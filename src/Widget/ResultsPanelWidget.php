@@ -4,14 +4,13 @@ declare(strict_types=1);
 
 namespace Porta\Widget;
 
-use Porta\Input\TextInput;
 use Porta\Ui\ListSelection;
 use Porta\Ui\Style;
+use Porta\Ui\TextField;
 use Porta\Widget\Render\HeaderRenderer;
 use Symfony\Component\Tui\Ansi\AnsiUtils;
 use Symfony\Component\Tui\Input\Key;
 use Symfony\Component\Tui\Render\RenderContext;
-use Symfony\Component\Tui\Style\CursorShape;
 use Symfony\Component\Tui\Widget\FocusableInterface;
 use Symfony\Component\Tui\Widget\FocusableTrait;
 use Symfony\Component\Tui\Widget\KeybindingsTrait;
@@ -31,8 +30,8 @@ final class ResultsPanelWidget extends OverlayWidget implements FocusableInterfa
     private bool $withOptions = false;
     private bool $withReplace = false;
     private string $title = '';
-    private string $query = '';
-    private string $replace = '';
+    private readonly TextField $query;
+    private readonly TextField $replace;
     /** 'query' | 'replace' — which field typing edits (only when withReplace) */
     private string $activeField = 'query';
     private readonly ListSelection $list;
@@ -59,6 +58,8 @@ final class ResultsPanelWidget extends OverlayWidget implements FocusableInterfa
     public function __construct()
     {
         $this->list = new ListSelection();
+        $this->query = new TextField();
+        $this->replace = new TextField();
         $this->visibleRows = 10;
     }
 
@@ -105,8 +106,8 @@ final class ResultsPanelWidget extends OverlayWidget implements FocusableInterfa
         $this->withReplace = $withReplace;
         $this->activeField = 'query';
         $this->title = $title;
-        $this->query = '';
-        $this->replace = '';
+        $this->query->clear();
+        $this->replace->clear();
         $this->results = [];
         $this->list->reset();
         $this->searching = false;
@@ -169,25 +170,24 @@ final class ResultsPanelWidget extends OverlayWidget implements FocusableInterfa
             $this->invalidate();
         } elseif ($this->withReplace && $kb->matches($data, 'replace_all')) {
             if (null !== $this->onReplaceAll) {
-                ($this->onReplaceAll)($this->replace);
+                ($this->onReplaceAll)($this->replace->value());
             }
         } elseif ($kb->matches($data, 'delete_char_backward')) {
             if ($this->withReplace && 'replace' === $this->activeField) {
-                $this->replace = substr($this->replace, 0, -1);
+                $this->replace->backspace();
                 $this->invalidate();
-            } elseif ($this->withQuery && '' !== $this->query) {
-                $this->query = substr($this->query, 0, -1);
+            } elseif ($this->withQuery && $this->query->backspace()) {
                 $this->notifyQuery();
                 $this->invalidate();
             }
-        } elseif ($this->withQuery && TextInput::isPrintable($data)) {
-            if ($this->withReplace && 'replace' === $this->activeField) {
-                $this->replace .= $data;
-            } else {
-                $this->query .= $data;
-                $this->notifyQuery();
+        } elseif ($this->withQuery) {
+            $field = $this->withReplace && 'replace' === $this->activeField ? $this->replace : $this->query;
+            if ($field->insert($data)) {
+                if ($field === $this->query) {
+                    $this->notifyQuery();
+                }
+                $this->invalidate();
             }
-            $this->invalidate();
         }
     }
 
@@ -258,9 +258,9 @@ final class ResultsPanelWidget extends OverlayWidget implements FocusableInterfa
         $lines = [];
 
         $status = $this->searching ? ' searching…' : \sprintf(' %d results', \count($this->results));
-        $cursor = $this->focused && $this->withQuery ? AnsiUtils::cursorMarker(CursorShape::Bar) : '';
-        $queryCursor = 'query' === $this->activeField ? $cursor : '';
-        $prefix = ' '.$this->title.($this->withQuery ? ': '.$this->query.$queryCursor : '')."\x1b[38;5;245m".$status."\x1b[39m";
+        $showCursor = $this->focused && $this->withQuery;
+        $queryField = $this->query->render(cursor: $showCursor && 'query' === $this->activeField);
+        $prefix = ' '.$this->title.($this->withQuery ? ': '.$queryField : '')."\x1b[38;5;245m".$status."\x1b[39m";
 
         $this->optionZones = [];
         $options = '';
@@ -280,8 +280,8 @@ final class ResultsPanelWidget extends OverlayWidget implements FocusableInterfa
         $lines[] = HeaderRenderer::render($header, $columns);
 
         if ($this->withReplace) {
-            $replaceCursor = 'replace' === $this->activeField ? $cursor : '';
-            $replaceLine = ' Replace: '.$this->replace.$replaceCursor."\x1b[38;5;245m  (Tab switch · Alt+A replace all)\x1b[39m";
+            $replaceField = $this->replace->render(cursor: $showCursor && 'replace' === $this->activeField);
+            $replaceLine = ' Replace: '.$replaceField."\x1b[38;5;245m  (Tab switch · Alt+A replace all)\x1b[39m";
             $lines[] = "\x1b[48;5;236m".AnsiUtils::truncateToWidth($replaceLine, $columns, '…', pad: true)."\x1b[0m";
         }
 
@@ -295,7 +295,7 @@ final class ResultsPanelWidget extends OverlayWidget implements FocusableInterfa
             $lines[] = $bg.AnsiUtils::truncateToWidth($text, $columns, '…', pad: true)."\x1b[0m";
         }
 
-        if ([] === $this->results && !$this->searching && '' !== $this->query) {
+        if ([] === $this->results && !$this->searching && '' !== $this->query->value()) {
             $lines[] = "\x1b[48;5;235m\x1b[38;5;244m".AnsiUtils::truncateToWidth(' no results', $columns, '', pad: true)."\x1b[0m";
         }
 
@@ -305,7 +305,7 @@ final class ResultsPanelWidget extends OverlayWidget implements FocusableInterfa
     private function notifyQuery(): void
     {
         if (null !== $this->onQueryChanged) {
-            ($this->onQueryChanged)($this->query);
+            ($this->onQueryChanged)($this->query->value());
         }
     }
 
