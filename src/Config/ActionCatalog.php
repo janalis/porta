@@ -8,7 +8,7 @@ namespace Porta\Config;
  * The single descriptor table for every rebindable action: its palette label
  * and, for Ide-scope actions (bound on the application rather than on a
  * widget), its default keys. {@see IdeConfig} derives the rebindable-action
- * allowlist from it, {@see ActionRegistry} serves labels from it, and the
+ * allowlist from it, {@see self::label()} serves labels from it, and the
  * coordinator builds its default keymap from it — previously three
  * hand-synced lists.
  *
@@ -152,5 +152,11 @@ final class ActionCatalog
     public static function labels(): array
     {
         return array_map(static fn (array $spec): string => $spec['label'], self::ACTIONS);
+    }
+
+    /** Palette label for an action id; unknown actions fall back to a title-cased slug. */
+    public static function label(string $action): string
+    {
+        return self::ACTIONS[$action]['label'] ?? ucwords(str_replace('_', ' ', $action));
     }
 }

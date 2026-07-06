@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace Porta\Ui;
 
-use Porta\Config\ActionRegistry;
+use Porta\Config\ActionCatalog;
 use Porta\Config\CommandRegistry;
 use Porta\Widget\CodeEditorWidget;
 use Symfony\Component\Tui\Input\Keybindings;
@@ -143,8 +143,8 @@ final class MenuModel
     {
         [$scope, $id] = explode(':', $spec, 2);
         $label = 'i' === $scope
-            ? $commands->label($id) ?? ActionRegistry::label($id)
-            : ActionRegistry::label($id);
+            ? $commands->label($id) ?? ActionCatalog::label($id)
+            : ActionCatalog::label($id);
         $shortcut = ShortcutFormatter::format(self::binding($id, $editor, $ideKeys));
         $run = 'i' === $scope
             ? static fn () => $commands->run($id)

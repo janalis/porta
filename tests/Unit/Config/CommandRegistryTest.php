@@ -16,7 +16,7 @@ final class CommandRegistryTest extends TestCase
             ->add('save', static function (): void {})
             ->add('toggle_inline_diagnostics', static function (): void {}, label: 'Toggle Inline Diagnostics');
 
-        $this->assertSame('Save File', $registry->label('save'), 'falls back to ActionRegistry label');
+        $this->assertSame('Save File', $registry->label('save'), 'falls back to ActionCatalog label');
         $this->assertSame('Toggle Inline Diagnostics', $registry->label('toggle_inline_diagnostics'), 'custom label');
     }
 

@@ -85,4 +85,11 @@ final class ActionCatalogTest extends TestCase
         $this->assertSame('Save File', $labels['save']);
         $this->assertCount(\count(ActionCatalog::ACTIONS), $labels);
     }
+
+    public function testLabelLookup(): void
+    {
+        $this->assertSame('Save File', ActionCatalog::label('save'));
+        // Unknown action falls back to a title-cased slug.
+        $this->assertSame('Some Made Up', ActionCatalog::label('some_made_up'));
+    }
 }

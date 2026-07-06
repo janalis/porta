@@ -9,7 +9,7 @@ namespace Porta\Config;
  * handler, and flags for whether it is bound to a key (dispatched from the input
  * listener) and/or listed in the Find Action palette. This replaces the parallel
  * `if/elseif` keybinding chain and the hand-maintained palette-command list, which
- * previously duplicated the same handlers. Labels come from {@see ActionRegistry}
+ * previously duplicated the same handlers. Labels come from {@see ActionCatalog}
  * unless a command supplies its own.
  */
 final class CommandRegistry
@@ -21,7 +21,7 @@ final class CommandRegistry
     {
         $this->commands[] = [
             'id' => $id,
-            'label' => $label ?? ActionRegistry::label($id),
+            'label' => $label ?? ActionCatalog::label($id),
             'handler' => $handler,
             'keyBound' => $keyBound,
             'inPalette' => $inPalette,
