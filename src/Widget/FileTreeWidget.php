@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Porta\Widget;
 
+use Porta\Ui\ListNavigation;
 use Porta\Ui\ListSelection;
 use Porta\Ui\Style;
 use Porta\Widget\Render\MenuOverlay;
@@ -138,17 +139,7 @@ final class FileTreeWidget extends AbstractWidget implements FocusableInterface,
             return;
         }
 
-        if ($kb->matches($data, 'move_up')) {
-            $this->list->moveUp();
-            $this->invalidate();
-        } elseif ($kb->matches($data, 'move_down')) {
-            $this->list->moveDown($count);
-            $this->invalidate();
-        } elseif ($kb->matches($data, 'page_up')) {
-            $this->list->moveUp($this->lastRows);
-            $this->invalidate();
-        } elseif ($kb->matches($data, 'page_down')) {
-            $this->list->moveDown($count, $this->lastRows);
+        if (ListNavigation::handleKey($data, $kb, $this->list, $count, page: $this->lastRows)) {
             $this->invalidate();
         } elseif ($kb->matches($data, 'collapse')) {
             $node = $this->visible[$this->list->selected()];

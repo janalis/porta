@@ -37,6 +37,20 @@ final class ListSelection
         $this->selected = $index;
     }
 
+    /**
+     * Select $index when it names a row and differs from the current
+     * selection; returns whether it changed (the hover-highlight idiom).
+     */
+    public function selectIfChanged(?int $index): bool
+    {
+        if (null === $index || $index === $this->selected) {
+            return false;
+        }
+        $this->selected = $index;
+
+        return true;
+    }
+
     /** Move the selection up $step entries, stopping at the first. */
     public function moveUp(int $step = 1): void
     {

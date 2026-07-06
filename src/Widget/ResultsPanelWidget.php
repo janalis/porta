@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Porta\Widget;
 
+use Porta\Ui\ListNavigation;
 use Porta\Ui\ListSelection;
 use Porta\Ui\Style;
 use Porta\Ui\TextField;
@@ -147,11 +148,7 @@ final class ResultsPanelWidget extends OverlayWidget implements FocusableInterfa
 
         if ($kb->matches($data, 'close')) {
             $this->close();
-        } elseif ($kb->matches($data, 'move_up')) {
-            $this->list->moveUp();
-            $this->invalidate();
-        } elseif ($kb->matches($data, 'move_down')) {
-            $this->list->moveDown(\count($this->results));
+        } elseif (ListNavigation::handleKey($data, $kb, $this->list, \count($this->results))) {
             $this->invalidate();
         } elseif ($kb->matches($data, 'jump')) {
             $result = $this->results[$this->list->selected()] ?? null;
@@ -224,9 +221,7 @@ final class ResultsPanelWidget extends OverlayWidget implements FocusableInterfa
     /** Highlight the result row under the pointer (widget-relative row); returns whether it changed. */
     public function hoverRow(int $relRow): bool
     {
-        $index = $this->rowIndexAt($relRow);
-        if (null !== $index && $index !== $this->list->selected()) {
-            $this->list->select($index);
+        if ($this->list->selectIfChanged($this->rowIndexAt($relRow))) {
             $this->invalidate();
 
             return true;

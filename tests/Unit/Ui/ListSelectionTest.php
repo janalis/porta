@@ -99,4 +99,13 @@ final class ListSelectionTest extends TestCase
         $list->select(0);
         $this->assertSame(0, $list->follow(5)); // exactly the first visible row
     }
+
+    public function testSelectIfChangedIgnoresNullAndSameRow(): void
+    {
+        $list = new ListSelection();
+        $this->assertFalse($list->selectIfChanged(null), 'outside the rows');
+        $this->assertFalse($list->selectIfChanged(0), 'already selected');
+        $this->assertTrue($list->selectIfChanged(3));
+        $this->assertSame(3, $list->selected());
+    }
 }
