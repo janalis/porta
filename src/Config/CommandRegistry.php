@@ -17,15 +17,20 @@ final class CommandRegistry
     /** @var list<array{id: string, label: string, handler: \Closure(): void, keyBound: bool, inPalette: bool}> */
     private array $commands = [];
 
+    /** @var array<string, array{id: string, label: string, handler: \Closure(): void, keyBound: bool, inPalette: bool}> first registration per id, for O(1) dispatch */
+    private array $byId = [];
+
     public function add(string $id, \Closure $handler, bool $keyBound = false, bool $inPalette = true, ?string $label = null): self
     {
-        $this->commands[] = [
+        $command = [
             'id' => $id,
             'label' => $label ?? ActionCatalog::label($id),
             'handler' => $handler,
             'keyBound' => $keyBound,
             'inPalette' => $inPalette,
         ];
+        $this->commands[] = $command;
+        $this->byId[$id] ??= $command;
 
         return $this;
     }
@@ -42,24 +47,14 @@ final class CommandRegistry
     /** The registered label for $id (including custom labels), or null when unknown. */
     public function label(string $id): ?string
     {
-        foreach ($this->commands as $command) {
-            if ($command['id'] === $id) {
-                return $command['label'];
-            }
-        }
-
-        return null;
+        return $this->byId[$id]['label'] ?? null;
     }
 
     /** Run the handler registered under $id (no-op when unknown). */
     public function run(string $id): void
     {
-        foreach ($this->commands as $command) {
-            if ($command['id'] === $id) {
-                $command['handler']();
-
-                return;
-            }
+        if (isset($this->byId[$id])) {
+            $this->byId[$id]['handler']();
         }
     }
 
