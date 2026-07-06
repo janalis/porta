@@ -25,8 +25,7 @@ final class ResultsPanelWidget extends OverlayWidget implements FocusableInterfa
     use FocusableTrait;
     use InputHook;
     use KeybindingsTrait;
-
-    private int $visibleRows = 10;
+    use PanelRows;
 
     private bool $withQuery = false;
     private bool $withOptions = false;
@@ -60,6 +59,7 @@ final class ResultsPanelWidget extends OverlayWidget implements FocusableInterfa
     public function __construct()
     {
         $this->list = new ListSelection();
+        $this->visibleRows = 10;
     }
 
     public function onQueryChanged(callable $callback): self
@@ -131,16 +131,6 @@ final class ResultsPanelWidget extends OverlayWidget implements FocusableInterfa
     protected function resetState(): void
     {
         $this->results = [];
-    }
-
-    /** Resize the panel to $rows visible result rows (clamped). */
-    public function setVisibleRows(int $rows): void
-    {
-        $rows = max(2, min($rows, 200));
-        if ($rows !== $this->visibleRows) {
-            $this->visibleRows = $rows;
-            $this->invalidate();
-        }
     }
 
     public function handleInput(string $data): void

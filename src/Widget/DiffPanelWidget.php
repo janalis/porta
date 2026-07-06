@@ -22,13 +22,17 @@ final class DiffPanelWidget extends OverlayWidget implements FocusableInterface
     use FocusableTrait;
     use InputHook;
     use KeybindingsTrait;
-
-    private int $visibleRows = 14;
+    use PanelRows;
 
     private string $title = 'Diff';
     /** @var list<array{kind: string, text: string}> */
     private array $rows = [];
     private int $scrollBack = 0;
+
+    public function __construct()
+    {
+        $this->visibleRows = 14;
+    }
 
     /**
      * @param list<array{kind: string, text: string}> $rows
@@ -45,16 +49,6 @@ final class DiffPanelWidget extends OverlayWidget implements FocusableInterface
     public function getTitle(): string
     {
         return $this->title;
-    }
-
-    /** Resize the panel to $rows visible rows (clamped). */
-    public function setVisibleRows(int $rows): void
-    {
-        $rows = max(2, min($rows, 200));
-        if ($rows !== $this->visibleRows) {
-            $this->visibleRows = $rows;
-            $this->invalidate();
-        }
     }
 
     public function handleInput(string $data): void

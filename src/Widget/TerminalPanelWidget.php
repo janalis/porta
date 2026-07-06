@@ -22,8 +22,7 @@ final class TerminalPanelWidget extends OverlayWidget implements FocusableInterf
     use FocusableTrait;
     use InputHook;
     use KeybindingsTrait;
-
-    private int $visibleRows = 12;
+    use PanelRows;
 
     private string $title = 'Terminal';
     private TerminalBuffer $buffer;
@@ -35,6 +34,7 @@ final class TerminalPanelWidget extends OverlayWidget implements FocusableInterf
     public function __construct()
     {
         $this->buffer = new TerminalBuffer();
+        $this->visibleRows = 12;
     }
 
     public function open(string $title, TerminalBuffer $buffer): void
@@ -75,21 +75,6 @@ final class TerminalPanelWidget extends OverlayWidget implements FocusableInterf
         $max = max(0, $this->buffer->lineCount() - $this->visibleRows);
         $this->scrollBack = max(0, min($this->scrollBack + $lines, $max));
         $this->invalidate();
-    }
-
-    /** Resize the panel to $rows visible rows (clamped). */
-    public function setVisibleRows(int $rows): void
-    {
-        $rows = max(2, min($rows, 200));
-        if ($rows !== $this->visibleRows) {
-            $this->visibleRows = $rows;
-            $this->invalidate();
-        }
-    }
-
-    public function visibleRows(): int
-    {
-        return $this->visibleRows;
     }
 
     public function onInputForward(callable $callback): self
