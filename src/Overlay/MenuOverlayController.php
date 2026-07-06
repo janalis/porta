@@ -82,9 +82,7 @@ final class MenuOverlayController
     {
         if (!$this->menuBar->isOpen()) {
             $this->menuDropdown = null;
-            $this->tabBar->setMenuOverlay([]);
-            $this->breadcrumbs->setMenuOverlay([]);
-            $this->editor->setMenuOverlay([]);
+            $this->clearOverlays([$this->tabBar, $this->breadcrumbs, $this->editor]);
 
             return;
         }
@@ -108,12 +106,7 @@ final class MenuOverlayController
         $segments = $this->menuBar->dropdownSegments($panelWidth);
 
         $this->menuDropdown = ['top' => $top, 'col' => $anchor, 'width' => $panelWidth, 'count' => \count($segments)];
-        $this->tabBar->setMenuOverlay($this->localSpans($segments, $tabsRect, $top, $anchor, $panelWidth));
-        $this->editor->setMenuOverlay($this->localSpans($segments, $editorRect, $top, $anchor, $panelWidth));
-        // The breadcrumb sits between the tabs and editor and is hidden (no rect)
-        // when the caret is outside every scope, so guard on its rect.
-        $bcRect = $this->renderer->getWidgetRect($this->breadcrumbs);
-        $this->breadcrumbs->setMenuOverlay(null !== $bcRect ? $this->localSpans($segments, $bcRect, $top, $anchor, $panelWidth) : []);
+        $this->pushOverlays($segments, $top, $anchor, $panelWidth, [$this->tabBar, $this->editor, $this->breadcrumbs]);
     }
 
     /**
@@ -127,21 +120,13 @@ final class MenuOverlayController
     {
         if (!$this->contextMenu->isOpen()) {
             $this->contextMenuDropdown = null;
-            $this->tree->setMenuOverlay([]);
-            $this->separator->setMenuOverlay([]);
-            $this->tabBar->setMenuOverlay([]);
-            $this->breadcrumbs->setMenuOverlay([]);
-            $this->editor->setMenuOverlay([]);
+            $this->clearOverlays([$this->tree, $this->separator, $this->tabBar, $this->breadcrumbs, $this->editor]);
 
             return;
         }
 
         // The context menu only ever opens from a right-click, i.e. after at
-        // least one frame, so the tree/tab/editor rects are always populated here.
-        /** @var WidgetRect $treeRect */
-        $treeRect = $this->renderer->getWidgetRect($this->tree);
-        /** @var WidgetRect $tabsRect */
-        $tabsRect = $this->renderer->getWidgetRect($this->tabBar);
+        // least one frame, so the editor rect is always populated here.
         /** @var WidgetRect $editorRect */
         $editorRect = $this->renderer->getWidgetRect($this->editor);
 
@@ -156,15 +141,32 @@ final class MenuOverlayController
 
         $segments = $this->contextMenu->segments($panelWidth);
         $this->contextMenuDropdown = ['top' => $top, 'col' => $col, 'width' => $panelWidth, 'count' => \count($segments)];
-        $this->tree->setMenuOverlay($this->localSpans($segments, $treeRect, $top, $col, $panelWidth));
-        $this->tabBar->setMenuOverlay($this->localSpans($segments, $tabsRect, $top, $col, $panelWidth));
-        $this->editor->setMenuOverlay($this->localSpans($segments, $editorRect, $top, $col, $panelWidth));
         // The sidebar↔editor separator column and the (conditionally hidden)
         // breadcrumb also sit under a menu that spills across the sidebar boundary.
-        $separatorRect = $this->renderer->getWidgetRect($this->separator);
-        $this->separator->setMenuOverlay(null !== $separatorRect ? $this->localSpans($segments, $separatorRect, $top, $col, $panelWidth) : []);
-        $bcRect = $this->renderer->getWidgetRect($this->breadcrumbs);
-        $this->breadcrumbs->setMenuOverlay(null !== $bcRect ? $this->localSpans($segments, $bcRect, $top, $col, $panelWidth) : []);
+        $this->pushOverlays($segments, $top, $col, $panelWidth, [$this->tree, $this->tabBar, $this->editor, $this->separator, $this->breadcrumbs]);
+    }
+
+    /** @param list<BreadcrumbsWidget|CodeEditorWidget|FileTreeWidget|SeparatorWidget|TabBarWidget> $panes */
+    private function clearOverlays(array $panes): void
+    {
+        foreach ($panes as $pane) {
+            $pane->setMenuOverlay([]);
+        }
+    }
+
+    /**
+     * Slice the dropdown into per-pane local spans and push them; panes without
+     * a rect this frame (e.g. the breadcrumb hidden outside every scope) clear.
+     *
+     * @param list<array{segment: string, separator: bool}>                                        $segments
+     * @param list<BreadcrumbsWidget|CodeEditorWidget|FileTreeWidget|SeparatorWidget|TabBarWidget> $panes
+     */
+    private function pushOverlays(array $segments, int $top, int $anchor, int $panelWidth, array $panes): void
+    {
+        foreach ($panes as $pane) {
+            $rect = $this->renderer->getWidgetRect($pane);
+            $pane->setMenuOverlay(null !== $rect ? $this->localSpans($segments, $rect, $top, $anchor, $panelWidth) : []);
+        }
     }
 
     /**
