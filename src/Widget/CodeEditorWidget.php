@@ -1211,7 +1211,6 @@ final class CodeEditorWidget extends AbstractWidget implements FocusableInterfac
 
         // The overlay/prompt chrome composites over the content; the
         // application-menu dropdown floats above everything else.
-        /** @var list<string> $result */
         return MenuOverlay::apply(
             $this->overlayHost->composite($result, $columns, $rows, $this->focused),
             $this->menuOverlay,
