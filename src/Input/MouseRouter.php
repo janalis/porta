@@ -74,23 +74,8 @@ final class MouseRouter
         $tabsRect = $this->hit->rect($this->tabBar);
         $editorRect = $this->hit->rect($this->editor);
 
-        // Wheel: scroll whichever pane is under the pointer.
         if ($mouse->wheel) {
-            $step = 3 * $mouse->wheelDelta;
-            $terminalRect = $this->hit->rect($this->terminalPanel);
-            if ($this->terminalPanel->isOpen() && null !== $terminalRect && $terminalRect->contains($mouse->row, $mouse->col)) {
-                $this->terminalPanel->scroll($mouse->wheelDelta < 0 ? 3 : -3); // wheel up → into history
-            } elseif (null !== $editorRect && $editorRect->contains($mouse->row, $mouse->col)) {
-                $this->editor->scrollBy($step);
-            } elseif (null !== $treeRect && $treeRect->contains($mouse->row, $mouse->col)) {
-                $key = $mouse->wheelDelta < 0 ? "\x1b[A" : "\x1b[B";
-                for ($i = 0; $i < 3; ++$i) {
-                    $this->tree->handleInput($key);
-                }
-            } else {
-                return;
-            }
-            $this->tui->requestRender();
+            $this->handleWheel($mouse, $treeRect, $editorRect);
 
             return;
         }
@@ -103,71 +88,13 @@ final class MouseRouter
             return;
         }
 
-        // Active text selection: a left-drag started in the editor keeps
-        // extending on motion/release, wherever the pointer now is (clamped to
-        // the editor viewport so a drag past the edge pins to the last line).
-        if ($this->mouseSelecting && ($mouse->isLeftDrag() || $mouse->isLeftRelease())) {
-            if (null !== $editorRect) {
-                $row = max($editorRect->row, min($mouse->row, $editorRect->row + $editorRect->rows - 1));
-                $col = max($editorRect->col, min($mouse->col, $editorRect->col + $editorRect->columns - 1));
-                $rel = $editorRect->toRelative($row, $col);
-                $this->editor->extendSelectionTo($rel['row'], $rel['col']);
-            }
-            if ($mouse->isLeftRelease()) {
-                $this->mouseSelecting = false;
-            }
-            $this->tui->requestRender();
-
-            return;
-        }
-
-        // Alt+Shift column selection: an editor-started drag rebuilds the
-        // rectangle on motion/release (gated by the flag, not per-event modifiers).
-        if ($this->columnSelecting && ($mouse->isLeftDrag() || $mouse->isLeftRelease())) {
-            if (null !== $editorRect) {
-                $row = max($editorRect->row, min($mouse->row, $editorRect->row + $editorRect->rows - 1));
-                $col = max($editorRect->col, min($mouse->col, $editorRect->col + $editorRect->columns - 1));
-                $rel = $editorRect->toRelative($row, $col);
-                $this->editor->extendColumnSelectionTo($rel['row'], $rel['col']);
-            }
-            if ($mouse->isLeftRelease()) {
-                $this->columnSelecting = false;
-            }
-            $this->tui->requestRender();
-
-            return;
-        }
-
-        // Tab reordering: a left-drag started on a tab moves it under the pointer.
-        if ($this->tabDragging && ($mouse->isLeftDrag() || $mouse->isLeftRelease())) {
-            if (null !== $tabsRect && null !== $this->tabDragPath) {
-                $col = max($tabsRect->col, min($mouse->col, $tabsRect->col + $tabsRect->columns - 1));
-                $rel = $tabsRect->toRelative($mouse->row, $col);
-                $target = $this->tabBar->tabIndexAtColumn($rel['col']);
-                if (null !== $target) {
-                    $order = $this->buffers->all();
-                    $current = null;
-                    foreach ($order as $i => $buffer) {
-                        if ($buffer->path === $this->tabDragPath) {
-                            $current = $i;
-                            break;
-                        }
-                    }
-                    if (null !== $current && $current !== $target) {
-                        $this->buffers->reorder($current, $target);
-                        $this->tui->requestRender();
-                    }
-                }
-            }
-            if ($mouse->isLeftRelease()) {
-                $this->tabDragging = false;
-            }
-
-            return;
-        }
-
-        // Sidebar/bottom-panel resize drags in progress consume the event.
-        if ($this->layout->continueResizeDrag($mouse, $treeRect)) {
+        // Drags in progress (text/column selection, tab reorder, pane resize)
+        // consume the event wherever the pointer now is.
+        if ($this->continueTextDrag($mouse, $editorRect)
+            || $this->continueColumnDrag($mouse, $editorRect)
+            || $this->continueTabDrag($mouse, $tabsRect)
+            || $this->layout->continueResizeDrag($mouse, $treeRect)
+        ) {
             return;
         }
 
@@ -187,22 +114,153 @@ final class MouseRouter
         $this->tabDragging = false;
         $this->layout->cancelDrags();
 
-        // An open editor popup (modal list overlay / completion) claims the click:
-        // inside the editor pane it picks an item; outside, a modal overlay is
-        // dismissed. A completion click that misses falls through to caret placement.
+        if ($this->handleModalPopupClick($mouse, $editorRect)) {
+            return;
+        }
+
+        // Separator drags: a press on the tree↔editor gap column, or on the top edge
+        // of the terminal/diff panel, arms a resize (must beat the pane hit-tests below).
+        if ($this->layout->armSidebarResize($treeRect, $mouse)) {
+            return;
+        }
+        if ($this->layout->armPanelResize($this->terminalPanel, $mouse) || $this->layout->armPanelResize($this->diffPanel, $mouse)) {
+            return;
+        }
+
+        $this->handlePaneClick($mouse, $treeRect, $tabsRect, $editorRect);
+    }
+
+    /** Wheel: scroll whichever pane is under the pointer. */
+    private function handleWheel(MouseEvent $mouse, ?WidgetRect $treeRect, ?WidgetRect $editorRect): void
+    {
+        $step = 3 * $mouse->wheelDelta;
+        $terminalRect = $this->hit->rect($this->terminalPanel);
+        if ($this->terminalPanel->isOpen() && null !== $terminalRect && $terminalRect->contains($mouse->row, $mouse->col)) {
+            $this->terminalPanel->scroll($mouse->wheelDelta < 0 ? 3 : -3); // wheel up → into history
+        } elseif (null !== $editorRect && $editorRect->contains($mouse->row, $mouse->col)) {
+            $this->editor->scrollBy($step);
+        } elseif (null !== $treeRect && $treeRect->contains($mouse->row, $mouse->col)) {
+            $key = $mouse->wheelDelta < 0 ? "\x1b[A" : "\x1b[B";
+            for ($i = 0; $i < 3; ++$i) {
+                $this->tree->handleInput($key);
+            }
+        } else {
+            return;
+        }
+        $this->tui->requestRender();
+    }
+
+    /**
+     * The pointer clamped into $rect (so a drag past an edge pins to the last
+     * row/column) and converted to rect-relative coordinates.
+     *
+     * @return array{row: int, col: int}
+     */
+    private function clampedRelative(WidgetRect $rect, MouseEvent $mouse): array
+    {
+        $row = max($rect->row, min($mouse->row, $rect->row + $rect->rows - 1));
+        $col = max($rect->col, min($mouse->col, $rect->col + $rect->columns - 1));
+
+        return $rect->toRelative($row, $col);
+    }
+
+    /**
+     * Active text selection: a left-drag started in the editor keeps extending
+     * on motion/release, wherever the pointer now is.
+     */
+    private function continueTextDrag(MouseEvent $mouse, ?WidgetRect $editorRect): bool
+    {
+        if (!$this->mouseSelecting || (!$mouse->isLeftDrag() && !$mouse->isLeftRelease())) {
+            return false;
+        }
+        if (null !== $editorRect) {
+            $rel = $this->clampedRelative($editorRect, $mouse);
+            $this->editor->extendSelectionTo($rel['row'], $rel['col']);
+        }
+        if ($mouse->isLeftRelease()) {
+            $this->mouseSelecting = false;
+        }
+        $this->tui->requestRender();
+
+        return true;
+    }
+
+    /**
+     * Alt+Shift column selection: an editor-started drag rebuilds the
+     * rectangle on motion/release (gated by the flag, not per-event modifiers).
+     */
+    private function continueColumnDrag(MouseEvent $mouse, ?WidgetRect $editorRect): bool
+    {
+        if (!$this->columnSelecting || (!$mouse->isLeftDrag() && !$mouse->isLeftRelease())) {
+            return false;
+        }
+        if (null !== $editorRect) {
+            $rel = $this->clampedRelative($editorRect, $mouse);
+            $this->editor->extendColumnSelectionTo($rel['row'], $rel['col']);
+        }
+        if ($mouse->isLeftRelease()) {
+            $this->columnSelecting = false;
+        }
+        $this->tui->requestRender();
+
+        return true;
+    }
+
+    /** Tab reordering: a left-drag started on a tab moves it under the pointer. */
+    private function continueTabDrag(MouseEvent $mouse, ?WidgetRect $tabsRect): bool
+    {
+        if (!$this->tabDragging || (!$mouse->isLeftDrag() && !$mouse->isLeftRelease())) {
+            return false;
+        }
+        if (null !== $tabsRect && null !== $this->tabDragPath) {
+            $col = max($tabsRect->col, min($mouse->col, $tabsRect->col + $tabsRect->columns - 1));
+            $rel = $tabsRect->toRelative($mouse->row, $col);
+            $target = $this->tabBar->tabIndexAtColumn($rel['col']);
+            if (null !== $target) {
+                $order = $this->buffers->all();
+                $current = null;
+                foreach ($order as $i => $buffer) {
+                    if ($buffer->path === $this->tabDragPath) {
+                        $current = $i;
+                        break;
+                    }
+                }
+                if (null !== $current && $current !== $target) {
+                    $this->buffers->reorder($current, $target);
+                    $this->tui->requestRender();
+                }
+            }
+        }
+        if ($mouse->isLeftRelease()) {
+            $this->tabDragging = false;
+        }
+
+        return true;
+    }
+
+    /**
+     * A left press while a popup/menu is showing: an open editor popup (modal
+     * list overlay / completion) claims the click — inside the editor pane it
+     * picks an item, outside a modal overlay is dismissed, and a completion
+     * click that misses falls through to caret placement. Then an open context
+     * menu or application menu runs/dismisses on its own hit test. Returns
+     * whether the click was consumed.
+     */
+    private function handleModalPopupClick(MouseEvent $mouse, ?WidgetRect $editorRect): bool
+    {
         if ($this->editor->isOverlayOpen() || $this->editor->isCompletionOpen()) {
             if (null !== $editorRect && $editorRect->contains($mouse->row, $mouse->col)) {
                 $rel = $editorRect->toRelative($mouse->row, $mouse->col);
                 if ($this->editor->handlePopupClick($rel['row'], $rel['col'])) {
                     $this->tui->requestRender();
 
-                    return;
+                    return true;
                 }
             } elseif ($this->editor->isOverlayOpen()) {
                 $this->editor->handlePopupClick(-1, -1); // outside the modal overlay → dismiss
                 $this->tui->requestRender();
 
-                return;
+                return true;
             }
         }
 
@@ -211,14 +269,12 @@ final class MouseRouter
         if ($this->contextMenu->isOpen()) {
             if (null !== ($item = $this->hit->hitRegion($this->overlay->contextMenuDropdown(), $mouse->row, $mouse->col))) {
                 $this->contextMenu->runItem($item);
-                $this->tui->requestRender();
-
-                return;
+            } else {
+                $this->contextMenu->close();
             }
-            $this->contextMenu->close();
             $this->tui->requestRender();
 
-            return;
+            return true;
         }
 
         // Menu bar: click a title to open (or switch) its dropdown.
@@ -233,33 +289,27 @@ final class MouseRouter
             }
             $this->tui->requestRender();
 
-            return;
+            return true;
         }
         // Dropdown item: the panel floats over the editor pane, outside the menu
         // bar's rect, so hit-test the tracked overlay region directly.
         if ($this->menuBar->isOpen()) {
             if (null !== ($item = $this->hit->hitRegion($this->overlay->menuDropdown(), $mouse->row, $mouse->col))) {
                 $this->menuBar->runItem($item);
-                $this->tui->requestRender();
-
-                return;
+            } else {
+                $this->menuBar->close(); // a click anywhere else dismisses an open menu
             }
-            // A click anywhere else dismisses an open menu.
-            $this->menuBar->close();
             $this->tui->requestRender();
 
-            return;
+            return true;
         }
 
-        // Separator drags: a press on the tree↔editor gap column, or on the top edge
-        // of the terminal/diff panel, arms a resize (must beat the pane hit-tests below).
-        if ($this->layout->armSidebarResize($treeRect, $mouse)) {
-            return;
-        }
-        if ($this->layout->armPanelResize($this->terminalPanel, $mouse) || $this->layout->armPanelResize($this->diffPanel, $mouse)) {
-            return;
-        }
+        return false;
+    }
 
+    /** A left press on the panes, tried front-to-back; the editor is the final target. */
+    private function handlePaneClick(MouseEvent $mouse, ?WidgetRect $treeRect, ?WidgetRect $tabsRect, ?WidgetRect $editorRect): void
+    {
         // A click in the open terminal pane focuses it, so typing reaches the shell.
         if ($this->terminalPanel->isOpen() && null !== $this->hit->hit($this->terminalPanel, $mouse->row, $mouse->col)) {
             $this->tui->setFocus($this->terminalPanel);
