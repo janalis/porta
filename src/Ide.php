@@ -445,6 +445,16 @@ final class Ide
 
     private function wireWidgets(Keybindings $keybindings): void
     {
+        $this->wireEditor();
+        $this->wireFindAndGoto();
+        $this->wireResultsPanel();
+        $this->wireInputDispatch($keybindings);
+        $this->wirePanels();
+    }
+
+    /** The file tree's open hook and the editor's outbound callback struct. */
+    private function wireEditor(): void
+    {
         $this->tree->onOpenFile(fn (string $path) => $this->openFile($path, focusEditor: true));
 
         // The editor's outbound hooks, built once: file lifecycle, buffer
@@ -515,7 +525,11 @@ final class Ide
             onPeek: fn (int $line, int $col) => $this->navigation->requestPeek($line, $col),
             onReformat: fn () => $this->refactor->requestReformat(),
         ));
+    }
 
+    /** Find bar and go-to-file palette: search-match mirroring and focus flow. */
+    private function wireFindAndGoto(): void
+    {
         $this->findBar->onUpdate(function (): void {
             $this->editor->setSearchMatches($this->findBar->getMatchesByLine());
             $this->tui->requestRender();
@@ -537,7 +551,11 @@ final class Ide
             }
             $this->tui->requestRender();
         });
+    }
 
+    /** The shared bottom results panel: live queries, toggles, jumps, close. */
+    private function wireResultsPanel(): void
+    {
         // The results panel serves two live-query modes (project text search
         // and workspace symbol search); the PanelManager's mode selects the handler.
         $this->resultsPanel->onQueryChanged(function (string $query): void {
@@ -590,7 +608,11 @@ final class Ide
             $this->projectSearchController->cancel();
             $this->panels->focusEditor();
         });
+    }
 
+    /** Command registry, menu bar, and the raw input listener (mouse + key-bound commands). */
+    private function wireInputDispatch(Keybindings $keybindings): void
+    {
         $this->wireCommands();
         $this->wireMenuBar($keybindings);
         $this->tui->addListener(function (InputEvent $event) use ($keybindings): void {
@@ -623,7 +645,11 @@ final class Ide
                 }
             }
         });
+    }
 
+    /** Terminal and diff panels: input forwarding and focus restoration on close. */
+    private function wirePanels(): void
+    {
         $this->terminalPanel->onInputForward(fn (string $data) => $this->run->forwardInput($data));
         $this->terminalPanel->onClose(function (): void {
             if ($this->tui->getFocus() === $this->terminalPanel) {
