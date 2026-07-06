@@ -994,6 +994,114 @@ final class CodeEditorWidget extends AbstractWidget implements FocusableInterfac
         return LineDecorator::applyFullWidth($gutter.$content, $this->lastGutterWidth + $contentWidth, "\x1b[48;5;237m");
     }
 
+    /**
+     * The gutter cell for one document line: git strip, line number colored by
+     * the line's worst diagnostic (or highlighted on the caret line), marker.
+     *
+     * @param list<array{col: int, endCol?: int, message: string, severity: int}> $lineDiags
+     */
+    private function gutterCell(int $lineIndex, bool $isCursorLine, array $lineDiags, int $numberWidth): string
+    {
+        $numColor = match (true) {
+            [] !== $lineDiags => "\x1b[38;5;".DiagnosticStyle::fg(DiagnosticStyle::worst($lineDiags)).'m',
+            $isCursorLine => "\x1b[38;5;252m",
+            default => "\x1b[38;5;240m",
+        };
+        // No icon in the left gutter — the severity reads from the line-number
+        // color here and from the colored block in the right stripe.
+        $marker = ' ';
+        // Relative line numbers: distance from the cursor line, absolute on
+        // the cursor line itself (PhpStorm/Vim "relativenumber" style).
+        if ($this->relativeLineNumbers && !$isCursorLine) {
+            $numberLabel = (string) abs($lineIndex - $this->document->getCursorLine());
+        } else {
+            $numberLabel = (string) ($lineIndex + 1);
+        }
+
+        return EditorRenderer::gitCell($this->gitMarks[$lineIndex] ?? null).$numColor.str_pad($numberLabel, $numberWidth, ' ', \STR_PAD_LEFT).$marker."\x1b[0m ";
+    }
+
+    /**
+     * One document line highlighted and fully decorated: indent guides, the
+     * layered selection/caret/search/occurrence/bracket/diagnostic spans,
+     * inlay hints, and the collapsed-fold marker.
+     *
+     * @param array{startLine: int, startCol: int, endLine: int, endCol: int}|null $selection null with multiple carets: every caret draws uniformly through the records
+     * @param list<array{line: int, col: int, anchorLine: int, anchorCol: int}>    $carets
+     * @param list<array{0: int, 1: int, 2: int}>                                  $occurrences
+     * @param array{0: array{0: int, 1: int}, 1: array{0: int, 1: int}}|null       $brackets
+     * @param list<array{col: int, endCol?: int, message: string, severity: int}>  $lineDiags
+     */
+    private function decoratedLine(int $lineIndex, string $highlighted, ?array $selection, array $carets, array $occurrences, ?array $brackets, array $lineDiags, int $hScroll, int $contentWidth): string
+    {
+        $doc = $this->document;
+        $hlLine = EditorRenderer::applyIndentGuides($doc, $highlighted, $lineIndex);
+
+        // Gather decoration spans in layering order, then apply them all at
+        // once. Each span is [startCol, endCol, openSgr, closeSgr, bgReapply].
+        ['spans' => $spans, 'padTo' => $padTo] = LineSpans::forLine(
+            $doc,
+            $lineIndex,
+            $selection,
+            $carets,
+            $this->searchMatches[$lineIndex] ?? [],
+            $occurrences,
+            $brackets,
+            $lineDiags,
+        );
+        if ($padTo > 0) {
+            // Pad so an end-of-line caret has a cell to invert (the window
+            // bound keeps padding within what's visible).
+            $need = min($padTo, $hScroll + $contentWidth);
+            $width = AnsiUtils::visibleWidth($hlLine);
+            if ($need > $width) {
+                $hlLine .= str_repeat(' ', $need - $width);
+            }
+        }
+        foreach ($spans as [$spanStart, $spanEnd, $openSgr, $closeSgr, $reapply]) {
+            $hlLine = LineDecorator::apply($hlLine, $spanStart, $spanEnd, $openSgr, $closeSgr, $reapply);
+        }
+
+        // Inlay hints: dim virtual text inserted after all decorations so
+        // their SGR spans stay attached to the real characters.
+        $hlLine = EditorRenderer::applyInlayHints($doc, $lineIndex, $this->inlayHints[$lineIndex] ?? [], $hlLine);
+
+        // Collapsed-region marker on the fold-start line.
+        if (null !== ($foldEnd = $this->foldModel->foldEndAt($lineIndex))) {
+            $hidden = $foldEnd - $lineIndex;
+            $hlLine .= "\x1b[38;5;238m ⋯ ".$hidden." lines\x1b[0m";
+        }
+
+        return $hlLine;
+    }
+
+    /**
+     * Overlay the signature hint on the rendered rows and hand the completion
+     * popup box to EditorCompletion (cleared first so a closed popup leaves
+     * no stale box for mouse hit-testing).
+     *
+     * @param list<string> $result rendered rows
+     *
+     * @return list<string>
+     */
+    private function composePopups(array $result, int $columns, int $rows, int $vScroll, int $cursorLine, int $stickyCount, int $gutterWidth, int $cursorDisplayCol, int $hScroll): array
+    {
+        if (null !== $this->signatureHint) {
+            $cursorScreenRow = max(0, $this->foldModel->screenRowFor($vScroll, $cursorLine)) + $stickyCount;
+            EditorRenderer::signatureHint($result, $columns, $gutterWidth, $cursorScreenRow, $this->signatureHint);
+        }
+
+        $this->completion->setBox(null);
+        if (null !== ($popup = $this->completion->popupState())) {
+            $cursorScreenRow = max(0, $this->foldModel->screenRowFor($vScroll, $cursorLine)) + $stickyCount;
+            $anchorCol = $gutterWidth + ($cursorDisplayCol - $hScroll) - mb_strwidth($this->document->getWordBeforeCursor());
+            $this->completion->setBox(EditorRenderer::completionPopup($result, $columns, $rows, $cursorScreenRow, $anchorCol, $popup['items'], $popup['selected']));
+        }
+
+        /** @var list<string> $result signatureHint() rewrites rows in place, keeping the shape */
+        return $result;
+    }
+
     public function render(RenderContext $context): array
     {
         $columns = $context->getColumns();
@@ -1072,65 +1180,9 @@ final class CodeEditorWidget extends AbstractWidget implements FocusableInterfac
 
             $isCursorLine = $lineIndex === $cursorLine;
             $lineDiags = $this->diagnostics[$lineIndex] ?? [];
-            $hasError = [] !== $lineDiags;
-            $worstSeverity = $hasError ? DiagnosticStyle::worst($lineDiags) : 4;
 
-            $numColor = match (true) {
-                $hasError => "\x1b[38;5;".DiagnosticStyle::fg($worstSeverity).'m',
-                $isCursorLine => "\x1b[38;5;252m",
-                default => "\x1b[38;5;240m",
-            };
-            // No icon in the left gutter — the severity reads from the line-number
-            // color here and from the colored block in the right stripe.
-            $marker = ' ';
-            // Relative line numbers: distance from the cursor line, absolute on
-            // the cursor line itself (PhpStorm/Vim "relativenumber" style).
-            if ($this->relativeLineNumbers && !$isCursorLine) {
-                $numberLabel = (string) abs($lineIndex - $cursorLine);
-            } else {
-                $numberLabel = (string) ($lineIndex + 1);
-            }
-            $gutter = EditorRenderer::gitCell($this->gitMarks[$lineIndex] ?? null).$numColor.str_pad($numberLabel, $numberWidth, ' ', \STR_PAD_LEFT).$marker."\x1b[0m ";
-
-            $hlLine = $highlighted[$lineIndex] ?? '';
-            $hlLine = EditorRenderer::applyIndentGuides($doc, $hlLine, $lineIndex);
-
-            // Gather decoration spans in layering order, then apply them all at
-            // once. Each span is [startCol, endCol, openSgr, closeSgr, bgReapply].
-            // With multiple carets the primary selection is null: every caret
-            // (incl. the primary) draws uniformly through the caret records.
-            ['spans' => $spans, 'padTo' => $padTo] = LineSpans::forLine(
-                $doc,
-                $lineIndex,
-                $multiActive ? null : $selection,
-                $carets,
-                $this->searchMatches[$lineIndex] ?? [],
-                $occurrences,
-                $brackets,
-                $lineDiags,
-            );
-            if ($padTo > 0) {
-                // Pad so an end-of-line caret has a cell to invert (the window
-                // bound keeps padding within what's visible).
-                $need = min($padTo, $hScroll + $contentWidth);
-                $width = AnsiUtils::visibleWidth($hlLine);
-                if ($need > $width) {
-                    $hlLine .= str_repeat(' ', $need - $width);
-                }
-            }
-            foreach ($spans as [$spanStart, $spanEnd, $openSgr, $closeSgr, $reapply]) {
-                $hlLine = LineDecorator::apply($hlLine, $spanStart, $spanEnd, $openSgr, $closeSgr, $reapply);
-            }
-
-            // Inlay hints: dim virtual text inserted after all decorations so
-            // their SGR spans stay attached to the real characters.
-            $hlLine = EditorRenderer::applyInlayHints($doc, $lineIndex, $this->inlayHints[$lineIndex] ?? [], $hlLine);
-
-            // Collapsed-region marker on the fold-start line.
-            if (null !== ($foldEnd = $this->foldModel->foldEndAt($lineIndex))) {
-                $hidden = $foldEnd - $lineIndex;
-                $hlLine .= "\x1b[38;5;238m ⋯ ".$hidden." lines\x1b[0m";
-            }
+            $gutter = $this->gutterCell($lineIndex, $isCursorLine, $lineDiags, $numberWidth);
+            $hlLine = $this->decoratedLine($lineIndex, $highlighted[$lineIndex] ?? '', $multiActive ? null : $selection, $carets, $occurrences, $brackets, $lineDiags, $hScroll, $contentWidth);
 
             $content = EditorRenderer::renderContentLine(
                 $hScroll,
@@ -1148,24 +1200,14 @@ final class CodeEditorWidget extends AbstractWidget implements FocusableInterfac
             // Inline diagnostic message in the trailing space (PhpStorm-style):
             // the worst-severity message on the line, colored by severity, with a
             // "+N" count when the line carries more than one diagnostic.
-            if ($this->inlineDiagnostics && $hasError) {
+            if ($this->inlineDiagnostics && [] !== $lineDiags) {
                 $content = EditorRenderer::appendInlineDiagnostic($hScroll, $doc->lineDisplayWidth($lineIndex), $lineDiags, $content, $contentWidth);
             }
 
             $result[] = $gutter.$content.$stripe[$stickyCount + $row];
         }
 
-        if (null !== $this->signatureHint) {
-            $cursorScreenRow = max(0, $this->foldModel->screenRowFor($vScroll, $cursorLine)) + $stickyCount;
-            EditorRenderer::signatureHint($result, $columns, $gutterWidth, $cursorScreenRow, $this->signatureHint);
-        }
-
-        $this->completion->setBox(null);
-        if (null !== ($popup = $this->completion->popupState())) {
-            $cursorScreenRow = max(0, $this->foldModel->screenRowFor($vScroll, $cursorLine)) + $stickyCount;
-            $anchorCol = $gutterWidth + ($cursorDisplayCol - $hScroll) - mb_strwidth($this->document->getWordBeforeCursor());
-            $this->completion->setBox(EditorRenderer::completionPopup($result, $columns, $rows, $cursorScreenRow, $anchorCol, $popup['items'], $popup['selected']));
-        }
+        $result = $this->composePopups($result, $columns, $rows, $vScroll, $cursorLine, $stickyCount, $gutterWidth, $cursorDisplayCol, $hScroll);
 
         // The overlay/prompt chrome composites over the content; the
         // application-menu dropdown floats above everything else.
