@@ -82,7 +82,7 @@ final class ActionCatalog
         'trigger_completion' => ['label' => 'Code Completion'],
         'accept_completion' => ['label' => 'Accept Completion'],
         'select_cancel' => ['label' => 'Cancel'],
-        'goto_definition' => ['label' => 'Go to Declaration'],
+        'goto_definition' => ['label' => 'Go to Declaration or Usages'],
         'goto_implementation' => ['label' => 'Go to Implementation'],
         'goto_type_definition' => ['label' => 'Go to Type Definition'],
         'navigate_back' => ['label' => 'Navigate Back'],

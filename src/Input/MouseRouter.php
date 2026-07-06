@@ -379,14 +379,22 @@ final class MouseRouter
             return;
         }
 
-        // Editor press. Alt+Shift begins a column selection; Alt toggles a caret;
-        // otherwise place/extend a selection (drag extends it, double-click a word,
+        // Editor press. Ctrl+Click navigates to the declaration (PhpStorm);
+        // Alt+Shift begins a column selection; Alt toggles a caret; otherwise
+        // place/extend a selection (drag extends it, double-click a word,
         // triple-click a line, Shift+click extends) — collapsing any extra carets.
         if (null !== $editorRect && $editorRect->contains($mouse->row, $mouse->col)) {
             $rel = $editorRect->toRelative($mouse->row, $mouse->col);
             $this->tui->setFocus($this->editor);
 
-            if ($mouse->alt && $mouse->shift) {
+            if ($mouse->ctrl && !$mouse->alt && !$mouse->shift) {
+                // Place the caret at the click (fold/scroll-aware), then fire the
+                // same action as Ctrl+B. A ctrl-click is a navigation, not a
+                // selection start, so no drag is armed.
+                $this->editor->clearExtraCarets();
+                $this->editor->clickAt($rel['row'], $rel['col']);
+                $this->editor->runAction('goto_definition');
+            } elseif ($mouse->alt && $mouse->shift) {
                 $this->editor->beginColumnSelectionAt($rel['row'], $rel['col']);
                 $this->columnSelecting = true;
             } elseif ($mouse->alt) {

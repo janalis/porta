@@ -133,6 +133,23 @@ final class MouseEventTest extends TestCase
         $this->assertFalse(MouseEvent::parse("\x1b[<0;7;2M")?->alt);
     }
 
+    public function testCtrlModifierDecoded(): void
+    {
+        $ctrlClick = MouseEvent::parse("\x1b[<16;7;2M"); // 0 (left) + 16 (ctrl)
+        $this->assertTrue($ctrlClick?->ctrl);
+        $this->assertFalse($ctrlClick?->shift);
+        $this->assertFalse($ctrlClick?->alt);
+        $this->assertSame(MouseEvent::LEFT, $ctrlClick?->button, 'the ctrl bit does not corrupt the button');
+        $this->assertTrue($ctrlClick->isLeftPress());
+
+        $ctrlAltShift = MouseEvent::parse("\x1b[<28;7;2M"); // 0 + 4 (shift) + 8 (alt) + 16 (ctrl)
+        $this->assertTrue($ctrlAltShift?->ctrl);
+        $this->assertTrue($ctrlAltShift?->alt);
+        $this->assertTrue($ctrlAltShift?->shift);
+
+        $this->assertFalse(MouseEvent::parse("\x1b[<0;7;2M")?->ctrl);
+    }
+
     public function testCoordinatesClampAtOrigin(): void
     {
         $e = MouseEvent::parse("\x1b[<0;0;0M"); // degenerate 0 coords

@@ -109,6 +109,26 @@ while (!feof($in)) {
         } elseif ('textDocument/definition' === $method && ($message['params']['position']['line'] ?? 0) >= 90) {
             // Test convention: line >= 90 has no definition
             sendMessage($out, ['jsonrpc' => '2.0', 'id' => $message['id'], 'result' => null]);
+        } elseif ('textDocument/definition' === $method && ($message['params']['position']['line'] ?? 0) >= 85) {
+            // Test convention: lines 85-89 mean the request was made from the
+            // declaration itself — the response contains the requested position
+            // (second, after a decoy, so any-match must beat the chooser).
+            $uri = $message['params']['textDocument']['uri'];
+            $line = $message['params']['position']['line'];
+            sendMessage($out, [
+                'jsonrpc' => '2.0',
+                'id' => $message['id'],
+                'result' => [
+                    [
+                        'uri' => preg_replace('#/[^/]+$#', '/Target.php', $uri),
+                        'range' => ['start' => ['line' => 3, 'character' => 6], 'end' => ['line' => 3, 'character' => 12]],
+                    ],
+                    [
+                        'uri' => $uri,
+                        'range' => ['start' => ['line' => $line, 'character' => 0], 'end' => ['line' => $line, 'character' => 40]],
+                    ],
+                ],
+            ]);
         } elseif ('textDocument/definition' === $method) {
             // Points at line 3 of a sibling file "Target.php" in the same directory
             $uri = $message['params']['textDocument']['uri'];
@@ -192,7 +212,9 @@ while (!feof($in)) {
                     'activeSignature' => 0,
                 ],
             ]);
-        } elseif ('textDocument/references' === $method && ($message['params']['position']['line'] ?? 0) >= 90) {
+        } elseif ('textDocument/references' === $method && ($message['params']['position']['line'] ?? 0) >= 88) {
+            // Lines 88+ have no usages (88-89 pair with the on-declaration
+            // definition band above to model "declaration with zero usages").
             sendMessage($out, ['jsonrpc' => '2.0', 'id' => $message['id'], 'result' => []]);
         } elseif ('textDocument/references' === $method) {
             $uri = $message['params']['textDocument']['uri'];

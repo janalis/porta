@@ -2938,6 +2938,81 @@ final class IdeEdgeCasesTest extends TestCase
         $this->assertStringContainsString('Rename failed: cannot rename this', $screen);
     }
 
+    public function testCtrlClickNavigatesToDeclaration(): void
+    {
+        $project = new TempProject([
+            '.porta.json' => $this->mockLspConfig(),
+            'src/Demo.php' => "<?php\n// line 1\n// line 2\n// line 3\n",
+            'src/Target.php' => "<?php\n\n\nclass Target {}\n",
+        ]);
+
+        $terminal = $this->runIde(
+            $project,
+            $project->path('src/Demo.php'),
+            [
+                400 => static function ($tui): void {
+                    $tui->tick(); // ensure a frame rendered so widget rects exist
+                    // Ctrl (SGR bit 16) + left click at screen row 5 → editor
+                    // content row 2 (menu row 0, tab bar row 1) → document line 2.
+                    $tui->handleInput("\x1b[<16;45;5M");
+                    $tui->handleInput("\x1b[<16;45;5m");
+                },
+                900 => function ($tui): void {
+                    $editor = $tui->getById('editor');
+                    $this->assertStringEndsWith('Target.php', (string) $editor->getFilePath(), 'ctrl+click jumped to the declaration');
+                    $this->assertSame(3, $editor->getDocument()->getCursorLine());
+                    $this->assertFalse($editor->getDocument()->hasSelection(), 'a ctrl+click is a navigation, not a selection start');
+                    $this->assertSame('editor', $tui->getFocus()?->getId());
+                },
+            ],
+        );
+
+        $screen = AnsiUtils::stripAnsiCodes($terminal->getOutput());
+        $this->assertStringContainsString('Target.php', $screen);
+    }
+
+    public function testGotoDeclarationOnDeclarationShowsUsages(): void
+    {
+        $tall = "<?php\n".str_repeat("// filler\n", 110);
+        $project = new TempProject([
+            '.porta.json' => $this->mockLspConfig(),
+            'src/Tall.php' => $tall,
+            'src/Target.php' => "<?php\n\n\nclass Target {}\n",
+        ]);
+
+        $terminal = $this->runIde(
+            $project,
+            $project->path('src/Tall.php'),
+            [
+                400 => static function ($tui): void {
+                    // Mock convention: definition at lines 85-89 contains the
+                    // requested position itself (a decoy Target.php location
+                    // comes first, so any-match must beat the chooser).
+                    $tui->getById('editor')->getDocument()->setCursor(86, 2);
+                    $tui->handleInput("\x1b[24~"); // F12: declaration or usages
+                },
+                700 => function ($tui): void {
+                    $editor = $tui->getById('editor');
+                    $this->assertStringEndsWith('Tall.php', (string) $editor->getFilePath(), 'on the declaration: no jump');
+                    $tui->handleInput("\x1b"); // close the usages panel
+                },
+                850 => static function ($tui): void {
+                    $tui->tick();
+                    // Lines 88-89: on the declaration, but zero usages.
+                    $tui->getById('editor')->getDocument()->setCursor(88, 2);
+                    $tui->handleInput("\x1b[24~");
+                },
+            ],
+            1.3,
+        );
+
+        $screen = AnsiUtils::stripAnsiCodes($terminal->getOutput());
+        $this->assertStringContainsString('Usages', $screen);
+        $this->assertStringContainsString('Target.php', $screen, 'usages rows listed');
+        $this->assertStringNotContainsString('Choose target', $screen, 'a self-match shows usages, never the chooser');
+        $this->assertStringContainsString('No usages found', $screen);
+    }
+
     public function testNavigateBackWithEmptyStackAndOsc52Copy(): void
     {
         putenv('PATH=/nonexistent');

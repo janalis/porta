@@ -90,6 +90,31 @@ final class IdeHelpersTest extends TestCase
         $this->assertSame(['start' => ['line' => 3]], LspMapper::firstLocation([$linkNoSelection])['range']);
     }
 
+    public function testRangeContains(): void
+    {
+        // Single-line name range: cols 6..12 on line 3.
+        $range = ['start' => ['line' => 3, 'character' => 6], 'end' => ['line' => 3, 'character' => 12]];
+        $this->assertFalse(LspMapper::rangeContains($range, 3, 5), 'before the start column');
+        $this->assertTrue(LspMapper::rangeContains($range, 3, 6), 'at the start column');
+        $this->assertTrue(LspMapper::rangeContains($range, 3, 9), 'inside');
+        $this->assertTrue(LspMapper::rangeContains($range, 3, 12), 'end column is inclusive (caret just past the identifier)');
+        $this->assertFalse(LspMapper::rangeContains($range, 3, 13), 'past the end column');
+        $this->assertFalse(LspMapper::rangeContains($range, 2, 9), 'line before');
+        $this->assertFalse(LspMapper::rangeContains($range, 4, 9), 'line after');
+
+        // Multi-line range: any column on a middle line is inside.
+        $block = ['start' => ['line' => 1, 'character' => 8], 'end' => ['line' => 5, 'character' => 2]];
+        $this->assertTrue(LspMapper::rangeContains($block, 3, 0), 'middle line, column irrelevant');
+        $this->assertFalse(LspMapper::rangeContains($block, 1, 7), 'first line before the start column');
+        $this->assertTrue(LspMapper::rangeContains($block, 5, 2), 'last line at the inclusive end');
+        $this->assertFalse(LspMapper::rangeContains($block, 5, 3), 'last line past the end');
+
+        // Missing/malformed parts default to 0: only 0:0 is contained.
+        $this->assertTrue(LspMapper::rangeContains([], 0, 0));
+        $this->assertFalse(LspMapper::rangeContains([], 0, 1));
+        $this->assertFalse(LspMapper::rangeContains(['start' => 'junk', 'end' => 'junk'], 1, 0), 'non-array parts');
+    }
+
     public function testHoverToTextVariants(): void
     {
         $this->assertNull(LspMapper::hoverToText(null));

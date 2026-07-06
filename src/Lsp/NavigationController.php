@@ -43,7 +43,7 @@ final class NavigationController extends AbstractLspController
 
     public function requestDefinition(int $line, int $utf16Col): void
     {
-        $this->requestGoTo('textDocument/definition', 'No definition found', $line, $utf16Col);
+        $this->requestGoTo('textDocument/definition', 'No definition found', $line, $utf16Col, usagesWhenOnDeclaration: true);
     }
 
     public function requestImplementation(int $line, int $utf16Col): void
@@ -58,9 +58,12 @@ final class NavigationController extends AbstractLspController
 
     /**
      * Shared "go to X" navigation: jumps to the single target, or offers a
-     * chooser in the results panel when the server returns several.
+     * chooser in the results panel when the server returns several. With
+     * $usagesWhenOnDeclaration, a target that contains the requested position
+     * means the caret already sits on the declaration — PhpStorm's "Go to
+     * Declaration or Usages" then shows the symbol's usages instead.
      */
-    private function requestGoTo(string $method, string $notFound, int $line, int $utf16Col): void
+    private function requestGoTo(string $method, string $notFound, int $line, int $utf16Col, bool $usagesWhenOnDeclaration = false): void
     {
         if (null === ($path = $this->ready(flush: false))) {
             return;
@@ -69,10 +72,15 @@ final class NavigationController extends AbstractLspController
         $this->lsp->request(
             $method,
             $this->positionParams($path, $line, $utf16Col),
-            function (mixed $result, ?array $error) use ($notFound): void {
+            function (mixed $result, ?array $error) use ($notFound, $path, $line, $utf16Col, $usagesWhenOnDeclaration): void {
                 $locations = LspMapper::allLocations($result);
                 if (null !== $error || [] === $locations) {
                     $this->flash($notFound);
+
+                    return;
+                }
+                if ($usagesWhenOnDeclaration && $this->caretOnDeclaration($locations, $path, $line, $utf16Col)) {
+                    $this->requestReferences($line, $utf16Col);
 
                     return;
                 }
@@ -84,6 +92,29 @@ final class NavigationController extends AbstractLspController
                 $this->jumpToLocation($locations[0]);
             },
         );
+    }
+
+    /**
+     * Whether any returned target contains the requested position — i.e. the
+     * request was made from the declaration itself. Compared against the
+     * requested path/position (not the live cursor): the caret may have moved
+     * while the request was in flight.
+     *
+     * @param list<array{uri: string, range: array}> $locations
+     */
+    private function caretOnDeclaration(array $locations, string $path, int $line, int $utf16Col): bool
+    {
+        foreach ($locations as $location) {
+            $target = Uri::toPath($location['uri']);
+            if (null === $target || $target !== $path) {
+                continue;
+            }
+            if (LspMapper::rangeContains($location['range'], $line, $utf16Col)) {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     /** Push the current position onto the jump stack and navigate to a location. */

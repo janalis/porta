@@ -28,6 +28,7 @@ final class MouseEvent
         public readonly int $wheelDelta, // -1 wheel up, +1 wheel down, 0 otherwise
         public readonly bool $shift, // Shift held (SGR modifier bit 4)
         public readonly bool $alt, // Alt/Option held (SGR modifier bit 8)
+        public readonly bool $ctrl, // Ctrl held (SGR modifier bit 16)
     ) {}
 
     /**
@@ -58,6 +59,7 @@ final class MouseEvent
             wheelDelta: $wheel ? (0 === ($code & 1) ? -1 : 1) : 0,
             shift: (bool) ($code & 4),
             alt: (bool) ($code & 8),
+            ctrl: (bool) ($code & 16),
         );
     }
 

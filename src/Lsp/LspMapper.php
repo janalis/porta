@@ -220,6 +220,27 @@ final class LspMapper
     }
 
     /**
+     * Whether the UTF-16 position (line, col) lies within an LSP range,
+     * end-inclusive: a caret sitting immediately after the identifier's last
+     * character still counts as "on" it (PhpStorm's reading). Missing range
+     * parts default to 0.
+     *
+     * @param array<array-key, mixed> $range an LSP Range ({start, end} of {line, character})
+     */
+    public static function rangeContains(array $range, int $line, int $utf16Col): bool
+    {
+        $start = \is_array($range['start'] ?? null) ? $range['start'] : [];
+        $end = \is_array($range['end'] ?? null) ? $range['end'] : [];
+        $startLine = (int) ($start['line'] ?? 0);
+        $startCol = (int) ($start['character'] ?? 0);
+        $endLine = (int) ($end['line'] ?? 0);
+        $endCol = (int) ($end['character'] ?? 0);
+
+        return ($line > $startLine || ($line === $startLine && $utf16Col >= $startCol))
+            && ($line < $endLine || ($line === $endLine && $utf16Col <= $endCol));
+    }
+
+    /**
      * Normalize a definition result (Location | Location[] | LocationLink[])
      * to a single {uri, range} array.
      *
