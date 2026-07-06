@@ -1,0 +1,84 @@
+<?php
+
+declare(strict_types=1);
+
+namespace Porta\Tests\Unit\Editor;
+
+use PHPUnit\Framework\TestCase;
+use Porta\Editor\ConflictMarkers;
+
+final class ConflictMarkersTest extends TestCase
+{
+    /** @return list<string> */
+    private function lines(string $text): array
+    {
+        return explode("\n", $text);
+    }
+
+    public function testFindsWellFormedRegions(): void
+    {
+        $lines = $this->lines(
+            "before\n"."<<<<<<< HEAD\n"."ours line\n"."=======\n"."their line\n".">>>>>>> branch\n".'after',
+        );
+
+        $this->assertSame(
+            [['start' => 1, 'sep' => 3, 'end' => 5]],
+            ConflictMarkers::find($lines),
+        );
+    }
+
+    public function testFindsMultipleRegions(): void
+    {
+        $lines = $this->lines(
+            "<<<<<<< a\nx\n=======\ny\n>>>>>>> b\n"."mid\n"."<<<<<<< c\nz\n=======\nw\n>>>>>>> d",
+        );
+
+        $regions = ConflictMarkers::find($lines);
+        $this->assertCount(2, $regions);
+        $this->assertSame(['start' => 0, 'sep' => 2, 'end' => 4], $regions[0]);
+        $this->assertSame(['start' => 6, 'sep' => 8, 'end' => 10], $regions[1]);
+    }
+
+    public function testIgnoresIncompleteMarkers(): void
+    {
+        // Separator/closer without an opener, and an opener with no closer.
+        $lines = $this->lines("=======\n>>>>>>> x\n<<<<<<< y\nours\n=======\ntheirs");
+        $this->assertSame([], ConflictMarkers::find($lines));
+    }
+
+    public function testNewOpenerResetsPendingSeparator(): void
+    {
+        // A second opener before any separator discards the first opener.
+        $lines = $this->lines("<<<<<<< a\nfoo\n<<<<<<< b\nbar\n=======\nbaz\n>>>>>>> c");
+        $this->assertSame(
+            [['start' => 2, 'sep' => 4, 'end' => 6]],
+            ConflictMarkers::find($lines),
+        );
+    }
+
+    public function testRegionAt(): void
+    {
+        $lines = $this->lines("<<<<<<< a\nx\n=======\ny\n>>>>>>> b\ntail");
+        $this->assertSame(['start' => 0, 'sep' => 2, 'end' => 4], ConflictMarkers::regionAt($lines, 1));
+        $this->assertSame(['start' => 0, 'sep' => 2, 'end' => 4], ConflictMarkers::regionAt($lines, 4));
+        $this->assertNull(ConflictMarkers::regionAt($lines, 5), 'tail line is outside the region');
+    }
+
+    public function testResolutionKeepsOursTheirsOrBoth(): void
+    {
+        $lines = $this->lines("<<<<<<< a\no1\no2\n=======\nt1\n>>>>>>> b");
+        $region = ConflictMarkers::find($lines)[0];
+
+        $this->assertSame(['o1', 'o2'], ConflictMarkers::resolution($lines, $region, 'ours'));
+        $this->assertSame(['t1'], ConflictMarkers::resolution($lines, $region, 'theirs'));
+        $this->assertSame(['o1', 'o2', 't1'], ConflictMarkers::resolution($lines, $region, 'both'));
+    }
+
+    public function testResolutionWithEmptySide(): void
+    {
+        $lines = $this->lines("<<<<<<< a\n=======\nt1\n>>>>>>> b");
+        $region = ConflictMarkers::find($lines)[0];
+        $this->assertSame([], ConflictMarkers::resolution($lines, $region, 'ours'));
+        $this->assertSame(['t1'], ConflictMarkers::resolution($lines, $region, 'both'));
+    }
+}

@@ -1,0 +1,213 @@
+<?php
+
+declare(strict_types=1);
+
+namespace Porta\Overlay;
+
+use Porta\Widget\BreadcrumbsWidget;
+use Porta\Widget\CodeEditorWidget;
+use Porta\Widget\ContextMenu;
+use Porta\Widget\FileTreeWidget;
+use Porta\Widget\MenuBarWidget;
+use Porta\Widget\SeparatorWidget;
+use Porta\Widget\TabBarWidget;
+use Symfony\Component\Tui\Ansi\AnsiUtils;
+use Symfony\Component\Tui\Render\Renderer;
+use Symfony\Component\Tui\Render\WidgetRect;
+
+/**
+ * Positions the app-menu dropdown and the right-click context menu as floating
+ * overlays and composites them onto the panes they cover, so an open menu never
+ * reflows the layout. On every open/navigate/close it computes the panel
+ * geometry (anchored under its title / at the click point, clamped to the editor
+ * pane, flipping up on bottom overflow), slices it into per-widget spans via
+ * {@see localSpans}, and pushes them onto each pane through `setMenuOverlay`.
+ * The tracked dropdown rectangles are exposed for the mouse router's hit-testing.
+ *
+ * @phpstan-type Dropdown array{top: int, col: int, width: int, count: int}
+ */
+final class MenuOverlayController
+{
+    /** @var Dropdown|null */
+    private ?array $menuDropdown = null;
+    /** @var Dropdown|null */
+    private ?array $contextMenuDropdown = null;
+    private int $contextAnchorRow = 0;
+    private int $contextAnchorCol = 0;
+
+    public function __construct(
+        private readonly Renderer $renderer,
+        private readonly MenuBarWidget $menuBar,
+        private readonly ContextMenu $contextMenu,
+        private readonly FileTreeWidget $tree,
+        private readonly SeparatorWidget $separator,
+        private readonly TabBarWidget $tabBar,
+        private readonly BreadcrumbsWidget $breadcrumbs,
+        private readonly CodeEditorWidget $editor,
+    ) {}
+
+    /**
+     * The app-menu dropdown box, for click/hover hit-testing; null when closed.
+     *
+     * @return array{top: int, col: int, width: int, count: int}|null
+     */
+    public function menuDropdown(): ?array
+    {
+        return $this->menuDropdown;
+    }
+
+    /**
+     * The context-menu dropdown box, for click hit-testing; null when closed.
+     *
+     * @return array{top: int, col: int, width: int, count: int}|null
+     */
+    public function contextMenuDropdown(): ?array
+    {
+        return $this->contextMenuDropdown;
+    }
+
+    /** Remember the right-click point the context menu anchors at. */
+    public function setContextAnchor(int $row, int $col): void
+    {
+        $this->contextAnchorRow = $row;
+        $this->contextAnchorCol = $col;
+    }
+
+    /**
+     * Position the open menu's dropdown as a floating overlay over the editor
+     * pane (tab bar + editor) so it never reflows the layout. Called on every
+     * open/navigate/close; clears the overlay when no menu is open.
+     */
+    public function refreshMenu(): void
+    {
+        if (!$this->menuBar->isOpen()) {
+            $this->menuDropdown = null;
+            $this->tabBar->setMenuOverlay([]);
+            $this->breadcrumbs->setMenuOverlay([]);
+            $this->editor->setMenuOverlay([]);
+
+            return;
+        }
+
+        $menuRect = $this->renderer->getWidgetRect($this->menuBar);
+        $tabsRect = $this->renderer->getWidgetRect($this->tabBar);
+        $editorRect = $this->renderer->getWidgetRect($this->editor);
+        if (null === $menuRect || null === $tabsRect || null === $editorRect) {
+            return; // no frame rendered yet; the next navigate will place it
+        }
+
+        // The menu bar now lives at the top of the editor pane, so its titles
+        // share the pane's columns: anchor each dropdown directly under its
+        // title (titleStart is menu-bar-local), clamped to the pane's width.
+        $panelWidth = min($this->menuBar->panelWidth(), $editorRect->columns);
+        $anchor = max(
+            $editorRect->col,
+            min($menuRect->col + $this->menuBar->titleStart($this->menuBar->openIndex()), $editorRect->col + $editorRect->columns - $panelWidth),
+        );
+        $top = $menuRect->row + $menuRect->rows;
+        $segments = $this->menuBar->dropdownSegments($panelWidth);
+
+        $this->menuDropdown = ['top' => $top, 'col' => $anchor, 'width' => $panelWidth, 'count' => \count($segments)];
+        $this->tabBar->setMenuOverlay($this->localSpans($segments, $tabsRect, $top, $anchor, $panelWidth));
+        $this->editor->setMenuOverlay($this->localSpans($segments, $editorRect, $top, $anchor, $panelWidth));
+        // The breadcrumb sits between the tabs and editor and is hidden (no rect)
+        // when the caret is outside every scope, so guard on its rect.
+        $bcRect = $this->renderer->getWidgetRect($this->breadcrumbs);
+        $this->breadcrumbs->setMenuOverlay(null !== $bcRect ? $this->localSpans($segments, $bcRect, $top, $anchor, $panelWidth) : []);
+    }
+
+    /**
+     * Position the open context menu as a floating overlay at the right-click
+     * point, composited over the tree, tab bar and editor so it can appear over
+     * any pane. Clamped to the editor pane's right/bottom edges (the screen's),
+     * flipping up when it would overflow the bottom. Clears the overlay when the
+     * menu is closed.
+     */
+    public function refreshContextMenu(): void
+    {
+        if (!$this->contextMenu->isOpen()) {
+            $this->contextMenuDropdown = null;
+            $this->tree->setMenuOverlay([]);
+            $this->separator->setMenuOverlay([]);
+            $this->tabBar->setMenuOverlay([]);
+            $this->breadcrumbs->setMenuOverlay([]);
+            $this->editor->setMenuOverlay([]);
+
+            return;
+        }
+
+        // The context menu only ever opens from a right-click, i.e. after at
+        // least one frame, so the tree/tab/editor rects are always populated here.
+        /** @var WidgetRect $treeRect */
+        $treeRect = $this->renderer->getWidgetRect($this->tree);
+        /** @var WidgetRect $tabsRect */
+        $tabsRect = $this->renderer->getWidgetRect($this->tabBar);
+        /** @var WidgetRect $editorRect */
+        $editorRect = $this->renderer->getWidgetRect($this->editor);
+
+        $screenRight = $editorRect->col + $editorRect->columns;
+        $screenBottom = $editorRect->row + $editorRect->rows;
+        $panelWidth = min($this->contextMenu->panelWidth(), $screenRight);
+        $col = max(0, min($this->contextAnchorCol, $screenRight - $panelWidth));
+        $count = $this->contextMenu->itemCount();
+        $top = ($this->contextAnchorRow + $count) > $screenBottom
+            ? max(0, $this->contextAnchorRow - $count)
+            : $this->contextAnchorRow;
+
+        $segments = $this->contextMenu->segments($panelWidth);
+        $this->contextMenuDropdown = ['top' => $top, 'col' => $col, 'width' => $panelWidth, 'count' => \count($segments)];
+        $this->tree->setMenuOverlay($this->localSpans($segments, $treeRect, $top, $col, $panelWidth));
+        $this->tabBar->setMenuOverlay($this->localSpans($segments, $tabsRect, $top, $col, $panelWidth));
+        $this->editor->setMenuOverlay($this->localSpans($segments, $editorRect, $top, $col, $panelWidth));
+        // The sidebar↔editor separator column and the (conditionally hidden)
+        // breadcrumb also sit under a menu that spills across the sidebar boundary.
+        $separatorRect = $this->renderer->getWidgetRect($this->separator);
+        $this->separator->setMenuOverlay(null !== $separatorRect ? $this->localSpans($segments, $separatorRect, $top, $col, $panelWidth) : []);
+        $bcRect = $this->renderer->getWidgetRect($this->breadcrumbs);
+        $this->breadcrumbs->setMenuOverlay(null !== $bcRect ? $this->localSpans($segments, $bcRect, $top, $col, $panelWidth) : []);
+    }
+
+    /**
+     * Translate absolute dropdown segments to $rect-local overlay spans, keeping
+     * only the rows that fall inside the widget and clipping each segment to the
+     * widget's columns. Clipping matters for context menus, whose panel can be
+     * anchored over one pane (e.g. the narrow tree) while spilling toward another;
+     * without it a segment wider than the host widget would blow out its line
+     * width and wreck the layout. Panels that do not overlap the widget at all
+     * (e.g. the editor menu vs. the tree) yield no spans.
+     *
+     * @param list<array{segment: string, separator: bool}> $segments
+     *
+     * @return list<array{row: int, col: int, width: int, segment: string}>
+     */
+    private function localSpans(array $segments, WidgetRect $rect, int $top, int $anchor, int $panelWidth): array
+    {
+        // Horizontal overlap of the panel [anchor, anchor+panelWidth) with the rect.
+        $start = max($anchor, $rect->col);
+        $end = min($anchor + $panelWidth, $rect->col + $rect->columns);
+        if ($start >= $end) {
+            return []; // the panel does not touch this widget
+        }
+        $clipOffset = $start - $anchor;
+        $clipWidth = $end - $start;
+        $localCol = $start - $rect->col;
+        $clipped = $clipOffset > 0 || $clipWidth < $panelWidth;
+
+        $spans = [];
+        foreach ($segments as $i => $segment) {
+            $localRow = $top + $i - $rect->row;
+            if ($localRow >= 0 && $localRow < $rect->rows) {
+                $spans[] = [
+                    'row' => $localRow,
+                    'col' => $localCol,
+                    'width' => $clipWidth,
+                    'segment' => $clipped
+                        ? AnsiUtils::sliceByColumn($segment['segment'], $clipOffset, $clipWidth)
+                        : $segment['segment'],
+                ];
+            }
+        }
+
+        return $spans;
+    }
+}

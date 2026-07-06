@@ -1,0 +1,301 @@
+<?php
+
+declare(strict_types=1);
+
+namespace Porta\Editor;
+
+use Porta\Support\FuzzyMatcher;
+use Symfony\Component\Tui\Input\Keybindings;
+
+/**
+ * The editor's LSP completion + snippet machinery: the popup's item list, its
+ * open/selected/prefix state and rendered box geometry, fuzzy filtering, keyboard
+ * navigation, click/hover hit-testing, and accepting an item — either as plain
+ * text or, when the server marks it a snippet, as a tab-stop session (with inline
+ * and deferred auto-imports). Built per document (like {@see MultiCaret}); effects
+ * and the request/resolve LSP round-trips flow through injected closures.
+ *
+ * @phpstan-type Item array{label: string, insertText: string, kind: string, detail: string, additionalTextEdits?: list<array>, snippet?: string|null, raw?: array<string, mixed>}
+ * @phpstan-type Box array{col: int, width: int, startRow: int, count: int, windowOffset: int}
+ */
+final class EditorCompletion
+{
+    /** @var list<Item> */
+    private array $items = [];
+    private bool $open = false;
+    private int $selected = 0;
+    private string $prefix = '';
+    /** @var Box|null */
+    private ?array $box = null;
+    private readonly SnippetSession $snippet;
+
+    /**
+     * @param \Closure(): void         $invalidate         request a redraw
+     * @param \Closure(): void         $notifyChange       announce a buffer edit
+     * @param \Closure(string): bool   $isInsertable       whether a keystroke is insertable text
+     * @param \Closure(int, int): void          $requestCompletion  ask the IDE for completions at (line, utf16 col)
+     * @param \Closure(array<string, mixed>): void $resolveCompletion resolve deferred edits for a raw server item
+     */
+    public function __construct(
+        private readonly Document $document,
+        private readonly \Closure $invalidate,
+        private readonly \Closure $notifyChange,
+        private readonly \Closure $isInsertable,
+        private readonly \Closure $requestCompletion,
+        private readonly \Closure $resolveCompletion,
+    ) {
+        $this->snippet = new SnippetSession($document, $invalidate, $notifyChange);
+    }
+
+    /** @param list<Item> $items */
+    public function show(array $items): void
+    {
+        $this->prefix = $this->document->getWordBeforeCursor();
+        $this->items = $items;
+        $this->selected = 0;
+        $this->open = [] !== $this->filtered();
+        ($this->invalidate)();
+    }
+
+    public function isOpen(): bool
+    {
+        return $this->open;
+    }
+
+    public function close(): void
+    {
+        $this->open = false;
+        $this->items = [];
+        $this->selected = 0;
+        $this->prefix = '';
+    }
+
+    /** Cancel any active snippet session (e.g. before an external edit). */
+    public function clearSnippet(): void
+    {
+        $this->snippet->clear();
+    }
+
+    /** Ask the IDE for completions at the caret (auto-trigger). */
+    public function requestCompletion(): void
+    {
+        ($this->requestCompletion)($this->document->getCursorLine(), $this->document->getCursorColUtf16());
+    }
+
+    /** Route a keystroke to an active snippet tab-stop session; true when consumed. */
+    public function handleSnippetTabStop(string $data, Keybindings $kb): bool
+    {
+        return $this->snippet->isActive() && !$this->open && $this->snippet->handleInput($data, $kb, $this->isInsertable);
+    }
+
+    public function handleInput(string $data, Keybindings $kb): bool
+    {
+        $filtered = $this->filtered();
+        if ([] === $filtered) {
+            $this->close();
+
+            return false;
+        }
+
+        if ($kb->matches($data, 'select_cancel')) {
+            $this->close();
+            ($this->invalidate)();
+
+            return true;
+        }
+
+        if ($kb->matches($data, 'cursor_up')) {
+            $this->selected = ($this->selected - 1 + \count($filtered)) % \count($filtered);
+            ($this->invalidate)();
+
+            return true;
+        }
+
+        if ($kb->matches($data, 'cursor_down')) {
+            $this->selected = ($this->selected + 1) % \count($filtered);
+            ($this->invalidate)();
+
+            return true;
+        }
+
+        if ($kb->matches($data, 'accept_completion') || $kb->matches($data, 'indent')) {
+            $item = $filtered[$this->selected] ?? null;
+            if (null !== $item) {
+                $this->acceptItem($item);
+            }
+
+            return true;
+        }
+
+        // Typing narrows the filter; deleting widens it
+        if ($kb->matches($data, 'delete_char_backward')) {
+            if ('' === $this->document->getWordBeforeCursor()) {
+                $this->close();
+            }
+
+            return false; // let normal handling perform the deletion
+        }
+
+        if (($this->isInsertable)($data) && preg_match('/^[\w$]+$/u', $data)) {
+            return false; // identifier chars: insert normally, popup refilters on render
+        }
+
+        // Any other key closes the popup and is handled normally
+        $this->close();
+
+        return false;
+    }
+
+    /** Consume a click that lands on a popup row (accepting that item); false otherwise. */
+    public function handleClick(int $relRow, int $relCol): bool
+    {
+        if ($this->open) {
+            $index = $this->completionItemAt($relRow, $relCol);
+            if (null !== $index) {
+                $item = $this->filtered()[$index] ?? null;
+                if (null !== $item) {
+                    $this->acceptItem($item);
+                }
+
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    /** Highlight the popup row under the pointer; true when the highlight changed. */
+    public function handleHover(int $relRow, int $relCol): bool
+    {
+        if ($this->open) {
+            $index = $this->completionItemAt($relRow, $relCol);
+            if (null !== $index && $index !== $this->selected) {
+                $this->selected = $index;
+                ($this->invalidate)();
+
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    /**
+     * The items + selected index to draw this frame (clamping the selection to the
+     * filtered list), or null when the popup should not be drawn. The widget draws
+     * it and hands the box geometry back via {@see setBox}.
+     *
+     * @return array{items: list<Item>, selected: int}|null
+     */
+    public function popupState(): ?array
+    {
+        if (!$this->open) {
+            return null;
+        }
+        $items = $this->filtered();
+        if ([] === $items) {
+            return null;
+        }
+        $this->selected = min($this->selected, \count($items) - 1);
+
+        return ['items' => $items, 'selected' => $this->selected];
+    }
+
+    /**
+     * Remember the last-rendered popup box geometry for mouse hit-testing.
+     *
+     * @param Box|null $box
+     */
+    public function setBox(?array $box): void
+    {
+        $this->box = $box;
+    }
+
+    /** Filtered-completion index at the given relative cell, or null if outside its rows. */
+    private function completionItemAt(int $relRow, int $relCol): ?int
+    {
+        $box = $this->box;
+        if (null === $box || $relCol < $box['col'] || $relCol >= ($box['col'] + $box['width'])) {
+            return null;
+        }
+        $i = $relRow - $box['startRow'];
+        if ($i < 0 || $i >= $box['count']) {
+            return null;
+        }
+
+        return $box['windowOffset'] + $i;
+    }
+
+    /**
+     * Apply an accepted completion item: expand a snippet into a tab-stop session
+     * when the server marked it as one, else insert its plain text. In both cases
+     * inline auto-imports are applied, and deferred imports are requested via
+     * completionItem/resolve.
+     *
+     * @param Item $item
+     */
+    private function acceptItem(array $item): void
+    {
+        $doc = $this->document;
+        /** @var list<array{newText: string, range: array{start: array{line: int, character: int}, end: array{line: int, character: int}}}> $additional */
+        $additional = $item['additionalTextEdits'] ?? [];
+        $snippet = $item['snippet'] ?? null;
+
+        $doc->beginCompound();
+        // Apply inline auto-imports first so the caret (and any snippet stops
+        // computed below) sit at their final line.
+        if ([] !== $additional) {
+            $doc->applyEditsKeepingCursor($additional);
+        }
+
+        $prefix = $doc->getWordBeforeCursor();
+
+        if (null !== $snippet && '' !== $snippet) {
+            $doc->replaceBeforeCursor(\strlen($prefix), '');
+            $startLine = $doc->getCursorLine();
+            $startCol = $doc->getCursorCol();
+            $parsed = SnippetParser::parse($snippet);
+            $doc->insert($parsed['text']);
+            $doc->endCompound();
+
+            $this->close();
+            $this->snippet->begin($startLine, $startCol, $parsed['text'], $parsed['stops']);
+        } else {
+            $doc->replaceBeforeCursor(\strlen($prefix), $item['insertText']);
+            $doc->endCompound();
+            $this->close();
+        }
+
+        ($this->notifyChange)();
+
+        // No inline edits but the server may defer auto-imports to
+        // completionItem/resolve — ask the IDE to fetch and apply them.
+        if ([] === $additional && isset($item['raw'])) {
+            ($this->resolveCompletion)($item['raw']);
+        }
+    }
+
+    /** @return list<Item> */
+    private function filtered(): array
+    {
+        $word = $this->document->getWordBeforeCursor();
+        if ('' === $word || $word === $this->prefix) {
+            return $this->items;
+        }
+
+        $needle = ltrim($word, '$');
+
+        // Fuzzy/camel-hump match, ranked best-first; the server's original
+        // ordering (sortText) breaks ties.
+        $scored = [];
+        foreach ($this->items as $index => $item) {
+            $score = FuzzyMatcher::score(ltrim($item['label'], '$'), $needle);
+            if (null !== $score) {
+                $scored[] = ['score' => $score, 'index' => $index, 'item' => $item];
+            }
+        }
+        usort($scored, static fn (array $a, array $b) => $b['score'] <=> $a['score'] ?: $a['index'] <=> $b['index']);
+
+        return array_map(static fn (array $e) => $e['item'], $scored);
+    }
+}

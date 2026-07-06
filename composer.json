@@ -1,0 +1,55 @@
+{
+    "name": "janalis/porta",
+    "description": "A terminal IDE for PHP projects, built on symfony/tui with LSP support, syntax highlighting and autocompletion",
+    "type": "library",
+    "license": "MIT",
+    "keywords": ["tui", "ide", "editor", "lsp", "terminal"],
+    "autoload": {
+        "psr-4": {
+            "Porta\\": "src/"
+        }
+    },
+    "autoload-dev": {
+        "psr-4": {
+            "Porta\\Tests\\": "tests/"
+        }
+    },
+    "bin": ["bin/porta"],
+    "require": {
+        "php": ">=8.4",
+        "ext-mbstring": "*",
+        "ext-pcntl": "*",
+        "revolt/event-loop": "^1.0",
+        "symfony/console": "^8.1",
+        "symfony/filesystem": "^8.1",
+        "symfony/finder": "^8.1",
+        "symfony/process": "^8.1",
+        "symfony/tui": "^8.1",
+        "tempest/highlight": "^2.16"
+    },
+    "require-dev": {
+        "ext-simplexml": "*",
+        "carthage-software/mago": "1.28.*",
+        "phpunit/phpunit": "^13.2"
+    },
+    "suggest": {
+        "phpactor/phpactor": "PHP language server used for autocompletion and diagnostics"
+    },
+    "scripts": {
+        "dev": "@php bin/porta",
+        "format": "mago format",
+        "format:check": "mago format --check",
+        "lint": "mago lint",
+        "analyze": "mago analyze",
+        "test": "@php vendor/bin/phpunit",
+        "coverage": "@php -d pcov.enabled=1 vendor/bin/phpunit --coverage-text --coverage-clover coverage/clover.xml",
+        "coverage:check": [
+            "@coverage",
+            "@php tools/coverage-check.php coverage/clover.xml 100"
+        ]
+    },
+    "minimum-stability": "stable",
+    "config": {
+        "sort-packages": true
+    }
+}

@@ -1,0 +1,54 @@
+# Mago configuration — https://mago.carthage.software
+#
+# The formatter is tuned to the Symfony coding standard (the same conventions
+# php-cs-fixer's @Symfony ruleset produces): single quotes, 4-space indent,
+# next-line braces for classes/functions/methods, same-line braces for control
+# structures and closures, no spaces around concatenation, a space after `fn`,
+# `?Type` nullable hints, ordered imports and a blank line before `return`.
+#
+# php-cs-fixer never reflows code, so to match it the formatter is configured
+# NOT to re-wrap: a wide print width plus "preserve breaking" keeps every line
+# exactly where it is and only normalises spacing/braces/imports.
+
+php-version = "8.4"
+
+[source]
+paths = ["src", "tests", "tools"]
+# Analyzed for type information but never reported on, so the analyzer knows the
+# types of third-party classes (symfony/tui, PHPUnit, …) instead of treating
+# everything from them as `mixed`.
+includes = ["vendor"]
+
+[analyzer]
+# Static analysis targets production code. Tests drive widgets through dynamic,
+# string-keyed lookups ($tui->getById('editor')->…) that a static analyzer cannot
+# follow, and tools/ are one-off scripts — analysing them yields only noise.
+excludes = ["tests", "tools"]
+
+[formatter]
+# Never re-wrap: keep the author's line breaks, like php-cs-fixer does.
+print-width = 200
+preserve-breaking-argument-list = true
+preserve-breaking-parameter-list = true
+preserve-breaking-conditional-expression = true
+preserve-breaking-attribute-list = true
+preserve-breaking-member-access-chain = true
+
+# Symfony-specific overrides of Mago's defaults:
+space-around-concatenation-binary-operator = false      # $a.$b, not $a . $b
+space-before-arrow-function-parameter-list-parenthesis = true  # fn ($x), not fn($x)
+empty-line-before-return = true                         # blank line before a non-leading return
+
+# The remaining Symfony conventions are already Mago's defaults, kept explicit
+# here as documentation:
+single-quote = true
+tab-width = 4
+use-tabs = false
+trailing-comma = true
+null-type-hint = "question"                             # ?Type
+control-brace-style = "same_line"                       # if (...) {
+closure-brace-style = "same_line"
+function-brace-style = "next_line"
+method-brace-style = "next_line"
+classlike-brace-style = "always_next_line"
+sort-uses = true

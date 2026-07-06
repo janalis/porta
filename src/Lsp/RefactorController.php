@@ -1,0 +1,250 @@
+<?php
+
+declare(strict_types=1);
+
+namespace Porta\Lsp;
+
+use Porta\Editor\BufferManager;
+use Porta\Support\ProjectPaths;
+use Porta\Widget\CodeEditorWidget;
+use Porta\Widget\StatusBarWidget;
+use Symfony\Component\Tui\Tui;
+
+/**
+ * Mutating language features: rename (validated via prepareRename), quick fixes
+ * / code actions, and reformatting. All apply their results through the shared
+ * {@see WorkspaceEditor}.
+ */
+final class RefactorController extends AbstractLspController
+{
+    /**
+     * @param \Closure(): string $lspStatus current server status label, for messages
+     */
+    public function __construct(
+        LspSession $lsp,
+        CodeEditorWidget $editor,
+        Tui $tui,
+        StatusBarWidget $statusBar,
+        private readonly BufferManager $buffers,
+        private readonly WorkspaceEditor $workspaceEditor,
+        private readonly string $rootDir,
+        private readonly \Closure $lspStatus,
+    ) {
+        parent::__construct($lsp, $editor, $tui, $statusBar);
+    }
+
+    /**
+     * Validate a rename position with textDocument/prepareRename before opening
+     * the rename prompt, pre-filling the server's placeholder when it offers one.
+     */
+    public function requestPrepareRename(int $line, int $col, string $word): void
+    {
+        $path = $this->editor->getFilePath();
+        if (null === $path || !$this->lsp->isInitialized()) {
+            $this->flash('Rename needs a language server');
+
+            return;
+        }
+
+        $this->lsp->request(
+            'textDocument/prepareRename',
+            $this->positionParams($path, $line, $col),
+            function (mixed $result, ?array $error) use ($line, $col, $word): void {
+                if (null !== $error || null === $result || false === $result) {
+                    $this->flash('Cannot rename this element');
+
+                    return;
+                }
+                $this->editor->openPrompt('Rename to', $word, function (string $value) use ($line, $col): void {
+                    if ('' !== trim($value)) {
+                        $this->requestRename(trim($value), $line, $col);
+                    }
+                });
+                $this->tui->requestRender();
+            },
+        );
+    }
+
+    private function requestRename(string $newName, int $line, int $col): void
+    {
+        // Only reached after prepareRename validated the position, so the
+        // language server and file are known-good here.
+        $path = (string) $this->editor->getFilePath();
+        $this->lsp->flushPendingChange($this->editor->getFilePath(), $this->editor->getDocument());
+        $this->lsp->request(
+            'textDocument/rename',
+            $this->positionParams($path, $line, $col, ['newName' => $newName]),
+            function (mixed $result, ?array $error): void {
+                if (null !== $error || !\is_array($result)) {
+                    $this->flash('Rename failed: '.(string) ($error['message'] ?? 'no result'));
+
+                    return;
+                }
+                /** @var array<string, mixed> $result */
+                $fileCount = $this->workspaceEditor->applyWorkspaceEdit($result);
+                $this->flash(\sprintf('Renamed in %d file%s', $fileCount, 1 === $fileCount ? '' : 's'));
+            },
+        );
+    }
+
+    public function requestCodeActions(int $line, int $col): void
+    {
+        if (null === ($path = $this->ready())) {
+            return;
+        }
+
+        // Use the diagnostic's range when the cursor line carries one, so
+        // servers offer their fix-this-problem actions.
+        $diagnostics = [];
+        $range = [
+            'start' => ['line' => $line, 'character' => $col],
+            'end' => ['line' => $line, 'character' => $col],
+        ];
+        foreach ($this->buffers->active()?->diagnostics[$line] ?? [] as $diag) {
+            $endCol = $diag['endCol'] ?? \PHP_INT_MAX;
+            $endCol = \PHP_INT_MAX === $endCol ? $diag['col'] + 1 : $endCol;
+            $lspDiag = [
+                'range' => [
+                    'start' => ['line' => $line, 'character' => $diag['col']],
+                    'end' => ['line' => $line, 'character' => $endCol],
+                ],
+                'severity' => $diag['severity'],
+                'message' => $diag['message'],
+            ];
+            $diagnostics[] = $lspDiag;
+            $range = $lspDiag['range'];
+        }
+
+        $this->lsp->request(
+            'textDocument/codeAction',
+            [
+                'textDocument' => ['uri' => $this->uri($path)],
+                'range' => $range,
+                'context' => ['diagnostics' => $diagnostics],
+            ],
+            function (mixed $result, ?array $error): void {
+                if (null !== $error || !\is_array($result) || [] === $result) {
+                    $this->flash('No quick fixes here');
+
+                    return;
+                }
+
+                /** @var list<array<string, mixed>> $actions */
+                $actions = array_values(array_filter($result, static fn ($a) => \is_array($a) && '' !== (string) ($a['title'] ?? '')));
+                $items = array_map(
+                    static fn (array $a, int $i) => [
+                        'label' => (string) $a['title'],
+                        'hint' => (string) ($a['kind'] ?? ''),
+                        'value' => (string) $i,
+                    ],
+                    $actions,
+                    array_keys($actions),
+                );
+
+                $this->editor->openListOverlay('Quick Fixes', $items, function (string $index) use ($actions): void {
+                    $this->applyCodeAction($actions[(int) $index] ?? []);
+                });
+                $this->tui->requestRender();
+            },
+        );
+    }
+
+    /**
+     * Apply a CodeAction (edit and/or command) or a bare Command.
+     *
+     * @param array<string, mixed> $action
+     */
+    private function applyCodeAction(array $action): void
+    {
+        $applied = false;
+        if (isset($action['edit'])) {
+            /** @var array<string, mixed> $edit */
+            $edit = $action['edit'];
+            $count = $this->workspaceEditor->applyWorkspaceEdit($edit);
+            $this->statusBar->flash(\sprintf('Applied "%s" to %d file%s', (string) ($action['title'] ?? 'fix'), $count, 1 === $count ? '' : 's'));
+            $applied = true;
+        }
+
+        // CodeAction.command, or the action IS a bare Command
+        /** @var array<string, mixed>|string|null $command */
+        $command = $action['command'] ?? null;
+        if (\is_string($command)) {
+            $command = ['command' => $command, 'arguments' => $action['arguments'] ?? []];
+        }
+        if (\is_array($command) && isset($command['command'])) {
+            $title = (string) ($action['title'] ?? $command['title'] ?? 'command');
+            $this->lsp->request(
+                'workspace/executeCommand',
+                [
+                    'command' => $command['command'],
+                    'arguments' => $command['arguments'] ?? [],
+                ],
+                function (mixed $result, ?array $error) use ($title): void {
+                    $this->statusBar->flash(
+                        null !== $error
+                            ? \sprintf('"%s" failed: %s', $title, (string) ($error['message'] ?? 'unknown error'))
+                            : \sprintf('Ran "%s"', $title),
+                    );
+                    $this->tui->requestRender();
+                },
+            );
+            $applied = true;
+        }
+
+        if (!$applied) {
+            $this->statusBar->flash('Quick fix has nothing to apply');
+        }
+        $this->tui->requestRender();
+    }
+
+    public function requestReformat(): void
+    {
+        if (null === ($path = $this->ready())) {
+            return;
+        }
+
+        // Format the selection (rangeFormatting) when one exists, else the file.
+        $doc = $this->editor->getDocument();
+        $options = ['tabSize' => $doc->usesTabs() ? $doc->tabWidth() : $doc->indentSize(), 'insertSpaces' => !$doc->usesTabs()];
+        $selection = $doc->getSelectionRange();
+        [$method, $params] = null !== $selection
+            ? [
+                'textDocument/rangeFormatting',
+                [
+                    'textDocument' => ['uri' => $this->uri($path)],
+                    'range' => [
+                        'start' => ['line' => $selection['startLine'], 'character' => $doc->byteColToUtf16($selection['startLine'], $selection['startCol'])],
+                        'end' => ['line' => $selection['endLine'], 'character' => $doc->byteColToUtf16($selection['endLine'], $selection['endCol'])],
+                    ],
+                    'options' => $options,
+                ],
+            ]
+            : [
+                'textDocument/formatting',
+                [
+                    'textDocument' => ['uri' => $this->uri($path)],
+                    'options' => $options,
+                ],
+            ];
+
+        $this->lsp->request($method, $params, function (mixed $result, ?array $error) use ($path): void {
+            if (null !== $error || !\is_array($result) || [] === $result) {
+                $this->flash(\sprintf('Formatting not supported by %s', ($this->lspStatus)()));
+
+                return;
+            }
+
+            $buffer = $this->buffers->get($path);
+            if (null !== $buffer) {
+                /** @var list<array{range: array{start: array{line?: int, character?: int}, end: array{line?: int, character?: int}}, newText: string}> $result */
+                $this->workspaceEditor->applyTextEdits($buffer->document, $result);
+                if ($buffer === $this->buffers->active()) {
+                    $this->editor->invalidate();
+                }
+                $this->lsp->notifyFullChange($buffer->path, $buffer->document);
+                $this->statusBar->flash('Reformatted '.ProjectPaths::relative($this->rootDir, $path));
+            }
+            $this->tui->requestRender();
+        });
+    }
+}

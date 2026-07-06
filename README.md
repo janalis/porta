@@ -1,0 +1,304 @@
+# Porta
+
+A terminal IDE for PHP projects, built on the experimental
+[symfony/tui](https://github.com/symfony/tui) component.
+
+- **Syntax highlighting** for PHP, JS/TS, JSON, YAML, Twig, Markdown, CSS,
+  SQL and more (via [tempest/highlight](https://github.com/tempestphp/highlight)),
+  including correct coloring of multi-line docblocks and heredocs
+- **Language Server Protocol** client over stdio, running on the same
+  Revolt event loop as the UI — completely non-blocking
+- **Autocompletion** popup (`Ctrl+Space`, and automatically after `->` / `::`),
+  fed by the language server and **fuzzy/camel-hump** filtered and ranked as you
+  type (e.g. `gm` matches `getMessage`); accepting an item also
+  applies its **auto-import** `use` statements (`additionalTextEdits`, including
+  those the server defers to `completionItem/resolve`) as a single undo step.
+  **Snippet completions** expand with tab stops: `Tab` / `Shift+Tab` cycle
+  through the placeholders (each selected so you can type over it), `Esc` ends
+  the session
+- **Go to definition** (`Ctrl+B` / `F12`) with a back-navigation stack (`Ctrl+Alt+Left`)
+- **Auto-closing brackets & quotes**: typing an opener inserts its pair,
+  selections get wrapped, closers type over, and backspacing an empty pair
+  removes both — toggleable via the command palette / `autoPairs` setting
+- **Multiple cursors**: add carets above/below (`Ctrl+Alt+↑/↓`), at the next
+  occurrence (`Alt+J`) or all occurrences (`Ctrl+Alt+Shift+J`); typing, deleting
+  and pasting apply at every caret as a single atomic undo step
+- **Structural editing**: expand/shrink the selection through the syntactic
+  hierarchy — caret → word → brackets/quotes → line → document (`Ctrl+W` /
+  `Ctrl+Shift+W`); move a statement over blank-line gaps (`Ctrl+Shift+↑/↓`);
+  surround the selection with a bracket pair, quotes or an `if`/`foreach`/`try`
+  snippet (`Ctrl+Alt+T`); and smart-Enter between a `{}`/`()`/`[]` pair opens a
+  blank indented line with the closer dropped below
+- **Multiple buffers** with an editor tab bar, `Alt+←/→` switching and a
+  `Ctrl+E` recent-files popup — every buffer keeps its cursor, undo history
+  and diagnostics
+- **Integrated terminal** (`Ctrl+\`` or `Alt+F12`): a real shell in a bottom
+  panel via a pseudo-terminal — run tests, git or composer without leaving the
+  IDE. Colours and progress bars render; it is a line-oriented scrollback
+  panel, not a full-screen VT host (vim/htop inside it are out of scope).
+- **Run configurations** (`Ctrl+Shift+R`): run the current PHP file, a composer
+  script, or a Makefile target in the terminal panel; `Shift+F10` repeats the
+  last run
+- **Git integration**: change markers in the gutter (added / modified /
+  deleted vs `HEAD`, refreshed on open and save) and the current branch in
+  the status bar — silently disabled outside a git working tree
+- **Diff viewer** (`Ctrl+Alt+D`): the current file's unified diff against
+  `HEAD` in a scrollable bottom panel, coloured per line (additions green,
+  deletions red, hunk headers cyan); flashes when there is nothing to show
+- **Merge-conflict navigator**: jump between `<<<<<<<`/`=======`/`>>>>>>>`
+  conflict regions (`F7` / `Shift+F7`) and resolve the one under the caret
+  (`Alt+M`) by keeping ours, theirs or both — applied as a single undoable edit
+- **Application menu** (`F10` or click): a menu bar atop the editor pane — File /
+  Edit / Navigate / Code / Run / View / Help — with a dropdown of commands under
+  each, every item showing its keyboard shortcut; the dropdown floats over the
+  editor without shifting content down; `↑`/`↓` move, `←`/`→` switch menus,
+  `Enter` runs, `Esc` closes, and titles/items are clickable
+- **Mouse support** (SGR 1006): click to place the cursor, drag to select text
+  (double-click a word, triple-click a line, Shift+click to extend), Alt+Click to
+  add/remove a caret and Alt+Shift+drag for a column (rectangular) selection
+  (PhpStorm-style), click the tree to open files / toggle folders, click a tab to
+  switch buffers, and wheel-scroll the editor or tree
+- **Fuzzy go-to-file** (`Ctrl+Shift+N`) and **incremental find/replace**
+  (`Ctrl+F` / `Ctrl+R`) with live match highlighting
+- **Find in project** (`Ctrl+Shift+F`): async `grep` streamed through the
+  event loop into a results panel, `Enter` jumps to the match; toggle
+  **regex** (`Alt+R`), **case-sensitive** (`Alt+C`) and **whole-word**
+  (`Alt+W`), and **replace across the project** — `Tab` to the replace field,
+  `Alt+A` applies to every matched file (open buffers as one undoable edit,
+  others on disk)
+- **Git write operations** (command palette): stage the current file
+  (`git add`), commit with a message prompt (`git commit`), and blame the
+  caret's line (`git blame`), all async and non-blocking
+- **Symbol navigation**: file structure popup (`Ctrl+F12`) via
+  `documentSymbol`, and go-to-symbol-in-project (`Ctrl+Alt+Shift+N`) via
+  `workspace/symbol`, both fuzzy/live-filtered
+- **Refactoring & navigation via LSP**: quick fixes / code actions
+  (`Alt+Enter`, applying edits or running server commands), rename symbol
+  (`Shift+F6`, validated first via `prepareRename` — refuses positions the
+  server won't rename), find usages (`Alt+F7`), quick documentation (`F1`),
+  signature help while typing arguments, go to line (`Ctrl+G`),
+  **go to implementation** (`Ctrl+Alt+B`) and **type definition**
+  (`Ctrl+Shift+B`) — when the server returns several targets a chooser opens in
+  the results panel; **reformat** (`Ctrl+Alt+L`) formats the selection when one
+  exists (`rangeFormatting`), otherwise the whole file
+- **Live diagnostics** — errors and warnings in the gutter, status bar, and
+  inline at end-of-line (dimmed), plus a project-wide problems panel (`Alt+6`)
+  and reformat-file (`Ctrl+Alt+L`) where the language server supports it
+- **Peek definition** (`Ctrl+Shift+I`): view a symbol's definition with
+  surrounding context inline, without leaving the current file
+- **Identifier highlight**: placing the caret on a name softly highlights its
+  other occurrences in view (PhpStorm-style), alongside matching-bracket
+  highlighting
+- **EditorConfig**: a file's nearest `.editorconfig` (resolved by walking up to
+  the first `root = true`) drives its indentation live — `indent_style`,
+  `indent_size`, `tab_width` — and its `end_of_line`, `trim_trailing_whitespace`
+  and `insert_final_newline` on save; disable with `"editorConfig": false`
+- **Indent guides**: dim vertical guides mark each indentation level
+- **Code folding** (`Ctrl+.`): collapse/expand the `{ … }` block at the caret;
+  a `⋯ N lines` marker shows on the folded line, moving the caret into a
+  collapsed region re-expands it, and clicks/scrolling map through hidden lines
+- **Inlay hints**: dim inline parameter-name / inferred-type hints from the
+  language server (`textDocument/inlayHint`), refreshed as you edit
+- **Local history & session restore**: each save snapshots the file under
+  `.porta/history/` (restore any snapshot with `Ctrl+Alt+H`); the open
+  buffers and cursors are saved to `.porta/session.json` on quit and
+  reopened next time you launch the IDE with no file argument
+- File tree with lazy expansion, editor with undo/redo, auto-indent,
+  smart Home, horizontal scrolling and a line-number gutter
+
+```
+ ide/                          │  1  <?php
+ ▾ src/                        │  2
+     Ide.php                   │  3  class Greeter
+   ▸ Widget/                   │  4  {
+   composer.json               │  5      public function greet(): string
+                               │  6      {
+                               │  7          return $this->▉
+                               │  8      }        ┌ makeGreeting  method ┐
+                               │  9  }            │ subject        prop  │
+                               │                  └──────────────────────┘
+ src/Greeter.php ●    1:24  LSP:phpactor  ^S save ^T panel ^Space complete ^Q quit
+```
+
+## Installation
+
+Install into any PHP project:
+
+```bash
+composer require --dev pierre/porta
+vendor/bin/ide
+```
+
+Requires PHP ≥ 8.4 and an interactive terminal.
+
+## Language server
+
+For completion and diagnostics you need an LSP server. The IDE looks for one
+in this order:
+
+1. `.porta.json` in the project root:
+   ```json
+   {"lsp": "php phpactor.phar language-server"}
+   ```
+2. The `PORTA_LSP` environment variable (same format)
+3. `vendor/bin/phpactor` in the project
+4. `phpactor` on your `PATH`
+5. `intelephense` on your `PATH` (`npm i -g intelephense`)
+
+The quickest setup is:
+
+```bash
+composer require --dev phpactor/phpactor
+```
+
+Without a server the IDE still works — you keep highlighting and editing,
+the status bar shows `LSP:none`.
+
+## Usage
+
+```bash
+vendor/bin/ide             # open the current directory
+vendor/bin/ide src/Foo.php # open a file directly
+vendor/bin/ide ~/other/app # open another project
+```
+
+### Keys
+
+The keymap follows PhpStorm wherever the terminal allows.
+
+| Key | Action |
+| --- | --- |
+| `Alt+6` | Problems panel (diagnostics across all open buffers) |
+| `Alt+Backspace` | Delete word backwards |
+| `Alt+Enter` | Quick fixes / code actions (via LSP) |
+| `Alt+F7` | Find usages (results panel) |
+| `Alt+J` | Add a caret at the next occurrence of the word |
+| `Alt+M` | Resolve the conflict under the caret (keep ours / theirs / both) |
+| `Alt+Shift+↑/↓` | Move line or selection up / down |
+| `Alt+W` / `Ctrl+F4` | Close the active buffer (unsaved changes prompt Save / Discard / Cancel) |
+| `Alt+←` / `Alt+→` | Previous / next editor tab |
+| `Ctrl+.` | Collapse / expand the code fold at the caret |
+| `Ctrl+/` | Toggle line comment |
+| `Ctrl+A` | Select all |
+| `Ctrl+Alt+B` | Go to implementation (chooser when several) |
+| `Ctrl+Alt+D` | Show the current file's diff vs `HEAD` (`Esc` hides it) |
+| `Ctrl+Alt+H` | Show local history (restore an earlier snapshot) |
+| `Ctrl+Alt+L` | Reformat file (via LSP formatting) |
+| `Ctrl+Alt+Left` | Navigate back after a definition jump |
+| `Ctrl+Alt+O` | Go to symbol in project (workspace symbols) |
+| `Ctrl+Alt+S` | Save all modified buffers |
+| `Ctrl+Alt+Shift+J` | Add carets at all occurrences |
+| `Ctrl+Alt+T` | Surround selection (bracket pair, quotes, if/foreach/try) |
+| `Ctrl+Alt+↑` / `Ctrl+Alt+↓` | Add a caret above / below |
+| `Ctrl+B` / `F12` | Go to declaration (via LSP) |
+| `Ctrl+C` / `Ctrl+X` / `Ctrl+V` | Copy / cut / paste (also copies to the system clipboard via OSC 52) |
+| `Ctrl+D` | Duplicate line or selection |
+| `Ctrl+E` | Recent files popup (`Ctrl+E` again cycles, `Enter` opens) |
+| `Ctrl+F12` / `Alt+7` | File structure popup (symbols in current file) |
+| `Ctrl+F` / `Ctrl+R` | Find / find-and-replace in file (`F3`/`Shift+F3` cycle, `Tab` switch field, `Alt+R` replace, `Alt+A` replace all) |
+| `Ctrl+G` | Go to line |
+| `Ctrl+Home` / `Ctrl+End` | Start / end of file |
+| `Ctrl+K` | Delete to end of line *(deviation: PhpStorm commits)* |
+| `Ctrl+P` | Go to file (fuzzy finder) |
+| `Ctrl+Q` | Quit, twice to discard unsaved changes *(deviation: PhpStorm quick-doc)* |
+| `Ctrl+S` | Save |
+| `Ctrl+Shift+A` | Find action (command palette) |
+| `Ctrl+Shift+B` | Go to type definition |
+| `Ctrl+Shift+F` | Find in project (`Alt+R/C/W` toggle regex / case / whole-word; `Tab`+`Alt+A` replace all) |
+| `Ctrl+Shift+I` | Peek definition (inline, no buffer switch; Enter jumps) |
+| `Ctrl+Shift+R` / `Shift+F10` | Run menu / repeat last run |
+| `Ctrl+Shift+↑/↓` | Move statement up / down (hops blank-line gaps) |
+| `Ctrl+Space` | Trigger autocompletion (auto after `->` and `::`) |
+| `Ctrl+T` / `F2` | Switch between file tree and editor |
+| `Ctrl+W` / `Ctrl+Shift+W` | Extend / shrink selection (word → brackets → line → file) |
+| `Ctrl+Y` | Delete line or selected lines |
+| `Ctrl+Z` / `Ctrl+Shift+Z` | Undo / redo (typing runs coalesce) |
+| `Ctrl+\`` / `Alt+F12` | Toggle the integrated terminal (`Esc` or the same key hides it) |
+| `Enter` (tree) | Open file / toggle directory |
+| `Esc` (multi-caret) | Collapse back to a single caret |
+| `F1` | Quick documentation popup |
+| `F6` / `Ctrl+F6` | Cycle focus forward / backward |
+| `F7` / `Shift+F7` | Jump to next / previous merge conflict |
+| `Home` | Smart home (first non-blank, then column 0) |
+| `Shift+F6` | Rename symbol (via LSP WorkspaceEdit, cross-file) |
+| `Shift+arrows` / `Ctrl+Shift+←/→` | Select (character / word) |
+| `Tab` / `Shift+Tab` | Next / previous snippet tab stop (while a snippet is active) |
+| `r` (tree) | Reload the tree |
+| `←` / `→` (tree) | Collapse / expand directory |
+| `↑` `↓` `Enter` / `Tab` | Navigate / accept completion, `Esc` closes |
+| Mouse | Click to position cursor / open tree files / switch tabs; wheel to scroll |
+
+### Custom keymap & settings
+
+Both live in `.porta.json`:
+
+```json
+{
+    "keymap": {
+        "duplicate_line": ["ctrl+shift+d"],
+        "save": ["f10", "ctrl+s"]
+    },
+    "settings": {
+        "tabWidth": 4,
+        "inlineDiagnostics": true,
+        "relativeLineNumbers": false,
+        "autoPairs": true
+    }
+}
+```
+
+The **command palette** (`Ctrl+Shift+A`, "Find Action") lists every action by
+name and can run common ones, including toggles for inline diagnostics and
+relative line numbers that persist back into `.porta.json`.
+Unknown action/setting names are reported in the status bar at startup. The full
+action list is in `Porta\Config\IdeConfig::KNOWN_ACTIONS`. Heavily
+modified chords (e.g. `Alt+Shift+↑`) work best in terminals with the Kitty
+keyboard protocol (kitty, WezTerm, iTerm2 3.5+, foot, Ghostty).
+
+## Project-local state
+
+The IDE writes a `.porta/` directory in the project you open (local history
+snapshots and the saved session) and reads/writes `.porta.json` for config.
+Add these to your project's `.gitignore`:
+
+```gitignore
+/.porta/
+```
+
+## Notes
+
+- Tabs are preserved verbatim: a file's original indentation (tabs or spaces)
+  round-trips through load and save unchanged. Tabs render at 4-cell stops, and
+  `Tab` / auto-indent insert the file's own indent unit (a tab in a tab-indented
+  file, four spaces otherwise).
+- Files larger than 2 MB and non-UTF-8 files are refused.
+- Git change marks reflect the last saved state (recomputed on open and
+  save); they are not live-remapped during unsaved edits.
+- Highlighting is incremental on files ≥ 2000 lines: local edits re-parse
+  only the touched lines (~0.2 ms per keystroke at 10k lines), with a full
+  repair parse every 25 edits to restore multi-line token colors.
+- Documents are synced to the language server with `didChange` notifications
+  debounced at 300 ms — **incremental** (a minimal prefix/suffix delta) when the
+  server advertises incremental sync, falling back to full-text otherwise.
+
+## Development
+
+```bash
+composer install
+composer test              # PHPUnit: Unit + Integration + E2e suites
+composer coverage          # coverage report (needs the pcov extension)
+composer coverage:check    # enforces 100% line coverage of src/
+```
+
+The suite covers **100% of the lines in `src/`**: unit tests per class,
+integration tests for the LSP client against mock/fault-injection servers
+(`tests/Support/*-lsp-server.php`), and end-to-end tests that boot the whole
+IDE on a `VirtualTerminal` and drive it with scripted keystrokes.
+
+Coverage needs `pcov` built against your PHP
+(`pecl install pcov`; on Homebrew PHP you may need
+`CPATH="$(brew --prefix pcre2)/include" pecl install pcov`).
+
+## License
+
+MIT

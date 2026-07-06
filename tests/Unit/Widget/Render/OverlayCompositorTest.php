@@ -1,0 +1,58 @@
+<?php
+
+declare(strict_types=1);
+
+namespace Porta\Tests\Unit\Widget\Render;
+
+use PHPUnit\Framework\TestCase;
+use Porta\Widget\Render\OverlayCompositor;
+use Symfony\Component\Tui\Ansi\AnsiUtils;
+
+final class OverlayCompositorTest extends TestCase
+{
+    public function testCompositesPopupAndKeepsTheLineExactlyTheTerminalWidth(): void
+    {
+        $line = str_repeat(' ', 20);
+        $popup = "\x1b[7m[popup]\x1b[0m"; // 7 visible columns
+
+        $out = OverlayCompositor::into($line, 5, 7, 20, $popup);
+
+        $this->assertSame(20, AnsiUtils::visibleWidth($out), 'the row stays exactly the terminal width');
+        $this->assertStringContainsString('[popup]', AnsiUtils::stripAnsiCodes($out));
+    }
+
+    public function testClippedPopupBackgroundDoesNotBleedIntoTheTail(): void
+    {
+        // A popup slice whose own trailing reset was clipped off (as happens when
+        // an overlay spills across a widget boundary): the background must not
+        // bleed across the tail. Regression: a menu spilling into a blank editor
+        // pane painted its box background across the whole pane.
+        $line = str_repeat(' ', 40); // blank pane (no styling of its own)
+        $clippedPopup = "\x1b[48;5;236mBOX"; // opens a background, never resets
+
+        $out = OverlayCompositor::into($line, 4, 3, 40, $clippedPopup);
+
+        // The background active over the tail (a blank column past the popup) must
+        // be the default, not the popup's — i.e. a reset separates them.
+        $this->assertSame('default', self::netBackgroundAt($out, 20), 'the popup background must not bleed across the tail');
+        $this->assertSame(40, AnsiUtils::visibleWidth($out));
+    }
+
+    /** The background colour in effect at visible column $col (net of every SGR code up to it). */
+    public static function netBackgroundAt(string $line, int $col): string
+    {
+        $slice = AnsiUtils::sliceByColumn($line, $col, 1, true); // carries all prior SGR as pending
+        $bg = 'default';
+        if (preg_match_all('/\x1b\[([0-9;]*)m/', $slice, $codes)) {
+            foreach ($codes[1] as $params) {
+                if ('' === $params || '0' === $params || '49' === $params) {
+                    $bg = 'default';
+                } elseif (preg_match('/48;5;(\d+)/', $params, $m)) {
+                    $bg = '48;5;'.$m[1];
+                }
+            }
+        }
+
+        return $bg;
+    }
+}

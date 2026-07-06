@@ -1,0 +1,32 @@
+#!/usr/bin/env php
+<?php
+
+declare(strict_types=1);
+
+// Locate the Composer autoloader whether we run from this package's checkout
+// or as an installed dependency (vendor/<name>/porta/bin/porta).
+$autoloadCandidates = [
+    __DIR__.'/../vendor/autoload.php',
+    __DIR__.'/../../../autoload.php',
+    __DIR__.'/../../../../autoload.php',
+];
+
+$autoloaded = false;
+foreach ($autoloadCandidates as $candidate) {
+    if (is_file($candidate)) {
+        require $candidate;
+        $autoloaded = true;
+        break;
+    }
+}
+
+if (!$autoloaded) {
+    fwrite(STDERR, "porta: could not find Composer's autoload.php. Run 'composer install' first.\n");
+    exit(1);
+}
+
+$command = new Porta\Console\PortaCommand();
+$application = new Symfony\Component\Console\Application('porta', Porta\Ide::VERSION);
+$application->addCommand($command);
+$application->setDefaultCommand((string) $command->getName(), true); // single-command app
+$application->run();

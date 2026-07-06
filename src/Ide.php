@@ -1,0 +1,1060 @@
+<?php
+
+declare(strict_types=1);
+
+namespace Porta;
+
+use Porta\Config\ActionCatalog;
+use Porta\Config\CommandRegistry;
+use Porta\Config\EditorConfig\EditorConfigResolver;
+use Porta\Config\IdeConfig;
+use Porta\Config\LayoutStore;
+use Porta\Config\SettingsController;
+use Porta\Editor\BreadcrumbScanner;
+use Porta\Editor\Buffer;
+use Porta\Editor\BufferManager;
+use Porta\Editor\BufferService;
+use Porta\Editor\Document;
+use Porta\Git\GitCommands;
+use Porta\Git\GitInfo;
+use Porta\History\LocalHistory;
+use Porta\History\LocalHistoryController;
+use Porta\History\SessionStore;
+use Porta\Input\HitTester;
+use Porta\Input\MouseEvent;
+use Porta\Input\MouseRouter;
+use Porta\Layout\LayoutController;
+use Porta\Lsp\CompletionController;
+use Porta\Lsp\LspMapper;
+use Porta\Lsp\LspSession;
+use Porta\Lsp\NavigationController;
+use Porta\Lsp\RefactorController;
+use Porta\Lsp\ServerLocator;
+use Porta\Lsp\WorkspaceEditor;
+use Porta\Overlay\MenuOverlayController;
+use Porta\Run\RunConfigs;
+use Porta\Run\RunController;
+use Porta\Search\ProjectSearch;
+use Porta\Search\ProjectSearchController;
+use Porta\Support\ProjectPaths;
+use Porta\Terminal\TerminalKeyEncoder;
+use Porta\Tree\TreeOperations;
+use Porta\Ui\CommandPalette;
+use Porta\Ui\ContextMenuBuilder;
+use Porta\Ui\MenuModel;
+use Porta\Ui\PanelManager;
+use Porta\Ui\ResultsPanelMode;
+use Porta\Widget\BreadcrumbsWidget;
+use Porta\Widget\CodeEditorWidget;
+use Porta\Widget\ContextMenu;
+use Porta\Widget\DiffPanelWidget;
+use Porta\Widget\FileTreeWidget;
+use Porta\Widget\FindBarWidget;
+use Porta\Widget\GoToFileWidget;
+use Porta\Widget\MenuBarWidget;
+use Porta\Widget\ResultsPanelWidget;
+use Porta\Widget\SeparatorWidget;
+use Porta\Widget\StatusBarWidget;
+use Porta\Widget\TabBarWidget;
+use Porta\Widget\TerminalPanelWidget;
+use Revolt\EventLoop;
+use Symfony\Component\Tui\Event\InputEvent;
+use Symfony\Component\Tui\Input\Keybindings;
+use Symfony\Component\Tui\Render\Renderer;
+use Symfony\Component\Tui\Style\Direction;
+use Symfony\Component\Tui\Style\Style;
+use Symfony\Component\Tui\Style\StyleSheet;
+use Symfony\Component\Tui\Terminal\Terminal;
+use Symfony\Component\Tui\Terminal\TerminalInterface;
+use Symfony\Component\Tui\Tui;
+use Symfony\Component\Tui\Widget\ContainerWidget;
+
+/**
+ * The terminal IDE application: file tree + code editor + status bar,
+ * backed by a language server for diagnostics and autocompletion.
+ */
+final class Ide
+{
+    public const string VERSION = '0.1.0';
+
+    private Tui $tui;
+    private FileTreeWidget $tree;
+    private CodeEditorWidget $editor;
+    private StatusBarWidget $statusBar;
+    private MenuBarWidget $menuBar;
+    private TabBarWidget $tabBar;
+    private BreadcrumbsWidget $breadcrumbs;
+    private SeparatorWidget $separator;
+    private FindBarWidget $findBar;
+    private GoToFileWidget $goToFile;
+    private ResultsPanelWidget $resultsPanel;
+    private ProjectSearchController $projectSearchController;
+    private CommandPalette $commandPalette;
+    private TerminalPanelWidget $terminalPanel;
+    private DiffPanelWidget $diffPanel;
+    private RunController $run;
+    private GitInfo $git;
+    private GitCommands $gitCommands;
+    private ?string $gitBranch = null;
+    private LocalHistory $history;
+    private LocalHistoryController $localHistory;
+    private SessionStore $session;
+    private LayoutController $layout;
+    private TreeOperations $treeOps;
+    private BufferManager $buffers;
+    private ?string $searchDebounce = null;
+    private PanelManager $panels;
+    private CommandRegistry $commands;
+
+    private LspSession $lsp;
+    private WorkspaceEditor $workspaceEditor;
+    private CompletionController $completion;
+    private NavigationController $navigation;
+    private RefactorController $refactor;
+    private string $lspStatus = 'no server';
+    private float $lastQuitPress = 0.0;
+
+    private Renderer $renderer;
+    private ContextMenu $contextMenu;
+
+    /** Positions + composites the app-menu and context-menu floating overlays. */
+    private MenuOverlayController $overlay;
+
+    private Keybindings $keybindings;
+
+    public function __construct(
+        private readonly string $rootDir,
+        private readonly ?string $initialFile = null,
+        ?TerminalInterface $terminal = null,
+        ?Renderer $renderer = null,
+        private readonly ?int $initialLine = null,
+        private readonly ?string $lspCommand = null,
+        private readonly bool $lspDisabled = false,
+    ) {
+        $config = IdeConfig::load($this->rootDir);
+        $keybindings = new Keybindings(array_merge(ActionCatalog::ideDefaults(), $config->keymap));
+        $this->keybindings = $keybindings;
+
+        // Own the Renderer so mouse hit-testing can query widget rects.
+        $this->renderer = $renderer ?? new Renderer($this->buildStyleSheet());
+        $this->tui = new Tui(
+            terminal: $terminal ?? new Terminal(),
+            keybindings: $keybindings,
+            renderer: $this->renderer,
+        );
+
+        $this->buffers = new BufferManager();
+        $this->lsp = new LspSession($this->rootDir);
+
+        $this->tree = new FileTreeWidget($this->rootDir);
+        $this->tree->setId('tree')->setStyle(new Style(flex: 0));
+        $this->editor = new CodeEditorWidget();
+        $this->editor->setId('editor');
+        $this->workspaceEditor = new WorkspaceEditor($this->buffers, $this->editor, $this->lsp);
+        $this->statusBar = new StatusBarWidget();
+        $this->statusBar->setId('status');
+        $this->menuBar = new MenuBarWidget();
+        $this->menuBar->setId('menu');
+        $this->contextMenu = new ContextMenu();
+        $this->contextMenu->setId('context-menu');
+        $this->completion = new CompletionController($this->lsp, $this->editor, $this->tui, $this->statusBar);
+        $this->tabBar = new TabBarWidget();
+        $this->tabBar->setId('tabs');
+        $this->tabBar->setProvider(fn (): array => array_map(fn (Buffer $b) => [
+            'name' => basename($b->path),
+            'dirty' => $b->isDirty(),
+            'active' => $b === $this->buffers->active(),
+        ], $this->buffers->all()));
+
+        $this->breadcrumbs = new BreadcrumbsWidget();
+        $this->breadcrumbs->setId('breadcrumbs');
+        $this->breadcrumbs->setProvider(fn (): array => $this->breadcrumbTrail());
+
+        $editorPane = new ContainerWidget();
+        $editorPane->setId('editor-pane');
+        $editorPane->setStyle(new Style(flex: 1));
+        $editorPane->expandVertically(true);
+        $editorPane->add($this->menuBar)->add($this->tabBar)->add($this->breadcrumbs)->add($this->editor);
+
+        $this->separator = new SeparatorWidget();
+        $this->separator->setId('separator')->setStyle(new Style(flex: 0));
+
+        $main = new ContainerWidget();
+        $main->setId('main');
+        $main->setStyle(new Style(direction: Direction::Horizontal, gap: 0));
+        $main->expandVertically(true);
+        $main->add($this->tree)->add($this->separator)->add($editorPane);
+
+        $this->goToFile = new GoToFileWidget($this->rootDir);
+        $this->goToFile->setId('goto-file');
+        $this->findBar = new FindBarWidget();
+        $this->findBar->setId('find-bar');
+        $this->resultsPanel = new ResultsPanelWidget();
+        $this->resultsPanel->setId('results');
+        $this->terminalPanel = new TerminalPanelWidget();
+        $this->terminalPanel->setId('terminal');
+        $this->diffPanel = new DiffPanelWidget();
+        $this->diffPanel->setId('diff');
+        $this->projectSearchController = new ProjectSearchController(
+            new ProjectSearch($this->rootDir),
+            $this->resultsPanel,
+            $this->editor,
+            $this->statusBar,
+            $this->tui,
+            $this->buffers,
+            $this->rootDir,
+            fn (string $path, Document $document) => $this->lsp->notifyFullChange($path, $document),
+        );
+        $this->commandPalette = new CommandPalette($this->resultsPanel, $this->tui);
+        $this->panels = new PanelManager($this->tui, $this->resultsPanel, $this->editor, $this->statusBar);
+        $this->navigation = new NavigationController(
+            $this->lsp,
+            $this->editor,
+            $this->tui,
+            $this->statusBar,
+            $this->buffers,
+            $this->resultsPanel,
+            $this->panels,
+            $this->rootDir,
+            fn (string $path, bool $focusEditor) => $this->openFile($path, $focusEditor),
+        );
+        $this->refactor = new RefactorController(
+            $this->lsp,
+            $this->editor,
+            $this->tui,
+            $this->statusBar,
+            $this->buffers,
+            $this->workspaceEditor,
+            $this->rootDir,
+            fn (): string => $this->lspStatus,
+        );
+        $this->run = new RunController(
+            new RunConfigs($this->rootDir),
+            $this->terminalPanel,
+            new TerminalKeyEncoder(fn (): bool => $this->tui->getTerminal()->isKittyProtocolActive()),
+            $this->editor,
+            $this->statusBar,
+            $this->tui,
+            $this->rootDir,
+        );
+        $this->git = new GitInfo($this->rootDir);
+        $this->gitCommands = new GitCommands(
+            $this->git,
+            $this->editor,
+            $this->statusBar,
+            $this->tui,
+            $this->diffPanel,
+            $this->terminalPanel,
+            $this->resultsPanel,
+            fn () => $this->refreshActiveGitMarks(),
+            fn () => $this->refreshBranch(),
+            fn (string $path) => $this->relativePath($path),
+        );
+        $this->history = new LocalHistory($this->rootDir);
+        $this->session = new SessionStore($this->rootDir);
+        $this->layout = new LayoutController(new LayoutStore($this->rootDir), $this->tui, $this->renderer, $this->tree, $this->terminalPanel, $this->resultsPanel, $this->diffPanel);
+        $this->overlay = new MenuOverlayController($this->renderer, $this->menuBar, $this->contextMenu, $this->tree, $this->separator, $this->tabBar, $this->breadcrumbs, $this->editor);
+        $this->treeOps = new TreeOperations(
+            $this->tree,
+            $this->editor,
+            $this->tui,
+            $this->statusBar,
+            $this->buffers,
+            fn (string $p, bool $focus) => $this->openFile($p, focusEditor: $focus),
+            fn (Buffer $b) => $this->showBuffer($b),
+            fn (string $p) => $this->relativePath($p),
+            fn (string $t) => $this->copyToClipboard($t),
+        );
+
+        $this->tui
+            ->add($this->goToFile)
+            ->add($main)
+            ->add($this->findBar)
+            ->add($this->resultsPanel)
+            ->add($this->terminalPanel)
+            ->add($this->diffPanel)
+            ->add($this->contextMenu)
+            ->add($this->statusBar);
+
+        $this->wireWidgets($keybindings);
+        $this->wireStatusBar();
+
+        // Apply persisted settings.
+        $this->settings = new SettingsController($config->settings, $this->editor, $this->statusBar, $this->tui, $this->rootDir);
+        $this->settings->applyAll();
+        $this->bufferService = new BufferService(
+            $this->buffers,
+            $this->editor,
+            $this->tree,
+            $this->statusBar,
+            $this->tui,
+            $this->lsp,
+            $this->completion,
+            $this->history,
+            new EditorConfigResolver(),
+            $this->rootDir,
+            (bool) ($config->settings['editorConfig'] ?? true),
+            fn (Buffer $buffer) => $this->refreshGitMarks($buffer),
+            fn () => $this->refreshBranch(),
+        );
+
+        $this->localHistory = new LocalHistoryController(
+            $this->history,
+            $this->panels,
+            $this->editor,
+            $this->buffers,
+            $this->statusBar,
+            $this->tui,
+            $this->completion,
+        );
+
+        $this->mouseRouter = new MouseRouter(
+            new HitTester($this->renderer),
+            $this->tui,
+            $this->tree,
+            $this->tabBar,
+            $this->editor,
+            $this->menuBar,
+            $this->contextMenu,
+            $this->breadcrumbs,
+            $this->terminalPanel,
+            $this->resultsPanel,
+            $this->goToFile,
+            $this->diffPanel,
+            $this->layout,
+            $this->overlay,
+            $this->buffers,
+            $this->bufferService,
+            $this->treeOps,
+            new ContextMenuBuilder($this->commands, $this->editor, $this->keybindings, $this->bufferService),
+        );
+
+        foreach ($config->warnings as $warning) {
+            $this->statusBar->flash($warning, 5.0);
+        }
+    }
+
+    private SettingsController $settings;
+    private BufferService $bufferService;
+    private MouseRouter $mouseRouter;
+
+    /**
+     * @internal exposed for tests
+     */
+    public function getTui(): Tui
+    {
+        return $this->tui;
+    }
+
+    public function run(): void
+    {
+        $this->startLsp();
+        $this->refreshBranch();
+
+        // Poll the filesystem so external edits, git checkouts and deletions are
+        // reflected in the open buffers and the tree without a manual reload. The
+        // timer only fires once the event loop runs (inside tui->run()), so it is
+        // safe to arm before setup; arming it before the try guarantees the finally
+        // can always cancel it.
+        $watcher = EventLoop::repeat(1.0, fn () => $this->pollFilesystem());
+
+        try {
+            // Enter the alternate screen so quitting restores the terminal exactly
+            // as it was before launch (like vim/htop). Plus SGR mouse reporting:
+            // 1000 (button press/release), 1003 (any-event motion — a superset of
+            // 1002's button-held drag, so we also see bare hover-moves for row
+            // highlighting) and 1006 (SGR coordinates). VirtualTerminal records
+            // these; tests feed synthetic seqs. Paired teardown is in the finally.
+            $this->tui->getTerminal()->write("\x1b[?1049h\x1b[?1000h\x1b[?1003h\x1b[?1006h");
+
+            $this->layout->applyLayout();
+
+            if (null !== $this->initialFile) {
+                $this->openFile($this->initialFile);
+                if (null !== $this->initialLine) {
+                    $this->editor->jumpTo($this->initialLine - 1, 0); // CLI lines are 1-based
+                }
+                $this->tui->setFocus($this->editor);
+            } elseif (!$this->restoreSession()) {
+                $this->tui->setFocus($this->tree);
+            }
+
+            $this->tui->run();
+        } finally {
+            EventLoop::cancel($watcher);
+            // Disable mouse reporting, then leave the alternate screen (restoring
+            // the pre-launch terminal). Guaranteed even if startup above threw.
+            $this->tui->getTerminal()->write("\x1b[?1000l\x1b[?1003l\x1b[?1006l\x1b[?1049l");
+            $this->saveSession();
+            $this->lsp->stop();
+            $this->git->cancelAll();
+            $this->run->stop();
+        }
+    }
+
+    /**
+     * Reopen the previous session's buffers. Returns true if any were opened.
+     */
+    private function restoreSession(): bool
+    {
+        $data = $this->session->load();
+        if (null === $data || [] === $data['buffers']) {
+            return false;
+        }
+
+        $opened = false;
+        foreach ($data['buffers'] as $buffer) {
+            if (!is_file($buffer['path'])) {
+                continue;
+            }
+            $this->openFile($buffer['path']);
+            $active = $this->buffers->active();
+            if (null !== $active) {
+                $active->document->setCursor($buffer['line'], $buffer['col']);
+            }
+            $opened = true;
+        }
+
+        if ($opened && null !== $data['active'] && $this->buffers->has(realpath($data['active']) ?: $data['active'])) {
+            /** @var Buffer $active */
+            $active = $this->buffers->setActive(realpath($data['active']) ?: $data['active']);
+            $this->showBuffer($active);
+        }
+        if ($opened) {
+            $this->tui->setFocus($this->editor);
+        }
+
+        return $opened;
+    }
+
+    private function saveSession(): void
+    {
+        $buffers = [];
+        foreach ($this->buffers->all() as $buffer) {
+            $buffers[] = [
+                'path' => $buffer->path,
+                'line' => $buffer->document->getCursorLine(),
+                'col' => $buffer->document->getCursorCol(),
+            ];
+        }
+        $this->session->save($buffers, $this->buffers->active()?->path);
+    }
+
+    // --- Wiring ---------------------------------------------------------------
+
+    private function wireWidgets(Keybindings $keybindings): void
+    {
+        $this->tree->onOpenFile(fn (string $path) => $this->openFile($path, focusEditor: true));
+
+        $this->editor->onSaveRequested(fn () => $this->saveCurrentFile());
+        $this->editor->onSaveAllRequested(fn () => $this->saveAllBuffers());
+
+        $this->editor->onChanged(function (Document $doc): void {
+            $this->completion->scheduleDidChange($doc);
+        });
+
+        $this->editor->onCompletionRequested(function (int $line, int $utf16Col): void {
+            $this->completion->requestCompletion($line, $utf16Col);
+        });
+
+        $this->editor->onCompletionResolve(
+            /** @param array<string, mixed> $item */
+            function (array $item): void {
+                $this->completion->resolveCompletion($item);
+            },
+        );
+
+        $this->editor->onDefinitionRequested(function (int $line, int $utf16Col): void {
+            $this->navigation->requestDefinition($line, $utf16Col);
+        });
+
+        $this->editor->onImplementationRequested(function (int $line, int $utf16Col): void {
+            $this->navigation->requestImplementation($line, $utf16Col);
+        });
+
+        $this->editor->onTypeDefinitionRequested(function (int $line, int $utf16Col): void {
+            $this->navigation->requestTypeDefinition($line, $utf16Col);
+        });
+
+        $this->editor->onNavigateBack(function (): void {
+            $this->navigation->navigateBack();
+        });
+
+        // Mirror editor copies to the system clipboard via OSC 52
+        $this->editor->onCopy(fn (string $text) => $this->copyToClipboard($text));
+
+        $this->editor->onBufferCycle(function (int $offset): void {
+            if (null !== ($buffer = $this->buffers->cycle($offset))) {
+                $this->showBuffer($buffer);
+            }
+        });
+
+        $this->editor->onRecentFiles(function (): void {
+            $recent = $this->buffers->recent();
+            if (\count($recent) < 2) {
+                return;
+            }
+            $items = array_map(fn (Buffer $b) => [
+                'label' => basename($b->path).($b->document->isDirty() ? ' ●' : ''),
+                'hint' => $this->relativePath($b->path),
+                'value' => $b->path,
+            ], $recent);
+            // Pre-select the previous file, like PhpStorm's Ctrl+E
+            $items[] = $items[0];
+            array_shift($items);
+
+            $this->editor->openListOverlay('Recent Files', $items, function (string $path): void {
+                if (null !== ($buffer = $this->buffers->setActive($path))) {
+                    $this->showBuffer($buffer);
+                }
+            });
+            $this->tui->requestRender();
+        });
+
+        $this->editor->onCloseBuffer(function (): void {
+            $this->closeActiveBuffer();
+        });
+
+        // Find / replace bar
+        $this->editor->onFindRequested(function (bool $withReplace): void {
+            $initial = $this->editor->getDocument()->getSelectedText();
+            $this->findBar->open(
+                $this->editor->getDocument(),
+                $withReplace,
+                str_contains($initial, "\n") ? '' : $initial,
+            );
+            $this->tui->setFocus($this->findBar);
+            $this->tui->requestRender();
+        });
+
+        $this->findBar->onUpdate(function (): void {
+            $this->editor->setSearchMatches($this->findBar->getMatchesByLine());
+            $this->tui->requestRender();
+        });
+
+        $this->findBar->onClose(function (): void {
+            $this->editor->setSearchMatches([]);
+            $this->tui->setFocus($this->editor);
+            $this->tui->requestRender();
+        });
+
+        // Go to file palette
+        $this->editor->onGotoFile(function (): void {
+            $this->goToFile->open();
+            $this->tui->setFocus($this->goToFile);
+            $this->tui->requestRender();
+        });
+
+        $this->goToFile->onPick(function (string $path): void {
+            $this->openFile($path, focusEditor: true);
+        });
+
+        $this->goToFile->onClose(function (): void {
+            if ($this->tui->getFocus() === $this->goToFile) {
+                $this->tui->setFocus($this->editor);
+            }
+            $this->tui->requestRender();
+        });
+
+        // LSP-powered features: hover, rename, usages, signature help
+        $this->editor->onQuickDoc(function (int $line, int $col): void {
+            $this->navigation->requestHover($line, $col);
+        });
+
+        $this->editor->onRenameRequested(function (int $line, int $col, string $word): void {
+            $this->refactor->requestPrepareRename($line, $col, $word);
+        });
+
+        $this->editor->onFindUsages(function (int $line, int $col): void {
+            $this->navigation->requestReferences($line, $col);
+        });
+
+        $this->editor->onSignatureHelp(function (int $line, int $col): void {
+            $this->completion->requestSignatureHelp($line, $col);
+        });
+
+        $this->editor->onCodeAction(function (int $line, int $col): void {
+            $this->refactor->requestCodeActions($line, $col);
+        });
+
+        $this->editor->onFileStructure(function (): void {
+            $this->navigation->requestFileStructure();
+        });
+
+        $this->editor->onPeek(function (int $line, int $col): void {
+            $this->navigation->requestPeek($line, $col);
+        });
+
+        $this->editor->onReformat(function (): void {
+            $this->refactor->requestReformat();
+        });
+
+        // The results panel serves two live-query modes (project text search
+        // and workspace symbol search); the PanelManager's mode selects the handler.
+        $this->resultsPanel->onQueryChanged(function (string $query): void {
+            if (null !== $this->searchDebounce) {
+                EventLoop::cancel($this->searchDebounce);
+            }
+            $this->searchDebounce = null;
+            if (ResultsPanelMode::Action === $this->panels->mode()) {
+                // The command palette filters synchronously (no I/O).
+                $this->commandPalette->filter($query);
+
+                return;
+            }
+            $this->resultsPanel->setSearching();
+            $this->searchDebounce = EventLoop::delay(0.25, function () use ($query): void {
+                $this->searchDebounce = null;
+                if (ResultsPanelMode::Symbol === $this->panels->mode()) {
+                    $this->navigation->requestWorkspaceSymbols($query);
+                } else {
+                    $this->projectSearchController->search($query);
+                }
+            });
+        });
+
+        $this->resultsPanel->onToggleOption(function (string $name): void {
+            $this->projectSearchController->toggleOption($name);
+        });
+
+        $this->resultsPanel->onReplaceAll(function (string $replacement): void {
+            $this->projectSearchController->replaceAll($replacement);
+        });
+
+        $this->resultsPanel->onJump(function (string $relativePath, int $line): void {
+            if (ResultsPanelMode::Action === $this->panels->mode()) {
+                $this->commandPalette->runAt($line);
+
+                return;
+            }
+            if (ResultsPanelMode::History === $this->panels->mode()) {
+                $this->localHistory->restore($line);
+
+                return;
+            }
+            $this->openFile($this->rootDir.'/'.$relativePath, focusEditor: true);
+            $this->editor->jumpTo($line, 0);
+            $this->tui->requestRender();
+        });
+
+        $this->resultsPanel->onClose(function (): void {
+            $this->projectSearchController->cancel();
+            $this->panels->focusEditor();
+        });
+
+        $this->wireCommands();
+        $this->wireMenuBar($keybindings);
+        $this->tui->addListener(function (InputEvent $event) use ($keybindings): void {
+            $data = $event->getData();
+
+            if (null !== ($mouse = MouseEvent::parse($data))) {
+                $event->stopPropagation();
+                $this->mouseRouter->route($mouse);
+
+                return;
+            }
+
+            // An open context menu captures the keyboard modally: arrows/Enter/Esc
+            // drive it and every other key is swallowed, so nothing leaks to the
+            // widget that still owns focus underneath it.
+            if ($this->contextMenu->isOpen()) {
+                $event->stopPropagation();
+                $this->contextMenu->handleInput($data);
+                $this->tui->requestRender();
+
+                return;
+            }
+
+            foreach ($this->commands->keyBoundIds() as $id) {
+                if ($keybindings->matches($data, $id)) {
+                    $event->stopPropagation();
+                    $this->commands->run($id);
+
+                    return;
+                }
+            }
+        });
+
+        $this->terminalPanel->onInputForward(fn (string $data) => $this->run->forwardInput($data));
+        $this->terminalPanel->onClose(function (): void {
+            if ($this->tui->getFocus() === $this->terminalPanel) {
+                $this->tui->setFocus($this->editor);
+            }
+            $this->tui->requestRender();
+        });
+        $this->diffPanel->onClose(function (): void {
+            // The diff panel is only ever closed via its own hide key while
+            // focused, so returning focus to the editor is always correct.
+            $this->tui->setFocus($this->editor);
+            $this->tui->requestRender();
+        });
+    }
+
+    /**
+     * The caret's scope path for the breadcrumbs bar. The PHP scan is memoized by
+     * document version so caret-only moves (the common case) just re-select from
+     * the cached scopes; non-PHP files show no bar.
+     *
+     * @return list<array{label: string, line: int}>
+     */
+    private function breadcrumbTrail(): array
+    {
+        $path = $this->editor->getFilePath();
+        if (null === $path || !str_ends_with($path, '.php')) {
+            return [];
+        }
+
+        return BreadcrumbScanner::select($this->editor->scopes(), $this->editor->getDocument()->getCursorLine());
+    }
+
+    /**
+     * Route a mouse event by hit-testing the tree, tab bar and editor rects
+     * populated by the Renderer on the last frame.
+     */
+    /** Move the active tab $offset positions in the strip (keyboard reordering). */
+    private function moveTab(int $offset): void
+    {
+        if ($this->buffers->moveActive($offset)) {
+            $this->tui->requestRender();
+        }
+    }
+
+    /** Copy $text to the system clipboard via OSC 52 (skipping oversized payloads). */
+    private function copyToClipboard(string $text): void
+    {
+        if (\strlen($text) < 100_000) {
+            $this->tui->getTerminal()->write("\x1b]52;c;".base64_encode($text)."\x07");
+        }
+    }
+
+    private function wireStatusBar(): void
+    {
+        $this->statusBar->setProvider(function (): array {
+            $doc = $this->editor->getDocument();
+            $path = $this->editor->getFilePath();
+
+            $left = null === $path
+                ? 'porta — open a file from the tree (Enter)'
+                : $this->relativePath($path).($doc->isDirty() ? ' ●' : '');
+
+            if (null !== $this->gitBranch) {
+                $left = "\x1b[38;5;114m\u{e0a0} {$this->gitBranch}\x1b[39m  ".$left;
+            }
+
+            if (null !== ($diagnostic = $this->editor->getCursorDiagnostic())) {
+                $left .= '  '."\x1b[38;5;203m".$diagnostic."\x1b[39m";
+            }
+
+            $counts = $this->editor->getDiagnosticCounts();
+            $problems = '';
+            if ($counts['errors'] > 0) {
+                $problems .= "\x1b[38;5;203m✗ {$counts['errors']}\x1b[39m ";
+            }
+            if ($counts['warnings'] > 0) {
+                $problems .= "\x1b[38;5;179m▲ {$counts['warnings']}\x1b[39m ";
+            }
+
+            $right = \sprintf(
+                '%s%d:%d  LSP:%s  ^S save ^T panel ^Space complete ^Q quit',
+                $problems,
+                $doc->getCursorLine() + 1,
+                $doc->getCursorDisplayCol() + 1,
+                $this->lspStatus,
+            );
+
+            return ['left' => $left, 'right' => $right];
+        });
+    }
+
+    private function buildStyleSheet(): StyleSheet
+    {
+        $sheet = new StyleSheet();
+        $sheet->addRule('#main', new Style(direction: Direction::Horizontal, gap: 0));
+
+        return $sheet;
+    }
+
+    // --- File handling ----------------------------------------------------------
+
+    private function openFile(string $path, bool $focusEditor = false): void
+    {
+        $this->bufferService->openFile($path, $focusEditor);
+    }
+
+    private function showBuffer(Buffer $buffer): void
+    {
+        $this->bufferService->showBuffer($buffer);
+    }
+
+    private function refreshBranch(): void
+    {
+        if (!$this->git->isAvailable()) {
+            return;
+        }
+        $this->git->branch(function (?string $branch): void {
+            $this->gitBranch = $branch;
+            $this->statusBar->invalidate();
+            $this->tui->requestRender();
+        });
+    }
+
+    /**
+     * Recompute git change marks for a buffer (on open and after save).
+     */
+    private function refreshGitMarks(Buffer $buffer): void
+    {
+        if (!$this->git->isAvailable()) {
+            return;
+        }
+        $this->git->diff($buffer->path, function (array $marks) use ($buffer): void {
+            $buffer->gitMarks = $marks;
+            if ($buffer === $this->buffers->active()) {
+                $this->editor->setGitMarks($marks);
+            }
+            $this->tui->requestRender();
+        });
+    }
+
+    /** Recompute git change marks for the active buffer, if any. */
+    private function refreshActiveGitMarks(): void
+    {
+        if (null !== ($buffer = $this->buffers->active())) {
+            $this->refreshGitMarks($buffer);
+        }
+    }
+
+    private function closeActiveBuffer(bool $force = false): void
+    {
+        $this->bufferService->closeActiveBuffer($force);
+    }
+
+    private function saveCurrentFile(): void
+    {
+        $this->bufferService->saveCurrentFile();
+    }
+
+    private function saveAllBuffers(): void
+    {
+        $this->bufferService->saveAllBuffers();
+    }
+
+    /**
+     * Reconcile the open buffers and the file tree with the on-disk state. Runs on
+     * a timer (see {@see run()}); also invoked directly by tests.
+     *
+     * @internal exposed for tests
+     */
+    public function pollFilesystem(): void
+    {
+        $this->bufferService->pollFilesystem();
+    }
+
+    private function handleQuit(): void
+    {
+        $dirty = $this->buffers->dirtyCount();
+        if ($dirty > 0 && (microtime(true) - $this->lastQuitPress) > 3.0) {
+            $this->lastQuitPress = microtime(true);
+            $noun = 1 === $dirty ? '1 file has' : $dirty.' files have';
+            $this->statusBar->flash("Unsaved changes — {$noun} edits. Ctrl+Q again to quit, Ctrl+S to save", 3.0);
+            $this->tui->requestRender();
+
+            return;
+        }
+        $this->tui->stop();
+    }
+
+    // --- LSP -------------------------------------------------------------------
+
+    private function startLsp(): void
+    {
+        if ($this->lspDisabled) {
+            $this->lspStatus = 'disabled';
+
+            return;
+        }
+        $server = ServerLocator::locate($this->rootDir, $this->lspCommand);
+        if (null === $server) {
+            $this->lspStatus = 'none (install phpactor)';
+
+            return;
+        }
+
+        $this->lspStatus = 'starting…';
+        $name = $server['name'];
+        $this->lsp->start(
+            $server['command'],
+            static function (string $line): void {
+                // LSP server log lines are currently discarded.
+            },
+            function (array $params): void {
+                $this->handleDiagnostics($params);
+            },
+            function (array $edit): bool {
+                /** @var array<string, mixed> $edit */
+                $count = $this->workspaceEditor->applyWorkspaceEdit($edit);
+                if ($count > 0) {
+                    $this->statusBar->flash(\sprintf('Applied server edit to %d file%s', $count, 1 === $count ? '' : 's'));
+                    $this->tui->requestRender();
+                }
+
+                return $count > 0;
+            },
+            function (bool $ok) use ($name): void {
+                $this->lspStatus = $ok ? $name : 'failed';
+                // lspStatus lives outside the widget tree; without an explicit
+                // invalidation the render cache would serve the stale frame.
+                $this->statusBar->invalidate();
+                $this->tui->requestRender();
+            },
+        );
+    }
+
+    /**
+     * Validate a rename position with textDocument/prepareRename before opening
+     * the rename prompt, pre-filling the server's placeholder when it offers one.
+     */
+    private function openProjectSearch(): void
+    {
+        $this->panels->setMode(ResultsPanelMode::Search);
+        $this->projectSearchController->open();
+    }
+
+    private function openSymbolSearch(): void
+    {
+        $this->panels->openQuery(ResultsPanelMode::Symbol, 'Go to Symbol in Project');
+    }
+
+    /**
+     * Register every IDE-level command once: keybinding dispatch, the Find Action
+     * palette, and their labels all read from this single source of truth.
+     */
+    private function wireCommands(): void
+    {
+        $this->commands = new CommandRegistry();
+
+        // Key-bound only (not offered in the palette).
+        $this->commands
+            ->add('ide_quit', fn () => $this->handleQuit(), keyBound: true, inPalette: false)
+            ->add(
+                'ide_toggle_focus',
+                function (): void {
+                    $focus = $this->tui->getFocus() === $this->editor ? $this->tree : $this->editor;
+                    $this->tui->setFocus($focus);
+                    $this->tui->requestRender();
+                },
+                keyBound: true,
+                inPalette: false,
+            )
+            ->add('ide_command_palette', fn () => $this->openCommandPalette(), keyBound: true, inPalette: false)
+            ->add('ide_local_history', fn () => $this->localHistory->show(), keyBound: true, inPalette: false)
+            ->add('ide_run_last', fn () => $this->run->runLast(), keyBound: true, inPalette: false)
+            ->add('ide_menu', fn () => $this->openMenu(), keyBound: true, inPalette: false);
+
+        // Palette commands, in display order (some also key-bound).
+        $this->commands
+            ->add('save', fn () => $this->saveCurrentFile())
+            ->add('save_all', fn () => $this->saveAllBuffers())
+            ->add('reformat', fn () => $this->refactor->requestReformat())
+            ->add('ide_problems', fn () => $this->showProblems(), keyBound: true)
+            ->add('ide_find_in_project', fn () => $this->openProjectSearch(), keyBound: true)
+            ->add('ide_goto_symbol', fn () => $this->openSymbolSearch(), keyBound: true)
+            ->add('move_tab_left', fn () => $this->moveTab(-1), keyBound: true)
+            ->add('move_tab_right', fn () => $this->moveTab(1), keyBound: true)
+            ->add('goto_file', function (): void {
+                $this->goToFile->open();
+                $this->tui->setFocus($this->goToFile);
+            })
+            ->add('toggle_inline_diagnostics', fn () => $this->settings->toggle('inlineDiagnostics'), label: 'Toggle Inline Diagnostics')
+            ->add('toggle_relative_line_numbers', fn () => $this->settings->toggle('relativeLineNumbers'), label: 'Toggle Relative Line Numbers')
+            ->add('toggle_auto_pairs', fn () => $this->settings->toggle('autoPairs'), label: 'Toggle Auto-Pairs')
+            ->add('ide_terminal', fn () => $this->run->toggleTerminal(), keyBound: true)
+            ->add('ide_run', fn () => $this->run->openRunMenu(), keyBound: true)
+            ->add('ide_diff', fn () => $this->gitCommands->openDiff(), keyBound: true)
+            ->add('git_stage', fn () => $this->gitCommands->stageCurrent(), label: 'Git: Stage Current File')
+            ->add('git_commit', fn () => $this->gitCommands->commit(), label: 'Git: Commit…')
+            ->add('git_blame', fn () => $this->gitCommands->blameLine(), label: 'Git: Blame Current Line');
+    }
+
+    private function openCommandPalette(): void
+    {
+        $this->panels->setMode(ResultsPanelMode::Action);
+        $this->commandPalette->open($this->commands->paletteCommands());
+    }
+
+    /** Populate the application menu bar and return focus to the editor on close. */
+    private function wireMenuBar(Keybindings $keybindings): void
+    {
+        $this->menuBar->setMenus(MenuModel::build($this->commands, $this->editor, $keybindings));
+        $this->menuBar->onNavigate(function (): void {
+            $this->overlay->refreshMenu();
+        });
+        $this->menuBar->onClose(function (): void {
+            $this->overlay->refreshMenu();
+            $this->tui->setFocus($this->editor);
+            $this->tui->requestRender();
+        });
+
+        $this->contextMenu->onNavigate(function (): void {
+            $this->overlay->refreshContextMenu();
+        });
+        $this->contextMenu->onClose(function (): void {
+            $this->overlay->refreshContextMenu();
+            $this->tui->requestRender();
+        });
+    }
+
+    private function openMenu(): void
+    {
+        $this->menuBar->open(0);
+        $this->tui->setFocus($this->menuBar);
+        $this->tui->requestRender();
+    }
+
+    private function showProblems(): void
+    {
+        $results = [];
+        foreach ($this->buffers->all() as $buffer) {
+            $rel = $this->relativePath($buffer->path);
+            foreach ($buffer->diagnostics as $line => $list) {
+                foreach ($list as $diag) {
+                    $marker = 1 === $diag['severity'] ? '✗' : '▲';
+                    $results[] = [
+                        'path' => $rel,
+                        'line' => $line,
+                        'text' => $marker.' '.$diag['message'],
+                    ];
+                }
+            }
+        }
+
+        // Sort by file then line for a stable, scannable list.
+        usort($results, static fn (array $a, array $b) => [$a['path'], $a['line']] <=> [$b['path'], $b['line']]);
+
+        $this->panels->showList(ResultsPanelMode::Problems, 'Problems', $results);
+    }
+
+    private function handleDiagnostics(array $params): void
+    {
+        /**
+         * @var array{
+         *     uri?: string,
+         *     diagnostics?: list<array{
+         *         severity?: int,
+         *         message?: string,
+         *         range: array{
+         *             start: array{line?: int, character?: int},
+         *             end: array{line?: int, character?: int},
+         *         },
+         *     }>,
+         * } $params
+         */
+        $this->bufferService->applyDiagnostics($params['uri'] ?? '', LspMapper::diagnosticsByLine($params));
+    }
+
+    // --- Helpers -----------------------------------------------------------------
+
+    private function relativePath(string $path): string
+    {
+        return ProjectPaths::relative($this->rootDir, $path);
+    }
+}

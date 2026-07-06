@@ -1,0 +1,6 @@
+/.phpunit.cache/
+/.porta/
+/coverage/
+/vendor/
+.porta.json
+composer.lock
