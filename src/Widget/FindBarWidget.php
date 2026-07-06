@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Porta\Widget;
 
 use Porta\Editor\Document;
+use Porta\Input\TextInput;
 use Symfony\Component\Tui\Ansi\AnsiUtils;
 use Symfony\Component\Tui\Input\Key;
 use Symfony\Component\Tui\Render\RenderContext;
@@ -155,7 +156,7 @@ final class FindBarWidget extends OverlayWidget implements FocusableInterface
         }
 
         // Plain text input
-        if ('' !== $data && !str_contains($data, "\x1b") && !preg_match('/[\x00-\x1F\x7F]/', $data)) {
+        if (TextInput::isPrintable($data)) {
             if (0 === $this->activeField) {
                 $this->query .= $data;
                 $this->recompute(jumpToNearest: true);
