@@ -5,11 +5,10 @@ declare(strict_types=1);
 namespace Porta\Widget;
 
 use Porta\Editor\Document;
-use Porta\Input\TextInput;
+use Porta\Ui\TextField;
 use Symfony\Component\Tui\Ansi\AnsiUtils;
 use Symfony\Component\Tui\Input\Key;
 use Symfony\Component\Tui\Render\RenderContext;
-use Symfony\Component\Tui\Style\CursorShape;
 use Symfony\Component\Tui\Widget\FocusableInterface;
 use Symfony\Component\Tui\Widget\FocusableTrait;
 use Symfony\Component\Tui\Widget\KeybindingsTrait;
@@ -30,8 +29,8 @@ final class FindBarWidget extends OverlayWidget implements FocusableInterface
     private const int MAX_MATCHES = 5000;
 
     private bool $withReplace = false;
-    private string $query = '';
-    private string $replacement = '';
+    private readonly TextField $query;
+    private readonly TextField $replacement;
     private int $activeField = 0; // 0 = find, 1 = replace
 
     /** @var list<array{line: int, start: int, end: int}> byte offsets */
@@ -44,6 +43,12 @@ final class FindBarWidget extends OverlayWidget implements FocusableInterface
     /** @var (callable(): void)|null called when matches/current change */
     private $onUpdate = null;
 
+    public function __construct()
+    {
+        $this->query = new TextField();
+        $this->replacement = new TextField();
+    }
+
     public function open(Document $document, bool $withReplace, string $initialQuery = ''): void
     {
         $this->document = $document;
@@ -51,7 +56,7 @@ final class FindBarWidget extends OverlayWidget implements FocusableInterface
         $this->withReplace = $withReplace;
         $this->activeField = 0;
         if ('' !== $initialQuery) {
-            $this->query = $initialQuery;
+            $this->query->setValue($initialQuery);
         }
         $this->lastDocVersion = -1;
         $this->recompute(jumpToNearest: true);
@@ -144,10 +149,9 @@ final class FindBarWidget extends OverlayWidget implements FocusableInterface
         }
 
         if ($kb->matches($data, 'delete_char_backward')) {
-            $field = 0 === $this->activeField ? 'query' : 'replacement';
-            if ('' !== $this->{$field}) {
-                $this->{$field} = substr($this->{$field}, 0, -1);
-                if ('query' === $field) {
+            $field = 0 === $this->activeField ? $this->query : $this->replacement;
+            if ($field->backspace()) {
+                if ($field === $this->query) {
                     $this->recompute(jumpToNearest: true);
                 }
                 $this->invalidate();
@@ -157,12 +161,10 @@ final class FindBarWidget extends OverlayWidget implements FocusableInterface
         }
 
         // Plain text input
-        if (TextInput::isPrintable($data)) {
-            if (0 === $this->activeField) {
-                $this->query .= $data;
+        $field = 0 === $this->activeField ? $this->query : $this->replacement;
+        if ($field->insert($data)) {
+            if ($field === $this->query) {
                 $this->recompute(jumpToNearest: true);
-            } else {
-                $this->replacement .= $data;
             }
             $this->invalidate();
         }
@@ -178,9 +180,8 @@ final class FindBarWidget extends OverlayWidget implements FocusableInterface
         $count = \count($this->matches);
         $position = $count > 0 ? \sprintf('%d/%d', $this->currentIndex + 1, $count) : '0/0';
 
-        $cursor = $this->focused ? AnsiUtils::cursorMarker(CursorShape::Bar) : '';
-        $findField = ' Find: '.$this->query.(0 === $this->activeField ? $cursor : '').'  ';
-        $replaceField = $this->withReplace ? 'Replace: '.$this->replacement.(1 === $this->activeField ? $cursor : '').'  ' : '';
+        $findField = ' Find: '.$this->query->render(cursor: $this->focused && 0 === $this->activeField).'  ';
+        $replaceField = $this->withReplace ? 'Replace: '.$this->replacement->render(cursor: $this->focused && 1 === $this->activeField).'  ' : '';
 
         $hints = $this->withReplace
             ? '⏎/F3 next  ⇧F3 prev  ⇥ field  ⌥R replace  ⌥A all  esc'
@@ -207,16 +208,17 @@ final class FindBarWidget extends OverlayWidget implements FocusableInterface
         $this->matches = [];
         $this->currentIndex = -1;
 
-        if (null === $this->document || '' === $this->query) {
+        if (null === $this->document || '' === $this->query->value()) {
             $this->notifyUpdate();
 
             return;
         }
 
         $this->lastDocVersion = $this->document->getVersion();
-        $caseInsensitive = strtolower($this->query) === $this->query;
-        $needle = $caseInsensitive ? strtolower($this->query) : $this->query;
-        $needleLen = \strlen($this->query);
+        $query = $this->query->value();
+        $caseInsensitive = strtolower($query) === $query;
+        $needle = $caseInsensitive ? strtolower($query) : $query;
+        $needleLen = \strlen($query);
 
         foreach ($this->document->getLines() as $lineIndex => $line) {
             $haystack = $caseInsensitive ? strtolower($line) : $line;
@@ -277,7 +279,7 @@ final class FindBarWidget extends OverlayWidget implements FocusableInterface
         $doc->setCursor($match['line'], $match['start']);
         $doc->beginSelect();
         $doc->setCursor($match['line'], $match['end'], keepSelection: true);
-        $doc->insert($this->replacement);
+        $doc->insert($this->replacement->value());
 
         $keepIndex = $this->currentIndex;
         $this->recompute(jumpToNearest: false);
@@ -296,7 +298,7 @@ final class FindBarWidget extends OverlayWidget implements FocusableInterface
             $doc->setCursor($match['line'], $match['start']);
             $doc->beginSelect();
             $doc->setCursor($match['line'], $match['end'], keepSelection: true);
-            $doc->insert($this->replacement);
+            $doc->insert($this->replacement->value());
         }
         $this->recompute(jumpToNearest: false);
     }
