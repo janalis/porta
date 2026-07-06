@@ -46,6 +46,7 @@ use Porta\Ui\PanelManager;
 use Porta\Ui\ResultsPanelMode;
 use Porta\Widget\BreadcrumbsWidget;
 use Porta\Widget\CodeEditorWidget;
+use Porta\Widget\EditorCallbacks;
 use Porta\Widget\ContextMenu;
 use Porta\Widget\DiffPanelWidget;
 use Porta\Widget\FileTreeWidget;
@@ -446,86 +447,74 @@ final class Ide
     {
         $this->tree->onOpenFile(fn (string $path) => $this->openFile($path, focusEditor: true));
 
-        $this->editor->onSaveRequested(fn () => $this->saveCurrentFile());
-        $this->editor->onSaveAllRequested(fn () => $this->saveAllBuffers());
-
-        $this->editor->onChanged(function (Document $doc): void {
-            $this->completion->scheduleDidChange($doc);
-        });
-
-        $this->editor->onCompletionRequested(function (int $line, int $utf16Col): void {
-            $this->completion->requestCompletion($line, $utf16Col);
-        });
-
-        $this->editor->onCompletionResolve(
-            /** @param array<string, mixed> $item */
-            function (array $item): void {
-                $this->completion->resolveCompletion($item);
-            },
-        );
-
-        $this->editor->onDefinitionRequested(function (int $line, int $utf16Col): void {
-            $this->navigation->requestDefinition($line, $utf16Col);
-        });
-
-        $this->editor->onImplementationRequested(function (int $line, int $utf16Col): void {
-            $this->navigation->requestImplementation($line, $utf16Col);
-        });
-
-        $this->editor->onTypeDefinitionRequested(function (int $line, int $utf16Col): void {
-            $this->navigation->requestTypeDefinition($line, $utf16Col);
-        });
-
-        $this->editor->onNavigateBack(function (): void {
-            $this->navigation->navigateBack();
-        });
-
-        // Mirror editor copies to the system clipboard via OSC 52
-        $this->editor->onCopy(fn (string $text) => $this->copyToClipboard($text));
-
-        $this->editor->onBufferCycle(function (int $offset): void {
-            if (null !== ($buffer = $this->buffers->cycle($offset))) {
-                $this->showBuffer($buffer);
-            }
-        });
-
-        $this->editor->onRecentFiles(function (): void {
-            $recent = $this->buffers->recent();
-            if (\count($recent) < 2) {
-                return;
-            }
-            $items = array_map(fn (Buffer $b) => [
-                'label' => basename($b->path).($b->document->isDirty() ? ' ●' : ''),
-                'hint' => $this->relativePath($b->path),
-                'value' => $b->path,
-            ], $recent);
-            // Pre-select the previous file, like PhpStorm's Ctrl+E
-            $items[] = $items[0];
-            array_shift($items);
-
-            $this->editor->openListOverlay('Recent Files', $items, function (string $path): void {
-                if (null !== ($buffer = $this->buffers->setActive($path))) {
+        // The editor's outbound hooks, built once: file lifecycle, buffer
+        // switching, and every LSP-powered feature routed to its controller.
+        $this->editor->setCallbacks(new EditorCallbacks(
+            onSaveRequested: fn () => $this->saveCurrentFile(),
+            onSaveAllRequested: fn () => $this->saveAllBuffers(),
+            onChanged: fn (Document $doc) => $this->completion->scheduleDidChange($doc),
+            onCompletionRequested: fn (int $line, int $utf16Col) => $this->completion->requestCompletion($line, $utf16Col),
+            onCompletionResolve:
+                /** @param array<string, mixed> $item */
+                fn (array $item) => $this->completion->resolveCompletion($item),
+            onDefinitionRequested: fn (int $line, int $utf16Col) => $this->navigation->requestDefinition($line, $utf16Col),
+            onImplementationRequested: fn (int $line, int $utf16Col) => $this->navigation->requestImplementation($line, $utf16Col),
+            onTypeDefinitionRequested: fn (int $line, int $utf16Col) => $this->navigation->requestTypeDefinition($line, $utf16Col),
+            onNavigateBack: fn () => $this->navigation->navigateBack(),
+            // Mirror editor copies to the system clipboard via OSC 52
+            onCopy: fn (string $text) => $this->copyToClipboard($text),
+            onBufferCycle: function (int $offset): void {
+                if (null !== ($buffer = $this->buffers->cycle($offset))) {
                     $this->showBuffer($buffer);
                 }
-            });
-            $this->tui->requestRender();
-        });
+            },
+            onRecentFiles: function (): void {
+                $recent = $this->buffers->recent();
+                if (\count($recent) < 2) {
+                    return;
+                }
+                $items = array_map(fn (Buffer $b) => [
+                    'label' => basename($b->path).($b->document->isDirty() ? ' ●' : ''),
+                    'hint' => $this->relativePath($b->path),
+                    'value' => $b->path,
+                ], $recent);
+                // Pre-select the previous file, like PhpStorm's Ctrl+E
+                $items[] = $items[0];
+                array_shift($items);
 
-        $this->editor->onCloseBuffer(function (): void {
-            $this->closeActiveBuffer();
-        });
-
-        // Find / replace bar
-        $this->editor->onFindRequested(function (bool $withReplace): void {
-            $initial = $this->editor->getDocument()->getSelectedText();
-            $this->findBar->open(
-                $this->editor->getDocument(),
-                $withReplace,
-                str_contains($initial, "\n") ? '' : $initial,
-            );
-            $this->tui->setFocus($this->findBar);
-            $this->tui->requestRender();
-        });
+                $this->editor->openListOverlay('Recent Files', $items, function (string $path): void {
+                    if (null !== ($buffer = $this->buffers->setActive($path))) {
+                        $this->showBuffer($buffer);
+                    }
+                });
+                $this->tui->requestRender();
+            },
+            onCloseBuffer: fn () => $this->closeActiveBuffer(),
+            onFindRequested: function (bool $withReplace): void {
+                $initial = $this->editor->getDocument()->getSelectedText();
+                $this->findBar->open(
+                    $this->editor->getDocument(),
+                    $withReplace,
+                    str_contains($initial, "\n") ? '' : $initial,
+                );
+                $this->tui->setFocus($this->findBar);
+                $this->tui->requestRender();
+            },
+            onGotoFile: function (): void {
+                $this->goToFile->open();
+                $this->tui->setFocus($this->goToFile);
+                $this->tui->requestRender();
+            },
+            // LSP-powered features: hover, rename, usages, signature help
+            onQuickDoc: fn (int $line, int $col) => $this->navigation->requestHover($line, $col),
+            onRenameRequested: fn (int $line, int $col, string $word) => $this->refactor->requestPrepareRename($line, $col, $word),
+            onFindUsages: fn (int $line, int $col) => $this->navigation->requestReferences($line, $col),
+            onSignatureHelp: fn (int $line, int $col) => $this->completion->requestSignatureHelp($line, $col),
+            onCodeAction: fn (int $line, int $col) => $this->refactor->requestCodeActions($line, $col),
+            onFileStructure: fn () => $this->navigation->requestFileStructure(),
+            onPeek: fn (int $line, int $col) => $this->navigation->requestPeek($line, $col),
+            onReformat: fn () => $this->refactor->requestReformat(),
+        ));
 
         $this->findBar->onUpdate(function (): void {
             $this->editor->setSearchMatches($this->findBar->getMatchesByLine());
@@ -538,13 +527,6 @@ final class Ide
             $this->tui->requestRender();
         });
 
-        // Go to file palette
-        $this->editor->onGotoFile(function (): void {
-            $this->goToFile->open();
-            $this->tui->setFocus($this->goToFile);
-            $this->tui->requestRender();
-        });
-
         $this->goToFile->onPick(function (string $path): void {
             $this->openFile($path, focusEditor: true);
         });
@@ -554,39 +536,6 @@ final class Ide
                 $this->tui->setFocus($this->editor);
             }
             $this->tui->requestRender();
-        });
-
-        // LSP-powered features: hover, rename, usages, signature help
-        $this->editor->onQuickDoc(function (int $line, int $col): void {
-            $this->navigation->requestHover($line, $col);
-        });
-
-        $this->editor->onRenameRequested(function (int $line, int $col, string $word): void {
-            $this->refactor->requestPrepareRename($line, $col, $word);
-        });
-
-        $this->editor->onFindUsages(function (int $line, int $col): void {
-            $this->navigation->requestReferences($line, $col);
-        });
-
-        $this->editor->onSignatureHelp(function (int $line, int $col): void {
-            $this->completion->requestSignatureHelp($line, $col);
-        });
-
-        $this->editor->onCodeAction(function (int $line, int $col): void {
-            $this->refactor->requestCodeActions($line, $col);
-        });
-
-        $this->editor->onFileStructure(function (): void {
-            $this->navigation->requestFileStructure();
-        });
-
-        $this->editor->onPeek(function (int $line, int $col): void {
-            $this->navigation->requestPeek($line, $col);
-        });
-
-        $this->editor->onReformat(function (): void {
-            $this->refactor->requestReformat();
         });
 
         // The results panel serves two live-query modes (project text search

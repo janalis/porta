@@ -6,6 +6,7 @@ namespace Porta\Tests\Unit\Widget;
 
 use PHPUnit\Framework\TestCase;
 use Porta\Widget\CodeEditorWidget;
+use Porta\Widget\EditorCallbacks;
 use Symfony\Component\Tui\Ansi\AnsiUtils;
 use Symfony\Component\Tui\Render\RenderContext;
 
@@ -287,9 +288,11 @@ final class CodeEditorMultiCaretTest extends TestCase
     private function blockCopy(CodeEditorWidget $editor): string
     {
         $copied = '';
-        $editor->onCopy(function (string $text) use (&$copied): void {
-            $copied = $text;
-        });
+        $editor->setCallbacks(new EditorCallbacks(
+            onCopy: function (string $text) use (&$copied): void {
+                $copied = $text;
+            },
+        ));
         $editor->handleInput("\x03"); // ctrl+c
 
         return $copied;
@@ -370,9 +373,11 @@ final class CodeEditorMultiCaretTest extends TestCase
         $editor = $this->editor("aaaa\nbb\ncccc\n");
         $editor->render(new RenderContext(80, 10));
         $copied = null;
-        $editor->onCopy(function (string $text) use (&$copied): void {
-            $copied = $text;
-        });
+        $editor->setCallbacks(new EditorCallbacks(
+            onCopy: function (string $text) use (&$copied): void {
+                $copied = $text;
+            },
+        ));
         $editor->beginColumnSelectionAt(0, 6 + 1);
         $editor->extendColumnSelectionTo(2, 6 + 3);
 

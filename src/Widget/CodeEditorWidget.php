@@ -84,36 +84,8 @@ final class CodeEditorWidget extends AbstractWidget implements FocusableInterfac
     /** @var array<int, list<array{col: int, text: string}>> inlay hints per line: byte col => dim label */
     private array $inlayHints = [];
 
-    /** @var (callable(): void)|null */
-    private $onSaveRequested = null;
-    /** @var (callable(): void)|null */
-    private $onSaveAllRequested = null;
-    /** @var (callable(Document): void)|null */
-    private $onChanged = null;
-    /** @var (callable(int, int): void)|null request completion at (line, utf16 col) */
-    private $onCompletionRequested = null;
-    /** @var (callable(array<string, mixed>): void)|null resolve an accepted completion item (for deferred auto-imports) */
-    private $onCompletionResolve = null;
-    /** @var (callable(int, int): void)|null request definition at (line, utf16 col) */
-    private $onDefinitionRequested = null;
-    /** @var (callable(int, int): void)|null request implementation at (line, utf16 col) */
-    private $onImplementationRequested = null;
-    /** @var (callable(int, int): void)|null request type definition at (line, utf16 col) */
-    private $onTypeDefinitionRequested = null;
-    /** @var (callable(): void)|null navigate back after a definition jump */
-    private $onNavigateBack = null;
-    /** @var (callable(string): void)|null text copied to the clipboard (for OSC 52) */
-    private $onCopy = null;
-    /** @var (callable(int): void)|null cycle to next (+1) / previous (-1) buffer */
-    private $onBufferCycle = null;
-    /** @var (callable(): void)|null open the recent-files switcher */
-    private $onRecentFiles = null;
-    /** @var (callable(): void)|null close the active buffer */
-    private $onCloseBuffer = null;
-    /** @var (callable(bool): void)|null open the find bar (true = with replace) */
-    private $onFindRequested = null;
-    /** @var (callable(): void)|null open the go-to-file palette */
-    private $onGotoFile = null;
+    /** Outbound hooks into the coordinator, replaced wholesale by wiring/tests. */
+    private EditorCallbacks $callbacks;
 
     /** @var array<int, list<array{start: int, end: int, current: bool}>> search matches by line (byte cols) */
     private array $searchMatches = [];
@@ -127,24 +99,6 @@ final class CodeEditorWidget extends AbstractWidget implements FocusableInterfac
     /** One-line signature hint shown above the cursor, cleared on movement. */
     private ?string $signatureHint = null;
 
-    /** @var (callable(int, int): void)|null quick documentation at (line, utf16 col) */
-    private $onQuickDoc = null;
-    /** @var (callable(string, int, int): void)|null rename symbol to $newName at (line, utf16 col) */
-    private $onRename = null;
-    /** @var (callable(int, int, string): void)|null validate+begin a rename at (line, utf16 col, word) */
-    private $onRenameRequested = null;
-    /** @var (callable(int, int): void)|null find usages at (line, utf16 col) */
-    private $onFindUsages = null;
-    /** @var (callable(int, int): void)|null signature help at (line, utf16 col) */
-    private $onSignatureHelp = null;
-    /** @var (callable(int, int): void)|null quick fixes at (line, utf16 col) */
-    private $onCodeAction = null;
-    /** @var (callable(): void)|null file structure popup */
-    private $onFileStructure = null;
-    /** @var (callable(int, int): void)|null peek definition at (line, utf16 col) */
-    private $onPeek = null;
-    /** @var (callable(): void)|null reformat the whole file */
-    private $onReformat = null;
 
     /** Editing-verb dispatcher (movement/clipboard/line ops), rebuilt per document. */
     private EditorActions $actions;
@@ -154,6 +108,7 @@ final class CodeEditorWidget extends AbstractWidget implements FocusableInterfac
 
     public function __construct()
     {
+        $this->callbacks = new EditorCallbacks();
         $this->overlayHost = new OverlayHost(fn () => $this->invalidate());
         $this->document = new Document('');
         $this->highlighter = new CodeHighlighter();
@@ -206,8 +161,8 @@ final class CodeEditorWidget extends AbstractWidget implements FocusableInterfac
             fn () => $this->invalidate(),
             fn () => $this->notifyChange(),
             fn (string $d) => $this->isInsertable($d),
-            fn (int $l, int $c) => null !== $this->onCompletionRequested ? ($this->onCompletionRequested)($l, $c) : null,
-            fn (array $raw) => null !== $this->onCompletionResolve ? ($this->onCompletionResolve)($raw) : null,
+            fn (int $l, int $c) => null !== $this->callbacks->onCompletionRequested ? ($this->callbacks->onCompletionRequested)($l, $c) : null,
+            fn (array $raw) => null !== $this->callbacks->onCompletionResolve ? ($this->callbacks->onCompletionResolve)($raw) : null,
         );
     }
 
@@ -225,17 +180,17 @@ final class CodeEditorWidget extends AbstractWidget implements FocusableInterfac
             fn (string $label, string $initial, callable $onSubmit) => $this->openPrompt($label, $initial, $onSubmit),
             fn (int $line, int $col) => $this->jumpTo($line, $col),
             fn (?string $hint) => $this->setSignatureHint($hint),
-            fn (string $text) => null !== $this->onCopy ? ($this->onCopy)($text) : null,
-            fn (int $line, int $col) => null !== $this->onSignatureHelp ? ($this->onSignatureHelp)($line, $col) : null,
+            fn (string $text) => null !== $this->callbacks->onCopy ? ($this->callbacks->onCopy)($text) : null,
+            fn (int $line, int $col) => null !== $this->callbacks->onSignatureHelp ? ($this->callbacks->onSignatureHelp)($line, $col) : null,
             function (int $line, int $col, string $word): void {
-                if (null !== $this->onRenameRequested) {
+                if (null !== $this->callbacks->onRenameRequested) {
                     // The IDE validates via prepareRename, then opens the prompt.
-                    ($this->onRenameRequested)($line, $col, $word);
-                } elseif (null !== $this->onRename) {
+                    ($this->callbacks->onRenameRequested)($line, $col, $word);
+                } elseif (null !== $this->callbacks->onRename) {
                     $this->openPrompt('Rename to', $word, function (string $value) use ($line, $col): void {
                         if ('' !== trim($value)) {
-                            /** @var callable(string, int, int): void $this->onRename */
-                            ($this->onRename)(trim($value), $line, $col);
+                            /** @var callable(string, int, int): void $this->callbacks->onRename */
+                            ($this->callbacks->onRename)(trim($value), $line, $col);
                         }
                     });
                 }
@@ -309,96 +264,18 @@ final class CodeEditorWidget extends AbstractWidget implements FocusableInterfac
         return $this->overlayHost->isListOpen();
     }
 
-    public function onBufferCycle(callable $callback): self
-    {
-        $this->onBufferCycle = $callback;
 
-        return $this;
-    }
 
-    public function onRecentFiles(callable $callback): self
-    {
-        $this->onRecentFiles = $callback;
 
-        return $this;
-    }
 
-    public function onCloseBuffer(callable $callback): self
-    {
-        $this->onCloseBuffer = $callback;
 
-        return $this;
-    }
 
-    public function onFindRequested(callable $callback): self
-    {
-        $this->onFindRequested = $callback;
 
-        return $this;
-    }
 
-    public function onGotoFile(callable $callback): self
-    {
-        $this->onGotoFile = $callback;
 
-        return $this;
-    }
 
-    public function onQuickDoc(callable $callback): self
-    {
-        $this->onQuickDoc = $callback;
 
-        return $this;
-    }
 
-    public function onRename(callable $callback): self
-    {
-        $this->onRename = $callback;
-
-        return $this;
-    }
-
-    public function onRenameRequested(callable $callback): self
-    {
-        $this->onRenameRequested = $callback;
-
-        return $this;
-    }
-
-    public function onFindUsages(callable $callback): self
-    {
-        $this->onFindUsages = $callback;
-
-        return $this;
-    }
-
-    public function onSignatureHelp(callable $callback): self
-    {
-        $this->onSignatureHelp = $callback;
-
-        return $this;
-    }
-
-    public function onCodeAction(callable $callback): self
-    {
-        $this->onCodeAction = $callback;
-
-        return $this;
-    }
-
-    public function onFileStructure(callable $callback): self
-    {
-        $this->onFileStructure = $callback;
-
-        return $this;
-    }
-
-    public function onPeek(callable $callback): self
-    {
-        $this->onPeek = $callback;
-
-        return $this;
-    }
 
     public function setInlineDiagnostics(bool $enabled): void
     {
@@ -431,12 +308,6 @@ final class CodeEditorWidget extends AbstractWidget implements FocusableInterfac
         return $this->autoPairs;
     }
 
-    public function onReformat(callable $callback): self
-    {
-        $this->onReformat = $callback;
-
-        return $this;
-    }
 
     /**
      * Open a single-line input prompt (go to line, rename symbol).
@@ -485,6 +356,12 @@ final class CodeEditorWidget extends AbstractWidget implements FocusableInterfac
         $this->invalidate();
     }
 
+    /** Install the coordinator's outbound hooks (see {@see EditorCallbacks}). */
+    public function setCallbacks(EditorCallbacks $callbacks): void
+    {
+        $this->callbacks = $callbacks;
+    }
+
     public function getDocument(): Document
     {
         return $this->document;
@@ -526,75 +403,15 @@ final class CodeEditorWidget extends AbstractWidget implements FocusableInterfac
         return $this; // the editor always fills its pane
     }
 
-    public function onSaveRequested(callable $callback): self
-    {
-        $this->onSaveRequested = $callback;
 
-        return $this;
-    }
 
-    public function onSaveAllRequested(callable $callback): self
-    {
-        $this->onSaveAllRequested = $callback;
 
-        return $this;
-    }
 
-    public function onChanged(callable $callback): self
-    {
-        $this->onChanged = $callback;
 
-        return $this;
-    }
 
-    public function onCompletionRequested(callable $callback): self
-    {
-        $this->onCompletionRequested = $callback;
 
-        return $this;
-    }
 
-    public function onCompletionResolve(callable $callback): self
-    {
-        $this->onCompletionResolve = $callback;
 
-        return $this;
-    }
-
-    public function onDefinitionRequested(callable $callback): self
-    {
-        $this->onDefinitionRequested = $callback;
-
-        return $this;
-    }
-
-    public function onImplementationRequested(callable $callback): self
-    {
-        $this->onImplementationRequested = $callback;
-
-        return $this;
-    }
-
-    public function onTypeDefinitionRequested(callable $callback): self
-    {
-        $this->onTypeDefinitionRequested = $callback;
-
-        return $this;
-    }
-
-    public function onNavigateBack(callable $callback): self
-    {
-        $this->onNavigateBack = $callback;
-
-        return $this;
-    }
-
-    public function onCopy(callable $callback): self
-    {
-        $this->onCopy = $callback;
-
-        return $this;
-    }
 
     /**
      * Place the cursor from a click relative to the editor's top-left.
@@ -817,16 +634,16 @@ final class CodeEditorWidget extends AbstractWidget implements FocusableInterfac
         // The remaining editor-level actions carry extra logic beyond firing a
         // single callback.
         if ($kb->matches($data, 'next_buffer') || $kb->matches($data, 'prev_buffer')) {
-            if (null !== $this->onBufferCycle) {
-                ($this->onBufferCycle)($kb->matches($data, 'next_buffer') ? 1 : -1);
+            if (null !== $this->callbacks->onBufferCycle) {
+                ($this->callbacks->onBufferCycle)($kb->matches($data, 'next_buffer') ? 1 : -1);
             }
 
             return;
         }
 
         if ($kb->matches($data, 'find') || $kb->matches($data, 'replace')) {
-            if (null !== $this->onFindRequested) {
-                ($this->onFindRequested)($kb->matches($data, 'replace'));
+            if (null !== $this->callbacks->onFindRequested) {
+                ($this->callbacks->onFindRequested)($kb->matches($data, 'replace'));
             }
 
             return;
@@ -857,17 +674,17 @@ final class CodeEditorWidget extends AbstractWidget implements FocusableInterfac
 
     private function fireSimpleAction(string $action): void
     {
-        $callback = self::SIMPLE_ACTIONS[$action];
-        if (null !== $this->{$callback}) {
-            ($this->{$callback})();
+        $callback = $this->callbacks->{self::SIMPLE_ACTIONS[$action]};
+        if (null !== $callback) {
+            $callback();
         }
     }
 
     private function firePositionalAction(string $action): void
     {
-        $callback = self::POSITIONAL_ACTIONS[$action];
-        if (null !== $this->{$callback}) {
-            ($this->{$callback})($this->document->getCursorLine(), $this->document->getCursorColUtf16());
+        $callback = $this->callbacks->{self::POSITIONAL_ACTIONS[$action]};
+        if (null !== $callback) {
+            $callback($this->document->getCursorLine(), $this->document->getCursorColUtf16());
         }
     }
 
@@ -948,8 +765,8 @@ final class CodeEditorWidget extends AbstractWidget implements FocusableInterfac
     private function notifyChange(): void
     {
         $this->invalidate();
-        if (null !== $this->onChanged) {
-            ($this->onChanged)($this->document);
+        if (null !== $this->callbacks->onChanged) {
+            ($this->callbacks->onChanged)($this->document);
         }
     }
 
