@@ -62,6 +62,11 @@ final class Document
      * these hooks let a snapshot capture/restore it so undo brings the carets back.
      * $captureCarets returns the current extra carets; $restoreCarets applies them.
      *
+     * Design note: this is a deliberate model→widget back-reference. Inverting it
+     * (e.g. a snapshot interface implemented by MultiCaret) was considered and
+     * rejected — undo/redo regressions are the costliest failure class here and
+     * the closures already keep the coupling to two narrow, optional hooks.
+     *
      * @var (\Closure(): list<array{line: int, col: int, anchorLine: int, anchorCol: int}>)|null
      */
     private ?\Closure $captureCarets = null;
