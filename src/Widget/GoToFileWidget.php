@@ -4,16 +4,15 @@ declare(strict_types=1);
 
 namespace Porta\Widget;
 
-use Porta\Input\TextInput;
 use Porta\Support\FuzzyMatcher;
-use Porta\Ui\Style;
 use Porta\Ui\ListSelection;
+use Porta\Ui\Style;
+use Porta\Ui\TextField;
 use Porta\Widget\Render\HeaderRenderer;
 use Symfony\Component\Finder\Finder;
 use Symfony\Component\Tui\Ansi\AnsiUtils;
 use Symfony\Component\Tui\Input\Key;
 use Symfony\Component\Tui\Render\RenderContext;
-use Symfony\Component\Tui\Style\CursorShape;
 use Symfony\Component\Tui\Widget\FocusableInterface;
 use Symfony\Component\Tui\Widget\FocusableTrait;
 use Symfony\Component\Tui\Widget\KeybindingsTrait;
@@ -31,7 +30,7 @@ final class GoToFileWidget extends OverlayWidget implements FocusableInterface
     private const int MAX_FILES = 20000;
     private const int MAX_RESULTS = 8;
 
-    private string $query = '';
+    private readonly TextField $query;
     private readonly ListSelection $list;
 
     /** @var list<string>|null relative paths, cached per open */
@@ -45,6 +44,7 @@ final class GoToFileWidget extends OverlayWidget implements FocusableInterface
     public function __construct(
         private readonly string $rootDir,
     ) {
+        $this->query = new TextField();
         $this->list = new ListSelection();
     }
 
@@ -58,7 +58,7 @@ final class GoToFileWidget extends OverlayWidget implements FocusableInterface
     public function open(): void
     {
         $this->open = true;
-        $this->query = '';
+        $this->query->clear();
         $this->list->reset();
         $this->files = null; // re-walk lazily
         $this->refilter();
@@ -91,13 +91,11 @@ final class GoToFileWidget extends OverlayWidget implements FocusableInterface
                 ($this->onPick)($this->rootDir.'/'.$picked);
             }
         } elseif ($kb->matches($data, 'delete_char_backward')) {
-            if ('' !== $this->query) {
-                $this->query = substr($this->query, 0, -1);
+            if ($this->query->backspace()) {
                 $this->refilter();
                 $this->invalidate();
             }
-        } elseif (TextInput::isPrintable($data)) {
-            $this->query .= $data;
+        } elseif ($this->query->insert($data)) {
             $this->refilter();
             $this->invalidate();
         }
@@ -150,10 +148,9 @@ final class GoToFileWidget extends OverlayWidget implements FocusableInterface
         }
 
         $columns = $context->getColumns();
-        $cursor = $this->focused ? AnsiUtils::cursorMarker(CursorShape::Bar) : '';
 
         $lines = [];
-        $header = ' Go to File: '.$this->query.$cursor;
+        $header = ' Go to File: '.$this->query->render(cursor: $this->focused);
         $lines[] = HeaderRenderer::render($header, $columns);
 
         foreach (\array_slice($this->results, 0, self::MAX_RESULTS) as $i => $path) {
@@ -165,7 +162,7 @@ final class GoToFileWidget extends OverlayWidget implements FocusableInterface
             $lines[] = $bg.AnsiUtils::truncateToWidth($text, $columns, '…', pad: true)."\x1b[0m";
         }
 
-        if ([] === $this->results && '' !== $this->query) {
+        if ([] === $this->results && '' !== $this->query->value()) {
             $lines[] = "\x1b[48;5;236m\x1b[38;5;244m".AnsiUtils::truncateToWidth(' no matches', $columns, '', pad: true)."\x1b[0m";
         }
 
@@ -179,7 +176,7 @@ final class GoToFileWidget extends OverlayWidget implements FocusableInterface
         $this->files ??= $this->walk();
         $this->list->reset();
 
-        if ('' === $this->query) {
+        if ('' === $this->query->value()) {
             $this->results = \array_slice($this->files, 0, self::MAX_RESULTS);
 
             return;
@@ -187,7 +184,7 @@ final class GoToFileWidget extends OverlayWidget implements FocusableInterface
 
         /** @var list<array{0: int, 1: string}> $scored */
         $scored = [];
-        $query = strtolower($this->query);
+        $query = strtolower($this->query->value());
         foreach ($this->files as $path) {
             // Lower-cased haystack so the basename bonus applies without
             // camelCase noise; the basename offset is the primary segment.
