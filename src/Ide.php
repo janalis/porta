@@ -122,6 +122,9 @@ final class Ide
     private MenuOverlayController $overlay;
 
     private Keybindings $keybindings;
+    private SettingsController $settings;
+    private BufferService $bufferService;
+    private MouseRouter $mouseRouter;
 
     public function __construct(
         private readonly string $rootDir,
@@ -334,10 +337,6 @@ final class Ide
             $this->statusBar->flash($warning, 5.0);
         }
     }
-
-    private SettingsController $settings;
-    private BufferService $bufferService;
-    private MouseRouter $mouseRouter;
 
     /**
      * @internal exposed for tests
