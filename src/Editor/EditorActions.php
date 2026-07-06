@@ -57,10 +57,41 @@ final class EditorActions
         private string $clipboard = '',
     ) {}
 
+    /**
+     * The pure run() forwards of the key cascade, grouped by where they sit
+     * between the special-cased blocks. Order within each list (and the
+     * position of each list in handleKey) IS the historical match order —
+     * see the class docblock before reordering anything.
+     */
+    private const array PRE_CARET_ACTIONS = ['goto_line', 'rename_symbol', 'trigger_completion', 'add_caret_above', 'add_caret_below', 'add_next_occurrence'];
+    private const array HISTORY_STRUCTURE_ACTIONS = ['undo', 'redo', 'expand_selection', 'shrink_selection'];
+    private const array CLIPBOARD_LINE_ACTIONS = ['copy', 'cut', 'paste', 'duplicate_line', 'move_line_up', 'move_line_down', 'toggle_comment', 'toggle_fold'];
+
+    /** Every table-dispatched action id, for the catalog cross-check test. */
+    public const array TABLE_ACTIONS = [...self::PRE_CARET_ACTIONS, ...self::HISTORY_STRUCTURE_ACTIONS, ...self::CLIPBOARD_LINE_ACTIONS];
+
     /** The clipboard content, handed to the next instance on a buffer switch. */
     public function clipboardValue(): string
     {
         return $this->clipboard;
+    }
+
+    /**
+     * Run the first listed action whose keybinding matches $data.
+     *
+     * @param list<string> $actions
+     */
+    private function runFirstMatch(string $data, Keybindings $kb, array $actions): bool
+    {
+        foreach ($actions as $action) {
+            if ($kb->matches($data, $action)) {
+                $this->run($action);
+
+                return true;
+            }
+        }
+
+        return false;
     }
 
     /**
@@ -71,34 +102,9 @@ final class EditorActions
     {
         $doc = $this->document;
 
-        if ($kb->matches($data, 'goto_line')) {
-            $this->run('goto_line');
-
-            return;
-        }
-
-        if ($kb->matches($data, 'rename_symbol')) {
-            $this->run('rename_symbol');
-
-            return;
-        }
-
-        if ($kb->matches($data, 'trigger_completion')) {
-            $this->run('trigger_completion');
-
-            return;
-        }
-
-        // Caret management (works whether or not extra carets already exist).
-        if ($kb->matches($data, 'add_caret_above') || $kb->matches($data, 'add_caret_below')) {
-            $this->run($kb->matches($data, 'add_caret_above') ? 'add_caret_above' : 'add_caret_below');
-
-            return;
-        }
-
-        if ($kb->matches($data, 'add_next_occurrence')) {
-            $this->run('add_next_occurrence');
-
+        // Prompts, completion, caret management (the latter work whether or
+        // not extra carets already exist).
+        if ($this->runFirstMatch($data, $kb, self::PRE_CARET_ACTIONS)) {
             return;
         }
 
@@ -128,27 +134,8 @@ final class EditorActions
             return;
         }
 
-        if ($kb->matches($data, 'undo')) {
-            $this->run('undo');
-
-            return;
-        }
-
-        if ($kb->matches($data, 'redo')) {
-            $this->run('redo');
-
-            return;
-        }
-
-        // Structural selection: grow/shrink through the syntactic hierarchy.
-        if ($kb->matches($data, 'expand_selection')) {
-            $this->run('expand_selection');
-
-            return;
-        }
-        if ($kb->matches($data, 'shrink_selection')) {
-            $this->run('shrink_selection');
-
+        // History and structural selection (grow/shrink the syntactic range).
+        if ($this->runFirstMatch($data, $kb, self::HISTORY_STRUCTURE_ACTIONS)) {
             return;
         }
 
@@ -235,47 +222,8 @@ final class EditorActions
             return;
         }
 
-        // Clipboard
-        if ($kb->matches($data, 'copy')) {
-            $this->run('copy');
-
-            return;
-        }
-
-        if ($kb->matches($data, 'cut')) {
-            $this->run('cut');
-
-            return;
-        }
-
-        if ($kb->matches($data, 'paste')) {
-            $this->run('paste');
-
-            return;
-        }
-
-        // Line operations
-        if ($kb->matches($data, 'duplicate_line')) {
-            $this->run('duplicate_line');
-
-            return;
-        }
-
-        if ($kb->matches($data, 'move_line_up') || $kb->matches($data, 'move_line_down')) {
-            $this->run($kb->matches($data, 'move_line_up') ? 'move_line_up' : 'move_line_down');
-
-            return;
-        }
-
-        if ($kb->matches($data, 'toggle_comment')) {
-            $this->run('toggle_comment');
-
-            return;
-        }
-
-        if ($kb->matches($data, 'toggle_fold')) {
-            $this->run('toggle_fold');
-
+        // Clipboard, line operations and folds.
+        if ($this->runFirstMatch($data, $kb, self::CLIPBOARD_LINE_ACTIONS)) {
             return;
         }
 

@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Porta\Tests\Unit\Editor;
 
 use PHPUnit\Framework\TestCase;
+use Porta\Config\ActionCatalog;
 use Porta\Editor\AutoPairService;
 use Porta\Editor\Document;
 use Porta\Editor\EditorActions;
@@ -276,6 +277,13 @@ final class EditorActionsTest extends TestCase
         $actions = $this->actions();
         $actions->run('not_a_verb');
         $this->assertSame([], $this->calls);
+    }
+
+    public function testEveryTableDispatchedActionIsInTheCatalog(): void
+    {
+        foreach (EditorActions::TABLE_ACTIONS as $action) {
+            $this->assertArrayHasKey($action, ActionCatalog::ACTIONS, "table action '{$action}' is not a catalogued action");
+        }
     }
 
     // --- handleKey(): load-bearing order --------------------------------------
