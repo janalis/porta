@@ -42,6 +42,7 @@ final class CodeEditorWidget extends AbstractWidget implements FocusableInterfac
 {
     use BracketedPasteTrait;
     use FocusableTrait;
+    use InputHook;
     use KeybindingsTrait;
 
     private Document $document;
@@ -757,7 +758,7 @@ final class CodeEditorWidget extends AbstractWidget implements FocusableInterfac
 
     public function handleInput(string $data): void
     {
-        if (null !== $this->onInput && ($this->onInput)($data)) {
+        if ($this->inputHookHandled($data)) {
             return;
         }
 

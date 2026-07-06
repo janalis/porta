@@ -20,6 +20,7 @@ use Symfony\Component\Tui\Widget\KeybindingsTrait;
 final class TerminalPanelWidget extends OverlayWidget implements FocusableInterface
 {
     use FocusableTrait;
+    use InputHook;
     use KeybindingsTrait;
 
     private int $visibleRows = 12;
@@ -100,7 +101,7 @@ final class TerminalPanelWidget extends OverlayWidget implements FocusableInterf
 
     public function handleInput(string $data): void
     {
-        if (null !== $this->onInput && ($this->onInput)($data)) {
+        if ($this->inputHookHandled($data)) {
             return;
         }
         if (!$this->open) {

@@ -24,6 +24,7 @@ use Symfony\Component\Tui\Widget\KeybindingsTrait;
 final class FindBarWidget extends OverlayWidget implements FocusableInterface
 {
     use FocusableTrait;
+    use InputHook;
     use KeybindingsTrait;
 
     private const int MAX_MATCHES = 5000;
@@ -92,7 +93,7 @@ final class FindBarWidget extends OverlayWidget implements FocusableInterface
 
     public function handleInput(string $data): void
     {
-        if (null !== $this->onInput && ($this->onInput)($data)) {
+        if ($this->inputHookHandled($data)) {
             return;
         }
         if (!$this->open || null === $this->document) {

@@ -22,6 +22,7 @@ use Symfony\Component\Tui\Widget\VerticallyExpandableInterface;
 final class FileTreeWidget extends AbstractWidget implements FocusableInterface, VerticallyExpandableInterface
 {
     use FocusableTrait;
+    use InputHook;
     use KeybindingsTrait;
 
     // '.porta' is the IDE's own session/history metadata dir; '.porta.json' (the
@@ -127,7 +128,7 @@ final class FileTreeWidget extends AbstractWidget implements FocusableInterface,
 
     public function handleInput(string $data): void
     {
-        if (null !== $this->onInput && ($this->onInput)($data)) {
+        if ($this->inputHookHandled($data)) {
             return;
         }
 

@@ -25,6 +25,7 @@ use Symfony\Component\Tui\Widget\KeybindingsTrait;
 final class GoToFileWidget extends OverlayWidget implements FocusableInterface
 {
     use FocusableTrait;
+    use InputHook;
     use KeybindingsTrait;
 
     private const int MAX_FILES = 20000;
@@ -66,7 +67,7 @@ final class GoToFileWidget extends OverlayWidget implements FocusableInterface
 
     public function handleInput(string $data): void
     {
-        if (null !== $this->onInput && ($this->onInput)($data)) {
+        if ($this->inputHookHandled($data)) {
             return;
         }
         if (!$this->open) {
