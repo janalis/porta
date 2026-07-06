@@ -6,6 +6,7 @@ namespace Porta\Widget\Render;
 
 use Porta\Editor\DiagnosticStyle;
 use Porta\Editor\Document;
+use Porta\Ui\Style;
 use Symfony\Component\Tui\Ansi\AnsiUtils;
 use Symfony\Component\Tui\Style\CursorShape;
 
@@ -359,7 +360,7 @@ final class EditorRenderer
         $popup[] = HeaderRenderer::render(' '.$overlay['title'], $width, bg: 237, fg: 231);
         foreach ($visible as $i => $item) {
             $isSelected = ($windowStart + $i) === $selected;
-            $bg = $isSelected ? "\x1b[48;5;31m\x1b[38;5;231m" : "\x1b[48;5;236m\x1b[38;5;250m";
+            $bg = $isSelected ? Style::SELECTED_ROW : Style::POPUP_ROW;
             $hintWidth = mb_strwidth($item['hint']);
             $label = AnsiUtils::truncateToWidth($item['label'], $width - $hintWidth - 3, '…', pad: true);
             $popup[] = $bg.' '.$label.' '."\x1b[38;5;244m".$item['hint'].' '."\x1b[0m";
@@ -415,7 +416,7 @@ final class EditorRenderer
             }
 
             $isSelected = $i === $selectedInWindow;
-            $bg = $isSelected ? "\x1b[48;5;31m\x1b[38;5;231m" : "\x1b[48;5;236m\x1b[38;5;250m";
+            $bg = $isSelected ? Style::SELECTED_ROW : Style::POPUP_ROW;
             $kindTag = "\x1b[38;5;180m".$item['kind']."\x1b[39m";
             $labelWidth = $width - mb_strwidth($item['kind']) - 3;
             $label = AnsiUtils::truncateToWidth($item['label'], $labelWidth, '…', pad: true);

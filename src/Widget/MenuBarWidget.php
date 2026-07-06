@@ -6,6 +6,7 @@ namespace Porta\Widget;
 
 use Porta\Ui\Menu;
 use Porta\Ui\MenuPanel;
+use Porta\Ui\Style;
 use Symfony\Component\Tui\Input\Key;
 use Symfony\Component\Tui\Render\RenderContext;
 use Symfony\Component\Tui\Widget\FocusableInterface;
@@ -139,7 +140,7 @@ final class MenuBarWidget extends OverlayWidget implements FocusableInterface
             $active = $this->open && $i === $this->openIndex;
             $hovered = !$this->open && $i === $this->hoveredIndex;
             if ($active) {
-                $line .= "\x1b[48;5;31m\x1b[38;5;231m\x1b[1m".$label."\x1b[22m";
+                $line .= Style::SELECTED_ROW."\x1b[1m".$label."\x1b[22m";
             } elseif ($hovered) {
                 $line .= "\x1b[48;5;240m\x1b[38;5;231m".$label;
             } else {

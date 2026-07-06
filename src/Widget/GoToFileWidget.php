@@ -6,6 +6,7 @@ namespace Porta\Widget;
 
 use Porta\Input\TextInput;
 use Porta\Support\FuzzyMatcher;
+use Porta\Ui\Style;
 use Porta\Ui\ListSelection;
 use Porta\Widget\Render\HeaderRenderer;
 use Symfony\Component\Finder\Finder;
@@ -156,7 +157,7 @@ final class GoToFileWidget extends OverlayWidget implements FocusableInterface
 
         foreach (\array_slice($this->results, 0, self::MAX_RESULTS) as $i => $path) {
             $selected = $i === $this->list->selected();
-            $bg = $selected ? "\x1b[48;5;31m\x1b[38;5;231m" : "\x1b[48;5;236m\x1b[38;5;250m";
+            $bg = $selected ? Style::SELECTED_ROW : Style::POPUP_ROW;
             $name = basename($path);
             $dir = ltrim(substr($path, 0, -\strlen($name)), '/');
             $text = ' '.$name.'  '."\x1b[38;5;244m".$dir;

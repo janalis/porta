@@ -6,6 +6,7 @@ namespace Porta\Widget;
 
 use Porta\Input\TextInput;
 use Porta\Ui\ListSelection;
+use Porta\Ui\Style;
 use Porta\Widget\Render\HeaderRenderer;
 use Symfony\Component\Tui\Ansi\AnsiUtils;
 use Symfony\Component\Tui\Input\Key;
@@ -297,7 +298,7 @@ final class ResultsPanelWidget extends OverlayWidget implements FocusableInterfa
 
         foreach (\array_slice($this->results, $scroll, $this->visibleRows) as $i => $result) {
             $isSelected = ($scroll + $i) === $this->list->selected();
-            $bg = $isSelected ? ($this->focused ? "\x1b[48;5;31m\x1b[38;5;231m" : "\x1b[48;5;238m") : "\x1b[48;5;235m";
+            $bg = $isSelected ? ($this->focused ? Style::SELECTED_ROW : "\x1b[48;5;238m") : "\x1b[48;5;235m";
             $location = $result['path'].':'.($result['line'] + 1);
             $text = ' '."\x1b[38;5;110m".$location."\x1b[39m".'  '.$result['text'];
             $lines[] = $bg.AnsiUtils::truncateToWidth($text, $columns, '…', pad: true)."\x1b[0m";
@@ -328,7 +329,7 @@ final class ResultsPanelWidget extends OverlayWidget implements FocusableInterfa
     private function optionTag(string $glyph, bool $on): string
     {
         return $on
-            ? "\x1b[48;5;31m\x1b[38;5;231m ".$glyph." \x1b[0m"
+            ? Style::SELECTED_ROW.' '.$glyph." \x1b[0m"
             : "\x1b[38;5;242m ".$glyph." \x1b[39m";
     }
 

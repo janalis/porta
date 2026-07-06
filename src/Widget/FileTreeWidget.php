@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Porta\Widget;
 
 use Porta\Ui\ListSelection;
+use Porta\Ui\Style;
 use Porta\Widget\Render\MenuOverlay;
 use Symfony\Component\Tui\Ansi\AnsiUtils;
 use Symfony\Component\Tui\Input\Key;
@@ -272,7 +273,7 @@ final class FileTreeWidget extends AbstractWidget implements FocusableInterface,
             $text = AnsiUtils::truncateToWidth($text, $width, '…', pad: true);
 
             if ($index === $this->list->selected()) {
-                $style = $this->focused ? "\x1b[48;5;31m\x1b[38;5;231m" : "\x1b[48;5;237m";
+                $style = $this->focused ? Style::SELECTED_ROW : "\x1b[48;5;237m";
                 $lines[] = $style.$text."\x1b[0m";
             } elseif ($index === $this->hoveredIndex) {
                 // Subtle hover background beneath the pointer, keeping the dir/file foreground.

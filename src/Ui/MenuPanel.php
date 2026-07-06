@@ -109,7 +109,7 @@ final class MenuPanel
         // Disabled always reads dim and never shows the selected highlight.
         $bg = !$enabled
             ? "\x1b[48;5;236m\x1b[38;5;240m"
-            : ($selected ? "\x1b[48;5;31m\x1b[38;5;231m" : "\x1b[48;5;236m\x1b[38;5;250m");
+            : ($selected ? Style::SELECTED_ROW : Style::POPUP_ROW);
         $tail = '' !== $shortcut ? "\x1b[38;5;244m".$shortcut."\x1b[39m" : str_repeat(' ', mb_strwidth($shortcut));
 
         return $bg.' '.$label.str_repeat(' ', $gap).$tail.' '."\x1b[0m";
