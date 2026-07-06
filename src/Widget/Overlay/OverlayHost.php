@@ -4,11 +4,10 @@ declare(strict_types=1);
 
 namespace Porta\Widget\Overlay;
 
-use Porta\Input\TextInput;
+use Porta\Ui\TextField;
 use Porta\Widget\Render\EditorRenderer;
 use Symfony\Component\Tui\Ansi\AnsiUtils;
 use Symfony\Component\Tui\Input\Keybindings;
-use Symfony\Component\Tui\Style\CursorShape;
 
 /**
  * App-modal chrome composited over the editor pane: the centered list overlay
@@ -24,7 +23,7 @@ final class OverlayHost
     private ?array $overlay = null;
     /** @var array{col: int, width: int, startRow: int, windowStart: int, count: int}|null last-rendered overlay box, for mouse hit-testing */
     private ?array $overlayBox = null;
-    /** @var array{label: string, value: string, onSubmit: callable(string): void}|null single-line mini prompt */
+    /** @var array{label: string, value: TextField, onSubmit: callable(string): void}|null single-line mini prompt */
     private ?array $prompt = null;
 
     /**
@@ -63,7 +62,7 @@ final class OverlayHost
     /** Open the single-line input prompt (go to line, rename symbol). */
     public function openPrompt(string $label, string $initial, callable $onSubmit): void
     {
-        $this->prompt = ['label' => $label, 'value' => $initial, 'onSubmit' => $onSubmit];
+        $this->prompt = ['label' => $label, 'value' => new TextField($initial), 'onSubmit' => $onSubmit];
         ($this->invalidate)();
     }
 
@@ -98,28 +97,26 @@ final class OverlayHost
         }
 
         if ($kb->matches($data, 'accept_completion')) { // Enter
-            /** @var array{label: string, value: string, onSubmit: callable(string): void} $prompt */
+            /** @var array{label: string, value: TextField, onSubmit: callable(string): void} $prompt */
             $prompt = $this->prompt;
             $this->prompt = null;
             ($this->invalidate)();
-            $prompt['onSubmit']($prompt['value']);
+            $prompt['onSubmit']($prompt['value']->value());
 
             return;
         }
 
         if ($kb->matches($data, 'delete_char_backward')) {
-            /** @var array{label: string, value: string, onSubmit: callable(string): void} $this->prompt */
-            if ('' !== $this->prompt['value']) {
-                $this->prompt['value'] = substr($this->prompt['value'], 0, -1);
+            /** @var array{label: string, value: TextField, onSubmit: callable(string): void} $this->prompt */
+            if ($this->prompt['value']->backspace()) {
                 ($this->invalidate)();
             }
 
             return;
         }
 
-        if (TextInput::isPrintable($data)) {
-            /** @var array{label: string, value: string, onSubmit: callable(string): void} $this->prompt */
-            $this->prompt['value'] .= $data;
+        /** @var array{label: string, value: TextField, onSubmit: callable(string): void} $this->prompt */
+        if ($this->prompt['value']->insert($data)) {
             ($this->invalidate)();
         }
     }
@@ -230,10 +227,10 @@ final class OverlayHost
         }
 
         if (null !== $this->prompt) {
-            $text = ' '.$this->prompt['label'].': '.$this->prompt['value'];
-            $marker = $focused ? AnsiUtils::cursorMarker(CursorShape::Bar) : '';
+            $text = ' '.$this->prompt['label'].': '.$this->prompt['value']->value();
             $width = min($columns, max(30, mb_strwidth($text) + 4));
-            $box = "\x1b[48;5;237m\x1b[38;5;231m".AnsiUtils::truncateToWidth($text.$marker.' ', $width, '…', pad: true)."\x1b[0m";
+            $rendered = ' '.$this->prompt['label'].': '.$this->prompt['value']->render(cursor: $focused);
+            $box = "\x1b[48;5;237m\x1b[38;5;231m".AnsiUtils::truncateToWidth($rendered.' ', $width, '…', pad: true)."\x1b[0m";
             $tail = AnsiUtils::sliceByColumn($lines[0] ?? '', $width, $columns - $width);
             $tailWidth = AnsiUtils::visibleWidth($tail);
             $lines[0] = $box.$tail."\x1b[0m".str_repeat(' ', max(0, $columns - $width - $tailWidth));
