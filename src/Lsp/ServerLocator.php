@@ -8,19 +8,139 @@ use Porta\Support\JsonFile;
 use Symfony\Component\Process\ExecutableFinder;
 
 /**
- * Finds a PHP language server for the current project.
+ * Finds the language servers for the current project.
  *
- * Resolution order:
- *  0. an explicit $override (e.g. the `--lsp` CLI option)
- *  1. "lsp" command in the project's .porta.json
- *  2. PORTA_LSP environment variable
- *  3. vendor/bin/phpactor in the project
- *  4. phpactor on PATH
- *  5. intelephense on PATH (needs `npm i -g intelephense`)
+ * Resolution order (see {@see locateAll()}):
+ *  0. an explicit $override (e.g. the `--lsp` CLI option) — serves every language
+ *  1. "lsp" in the project's .porta.json: a command string/argv (serves every
+ *     language, the historical form) or a {languageId: command} map for
+ *     per-language servers, e.g.
+ *     {"lsp": {"php": "phpactor language-server", "typescript": "typescript-language-server --stdio"}}
+ *  2. PORTA_LSP environment variable — serves every language
+ *  3. auto-detected defaults, each scoped to its language: phpactor
+ *     (vendor/bin, then PATH) or intelephense for PHP;
+ *     typescript-language-server for JS/TS; pyright/pylsp for Python
  */
 final class ServerLocator
 {
     /**
+     * Every configured server, keyed by LSP languageId ('*' = serves any
+     * language, the single-server catch-all).
+     *
+     * @return array<string, array{command: list<string>, name: string}>
+     */
+    public static function locateAll(string $rootDir, ?string $override = null): array
+    {
+        if (null !== $override && '' !== $override) {
+            return ['*' => self::server(self::split($override))];
+        }
+
+        /** @var array{lsp?: string|array<array-key, mixed>}|null $config */
+        $config = JsonFile::read($rootDir.'/.porta.json');
+        $lsp = $config['lsp'] ?? null;
+        if (\is_array($lsp) && [] !== $lsp && !array_is_list($lsp)) {
+            // {languageId: command} map: each entry is a string or an argv list.
+            $servers = [];
+            /** @var mixed $command */
+            foreach ($lsp as $language => $command) {
+                if (\is_string($command) && '' !== $command) {
+                    $servers[(string) $language] = self::server(self::split($command));
+                } elseif (\is_array($command) && [] !== $command) {
+                    $servers[(string) $language] = self::server(array_values(array_map(strval(...), $command)));
+                }
+            }
+
+            return $servers;
+        }
+
+        // The historical single-server sources (config string/argv, env var)
+        // keep their catch-all semantics: one server sees every file.
+        if (null !== ($single = self::explicitSingle($rootDir))) {
+            return ['*' => $single];
+        }
+
+        return self::defaults($rootDir);
+    }
+
+    /**
+     * The explicitly configured single server: .porta.json "lsp" as a command
+     * string or argv list, then the PORTA_LSP env var. Null when neither is set.
+     *
+     * @return array{command: list<string>, name: string}|null
+     */
+    private static function explicitSingle(string $rootDir): ?array
+    {
+        /** @var array{lsp?: string|array<array-key, mixed>}|null $config */
+        $config = JsonFile::read($rootDir.'/.porta.json');
+        $lsp = $config['lsp'] ?? null;
+        if (\is_string($lsp) && '' !== $lsp) {
+            return self::server(self::split($lsp));
+        }
+        if (\is_array($lsp) && [] !== $lsp && array_is_list($lsp)) {
+            return self::server(array_values(array_map(strval(...), $lsp)));
+        }
+
+        $env = getenv('PORTA_LSP');
+        if (\is_string($env) && '' !== $env) {
+            return self::server(self::split($env));
+        }
+
+        return null;
+    }
+
+    /**
+     * Auto-detected per-language servers, each only reached when a file of its
+     * language is opened (sessions start lazily).
+     *
+     * @return array<string, array{command: list<string>, name: string}>
+     */
+    private static function defaults(string $rootDir): array
+    {
+        $servers = [];
+
+        $local = $rootDir.'/vendor/bin/phpactor';
+        $phpactor = self::which('phpactor');
+        $intelephense = self::which('intelephense');
+        if (is_file($local) && is_executable($local)) {
+            $servers['php'] = ['command' => [$local, 'language-server'], 'name' => 'phpactor'];
+        } elseif (null !== $phpactor) {
+            $servers['php'] = ['command' => [$phpactor, 'language-server'], 'name' => 'phpactor'];
+        } elseif (null !== $intelephense) {
+            $servers['php'] = ['command' => [$intelephense, '--stdio'], 'name' => 'intelephense'];
+        }
+
+        $tls = self::which('typescript-language-server');
+        if (null !== $tls) {
+            $server = ['command' => [$tls, '--stdio'], 'name' => 'typescript-language-server'];
+            $servers['javascript'] = $server;
+            $servers['typescript'] = $server;
+        }
+
+        $pyright = self::which('pyright-langserver');
+        $pylsp = self::which('pylsp');
+        if (null !== $pyright) {
+            $servers['python'] = ['command' => [$pyright, '--stdio'], 'name' => 'pyright'];
+        } elseif (null !== $pylsp) {
+            $servers['python'] = ['command' => [$pylsp], 'name' => 'pylsp'];
+        }
+
+        return $servers;
+    }
+
+    /**
+     * @param list<string> $command
+     *
+     * @return array{command: list<string>, name: string}
+     */
+    private static function server(array $command): array
+    {
+        return ['command' => $command, 'name' => self::displayName($command)];
+    }
+
+    /**
+     * The single catch-all server from the historical sources (override,
+     * config string/argv, env var, PHP defaults chain).
+     *
      * @param string|null $override an explicit command (e.g. from `--lsp`) taking precedence over every other source
      *
      * @return array{command: list<string>, name: string}|null
@@ -28,49 +148,14 @@ final class ServerLocator
     public static function locate(string $rootDir, ?string $override = null): ?array
     {
         if (null !== $override && '' !== $override) {
-            $command = self::split($override);
-
-            return ['command' => $command, 'name' => self::displayName($command)];
+            return self::server(self::split($override));
         }
 
-        $configFile = $rootDir.'/.porta.json';
-        /** @var array{lsp?: string|list<mixed>}|null $config */
-        $config = JsonFile::read($configFile);
-        if (null !== $config) {
-            $lsp = $config['lsp'] ?? null;
-            if (\is_string($lsp) && '' !== $lsp) {
-                $command = self::split($lsp);
-
-                return ['command' => $command, 'name' => self::displayName($command)];
-            }
-            if (\is_array($lsp) && [] !== $lsp) {
-                $command = array_values(array_map('strval', $lsp));
-
-                return ['command' => $command, 'name' => self::displayName($command)];
-            }
+        if (null !== ($single = self::explicitSingle($rootDir))) {
+            return $single;
         }
 
-        $env = getenv('PORTA_LSP');
-        if (\is_string($env) && '' !== $env) {
-            $command = self::split($env);
-
-            return ['command' => $command, 'name' => self::displayName($command)];
-        }
-
-        $local = $rootDir.'/vendor/bin/phpactor';
-        if (is_file($local) && is_executable($local)) {
-            return ['command' => [$local, 'language-server'], 'name' => 'phpactor'];
-        }
-
-        if (null !== ($path = self::which('phpactor'))) {
-            return ['command' => [$path, 'language-server'], 'name' => 'phpactor'];
-        }
-
-        if (null !== ($path = self::which('intelephense'))) {
-            return ['command' => [$path, '--stdio'], 'name' => 'intelephense'];
-        }
-
-        return null;
+        return self::defaults($rootDir)['php'] ?? null;
     }
 
     /**

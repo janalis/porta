@@ -137,4 +137,93 @@ final class ServerLocatorTest extends TestCase
 
         $this->assertNull(ServerLocator::locate($project->dir));
     }
+
+    // --- locateAll ------------------------------------------------------------
+
+    public function testLocateAllStringConfigIsTheCatchAll(): void
+    {
+        $project = new TempProject(['.porta.json' => json_encode(['lsp' => 'phpactor language-server'])]);
+
+        $servers = ServerLocator::locateAll($project->dir);
+
+        $this->assertSame(['*'], array_keys($servers), 'a single command string serves every language');
+        $this->assertSame(['phpactor', 'language-server'], $servers['*']['command']);
+    }
+
+    public function testLocateAllOverrideIsTheCatchAll(): void
+    {
+        $project = new TempProject(['.porta.json' => json_encode(['lsp' => ['php' => 'phpactor language-server']])]);
+
+        $servers = ServerLocator::locateAll($project->dir, 'my-ls --stdio');
+
+        $this->assertSame(['*'], array_keys($servers), 'the --lsp override beats even a map config');
+        $this->assertSame(['my-ls', '--stdio'], $servers['*']['command']);
+    }
+
+    public function testLocateAllMapConfigRoutesPerLanguage(): void
+    {
+        $project = new TempProject(['.porta.json' => json_encode(['lsp' => [
+            'php' => 'phpactor language-server',
+            'typescript' => ['node', '/x/tsserver.js', '--stdio'],
+            'python' => '',                 // empty command: dropped
+            'yaml' => ['ls', '--stdio'],    // argv-list value form
+        ]])]);
+
+        $servers = ServerLocator::locateAll($project->dir);
+
+        $this->assertSame(['php', 'typescript', 'yaml'], array_keys($servers));
+        $this->assertSame(['phpactor', 'language-server'], $servers['php']['command']);
+        $this->assertSame(['node', '/x/tsserver.js', '--stdio'], $servers['typescript']['command']);
+        $this->assertSame('tsserver', $servers['typescript']['name']);
+        $this->assertSame(['ls', '--stdio'], $servers['yaml']['command']);
+    }
+
+    public function testLocateAllEnvVariableIsTheCatchAll(): void
+    {
+        $project = new TempProject();
+        putenv('PORTA_LSP=custom-ls --stdio');
+
+        $servers = ServerLocator::locateAll($project->dir);
+
+        $this->assertSame(['*'], array_keys($servers));
+        $this->assertSame('custom-ls', $servers['*']['name']);
+    }
+
+    public function testLocateAllDefaultsDetectPerLanguageServers(): void
+    {
+        $project = new TempProject();
+        $tools = new TempProject([], 'porta-bin-');
+        foreach (['phpactor', 'typescript-language-server', 'pyright-langserver'] as $bin) {
+            chmod($tools->write($bin, "#!/bin/sh\n"), 0755);
+        }
+        putenv('PATH='.$tools->dir);
+
+        $servers = ServerLocator::locateAll($project->dir);
+
+        $this->assertSame('phpactor', $servers['php']['name']);
+        $this->assertSame('typescript-language-server', $servers['javascript']['name']);
+        $this->assertSame($servers['javascript'], $servers['typescript'], 'JS and TS share one server');
+        $this->assertSame('pyright', $servers['python']['name']);
+    }
+
+    public function testLocateAllDefaultsFallBackToPylsp(): void
+    {
+        $project = new TempProject();
+        $tools = new TempProject([], 'porta-bin-');
+        chmod($tools->write('pylsp', "#!/bin/sh\n"), 0755);
+        putenv('PATH='.$tools->dir);
+
+        $servers = ServerLocator::locateAll($project->dir);
+
+        $this->assertSame(['python'], array_keys($servers));
+        $this->assertSame('pylsp', $servers['python']['name']);
+    }
+
+    public function testLocateAllWithNothingInstalledIsEmpty(): void
+    {
+        $project = new TempProject();
+        putenv('PATH=/nonexistent');
+
+        $this->assertSame([], ServerLocator::locateAll($project->dir));
+    }
 }
