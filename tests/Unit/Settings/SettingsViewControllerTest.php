@@ -9,6 +9,8 @@ use Porta\Config\IdeConfig;
 use Porta\Config\SettingsController;
 use Porta\Config\SettingsKeymapController;
 use Porta\Config\SettingsLanguageController;
+use Porta\Config\SettingsLspController;
+use Porta\Lsp\LspSessionPool;
 use Porta\Settings\SettingsViewController;
 use Porta\Tests\Support\TempProject;
 use Porta\Widget\CodeEditorWidget;
@@ -62,6 +64,8 @@ final class SettingsViewControllerTest extends TestCase
         $settings = new SettingsController(IdeConfig::DEFAULT_SETTINGS, $editor, $status, $this->tui, $this->project->dir);
         $keymap = new SettingsKeymapController($editor, new Keybindings([]), $status, $this->tui, $this->project->dir);
         $languages = new SettingsLanguageController($editor, $status, $this->tui, $this->project->dir, []);
+        $pool = new LspSessionPool($this->project->dir, static fn (): ?string => null);
+        $lsp = new SettingsLspController($this->project->dir, $pool, [], null, static function (): void {}, $status, $this->tui);
         $this->closed = 0;
 
         return new SettingsViewController(
@@ -77,6 +81,7 @@ final class SettingsViewControllerTest extends TestCase
             $settings,
             $keymap,
             $languages,
+            $lsp,
             onClosed: function (): void { ++$this->closed; },
         );
     }
@@ -125,10 +130,30 @@ final class SettingsViewControllerTest extends TestCase
         $screen = implode("\n", $this->form->render(new \Symfony\Component\Tui\Render\RenderContext(80, 8)));
         $this->assertStringContainsString('Indent style', $screen);
         $this->assertStringContainsString('Indent size', $screen);
+        $this->assertStringContainsString('LSP server', $screen, 'the language section also shows its LSP server row');
 
         // Actuate the indent-style row (auto → spaces) → persists to the languages block.
         $this->form->handleClick(0);
         $this->assertSame('spaces', IdeConfig::load($this->project->dir)->languages['php']['indentStyle']);
+    }
+
+    public function testEditingTheLspRowRoutesToTheLspControllerAndPersists(): void
+    {
+        $controller = $this->controller();
+        $controller->open();
+        $this->nav->handleInput("\x1b[B"); // Keybindings
+        $this->nav->handleInput("\x1b[B"); // PHP
+
+        // The LSP row is the third row of a language section; edit it inline.
+        $this->form->handleInput("\x1b[B");
+        $this->form->handleInput("\x1b[B");
+        $this->form->handleInput("\r"); // start editing
+        foreach (str_split('phpactor') as $char) {
+            $this->form->handleInput($char);
+        }
+        $this->form->handleInput("\r"); // commit
+
+        $this->assertSame('phpactor', IdeConfig::load($this->project->dir)->lspServers['php']);
     }
 
     public function testChangingAGeneralSettingPersistsToTheSettingsBlock(): void

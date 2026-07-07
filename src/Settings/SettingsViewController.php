@@ -7,6 +7,7 @@ namespace Porta\Settings;
 use Porta\Config\SettingsController;
 use Porta\Config\SettingsKeymapController;
 use Porta\Config\SettingsLanguageController;
+use Porta\Config\SettingsLspController;
 use Porta\Widget\MenuBarWidget;
 use Porta\Widget\Settings\KeybindingsListWidget;
 use Porta\Widget\Settings\SettingsFormWidget;
@@ -46,6 +47,7 @@ final class SettingsViewController
         private readonly SettingsController $settings,
         private readonly SettingsKeymapController $keymap,
         private readonly SettingsLanguageController $languages,
+        private readonly SettingsLspController $lsp,
         private readonly \Closure $onClosed,
     ) {
         $exit = fn () => $this->close();
@@ -133,19 +135,27 @@ final class SettingsViewController
     /**
      * The form rows for the active (General or language) section.
      *
-     * @return list<array{key: string, label: string, kind: string, value: bool|int|string, restart: bool, options?: list<string>, min?: int, max?: int}>
+     * @return list<array{key: string, label: string, kind: string, value: bool|int|string, restart: bool, options?: list<string>, min?: int, max?: int, hint?: string}>
      */
     private function rowsForSection(): array
     {
-        return str_starts_with($this->section, 'lang:')
-            ? $this->languages->rows(substr($this->section, 5))
-            : $this->settings->formRows();
+        if (!str_starts_with($this->section, 'lang:')) {
+            return $this->settings->formRows();
+        }
+        $language = substr($this->section, 5);
+
+        return [...$this->languages->rows($language), ...$this->lsp->rows($language)];
     }
 
     private function changeSetting(string $key, bool|int|string $value): void
     {
         if (str_starts_with($this->section, 'lang:')) {
-            $this->languages->changeLanguageSetting(substr($this->section, 5), $key, $value);
+            $language = substr($this->section, 5);
+            if ('lspServer' === $key) {
+                $this->lsp->changeLspServer($language, (string) $value);
+            } else {
+                $this->languages->changeLanguageSetting($language, $key, $value);
+            }
         } else {
             $this->settings->changeSetting($key, $value);
         }

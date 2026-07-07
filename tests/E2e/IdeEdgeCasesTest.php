@@ -3391,10 +3391,19 @@ final class IdeEdgeCasesTest extends TestCase
                 },
                 1300 => function ($tui, $terminal): void {
                     $tui->tick();
-                    $this->assertStringContainsString('Indent style', AnsiUtils::stripAnsiCodes($terminal->getOutput()), 'the PHP section shows indent settings');
+                    $screen = AnsiUtils::stripAnsiCodes($terminal->getOutput());
+                    $this->assertStringContainsString('Indent style', $screen, 'the PHP section shows indent settings');
+                    $this->assertStringContainsString('LSP server', $screen, 'and its LSP server row');
                     // Actuate the indent-style row (auto → spaces) in the content pane.
                     $tui->handleInput("\x1b[<0;40;2M");
                     $tui->handleInput("\x1b[<0;40;2m");
+                    // Edit the LSP server row (form row 2 = screen row 4): a click starts inline editing.
+                    $tui->handleInput("\x1b[<0;40;4M");
+                    $tui->handleInput("\x1b[<0;40;4m");
+                    foreach (str_split('my-ls --stdio') as $char) {
+                        $tui->handleInput($char);
+                    }
+                    $tui->handleInput("\r"); // commit → persists + reconfigures the LSP pool live
                     $tui->handleInput("\x1b[21~"); // F10 opens the app menu OVER the settings view
                 },
                 1500 => function ($tui, $terminal): void {
@@ -3411,6 +3420,7 @@ final class IdeEdgeCasesTest extends TestCase
 
         $this->assertFalse(IdeConfig::load($project->dir)->settings['inlineDiagnostics'], 'the General toggle persisted');
         $this->assertSame('spaces', IdeConfig::load($project->dir)->languages['php']['indentStyle'], 'the PHP indent change persisted');
+        $this->assertSame('my-ls --stdio', IdeConfig::load($project->dir)->lspServers['php'], 'the PHP LSP server persisted');
     }
 
     public function testSettingsSidebarResizesAndPersists(): void

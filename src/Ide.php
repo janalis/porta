@@ -12,6 +12,7 @@ use Porta\Config\LayoutStore;
 use Porta\Config\SettingsController;
 use Porta\Config\SettingsKeymapController;
 use Porta\Config\SettingsLanguageController;
+use Porta\Config\SettingsLspController;
 use Porta\Editor\BreadcrumbScanner;
 use Porta\Editor\Buffer;
 use Porta\Editor\BufferManager;
@@ -406,6 +407,7 @@ final class Ide
             $this->settings,
             new SettingsKeymapController($this->editor, $this->keybindings, $this->statusBar, $this->tui, $this->rootDir),
             $this->settingsLanguages,
+            new SettingsLspController($this->rootDir, $this->lsp, $config->lspServers, $this->lspCommand, fn () => $this->reopenLspBuffers(), $this->statusBar, $this->tui),
             onClosed: function (): void {
                 $this->tui->setFocus($this->editor);
                 $this->tui->requestRender();
@@ -987,6 +989,14 @@ final class Ide
     }
 
     // --- LSP -------------------------------------------------------------------
+
+    /** Re-send didOpen for every open file, so a live LSP reconfigure relaunches its servers. */
+    private function reopenLspBuffers(): void
+    {
+        foreach ($this->buffers->all() as $buffer) {
+            $this->lsp->notifyDidOpen($buffer->path, $buffer->document->getText(), ProjectPaths::languageId($buffer->path), $buffer->document->getVersion());
+        }
+    }
 
     private function startLsp(): void
     {
