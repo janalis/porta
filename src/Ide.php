@@ -1004,7 +1004,8 @@ final class Ide
             ->add('ide_git', fn () => $this->gitView->toggle(), keyBound: true)
             ->add('git_stage', fn () => $this->gitCommands->stageCurrent(), label: 'Git: Stage Current File')
             ->add('git_commit', fn () => $this->gitCommands->commit(), label: 'Git: Commit…')
-            ->add('git_blame', fn () => $this->gitCommands->blameLine(), label: 'Git: Blame Current Line');
+            ->add('git_blame', fn () => $this->gitCommands->blameLine(), label: 'Git: Blame Current Line')
+            ->add('git_undo_commit', fn () => $this->gitCommands->undoLastCommit(), label: 'Git: Undo Last Commit');
     }
 
     private function openCommandPalette(): void

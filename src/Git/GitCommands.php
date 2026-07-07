@@ -95,6 +95,22 @@ final class GitCommands
         );
     }
 
+    /** Undo the last commit (soft reset), keeping its changes staged. */
+    public function undoLastCommit(): void
+    {
+        if (!$this->git->isAvailable()) {
+            $this->unavailable();
+
+            return;
+        }
+        $this->git->undoLastCommit(function (bool $ok): void {
+            $this->statusBar->flash($ok ? 'Last commit undone (changes kept staged)' : 'Nothing to undo');
+            ($this->refreshBranch)();
+            ($this->refreshActiveMarks)();
+            $this->tui->requestRender();
+        });
+    }
+
     private function unavailable(): void
     {
         $this->statusBar->flash('Git not available');

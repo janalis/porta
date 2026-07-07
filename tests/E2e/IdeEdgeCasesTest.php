@@ -1094,12 +1094,19 @@ final class IdeEdgeCasesTest extends TestCase
                     $tui->getById('editor')->getDocument()->setCursor(1, 0);
                     $palette($tui, 'Git: Blame');
                 },
-                1750 => function ($tui, $terminal): void {
+                1750 => function ($tui, $terminal) use ($palette): void {
                     $tui->tick();
                     $this->assertStringContainsString('tester', AnsiUtils::stripAnsiCodes($terminal->getOutput()), 'blame flashes the author');
+                    $palette($tui, 'Git: Undo');
+                },
+                2100 => function ($tui, $terminal) use ($project): void {
+                    $tui->tick();
+                    $this->assertStringContainsString('Last commit undone', AnsiUtils::stripAnsiCodes($terminal->getOutput()));
+                    exec('git -C '.escapeshellarg($project->dir).' log --format=%s 2>/dev/null', $subjects);
+                    $this->assertSame(['init'], $subjects, 'the soft reset removed "my commit"');
                 },
             ],
-            2.0,
+            2.4,
         );
     }
 
@@ -1164,12 +1171,13 @@ final class IdeEdgeCasesTest extends TestCase
                 400 => static fn ($tui) => $palette($tui, 'Git: Stage'),
                 550 => static fn ($tui) => $palette($tui, 'Git: Commit'),
                 700 => static fn ($tui) => $palette($tui, 'Git: Blame'),
-                850 => function ($tui, $terminal): void {
+                850 => static fn ($tui) => $palette($tui, 'Git: Undo'),
+                1000 => function ($tui, $terminal): void {
                     $tui->tick();
                     $this->assertStringContainsString('Git not available', AnsiUtils::stripAnsiCodes($terminal->getOutput()));
                 },
             ],
-            1.1,
+            1.25,
         );
     }
 

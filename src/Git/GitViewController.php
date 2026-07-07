@@ -78,7 +78,8 @@ final class GitViewController
             ->onExit($exit);
         $this->commitBox
             ->hasStagedChanges(fn (): bool => $this->hasStagedChanges())
-            ->onCommit(fn (string $message) => $this->commit($message))
+            ->onCommit(fn (string $message, bool $amend) => $this->commit($message, $amend))
+            ->onAmendToggle(fn (bool $amend) => $this->amendToggled($amend))
             ->onFocusNext($next)
             ->onExit($exit);
     }
@@ -259,7 +260,24 @@ final class GitViewController
         });
     }
 
-    private function commit(string $message): void
+    /** Amend armed: prefill the last commit's message; disarmed: start fresh. */
+    private function amendToggled(bool $amend): void
+    {
+        if (!$amend) {
+            $this->commitBox->setMessage('');
+            $this->tui->requestRender();
+
+            return;
+        }
+        $this->git->lastCommitMessage(function (string $message): void {
+            if ($this->open && $this->commitBox->isAmend()) {
+                $this->commitBox->setMessage($message);
+            }
+            $this->tui->requestRender();
+        });
+    }
+
+    private function commit(string $message, bool $amend = false): void
     {
         $this->git->commit($message, function (bool $ok, string $out): void {
             $firstLine = strtok($out, "\n");
@@ -272,7 +290,7 @@ final class GitViewController
                 $this->statusBar->flash('Commit failed: '.$summary);
             }
             $this->refresh();
-        });
+        }, $amend);
     }
 
     /** Swap the left pane between the Changes and History tabs. */

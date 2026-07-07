@@ -226,6 +226,50 @@ final class GitViewControllerTest extends TestCase
         $this->assertSame(1, $this->committed, 'a failed commit fires no onCommitted');
     }
 
+    public function testAmendPrefillsTheLastMessageAndRewritesTheTip(): void
+    {
+        $controller = $this->controller();
+        $controller->open();
+        $this->await(fn (): bool => $controller->isOpen());
+
+        // alt+m arms amend and prefills the last commit's message.
+        $this->commitBox->setFocused(true);
+        $this->commitBox->handleInput("\x1bm");
+        $this->await(fn (): bool => 'init' === $this->commitBox->message());
+        $this->assertTrue($this->commitBox->commitEnabled(), 'amend needs nothing staged');
+
+        // Reword and commit: the tip is rewritten, not extended.
+        foreach (str_split(' reworded') as $ch) {
+            $this->commitBox->handleInput($ch);
+        }
+        $this->commitBox->handleInput("\x1b[13;5u");
+        $this->await(fn (): bool => 1 === $this->committed);
+        exec('git -C '.escapeshellarg($this->project->dir).' log --format=%s 2>/dev/null', $subjects);
+        $this->assertSame(['init reworded'], $subjects);
+        $this->assertFalse($this->commitBox->isAmend(), 'the box clears (and disarms) after committing');
+
+        // Toggling amend off wipes the prefill.
+        $this->commitBox->handleInput("\x1bm");
+        $this->await(fn (): bool => 'init reworded' === $this->commitBox->message());
+        $this->commitBox->handleInput("\x1bm");
+        $this->assertSame('', $this->commitBox->message());
+    }
+
+    public function testStalePrefillIsDroppedWhenAmendDisarmsFirst(): void
+    {
+        $controller = $this->controller();
+        $controller->open();
+        $this->await(fn (): bool => $controller->isOpen());
+
+        // Fire the prefill, then disarm before git answers: the late message
+        // must not repopulate a box the user already toggled back off.
+        $this->commitBox->setFocused(true);
+        $this->commitBox->handleInput("\x1bm");
+        $this->commitBox->handleInput("\x1bm");
+        $this->awaitTicks(15);
+        $this->assertSame('', $this->commitBox->message());
+    }
+
     public function testCommitStaysDisabledWithOnlyUnstagedChanges(): void
     {
         $controller = $this->controller();

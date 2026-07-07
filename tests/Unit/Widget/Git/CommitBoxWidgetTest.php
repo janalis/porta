@@ -13,13 +13,14 @@ final class CommitBoxWidgetTest extends TestCase
 {
     private bool $staged = true;
 
-    private function widget(?string &$committed = null): CommitBoxWidget
+    private function widget(?string &$committed = null, ?bool &$amended = null): CommitBoxWidget
     {
         $widget = new CommitBoxWidget();
         $widget->setFocused(true);
         $widget->hasStagedChanges(fn (): bool => $this->staged);
-        $widget->onCommit(function (string $message) use (&$committed): void {
+        $widget->onCommit(function (string $message, bool $amend) use (&$committed, &$amended): void {
             $committed = $message;
+            $amended = $amend;
         });
 
         return $widget;
@@ -139,6 +140,52 @@ final class CommitBoxWidgetTest extends TestCase
         $widget = $this->widget();
         $widget->onInput(static fn (string $data): bool => true);
         $this->type($widget, 'swallowed');
+        $this->assertSame('', $widget->message());
+    }
+
+    public function testAmendToggleEnablesCommitWithoutStagedChangesAndFlagsSubmit(): void
+    {
+        $this->staged = false;
+        $widget = $this->widget($committed, $amended);
+        $toggles = [];
+        $widget->onAmendToggle(function (bool $amend) use (&$toggles): void {
+            $toggles[] = $amend;
+        });
+
+        $this->type($widget, 'Reword');
+        $this->assertFalse($widget->commitEnabled(), 'nothing staged, no amend: disabled');
+
+        $widget->handleInput("\x1bm"); // alt+m
+        $this->assertSame([true], $toggles);
+        $this->assertTrue($widget->isAmend());
+        $this->assertTrue($widget->commitEnabled(), 'amending only the message needs nothing staged');
+
+        $screen = $this->plain($widget);
+        $this->assertStringContainsString('[amend · alt+m]', $screen);
+        $this->assertStringContainsString('Amend last commit', $screen);
+
+        $widget->handleInput("\x1b[13;5u");
+        $this->assertSame('Reword', $committed);
+        $this->assertTrue($amended);
+
+        $widget->handleInput("\x1bm"); // toggle back off
+        $this->assertSame([true, false], $toggles);
+        $this->assertFalse($widget->isAmend());
+    }
+
+    public function testSetMessagePrefillsSummaryAndDescriptionAndClearResetsAmend(): void
+    {
+        $widget = $this->widget();
+        $widget->handleInput("\x1bm");
+
+        $widget->setMessage("A subject\nwrapped\n\nbody line 1\nbody line 2");
+        $this->assertSame("A subject wrapped\n\nbody line 1\nbody line 2", $widget->message(), 'summary newlines flatten; body survives verbatim');
+
+        $widget->setMessage('Just a subject');
+        $this->assertSame('Just a subject', $widget->message(), 'a summary-only prefill clears the old description');
+
+        $widget->clear();
+        $this->assertFalse($widget->isAmend(), 'clear() disarms amend');
         $this->assertSame('', $widget->message());
     }
 

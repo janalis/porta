@@ -196,18 +196,58 @@ final class GitInfo
     }
 
     /**
-     * Commit the index (`git commit -m`). Reports success and git's output.
+     * Commit the index (`git commit -m`), optionally amending the last
+     * commit. Reports success and git's output.
      *
      * @param callable(bool, string): void $onDone
      */
-    public function commit(string $message, callable $onDone): void
+    public function commit(string $message, callable $onDone, bool $amend = false): void
     {
         if (!$this->available) {
             $onDone(false, '');
 
             return;
         }
-        $this->runStatus(['commit', '-m', $message], static fn (int $code, string $out) => $onDone(0 === $code, trim($out)));
+        $args = $amend ? ['commit', '--amend', '-m', $message] : ['commit', '-m', $message];
+        $this->runStatus($args, static fn (int $code, string $out) => $onDone(0 === $code, trim($out)));
+    }
+
+    /**
+     * The last commit's full message, for prefilling an amend.
+     *
+     * @param callable(string): void $onDone
+     */
+    public function lastCommitMessage(callable $onDone): void
+    {
+        if (!$this->available) {
+            $onDone('');
+
+            return;
+        }
+        $this->run(['log', '-1', '--format=%B'], static fn (string $out) => $onDone(trim($out)));
+    }
+
+    /**
+     * Undo the last commit, keeping its changes staged (`reset --soft`).
+     * Refused when HEAD has no parent (nothing to undo onto).
+     *
+     * @param callable(bool): void $onDone
+     */
+    public function undoLastCommit(callable $onDone): void
+    {
+        if (!$this->available) {
+            $onDone(false);
+
+            return;
+        }
+        $this->runStatus(['rev-parse', '--verify', 'HEAD~1'], function (int $code) use ($onDone): void {
+            if (0 !== $code) {
+                $onDone(false); // the root commit cannot be undone onto a parent
+
+                return;
+            }
+            $this->runStatus(['reset', '--soft', 'HEAD~1'], static fn (int $c) => $onDone(0 === $c));
+        });
     }
 
     /**

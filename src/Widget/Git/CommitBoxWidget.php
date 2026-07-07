@@ -33,11 +33,14 @@ final class CommitBoxWidget extends AbstractWidget implements FocusableInterface
     private readonly TextField $summary;
     private readonly MultilineInput $description;
     private int $activeField = 0; // 0 = summary, 1 = description
+    private bool $amend = false;
 
     /** @var (callable(): bool)|null anything staged to commit? */
     private $hasStagedChanges = null;
-    /** @var (callable(string): void)|null commit with the assembled message */
+    /** @var (callable(string, bool): void)|null commit with the assembled message (+ amend flag) */
     private $onCommit = null;
+    /** @var (callable(bool): void)|null amend toggled: the controller prefills/clears the message */
+    private $onAmendToggle = null;
     /** @var (callable(): void)|null Tab past the last field: next git pane */
     private $onFocusNext = null;
     /** @var (callable(): void)|null Esc: leave the git view */
@@ -58,11 +61,35 @@ final class CommitBoxWidget extends AbstractWidget implements FocusableInterface
         return $this;
     }
 
+    /** @param callable(string, bool): void $callback */
     public function onCommit(callable $callback): self
     {
         $this->onCommit = $callback;
 
         return $this;
+    }
+
+    /** @param callable(bool): void $callback */
+    public function onAmendToggle(callable $callback): self
+    {
+        $this->onAmendToggle = $callback;
+
+        return $this;
+    }
+
+    public function isAmend(): bool
+    {
+        return $this->amend;
+    }
+
+    /** Prefill the fields from an existing message (amend), caret at the end. */
+    public function setMessage(string $message): void
+    {
+        $parts = explode("\n\n", $message, 2);
+        $description = $parts[1] ?? '';
+        $this->summary->setValue(str_replace("\n", ' ', $parts[0]));
+        '' === $description ? $this->description->clear() : $this->description->setValue($description);
+        $this->invalidate();
     }
 
     public function onFocusNext(callable $callback): self
@@ -84,6 +111,7 @@ final class CommitBoxWidget extends AbstractWidget implements FocusableInterface
         $this->summary->clear();
         $this->description->clear();
         $this->activeField = 0;
+        $this->amend = false;
         $this->invalidate();
     }
 
@@ -96,7 +124,12 @@ final class CommitBoxWidget extends AbstractWidget implements FocusableInterface
 
     public function commitEnabled(): bool
     {
-        return '' !== $this->summary->value() && (null !== $this->hasStagedChanges && ($this->hasStagedChanges)());
+        if ('' === $this->summary->value()) {
+            return false;
+        }
+
+        // Amending only the message needs no staged changes.
+        return $this->amend || (null !== $this->hasStagedChanges && ($this->hasStagedChanges)());
     }
 
     /** The assembled commit message: summary, blank line, description. */
@@ -111,7 +144,7 @@ final class CommitBoxWidget extends AbstractWidget implements FocusableInterface
     public function submit(): void
     {
         if ($this->commitEnabled() && null !== $this->onCommit) {
-            ($this->onCommit)($this->message());
+            ($this->onCommit)($this->message(), $this->amend);
         }
     }
 
@@ -137,6 +170,15 @@ final class CommitBoxWidget extends AbstractWidget implements FocusableInterface
         }
         if ($kb->matches($data, 'commit')) {
             $this->submit();
+
+            return;
+        }
+        if ($kb->matches($data, 'toggle_amend')) {
+            $this->amend = !$this->amend;
+            if (null !== $this->onAmendToggle) {
+                ($this->onAmendToggle)($this->amend);
+            }
+            $this->invalidate();
 
             return;
         }
@@ -187,7 +229,8 @@ final class CommitBoxWidget extends AbstractWidget implements FocusableInterface
         $focused = $this->focused;
 
         $lines = [];
-        $lines[] = "\x1b[48;5;237m\x1b[1m".AnsiUtils::truncateToWidth(' Commit', $width, '…', pad: true)."\x1b[0m";
+        $header = $this->amend ? ' Commit  [amend · alt+m]' : ' Commit  ·  alt+m: amend';
+        $lines[] = "\x1b[48;5;237m\x1b[1m".AnsiUtils::truncateToWidth($header, $width, '…', pad: true)."\x1b[0m";
 
         $summary = ' '.$this->summary->render(cursor: $focused && 0 === $this->activeField);
         $summaryHint = '' === $this->summary->value() && !($focused && 0 === $this->activeField) ? "\x1b[38;5;245m Summary (required)\x1b[0m" : $summary;
@@ -202,9 +245,10 @@ final class CommitBoxWidget extends AbstractWidget implements FocusableInterface
         }
 
         $lines[] = str_repeat(' ', $width);
+        $label = $this->amend ? '  Amend last commit  ' : '  Commit to branch  ';
         $button = $this->commitEnabled()
-            ? Style::SELECTED_ROW.AnsiUtils::truncateToWidth('  Commit to branch  ', $width, '…', pad: true)."\x1b[0m"
-            : "\x1b[48;5;236m\x1b[38;5;245m".AnsiUtils::truncateToWidth('  Commit to branch  ', $width, '…', pad: true)."\x1b[0m";
+            ? Style::SELECTED_ROW.AnsiUtils::truncateToWidth($label, $width, '…', pad: true)."\x1b[0m"
+            : "\x1b[48;5;236m\x1b[38;5;245m".AnsiUtils::truncateToWidth($label, $width, '…', pad: true)."\x1b[0m";
         $lines[] = $button;
 
         return $lines;
@@ -215,6 +259,7 @@ final class CommitBoxWidget extends AbstractWidget implements FocusableInterface
     {
         return [
             'commit' => ['ctrl+enter'],
+            'toggle_amend' => ['alt+m'],
             'next_field' => [Key::TAB],
             'delete_char_backward' => [Key::BACKSPACE],
             'exit_view' => [Key::ESCAPE],

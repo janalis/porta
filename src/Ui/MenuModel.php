@@ -91,6 +91,7 @@ final class MenuModel
             self::SEP,
             'i:git_stage',
             'i:git_commit',
+            'i:git_undo_commit',
             'i:git_blame',
         ],
         'View' => [

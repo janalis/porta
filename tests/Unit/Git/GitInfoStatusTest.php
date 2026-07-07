@@ -102,6 +102,60 @@ final class GitInfoStatusTest extends TestCase
         $this->assertSame("one\n", file_get_contents($project->path('a.txt')), 'worktree restored to HEAD');
     }
 
+    public function testAmendRewritesTheLastCommitAndPrefillReadsIt(): void
+    {
+        $git = $this->repo($project, committed: ['a.txt' => "one\n"]);
+        $project->write('a.txt', "one more\n");
+        exec('git -C '.escapeshellarg($project->dir).' add a.txt 2>/dev/null');
+
+        $committed = null;
+        $git->commit("second\n\nwith body", function (bool $ok) use (&$committed): void {
+            $committed = $ok;
+        });
+        $this->await(static fn (): bool => null !== $committed);
+        $this->assertTrue($committed);
+
+        $message = null;
+        $git->lastCommitMessage(function (string $m) use (&$message): void {
+            $message = $m;
+        });
+        $this->await(static fn (): bool => null !== $message);
+        $this->assertSame("second\n\nwith body", $message, 'the full message comes back for the amend prefill');
+
+        $amended = null;
+        $git->commit('second, reworded', function (bool $ok) use (&$amended): void {
+            $amended = $ok;
+        }, amend: true);
+        $this->await(static fn (): bool => null !== $amended);
+        $this->assertTrue($amended);
+        exec('git -C '.escapeshellarg($project->dir).' log --format=%s 2>/dev/null', $subjects);
+        $this->assertSame(['second, reworded', 'init'], $subjects, 'amend rewrote the tip without adding a commit');
+    }
+
+    public function testUndoLastCommitSoftResetsAndRefusesTheRootCommit(): void
+    {
+        $git = $this->repo($project, committed: ['a.txt' => "one\n"]);
+        $project->write('a.txt', "two\n");
+        exec('git -C '.escapeshellarg($project->dir).' add a.txt 2>/dev/null');
+        exec('git -C '.escapeshellarg($project->dir).' commit -qm second 2>/dev/null');
+
+        $undone = null;
+        $git->undoLastCommit(function (bool $ok) use (&$undone): void {
+            $undone = $ok;
+        });
+        $this->await(static fn (): bool => null !== $undone);
+        $this->assertTrue($undone);
+        exec('git -C '.escapeshellarg($project->dir).' status --porcelain 2>/dev/null', $lines);
+        $this->assertSame(['M  a.txt'], $lines, 'the undone commit\'s change is back and still staged');
+
+        $refused = null;
+        $git->undoLastCommit(function (bool $ok) use (&$refused): void {
+            $refused = $ok;
+        });
+        $this->await(static fn (): bool => null !== $refused);
+        $this->assertFalse($refused, 'the root commit has no parent to reset onto');
+    }
+
     public function testEveryNewVerbShortCircuitsWithoutARepo(): void
     {
         $project = new TempProject(['a.txt' => "x\n"]);
@@ -139,9 +193,18 @@ final class GitInfoStatusTest extends TestCase
         $git->commitFileDiff('deadbeef', 'a.txt', function (string $raw) use (&$calls): void {
             $calls[] = ['show', $raw];
         });
+        $git->commit('msg', function (bool $ok, string $out) use (&$calls): void {
+            $calls[] = ['commit', $ok, $out];
+        });
+        $git->lastCommitMessage(function (string $m) use (&$calls): void {
+            $calls[] = ['last', $m];
+        });
+        $git->undoLastCommit(function (bool $ok) use (&$calls): void {
+            $calls[] = ['undo', $ok];
+        });
 
         $this->assertSame(
-            [['status', [], ''], ['cached', ''], ['worktree', ''], ['untracked', ''], ['unstage', false], ['discard', false], ['apply', false], ['log', []], ['files', []], ['show', '']],
+            [['status', [], ''], ['cached', ''], ['worktree', ''], ['untracked', ''], ['unstage', false], ['discard', false], ['apply', false], ['log', []], ['files', []], ['show', ''], ['commit', false, ''], ['last', ''], ['undo', false]],
             $calls,
             'all resolve synchronously with empty/false results',
         );
