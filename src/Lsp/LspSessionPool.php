@@ -74,6 +74,21 @@ final class LspSessionPool
         $this->configured = true;
     }
 
+    /**
+     * Swap the server map at runtime (e.g. after editing an LSP command in
+     * settings): stop every running session and forget it, so the next didOpen
+     * relaunches under the new configuration. The inbound hooks are kept.
+     *
+     * @param array<string, array{command: list<string>, name: string}> $servers
+     */
+    public function reconfigure(array $servers): void
+    {
+        $this->stop();
+        $this->sessions = [];
+        $this->statuses = [];
+        $this->servers = $servers;
+    }
+
     public function stop(): void
     {
         foreach ($this->sessions as $session) {

@@ -204,4 +204,21 @@ final class LspSessionPoolTest extends TestCase
             $methods,
         );
     }
+
+    public function testReconfigureStopsSessionsAndRelaunchesUnderTheNewCommand(): void
+    {
+        $pool = $this->pool(self::SERVERS);
+        $pool->notifyDidOpen('/tmp/proj/a.php', '<?php', 'php', 1);
+        $old = $this->clients[0]['client'];
+        $this->assertFalse($old->stopped);
+
+        $pool->reconfigure(['php' => ['command' => ['new-php-ls'], 'name' => 'new-php-ls']]);
+        $this->assertTrue($old->stopped, 'the running session is stopped');
+
+        // The next didOpen relaunches under the new command.
+        $pool->notifyDidOpen('/tmp/proj/a.php', '<?php', 'php', 1);
+        $this->assertCount(2, $this->clients);
+        $this->assertSame(['new-php-ls'], $this->clients[1]['command']);
+        $this->assertSame('new-php-ls', $pool->statusFor('/tmp/proj/a.php'));
+    }
 }
