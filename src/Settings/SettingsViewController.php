@@ -31,7 +31,7 @@ final class SettingsViewController
     private string $section = 'general';
 
     /**
-     * @param list<AbstractWidget> $editArea the main container's normal children (tree, separator, editor pane)
+     * @param \Closure(): list<AbstractWidget> $editArea the main container's normal children (tree, separator, editor pane), in the current writing direction's order
      * @param \Closure(): void     $onClosed restore focus/render after the swap back
      */
     public function __construct(
@@ -42,7 +42,7 @@ final class SettingsViewController
         private readonly ContainerWidget $settingsArea,
         private readonly ContainerWidget $settingsContent,
         private readonly MenuBarWidget $menuBar,
-        private readonly array $editArea,
+        private readonly \Closure $editArea,
         private readonly Tui $tui,
         private readonly SettingsController $settings,
         private readonly SettingsKeymapController $keymap,
@@ -107,7 +107,7 @@ final class SettingsViewController
         $this->open = false;
         $this->menuBar->close();
         $this->main->clear();
-        foreach ($this->editArea as $widget) {
+        foreach (($this->editArea)() as $widget) {
             $this->main->add($widget);
         }
         ($this->onClosed)();

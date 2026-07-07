@@ -48,7 +48,7 @@ final class GitViewController
     private int $contextStep = 0;
 
     /**
-     * @param list<AbstractWidget> $editArea the main container's normal children (tree, separator, editor pane)
+     * @param \Closure(): list<AbstractWidget> $editArea the main container's normal children (tree, separator, editor pane), in the current writing direction's order
      * @param \Closure(): void     $onClosed restore focus/render after the swap back
      * @param \Closure(): void     $onCommitted refresh gutter marks and branch after a commit
      * @param \Closure(): array{split: bool, hideWhitespace: bool} $loadDiffPrefs persisted display toggles
@@ -67,7 +67,7 @@ final class GitViewController
         private readonly ContainerWidget $gitArea,
         private readonly ContainerWidget $gitLeft,
         private readonly MenuBarWidget $menuBar,
-        private readonly array $editArea,
+        private readonly \Closure $editArea,
         private readonly Tui $tui,
         private readonly StatusBarWidget $statusBar,
         private readonly Translator $translator,
@@ -171,7 +171,7 @@ final class GitViewController
         }
         $this->menuBar->close();
         $this->main->clear();
-        foreach ($this->editArea as $widget) {
+        foreach (($this->editArea)() as $widget) {
             $this->main->add($widget);
         }
         ($this->onClosed)();

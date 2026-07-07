@@ -705,6 +705,45 @@ final class IdeEdgeCasesTest extends TestCase
         $this->assertStringContainsString('Unsaved changes', AnsiUtils::stripAnsiCodes($terminal->getOutput()));
     }
 
+    public function testRtlLocaleMirrorsTheMainLayoutSidebarToTheRight(): void
+    {
+        putenv('PATH=/nonexistent');
+        $project = new TempProject([
+            '.porta.json' => json_encode(['settings' => ['language' => 'he']]),
+            'a.php' => "<?php\n",
+        ]);
+
+        $this->runIde(
+            $project,
+            $project->path('a.php'),
+            [
+                200 => function ($tui): void {
+                    $ids = array_map(static fn ($w) => $w->getId(), $tui->getById('main')->all());
+                    $this->assertSame(['editor-pane', 'separator', 'tree'], $ids, 'RTL puts the file tree on the right');
+                },
+            ],
+            0.5,
+        );
+    }
+
+    public function testLtrLocaleKeepsTheSidebarOnTheLeft(): void
+    {
+        putenv('PATH=/nonexistent');
+        $project = new TempProject(['a.php' => "<?php\n"]);
+
+        $this->runIde(
+            $project,
+            $project->path('a.php'),
+            [
+                200 => function ($tui): void {
+                    $ids = array_map(static fn ($w) => $w->getId(), $tui->getById('main')->all());
+                    $this->assertSame(['tree', 'separator', 'editor-pane'], $ids, 'LTR keeps the file tree on the left');
+                },
+            ],
+            0.5,
+        );
+    }
+
     public function testWarningDiagnosticsShowInStatusBar(): void
     {
         putenv('PATH=/nonexistent');

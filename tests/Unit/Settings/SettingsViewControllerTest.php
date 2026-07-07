@@ -77,7 +77,7 @@ final class SettingsViewControllerTest extends TestCase
             $area,
             $this->content,
             $menuBar,
-            [$editWidget],
+            static fn (): array => [$editWidget],
             $this->tui,
             $settings,
             $keymap,

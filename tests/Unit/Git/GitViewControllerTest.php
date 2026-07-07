@@ -105,7 +105,7 @@ final class GitViewControllerTest extends TestCase
             $gitArea,
             $this->gitLeft,
             $this->menuBar,
-            [$editWidget],
+            static fn (): array => [$editWidget],
             $this->tui,
             $this->statusBar,
             new Translator('en'),

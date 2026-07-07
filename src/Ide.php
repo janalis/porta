@@ -139,6 +139,14 @@ final class Ide
     private Keybindings $keybindings;
     private Translator $translator;
     private ContainerWidget $main;
+    private ContainerWidget $gitAreaContainer;
+    private ContainerWidget $settingsAreaContainer;
+    /** @var list<AbstractWidget> the main editor layout's panes, in canonical LTR order (sidebar first) */
+    private array $editorPanes;
+    /** @var list<AbstractWidget> the git view's panes, in canonical LTR order (sidebar first) */
+    private array $gitPanes;
+    /** @var list<AbstractWidget> the settings view's panes, in canonical LTR order (sidebar first) */
+    private array $settingsPanes;
     private GitViewController $gitView;
     private SettingsViewController $settingsView;
     private ChangesListWidget $gitChanges;
@@ -213,7 +221,8 @@ final class Ide
         $this->main->setId('main');
         $this->main->setStyle(new Style(direction: Direction::Horizontal, gap: 0));
         $this->main->expandVertically(true);
-        $this->main->add($this->tree)->add($this->separator)->add($editorPane);
+        $this->editorPanes = [$this->tree, $this->separator, $editorPane];
+        $this->setPanes($this->main, $this->editorPanes);
 
         $this->goToFile = new GoToFileWidget($this->translator, $this->rootDir);
         $this->goToFile->setId('goto-file');
@@ -302,7 +311,9 @@ final class Ide
         $gitArea->setId('git-area');
         $gitArea->setStyle(new Style(direction: Direction::Horizontal, gap: 0));
         $gitArea->expandVertically(true);
-        $gitArea->add($gitLeft)->add($gitSeparator)->add($this->gitDiff);
+        $this->gitAreaContainer = $gitArea;
+        $this->gitPanes = [$gitLeft, $gitSeparator, $this->gitDiff];
+        $this->setPanes($gitArea, $this->gitPanes);
         $this->gitView = new GitViewController(
             $this->git,
             $this->rootDir,
@@ -315,7 +326,7 @@ final class Ide
             $gitArea,
             $gitLeft,
             $this->menuBar,
-            [$this->tree, $this->separator, $editorPane],
+            fn (): array => $this->orderPanes($this->editorPanes),
             $this->tui,
             $this->statusBar,
             $this->translator,
@@ -347,7 +358,9 @@ final class Ide
         $settingsArea->setId('settings-area');
         $settingsArea->setStyle(new Style(direction: Direction::Horizontal, gap: 0));
         $settingsArea->expandVertically(true);
-        $settingsArea->add($settingsNav)->add($settingsSeparator)->add($settingsContent);
+        $this->settingsAreaContainer = $settingsArea;
+        $this->settingsPanes = [$settingsNav, $settingsSeparator, $settingsContent];
+        $this->setPanes($settingsArea, $this->settingsPanes);
 
         $this->history = new LocalHistory($this->rootDir);
         $this->session = new SessionStore($this->rootDir);
@@ -413,7 +426,7 @@ final class Ide
             $settingsArea,
             $settingsContent,
             $this->menuBar,
-            [$this->tree, $this->separator, $editorPane],
+            fn (): array => $this->orderPanes($this->editorPanes),
             $this->tui,
             $this->settings,
             new SettingsKeymapController($this->editor, $this->keybindings, $this->statusBar, $this->tui, $this->rootDir, $this->translator),
@@ -483,6 +496,10 @@ final class Ide
             $settingsSeparator,
             fn (): bool => $this->settingsView->isOpen(),
         );
+
+        // Now that both view controllers exist, settle the layout for the
+        // persisted locale's writing direction (RTL mirrors the sidebar right).
+        $this->applyDirection();
 
         foreach ($config->warnings as $warning) {
             $this->statusBar->flash($warning, 5.0);
@@ -1008,12 +1025,58 @@ final class Ide
     {
         $this->translator->setLocale($locale);
         $this->rebuildMenu(); // the menu bakes its labels at setMenus time
+        $this->applyDirection();
         // Widgets cache their rendered lines; clear the whole tree so the next
         // frame rebuilds every label under the new locale.
         foreach ([$this->menuBar, $this->main, $this->statusBar, $this->goToFile, $this->findBar, $this->resultsPanel, $this->terminalPanel, $this->contextMenu] as $widget) {
             $this->invalidateTree($widget);
         }
         $this->tui->requestRender();
+    }
+
+    /**
+     * Panes in visual order: reversed (sidebar on the right) for RTL locales.
+     *
+     * @param list<AbstractWidget> $ltr
+     *
+     * @return list<AbstractWidget>
+     */
+    private function orderPanes(array $ltr): array
+    {
+        return $this->translator->isRtl() ? array_reverse($ltr) : $ltr;
+    }
+
+    /**
+     * Replace a horizontal container's children with $ltr panes in visual order.
+     *
+     * @param list<AbstractWidget> $ltr
+     */
+    private function setPanes(ContainerWidget $container, array $ltr): void
+    {
+        $container->clear();
+        foreach ($this->orderPanes($ltr) as $pane) {
+            $container->add($pane);
+        }
+    }
+
+    /**
+     * Mirror the horizontal layouts for the active writing direction: the git
+     * and settings areas always, and the editor layout when it currently owns
+     * the main container (a swapped-in view restores in order when it closes).
+     */
+    private function applyDirection(): void
+    {
+        // The boot-time applyAll() fires this before the view controllers exist;
+        // the containers were already ordered for the persisted locale at build
+        // time, so there is nothing to re-mirror until a live locale switch.
+        if (!isset($this->gitView, $this->settingsView)) {
+            return;
+        }
+        $this->setPanes($this->gitAreaContainer, $this->gitPanes);
+        $this->setPanes($this->settingsAreaContainer, $this->settingsPanes);
+        if (!$this->gitView->isOpen() && !$this->settingsView->isOpen()) {
+            $this->setPanes($this->main, $this->editorPanes);
+        }
     }
 
     private function invalidateTree(AbstractWidget $widget): void
