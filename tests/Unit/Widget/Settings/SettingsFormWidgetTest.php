@@ -210,11 +210,112 @@ final class SettingsFormWidgetTest extends TestCase
         $this->assertTrue($widget->expandVertically(false)->isVerticallyExpanded());
     }
 
+    public function testActuateWithNoRowsIsSafe(): void
+    {
+        $widget = new SettingsFormWidget(); // no rows set
+        $widget->handleInput(' '); // increment → actuate → no selected row
+        $this->expectNotToPerformAssertions();
+    }
+
     public function testOverlayComposites(): void
     {
         $widget = $this->widget();
         $widget->setMenuOverlay([['row' => 0, 'col' => 0, 'width' => 8, 'segment' => "\x1b[7mDROPDOWN\x1b[0m"]]);
         $line = $widget->render(new RenderContext(60, 8))[0];
         $this->assertStringContainsString('DROPDOWN', $line);
+    }
+
+    private function textWidget(?array &$changes = null): SettingsFormWidget
+    {
+        $changes = [];
+        $widget = new SettingsFormWidget();
+        $widget->setFocused(true);
+        $widget->setRows([
+            ['key' => 'lspServer', 'label' => 'LSP server', 'kind' => 'text', 'value' => 'phpactor', 'restart' => false],
+            ['key' => 'other', 'label' => 'Other', 'kind' => 'text', 'value' => '', 'restart' => false, 'hint' => 'auto: none'],
+        ]);
+        $widget->onChange(function (string $key, bool|int|string $value) use (&$changes): void {
+            $changes[] = [$key, $value];
+        });
+
+        return $widget;
+    }
+
+    public function testTextRowRendersValueAndDimmedHint(): void
+    {
+        $rendered = $this->textWidget()->render(new RenderContext(60, 4));
+        $this->assertStringContainsString('LSP server  phpactor', AnsiUtils::stripAnsiCodes($rendered[0]));
+        $this->assertStringContainsString('auto: none', AnsiUtils::stripAnsiCodes($rendered[1]), 'empty text row shows its hint');
+        $this->assertStringContainsString("\x1b[38;5;245mauto: none", $rendered[1], 'hint is dimmed');
+    }
+
+    public function testEditingATextRowTypesAndCommits(): void
+    {
+        $widget = $this->textWidget($changes);
+        $widget->handleInput("\r"); // Enter starts editing row 0
+        $this->assertTrue($widget->isEditing());
+
+        $widget->handleInput('-');
+        $widget->handleInput('x');
+        $this->assertStringContainsString('phpactor-x', AnsiUtils::stripAnsiCodes($widget->render(new RenderContext(60, 4))[0]));
+
+        $widget->handleInput("\x7f"); // backspace
+        $widget->handleInput("\r");   // Enter commits
+        $this->assertFalse($widget->isEditing());
+        $this->assertSame([['lspServer', 'phpactor-']], $changes);
+    }
+
+    public function testEscapeCancelsTextEditingWithoutFiring(): void
+    {
+        $widget = $this->textWidget($changes);
+        $widget->handleInput("\r"); // edit
+        $widget->handleInput('z');
+        $widget->handleInput("\x1b"); // Esc cancels
+        $this->assertFalse($widget->isEditing());
+        $this->assertSame([], $changes);
+    }
+
+    public function testClickStartsTextEditingAndNavIsSuppressedWhileEditing(): void
+    {
+        $widget = $this->textWidget($changes);
+        $widget->handleClick(1); // the empty text row
+        $this->assertTrue($widget->isEditing());
+        $this->assertSame(1, $widget->selectedIndex());
+
+        $widget->handleInput("\x1b[B"); // arrow ignored while editing
+        $this->assertSame(1, $widget->selectedIndex());
+        $widget->handleInput('a');
+        $widget->handleInput("\r");
+        $this->assertSame([['other', 'a']], $changes);
+    }
+
+    public function testSetRowsCancelsEditing(): void
+    {
+        $widget = $this->textWidget();
+        $widget->handleInput("\r");
+        $this->assertTrue($widget->isEditing());
+        $widget->setRows([['key' => 'lspServer', 'label' => 'LSP server', 'kind' => 'text', 'value' => 'x', 'restart' => false]]);
+        $this->assertFalse($widget->isEditing());
+    }
+
+    public function testEditingWithoutAChangeHandlerIsSafe(): void
+    {
+        $widget = new SettingsFormWidget();
+        $widget->setRows([['key' => 'lspServer', 'label' => 'LSP server', 'kind' => 'text', 'value' => 'x', 'restart' => false]]);
+        $widget->handleInput("\r"); // edit
+        $widget->handleInput('y');
+        $widget->handleInput("\r"); // commit with no onChange
+        $this->expectNotToPerformAssertions();
+    }
+
+    public function testInputHookConsumesFirstWhileEditing(): void
+    {
+        $widget = $this->textWidget($changes);
+        $widget->handleInput("\r");
+        $widget->onInput(static fn (string $d): bool => true);
+        $widget->handleInput('q'); // swallowed
+        $widget->handleInput("\r"); // swallowed too, so no commit
+        $this->assertTrue($widget->isEditing());
+        $this->assertSame([], $changes);
     }
 }
