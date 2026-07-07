@@ -125,8 +125,12 @@ final class LspSessionPoolTest extends TestCase
         $this->assertTrue($pool->isActive());
         $this->assertSame('/tmp/proj/b.ts', $pool->ready('/tmp/proj/b.ts', new Document('y')));
 
+        // With no active file, workspace-level calls (symbol search,
+        // executeCommand) fall back to the running PHP/catch-all session.
         $this->activePath = null;
-        $this->assertFalse($pool->isActive(), 'no active file, no session');
+        $this->assertTrue($pool->isActive());
+        $pool->request('workspace/symbol', ['query' => 'x'], static function (): void {});
+        $this->assertSame('workspace/symbol', $this->clients[0]['client']->requests[0]['method'] ?? null);
     }
 
     public function testStatusForTracksLifecyclePerServer(): void
@@ -171,6 +175,15 @@ final class LspSessionPoolTest extends TestCase
 
         $this->assertTrue($this->clients[0]['client']->stopped);
         $this->assertTrue($this->clients[1]['client']->stopped);
+    }
+
+    public function testNonOpeningCallsNeverStartASession(): void
+    {
+        $pool = $this->pool(self::SERVERS);
+        $pool->notifyDidSave('/tmp/proj/a.php'); // configured language, but nothing opened it
+        $pool->flushPendingChange('/tmp/proj/a.php', new Document('x'));
+
+        $this->assertCount(0, $this->clients, 'only didOpen may launch a server');
     }
 
     public function testSyncCallsRouteByPath(): void

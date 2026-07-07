@@ -8,7 +8,7 @@ use Porta\Config\EditorConfig\DocumentWriter;
 use Porta\Config\EditorConfig\EditorConfigResolver;
 use Porta\History\LocalHistory;
 use Porta\Lsp\CompletionController;
-use Porta\Lsp\LspSession;
+use Porta\Lsp\LspSessionPool;
 use Porta\Lsp\Uri;
 use Porta\Support\ProjectPaths;
 use Porta\Widget\CodeEditorWidget;
@@ -41,7 +41,7 @@ final class BufferService
         private readonly FileTreeWidget $tree,
         private readonly StatusBarWidget $statusBar,
         private readonly Tui $tui,
-        private readonly LspSession $lsp,
+        private readonly LspSessionPool $lsp,
         private readonly CompletionController $completion,
         private readonly LocalHistory $history,
         private readonly EditorConfigResolver $editorConfigResolver,
@@ -89,15 +89,14 @@ final class BufferService
         $this->applyEditorConfig($buffer);
 
         // didOpen before showBuffer so the inlay-hint request it fires is
-        // ordered after the server knows about the file.
-        if ($this->lsp->isActive()) {
-            $this->lsp->notifyDidOpen(
-                $path,
-                $buffer->document->getText(),
-                ProjectPaths::languageId($path),
-                $buffer->document->getVersion(),
-            );
-        }
+        // ordered after the server knows about the file; this is also what
+        // lazily starts the file's language server.
+        $this->lsp->notifyDidOpen(
+            $path,
+            $buffer->document->getText(),
+            ProjectPaths::languageId($path),
+            $buffer->document->getVersion(),
+        );
 
         $this->showBuffer($buffer);
         ($this->refreshGitMarks)($buffer);

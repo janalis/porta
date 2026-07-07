@@ -19,7 +19,7 @@ final readonly class WorkspaceEditor
     public function __construct(
         private BufferManager $buffers,
         private CodeEditorWidget $editor,
-        private LspSession $lsp,
+        private LspSessionPool $lsp,
     ) {}
 
     /**

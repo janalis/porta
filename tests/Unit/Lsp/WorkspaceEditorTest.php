@@ -7,7 +7,7 @@ namespace Porta\Tests\Unit\Lsp;
 use PHPUnit\Framework\TestCase;
 use Porta\Editor\BufferManager;
 use Porta\Editor\Document;
-use Porta\Lsp\LspSession;
+use Porta\Lsp\LspSessionPool;
 use Porta\Lsp\WorkspaceEditor;
 use Porta\Widget\CodeEditorWidget;
 
@@ -15,7 +15,7 @@ final class WorkspaceEditorTest extends TestCase
 {
     private function workspaceEditor(): WorkspaceEditor
     {
-        return new WorkspaceEditor(new BufferManager(), new CodeEditorWidget(), new LspSession(sys_get_temp_dir()));
+        return new WorkspaceEditor(new BufferManager(), new CodeEditorWidget(), new LspSessionPool(sys_get_temp_dir(), static fn (): ?string => null));
     }
 
     public function testMultiEditRenameIsASingleUndoStep(): void

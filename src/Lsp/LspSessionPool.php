@@ -108,6 +108,12 @@ final class LspSessionPool
         return $this->activeSession()?->isActive() ?? false;
     }
 
+    /** The active file's server is up and past initialize. */
+    public function isInitialized(): bool
+    {
+        return $this->activeSession()?->isInitialized() ?? false;
+    }
+
     public function request(string $method, mixed $params, callable $onResult): void
     {
         $this->activeSession()?->request($method, $params, $onResult);
@@ -162,7 +168,16 @@ final class LspSessionPool
 
     private function activeSession(): ?LspSession
     {
-        return $this->sessionFor(($this->activePath)());
+        $session = $this->sessionFor(($this->activePath)());
+        if (null !== $session) {
+            return $session;
+        }
+        // Workspace-level requests (symbol search, executeCommand) can run with
+        // no matching file open: fall back to the catch-all/PHP server when one
+        // is already running.
+        $key = $this->fallbackKey();
+
+        return null === $key ? null : ($this->sessions[self::signature($this->servers[$key]['command'])] ?? null);
     }
 
     private function sessionFor(?string $path, bool $startIfNeeded = false): ?LspSession

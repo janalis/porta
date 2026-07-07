@@ -73,6 +73,15 @@ final class LspSessionTest extends TestCase
         $this->assertSame([['text' => "<?php\necho 1;\n"]], $sent['params']['contentChanges']);
     }
 
+    public function testScheduleDidChangeWithoutAClientIsANoOp(): void
+    {
+        $session = $this->session(new FakeLspClient());
+        // Never started: no client, so nothing to debounce against.
+        $session->scheduleDidChange(new Document('x'), static fn (): ?string => '/tmp/project/a.php', static function (): void {});
+
+        $this->assertFalse($session->isActive());
+    }
+
     public function testReadyRequiresInitializedServerAndFlushesNothingPending(): void
     {
         $client = new FakeLspClient();

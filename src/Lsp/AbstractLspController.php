@@ -16,7 +16,7 @@ use Symfony\Component\Tui\Tui;
 abstract class AbstractLspController
 {
     public function __construct(
-        protected readonly LspSession $lsp,
+        protected readonly LspSessionPool $lsp,
         protected readonly CodeEditorWidget $editor,
         protected readonly Tui $tui,
         protected readonly StatusBarWidget $statusBar,

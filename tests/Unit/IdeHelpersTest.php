@@ -157,6 +157,8 @@ final class IdeHelpersTest extends TestCase
             'x.yaml' => 'yaml',
             'x.yml' => 'yaml',
             'x.twig' => 'twig',
+            'x.py' => 'python',
+            'x.scss' => 'scss',
             'x.weird' => 'plaintext',
         ];
         foreach ($cases as $file => $expected) {
@@ -437,11 +439,16 @@ final class IdeHelpersTest extends TestCase
         $client->stop();
     }
 
-    /** Inject a live client into the Ide's LspSession so feature code runs for real. */
+    /** Inject a live client into the Ide's session pool so feature code runs for real. */
     private function injectLspClient(\Porta\Lsp\LspClient $client): void
     {
-        $session = new \ReflectionProperty($this->ide, 'lsp')->getValue($this->ide);
+        $session = new \Porta\Lsp\LspSession(sys_get_temp_dir());
         new \ReflectionProperty($session, 'client')->setValue($session, $client);
+
+        $pool = new \ReflectionProperty($this->ide, 'lsp')->getValue($this->ide);
+        new \ReflectionProperty($pool, 'servers')->setValue($pool, ['*' => ['command' => ['injected'], 'name' => 'injected']]);
+        new \ReflectionProperty($pool, 'sessions')->setValue($pool, ['injected' => $session]);
+        new \ReflectionProperty($pool, 'configured')->setValue($pool, true);
     }
 
     private function await(callable $done, float $timeout = 3.0): void
@@ -499,7 +506,8 @@ final class IdeHelpersTest extends TestCase
         });
         $this->await(static fn () => $ready);
         $this->injectLspClient($client);
-        new \ReflectionProperty($this->ide, 'lspStatus')->setValue($this->ide, 'mock-lsp-server');
+        $pool = new \ReflectionProperty($this->ide, 'lsp')->getValue($this->ide);
+        new \ReflectionProperty($pool, 'statuses')->setValue($pool, ['injected' => 'mock-lsp-server']);
 
         // Open a "noformat" buffer and make it the active editor document.
         $buffers = new \ReflectionProperty($this->ide, 'buffers')->getValue($this->ide);

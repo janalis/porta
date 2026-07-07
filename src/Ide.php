@@ -26,7 +26,7 @@ use Porta\Input\MouseRouter;
 use Porta\Layout\LayoutController;
 use Porta\Lsp\CompletionController;
 use Porta\Lsp\LspMapper;
-use Porta\Lsp\LspSession;
+use Porta\Lsp\LspSessionPool;
 use Porta\Lsp\NavigationController;
 use Porta\Lsp\RefactorController;
 use Porta\Lsp\ServerLocator;
@@ -109,12 +109,11 @@ final class Ide
     private PanelManager $panels;
     private CommandRegistry $commands;
 
-    private LspSession $lsp;
+    private LspSessionPool $lsp;
     private WorkspaceEditor $workspaceEditor;
     private CompletionController $completion;
     private NavigationController $navigation;
     private RefactorController $refactor;
-    private string $lspStatus = 'no server';
     private float $lastQuitPress = 0.0;
 
     private Renderer $renderer;
@@ -150,7 +149,7 @@ final class Ide
         );
 
         $this->buffers = new BufferManager();
-        $this->lsp = new LspSession($this->rootDir);
+        $this->lsp = new LspSessionPool($this->rootDir, fn (): ?string => $this->editor->getFilePath());
 
         $this->tree = new FileTreeWidget($this->rootDir);
         $this->tree->setId('tree')->setStyle(new Style(flex: 0));
@@ -233,7 +232,7 @@ final class Ide
             $this->buffers,
             $this->workspaceEditor,
             $this->rootDir,
-            fn (): string => $this->lspStatus,
+            fn (): string => $this->lsp->statusFor($this->editor->getFilePath()),
         );
         $this->run = new RunController(
             new RunConfigs($this->rootDir),
@@ -755,7 +754,7 @@ final class Ide
                 $problems,
                 $doc->getCursorLine() + 1,
                 $doc->getCursorDisplayCol() + 1,
-                $this->lspStatus,
+                $this->lsp->statusFor($this->editor->getFilePath()),
             );
 
             return ['left' => $left, 'right' => $right];
@@ -864,21 +863,14 @@ final class Ide
     private function startLsp(): void
     {
         if ($this->lspDisabled) {
-            $this->lspStatus = 'disabled';
+            $this->lsp->disable();
 
             return;
         }
-        $server = ServerLocator::locate($this->rootDir, $this->lspCommand);
-        if (null === $server) {
-            $this->lspStatus = 'none (install phpactor)';
-
-            return;
-        }
-
-        $this->lspStatus = 'starting…';
-        $name = $server['name'];
-        $this->lsp->start(
-            $server['command'],
+        // Declare every configured/detected server; each session starts lazily
+        // on the first didOpen of a file in its language.
+        $this->lsp->configure(
+            ServerLocator::locateAll($this->rootDir, $this->lspCommand),
             static function (string $line): void {
                 // LSP server log lines are currently discarded.
             },
@@ -895,10 +887,9 @@ final class Ide
 
                 return $count > 0;
             },
-            function (bool $ok) use ($name): void {
-                $this->lspStatus = $ok ? $name : 'failed';
-                // lspStatus lives outside the widget tree; without an explicit
-                // invalidation the render cache would serve the stale frame.
+            function (): void {
+                // The status label lives outside the widget tree; without an
+                // explicit invalidation the render cache serves a stale frame.
                 $this->statusBar->invalidate();
                 $this->tui->requestRender();
             },

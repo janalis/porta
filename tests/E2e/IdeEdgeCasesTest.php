@@ -3035,6 +3035,49 @@ final class IdeEdgeCasesTest extends TestCase
         );
     }
 
+    public function testPerLanguageServersRouteAndReportStatus(): void
+    {
+        // Two distinct server processes (the argv differ, so the pool cannot
+        // share a session) from one language-map config; markdown has neither.
+        $mock = \PHP_BINARY.' '.__DIR__.'/../Support/mock-lsp-server.php';
+        $project = new TempProject([
+            '.porta.json' => json_encode(['lsp' => ['php' => $mock, 'javascript' => $mock.' js-flavor']]),
+            'src/A.php' => "<?php\ngreet();\n",
+            'src/app.js' => "doWork(x);\n",
+            'src/Target.php' => "<?php\n\n\nclass Target {}\n",
+            'notes.md' => "# notes\n",
+        ]);
+
+        $terminal = $this->runIde(
+            $project,
+            $project->path('src/A.php'),
+            [
+                400 => static function ($tui): void {
+                    $tui->getById('editor')->getDocument()->setCursor(1, 2); // on greet
+                    $tui->handleInput("\x1b[24~"); // php server resolves Target.php
+                },
+                700 => function ($tui, $terminal, $ide) use ($project): void {
+                    $this->assertStringEndsWith('Target.php', (string) $tui->getById('editor')->getFilePath(), 'php-routed definition jumped');
+                    new \ReflectionMethod($ide, 'openFile')->invoke($ide, $project->path('src/app.js'), true);
+                },
+                1100 => static function ($tui): void {
+                    $tui->getById('editor')->getDocument()->setCursor(0, 2); // on doWork
+                    $tui->handleInput("\x1b[24~"); // js server resolves Target.php too
+                },
+                1400 => function ($tui, $terminal, $ide) use ($project): void {
+                    $this->assertStringEndsWith('Target.php', (string) $tui->getById('editor')->getFilePath(), 'js-routed definition jumped');
+                    new \ReflectionMethod($ide, 'openFile')->invoke($ide, $project->path('notes.md'), true);
+                    $tui->tick();
+                },
+            ],
+            1.7,
+        );
+
+        $screen = AnsiUtils::stripAnsiCodes($terminal->getOutput());
+        $this->assertStringContainsString('LSP:mock-lsp-server', $screen, 'per-language server name in the status bar');
+        $this->assertStringContainsString('LSP:no server', $screen, 'markdown has no configured server');
+    }
+
     public function testCtrlClickNavigatesToDeclaration(): void
     {
         $project = new TempProject([

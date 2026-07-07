@@ -21,7 +21,7 @@ final class RefactorController extends AbstractLspController
      * @param \Closure(): string $lspStatus current server status label, for messages
      */
     public function __construct(
-        LspSession $lsp,
+        LspSessionPool $lsp,
         CodeEditorWidget $editor,
         Tui $tui,
         StatusBarWidget $statusBar,

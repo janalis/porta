@@ -30,7 +30,7 @@ final class NavigationController extends AbstractLspController
      * @param \Closure(string): void       $openUrl  open a docs URL in the browser
      */
     public function __construct(
-        LspSession $lsp,
+        LspSessionPool $lsp,
         CodeEditorWidget $editor,
         Tui $tui,
         StatusBarWidget $statusBar,
