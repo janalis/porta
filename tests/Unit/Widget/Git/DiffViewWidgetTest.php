@@ -497,4 +497,95 @@ final class DiffViewWidgetTest extends TestCase
         $this->assertStringContainsString("\x1b[48;5;88m", $raw[2], 'the deletion emphasis bg survived the slice');
         $this->assertStringContainsString("\x1b[48;5;22m", $raw[3], 'the addition emphasis bg survived the slice');
     }
+
+    public function testCtrlCCopiesTheCursorRowRangesAndHunks(): void
+    {
+        $widget = $this->widget();
+        $widget->setFocused(true);
+        $copies = [];
+        $widget->onCopy(function (string $text) use (&$copies): void {
+            $copies[] = $text;
+        });
+
+        // Cursor on the hunk header: the whole hunk's plain text.
+        $widget->handleInput("\x03");
+        $this->assertSame(["\$keep = 1;\n\$old = 2;\n\$new = 2;\n\$extra = 3;\n"], $copies);
+
+        // A single ± row copies just that line's text.
+        $widget->handleInput("\x1b[B");
+        $widget->handleInput("\x1b[B"); // on -$old
+        $widget->handleInput("\x03");
+        $this->assertSame("\$old = 2;\n", $copies[1]);
+
+        // A v-range joins the ranged rows in document order.
+        $widget->handleInput('v');
+        $widget->handleInput("\x1b[B"); // include +$new
+        $widget->handleInput("\x03");
+        $this->assertSame("\$old = 2;\n\$new = 2;\n", $copies[2]);
+        $widget->handleInput("\x03"); // the range was consumed: back to single-row
+        $this->assertSame("\$new = 2;\n", $copies[3]);
+    }
+
+    public function testCopySkipsNoNewlineMarkersAndWorksSplitAndReadOnly(): void
+    {
+        $widget = new DiffViewWidget();
+        $widget->setDocument(DiffDocument::parse("@@ -1,1 +1,1 @@\n-old\n\\ No newline at end of file\n+new\n"), 'x.txt');
+        $widget->setFocused(true);
+        $widget->setReadOnly(true); // history diffs can select + copy...
+        $staged = false;
+        $widget->onStageSelection(function () use (&$staged): void {
+            $staged = true;
+        });
+        $copies = [];
+        $widget->onCopy(function (string $text) use (&$copies): void {
+            $copies[] = $text;
+        });
+
+        $widget->setSplit(true); // the -old/\-marker rows precede the +new pair
+        $widget->handleInput("\x1b[B"); // first pair row (-old | blank)
+        $widget->handleInput('v');      // allowed while read-only now
+        $widget->handleInput("\x1b[B");
+        $widget->handleInput("\x1b[B"); // through the marker row to (+new)
+        $widget->handleInput(' ');      // staging stays blocked
+        $this->assertFalse($staged);
+        $widget->handleInput("\x03");
+        $this->assertSame(["old\nnew\n"], $copies, 'both sides, marker line skipped, still read-only');
+
+        $empty = new DiffViewWidget();
+        $empty->setDocument(null, null);
+        $empty->onCopy(function () use (&$copies): void {
+            $copies[] = 'never';
+        });
+        $empty->handleInput("\x03");
+        $this->assertCount(1, $copies, 'no document: nothing fires');
+    }
+
+    public function testDragSelectExtendsARangeAndAClickClearsIt(): void
+    {
+        $widget = $this->widget();
+        $widget->setFocused(true);
+        $this->plainLines($widget); // teach the viewport
+        $copies = [];
+        $widget->onCopy(function (string $text) use (&$copies): void {
+            $copies[] = $text;
+        });
+
+        $widget->handleClick(3, 10);  // press on -$old (row 3)
+        $widget->dragSelectTo(4);     // drag to +$new: anchor armed at the press row
+        $raw = $widget->render(new RenderContext(80, 12));
+        $this->assertStringContainsString("\x1b[48;5;236m", $raw[3], 'the dragged range is highlighted');
+        $widget->handleInput("\x03");
+        $this->assertSame(["\$old = 2;\n\$new = 2;\n"], $copies);
+
+        // A fresh click clears any leftover anchor before selecting anew.
+        $widget->dragSelectTo(2);
+        $widget->handleClick(4, 10);
+        $widget->handleInput("\x03");
+        $this->assertSame("\$new = 2;\n", $copies[1], 'single row: the click dropped the old anchor');
+
+        $empty = new DiffViewWidget();
+        $empty->setDocument(null, null);
+        $empty->dragSelectTo(3); // no rows: a safe no-op
+        $this->assertFalse($empty->isSplit());
+    }
 }

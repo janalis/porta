@@ -52,6 +52,7 @@ final class GitViewController
      * @param \Closure(): void     $onCommitted refresh gutter marks and branch after a commit
      * @param \Closure(): array{split: bool, hideWhitespace: bool} $loadDiffPrefs persisted display toggles
      * @param \Closure(bool, bool): void                           $saveDiffPrefs persist (split, hideWhitespace)
+     * @param \Closure(string): void                               $copyToClipboard OSC 52 copy
      */
     public function __construct(
         private readonly GitInfo $git,
@@ -72,6 +73,7 @@ final class GitViewController
         private readonly \Closure $onCommitted,
         private readonly \Closure $loadDiffPrefs,
         private readonly \Closure $saveDiffPrefs,
+        private readonly \Closure $copyToClipboard,
     ) {
         $exit = fn () => $this->close();
         $next = fn () => $this->focusNext();
@@ -94,6 +96,7 @@ final class GitViewController
             ->onCycleContext(fn () => $this->cycleContext())
             ->onLayoutToggle(fn (bool $split) => ($this->saveDiffPrefs)($split, $this->hideWhitespace))
             ->onToggleWhitespace(fn () => $this->toggleWhitespace())
+            ->onCopy(fn (string $text) => $this->copyDiffText($text))
             ->onFocusNext($next)
             ->onExit($exit);
         $this->tabs->onSelect(fn (string $mode) => $this->switchMode($mode));
@@ -228,6 +231,15 @@ final class GitViewController
             $this->shownSide = 'cached';
             $this->git->cachedFileDiff($abs, $show, self::CONTEXT_STEPS[$this->contextStep], $this->hideWhitespace);
         }
+    }
+
+    /** ctrl+c in the diff pane: selected plain-code lines onto the clipboard. */
+    private function copyDiffText(string $text): void
+    {
+        ($this->copyToClipboard)($text);
+        $lines = substr_count($text, "\n");
+        $this->statusBar->flash(\sprintf('Copied %d line%s', $lines, 1 === $lines ? '' : 's'));
+        $this->tui->requestRender();
     }
 
     /**

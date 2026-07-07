@@ -3301,14 +3301,21 @@ final class IdeEdgeCasesTest extends TestCase
                     // the selection (keyboard-like, so it may load).
                     $tui->handleInput("\x1b[<65;80;6M");
                     $tui->handleInput("\x1b[<65;10;4M");
-                    // A click on the diff pane focuses it.
+                    // Press on a diff row, drag a row down, release: a row
+                    // range arms; ctrl+c copies it as plain code (OSC 52).
                     $tui->handleInput("\x1b[<0;60;6M");
-                    $tui->handleInput("\x1b[<0;60;6m");
+                    $tui->handleInput("\x1b[<32;60;7M");
+                    $tui->handleInput("\x1b[<0;60;7m");
+                    $tui->handleInput("\x03");
                     // Click into the commit box summary row.
                     $tui->handleInput("\x1b[<0;5;20M");
                     $tui->handleInput("\x1b[<0;5;20m");
                 },
                 2250 => function ($tui, $terminal): void {
+                    $raw = $terminal->getOutput();
+                    $copied = 'new '.str_repeat('long-tail ', 8)."\n";
+                    $this->assertStringContainsString("\x1b]52;c;".base64_encode($copied), $raw, "the dragged row's code reached the clipboard");
+                    $this->assertStringContainsString('Copied 1 line', AnsiUtils::stripAnsiCodes($raw));
                     $this->assertSame('git-commit', $tui->getFocus()?->getId(), 'click focused the commit box');
                     // The diff toolbar tags sit at the right edge of the diff
                     // title row (screen row 2): ' s:split ' then ' w:hide-ws '.

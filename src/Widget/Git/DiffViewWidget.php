@@ -80,6 +80,8 @@ final class DiffViewWidget extends AbstractWidget implements FocusableInterface,
     private $onLayoutToggle = null;
     /** @var (callable(): void)|null `w`: hide/show whitespace changes (state lives in the controller) */
     private $onToggleWhitespace = null;
+    /** @var (callable(string): void)|null ctrl+c: selected line texts, plain (no ± markers) */
+    private $onCopy = null;
 
     public function __construct()
     {
@@ -128,6 +130,14 @@ final class DiffViewWidget extends AbstractWidget implements FocusableInterface,
     public function onToggleWhitespace(callable $callback): self
     {
         $this->onToggleWhitespace = $callback;
+
+        return $this;
+    }
+
+    /** @param callable(string): void $callback */
+    public function onCopy(callable $callback): self
+    {
+        $this->onCopy = $callback;
 
         return $this;
     }
@@ -284,10 +294,14 @@ final class DiffViewWidget extends AbstractWidget implements FocusableInterface,
         } elseif ($kb->matches($data, 'page_down')) {
             $this->moveCursor(max(1, $this->lastRows - 2));
         } elseif ($kb->matches($data, 'range_anchor')) {
-            if (!$this->readOnly && [] !== $this->rows) {
+            // Allowed in read-only mode too: the range doubles as a COPY
+            // selection there (staging stays blocked in fireStageSelection).
+            if ([] !== $this->rows) {
                 $this->anchor = null === $this->anchor ? $this->cursor : null;
                 $this->invalidate();
             }
+        } elseif ($kb->matches($data, 'copy')) {
+            $this->fireCopy();
         } elseif ($kb->matches($data, 'stage_selection')) {
             $this->fireStageSelection();
         } elseif ($kb->matches($data, 'cycle_context')) {
@@ -326,9 +340,24 @@ final class DiffViewWidget extends AbstractWidget implements FocusableInterface,
             return;
         }
         if ([] !== $this->rows) {
+            $this->anchor = null; // a fresh click starts a new selection
             $this->cursor = max(0, min($this->scroll + $relRow - 1, \count($this->rows) - 1));
             $this->invalidate();
         }
+    }
+
+    /**
+     * Extend a mouse drag selection: the press row becomes the anchor (once)
+     * and the cursor follows the pointer, mirroring the keyboard `v` range.
+     */
+    public function dragSelectTo(int $relRow): void
+    {
+        if ([] === $this->rows) {
+            return;
+        }
+        $this->anchor ??= $this->cursor;
+        $this->cursor = max(0, min($this->scroll + $relRow - 1, \count($this->rows) - 1));
+        $this->invalidate();
     }
 
     private function fireButton(string $name): void
@@ -367,6 +396,45 @@ final class DiffViewWidget extends AbstractWidget implements FocusableInterface,
             return;
         }
 
+        ($this->onStageSelection)($this->collectSelection());
+    }
+
+    /**
+     * ctrl+c: put the selected lines on the clipboard as plain code — the
+     * line texts in document order, no ± markers or numbers. Works on
+     * read-only history diffs too; clears the range like staging does.
+     */
+    private function fireCopy(): void
+    {
+        $document = $this->document;
+        $onCopy = $this->onCopy;
+        if (null === $onCopy || null === $document || !isset($this->rows[$this->cursor])) {
+            return;
+        }
+
+        $selected = $this->collectSelection();
+        $texts = [];
+        foreach ($document->hunks as $h => $hunk) {
+            foreach ($hunk->lines as $l => $line) {
+                if (isset($selected[$h][$l]) && '\\' !== $line->origin) {
+                    $texts[] = $line->text;
+                }
+            }
+        }
+        if ([] !== $texts) {
+            $onCopy(implode("\n", $texts)."\n");
+        }
+    }
+
+    /**
+     * The selection under the cursor: with an armed `v`/drag anchor the whole
+     * row range (consumed), on a hunk header the whole hunk, else the single
+     * row — as a hunk index => line-index set.
+     *
+     * @return array<int, array<int, true>>
+     */
+    private function collectSelection(): array
+    {
         $selected = [];
         $row = $this->rows[$this->cursor];
         if (null !== $this->anchor) {
@@ -385,7 +453,7 @@ final class DiffViewWidget extends AbstractWidget implements FocusableInterface,
             $this->selectRowLines($row, $selected);
         }
 
-        ($this->onStageSelection)($selected);
+        return $selected;
     }
 
     /**
@@ -612,6 +680,7 @@ final class DiffViewWidget extends AbstractWidget implements FocusableInterface,
             'page_down' => [Key::PAGE_DOWN],
             'range_anchor' => ['v'],
             'stage_selection' => [Key::SPACE],
+            'copy' => ['ctrl+c'],
             'cycle_context' => ['c'],
             'toggle_layout' => ['s'],
             'toggle_whitespace' => ['w'],

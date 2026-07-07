@@ -50,6 +50,8 @@ final class GitViewControllerTest extends TestCase
     private array $diffPrefs = ['split' => false, 'hideWhitespace' => false];
     /** @var list<array{bool, bool}> */
     private array $savedPrefs = [];
+    /** @var list<string> */
+    private array $clipboard = [];
 
     private function controller(bool $realRepo = true): GitViewController
     {
@@ -88,6 +90,7 @@ final class GitViewControllerTest extends TestCase
         $this->committed = 0;
         $this->diffPrefs = ['split' => false, 'hideWhitespace' => false];
         $this->savedPrefs = [];
+        $this->clipboard = [];
 
         return new GitViewController(
             $this->git,
@@ -113,6 +116,9 @@ final class GitViewControllerTest extends TestCase
             loadDiffPrefs: fn (): array => $this->diffPrefs,
             saveDiffPrefs: function (bool $split, bool $hideWhitespace): void {
                 $this->savedPrefs[] = [$split, $hideWhitespace];
+            },
+            copyToClipboard: function (string $text): void {
+                $this->clipboard[] = $text;
             },
         );
     }
@@ -427,6 +433,24 @@ final class GitViewControllerTest extends TestCase
         $this->diffView->setFocused(true);
         $this->diffView->handleInput('s'); // back to unified: persists
         $this->assertSame([[false, false]], $this->savedPrefs);
+    }
+
+    public function testCtrlCCopiesTheSelectedDiffLines(): void
+    {
+        $controller = $this->controller();
+        $this->project->write('a.txt', "one CHANGED\ntwo CHANGED\n");
+        $controller->open();
+        $this->await(fn (): bool => str_contains($this->diffText(), '+one CHANGED'));
+
+        // Range over the two deletions, then copy: plain code, no markers.
+        $this->diffView->setFocused(true);
+        $this->diffView->handleInput("\x1b[B"); // -one
+        $this->diffView->handleInput('v');
+        $this->diffView->handleInput("\x1b[B"); // -two
+        $this->diffView->handleInput("\x03");
+
+        $this->assertSame(["one\ntwo\n"], $this->clipboard);
+        $this->assertStringContainsString('Copied 2 lines', $this->statusFlash());
     }
 
     public function testWhitespaceToggleHidesWhitespaceHunksAndBlocksStaging(): void

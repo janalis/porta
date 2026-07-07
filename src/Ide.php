@@ -310,6 +310,7 @@ final class Ide
             },
             loadDiffPrefs: fn (): array => $this->layout->gitDiffPrefs(),
             saveDiffPrefs: fn (bool $split, bool $hideWhitespace) => $this->layout->setGitDiffPrefs($split, $hideWhitespace),
+            copyToClipboard: fn (string $text) => $this->copyToClipboard($text),
         );
 
         $this->history = new LocalHistory($this->rootDir);

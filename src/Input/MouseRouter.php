@@ -42,6 +42,7 @@ final class MouseRouter
 {
     /** True while a left-drag started in the editor is extending a text selection. */
     private bool $mouseSelecting = false;
+    private bool $diffSelecting = false; // a press on a diff body row arms a row-range drag
     /** True while an Alt+Shift left-drag is building a column (rectangular) selection. */
     private bool $columnSelecting = false;
     /** True while a left-drag started on a tab is reordering it; $tabDragPath is the dragged buffer. */
@@ -120,6 +121,7 @@ final class MouseRouter
         if ($this->continueTextDrag($mouse, $editorRect)
             || $this->continueColumnDrag($mouse, $editorRect)
             || $this->continueTabDrag($mouse, $tabsRect)
+            || $this->continueDiffDrag($mouse)
             || $this->layout->continueResizeDrag($mouse, $treeRect, $gitLeftRect)
         ) {
             return;
@@ -139,6 +141,7 @@ final class MouseRouter
         $this->mouseSelecting = false;
         $this->columnSelecting = false;
         $this->tabDragging = false;
+        $this->diffSelecting = false;
         $this->layout->cancelDrags();
 
         if ($this->handleModalPopupClick($mouse, $editorRect, $gitViewOpen)) {
@@ -365,6 +368,28 @@ final class MouseRouter
         return false;
     }
 
+    /**
+     * Extend a diff row-range selection while the left button drags over the
+     * diff pane; the release keeps the range armed for a follow-up copy.
+     */
+    private function continueDiffDrag(MouseEvent $mouse): bool
+    {
+        if (!$this->diffSelecting || (!$mouse->isLeftDrag() && !$mouse->isLeftRelease())) {
+            return false;
+        }
+        // Only genuine motion extends the range — a plain click's release
+        // must not arm an anchor on the row it already selected.
+        if ($mouse->isLeftDrag() && null !== ($rel = $this->hit->hit($this->gitDiff, $mouse->row, $mouse->col)) && $rel['row'] > 0) {
+            $this->gitDiff->dragSelectTo($rel['row']);
+            $this->tui->requestRender();
+        }
+        if ($mouse->isLeftRelease()) {
+            $this->diffSelecting = false;
+        }
+
+        return true;
+    }
+
     /** A left press on the panes, tried front-to-back; the editor is the final target. */
     private function handlePaneClick(MouseEvent $mouse, ?WidgetRect $treeRect, ?WidgetRect $tabsRect, ?WidgetRect $editorRect): void
     {
@@ -399,6 +424,9 @@ final class MouseRouter
         if (null !== ($rel = $this->hit->hit($this->gitDiff, $mouse->row, $mouse->col))) {
             $this->tui->setFocus($this->gitDiff);
             $this->gitDiff->handleClick($rel['row'], $rel['col']);
+            // A body-row press arms a drag selection (rows join the range as
+            // the pointer moves; ctrl+c then copies the highlighted lines).
+            $this->diffSelecting = $rel['row'] > 0;
             $this->tui->requestRender();
 
             return;
