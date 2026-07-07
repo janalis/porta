@@ -88,6 +88,100 @@ final class GitInfo
     }
 
     /**
+     * Every changed/untracked file in the working tree, for the changes list.
+     *
+     * @param callable(list<ChangeEntry>, string): void $onDone entries plus the raw
+     *                                                  porcelain output (for cheap
+     *                                                  change-detection between polls)
+     */
+    public function status(callable $onDone): void
+    {
+        if (!$this->available) {
+            $onDone([], '');
+
+            return;
+        }
+        $this->run(['status', '--porcelain=v1', '-z', '--untracked-files=all'], static fn (string $out) => $onDone(StatusParser::parse($out), $out));
+    }
+
+    /**
+     * The staged (index vs HEAD) diff of a file, for viewing/unstaging.
+     *
+     * @param callable(string): void $onDone receives the raw diff
+     */
+    public function cachedFileDiff(string $absPath, callable $onDone): void
+    {
+        if (!$this->available) {
+            $onDone('');
+
+            return;
+        }
+        $this->run(['diff', '--no-color', '--cached', '--', $absPath], $onDone);
+    }
+
+    /**
+     * The worktree-vs-index diff of a file (what line-staging operates on).
+     *
+     * @param callable(string): void $onDone receives the raw diff
+     */
+    public function worktreeFileDiff(string $absPath, callable $onDone): void
+    {
+        if (!$this->available) {
+            $onDone('');
+
+            return;
+        }
+        $this->run(['diff', '--no-color', '--', $absPath], $onDone);
+    }
+
+    /**
+     * A whole-file "diff" for an untracked file (everything is an addition).
+     * `--no-index` exits 1 when the files differ, which is the success case.
+     *
+     * @param callable(string): void $onDone receives the raw diff
+     */
+    public function untrackedFileDiff(string $absPath, callable $onDone): void
+    {
+        if (!$this->available) {
+            $onDone('');
+
+            return;
+        }
+        $this->runStatus(['diff', '--no-color', '--no-index', '--', '/dev/null', $absPath], static fn (int $code, string $out) => $onDone($out));
+    }
+
+    /**
+     * Take a file's changes out of the index (`git restore --staged`).
+     *
+     * @param callable(bool): void $onDone
+     */
+    public function unstageFile(string $absPath, callable $onDone): void
+    {
+        if (!$this->available) {
+            $onDone(false);
+
+            return;
+        }
+        $this->runStatus(['restore', '--staged', '--', $absPath], static fn (int $code) => $onDone(0 === $code));
+    }
+
+    /**
+     * Throw away a tracked file's worktree changes (`git restore`).
+     * Untracked files are simply unlinked by the caller — no git verb needed.
+     *
+     * @param callable(bool): void $onDone
+     */
+    public function discardFile(string $absPath, callable $onDone): void
+    {
+        if (!$this->available) {
+            $onDone(false);
+
+            return;
+        }
+        $this->runStatus(['restore', '--', $absPath], static fn (int $code) => $onDone(0 === $code));
+    }
+
+    /**
      * Stage a file (`git add`). Reports whether git exited cleanly.
      *
      * @param callable(bool): void $onDone
