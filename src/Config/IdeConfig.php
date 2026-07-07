@@ -107,8 +107,8 @@ final class IdeConfig
      * {auto,spaces,tabs}, `indentSize` = 'auto' or a positive int. Invalid
      * entries are dropped with a warning.
      *
-     * @param array<string, mixed> $config
-     * @param list<string>         $warnings
+     * @param array<array-key, mixed> $config
+     * @param list<string>            $warnings
      *
      * @return array<string, array{indentStyle?: string, indentSize?: int|string}>
      */
