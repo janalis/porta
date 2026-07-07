@@ -55,10 +55,8 @@ final class GitViewController
         private readonly HistoryListWidget $history,
         private readonly GitTabsWidget $tabs,
         private readonly ContainerWidget $main,
-        private readonly ContainerWidget $gitRoot,
         private readonly ContainerWidget $gitArea,
         private readonly ContainerWidget $gitLeft,
-        private readonly ContainerWidget $editorPane,
         private readonly MenuBarWidget $menuBar,
         private readonly array $editArea,
         private readonly Tui $tui,
@@ -125,15 +123,11 @@ final class GitViewController
         }
 
         $this->open = true;
-        // The menu bar rides along: it normally heads the (now detached)
-        // editor pane, so re-parent it above the git area for the swap.
+        // The (global, full-width) menu bar stays put; just drop any open
+        // dropdown so its tracked hit region cannot go stale across the swap.
         $this->menuBar->close();
-        $this->editorPane->remove($this->menuBar);
-        $this->gitRoot->clear();
-        $this->gitRoot->add($this->menuBar);
-        $this->gitRoot->add($this->gitArea);
         $this->main->clear();
-        $this->main->add($this->gitRoot);
+        $this->main->add($this->gitArea);
         if ('changes' !== $this->mode) {
             $this->switchMode('changes'); // the view always opens on Changes
         }
@@ -155,16 +149,7 @@ final class GitViewController
             EventLoop::cancel($this->poll);
             $this->poll = null;
         }
-        // Hand the menu bar back as the editor pane's FIRST child (add()
-        // only appends, so rebuild the children around it).
         $this->menuBar->close();
-        $this->gitRoot->remove($this->menuBar);
-        $rest = $this->editorPane->all();
-        $this->editorPane->clear();
-        $this->editorPane->add($this->menuBar);
-        foreach ($rest as $widget) {
-            $this->editorPane->add($widget);
-        }
         $this->main->clear();
         foreach ($this->editArea as $widget) {
             $this->main->add($widget);

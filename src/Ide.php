@@ -191,7 +191,7 @@ final class Ide
         $editorPane->setId('editor-pane');
         $editorPane->setStyle(new Style(flex: 1));
         $editorPane->expandVertically(true);
-        $editorPane->add($this->menuBar)->add($this->tabBar)->add($this->breadcrumbs)->add($this->editor);
+        $editorPane->add($this->tabBar)->add($this->breadcrumbs)->add($this->editor);
 
         $this->separator = new SeparatorWidget();
         $this->separator->setId('separator')->setStyle(new Style(flex: 0));
@@ -285,9 +285,6 @@ final class Ide
         $gitArea->setStyle(new Style(direction: Direction::Horizontal, gap: 0));
         $gitArea->expandVertically(true);
         $gitArea->add($gitLeft)->add($gitSeparator)->add($this->gitDiff);
-        $gitRoot = new ContainerWidget();
-        $gitRoot->setId('git-root');
-        $gitRoot->expandVertically(true);
         $this->gitView = new GitViewController(
             $this->git,
             $this->rootDir,
@@ -297,10 +294,8 @@ final class Ide
             $this->gitHistory,
             $this->gitTabs,
             $this->main,
-            $gitRoot,
             $gitArea,
             $gitLeft,
-            $editorPane,
             $this->menuBar,
             [$this->tree, $this->separator, $editorPane],
             $this->tui,
@@ -348,6 +343,7 @@ final class Ide
         );
 
         $this->tui
+            ->add($this->menuBar)
             ->add($this->goToFile)
             ->add($this->main)
             ->add($this->findBar)

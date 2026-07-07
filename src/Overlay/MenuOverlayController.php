@@ -71,7 +71,7 @@ final class MenuOverlayController
     {
         return ($this->gitViewOpen)()
             ? [$this->gitTabs, $this->gitChanges, $this->gitCommitBox, $this->gitHistory, $this->gitSeparator, $this->gitDiff]
-            : [$this->tabBar, $this->editor, $this->breadcrumbs];
+            : [$this->tree, $this->separator, $this->tabBar, $this->editor, $this->breadcrumbs];
     }
 
     /**
@@ -102,9 +102,9 @@ final class MenuOverlayController
     }
 
     /**
-     * Position the open menu's dropdown as a floating overlay over the editor
-     * pane (tab bar + editor) so it never reflows the layout. Called on every
-     * open/navigate/close; clears the overlay when no menu is open.
+     * Position the open menu's dropdown as a floating overlay over the panes
+     * beneath the (full-width) menu row so it never reflows the layout. Called
+     * on every open/navigate/close; clears the overlay when no menu is open.
      */
     public function refreshMenu(): void
     {
@@ -112,26 +112,23 @@ final class MenuOverlayController
             $this->menuDropdown = null;
             // Clear both mode's pane sets: clearing a detached widget is harmless
             // and a dropdown may close across a view swap.
-            $this->clearOverlays([$this->tabBar, $this->breadcrumbs, $this->editor, $this->gitTabs, $this->gitChanges, $this->gitCommitBox, $this->gitHistory, $this->gitSeparator, $this->gitDiff]);
+            $this->clearOverlays([$this->tree, $this->separator, $this->tabBar, $this->breadcrumbs, $this->editor, $this->gitTabs, $this->gitChanges, $this->gitCommitBox, $this->gitHistory, $this->gitSeparator, $this->gitDiff]);
 
             return;
         }
 
         $menuRect = $this->renderer->getWidgetRect($this->menuBar);
-        $paneRect = ($this->gitViewOpen)()
-            ? $menuRect // in the git view the menu row spans the full width; clamp to it
-            : $this->renderer->getWidgetRect($this->editor);
-        if (null === $menuRect || null === $paneRect) {
+        if (null === $menuRect) {
             return; // no frame rendered yet; the next navigate will place it
         }
 
-        // The menu bar heads the pane its dropdown floats over, so its titles
-        // share the pane's columns: anchor each dropdown directly under its
-        // title (titleStart is menu-bar-local), clamped to the pane's width.
-        $panelWidth = min($this->menuBar->panelWidth(), $paneRect->columns);
+        // The menu bar is the screen's full-width top row in both views, so
+        // anchor each dropdown directly under its title (titleStart is
+        // menu-bar-local), clamped to the menu row's own span.
+        $panelWidth = min($this->menuBar->panelWidth(), $menuRect->columns);
         $anchor = max(
-            $paneRect->col,
-            min($menuRect->col + $this->menuBar->titleStart($this->menuBar->openIndex()), $paneRect->col + $paneRect->columns - $panelWidth),
+            $menuRect->col,
+            min($menuRect->col + $this->menuBar->titleStart($this->menuBar->openIndex()), $menuRect->col + $menuRect->columns - $panelWidth),
         );
         $top = $menuRect->row + $menuRect->rows;
         $segments = $this->menuBar->dropdownSegments($panelWidth);

@@ -396,15 +396,25 @@ final class IdeEdgeCasesTest extends TestCase
                 280 => function ($tui): void {
                     $crumb = AnsiUtils::stripAnsiCodes($tui->getById('breadcrumbs')->render(new \Symfony\Component\Tui\Render\RenderContext(120, 1))[0]);
                     $this->assertStringContainsString('handle', $crumb, 'breadcrumb is visible');
-                    $tui->handleInput("\x1b[<0;35;1M"); // open the File menu; its dropdown reaches the breadcrumb row
+                    // Open View (a right-side title, cols 39-44): its dropdown
+                    // reaches down over the breadcrumb row's columns.
+                    $tui->handleInput("\x1b[<0;41;1M");
                 },
                 360 => function ($tui): void {
                     $this->assertTrue($tui->getById('menu')->isOpen());
                     $row = $tui->getById('breadcrumbs')->render(new \Symfony\Component\Tui\Render\RenderContext(120, 1))[0];
                     $this->assertStringContainsString("\x1b[48;5;236m", $row, 'the dropdown composites over the breadcrumb row (breadcrumb no longer in front)');
+                    // Switch to File (left edge): with the full-width menu row its
+                    // dropdown now floats over the TREE columns instead.
+                    $tui->handleInput("\x1b[<0;3;1M");
+                },
+                440 => function ($tui): void {
+                    $this->assertTrue($tui->getById('menu')->isOpen());
+                    $treeTop = AnsiUtils::stripAnsiCodes($tui->getById('tree')->render(new \Symfony\Component\Tui\Render\RenderContext(30, 20))[0]);
+                    $this->assertStringContainsString('Save File', $treeTop, "File's dropdown composites over the tree");
                 },
             ],
-            0.7,
+            0.9,
         );
 
         $this->addToAssertionCount(1);
@@ -427,7 +437,7 @@ final class IdeEdgeCasesTest extends TestCase
                 200 => function ($tui, $terminal, $ide): void {
                     // Right-press col 25, row 1: the 22-wide menu spills past the
                     // sidebar (tree cols 0–29) into the editor (col 31+).
-                    $tui->handleInput("\x1b[<2;26;2M");
+                    $tui->handleInput("\x1b[<2;26;3M");
                     $this->assertTrue($tui->getById('context-menu')->isOpen(), 'context menu opened');
 
                     $renderer = new \ReflectionProperty($ide, 'renderer')->getValue($ide);
@@ -458,7 +468,7 @@ final class IdeEdgeCasesTest extends TestCase
             [
                 200 => function ($tui): void {
                     // Right-click a tree entry; the menu is wide enough to spill past the sidebar.
-                    $tui->handleInput("\x1b[<2;21;2M"); // right-press col 20, row 1 (first entry)
+                    $tui->handleInput("\x1b[<2;21;3M"); // right-press col 20, row 1 (first entry)
                 },
                 280 => function ($tui): void {
                     $this->assertTrue($tui->getById('context-menu')->isOpen(), 'tree context menu opened');
@@ -594,7 +604,7 @@ final class IdeEdgeCasesTest extends TestCase
             null, // start with no file
             [
                 200 => function ($tui): void {
-                    $tui->handleInput("\x1b[<0;40;1M"); // open the Edit menu (title cols 37-42)
+                    $tui->handleInput("\x1b[<0;9;1M"); // open the Edit menu (title cols 7-12)
                 },
                 280 => function ($tui): void {
                     $menu = $tui->getById('menu');
@@ -608,7 +618,7 @@ final class IdeEdgeCasesTest extends TestCase
                 360 => function ($tui) use ($project): void {
                     // Open a file so the document actions re-enable, then reopen Edit.
                     $tui->getById('editor')->openFile($project->path('a.php'), "<?php\necho 1;\n");
-                    $tui->handleInput("\x1b[<0;40;1M");
+                    $tui->handleInput("\x1b[<0;9;1M");
                 },
                 440 => function ($tui): void {
                     $menu = $tui->getById('menu');
@@ -1591,35 +1601,34 @@ final class IdeEdgeCasesTest extends TestCase
                     $editor = $tui->getById('editor');
                     $editor->getDocument()->setCursor(0, 0);
                     $editor->handleInput('X'); // dirty: "X<?php"
-                    // The menu bar sits at the top of the editor pane (tree width 30
-                    // + gap 1 → col 31): File title at cols 31-36, Edit at 37-42.
-                    // Click the "Edit" title (screen row 0 → SGR row 1).
-                    $tui->handleInput("\x1b[<0;40;1M");
+                    // The menu bar is the full-width top row: File title at
+                    // cols 1-6, Edit at 7-12. Click "Edit" (SGR row 1).
+                    $tui->handleInput("\x1b[<0;9;1M");
                 },
                 300 => function ($tui): void {
                     $this->assertTrue($tui->getById('menu')->isOpen(), 'title click opened the menu');
                     $this->assertSame('menu', $tui->getFocus()?->getId());
-                    // The dropdown anchors under Edit (col 37); Undo is item 0 at
+                    // The dropdown anchors under Edit (col 7); Undo is item 0 at
                     // screen row 1 (below the menu bar) → SGR row 2.
-                    $tui->handleInput("\x1b[<0;40;2M"); // click Undo -> runs it + closes
+                    $tui->handleInput("\x1b[<0;9;2M"); // click Undo -> runs it + closes
                 },
                 400 => function ($tui): void {
                     $this->assertFalse($tui->getById('menu')->isOpen(), 'item click ran and closed');
                     $editor = $tui->getById('editor');
                     $this->assertSame('<?php', $editor->getDocument()->getLine(0), 'clicking Undo undid the edit');
                     $tui->tick();
-                    $tui->handleInput("\x1b[<0;35;1M"); // reopen File (title cols 31-36)
+                    $tui->handleInput("\x1b[<0;3;1M"); // reopen File (title cols 1-6)
                 },
                 500 => function ($tui): void {
                     $this->assertTrue($tui->getById('menu')->isOpen(), 'File reopened');
                     // Clicking the SAME (open) title again toggles the dropdown closed.
-                    $tui->handleInput("\x1b[<0;35;1M"); // File title cols 31-36
+                    $tui->handleInput("\x1b[<0;3;1M"); // File title cols 1-6
                 },
                 600 => function ($tui): void {
                     $this->assertFalse($tui->getById('menu')->isOpen(), 're-clicking the open title closed it');
                     // Open File, then click a DIFFERENT title (Edit) → switches, stays open.
-                    $tui->handleInput("\x1b[<0;35;1M"); // open File (index 0)
-                    $tui->handleInput("\x1b[<0;40;1M"); // click Edit (index 1)
+                    $tui->handleInput("\x1b[<0;3;1M"); // open File (index 0)
+                    $tui->handleInput("\x1b[<0;9;1M"); // click Edit (index 1)
                 },
                 700 => function ($tui): void {
                     $menu = $tui->getById('menu');
@@ -1648,8 +1657,8 @@ final class IdeEdgeCasesTest extends TestCase
             [
                 200 => function ($tui): void {
                     $tui->tick();
-                    // Closed bar: hover the File title (cols 31-36, SGR move code 35).
-                    $tui->handleInput("\x1b[<35;35;1M");
+                    // Closed bar: hover the File title (cols 1-6, SGR move code 35).
+                    $tui->handleInput("\x1b[<35;3;1M");
                 },
                 280 => function ($tui): void {
                     $menu = $tui->getById('menu');
@@ -1662,14 +1671,14 @@ final class IdeEdgeCasesTest extends TestCase
                     $menu = $tui->getById('menu');
                     $row = $menu->render(new \Symfony\Component\Tui\Render\RenderContext(120, 1))[0];
                     $this->assertStringNotContainsString("\x1b[48;5;240m", $row, 'moving off the bar cleared the highlight');
-                    $tui->handleInput("\x1b[<0;40;1M"); // click the Edit title (cols 37-42) to open it
+                    $tui->handleInput("\x1b[<0;9;1M"); // click the Edit title (cols 7-12) to open it
                 },
                 440 => function ($tui): void {
                     $menu = $tui->getById('menu');
                     $this->assertTrue($menu->isOpen());
                     $this->assertSame(1, $menu->openIndex(), 'Edit is open');
                     // Hover Redo (item 1) in the dropdown: bar row 0 → items at SGR rows 2,3.
-                    $tui->handleInput("\x1b[<35;40;3M");
+                    $tui->handleInput("\x1b[<35;9;3M");
                 },
                 520 => function ($tui): void {
                     $menu = $tui->getById('menu');
@@ -1677,7 +1686,7 @@ final class IdeEdgeCasesTest extends TestCase
                     $this->assertStringContainsString("\x1b[48;5;31m", $segments[1]['segment'], 'hovering Redo highlighted it');
                     $this->assertStringNotContainsString("\x1b[48;5;31m", $segments[0]['segment'], 'Undo is no longer highlighted');
                     // While open, hover the sibling File title → switches the dropdown.
-                    $tui->handleInput("\x1b[<35;35;1M");
+                    $tui->handleInput("\x1b[<35;3;1M");
                 },
                 600 => function ($tui): void {
                     $menu = $tui->getById('menu');
@@ -1718,16 +1727,20 @@ final class IdeEdgeCasesTest extends TestCase
                     $tui->tick();
 
                     $before = $this->screenGrid($tui, $terminal);
-                    $markerRow = $this->rowOf($before, 'zmarker');
-                    $this->assertNotNull($markerRow, 'tree lists zmarker.php before the menu opens');
+                    $this->assertNotNull($this->rowOf($before, 'zmarker'), 'tree lists zmarker.php before the menu opens');
+                    // The File dropdown floats over the TREE columns now, so the
+                    // row-stability marker must live outside its footprint: use
+                    // the editor's text (col ~38, untouched by the dropdown).
+                    $markerRow = $this->rowOf($before, 'echo 1;');
+                    $this->assertNotNull($markerRow, 'editor content visible before the menu opens');
 
                     $tui->handleInput("\x1b[21~"); // F10 opens the menu
 
                     $after = $this->screenGrid($tui, $terminal);
                     $this->assertTrue($tui->getById('menu')->isOpen(), 'F10 opened the menu');
-                    // Regression: the tree entry stays on the SAME screen row (before
+                    // Regression: the editor line stays on the SAME screen row (before
                     // the fix it was reflowed downward) and no rows were inserted.
-                    $this->assertSame($markerRow, $this->rowOf($after, 'zmarker'), 'content did not shift down');
+                    $this->assertSame($markerRow, $this->rowOf($after, 'echo 1;'), 'content did not shift down');
                     $this->assertSameSize($before, $after, 'no extra rows inserted');
 
                     // ...and the dropdown really is drawn, floating over the pane.
@@ -1839,7 +1852,7 @@ final class IdeEdgeCasesTest extends TestCase
                     // Tree click: focus the tree and open B.php. The menu bar now
                     // lives in the editor pane, so the tree owns the full height:
                     // header row 0, A.php row 1, B.php row 2.
-                    $tui->handleInput("\x1b[<0;2;3M"); // 0-based col1 row2 -> B.php
+                    $tui->handleInput("\x1b[<0;2;4M"); // 0-based col1 row2 -> B.php
                 },
                 650 => function ($tui): void {
                     $editor = $tui->getById('editor');
@@ -3706,7 +3719,7 @@ final class IdeEdgeCasesTest extends TestCase
             [
                 200 => function ($tui): void {
                     $tui->tick();
-                    $tui->handleInput("\x1b[<2;3;1M"); // tree header row → nodeAt() null
+                    $tui->handleInput("\x1b[<2;3;2M"); // tree header row → nodeAt() null
                 },
                 250 => function ($tui): void {
                     $this->assertFalse($tui->getById('context-menu')->isOpen(), 'the tree header targets no node');
@@ -3733,7 +3746,7 @@ final class IdeEdgeCasesTest extends TestCase
             [
                 150 => function ($tui): void {
                     $tui->tick();
-                    $tui->handleInput("\x1b[<0;3;3M"); // open B (tree row 2)
+                    $tui->handleInput("\x1b[<0;3;4M"); // open B (tree row 2)
                 },
                 300 => function ($tui): void {
                     $tui->tick();
@@ -3764,11 +3777,11 @@ final class IdeEdgeCasesTest extends TestCase
             [
                 120 => function ($tui): void {
                     $tui->tick();
-                    $tui->handleInput("\x1b[<0;3;3M"); // open B (row 2)
+                    $tui->handleInput("\x1b[<0;3;4M"); // open B (row 2)
                 },
                 200 => function ($tui): void {
                     $tui->tick();
-                    $tui->handleInput("\x1b[<0;3;4M"); // open C (row 3)
+                    $tui->handleInput("\x1b[<0;3;5M"); // open C (row 3)
                 },
                 300 => function ($tui): void {
                     // Make C (the active buffer) dirty, then Close Others from A's tab.
@@ -3816,7 +3829,7 @@ final class IdeEdgeCasesTest extends TestCase
             [
                 150 => function ($tui): void {
                     $tui->tick();
-                    $tui->handleInput("\x1b[<0;3;3M"); // open B (row 2)
+                    $tui->handleInput("\x1b[<0;3;4M"); // open B (row 2)
                 },
                 300 => function ($tui): void {
                     $tui->tick();
@@ -3848,7 +3861,7 @@ final class IdeEdgeCasesTest extends TestCase
             [
                 200 => function ($tui): void {
                     $tui->tick();
-                    $tui->handleInput("\x1b[<2;3;2M"); // right-click src/ (a directory)
+                    $tui->handleInput("\x1b[<2;3;3M"); // right-click src/ (a directory)
                 },
                 300 => function ($tui): void {
                     $this->assertTrue($tui->getById('context-menu')->isOpen());
@@ -3859,7 +3872,7 @@ final class IdeEdgeCasesTest extends TestCase
                     $tui->handleInput("\r"); // submit
                 },
                 460 => function ($tui): void {
-                    $tui->handleInput("\x1b[<2;3;2M"); // right-click src/ again
+                    $tui->handleInput("\x1b[<2;3;3M"); // right-click src/ again
                 },
                 540 => function ($tui): void {
                     $tui->handleInput("\x1b[B"); // down → New Folder
@@ -3888,7 +3901,7 @@ final class IdeEdgeCasesTest extends TestCase
             [
                 200 => function ($tui): void {
                     $tui->tick();
-                    $tui->handleInput("\x1b[<2;3;2M"); // right-click src/
+                    $tui->handleInput("\x1b[<2;3;3M"); // right-click src/
                 },
                 300 => function ($tui): void {
                     $tui->handleInput("\r"); // New File
@@ -3897,7 +3910,7 @@ final class IdeEdgeCasesTest extends TestCase
                     $tui->handleInput("\r"); // submit an empty name → no-op
                 },
                 460 => function ($tui): void {
-                    $tui->handleInput("\x1b[<2;3;2M"); // right-click src/
+                    $tui->handleInput("\x1b[<2;3;3M"); // right-click src/
                 },
                 540 => function ($tui): void {
                     $tui->handleInput("\x1b[B"); // New Folder
@@ -3925,7 +3938,7 @@ final class IdeEdgeCasesTest extends TestCase
             [
                 150 => function ($tui): void {
                     $tui->tick();
-                    $tui->handleInput("\x1b[<2;3;2M"); // right-click A.php
+                    $tui->handleInput("\x1b[<2;3;3M"); // right-click A.php
                 },
                 230 => function ($tui): void {
                     $tui->handleInput("\x1b[B"); // New Folder
@@ -3941,7 +3954,7 @@ final class IdeEdgeCasesTest extends TestCase
                 },
                 380 => function ($tui) use ($project): void {
                     $this->assertFileExists($project->path('A.php'), 'renaming to the same name changed nothing');
-                    $tui->handleInput("\x1b[<2;3;2M"); // right-click A.php again
+                    $tui->handleInput("\x1b[<2;3;3M"); // right-click A.php again
                 },
                 460 => function ($tui): void {
                     foreach (range(1, 4) as $_) {
@@ -4006,7 +4019,7 @@ final class IdeEdgeCasesTest extends TestCase
                     $tui->tick();
                     // Right-click near the tree's right edge: the panel spills past
                     // the tree into the editor pane, exercising the per-pane clip.
-                    $tui->handleInput("\x1b[<2;28;2M");
+                    $tui->handleInput("\x1b[<2;28;3M");
                     $tui->tick();
                 },
                 300 => function ($tui): void {
@@ -4030,7 +4043,7 @@ final class IdeEdgeCasesTest extends TestCase
             [
                 200 => function ($tui): void {
                     $tui->tick();
-                    $tui->handleInput("\x1b[<2;3;2M"); // right-click A.php (row 1)
+                    $tui->handleInput("\x1b[<2;3;3M"); // right-click A.php (row 1)
                 },
                 300 => function ($tui): void {
                     // Rename is the 4th selectable item after New File/New Folder/Copy×2.
@@ -4066,7 +4079,7 @@ final class IdeEdgeCasesTest extends TestCase
             [
                 200 => function ($tui): void {
                     $tui->tick();
-                    $tui->handleInput("\x1b[<2;3;2M"); // right-click A.php
+                    $tui->handleInput("\x1b[<2;3;3M"); // right-click A.php
                 },
                 300 => function ($tui): void {
                     $tui->handleInput("\x1b[B"); // New Folder
@@ -4074,7 +4087,7 @@ final class IdeEdgeCasesTest extends TestCase
                     $tui->handleInput("\r");
                 },
                 400 => function ($tui): void {
-                    $tui->handleInput("\x1b[<2;3;2M"); // right-click A.php again
+                    $tui->handleInput("\x1b[<2;3;3M"); // right-click A.php again
                 },
                 500 => function ($tui): void {
                     $tui->handleInput("\x1b[B"); // New Folder
@@ -4105,11 +4118,11 @@ final class IdeEdgeCasesTest extends TestCase
             [
                 150 => function ($tui): void {
                     $tui->tick();
-                    $tui->handleInput("\x1b[<0;3;3M"); // open B (row 2) as well
+                    $tui->handleInput("\x1b[<0;3;4M"); // open B (row 2) as well
                 },
                 250 => function ($tui): void {
                     $tui->tick();
-                    $tui->handleInput("\x1b[<2;3;2M"); // right-click A.php (row 1)
+                    $tui->handleInput("\x1b[<2;3;3M"); // right-click A.php (row 1)
                 },
                 350 => function ($tui): void {
                     // Delete is the 6th selectable item.
@@ -4143,7 +4156,7 @@ final class IdeEdgeCasesTest extends TestCase
             [
                 200 => function ($tui): void {
                     $tui->tick();
-                    $tui->handleInput("\x1b[<2;3;2M"); // right-click A.php
+                    $tui->handleInput("\x1b[<2;3;3M"); // right-click A.php
                 },
                 300 => function ($tui): void {
                     foreach (range(1, 5) as $_) {
@@ -4173,7 +4186,7 @@ final class IdeEdgeCasesTest extends TestCase
             [
                 200 => function ($tui): void {
                     $tui->tick();
-                    $tui->handleInput("\x1b[<2;3;2M");
+                    $tui->handleInput("\x1b[<2;3;3M");
                 },
                 300 => function ($tui): void {
                     foreach (range(1, 5) as $_) {
@@ -4207,22 +4220,22 @@ final class IdeEdgeCasesTest extends TestCase
                 200 => function ($tui): void {
                     $tui->tick();
                     $tui->getById('editor')->showDocument('', new \Porta\Editor\Document(''));
-                    $tui->handleInput("\x1b[<2;3;2M"); // right-click A.php (row 1)
+                    $tui->handleInput("\x1b[<2;3;3M"); // right-click A.php (row 1)
                 },
                 300 => function ($tui): void {
                     // The menu anchors at the click (SGR row 2), so item i sits at
                     // SGR row 2+i. "Open" is item 9 for a file node → SGR row 11.
-                    $tui->handleInput("\x1b[<0;4;11M"); // left-click "Open"
+                    $tui->handleInput("\x1b[<0;4;12M"); // left-click "Open"
                 },
                 400 => function ($tui) use ($project): void {
                     $this->assertStringEndsWith('A.php', (string) $tui->getById('editor')->getFilePath(), 'Open reopened the file');
                     // A file created on disk appears in the tree only after Refresh.
                     $project->write('late.php', "<?php\n");
-                    $tui->handleInput("\x1b[<2;3;2M"); // right-click A.php again
+                    $tui->handleInput("\x1b[<2;3;3M"); // right-click A.php again
                 },
                 500 => function ($tui): void {
                     // "Refresh" is the last item (10) → SGR row 12.
-                    $tui->handleInput("\x1b[<0;4;12M");
+                    $tui->handleInput("\x1b[<0;4;13M");
                     $tui->tick();
                 },
                 600 => function ($tui, $terminal): void {
@@ -4285,7 +4298,7 @@ final class IdeEdgeCasesTest extends TestCase
             [
                 200 => function ($tui): void {
                     $tui->tick();
-                    $tui->handleInput("\x1b[<0;3;3M"); // open B (tree row 2)
+                    $tui->handleInput("\x1b[<0;3;4M"); // open B (tree row 2)
                 },
                 300 => function ($tui): void {
                     $tui->tick();
@@ -4315,11 +4328,11 @@ final class IdeEdgeCasesTest extends TestCase
             [
                 150 => function ($tui): void {
                     $tui->tick();
-                    $tui->handleInput("\x1b[<0;3;3M"); // open B (row 2)
+                    $tui->handleInput("\x1b[<0;3;4M"); // open B (row 2)
                 },
                 250 => function ($tui): void {
                     $tui->tick();
-                    $tui->handleInput("\x1b[<0;3;4M"); // open C (row 3)
+                    $tui->handleInput("\x1b[<0;3;5M"); // open C (row 3)
                 },
                 350 => function ($tui): void {
                     $tui->tick();
@@ -4350,11 +4363,11 @@ final class IdeEdgeCasesTest extends TestCase
             [
                 150 => function ($tui): void {
                     $tui->tick();
-                    $tui->handleInput("\x1b[<0;3;3M"); // open B (row 2)
+                    $tui->handleInput("\x1b[<0;3;4M"); // open B (row 2)
                 },
                 250 => function ($tui): void {
                     $tui->tick();
-                    $tui->handleInput("\x1b[<0;3;4M"); // open C (row 3) → active = C
+                    $tui->handleInput("\x1b[<0;3;5M"); // open C (row 3) → active = C
                 },
                 350 => function ($tui): void {
                     $tui->tick();

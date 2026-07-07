@@ -41,8 +41,6 @@ final class GitViewControllerTest extends TestCase
     private HistoryListWidget $history;
     private GitTabsWidget $tabs;
     private MenuBarWidget $menuBar;
-    private ContainerWidget $editorPane;
-    private ContainerWidget $gitRoot;
     private ContainerWidget $gitLeft;
     private ContainerWidget $main;
     private StatusBarWidget $statusBar;
@@ -70,21 +68,16 @@ final class GitViewControllerTest extends TestCase
         $this->tabs->setId('git-tabs');
         $this->menuBar = new MenuBarWidget();
         $this->menuBar->setId('menu');
-        $this->editorPane = new ContainerWidget();
-        $this->editorPane->setId('edit-stub');
-        $editorStub = new ContainerWidget();
-        $editorStub->setId('editor-stub');
-        $this->editorPane->add($this->menuBar)->add($editorStub);
+        $editWidget = new ContainerWidget();
+        $editWidget->setId('edit-stub');
         $this->main = new ContainerWidget();
-        $this->main->add($this->editorPane);
+        $this->main->add($editWidget);
         $this->gitLeft = new ContainerWidget();
         $this->gitLeft->setId('git-left');
         $this->gitLeft->add($this->tabs)->add($this->changes)->add($this->commitBox);
         $gitArea = new ContainerWidget();
         $gitArea->setId('git-area');
         $gitArea->add($this->gitLeft)->add($this->diffView);
-        $this->gitRoot = new ContainerWidget();
-        $this->gitRoot->setId('git-root');
         $this->statusBar = new StatusBarWidget();
         $this->tui = new Tui(terminal: new VirtualTerminal(columns: 100, rows: 24), keybindings: new Keybindings([]), renderer: new Renderer(new StyleSheet()));
         $this->closed = 0;
@@ -99,12 +92,10 @@ final class GitViewControllerTest extends TestCase
             $this->history,
             $this->tabs,
             $this->main,
-            $this->gitRoot,
             $gitArea,
             $this->gitLeft,
-            $this->editorPane,
             $this->menuBar,
-            [$this->editorPane],
+            [$editWidget],
             $this->tui,
             $this->statusBar,
             onClosed: function (): void {
@@ -142,25 +133,25 @@ final class GitViewControllerTest extends TestCase
     {
         $controller = $this->controller();
 
+        $this->menuBar->setMenus([new \Porta\Ui\Menu('File', [])]);
+        $this->menuBar->open(0);
         $controller->toggle();
         $this->assertTrue($controller->isOpen());
-        $this->assertSame(['git-root'], array_map(static fn ($w) => $w->getId(), $this->main->all()));
-        $this->assertSame(['menu', 'git-area'], array_map(static fn ($w) => $w->getId(), $this->gitRoot->all()), 'the menu bar rides along above the git area');
-        $this->assertSame(['editor-stub'], array_map(static fn ($w) => $w->getId(), $this->editorPane->all()), 'the editor pane lent its menu bar out');
+        $this->assertSame(['git-area'], array_map(static fn ($w) => $w->getId(), $this->main->all()));
+        $this->assertFalse($this->menuBar->isOpen(), 'an open dropdown closes across the swap');
         $controller->open(); // idempotent
         $this->assertTrue($controller->isOpen());
 
         $controller->toggle();
         $this->assertFalse($controller->isOpen());
         $this->assertSame(['edit-stub'], array_map(static fn ($w) => $w->getId(), $this->main->all()));
-        $this->assertSame(['menu', 'editor-stub'], array_map(static fn ($w) => $w->getId(), $this->editorPane->all()), 'the menu bar returns as the FIRST child');
         $this->assertSame(1, $this->closed);
         $controller->close(); // idempotent
         $this->assertSame(1, $this->closed);
 
         $controller->toggle(); // second round trip stays stable
         $controller->toggle();
-        $this->assertSame(['menu', 'editor-stub'], array_map(static fn ($w) => $w->getId(), $this->editorPane->all()));
+        $this->assertSame(['edit-stub'], array_map(static fn ($w) => $w->getId(), $this->main->all()));
     }
 
     public function testFocusTargetFollowsTheActiveTab(): void
