@@ -875,6 +875,7 @@ final class Ide
                 // LSP server log lines are currently discarded.
             },
             function (array $params): void {
+                /** @var array{uri?: string, diagnostics?: list<array{severity?: int, message?: string, range: array{start: array{line?: int, character?: int}, end: array{line?: int, character?: int}}}>} $params */
                 $this->handleDiagnostics($params);
             },
             function (array $edit): bool {
