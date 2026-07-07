@@ -373,6 +373,51 @@ final class GitViewControllerTest extends TestCase
         $this->await(fn (): bool => str_contains($this->statusFlash(), 'git apply refused'));
     }
 
+    public function testContextCycleReloadsTheDiffWithMoreContextAndWrapsAround(): void
+    {
+        $controller = $this->controller();
+        $d = escapeshellarg($this->project->dir);
+        $body = implode("\n", array_map(static fn (int $i): string => 'line '.$i, range(1, 30)))."\n";
+        $this->project->write('big.txt', $body);
+        exec("git -C {$d} add -A && git -C {$d} commit -qm big");
+        $this->project->write('big.txt', str_replace('line 15', 'line 15 EDITED', $body));
+        $controller->open();
+        $this->await(fn (): bool => str_contains($this->diffText(), '+line 15 EDITED'));
+        $this->assertStringNotContainsString('line 5 ', $this->diffText(), 'default context stops three lines out');
+
+        $this->diffView->setFocused(true);
+        $this->diffView->handleInput('c');
+        $this->await(fn (): bool => str_contains($this->diffText(), 'line 5 '), '-U10 pulls in farther context');
+        $this->assertStringContainsString('Diff context: ±10 lines', $this->statusFlash());
+        $this->assertStringNotContainsString('line 1 ', $this->diffText());
+
+        $this->diffView->handleInput('c');
+        $this->await(fn (): bool => str_contains($this->diffText(), 'line 1 '), 'whole-file context starts at line 1');
+        $this->assertStringContainsString('Diff context: whole file', $this->statusFlash());
+
+        $this->diffView->handleInput('c'); // wraps back to the default
+        $this->await(fn (): bool => !str_contains($this->diffText(), 'line 5 '));
+        $this->assertStringContainsString('Diff context: default', $this->statusFlash());
+    }
+
+    public function testContextCycleGuardsUntrackedAndMissingDiffs(): void
+    {
+        $controller = $this->controller();
+        $this->project->write('new.txt', "fresh\n");
+        $controller->open();
+        $this->await(fn (): bool => str_contains($this->diffText(), '+fresh'));
+
+        // Untracked diffs are already whole-file: flash, no reload.
+        $this->diffView->setFocused(true);
+        $this->diffView->handleInput('c');
+        $this->assertStringContainsString('Untracked files always show the whole file', $this->statusFlash());
+
+        // No shown entry at all: a silent no-op.
+        new \ReflectionProperty($controller, 'shownEntry')->setValue($controller, null);
+        new \ReflectionMethod($controller, 'cycleContext')->invoke($controller);
+        $this->assertStringContainsString('Untracked files', $this->statusFlash(), 'no new flash replaced the old one');
+    }
+
     public function testHistoryModeBrowsesCommitsAndShowsReadOnlyDiffs(): void
     {
         $controller = $this->controller();

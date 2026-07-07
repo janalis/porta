@@ -63,6 +63,36 @@ final class GitInfoStatusTest extends TestCase
         $this->assertStringNotContainsString('+one staged', $worktree);
     }
 
+    public function testDiffContextControlsTheSurroundingLines(): void
+    {
+        $body = implode("\n", array_map(static fn (int $i): string => 'line '.$i, range(1, 30)))."\n";
+        $git = $this->repo($project, committed: ['a.txt' => $body]);
+        $project->write('a.txt', str_replace('line 15', 'line 15 EDITED', $body));
+
+        $default = $ten = null;
+        $git->worktreeFileDiff($project->path('a.txt'), function (string $out) use (&$default): void {
+            $default = $out;
+        });
+        $git->worktreeFileDiff($project->path('a.txt'), function (string $out) use (&$ten): void {
+            $ten = $out;
+        }, context: 10);
+        $this->await(static fn (): bool => null !== $default && null !== $ten);
+
+        $this->assertStringContainsString(" line 12\n", $default, 'git default: three lines of context');
+        $this->assertStringNotContainsString(" line 5\n", $default);
+        $this->assertStringContainsString(" line 5\n", $ten, '-U10 reaches ten lines out');
+        $this->assertStringNotContainsString(" line 1\n", $ten);
+
+        exec('git -C '.escapeshellarg($project->dir).' add a.txt 2>/dev/null');
+        $full = null;
+        $git->cachedFileDiff($project->path('a.txt'), function (string $out) use (&$full): void {
+            $full = $out;
+        }, context: 999_999);
+        $this->await(static fn (): bool => null !== $full);
+        $this->assertStringContainsString(" line 1\n", $full, 'the huge -U shows the whole file');
+        $this->assertStringContainsString(" line 30\n", $full);
+    }
+
     public function testUntrackedFileDiffShowsEverythingAsAdditions(): void
     {
         $git = $this->repo($project, committed: ['seed.txt' => "s\n"]);

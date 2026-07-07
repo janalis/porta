@@ -34,6 +34,10 @@ final class GitViewController
     private string $shownSide = 'worktree';
     /** 'changes' | 'history' — which tab owns the left pane. */
     private string $mode = 'changes';
+    /** Diff context cycle (`c` in the diff pane): git's default → ±10 → the whole file. */
+    private const array CONTEXT_STEPS = [null, 10, 999_999];
+    private const array CONTEXT_LABELS = ['default', '±10 lines', 'whole file'];
+    private int $contextStep = 0;
 
     /**
      * @param list<AbstractWidget> $editArea the main container's normal children (tree, separator, editor pane)
@@ -74,6 +78,7 @@ final class GitViewController
             ->onExit($exit);
         $this->diffView
             ->onStageSelection(fn (array $selected) => $this->stageSelection($selected))
+            ->onCycleContext(fn () => $this->cycleContext())
             ->onFocusNext($next)
             ->onExit($exit);
         $this->commitBox
@@ -114,6 +119,7 @@ final class GitViewController
         }
         $this->tui->setFocus($this->changes);
         $this->lastStatusRaw = "\0unset";
+        $this->contextStep = 0;
         $this->refresh();
         $this->poll = EventLoop::repeat(2.0, fn () => $this->refresh(quiet: true));
         $this->tui->requestRender();
@@ -187,11 +193,29 @@ final class GitViewController
             $this->git->untrackedFileDiff($abs, $show);
         } elseif (' ' !== $entry->worktreeStatus) {
             $this->shownSide = 'worktree';
-            $this->git->worktreeFileDiff($abs, $show);
+            $this->git->worktreeFileDiff($abs, $show, self::CONTEXT_STEPS[$this->contextStep]);
         } else {
             $this->shownSide = 'cached';
-            $this->git->cachedFileDiff($abs, $show);
+            $this->git->cachedFileDiff($abs, $show, self::CONTEXT_STEPS[$this->contextStep]);
         }
+    }
+
+    /** `c` in the diff pane: reload with the next context size in the cycle. */
+    private function cycleContext(): void
+    {
+        if (null === $this->shownEntry) {
+            return;
+        }
+        if ('untracked' === $this->shownSide) {
+            $this->statusBar->flash('Untracked files always show the whole file');
+            $this->tui->requestRender();
+
+            return;
+        }
+        $this->contextStep = ($this->contextStep + 1) % \count(self::CONTEXT_STEPS);
+        $this->statusBar->flash('Diff context: '.self::CONTEXT_LABELS[$this->contextStep]);
+        $this->loadDiff($this->shownEntry);
+        $this->tui->requestRender();
     }
 
     /**

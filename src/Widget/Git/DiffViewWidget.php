@@ -59,6 +59,8 @@ final class DiffViewWidget extends AbstractWidget implements FocusableInterface,
     private $onExit = null;
     /** @var (callable(array<int, array<int, true>>): void)|null stage/unstage the selected lines (hunk index => line set) */
     private $onStageSelection = null;
+    /** @var (callable(): void)|null `c`: cycle the diff context (default → ±10 → whole file) */
+    private $onCycleContext = null;
 
     public function __construct()
     {
@@ -83,6 +85,14 @@ final class DiffViewWidget extends AbstractWidget implements FocusableInterface,
     public function onStageSelection(callable $callback): self
     {
         $this->onStageSelection = $callback;
+
+        return $this;
+    }
+
+    /** @param callable(): void $callback */
+    public function onCycleContext(callable $callback): self
+    {
+        $this->onCycleContext = $callback;
 
         return $this;
     }
@@ -186,6 +196,10 @@ final class DiffViewWidget extends AbstractWidget implements FocusableInterface,
             }
         } elseif ($kb->matches($data, 'stage_selection')) {
             $this->fireStageSelection();
+        } elseif ($kb->matches($data, 'cycle_context')) {
+            if (!$this->readOnly && [] !== $this->rows && null !== $this->onCycleContext) {
+                ($this->onCycleContext)();
+            }
         }
     }
 
@@ -358,6 +372,7 @@ final class DiffViewWidget extends AbstractWidget implements FocusableInterface,
             'page_down' => [Key::PAGE_DOWN],
             'range_anchor' => ['v'],
             'stage_selection' => [Key::SPACE],
+            'cycle_context' => ['c'],
             'focus_next_pane' => [Key::TAB],
             'exit_view' => [Key::ESCAPE],
         ];

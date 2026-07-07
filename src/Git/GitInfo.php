@@ -90,31 +90,33 @@ final class GitInfo
     /**
      * The staged (index vs HEAD) diff of a file, for viewing/unstaging.
      *
-     * @param callable(string): void $onDone receives the raw diff
+     * @param callable(string): void $onDone  receives the raw diff
+     * @param int|null               $context surrounding lines per hunk (null = git's default)
      */
-    public function cachedFileDiff(string $absPath, callable $onDone): void
+    public function cachedFileDiff(string $absPath, callable $onDone, ?int $context = null): void
     {
         if (!$this->available) {
             $onDone('');
 
             return;
         }
-        $this->run(['diff', '--no-color', '--cached', '--', $absPath], $onDone);
+        $this->run(['diff', '--no-color', '--cached', ...(null === $context ? [] : ['-U'.$context]), '--', $absPath], $onDone);
     }
 
     /**
      * The worktree-vs-index diff of a file (what line-staging operates on).
      *
-     * @param callable(string): void $onDone receives the raw diff
+     * @param callable(string): void $onDone  receives the raw diff
+     * @param int|null               $context surrounding lines per hunk (null = git's default)
      */
-    public function worktreeFileDiff(string $absPath, callable $onDone): void
+    public function worktreeFileDiff(string $absPath, callable $onDone, ?int $context = null): void
     {
         if (!$this->available) {
             $onDone('');
 
             return;
         }
-        $this->run(['diff', '--no-color', '--', $absPath], $onDone);
+        $this->run(['diff', '--no-color', ...(null === $context ? [] : ['-U'.$context]), '--', $absPath], $onDone);
     }
 
     /**
