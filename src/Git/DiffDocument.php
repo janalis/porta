@@ -23,40 +23,34 @@ final readonly class DiffDocument
     public static function parse(string $raw): self
     {
         $headerLines = [];
-        $hunks = [];
+        /** @var list<array{old: int, oldCount: int, new: int, newCount: int, heading: string, lines: list<DiffLine>, oldNo: int, newNo: int}> $pending */
+        $pending = [];
 
         $lines = explode("\n", $raw);
         if ('' === end($lines)) {
             array_pop($lines); // trailing newline
         }
 
-        $current = null; // array{old: int, oldCount: int, new: int, newCount: int, heading: string, lines: list<DiffLine>, oldNo: int, newNo: int}
-        $flush = static function () use (&$current, &$hunks): void {
-            if (null !== $current) {
-                $hunks[] = new DiffHunk($current['old'], $current['oldCount'], $current['new'], $current['newCount'], $current['heading'], $current['lines']);
-                $current = null;
-            }
-        };
-
         foreach ($lines as $line) {
             $m = [];
             if (preg_match('/^@@ -(\d+)(?:,(\d+))? \+(\d+)(?:,(\d+))? @@ ?(.*)$/', $line, $m)) {
-                $flush();
-                $current = [
-                    'old' => (int) $m[1],
+                $old = (int) $m[1];
+                $new = (int) $m[3];
+                $pending[] = [
+                    'old' => $old,
                     'oldCount' => '' === ($m[2] ?? '') ? 1 : (int) $m[2],
-                    'new' => (int) $m[3],
+                    'new' => $new,
                     'newCount' => '' === ($m[4] ?? '') ? 1 : (int) $m[4],
                     'heading' => $m[5],
                     'lines' => [],
+                    'oldNo' => $old,
+                    'newNo' => $new,
                 ];
-                $current['oldNo'] = $current['old'];
-                $current['newNo'] = $current['new'];
 
                 continue;
             }
 
-            if (null === $current) {
+            if ([] === $pending) {
                 if ('' !== $line) {
                     $headerLines[] = $line;
                 }
@@ -64,24 +58,29 @@ final readonly class DiffDocument
                 continue;
             }
 
+            $last = array_key_last($pending);
             $origin = $line[0] ?? ' ';
             $text = substr($line, 1);
             switch ($origin) {
                 case '+':
-                    $current['lines'][] = new DiffLine('+', $text, null, $current['newNo']++);
+                    $pending[$last]['lines'][] = new DiffLine('+', $text, null, $pending[$last]['newNo']++);
                     break;
                 case '-':
-                    $current['lines'][] = new DiffLine('-', $text, $current['oldNo']++, null);
+                    $pending[$last]['lines'][] = new DiffLine('-', $text, $pending[$last]['oldNo']++, null);
                     break;
                 case '\\':
-                    $current['lines'][] = new DiffLine('\\', $text, null, null);
+                    $pending[$last]['lines'][] = new DiffLine('\\', $text, null, null);
                     break;
                 default:
                     // Context (including a fully empty line, which git emits as ' ').
-                    $current['lines'][] = new DiffLine(' ', $text, $current['oldNo']++, $current['newNo']++);
+                    $pending[$last]['lines'][] = new DiffLine(' ', $text, $pending[$last]['oldNo']++, $pending[$last]['newNo']++);
             }
         }
-        $flush();
+
+        $hunks = array_map(
+            static fn (array $h): DiffHunk => new DiffHunk($h['old'], $h['oldCount'], $h['new'], $h['newCount'], $h['heading'], $h['lines']),
+            $pending,
+        );
 
         return new self($headerLines, $hunks);
     }
