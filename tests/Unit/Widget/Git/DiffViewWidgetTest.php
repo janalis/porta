@@ -342,8 +342,8 @@ final class DiffViewWidgetTest extends TestCase
         $raw = $widget->render(new RenderContext(80, 12));
         $this->assertStringNotContainsString("\x1b[48;5;31m", $raw[0], 'inactive tag renders dim');
 
-        // At 80 cols the ' s:split ' tag occupies cols 70-78.
-        $widget->handleClick(0, 72);
+        // At 80 cols the tags start at col 58: ' s:split ' spans 58-66.
+        $widget->handleClick(0, 60);
         $this->assertTrue($widget->isSplit());
         $this->assertSame([true], $toggles);
         $raw = $widget->render(new RenderContext(80, 12));
@@ -398,5 +398,32 @@ final class DiffViewWidgetTest extends TestCase
         $this->assertFalse($widget->isSplit());
         $widget->setSplit(false); // idempotent
         $this->assertFalse($fired);
+    }
+
+    public function testWhitespaceTagFiresTheHookAndMirrorsTheState(): void
+    {
+        $widget = $this->widget();
+        $fired = 0;
+        $widget->onToggleWhitespace(function () use (&$fired): void {
+            ++$fired;
+        });
+        $widget->render(new RenderContext(80, 12));
+
+        // ' w:hide-ws ' spans cols 68-78 at 80 cols.
+        $widget->handleClick(0, 70);
+        $this->assertSame(1, $fired);
+
+        $widget->setFocused(true);
+        $widget->setReadOnly(true);
+        $widget->handleInput('w'); // allowed on read-only history diffs
+        $this->assertSame(2, $fired);
+
+        // The tag reflects the controller-owned state.
+        $off = $widget->render(new RenderContext(80, 12))[0];
+        $this->assertStringNotContainsString("\x1b[48;5;31m\x1b[38;5;231m w:hide-ws ", $off, 'inactive until the controller says so');
+        $widget->setWhitespaceHidden(true);
+        $widget->setWhitespaceHidden(true); // idempotent
+        $on = $widget->render(new RenderContext(80, 12))[0];
+        $this->assertStringContainsString("\x1b[48;5;31m\x1b[38;5;231m w:hide-ws ", $on, 'active tag renders selected');
     }
 }

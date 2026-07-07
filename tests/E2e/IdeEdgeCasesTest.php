@@ -3294,12 +3294,14 @@ final class IdeEdgeCasesTest extends TestCase
                 },
                 2250 => function ($tui, $terminal): void {
                     $this->assertSame('git-commit', $tui->getFocus()?->getId(), 'click focused the commit box');
-                    // The diff toolbar: the ' s:split ' tag sits at the right
-                    // edge of the diff title row (screen row 2). Clicking it
-                    // flips to side-by-side and persists the preference.
-                    $tui->handleInput("\x1b[<0;153;2M");
-                    $tui->handleInput("\x1b[<0;153;2m");
-                    $this->assertTrue($tui->getById('git-diff')->isSplit(), 'the toolbar click switched to side-by-side');
+                    // The diff toolbar tags sit at the right edge of the diff
+                    // title row (screen row 2): ' s:split ' then ' w:hide-ws '.
+                    // Clicking them flips the modes and persists the prefs.
+                    $tui->handleInput("\x1b[<0;141;2M");
+                    $tui->handleInput("\x1b[<0;141;2m");
+                    $this->assertTrue($tui->getById('git-diff')->isSplit(), 'the split tag switched to side-by-side');
+                    $tui->handleInput("\x1b[<0;151;2M");
+                    $tui->handleInput("\x1b[<0;151;2m");
                     $tui->handleInput("\x1b");
                 },
             ],
@@ -3310,6 +3312,7 @@ final class IdeEdgeCasesTest extends TestCase
         $this->assertStringContainsString('b.txt', $screen);
         $layout = json_decode((string) file_get_contents($project->path('.porta/layout.json')), true);
         $this->assertTrue($layout['gitDiffSplit'], 'the split preference persisted');
+        $this->assertTrue($layout['gitDiffHideWhitespace'], 'the whitespace preference persisted');
     }
 
     public function testGitViewHistoryTabBrowsesCommits(): void

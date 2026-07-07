@@ -49,6 +49,8 @@ final class DiffViewWidget extends AbstractWidget implements FocusableInterface,
     private array $highlighted = [];
     /** Side-by-side rendering instead of unified. */
     private bool $split = false;
+    /** Mirror of the controller's hide-whitespace state, for the toolbar tag. */
+    private bool $whitespaceHidden = false;
     /** @var list<array{name: string, start: int, end: int}> clickable toolbar tag spans from the last render */
     private array $buttonZones = [];
     private int $scroll = 0;
@@ -72,6 +74,8 @@ final class DiffViewWidget extends AbstractWidget implements FocusableInterface,
     private $onCycleContext = null;
     /** @var (callable(bool): void)|null the split/unified toggle flipped (for persistence) */
     private $onLayoutToggle = null;
+    /** @var (callable(): void)|null `w`: hide/show whitespace changes (state lives in the controller) */
+    private $onToggleWhitespace = null;
 
     public function __construct()
     {
@@ -114,6 +118,23 @@ final class DiffViewWidget extends AbstractWidget implements FocusableInterface,
         $this->onLayoutToggle = $callback;
 
         return $this;
+    }
+
+    /** @param callable(): void $callback */
+    public function onToggleWhitespace(callable $callback): self
+    {
+        $this->onToggleWhitespace = $callback;
+
+        return $this;
+    }
+
+    /** Reflect the controller's hide-whitespace state on the toolbar tag. */
+    public function setWhitespaceHidden(bool $hidden): void
+    {
+        if ($hidden !== $this->whitespaceHidden) {
+            $this->whitespaceHidden = $hidden;
+            $this->invalidate();
+        }
     }
 
     /** Apply a split/unified preference without firing the persistence hook. */
@@ -252,6 +273,10 @@ final class DiffViewWidget extends AbstractWidget implements FocusableInterface,
             }
         } elseif ($kb->matches($data, 'toggle_layout')) {
             $this->toggleLayout(); // display-only: allowed in read-only mode too
+        } elseif ($kb->matches($data, 'toggle_whitespace')) {
+            if (null !== $this->onToggleWhitespace) {
+                ($this->onToggleWhitespace)(); // allowed in read-only mode too
+            }
         }
     }
 
@@ -283,6 +308,8 @@ final class DiffViewWidget extends AbstractWidget implements FocusableInterface,
     {
         if ('split' === $name) {
             $this->toggleLayout();
+        } elseif ('whitespace' === $name && null !== $this->onToggleWhitespace) {
+            ($this->onToggleWhitespace)();
         }
     }
 
@@ -428,7 +455,10 @@ final class DiffViewWidget extends AbstractWidget implements FocusableInterface,
     private function renderToolbar(string $title, int $width): string
     {
         $this->buttonZones = [];
-        $tags = [['name' => 'split', 'label' => ' s:split ', 'on' => $this->split]];
+        $tags = [
+            ['name' => 'split', 'label' => ' s:split ', 'on' => $this->split],
+            ['name' => 'whitespace', 'label' => ' w:hide-ws ', 'on' => $this->whitespaceHidden],
+        ];
 
         $rendered = '';
         $tagsWidth = 0;
@@ -536,6 +566,7 @@ final class DiffViewWidget extends AbstractWidget implements FocusableInterface,
             'stage_selection' => [Key::SPACE],
             'cycle_context' => ['c'],
             'toggle_layout' => ['s'],
+            'toggle_whitespace' => ['w'],
             'focus_next_pane' => [Key::TAB],
             'exit_view' => [Key::ESCAPE],
         ];

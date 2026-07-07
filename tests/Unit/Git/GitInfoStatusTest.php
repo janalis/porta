@@ -93,6 +93,45 @@ final class GitInfoStatusTest extends TestCase
         $this->assertStringContainsString(" line 30\n", $full);
     }
 
+    public function testIgnoreWhitespaceDropsIndentOnlyChanges(): void
+    {
+        $git = $this->repo($project, committed: ['a.txt' => "alpha\nbravo\ncharlie\ndelta\necho\nfoxtrot\ngolf\nhotel\n"]);
+        // One indent-only change (bravo) and one real change (hotel).
+        $project->write('a.txt', "alpha\n  bravo\ncharlie\ndelta\necho\nfoxtrot\ngolf\nhotel CHANGED\n");
+
+        $plain = $ignoring = null;
+        $git->worktreeFileDiff($project->path('a.txt'), function (string $out) use (&$plain): void {
+            $plain = $out;
+        });
+        $git->worktreeFileDiff($project->path('a.txt'), function (string $out) use (&$ignoring): void {
+            $ignoring = $out;
+        }, ignoreWhitespace: true);
+        $this->await(static fn (): bool => null !== $plain && null !== $ignoring);
+
+        $this->assertStringContainsString('+  bravo', $plain, 'the plain diff shows the indent change');
+        $this->assertStringNotContainsString('bravo', $ignoring, '-w drops the whitespace-only hunk');
+        $this->assertStringContainsString('+hotel CHANGED', $ignoring, 'real changes survive -w');
+
+        exec('git -C '.escapeshellarg($project->dir).' add a.txt 2>/dev/null');
+        exec('git -C '.escapeshellarg($project->dir).' commit -qm ws 2>/dev/null');
+        exec('git -C '.escapeshellarg($project->dir).' log -1 --format=%H 2>/dev/null', $sha);
+
+        $cached = $show = null;
+        $project->write('a.txt', "alpha\n    bravo\ncharlie\ndelta\necho\nfoxtrot\ngolf\nhotel CHANGED\n");
+        exec('git -C '.escapeshellarg($project->dir).' add a.txt 2>/dev/null');
+        $git->cachedFileDiff($project->path('a.txt'), function (string $out) use (&$cached): void {
+            $cached = $out;
+        }, ignoreWhitespace: true);
+        $git->commitFileDiff($sha[0], 'a.txt', function (string $out) use (&$show): void {
+            $show = $out;
+        }, ignoreWhitespace: true);
+        $this->await(static fn (): bool => null !== $cached && null !== $show);
+
+        $this->assertStringNotContainsString('bravo', $cached, 'the cached -w diff hides the reindent');
+        $this->assertStringNotContainsString('bravo', $show, "the commit's -w patch hides its indent hunk");
+        $this->assertStringContainsString('+hotel CHANGED', $show);
+    }
+
     public function testUntrackedFileDiffShowsEverythingAsAdditions(): void
     {
         $git = $this->repo($project, committed: ['seed.txt' => "s\n"]);

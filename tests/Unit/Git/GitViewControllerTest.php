@@ -429,6 +429,62 @@ final class GitViewControllerTest extends TestCase
         $this->assertSame([[false, false]], $this->savedPrefs);
     }
 
+    public function testWhitespaceToggleHidesWhitespaceHunksAndBlocksStaging(): void
+    {
+        $controller = $this->controller();
+        // An indent-only change on 'one' plus a real change on 'two'.
+        $this->project->write('a.txt', "  one\ntwo CHANGED\n");
+        $controller->open();
+        $this->await(fn (): bool => str_contains($this->diffText(), '+  one'));
+
+        $this->diffView->setFocused(true);
+        $this->diffView->handleInput('w');
+        $this->await(fn (): bool => !str_contains($this->diffText(), '+  one'), 'the indent-only pair disappears');
+        $this->assertStringContainsString('+two CHANGED', $this->diffText(), 'real changes survive');
+        $this->assertStringContainsString('Whitespace changes hidden', $this->statusFlash());
+        $this->assertSame([[false, true]], $this->savedPrefs, 'the preference persisted');
+
+        // Staging is blocked while whitespace is hidden: a -w diff cannot
+        // produce an appliable patch.
+        $this->diffView->handleInput("\x1b[B");
+        $this->diffView->handleInput(' ');
+        $this->await(fn (): bool => str_contains($this->statusFlash(), 'Show whitespace changes to stage lines'));
+        $this->assertSame([' M a.txt'], $this->porcelain(), 'nothing was staged');
+
+        $this->diffView->handleInput('w'); // back on
+        $this->await(fn (): bool => str_contains($this->diffText(), '+  one'));
+        $this->assertStringContainsString('Whitespace changes shown', $this->statusFlash());
+    }
+
+    public function testWhitespaceOnlyChangeShowsThePlaceholder(): void
+    {
+        $controller = $this->controller();
+        $this->diffPrefs = ['split' => false, 'hideWhitespace' => true]; // persisted from a previous session
+        $this->project->write('a.txt', "  one\ntwo\n"); // reindent only
+        $controller->open();
+
+        $this->await(fn (): bool => str_contains($this->diffText(), 'No changes (whitespace hidden)'));
+    }
+
+    public function testWhitespaceToggleAppliesToHistoryDiffs(): void
+    {
+        $controller = $this->controller();
+        $this->project->write('a.txt', "  one\ntwo CHANGED\n");
+        $d = escapeshellarg($this->project->dir);
+        exec("git -C {$d} add -A && git -C {$d} commit -qm reindent");
+        $controller->open();
+        $this->await(fn (): bool => $controller->isOpen());
+
+        $this->changes->setFocused(true);
+        $this->changes->handleInput('2'); // History: the reindent commit auto-loads a.txt
+        $this->await(fn (): bool => str_contains($this->diffText(), '+  one'));
+
+        $this->diffView->setFocused(true);
+        $this->diffView->handleInput('w');
+        $this->await(fn (): bool => !str_contains($this->diffText(), '+  one'), 'the history patch reloads with -w');
+        $this->assertStringContainsString('+two CHANGED', $this->diffText());
+    }
+
     public function testContextCycleReloadsTheDiffWithMoreContextAndWrapsAround(): void
     {
         $controller = $this->controller();

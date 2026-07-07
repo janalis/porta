@@ -36,8 +36,11 @@ final class GitViewController
     private string $shownSide = 'worktree';
     /** 'changes' | 'history' — which tab owns the left pane. */
     private string $mode = 'changes';
-    /** Diff pane display toggle (persisted): drop whitespace-only changes. Wired in the next commit. */
+    /** Diff pane display toggle (persisted): drop whitespace-only changes (-w). */
     private bool $hideWhitespace = false;
+    /** The commit + path shown in the history diff, for whitespace-toggle reloads. */
+    private ?LogEntry $shownCommit = null;
+    private ?string $shownCommitPath = null;
     /** Diff context cycle (`c` in the diff pane): git's default → ±10 → the whole file. */
     private const array CONTEXT_STEPS = [null, 10, 999_999];
     private const array CONTEXT_LABELS = ['default', '±10 lines', 'whole file'];
@@ -90,6 +93,7 @@ final class GitViewController
             ->onStageSelection(fn (array $selected) => $this->stageSelection($selected))
             ->onCycleContext(fn () => $this->cycleContext())
             ->onLayoutToggle(fn (bool $split) => ($this->saveDiffPrefs)($split, $this->hideWhitespace))
+            ->onToggleWhitespace(fn () => $this->toggleWhitespace())
             ->onFocusNext($next)
             ->onExit($exit);
         $this->tabs->onSelect(fn (string $mode) => $this->switchMode($mode));
@@ -144,6 +148,7 @@ final class GitViewController
         $prefs = ($this->loadDiffPrefs)();
         $this->diffView->setSplit($prefs['split']);
         $this->hideWhitespace = $prefs['hideWhitespace'];
+        $this->diffView->setWhitespaceHidden($this->hideWhitespace);
         $this->refresh();
         $this->poll = EventLoop::repeat(2.0, fn () => $this->refresh(quiet: true));
         $this->tui->requestRender();
@@ -209,7 +214,7 @@ final class GitViewController
             $document = DiffDocument::parse($raw);
             $this->shownEntry = $entry;
             $this->shownDocument = $document->isEmpty() ? null : $document;
-            $this->diffView->setDocument($this->shownDocument, $entry->path, 'No changes');
+            $this->diffView->setDocument($this->shownDocument, $entry->path, $this->hideWhitespace ? 'No changes (whitespace hidden)' : 'No changes');
             $this->tui->requestRender();
         };
 
@@ -218,11 +223,32 @@ final class GitViewController
             $this->git->untrackedFileDiff($abs, $show);
         } elseif (' ' !== $entry->worktreeStatus) {
             $this->shownSide = 'worktree';
-            $this->git->worktreeFileDiff($abs, $show, self::CONTEXT_STEPS[$this->contextStep]);
+            $this->git->worktreeFileDiff($abs, $show, self::CONTEXT_STEPS[$this->contextStep], $this->hideWhitespace);
         } else {
             $this->shownSide = 'cached';
-            $this->git->cachedFileDiff($abs, $show, self::CONTEXT_STEPS[$this->contextStep]);
+            $this->git->cachedFileDiff($abs, $show, self::CONTEXT_STEPS[$this->contextStep], $this->hideWhitespace);
         }
+    }
+
+    /**
+     * `w` on the diff toolbar: flip whitespace hiding, persist, and reload
+     * whichever diff is shown (the changes-side file or the history patch).
+     */
+    private function toggleWhitespace(): void
+    {
+        $this->hideWhitespace = !$this->hideWhitespace;
+        $this->diffView->setWhitespaceHidden($this->hideWhitespace);
+        ($this->saveDiffPrefs)($this->diffView->isSplit(), $this->hideWhitespace);
+        $this->statusBar->flash($this->hideWhitespace ? 'Whitespace changes hidden' : 'Whitespace changes shown');
+
+        if ('history' === $this->mode) {
+            if (null !== $this->shownCommit && null !== $this->shownCommitPath) {
+                $this->loadCommitFileDiff($this->shownCommit, $this->shownCommitPath);
+            }
+        } elseif (null !== $this->shownEntry) {
+            $this->loadDiff($this->shownEntry);
+        }
+        $this->tui->requestRender();
     }
 
     /** `c` in the diff pane: reload with the next context size in the cycle. */
@@ -258,6 +284,14 @@ final class GitViewController
         }
         if ('untracked' === $this->shownSide) {
             $this->statusBar->flash('Untracked: stage the whole file with Space in the changes list');
+            $this->tui->requestRender();
+
+            return;
+        }
+        if ($this->hideWhitespace) {
+            // A -w diff's hunks omit whitespace-only lines, so a patch built
+            // from them no longer matches the preimage — git apply would balk.
+            $this->statusBar->flash('Show whitespace changes to stage lines (w)');
             $this->tui->requestRender();
 
             return;
@@ -396,14 +430,16 @@ final class GitViewController
 
     private function loadCommitFileDiff(LogEntry $commit, string $path): void
     {
+        $this->shownCommit = $commit;
+        $this->shownCommitPath = $path;
         $this->git->commitFileDiff($commit->sha, $path, function (string $raw) use ($path): void {
             if (!$this->open || 'history' !== $this->mode) {
                 return;
             }
             $document = DiffDocument::parse($raw);
-            $this->diffView->setDocument($document->isEmpty() ? null : $document, $path, 'No patch for this file');
+            $this->diffView->setDocument($document->isEmpty() ? null : $document, $path, $this->hideWhitespace ? 'No patch (whitespace hidden)' : 'No patch for this file');
             $this->tui->requestRender();
-        });
+        }, $this->hideWhitespace);
     }
 
     private function hasStagedChanges(): bool

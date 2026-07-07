@@ -90,33 +90,35 @@ final class GitInfo
     /**
      * The staged (index vs HEAD) diff of a file, for viewing/unstaging.
      *
-     * @param callable(string): void $onDone  receives the raw diff
-     * @param int|null               $context surrounding lines per hunk (null = git's default)
+     * @param callable(string): void $onDone           receives the raw diff
+     * @param int|null               $context          surrounding lines per hunk (null = git's default)
+     * @param bool                   $ignoreWhitespace drop whitespace-only changes (-w)
      */
-    public function cachedFileDiff(string $absPath, callable $onDone, ?int $context = null): void
+    public function cachedFileDiff(string $absPath, callable $onDone, ?int $context = null, bool $ignoreWhitespace = false): void
     {
         if (!$this->available) {
             $onDone('');
 
             return;
         }
-        $this->run(['diff', '--no-color', '--cached', ...(null === $context ? [] : ['-U'.$context]), '--', $absPath], $onDone);
+        $this->run(['diff', '--no-color', '--cached', ...(null === $context ? [] : ['-U'.$context]), ...($ignoreWhitespace ? ['-w'] : []), '--', $absPath], $onDone);
     }
 
     /**
      * The worktree-vs-index diff of a file (what line-staging operates on).
      *
-     * @param callable(string): void $onDone  receives the raw diff
-     * @param int|null               $context surrounding lines per hunk (null = git's default)
+     * @param callable(string): void $onDone           receives the raw diff
+     * @param int|null               $context          surrounding lines per hunk (null = git's default)
+     * @param bool                   $ignoreWhitespace drop whitespace-only changes (-w)
      */
-    public function worktreeFileDiff(string $absPath, callable $onDone, ?int $context = null): void
+    public function worktreeFileDiff(string $absPath, callable $onDone, ?int $context = null, bool $ignoreWhitespace = false): void
     {
         if (!$this->available) {
             $onDone('');
 
             return;
         }
-        $this->run(['diff', '--no-color', ...(null === $context ? [] : ['-U'.$context]), '--', $absPath], $onDone);
+        $this->run(['diff', '--no-color', ...(null === $context ? [] : ['-U'.$context]), ...($ignoreWhitespace ? ['-w'] : []), '--', $absPath], $onDone);
     }
 
     /**
@@ -285,16 +287,17 @@ final class GitInfo
     /**
      * One file's patch within a commit, for the read-only history diff.
      *
-     * @param callable(string): void $onDone receives the raw diff
+     * @param callable(string): void $onDone           receives the raw diff
+     * @param bool                   $ignoreWhitespace drop whitespace-only changes (-w)
      */
-    public function commitFileDiff(string $sha, string $relPath, callable $onDone): void
+    public function commitFileDiff(string $sha, string $relPath, callable $onDone, bool $ignoreWhitespace = false): void
     {
         if (!$this->available) {
             $onDone('');
 
             return;
         }
-        $this->run(['show', '--no-color', '--format=', $sha, '--', $relPath], $onDone);
+        $this->run(['show', '--no-color', '--format=', ...($ignoreWhitespace ? ['-w'] : []), $sha, '--', $relPath], $onDone);
     }
 
     /**
