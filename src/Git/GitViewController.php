@@ -7,6 +7,7 @@ namespace Porta\Git;
 use Porta\Widget\Git\ChangesListWidget;
 use Porta\Widget\Git\CommitBoxWidget;
 use Porta\Widget\Git\DiffViewWidget;
+use Porta\Widget\Git\HistoryListWidget;
 use Porta\Widget\StatusBarWidget;
 use Revolt\EventLoop;
 use Symfony\Component\Tui\Tui;
@@ -31,6 +32,8 @@ final class GitViewController
     private ?ChangeEntry $shownEntry = null;
     private ?DiffDocument $shownDocument = null;
     private string $shownSide = 'worktree';
+    /** 'changes' | 'history' — which tab owns the left pane. */
+    private string $mode = 'changes';
 
     /**
      * @param list<AbstractWidget> $editArea the main container's normal children (tree, separator, editor pane)
@@ -43,8 +46,10 @@ final class GitViewController
         private readonly ChangesListWidget $changes,
         private readonly DiffViewWidget $diffView,
         private readonly CommitBoxWidget $commitBox,
+        private readonly HistoryListWidget $history,
         private readonly ContainerWidget $main,
         private readonly ContainerWidget $gitArea,
+        private readonly ContainerWidget $gitLeft,
         private readonly array $editArea,
         private readonly Tui $tui,
         private readonly StatusBarWidget $statusBar,
@@ -58,6 +63,13 @@ final class GitViewController
             ->onSelect(fn (ChangeEntry $entry) => $this->loadDiff($entry))
             ->onToggleStage(fn (ChangeEntry $entry) => $this->toggleStage($entry))
             ->onDiscard(fn (ChangeEntry $entry) => $this->discard($entry))
+            ->onShowHistory(fn () => $this->switchMode('history'))
+            ->onFocusNext($next)
+            ->onExit($exit);
+        $this->history
+            ->onSelectCommit(fn (LogEntry $commit) => $this->loadCommitFiles($commit))
+            ->onSelectFile(fn (LogEntry $commit, string $path) => $this->loadCommitFileDiff($commit, $path))
+            ->onShowChanges(fn () => $this->switchMode('changes'))
             ->onFocusNext($next)
             ->onExit($exit);
         $this->diffView
@@ -96,6 +108,9 @@ final class GitViewController
         $this->open = true;
         $this->main->clear();
         $this->main->add($this->gitArea);
+        if ('changes' !== $this->mode) {
+            $this->switchMode('changes'); // the view always opens on Changes
+        }
         $this->tui->setFocus($this->changes);
         $this->lastStatusRaw = "\0unset";
         $this->refresh();
@@ -132,6 +147,9 @@ final class GitViewController
             $this->changes->setEntries($entries);
             $this->commitBox->invalidate(); // the button's enabled state may flip
 
+            if ('history' === $this->mode) {
+                return; // the diff pane belongs to the commit browser right now
+            }
             $selected = $this->changes->selectedEntry();
             if (null === $selected) {
                 $this->diffView->setDocument(null, null, 'Working tree clean');
@@ -257,6 +275,63 @@ final class GitViewController
         });
     }
 
+    /** Swap the left pane between the Changes and History tabs. */
+    private function switchMode(string $mode): void
+    {
+        if ($mode === $this->mode) {
+            return;
+        }
+        $this->mode = $mode;
+        $this->gitLeft->clear();
+        if ('history' === $mode) {
+            $this->gitLeft->add($this->history);
+            $this->diffView->setReadOnly(true);
+            $this->diffView->setDocument(null, null, 'Select a commit file');
+            $this->tui->setFocus($this->history);
+            $this->git->log(200, function (array $commits): void {
+                if (!$this->open || 'history' !== $this->mode) {
+                    return;
+                }
+                $this->history->setCommits($commits);
+                if (null !== ($first = $this->history->selectedCommit())) {
+                    $this->loadCommitFiles($first);
+                }
+                $this->tui->requestRender();
+            });
+        } else {
+            $this->gitLeft->add($this->changes);
+            $this->gitLeft->add($this->commitBox);
+            $this->diffView->setReadOnly(false);
+            $this->tui->setFocus($this->changes);
+            $this->refresh();
+        }
+        $this->tui->requestRender();
+    }
+
+    private function loadCommitFiles(LogEntry $commit): void
+    {
+        $this->git->commitFiles($commit->sha, function (array $files) use ($commit): void {
+            if (!$this->open || 'history' !== $this->mode || $commit->sha !== $this->history->selectedCommit()?->sha) {
+                return;
+            }
+            $this->history->setFiles($files);
+            $this->diffView->setDocument(null, null, 'Select a file (Enter switches lists)');
+            $this->tui->requestRender();
+        });
+    }
+
+    private function loadCommitFileDiff(LogEntry $commit, string $path): void
+    {
+        $this->git->commitFileDiff($commit->sha, $path, function (string $raw) use ($path): void {
+            if (!$this->open || 'history' !== $this->mode) {
+                return;
+            }
+            $document = DiffDocument::parse($raw);
+            $this->diffView->setDocument($document->isEmpty() ? null : $document, $path, 'No patch for this file');
+            $this->tui->requestRender();
+        });
+    }
+
     private function hasStagedChanges(): bool
     {
         foreach ($this->entries as $entry) {
@@ -268,11 +343,13 @@ final class GitViewController
         return false;
     }
 
-    /** Tab order: changes list → diff → commit box → changes list. */
+    /** Tab order: changes list → diff → commit box → changes list (history: list ↔ diff). */
     private function focusNext(): void
     {
         /** @var list<FocusableInterface&AbstractWidget> $order */
-        $order = [$this->changes, $this->diffView, $this->commitBox];
+        $order = 'history' === $this->mode
+            ? [$this->history, $this->diffView]
+            : [$this->changes, $this->diffView, $this->commitBox];
         $current = $this->tui->getFocus();
         $index = array_search($current, $order, true);
         $target = $order[(false === $index ? 0 : $index + 1) % \count($order)];

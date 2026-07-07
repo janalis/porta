@@ -11,6 +11,7 @@ use Porta\Tests\Support\TempProject;
 use Porta\Widget\Git\ChangesListWidget;
 use Porta\Widget\Git\CommitBoxWidget;
 use Porta\Widget\Git\DiffViewWidget;
+use Porta\Widget\Git\HistoryListWidget;
 use Porta\Widget\StatusBarWidget;
 use Revolt\EventLoop;
 use Symfony\Component\Tui\Ansi\AnsiUtils;
@@ -35,6 +36,8 @@ final class GitViewControllerTest extends TestCase
     private ChangesListWidget $changes;
     private DiffViewWidget $diffView;
     private CommitBoxWidget $commitBox;
+    private HistoryListWidget $history;
+    private ContainerWidget $gitLeft;
     private ContainerWidget $main;
     private StatusBarWidget $statusBar;
     private int $closed = 0;
@@ -55,13 +58,18 @@ final class GitViewControllerTest extends TestCase
         $this->changes = new ChangesListWidget();
         $this->diffView = new DiffViewWidget();
         $this->commitBox = new CommitBoxWidget();
+        $this->history = new HistoryListWidget();
+        $this->history->setId('git-history');
         $editWidget = new ContainerWidget();
         $editWidget->setId('edit-stub');
         $this->main = new ContainerWidget();
         $this->main->add($editWidget);
+        $this->gitLeft = new ContainerWidget();
+        $this->gitLeft->setId('git-left');
+        $this->gitLeft->add($this->changes)->add($this->commitBox);
         $gitArea = new ContainerWidget();
         $gitArea->setId('git-area');
-        $gitArea->add($this->changes)->add($this->commitBox)->add($this->diffView);
+        $gitArea->add($this->gitLeft)->add($this->diffView);
         $this->statusBar = new StatusBarWidget();
         $this->tui = new Tui(terminal: new VirtualTerminal(columns: 100, rows: 24), keybindings: new Keybindings([]), renderer: new Renderer(new StyleSheet()));
         $this->closed = 0;
@@ -73,8 +81,10 @@ final class GitViewControllerTest extends TestCase
             $this->changes,
             $this->diffView,
             $this->commitBox,
+            $this->history,
             $this->main,
             $gitArea,
+            $this->gitLeft,
             [$editWidget],
             $this->tui,
             $this->statusBar,
@@ -317,6 +327,104 @@ final class GitViewControllerTest extends TestCase
         $this->diffView->setFocused(true);
         $this->diffView->handleInput(' '); // whole first hunk, built against the OLD worktree diff
         $this->await(fn (): bool => str_contains($this->statusFlash(), 'git apply refused'));
+    }
+
+    public function testHistoryModeBrowsesCommitsAndShowsReadOnlyDiffs(): void
+    {
+        $controller = $this->controller();
+        // A second commit so the log has two entries.
+        $this->project->write('a.txt', "one\ntwo\nthree\n");
+        exec('git -C '.escapeshellarg($this->project->dir).' add -A && git -C '.escapeshellarg($this->project->dir).' commit -qm second');
+        $controller->open();
+        $this->await(fn (): bool => $controller->isOpen());
+
+        $this->changes->setFocused(true);
+        $this->changes->handleInput('2'); // switch to History
+        $this->await(fn (): bool => null !== $this->history->selectedCommit());
+        $this->assertSame(['git-history'], array_map(static fn ($w) => $w->getId(), $this->gitLeft->all()), 'the left pane swapped to the history list');
+        $this->assertSame('second', $this->history->selectedCommit()?->subject);
+        $this->assertTrue($this->diffView->isReadOnly());
+
+        // The files of the newest commit load; select the file → its patch shows.
+        $this->await(fn (): bool => str_contains($this->historyText(), 'M a.txt'));
+        $this->history->setFocused(true);
+        $this->history->handleInput("\r");     // into the file list
+        $this->history->handleInput("\x1b[B"); // fire selection... first move selects
+        $this->history->handleInput("\x1b[A");
+        $this->await(fn (): bool => str_contains($this->diffText(), '+three'), 'the commit file patch renders');
+
+        // Staged keys are inert in read-only mode.
+        $this->diffView->setFocused(true);
+        $this->diffView->handleInput(' ');
+        $this->assertSame([], $this->porcelain(), 'nothing staged from history');
+
+        // Back to Changes: left pane restored, diff editable again.
+        $this->history->setFocused(true);
+        $this->history->handleInput('1');
+        $this->await(fn (): bool => ['git-left-changes'] !== [] && \count($this->gitLeft->all()) === 2);
+        $this->assertFalse($this->diffView->isReadOnly());
+    }
+
+    public function testReopeningAfterHistoryModeLandsOnChanges(): void
+    {
+        $controller = $this->controller();
+        $controller->open();
+        $this->await(fn (): bool => $controller->isOpen());
+        $this->changes->setFocused(true);
+        $this->changes->handleInput('2');
+        $this->await(fn (): bool => 'git-history' === ($this->gitLeft->all()[0] ?? null)?->getId());
+
+        $controller->close();
+        $controller->open(); // must reset to the Changes tab
+        $this->await(fn (): bool => 2 === \count($this->gitLeft->all()));
+        $this->assertFalse($this->diffView->isReadOnly());
+
+        // History-mode focus cycle: history <-> diff only.
+        $this->changes->setFocused(true);
+        $this->changes->handleInput('2');
+        $this->await(fn (): bool => 1 === \count($this->gitLeft->all()));
+        $this->history->setFocused(true);
+        $this->history->handleInput("\t");
+        $this->assertSame($this->diffView, $this->tui->getFocus());
+        $this->diffView->setFocused(true);
+        $this->diffView->handleInput("\t");
+        $this->assertSame($this->history, $this->tui->getFocus());
+    }
+
+    public function testStaleHistoryCallbacksAreDropped(): void
+    {
+        $controller = $this->controller();
+        $controller->open();
+        $this->await(fn (): bool => $controller->isOpen());
+        $this->changes->setFocused(true);
+        $this->changes->handleInput('2');
+        new \ReflectionMethod($controller, 'switchMode')->invoke($controller, 'history'); // same mode: no-op
+        $this->await(fn (): bool => null !== $this->history->selectedCommit());
+
+        // A log request whose view closes before it resolves is dropped.
+        $controller->close();
+        $controller->open(); // back on Changes
+        $this->changes->setFocused(true);
+        $this->changes->handleInput('2'); // fires git log...
+        $controller->close();             // ...and closes before it lands
+        $this->awaitTicks(15);
+        $this->assertFalse($controller->isOpen());
+        $controller->open();
+
+        $commit = $this->history->selectedCommit();
+        // Fire the loaders, then flip back to Changes before they resolve:
+        // both callbacks must drop their results.
+        new \ReflectionMethod($controller, 'loadCommitFiles')->invoke($controller, $commit);
+        new \ReflectionMethod($controller, 'loadCommitFileDiff')->invoke($controller, $commit, 'a.txt');
+        $this->history->setFocused(true);
+        $this->history->handleInput('1');
+        $this->awaitTicks(15);
+        $this->assertFalse($this->diffView->isReadOnly(), 'back on Changes, untouched by stale history data');
+    }
+
+    private function historyText(): string
+    {
+        return implode("\n", array_map(\Symfony\Component\Tui\Ansi\AnsiUtils::stripAnsiCodes(...), $this->history->render(new RenderContext(44, 20))));
     }
 
     public function testFocusCycleWalksTheThreePanes(): void

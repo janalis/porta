@@ -130,9 +130,18 @@ final class GitInfoStatusTest extends TestCase
         $git->applyCached("diff --git a/x b/x\n", function (bool $ok) use (&$calls): void {
             $calls[] = ['apply', $ok];
         });
+        $git->log(10, function (array $commits) use (&$calls): void {
+            $calls[] = ['log', $commits];
+        });
+        $git->commitFiles('deadbeef', function (array $files) use (&$calls): void {
+            $calls[] = ['files', $files];
+        });
+        $git->commitFileDiff('deadbeef', 'a.txt', function (string $raw) use (&$calls): void {
+            $calls[] = ['show', $raw];
+        });
 
         $this->assertSame(
-            [['status', [], ''], ['cached', ''], ['worktree', ''], ['untracked', ''], ['unstage', false], ['discard', false], ['apply', false]],
+            [['status', [], ''], ['cached', ''], ['worktree', ''], ['untracked', ''], ['unstage', false], ['discard', false], ['apply', false], ['log', []], ['files', []], ['show', '']],
             $calls,
             'all resolve synchronously with empty/false results',
         );

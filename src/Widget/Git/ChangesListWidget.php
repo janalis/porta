@@ -55,6 +55,8 @@ final class ChangesListWidget extends AbstractWidget implements FocusableInterfa
     private $onFocusNext = null;
     /** @var (callable(): void)|null Esc: leave the git view */
     private $onExit = null;
+    /** @var (callable(): void)|null `2`: switch to the History tab */
+    private $onShowHistory = null;
 
     public function __construct(
         private readonly int $width = 44,
@@ -93,6 +95,13 @@ final class ChangesListWidget extends AbstractWidget implements FocusableInterfa
     public function onExit(callable $callback): self
     {
         $this->onExit = $callback;
+
+        return $this;
+    }
+
+    public function onShowHistory(callable $callback): self
+    {
+        $this->onShowHistory = $callback;
 
         return $this;
     }
@@ -171,6 +180,10 @@ final class ChangesListWidget extends AbstractWidget implements FocusableInterfa
             if (null !== ($entry = $this->selectedEntry()) && null !== $this->onToggleStage) {
                 ($this->onToggleStage)($entry);
             }
+        } elseif ($kb->matches($data, 'show_history')) {
+            if (null !== $this->onShowHistory) {
+                ($this->onShowHistory)();
+            }
         } elseif ($kb->matches($data, 'discard')) {
             if (null !== $this->selectedEntry()) {
                 $this->confirmDiscard = $this->list->selected();
@@ -233,7 +246,7 @@ final class ChangesListWidget extends AbstractWidget implements FocusableInterfa
         $this->lastRows = $rows;
 
         $count = \count($this->entries);
-        $title = \sprintf(' %d changed file%s', $count, 1 === $count ? '' : 's');
+        $title = \sprintf(' %d changed file%s', $count, 1 === $count ? '' : 's').'  ·  2: History';
         $lines = ["\x1b[48;5;237m\x1b[1m".AnsiUtils::truncateToWidth($title, $width, '…', pad: true)."\x1b[0m"];
 
         $scroll = $this->list->follow($rows - 1);
@@ -288,6 +301,7 @@ final class ChangesListWidget extends AbstractWidget implements FocusableInterfa
             'page_down' => [Key::PAGE_DOWN],
             'toggle_stage' => [Key::SPACE],
             'discard' => ['d', Key::DELETE],
+            'show_history' => ['2'],
             'focus_next_pane' => [Key::TAB],
             'exit_view' => [Key::ESCAPE],
         ];

@@ -17,6 +17,7 @@ use Porta\Widget\FileTreeWidget;
 use Porta\Widget\Git\ChangesListWidget;
 use Porta\Widget\Git\CommitBoxWidget;
 use Porta\Widget\Git\DiffViewWidget;
+use Porta\Widget\Git\HistoryListWidget;
 use Porta\Widget\GoToFileWidget;
 use Porta\Widget\MenuBarWidget;
 use Porta\Widget\ResultsPanelWidget;
@@ -73,6 +74,7 @@ final class MouseRouter
         private readonly ChangesListWidget $gitChanges,
         private readonly DiffViewWidget $gitDiff,
         private readonly CommitBoxWidget $gitCommitBox,
+        private readonly HistoryListWidget $gitHistory,
         private readonly \Closure $gitViewOpen,
     ) {}
 
@@ -167,6 +169,11 @@ final class MouseRouter
             $key = $mouse->wheelDelta < 0 ? "\x1b[A" : "\x1b[B";
             for ($i = 0; $i < 3; ++$i) {
                 $this->gitChanges->handleInput($key); // list scroll follows selection
+            }
+        } elseif (null !== $this->hit->hit($this->gitHistory, $mouse->row, $mouse->col)) {
+            $key = $mouse->wheelDelta < 0 ? "\x1b[A" : "\x1b[B";
+            for ($i = 0; $i < 3; ++$i) {
+                $this->gitHistory->handleInput($key);
             }
         } else {
             return;
@@ -338,6 +345,13 @@ final class MouseRouter
         if (null !== ($rel = $this->hit->hit($this->gitChanges, $mouse->row, $mouse->col))) {
             $this->tui->setFocus($this->gitChanges);
             $this->gitChanges->handleClick($rel['row'], $rel['col']);
+            $this->tui->requestRender();
+
+            return;
+        }
+        if (null !== ($rel = $this->hit->hit($this->gitHistory, $mouse->row, $mouse->col))) {
+            $this->tui->setFocus($this->gitHistory);
+            $this->gitHistory->handleClick($rel['row']);
             $this->tui->requestRender();
 
             return;

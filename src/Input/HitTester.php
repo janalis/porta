@@ -20,9 +20,19 @@ final class HitTester
         private readonly Renderer $renderer,
     ) {}
 
-    /** The widget's rect in the last render, or null when it produced no rows. */
+    /**
+     * The widget's rect in the last render, or null when it produced no rows
+     * — or when the widget is detached: the renderer keeps last-frame rects
+     * for widgets that were since swapped out of the tree (git view tabs, the
+     * main-area swap), and a stale rect must never route events to an
+     * invisible widget.
+     */
     public function rect(AbstractWidget $widget): ?WidgetRect
     {
+        if (null === $widget->getContext()) {
+            return null;
+        }
+
         return $this->renderer->getWidgetRect($widget);
     }
 
@@ -34,7 +44,7 @@ final class HitTester
      */
     public function hit(AbstractWidget $widget, int $row, int $col): ?array
     {
-        $rect = $this->renderer->getWidgetRect($widget);
+        $rect = $this->rect($widget);
         if (null === $rect || !$rect->contains($row, $col)) {
             return null;
         }

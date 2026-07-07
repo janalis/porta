@@ -211,6 +211,51 @@ final class GitInfo
     }
 
     /**
+     * The most recent commits, for the history tab (capped; no paging).
+     *
+     * @param callable(list<LogEntry>): void $onDone
+     */
+    public function log(int $limit, callable $onDone): void
+    {
+        if (!$this->available) {
+            $onDone([]);
+
+            return;
+        }
+        $this->run(['log', '-z', '-n', (string) $limit, '--format=%H%x1f%h%x1f%an%x1f%at%x1f%s'], static fn (string $out) => $onDone(LogParser::parseLog($out)));
+    }
+
+    /**
+     * The files a commit touched, with their status letters.
+     *
+     * @param callable(list<array{status: string, path: string}>): void $onDone
+     */
+    public function commitFiles(string $sha, callable $onDone): void
+    {
+        if (!$this->available) {
+            $onDone([]);
+
+            return;
+        }
+        $this->run(['show', '-z', '--name-status', '--format=', $sha], static fn (string $out) => $onDone(LogParser::parseNameStatus($out)));
+    }
+
+    /**
+     * One file's patch within a commit, for the read-only history diff.
+     *
+     * @param callable(string): void $onDone receives the raw diff
+     */
+    public function commitFileDiff(string $sha, string $relPath, callable $onDone): void
+    {
+        if (!$this->available) {
+            $onDone('');
+
+            return;
+        }
+        $this->run(['show', '--no-color', '--format=', $sha, '--', $relPath], $onDone);
+    }
+
+    /**
      * Blame a single line (1-based externally, 0-based $line here).
      *
      * @param callable(array{sha: string, author: string, summary: string}|null): void $onDone

@@ -3206,6 +3206,56 @@ final class IdeEdgeCasesTest extends TestCase
         $this->assertStringContainsString('b.txt', AnsiUtils::stripAnsiCodes($terminal->getOutput()));
     }
 
+    public function testGitViewHistoryTabBrowsesCommits(): void
+    {
+        if (!$this->gitAvailable()) {
+            $this->markTestSkipped('git not available');
+        }
+        putenv('PATH='.\dirname((string) $this->whichGit()));
+        $project = new TempProject(['a.txt' => "one\n"]);
+        $dir = escapeshellarg($project->dir);
+        exec("git -C {$dir} init -q && git -C {$dir} config user.email t@t && git -C {$dir} config user.name t && git -C {$dir} add -A && git -C {$dir} commit -qm 'first commit'");
+        $project->write('a.txt', "one\nmore\n");
+        exec("git -C {$dir} add -A && git -C {$dir} commit -qm 'second commit'");
+
+        $terminal = $this->runIde(
+            $project,
+            $project->path('a.txt'),
+            [
+                300 => static function ($tui): void {
+                    $tui->handleInput("\x1b\x04"); // open the git view
+                },
+                600 => static function ($tui): void {
+                    $tui->tick();
+                    $tui->handleInput('2'); // History tab
+                },
+                1000 => function ($tui, $terminal): void {
+                    $screen = AnsiUtils::stripAnsiCodes($terminal->getOutput());
+                    $this->assertStringContainsString('History (2)', $screen);
+                    $this->assertStringContainsString('second commit', $screen);
+                    $this->assertStringContainsString('M a.txt', $screen, 'the newest commit file list loads');
+                    // Mouse: wheel over the history list, click the first commit row.
+                    $tui->handleInput("\x1b[<65;10;3M");
+                    $tui->handleInput("\x1b[<0;10;2M");
+                    $tui->handleInput("\x1b[<0;10;2m");
+                },
+                1200 => static function ($tui): void {
+                    // The clicked commit's files have settled; open its patch.
+                    $tui->handleInput("\r");     // into the files list
+                    $tui->handleInput("\x1b[B"); // wiggle selection to fire the file load
+                    $tui->handleInput("\x1b[A");
+                },
+                1500 => function ($tui, $terminal): void {
+                    $this->assertStringContainsString('+more', AnsiUtils::stripAnsiCodes($terminal->getOutput()), 'the commit patch renders read-only');
+                    $tui->handleInput('1'); // back to Changes
+                },
+            ],
+            1.9,
+        );
+
+        $this->assertStringContainsString('Working tree clean', AnsiUtils::stripAnsiCodes($terminal->getOutput()), 'the Changes tab restored');
+    }
+
     private function gitAvailable(): bool
     {
         return null !== $this->whichGit();

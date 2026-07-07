@@ -56,6 +56,7 @@ use Porta\Widget\FindBarWidget;
 use Porta\Widget\Git\ChangesListWidget;
 use Porta\Widget\Git\CommitBoxWidget;
 use Porta\Widget\Git\DiffViewWidget;
+use Porta\Widget\Git\HistoryListWidget;
 use Porta\Widget\GoToFileWidget;
 use Porta\Widget\MenuBarWidget;
 use Porta\Widget\ResultsPanelWidget;
@@ -130,6 +131,7 @@ final class Ide
     private ChangesListWidget $gitChanges;
     private DiffViewWidget $gitDiff;
     private CommitBoxWidget $gitCommitBox;
+    private HistoryListWidget $gitHistory;
     private SettingsController $settings;
     private BufferService $bufferService;
     private MouseRouter $mouseRouter;
@@ -264,6 +266,8 @@ final class Ide
         $this->gitDiff->setId('git-diff')->setStyle(new Style(flex: 1));
         $this->gitCommitBox = new CommitBoxWidget();
         $this->gitCommitBox->setId('git-commit');
+        $this->gitHistory = new HistoryListWidget();
+        $this->gitHistory->setId('git-history');
         $gitLeft = new ContainerWidget();
         $gitLeft->setId('git-left');
         $gitLeft->setStyle(new Style(flex: 0));
@@ -282,8 +286,10 @@ final class Ide
             $this->gitChanges,
             $this->gitDiff,
             $this->gitCommitBox,
+            $this->gitHistory,
             $this->main,
             $gitArea,
+            $gitLeft,
             [$this->tree, $this->separator, $editorPane],
             $this->tui,
             $this->statusBar,
@@ -375,6 +381,7 @@ final class Ide
             $this->gitChanges,
             $this->gitDiff,
             $this->gitCommitBox,
+            $this->gitHistory,
             fn (): bool => $this->gitView->isOpen(),
         );
 
