@@ -86,27 +86,156 @@ final class DiffViewWidgetTest extends TestCase
         $this->assertCount(5, $lines, 'pads to the full height');
     }
 
-    public function testScrollingClampsAndAnnotatesTheHeader(): void
+    public function testCursorMovementScrollFollowsAndClamps(): void
     {
         $widget = $this->widget();
         $widget->setFocused(true);
         $this->plainLines($widget, 80, 4); // a first frame teaches the widget its viewport height
 
-        $widget->handleInput("\x1b[B"); // down
+        // Three rows visible; moving the cursor past the window scrolls it.
+        $widget->handleInput("\x1b[B");
+        $widget->handleInput("\x1b[B");
+        $widget->handleInput("\x1b[B");
         $lines = $this->plainLines($widget, 80, 4);
         $this->assertStringContainsString('[scrolled +1]', $lines[0]);
-        $this->assertStringContainsString('$keep = 1;', $lines[1], 'first visible row moved');
 
-        $widget->handleInput("\x1b[6~"); // page down clamps at the end
+        $widget->handleInput("\x1b[6~"); // page down clamps at the last row
+        $widget->handleInput("\x1b[6~");
         $widget->handleInput("\x1b[6~");
         $this->assertStringContainsString('tail!', implode("\n", $this->plainLines($widget, 80, 4)));
 
-        $widget->handleInput("\x1b[5~"); // page up ×2 (step 2) + one line up
-        $widget->handleInput("\x1b[5~");
-        $widget->handleInput("\x1b[A");
+        for ($i = 0; $i < 5; ++$i) {
+            $widget->handleInput("\x1b[5~"); // page up back past the top clamps
+        }
         $lines = $this->plainLines($widget, 80, 4);
         $this->assertStringContainsString('@@ -3,3', $lines[1], 'clamped back to the top');
         $this->assertStringNotContainsString('[scrolled', $lines[0]);
+    }
+
+    public function testSpaceOnAHunkHeaderSelectsTheWholeHunk(): void
+    {
+        $widget = $this->widget();
+        $widget->setFocused(true);
+        $captured = null;
+        $widget->onStageSelection(function (array $selected) use (&$captured): void {
+            $captured = $selected;
+        });
+
+        $widget->handleInput(' '); // cursor starts on hunk 0's header
+
+        $this->assertSame([0 => [0 => true, 1 => true, 2 => true, 3 => true]], $captured);
+    }
+
+    public function testSpaceOnALineSelectsJustThatLine(): void
+    {
+        $widget = $this->widget();
+        $widget->setFocused(true);
+        $captured = null;
+        $widget->onStageSelection(function (array $selected) use (&$captured): void {
+            $captured = $selected;
+        });
+
+        $widget->handleInput("\x1b[B"); // rows: header, ctx, -old, +new...
+        $widget->handleInput("\x1b[B");
+        $widget->handleInput(' '); // on '-$old = 2;' (hunk 0, line 1)
+
+        $this->assertSame([0 => [1 => true]], $captured);
+    }
+
+    public function testRangeAnchorSelectsTheSpanAndClears(): void
+    {
+        $widget = $this->widget();
+        $widget->setFocused(true);
+        $captured = null;
+        $widget->onStageSelection(function (array $selected) use (&$captured): void {
+            $captured = $selected;
+        });
+
+        $widget->handleInput("\x1b[B");
+        $widget->handleInput("\x1b[B"); // on the deletion row
+        $widget->handleInput('v');      // arm the anchor
+        $widget->handleInput("\x1b[B");
+        $widget->handleInput("\x1b[B"); // down to '+extra'
+        $widget->handleInput(' ');
+
+        $this->assertSame([0 => [1 => true, 2 => true, 3 => true]], $captured, 'the ± rows in the range');
+
+        // The anchor cleared: the next space is single-line again.
+        $widget->handleInput(' ');
+        $this->assertSame([0 => [3 => true]], $captured);
+    }
+
+    public function testCursorUpAndEmptyDocumentMovesAreSafe(): void
+    {
+        $widget = $this->widget();
+        $widget->setFocused(true);
+        $widget->handleInput("\x1b[B");
+        $widget->handleInput("\x1b[A"); // back to the top
+        $captured = null;
+        $widget->onStageSelection(function (array $selected) use (&$captured): void {
+            $captured = $selected;
+        });
+        $widget->handleInput(' ');
+        $this->assertArrayHasKey(0, (array) $captured, 'cursor is back on hunk 0');
+
+        $empty = new DiffViewWidget();
+        $empty->setDocument(null, null);
+        $empty->setFocused(true);
+        $empty->handleInput("\x1b[B"); // no rows: consumed, no crash
+        $empty->handleInput(' ');
+        $this->assertTrue(true);
+    }
+
+    public function testArmedRangeHighlightsRowsIncludingReversedAnchors(): void
+    {
+        $widget = $this->widget();
+        $widget->setFocused(true);
+        $this->plainLines($widget, 80, 12);
+        $widget->handleInput("\x1b[B");
+        $widget->handleInput("\x1b[B");
+        $widget->handleInput('v');      // anchor at row 2
+        $widget->handleInput("\x1b[A"); // cursor row 1: reversed range [1..2]
+        $raw = $widget->render(new RenderContext(80, 12));
+        $this->assertStringContainsString("\x1b[48;5;236m", $raw[3], 'the anchor row (below the cursor) is range-highlighted');
+    }
+
+    public function testReadOnlyIgnoresStagingKeys(): void
+    {
+        $widget = $this->widget();
+        $widget->setFocused(true);
+        $widget->setReadOnly(true);
+        $fired = false;
+        $widget->onStageSelection(function () use (&$fired): void {
+            $fired = true;
+        });
+
+        $widget->handleInput('v');
+        $widget->handleInput(' ');
+        $this->assertFalse($fired);
+    }
+
+    public function testSamePathReloadKeepsTheCursor(): void
+    {
+        $widget = $this->widget();
+        $widget->setFocused(true);
+        $this->plainLines($widget, 80, 12);
+        $widget->handleInput("\x1b[B");
+        $widget->handleInput("\x1b[B");
+        $widget->handleInput("\x1b[B"); // cursor row 3
+
+        // Reload the SAME path with a shorter diff: cursor clamps, not resets.
+        $widget->setDocument(DiffDocument::parse("@@ -1,1 +1,1 @@\n-a\n+b\n"), 'src/demo.php');
+        $captured = null;
+        $widget->onStageSelection(function (array $selected) use (&$captured): void {
+            $captured = $selected;
+        });
+        $widget->handleInput(' ');
+        $this->assertSame([0 => [1 => true]], $captured, 'cursor clamped to the last row (+b)');
+
+        // A DIFFERENT path resets to the top.
+        $widget->setDocument(DiffDocument::parse("@@ -1,1 +1,1 @@\n-a\n+b\n"), 'other.php');
+        $widget->handleInput(' ');
+        $this->assertSame([0 => [0 => true, 1 => true]], $captured, 'cursor back on the hunk header');
     }
 
     public function testTabAndEscapeFireTheirHooks(): void

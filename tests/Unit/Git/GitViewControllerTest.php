@@ -253,6 +253,72 @@ final class GitViewControllerTest extends TestCase
         $this->assertFalse($controller->isOpen());
     }
 
+    public function testLineStagingAndUnstagingThroughTheDiffPane(): void
+    {
+        $controller = $this->controller();
+        $this->project->write('a.txt', "one CHANGED\ntwo CHANGED\n");
+        $controller->open();
+        $this->await(fn (): bool => str_contains($this->diffText(), '+one CHANGED'));
+
+        // Stage only the 'one' pair via the diff pane: v-range over rows 1-2.
+        $this->diffView->setFocused(true);
+        $this->diffView->handleInput("\x1b[B"); // -one
+        $this->diffView->handleInput('v');
+        $this->diffView->handleInput("\x1b[B"); // -two... rows: header, -one, -two, +one, +two? git pairs deletions first
+        $this->diffView->handleInput("\x1b[B"); // include +one
+        $this->diffView->handleInput(' ');
+        $this->await(fn (): bool => [] !== array_filter($this->porcelain(), static fn (string $l): bool => str_starts_with($l, 'MM')));
+
+        // Now the file is partially staged; selecting it again shows the
+        // worktree remainder. Unstage via the cached side: make the worktree
+        // clean for the staged part by... simpler: fully stage, then unstage a line.
+        exec('git -C '.escapeshellarg($this->project->dir).' add a.txt');
+        $controller->refresh();
+        $this->await(fn (): bool => 'full' === $this->changes->selectedEntry()?->stagedState());
+        $this->await(fn (): bool => str_contains($this->diffText(), '+two CHANGED'), 'cached diff loads');
+
+        $this->diffView->handleInput(' '); // space on the hunk header: unstage the WHOLE hunk
+        $this->await(fn (): bool => 'none' === ($this->changes->selectedEntry()?->stagedState() ?? 'gone'));
+    }
+
+    public function testStageSelectionGuardsUntrackedAndEmptySelections(): void
+    {
+        $controller = $this->controller();
+        $this->project->write('new.txt', "fresh\n");
+        $controller->open();
+        $this->await(fn (): bool => str_contains($this->diffText(), '+fresh'));
+
+        $this->diffView->setFocused(true);
+        $this->diffView->handleInput("\x1b[B");
+        $this->diffView->handleInput(' '); // untracked: flash, no patch
+        $this->await(fn (): bool => str_contains($this->statusFlash(), 'stage the whole file'));
+        $this->assertSame(['?? new.txt'], $this->porcelain(), 'nothing was staged');
+
+        // Guard: no shown document at all.
+        new \ReflectionProperty($controller, 'shownDocument')->setValue($controller, null);
+        new \ReflectionMethod($controller, 'stageSelection')->invoke($controller, [0 => [0 => true]]);
+        $this->assertSame(['?? new.txt'], $this->porcelain());
+    }
+
+    public function testApplyFailureFlashes(): void
+    {
+        $controller = $this->controller();
+        $this->project->write('a.txt', "edited\ntwo\n");
+        $controller->open();
+        $this->await(fn (): bool => str_contains($this->diffText(), '+edited'));
+
+        // A context-only selection builds no patch and is a silent no-op.
+        new \ReflectionMethod($controller, 'stageSelection')->invoke($controller, [0 => [2 => true]]);
+        $this->assertStringNotContainsString('git apply', $this->statusFlash());
+
+        // Corrupt the worktree state between diff load and apply: replace the
+        // file so the crafted patch no longer matches the index.
+        exec('git -C '.escapeshellarg($this->project->dir).' add a.txt'); // index = edited
+        $this->diffView->setFocused(true);
+        $this->diffView->handleInput(' '); // whole first hunk, built against the OLD worktree diff
+        $this->await(fn (): bool => str_contains($this->statusFlash(), 'git apply refused'));
+    }
+
     public function testFocusCycleWalksTheThreePanes(): void
     {
         $controller = $this->controller();

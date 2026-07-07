@@ -27,6 +27,10 @@ final class GitViewController
     private array $entries = [];
     private string $lastStatusRaw = "\0unset";
     private ?string $poll = null;
+    /** The entry, parsed document and side ('worktree'|'cached'|'untracked') shown in the diff pane. */
+    private ?ChangeEntry $shownEntry = null;
+    private ?DiffDocument $shownDocument = null;
+    private string $shownSide = 'worktree';
 
     /**
      * @param list<AbstractWidget> $editArea the main container's normal children (tree, separator, editor pane)
@@ -57,6 +61,7 @@ final class GitViewController
             ->onFocusNext($next)
             ->onExit($exit);
         $this->diffView
+            ->onStageSelection(fn (array $selected) => $this->stageSelection($selected))
             ->onFocusNext($next)
             ->onExit($exit);
         $this->commitBox
@@ -122,7 +127,6 @@ final class GitViewController
             if (!$this->open || ($quiet && $raw === $this->lastStatusRaw)) {
                 return;
             }
-            $selectedBefore = $this->changes->selectedEntry()?->path;
             $this->lastStatusRaw = $raw;
             $this->entries = $entries;
             $this->changes->setEntries($entries);
@@ -131,7 +135,10 @@ final class GitViewController
             $selected = $this->changes->selectedEntry();
             if (null === $selected) {
                 $this->diffView->setDocument(null, null, 'Working tree clean');
-            } elseif ($selected->path !== $selectedBefore) {
+            } else {
+                // Always reload: the same path's diff side can flip between
+                // worktree and cached as staging changes; a same-path reload
+                // keeps the diff cursor in place.
                 $this->loadDiff($selected);
             }
             $this->tui->requestRender();
@@ -150,17 +157,60 @@ final class GitViewController
                 return;
             }
             $document = DiffDocument::parse($raw);
-            $this->diffView->setDocument($document->isEmpty() ? null : $document, $entry->path, 'No changes');
+            $this->shownEntry = $entry;
+            $this->shownDocument = $document->isEmpty() ? null : $document;
+            $this->diffView->setDocument($this->shownDocument, $entry->path, 'No changes');
             $this->tui->requestRender();
         };
 
         if ($entry->isUntracked()) {
+            $this->shownSide = 'untracked';
             $this->git->untrackedFileDiff($abs, $show);
         } elseif (' ' !== $entry->worktreeStatus) {
+            $this->shownSide = 'worktree';
             $this->git->worktreeFileDiff($abs, $show);
         } else {
+            $this->shownSide = 'cached';
             $this->git->cachedFileDiff($abs, $show);
         }
+    }
+
+    /**
+     * Line/hunk staging from the diff pane: a worktree diff stages the
+     * selection into the index; a cached diff unstages it (the patch is built
+     * from the inverted hunks, same recount path). Untracked files have no
+     * partial form — the whole file stages from the list.
+     *
+     * @param array<int, array<int, true>> $selected hunk index => selected line set
+     */
+    private function stageSelection(array $selected): void
+    {
+        if (null === $this->shownEntry || null === $this->shownDocument) {
+            return;
+        }
+        if ('untracked' === $this->shownSide) {
+            $this->statusBar->flash('Untracked: stage the whole file with Space in the changes list');
+            $this->tui->requestRender();
+
+            return;
+        }
+
+        $hunks = 'cached' === $this->shownSide
+            ? array_map(PatchBuilder::invertHunk(...), $this->shownDocument->hunks)
+            : $this->shownDocument->hunks;
+        $patch = PatchBuilder::build($this->shownEntry->path, $hunks, $selected);
+        if (null === $patch) {
+            return; // only context rows selected
+        }
+
+        $entry = $this->shownEntry;
+        $this->git->applyCached($patch, function (bool $ok) use ($entry): void {
+            if (!$ok) {
+                $this->statusBar->flash('git apply refused the partial patch');
+            }
+            $this->refresh();
+            $this->loadDiff($entry); // same path: the diff view keeps its cursor
+        });
     }
 
     private function toggleStage(ChangeEntry $entry): void

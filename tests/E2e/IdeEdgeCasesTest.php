@@ -3104,6 +3104,49 @@ final class IdeEdgeCasesTest extends TestCase
         $this->assertStringContainsString('Working tree clean', $screen, 'after commit+discard nothing is left');
     }
 
+    public function testGitViewStagesASingleLineFromTheDiffPane(): void
+    {
+        if (!$this->gitAvailable()) {
+            $this->markTestSkipped('git not available');
+        }
+        putenv('PATH='.\dirname((string) $this->whichGit()));
+        $project = new TempProject(['f.txt' => "alpha\nbeta\ngamma\n"]);
+        $dir = escapeshellarg($project->dir);
+        exec("git -C {$dir} init -q && git -C {$dir} config user.email t@t && git -C {$dir} config user.name t && git -C {$dir} add -A && git -C {$dir} commit -qm init");
+        $project->write('f.txt', "alpha CHANGED\nbeta\ngamma CHANGED\n");
+
+        $terminal = $this->runIde(
+            $project,
+            $project->path('f.txt'),
+            [
+                300 => static function ($tui): void {
+                    $tui->handleInput("\x1b\x04"); // open the git view
+                },
+                600 => static function ($tui): void {
+                    $tui->tick();
+                    $tui->handleInput("\t"); // changes list -> diff pane
+                    // Rows: hunk header, ctx?, -alpha, +alpha CHANGED, ... walk to
+                    // the first '+' row and stage just it.
+                    $tui->handleInput("\x1b[B");
+                    $tui->handleInput("\x1b[B");
+                    $tui->handleInput(" ");
+                },
+                1000 => function ($tui, $terminal) use ($project): void {
+                    exec('git -C '.escapeshellarg($project->dir).' diff --cached 2>/dev/null', $cached);
+                    exec('git -C '.escapeshellarg($project->dir).' diff 2>/dev/null', $work);
+                    $joinedCached = implode("\n", $cached);
+                    $this->assertStringContainsString('alpha', $joinedCached, 'the alpha change reached the index');
+                    $this->assertStringNotContainsString('gamma CHANGED', $joinedCached, 'gamma stayed out of the index');
+                    $this->assertStringContainsString('gamma CHANGED', implode("\n", $work), 'gamma remains a worktree change');
+                    $tui->handleInput("\x1b");
+                },
+            ],
+            1.4,
+        );
+
+        $this->assertStringContainsString('[~] M f.txt', AnsiUtils::stripAnsiCodes($terminal->getOutput()), 'partial staging shows the mixed checkbox');
+    }
+
     public function testGitViewMouseAndMenuGuard(): void
     {
         if (!$this->gitAvailable()) {
