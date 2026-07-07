@@ -15,11 +15,12 @@ final class LayoutStoreTest extends TestCase
         $project = new TempProject();
         $store = new LayoutStore($project->dir);
 
-        $this->assertTrue($store->save(22, 35));
+        $this->assertTrue($store->save(22, 35, 28));
 
         $loaded = $store->load();
         $this->assertSame(22, $loaded['sidebarWidthPercent']);
         $this->assertSame(35, $loaded['bottomPanelHeightPercent']);
+        $this->assertSame(28, $loaded['gitSidebarWidthPercent']);
     }
 
     public function testLoadWhenNoFileReturnsNull(): void
@@ -37,6 +38,7 @@ final class LayoutStoreTest extends TestCase
         $loaded = new LayoutStore($project->dir)->load();
         $this->assertNull($loaded['sidebarWidthPercent'], 'non-numeric value is ignored');
         $this->assertNull($loaded['bottomPanelHeightPercent'], 'absent key is null');
+        $this->assertNull($loaded['gitSidebarWidthPercent'], 'absent git key is null');
     }
 
     public function testHandEditedNumericStringIsAccepted(): void
@@ -57,6 +59,7 @@ final class LayoutStoreTest extends TestCase
         $raw = (string) file_get_contents($project->path('.porta/layout.json'));
         $this->assertStringContainsString('sidebarWidthPercent', $raw);
         $this->assertStringNotContainsString('bottomPanelHeightPercent', $raw);
+        $this->assertStringNotContainsString('gitSidebarWidthPercent', $raw);
         $this->assertSame(20, $store->load()['sidebarWidthPercent']);
         $this->assertNull($store->load()['bottomPanelHeightPercent']);
     }

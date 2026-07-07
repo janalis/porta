@@ -24,6 +24,7 @@ use Porta\History\SessionStore;
 use Porta\Input\HitTester;
 use Porta\Input\MouseEvent;
 use Porta\Input\MouseRouter;
+use Porta\Layout\GitSidebar;
 use Porta\Layout\LayoutController;
 use Porta\Lsp\CompletionController;
 use Porta\Lsp\LspMapper;
@@ -316,7 +317,7 @@ final class Ide
 
         $this->history = new LocalHistory($this->rootDir);
         $this->session = new SessionStore($this->rootDir);
-        $this->layout = new LayoutController(new LayoutStore($this->rootDir), $this->tui, $this->renderer, $this->tree, $this->terminalPanel, $this->resultsPanel);
+        $this->layout = new LayoutController(new LayoutStore($this->rootDir), $this->tui, $this->renderer, $this->tree, $this->terminalPanel, $this->resultsPanel, new GitSidebar($this->gitTabs, $this->gitChanges, $this->gitCommitBox, $this->gitHistory));
         $this->overlay = new MenuOverlayController(
             $this->renderer,
             $this->menuBar,
@@ -410,6 +411,7 @@ final class Ide
             $this->gitCommitBox,
             $this->gitHistory,
             $this->gitTabs,
+            $gitSeparator,
             fn (): bool => $this->gitView->isOpen(),
         );
 

@@ -22,6 +22,7 @@ use Porta\Widget\Git\HistoryListWidget;
 use Porta\Widget\GoToFileWidget;
 use Porta\Widget\MenuBarWidget;
 use Porta\Widget\ResultsPanelWidget;
+use Porta\Widget\SeparatorWidget;
 use Porta\Widget\TabBarWidget;
 use Porta\Widget\TerminalPanelWidget;
 use Symfony\Component\Tui\Render\WidgetRect;
@@ -77,6 +78,7 @@ final class MouseRouter
         private readonly CommitBoxWidget $gitCommitBox,
         private readonly HistoryListWidget $gitHistory,
         private readonly GitTabsWidget $gitTabs,
+        private readonly SeparatorWidget $gitSeparator,
         private readonly \Closure $gitViewOpen,
     ) {}
 
@@ -94,6 +96,10 @@ final class MouseRouter
         if ($gitViewOpen) {
             $treeRect = $tabsRect = $editorRect = null;
         }
+        // The git sidebar's drag column and left edge (the tab strip is
+        // attached in both git modes and spans exactly the sidebar width).
+        $gitSepRect = $gitViewOpen ? $this->hit->rect($this->gitSeparator) : null;
+        $gitLeftRect = $gitViewOpen ? $this->hit->rect($this->gitTabs) : null;
 
         if ($mouse->wheel) {
             $this->handleWheel($mouse, $treeRect, $editorRect);
@@ -114,7 +120,7 @@ final class MouseRouter
         if ($this->continueTextDrag($mouse, $editorRect)
             || $this->continueColumnDrag($mouse, $editorRect)
             || $this->continueTabDrag($mouse, $tabsRect)
-            || $this->layout->continueResizeDrag($mouse, $treeRect)
+            || $this->layout->continueResizeDrag($mouse, $treeRect, $gitLeftRect)
         ) {
             return;
         }
@@ -142,6 +148,9 @@ final class MouseRouter
         // Separator drags: a press on the tree↔editor gap column, or on the top edge
         // of the terminal/diff panel, arms a resize (must beat the pane hit-tests below).
         if ($this->layout->armSidebarResize($treeRect, $mouse)) {
+            return;
+        }
+        if ($this->layout->armGitSidebarResize($gitSepRect, $mouse)) {
             return;
         }
         if ($this->layout->armPanelResize($this->terminalPanel, $mouse)) {

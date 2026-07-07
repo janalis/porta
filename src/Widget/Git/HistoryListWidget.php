@@ -59,10 +59,25 @@ final class HistoryListWidget extends AbstractWidget implements FocusableInterfa
     private $onShowChanges = null;
 
     public function __construct(
-        private readonly int $width = 44,
+        private int $width = 44,
     ) {
         $this->commitList = new ListSelection();
         $this->fileList = new ListSelection();
+    }
+
+    /** Resize the git sidebar column to $width columns (clamped sane). */
+    public function setWidth(int $width): void
+    {
+        $width = max(24, min($width, 200));
+        if ($width !== $this->width) {
+            $this->width = $width;
+            $this->invalidate();
+        }
+    }
+
+    public function getWidth(): int
+    {
+        return $this->width;
     }
 
     public function onSelectCommit(callable $callback): self

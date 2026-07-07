@@ -288,6 +288,49 @@ final class IdeEdgeCasesTest extends TestCase
         $this->addToAssertionCount(1);
     }
 
+    public function testGitSidebarDragResizesAndPersists(): void
+    {
+        if (!$this->gitAvailable()) {
+            $this->markTestSkipped('git not available');
+        }
+        putenv('PATH='.\dirname((string) $this->whichGit()));
+        $project = new TempProject(['a.txt' => "one\n"]);
+        $dir = escapeshellarg($project->dir);
+        exec("git -C {$dir} init -q && git -C {$dir} config user.email t@t && git -C {$dir} config user.name t && git -C {$dir} add -A && git -C {$dir} commit -qm init");
+        // A seeded percent must be applied at startup (25% of 160 cols = 40).
+        @mkdir($project->path('.porta'), 0777, true);
+        file_put_contents($project->path('.porta/layout.json'), json_encode(['gitSidebarWidthPercent' => 25]));
+
+        $this->runIde(
+            $project,
+            $project->path('a.txt'),
+            [
+                300 => static function ($tui): void {
+                    $tui->handleInput("\x1b\x04"); // open the git view
+                },
+                600 => function ($tui): void {
+                    $tui->tick();
+                    $this->assertSame(40, $tui->getById('git-changes')->getWidth(), 'the seeded percent applied at startup');
+                    // Drag the git separator (SGR col 41 with a 40-wide sidebar)
+                    // out to col 61: the whole left column follows.
+                    $tui->handleInput("\x1b[<0;41;6M");  // arm on the separator
+                    $tui->handleInput("\x1b[<32;61;6M"); // drag right
+                    $tui->handleInput("\x1b[<0;61;6m");  // release
+                },
+                900 => function ($tui) use ($project): void {
+                    $this->assertSame(60, $tui->getById('git-changes')->getWidth(), 'the drag resized the sidebar');
+                    $this->assertSame(60, $tui->getById('git-tabs')->getWidth(), 'the tab strip follows');
+                    $this->assertSame(60, $tui->getById('git-commit')->getWidth(), 'the commit box follows');
+                    $layout = json_decode((string) file_get_contents($project->path('.porta/layout.json')), true);
+                    $this->assertSame(38, $layout['gitSidebarWidthPercent'], 'saved as a percentage (round(60/160))');
+                },
+            ],
+            1.2,
+        );
+
+        $this->addToAssertionCount(1);
+    }
+
     public function testSavedLayoutIsAppliedOnStartup(): void
     {
         putenv('PATH=/nonexistent');

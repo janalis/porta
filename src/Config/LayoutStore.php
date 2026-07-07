@@ -24,7 +24,7 @@ final readonly class LayoutStore
         $this->fs = new Filesystem();
     }
 
-    public function save(?int $sidebarWidthPercent, ?int $bottomPanelHeightPercent): bool
+    public function save(?int $sidebarWidthPercent, ?int $bottomPanelHeightPercent, ?int $gitSidebarWidthPercent = null): bool
     {
         $data = [];
         if (null !== $sidebarWidthPercent) {
@@ -32,6 +32,9 @@ final readonly class LayoutStore
         }
         if (null !== $bottomPanelHeightPercent) {
             $data['bottomPanelHeightPercent'] = $bottomPanelHeightPercent;
+        }
+        if (null !== $gitSidebarWidthPercent) {
+            $data['gitSidebarWidthPercent'] = $gitSidebarWidthPercent;
         }
 
         try {
@@ -47,7 +50,7 @@ final readonly class LayoutStore
     }
 
     /**
-     * @return array{sidebarWidthPercent: ?int, bottomPanelHeightPercent: ?int}|null null when no file exists
+     * @return array{sidebarWidthPercent: ?int, bottomPanelHeightPercent: ?int, gitSidebarWidthPercent: ?int}|null null when no file exists
      */
     public function load(): ?array
     {
@@ -59,6 +62,7 @@ final readonly class LayoutStore
         return [
             'sidebarWidthPercent' => $this->percent($data['sidebarWidthPercent'] ?? null),
             'bottomPanelHeightPercent' => $this->percent($data['bottomPanelHeightPercent'] ?? null),
+            'gitSidebarWidthPercent' => $this->percent($data['gitSidebarWidthPercent'] ?? null),
         ];
     }
 

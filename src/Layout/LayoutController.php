@@ -23,12 +23,15 @@ use Symfony\Component\Tui\Tui;
 final class LayoutController
 {
     private bool $sidebarResizing = false;
+    private bool $gitSidebarResizing = false;
     private bool $panelResizing = false;
     private int $panelResizeBottom = 0; // the dragged panel's anchored bottom row, captured at press
     private int $sidebarResizeStartWidth = 0; // sidebar/panel sizes at drag start, to skip no-op persists
+    private int $gitSidebarResizeStartWidth = 0;
     private int $panelResizeStartHeight = 0;
     private ?int $sidebarWidthPercent = null; // persisted pane proportions (null = widget default)
     private ?int $bottomPanelHeightPercent = null;
+    private ?int $gitSidebarWidthPercent = null;
 
     public function __construct(
         private readonly LayoutStore $store,
@@ -37,6 +40,7 @@ final class LayoutController
         private readonly FileTreeWidget $tree,
         private readonly TerminalPanelWidget $terminalPanel,
         private readonly ResultsPanelWidget $resultsPanel,
+        private readonly GitSidebar $gitSidebar,
     ) {}
 
     public function applyLayout(): void
@@ -51,9 +55,14 @@ final class LayoutController
         $rows = $terminal->getRows();
         $this->sidebarWidthPercent = $layout['sidebarWidthPercent'];
         $this->bottomPanelHeightPercent = $layout['bottomPanelHeightPercent'];
+        $this->gitSidebarWidthPercent = $layout['gitSidebarWidthPercent'];
 
         if (null !== $this->sidebarWidthPercent) {
             $this->tree->setWidth($this->clampSidebar((int) round(($this->sidebarWidthPercent * $cols) / 100), $cols));
+        }
+        if (null !== $this->gitSidebarWidthPercent) {
+            // Plain width fields: safe to set while the git widgets are detached.
+            $this->gitSidebar->setWidth($this->clampGitSidebar((int) round(($this->gitSidebarWidthPercent * $cols) / 100), $cols));
         }
         if (null !== $this->bottomPanelHeightPercent) {
             $this->resizeBottomPanels($this->clampPanel((int) round(($this->bottomPanelHeightPercent * $rows) / 100), $rows));
@@ -64,7 +73,7 @@ final class LayoutController
      * Continue an armed resize drag: apply the new sidebar width / panel height on
      * each left-drag, persist on release. Returns true when it consumed the event.
      */
-    public function continueResizeDrag(MouseEvent $mouse, ?WidgetRect $treeRect): bool
+    public function continueResizeDrag(MouseEvent $mouse, ?WidgetRect $treeRect, ?WidgetRect $gitLeftRect = null): bool
     {
         // Sidebar resize: dragging the tree↔editor separator sets the sidebar width.
         if ($this->sidebarResizing && ($mouse->isLeftDrag() || $mouse->isLeftRelease())) {
@@ -78,6 +87,23 @@ final class LayoutController
             }
             if ($mouse->isLeftRelease()) {
                 $this->sidebarResizing = false;
+            }
+
+            return true;
+        }
+
+        // Git-sidebar resize: dragging the git separator sets the left column's width.
+        if ($this->gitSidebarResizing && ($mouse->isLeftDrag() || $mouse->isLeftRelease())) {
+            if (null !== $gitLeftRect) {
+                $cols = $this->tui->getTerminal()->getColumns();
+                $this->gitSidebar->setWidth($this->clampGitSidebar($mouse->col - $gitLeftRect->col, $cols));
+                $this->tui->requestRender();
+                if ($mouse->isLeftRelease() && $this->gitSidebar->width() !== $this->gitSidebarResizeStartWidth) {
+                    $this->commitGitSidebarWidth($cols);
+                }
+            }
+            if ($mouse->isLeftRelease()) {
+                $this->gitSidebarResizing = false;
             }
 
             return true;
@@ -119,6 +145,22 @@ final class LayoutController
     }
 
     /**
+     * Arm a git-sidebar resize when a left-press lands anywhere on the git
+     * separator's one-column rect. Returns true when armed.
+     */
+    public function armGitSidebarResize(?WidgetRect $gitSeparatorRect, MouseEvent $mouse): bool
+    {
+        if (null !== $gitSeparatorRect && $gitSeparatorRect->contains($mouse->row, $mouse->col)) {
+            $this->gitSidebarResizeStartWidth = $this->gitSidebar->width();
+            $this->gitSidebarResizing = true;
+
+            return true;
+        }
+
+        return false;
+    }
+
+    /**
      * Arm a bottom-panel resize when a left-press lands on the panel's top edge.
      * Focuses the panel too, preserving the click-to-focus behaviour.
      */
@@ -144,6 +186,7 @@ final class LayoutController
     public function cancelDrags(): void
     {
         $this->sidebarResizing = false;
+        $this->gitSidebarResizing = false;
         $this->panelResizing = false;
     }
 
@@ -157,6 +200,12 @@ final class LayoutController
     private function clampSidebar(int $width, int $cols): int
     {
         return max(12, min($width, (int) round($cols * 0.6), $cols - 20));
+    }
+
+    /** Clamp the git sidebar so the tabs/commit button and the diff stay usable. */
+    private function clampGitSidebar(int $width, int $cols): int
+    {
+        return max(30, min($width, (int) round($cols * 0.6), $cols - 20));
     }
 
     /** Clamp a bottom-panel height so the editor keeps room above it. */
@@ -174,6 +223,15 @@ final class LayoutController
         }
     }
 
+    private function commitGitSidebarWidth(int $cols): void
+    {
+        $pct = $cols > 0 ? (int) round(($this->gitSidebar->width() * 100) / $cols) : null;
+        if ($pct !== $this->gitSidebarWidthPercent) {
+            $this->gitSidebarWidthPercent = $pct;
+            $this->persistLayout();
+        }
+    }
+
     private function commitPanelHeight(int $height, int $rows): void
     {
         $pct = $rows > 0 ? (int) round(($height * 100) / $rows) : null;
@@ -185,6 +243,6 @@ final class LayoutController
 
     private function persistLayout(): void
     {
-        $this->store->save($this->sidebarWidthPercent, $this->bottomPanelHeightPercent);
+        $this->store->save($this->sidebarWidthPercent, $this->bottomPanelHeightPercent, $this->gitSidebarWidthPercent);
     }
 }
