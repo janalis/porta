@@ -127,9 +127,12 @@ final class GitInfoStatusTest extends TestCase
         $git->discardFile($project->path('a.txt'), function (bool $ok) use (&$calls): void {
             $calls[] = ['discard', $ok];
         });
+        $git->applyCached("diff --git a/x b/x\n", function (bool $ok) use (&$calls): void {
+            $calls[] = ['apply', $ok];
+        });
 
         $this->assertSame(
-            [['status', [], ''], ['cached', ''], ['worktree', ''], ['untracked', ''], ['unstage', false], ['discard', false]],
+            [['status', [], ''], ['cached', ''], ['worktree', ''], ['untracked', ''], ['unstage', false], ['discard', false], ['apply', false]],
             $calls,
             'all resolve synchronously with empty/false results',
         );
