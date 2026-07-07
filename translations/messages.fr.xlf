@@ -1,7 +1,1155 @@
-<?xml version="1.0" encoding="utf-8"?>
+<?xml version="1.0" encoding="UTF-8"?>
 <xliff xmlns="urn:oasis:names:tc:xliff:document:1.2" version="1.2">
   <file source-language="en" target-language="fr" datatype="plaintext" original="messages">
     <body>
+      <trans-unit id="1">
+        <source>  Amend last commit  </source>
+        <target>  Amender le dernier commit  </target>
+      </trans-unit>
+      <trans-unit id="2">
+        <source>  Commit to branch  </source>
+        <target>  Valider sur la branche  </target>
+      </trans-unit>
+      <trans-unit id="3">
+        <source> %count% changed file</source>
+        <target> %count% fichier modifié</target>
+      </trans-unit>
+      <trans-unit id="4">
+        <source> %count% changed files</source>
+        <target> %count% fichiers modifiés</target>
+      </trans-unit>
+      <trans-unit id="5">
+        <source> Commit  [amend · alt+m]</source>
+        <target> Commit  [amender · alt+m]</target>
+      </trans-unit>
+      <trans-unit id="6">
+        <source> Commit  ·  alt+m: amend</source>
+        <target> Commit  ·  alt+m : amender</target>
+      </trans-unit>
+      <trans-unit id="7">
+        <source> Discard changes? y = yes · any key = no</source>
+        <target> Abandonner les modifications ? y = oui · autre touche = non</target>
+      </trans-unit>
+      <trans-unit id="8">
+        <source> Files (%count%)</source>
+        <target> Fichiers (%count%)</target>
+      </trans-unit>
+      <trans-unit id="9">
+        <source> History (%count%)</source>
+        <target> Historique (%count%)</target>
+      </trans-unit>
+      <trans-unit id="10">
+        <source> s:split </source>
+        <target> s:split </target>
+      </trans-unit>
+      <trans-unit id="11">
+        <source> w:hide-ws </source>
+        <target> w:hide-ws </target>
+      </trans-unit>
+      <trans-unit id="12">
+        <source>&quot;%title%&quot; failed: %message%</source>
+        <target>« %title% » a échoué : %message%</target>
+      </trans-unit>
+      <trans-unit id="13">
+        <source>%count% files have</source>
+        <target>%count% fichiers ont</target>
+      </trans-unit>
+      <trans-unit id="14">
+        <source>%count% unsaved tab kept open</source>
+        <target>%count% onglet non enregistré conservé</target>
+      </trans-unit>
+      <trans-unit id="15">
+        <source>%count% unsaved tabs kept open</source>
+        <target>%count% onglets non enregistrés conservés</target>
+      </trans-unit>
+      <trans-unit id="16">
+        <source>%file% changed on disk</source>
+        <target>%file% modifié sur le disque</target>
+      </trans-unit>
+      <trans-unit id="17">
+        <source>%file% deleted on disk</source>
+        <target>%file% supprimé sur le disque</target>
+      </trans-unit>
+      <trans-unit id="18">
+        <source>.editorconfig charset &quot;%charset%&quot; ignored (UTF-8 only)</source>
+        <target>Jeu de caractères .editorconfig « %charset% » ignoré (UTF-8 uniquement)</target>
+      </trans-unit>
+      <trans-unit id="19">
+        <source>1 file has</source>
+        <target>1 fichier a</target>
+      </trans-unit>
+      <trans-unit id="20">
+        <source>Applied &quot;%title%&quot; to %count% file</source>
+        <target>« %title% » appliqué à %count% fichier</target>
+      </trans-unit>
+      <trans-unit id="21">
+        <source>Applied &quot;%title%&quot; to %count% files</source>
+        <target>« %title% » appliqué à %count% fichiers</target>
+      </trans-unit>
+      <trans-unit id="22">
+        <source>Applied server edit to %count% file</source>
+        <target>Modification serveur appliquée à %count% fichier</target>
+      </trans-unit>
+      <trans-unit id="23">
+        <source>Applied server edit to %count% files</source>
+        <target>Modification serveur appliquée à %count% fichiers</target>
+      </trans-unit>
+      <trans-unit id="24">
+        <source>Cancel</source>
+        <target>Annuler</target>
+      </trans-unit>
+      <trans-unit id="25">
+        <source>Cannot create %file%</source>
+        <target>Impossible de créer %file%</target>
+      </trans-unit>
+      <trans-unit id="26">
+        <source>Cannot delete %file%</source>
+        <target>Impossible de supprimer %file%</target>
+      </trans-unit>
+      <trans-unit id="27">
+        <source>Cannot read %file%</source>
+        <target>Impossible de lire %file%</target>
+      </trans-unit>
+      <trans-unit id="28">
+        <source>Cannot rename %file%</source>
+        <target>Impossible de renommer %file%</target>
+      </trans-unit>
+      <trans-unit id="29">
+        <source>Cannot rename this element</source>
+        <target>Impossible de renommer cet élément</target>
+      </trans-unit>
+      <trans-unit id="30">
+        <source>Choose target</source>
+        <target>Choisir la cible</target>
+      </trans-unit>
+      <trans-unit id="31">
+        <source>Close</source>
+        <target>Fermer</target>
+      </trans-unit>
+      <trans-unit id="32">
+        <source>Close All</source>
+        <target>Tout fermer</target>
+      </trans-unit>
+      <trans-unit id="33">
+        <source>Close Others</source>
+        <target>Fermer les autres</target>
+      </trans-unit>
+      <trans-unit id="34">
+        <source>Commit failed (nothing staged?)</source>
+        <target>Échec de la validation (rien d’indexé ?)</target>
+      </trans-unit>
+      <trans-unit id="35">
+        <source>Commit failed: %summary%</source>
+        <target>Échec de la validation : %summary%</target>
+      </trans-unit>
+      <trans-unit id="36">
+        <source>Commit message</source>
+        <target>Message de commit</target>
+      </trans-unit>
+      <trans-unit id="37">
+        <source>Committed: %summary%</source>
+        <target>Validé : %summary%</target>
+      </trans-unit>
+      <trans-unit id="38">
+        <source>Copied %count% line</source>
+        <target>%count% ligne copiée</target>
+      </trans-unit>
+      <trans-unit id="39">
+        <source>Copied %count% lines</source>
+        <target>%count% lignes copiées</target>
+      </trans-unit>
+      <trans-unit id="40">
+        <source>Copied %text%</source>
+        <target>Copié %text%</target>
+      </trans-unit>
+      <trans-unit id="41">
+        <source>Copy Path</source>
+        <target>Copier le chemin</target>
+      </trans-unit>
+      <trans-unit id="42">
+        <source>Copy Relative Path</source>
+        <target>Copier le chemin relatif</target>
+      </trans-unit>
+      <trans-unit id="43">
+        <source>Could not read that snapshot</source>
+        <target>Impossible de lire cet instantané</target>
+      </trans-unit>
+      <trans-unit id="44">
+        <source>Could not start the terminal process</source>
+        <target>Impossible de démarrer le processus du terminal</target>
+      </trans-unit>
+      <trans-unit id="45">
+        <source>Created %file%</source>
+        <target>%file% créé</target>
+      </trans-unit>
+      <trans-unit id="46">
+        <source>Delete %name%? (y/N)</source>
+        <target>Supprimer %name% ? (y/N)</target>
+      </trans-unit>
+      <trans-unit id="47">
+        <source>Deleted %file%</source>
+        <target>%file% supprimé</target>
+      </trans-unit>
+      <trans-unit id="48">
+        <source>Deleted %path%</source>
+        <target>%path% supprimé</target>
+      </trans-unit>
+      <trans-unit id="49">
+        <source>Delete…</source>
+        <target>Supprimer…</target>
+      </trans-unit>
+      <trans-unit id="50">
+        <source>Description</source>
+        <target>Description</target>
+      </trans-unit>
+      <trans-unit id="51">
+        <source>Diff</source>
+        <target>Diff</target>
+      </trans-unit>
+      <trans-unit id="52">
+        <source>Diff context: %label%</source>
+        <target>Contexte du diff : %label%</target>
+      </trans-unit>
+      <trans-unit id="53">
+        <source>Discard &amp; Close</source>
+        <target>Abandonner et fermer</target>
+      </trans-unit>
+      <trans-unit id="54">
+        <source>Discard failed</source>
+        <target>Abandon échoué</target>
+      </trans-unit>
+      <trans-unit id="55">
+        <source>Discarded changes to %path%</source>
+        <target>Modifications abandonnées pour %path%</target>
+      </trans-unit>
+      <trans-unit id="56">
+        <source>Docs: %url%</source>
+        <target>Docs : %url%</target>
+      </trans-unit>
+      <trans-unit id="57">
+        <source>Documentation</source>
+        <target>Documentation</target>
+      </trans-unit>
+      <trans-unit id="58">
+        <source>File Structure</source>
+        <target>Structure du fichier</target>
+      </trans-unit>
+      <trans-unit id="59">
+        <source>File too large (&gt; 2 MB)</source>
+        <target>Fichier trop volumineux (&gt; 2 Mo)</target>
+      </trans-unit>
+      <trans-unit id="60">
+        <source>Find in Project</source>
+        <target>Rechercher dans le projet</target>
+      </trans-unit>
+      <trans-unit id="61">
+        <source>Find:</source>
+        <target>Rechercher :</target>
+      </trans-unit>
+      <trans-unit id="62">
+        <source>Formatting not supported by %server%</source>
+        <target>Formatage non pris en charge par %server%</target>
+      </trans-unit>
+      <trans-unit id="63">
+        <source>Git not available</source>
+        <target>Git non disponible</target>
+      </trans-unit>
+      <trans-unit id="64">
+        <source>Go to File:</source>
+        <target>Aller au fichier :</target>
+      </trans-unit>
+      <trans-unit id="65">
+        <source>Indent size</source>
+        <target>Taille d’indentation</target>
+      </trans-unit>
+      <trans-unit id="66">
+        <source>Indent style</source>
+        <target>Style d’indentation</target>
+      </trans-unit>
+      <trans-unit id="67">
+        <source>Keybindings — %count% actions · Enter to rebind</source>
+        <target>Raccourcis — %count% actions · Entrée pour réassigner</target>
+      </trans-unit>
+      <trans-unit id="68">
+        <source>LSP is set via --lsp; the settings change was not applied</source>
+        <target>LSP est défini via --lsp ; la modification des réglages n’a pas été appliquée</target>
+      </trans-unit>
+      <trans-unit id="69">
+        <source>LSP server</source>
+        <target>Serveur LSP</target>
+      </trans-unit>
+      <trans-unit id="70">
+        <source>LSP:%status%  ^S save ^T panel ^Space complete ^Q quit</source>
+        <target>LSP:%status%  ^S enregistrer ^T panneau ^Space compléter ^Q quitter</target>
+      </trans-unit>
+      <trans-unit id="71">
+        <source>Last commit undone (changes kept staged)</source>
+        <target>Dernier commit annulé (modifications gardées indexées)</target>
+      </trans-unit>
+      <trans-unit id="72">
+        <source>New File</source>
+        <target>Nouveau fichier</target>
+      </trans-unit>
+      <trans-unit id="73">
+        <source>New File…</source>
+        <target>Nouveau fichier…</target>
+      </trans-unit>
+      <trans-unit id="74">
+        <source>New Folder</source>
+        <target>Nouveau dossier</target>
+      </trans-unit>
+      <trans-unit id="75">
+        <source>New Folder…</source>
+        <target>Nouveau dossier…</target>
+      </trans-unit>
+      <trans-unit id="76">
+        <source>No blame for this line</source>
+        <target>Aucun blame pour cette ligne</target>
+      </trans-unit>
+      <trans-unit id="77">
+        <source>No definition found</source>
+        <target>Aucune définition trouvée</target>
+      </trans-unit>
+      <trans-unit id="78">
+        <source>No documentation found</source>
+        <target>Aucune documentation trouvée</target>
+      </trans-unit>
+      <trans-unit id="79">
+        <source>No implementation found</source>
+        <target>Aucune implémentation trouvée</target>
+      </trans-unit>
+      <trans-unit id="80">
+        <source>No local history for this file yet</source>
+        <target>Pas encore d’historique local pour ce fichier</target>
+      </trans-unit>
+      <trans-unit id="81">
+        <source>No previous run — press Ctrl+Shift+R to pick one</source>
+        <target>Aucune exécution précédente — appuyez sur Ctrl+Shift+R pour en choisir une</target>
+      </trans-unit>
+      <trans-unit id="82">
+        <source>No quick fixes here</source>
+        <target>Aucune correction rapide ici</target>
+      </trans-unit>
+      <trans-unit id="83">
+        <source>No symbols in this file</source>
+        <target>Aucun symbole dans ce fichier</target>
+      </trans-unit>
+      <trans-unit id="84">
+        <source>No type definition found</source>
+        <target>Aucune définition de type trouvée</target>
+      </trans-unit>
+      <trans-unit id="85">
+        <source>No usages found</source>
+        <target>Aucune utilisation trouvée</target>
+      </trans-unit>
+      <trans-unit id="86">
+        <source>Not a UTF-8 text file</source>
+        <target>Fichier texte non UTF-8</target>
+      </trans-unit>
+      <trans-unit id="87">
+        <source>Not a git repository</source>
+        <target>Pas un dépôt git</target>
+      </trans-unit>
+      <trans-unit id="88">
+        <source>Nothing to peek</source>
+        <target>Rien à prévisualiser</target>
+      </trans-unit>
+      <trans-unit id="89">
+        <source>Nothing to replace</source>
+        <target>Rien à remplacer</target>
+      </trans-unit>
+      <trans-unit id="90">
+        <source>Nothing to run (no PHP file, composer scripts, or Makefile)</source>
+        <target>Rien à exécuter (aucun fichier PHP, script composer ou Makefile)</target>
+      </trans-unit>
+      <trans-unit id="91">
+        <source>Nothing to save</source>
+        <target>Rien à enregistrer</target>
+      </trans-unit>
+      <trans-unit id="92">
+        <source>Nothing to undo</source>
+        <target>Rien à annuler</target>
+      </trans-unit>
+      <trans-unit id="93">
+        <source>Nowhere to go back to</source>
+        <target>Aucun endroit où revenir</target>
+      </trans-unit>
+      <trans-unit id="94">
+        <source>Open</source>
+        <target>Ouvrir</target>
+      </trans-unit>
+      <trans-unit id="95">
+        <source>Opened %url%</source>
+        <target>%url% ouvert</target>
+      </trans-unit>
+      <trans-unit id="96">
+        <source>Peek target outside the filesystem</source>
+        <target>Cible de prévisualisation hors du système de fichiers</target>
+      </trans-unit>
+      <trans-unit id="97">
+        <source>Press a key… (Esc to cancel)</source>
+        <target>Appuyez sur une touche… (Échap pour annuler)</target>
+      </trans-unit>
+      <trans-unit id="98">
+        <source>Quick Fixes</source>
+        <target>Corrections rapides</target>
+      </trans-unit>
+      <trans-unit id="99">
+        <source>Quick fix has nothing to apply</source>
+        <target>La correction rapide n’a rien à appliquer</target>
+      </trans-unit>
+      <trans-unit id="100">
+        <source>Ran &quot;%title%&quot;</source>
+        <target>« %title% » exécuté</target>
+      </trans-unit>
+      <trans-unit id="101">
+        <source>Rebound %action% to %key% · applies on restart</source>
+        <target>%action% réassigné à %key% · appliqué au redémarrage</target>
+      </trans-unit>
+      <trans-unit id="102">
+        <source>Reformatted %file%</source>
+        <target>%file% reformaté</target>
+      </trans-unit>
+      <trans-unit id="103">
+        <source>Refresh</source>
+        <target>Actualiser</target>
+      </trans-unit>
+      <trans-unit id="104">
+        <source>Reloaded %file%</source>
+        <target>%file% rechargé</target>
+      </trans-unit>
+      <trans-unit id="105">
+        <source>Rename</source>
+        <target>Renommer</target>
+      </trans-unit>
+      <trans-unit id="106">
+        <source>Rename failed: %message%</source>
+        <target>Échec du renommage : %message%</target>
+      </trans-unit>
+      <trans-unit id="107">
+        <source>Rename needs a language server</source>
+        <target>Le renommage nécessite un serveur de langage</target>
+      </trans-unit>
+      <trans-unit id="108">
+        <source>Rename to</source>
+        <target>Renommer en</target>
+      </trans-unit>
+      <trans-unit id="109">
+        <source>Renamed in %count% file</source>
+        <target>Renommé dans %count% fichier</target>
+      </trans-unit>
+      <trans-unit id="110">
+        <source>Renamed in %count% files</source>
+        <target>Renommé dans %count% fichiers</target>
+      </trans-unit>
+      <trans-unit id="111">
+        <source>Renamed to %name%</source>
+        <target>Renommé en %name%</target>
+      </trans-unit>
+      <trans-unit id="112">
+        <source>Rename…</source>
+        <target>Renommer…</target>
+      </trans-unit>
+      <trans-unit id="113">
+        <source>Replace:</source>
+        <target>Remplacer :</target>
+      </trans-unit>
+      <trans-unit id="114">
+        <source>Replaced in %count% file</source>
+        <target>Remplacé dans %count% fichier</target>
+      </trans-unit>
+      <trans-unit id="115">
+        <source>Replaced in %count% files</source>
+        <target>Remplacé dans %count% fichiers</target>
+      </trans-unit>
+      <trans-unit id="116">
+        <source>Restored from local history</source>
+        <target>Restauré depuis l’historique local</target>
+      </trans-unit>
+      <trans-unit id="117">
+        <source>Run</source>
+        <target>Exécuter</target>
+      </trans-unit>
+      <trans-unit id="118">
+        <source>Save &amp; Close</source>
+        <target>Enregistrer et fermer</target>
+      </trans-unit>
+      <trans-unit id="119">
+        <source>Save failed: %file%</source>
+        <target>Échec de l’enregistrement : %file%</target>
+      </trans-unit>
+      <trans-unit id="120">
+        <source>Saved %count% file</source>
+        <target>%count% fichier enregistré</target>
+      </trans-unit>
+      <trans-unit id="121">
+        <source>Saved %count% files</source>
+        <target>%count% fichiers enregistrés</target>
+      </trans-unit>
+      <trans-unit id="122">
+        <source>Saved %file%</source>
+        <target>%file% enregistré</target>
+      </trans-unit>
+      <trans-unit id="123">
+        <source>Show whitespace changes to stage lines (w)</source>
+        <target>Affichez les espaces pour indexer des lignes (w)</target>
+      </trans-unit>
+      <trans-unit id="124">
+        <source>Stage failed</source>
+        <target>Indexation échouée</target>
+      </trans-unit>
+      <trans-unit id="125">
+        <source>Staged %path%</source>
+        <target>%path% indexé</target>
+      </trans-unit>
+      <trans-unit id="126">
+        <source>Summary (required)</source>
+        <target>Résumé (obligatoire)</target>
+      </trans-unit>
+      <trans-unit id="127">
+        <source>Target outside the filesystem</source>
+        <target>Cible hors du système de fichiers</target>
+      </trans-unit>
+      <trans-unit id="128">
+        <source>Unknown language setting &quot;%key%&quot;</source>
+        <target>Réglage de langue inconnu « %key% »</target>
+      </trans-unit>
+      <trans-unit id="129">
+        <source>Unknown setting &quot;%key%&quot;</source>
+        <target>Réglage inconnu « %key% »</target>
+      </trans-unit>
+      <trans-unit id="130">
+        <source>Unsaved changes in %name%</source>
+        <target>Modifications non enregistrées dans %name%</target>
+      </trans-unit>
+      <trans-unit id="131">
+        <source>Unsaved changes — %noun% edits. Ctrl+Q again to quit, Ctrl+S to save</source>
+        <target>Modifications non enregistrées — %noun% des modifications. Ctrl+Q à nouveau pour quitter, Ctrl+S pour enregistrer</target>
+      </trans-unit>
+      <trans-unit id="132">
+        <source>Unsupported key — try another</source>
+        <target>Touche non prise en charge — essayez-en une autre</target>
+      </trans-unit>
+      <trans-unit id="133">
+        <source>Untracked files always show the whole file</source>
+        <target>Les fichiers non suivis affichent toujours le fichier entier</target>
+      </trans-unit>
+      <trans-unit id="134">
+        <source>Untracked: stage the whole file with Space in the changes list</source>
+        <target>Non suivi : indexez le fichier entier avec Espace dans la liste des modifications</target>
+      </trans-unit>
+      <trans-unit id="135">
+        <source>[scrolled +%count%]</source>
+        <target>[défilé +%count%]</target>
+      </trans-unit>
+      <trans-unit id="136">
+        <source>applies on restart</source>
+        <target>appliqué au redémarrage</target>
+      </trans-unit>
+      <trans-unit id="137">
+        <source>auto-detect</source>
+        <target>détection auto</target>
+      </trans-unit>
+      <trans-unit id="138">
+        <source>auto: %server%</source>
+        <target>auto : %server%</target>
+      </trans-unit>
+      <trans-unit id="139">
+        <source>disabled</source>
+        <target>désactivé</target>
+      </trans-unit>
+      <trans-unit id="140">
+        <source>failed</source>
+        <target>échec</target>
+      </trans-unit>
+      <trans-unit id="141">
+        <source>git apply refused the partial patch</source>
+        <target>git apply a refusé le correctif partiel</target>
+      </trans-unit>
+      <trans-unit id="142">
+        <source>git refused the staging change</source>
+        <target>git a refusé la modification d’index</target>
+      </trans-unit>
+      <trans-unit id="143">
+        <source>no matches</source>
+        <target>aucune correspondance</target>
+      </trans-unit>
+      <trans-unit id="144">
+        <source>no server</source>
+        <target>aucun serveur</target>
+      </trans-unit>
+      <trans-unit id="145">
+        <source>none (install phpactor)</source>
+        <target>aucun (installez phpactor)</target>
+      </trans-unit>
+      <trans-unit id="146">
+        <source>not saved</source>
+        <target>non enregistré</target>
+      </trans-unit>
+      <trans-unit id="147">
+        <source>porta — open a file from the tree (Enter)</source>
+        <target>porta — ouvrez un fichier depuis l’arborescence (Entrée)</target>
+      </trans-unit>
+      <trans-unit id="148">
+        <source>starting…</source>
+        <target>démarrage…</target>
+      </trans-unit>
+      <trans-unit id="149">
+        <source>⏎/F3 next  ⇧F3 prev  esc</source>
+        <target>⏎/F3 suivant  ⇧F3 précédent  esc</target>
+      </trans-unit>
+      <trans-unit id="150">
+        <source>⏎/F3 next  ⇧F3 prev  ⇥ field  ⌥R replace  ⌥A all  esc</source>
+        <target>⏎/F3 suivant  ⇧F3 précédent  ⇥ champ  ⌥R remplacer  ⌥A tout  esc</target>
+      </trans-unit>
+      <trans-unit id="151">
+        <source>Accept Completion</source>
+        <target>Accepter la complétion</target>
+      </trans-unit>
+      <trans-unit id="152">
+        <source>Add Caret Above</source>
+        <target>Ajouter un curseur au-dessus</target>
+      </trans-unit>
+      <trans-unit id="153">
+        <source>Add Caret Below</source>
+        <target>Ajouter un curseur en dessous</target>
+      </trans-unit>
+      <trans-unit id="154">
+        <source>Add Caret at Next Occurrence</source>
+        <target>Ajouter un curseur à l’occurrence suivante</target>
+      </trans-unit>
+      <trans-unit id="155">
+        <source>Backspace</source>
+        <target>Retour arrière</target>
+      </trans-unit>
+      <trans-unit id="156">
+        <source>Close Tab</source>
+        <target>Fermer l’onglet</target>
+      </trans-unit>
+      <trans-unit id="157">
+        <source>Code Completion</source>
+        <target>Complétion de code</target>
+      </trans-unit>
+      <trans-unit id="158">
+        <source>Collapse / Expand Fold</source>
+        <target>Replier / déplier</target>
+      </trans-unit>
+      <trans-unit id="159">
+        <source>Copy</source>
+        <target>Copier</target>
+      </trans-unit>
+      <trans-unit id="160">
+        <source>Cut</source>
+        <target>Couper</target>
+      </trans-unit>
+      <trans-unit id="161">
+        <source>Delete Character</source>
+        <target>Supprimer le caractère</target>
+      </trans-unit>
+      <trans-unit id="162">
+        <source>Delete Line</source>
+        <target>Supprimer la ligne</target>
+      </trans-unit>
+      <trans-unit id="163">
+        <source>Delete Word</source>
+        <target>Supprimer le mot</target>
+      </trans-unit>
+      <trans-unit id="164">
+        <source>Delete to Line End</source>
+        <target>Supprimer jusqu’à la fin de ligne</target>
+      </trans-unit>
+      <trans-unit id="165">
+        <source>Duplicate Line or Selection</source>
+        <target>Dupliquer la ligne ou la sélection</target>
+      </trans-unit>
+      <trans-unit id="166">
+        <source>Extend Selection</source>
+        <target>Étendre la sélection</target>
+      </trans-unit>
+      <trans-unit id="167">
+        <source>Extend Selection Down</source>
+        <target>Étendre la sélection vers le bas</target>
+      </trans-unit>
+      <trans-unit id="168">
+        <source>Extend Selection Left</source>
+        <target>Étendre la sélection vers la gauche</target>
+      </trans-unit>
+      <trans-unit id="169">
+        <source>Extend Selection Right</source>
+        <target>Étendre la sélection vers la droite</target>
+      </trans-unit>
+      <trans-unit id="170">
+        <source>Extend Selection Up</source>
+        <target>Étendre la sélection vers le haut</target>
+      </trans-unit>
+      <trans-unit id="171">
+        <source>Extend Selection to Line End</source>
+        <target>Étendre la sélection jusqu’à la fin de ligne</target>
+      </trans-unit>
+      <trans-unit id="172">
+        <source>Extend Selection to Line Start</source>
+        <target>Étendre la sélection jusqu’au début de ligne</target>
+      </trans-unit>
+      <trans-unit id="173">
+        <source>Extend Selection to Next Word</source>
+        <target>Étendre la sélection au mot suivant</target>
+      </trans-unit>
+      <trans-unit id="174">
+        <source>Extend Selection to Previous Word</source>
+        <target>Étendre la sélection au mot précédent</target>
+      </trans-unit>
+      <trans-unit id="175">
+        <source>Find Action</source>
+        <target>Rechercher une action</target>
+      </trans-unit>
+      <trans-unit id="176">
+        <source>Find Usages</source>
+        <target>Rechercher les utilisations</target>
+      </trans-unit>
+      <trans-unit id="177">
+        <source>Find in File</source>
+        <target>Rechercher dans le fichier</target>
+      </trans-unit>
+      <trans-unit id="178">
+        <source>Focus Next Pane</source>
+        <target>Activer le panneau suivant</target>
+      </trans-unit>
+      <trans-unit id="179">
+        <source>Focus Previous Pane</source>
+        <target>Activer le panneau précédent</target>
+      </trans-unit>
+      <trans-unit id="180">
+        <source>Git: Changes</source>
+        <target>Git : Modifications</target>
+      </trans-unit>
+      <trans-unit id="181">
+        <source>Go to Declaration or Usages</source>
+        <target>Aller à la déclaration ou aux utilisations</target>
+      </trans-unit>
+      <trans-unit id="182">
+        <source>Go to File</source>
+        <target>Aller au fichier</target>
+      </trans-unit>
+      <trans-unit id="183">
+        <source>Go to Implementation</source>
+        <target>Aller à l’implémentation</target>
+      </trans-unit>
+      <trans-unit id="184">
+        <source>Go to Line</source>
+        <target>Aller à la ligne</target>
+      </trans-unit>
+      <trans-unit id="185">
+        <source>Go to Symbol in Project</source>
+        <target>Aller au symbole dans le projet</target>
+      </trans-unit>
+      <trans-unit id="186">
+        <source>Go to Type Definition</source>
+        <target>Aller à la définition du type</target>
+      </trans-unit>
+      <trans-unit id="187">
+        <source>Indent</source>
+        <target>Indenter</target>
+      </trans-unit>
+      <trans-unit id="188">
+        <source>Move Caret Down</source>
+        <target>Déplacer le curseur vers le bas</target>
+      </trans-unit>
+      <trans-unit id="189">
+        <source>Move Caret Left</source>
+        <target>Déplacer le curseur vers la gauche</target>
+      </trans-unit>
+      <trans-unit id="190">
+        <source>Move Caret Right</source>
+        <target>Déplacer le curseur vers la droite</target>
+      </trans-unit>
+      <trans-unit id="191">
+        <source>Move Caret Up</source>
+        <target>Déplacer le curseur vers le haut</target>
+      </trans-unit>
+      <trans-unit id="192">
+        <source>Move Caret to Line End</source>
+        <target>Déplacer le curseur en fin de ligne</target>
+      </trans-unit>
+      <trans-unit id="193">
+        <source>Move Caret to Line Start</source>
+        <target>Déplacer le curseur en début de ligne</target>
+      </trans-unit>
+      <trans-unit id="194">
+        <source>Move Caret to Next Word</source>
+        <target>Déplacer le curseur au mot suivant</target>
+      </trans-unit>
+      <trans-unit id="195">
+        <source>Move Caret to Previous Word</source>
+        <target>Déplacer le curseur au mot précédent</target>
+      </trans-unit>
+      <trans-unit id="196">
+        <source>Move Caret to Text End</source>
+        <target>Déplacer le curseur à la fin du texte</target>
+      </trans-unit>
+      <trans-unit id="197">
+        <source>Move Caret to Text Start</source>
+        <target>Déplacer le curseur au début du texte</target>
+      </trans-unit>
+      <trans-unit id="198">
+        <source>Move Line Down</source>
+        <target>Déplacer la ligne vers le bas</target>
+      </trans-unit>
+      <trans-unit id="199">
+        <source>Move Line Up</source>
+        <target>Déplacer la ligne vers le haut</target>
+      </trans-unit>
+      <trans-unit id="200">
+        <source>Move Statement Down</source>
+        <target>Déplacer l’instruction vers le bas</target>
+      </trans-unit>
+      <trans-unit id="201">
+        <source>Move Statement Up</source>
+        <target>Déplacer l’instruction vers le haut</target>
+      </trans-unit>
+      <trans-unit id="202">
+        <source>Move Tab Left</source>
+        <target>Déplacer l’onglet à gauche</target>
+      </trans-unit>
+      <trans-unit id="203">
+        <source>Move Tab Right</source>
+        <target>Déplacer l’onglet à droite</target>
+      </trans-unit>
+      <trans-unit id="204">
+        <source>Navigate Back</source>
+        <target>Revenir en arrière</target>
+      </trans-unit>
+      <trans-unit id="205">
+        <source>New Line</source>
+        <target>Nouvelle ligne</target>
+      </trans-unit>
+      <trans-unit id="206">
+        <source>Next Conflict</source>
+        <target>Conflit suivant</target>
+      </trans-unit>
+      <trans-unit id="207">
+        <source>Next Tab</source>
+        <target>Onglet suivant</target>
+      </trans-unit>
+      <trans-unit id="208">
+        <source>Open Menu</source>
+        <target>Ouvrir le menu</target>
+      </trans-unit>
+      <trans-unit id="209">
+        <source>Open Terminal</source>
+        <target>Ouvrir le terminal</target>
+      </trans-unit>
+      <trans-unit id="210">
+        <source>Page Down</source>
+        <target>Page suivante</target>
+      </trans-unit>
+      <trans-unit id="211">
+        <source>Page Up</source>
+        <target>Page précédente</target>
+      </trans-unit>
+      <trans-unit id="212">
+        <source>Paste</source>
+        <target>Coller</target>
+      </trans-unit>
+      <trans-unit id="213">
+        <source>Peek Definition</source>
+        <target>Aperçu de la définition</target>
+      </trans-unit>
+      <trans-unit id="214">
+        <source>Previous Conflict</source>
+        <target>Conflit précédent</target>
+      </trans-unit>
+      <trans-unit id="215">
+        <source>Previous Snippet Tab Stop</source>
+        <target>Point de tabulation de snippet précédent</target>
+      </trans-unit>
+      <trans-unit id="216">
+        <source>Previous Tab</source>
+        <target>Onglet précédent</target>
+      </trans-unit>
+      <trans-unit id="217">
+        <source>Quick Documentation</source>
+        <target>Documentation rapide</target>
+      </trans-unit>
+      <trans-unit id="218">
+        <source>Quit</source>
+        <target>Quitter</target>
+      </trans-unit>
+      <trans-unit id="219">
+        <source>Recent Files</source>
+        <target>Fichiers récents</target>
+      </trans-unit>
+      <trans-unit id="220">
+        <source>Redo</source>
+        <target>Rétablir</target>
+      </trans-unit>
+      <trans-unit id="221">
+        <source>Reformat File</source>
+        <target>Reformater le fichier</target>
+      </trans-unit>
+      <trans-unit id="222">
+        <source>Rename Symbol</source>
+        <target>Renommer le symbole</target>
+      </trans-unit>
+      <trans-unit id="223">
+        <source>Replace in File</source>
+        <target>Remplacer dans le fichier</target>
+      </trans-unit>
+      <trans-unit id="224">
+        <source>Resolve Conflict</source>
+        <target>Résoudre le conflit</target>
+      </trans-unit>
+      <trans-unit id="225">
+        <source>Run Last</source>
+        <target>Exécuter le dernier</target>
+      </trans-unit>
+      <trans-unit id="226">
+        <source>Run…</source>
+        <target>Exécuter…</target>
+      </trans-unit>
+      <trans-unit id="227">
+        <source>Save All</source>
+        <target>Tout enregistrer</target>
+      </trans-unit>
+      <trans-unit id="228">
+        <source>Save File</source>
+        <target>Enregistrer le fichier</target>
+      </trans-unit>
+      <trans-unit id="229">
+        <source>Select All</source>
+        <target>Tout sélectionner</target>
+      </trans-unit>
+      <trans-unit id="230">
+        <source>Select All Occurrences</source>
+        <target>Sélectionner toutes les occurrences</target>
+      </trans-unit>
+      <trans-unit id="231">
+        <source>Settings…</source>
+        <target>Paramètres…</target>
+      </trans-unit>
+      <trans-unit id="232">
+        <source>Show Local History</source>
+        <target>Afficher l’historique local</target>
+      </trans-unit>
+      <trans-unit id="233">
+        <source>Show Problems</source>
+        <target>Afficher les problèmes</target>
+      </trans-unit>
+      <trans-unit id="234">
+        <source>Show Quick Fixes</source>
+        <target>Afficher les corrections rapides</target>
+      </trans-unit>
+      <trans-unit id="235">
+        <source>Shrink Selection</source>
+        <target>Réduire la sélection</target>
+      </trans-unit>
+      <trans-unit id="236">
+        <source>Surround With…</source>
+        <target>Entourer de…</target>
+      </trans-unit>
+      <trans-unit id="237">
+        <source>Switch Tree / Editor Focus</source>
+        <target>Basculer le focus arborescence / éditeur</target>
+      </trans-unit>
+      <trans-unit id="238">
+        <source>Toggle Comment</source>
+        <target>Basculer le commentaire</target>
+      </trans-unit>
+      <trans-unit id="239">
+        <source>Tree: Collapse</source>
+        <target>Arborescence : replier</target>
+      </trans-unit>
+      <trans-unit id="240">
+        <source>Tree: Expand</source>
+        <target>Arborescence : déplier</target>
+      </trans-unit>
+      <trans-unit id="241">
+        <source>Tree: Open / Toggle</source>
+        <target>Arborescence : ouvrir / basculer</target>
+      </trans-unit>
+      <trans-unit id="242">
+        <source>Tree: Reload</source>
+        <target>Arborescence : recharger</target>
+      </trans-unit>
+      <trans-unit id="243">
+        <source>Tree: Select Next</source>
+        <target>Arborescence : sélectionner le suivant</target>
+      </trans-unit>
+      <trans-unit id="244">
+        <source>Tree: Select Previous</source>
+        <target>Arborescence : sélectionner le précédent</target>
+      </trans-unit>
+      <trans-unit id="245">
+        <source>Undo</source>
+        <target>Annuler</target>
+      </trans-unit>
+      <trans-unit id="246">
+        <source>Git: Blame Current Line</source>
+        <target>Git : Blame de la ligne courante</target>
+      </trans-unit>
+      <trans-unit id="247">
+        <source>Git: Commit…</source>
+        <target>Git : Valider…</target>
+      </trans-unit>
+      <trans-unit id="248">
+        <source>Git: Stage Current File</source>
+        <target>Git : Indexer le fichier courant</target>
+      </trans-unit>
+      <trans-unit id="249">
+        <source>Git: Undo Last Commit</source>
+        <target>Git : Annuler le dernier commit</target>
+      </trans-unit>
+      <trans-unit id="250">
+        <source>Toggle Auto-Pairs</source>
+        <target>Basculer les paires automatiques</target>
+      </trans-unit>
+      <trans-unit id="251">
+        <source>Toggle Inline Diagnostics</source>
+        <target>Basculer les diagnostics en ligne</target>
+      </trans-unit>
+      <trans-unit id="252">
+        <source>Toggle Relative Line Numbers</source>
+        <target>Basculer les numéros de ligne relatifs</target>
+      </trans-unit>
+      <trans-unit id="253">
+        <source>File</source>
+        <target>Fichier</target>
+      </trans-unit>
+      <trans-unit id="254">
+        <source>Edit</source>
+        <target>Édition</target>
+      </trans-unit>
+      <trans-unit id="255">
+        <source>Navigate</source>
+        <target>Naviguer</target>
+      </trans-unit>
+      <trans-unit id="256">
+        <source>Code</source>
+        <target>Code</target>
+      </trans-unit>
+      <trans-unit id="257">
+        <source>Git</source>
+        <target>Git</target>
+      </trans-unit>
+      <trans-unit id="258">
+        <source>View</source>
+        <target>Affichage</target>
+      </trans-unit>
+      <trans-unit id="259">
+        <source>Help</source>
+        <target>Aide</target>
+      </trans-unit>
+      <trans-unit id="260">
+        <source>Language</source>
+        <target>Langue</target>
+      </trans-unit>
+      <trans-unit id="261">
+        <source>Inline diagnostics</source>
+        <target>Diagnostics en ligne</target>
+      </trans-unit>
+      <trans-unit id="262">
+        <source>Relative line numbers</source>
+        <target>Numéros de ligne relatifs</target>
+      </trans-unit>
+      <trans-unit id="263">
+        <source>Auto-pairs</source>
+        <target>Paires automatiques</target>
+      </trans-unit>
+      <trans-unit id="264">
+        <source>Respect .editorconfig</source>
+        <target>Respecter .editorconfig</target>
+      </trans-unit>
+      <trans-unit id="265">
+        <source>Theme</source>
+        <target>Thème</target>
+      </trans-unit>
+      <trans-unit id="266">
+        <source>General</source>
+        <target>Général</target>
+      </trans-unit>
+      <trans-unit id="267">
+        <source>Keybindings</source>
+        <target>Raccourcis clavier</target>
+      </trans-unit>
+      <trans-unit id="268">
+        <source>Languages</source>
+        <target>Langages</target>
+      </trans-unit>
+      <trans-unit id="269">
+        <source> Changes </source>
+        <target> Modifs </target>
+      </trans-unit>
+      <trans-unit id="270">
+        <source> History </source>
+        <target> Historique </target>
+      </trans-unit>
+      <trans-unit id="271">
+        <source>default</source>
+        <target>par défaut</target>
+      </trans-unit>
+      <trans-unit id="272">
+        <source>±10 lines</source>
+        <target>±10 lignes</target>
+      </trans-unit>
+      <trans-unit id="273">
+        <source>whole file</source>
+        <target>fichier entier</target>
+      </trans-unit>
+      <trans-unit id="274">
+        <source>No changes selected</source>
+        <target>Aucune modification sélectionnée</target>
+      </trans-unit>
+      <trans-unit id="275">
+        <source>Working tree clean</source>
+        <target>Arbre de travail propre</target>
+      </trans-unit>
+      <trans-unit id="276">
+        <source>No changes (whitespace hidden)</source>
+        <target>Aucune modification (espaces masqués)</target>
+      </trans-unit>
+      <trans-unit id="277">
+        <source>No changes</source>
+        <target>Aucune modification</target>
+      </trans-unit>
+      <trans-unit id="278">
+        <source>Select a commit file</source>
+        <target>Sélectionnez un fichier du commit</target>
+      </trans-unit>
+      <trans-unit id="279">
+        <source>No files in this commit</source>
+        <target>Aucun fichier dans ce commit</target>
+      </trans-unit>
+      <trans-unit id="280">
+        <source>No patch (whitespace hidden)</source>
+        <target>Aucun correctif (espaces masqués)</target>
+      </trans-unit>
+      <trans-unit id="281">
+        <source>No patch for this file</source>
+        <target>Aucun correctif pour ce fichier</target>
+      </trans-unit>
+      <trans-unit id="282">
+        <source>on</source>
+        <target>activé</target>
+      </trans-unit>
+      <trans-unit id="283">
+        <source>off</source>
+        <target>désactivé</target>
+      </trans-unit>
+      <trans-unit id="284">
+        <source>indent size</source>
+        <target>taille d’indentation</target>
+      </trans-unit>
+      <trans-unit id="285">
+        <source>indent style</source>
+        <target>style d’indentation</target>
+      </trans-unit>
+      <trans-unit id="286">
+        <source>Whitespace changes hidden</source>
+        <target>Modifications d’espaces masquées</target>
+      </trans-unit>
+      <trans-unit id="287">
+        <source>Whitespace changes shown</source>
+        <target>Modifications d’espaces affichées</target>
+      </trans-unit>
     </body>
   </file>
 </xliff>

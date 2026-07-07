@@ -1,7 +1,1155 @@
-<?xml version="1.0" encoding="utf-8"?>
+<?xml version="1.0" encoding="UTF-8"?>
 <xliff xmlns="urn:oasis:names:tc:xliff:document:1.2" version="1.2">
   <file source-language="en" target-language="ja" datatype="plaintext" original="messages">
     <body>
+      <trans-unit id="1">
+        <source>  Amend last commit  </source>
+        <target>  直前のコミットを修正  </target>
+      </trans-unit>
+      <trans-unit id="2">
+        <source>  Commit to branch  </source>
+        <target>  ブランチにコミット  </target>
+      </trans-unit>
+      <trans-unit id="3">
+        <source> %count% changed file</source>
+        <target> %count% 件の変更ファイル</target>
+      </trans-unit>
+      <trans-unit id="4">
+        <source> %count% changed files</source>
+        <target> %count% 件の変更ファイル</target>
+      </trans-unit>
+      <trans-unit id="5">
+        <source> Commit  [amend · alt+m]</source>
+        <target> コミット  [修正 · alt+m]</target>
+      </trans-unit>
+      <trans-unit id="6">
+        <source> Commit  ·  alt+m: amend</source>
+        <target> コミット  ·  alt+m: 修正</target>
+      </trans-unit>
+      <trans-unit id="7">
+        <source> Discard changes? y = yes · any key = no</source>
+        <target> 変更を破棄しますか? y = はい · 他のキー = いいえ</target>
+      </trans-unit>
+      <trans-unit id="8">
+        <source> Files (%count%)</source>
+        <target> ファイル (%count%)</target>
+      </trans-unit>
+      <trans-unit id="9">
+        <source> History (%count%)</source>
+        <target> 履歴 (%count%)</target>
+      </trans-unit>
+      <trans-unit id="10">
+        <source> s:split </source>
+        <target> s:split </target>
+      </trans-unit>
+      <trans-unit id="11">
+        <source> w:hide-ws </source>
+        <target> w:hide-ws </target>
+      </trans-unit>
+      <trans-unit id="12">
+        <source>&quot;%title%&quot; failed: %message%</source>
+        <target>「%title%」が失敗しました: %message%</target>
+      </trans-unit>
+      <trans-unit id="13">
+        <source>%count% files have</source>
+        <target>%count% 件のファイルに</target>
+      </trans-unit>
+      <trans-unit id="14">
+        <source>%count% unsaved tab kept open</source>
+        <target>未保存のタブ %count% 件を開いたままにしました</target>
+      </trans-unit>
+      <trans-unit id="15">
+        <source>%count% unsaved tabs kept open</source>
+        <target>未保存のタブ %count% 件を開いたままにしました</target>
+      </trans-unit>
+      <trans-unit id="16">
+        <source>%file% changed on disk</source>
+        <target>%file% はディスク上で変更されました</target>
+      </trans-unit>
+      <trans-unit id="17">
+        <source>%file% deleted on disk</source>
+        <target>%file% はディスク上で削除されました</target>
+      </trans-unit>
+      <trans-unit id="18">
+        <source>.editorconfig charset &quot;%charset%&quot; ignored (UTF-8 only)</source>
+        <target>.editorconfig の文字コード「%charset%」は無視されます (UTF-8 のみ)</target>
+      </trans-unit>
+      <trans-unit id="19">
+        <source>1 file has</source>
+        <target>1 件のファイルに</target>
+      </trans-unit>
+      <trans-unit id="20">
+        <source>Applied &quot;%title%&quot; to %count% file</source>
+        <target>「%title%」を %count% 件のファイルに適用しました</target>
+      </trans-unit>
+      <trans-unit id="21">
+        <source>Applied &quot;%title%&quot; to %count% files</source>
+        <target>「%title%」を %count% 件のファイルに適用しました</target>
+      </trans-unit>
+      <trans-unit id="22">
+        <source>Applied server edit to %count% file</source>
+        <target>サーバー編集を %count% 件のファイルに適用しました</target>
+      </trans-unit>
+      <trans-unit id="23">
+        <source>Applied server edit to %count% files</source>
+        <target>サーバー編集を %count% 件のファイルに適用しました</target>
+      </trans-unit>
+      <trans-unit id="24">
+        <source>Cancel</source>
+        <target>キャンセル</target>
+      </trans-unit>
+      <trans-unit id="25">
+        <source>Cannot create %file%</source>
+        <target>%file% を作成できません</target>
+      </trans-unit>
+      <trans-unit id="26">
+        <source>Cannot delete %file%</source>
+        <target>%file% を削除できません</target>
+      </trans-unit>
+      <trans-unit id="27">
+        <source>Cannot read %file%</source>
+        <target>%file% を読み込めません</target>
+      </trans-unit>
+      <trans-unit id="28">
+        <source>Cannot rename %file%</source>
+        <target>%file% の名前を変更できません</target>
+      </trans-unit>
+      <trans-unit id="29">
+        <source>Cannot rename this element</source>
+        <target>この要素の名前は変更できません</target>
+      </trans-unit>
+      <trans-unit id="30">
+        <source>Choose target</source>
+        <target>対象を選択</target>
+      </trans-unit>
+      <trans-unit id="31">
+        <source>Close</source>
+        <target>閉じる</target>
+      </trans-unit>
+      <trans-unit id="32">
+        <source>Close All</source>
+        <target>すべて閉じる</target>
+      </trans-unit>
+      <trans-unit id="33">
+        <source>Close Others</source>
+        <target>他を閉じる</target>
+      </trans-unit>
+      <trans-unit id="34">
+        <source>Commit failed (nothing staged?)</source>
+        <target>コミットに失敗しました (ステージが空?)</target>
+      </trans-unit>
+      <trans-unit id="35">
+        <source>Commit failed: %summary%</source>
+        <target>コミットに失敗しました: %summary%</target>
+      </trans-unit>
+      <trans-unit id="36">
+        <source>Commit message</source>
+        <target>コミットメッセージ</target>
+      </trans-unit>
+      <trans-unit id="37">
+        <source>Committed: %summary%</source>
+        <target>コミットしました: %summary%</target>
+      </trans-unit>
+      <trans-unit id="38">
+        <source>Copied %count% line</source>
+        <target>%count% 行をコピーしました</target>
+      </trans-unit>
+      <trans-unit id="39">
+        <source>Copied %count% lines</source>
+        <target>%count% 行をコピーしました</target>
+      </trans-unit>
+      <trans-unit id="40">
+        <source>Copied %text%</source>
+        <target>%text% をコピーしました</target>
+      </trans-unit>
+      <trans-unit id="41">
+        <source>Copy Path</source>
+        <target>パスをコピー</target>
+      </trans-unit>
+      <trans-unit id="42">
+        <source>Copy Relative Path</source>
+        <target>相対パスをコピー</target>
+      </trans-unit>
+      <trans-unit id="43">
+        <source>Could not read that snapshot</source>
+        <target>そのスナップショットを読み込めませんでした</target>
+      </trans-unit>
+      <trans-unit id="44">
+        <source>Could not start the terminal process</source>
+        <target>ターミナルプロセスを開始できませんでした</target>
+      </trans-unit>
+      <trans-unit id="45">
+        <source>Created %file%</source>
+        <target>%file% を作成しました</target>
+      </trans-unit>
+      <trans-unit id="46">
+        <source>Delete %name%? (y/N)</source>
+        <target>%name% を削除しますか? (y/N)</target>
+      </trans-unit>
+      <trans-unit id="47">
+        <source>Deleted %file%</source>
+        <target>%file% を削除しました</target>
+      </trans-unit>
+      <trans-unit id="48">
+        <source>Deleted %path%</source>
+        <target>%path% を削除しました</target>
+      </trans-unit>
+      <trans-unit id="49">
+        <source>Delete…</source>
+        <target>削除…</target>
+      </trans-unit>
+      <trans-unit id="50">
+        <source>Description</source>
+        <target>説明</target>
+      </trans-unit>
+      <trans-unit id="51">
+        <source>Diff</source>
+        <target>差分</target>
+      </trans-unit>
+      <trans-unit id="52">
+        <source>Diff context: %label%</source>
+        <target>差分コンテキスト: %label%</target>
+      </trans-unit>
+      <trans-unit id="53">
+        <source>Discard &amp; Close</source>
+        <target>破棄して閉じる</target>
+      </trans-unit>
+      <trans-unit id="54">
+        <source>Discard failed</source>
+        <target>破棄に失敗しました</target>
+      </trans-unit>
+      <trans-unit id="55">
+        <source>Discarded changes to %path%</source>
+        <target>%path% の変更を破棄しました</target>
+      </trans-unit>
+      <trans-unit id="56">
+        <source>Docs: %url%</source>
+        <target>ドキュメント: %url%</target>
+      </trans-unit>
+      <trans-unit id="57">
+        <source>Documentation</source>
+        <target>ドキュメント</target>
+      </trans-unit>
+      <trans-unit id="58">
+        <source>File Structure</source>
+        <target>ファイル構造</target>
+      </trans-unit>
+      <trans-unit id="59">
+        <source>File too large (&gt; 2 MB)</source>
+        <target>ファイルが大きすぎます (&gt; 2 MB)</target>
+      </trans-unit>
+      <trans-unit id="60">
+        <source>Find in Project</source>
+        <target>プロジェクト内を検索</target>
+      </trans-unit>
+      <trans-unit id="61">
+        <source>Find:</source>
+        <target>検索:</target>
+      </trans-unit>
+      <trans-unit id="62">
+        <source>Formatting not supported by %server%</source>
+        <target>%server% は整形に対応していません</target>
+      </trans-unit>
+      <trans-unit id="63">
+        <source>Git not available</source>
+        <target>git を利用できません</target>
+      </trans-unit>
+      <trans-unit id="64">
+        <source>Go to File:</source>
+        <target>ファイルへ移動:</target>
+      </trans-unit>
+      <trans-unit id="65">
+        <source>Indent size</source>
+        <target>インデント幅</target>
+      </trans-unit>
+      <trans-unit id="66">
+        <source>Indent style</source>
+        <target>インデントスタイル</target>
+      </trans-unit>
+      <trans-unit id="67">
+        <source>Keybindings — %count% actions · Enter to rebind</source>
+        <target>キーバインド — %count% 個のアクション · Enter で再割り当て</target>
+      </trans-unit>
+      <trans-unit id="68">
+        <source>LSP is set via --lsp; the settings change was not applied</source>
+        <target>LSP は --lsp で設定されています。設定変更は適用されませんでした</target>
+      </trans-unit>
+      <trans-unit id="69">
+        <source>LSP server</source>
+        <target>LSP サーバー</target>
+      </trans-unit>
+      <trans-unit id="70">
+        <source>LSP:%status%  ^S save ^T panel ^Space complete ^Q quit</source>
+        <target>LSP:%status%  ^S 保存 ^T パネル ^Space 補完 ^Q 終了</target>
+      </trans-unit>
+      <trans-unit id="71">
+        <source>Last commit undone (changes kept staged)</source>
+        <target>直前のコミットを取り消しました (変更はステージに残ります)</target>
+      </trans-unit>
+      <trans-unit id="72">
+        <source>New File</source>
+        <target>新規ファイル</target>
+      </trans-unit>
+      <trans-unit id="73">
+        <source>New File…</source>
+        <target>新規ファイル…</target>
+      </trans-unit>
+      <trans-unit id="74">
+        <source>New Folder</source>
+        <target>新規フォルダー</target>
+      </trans-unit>
+      <trans-unit id="75">
+        <source>New Folder…</source>
+        <target>新規フォルダー…</target>
+      </trans-unit>
+      <trans-unit id="76">
+        <source>No blame for this line</source>
+        <target>この行の blame はありません</target>
+      </trans-unit>
+      <trans-unit id="77">
+        <source>No definition found</source>
+        <target>定義が見つかりません</target>
+      </trans-unit>
+      <trans-unit id="78">
+        <source>No documentation found</source>
+        <target>ドキュメントが見つかりません</target>
+      </trans-unit>
+      <trans-unit id="79">
+        <source>No implementation found</source>
+        <target>実装が見つかりません</target>
+      </trans-unit>
+      <trans-unit id="80">
+        <source>No local history for this file yet</source>
+        <target>このファイルのローカル履歴はまだありません</target>
+      </trans-unit>
+      <trans-unit id="81">
+        <source>No previous run — press Ctrl+Shift+R to pick one</source>
+        <target>前回の実行がありません — Ctrl+Shift+R で選択</target>
+      </trans-unit>
+      <trans-unit id="82">
+        <source>No quick fixes here</source>
+        <target>ここにクイックフィックスはありません</target>
+      </trans-unit>
+      <trans-unit id="83">
+        <source>No symbols in this file</source>
+        <target>このファイルにシンボルはありません</target>
+      </trans-unit>
+      <trans-unit id="84">
+        <source>No type definition found</source>
+        <target>型定義が見つかりません</target>
+      </trans-unit>
+      <trans-unit id="85">
+        <source>No usages found</source>
+        <target>使用箇所が見つかりません</target>
+      </trans-unit>
+      <trans-unit id="86">
+        <source>Not a UTF-8 text file</source>
+        <target>UTF-8 のテキストファイルではありません</target>
+      </trans-unit>
+      <trans-unit id="87">
+        <source>Not a git repository</source>
+        <target>git リポジトリではありません</target>
+      </trans-unit>
+      <trans-unit id="88">
+        <source>Nothing to peek</source>
+        <target>プレビューする対象がありません</target>
+      </trans-unit>
+      <trans-unit id="89">
+        <source>Nothing to replace</source>
+        <target>置換する対象がありません</target>
+      </trans-unit>
+      <trans-unit id="90">
+        <source>Nothing to run (no PHP file, composer scripts, or Makefile)</source>
+        <target>実行対象がありません (PHP ファイル、composer スクリプト、Makefile なし)</target>
+      </trans-unit>
+      <trans-unit id="91">
+        <source>Nothing to save</source>
+        <target>保存するものはありません</target>
+      </trans-unit>
+      <trans-unit id="92">
+        <source>Nothing to undo</source>
+        <target>取り消す操作はありません</target>
+      </trans-unit>
+      <trans-unit id="93">
+        <source>Nowhere to go back to</source>
+        <target>戻る場所がありません</target>
+      </trans-unit>
+      <trans-unit id="94">
+        <source>Open</source>
+        <target>開く</target>
+      </trans-unit>
+      <trans-unit id="95">
+        <source>Opened %url%</source>
+        <target>%url% を開きました</target>
+      </trans-unit>
+      <trans-unit id="96">
+        <source>Peek target outside the filesystem</source>
+        <target>プレビュー対象がファイルシステム外です</target>
+      </trans-unit>
+      <trans-unit id="97">
+        <source>Press a key… (Esc to cancel)</source>
+        <target>キーを押してください… (Esc でキャンセル)</target>
+      </trans-unit>
+      <trans-unit id="98">
+        <source>Quick Fixes</source>
+        <target>クイックフィックス</target>
+      </trans-unit>
+      <trans-unit id="99">
+        <source>Quick fix has nothing to apply</source>
+        <target>クイックフィックスに適用する内容がありません</target>
+      </trans-unit>
+      <trans-unit id="100">
+        <source>Ran &quot;%title%&quot;</source>
+        <target>「%title%」を実行しました</target>
+      </trans-unit>
+      <trans-unit id="101">
+        <source>Rebound %action% to %key% · applies on restart</source>
+        <target>%action% を %key% に再割り当て · 再起動後に適用</target>
+      </trans-unit>
+      <trans-unit id="102">
+        <source>Reformatted %file%</source>
+        <target>%file% を再整形しました</target>
+      </trans-unit>
+      <trans-unit id="103">
+        <source>Refresh</source>
+        <target>更新</target>
+      </trans-unit>
+      <trans-unit id="104">
+        <source>Reloaded %file%</source>
+        <target>%file% を再読み込みしました</target>
+      </trans-unit>
+      <trans-unit id="105">
+        <source>Rename</source>
+        <target>名前を変更</target>
+      </trans-unit>
+      <trans-unit id="106">
+        <source>Rename failed: %message%</source>
+        <target>名前変更に失敗しました: %message%</target>
+      </trans-unit>
+      <trans-unit id="107">
+        <source>Rename needs a language server</source>
+        <target>名前変更には言語サーバーが必要です</target>
+      </trans-unit>
+      <trans-unit id="108">
+        <source>Rename to</source>
+        <target>名前の変更先</target>
+      </trans-unit>
+      <trans-unit id="109">
+        <source>Renamed in %count% file</source>
+        <target>%count% 件のファイルで名前を変更しました</target>
+      </trans-unit>
+      <trans-unit id="110">
+        <source>Renamed in %count% files</source>
+        <target>%count% 件のファイルで名前を変更しました</target>
+      </trans-unit>
+      <trans-unit id="111">
+        <source>Renamed to %name%</source>
+        <target>%name% に名前を変更しました</target>
+      </trans-unit>
+      <trans-unit id="112">
+        <source>Rename…</source>
+        <target>名前を変更…</target>
+      </trans-unit>
+      <trans-unit id="113">
+        <source>Replace:</source>
+        <target>置換:</target>
+      </trans-unit>
+      <trans-unit id="114">
+        <source>Replaced in %count% file</source>
+        <target>%count% 件のファイルで置換しました</target>
+      </trans-unit>
+      <trans-unit id="115">
+        <source>Replaced in %count% files</source>
+        <target>%count% 件のファイルで置換しました</target>
+      </trans-unit>
+      <trans-unit id="116">
+        <source>Restored from local history</source>
+        <target>ローカル履歴から復元しました</target>
+      </trans-unit>
+      <trans-unit id="117">
+        <source>Run</source>
+        <target>実行</target>
+      </trans-unit>
+      <trans-unit id="118">
+        <source>Save &amp; Close</source>
+        <target>保存して閉じる</target>
+      </trans-unit>
+      <trans-unit id="119">
+        <source>Save failed: %file%</source>
+        <target>保存に失敗しました: %file%</target>
+      </trans-unit>
+      <trans-unit id="120">
+        <source>Saved %count% file</source>
+        <target>%count% 件のファイルを保存しました</target>
+      </trans-unit>
+      <trans-unit id="121">
+        <source>Saved %count% files</source>
+        <target>%count% 件のファイルを保存しました</target>
+      </trans-unit>
+      <trans-unit id="122">
+        <source>Saved %file%</source>
+        <target>%file% を保存しました</target>
+      </trans-unit>
+      <trans-unit id="123">
+        <source>Show whitespace changes to stage lines (w)</source>
+        <target>行をステージするには空白の変更を表示 (w)</target>
+      </trans-unit>
+      <trans-unit id="124">
+        <source>Stage failed</source>
+        <target>ステージに失敗しました</target>
+      </trans-unit>
+      <trans-unit id="125">
+        <source>Staged %path%</source>
+        <target>%path% をステージしました</target>
+      </trans-unit>
+      <trans-unit id="126">
+        <source>Summary (required)</source>
+        <target>概要 (必須)</target>
+      </trans-unit>
+      <trans-unit id="127">
+        <source>Target outside the filesystem</source>
+        <target>対象がファイルシステム外です</target>
+      </trans-unit>
+      <trans-unit id="128">
+        <source>Unknown language setting &quot;%key%&quot;</source>
+        <target>不明な言語設定「%key%」</target>
+      </trans-unit>
+      <trans-unit id="129">
+        <source>Unknown setting &quot;%key%&quot;</source>
+        <target>不明な設定「%key%」</target>
+      </trans-unit>
+      <trans-unit id="130">
+        <source>Unsaved changes in %name%</source>
+        <target>%name% に未保存の変更があります</target>
+      </trans-unit>
+      <trans-unit id="131">
+        <source>Unsaved changes — %noun% edits. Ctrl+Q again to quit, Ctrl+S to save</source>
+        <target>未保存の変更 — %noun% 変更があります。もう一度 Ctrl+Q で終了、Ctrl+S で保存</target>
+      </trans-unit>
+      <trans-unit id="132">
+        <source>Unsupported key — try another</source>
+        <target>サポートされていないキー — 別のキーを試してください</target>
+      </trans-unit>
+      <trans-unit id="133">
+        <source>Untracked files always show the whole file</source>
+        <target>追跡外のファイルは常にファイル全体を表示します</target>
+      </trans-unit>
+      <trans-unit id="134">
+        <source>Untracked: stage the whole file with Space in the changes list</source>
+        <target>追跡外: 変更リストで Space を押してファイル全体をステージします</target>
+      </trans-unit>
+      <trans-unit id="135">
+        <source>[scrolled +%count%]</source>
+        <target>[スクロール +%count%]</target>
+      </trans-unit>
+      <trans-unit id="136">
+        <source>applies on restart</source>
+        <target>再起動後に適用</target>
+      </trans-unit>
+      <trans-unit id="137">
+        <source>auto-detect</source>
+        <target>自動検出</target>
+      </trans-unit>
+      <trans-unit id="138">
+        <source>auto: %server%</source>
+        <target>自動: %server%</target>
+      </trans-unit>
+      <trans-unit id="139">
+        <source>disabled</source>
+        <target>無効</target>
+      </trans-unit>
+      <trans-unit id="140">
+        <source>failed</source>
+        <target>失敗</target>
+      </trans-unit>
+      <trans-unit id="141">
+        <source>git apply refused the partial patch</source>
+        <target>git apply が部分パッチを拒否しました</target>
+      </trans-unit>
+      <trans-unit id="142">
+        <source>git refused the staging change</source>
+        <target>git がステージ変更を拒否しました</target>
+      </trans-unit>
+      <trans-unit id="143">
+        <source>no matches</source>
+        <target>一致なし</target>
+      </trans-unit>
+      <trans-unit id="144">
+        <source>no server</source>
+        <target>サーバーなし</target>
+      </trans-unit>
+      <trans-unit id="145">
+        <source>none (install phpactor)</source>
+        <target>なし (phpactor をインストール)</target>
+      </trans-unit>
+      <trans-unit id="146">
+        <source>not saved</source>
+        <target>未保存</target>
+      </trans-unit>
+      <trans-unit id="147">
+        <source>porta — open a file from the tree (Enter)</source>
+        <target>porta — ツリーからファイルを開く (Enter)</target>
+      </trans-unit>
+      <trans-unit id="148">
+        <source>starting…</source>
+        <target>起動中…</target>
+      </trans-unit>
+      <trans-unit id="149">
+        <source>⏎/F3 next  ⇧F3 prev  esc</source>
+        <target>⏎/F3 次へ  ⇧F3 前へ  esc</target>
+      </trans-unit>
+      <trans-unit id="150">
+        <source>⏎/F3 next  ⇧F3 prev  ⇥ field  ⌥R replace  ⌥A all  esc</source>
+        <target>⏎/F3 次へ  ⇧F3 前へ  ⇥ フィールド  ⌥R 置換  ⌥A すべて  esc</target>
+      </trans-unit>
+      <trans-unit id="151">
+        <source>Accept Completion</source>
+        <target>補完を確定</target>
+      </trans-unit>
+      <trans-unit id="152">
+        <source>Add Caret Above</source>
+        <target>上にキャレットを追加</target>
+      </trans-unit>
+      <trans-unit id="153">
+        <source>Add Caret Below</source>
+        <target>下にキャレットを追加</target>
+      </trans-unit>
+      <trans-unit id="154">
+        <source>Add Caret at Next Occurrence</source>
+        <target>次の一致にキャレットを追加</target>
+      </trans-unit>
+      <trans-unit id="155">
+        <source>Backspace</source>
+        <target>バックスペース</target>
+      </trans-unit>
+      <trans-unit id="156">
+        <source>Close Tab</source>
+        <target>タブを閉じる</target>
+      </trans-unit>
+      <trans-unit id="157">
+        <source>Code Completion</source>
+        <target>コード補完</target>
+      </trans-unit>
+      <trans-unit id="158">
+        <source>Collapse / Expand Fold</source>
+        <target>折りたたみを開閉</target>
+      </trans-unit>
+      <trans-unit id="159">
+        <source>Copy</source>
+        <target>コピー</target>
+      </trans-unit>
+      <trans-unit id="160">
+        <source>Cut</source>
+        <target>切り取り</target>
+      </trans-unit>
+      <trans-unit id="161">
+        <source>Delete Character</source>
+        <target>文字を削除</target>
+      </trans-unit>
+      <trans-unit id="162">
+        <source>Delete Line</source>
+        <target>行を削除</target>
+      </trans-unit>
+      <trans-unit id="163">
+        <source>Delete Word</source>
+        <target>単語を削除</target>
+      </trans-unit>
+      <trans-unit id="164">
+        <source>Delete to Line End</source>
+        <target>行末まで削除</target>
+      </trans-unit>
+      <trans-unit id="165">
+        <source>Duplicate Line or Selection</source>
+        <target>行または選択を複製</target>
+      </trans-unit>
+      <trans-unit id="166">
+        <source>Extend Selection</source>
+        <target>選択を拡張</target>
+      </trans-unit>
+      <trans-unit id="167">
+        <source>Extend Selection Down</source>
+        <target>選択を下に拡張</target>
+      </trans-unit>
+      <trans-unit id="168">
+        <source>Extend Selection Left</source>
+        <target>選択を左に拡張</target>
+      </trans-unit>
+      <trans-unit id="169">
+        <source>Extend Selection Right</source>
+        <target>選択を右に拡張</target>
+      </trans-unit>
+      <trans-unit id="170">
+        <source>Extend Selection Up</source>
+        <target>選択を上に拡張</target>
+      </trans-unit>
+      <trans-unit id="171">
+        <source>Extend Selection to Line End</source>
+        <target>選択を行末まで拡張</target>
+      </trans-unit>
+      <trans-unit id="172">
+        <source>Extend Selection to Line Start</source>
+        <target>選択を行頭まで拡張</target>
+      </trans-unit>
+      <trans-unit id="173">
+        <source>Extend Selection to Next Word</source>
+        <target>選択を次の単語まで拡張</target>
+      </trans-unit>
+      <trans-unit id="174">
+        <source>Extend Selection to Previous Word</source>
+        <target>選択を前の単語まで拡張</target>
+      </trans-unit>
+      <trans-unit id="175">
+        <source>Find Action</source>
+        <target>アクションを検索</target>
+      </trans-unit>
+      <trans-unit id="176">
+        <source>Find Usages</source>
+        <target>使用箇所を検索</target>
+      </trans-unit>
+      <trans-unit id="177">
+        <source>Find in File</source>
+        <target>ファイル内を検索</target>
+      </trans-unit>
+      <trans-unit id="178">
+        <source>Focus Next Pane</source>
+        <target>次のペインにフォーカス</target>
+      </trans-unit>
+      <trans-unit id="179">
+        <source>Focus Previous Pane</source>
+        <target>前のペインにフォーカス</target>
+      </trans-unit>
+      <trans-unit id="180">
+        <source>Git: Changes</source>
+        <target>Git: 変更</target>
+      </trans-unit>
+      <trans-unit id="181">
+        <source>Go to Declaration or Usages</source>
+        <target>宣言または使用箇所へ移動</target>
+      </trans-unit>
+      <trans-unit id="182">
+        <source>Go to File</source>
+        <target>ファイルへ移動</target>
+      </trans-unit>
+      <trans-unit id="183">
+        <source>Go to Implementation</source>
+        <target>実装へ移動</target>
+      </trans-unit>
+      <trans-unit id="184">
+        <source>Go to Line</source>
+        <target>行へ移動</target>
+      </trans-unit>
+      <trans-unit id="185">
+        <source>Go to Symbol in Project</source>
+        <target>プロジェクト内のシンボルへ移動</target>
+      </trans-unit>
+      <trans-unit id="186">
+        <source>Go to Type Definition</source>
+        <target>型定義へ移動</target>
+      </trans-unit>
+      <trans-unit id="187">
+        <source>Indent</source>
+        <target>インデント</target>
+      </trans-unit>
+      <trans-unit id="188">
+        <source>Move Caret Down</source>
+        <target>キャレットを下へ</target>
+      </trans-unit>
+      <trans-unit id="189">
+        <source>Move Caret Left</source>
+        <target>キャレットを左へ</target>
+      </trans-unit>
+      <trans-unit id="190">
+        <source>Move Caret Right</source>
+        <target>キャレットを右へ</target>
+      </trans-unit>
+      <trans-unit id="191">
+        <source>Move Caret Up</source>
+        <target>キャレットを上へ</target>
+      </trans-unit>
+      <trans-unit id="192">
+        <source>Move Caret to Line End</source>
+        <target>キャレットを行末へ</target>
+      </trans-unit>
+      <trans-unit id="193">
+        <source>Move Caret to Line Start</source>
+        <target>キャレットを行頭へ</target>
+      </trans-unit>
+      <trans-unit id="194">
+        <source>Move Caret to Next Word</source>
+        <target>キャレットを次の単語へ</target>
+      </trans-unit>
+      <trans-unit id="195">
+        <source>Move Caret to Previous Word</source>
+        <target>キャレットを前の単語へ</target>
+      </trans-unit>
+      <trans-unit id="196">
+        <source>Move Caret to Text End</source>
+        <target>キャレットを文末へ</target>
+      </trans-unit>
+      <trans-unit id="197">
+        <source>Move Caret to Text Start</source>
+        <target>キャレットを文頭へ</target>
+      </trans-unit>
+      <trans-unit id="198">
+        <source>Move Line Down</source>
+        <target>行を下へ移動</target>
+      </trans-unit>
+      <trans-unit id="199">
+        <source>Move Line Up</source>
+        <target>行を上へ移動</target>
+      </trans-unit>
+      <trans-unit id="200">
+        <source>Move Statement Down</source>
+        <target>文を下へ移動</target>
+      </trans-unit>
+      <trans-unit id="201">
+        <source>Move Statement Up</source>
+        <target>文を上へ移動</target>
+      </trans-unit>
+      <trans-unit id="202">
+        <source>Move Tab Left</source>
+        <target>タブを左へ移動</target>
+      </trans-unit>
+      <trans-unit id="203">
+        <source>Move Tab Right</source>
+        <target>タブを右へ移動</target>
+      </trans-unit>
+      <trans-unit id="204">
+        <source>Navigate Back</source>
+        <target>前に戻る</target>
+      </trans-unit>
+      <trans-unit id="205">
+        <source>New Line</source>
+        <target>改行</target>
+      </trans-unit>
+      <trans-unit id="206">
+        <source>Next Conflict</source>
+        <target>次の競合</target>
+      </trans-unit>
+      <trans-unit id="207">
+        <source>Next Tab</source>
+        <target>次のタブ</target>
+      </trans-unit>
+      <trans-unit id="208">
+        <source>Open Menu</source>
+        <target>メニューを開く</target>
+      </trans-unit>
+      <trans-unit id="209">
+        <source>Open Terminal</source>
+        <target>ターミナルを開く</target>
+      </trans-unit>
+      <trans-unit id="210">
+        <source>Page Down</source>
+        <target>ページダウン</target>
+      </trans-unit>
+      <trans-unit id="211">
+        <source>Page Up</source>
+        <target>ページアップ</target>
+      </trans-unit>
+      <trans-unit id="212">
+        <source>Paste</source>
+        <target>貼り付け</target>
+      </trans-unit>
+      <trans-unit id="213">
+        <source>Peek Definition</source>
+        <target>定義をプレビュー</target>
+      </trans-unit>
+      <trans-unit id="214">
+        <source>Previous Conflict</source>
+        <target>前の競合</target>
+      </trans-unit>
+      <trans-unit id="215">
+        <source>Previous Snippet Tab Stop</source>
+        <target>前のスニペットタブストップ</target>
+      </trans-unit>
+      <trans-unit id="216">
+        <source>Previous Tab</source>
+        <target>前のタブ</target>
+      </trans-unit>
+      <trans-unit id="217">
+        <source>Quick Documentation</source>
+        <target>クイックドキュメント</target>
+      </trans-unit>
+      <trans-unit id="218">
+        <source>Quit</source>
+        <target>終了</target>
+      </trans-unit>
+      <trans-unit id="219">
+        <source>Recent Files</source>
+        <target>最近使ったファイル</target>
+      </trans-unit>
+      <trans-unit id="220">
+        <source>Redo</source>
+        <target>やり直し</target>
+      </trans-unit>
+      <trans-unit id="221">
+        <source>Reformat File</source>
+        <target>ファイルを再整形</target>
+      </trans-unit>
+      <trans-unit id="222">
+        <source>Rename Symbol</source>
+        <target>シンボルの名前を変更</target>
+      </trans-unit>
+      <trans-unit id="223">
+        <source>Replace in File</source>
+        <target>ファイル内で置換</target>
+      </trans-unit>
+      <trans-unit id="224">
+        <source>Resolve Conflict</source>
+        <target>競合を解決</target>
+      </trans-unit>
+      <trans-unit id="225">
+        <source>Run Last</source>
+        <target>前回を実行</target>
+      </trans-unit>
+      <trans-unit id="226">
+        <source>Run…</source>
+        <target>実行…</target>
+      </trans-unit>
+      <trans-unit id="227">
+        <source>Save All</source>
+        <target>すべて保存</target>
+      </trans-unit>
+      <trans-unit id="228">
+        <source>Save File</source>
+        <target>ファイルを保存</target>
+      </trans-unit>
+      <trans-unit id="229">
+        <source>Select All</source>
+        <target>すべて選択</target>
+      </trans-unit>
+      <trans-unit id="230">
+        <source>Select All Occurrences</source>
+        <target>すべての一致を選択</target>
+      </trans-unit>
+      <trans-unit id="231">
+        <source>Settings…</source>
+        <target>設定…</target>
+      </trans-unit>
+      <trans-unit id="232">
+        <source>Show Local History</source>
+        <target>ローカル履歴を表示</target>
+      </trans-unit>
+      <trans-unit id="233">
+        <source>Show Problems</source>
+        <target>問題を表示</target>
+      </trans-unit>
+      <trans-unit id="234">
+        <source>Show Quick Fixes</source>
+        <target>クイックフィックスを表示</target>
+      </trans-unit>
+      <trans-unit id="235">
+        <source>Shrink Selection</source>
+        <target>選択を縮小</target>
+      </trans-unit>
+      <trans-unit id="236">
+        <source>Surround With…</source>
+        <target>囲む…</target>
+      </trans-unit>
+      <trans-unit id="237">
+        <source>Switch Tree / Editor Focus</source>
+        <target>ツリー / エディターのフォーカスを切替</target>
+      </trans-unit>
+      <trans-unit id="238">
+        <source>Toggle Comment</source>
+        <target>コメントを切替</target>
+      </trans-unit>
+      <trans-unit id="239">
+        <source>Tree: Collapse</source>
+        <target>ツリー: 折りたたむ</target>
+      </trans-unit>
+      <trans-unit id="240">
+        <source>Tree: Expand</source>
+        <target>ツリー: 展開</target>
+      </trans-unit>
+      <trans-unit id="241">
+        <source>Tree: Open / Toggle</source>
+        <target>ツリー: 開く / 切替</target>
+      </trans-unit>
+      <trans-unit id="242">
+        <source>Tree: Reload</source>
+        <target>ツリー: 再読み込み</target>
+      </trans-unit>
+      <trans-unit id="243">
+        <source>Tree: Select Next</source>
+        <target>ツリー: 次を選択</target>
+      </trans-unit>
+      <trans-unit id="244">
+        <source>Tree: Select Previous</source>
+        <target>ツリー: 前を選択</target>
+      </trans-unit>
+      <trans-unit id="245">
+        <source>Undo</source>
+        <target>元に戻す</target>
+      </trans-unit>
+      <trans-unit id="246">
+        <source>Git: Blame Current Line</source>
+        <target>Git: 現在の行の blame</target>
+      </trans-unit>
+      <trans-unit id="247">
+        <source>Git: Commit…</source>
+        <target>Git: コミット…</target>
+      </trans-unit>
+      <trans-unit id="248">
+        <source>Git: Stage Current File</source>
+        <target>Git: 現在のファイルをステージ</target>
+      </trans-unit>
+      <trans-unit id="249">
+        <source>Git: Undo Last Commit</source>
+        <target>Git: 直前のコミットを取り消す</target>
+      </trans-unit>
+      <trans-unit id="250">
+        <source>Toggle Auto-Pairs</source>
+        <target>自動ペアを切替</target>
+      </trans-unit>
+      <trans-unit id="251">
+        <source>Toggle Inline Diagnostics</source>
+        <target>インライン診断を切替</target>
+      </trans-unit>
+      <trans-unit id="252">
+        <source>Toggle Relative Line Numbers</source>
+        <target>相対行番号を切替</target>
+      </trans-unit>
+      <trans-unit id="253">
+        <source>File</source>
+        <target>ファイル</target>
+      </trans-unit>
+      <trans-unit id="254">
+        <source>Edit</source>
+        <target>編集</target>
+      </trans-unit>
+      <trans-unit id="255">
+        <source>Navigate</source>
+        <target>移動</target>
+      </trans-unit>
+      <trans-unit id="256">
+        <source>Code</source>
+        <target>コード</target>
+      </trans-unit>
+      <trans-unit id="257">
+        <source>Git</source>
+        <target>Git</target>
+      </trans-unit>
+      <trans-unit id="258">
+        <source>View</source>
+        <target>表示</target>
+      </trans-unit>
+      <trans-unit id="259">
+        <source>Help</source>
+        <target>ヘルプ</target>
+      </trans-unit>
+      <trans-unit id="260">
+        <source>Language</source>
+        <target>言語</target>
+      </trans-unit>
+      <trans-unit id="261">
+        <source>Inline diagnostics</source>
+        <target>インライン診断</target>
+      </trans-unit>
+      <trans-unit id="262">
+        <source>Relative line numbers</source>
+        <target>相対行番号</target>
+      </trans-unit>
+      <trans-unit id="263">
+        <source>Auto-pairs</source>
+        <target>自動ペア</target>
+      </trans-unit>
+      <trans-unit id="264">
+        <source>Respect .editorconfig</source>
+        <target>.editorconfig を尊重</target>
+      </trans-unit>
+      <trans-unit id="265">
+        <source>Theme</source>
+        <target>テーマ</target>
+      </trans-unit>
+      <trans-unit id="266">
+        <source>General</source>
+        <target>一般</target>
+      </trans-unit>
+      <trans-unit id="267">
+        <source>Keybindings</source>
+        <target>キーバインド</target>
+      </trans-unit>
+      <trans-unit id="268">
+        <source>Languages</source>
+        <target>言語</target>
+      </trans-unit>
+      <trans-unit id="269">
+        <source> Changes </source>
+        <target> 変更 </target>
+      </trans-unit>
+      <trans-unit id="270">
+        <source> History </source>
+        <target> 履歴 </target>
+      </trans-unit>
+      <trans-unit id="271">
+        <source>default</source>
+        <target>既定</target>
+      </trans-unit>
+      <trans-unit id="272">
+        <source>±10 lines</source>
+        <target>±10 行</target>
+      </trans-unit>
+      <trans-unit id="273">
+        <source>whole file</source>
+        <target>ファイル全体</target>
+      </trans-unit>
+      <trans-unit id="274">
+        <source>No changes selected</source>
+        <target>変更が選択されていません</target>
+      </trans-unit>
+      <trans-unit id="275">
+        <source>Working tree clean</source>
+        <target>作業ツリーはクリーンです</target>
+      </trans-unit>
+      <trans-unit id="276">
+        <source>No changes (whitespace hidden)</source>
+        <target>変更なし (空白を非表示)</target>
+      </trans-unit>
+      <trans-unit id="277">
+        <source>No changes</source>
+        <target>変更なし</target>
+      </trans-unit>
+      <trans-unit id="278">
+        <source>Select a commit file</source>
+        <target>コミットのファイルを選択</target>
+      </trans-unit>
+      <trans-unit id="279">
+        <source>No files in this commit</source>
+        <target>このコミットにファイルはありません</target>
+      </trans-unit>
+      <trans-unit id="280">
+        <source>No patch (whitespace hidden)</source>
+        <target>パッチなし (空白を非表示)</target>
+      </trans-unit>
+      <trans-unit id="281">
+        <source>No patch for this file</source>
+        <target>このファイルのパッチはありません</target>
+      </trans-unit>
+      <trans-unit id="282">
+        <source>on</source>
+        <target>オン</target>
+      </trans-unit>
+      <trans-unit id="283">
+        <source>off</source>
+        <target>オフ</target>
+      </trans-unit>
+      <trans-unit id="284">
+        <source>indent size</source>
+        <target>インデント幅</target>
+      </trans-unit>
+      <trans-unit id="285">
+        <source>indent style</source>
+        <target>インデントスタイル</target>
+      </trans-unit>
+      <trans-unit id="286">
+        <source>Whitespace changes hidden</source>
+        <target>空白の変更を非表示</target>
+      </trans-unit>
+      <trans-unit id="287">
+        <source>Whitespace changes shown</source>
+        <target>空白の変更を表示</target>
+      </trans-unit>
     </body>
   </file>
 </xliff>
