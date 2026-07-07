@@ -36,11 +36,38 @@ final class MouseEventTest extends TestCase
         $up = MouseEvent::parse("\x1b[<64;3;3M");
         $this->assertTrue($up?->wheel);
         $this->assertSame(-1, $up?->wheelDelta);
+        $this->assertSame(0, $up?->wheelHDelta, 'a vertical wheel carries no horizontal delta');
         $this->assertFalse($up->isLeftPress());
 
         $down = MouseEvent::parse("\x1b[<65;3;3M");
         $this->assertTrue($down?->wheel);
         $this->assertSame(1, $down?->wheelDelta);
+        $this->assertSame(0, $down?->wheelHDelta);
+    }
+
+    public function testHorizontalWheelDecodes(): void
+    {
+        $left = MouseEvent::parse("\x1b[<66;3;3M");
+        $this->assertTrue($left?->wheel);
+        $this->assertSame(-1, $left?->wheelHDelta, 'code 66 = wheel left');
+        $this->assertSame(0, $left?->wheelDelta, 'horizontal must not leak into the vertical delta');
+
+        $right = MouseEvent::parse("\x1b[<67;3;3M");
+        $this->assertSame(1, $right?->wheelHDelta, 'code 67 = wheel right');
+        $this->assertSame(0, $right?->wheelDelta);
+    }
+
+    public function testShiftVerticalWheelMapsToHorizontal(): void
+    {
+        $left = MouseEvent::parse("\x1b[<68;3;3M"); // shift + wheel up
+        $this->assertTrue($left?->wheel);
+        $this->assertTrue($left?->shift);
+        $this->assertSame(-1, $left?->wheelHDelta, 'shift+up scrolls left (mouse convention)');
+        $this->assertSame(0, $left?->wheelDelta);
+
+        $right = MouseEvent::parse("\x1b[<69;3;3M"); // shift + wheel down
+        $this->assertSame(1, $right?->wheelHDelta, 'shift+down scrolls right');
+        $this->assertSame(0, $right?->wheelDelta);
     }
 
     public function testMotionAndRightButton(): void
