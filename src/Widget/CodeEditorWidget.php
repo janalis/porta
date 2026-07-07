@@ -50,6 +50,8 @@ final class CodeEditorWidget extends AbstractWidget implements FocusableInterfac
     private Document $document;
     private CodeHighlighter $highlighter;
     private ?string $filePath = null;
+    /** Global indent-style override: 'auto' defers to detection/.editorconfig, else 'spaces'|'tabs'. */
+    private string $indentStyle = 'auto';
 
     /** Viewport scroll state + caret-visibility clamp math, rebuilt per document. */
     private EditorScroll $scroll;
@@ -228,6 +230,7 @@ final class CodeEditorWidget extends AbstractWidget implements FocusableInterfac
     {
         $this->filePath = '' !== $path ? $path : null;
         $this->document = $document;
+        $this->applyIndentStyle();
         if (null !== $highlighter) {
             $this->highlighter = $highlighter;
         } else {
@@ -302,6 +305,27 @@ final class CodeEditorWidget extends AbstractWidget implements FocusableInterfac
     public function hasRelativeLineNumbers(): bool
     {
         return $this->relativeLineNumbers;
+    }
+
+    /**
+     * Set the global indent style ('auto' | 'spaces' | 'tabs'); a non-auto
+     * value overrides the current document immediately and every document
+     * shown afterwards (buffer switches re-apply it via {@see showDocument}).
+     */
+    public function setIndentStyle(string $style): void
+    {
+        if ($style !== $this->indentStyle) {
+            $this->indentStyle = $style;
+            $this->applyIndentStyle();
+            $this->invalidate();
+        }
+    }
+
+    private function applyIndentStyle(): void
+    {
+        if ('auto' !== $this->indentStyle) {
+            $this->document->setUsesTabs('tabs' === $this->indentStyle);
+        }
     }
 
     public function setAutoPairs(bool $enabled): void

@@ -18,7 +18,7 @@ use Symfony\Component\Tui\Tui;
  * rest (`editorConfig`, `theme`, `tabWidth`) are persist-only and take effect
  * next launch, flagged with a "applies on restart" note.
  *
- * @phpstan-type Descriptor array{label: string, kind: string, restart: bool, apply: (\Closure(bool): void)|null, options?: list<string>, min?: int, max?: int}
+ * @phpstan-type Descriptor array{label: string, kind: string, restart: bool, apply: (\Closure(int|bool|string): void)|null, options?: list<string>, min?: int, max?: int}
  * @phpstan-type FormRow array{key: string, label: string, kind: string, value: bool|int|string, restart: bool, options?: list<string>, min?: int, max?: int}
  */
 final class SettingsController
@@ -37,9 +37,10 @@ final class SettingsController
         private readonly string $rootDir,
     ) {
         $this->descriptors = [
-            'inlineDiagnostics' => ['label' => 'Inline diagnostics', 'kind' => 'bool', 'restart' => false, 'apply' => static fn (bool $on) => $editor->setInlineDiagnostics($on)],
-            'relativeLineNumbers' => ['label' => 'Relative line numbers', 'kind' => 'bool', 'restart' => false, 'apply' => static fn (bool $on) => $editor->setRelativeLineNumbers($on)],
-            'autoPairs' => ['label' => 'Auto-pairs', 'kind' => 'bool', 'restart' => false, 'apply' => static fn (bool $on) => $editor->setAutoPairs($on)],
+            'inlineDiagnostics' => ['label' => 'Inline diagnostics', 'kind' => 'bool', 'restart' => false, 'apply' => static fn (int|bool|string $v) => $editor->setInlineDiagnostics((bool) $v)],
+            'relativeLineNumbers' => ['label' => 'Relative line numbers', 'kind' => 'bool', 'restart' => false, 'apply' => static fn (int|bool|string $v) => $editor->setRelativeLineNumbers((bool) $v)],
+            'autoPairs' => ['label' => 'Auto-pairs', 'kind' => 'bool', 'restart' => false, 'apply' => static fn (int|bool|string $v) => $editor->setAutoPairs((bool) $v)],
+            'indentStyle' => ['label' => 'Indent style', 'kind' => 'choice', 'restart' => false, 'apply' => static fn (int|bool|string $v) => $editor->setIndentStyle((string) $v), 'options' => ['auto', 'spaces', 'tabs']],
             'editorConfig' => ['label' => 'Respect .editorconfig', 'kind' => 'bool', 'restart' => true, 'apply' => null],
             'theme' => ['label' => 'Theme', 'kind' => 'choice', 'restart' => true, 'apply' => null, 'options' => ['dark', 'light']],
             'tabWidth' => ['label' => 'Tab width', 'kind' => 'int', 'restart' => true, 'apply' => null, 'min' => 1, 'max' => 16],
@@ -51,7 +52,7 @@ final class SettingsController
     {
         foreach ($this->descriptors as $key => $descriptor) {
             if (null !== $descriptor['apply']) {
-                ($descriptor['apply'])((bool) $this->settings[$key]);
+                ($descriptor['apply'])($this->settings[$key]);
             }
         }
     }
@@ -117,7 +118,7 @@ final class SettingsController
 
         $this->settings[$key] = $value;
         if (null !== $descriptor['apply']) {
-            ($descriptor['apply'])((bool) $value);
+            ($descriptor['apply'])($value);
         }
 
         $persisted = IdeConfig::persistSetting($this->rootDir, $key, $value);

@@ -131,6 +131,17 @@ final class Document
         return $this->usesTabs;
     }
 
+    /**
+     * Force the indentation unit (the editor's global indent-style setting
+     * overrides the auto-detected/`.editorconfig` value). Invalidates the
+     * tab-expansion cache so a changed unit renders immediately.
+     */
+    public function setUsesTabs(bool $usesTabs): void
+    {
+        $this->usesTabs = $usesTabs;
+        $this->visualLinesVersion = -1;
+    }
+
     /** The indentation unit for one level: a tab, or {@see $indentSize} spaces. */
     public function indentUnit(): string
     {

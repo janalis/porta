@@ -54,7 +54,8 @@ final class SettingsControllerTest extends TestCase
         $rows = $controller->formRows();
         $byKey = array_column($rows, null, 'key');
 
-        $this->assertSame(['inlineDiagnostics', 'relativeLineNumbers', 'autoPairs', 'editorConfig', 'theme', 'tabWidth'], array_column($rows, 'key'));
+        $this->assertSame(['inlineDiagnostics', 'relativeLineNumbers', 'autoPairs', 'indentStyle', 'editorConfig', 'theme', 'tabWidth'], array_column($rows, 'key'));
+        $this->assertSame(['auto', 'spaces', 'tabs'], $byKey['indentStyle']['options']);
         $this->assertFalse($byKey['autoPairs']['value']);
         $this->assertSame('bool', $byKey['autoPairs']['kind']);
         $this->assertFalse($byKey['inlineDiagnostics']['restart'], 'live toggles need no restart');
@@ -79,6 +80,22 @@ final class SettingsControllerTest extends TestCase
         $this->assertTrue(IdeConfig::load($project->dir)->settings['relativeLineNumbers'], 'persisted');
         $this->assertStringContainsString('Relative line numbers on', $this->flashText($status));
         $this->assertStringNotContainsString('restart', $this->flashText($status), 'live change is immediate');
+    }
+
+    public function testChangingIndentStyleAppliesToTheEditorLive(): void
+    {
+        $project = new TempProject();
+        $editor = new CodeEditorWidget();
+        $editor->openFile('x.php', "<?php\n\$a = 1;\n");
+        $controller = $this->controller($project->dir, $editor, $status = new StatusBarWidget());
+
+        $controller->changeSetting('indentStyle', 'tabs');
+        $this->assertTrue($editor->getDocument()->usesTabs(), 'tabs applied to the current document');
+        $this->assertSame('tabs', IdeConfig::load($project->dir)->settings['indentStyle'], 'persisted');
+        $this->assertStringNotContainsString('restart', $this->flashText($status), 'indent style is live');
+
+        $controller->changeSetting('indentStyle', 'spaces');
+        $this->assertFalse($editor->getDocument()->usesTabs());
     }
 
     public function testChangingARestartSettingPersistsWithoutApplyingLive(): void
@@ -122,10 +139,12 @@ final class SettingsControllerTest extends TestCase
     {
         $project = new TempProject();
         $editor = new CodeEditorWidget();
-        $controller = $this->controller($project->dir, $editor, new StatusBarWidget(), ['relativeLineNumbers' => true, 'theme' => 'light']);
+        $editor->openFile('x.php', "<?php\n");
+        $controller = $this->controller($project->dir, $editor, new StatusBarWidget(), ['relativeLineNumbers' => true, 'theme' => 'light', 'indentStyle' => 'tabs']);
 
         $controller->applyAll(); // must not choke on the null-apply descriptors
         $this->assertTrue($editor->hasRelativeLineNumbers());
+        $this->assertTrue($editor->getDocument()->usesTabs(), 'the persisted indent style is applied on boot');
     }
 
     public function testUnknownKeyFlashesInsteadOfTogglingAnything(): void

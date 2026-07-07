@@ -33,6 +33,7 @@ final class IdeConfig
     public const DEFAULT_SETTINGS = [
         'theme' => 'dark',
         'tabWidth' => 4,
+        'indentStyle' => 'auto',
         'inlineDiagnostics' => true,
         'relativeLineNumbers' => false,
         'autoPairs' => true,
