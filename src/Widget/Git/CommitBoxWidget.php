@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Porta\Widget\Git;
 
+use Porta\I18n\Translator;
 use Porta\Ui\MultilineInput;
 use Porta\Ui\Style;
 use Porta\Ui\TextField;
@@ -50,6 +51,7 @@ final class CommitBoxWidget extends AbstractWidget implements FocusableInterface
     private $onExit = null;
 
     public function __construct(
+        private readonly Translator $translator,
         private int $width = 44,
     ) {
         $this->summary = new TextField();
@@ -247,23 +249,23 @@ final class CommitBoxWidget extends AbstractWidget implements FocusableInterface
         $focused = $this->focused;
 
         $lines = [];
-        $header = $this->amend ? ' Commit  [amend · alt+m]' : ' Commit  ·  alt+m: amend';
+        $header = $this->amend ? $this->translator->trans(' Commit  [amend · alt+m]') : $this->translator->trans(' Commit  ·  alt+m: amend');
         $lines[] = "\x1b[48;5;237m\x1b[1m".AnsiUtils::truncateToWidth($header, $width, '…', pad: true)."\x1b[0m";
 
         $summary = ' '.$this->summary->render(cursor: $focused && 0 === $this->activeField);
-        $summaryHint = '' === $this->summary->value() && !($focused && 0 === $this->activeField) ? "\x1b[38;5;245m Summary (required)\x1b[0m" : $summary;
+        $summaryHint = '' === $this->summary->value() && !($focused && 0 === $this->activeField) ? "\x1b[38;5;245m ".$this->translator->trans('Summary (required)')."\x1b[0m" : $summary;
         $lines[] = "\x1b[48;5;236m".AnsiUtils::truncateToWidth($summaryHint, $width, '…', pad: true)."\x1b[0m";
 
         $descriptionLines = $this->description->render($width - 1, cursor: $focused && 1 === $this->activeField);
         if ($this->description->isEmpty() && !($focused && 1 === $this->activeField)) {
-            $descriptionLines = ["\x1b[38;5;245mDescription\x1b[0m"];
+            $descriptionLines = ["\x1b[38;5;245m".$this->translator->trans('Description')."\x1b[0m"];
         }
         for ($i = 0; $i < self::DESCRIPTION_ROWS; ++$i) {
             $lines[] = "\x1b[48;5;235m".AnsiUtils::truncateToWidth(' '.($descriptionLines[$i] ?? ''), $width, '…', pad: true)."\x1b[0m";
         }
 
         $lines[] = str_repeat(' ', $width);
-        $label = $this->amend ? '  Amend last commit  ' : '  Commit to branch  ';
+        $label = $this->amend ? $this->translator->trans('  Amend last commit  ') : $this->translator->trans('  Commit to branch  ');
         $button = $this->commitEnabled()
             ? Style::SELECTED_ROW.AnsiUtils::truncateToWidth($label, $width, '…', pad: true)."\x1b[0m"
             : "\x1b[48;5;236m\x1b[38;5;245m".AnsiUtils::truncateToWidth($label, $width, '…', pad: true)."\x1b[0m";

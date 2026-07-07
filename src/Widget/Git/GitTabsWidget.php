@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Porta\Widget\Git;
 
+use Porta\I18n\Translator;
 use Porta\Ui\Style;
 use Porta\Widget\Render\MenuOverlayHost;
 use Porta\Widget\Render\MenuOverlayHostTrait;
@@ -31,6 +32,7 @@ final class GitTabsWidget extends AbstractWidget implements MenuOverlayHost
     private $onSelect = null;
 
     public function __construct(
+        private readonly Translator $translator,
         private int $width = 44,
     ) {}
 
@@ -93,7 +95,8 @@ final class GitTabsWidget extends AbstractWidget implements MenuOverlayHost
         $this->layout = [];
         $line = ' ';
         $col = 1;
-        foreach (self::TABS as $mode => $label) {
+        foreach (self::TABS as $mode => $rawLabel) {
+            $label = $this->translator->trans($rawLabel);
             $tabWidth = mb_strwidth($label);
             $this->layout[] = ['mode' => $mode, 'start' => $col, 'width' => $tabWidth];
             $line .= ($mode === $this->active ? Style::SELECTED_ROW."\x1b[1m" : "\x1b[48;5;237m\x1b[38;5;250m").$label."\x1b[0m\x1b[48;5;235m";

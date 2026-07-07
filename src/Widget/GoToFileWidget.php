@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Porta\Widget;
 
+use Porta\I18n\Translator;
 use Porta\Support\FuzzyMatcher;
 use Porta\Ui\ListNavigation;
 use Porta\Ui\ListSelection;
@@ -48,6 +49,7 @@ final class GoToFileWidget extends OverlayWidget implements FocusableInterface
     private $onPick = null;
 
     public function __construct(
+        private readonly Translator $translator,
         private readonly string $rootDir,
     ) {
         $this->query = new TextField();
@@ -150,7 +152,7 @@ final class GoToFileWidget extends OverlayWidget implements FocusableInterface
         $columns = $context->getColumns();
 
         $lines = [];
-        $header = ' Go to File: '.$this->query->render(cursor: $this->focused);
+        $header = ' '.$this->translator->trans('Go to File:').' '.$this->query->render(cursor: $this->focused);
         $lines[] = HeaderRenderer::render($header, $columns);
 
         foreach (\array_slice($this->results, 0, self::MAX_RESULTS) as $i => $path) {
@@ -163,7 +165,7 @@ final class GoToFileWidget extends OverlayWidget implements FocusableInterface
         }
 
         if ([] === $this->results && '' !== $this->query->value()) {
-            $lines[] = "\x1b[48;5;236m\x1b[38;5;244m".AnsiUtils::truncateToWidth(' no matches', $columns, '', pad: true)."\x1b[0m";
+            $lines[] = "\x1b[48;5;236m\x1b[38;5;244m".AnsiUtils::truncateToWidth(' '.$this->translator->trans('no matches'), $columns, '', pad: true)."\x1b[0m";
         }
 
         return $lines;

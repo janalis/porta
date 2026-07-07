@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Porta\Tests\Unit\Widget;
 
+use Porta\I18n\Translator;
 use PHPUnit\Framework\TestCase;
 use Porta\Editor\Document;
 use Porta\Widget\FindBarWidget;
@@ -21,7 +22,7 @@ final class FindBarWidgetTest extends TestCase
 
     public function testClosedBarRendersNothingAndIgnoresInput(): void
     {
-        $bar = new FindBarWidget();
+        $bar = new FindBarWidget(new Translator('en'));
         $this->assertSame([], $bar->render(new RenderContext(80, 1)));
         $bar->handleInput('x'); // no crash while closed
         $this->assertFalse($bar->isOpen());
@@ -30,7 +31,7 @@ final class FindBarWidgetTest extends TestCase
     public function testIncrementalSmartCaseSearch(): void
     {
         $doc = new Document("Foo bar\nfoo BAR\nbaz\n");
-        $bar = new FindBarWidget();
+        $bar = new FindBarWidget(new Translator('en'));
         $bar->setFocused(true);
         $updates = 0;
         $bar->onUpdate(function () use (&$updates): void {
@@ -55,7 +56,7 @@ final class FindBarWidgetTest extends TestCase
     {
         $doc = new Document("a match\nb match\nc match\n");
         $doc->setCursor(1, 0);
-        $bar = new FindBarWidget();
+        $bar = new FindBarWidget(new Translator('en'));
         $bar->open($doc, withReplace: false, initialQuery: 'match');
 
         $this->assertSame(1, $doc->getCursorLine(), 'nearest match at/after cursor');
@@ -71,7 +72,7 @@ final class FindBarWidgetTest extends TestCase
     public function testBackspaceNarrowsAndEmptyQueryClearsMatches(): void
     {
         $doc = new Document("alpha\n");
-        $bar = new FindBarWidget();
+        $bar = new FindBarWidget(new Translator('en'));
         $bar->open($doc, withReplace: false);
         $this->type($bar, 'al');
         $this->assertNotSame([], $bar->getMatchesByLine());
@@ -87,7 +88,7 @@ final class FindBarWidgetTest extends TestCase
     public function testReplaceOneAndAll(): void
     {
         $doc = new Document("aaa bbb aaa\nccc aaa\n");
-        $bar = new FindBarWidget();
+        $bar = new FindBarWidget(new Translator('en'));
         $bar->open($doc, withReplace: true, initialQuery: 'aaa');
         $bar->handleInput("\t"); // switch to replace field
         $this->type($bar, 'XX');
@@ -104,7 +105,7 @@ final class FindBarWidgetTest extends TestCase
     public function testSwitchFieldIgnoredWithoutReplaceMode(): void
     {
         $doc = new Document("x\n");
-        $bar = new FindBarWidget();
+        $bar = new FindBarWidget(new Translator('en'));
         $bar->open($doc, withReplace: false, initialQuery: 'x');
 
         $bar->handleInput("\t");
@@ -115,7 +116,7 @@ final class FindBarWidgetTest extends TestCase
     public function testReplaceIgnoredWithoutReplaceMode(): void
     {
         $doc = new Document("aaa\n");
-        $bar = new FindBarWidget();
+        $bar = new FindBarWidget(new Translator('en'));
         $bar->open($doc, withReplace: false, initialQuery: 'aaa');
 
         $bar->handleInput("\x1br");
@@ -125,7 +126,7 @@ final class FindBarWidgetTest extends TestCase
     public function testRefreshIfStaleRecomputesAfterExternalEdit(): void
     {
         $doc = new Document("match one\n");
-        $bar = new FindBarWidget();
+        $bar = new FindBarWidget(new Translator('en'));
         $bar->open($doc, withReplace: false, initialQuery: 'match');
 
         $doc->moveToDocumentEnd();
@@ -139,7 +140,7 @@ final class FindBarWidgetTest extends TestCase
     public function testRenderShowsQueryCounterAndReplaceHints(): void
     {
         $doc = new Document("needle\n");
-        $bar = new FindBarWidget();
+        $bar = new FindBarWidget(new Translator('en'));
         $bar->setFocused(true);
         $bar->open($doc, withReplace: true, initialQuery: 'needle');
 
@@ -156,7 +157,7 @@ final class FindBarWidgetTest extends TestCase
     public function testCloseNotifiesAndClearsMatches(): void
     {
         $doc = new Document("x\n");
-        $bar = new FindBarWidget();
+        $bar = new FindBarWidget(new Translator('en'));
         $closed = false;
         $bar->onClose(function () use (&$closed): void {
             $closed = true;
@@ -175,7 +176,7 @@ final class FindBarWidgetTest extends TestCase
     public function testOnInputHookConsumes(): void
     {
         $doc = new Document("x\n");
-        $bar = new FindBarWidget();
+        $bar = new FindBarWidget(new Translator('en'));
         $bar->open($doc, withReplace: false);
         $bar->onInput(static fn (string $data): bool => 'Z' === $data);
 
@@ -189,7 +190,7 @@ final class FindBarWidgetTest extends TestCase
     {
         $doc = new Document("match early\nnothing here\n");
         $doc->setCursor(1, 5); // after every match
-        $bar = new FindBarWidget();
+        $bar = new FindBarWidget(new Translator('en'));
         $bar->open($doc, withReplace: false, initialQuery: 'match');
 
         $this->assertSame(0, $doc->getCursorLine(), 'wrapped to the first match');
@@ -198,7 +199,7 @@ final class FindBarWidgetTest extends TestCase
     public function testMatchCap(): void
     {
         $doc = new Document(str_repeat("x\n", 6000));
-        $bar = new FindBarWidget();
+        $bar = new FindBarWidget(new Translator('en'));
         $bar->open($doc, withReplace: false, initialQuery: 'x');
 
         $flat = array_merge(...array_values($bar->getMatchesByLine()));

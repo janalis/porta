@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Porta\Tests\Unit\Widget\Git;
 
+use Porta\I18n\Translator;
 use PHPUnit\Framework\TestCase;
 use Porta\Git\ChangeEntry;
 use Porta\Widget\Git\ChangesListWidget;
@@ -30,7 +31,7 @@ final class ChangesListWidgetTest extends TestCase
 
     public function testRendersHeaderCheckboxesAndStatuses(): void
     {
-        $widget = new ChangesListWidget();
+        $widget = new ChangesListWidget(new Translator('en'));
         $widget->setEntries($this->entries());
 
         $screen = $this->plain($widget->render(new RenderContext(44, 8)));
@@ -44,7 +45,7 @@ final class ChangesListWidgetTest extends TestCase
 
     public function testPartialStagingShowsTheMixedCheckbox(): void
     {
-        $widget = new ChangesListWidget();
+        $widget = new ChangesListWidget(new Translator('en'));
         $widget->setEntries([new ChangeEntry('x.php', 'M', 'M')]);
 
         $this->assertStringContainsString('[~] M x.php', $this->plain($widget->render(new RenderContext(44, 4))));
@@ -52,7 +53,7 @@ final class ChangesListWidgetTest extends TestCase
 
     public function testNavigationFiresOnSelect(): void
     {
-        $widget = new ChangesListWidget();
+        $widget = new ChangesListWidget(new Translator('en'));
         $widget->setFocused(true);
         $widget->setEntries($this->entries());
         $selected = [];
@@ -69,7 +70,7 @@ final class ChangesListWidgetTest extends TestCase
 
     public function testSpaceTogglesStagingOnTheSelectedEntry(): void
     {
-        $widget = new ChangesListWidget();
+        $widget = new ChangesListWidget(new Translator('en'));
         $widget->setFocused(true);
         $widget->setEntries($this->entries());
         $toggled = null;
@@ -84,7 +85,7 @@ final class ChangesListWidgetTest extends TestCase
 
     public function testDiscardNeedsInlineConfirmation(): void
     {
-        $widget = new ChangesListWidget();
+        $widget = new ChangesListWidget(new Translator('en'));
         $widget->setFocused(true);
         $widget->setEntries($this->entries());
         $discarded = null;
@@ -106,7 +107,7 @@ final class ChangesListWidgetTest extends TestCase
 
     public function testSetEntriesKeepsSelectionByPath(): void
     {
-        $widget = new ChangesListWidget();
+        $widget = new ChangesListWidget(new Translator('en'));
         $widget->setFocused(true);
         $widget->setEntries($this->entries());
         $widget->handleInput("\x1b[B"); // select src/b.php
@@ -126,7 +127,7 @@ final class ChangesListWidgetTest extends TestCase
 
     public function testClickTogglesInTheCheckboxColumnAndSelectsElsewhere(): void
     {
-        $widget = new ChangesListWidget();
+        $widget = new ChangesListWidget(new Translator('en'));
         $widget->setEntries($this->entries());
         $toggled = $selected = null;
         $widget->onToggleStage(function (ChangeEntry $entry) use (&$toggled): void {
@@ -149,7 +150,7 @@ final class ChangesListWidgetTest extends TestCase
 
     public function testHoverTintsWithoutTouchingSelectionOrFiringSelect(): void
     {
-        $widget = new ChangesListWidget();
+        $widget = new ChangesListWidget(new Translator('en'));
         $widget->setEntries($this->entries());
         $selectFired = 0;
         $widget->onSelect(function () use (&$selectFired): void {
@@ -177,7 +178,7 @@ final class ChangesListWidgetTest extends TestCase
 
     public function testInputHookConsumesFirstAndEntryCountCounts(): void
     {
-        $widget = new ChangesListWidget();
+        $widget = new ChangesListWidget(new Translator('en'));
         $widget->setFocused(true);
         $widget->setEntries($this->entries());
         $widget->onInput(static fn (string $data): bool => true);
@@ -189,13 +190,13 @@ final class ChangesListWidgetTest extends TestCase
 
     public function testAlwaysFillsItsPane(): void
     {
-        $widget = new ChangesListWidget();
+        $widget = new ChangesListWidget(new Translator('en'));
         $this->assertTrue($widget->expandVertically(false)->isVerticallyExpanded());
     }
 
     public function testTabAndEscapeFireTheirHooks(): void
     {
-        $widget = new ChangesListWidget();
+        $widget = new ChangesListWidget(new Translator('en'));
         $widget->setFocused(true);
         $widget->setEntries($this->entries());
         $events = [];

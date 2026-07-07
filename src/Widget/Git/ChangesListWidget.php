@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Porta\Widget\Git;
 
 use Porta\Git\ChangeEntry;
+use Porta\I18n\Translator;
 use Porta\Ui\ListNavigation;
 use Porta\Ui\ListSelection;
 use Porta\Ui\Style;
@@ -64,6 +65,7 @@ final class ChangesListWidget extends AbstractWidget implements FocusableInterfa
     private $onShowHistory = null;
 
     public function __construct(
+        private readonly Translator $translator,
         private int $width = 44,
     ) {
         $this->list = new ListSelection();
@@ -281,7 +283,9 @@ final class ChangesListWidget extends AbstractWidget implements FocusableInterfa
         $this->lastRows = $rows;
 
         $count = \count($this->entries);
-        $title = \sprintf(' %d changed file%s', $count, 1 === $count ? '' : 's');
+        $title = 1 === $count
+            ? $this->translator->trans(' %count% changed file', ['%count%' => $count])
+            : $this->translator->trans(' %count% changed files', ['%count%' => $count]);
         $lines = ["\x1b[48;5;237m\x1b[1m".AnsiUtils::truncateToWidth($title, $width, '…', pad: true)."\x1b[0m"];
 
         $scroll = $this->list->follow($rows - 1);
@@ -293,7 +297,7 @@ final class ChangesListWidget extends AbstractWidget implements FocusableInterfa
                 continue;
             }
             if ($index === $this->confirmDiscard) {
-                $confirm = ' Discard changes? y = yes · any key = no';
+                $confirm = $this->translator->trans(' Discard changes? y = yes · any key = no');
                 $lines[] = "\x1b[48;5;88m\x1b[38;5;231m".AnsiUtils::truncateToWidth($confirm, $width, '…', pad: true)."\x1b[0m";
                 continue;
             }

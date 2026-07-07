@@ -191,11 +191,11 @@ final class BufferService
         if (!$force && $active->isDirty()) {
             $name = basename($active->path);
             $this->editor->openListOverlay(
-                "Unsaved changes in {$name}",
+                $this->translator->trans('Unsaved changes in %name%', ['%name%' => $name]),
                 [
-                    ['label' => 'Save & Close', 'hint' => '', 'value' => 'save'],
-                    ['label' => 'Discard & Close', 'hint' => '', 'value' => 'discard'],
-                    ['label' => 'Cancel', 'hint' => '', 'value' => 'cancel'],
+                    ['label' => $this->translator->trans('Save & Close'), 'hint' => '', 'value' => 'save'],
+                    ['label' => $this->translator->trans('Discard & Close'), 'hint' => '', 'value' => 'discard'],
+                    ['label' => $this->translator->trans('Cancel'), 'hint' => '', 'value' => 'cancel'],
                 ],
                 function (string $choice) use ($active): void {
                     if ('save' === $choice && $this->saveBuffer($active)) {

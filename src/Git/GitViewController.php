@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Porta\Git;
 
+use Porta\I18n\Translator;
 use Porta\Widget\Git\ChangesListWidget;
 use Porta\Widget\Git\CommitBoxWidget;
 use Porta\Widget\Git\DiffViewWidget;
@@ -69,6 +70,7 @@ final class GitViewController
         private readonly array $editArea,
         private readonly Tui $tui,
         private readonly StatusBarWidget $statusBar,
+        private readonly Translator $translator,
         private readonly \Closure $onClosed,
         private readonly \Closure $onCommitted,
         private readonly \Closure $loadDiffPrefs,
@@ -130,7 +132,7 @@ final class GitViewController
             return;
         }
         if (!$this->git->isAvailable()) {
-            $this->statusBar->flash('Not a git repository');
+            $this->statusBar->flash($this->translator->trans('Not a git repository'));
             $this->tui->requestRender();
 
             return;
@@ -238,7 +240,9 @@ final class GitViewController
     {
         ($this->copyToClipboard)($text);
         $lines = substr_count(rtrim($text, "\n"), "\n") + 1;
-        $this->statusBar->flash(\sprintf('Copied %d line%s', $lines, 1 === $lines ? '' : 's'));
+        $this->statusBar->flash(1 === $lines
+            ? $this->translator->trans('Copied %count% line', ['%count%' => $lines])
+            : $this->translator->trans('Copied %count% lines', ['%count%' => $lines]));
         $this->tui->requestRender();
     }
 
@@ -251,7 +255,7 @@ final class GitViewController
         $this->hideWhitespace = !$this->hideWhitespace;
         $this->diffView->setWhitespaceHidden($this->hideWhitespace);
         ($this->saveDiffPrefs)($this->diffView->isSplit(), $this->hideWhitespace);
-        $this->statusBar->flash($this->hideWhitespace ? 'Whitespace changes hidden' : 'Whitespace changes shown');
+        $this->statusBar->flash($this->translator->trans($this->hideWhitespace ? 'Whitespace changes hidden' : 'Whitespace changes shown'));
 
         if ('history' === $this->mode) {
             if (null !== $this->shownCommit && null !== $this->shownCommitPath) {
@@ -270,13 +274,13 @@ final class GitViewController
             return;
         }
         if ('untracked' === $this->shownSide) {
-            $this->statusBar->flash('Untracked files always show the whole file');
+            $this->statusBar->flash($this->translator->trans('Untracked files always show the whole file'));
             $this->tui->requestRender();
 
             return;
         }
         $this->contextStep = ($this->contextStep + 1) % \count(self::CONTEXT_STEPS);
-        $this->statusBar->flash('Diff context: '.self::CONTEXT_LABELS[$this->contextStep]);
+        $this->statusBar->flash($this->translator->trans('Diff context: %label%', ['%label%' => $this->translator->trans(self::CONTEXT_LABELS[$this->contextStep])]));
         $this->loadDiff($this->shownEntry);
         $this->tui->requestRender();
     }
@@ -295,7 +299,7 @@ final class GitViewController
             return;
         }
         if ('untracked' === $this->shownSide) {
-            $this->statusBar->flash('Untracked: stage the whole file with Space in the changes list');
+            $this->statusBar->flash($this->translator->trans('Untracked: stage the whole file with Space in the changes list'));
             $this->tui->requestRender();
 
             return;
@@ -303,7 +307,7 @@ final class GitViewController
         if ($this->hideWhitespace) {
             // A -w diff's hunks omit whitespace-only lines, so a patch built
             // from them no longer matches the preimage — git apply would balk.
-            $this->statusBar->flash('Show whitespace changes to stage lines (w)');
+            $this->statusBar->flash($this->translator->trans('Show whitespace changes to stage lines (w)'));
             $this->tui->requestRender();
 
             return;
@@ -320,7 +324,7 @@ final class GitViewController
         $entry = $this->shownEntry;
         $this->git->applyCached($patch, function (bool $ok) use ($entry): void {
             if (!$ok) {
-                $this->statusBar->flash('git apply refused the partial patch');
+                $this->statusBar->flash($this->translator->trans('git apply refused the partial patch'));
             }
             $this->refresh();
             $this->loadDiff($entry); // same path: the diff view keeps its cursor
@@ -332,7 +336,7 @@ final class GitViewController
         $abs = $this->rootDir.'/'.$entry->path;
         $done = function (bool $ok): void {
             if (!$ok) {
-                $this->statusBar->flash('git refused the staging change');
+                $this->statusBar->flash($this->translator->trans('git refused the staging change'));
             }
             $this->refresh();
         };
@@ -344,13 +348,15 @@ final class GitViewController
     {
         if ($entry->isUntracked()) {
             @unlink($this->rootDir.'/'.$entry->path);
-            $this->statusBar->flash('Deleted '.$entry->path);
+            $this->statusBar->flash($this->translator->trans('Deleted %path%', ['%path%' => $entry->path]));
             $this->refresh();
 
             return;
         }
         $this->git->discardFile($this->rootDir.'/'.$entry->path, function (bool $ok) use ($entry): void {
-            $this->statusBar->flash($ok ? 'Discarded changes to '.$entry->path : 'Discard failed');
+            $this->statusBar->flash($ok
+                ? $this->translator->trans('Discarded changes to %path%', ['%path%' => $entry->path])
+                : $this->translator->trans('Discard failed'));
             $this->refresh();
         });
     }
@@ -379,10 +385,10 @@ final class GitViewController
             $summary = false === $firstLine ? '' : $firstLine;
             if ($ok) {
                 $this->commitBox->clear();
-                $this->statusBar->flash('Committed: '.$summary);
+                $this->statusBar->flash($this->translator->trans('Committed: %summary%', ['%summary%' => $summary]));
                 ($this->onCommitted)();
             } else {
-                $this->statusBar->flash('Commit failed: '.$summary);
+                $this->statusBar->flash($this->translator->trans('Commit failed: %summary%', ['%summary%' => $summary]));
             }
             $this->refresh();
         }, $amend);

@@ -7,6 +7,7 @@ namespace Porta\Widget\Git;
 use Porta\Git\DiffDocument;
 use Porta\Git\DiffLine;
 use Porta\Highlight\CodeHighlighter;
+use Porta\I18n\Translator;
 use Porta\Ui\Style;
 use Porta\Widget\Render\LineDecorator;
 use Porta\Widget\InputHook;
@@ -93,7 +94,7 @@ final class DiffViewWidget extends AbstractWidget implements FocusableInterface,
     /** @var (callable(string): void)|null ctrl+c: selected line texts, plain (no ± markers) */
     private $onCopy = null;
 
-    public function __construct()
+    public function __construct(private readonly Translator $translator)
     {
         $this->highlighter = new CodeHighlighter();
     }
@@ -636,13 +637,13 @@ final class DiffViewWidget extends AbstractWidget implements FocusableInterface,
         $this->lastRows = $rows;
         $this->lastWidth = $width;
 
-        $title = ' '.($this->path ?? 'Diff')
-            .($this->scroll > 0 ? \sprintf('  [scrolled +%d]', $this->scroll) : '')
+        $title = ' '.($this->path ?? $this->translator->trans('Diff'))
+            .($this->scroll > 0 ? '  '.$this->translator->trans('[scrolled +%count%]', ['%count%' => $this->scroll]) : '')
             .($this->hScroll > 0 ? \sprintf('  [→%d]', $this->hScroll) : '');
         $lines = [$this->renderToolbar($title, $width)];
 
         if (null === $this->document || [] === $this->rows) {
-            $message = "\x1b[38;5;245m ".$this->placeholder."\x1b[0m";
+            $message = "\x1b[38;5;245m ".$this->translator->trans($this->placeholder)."\x1b[0m";
             $lines[] = AnsiUtils::truncateToWidth($message, $width, '…', pad: true);
             while (\count($lines) < $rows) {
                 $lines[] = str_repeat(' ', $width);
@@ -740,8 +741,8 @@ final class DiffViewWidget extends AbstractWidget implements FocusableInterface,
     {
         $this->buttonZones = [];
         $tags = [
-            ['name' => 'split', 'label' => ' s:split ', 'on' => $this->split],
-            ['name' => 'whitespace', 'label' => ' w:hide-ws ', 'on' => $this->whitespaceHidden],
+            ['name' => 'split', 'label' => $this->translator->trans(' s:split '), 'on' => $this->split],
+            ['name' => 'whitespace', 'label' => $this->translator->trans(' w:hide-ws '), 'on' => $this->whitespaceHidden],
         ];
 
         $rendered = '';

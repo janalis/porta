@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Porta\Tests\Unit\Widget;
 
+use Porta\I18n\Translator;
 use PHPUnit\Framework\TestCase;
 use Porta\Tests\Support\TempProject;
 use Porta\Widget\GoToFileWidget;
@@ -14,7 +15,7 @@ final class GoToFileWidgetTest extends TestCase
 {
     private function widget(TempProject $project): GoToFileWidget
     {
-        $widget = new GoToFileWidget($project->dir);
+        $widget = new GoToFileWidget(new Translator('en'), $project->dir);
         $widget->setFocused(true);
         $widget->open();
 
@@ -31,7 +32,7 @@ final class GoToFileWidgetTest extends TestCase
     public function testClosedRendersNothing(): void
     {
         $project = new TempProject(['a.php' => '']);
-        $widget = new GoToFileWidget($project->dir);
+        $widget = new GoToFileWidget(new Translator('en'), $project->dir);
 
         $this->assertSame([], $widget->render(new RenderContext(80, 10)));
         $widget->handleInput('x'); // ignored while closed

@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Porta\Widget\Git;
 
 use Porta\Git\LogEntry;
+use Porta\I18n\Translator;
 use Porta\Ui\ListNavigation;
 use Porta\Ui\ListSelection;
 use Porta\Ui\Style;
@@ -59,6 +60,7 @@ final class HistoryListWidget extends AbstractWidget implements FocusableInterfa
     private $onShowChanges = null;
 
     public function __construct(
+        private readonly Translator $translator,
         private int $width = 44,
     ) {
         $this->commitList = new ListSelection();
@@ -281,7 +283,7 @@ final class HistoryListWidget extends AbstractWidget implements FocusableInterfa
         $rows = max(4, $context->getRows() > 0 ? $context->getRows() : 12);
         $this->lastRows = $rows;
 
-        $lines = ["\x1b[48;5;237m\x1b[1m".AnsiUtils::truncateToWidth(\sprintf(' History (%d)', \count($this->commits)), $width, '…', pad: true)."\x1b[0m"];
+        $lines = ["\x1b[48;5;237m\x1b[1m".AnsiUtils::truncateToWidth($this->translator->trans(' History (%count%)', ['%count%' => \count($this->commits)]), $width, '…', pad: true)."\x1b[0m"];
 
         $commitRows = $this->commitRowCount();
         $scroll = $this->commitList->follow($commitRows);
@@ -299,7 +301,7 @@ final class HistoryListWidget extends AbstractWidget implements FocusableInterfa
             $lines[] = $bg.AnsiUtils::truncateToWidth($text, $width, '…', pad: true)."\x1b[0m";
         }
 
-        $lines[] = "\x1b[48;5;236m\x1b[1m".AnsiUtils::truncateToWidth(\sprintf(' Files (%d)', \count($this->files)), $width, '…', pad: true)."\x1b[0m";
+        $lines[] = "\x1b[48;5;236m\x1b[1m".AnsiUtils::truncateToWidth($this->translator->trans(' Files (%count%)', ['%count%' => \count($this->files)]), $width, '…', pad: true)."\x1b[0m";
         $fileScroll = $this->fileList->follow(self::FILE_ROWS);
         for ($row = 0; $row < self::FILE_ROWS && \count($lines) < $rows; ++$row) {
             $file = $this->files[$fileScroll + $row] ?? null;

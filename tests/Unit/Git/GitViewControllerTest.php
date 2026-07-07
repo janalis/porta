@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Porta\Tests\Unit\Git;
 
+use Porta\I18n\Translator;
 use PHPUnit\Framework\TestCase;
 use Porta\Git\GitInfo;
 use Porta\Git\GitViewController;
@@ -65,12 +66,12 @@ final class GitViewControllerTest extends TestCase
         }
         $this->git = new GitInfo($this->project->dir);
 
-        $this->changes = new ChangesListWidget();
-        $this->diffView = new DiffViewWidget();
-        $this->commitBox = new CommitBoxWidget();
-        $this->history = new HistoryListWidget();
+        $this->changes = new ChangesListWidget(new Translator('en'));
+        $this->diffView = new DiffViewWidget(new Translator('en'));
+        $this->commitBox = new CommitBoxWidget(new Translator('en'));
+        $this->history = new HistoryListWidget(new Translator('en'));
         $this->history->setId('git-history');
-        $this->tabs = new GitTabsWidget();
+        $this->tabs = new GitTabsWidget(new Translator('en'));
         $this->tabs->setId('git-tabs');
         $this->menuBar = new MenuBarWidget();
         $this->menuBar->setId('menu');
@@ -107,6 +108,7 @@ final class GitViewControllerTest extends TestCase
             [$editWidget],
             $this->tui,
             $this->statusBar,
+            new Translator('en'),
             onClosed: function (): void {
                 ++$this->closed;
             },

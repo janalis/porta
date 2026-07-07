@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Porta\Tests\Unit\Layout;
 
+use Porta\I18n\Translator;
 use PHPUnit\Framework\TestCase;
 use Porta\Layout\GitSidebar;
 use Porta\Widget\Git\ChangesListWidget;
@@ -15,10 +16,10 @@ final class GitSidebarTest extends TestCase
 {
     public function testFansTheWidthOutToAllFourWidgetsWithClamping(): void
     {
-        $tabs = new GitTabsWidget();
-        $changes = new ChangesListWidget();
-        $commitBox = new CommitBoxWidget();
-        $history = new HistoryListWidget();
+        $tabs = new GitTabsWidget(new Translator('en'));
+        $changes = new ChangesListWidget(new Translator('en'));
+        $commitBox = new CommitBoxWidget(new Translator('en'));
+        $history = new HistoryListWidget(new Translator('en'));
         $sidebar = new GitSidebar($tabs, $changes, $commitBox, $history);
 
         $this->assertSame(44, $sidebar->width(), 'the default ctor width');

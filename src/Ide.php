@@ -215,9 +215,9 @@ final class Ide
         $this->main->expandVertically(true);
         $this->main->add($this->tree)->add($this->separator)->add($editorPane);
 
-        $this->goToFile = new GoToFileWidget($this->rootDir);
+        $this->goToFile = new GoToFileWidget($this->translator, $this->rootDir);
         $this->goToFile->setId('goto-file');
-        $this->findBar = new FindBarWidget();
+        $this->findBar = new FindBarWidget($this->translator);
         $this->findBar->setId('find-bar');
         $this->resultsPanel = new ResultsPanelWidget();
         $this->resultsPanel->setId('results');
@@ -276,19 +276,20 @@ final class Ide
             $this->editor,
             $this->statusBar,
             $this->tui,
+            $this->translator,
             fn () => $this->refreshActiveGitMarks(),
             fn () => $this->refreshBranch(),
             fn (string $path) => $this->relativePath($path),
         );
-        $this->gitChanges = new ChangesListWidget();
+        $this->gitChanges = new ChangesListWidget($this->translator);
         $this->gitChanges->setId('git-changes')->setStyle(new Style(flex: 0));
-        $this->gitDiff = new DiffViewWidget();
+        $this->gitDiff = new DiffViewWidget($this->translator);
         $this->gitDiff->setId('git-diff')->setStyle(new Style(flex: 1));
-        $this->gitCommitBox = new CommitBoxWidget();
+        $this->gitCommitBox = new CommitBoxWidget($this->translator);
         $this->gitCommitBox->setId('git-commit');
-        $this->gitHistory = new HistoryListWidget();
+        $this->gitHistory = new HistoryListWidget($this->translator);
         $this->gitHistory->setId('git-history');
-        $this->gitTabs = new GitTabsWidget();
+        $this->gitTabs = new GitTabsWidget($this->translator);
         $this->gitTabs->setId('git-tabs')->setStyle(new Style(flex: 0));
         $gitLeft = new ContainerWidget();
         $gitLeft->setId('git-left');
@@ -317,6 +318,7 @@ final class Ide
             [$this->tree, $this->separator, $editorPane],
             $this->tui,
             $this->statusBar,
+            $this->translator,
             onClosed: function (): void {
                 $this->tui->setFocus($this->editor);
                 $this->tui->requestRender();

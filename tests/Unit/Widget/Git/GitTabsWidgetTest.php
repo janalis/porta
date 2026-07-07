@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Porta\Tests\Unit\Widget\Git;
 
+use Porta\I18n\Translator;
 use PHPUnit\Framework\TestCase;
 use Porta\Widget\Git\GitTabsWidget;
 use Symfony\Component\Tui\Ansi\AnsiUtils;
@@ -13,7 +14,7 @@ final class GitTabsWidgetTest extends TestCase
 {
     public function testRendersBothTabsWithTheActiveOneHighlighted(): void
     {
-        $widget = new GitTabsWidget();
+        $widget = new GitTabsWidget(new Translator('en'));
         $lines = $widget->render(new RenderContext(44, 1));
 
         $this->assertCount(1, $lines);
@@ -34,7 +35,7 @@ final class GitTabsWidgetTest extends TestCase
     public function testClickOnTheInactiveTabFiresAndTheActiveOneDoesNot(): void
     {
         $selected = [];
-        $widget = new GitTabsWidget();
+        $widget = new GitTabsWidget(new Translator('en'));
         $widget->onSelect(function (string $mode) use (&$selected): void {
             $selected[] = $mode;
         });
@@ -63,7 +64,7 @@ final class GitTabsWidgetTest extends TestCase
 
     public function testSetActiveIsIdempotentAndOverlayComposites(): void
     {
-        $widget = new GitTabsWidget();
+        $widget = new GitTabsWidget(new Translator('en'));
         $widget->setActive('changes'); // already active: no-op
 
         $widget->setMenuOverlay([['row' => 0, 'col' => 0, 'width' => 8, 'segment' => "\x1b[7mDROPDOWN\x1b[0m"]]);

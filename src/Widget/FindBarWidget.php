@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Porta\Widget;
 
 use Porta\Editor\Document;
+use Porta\I18n\Translator;
 use Porta\Ui\TextField;
 use Symfony\Component\Tui\Ansi\AnsiUtils;
 use Symfony\Component\Tui\Input\Key;
@@ -43,7 +44,7 @@ final class FindBarWidget extends OverlayWidget implements FocusableInterface
     /** @var (callable(): void)|null called when matches/current change */
     private $onUpdate = null;
 
-    public function __construct()
+    public function __construct(private readonly Translator $translator)
     {
         $this->query = new TextField();
         $this->replacement = new TextField();
@@ -180,12 +181,12 @@ final class FindBarWidget extends OverlayWidget implements FocusableInterface
         $count = \count($this->matches);
         $position = $count > 0 ? \sprintf('%d/%d', $this->currentIndex + 1, $count) : '0/0';
 
-        $findField = ' Find: '.$this->query->render(cursor: $this->focused && 0 === $this->activeField).'  ';
-        $replaceField = $this->withReplace ? 'Replace: '.$this->replacement->render(cursor: $this->focused && 1 === $this->activeField).'  ' : '';
+        $findField = ' '.$this->translator->trans('Find:').' '.$this->query->render(cursor: $this->focused && 0 === $this->activeField).'  ';
+        $replaceField = $this->withReplace ? $this->translator->trans('Replace:').' '.$this->replacement->render(cursor: $this->focused && 1 === $this->activeField).'  ' : '';
 
         $hints = $this->withReplace
-            ? '⏎/F3 next  ⇧F3 prev  ⇥ field  ⌥R replace  ⌥A all  esc'
-            : '⏎/F3 next  ⇧F3 prev  esc';
+            ? $this->translator->trans('⏎/F3 next  ⇧F3 prev  ⇥ field  ⌥R replace  ⌥A all  esc')
+            : $this->translator->trans('⏎/F3 next  ⇧F3 prev  esc');
 
         $left = $findField.$replaceField."\x1b[38;5;245m[{$position}]\x1b[39m";
         $line = $left.'  '."\x1b[38;5;242m".$hints."\x1b[39m";

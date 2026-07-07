@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Porta\Tests\Unit\Widget\Git;
 
+use Porta\I18n\Translator;
 use PHPUnit\Framework\TestCase;
 use Porta\Git\LogEntry;
 use Porta\Widget\Git\HistoryListWidget;
@@ -14,7 +15,7 @@ final class HistoryListWidgetTest extends TestCase
 {
     private function widget(): HistoryListWidget
     {
-        $widget = new HistoryListWidget();
+        $widget = new HistoryListWidget(new Translator('en'));
         $widget->setFocused(true);
         $widget->setCommits([
             new LogEntry('full1', 'aaa111', 'Alice', 1700000100, 'Newest work'),
@@ -140,7 +141,7 @@ final class HistoryListWidgetTest extends TestCase
         });
         $widget->onInput(static fn (string $d): bool => false);
 
-        $hooked = new HistoryListWidget();
+        $hooked = new HistoryListWidget(new Translator('en'));
         $hooked->setFocused(true);
         $hooked->onInput(static fn (string $d): bool => true);
         $hooked->handleInput('1'); // swallowed by the hook

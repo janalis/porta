@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Porta\Tests\Unit\Widget\Git;
 
+use Porta\I18n\Translator;
 use PHPUnit\Framework\TestCase;
 use Porta\Widget\Git\CommitBoxWidget;
 use Symfony\Component\Tui\Ansi\AnsiUtils;
@@ -15,7 +16,7 @@ final class CommitBoxWidgetTest extends TestCase
 
     private function widget(?string &$committed = null, ?bool &$amended = null): CommitBoxWidget
     {
-        $widget = new CommitBoxWidget();
+        $widget = new CommitBoxWidget(new Translator('en'));
         $widget->setFocused(true);
         $widget->hasStagedChanges(fn (): bool => $this->staged);
         $widget->onCommit(function (string $message, bool $amend) use (&$committed, &$amended): void {
@@ -102,7 +103,7 @@ final class CommitBoxWidgetTest extends TestCase
 
     public function testRenderShowsPlaceholdersButtonStateAndClearResets(): void
     {
-        $widget = new CommitBoxWidget();
+        $widget = new CommitBoxWidget(new Translator('en'));
         $widget->hasStagedChanges(static fn (): bool => true);
 
         $screen = $this->plain($widget);

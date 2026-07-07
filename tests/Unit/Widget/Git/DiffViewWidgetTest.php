@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Porta\Tests\Unit\Widget\Git;
 
+use Porta\I18n\Translator;
 use PHPUnit\Framework\TestCase;
 use Porta\Git\DiffDocument;
 use Porta\Widget\Git\DiffViewWidget;
@@ -28,7 +29,7 @@ final class DiffViewWidgetTest extends TestCase
 
     private function widget(): DiffViewWidget
     {
-        $widget = new DiffViewWidget();
+        $widget = new DiffViewWidget(new Translator('en'));
         $widget->setDocument(DiffDocument::parse(self::RAW), 'src/demo.php');
 
         return $widget;
@@ -78,7 +79,7 @@ final class DiffViewWidgetTest extends TestCase
 
     public function testPlaceholderWithoutADocument(): void
     {
-        $widget = new DiffViewWidget();
+        $widget = new DiffViewWidget(new Translator('en'));
         $widget->setDocument(null, null, 'Select a file');
 
         $lines = $this->plainLines($widget, 40, 5);
@@ -178,7 +179,7 @@ final class DiffViewWidgetTest extends TestCase
         $widget->handleInput(' ');
         $this->assertArrayHasKey(0, (array) $captured, 'cursor is back on hunk 0');
 
-        $empty = new DiffViewWidget();
+        $empty = new DiffViewWidget(new Translator('en'));
         $empty->setDocument(null, null);
         $empty->setFocused(true);
         $empty->handleInput("\x1b[B"); // no rows: consumed, no crash
@@ -278,7 +279,7 @@ final class DiffViewWidgetTest extends TestCase
 
     public function testNoNewlineMarkerRendersDim(): void
     {
-        $widget = new DiffViewWidget();
+        $widget = new DiffViewWidget(new Translator('en'));
         $widget->setDocument(DiffDocument::parse("@@ -1,1 +1,1 @@\n-old\n\\ No newline at end of file\n+new\n"), 'x.txt');
 
         $lines = $this->plainLines($widget, 60, 6);
@@ -375,7 +376,7 @@ final class DiffViewWidgetTest extends TestCase
         $widget->handleInput(' ');
         $this->assertSame([1 => [1 => true]], $captured, 'clamped to the final +tail! row');
 
-        $empty = new DiffViewWidget();
+        $empty = new DiffViewWidget(new Translator('en'));
         $empty->setDocument(null, null);
         $empty->handleClick(2, 2); // no rows: a safe no-op
         $this->assertFalse($empty->isSplit());
@@ -430,7 +431,7 @@ final class DiffViewWidgetTest extends TestCase
     public function testHorizontalScrollSlidesTextUnderPinnedGutters(): void
     {
         $long = str_repeat('x', 30).'NEEDLE'.str_repeat('y', 30);
-        $widget = new DiffViewWidget();
+        $widget = new DiffViewWidget(new Translator('en'));
         $widget->setDocument(DiffDocument::parse("@@ -1,1 +1,1 @@\n-old\n+{$long}\n"), 'x.txt');
         $widget->setFocused(true);
 
@@ -462,7 +463,7 @@ final class DiffViewWidgetTest extends TestCase
     {
         $long = str_repeat('a', 25).'LEFT'.str_repeat('b', 20);
         $longer = str_repeat('c', 25).'RIGHT'.str_repeat('d', 20);
-        $widget = new DiffViewWidget();
+        $widget = new DiffViewWidget(new Translator('en'));
         $widget->setDocument(DiffDocument::parse("@@ -1,1 +1,1 @@\n-{$long}\n+{$longer}\n"), 'x.txt');
         $widget->setSplit(true);
         $widget->setFocused(true);
@@ -486,7 +487,7 @@ final class DiffViewWidgetTest extends TestCase
     {
         // Paired lines sharing prefix/suffix get an intraline range; scroll so
         // the emphasized middle is inside the window and check its bg code.
-        $widget = new DiffViewWidget();
+        $widget = new DiffViewWidget(new Translator('en'));
         $widget->setDocument(DiffDocument::parse("@@ -1,1 +1,1 @@\n-".str_repeat('p', 30)."OLD tail\n+".str_repeat('p', 30)."NEW tail\n"), 'x.txt');
         $widget->setFocused(true);
         for ($i = 0; $i < 3; ++$i) {
@@ -528,7 +529,7 @@ final class DiffViewWidgetTest extends TestCase
 
     public function testCopySkipsNoNewlineMarkersAndWorksSplitAndReadOnly(): void
     {
-        $widget = new DiffViewWidget();
+        $widget = new DiffViewWidget(new Translator('en'));
         $widget->setDocument(DiffDocument::parse("@@ -1,1 +1,1 @@\n-old\n\\ No newline at end of file\n+new\n"), 'x.txt');
         $widget->setFocused(true);
         $widget->setReadOnly(true); // history diffs can select + copy...
@@ -551,7 +552,7 @@ final class DiffViewWidgetTest extends TestCase
         $widget->handleInput("\x03");
         $this->assertSame(["old\nnew\n"], $copies, 'both sides, marker line skipped, still read-only');
 
-        $empty = new DiffViewWidget();
+        $empty = new DiffViewWidget(new Translator('en'));
         $empty->setDocument(null, null);
         $empty->onCopy(function () use (&$copies): void {
             $copies[] = 'never';
@@ -602,7 +603,7 @@ final class DiffViewWidgetTest extends TestCase
         $widget->handleInput("\x03");
         $this->assertSame("extra = 3;\ntail", $copies[3], 'hunk header skipped mid-selection');
 
-        $empty = new DiffViewWidget();
+        $empty = new DiffViewWidget(new Translator('en'));
         $empty->setDocument(null, null);
         $empty->dragSelectTo(3, 5); // no rows / no press: a safe no-op
         $this->assertFalse($empty->isSplit());
@@ -610,7 +611,7 @@ final class DiffViewWidgetTest extends TestCase
 
     public function testSplitDragBindsToItsHalf(): void
     {
-        $widget = new DiffViewWidget();
+        $widget = new DiffViewWidget(new Translator('en'));
         $widget->setDocument(DiffDocument::parse("@@ -1,2 +1,2 @@\n-oldA\n-oldB\n+newA\n+newB\n"), 'x.txt');
         $widget->setSplit(true);
         $widget->setFocused(true);
@@ -655,7 +656,7 @@ final class DiffViewWidgetTest extends TestCase
         // The right split half holds syntax-highlighted additions whose SGR
         // (and truncateToWidth's pad-boundary \x1b[0m) reset the background
         // mid-span; the selection must re-apply its bg after every reset.
-        $widget = new DiffViewWidget();
+        $widget = new DiffViewWidget(new Translator('en'));
         $widget->setDocument(DiffDocument::parse("@@ -1,1 +1,1 @@\n-\$a = 1;\n+\$a = 22;\n"), 'src/demo.php');
         $widget->setSplit(true);
         $widget->setFocused(false);
