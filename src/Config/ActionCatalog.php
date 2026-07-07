@@ -113,6 +113,7 @@ final class ActionCatalog
         'ide_run' => ['label' => 'Run…', 'keys' => ['ctrl+shift+r']],
         'ide_run_last' => ['label' => 'Run Last', 'keys' => ['shift+f10']],
         'ide_git' => ['label' => 'Git: Changes', 'keys' => ['ctrl+alt+d']],
+        'ide_settings' => ['label' => 'Settings…', 'keys' => ['ctrl+,']],
         'ide_menu' => ['label' => 'Open Menu', 'keys' => ['f10']],
         // Tree
         'move_up' => ['label' => 'Tree: Select Previous'],

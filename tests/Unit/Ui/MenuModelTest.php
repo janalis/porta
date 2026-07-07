@@ -118,6 +118,37 @@ final class MenuModelTest extends TestCase
         $this->assertTrue($this->item($menus, 'File', 'Go to File')->enabled());
     }
 
+    public function testSettingsIsListedInTheFileMenu(): void
+    {
+        $menus = $this->build(new CommandRegistry(), new CodeEditorWidget());
+        $this->assertSame('Settings…', $this->item($menus, 'File', 'Settings…')->label);
+    }
+
+    public function testSettingsViewGreysOutEverythingButTheSafeCommands(): void
+    {
+        $editor = new CodeEditorWidget();
+        $editor->openFile('x.php', "<?php\n");
+        $settingsOpen = true;
+        $ideKeys = new Keybindings([]);
+        $commands = $this->gitCommands()->add('ide_settings', static function (): void {}, label: 'Settings…');
+        $menus = MenuModel::build($commands, $editor, $ideKeys, null, function () use (&$settingsOpen): bool {
+            return $settingsOpen;
+        });
+
+        // Open view: only the settings-safe commands stay live.
+        $this->assertFalse($this->item($menus, 'Edit', 'Undo')->enabled());
+        $this->assertFalse($this->item($menus, 'File', 'Save File')->enabled());
+        $this->assertFalse($this->item($menus, 'Git', 'Git: Changes')->enabled(), 'even the git-view command greys out here');
+        $this->assertTrue($this->item($menus, 'File', 'Settings…')->enabled());
+        $this->assertTrue($this->item($menus, 'File', 'Quit')->enabled());
+        $this->assertTrue($this->item($menus, 'Help', 'Find Action')->enabled());
+
+        // Closed view: the file-scoped rules apply again.
+        $settingsOpen = false;
+        $this->assertTrue($this->item($menus, 'Edit', 'Undo')->enabled());
+        $this->assertTrue($this->item($menus, 'Git', 'Git: Changes')->enabled());
+    }
+
     public function testEditorItemRunsRunActionAndShowsShortcut(): void
     {
         $editor = new CodeEditorWidget();

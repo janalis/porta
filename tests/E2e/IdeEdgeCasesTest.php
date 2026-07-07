@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Porta\Tests\E2e;
 
 use PHPUnit\Framework\TestCase;
+use Porta\Config\IdeConfig;
 use Porta\Ide;
 use Porta\Tests\Support\TempProject;
 use Revolt\EventLoop;
@@ -3337,6 +3338,67 @@ final class IdeEdgeCasesTest extends TestCase
         $layout = json_decode((string) file_get_contents($project->path('.porta/layout.json')), true);
         $this->assertTrue($layout['gitDiffSplit'], 'the split preference persisted');
         $this->assertTrue($layout['gitDiffHideWhitespace'], 'the whitespace preference persisted');
+    }
+
+    public function testSettingsViewMouseFormTabsAndKeybindings(): void
+    {
+        putenv('PATH=/nonexistent'); // no git/LSP subprocesses needed
+        $project = new TempProject(['a.php' => "<?php\n"]);
+
+        $terminal = $this->runIde(
+            $project,
+            $project->path('a.php'),
+            [
+                300 => static function ($tui, $terminal, $ide): void {
+                    // Open via the command registry (the ide_settings closure),
+                    // then the mouse steps below exercise the routing.
+                    new \ReflectionProperty($ide, 'commands')->getValue($ide)->run('ide_settings');
+                },
+                500 => function ($tui, $terminal): void {
+                    $tui->tick();
+                    $screen = AnsiUtils::stripAnsiCodes($terminal->getOutput());
+                    $this->assertSame('settings-form', $tui->getFocus()?->getId(), 'settings opened focused on the form');
+                    $this->assertStringContainsString('Inline diagnostics', $screen);
+                    $this->assertStringContainsString('Keybindings', $screen, 'the tab strip is shown');
+                    // Click the Inline diagnostics checkbox (form row 0 = screen row 3).
+                    $tui->handleInput("\x1b[<0;5;3M");
+                    $tui->handleInput("\x1b[<0;5;3m");
+                    // A hover in form mode misses the (unrendered) list → clears any tint.
+                    $tui->handleInput("\x1b[<35;20;5M");
+                },
+                700 => function ($tui): void {
+                    $tui->tick();
+                    // Click the Keybindings tab in the strip (screen row 2).
+                    $tui->handleInput("\x1b[<0;18;2M");
+                    $tui->handleInput("\x1b[<0;18;2m");
+                },
+                900 => function ($tui, $terminal): void {
+                    $tui->tick();
+                    $this->assertSame('settings-keys', $tui->getFocus()?->getId(), 'the Keybindings tab took focus');
+                    $this->assertStringContainsString('actions', AnsiUtils::stripAnsiCodes($terminal->getOutput()));
+                    // Hover a list row (tint), wheel over it, then click a row.
+                    $tui->handleInput("\x1b[<35;10;5M"); // hover
+                    $tui->handleInput("\x1b[<65;10;5M"); // wheel down over the list
+                    $tui->handleInput("\x1b[<0;10;5M");  // click selects the row
+                    $tui->handleInput("\x1b[<0;10;5m");
+                },
+                1100 => function ($tui): void {
+                    $tui->tick();
+                    $tui->handleInput("\x1b[21~"); // F10 opens the app menu OVER the settings view
+                },
+                1300 => function ($tui, $terminal): void {
+                    $tui->tick();
+                    $tui->handleInput("\x1b[<35;5;3M"); // hover a dropdown row: the menu rides along over the settings view
+                    $screen = AnsiUtils::stripAnsiCodes($terminal->getOutput());
+                    $this->assertSame('menu', $tui->getFocus()?->getId(), 'F10 focused the menu bar');
+                    $this->assertStringContainsString('Settings…', $screen, 'the File dropdown composites over the settings panes');
+                    $this->assertStringContainsString('Save File', $screen);
+                },
+            ],
+            1.7,
+        );
+
+        $this->assertFalse(IdeConfig::load($project->dir)->settings['inlineDiagnostics'], 'the checkbox click persisted');
     }
 
     public function testGitViewHistoryTabBrowsesCommits(): void

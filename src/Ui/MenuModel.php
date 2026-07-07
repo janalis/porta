@@ -36,6 +36,7 @@ final class MenuModel
             self::SEP,
             'i:ide_local_history',
             self::SEP,
+            'i:ide_settings',
             'i:ide_quit',
         ],
         'Edit' => [
@@ -109,15 +110,16 @@ final class MenuModel
     ];
 
     /**
-     * @param (\Closure(): bool)|null $gitViewOpen while true, only GIT_VIEW_SAFE items stay enabled
+     * @param (\Closure(): bool)|null $gitViewOpen      while true, only GIT_VIEW_SAFE items stay enabled
+     * @param (\Closure(): bool)|null $settingsViewOpen while true, only SETTINGS_VIEW_SAFE items stay enabled
      *
      * @return list<Menu>
      */
-    public static function build(CommandRegistry $commands, CodeEditorWidget $editor, Keybindings $ideKeys, ?\Closure $gitViewOpen = null): array
+    public static function build(CommandRegistry $commands, CodeEditorWidget $editor, Keybindings $ideKeys, ?\Closure $gitViewOpen = null, ?\Closure $settingsViewOpen = null): array
     {
         $menus = [];
         foreach (self::DEFS as $title => $specs) {
-            $menus[] = new Menu($title, self::items($specs, $commands, $editor, $ideKeys, $gitViewOpen));
+            $menus[] = new Menu($title, self::items($specs, $commands, $editor, $ideKeys, $gitViewOpen, $settingsViewOpen));
         }
 
         return $menus;
@@ -130,16 +132,17 @@ final class MenuModel
      *
      * @param list<string>            $specs
      * @param (\Closure(): bool)|null $gitViewOpen
+     * @param (\Closure(): bool)|null $settingsViewOpen
      *
      * @return list<MenuItem>
      */
-    public static function items(array $specs, CommandRegistry $commands, CodeEditorWidget $editor, Keybindings $ideKeys, ?\Closure $gitViewOpen = null): array
+    public static function items(array $specs, CommandRegistry $commands, CodeEditorWidget $editor, Keybindings $ideKeys, ?\Closure $gitViewOpen = null, ?\Closure $settingsViewOpen = null): array
     {
         $items = [];
         foreach ($specs as $spec) {
             $items[] = self::SEP === $spec
                 ? MenuItem::separator()
-                : self::item($spec, $commands, $editor, $ideKeys, $gitViewOpen);
+                : self::item($spec, $commands, $editor, $ideKeys, $gitViewOpen, $settingsViewOpen);
         }
 
         return $items;
@@ -157,8 +160,18 @@ final class MenuModel
      */
     private const array GIT_VIEW_SAFE = ['ide_quit', 'ide_git', 'git_commit', 'git_undo_commit', 'ide_command_palette'];
 
-    /** @param (\Closure(): bool)|null $gitViewOpen */
-    private static function item(string $spec, CommandRegistry $commands, CodeEditorWidget $editor, Keybindings $ideKeys, ?\Closure $gitViewOpen): MenuItem
+    /**
+     * The only commands that stay enabled while the settings view owns the main
+     * area: leaving it, closing the app, or the palette. Everything else targets
+     * the detached editor/tree and would act invisibly.
+     */
+    private const array SETTINGS_VIEW_SAFE = ['ide_quit', 'ide_settings', 'ide_command_palette'];
+
+    /**
+     * @param (\Closure(): bool)|null $gitViewOpen
+     * @param (\Closure(): bool)|null $settingsViewOpen
+     */
+    private static function item(string $spec, CommandRegistry $commands, CodeEditorWidget $editor, Keybindings $ideKeys, ?\Closure $gitViewOpen, ?\Closure $settingsViewOpen): MenuItem
     {
         [$scope, $id] = explode(':', $spec, 2);
         $label = 'i' === $scope
@@ -171,11 +184,14 @@ final class MenuModel
 
         $requiresFile = self::requiresOpenFile($scope, $id);
         $gitSafe = 'i' === $scope && \in_array($id, self::GIT_VIEW_SAFE, true);
-        $isEnabled = null === $gitViewOpen && !$requiresFile
+        $settingsSafe = 'i' === $scope && \in_array($id, self::SETTINGS_VIEW_SAFE, true);
+        $isEnabled = null === $gitViewOpen && null === $settingsViewOpen && !$requiresFile
             ? null
-            : static fn (): bool => (null !== $gitViewOpen && $gitViewOpen())
-                ? $gitSafe
-                : (!$requiresFile || null !== $editor->getFilePath());
+            : static fn (): bool => match (true) {
+                null !== $settingsViewOpen && $settingsViewOpen() => $settingsSafe,
+                null !== $gitViewOpen && $gitViewOpen() => $gitSafe,
+                default => !$requiresFile || null !== $editor->getFilePath(),
+            };
 
         return new MenuItem($label, $shortcut, $run, isEnabled: $isEnabled);
     }

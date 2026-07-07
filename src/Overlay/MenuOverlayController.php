@@ -16,6 +16,9 @@ use Porta\Widget\Git\HistoryListWidget;
 use Porta\Widget\MenuBarWidget;
 use Porta\Widget\Render\MenuOverlayHost;
 use Porta\Widget\SeparatorWidget;
+use Porta\Widget\Settings\KeybindingsListWidget;
+use Porta\Widget\Settings\SettingsFormWidget;
+use Porta\Widget\Settings\SettingsTabsWidget;
 use Porta\Widget\TabBarWidget;
 use Symfony\Component\Tui\Ansi\AnsiUtils;
 use Symfony\Component\Tui\Render\Renderer;
@@ -59,19 +62,25 @@ final class MenuOverlayController
         private readonly GitTabsWidget $gitTabs,
         private readonly SeparatorWidget $gitSeparator,
         private readonly \Closure $gitViewOpen,
+        private readonly SettingsTabsWidget $settingsTabs,
+        private readonly SettingsFormWidget $settingsForm,
+        private readonly KeybindingsListWidget $settingsKeys,
+        private readonly \Closure $settingsViewOpen,
     ) {}
 
     /**
-     * The panes the app-menu dropdown floats over in the current mode: the git
-     * view's panes while it owns the main area, else the editor pane's rows.
+     * The panes the app-menu dropdown floats over in the current mode: the
+     * settings view's panes, else the git view's, else the editor pane's rows.
      *
      * @return list<AbstractWidget&MenuOverlayHost>
      */
     private function menuPanes(): array
     {
-        return ($this->gitViewOpen)()
-            ? [$this->gitTabs, $this->gitChanges, $this->gitCommitBox, $this->gitHistory, $this->gitSeparator, $this->gitDiff]
-            : [$this->tree, $this->separator, $this->tabBar, $this->editor, $this->breadcrumbs];
+        return match (true) {
+            ($this->settingsViewOpen)() => [$this->settingsTabs, $this->settingsForm, $this->settingsKeys],
+            ($this->gitViewOpen)() => [$this->gitTabs, $this->gitChanges, $this->gitCommitBox, $this->gitHistory, $this->gitSeparator, $this->gitDiff],
+            default => [$this->tree, $this->separator, $this->tabBar, $this->editor, $this->breadcrumbs],
+        };
     }
 
     /**
@@ -112,7 +121,7 @@ final class MenuOverlayController
             $this->menuDropdown = null;
             // Clear both mode's pane sets: clearing a detached widget is harmless
             // and a dropdown may close across a view swap.
-            $this->clearOverlays([$this->tree, $this->separator, $this->tabBar, $this->breadcrumbs, $this->editor, $this->gitTabs, $this->gitChanges, $this->gitCommitBox, $this->gitHistory, $this->gitSeparator, $this->gitDiff]);
+            $this->clearOverlays([$this->tree, $this->separator, $this->tabBar, $this->breadcrumbs, $this->editor, $this->gitTabs, $this->gitChanges, $this->gitCommitBox, $this->gitHistory, $this->gitSeparator, $this->gitDiff, $this->settingsTabs, $this->settingsForm, $this->settingsKeys]);
 
             return;
         }

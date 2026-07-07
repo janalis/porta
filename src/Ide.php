@@ -10,6 +10,7 @@ use Porta\Config\EditorConfig\EditorConfigResolver;
 use Porta\Config\IdeConfig;
 use Porta\Config\LayoutStore;
 use Porta\Config\SettingsController;
+use Porta\Config\SettingsKeymapController;
 use Porta\Editor\BreadcrumbScanner;
 use Porta\Editor\Buffer;
 use Porta\Editor\BufferManager;
@@ -18,6 +19,10 @@ use Porta\Editor\Document;
 use Porta\Git\GitCommands;
 use Porta\Git\GitInfo;
 use Porta\Git\GitViewController;
+use Porta\Settings\SettingsViewController;
+use Porta\Widget\Settings\KeybindingsListWidget;
+use Porta\Widget\Settings\SettingsFormWidget;
+use Porta\Widget\Settings\SettingsTabsWidget;
 use Porta\History\LocalHistory;
 use Porta\History\LocalHistoryController;
 use Porta\History\SessionStore;
@@ -130,6 +135,7 @@ final class Ide
     private Keybindings $keybindings;
     private ContainerWidget $main;
     private GitViewController $gitView;
+    private SettingsViewController $settingsView;
     private ChangesListWidget $gitChanges;
     private DiffViewWidget $gitDiff;
     private CommitBoxWidget $gitCommitBox;
@@ -313,6 +319,20 @@ final class Ide
             copyToClipboard: fn (string $text) => $this->copyToClipboard($text),
         );
 
+        $settingsTabs = new SettingsTabsWidget();
+        $settingsTabs->setId('settings-tabs')->setStyle(new Style(flex: 0));
+        $settingsForm = new SettingsFormWidget();
+        $settingsForm->setId('settings-form')->setStyle(new Style(flex: 1));
+        $settingsKeys = new KeybindingsListWidget();
+        $settingsKeys->setId('settings-keys')->setStyle(new Style(flex: 1));
+        $settingsContent = new ContainerWidget();
+        $settingsContent->setId('settings-content')->setStyle(new Style(flex: 1));
+        $settingsContent->expandVertically(true);
+        $settingsArea = new ContainerWidget();
+        $settingsArea->setId('settings-area');
+        $settingsArea->expandVertically(true);
+        $settingsArea->add($settingsTabs)->add($settingsContent);
+
         $this->history = new LocalHistory($this->rootDir);
         $this->session = new SessionStore($this->rootDir);
         $this->layout = new LayoutController(new LayoutStore($this->rootDir), $this->tui, $this->renderer, $this->tree, $this->terminalPanel, $this->resultsPanel, new GitSidebar($this->gitTabs, $this->gitChanges, $this->gitCommitBox, $this->gitHistory));
@@ -332,6 +352,10 @@ final class Ide
             $this->gitTabs,
             $gitSeparator,
             fn (): bool => $this->gitView->isOpen(),
+            $settingsTabs,
+            $settingsForm,
+            $settingsKeys,
+            fn (): bool => $this->settingsView->isOpen(),
         );
         $this->treeOps = new TreeOperations(
             $this->tree,
@@ -361,6 +385,23 @@ final class Ide
         // Apply persisted settings.
         $this->settings = new SettingsController($config->settings, $this->editor, $this->statusBar, $this->tui, $this->rootDir);
         $this->settings->applyAll();
+        $this->settingsView = new SettingsViewController(
+            $settingsTabs,
+            $settingsForm,
+            $settingsKeys,
+            $this->main,
+            $settingsArea,
+            $settingsContent,
+            $this->menuBar,
+            [$this->tree, $this->separator, $editorPane],
+            $this->tui,
+            $this->settings,
+            new SettingsKeymapController($this->editor, $this->keybindings, $this->statusBar, $this->tui, $this->rootDir),
+            onClosed: function (): void {
+                $this->tui->setFocus($this->editor);
+                $this->tui->requestRender();
+            },
+        );
         $this->bufferService = new BufferService(
             $this->buffers,
             $this->editor,
@@ -412,6 +453,10 @@ final class Ide
             $this->gitTabs,
             $gitSeparator,
             fn (): bool => $this->gitView->isOpen(),
+            $settingsTabs,
+            $settingsForm,
+            $settingsKeys,
+            fn (): bool => $this->settingsView->isOpen(),
         );
 
         foreach ($config->warnings as $warning) {
@@ -1030,7 +1075,14 @@ final class Ide
             ->add('toggle_auto_pairs', fn () => $this->settings->toggle('autoPairs'), label: 'Toggle Auto-Pairs')
             ->add('ide_terminal', fn () => $this->run->toggleTerminal(), keyBound: true)
             ->add('ide_run', fn () => $this->run->openRunMenu(), keyBound: true)
-            ->add('ide_git', fn () => $this->gitView->toggle(), keyBound: true)
+            ->add('ide_git', function (): void {
+                $this->settingsView->close();
+                $this->gitView->toggle();
+            }, keyBound: true)
+            ->add('ide_settings', function (): void {
+                $this->gitView->close();
+                $this->settingsView->toggle();
+            }, keyBound: true)
             ->add('git_stage', fn () => $this->gitCommands->stageCurrent(), label: 'Git: Stage Current File')
             ->add('git_commit', fn () => $this->gitCommands->commit(), label: 'Git: Commit…')
             ->add('git_blame', fn () => $this->gitCommands->blameLine(), label: 'Git: Blame Current Line')
@@ -1046,13 +1098,17 @@ final class Ide
     /** Populate the application menu bar and return focus to the editor on close. */
     private function wireMenuBar(Keybindings $keybindings): void
     {
-        $this->menuBar->setMenus(MenuModel::build($this->commands, $this->editor, $keybindings, fn (): bool => $this->gitView->isOpen()));
+        $this->menuBar->setMenus(MenuModel::build($this->commands, $this->editor, $keybindings, fn (): bool => $this->gitView->isOpen(), fn (): bool => $this->settingsView->isOpen()));
         $this->menuBar->onNavigate(function (): void {
             $this->overlay->refreshMenu();
         });
         $this->menuBar->onClose(function (): void {
             $this->overlay->refreshMenu();
-            $this->tui->setFocus($this->gitView->isOpen() ? $this->gitView->focusTarget() : $this->editor);
+            $this->tui->setFocus(match (true) {
+                $this->settingsView->isOpen() => $this->settingsView->focusTarget(),
+                $this->gitView->isOpen() => $this->gitView->focusTarget(),
+                default => $this->editor,
+            });
             $this->tui->requestRender();
         });
 

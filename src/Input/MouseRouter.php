@@ -19,6 +19,9 @@ use Porta\Widget\Git\CommitBoxWidget;
 use Porta\Widget\Git\DiffViewWidget;
 use Porta\Widget\Git\GitTabsWidget;
 use Porta\Widget\Git\HistoryListWidget;
+use Porta\Widget\Settings\KeybindingsListWidget;
+use Porta\Widget\Settings\SettingsFormWidget;
+use Porta\Widget\Settings\SettingsTabsWidget;
 use Porta\Widget\GoToFileWidget;
 use Porta\Widget\MenuBarWidget;
 use Porta\Widget\ResultsPanelWidget;
@@ -54,7 +57,8 @@ final class MouseRouter
     private int $clickCount = 0;
 
     /**
-     * @param \Closure(): bool $gitViewOpen whether the git view owns the main area
+     * @param \Closure(): bool $gitViewOpen      whether the git view owns the main area
+     * @param \Closure(): bool $settingsViewOpen whether the settings view owns the main area
      */
     public function __construct(
         private readonly HitTester $hit,
@@ -81,6 +85,10 @@ final class MouseRouter
         private readonly GitTabsWidget $gitTabs,
         private readonly SeparatorWidget $gitSeparator,
         private readonly \Closure $gitViewOpen,
+        private readonly SettingsTabsWidget $settingsTabs,
+        private readonly SettingsFormWidget $settingsForm,
+        private readonly KeybindingsListWidget $settingsKeys,
+        private readonly \Closure $settingsViewOpen,
     ) {}
 
     public function route(MouseEvent $mouse): void
@@ -89,12 +97,13 @@ final class MouseRouter
         $tabsRect = $this->hit->rect($this->tabBar);
         $editorRect = $this->hit->rect($this->editor);
 
-        // While the git view owns the main area, the tree/tabs/editor (and the
-        // menu bar inside the editor pane) are detached — but the renderer
-        // still holds their last-frame rects. Null them so no stale-rect
-        // branch routes events to an invisible widget.
+        // While a full view (git or settings) owns the main area, the
+        // tree/tabs/editor (and the menu bar inside the editor pane) are
+        // detached — but the renderer still holds their last-frame rects. Null
+        // them so no stale-rect branch routes events to an invisible widget.
         $gitViewOpen = ($this->gitViewOpen)();
-        if ($gitViewOpen) {
+        $settingsViewOpen = ($this->settingsViewOpen)();
+        if ($gitViewOpen || $settingsViewOpen) {
             $treeRect = $tabsRect = $editorRect = null;
         }
         // The git sidebar's drag column and left edge (the tab strip is
@@ -111,7 +120,7 @@ final class MouseRouter
         // Bare hover-move (mouse mode 1003): track the row under the pointer in
         // whichever list popup/panel is open, like PhpStorm's menu hovering.
         if ($mouse->isMove()) {
-            $this->handleHover($mouse, $editorRect, $gitViewOpen);
+            $this->handleHover($mouse, $editorRect, $gitViewOpen, $settingsViewOpen);
 
             return;
         }
@@ -144,7 +153,7 @@ final class MouseRouter
         $this->diffSelecting = false;
         $this->layout->cancelDrags();
 
-        if ($this->handleModalPopupClick($mouse, $editorRect, $gitViewOpen)) {
+        if ($this->handleModalPopupClick($mouse, $editorRect, $gitViewOpen || $settingsViewOpen)) {
             return;
         }
 
@@ -202,6 +211,11 @@ final class MouseRouter
             $key = $mouse->wheelDelta < 0 ? "\x1b[A" : "\x1b[B";
             for ($i = 0; $i < 3; ++$i) {
                 $this->gitHistory->handleInput($key);
+            }
+        } elseif (null !== $this->hit->hit($this->settingsKeys, $mouse->row, $mouse->col)) {
+            $key = $mouse->wheelDelta < 0 ? "\x1b[A" : "\x1b[B";
+            for ($i = 0; $i < 3; ++$i) {
+                $this->settingsKeys->handleInput($key);
             }
         } else {
             return;
@@ -305,11 +319,11 @@ final class MouseRouter
      * menu or application menu runs/dismisses on its own hit test. Returns
      * whether the click was consumed.
      */
-    private function handleModalPopupClick(MouseEvent $mouse, ?WidgetRect $editorRect, bool $gitViewOpen = false): bool
+    private function handleModalPopupClick(MouseEvent $mouse, ?WidgetRect $editorRect, bool $fullViewOpen = false): bool
     {
-        // Editor popups are unreachable while the git view owns the main area
-        // (the editor is detached); only the menus below can claim the click.
-        if (!$gitViewOpen && ($this->editor->isOverlayOpen() || $this->editor->isCompletionOpen())) {
+        // Editor popups are unreachable while a full view (git/settings) owns the
+        // main area (the editor is detached); only the menus below can claim it.
+        if (!$fullViewOpen && ($this->editor->isOverlayOpen() || $this->editor->isCompletionOpen())) {
             if (null !== $editorRect && $editorRect->contains($mouse->row, $mouse->col)) {
                 $rel = $editorRect->toRelative($mouse->row, $mouse->col);
                 if ($this->editor->handlePopupClick($rel['row'], $rel['col'])) {
@@ -427,6 +441,28 @@ final class MouseRouter
             // A body-row press arms a drag selection (rows join the range as
             // the pointer moves; ctrl+c then copies the highlighted lines).
             $this->diffSelecting = $rel['row'] > 0;
+            $this->tui->requestRender();
+
+            return;
+        }
+
+        // Settings view panes (rects exist only while the view is swapped in).
+        if (null !== ($rel = $this->hit->hit($this->settingsTabs, $mouse->row, $mouse->col))) {
+            $this->settingsTabs->handleClick($rel['col']);
+            $this->tui->requestRender();
+
+            return;
+        }
+        if (null !== ($rel = $this->hit->hit($this->settingsForm, $mouse->row, $mouse->col))) {
+            $this->tui->setFocus($this->settingsForm);
+            $this->settingsForm->handleClick($rel['row']);
+            $this->tui->requestRender();
+
+            return;
+        }
+        if (null !== ($rel = $this->hit->hit($this->settingsKeys, $mouse->row, $mouse->col))) {
+            $this->tui->setFocus($this->settingsKeys);
+            $this->settingsKeys->handleClick($rel['row']);
             $this->tui->requestRender();
 
             return;
@@ -599,8 +635,23 @@ final class MouseRouter
      * Re-renders only when the highlighted row actually changes, so the extra
      * motion traffic from mouse mode 1003 stays cheap.
      */
-    private function handleHover(MouseEvent $mouse, ?WidgetRect $editorRect, bool $gitViewOpen = false): void
+    private function handleHover(MouseEvent $mouse, ?WidgetRect $editorRect, bool $gitViewOpen = false, bool $settingsViewOpen = false): void
     {
+        if ($settingsViewOpen) {
+            if ($this->handleMenuHover($mouse)) {
+                return; // the menu bar rides along into the settings view
+            }
+            // Only the keybindings list tints on hover; a miss clears it.
+            $changed = null !== ($rel = $this->hit->hit($this->settingsKeys, $mouse->row, $mouse->col))
+                ? $this->settingsKeys->hoverRow($rel['row'])
+                : $this->settingsKeys->clearHover();
+            if ($changed) {
+                $this->tui->requestRender();
+            }
+
+            return; // the tree/editor hover targets below are all detached
+        }
+
         if ($gitViewOpen) {
             if ($this->handleMenuHover($mouse)) {
                 return; // the menu bar rides along into the git view
