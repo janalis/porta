@@ -40,10 +40,8 @@ final class SettingsController
             'inlineDiagnostics' => ['label' => 'Inline diagnostics', 'kind' => 'bool', 'restart' => false, 'apply' => static fn (int|bool|string $v) => $editor->setInlineDiagnostics((bool) $v)],
             'relativeLineNumbers' => ['label' => 'Relative line numbers', 'kind' => 'bool', 'restart' => false, 'apply' => static fn (int|bool|string $v) => $editor->setRelativeLineNumbers((bool) $v)],
             'autoPairs' => ['label' => 'Auto-pairs', 'kind' => 'bool', 'restart' => false, 'apply' => static fn (int|bool|string $v) => $editor->setAutoPairs((bool) $v)],
-            'indentStyle' => ['label' => 'Indent style', 'kind' => 'choice', 'restart' => false, 'apply' => static fn (int|bool|string $v) => $editor->setIndentStyle((string) $v), 'options' => ['auto', 'spaces', 'tabs']],
             'editorConfig' => ['label' => 'Respect .editorconfig', 'kind' => 'bool', 'restart' => true, 'apply' => null],
             'theme' => ['label' => 'Theme', 'kind' => 'choice', 'restart' => true, 'apply' => null, 'options' => ['dark', 'light']],
-            'tabWidth' => ['label' => 'Tab width', 'kind' => 'int', 'restart' => true, 'apply' => null, 'min' => 1, 'max' => 16],
         ];
     }
 
@@ -67,18 +65,10 @@ final class SettingsController
         $rows = [];
         foreach ($this->descriptors as $key => $descriptor) {
             $raw = $this->settings[$key] ?? '';
-            $value = match ($descriptor['kind']) {
-                'bool' => (bool) $raw,
-                'int' => (int) $raw,
-                default => (string) $raw,
-            };
+            $value = 'bool' === $descriptor['kind'] ? (bool) $raw : (string) $raw;
             $row = ['key' => $key, 'label' => $descriptor['label'], 'kind' => $descriptor['kind'], 'value' => $value, 'restart' => $descriptor['restart']];
             if (isset($descriptor['options'])) {
                 $row['options'] = $descriptor['options'];
-            }
-            if (isset($descriptor['min'], $descriptor['max'])) {
-                $row['min'] = $descriptor['min'];
-                $row['max'] = $descriptor['max'];
             }
             $rows[] = $row;
         }

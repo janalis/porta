@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace Porta\Widget;
 
+use Porta\Config\EditorConfig\ResolvedEditorConfig;
+use Porta\Config\LanguageIndent;
 use Porta\Editor\AutoPairService;
 use Porta\Editor\BreadcrumbScanner;
 use Porta\Editor\DiagnosticStyle;
@@ -18,6 +20,7 @@ use Porta\Editor\FoldModel;
 use Porta\Editor\MultiCaret;
 use Porta\Highlight\CodeHighlighter;
 use Porta\Input\TextInput;
+use Porta\Support\ProjectPaths;
 use Porta\Widget\Overlay\OverlayHost;
 use Porta\Widget\Render\EditorRenderer;
 use Porta\Widget\Render\LineDecorator;
@@ -50,8 +53,16 @@ final class CodeEditorWidget extends AbstractWidget implements FocusableInterfac
     private Document $document;
     private CodeHighlighter $highlighter;
     private ?string $filePath = null;
-    /** Global indent-style override: 'auto' defers to detection/.editorconfig, else 'spaces'|'tabs'. */
-    private string $indentStyle = 'auto';
+    /**
+     * Per-language indent config (languageId => preference). A language absent
+     * from the map (or an 'auto' value) defers to the file's .editorconfig,
+     * falling back to unix-style 2 spaces.
+     *
+     * @var array<string, LanguageIndent>
+     */
+    private array $languageIndents = [];
+    /** The current document's resolved .editorconfig, for the 'auto' indent branch. */
+    private ?ResolvedEditorConfig $currentEditorConfig = null;
 
     /** Viewport scroll state + caret-visibility clamp math, rebuilt per document. */
     private EditorScroll $scroll;
@@ -225,12 +236,15 @@ final class CodeEditorWidget extends AbstractWidget implements FocusableInterfac
      * @param array<int, list<array{severity: int, message: string, col: int, endCol?: int}>> $diagnostics
      * @param CodeHighlighter|null                                                            $highlighter buffer-owned highlighter
      *                                                                                                     whose cache survives switches
+     * @param ResolvedEditorConfig|null                                                       $editorConfig the file's resolved
+     *                                                                                                      `.editorconfig`, for the 'auto' indent branch
      */
-    public function showDocument(string $path, Document $document, array $diagnostics = [], ?CodeHighlighter $highlighter = null): void
+    public function showDocument(string $path, Document $document, array $diagnostics = [], ?CodeHighlighter $highlighter = null, ?ResolvedEditorConfig $editorConfig = null): void
     {
         $this->filePath = '' !== $path ? $path : null;
         $this->document = $document;
-        $this->applyIndentStyle();
+        $this->currentEditorConfig = $editorConfig;
+        $this->applyEffectiveIndent();
         if (null !== $highlighter) {
             $this->highlighter = $highlighter;
         } else {
@@ -308,24 +322,43 @@ final class CodeEditorWidget extends AbstractWidget implements FocusableInterfac
     }
 
     /**
-     * Set the global indent style ('auto' | 'spaces' | 'tabs'); a non-auto
-     * value overrides the current document immediately and every document
-     * shown afterwards (buffer switches re-apply it via {@see showDocument}).
+     * Set the per-language indent config (languageId => {style, size}); re-applies
+     * to the current document immediately and to every document shown afterwards
+     * (buffer switches re-apply via {@see showDocument}).
+     *
+     * @param array<string, LanguageIndent> $indents
      */
-    public function setIndentStyle(string $style): void
+    public function setLanguageIndents(array $indents): void
     {
-        if ($style !== $this->indentStyle) {
-            $this->indentStyle = $style;
-            $this->applyIndentStyle();
-            $this->invalidate();
-        }
+        $this->languageIndents = $indents;
+        $this->applyEffectiveIndent();
+        $this->invalidate();
     }
 
-    private function applyIndentStyle(): void
+    /**
+     * Apply the effective indent for the current file's language: an explicit
+     * per-language style/size wins; 'auto' takes the file's `.editorconfig`
+     * value, falling back to unix-style 2 spaces. A file whose language has no
+     * entry in the map (e.g. plaintext, or a bare editor with no config) keeps
+     * the document's own auto-detected/`.editorconfig` indent.
+     */
+    private function applyEffectiveIndent(): void
     {
-        if ('auto' !== $this->indentStyle) {
-            $this->document->setUsesTabs('tabs' === $this->indentStyle);
+        $config = $this->languageIndents[ProjectPaths::languageId($this->filePath ?? '')] ?? null;
+        if (null === $config) {
+            return;
         }
+
+        $usesTabs = match ($config->indentStyle) {
+            'spaces' => false,
+            'tabs' => true,
+            default => $this->currentEditorConfig?->usesTabs ?? false,
+        };
+        $size = 'auto' === $config->indentSize
+            ? ($this->currentEditorConfig?->indentSize ?? 2)
+            : (int) $config->indentSize;
+
+        $this->document->setIndent($usesTabs, $size);
     }
 
     public function setAutoPairs(bool $enabled): void

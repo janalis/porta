@@ -50,7 +50,6 @@ final class IdeConfigTest extends TestCase
     {
         $project = new TempProject(['.porta.json' => json_encode([
             'settings' => [
-                'tabWidth' => '2',
                 'inlineDiagnostics' => 0,
                 'relativeLineNumbers' => true,
                 'theme' => 'light',
@@ -60,7 +59,6 @@ final class IdeConfigTest extends TestCase
 
         $config = IdeConfig::load($project->dir);
 
-        $this->assertSame(2, $config->settings['tabWidth'], 'string coerced to int');
         $this->assertFalse($config->settings['inlineDiagnostics'], '0 coerced to bool');
         $this->assertTrue($config->settings['relativeLineNumbers']);
         $this->assertSame('light', $config->settings['theme']);
@@ -68,10 +66,60 @@ final class IdeConfigTest extends TestCase
         $this->assertContains('Unknown setting "bogusSetting" in .porta.json', $config->warnings);
     }
 
-    public function testTabWidthClampedToAtLeastOne(): void
+    public function testLanguagesParsingAndValidation(): void
     {
-        $project = new TempProject(['.porta.json' => json_encode(['settings' => ['tabWidth' => 0]])]);
-        $this->assertSame(1, IdeConfig::load($project->dir)->settings['tabWidth']);
+        $project = new TempProject(['.porta.json' => json_encode([
+            'languages' => [
+                'php' => ['indentStyle' => 'tabs', 'indentSize' => 4],
+                'javascript' => ['indentSize' => '2', 'indentStyle' => 'bogus'],
+                'css' => ['indentStyle' => 'spaces'],
+                'klingon' => ['indentStyle' => 'tabs'],
+                'python' => 'not-an-object',
+                'yaml' => ['indentSize' => 0],
+            ],
+        ])]);
+
+        $config = IdeConfig::load($project->dir);
+
+        $this->assertSame(['indentStyle' => 'tabs', 'indentSize' => 4], $config->languages['php']);
+        $this->assertSame(['indentSize' => 2], $config->languages['javascript'], 'string size coerced, bogus style dropped');
+        $this->assertSame(['indentStyle' => 'spaces'], $config->languages['css']);
+        $this->assertArrayNotHasKey('klingon', $config->languages, 'unknown language dropped');
+        $this->assertArrayNotHasKey('python', $config->languages, 'non-object dropped');
+        $this->assertArrayNotHasKey('yaml', $config->languages, 'invalid size (< 1) dropped');
+        $this->assertContains('Unknown language "klingon" in .porta.json', $config->warnings);
+        $this->assertContains('Language "python" must map to an object of indent settings', $config->warnings);
+    }
+
+    public function testAutoIndentSizeIsPreserved(): void
+    {
+        $project = new TempProject(['.porta.json' => json_encode(['languages' => ['php' => ['indentStyle' => 'spaces', 'indentSize' => 'auto']]])]);
+        $this->assertSame(['indentStyle' => 'spaces', 'indentSize' => 'auto'], IdeConfig::load($project->dir)->languages['php']);
+    }
+
+    public function testPersistLanguageSettingMergesAndPreserves(): void
+    {
+        $project = new TempProject(['.porta.json' => json_encode([
+            'lsp' => 'phpactor',
+            'languages' => ['php' => ['indentStyle' => 'tabs']],
+        ])]);
+
+        $this->assertTrue(IdeConfig::persistLanguageSetting($project->dir, 'php', 'indentSize', 4));
+        $this->assertTrue(IdeConfig::persistLanguageSetting($project->dir, 'css', 'indentStyle', 'spaces'));
+
+        $written = json_decode((string) file_get_contents($project->path('.porta.json')), true);
+        $this->assertSame(['indentStyle' => 'tabs', 'indentSize' => 4], $written['languages']['php'], 'merged into the existing entry');
+        $this->assertSame(['indentStyle' => 'spaces'], $written['languages']['css'], 'new language added');
+        $this->assertSame('phpactor', $written['lsp'], 'unrelated key preserved');
+
+        $this->assertSame(4, IdeConfig::load($project->dir)->languages['php']['indentSize']);
+    }
+
+    public function testPersistLanguageSettingReturnsFalseWhenWriteFails(): void
+    {
+        $project = new TempProject();
+        mkdir($project->path('.porta.json'));
+        $this->assertFalse(IdeConfig::persistLanguageSetting($project->dir, 'php', 'indentStyle', 'tabs'));
     }
 
     public function testPersistSettingMergesAndPreservesUnknownKeys(): void

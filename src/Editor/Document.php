@@ -132,13 +132,16 @@ final class Document
     }
 
     /**
-     * Force the indentation unit (the editor's global indent-style setting
-     * overrides the auto-detected/`.editorconfig` value). Invalidates the
-     * tab-expansion cache so a changed unit renders immediately.
+     * Force the effective indentation: the unit (tabs vs spaces) and its size —
+     * one indent level is $size spaces, or one hard tab displayed $size columns
+     * wide. Used by the editor's per-language indent settings, which win over
+     * auto-detection and `.editorconfig`. Invalidates the tab-expansion cache.
      */
-    public function setUsesTabs(bool $usesTabs): void
+    public function setIndent(bool $usesTabs, int $size): void
     {
         $this->usesTabs = $usesTabs;
+        $this->indentSize = max(1, $size);
+        $this->tabWidth = max(1, $size);
         $this->visualLinesVersion = -1;
     }
 

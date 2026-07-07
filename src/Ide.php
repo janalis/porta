@@ -11,6 +11,7 @@ use Porta\Config\IdeConfig;
 use Porta\Config\LayoutStore;
 use Porta\Config\SettingsController;
 use Porta\Config\SettingsKeymapController;
+use Porta\Config\SettingsLanguageController;
 use Porta\Editor\BreadcrumbScanner;
 use Porta\Editor\Buffer;
 use Porta\Editor\BufferManager;
@@ -142,6 +143,7 @@ final class Ide
     private HistoryListWidget $gitHistory;
     private GitTabsWidget $gitTabs;
     private SettingsController $settings;
+    private SettingsLanguageController $settingsLanguages;
     private BufferService $bufferService;
     private MouseRouter $mouseRouter;
 
@@ -385,6 +387,8 @@ final class Ide
         // Apply persisted settings.
         $this->settings = new SettingsController($config->settings, $this->editor, $this->statusBar, $this->tui, $this->rootDir);
         $this->settings->applyAll();
+        $this->settingsLanguages = new SettingsLanguageController($this->editor, $this->statusBar, $this->tui, $this->rootDir, $config->languages);
+        $this->settingsLanguages->applyToEditor();
         $this->settingsView = new SettingsViewController(
             $settingsTabs,
             $settingsForm,

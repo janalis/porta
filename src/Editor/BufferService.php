@@ -128,7 +128,7 @@ final class BufferService
 
     public function showBuffer(Buffer $buffer): void
     {
-        $this->editor->showDocument($buffer->path, $buffer->document, $buffer->diagnostics, $buffer->highlighter);
+        $this->editor->showDocument($buffer->path, $buffer->document, $buffer->diagnostics, $buffer->highlighter, $buffer->editorConfig);
         $this->editor->setGitMarks($buffer->gitMarks);
         $this->lsp->whenReady(fn () => $this->completion->requestInlayHints());
         $this->tui->requestRender();
