@@ -99,6 +99,9 @@ final class CodeEditorWidget extends AbstractWidget implements FocusableInterfac
     /** @var array<int, string> 0-based line => 'added'|'modified'|'deleted' */
     private array $gitMarks = [];
 
+    /** @var array{int, int}|null caret (line, col) at the last render, to gate hScroll following */
+    private ?array $lastFollowedCursor = null;
+
     /** One-line signature hint shown above the cursor, cleared on movement. */
     private ?string $signatureHint = null;
 
@@ -479,6 +482,23 @@ final class CodeEditorWidget extends AbstractWidget implements FocusableInterfac
     public function scrollBy(int $delta): void
     {
         $this->scroll->scrollBy($delta);
+    }
+
+    /**
+     * Scroll the view horizontally without moving the caret (horizontal wheel
+     * or shift+wheel), clamped so the widest visible line stays reachable.
+     * The next caret move snaps the view back via followCursor.
+     */
+    public function scrollHBy(int $cols): void
+    {
+        $doc = $this->document;
+        $vScroll = $this->scroll->vScroll();
+        $widest = 0;
+        $last = min($doc->getLineCount() - 1, $vScroll + $this->scroll->contentRows() - 1);
+        for ($line = $vScroll; $line <= $last; ++$line) {
+            $widest = max($widest, $doc->lineDisplayWidth($line));
+        }
+        $this->scroll->scrollHBy($cols, $widest - 10);
     }
 
     /**
@@ -976,7 +996,11 @@ final class CodeEditorWidget extends AbstractWidget implements FocusableInterfac
         $cursorDisplayCol = $doc->getCursorDisplayCol();
         // Inlay hints inserted before the caret push its visual column right.
         $cursorDisplayCol += EditorRenderer::inlayShiftAt($doc, $cursorLine, $this->inlayHints[$cursorLine] ?? [], $cursorDisplayCol);
-        $this->scroll->followCursor($cursorDisplayCol, $contentWidth);
+        // Follow only when the caret actually moved since the last frame, so a
+        // manual horizontal scroll (scrollHBy) survives parked-caret renders.
+        $cursorMoved = [$cursorLine, $doc->getCursorCol()] !== $this->lastFollowedCursor;
+        $this->lastFollowedCursor = [$cursorLine, $doc->getCursorCol()];
+        $this->scroll->followCursor($cursorDisplayCol, $contentWidth, $cursorMoved);
         $hScroll = $this->scroll->hScroll();
 
         // Highlight/render tab-expanded lines so widths line up with the

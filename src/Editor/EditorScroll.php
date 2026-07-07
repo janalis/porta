@@ -110,13 +110,25 @@ final class EditorScroll
     /**
      * Shift the horizontal scroll so the caret's display column stays inside
      * the content area, keeping an 8-column margin when scrolling back left.
+     * A render with a parked caret ($cursorMoved false) leaves a manual
+     * horizontal scroll alone — moving/typing snaps the view back to the caret.
      */
-    public function followCursor(int $cursorDisplayCol, int $contentWidth): void
+    public function followCursor(int $cursorDisplayCol, int $contentWidth, bool $cursorMoved = true): void
     {
+        if (!$cursorMoved) {
+            return;
+        }
         if ($cursorDisplayCol < $this->hScroll) {
             $this->hScroll = max(0, $cursorDisplayCol - 8);
         } elseif ($cursorDisplayCol > ($this->hScroll + $contentWidth - 1)) {
             $this->hScroll = $cursorDisplayCol - $contentWidth + 1;
         }
+    }
+
+    /** Scroll the view horizontally without touching the caret, clamped to [0, $max]. */
+    public function scrollHBy(int $cols, int $max): void
+    {
+        $this->hScroll = max(0, min($this->hScroll + $cols, max(0, $max)));
+        ($this->invalidate)();
     }
 }

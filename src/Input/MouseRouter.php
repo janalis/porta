@@ -169,6 +169,9 @@ final class MouseRouter
             if (null !== $this->hit->hit($this->gitDiff, $mouse->row, $mouse->col)) {
                 $this->gitDiff->scrollHBy(6 * $mouse->wheelHDelta);
                 $this->tui->requestRender();
+            } elseif (null !== $editorRect && $editorRect->contains($mouse->row, $mouse->col)) {
+                $this->editor->scrollHBy(6 * $mouse->wheelHDelta);
+                $this->tui->requestRender();
             }
 
             return;

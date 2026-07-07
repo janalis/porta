@@ -1816,7 +1816,8 @@ final class IdeEdgeCasesTest extends TestCase
         putenv('PATH=/nonexistent');
         // Root-level files so the tree lists them directly (dirs sort first,
         // so keeping it flat makes row math simple).
-        $long = "<?php\n".implode("\n", array_map(static fn (int $i) => "// line {$i}", range(1, 60)))."\n";
+        // Line 3 is long so the horizontal-wheel step has room to scroll.
+        $long = "<?php\n".implode("\n", array_map(static fn (int $i) => "// line {$i}".(3 === $i ? str_repeat(' pad', 30) : ''), range(1, 60)))."\n";
         $project = new TempProject(['A.php' => $long, 'B.php' => "<?php\n// this is B\n"]);
 
         $terminal = $this->runIde(
@@ -1835,6 +1836,14 @@ final class IdeEdgeCasesTest extends TestCase
                     $editor = $tui->getById('editor');
                     $this->assertSame('editor', $tui->getFocus()?->getId());
                     $this->assertSame(2, $editor->getDocument()->getCursorLine(), 'click moved cursor');
+                    // Horizontal wheel over the editor slides the view without
+                    // moving the caret; shift+wheel-up brings it back.
+                    $tui->handleInput("\x1b[<67;45;6M");
+                    $scroll = new \ReflectionProperty($editor, 'scroll')->getValue($editor);
+                    $this->assertSame(6, $scroll->hScroll(), 'wheel-right scrolled the editor sideways');
+                    $this->assertSame(2, $editor->getDocument()->getCursorLine(), 'the caret stayed put');
+                    $tui->handleInput("\x1b[<68;45;6M");
+                    $this->assertSame(0, $scroll->hScroll(), 'shift+wheel-up scrolled back');
                     // Wheel down over the editor scrolls the viewport.
                     $tui->handleInput("\x1b[<65;45;6M");
                     $tui->handleInput("\x1b[<65;45;6M");
