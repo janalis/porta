@@ -3341,10 +3341,12 @@ final class IdeEdgeCasesTest extends TestCase
                     $tui->handleInput("\x1b[<0;10;4M");
                     $tui->handleInput("\x1b[<0;10;4m");
                 },
-                1200 => static function ($tui): void {
-                    // The clicked commit's files have settled; open its patch.
+                1200 => function ($tui, $terminal): void {
+                    // The clicked commit's files settled AND its first file's
+                    // patch auto-loaded — no keystroke needed to see a diff.
+                    $this->assertStringContainsString('+more', AnsiUtils::stripAnsiCodes($terminal->getOutput()), 'first file auto-selected');
                     $tui->handleInput("\r");     // into the files list
-                    $tui->handleInput("\x1b[B"); // wiggle selection to fire the file load
+                    $tui->handleInput("\x1b[B"); // wiggle selection to refire the load
                     $tui->handleInput("\x1b[A");
                 },
                 1500 => function ($tui, $terminal): void {

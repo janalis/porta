@@ -464,11 +464,15 @@ final class GitViewControllerTest extends TestCase
         $this->assertSame('second', $this->history->selectedCommit()?->subject);
         $this->assertTrue($this->diffView->isReadOnly());
 
-        // The files of the newest commit load; select the file → its patch shows.
+        // The files of the newest commit load, and the FIRST file's patch
+        // shows immediately — no keyboard step needed to see a diff.
         $this->await(fn (): bool => str_contains($this->historyText(), 'M a.txt'));
+        $this->await(fn (): bool => str_contains($this->diffText(), '+three'), "the first file's patch auto-loads on commit selection");
+
+        // Keyboard file browsing still refires loads.
         $this->history->setFocused(true);
         $this->history->handleInput("\r");     // into the file list
-        $this->history->handleInput("\x1b[B"); // fire selection... first move selects
+        $this->history->handleInput("\x1b[B");
         $this->history->handleInput("\x1b[A");
         $this->await(fn (): bool => str_contains($this->diffText(), '+three'), 'the commit file patch renders');
 
@@ -482,6 +486,19 @@ final class GitViewControllerTest extends TestCase
         $this->history->handleInput('1');
         $this->await(fn (): bool => 3 === \count($this->gitLeft->all()));
         $this->assertFalse($this->diffView->isReadOnly());
+    }
+
+    public function testEmptyCommitShowsAPlaceholderInsteadOfAutoLoading(): void
+    {
+        $controller = $this->controller();
+        exec('git -C '.escapeshellarg($this->project->dir).' commit -q --allow-empty -m hollow');
+        $controller->open();
+        $this->await(fn (): bool => $controller->isOpen());
+
+        $this->changes->setFocused(true);
+        $this->changes->handleInput('2'); // History: the empty commit is newest
+        $this->await(fn (): bool => 'hollow' === $this->history->selectedCommit()?->subject);
+        $this->await(fn (): bool => str_contains($this->diffText(), 'No files in this commit'));
     }
 
     public function testReopeningAfterHistoryModeLandsOnChanges(): void

@@ -374,7 +374,12 @@ final class GitViewController
                 return;
             }
             $this->history->setFiles($files);
-            $this->diffView->setDocument(null, null, 'Select a file (Enter switches lists)');
+            // The first file is selected by default — show its patch right away.
+            if ([] !== $files) {
+                $this->loadCommitFileDiff($commit, $files[0]['path']);
+            } else {
+                $this->diffView->setDocument(null, null, 'No files in this commit');
+            }
             $this->tui->requestRender();
         });
     }
