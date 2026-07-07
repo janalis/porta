@@ -144,6 +144,7 @@ final class DiffViewWidgetTest extends TestCase
         $this->assertFalse($widget->isReadOnly());
         $widget->setReadOnly(true);
         $this->assertTrue($widget->isReadOnly());
+        $this->assertTrue($widget->expandVertically(false)->isVerticallyExpanded(), 'always fills its pane');
     }
 
     public function testNoNewlineMarkerRendersDim(): void

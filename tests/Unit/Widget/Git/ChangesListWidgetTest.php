@@ -169,6 +169,12 @@ final class ChangesListWidgetTest extends TestCase
         $this->assertSame(4, $widget->entryCount());
     }
 
+    public function testAlwaysFillsItsPane(): void
+    {
+        $widget = new ChangesListWidget();
+        $this->assertTrue($widget->expandVertically(false)->isVerticallyExpanded());
+    }
+
     public function testTabAndEscapeFireTheirHooks(): void
     {
         $widget = new ChangesListWidget();

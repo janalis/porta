@@ -13,8 +13,10 @@ use Porta\Ui\ContextMenuBuilder;
 use Porta\Widget\BreadcrumbsWidget;
 use Porta\Widget\CodeEditorWidget;
 use Porta\Widget\ContextMenu;
-use Porta\Widget\DiffPanelWidget;
 use Porta\Widget\FileTreeWidget;
+use Porta\Widget\Git\ChangesListWidget;
+use Porta\Widget\Git\CommitBoxWidget;
+use Porta\Widget\Git\DiffViewWidget;
 use Porta\Widget\GoToFileWidget;
 use Porta\Widget\MenuBarWidget;
 use Porta\Widget\ResultsPanelWidget;
@@ -47,6 +49,9 @@ final class MouseRouter
     private int $lastClickCol = -1;
     private int $clickCount = 0;
 
+    /**
+     * @param \Closure(): bool $gitViewOpen whether the git view owns the main area
+     */
     public function __construct(
         private readonly HitTester $hit,
         private readonly Tui $tui,
@@ -59,13 +64,16 @@ final class MouseRouter
         private readonly TerminalPanelWidget $terminalPanel,
         private readonly ResultsPanelWidget $resultsPanel,
         private readonly GoToFileWidget $goToFile,
-        private readonly DiffPanelWidget $diffPanel,
         private readonly LayoutController $layout,
         private readonly MenuOverlayController $overlay,
         private readonly BufferManager $buffers,
         private readonly BufferService $bufferService,
         private readonly TreeOperations $treeOps,
         private readonly ContextMenuBuilder $contextItems,
+        private readonly ChangesListWidget $gitChanges,
+        private readonly DiffViewWidget $gitDiff,
+        private readonly CommitBoxWidget $gitCommitBox,
+        private readonly \Closure $gitViewOpen,
     ) {}
 
     public function route(MouseEvent $mouse): void
@@ -73,6 +81,15 @@ final class MouseRouter
         $treeRect = $this->hit->rect($this->tree);
         $tabsRect = $this->hit->rect($this->tabBar);
         $editorRect = $this->hit->rect($this->editor);
+
+        // While the git view owns the main area, the tree/tabs/editor (and the
+        // menu bar inside the editor pane) are detached — but the renderer
+        // still holds their last-frame rects. Null them so no stale-rect
+        // branch routes events to an invisible widget.
+        $gitViewOpen = ($this->gitViewOpen)();
+        if ($gitViewOpen) {
+            $treeRect = $tabsRect = $editorRect = null;
+        }
 
         if ($mouse->wheel) {
             $this->handleWheel($mouse, $treeRect, $editorRect);
@@ -83,7 +100,7 @@ final class MouseRouter
         // Bare hover-move (mouse mode 1003): track the row under the pointer in
         // whichever list popup/panel is open, like PhpStorm's menu hovering.
         if ($mouse->isMove()) {
-            $this->handleHover($mouse, $editorRect);
+            $this->handleHover($mouse, $editorRect, $gitViewOpen);
 
             return;
         }
@@ -114,7 +131,7 @@ final class MouseRouter
         $this->tabDragging = false;
         $this->layout->cancelDrags();
 
-        if ($this->handleModalPopupClick($mouse, $editorRect)) {
+        if (!$gitViewOpen && $this->handleModalPopupClick($mouse, $editorRect)) {
             return;
         }
 
@@ -123,7 +140,7 @@ final class MouseRouter
         if ($this->layout->armSidebarResize($treeRect, $mouse)) {
             return;
         }
-        if ($this->layout->armPanelResize($this->terminalPanel, $mouse) || $this->layout->armPanelResize($this->diffPanel, $mouse)) {
+        if ($this->layout->armPanelResize($this->terminalPanel, $mouse)) {
             return;
         }
 
@@ -143,6 +160,13 @@ final class MouseRouter
             $key = $mouse->wheelDelta < 0 ? "\x1b[A" : "\x1b[B";
             for ($i = 0; $i < 3; ++$i) {
                 $this->tree->handleInput($key);
+            }
+        } elseif (null !== $this->hit->hit($this->gitDiff, $mouse->row, $mouse->col)) {
+            $this->gitDiff->scrollBy($step);
+        } elseif (null !== $this->hit->hit($this->gitChanges, $mouse->row, $mouse->col)) {
+            $key = $mouse->wheelDelta < 0 ? "\x1b[A" : "\x1b[B";
+            for ($i = 0; $i < 3; ++$i) {
+                $this->gitChanges->handleInput($key); // list scroll follows selection
             }
         } else {
             return;
@@ -310,6 +334,28 @@ final class MouseRouter
     /** A left press on the panes, tried front-to-back; the editor is the final target. */
     private function handlePaneClick(MouseEvent $mouse, ?WidgetRect $treeRect, ?WidgetRect $tabsRect, ?WidgetRect $editorRect): void
     {
+        // Git view panes (rects exist only while the view is swapped in).
+        if (null !== ($rel = $this->hit->hit($this->gitChanges, $mouse->row, $mouse->col))) {
+            $this->tui->setFocus($this->gitChanges);
+            $this->gitChanges->handleClick($rel['row'], $rel['col']);
+            $this->tui->requestRender();
+
+            return;
+        }
+        if (null !== ($rel = $this->hit->hit($this->gitCommitBox, $mouse->row, $mouse->col))) {
+            $this->tui->setFocus($this->gitCommitBox);
+            $this->gitCommitBox->handleClick($rel['row']);
+            $this->tui->requestRender();
+
+            return;
+        }
+        if (null !== $this->hit->hit($this->gitDiff, $mouse->row, $mouse->col)) {
+            $this->tui->setFocus($this->gitDiff);
+            $this->tui->requestRender();
+
+            return;
+        }
+
         // A click in the open terminal pane focuses it, so typing reaches the shell.
         if ($this->terminalPanel->isOpen() && null !== $this->hit->hit($this->terminalPanel, $mouse->row, $mouse->col)) {
             $this->tui->setFocus($this->terminalPanel);
@@ -477,8 +523,18 @@ final class MouseRouter
      * Re-renders only when the highlighted row actually changes, so the extra
      * motion traffic from mouse mode 1003 stays cheap.
      */
-    private function handleHover(MouseEvent $mouse, ?WidgetRect $editorRect): void
+    private function handleHover(MouseEvent $mouse, ?WidgetRect $editorRect, bool $gitViewOpen = false): void
     {
+        if ($gitViewOpen) {
+            if (null !== ($rel = $this->hit->hit($this->gitChanges, $mouse->row, $mouse->col))
+                && $this->gitChanges->hoverRow($rel['row'])
+            ) {
+                $this->tui->requestRender();
+            }
+
+            return; // the tree/menu hover targets below are all detached
+        }
+
         $this->updateTreeHover($mouse);
 
         if ($this->handleMenuHover($mouse)) {

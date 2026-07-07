@@ -16,6 +16,7 @@ use Symfony\Component\Tui\Widget\AbstractWidget;
 use Symfony\Component\Tui\Widget\FocusableInterface;
 use Symfony\Component\Tui\Widget\FocusableTrait;
 use Symfony\Component\Tui\Widget\KeybindingsTrait;
+use Symfony\Component\Tui\Widget\VerticallyExpandableInterface;
 
 /**
  * The git view's changed-files list (GitHub Desktop's left column): one row
@@ -23,7 +24,7 @@ use Symfony\Component\Tui\Widget\KeybindingsTrait;
  * staged state. Space toggles staging, `d` arms an inline discard
  * confirmation, Enter/selection drives the diff pane via onSelect.
  */
-final class ChangesListWidget extends AbstractWidget implements FocusableInterface
+final class ChangesListWidget extends AbstractWidget implements FocusableInterface, VerticallyExpandableInterface
 {
     use FocusableTrait;
     use InputHook;
@@ -265,6 +266,16 @@ final class ChangesListWidget extends AbstractWidget implements FocusableInterfa
         }
 
         return $lines;
+    }
+
+    public function isVerticallyExpanded(): bool
+    {
+        return true;
+    }
+
+    public function expandVertically(bool $expand): static
+    {
+        return $this; // always fills its pane
     }
 
     /** @return array<string, string[]> */

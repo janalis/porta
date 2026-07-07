@@ -14,6 +14,7 @@ use Symfony\Component\Tui\Widget\AbstractWidget;
 use Symfony\Component\Tui\Widget\FocusableInterface;
 use Symfony\Component\Tui\Widget\FocusableTrait;
 use Symfony\Component\Tui\Widget\KeybindingsTrait;
+use Symfony\Component\Tui\Widget\VerticallyExpandableInterface;
 
 /**
  * The git view's diff pane (GitHub Desktop's right column): dual old/new
@@ -21,7 +22,7 @@ use Symfony\Component\Tui\Widget\KeybindingsTrait;
  * highlighting (deleted lines stay plain red — the pre-image no longer
  * matches the file's highlight state). Scrollable; read-only for history.
  */
-final class DiffViewWidget extends AbstractWidget implements FocusableInterface
+final class DiffViewWidget extends AbstractWidget implements FocusableInterface, VerticallyExpandableInterface
 {
     use FocusableTrait;
     use InputHook;
@@ -214,6 +215,16 @@ final class DiffViewWidget extends AbstractWidget implements FocusableInterface
         };
 
         return $gutter.AnsiUtils::truncateToWidth($content, max(1, $width - 11), '…', pad: true)."\x1b[0m";
+    }
+
+    public function isVerticallyExpanded(): bool
+    {
+        return true;
+    }
+
+    public function expandVertically(bool $expand): static
+    {
+        return $this; // always fills its pane
     }
 
     /** @return array<string, string[]> */

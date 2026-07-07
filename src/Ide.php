@@ -17,6 +17,7 @@ use Porta\Editor\BufferService;
 use Porta\Editor\Document;
 use Porta\Git\GitCommands;
 use Porta\Git\GitInfo;
+use Porta\Git\GitViewController;
 use Porta\History\LocalHistory;
 use Porta\History\LocalHistoryController;
 use Porta\History\SessionStore;
@@ -50,9 +51,11 @@ use Porta\Widget\BreadcrumbsWidget;
 use Porta\Widget\CodeEditorWidget;
 use Porta\Widget\EditorCallbacks;
 use Porta\Widget\ContextMenu;
-use Porta\Widget\DiffPanelWidget;
 use Porta\Widget\FileTreeWidget;
 use Porta\Widget\FindBarWidget;
+use Porta\Widget\Git\ChangesListWidget;
+use Porta\Widget\Git\CommitBoxWidget;
+use Porta\Widget\Git\DiffViewWidget;
 use Porta\Widget\GoToFileWidget;
 use Porta\Widget\MenuBarWidget;
 use Porta\Widget\ResultsPanelWidget;
@@ -94,7 +97,6 @@ final class Ide
     private ProjectSearchController $projectSearchController;
     private CommandPalette $commandPalette;
     private TerminalPanelWidget $terminalPanel;
-    private DiffPanelWidget $diffPanel;
     private RunController $run;
     private GitInfo $git;
     private GitCommands $gitCommands;
@@ -123,6 +125,11 @@ final class Ide
     private MenuOverlayController $overlay;
 
     private Keybindings $keybindings;
+    private ContainerWidget $main;
+    private GitViewController $gitView;
+    private ChangesListWidget $gitChanges;
+    private DiffViewWidget $gitDiff;
+    private CommitBoxWidget $gitCommitBox;
     private SettingsController $settings;
     private BufferService $bufferService;
     private MouseRouter $mouseRouter;
@@ -184,11 +191,11 @@ final class Ide
         $this->separator = new SeparatorWidget();
         $this->separator->setId('separator')->setStyle(new Style(flex: 0));
 
-        $main = new ContainerWidget();
-        $main->setId('main');
-        $main->setStyle(new Style(direction: Direction::Horizontal, gap: 0));
-        $main->expandVertically(true);
-        $main->add($this->tree)->add($this->separator)->add($editorPane);
+        $this->main = new ContainerWidget();
+        $this->main->setId('main');
+        $this->main->setStyle(new Style(direction: Direction::Horizontal, gap: 0));
+        $this->main->expandVertically(true);
+        $this->main->add($this->tree)->add($this->separator)->add($editorPane);
 
         $this->goToFile = new GoToFileWidget($this->rootDir);
         $this->goToFile->setId('goto-file');
@@ -198,8 +205,6 @@ final class Ide
         $this->resultsPanel->setId('results');
         $this->terminalPanel = new TerminalPanelWidget();
         $this->terminalPanel->setId('terminal');
-        $this->diffPanel = new DiffPanelWidget();
-        $this->diffPanel->setId('diff');
         $this->projectSearchController = new ProjectSearchController(
             new ProjectSearch($this->rootDir),
             $this->resultsPanel,
@@ -249,16 +254,52 @@ final class Ide
             $this->editor,
             $this->statusBar,
             $this->tui,
-            $this->diffPanel,
-            $this->terminalPanel,
-            $this->resultsPanel,
             fn () => $this->refreshActiveGitMarks(),
             fn () => $this->refreshBranch(),
             fn (string $path) => $this->relativePath($path),
         );
+        $this->gitChanges = new ChangesListWidget();
+        $this->gitChanges->setId('git-changes')->setStyle(new Style(flex: 0));
+        $this->gitDiff = new DiffViewWidget();
+        $this->gitDiff->setId('git-diff')->setStyle(new Style(flex: 1));
+        $this->gitCommitBox = new CommitBoxWidget();
+        $this->gitCommitBox->setId('git-commit');
+        $gitLeft = new ContainerWidget();
+        $gitLeft->setId('git-left');
+        $gitLeft->setStyle(new Style(flex: 0));
+        $gitLeft->expandVertically(true);
+        $gitLeft->add($this->gitChanges)->add($this->gitCommitBox);
+        $gitSeparator = new SeparatorWidget();
+        $gitSeparator->setId('git-separator')->setStyle(new Style(flex: 0));
+        $gitArea = new ContainerWidget();
+        $gitArea->setId('git-area');
+        $gitArea->setStyle(new Style(direction: Direction::Horizontal, gap: 0));
+        $gitArea->expandVertically(true);
+        $gitArea->add($gitLeft)->add($gitSeparator)->add($this->gitDiff);
+        $this->gitView = new GitViewController(
+            $this->git,
+            $this->rootDir,
+            $this->gitChanges,
+            $this->gitDiff,
+            $this->gitCommitBox,
+            $this->main,
+            $gitArea,
+            [$this->tree, $this->separator, $editorPane],
+            $this->tui,
+            $this->statusBar,
+            onClosed: function (): void {
+                $this->tui->setFocus($this->editor);
+                $this->tui->requestRender();
+            },
+            onCommitted: function (): void {
+                $this->refreshActiveGitMarks();
+                $this->refreshBranch();
+            },
+        );
+
         $this->history = new LocalHistory($this->rootDir);
         $this->session = new SessionStore($this->rootDir);
-        $this->layout = new LayoutController(new LayoutStore($this->rootDir), $this->tui, $this->renderer, $this->tree, $this->terminalPanel, $this->resultsPanel, $this->diffPanel);
+        $this->layout = new LayoutController(new LayoutStore($this->rootDir), $this->tui, $this->renderer, $this->tree, $this->terminalPanel, $this->resultsPanel);
         $this->overlay = new MenuOverlayController($this->renderer, $this->menuBar, $this->contextMenu, $this->tree, $this->separator, $this->tabBar, $this->breadcrumbs, $this->editor);
         $this->treeOps = new TreeOperations(
             $this->tree,
@@ -274,11 +315,10 @@ final class Ide
 
         $this->tui
             ->add($this->goToFile)
-            ->add($main)
+            ->add($this->main)
             ->add($this->findBar)
             ->add($this->resultsPanel)
             ->add($this->terminalPanel)
-            ->add($this->diffPanel)
             ->add($this->contextMenu)
             ->add($this->statusBar);
 
@@ -326,13 +366,16 @@ final class Ide
             $this->terminalPanel,
             $this->resultsPanel,
             $this->goToFile,
-            $this->diffPanel,
             $this->layout,
             $this->overlay,
             $this->buffers,
             $this->bufferService,
             $this->treeOps,
             new ContextMenuBuilder($this->commands, $this->editor, $this->keybindings, $this->bufferService),
+            $this->gitChanges,
+            $this->gitDiff,
+            $this->gitCommitBox,
+            fn (): bool => $this->gitView->isOpen(),
         );
 
         foreach ($config->warnings as $warning) {
@@ -658,12 +701,6 @@ final class Ide
             }
             $this->tui->requestRender();
         });
-        $this->diffPanel->onClose(function (): void {
-            // The diff panel is only ever closed via its own hide key while
-            // focused, so returning focus to the editor is always correct.
-            $this->tui->setFocus($this->editor);
-            $this->tui->requestRender();
-        });
     }
 
     /**
@@ -957,7 +994,7 @@ final class Ide
             ->add('toggle_auto_pairs', fn () => $this->settings->toggle('autoPairs'), label: 'Toggle Auto-Pairs')
             ->add('ide_terminal', fn () => $this->run->toggleTerminal(), keyBound: true)
             ->add('ide_run', fn () => $this->run->openRunMenu(), keyBound: true)
-            ->add('ide_diff', fn () => $this->gitCommands->openDiff(), keyBound: true)
+            ->add('ide_git', fn () => $this->gitView->toggle(), keyBound: true)
             ->add('git_stage', fn () => $this->gitCommands->stageCurrent(), label: 'Git: Stage Current File')
             ->add('git_commit', fn () => $this->gitCommands->commit(), label: 'Git: Commit…')
             ->add('git_blame', fn () => $this->gitCommands->blameLine(), label: 'Git: Blame Current Line');
@@ -993,6 +1030,12 @@ final class Ide
 
     private function openMenu(): void
     {
+        if ($this->gitView->isOpen()) {
+            $this->statusBar->flash('Close the Git view first (Esc)');
+            $this->tui->requestRender();
+
+            return;
+        }
         $this->menuBar->open(0);
         $this->tui->setFocus($this->menuBar);
         $this->tui->requestRender();

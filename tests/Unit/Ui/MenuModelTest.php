@@ -43,20 +43,31 @@ final class MenuModelTest extends TestCase
         $menus = $this->build(new CommandRegistry(), new CodeEditorWidget());
 
         $titles = array_map(static fn (Menu $m) => $m->title, $menus);
-        $this->assertSame(['File', 'Edit', 'Navigate', 'Code', 'Run', 'View', 'Help'], $titles);
+        $this->assertSame(['File', 'Edit', 'Navigate', 'Code', 'Run', 'Git', 'View', 'Help'], $titles);
+    }
+
+    private function gitCommands(): CommandRegistry
+    {
+        return new CommandRegistry()
+            ->add('git_stage', static function (): void {}, label: 'Git: Stage Current File')
+            ->add('git_commit', static function (): void {}, label: 'Git: Commit…')
+            ->add('git_blame', static function (): void {}, label: 'Git: Blame Current Line');
     }
 
     public function testFileScopedItemsDisabledWhenNoFileOpen(): void
     {
-        $menus = $this->build(new CommandRegistry(), new CodeEditorWidget()); // filePath === null
+        $menus = $this->build($this->gitCommands(), new CodeEditorWidget()); // filePath === null
 
         // Editor document actions + file-scoped IDE commands are disabled.
         $this->assertFalse($this->item($menus, 'Edit', 'Undo')->enabled());
         $this->assertFalse($this->item($menus, 'File', 'Save File')->enabled());
         $this->assertFalse($this->item($menus, 'Navigate', 'Go to Line')->enabled());
         $this->assertFalse($this->item($menus, 'Edit', 'Reformat File')->enabled());
-        $this->assertFalse($this->item($menus, 'Run', 'Show Diff vs HEAD')->enabled());
+        $this->assertFalse($this->item($menus, 'Git', 'Git: Stage Current File')->enabled());
         $this->assertFalse($this->item($menus, 'File', 'Show Local History')->enabled());
+
+        // The git view itself is not file-scoped.
+        $this->assertTrue($this->item($menus, 'Git', 'Git: Changes')->enabled());
 
         // Ways back into a file + global commands stay enabled.
         $this->assertTrue($this->item($menus, 'File', 'Recent Files')->enabled());
@@ -68,12 +79,12 @@ final class MenuModelTest extends TestCase
     {
         $editor = new CodeEditorWidget();
         $editor->openFile('x.php', "<?php\n");
-        $menus = $this->build(new CommandRegistry(), $editor);
+        $menus = $this->build($this->gitCommands(), $editor);
 
         $this->assertTrue($this->item($menus, 'Edit', 'Undo')->enabled());
         $this->assertTrue($this->item($menus, 'File', 'Save File')->enabled());
         $this->assertTrue($this->item($menus, 'Edit', 'Reformat File')->enabled());
-        $this->assertTrue($this->item($menus, 'Run', 'Show Diff vs HEAD')->enabled());
+        $this->assertTrue($this->item($menus, 'Git', 'Git: Stage Current File')->enabled());
     }
 
     public function testEditorItemRunsRunActionAndShowsShortcut(): void

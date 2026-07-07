@@ -6,7 +6,6 @@ namespace Porta\Layout;
 
 use Porta\Config\LayoutStore;
 use Porta\Input\MouseEvent;
-use Porta\Widget\DiffPanelWidget;
 use Porta\Widget\FileTreeWidget;
 use Porta\Widget\ResultsPanelWidget;
 use Porta\Widget\TerminalPanelWidget;
@@ -38,7 +37,6 @@ final class LayoutController
         private readonly FileTreeWidget $tree,
         private readonly TerminalPanelWidget $terminalPanel,
         private readonly ResultsPanelWidget $resultsPanel,
-        private readonly DiffPanelWidget $diffPanel,
     ) {}
 
     public function applyLayout(): void
@@ -124,7 +122,7 @@ final class LayoutController
      * Arm a bottom-panel resize when a left-press lands on the panel's top edge.
      * Focuses the panel too, preserving the click-to-focus behaviour.
      */
-    public function armPanelResize(TerminalPanelWidget|DiffPanelWidget $panel, MouseEvent $mouse): bool
+    public function armPanelResize(TerminalPanelWidget $panel, MouseEvent $mouse): bool
     {
         if (!$panel->isOpen()) {
             return false;
@@ -153,7 +151,6 @@ final class LayoutController
     {
         $this->terminalPanel->setVisibleRows($height);
         $this->resultsPanel->setVisibleRows($height);
-        $this->diffPanel->setVisibleRows($height);
     }
 
     /** Clamp a sidebar width to keep both the tree and the editor usable. */

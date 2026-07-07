@@ -8,7 +8,6 @@ use PHPUnit\Framework\TestCase;
 use Porta\Config\ActionCatalog;
 use Porta\Widget\CodeEditorWidget;
 use Porta\Widget\ContextMenu;
-use Porta\Widget\DiffPanelWidget;
 use Porta\Widget\FileTreeWidget;
 use Porta\Widget\FindBarWidget;
 use Porta\Widget\GoToFileWidget;
@@ -22,7 +21,6 @@ final class ActionCatalogTest extends TestCase
     private const array WIDGETS = [
         CodeEditorWidget::class,
         ContextMenu::class,
-        DiffPanelWidget::class,
         FileTreeWidget::class,
         FindBarWidget::class,
         GoToFileWidget::class,

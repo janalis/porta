@@ -71,23 +71,6 @@ final class GitInfo
     }
 
     /**
-     * The full unified diff of a file against HEAD (default context), as raw
-     * text for a diff viewer. Empty when the file is unchanged or untracked.
-     *
-     * @param callable(string): void $onDone receives the raw diff
-     */
-    public function fileDiff(string $absPath, callable $onDone): void
-    {
-        if (!$this->available) {
-            $onDone('');
-
-            return;
-        }
-
-        $this->run(['diff', '--no-color', 'HEAD', '--', $absPath], $onDone);
-    }
-
-    /**
      * Every changed/untracked file in the working tree, for the changes list.
      *
      * @param callable(list<ChangeEntry>, string): void $onDone entries plus the raw

@@ -85,7 +85,13 @@ final class MenuModel
             'i:ide_run_last',
             self::SEP,
             'i:ide_terminal',
-            'i:ide_diff',
+        ],
+        'Git' => [
+            'i:ide_git',
+            self::SEP,
+            'i:git_stage',
+            'i:git_commit',
+            'i:git_blame',
         ],
         'View' => [
             'i:ide_problems',
@@ -137,7 +143,7 @@ final class MenuModel
      * IDE commands that operate on the current file (so they are disabled when no
      * file is open, alongside every editor action except `recent_files`).
      */
-    private const array FILE_SCOPED_IDE = ['reformat', 'ide_diff', 'ide_local_history'];
+    private const array FILE_SCOPED_IDE = ['reformat', 'ide_local_history', 'git_stage', 'git_blame'];
 
     private static function item(string $spec, CommandRegistry $commands, CodeEditorWidget $editor, Keybindings $ideKeys): MenuItem
     {

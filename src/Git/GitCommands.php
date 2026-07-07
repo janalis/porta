@@ -4,20 +4,16 @@ declare(strict_types=1);
 
 namespace Porta\Git;
 
-use Porta\Editor\DiffParser;
 use Porta\Widget\CodeEditorWidget;
-use Porta\Widget\DiffPanelWidget;
-use Porta\Widget\ResultsPanelWidget;
 use Porta\Widget\StatusBarWidget;
-use Porta\Widget\TerminalPanelWidget;
 use Symfony\Component\Tui\Tui;
 
 /**
  * The git actions invoked from the editor/command palette — stage the current
- * file, commit, blame the caret line, and show the current file's diff vs
- * HEAD. Each is a thin orchestration of the async {@see GitInfo} client plus a
- * status flash and a redraw; keeping them here leaves the IDE coordinator out
- * of the git-command business.
+ * file, commit, and blame the caret line. Each is a thin orchestration of the
+ * async {@see GitInfo} client plus a status flash and a redraw; keeping them
+ * here leaves the IDE coordinator out of the git-command business. The full
+ * changes/diff experience lives in {@see GitViewController}.
  *
  * The three closures are the seams back to the coordinator: refresh the active
  * buffer's change marks, refresh the branch indicator, and format a path for
@@ -26,52 +22,19 @@ use Symfony\Component\Tui\Tui;
 final class GitCommands
 {
     /**
-     * @param \Closure(): void       $refreshActiveMarks recompute the active buffer's git marks
-     * @param \Closure(): void       $refreshBranch      refresh the branch indicator
-     * @param \Closure(string): string $relativePath     format an absolute path for display
+     * @param \Closure(): void       $refreshActiveMarks
+     * @param \Closure(): void       $refreshBranch
+     * @param \Closure(string): string $relativePath
      */
     public function __construct(
         private readonly GitInfo $git,
         private readonly CodeEditorWidget $editor,
         private readonly StatusBarWidget $statusBar,
         private readonly Tui $tui,
-        private readonly DiffPanelWidget $diffPanel,
-        private readonly TerminalPanelWidget $terminalPanel,
-        private readonly ResultsPanelWidget $resultsPanel,
         private readonly \Closure $refreshActiveMarks,
         private readonly \Closure $refreshBranch,
         private readonly \Closure $relativePath,
     ) {}
-
-    /**
-     * Show the current file's unified diff against HEAD in the bottom panel.
-     */
-    public function openDiff(): void
-    {
-        $path = $this->editor->getFilePath();
-        if (null === $path) {
-            $this->statusBar->flash('No file to diff');
-            $this->tui->requestRender();
-
-            return;
-        }
-        $rel = ($this->relativePath)($path);
-        $this->git->fileDiff($path, function (string $raw) use ($rel): void {
-            $rows = DiffParser::parse($raw);
-            if ([] === $rows) {
-                $this->statusBar->flash(\sprintf('%s — no changes vs HEAD', $rel));
-                $this->tui->requestRender();
-
-                return;
-            }
-            // Only one bottom panel is visible at a time.
-            $this->terminalPanel->close();
-            $this->resultsPanel->close();
-            $this->diffPanel->open(\sprintf('Diff: %s (vs HEAD)', $rel), $rows);
-            $this->tui->setFocus($this->diffPanel);
-            $this->tui->requestRender();
-        });
-    }
 
     public function stageCurrent(): void
     {

@@ -3040,6 +3040,145 @@ final class IdeEdgeCasesTest extends TestCase
         );
     }
 
+    public function testGitViewStagesCommitsDiscardsAndRestores(): void
+    {
+        if (!$this->gitAvailable()) {
+            $this->markTestSkipped('git not available');
+        }
+        putenv('PATH='.\dirname((string) $this->whichGit()));
+        $project = new TempProject(['src/A.php' => "<?php\n\$a = 1;\n"]);
+        $dir = escapeshellarg($project->dir);
+        exec("git -C {$dir} init -q && git -C {$dir} config user.email t@t && git -C {$dir} config user.name t && git -C {$dir} add -A && git -C {$dir} commit -qm init");
+        $project->write('src/A.php', "<?php\n\$a = 2;\n"); // unstaged edit
+        $project->write('notes.md', "hi\n");               // untracked
+
+        $terminal = $this->runIde(
+            $project,
+            $project->path('src/A.php'),
+            [
+                300 => static function ($tui): void {
+                    $tui->handleInput("\x1b\x04"); // ctrl+alt+d opens the git view
+                },
+                550 => function ($tui, $terminal, $ide) use ($project): void {
+                    $screen = AnsiUtils::stripAnsiCodes($terminal->getOutput());
+                    $this->assertStringContainsString('2 changed files', $screen);
+                    $this->assertStringContainsString('[ ] M src/A.php', $screen);
+                    $this->assertStringContainsString('+$a = 2;', $screen, 'the diff pane shows the worktree change');
+                    $tui->handleInput(' '); // stage src/A.php
+                },
+                850 => function ($tui, $terminal) use ($project): void {
+                    exec('git -C '.escapeshellarg($project->dir).' status --porcelain 2>/dev/null', $lines);
+                    $this->assertContains('M  src/A.php', $lines, 'space staged the file');
+                    // Tab twice: changes -> diff -> commit box; type + ctrl+enter.
+                    $tui->handleInput("\t");
+                    $tui->handleInput("\t");
+                    foreach (str_split('Update A') as $ch) {
+                        $tui->handleInput($ch);
+                    }
+                    $tui->handleInput("\x1b[13;5u");
+                },
+                1250 => function ($tui, $terminal) use ($project): void {
+                    exec('git -C '.escapeshellarg($project->dir).' log --format=%s 2>/dev/null', $subjects);
+                    $this->assertSame(['Update A', 'init'], $subjects, 'ctrl+enter committed the staged change');
+                    // Discard the untracked notes.md: Tab walks summary -> description
+                    // -> next pane (the changes list), then arm + confirm.
+                    $tui->handleInput("\t");
+                    $tui->handleInput("\t");
+                    $tui->handleInput('d');
+                    $tui->handleInput('y');
+                },
+                1550 => function ($tui, $terminal, $ide) use ($project): void {
+                    $this->assertFileDoesNotExist($project->path('notes.md'), 'discard deleted the untracked file');
+                    $tui->handleInput("\x1b"); // esc restores the editor view
+                },
+                1700 => function ($tui): void {
+                    $this->assertSame('editor', $tui->getFocus()?->getId());
+                    $this->assertNotNull($tui->getById('tree'), 'tree pane restored');
+                },
+            ],
+            2.0,
+        );
+
+        $screen = AnsiUtils::stripAnsiCodes($terminal->getOutput());
+        $this->assertStringContainsString('Committed:', $screen);
+        $this->assertStringContainsString('Working tree clean', $screen, 'after commit+discard nothing is left');
+    }
+
+    public function testGitViewMouseAndMenuGuard(): void
+    {
+        if (!$this->gitAvailable()) {
+            $this->markTestSkipped('git not available');
+        }
+        putenv('PATH='.\dirname((string) $this->whichGit()));
+        $project = new TempProject(['a.txt' => "one\ntwo\nthree\n"]);
+        $dir = escapeshellarg($project->dir);
+        exec("git -C {$dir} init -q && git -C {$dir} config user.email t@t && git -C {$dir} config user.name t && git -C {$dir} add -A && git -C {$dir} commit -qm init");
+        $project->write('a.txt', "one!\ntwo\nthree changed\n");
+        $project->write('b.txt', "new\n");
+
+        $terminal = $this->runIde(
+            $project,
+            $project->path('a.txt'),
+            [
+                300 => static function ($tui): void {
+                    $tui->handleInput("\x1b\x04"); // open the git view
+                },
+                600 => function ($tui): void {
+                    $tui->tick();
+                    // F10 is guarded while the git view is open.
+                    $tui->handleInput("\x1b[21~");
+                    // The git view owns the whole main area, so its header is
+                    // screen row 1 (1-based) and a.txt sits on row 2. Click the
+                    // checkbox column: stages it.
+                    $tui->handleInput("\x1b[<0;3;2M");
+                    $tui->handleInput("\x1b[<0;3;2m");
+                },
+                950 => function ($tui, $terminal) use ($project): void {
+                    exec('git -C '.escapeshellarg($project->dir).' status --porcelain 2>/dev/null', $lines);
+                    $this->assertContains('M  a.txt', $lines, 'checkbox click staged the file');
+                    // Hover row 2 (b.txt) selects it and loads its diff;
+                    // wheel over the diff pane scrolls it.
+                    $tui->handleInput("\x1b[<35;10;3M");
+                    $tui->handleInput("\x1b[<65;80;5M");
+                    // Wheel over the changes list moves its selection.
+                    $tui->handleInput("\x1b[<65;10;2M");
+                    // A click on the diff pane focuses it.
+                    $tui->handleInput("\x1b[<0;60;5M");
+                    $tui->handleInput("\x1b[<0;60;5m");
+                    // Click into the commit box summary row.
+                    $tui->handleInput("\x1b[<0;5;19M");
+                    $tui->handleInput("\x1b[<0;5;19m");
+                },
+                1250 => function ($tui, $terminal): void {
+                    $screen = AnsiUtils::stripAnsiCodes($terminal->getOutput());
+                    $this->assertStringContainsString('Close the Git view first', $screen, 'F10 flashed the guard');
+                    $this->assertStringContainsString('+new', $screen, 'hover loaded the untracked diff');
+                    $this->assertSame('git-commit', $tui->getFocus()?->getId(), 'click focused the commit box');
+                    $tui->handleInput("\x1b");
+                },
+            ],
+            1.6,
+        );
+
+        $this->assertStringContainsString('b.txt', AnsiUtils::stripAnsiCodes($terminal->getOutput()));
+    }
+
+    private function gitAvailable(): bool
+    {
+        return null !== $this->whichGit();
+    }
+
+    private function whichGit(): ?string
+    {
+        foreach (explode(\PATH_SEPARATOR, (string) getenv('PATH')) as $d) {
+            if (is_file($d.'/git') && is_executable($d.'/git')) {
+                return $d.'/git';
+            }
+        }
+
+        return null;
+    }
+
     public function testPerLanguageServersRouteAndReportStatus(): void
     {
         // Two distinct server processes (the argv differ, so the pool cannot
@@ -3262,84 +3401,8 @@ final class IdeEdgeCasesTest extends TestCase
         self::markTestSkipped('git binary not available');
     }
 
-    public function testDiffPanelOpensForModifiedFileAndCloses(): void
-    {
-        $this->requireGit();
-        $project = new TempProject(['a.php' => "<?php\n\$x = 1;\n\$y = 2;\n"]);
-        $this->gitInit($project->dir);
-        $this->gitCommit($project->dir);
-        $project->write('a.php', "<?php\n\$x = 99;\n\$y = 2;\n");
 
-        $terminal = $this->runIde(
-            $project,
-            $project->path('a.php'),
-            [
-                300 => static function ($tui): void {
-                    $tui->handleInput("\x1b\x04"); // ctrl+alt+d: show diff vs HEAD
-                },
-                750 => function ($tui): void {
-                    $this->assertTrue($tui->getById('diff')->isOpen(), 'diff panel opened');
-                    $tui->tick();
-                },
-                850 => function ($tui): void {
-                    $tui->handleInput("\x1b"); // Esc hides the diff panel
-                    $this->assertFalse($tui->getById('diff')->isOpen(), 'diff panel closed');
-                    $tui->tick();
-                },
-            ],
-            1.2,
-        );
 
-        // After closing, focus returned to the editor showing the file.
-        $this->assertStringContainsString('a.php', AnsiUtils::stripAnsiCodes($terminal->getOutput()));
-    }
-
-    public function testDiffPanelFlashesWhenNoChanges(): void
-    {
-        $this->requireGit();
-        $project = new TempProject(['a.php' => "<?php\n\$x = 1;\n"]);
-        $this->gitInit($project->dir);
-        $this->gitCommit($project->dir);
-
-        $terminal = $this->runIde(
-            $project,
-            $project->path('a.php'),
-            [
-                300 => static function ($tui): void {
-                    $tui->handleInput("\x1b\x04");
-                },
-                750 => static function ($tui): void {
-                    $tui->tick();
-                },
-            ],
-            1.2,
-        );
-
-        $screen = AnsiUtils::stripAnsiCodes($terminal->getOutput());
-        $this->assertStringContainsString('no changes vs HEAD', $screen);
-    }
-
-    public function testDiffFlashesWhenNoFileOpen(): void
-    {
-        $this->requireGit();
-        $project = new TempProject(['a.php' => "<?php\n"]);
-        $this->gitInit($project->dir);
-        $this->gitCommit($project->dir);
-
-        $terminal = $this->runIde(
-            $project,
-            null,
-            [
-                300 => static function ($tui): void {
-                    $tui->handleInput("\x1b\x04"); // ctrl+alt+d with no file open
-                    $tui->tick();
-                },
-            ],
-            0.8,
-        );
-
-        $this->assertStringContainsString('No file to diff', AnsiUtils::stripAnsiCodes($terminal->getOutput()));
-    }
 
     // --- Right-click context menus -------------------------------------------
     //

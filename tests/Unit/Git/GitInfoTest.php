@@ -74,11 +74,6 @@ final class GitInfoTest extends TestCase
         });
         $this->assertSame([], $marks);
 
-        $raw = 'unset';
-        $git->fileDiff($project->path('a.txt'), function (string $d) use (&$raw): void {
-            $raw = $d;
-        });
-        $this->assertSame('', $raw, 'fileDiff resolves synchronously to empty when disabled');
 
         // Write operations short-circuit too.
         $staged = 'unset';
@@ -153,31 +148,6 @@ final class GitInfoTest extends TestCase
         $git->cancelAll();
     }
 
-    public function testFileDiffAgainstRealRepository(): void
-    {
-        if (null === self::findGit()) {
-            self::markTestSkipped('git binary not available');
-        }
-
-        $project = new TempProject([]);
-        $this->gitInit($project->dir);
-        $project->write('a.txt', "line1\nline2\nline3\n");
-        $this->gitCommit($project->dir, 'a.txt');
-        $project->write('a.txt', "line1\nCHANGED\nline3\n");
-
-        $git = new GitInfo($project->dir);
-        $raw = null;
-        $git->fileDiff($project->path('a.txt'), function (string $d) use (&$raw): void {
-            $raw = $d;
-        });
-        $this->await(static fn () => null !== $raw);
-
-        $this->assertStringContainsString('-line2', (string) $raw);
-        $this->assertStringContainsString('+CHANGED', (string) $raw);
-        $this->assertStringContainsString('@@', (string) $raw);
-
-        $git->cancelAll();
-    }
 
     public function testAgainstARealRepository(): void
     {
