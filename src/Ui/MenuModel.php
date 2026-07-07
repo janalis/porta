@@ -6,6 +6,7 @@ namespace Porta\Ui;
 
 use Porta\Config\ActionCatalog;
 use Porta\Config\CommandRegistry;
+use Porta\I18n\Translator;
 use Porta\Widget\CodeEditorWidget;
 use Symfony\Component\Tui\Input\Keybindings;
 
@@ -115,11 +116,11 @@ final class MenuModel
      *
      * @return list<Menu>
      */
-    public static function build(CommandRegistry $commands, CodeEditorWidget $editor, Keybindings $ideKeys, ?\Closure $gitViewOpen = null, ?\Closure $settingsViewOpen = null): array
+    public static function build(CommandRegistry $commands, CodeEditorWidget $editor, Keybindings $ideKeys, Translator $translator, ?\Closure $gitViewOpen = null, ?\Closure $settingsViewOpen = null): array
     {
         $menus = [];
         foreach (self::DEFS as $title => $specs) {
-            $menus[] = new Menu($title, self::items($specs, $commands, $editor, $ideKeys, $gitViewOpen, $settingsViewOpen));
+            $menus[] = new Menu($translator->trans($title), self::items($specs, $commands, $editor, $ideKeys, $translator, $gitViewOpen, $settingsViewOpen));
         }
 
         return $menus;
@@ -136,13 +137,13 @@ final class MenuModel
      *
      * @return list<MenuItem>
      */
-    public static function items(array $specs, CommandRegistry $commands, CodeEditorWidget $editor, Keybindings $ideKeys, ?\Closure $gitViewOpen = null, ?\Closure $settingsViewOpen = null): array
+    public static function items(array $specs, CommandRegistry $commands, CodeEditorWidget $editor, Keybindings $ideKeys, Translator $translator, ?\Closure $gitViewOpen = null, ?\Closure $settingsViewOpen = null): array
     {
         $items = [];
         foreach ($specs as $spec) {
             $items[] = self::SEP === $spec
                 ? MenuItem::separator()
-                : self::item($spec, $commands, $editor, $ideKeys, $gitViewOpen, $settingsViewOpen);
+                : self::item($spec, $commands, $editor, $ideKeys, $translator, $gitViewOpen, $settingsViewOpen);
         }
 
         return $items;
@@ -171,12 +172,12 @@ final class MenuModel
      * @param (\Closure(): bool)|null $gitViewOpen
      * @param (\Closure(): bool)|null $settingsViewOpen
      */
-    private static function item(string $spec, CommandRegistry $commands, CodeEditorWidget $editor, Keybindings $ideKeys, ?\Closure $gitViewOpen, ?\Closure $settingsViewOpen): MenuItem
+    private static function item(string $spec, CommandRegistry $commands, CodeEditorWidget $editor, Keybindings $ideKeys, Translator $translator, ?\Closure $gitViewOpen, ?\Closure $settingsViewOpen): MenuItem
     {
         [$scope, $id] = explode(':', $spec, 2);
-        $label = 'i' === $scope
+        $label = $translator->trans('i' === $scope
             ? $commands->label($id) ?? ActionCatalog::label($id)
-            : ActionCatalog::label($id);
+            : ActionCatalog::label($id));
         $shortcut = ShortcutFormatter::format(self::binding($id, $editor, $ideKeys));
         $run = 'i' === $scope
             ? static fn () => $commands->run($id)

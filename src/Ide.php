@@ -460,7 +460,7 @@ final class Ide
             $this->buffers,
             $this->bufferService,
             $this->treeOps,
-            new ContextMenuBuilder($this->commands, $this->editor, $this->keybindings, $this->bufferService),
+            new ContextMenuBuilder($this->commands, $this->editor, $this->keybindings, $this->bufferService, $this->translator),
             $this->gitChanges,
             $this->gitDiff,
             $this->gitCommitBox,
@@ -998,6 +998,7 @@ final class Ide
     private function applyLanguage(string $locale): void
     {
         $this->translator->setLocale($locale);
+        $this->rebuildMenu(); // the menu bakes its labels at setMenus time
         // Widgets cache their rendered lines; clear the whole tree so the next
         // frame rebuilds every label under the new locale.
         foreach ([$this->menuBar, $this->main, $this->statusBar, $this->goToFile, $this->findBar, $this->resultsPanel, $this->terminalPanel, $this->contextMenu] as $widget) {
@@ -1141,10 +1142,16 @@ final class Ide
         $this->commandPalette->open($this->commands->paletteCommands());
     }
 
+    /** (Re)build the menu-bar labels for the current locale. */
+    private function rebuildMenu(): void
+    {
+        $this->menuBar->setMenus(MenuModel::build($this->commands, $this->editor, $this->keybindings, $this->translator, fn (): bool => $this->gitView->isOpen(), fn (): bool => $this->settingsView->isOpen()));
+    }
+
     /** Populate the application menu bar and return focus to the editor on close. */
     private function wireMenuBar(Keybindings $keybindings): void
     {
-        $this->menuBar->setMenus(MenuModel::build($this->commands, $this->editor, $keybindings, fn (): bool => $this->gitView->isOpen(), fn (): bool => $this->settingsView->isOpen()));
+        $this->rebuildMenu();
         $this->menuBar->onNavigate(function (): void {
             $this->overlay->refreshMenu();
         });

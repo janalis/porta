@@ -8,20 +8,21 @@ use PHPUnit\Framework\TestCase;
 use Porta\Config\CommandRegistry;
 use Porta\Ui\Menu;
 use Porta\Ui\MenuItem;
+use Porta\I18n\Translator;
 use Porta\Ui\MenuModel;
 use Porta\Widget\CodeEditorWidget;
 use Symfony\Component\Tui\Input\Keybindings;
 
 final class MenuModelTest extends TestCase
 {
-    private function build(CommandRegistry $commands, CodeEditorWidget $editor): array
+    private function build(CommandRegistry $commands, CodeEditorWidget $editor, ?Translator $translator = null): array
     {
         $ideKeys = new Keybindings([
             'ide_run' => ['ctrl+shift+r'],
             'ide_goto_symbol' => ['ctrl+alt+shift+n'],
         ]);
 
-        return MenuModel::build($commands, $editor, $ideKeys);
+        return MenuModel::build($commands, $editor, $ideKeys, $translator ?? new Translator('en'));
     }
 
     private function item(array $menus, string $title, string $label): MenuItem
@@ -44,6 +45,23 @@ final class MenuModelTest extends TestCase
 
         $titles = array_map(static fn (Menu $m) => $m->title, $menus);
         $this->assertSame(['File', 'Edit', 'Navigate', 'Code', 'Run', 'Git', 'View', 'Help'], $titles);
+    }
+
+    public function testTitlesAndItemsAreTranslated(): void
+    {
+        $project = new \Porta\Tests\Support\TempProject(['messages.fr.xlf' => '<?xml version="1.0"?>'
+            .'<xliff xmlns="urn:oasis:names:tc:xliff:document:1.2" version="1.2">'
+            .'<file source-language="en" target-language="fr" datatype="plaintext" original="messages"><body>'
+            .'<trans-unit id="1"><source>File</source><target>Fichier</target></trans-unit>'
+            .'<trans-unit id="2"><source>Save File</source><target>Enregistrer le fichier</target></trans-unit>'
+            .'</body></file></xliff>']);
+        $translator = new Translator('fr', $project->dir);
+
+        $menus = $this->build(new CommandRegistry(), new CodeEditorWidget(), $translator);
+
+        $this->assertSame('Fichier', $menus[0]->title, 'the File title is translated');
+        $labels = array_map(static fn (MenuItem $i) => $i->label, $menus[0]->items);
+        $this->assertContains('Enregistrer le fichier', $labels, 'the Save File item is translated');
     }
 
     private function gitCommands(): CommandRegistry
@@ -96,7 +114,7 @@ final class MenuModelTest extends TestCase
         $commands = $this->gitCommands()
             ->add('git_undo_commit', static function (): void {}, label: 'Git: Undo Last Commit')
             ->add('ide_git', static function (): void {}, label: 'Git: Changes');
-        $menus = MenuModel::build($commands, $editor, $ideKeys, function () use (&$gitViewOpen): bool {
+        $menus = MenuModel::build($commands, $editor, $ideKeys, new Translator('en'), function () use (&$gitViewOpen): bool {
             return $gitViewOpen;
         });
 
@@ -131,7 +149,7 @@ final class MenuModelTest extends TestCase
         $settingsOpen = true;
         $ideKeys = new Keybindings([]);
         $commands = $this->gitCommands()->add('ide_settings', static function (): void {}, label: 'Settings…');
-        $menus = MenuModel::build($commands, $editor, $ideKeys, null, function () use (&$settingsOpen): bool {
+        $menus = MenuModel::build($commands, $editor, $ideKeys, new Translator('en'), null, function () use (&$settingsOpen): bool {
             return $settingsOpen;
         });
 

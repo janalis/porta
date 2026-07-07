@@ -6,6 +6,7 @@ namespace Porta\Ui;
 
 use Porta\Config\CommandRegistry;
 use Porta\Editor\BufferService;
+use Porta\I18n\Translator;
 use Porta\Widget\CodeEditorWidget;
 use Symfony\Component\Tui\Input\Keybindings;
 
@@ -20,6 +21,7 @@ final class ContextMenuBuilder
         private readonly CodeEditorWidget $editor,
         private readonly Keybindings $keybindings,
         private readonly BufferService $bufferService,
+        private readonly Translator $translator,
     ) {}
 
     /** @return list<MenuItem> */
@@ -42,6 +44,7 @@ final class ContextMenuBuilder
             $this->commands,
             $this->editor,
             $this->keybindings,
+            $this->translator,
         );
     }
 
@@ -49,9 +52,9 @@ final class ContextMenuBuilder
     public function tabItems(string $path): array
     {
         return [
-            new MenuItem('Close', '', fn () => $this->bufferService->closeTab($path)),
-            new MenuItem('Close Others', '', fn () => $this->bufferService->closeTabsExcept($path)),
-            new MenuItem('Close All', '', fn () => $this->bufferService->closeTabsExcept(null)),
+            new MenuItem($this->translator->trans('Close'), '', fn () => $this->bufferService->closeTab($path)),
+            new MenuItem($this->translator->trans('Close Others'), '', fn () => $this->bufferService->closeTabsExcept($path)),
+            new MenuItem($this->translator->trans('Close All'), '', fn () => $this->bufferService->closeTabsExcept(null)),
         ];
     }
 }
