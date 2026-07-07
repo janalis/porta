@@ -1,0 +1,139 @@
+<?php
+
+declare(strict_types=1);
+
+namespace Porta\Ui;
+
+use Porta\Input\TextInput;
+use Symfony\Component\Tui\Ansi\AnsiUtils;
+use Symfony\Component\Tui\Style\CursorShape;
+
+/**
+ * A small multi-line text input (the commit description box): a list of
+ * lines with a caret, printable insertion, Enter split, Backspace join and
+ * arrow movement. Deliberately minimal — no selection, no undo, no
+ * horizontal scrolling; long lines are clipped by the caller's width.
+ */
+final class MultilineInput
+{
+    /** @var list<string> */
+    private array $lines = [''];
+    private int $line = 0;
+    private int $col = 0;
+
+    public function value(): string
+    {
+        return implode("\n", $this->lines);
+    }
+
+    public function isEmpty(): bool
+    {
+        return [''] === $this->lines;
+    }
+
+    public function setValue(string $text): void
+    {
+        $this->lines = explode("\n", $text);
+        $this->line = \count($this->lines) - 1;
+        $this->col = \strlen($this->lines[$this->line]);
+    }
+
+    public function clear(): void
+    {
+        $this->lines = [''];
+        $this->line = 0;
+        $this->col = 0;
+    }
+
+    /** Handle one keystroke; returns whether it was consumed (content or caret changed). */
+    public function handleKey(string $data): bool
+    {
+        switch ($data) {
+            case "\r":
+            case "\n":
+                $current = $this->lines[$this->line];
+                $this->lines[$this->line] = substr($current, 0, $this->col);
+                array_splice($this->lines, $this->line + 1, 0, [substr($current, $this->col)]);
+                ++$this->line;
+                $this->col = 0;
+
+                return true;
+            case "\x7f":
+            case "\x08":
+                if ($this->col > 0) {
+                    $line = $this->lines[$this->line];
+                    $this->lines[$this->line] = substr($line, 0, $this->col - 1).substr($line, $this->col);
+                    --$this->col;
+                } elseif ($this->line > 0) {
+                    $tail = $this->lines[$this->line];
+                    array_splice($this->lines, $this->line, 1);
+                    --$this->line;
+                    $this->col = \strlen($this->lines[$this->line]);
+                    $this->lines[$this->line] .= $tail;
+                }
+
+                return true;
+            case "\x1b[A": // up
+                if ($this->line > 0) {
+                    --$this->line;
+                    $this->col = min($this->col, \strlen($this->lines[$this->line]));
+                }
+
+                return true;
+            case "\x1b[B": // down
+                if ($this->line < \count($this->lines) - 1) {
+                    ++$this->line;
+                    $this->col = min($this->col, \strlen($this->lines[$this->line]));
+                }
+
+                return true;
+            case "\x1b[D": // left
+                if ($this->col > 0) {
+                    --$this->col;
+                } elseif ($this->line > 0) {
+                    --$this->line;
+                    $this->col = \strlen($this->lines[$this->line]);
+                }
+
+                return true;
+            case "\x1b[C": // right
+                if ($this->col < \strlen($this->lines[$this->line])) {
+                    ++$this->col;
+                } elseif ($this->line < \count($this->lines) - 1) {
+                    ++$this->line;
+                    $this->col = 0;
+                }
+
+                return true;
+        }
+
+        if (TextInput::isPrintable($data)) {
+            $line = $this->lines[$this->line];
+            $this->lines[$this->line] = substr($line, 0, $this->col).$data.substr($line, $this->col);
+            $this->col += \strlen($data);
+
+            return true;
+        }
+
+        return false;
+    }
+
+    /**
+     * The lines clipped to $width, with a bar cursor marker at the caret when
+     * $cursor is true. Always at least one line.
+     *
+     * @return list<string>
+     */
+    public function render(int $width, bool $cursor): array
+    {
+        $out = [];
+        foreach ($this->lines as $i => $line) {
+            if ($cursor && $i === $this->line) {
+                $line = substr($line, 0, $this->col).AnsiUtils::cursorMarker(CursorShape::Bar).substr($line, $this->col);
+            }
+            $out[] = AnsiUtils::truncateToWidth($line, $width, '…', pad: false);
+        }
+
+        return $out;
+    }
+}
