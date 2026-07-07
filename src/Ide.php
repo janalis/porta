@@ -51,6 +51,8 @@ use Porta\Support\BrowserOpener;
 use Porta\Support\ProjectPaths;
 use Porta\Terminal\TerminalKeyEncoder;
 use Porta\Tree\TreeOperations;
+use Porta\I18n\Bidi;
+use Porta\Ui\BidiTui;
 use Porta\Ui\CommandPalette;
 use Porta\Ui\ContextMenuBuilder;
 use Porta\Ui\MenuModel;
@@ -96,6 +98,7 @@ final class Ide
     public const string VERSION = '0.1.0';
 
     private Tui $tui;
+    private BidiTui $bidiTui;
     private FileTreeWidget $tree;
     private CodeEditorWidget $editor;
     private StatusBarWidget $statusBar;
@@ -175,11 +178,12 @@ final class Ide
 
         // Own the Renderer so mouse hit-testing can query widget rects.
         $this->renderer = $renderer ?? new Renderer($this->buildStyleSheet());
-        $this->tui = new Tui(
+        $this->bidiTui = new BidiTui(
             terminal: $terminal ?? new Terminal(),
             keybindings: $keybindings,
             renderer: $this->renderer,
         );
+        $this->tui = $this->bidiTui;
 
         $this->buffers = new BufferManager();
         $this->lsp = new LspSessionPool($this->rootDir, fn (): ?string => $this->editor->getFilePath(), $this->translator);
@@ -1072,6 +1076,9 @@ final class Ide
         if (!isset($this->gitView, $this->settingsView)) {
             return;
         }
+        $this->bidiTui->setLineReorderer(
+            $this->translator->isRtl() ? static fn (string $line): string => Bidi::reorder($line, true) : null,
+        );
         $this->setPanes($this->gitAreaContainer, $this->gitPanes);
         $this->setPanes($this->settingsAreaContainer, $this->settingsPanes);
         if (!$this->gitView->isOpen() && !$this->settingsView->isOpen()) {
