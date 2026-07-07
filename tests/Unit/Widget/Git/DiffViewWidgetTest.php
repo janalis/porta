@@ -649,4 +649,31 @@ final class DiffViewWidgetTest extends TestCase
         $widget->handleInput(' ');
         $this->assertSame([0 => [1 => true, 3 => true]], $staged, 'Space stages the cursor pair row, not the char span');
     }
+
+    public function testSelectionBgSurvivesResetsInsideTheSpan(): void
+    {
+        // The right split half holds syntax-highlighted additions whose SGR
+        // (and truncateToWidth's pad-boundary \x1b[0m) reset the background
+        // mid-span; the selection must re-apply its bg after every reset.
+        $widget = new DiffViewWidget();
+        $widget->setDocument(DiffDocument::parse("@@ -1,1 +1,1 @@\n-\$a = 1;\n+\$a = 22;\n"), 'src/demo.php');
+        $widget->setSplit(true);
+        $widget->setFocused(false);
+        $widget->render(new RenderContext(60, 6)); // leftW = 29: right text starts col 36
+
+        // Select from the right-half text start well past the line's end
+        // (into the padding, which sits behind a \x1b[0m reset).
+        $widget->handleClick(2, 36);
+        $widget->dragSelectTo(2, 55);
+        $row = $widget->render(new RenderContext(60, 6))[2];
+
+        $this->assertGreaterThanOrEqual(
+            2,
+            substr_count($row, "\x1b[48;5;24m"),
+            'the selection bg is re-applied after resets inside the span',
+        );
+        // After a bg reset inside the span (the intraline emphasis closes with
+        // \x1b[49m) the selection bg must come straight back.
+        $this->assertNotFalse(strpos($row, "\x1b[49m\x1b[48;5;24m"), 'a re-applied bg follows a reset inside the span');
+    }
 }

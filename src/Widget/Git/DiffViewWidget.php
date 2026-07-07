@@ -695,7 +695,10 @@ final class DiffViewWidget extends AbstractWidget implements FocusableInterface,
         $start = max($textStart, $textStart + $fromCol - $this->hScroll);
         $end = min($segEnd, $textStart + $toCol - $this->hScroll);
 
-        return $end <= $start ? $line : LineDecorator::apply($line, $start, $end, LineDecorator::SELECTION_BG, "\x1b[49m", '');
+        // Re-apply the bg after any reset inside the span (syntax SGR resets,
+        // truncateToWidth's pad boundary) — without it the highlight dies
+        // mid-selection on highlighted lines.
+        return $end <= $start ? $line : LineDecorator::apply($line, $start, $end, LineDecorator::SELECTION_BG, "\x1b[49m", LineDecorator::SELECTION_BG);
     }
 
     /**
@@ -715,7 +718,7 @@ final class DiffViewWidget extends AbstractWidget implements FocusableInterface,
         $startCol = mb_strwidth(substr($line->text, 0, $from));
         $endCol = $startCol + mb_strwidth(substr($line->text, $from, $to - $from));
 
-        return LineDecorator::apply($rendered, $startCol, $endCol, $bg, "\x1b[49m", '');
+        return LineDecorator::apply($rendered, $startCol, $endCol, $bg, "\x1b[49m", $bg);
     }
 
     /** Whether $rowIndex sits inside the armed `v` range. */
