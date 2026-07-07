@@ -110,6 +110,35 @@ final class IdeConfig
         $settings[$key] = $value;
         $config['settings'] = $settings;
 
+        return self::write($file, $config);
+    }
+
+    /**
+     * Persist an action's key binding into .porta.json's `keymap` block, merging
+     * with and preserving any existing content (other actions, unknown keys).
+     * The override takes effect next launch, when the keymap is merged into the
+     * live keybindings. Returns true on success.
+     *
+     * @param list<string> $keys
+     */
+    public static function persistKeymap(string $rootDir, string $action, array $keys): bool
+    {
+        $file = $rootDir.'/.porta.json';
+        $config = JsonFile::read($file) ?? [];
+        $keymap = \is_array($config['keymap'] ?? null) ? $config['keymap'] : [];
+        $keymap[$action] = array_values($keys);
+        $config['keymap'] = $keymap;
+
+        return self::write($file, $config);
+    }
+
+    /**
+     * Atomically write the merged config back, pretty-printed; false on IO error.
+     *
+     * @param array<array-key, mixed> $config
+     */
+    private static function write(string $file, array $config): bool
+    {
         try {
             new Filesystem()->dumpFile(
                 $file,

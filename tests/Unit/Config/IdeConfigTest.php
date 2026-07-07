@@ -121,6 +121,62 @@ final class IdeConfigTest extends TestCase
         $this->assertFalse(IdeConfig::persistSetting($project->dir, 'inlineDiagnostics', false));
     }
 
+    public function testPersistKeymapMergesAndPreservesOtherEntries(): void
+    {
+        $project = new TempProject(['.porta.json' => json_encode([
+            'lsp' => 'phpactor',
+            'keymap' => ['save' => ['f10']],
+            'settings' => ['tabWidth' => 8],
+        ])]);
+
+        $this->assertTrue(IdeConfig::persistKeymap($project->dir, 'duplicate_line', ['ctrl+shift+d']));
+
+        $written = json_decode((string) file_get_contents($project->path('.porta.json')), true);
+        $this->assertSame(['ctrl+shift+d'], $written['keymap']['duplicate_line'], 'new binding written');
+        $this->assertSame(['f10'], $written['keymap']['save'], 'existing binding preserved');
+        $this->assertSame('phpactor', $written['lsp'], 'top-level key preserved');
+        $this->assertSame(8, $written['settings']['tabWidth'], 'settings block preserved');
+
+        // A fresh load applies the override.
+        $this->assertSame(['ctrl+shift+d'], IdeConfig::load($project->dir)->keymap['duplicate_line']);
+    }
+
+    public function testPersistKeymapOverwritesAnExistingActionAndReindexes(): void
+    {
+        $project = new TempProject(['.porta.json' => json_encode(['keymap' => ['save' => ['f10']]])]);
+
+        // A non-zero-based list is stored contiguously.
+        $this->assertTrue(IdeConfig::persistKeymap($project->dir, 'save', [1 => 'ctrl+s']));
+
+        $written = json_decode((string) file_get_contents($project->path('.porta.json')), true);
+        $this->assertSame(['ctrl+s'], $written['keymap']['save']);
+    }
+
+    public function testPersistKeymapCreatesFileWhenAbsent(): void
+    {
+        $project = new TempProject();
+        $this->assertTrue(IdeConfig::persistKeymap($project->dir, 'duplicate_line', ['ctrl+shift+q']));
+
+        $this->assertSame(['ctrl+shift+q'], IdeConfig::load($project->dir)->keymap['duplicate_line']);
+    }
+
+    public function testPersistKeymapIgnoresCorruptExistingFile(): void
+    {
+        $project = new TempProject(['.porta.json' => '{not json']);
+        $this->assertTrue(IdeConfig::persistKeymap($project->dir, 'save', ['f10']));
+
+        $written = json_decode((string) file_get_contents($project->path('.porta.json')), true);
+        $this->assertSame(['f10'], $written['keymap']['save']);
+    }
+
+    public function testPersistKeymapReturnsFalseWhenWriteFails(): void
+    {
+        $project = new TempProject();
+        mkdir($project->path('.porta.json'));
+
+        $this->assertFalse(IdeConfig::persistKeymap($project->dir, 'save', ['f10']));
+    }
+
     public function testKeymapParsingAndValidation(): void
     {
         $project = new TempProject(['.porta.json' => json_encode([
