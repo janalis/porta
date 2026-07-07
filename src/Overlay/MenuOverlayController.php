@@ -18,7 +18,7 @@ use Porta\Widget\Render\MenuOverlayHost;
 use Porta\Widget\SeparatorWidget;
 use Porta\Widget\Settings\KeybindingsListWidget;
 use Porta\Widget\Settings\SettingsFormWidget;
-use Porta\Widget\Settings\SettingsTabsWidget;
+use Porta\Widget\Settings\SettingsNavWidget;
 use Porta\Widget\TabBarWidget;
 use Symfony\Component\Tui\Ansi\AnsiUtils;
 use Symfony\Component\Tui\Render\Renderer;
@@ -62,9 +62,10 @@ final class MenuOverlayController
         private readonly GitTabsWidget $gitTabs,
         private readonly SeparatorWidget $gitSeparator,
         private readonly \Closure $gitViewOpen,
-        private readonly SettingsTabsWidget $settingsTabs,
+        private readonly SettingsNavWidget $settingsNav,
         private readonly SettingsFormWidget $settingsForm,
         private readonly KeybindingsListWidget $settingsKeys,
+        private readonly SeparatorWidget $settingsSeparator,
         private readonly \Closure $settingsViewOpen,
     ) {}
 
@@ -77,7 +78,7 @@ final class MenuOverlayController
     private function menuPanes(): array
     {
         return match (true) {
-            ($this->settingsViewOpen)() => [$this->settingsTabs, $this->settingsForm, $this->settingsKeys],
+            ($this->settingsViewOpen)() => [$this->settingsNav, $this->settingsSeparator, $this->settingsForm, $this->settingsKeys],
             ($this->gitViewOpen)() => [$this->gitTabs, $this->gitChanges, $this->gitCommitBox, $this->gitHistory, $this->gitSeparator, $this->gitDiff],
             default => [$this->tree, $this->separator, $this->tabBar, $this->editor, $this->breadcrumbs],
         };
@@ -121,7 +122,7 @@ final class MenuOverlayController
             $this->menuDropdown = null;
             // Clear both mode's pane sets: clearing a detached widget is harmless
             // and a dropdown may close across a view swap.
-            $this->clearOverlays([$this->tree, $this->separator, $this->tabBar, $this->breadcrumbs, $this->editor, $this->gitTabs, $this->gitChanges, $this->gitCommitBox, $this->gitHistory, $this->gitSeparator, $this->gitDiff, $this->settingsTabs, $this->settingsForm, $this->settingsKeys]);
+            $this->clearOverlays([$this->tree, $this->separator, $this->tabBar, $this->breadcrumbs, $this->editor, $this->gitTabs, $this->gitChanges, $this->gitCommitBox, $this->gitHistory, $this->gitSeparator, $this->gitDiff, $this->settingsNav, $this->settingsSeparator, $this->settingsForm, $this->settingsKeys]);
 
             return;
         }

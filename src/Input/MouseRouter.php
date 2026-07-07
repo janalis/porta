@@ -21,7 +21,7 @@ use Porta\Widget\Git\GitTabsWidget;
 use Porta\Widget\Git\HistoryListWidget;
 use Porta\Widget\Settings\KeybindingsListWidget;
 use Porta\Widget\Settings\SettingsFormWidget;
-use Porta\Widget\Settings\SettingsTabsWidget;
+use Porta\Widget\Settings\SettingsNavWidget;
 use Porta\Widget\GoToFileWidget;
 use Porta\Widget\MenuBarWidget;
 use Porta\Widget\ResultsPanelWidget;
@@ -85,7 +85,7 @@ final class MouseRouter
         private readonly GitTabsWidget $gitTabs,
         private readonly SeparatorWidget $gitSeparator,
         private readonly \Closure $gitViewOpen,
-        private readonly SettingsTabsWidget $settingsTabs,
+        private readonly SettingsNavWidget $settingsNav,
         private readonly SettingsFormWidget $settingsForm,
         private readonly KeybindingsListWidget $settingsKeys,
         private readonly \Closure $settingsViewOpen,
@@ -447,8 +447,9 @@ final class MouseRouter
         }
 
         // Settings view panes (rects exist only while the view is swapped in).
-        if (null !== ($rel = $this->hit->hit($this->settingsTabs, $mouse->row, $mouse->col))) {
-            $this->settingsTabs->handleClick($rel['col']);
+        if (null !== ($rel = $this->hit->hit($this->settingsNav, $mouse->row, $mouse->col))) {
+            $this->tui->setFocus($this->settingsNav);
+            $this->settingsNav->handleClick($rel['row']);
             $this->tui->requestRender();
 
             return;
@@ -641,10 +642,13 @@ final class MouseRouter
             if ($this->handleMenuHover($mouse)) {
                 return; // the menu bar rides along into the settings view
             }
-            // Only the keybindings list tints on hover; a miss clears it.
-            $changed = null !== ($rel = $this->hit->hit($this->settingsKeys, $mouse->row, $mouse->col))
+            // The nav sidebar and the keybindings list tint on hover; a miss clears them.
+            $changed = null !== ($rel = $this->hit->hit($this->settingsNav, $mouse->row, $mouse->col))
+                ? $this->settingsNav->hoverRow($rel['row'])
+                : $this->settingsNav->clearHover();
+            $changed = (null !== ($rel = $this->hit->hit($this->settingsKeys, $mouse->row, $mouse->col))
                 ? $this->settingsKeys->hoverRow($rel['row'])
-                : $this->settingsKeys->clearHover();
+                : $this->settingsKeys->clearHover()) || $changed;
             if ($changed) {
                 $this->tui->requestRender();
             }

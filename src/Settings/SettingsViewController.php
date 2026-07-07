@@ -6,10 +6,11 @@ namespace Porta\Settings;
 
 use Porta\Config\SettingsController;
 use Porta\Config\SettingsKeymapController;
+use Porta\Config\SettingsLanguageController;
 use Porta\Widget\MenuBarWidget;
 use Porta\Widget\Settings\KeybindingsListWidget;
 use Porta\Widget\Settings\SettingsFormWidget;
-use Porta\Widget\Settings\SettingsTabsWidget;
+use Porta\Widget\Settings\SettingsNavWidget;
 use Symfony\Component\Tui\Tui;
 use Symfony\Component\Tui\Widget\AbstractWidget;
 use Symfony\Component\Tui\Widget\ContainerWidget;
@@ -17,22 +18,23 @@ use Symfony\Component\Tui\Widget\FocusableInterface;
 
 /**
  * The full-screen settings view: swaps the main area's tree|editor children for
- * a [tabs | content] column, where content is either the editor-settings form
- * or the rebindable-keybindings list. Structured like {@see \Porta\Git\GitViewController}
- * but simpler — no git poll loop and no availability gate.
+ * a [nav sidebar | separator | content] column. The sidebar selects a section —
+ * General, Keybindings, or a language — and the content pane shows the matching
+ * form/list. Structured like {@see \Porta\Git\GitViewController} but simpler (no
+ * poll loop, no availability gate).
  */
 final class SettingsViewController
 {
     private bool $open = false;
-    /** 'settings' | 'keybindings' — which tab owns the content pane. */
-    private string $mode = 'settings';
+    /** 'general' | 'keybindings' | 'lang:<id>' — the active section. */
+    private string $section = 'general';
 
     /**
      * @param list<AbstractWidget> $editArea the main container's normal children (tree, separator, editor pane)
      * @param \Closure(): void     $onClosed restore focus/render after the swap back
      */
     public function __construct(
-        private readonly SettingsTabsWidget $tabs,
+        private readonly SettingsNavWidget $nav,
         private readonly SettingsFormWidget $form,
         private readonly KeybindingsListWidget $keymapList,
         private readonly ContainerWidget $main,
@@ -43,21 +45,22 @@ final class SettingsViewController
         private readonly Tui $tui,
         private readonly SettingsController $settings,
         private readonly SettingsKeymapController $keymap,
+        private readonly SettingsLanguageController $languages,
         private readonly \Closure $onClosed,
     ) {
         $exit = fn () => $this->close();
-        $next = fn () => $this->focusNext();
 
-        $this->tabs->onSelect(fn (string $mode) => $this->switchMode($mode));
+        $this->nav
+            ->onSelect(fn (string $id) => $this->selectSection($id))
+            ->onFocusNext(fn () => $this->focusContent())
+            ->onExit($exit);
         $this->form
             ->onChange(fn (string $key, bool|int|string $value) => $this->changeSetting($key, $value))
-            ->onShowKeybindings(fn () => $this->switchMode('keybindings'))
-            ->onFocusNext($next)
+            ->onFocusNext(fn () => $this->focusNav())
             ->onExit($exit);
         $this->keymapList
             ->onRebind(fn (string $action, string $key) => $this->rebind($action, $key))
-            ->onShowSettings(fn () => $this->switchMode('settings'))
-            ->onFocusNext($next)
+            ->onFocusNext(fn () => $this->focusNav())
             ->onExit($exit);
     }
 
@@ -69,7 +72,7 @@ final class SettingsViewController
     /** Where focus should land when a popup (e.g. the app menu) closes over the view. */
     public function focusTarget(): AbstractWidget&FocusableInterface
     {
-        return 'keybindings' === $this->mode ? $this->keymapList : $this->form;
+        return $this->contentWidget();
     }
 
     public function toggle(): void
@@ -89,12 +92,7 @@ final class SettingsViewController
         $this->main->clear();
         $this->main->add($this->settingsArea);
 
-        // Always open on the Settings tab.
-        $this->mode = 'settings';
-        $this->tabs->setActive('settings');
-        $this->form->setRows($this->settings->formRows());
-        $this->settingsContent->clear();
-        $this->settingsContent->add($this->form);
+        $this->selectSection('general'); // always open on General
         $this->tui->setFocus($this->form);
         $this->tui->requestRender();
     }
@@ -114,45 +112,66 @@ final class SettingsViewController
     }
 
     /**
-     * Swap the content pane between the Settings form and the Keybindings list.
-     * Only ever reached with the other mode (the tab strip fires solely for the
-     * inactive tab and the in-pane switch keys always cross over).
+     * Show a section's content pane. Does not steal focus — the sidebar keeps it
+     * while navigating (Tab moves to the content).
      */
-    private function switchMode(string $mode): void
+    private function selectSection(string $id): void
     {
-        $this->mode = $mode;
-        $this->tabs->setActive($mode);
+        $this->section = $id;
+        $this->nav->setActive($id);
         $this->settingsContent->clear();
-        if ('keybindings' === $mode) {
+        if ('keybindings' === $id) {
             $this->keymapList->setRows($this->keymap->rows());
             $this->settingsContent->add($this->keymapList);
-            $this->tui->setFocus($this->keymapList);
         } else {
-            $this->form->setRows($this->settings->formRows());
+            $this->form->setRows($this->rowsForSection());
             $this->settingsContent->add($this->form);
-            $this->tui->setFocus($this->form);
         }
         $this->tui->requestRender();
     }
 
+    /**
+     * The form rows for the active (General or language) section.
+     *
+     * @return list<array{key: string, label: string, kind: string, value: bool|int|string, restart: bool, options?: list<string>, min?: int, max?: int}>
+     */
+    private function rowsForSection(): array
+    {
+        return str_starts_with($this->section, 'lang:')
+            ? $this->languages->rows(substr($this->section, 5))
+            : $this->settings->formRows();
+    }
+
     private function changeSetting(string $key, bool|int|string $value): void
     {
-        $this->settings->changeSetting($key, $value);
-        $this->form->setRows($this->settings->formRows());
+        if (str_starts_with($this->section, 'lang:')) {
+            $this->languages->changeLanguageSetting(substr($this->section, 5), $key, $value);
+        } else {
+            $this->settings->changeSetting($key, $value);
+        }
+        $this->form->setRows($this->rowsForSection());
     }
 
     private function rebind(string $action, string $key): void
     {
         $this->keymap->rebind($action, $key);
-        // The live binding only changes next launch, but re-reading clears the
-        // capture prompt and keeps the list consistent.
         $this->keymapList->setRows($this->keymap->rows());
     }
 
-    /** One focusable pane per tab today, so this simply re-focuses it. */
-    private function focusNext(): void
+    private function contentWidget(): AbstractWidget&FocusableInterface
     {
-        $this->tui->setFocus('keybindings' === $this->mode ? $this->keymapList : $this->form);
+        return 'keybindings' === $this->section ? $this->keymapList : $this->form;
+    }
+
+    private function focusNav(): void
+    {
+        $this->tui->setFocus($this->nav);
+        $this->tui->requestRender();
+    }
+
+    private function focusContent(): void
+    {
+        $this->tui->setFocus($this->contentWidget());
         $this->tui->requestRender();
     }
 }

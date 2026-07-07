@@ -23,7 +23,7 @@ use Porta\Git\GitViewController;
 use Porta\Settings\SettingsViewController;
 use Porta\Widget\Settings\KeybindingsListWidget;
 use Porta\Widget\Settings\SettingsFormWidget;
-use Porta\Widget\Settings\SettingsTabsWidget;
+use Porta\Widget\Settings\SettingsNavWidget;
 use Porta\History\LocalHistory;
 use Porta\History\LocalHistoryController;
 use Porta\History\SessionStore;
@@ -321,19 +321,22 @@ final class Ide
             copyToClipboard: fn (string $text) => $this->copyToClipboard($text),
         );
 
-        $settingsTabs = new SettingsTabsWidget();
-        $settingsTabs->setId('settings-tabs')->setStyle(new Style(flex: 0));
+        $settingsNav = new SettingsNavWidget();
+        $settingsNav->setId('settings-nav')->setStyle(new Style(flex: 0));
         $settingsForm = new SettingsFormWidget();
         $settingsForm->setId('settings-form')->setStyle(new Style(flex: 1));
         $settingsKeys = new KeybindingsListWidget();
         $settingsKeys->setId('settings-keys')->setStyle(new Style(flex: 1));
+        $settingsSeparator = new SeparatorWidget();
+        $settingsSeparator->setId('settings-separator')->setStyle(new Style(flex: 0));
         $settingsContent = new ContainerWidget();
         $settingsContent->setId('settings-content')->setStyle(new Style(flex: 1));
         $settingsContent->expandVertically(true);
         $settingsArea = new ContainerWidget();
         $settingsArea->setId('settings-area');
+        $settingsArea->setStyle(new Style(direction: Direction::Horizontal, gap: 0));
         $settingsArea->expandVertically(true);
-        $settingsArea->add($settingsTabs)->add($settingsContent);
+        $settingsArea->add($settingsNav)->add($settingsSeparator)->add($settingsContent);
 
         $this->history = new LocalHistory($this->rootDir);
         $this->session = new SessionStore($this->rootDir);
@@ -354,9 +357,10 @@ final class Ide
             $this->gitTabs,
             $gitSeparator,
             fn (): bool => $this->gitView->isOpen(),
-            $settingsTabs,
+            $settingsNav,
             $settingsForm,
             $settingsKeys,
+            $settingsSeparator,
             fn (): bool => $this->settingsView->isOpen(),
         );
         $this->treeOps = new TreeOperations(
@@ -390,7 +394,7 @@ final class Ide
         $this->settingsLanguages = new SettingsLanguageController($this->editor, $this->statusBar, $this->tui, $this->rootDir, $config->languages);
         $this->settingsLanguages->applyToEditor();
         $this->settingsView = new SettingsViewController(
-            $settingsTabs,
+            $settingsNav,
             $settingsForm,
             $settingsKeys,
             $this->main,
@@ -401,6 +405,7 @@ final class Ide
             $this->tui,
             $this->settings,
             new SettingsKeymapController($this->editor, $this->keybindings, $this->statusBar, $this->tui, $this->rootDir),
+            $this->settingsLanguages,
             onClosed: function (): void {
                 $this->tui->setFocus($this->editor);
                 $this->tui->requestRender();
@@ -457,7 +462,7 @@ final class Ide
             $this->gitTabs,
             $gitSeparator,
             fn (): bool => $this->gitView->isOpen(),
-            $settingsTabs,
+            $settingsNav,
             $settingsForm,
             $settingsKeys,
             fn (): bool => $this->settingsView->isOpen(),

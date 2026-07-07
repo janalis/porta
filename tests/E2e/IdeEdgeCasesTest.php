@@ -3340,7 +3340,7 @@ final class IdeEdgeCasesTest extends TestCase
         $this->assertTrue($layout['gitDiffHideWhitespace'], 'the whitespace preference persisted');
     }
 
-    public function testSettingsViewMouseFormTabsAndKeybindings(): void
+    public function testSettingsViewSidebarNavFormAndLanguages(): void
     {
         putenv('PATH=/nonexistent'); // no git/LSP subprocesses needed
         $project = new TempProject(['a.php' => "<?php\n"]);
@@ -3357,48 +3357,60 @@ final class IdeEdgeCasesTest extends TestCase
                 500 => function ($tui, $terminal): void {
                     $tui->tick();
                     $screen = AnsiUtils::stripAnsiCodes($terminal->getOutput());
-                    $this->assertSame('settings-form', $tui->getFocus()?->getId(), 'settings opened focused on the form');
-                    $this->assertStringContainsString('Inline diagnostics', $screen);
-                    $this->assertStringContainsString('Keybindings', $screen, 'the tab strip is shown');
-                    // Click the Inline diagnostics checkbox (form row 0 = screen row 3).
-                    $tui->handleInput("\x1b[<0;5;3M");
-                    $tui->handleInput("\x1b[<0;5;3m");
-                    // A hover in form mode misses the (unrendered) list → clears any tint.
-                    $tui->handleInput("\x1b[<35;20;5M");
+                    $this->assertSame('settings-form', $tui->getFocus()?->getId(), 'settings opened focused on the General form');
+                    $this->assertStringContainsString('General', $screen, 'the nav sidebar lists sections');
+                    $this->assertStringContainsString('Languages', $screen);
+                    $this->assertStringContainsString('Inline diagnostics', $screen, 'General content shown');
+                    // Toggle Inline diagnostics in the content pane (right of the sidebar).
+                    $tui->handleInput("\x1b[<0;40;2M");
+                    $tui->handleInput("\x1b[<0;40;2m");
+                    // Hover the nav sidebar (a tint).
+                    $tui->handleInput("\x1b[<35;5;3M");
                 },
                 700 => function ($tui): void {
                     $tui->tick();
-                    // Click the Keybindings tab in the strip (screen row 2).
-                    $tui->handleInput("\x1b[<0;18;2M");
-                    $tui->handleInput("\x1b[<0;18;2m");
+                    // Click the 'Keybindings' entry in the nav (screen row 3).
+                    $tui->handleInput("\x1b[<0;5;3M");
+                    $tui->handleInput("\x1b[<0;5;3m");
                 },
                 900 => function ($tui, $terminal): void {
                     $tui->tick();
-                    $this->assertSame('settings-keys', $tui->getFocus()?->getId(), 'the Keybindings tab took focus');
-                    $this->assertStringContainsString('actions', AnsiUtils::stripAnsiCodes($terminal->getOutput()));
-                    // Hover a list row (tint), wheel over it, then click a row.
-                    $tui->handleInput("\x1b[<35;10;5M"); // hover
-                    $tui->handleInput("\x1b[<65;10;5M"); // wheel down over the list
-                    $tui->handleInput("\x1b[<0;10;5M");  // click selects the row
-                    $tui->handleInput("\x1b[<0;10;5m");
+                    $this->assertSame('settings-nav', $tui->getFocus()?->getId(), 'clicking the nav focuses it');
+                    $this->assertStringContainsString('actions', AnsiUtils::stripAnsiCodes($terminal->getOutput()), 'the keybindings list shows');
+                    // Hover + wheel + click the keybindings list (content pane), a nav miss too.
+                    $tui->handleInput("\x1b[<35;40;5M"); // hover a list row (nav clears)
+                    $tui->handleInput("\x1b[<65;40;5M"); // wheel down over the list
+                    $tui->handleInput("\x1b[<0;40;5M");  // click a list row
+                    $tui->handleInput("\x1b[<0;40;5m");
                 },
                 1100 => function ($tui): void {
                     $tui->tick();
-                    $tui->handleInput("\x1b[21~"); // F10 opens the app menu OVER the settings view
+                    // Select PHP in the nav (screen row 5) → the content shows its indent rows.
+                    $tui->handleInput("\x1b[<0;5;5M");
+                    $tui->handleInput("\x1b[<0;5;5m");
                 },
                 1300 => function ($tui, $terminal): void {
                     $tui->tick();
-                    $tui->handleInput("\x1b[<35;5;3M"); // hover a dropdown row: the menu rides along over the settings view
+                    $this->assertStringContainsString('Indent style', AnsiUtils::stripAnsiCodes($terminal->getOutput()), 'the PHP section shows indent settings');
+                    // Actuate the indent-style row (auto → spaces) in the content pane.
+                    $tui->handleInput("\x1b[<0;40;2M");
+                    $tui->handleInput("\x1b[<0;40;2m");
+                    $tui->handleInput("\x1b[21~"); // F10 opens the app menu OVER the settings view
+                },
+                1500 => function ($tui, $terminal): void {
+                    $tui->tick();
+                    $tui->handleInput("\x1b[<35;5;3M"); // hover a dropdown row: the menu rides along
                     $screen = AnsiUtils::stripAnsiCodes($terminal->getOutput());
                     $this->assertSame('menu', $tui->getFocus()?->getId(), 'F10 focused the menu bar');
                     $this->assertStringContainsString('Settings…', $screen, 'the File dropdown composites over the settings panes');
                     $this->assertStringContainsString('Save File', $screen);
                 },
             ],
-            1.7,
+            1.9,
         );
 
-        $this->assertFalse(IdeConfig::load($project->dir)->settings['inlineDiagnostics'], 'the checkbox click persisted');
+        $this->assertFalse(IdeConfig::load($project->dir)->settings['inlineDiagnostics'], 'the General toggle persisted');
+        $this->assertSame('spaces', IdeConfig::load($project->dir)->languages['php']['indentStyle'], 'the PHP indent change persisted');
     }
 
     public function testGitViewHistoryTabBrowsesCommits(): void
