@@ -372,6 +372,12 @@ final class CodeEditorWidget extends AbstractWidget implements FocusableInterfac
         return $this->filePath;
     }
 
+    /** The active buffer's highlight language (see CodeHighlighter), or null. */
+    public function getLanguage(): ?string
+    {
+        return $this->highlighter->getLanguage();
+    }
+
     /**
      * The document's structural scopes (namespace / class / function), memoized
      * by document identity + version. Empty for non-PHP files. Shared by the

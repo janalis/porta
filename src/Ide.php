@@ -36,6 +36,8 @@ use Porta\Run\RunConfigs;
 use Porta\Run\RunController;
 use Porta\Search\ProjectSearch;
 use Porta\Search\ProjectSearchController;
+use Porta\Support\AsyncProcess;
+use Porta\Support\BrowserOpener;
 use Porta\Support\ProjectPaths;
 use Porta\Terminal\TerminalKeyEncoder;
 use Porta\Tree\TreeOperations;
@@ -221,6 +223,7 @@ final class Ide
             $this->panels,
             $this->rootDir,
             fn (string $path, bool $focusEditor) => $this->openFile($path, $focusEditor),
+            fn (string $url) => $this->openDocsUrl($url),
         );
         $this->refactor = new RefactorController(
             $this->lsp,
@@ -699,6 +702,25 @@ final class Ide
         if (\strlen($text) < 100_000) {
             $this->tui->getTerminal()->write("\x1b]52;c;".base64_encode($text)."\x07");
         }
+    }
+
+    /**
+     * Open a documentation URL in the system browser (native-symbol docs from
+     * go-to-declaration). Without an opener on PATH, flash the URL itself —
+     * most terminals auto-link it.
+     */
+    private function openDocsUrl(string $url): void
+    {
+        $command = BrowserOpener::command($url);
+        if (null === $command) {
+            $this->statusBar->flash('Docs: '.$url, 5.0);
+            $this->tui->requestRender();
+
+            return;
+        }
+        new AsyncProcess($command, $this->rootDir)->start(static function (): void {});
+        $this->statusBar->flash('Opened '.$url, 3.0);
+        $this->tui->requestRender();
     }
 
     private function wireStatusBar(): void

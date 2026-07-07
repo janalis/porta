@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Porta\Lsp;
 
 use Porta\Editor\BufferManager;
+use Porta\Support\NativeDocs;
 use Porta\Support\ProjectPaths;
 use Porta\Ui\PanelManager;
 use Porta\Ui\ResultsPanelMode;
@@ -26,6 +27,7 @@ final class NavigationController extends AbstractLspController
 
     /**
      * @param \Closure(string, bool): void $openFile fn(path, focusEditor)
+     * @param \Closure(string): void       $openUrl  open a docs URL in the browser
      */
     public function __construct(
         LspSession $lsp,
@@ -37,13 +39,37 @@ final class NavigationController extends AbstractLspController
         private readonly PanelManager $panels,
         private readonly string $rootDir,
         private readonly \Closure $openFile,
+        private readonly \Closure $openUrl,
     ) {
         parent::__construct($lsp, $editor, $tui, $statusBar);
     }
 
     public function requestDefinition(int $line, int $utf16Col): void
     {
+        // Native symbols have no project declaration to jump to — open their
+        // official docs instead. Decided before any LSP involvement, so this
+        // works even without a language server.
+        if (null !== ($url = $this->nativeDocsUrl($line, $utf16Col))) {
+            ($this->openUrl)($url);
+
+            return;
+        }
+
         $this->requestGoTo('textDocument/definition', 'No definition found', $line, $utf16Col, usagesWhenOnDeclaration: true);
+    }
+
+    /** Docs URL when the word at the requested position is a native symbol of the buffer's language. */
+    private function nativeDocsUrl(int $line, int $utf16Col): ?string
+    {
+        $doc = $this->editor->getDocument();
+        $byteCol = $doc->utf16ColToByteCol($line, $utf16Col);
+        $range = $doc->wordRangeAt($line, $byteCol);
+        if (null === $range) {
+            return null;
+        }
+        $word = substr($doc->getLine($line), $range['startCol'], $range['endCol'] - $range['startCol']);
+
+        return NativeDocs::urlFor($this->editor->getLanguage(), $word);
     }
 
     public function requestImplementation(int $line, int $utf16Col): void

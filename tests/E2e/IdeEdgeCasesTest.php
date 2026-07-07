@@ -2938,6 +2938,103 @@ final class IdeEdgeCasesTest extends TestCase
         $this->assertStringContainsString('Rename failed: cannot rename this', $screen);
     }
 
+    /**
+     * A temp dir holding `open` and `xdg-open` shims that append their args to
+     * $captureFile, put first on PATH so BrowserOpener resolves them instead of
+     * a real browser opener.
+     */
+    private function shimBrowserOpener(TempProject $project, string $captureFile): void
+    {
+        foreach (['open', 'xdg-open'] as $name) {
+            $shim = $project->write('shim-bin/'.$name, "#!/bin/sh\nprintf '%s\\n' \"\$@\" >> ".escapeshellarg($captureFile)."\n");
+            chmod($shim, 0o755);
+        }
+        putenv('PATH='.$project->path('shim-bin'));
+    }
+
+    public function testGotoDeclarationOnNativePhpFunctionOpensDocs(): void
+    {
+        // No .porta.json: proves the native path never needs a language server.
+        $project = new TempProject(['src/A.php' => "<?php\nstrlen('x');\n"]);
+        $captureFile = $project->path('opened-urls.txt');
+        $this->shimBrowserOpener($project, $captureFile);
+
+        $terminal = $this->runIde(
+            $project,
+            $project->path('src/A.php'),
+            [
+                300 => static function ($tui): void {
+                    $tui->getById('editor')->getDocument()->setCursor(1, 3); // inside 'strlen'
+                    $tui->handleInput("\x1b[24~"); // F12
+                },
+                600 => static function ($tui): void {
+                    $tui->tick();
+                    // Ctrl+Click the same word: editor pane starts at screen col 31
+                    // (tree 30 + separator), gutter is 6 wide, so doc col ~3 of
+                    // line 1 (screen row 4, 1-based) is at 1-based col 41.
+                    $tui->handleInput("\x1b[<16;41;4M");
+                    $tui->handleInput("\x1b[<16;41;4m");
+                },
+            ],
+        );
+
+        $screen = AnsiUtils::stripAnsiCodes($terminal->getOutput());
+        $this->assertStringContainsString('Opened https://www.php.net', $screen);
+        $urls = (string) file_get_contents($captureFile);
+        $this->assertStringContainsString('https://www.php.net/manual/en/function.strlen.php', $urls);
+        $this->assertSame(2, substr_count($urls, "\n"), 'both F12 and ctrl+click opened the docs');
+    }
+
+    public function testGotoDeclarationOnJsBuiltinOpensMdn(): void
+    {
+        $project = new TempProject(['app.js' => "JSON.parse(x);\n"]);
+        $captureFile = $project->path('opened-urls.txt');
+        $this->shimBrowserOpener($project, $captureFile);
+
+        $terminal = $this->runIde(
+            $project,
+            $project->path('app.js'),
+            [
+                300 => static function ($tui): void {
+                    $tui->getById('editor')->getDocument()->setCursor(0, 2); // inside 'JSON'
+                    $tui->handleInput("\x1b[24~");
+                },
+                600 => static function ($tui): void {
+                    $tui->tick();
+                    $tui->getById('editor')->getDocument()->setCursor(0, 6); // 'parse': not curated, no LSP
+                    $tui->handleInput("\x1b[24~");
+                },
+            ],
+        );
+
+        $this->assertStringContainsString('Opened https://developer.mozilla.org', AnsiUtils::stripAnsiCodes($terminal->getOutput()));
+        $urls = (string) file_get_contents($captureFile);
+        $this->assertStringContainsString('https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/JSON', $urls);
+        $this->assertStringNotContainsString('parse', $urls, 'a non-curated word opens nothing');
+    }
+
+    public function testNativeDocsWithoutAnOpenerFlashesTheUrl(): void
+    {
+        putenv('PATH=/nonexistent');
+        $project = new TempProject(['src/A.php' => "<?php\narray_map('trim', []);\n"]);
+
+        $terminal = $this->runIde(
+            $project,
+            $project->path('src/A.php'),
+            [
+                300 => static function ($tui): void {
+                    $tui->getById('editor')->getDocument()->setCursor(1, 2); // inside 'array_map'
+                    $tui->handleInput("\x1b[24~");
+                },
+            ],
+        );
+
+        $this->assertStringContainsString(
+            'Docs: https://www.php.net/manual/en/function.array-map.php',
+            AnsiUtils::stripAnsiCodes($terminal->getOutput()),
+        );
+    }
+
     public function testCtrlClickNavigatesToDeclaration(): void
     {
         $project = new TempProject([
