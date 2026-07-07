@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Porta\Tests\Unit\Lsp;
 
 use PHPUnit\Framework\TestCase;
+use Porta\I18n\Translator;
 use Porta\Editor\Document;
 use Porta\Lsp\LspSessionPool;
 use Porta\Tests\Support\FakeLspClient;
@@ -22,6 +23,7 @@ final class LspSessionPoolTest extends TestCase
         $pool = new LspSessionPool(
             '/tmp/proj',
             fn (): ?string => $this->activePath,
+            new Translator('en'),
             function (array $command, string $rootDir, \Closure $onLog): FakeLspClient {
                 $client = new FakeLspClient();
                 $this->clients[] = ['command' => $command, 'client' => $client];

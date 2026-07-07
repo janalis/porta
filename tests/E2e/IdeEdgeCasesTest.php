@@ -681,6 +681,30 @@ final class IdeEdgeCasesTest extends TestCase
         $this->assertStringContainsString('open a file from the tree', AnsiUtils::stripAnsiCodes($terminal->getOutput()));
     }
 
+    public function testQuitWithASingleDirtyBufferWarnsInTheSingular(): void
+    {
+        putenv('PATH=/nonexistent');
+        $project = new TempProject(['a.php' => "<?php // a\n"]);
+
+        $terminal = $this->runIde(
+            $project,
+            $project->path('a.php'),
+            [
+                200 => static function ($tui): void {
+                    $tui->handleInput('E'); // dirty the single open buffer
+                    $tui->handleInput("\x11"); // ctrl+q -> first press warns
+                },
+                400 => function ($tui, $terminal): void {
+                    $tui->tick();
+                    $this->assertStringContainsString('1 file has edits', AnsiUtils::stripAnsiCodes($terminal->getOutput()));
+                },
+            ],
+            0.6,
+        );
+
+        $this->assertStringContainsString('Unsaved changes', AnsiUtils::stripAnsiCodes($terminal->getOutput()));
+    }
+
     public function testWarningDiagnosticsShowInStatusBar(): void
     {
         putenv('PATH=/nonexistent');
@@ -1068,6 +1092,40 @@ final class IdeEdgeCasesTest extends TestCase
                     $doc = $tui->getById('editor')->getDocument();
                     $this->assertStringContainsString('$bar = 1;', $doc->getText(), 'open buffer replaced (undoable)');
                     $this->assertStringContainsString('$bar = 2;', (string) file_get_contents($project->path('src/B.php')), 'on-disk file replaced');
+                },
+            ],
+            1.3,
+        );
+    }
+
+    public function testProjectReplaceInASingleFileFlashesSingular(): void
+    {
+        $project = new TempProject([
+            'src/A.php' => "<?php\n\$foo = 1;\n", // the only file containing the match
+            'src/B.php' => "<?php\n\$bar = 2;\n",
+        ]);
+
+        $terminal = $this->runIde(
+            $project,
+            $project->path('src/A.php'),
+            [
+                300 => static function ($tui): void {
+                    $tui->handleInput("\x1b[102;6u"); // ctrl+shift+f
+                    foreach (str_split('foo') as $ch) {
+                        $tui->handleInput($ch);
+                    }
+                },
+                700 => static function ($tui): void {
+                    $tui->tick();
+                    $tui->handleInput("\t"); // switch to the replace field
+                    foreach (str_split('baz') as $ch) {
+                        $tui->handleInput($ch);
+                    }
+                    $tui->handleInput("\x1ba"); // alt+a -> replace all
+                },
+                1000 => function ($tui, $terminal): void {
+                    $tui->tick();
+                    $this->assertStringContainsString('Replaced in 1 file', AnsiUtils::stripAnsiCodes($terminal->getOutput()));
                 },
             ],
             1.3,

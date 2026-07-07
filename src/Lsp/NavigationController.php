@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Porta\Lsp;
 
+use Porta\I18n\Translator;
 use Porta\Editor\BufferManager;
 use Porta\Support\NativeDocs;
 use Porta\Support\ProjectPaths;
@@ -34,6 +35,7 @@ final class NavigationController extends AbstractLspController
         CodeEditorWidget $editor,
         Tui $tui,
         StatusBarWidget $statusBar,
+        Translator $translator,
         private readonly BufferManager $buffers,
         private readonly ResultsPanelWidget $resultsPanel,
         private readonly PanelManager $panels,
@@ -41,7 +43,7 @@ final class NavigationController extends AbstractLspController
         private readonly \Closure $openFile,
         private readonly \Closure $openUrl,
     ) {
-        parent::__construct($lsp, $editor, $tui, $statusBar);
+        parent::__construct($lsp, $editor, $tui, $statusBar, $translator);
     }
 
     public function requestDefinition(int $line, int $utf16Col): void
@@ -55,7 +57,7 @@ final class NavigationController extends AbstractLspController
             return;
         }
 
-        $this->requestGoTo('textDocument/definition', 'No definition found', $line, $utf16Col, usagesWhenOnDeclaration: true);
+        $this->requestGoTo('textDocument/definition', $this->trans('No definition found'), $line, $utf16Col, usagesWhenOnDeclaration: true);
     }
 
     /** Docs URL when the word at the requested position is a native symbol of the buffer's language. */
@@ -74,12 +76,12 @@ final class NavigationController extends AbstractLspController
 
     public function requestImplementation(int $line, int $utf16Col): void
     {
-        $this->requestGoTo('textDocument/implementation', 'No implementation found', $line, $utf16Col);
+        $this->requestGoTo('textDocument/implementation', $this->trans('No implementation found'), $line, $utf16Col);
     }
 
     public function requestTypeDefinition(int $line, int $utf16Col): void
     {
-        $this->requestGoTo('textDocument/typeDefinition', 'No type definition found', $line, $utf16Col);
+        $this->requestGoTo('textDocument/typeDefinition', $this->trans('No type definition found'), $line, $utf16Col);
     }
 
     /**
@@ -148,7 +150,7 @@ final class NavigationController extends AbstractLspController
     {
         $target = Uri::toPath((string) $location['uri']);
         if (null === $target) {
-            $this->flash('Target outside the filesystem');
+            $this->flash($this->trans('Target outside the filesystem'));
 
             return;
         }
@@ -185,7 +187,7 @@ final class NavigationController extends AbstractLspController
             return;
         }
 
-        $this->panels->showList(ResultsPanelMode::Search, 'Choose target', $results);
+        $this->panels->showList(ResultsPanelMode::Search, $this->trans('Choose target'), $results);
     }
 
     /**
@@ -219,7 +221,7 @@ final class NavigationController extends AbstractLspController
     {
         $previous = array_pop($this->jumpStack);
         if (null === $previous) {
-            $this->flash('Nowhere to go back to');
+            $this->flash($this->trans('Nowhere to go back to'));
 
             return;
         }
@@ -244,13 +246,13 @@ final class NavigationController extends AbstractLspController
             function (mixed $result, ?array $error): void {
                 $text = LspMapper::hoverToText($result);
                 if (null !== $error || null === $text) {
-                    $this->flash('No documentation found');
+                    $this->flash($this->trans('No documentation found'));
 
                     return;
                 }
                 $lines = \array_slice(explode("\n", $text), 0, 12);
                 $items = array_map(static fn (string $l) => ['label' => $l, 'hint' => '', 'value' => ''], $lines);
-                $this->editor->openListOverlay('Documentation', $items, static function (): void {});
+                $this->editor->openListOverlay($this->trans('Documentation'), $items, static function (): void {});
                 $this->tui->requestRender();
             },
         );
@@ -267,7 +269,7 @@ final class NavigationController extends AbstractLspController
             $this->positionParams($path, $line, $col, ['context' => ['includeDeclaration' => true]]),
             function (mixed $result, ?array $error): void {
                 if (null !== $error || !\is_array($result) || [] === $result) {
-                    $this->panels->flash('No usages found');
+                    $this->panels->flash($this->trans('No usages found'));
 
                     return;
                 }
@@ -290,14 +292,14 @@ final class NavigationController extends AbstractLspController
             function (mixed $result, ?array $error): void {
                 $location = LspMapper::firstLocation($result);
                 if (null !== $error || null === $location) {
-                    $this->flash('Nothing to peek');
+                    $this->flash($this->trans('Nothing to peek'));
 
                     return;
                 }
 
                 $target = Uri::toPath($location['uri']);
                 if (null === $target) {
-                    $this->flash('Peek target outside the filesystem');
+                    $this->flash($this->trans('Peek target outside the filesystem'));
 
                     return;
                 }
@@ -343,7 +345,7 @@ final class NavigationController extends AbstractLspController
             ],
             function (mixed $result, ?array $error): void {
                 if (null !== $error || !\is_array($result) || [] === $result) {
-                    $this->flash('No symbols in this file');
+                    $this->flash($this->trans('No symbols in this file'));
 
                     return;
                 }
@@ -351,7 +353,7 @@ final class NavigationController extends AbstractLspController
                 $items = [];
                 /** @var list<array<array-key, mixed>> $result */
                 LspMapper::flattenSymbols($result, 0, $items);
-                $this->editor->openListOverlay('File Structure', $items, function (string $pos): void {
+                $this->editor->openListOverlay($this->trans('File Structure'), $items, function (string $pos): void {
                     [$line, $character] = array_map('intval', explode(':', $pos));
                     $this->editor->jumpTo($line, $character);
                 });

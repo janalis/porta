@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Porta\Search;
 
+use Porta\I18n\Translator;
 use Porta\Editor\BufferManager;
 use Porta\Editor\Document;
 use Porta\Widget\CodeEditorWidget;
@@ -35,6 +36,7 @@ final class ProjectSearchController
         private readonly CodeEditorWidget $editor,
         private readonly StatusBarWidget $statusBar,
         private readonly Tui $tui,
+        private readonly Translator $translator,
         private readonly BufferManager $buffers,
         private readonly string $rootDir,
         private readonly \Closure $notifyFullChange,
@@ -46,7 +48,7 @@ final class ProjectSearchController
         $this->searchOptions = ['regex' => false, 'case' => false, 'word' => false];
         $this->lastSearchQuery = '';
         $this->lastSearchResults = [];
-        $this->resultsPanel->open('Find in Project', withQuery: true, withOptions: true, withReplace: true);
+        $this->resultsPanel->open($this->translator->trans('Find in Project'), withQuery: true, withOptions: true, withReplace: true);
         $this->resultsPanel->setOptions($this->searchOptions);
         $this->tui->setFocus($this->resultsPanel);
         $this->tui->requestRender();
@@ -82,7 +84,7 @@ final class ProjectSearchController
     public function replaceAll(string $replacement): void
     {
         if ('' === trim($this->lastSearchQuery) || [] === $this->lastSearchResults) {
-            $this->statusBar->flash('Nothing to replace');
+            $this->statusBar->flash($this->translator->trans('Nothing to replace'));
             $this->tui->requestRender();
 
             return;
@@ -113,7 +115,9 @@ final class ProjectSearchController
             }
         }
 
-        $this->statusBar->flash(\sprintf('Replaced in %d file%s', $touched, 1 === $touched ? '' : 's'));
+        $this->statusBar->flash(1 === $touched
+            ? $this->translator->trans('Replaced in %count% file', ['%count%' => $touched])
+            : $this->translator->trans('Replaced in %count% files', ['%count%' => $touched]));
         $this->resultsPanel->close();
         $this->tui->setFocus($this->editor);
         $this->tui->requestRender();

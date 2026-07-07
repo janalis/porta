@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Porta\Lsp;
 
 use Porta\Editor\Document;
+use Porta\I18n\Translator;
 use Porta\Support\ProjectPaths;
 
 /**
@@ -45,6 +46,7 @@ final class LspSessionPool
     public function __construct(
         private readonly string $rootDir,
         private readonly \Closure $activePath,
+        private readonly Translator $translator,
         private readonly ?\Closure $clientFactory = null,
     ) {}
 
@@ -100,15 +102,15 @@ final class LspSessionPool
     public function statusFor(?string $path): string
     {
         if ($this->disabled) {
-            return 'disabled';
+            return $this->translator->trans('disabled');
         }
         if (!$this->configured) {
-            return 'no server';
+            return $this->translator->trans('no server');
         }
         $key = null === $path ? $this->fallbackKey() : $this->serverKeyFor($path);
         if (null === $key) {
             // PHP is the first-class language here; keep its historical hint.
-            return null !== $path && 'php' === ProjectPaths::languageId($path) ? 'none (install phpactor)' : 'no server';
+            return null !== $path && 'php' === ProjectPaths::languageId($path) ? $this->translator->trans('none (install phpactor)') : $this->translator->trans('no server');
         }
         $server = $this->servers[$key];
 
@@ -241,14 +243,14 @@ final class LspSessionPool
     private function startSession(array $server, string $signature): LspSession
     {
         $session = new LspSession($this->rootDir, $this->clientFactory);
-        $this->statuses[$signature] = 'starting…';
+        $this->statuses[$signature] = $this->translator->trans('starting…');
         $session->start(
             $server['command'],
             $this->onLog ?? static function (string $line): void {},
             $this->onDiagnostics ?? static function (array $params): void {},
             $this->onApplyEdit ?? static fn (array $edit): bool => false,
             function (bool $ok) use ($server, $signature): void {
-                $this->statuses[$signature] = $ok ? $server['name'] : 'failed';
+                $this->statuses[$signature] = $ok ? $server['name'] : $this->translator->trans('failed');
                 if (null !== $this->onStatusChanged) {
                     ($this->onStatusChanged)();
                 }

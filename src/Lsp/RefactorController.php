@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Porta\Lsp;
 
+use Porta\I18n\Translator;
 use Porta\Editor\BufferManager;
 use Porta\Support\ProjectPaths;
 use Porta\Widget\CodeEditorWidget;
@@ -25,12 +26,13 @@ final class RefactorController extends AbstractLspController
         CodeEditorWidget $editor,
         Tui $tui,
         StatusBarWidget $statusBar,
+        Translator $translator,
         private readonly BufferManager $buffers,
         private readonly WorkspaceEditor $workspaceEditor,
         private readonly string $rootDir,
         private readonly \Closure $lspStatus,
     ) {
-        parent::__construct($lsp, $editor, $tui, $statusBar);
+        parent::__construct($lsp, $editor, $tui, $statusBar, $translator);
     }
 
     /**
@@ -41,7 +43,7 @@ final class RefactorController extends AbstractLspController
     {
         $path = $this->editor->getFilePath();
         if (null === $path || !$this->lsp->isInitialized()) {
-            $this->flash('Rename needs a language server');
+            $this->flash($this->trans('Rename needs a language server'));
 
             return;
         }
@@ -51,11 +53,11 @@ final class RefactorController extends AbstractLspController
             $this->positionParams($path, $line, $col),
             function (mixed $result, ?array $error) use ($line, $col, $word): void {
                 if (null !== $error || null === $result || false === $result) {
-                    $this->flash('Cannot rename this element');
+                    $this->flash($this->trans('Cannot rename this element'));
 
                     return;
                 }
-                $this->editor->openPrompt('Rename to', $word, function (string $value) use ($line, $col): void {
+                $this->editor->openPrompt($this->trans('Rename to'), $word, function (string $value) use ($line, $col): void {
                     if ('' !== trim($value)) {
                         $this->requestRename(trim($value), $line, $col);
                     }
@@ -76,13 +78,15 @@ final class RefactorController extends AbstractLspController
             $this->positionParams($path, $line, $col, ['newName' => $newName]),
             function (mixed $result, ?array $error): void {
                 if (null !== $error || !\is_array($result)) {
-                    $this->flash('Rename failed: '.(string) ($error['message'] ?? 'no result'));
+                    $this->flash($this->trans('Rename failed: %message%', ['%message%' => (string) ($error['message'] ?? 'no result')]));
 
                     return;
                 }
                 /** @var array<string, mixed> $result */
                 $fileCount = $this->workspaceEditor->applyWorkspaceEdit($result);
-                $this->flash(\sprintf('Renamed in %d file%s', $fileCount, 1 === $fileCount ? '' : 's'));
+                $this->flash(1 === $fileCount
+                    ? $this->trans('Renamed in %count% file', ['%count%' => $fileCount])
+                    : $this->trans('Renamed in %count% files', ['%count%' => $fileCount]));
             },
         );
     }
@@ -124,7 +128,7 @@ final class RefactorController extends AbstractLspController
             ],
             function (mixed $result, ?array $error): void {
                 if (null !== $error || !\is_array($result) || [] === $result) {
-                    $this->flash('No quick fixes here');
+                    $this->flash($this->trans('No quick fixes here'));
 
                     return;
                 }
@@ -141,7 +145,7 @@ final class RefactorController extends AbstractLspController
                     array_keys($actions),
                 );
 
-                $this->editor->openListOverlay('Quick Fixes', $items, function (string $index) use ($actions): void {
+                $this->editor->openListOverlay($this->trans('Quick Fixes'), $items, function (string $index) use ($actions): void {
                     $this->applyCodeAction($actions[(int) $index] ?? []);
                 });
                 $this->tui->requestRender();
@@ -161,7 +165,10 @@ final class RefactorController extends AbstractLspController
             /** @var array<string, mixed> $edit */
             $edit = $action['edit'];
             $count = $this->workspaceEditor->applyWorkspaceEdit($edit);
-            $this->statusBar->flash(\sprintf('Applied "%s" to %d file%s', (string) ($action['title'] ?? 'fix'), $count, 1 === $count ? '' : 's'));
+            $title = (string) ($action['title'] ?? 'fix');
+            $this->statusBar->flash(1 === $count
+                ? $this->trans('Applied "%title%" to %count% file', ['%title%' => $title, '%count%' => $count])
+                : $this->trans('Applied "%title%" to %count% files', ['%title%' => $title, '%count%' => $count]));
             $applied = true;
         }
 
@@ -182,8 +189,8 @@ final class RefactorController extends AbstractLspController
                 function (mixed $result, ?array $error) use ($title): void {
                     $this->statusBar->flash(
                         null !== $error
-                            ? \sprintf('"%s" failed: %s', $title, (string) ($error['message'] ?? 'unknown error'))
-                            : \sprintf('Ran "%s"', $title),
+                            ? $this->trans('"%title%" failed: %message%', ['%title%' => $title, '%message%' => (string) ($error['message'] ?? 'unknown error')])
+                            : $this->trans('Ran "%title%"', ['%title%' => $title]),
                     );
                     $this->tui->requestRender();
                 },
@@ -192,7 +199,7 @@ final class RefactorController extends AbstractLspController
         }
 
         if (!$applied) {
-            $this->statusBar->flash('Quick fix has nothing to apply');
+            $this->statusBar->flash($this->trans('Quick fix has nothing to apply'));
         }
         $this->tui->requestRender();
     }
@@ -229,7 +236,7 @@ final class RefactorController extends AbstractLspController
 
         $this->lsp->request($method, $params, function (mixed $result, ?array $error) use ($path): void {
             if (null !== $error || !\is_array($result) || [] === $result) {
-                $this->flash(\sprintf('Formatting not supported by %s', ($this->lspStatus)()));
+                $this->flash($this->trans('Formatting not supported by %server%', ['%server%' => ($this->lspStatus)()]));
 
                 return;
             }
@@ -242,7 +249,7 @@ final class RefactorController extends AbstractLspController
                     $this->editor->invalidate();
                 }
                 $this->lsp->notifyFullChange($buffer->path, $buffer->document);
-                $this->statusBar->flash('Reformatted '.ProjectPaths::relative($this->rootDir, $path));
+                $this->statusBar->flash($this->trans('Reformatted %file%', ['%file%' => ProjectPaths::relative($this->rootDir, $path)]));
             }
             $this->tui->requestRender();
         });

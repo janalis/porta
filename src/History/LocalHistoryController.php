@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Porta\History;
 
+use Porta\I18n\Translator;
 use Porta\Editor\BufferManager;
 use Porta\Lsp\CompletionController;
 use Porta\Ui\PanelManager;
@@ -29,6 +30,7 @@ final class LocalHistoryController
         private readonly BufferManager $buffers,
         private readonly StatusBarWidget $statusBar,
         private readonly Tui $tui,
+        private readonly Translator $translator,
         private readonly CompletionController $completion,
     ) {}
 
@@ -41,7 +43,7 @@ final class LocalHistoryController
 
         $snapshots = $this->history->list($path);
         if ([] === $snapshots) {
-            $this->panels->flash('No local history for this file yet');
+            $this->panels->flash($this->translator->trans('No local history for this file yet'));
 
             return;
         }
@@ -66,7 +68,7 @@ final class LocalHistoryController
         }
         $content = $this->history->read($file);
         if (null === $content) {
-            $this->statusBar->flash('Could not read that snapshot');
+            $this->statusBar->flash($this->translator->trans('Could not read that snapshot'));
             $this->tui->requestRender();
 
             return;
@@ -78,7 +80,7 @@ final class LocalHistoryController
         $doc->insert($content);
         $this->editor->invalidate();
         $this->completion->scheduleDidChange($doc);
-        $this->statusBar->flash('Restored from local history');
+        $this->statusBar->flash($this->translator->trans('Restored from local history'));
         $this->tui->requestRender();
     }
 }

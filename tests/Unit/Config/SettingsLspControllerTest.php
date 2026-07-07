@@ -37,7 +37,7 @@ final class SettingsLspControllerTest extends TestCase
     {
         $this->reopened = 0;
         $tui = new Tui(terminal: new VirtualTerminal(columns: 80, rows: 24));
-        $pool = new LspSessionPool($rootDir, static fn (): ?string => null);
+        $pool = new LspSessionPool($rootDir, static fn (): ?string => null, new Translator('en'));
 
         return new SettingsLspController($rootDir, $pool, $overrides, $lspOverride, function (): void { ++$this->reopened; }, $status, $tui, new Translator('en'));
     }

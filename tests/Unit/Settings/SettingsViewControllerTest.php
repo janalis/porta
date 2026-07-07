@@ -65,7 +65,7 @@ final class SettingsViewControllerTest extends TestCase
         $settings = new SettingsController(IdeConfig::DEFAULT_SETTINGS, $editor, $status, $this->tui, $this->project->dir, new Translator('en'), static function (string $locale): void {});
         $keymap = new SettingsKeymapController($editor, new Keybindings([]), $status, $this->tui, $this->project->dir, new Translator('en'));
         $languages = new SettingsLanguageController($editor, $status, $this->tui, $this->project->dir, new Translator('en'), []);
-        $pool = new LspSessionPool($this->project->dir, static fn (): ?string => null);
+        $pool = new LspSessionPool($this->project->dir, static fn (): ?string => null, new Translator('en'));
         $lsp = new SettingsLspController($this->project->dir, $pool, [], null, static function (): void {}, $status, $this->tui, new Translator('en'));
         $this->closed = 0;
 

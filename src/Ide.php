@@ -174,7 +174,7 @@ final class Ide
         );
 
         $this->buffers = new BufferManager();
-        $this->lsp = new LspSessionPool($this->rootDir, fn (): ?string => $this->editor->getFilePath());
+        $this->lsp = new LspSessionPool($this->rootDir, fn (): ?string => $this->editor->getFilePath(), $this->translator);
 
         $this->tree = new FileTreeWidget($this->rootDir);
         $this->tree->setId('tree')->setStyle(new Style(flex: 0));
@@ -187,7 +187,7 @@ final class Ide
         $this->menuBar->setId('menu');
         $this->contextMenu = new ContextMenu();
         $this->contextMenu->setId('context-menu');
-        $this->completion = new CompletionController($this->lsp, $this->editor, $this->tui, $this->statusBar);
+        $this->completion = new CompletionController($this->lsp, $this->editor, $this->tui, $this->statusBar, $this->translator);
         $this->tabBar = new TabBarWidget();
         $this->tabBar->setId('tabs');
         $this->tabBar->setProvider(fn (): array => array_map(fn (Buffer $b) => [
@@ -229,6 +229,7 @@ final class Ide
             $this->editor,
             $this->statusBar,
             $this->tui,
+            $this->translator,
             $this->buffers,
             $this->rootDir,
             fn (string $path, Document $document) => $this->lsp->notifyFullChange($path, $document),
@@ -240,6 +241,7 @@ final class Ide
             $this->editor,
             $this->tui,
             $this->statusBar,
+            $this->translator,
             $this->buffers,
             $this->resultsPanel,
             $this->panels,
@@ -252,6 +254,7 @@ final class Ide
             $this->editor,
             $this->tui,
             $this->statusBar,
+            $this->translator,
             $this->buffers,
             $this->workspaceEditor,
             $this->rootDir,
@@ -264,6 +267,7 @@ final class Ide
             $this->editor,
             $this->statusBar,
             $this->tui,
+            $this->translator,
             $this->rootDir,
         );
         $this->git = new GitInfo($this->rootDir);
@@ -374,6 +378,7 @@ final class Ide
             $this->tui,
             $this->statusBar,
             $this->buffers,
+            $this->translator,
             fn (string $p, bool $focus) => $this->openFile($p, focusEditor: $focus),
             fn (Buffer $b) => $this->showBuffer($b),
             fn (string $p) => $this->relativePath($p),
@@ -429,6 +434,7 @@ final class Ide
             new EditorConfigResolver(),
             $this->rootDir,
             (bool) ($config->settings['editorConfig'] ?? true),
+            $this->translator,
             fn (Buffer $buffer) => $this->refreshGitMarks($buffer),
             fn () => $this->refreshBranch(),
         );
@@ -440,6 +446,7 @@ final class Ide
             $this->buffers,
             $this->statusBar,
             $this->tui,
+            $this->translator,
             $this->completion,
         );
 
@@ -846,13 +853,13 @@ final class Ide
     {
         $command = BrowserOpener::command($url);
         if (null === $command) {
-            $this->statusBar->flash('Docs: '.$url, 5.0);
+            $this->statusBar->flash($this->translator->trans('Docs: %url%', ['%url%' => $url]), 5.0);
             $this->tui->requestRender();
 
             return;
         }
         new AsyncProcess($command, $this->rootDir)->start(static function (): void {});
-        $this->statusBar->flash('Opened '.$url, 3.0);
+        $this->statusBar->flash($this->translator->trans('Opened %url%', ['%url%' => $url]), 3.0);
         $this->tui->requestRender();
     }
 
@@ -863,7 +870,7 @@ final class Ide
             $path = $this->editor->getFilePath();
 
             $left = null === $path
-                ? 'porta — open a file from the tree (Enter)'
+                ? $this->translator->trans('porta — open a file from the tree (Enter)')
                 : $this->relativePath($path).($doc->isDirty() ? ' ●' : '');
 
             if (null !== $this->gitBranch) {
@@ -883,13 +890,11 @@ final class Ide
                 $problems .= "\x1b[38;5;179m▲ {$counts['warnings']}\x1b[39m ";
             }
 
-            $right = \sprintf(
-                '%s%d:%d  LSP:%s  ^S save ^T panel ^Space complete ^Q quit',
-                $problems,
-                $doc->getCursorLine() + 1,
-                $doc->getCursorDisplayCol() + 1,
-                $this->lsp->statusFor($this->editor->getFilePath()),
-            );
+            $location = \sprintf('%d:%d', $doc->getCursorLine() + 1, $doc->getCursorDisplayCol() + 1);
+            $legend = $this->translator->trans('LSP:%status%  ^S save ^T panel ^Space complete ^Q quit', [
+                '%status%' => $this->lsp->statusFor($this->editor->getFilePath()),
+            ]);
+            $right = $problems.$location.'  '.$legend;
 
             return ['left' => $left, 'right' => $right];
         });
@@ -983,8 +988,10 @@ final class Ide
         $dirty = $this->buffers->dirtyCount();
         if ($dirty > 0 && (microtime(true) - $this->lastQuitPress) > 3.0) {
             $this->lastQuitPress = microtime(true);
-            $noun = 1 === $dirty ? '1 file has' : $dirty.' files have';
-            $this->statusBar->flash("Unsaved changes — {$noun} edits. Ctrl+Q again to quit, Ctrl+S to save", 3.0);
+            $noun = 1 === $dirty
+                ? $this->translator->trans('1 file has')
+                : $this->translator->trans('%count% files have', ['%count%' => $dirty]);
+            $this->statusBar->flash($this->translator->trans('Unsaved changes — %noun% edits. Ctrl+Q again to quit, Ctrl+S to save', ['%noun%' => $noun]), 3.0);
             $this->tui->requestRender();
 
             return;
@@ -1047,7 +1054,9 @@ final class Ide
                 /** @var array<string, mixed> $edit */
                 $count = $this->workspaceEditor->applyWorkspaceEdit($edit);
                 if ($count > 0) {
-                    $this->statusBar->flash(\sprintf('Applied server edit to %d file%s', $count, 1 === $count ? '' : 's'));
+                    $this->statusBar->flash(1 === $count
+                        ? $this->translator->trans('Applied server edit to %count% file', ['%count%' => $count])
+                        : $this->translator->trans('Applied server edit to %count% files', ['%count%' => $count]));
                     $this->tui->requestRender();
                 }
 

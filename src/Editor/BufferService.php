@@ -7,6 +7,7 @@ namespace Porta\Editor;
 use Porta\Config\EditorConfig\DocumentWriter;
 use Porta\Config\EditorConfig\EditorConfigResolver;
 use Porta\History\LocalHistory;
+use Porta\I18n\Translator;
 use Porta\Lsp\CompletionController;
 use Porta\Lsp\LspSessionPool;
 use Porta\Lsp\Uri;
@@ -47,6 +48,7 @@ final class BufferService
         private readonly EditorConfigResolver $editorConfigResolver,
         private readonly string $rootDir,
         private readonly bool $editorConfigEnabled,
+        private readonly Translator $translator,
         private readonly \Closure $refreshGitMarks,
         private readonly \Closure $refreshBranch,
     ) {}
@@ -67,19 +69,19 @@ final class BufferService
         }
 
         if (!is_file($path) || !is_readable($path)) {
-            $this->statusBar->flash('Cannot read '.$this->relativePath($path));
+            $this->statusBar->flash($this->translator->trans('Cannot read %file%', ['%file%' => $this->relativePath($path)]));
 
             return;
         }
         if ((int) filesize($path) > (2 * 1024 * 1024)) {
-            $this->statusBar->flash('File too large (> 2 MB)');
+            $this->statusBar->flash($this->translator->trans('File too large (> 2 MB)'));
 
             return;
         }
 
         $content = (string) file_get_contents($path);
         if ('' !== $content && !mb_check_encoding($content, 'UTF-8')) {
-            $this->statusBar->flash('Not a UTF-8 text file');
+            $this->statusBar->flash($this->translator->trans('Not a UTF-8 text file'));
 
             return;
         }
@@ -122,7 +124,7 @@ final class BufferService
         $buffer->document->applyEditorConfig($config);
         $buffer->editorConfig = $config;
         if (null !== $config->charset && !\in_array($config->charset, ['utf-8', 'utf-8-bom'], true)) {
-            $this->statusBar->flash(\sprintf('.editorconfig charset "%s" ignored (UTF-8 only)', $config->charset), 5.0);
+            $this->statusBar->flash($this->translator->trans('.editorconfig charset "%charset%" ignored (UTF-8 only)', ['%charset%' => $config->charset]), 5.0);
         }
     }
 
@@ -173,7 +175,9 @@ final class BufferService
         }
 
         if ($dirtyKept > 0) {
-            $this->statusBar->flash($dirtyKept.' unsaved tab'.(1 === $dirtyKept ? '' : 's').' kept open');
+            $this->statusBar->flash(1 === $dirtyKept
+                ? $this->translator->trans('%count% unsaved tab kept open', ['%count%' => $dirtyKept])
+                : $this->translator->trans('%count% unsaved tabs kept open', ['%count%' => $dirtyKept]));
         }
         $this->tui->requestRender();
     }
@@ -225,7 +229,7 @@ final class BufferService
             return;
         }
         if ($this->saveBuffer($active)) {
-            $this->statusBar->flash('Saved '.$this->relativePath($active->path));
+            $this->statusBar->flash($this->translator->trans('Saved %file%', ['%file%' => $this->relativePath($active->path)]));
         }
         $this->tui->requestRender();
     }
@@ -238,7 +242,11 @@ final class BufferService
                 ++$saved;
             }
         }
-        $this->statusBar->flash(0 === $saved ? 'Nothing to save' : \sprintf('Saved %d file%s', $saved, 1 === $saved ? '' : 's'));
+        $this->statusBar->flash(match (true) {
+            0 === $saved => $this->translator->trans('Nothing to save'),
+            1 === $saved => $this->translator->trans('Saved %count% file', ['%count%' => $saved]),
+            default => $this->translator->trans('Saved %count% files', ['%count%' => $saved]),
+        });
         $this->tui->requestRender();
     }
 
@@ -250,7 +258,7 @@ final class BufferService
         try {
             new Filesystem()->dumpFile($buffer->path, $bytes);
         } catch (IOExceptionInterface) {
-            $this->statusBar->flash('Save failed: '.$this->relativePath($buffer->path));
+            $this->statusBar->flash($this->translator->trans('Save failed: %file%', ['%file%' => $this->relativePath($buffer->path)]));
             $this->tui->requestRender();
 
             return false;
@@ -287,7 +295,7 @@ final class BufferService
         if (null === $stamp) {
             if (null !== $buffer->diskStamp) {
                 $buffer->diskStamp = null; // flash once; keep the buffer so it can be re-saved
-                $this->statusBar->flash($this->relativePath($buffer->path).' deleted on disk');
+                $this->statusBar->flash($this->translator->trans('%file% deleted on disk', ['%file%' => $this->relativePath($buffer->path)]));
                 $this->tui->requestRender();
             }
 
@@ -304,7 +312,7 @@ final class BufferService
             return; // unreadable / too large / binary now — leave the buffer untouched
         }
         if ($buffer->isDirty()) {
-            $this->statusBar->flash($this->relativePath($buffer->path).' changed on disk');
+            $this->statusBar->flash($this->translator->trans('%file% changed on disk', ['%file%' => $this->relativePath($buffer->path)]));
             $this->tui->requestRender();
 
             return;
@@ -319,7 +327,7 @@ final class BufferService
         $buffer->document->markSaved();
         $this->lsp->notifyFullChange($buffer->path, $buffer->document); // no-op when no server is running
         ($this->refreshGitMarks)($buffer);
-        $this->statusBar->flash('Reloaded '.$this->relativePath($buffer->path));
+        $this->statusBar->flash($this->translator->trans('Reloaded %file%', ['%file%' => $this->relativePath($buffer->path)]));
         $this->tui->requestRender();
     }
 

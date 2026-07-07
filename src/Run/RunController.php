@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Porta\Run;
 
+use Porta\I18n\Translator;
 use Porta\Terminal\PtyProcess;
 use Porta\Terminal\TerminalBuffer;
 use Porta\Terminal\TerminalKeyEncoder;
@@ -32,6 +33,7 @@ final class RunController
         private readonly CodeEditorWidget $editor,
         private readonly StatusBarWidget $statusBar,
         private readonly Tui $tui,
+        private readonly Translator $translator,
         private readonly string $rootDir,
     ) {}
 
@@ -39,7 +41,7 @@ final class RunController
     {
         $tasks = $this->runConfigs->discover($this->editor->getFilePath());
         if ([] === $tasks) {
-            $this->statusBar->flash('Nothing to run (no PHP file, composer scripts, or Makefile)');
+            $this->statusBar->flash($this->translator->trans('Nothing to run (no PHP file, composer scripts, or Makefile)'));
             $this->tui->requestRender();
 
             return;
@@ -49,7 +51,7 @@ final class RunController
         foreach ($tasks as $index => $task) {
             $items[] = ['label' => $task['label'], 'hint' => '', 'value' => (string) $index];
         }
-        $this->editor->openListOverlay('Run', $items, function (string $index) use ($tasks): void {
+        $this->editor->openListOverlay($this->translator->trans('Run'), $items, function (string $index) use ($tasks): void {
             $task = $tasks[(int) $index] ?? null;
             if (null !== $task) {
                 $this->lastRun = $task;
@@ -62,7 +64,7 @@ final class RunController
     public function runLast(): void
     {
         if (null === $this->lastRun) {
-            $this->statusBar->flash('No previous run — press Ctrl+Shift+R to pick one');
+            $this->statusBar->flash($this->translator->trans('No previous run — press Ctrl+Shift+R to pick one'));
             $this->tui->requestRender();
 
             return;
@@ -118,7 +120,7 @@ final class RunController
         if (!$this->terminal->start()) {
             // Spawn failure needs a PTY-less system; unreachable here.
             // @codeCoverageIgnoreStart
-            $this->statusBar->flash('Could not start the terminal process');
+            $this->statusBar->flash($this->translator->trans('Could not start the terminal process'));
             $this->terminal = null;
 
             // @codeCoverageIgnoreEnd

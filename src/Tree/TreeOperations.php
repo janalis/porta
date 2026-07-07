@@ -7,6 +7,7 @@ namespace Porta\Tree;
 use Porta\Editor\Buffer;
 use Porta\Editor\BufferManager;
 use Porta\Editor\Document;
+use Porta\I18n\Translator;
 use Porta\Ui\MenuItem;
 use Porta\Widget\CodeEditorWidget;
 use Porta\Widget\FileTreeWidget;
@@ -37,6 +38,7 @@ final class TreeOperations
         private readonly Tui $tui,
         private readonly StatusBarWidget $statusBar,
         private readonly BufferManager $buffers,
+        private readonly Translator $translator,
         private readonly \Closure $openFile,
         private readonly \Closure $showBuffer,
         private readonly \Closure $relativePath,
@@ -53,20 +55,20 @@ final class TreeOperations
     public function contextItems(array $node): array
     {
         $items = [
-            new MenuItem('New File…', '', fn () => $this->treeNewFile($node)),
-            new MenuItem('New Folder…', '', fn () => $this->treeNewFolder($node)),
+            new MenuItem($this->translator->trans('New File…'), '', fn () => $this->treeNewFile($node)),
+            new MenuItem($this->translator->trans('New Folder…'), '', fn () => $this->treeNewFolder($node)),
             MenuItem::separator(),
-            new MenuItem('Copy Path', '', fn () => $this->copyPath($node['path'], false)),
-            new MenuItem('Copy Relative Path', '', fn () => $this->copyPath($node['path'], true)),
+            new MenuItem($this->translator->trans('Copy Path'), '', fn () => $this->copyPath($node['path'], false)),
+            new MenuItem($this->translator->trans('Copy Relative Path'), '', fn () => $this->copyPath($node['path'], true)),
             MenuItem::separator(),
-            new MenuItem('Rename…', '', fn () => $this->treeRename($node)),
-            new MenuItem('Delete…', '', fn () => $this->treeDelete($node)),
+            new MenuItem($this->translator->trans('Rename…'), '', fn () => $this->treeRename($node)),
+            new MenuItem($this->translator->trans('Delete…'), '', fn () => $this->treeDelete($node)),
             MenuItem::separator(),
         ];
         if (!$node['isDir']) {
-            $items[] = new MenuItem('Open', '', fn () => ($this->openFile)($node['path'], true));
+            $items[] = new MenuItem($this->translator->trans('Open'), '', fn () => ($this->openFile)($node['path'], true));
         }
-        $items[] = new MenuItem('Refresh', '', fn () => $this->tree->refresh());
+        $items[] = new MenuItem($this->translator->trans('Refresh'), '', fn () => $this->tree->refresh());
 
         return $items;
     }
@@ -85,16 +87,16 @@ final class TreeOperations
     private function treeNewFile(array $node): void
     {
         $dir = $this->treeTargetDir($node);
-        $this->promptName('New File', '', function (string $name) use ($dir): void {
+        $this->promptName($this->translator->trans('New File'), '', function (string $name) use ($dir): void {
             if ('' === ($name = trim($name))) {
                 return;
             }
             $path = $dir.'/'.$name;
-            $this->withFs('Cannot create '.($this->relativePath)($path), function () use ($path): void {
+            $this->withFs($this->translator->trans('Cannot create %file%', ['%file%' => ($this->relativePath)($path)]), function () use ($path): void {
                 new Filesystem()->dumpFile($path, '');
                 $this->tree->refresh();
                 ($this->openFile)($path, true);
-                $this->statusBar->flash('Created '.($this->relativePath)($path));
+                $this->statusBar->flash($this->translator->trans('Created %file%', ['%file%' => ($this->relativePath)($path)]));
             });
         });
     }
@@ -103,16 +105,16 @@ final class TreeOperations
     private function treeNewFolder(array $node): void
     {
         $dir = $this->treeTargetDir($node);
-        $this->promptName('New Folder', '', function (string $name) use ($dir): void {
+        $this->promptName($this->translator->trans('New Folder'), '', function (string $name) use ($dir): void {
             if ('' === ($name = trim($name))) {
                 return;
             }
             $path = $dir.'/'.$name;
-            $this->withFs('Cannot create '.($this->relativePath)($path), function () use ($path): void {
+            $this->withFs($this->translator->trans('Cannot create %file%', ['%file%' => ($this->relativePath)($path)]), function () use ($path): void {
                 new Filesystem()->mkdir($path);
                 $this->tree->refresh();
                 $this->tui->setFocus($this->tree);
-                $this->statusBar->flash('Created '.($this->relativePath)($path));
+                $this->statusBar->flash($this->translator->trans('Created %file%', ['%file%' => ($this->relativePath)($path)]));
             });
         });
     }
@@ -121,7 +123,7 @@ final class TreeOperations
     private function treeRename(array $node): void
     {
         $old = $node['path'];
-        $this->promptName('Rename', $node['name'], function (string $name) use ($old): void {
+        $this->promptName($this->translator->trans('Rename'), $node['name'], function (string $name) use ($old): void {
             $name = trim($name);
             if ('' === $name || $name === basename($old)) {
                 return;
@@ -130,7 +132,7 @@ final class TreeOperations
             // Buffers are keyed by realpath(); resolve the old path the same way
             // so an open file's buffer is re-pointed at the new name.
             $oldKey = realpath($old) ?: $old;
-            $this->withFs('Cannot rename '.($this->relativePath)($old), function () use ($old, $new, $name, $oldKey): void {
+            $this->withFs($this->translator->trans('Cannot rename %file%', ['%file%' => ($this->relativePath)($old)]), function () use ($old, $new, $name, $oldKey): void {
                 new Filesystem()->rename($old, $new); // no overwrite: a name clash is an error
                 if ($this->buffers->has($oldKey)) {
                     $this->buffers->close($oldKey);
@@ -138,7 +140,7 @@ final class TreeOperations
                 }
                 $this->tree->refresh();
                 $this->tui->setFocus($this->tree);
-                $this->statusBar->flash('Renamed to '.$name);
+                $this->statusBar->flash($this->translator->trans('Renamed to %name%', ['%name%' => $name]));
             });
         });
     }
@@ -147,14 +149,14 @@ final class TreeOperations
     private function treeDelete(array $node): void
     {
         $path = $node['path'];
-        $this->promptName(\sprintf('Delete %s? (y/N)', $node['name']), '', function (string $answer) use ($path): void {
+        $this->promptName($this->translator->trans('Delete %name%? (y/N)', ['%name%' => $node['name']]), '', function (string $answer) use ($path): void {
             if (!\in_array(strtolower(trim($answer)), ['y', 'yes'], true)) {
                 $this->tui->setFocus($this->tree);
 
                 return;
             }
             $key = realpath($path) ?: $path; // buffers are keyed by realpath()
-            $this->withFs('Cannot delete '.($this->relativePath)($path), function () use ($path, $key): void {
+            $this->withFs($this->translator->trans('Cannot delete %file%', ['%file%' => ($this->relativePath)($path)]), function () use ($path, $key): void {
                 new Filesystem()->remove($path);
                 if ($this->buffers->has($key)) {
                     $next = $this->buffers->close($key);
@@ -162,7 +164,7 @@ final class TreeOperations
                 }
                 $this->tree->refresh();
                 $this->tui->setFocus($this->tree);
-                $this->statusBar->flash('Deleted '.($this->relativePath)($path));
+                $this->statusBar->flash($this->translator->trans('Deleted %file%', ['%file%' => ($this->relativePath)($path)]));
             });
         });
     }
@@ -171,7 +173,7 @@ final class TreeOperations
     {
         $text = $relative ? ($this->relativePath)($path) : $path;
         ($this->copyToClipboard)($text);
-        $this->statusBar->flash('Copied '.$text);
+        $this->statusBar->flash($this->translator->trans('Copied %text%', ['%text%' => $text]));
     }
 
     /** Focus the editor and open its single-line prompt (tree file-op names/confirmations). */

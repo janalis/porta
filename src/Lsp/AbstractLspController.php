@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Porta\Lsp;
 
+use Porta\I18n\Translator;
 use Porta\Widget\CodeEditorWidget;
 use Porta\Widget\StatusBarWidget;
 use Symfony\Component\Tui\Tui;
@@ -20,7 +21,18 @@ abstract class AbstractLspController
         protected readonly CodeEditorWidget $editor,
         protected readonly Tui $tui,
         protected readonly StatusBarWidget $statusBar,
+        protected readonly Translator $translator,
     ) {}
+
+    /**
+     * Translate a user-facing message for the active UI locale.
+     *
+     * @param array<string, string|int> $params
+     */
+    protected function trans(string $id, array $params = []): string
+    {
+        return $this->translator->trans($id, $params);
+    }
 
     /**
      * The active file's path when an initialized server is ready for a feature
