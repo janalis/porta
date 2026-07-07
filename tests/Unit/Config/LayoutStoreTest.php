@@ -15,7 +15,7 @@ final class LayoutStoreTest extends TestCase
         $project = new TempProject();
         $store = new LayoutStore($project->dir);
 
-        $this->assertTrue($store->save(22, 35, 28, true, true));
+        $this->assertTrue($store->save(22, 35, 28, true, true, 19));
 
         $loaded = $store->load();
         $this->assertSame(22, $loaded['sidebarWidthPercent']);
@@ -23,6 +23,7 @@ final class LayoutStoreTest extends TestCase
         $this->assertSame(28, $loaded['gitSidebarWidthPercent']);
         $this->assertTrue($loaded['gitDiffSplit']);
         $this->assertTrue($loaded['gitDiffHideWhitespace']);
+        $this->assertSame(19, $loaded['settingsSidebarWidthPercent']);
     }
 
     public function testLoadWhenNoFileReturnsNull(): void
@@ -43,6 +44,7 @@ final class LayoutStoreTest extends TestCase
         $this->assertNull($loaded['bottomPanelHeightPercent'], 'absent key is null');
         $this->assertNull($loaded['gitSidebarWidthPercent'], 'absent git key is null');
         $this->assertNull($loaded['gitDiffHideWhitespace'], 'absent bool key is null');
+        $this->assertNull($loaded['settingsSidebarWidthPercent'], 'absent settings key is null');
     }
 
     public function testHandEditedNumericStringIsAccepted(): void
@@ -64,6 +66,7 @@ final class LayoutStoreTest extends TestCase
         $this->assertStringContainsString('sidebarWidthPercent', $raw);
         $this->assertStringNotContainsString('bottomPanelHeightPercent', $raw);
         $this->assertStringNotContainsString('gitSidebarWidthPercent', $raw);
+        $this->assertStringNotContainsString('settingsSidebarWidthPercent', $raw);
         $this->assertStringNotContainsString('gitDiffSplit', $raw, 'false/omitted toggles leave no key');
         $this->assertSame(20, $store->load()['sidebarWidthPercent']);
         $this->assertNull($store->load()['bottomPanelHeightPercent']);

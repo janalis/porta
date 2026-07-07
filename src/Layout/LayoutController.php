@@ -8,6 +8,7 @@ use Porta\Config\LayoutStore;
 use Porta\Input\MouseEvent;
 use Porta\Widget\FileTreeWidget;
 use Porta\Widget\ResultsPanelWidget;
+use Porta\Widget\Settings\SettingsNavWidget;
 use Porta\Widget\TerminalPanelWidget;
 use Symfony\Component\Tui\Render\Renderer;
 use Symfony\Component\Tui\Render\WidgetRect;
@@ -24,14 +25,17 @@ final class LayoutController
 {
     private bool $sidebarResizing = false;
     private bool $gitSidebarResizing = false;
+    private bool $settingsSidebarResizing = false;
     private bool $panelResizing = false;
     private int $panelResizeBottom = 0; // the dragged panel's anchored bottom row, captured at press
     private int $sidebarResizeStartWidth = 0; // sidebar/panel sizes at drag start, to skip no-op persists
     private int $gitSidebarResizeStartWidth = 0;
+    private int $settingsSidebarResizeStartWidth = 0;
     private int $panelResizeStartHeight = 0;
     private ?int $sidebarWidthPercent = null; // persisted pane proportions (null = widget default)
     private ?int $bottomPanelHeightPercent = null;
     private ?int $gitSidebarWidthPercent = null;
+    private ?int $settingsSidebarWidthPercent = null;
     private bool $gitDiffSplit = false;
     private bool $gitDiffHideWhitespace = false;
 
@@ -43,6 +47,7 @@ final class LayoutController
         private readonly TerminalPanelWidget $terminalPanel,
         private readonly ResultsPanelWidget $resultsPanel,
         private readonly GitSidebar $gitSidebar,
+        private readonly SettingsNavWidget $settingsSidebar,
     ) {}
 
     public function applyLayout(): void
@@ -58,6 +63,7 @@ final class LayoutController
         $this->sidebarWidthPercent = $layout['sidebarWidthPercent'];
         $this->bottomPanelHeightPercent = $layout['bottomPanelHeightPercent'];
         $this->gitSidebarWidthPercent = $layout['gitSidebarWidthPercent'];
+        $this->settingsSidebarWidthPercent = $layout['settingsSidebarWidthPercent'];
         $this->gitDiffSplit = $layout['gitDiffSplit'] ?? false;
         $this->gitDiffHideWhitespace = $layout['gitDiffHideWhitespace'] ?? false;
 
@@ -68,6 +74,9 @@ final class LayoutController
             // Plain width fields: safe to set while the git widgets are detached.
             $this->gitSidebar->setWidth($this->clampGitSidebar((int) round(($this->gitSidebarWidthPercent * $cols) / 100), $cols));
         }
+        if (null !== $this->settingsSidebarWidthPercent) {
+            $this->settingsSidebar->setWidth($this->clampSettingsSidebar((int) round(($this->settingsSidebarWidthPercent * $cols) / 100), $cols));
+        }
         if (null !== $this->bottomPanelHeightPercent) {
             $this->resizeBottomPanels($this->clampPanel((int) round(($this->bottomPanelHeightPercent * $rows) / 100), $rows));
         }
@@ -77,7 +86,7 @@ final class LayoutController
      * Continue an armed resize drag: apply the new sidebar width / panel height on
      * each left-drag, persist on release. Returns true when it consumed the event.
      */
-    public function continueResizeDrag(MouseEvent $mouse, ?WidgetRect $treeRect, ?WidgetRect $gitLeftRect = null): bool
+    public function continueResizeDrag(MouseEvent $mouse, ?WidgetRect $treeRect, ?WidgetRect $gitLeftRect = null, ?WidgetRect $settingsLeftRect = null): bool
     {
         // Sidebar resize: dragging the tree↔editor separator sets the sidebar width.
         if ($this->sidebarResizing && ($mouse->isLeftDrag() || $mouse->isLeftRelease())) {
@@ -108,6 +117,23 @@ final class LayoutController
             }
             if ($mouse->isLeftRelease()) {
                 $this->gitSidebarResizing = false;
+            }
+
+            return true;
+        }
+
+        // Settings-sidebar resize: dragging the settings separator sets the nav width.
+        if ($this->settingsSidebarResizing && ($mouse->isLeftDrag() || $mouse->isLeftRelease())) {
+            if (null !== $settingsLeftRect) {
+                $cols = $this->tui->getTerminal()->getColumns();
+                $this->settingsSidebar->setWidth($this->clampSettingsSidebar($mouse->col - $settingsLeftRect->col, $cols));
+                $this->tui->requestRender();
+                if ($mouse->isLeftRelease() && $this->settingsSidebar->getWidth() !== $this->settingsSidebarResizeStartWidth) {
+                    $this->commitSettingsSidebarWidth($cols);
+                }
+            }
+            if ($mouse->isLeftRelease()) {
+                $this->settingsSidebarResizing = false;
             }
 
             return true;
@@ -165,6 +191,22 @@ final class LayoutController
     }
 
     /**
+     * Arm a settings-sidebar resize when a left-press lands on the settings
+     * separator's one-column rect. Returns true when armed.
+     */
+    public function armSettingsSidebarResize(?WidgetRect $settingsSeparatorRect, MouseEvent $mouse): bool
+    {
+        if (null !== $settingsSeparatorRect && $settingsSeparatorRect->contains($mouse->row, $mouse->col)) {
+            $this->settingsSidebarResizeStartWidth = $this->settingsSidebar->getWidth();
+            $this->settingsSidebarResizing = true;
+
+            return true;
+        }
+
+        return false;
+    }
+
+    /**
      * Arm a bottom-panel resize when a left-press lands on the panel's top edge.
      * Focuses the panel too, preserving the click-to-focus behaviour.
      */
@@ -191,6 +233,7 @@ final class LayoutController
     {
         $this->sidebarResizing = false;
         $this->gitSidebarResizing = false;
+        $this->settingsSidebarResizing = false;
         $this->panelResizing = false;
     }
 
@@ -210,6 +253,12 @@ final class LayoutController
     private function clampGitSidebar(int $width, int $cols): int
     {
         return max(30, min($width, (int) round($cols * 0.6), $cols - 20));
+    }
+
+    /** Clamp the settings sidebar so the nav and the content pane stay usable. */
+    private function clampSettingsSidebar(int $width, int $cols): int
+    {
+        return max(14, min($width, (int) round($cols * 0.5), $cols - 20));
     }
 
     /** Clamp a bottom-panel height so the editor keeps room above it. */
@@ -232,6 +281,15 @@ final class LayoutController
         $pct = $cols > 0 ? (int) round(($this->gitSidebar->width() * 100) / $cols) : null;
         if ($pct !== $this->gitSidebarWidthPercent) {
             $this->gitSidebarWidthPercent = $pct;
+            $this->persistLayout();
+        }
+    }
+
+    private function commitSettingsSidebarWidth(int $cols): void
+    {
+        $pct = $cols > 0 ? (int) round(($this->settingsSidebar->getWidth() * 100) / $cols) : null;
+        if ($pct !== $this->settingsSidebarWidthPercent) {
+            $this->settingsSidebarWidthPercent = $pct;
             $this->persistLayout();
         }
     }
@@ -270,6 +328,7 @@ final class LayoutController
             $this->gitSidebarWidthPercent,
             $this->gitDiffSplit ?: null,
             $this->gitDiffHideWhitespace ?: null,
+            $this->settingsSidebarWidthPercent,
         );
     }
 }

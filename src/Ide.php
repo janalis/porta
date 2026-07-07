@@ -340,7 +340,7 @@ final class Ide
 
         $this->history = new LocalHistory($this->rootDir);
         $this->session = new SessionStore($this->rootDir);
-        $this->layout = new LayoutController(new LayoutStore($this->rootDir), $this->tui, $this->renderer, $this->tree, $this->terminalPanel, $this->resultsPanel, new GitSidebar($this->gitTabs, $this->gitChanges, $this->gitCommitBox, $this->gitHistory));
+        $this->layout = new LayoutController(new LayoutStore($this->rootDir), $this->tui, $this->renderer, $this->tree, $this->terminalPanel, $this->resultsPanel, new GitSidebar($this->gitTabs, $this->gitChanges, $this->gitCommitBox, $this->gitHistory), $settingsNav);
         $this->overlay = new MenuOverlayController(
             $this->renderer,
             $this->menuBar,
@@ -465,6 +465,7 @@ final class Ide
             $settingsNav,
             $settingsForm,
             $settingsKeys,
+            $settingsSeparator,
             fn (): bool => $this->settingsView->isOpen(),
         );
 

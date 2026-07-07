@@ -88,6 +88,7 @@ final class MouseRouter
         private readonly SettingsNavWidget $settingsNav,
         private readonly SettingsFormWidget $settingsForm,
         private readonly KeybindingsListWidget $settingsKeys,
+        private readonly SeparatorWidget $settingsSeparator,
         private readonly \Closure $settingsViewOpen,
     ) {}
 
@@ -110,6 +111,9 @@ final class MouseRouter
         // attached in both git modes and spans exactly the sidebar width).
         $gitSepRect = $gitViewOpen ? $this->hit->rect($this->gitSeparator) : null;
         $gitLeftRect = $gitViewOpen ? $this->hit->rect($this->gitTabs) : null;
+        // The settings sidebar's drag column and left edge (the nav spans the sidebar width).
+        $settingsSepRect = $settingsViewOpen ? $this->hit->rect($this->settingsSeparator) : null;
+        $settingsLeftRect = $settingsViewOpen ? $this->hit->rect($this->settingsNav) : null;
 
         if ($mouse->wheel) {
             $this->handleWheel($mouse, $treeRect, $editorRect);
@@ -131,7 +135,7 @@ final class MouseRouter
             || $this->continueColumnDrag($mouse, $editorRect)
             || $this->continueTabDrag($mouse, $tabsRect)
             || $this->continueDiffDrag($mouse)
-            || $this->layout->continueResizeDrag($mouse, $treeRect, $gitLeftRect)
+            || $this->layout->continueResizeDrag($mouse, $treeRect, $gitLeftRect, $settingsLeftRect)
         ) {
             return;
         }
@@ -163,6 +167,9 @@ final class MouseRouter
             return;
         }
         if ($this->layout->armGitSidebarResize($gitSepRect, $mouse)) {
+            return;
+        }
+        if ($this->layout->armSettingsSidebarResize($settingsSepRect, $mouse)) {
             return;
         }
         if ($this->layout->armPanelResize($this->terminalPanel, $mouse)) {

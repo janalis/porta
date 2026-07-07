@@ -24,7 +24,7 @@ final readonly class LayoutStore
         $this->fs = new Filesystem();
     }
 
-    public function save(?int $sidebarWidthPercent, ?int $bottomPanelHeightPercent, ?int $gitSidebarWidthPercent = null, ?bool $gitDiffSplit = null, ?bool $gitDiffHideWhitespace = null): bool
+    public function save(?int $sidebarWidthPercent, ?int $bottomPanelHeightPercent, ?int $gitSidebarWidthPercent = null, ?bool $gitDiffSplit = null, ?bool $gitDiffHideWhitespace = null, ?int $settingsSidebarWidthPercent = null): bool
     {
         $data = [];
         if (null !== $sidebarWidthPercent) {
@@ -35,6 +35,9 @@ final readonly class LayoutStore
         }
         if (null !== $gitSidebarWidthPercent) {
             $data['gitSidebarWidthPercent'] = $gitSidebarWidthPercent;
+        }
+        if (null !== $settingsSidebarWidthPercent) {
+            $data['settingsSidebarWidthPercent'] = $settingsSidebarWidthPercent;
         }
         if (null !== $gitDiffSplit) {
             $data['gitDiffSplit'] = $gitDiffSplit;
@@ -56,7 +59,7 @@ final readonly class LayoutStore
     }
 
     /**
-     * @return array{sidebarWidthPercent: ?int, bottomPanelHeightPercent: ?int, gitSidebarWidthPercent: ?int, gitDiffSplit: ?bool, gitDiffHideWhitespace: ?bool}|null null when no file exists
+     * @return array{sidebarWidthPercent: ?int, bottomPanelHeightPercent: ?int, gitSidebarWidthPercent: ?int, gitDiffSplit: ?bool, gitDiffHideWhitespace: ?bool, settingsSidebarWidthPercent: ?int}|null null when no file exists
      */
     public function load(): ?array
     {
@@ -71,6 +74,7 @@ final readonly class LayoutStore
             'gitSidebarWidthPercent' => $this->percent($data['gitSidebarWidthPercent'] ?? null),
             'gitDiffSplit' => $this->bool($data['gitDiffSplit'] ?? null),
             'gitDiffHideWhitespace' => $this->bool($data['gitDiffHideWhitespace'] ?? null),
+            'settingsSidebarWidthPercent' => $this->percent($data['settingsSidebarWidthPercent'] ?? null),
         ];
     }
 

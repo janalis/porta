@@ -3413,6 +3413,39 @@ final class IdeEdgeCasesTest extends TestCase
         $this->assertSame('spaces', IdeConfig::load($project->dir)->languages['php']['indentStyle'], 'the PHP indent change persisted');
     }
 
+    public function testSettingsSidebarResizesAndPersists(): void
+    {
+        putenv('PATH=/nonexistent');
+        $project = new TempProject(['a.php' => "<?php\n"]);
+        // A seeded percent must be applied at startup (25% of 160 cols = 40).
+        @mkdir($project->path('.porta'), 0777, true);
+        file_put_contents($project->path('.porta/layout.json'), json_encode(['settingsSidebarWidthPercent' => 25]));
+
+        $this->runIde(
+            $project,
+            $project->path('a.php'),
+            [
+                300 => static function ($tui, $terminal, $ide): void {
+                    new \ReflectionProperty($ide, 'commands')->getValue($ide)->run('ide_settings');
+                },
+                600 => function ($tui): void {
+                    $tui->tick();
+                    $this->assertSame(40, $tui->getById('settings-nav')->getWidth(), 'the seeded percent applied at startup');
+                    // Drag the settings separator (SGR col 41 with a 40-wide nav) in to col 31.
+                    $tui->handleInput("\x1b[<0;41;6M");  // arm on the separator
+                    $tui->handleInput("\x1b[<32;31;6M"); // drag left
+                    $tui->handleInput("\x1b[<0;31;6m");  // release
+                },
+                900 => function ($tui) use ($project): void {
+                    $this->assertSame(30, $tui->getById('settings-nav')->getWidth(), 'the drag resized the sidebar');
+                    $layout = json_decode((string) file_get_contents($project->path('.porta/layout.json')), true);
+                    $this->assertSame(19, $layout['settingsSidebarWidthPercent'], 'saved as a percentage (round(30/160))');
+                },
+            ],
+            1.2,
+        );
+    }
+
     public function testGitViewHistoryTabBrowsesCommits(): void
     {
         if (!$this->gitAvailable()) {
