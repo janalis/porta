@@ -56,6 +56,7 @@ use Porta\Widget\FindBarWidget;
 use Porta\Widget\Git\ChangesListWidget;
 use Porta\Widget\Git\CommitBoxWidget;
 use Porta\Widget\Git\DiffViewWidget;
+use Porta\Widget\Git\GitTabsWidget;
 use Porta\Widget\Git\HistoryListWidget;
 use Porta\Widget\GoToFileWidget;
 use Porta\Widget\MenuBarWidget;
@@ -132,6 +133,7 @@ final class Ide
     private DiffViewWidget $gitDiff;
     private CommitBoxWidget $gitCommitBox;
     private HistoryListWidget $gitHistory;
+    private GitTabsWidget $gitTabs;
     private SettingsController $settings;
     private BufferService $bufferService;
     private MouseRouter $mouseRouter;
@@ -268,11 +270,13 @@ final class Ide
         $this->gitCommitBox->setId('git-commit');
         $this->gitHistory = new HistoryListWidget();
         $this->gitHistory->setId('git-history');
+        $this->gitTabs = new GitTabsWidget();
+        $this->gitTabs->setId('git-tabs')->setStyle(new Style(flex: 0));
         $gitLeft = new ContainerWidget();
         $gitLeft->setId('git-left');
         $gitLeft->setStyle(new Style(flex: 0));
         $gitLeft->expandVertically(true);
-        $gitLeft->add($this->gitChanges)->add($this->gitCommitBox);
+        $gitLeft->add($this->gitTabs)->add($this->gitChanges)->add($this->gitCommitBox);
         $gitSeparator = new SeparatorWidget();
         $gitSeparator->setId('git-separator')->setStyle(new Style(flex: 0));
         $gitArea = new ContainerWidget();
@@ -290,6 +294,7 @@ final class Ide
             $this->gitDiff,
             $this->gitCommitBox,
             $this->gitHistory,
+            $this->gitTabs,
             $this->main,
             $gitRoot,
             $gitArea,
@@ -325,6 +330,7 @@ final class Ide
             $this->gitCommitBox,
             $this->gitHistory,
             $this->gitDiff,
+            $this->gitTabs,
             $gitSeparator,
             fn (): bool => $this->gitView->isOpen(),
         );
@@ -403,6 +409,7 @@ final class Ide
             $this->gitDiff,
             $this->gitCommitBox,
             $this->gitHistory,
+            $this->gitTabs,
             fn (): bool => $this->gitView->isOpen(),
         );
 

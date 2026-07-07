@@ -7,6 +7,7 @@ namespace Porta\Git;
 use Porta\Widget\Git\ChangesListWidget;
 use Porta\Widget\Git\CommitBoxWidget;
 use Porta\Widget\Git\DiffViewWidget;
+use Porta\Widget\Git\GitTabsWidget;
 use Porta\Widget\Git\HistoryListWidget;
 use Porta\Widget\MenuBarWidget;
 use Porta\Widget\StatusBarWidget;
@@ -52,6 +53,7 @@ final class GitViewController
         private readonly DiffViewWidget $diffView,
         private readonly CommitBoxWidget $commitBox,
         private readonly HistoryListWidget $history,
+        private readonly GitTabsWidget $tabs,
         private readonly ContainerWidget $main,
         private readonly ContainerWidget $gitRoot,
         private readonly ContainerWidget $gitArea,
@@ -85,6 +87,7 @@ final class GitViewController
             ->onCycleContext(fn () => $this->cycleContext())
             ->onFocusNext($next)
             ->onExit($exit);
+        $this->tabs->onSelect(fn (string $mode) => $this->switchMode($mode));
         $this->commitBox
             ->hasStagedChanges(fn (): bool => $this->hasStagedChanges())
             ->onCommit(fn (string $message, bool $amend) => $this->commit($message, $amend))
@@ -351,7 +354,9 @@ final class GitViewController
             return;
         }
         $this->mode = $mode;
+        $this->tabs->setActive($mode);
         $this->gitLeft->clear();
+        $this->gitLeft->add($this->tabs);
         if ('history' === $mode) {
             $this->gitLeft->add($this->history);
             $this->diffView->setReadOnly(true);

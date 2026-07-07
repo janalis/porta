@@ -17,6 +17,7 @@ use Porta\Widget\FileTreeWidget;
 use Porta\Widget\Git\ChangesListWidget;
 use Porta\Widget\Git\CommitBoxWidget;
 use Porta\Widget\Git\DiffViewWidget;
+use Porta\Widget\Git\GitTabsWidget;
 use Porta\Widget\Git\HistoryListWidget;
 use Porta\Widget\GoToFileWidget;
 use Porta\Widget\MenuBarWidget;
@@ -75,6 +76,7 @@ final class MouseRouter
         private readonly DiffViewWidget $gitDiff,
         private readonly CommitBoxWidget $gitCommitBox,
         private readonly HistoryListWidget $gitHistory,
+        private readonly GitTabsWidget $gitTabs,
         private readonly \Closure $gitViewOpen,
     ) {}
 
@@ -344,6 +346,12 @@ final class MouseRouter
     private function handlePaneClick(MouseEvent $mouse, ?WidgetRect $treeRect, ?WidgetRect $tabsRect, ?WidgetRect $editorRect): void
     {
         // Git view panes (rects exist only while the view is swapped in).
+        if (null !== ($rel = $this->hit->hit($this->gitTabs, $mouse->row, $mouse->col))) {
+            $this->gitTabs->handleClick($rel['col']);
+            $this->tui->requestRender();
+
+            return;
+        }
         if (null !== ($rel = $this->hit->hit($this->gitChanges, $mouse->row, $mouse->col))) {
             $this->tui->setFocus($this->gitChanges);
             $this->gitChanges->handleClick($rel['row'], $rel['col']);

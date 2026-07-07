@@ -225,7 +225,7 @@ final class HistoryListWidget extends AbstractWidget implements FocusableInterfa
         $rows = max(4, $context->getRows() > 0 ? $context->getRows() : 12);
         $this->lastRows = $rows;
 
-        $lines = ["\x1b[48;5;237m\x1b[1m".AnsiUtils::truncateToWidth(\sprintf(' History (%d)  ·  1: Changes', \count($this->commits)), $width, '…', pad: true)."\x1b[0m"];
+        $lines = ["\x1b[48;5;237m\x1b[1m".AnsiUtils::truncateToWidth(\sprintf(' History (%d)', \count($this->commits)), $width, '…', pad: true)."\x1b[0m"];
 
         $commitRows = $this->commitRowCount();
         $scroll = $this->commitList->follow($commitRows);

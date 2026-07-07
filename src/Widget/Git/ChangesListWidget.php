@@ -249,7 +249,7 @@ final class ChangesListWidget extends AbstractWidget implements FocusableInterfa
         $this->lastRows = $rows;
 
         $count = \count($this->entries);
-        $title = \sprintf(' %d changed file%s', $count, 1 === $count ? '' : 's').'  ·  2: History';
+        $title = \sprintf(' %d changed file%s', $count, 1 === $count ? '' : 's');
         $lines = ["\x1b[48;5;237m\x1b[1m".AnsiUtils::truncateToWidth($title, $width, '…', pad: true)."\x1b[0m"];
 
         $scroll = $this->list->follow($rows - 1);

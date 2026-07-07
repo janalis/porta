@@ -11,6 +11,7 @@ use Porta\Widget\FileTreeWidget;
 use Porta\Widget\Git\ChangesListWidget;
 use Porta\Widget\Git\CommitBoxWidget;
 use Porta\Widget\Git\DiffViewWidget;
+use Porta\Widget\Git\GitTabsWidget;
 use Porta\Widget\Git\HistoryListWidget;
 use Porta\Widget\MenuBarWidget;
 use Porta\Widget\Render\MenuOverlayHost;
@@ -55,6 +56,7 @@ final class MenuOverlayController
         private readonly CommitBoxWidget $gitCommitBox,
         private readonly HistoryListWidget $gitHistory,
         private readonly DiffViewWidget $gitDiff,
+        private readonly GitTabsWidget $gitTabs,
         private readonly SeparatorWidget $gitSeparator,
         private readonly \Closure $gitViewOpen,
     ) {}
@@ -68,7 +70,7 @@ final class MenuOverlayController
     private function menuPanes(): array
     {
         return ($this->gitViewOpen)()
-            ? [$this->gitChanges, $this->gitCommitBox, $this->gitHistory, $this->gitSeparator, $this->gitDiff]
+            ? [$this->gitTabs, $this->gitChanges, $this->gitCommitBox, $this->gitHistory, $this->gitSeparator, $this->gitDiff]
             : [$this->tabBar, $this->editor, $this->breadcrumbs];
     }
 
@@ -110,7 +112,7 @@ final class MenuOverlayController
             $this->menuDropdown = null;
             // Clear both mode's pane sets: clearing a detached widget is harmless
             // and a dropdown may close across a view swap.
-            $this->clearOverlays([$this->tabBar, $this->breadcrumbs, $this->editor, $this->gitChanges, $this->gitCommitBox, $this->gitHistory, $this->gitSeparator, $this->gitDiff]);
+            $this->clearOverlays([$this->tabBar, $this->breadcrumbs, $this->editor, $this->gitTabs, $this->gitChanges, $this->gitCommitBox, $this->gitHistory, $this->gitSeparator, $this->gitDiff]);
 
             return;
         }

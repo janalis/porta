@@ -3200,20 +3200,20 @@ final class IdeEdgeCasesTest extends TestCase
                     $tui->handleInput("\x1b[<0;3;1m");
                     $tui->handleInput("\x1b[<0;3;1M");
                     $tui->handleInput("\x1b[<0;3;1m");
-                    // With the menu row on top, the changes header is screen
-                    // row 2 and a.txt sits on row 3. Click the checkbox: stages.
-                    $tui->handleInput("\x1b[<0;3;3M");
-                    $tui->handleInput("\x1b[<0;3;3m");
+                    // Below the menu row sits the tab strip (row 2), then the
+                    // changes header (row 3); a.txt is row 4. Click the checkbox.
+                    $tui->handleInput("\x1b[<0;3;4M");
+                    $tui->handleInput("\x1b[<0;3;4m");
                 },
                 1500 => function ($tui, $terminal) use ($project): void {
                     exec('git -C '.escapeshellarg($project->dir).' status --porcelain 2>/dev/null', $lines);
                     $this->assertContains('M  a.txt', $lines, 'checkbox click staged the file');
-                    // Hover row 4 (b.txt) selects it and loads its diff;
+                    // Hover row 5 (b.txt) selects it and loads its diff;
                     // wheel over the diff pane scrolls it.
-                    $tui->handleInput("\x1b[<35;10;4M");
+                    $tui->handleInput("\x1b[<35;10;5M");
                     $tui->handleInput("\x1b[<65;80;6M");
                     // Wheel over the changes list moves its selection.
-                    $tui->handleInput("\x1b[<65;10;3M");
+                    $tui->handleInput("\x1b[<65;10;4M");
                     // A click on the diff pane focuses it.
                     $tui->handleInput("\x1b[<0;60;6M");
                     $tui->handleInput("\x1b[<0;60;6m");
@@ -3255,7 +3255,9 @@ final class IdeEdgeCasesTest extends TestCase
                 },
                 600 => static function ($tui): void {
                     $tui->tick();
-                    $tui->handleInput('2'); // History tab
+                    // Click the [History] tab cell (tab strip = screen row 2).
+                    $tui->handleInput("\x1b[<0;14;2M");
+                    $tui->handleInput("\x1b[<0;14;2m");
                 },
                 1000 => function ($tui, $terminal): void {
                     $screen = AnsiUtils::stripAnsiCodes($terminal->getOutput());
@@ -3263,10 +3265,10 @@ final class IdeEdgeCasesTest extends TestCase
                     $this->assertStringContainsString('second commit', $screen);
                     $this->assertStringContainsString('M a.txt', $screen, 'the newest commit file list loads');
                     // Mouse: wheel over the history list, click the first commit
-                    // row (the menu row on top shifts everything down one).
-                    $tui->handleInput("\x1b[<65;10;4M");
-                    $tui->handleInput("\x1b[<0;10;3M");
-                    $tui->handleInput("\x1b[<0;10;3m");
+                    // row (menu row + tab strip shift the list down two).
+                    $tui->handleInput("\x1b[<65;10;5M");
+                    $tui->handleInput("\x1b[<0;10;4M");
+                    $tui->handleInput("\x1b[<0;10;4m");
                 },
                 1200 => static function ($tui): void {
                     // The clicked commit's files have settled; open its patch.
@@ -3276,7 +3278,9 @@ final class IdeEdgeCasesTest extends TestCase
                 },
                 1500 => function ($tui, $terminal): void {
                     $this->assertStringContainsString('+more', AnsiUtils::stripAnsiCodes($terminal->getOutput()), 'the commit patch renders read-only');
-                    $tui->handleInput('1'); // back to Changes
+                    // Click the [Changes] tab to switch back.
+                    $tui->handleInput("\x1b[<0;4;2M");
+                    $tui->handleInput("\x1b[<0;4;2m");
                 },
             ],
             1.9,

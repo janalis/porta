@@ -11,6 +11,7 @@ use Porta\Tests\Support\TempProject;
 use Porta\Widget\Git\ChangesListWidget;
 use Porta\Widget\Git\CommitBoxWidget;
 use Porta\Widget\Git\DiffViewWidget;
+use Porta\Widget\Git\GitTabsWidget;
 use Porta\Widget\Git\HistoryListWidget;
 use Porta\Widget\MenuBarWidget;
 use Porta\Widget\StatusBarWidget;
@@ -38,6 +39,7 @@ final class GitViewControllerTest extends TestCase
     private DiffViewWidget $diffView;
     private CommitBoxWidget $commitBox;
     private HistoryListWidget $history;
+    private GitTabsWidget $tabs;
     private MenuBarWidget $menuBar;
     private ContainerWidget $editorPane;
     private ContainerWidget $gitRoot;
@@ -64,6 +66,8 @@ final class GitViewControllerTest extends TestCase
         $this->commitBox = new CommitBoxWidget();
         $this->history = new HistoryListWidget();
         $this->history->setId('git-history');
+        $this->tabs = new GitTabsWidget();
+        $this->tabs->setId('git-tabs');
         $this->menuBar = new MenuBarWidget();
         $this->menuBar->setId('menu');
         $this->editorPane = new ContainerWidget();
@@ -75,7 +79,7 @@ final class GitViewControllerTest extends TestCase
         $this->main->add($this->editorPane);
         $this->gitLeft = new ContainerWidget();
         $this->gitLeft->setId('git-left');
-        $this->gitLeft->add($this->changes)->add($this->commitBox);
+        $this->gitLeft->add($this->tabs)->add($this->changes)->add($this->commitBox);
         $gitArea = new ContainerWidget();
         $gitArea->setId('git-area');
         $gitArea->add($this->gitLeft)->add($this->diffView);
@@ -93,6 +97,7 @@ final class GitViewControllerTest extends TestCase
             $this->diffView,
             $this->commitBox,
             $this->history,
+            $this->tabs,
             $this->main,
             $this->gitRoot,
             $gitArea,
@@ -167,7 +172,7 @@ final class GitViewControllerTest extends TestCase
 
         $this->changes->setFocused(true);
         $this->changes->handleInput('2');
-        $this->await(fn (): bool => 1 === \count($this->gitLeft->all()));
+        $this->await(fn (): bool => 2 === \count($this->gitLeft->all()));
         $this->assertSame($this->history, $controller->focusTarget());
     }
 
@@ -464,7 +469,7 @@ final class GitViewControllerTest extends TestCase
         $this->changes->setFocused(true);
         $this->changes->handleInput('2'); // switch to History
         $this->await(fn (): bool => null !== $this->history->selectedCommit());
-        $this->assertSame(['git-history'], array_map(static fn ($w) => $w->getId(), $this->gitLeft->all()), 'the left pane swapped to the history list');
+        $this->assertSame(['git-tabs', 'git-history'], array_map(static fn ($w) => $w->getId(), $this->gitLeft->all()), 'the left pane swapped to the history list (tabs stay on top)');
         $this->assertSame('second', $this->history->selectedCommit()?->subject);
         $this->assertTrue($this->diffView->isReadOnly());
 
@@ -484,7 +489,7 @@ final class GitViewControllerTest extends TestCase
         // Back to Changes: left pane restored, diff editable again.
         $this->history->setFocused(true);
         $this->history->handleInput('1');
-        $this->await(fn (): bool => ['git-left-changes'] !== [] && \count($this->gitLeft->all()) === 2);
+        $this->await(fn (): bool => 3 === \count($this->gitLeft->all()));
         $this->assertFalse($this->diffView->isReadOnly());
     }
 
@@ -495,17 +500,17 @@ final class GitViewControllerTest extends TestCase
         $this->await(fn (): bool => $controller->isOpen());
         $this->changes->setFocused(true);
         $this->changes->handleInput('2');
-        $this->await(fn (): bool => 'git-history' === ($this->gitLeft->all()[0] ?? null)?->getId());
+        $this->await(fn (): bool => 'git-history' === ($this->gitLeft->all()[1] ?? null)?->getId());
 
         $controller->close();
         $controller->open(); // must reset to the Changes tab
-        $this->await(fn (): bool => 2 === \count($this->gitLeft->all()));
+        $this->await(fn (): bool => 3 === \count($this->gitLeft->all()));
         $this->assertFalse($this->diffView->isReadOnly());
 
         // History-mode focus cycle: history <-> diff only.
         $this->changes->setFocused(true);
         $this->changes->handleInput('2');
-        $this->await(fn (): bool => 1 === \count($this->gitLeft->all()));
+        $this->await(fn (): bool => 2 === \count($this->gitLeft->all()));
         $this->history->setFocused(true);
         $this->history->handleInput("\t");
         $this->assertSame($this->diffView, $this->tui->getFocus());
