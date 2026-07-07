@@ -9,6 +9,8 @@ use Porta\Ui\ListNavigation;
 use Porta\Ui\ListSelection;
 use Porta\Ui\Style;
 use Porta\Widget\InputHook;
+use Porta\Widget\Render\MenuOverlayHost;
+use Porta\Widget\Render\MenuOverlayHostTrait;
 use Symfony\Component\Tui\Ansi\AnsiUtils;
 use Symfony\Component\Tui\Input\Key;
 use Symfony\Component\Tui\Render\RenderContext;
@@ -24,10 +26,11 @@ use Symfony\Component\Tui\Widget\VerticallyExpandableInterface;
  * file drives the read-only diff pane. Selection changes fire onSelectCommit
  * / onSelectFile so the controller can load `git show` data.
  */
-final class HistoryListWidget extends AbstractWidget implements FocusableInterface, VerticallyExpandableInterface
+final class HistoryListWidget extends AbstractWidget implements FocusableInterface, MenuOverlayHost, VerticallyExpandableInterface
 {
     use FocusableTrait;
     use InputHook;
+    use MenuOverlayHostTrait;
     use KeybindingsTrait;
 
     private const int FILE_ROWS = 8;
@@ -253,7 +256,7 @@ final class HistoryListWidget extends AbstractWidget implements FocusableInterfa
         // commitRowCount + the two headers + FILE_ROWS always fill $rows exactly
         // (the file loop is height-capped), so no tail padding is needed.
 
-        return $lines;
+        return $this->withMenuOverlay($lines, $width);
     }
 
     public function isVerticallyExpanded(): bool

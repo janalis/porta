@@ -280,6 +280,9 @@ final class Ide
         $gitArea->setStyle(new Style(direction: Direction::Horizontal, gap: 0));
         $gitArea->expandVertically(true);
         $gitArea->add($gitLeft)->add($gitSeparator)->add($this->gitDiff);
+        $gitRoot = new ContainerWidget();
+        $gitRoot->setId('git-root');
+        $gitRoot->expandVertically(true);
         $this->gitView = new GitViewController(
             $this->git,
             $this->rootDir,
@@ -288,8 +291,11 @@ final class Ide
             $this->gitCommitBox,
             $this->gitHistory,
             $this->main,
+            $gitRoot,
             $gitArea,
             $gitLeft,
+            $editorPane,
+            $this->menuBar,
             [$this->tree, $this->separator, $editorPane],
             $this->tui,
             $this->statusBar,
@@ -306,7 +312,22 @@ final class Ide
         $this->history = new LocalHistory($this->rootDir);
         $this->session = new SessionStore($this->rootDir);
         $this->layout = new LayoutController(new LayoutStore($this->rootDir), $this->tui, $this->renderer, $this->tree, $this->terminalPanel, $this->resultsPanel);
-        $this->overlay = new MenuOverlayController($this->renderer, $this->menuBar, $this->contextMenu, $this->tree, $this->separator, $this->tabBar, $this->breadcrumbs, $this->editor);
+        $this->overlay = new MenuOverlayController(
+            $this->renderer,
+            $this->menuBar,
+            $this->contextMenu,
+            $this->tree,
+            $this->separator,
+            $this->tabBar,
+            $this->breadcrumbs,
+            $this->editor,
+            $this->gitChanges,
+            $this->gitCommitBox,
+            $this->gitHistory,
+            $this->gitDiff,
+            $gitSeparator,
+            fn (): bool => $this->gitView->isOpen(),
+        );
         $this->treeOps = new TreeOperations(
             $this->tree,
             $this->editor,
@@ -1017,13 +1038,13 @@ final class Ide
     /** Populate the application menu bar and return focus to the editor on close. */
     private function wireMenuBar(Keybindings $keybindings): void
     {
-        $this->menuBar->setMenus(MenuModel::build($this->commands, $this->editor, $keybindings));
+        $this->menuBar->setMenus(MenuModel::build($this->commands, $this->editor, $keybindings, fn (): bool => $this->gitView->isOpen()));
         $this->menuBar->onNavigate(function (): void {
             $this->overlay->refreshMenu();
         });
         $this->menuBar->onClose(function (): void {
             $this->overlay->refreshMenu();
-            $this->tui->setFocus($this->editor);
+            $this->tui->setFocus($this->gitView->isOpen() ? $this->gitView->focusTarget() : $this->editor);
             $this->tui->requestRender();
         });
 
@@ -1038,12 +1059,6 @@ final class Ide
 
     private function openMenu(): void
     {
-        if ($this->gitView->isOpen()) {
-            $this->statusBar->flash('Close the Git view first (Esc)');
-            $this->tui->requestRender();
-
-            return;
-        }
         $this->menuBar->open(0);
         $this->tui->setFocus($this->menuBar);
         $this->tui->requestRender();

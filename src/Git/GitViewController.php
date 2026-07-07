@@ -8,6 +8,7 @@ use Porta\Widget\Git\ChangesListWidget;
 use Porta\Widget\Git\CommitBoxWidget;
 use Porta\Widget\Git\DiffViewWidget;
 use Porta\Widget\Git\HistoryListWidget;
+use Porta\Widget\MenuBarWidget;
 use Porta\Widget\StatusBarWidget;
 use Revolt\EventLoop;
 use Symfony\Component\Tui\Tui;
@@ -52,8 +53,11 @@ final class GitViewController
         private readonly CommitBoxWidget $commitBox,
         private readonly HistoryListWidget $history,
         private readonly ContainerWidget $main,
+        private readonly ContainerWidget $gitRoot,
         private readonly ContainerWidget $gitArea,
         private readonly ContainerWidget $gitLeft,
+        private readonly ContainerWidget $editorPane,
+        private readonly MenuBarWidget $menuBar,
         private readonly array $editArea,
         private readonly Tui $tui,
         private readonly StatusBarWidget $statusBar,
@@ -94,6 +98,12 @@ final class GitViewController
         return $this->open;
     }
 
+    /** Where focus should land when a popup (e.g. the app menu) closes over the view. */
+    public function focusTarget(): AbstractWidget&FocusableInterface
+    {
+        return 'history' === $this->mode ? $this->history : $this->changes;
+    }
+
     public function toggle(): void
     {
         $this->open ? $this->close() : $this->open();
@@ -112,8 +122,15 @@ final class GitViewController
         }
 
         $this->open = true;
+        // The menu bar rides along: it normally heads the (now detached)
+        // editor pane, so re-parent it above the git area for the swap.
+        $this->menuBar->close();
+        $this->editorPane->remove($this->menuBar);
+        $this->gitRoot->clear();
+        $this->gitRoot->add($this->menuBar);
+        $this->gitRoot->add($this->gitArea);
         $this->main->clear();
-        $this->main->add($this->gitArea);
+        $this->main->add($this->gitRoot);
         if ('changes' !== $this->mode) {
             $this->switchMode('changes'); // the view always opens on Changes
         }
@@ -134,6 +151,16 @@ final class GitViewController
         if (null !== $this->poll) {
             EventLoop::cancel($this->poll);
             $this->poll = null;
+        }
+        // Hand the menu bar back as the editor pane's FIRST child (add()
+        // only appends, so rebuild the children around it).
+        $this->menuBar->close();
+        $this->gitRoot->remove($this->menuBar);
+        $rest = $this->editorPane->all();
+        $this->editorPane->clear();
+        $this->editorPane->add($this->menuBar);
+        foreach ($rest as $widget) {
+            $this->editorPane->add($widget);
         }
         $this->main->clear();
         foreach ($this->editArea as $widget) {

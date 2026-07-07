@@ -8,6 +8,8 @@ use Porta\Ui\MultilineInput;
 use Porta\Ui\Style;
 use Porta\Ui\TextField;
 use Porta\Widget\InputHook;
+use Porta\Widget\Render\MenuOverlayHost;
+use Porta\Widget\Render\MenuOverlayHostTrait;
 use Symfony\Component\Tui\Ansi\AnsiUtils;
 use Symfony\Component\Tui\Input\Key;
 use Symfony\Component\Tui\Render\RenderContext;
@@ -22,10 +24,11 @@ use Symfony\Component\Tui\Widget\KeybindingsTrait;
  * Commit is enabled when the summary is non-empty and anything is staged
  * (via the injected predicate); Ctrl+Enter or a button click commits.
  */
-final class CommitBoxWidget extends AbstractWidget implements FocusableInterface
+final class CommitBoxWidget extends AbstractWidget implements FocusableInterface, MenuOverlayHost
 {
     use FocusableTrait;
     use InputHook;
+    use MenuOverlayHostTrait;
     use KeybindingsTrait;
 
     private const int DESCRIPTION_ROWS = 3;
@@ -251,7 +254,7 @@ final class CommitBoxWidget extends AbstractWidget implements FocusableInterface
             : "\x1b[48;5;236m\x1b[38;5;245m".AnsiUtils::truncateToWidth($label, $width, '…', pad: true)."\x1b[0m";
         $lines[] = $button;
 
-        return $lines;
+        return $this->withMenuOverlay($lines, $width);
     }
 
     /** @return array<string, string[]> */

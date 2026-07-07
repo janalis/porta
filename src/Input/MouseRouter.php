@@ -133,7 +133,7 @@ final class MouseRouter
         $this->tabDragging = false;
         $this->layout->cancelDrags();
 
-        if (!$gitViewOpen && $this->handleModalPopupClick($mouse, $editorRect)) {
+        if ($this->handleModalPopupClick($mouse, $editorRect, $gitViewOpen)) {
             return;
         }
 
@@ -277,9 +277,11 @@ final class MouseRouter
      * menu or application menu runs/dismisses on its own hit test. Returns
      * whether the click was consumed.
      */
-    private function handleModalPopupClick(MouseEvent $mouse, ?WidgetRect $editorRect): bool
+    private function handleModalPopupClick(MouseEvent $mouse, ?WidgetRect $editorRect, bool $gitViewOpen = false): bool
     {
-        if ($this->editor->isOverlayOpen() || $this->editor->isCompletionOpen()) {
+        // Editor popups are unreachable while the git view owns the main area
+        // (the editor is detached); only the menus below can claim the click.
+        if (!$gitViewOpen && ($this->editor->isOverlayOpen() || $this->editor->isCompletionOpen())) {
             if (null !== $editorRect && $editorRect->contains($mouse->row, $mouse->col)) {
                 $rel = $editorRect->toRelative($mouse->row, $mouse->col);
                 if ($this->editor->handlePopupClick($rel['row'], $rel['col'])) {
@@ -540,13 +542,16 @@ final class MouseRouter
     private function handleHover(MouseEvent $mouse, ?WidgetRect $editorRect, bool $gitViewOpen = false): void
     {
         if ($gitViewOpen) {
+            if ($this->handleMenuHover($mouse)) {
+                return; // the menu bar rides along into the git view
+            }
             if (null !== ($rel = $this->hit->hit($this->gitChanges, $mouse->row, $mouse->col))
                 && $this->gitChanges->hoverRow($rel['row'])
             ) {
                 $this->tui->requestRender();
             }
 
-            return; // the tree/menu hover targets below are all detached
+            return; // the tree/editor hover targets below are all detached
         }
 
         $this->updateTreeHover($mouse);

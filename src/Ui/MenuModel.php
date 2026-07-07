@@ -108,12 +108,16 @@ final class MenuModel
         ],
     ];
 
-    /** @return list<Menu> */
-    public static function build(CommandRegistry $commands, CodeEditorWidget $editor, Keybindings $ideKeys): array
+    /**
+     * @param (\Closure(): bool)|null $gitViewOpen while true, only GIT_VIEW_SAFE items stay enabled
+     *
+     * @return list<Menu>
+     */
+    public static function build(CommandRegistry $commands, CodeEditorWidget $editor, Keybindings $ideKeys, ?\Closure $gitViewOpen = null): array
     {
         $menus = [];
         foreach (self::DEFS as $title => $specs) {
-            $menus[] = new Menu($title, self::items($specs, $commands, $editor, $ideKeys));
+            $menus[] = new Menu($title, self::items($specs, $commands, $editor, $ideKeys, $gitViewOpen));
         }
 
         return $menus;
@@ -124,17 +128,18 @@ final class MenuModel
      * the menu bar and the right-click context menus so labels, shortcuts and
      * run handlers stay a single source of truth.
      *
-     * @param list<string> $specs
+     * @param list<string>            $specs
+     * @param (\Closure(): bool)|null $gitViewOpen
      *
      * @return list<MenuItem>
      */
-    public static function items(array $specs, CommandRegistry $commands, CodeEditorWidget $editor, Keybindings $ideKeys): array
+    public static function items(array $specs, CommandRegistry $commands, CodeEditorWidget $editor, Keybindings $ideKeys, ?\Closure $gitViewOpen = null): array
     {
         $items = [];
         foreach ($specs as $spec) {
             $items[] = self::SEP === $spec
                 ? MenuItem::separator()
-                : self::item($spec, $commands, $editor, $ideKeys);
+                : self::item($spec, $commands, $editor, $ideKeys, $gitViewOpen);
         }
 
         return $items;
@@ -146,7 +151,14 @@ final class MenuModel
      */
     private const array FILE_SCOPED_IDE = ['reformat', 'ide_local_history', 'git_stage', 'git_blame'];
 
-    private static function item(string $spec, CommandRegistry $commands, CodeEditorWidget $editor, Keybindings $ideKeys): MenuItem
+    /**
+     * The only commands that stay enabled while the git view owns the main area:
+     * everything else targets the detached editor/tree and would act invisibly.
+     */
+    private const array GIT_VIEW_SAFE = ['ide_quit', 'ide_git', 'git_commit', 'git_undo_commit', 'ide_command_palette'];
+
+    /** @param (\Closure(): bool)|null $gitViewOpen */
+    private static function item(string $spec, CommandRegistry $commands, CodeEditorWidget $editor, Keybindings $ideKeys, ?\Closure $gitViewOpen): MenuItem
     {
         [$scope, $id] = explode(':', $spec, 2);
         $label = 'i' === $scope
@@ -156,9 +168,14 @@ final class MenuModel
         $run = 'i' === $scope
             ? static fn () => $commands->run($id)
             : static fn () => $editor->runAction($id);
-        $isEnabled = self::requiresOpenFile($scope, $id)
-            ? static fn (): bool => null !== $editor->getFilePath()
-            : null;
+
+        $requiresFile = self::requiresOpenFile($scope, $id);
+        $gitSafe = 'i' === $scope && \in_array($id, self::GIT_VIEW_SAFE, true);
+        $isEnabled = null === $gitViewOpen && !$requiresFile
+            ? null
+            : static fn (): bool => (null !== $gitViewOpen && $gitViewOpen())
+                ? $gitSafe
+                : (!$requiresFile || null !== $editor->getFilePath());
 
         return new MenuItem($label, $shortcut, $run, isEnabled: $isEnabled);
     }

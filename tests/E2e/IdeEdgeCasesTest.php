@@ -3176,39 +3176,59 @@ final class IdeEdgeCasesTest extends TestCase
                 },
                 600 => function ($tui): void {
                     $tui->tick();
-                    // F10 is guarded while the git view is open.
+                    // F10 opens the app menu OVER the git view now.
                     $tui->handleInput("\x1b[21~");
-                    // The git view owns the whole main area, so its header is
-                    // screen row 1 (1-based) and a.txt sits on row 2. Click the
-                    // checkbox column: stages it.
-                    $tui->handleInput("\x1b[<0;3;2M");
-                    $tui->handleInput("\x1b[<0;3;2m");
                 },
-                950 => function ($tui, $terminal) use ($project): void {
+                900 => function ($tui, $terminal): void {
+                    $tui->tick();
+                    $screen = AnsiUtils::stripAnsiCodes($terminal->getOutput());
+                    $this->assertSame('menu', $tui->getFocus()?->getId(), 'F10 focused the menu bar');
+                    $this->assertStringContainsString('Save File', $screen, 'the File dropdown composites over the git panes');
+                    $this->assertStringContainsString('Quit', $screen);
+                    // Hover a dropdown row (the dropdown starts under the menu
+                    // row, i.e. screen row 2), then click the greyed 'Save File'
+                    // item: disabled in the git view, so it only closes the menu.
+                    $tui->handleInput("\x1b[<35;5;4M");
+                    $tui->handleInput("\x1b[<0;5;2M");
+                    $tui->handleInput("\x1b[<0;5;2m");
+                },
+                1150 => function ($tui): void {
+                    $tui->tick();
+                    $this->assertSame('git-changes', $tui->getFocus()?->getId(), 'closing the menu restores the git focus target');
+                    // Click the 'File' title (row 1) to open, then again to close.
+                    $tui->handleInput("\x1b[<0;3;1M");
+                    $tui->handleInput("\x1b[<0;3;1m");
+                    $tui->handleInput("\x1b[<0;3;1M");
+                    $tui->handleInput("\x1b[<0;3;1m");
+                    // With the menu row on top, the changes header is screen
+                    // row 2 and a.txt sits on row 3. Click the checkbox: stages.
+                    $tui->handleInput("\x1b[<0;3;3M");
+                    $tui->handleInput("\x1b[<0;3;3m");
+                },
+                1500 => function ($tui, $terminal) use ($project): void {
                     exec('git -C '.escapeshellarg($project->dir).' status --porcelain 2>/dev/null', $lines);
                     $this->assertContains('M  a.txt', $lines, 'checkbox click staged the file');
-                    // Hover row 2 (b.txt) selects it and loads its diff;
+                    // Hover row 4 (b.txt) selects it and loads its diff;
                     // wheel over the diff pane scrolls it.
-                    $tui->handleInput("\x1b[<35;10;3M");
-                    $tui->handleInput("\x1b[<65;80;5M");
+                    $tui->handleInput("\x1b[<35;10;4M");
+                    $tui->handleInput("\x1b[<65;80;6M");
                     // Wheel over the changes list moves its selection.
-                    $tui->handleInput("\x1b[<65;10;2M");
+                    $tui->handleInput("\x1b[<65;10;3M");
                     // A click on the diff pane focuses it.
-                    $tui->handleInput("\x1b[<0;60;5M");
-                    $tui->handleInput("\x1b[<0;60;5m");
+                    $tui->handleInput("\x1b[<0;60;6M");
+                    $tui->handleInput("\x1b[<0;60;6m");
                     // Click into the commit box summary row.
-                    $tui->handleInput("\x1b[<0;5;19M");
-                    $tui->handleInput("\x1b[<0;5;19m");
+                    $tui->handleInput("\x1b[<0;5;20M");
+                    $tui->handleInput("\x1b[<0;5;20m");
                 },
-                1250 => function ($tui, $terminal): void {
+                1800 => function ($tui, $terminal): void {
                     $screen = AnsiUtils::stripAnsiCodes($terminal->getOutput());
-                    $this->assertStringContainsString('Close the Git view first', $screen, 'F10 flashed the guard');
                     $this->assertStringContainsString('+new', $screen, 'hover loaded the untracked diff');
                     $this->assertSame('git-commit', $tui->getFocus()?->getId(), 'click focused the commit box');
                     $tui->handleInput("\x1b");
                 },
             ],
-            1.6,
+            2.1,
         );
 
         $this->assertStringContainsString('b.txt', AnsiUtils::stripAnsiCodes($terminal->getOutput()));
@@ -3242,10 +3262,11 @@ final class IdeEdgeCasesTest extends TestCase
                     $this->assertStringContainsString('History (2)', $screen);
                     $this->assertStringContainsString('second commit', $screen);
                     $this->assertStringContainsString('M a.txt', $screen, 'the newest commit file list loads');
-                    // Mouse: wheel over the history list, click the first commit row.
-                    $tui->handleInput("\x1b[<65;10;3M");
-                    $tui->handleInput("\x1b[<0;10;2M");
-                    $tui->handleInput("\x1b[<0;10;2m");
+                    // Mouse: wheel over the history list, click the first commit
+                    // row (the menu row on top shifts everything down one).
+                    $tui->handleInput("\x1b[<65;10;4M");
+                    $tui->handleInput("\x1b[<0;10;3M");
+                    $tui->handleInput("\x1b[<0;10;3m");
                 },
                 1200 => static function ($tui): void {
                     // The clicked commit's files have settled; open its patch.

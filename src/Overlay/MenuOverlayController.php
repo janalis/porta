@@ -8,6 +8,10 @@ use Porta\Widget\BreadcrumbsWidget;
 use Porta\Widget\CodeEditorWidget;
 use Porta\Widget\ContextMenu;
 use Porta\Widget\FileTreeWidget;
+use Porta\Widget\Git\ChangesListWidget;
+use Porta\Widget\Git\CommitBoxWidget;
+use Porta\Widget\Git\DiffViewWidget;
+use Porta\Widget\Git\HistoryListWidget;
 use Porta\Widget\MenuBarWidget;
 use Porta\Widget\Render\MenuOverlayHost;
 use Porta\Widget\SeparatorWidget;
@@ -37,6 +41,7 @@ final class MenuOverlayController
     private int $contextAnchorRow = 0;
     private int $contextAnchorCol = 0;
 
+    /** @param \Closure(): bool $gitViewOpen whether the git view owns the main area */
     public function __construct(
         private readonly Renderer $renderer,
         private readonly MenuBarWidget $menuBar,
@@ -46,7 +51,26 @@ final class MenuOverlayController
         private readonly TabBarWidget $tabBar,
         private readonly BreadcrumbsWidget $breadcrumbs,
         private readonly CodeEditorWidget $editor,
+        private readonly ChangesListWidget $gitChanges,
+        private readonly CommitBoxWidget $gitCommitBox,
+        private readonly HistoryListWidget $gitHistory,
+        private readonly DiffViewWidget $gitDiff,
+        private readonly SeparatorWidget $gitSeparator,
+        private readonly \Closure $gitViewOpen,
     ) {}
+
+    /**
+     * The panes the app-menu dropdown floats over in the current mode: the git
+     * view's panes while it owns the main area, else the editor pane's rows.
+     *
+     * @return list<AbstractWidget&MenuOverlayHost>
+     */
+    private function menuPanes(): array
+    {
+        return ($this->gitViewOpen)()
+            ? [$this->gitChanges, $this->gitCommitBox, $this->gitHistory, $this->gitSeparator, $this->gitDiff]
+            : [$this->tabBar, $this->editor, $this->breadcrumbs];
+    }
 
     /**
      * The app-menu dropdown box, for click/hover hit-testing; null when closed.
@@ -84,31 +108,34 @@ final class MenuOverlayController
     {
         if (!$this->menuBar->isOpen()) {
             $this->menuDropdown = null;
-            $this->clearOverlays([$this->tabBar, $this->breadcrumbs, $this->editor]);
+            // Clear both mode's pane sets: clearing a detached widget is harmless
+            // and a dropdown may close across a view swap.
+            $this->clearOverlays([$this->tabBar, $this->breadcrumbs, $this->editor, $this->gitChanges, $this->gitCommitBox, $this->gitHistory, $this->gitSeparator, $this->gitDiff]);
 
             return;
         }
 
         $menuRect = $this->renderer->getWidgetRect($this->menuBar);
-        $tabsRect = $this->renderer->getWidgetRect($this->tabBar);
-        $editorRect = $this->renderer->getWidgetRect($this->editor);
-        if (null === $menuRect || null === $tabsRect || null === $editorRect) {
+        $paneRect = ($this->gitViewOpen)()
+            ? $menuRect // in the git view the menu row spans the full width; clamp to it
+            : $this->renderer->getWidgetRect($this->editor);
+        if (null === $menuRect || null === $paneRect) {
             return; // no frame rendered yet; the next navigate will place it
         }
 
-        // The menu bar now lives at the top of the editor pane, so its titles
+        // The menu bar heads the pane its dropdown floats over, so its titles
         // share the pane's columns: anchor each dropdown directly under its
         // title (titleStart is menu-bar-local), clamped to the pane's width.
-        $panelWidth = min($this->menuBar->panelWidth(), $editorRect->columns);
+        $panelWidth = min($this->menuBar->panelWidth(), $paneRect->columns);
         $anchor = max(
-            $editorRect->col,
-            min($menuRect->col + $this->menuBar->titleStart($this->menuBar->openIndex()), $editorRect->col + $editorRect->columns - $panelWidth),
+            $paneRect->col,
+            min($menuRect->col + $this->menuBar->titleStart($this->menuBar->openIndex()), $paneRect->col + $paneRect->columns - $panelWidth),
         );
         $top = $menuRect->row + $menuRect->rows;
         $segments = $this->menuBar->dropdownSegments($panelWidth);
 
         $this->menuDropdown = ['top' => $top, 'col' => $anchor, 'width' => $panelWidth, 'count' => \count($segments)];
-        $this->pushOverlays($segments, $top, $anchor, $panelWidth, [$this->tabBar, $this->editor, $this->breadcrumbs]);
+        $this->pushOverlays($segments, $top, $anchor, $panelWidth, $this->menuPanes());
     }
 
     /**

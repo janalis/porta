@@ -87,6 +87,37 @@ final class MenuModelTest extends TestCase
         $this->assertTrue($this->item($menus, 'Git', 'Git: Stage Current File')->enabled());
     }
 
+    public function testGitViewGreysOutEverythingButTheSafeCommands(): void
+    {
+        $editor = new CodeEditorWidget();
+        $editor->openFile('x.php', "<?php\n");
+        $gitViewOpen = true;
+        $ideKeys = new Keybindings([]);
+        $commands = $this->gitCommands()
+            ->add('git_undo_commit', static function (): void {}, label: 'Git: Undo Last Commit')
+            ->add('ide_git', static function (): void {}, label: 'Git: Changes');
+        $menus = MenuModel::build($commands, $editor, $ideKeys, function () use (&$gitViewOpen): bool {
+            return $gitViewOpen;
+        });
+
+        // Open view: only the git-safe commands stay live, file open or not.
+        $this->assertFalse($this->item($menus, 'Edit', 'Undo')->enabled(), 'editor actions target the detached editor');
+        $this->assertFalse($this->item($menus, 'File', 'Save File')->enabled());
+        $this->assertFalse($this->item($menus, 'File', 'Go to File')->enabled(), 'even non-file-scoped IDE commands grey out');
+        $this->assertFalse($this->item($menus, 'Git', 'Git: Stage Current File')->enabled(), 'stage targets the editor file');
+        $this->assertTrue($this->item($menus, 'File', 'Quit')->enabled());
+        $this->assertTrue($this->item($menus, 'Git', 'Git: Changes')->enabled());
+        $this->assertTrue($this->item($menus, 'Git', 'Git: Commit…')->enabled());
+        $this->assertTrue($this->item($menus, 'Git', 'Git: Undo Last Commit')->enabled());
+        $this->assertTrue($this->item($menus, 'Help', 'Find Action')->enabled());
+
+        // Closed view: the same menus fall back to the file-scoped rules.
+        $gitViewOpen = false;
+        $this->assertTrue($this->item($menus, 'Edit', 'Undo')->enabled());
+        $this->assertTrue($this->item($menus, 'Git', 'Git: Stage Current File')->enabled());
+        $this->assertTrue($this->item($menus, 'File', 'Go to File')->enabled());
+    }
+
     public function testEditorItemRunsRunActionAndShowsShortcut(): void
     {
         $editor = new CodeEditorWidget();

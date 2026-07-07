@@ -9,6 +9,8 @@ use Porta\Ui\ListNavigation;
 use Porta\Ui\ListSelection;
 use Porta\Ui\Style;
 use Porta\Widget\InputHook;
+use Porta\Widget\Render\MenuOverlayHost;
+use Porta\Widget\Render\MenuOverlayHostTrait;
 use Symfony\Component\Tui\Ansi\AnsiUtils;
 use Symfony\Component\Tui\Input\Key;
 use Symfony\Component\Tui\Render\RenderContext;
@@ -24,10 +26,11 @@ use Symfony\Component\Tui\Widget\VerticallyExpandableInterface;
  * staged state. Space toggles staging, `d` arms an inline discard
  * confirmation, Enter/selection drives the diff pane via onSelect.
  */
-final class ChangesListWidget extends AbstractWidget implements FocusableInterface, VerticallyExpandableInterface
+final class ChangesListWidget extends AbstractWidget implements FocusableInterface, MenuOverlayHost, VerticallyExpandableInterface
 {
     use FocusableTrait;
     use InputHook;
+    use MenuOverlayHostTrait;
     use KeybindingsTrait;
 
     private const array STATUS_FG = [
@@ -278,7 +281,7 @@ final class ChangesListWidget extends AbstractWidget implements FocusableInterfa
             $lines[] = $bg.AnsiUtils::truncateToWidth($text, $width, '…', pad: true)."\x1b[0m";
         }
 
-        return $lines;
+        return $this->withMenuOverlay($lines, $width);
     }
 
     public function isVerticallyExpanded(): bool

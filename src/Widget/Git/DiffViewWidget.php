@@ -9,6 +9,8 @@ use Porta\Git\DiffLine;
 use Porta\Highlight\CodeHighlighter;
 use Porta\Widget\Render\LineDecorator;
 use Porta\Widget\InputHook;
+use Porta\Widget\Render\MenuOverlayHost;
+use Porta\Widget\Render\MenuOverlayHostTrait;
 use Symfony\Component\Tui\Ansi\AnsiUtils;
 use Symfony\Component\Tui\Input\Key;
 use Symfony\Component\Tui\Render\RenderContext;
@@ -24,10 +26,11 @@ use Symfony\Component\Tui\Widget\VerticallyExpandableInterface;
  * highlighting (deleted lines stay plain red — the pre-image no longer
  * matches the file's highlight state). Scrollable; read-only for history.
  */
-final class DiffViewWidget extends AbstractWidget implements FocusableInterface, VerticallyExpandableInterface
+final class DiffViewWidget extends AbstractWidget implements FocusableInterface, MenuOverlayHost, VerticallyExpandableInterface
 {
     use FocusableTrait;
     use InputHook;
+    use MenuOverlayHostTrait;
     use KeybindingsTrait;
 
     private const string ADD_FG = "\x1b[38;5;114m";
@@ -270,7 +273,7 @@ final class DiffViewWidget extends AbstractWidget implements FocusableInterface,
                 $lines[] = str_repeat(' ', $width);
             }
 
-            return $lines;
+            return $this->withMenuOverlay($lines, $width);
         }
 
         foreach (\array_slice($this->rows, $this->scroll, $rows - 1) as $i => $row) {
@@ -287,7 +290,7 @@ final class DiffViewWidget extends AbstractWidget implements FocusableInterface,
             $lines[] = str_repeat(' ', $width);
         }
 
-        return $lines;
+        return $this->withMenuOverlay($lines, $width);
     }
 
     /**
