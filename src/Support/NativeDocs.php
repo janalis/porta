@@ -87,9 +87,11 @@ final class NativeDocs
             return null;
         }
 
+        $mdnSuffix = self::JS_BUILTINS[$word] ?? null;
+
         return match ($language) {
             'php' => self::phpUrl($word),
-            'javascript', 'typescript' => isset(self::JS_BUILTINS[$word]) ? self::MDN.self::JS_BUILTINS[$word] : null,
+            'javascript', 'typescript' => null === $mdnSuffix ? null : self::MDN.$mdnSuffix,
             'css', 'scss' => \in_array($word, self::CSS_PROPERTIES, true) ? self::MDN.'Web/CSS/'.$word : null,
             'python' => \in_array($word, self::PYTHON_BUILTINS, true) ? 'https://docs.python.org/3/library/functions.html#'.$word : null,
             default => null,
