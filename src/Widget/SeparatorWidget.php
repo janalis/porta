@@ -4,7 +4,8 @@ declare(strict_types=1);
 
 namespace Porta\Widget;
 
-use Porta\Widget\Render\MenuOverlay;
+use Porta\Widget\Render\MenuOverlayHost;
+use Porta\Widget\Render\MenuOverlayHostTrait;
 use Symfony\Component\Tui\Render\RenderContext;
 use Symfony\Component\Tui\Widget\AbstractWidget;
 use Symfony\Component\Tui\Widget\VerticallyExpandableInterface;
@@ -15,19 +16,9 @@ use Symfony\Component\Tui\Widget\VerticallyExpandableInterface;
  * spans — so a context menu that spills across the sidebar boundary paints solidly
  * over this column instead of leaving a hole.
  */
-final class SeparatorWidget extends AbstractWidget implements VerticallyExpandableInterface
+final class SeparatorWidget extends AbstractWidget implements MenuOverlayHost, VerticallyExpandableInterface
 {
-    /** @var list<array{row: int, col: int, width: int, segment: string}> floating menu spans to overlay */
-    private array $menuOverlay = [];
-
-    /**
-     * @param list<array{row: int, col: int, width: int, segment: string}> $spans
-     */
-    public function setMenuOverlay(array $spans): void
-    {
-        $this->menuOverlay = $spans;
-        $this->invalidate();
-    }
+    use MenuOverlayHostTrait;
 
     public function isVerticallyExpanded(): bool
     {
@@ -44,6 +35,6 @@ final class SeparatorWidget extends AbstractWidget implements VerticallyExpandab
         $rows = max(1, $context->getRows() > 0 ? $context->getRows() : 1);
         $lines = array_fill(0, $rows, ' ');
 
-        return MenuOverlay::apply($lines, $this->menuOverlay, 1);
+        return $this->withMenuOverlay($lines, 1);
     }
 }

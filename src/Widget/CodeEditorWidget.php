@@ -22,7 +22,8 @@ use Porta\Widget\Overlay\OverlayHost;
 use Porta\Widget\Render\EditorRenderer;
 use Porta\Widget\Render\LineDecorator;
 use Porta\Widget\Render\LineSpans;
-use Porta\Widget\Render\MenuOverlay;
+use Porta\Widget\Render\MenuOverlayHost;
+use Porta\Widget\Render\MenuOverlayHostTrait;
 use Symfony\Component\Tui\Ansi\AnsiUtils;
 use Symfony\Component\Tui\Input\Key;
 use Symfony\Component\Tui\Render\RenderContext;
@@ -38,10 +39,11 @@ use Symfony\Component\Tui\Widget\VerticallyExpandableInterface;
  * IDE-style code editor: line-number gutter, syntax highlighting,
  * vertical + horizontal scrolling, LSP diagnostics and a completion popup.
  */
-final class CodeEditorWidget extends AbstractWidget implements FocusableInterface, VerticallyExpandableInterface
+final class CodeEditorWidget extends AbstractWidget implements FocusableInterface, MenuOverlayHost, VerticallyExpandableInterface
 {
     use BracketedPasteTrait;
     use FocusableTrait;
+    use MenuOverlayHostTrait;
     use InputHook;
     use KeybindingsTrait;
 
@@ -96,9 +98,6 @@ final class CodeEditorWidget extends AbstractWidget implements FocusableInterfac
 
     /** @var array<int, string> 0-based line => 'added'|'modified'|'deleted' */
     private array $gitMarks = [];
-
-    /** @var list<array{row: int, col: int, width: int, segment: string}> floating menu dropdown spans (local coords) */
-    private array $menuOverlay = [];
 
     /** One-line signature hint shown above the cursor, cleared on movement. */
     private ?string $signatureHint = null;
@@ -344,19 +343,6 @@ final class CodeEditorWidget extends AbstractWidget implements FocusableInterfac
     public function setGitMarks(array $byLine): void
     {
         $this->gitMarks = $byLine;
-        $this->invalidate();
-    }
-
-    /**
-     * Floating application-menu dropdown spans (in this widget's local coords) to
-     * composite over the editor, or [] for none. Set by the coordinator so the
-     * menu dropdown floats without reflowing the layout.
-     *
-     * @param list<array{row: int, col: int, width: int, segment: string}> $spans
-     */
-    public function setMenuOverlay(array $spans): void
-    {
-        $this->menuOverlay = $spans;
         $this->invalidate();
     }
 
@@ -959,7 +945,7 @@ final class CodeEditorWidget extends AbstractWidget implements FocusableInterfac
             $this->lastGutterWidth = 0;
             $this->lastStripeCol = \PHP_INT_MAX; // no stripe over the empty-state pane
 
-            return MenuOverlay::apply($this->renderEmptyState($columns, $rows), $this->menuOverlay, $columns);
+            return $this->withMenuOverlay($this->renderEmptyState($columns, $rows), $columns);
         }
 
         $doc = $this->document;
@@ -1057,11 +1043,7 @@ final class CodeEditorWidget extends AbstractWidget implements FocusableInterfac
 
         // The overlay/prompt chrome composites over the content; the
         // application-menu dropdown floats above everything else.
-        return MenuOverlay::apply(
-            $this->overlayHost->composite($result, $columns, $rows, $this->focused),
-            $this->menuOverlay,
-            $columns,
-        );
+        return $this->withMenuOverlay($this->overlayHost->composite($result, $columns, $rows, $this->focused), $columns);
     }
 
     /**

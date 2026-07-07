@@ -7,7 +7,8 @@ namespace Porta\Widget;
 use Porta\Ui\ListNavigation;
 use Porta\Ui\ListSelection;
 use Porta\Ui\Style;
-use Porta\Widget\Render\MenuOverlay;
+use Porta\Widget\Render\MenuOverlayHost;
+use Porta\Widget\Render\MenuOverlayHostTrait;
 use Symfony\Component\Tui\Ansi\AnsiUtils;
 use Symfony\Component\Tui\Input\Key;
 use Symfony\Component\Tui\Render\RenderContext;
@@ -20,9 +21,10 @@ use Symfony\Component\Tui\Widget\VerticallyExpandableInterface;
 /**
  * Project file tree with lazy directory expansion.
  */
-final class FileTreeWidget extends AbstractWidget implements FocusableInterface, VerticallyExpandableInterface
+final class FileTreeWidget extends AbstractWidget implements FocusableInterface, MenuOverlayHost, VerticallyExpandableInterface
 {
     use FocusableTrait;
+    use MenuOverlayHostTrait;
     use InputHook;
     use KeybindingsTrait;
 
@@ -58,9 +60,6 @@ final class FileTreeWidget extends AbstractWidget implements FocusableInterface,
     /** @var (callable(string): void)|null */
     private $onOpenFile = null;
 
-    /** @var list<array{row: int, col: int, width: int, segment: string}> floating context-menu spans (local coords) to overlay */
-    private array $menuOverlay = [];
-
     public function __construct(
         private readonly string $rootDir,
         private int $width = 30,
@@ -84,17 +83,6 @@ final class FileTreeWidget extends AbstractWidget implements FocusableInterface,
         $this->onOpenFile = $callback;
 
         return $this;
-    }
-
-    /**
-     * Floating context-menu dropdown spans (local coords) to overlay, or [] for none.
-     *
-     * @param list<array{row: int, col: int, width: int, segment: string}> $spans
-     */
-    public function setMenuOverlay(array $spans): void
-    {
-        $this->menuOverlay = $spans;
-        $this->invalidate();
     }
 
     /**
@@ -295,7 +283,7 @@ final class FileTreeWidget extends AbstractWidget implements FocusableInterface,
         // width: the tree's rows are exactly $width wide, and a measuring layout
         // pass can hand us a wider context — padding to that would blow out the
         // tree's reported width and starve the editor pane.
-        return MenuOverlay::apply($lines, $this->menuOverlay, $width);
+        return $this->withMenuOverlay($lines, $width);
     }
 
     private function rebuild(): void

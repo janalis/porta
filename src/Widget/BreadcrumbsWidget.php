@@ -4,7 +4,8 @@ declare(strict_types=1);
 
 namespace Porta\Widget;
 
-use Porta\Widget\Render\MenuOverlay;
+use Porta\Widget\Render\MenuOverlayHost;
+use Porta\Widget\Render\MenuOverlayHostTrait;
 use Symfony\Component\Tui\Ansi\AnsiUtils;
 use Symfony\Component\Tui\Render\RenderContext;
 use Symfony\Component\Tui\Widget\AbstractWidget;
@@ -15,8 +16,10 @@ use Symfony\Component\Tui\Widget\AbstractWidget;
  * tracks the caret for free on every frame. Renders zero rows (no bar) when the
  * caret is not inside any scope, so a structureless file keeps its full editor.
  */
-final class BreadcrumbsWidget extends AbstractWidget
+final class BreadcrumbsWidget extends AbstractWidget implements MenuOverlayHost
 {
+    use MenuOverlayHostTrait;
+
     private const SEPARATOR = "\x1b[38;5;240m › \x1b[39m"; // visible width 3
 
     /** @var (callable(): list<array{label: string, line: int}>)|null */
@@ -26,21 +29,6 @@ final class BreadcrumbsWidget extends AbstractWidget
 
     /** @var list<array{start: int, width: int, line: int}> segment layout from the last render, for hit-testing */
     private array $lastLayout = [];
-
-    /** @var list<array{row: int, col: int, width: int, segment: string}> floating menu spans to overlay on top */
-    private array $menuOverlay = [];
-
-    /**
-     * Floating menu-dropdown spans (local coords) to composite over the bar, so an
-     * app-menu dropdown covers the breadcrumb row instead of drawing behind it.
-     *
-     * @param list<array{row: int, col: int, width: int, segment: string}> $spans
-     */
-    public function setMenuOverlay(array $spans): void
-    {
-        $this->menuOverlay = $spans;
-        $this->invalidate();
-    }
 
     /** @param callable(): list<array{label: string, line: int}> $provider */
     public function setProvider(callable $provider): self
@@ -88,7 +76,7 @@ final class BreadcrumbsWidget extends AbstractWidget
             $col += $width;
         }
 
-        return MenuOverlay::apply([AnsiUtils::truncateToWidth($content, $columns, '…', pad: true)."\x1b[0m"], $this->menuOverlay, $columns);
+        return $this->withMenuOverlay([AnsiUtils::truncateToWidth($content, $columns, '…', pad: true)."\x1b[0m"], $columns);
     }
 
     /** The jump line of the crumb at column $col of the last render, or null. */

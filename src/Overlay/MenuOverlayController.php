@@ -9,11 +9,13 @@ use Porta\Widget\CodeEditorWidget;
 use Porta\Widget\ContextMenu;
 use Porta\Widget\FileTreeWidget;
 use Porta\Widget\MenuBarWidget;
+use Porta\Widget\Render\MenuOverlayHost;
 use Porta\Widget\SeparatorWidget;
 use Porta\Widget\TabBarWidget;
 use Symfony\Component\Tui\Ansi\AnsiUtils;
 use Symfony\Component\Tui\Render\Renderer;
 use Symfony\Component\Tui\Render\WidgetRect;
+use Symfony\Component\Tui\Widget\AbstractWidget;
 
 /**
  * Positions the app-menu dropdown and the right-click context menu as floating
@@ -146,7 +148,7 @@ final class MenuOverlayController
         $this->pushOverlays($segments, $top, $col, $panelWidth, [$this->tree, $this->tabBar, $this->editor, $this->separator, $this->breadcrumbs]);
     }
 
-    /** @param list<BreadcrumbsWidget|CodeEditorWidget|FileTreeWidget|SeparatorWidget|TabBarWidget> $panes */
+    /** @param list<AbstractWidget&MenuOverlayHost> $panes */
     private function clearOverlays(array $panes): void
     {
         foreach ($panes as $pane) {
@@ -158,8 +160,8 @@ final class MenuOverlayController
      * Slice the dropdown into per-pane local spans and push them; panes without
      * a rect this frame (e.g. the breadcrumb hidden outside every scope) clear.
      *
-     * @param list<array{segment: string, separator: bool}>                                        $segments
-     * @param list<BreadcrumbsWidget|CodeEditorWidget|FileTreeWidget|SeparatorWidget|TabBarWidget> $panes
+     * @param list<array{segment: string, separator: bool}> $segments
+     * @param list<AbstractWidget&MenuOverlayHost>           $panes
      */
     private function pushOverlays(array $segments, int $top, int $anchor, int $panelWidth, array $panes): void
     {

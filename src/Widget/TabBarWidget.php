@@ -4,7 +4,8 @@ declare(strict_types=1);
 
 namespace Porta\Widget;
 
-use Porta\Widget\Render\MenuOverlay;
+use Porta\Widget\Render\MenuOverlayHost;
+use Porta\Widget\Render\MenuOverlayHostTrait;
 use Symfony\Component\Tui\Ansi\AnsiUtils;
 use Symfony\Component\Tui\Render\RenderContext;
 use Symfony\Component\Tui\Widget\AbstractWidget;
@@ -13,8 +14,10 @@ use Symfony\Component\Tui\Widget\AbstractWidget;
  * One-line editor tab strip. Content comes from a provider closure so it
  * always reflects the BufferManager state.
  */
-final class TabBarWidget extends AbstractWidget
+final class TabBarWidget extends AbstractWidget implements MenuOverlayHost
 {
+    use MenuOverlayHostTrait;
+
     /** @var (callable(): list<array{name: string, dirty: bool, active: bool}>)|null */
     private $provider = null;
 
@@ -22,20 +25,6 @@ final class TabBarWidget extends AbstractWidget
 
     /** @var list<array{index: int, start: int, width: int, closeStart: int, closeWidth: int}> layout from the last render */
     private array $lastLayout = [];
-
-    /** @var list<array{row: int, col: int, width: int, segment: string}> menu-dropdown spans to composite on top */
-    private array $menuOverlay = [];
-
-    /**
-     * Floating application-menu dropdown spans (local coords) to overlay, or [] for none.
-     *
-     * @param list<array{row: int, col: int, width: int, segment: string}> $spans
-     */
-    public function setMenuOverlay(array $spans): void
-    {
-        $this->menuOverlay = $spans;
-        $this->invalidate();
-    }
 
     /** @param callable(): list<array{name: string, dirty: bool, active: bool}> $provider */
     public function setProvider(callable $provider): self
@@ -63,7 +52,7 @@ final class TabBarWidget extends AbstractWidget
         $tabs = null !== $this->provider ? ($this->provider)() : [];
 
         if ([] === $tabs) {
-            return MenuOverlay::apply([str_repeat(' ', $columns)], $this->menuOverlay, $columns);
+            return $this->withMenuOverlay([str_repeat(' ', $columns)], $columns);
         }
 
         // Make sure the active tab is visible: drop leading tabs if needed. Each
@@ -118,7 +107,7 @@ final class TabBarWidget extends AbstractWidget
             $used += $part['width'];
         }
 
-        return MenuOverlay::apply([$line.str_repeat(' ', max(0, $columns - AnsiUtils::visibleWidth($line)))], $this->menuOverlay, $columns);
+        return $this->withMenuOverlay([$line.str_repeat(' ', max(0, $columns - AnsiUtils::visibleWidth($line)))], $columns);
     }
 
     /**
