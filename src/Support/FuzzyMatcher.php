@@ -25,11 +25,20 @@ final class FuzzyMatcher
      */
     public static function score(string $haystack, string $query, int $boundaryStart = 0): ?int
     {
-        $lowerHaystack = strtolower($haystack);
-        $lowerQuery = strtolower($query);
+        return self::scoreLowered(strtolower($haystack), strtolower($query), $boundaryStart, $haystack);
+    }
 
+    /**
+     * Scoring core for pre-lowered operands, so a caller filtering thousands of
+     * candidates per keystroke lowers each candidate once, not per keystroke.
+     * $original (case-preserved) enables the camelCase-hump bonus; null keeps
+     * it off — the go-to-file palette lowers its haystacks deliberately so
+     * paths never earn hump noise.
+     */
+    public static function scoreLowered(string $lowerHaystack, string $lowerQuery, int $boundaryStart = 0, ?string $original = null): ?int
+    {
         $score = 0;
-        $length = \strlen($haystack);
+        $length = \strlen($lowerHaystack);
         $pos = -1;
         $prevPos = -2;
 
@@ -45,10 +54,10 @@ final class FuzzyMatcher
             if ($pos >= $boundaryStart) {
                 $score += 3; // inside the primary segment
             }
-            $prev = $pos > 0 ? $haystack[$pos - 1] : '';
+            $prev = $pos > 0 ? $lowerHaystack[$pos - 1] : '';
             if (0 === $pos || '/' === $prev || '_' === $prev || '-' === $prev || '.' === $prev) {
                 $score += 4; // word-boundary start
-            } elseif (ctype_lower($prev) && ctype_upper($haystack[$pos])) {
+            } elseif (null !== $original && ctype_lower($original[$pos - 1]) && ctype_upper($original[$pos])) {
                 $score += 4; // camelCase hump
             }
             $prevPos = $pos;

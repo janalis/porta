@@ -50,4 +50,26 @@ final class FuzzyMatcherTest extends TestCase
         $without = FuzzyMatcher::score('dir/name', 'name', 100);
         $this->assertGreaterThan($without, $withBonus);
     }
+
+    public function testScoreLoweredMatchesScoreOnPreLoweredInputs(): void
+    {
+        foreach ([['src/UserRepo.php', 'urp', 4], ['getUserName', 'gun', 0], ['a-b_c.d', 'abcd', 0]] as [$haystack, $query, $boundary]) {
+            $this->assertSame(
+                FuzzyMatcher::score($haystack, $query, $boundary),
+                FuzzyMatcher::scoreLowered(strtolower($haystack), strtolower($query), $boundary, $haystack),
+                "parity for {$haystack}",
+            );
+        }
+    }
+
+    public function testScoreLoweredWithoutOriginalDisablesHumps(): void
+    {
+        // The hump bonus needs the original case; without it the same match
+        // scores lower — exactly the go-to-file palette's deliberate behavior.
+        $withHumps = FuzzyMatcher::scoreLowered('getusername', 'un', 0, 'getUserName');
+        $withoutHumps = FuzzyMatcher::scoreLowered('getusername', 'un', 0);
+        $this->assertNotNull($withoutHumps);
+        $this->assertGreaterThan($withoutHumps, $withHumps);
+        $this->assertNull(FuzzyMatcher::scoreLowered('abc', 'xyz'), 'non-subsequence still null');
+    }
 }

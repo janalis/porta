@@ -34,7 +34,12 @@ final class GoToFileWidget extends OverlayWidget implements FocusableInterface
     private readonly TextField $query;
     private readonly ListSelection $list;
 
-    /** @var list<string>|null relative paths, cached per open */
+    /**
+     * Candidates cached per open, with the lowered path and basename-boundary
+     * offset precomputed once so per-keystroke filtering does no string prep.
+     *
+     * @var list<array{path: string, lower: string, boundary: int}>|null
+     */
     private ?array $files = null;
     /** @var list<string> current filtered results (relative paths) */
     private array $results = [];
@@ -172,7 +177,7 @@ final class GoToFileWidget extends OverlayWidget implements FocusableInterface
         $this->list->reset();
 
         if ('' === $this->query->value()) {
-            $this->results = \array_slice($this->files, 0, self::MAX_RESULTS);
+            $this->results = array_map(static fn (array $entry): string => $entry['path'], \array_slice($this->files, 0, self::MAX_RESULTS));
 
             return;
         }
@@ -180,14 +185,12 @@ final class GoToFileWidget extends OverlayWidget implements FocusableInterface
         /** @var list<array{0: int, 1: string}> $scored */
         $scored = [];
         $query = strtolower($this->query->value());
-        foreach ($this->files as $path) {
-            // Lower-cased haystack so the basename bonus applies without
-            // camelCase noise; the basename offset is the primary segment.
-            $lower = strtolower($path);
-            $boundary = \strlen($lower) - \strlen(basename($path));
-            $score = FuzzyMatcher::score($lower, $query, $boundary);
+        foreach ($this->files as $entry) {
+            // Pre-lowered haystack (no camelCase noise on paths, by design);
+            // the basename offset is the primary segment.
+            $score = FuzzyMatcher::scoreLowered($entry['lower'], $query, $entry['boundary']);
             if (null !== $score) {
-                $scored[] = [$score, $path];
+                $scored[] = [$score, $entry['path']];
             }
         }
         usort($scored, static fn (array $a, array $b) => $b[0] <=> $a[0] ?: \strlen($a[1]) <=> \strlen($b[1]));
@@ -196,7 +199,7 @@ final class GoToFileWidget extends OverlayWidget implements FocusableInterface
         $this->results = $paths;
     }
 
-    /** @return list<string> relative paths */
+    /** @return list<array{path: string, lower: string, boundary: int}> sorted by path */
     private function walk(): array
     {
         $finder = new Finder()
@@ -207,13 +210,17 @@ final class GoToFileWidget extends OverlayWidget implements FocusableInterface
             ->exclude(['.git', 'node_modules', '.idea', '.vscode'])
             ->notName('.DS_Store');
 
-        $files = [];
+        $paths = [];
         foreach (new \LimitIterator($finder->getIterator(), 0, self::MAX_FILES) as $file) {
-            $files[] = $file->getRelativePathname();
+            $paths[] = $file->getRelativePathname();
         }
-        sort($files);
+        sort($paths);
 
-        return $files;
+        return array_map(static function (string $path): array {
+            $lower = strtolower($path);
+
+            return ['path' => $path, 'lower' => $lower, 'boundary' => \strlen($lower) - \strlen(basename($lower))];
+        }, $paths);
     }
 
     /** @return array<string, string[]> */
