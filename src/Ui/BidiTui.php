@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Porta\Ui;
 
+use Porta\I18n\Bidi;
 use Symfony\Component\Tui\Render\Renderer;
 use Symfony\Component\Tui\Render\ScreenWriter;
 use Symfony\Component\Tui\Tui;
@@ -25,6 +26,9 @@ final class BidiTui extends Tui
     /** @var (\Closure(string): string)|null the per-line visual reorder, or null for the stock path */
     private ?\Closure $reorder = null;
 
+    /** @var list<string> the last frame's pre-reorder lines, for visual→logical column mapping */
+    private array $lastLines = [];
+
     /**
      * Install (or clear, with null) the per-line reorder applied to every frame.
      *
@@ -33,6 +37,23 @@ final class BidiTui extends Tui
     public function setLineReorderer(?\Closure $reorder): void
     {
         $this->reorder = $reorder;
+        if (null === $reorder) {
+            $this->lastLines = [];
+        }
+    }
+
+    /**
+     * Map a screen (visual) column on $row back to the logical column that the
+     * widgets rendered, inverting the RTL reorder. Identity when no reorder is
+     * active or the row was not part of the last frame.
+     */
+    public function logicalColumn(int $row, int $visualCol): int
+    {
+        if (null === $this->reorder || !isset($this->lastLines[$row])) {
+            return $visualCol;
+        }
+
+        return Bidi::visualToLogicalColumn($this->lastLines[$row], $visualCol, true);
     }
 
     public function processRender(): void
@@ -58,7 +79,8 @@ final class BidiTui extends Tui
         $screenWriter = new \ReflectionProperty(Tui::class, 'screenWriter')->getValue($this);
 
         $terminal = $this->getTerminal();
-        $lines = $renderer->render($root, $terminal->getColumns(), $terminal->getRows());
+        $lines = array_values($renderer->render($root, $terminal->getColumns(), $terminal->getRows()));
+        $this->lastLines = $lines; // pre-reorder, row-indexed, for click column mapping
 
         $screenWriter->writeLines(array_map(static fn (string $line): string => $reorder($line), $lines));
     }

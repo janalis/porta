@@ -36,7 +36,9 @@ final class Bidi
     public static function reorder(string $line, bool $baseRtl): string
     {
         $matches = [];
-        if (!preg_match_all('/\x1b\[[0-9;]*m|\X/u', $line, $matches)) {
+        // Tokens: an SGR sequence, the zero-width APC cursor marker
+        // (\x1b_…\x07), or a single grapheme cluster.
+        if (!preg_match_all('/\x1b\[[0-9;]*m|\x1b_[^\x07]*\x07|\X/u', $line, $matches)) {
             return $line;
         }
 
@@ -44,10 +46,12 @@ final class Bidi
         $cells = [];
         $active = '';
         foreach ($matches[0] as $token) {
-            if (str_starts_with($token, "\x1b")) {
+            if (str_starts_with($token, "\x1b[")) { // SGR: updates the active style
                 $active = "\x1b[0m" === $token || "\x1b[m" === $token ? '' : $active . $token;
                 continue;
             }
+            // A grapheme, or the zero-width cursor marker carried as a neutral cell
+            // so the reorder lands it at the caret's visual column.
             $cells[] = ['g' => $token, 'sgr' => $active];
         }
 
@@ -66,9 +70,70 @@ final class Bidi
         return self::serialize($cells, $levels, $order);
     }
 
+    /**
+     * Map a visual column (as clicked on screen) back to the logical column in
+     * the pre-reorder line, inverting {@see reorder()} for the same base. A line
+     * with no reordering (ltr base, no rtl runs) maps each column to itself, so
+     * mouse hit-testing stays correct for untouched content.
+     */
+    public static function visualToLogicalColumn(string $line, int $visualCol, bool $baseRtl): int
+    {
+        $matches = [];
+        if ($visualCol < 0 || !preg_match_all('/\x1b\[[0-9;]*m|\x1b_[^\x07]*\x07|\X/u', $line, $matches)) {
+            return max(0, $visualCol);
+        }
+
+        /** @var list<array{g: string, w: int}> $glyphs */
+        $glyphs = [];
+        foreach ($matches[0] as $token) {
+            if (str_starts_with($token, "\x1b[")) {
+                continue; // SGR carries no column
+            }
+            // The APC cursor marker prints nothing; only real graphemes take width.
+            $width = str_starts_with($token, "\x1b") ? 0 : mb_strwidth($token, 'UTF-8');
+            $glyphs[] = ['g' => $token, 'w' => $width];
+        }
+        if ([] === $glyphs) {
+            return $visualCol;
+        }
+
+        $classes = array_map(static fn (array $c): string => self::classify($c['g']), $glyphs);
+        if (!$baseRtl && !\in_array('R', $classes, true)) {
+            return $visualCol;
+        }
+
+        $levels = self::levels($classes, $baseRtl);
+        $order = self::visualOrder($levels);
+
+        $logicalStart = [];
+        $acc = 0;
+        foreach ($glyphs as $i => $glyph) {
+            $logicalStart[$i] = $acc;
+            $acc += $glyph['w'];
+        }
+
+        $visual = 0;
+        foreach ($order as $logicalIndex) {
+            $width = $glyphs[$logicalIndex]['w'];
+            if (0 === $width) {
+                continue; // the zero-width cursor marker occupies no column
+            }
+            if ($visualCol < $visual + $width) {
+                return $logicalStart[$logicalIndex] + ($visualCol - $visual);
+            }
+            $visual += $width;
+        }
+
+        return $acc; // a click past the content maps to the logical line end
+    }
+
     /** Bidi class of a grapheme's base codepoint: R (rtl), EN (digit), L, or N (neutral). */
     private static function classify(string $grapheme): string
     {
+        // The zero-width cursor marker (and any stray control sequence) is neutral.
+        if (str_starts_with($grapheme, "\x1b")) {
+            return 'N';
+        }
         // A grapheme cluster may carry combining marks; classify by its base
         // codepoint (always present — \X matches at least one).
         $cp = mb_ord(mb_substr($grapheme, 0, 1, 'UTF-8'), 'UTF-8');

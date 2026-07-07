@@ -86,4 +86,39 @@ final class BidiTuiTest extends TestCase
 
         self::assertStringContainsString(self::SHALOM, $terminal->getOutput());
     }
+
+    public function testLogicalColumnMapsClicksBackThroughTheReorder(): void
+    {
+        $terminal = new VirtualTerminal(columns: 20, rows: 2);
+        $tui = $this->tuiWith($terminal);
+        $tui->setLineReorderer(static fn (string $line): string => Bidi::reorder($line, true));
+        $tui->requestRender();
+        $tui->processRender();
+
+        // Row 0 renders שלום (reversed on screen); the leftmost screen column
+        // maps back to the last logical character.
+        self::assertSame(3, $tui->logicalColumn(0, 0));
+        self::assertSame(0, $tui->logicalColumn(0, 3));
+    }
+
+    public function testLogicalColumnIsIdentityWithoutAReorderer(): void
+    {
+        $terminal = new VirtualTerminal(columns: 20, rows: 2);
+        $tui = $this->tuiWith($terminal);
+        $tui->requestRender();
+        $tui->processRender();
+
+        self::assertSame(5, $tui->logicalColumn(0, 5)); // no reorderer → identity
+    }
+
+    public function testLogicalColumnIsIdentityForAnUnknownRow(): void
+    {
+        $terminal = new VirtualTerminal(columns: 20, rows: 2);
+        $tui = $this->tuiWith($terminal);
+        $tui->setLineReorderer(static fn (string $line): string => Bidi::reorder($line, true));
+        $tui->requestRender();
+        $tui->processRender();
+
+        self::assertSame(7, $tui->logicalColumn(99, 7)); // row not in the last frame
+    }
 }

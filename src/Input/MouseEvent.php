@@ -67,6 +67,15 @@ final class MouseEvent
         );
     }
 
+    /** A copy at a different screen column (visual→logical remap under RTL). */
+    public function withColumn(int $col): self
+    {
+        return new self(
+            $this->button, $col, $this->row, $this->pressed, $this->motion, $this->wheel,
+            $this->wheelDelta, $this->wheelHDelta, $this->shift, $this->alt, $this->ctrl,
+        );
+    }
+
     public function isLeftPress(): bool
     {
         return self::LEFT === $this->button && $this->pressed && !$this->motion && !$this->wheel;

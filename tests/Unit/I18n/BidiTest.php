@@ -111,4 +111,57 @@ final class BidiTest extends TestCase
         $line = "e\u{0301}";
         self::assertSame($line, self::strip(Bidi::reorder($line, true)));
     }
+
+    public function testTheZeroWidthCursorMarkerSurvivesAndTracksTheCaret(): void
+    {
+        $marker = "\x1b_pi:c;5\x07";
+        // Caret before "c" in Latin: the marker stays put (all-LTR run).
+        $out = Bidi::reorder("ab{$marker}cd", true);
+        self::assertSame(1, substr_count($out, $marker), 'the marker is not shattered');
+        self::assertStringContainsString("ab{$marker}cd", $out);
+
+        // Caret inside Hebrew: the marker rides the reversed run to the matching gap.
+        $he = self::SHALOM;
+        $withCaret = mb_substr($he, 0, 2, 'UTF-8') . $marker . mb_substr($he, 2, null, 'UTF-8');
+        $reordered = Bidi::reorder($withCaret, true);
+        self::assertSame(1, substr_count($reordered, $marker));
+    }
+
+    public function testVisualToLogicalColumnInvertsTheHebrewReversal(): void
+    {
+        // שלום reverses under rtl, so the leftmost screen column shows the last
+        // logical character and vice versa.
+        self::assertSame(3, Bidi::visualToLogicalColumn(self::SHALOM, 0, true));
+        self::assertSame(2, Bidi::visualToLogicalColumn(self::SHALOM, 1, true));
+        self::assertSame(1, Bidi::visualToLogicalColumn(self::SHALOM, 2, true));
+        self::assertSame(0, Bidi::visualToLogicalColumn(self::SHALOM, 3, true));
+    }
+
+    public function testVisualToLogicalColumnIsIdentityForUnreorderedContent(): void
+    {
+        self::assertSame(2, Bidi::visualToLogicalColumn('abc', 2, false)); // ltr, no rtl
+        self::assertSame(1, Bidi::visualToLogicalColumn('abc', 1, true)); // latin under rtl
+    }
+
+    public function testVisualToLogicalColumnHandlesEdges(): void
+    {
+        self::assertSame(0, Bidi::visualToLogicalColumn(self::SHALOM, -3, true)); // negative clamps
+        self::assertSame(4, Bidi::visualToLogicalColumn(self::SHALOM, 99, true)); // past end → line end
+        self::assertSame(5, Bidi::visualToLogicalColumn('', 5, true)); // empty line: identity
+        self::assertSame(2, Bidi::visualToLogicalColumn("\x1b[0m", 2, true)); // pure SGR: identity
+    }
+
+    public function testVisualToLogicalColumnSkipsTheZeroWidthMarker(): void
+    {
+        $marker = "\x1b_pi:c;5\x07";
+        // The marker occupies no column, so mapping still lands on the glyphs.
+        self::assertSame(1, Bidi::visualToLogicalColumn("a{$marker}bc", 1, true));
+    }
+
+    public function testVisualToLogicalColumnMapsWithinWideCharacters(): void
+    {
+        // 日 occupies screen columns 1–2; a click on its first cell maps to its
+        // logical column (1), just past the leading "a".
+        self::assertSame(1, Bidi::visualToLogicalColumn("a\u{65E5}b", 1, true));
+    }
 }

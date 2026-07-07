@@ -499,6 +499,7 @@ final class Ide
             $settingsKeys,
             $settingsSeparator,
             fn (): bool => $this->settingsView->isOpen(),
+            fn (int $row, int $col): int => $this->bidiTui->logicalColumn($row, $col),
         );
 
         // Now that both view controllers exist, settle the layout for the

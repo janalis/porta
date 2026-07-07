@@ -60,6 +60,11 @@ final class MouseRouter
      * @param \Closure(): bool $gitViewOpen      whether the git view owns the main area
      * @param \Closure(): bool $settingsViewOpen whether the settings view owns the main area
      */
+    /**
+     * @param \Closure(): bool      $gitViewOpen
+     * @param \Closure(): bool      $settingsViewOpen
+     * @param \Closure(int, int): int $toLogicalColumn map a screen (row, col) to the logical column
+     */
     public function __construct(
         private readonly HitTester $hit,
         private readonly Tui $tui,
@@ -90,10 +95,16 @@ final class MouseRouter
         private readonly KeybindingsListWidget $settingsKeys,
         private readonly SeparatorWidget $settingsSeparator,
         private readonly \Closure $settingsViewOpen,
+        private readonly \Closure $toLogicalColumn,
     ) {}
 
     public function route(MouseEvent $mouse): void
     {
+        // Under an RTL locale the frame's glyphs are reordered after layout, so a
+        // click's screen column is mapped back to the logical column the widgets
+        // rendered before any rect/hit-testing (identity for LTR content).
+        $mouse = $mouse->withColumn(($this->toLogicalColumn)($mouse->row, $mouse->col));
+
         $treeRect = $this->hit->rect($this->tree);
         $tabsRect = $this->hit->rect($this->tabBar);
         $editorRect = $this->hit->rect($this->editor);
