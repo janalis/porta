@@ -1020,21 +1020,21 @@ final class Ide
         $this->panels->showList(ResultsPanelMode::Problems, 'Problems', $results);
     }
 
+    /**
+     * @param array{
+     *     uri?: string,
+     *     diagnostics?: list<array{
+     *         severity?: int,
+     *         message?: string,
+     *         range: array{
+     *             start: array{line?: int, character?: int},
+     *             end: array{line?: int, character?: int},
+     *         },
+     *     }>,
+     * } $params
+     */
     private function handleDiagnostics(array $params): void
     {
-        /**
-         * @var array{
-         *     uri?: string,
-         *     diagnostics?: list<array{
-         *         severity?: int,
-         *         message?: string,
-         *         range: array{
-         *             start: array{line?: int, character?: int},
-         *             end: array{line?: int, character?: int},
-         *         },
-         *     }>,
-         * } $params
-         */
         $this->bufferService->applyDiagnostics($params['uri'] ?? '', LspMapper::diagnosticsByLine($params));
     }
 

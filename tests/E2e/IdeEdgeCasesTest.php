@@ -37,8 +37,13 @@ final class IdeEdgeCasesTest extends TestCase
      *
      * @param array<int|string, callable> $steps delay-ms => callback(Tui, VirtualTerminal)
      */
-    private function runIde(TempProject $project, ?string $file, array $steps, float $duration = 1.2): VirtualTerminal
+    private function runIde(TempProject $project, ?string $file, array $steps, ?float $duration = null): VirtualTerminal
     {
+        // Default duration: the last step plus a settle margin for its async
+        // fallout (mock-LSP roundtrips are stdio, ~ms). Tests whose tail work
+        // needs longer pass an explicit duration.
+        $duration ??= max([] === $steps ? 0.0 : max(array_keys($steps)) / 1000 + 0.5, 0.7);
+
         // Wide terminal so status-bar flashes are not truncated away
         $terminal = new VirtualTerminal(columns: 160, rows: 24);
         $ide = new Ide($project->dir, $file, $terminal);

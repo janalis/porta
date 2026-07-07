@@ -29,6 +29,7 @@
     },
     "require-dev": {
         "ext-simplexml": "*",
+        "brianium/paratest": "^7.23",
         "carthage-software/mago": "1.28.*",
         "phpunit/phpunit": "^13.2"
     },
@@ -41,8 +42,9 @@
         "format:check": "mago format --check",
         "lint": "mago lint",
         "analyze": "mago analyze",
-        "test": "@php vendor/bin/phpunit",
-        "coverage": "@php -d pcov.enabled=1 vendor/bin/phpunit --coverage-text --coverage-clover coverage/clover.xml",
+        "test": "@php vendor/bin/paratest --processes=auto --functional",
+        "test:serial": "@php vendor/bin/phpunit",
+        "coverage": "@php -d pcov.enabled=1 vendor/bin/paratest --processes=auto --functional --passthru-php='-d pcov.enabled=1' --coverage-clover coverage/clover.xml",
         "coverage:check": [
             "@coverage",
             "@php tools/coverage-check.php coverage/clover.xml 100"
