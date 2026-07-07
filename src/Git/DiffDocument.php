@@ -78,11 +78,51 @@ final readonly class DiffDocument
         }
 
         $hunks = array_map(
-            static fn (array $h): DiffHunk => new DiffHunk($h['old'], $h['oldCount'], $h['new'], $h['newCount'], $h['heading'], $h['lines']),
+            static fn (array $h): DiffHunk => new DiffHunk($h['old'], $h['oldCount'], $h['new'], $h['newCount'], $h['heading'], self::withIntraline($h['lines'])),
             $pending,
         );
 
         return new self($headerLines, $hunks);
+    }
+
+    /**
+     * Pair each ± run's i-th deletion with its i-th addition and stamp the
+     * intraline changed range on both lines.
+     *
+     * @param list<DiffLine> $lines
+     *
+     * @return list<DiffLine>
+     */
+    private static function withIntraline(array $lines): array
+    {
+        $count = \count($lines);
+        for ($i = 0; $i < $count; ++$i) {
+            if ('-' !== $lines[$i]->origin || ($i > 0 && '-' === $lines[$i - 1]->origin)) {
+                continue; // only the start of a deletion run
+            }
+            $delStart = $i;
+            $dels = 0;
+            while ($delStart + $dels < $count && '-' === $lines[$delStart + $dels]->origin) {
+                ++$dels;
+            }
+            $addStart = $delStart + $dels;
+            $adds = 0;
+            while ($addStart + $adds < $count && '+' === $lines[$addStart + $adds]->origin) {
+                ++$adds;
+            }
+            for ($p = 0; $p < min($dels, $adds); ++$p) {
+                $del = $lines[$delStart + $p];
+                $add = $lines[$addStart + $p];
+                $ranges = IntralineDiff::changedRanges($del->text, $add->text);
+                if (null !== $ranges) {
+                    $lines[$delStart + $p] = new DiffLine('-', $del->text, $del->oldNo, $del->newNo, $ranges[0]);
+                    $lines[$addStart + $p] = new DiffLine('+', $add->text, $add->oldNo, $add->newNo, $ranges[1]);
+                }
+            }
+            $i = $addStart + $adds - 1;
+        }
+
+        return $lines;
     }
 
     public function isEmpty(): bool

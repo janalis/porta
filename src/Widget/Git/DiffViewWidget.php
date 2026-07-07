@@ -5,7 +5,9 @@ declare(strict_types=1);
 namespace Porta\Widget\Git;
 
 use Porta\Git\DiffDocument;
+use Porta\Git\DiffLine;
 use Porta\Highlight\CodeHighlighter;
+use Porta\Widget\Render\LineDecorator;
 use Porta\Widget\InputHook;
 use Symfony\Component\Tui\Ansi\AnsiUtils;
 use Symfony\Component\Tui\Input\Key;
@@ -274,6 +276,26 @@ final class DiffViewWidget extends AbstractWidget implements FocusableInterface,
         return $lines;
     }
 
+    /**
+     * Overlay the intraline changed range (byte offsets on the raw text,
+     * converted to display columns) with a stronger background; the
+     * ANSI-aware LineDecorator keeps any syntax SGR spans intact.
+     */
+    private function withEmphasis(string $rendered, DiffLine $line, string $bg): string
+    {
+        if (null === $line->changedRange) {
+            return $rendered;
+        }
+        [$from, $to] = $line->changedRange;
+        if ($from >= $to) {
+            return $rendered;
+        }
+        $startCol = mb_strwidth(substr($line->text, 0, $from));
+        $endCol = $startCol + mb_strwidth(substr($line->text, $from, $to - $from));
+
+        return LineDecorator::apply($rendered, $startCol, $endCol, $bg, "\x1b[49m", '');
+    }
+
     /** Whether $rowIndex sits inside the armed `v` range. */
     private function inRange(int $rowIndex): bool
     {
@@ -304,10 +326,11 @@ final class DiffViewWidget extends AbstractWidget implements FocusableInterface,
 
         // The origin char and gutter mark the row kind; added/context text keeps
         // its syntax colors, deletions render whole-row red (the pre-image no
-        // longer matches the file's highlight state).
+        // longer matches the file's highlight state). Paired ± lines carry an
+        // intraline changed range, emphasized with a stronger background.
         $content = match ($line->origin) {
-            '+' => self::ADD_FG.'+'."\x1b[39m".($this->highlighted[$rowIndex] ?? $line->text),
-            '-' => self::DEL_FG.'-'.$line->text,
+            '+' => self::ADD_FG.'+'."\x1b[39m".$this->withEmphasis($this->highlighted[$rowIndex] ?? $line->text, $line, "\x1b[48;5;22m"),
+            '-' => self::DEL_FG.'-'.$this->withEmphasis($line->text, $line, "\x1b[48;5;88m"),
             '\\' => "\x1b[38;5;245m ".$line->text,
             default => ' '.($this->highlighted[$rowIndex] ?? $line->text),
         };

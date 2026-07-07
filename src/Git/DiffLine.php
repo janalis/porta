@@ -11,10 +11,12 @@ namespace Porta\Git;
  */
 final readonly class DiffLine
 {
+    /** @param array{int, int}|null $changedRange emphasized byte range from the intraline pairing */
     public function __construct(
         public string $origin, // ' ' | '+' | '-' | '\\'
         public string $text,
         public ?int $oldNo,
         public ?int $newNo,
+        public ?array $changedRange = null,
     ) {}
 }
