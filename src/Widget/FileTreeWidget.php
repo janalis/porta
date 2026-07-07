@@ -39,8 +39,21 @@ final class FileTreeWidget extends AbstractWidget implements FocusableInterface,
     /** @var list<array{path: string, name: string, isDir: bool, depth: int}> */
     private array $visible = [];
 
-    /** @var array<string, string> entry-list signature of each directory scanned in the last rebuild, for change detection */
+    /**
+     * Change-detection state per directory scanned in the last rebuild: the
+     * entry-list signature plus the directory mtime read just before it, so
+     * the poll can skip the scandir when the mtime provably hasn't moved.
+     *
+     * @var array<string, array{sig: string, mtime: int}>
+     */
     private array $scannedSigs = [];
+
+    /**
+     * An unchanged dir mtime older than this many seconds is trusted without a
+     * scandir; younger ones are re-scanned because a same-second rename can
+     * leave the mtime identical.
+     */
+    private const int POLL_GRACE_SECONDS = 2;
 
     /** @var (callable(string): void)|null */
     private $onOpenFile = null;
@@ -295,17 +308,28 @@ final class FileTreeWidget extends AbstractWidget implements FocusableInterface,
     /**
      * Rebuild the tree only if a scanned directory changed on disk (an entry was
      * added, removed or renamed), preserving the expanded/selection state via
-     * {@see refresh()}. Returns whether a refresh happened. Uses the directory's
-     * entry list (not mtime) so same-second changes are detected reliably.
+     * {@see refresh()}. Returns whether a refresh happened. An unchanged mtime
+     * outside the grace window skips the (much costlier) scandir; the entry-list
+     * signature stays the source of truth inside it, so same-second changes are
+     * still detected reliably.
      */
     public function refreshIfChanged(): bool
     {
-        foreach ($this->scannedSigs as $dir => $sig) {
-            if ($this->dirSignature($dir) !== $sig) {
+        clearstatcache();
+        $freshBefore = time() - self::POLL_GRACE_SECONDS;
+        foreach ($this->scannedSigs as $dir => $scan) {
+            // Read the mtime BEFORE the signature it vouches for: a change
+            // landing after this read bumps the mtime again → caught next tick.
+            $mtime = is_dir($dir) ? (int) @filemtime($dir) : -1;
+            if ($mtime === $scan['mtime'] && $mtime < $freshBefore && -1 !== $mtime) {
+                continue;
+            }
+            if ($this->dirSignature($dir) !== $scan['sig']) {
                 $this->refresh();
 
                 return true;
             }
+            $this->scannedSigs[$dir]['mtime'] = $mtime; // signature verified at this mtime
         }
 
         return false;
@@ -319,7 +343,8 @@ final class FileTreeWidget extends AbstractWidget implements FocusableInterface,
 
     private function walk(string $dir, int $depth): void
     {
-        $this->scannedSigs[$dir] = $this->dirSignature($dir);
+        $mtime = is_dir($dir) ? (int) @filemtime($dir) : -1; // before the scandir it vouches for
+        $this->scannedSigs[$dir] = ['sig' => $this->dirSignature($dir), 'mtime' => $mtime];
         $entries = @scandir($dir) ?: [];
         $dirs = $files = [];
 

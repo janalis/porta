@@ -61,6 +61,10 @@ final class CodeEditorWidget extends AbstractWidget implements FocusableInterfac
     private array $scopeCache = [];
     private string $scopeKey = '';
 
+    /** @var array{0: array{0: int, 1: int}, 1: array{0: int, 1: int}}|null memoized bracket pair, keyed by version + caret */
+    private ?array $bracketsMemo = null;
+    private string $bracketsKey = '';
+
     /** Mouse hit-testing + selection, rebuilt per document. */
     private EditorMouse $mouse;
 
@@ -818,6 +822,25 @@ final class CodeEditorWidget extends AbstractWidget implements FocusableInterfac
     }
 
     /**
+     * {@see EditorRenderer::matchingBrackets()} memoized per (version, caret):
+     * the scan is up to ~20k chars, and re-renders triggered by anything other
+     * than an edit or caret move (diagnostics arriving, git marks, overlays)
+     * would otherwise repeat it for an identical result.
+     *
+     * @return array{0: array{0: int, 1: int}, 1: array{0: int, 1: int}}|null
+     */
+    private function matchingBrackets(Document $doc): ?array
+    {
+        $key = $doc->getVersion().':'.$doc->getCursorLine().':'.$doc->getCursorCol();
+        if ($key !== $this->bracketsKey) {
+            $this->bracketsKey = $key;
+            $this->bracketsMemo = EditorRenderer::matchingBrackets($doc);
+        }
+
+        return $this->bracketsMemo;
+    }
+
+    /**
      * The gutter cell for one document line: git strip, line number colored by
      * the line's worst diagnostic (or highlighted on the caret line), marker.
      *
@@ -978,7 +1001,7 @@ final class CodeEditorWidget extends AbstractWidget implements FocusableInterfac
         // way — a reverse-video cell — and the hardware-cursor bar is suppressed.
         $multiActive = $this->focused && $this->multiCaret->hasMultiple();
         $carets = $multiActive ? $this->multiCaret->allCarets() : [];
-        $brackets = $this->focused ? EditorRenderer::matchingBrackets($doc) : null;
+        $brackets = $this->focused ? $this->matchingBrackets($doc) : null;
         $lastVisibleDocLine = $this->foldModel->docLineAtRow($vScroll, $contentRows - 1) ?? ($lineCount - 1);
         $occurrences = EditorRenderer::identifierOccurrences($doc, $this->focused, $vScroll, $lastVisibleDocLine);
 

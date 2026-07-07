@@ -150,6 +150,36 @@ final class FileTreeWidgetTest extends TestCase
         $this->assertStringContainsString('d.php', $this->plain($tree->render($context)));
     }
 
+    public function testPollSkipsTheScandirWhenTheDirMtimeIsOldAndUnchanged(): void
+    {
+        $project = new TempProject(['a.php' => '']);
+        $past = time() - 60;
+        touch($project->dir, $past);
+        $tree = new FileTreeWidget($project->dir); // rebuild records sig + the old mtime
+
+        // A change the mtime does not betray: add an entry, then restore the
+        // old dir mtime. Outside the grace window the poll trusts the mtime
+        // and skips the scandir, so the change goes (deliberately) unseen.
+        $project->write('b.php', '');
+        touch($project->dir, $past);
+        $this->assertFalse($tree->refreshIfChanged(), 'unchanged old mtime short-circuits the scandir');
+
+        // As soon as the mtime moves, the signature is compared again.
+        touch($project->dir);
+        $this->assertTrue($tree->refreshIfChanged(), 'a moved mtime re-verifies the entry list');
+    }
+
+    public function testPollInsideTheGraceWindowStillComparesEntryLists(): void
+    {
+        $project = new TempProject(['a.php' => '']);
+        $tree = new FileTreeWidget($project->dir); // dir mtime is "now": inside the grace window
+
+        $mtime = (int) filemtime($project->dir);
+        $project->write('b.php', '');
+        touch($project->dir, $mtime); // same-second change: mtime identical
+        $this->assertTrue($tree->refreshIfChanged(), 'fresh dirs are scandir-compared even with an identical mtime');
+    }
+
     public function testIgnoredEntriesHidden(): void
     {
         $project = new TempProject([
