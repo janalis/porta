@@ -382,8 +382,9 @@ final class MouseRouter
 
             return;
         }
-        if (null !== $this->hit->hit($this->gitDiff, $mouse->row, $mouse->col)) {
+        if (null !== ($rel = $this->hit->hit($this->gitDiff, $mouse->row, $mouse->col))) {
             $this->tui->setFocus($this->gitDiff);
+            $this->gitDiff->handleClick($rel['row'], $rel['col']);
             $this->tui->requestRender();
 
             return;

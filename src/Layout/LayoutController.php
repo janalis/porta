@@ -32,6 +32,8 @@ final class LayoutController
     private ?int $sidebarWidthPercent = null; // persisted pane proportions (null = widget default)
     private ?int $bottomPanelHeightPercent = null;
     private ?int $gitSidebarWidthPercent = null;
+    private bool $gitDiffSplit = false;
+    private bool $gitDiffHideWhitespace = false;
 
     public function __construct(
         private readonly LayoutStore $store,
@@ -56,6 +58,8 @@ final class LayoutController
         $this->sidebarWidthPercent = $layout['sidebarWidthPercent'];
         $this->bottomPanelHeightPercent = $layout['bottomPanelHeightPercent'];
         $this->gitSidebarWidthPercent = $layout['gitSidebarWidthPercent'];
+        $this->gitDiffSplit = $layout['gitDiffSplit'] ?? false;
+        $this->gitDiffHideWhitespace = $layout['gitDiffHideWhitespace'] ?? false;
 
         if (null !== $this->sidebarWidthPercent) {
             $this->tree->setWidth($this->clampSidebar((int) round(($this->sidebarWidthPercent * $cols) / 100), $cols));
@@ -241,8 +245,31 @@ final class LayoutController
         }
     }
 
+    /**
+     * The persisted git-diff display toggles (side-by-side, hide whitespace).
+     *
+     * @return array{split: bool, hideWhitespace: bool}
+     */
+    public function gitDiffPrefs(): array
+    {
+        return ['split' => $this->gitDiffSplit, 'hideWhitespace' => $this->gitDiffHideWhitespace];
+    }
+
+    public function setGitDiffPrefs(bool $split, bool $hideWhitespace): void
+    {
+        $this->gitDiffSplit = $split;
+        $this->gitDiffHideWhitespace = $hideWhitespace;
+        $this->persistLayout();
+    }
+
     private function persistLayout(): void
     {
-        $this->store->save($this->sidebarWidthPercent, $this->bottomPanelHeightPercent, $this->gitSidebarWidthPercent);
+        $this->store->save(
+            $this->sidebarWidthPercent,
+            $this->bottomPanelHeightPercent,
+            $this->gitSidebarWidthPercent,
+            $this->gitDiffSplit ?: null,
+            $this->gitDiffHideWhitespace ?: null,
+        );
     }
 }

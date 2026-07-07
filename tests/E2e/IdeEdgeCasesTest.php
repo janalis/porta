@@ -3294,13 +3294,22 @@ final class IdeEdgeCasesTest extends TestCase
                 },
                 2250 => function ($tui, $terminal): void {
                     $this->assertSame('git-commit', $tui->getFocus()?->getId(), 'click focused the commit box');
+                    // The diff toolbar: the ' s:split ' tag sits at the right
+                    // edge of the diff title row (screen row 2). Clicking it
+                    // flips to side-by-side and persists the preference.
+                    $tui->handleInput("\x1b[<0;153;2M");
+                    $tui->handleInput("\x1b[<0;153;2m");
+                    $this->assertTrue($tui->getById('git-diff')->isSplit(), 'the toolbar click switched to side-by-side');
                     $tui->handleInput("\x1b");
                 },
             ],
             2.6,
         );
 
-        $this->assertStringContainsString('b.txt', AnsiUtils::stripAnsiCodes($terminal->getOutput()));
+        $screen = AnsiUtils::stripAnsiCodes($terminal->getOutput());
+        $this->assertStringContainsString('b.txt', $screen);
+        $layout = json_decode((string) file_get_contents($project->path('.porta/layout.json')), true);
+        $this->assertTrue($layout['gitDiffSplit'], 'the split preference persisted');
     }
 
     public function testGitViewHistoryTabBrowsesCommits(): void

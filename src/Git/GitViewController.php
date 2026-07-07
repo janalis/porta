@@ -36,6 +36,8 @@ final class GitViewController
     private string $shownSide = 'worktree';
     /** 'changes' | 'history' — which tab owns the left pane. */
     private string $mode = 'changes';
+    /** Diff pane display toggle (persisted): drop whitespace-only changes. Wired in the next commit. */
+    private bool $hideWhitespace = false;
     /** Diff context cycle (`c` in the diff pane): git's default → ±10 → the whole file. */
     private const array CONTEXT_STEPS = [null, 10, 999_999];
     private const array CONTEXT_LABELS = ['default', '±10 lines', 'whole file'];
@@ -45,6 +47,8 @@ final class GitViewController
      * @param list<AbstractWidget> $editArea the main container's normal children (tree, separator, editor pane)
      * @param \Closure(): void     $onClosed restore focus/render after the swap back
      * @param \Closure(): void     $onCommitted refresh gutter marks and branch after a commit
+     * @param \Closure(): array{split: bool, hideWhitespace: bool} $loadDiffPrefs persisted display toggles
+     * @param \Closure(bool, bool): void                           $saveDiffPrefs persist (split, hideWhitespace)
      */
     public function __construct(
         private readonly GitInfo $git,
@@ -63,6 +67,8 @@ final class GitViewController
         private readonly StatusBarWidget $statusBar,
         private readonly \Closure $onClosed,
         private readonly \Closure $onCommitted,
+        private readonly \Closure $loadDiffPrefs,
+        private readonly \Closure $saveDiffPrefs,
     ) {
         $exit = fn () => $this->close();
         $next = fn () => $this->focusNext();
@@ -83,6 +89,7 @@ final class GitViewController
         $this->diffView
             ->onStageSelection(fn (array $selected) => $this->stageSelection($selected))
             ->onCycleContext(fn () => $this->cycleContext())
+            ->onLayoutToggle(fn (bool $split) => ($this->saveDiffPrefs)($split, $this->hideWhitespace))
             ->onFocusNext($next)
             ->onExit($exit);
         $this->tabs->onSelect(fn (string $mode) => $this->switchMode($mode));
@@ -134,6 +141,9 @@ final class GitViewController
         $this->tui->setFocus($this->changes);
         $this->lastStatusRaw = "\0unset";
         $this->contextStep = 0;
+        $prefs = ($this->loadDiffPrefs)();
+        $this->diffView->setSplit($prefs['split']);
+        $this->hideWhitespace = $prefs['hideWhitespace'];
         $this->refresh();
         $this->poll = EventLoop::repeat(2.0, fn () => $this->refresh(quiet: true));
         $this->tui->requestRender();

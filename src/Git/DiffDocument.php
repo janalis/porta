@@ -149,4 +149,67 @@ final readonly class DiffDocument
 
         return $rows;
     }
+
+    /**
+     * The side-by-side render row list: 'hunk' rows as in {@see rows()}, then
+     * one 'pair' row per old/new line pair — a context line occupies both
+     * sides, a ± run pairs its i-th deletion with its i-th addition (the same
+     * pairing the intraline emphasis uses), and surplus lines leave the other
+     * side at -1 (blank). A `\ No newline` marker rides the side of the line
+     * it terminates.
+     *
+     * @return list<array{kind: 'hunk'|'pair', hunk: int, left: int, right: int}>
+     */
+    public function splitRows(): array
+    {
+        $rows = [];
+        foreach ($this->hunks as $h => $hunk) {
+            $rows[] = ['kind' => 'hunk', 'hunk' => $h, 'left' => -1, 'right' => -1];
+            $lines = $hunk->lines;
+            $count = \count($lines);
+            for ($i = 0; $i < $count; ++$i) {
+                $origin = $lines[$i]->origin;
+                if (' ' === $origin) {
+                    $rows[] = ['kind' => 'pair', 'hunk' => $h, 'left' => $i, 'right' => $i];
+
+                    continue;
+                }
+                if ('\\' === $origin) {
+                    // Terminates the previous line: additions end on the right,
+                    // everything else (deletions, context) on the left.
+                    $side = $i > 0 && '+' === $lines[$i - 1]->origin ? 'right' : 'left';
+                    $rows[] = ['kind' => 'pair', 'hunk' => $h, 'left' => 'left' === $side ? $i : -1, 'right' => 'right' === $side ? $i : -1];
+
+                    continue;
+                }
+                if ('+' === $origin) {
+                    // An addition run with no preceding deletions: right side only.
+                    $rows[] = ['kind' => 'pair', 'hunk' => $h, 'left' => -1, 'right' => $i];
+
+                    continue;
+                }
+                // Start of a deletion run: measure it and the following additions.
+                $dels = 0;
+                while ($i + $dels < $count && '-' === $lines[$i + $dels]->origin) {
+                    ++$dels;
+                }
+                $addStart = $i + $dels;
+                $adds = 0;
+                while ($addStart + $adds < $count && '+' === $lines[$addStart + $adds]->origin) {
+                    ++$adds;
+                }
+                for ($p = 0; $p < max($dels, $adds); ++$p) {
+                    $rows[] = [
+                        'kind' => 'pair',
+                        'hunk' => $h,
+                        'left' => $p < $dels ? $i + $p : -1,
+                        'right' => $p < $adds ? $addStart + $p : -1,
+                    ];
+                }
+                $i = $addStart + $adds - 1;
+            }
+        }
+
+        return $rows;
+    }
 }

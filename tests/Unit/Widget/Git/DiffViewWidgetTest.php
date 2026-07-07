@@ -283,5 +283,120 @@ final class DiffViewWidgetTest extends TestCase
 
         $lines = $this->plainLines($widget, 60, 6);
         $this->assertStringContainsString('No newline at end of file', $lines[3]);
+
+        // In split mode the marker rides the old side of its own row.
+        $widget->setSplit(true);
+        $lines = $this->plainLines($widget, 60, 6);
+        $this->assertMatchesRegularExpression('/No newline.*│/', $lines[3], 'the marker rides the old side (truncated to the half width)');
+    }
+
+    public function testSplitModeRendersPairsSideBySide(): void
+    {
+        $widget = $this->widget();
+        $widget->setFocused(true);
+        $widget->handleInput('s');
+        $this->assertTrue($widget->isSplit());
+
+        $lines = $this->plainLines($widget);
+        // The paired change sits on ONE row: old text left, new text right.
+        $this->assertMatchesRegularExpression('/^\s+4 -\$old = 2;\s*│\s+4 \+\$new = 2;/', $lines[3]);
+        // The surplus addition leaves the old side blank.
+        $this->assertMatchesRegularExpression('/^\s{39}│\s+5 \+\$extra = 3;/', $lines[4]);
+        // Context shows the same text on both sides.
+        $this->assertMatchesRegularExpression('/\$keep = 1;.*│.*\$keep = 1;/', $lines[2]);
+
+        $widget->handleInput('s'); // back to unified
+        $this->assertFalse($widget->isSplit());
+        $this->assertMatchesRegularExpression('/^\s+4\s+ │-\$old = 2;/', $this->plainLines($widget)[3]);
+    }
+
+    public function testSplitStagingSelectsThePairAndRangesUnionBothSides(): void
+    {
+        $widget = $this->widget();
+        $widget->setFocused(true);
+        $widget->handleInput('s');
+        $captured = null;
+        $widget->onStageSelection(function (array $selected) use (&$captured): void {
+            $captured = $selected;
+        });
+
+        // Split rows: header, ctx pair, (-old|+new), (blank|+extra), header, pair.
+        $widget->handleInput("\x1b[B");
+        $widget->handleInput("\x1b[B");
+        $widget->handleInput(' '); // the pair row stages BOTH sides
+        $this->assertSame([0 => [1 => true, 2 => true]], $captured);
+
+        $widget->handleInput('v');
+        $widget->handleInput("\x1b[B"); // include the surplus addition row
+        $widget->handleInput(' ');
+        $this->assertSame([0 => [1 => true, 2 => true, 3 => true]], $captured, 'the range unions every side in it');
+    }
+
+    public function testToolbarTagTogglesByClickAndFiresThePersistenceHook(): void
+    {
+        $widget = $this->widget();
+        $toggles = [];
+        $widget->onLayoutToggle(function (bool $split) use (&$toggles): void {
+            $toggles[] = $split;
+        });
+        $raw = $widget->render(new RenderContext(80, 12));
+        $this->assertStringNotContainsString("\x1b[48;5;31m", $raw[0], 'inactive tag renders dim');
+
+        // At 80 cols the ' s:split ' tag occupies cols 70-78.
+        $widget->handleClick(0, 72);
+        $this->assertTrue($widget->isSplit());
+        $this->assertSame([true], $toggles);
+        $raw = $widget->render(new RenderContext(80, 12));
+        $this->assertStringContainsString("\x1b[48;5;31m", $raw[0], 'active tag renders selected');
+
+        $widget->handleClick(0, 5); // title text: not a button
+        $this->assertTrue($widget->isSplit());
+
+        $widget->setFocused(true);
+        $widget->handleInput('s'); // keyboard path fires the hook too
+        $this->assertSame([true, false], $toggles);
+    }
+
+    public function testBodyClickMovesTheCursor(): void
+    {
+        $widget = $this->widget();
+        $widget->setFocused(true);
+        $this->plainLines($widget); // teach the viewport
+        $captured = null;
+        $widget->onStageSelection(function (array $selected) use (&$captured): void {
+            $captured = $selected;
+        });
+
+        $widget->handleClick(3, 10); // row 3 = the deletion (hunk 0 line 1)
+        $widget->handleInput(' ');
+        $this->assertSame([0 => [1 => true]], $captured);
+
+        $widget->handleClick(50, 10); // past the rows: clamps to the last row
+        $widget->handleInput(' ');
+        $this->assertSame([1 => [1 => true]], $captured, 'clamped to the final +tail! row');
+
+        $empty = new DiffViewWidget();
+        $empty->setDocument(null, null);
+        $empty->handleClick(2, 2); // no rows: a safe no-op
+        $this->assertFalse($empty->isSplit());
+    }
+
+    public function testReadOnlyStillAllowsTheLayoutToggle(): void
+    {
+        $widget = $this->widget();
+        $widget->setFocused(true);
+        $widget->setReadOnly(true);
+        $widget->handleInput('s');
+        $this->assertTrue($widget->isSplit(), 'split is display-only, fine for history diffs');
+
+        // setSplit applies a preference silently (no hook fire).
+        $fired = false;
+        $widget->onLayoutToggle(function () use (&$fired): void {
+            $fired = true;
+        });
+        $widget->setSplit(false);
+        $this->assertFalse($widget->isSplit());
+        $widget->setSplit(false); // idempotent
+        $this->assertFalse($fired);
     }
 }

@@ -46,6 +46,10 @@ final class GitViewControllerTest extends TestCase
     private StatusBarWidget $statusBar;
     private int $closed = 0;
     private int $committed = 0;
+    /** @var array{split: bool, hideWhitespace: bool} */
+    private array $diffPrefs = ['split' => false, 'hideWhitespace' => false];
+    /** @var list<array{bool, bool}> */
+    private array $savedPrefs = [];
 
     private function controller(bool $realRepo = true): GitViewController
     {
@@ -82,6 +86,8 @@ final class GitViewControllerTest extends TestCase
         $this->tui = new Tui(terminal: new VirtualTerminal(columns: 100, rows: 24), keybindings: new Keybindings([]), renderer: new Renderer(new StyleSheet()));
         $this->closed = 0;
         $this->committed = 0;
+        $this->diffPrefs = ['split' => false, 'hideWhitespace' => false];
+        $this->savedPrefs = [];
 
         return new GitViewController(
             $this->git,
@@ -103,6 +109,10 @@ final class GitViewControllerTest extends TestCase
             },
             onCommitted: function (): void {
                 ++$this->committed;
+            },
+            loadDiffPrefs: fn (): array => $this->diffPrefs,
+            saveDiffPrefs: function (bool $split, bool $hideWhitespace): void {
+                $this->savedPrefs[] = [$split, $hideWhitespace];
             },
         );
     }
@@ -361,7 +371,10 @@ final class GitViewControllerTest extends TestCase
         $this->await(fn (): bool => 'full' === $this->changes->selectedEntry()?->stagedState());
         $this->await(fn (): bool => str_contains($this->diffText(), '+two CHANGED'), 'cached diff loads');
 
-        $this->diffView->handleInput(' '); // space on the hunk header: unstage the WHOLE hunk
+        // The raced same-path reloads leave the cursor wherever clamping put
+        // it — page up pins it on the hunk header before unstaging the WHOLE hunk.
+        $this->diffView->handleInput("\x1b[5~");
+        $this->diffView->handleInput(' ');
         $this->await(fn (): bool => 'none' === ($this->changes->selectedEntry()?->stagedState() ?? 'gone'));
     }
 
@@ -401,6 +414,19 @@ final class GitViewControllerTest extends TestCase
         $this->diffView->setFocused(true);
         $this->diffView->handleInput(' '); // whole first hunk, built against the OLD worktree diff
         $this->await(fn (): bool => str_contains($this->statusFlash(), 'git apply refused'));
+    }
+
+    public function testDiffPrefsApplyOnOpenAndPersistOnToggle(): void
+    {
+        $controller = $this->controller();
+        $this->diffPrefs = ['split' => true, 'hideWhitespace' => false];
+        $controller->open();
+        $this->await(fn (): bool => $controller->isOpen());
+        $this->assertTrue($this->diffView->isSplit(), 'the persisted split preference applies on open');
+
+        $this->diffView->setFocused(true);
+        $this->diffView->handleInput('s'); // back to unified: persists
+        $this->assertSame([[false, false]], $this->savedPrefs);
     }
 
     public function testContextCycleReloadsTheDiffWithMoreContextAndWrapsAround(): void

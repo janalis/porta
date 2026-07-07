@@ -118,4 +118,46 @@ final class DiffDocumentTest extends TestCase
         $this->assertTrue($doc->isEmpty());
         $this->assertContains('rename from old.php', $doc->headerLines);
     }
+
+    public function testSplitRowsPairContextAndRuns(): void
+    {
+        // ctx, -a, +b, +c  → ctx pair, (a|b) pair, (blank|c) pair.
+        $doc = DiffDocument::parse("@@ -1,2 +1,3 @@\n ctx\n-a\n+b\n+c\n");
+
+        $this->assertSame([
+            ['kind' => 'hunk', 'hunk' => 0, 'left' => -1, 'right' => -1],
+            ['kind' => 'pair', 'hunk' => 0, 'left' => 0, 'right' => 0],
+            ['kind' => 'pair', 'hunk' => 0, 'left' => 1, 'right' => 2],
+            ['kind' => 'pair', 'hunk' => 0, 'left' => -1, 'right' => 3],
+        ], $doc->splitRows());
+    }
+
+    public function testSplitRowsSurplusDeletionsAndLoneAdditions(): void
+    {
+        // -a, -b, +c → (a|c), (b|blank); then a lone addition run +d.
+        $doc = DiffDocument::parse("@@ -1,2 +1,1 @@\n-a\n-b\n+c\n@@ -9,1 +8,2 @@\n ctx\n+d\n");
+        $rows = $doc->splitRows();
+
+        $this->assertSame(['kind' => 'pair', 'hunk' => 0, 'left' => 0, 'right' => 2], $rows[1]);
+        $this->assertSame(['kind' => 'pair', 'hunk' => 0, 'left' => 1, 'right' => -1], $rows[2]);
+        $this->assertSame(['kind' => 'pair', 'hunk' => 1, 'left' => -1, 'right' => 1], $rows[5], 'a run of additions with no deletions sits right-only');
+    }
+
+    public function testSplitRowsNoNewlineMarkerRidesItsSide(): void
+    {
+        // The marker after +new terminates the ADDITION → right side; after a
+        // deletion (old side ends the file) it rides left.
+        $doc = DiffDocument::parse("@@ -1,1 +1,1 @@\n-old\n+new\n\\ No newline at end of file\n");
+        $rows = $doc->splitRows();
+        $this->assertSame(['kind' => 'pair', 'hunk' => 0, 'left' => -1, 'right' => 2], $rows[2]);
+
+        $doc = DiffDocument::parse("@@ -1,1 +1,1 @@\n-old\n\\ No newline at end of file\n+new\n");
+        $rows = $doc->splitRows();
+        $this->assertSame(['kind' => 'pair', 'hunk' => 0, 'left' => 1, 'right' => -1], $rows[2], 'after a deletion the marker rides the old side');
+    }
+
+    public function testSplitRowsOfAnEmptyDocument(): void
+    {
+        $this->assertSame([], DiffDocument::parse('')->splitRows());
+    }
 }

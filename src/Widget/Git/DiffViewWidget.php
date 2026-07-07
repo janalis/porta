@@ -7,6 +7,7 @@ namespace Porta\Widget\Git;
 use Porta\Git\DiffDocument;
 use Porta\Git\DiffLine;
 use Porta\Highlight\CodeHighlighter;
+use Porta\Ui\Style;
 use Porta\Widget\Render\LineDecorator;
 use Porta\Widget\InputHook;
 use Porta\Widget\Render\MenuOverlayHost;
@@ -21,10 +22,11 @@ use Symfony\Component\Tui\Widget\KeybindingsTrait;
 use Symfony\Component\Tui\Widget\VerticallyExpandableInterface;
 
 /**
- * The git view's diff pane (GitHub Desktop's right column): dual old/new
- * line-number gutters, cyan hunk headers, ± rows colored over syntax
- * highlighting (deleted lines stay plain red — the pre-image no longer
- * matches the file's highlight state). Scrollable; read-only for history.
+ * The git view's diff pane (GitHub Desktop's right column): unified (dual
+ * old/new gutters) or side-by-side rendering, cyan hunk headers, ± rows
+ * colored over syntax highlighting (deleted lines stay plain red — the
+ * pre-image no longer matches the file's highlight state). The title row is
+ * a toolbar with clickable display toggles. Scrollable; read-only for history.
  */
 final class DiffViewWidget extends AbstractWidget implements FocusableInterface, MenuOverlayHost, VerticallyExpandableInterface
 {
@@ -41,10 +43,14 @@ final class DiffViewWidget extends AbstractWidget implements FocusableInterface,
     private ?DiffDocument $document = null;
     private ?string $path = null;
     private string $placeholder = 'No changes selected';
-    /** @var list<array{kind: 'hunk'|'line', hunk: int, line: int}> */
+    /** @var list<array{kind: string, hunk: int, line?: int, left?: int, right?: int}> unified or split render rows */
     private array $rows = [];
-    /** @var array<int, string> highlighted text per flat row index (context/add rows only) */
+    /** @var array<string, string> highlighted text per "hunk:line" key (context/add lines only) */
     private array $highlighted = [];
+    /** Side-by-side rendering instead of unified. */
+    private bool $split = false;
+    /** @var list<array{name: string, start: int, end: int}> clickable toolbar tag spans from the last render */
+    private array $buttonZones = [];
     private int $scroll = 0;
     private int $lastRows = 12;
     private bool $readOnly = false;
@@ -64,6 +70,8 @@ final class DiffViewWidget extends AbstractWidget implements FocusableInterface,
     private $onStageSelection = null;
     /** @var (callable(): void)|null `c`: cycle the diff context (default → ±10 → whole file) */
     private $onCycleContext = null;
+    /** @var (callable(bool): void)|null the split/unified toggle flipped (for persistence) */
+    private $onLayoutToggle = null;
 
     public function __construct()
     {
@@ -100,6 +108,48 @@ final class DiffViewWidget extends AbstractWidget implements FocusableInterface,
         return $this;
     }
 
+    /** @param callable(bool): void $callback */
+    public function onLayoutToggle(callable $callback): self
+    {
+        $this->onLayoutToggle = $callback;
+
+        return $this;
+    }
+
+    /** Apply a split/unified preference without firing the persistence hook. */
+    public function setSplit(bool $split): void
+    {
+        if ($split !== $this->split) {
+            $this->split = $split;
+            $this->rebuildRows();
+        }
+    }
+
+    public function isSplit(): bool
+    {
+        return $this->split;
+    }
+
+    private function toggleLayout(): void
+    {
+        $this->split = !$this->split;
+        $this->rebuildRows();
+        if (null !== $this->onLayoutToggle) {
+            ($this->onLayoutToggle)($this->split);
+        }
+    }
+
+    /** Rebuild the render rows for the current mode, keeping cursor/scroll sane. */
+    private function rebuildRows(): void
+    {
+        $this->rows = null === $this->document ? [] : ($this->split ? $this->document->splitRows() : $this->document->rows());
+        $maxRow = max(0, \count($this->rows) - 1);
+        $this->cursor = min($this->cursor, $maxRow);
+        $this->scroll = min($this->scroll, $maxRow);
+        $this->anchor = null;
+        $this->invalidate();
+    }
+
     public function setReadOnly(bool $readOnly): void
     {
         $this->readOnly = $readOnly;
@@ -121,13 +171,12 @@ final class DiffViewWidget extends AbstractWidget implements FocusableInterface,
         $this->document = $document;
         $this->path = $path;
         $this->placeholder = $placeholder;
-        $this->rows = $document?->rows() ?? [];
-        $maxRow = max(0, \count($this->rows) - 1);
-        $this->cursor = $samePath ? min($this->cursor, $maxRow) : 0;
-        $this->scroll = $samePath ? min($this->scroll, $maxRow) : 0;
-        $this->anchor = null;
+        if (!$samePath) {
+            $this->cursor = 0;
+            $this->scroll = 0;
+        }
+        $this->rebuildRows();
         $this->highlightRows();
-        $this->invalidate();
     }
 
     /**
@@ -143,22 +192,20 @@ final class DiffViewWidget extends AbstractWidget implements FocusableInterface,
         }
         $this->highlighter->setFile($this->path);
 
-        $indices = [];
+        $keys = [];
         $texts = [];
-        foreach ($this->rows as $i => $row) {
-            if ('line' !== $row['kind']) {
-                continue;
-            }
-            $line = $this->document->hunks[$row['hunk']]->lines[$row['line']];
-            if ('+' === $line->origin || ' ' === $line->origin) {
-                $indices[] = $i;
-                $texts[] = $line->text;
+        foreach ($this->document->hunks as $h => $hunk) {
+            foreach ($hunk->lines as $l => $line) {
+                if ('+' === $line->origin || ' ' === $line->origin) {
+                    $keys[] = $h.':'.$l;
+                    $texts[] = $line->text;
+                }
             }
         }
 
         $highlighted = $this->highlighter->highlight($texts, ++$this->highlightVersion);
-        foreach ($indices as $n => $rowIndex) {
-            $this->highlighted[$rowIndex] = $highlighted[$n] ?? '';
+        foreach ($keys as $n => $key) {
+            $this->highlighted[$key] = $highlighted[$n] ?? '';
         }
     }
 
@@ -203,6 +250,39 @@ final class DiffViewWidget extends AbstractWidget implements FocusableInterface,
             if (!$this->readOnly && [] !== $this->rows && null !== $this->onCycleContext) {
                 ($this->onCycleContext)();
             }
+        } elseif ($kb->matches($data, 'toggle_layout')) {
+            $this->toggleLayout(); // display-only: allowed in read-only mode too
+        }
+    }
+
+    /**
+     * A click on the toolbar row toggles the button under it; a click on a
+     * diff row moves the cursor there (so mouse users can stage where they
+     * click). Focus is handled by the router.
+     */
+    public function handleClick(int $relRow, int $relCol): void
+    {
+        if (0 === $relRow) {
+            foreach ($this->buttonZones as $zone) {
+                if ($relCol >= $zone['start'] && $relCol < $zone['end']) {
+                    $this->fireButton($zone['name']);
+
+                    return;
+                }
+            }
+
+            return;
+        }
+        if ([] !== $this->rows) {
+            $this->cursor = max(0, min($this->scroll + $relRow - 1, \count($this->rows) - 1));
+            $this->invalidate();
+        }
+    }
+
+    private function fireButton(string $name): void
+    {
+        if ('split' === $name) {
+            $this->toggleLayout();
         }
     }
 
@@ -238,10 +318,7 @@ final class DiffViewWidget extends AbstractWidget implements FocusableInterface,
         if (null !== $this->anchor) {
             [$from, $to] = $this->anchor <= $this->cursor ? [$this->anchor, $this->cursor] : [$this->cursor, $this->anchor];
             for ($i = $from; $i <= $to; ++$i) {
-                $r = $this->rows[$i];
-                if ('line' === $r['kind']) {
-                    $selected[$r['hunk']][$r['line']] = true;
-                }
+                $this->selectRowLines($this->rows[$i], $selected);
             }
             $this->anchor = null;
             $this->invalidate();
@@ -251,10 +328,30 @@ final class DiffViewWidget extends AbstractWidget implements FocusableInterface,
                 $selected[$row['hunk']][$i] = true;
             }
         } else {
-            $selected[$row['hunk']][$row['line']] = true;
+            $this->selectRowLines($row, $selected);
         }
 
         ($this->onStageSelection)($selected);
+    }
+
+    /**
+     * Collect a render row's line indices: a unified row holds one, a split
+     * row up to two (its old/new pair — Space stages both sides together).
+     *
+     * @param array{kind: string, hunk: int, line?: int, left?: int, right?: int} $row
+     * @param array<int, array<int, true>>                                        $selected
+     */
+    private function selectRowLines(array $row, array &$selected): void
+    {
+        if ('line' === $row['kind']) {
+            $selected[$row['hunk']][$row['line'] ?? -1] = true;
+        } elseif ('pair' === $row['kind']) {
+            foreach ([$row['left'] ?? -1, $row['right'] ?? -1] as $index) {
+                if ($index >= 0) {
+                    $selected[$row['hunk']][$index] = true;
+                }
+            }
+        }
     }
 
     public function render(RenderContext $context): array
@@ -264,7 +361,7 @@ final class DiffViewWidget extends AbstractWidget implements FocusableInterface,
         $this->lastRows = $rows;
 
         $title = ' '.($this->path ?? 'Diff').($this->scroll > 0 ? \sprintf('  [scrolled +%d]', $this->scroll) : '');
-        $lines = ["\x1b[48;5;237m\x1b[1m".AnsiUtils::truncateToWidth($title, $width, '…', pad: true)."\x1b[0m"];
+        $lines = [$this->renderToolbar($title, $width)];
 
         if (null === $this->document || [] === $this->rows) {
             $message = "\x1b[38;5;245m ".$this->placeholder."\x1b[0m";
@@ -324,7 +421,34 @@ final class DiffViewWidget extends AbstractWidget implements FocusableInterface,
         return $rowIndex >= $from && $rowIndex <= $to;
     }
 
-    /** @param array{kind: 'hunk'|'line', hunk: int, line: int} $row */
+    /**
+     * The title row doubles as a toolbar: path + scroll hint on the left,
+     * right-aligned clickable display toggles (spans recorded for the mouse).
+     */
+    private function renderToolbar(string $title, int $width): string
+    {
+        $this->buttonZones = [];
+        $tags = [['name' => 'split', 'label' => ' s:split ', 'on' => $this->split]];
+
+        $rendered = '';
+        $tagsWidth = 0;
+        foreach ($tags as $tag) {
+            $tagsWidth += mb_strwidth($tag['label']) + 1;
+        }
+        $col = max(0, $width - $tagsWidth);
+        $left = AnsiUtils::truncateToWidth($title, $col, '…', pad: true);
+        foreach ($tags as $tag) {
+            $tagWidth = mb_strwidth($tag['label']);
+            $this->buttonZones[] = ['name' => $tag['name'], 'start' => $col, 'end' => $col + $tagWidth];
+            $style = $tag['on'] ? Style::SELECTED_ROW : "\x1b[48;5;238m\x1b[38;5;250m";
+            $rendered .= $style.$tag['label']."\x1b[0m\x1b[48;5;237m\x1b[1m".' ';
+            $col += $tagWidth + 1;
+        }
+
+        return "\x1b[48;5;237m\x1b[1m".$left.$rendered."\x1b[0m";
+    }
+
+    /** @param array{kind: string, hunk: int, line?: int, left?: int, right?: int} $row */
     private function renderRow(int $rowIndex, array $row, int $width): string
     {
         \assert(null !== $this->document);
@@ -333,8 +457,16 @@ final class DiffViewWidget extends AbstractWidget implements FocusableInterface,
         if ('hunk' === $row['kind']) {
             return self::HUNK_FG.AnsiUtils::truncateToWidth(' '.$hunk->header(), $width, '…', pad: true)."\x1b[0m";
         }
+        if ('pair' === $row['kind']) {
+            $leftW = intdiv($width - 1, 2);
+            $rightW = $width - 1 - $leftW;
 
-        $line = $hunk->lines[$row['line']];
+            return $this->renderHalf($row['hunk'], $row['left'] ?? -1, $leftW, old: true)
+                .self::GUTTER_FG.'│'."\x1b[39m"
+                .$this->renderHalf($row['hunk'], $row['right'] ?? -1, $rightW, old: false)."\x1b[0m";
+        }
+
+        $line = $hunk->lines[$row['line'] ?? -1];
         $gutter = self::GUTTER_FG
             .str_pad(null === $line->oldNo ? '' : (string) $line->oldNo, 4, ' ', \STR_PAD_LEFT)
             .' '
@@ -345,14 +477,41 @@ final class DiffViewWidget extends AbstractWidget implements FocusableInterface,
         // its syntax colors, deletions render whole-row red (the pre-image no
         // longer matches the file's highlight state). Paired ± lines carry an
         // intraline changed range, emphasized with a stronger background.
+        $key = $row['hunk'].':'.($row['line'] ?? -1);
         $content = match ($line->origin) {
-            '+' => self::ADD_FG.'+'."\x1b[39m".$this->withEmphasis($this->highlighted[$rowIndex] ?? $line->text, $line, "\x1b[48;5;22m"),
+            '+' => self::ADD_FG.'+'."\x1b[39m".$this->withEmphasis($this->highlighted[$key] ?? $line->text, $line, "\x1b[48;5;22m"),
             '-' => self::DEL_FG.'-'.$this->withEmphasis($line->text, $line, "\x1b[48;5;88m"),
             '\\' => "\x1b[38;5;245m ".$line->text,
-            default => ' '.($this->highlighted[$rowIndex] ?? $line->text),
+            default => ' '.($this->highlighted[$key] ?? $line->text),
         };
 
         return $gutter.AnsiUtils::truncateToWidth($content, max(1, $width - 11), '…', pad: true)."\x1b[0m";
+    }
+
+    /**
+     * One side of a side-by-side row: 4-digit gutter + marker + content in
+     * $width columns; -1 (no line on this side) renders blank. Colors reset
+     * to the default foreground at the end so nothing bleeds past the divider.
+     */
+    private function renderHalf(int $hunkIndex, int $lineIndex, int $width, bool $old): string
+    {
+        \assert(null !== $this->document);
+        if ($lineIndex < 0) {
+            return str_repeat(' ', $width);
+        }
+        $line = $this->document->hunks[$hunkIndex]->lines[$lineIndex];
+        $no = $old ? $line->oldNo : $line->newNo;
+        $gutter = self::GUTTER_FG.str_pad(null === $no ? '' : (string) $no, 4, ' ', \STR_PAD_LEFT).' '."\x1b[39m";
+
+        $key = $hunkIndex.':'.$lineIndex;
+        $content = match ($line->origin) {
+            '+' => self::ADD_FG.'+'."\x1b[39m".$this->withEmphasis($this->highlighted[$key] ?? $line->text, $line, "\x1b[48;5;22m"),
+            '-' => self::DEL_FG.'-'.$this->withEmphasis($line->text, $line, "\x1b[48;5;88m"),
+            '\\' => "\x1b[38;5;245m ".$line->text,
+            default => ' '.($this->highlighted[$key] ?? $line->text),
+        };
+
+        return $gutter.AnsiUtils::truncateToWidth($content, max(1, $width - 5), '…', pad: true)."\x1b[39m";
     }
 
     public function isVerticallyExpanded(): bool
@@ -376,6 +535,7 @@ final class DiffViewWidget extends AbstractWidget implements FocusableInterface,
             'range_anchor' => ['v'],
             'stage_selection' => [Key::SPACE],
             'cycle_context' => ['c'],
+            'toggle_layout' => ['s'],
             'focus_next_pane' => [Key::TAB],
             'exit_view' => [Key::ESCAPE],
         ];
