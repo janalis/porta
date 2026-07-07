@@ -29,14 +29,20 @@ final class SettingsControllerTest extends TestCase
         putenv('PATH='.$this->originalPath);
     }
 
+    /** @var list<string> */
+    private array $languageChanges = [];
+
     /**
      * @param array<string, int|bool|string> $settings
      */
     private function controller(string $rootDir, CodeEditorWidget $editor, StatusBarWidget $status, array $settings = []): SettingsController
     {
         $tui = new Tui(terminal: new VirtualTerminal(columns: 80, rows: 24));
+        $this->languageChanges = [];
 
-        return new SettingsController($settings + IdeConfig::DEFAULT_SETTINGS, $editor, $status, $tui, $rootDir);
+        return new SettingsController($settings + IdeConfig::DEFAULT_SETTINGS, $editor, $status, $tui, $rootDir, function (string $locale): void {
+            $this->languageChanges[] = $locale;
+        });
     }
 
     private function flashText(StatusBarWidget $status): string
@@ -54,7 +60,8 @@ final class SettingsControllerTest extends TestCase
         $rows = $controller->formRows();
         $byKey = array_column($rows, null, 'key');
 
-        $this->assertSame(['inlineDiagnostics', 'relativeLineNumbers', 'autoPairs', 'editorConfig', 'theme'], array_column($rows, 'key'), 'indent settings moved to the Languages section');
+        $this->assertSame(['language', 'inlineDiagnostics', 'relativeLineNumbers', 'autoPairs', 'editorConfig', 'theme'], array_column($rows, 'key'), 'language first; indent settings moved to the Languages section');
+        $this->assertSame(['en', 'fr', 'de', 'es', 'it', 'ja', 'he'], $byKey['language']['options']);
         $this->assertFalse($byKey['autoPairs']['value']);
         $this->assertSame('bool', $byKey['autoPairs']['kind']);
         $this->assertFalse($byKey['inlineDiagnostics']['restart'], 'live toggles need no restart');
@@ -76,6 +83,18 @@ final class SettingsControllerTest extends TestCase
         $this->assertTrue(IdeConfig::load($project->dir)->settings['relativeLineNumbers'], 'persisted');
         $this->assertStringContainsString('Relative line numbers on', $this->flashText($status));
         $this->assertStringNotContainsString('restart', $this->flashText($status), 'live change is immediate');
+    }
+
+    public function testChangingLanguageFiresTheLocaleHookAndPersists(): void
+    {
+        $project = new TempProject();
+        $controller = $this->controller($project->dir, new CodeEditorWidget(), $status = new StatusBarWidget());
+
+        $controller->changeSetting('language', 'fr');
+
+        $this->assertSame(['fr'], $this->languageChanges, 'the UI-locale hook fired live');
+        $this->assertSame('fr', IdeConfig::load($project->dir)->settings['language'], 'persisted');
+        $this->assertStringNotContainsString('restart', $this->flashText($status), 'language switches live');
     }
 
     public function testChangingARestartSettingPersistsWithoutApplyingLive(): void

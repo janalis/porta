@@ -3361,9 +3361,9 @@ final class IdeEdgeCasesTest extends TestCase
                     $this->assertStringContainsString('General', $screen, 'the nav sidebar lists sections');
                     $this->assertStringContainsString('Languages', $screen);
                     $this->assertStringContainsString('Inline diagnostics', $screen, 'General content shown');
-                    // Toggle Inline diagnostics in the content pane (right of the sidebar).
-                    $tui->handleInput("\x1b[<0;40;2M");
-                    $tui->handleInput("\x1b[<0;40;2m");
+                    // Toggle Inline diagnostics (General row 1; row 0 is Language) in the content pane.
+                    $tui->handleInput("\x1b[<0;40;3M");
+                    $tui->handleInput("\x1b[<0;40;3m");
                     // Hover the nav sidebar (a tint).
                     $tui->handleInput("\x1b[<35;5;3M");
                 },

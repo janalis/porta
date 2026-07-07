@@ -1,0 +1,101 @@
+<?php
+
+declare(strict_types=1);
+
+namespace Porta\Tests\Unit\I18n;
+
+use PHPUnit\Framework\TestCase;
+use Porta\I18n\Translator;
+use Porta\Tests\Support\TempProject;
+
+final class TranslatorTest extends TestCase
+{
+    private function xliff(string $locale, string $body): string
+    {
+        return '<?xml version="1.0" encoding="utf-8"?>'
+            .'<xliff xmlns="urn:oasis:names:tc:xliff:document:1.2" version="1.2">'
+            .'<file source-language="en" target-language="'.$locale.'" datatype="plaintext" original="messages"><body>'
+            .$body.'</body></file></xliff>';
+    }
+
+    private function unit(string $source, string $target): string
+    {
+        return '<trans-unit id="x"><source>'.$source.'</source><target>'.$target.'</target></trans-unit>';
+    }
+
+    public function testTranslatesTheActiveLocaleAndFallsBackToEnglish(): void
+    {
+        $project = new TempProject(['messages.fr.xlf' => $this->xliff('fr', $this->unit('Save File', 'Enregistrer le fichier'))]);
+        $translator = new Translator('fr', $project->dir);
+
+        $this->assertSame('Enregistrer le fichier', $translator->trans('Save File'));
+        $this->assertSame('Unknown String', $translator->trans('Unknown String'), 'an untranslated id returns itself (English)');
+        $this->assertSame('fr', $translator->locale());
+    }
+
+    public function testPlaceholdersAreInterpolated(): void
+    {
+        $project = new TempProject(['messages.fr.xlf' => $this->xliff('fr', $this->unit('Committed: %summary%', 'Validé : %summary%'))]);
+        $translator = new Translator('fr', $project->dir);
+
+        $this->assertSame('Validé : init', $translator->trans('Committed: %summary%', ['%summary%' => 'init']));
+    }
+
+    public function testAnEmptyTargetFallsBackToTheSource(): void
+    {
+        $project = new TempProject(['messages.de.xlf' => $this->xliff('de', $this->unit('Save File', ''))]);
+        $translator = new Translator('de', $project->dir);
+
+        $this->assertSame('Save File', $translator->trans('Save File'), 'a stubbed (empty) target keeps English');
+    }
+
+    public function testSetLocaleSwitchesTranslations(): void
+    {
+        $project = new TempProject([
+            'messages.fr.xlf' => $this->xliff('fr', $this->unit('Save File', 'Enregistrer')),
+            'messages.de.xlf' => $this->xliff('de', $this->unit('Save File', 'Speichern')),
+        ]);
+        $translator = new Translator('en', $project->dir);
+
+        $this->assertSame('Save File', $translator->trans('Save File'), 'English is the source');
+        $translator->setLocale('fr');
+        $this->assertSame('Enregistrer', $translator->trans('Save File'));
+        $translator->setLocale('de');
+        $this->assertSame('Speichern', $translator->trans('Save File'));
+    }
+
+    public function testDirectionAndRtl(): void
+    {
+        $translator = new Translator('he', new TempProject()->dir);
+        $this->assertSame('rtl', $translator->direction());
+        $this->assertTrue($translator->isRtl());
+
+        $translator->setLocale('en');
+        $this->assertSame('ltr', $translator->direction());
+        $this->assertFalse($translator->isRtl());
+    }
+
+    public function testAnUnknownLocaleNormalizesToEnglish(): void
+    {
+        $translator = new Translator('klingon', new TempProject()->dir);
+        $this->assertSame('en', $translator->locale());
+        $translator->setLocale('martian');
+        $this->assertSame('en', $translator->locale());
+    }
+
+    public function testMalformedXliffIsIgnored(): void
+    {
+        $project = new TempProject(['messages.fr.xlf' => '<xliff not valid']);
+        $translator = new Translator('fr', $project->dir);
+
+        $this->assertSame('Save File', $translator->trans('Save File'), 'a broken catalog degrades to English');
+    }
+
+    public function testDefaultsToThePackageTranslationsDirectory(): void
+    {
+        // No dir override → loads the shipped translations/ (currently source-only).
+        $translator = new Translator('en');
+        $this->assertSame('Some Menu Item', $translator->trans('Some Menu Item'));
+        $this->assertContains('fr', Translator::LOCALES);
+    }
+}

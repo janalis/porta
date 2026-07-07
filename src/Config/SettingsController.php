@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Porta\Config;
 
+use Porta\I18n\Translator;
 use Porta\Widget\CodeEditorWidget;
 use Porta\Widget\StatusBarWidget;
 use Symfony\Component\Tui\Tui;
@@ -27,7 +28,8 @@ final class SettingsController
     private readonly array $descriptors;
 
     /**
-     * @param array<string, int|bool|string> $settings resolved settings (defaults merged)
+     * @param array<string, int|bool|string> $settings         resolved settings (defaults merged)
+     * @param \Closure(string): void         $onLanguageChange switch the UI locale + repaint
      */
     public function __construct(
         private array $settings,
@@ -35,8 +37,10 @@ final class SettingsController
         private readonly StatusBarWidget $statusBar,
         private readonly Tui $tui,
         private readonly string $rootDir,
+        \Closure $onLanguageChange,
     ) {
         $this->descriptors = [
+            'language' => ['label' => 'Language', 'kind' => 'choice', 'restart' => false, 'apply' => static fn (int|bool|string $v) => $onLanguageChange((string) $v), 'options' => Translator::LOCALES],
             'inlineDiagnostics' => ['label' => 'Inline diagnostics', 'kind' => 'bool', 'restart' => false, 'apply' => static fn (int|bool|string $v) => $editor->setInlineDiagnostics((bool) $v)],
             'relativeLineNumbers' => ['label' => 'Relative line numbers', 'kind' => 'bool', 'restart' => false, 'apply' => static fn (int|bool|string $v) => $editor->setRelativeLineNumbers((bool) $v)],
             'autoPairs' => ['label' => 'Auto-pairs', 'kind' => 'bool', 'restart' => false, 'apply' => static fn (int|bool|string $v) => $editor->setAutoPairs((bool) $v)],

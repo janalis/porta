@@ -31,6 +31,7 @@ final class IdeConfig
      * @var array<string, int|bool|string>
      */
     public const DEFAULT_SETTINGS = [
+        'language' => 'en',
         'theme' => 'dark',
         'inlineDiagnostics' => true,
         'relativeLineNumbers' => false,

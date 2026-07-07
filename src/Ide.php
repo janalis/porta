@@ -21,6 +21,7 @@ use Porta\Editor\Document;
 use Porta\Git\GitCommands;
 use Porta\Git\GitInfo;
 use Porta\Git\GitViewController;
+use Porta\I18n\Translator;
 use Porta\Settings\SettingsViewController;
 use Porta\Widget\Settings\KeybindingsListWidget;
 use Porta\Widget\Settings\SettingsFormWidget;
@@ -83,6 +84,7 @@ use Symfony\Component\Tui\Style\StyleSheet;
 use Symfony\Component\Tui\Terminal\Terminal;
 use Symfony\Component\Tui\Terminal\TerminalInterface;
 use Symfony\Component\Tui\Tui;
+use Symfony\Component\Tui\Widget\AbstractWidget;
 use Symfony\Component\Tui\Widget\ContainerWidget;
 
 /**
@@ -135,6 +137,7 @@ final class Ide
     private MenuOverlayController $overlay;
 
     private Keybindings $keybindings;
+    private Translator $translator;
     private ContainerWidget $main;
     private GitViewController $gitView;
     private SettingsViewController $settingsView;
@@ -158,6 +161,7 @@ final class Ide
         private readonly bool $lspDisabled = false,
     ) {
         $config = IdeConfig::load($this->rootDir);
+        $this->translator = new Translator((string) ($config->settings['language'] ?? 'en'));
         $keybindings = new Keybindings(array_merge(ActionCatalog::ideDefaults(), $config->keymap));
         $this->keybindings = $keybindings;
 
@@ -390,7 +394,7 @@ final class Ide
         $this->wireStatusBar();
 
         // Apply persisted settings.
-        $this->settings = new SettingsController($config->settings, $this->editor, $this->statusBar, $this->tui, $this->rootDir);
+        $this->settings = new SettingsController($config->settings, $this->editor, $this->statusBar, $this->tui, $this->rootDir, fn (string $locale) => $this->applyLanguage($locale));
         $this->settings->applyAll();
         $this->settingsLanguages = new SettingsLanguageController($this->editor, $this->statusBar, $this->tui, $this->rootDir, $config->languages);
         $this->settingsLanguages->applyToEditor();
@@ -989,6 +993,28 @@ final class Ide
     }
 
     // --- LSP -------------------------------------------------------------------
+
+    /** Live UI-locale switch: point the translator at $locale and rebuild the chrome. */
+    private function applyLanguage(string $locale): void
+    {
+        $this->translator->setLocale($locale);
+        // Widgets cache their rendered lines; clear the whole tree so the next
+        // frame rebuilds every label under the new locale.
+        foreach ([$this->menuBar, $this->main, $this->statusBar, $this->goToFile, $this->findBar, $this->resultsPanel, $this->terminalPanel, $this->contextMenu] as $widget) {
+            $this->invalidateTree($widget);
+        }
+        $this->tui->requestRender();
+    }
+
+    private function invalidateTree(AbstractWidget $widget): void
+    {
+        $widget->clearRenderCache();
+        if ($widget instanceof ContainerWidget) {
+            foreach ($widget->all() as $child) {
+                $this->invalidateTree($child);
+            }
+        }
+    }
 
     /** Re-send didOpen for every open file, so a live LSP reconfigure relaunches its servers. */
     private function reopenLspBuffers(): void

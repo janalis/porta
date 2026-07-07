@@ -19,16 +19,17 @@
         "php": ">=8.4",
         "ext-mbstring": "*",
         "ext-pcntl": "*",
+        "ext-simplexml": "*",
         "revolt/event-loop": "^1.0",
         "symfony/console": "^8.1",
         "symfony/filesystem": "^8.1",
         "symfony/finder": "^8.1",
         "symfony/process": "^8.1",
+        "symfony/translation": "^8.1",
         "symfony/tui": "^8.1",
         "tempest/highlight": "^2.16"
     },
     "require-dev": {
-        "ext-simplexml": "*",
         "brianium/paratest": "^7.23",
         "carthage-software/mago": "1.28.*",
         "phpunit/phpunit": "^13.2"

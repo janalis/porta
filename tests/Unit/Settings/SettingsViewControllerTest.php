@@ -61,7 +61,7 @@ final class SettingsViewControllerTest extends TestCase
         $this->tui = new Tui(terminal: new VirtualTerminal(columns: 100, rows: 24), keybindings: new Keybindings([]), renderer: new Renderer(new StyleSheet()));
         $editor = new CodeEditorWidget();
         $status = new StatusBarWidget();
-        $settings = new SettingsController(IdeConfig::DEFAULT_SETTINGS, $editor, $status, $this->tui, $this->project->dir);
+        $settings = new SettingsController(IdeConfig::DEFAULT_SETTINGS, $editor, $status, $this->tui, $this->project->dir, static function (string $locale): void {});
         $keymap = new SettingsKeymapController($editor, new Keybindings([]), $status, $this->tui, $this->project->dir);
         $languages = new SettingsLanguageController($editor, $status, $this->tui, $this->project->dir, []);
         $pool = new LspSessionPool($this->project->dir, static fn (): ?string => null);
@@ -161,7 +161,7 @@ final class SettingsViewControllerTest extends TestCase
         $controller = $this->controller();
         $controller->open();
 
-        $this->form->handleClick(0); // toggle Inline diagnostics (default true → false)
+        $this->form->handleClick(1); // toggle Inline diagnostics (row 0 is Language now; default true → false)
         $this->assertFalse(IdeConfig::load($this->project->dir)->settings['inlineDiagnostics']);
     }
 
