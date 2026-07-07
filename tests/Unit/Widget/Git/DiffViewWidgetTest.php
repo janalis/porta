@@ -560,32 +560,93 @@ final class DiffViewWidgetTest extends TestCase
         $this->assertCount(1, $copies, 'no document: nothing fires');
     }
 
-    public function testDragSelectExtendsARangeAndAClickClearsIt(): void
+    public function testDragSelectsCharsAcrossRowsAndAClickClearsIt(): void
     {
+        // Rows: title, hunk, ' $keep = 1;', '-$old = 2;', '+$new = 2;'...
+        // Text columns start at widget col 12 (gutter 11 + marker).
         $widget = $this->widget();
         $widget->setFocused(true);
-        $this->plainLines($widget); // teach the viewport
+        $this->plainLines($widget); // teach the viewport geometry
         $copies = [];
         $widget->onCopy(function (string $text) use (&$copies): void {
             $copies[] = $text;
         });
 
-        $widget->handleClick(3, 10);  // press on -$old (row 3)
-        $widget->dragSelectTo(4);     // drag to +$new: anchor armed at the press row
+        // Press mid '-$old = 2;' (text col 1 = 'old = 2;') and drag to the
+        // next row's text col 4: tail of the old line + head of the new one.
+        $widget->handleClick(3, 13);
+        $widget->dragSelectTo(4, 16);
         $raw = $widget->render(new RenderContext(80, 12));
-        $this->assertStringContainsString("\x1b[48;5;236m", $raw[3], 'the dragged range is highlighted');
+        $this->assertStringContainsString("\x1b[48;5;24m", $raw[3], 'the selected span carries the selection bg');
+        $this->assertStringContainsString("\x1b[48;5;24m", $raw[4]);
+        $this->assertStringNotContainsString("\x1b[48;5;24m", $raw[2], 'rows outside the span stay untinted');
         $widget->handleInput("\x03");
-        $this->assertSame(["\$old = 2;\n\$new = 2;\n"], $copies);
+        $this->assertSame(["old = 2;\n\$new"], $copies, 'exact chars: tail of the deletion, head of the addition');
 
-        // A fresh click clears any leftover anchor before selecting anew.
-        $widget->dragSelectTo(2);
-        $widget->handleClick(4, 10);
+        // The selection was consumed; a plain click + copy is row-based again.
+        $widget->handleClick(4, 20);
         $widget->handleInput("\x03");
-        $this->assertSame("\$new = 2;\n", $copies[1], 'single row: the click dropped the old anchor');
+        $this->assertSame("\$new = 2;\n", $copies[1], 'a degenerate press falls back to the cursor row');
+
+        // A reversed drag (upward) normalizes.
+        $widget->handleClick(4, 16);
+        $widget->dragSelectTo(3, 13);
+        $widget->handleInput("\x03");
+        $this->assertSame("old = 2;\n\$new", $copies[2]);
+
+        // A span across the second hunk header: the header row contributes
+        // nothing to the tint or the copied text.
+        $widget->handleClick(5, 13); // +$extra = 3;
+        $widget->dragSelectTo(7, 16); // through '@@ -10,1 +11,1 @@' to -tail
+        $widget->render(new RenderContext(80, 12)); // tints skip the header row
+        $widget->handleInput("\x03");
+        $this->assertSame("extra = 3;\ntail", $copies[3], 'hunk header skipped mid-selection');
 
         $empty = new DiffViewWidget();
         $empty->setDocument(null, null);
-        $empty->dragSelectTo(3); // no rows: a safe no-op
+        $empty->dragSelectTo(3, 5); // no rows / no press: a safe no-op
         $this->assertFalse($empty->isSplit());
+    }
+
+    public function testSplitDragBindsToItsHalf(): void
+    {
+        $widget = new DiffViewWidget();
+        $widget->setDocument(DiffDocument::parse("@@ -1,2 +1,2 @@\n-oldA\n-oldB\n+newA\n+newB\n"), 'x.txt');
+        $widget->setSplit(true);
+        $widget->setFocused(true);
+        $widget->render(new RenderContext(80, 6)); // leftW = 39: right half text starts at col 46
+        $copies = [];
+        $widget->onCopy(function (string $text) use (&$copies): void {
+            $copies[] = $text;
+        });
+
+        // Press in the RIGHT half (col 46 = new-side text col 0) and drag down
+        // past the divider into the left half: the selection stays on the new
+        // side, the out-of-half column clamps to its start.
+        $widget->handleClick(2, 46);
+        $widget->dragSelectTo(3, 50);
+        $raw = $widget->render(new RenderContext(80, 6));
+        $this->assertStringContainsString("\x1b[48;5;24m", $raw[2], 'the right-half span is tinted');
+        $widget->handleInput("\x03");
+        $this->assertSame(["newA\nnewB"], $copies, 'only new-side texts, cols projected onto the right half');
+
+        // Press in the LEFT half: old-side text only.
+        $widget->handleClick(2, 6);
+        $widget->dragSelectTo(3, 8);
+        $raw = $widget->render(new RenderContext(80, 6));
+        $this->assertStringContainsString("\x1b[48;5;24m", $raw[2], 'the left-half span is tinted');
+        $widget->handleInput("\x03");
+        $this->assertSame("oldA\nol", $copies[1]);
+
+        // Staging Space is unaffected by a char selection (no v anchor armed).
+        $staged = null;
+        $widget->onStageSelection(function (array $sel) use (&$staged): void {
+            $staged = $sel;
+        });
+        $widget->handleClick(2, 6);
+        $widget->dragSelectTo(3, 8);
+        $widget->setReadOnly(false);
+        $widget->handleInput(' ');
+        $this->assertSame([0 => [1 => true, 3 => true]], $staged, 'Space stages the cursor pair row, not the char span');
     }
 }

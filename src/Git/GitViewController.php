@@ -237,7 +237,7 @@ final class GitViewController
     private function copyDiffText(string $text): void
     {
         ($this->copyToClipboard)($text);
-        $lines = substr_count($text, "\n");
+        $lines = substr_count(rtrim($text, "\n"), "\n") + 1;
         $this->statusBar->flash(\sprintf('Copied %d line%s', $lines, 1 === $lines ? '' : 's'));
         $this->tui->requestRender();
     }

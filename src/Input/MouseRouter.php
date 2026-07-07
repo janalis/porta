@@ -380,7 +380,7 @@ final class MouseRouter
         // Only genuine motion extends the range — a plain click's release
         // must not arm an anchor on the row it already selected.
         if ($mouse->isLeftDrag() && null !== ($rel = $this->hit->hit($this->gitDiff, $mouse->row, $mouse->col)) && $rel['row'] > 0) {
-            $this->gitDiff->dragSelectTo($rel['row']);
+            $this->gitDiff->dragSelectTo($rel['row'], $rel['col']);
             $this->tui->requestRender();
         }
         if ($mouse->isLeftRelease()) {
