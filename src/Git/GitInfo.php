@@ -165,6 +165,22 @@ final class GitInfo
     }
 
     /**
+     * Apply a crafted partial patch to the index (`git apply --cached -`),
+     * the engine behind line/hunk staging and unstaging.
+     *
+     * @param callable(bool): void $onDone
+     */
+    public function applyCached(string $patch, callable $onDone): void
+    {
+        if (!$this->available) {
+            $onDone(false);
+
+            return;
+        }
+        $this->runStatus(['apply', '--cached', '--whitespace=nowarn', '-'], static fn (int $code) => $onDone(0 === $code), stdin: $patch);
+    }
+
+    /**
      * Stage a file (`git add`). Reports whether git exited cleanly.
      *
      * @param callable(bool): void $onDone
@@ -291,13 +307,14 @@ final class GitInfo
     /**
      * @param list<string>                 $args
      * @param callable(int, string): void  $onDone receives (exit code, stdout)
+     * @param string|null                  $stdin  payload piped to the command
      */
-    private function runStatus(array $args, callable $onDone): void
+    private function runStatus(array $args, callable $onDone, ?string $stdin = null): void
     {
         /** @var list<string> $command */
         $command = [$this->git, '-C', $this->rootDir, ...$args];
         $key = $this->nextKey++;
-        $process = new AsyncProcess($command, $this->rootDir);
+        $process = new AsyncProcess($command, $this->rootDir, $stdin);
         $started = $process->start(function (int $code, string $out) use ($key, $onDone): void {
             unset($this->running[$key]);
             $onDone($code, $out);

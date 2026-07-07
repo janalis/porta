@@ -25,10 +25,14 @@ final class AsyncProcess
 
     /**
      * @param list<string> $command
+     * @param string|null  $stdin payload written to the child's stdin, which is
+     *                            then closed (e.g. a patch for `git apply -`);
+     *                            null leaves stdin unattached
      */
     public function __construct(
         private readonly array $command,
         private readonly string $cwd,
+        private readonly ?string $stdin = null,
     ) {}
 
     /**
@@ -43,7 +47,11 @@ final class AsyncProcess
         $pipes = [];
         /** @var non-empty-string $cwd */
         $cwd = $this->cwd;
-        $process = @proc_open($this->command, [1 => ['pipe', 'w'], 2 => ['file', '/dev/null', 'w']], $pipes, $cwd);
+        $descriptors = [1 => ['pipe', 'w'], 2 => ['file', '/dev/null', 'w']];
+        if (null !== $this->stdin) {
+            $descriptors[0] = ['pipe', 'r'];
+        }
+        $process = @proc_open($this->command, $descriptors, $pipes, $cwd);
         if (!\is_resource($process)) {
             // Defensive: proc_open spawns even unusable binaries (exec
             // failure surfaces later as an exit code), so this is unreachable
@@ -55,6 +63,14 @@ final class AsyncProcess
         }
 
         $this->process = $process;
+        if (null !== $this->stdin) {
+            // Write-and-close before watching stdout. Payloads here are patch-
+            // sized (well under the pipe buffer), so a blocking write cannot
+            // stall the loop the way streaming would.
+            /** @var array{0: resource, 1: resource} $pipes */
+            @fwrite($pipes[0], $this->stdin);
+            @fclose($pipes[0]);
+        }
         /** @var array{1: resource} $pipes */
         $stdout = $pipes[1];
         stream_set_blocking($stdout, false);
