@@ -228,7 +228,6 @@ final class IdeConfigTest extends TestCase
     public function testKeymapParsingAndValidation(): void
     {
         $project = new TempProject(['.porta.json' => json_encode([
-            'lsp' => 'phpactor language-server',
             'keymap' => [
                 'duplicate_line' => ['ctrl+shift+d'],
                 'save' => 'f10',
@@ -245,5 +244,73 @@ final class IdeConfigTest extends TestCase
         $this->assertArrayNotHasKey('copy', $config->keymap, 'non-list value rejected');
         $this->assertCount(2, $config->warnings);
         $this->assertStringContainsString('bogus_action', $config->warnings[0]);
+    }
+
+    public function testLspServersMapLoaded(): void
+    {
+        $project = new TempProject(['.porta.json' => json_encode([
+            'lsp' => ['php' => 'phpactor language-server', 'typescript' => ['node', '/x/tsserver.js', '--stdio']],
+        ])]);
+
+        $config = IdeConfig::load($project->dir);
+        $this->assertSame('phpactor language-server', $config->lspServers['php']);
+        $this->assertSame('node /x/tsserver.js --stdio', $config->lspServers['typescript'], 'argv joined to a command string');
+        $this->assertSame([], $config->warnings);
+    }
+
+    public function testLspSingleCommandFormIsNotShownPerLanguage(): void
+    {
+        $project = new TempProject(['.porta.json' => json_encode(['lsp' => 'phpactor language-server'])]);
+        $config = IdeConfig::load($project->dir);
+
+        $this->assertSame([], $config->lspServers, 'a catch-all command is not a per-language map');
+        $this->assertSame([], $config->warnings, 'the historical single-command form is valid, not a warning');
+    }
+
+    public function testPersistLspServerMergesRemovesAndPrunes(): void
+    {
+        $project = new TempProject(['.porta.json' => json_encode(['lsp' => ['php' => 'phpactor language-server']])]);
+
+        $this->assertTrue(IdeConfig::persistLspServer($project->dir, 'typescript', 'typescript-language-server --stdio'));
+        $written = json_decode((string) file_get_contents($project->path('.porta.json')), true);
+        $this->assertSame('phpactor language-server', $written['lsp']['php'], 'existing entry preserved');
+        $this->assertSame('typescript-language-server --stdio', $written['lsp']['typescript']);
+
+        // Clearing a language removes its key (reverts to auto-detect).
+        $this->assertTrue(IdeConfig::persistLspServer($project->dir, 'php', '  '));
+        $written = json_decode((string) file_get_contents($project->path('.porta.json')), true);
+        $this->assertArrayNotHasKey('php', $written['lsp']);
+
+        // Clearing the last entry drops the whole lsp block.
+        $this->assertTrue(IdeConfig::persistLspServer($project->dir, 'typescript', ''));
+        $written = json_decode((string) file_get_contents($project->path('.porta.json')), true);
+        $this->assertArrayNotHasKey('lsp', $written);
+    }
+
+    public function testPersistLspServerConvertsACatchAllStringToAMap(): void
+    {
+        $project = new TempProject(['.porta.json' => json_encode(['lsp' => 'phpactor language-server'])]);
+
+        $this->assertTrue(IdeConfig::persistLspServer($project->dir, 'python', 'pylsp'));
+        $written = json_decode((string) file_get_contents($project->path('.porta.json')), true);
+        $this->assertSame('phpactor language-server', $written['lsp']['*'], 'the catch-all is kept as *');
+        $this->assertSame('pylsp', $written['lsp']['python']);
+    }
+
+    public function testPersistLspServerConvertsACatchAllArgvListToAMap(): void
+    {
+        $project = new TempProject(['.porta.json' => json_encode(['lsp' => ['node', '/x/ls.js', '--stdio']])]);
+
+        $this->assertTrue(IdeConfig::persistLspServer($project->dir, 'php', 'phpactor'));
+        $written = json_decode((string) file_get_contents($project->path('.porta.json')), true);
+        $this->assertSame('node /x/ls.js --stdio', $written['lsp']['*'], 'the argv catch-all is joined and kept as *');
+        $this->assertSame('phpactor', $written['lsp']['php']);
+    }
+
+    public function testPersistLspServerReturnsFalseWhenWriteFails(): void
+    {
+        $project = new TempProject();
+        mkdir($project->path('.porta.json'));
+        $this->assertFalse(IdeConfig::persistLspServer($project->dir, 'php', 'phpactor'));
     }
 }

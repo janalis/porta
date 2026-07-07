@@ -162,10 +162,11 @@ final class ServerLocatorTest extends TestCase
 
     public function testLocateAllMapConfigRoutesPerLanguage(): void
     {
+        putenv('PATH=/nonexistent'); // no auto-detected servers to merge in
         $project = new TempProject(['.porta.json' => json_encode(['lsp' => [
             'php' => 'phpactor language-server',
             'typescript' => ['node', '/x/tsserver.js', '--stdio'],
-            'python' => '',                 // empty command: dropped
+            'python' => '',                 // empty command: dropped → auto-detect (none here)
             'yaml' => ['ls', '--stdio'],    // argv-list value form
         ]])]);
 
@@ -176,6 +177,32 @@ final class ServerLocatorTest extends TestCase
         $this->assertSame(['node', '/x/tsserver.js', '--stdio'], $servers['typescript']['command']);
         $this->assertSame('tsserver', $servers['typescript']['name']);
         $this->assertSame(['ls', '--stdio'], $servers['yaml']['command']);
+    }
+
+    public function testLocateAllMapMergesWithAutoDetect(): void
+    {
+        // A map that only overrides typescript leaves php on its auto-detected default.
+        $project = new TempProject(['.porta.json' => json_encode(['lsp' => ['typescript' => 'my-tsls --stdio']])]);
+        $bin = $project->write('vendor/bin/phpactor', "#!/bin/sh\n");
+        chmod($bin, 0755);
+        putenv('PATH=/nonexistent');
+
+        $servers = ServerLocator::locateAll($project->dir);
+
+        $this->assertSame([$bin, 'language-server'], $servers['php']['command'], 'php keeps its auto-detected server');
+        $this->assertSame(['my-tsls', '--stdio'], $servers['typescript']['command'], 'the override applies');
+    }
+
+    public function testAutoDetectedAndDescribeHelpers(): void
+    {
+        $project = new TempProject();
+        $bin = $project->write('vendor/bin/phpactor', "#!/bin/sh\n");
+        chmod($bin, 0755);
+        putenv('PATH=/nonexistent');
+
+        $this->assertSame('phpactor', ServerLocator::autoDetected($project->dir)['php']['name']);
+        $this->assertSame(['node', '/x/ls.js', '--stdio'], ServerLocator::describe('node /x/ls.js --stdio')['command']);
+        $this->assertSame('ls', ServerLocator::describe('node /x/ls.js --stdio')['name']);
     }
 
     public function testLocateAllEnvVariableIsTheCatchAll(): void

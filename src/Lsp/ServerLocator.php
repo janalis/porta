@@ -39,8 +39,10 @@ final class ServerLocator
         $config = JsonFile::read($rootDir.'/.porta.json');
         $lsp = $config['lsp'] ?? null;
         if (\is_array($lsp) && [] !== $lsp && !array_is_list($lsp)) {
-            // {languageId: command} map: each entry is a string or an argv list.
-            $servers = [];
+            // {languageId: command} map: each entry (a string or argv list) overrides
+            // that language, but the rest keep their auto-detected default — so
+            // configuring one language never silently unserves the others.
+            $servers = self::defaults($rootDir);
             /** @var mixed $command */
             foreach ($lsp as $language => $command) {
                 if (\is_string($command) && '' !== $command) {
@@ -86,6 +88,28 @@ final class ServerLocator
         }
 
         return null;
+    }
+
+    /**
+     * The auto-detected per-language servers (php/js/ts/python), for the settings
+     * screen to show as the effective default when no override is configured.
+     *
+     * @return array<string, array{command: list<string>, name: string}>
+     */
+    public static function autoDetected(string $rootDir): array
+    {
+        return self::defaults($rootDir);
+    }
+
+    /**
+     * Parse a raw command string into a server descriptor (command argv + display
+     * name), for previewing a user-typed LSP command.
+     *
+     * @return array{command: list<string>, name: string}
+     */
+    public static function describe(string $command): array
+    {
+        return self::server(self::split($command));
     }
 
     /**

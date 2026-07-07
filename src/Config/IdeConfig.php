@@ -43,14 +43,16 @@ final class IdeConfig
 
     /**
      * @param array<string, list<string>>                                          $keymap
-     * @param array<string, int|bool|string>                                       $settings  resolved settings (defaults merged)
-     * @param array<string, array{indentStyle?: string, indentSize?: int|string}>  $languages per-language indent overrides
+     * @param array<string, int|bool|string>                                       $settings   resolved settings (defaults merged)
+     * @param array<string, array{indentStyle?: string, indentSize?: int|string}>  $languages  per-language indent overrides
+     * @param array<string, string>                                                $lspServers per-language LSP command overrides (map form)
      * @param list<string>                                                         $warnings
      */
     private function __construct(
         public readonly array $keymap,
         public readonly array $settings,
         public readonly array $languages,
+        public readonly array $lspServers,
         public readonly array $warnings,
     ) {}
 
@@ -58,12 +60,12 @@ final class IdeConfig
     {
         $file = $rootDir.'/.porta.json';
         if (!is_file($file)) {
-            return new self([], self::DEFAULT_SETTINGS, [], []);
+            return new self([], self::DEFAULT_SETTINGS, [], [], []);
         }
 
         $config = JsonFile::read($file);
         if (null === $config) {
-            return new self([], self::DEFAULT_SETTINGS, [], ['.porta.json is not valid JSON']);
+            return new self([], self::DEFAULT_SETTINGS, [], [], ['.porta.json is not valid JSON']);
         }
 
         $keymap = [];
@@ -98,8 +100,41 @@ final class IdeConfig
         /** @var array<string, mixed> $languagesConfig */
         $languagesConfig = \is_array($config['languages'] ?? null) ? $config['languages'] : [];
         $languages = self::parseLanguages($languagesConfig, $warnings);
+        $lspServers = self::parseLspServers($config['lsp'] ?? null);
 
-        return new self($keymap, $settings, $languages, $warnings);
+        return new self($keymap, $settings, $languages, $lspServers, $warnings);
+    }
+
+    /**
+     * Read the per-language `lsp` map ({languageId: command}) into command
+     * strings for the settings screen. A single-command form (string / argv
+     * list) can't hold per-language entries, so it yields nothing here — the
+     * settings UI shows those languages as unset and converts to a map on edit.
+     *
+     * @return array<string, string>
+     */
+    private static function parseLspServers(mixed $lsp): array
+    {
+        if (!\is_array($lsp) || [] === $lsp || array_is_list($lsp)) {
+            return [];
+        }
+
+        $servers = [];
+        foreach (array_keys($lsp) as $language) {
+            $servers[(string) $language] = self::commandString($lsp[$language]);
+        }
+
+        return $servers;
+    }
+
+    /** A raw `lsp` value (string or argv list) as a single command string. */
+    private static function commandString(mixed $command): string
+    {
+        if (\is_array($command)) {
+            return implode(' ', array_map(strval(...), $command));
+        }
+
+        return \is_string($command) ? $command : '';
     }
 
     /**
@@ -224,6 +259,61 @@ final class IdeConfig
         $config['languages'] = $languages;
 
         return self::write($file, $config);
+    }
+
+    /**
+     * Persist a per-language LSP server command into .porta.json's `lsp` map.
+     * A blank command removes the language's entry (reverting to auto-detect);
+     * an empty map drops the whole `lsp` block. A single-command form is
+     * converted to a map (its command kept as the `*` catch-all). True on success.
+     */
+    public static function persistLspServer(string $rootDir, string $languageId, string $command): bool
+    {
+        $file = $rootDir.'/.porta.json';
+        $config = JsonFile::read($file) ?? [];
+        $map = self::lspMap($config['lsp'] ?? null);
+
+        $command = trim($command);
+        if ('' === $command) {
+            unset($map[$languageId]);
+        } else {
+            $map[$languageId] = $command;
+        }
+
+        if ([] === $map) {
+            unset($config['lsp']);
+        } else {
+            $config['lsp'] = $map;
+        }
+
+        return self::write($file, $config);
+    }
+
+    /**
+     * Normalize any `lsp` value to a {languageId: command} map: a map is coerced
+     * to command strings; a single command string/argv list becomes the `*`
+     * catch-all; anything else is empty.
+     *
+     * @return array<string, string>
+     */
+    private static function lspMap(mixed $lsp): array
+    {
+        if (\is_array($lsp) && [] !== $lsp && array_is_list($lsp)) {
+            return ['*' => self::commandString($lsp)];
+        }
+        if (\is_string($lsp) && '' !== $lsp) {
+            return ['*' => $lsp];
+        }
+        if (!\is_array($lsp)) {
+            return [];
+        }
+
+        $map = [];
+        foreach (array_keys($lsp) as $language) {
+            $map[(string) $language] = self::commandString($lsp[$language]);
+        }
+
+        return $map;
     }
 
     /**
