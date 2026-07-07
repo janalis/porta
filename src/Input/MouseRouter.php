@@ -163,6 +163,17 @@ final class MouseRouter
     /** Wheel: scroll whichever pane is under the pointer. */
     private function handleWheel(MouseEvent $mouse, ?WidgetRect $treeRect, ?WidgetRect $editorRect): void
     {
+        // Horizontal wheel (trackpad swipe or shift+wheel): only the panes
+        // with long lines scroll sideways; everything else ignores it.
+        if (0 !== $mouse->wheelHDelta) {
+            if (null !== $this->hit->hit($this->gitDiff, $mouse->row, $mouse->col)) {
+                $this->gitDiff->scrollHBy(6 * $mouse->wheelHDelta);
+                $this->tui->requestRender();
+            }
+
+            return;
+        }
+
         $step = 3 * $mouse->wheelDelta;
         $terminalRect = $this->hit->rect($this->terminalPanel);
         if ($this->terminalPanel->isOpen() && null !== $terminalRect && $terminalRect->contains($mouse->row, $mouse->col)) {

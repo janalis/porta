@@ -54,6 +54,10 @@ final class DiffViewWidget extends AbstractWidget implements FocusableInterface,
     /** @var list<array{name: string, start: int, end: int}> clickable toolbar tag spans from the last render */
     private array $buttonZones = [];
     private int $scroll = 0;
+    /** Horizontal scroll offset (display columns into the line texts). */
+    private int $hScroll = 0;
+    /** Widest line text in the shown document, to clamp the h-scroll. */
+    private int $maxLineWidth = 0;
     private int $lastRows = 12;
     private bool $readOnly = false;
     /** Cursor row (index into $rows); staging operates at/around it. */
@@ -195,6 +199,13 @@ final class DiffViewWidget extends AbstractWidget implements FocusableInterface,
         if (!$samePath) {
             $this->cursor = 0;
             $this->scroll = 0;
+            $this->hScroll = 0;
+        }
+        $this->maxLineWidth = 0;
+        foreach ($document?->hunks ?? [] as $hunk) {
+            foreach ($hunk->lines as $line) {
+                $this->maxLineWidth = max($this->maxLineWidth, mb_strwidth($line->text));
+            }
         }
         $this->rebuildRows();
         $this->highlightRows();
@@ -237,6 +248,18 @@ final class DiffViewWidget extends AbstractWidget implements FocusableInterface,
         $this->invalidate();
     }
 
+    /** Scroll the line texts horizontally; gutters and ± markers stay pinned. */
+    public function scrollHBy(int $cols): void
+    {
+        $this->hScroll = max(0, min($this->hScroll + $cols, max(0, $this->maxLineWidth - 20)));
+        $this->invalidate();
+    }
+
+    public function hScroll(): int
+    {
+        return $this->hScroll;
+    }
+
     public function handleInput(string $data): void
     {
         if ($this->inputHookHandled($data)) {
@@ -277,6 +300,10 @@ final class DiffViewWidget extends AbstractWidget implements FocusableInterface,
             if (null !== $this->onToggleWhitespace) {
                 ($this->onToggleWhitespace)(); // allowed in read-only mode too
             }
+        } elseif ($kb->matches($data, 'scroll_left')) {
+            $this->scrollHBy(-8);
+        } elseif ($kb->matches($data, 'scroll_right')) {
+            $this->scrollHBy(8);
         }
     }
 
@@ -387,7 +414,9 @@ final class DiffViewWidget extends AbstractWidget implements FocusableInterface,
         $rows = max(1, $context->getRows() > 0 ? $context->getRows() : 12);
         $this->lastRows = $rows;
 
-        $title = ' '.($this->path ?? 'Diff').($this->scroll > 0 ? \sprintf('  [scrolled +%d]', $this->scroll) : '');
+        $title = ' '.($this->path ?? 'Diff')
+            .($this->scroll > 0 ? \sprintf('  [scrolled +%d]', $this->scroll) : '')
+            .($this->hScroll > 0 ? \sprintf('  [→%d]', $this->hScroll) : '');
         $lines = [$this->renderToolbar($title, $width)];
 
         if (null === $this->document || [] === $this->rows) {
@@ -503,19 +532,44 @@ final class DiffViewWidget extends AbstractWidget implements FocusableInterface,
             .str_pad(null === $line->newNo ? '' : (string) $line->newNo, 4, ' ', \STR_PAD_LEFT)
             .' │'."\x1b[39m";
 
-        // The origin char and gutter mark the row kind; added/context text keeps
-        // its syntax colors, deletions render whole-row red (the pre-image no
-        // longer matches the file's highlight state). Paired ± lines carry an
-        // intraline changed range, emphasized with a stronger background.
-        $key = $row['hunk'].':'.($row['line'] ?? -1);
-        $content = match ($line->origin) {
-            '+' => self::ADD_FG.'+'."\x1b[39m".$this->withEmphasis($this->highlighted[$key] ?? $line->text, $line, "\x1b[48;5;22m"),
-            '-' => self::DEL_FG.'-'.$this->withEmphasis($line->text, $line, "\x1b[48;5;88m"),
-            '\\' => "\x1b[38;5;245m ".$line->text,
-            default => ' '.($this->highlighted[$key] ?? $line->text),
-        };
+        [$marker, $text] = $this->lineBody($line, $row['hunk'].':'.($row['line'] ?? -1));
 
-        return $gutter.AnsiUtils::truncateToWidth($content, max(1, $width - 11), '…', pad: true)."\x1b[0m";
+        return $gutter.$marker.$this->scrolledText($text, max(1, $width - 12))."\x1b[0m";
+    }
+
+    /**
+     * A body line split into its pinned one-column ± marker and the scrollable
+     * styled text. The origin char and gutter mark the row kind; added/context
+     * text keeps its syntax colors, deletions render whole-row red (the
+     * pre-image no longer matches the file's highlight state). Paired ± lines
+     * carry an intraline changed range, emphasized with a stronger background.
+     *
+     * @return array{0: string, 1: string}
+     */
+    private function lineBody(DiffLine $line, string $key): array
+    {
+        return match ($line->origin) {
+            '+' => [self::ADD_FG.'+'."\x1b[39m", $this->withEmphasis($this->highlighted[$key] ?? $line->text, $line, "\x1b[48;5;22m")],
+            '-' => [self::DEL_FG.'-', $this->withEmphasis($line->text, $line, "\x1b[48;5;88m")],
+            '\\' => ["\x1b[38;5;245m ", $line->text],
+            default => [' ', $this->highlighted[$key] ?? $line->text],
+        };
+    }
+
+    /**
+     * The visible window of a styled line text: sliced by the horizontal
+     * scroll (ANSI-aware, so syntax/emphasis SGR survives) with a leading …
+     * marking cut-off text, right-truncated and padded to $inner columns.
+     */
+    private function scrolledText(string $text, int $inner): string
+    {
+        if ($this->hScroll <= 0) {
+            return AnsiUtils::truncateToWidth($text, $inner, '…', pad: true);
+        }
+
+        $slice = AnsiUtils::sliceByColumn($text, $this->hScroll, $inner);
+
+        return '…'.AnsiUtils::truncateToWidth($slice, max(1, $inner - 1), '…', pad: true);
     }
 
     /**
@@ -533,15 +587,9 @@ final class DiffViewWidget extends AbstractWidget implements FocusableInterface,
         $no = $old ? $line->oldNo : $line->newNo;
         $gutter = self::GUTTER_FG.str_pad(null === $no ? '' : (string) $no, 4, ' ', \STR_PAD_LEFT).' '."\x1b[39m";
 
-        $key = $hunkIndex.':'.$lineIndex;
-        $content = match ($line->origin) {
-            '+' => self::ADD_FG.'+'."\x1b[39m".$this->withEmphasis($this->highlighted[$key] ?? $line->text, $line, "\x1b[48;5;22m"),
-            '-' => self::DEL_FG.'-'.$this->withEmphasis($line->text, $line, "\x1b[48;5;88m"),
-            '\\' => "\x1b[38;5;245m ".$line->text,
-            default => ' '.($this->highlighted[$key] ?? $line->text),
-        };
+        [$marker, $text] = $this->lineBody($line, $hunkIndex.':'.$lineIndex);
 
-        return $gutter.AnsiUtils::truncateToWidth($content, max(1, $width - 5), '…', pad: true)."\x1b[39m";
+        return $gutter.$marker.$this->scrolledText($text, max(1, $width - 6))."\x1b[39m";
     }
 
     public function isVerticallyExpanded(): bool
@@ -567,6 +615,8 @@ final class DiffViewWidget extends AbstractWidget implements FocusableInterface,
             'cycle_context' => ['c'],
             'toggle_layout' => ['s'],
             'toggle_whitespace' => ['w'],
+            'scroll_left' => [Key::LEFT],
+            'scroll_right' => [Key::RIGHT],
             'focus_next_pane' => [Key::TAB],
             'exit_view' => [Key::ESCAPE],
         ];

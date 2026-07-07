@@ -3221,7 +3221,7 @@ final class IdeEdgeCasesTest extends TestCase
         $dir = escapeshellarg($project->dir);
         exec("git -C {$dir} init -q && git -C {$dir} config user.email t@t && git -C {$dir} config user.name t && git -C {$dir} add -A && git -C {$dir} commit -qm init");
         $project->write('a.txt', "one!\ntwo\nthree changed\n");
-        $project->write('b.txt', "new\n");
+        $project->write('b.txt', 'new '.str_repeat('long-tail ', 8)."\n"); // long enough to h-scroll
 
         $terminal = $this->runIde(
             $project,
@@ -3281,6 +3281,13 @@ final class IdeEdgeCasesTest extends TestCase
                 1950 => function ($tui, $terminal): void {
                     $tui->tick();
                     $this->assertStringContainsString('+new', AnsiUtils::stripAnsiCodes($terminal->getOutput()), 'the click loaded the untracked diff');
+                    // Horizontal wheel (trackpad code 67) over the diff pane
+                    // scrolls sideways; the tree/list panes ignore it.
+                    $tui->handleInput("\x1b[<67;80;6M");
+                    $this->assertSame(6, $tui->getById('git-diff')->hScroll(), 'wheel-right scrolled the diff text');
+                    $tui->handleInput("\x1b[<68;80;6M"); // shift+wheel-up = left
+                    $this->assertSame(0, $tui->getById('git-diff')->hScroll());
+                    $tui->handleInput("\x1b[<67;10;4M"); // over the changes list: ignored
                     // Wheel over the diff pane scrolls it; over the list it moves
                     // the selection (keyboard-like, so it may load).
                     $tui->handleInput("\x1b[<65;80;6M");

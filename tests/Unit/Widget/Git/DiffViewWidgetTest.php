@@ -426,4 +426,75 @@ final class DiffViewWidgetTest extends TestCase
         $on = $widget->render(new RenderContext(80, 12))[0];
         $this->assertStringContainsString("\x1b[48;5;31m\x1b[38;5;231m w:hide-ws ", $on, 'active tag renders selected');
     }
+
+    public function testHorizontalScrollSlidesTextUnderPinnedGutters(): void
+    {
+        $long = str_repeat('x', 30).'NEEDLE'.str_repeat('y', 30);
+        $widget = new DiffViewWidget();
+        $widget->setDocument(DiffDocument::parse("@@ -1,1 +1,1 @@\n-old\n+{$long}\n"), 'x.txt');
+        $widget->setFocused(true);
+
+        $lines = $this->plainLines($widget, 40, 6);
+        $this->assertStringNotContainsString('NEEDLE', implode('', $lines), 'the needle starts off-screen');
+
+        for ($i = 0; $i < 3; ++$i) {
+            $widget->handleInput("\x1b[C"); // right ×3 = 24 cols
+        }
+        $lines = $this->plainLines($widget, 40, 6);
+        $this->assertStringContainsString('[→24]', $lines[0], 'the title shows the horizontal offset');
+        $this->assertStringContainsString('NEEDLE', $lines[3], 'the needle scrolled into view');
+        $this->assertMatchesRegularExpression('/^\s+1 │\+…/', $lines[3], 'gutter and marker stay pinned; … marks the cut');
+
+        for ($i = 0; $i < 20; ++$i) {
+            $widget->handleInput("\x1b[D"); // left clamps at 0
+        }
+        $lines = $this->plainLines($widget, 40, 6);
+        $this->assertStringNotContainsString('[→', $lines[0]);
+        $this->assertStringContainsString('+xxxx', $lines[3]);
+
+        for ($i = 0; $i < 50; ++$i) {
+            $widget->handleInput("\x1b[C"); // right clamps near the widest line
+        }
+        $this->assertSame(46, $widget->hScroll(), 'clamped to maxLineWidth (66) - 20');
+    }
+
+    public function testHorizontalScrollAppliesToBothSplitHalvesAndResetsPerPath(): void
+    {
+        $long = str_repeat('a', 25).'LEFT'.str_repeat('b', 20);
+        $longer = str_repeat('c', 25).'RIGHT'.str_repeat('d', 20);
+        $widget = new DiffViewWidget();
+        $widget->setDocument(DiffDocument::parse("@@ -1,1 +1,1 @@\n-{$long}\n+{$longer}\n"), 'x.txt');
+        $widget->setSplit(true);
+        $widget->setFocused(true);
+
+        $widget->setReadOnly(true); // history diffs may scroll sideways too
+        for ($i = 0; $i < 3; ++$i) {
+            $widget->handleInput("\x1b[C");
+        }
+        $line = $this->plainLines($widget, 80, 6)[2];
+        $this->assertStringContainsString('LEFT', $line, 'the old half scrolled');
+        $this->assertStringContainsString('RIGHT', $line, 'the new half scrolled in step');
+
+        // A different path resets the horizontal offset; same path keeps it.
+        $widget->setDocument(DiffDocument::parse("@@ -1,1 +1,1 @@\n-a\n+b\n"), 'x.txt');
+        $this->assertSame(24, $widget->hScroll(), 'same-path reload keeps the offset');
+        $widget->setDocument(DiffDocument::parse("@@ -1,1 +1,1 @@\n-a\n+b\n"), 'other.txt');
+        $this->assertSame(0, $widget->hScroll());
+    }
+
+    public function testEmphasisSurvivesTheHorizontalSlice(): void
+    {
+        // Paired lines sharing prefix/suffix get an intraline range; scroll so
+        // the emphasized middle is inside the window and check its bg code.
+        $widget = new DiffViewWidget();
+        $widget->setDocument(DiffDocument::parse("@@ -1,1 +1,1 @@\n-".str_repeat('p', 30)."OLD tail\n+".str_repeat('p', 30)."NEW tail\n"), 'x.txt');
+        $widget->setFocused(true);
+        for ($i = 0; $i < 3; ++$i) {
+            $widget->handleInput("\x1b[C"); // 24 cols: the changed middle is in view
+        }
+
+        $raw = $widget->render(new RenderContext(40, 6));
+        $this->assertStringContainsString("\x1b[48;5;88m", $raw[2], 'the deletion emphasis bg survived the slice');
+        $this->assertStringContainsString("\x1b[48;5;22m", $raw[3], 'the addition emphasis bg survived the slice');
+    }
 }
