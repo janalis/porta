@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Porta\Config;
 
+use Porta\I18n\Translator;
 use Porta\Widget\CodeEditorWidget;
 use Porta\Widget\StatusBarWidget;
 use Symfony\Component\Tui\Tui;
@@ -32,6 +33,7 @@ final class SettingsLanguageController
         private readonly StatusBarWidget $statusBar,
         private readonly Tui $tui,
         private readonly string $rootDir,
+        private readonly Translator $translator,
         array $overrides,
     ) {
         foreach (LanguageCatalog::ids() as $id) {
@@ -57,8 +59,8 @@ final class SettingsLanguageController
         $entry = $this->config[$language] ?? new LanguageIndent();
 
         return [
-            ['key' => 'indentStyle', 'label' => 'Indent style', 'kind' => 'choice', 'value' => $entry->indentStyle, 'restart' => false, 'options' => self::STYLE_OPTIONS],
-            ['key' => 'indentSize', 'label' => 'Indent size', 'kind' => 'choice', 'value' => (string) $entry->indentSize, 'restart' => false, 'options' => self::SIZE_OPTIONS],
+            ['key' => 'indentStyle', 'label' => $this->translator->trans('Indent style'), 'kind' => 'choice', 'value' => $entry->indentStyle, 'restart' => false, 'options' => self::STYLE_OPTIONS],
+            ['key' => 'indentSize', 'label' => $this->translator->trans('Indent size'), 'kind' => 'choice', 'value' => (string) $entry->indentSize, 'restart' => false, 'options' => self::SIZE_OPTIONS],
         ];
     }
 
@@ -70,7 +72,7 @@ final class SettingsLanguageController
     {
         $current = $this->config[$language] ?? null;
         if (null === $current || ('indentStyle' !== $key && 'indentSize' !== $key)) {
-            $this->statusBar->flash(\sprintf('Unknown language setting "%s.%s"', $language, $key));
+            $this->statusBar->flash($this->translator->trans('Unknown language setting "%key%"', ['%key%' => $language.'.'.$key]));
             $this->tui->requestRender();
 
             return;
@@ -83,8 +85,9 @@ final class SettingsLanguageController
 
         $persisted = IdeConfig::persistLanguageSetting($this->rootDir, $language, $key, $stored);
         $this->applyToEditor();
-        $label = 'indentSize' === $key ? 'indent size' : 'indent style';
-        $this->statusBar->flash(\sprintf('%s %s: %s%s', LanguageCatalog::displayName($language), $label, $stored, $persisted ? '' : ' (not saved)'));
+        $label = $this->translator->trans('indentSize' === $key ? 'indent size' : 'indent style');
+        $saved = $persisted ? '' : ' ('.$this->translator->trans('not saved').')';
+        $this->statusBar->flash(\sprintf('%s %s: %s%s', LanguageCatalog::displayName($language), $label, $stored, $saved));
         $this->tui->requestRender();
     }
 }

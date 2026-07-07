@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Porta\Tests\Unit\Config;
 
 use PHPUnit\Framework\TestCase;
+use Porta\I18n\Translator;
 use Porta\Config\IdeConfig;
 use Porta\Config\SettingsLspController;
 use Porta\Lsp\LspSessionPool;
@@ -38,7 +39,7 @@ final class SettingsLspControllerTest extends TestCase
         $tui = new Tui(terminal: new VirtualTerminal(columns: 80, rows: 24));
         $pool = new LspSessionPool($rootDir, static fn (): ?string => null);
 
-        return new SettingsLspController($rootDir, $pool, $overrides, $lspOverride, function (): void { ++$this->reopened; }, $status, $tui);
+        return new SettingsLspController($rootDir, $pool, $overrides, $lspOverride, function (): void { ++$this->reopened; }, $status, $tui, new Translator('en'));
     }
 
     private function flashText(StatusBarWidget $status): string

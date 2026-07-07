@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Porta\Widget\Settings;
 
+use Porta\I18n\Translator;
 use Porta\Ui\ListNavigation;
 use Porta\Ui\ListSelection;
 use Porta\Ui\ShortcutFormatter;
@@ -53,8 +54,9 @@ final class KeybindingsListWidget extends AbstractWidget implements FocusableInt
     /** @var (callable(): void)|null Esc (when idle): leave the settings view */
     private $onExit = null;
 
-    public function __construct()
-    {
+    public function __construct(
+        private readonly Translator $translator,
+    ) {
         $this->list = new ListSelection();
     }
 
@@ -212,7 +214,7 @@ final class KeybindingsListWidget extends AbstractWidget implements FocusableInt
         $rows = max(1, $context->getRows() > 0 ? $context->getRows() : 12);
         $this->lastRows = $rows;
 
-        $title = \sprintf(' Keybindings — %d actions · Enter to rebind', \count($this->rows));
+        $title = ' '.$this->translator->trans('Keybindings — %count% actions · Enter to rebind', ['%count%' => \count($this->rows)]);
         $lines = ["\x1b[48;5;237m\x1b[1m".AnsiUtils::truncateToWidth($title, $width, '…', pad: true)."\x1b[0m"];
 
         $scroll = $this->list->follow($rows - 1);
@@ -230,8 +232,9 @@ final class KeybindingsListWidget extends AbstractWidget implements FocusableInt
                 : ($index === $this->hoveredIndex ? "\x1b[48;5;236m" : '');
 
             if ($index === $this->capturingIndex) {
-                $right = "\x1b[38;5;179mPress a key… (Esc to cancel)\x1b[39m";
-                $rightWidth = mb_strwidth('Press a key… (Esc to cancel)');
+                $prompt = $this->translator->trans('Press a key… (Esc to cancel)');
+                $right = "\x1b[38;5;179m".$prompt."\x1b[39m";
+                $rightWidth = mb_strwidth($prompt);
             } else {
                 $shortcut = ShortcutFormatter::format($entry['binding']);
                 $right = '' === $shortcut ? "\x1b[38;5;245m—\x1b[39m" : $shortcut;

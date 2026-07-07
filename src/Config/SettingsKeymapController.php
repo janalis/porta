@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Porta\Config;
 
+use Porta\I18n\Translator;
 use Porta\Ui\ShortcutFormatter;
 use Porta\Widget\CodeEditorWidget;
 use Porta\Widget\StatusBarWidget;
@@ -28,6 +29,7 @@ final class SettingsKeymapController
         private readonly StatusBarWidget $statusBar,
         private readonly Tui $tui,
         private readonly string $rootDir,
+        private readonly Translator $translator,
         private readonly KeyParser $parser = new KeyParser(),
     ) {}
 
@@ -43,7 +45,7 @@ final class SettingsKeymapController
         $rows = [];
         foreach (ActionCatalog::ACTIONS as $action => $spec) {
             $binding = $this->editor->getKeybindings()->getBindings($action)[0] ?? $this->ideKeys->getBindings($action)[0] ?? '';
-            $rows[] = ['action' => $action, 'label' => ActionCatalog::label($action), 'binding' => $binding];
+            $rows[] = ['action' => $action, 'label' => $this->translator->trans(ActionCatalog::label($action)), 'binding' => $binding];
         }
 
         return $rows;
@@ -57,7 +59,7 @@ final class SettingsKeymapController
     {
         $parsed = $this->parser->parse($rawKey);
         if (null === $parsed) {
-            $this->statusBar->flash('Unsupported key — try another');
+            $this->statusBar->flash($this->translator->trans('Unsupported key — try another'));
             $this->tui->requestRender();
 
             return;
@@ -65,12 +67,11 @@ final class SettingsKeymapController
 
         $token = $parsed['key'];
         $persisted = IdeConfig::persistKeymap($this->rootDir, $action, [$token]);
-        $this->statusBar->flash(\sprintf(
-            'Rebound %s to %s · applies on restart%s',
-            ActionCatalog::label($action),
-            ShortcutFormatter::format($token),
-            $persisted ? '' : ' (not saved)',
-        ));
+        $saved = $persisted ? '' : ' ('.$this->translator->trans('not saved').')';
+        $this->statusBar->flash($this->translator->trans('Rebound %action% to %key% · applies on restart', [
+            '%action%' => $this->translator->trans(ActionCatalog::label($action)),
+            '%key%' => ShortcutFormatter::format($token),
+        ]).$saved);
         $this->tui->requestRender();
     }
 }

@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Porta\Tests\Unit\Config;
 
 use PHPUnit\Framework\TestCase;
+use Porta\I18n\Translator;
 use Porta\Config\IdeConfig;
 use Porta\Config\SettingsLanguageController;
 use Porta\Tests\Support\TempProject;
@@ -22,7 +23,7 @@ final class SettingsLanguageControllerTest extends TestCase
     {
         $tui = new Tui(terminal: new VirtualTerminal(columns: 80, rows: 24));
 
-        return new SettingsLanguageController($editor, $status, $tui, $rootDir, $overrides);
+        return new SettingsLanguageController($editor, $status, $tui, $rootDir, new Translator('en'), $overrides);
     }
 
     private function flashText(StatusBarWidget $status): string

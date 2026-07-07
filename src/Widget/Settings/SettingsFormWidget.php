@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Porta\Widget\Settings;
 
+use Porta\I18n\Translator;
 use Porta\Ui\Style;
 use Porta\Ui\TextField;
 use Porta\Widget\InputHook;
@@ -39,7 +40,9 @@ final class SettingsFormWidget extends AbstractWidget implements FocusableInterf
     use MenuOverlayHostTrait;
     use KeybindingsTrait;
 
-    private const string RESTART_NOTE = "\x1b[38;5;245m · applies on restart\x1b[39m";
+    public function __construct(
+        private readonly Translator $translator,
+    ) {}
 
     /** @var list<Row> */
     private array $rows = [];
@@ -263,7 +266,7 @@ final class SettingsFormWidget extends AbstractWidget implements FocusableInterf
                 default => ' '.$row['label'].'  < '.(string) $row['value'].' >',
             };
             if ($row['restart']) {
-                $text .= self::RESTART_NOTE;
+                $text .= "\x1b[38;5;245m · ".$this->translator->trans('applies on restart')."\x1b[39m";
             }
             $lines[] = $bg.AnsiUtils::truncateToWidth($text, $width, '…', pad: true)."\x1b[0m";
         }

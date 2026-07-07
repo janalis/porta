@@ -7,6 +7,7 @@ namespace Porta\Tests\Unit\Config;
 use PHPUnit\Framework\TestCase;
 use Porta\Config\IdeConfig;
 use Porta\Config\SettingsController;
+use Porta\I18n\Translator;
 use Porta\Ide;
 use Porta\Tests\Support\TempProject;
 use Porta\Widget\CodeEditorWidget;
@@ -40,7 +41,7 @@ final class SettingsControllerTest extends TestCase
         $tui = new Tui(terminal: new VirtualTerminal(columns: 80, rows: 24));
         $this->languageChanges = [];
 
-        return new SettingsController($settings + IdeConfig::DEFAULT_SETTINGS, $editor, $status, $tui, $rootDir, function (string $locale): void {
+        return new SettingsController($settings + IdeConfig::DEFAULT_SETTINGS, $editor, $status, $tui, $rootDir, new Translator('en'), function (string $locale): void {
             $this->languageChanges[] = $locale;
         });
     }

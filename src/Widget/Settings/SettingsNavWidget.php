@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Porta\Widget\Settings;
 
 use Porta\Config\LanguageCatalog;
+use Porta\I18n\Translator;
 use Porta\Ui\ListSelection;
 use Porta\Ui\Style;
 use Porta\Widget\InputHook;
@@ -50,6 +51,7 @@ final class SettingsNavWidget extends AbstractWidget implements FocusableInterfa
     private $onExit = null;
 
     public function __construct(
+        private readonly Translator $translator,
         private int $width = 22,
     ) {
         $entries = [];
@@ -235,7 +237,7 @@ final class SettingsNavWidget extends AbstractWidget implements FocusableInterfa
             }
 
             if ('header' === $entry['kind']) {
-                $lines[] = "\x1b[48;5;235m\x1b[38;5;245m\x1b[1m".AnsiUtils::truncateToWidth(' '.$entry['label'], $width, '…', pad: true)."\x1b[0m";
+                $lines[] = "\x1b[48;5;235m\x1b[38;5;245m\x1b[1m".AnsiUtils::truncateToWidth(' '.$this->translator->trans($entry['label']), $width, '…', pad: true)."\x1b[0m";
                 continue;
             }
 
@@ -243,7 +245,7 @@ final class SettingsNavWidget extends AbstractWidget implements FocusableInterfa
             $bg = $selected
                 ? ($this->focused ? Style::SELECTED_ROW : "\x1b[48;5;237m")
                 : ($index === $this->hoveredIndex ? "\x1b[48;5;236m" : '');
-            $text = 'language' === $entry['kind'] ? '   '.$entry['label'] : ' '.$entry['label'];
+            $text = 'language' === $entry['kind'] ? '   '.$entry['label'] : ' '.$this->translator->trans($entry['label']);
             $lines[] = $bg.AnsiUtils::truncateToWidth($text, $width, '…', pad: true)."\x1b[0m";
         }
 

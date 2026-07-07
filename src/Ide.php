@@ -326,11 +326,11 @@ final class Ide
             copyToClipboard: fn (string $text) => $this->copyToClipboard($text),
         );
 
-        $settingsNav = new SettingsNavWidget();
+        $settingsNav = new SettingsNavWidget($this->translator);
         $settingsNav->setId('settings-nav')->setStyle(new Style(flex: 0));
-        $settingsForm = new SettingsFormWidget();
+        $settingsForm = new SettingsFormWidget($this->translator);
         $settingsForm->setId('settings-form')->setStyle(new Style(flex: 1));
-        $settingsKeys = new KeybindingsListWidget();
+        $settingsKeys = new KeybindingsListWidget($this->translator);
         $settingsKeys->setId('settings-keys')->setStyle(new Style(flex: 1));
         $settingsSeparator = new SeparatorWidget();
         $settingsSeparator->setId('settings-separator')->setStyle(new Style(flex: 0));
@@ -394,9 +394,9 @@ final class Ide
         $this->wireStatusBar();
 
         // Apply persisted settings.
-        $this->settings = new SettingsController($config->settings, $this->editor, $this->statusBar, $this->tui, $this->rootDir, fn (string $locale) => $this->applyLanguage($locale));
+        $this->settings = new SettingsController($config->settings, $this->editor, $this->statusBar, $this->tui, $this->rootDir, $this->translator, fn (string $locale) => $this->applyLanguage($locale));
         $this->settings->applyAll();
-        $this->settingsLanguages = new SettingsLanguageController($this->editor, $this->statusBar, $this->tui, $this->rootDir, $config->languages);
+        $this->settingsLanguages = new SettingsLanguageController($this->editor, $this->statusBar, $this->tui, $this->rootDir, $this->translator, $config->languages);
         $this->settingsLanguages->applyToEditor();
         $this->settingsView = new SettingsViewController(
             $settingsNav,
@@ -409,9 +409,9 @@ final class Ide
             [$this->tree, $this->separator, $editorPane],
             $this->tui,
             $this->settings,
-            new SettingsKeymapController($this->editor, $this->keybindings, $this->statusBar, $this->tui, $this->rootDir),
+            new SettingsKeymapController($this->editor, $this->keybindings, $this->statusBar, $this->tui, $this->rootDir, $this->translator),
             $this->settingsLanguages,
-            new SettingsLspController($this->rootDir, $this->lsp, $config->lspServers, $this->lspCommand, fn () => $this->reopenLspBuffers(), $this->statusBar, $this->tui),
+            new SettingsLspController($this->rootDir, $this->lsp, $config->lspServers, $this->lspCommand, fn () => $this->reopenLspBuffers(), $this->statusBar, $this->tui, $this->translator),
             onClosed: function (): void {
                 $this->tui->setFocus($this->editor);
                 $this->tui->requestRender();

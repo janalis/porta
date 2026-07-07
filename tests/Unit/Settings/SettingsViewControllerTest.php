@@ -11,6 +11,7 @@ use Porta\Config\SettingsKeymapController;
 use Porta\Config\SettingsLanguageController;
 use Porta\Config\SettingsLspController;
 use Porta\Lsp\LspSessionPool;
+use Porta\I18n\Translator;
 use Porta\Settings\SettingsViewController;
 use Porta\Tests\Support\TempProject;
 use Porta\Widget\CodeEditorWidget;
@@ -46,10 +47,10 @@ final class SettingsViewControllerTest extends TestCase
         $this->main = new ContainerWidget();
         $this->main->add($editWidget);
 
-        $this->nav = new SettingsNavWidget();
-        $this->form = new SettingsFormWidget();
+        $this->nav = new SettingsNavWidget(new Translator('en'));
+        $this->form = new SettingsFormWidget(new Translator('en'));
         $this->form->setId('settings-form');
-        $this->keymapList = new KeybindingsListWidget();
+        $this->keymapList = new KeybindingsListWidget(new Translator('en'));
         $this->keymapList->setId('settings-keys');
         $this->content = new ContainerWidget();
         $area = new ContainerWidget();
@@ -61,11 +62,11 @@ final class SettingsViewControllerTest extends TestCase
         $this->tui = new Tui(terminal: new VirtualTerminal(columns: 100, rows: 24), keybindings: new Keybindings([]), renderer: new Renderer(new StyleSheet()));
         $editor = new CodeEditorWidget();
         $status = new StatusBarWidget();
-        $settings = new SettingsController(IdeConfig::DEFAULT_SETTINGS, $editor, $status, $this->tui, $this->project->dir, static function (string $locale): void {});
-        $keymap = new SettingsKeymapController($editor, new Keybindings([]), $status, $this->tui, $this->project->dir);
-        $languages = new SettingsLanguageController($editor, $status, $this->tui, $this->project->dir, []);
+        $settings = new SettingsController(IdeConfig::DEFAULT_SETTINGS, $editor, $status, $this->tui, $this->project->dir, new Translator('en'), static function (string $locale): void {});
+        $keymap = new SettingsKeymapController($editor, new Keybindings([]), $status, $this->tui, $this->project->dir, new Translator('en'));
+        $languages = new SettingsLanguageController($editor, $status, $this->tui, $this->project->dir, new Translator('en'), []);
         $pool = new LspSessionPool($this->project->dir, static fn (): ?string => null);
-        $lsp = new SettingsLspController($this->project->dir, $pool, [], null, static function (): void {}, $status, $this->tui);
+        $lsp = new SettingsLspController($this->project->dir, $pool, [], null, static function (): void {}, $status, $this->tui, new Translator('en'));
         $this->closed = 0;
 
         return new SettingsViewController(

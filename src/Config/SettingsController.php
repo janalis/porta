@@ -37,6 +37,7 @@ final class SettingsController
         private readonly StatusBarWidget $statusBar,
         private readonly Tui $tui,
         private readonly string $rootDir,
+        private readonly Translator $translator,
         \Closure $onLanguageChange,
     ) {
         $this->descriptors = [
@@ -70,7 +71,7 @@ final class SettingsController
         foreach ($this->descriptors as $key => $descriptor) {
             $raw = $this->settings[$key] ?? '';
             $value = 'bool' === $descriptor['kind'] ? (bool) $raw : (string) $raw;
-            $row = ['key' => $key, 'label' => $descriptor['label'], 'kind' => $descriptor['kind'], 'value' => $value, 'restart' => $descriptor['restart']];
+            $row = ['key' => $key, 'label' => $this->translator->trans($descriptor['label']), 'kind' => $descriptor['kind'], 'value' => $value, 'restart' => $descriptor['restart']];
             if (isset($descriptor['options'])) {
                 $row['options'] = $descriptor['options'];
             }
@@ -87,7 +88,7 @@ final class SettingsController
     public function toggle(string $key): void
     {
         if (!isset($this->descriptors[$key])) {
-            $this->statusBar->flash(\sprintf('Unknown setting "%s"', $key));
+            $this->statusBar->flash($this->translator->trans('Unknown setting "%key%"', ['%key%' => $key]));
             $this->tui->requestRender();
 
             return;
@@ -104,7 +105,7 @@ final class SettingsController
     {
         $descriptor = $this->descriptors[$key] ?? null;
         if (null === $descriptor) {
-            $this->statusBar->flash(\sprintf('Unknown setting "%s"', $key));
+            $this->statusBar->flash($this->translator->trans('Unknown setting "%key%"', ['%key%' => $key]));
             $this->tui->requestRender();
 
             return;
@@ -116,9 +117,10 @@ final class SettingsController
         }
 
         $persisted = IdeConfig::persistSetting($this->rootDir, $key, $value);
-        $state = \is_bool($value) ? ($value ? 'on' : 'off') : (string) $value;
-        $note = $descriptor['restart'] ? ' · applies on restart' : '';
-        $this->statusBar->flash(\sprintf('%s %s%s%s', $descriptor['label'], $state, $note, $persisted ? '' : ' (not saved)'));
+        $state = \is_bool($value) ? $this->translator->trans($value ? 'on' : 'off') : (string) $value;
+        $note = $descriptor['restart'] ? ' · '.$this->translator->trans('applies on restart') : '';
+        $saved = $persisted ? '' : ' ('.$this->translator->trans('not saved').')';
+        $this->statusBar->flash(\sprintf('%s %s%s%s', $this->translator->trans($descriptor['label']), $state, $note, $saved));
         $this->tui->requestRender();
     }
 }

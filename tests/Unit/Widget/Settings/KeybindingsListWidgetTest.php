@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Porta\Tests\Unit\Widget\Settings;
 
 use PHPUnit\Framework\TestCase;
+use Porta\I18n\Translator;
 use Porta\Widget\Settings\KeybindingsListWidget;
 use Symfony\Component\Tui\Ansi\AnsiUtils;
 use Symfony\Component\Tui\Render\RenderContext;
@@ -24,7 +25,7 @@ final class KeybindingsListWidgetTest extends TestCase
     private function widget(?array &$rebinds = null): KeybindingsListWidget
     {
         $rebinds = [];
-        $widget = new KeybindingsListWidget();
+        $widget = new KeybindingsListWidget(new Translator('en'));
         $widget->setFocused(true);
         $widget->setRows($this->rows());
         $widget->onRebind(function (string $action, string $key) use (&$rebinds): void {
@@ -147,7 +148,7 @@ final class KeybindingsListWidgetTest extends TestCase
 
     public function testArmingIsANoOpWithNoRows(): void
     {
-        $widget = new KeybindingsListWidget();
+        $widget = new KeybindingsListWidget(new Translator('en'));
         $widget->setRows([]);
         $widget->handleInput("\r");
         $this->assertFalse($widget->isCapturing());
@@ -156,7 +157,7 @@ final class KeybindingsListWidgetTest extends TestCase
 
     public function testCallbacksAreOptional(): void
     {
-        $widget = new KeybindingsListWidget();
+        $widget = new KeybindingsListWidget(new Translator('en'));
         $widget->setRows($this->rows());
         $widget->handleInput('1');    // no onShowSettings
         $widget->handleInput("\t");   // no onFocusNext
@@ -178,7 +179,7 @@ final class KeybindingsListWidgetTest extends TestCase
 
     public function testScrollFollowsSelectionInAShortViewport(): void
     {
-        $widget = new KeybindingsListWidget();
+        $widget = new KeybindingsListWidget(new Translator('en'));
         $rows = [];
         for ($i = 0; $i < 20; ++$i) {
             $rows[] = ['action' => "a$i", 'label' => "Action $i", 'binding' => ''];

@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Porta\Tests\Unit\Widget\Settings;
 
 use PHPUnit\Framework\TestCase;
+use Porta\I18n\Translator;
 use Porta\Widget\Settings\SettingsNavWidget;
 use Symfony\Component\Tui\Ansi\AnsiUtils;
 use Symfony\Component\Tui\Render\RenderContext;
@@ -14,7 +15,7 @@ final class SettingsNavWidgetTest extends TestCase
     private function widget(?array &$selected = null): SettingsNavWidget
     {
         $selected = [];
-        $widget = new SettingsNavWidget();
+        $widget = new SettingsNavWidget(new Translator('en'));
         $widget->setFocused(true);
         $widget->onSelect(function (string $id) use (&$selected): void {
             $selected[] = $id;

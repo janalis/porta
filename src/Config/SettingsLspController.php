@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Porta\Config;
 
+use Porta\I18n\Translator;
 use Porta\Lsp\LspSessionPool;
 use Porta\Lsp\ServerLocator;
 use Porta\Widget\StatusBarWidget;
@@ -32,6 +33,7 @@ final class SettingsLspController
         private readonly \Closure $reopenBuffers,
         private readonly StatusBarWidget $statusBar,
         private readonly Tui $tui,
+        private readonly Translator $translator,
     ) {}
 
     /**
@@ -46,11 +48,11 @@ final class SettingsLspController
 
         return [[
             'key' => 'lspServer',
-            'label' => 'LSP server',
+            'label' => $this->translator->trans('LSP server'),
             'kind' => 'text',
             'value' => $this->overrides[$language] ?? '',
             'restart' => false,
-            'hint' => null !== $auto ? 'auto: '.$auto : 'auto-detect',
+            'hint' => null !== $auto ? $this->translator->trans('auto: %server%', ['%server%' => $auto]) : $this->translator->trans('auto-detect'),
         ]];
     }
 
@@ -63,7 +65,7 @@ final class SettingsLspController
     public function changeLspServer(string $language, string $command): void
     {
         if (null !== $this->lspOverride && '' !== $this->lspOverride) {
-            $this->flash('LSP is set via --lsp; the settings change was not applied');
+            $this->flash($this->translator->trans('LSP is set via --lsp; the settings change was not applied'));
 
             return;
         }
@@ -79,8 +81,9 @@ final class SettingsLspController
         $this->lsp->reconfigure(ServerLocator::locateAll($this->rootDir, $this->lspOverride));
         ($this->reopenBuffers)();
 
-        $label = LanguageCatalog::displayName($language);
-        $this->flash(\sprintf('%s LSP: %s%s', $label, '' === $command ? 'auto-detect' : $command, $persisted ? '' : ' (not saved)'));
+        $shown = '' === $command ? $this->translator->trans('auto-detect') : $command;
+        $saved = $persisted ? '' : ' ('.$this->translator->trans('not saved').')';
+        $this->flash(\sprintf('%s LSP: %s%s', LanguageCatalog::displayName($language), $shown, $saved));
     }
 
     private function flash(string $message): void

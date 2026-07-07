@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Porta\Tests\Unit\Widget\Settings;
 
 use PHPUnit\Framework\TestCase;
+use Porta\I18n\Translator;
 use Porta\Widget\Settings\SettingsFormWidget;
 use Symfony\Component\Tui\Ansi\AnsiUtils;
 use Symfony\Component\Tui\Render\RenderContext;
@@ -26,7 +27,7 @@ final class SettingsFormWidgetTest extends TestCase
     private function widget(?array &$changes = null): SettingsFormWidget
     {
         $changes = [];
-        $widget = new SettingsFormWidget();
+        $widget = new SettingsFormWidget(new Translator('en'));
         $widget->setFocused(true);
         $widget->setRows($this->rows());
         $widget->onChange(function (string $key, bool|int|string $value) use (&$changes): void {
@@ -170,7 +171,7 @@ final class SettingsFormWidgetTest extends TestCase
 
     public function testActuateWithoutAChangeHandlerIsSafe(): void
     {
-        $widget = new SettingsFormWidget();
+        $widget = new SettingsFormWidget(new Translator('en'));
         $widget->setRows($this->rows());
         $widget->handleInput(' '); // no onChange wired
         $this->expectNotToPerformAssertions();
@@ -178,7 +179,7 @@ final class SettingsFormWidgetTest extends TestCase
 
     public function testCallbacksAreOptional(): void
     {
-        $widget = new SettingsFormWidget();
+        $widget = new SettingsFormWidget(new Translator('en'));
         $widget->setRows($this->rows());
         $widget->handleInput('2');    // no onShowKeybindings
         $widget->handleInput("\t");   // no onFocusNext
@@ -206,13 +207,13 @@ final class SettingsFormWidgetTest extends TestCase
 
     public function testAlwaysFillsItsPane(): void
     {
-        $widget = new SettingsFormWidget();
+        $widget = new SettingsFormWidget(new Translator('en'));
         $this->assertTrue($widget->expandVertically(false)->isVerticallyExpanded());
     }
 
     public function testActuateWithNoRowsIsSafe(): void
     {
-        $widget = new SettingsFormWidget(); // no rows set
+        $widget = new SettingsFormWidget(new Translator('en')); // no rows set
         $widget->handleInput(' '); // increment → actuate → no selected row
         $this->expectNotToPerformAssertions();
     }
@@ -228,7 +229,7 @@ final class SettingsFormWidgetTest extends TestCase
     private function textWidget(?array &$changes = null): SettingsFormWidget
     {
         $changes = [];
-        $widget = new SettingsFormWidget();
+        $widget = new SettingsFormWidget(new Translator('en'));
         $widget->setFocused(true);
         $widget->setRows([
             ['key' => 'lspServer', 'label' => 'LSP server', 'kind' => 'text', 'value' => 'phpactor', 'restart' => false],
@@ -300,7 +301,7 @@ final class SettingsFormWidgetTest extends TestCase
 
     public function testEditingWithoutAChangeHandlerIsSafe(): void
     {
-        $widget = new SettingsFormWidget();
+        $widget = new SettingsFormWidget(new Translator('en'));
         $widget->setRows([['key' => 'lspServer', 'label' => 'LSP server', 'kind' => 'text', 'value' => 'x', 'restart' => false]]);
         $widget->handleInput("\r"); // edit
         $widget->handleInput('y');
