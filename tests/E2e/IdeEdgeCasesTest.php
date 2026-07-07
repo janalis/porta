@@ -3208,11 +3208,26 @@ final class IdeEdgeCasesTest extends TestCase
                 1500 => function ($tui, $terminal) use ($project): void {
                     exec('git -C '.escapeshellarg($project->dir).' status --porcelain 2>/dev/null', $lines);
                     $this->assertContains('M  a.txt', $lines, 'checkbox click staged the file');
-                    // Hover row 5 (b.txt) selects it and loads its diff;
-                    // wheel over the diff pane scrolls it.
+                    // Hover row 5 (b.txt): a tint only — the diff must NOT load.
                     $tui->handleInput("\x1b[<35;10;5M");
+                },
+                1700 => function ($tui, $terminal): void {
+                    $tui->tick();
+                    $screen = AnsiUtils::stripAnsiCodes($terminal->getOutput());
+                    $this->assertStringNotContainsString('+new', $screen, 'hover alone must not load the hovered diff');
+                    $this->assertStringContainsString('three changed', $screen, "a.txt's diff is still shown");
+                    // Moving the pointer onto the diff pane clears the tint...
+                    $tui->handleInput("\x1b[<35;80;6M");
+                    // ...and a CLICK on b.txt selects it and loads its diff.
+                    $tui->handleInput("\x1b[<0;10;5M");
+                    $tui->handleInput("\x1b[<0;10;5m");
+                },
+                1950 => function ($tui, $terminal): void {
+                    $tui->tick();
+                    $this->assertStringContainsString('+new', AnsiUtils::stripAnsiCodes($terminal->getOutput()), 'the click loaded the untracked diff');
+                    // Wheel over the diff pane scrolls it; over the list it moves
+                    // the selection (keyboard-like, so it may load).
                     $tui->handleInput("\x1b[<65;80;6M");
-                    // Wheel over the changes list moves its selection.
                     $tui->handleInput("\x1b[<65;10;4M");
                     // A click on the diff pane focuses it.
                     $tui->handleInput("\x1b[<0;60;6M");
@@ -3221,14 +3236,12 @@ final class IdeEdgeCasesTest extends TestCase
                     $tui->handleInput("\x1b[<0;5;20M");
                     $tui->handleInput("\x1b[<0;5;20m");
                 },
-                1800 => function ($tui, $terminal): void {
-                    $screen = AnsiUtils::stripAnsiCodes($terminal->getOutput());
-                    $this->assertStringContainsString('+new', $screen, 'hover loaded the untracked diff');
+                2250 => function ($tui, $terminal): void {
                     $this->assertSame('git-commit', $tui->getFocus()?->getId(), 'click focused the commit box');
                     $tui->handleInput("\x1b");
                 },
             ],
-            2.1,
+            2.6,
         );
 
         $this->assertStringContainsString('b.txt', AnsiUtils::stripAnsiCodes($terminal->getOutput()));
@@ -3264,8 +3277,10 @@ final class IdeEdgeCasesTest extends TestCase
                     $this->assertStringContainsString('History (2)', $screen);
                     $this->assertStringContainsString('second commit', $screen);
                     $this->assertStringContainsString('M a.txt', $screen, 'the newest commit file list loads');
-                    // Mouse: wheel over the history list, click the first commit
+                    // Mouse: hover tints a commit row (no selection change),
+                    // wheel over the history list, click the first commit
                     // row (menu row + tab strip shift the list down two).
+                    $tui->handleInput("\x1b[<35;10;5M");
                     $tui->handleInput("\x1b[<65;10;5M");
                     $tui->handleInput("\x1b[<0;10;4M");
                     $tui->handleInput("\x1b[<0;10;4m");

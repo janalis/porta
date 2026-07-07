@@ -42,6 +42,9 @@ final class HistoryListWidget extends AbstractWidget implements FocusableInterfa
     private readonly ListSelection $commitList;
     private readonly ListSelection $fileList;
     private bool $filesFocused = false;
+    /** Rows tinted under the mouse pointer; visual only, never the selection. */
+    private ?int $hoveredCommit = null;
+    private ?int $hoveredFile = null;
     private int $lastRows = 12;
 
     /** @var (callable(LogEntry): void)|null */
@@ -102,6 +105,7 @@ final class HistoryListWidget extends AbstractWidget implements FocusableInterfa
     {
         $this->commits = $commits;
         $this->commitList->reset();
+        $this->hoveredCommit = $this->hoveredFile = null;
         $this->files = [];
         $this->fileList->reset();
         $this->filesFocused = false;
@@ -113,6 +117,7 @@ final class HistoryListWidget extends AbstractWidget implements FocusableInterfa
     {
         $this->files = $files;
         $this->fileList->reset();
+        $this->hoveredFile = null;
         $this->invalidate();
     }
 
@@ -198,6 +203,42 @@ final class HistoryListWidget extends AbstractWidget implements FocusableInterfa
         }
     }
 
+    /**
+     * Tint the row under the pointer (commit or file section, same row math
+     * as {@see handleClick}); a pure visual that never moves the selections.
+     */
+    public function hoverRow(int $relRow): bool
+    {
+        $commitRows = $this->commitRowCount();
+        if ($relRow >= 1 && $relRow < 1 + $commitRows) {
+            $index = $this->commitList->scroll() + $relRow - 1;
+
+            return $this->setHovered(isset($this->commits[$index]) ? $index : null, null);
+        }
+        $fileHeader = 1 + $commitRows;
+        $index = $this->fileList->scroll() + $relRow - $fileHeader - 1;
+
+        return $this->setHovered(null, $relRow > $fileHeader && isset($this->files[$index]) ? $index : null);
+    }
+
+    /** The pointer left the list: drop the hover tint. */
+    public function clearHover(): bool
+    {
+        return $this->setHovered(null, null);
+    }
+
+    private function setHovered(?int $commit, ?int $file): bool
+    {
+        if ($commit === $this->hoveredCommit && $file === $this->hoveredFile) {
+            return false;
+        }
+        $this->hoveredCommit = $commit;
+        $this->hoveredFile = $file;
+        $this->invalidate();
+
+        return true;
+    }
+
     private function fireSelectCommit(): void
     {
         if (null !== ($commit = $this->selectedCommit()) && null !== $this->onSelectCommit) {
@@ -236,7 +277,9 @@ final class HistoryListWidget extends AbstractWidget implements FocusableInterfa
                 continue;
             }
             $selected = ($scroll + $row) === $this->commitList->selected();
-            $bg = $selected ? ($this->focused && !$this->filesFocused ? Style::SELECTED_ROW : "\x1b[48;5;237m") : '';
+            $bg = $selected
+                ? ($this->focused && !$this->filesFocused ? Style::SELECTED_ROW : "\x1b[48;5;237m")
+                : (($scroll + $row) === $this->hoveredCommit ? "\x1b[48;5;236m" : '');
             $text = ' '."\x1b[38;5;179m".$commit->shortSha."\x1b[39m".' '.$commit->subject."\x1b[38;5;245m".'  '.$commit->author."\x1b[39m";
             $lines[] = $bg.AnsiUtils::truncateToWidth($text, $width, '…', pad: true)."\x1b[0m";
         }
@@ -250,7 +293,9 @@ final class HistoryListWidget extends AbstractWidget implements FocusableInterfa
                 continue;
             }
             $selected = ($fileScroll + $row) === $this->fileList->selected();
-            $bg = $selected ? ($this->focused && $this->filesFocused ? Style::SELECTED_ROW : "\x1b[48;5;237m") : '';
+            $bg = $selected
+                ? ($this->focused && $this->filesFocused ? Style::SELECTED_ROW : "\x1b[48;5;237m")
+                : (($fileScroll + $row) === $this->hoveredFile ? "\x1b[48;5;236m" : '');
             $lines[] = $bg.AnsiUtils::truncateToWidth(' '.$file['status'].' '.$file['path'], $width, '…', pad: true)."\x1b[0m";
         }
         // commitRowCount + the two headers + FILE_ROWS always fill $rows exactly

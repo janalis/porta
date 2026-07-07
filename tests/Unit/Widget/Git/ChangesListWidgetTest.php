@@ -147,14 +147,32 @@ final class ChangesListWidgetTest extends TestCase
         $this->assertSame('src/b.php', $toggled);
     }
 
-    public function testHoverSelectsOnlyOnChange(): void
+    public function testHoverTintsWithoutTouchingSelectionOrFiringSelect(): void
     {
         $widget = new ChangesListWidget();
         $widget->setEntries($this->entries());
+        $selectFired = 0;
+        $widget->onSelect(function () use (&$selectFired): void {
+            ++$selectFired;
+        });
 
-        $this->assertFalse($widget->hoverRow(1), 'row 1 is already selected');
         $this->assertTrue($widget->hoverRow(2));
-        $this->assertSame('src/b.php', $widget->selectedEntry()?->path);
+        $this->assertFalse($widget->hoverRow(2), 'same row: no repaint needed');
+        $this->assertSame('src/a.php', $widget->selectedEntry()?->path, 'selection stays where it was');
+        $this->assertSame(0, $selectFired, 'hover never loads a diff');
+
+        $rendered = $widget->render(new RenderContext(44, 8));
+        $this->assertStringContainsString("\x1b[48;5;236m", $rendered[2], 'the hovered row is tinted');
+
+        $this->assertTrue($widget->hoverRow(0), 'the header row clears the tint');
+        $this->assertFalse($widget->clearHover(), 'already clear');
+        $this->assertTrue($widget->hoverRow(3));
+        $this->assertTrue($widget->clearHover(), 'pointer moved off the list');
+
+        $widget->hoverRow(3);
+        $widget->setEntries($this->entries());
+        $rendered = $widget->render(new RenderContext(44, 8));
+        $this->assertStringNotContainsString("\x1b[48;5;236m", implode('', $rendered), 'setEntries drops a stale hover tint');
     }
 
     public function testInputHookConsumesFirstAndEntryCountCounts(): void

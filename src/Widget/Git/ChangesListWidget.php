@@ -47,6 +47,8 @@ final class ChangesListWidget extends AbstractWidget implements FocusableInterfa
     private int $lastRows = 10;
     /** Index of the entry an inline discard confirmation is armed for, or null. */
     private ?int $confirmDiscard = null;
+    /** Row tinted under the mouse pointer; visual only, never the selection. */
+    private ?int $hoveredIndex = null;
 
     /** @var (callable(ChangeEntry): void)|null selection moved to this entry */
     private $onSelect = null;
@@ -119,6 +121,7 @@ final class ChangesListWidget extends AbstractWidget implements FocusableInterfa
     {
         $previous = $this->selectedEntry()?->path;
         $this->entries = $entries;
+        $this->hoveredIndex = null; // rows moved under the pointer
         if (null !== $previous) {
             foreach ($entries as $i => $entry) {
                 if ($entry->path === $previous) {
@@ -212,17 +215,31 @@ final class ChangesListWidget extends AbstractWidget implements FocusableInterfa
         $this->invalidate();
     }
 
-    /** Highlight the row under the pointer; returns whether it changed. */
+    /**
+     * Tint the row under the pointer; returns whether it changed. Hover is a
+     * pure visual — it must never move the selection, because the controller
+     * reloads the SELECTED entry's diff on every refresh/poll.
+     */
     public function hoverRow(int $relRow): bool
     {
-        if ($this->list->selectIfChanged($this->rowIndexAt($relRow))) {
-            $this->fireSelect();
-            $this->invalidate();
+        return $this->setHovered($this->rowIndexAt($relRow));
+    }
 
-            return true;
+    /** The pointer left the list: drop the hover tint. */
+    public function clearHover(): bool
+    {
+        return $this->setHovered(null);
+    }
+
+    private function setHovered(?int $index): bool
+    {
+        if ($index === $this->hoveredIndex) {
+            return false;
         }
+        $this->hoveredIndex = $index;
+        $this->invalidate();
 
-        return false;
+        return true;
     }
 
     private function rowIndexAt(int $relRow): ?int
@@ -276,7 +293,9 @@ final class ChangesListWidget extends AbstractWidget implements FocusableInterfa
             $label = $entry->path.(null !== $entry->renamedFrom ? ' ← '.$entry->renamedFrom : '');
 
             $selected = $index === $this->list->selected();
-            $bg = $selected ? ($this->focused ? Style::SELECTED_ROW : "\x1b[48;5;237m") : '';
+            $bg = $selected
+                ? ($this->focused ? Style::SELECTED_ROW : "\x1b[48;5;237m")
+                : ($index === $this->hoveredIndex ? "\x1b[48;5;236m" : '');
             $text = ' '.$checkbox.' '.$statusFg.$status."\x1b[39m".' '.$label;
             $lines[] = $bg.AnsiUtils::truncateToWidth($text, $width, '…', pad: true)."\x1b[0m";
         }

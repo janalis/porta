@@ -64,6 +64,46 @@ final class HistoryListWidgetTest extends TestCase
         $this->assertSame('full2', $widget->selectedCommit()?->sha);
     }
 
+    public function testHoverTintsCommitAndFileRowsWithoutSelecting(): void
+    {
+        $widget = $this->widget();
+        $widget->render(new RenderContext(44, 16)); // commitRowCount = 6, Files header row 7
+        $fired = 0;
+        $widget->onSelectCommit(function () use (&$fired): void {
+            ++$fired;
+        });
+        $widget->onSelectFile(function () use (&$fired): void {
+            ++$fired;
+        });
+
+        $this->assertTrue($widget->hoverRow(2), 'second commit row tints');
+        $this->assertFalse($widget->hoverRow(2), 'same row: no repaint');
+        $rendered = $widget->render(new RenderContext(44, 16));
+        $this->assertStringContainsString("\x1b[48;5;236m", $rendered[2]);
+        $this->assertSame('full1', $widget->selectedCommit()?->sha, 'selection untouched');
+
+        $this->assertTrue($widget->hoverRow(9), 'second file row tints');
+        $rendered = $widget->render(new RenderContext(44, 16));
+        $this->assertStringContainsString("\x1b[48;5;236m", $rendered[9]);
+        $this->assertStringNotContainsString("\x1b[48;5;236m", $rendered[2], 'the commit tint moved away');
+
+        $this->assertTrue($widget->hoverRow(7), 'the Files header clears both tints');
+        $this->assertFalse($widget->clearHover(), 'already clear');
+        $this->assertTrue($widget->hoverRow(1));
+        $this->assertTrue($widget->clearHover());
+        $this->assertSame(0, $fired, 'hover fires no selection callbacks');
+
+        $widget->hoverRow(1);
+        $widget->setCommits([new LogEntry('x', 'ccc333', 'Cara', 1700000200, 'Reset')]);
+        $this->assertFalse($widget->clearHover(), 'setCommits already dropped the tint');
+
+        $widget->setFiles([['status' => 'M', 'path' => 'z.txt']]);
+        $widget->render(new RenderContext(44, 16));
+        $widget->hoverRow(8);
+        $widget->setFiles([['status' => 'M', 'path' => 'z.txt']]);
+        $this->assertFalse($widget->clearHover(), 'setFiles already dropped the file tint');
+    }
+
     public function testClickRoutesToCommitOrFileRows(): void
     {
         $widget = $this->widget();

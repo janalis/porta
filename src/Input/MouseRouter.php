@@ -553,9 +553,15 @@ final class MouseRouter
             if ($this->handleMenuHover($mouse)) {
                 return; // the menu bar rides along into the git view
             }
-            if (null !== ($rel = $this->hit->hit($this->gitChanges, $mouse->row, $mouse->col))
-                && $this->gitChanges->hoverRow($rel['row'])
-            ) {
+            // Hover tints the row under the pointer in whichever list is
+            // attached; a miss clears the tint (pointer over another pane).
+            $changed = null !== ($rel = $this->hit->hit($this->gitChanges, $mouse->row, $mouse->col))
+                ? $this->gitChanges->hoverRow($rel['row'])
+                : $this->gitChanges->clearHover();
+            $changed = (null !== ($rel = $this->hit->hit($this->gitHistory, $mouse->row, $mouse->col))
+                ? $this->gitHistory->hoverRow($rel['row'])
+                : $this->gitHistory->clearHover()) || $changed;
+            if ($changed) {
                 $this->tui->requestRender();
             }
 
