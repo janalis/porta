@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace Porta\Widget;
 
+use Psr\Clock\ClockInterface;
+use Symfony\Component\Clock\NativeClock;
 use Symfony\Component\Tui\Ansi\AnsiUtils;
 use Symfony\Component\Tui\Render\RenderContext;
 use Symfony\Component\Tui\Widget\AbstractWidget;
@@ -23,6 +25,14 @@ final class StatusBarWidget extends AbstractWidget
     /** @var array{text: string, until: float}|null */
     private ?array $flash = null;
 
+    private readonly ClockInterface $clock;
+
+    /** The clock is injected by the container; a MockClock makes flash expiry testable. */
+    public function __construct(?ClockInterface $clock = null)
+    {
+        $this->clock = $clock ?? new NativeClock();
+    }
+
     /**
      * @param callable(): array{left: string, right: string} $provider
      */
@@ -33,18 +43,28 @@ final class StatusBarWidget extends AbstractWidget
         return $this;
     }
 
+    /** The clock's current instant as float seconds (with sub-second precision). */
+    private function nowSeconds(): float
+    {
+        /** @var numeric-string $seconds */
+        $seconds = $this->clock->now()->format('U.u');
+
+        return (float) $seconds;
+    }
+
     /**
      * Show a transient message (e.g. "Saved") for a few seconds.
      */
     public function flash(string $text, float $seconds = 2.5): void
     {
-        $this->flash = ['text' => $text, 'until' => microtime(true) + $seconds];
+        $this->flash = ['text' => $text, 'until' => $this->nowSeconds() + $seconds];
         $this->invalidate();
     }
 
     public function beforeRender(): void
     {
-        if (null !== $this->flash && microtime(true) > $this->flash['until']) {
+        $now = $this->nowSeconds();
+        if (null !== $this->flash && $now > $this->flash['until']) {
             $this->flash = null;
             $this->invalidate();
         }

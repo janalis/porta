@@ -6,6 +6,7 @@ namespace Porta\Tests\Unit\Widget;
 
 use PHPUnit\Framework\TestCase;
 use Porta\Widget\StatusBarWidget;
+use Symfony\Component\Clock\MockClock;
 use Symfony\Component\Tui\Ansi\AnsiUtils;
 use Symfony\Component\Tui\Render\RenderContext;
 
@@ -26,7 +27,8 @@ final class StatusBarWidgetTest extends TestCase
 
     public function testFlashOverridesLeftAndExpires(): void
     {
-        $status = new StatusBarWidget();
+        $clock = new MockClock('2020-01-01T00:00:00+00:00');
+        $status = new StatusBarWidget($clock);
         $status->setProvider(static fn () => ['left' => 'normal', 'right' => 'R']);
         $status->beforeRender();
 
@@ -34,7 +36,7 @@ final class StatusBarWidgetTest extends TestCase
         $line = $status->render(new RenderContext(40, 1))[0];
         $this->assertStringContainsString('Saved!', $line);
 
-        usleep(80_000);
+        $clock->sleep(0.08); // advance past the 0.05s flash window, deterministically
         $status->beforeRender();
         $line = $status->render(new RenderContext(40, 1))[0];
         $this->assertStringNotContainsString('Saved!', $line);

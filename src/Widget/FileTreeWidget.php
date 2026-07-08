@@ -11,6 +11,8 @@ use Porta\Ui\ListSelection;
 use Porta\Ui\Style;
 use Porta\Widget\Render\MenuOverlayHost;
 use Porta\Widget\Render\MenuOverlayHostTrait;
+use Psr\Clock\ClockInterface;
+use Symfony\Component\Clock\NativeClock;
 use Symfony\Component\Tui\Ansi\AnsiUtils;
 use Symfony\Component\Tui\Input\Key;
 use Symfony\Component\Tui\Render\RenderContext;
@@ -63,10 +65,14 @@ final class FileTreeWidget extends AbstractWidget implements FocusableInterface,
     /** @var (callable(string): void)|null */
     private $onOpenFile = null;
 
+    private readonly ClockInterface $clock;
+
     public function __construct(
         private readonly string $rootDir,
+        ?ClockInterface $clock = null,
         private int $width = 30,
     ) {
+        $this->clock = $clock ?? new NativeClock();
         $this->list = new ListSelection();
         $this->rebuild();
     }
@@ -297,7 +303,7 @@ final class FileTreeWidget extends AbstractWidget implements FocusableInterface,
     public function refreshIfChanged(): bool
     {
         clearstatcache();
-        $freshBefore = time() - self::POLL_GRACE_SECONDS;
+        $freshBefore = $this->clock->now()->getTimestamp() - self::POLL_GRACE_SECONDS;
         foreach ($this->scannedSigs as $dir => $scan) {
             // Read the mtime BEFORE the signature it vouches for: a change
             // landing after this read bumps the mtime again → caught next tick.
