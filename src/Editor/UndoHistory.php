@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace Porta\Editor;
 
+use function Symfony\Component\Clock\now;
+
 /**
  * Undo/redo history for a {@see Document}: the undo and redo snapshot stacks,
  * time-based coalescing of consecutive single-character edits, and compound
@@ -37,10 +39,19 @@ final class UndoHistory
     /** @var \Closure(): float */
     private \Closure $clock;
 
-    /** @param (\Closure(): float)|null $clock defaults to microtime(true) */
+    /** @param (\Closure(): float)|null $clock defaults to the symfony/clock wall clock */
     public function __construct(?\Closure $clock = null)
     {
-        $this->clock = $clock ?? static fn (): float => microtime(true);
+        $this->clock = $clock ?? self::wallClock(...);
+    }
+
+    /** Current wall-clock instant in float seconds, via symfony/clock's global clock. */
+    private static function wallClock(): float
+    {
+        /** @var numeric-string $seconds */
+        $seconds = now()->format('U.u');
+
+        return (float) $seconds;
     }
 
     /**
