@@ -20,12 +20,16 @@ use Porta\Ui\Notifier;
 use Porta\Ui\PanelManager;
 use Porta\Widget\CodeEditorWidget;
 use Porta\Widget\FileTreeWidget;
+use Porta\Widget\FindBarWidget;
 use Porta\Widget\Git\ChangesListWidget;
 use Porta\Widget\Git\CommitBoxWidget;
 use Porta\Widget\Git\DiffViewWidget;
 use Porta\Widget\Git\GitTabsWidget;
 use Porta\Widget\Git\HistoryListWidget;
+use Porta\Widget\GoToFileWidget;
 use Porta\Widget\ResultsPanelWidget;
+use Porta\Widget\Settings\KeybindingsListWidget;
+use Porta\Widget\Settings\SettingsFormWidget;
 use Porta\Widget\Settings\SettingsNavWidget;
 use Porta\Widget\StatusBarWidget;
 use Porta\Widget\TerminalPanelWidget;
@@ -123,10 +127,29 @@ return static function (ContainerConfigurator $container): void {
         ->call('setStyle', [inline_service(Style::class)->args(['$flex' => 0])]);
     $services->set(GitSidebar::class)->public();
 
+    // Settings-view + overlay widgets (each takes the Translator).
+    $services
+        ->set(SettingsNavWidget::class)
+        ->public()
+        ->call('setId', ['settings-nav'])
+        ->call('setStyle', [inline_service(Style::class)->args(['$flex' => 0])]);
+    $services
+        ->set(SettingsFormWidget::class)
+        ->public()
+        ->call('setId', ['settings-form'])
+        ->call('setStyle', [inline_service(Style::class)->args(['$flex' => 1])]);
+    $services
+        ->set(KeybindingsListWidget::class)
+        ->public()
+        ->call('setId', ['settings-keys'])
+        ->call('setStyle', [inline_service(Style::class)->args(['$flex' => 1])]);
+    $services->set(GoToFileWidget::class)->public()->call('setId', ['goto-file']);
+    $services->set(FindBarWidget::class)->public()->call('setId', ['find-bar']);
+
     // Synthetic infrastructure: external (Renderer/Tui) or closure-wired objects
     // the container can't build. Ide constructs these and ->set()s the instances
     // after boot; declared here so services can depend on them by type.
-    foreach ([Renderer::class, Tui::class, LspSessionPool::class, SettingsNavWidget::class] as $syntheticId) {
+    foreach ([Renderer::class, Tui::class, LspSessionPool::class] as $syntheticId) {
         $services->set($syntheticId)->synthetic();
     }
 };

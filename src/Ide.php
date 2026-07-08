@@ -777,13 +777,9 @@ final class Ide
     /** Construct the settings-view widgets and their horizontal pane container. */
     private function buildSettingsWidgets(): void
     {
-        $this->settingsNav = new SettingsNavWidget($this->translator);
-        $this->container->set(SettingsNavWidget::class, $this->settingsNav);
-        $this->settingsNav->setId('settings-nav')->setStyle(new Style(flex: 0));
-        $this->settingsForm = new SettingsFormWidget($this->translator);
-        $this->settingsForm->setId('settings-form')->setStyle(new Style(flex: 1));
-        $this->settingsKeys = new KeybindingsListWidget($this->translator);
-        $this->settingsKeys->setId('settings-keys')->setStyle(new Style(flex: 1));
+        $this->settingsNav = $this->service(SettingsNavWidget::class);
+        $this->settingsForm = $this->service(SettingsFormWidget::class);
+        $this->settingsKeys = $this->service(KeybindingsListWidget::class);
         $this->settingsSeparator = new SeparatorWidget();
         $this->settingsSeparator->setId('settings-separator')->setStyle(new Style(flex: 0));
         $this->settingsContent = new ContainerWidget();
@@ -878,10 +874,8 @@ final class Ide
     /** The floating panels, project search, command palette and the LSP/run controllers. */
     private function buildSidePanels(): void
     {
-        $this->goToFile = new GoToFileWidget($this->translator, $this->rootDir);
-        $this->goToFile->setId('goto-file');
-        $this->findBar = new FindBarWidget($this->translator);
-        $this->findBar->setId('find-bar');
+        $this->goToFile = $this->service(GoToFileWidget::class);
+        $this->findBar = $this->service(FindBarWidget::class);
         $this->resultsPanel = $this->service(ResultsPanelWidget::class);
         $this->terminalPanel = $this->service(TerminalPanelWidget::class);
         $this->projectSearchController = new ProjectSearchController(
