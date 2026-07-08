@@ -80,9 +80,14 @@ return static function (ContainerConfigurator $container): void {
     $services->set(ClockInterface::class, NativeClock::class);
 
     // The IDE color scheme. Widgets autowire Palette; PaletteFactory picks the
-    // concrete instance (dark, or monochrome for --no-ansi) from the porta.ansi
-    // parameter set by IdeContainerFactory. Public so Ide can resolve it too.
-    $services->set(Palette::class)->factory([PaletteFactory::class, 'create'])->args([param('porta.ansi')])->public();
+    // concrete instance (dark/light, or monochrome for --no-ansi) from the
+    // porta.ansi parameter set by IdeContainerFactory. The theme is wired to the
+    // porta.theme parameter separately. Public so Ide can resolve it too.
+    $services
+        ->set(Palette::class)
+        ->factory([PaletteFactory::class, 'create'])
+        ->args([param('porta.ansi'), 'dark'])
+        ->public();
 
     // Ide resolves these by id (service-locator boundary), so they must be
     // public to survive compilation rather than being pruned.

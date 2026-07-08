@@ -77,6 +77,79 @@ final class PaletteTest extends TestCase
         $this->assertSame($expected, ColorPalette::dark()->of($role));
     }
 
+    /**
+     * Locks the light palette to its chosen SGR codes — the dark-on-light
+     * counterpart selected when the `theme` setting is `light`.
+     *
+     * @return iterable<string, array{Role, string}>
+     */
+    public static function lightRoles(): iterable
+    {
+        yield 'gutter' => [Role::Gutter, "\x1b[38;5;245m"];
+        yield 'added' => [Role::Added, "\x1b[38;5;28m"];
+        yield 'deleted' => [Role::Deleted, "\x1b[38;5;160m"];
+        yield 'hunk' => [Role::Hunk, "\x1b[38;5;25m"];
+        yield 'add-emphasis-bg' => [Role::AddEmphasisBg, "\x1b[48;5;194m"];
+        yield 'del-emphasis-bg' => [Role::DelEmphasisBg, "\x1b[48;5;224m"];
+        yield 'selected-row' => [Role::SelectedRow, "\x1b[48;5;111m\x1b[38;5;16m"];
+        yield 'row-highlight-bg' => [Role::RowHighlightBg, "\x1b[48;5;253m"];
+        yield 'popup-row' => [Role::PopupRow, "\x1b[48;5;253m\x1b[38;5;240m"];
+        yield 'header-bar' => [Role::HeaderBar, "\x1b[48;5;253m"];
+        yield 'toolbar' => [Role::Toolbar, "\x1b[48;5;254m"];
+        yield 'tag-off-bg' => [Role::TagOffBg, "\x1b[48;5;252m"];
+        yield 'modified' => [Role::Modified, "\x1b[38;5;130m"];
+        yield 'danger-bg' => [Role::DangerBg, "\x1b[48;5;224m"];
+        yield 'dim' => [Role::Dim, "\x1b[38;5;244m"];
+        yield 'muted' => [Role::Muted, "\x1b[38;5;240m"];
+        yield 'bright' => [Role::Bright, "\x1b[38;5;16m"];
+        yield 'diag-error' => [Role::DiagError, "\x1b[38;5;160m"];
+        yield 'diag-warn' => [Role::DiagWarn, "\x1b[38;5;130m"];
+        yield 'diag-info' => [Role::DiagInfo, "\x1b[38;5;25m"];
+        yield 'diag-hint' => [Role::DiagHint, "\x1b[38;5;245m"];
+        yield 'diag-error-dim' => [Role::DiagErrorDim, "\x1b[38;5;124m"];
+        yield 'diag-warn-dim' => [Role::DiagWarnDim, "\x1b[38;5;136m"];
+        yield 'diag-info-dim' => [Role::DiagInfoDim, "\x1b[38;5;67m"];
+        yield 'diag-hint-dim' => [Role::DiagHintDim, "\x1b[38;5;240m"];
+        yield 'diag-error-ul' => [Role::DiagErrorUnderline, "\x1b[58;5;160m"];
+        yield 'diag-warn-ul' => [Role::DiagWarnUnderline, "\x1b[58;5;130m"];
+        yield 'diag-info-ul' => [Role::DiagInfoUnderline, "\x1b[58;5;25m"];
+        yield 'diag-hint-ul' => [Role::DiagHintUnderline, "\x1b[58;5;245m"];
+        yield 'current-line-number' => [Role::CurrentLineNumber, "\x1b[38;5;240m"];
+        yield 'placeholder' => [Role::Placeholder, "\x1b[38;5;250m"];
+        yield 'inlay' => [Role::Inlay, "\x1b[38;5;245m"];
+        yield 'indent-guide' => [Role::IndentGuide, "\x1b[38;5;250m"];
+        yield 'git-added' => [Role::GitAdded, "\x1b[38;5;28m"];
+        yield 'git-modified' => [Role::GitModified, "\x1b[38;5;25m"];
+        yield 'git-deleted' => [Role::GitDeleted, "\x1b[38;5;160m"];
+        yield 'inlay-popup-bg' => [Role::InlayPopupBg, "\x1b[48;5;254m"];
+        yield 'inlay-popup-fg' => [Role::InlayPopupFg, "\x1b[38;5;240m"];
+        yield 'completion-hint' => [Role::CompletionHint, "\x1b[38;5;244m"];
+        yield 'completion-kind' => [Role::CompletionKind, "\x1b[38;5;97m"];
+        yield 'selection-bg' => [Role::SelectionBg, "\x1b[48;5;153m"];
+        yield 'search-bg' => [Role::SearchBg, "\x1b[48;5;229m"];
+        yield 'search-current-bg' => [Role::SearchCurrentBg, "\x1b[48;5;215m"];
+        yield 'occurrence-bg' => [Role::OccurrenceBg, "\x1b[48;5;194m"];
+        yield 'tab-accent' => [Role::TabAccent, "\x1b[38;5;25m"];
+        yield 'menu-active-bg' => [Role::MenuActiveBg, "\x1b[48;5;252m"];
+        yield 'faint' => [Role::Faint, "\x1b[38;5;245m"];
+        yield 'subtle' => [Role::Subtle, "\x1b[38;5;246m"];
+        yield 'emphasis' => [Role::Emphasis, "\x1b[38;5;16m"];
+    }
+
+    #[DataProvider('lightRoles')]
+    public function testLightPaletteMapsEveryRole(Role $role, string $expected): void
+    {
+        $this->assertSame($expected, ColorPalette::light()->of($role));
+    }
+
+    public function testLightCoversEveryRoleDarkDefines(): void
+    {
+        $light = ColorPalette::light();
+        foreach (Role::cases() as $role) {
+            $this->assertNotSame('', $light->of($role), $role->name.' must have a light color');
+        }
+    }
+
     public function testDarkResets(): void
     {
         $dark = ColorPalette::dark();
@@ -102,6 +175,7 @@ final class PaletteTest extends TestCase
     public function testHasColor(): void
     {
         $this->assertTrue(ColorPalette::dark()->hasColor());
+        $this->assertTrue(ColorPalette::light()->hasColor());
         $this->assertFalse(new MonochromePalette()->hasColor());
     }
 }
