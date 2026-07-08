@@ -17,9 +17,23 @@ enum Role
     case Added;
     case Deleted;
     case Hunk;
+    case AddEmphasisBg;
+    case DelEmphasisBg;
 
     // Shared row highlights (menus, popups, lists, the current editor line).
     case SelectedRow;
     case RowHighlightBg;
     case PopupRow;
+
+    // Git chrome: header/toolbar bars, file-status markers, tag buttons.
+    case HeaderBar;
+    case Toolbar;
+    case TagOffBg;
+    case Modified;
+    case DangerBg;
+
+    // Text shades.
+    case Dim;
+    case Muted;
+    case Bright;
 }

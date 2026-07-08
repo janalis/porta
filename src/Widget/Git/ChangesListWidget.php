@@ -7,9 +7,11 @@ namespace Porta\Widget\Git;
 use Porta\Git\ChangeEntry;
 use Porta\I18n\Translator;
 use Porta\Support\IntMath;
+use Porta\Ui\ColorPalette;
 use Porta\Ui\ListNavigation;
 use Porta\Ui\ListSelection;
-use Porta\Ui\Style;
+use Porta\Ui\Palette;
+use Porta\Ui\Role;
 use Porta\Widget\FillsPaneTrait;
 use Porta\Widget\InputHook;
 use Porta\Widget\PaneNavigationCallbacks;
@@ -39,13 +41,16 @@ final class ChangesListWidget extends AbstractWidget implements FocusableInterfa
     use KeybindingsTrait;
     use PaneNavigationCallbacks;
 
-    private const array STATUS_FG = [
-        'A' => "\x1b[38;5;114m",
-        'M' => "\x1b[38;5;179m",
-        'D' => "\x1b[38;5;203m",
-        'R' => "\x1b[38;5;75m",
-        'C' => "\x1b[38;5;75m",
+    /** @var array<string, Role> file-status char → color role */
+    private const array STATUS_ROLE = [
+        'A' => Role::Added,
+        'M' => Role::Modified,
+        'D' => Role::Deleted,
+        'R' => Role::Hunk,
+        'C' => Role::Hunk,
     ];
+
+    private readonly Palette $palette;
 
     /** @var list<ChangeEntry> */
     private array $entries = [];
@@ -68,7 +73,9 @@ final class ChangesListWidget extends AbstractWidget implements FocusableInterfa
     public function __construct(
         private readonly Translator $translator,
         private int $width = 44,
+        ?Palette $palette = null,
     ) {
+        $this->palette = $palette ?? ColorPalette::dark();
         $this->list = new ListSelection();
     }
 
@@ -269,7 +276,7 @@ final class ChangesListWidget extends AbstractWidget implements FocusableInterfa
         $title = 1 === $count
             ? $this->translator->trans(' %count% changed file', ['%count%' => $count])
             : $this->translator->trans(' %count% changed files', ['%count%' => $count]);
-        $lines = ["\x1b[48;5;237m\x1b[1m".AnsiUtils::truncateToWidth($title, $width, '…', pad: true)."\x1b[0m"];
+        $lines = [$this->palette->of(Role::HeaderBar)."\x1b[1m".AnsiUtils::truncateToWidth($title, $width, '…', pad: true)."\x1b[0m"];
 
         $scroll = $this->list->follow($rows - 1);
         for ($row = 1; $row < $rows; ++$row) {
@@ -281,7 +288,7 @@ final class ChangesListWidget extends AbstractWidget implements FocusableInterfa
             }
             if ($index === $this->confirmDiscard) {
                 $confirm = $this->translator->trans(' Discard changes? y = yes · any key = no');
-                $lines[] = "\x1b[48;5;88m\x1b[38;5;231m".AnsiUtils::truncateToWidth($confirm, $width, '…', pad: true)."\x1b[0m";
+                $lines[] = $this->palette->of(Role::DangerBg).$this->palette->of(Role::Bright).AnsiUtils::truncateToWidth($confirm, $width, '…', pad: true)."\x1b[0m";
                 continue;
             }
 
@@ -291,13 +298,13 @@ final class ChangesListWidget extends AbstractWidget implements FocusableInterfa
                 default => '[ ]',
             };
             $status = $entry->displayStatus();
-            $statusFg = self::STATUS_FG[$status] ?? '';
+            $statusFg = isset(self::STATUS_ROLE[$status]) ? $this->palette->of(self::STATUS_ROLE[$status]) : '';
             $label = $entry->path.(null !== $entry->renamedFrom ? ' ← '.$entry->renamedFrom : '');
 
             $selected = $this->list->isSelected($index);
             $bg = $selected
-                ? ($this->focused ? Style::SELECTED_ROW : "\x1b[48;5;237m")
-                : ($index === $this->hoveredIndex ? Style::POPUP_ROW_BG : '');
+                ? ($this->focused ? $this->palette->of(Role::SelectedRow) : $this->palette->of(Role::HeaderBar))
+                : ($index === $this->hoveredIndex ? $this->palette->of(Role::RowHighlightBg) : '');
             $text = ' '.$checkbox.' '.$statusFg.$status."\x1b[39m".' '.$label;
             $lines[] = $bg.AnsiUtils::truncateToWidth($text, $width, '…', pad: true)."\x1b[0m";
         }

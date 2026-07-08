@@ -6,7 +6,9 @@ namespace Porta\Widget\Git;
 
 use Porta\I18n\Translator;
 use Porta\Support\IntMath;
-use Porta\Ui\Style;
+use Porta\Ui\ColorPalette;
+use Porta\Ui\Palette;
+use Porta\Ui\Role;
 use Porta\Widget\Render\MenuOverlayHost;
 use Porta\Widget\Render\MenuOverlayHostTrait;
 use Symfony\Component\Tui\Ansi\AnsiUtils;
@@ -32,10 +34,15 @@ final class GitTabsWidget extends AbstractWidget implements MenuOverlayHost
     /** @var (callable(string): void)|null a click chose the other tab ('changes'|'history') */
     private $onSelect = null;
 
+    private readonly Palette $palette;
+
     public function __construct(
         private readonly Translator $translator,
         private int $width = 44,
-    ) {}
+        ?Palette $palette = null,
+    ) {
+        $this->palette = $palette ?? ColorPalette::dark();
+    }
 
     /** Resize the git sidebar column to $width columns (clamped sane). */
     public function setWidth(int $width): void
@@ -100,11 +107,15 @@ final class GitTabsWidget extends AbstractWidget implements MenuOverlayHost
             $label = $this->translator->trans($rawLabel);
             $tabWidth = mb_strwidth($label);
             $this->layout[] = ['mode' => $mode, 'start' => $col, 'width' => $tabWidth];
-            $line .= ($mode === $this->active ? Style::SELECTED_ROW."\x1b[1m" : "\x1b[48;5;237m\x1b[38;5;250m").$label."\x1b[0m\x1b[48;5;235m";
+            $line .=
+                ($mode === $this->active ? $this->palette->of(Role::SelectedRow)."\x1b[1m" : $this->palette->of(Role::HeaderBar).$this->palette->of(Role::Muted))
+                .$label
+                ."\x1b[0m"
+                .$this->palette->of(Role::Toolbar);
             $col += $tabWidth + 1;
             $line .= ' ';
         }
 
-        return $this->withMenuOverlay(["\x1b[48;5;235m".AnsiUtils::truncateToWidth($line, $width, '…', pad: true)."\x1b[0m"], $width);
+        return $this->withMenuOverlay([$this->palette->of(Role::Toolbar).AnsiUtils::truncateToWidth($line, $width, '…', pad: true)."\x1b[0m"], $width);
     }
 }

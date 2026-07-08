@@ -9,7 +9,9 @@ use Porta\Git\DiffLine;
 use Porta\Highlight\CodeHighlighter;
 use Porta\I18n\Translator;
 use Porta\Support\IntMath;
-use Porta\Ui\Style;
+use Porta\Ui\ColorPalette;
+use Porta\Ui\Palette;
+use Porta\Ui\Role;
 use Porta\Widget\FillsPaneTrait;
 use Porta\Widget\InputHook;
 use Porta\Widget\PaneNavigationCallbacks;
@@ -41,10 +43,7 @@ final class DiffViewWidget extends AbstractWidget implements FocusableInterface,
     use KeybindingsTrait;
     use PaneNavigationCallbacks;
 
-    private const string ADD_FG = "\x1b[38;5;114m";
-    private const string DEL_FG = "\x1b[38;5;203m";
-    private const string HUNK_FG = "\x1b[38;5;75m";
-    private const string GUTTER_FG = "\x1b[38;5;240m";
+    private readonly Palette $palette;
 
     private ?DiffDocument $document = null;
     private ?string $path = null;
@@ -97,7 +96,9 @@ final class DiffViewWidget extends AbstractWidget implements FocusableInterface,
 
     public function __construct(
         private readonly Translator $translator,
+        ?Palette $palette = null,
     ) {
+        $this->palette = $palette ?? ColorPalette::dark();
         $this->highlighter = new CodeHighlighter();
     }
 
@@ -629,7 +630,7 @@ final class DiffViewWidget extends AbstractWidget implements FocusableInterface,
         $lines = [$this->renderToolbar($title, $width)];
 
         if (null === $this->document || [] === $this->rows) {
-            $message = "\x1b[38;5;245m ".$this->translator->trans($this->placeholder)."\x1b[0m";
+            $message = $this->palette->of(Role::Dim).' '.$this->translator->trans($this->placeholder)."\x1b[0m";
             $lines[] = AnsiUtils::truncateToWidth($message, $width, '…', pad: true);
             while (\count($lines) < $rows) {
                 $lines[] = str_repeat(' ', $width);
@@ -642,9 +643,9 @@ final class DiffViewWidget extends AbstractWidget implements FocusableInterface,
             $rowIndex = $this->scroll + $i;
             $line = $this->applyCharSelectionTint($rowIndex, $row, $this->renderRow($rowIndex, $row, $width), $width);
             if ($this->focused && $rowIndex === $this->cursor) {
-                $line = "\x1b[48;5;237m".$line;
+                $line = $this->palette->of(Role::HeaderBar).$line;
             } elseif ($this->inRange($rowIndex)) {
-                $line = Style::POPUP_ROW_BG.$line;
+                $line = $this->palette->of(Role::RowHighlightBg).$line;
             }
             $lines[] = $line;
         }
@@ -741,12 +742,12 @@ final class DiffViewWidget extends AbstractWidget implements FocusableInterface,
         foreach ($tags as $tag) {
             $tagWidth = mb_strwidth($tag['label']);
             $this->buttonZones[] = ['name' => $tag['name'], 'start' => $col, 'end' => $col + $tagWidth];
-            $style = $tag['on'] ? Style::SELECTED_ROW : "\x1b[48;5;238m\x1b[38;5;250m";
-            $rendered .= $style.$tag['label']."\x1b[0m\x1b[48;5;237m\x1b[1m".' ';
+            $style = $tag['on'] ? $this->palette->of(Role::SelectedRow) : $this->palette->of(Role::TagOffBg).$this->palette->of(Role::Muted);
+            $rendered .= $style.$tag['label']."\x1b[0m".$this->palette->of(Role::HeaderBar)."\x1b[1m".' ';
             $col += $tagWidth + 1;
         }
 
-        return "\x1b[48;5;237m\x1b[1m".$left.$rendered."\x1b[0m";
+        return $this->palette->of(Role::HeaderBar)."\x1b[1m".$left.$rendered."\x1b[0m";
     }
 
     /** @param array{kind: string, hunk: int, line?: int, left?: int, right?: int} $row */
@@ -756,7 +757,7 @@ final class DiffViewWidget extends AbstractWidget implements FocusableInterface,
         $hunk = $this->document->hunks[$row['hunk']];
 
         if ('hunk' === $row['kind']) {
-            return self::HUNK_FG.AnsiUtils::truncateToWidth(' '.$hunk->header(), $width, '…', pad: true)."\x1b[0m";
+            return $this->palette->of(Role::Hunk).AnsiUtils::truncateToWidth(' '.$hunk->header(), $width, '…', pad: true)."\x1b[0m";
         }
         if ('pair' === $row['kind']) {
             $leftW = intdiv($width - 1, 2);
@@ -764,7 +765,7 @@ final class DiffViewWidget extends AbstractWidget implements FocusableInterface,
 
             return (
                 $this->renderHalf($row['hunk'], $row['left'] ?? -1, $leftW, DiffSide::Old)
-                .self::GUTTER_FG
+                .$this->palette->of(Role::Gutter)
                 .'│'
                 ."\x1b[39m"
                 .$this->renderHalf($row['hunk'], $row['right'] ?? -1, $rightW, DiffSide::New)
@@ -774,7 +775,7 @@ final class DiffViewWidget extends AbstractWidget implements FocusableInterface,
 
         $line = $hunk->lines[$row['line'] ?? -1];
         $gutter =
-            self::GUTTER_FG
+            $this->palette->of(Role::Gutter)
             .str_pad(null === $line->oldNo ? '' : (string) $line->oldNo, 4, ' ', \STR_PAD_LEFT)
             .' '
             .str_pad(null === $line->newNo ? '' : (string) $line->newNo, 4, ' ', \STR_PAD_LEFT)
@@ -798,9 +799,9 @@ final class DiffViewWidget extends AbstractWidget implements FocusableInterface,
     private function lineBody(DiffLine $line, string $key): array
     {
         return match ($line->origin) {
-            '+' => [self::ADD_FG.'+'."\x1b[39m", $this->withEmphasis($this->highlighted[$key] ?? $line->text, $line, "\x1b[48;5;22m")],
-            '-' => [self::DEL_FG.'-', $this->withEmphasis($line->text, $line, "\x1b[48;5;88m")],
-            '\\' => ["\x1b[38;5;245m ", $line->text],
+            '+' => [$this->palette->of(Role::Added).'+'."\x1b[39m", $this->withEmphasis($this->highlighted[$key] ?? $line->text, $line, $this->palette->of(Role::AddEmphasisBg))],
+            '-' => [$this->palette->of(Role::Deleted).'-', $this->withEmphasis($line->text, $line, $this->palette->of(Role::DelEmphasisBg))],
+            '\\' => [$this->palette->of(Role::Dim).' ', $line->text],
             default => [' ', $this->highlighted[$key] ?? $line->text],
         };
     }
@@ -834,7 +835,7 @@ final class DiffViewWidget extends AbstractWidget implements FocusableInterface,
         }
         $line = $this->document->hunks[$hunkIndex]->lines[$lineIndex];
         $no = $side->lineNo($line);
-        $gutter = self::GUTTER_FG.str_pad(null === $no ? '' : (string) $no, 4, ' ', \STR_PAD_LEFT).' '."\x1b[39m";
+        $gutter = $this->palette->of(Role::Gutter).str_pad(null === $no ? '' : (string) $no, 4, ' ', \STR_PAD_LEFT).' '."\x1b[39m";
 
         [$marker, $text] = $this->lineBody($line, $hunkIndex.':'.$lineIndex);
 

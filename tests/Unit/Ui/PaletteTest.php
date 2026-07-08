@@ -24,9 +24,19 @@ final class PaletteTest extends TestCase
         yield 'added' => [Role::Added, "\x1b[38;5;114m"];
         yield 'deleted' => [Role::Deleted, "\x1b[38;5;203m"];
         yield 'hunk' => [Role::Hunk, "\x1b[38;5;75m"];
+        yield 'add-emphasis-bg' => [Role::AddEmphasisBg, "\x1b[48;5;22m"];
+        yield 'del-emphasis-bg' => [Role::DelEmphasisBg, "\x1b[48;5;88m"];
         yield 'selected-row' => [Role::SelectedRow, "\x1b[48;5;31m\x1b[38;5;231m"];
         yield 'row-highlight-bg' => [Role::RowHighlightBg, "\x1b[48;5;236m"];
         yield 'popup-row' => [Role::PopupRow, "\x1b[48;5;236m\x1b[38;5;250m"];
+        yield 'header-bar' => [Role::HeaderBar, "\x1b[48;5;237m"];
+        yield 'toolbar' => [Role::Toolbar, "\x1b[48;5;235m"];
+        yield 'tag-off-bg' => [Role::TagOffBg, "\x1b[48;5;238m"];
+        yield 'modified' => [Role::Modified, "\x1b[38;5;179m"];
+        yield 'danger-bg' => [Role::DangerBg, "\x1b[48;5;88m"];
+        yield 'dim' => [Role::Dim, "\x1b[38;5;245m"];
+        yield 'muted' => [Role::Muted, "\x1b[38;5;250m"];
+        yield 'bright' => [Role::Bright, "\x1b[38;5;231m"];
     }
 
     #[DataProvider('darkRoles')]
