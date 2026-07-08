@@ -14,18 +14,9 @@ use Porta\Widget\BreadcrumbsWidget;
 use Porta\Widget\CodeEditorWidget;
 use Porta\Widget\ContextMenu;
 use Porta\Widget\FileTreeWidget;
-use Porta\Widget\Git\ChangesListWidget;
-use Porta\Widget\Git\CommitBoxWidget;
-use Porta\Widget\Git\DiffViewWidget;
-use Porta\Widget\Git\GitTabsWidget;
-use Porta\Widget\Git\HistoryListWidget;
 use Porta\Widget\GoToFileWidget;
 use Porta\Widget\MenuBarWidget;
 use Porta\Widget\ResultsPanelWidget;
-use Porta\Widget\SeparatorWidget;
-use Porta\Widget\Settings\KeybindingsListWidget;
-use Porta\Widget\Settings\SettingsFormWidget;
-use Porta\Widget\Settings\SettingsNavWidget;
 use Porta\Widget\TabBarWidget;
 use Porta\Widget\TerminalPanelWidget;
 use Symfony\Component\Tui\Render\WidgetRect;
@@ -45,7 +36,6 @@ final class MouseRouter
 {
     /** True while a left-drag started in the editor is extending a text selection. */
     private bool $mouseSelecting = false;
-    private bool $diffSelecting = false; // a press on a diff body row arms a row-range drag
     /** True while an Alt+Shift left-drag is building a column (rectangular) selection. */
     private bool $columnSelecting = false;
     /** True while a left-drag started on a tab is reordering it; $tabDragPath is the dragged buffer. */
@@ -79,17 +69,9 @@ final class MouseRouter
         private readonly BufferService $bufferService,
         private readonly TreeOperations $treeOps,
         private readonly ContextMenuBuilder $contextItems,
-        private readonly ChangesListWidget $gitChanges,
-        private readonly DiffViewWidget $gitDiff,
-        private readonly CommitBoxWidget $gitCommitBox,
-        private readonly HistoryListWidget $gitHistory,
-        private readonly GitTabsWidget $gitTabs,
-        private readonly SeparatorWidget $gitSeparator,
+        private readonly GitMouseRouter $git,
         private readonly \Closure $gitViewOpen,
-        private readonly SettingsNavWidget $settingsNav,
-        private readonly SettingsFormWidget $settingsForm,
-        private readonly KeybindingsListWidget $settingsKeys,
-        private readonly SeparatorWidget $settingsSeparator,
+        private readonly SettingsMouseRouter $settings,
         private readonly \Closure $settingsViewOpen,
         private readonly \Closure $toLogicalColumn,
     ) {}
@@ -114,13 +96,12 @@ final class MouseRouter
         if ($gitViewOpen || $settingsViewOpen) {
             $treeRect = $tabsRect = $editorRect = null;
         }
-        // The git sidebar's drag column and left edge (the tab strip is
-        // attached in both git modes and spans exactly the sidebar width).
-        $gitSepRect = $gitViewOpen ? $this->hit->rect($this->gitSeparator) : null;
-        $gitLeftRect = $gitViewOpen ? $this->hit->rect($this->gitTabs) : null;
-        // The settings sidebar's drag column and left edge (the nav spans the sidebar width).
-        $settingsSepRect = $settingsViewOpen ? $this->hit->rect($this->settingsSeparator) : null;
-        $settingsLeftRect = $settingsViewOpen ? $this->hit->rect($this->settingsNav) : null;
+        // The git/settings sidebars' drag columns and left edges (each router
+        // owns its widgets; the rects exist only while its view is swapped in).
+        $gitSepRect = $gitViewOpen ? $this->git->separatorRect() : null;
+        $gitLeftRect = $gitViewOpen ? $this->git->leftRect() : null;
+        $settingsSepRect = $settingsViewOpen ? $this->settings->separatorRect() : null;
+        $settingsLeftRect = $settingsViewOpen ? $this->settings->leftRect() : null;
 
         if ($mouse->wheel) {
             $this->handleWheel($mouse, $treeRect, $editorRect);
@@ -142,7 +123,7 @@ final class MouseRouter
             $this->continueTextDrag($mouse, $editorRect)
             || $this->continueColumnDrag($mouse, $editorRect)
             || $this->continueTabDrag($mouse, $tabsRect)
-            || $this->continueDiffDrag($mouse)
+            || $this->git->continueDiffDrag($mouse)
             || $this->layout->continueResizeDrag($mouse, $treeRect, $gitLeftRect, $settingsLeftRect)
         ) {
             return;
@@ -162,7 +143,7 @@ final class MouseRouter
         $this->mouseSelecting = false;
         $this->columnSelecting = false;
         $this->tabDragging = false;
-        $this->diffSelecting = false;
+        $this->git->cancelDrag();
         $this->layout->cancelDrags();
 
         if ($this->handleModalPopupClick($mouse, $editorRect, $gitViewOpen || $settingsViewOpen)) {
@@ -193,8 +174,7 @@ final class MouseRouter
         // Horizontal wheel (trackpad swipe or shift+wheel): only the panes
         // with long lines scroll sideways; everything else ignores it.
         if (0 !== $mouse->wheelHDelta) {
-            if (null !== $this->hit->hit($this->gitDiff, $mouse->row, $mouse->col)) {
-                $this->gitDiff->scrollHBy(6 * $mouse->wheelHDelta);
+            if ($this->git->scrollHorizontal($mouse)) {
                 $this->tui->requestRender();
             } elseif (null !== $editorRect && $editorRect->contains($mouse->row, $mouse->col)) {
                 $this->editor->scrollHBy(6 * $mouse->wheelHDelta);
@@ -215,24 +195,8 @@ final class MouseRouter
             for ($i = 0; $i < 3; ++$i) {
                 $this->tree->handleInput($key);
             }
-        } elseif (null !== $this->hit->hit($this->gitDiff, $mouse->row, $mouse->col)) {
-            $this->gitDiff->scrollBy($step);
-        } elseif (null !== $this->hit->hit($this->gitChanges, $mouse->row, $mouse->col)) {
-            $key = $mouse->wheelDelta < 0 ? "\x1b[A" : "\x1b[B";
-            for ($i = 0; $i < 3; ++$i) {
-                $this->gitChanges->handleInput($key); // list scroll follows selection
-            }
-        } elseif (null !== $this->hit->hit($this->gitHistory, $mouse->row, $mouse->col)) {
-            $key = $mouse->wheelDelta < 0 ? "\x1b[A" : "\x1b[B";
-            for ($i = 0; $i < 3; ++$i) {
-                $this->gitHistory->handleInput($key);
-            }
-        } elseif (null !== $this->hit->hit($this->settingsKeys, $mouse->row, $mouse->col)) {
-            $key = $mouse->wheelDelta < 0 ? "\x1b[A" : "\x1b[B";
-            for ($i = 0; $i < 3; ++$i) {
-                $this->settingsKeys->handleInput($key);
-            }
-        } else {
+        } elseif (!$this->git->scrollVertical($mouse, $step) && !$this->settings->scrollVertical($mouse)) {
+            // Neither the git panes nor the settings list are under the pointer.
             return;
         }
         $this->tui->requestRender();
@@ -397,35 +361,13 @@ final class MouseRouter
         return false;
     }
 
-    /**
-     * Extend a diff row-range selection while the left button drags over the
-     * diff pane; the release keeps the range armed for a follow-up copy.
-     */
-    private function continueDiffDrag(MouseEvent $mouse): bool
-    {
-        if (!$this->diffSelecting || !$mouse->isLeftDrag() && !$mouse->isLeftRelease()) {
-            return false;
-        }
-        // Only genuine motion extends the range — a plain click's release
-        // must not arm an anchor on the row it already selected.
-        if ($mouse->isLeftDrag() && null !== ($rel = $this->hit->hit($this->gitDiff, $mouse->row, $mouse->col)) && $rel['row'] > 0) {
-            $this->gitDiff->dragSelectTo($rel['row'], $rel['col']);
-            $this->tui->requestRender();
-        }
-        if ($mouse->isLeftRelease()) {
-            $this->diffSelecting = false;
-        }
-
-        return true;
-    }
-
     /** A left press on the panes, tried front-to-back; the editor is the final target. */
     private function handlePaneClick(MouseEvent $mouse, ?WidgetRect $treeRect, ?WidgetRect $tabsRect, ?WidgetRect $editorRect): void
     {
-        if ($this->tryGitPaneClick($mouse)) {
+        if ($this->git->tryPaneClick($mouse)) {
             return;
         }
-        if ($this->trySettingsPaneClick($mouse)) {
+        if ($this->settings->tryPaneClick($mouse)) {
             return;
         }
         if ($this->tryOverlayPanelClick($mouse)) {
@@ -435,78 +377,6 @@ final class MouseRouter
             return;
         }
         $this->handleEditorClick($mouse, $editorRect);
-    }
-
-    /** Git view panes (rects exist only while the view is swapped in). */
-    private function tryGitPaneClick(MouseEvent $mouse): bool
-    {
-        if (null !== ($rel = $this->hit->hit($this->gitTabs, $mouse->row, $mouse->col))) {
-            $this->gitTabs->handleClick($rel['col']);
-            $this->tui->requestRender();
-
-            return true;
-        }
-        if (null !== ($rel = $this->hit->hit($this->gitChanges, $mouse->row, $mouse->col))) {
-            $this->tui->setFocus($this->gitChanges);
-            $this->gitChanges->handleClick($rel['row'], $rel['col']);
-            $this->tui->requestRender();
-
-            return true;
-        }
-        if (null !== ($rel = $this->hit->hit($this->gitHistory, $mouse->row, $mouse->col))) {
-            $this->tui->setFocus($this->gitHistory);
-            $this->gitHistory->handleClick($rel['row']);
-            $this->tui->requestRender();
-
-            return true;
-        }
-        if (null !== ($rel = $this->hit->hit($this->gitCommitBox, $mouse->row, $mouse->col))) {
-            $this->tui->setFocus($this->gitCommitBox);
-            $this->gitCommitBox->handleClick($rel['row']);
-            $this->tui->requestRender();
-
-            return true;
-        }
-        if (null !== ($rel = $this->hit->hit($this->gitDiff, $mouse->row, $mouse->col))) {
-            $this->tui->setFocus($this->gitDiff);
-            $this->gitDiff->handleClick($rel['row'], $rel['col']);
-            // A body-row press arms a drag selection (rows join the range as
-            // the pointer moves; ctrl+c then copies the highlighted lines).
-            $this->diffSelecting = $rel['row'] > 0;
-            $this->tui->requestRender();
-
-            return true;
-        }
-
-        return false;
-    }
-
-    /** Settings view panes (rects exist only while the view is swapped in). */
-    private function trySettingsPaneClick(MouseEvent $mouse): bool
-    {
-        if (null !== ($rel = $this->hit->hit($this->settingsNav, $mouse->row, $mouse->col))) {
-            $this->tui->setFocus($this->settingsNav);
-            $this->settingsNav->handleClick($rel['row']);
-            $this->tui->requestRender();
-
-            return true;
-        }
-        if (null !== ($rel = $this->hit->hit($this->settingsForm, $mouse->row, $mouse->col))) {
-            $this->tui->setFocus($this->settingsForm);
-            $this->settingsForm->handleClick($rel['row']);
-            $this->tui->requestRender();
-
-            return true;
-        }
-        if (null !== ($rel = $this->hit->hit($this->settingsKeys, $mouse->row, $mouse->col))) {
-            $this->tui->setFocus($this->settingsKeys);
-            $this->settingsKeys->handleClick($rel['row']);
-            $this->tui->requestRender();
-
-            return true;
-        }
-
-        return false;
     }
 
     /** The floating bottom/overlay panels: terminal, results and go-to-file. */
@@ -695,61 +565,23 @@ final class MouseRouter
     private function handleHover(MouseEvent $mouse, ?WidgetRect $editorRect, bool $gitViewOpen = false, bool $settingsViewOpen = false): void
     {
         // Each full-view state owns its hover targets exclusively; the tree/editor
-        // targets are detached while a view is swapped in.
+        // targets are detached while a view is swapped in. The menu bar rides
+        // along into either view, so it gets first refusal before the region.
         if ($settingsViewOpen) {
-            $this->handleSettingsHover($mouse);
+            if (!$this->handleMenuHover($mouse)) {
+                $this->settings->hover($mouse);
+            }
 
             return;
         }
         if ($gitViewOpen) {
-            $this->handleGitHover($mouse);
+            if (!$this->handleMenuHover($mouse)) {
+                $this->git->hover($mouse);
+            }
 
             return;
         }
         $this->handleMainHover($mouse, $editorRect);
-    }
-
-    /** Hover routing while the settings view owns the main area. */
-    private function handleSettingsHover(MouseEvent $mouse): void
-    {
-        if ($this->handleMenuHover($mouse)) {
-            return; // the menu bar rides along into the settings view
-        }
-        // The nav sidebar and the keybindings list tint on hover; a miss clears them.
-        $changed = null !== ($rel = $this->hit->hit($this->settingsNav, $mouse->row, $mouse->col))
-            ? $this->settingsNav->hoverRow($rel['row'])
-            : $this->settingsNav->clearHover();
-        $changed =
-            (
-                null !== ($rel = $this->hit->hit($this->settingsKeys, $mouse->row, $mouse->col))
-                    ? $this->settingsKeys->hoverRow($rel['row'])
-                    : $this->settingsKeys->clearHover()
-            ) || $changed;
-        if ($changed) {
-            $this->tui->requestRender();
-        }
-    }
-
-    /** Hover routing while the git view owns the main area. */
-    private function handleGitHover(MouseEvent $mouse): void
-    {
-        if ($this->handleMenuHover($mouse)) {
-            return; // the menu bar rides along into the git view
-        }
-        // Hover tints the row under the pointer in whichever list is
-        // attached; a miss clears the tint (pointer over another pane).
-        $changed = null !== ($rel = $this->hit->hit($this->gitChanges, $mouse->row, $mouse->col))
-            ? $this->gitChanges->hoverRow($rel['row'])
-            : $this->gitChanges->clearHover();
-        $changed =
-            (
-                null !== ($rel = $this->hit->hit($this->gitHistory, $mouse->row, $mouse->col))
-                    ? $this->gitHistory->hoverRow($rel['row'])
-                    : $this->gitHistory->clearHover()
-            ) || $changed;
-        if ($changed) {
-            $this->tui->requestRender();
-        }
     }
 
     /** Hover routing for the normal editor layout: tree, menu, editor popup, panels. */

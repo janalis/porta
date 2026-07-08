@@ -26,9 +26,11 @@ use Porta\History\LocalHistoryController;
 use Porta\History\SessionStore;
 use Porta\I18n\Bidi;
 use Porta\I18n\Translator;
+use Porta\Input\GitMouseRouter;
 use Porta\Input\HitTester;
 use Porta\Input\MouseEvent;
 use Porta\Input\MouseRouter;
+use Porta\Input\SettingsMouseRouter;
 use Porta\Layout\GitSidebar;
 use Porta\Layout\LayoutController;
 use Porta\Lsp\CompletionController;
@@ -419,8 +421,9 @@ final class Ide
             $this->completion,
         );
 
+        $hit = new HitTester($this->renderer);
         $this->mouseRouter = new MouseRouter(
-            new HitTester($this->renderer),
+            $hit,
             $this->tui,
             $this->tree,
             $this->tabBar,
@@ -437,17 +440,9 @@ final class Ide
             $this->bufferService,
             $this->treeOps,
             new ContextMenuBuilder($this->commands, $this->editor, $this->keybindings, $this->bufferService, $this->translator),
-            $this->gitChanges,
-            $this->gitDiff,
-            $this->gitCommitBox,
-            $this->gitHistory,
-            $this->gitTabs,
-            $this->gitSeparator,
+            new GitMouseRouter($hit, $this->tui, $this->gitChanges, $this->gitDiff, $this->gitCommitBox, $this->gitHistory, $this->gitTabs, $this->gitSeparator),
             fn (): bool => $this->gitView->isOpen(),
-            $this->settingsNav,
-            $this->settingsForm,
-            $this->settingsKeys,
-            $this->settingsSeparator,
+            new SettingsMouseRouter($hit, $this->tui, $this->settingsNav, $this->settingsForm, $this->settingsKeys, $this->settingsSeparator),
             fn (): bool => $this->settingsView->isOpen(),
             fn (int $row, int $col): int => $this->bidiTui->logicalColumn($row, $col),
         );
