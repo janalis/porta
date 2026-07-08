@@ -7,6 +7,7 @@ use Porta\Git\GitInfo;
 use Porta\History\LocalHistory;
 use Porta\History\SessionStore;
 use Porta\I18n\Translator;
+use Porta\Lsp\LspSessionPool;
 use Porta\Ui\Notifier;
 use Porta\Widget\CodeEditorWidget;
 use Porta\Widget\FileTreeWidget;
@@ -47,7 +48,7 @@ return static function (ContainerConfigurator $container): void {
     // Synthetic infrastructure: Ide builds these manually (they need per-instance
     // setId/setStyle or the terminal), then ->set()s the instances after boot.
     // Declared here so container-built controllers can depend on them by type.
-    foreach ([Renderer::class, Tui::class, Notifier::class, CodeEditorWidget::class, FileTreeWidget::class, StatusBarWidget::class, ResultsPanelWidget::class, TerminalPanelWidget::class] as $syntheticId) {
+    foreach ([Renderer::class, Tui::class, Notifier::class, LspSessionPool::class, CodeEditorWidget::class, FileTreeWidget::class, StatusBarWidget::class, ResultsPanelWidget::class, TerminalPanelWidget::class] as $syntheticId) {
         $services->set($syntheticId)->synthetic();
     }
 };

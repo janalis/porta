@@ -357,6 +357,7 @@ final class Ide
         $this->container->set(Renderer::class, $this->renderer);
         $this->container->set(Tui::class, $this->tui);
         $this->container->set(Notifier::class, $this->notifier);
+        $this->container->set(LspSessionPool::class, $this->lsp);
         $this->container->set(CodeEditorWidget::class, $this->editor);
         $this->container->set(FileTreeWidget::class, $this->tree);
         $this->container->set(StatusBarWidget::class, $this->statusBar);
