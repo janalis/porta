@@ -52,10 +52,13 @@ Run gate commands capturing output rather than piping to a pager, e.g.
 ## Architecture
 
 **`Ide` (`src/Ide.php`) is the coordinator.** Its constructor wires the entire widget tree and
-every controller together; `run()` sets up the terminal (alternate screen + SGR mouse modes
-1000/1003/1006), arms a 1s filesystem-poll timer, and enters `tui->run()`. Teardown (mouse
+every controller together, delegating to a sequence of named `build*` steps (`buildEditorArea`,
+`buildSidePanels`, `buildGitView`, `buildSettingsWidgets`, `buildLayoutAndOverlay`) so it reads
+top-to-bottom as a composition root; `run()` sets up the terminal (alternate screen + SGR mouse
+modes 1000/1003/1006), arms a 1s filesystem-poll timer, and enters `tui->run()`. Teardown (mouse
 disable, session save, LSP/git/run shutdown) is in the `finally`. It's large by design — the
-single place that knows how the pieces connect.
+single place that knows how the pieces connect; add new construction to the matching `build*`
+step, not as another extracted class.
 
 **Single event loop.** `revolt/event-loop` drives both the `symfony/tui` render/input loop and
 all async work (LSP over stdio, git subprocesses, the integrated terminal PTY, run
