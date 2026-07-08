@@ -4,22 +4,10 @@ declare(strict_types=1);
 
 namespace Porta\Overlay;
 
-use Porta\Widget\BreadcrumbsWidget;
 use Porta\Widget\CodeEditorWidget;
 use Porta\Widget\ContextMenu;
-use Porta\Widget\FileTreeWidget;
-use Porta\Widget\Git\ChangesListWidget;
-use Porta\Widget\Git\CommitBoxWidget;
-use Porta\Widget\Git\DiffViewWidget;
-use Porta\Widget\Git\GitTabsWidget;
-use Porta\Widget\Git\HistoryListWidget;
 use Porta\Widget\MenuBarWidget;
 use Porta\Widget\Render\MenuOverlayHost;
-use Porta\Widget\SeparatorWidget;
-use Porta\Widget\Settings\KeybindingsListWidget;
-use Porta\Widget\Settings\SettingsFormWidget;
-use Porta\Widget\Settings\SettingsNavWidget;
-use Porta\Widget\TabBarWidget;
 use Symfony\Component\Tui\Ansi\AnsiUtils;
 use Symfony\Component\Tui\Render\Renderer;
 use Symfony\Component\Tui\Render\WidgetRect;
@@ -45,44 +33,13 @@ final class MenuOverlayController
     private int $contextAnchorRow = 0;
     private int $contextAnchorCol = 0;
 
-    /** @param \Closure(): bool $gitViewOpen whether the git view owns the main area */
     public function __construct(
         private readonly Renderer $renderer,
         private readonly MenuBarWidget $menuBar,
         private readonly ContextMenu $contextMenu,
-        private readonly FileTreeWidget $tree,
-        private readonly SeparatorWidget $separator,
-        private readonly TabBarWidget $tabBar,
-        private readonly BreadcrumbsWidget $breadcrumbs,
         private readonly CodeEditorWidget $editor,
-        private readonly ChangesListWidget $gitChanges,
-        private readonly CommitBoxWidget $gitCommitBox,
-        private readonly HistoryListWidget $gitHistory,
-        private readonly DiffViewWidget $gitDiff,
-        private readonly GitTabsWidget $gitTabs,
-        private readonly SeparatorWidget $gitSeparator,
-        private readonly \Closure $gitViewOpen,
-        private readonly SettingsNavWidget $settingsNav,
-        private readonly SettingsFormWidget $settingsForm,
-        private readonly KeybindingsListWidget $settingsKeys,
-        private readonly SeparatorWidget $settingsSeparator,
-        private readonly \Closure $settingsViewOpen,
+        private readonly MenuOverlayPanes $panes,
     ) {}
-
-    /**
-     * The panes the app-menu dropdown floats over in the current mode: the
-     * settings view's panes, else the git view's, else the editor pane's rows.
-     *
-     * @return list<AbstractWidget&MenuOverlayHost>
-     */
-    private function menuPanes(): array
-    {
-        return match (true) {
-            ($this->settingsViewOpen)() => [$this->settingsNav, $this->settingsSeparator, $this->settingsForm, $this->settingsKeys],
-            ($this->gitViewOpen)() => [$this->gitTabs, $this->gitChanges, $this->gitCommitBox, $this->gitHistory, $this->gitSeparator, $this->gitDiff],
-            default => [$this->tree, $this->separator, $this->tabBar, $this->editor, $this->breadcrumbs],
-        };
-    }
 
     /**
      * The app-menu dropdown box, for click/hover hit-testing; null when closed.
@@ -120,9 +77,9 @@ final class MenuOverlayController
     {
         if (!$this->menuBar->isOpen()) {
             $this->menuDropdown = null;
-            // Clear both mode's pane sets: clearing a detached widget is harmless
+            // Clear every mode's pane set: clearing a detached widget is harmless
             // and a dropdown may close across a view swap.
-            $this->clearOverlays([$this->tree, $this->separator, $this->tabBar, $this->breadcrumbs, $this->editor, $this->gitTabs, $this->gitChanges, $this->gitCommitBox, $this->gitHistory, $this->gitSeparator, $this->gitDiff, $this->settingsNav, $this->settingsSeparator, $this->settingsForm, $this->settingsKeys]);
+            $this->clearOverlays($this->panes->all());
 
             return;
         }
@@ -144,7 +101,7 @@ final class MenuOverlayController
         $segments = $this->menuBar->dropdownSegments($panelWidth);
 
         $this->menuDropdown = ['top' => $top, 'col' => $anchor, 'width' => $panelWidth, 'count' => \count($segments)];
-        $this->pushOverlays($segments, $top, $anchor, $panelWidth, $this->menuPanes());
+        $this->pushOverlays($segments, $top, $anchor, $panelWidth, $this->panes->current());
     }
 
     /**
@@ -158,7 +115,7 @@ final class MenuOverlayController
     {
         if (!$this->contextMenu->isOpen()) {
             $this->contextMenuDropdown = null;
-            $this->clearOverlays([$this->tree, $this->separator, $this->tabBar, $this->breadcrumbs, $this->editor]);
+            $this->clearOverlays($this->panes->editor());
 
             return;
         }
@@ -179,9 +136,10 @@ final class MenuOverlayController
 
         $segments = $this->contextMenu->segments($panelWidth);
         $this->contextMenuDropdown = ['top' => $top, 'col' => $col, 'width' => $panelWidth, 'count' => \count($segments)];
-        // The sidebar↔editor separator column and the (conditionally hidden)
-        // breadcrumb also sit under a menu that spills across the sidebar boundary.
-        $this->pushOverlays($segments, $top, $col, $panelWidth, [$this->tree, $this->tabBar, $this->editor, $this->separator, $this->breadcrumbs]);
+        // The editor-layout panes: the sidebar↔editor separator column and the
+        // (conditionally hidden) breadcrumb also sit under a menu that spills
+        // across the sidebar boundary.
+        $this->pushOverlays($segments, $top, $col, $panelWidth, $this->panes->editor());
     }
 
     /** @param list<AbstractWidget&MenuOverlayHost> $panes */

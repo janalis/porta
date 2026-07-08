@@ -1,0 +1,70 @@
+<?php
+
+declare(strict_types=1);
+
+namespace Porta\Overlay;
+
+use Porta\Widget\Render\MenuOverlayHost;
+use Symfony\Component\Tui\Widget\AbstractWidget;
+
+/**
+ * The panes a floating menu can composite over, grouped by which view owns the
+ * main area: the editor layout's panes, the git view's, and the settings view's.
+ * Bundles what were fifteen positional widget arguments to
+ * {@see MenuOverlayController} into one value that answers the three questions
+ * the controller asks — the current mode's panes, the editor-layout panes (the
+ * context menu only opens there), and every pane for a blanket overlay clear.
+ */
+final readonly class MenuOverlayPanes
+{
+    /**
+     * @param list<AbstractWidget&MenuOverlayHost> $editor   tree, separator, tab bar, editor, breadcrumbs
+     * @param list<AbstractWidget&MenuOverlayHost> $git      the git view's panes
+     * @param list<AbstractWidget&MenuOverlayHost> $settings the settings view's panes
+     * @param \Closure(): bool                     $gitViewOpen
+     * @param \Closure(): bool                     $settingsViewOpen
+     */
+    public function __construct(
+        private array $editor,
+        private array $git,
+        private array $settings,
+        private \Closure $gitViewOpen,
+        private \Closure $settingsViewOpen,
+    ) {}
+
+    /**
+     * The panes the app-menu dropdown floats over in the current mode: the
+     * settings view's, else the git view's, else the editor layout's.
+     *
+     * @return list<AbstractWidget&MenuOverlayHost>
+     */
+    public function current(): array
+    {
+        return match (true) {
+            ($this->settingsViewOpen)() => $this->settings,
+            ($this->gitViewOpen)() => $this->git,
+            default => $this->editor,
+        };
+    }
+
+    /**
+     * The editor-layout panes — the context menu only ever opens there.
+     *
+     * @return list<AbstractWidget&MenuOverlayHost>
+     */
+    public function editor(): array
+    {
+        return $this->editor;
+    }
+
+    /**
+     * Every pane across all modes, for clearing a dropdown that may close across
+     * a view swap (clearing a detached widget is harmless).
+     *
+     * @return list<AbstractWidget&MenuOverlayHost>
+     */
+    public function all(): array
+    {
+        return [...$this->editor, ...$this->git, ...$this->settings];
+    }
+}

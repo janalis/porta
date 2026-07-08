@@ -41,6 +41,7 @@ use Porta\Lsp\RefactorController;
 use Porta\Lsp\ServerLocator;
 use Porta\Lsp\WorkspaceEditor;
 use Porta\Overlay\MenuOverlayController;
+use Porta\Overlay\MenuOverlayPanes;
 use Porta\Run\RunConfigs;
 use Porta\Run\RunController;
 use Porta\Search\ProjectSearch;
@@ -325,23 +326,14 @@ final class Ide
             $this->renderer,
             $this->menuBar,
             $this->contextMenu,
-            $this->tree,
-            $this->separator,
-            $this->tabBar,
-            $this->breadcrumbs,
             $this->editor,
-            $this->gitChanges,
-            $this->gitCommitBox,
-            $this->gitHistory,
-            $this->gitDiff,
-            $this->gitTabs,
-            $this->gitSeparator,
-            fn (): bool => $this->gitView->isOpen(),
-            $this->settingsNav,
-            $this->settingsForm,
-            $this->settingsKeys,
-            $this->settingsSeparator,
-            fn (): bool => $this->settingsView->isOpen(),
+            new MenuOverlayPanes(
+                [$this->tree, $this->separator, $this->tabBar, $this->editor, $this->breadcrumbs],
+                [$this->gitTabs, $this->gitChanges, $this->gitCommitBox, $this->gitHistory, $this->gitSeparator, $this->gitDiff],
+                [$this->settingsNav, $this->settingsSeparator, $this->settingsForm, $this->settingsKeys],
+                fn (): bool => $this->gitView->isOpen(),
+                fn (): bool => $this->settingsView->isOpen(),
+            ),
         );
         $this->treeOps = new TreeOperations(
             $this->tree,
