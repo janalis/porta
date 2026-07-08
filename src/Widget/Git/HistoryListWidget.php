@@ -9,6 +9,7 @@ use Porta\I18n\Translator;
 use Porta\Ui\ListNavigation;
 use Porta\Ui\ListSelection;
 use Porta\Ui\Style;
+use Porta\Widget\FillsPaneTrait;
 use Porta\Widget\InputHook;
 use Porta\Widget\Render\MenuOverlayHost;
 use Porta\Widget\Render\MenuOverlayHostTrait;
@@ -29,6 +30,7 @@ use Symfony\Component\Tui\Widget\VerticallyExpandableInterface;
  */
 final class HistoryListWidget extends AbstractWidget implements FocusableInterface, MenuOverlayHost, VerticallyExpandableInterface
 {
+    use FillsPaneTrait;
     use FocusableTrait;
     use InputHook;
     use MenuOverlayHostTrait;
@@ -196,7 +198,7 @@ final class HistoryListWidget extends AbstractWidget implements FocusableInterfa
     public function handleClick(int $relRow): void
     {
         $commitRows = $this->commitRowCount();
-        if ($relRow >= 1 && $relRow < 1 + $commitRows) {
+        if ($relRow >= 1 && $relRow < (1 + $commitRows)) {
             $index = $this->commitList->scroll() + $relRow - 1;
             if (isset($this->commits[$index])) {
                 $this->filesFocused = false;
@@ -227,7 +229,7 @@ final class HistoryListWidget extends AbstractWidget implements FocusableInterfa
     public function hoverRow(int $relRow): bool
     {
         $commitRows = $this->commitRowCount();
-        if ($relRow >= 1 && $relRow < 1 + $commitRows) {
+        if ($relRow >= 1 && $relRow < (1 + $commitRows)) {
             $index = $this->commitList->scroll() + $relRow - 1;
 
             return $this->setHovered(isset($this->commits[$index]) ? $index : null, null);
@@ -315,20 +317,11 @@ final class HistoryListWidget extends AbstractWidget implements FocusableInterfa
                 : (($fileScroll + $row) === $this->hoveredFile ? "\x1b[48;5;236m" : '');
             $lines[] = $bg.AnsiUtils::truncateToWidth(' '.$file['status'].' '.$file['path'], $width, '…', pad: true)."\x1b[0m";
         }
+
         // commitRowCount + the two headers + FILE_ROWS always fill $rows exactly
         // (the file loop is height-capped), so no tail padding is needed.
 
         return $this->withMenuOverlay($lines, $width);
-    }
-
-    public function isVerticallyExpanded(): bool
-    {
-        return true;
-    }
-
-    public function expandVertically(bool $expand): static
-    {
-        return $this; // always fills its pane
     }
 
     /** @return array<string, string[]> */

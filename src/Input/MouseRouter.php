@@ -19,13 +19,13 @@ use Porta\Widget\Git\CommitBoxWidget;
 use Porta\Widget\Git\DiffViewWidget;
 use Porta\Widget\Git\GitTabsWidget;
 use Porta\Widget\Git\HistoryListWidget;
-use Porta\Widget\Settings\KeybindingsListWidget;
-use Porta\Widget\Settings\SettingsFormWidget;
-use Porta\Widget\Settings\SettingsNavWidget;
 use Porta\Widget\GoToFileWidget;
 use Porta\Widget\MenuBarWidget;
 use Porta\Widget\ResultsPanelWidget;
 use Porta\Widget\SeparatorWidget;
+use Porta\Widget\Settings\KeybindingsListWidget;
+use Porta\Widget\Settings\SettingsFormWidget;
+use Porta\Widget\Settings\SettingsNavWidget;
 use Porta\Widget\TabBarWidget;
 use Porta\Widget\TerminalPanelWidget;
 use Symfony\Component\Tui\Render\WidgetRect;
@@ -57,13 +57,9 @@ final class MouseRouter
     private int $clickCount = 0;
 
     /**
-     * @param \Closure(): bool $gitViewOpen      whether the git view owns the main area
-     * @param \Closure(): bool $settingsViewOpen whether the settings view owns the main area
-     */
-    /**
-     * @param \Closure(): bool      $gitViewOpen
-     * @param \Closure(): bool      $settingsViewOpen
-     * @param \Closure(int, int): int $toLogicalColumn map a screen (row, col) to the logical column
+     * @param \Closure(): bool        $gitViewOpen      whether the git view owns the main area
+     * @param \Closure(): bool        $settingsViewOpen whether the settings view owns the main area
+     * @param \Closure(int, int): int $toLogicalColumn  map a screen (row, col) to the logical column
      */
     public function __construct(
         private readonly HitTester $hit,
@@ -142,7 +138,8 @@ final class MouseRouter
 
         // Drags in progress (text/column selection, tab reorder, pane resize)
         // consume the event wherever the pointer now is.
-        if ($this->continueTextDrag($mouse, $editorRect)
+        if (
+            $this->continueTextDrag($mouse, $editorRect)
             || $this->continueColumnDrag($mouse, $editorRect)
             || $this->continueTabDrag($mouse, $tabsRect)
             || $this->continueDiffDrag($mouse)
@@ -261,7 +258,7 @@ final class MouseRouter
      */
     private function continueTextDrag(MouseEvent $mouse, ?WidgetRect $editorRect): bool
     {
-        if (!$this->mouseSelecting || (!$mouse->isLeftDrag() && !$mouse->isLeftRelease())) {
+        if (!$this->mouseSelecting || !$mouse->isLeftDrag() && !$mouse->isLeftRelease()) {
             return false;
         }
         if (null !== $editorRect) {
@@ -282,7 +279,7 @@ final class MouseRouter
      */
     private function continueColumnDrag(MouseEvent $mouse, ?WidgetRect $editorRect): bool
     {
-        if (!$this->columnSelecting || (!$mouse->isLeftDrag() && !$mouse->isLeftRelease())) {
+        if (!$this->columnSelecting || !$mouse->isLeftDrag() && !$mouse->isLeftRelease()) {
             return false;
         }
         if (null !== $editorRect) {
@@ -300,7 +297,7 @@ final class MouseRouter
     /** Tab reordering: a left-drag started on a tab moves it under the pointer. */
     private function continueTabDrag(MouseEvent $mouse, ?WidgetRect $tabsRect): bool
     {
-        if (!$this->tabDragging || (!$mouse->isLeftDrag() && !$mouse->isLeftRelease())) {
+        if (!$this->tabDragging || !$mouse->isLeftDrag() && !$mouse->isLeftRelease()) {
             return false;
         }
         if (null !== $tabsRect && null !== $this->tabDragPath) {
@@ -406,7 +403,7 @@ final class MouseRouter
      */
     private function continueDiffDrag(MouseEvent $mouse): bool
     {
-        if (!$this->diffSelecting || (!$mouse->isLeftDrag() && !$mouse->isLeftRelease())) {
+        if (!$this->diffSelecting || !$mouse->isLeftDrag() && !$mouse->isLeftRelease()) {
             return false;
         }
         // Only genuine motion extends the range — a plain click's release
@@ -664,9 +661,12 @@ final class MouseRouter
             $changed = null !== ($rel = $this->hit->hit($this->settingsNav, $mouse->row, $mouse->col))
                 ? $this->settingsNav->hoverRow($rel['row'])
                 : $this->settingsNav->clearHover();
-            $changed = (null !== ($rel = $this->hit->hit($this->settingsKeys, $mouse->row, $mouse->col))
-                ? $this->settingsKeys->hoverRow($rel['row'])
-                : $this->settingsKeys->clearHover()) || $changed;
+            $changed =
+                (
+                    null !== ($rel = $this->hit->hit($this->settingsKeys, $mouse->row, $mouse->col))
+                        ? $this->settingsKeys->hoverRow($rel['row'])
+                        : $this->settingsKeys->clearHover()
+                ) || $changed;
             if ($changed) {
                 $this->tui->requestRender();
             }
@@ -683,9 +683,12 @@ final class MouseRouter
             $changed = null !== ($rel = $this->hit->hit($this->gitChanges, $mouse->row, $mouse->col))
                 ? $this->gitChanges->hoverRow($rel['row'])
                 : $this->gitChanges->clearHover();
-            $changed = (null !== ($rel = $this->hit->hit($this->gitHistory, $mouse->row, $mouse->col))
-                ? $this->gitHistory->hoverRow($rel['row'])
-                : $this->gitHistory->clearHover()) || $changed;
+            $changed =
+                (
+                    null !== ($rel = $this->hit->hit($this->gitHistory, $mouse->row, $mouse->col))
+                        ? $this->gitHistory->hoverRow($rel['row'])
+                        : $this->gitHistory->clearHover()
+                ) || $changed;
             if ($changed) {
                 $this->tui->requestRender();
             }

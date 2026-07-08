@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Porta\Terminal;
 
+use Porta\Support\AnsiText;
 use Symfony\Component\Tui\Ansi\AnsiUtils;
 
 /**
@@ -152,8 +153,7 @@ final class TerminalBuffer
 
         if ($this->col >= AnsiUtils::visibleWidth($cur)) {
             // Append (common case), padding any gap left by \t or cursor moves.
-            $pad = str_repeat(' ', max(0, $this->col - AnsiUtils::visibleWidth($cur)));
-            $this->lines[\count($this->lines) - 1] = $cur.$pad.$text;
+            $this->lines[\count($this->lines) - 1] = AnsiText::padRight($cur, $this->col).$text;
         } else {
             // Overwrite from the cursor column (e.g. after \r).
             $head = AnsiUtils::sliceByColumn($cur, 0, $this->col);

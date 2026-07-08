@@ -6,6 +6,7 @@ namespace Porta\Widget\Render;
 
 use Porta\Editor\DiagnosticStyle;
 use Porta\Editor\Document;
+use Porta\Support\AnsiText;
 use Porta\Ui\Style;
 use Symfony\Component\Tui\Ansi\AnsiUtils;
 use Symfony\Component\Tui\Style\CursorShape;
@@ -294,8 +295,7 @@ final class EditorRenderer
         $label = AnsiUtils::truncateToWidth('‹ '.(string) preg_replace('/\s+/', ' ', $message).$extra.' ›', $available, '…');
         $labelWidth = AnsiUtils::visibleWidth($label);
 
-        $head = AnsiUtils::sliceByColumn($content, 0, $start);
-        $head .= str_repeat(' ', max(0, $start - AnsiUtils::visibleWidth($head)));
+        $head = AnsiText::padRight(AnsiUtils::sliceByColumn($content, 0, $start), $start);
 
         return $head.$color.$label."\x1b[0m".str_repeat(' ', max(0, $contentWidth - $start - $labelWidth));
     }

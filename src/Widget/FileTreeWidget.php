@@ -23,6 +23,7 @@ use Symfony\Component\Tui\Widget\VerticallyExpandableInterface;
  */
 final class FileTreeWidget extends AbstractWidget implements FocusableInterface, MenuOverlayHost, VerticallyExpandableInterface
 {
+    use FillsPaneTrait;
     use FocusableTrait;
     use MenuOverlayHostTrait;
     use InputHook;
@@ -104,16 +105,6 @@ final class FileTreeWidget extends AbstractWidget implements FocusableInterface,
         $this->invalidate();
 
         return $this->visible[$index];
-    }
-
-    public function isVerticallyExpanded(): bool
-    {
-        return true;
-    }
-
-    public function expandVertically(bool $expand): static
-    {
-        return $this; // the tree always fills its pane
     }
 
     public function getWidth(): int

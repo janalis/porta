@@ -9,8 +9,9 @@ use Porta\Git\DiffLine;
 use Porta\Highlight\CodeHighlighter;
 use Porta\I18n\Translator;
 use Porta\Ui\Style;
-use Porta\Widget\Render\LineDecorator;
+use Porta\Widget\FillsPaneTrait;
 use Porta\Widget\InputHook;
+use Porta\Widget\Render\LineDecorator;
 use Porta\Widget\Render\MenuOverlayHost;
 use Porta\Widget\Render\MenuOverlayHostTrait;
 use Symfony\Component\Tui\Ansi\AnsiUtils;
@@ -31,6 +32,7 @@ use Symfony\Component\Tui\Widget\VerticallyExpandableInterface;
  */
 final class DiffViewWidget extends AbstractWidget implements FocusableInterface, MenuOverlayHost, VerticallyExpandableInterface
 {
+    use FillsPaneTrait;
     use FocusableTrait;
     use InputHook;
     use MenuOverlayHostTrait;
@@ -94,8 +96,9 @@ final class DiffViewWidget extends AbstractWidget implements FocusableInterface,
     /** @var (callable(string): void)|null ctrl+c: selected line texts, plain (no ± markers) */
     private $onCopy = null;
 
-    public function __construct(private readonly Translator $translator)
-    {
+    public function __construct(
+        private readonly Translator $translator,
+    ) {
         $this->highlighter = new CodeHighlighter();
     }
 
@@ -435,7 +438,7 @@ final class DiffViewWidget extends AbstractWidget implements FocusableInterface,
         $visible = max(1, $this->lastRows - 1);
         if ($this->cursor < $this->scroll) {
             $this->scroll = $this->cursor;
-        } elseif ($this->cursor > $this->scroll + $visible - 1) {
+        } elseif ($this->cursor > ($this->scroll + $visible - 1)) {
             $this->scroll = $this->cursor - $visible + 1;
         }
         $this->invalidate();
@@ -554,10 +557,10 @@ final class DiffViewWidget extends AbstractWidget implements FocusableInterface,
     private function normalizedCharSel(): ?array
     {
         $sel = $this->charSel;
-        if (null === $sel || ($sel['fromRow'] === $sel['toRow'] && $sel['fromCol'] === $sel['toCol'])) {
+        if (null === $sel || $sel['fromRow'] === $sel['toRow'] && $sel['fromCol'] === $sel['toCol']) {
             return null;
         }
-        if ($sel['fromRow'] > $sel['toRow'] || ($sel['fromRow'] === $sel['toRow'] && $sel['fromCol'] > $sel['toCol'])) {
+        if ($sel['fromRow'] > $sel['toRow'] || $sel['fromRow'] === $sel['toRow'] && $sel['fromCol'] > $sel['toCol']) {
             return [
                 'fromRow' => $sel['toRow'],
                 'fromCol' => $sel['toCol'],
@@ -609,8 +612,8 @@ final class DiffViewWidget extends AbstractWidget implements FocusableInterface,
             return null;
         }
         $index = 'line' === $row['kind']
-            ? ($row['line'] ?? -1)
-            : ('left' === ($side ?? 'left') ? ($row['left'] ?? -1) : ($row['right'] ?? -1));
+            ? $row['line'] ?? -1
+            : ('left' === ($side ?? 'left') ? $row['left'] ?? -1 : $row['right'] ?? -1);
 
         return $index >= 0 ? $this->document->hunks[$row['hunk']]->lines[$index] : null;
     }
@@ -637,7 +640,9 @@ final class DiffViewWidget extends AbstractWidget implements FocusableInterface,
         $this->lastRows = $rows;
         $this->lastWidth = $width;
 
-        $title = ' '.($this->path ?? $this->translator->trans('Diff'))
+        $title =
+            ' '
+            .($this->path ?? $this->translator->trans('Diff'))
             .($this->scroll > 0 ? '  '.$this->translator->trans('[scrolled +%count%]', ['%count%' => $this->scroll]) : '')
             .($this->hScroll > 0 ? \sprintf('  [→%d]', $this->hScroll) : '');
         $lines = [$this->renderToolbar($title, $width)];
@@ -776,17 +781,24 @@ final class DiffViewWidget extends AbstractWidget implements FocusableInterface,
             $leftW = intdiv($width - 1, 2);
             $rightW = $width - 1 - $leftW;
 
-            return $this->renderHalf($row['hunk'], $row['left'] ?? -1, $leftW, old: true)
-                .self::GUTTER_FG.'│'."\x1b[39m"
-                .$this->renderHalf($row['hunk'], $row['right'] ?? -1, $rightW, old: false)."\x1b[0m";
+            return (
+                $this->renderHalf($row['hunk'], $row['left'] ?? -1, $leftW, old: true)
+                .self::GUTTER_FG
+                .'│'
+                ."\x1b[39m"
+                .$this->renderHalf($row['hunk'], $row['right'] ?? -1, $rightW, old: false)
+                ."\x1b[0m"
+            );
         }
 
         $line = $hunk->lines[$row['line'] ?? -1];
-        $gutter = self::GUTTER_FG
+        $gutter =
+            self::GUTTER_FG
             .str_pad(null === $line->oldNo ? '' : (string) $line->oldNo, 4, ' ', \STR_PAD_LEFT)
             .' '
             .str_pad(null === $line->newNo ? '' : (string) $line->newNo, 4, ' ', \STR_PAD_LEFT)
-            .' │'."\x1b[39m";
+            .' │'
+            ."\x1b[39m";
 
         [$marker, $text] = $this->lineBody($line, $row['hunk'].':'.($row['line'] ?? -1));
 
@@ -846,16 +858,6 @@ final class DiffViewWidget extends AbstractWidget implements FocusableInterface,
         [$marker, $text] = $this->lineBody($line, $hunkIndex.':'.$lineIndex);
 
         return $gutter.$marker.$this->scrolledText($text, max(1, $width - 6))."\x1b[39m";
-    }
-
-    public function isVerticallyExpanded(): bool
-    {
-        return true;
-    }
-
-    public function expandVertically(bool $expand): static
-    {
-        return $this; // always fills its pane
     }
 
     /** @return array<string, string[]> */

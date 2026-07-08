@@ -9,6 +9,7 @@ use Porta\Ui\ListNavigation;
 use Porta\Ui\ListSelection;
 use Porta\Ui\ShortcutFormatter;
 use Porta\Ui\Style;
+use Porta\Widget\FillsPaneTrait;
 use Porta\Widget\InputHook;
 use Porta\Widget\Render\MenuOverlayHost;
 use Porta\Widget\Render\MenuOverlayHostTrait;
@@ -31,6 +32,7 @@ use Symfony\Component\Tui\Widget\VerticallyExpandableInterface;
  */
 final class KeybindingsListWidget extends AbstractWidget implements FocusableInterface, MenuOverlayHost, VerticallyExpandableInterface
 {
+    use FillsPaneTrait;
     use FocusableTrait;
     use InputHook;
     use MenuOverlayHostTrait;
@@ -247,16 +249,6 @@ final class KeybindingsListWidget extends AbstractWidget implements FocusableInt
         }
 
         return $this->withMenuOverlay($lines, $width);
-    }
-
-    public function isVerticallyExpanded(): bool
-    {
-        return true;
-    }
-
-    public function expandVertically(bool $expand): static
-    {
-        return $this; // always fills its pane
     }
 
     /** @return array<string, string[]> */

@@ -4,9 +4,9 @@ declare(strict_types=1);
 
 namespace Porta\Widget;
 
+use Porta\Support\AnsiText;
 use Porta\Widget\Render\MenuOverlayHost;
 use Porta\Widget\Render\MenuOverlayHostTrait;
-use Symfony\Component\Tui\Ansi\AnsiUtils;
 use Symfony\Component\Tui\Render\RenderContext;
 use Symfony\Component\Tui\Widget\AbstractWidget;
 
@@ -107,7 +107,7 @@ final class TabBarWidget extends AbstractWidget implements MenuOverlayHost
             $used += $part['width'];
         }
 
-        return $this->withMenuOverlay([$line.str_repeat(' ', max(0, $columns - AnsiUtils::visibleWidth($line)))], $columns);
+        return $this->withMenuOverlay([AnsiText::padRight($line, $columns)], $columns);
     }
 
     /**

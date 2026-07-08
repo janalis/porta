@@ -18,17 +18,8 @@ use Symfony\Component\Tui\Widget\VerticallyExpandableInterface;
  */
 final class SeparatorWidget extends AbstractWidget implements MenuOverlayHost, VerticallyExpandableInterface
 {
+    use FillsPaneTrait;
     use MenuOverlayHostTrait;
-
-    public function isVerticallyExpanded(): bool
-    {
-        return true;
-    }
-
-    public function expandVertically(bool $expand): static
-    {
-        return $this; // always fills its pane height
-    }
 
     public function render(RenderContext $context): array
     {

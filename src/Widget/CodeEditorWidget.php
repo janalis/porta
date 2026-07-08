@@ -46,6 +46,7 @@ use Symfony\Component\Tui\Widget\VerticallyExpandableInterface;
 final class CodeEditorWidget extends AbstractWidget implements FocusableInterface, MenuOverlayHost, VerticallyExpandableInterface
 {
     use BracketedPasteTrait;
+    use FillsPaneTrait;
     use FocusableTrait;
     use MenuOverlayHostTrait;
     use InputHook;
@@ -118,7 +119,6 @@ final class CodeEditorWidget extends AbstractWidget implements FocusableInterfac
 
     /** One-line signature hint shown above the cursor, cleared on movement. */
     private ?string $signatureHint = null;
-
 
     /** Editing-verb dispatcher (movement/clipboard/line ops), rebuilt per document. */
     private EditorActions $actions;
@@ -288,19 +288,6 @@ final class CodeEditorWidget extends AbstractWidget implements FocusableInterfac
         return $this->overlayHost->isListOpen();
     }
 
-
-
-
-
-
-
-
-
-
-
-
-
-
     public function setInlineDiagnostics(bool $enabled): void
     {
         if ($this->inlineDiagnostics !== $enabled) {
@@ -356,7 +343,7 @@ final class CodeEditorWidget extends AbstractWidget implements FocusableInterfac
             default => $this->currentEditorConfig?->usesTabs ?? false,
         };
         $size = 'auto' === $config->indentSize
-            ? ($this->currentEditorConfig?->indentSize ?? 2)
+            ? $this->currentEditorConfig?->indentSize ?? 2
             : (int) $config->indentSize;
 
         $this->document->setIndent($usesTabs, $size);
@@ -371,7 +358,6 @@ final class CodeEditorWidget extends AbstractWidget implements FocusableInterfac
     {
         return $this->autoPairs;
     }
-
 
     /**
      * Open a single-line input prompt (go to line, rename symbol).
@@ -449,26 +435,6 @@ final class CodeEditorWidget extends AbstractWidget implements FocusableInterfac
 
         return $this->scopeCache;
     }
-
-    public function isVerticallyExpanded(): bool
-    {
-        return true;
-    }
-
-    public function expandVertically(bool $expand): static
-    {
-        return $this; // the editor always fills its pane
-    }
-
-
-
-
-
-
-
-
-
-
 
     /**
      * Place the cursor from a click relative to the editor's top-left.
@@ -942,8 +908,17 @@ final class CodeEditorWidget extends AbstractWidget implements FocusableInterfac
      * @param array{0: array{0: int, 1: int}, 1: array{0: int, 1: int}}|null       $brackets
      * @param list<array{col: int, endCol?: int, message: string, severity: int}>  $lineDiags
      */
-    private function decoratedLine(int $lineIndex, string $highlighted, ?array $selection, array $carets, array $occurrences, ?array $brackets, array $lineDiags, int $hScroll, int $contentWidth): string
-    {
+    private function decoratedLine(
+        int $lineIndex,
+        string $highlighted,
+        ?array $selection,
+        array $carets,
+        array $occurrences,
+        ?array $brackets,
+        array $lineDiags,
+        int $hScroll,
+        int $contentWidth,
+    ): string {
         $doc = $this->document;
         $hlLine = EditorRenderer::applyIndentGuides($doc, $highlighted, $lineIndex);
 

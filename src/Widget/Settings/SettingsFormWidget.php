@@ -7,6 +7,7 @@ namespace Porta\Widget\Settings;
 use Porta\I18n\Translator;
 use Porta\Ui\Style;
 use Porta\Ui\TextField;
+use Porta\Widget\FillsPaneTrait;
 use Porta\Widget\InputHook;
 use Porta\Widget\Render\MenuOverlayHost;
 use Porta\Widget\Render\MenuOverlayHostTrait;
@@ -35,6 +36,7 @@ use Symfony\Component\Tui\Widget\VerticallyExpandableInterface;
  */
 final class SettingsFormWidget extends AbstractWidget implements FocusableInterface, MenuOverlayHost, VerticallyExpandableInterface
 {
+    use FillsPaneTrait;
     use FocusableTrait;
     use InputHook;
     use MenuOverlayHostTrait;
@@ -223,7 +225,7 @@ final class SettingsFormWidget extends AbstractWidget implements FocusableInterf
         $index = false === $index ? 0 : $index;
         $count = \count($options);
 
-        return $options[(($index + $delta) % $count + $count) % $count];
+        return $options[((($index + $delta) % $count) + $count) % $count];
     }
 
     /**
@@ -291,16 +293,6 @@ final class SettingsFormWidget extends AbstractWidget implements FocusableInterf
         }
 
         return $value;
-    }
-
-    public function isVerticallyExpanded(): bool
-    {
-        return true;
-    }
-
-    public function expandVertically(bool $expand): static
-    {
-        return $this; // always fills its pane
     }
 
     /** @return array<string, string[]> */

@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Porta\Widget\Render;
 
+use Porta\Support\AnsiText;
 use Symfony\Component\Tui\Ansi\AnsiUtils;
 
 /**
@@ -23,8 +24,7 @@ final class OverlayCompositor
      */
     public static function into(string $line, int $col, int $width, int $columns, string $popup): string
     {
-        $head = AnsiUtils::sliceByColumn($line, 0, $col);
-        $head .= str_repeat(' ', max(0, $col - AnsiUtils::visibleWidth($head)));
+        $head = AnsiText::padRight(AnsiUtils::sliceByColumn($line, 0, $col), $col);
         $tail = AnsiUtils::sliceByColumn($line, $col + $width, $columns - $col - $width);
         $tailWidth = AnsiUtils::visibleWidth($tail);
 
