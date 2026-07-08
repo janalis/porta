@@ -203,105 +203,10 @@ final class Ide
         );
         $this->tui = $this->bidiTui;
 
-        $this->buffers = new BufferManager();
-        $this->lsp = new LspSessionPool($this->rootDir, fn (): ?string => $this->editor->getFilePath(), $this->translator);
+        $this->buildEditorArea();
 
-        $this->tree = new FileTreeWidget($this->rootDir);
-        $this->tree->setId('tree')->setStyle(new Style(flex: 0));
-        $this->editor = new CodeEditorWidget();
-        $this->editor->setId('editor');
-        $this->workspaceEditor = new WorkspaceEditor($this->buffers, $this->editor, $this->lsp);
-        $this->statusBar = new StatusBarWidget();
-        $this->statusBar->setId('status');
-        $this->notifier = new Notifier($this->statusBar, $this->tui);
-        $this->menuBar = new MenuBarWidget();
-        $this->menuBar->setId('menu');
-        $this->contextMenu = new ContextMenu();
-        $this->contextMenu->setId('context-menu');
-        $this->completion = new CompletionController($this->lsp, $this->editor, $this->tui, $this->notifier, $this->translator);
-        $this->tabBar = new TabBarWidget();
-        $this->tabBar->setId('tabs');
-        $this->tabBar->setProvider(fn (): array => array_map(fn (Buffer $b) => [
-            'name' => basename($b->path),
-            'dirty' => $b->isDirty(),
-            'active' => $b === $this->buffers->active(),
-        ], $this->buffers->all()));
+        $this->buildSidePanels();
 
-        $this->breadcrumbs = new BreadcrumbsWidget();
-        $this->breadcrumbs->setId('breadcrumbs');
-        $this->breadcrumbs->setProvider(fn (): array => $this->breadcrumbTrail());
-
-        $editorPane = new ContainerWidget();
-        $editorPane->setId('editor-pane');
-        $editorPane->setStyle(new Style(flex: 1));
-        $editorPane->expandVertically(true);
-        $editorPane->add($this->tabBar)->add($this->breadcrumbs)->add($this->editor);
-
-        $this->separator = new SeparatorWidget();
-        $this->separator->setId('separator')->setStyle(new Style(flex: 0));
-
-        $this->main = new ContainerWidget();
-        $this->main->setId('main');
-        $this->main->setStyle(new Style(direction: Direction::Horizontal, gap: 0));
-        $this->main->expandVertically(true);
-        $this->editorPanes = [$this->tree, $this->separator, $editorPane];
-        $this->setPanes($this->main, $this->editorPanes);
-
-        $this->goToFile = new GoToFileWidget($this->translator, $this->rootDir);
-        $this->goToFile->setId('goto-file');
-        $this->findBar = new FindBarWidget($this->translator);
-        $this->findBar->setId('find-bar');
-        $this->resultsPanel = new ResultsPanelWidget();
-        $this->resultsPanel->setId('results');
-        $this->terminalPanel = new TerminalPanelWidget();
-        $this->terminalPanel->setId('terminal');
-        $this->projectSearchController = new ProjectSearchController(
-            new ProjectSearch($this->rootDir),
-            $this->resultsPanel,
-            $this->editor,
-            $this->statusBar,
-            $this->tui,
-            $this->translator,
-            $this->buffers,
-            $this->rootDir,
-            fn (string $path, Document $document) => $this->lsp->notifyFullChange($path, $document),
-        );
-        $this->commandPalette = new CommandPalette($this->resultsPanel, $this->tui);
-        $this->panels = new PanelManager($this->tui, $this->resultsPanel, $this->editor, $this->notifier);
-        $this->navigation = new NavigationController(
-            $this->lsp,
-            $this->editor,
-            $this->tui,
-            $this->notifier,
-            $this->translator,
-            $this->buffers,
-            $this->resultsPanel,
-            $this->panels,
-            $this->rootDir,
-            fn (string $path, bool $focusEditor) => $this->openFile($path, $focusEditor),
-            fn (string $url) => $this->openDocsUrl($url),
-        );
-        $this->refactor = new RefactorController(
-            $this->lsp,
-            $this->editor,
-            $this->tui,
-            $this->notifier,
-            $this->translator,
-            $this->buffers,
-            $this->workspaceEditor,
-            $this->rootDir,
-            fn (): string => $this->lsp->statusFor($this->editor->getFilePath()),
-        );
-        $this->run = new RunController(
-            new RunConfigs($this->rootDir),
-            $this->terminalPanel,
-            new TerminalKeyEncoder(fn (): bool => $this->tui->getTerminal()->isKittyProtocolActive()),
-            $this->editor,
-            $this->notifier,
-            $this->tui,
-            $this->translator,
-            $this->rootDir,
-        );
         $this->git = new GitInfo($this->rootDir);
         $this->gitCommands = new GitCommands(
             $this->git,
@@ -319,41 +224,7 @@ final class Ide
 
         $this->history = new LocalHistory($this->rootDir);
         $this->session = new SessionStore($this->rootDir);
-        $this->layout = new LayoutController(
-            new LayoutStore($this->rootDir),
-            $this->tui,
-            $this->renderer,
-            $this->tree,
-            $this->terminalPanel,
-            $this->resultsPanel,
-            new GitSidebar($this->gitTabs, $this->gitChanges, $this->gitCommitBox, $this->gitHistory),
-            $this->settingsNav,
-        );
-        $this->overlay = new MenuOverlayController(
-            $this->renderer,
-            $this->menuBar,
-            $this->contextMenu,
-            $this->editor,
-            new MenuOverlayPanes(
-                [$this->tree, $this->separator, $this->tabBar, $this->editor, $this->breadcrumbs],
-                [$this->gitTabs, $this->gitChanges, $this->gitCommitBox, $this->gitHistory, $this->gitSeparator, $this->gitDiff],
-                [$this->settingsNav, $this->settingsSeparator, $this->settingsForm, $this->settingsKeys],
-                fn (): bool => $this->gitView->isOpen(),
-                fn (): bool => $this->settingsView->isOpen(),
-            ),
-        );
-        $this->treeOps = new TreeOperations(
-            $this->tree,
-            $this->editor,
-            $this->tui,
-            $this->notifier,
-            $this->buffers,
-            $this->translator,
-            fn (string $p, bool $focus) => $this->openFile($p, focusEditor: $focus),
-            fn (Buffer $b) => $this->showBuffer($b),
-            fn (string $p) => $this->relativePath($p),
-            fn (string $t) => $this->copyToClipboard($t),
-        );
+        $this->buildLayoutAndOverlay();
 
         $this->tui
             ->add($this->menuBar)
@@ -900,6 +771,154 @@ final class Ide
     }
 
     /** Construct the git-view widgets, their horizontal pane container and the controller. */
+    /** The resize/layout controller, the menu/context overlay compositor and the tree operations. */
+    private function buildLayoutAndOverlay(): void
+    {
+        $this->layout = new LayoutController(
+            new LayoutStore($this->rootDir),
+            $this->tui,
+            $this->renderer,
+            $this->tree,
+            $this->terminalPanel,
+            $this->resultsPanel,
+            new GitSidebar($this->gitTabs, $this->gitChanges, $this->gitCommitBox, $this->gitHistory),
+            $this->settingsNav,
+        );
+        $this->overlay = new MenuOverlayController(
+            $this->renderer,
+            $this->menuBar,
+            $this->contextMenu,
+            $this->editor,
+            new MenuOverlayPanes(
+                [$this->tree, $this->separator, $this->tabBar, $this->editor, $this->breadcrumbs],
+                [$this->gitTabs, $this->gitChanges, $this->gitCommitBox, $this->gitHistory, $this->gitSeparator, $this->gitDiff],
+                [$this->settingsNav, $this->settingsSeparator, $this->settingsForm, $this->settingsKeys],
+                fn (): bool => $this->gitView->isOpen(),
+                fn (): bool => $this->settingsView->isOpen(),
+            ),
+        );
+        $this->treeOps = new TreeOperations(
+            $this->tree,
+            $this->editor,
+            $this->tui,
+            $this->notifier,
+            $this->buffers,
+            $this->translator,
+            fn (string $p, bool $focus) => $this->openFile($p, focusEditor: $focus),
+            fn (Buffer $b) => $this->showBuffer($b),
+            fn (string $p) => $this->relativePath($p),
+            fn (string $t) => $this->copyToClipboard($t),
+        );
+    }
+
+    /** The editor workspace: tree, editor + LSP backend, chrome widgets and the main horizontal layout. */
+    private function buildEditorArea(): void
+    {
+        $this->buffers = new BufferManager();
+        $this->lsp = new LspSessionPool($this->rootDir, fn (): ?string => $this->editor->getFilePath(), $this->translator);
+
+        $this->tree = new FileTreeWidget($this->rootDir);
+        $this->tree->setId('tree')->setStyle(new Style(flex: 0));
+        $this->editor = new CodeEditorWidget();
+        $this->editor->setId('editor');
+        $this->workspaceEditor = new WorkspaceEditor($this->buffers, $this->editor, $this->lsp);
+        $this->statusBar = new StatusBarWidget();
+        $this->statusBar->setId('status');
+        $this->notifier = new Notifier($this->statusBar, $this->tui);
+        $this->menuBar = new MenuBarWidget();
+        $this->menuBar->setId('menu');
+        $this->contextMenu = new ContextMenu();
+        $this->contextMenu->setId('context-menu');
+        $this->completion = new CompletionController($this->lsp, $this->editor, $this->tui, $this->notifier, $this->translator);
+        $this->tabBar = new TabBarWidget();
+        $this->tabBar->setId('tabs');
+        $this->tabBar->setProvider(fn (): array => array_map(fn (Buffer $b) => [
+            'name' => basename($b->path),
+            'dirty' => $b->isDirty(),
+            'active' => $b === $this->buffers->active(),
+        ], $this->buffers->all()));
+
+        $this->breadcrumbs = new BreadcrumbsWidget();
+        $this->breadcrumbs->setId('breadcrumbs');
+        $this->breadcrumbs->setProvider(fn (): array => $this->breadcrumbTrail());
+
+        $editorPane = new ContainerWidget();
+        $editorPane->setId('editor-pane');
+        $editorPane->setStyle(new Style(flex: 1));
+        $editorPane->expandVertically(true);
+        $editorPane->add($this->tabBar)->add($this->breadcrumbs)->add($this->editor);
+
+        $this->separator = new SeparatorWidget();
+        $this->separator->setId('separator')->setStyle(new Style(flex: 0));
+
+        $this->main = new ContainerWidget();
+        $this->main->setId('main');
+        $this->main->setStyle(new Style(direction: Direction::Horizontal, gap: 0));
+        $this->main->expandVertically(true);
+        $this->editorPanes = [$this->tree, $this->separator, $editorPane];
+        $this->setPanes($this->main, $this->editorPanes);
+    }
+
+    /** The floating panels, project search, command palette and the LSP/run controllers. */
+    private function buildSidePanels(): void
+    {
+        $this->goToFile = new GoToFileWidget($this->translator, $this->rootDir);
+        $this->goToFile->setId('goto-file');
+        $this->findBar = new FindBarWidget($this->translator);
+        $this->findBar->setId('find-bar');
+        $this->resultsPanel = new ResultsPanelWidget();
+        $this->resultsPanel->setId('results');
+        $this->terminalPanel = new TerminalPanelWidget();
+        $this->terminalPanel->setId('terminal');
+        $this->projectSearchController = new ProjectSearchController(
+            new ProjectSearch($this->rootDir),
+            $this->resultsPanel,
+            $this->editor,
+            $this->statusBar,
+            $this->tui,
+            $this->translator,
+            $this->buffers,
+            $this->rootDir,
+            fn (string $path, Document $document) => $this->lsp->notifyFullChange($path, $document),
+        );
+        $this->commandPalette = new CommandPalette($this->resultsPanel, $this->tui);
+        $this->panels = new PanelManager($this->tui, $this->resultsPanel, $this->editor, $this->notifier);
+        $this->navigation = new NavigationController(
+            $this->lsp,
+            $this->editor,
+            $this->tui,
+            $this->notifier,
+            $this->translator,
+            $this->buffers,
+            $this->resultsPanel,
+            $this->panels,
+            $this->rootDir,
+            fn (string $path, bool $focusEditor) => $this->openFile($path, $focusEditor),
+            fn (string $url) => $this->openDocsUrl($url),
+        );
+        $this->refactor = new RefactorController(
+            $this->lsp,
+            $this->editor,
+            $this->tui,
+            $this->notifier,
+            $this->translator,
+            $this->buffers,
+            $this->workspaceEditor,
+            $this->rootDir,
+            fn (): string => $this->lsp->statusFor($this->editor->getFilePath()),
+        );
+        $this->run = new RunController(
+            new RunConfigs($this->rootDir),
+            $this->terminalPanel,
+            new TerminalKeyEncoder(fn (): bool => $this->tui->getTerminal()->isKittyProtocolActive()),
+            $this->editor,
+            $this->notifier,
+            $this->tui,
+            $this->translator,
+            $this->rootDir,
+        );
+    }
+
     private function buildGitView(): void
     {
         $this->gitChanges = new ChangesListWidget($this->translator);
