@@ -70,14 +70,14 @@ final class LayoutController
         $this->gitDiffHideWhitespace = $layout->gitDiffHideWhitespace ?? false;
 
         if (null !== $this->sidebarWidthPercent) {
-            $this->tree->setWidth($this->clampSidebar((int) round(($this->sidebarWidthPercent * $cols) / 100), $cols));
+            $this->tree->setWidth($this->clampSidebarWidth((int) round(($this->sidebarWidthPercent * $cols) / 100), $cols, 12, 0.6));
         }
         if (null !== $this->gitSidebarWidthPercent) {
             // Plain width fields: safe to set while the git widgets are detached.
-            $this->gitSidebar->setWidth($this->clampGitSidebar((int) round(($this->gitSidebarWidthPercent * $cols) / 100), $cols));
+            $this->gitSidebar->setWidth($this->clampSidebarWidth((int) round(($this->gitSidebarWidthPercent * $cols) / 100), $cols, 30, 0.6));
         }
         if (null !== $this->settingsSidebarWidthPercent) {
-            $this->settingsSidebar->setWidth($this->clampSettingsSidebar((int) round(($this->settingsSidebarWidthPercent * $cols) / 100), $cols));
+            $this->settingsSidebar->setWidth($this->clampSidebarWidth((int) round(($this->settingsSidebarWidthPercent * $cols) / 100), $cols, 14, 0.5));
         }
         if (null !== $this->bottomPanelHeightPercent) {
             $this->resizeBottomPanels($this->clampPanel((int) round(($this->bottomPanelHeightPercent * $rows) / 100), $rows));
@@ -94,10 +94,10 @@ final class LayoutController
         if ($this->sidebarResizing && ($mouse->isLeftDrag() || $mouse->isLeftRelease())) {
             if (null !== $treeRect) {
                 $cols = $this->tui->getTerminal()->getColumns();
-                $this->tree->setWidth($this->clampSidebar($mouse->col - $treeRect->col, $cols));
+                $this->tree->setWidth($this->clampSidebarWidth($mouse->col - $treeRect->col, $cols, 12, 0.6));
                 $this->tui->requestRender();
                 if ($mouse->isLeftRelease() && $this->tree->width() !== $this->sidebarResizeStartWidth) {
-                    $this->commitSidebarWidth($cols);
+                    $this->commitPercent($this->tree->width(), $cols, $this->sidebarWidthPercent);
                 }
             }
             if ($mouse->isLeftRelease()) {
@@ -111,10 +111,10 @@ final class LayoutController
         if ($this->gitSidebarResizing && ($mouse->isLeftDrag() || $mouse->isLeftRelease())) {
             if (null !== $gitLeftRect) {
                 $cols = $this->tui->getTerminal()->getColumns();
-                $this->gitSidebar->setWidth($this->clampGitSidebar($mouse->col - $gitLeftRect->col, $cols));
+                $this->gitSidebar->setWidth($this->clampSidebarWidth($mouse->col - $gitLeftRect->col, $cols, 30, 0.6));
                 $this->tui->requestRender();
                 if ($mouse->isLeftRelease() && $this->gitSidebar->width() !== $this->gitSidebarResizeStartWidth) {
-                    $this->commitGitSidebarWidth($cols);
+                    $this->commitPercent($this->gitSidebar->width(), $cols, $this->gitSidebarWidthPercent);
                 }
             }
             if ($mouse->isLeftRelease()) {
@@ -128,10 +128,10 @@ final class LayoutController
         if ($this->settingsSidebarResizing && ($mouse->isLeftDrag() || $mouse->isLeftRelease())) {
             if (null !== $settingsLeftRect) {
                 $cols = $this->tui->getTerminal()->getColumns();
-                $this->settingsSidebar->setWidth($this->clampSettingsSidebar($mouse->col - $settingsLeftRect->col, $cols));
+                $this->settingsSidebar->setWidth($this->clampSidebarWidth($mouse->col - $settingsLeftRect->col, $cols, 14, 0.5));
                 $this->tui->requestRender();
                 if ($mouse->isLeftRelease() && $this->settingsSidebar->width() !== $this->settingsSidebarResizeStartWidth) {
-                    $this->commitSettingsSidebarWidth($cols);
+                    $this->commitPercent($this->settingsSidebar->width(), $cols, $this->settingsSidebarWidthPercent);
                 }
             }
             if ($mouse->isLeftRelease()) {
@@ -149,7 +149,7 @@ final class LayoutController
             $this->tui->requestRender();
             if ($mouse->isLeftRelease()) {
                 if ($height !== $this->panelResizeStartHeight) {
-                    $this->commitPanelHeight($height, $rows);
+                    $this->commitPercent($height, $rows, $this->bottomPanelHeightPercent);
                 }
                 $this->panelResizing = false;
             }
@@ -245,22 +245,14 @@ final class LayoutController
         $this->resultsPanel->setVisibleRows($height);
     }
 
-    /** Clamp a sidebar width to keep both the tree and the editor usable. */
-    private function clampSidebar(int $width, int $cols): int
+    /**
+     * Clamp a sidebar width to keep both the sidebar and the main pane usable:
+     * at least $min columns, at most $ratio of the terminal (and $cols-20 so the
+     * pane beside it never collapses).
+     */
+    private function clampSidebarWidth(int $width, int $cols, int $min, float $ratio): int
     {
-        return max(12, min($width, (int) round($cols * 0.6), $cols - 20));
-    }
-
-    /** Clamp the git sidebar so the tabs/commit button and the diff stay usable. */
-    private function clampGitSidebar(int $width, int $cols): int
-    {
-        return max(30, min($width, (int) round($cols * 0.6), $cols - 20));
-    }
-
-    /** Clamp the settings sidebar so the nav and the content pane stay usable. */
-    private function clampSettingsSidebar(int $width, int $cols): int
-    {
-        return max(14, min($width, (int) round($cols * 0.5), $cols - 20));
+        return max($min, min($width, (int) round($cols * $ratio), $cols - 20));
     }
 
     /** Clamp a bottom-panel height so the editor keeps room above it. */
@@ -269,38 +261,16 @@ final class LayoutController
         return IntMath::clamp($height, 3, $rows - 8);
     }
 
-    private function commitSidebarWidth(int $cols): void
+    /**
+     * Persist a pane's size as a percentage of the space available to it,
+     * updating $target and writing the layout only when the rounded percent
+     * changes. Shared by every sidebar width and the bottom-panel height.
+     */
+    private function commitPercent(int $value, int $total, ?int &$target): void
     {
-        $pct = $cols > 0 ? (int) round(($this->tree->width() * 100) / $cols) : null;
-        if ($pct !== $this->sidebarWidthPercent) {
-            $this->sidebarWidthPercent = $pct;
-            $this->persistLayout();
-        }
-    }
-
-    private function commitGitSidebarWidth(int $cols): void
-    {
-        $pct = $cols > 0 ? (int) round(($this->gitSidebar->width() * 100) / $cols) : null;
-        if ($pct !== $this->gitSidebarWidthPercent) {
-            $this->gitSidebarWidthPercent = $pct;
-            $this->persistLayout();
-        }
-    }
-
-    private function commitSettingsSidebarWidth(int $cols): void
-    {
-        $pct = $cols > 0 ? (int) round(($this->settingsSidebar->width() * 100) / $cols) : null;
-        if ($pct !== $this->settingsSidebarWidthPercent) {
-            $this->settingsSidebarWidthPercent = $pct;
-            $this->persistLayout();
-        }
-    }
-
-    private function commitPanelHeight(int $height, int $rows): void
-    {
-        $pct = $rows > 0 ? (int) round(($height * 100) / $rows) : null;
-        if ($pct !== $this->bottomPanelHeightPercent) {
-            $this->bottomPanelHeightPercent = $pct;
+        $pct = $total > 0 ? (int) round(($value * 100) / $total) : null;
+        if ($pct !== $target) {
+            $target = $pct;
             $this->persistLayout();
         }
     }
