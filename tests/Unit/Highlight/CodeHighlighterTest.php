@@ -26,6 +26,17 @@ final class CodeHighlighterTest extends TestCase
         $this->assertSame("return 'str';", $plain[3]);
     }
 
+    public function testMonochromeEmitsNoSyntaxColor(): void
+    {
+        $highlighter = new CodeHighlighter(ansi: false);
+        $highlighter->setFile('test.php');
+        $lines = $highlighter->highlight(explode("\n", "<?php\nreturn 'str';"), 1);
+
+        $joined = implode('', $lines);
+        $this->assertStringNotContainsString("\x1b[38;5;", $joined, 'no syntax color in monochrome');
+        $this->assertSame("return 'str';", AnsiUtils::stripAnsiCodes($lines[1]));
+    }
+
     public function testMultiLineTokenColorCarriesAcrossLines(): void
     {
         $highlighter = new CodeHighlighter();

@@ -93,9 +93,9 @@ final class CodeHighlighter
      * @param (\Closure(string, string): string)|null $parser (content, language) => highlighted;
      *                                                        injectable for testing the fallback paths
      */
-    public function __construct(?\Closure $parser = null)
+    public function __construct(?\Closure $parser = null, bool $ansi = true)
     {
-        $this->highlighter = new Highlighter(new DarkTerminalTheme());
+        $this->highlighter = new Highlighter($ansi ? new DarkTerminalTheme() : new PlainTerminalTheme());
         $this->parser = $parser ?? fn (string $content, string $language): string => $this->highlighter->parse($content, $language);
     }
 
