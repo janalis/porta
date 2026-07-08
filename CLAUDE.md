@@ -37,10 +37,13 @@ Run gate commands capturing output rather than piping to a pager, e.g.
 
 ## Conventions
 
-- **Final classes + constructor injection everywhere.** There is no static/global service
-  locator. Collaborators (`$this->editor`, `$this->statusBar`, the translator, …) are threaded
-  as constructor arguments, mirrored down through the controllers. When you add a dependency to
-  a class, inject it and update every construction site (including tests).
+- **Final classes + constructor injection everywhere.** Collaborators are threaded as
+  constructor arguments — no class reaches for a global. Services that are expressible as
+  service+scalar injection are built by a **Symfony DI container** (see the Architecture note on
+  `Ide`); everything else (widgets needing per-instance config, objects wired with `$this`
+  closures) is still hand-constructed in `Ide`. When you add a dependency to a container-built
+  class, autowiring handles it; when you add one to a hand-built class, inject it and update
+  every construction site (including tests).
 - **No `$this` inside injected `static fn` closures** — mago rejects it.
 - The formatter (`mago format`, Symfony-style) **never re-wraps lines** (print-width 200,
   preserve-breaking). Keep your own line breaks; don't fight it.
@@ -51,14 +54,32 @@ Run gate commands capturing output rather than piping to a pager, e.g.
 
 ## Architecture
 
-**`Ide` (`src/Ide.php`) is the coordinator.** Its constructor wires the entire widget tree and
-every controller together, delegating to a sequence of named `build*` steps (`buildEditorArea`,
+**`Ide` (`src/Ide.php`) is the coordinator, over a Symfony DI container.** Its constructor builds
+a `ContainerBuilder` via `Container/IdeContainerFactory` (runtime `rootDir`/`locale` become
+container parameters; compiled fresh per boot because `rootDir` differs per project, so it can't
+be dumped/cached), then delegates to a sequence of named `build*` steps (`buildEditorArea`,
 `buildSidePanels`, `buildGitView`, `buildSettingsWidgets`, `buildLayoutAndOverlay`) so it reads
-top-to-bottom as a composition root; `run()` sets up the terminal (alternate screen + SGR mouse
+top-to-bottom as a composition root. `run()` sets up the terminal (alternate screen + SGR mouse
 modes 1000/1003/1006), arms a 1s filesystem-poll timer, and enters `tui->run()`. Teardown (mouse
-disable, session save, LSP/git/run shutdown) is in the `finally`. It's large by design — the
-single place that knows how the pieces connect; add new construction to the matching `build*`
-step, not as another extracted class.
+disable, session save, LSP/git/run shutdown) is in the `finally`.
+
+The container owns construction of every service expressible as **service + scalar injection**
+(the leaves like `Translator`/`GitInfo`, plus autowired controllers like `WorkspaceEditor`,
+`CompletionController`, `PanelManager`, `LayoutController`). `Ide` resolves each via the typed
+`service()` helper and stores it into its existing private property (so reflection-based tests
+keep working). What the container **cannot** express stays hand-built in the matching `build*`
+step: the widget tree (`setId`/`setStyle`/`add`, the 6 `ContainerWidget`s / 3 `SeparatorWidget`s
+which are duplicate-typed and un-autowirable), RTL pane ordering, the `tui->add` Z-order chain,
+per-buffer runtime objects (`Buffer`/`Document`/`CodeHighlighter`), and the ~100 `$this`-closures
+that wire widgets to `Ide`'s orchestration methods. Manually-built singletons that container
+services depend on (renderer, tui, the chrome widgets, `LspSessionPool`, `GitSidebar`) are handed
+to the container as **synthetic** services right after `Ide` builds them.
+
+**Rules for the container** (`config/services.php`, deliberately **outside `src/`** so the wiring
+stays off the 100%-line-coverage gate): every def is **shared** and **public** (Ide resolves them
+by id across the locator boundary); **never `lazy: true`** — it proxy-subclasses, which breaks on
+`final` classes; add new service defs there and resolve with `service()`. Add construction that
+the container can't own to the matching `build*` step, not as another extracted class.
 
 **Single event loop.** `revolt/event-loop` drives both the `symfony/tui` render/input loop and
 all async work (LSP over stdio, git subprocesses, the integrated terminal PTY, run
