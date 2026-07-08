@@ -663,7 +663,7 @@ final class DiffViewWidget extends AbstractWidget implements FocusableInterface,
             if ($this->focused && $rowIndex === $this->cursor) {
                 $line = "\x1b[48;5;237m".$line;
             } elseif ($this->inRange($rowIndex)) {
-                $line = "\x1b[48;5;236m".$line;
+                $line = Style::POPUP_ROW_BG.$line;
             }
             $lines[] = $line;
         }

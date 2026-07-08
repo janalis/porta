@@ -165,7 +165,7 @@ final class GoToFileWidget extends OverlayWidget implements FocusableInterface
         }
 
         if ([] === $this->results && '' !== $this->query->value()) {
-            $lines[] = "\x1b[48;5;236m\x1b[38;5;244m".AnsiUtils::truncateToWidth(' '.$this->translator->trans('no matches'), $columns, '', pad: true)."\x1b[0m";
+            $lines[] = Style::POPUP_ROW_BG."\x1b[38;5;244m".AnsiUtils::truncateToWidth(' '.$this->translator->trans('no matches'), $columns, '', pad: true)."\x1b[0m";
         }
 
         return $lines;

@@ -298,12 +298,12 @@ final class HistoryListWidget extends AbstractWidget implements FocusableInterfa
             $selected = $this->commitList->isSelected($scroll + $row);
             $bg = $selected
                 ? ($this->focused && !$this->filesFocused ? Style::SELECTED_ROW : "\x1b[48;5;237m")
-                : (($scroll + $row) === $this->hoveredCommit ? "\x1b[48;5;236m" : '');
+                : (($scroll + $row) === $this->hoveredCommit ? Style::POPUP_ROW_BG : '');
             $text = ' '."\x1b[38;5;179m".$commit->shortSha."\x1b[39m".' '.$commit->subject."\x1b[38;5;245m".'  '.$commit->author."\x1b[39m";
             $lines[] = $bg.AnsiUtils::truncateToWidth($text, $width, '…', pad: true)."\x1b[0m";
         }
 
-        $lines[] = "\x1b[48;5;236m\x1b[1m".AnsiUtils::truncateToWidth($this->translator->trans(' Files (%count%)', ['%count%' => \count($this->files)]), $width, '…', pad: true)."\x1b[0m";
+        $lines[] = Style::POPUP_ROW_BG."\x1b[1m".AnsiUtils::truncateToWidth($this->translator->trans(' Files (%count%)', ['%count%' => \count($this->files)]), $width, '…', pad: true)."\x1b[0m";
         $fileScroll = $this->fileList->follow(self::FILE_ROWS);
         for ($row = 0; $row < self::FILE_ROWS && \count($lines) < $rows; ++$row) {
             $file = $this->files[$fileScroll + $row] ?? null;
@@ -314,7 +314,7 @@ final class HistoryListWidget extends AbstractWidget implements FocusableInterfa
             $selected = $this->fileList->isSelected($fileScroll + $row);
             $bg = $selected
                 ? ($this->focused && $this->filesFocused ? Style::SELECTED_ROW : "\x1b[48;5;237m")
-                : (($fileScroll + $row) === $this->hoveredFile ? "\x1b[48;5;236m" : '');
+                : (($fileScroll + $row) === $this->hoveredFile ? Style::POPUP_ROW_BG : '');
             $lines[] = $bg.AnsiUtils::truncateToWidth(' '.$file['status'].' '.$file['path'], $width, '…', pad: true)."\x1b[0m";
         }
 

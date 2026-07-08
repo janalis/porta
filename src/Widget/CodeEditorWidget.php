@@ -21,6 +21,7 @@ use Porta\Editor\MultiCaret;
 use Porta\Highlight\CodeHighlighter;
 use Porta\Input\TextInput;
 use Porta\Support\ProjectPaths;
+use Porta\Ui\Style;
 use Porta\Widget\Overlay\OverlayHost;
 use Porta\Widget\Render\EditorDecorations;
 use Porta\Widget\Render\EditorGeometry;
@@ -1170,7 +1171,7 @@ final class CodeEditorWidget extends AbstractWidget implements FocusableInterfac
 
             // Current-line background (skip when a selection is being shown)
             if ($isCursorLine && $this->focused && null === $decorations->selection) {
-                $content = LineDecorator::applyFullWidth($content, $geo->contentWidth, LineDecorator::CURRENT_LINE_BG);
+                $content = LineDecorator::applyFullWidth($content, $geo->contentWidth, Style::POPUP_ROW_BG);
             }
 
             // Inline diagnostic message in the trailing space (PhpStorm-style):
@@ -1239,7 +1240,7 @@ final class CodeEditorWidget extends AbstractWidget implements FocusableInterfac
 
         $cells = [];
         for ($r = 0; $r < $rows; ++$r) {
-            $bg = $showThumb && $r >= $thumbTop && $r <= $thumbBottom ? "\x1b[48;5;236m" : '';
+            $bg = $showThumb && $r >= $thumbTop && $r <= $thumbBottom ? Style::POPUP_ROW_BG : '';
             $cells[] = 0 !== $sev[$r]
                 ? "\x1b[0m".$bg."\x1b[38;5;".DiagnosticStyle::fg($sev[$r]).'m'.DiagnosticStyle::MARK."\x1b[0m"
                 : "\x1b[0m".$bg.' '."\x1b[0m";

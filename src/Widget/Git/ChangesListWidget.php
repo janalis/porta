@@ -316,7 +316,7 @@ final class ChangesListWidget extends AbstractWidget implements FocusableInterfa
             $selected = $this->list->isSelected($index);
             $bg = $selected
                 ? ($this->focused ? Style::SELECTED_ROW : "\x1b[48;5;237m")
-                : ($index === $this->hoveredIndex ? "\x1b[48;5;236m" : '');
+                : ($index === $this->hoveredIndex ? Style::POPUP_ROW_BG : '');
             $text = ' '.$checkbox.' '.$statusFg.$status."\x1b[39m".' '.$label;
             $lines[] = $bg.AnsiUtils::truncateToWidth($text, $width, '…', pad: true)."\x1b[0m";
         }

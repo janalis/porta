@@ -231,7 +231,7 @@ final class KeybindingsListWidget extends AbstractWidget implements FocusableInt
             $selected = $index === $this->list->selected();
             $bg = $selected
                 ? ($this->focused ? Style::SELECTED_ROW : "\x1b[48;5;237m")
-                : ($index === $this->hoveredIndex ? "\x1b[48;5;236m" : '');
+                : ($index === $this->hoveredIndex ? Style::POPUP_ROW_BG : '');
 
             if ($index === $this->capturingIndex) {
                 $prompt = $this->translator->trans('Press a key… (Esc to cancel)');

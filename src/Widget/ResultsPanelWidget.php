@@ -277,7 +277,7 @@ final class ResultsPanelWidget extends OverlayWidget implements FocusableInterfa
         if ($this->withReplace) {
             $replaceField = $this->replace->render(cursor: $showCursor && 'replace' === $this->activeField);
             $replaceLine = ' Replace: '.$replaceField."\x1b[38;5;245m  (Tab switch · Alt+A replace all)\x1b[39m";
-            $lines[] = "\x1b[48;5;236m".AnsiUtils::truncateToWidth($replaceLine, $columns, '…', pad: true)."\x1b[0m";
+            $lines[] = Style::POPUP_ROW_BG.AnsiUtils::truncateToWidth($replaceLine, $columns, '…', pad: true)."\x1b[0m";
         }
 
         $scroll = $this->list->follow($this->visibleRows);

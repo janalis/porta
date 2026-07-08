@@ -262,7 +262,7 @@ final class FileTreeWidget extends AbstractWidget implements FocusableInterface,
             } elseif ($index === $this->hoveredIndex) {
                 // Subtle hover background beneath the pointer, keeping the dir/file foreground.
                 $fg = $node['isDir'] ? "\x1b[38;5;110m" : '';
-                $lines[] = "\x1b[48;5;236m".$fg.$text."\x1b[0m";
+                $lines[] = Style::POPUP_ROW_BG.$fg.$text."\x1b[0m";
             } elseif ($node['isDir']) {
                 $lines[] = "\x1b[38;5;110m".$text."\x1b[0m";
             } else {

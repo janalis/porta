@@ -47,7 +47,7 @@ final class MenuPanel
         foreach ($items as $index => $item) {
             $out[] = [
                 'segment' => $item->separator
-                    ? "\x1b[48;5;236m\x1b[38;5;238m".str_repeat('─', $panelWidth)."\x1b[0m"
+                    ? Style::POPUP_ROW_BG."\x1b[38;5;238m".str_repeat('─', $panelWidth)."\x1b[0m"
                     : self::itemSegment($item, $panelWidth, $index === $selected, $item->enabled()),
                 'separator' => $item->separator,
             ];
@@ -108,7 +108,7 @@ final class MenuPanel
 
         // Disabled always reads dim and never shows the selected highlight.
         $bg = !$enabled
-            ? "\x1b[48;5;236m\x1b[38;5;240m"
+            ? Style::POPUP_ROW_BG."\x1b[38;5;240m"
             : ($selected ? Style::SELECTED_ROW : Style::POPUP_ROW);
         $tail = '' !== $shortcut ? "\x1b[38;5;244m".$shortcut."\x1b[39m" : str_repeat(' ', mb_strwidth($shortcut));
 
