@@ -129,9 +129,9 @@ final class SettingsNavWidgetTest extends TestCase
     {
         $widget = $this->widget();
         $widget->setWidth(30);
-        $this->assertSame(30, $widget->getWidth());
+        $this->assertSame(30, $widget->width());
         $widget->setWidth(5); // clamped up
-        $this->assertSame(14, $widget->getWidth());
+        $this->assertSame(14, $widget->width());
         $this->assertTrue($widget->expandVertically(false)->isVerticallyExpanded());
 
         $widget->setMenuOverlay([['row' => 0, 'col' => 0, 'width' => 8, 'segment' => "\x1b[7mDROP\x1b[0m"]]);

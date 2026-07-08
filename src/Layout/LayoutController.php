@@ -96,7 +96,7 @@ final class LayoutController
                 $cols = $this->tui->getTerminal()->getColumns();
                 $this->tree->setWidth($this->clampSidebar($mouse->col - $treeRect->col, $cols));
                 $this->tui->requestRender();
-                if ($mouse->isLeftRelease() && $this->tree->getWidth() !== $this->sidebarResizeStartWidth) {
+                if ($mouse->isLeftRelease() && $this->tree->width() !== $this->sidebarResizeStartWidth) {
                     $this->commitSidebarWidth($cols);
                 }
             }
@@ -130,7 +130,7 @@ final class LayoutController
                 $cols = $this->tui->getTerminal()->getColumns();
                 $this->settingsSidebar->setWidth($this->clampSettingsSidebar($mouse->col - $settingsLeftRect->col, $cols));
                 $this->tui->requestRender();
-                if ($mouse->isLeftRelease() && $this->settingsSidebar->getWidth() !== $this->settingsSidebarResizeStartWidth) {
+                if ($mouse->isLeftRelease() && $this->settingsSidebar->width() !== $this->settingsSidebarResizeStartWidth) {
                     $this->commitSettingsSidebarWidth($cols);
                 }
             }
@@ -167,7 +167,7 @@ final class LayoutController
     public function armSidebarResize(?WidgetRect $treeRect, MouseEvent $mouse): bool
     {
         if (null !== $treeRect && $mouse->col === ($treeRect->col + $treeRect->columns) && $mouse->row >= $treeRect->row && $mouse->row < ($treeRect->row + $treeRect->rows)) {
-            $this->sidebarResizeStartWidth = $this->tree->getWidth();
+            $this->sidebarResizeStartWidth = $this->tree->width();
             $this->sidebarResizing = true;
 
             return true;
@@ -199,7 +199,7 @@ final class LayoutController
     public function armSettingsSidebarResize(?WidgetRect $settingsSeparatorRect, MouseEvent $mouse): bool
     {
         if (null !== $settingsSeparatorRect && $settingsSeparatorRect->contains($mouse->row, $mouse->col)) {
-            $this->settingsSidebarResizeStartWidth = $this->settingsSidebar->getWidth();
+            $this->settingsSidebarResizeStartWidth = $this->settingsSidebar->width();
             $this->settingsSidebarResizing = true;
 
             return true;
@@ -271,7 +271,7 @@ final class LayoutController
 
     private function commitSidebarWidth(int $cols): void
     {
-        $pct = $cols > 0 ? (int) round(($this->tree->getWidth() * 100) / $cols) : null;
+        $pct = $cols > 0 ? (int) round(($this->tree->width() * 100) / $cols) : null;
         if ($pct !== $this->sidebarWidthPercent) {
             $this->sidebarWidthPercent = $pct;
             $this->persistLayout();
@@ -289,7 +289,7 @@ final class LayoutController
 
     private function commitSettingsSidebarWidth(int $cols): void
     {
-        $pct = $cols > 0 ? (int) round(($this->settingsSidebar->getWidth() * 100) / $cols) : null;
+        $pct = $cols > 0 ? (int) round(($this->settingsSidebar->width() * 100) / $cols) : null;
         if ($pct !== $this->settingsSidebarWidthPercent) {
             $this->settingsSidebarWidthPercent = $pct;
             $this->persistLayout();

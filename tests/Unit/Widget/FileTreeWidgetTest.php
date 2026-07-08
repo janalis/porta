@@ -79,13 +79,13 @@ final class FileTreeWidgetTest extends TestCase
         $tree = new FileTreeWidget($project->dir);
 
         $tree->setWidth(50);
-        $this->assertSame(50, $tree->getWidth());
+        $this->assertSame(50, $tree->width());
         foreach ($tree->render(new RenderContext(80, 6)) as $line) {
             $this->assertSame(50, AnsiUtils::visibleWidth($line), 'rows render at the new width');
         }
 
         $tree->setWidth(1); // clamped up to the 12-column floor
-        $this->assertSame(12, $tree->getWidth());
+        $this->assertSame(12, $tree->width());
     }
 
     public function testClearHover(): void
@@ -249,7 +249,7 @@ final class FileTreeWidgetTest extends TestCase
 
         $this->assertTrue($tree->isVerticallyExpanded());
         $this->assertSame($tree, $tree->expandVertically(false), 'always fills its pane');
-        $this->assertSame(25, $tree->getWidth());
+        $this->assertSame(25, $tree->width());
 
         // onInput hook consumes input before default handling
         $tree->setFocused(true);

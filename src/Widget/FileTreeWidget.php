@@ -108,7 +108,7 @@ final class FileTreeWidget extends AbstractWidget implements FocusableInterface,
         return $this->visible[$index];
     }
 
-    public function getWidth(): int
+    public function width(): int
     {
         return $this->width;
     }

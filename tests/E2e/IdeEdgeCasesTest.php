@@ -239,14 +239,14 @@ final class IdeEdgeCasesTest extends TestCase
             $project->path('a.php'),
             [
                 200 => function ($tui): void {
-                    $this->assertSame(30, $tui->getById('tree')->getWidth());
+                    $this->assertSame(30, $tui->getById('tree')->width());
                     // Drag the tree↔editor gap (SGR col 31 = the gap column) out to col 44.
                     $tui->handleInput("\x1b[<0;31;5M"); // arm on the gap
                     $tui->handleInput("\x1b[<32;45;5M"); // drag to col 44
                     $tui->handleInput("\x1b[<0;45;5m"); // release
                 },
                 320 => function ($tui) use ($project): void {
-                    $this->assertSame(44, $tui->getById('tree')->getWidth(), 'sidebar resized by the drag');
+                    $this->assertSame(44, $tui->getById('tree')->width(), 'sidebar resized by the drag');
                     $layout = json_decode((string) file_get_contents($project->path('.porta/layout.json')), true);
                     $this->assertSame(28, $layout['sidebarWidthPercent'], 'saved as a percentage (round(44/160))');
                 },
@@ -312,7 +312,7 @@ final class IdeEdgeCasesTest extends TestCase
                 },
                 600 => function ($tui): void {
                     $tui->tick();
-                    $this->assertSame(40, $tui->getById('git-changes')->getWidth(), 'the seeded percent applied at startup');
+                    $this->assertSame(40, $tui->getById('git-changes')->width(), 'the seeded percent applied at startup');
                     // Drag the git separator (SGR col 41 with a 40-wide sidebar)
                     // out to col 61: the whole left column follows.
                     $tui->handleInput("\x1b[<0;41;6M");  // arm on the separator
@@ -320,9 +320,9 @@ final class IdeEdgeCasesTest extends TestCase
                     $tui->handleInput("\x1b[<0;61;6m");  // release
                 },
                 900 => function ($tui) use ($project): void {
-                    $this->assertSame(60, $tui->getById('git-changes')->getWidth(), 'the drag resized the sidebar');
-                    $this->assertSame(60, $tui->getById('git-tabs')->getWidth(), 'the tab strip follows');
-                    $this->assertSame(60, $tui->getById('git-commit')->getWidth(), 'the commit box follows');
+                    $this->assertSame(60, $tui->getById('git-changes')->width(), 'the drag resized the sidebar');
+                    $this->assertSame(60, $tui->getById('git-tabs')->width(), 'the tab strip follows');
+                    $this->assertSame(60, $tui->getById('git-commit')->width(), 'the commit box follows');
                     $layout = json_decode((string) file_get_contents($project->path('.porta/layout.json')), true);
                     $this->assertSame(38, $layout['gitSidebarWidthPercent'], 'saved as a percentage (round(60/160))');
                 },
@@ -348,7 +348,7 @@ final class IdeEdgeCasesTest extends TestCase
             $project->path('a.php'),
             [
                 200 => function ($tui): void {
-                    $this->assertSame(40, $tui->getById('tree')->getWidth(), '25% of 160 columns');
+                    $this->assertSame(40, $tui->getById('tree')->width(), '25% of 160 columns');
                     $this->assertSame(10, $tui->getById('terminal')->visibleRows(), '40% of 24 rows');
                 },
             ],
@@ -370,7 +370,7 @@ final class IdeEdgeCasesTest extends TestCase
                 200 => function ($tui) use ($project): void {
                     $tui->handleInput("\x1b[<0;31;5M"); // press the gap
                     $tui->handleInput("\x1b[<0;31;5m"); // release without moving
-                    $this->assertSame(30, $tui->getById('tree')->getWidth(), 'width unchanged');
+                    $this->assertSame(30, $tui->getById('tree')->width(), 'width unchanged');
                     $this->assertFileDoesNotExist($project->path('.porta/layout.json'), 'no file written for a no-op');
                 },
             ],
@@ -3538,14 +3538,14 @@ final class IdeEdgeCasesTest extends TestCase
                 },
                 600 => function ($tui): void {
                     $tui->tick();
-                    $this->assertSame(40, $tui->getById('settings-nav')->getWidth(), 'the seeded percent applied at startup');
+                    $this->assertSame(40, $tui->getById('settings-nav')->width(), 'the seeded percent applied at startup');
                     // Drag the settings separator (SGR col 41 with a 40-wide nav) in to col 31.
                     $tui->handleInput("\x1b[<0;41;6M");  // arm on the separator
                     $tui->handleInput("\x1b[<32;31;6M"); // drag left
                     $tui->handleInput("\x1b[<0;31;6m");  // release
                 },
                 900 => function ($tui) use ($project): void {
-                    $this->assertSame(30, $tui->getById('settings-nav')->getWidth(), 'the drag resized the sidebar');
+                    $this->assertSame(30, $tui->getById('settings-nav')->width(), 'the drag resized the sidebar');
                     $layout = json_decode((string) file_get_contents($project->path('.porta/layout.json')), true);
                     $this->assertSame(19, $layout['settingsSidebarWidthPercent'], 'saved as a percentage (round(30/160))');
                 },

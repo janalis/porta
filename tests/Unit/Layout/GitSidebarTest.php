@@ -26,15 +26,15 @@ final class GitSidebarTest extends TestCase
 
         $sidebar->setWidth(60);
         $this->assertSame(60, $sidebar->width());
-        $this->assertSame(60, $tabs->getWidth());
-        $this->assertSame(60, $changes->getWidth());
-        $this->assertSame(60, $commitBox->getWidth());
-        $this->assertSame(60, $history->getWidth());
+        $this->assertSame(60, $tabs->width());
+        $this->assertSame(60, $changes->width());
+        $this->assertSame(60, $commitBox->width());
+        $this->assertSame(60, $history->width());
 
         $sidebar->setWidth(1); // clamps to the widgets' floor
         $this->assertSame(24, $sidebar->width());
         $sidebar->setWidth(24); // same width again: a no-op
-        $this->assertSame(24, $history->getWidth());
+        $this->assertSame(24, $history->width());
         $sidebar->setWidth(9_999);
         $this->assertSame(200, $sidebar->width(), 'clamped to the ceiling');
     }

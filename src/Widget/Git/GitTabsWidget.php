@@ -47,7 +47,7 @@ final class GitTabsWidget extends AbstractWidget implements MenuOverlayHost
         }
     }
 
-    public function getWidth(): int
+    public function width(): int
     {
         return $this->width;
     }

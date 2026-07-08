@@ -33,6 +33,6 @@ final readonly class GitSidebar
 
     public function width(): int
     {
-        return $this->changes->getWidth();
+        return $this->changes->width();
     }
 }

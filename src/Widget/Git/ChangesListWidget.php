@@ -84,7 +84,7 @@ final class ChangesListWidget extends AbstractWidget implements FocusableInterfa
         }
     }
 
-    public function getWidth(): int
+    public function width(): int
     {
         return $this->width;
     }

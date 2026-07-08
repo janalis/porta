@@ -69,7 +69,7 @@ final class CommitBoxWidget extends AbstractWidget implements FocusableInterface
         }
     }
 
-    public function getWidth(): int
+    public function width(): int
     {
         return $this->width;
     }
