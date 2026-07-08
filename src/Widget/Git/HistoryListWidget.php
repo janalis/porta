@@ -295,7 +295,7 @@ final class HistoryListWidget extends AbstractWidget implements FocusableInterfa
                 $lines[] = str_repeat(' ', $width);
                 continue;
             }
-            $selected = ($scroll + $row) === $this->commitList->selected();
+            $selected = $this->commitList->isSelected($scroll + $row);
             $bg = $selected
                 ? ($this->focused && !$this->filesFocused ? Style::SELECTED_ROW : "\x1b[48;5;237m")
                 : (($scroll + $row) === $this->hoveredCommit ? "\x1b[48;5;236m" : '');
@@ -311,7 +311,7 @@ final class HistoryListWidget extends AbstractWidget implements FocusableInterfa
                 $lines[] = str_repeat(' ', $width);
                 continue;
             }
-            $selected = ($fileScroll + $row) === $this->fileList->selected();
+            $selected = $this->fileList->isSelected($fileScroll + $row);
             $bg = $selected
                 ? ($this->focused && $this->filesFocused ? Style::SELECTED_ROW : "\x1b[48;5;237m")
                 : (($fileScroll + $row) === $this->hoveredFile ? "\x1b[48;5;236m" : '');

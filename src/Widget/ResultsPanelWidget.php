@@ -283,7 +283,7 @@ final class ResultsPanelWidget extends OverlayWidget implements FocusableInterfa
         $scroll = $this->list->follow($this->visibleRows);
 
         foreach (\array_slice($this->results, $scroll, $this->visibleRows) as $i => $result) {
-            $isSelected = ($scroll + $i) === $this->list->selected();
+            $isSelected = $this->list->isSelected($scroll + $i);
             $bg = $isSelected ? ($this->focused ? Style::SELECTED_ROW : "\x1b[48;5;238m") : "\x1b[48;5;235m";
             $location = $result['path'].':'.($result['line'] + 1);
             $text = ' '."\x1b[38;5;110m".$location."\x1b[39m".'  '.$result['text'];

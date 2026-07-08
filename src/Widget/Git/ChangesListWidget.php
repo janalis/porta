@@ -313,7 +313,7 @@ final class ChangesListWidget extends AbstractWidget implements FocusableInterfa
             $statusFg = self::STATUS_FG[$status] ?? '';
             $label = $entry->path.(null !== $entry->renamedFrom ? ' ← '.$entry->renamedFrom : '');
 
-            $selected = $index === $this->list->selected();
+            $selected = $this->list->isSelected($index);
             $bg = $selected
                 ? ($this->focused ? Style::SELECTED_ROW : "\x1b[48;5;237m")
                 : ($index === $this->hoveredIndex ? "\x1b[48;5;236m" : '');

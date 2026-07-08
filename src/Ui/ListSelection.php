@@ -37,6 +37,12 @@ final class ListSelection
         $this->selected = $index;
     }
 
+    /** Whether $index is the selected row (the render-loop highlight test). */
+    public function isSelected(int $index): bool
+    {
+        return $index === $this->selected;
+    }
+
     /**
      * Select $index when it names a row and differs from the current
      * selection; returns whether it changed (the hover-highlight idiom).
