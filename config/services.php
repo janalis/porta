@@ -39,32 +39,44 @@ use function Symfony\Component\DependencyInjection\Loader\Configurator\param;
 return static function (ContainerConfigurator $container): void {
     $services = $container->services();
 
-    // Public: Ide resolves these from the container by id (service-locator
-    // boundary), so they must survive compilation rather than being inlined.
+    // Private by default: autoregistration below relies on the removal pass
+    // pruning the ~137 non-service classes (closure-wired controllers, DTOs,
+    // value objects, per-buffer objects) that register but nothing public
+    // references. Making defaults public would keep them all and fail autowiring.
     $services->defaults()
         ->autowire()
         ->autoconfigure()
-        ->public()
         ->bind('$rootDir', param('porta.root_dir'))
         ->bind('$locale', param('porta.locale'));
 
-    // Closure-free leaves: only scalar (rootDir/locale) dependencies.
-    $services->set(Translator::class);
-    $services->set(GitInfo::class);
-    $services->set(LocalHistory::class);
-    $services->set(SessionStore::class);
-    $services->set(EditorConfigResolver::class);
-    $services->set(BufferManager::class);
-    $services->set(LayoutStore::class);
+    // Autoregister every Porta\ class. Only the orchestrator and the container
+    // factory are excluded; everything else that isn't a real service registers
+    // private and is pruned at compile.
+    $services->load('Porta\\', '../src/*')
+        ->exclude([
+            '../src/Ide.php',
+            '../src/Container/',
+        ]);
 
-    // Category-A controllers: autowired from services + synthetics above, no
-    // closures. Ide resolves each into its existing property.
-    $services->set(WorkspaceEditor::class);
-    $services->set(CompletionController::class);
-    $services->set(PanelManager::class);
-    $services->set(CommandPalette::class);
-    $services->set(HitTester::class);
-    $services->set(LayoutController::class);
+    // Ide resolves these by id (service-locator boundary), so they must be
+    // public to survive compilation rather than being pruned.
+    foreach ([
+        Translator::class,
+        GitInfo::class,
+        LocalHistory::class,
+        SessionStore::class,
+        EditorConfigResolver::class,
+        BufferManager::class,
+        LayoutStore::class,
+        WorkspaceEditor::class,
+        CompletionController::class,
+        PanelManager::class,
+        CommandPalette::class,
+        HitTester::class,
+        LayoutController::class,
+    ] as $publicId) {
+        $services->set($publicId)->public();
+    }
 
     // Synthetic infrastructure: Ide builds these manually (they need per-instance
     // setId/setStyle or the terminal), then ->set()s the instances after boot.
