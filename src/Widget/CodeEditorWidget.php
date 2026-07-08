@@ -22,6 +22,8 @@ use Porta\Highlight\CodeHighlighter;
 use Porta\Input\TextInput;
 use Porta\Support\ProjectPaths;
 use Porta\Widget\Overlay\OverlayHost;
+use Porta\Widget\Render\EditorDecorations;
+use Porta\Widget\Render\EditorGeometry;
 use Porta\Widget\Render\EditorPopupGeometry;
 use Porta\Widget\Render\EditorRenderer;
 use Porta\Widget\Render\LineDecorator;
@@ -1003,15 +1005,10 @@ final class CodeEditorWidget extends AbstractWidget implements FocusableInterfac
 
         $doc = $this->document;
         $lineCount = $doc->getLineCount();
-        // gutter = git strip (1) + line number + change marker + trailing space
-        $numberWidth = max(3, \strlen((string) $lineCount));
-        $gutterWidth = 1 + $numberWidth + 2;
-        $this->lastGutterWidth = $gutterWidth;
-        // Reserve the rightmost column for the error stripe (whole-file overview);
-        // always reserved so diagnostics arriving/leaving never reflow the content.
-        $contentWidth = max(1, $columns - $gutterWidth - 1);
+        $geo = $this->computeGeometry($columns, $lineCount);
+        $this->lastGutterWidth = $geo->gutterWidth;
         $this->lastRenderRows = $rows;
-        $this->lastStripeCol = $gutterWidth + $contentWidth;
+        $this->lastStripeCol = $geo->stripeCol;
 
         // Clamp scroll to cursor: the caret must stay visible below whatever
         // sticky-scroll band the settled scroll position pins at the top.
@@ -1021,80 +1018,25 @@ final class CodeEditorWidget extends AbstractWidget implements FocusableInterfac
 
         // The pinned headers for the settled scroll position.
         $sticky = $this->stickyHeadersAt($vScroll, $rows);
-        $stickyCount = \count($sticky);
         $this->stickyLines = array_map(static fn (array $h): int => $h['line'], $sticky);
-        $contentRows = $rows - $stickyCount;
+        $contentRows = $rows - \count($sticky);
         $this->scroll->setContentRows($contentRows);
 
-        $cursorDisplayCol = $doc->getCursorDisplayCol();
-        // Inlay hints inserted before the caret push its visual column right.
-        $cursorDisplayCol += EditorRenderer::inlayShiftAt($doc, $cursorLine, $this->inlayHints[$cursorLine] ?? [], $cursorDisplayCol);
-        // Follow only when the caret actually moved since the last frame, so a
-        // manual horizontal scroll (scrollHBy) survives parked-caret renders.
-        $cursorMoved = [$cursorLine, $doc->getCursorCol()] !== $this->lastFollowedCursor;
-        $this->lastFollowedCursor = [$cursorLine, $doc->getCursorCol()];
-        $this->scroll->followCursor($cursorDisplayCol, $contentWidth, $cursorMoved);
+        $cursorDisplayCol = $this->followCaret($doc, $cursorLine, $geo->contentWidth);
         $hScroll = $this->scroll->hScroll();
 
         // Highlight/render tab-expanded lines so widths line up with the
         // display-column math; the buffer keeps its raw tabs.
         $highlighted = $this->highlighter->highlight($doc->getVisualLines(), $doc->getVersion());
-        $selection = $doc->getSelectionRange();
-        // With multiple carets, every caret (primary + extras) is drawn the same
-        // way — a reverse-video cell — and the hardware-cursor bar is suppressed.
-        $multiActive = $this->focused && $this->multiCaret->hasMultiple();
-        $carets = $multiActive ? $this->multiCaret->allCarets() : [];
-        $brackets = $this->focused ? $this->matchingBrackets($doc) : null;
         $lastVisibleDocLine = $this->foldModel->docLineAtRow($vScroll, $contentRows - 1) ?? ($lineCount - 1);
-        $occurrences = EditorRenderer::identifierOccurrences($doc, $this->focused, $vScroll, $lastVisibleDocLine);
+        $decorations = $this->collectDecorations($doc, $vScroll, $lastVisibleDocLine);
 
         // Right-margin error stripe: one styled cell per screen row, a whole-file
         // overview of diagnostics plus a faint viewport thumb. Appended to every
         // produced row so each reaches the full terminal width.
         $stripe = $this->buildStripe($rows, $lineCount, $vScroll, $lastVisibleDocLine);
 
-        /** @var list<string> $result */
-        $result = [];
-        // Pinned sticky-scroll headers occupy the top rows; content follows below.
-        foreach ($sticky as $i => $header) {
-            $result[] = $this->renderStickyRow($header['line'], $numberWidth, $contentWidth, $highlighted).$stripe[$i];
-        }
-        for ($row = 0; $row < $contentRows; ++$row) {
-            $lineIndex = $this->foldModel->docLineAtRow($vScroll, $row);
-
-            if (null === $lineIndex) {
-                $result[] = "\x1b[38;5;238m".str_pad('~', $gutterWidth)."\x1b[0m".str_repeat(' ', $contentWidth).$stripe[$stickyCount + $row];
-                continue;
-            }
-
-            $isCursorLine = $lineIndex === $cursorLine;
-            $lineDiags = $this->diagnostics[$lineIndex] ?? [];
-
-            $gutter = $this->gutterCell($lineIndex, $isCursorLine, $lineDiags, $numberWidth);
-            $hlLine = $this->decoratedLine($lineIndex, $highlighted[$lineIndex] ?? '', $multiActive ? null : $selection, $carets, $occurrences, $brackets, $lineDiags, $hScroll, $contentWidth);
-
-            $content = EditorRenderer::renderContentLine(
-                $hScroll,
-                $hlLine,
-                $contentWidth,
-                $isCursorLine && $this->focused && !$multiActive,
-                $cursorDisplayCol,
-            );
-
-            // Current-line background (skip when a selection is being shown)
-            if ($isCursorLine && $this->focused && null === $selection) {
-                $content = LineDecorator::applyFullWidth($content, $contentWidth, LineDecorator::CURRENT_LINE_BG);
-            }
-
-            // Inline diagnostic message in the trailing space (PhpStorm-style):
-            // the worst-severity message on the line, colored by severity, with a
-            // "+N" count when the line carries more than one diagnostic.
-            if ($this->inlineDiagnostics && [] !== $lineDiags) {
-                $content = EditorRenderer::appendInlineDiagnostic($hScroll, $doc->lineDisplayWidth($lineIndex), $lineDiags, $content, $contentWidth);
-            }
-
-            $result[] = $gutter.$content.$stripe[$stickyCount + $row];
-        }
+        $result = $this->assembleRows($geo, $decorations, $sticky, $highlighted, $stripe, $contentRows, $vScroll, $cursorLine, $cursorDisplayCol, $hScroll);
 
         $result = $this->composePopups($result, new EditorPopupGeometry(
             columns: $columns,
@@ -1103,13 +1045,145 @@ final class CodeEditorWidget extends AbstractWidget implements FocusableInterfac
             hScroll: $hScroll,
             cursorLine: $cursorLine,
             cursorDisplayCol: $cursorDisplayCol,
-            gutterWidth: $gutterWidth,
-            stickyCount: $stickyCount,
+            gutterWidth: $geo->gutterWidth,
+            stickyCount: \count($sticky),
         ));
 
         // The overlay/prompt chrome composites over the content; the
         // application-menu dropdown floats above everything else.
         return $this->withMenuOverlay($this->overlayHost->composite($result, $columns, $rows, $this->focused), $columns);
+    }
+
+    /**
+     * The horizontal layout for a $lineCount-line document in $columns cells:
+     * gutter = git strip (1) + line number + change marker + trailing space, and
+     * the rightmost column always reserved for the error stripe so diagnostics
+     * arriving or leaving never reflow the content.
+     */
+    private function computeGeometry(int $columns, int $lineCount): EditorGeometry
+    {
+        $numberWidth = max(3, \strlen((string) $lineCount));
+        $gutterWidth = 1 + $numberWidth + 2;
+        $contentWidth = max(1, $columns - $gutterWidth - 1);
+
+        return new EditorGeometry($numberWidth, $gutterWidth, $contentWidth, $gutterWidth + $contentWidth);
+    }
+
+    /**
+     * Advance the horizontal scroll to keep the caret in view and return its
+     * display column (shifted right by any inlay hints before it). Follows only
+     * when the caret actually moved since the last frame, so a manual scroll
+     * (scrollHBy) survives parked-caret renders.
+     */
+    private function followCaret(Document $doc, int $cursorLine, int $contentWidth): int
+    {
+        $cursorDisplayCol = $doc->getCursorDisplayCol();
+        $cursorDisplayCol += EditorRenderer::inlayShiftAt($doc, $cursorLine, $this->inlayHints[$cursorLine] ?? [], $cursorDisplayCol);
+        $cursorMoved = [$cursorLine, $doc->getCursorCol()] !== $this->lastFollowedCursor;
+        $this->lastFollowedCursor = [$cursorLine, $doc->getCursorCol()];
+        $this->scroll->followCursor($cursorDisplayCol, $contentWidth, $cursorMoved);
+
+        return $cursorDisplayCol;
+    }
+
+    /**
+     * Gather the per-line decoration inputs for the frame. With multiple carets
+     * every caret (primary + extras) is drawn the same way — a reverse-video
+     * cell — so the range selection and the hardware-cursor bar are suppressed.
+     */
+    private function collectDecorations(Document $doc, int $vScroll, int $lastVisibleDocLine): EditorDecorations
+    {
+        $multiActive = $this->focused && $this->multiCaret->hasMultiple();
+
+        return new EditorDecorations(
+            multiActive: $multiActive,
+            selection: $doc->getSelectionRange(),
+            carets: $multiActive ? $this->multiCaret->allCarets() : [],
+            occurrences: EditorRenderer::identifierOccurrences($doc, $this->focused, $vScroll, $lastVisibleDocLine),
+            brackets: $this->focused ? $this->matchingBrackets($doc) : null,
+        );
+    }
+
+    /**
+     * Assemble the frame's rows: the pinned sticky-scroll headers on top, then
+     * one content row per visible screen line (a "~" filler past end-of-file),
+     * each fully decorated and closed with its error-stripe cell.
+     *
+     * @param list<array{label: string, line: int}> $sticky
+     * @param array<array-key, string>               $highlighted
+     * @param list<string>                           $stripe
+     *
+     * @return list<string>
+     */
+    private function assembleRows(
+        EditorGeometry $geo,
+        EditorDecorations $decorations,
+        array $sticky,
+        array $highlighted,
+        array $stripe,
+        int $contentRows,
+        int $vScroll,
+        int $cursorLine,
+        int $cursorDisplayCol,
+        int $hScroll,
+    ): array {
+        $doc = $this->document;
+        $stickyCount = \count($sticky);
+
+        /** @var list<string> $result */
+        $result = [];
+        // Pinned sticky-scroll headers occupy the top rows; content follows below.
+        foreach ($sticky as $i => $header) {
+            $result[] = $this->renderStickyRow($header['line'], $geo->numberWidth, $geo->contentWidth, $highlighted).$stripe[$i];
+        }
+        for ($row = 0; $row < $contentRows; ++$row) {
+            $lineIndex = $this->foldModel->docLineAtRow($vScroll, $row);
+
+            if (null === $lineIndex) {
+                $result[] = "\x1b[38;5;238m".str_pad('~', $geo->gutterWidth)."\x1b[0m".str_repeat(' ', $geo->contentWidth).$stripe[$stickyCount + $row];
+                continue;
+            }
+
+            $isCursorLine = $lineIndex === $cursorLine;
+            $lineDiags = $this->diagnostics[$lineIndex] ?? [];
+
+            $gutter = $this->gutterCell($lineIndex, $isCursorLine, $lineDiags, $geo->numberWidth);
+            $hlLine = $this->decoratedLine(
+                $lineIndex,
+                $highlighted[$lineIndex] ?? '',
+                $decorations->multiActive ? null : $decorations->selection,
+                $decorations->carets,
+                $decorations->occurrences,
+                $decorations->brackets,
+                $lineDiags,
+                $hScroll,
+                $geo->contentWidth,
+            );
+
+            $content = EditorRenderer::renderContentLine(
+                $hScroll,
+                $hlLine,
+                $geo->contentWidth,
+                $isCursorLine && $this->focused && !$decorations->multiActive,
+                $cursorDisplayCol,
+            );
+
+            // Current-line background (skip when a selection is being shown)
+            if ($isCursorLine && $this->focused && null === $decorations->selection) {
+                $content = LineDecorator::applyFullWidth($content, $geo->contentWidth, LineDecorator::CURRENT_LINE_BG);
+            }
+
+            // Inline diagnostic message in the trailing space (PhpStorm-style):
+            // the worst-severity message on the line, colored by severity, with a
+            // "+N" count when the line carries more than one diagnostic.
+            if ($this->inlineDiagnostics && [] !== $lineDiags) {
+                $content = EditorRenderer::appendInlineDiagnostic($hScroll, $doc->lineDisplayWidth($lineIndex), $lineDiags, $content, $geo->contentWidth);
+            }
+
+            $result[] = $gutter.$content.$stripe[$stickyCount + $row];
+        }
+
+        return $result;
     }
 
     /**
