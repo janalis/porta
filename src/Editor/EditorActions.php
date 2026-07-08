@@ -100,18 +100,40 @@ final class EditorActions
      */
     public function handleKey(string $data, Keybindings $kb): void
     {
-        $doc = $this->document;
+        // Ordered dispatch: each group handles the keys it owns and reports
+        // whether it consumed the event. The order is load-bearing (block
+        // copy/cut before MultiCaret, movement before editing, text last).
+        if ($this->tryCaretAndBlockOps($data, $kb)) {
+            return;
+        }
+        if ($this->tryHistoryAndStructure($data, $kb)) {
+            return;
+        }
+        if ($this->tryMovement($data, $kb)) {
+            return;
+        }
+        if ($this->tryClipboardAndLineOps($data, $kb)) {
+            return;
+        }
+        if ($this->tryEditing($data, $kb)) {
+            return;
+        }
+        $this->tryTextInput($data, $kb);
+    }
 
+    /** Prompts/completion/caret management, block copy/cut, and the multi-caret path. */
+    private function tryCaretAndBlockOps(string $data, Keybindings $kb): bool
+    {
         // Prompts, completion, caret management (the latter work whether or
         // not extra carets already exist).
         if ($this->runFirstMatch($data, $kb, self::PRE_CARET_ACTIONS)) {
-            return;
+            return true;
         }
 
         if ($kb->matches($data, 'select_all_occurrences')) {
             $this->multiCaret->selectAllOccurrences();
 
-            return;
+            return true;
         }
 
         // Block copy/cut: intercept before MultiCaret::handleInput (which does
@@ -125,18 +147,22 @@ final class EditorActions
                 ($this->invalidate)();
             }
 
-            return;
+            return true;
         }
 
         // With multiple carets active, most editing/movement keys apply to
         // every caret; unhandled keys collapse back to a single caret.
-        if ($this->multiCaret->hasMultiple() && $this->multiCaret->handleInput($data, $kb, $this->clipboard, fn (string $d) => ($this->isInsertable)($d))) {
-            return;
-        }
+        return $this->multiCaret->hasMultiple() && $this->multiCaret->handleInput($data, $kb, $this->clipboard, fn (string $d) => ($this->isInsertable)($d));
+    }
+
+    /** Undo/redo + structural selection, statement moves, surround, and conflict nav. */
+    private function tryHistoryAndStructure(string $data, Keybindings $kb): bool
+    {
+        $doc = $this->document;
 
         // History and structural selection (grow/shrink the syntactic range).
         if ($this->runFirstMatch($data, $kb, self::HISTORY_STRUCTURE_ACTIONS)) {
-            return;
+            return true;
         }
 
         // Move the current statement over blank-line gaps.
@@ -145,33 +171,40 @@ final class EditorActions
                 ($this->notifyChange)();
             }
 
-            return;
+            return true;
         }
 
         // Surround the selection with a chosen pair or snippet.
         if ($kb->matches($data, 'surround_with')) {
             $this->run('surround_with');
 
-            return;
+            return true;
         }
 
         // Merge-conflict navigation and resolution.
         if ($kb->matches($data, 'next_conflict') || $kb->matches($data, 'prev_conflict')) {
             $this->structural->gotoConflict($kb->matches($data, 'next_conflict') ? 1 : -1);
 
-            return;
+            return true;
         }
         if ($kb->matches($data, 'resolve_conflict')) {
             $this->structural->openResolveConflictMenu();
 
-            return;
+            return true;
         }
+
+        return false;
+    }
+
+    /** Caret movement (with shift-select variants), select-all, document ends and paging. */
+    private function tryMovement(string $data, Keybindings $kb): bool
+    {
+        $doc = $this->document;
 
         // Movement: each action has a shift+key "select_" variant that
         // anchors/extends the selection instead of clearing it. The same
         // action→method map drives the multi-caret path.
-        $movements = MultiCaret::MOVE_METHODS;
-        foreach ($movements as $action => $method) {
+        foreach (MultiCaret::MOVE_METHODS as $action => $method) {
             if ($kb->matches($data, $action)) {
                 if ('cursor_up' === $action || 'cursor_down' === $action) {
                     ($this->setSignatureHint)(null);
@@ -180,21 +213,21 @@ final class EditorActions
                 $doc->{$method}();
                 ($this->invalidate)();
 
-                return;
+                return true;
             }
             if ($kb->matches($data, substr_replace($action, 'select', 0, 6))) {
                 $doc->beginSelect();
                 $doc->{$method}();
                 ($this->invalidate)();
 
-                return;
+                return true;
             }
         }
 
         if ($kb->matches($data, 'select_all')) {
             $this->run('select_all');
 
-            return;
+            return true;
         }
 
         if ($kb->matches($data, 'document_start')) {
@@ -202,7 +235,7 @@ final class EditorActions
             $doc->moveToDocumentStart();
             ($this->invalidate)();
 
-            return;
+            return true;
         }
 
         if ($kb->matches($data, 'document_end')) {
@@ -210,7 +243,7 @@ final class EditorActions
             $doc->moveToDocumentEnd();
             ($this->invalidate)();
 
-            return;
+            return true;
         }
 
         if ($kb->matches($data, 'page_up') || $kb->matches($data, 'page_down')) {
@@ -219,12 +252,20 @@ final class EditorActions
             $doc->setCursor($doc->getCursorLine() + $delta, $doc->getCursorCol());
             ($this->invalidate)();
 
-            return;
+            return true;
         }
+
+        return false;
+    }
+
+    /** Clipboard/line/fold verbs, newline, and the indent/outdent family. */
+    private function tryClipboardAndLineOps(string $data, Keybindings $kb): bool
+    {
+        $doc = $this->document;
 
         // Clipboard, line operations and folds.
         if ($this->runFirstMatch($data, $kb, self::CLIPBOARD_LINE_ACTIONS)) {
-            return;
+            return true;
         }
 
         // Editing
@@ -232,7 +273,7 @@ final class EditorActions
             $doc->insertNewLine();
             ($this->notifyChange)();
 
-            return;
+            return true;
         }
 
         // Tab/Shift+Tab over a selection indent/outdent the whole block of lines;
@@ -242,21 +283,29 @@ final class EditorActions
             $doc->indentSelection();
             ($this->notifyChange)();
 
-            return;
+            return true;
         }
         if ($kb->matches($data, 'prev_tab_stop')) {
             $doc->dedentSelection();
             ($this->notifyChange)();
 
-            return;
+            return true;
         }
 
         if ($kb->matches($data, 'indent')) {
             $doc->insert($doc->indentUnit());
             ($this->notifyChange)();
 
-            return;
+            return true;
         }
+
+        return false;
+    }
+
+    /** Auto-pair backspace, line delete, the delete-char family, and cancel-selection. */
+    private function tryEditing(string $data, Keybindings $kb): bool
+    {
+        $doc = $this->document;
 
         // Auto-pairs: backspacing between an empty pair removes both chars.
         if (($this->autoPairsEnabled)() && $kb->matches($data, 'delete_char_backward') && !$doc->hasSelection() && $this->autoPair->isBetweenEmptyPair($doc)) {
@@ -266,13 +315,13 @@ final class EditorActions
             });
             ($this->notifyChange)();
 
-            return;
+            return true;
         }
 
         if ($kb->matches($data, 'delete_line')) {
             $this->run('delete_line');
 
-            return;
+            return true;
         }
 
         $edited = match (true) {
@@ -287,7 +336,7 @@ final class EditorActions
                 ($this->notifyChange)();
             }
 
-            return;
+            return true;
         }
 
         if ($kb->matches($data, 'select_cancel')) {
@@ -296,21 +345,31 @@ final class EditorActions
                 ($this->invalidate)();
             }
 
-            return;
+            return true;
         }
 
-        // Plain text input
-        if (($this->isInsertable)($data)) {
-            if (($this->autoPairsEnabled)() && $this->autoPair->handle($doc, $data)) {
-                ($this->notifyChange)();
-                $this->maybeAutoTrigger($data);
+        return false;
+    }
 
-                return;
-            }
-            $doc->insert($data);
+    /** Plain text insertion (with auto-pairing), the final fall-through. */
+    private function tryTextInput(string $data, Keybindings $kb): bool
+    {
+        if (!($this->isInsertable)($data)) {
+            return false;
+        }
+
+        $doc = $this->document;
+        if (($this->autoPairsEnabled)() && $this->autoPair->handle($doc, $data)) {
             ($this->notifyChange)();
             $this->maybeAutoTrigger($data);
+
+            return true;
         }
+        $doc->insert($data);
+        ($this->notifyChange)();
+        $this->maybeAutoTrigger($data);
+
+        return true;
     }
 
     /**
