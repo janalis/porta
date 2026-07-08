@@ -8,7 +8,6 @@ use Porta\Config\ActionCatalog;
 use Porta\Config\CommandRegistry;
 use Porta\Config\EditorConfig\EditorConfigResolver;
 use Porta\Config\IdeConfig;
-use Porta\Config\LayoutStore;
 use Porta\Config\SettingsController;
 use Porta\Config\SettingsKeymapController;
 use Porta\Config\SettingsLanguageController;
@@ -780,6 +779,7 @@ final class Ide
     private function buildSettingsWidgets(): void
     {
         $this->settingsNav = new SettingsNavWidget($this->translator);
+        $this->container->set(SettingsNavWidget::class, $this->settingsNav);
         $this->settingsNav->setId('settings-nav')->setStyle(new Style(flex: 0));
         $this->settingsForm = new SettingsFormWidget($this->translator);
         $this->settingsForm->setId('settings-form')->setStyle(new Style(flex: 1));
@@ -802,16 +802,8 @@ final class Ide
     /** The resize/layout controller, the menu/context overlay compositor and the tree operations. */
     private function buildLayoutAndOverlay(): void
     {
-        $this->layout = new LayoutController(
-            new LayoutStore($this->rootDir),
-            $this->tui,
-            $this->renderer,
-            $this->tree,
-            $this->terminalPanel,
-            $this->resultsPanel,
-            new GitSidebar($this->gitTabs, $this->gitChanges, $this->gitCommitBox, $this->gitHistory),
-            $this->settingsNav,
-        );
+        $this->container->set(GitSidebar::class, new GitSidebar($this->gitTabs, $this->gitChanges, $this->gitCommitBox, $this->gitHistory));
+        $this->layout = $this->service(LayoutController::class);
         $this->overlay = new MenuOverlayController(
             $this->renderer,
             $this->menuBar,
