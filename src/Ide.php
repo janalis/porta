@@ -26,10 +26,12 @@ use Porta\History\LocalHistoryController;
 use Porta\History\SessionStore;
 use Porta\I18n\Bidi;
 use Porta\I18n\Translator;
+use Porta\Input\EditorLayoutPanes;
 use Porta\Input\GitMouseRouter;
 use Porta\Input\HitTester;
 use Porta\Input\MouseEvent;
 use Porta\Input\MouseRouter;
+use Porta\Input\OverlayPanels;
 use Porta\Input\SettingsMouseRouter;
 use Porta\Layout\GitSidebar;
 use Porta\Layout\LayoutController;
@@ -422,15 +424,10 @@ final class Ide
         $this->mouseRouter = new MouseRouter(
             $hit,
             $this->tui,
-            $this->tree,
-            $this->tabBar,
-            $this->editor,
+            new EditorLayoutPanes($this->tree, $this->tabBar, $this->editor, $this->breadcrumbs),
+            new OverlayPanels($this->terminalPanel, $this->resultsPanel, $this->goToFile),
             $this->menuBar,
             $this->contextMenu,
-            $this->breadcrumbs,
-            $this->terminalPanel,
-            $this->resultsPanel,
-            $this->goToFile,
             $this->layout,
             $this->overlay,
             $this->buffers,
