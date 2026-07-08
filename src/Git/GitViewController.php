@@ -49,6 +49,9 @@ final class GitViewController
 
     private int $contextStep = 0;
 
+    /** Runs the index-mutating verbs (stage/unstage/discard/commit) for this view. */
+    private readonly GitStagingService $staging;
+
     /**
      * @param \Closure(): list<AbstractWidget> $editArea the main container's normal children (tree, separator, editor pane), in the current writing direction's order
      * @param \Closure(): void     $onClosed restore focus/render after the swap back
@@ -79,6 +82,8 @@ final class GitViewController
         private readonly \Closure $saveDiffPrefs,
         private readonly \Closure $copyToClipboard,
     ) {
+        $this->staging = new GitStagingService($this->git, $this->rootDir, $this->commitBox, $this->notifier, $this->translator);
+
         $exit = fn () => $this->close();
         $next = fn () => $this->focusNext();
 
@@ -290,10 +295,9 @@ final class GitViewController
     }
 
     /**
-     * Line/hunk staging from the diff pane: a worktree diff stages the
-     * selection into the index; a cached diff unstages it (the patch is built
-     * from the inverted hunks, same recount path). Untracked files have no
-     * partial form — the whole file stages from the list.
+     * Line/hunk staging from the diff pane, delegated to the staging service
+     * once the currently-shown diff is known; the callback refreshes and
+     * reloads the same path so the diff view keeps its cursor.
      *
      * @param array<int, array<int, true>> $selected hunk index => selected line set
      */
@@ -302,34 +306,8 @@ final class GitViewController
         if (null === $this->shownEntry || null === $this->shownDocument) {
             return;
         }
-        if ('untracked' === $this->shownSide) {
-            $this->notifier->flash($this->translator->trans('Untracked: stage the whole file with Space in the changes list'));
-            $this->tui->requestRender();
-
-            return;
-        }
-        if ($this->hideWhitespace) {
-            // A -w diff's hunks omit whitespace-only lines, so a patch built
-            // from them no longer matches the preimage — git apply would balk.
-            $this->notifier->flash($this->translator->trans('Show whitespace changes to stage lines (w)'));
-            $this->tui->requestRender();
-
-            return;
-        }
-
-        $hunks = 'cached' === $this->shownSide
-            ? array_map(PatchBuilder::invertHunk(...), $this->shownDocument->hunks)
-            : $this->shownDocument->hunks;
-        $patch = PatchBuilder::build($this->shownEntry->path, $hunks, $selected);
-        if (null === $patch) {
-            return; // only context rows selected
-        }
-
         $entry = $this->shownEntry;
-        $this->git->applyCached($patch, function (bool $ok) use ($entry): void {
-            if (!$ok) {
-                $this->notifier->flash($this->translator->trans('git apply refused the partial patch'));
-            }
+        $this->staging->stageSelection($entry, $this->shownDocument, $this->shownSide, $this->hideWhitespace, $selected, function () use ($entry): void {
             $this->refresh();
             $this->loadDiff($entry); // same path: the diff view keeps its cursor
         });
@@ -337,34 +315,12 @@ final class GitViewController
 
     private function toggleStage(ChangeEntry $entry): void
     {
-        $abs = $this->rootDir.'/'.$entry->path;
-        $done = function (bool $ok): void {
-            if (!$ok) {
-                $this->notifier->flash($this->translator->trans('git refused the staging change'));
-            }
-            $this->refresh();
-        };
-
-        'full' === $entry->stagedState() ? $this->git->unstageFile($abs, $done) : $this->git->stage($abs, $done);
+        $this->staging->toggleStage($entry, fn () => $this->refresh());
     }
 
     private function discard(ChangeEntry $entry): void
     {
-        if ($entry->isUntracked()) {
-            @unlink($this->rootDir.'/'.$entry->path);
-            $this->notifier->flash($this->translator->trans('Deleted %path%', ['%path%' => $entry->path]));
-            $this->refresh();
-
-            return;
-        }
-        $this->git->discardFile($this->rootDir.'/'.$entry->path, function (bool $ok) use ($entry): void {
-            $this->notifier->flash(
-                $ok
-                    ? $this->translator->trans('Discarded changes to %path%', ['%path%' => $entry->path])
-                    : $this->translator->trans('Discard failed'),
-            );
-            $this->refresh();
-        });
+        $this->staging->discard($entry, fn () => $this->refresh());
     }
 
     /** Amend armed: prefill the last commit's message; disarmed: start fresh. */
@@ -386,22 +342,7 @@ final class GitViewController
 
     private function commit(string $message, bool $amend = false): void
     {
-        $this->git->commit(
-            $message,
-            function (bool $ok, string $out): void {
-                $firstLine = strtok($out, "\n");
-                $summary = false === $firstLine ? '' : $firstLine;
-                if ($ok) {
-                    $this->commitBox->clear();
-                    $this->notifier->flash($this->translator->trans('Committed: %summary%', ['%summary%' => $summary]));
-                    ($this->onCommitted)();
-                } else {
-                    $this->notifier->flash($this->translator->trans('Commit failed: %summary%', ['%summary%' => $summary]));
-                }
-                $this->refresh();
-            },
-            $amend,
-        );
+        $this->staging->commit($message, $amend, fn () => ($this->onCommitted)(), fn () => $this->refresh());
     }
 
     /** Swap the left pane between the Changes and History tabs. */
