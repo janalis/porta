@@ -12,10 +12,15 @@ final class TranslatorTest extends TestCase
 {
     private function xliff(string $locale, string $body): string
     {
-        return '<?xml version="1.0" encoding="utf-8"?>'
+        return (
+            '<?xml version="1.0" encoding="utf-8"?>'
             .'<xliff xmlns="urn:oasis:names:tc:xliff:document:1.2" version="1.2">'
-            .'<file source-language="en" target-language="'.$locale.'" datatype="plaintext" original="messages"><body>'
-            .$body.'</body></file></xliff>';
+            .'<file source-language="en" target-language="'
+            .$locale
+            .'" datatype="plaintext" original="messages"><body>'
+            .$body
+            .'</body></file></xliff>'
+        );
     }
 
     private function unit(string $source, string $target): string

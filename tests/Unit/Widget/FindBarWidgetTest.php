@@ -4,9 +4,9 @@ declare(strict_types=1);
 
 namespace Porta\Tests\Unit\Widget;
 
-use Porta\I18n\Translator;
 use PHPUnit\Framework\TestCase;
 use Porta\Editor\Document;
+use Porta\I18n\Translator;
 use Porta\Widget\FindBarWidget;
 use Symfony\Component\Tui\Ansi\AnsiUtils;
 use Symfony\Component\Tui\Render\RenderContext;

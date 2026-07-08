@@ -5,9 +5,9 @@ declare(strict_types=1);
 namespace Porta\Tests\Unit\Lsp;
 
 use PHPUnit\Framework\TestCase;
-use Porta\I18n\Translator;
 use Porta\Editor\BufferManager;
 use Porta\Editor\Document;
+use Porta\I18n\Translator;
 use Porta\Lsp\LspSessionPool;
 use Porta\Lsp\WorkspaceEditor;
 use Porta\Widget\CodeEditorWidget;

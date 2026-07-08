@@ -74,7 +74,6 @@ final class GitInfoTest extends TestCase
         });
         $this->assertSame([], $marks);
 
-
         // Write operations short-circuit too.
         $staged = 'unset';
         $git->stage($project->path('a.txt'), function (bool $ok) use (&$staged): void {
@@ -147,7 +146,6 @@ final class GitInfoTest extends TestCase
 
         $git->cancelAll();
     }
-
 
     public function testAgainstARealRepository(): void
     {

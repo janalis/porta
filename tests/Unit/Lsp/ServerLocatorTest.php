@@ -163,12 +163,14 @@ final class ServerLocatorTest extends TestCase
     public function testLocateAllMapConfigRoutesPerLanguage(): void
     {
         putenv('PATH=/nonexistent'); // no auto-detected servers to merge in
-        $project = new TempProject(['.porta.json' => json_encode(['lsp' => [
-            'php' => 'phpactor language-server',
-            'typescript' => ['node', '/x/tsserver.js', '--stdio'],
-            'python' => '',                 // empty command: dropped → auto-detect (none here)
-            'yaml' => ['ls', '--stdio'],    // argv-list value form
-        ]])]);
+        $project = new TempProject(['.porta.json' => json_encode([
+            'lsp' => [
+                'php' => 'phpactor language-server',
+                'typescript' => ['node', '/x/tsserver.js', '--stdio'],
+                'python' => '', // empty command: dropped → auto-detect (none here)
+                'yaml' => ['ls', '--stdio'], // argv-list value form
+            ],
+        ])]);
 
         $servers = ServerLocator::locateAll($project->dir);
 

@@ -7,8 +7,8 @@ namespace Porta\Tests\E2e;
 use PHPUnit\Framework\TestCase;
 use Porta\Config\IdeConfig;
 use Porta\Ide;
-use Porta\Widget\ResultsPanelFields;
 use Porta\Tests\Support\TempProject;
+use Porta\Widget\ResultsPanelFields;
 use Revolt\EventLoop;
 use Symfony\Component\Tui\Ansi\AnsiUtils;
 use Symfony\Component\Tui\Terminal\VirtualTerminal;
@@ -44,7 +44,7 @@ final class IdeEdgeCasesTest extends TestCase
         // Default duration: the last step plus a settle margin for its async
         // fallout (mock-LSP roundtrips are stdio, ~ms). Tests whose tail work
         // needs longer pass an explicit duration.
-        $duration ??= max([] === $steps ? 0.0 : max(array_keys($steps)) / 1000 + 0.5, 0.7);
+        $duration ??= max([] === $steps ? 0.0 : (max(array_keys($steps)) / 1000) + 0.5, 0.7);
 
         // Wide terminal so status-bar flashes are not truncated away
         $terminal = new VirtualTerminal(columns: 160, rows: 24);
@@ -315,9 +315,9 @@ final class IdeEdgeCasesTest extends TestCase
                     $this->assertSame(40, $tui->getById('git-changes')->width(), 'the seeded percent applied at startup');
                     // Drag the git separator (SGR col 41 with a 40-wide sidebar)
                     // out to col 61: the whole left column follows.
-                    $tui->handleInput("\x1b[<0;41;6M");  // arm on the separator
+                    $tui->handleInput("\x1b[<0;41;6M"); // arm on the separator
                     $tui->handleInput("\x1b[<32;61;6M"); // drag right
-                    $tui->handleInput("\x1b[<0;61;6m");  // release
+                    $tui->handleInput("\x1b[<0;61;6m"); // release
                 },
                 900 => function ($tui) use ($project): void {
                     $this->assertSame(60, $tui->getById('git-changes')->width(), 'the drag resized the sidebar');
@@ -3222,7 +3222,7 @@ final class IdeEdgeCasesTest extends TestCase
         $dir = escapeshellarg($project->dir);
         exec("git -C {$dir} init -q && git -C {$dir} config user.email t@t && git -C {$dir} config user.name t && git -C {$dir} add -A && git -C {$dir} commit -qm init");
         $project->write('src/A.php', "<?php\n\$a = 2;\n"); // unstaged edit
-        $project->write('notes.md', "hi\n");               // untracked
+        $project->write('notes.md', "hi\n"); // untracked
 
         $terminal = $this->runIde(
             $project,
@@ -3301,7 +3301,7 @@ final class IdeEdgeCasesTest extends TestCase
                     // the first '+' row and stage just it.
                     $tui->handleInput("\x1b[B");
                     $tui->handleInput("\x1b[B");
-                    $tui->handleInput(" ");
+                    $tui->handleInput(' ');
                 },
                 1000 => function ($tui, $terminal) use ($project): void {
                     exec('git -C '.escapeshellarg($project->dir).' diff --cached 2>/dev/null', $cached);
@@ -3478,7 +3478,7 @@ final class IdeEdgeCasesTest extends TestCase
                     // Hover + wheel + click the keybindings list (content pane), a nav miss too.
                     $tui->handleInput("\x1b[<35;40;5M"); // hover a list row (nav clears)
                     $tui->handleInput("\x1b[<65;40;5M"); // wheel down over the list
-                    $tui->handleInput("\x1b[<0;40;5M");  // click a list row
+                    $tui->handleInput("\x1b[<0;40;5M"); // click a list row
                     $tui->handleInput("\x1b[<0;40;5m");
                 },
                 1100 => function ($tui): void {
@@ -3540,9 +3540,9 @@ final class IdeEdgeCasesTest extends TestCase
                     $tui->tick();
                     $this->assertSame(40, $tui->getById('settings-nav')->width(), 'the seeded percent applied at startup');
                     // Drag the settings separator (SGR col 41 with a 40-wide nav) in to col 31.
-                    $tui->handleInput("\x1b[<0;41;6M");  // arm on the separator
+                    $tui->handleInput("\x1b[<0;41;6M"); // arm on the separator
                     $tui->handleInput("\x1b[<32;31;6M"); // drag left
-                    $tui->handleInput("\x1b[<0;31;6m");  // release
+                    $tui->handleInput("\x1b[<0;31;6m"); // release
                 },
                 900 => function ($tui) use ($project): void {
                     $this->assertSame(30, $tui->getById('settings-nav')->width(), 'the drag resized the sidebar');
@@ -3596,7 +3596,7 @@ final class IdeEdgeCasesTest extends TestCase
                     // The clicked commit's files settled AND its first file's
                     // patch auto-loaded — no keystroke needed to see a diff.
                     $this->assertStringContainsString('+more', AnsiUtils::stripAnsiCodes($terminal->getOutput()), 'first file auto-selected');
-                    $tui->handleInput("\r");     // into the files list
+                    $tui->handleInput("\r"); // into the files list
                     $tui->handleInput("\x1b[B"); // wiggle selection to refire the load
                     $tui->handleInput("\x1b[A");
                 },
@@ -3850,9 +3850,6 @@ final class IdeEdgeCasesTest extends TestCase
         }
         self::markTestSkipped('git binary not available');
     }
-
-
-
 
     // --- Right-click context menus -------------------------------------------
     //

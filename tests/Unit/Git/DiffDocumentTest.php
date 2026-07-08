@@ -124,12 +124,15 @@ final class DiffDocumentTest extends TestCase
         // ctx, -a, +b, +c  → ctx pair, (a|b) pair, (blank|c) pair.
         $doc = DiffDocument::parse("@@ -1,2 +1,3 @@\n ctx\n-a\n+b\n+c\n");
 
-        $this->assertSame([
-            ['kind' => 'hunk', 'hunk' => 0, 'left' => -1, 'right' => -1],
-            ['kind' => 'pair', 'hunk' => 0, 'left' => 0, 'right' => 0],
-            ['kind' => 'pair', 'hunk' => 0, 'left' => 1, 'right' => 2],
-            ['kind' => 'pair', 'hunk' => 0, 'left' => -1, 'right' => 3],
-        ], $doc->splitRows());
+        $this->assertSame(
+            [
+                ['kind' => 'hunk', 'hunk' => 0, 'left' => -1, 'right' => -1],
+                ['kind' => 'pair', 'hunk' => 0, 'left' => 0, 'right' => 0],
+                ['kind' => 'pair', 'hunk' => 0, 'left' => 1, 'right' => 2],
+                ['kind' => 'pair', 'hunk' => 0, 'left' => -1, 'right' => 3],
+            ],
+            $doc->splitRows(),
+        );
     }
 
     public function testSplitRowsSurplusDeletionsAndLoneAdditions(): void

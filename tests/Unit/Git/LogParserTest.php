@@ -11,14 +11,17 @@ final class LogParserTest extends TestCase
 {
     public function testParsesNulRecordsWithUnitSeparatedFields(): void
     {
-        $raw = "abc123full\x1fabc123\x1fAlice\x1f1700000000\x1fFix the parser\0"
-            ."def456full\x1fdef456\x1fBob\x1f1700000100\x1fAdd tests\0";
+        $raw = "abc123full\x1fabc123\x1fAlice\x1f1700000000\x1fFix the parser\0"."def456full\x1fdef456\x1fBob\x1f1700000100\x1fAdd tests\0";
 
         $entries = LogParser::parseLog($raw);
 
         $this->assertCount(2, $entries);
         $this->assertSame(['abc123full', 'abc123', 'Alice', 1700000000, 'Fix the parser'], [
-            $entries[0]->sha, $entries[0]->shortSha, $entries[0]->author, $entries[0]->timestamp, $entries[0]->subject,
+            $entries[0]->sha,
+            $entries[0]->shortSha,
+            $entries[0]->author,
+            $entries[0]->timestamp,
+            $entries[0]->subject,
         ]);
         $this->assertSame('Add tests', $entries[1]->subject);
     }
@@ -36,12 +39,15 @@ final class LogParserTest extends TestCase
 
         $files = LogParser::parseNameStatus($raw);
 
-        $this->assertSame([
-            ['status' => 'M', 'path' => 'src/a.php'],
-            ['status' => 'A', 'path' => 'new.txt'],
-            ['status' => 'R', 'path' => 'new/name.php'],
-            ['status' => 'D', 'path' => 'gone.txt'],
-        ], $files);
+        $this->assertSame(
+            [
+                ['status' => 'M', 'path' => 'src/a.php'],
+                ['status' => 'A', 'path' => 'new.txt'],
+                ['status' => 'R', 'path' => 'new/name.php'],
+                ['status' => 'D', 'path' => 'gone.txt'],
+            ],
+            $files,
+        );
     }
 
     public function testNameStatusEdgeCases(): void

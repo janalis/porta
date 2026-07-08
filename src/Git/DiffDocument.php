@@ -97,17 +97,17 @@ final readonly class DiffDocument
     {
         $count = \count($lines);
         for ($i = 0; $i < $count; ++$i) {
-            if ('-' !== $lines[$i]->origin || ($i > 0 && '-' === $lines[$i - 1]->origin)) {
+            if ('-' !== $lines[$i]->origin || $i > 0 && '-' === $lines[$i - 1]->origin) {
                 continue; // only the start of a deletion run
             }
             $delStart = $i;
             $dels = 0;
-            while ($delStart + $dels < $count && '-' === $lines[$delStart + $dels]->origin) {
+            while (($delStart + $dels) < $count && '-' === $lines[$delStart + $dels]->origin) {
                 ++$dels;
             }
             $addStart = $delStart + $dels;
             $adds = 0;
-            while ($addStart + $adds < $count && '+' === $lines[$addStart + $adds]->origin) {
+            while (($addStart + $adds) < $count && '+' === $lines[$addStart + $adds]->origin) {
                 ++$adds;
             }
             for ($p = 0; $p < min($dels, $adds); ++$p) {
@@ -190,12 +190,12 @@ final readonly class DiffDocument
                 }
                 // Start of a deletion run: measure it and the following additions.
                 $dels = 0;
-                while ($i + $dels < $count && '-' === $lines[$i + $dels]->origin) {
+                while (($i + $dels) < $count && '-' === $lines[$i + $dels]->origin) {
                     ++$dels;
                 }
                 $addStart = $i + $dels;
                 $adds = 0;
-                while ($addStart + $adds < $count && '+' === $lines[$addStart + $adds]->origin) {
+                while (($addStart + $adds) < $count && '+' === $lines[$addStart + $adds]->origin) {
                     ++$adds;
                 }
                 for ($p = 0; $p < max($dels, $adds); ++$p) {

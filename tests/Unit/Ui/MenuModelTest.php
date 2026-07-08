@@ -6,9 +6,9 @@ namespace Porta\Tests\Unit\Ui;
 
 use PHPUnit\Framework\TestCase;
 use Porta\Config\CommandRegistry;
+use Porta\I18n\Translator;
 use Porta\Ui\Menu;
 use Porta\Ui\MenuItem;
-use Porta\I18n\Translator;
 use Porta\Ui\MenuModel;
 use Porta\Widget\CodeEditorWidget;
 use Symfony\Component\Tui\Input\Keybindings;
@@ -49,12 +49,15 @@ final class MenuModelTest extends TestCase
 
     public function testTitlesAndItemsAreTranslated(): void
     {
-        $project = new \Porta\Tests\Support\TempProject(['messages.fr.xlf' => '<?xml version="1.0"?>'
-            .'<xliff xmlns="urn:oasis:names:tc:xliff:document:1.2" version="1.2">'
-            .'<file source-language="en" target-language="fr" datatype="plaintext" original="messages"><body>'
-            .'<trans-unit id="1"><source>File</source><target>Fichier</target></trans-unit>'
-            .'<trans-unit id="2"><source>Save File</source><target>Enregistrer le fichier</target></trans-unit>'
-            .'</body></file></xliff>']);
+        $project = new \Porta\Tests\Support\TempProject([
+            'messages.fr.xlf' =>
+                '<?xml version="1.0"?>'
+                    .'<xliff xmlns="urn:oasis:names:tc:xliff:document:1.2" version="1.2">'
+                    .'<file source-language="en" target-language="fr" datatype="plaintext" original="messages"><body>'
+                    .'<trans-unit id="1"><source>File</source><target>Fichier</target></trans-unit>'
+                    .'<trans-unit id="2"><source>Save File</source><target>Enregistrer le fichier</target></trans-unit>'
+                    .'</body></file></xliff>',
+        ]);
         $translator = new Translator('fr', $project->dir);
 
         $menus = $this->build(new CommandRegistry(), new CodeEditorWidget(), $translator);
@@ -111,7 +114,8 @@ final class MenuModelTest extends TestCase
         $editor->openFile('x.php', "<?php\n");
         $gitViewOpen = true;
         $ideKeys = new Keybindings([]);
-        $commands = $this->gitCommands()
+        $commands = $this
+            ->gitCommands()
             ->add('git_undo_commit', static function (): void {}, label: 'Git: Undo Last Commit')
             ->add('ide_git', static function (): void {}, label: 'Git: Changes');
         $menus = MenuModel::build($commands, $editor, $ideKeys, new Translator('en'), function () use (&$gitViewOpen): bool {

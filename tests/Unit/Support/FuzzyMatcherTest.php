@@ -53,7 +53,11 @@ final class FuzzyMatcherTest extends TestCase
 
     public function testScoreLoweredMatchesScoreOnPreLoweredInputs(): void
     {
-        foreach ([['src/UserRepo.php', 'urp', 4], ['getUserName', 'gun', 0], ['a-b_c.d', 'abcd', 0]] as [$haystack, $query, $boundary]) {
+        foreach ([
+            ['src/UserRepo.php', 'urp',  4],
+            ['getUserName',      'gun',  0],
+            ['a-b_c.d',          'abcd', 0],
+        ] as [$haystack, $query, $boundary]) {
             $this->assertSame(
                 FuzzyMatcher::score($haystack, $query, $boundary),
                 FuzzyMatcher::scoreLowered(strtolower($haystack), strtolower($query), $boundary, $haystack),

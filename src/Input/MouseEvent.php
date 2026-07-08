@@ -71,8 +71,17 @@ final class MouseEvent
     public function withColumn(int $col): self
     {
         return new self(
-            $this->button, $col, $this->row, $this->pressed, $this->motion, $this->wheel,
-            $this->wheelDelta, $this->wheelHDelta, $this->shift, $this->alt, $this->ctrl,
+            $this->button,
+            $col,
+            $this->row,
+            $this->pressed,
+            $this->motion,
+            $this->wheel,
+            $this->wheelDelta,
+            $this->wheelHDelta,
+            $this->shift,
+            $this->alt,
+            $this->ctrl,
         );
     }
 

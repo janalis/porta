@@ -116,8 +116,14 @@ final class MenuModel
      *
      * @return list<Menu>
      */
-    public static function build(CommandRegistry $commands, CodeEditorWidget $editor, Keybindings $ideKeys, Translator $translator, ?\Closure $gitViewOpen = null, ?\Closure $settingsViewOpen = null): array
-    {
+    public static function build(
+        CommandRegistry $commands,
+        CodeEditorWidget $editor,
+        Keybindings $ideKeys,
+        Translator $translator,
+        ?\Closure $gitViewOpen = null,
+        ?\Closure $settingsViewOpen = null,
+    ): array {
         $menus = [];
         foreach (self::DEFS as $title => $specs) {
             $menus[] = new Menu($translator->trans($title), self::items($specs, $commands, $editor, $ideKeys, $translator, $gitViewOpen, $settingsViewOpen));
@@ -137,8 +143,15 @@ final class MenuModel
      *
      * @return list<MenuItem>
      */
-    public static function items(array $specs, CommandRegistry $commands, CodeEditorWidget $editor, Keybindings $ideKeys, Translator $translator, ?\Closure $gitViewOpen = null, ?\Closure $settingsViewOpen = null): array
-    {
+    public static function items(
+        array $specs,
+        CommandRegistry $commands,
+        CodeEditorWidget $editor,
+        Keybindings $ideKeys,
+        Translator $translator,
+        ?\Closure $gitViewOpen = null,
+        ?\Closure $settingsViewOpen = null,
+    ): array {
         $items = [];
         foreach ($specs as $spec) {
             $items[] = self::SEP === $spec
@@ -172,12 +185,21 @@ final class MenuModel
      * @param (\Closure(): bool)|null $gitViewOpen
      * @param (\Closure(): bool)|null $settingsViewOpen
      */
-    private static function item(string $spec, CommandRegistry $commands, CodeEditorWidget $editor, Keybindings $ideKeys, Translator $translator, ?\Closure $gitViewOpen, ?\Closure $settingsViewOpen): MenuItem
-    {
+    private static function item(
+        string $spec,
+        CommandRegistry $commands,
+        CodeEditorWidget $editor,
+        Keybindings $ideKeys,
+        Translator $translator,
+        ?\Closure $gitViewOpen,
+        ?\Closure $settingsViewOpen,
+    ): MenuItem {
         [$scope, $id] = explode(':', $spec, 2);
-        $label = $translator->trans('i' === $scope
-            ? $commands->label($id) ?? ActionCatalog::label($id)
-            : ActionCatalog::label($id));
+        $label = $translator->trans(
+            'i' === $scope
+                ? $commands->label($id) ?? ActionCatalog::label($id)
+                : ActionCatalog::label($id),
+        );
         $shortcut = ShortcutFormatter::format(self::binding($id, $editor, $ideKeys));
         $run = 'i' === $scope
             ? static fn () => $commands->run($id)

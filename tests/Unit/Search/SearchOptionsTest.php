@@ -21,17 +21,17 @@ final class SearchOptionsTest extends TestCase
 
     public function testToggledFlipsTheKeyedFlagAndLeavesTheRest(): void
     {
-        $this->assertTrue((new SearchOptions())->toggled('regex')->regex);
-        $this->assertTrue((new SearchOptions())->toggled('case')->caseSensitive);
-        $this->assertTrue((new SearchOptions())->toggled('word')->wholeWord);
+        $this->assertTrue(new SearchOptions()->toggled('regex')->regex);
+        $this->assertTrue(new SearchOptions()->toggled('case')->caseSensitive);
+        $this->assertTrue(new SearchOptions()->toggled('word')->wholeWord);
 
         // Toggling one leaves the others untouched.
-        $onlyWord = (new SearchOptions())->toggled('word');
+        $onlyWord = new SearchOptions()->toggled('word');
         $this->assertFalse($onlyWord->regex);
         $this->assertFalse($onlyWord->caseSensitive);
 
         // Toggling twice returns to off.
-        $this->assertFalse((new SearchOptions())->toggled('regex')->toggled('regex')->regex);
+        $this->assertFalse(new SearchOptions()->toggled('regex')->toggled('regex')->regex);
     }
 
     public function testAnUnknownKeyIsANoOp(): void

@@ -194,7 +194,7 @@ final class LspSessionPool
         // is already running.
         $key = $this->fallbackKey();
 
-        return null === $key ? null : ($this->sessions[self::signature($this->servers[$key]['command'])] ?? null);
+        return null === $key ? null : $this->sessions[self::signature($this->servers[$key]['command'])] ?? null;
     }
 
     private function sessionFor(?string $path, bool $startIfNeeded = false): ?LspSession

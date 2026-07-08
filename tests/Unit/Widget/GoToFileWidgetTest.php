@@ -4,8 +4,8 @@ declare(strict_types=1);
 
 namespace Porta\Tests\Unit\Widget;
 
-use Porta\I18n\Translator;
 use PHPUnit\Framework\TestCase;
+use Porta\I18n\Translator;
 use Porta\Tests\Support\TempProject;
 use Porta\Widget\GoToFileWidget;
 use Symfony\Component\Tui\Ansi\AnsiUtils;

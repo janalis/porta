@@ -5,8 +5,8 @@ declare(strict_types=1);
 namespace Porta\Tests\Unit\Lsp;
 
 use PHPUnit\Framework\TestCase;
-use Porta\I18n\Translator;
 use Porta\Editor\Document;
+use Porta\I18n\Translator;
 use Porta\Lsp\LspSessionPool;
 use Porta\Tests\Support\FakeLspClient;
 
@@ -37,7 +37,9 @@ final class LspSessionPoolTest extends TestCase
                 static function (string $line): void {},
                 static function (array $params): void {},
                 static fn (array $edit): bool => false,
-                function (): void { ++$this->statusRepaints; },
+                function (): void {
+                    ++$this->statusRepaints;
+                },
             );
         }
 

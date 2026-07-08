@@ -19,8 +19,8 @@ final class GitInfoStatusTest extends TestCase
     public function testStatusListsStagedUnstagedAndUntracked(): void
     {
         $git = $this->repo($project, committed: ['a.txt' => "one\n"]);
-        $project->write('a.txt', "one changed\n");   // unstaged edit
-        $project->write('new.txt', "fresh\n");       // untracked
+        $project->write('a.txt', "one changed\n"); // unstaged edit
+        $project->write('new.txt', "fresh\n"); // untracked
         exec('git -C '.escapeshellarg($project->dir).' add new.txt 2>/dev/null'); // staged add
 
         $entries = null;
@@ -73,9 +73,13 @@ final class GitInfoStatusTest extends TestCase
         $git->worktreeFileDiff($project->path('a.txt'), function (string $out) use (&$default): void {
             $default = $out;
         });
-        $git->worktreeFileDiff($project->path('a.txt'), function (string $out) use (&$ten): void {
-            $ten = $out;
-        }, context: 10);
+        $git->worktreeFileDiff(
+            $project->path('a.txt'),
+            function (string $out) use (&$ten): void {
+                $ten = $out;
+            },
+            context: 10,
+        );
         $this->await(static fn (): bool => null !== $default && null !== $ten);
 
         $this->assertStringContainsString(" line 12\n", $default, 'git default: three lines of context');
@@ -85,9 +89,13 @@ final class GitInfoStatusTest extends TestCase
 
         exec('git -C '.escapeshellarg($project->dir).' add a.txt 2>/dev/null');
         $full = null;
-        $git->cachedFileDiff($project->path('a.txt'), function (string $out) use (&$full): void {
-            $full = $out;
-        }, context: 999_999);
+        $git->cachedFileDiff(
+            $project->path('a.txt'),
+            function (string $out) use (&$full): void {
+                $full = $out;
+            },
+            context: 999_999,
+        );
         $this->await(static fn (): bool => null !== $full);
         $this->assertStringContainsString(" line 1\n", $full, 'the huge -U shows the whole file');
         $this->assertStringContainsString(" line 30\n", $full);
@@ -103,9 +111,13 @@ final class GitInfoStatusTest extends TestCase
         $git->worktreeFileDiff($project->path('a.txt'), function (string $out) use (&$plain): void {
             $plain = $out;
         });
-        $git->worktreeFileDiff($project->path('a.txt'), function (string $out) use (&$ignoring): void {
-            $ignoring = $out;
-        }, ignoreWhitespace: true);
+        $git->worktreeFileDiff(
+            $project->path('a.txt'),
+            function (string $out) use (&$ignoring): void {
+                $ignoring = $out;
+            },
+            ignoreWhitespace: true,
+        );
         $this->await(static fn (): bool => null !== $plain && null !== $ignoring);
 
         $this->assertStringContainsString('+  bravo', $plain, 'the plain diff shows the indent change');
@@ -119,12 +131,21 @@ final class GitInfoStatusTest extends TestCase
         $cached = $show = null;
         $project->write('a.txt', "alpha\n    bravo\ncharlie\ndelta\necho\nfoxtrot\ngolf\nhotel CHANGED\n");
         exec('git -C '.escapeshellarg($project->dir).' add a.txt 2>/dev/null');
-        $git->cachedFileDiff($project->path('a.txt'), function (string $out) use (&$cached): void {
-            $cached = $out;
-        }, ignoreWhitespace: true);
-        $git->commitFileDiff($sha[0], 'a.txt', function (string $out) use (&$show): void {
-            $show = $out;
-        }, ignoreWhitespace: true);
+        $git->cachedFileDiff(
+            $project->path('a.txt'),
+            function (string $out) use (&$cached): void {
+                $cached = $out;
+            },
+            ignoreWhitespace: true,
+        );
+        $git->commitFileDiff(
+            $sha[0],
+            'a.txt',
+            function (string $out) use (&$show): void {
+                $show = $out;
+            },
+            ignoreWhitespace: true,
+        );
         $this->await(static fn (): bool => null !== $cached && null !== $show);
 
         $this->assertStringNotContainsString('bravo', $cached, 'the cached -w diff hides the reindent');
@@ -192,9 +213,13 @@ final class GitInfoStatusTest extends TestCase
         $this->assertSame("second\n\nwith body", $message, 'the full message comes back for the amend prefill');
 
         $amended = null;
-        $git->commit('second, reworded', function (bool $ok) use (&$amended): void {
-            $amended = $ok;
-        }, amend: true);
+        $git->commit(
+            'second, reworded',
+            function (bool $ok) use (&$amended): void {
+                $amended = $ok;
+            },
+            amend: true,
+        );
         $this->await(static fn (): bool => null !== $amended);
         $this->assertTrue($amended);
         exec('git -C '.escapeshellarg($project->dir).' log --format=%s 2>/dev/null', $subjects);
@@ -273,7 +298,21 @@ final class GitInfoStatusTest extends TestCase
         });
 
         $this->assertSame(
-            [['status', [], ''], ['cached', ''], ['worktree', ''], ['untracked', ''], ['unstage', false], ['discard', false], ['apply', false], ['log', []], ['files', []], ['show', ''], ['commit', false, ''], ['last', ''], ['undo', false]],
+            [
+                ['status', [], ''],
+                ['cached', ''],
+                ['worktree', ''],
+                ['untracked', ''],
+                ['unstage', false],
+                ['discard', false],
+                ['apply', false],
+                ['log', []],
+                ['files', []],
+                ['show', ''],
+                ['commit', false, ''],
+                ['last', ''],
+                ['undo', false],
+            ],
             $calls,
             'all resolve synchronously with empty/false results',
         );

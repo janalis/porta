@@ -4,9 +4,9 @@ declare(strict_types=1);
 
 namespace Porta\Tests\Unit\Widget\Git;
 
-use Porta\I18n\Translator;
 use PHPUnit\Framework\TestCase;
 use Porta\Git\LogEntry;
+use Porta\I18n\Translator;
 use Porta\Widget\Git\HistoryListWidget;
 use Symfony\Component\Tui\Ansi\AnsiUtils;
 use Symfony\Component\Tui\Render\RenderContext;
@@ -58,7 +58,7 @@ final class HistoryListWidgetTest extends TestCase
         });
 
         $widget->handleInput("\x1b[B"); // second commit
-        $widget->handleInput("\r");     // into the file list
+        $widget->handleInput("\r"); // into the file list
         $widget->handleInput("\x1b[B"); // second file
 
         $this->assertSame(['commit:bbb222', 'file:new.txt'], $events);
@@ -117,12 +117,12 @@ final class HistoryListWidgetTest extends TestCase
         });
         $widget->render(new RenderContext(44, 16)); // teach it its height
 
-        $widget->handleClick(2);  // second commit row
+        $widget->handleClick(2); // second commit row
         // With 16 rows: commits occupy rows 1..6, files header row 7, files from row 8.
-        $widget->handleClick(9);  // second file row
+        $widget->handleClick(9); // second file row
 
         $this->assertSame(['commit:bbb222', 'file:new.txt'], $events);
-        $widget->handleClick(0);  // header: ignored
+        $widget->handleClick(0); // header: ignored
         $this->assertCount(2, $events);
     }
 

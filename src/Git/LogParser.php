@@ -48,10 +48,10 @@ final class LogParser
                 continue;
             }
             $letter = $status[0];
-            if (('R' === $letter || 'C' === $letter) && $i + 2 < $count) {
+            if (('R' === $letter || 'C' === $letter) && ($i + 2) < $count) {
                 $files[] = ['status' => $letter, 'path' => $tokens[$i + 2]]; // old path skipped
                 $i += 3;
-            } elseif ($i + 1 < $count) {
+            } elseif (($i + 1) < $count) {
                 $files[] = ['status' => $letter, 'path' => $tokens[$i + 1]];
                 $i += 2;
             } else {

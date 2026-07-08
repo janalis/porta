@@ -4,8 +4,8 @@ declare(strict_types=1);
 
 namespace Porta\Tests\Unit\Layout;
 
-use Porta\I18n\Translator;
 use PHPUnit\Framework\TestCase;
+use Porta\I18n\Translator;
 use Porta\Layout\GitSidebar;
 use Porta\Widget\Git\ChangesListWidget;
 use Porta\Widget\Git\CommitBoxWidget;

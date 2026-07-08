@@ -49,19 +49,19 @@ final class BidiTest extends TestCase
 
     public function testMixedLineOrdersRunsForTheRtlBase(): void
     {
-        $line = 'abc ' . self::SHALOM . ' def';
-        self::assertSame('def ' . self::SHALOM_VISUAL . ' abc', self::strip(Bidi::reorder($line, true)));
+        $line = 'abc '.self::SHALOM.' def';
+        self::assertSame('def '.self::SHALOM_VISUAL.' abc', self::strip(Bidi::reorder($line, true)));
     }
 
     public function testHebrewRunReversesWhileLatinStaysUnderAnLtrBase(): void
     {
-        $line = 'x ' . self::SHALOM . ' y';
-        self::assertSame('x ' . self::SHALOM_VISUAL . ' y', self::strip(Bidi::reorder($line, false)));
+        $line = 'x '.self::SHALOM.' y';
+        self::assertSame('x '.self::SHALOM_VISUAL.' y', self::strip(Bidi::reorder($line, false)));
     }
 
     public function testDigitsReadLeftToRightUnderAnRtlBase(): void
     {
-        self::assertSame(self::SHALOM_VISUAL . ' 12', self::strip(Bidi::reorder('12 ' . self::SHALOM, true)));
+        self::assertSame(self::SHALOM_VISUAL.' 12', self::strip(Bidi::reorder('12 '.self::SHALOM, true)));
     }
 
     public function testWideCharacterWidthIsPreserved(): void
@@ -93,7 +93,7 @@ final class BidiTest extends TestCase
     public function testPairedPunctuationMirrorsInsideARightToLeftRun(): void
     {
         // A parenthesis adjacent to Hebrew resolves rtl and mirrors under L4.
-        $out = self::strip(Bidi::reorder('(' . self::SHALOM, true));
+        $out = self::strip(Bidi::reorder('('.self::SHALOM, true));
         self::assertStringContainsString(')', $out, 'the opening paren mirrors to a closing one');
         self::assertStringNotContainsString('(', $out);
     }
@@ -122,7 +122,7 @@ final class BidiTest extends TestCase
 
         // Caret inside Hebrew: the marker rides the reversed run to the matching gap.
         $he = self::SHALOM;
-        $withCaret = mb_substr($he, 0, 2, 'UTF-8') . $marker . mb_substr($he, 2, null, 'UTF-8');
+        $withCaret = mb_substr($he, 0, 2, 'UTF-8').$marker.mb_substr($he, 2, null, 'UTF-8');
         $reordered = Bidi::reorder($withCaret, true);
         self::assertSame(1, substr_count($reordered, $marker));
     }

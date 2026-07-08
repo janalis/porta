@@ -14,12 +14,12 @@ use Porta\I18n\Translator;
  */
 final class CatalogCompletenessTest extends TestCase
 {
-    private const string DIR = __DIR__ . '/../../../translations';
+    private const string DIR = __DIR__.'/../../../translations';
 
     /** @return list<string> the <source> texts of a catalog, in document order */
     private function sources(string $locale): array
     {
-        $xml = simplexml_load_file(self::DIR . '/messages.' . $locale . '.xlf');
+        $xml = simplexml_load_file(self::DIR.'/messages.'.$locale.'.xlf');
         self::assertNotFalse($xml, "messages.{$locale}.xlf is not valid XML");
         $xml->registerXPathNamespace('x', 'urn:oasis:names:tc:xliff:document:1.2');
 
@@ -43,14 +43,14 @@ final class CatalogCompletenessTest extends TestCase
         foreach (['fr', 'de', 'es', 'it', 'ja', 'he'] as $locale) {
             $have = $this->sources($locale);
             $missing = array_values(array_diff($english, $have));
-            self::assertSame([], $missing, "messages.{$locale}.xlf is missing sources: " . implode(' | ', $missing));
+            self::assertSame([], $missing, "messages.{$locale}.xlf is missing sources: ".implode(' | ', $missing));
         }
     }
 
     public function testEveryUnitHasANonEmptyTargetInEveryCatalog(): void
     {
         foreach (Translator::LOCALES as $locale) {
-            $xml = simplexml_load_file(self::DIR . '/messages.' . $locale . '.xlf');
+            $xml = simplexml_load_file(self::DIR.'/messages.'.$locale.'.xlf');
             self::assertNotFalse($xml);
             $xml->registerXPathNamespace('x', 'urn:oasis:names:tc:xliff:document:1.2');
 
@@ -66,7 +66,7 @@ final class CatalogCompletenessTest extends TestCase
     public function testTargetLanguageAttributeMatchesTheFile(): void
     {
         foreach (Translator::LOCALES as $locale) {
-            $xml = simplexml_load_file(self::DIR . '/messages.' . $locale . '.xlf');
+            $xml = simplexml_load_file(self::DIR.'/messages.'.$locale.'.xlf');
             self::assertNotFalse($xml);
             $file = ($xml->xpath('//*[local-name()="file"]') ?: [])[0] ?? null;
             self::assertNotNull($file);

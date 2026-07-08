@@ -114,8 +114,12 @@ final class SettingsNavWidgetTest extends TestCase
     {
         $fired = [];
         $widget = $this->widget();
-        $widget->onFocusNext(function () use (&$fired): void { $fired[] = 'next'; });
-        $widget->onExit(function () use (&$fired): void { $fired[] = 'exit'; });
+        $widget->onFocusNext(function () use (&$fired): void {
+            $fired[] = 'next';
+        });
+        $widget->onExit(function () use (&$fired): void {
+            $fired[] = 'exit';
+        });
         $widget->handleInput("\t");
         $widget->handleInput("\x1b");
         $this->assertSame(['next', 'exit'], $fired);

@@ -25,8 +25,18 @@ final class Bidi
      * @var array<string, string>
      */
     private const array MIRROR = [
-        '(' => ')', ')' => '(', '[' => ']', ']' => '[', '{' => '}', '}' => '{',
-        '<' => '>', '>' => '<', '«' => '»', '»' => '«', '‹' => '›', '›' => '‹',
+        '(' => ')',
+        ')' => '(',
+        '[' => ']',
+        ']' => '[',
+        '{' => '}',
+        '}' => '{',
+        '<' => '>',
+        '>' => '<',
+        '«' => '»',
+        '»' => '«',
+        '‹' => '›',
+        '›' => '‹',
     ];
 
     /**
@@ -47,7 +57,7 @@ final class Bidi
         $active = '';
         foreach ($matches[0] as $token) {
             if (str_starts_with($token, "\x1b[")) { // SGR: updates the active style
-                $active = "\x1b[0m" === $token || "\x1b[m" === $token ? '' : $active . $token;
+                $active = "\x1b[0m" === $token || "\x1b[m" === $token ? '' : $active.$token;
                 continue;
             }
             // A grapheme, or the zero-width cursor marker carried as a neutral cell
@@ -118,7 +128,7 @@ final class Bidi
             if (0 === $width) {
                 continue; // the zero-width cursor marker occupies no column
             }
-            if ($visualCol < $visual + $width) {
+            if ($visualCol < ($visual + $width)) {
                 return $logicalStart[$logicalIndex] + ($visualCol - $visual);
             }
             $visual += $width;
@@ -138,19 +148,14 @@ final class Bidi
         // codepoint (always present — \X matches at least one).
         $cp = mb_ord(mb_substr($grapheme, 0, 1, 'UTF-8'), 'UTF-8');
         // Hebrew, Arabic and their presentation forms → right-to-left.
-        if (($cp >= 0x0590 && $cp <= 0x05FF) || ($cp >= 0x0600 && $cp <= 0x06FF)
-            || ($cp >= 0x0700 && $cp <= 0x08FF) || ($cp >= 0xFB1D && $cp <= 0xFDFF)
-            || ($cp >= 0xFE70 && $cp <= 0xFEFF)) {
+        if ($cp >= 0x0590 && $cp <= 0x05FF || $cp >= 0x0600 && $cp <= 0x06FF || $cp >= 0x0700 && $cp <= 0x08FF || $cp >= 0xFB1D && $cp <= 0xFDFF || $cp >= 0xFE70 && $cp <= 0xFEFF) {
             return 'R';
         }
         if ($cp >= 0x0030 && $cp <= 0x0039) {
             return 'EN';
         }
         // ASCII space/punctuation/symbols and the common Unicode spaces are neutral.
-        if (0x20 === $cp || 0xA0 === $cp
-            || ($cp >= 0x21 && $cp <= 0x2F) || ($cp >= 0x3A && $cp <= 0x40)
-            || ($cp >= 0x5B && $cp <= 0x60) || ($cp >= 0x7B && $cp <= 0x7E)
-            || ($cp >= 0x2000 && $cp <= 0x206F)) {
+        if (0x20 === $cp || 0xA0 === $cp || $cp >= 0x21 && $cp <= 0x2F || $cp >= 0x3A && $cp <= 0x40 || $cp >= 0x5B && $cp <= 0x60 || $cp >= 0x7B && $cp <= 0x7E || $cp >= 0x2000 && $cp <= 0x206F) {
             return 'N';
         }
 
@@ -255,11 +260,11 @@ final class Bidi
         foreach ($order as $index) {
             $sgr = $cells[$index]['sgr'];
             if ($sgr !== $emitted) {
-                $out .= '' === $sgr ? "\x1b[0m" : "\x1b[0m" . $sgr;
+                $out .= '' === $sgr ? "\x1b[0m" : "\x1b[0m".$sgr;
                 $emitted = $sgr;
             }
             $glyph = $cells[$index]['g'];
-            if (1 === $levels[$index] % 2 && isset(self::MIRROR[$glyph])) {
+            if (1 === ($levels[$index] % 2) && isset(self::MIRROR[$glyph])) {
                 $glyph = self::MIRROR[$glyph];
             }
             $out .= $glyph;

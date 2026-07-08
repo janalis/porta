@@ -4,9 +4,9 @@ declare(strict_types=1);
 
 namespace Porta\Tests\Unit\Widget\Git;
 
-use Porta\I18n\Translator;
 use PHPUnit\Framework\TestCase;
 use Porta\Git\DiffDocument;
+use Porta\I18n\Translator;
 use Porta\Widget\Git\DiffViewWidget;
 use Symfony\Component\Tui\Ansi\AnsiUtils;
 use Symfony\Component\Tui\Render\RenderContext;
@@ -154,7 +154,7 @@ final class DiffViewWidgetTest extends TestCase
 
         $widget->handleInput("\x1b[B");
         $widget->handleInput("\x1b[B"); // on the deletion row
-        $widget->handleInput('v');      // arm the anchor
+        $widget->handleInput('v'); // arm the anchor
         $widget->handleInput("\x1b[B");
         $widget->handleInput("\x1b[B"); // down to '+extra'
         $widget->handleInput(' ');
@@ -194,7 +194,7 @@ final class DiffViewWidgetTest extends TestCase
         $this->plainLines($widget, 80, 12);
         $widget->handleInput("\x1b[B");
         $widget->handleInput("\x1b[B");
-        $widget->handleInput('v');      // anchor at row 2
+        $widget->handleInput('v'); // anchor at row 2
         $widget->handleInput("\x1b[A"); // cursor row 1: reversed range [1..2]
         $raw = $widget->render(new RenderContext(80, 12));
         $this->assertStringContainsString("\x1b[48;5;236m", $raw[3], 'the anchor row (below the cursor) is range-highlighted');
@@ -544,10 +544,10 @@ final class DiffViewWidgetTest extends TestCase
 
         $widget->setSplit(true); // the -old/\-marker rows precede the +new pair
         $widget->handleInput("\x1b[B"); // first pair row (-old | blank)
-        $widget->handleInput('v');      // allowed while read-only now
+        $widget->handleInput('v'); // allowed while read-only now
         $widget->handleInput("\x1b[B");
         $widget->handleInput("\x1b[B"); // through the marker row to (+new)
-        $widget->handleInput(' ');      // staging stays blocked
+        $widget->handleInput(' '); // staging stays blocked
         $this->assertFalse($staged);
         $widget->handleInput("\x03");
         $this->assertSame(["old\nnew\n"], $copies, 'both sides, marker line skipped, still read-only');
