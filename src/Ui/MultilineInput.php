@@ -46,9 +46,9 @@ final class MultilineInput
     }
 
     /** Handle one keystroke; returns whether it was consumed (content or caret changed). */
-    public function handleKey(string $data): bool
+    public function handleKey(string $keys): bool
     {
-        switch ($data) {
+        switch ($keys) {
             case "\r":
             case "\n":
                 $current = $this->lines[$this->line];
@@ -81,7 +81,7 @@ final class MultilineInput
 
                 return true;
             case "\x1b[B": // down
-                if ($this->line < \count($this->lines) - 1) {
+                if ($this->line < (\count($this->lines) - 1)) {
                     ++$this->line;
                     $this->col = min($this->col, \strlen($this->lines[$this->line]));
                 }
@@ -99,7 +99,7 @@ final class MultilineInput
             case "\x1b[C": // right
                 if ($this->col < \strlen($this->lines[$this->line])) {
                     ++$this->col;
-                } elseif ($this->line < \count($this->lines) - 1) {
+                } elseif ($this->line < (\count($this->lines) - 1)) {
                     ++$this->line;
                     $this->col = 0;
                 }
@@ -107,10 +107,10 @@ final class MultilineInput
                 return true;
         }
 
-        if (TextInput::isPrintable($data)) {
+        if (TextInput::isPrintable($keys)) {
             $line = $this->lines[$this->line];
-            $this->lines[$this->line] = substr($line, 0, $this->col).$data.substr($line, $this->col);
-            $this->col += \strlen($data);
+            $this->lines[$this->line] = substr($line, 0, $this->col).$keys.substr($line, $this->col);
+            $this->col += \strlen($keys);
 
             return true;
         }

@@ -72,15 +72,15 @@ final class OverlayHost
      * list overlay is open (the prompt wins when both are). Returns whether
      * the input was consumed.
      */
-    public function handleInput(string $data, Keybindings $kb): bool
+    public function handleInput(string $keys, Keybindings $kb): bool
     {
         if (null !== $this->prompt) {
-            $this->handlePromptInput($data, $kb);
+            $this->handlePromptInput($keys, $kb);
 
             return true;
         }
         if (null !== $this->overlay) {
-            $this->handleOverlayInput($data, $kb);
+            $this->handleOverlayInput($keys, $kb);
 
             return true;
         }
@@ -88,16 +88,16 @@ final class OverlayHost
         return false;
     }
 
-    private function handlePromptInput(string $data, Keybindings $kb): void
+    private function handlePromptInput(string $keys, Keybindings $kb): void
     {
-        if ($kb->matches($data, 'select_cancel')) {
+        if ($kb->matches($keys, 'select_cancel')) {
             $this->prompt = null;
             ($this->invalidate)();
 
             return;
         }
 
-        if ($kb->matches($data, 'accept_completion')) { // Enter
+        if ($kb->matches($keys, 'accept_completion')) { // Enter
             /** @var array{label: string, value: TextField, onSubmit: callable(string): void} $prompt */
             $prompt = $this->prompt;
             $this->prompt = null;
@@ -107,7 +107,7 @@ final class OverlayHost
             return;
         }
 
-        if ($kb->matches($data, 'delete_char_backward')) {
+        if ($kb->matches($keys, 'delete_char_backward')) {
             /** @var array{label: string, value: TextField, onSubmit: callable(string): void} $this->prompt */
             if ($this->prompt['value']->backspace()) {
                 ($this->invalidate)();
@@ -117,28 +117,28 @@ final class OverlayHost
         }
 
         /** @var array{label: string, value: TextField, onSubmit: callable(string): void} $this->prompt */
-        if ($this->prompt['value']->insert($data)) {
+        if ($this->prompt['value']->insert($keys)) {
             ($this->invalidate)();
         }
     }
 
-    private function handleOverlayInput(string $data, Keybindings $kb): void
+    private function handleOverlayInput(string $keys, Keybindings $kb): void
     {
         /** @var array{title: string, items: list<array{label: string, hint: string, value: string}>, selected: int, onPick: callable(string): void} $this->overlay */
         $count = \count($this->overlay['items']);
 
-        if ($kb->matches($data, 'select_cancel')) {
+        if ($kb->matches($keys, 'select_cancel')) {
             $this->overlay = null;
-        } elseif ($kb->matches($data, 'cursor_up')) {
+        } elseif ($kb->matches($keys, 'cursor_up')) {
             $this->overlay['selected'] = ($this->overlay['selected'] - 1 + $count) % $count;
-        } elseif ($kb->matches($data, 'cursor_down')) {
+        } elseif ($kb->matches($keys, 'cursor_down')) {
             $this->overlay['selected'] = ($this->overlay['selected'] + 1) % $count;
-        } elseif ($kb->matches($data, 'accept_completion')) {
+        } elseif ($kb->matches($keys, 'accept_completion')) {
             $item = $this->overlay['items'][$this->overlay['selected']];
             $onPick = $this->overlay['onPick'];
             $this->overlay = null;
             $onPick($item['value']);
-        } elseif ($kb->matches($data, 'recent_files')) {
+        } elseif ($kb->matches($keys, 'recent_files')) {
             // Ctrl+E again cycles like PhpStorm
             $this->overlay['selected'] = ($this->overlay['selected'] + 1) % $count;
         } else {

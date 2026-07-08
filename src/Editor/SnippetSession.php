@@ -63,19 +63,19 @@ final class SnippetSession
      *
      * @param \Closure(string): bool $isInsertable printable-char guard from the widget
      */
-    public function handleInput(string $data, Keybindings $kb, \Closure $isInsertable): bool
+    public function handleInput(string $keys, Keybindings $kb, \Closure $isInsertable): bool
     {
-        if ($kb->matches($data, 'indent')) {
+        if ($kb->matches($keys, 'indent')) {
             $this->moveStop(1);
 
             return true;
         }
-        if ($kb->matches($data, 'prev_tab_stop')) {
+        if ($kb->matches($keys, 'prev_tab_stop')) {
             $this->moveStop(-1);
 
             return true;
         }
-        if ($kb->matches($data, 'select_cancel')) {
+        if ($kb->matches($keys, 'select_cancel')) {
             // Collapse any placeholder selection and leave the caret in place.
             $this->document->setCursor($this->document->getCursorLine(), $this->document->getCursorCol());
             $this->session = null;
@@ -84,9 +84,9 @@ final class SnippetSession
             return true;
         }
 
-        $printable = $isInsertable($data);
-        $isBackspace = $kb->matches($data, 'delete_char_backward');
-        if (($printable || $isBackspace) && !str_contains($data, "\n")) {
+        $printable = $isInsertable($keys);
+        $isBackspace = $kb->matches($keys, 'delete_char_backward');
+        if (($printable || $isBackspace) && !str_contains($keys, "\n")) {
             $line = $this->document->getCursorLine();
             /** @var array{stops: list<array{line: int, start: int, end: int}>, index: int} $session */
             $session = $this->session;
@@ -95,7 +95,7 @@ final class SnippetSession
             if ($active['line'] === $line) {
                 $before = \strlen($this->document->getLine($line));
                 if ($printable) {
-                    $this->document->insert($data);
+                    $this->document->insert($keys);
                 } elseif ($this->document->hasSelection()) {
                     $this->document->deleteSelection();
                 } else {

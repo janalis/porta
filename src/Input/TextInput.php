@@ -10,12 +10,12 @@ namespace Porta\Input;
 final class TextInput
 {
     /**
-     * Whether $data is insertable text: non-empty, not an escape sequence, and
+     * Whether $keys is insertable text: non-empty, not an escape sequence, and
      * free of C0/C1 control characters. Shared by the single-line input widgets
      * (find, go-to-file, results query) and the editor's prompt capture.
      */
-    public static function isPrintable(string $data): bool
+    public static function isPrintable(string $keys): bool
     {
-        return '' !== $data && !str_contains($data, "\x1b") && !preg_match('/[\x00-\x1F\x7F]/', $data);
+        return '' !== $keys && !str_contains($keys, "\x1b") && !preg_match('/[\x00-\x1F\x7F]/', $keys);
     }
 }

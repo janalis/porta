@@ -17,9 +17,9 @@ trait InputHook
     /** @var (\Closure(string): bool)|null */
     private ?\Closure $onInput = null;
 
-    /** Whether the app-level input hook consumed $data. */
-    protected function inputHookHandled(string $data): bool
+    /** Whether the app-level input hook consumed $keys. */
+    protected function inputHookHandled(string $keys): bool
     {
-        return null !== $this->onInput && ($this->onInput)($data);
+        return null !== $this->onInput && ($this->onInput)($keys);
     }
 }

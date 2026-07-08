@@ -35,13 +35,13 @@ final class TextField
         $this->value = '';
     }
 
-    /** Append $data when it is insertable text; returns whether the value changed. */
-    public function insert(string $data): bool
+    /** Append $keys when it is insertable text; returns whether the value changed. */
+    public function insert(string $keys): bool
     {
-        if (!TextInput::isPrintable($data)) {
+        if (!TextInput::isPrintable($keys)) {
             return false;
         }
-        $this->value .= $data;
+        $this->value .= $keys;
 
         return true;
     }

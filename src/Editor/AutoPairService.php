@@ -24,15 +24,15 @@ final class AutoPairService
      * the keystroke (wrapped a selection, typed over a closer, or inserted a
      * pair), false to let normal insertion proceed.
      */
-    public function handle(Document $doc, string $data): bool
+    public function handle(Document $doc, string $keys): bool
     {
         // Note: with multiple carets, MultiCaret::handleInput intercepts typing
         // before this is reached, so no extra-caret guard is needed here.
-        $isOpen = isset(self::PAIRS[$data]);
+        $isOpen = isset(self::PAIRS[$keys]);
 
         // Wrap a selection in the pair.
         if ($isOpen && null !== ($range = $doc->getSelectionRange())) {
-            $this->wrapSelection($doc, $data, self::PAIRS[$data], $range);
+            $this->wrapSelection($doc, $keys, self::PAIRS[$keys], $range);
 
             return true;
         }
@@ -41,7 +41,7 @@ final class AutoPairService
         $nextChar = $line[$doc->getCursorCol()] ?? '';
 
         // Type over an existing closer/quote instead of inserting a new one.
-        if ($data === $nextChar && \in_array($data, self::PAIRS, true)) {
+        if ($keys === $nextChar && \in_array($keys, self::PAIRS, true)) {
             $doc->moveRight();
 
             return true;
@@ -53,8 +53,8 @@ final class AutoPairService
 
         // Quote heuristic: don't pair a quote right after a word char (e.g. it's)
         // or when the same quote already sits under the cursor.
-        $close = self::PAIRS[$data];
-        if ($data === $close) {
+        $close = self::PAIRS[$keys];
+        if ($keys === $close) {
             $prevChar = $doc->getCursorCol() > 0 ? $line[$doc->getCursorCol() - 1] ?? '' : '';
             if (1 === preg_match('/[\w]/', $prevChar)) {
                 return false;
@@ -65,7 +65,7 @@ final class AutoPairService
             return false;
         }
 
-        $doc->insert($data.$close);
+        $doc->insert($keys.$close);
         $doc->moveLeft();
 
         return true;

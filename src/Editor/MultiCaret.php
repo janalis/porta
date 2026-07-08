@@ -187,11 +187,11 @@ final class MultiCaret
      *
      * @param \Closure(string): bool $isInsertable printable-char guard from the widget
      */
-    public function handleInput(string $data, Keybindings $kb, string $clipboard, \Closure $isInsertable): bool
+    public function handleInput(string $keys, Keybindings $kb, string $clipboard, \Closure $isInsertable): bool
     {
         $doc = $this->document;
 
-        if ($kb->matches($data, 'select_cancel')) {
+        if ($kb->matches($keys, 'select_cancel')) {
             $this->clear();
             $doc->clearSelection();
 
@@ -200,7 +200,7 @@ final class MultiCaret
 
         // Movement: move every caret, then dedupe.
         foreach (self::MOVE_METHODS as $action => $method) {
-            if ($kb->matches($data, $action)) {
+            if ($kb->matches($keys, $action)) {
                 $this->moveAll($method);
 
                 return true;
@@ -209,7 +209,7 @@ final class MultiCaret
 
         // Shift+movement: extend every caret's selection.
         foreach (self::SELECT_METHODS as $action => $method) {
-            if ($kb->matches($data, $action)) {
+            if ($kb->matches($keys, $action)) {
                 $this->extendAll($method);
 
                 return true;
@@ -219,26 +219,26 @@ final class MultiCaret
         // Editing operations applied at every caret: the bare Document verbs are
         // table-driven; indent and paste carry an argument, so they stay explicit.
         foreach (self::EDIT_METHODS as $action => $method) {
-            if ($kb->matches($data, $action)) {
+            if ($kb->matches($keys, $action)) {
                 $this->applyEdit(static fn (Document $d) => $d->{$method}());
 
                 return true;
             }
         }
-        if ($kb->matches($data, 'indent')) {
+        if ($kb->matches($keys, 'indent')) {
             $this->applyEdit(static fn (Document $d) => $d->insert($d->indentUnit()));
 
             return true;
         }
-        if ($kb->matches($data, 'paste') && '' !== $clipboard) {
+        if ($kb->matches($keys, 'paste') && '' !== $clipboard) {
             $this->applyEdit(static fn (Document $d) => $d->insert($clipboard));
 
             return true;
         }
 
         // Plain text input at every caret.
-        if ($isInsertable($data)) {
-            $this->applyEdit(static fn (Document $d) => $d->insert($data));
+        if ($isInsertable($keys)) {
+            $this->applyEdit(static fn (Document $d) => $d->insert($keys));
 
             return true;
         }

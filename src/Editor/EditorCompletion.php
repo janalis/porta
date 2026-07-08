@@ -83,12 +83,12 @@ final class EditorCompletion
     }
 
     /** Route a keystroke to an active snippet tab-stop session; true when consumed. */
-    public function handleSnippetTabStop(string $data, Keybindings $kb): bool
+    public function handleSnippetTabStop(string $keys, Keybindings $kb): bool
     {
-        return $this->snippet->isActive() && !$this->open && $this->snippet->handleInput($data, $kb, $this->isInsertable);
+        return $this->snippet->isActive() && !$this->open && $this->snippet->handleInput($keys, $kb, $this->isInsertable);
     }
 
-    public function handleInput(string $data, Keybindings $kb): bool
+    public function handleInput(string $keys, Keybindings $kb): bool
     {
         $filtered = $this->filtered();
         if ([] === $filtered) {
@@ -97,28 +97,28 @@ final class EditorCompletion
             return false;
         }
 
-        if ($kb->matches($data, 'select_cancel')) {
+        if ($kb->matches($keys, 'select_cancel')) {
             $this->close();
             ($this->invalidate)();
 
             return true;
         }
 
-        if ($kb->matches($data, 'cursor_up')) {
+        if ($kb->matches($keys, 'cursor_up')) {
             $this->selected = ($this->selected - 1 + \count($filtered)) % \count($filtered);
             ($this->invalidate)();
 
             return true;
         }
 
-        if ($kb->matches($data, 'cursor_down')) {
+        if ($kb->matches($keys, 'cursor_down')) {
             $this->selected = ($this->selected + 1) % \count($filtered);
             ($this->invalidate)();
 
             return true;
         }
 
-        if ($kb->matches($data, 'accept_completion') || $kb->matches($data, 'indent')) {
+        if ($kb->matches($keys, 'accept_completion') || $kb->matches($keys, 'indent')) {
             $item = $filtered[$this->selected] ?? null;
             if (null !== $item) {
                 $this->acceptItem($item);
@@ -128,7 +128,7 @@ final class EditorCompletion
         }
 
         // Typing narrows the filter; deleting widens it
-        if ($kb->matches($data, 'delete_char_backward')) {
+        if ($kb->matches($keys, 'delete_char_backward')) {
             if ('' === $this->document->getWordBeforeCursor()) {
                 $this->close();
             }
@@ -136,7 +136,7 @@ final class EditorCompletion
             return false; // let normal handling perform the deletion
         }
 
-        if (($this->isInsertable)($data) && preg_match('/^[\w$]+$/u', $data)) {
+        if (($this->isInsertable)($keys) && preg_match('/^[\w$]+$/u', $keys)) {
             return false; // identifier chars: insert normally, popup refilters on render
         }
 
