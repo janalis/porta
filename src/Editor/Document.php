@@ -37,12 +37,8 @@ final class Document
     /** Preferred display column kept while moving vertically. */
     private ?int $goalCol = null;
 
-    /**
-     * Selection anchor; the selection is anchor..cursor.
-     *
-     * @var array{line: int, col: int}|null
-     */
-    private ?array $anchor = null;
+    /** The primary selection's anchor (the selection is anchor..cursor) and its range math. */
+    private readonly SelectionModel $selection;
 
     /** Undo/redo stacks, coalescing and compound grouping. */
     private readonly UndoHistory $history;
@@ -82,6 +78,7 @@ final class Document
         $this->lines = '' === $text ? [''] : explode("\n", $text);
         $this->savedText = implode("\n", $this->lines);
         $this->indent = new IndentModel($this->detectTabIndentation(), self::TAB_SIZE, self::TAB_SIZE);
+        $this->selection = new SelectionModel();
         $this->history = new UndoHistory();
         $this->positionMapper = new PositionMapper($this);
     }
@@ -342,12 +339,12 @@ final class Document
      */
     public function beginSelect(): void
     {
-        $this->anchor ??= ['line' => $this->cursorLine, 'col' => $this->cursorCol];
+        $this->selection->begin($this->cursorLine, $this->cursorCol);
     }
 
     public function clearSelection(): void
     {
-        $this->anchor = null;
+        $this->selection->clear();
     }
 
     public function hasSelection(): bool
@@ -362,19 +359,7 @@ final class Document
      */
     public function getSelectionRange(): ?array
     {
-        if (null === $this->anchor) {
-            return null;
-        }
-        /** @var list<int> $a */
-        $a = [$this->anchor['line'], $this->anchor['col']];
-        /** @var list<int> $b */
-        $b = [$this->cursorLine, $this->cursorCol];
-        if ($a === $b) {
-            return null;
-        }
-        [$start, $end] = $a < $b ? [$a, $b] : [$b, $a];
-
-        return ['startLine' => $start[0], 'startCol' => $start[1], 'endLine' => $end[0], 'endCol' => $end[1]];
+        return $this->selection->range($this->cursorLine, $this->cursorCol);
     }
 
     public function getSelectedText(): string
@@ -407,7 +392,7 @@ final class Document
 
     public function selectAll(): void
     {
-        $this->anchor = ['line' => 0, 'col' => 0];
+        $this->selection->set(0, 0);
         $this->cursorLine = \count($this->lines) - 1;
         $this->cursorCol = \strlen($this->lines[$this->cursorLine]);
         $this->goalCol = null;
@@ -441,7 +426,7 @@ final class Document
     public function deleteSelection(): bool
     {
         if (null === $this->getSelectionRange()) {
-            $this->anchor = null;
+            $this->selection->clear();
 
             return false;
         }
@@ -463,7 +448,7 @@ final class Document
         array_splice($this->lines, $range['startLine'], $range['endLine'] - $range['startLine'] + 1, [$head.$tail]);
         $this->cursorLine = $range['startLine'];
         $this->cursorCol = $range['startCol'];
-        $this->anchor = null;
+        $this->selection->clear();
     }
 
     // --- Line operations ------------------------------------------------------
@@ -480,9 +465,7 @@ final class Document
         array_splice($this->lines, $last + 1, 0, $block);
         $offset = $last - $first + 1;
         $this->cursorLine += $offset;
-        if (null !== $this->anchor) {
-            $this->anchor['line'] += $offset;
-        }
+        $this->selection->shiftLine($offset);
         $this->touch();
     }
 
@@ -500,7 +483,7 @@ final class Document
         if ([] === $this->lines) {
             $this->lines = [''];
         }
-        $this->anchor = null;
+        $this->selection->clear();
         $this->cursorLine = min($first, \count($this->lines) - 1);
         $this->cursorCol = min($this->cursorCol, \strlen($this->lines[$this->cursorLine]));
         $this->touch();
@@ -523,9 +506,7 @@ final class Document
         array_splice($this->lines, $first, $last - $first + 1);
         array_splice($this->lines, $target, 0, $block);
         $this->cursorLine += $delta;
-        if (null !== $this->anchor) {
-            $this->anchor['line'] += $delta;
-        }
+        $this->selection->shiftLine($delta);
         $this->touch();
 
         return true;
@@ -575,9 +556,7 @@ final class Document
         array_splice($this->lines, $first, $last - $first + 1);
         array_splice($this->lines, $target, 0, $block);
         $this->cursorLine += $shift;
-        if (null !== $this->anchor) {
-            $this->anchor['line'] += $shift;
-        }
+        $this->selection->shiftLine($shift);
         $this->touch();
 
         return true;
@@ -641,15 +620,13 @@ final class Document
             if ($i === $this->cursorLine && $this->cursorCol > 0) {
                 $cursorDelta = $width;
             }
-            if (null !== $this->anchor && $i === $this->anchor['line'] && $this->anchor['col'] > 0) {
+            if ($i === $this->selection->anchorLine() && ($this->selection->anchorCol() ?? 0) > 0) {
                 $anchorDelta = $width;
             }
         }
 
         $this->cursorCol += $cursorDelta;
-        if (null !== $this->anchor) {
-            $this->anchor['col'] += $anchorDelta;
-        }
+        $this->selection->shiftColClamped($anchorDelta);
         $this->touch();
     }
 
@@ -680,15 +657,13 @@ final class Document
             if ($i === $this->cursorLine) {
                 $cursorRemoved = $removed;
             }
-            if (null !== $this->anchor && $i === $this->anchor['line']) {
+            if ($i === $this->selection->anchorLine()) {
                 $anchorRemoved = $removed;
             }
         }
 
         $this->cursorCol = max(0, $this->cursorCol - $cursorRemoved);
-        if (null !== $this->anchor) {
-            $this->anchor['col'] = max(0, $this->anchor['col'] - $anchorRemoved);
-        }
+        $this->selection->shiftColClamped(-$anchorRemoved);
         $this->touch();
     }
 
@@ -726,7 +701,7 @@ final class Document
      */
     public function setSelectionRange(int $startLine, int $startCol, int $endLine, int $endCol): void
     {
-        $this->anchor = ['line' => $startLine, 'col' => $startCol];
+        $this->selection->set($startLine, $startCol);
         $this->cursorLine = $this->clampLine($endLine);
         $this->cursorCol = $this->clampCol($this->cursorLine, $endCol);
         $this->goalCol = null;
@@ -738,7 +713,7 @@ final class Document
         $this->cursorCol = $this->clampCol($this->cursorLine, $col);
         $this->goalCol = null;
         if (!$keepSelection) {
-            $this->anchor = null;
+            $this->selection->clear();
         }
     }
 
@@ -1142,7 +1117,7 @@ final class Document
         $this->lines = '' === $text ? [''] : explode("\n", $text);
         $this->cursorLine = $this->clampLine($this->cursorLine);
         $this->cursorCol = $this->clampCol($this->cursorLine, $this->cursorCol);
-        $this->anchor = null;
+        $this->selection->clear();
         $this->touch();
     }
 
@@ -1182,10 +1157,11 @@ final class Document
         $this->cursorCol = min($state['col'], \strlen($this->lines[$this->cursorLine]));
         // Restore the selection anchor (clamped; dropped if it no longer fits).
         $anchor = $state['anchor'] ?? null;
-        $this->anchor =
+        $this->selection->restore(
             null !== $anchor && $anchor['line'] < \count($this->lines) && $anchor['col'] <= \strlen($this->lines[$anchor['line']])
                 ? $anchor
-                : null;
+                : null,
+        );
         if (null !== $this->restoreCarets) {
             ($this->restoreCarets)($state['extras'] ?? []);
         }
@@ -1206,7 +1182,7 @@ final class Document
             'lines' => $this->lines,
             'line' => $this->cursorLine,
             'col' => $this->cursorCol,
-            'anchor' => $this->anchor,
+            'anchor' => $this->selection->snapshot(),
             'extras' => null !== $this->captureCarets ? ($this->captureCarets)() : [],
         ];
     }
@@ -1224,7 +1200,7 @@ final class Document
             $this->compoundCaret = [
                 'line' => $this->cursorLine,
                 'col' => $this->cursorCol,
-                'anchor' => $this->anchor,
+                'anchor' => $this->selection->snapshot(),
                 'extras' => null !== $this->captureCarets ? ($this->captureCarets)() : [],
             ];
         }
