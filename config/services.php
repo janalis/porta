@@ -7,7 +7,15 @@ use Porta\Git\GitInfo;
 use Porta\History\LocalHistory;
 use Porta\History\SessionStore;
 use Porta\I18n\Translator;
+use Porta\Ui\Notifier;
+use Porta\Widget\CodeEditorWidget;
+use Porta\Widget\FileTreeWidget;
+use Porta\Widget\ResultsPanelWidget;
+use Porta\Widget\StatusBarWidget;
+use Porta\Widget\TerminalPanelWidget;
 use Symfony\Component\DependencyInjection\Loader\Configurator\ContainerConfigurator;
+use Symfony\Component\Tui\Render\Renderer;
+use Symfony\Component\Tui\Tui;
 
 use function Symfony\Component\DependencyInjection\Loader\Configurator\param;
 
@@ -35,4 +43,11 @@ return static function (ContainerConfigurator $container): void {
     $services->set(LocalHistory::class);
     $services->set(SessionStore::class);
     $services->set(EditorConfigResolver::class);
+
+    // Synthetic infrastructure: Ide builds these manually (they need per-instance
+    // setId/setStyle or the terminal), then ->set()s the instances after boot.
+    // Declared here so container-built controllers can depend on them by type.
+    foreach ([Renderer::class, Tui::class, Notifier::class, CodeEditorWidget::class, FileTreeWidget::class, StatusBarWidget::class, ResultsPanelWidget::class, TerminalPanelWidget::class] as $syntheticId) {
+        $services->set($syntheticId)->synthetic();
+    }
 };

@@ -213,6 +213,8 @@ final class Ide
 
         $this->buildSidePanels();
 
+        $this->registerSyntheticServices();
+
         $this->git = $this->service(GitInfo::class);
         $this->gitCommands = new GitCommands(
             $this->git,
@@ -342,6 +344,24 @@ final class Ide
         \assert($service instanceof $id);
 
         return $service;
+    }
+
+    /**
+     * Register the manually-built singletons (renderer, tui, chrome widgets)
+     * into the container as synthetic services, so the container-built
+     * controllers can depend on them by type. They are declared synthetic in
+     * config/services.php; here we hand over the configured instances.
+     */
+    private function registerSyntheticServices(): void
+    {
+        $this->container->set(Renderer::class, $this->renderer);
+        $this->container->set(Tui::class, $this->tui);
+        $this->container->set(Notifier::class, $this->notifier);
+        $this->container->set(CodeEditorWidget::class, $this->editor);
+        $this->container->set(FileTreeWidget::class, $this->tree);
+        $this->container->set(StatusBarWidget::class, $this->statusBar);
+        $this->container->set(ResultsPanelWidget::class, $this->resultsPanel);
+        $this->container->set(TerminalPanelWidget::class, $this->terminalPanel);
     }
 
     /**
