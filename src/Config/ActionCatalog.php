@@ -90,9 +90,9 @@ final class ActionCatalog
         'prev_buffer' => ['label' => 'Previous Tab'],
         'recent_files' => ['label' => 'Recent Files'],
         'close_buffer' => ['label' => 'Close Tab'],
-        // Move the active tab left/right (Alt+Left/Right switch tabs).
-        'move_tab_left' => ['label' => 'Move Tab Left', 'keys' => ['alt+shift+left']],
-        'move_tab_right' => ['label' => 'Move Tab Right', 'keys' => ['alt+shift+right']],
+        // Move the active tab left/right (Ctrl+Left/Right switch tabs).
+        'move_tab_left' => ['label' => 'Move Tab Left', 'keys' => ['ctrl+shift+left']],
+        'move_tab_right' => ['label' => 'Move Tab Right', 'keys' => ['ctrl+shift+right']],
         'find' => ['label' => 'Find in File'],
         'replace' => ['label' => 'Replace in File'],
         'goto_file' => ['label' => 'Go to File'],

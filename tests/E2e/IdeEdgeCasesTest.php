@@ -2947,7 +2947,7 @@ final class IdeEdgeCasesTest extends TestCase
                     // buffer-owned cache (same version, no re-parse).
                     $editorBefore = $tui->getById('editor');
                     $versionBefore = $editorBefore->getDocument()->getVersion();
-                    $tui->handleInput("\x1b[1;3C"); // alt+right -> a.php
+                    $tui->handleInput("\x1b[1;5C"); // ctrl+right -> a.php
                     $tui->tick();
                     $this->assertStringEndsWith('a.php', (string) $tui->getById('editor')->getFilePath());
                     $this->assertSame(1, $versionBefore, 'no phantom edits from switching');
@@ -4692,13 +4692,13 @@ final class IdeEdgeCasesTest extends TestCase
                 350 => function ($tui): void {
                     $tui->tick();
                     $this->assertSame(['A.php', 'B.php', 'C.php'], $this->tabNames($tui));
-                    $tui->handleInput("\x1b[1;4D"); // alt+shift+left → [A, C, B]
-                    $tui->handleInput("\x1b[1;4D"); // → [C, A, B]
-                    $tui->handleInput("\x1b[1;4D"); // C already first → no move
+                    $tui->handleInput("\x1b[1;6D"); // ctrl+shift+left → [A, C, B]
+                    $tui->handleInput("\x1b[1;6D"); // → [C, A, B]
+                    $tui->handleInput("\x1b[1;6D"); // C already first → no move
                 },
                 420 => function ($tui): void {
                     $this->assertSame(['C.php', 'A.php', 'B.php'], $this->tabNames($tui), 'C moved to the front and stopped at the end');
-                    $tui->handleInput("\x1b[1;4C"); // alt+shift+right → [A, C, B]
+                    $tui->handleInput("\x1b[1;6C"); // ctrl+shift+right → [A, C, B]
                 },
                 500 => function ($tui): void {
                     $this->assertSame(['A.php', 'C.php', 'B.php'], $this->tabNames($tui), 'moved back right');

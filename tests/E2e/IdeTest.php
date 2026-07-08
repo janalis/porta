@@ -150,7 +150,7 @@ final class IdeTest extends TestCase
             $s = $screen();
             $this->assertStringContainsString('Demo.php', $s);
             $this->assertStringContainsString('Target.php', $s);
-            $tui->handleInput("\x1b[1;3C"); // alt+right wraps to Demo.php
+            $tui->handleInput("\x1b[1;5C"); // ctrl+right wraps to Demo.php
         });
         $this->step(2.55, function () use ($editor, $tui): void {
             $this->assertStringEndsWith('Demo.php', (string) $editor()->getFilePath());

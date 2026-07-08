@@ -869,8 +869,8 @@ final class CodeEditorWidgetTest extends TestCase
             ),
         ));
 
-        $editor->handleInput("\x1b[1;3C"); // alt+right
-        $editor->handleInput("\x1b[1;3D"); // alt+left
+        $editor->handleInput("\x1b[1;5C"); // ctrl+right
+        $editor->handleInput("\x1b[1;5D"); // ctrl+left
         $editor->handleInput("\x05"); // ctrl+e
         $editor->handleInput("\x1bw"); // alt+w
         $editor->handleInput("\x06"); // ctrl+f
