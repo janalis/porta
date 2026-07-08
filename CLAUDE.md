@@ -38,12 +38,12 @@ Run gate commands capturing output rather than piping to a pager, e.g.
 ## Conventions
 
 - **Final classes + constructor injection everywhere.** Collaborators are threaded as
-  constructor arguments — no class reaches for a global. Services that are expressible as
-  service+scalar injection are built by a **Symfony DI container** (see the Architecture note on
-  `Ide`); everything else (widgets needing per-instance config, objects wired with `$this`
-  closures) is still hand-constructed in `Ide`. When you add a dependency to a container-built
-  class, autowiring handles it; when you add one to a hand-built class, inject it and update
-  every construction site (including tests).
+  constructor arguments — no class reaches for a global. Services and singleton widgets are
+  **autoregistered** by a **Symfony DI container** (see the Architecture note on `Ide`); only the
+  `$this`-closure-wired objects and the composite widget-tree assembly stay hand-constructed in
+  `Ide`. When you add a dependency to a container-built class, autowiring handles it (a new
+  autowirable class needs no config unless `Ide` resolves it by id — then mark it public); when
+  you add one to a hand-built class, inject it and update every construction site (including tests).
 - **No `$this` inside injected `static fn` closures** — mago rejects it.
 - The formatter (`mago format`, Symfony-style) **never re-wraps lines** (print-width 200,
   preserve-breaking). Keep your own line breaks; don't fight it.
@@ -63,23 +63,32 @@ top-to-bottom as a composition root. `run()` sets up the terminal (alternate scr
 modes 1000/1003/1006), arms a 1s filesystem-poll timer, and enters `tui->run()`. Teardown (mouse
 disable, session save, LSP/git/run shutdown) is in the `finally`.
 
-The container owns construction of every service expressible as **service + scalar injection**
-(the leaves like `Translator`/`GitInfo`, plus autowired controllers like `WorkspaceEditor`,
-`CompletionController`, `PanelManager`, `LayoutController`). `Ide` resolves each via the typed
-`service()` helper and stores it into its existing private property (so reflection-based tests
-keep working). What the container **cannot** express stays hand-built in the matching `build*`
-step: the widget tree (`setId`/`setStyle`/`add`, the 6 `ContainerWidget`s / 3 `SeparatorWidget`s
-which are duplicate-typed and un-autowirable), RTL pane ordering, the `tui->add` Z-order chain,
-per-buffer runtime objects (`Buffer`/`Document`/`CodeHighlighter`), and the ~100 `$this`-closures
-that wire widgets to `Ide`'s orchestration methods. Manually-built singletons that container
-services depend on (renderer, tui, the chrome widgets, `LspSessionPool`, `GitSidebar`) are handed
-to the container as **synthetic** services right after `Ide` builds them.
+The container owns construction of every service+scalar-injectable class **and every singleton
+widget** — the leaves (`Translator`/`GitInfo`), the autowired controllers (`WorkspaceEditor`,
+`CompletionController`, `PanelManager`, `LayoutController`), and the widgets (`FileTreeWidget`,
+`CodeEditorWidget`, the git/settings widgets, …), whose per-instance `setId`/`setStyle` is applied
+in-config via `->call()`. `Ide` resolves each via the typed `service()` helper and stores it into
+its existing private property (so reflection-based tests keep working). What the container
+**cannot** express stays hand-built in the matching `build*` step: the composite `ContainerWidget`
+tree assembly (`->add`/`setPanes`, the 6 `ContainerWidget`s / 3 `SeparatorWidget`s which are
+duplicate-typed and un-autowirable), the `setProvider(fn…)` closures on `TabBar`/`Breadcrumbs`/
+`StatusBar`, RTL pane ordering, the `tui->add` Z-order chain, per-buffer runtime objects
+(`Buffer`/`Document`/`CodeHighlighter`), and the ~100 `$this`-closures that wire widgets to `Ide`'s
+orchestration methods. Only three objects the container can't build are handed to it as
+**synthetic** services after `Ide` constructs them: `Renderer` and `Tui` (external `symfony/tui`
+infra) and `LspSessionPool` (a required `$this` closure).
 
 **Rules for the container** (`config/services.php`, deliberately **outside `src/`** so the wiring
-stays off the 100%-line-coverage gate): every def is **shared** and **public** (Ide resolves them
-by id across the locator boundary); **never `lazy: true`** — it proxy-subclasses, which breaks on
-`final` classes; add new service defs there and resolve with `service()`. Add construction that
-the container can't own to the matching `build*` step, not as another extracted class.
+stays off the 100%-line-coverage gate): services are **autoregistered** via
+`$services->load('Porta\\', '../src/*')` excluding only `Ide.php` and `Container/` — the ~137
+non-service classes register private and are pruned at compile because nothing public references
+them (*fragile*: if a **public** service ever gains a dependency on a closure-wired/DTO class,
+compile fails with a Symfony autowiring error — explicit at boot, caught by the first E2e test).
+`_defaults` stays **private**; only the ids `Ide` resolves by id are marked `->public()`. Every def
+is **shared**; **never `lazy: true`** — it proxy-subclasses, which breaks `final` classes. Widgets
+needing per-instance config get an explicit `set()->public()->call('setId'|'setStyle', …)` override
+(Style via `inline_service(Style::class)->args(['$flex'=>N])`). Add construction the container can't
+own to the matching `build*` step, not as another extracted class.
 
 **Single event loop.** `revolt/event-loop` drives both the `symfony/tui` render/input loop and
 all async work (LSP over stdio, git subprocesses, the integrated terminal PTY, run
