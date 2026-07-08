@@ -13,7 +13,7 @@ use Symfony\Component\Console\Tester\CommandTester;
 
 final class PortaCommandTest extends TestCase
 {
-    /** @var array{0: Workspace, 1: ?string, 2: bool}|null captured launch arguments */
+    /** @var array{0: Workspace, 1: ?string, 2: bool, 3: bool}|null captured launch arguments */
     private ?array $launched = null;
 
     private function command(bool $interactive = true): PortaCommand
@@ -21,8 +21,8 @@ final class PortaCommandTest extends TestCase
         $this->launched = null;
 
         return new PortaCommand(
-            launch: function (Workspace $workspace, ?string $lsp, bool $noLsp): void {
-                $this->launched = [$workspace, $lsp, $noLsp];
+            launch: function (Workspace $workspace, ?string $lsp, bool $noLsp, bool $ansi): void {
+                $this->launched = [$workspace, $lsp, $noLsp, $ansi];
             },
             isInteractive: static fn (): bool => $interactive,
         );
@@ -70,6 +70,19 @@ final class PortaCommandTest extends TestCase
         [, $lsp, $noLsp] = $this->launched;
         $this->assertSame('my-ls --stdio', $lsp);
         $this->assertTrue($noLsp);
+    }
+
+    public function testOutputDecorationDrivesTheColorMode(): void
+    {
+        $project = new TempProject(['a.php' => '']);
+
+        $tester = new CommandTester($this->command());
+        $tester->execute(['path' => $project->dir], ['decorated' => false]);
+        $this->assertFalse($this->launched[3], '--no-ansi (undecorated output) launches in monochrome');
+
+        $tester = new CommandTester($this->command());
+        $tester->execute(['path' => $project->dir], ['decorated' => true]);
+        $this->assertTrue($this->launched[3], '--ansi (decorated output) launches in color');
     }
 
     public function testNonInteractiveTerminalRefusesToLaunch(): void

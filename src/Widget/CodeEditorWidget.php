@@ -143,7 +143,7 @@ final class CodeEditorWidget extends AbstractWidget implements FocusableInterfac
         $this->callbacks = new EditorCallbacks();
         $this->overlayHost = new OverlayHost(fn () => $this->invalidate(), $this->palette);
         $this->document = new Document('');
-        $this->highlighter = new CodeHighlighter();
+        $this->highlighter = new CodeHighlighter(ansi: $this->palette->hasColor());
         $this->foldModel = new FoldModel($this->document);
         $this->scroll = new EditorScroll($this->document, $this->foldModel, fn () => $this->invalidate());
         $this->multiCaret = $this->newMultiCaret($this->document);
@@ -265,7 +265,7 @@ final class CodeEditorWidget extends AbstractWidget implements FocusableInterfac
         if (null !== $highlighter) {
             $this->highlighter = $highlighter;
         } else {
-            $this->highlighter = new CodeHighlighter();
+            $this->highlighter = new CodeHighlighter(ansi: $this->palette->hasColor());
             $this->highlighter->setFile($path);
         }
         $this->diagnostics = $diagnostics;

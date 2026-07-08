@@ -26,4 +26,9 @@ final class MonochromePalette implements Palette
     {
         return "\x1b[0m";
     }
+
+    public function hasColor(): bool
+    {
+        return false;
+    }
 }

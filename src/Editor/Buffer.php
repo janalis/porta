@@ -33,8 +33,9 @@ final class Buffer
     public function __construct(
         public readonly string $path,
         public readonly Document $document,
+        bool $ansi = true,
     ) {
-        $this->highlighter = new CodeHighlighter();
+        $this->highlighter = new CodeHighlighter(ansi: $ansi);
         $this->highlighter->setFile($path);
     }
 

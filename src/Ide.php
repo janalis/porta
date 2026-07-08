@@ -191,9 +191,10 @@ final class Ide
         private readonly ?int $initialLine = null,
         private readonly ?string $lspCommand = null,
         private readonly bool $lspDisabled = false,
+        bool $ansi = true,
     ) {
         $config = IdeConfig::load($this->rootDir);
-        $this->container = new IdeContainerFactory()->build($this->rootDir, (string) ($config->settings['language'] ?? 'en'));
+        $this->container = new IdeContainerFactory()->build($this->rootDir, (string) ($config->settings['language'] ?? 'en'), $ansi);
         $this->translator = $this->service(Translator::class);
         $keybindings = new Keybindings(array_merge(ActionCatalog::ideDefaults(), $config->keymap));
         $this->keybindings = $keybindings;

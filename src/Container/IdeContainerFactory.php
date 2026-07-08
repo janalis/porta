@@ -18,11 +18,12 @@ use Symfony\Component\DependencyInjection\Loader\PhpFileLoader;
  */
 final class IdeContainerFactory
 {
-    public function build(string $rootDir, string $locale): ContainerBuilder
+    public function build(string $rootDir, string $locale, bool $ansi): ContainerBuilder
     {
         $container = new ContainerBuilder();
         $container->setParameter('porta.root_dir', $rootDir);
         $container->setParameter('porta.locale', $locale);
+        $container->setParameter('porta.ansi', $ansi);
 
         new PhpFileLoader($container, new FileLocator(\dirname(__DIR__, 2).'/config'))->load('services.php');
 

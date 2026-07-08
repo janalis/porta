@@ -5,6 +5,8 @@ declare(strict_types=1);
 namespace Porta\Editor;
 
 use Porta\Support\IntMath;
+use Porta\Ui\ColorPalette;
+use Porta\Ui\Palette;
 
 /**
  * Holds all open editor buffers. Each buffer keeps its own Document (and
@@ -17,10 +19,16 @@ final class BufferManager
     private array $buffers = [];
     private ?string $activePath = null;
     private int $focusCounter = 0;
+    private readonly Palette $palette;
+
+    public function __construct(?Palette $palette = null)
+    {
+        $this->palette = $palette ?? ColorPalette::dark();
+    }
 
     public function open(string $path, string $content): Buffer
     {
-        $buffer = $this->buffers[$path] ??= new Buffer($path, new Document($content));
+        $buffer = $this->buffers[$path] ??= new Buffer($path, new Document($content), $this->palette->hasColor());
         $this->activePath = $path;
         $buffer->lastFocused = ++$this->focusCounter;
 

@@ -99,7 +99,7 @@ final class DiffViewWidget extends AbstractWidget implements FocusableInterface,
         ?Palette $palette = null,
     ) {
         $this->palette = $palette ?? ColorPalette::dark();
-        $this->highlighter = new CodeHighlighter();
+        $this->highlighter = new CodeHighlighter(ansi: $this->palette->hasColor());
     }
 
     /** @param callable(array<int, array<int, true>>): void $callback */

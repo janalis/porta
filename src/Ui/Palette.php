@@ -22,4 +22,7 @@ interface Palette
 
     /** Reset all attributes ("\x1b[0m"); kept in monochrome to close bold/reverse runs. */
     public function reset(): string;
+
+    /** Whether this palette emits color (false in monochrome) — drives the syntax theme too. */
+    public function hasColor(): bool;
 }

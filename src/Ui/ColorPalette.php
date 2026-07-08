@@ -88,4 +88,9 @@ final class ColorPalette implements Palette
     {
         return "\x1b[0m";
     }
+
+    public function hasColor(): bool
+    {
+        return true;
+    }
 }

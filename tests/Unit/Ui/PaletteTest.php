@@ -98,4 +98,10 @@ final class PaletteTest extends TestCase
         $this->assertSame('', $mono->fgReset(), 'no fg reset when nothing was colored');
         $this->assertSame("\x1b[0m", $mono->reset(), 'attribute reset stays to close bold/reverse');
     }
+
+    public function testHasColor(): void
+    {
+        $this->assertTrue(ColorPalette::dark()->hasColor());
+        $this->assertFalse(new MonochromePalette()->hasColor());
+    }
 }
