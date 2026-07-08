@@ -40,13 +40,13 @@ final class SettingsLanguageControllerTest extends TestCase
 
         $php = $controller->rows('php');
         $this->assertSame(['indentStyle', 'indentSize'], array_column($php, 'key'));
-        $this->assertSame('tabs', $php[0]['value']);
-        $this->assertSame(['auto', 'spaces', 'tabs'], $php[0]['options']);
-        $this->assertSame('4', $php[1]['value'], 'size rendered as a string for the choice');
+        $this->assertSame('tabs', $php[0]->value);
+        $this->assertSame(['auto', 'spaces', 'tabs'], $php[0]->options);
+        $this->assertSame('4', $php[1]->value, 'size rendered as a string for the choice');
 
         $css = $controller->rows('css'); // unconfigured → auto/auto
-        $this->assertSame('auto', $css[0]['value']);
-        $this->assertSame('auto', $css[1]['value']);
+        $this->assertSame('auto', $css[0]->value);
+        $this->assertSame('auto', $css[1]->value);
     }
 
     public function testApplyToEditorPushesTheMap(): void

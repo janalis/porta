@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Porta\Widget\Settings;
 
+use Porta\Config\SettingsRow;
 use Porta\I18n\Translator;
 use Porta\Ui\Style;
 use Porta\Ui\TextField;
@@ -32,7 +33,6 @@ use Symfony\Component\Tui\Widget\VerticallyExpandableInterface;
  * A `text` row is edited inline: Enter/click enters edit mode, typing/Backspace
  * change the value, Enter commits (fires onChange), Esc cancels.
  *
- * @phpstan-type Row array{key: string, label: string, kind: string, value: bool|int|string, restart: bool, options?: list<string>, min?: int, max?: int, hint?: string}
  */
 final class SettingsFormWidget extends AbstractWidget implements FocusableInterface, MenuOverlayHost, VerticallyExpandableInterface
 {
@@ -46,7 +46,7 @@ final class SettingsFormWidget extends AbstractWidget implements FocusableInterf
         private readonly Translator $translator,
     ) {}
 
-    /** @var list<Row> */
+    /** @var list<SettingsRow> */
     private array $rows = [];
     private int $selected = 0;
     /** The row index whose text field is being edited inline, or null. */
@@ -94,7 +94,7 @@ final class SettingsFormWidget extends AbstractWidget implements FocusableInterf
     /**
      * Replace the rows, clamping the selection into range.
      *
-     * @param list<Row> $rows
+     * @param list<SettingsRow> $rows
      */
     public function setRows(array $rows): void
     {
@@ -170,8 +170,8 @@ final class SettingsFormWidget extends AbstractWidget implements FocusableInterf
         if (null === $row) {
             return;
         }
-        if ('text' === $row['kind']) {
-            $this->editField = new TextField((string) $row['value']);
+        if ('text' === $row->kind) {
+            $this->editField = new TextField((string) $row->value);
             $this->editing = $this->selected;
             $this->invalidate();
 
@@ -181,12 +181,12 @@ final class SettingsFormWidget extends AbstractWidget implements FocusableInterf
             return;
         }
 
-        $new = match ($row['kind']) {
-            'bool' => !(bool) $row['value'],
+        $new = match ($row->kind) {
+            'bool' => !(bool) $row->value,
             'choice' => $this->cycleChoice($row, $delta),
             default => $this->stepInt($row, $delta),
         };
-        ($this->onChange)($row['key'], $new);
+        ($this->onChange)($row->key, $new);
     }
 
     /** Route a keystroke into the inline text editor: Esc cancels, Enter commits. */
@@ -196,7 +196,7 @@ final class SettingsFormWidget extends AbstractWidget implements FocusableInterf
             $this->editing = null;
             $this->invalidate();
         } elseif ($kb->matches($data, 'confirm')) {
-            $key = $this->rows[$index]['key'] ?? null;
+            $key = ($this->rows[$index] ?? null)?->key;
             $value = $field->value();
             $this->editing = null;
             $this->invalidate();
@@ -213,15 +213,15 @@ final class SettingsFormWidget extends AbstractWidget implements FocusableInterf
     }
 
     /**
-     * @param Row $row
+     * @param SettingsRow $row
      */
-    private function cycleChoice(array $row, int $delta): string
+    private function cycleChoice(SettingsRow $row, int $delta): string
     {
-        $options = $row['options'] ?? [];
+        $options = $row->options ?? [];
         if ([] === $options) {
-            return (string) $row['value'];
+            return (string) $row->value;
         }
-        $index = array_search($row['value'], $options, true);
+        $index = array_search($row->value, $options, true);
         $index = false === $index ? 0 : $index;
         $count = \count($options);
 
@@ -229,14 +229,14 @@ final class SettingsFormWidget extends AbstractWidget implements FocusableInterf
     }
 
     /**
-     * @param Row $row
+     * @param SettingsRow $row
      */
-    private function stepInt(array $row, int $delta): int
+    private function stepInt(SettingsRow $row, int $delta): int
     {
-        $min = $row['min'] ?? 1;
-        $max = $row['max'] ?? \PHP_INT_MAX;
+        $min = $row->min ?? 1;
+        $max = $row->max ?? \PHP_INT_MAX;
 
-        return max($min, min($max, (int) $row['value'] + $delta));
+        return max($min, min($max, (int) $row->value + $delta));
     }
 
     /** @param (callable(): void)|null $callback */
@@ -262,12 +262,12 @@ final class SettingsFormWidget extends AbstractWidget implements FocusableInterf
 
             $selected = $i === $this->selected;
             $bg = $selected ? ($this->focused ? Style::SELECTED_ROW : "\x1b[48;5;237m") : '';
-            $text = match ($row['kind']) {
-                'bool' => ' '.((bool) $row['value'] ? '[x]' : '[ ]').' '.$row['label'],
-                'text' => ' '.$row['label'].'  '.$this->textValue($row, $i),
-                default => ' '.$row['label'].'  < '.(string) $row['value'].' >',
+            $text = match ($row->kind) {
+                'bool' => ' '.((bool) $row->value ? '[x]' : '[ ]').' '.$row->label,
+                'text' => ' '.$row->label.'  '.$this->textValue($row, $i),
+                default => ' '.$row->label.'  < '.(string) $row->value.' >',
             };
-            if ($row['restart']) {
+            if ($row->restart) {
                 $text .= "\x1b[38;5;245m · ".$this->translator->trans('applies on restart')."\x1b[39m";
             }
             $lines[] = $bg.AnsiUtils::truncateToWidth($text, $width, '…', pad: true)."\x1b[0m";
@@ -280,16 +280,16 @@ final class SettingsFormWidget extends AbstractWidget implements FocusableInterf
      * The rendered value of a text row: the live editor (with a cursor) while
      * editing, else the value, else a dimmed hint when empty.
      *
-     * @param Row $row
+     * @param SettingsRow $row
      */
-    private function textValue(array $row, int $index): string
+    private function textValue(SettingsRow $row, int $index): string
     {
         if ($index === $this->editing && null !== $this->editField) {
             return $this->editField->render(cursor: $this->focused);
         }
-        $value = (string) $row['value'];
-        if ('' === $value && isset($row['hint'])) {
-            return "\x1b[38;5;245m".$row['hint']."\x1b[39m";
+        $value = (string) $row->value;
+        if ('' === $value && null !== $row->hint) {
+            return "\x1b[38;5;245m".$row->hint."\x1b[39m";
         }
 
         return $value;

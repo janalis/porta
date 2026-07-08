@@ -15,8 +15,6 @@ use Porta\Ui\Notifier;
  * .porta.json's `lsp` map, and applies it live — re-resolving the servers,
  * reconfiguring the session pool, and re-opening buffers so the new server
  * starts without a restart.
- *
- * @phpstan-type FormRow array{key: string, label: string, kind: string, value: bool|int|string, restart: bool, options?: list<string>, min?: int, max?: int, hint?: string}
  */
 final class SettingsLspController
 {
@@ -38,20 +36,20 @@ final class SettingsLspController
      * The LSP-server row for a language: a text field holding the configured
      * command, hinting the auto-detected server when empty.
      *
-     * @return list<FormRow>
+     * @return list<SettingsRow>
      */
     public function rows(string $language): array
     {
         $auto = ServerLocator::autoDetected($this->rootDir)[$language]['name'] ?? null;
 
-        return [[
-            'key' => 'lspServer',
-            'label' => $this->translator->trans('LSP server'),
-            'kind' => 'text',
-            'value' => $this->overrides[$language] ?? '',
-            'restart' => false,
-            'hint' => null !== $auto ? $this->translator->trans('auto: %server%', ['%server%' => $auto]) : $this->translator->trans('auto-detect'),
-        ]];
+        return [new SettingsRow(
+            key: 'lspServer',
+            label: $this->translator->trans('LSP server'),
+            kind: 'text',
+            value: $this->overrides[$language] ?? '',
+            restart: false,
+            hint: null !== $auto ? $this->translator->trans('auto: %server%', ['%server%' => $auto]) : $this->translator->trans('auto-detect'),
+        )];
     }
 
     /**

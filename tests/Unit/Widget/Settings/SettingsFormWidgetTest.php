@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Porta\Tests\Unit\Widget\Settings;
 
 use PHPUnit\Framework\TestCase;
+use Porta\Config\SettingsRow;
 use Porta\I18n\Translator;
 use Porta\Widget\Settings\SettingsFormWidget;
 use Symfony\Component\Tui\Ansi\AnsiUtils;
@@ -12,15 +13,15 @@ use Symfony\Component\Tui\Render\RenderContext;
 
 final class SettingsFormWidgetTest extends TestCase
 {
-    /** @return list<array<string, mixed>> */
+    /** @return list<SettingsRow> */
     private function rows(): array
     {
         return [
-            ['key' => 'inlineDiagnostics', 'label' => 'Inline diagnostics', 'kind' => 'bool', 'value' => true, 'restart' => false],
-            ['key' => 'relativeLineNumbers', 'label' => 'Relative line numbers', 'kind' => 'bool', 'value' => false, 'restart' => false],
-            ['key' => 'editorConfig', 'label' => 'Respect .editorconfig', 'kind' => 'bool', 'value' => true, 'restart' => true],
-            ['key' => 'theme', 'label' => 'Theme', 'kind' => 'choice', 'value' => 'dark', 'restart' => true, 'options' => ['dark', 'light']],
-            ['key' => 'tabWidth', 'label' => 'Tab width', 'kind' => 'int', 'value' => 4, 'restart' => true, 'min' => 1, 'max' => 8],
+            new SettingsRow(key: 'inlineDiagnostics', label: 'Inline diagnostics', kind: 'bool', value: true, restart: false),
+            new SettingsRow(key: 'relativeLineNumbers', label: 'Relative line numbers', kind: 'bool', value: false, restart: false),
+            new SettingsRow(key: 'editorConfig', label: 'Respect .editorconfig', kind: 'bool', value: true, restart: true),
+            new SettingsRow(key: 'theme', label: 'Theme', kind: 'choice', value: 'dark', restart: true, options: ['dark', 'light']),
+            new SettingsRow(key: 'tabWidth', label: 'Tab width', kind: 'int', value: 4, restart: true, min: 1, max: 8),
         ];
     }
 
@@ -96,12 +97,12 @@ final class SettingsFormWidgetTest extends TestCase
         $this->assertSame(['theme', 'light'], $changes[0]);
 
         // From the last option, forward wraps to the first.
-        $widget->setRows([['key' => 'theme', 'label' => 'Theme', 'kind' => 'choice', 'value' => 'light', 'restart' => true, 'options' => ['dark', 'light']]]);
+        $widget->setRows([new SettingsRow(key: 'theme', label: 'Theme', kind: 'choice', value: 'light', restart: true, options: ['dark', 'light'])]);
         $widget->handleInput(']');
         $this->assertSame(['theme', 'dark'], $changes[1], ']= forward wraps');
 
         // Backward from the first wraps to the last.
-        $widget->setRows([['key' => 'theme', 'label' => 'Theme', 'kind' => 'choice', 'value' => 'dark', 'restart' => true, 'options' => ['dark', 'light']]]);
+        $widget->setRows([new SettingsRow(key: 'theme', label: 'Theme', kind: 'choice', value: 'dark', restart: true, options: ['dark', 'light'])]);
         $widget->handleInput("\x1b[D"); // left → prev
         $this->assertSame(['theme', 'light'], $changes[2]);
     }
@@ -115,11 +116,11 @@ final class SettingsFormWidgetTest extends TestCase
         $widget->handleInput(' '); // +1 → 5
         $this->assertSame(['tabWidth', 5], $changes[0]);
 
-        $widget->setRows([['key' => 'tabWidth', 'label' => 'Tab width', 'kind' => 'int', 'value' => 8, 'restart' => true, 'min' => 1, 'max' => 8]]);
+        $widget->setRows([new SettingsRow(key: 'tabWidth', label: 'Tab width', kind: 'int', value: 8, restart: true, min: 1, max: 8)]);
         $widget->handleInput(']');
         $this->assertSame(['tabWidth', 8], $changes[1], 'clamped at max');
 
-        $widget->setRows([['key' => 'tabWidth', 'label' => 'Tab width', 'kind' => 'int', 'value' => 1, 'restart' => true, 'min' => 1, 'max' => 8]]);
+        $widget->setRows([new SettingsRow(key: 'tabWidth', label: 'Tab width', kind: 'int', value: 1, restart: true, min: 1, max: 8)]);
         $widget->handleInput('['); // -1
         $this->assertSame(['tabWidth', 1], $changes[2], 'clamped at min');
     }
@@ -127,7 +128,7 @@ final class SettingsFormWidgetTest extends TestCase
     public function testIntWithoutExplicitBoundsUsesSaneDefaults(): void
     {
         $widget = $this->widget($changes);
-        $widget->setRows([['key' => 'tabWidth', 'label' => 'Tab width', 'kind' => 'int', 'value' => 1, 'restart' => false]]);
+        $widget->setRows([new SettingsRow(key: 'tabWidth', label: 'Tab width', kind: 'int', value: 1, restart: false)]);
         $widget->handleInput('['); // default min is 1 → stays
         $this->assertSame(['tabWidth', 1], $changes[0]);
     }
@@ -135,11 +136,11 @@ final class SettingsFormWidgetTest extends TestCase
     public function testChoiceWithNoOptionsOrUnknownValueDegradesGracefully(): void
     {
         $widget = $this->widget($changes);
-        $widget->setRows([['key' => 'theme', 'label' => 'Theme', 'kind' => 'choice', 'value' => 'dark', 'restart' => false, 'options' => []]]);
+        $widget->setRows([new SettingsRow(key: 'theme', label: 'Theme', kind: 'choice', value: 'dark', restart: false, options: [])]);
         $widget->handleInput(' ');
         $this->assertSame(['theme', 'dark'], $changes[0], 'empty options keep the value');
 
-        $widget->setRows([['key' => 'theme', 'label' => 'Theme', 'kind' => 'choice', 'value' => 'sepia', 'restart' => false, 'options' => ['dark', 'light']]]);
+        $widget->setRows([new SettingsRow(key: 'theme', label: 'Theme', kind: 'choice', value: 'sepia', restart: false, options: ['dark', 'light'])]);
         $widget->handleInput(' '); // unknown value → index 0 + 1
         $this->assertSame(['theme', 'light'], $changes[1]);
     }
@@ -148,9 +149,15 @@ final class SettingsFormWidgetTest extends TestCase
     {
         $fired = [];
         $widget = $this->widget();
-        $widget->onShowKeybindings(function () use (&$fired): void { $fired[] = 'kb'; });
-        $widget->onFocusNext(function () use (&$fired): void { $fired[] = 'next'; });
-        $widget->onExit(function () use (&$fired): void { $fired[] = 'exit'; });
+        $widget->onShowKeybindings(function () use (&$fired): void {
+            $fired[] = 'kb';
+        });
+        $widget->onFocusNext(function () use (&$fired): void {
+            $fired[] = 'next';
+        });
+        $widget->onExit(function () use (&$fired): void {
+            $fired[] = 'exit';
+        });
 
         $widget->handleInput('2');
         $widget->handleInput("\t");
@@ -181,8 +188,8 @@ final class SettingsFormWidgetTest extends TestCase
     {
         $widget = new SettingsFormWidget(new Translator('en'));
         $widget->setRows($this->rows());
-        $widget->handleInput('2');    // no onShowKeybindings
-        $widget->handleInput("\t");   // no onFocusNext
+        $widget->handleInput('2'); // no onShowKeybindings
+        $widget->handleInput("\t"); // no onFocusNext
         $widget->handleInput("\x1b"); // no onExit
         $this->expectNotToPerformAssertions();
     }
@@ -193,7 +200,7 @@ final class SettingsFormWidgetTest extends TestCase
         for ($i = 0; $i < 4; ++$i) {
             $widget->handleInput("\x1b[B"); // selected = 4
         }
-        $widget->setRows([['key' => 'inlineDiagnostics', 'label' => 'Inline diagnostics', 'kind' => 'bool', 'value' => true, 'restart' => false]]);
+        $widget->setRows([new SettingsRow(key: 'inlineDiagnostics', label: 'Inline diagnostics', kind: 'bool', value: true, restart: false)]);
         $this->assertSame(0, $widget->selectedIndex());
     }
 
@@ -232,8 +239,8 @@ final class SettingsFormWidgetTest extends TestCase
         $widget = new SettingsFormWidget(new Translator('en'));
         $widget->setFocused(true);
         $widget->setRows([
-            ['key' => 'lspServer', 'label' => 'LSP server', 'kind' => 'text', 'value' => 'phpactor', 'restart' => false],
-            ['key' => 'other', 'label' => 'Other', 'kind' => 'text', 'value' => '', 'restart' => false, 'hint' => 'auto: none'],
+            new SettingsRow(key: 'lspServer', label: 'LSP server', kind: 'text', value: 'phpactor', restart: false),
+            new SettingsRow(key: 'other', label: 'Other', kind: 'text', value: '', restart: false, hint: 'auto: none'),
         ]);
         $widget->onChange(function (string $key, bool|int|string $value) use (&$changes): void {
             $changes[] = [$key, $value];
@@ -261,7 +268,7 @@ final class SettingsFormWidgetTest extends TestCase
         $this->assertStringContainsString('phpactor-x', AnsiUtils::stripAnsiCodes($widget->render(new RenderContext(60, 4))[0]));
 
         $widget->handleInput("\x7f"); // backspace
-        $widget->handleInput("\r");   // Enter commits
+        $widget->handleInput("\r"); // Enter commits
         $this->assertFalse($widget->isEditing());
         $this->assertSame([['lspServer', 'phpactor-']], $changes);
     }
@@ -295,14 +302,14 @@ final class SettingsFormWidgetTest extends TestCase
         $widget = $this->textWidget();
         $widget->handleInput("\r");
         $this->assertTrue($widget->isEditing());
-        $widget->setRows([['key' => 'lspServer', 'label' => 'LSP server', 'kind' => 'text', 'value' => 'x', 'restart' => false]]);
+        $widget->setRows([new SettingsRow(key: 'lspServer', label: 'LSP server', kind: 'text', value: 'x', restart: false)]);
         $this->assertFalse($widget->isEditing());
     }
 
     public function testEditingWithoutAChangeHandlerIsSafe(): void
     {
         $widget = new SettingsFormWidget(new Translator('en'));
-        $widget->setRows([['key' => 'lspServer', 'label' => 'LSP server', 'kind' => 'text', 'value' => 'x', 'restart' => false]]);
+        $widget->setRows([new SettingsRow(key: 'lspServer', label: 'LSP server', kind: 'text', value: 'x', restart: false)]);
         $widget->handleInput("\r"); // edit
         $widget->handleInput('y');
         $widget->handleInput("\r"); // commit with no onChange

@@ -19,7 +19,6 @@ use Porta\Widget\CodeEditorWidget;
  * next launch, flagged with a "applies on restart" note.
  *
  * @phpstan-type Descriptor array{label: string, kind: string, restart: bool, apply: (\Closure(int|bool|string): void)|null, options?: list<string>, min?: int, max?: int}
- * @phpstan-type FormRow array{key: string, label: string, kind: string, value: bool|int|string, restart: bool, options?: list<string>, min?: int, max?: int}
  */
 final class SettingsController
 {
@@ -72,7 +71,7 @@ final class SettingsController
     /**
      * The rows the settings form renders, current values pulled from state.
      *
-     * @return list<FormRow>
+     * @return list<SettingsRow>
      */
     public function formRows(): array
     {
@@ -80,11 +79,14 @@ final class SettingsController
         foreach ($this->descriptors as $key => $descriptor) {
             $raw = $this->settings[$key] ?? '';
             $value = 'bool' === $descriptor['kind'] ? (bool) $raw : (string) $raw;
-            $row = ['key' => $key, 'label' => $this->translator->trans($descriptor['label']), 'kind' => $descriptor['kind'], 'value' => $value, 'restart' => $descriptor['restart']];
-            if (isset($descriptor['options'])) {
-                $row['options'] = $descriptor['options'];
-            }
-            $rows[] = $row;
+            $rows[] = new SettingsRow(
+                key: $key,
+                label: $this->translator->trans($descriptor['label']),
+                kind: $descriptor['kind'],
+                value: $value,
+                restart: $descriptor['restart'],
+                options: $descriptor['options'] ?? null,
+            );
         }
 
         return $rows;

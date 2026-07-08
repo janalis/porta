@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Porta\Tests\Unit\Widget\Settings;
 
 use PHPUnit\Framework\TestCase;
+use Porta\Config\KeybindingRow;
 use Porta\I18n\Translator;
 use Porta\Widget\Settings\KeybindingsListWidget;
 use Symfony\Component\Tui\Ansi\AnsiUtils;
@@ -12,13 +13,13 @@ use Symfony\Component\Tui\Render\RenderContext;
 
 final class KeybindingsListWidgetTest extends TestCase
 {
-    /** @return list<array<string, string>> */
+    /** @return list<KeybindingRow> */
     private function rows(): array
     {
         return [
-            ['action' => 'save', 'label' => 'Save', 'binding' => 'ctrl+s'],
-            ['action' => 'duplicate_line', 'label' => 'Duplicate Line', 'binding' => 'ctrl+d'],
-            ['action' => 'quit', 'label' => 'Quit', 'binding' => ''],
+            new KeybindingRow('save', 'Save', 'ctrl+s'),
+            new KeybindingRow('duplicate_line', 'Duplicate Line', 'ctrl+d'),
+            new KeybindingRow('quit', 'Quit', ''),
         ];
     }
 
@@ -65,7 +66,7 @@ final class KeybindingsListWidgetTest extends TestCase
     {
         $widget = $this->widget($rebinds);
         $widget->handleInput("\x1b[B"); // select duplicate_line
-        $widget->handleInput("\r");     // Enter arms capture
+        $widget->handleInput("\r"); // Enter arms capture
         $this->assertTrue($widget->isCapturing());
         $this->assertStringContainsString('Press a key', $this->plain($widget->render(new RenderContext(60, 8))));
 
@@ -78,10 +79,12 @@ final class KeybindingsListWidgetTest extends TestCase
     {
         $exited = false;
         $widget = $this->widget($rebinds);
-        $widget->onExit(function () use (&$exited): void { $exited = true; });
+        $widget->onExit(function () use (&$exited): void {
+            $exited = true;
+        });
 
-        $widget->handleInput("\r");    // arm
-        $widget->handleInput("\x1b");  // Esc cancels capture
+        $widget->handleInput("\r"); // arm
+        $widget->handleInput("\x1b"); // Esc cancels capture
         $this->assertFalse($widget->isCapturing());
         $this->assertSame([], $rebinds, 'nothing rebound');
         $this->assertFalse($exited, 'Esc during capture does not leave the view');
@@ -91,7 +94,9 @@ final class KeybindingsListWidgetTest extends TestCase
     {
         $exited = false;
         $widget = $this->widget();
-        $widget->onExit(function () use (&$exited): void { $exited = true; });
+        $widget->onExit(function () use (&$exited): void {
+            $exited = true;
+        });
         $widget->handleInput("\x1b");
         $this->assertTrue($exited);
     }
@@ -100,8 +105,12 @@ final class KeybindingsListWidgetTest extends TestCase
     {
         $fired = [];
         $widget = $this->widget();
-        $widget->onShowSettings(function () use (&$fired): void { $fired[] = 'settings'; });
-        $widget->onFocusNext(function () use (&$fired): void { $fired[] = 'next'; });
+        $widget->onShowSettings(function () use (&$fired): void {
+            $fired[] = 'settings';
+        });
+        $widget->onFocusNext(function () use (&$fired): void {
+            $fired[] = 'next';
+        });
         $widget->handleInput('1');
         $widget->handleInput("\t");
         $this->assertSame(['settings', 'next'], $fired);
@@ -159,11 +168,11 @@ final class KeybindingsListWidgetTest extends TestCase
     {
         $widget = new KeybindingsListWidget(new Translator('en'));
         $widget->setRows($this->rows());
-        $widget->handleInput('1');    // no onShowSettings
-        $widget->handleInput("\t");   // no onFocusNext
+        $widget->handleInput('1'); // no onShowSettings
+        $widget->handleInput("\t"); // no onFocusNext
         $widget->handleInput("\x1b"); // no onExit
-        $widget->handleInput("\r");   // arm (no onRebind)
-        $widget->handleInput('a');    // capture with no onRebind is safe
+        $widget->handleInput("\r"); // arm (no onRebind)
+        $widget->handleInput('a'); // capture with no onRebind is safe
         $this->assertFalse($widget->isCapturing());
     }
 
@@ -182,7 +191,7 @@ final class KeybindingsListWidgetTest extends TestCase
         $widget = new KeybindingsListWidget(new Translator('en'));
         $rows = [];
         for ($i = 0; $i < 20; ++$i) {
-            $rows[] = ['action' => "a$i", 'label' => "Action $i", 'binding' => ''];
+            $rows[] = new KeybindingRow("a{$i}", "Action {$i}", '');
         }
         $widget->setFocused(true);
         $widget->setRows($rows);

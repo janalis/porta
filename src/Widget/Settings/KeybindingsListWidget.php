@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Porta\Widget\Settings;
 
+use Porta\Config\KeybindingRow;
 use Porta\I18n\Translator;
 use Porta\Ui\ListNavigation;
 use Porta\Ui\ListSelection;
@@ -28,7 +29,6 @@ use Symfony\Component\Tui\Widget\VerticallyExpandableInterface;
  * raw to onRebind for the controller to parse, validate and persist — Escape
  * cancels capture instead of leaving the view. Rebinds take effect next launch.
  *
- * @phpstan-type Row array{action: string, label: string, binding: string}
  */
 final class KeybindingsListWidget extends AbstractWidget implements FocusableInterface, MenuOverlayHost, VerticallyExpandableInterface
 {
@@ -38,7 +38,7 @@ final class KeybindingsListWidget extends AbstractWidget implements FocusableInt
     use MenuOverlayHostTrait;
     use KeybindingsTrait;
 
-    /** @var list<Row> */
+    /** @var list<KeybindingRow> */
     private array $rows = [];
     private readonly ListSelection $list;
     private int $lastRows = 10;
@@ -94,7 +94,7 @@ final class KeybindingsListWidget extends AbstractWidget implements FocusableInt
     /**
      * Replace the rows, keeping the selection in range and dropping any capture.
      *
-     * @param list<Row> $rows
+     * @param list<KeybindingRow> $rows
      */
     public function setRows(array $rows): void
     {
@@ -112,7 +112,7 @@ final class KeybindingsListWidget extends AbstractWidget implements FocusableInt
 
     public function selectedAction(): ?string
     {
-        return $this->rows[$this->list->selected()]['action'] ?? null;
+        return ($this->rows[$this->list->selected()] ?? null)?->action;
     }
 
     public function handleInput(string $data): void
@@ -128,7 +128,7 @@ final class KeybindingsListWidget extends AbstractWidget implements FocusableInt
             $row = $this->rows[$this->capturingIndex] ?? null;
             $this->capturingIndex = null;
             if (!$kb->matches($data, 'exit_view') && null !== $row && null !== $this->onRebind) {
-                ($this->onRebind)($row['action'], $data);
+                ($this->onRebind)($row->action, $data);
             }
             $this->invalidate();
 
@@ -238,13 +238,13 @@ final class KeybindingsListWidget extends AbstractWidget implements FocusableInt
                 $right = "\x1b[38;5;179m".$prompt."\x1b[39m";
                 $rightWidth = mb_strwidth($prompt);
             } else {
-                $shortcut = ShortcutFormatter::format($entry['binding']);
+                $shortcut = ShortcutFormatter::format($entry->binding);
                 $right = '' === $shortcut ? "\x1b[38;5;245m—\x1b[39m" : $shortcut;
                 $rightWidth = '' === $shortcut ? 1 : mb_strwidth($shortcut);
             }
 
             $labelWidth = max(0, $width - $rightWidth - 2);
-            $label = AnsiUtils::truncateToWidth(' '.$entry['label'], $labelWidth, '…', pad: true);
+            $label = AnsiUtils::truncateToWidth(' '.$entry->label, $labelWidth, '…', pad: true);
             $lines[] = $bg.$label.' '.$right.' '."\x1b[0m";
         }
 

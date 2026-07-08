@@ -67,13 +67,13 @@ final class SettingsControllerTest extends TestCase
             array_column($rows, 'key'),
             'language first; indent settings moved to the Languages section',
         );
-        $this->assertSame(['en', 'fr', 'de', 'es', 'it', 'ja', 'he'], $byKey['language']['options']);
-        $this->assertFalse($byKey['autoPairs']['value']);
-        $this->assertSame('bool', $byKey['autoPairs']['kind']);
-        $this->assertFalse($byKey['inlineDiagnostics']['restart'], 'live toggles need no restart');
-        $this->assertTrue($byKey['editorConfig']['restart']);
-        $this->assertSame('light', $byKey['theme']['value']);
-        $this->assertSame(['dark', 'light'], $byKey['theme']['options']);
+        $this->assertSame(['en', 'fr', 'de', 'es', 'it', 'ja', 'he'], $byKey['language']->options);
+        $this->assertFalse($byKey['autoPairs']->value);
+        $this->assertSame('bool', $byKey['autoPairs']->kind);
+        $this->assertFalse($byKey['inlineDiagnostics']->restart, 'live toggles need no restart');
+        $this->assertTrue($byKey['editorConfig']->restart);
+        $this->assertSame('light', $byKey['theme']->value);
+        $this->assertSame(['dark', 'light'], $byKey['theme']->options);
     }
 
     public function testChangingALiveSettingAppliesToTheEditorAndPersists(): void

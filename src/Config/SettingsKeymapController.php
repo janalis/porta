@@ -17,8 +17,6 @@ use Symfony\Component\Tui\Input\KeyParser;
  * .porta.json's keymap block. The live {@see Keybindings} instance has no
  * mutator, so a rebind takes effect next launch — flagged with an "applies on
  * restart" flash.
- *
- * @phpstan-type Row array{action: string, label: string, binding: string}
  */
 final class SettingsKeymapController
 {
@@ -36,14 +34,14 @@ final class SettingsKeymapController
      * the menu does: the editor's merged keybindings first, then the IDE-level
      * ones.
      *
-     * @return list<Row>
+     * @return list<KeybindingRow>
      */
     public function rows(): array
     {
         $rows = [];
         foreach (ActionCatalog::ACTIONS as $action => $spec) {
             $binding = $this->editor->getKeybindings()->getBindings($action)[0] ?? $this->ideKeys->getBindings($action)[0] ?? '';
-            $rows[] = ['action' => $action, 'label' => $this->translator->trans(ActionCatalog::label($action)), 'binding' => $binding];
+            $rows[] = new KeybindingRow($action, $this->translator->trans(ActionCatalog::label($action)), $binding);
         }
 
         return $rows;

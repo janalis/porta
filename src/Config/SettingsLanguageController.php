@@ -13,8 +13,6 @@ use Porta\Widget\CodeEditorWidget;
  * exposes each language's indent-style/size rows, persists a change into
  * .porta.json's `languages` block, and pushes the resolved map to the editor
  * (which re-applies it to the current document and every buffer opened after).
- *
- * @phpstan-type FormRow array{key: string, label: string, kind: string, value: bool|int|string, restart: bool, options?: list<string>, min?: int, max?: int}
  */
 final class SettingsLanguageController
 {
@@ -50,22 +48,15 @@ final class SettingsLanguageController
      * The indent rows for a language section: style and size, both choices with
      * an 'auto' option.
      *
-     * @return list<FormRow>
+     * @return list<SettingsRow>
      */
     public function rows(string $language): array
     {
         $entry = $this->config[$language] ?? new LanguageIndent();
 
         return [
-            ['key' => 'indentStyle', 'label' => $this->translator->trans('Indent style'), 'kind' => 'choice', 'value' => $entry->indentStyle, 'restart' => false, 'options' => self::STYLE_OPTIONS],
-            [
-                'key' => 'indentSize',
-                'label' => $this->translator->trans('Indent size'),
-                'kind' => 'choice',
-                'value' => (string) $entry->indentSize,
-                'restart' => false,
-                'options' => self::SIZE_OPTIONS,
-            ],
+            new SettingsRow(key: 'indentStyle', label: $this->translator->trans('Indent style'), kind: 'choice', value: $entry->indentStyle, restart: false, options: self::STYLE_OPTIONS),
+            new SettingsRow(key: 'indentSize', label: $this->translator->trans('Indent size'), kind: 'choice', value: (string) $entry->indentSize, restart: false, options: self::SIZE_OPTIONS),
         ];
     }
 

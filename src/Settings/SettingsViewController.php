@@ -8,6 +8,7 @@ use Porta\Config\SettingsController;
 use Porta\Config\SettingsKeymapController;
 use Porta\Config\SettingsLanguageController;
 use Porta\Config\SettingsLspController;
+use Porta\Config\SettingsRow;
 use Porta\Widget\MenuBarWidget;
 use Porta\Widget\Settings\KeybindingsListWidget;
 use Porta\Widget\Settings\SettingsFormWidget;
@@ -135,7 +136,7 @@ final class SettingsViewController
     /**
      * The form rows for the active (General or language) section.
      *
-     * @return list<array{key: string, label: string, kind: string, value: bool|int|string, restart: bool, options?: list<string>, min?: int, max?: int, hint?: string}>
+     * @return list<SettingsRow>
      */
     private function rowsForSection(): array
     {
