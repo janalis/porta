@@ -159,6 +159,12 @@ final class Ide
     private CommitBoxWidget $gitCommitBox;
     private HistoryListWidget $gitHistory;
     private GitTabsWidget $gitTabs;
+    private SeparatorWidget $gitSeparator;
+    private SettingsNavWidget $settingsNav;
+    private SettingsFormWidget $settingsForm;
+    private KeybindingsListWidget $settingsKeys;
+    private SeparatorWidget $settingsSeparator;
+    private ContainerWidget $settingsContent;
     private SettingsController $settings;
     private SettingsLanguageController $settingsLanguages;
     private BufferService $bufferService;
@@ -297,77 +303,9 @@ final class Ide
             fn () => $this->refreshBranch(),
             fn (string $path) => $this->relativePath($path),
         );
-        $this->gitChanges = new ChangesListWidget($this->translator);
-        $this->gitChanges->setId('git-changes')->setStyle(new Style(flex: 0));
-        $this->gitDiff = new DiffViewWidget($this->translator);
-        $this->gitDiff->setId('git-diff')->setStyle(new Style(flex: 1));
-        $this->gitCommitBox = new CommitBoxWidget($this->translator);
-        $this->gitCommitBox->setId('git-commit');
-        $this->gitHistory = new HistoryListWidget($this->translator);
-        $this->gitHistory->setId('git-history');
-        $this->gitTabs = new GitTabsWidget($this->translator);
-        $this->gitTabs->setId('git-tabs')->setStyle(new Style(flex: 0));
-        $gitLeft = new ContainerWidget();
-        $gitLeft->setId('git-left');
-        $gitLeft->setStyle(new Style(flex: 0));
-        $gitLeft->expandVertically(true);
-        $gitLeft->add($this->gitTabs)->add($this->gitChanges)->add($this->gitCommitBox);
-        $gitSeparator = new SeparatorWidget();
-        $gitSeparator->setId('git-separator')->setStyle(new Style(flex: 0));
-        $gitArea = new ContainerWidget();
-        $gitArea->setId('git-area');
-        $gitArea->setStyle(new Style(direction: Direction::Horizontal, gap: 0));
-        $gitArea->expandVertically(true);
-        $this->gitAreaContainer = $gitArea;
-        $this->gitPanes = [$gitLeft, $gitSeparator, $this->gitDiff];
-        $this->setPanes($gitArea, $this->gitPanes);
-        $this->gitView = new GitViewController(
-            $this->git,
-            $this->rootDir,
-            $this->gitChanges,
-            $this->gitDiff,
-            $this->gitCommitBox,
-            $this->gitHistory,
-            $this->gitTabs,
-            $this->main,
-            $gitArea,
-            $gitLeft,
-            $this->menuBar,
-            fn (): array => $this->orderPanes($this->editorPanes),
-            $this->tui,
-            $this->notifier,
-            $this->translator,
-            onClosed: function (): void {
-                $this->tui->setFocus($this->editor);
-                $this->tui->requestRender();
-            },
-            onCommitted: function (): void {
-                $this->refreshActiveGitMarks();
-                $this->refreshBranch();
-            },
-            loadDiffPrefs: fn (): array => $this->layout->gitDiffPrefs(),
-            saveDiffPrefs: fn (bool $split, bool $hideWhitespace) => $this->layout->setGitDiffPrefs($split, $hideWhitespace),
-            copyToClipboard: fn (string $text) => $this->copyToClipboard($text),
-        );
+        $this->buildGitView();
 
-        $settingsNav = new SettingsNavWidget($this->translator);
-        $settingsNav->setId('settings-nav')->setStyle(new Style(flex: 0));
-        $settingsForm = new SettingsFormWidget($this->translator);
-        $settingsForm->setId('settings-form')->setStyle(new Style(flex: 1));
-        $settingsKeys = new KeybindingsListWidget($this->translator);
-        $settingsKeys->setId('settings-keys')->setStyle(new Style(flex: 1));
-        $settingsSeparator = new SeparatorWidget();
-        $settingsSeparator->setId('settings-separator')->setStyle(new Style(flex: 0));
-        $settingsContent = new ContainerWidget();
-        $settingsContent->setId('settings-content')->setStyle(new Style(flex: 1));
-        $settingsContent->expandVertically(true);
-        $settingsArea = new ContainerWidget();
-        $settingsArea->setId('settings-area');
-        $settingsArea->setStyle(new Style(direction: Direction::Horizontal, gap: 0));
-        $settingsArea->expandVertically(true);
-        $this->settingsAreaContainer = $settingsArea;
-        $this->settingsPanes = [$settingsNav, $settingsSeparator, $settingsContent];
-        $this->setPanes($settingsArea, $this->settingsPanes);
+        $this->buildSettingsWidgets();
 
         $this->history = new LocalHistory($this->rootDir);
         $this->session = new SessionStore($this->rootDir);
@@ -379,7 +317,7 @@ final class Ide
             $this->terminalPanel,
             $this->resultsPanel,
             new GitSidebar($this->gitTabs, $this->gitChanges, $this->gitCommitBox, $this->gitHistory),
-            $settingsNav,
+            $this->settingsNav,
         );
         $this->overlay = new MenuOverlayController(
             $this->renderer,
@@ -395,12 +333,12 @@ final class Ide
             $this->gitHistory,
             $this->gitDiff,
             $this->gitTabs,
-            $gitSeparator,
+            $this->gitSeparator,
             fn (): bool => $this->gitView->isOpen(),
-            $settingsNav,
-            $settingsForm,
-            $settingsKeys,
-            $settingsSeparator,
+            $this->settingsNav,
+            $this->settingsForm,
+            $this->settingsKeys,
+            $this->settingsSeparator,
             fn (): bool => $this->settingsView->isOpen(),
         );
         $this->treeOps = new TreeOperations(
@@ -435,12 +373,12 @@ final class Ide
         $this->settingsLanguages = new SettingsLanguageController($this->editor, $this->notifier, $this->rootDir, $this->translator, $config->languages);
         $this->settingsLanguages->applyToEditor();
         $this->settingsView = new SettingsViewController(
-            $settingsNav,
-            $settingsForm,
-            $settingsKeys,
+            $this->settingsNav,
+            $this->settingsForm,
+            $this->settingsKeys,
             $this->main,
-            $settingsArea,
-            $settingsContent,
+            $this->settingsAreaContainer,
+            $this->settingsContent,
             $this->menuBar,
             fn (): array => $this->orderPanes($this->editorPanes),
             $this->tui,
@@ -504,12 +442,12 @@ final class Ide
             $this->gitCommitBox,
             $this->gitHistory,
             $this->gitTabs,
-            $gitSeparator,
+            $this->gitSeparator,
             fn (): bool => $this->gitView->isOpen(),
-            $settingsNav,
-            $settingsForm,
-            $settingsKeys,
-            $settingsSeparator,
+            $this->settingsNav,
+            $this->settingsForm,
+            $this->settingsKeys,
+            $this->settingsSeparator,
             fn (): bool => $this->settingsView->isOpen(),
             fn (int $row, int $col): int => $this->bidiTui->logicalColumn($row, $col),
         );
@@ -938,6 +876,84 @@ final class Ide
         $sheet->addRule('#main', new Style(direction: Direction::Horizontal, gap: 0));
 
         return $sheet;
+    }
+
+    /** Construct the settings-view widgets and their horizontal pane container. */
+    private function buildSettingsWidgets(): void
+    {
+        $this->settingsNav = new SettingsNavWidget($this->translator);
+        $this->settingsNav->setId('settings-nav')->setStyle(new Style(flex: 0));
+        $this->settingsForm = new SettingsFormWidget($this->translator);
+        $this->settingsForm->setId('settings-form')->setStyle(new Style(flex: 1));
+        $this->settingsKeys = new KeybindingsListWidget($this->translator);
+        $this->settingsKeys->setId('settings-keys')->setStyle(new Style(flex: 1));
+        $this->settingsSeparator = new SeparatorWidget();
+        $this->settingsSeparator->setId('settings-separator')->setStyle(new Style(flex: 0));
+        $this->settingsContent = new ContainerWidget();
+        $this->settingsContent->setId('settings-content')->setStyle(new Style(flex: 1));
+        $this->settingsContent->expandVertically(true);
+        $this->settingsAreaContainer = new ContainerWidget();
+        $this->settingsAreaContainer->setId('settings-area');
+        $this->settingsAreaContainer->setStyle(new Style(direction: Direction::Horizontal, gap: 0));
+        $this->settingsAreaContainer->expandVertically(true);
+        $this->settingsPanes = [$this->settingsNav, $this->settingsSeparator, $this->settingsContent];
+        $this->setPanes($this->settingsAreaContainer, $this->settingsPanes);
+    }
+
+    /** Construct the git-view widgets, their horizontal pane container and the controller. */
+    private function buildGitView(): void
+    {
+        $this->gitChanges = new ChangesListWidget($this->translator);
+        $this->gitChanges->setId('git-changes')->setStyle(new Style(flex: 0));
+        $this->gitDiff = new DiffViewWidget($this->translator);
+        $this->gitDiff->setId('git-diff')->setStyle(new Style(flex: 1));
+        $this->gitCommitBox = new CommitBoxWidget($this->translator);
+        $this->gitCommitBox->setId('git-commit');
+        $this->gitHistory = new HistoryListWidget($this->translator);
+        $this->gitHistory->setId('git-history');
+        $this->gitTabs = new GitTabsWidget($this->translator);
+        $this->gitTabs->setId('git-tabs')->setStyle(new Style(flex: 0));
+        $gitLeft = new ContainerWidget();
+        $gitLeft->setId('git-left');
+        $gitLeft->setStyle(new Style(flex: 0));
+        $gitLeft->expandVertically(true);
+        $gitLeft->add($this->gitTabs)->add($this->gitChanges)->add($this->gitCommitBox);
+        $this->gitSeparator = new SeparatorWidget();
+        $this->gitSeparator->setId('git-separator')->setStyle(new Style(flex: 0));
+        $this->gitAreaContainer = new ContainerWidget();
+        $this->gitAreaContainer->setId('git-area');
+        $this->gitAreaContainer->setStyle(new Style(direction: Direction::Horizontal, gap: 0));
+        $this->gitAreaContainer->expandVertically(true);
+        $this->gitPanes = [$gitLeft, $this->gitSeparator, $this->gitDiff];
+        $this->setPanes($this->gitAreaContainer, $this->gitPanes);
+        $this->gitView = new GitViewController(
+            $this->git,
+            $this->rootDir,
+            $this->gitChanges,
+            $this->gitDiff,
+            $this->gitCommitBox,
+            $this->gitHistory,
+            $this->gitTabs,
+            $this->main,
+            $this->gitAreaContainer,
+            $gitLeft,
+            $this->menuBar,
+            fn (): array => $this->orderPanes($this->editorPanes),
+            $this->tui,
+            $this->notifier,
+            $this->translator,
+            onClosed: function (): void {
+                $this->tui->setFocus($this->editor);
+                $this->tui->requestRender();
+            },
+            onCommitted: function (): void {
+                $this->refreshActiveGitMarks();
+                $this->refreshBranch();
+            },
+            loadDiffPrefs: fn (): array => $this->layout->gitDiffPrefs(),
+            saveDiffPrefs: fn (bool $split, bool $hideWhitespace) => $this->layout->setGitDiffPrefs($split, $hideWhitespace),
+            copyToClipboard: fn (string $text) => $this->copyToClipboard($text),
+        );
     }
 
     // --- File handling ----------------------------------------------------------
