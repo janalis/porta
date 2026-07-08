@@ -763,11 +763,11 @@ final class DiffViewWidget extends AbstractWidget implements FocusableInterface,
             $rightW = $width - 1 - $leftW;
 
             return (
-                $this->renderHalf($row['hunk'], $row['left'] ?? -1, $leftW, old: true)
+                $this->renderHalf($row['hunk'], $row['left'] ?? -1, $leftW, DiffSide::Old)
                 .self::GUTTER_FG
                 .'│'
                 ."\x1b[39m"
-                .$this->renderHalf($row['hunk'], $row['right'] ?? -1, $rightW, old: false)
+                .$this->renderHalf($row['hunk'], $row['right'] ?? -1, $rightW, DiffSide::New)
                 ."\x1b[0m"
             );
         }
@@ -826,14 +826,14 @@ final class DiffViewWidget extends AbstractWidget implements FocusableInterface,
      * $width columns; -1 (no line on this side) renders blank. Colors reset
      * to the default foreground at the end so nothing bleeds past the divider.
      */
-    private function renderHalf(int $hunkIndex, int $lineIndex, int $width, bool $old): string
+    private function renderHalf(int $hunkIndex, int $lineIndex, int $width, DiffSide $side): string
     {
         \assert(null !== $this->document);
         if ($lineIndex < 0) {
             return str_repeat(' ', $width);
         }
         $line = $this->document->hunks[$hunkIndex]->lines[$lineIndex];
-        $no = $old ? $line->oldNo : $line->newNo;
+        $no = $side->lineNo($line);
         $gutter = self::GUTTER_FG.str_pad(null === $no ? '' : (string) $no, 4, ' ', \STR_PAD_LEFT).' '."\x1b[39m";
 
         [$marker, $text] = $this->lineBody($line, $hunkIndex.':'.$lineIndex);
