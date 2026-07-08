@@ -208,12 +208,15 @@ final class Ide
             renderer: $this->renderer,
         );
         $this->tui = $this->bidiTui;
+        // Hand the manually-built infrastructure to the container as synthetic
+        // services (declared synthetic in config/services.php) right after each
+        // is created, so container-built controllers can resolve them by type.
+        $this->container->set(Renderer::class, $this->renderer);
+        $this->container->set(Tui::class, $this->tui);
 
         $this->buildEditorArea();
 
         $this->buildSidePanels();
-
-        $this->registerSyntheticServices();
 
         $this->git = $this->service(GitInfo::class);
         $this->gitCommands = new GitCommands(
@@ -299,7 +302,7 @@ final class Ide
             $this->completion,
         );
 
-        $hit = new HitTester($this->renderer);
+        $hit = $this->service(HitTester::class);
         $this->mouseRouter = new MouseRouter(
             $hit,
             $this->tui,
@@ -344,25 +347,6 @@ final class Ide
         \assert($service instanceof $id);
 
         return $service;
-    }
-
-    /**
-     * Register the manually-built singletons (renderer, tui, chrome widgets)
-     * into the container as synthetic services, so the container-built
-     * controllers can depend on them by type. They are declared synthetic in
-     * config/services.php; here we hand over the configured instances.
-     */
-    private function registerSyntheticServices(): void
-    {
-        $this->container->set(Renderer::class, $this->renderer);
-        $this->container->set(Tui::class, $this->tui);
-        $this->container->set(Notifier::class, $this->notifier);
-        $this->container->set(LspSessionPool::class, $this->lsp);
-        $this->container->set(CodeEditorWidget::class, $this->editor);
-        $this->container->set(FileTreeWidget::class, $this->tree);
-        $this->container->set(StatusBarWidget::class, $this->statusBar);
-        $this->container->set(ResultsPanelWidget::class, $this->resultsPanel);
-        $this->container->set(TerminalPanelWidget::class, $this->terminalPanel);
     }
 
     /**
@@ -858,22 +842,27 @@ final class Ide
     /** The editor workspace: tree, editor + LSP backend, chrome widgets and the main horizontal layout. */
     private function buildEditorArea(): void
     {
-        $this->buffers = new BufferManager();
+        $this->buffers = $this->service(BufferManager::class);
         $this->lsp = new LspSessionPool($this->rootDir, fn (): ?string => $this->editor->getFilePath(), $this->translator);
+        $this->container->set(LspSessionPool::class, $this->lsp);
 
         $this->tree = new FileTreeWidget($this->rootDir);
         $this->tree->setId('tree')->setStyle(new Style(flex: 0));
+        $this->container->set(FileTreeWidget::class, $this->tree);
         $this->editor = new CodeEditorWidget();
         $this->editor->setId('editor');
-        $this->workspaceEditor = new WorkspaceEditor($this->buffers, $this->editor, $this->lsp);
+        $this->container->set(CodeEditorWidget::class, $this->editor);
+        $this->workspaceEditor = $this->service(WorkspaceEditor::class);
         $this->statusBar = new StatusBarWidget();
         $this->statusBar->setId('status');
+        $this->container->set(StatusBarWidget::class, $this->statusBar);
         $this->notifier = new Notifier($this->statusBar, $this->tui);
+        $this->container->set(Notifier::class, $this->notifier);
         $this->menuBar = new MenuBarWidget();
         $this->menuBar->setId('menu');
         $this->contextMenu = new ContextMenu();
         $this->contextMenu->setId('context-menu');
-        $this->completion = new CompletionController($this->lsp, $this->editor, $this->tui, $this->notifier, $this->translator);
+        $this->completion = $this->service(CompletionController::class);
         $this->tabBar = new TabBarWidget();
         $this->tabBar->setId('tabs');
         $this->tabBar->setProvider(fn (): array => array_map(fn (Buffer $b) => [
@@ -912,8 +901,10 @@ final class Ide
         $this->findBar->setId('find-bar');
         $this->resultsPanel = new ResultsPanelWidget();
         $this->resultsPanel->setId('results');
+        $this->container->set(ResultsPanelWidget::class, $this->resultsPanel);
         $this->terminalPanel = new TerminalPanelWidget();
         $this->terminalPanel->setId('terminal');
+        $this->container->set(TerminalPanelWidget::class, $this->terminalPanel);
         $this->projectSearchController = new ProjectSearchController(
             new ProjectSearch($this->rootDir),
             $this->resultsPanel,
@@ -925,8 +916,8 @@ final class Ide
             $this->rootDir,
             fn (string $path, Document $document) => $this->lsp->notifyFullChange($path, $document),
         );
-        $this->commandPalette = new CommandPalette($this->resultsPanel, $this->tui);
-        $this->panels = new PanelManager($this->tui, $this->resultsPanel, $this->editor, $this->notifier);
+        $this->commandPalette = $this->service(CommandPalette::class);
+        $this->panels = $this->service(PanelManager::class);
         $this->navigation = new NavigationController(
             $this->lsp,
             $this->editor,

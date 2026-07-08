@@ -3,12 +3,18 @@
 declare(strict_types=1);
 
 use Porta\Config\EditorConfig\EditorConfigResolver;
+use Porta\Editor\BufferManager;
 use Porta\Git\GitInfo;
 use Porta\History\LocalHistory;
 use Porta\History\SessionStore;
 use Porta\I18n\Translator;
+use Porta\Input\HitTester;
+use Porta\Lsp\CompletionController;
 use Porta\Lsp\LspSessionPool;
+use Porta\Lsp\WorkspaceEditor;
+use Porta\Ui\CommandPalette;
 use Porta\Ui\Notifier;
+use Porta\Ui\PanelManager;
 use Porta\Widget\CodeEditorWidget;
 use Porta\Widget\FileTreeWidget;
 use Porta\Widget\ResultsPanelWidget;
@@ -44,6 +50,15 @@ return static function (ContainerConfigurator $container): void {
     $services->set(LocalHistory::class);
     $services->set(SessionStore::class);
     $services->set(EditorConfigResolver::class);
+    $services->set(BufferManager::class);
+
+    // Category-A controllers: autowired from services + synthetics above, no
+    // closures. Ide resolves each into its existing property.
+    $services->set(WorkspaceEditor::class);
+    $services->set(CompletionController::class);
+    $services->set(PanelManager::class);
+    $services->set(CommandPalette::class);
+    $services->set(HitTester::class);
 
     // Synthetic infrastructure: Ide builds these manually (they need per-instance
     // setId/setStyle or the terminal), then ->set()s the instances after boot.
