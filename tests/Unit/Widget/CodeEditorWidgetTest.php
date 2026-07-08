@@ -6,8 +6,13 @@ namespace Porta\Tests\Unit\Widget;
 
 use PHPUnit\Framework\TestCase;
 use Porta\Ui\Style;
+use Porta\Widget\BufferCallbacks;
 use Porta\Widget\CodeEditorWidget;
+use Porta\Widget\CompletionCallbacks;
 use Porta\Widget\EditorCallbacks;
+use Porta\Widget\FileActionCallbacks;
+use Porta\Widget\NavigationCallbacks;
+use Porta\Widget\RefactorCallbacks;
 use Porta\Widget\Render\LineDecorator;
 use Symfony\Component\Tui\Ansi\AnsiUtils;
 use Symfony\Component\Tui\Render\RenderContext;
@@ -223,9 +228,11 @@ final class CodeEditorWidgetTest extends TestCase
 
         $resolved = null;
         $editor->setCallbacks(new EditorCallbacks(
-            onCompletionResolve: function (array $item) use (&$resolved): void {
-                $resolved = $item;
-            },
+            completion: new CompletionCallbacks(
+                onCompletionResolve: function (array $item) use (&$resolved): void {
+                    $resolved = $item;
+                },
+            ),
         ));
 
         $editor->showCompletions([[
@@ -395,9 +402,11 @@ final class CodeEditorWidgetTest extends TestCase
 
         $copied = null;
         $editor->setCallbacks(new EditorCallbacks(
-            onCopy: function (string $text) use (&$copied): void {
-                $copied = $text;
-            },
+            file: new FileActionCallbacks(
+                onCopy: function (string $text) use (&$copied): void {
+                    $copied = $text;
+                },
+            ),
         ));
         $editor->handleInput("\x03"); // ctrl+c
         $this->assertSame('echo', $copied);
@@ -730,12 +739,14 @@ final class CodeEditorWidgetTest extends TestCase
         $completionRequests = [];
         $signatureRequests = [];
         $editor->setCallbacks(new EditorCallbacks(
-            onCompletionRequested: function (int $l, int $c) use (&$completionRequests): void {
-                $completionRequests[] = [$l, $c];
-            },
-            onSignatureHelp: function (int $l, int $c) use (&$signatureRequests): void {
-                $signatureRequests[] = [$l, $c];
-            },
+            completion: new CompletionCallbacks(
+                onCompletionRequested: function (int $l, int $c) use (&$completionRequests): void {
+                    $completionRequests[] = [$l, $c];
+                },
+                onSignatureHelp: function (int $l, int $c) use (&$signatureRequests): void {
+                    $signatureRequests[] = [$l, $c];
+                },
+            ),
         ));
 
         $editor->getDocument()->setCursor(1, 2);
@@ -756,12 +767,14 @@ final class CodeEditorWidgetTest extends TestCase
         $definitionAt = null;
         $navigatedBack = false;
         $editor->setCallbacks(new EditorCallbacks(
-            onDefinitionRequested: function (int $l, int $c) use (&$definitionAt): void {
-                $definitionAt = [$l, $c];
-            },
-            onNavigateBack: function () use (&$navigatedBack): void {
-                $navigatedBack = true;
-            },
+            navigation: new NavigationCallbacks(
+                onDefinitionRequested: function (int $l, int $c) use (&$definitionAt): void {
+                    $definitionAt = [$l, $c];
+                },
+                onNavigateBack: function () use (&$navigatedBack): void {
+                    $navigatedBack = true;
+                },
+            ),
         ));
 
         $editor->getDocument()->setCursor(2, 3);
@@ -828,27 +841,33 @@ final class CodeEditorWidgetTest extends TestCase
         $editor = $this->editor();
         $events = [];
         $editor->setCallbacks(new EditorCallbacks(
-            onBufferCycle: function (int $d) use (&$events): void {
-                $events[] = "cycle:{$d}";
-            },
-            onRecentFiles: function () use (&$events): void {
-                $events[] = 'recent';
-            },
-            onCloseBuffer: function () use (&$events): void {
-                $events[] = 'close';
-            },
-            onFindRequested: function (bool $r) use (&$events): void {
-                $events[] = 'find:'.var_export($r, true);
-            },
-            onGotoFile: function () use (&$events): void {
-                $events[] = 'goto';
-            },
-            onQuickDoc: function () use (&$events): void {
-                $events[] = 'doc';
-            },
-            onFindUsages: function () use (&$events): void {
-                $events[] = 'usages';
-            },
+            file: new FileActionCallbacks(
+                onFindRequested: function (bool $r) use (&$events): void {
+                    $events[] = 'find:'.var_export($r, true);
+                },
+                onGotoFile: function () use (&$events): void {
+                    $events[] = 'goto';
+                },
+            ),
+            navigation: new NavigationCallbacks(
+                onQuickDoc: function () use (&$events): void {
+                    $events[] = 'doc';
+                },
+                onFindUsages: function () use (&$events): void {
+                    $events[] = 'usages';
+                },
+            ),
+            buffer: new BufferCallbacks(
+                onBufferCycle: function (int $d) use (&$events): void {
+                    $events[] = "cycle:{$d}";
+                },
+                onRecentFiles: function () use (&$events): void {
+                    $events[] = 'recent';
+                },
+                onCloseBuffer: function () use (&$events): void {
+                    $events[] = 'close';
+                },
+            ),
         ));
 
         $editor->handleInput("\x1b[1;3C"); // alt+right
@@ -872,9 +891,11 @@ final class CodeEditorWidgetTest extends TestCase
         $editor = $this->editor();
         $saved = false;
         $editor->setCallbacks(new EditorCallbacks(
-            onSaveRequested: function () use (&$saved): void {
-                $saved = true;
-            },
+            file: new FileActionCallbacks(
+                onSaveRequested: function () use (&$saved): void {
+                    $saved = true;
+                },
+            ),
         ));
 
         $editor->handleInput("\x13"); // ctrl+s
@@ -901,9 +922,11 @@ final class CodeEditorWidgetTest extends TestCase
         $editor = $this->editor("<?php\n\$subject\n");
         $renamed = null;
         $editor->setCallbacks(new EditorCallbacks(
-            onRename: function (string $n, int $l, int $c) use (&$renamed): void {
-                $renamed = [$n, $l, $c];
-            },
+            refactor: new RefactorCallbacks(
+                onRename: function (string $n, int $l, int $c) use (&$renamed): void {
+                    $renamed = [$n, $l, $c];
+                },
+            ),
         ));
         $editor->getDocument()->setCursor(1, 8);
 
@@ -952,12 +975,16 @@ final class CodeEditorWidgetTest extends TestCase
         $reformatted = false;
         $usagesAt = null;
         $editor->setCallbacks(new EditorCallbacks(
-            onReformat: function () use (&$reformatted): void {
-                $reformatted = true;
-            },
-            onFindUsages: function (int $l, int $c) use (&$usagesAt): void {
-                $usagesAt = [$l, $c];
-            },
+            navigation: new NavigationCallbacks(
+                onFindUsages: function (int $l, int $c) use (&$usagesAt): void {
+                    $usagesAt = [$l, $c];
+                },
+            ),
+            refactor: new RefactorCallbacks(
+                onReformat: function () use (&$reformatted): void {
+                    $reformatted = true;
+                },
+            ),
         ));
         $editor->getDocument()->setCursor(2, 3);
 

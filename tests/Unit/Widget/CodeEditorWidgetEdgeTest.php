@@ -7,6 +7,7 @@ namespace Porta\Tests\Unit\Widget;
 use PHPUnit\Framework\TestCase;
 use Porta\Widget\CodeEditorWidget;
 use Porta\Widget\EditorCallbacks;
+use Porta\Widget\NavigationCallbacks;
 use Symfony\Component\Tui\Ansi\AnsiUtils;
 use Symfony\Component\Tui\Render\RenderContext;
 
@@ -725,9 +726,11 @@ final class CodeEditorWidgetEdgeTest extends TestCase
         $editor = $this->editor("<?php\n\$x;\n");
         $peekedAt = null;
         $editor->setCallbacks(new EditorCallbacks(
-            onPeek: function (int $l, int $c) use (&$peekedAt): void {
-                $peekedAt = [$l, $c];
-            },
+            navigation: new NavigationCallbacks(
+                onPeek: function (int $l, int $c) use (&$peekedAt): void {
+                    $peekedAt = [$l, $c];
+                },
+            ),
         ));
         $editor->getDocument()->setCursor(1, 1);
 
