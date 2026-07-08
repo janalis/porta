@@ -19,6 +19,7 @@ use Porta\Editor\EditorViewport;
 use Porta\Editor\FoldModel;
 use Porta\Editor\MultiCaret;
 use Porta\Highlight\CodeHighlighter;
+use Porta\Highlight\DarkTerminalTheme;
 use Porta\Input\TextInput;
 use Porta\Support\AnsiText;
 use Porta\Support\IntMath;
@@ -44,6 +45,7 @@ use Symfony\Component\Tui\Widget\FocusableInterface;
 use Symfony\Component\Tui\Widget\FocusableTrait;
 use Symfony\Component\Tui\Widget\KeybindingsTrait;
 use Symfony\Component\Tui\Widget\VerticallyExpandableInterface;
+use Tempest\Highlight\TerminalTheme;
 
 /**
  * IDE-style code editor: line-number gutter, syntax highlighting,
@@ -137,13 +139,16 @@ final class CodeEditorWidget extends AbstractWidget implements FocusableInterfac
 
     private readonly Palette $palette;
 
-    public function __construct(?Palette $palette = null)
+    private readonly TerminalTheme $syntaxTheme;
+
+    public function __construct(?Palette $palette = null, ?TerminalTheme $syntaxTheme = null)
     {
         $this->palette = $palette ?? ColorPalette::dark();
+        $this->syntaxTheme = $syntaxTheme ?? new DarkTerminalTheme();
         $this->callbacks = new EditorCallbacks();
         $this->overlayHost = new OverlayHost(fn () => $this->invalidate(), $this->palette);
         $this->document = new Document('');
-        $this->highlighter = new CodeHighlighter(ansi: $this->palette->hasColor());
+        $this->highlighter = new CodeHighlighter(syntaxTheme: $this->syntaxTheme);
         $this->foldModel = new FoldModel($this->document);
         $this->scroll = new EditorScroll($this->document, $this->foldModel, fn () => $this->invalidate());
         $this->multiCaret = $this->newMultiCaret($this->document);
@@ -265,7 +270,7 @@ final class CodeEditorWidget extends AbstractWidget implements FocusableInterfac
         if (null !== $highlighter) {
             $this->highlighter = $highlighter;
         } else {
-            $this->highlighter = new CodeHighlighter(ansi: $this->palette->hasColor());
+            $this->highlighter = new CodeHighlighter(syntaxTheme: $this->syntaxTheme);
             $this->highlighter->setFile($path);
         }
         $this->diagnostics = $diagnostics;

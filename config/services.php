@@ -6,6 +6,7 @@ use Porta\Config\EditorConfig\EditorConfigResolver;
 use Porta\Config\LayoutStore;
 use Porta\Editor\BufferManager;
 use Porta\Git\GitInfo;
+use Porta\Highlight\TerminalThemeFactory;
 use Porta\History\LocalHistory;
 use Porta\History\SessionStore;
 use Porta\I18n\Translator;
@@ -41,6 +42,7 @@ use Symfony\Component\DependencyInjection\Loader\Configurator\ContainerConfigura
 use Symfony\Component\Tui\Render\Renderer;
 use Symfony\Component\Tui\Style\Style;
 use Symfony\Component\Tui\Tui;
+use Tempest\Highlight\TerminalTheme;
 
 use function Symfony\Component\DependencyInjection\Loader\Configurator\inline_service;
 use function Symfony\Component\DependencyInjection\Loader\Configurator\param;
@@ -88,6 +90,14 @@ return static function (ContainerConfigurator $container): void {
         ->factory([PaletteFactory::class, 'create'])
         ->args([param('porta.ansi'), 'dark'])
         ->public();
+
+    // The syntax-highlighting theme. Buffers and the editor/diff widgets autowire
+    // TerminalTheme; TerminalThemeFactory picks it (dark/light, or plain for
+    // --no-ansi) from the same porta.ansi/porta.theme parameters as the chrome.
+    $services
+        ->set(TerminalTheme::class)
+        ->factory([TerminalThemeFactory::class, 'create'])
+        ->args([param('porta.ansi'), 'dark']);
 
     // Ide resolves these by id (service-locator boundary), so they must be
     // public to survive compilation rather than being pruned.

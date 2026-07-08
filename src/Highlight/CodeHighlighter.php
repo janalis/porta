@@ -6,6 +6,7 @@ namespace Porta\Highlight;
 
 use Symfony\Component\Tui\Ansi\AnsiCodeTracker;
 use Tempest\Highlight\Highlighter;
+use Tempest\Highlight\TerminalTheme;
 
 /**
  * Highlights a whole document and exposes it as per-display-line ANSI strings.
@@ -90,12 +91,14 @@ final class CodeHighlighter
     private \Closure $parser;
 
     /**
-     * @param (\Closure(string, string): string)|null $parser (content, language) => highlighted;
-     *                                                        injectable for testing the fallback paths
+     * @param (\Closure(string, string): string)|null $parser      (content, language) => highlighted;
+     *                                                              injectable for testing the fallback paths
+     * @param TerminalTheme|null                       $syntaxTheme the token color scheme; defaults to
+     *                                                              the dark theme when none is injected
      */
-    public function __construct(?\Closure $parser = null, bool $ansi = true)
+    public function __construct(?\Closure $parser = null, ?TerminalTheme $syntaxTheme = null)
     {
-        $this->highlighter = new Highlighter($ansi ? new DarkTerminalTheme() : new PlainTerminalTheme());
+        $this->highlighter = new Highlighter($syntaxTheme ?? new DarkTerminalTheme());
         $this->parser = $parser ?? fn (string $content, string $language): string => $this->highlighter->parse($content, $language);
     }
 

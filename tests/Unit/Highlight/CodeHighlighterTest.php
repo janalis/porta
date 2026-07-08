@@ -6,6 +6,7 @@ namespace Porta\Tests\Unit\Highlight;
 
 use PHPUnit\Framework\TestCase;
 use Porta\Highlight\CodeHighlighter;
+use Porta\Highlight\PlainTerminalTheme;
 use Symfony\Component\Tui\Ansi\AnsiUtils;
 
 final class CodeHighlighterTest extends TestCase
@@ -28,7 +29,7 @@ final class CodeHighlighterTest extends TestCase
 
     public function testMonochromeEmitsNoSyntaxColor(): void
     {
-        $highlighter = new CodeHighlighter(ansi: false);
+        $highlighter = new CodeHighlighter(syntaxTheme: new PlainTerminalTheme());
         $highlighter->setFile('test.php');
         $lines = $highlighter->highlight(explode("\n", "<?php\nreturn 'str';"), 1);
 

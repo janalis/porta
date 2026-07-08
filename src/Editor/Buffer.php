@@ -6,6 +6,7 @@ namespace Porta\Editor;
 
 use Porta\Config\EditorConfig\ResolvedEditorConfig;
 use Porta\Highlight\CodeHighlighter;
+use Tempest\Highlight\TerminalTheme;
 
 /**
  * One open file: its document (cursor, undo history), diagnostics and its
@@ -33,9 +34,9 @@ final class Buffer
     public function __construct(
         public readonly string $path,
         public readonly Document $document,
-        bool $ansi = true,
+        ?TerminalTheme $syntaxTheme = null,
     ) {
-        $this->highlighter = new CodeHighlighter(ansi: $ansi);
+        $this->highlighter = new CodeHighlighter(syntaxTheme: $syntaxTheme);
         $this->highlighter->setFile($path);
     }
 

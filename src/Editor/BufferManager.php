@@ -4,9 +4,9 @@ declare(strict_types=1);
 
 namespace Porta\Editor;
 
+use Porta\Highlight\DarkTerminalTheme;
 use Porta\Support\IntMath;
-use Porta\Ui\ColorPalette;
-use Porta\Ui\Palette;
+use Tempest\Highlight\TerminalTheme;
 
 /**
  * Holds all open editor buffers. Each buffer keeps its own Document (and
@@ -19,16 +19,16 @@ final class BufferManager
     private array $buffers = [];
     private ?string $activePath = null;
     private int $focusCounter = 0;
-    private readonly Palette $palette;
+    private readonly TerminalTheme $syntaxTheme;
 
-    public function __construct(?Palette $palette = null)
+    public function __construct(?TerminalTheme $syntaxTheme = null)
     {
-        $this->palette = $palette ?? ColorPalette::dark();
+        $this->syntaxTheme = $syntaxTheme ?? new DarkTerminalTheme();
     }
 
     public function open(string $path, string $content): Buffer
     {
-        $buffer = $this->buffers[$path] ??= new Buffer($path, new Document($content), $this->palette->hasColor());
+        $buffer = $this->buffers[$path] ??= new Buffer($path, new Document($content), $this->syntaxTheme);
         $this->activePath = $path;
         $buffer->lastFocused = ++$this->focusCounter;
 

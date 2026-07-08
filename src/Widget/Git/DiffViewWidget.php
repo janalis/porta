@@ -7,6 +7,7 @@ namespace Porta\Widget\Git;
 use Porta\Git\DiffDocument;
 use Porta\Git\DiffLine;
 use Porta\Highlight\CodeHighlighter;
+use Porta\Highlight\DarkTerminalTheme;
 use Porta\I18n\Translator;
 use Porta\Support\IntMath;
 use Porta\Ui\ColorPalette;
@@ -26,6 +27,7 @@ use Symfony\Component\Tui\Widget\FocusableInterface;
 use Symfony\Component\Tui\Widget\FocusableTrait;
 use Symfony\Component\Tui\Widget\KeybindingsTrait;
 use Symfony\Component\Tui\Widget\VerticallyExpandableInterface;
+use Tempest\Highlight\TerminalTheme;
 
 /**
  * The git view's diff pane (GitHub Desktop's right column): unified (dual
@@ -97,9 +99,10 @@ final class DiffViewWidget extends AbstractWidget implements FocusableInterface,
     public function __construct(
         private readonly Translator $translator,
         ?Palette $palette = null,
+        ?TerminalTheme $syntaxTheme = null,
     ) {
         $this->palette = $palette ?? ColorPalette::dark();
-        $this->highlighter = new CodeHighlighter(ansi: $this->palette->hasColor());
+        $this->highlighter = new CodeHighlighter(syntaxTheme: $syntaxTheme ?? new DarkTerminalTheme());
     }
 
     /** @param callable(array<int, array<int, true>>): void $callback */
