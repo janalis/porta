@@ -20,4 +20,13 @@ final class PaletteFactory
 
         return 'light' === $theme ? ColorPalette::light() : ColorPalette::dark();
     }
+
+    /**
+     * The {@see Palette} wrapped in a {@see SwitchablePalette} so the theme can be
+     * swapped live. This is what the container binds; widgets hold the holder.
+     */
+    public static function createSwitchable(bool $ansi, string $theme): SwitchablePalette
+    {
+        return new SwitchablePalette(self::create($ansi, $theme));
+    }
 }

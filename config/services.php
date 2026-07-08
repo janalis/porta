@@ -6,6 +6,7 @@ use Porta\Config\EditorConfig\EditorConfigResolver;
 use Porta\Config\LayoutStore;
 use Porta\Editor\BufferManager;
 use Porta\Git\GitInfo;
+use Porta\Highlight\SwitchableTerminalTheme;
 use Porta\Highlight\TerminalThemeFactory;
 use Porta\History\LocalHistory;
 use Porta\History\SessionStore;
@@ -21,6 +22,7 @@ use Porta\Ui\Notifier;
 use Porta\Ui\Palette;
 use Porta\Ui\PaletteFactory;
 use Porta\Ui\PanelManager;
+use Porta\Ui\SwitchablePalette;
 use Porta\Widget\CodeEditorWidget;
 use Porta\Widget\FileTreeWidget;
 use Porta\Widget\FindBarWidget;
@@ -81,23 +83,26 @@ return static function (ContainerConfigurator $container): void {
     // so time-dependent services autowire it; tests inject a MockClock.
     $services->set(ClockInterface::class, NativeClock::class);
 
-    // The IDE color scheme. Widgets autowire Palette; PaletteFactory picks the
-    // concrete instance (dark/light, or monochrome for --no-ansi) from the
-    // porta.ansi and porta.theme parameters set by IdeContainerFactory. Public
-    // so Ide can resolve it too.
+    // The IDE color scheme. The service is a SwitchablePalette (built from the
+    // porta.ansi/porta.theme parameters) so Ide can swap the theme live; widgets
+    // autowire Palette via the alias and hold that one holder instance. Both the
+    // holder id and the alias are public so Ide can resolve them.
     $services
-        ->set(Palette::class)
-        ->factory([PaletteFactory::class, 'create'])
+        ->set(SwitchablePalette::class)
+        ->factory([PaletteFactory::class, 'createSwitchable'])
         ->args([param('porta.ansi'), param('porta.theme')])
         ->public();
+    $services->alias(Palette::class, SwitchablePalette::class)->public();
 
-    // The syntax-highlighting theme. Buffers and the editor/diff widgets autowire
-    // TerminalTheme; TerminalThemeFactory picks it (dark/light, or plain for
-    // --no-ansi) from the same porta.ansi/porta.theme parameters as the chrome.
+    // The syntax-highlighting theme, likewise a live-swappable holder. Buffers and
+    // the editor/diff widgets autowire TerminalTheme via the alias; Ide resolves
+    // the holder by id to switch it.
     $services
-        ->set(TerminalTheme::class)
-        ->factory([TerminalThemeFactory::class, 'create'])
-        ->args([param('porta.ansi'), param('porta.theme')]);
+        ->set(SwitchableTerminalTheme::class)
+        ->factory([TerminalThemeFactory::class, 'createSwitchable'])
+        ->args([param('porta.ansi'), param('porta.theme')])
+        ->public();
+    $services->alias(TerminalTheme::class, SwitchableTerminalTheme::class);
 
     // Ide resolves these by id (service-locator boundary), so they must be
     // public to survive compilation rather than being pruned.

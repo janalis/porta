@@ -23,4 +23,14 @@ final class TerminalThemeFactory
 
         return 'light' === $theme ? new LightTerminalTheme() : new DarkTerminalTheme();
     }
+
+    /**
+     * The {@see TerminalTheme} wrapped in a {@see SwitchableTerminalTheme} so the
+     * theme can be swapped live. This is what the container binds; the buffers'
+     * highlighters hold the holder.
+     */
+    public static function createSwitchable(bool $ansi, string $theme): SwitchableTerminalTheme
+    {
+        return new SwitchableTerminalTheme(self::create($ansi, $theme));
+    }
 }
