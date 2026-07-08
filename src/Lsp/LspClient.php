@@ -96,64 +96,20 @@ final class LspClient implements LspClientInterface
      */
     public function start(callable $onReady): void
     {
-        $descriptors = [0 => ['pipe', 'r'], 1 => ['pipe', 'w'], 2 => ['pipe', 'w']];
         $pipes = [];
-        /** @var non-empty-string $cwd */
-        $cwd = $this->rootDir;
-        $process = @proc_open($this->command, $descriptors, $pipes, $cwd);
-
-        if (!\is_resource($process)) {
+        $process = $this->openServerProcess($pipes);
+        if (null === $process) {
             $onReady(false);
 
             return;
         }
 
         $this->process = $process;
-        /** @var array{0: resource, 1: resource, 2: resource} $pipes */
-        [$this->stdin, $this->stdout, $this->stderr] = [$pipes[0], $pipes[1], $pipes[2]];
-        stream_set_blocking($this->stdout, false);
-        stream_set_blocking($this->stderr, false);
-
-        $this->stdoutWatcher = EventLoop::onReadable($this->stdout, fn () => $this->drainStdout());
-        $this->stderrWatcher = EventLoop::onReadable($this->stderr, function (): void {
-            /** @var resource $stderr */
-            $stderr = $this->stderr;
-            $data = @fread($stderr, 8192);
-            if (\is_string($data) && '' !== $data && null !== $this->logger) {
-                ($this->logger)(rtrim($data));
-            }
-        });
-
-        $rootUri = 'file://'.str_replace(\DIRECTORY_SEPARATOR, '/', $this->rootDir);
+        $this->attachStreamWatchers($pipes);
 
         $this->request(
             'initialize',
-            [
-                'processId' => getmypid(),
-                'rootUri' => $rootUri,
-                'workspaceFolders' => [['uri' => $rootUri, 'name' => basename($this->rootDir)]],
-                'clientInfo' => ['name' => 'porta', 'version' => '0.1.0'],
-                'capabilities' => [
-                    'textDocument' => [
-                        'synchronization' => ['didSave' => true],
-                        'completion' => [
-                            'completionItem' => ['snippetSupport' => true, 'documentationFormat' => ['plaintext', 'markdown']],
-                        ],
-                        'publishDiagnostics' => ['relatedInformation' => false],
-                        'hover' => ['contentFormat' => ['plaintext', 'markdown']],
-                        'definition' => ['linkSupport' => false],
-                        'references' => ['dynamicRegistration' => false],
-                        'rename' => ['prepareSupport' => true],
-                        'signatureHelp' => ['signatureInformation' => ['documentationFormat' => ['plaintext']]],
-                        'codeAction' => [
-                            'codeActionLiteralSupport' => ['codeActionKind' => ['valueSet' => ['quickfix', 'refactor', 'source']]],
-                        ],
-                        'documentSymbol' => ['hierarchicalDocumentSymbolSupport' => true],
-                        'formatting' => ['dynamicRegistration' => false],
-                    ],
-                    'workspace' => ['configuration' => false, 'workspaceFolders' => true, 'symbol' => ['dynamicRegistration' => false]],
-                ],
-            ],
+            $this->initializeParams(),
             function (mixed $result, ?array $error) use ($onReady): void {
                 if (null !== $error) {
                     $this->log('initialize failed: '.(string) json_encode($error));
@@ -173,6 +129,96 @@ final class LspClient implements LspClientInterface
                 $onReady(true);
             },
         );
+    }
+
+    /**
+     * Spawn the server over three stdio pipes. Returns the process handle, or
+     * null when proc_open fails; $pipes is populated with [stdin, stdout, stderr].
+     *
+     * @param array<int, resource> $pipes
+     *
+     * @return resource|null
+     */
+    private function openServerProcess(array &$pipes)
+    {
+        $descriptors = [0 => ['pipe', 'r'], 1 => ['pipe', 'w'], 2 => ['pipe', 'w']];
+        /** @var non-empty-string $cwd */
+        $cwd = $this->rootDir;
+        $process = @proc_open($this->command, $descriptors, $pipes, $cwd);
+
+        return \is_resource($process) ? $process : null;
+    }
+
+    /**
+     * Keep the pipes, put reads in non-blocking mode and register the event-loop
+     * watchers that drain stdout (JSON-RPC) and forward stderr to the logger.
+     *
+     * @param array<int, resource> $pipes the [stdin, stdout, stderr] from openServerProcess
+     */
+    private function attachStreamWatchers(array $pipes): void
+    {
+        [$this->stdin, $this->stdout, $this->stderr] = [$pipes[0], $pipes[1], $pipes[2]];
+        stream_set_blocking($this->stdout, false);
+        stream_set_blocking($this->stderr, false);
+
+        $this->stdoutWatcher = EventLoop::onReadable($this->stdout, fn () => $this->drainStdout());
+        $this->stderrWatcher = EventLoop::onReadable($this->stderr, function (): void {
+            /** @var resource $stderr */
+            $stderr = $this->stderr;
+            $data = @fread($stderr, 8192);
+            if (\is_string($data) && '' !== $data && null !== $this->logger) {
+                ($this->logger)(rtrim($data));
+            }
+        });
+    }
+
+    /**
+     * The `initialize` request params: process/workspace identity plus the
+     * capabilities we advertise.
+     *
+     * @return array<string, mixed>
+     */
+    private function initializeParams(): array
+    {
+        $rootUri = 'file://'.str_replace(\DIRECTORY_SEPARATOR, '/', $this->rootDir);
+
+        return [
+            'processId' => getmypid(),
+            'rootUri' => $rootUri,
+            'workspaceFolders' => [['uri' => $rootUri, 'name' => basename($this->rootDir)]],
+            'clientInfo' => ['name' => 'porta', 'version' => '0.1.0'],
+            'capabilities' => $this->clientCapabilities(),
+        ];
+    }
+
+    /**
+     * The textDocument/workspace features this client supports, sent in the
+     * initialize handshake.
+     *
+     * @return array<string, mixed>
+     */
+    private function clientCapabilities(): array
+    {
+        return [
+            'textDocument' => [
+                'synchronization' => ['didSave' => true],
+                'completion' => [
+                    'completionItem' => ['snippetSupport' => true, 'documentationFormat' => ['plaintext', 'markdown']],
+                ],
+                'publishDiagnostics' => ['relatedInformation' => false],
+                'hover' => ['contentFormat' => ['plaintext', 'markdown']],
+                'definition' => ['linkSupport' => false],
+                'references' => ['dynamicRegistration' => false],
+                'rename' => ['prepareSupport' => true],
+                'signatureHelp' => ['signatureInformation' => ['documentationFormat' => ['plaintext']]],
+                'codeAction' => [
+                    'codeActionLiteralSupport' => ['codeActionKind' => ['valueSet' => ['quickfix', 'refactor', 'source']]],
+                ],
+                'documentSymbol' => ['hierarchicalDocumentSymbolSupport' => true],
+                'formatting' => ['dynamicRegistration' => false],
+            ],
+            'workspace' => ['configuration' => false, 'workspaceFolders' => true, 'symbol' => ['dynamicRegistration' => false]],
+        ];
     }
 
     /**
