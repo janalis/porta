@@ -20,6 +20,7 @@ use Porta\Editor\FoldModel;
 use Porta\Editor\MultiCaret;
 use Porta\Highlight\CodeHighlighter;
 use Porta\Input\TextInput;
+use Porta\Support\AnsiText;
 use Porta\Support\IntMath;
 use Porta\Support\ProjectPaths;
 use Porta\Ui\Style;
@@ -1201,7 +1202,7 @@ final class CodeEditorWidget extends AbstractWidget implements FocusableInterfac
         $text = AnsiUtils::truncateToWidth($hint, $columns, '…');
         $textWidth = AnsiUtils::visibleWidth($text);
         $left = max(0, intdiv($columns - $textWidth, 2));
-        $hintRow = str_repeat(' ', $left)."\x1b[38;5;244m".$text."\x1b[39m".str_repeat(' ', max(0, $columns - $left - $textWidth));
+        $hintRow = AnsiText::padRight(str_repeat(' ', $left)."\x1b[38;5;244m".$text."\x1b[39m", $columns);
 
         $middle = intdiv($rows, 2);
         $lines = [];

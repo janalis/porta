@@ -236,7 +236,7 @@ final class EditorRenderer
         if (!$withCursor) {
             $slice = AnsiUtils::sliceWithWidth($highlightedLine, $hScroll, $contentWidth);
 
-            return $slice['text']."\x1b[0m".str_repeat(' ', max(0, $contentWidth - $slice['width']));
+            return AnsiText::padRight($slice['text']."\x1b[0m", $contentWidth);
         }
 
         // Slice the whole visible window in one pass (correct SGR throughout),
@@ -253,7 +253,7 @@ final class EditorRenderer
         $byte = \strlen(AnsiUtils::sliceByColumn($text, 0, $cursorOffset));
         $withCursorText = substr($text, 0, $byte).AnsiUtils::cursorMarker(CursorShape::Bar).substr($text, $byte);
 
-        return $withCursorText."\x1b[0m".str_repeat(' ', max(0, $contentWidth - $windowed['width']));
+        return AnsiText::padRight($withCursorText."\x1b[0m", $contentWidth);
     }
 
     /**
@@ -294,11 +294,9 @@ final class EditorRenderer
         $color = "\x1b[38;5;".DiagnosticStyle::dim($worst).'m';
         $extra = \count($diags) > 1 ? ' +'.(\count($diags) - 1) : '';
         $label = AnsiUtils::truncateToWidth('‹ '.(string) preg_replace('/\s+/', ' ', $message).$extra.' ›', $available, '…');
-        $labelWidth = AnsiUtils::visibleWidth($label);
-
         $head = AnsiText::padRight(AnsiUtils::sliceByColumn($content, 0, $start), $start);
 
-        return $head.$color.$label."\x1b[0m".str_repeat(' ', max(0, $contentWidth - $start - $labelWidth));
+        return AnsiText::padRight($head.$color.$label."\x1b[0m", $contentWidth);
     }
 
     // --- Overlays ----------------------------------------------------------

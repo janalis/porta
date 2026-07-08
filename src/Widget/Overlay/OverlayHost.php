@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Porta\Widget\Overlay;
 
+use Porta\Support\AnsiText;
 use Porta\Ui\TextField;
 use Porta\Widget\Render\EditorRenderer;
 use Symfony\Component\Tui\Ansi\AnsiUtils;
@@ -232,8 +233,7 @@ final class OverlayHost
             $rendered = ' '.$this->prompt['label'].': '.$this->prompt['value']->render(cursor: $focused);
             $box = "\x1b[48;5;237m\x1b[38;5;231m".AnsiUtils::truncateToWidth($rendered.' ', $width, '…', pad: true)."\x1b[0m";
             $tail = AnsiUtils::sliceByColumn($lines[0] ?? '', $width, $columns - $width);
-            $tailWidth = AnsiUtils::visibleWidth($tail);
-            $lines[0] = $box.$tail."\x1b[0m".str_repeat(' ', max(0, $columns - $width - $tailWidth));
+            $lines[0] = AnsiText::padRight($box.$tail."\x1b[0m", $columns);
         }
 
         /** @var list<string> $lines writing index 0 keeps the shape */

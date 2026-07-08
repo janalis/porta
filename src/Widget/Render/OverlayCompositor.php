@@ -26,13 +26,12 @@ final class OverlayCompositor
     {
         $head = AnsiText::padRight(AnsiUtils::sliceByColumn($line, 0, $col), $col);
         $tail = AnsiUtils::sliceByColumn($line, $col + $width, $columns - $col - $width);
-        $tailWidth = AnsiUtils::visibleWidth($tail);
 
         // Reset after the popup as well as after the head: when the popup is a
         // clipped overlay slice (a menu spilling across a widget boundary), its
         // trailing reset may have been sliced off, and without this its
         // background would bleed across the tail — visible as a menu box painted
         // full-width over a blank pane.
-        return $head."\x1b[0m".$popup."\x1b[0m".$tail."\x1b[0m".str_repeat(' ', max(0, $columns - $col - $width - $tailWidth));
+        return AnsiText::padRight($head."\x1b[0m".$popup."\x1b[0m".$tail."\x1b[0m", $columns);
     }
 }
