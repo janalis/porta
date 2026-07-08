@@ -11,6 +11,7 @@ use Porta\Ui\Style;
 use Porta\Ui\TextField;
 use Porta\Widget\FillsPaneTrait;
 use Porta\Widget\InputHook;
+use Porta\Widget\PaneNavigationCallbacks;
 use Porta\Widget\Render\MenuOverlayHost;
 use Porta\Widget\Render\MenuOverlayHostTrait;
 use Symfony\Component\Tui\Ansi\AnsiUtils;
@@ -42,6 +43,7 @@ final class SettingsFormWidget extends AbstractWidget implements FocusableInterf
     use InputHook;
     use MenuOverlayHostTrait;
     use KeybindingsTrait;
+    use PaneNavigationCallbacks;
 
     public function __construct(
         private readonly Translator $translator,
@@ -58,10 +60,6 @@ final class SettingsFormWidget extends AbstractWidget implements FocusableInterf
     private $onChange = null;
     /** @var (callable(): void)|null `2`: switch to the Keybindings tab */
     private $onShowKeybindings = null;
-    /** @var (callable(): void)|null Tab: cycle focus (single pane today) */
-    private $onFocusNext = null;
-    /** @var (callable(): void)|null Esc: leave the settings view */
-    private $onExit = null;
 
     /** @param callable(string, bool|int|string): void $callback */
     public function onChange(callable $callback): self
@@ -74,20 +72,6 @@ final class SettingsFormWidget extends AbstractWidget implements FocusableInterf
     public function onShowKeybindings(callable $callback): self
     {
         $this->onShowKeybindings = $callback;
-
-        return $this;
-    }
-
-    public function onFocusNext(callable $callback): self
-    {
-        $this->onFocusNext = $callback;
-
-        return $this;
-    }
-
-    public function onExit(callable $callback): self
-    {
-        $this->onExit = $callback;
 
         return $this;
     }
@@ -238,14 +222,6 @@ final class SettingsFormWidget extends AbstractWidget implements FocusableInterf
         $max = $row->max ?? \PHP_INT_MAX;
 
         return IntMath::clamp((int) $row->value + $delta, $min, $max);
-    }
-
-    /** @param (callable(): void)|null $callback */
-    private function fire(?callable $callback): void
-    {
-        if (null !== $callback) {
-            $callback();
-        }
     }
 
     public function render(RenderContext $context): array

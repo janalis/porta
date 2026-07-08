@@ -10,6 +10,7 @@ use Porta\Ui\MultilineInput;
 use Porta\Ui\Style;
 use Porta\Ui\TextField;
 use Porta\Widget\InputHook;
+use Porta\Widget\PaneNavigationCallbacks;
 use Porta\Widget\Render\MenuOverlayHost;
 use Porta\Widget\Render\MenuOverlayHostTrait;
 use Symfony\Component\Tui\Ansi\AnsiUtils;
@@ -32,6 +33,7 @@ final class CommitBoxWidget extends AbstractWidget implements FocusableInterface
     use InputHook;
     use MenuOverlayHostTrait;
     use KeybindingsTrait;
+    use PaneNavigationCallbacks;
 
     private const int DESCRIPTION_ROWS = 3;
 
@@ -46,10 +48,6 @@ final class CommitBoxWidget extends AbstractWidget implements FocusableInterface
     private $onCommit = null;
     /** @var (callable(bool): void)|null amend toggled: the controller prefills/clears the message */
     private $onAmendToggle = null;
-    /** @var (callable(): void)|null Tab past the last field: next git pane */
-    private $onFocusNext = null;
-    /** @var (callable(): void)|null Esc: leave the git view */
-    private $onExit = null;
 
     public function __construct(
         private readonly Translator $translator,
@@ -113,20 +111,6 @@ final class CommitBoxWidget extends AbstractWidget implements FocusableInterface
         $this->invalidate();
     }
 
-    public function onFocusNext(callable $callback): self
-    {
-        $this->onFocusNext = $callback;
-
-        return $this;
-    }
-
-    public function onExit(callable $callback): self
-    {
-        $this->onExit = $callback;
-
-        return $this;
-    }
-
     public function clear(): void
     {
         $this->summary->clear();
@@ -183,9 +167,7 @@ final class CommitBoxWidget extends AbstractWidget implements FocusableInterface
         $kb = $this->getKeybindings();
 
         if ($kb->matches($data, 'exit_view')) {
-            if (null !== $this->onExit) {
-                ($this->onExit)();
-            }
+            $this->fire($this->onExit);
 
             return;
         }

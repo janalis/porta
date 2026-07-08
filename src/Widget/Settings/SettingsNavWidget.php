@@ -11,6 +11,7 @@ use Porta\Ui\ListSelection;
 use Porta\Ui\Style;
 use Porta\Widget\FillsPaneTrait;
 use Porta\Widget\InputHook;
+use Porta\Widget\PaneNavigationCallbacks;
 use Porta\Widget\Render\MenuOverlayHost;
 use Porta\Widget\Render\MenuOverlayHostTrait;
 use Symfony\Component\Tui\Ansi\AnsiUtils;
@@ -38,6 +39,7 @@ final class SettingsNavWidget extends AbstractWidget implements FocusableInterfa
     use InputHook;
     use MenuOverlayHostTrait;
     use KeybindingsTrait;
+    use PaneNavigationCallbacks;
 
     private const array SECTIONS = ['general' => 'General', 'keybindings' => 'Keybindings'];
 
@@ -48,10 +50,6 @@ final class SettingsNavWidget extends AbstractWidget implements FocusableInterfa
 
     /** @var (callable(string): void)|null selection moved to this entry id */
     private $onSelect = null;
-    /** @var (callable(): void)|null Tab: focus the content pane */
-    private $onFocusNext = null;
-    /** @var (callable(): void)|null Esc: leave the settings view */
-    private $onExit = null;
 
     public function __construct(
         private readonly Translator $translator,
@@ -87,20 +85,6 @@ final class SettingsNavWidget extends AbstractWidget implements FocusableInterfa
     public function onSelect(callable $callback): self
     {
         $this->onSelect = $callback;
-
-        return $this;
-    }
-
-    public function onFocusNext(callable $callback): self
-    {
-        $this->onFocusNext = $callback;
-
-        return $this;
-    }
-
-    public function onExit(callable $callback): self
-    {
-        $this->onExit = $callback;
 
         return $this;
     }
@@ -214,14 +198,6 @@ final class SettingsNavWidget extends AbstractWidget implements FocusableInterfa
         $index = $this->list->scroll() + $relRow;
 
         return $relRow >= 0 && isset($this->entries[$index]) ? $index : null;
-    }
-
-    /** @param (callable(): void)|null $callback */
-    private function fire(?callable $callback): void
-    {
-        if (null !== $callback) {
-            $callback();
-        }
     }
 
     public function render(RenderContext $context): array

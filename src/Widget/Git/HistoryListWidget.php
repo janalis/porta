@@ -12,6 +12,7 @@ use Porta\Ui\ListSelection;
 use Porta\Ui\Style;
 use Porta\Widget\FillsPaneTrait;
 use Porta\Widget\InputHook;
+use Porta\Widget\PaneNavigationCallbacks;
 use Porta\Widget\Render\MenuOverlayHost;
 use Porta\Widget\Render\MenuOverlayHostTrait;
 use Symfony\Component\Tui\Ansi\AnsiUtils;
@@ -36,6 +37,7 @@ final class HistoryListWidget extends AbstractWidget implements FocusableInterfa
     use InputHook;
     use MenuOverlayHostTrait;
     use KeybindingsTrait;
+    use PaneNavigationCallbacks;
 
     private const int FILE_ROWS = 8;
 
@@ -55,10 +57,6 @@ final class HistoryListWidget extends AbstractWidget implements FocusableInterfa
     private $onSelectCommit = null;
     /** @var (callable(LogEntry, string): void)|null commit + file path */
     private $onSelectFile = null;
-    /** @var (callable(): void)|null */
-    private $onFocusNext = null;
-    /** @var (callable(): void)|null */
-    private $onExit = null;
     /** @var (callable(): void)|null `1`: switch back to the Changes tab */
     private $onShowChanges = null;
 
@@ -95,20 +93,6 @@ final class HistoryListWidget extends AbstractWidget implements FocusableInterfa
     public function onSelectFile(callable $callback): self
     {
         $this->onSelectFile = $callback;
-
-        return $this;
-    }
-
-    public function onFocusNext(callable $callback): self
-    {
-        $this->onFocusNext = $callback;
-
-        return $this;
-    }
-
-    public function onExit(callable $callback): self
-    {
-        $this->onExit = $callback;
 
         return $this;
     }
@@ -154,16 +138,12 @@ final class HistoryListWidget extends AbstractWidget implements FocusableInterfa
         $kb = $this->getKeybindings();
 
         if ($kb->matches($data, 'exit_view')) {
-            if (null !== $this->onExit) {
-                ($this->onExit)();
-            }
+            $this->fire($this->onExit);
 
             return;
         }
         if ($kb->matches($data, 'focus_next_pane')) {
-            if (null !== $this->onFocusNext) {
-                ($this->onFocusNext)();
-            }
+            $this->fire($this->onFocusNext);
 
             return;
         }

@@ -12,6 +12,7 @@ use Porta\Ui\ShortcutFormatter;
 use Porta\Ui\Style;
 use Porta\Widget\FillsPaneTrait;
 use Porta\Widget\InputHook;
+use Porta\Widget\PaneNavigationCallbacks;
 use Porta\Widget\Render\MenuOverlayHost;
 use Porta\Widget\Render\MenuOverlayHostTrait;
 use Symfony\Component\Tui\Ansi\AnsiUtils;
@@ -37,6 +38,7 @@ final class KeybindingsListWidget extends AbstractWidget implements FocusableInt
     use InputHook;
     use MenuOverlayHostTrait;
     use KeybindingsTrait;
+    use PaneNavigationCallbacks;
 
     /** @var list<KeybindingRow> */
     private array $rows = [];
@@ -51,10 +53,6 @@ final class KeybindingsListWidget extends AbstractWidget implements FocusableInt
     private $onRebind = null;
     /** @var (callable(): void)|null `1`: switch to the Settings tab */
     private $onShowSettings = null;
-    /** @var (callable(): void)|null Tab: cycle focus (single pane today) */
-    private $onFocusNext = null;
-    /** @var (callable(): void)|null Esc (when idle): leave the settings view */
-    private $onExit = null;
 
     public function __construct(
         private readonly Translator $translator,
@@ -73,20 +71,6 @@ final class KeybindingsListWidget extends AbstractWidget implements FocusableInt
     public function onShowSettings(callable $callback): self
     {
         $this->onShowSettings = $callback;
-
-        return $this;
-    }
-
-    public function onFocusNext(callable $callback): self
-    {
-        $this->onFocusNext = $callback;
-
-        return $this;
-    }
-
-    public function onExit(callable $callback): self
-    {
-        $this->onExit = $callback;
 
         return $this;
     }
@@ -200,14 +184,6 @@ final class KeybindingsListWidget extends AbstractWidget implements FocusableInt
         }
 
         return $index;
-    }
-
-    /** @param (callable(): void)|null $callback */
-    private function fire(?callable $callback): void
-    {
-        if (null !== $callback) {
-            $callback();
-        }
     }
 
     public function render(RenderContext $context): array

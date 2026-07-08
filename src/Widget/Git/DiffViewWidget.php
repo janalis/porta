@@ -12,6 +12,7 @@ use Porta\Support\IntMath;
 use Porta\Ui\Style;
 use Porta\Widget\FillsPaneTrait;
 use Porta\Widget\InputHook;
+use Porta\Widget\PaneNavigationCallbacks;
 use Porta\Widget\Render\LineDecorator;
 use Porta\Widget\Render\MenuOverlayHost;
 use Porta\Widget\Render\MenuOverlayHostTrait;
@@ -38,6 +39,7 @@ final class DiffViewWidget extends AbstractWidget implements FocusableInterface,
     use InputHook;
     use MenuOverlayHostTrait;
     use KeybindingsTrait;
+    use PaneNavigationCallbacks;
 
     private const string ADD_FG = "\x1b[38;5;114m";
     private const string DEL_FG = "\x1b[38;5;203m";
@@ -82,10 +84,6 @@ final class DiffViewWidget extends AbstractWidget implements FocusableInterface,
     private readonly CodeHighlighter $highlighter;
     private int $highlightVersion = 0;
 
-    /** @var (callable(): void)|null Tab: move focus to the next git pane */
-    private $onFocusNext = null;
-    /** @var (callable(): void)|null Esc: leave the git view */
-    private $onExit = null;
     /** @var (callable(array<int, array<int, true>>): void)|null stage/unstage the selected lines (hunk index => line set) */
     private $onStageSelection = null;
     /** @var (callable(): void)|null `c`: cycle the diff context (default → ±10 → whole file) */
@@ -101,20 +99,6 @@ final class DiffViewWidget extends AbstractWidget implements FocusableInterface,
         private readonly Translator $translator,
     ) {
         $this->highlighter = new CodeHighlighter();
-    }
-
-    public function onFocusNext(callable $callback): self
-    {
-        $this->onFocusNext = $callback;
-
-        return $this;
-    }
-
-    public function onExit(callable $callback): self
-    {
-        $this->onExit = $callback;
-
-        return $this;
     }
 
     /** @param callable(array<int, array<int, true>>): void $callback */
@@ -294,13 +278,9 @@ final class DiffViewWidget extends AbstractWidget implements FocusableInterface,
         $kb = $this->getKeybindings();
 
         if ($kb->matches($data, 'exit_view')) {
-            if (null !== $this->onExit) {
-                ($this->onExit)();
-            }
+            $this->fire($this->onExit);
         } elseif ($kb->matches($data, 'focus_next_pane')) {
-            if (null !== $this->onFocusNext) {
-                ($this->onFocusNext)();
-            }
+            $this->fire($this->onFocusNext);
         } elseif ($kb->matches($data, 'cursor_up')) {
             $this->moveCursor(-1);
         } elseif ($kb->matches($data, 'cursor_down')) {

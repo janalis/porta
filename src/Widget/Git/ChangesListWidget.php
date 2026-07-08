@@ -12,6 +12,7 @@ use Porta\Ui\ListSelection;
 use Porta\Ui\Style;
 use Porta\Widget\FillsPaneTrait;
 use Porta\Widget\InputHook;
+use Porta\Widget\PaneNavigationCallbacks;
 use Porta\Widget\Render\MenuOverlayHost;
 use Porta\Widget\Render\MenuOverlayHostTrait;
 use Symfony\Component\Tui\Ansi\AnsiUtils;
@@ -36,6 +37,7 @@ final class ChangesListWidget extends AbstractWidget implements FocusableInterfa
     use InputHook;
     use MenuOverlayHostTrait;
     use KeybindingsTrait;
+    use PaneNavigationCallbacks;
 
     private const array STATUS_FG = [
         'A' => "\x1b[38;5;114m",
@@ -60,10 +62,6 @@ final class ChangesListWidget extends AbstractWidget implements FocusableInterfa
     private $onToggleStage = null;
     /** @var (callable(ChangeEntry): void)|null discard confirmed */
     private $onDiscard = null;
-    /** @var (callable(): void)|null Tab: move focus to the next git pane */
-    private $onFocusNext = null;
-    /** @var (callable(): void)|null Esc: leave the git view */
-    private $onExit = null;
     /** @var (callable(): void)|null `2`: switch to the History tab */
     private $onShowHistory = null;
 
@@ -106,20 +104,6 @@ final class ChangesListWidget extends AbstractWidget implements FocusableInterfa
     public function onDiscard(callable $callback): self
     {
         $this->onDiscard = $callback;
-
-        return $this;
-    }
-
-    public function onFocusNext(callable $callback): self
-    {
-        $this->onFocusNext = $callback;
-
-        return $this;
-    }
-
-    public function onExit(callable $callback): self
-    {
-        $this->onExit = $callback;
 
         return $this;
     }
@@ -192,13 +176,9 @@ final class ChangesListWidget extends AbstractWidget implements FocusableInterfa
         }
 
         if ($kb->matches($data, 'exit_view')) {
-            if (null !== $this->onExit) {
-                ($this->onExit)();
-            }
+            $this->fire($this->onExit);
         } elseif ($kb->matches($data, 'focus_next_pane')) {
-            if (null !== $this->onFocusNext) {
-                ($this->onFocusNext)();
-            }
+            $this->fire($this->onFocusNext);
         } elseif (ListNavigation::handleKey($data, $kb, $this->list, \count($this->entries), page: $this->lastRows)) {
             $this->fireSelect();
             $this->invalidate();
