@@ -14,9 +14,11 @@ use Porta\Widget\CodeEditorWidget;
  * the live ones) applier live in a single descriptor table, which also feeds
  * the settings screen's form rows.
  *
- * Most settings apply live (their `apply` closure mutates the running UI);
- * `editorConfig` alone persists and takes effect next launch, flagged with an
- * "applies on restart" note.
+ * Every setting applies live: its `apply` closure mutates the running UI (the
+ * editor, the theme, .editorconfig resolution, or the locale) the instant it
+ * changes, and the value is persisted. The `restart` descriptor flag (and the
+ * form's "applies on restart" note) is retained for any future setting that
+ * genuinely needs a relaunch, but none do today.
  *
  * @phpstan-type Descriptor array{label: string, kind: string, restart: bool, apply: (\Closure(int|bool|string): void)|null, options?: list<string>, min?: int, max?: int}
  */
@@ -27,8 +29,9 @@ final class SettingsController
 
     /**
      * @param array<string, int|bool|string> $settings         resolved settings (defaults merged)
-     * @param \Closure(string): void         $onLanguageChange switch the UI locale + repaint
-     * @param \Closure(string): void         $onThemeChange    switch the dark/light theme + repaint
+     * @param \Closure(string): void         $onLanguageChange     switch the UI locale + repaint
+     * @param \Closure(string): void         $onThemeChange        switch the dark/light theme + repaint
+     * @param \Closure(bool): void           $onEditorConfigChange toggle .editorconfig + re-resolve buffers
      */
     public function __construct(
         private array $settings,
@@ -38,6 +41,7 @@ final class SettingsController
         private readonly Translator $translator,
         \Closure $onLanguageChange,
         \Closure $onThemeChange,
+        \Closure $onEditorConfigChange,
     ) {
         $this->descriptors = [
             'language' => [
@@ -55,7 +59,7 @@ final class SettingsController
                 'apply' => static fn (int|bool|string $v) => $editor->setRelativeLineNumbers((bool) $v),
             ],
             'autoPairs' => ['label' => 'Auto-pairs', 'kind' => 'bool', 'restart' => false, 'apply' => static fn (int|bool|string $v) => $editor->setAutoPairs((bool) $v)],
-            'editorConfig' => ['label' => 'Respect .editorconfig', 'kind' => 'bool', 'restart' => true, 'apply' => null],
+            'editorConfig' => ['label' => 'Respect .editorconfig', 'kind' => 'bool', 'restart' => false, 'apply' => static fn (int|bool|string $v) => $onEditorConfigChange((bool) $v)],
             'theme' => [
                 'label' => 'Theme',
                 'kind' => 'choice',

@@ -37,6 +37,9 @@ final class SettingsControllerTest extends TestCase
     /** @var list<string> */
     private array $themeChanges = [];
 
+    /** @var list<bool> */
+    private array $editorConfigChanges = [];
+
     /**
      * @param array<string, int|bool|string> $settings
      */
@@ -45,6 +48,7 @@ final class SettingsControllerTest extends TestCase
         $tui = new Tui(terminal: new VirtualTerminal(columns: 80, rows: 24));
         $this->languageChanges = [];
         $this->themeChanges = [];
+        $this->editorConfigChanges = [];
 
         return new SettingsController(
             $settings + IdeConfig::DEFAULT_SETTINGS,
@@ -57,6 +61,9 @@ final class SettingsControllerTest extends TestCase
             },
             function (string $theme): void {
                 $this->themeChanges[] = $theme;
+            },
+            function (bool $enabled): void {
+                $this->editorConfigChanges[] = $enabled;
             },
         );
     }
@@ -85,7 +92,7 @@ final class SettingsControllerTest extends TestCase
         $this->assertFalse($byKey['autoPairs']->value);
         $this->assertSame('bool', $byKey['autoPairs']->kind);
         $this->assertFalse($byKey['inlineDiagnostics']->restart, 'live toggles need no restart');
-        $this->assertTrue($byKey['editorConfig']->restart);
+        $this->assertFalse($byKey['editorConfig']->restart, 'editorConfig applies live too now');
         $this->assertSame('light', $byKey['theme']->value);
         $this->assertSame(['dark', 'light'], $byKey['theme']->options);
     }
@@ -129,15 +136,16 @@ final class SettingsControllerTest extends TestCase
         $this->assertStringNotContainsString('restart', $this->flashText($status), 'theme switches live');
     }
 
-    public function testChangingARestartSettingPersistsWithoutApplyingLive(): void
+    public function testChangingEditorConfigFiresTheHookAndPersists(): void
     {
         $project = new TempProject();
         $controller = $this->controller($project->dir, new CodeEditorWidget(), $status = new StatusBarWidget());
 
         $controller->changeSetting('editorConfig', false);
 
-        $this->assertFalse(IdeConfig::load($project->dir)->settings['editorConfig']);
-        $this->assertStringContainsString('applies on restart', $this->flashText($status));
+        $this->assertSame([false], $this->editorConfigChanges, 'the .editorconfig hook fired live');
+        $this->assertFalse(IdeConfig::load($project->dir)->settings['editorConfig'], 'persisted');
+        $this->assertStringNotContainsString('restart', $this->flashText($status), '.editorconfig applies live');
     }
 
     public function testChangingAnUnknownSettingFlashesAndPersistsNothing(): void
@@ -162,15 +170,16 @@ final class SettingsControllerTest extends TestCase
         $this->assertStringContainsString('(not saved)', $this->flashText($status));
     }
 
-    public function testApplyAllAppliesOnlyLiveSettings(): void
+    public function testApplyAllAppliesEverySetting(): void
     {
         $project = new TempProject();
         $editor = new CodeEditorWidget();
         $controller = $this->controller($project->dir, $editor, new StatusBarWidget(), ['relativeLineNumbers' => true, 'theme' => 'light']);
 
-        $controller->applyAll(); // must not choke on the null-apply descriptors
+        $controller->applyAll(); // every descriptor applies live now
         $this->assertTrue($editor->hasRelativeLineNumbers());
         $this->assertSame(['light'], $this->themeChanges, 'the theme hook applies at boot too');
+        $this->assertSame([true], $this->editorConfigChanges, 'the .editorconfig hook applies at boot too');
     }
 
     public function testUnknownKeyFlashesInsteadOfTogglingAnything(): void

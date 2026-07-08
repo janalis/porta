@@ -3559,6 +3559,38 @@ final class IdeEdgeCasesTest extends TestCase
         $this->assertSame('light', IdeConfig::load($project->dir)->settings['theme'], 'the theme persisted');
     }
 
+    public function testEditorConfigToggleLiveReResolvesOpenBuffers(): void
+    {
+        putenv('PATH=/nonexistent'); // no git/LSP subprocesses needed
+        $project = new TempProject([
+            '.editorconfig' => "[*]\nindent_style = space\nindent_size = 2\n",
+            'a.php' => "<?php\n",
+        ]);
+
+        $this->runIde(
+            $project,
+            $project->path('a.php'),
+            [
+                300 => function ($tui, $terminal, $ide): void {
+                    $settings = new \ReflectionProperty($ide, 'settings')->getValue($ide);
+                    $buffers = new \ReflectionProperty($ide, 'buffers')->getValue($ide);
+                    \assert($settings instanceof \Porta\Config\SettingsController);
+                    \assert($buffers instanceof \Porta\Editor\BufferManager);
+
+                    // Disabling drops the resolved config from every open buffer.
+                    $settings->changeSetting('editorConfig', false);
+                    $this->assertNull($buffers->active()?->editorConfig, 'disabling clears the resolved config');
+
+                    // Re-enabling re-resolves it live.
+                    $settings->changeSetting('editorConfig', true);
+                    $this->assertNotNull($buffers->active()?->editorConfig, 'enabling re-resolves .editorconfig');
+                },
+            ],
+        );
+
+        $this->assertTrue(IdeConfig::load($project->dir)->settings['editorConfig'], 'the final state persisted');
+    }
+
     public function testSettingsSidebarResizesAndPersists(): void
     {
         putenv('PATH=/nonexistent');

@@ -259,7 +259,25 @@ final class Ide
         $this->wireWidgets($keybindings);
         $this->wireStatusBar();
 
-        // Apply persisted settings.
+        $this->bufferService = new BufferService(
+            $this->buffers,
+            $this->editor,
+            $this->tree,
+            $this->notifier,
+            $this->tui,
+            $this->lsp,
+            $this->completion,
+            $this->history,
+            $this->service(EditorConfigResolver::class),
+            $this->rootDir,
+            (bool) ($config->settings['editorConfig'] ?? true),
+            $this->translator,
+            fn (Buffer $buffer) => $this->refreshGitMarks($buffer),
+            fn () => $this->refreshBranch(),
+        );
+
+        // Apply persisted settings. bufferService is built first: applyAll() fires
+        // the editorConfig apply closure below, which re-resolves open buffers.
         $this->settings = new SettingsController(
             $config->settings,
             $this->editor,
@@ -268,6 +286,7 @@ final class Ide
             $this->translator,
             fn (string $locale) => $this->applyLanguage($locale),
             fn (string $theme) => $this->applyTheme($theme),
+            fn (bool $enabled) => $this->bufferService->setEditorConfigEnabled($enabled),
         );
         $this->settings->applyAll();
         $this->settingsLanguages = new SettingsLanguageController($this->editor, $this->notifier, $this->rootDir, $this->translator, $config->languages);
@@ -290,22 +309,6 @@ final class Ide
                 $this->tui->setFocus($this->editor);
                 $this->tui->requestRender();
             },
-        );
-        $this->bufferService = new BufferService(
-            $this->buffers,
-            $this->editor,
-            $this->tree,
-            $this->notifier,
-            $this->tui,
-            $this->lsp,
-            $this->completion,
-            $this->history,
-            $this->service(EditorConfigResolver::class),
-            $this->rootDir,
-            (bool) ($config->settings['editorConfig'] ?? true),
-            $this->translator,
-            fn (Buffer $buffer) => $this->refreshGitMarks($buffer),
-            fn () => $this->refreshBranch(),
         );
 
         $this->localHistory = new LocalHistoryController(

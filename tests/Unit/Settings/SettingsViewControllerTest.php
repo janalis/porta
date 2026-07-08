@@ -72,6 +72,7 @@ final class SettingsViewControllerTest extends TestCase
             new Translator('en'),
             static function (string $locale): void {},
             static function (string $theme): void {},
+            static function (bool $enabled): void {},
         );
         $keymap = new SettingsKeymapController($editor, new Keybindings([]), $notifier, $this->project->dir, new Translator('en'));
         $languages = new SettingsLanguageController($editor, $notifier, $this->project->dir, new Translator('en'), []);

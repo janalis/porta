@@ -6,6 +6,7 @@ namespace Porta\Editor;
 
 use Porta\Config\EditorConfig\DocumentWriter;
 use Porta\Config\EditorConfig\EditorConfigResolver;
+use Porta\Config\EditorConfig\ResolvedEditorConfig;
 use Porta\History\LocalHistory;
 use Porta\I18n\Translator;
 use Porta\Lsp\CompletionController;
@@ -47,7 +48,7 @@ final class BufferService
         private readonly LocalHistory $history,
         private readonly EditorConfigResolver $editorConfigResolver,
         private readonly string $rootDir,
-        private readonly bool $editorConfigEnabled,
+        private bool $editorConfigEnabled,
         private readonly Translator $translator,
         private readonly \Closure $refreshGitMarks,
         private readonly \Closure $refreshBranch,
@@ -126,6 +127,29 @@ final class BufferService
         if (null !== $config->charset && !\in_array($config->charset, ['utf-8', 'utf-8-bom'], true)) {
             $this->notifier->flash($this->translator->trans('.editorconfig charset "%charset%" ignored (UTF-8 only)', ['%charset%' => $config->charset]), 5.0);
         }
+    }
+
+    /**
+     * Toggle .editorconfig support live and re-resolve every open buffer: enabled
+     * re-applies each file's config; disabled resets indent to neutral and drops
+     * the stored config so the save-time transforms skip it. New opens honour the
+     * new value directly. (Already-typed content is left untouched.)
+     */
+    public function setEditorConfigEnabled(bool $enabled): void
+    {
+        $this->editorConfigEnabled = $enabled;
+        foreach ($this->buffers->all() as $buffer) {
+            if ($enabled) {
+                $this->applyEditorConfig($buffer);
+            } else {
+                $buffer->document->applyEditorConfig(ResolvedEditorConfig::none());
+                $buffer->editorConfig = null;
+            }
+        }
+        if (null !== ($active = $this->buffers->active())) {
+            $this->showBuffer($active);
+        }
+        $this->tui->requestRender();
     }
 
     public function showBuffer(Buffer $buffer): void

@@ -123,7 +123,10 @@ and owns cross-event drag/click state. Hit-testing uses the renderer's per-widge
 
 **Per-project config: `.porta.json`** (parsed by `Config/IdeConfig`) with keys `keymap`,
 `settings`, `languages`, `lsp`. Settings (`Config/SettingsController` + the `Settings/` view)
-apply live where possible; some require restart.
+all apply live via per-descriptor `apply` closures — theme swaps the `SwitchablePalette`/
+`SwitchableTerminalTheme` holders and rebuilds the highlighters (`Ide::applyTheme`), the locale
+relabels the tree (`Ide::applyLanguage`), and `.editorconfig` re-resolves open buffers
+(`BufferService::setEditorConfigEnabled`). The `restart` descriptor flag is retained but unused.
 
 **i18n / RTL.** `I18n/Translator` wraps `symfony/translation`; the English source string *is* the
 message id (so untranslated lookups fall back to English) with XLIFF catalogs in `translations/`
