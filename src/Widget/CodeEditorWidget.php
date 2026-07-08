@@ -130,6 +130,9 @@ final class CodeEditorWidget extends AbstractWidget implements FocusableInterfac
     /** Modal list-overlay + prompt chrome composited over the editor pane. */
     private readonly OverlayHost $overlayHost;
 
+    /** Editor-level action dispatch (keymap actions + menu items). */
+    private readonly EditorActionRouter $actionRouter;
+
     public function __construct()
     {
         $this->callbacks = new EditorCallbacks();
@@ -144,6 +147,10 @@ final class CodeEditorWidget extends AbstractWidget implements FocusableInterfac
         $this->mouse = $this->newEditorMouse($this->document);
         $this->structural = $this->newEditorStructural($this->document);
         $this->actions = $this->newEditorActions($this->document, '');
+        $this->actionRouter = new EditorActionRouter(
+            fn (): EditorCallbacks => $this->callbacks,
+            fn (): array => [$this->document->getCursorLine(), $this->document->getCursorColUtf16()],
+        );
     }
 
     private function newEditorStructural(Document $document): EditorStructural
@@ -591,32 +598,6 @@ final class CodeEditorWidget extends AbstractWidget implements FocusableInterfac
 
     // --- Input -------------------------------------------------------------
 
-    /**
-     * Editor actions that fire a no-argument callback. Shared by handleInput
-     * (key dispatch) and runAction (menu dispatch) so both fire identical logic.
-     */
-    private const array SIMPLE_ACTIONS = [
-        'recent_files' => 'onRecentFiles',
-        'close_buffer' => 'onCloseBuffer',
-        'goto_file' => 'onGotoFile',
-        'reformat' => 'onReformat',
-        'file_structure' => 'onFileStructure',
-        'save_all' => 'onSaveAllRequested',
-        'save' => 'onSaveRequested',
-        'navigate_back' => 'onNavigateBack',
-    ];
-
-    /** Editor actions that fire a callback with the caret (line, utf16 col). */
-    private const array POSITIONAL_ACTIONS = [
-        'peek_definition' => 'onPeek',
-        'code_action' => 'onCodeAction',
-        'quick_doc' => 'onQuickDoc',
-        'find_usages' => 'onFindUsages',
-        'goto_definition' => 'onDefinitionRequested',
-        'goto_implementation' => 'onImplementationRequested',
-        'goto_type_definition' => 'onTypeDefinitionRequested',
-    ];
-
     public function handleInput(string $data): void
     {
         if ($this->inputHookHandled($data)) {
@@ -655,41 +636,9 @@ final class CodeEditorWidget extends AbstractWidget implements FocusableInterfac
             return;
         }
 
-        // Editor-level actions that fire an optional callback, dispatched by a
-        // lookup table instead of a flat if/return chain. Split by the
-        // callback's arity: no arguments, or the caret position (line, col).
-        // The same tables drive runAction() so the menu bar fires identical logic.
-        foreach (self::SIMPLE_ACTIONS as $action => $callback) {
-            if ($kb->matches($data, $action)) {
-                $this->fireSimpleAction($action);
-
-                return;
-            }
-        }
-
-        foreach (self::POSITIONAL_ACTIONS as $action => $callback) {
-            if ($kb->matches($data, $action)) {
-                $this->firePositionalAction($action);
-
-                return;
-            }
-        }
-
-        // The remaining editor-level actions carry extra logic beyond firing a
-        // single callback.
-        if ($kb->matches($data, 'next_buffer') || $kb->matches($data, 'prev_buffer')) {
-            if (null !== $this->callbacks->onBufferCycle) {
-                ($this->callbacks->onBufferCycle)($kb->matches($data, 'next_buffer') ? 1 : -1);
-            }
-
-            return;
-        }
-
-        if ($kb->matches($data, 'find') || $kb->matches($data, 'replace')) {
-            if (null !== $this->callbacks->onFindRequested) {
-                ($this->callbacks->onFindRequested)($kb->matches($data, 'replace'));
-            }
-
+        // Editor-level actions (keymap + menu) fire through the action router;
+        // anything it does not claim falls through to the editing verbs.
+        if ($this->actionRouter->dispatchKey($data, $kb)) {
             return;
         }
 
@@ -703,32 +652,8 @@ final class CodeEditorWidget extends AbstractWidget implements FocusableInterfac
      */
     public function runAction(string $action): void
     {
-        if (isset(self::SIMPLE_ACTIONS[$action])) {
-            $this->fireSimpleAction($action);
-
-            return;
-        }
-        if (isset(self::POSITIONAL_ACTIONS[$action])) {
-            $this->firePositionalAction($action);
-
-            return;
-        }
-        $this->actions->run($action);
-    }
-
-    private function fireSimpleAction(string $action): void
-    {
-        $callback = $this->callbacks->{self::SIMPLE_ACTIONS[$action]};
-        if (null !== $callback) {
-            $callback();
-        }
-    }
-
-    private function firePositionalAction(string $action): void
-    {
-        $callback = $this->callbacks->{self::POSITIONAL_ACTIONS[$action]};
-        if (null !== $callback) {
-            $callback($this->document->getCursorLine(), $this->document->getCursorColUtf16());
+        if (!$this->actionRouter->run($action)) {
+            $this->actions->run($action);
         }
     }
 
