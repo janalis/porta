@@ -20,6 +20,8 @@ use Porta\Editor\BufferService;
 use Porta\Editor\Document;
 use Porta\Git\GitCommands;
 use Porta\Git\GitInfo;
+use Porta\Git\GitPanes;
+use Porta\Git\GitViewCallbacks;
 use Porta\Git\GitViewController;
 use Porta\History\LocalHistory;
 use Porta\History\LocalHistoryController;
@@ -947,30 +949,28 @@ final class Ide
         $this->gitView = new GitViewController(
             $this->git,
             $this->rootDir,
-            $this->gitChanges,
-            $this->gitDiff,
-            $this->gitCommitBox,
-            $this->gitHistory,
-            $this->gitTabs,
+            new GitPanes($this->gitChanges, $this->gitDiff, $this->gitCommitBox, $this->gitHistory, $this->gitTabs),
             $this->main,
             $this->gitAreaContainer,
             $gitLeft,
             $this->menuBar,
-            fn (): array => $this->orderPanes($this->editorPanes),
             $this->tui,
             $this->notifier,
             $this->translator,
-            onClosed: function (): void {
-                $this->tui->setFocus($this->editor);
-                $this->tui->requestRender();
-            },
-            onCommitted: function (): void {
-                $this->refreshActiveGitMarks();
-                $this->refreshBranch();
-            },
-            loadDiffPrefs: fn (): array => $this->layout->gitDiffPrefs(),
-            saveDiffPrefs: fn (bool $split, bool $hideWhitespace) => $this->layout->setGitDiffPrefs($split, $hideWhitespace),
-            copyToClipboard: fn (string $text) => $this->copyToClipboard($text),
+            new GitViewCallbacks(
+                editArea: fn (): array => $this->orderPanes($this->editorPanes),
+                onClosed: function (): void {
+                    $this->tui->setFocus($this->editor);
+                    $this->tui->requestRender();
+                },
+                onCommitted: function (): void {
+                    $this->refreshActiveGitMarks();
+                    $this->refreshBranch();
+                },
+                loadDiffPrefs: fn (): array => $this->layout->gitDiffPrefs(),
+                saveDiffPrefs: fn (bool $split, bool $hideWhitespace) => $this->layout->setGitDiffPrefs($split, $hideWhitespace),
+                copyToClipboard: fn (string $text) => $this->copyToClipboard($text),
+            ),
         );
     }
 

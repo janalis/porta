@@ -6,6 +6,8 @@ namespace Porta\Tests\Unit\Git;
 
 use PHPUnit\Framework\TestCase;
 use Porta\Git\GitInfo;
+use Porta\Git\GitPanes;
+use Porta\Git\GitViewCallbacks;
 use Porta\Git\GitViewController;
 use Porta\I18n\Translator;
 use Porta\Tests\Support\TempProject;
@@ -97,32 +99,30 @@ final class GitViewControllerTest extends TestCase
         return new GitViewController(
             $this->git,
             $this->project->dir,
-            $this->changes,
-            $this->diffView,
-            $this->commitBox,
-            $this->history,
-            $this->tabs,
+            new GitPanes($this->changes, $this->diffView, $this->commitBox, $this->history, $this->tabs),
             $this->main,
             $gitArea,
             $this->gitLeft,
             $this->menuBar,
-            static fn (): array => [$editWidget],
             $this->tui,
             new Notifier($this->statusBar, $this->tui),
             new Translator('en'),
-            onClosed: function (): void {
-                ++$this->closed;
-            },
-            onCommitted: function (): void {
-                ++$this->committed;
-            },
-            loadDiffPrefs: fn (): array => $this->diffPrefs,
-            saveDiffPrefs: function (bool $split, bool $hideWhitespace): void {
-                $this->savedPrefs[] = [$split, $hideWhitespace];
-            },
-            copyToClipboard: function (string $text): void {
-                $this->clipboard[] = $text;
-            },
+            new GitViewCallbacks(
+                editArea: static fn (): array => [$editWidget],
+                onClosed: function (): void {
+                    ++$this->closed;
+                },
+                onCommitted: function (): void {
+                    ++$this->committed;
+                },
+                loadDiffPrefs: fn (): array => $this->diffPrefs,
+                saveDiffPrefs: function (bool $split, bool $hideWhitespace): void {
+                    $this->savedPrefs[] = [$split, $hideWhitespace];
+                },
+                copyToClipboard: function (string $text): void {
+                    $this->clipboard[] = $text;
+                },
+            ),
         );
     }
 
