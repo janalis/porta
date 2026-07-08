@@ -4,11 +4,12 @@ declare(strict_types=1);
 
 namespace Porta\Tests\Unit\Git;
 
-use Porta\I18n\Translator;
 use PHPUnit\Framework\TestCase;
 use Porta\Git\GitInfo;
 use Porta\Git\GitViewController;
+use Porta\I18n\Translator;
 use Porta\Tests\Support\TempProject;
+use Porta\Ui\Notifier;
 use Porta\Widget\Git\ChangesListWidget;
 use Porta\Widget\Git\CommitBoxWidget;
 use Porta\Widget\Git\DiffViewWidget;
@@ -107,7 +108,7 @@ final class GitViewControllerTest extends TestCase
             $this->menuBar,
             static fn (): array => [$editWidget],
             $this->tui,
-            $this->statusBar,
+            new Notifier($this->statusBar, $this->tui),
             new Translator('en'),
             onClosed: function (): void {
                 ++$this->closed;
@@ -579,7 +580,7 @@ final class GitViewControllerTest extends TestCase
 
         // Keyboard file browsing still refires loads.
         $this->history->setFocused(true);
-        $this->history->handleInput("\r");     // into the file list
+        $this->history->handleInput("\r"); // into the file list
         $this->history->handleInput("\x1b[B");
         $this->history->handleInput("\x1b[A");
         $this->await(fn (): bool => str_contains($this->diffText(), '+three'), 'the commit file patch renders');
@@ -650,7 +651,7 @@ final class GitViewControllerTest extends TestCase
         $controller->open(); // back on Changes
         $this->changes->setFocused(true);
         $this->changes->handleInput('2'); // fires git log...
-        $controller->close();             // ...and closes before it lands
+        $controller->close(); // ...and closes before it lands
         $this->awaitTicks(15);
         $this->assertFalse($controller->isOpen());
         $controller->open();

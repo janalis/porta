@@ -4,15 +4,15 @@ declare(strict_types=1);
 
 namespace Porta\Lsp;
 
-use Porta\I18n\Translator;
 use Porta\Editor\BufferManager;
+use Porta\I18n\Translator;
 use Porta\Support\NativeDocs;
 use Porta\Support\ProjectPaths;
+use Porta\Ui\Notifier;
 use Porta\Ui\PanelManager;
 use Porta\Ui\ResultsPanelMode;
 use Porta\Widget\CodeEditorWidget;
 use Porta\Widget\ResultsPanelWidget;
-use Porta\Widget\StatusBarWidget;
 use Symfony\Component\Tui\Tui;
 
 /**
@@ -34,7 +34,7 @@ final class NavigationController extends AbstractLspController
         LspSessionPool $lsp,
         CodeEditorWidget $editor,
         Tui $tui,
-        StatusBarWidget $statusBar,
+        Notifier $notifier,
         Translator $translator,
         private readonly BufferManager $buffers,
         private readonly ResultsPanelWidget $resultsPanel,
@@ -43,7 +43,7 @@ final class NavigationController extends AbstractLspController
         private readonly \Closure $openFile,
         private readonly \Closure $openUrl,
     ) {
-        parent::__construct($lsp, $editor, $tui, $statusBar, $translator);
+        parent::__construct($lsp, $editor, $tui, $notifier, $translator);
     }
 
     public function requestDefinition(int $line, int $utf16Col): void

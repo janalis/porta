@@ -10,6 +10,7 @@ use Porta\Config\SettingsController;
 use Porta\I18n\Translator;
 use Porta\Ide;
 use Porta\Tests\Support\TempProject;
+use Porta\Ui\Notifier;
 use Porta\Widget\CodeEditorWidget;
 use Porta\Widget\StatusBarWidget;
 use Symfony\Component\Tui\Terminal\VirtualTerminal;
@@ -41,7 +42,7 @@ final class SettingsControllerTest extends TestCase
         $tui = new Tui(terminal: new VirtualTerminal(columns: 80, rows: 24));
         $this->languageChanges = [];
 
-        return new SettingsController($settings + IdeConfig::DEFAULT_SETTINGS, $editor, $status, $tui, $rootDir, new Translator('en'), function (string $locale): void {
+        return new SettingsController($settings + IdeConfig::DEFAULT_SETTINGS, $editor, new Notifier($status, $tui), $rootDir, new Translator('en'), function (string $locale): void {
             $this->languageChanges[] = $locale;
         });
     }
@@ -61,7 +62,11 @@ final class SettingsControllerTest extends TestCase
         $rows = $controller->formRows();
         $byKey = array_column($rows, null, 'key');
 
-        $this->assertSame(['language', 'inlineDiagnostics', 'relativeLineNumbers', 'autoPairs', 'editorConfig', 'theme'], array_column($rows, 'key'), 'language first; indent settings moved to the Languages section');
+        $this->assertSame(
+            ['language', 'inlineDiagnostics', 'relativeLineNumbers', 'autoPairs', 'editorConfig', 'theme'],
+            array_column($rows, 'key'),
+            'language first; indent settings moved to the Languages section',
+        );
         $this->assertSame(['en', 'fr', 'de', 'es', 'it', 'ja', 'he'], $byKey['language']['options']);
         $this->assertFalse($byKey['autoPairs']['value']);
         $this->assertSame('bool', $byKey['autoPairs']['kind']);

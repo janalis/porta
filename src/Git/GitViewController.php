@@ -5,13 +5,13 @@ declare(strict_types=1);
 namespace Porta\Git;
 
 use Porta\I18n\Translator;
+use Porta\Ui\Notifier;
 use Porta\Widget\Git\ChangesListWidget;
 use Porta\Widget\Git\CommitBoxWidget;
 use Porta\Widget\Git\DiffViewWidget;
 use Porta\Widget\Git\GitTabsWidget;
 use Porta\Widget\Git\HistoryListWidget;
 use Porta\Widget\MenuBarWidget;
-use Porta\Widget\StatusBarWidget;
 use Revolt\EventLoop;
 use Symfony\Component\Tui\Tui;
 use Symfony\Component\Tui\Widget\AbstractWidget;
@@ -42,9 +42,11 @@ final class GitViewController
     /** The commit + path shown in the history diff, for whitespace-toggle reloads. */
     private ?LogEntry $shownCommit = null;
     private ?string $shownCommitPath = null;
+
     /** Diff context cycle (`c` in the diff pane): git's default → ±10 → the whole file. */
     private const array CONTEXT_STEPS = [null, 10, 999_999];
     private const array CONTEXT_LABELS = ['default', '±10 lines', 'whole file'];
+
     private int $contextStep = 0;
 
     /**
@@ -69,7 +71,7 @@ final class GitViewController
         private readonly MenuBarWidget $menuBar,
         private readonly \Closure $editArea,
         private readonly Tui $tui,
-        private readonly StatusBarWidget $statusBar,
+        private readonly Notifier $notifier,
         private readonly Translator $translator,
         private readonly \Closure $onClosed,
         private readonly \Closure $onCommitted,
@@ -132,7 +134,7 @@ final class GitViewController
             return;
         }
         if (!$this->git->isAvailable()) {
-            $this->statusBar->flash($this->translator->trans('Not a git repository'));
+            $this->notifier->flash($this->translator->trans('Not a git repository'));
             $this->tui->requestRender();
 
             return;
@@ -181,7 +183,7 @@ final class GitViewController
     public function refresh(bool $quiet = false): void
     {
         $this->git->status(function (array $entries, string $raw) use ($quiet): void {
-            if (!$this->open || ($quiet && $raw === $this->lastStatusRaw)) {
+            if (!$this->open || $quiet && $raw === $this->lastStatusRaw) {
                 return;
             }
             $this->lastStatusRaw = $raw;
@@ -240,9 +242,11 @@ final class GitViewController
     {
         ($this->copyToClipboard)($text);
         $lines = substr_count(rtrim($text, "\n"), "\n") + 1;
-        $this->statusBar->flash(1 === $lines
-            ? $this->translator->trans('Copied %count% line', ['%count%' => $lines])
-            : $this->translator->trans('Copied %count% lines', ['%count%' => $lines]));
+        $this->notifier->flash(
+            1 === $lines
+                ? $this->translator->trans('Copied %count% line', ['%count%' => $lines])
+                : $this->translator->trans('Copied %count% lines', ['%count%' => $lines]),
+        );
         $this->tui->requestRender();
     }
 
@@ -255,7 +259,7 @@ final class GitViewController
         $this->hideWhitespace = !$this->hideWhitespace;
         $this->diffView->setWhitespaceHidden($this->hideWhitespace);
         ($this->saveDiffPrefs)($this->diffView->isSplit(), $this->hideWhitespace);
-        $this->statusBar->flash($this->translator->trans($this->hideWhitespace ? 'Whitespace changes hidden' : 'Whitespace changes shown'));
+        $this->notifier->flash($this->translator->trans($this->hideWhitespace ? 'Whitespace changes hidden' : 'Whitespace changes shown'));
 
         if ('history' === $this->mode) {
             if (null !== $this->shownCommit && null !== $this->shownCommitPath) {
@@ -274,13 +278,13 @@ final class GitViewController
             return;
         }
         if ('untracked' === $this->shownSide) {
-            $this->statusBar->flash($this->translator->trans('Untracked files always show the whole file'));
+            $this->notifier->flash($this->translator->trans('Untracked files always show the whole file'));
             $this->tui->requestRender();
 
             return;
         }
         $this->contextStep = ($this->contextStep + 1) % \count(self::CONTEXT_STEPS);
-        $this->statusBar->flash($this->translator->trans('Diff context: %label%', ['%label%' => $this->translator->trans(self::CONTEXT_LABELS[$this->contextStep])]));
+        $this->notifier->flash($this->translator->trans('Diff context: %label%', ['%label%' => $this->translator->trans(self::CONTEXT_LABELS[$this->contextStep])]));
         $this->loadDiff($this->shownEntry);
         $this->tui->requestRender();
     }
@@ -299,7 +303,7 @@ final class GitViewController
             return;
         }
         if ('untracked' === $this->shownSide) {
-            $this->statusBar->flash($this->translator->trans('Untracked: stage the whole file with Space in the changes list'));
+            $this->notifier->flash($this->translator->trans('Untracked: stage the whole file with Space in the changes list'));
             $this->tui->requestRender();
 
             return;
@@ -307,7 +311,7 @@ final class GitViewController
         if ($this->hideWhitespace) {
             // A -w diff's hunks omit whitespace-only lines, so a patch built
             // from them no longer matches the preimage — git apply would balk.
-            $this->statusBar->flash($this->translator->trans('Show whitespace changes to stage lines (w)'));
+            $this->notifier->flash($this->translator->trans('Show whitespace changes to stage lines (w)'));
             $this->tui->requestRender();
 
             return;
@@ -324,7 +328,7 @@ final class GitViewController
         $entry = $this->shownEntry;
         $this->git->applyCached($patch, function (bool $ok) use ($entry): void {
             if (!$ok) {
-                $this->statusBar->flash($this->translator->trans('git apply refused the partial patch'));
+                $this->notifier->flash($this->translator->trans('git apply refused the partial patch'));
             }
             $this->refresh();
             $this->loadDiff($entry); // same path: the diff view keeps its cursor
@@ -336,7 +340,7 @@ final class GitViewController
         $abs = $this->rootDir.'/'.$entry->path;
         $done = function (bool $ok): void {
             if (!$ok) {
-                $this->statusBar->flash($this->translator->trans('git refused the staging change'));
+                $this->notifier->flash($this->translator->trans('git refused the staging change'));
             }
             $this->refresh();
         };
@@ -348,15 +352,17 @@ final class GitViewController
     {
         if ($entry->isUntracked()) {
             @unlink($this->rootDir.'/'.$entry->path);
-            $this->statusBar->flash($this->translator->trans('Deleted %path%', ['%path%' => $entry->path]));
+            $this->notifier->flash($this->translator->trans('Deleted %path%', ['%path%' => $entry->path]));
             $this->refresh();
 
             return;
         }
         $this->git->discardFile($this->rootDir.'/'.$entry->path, function (bool $ok) use ($entry): void {
-            $this->statusBar->flash($ok
-                ? $this->translator->trans('Discarded changes to %path%', ['%path%' => $entry->path])
-                : $this->translator->trans('Discard failed'));
+            $this->notifier->flash(
+                $ok
+                    ? $this->translator->trans('Discarded changes to %path%', ['%path%' => $entry->path])
+                    : $this->translator->trans('Discard failed'),
+            );
             $this->refresh();
         });
     }
@@ -380,18 +386,22 @@ final class GitViewController
 
     private function commit(string $message, bool $amend = false): void
     {
-        $this->git->commit($message, function (bool $ok, string $out): void {
-            $firstLine = strtok($out, "\n");
-            $summary = false === $firstLine ? '' : $firstLine;
-            if ($ok) {
-                $this->commitBox->clear();
-                $this->statusBar->flash($this->translator->trans('Committed: %summary%', ['%summary%' => $summary]));
-                ($this->onCommitted)();
-            } else {
-                $this->statusBar->flash($this->translator->trans('Commit failed: %summary%', ['%summary%' => $summary]));
-            }
-            $this->refresh();
-        }, $amend);
+        $this->git->commit(
+            $message,
+            function (bool $ok, string $out): void {
+                $firstLine = strtok($out, "\n");
+                $summary = false === $firstLine ? '' : $firstLine;
+                if ($ok) {
+                    $this->commitBox->clear();
+                    $this->notifier->flash($this->translator->trans('Committed: %summary%', ['%summary%' => $summary]));
+                    ($this->onCommitted)();
+                } else {
+                    $this->notifier->flash($this->translator->trans('Commit failed: %summary%', ['%summary%' => $summary]));
+                }
+                $this->refresh();
+            },
+            $amend,
+        );
     }
 
     /** Swap the left pane between the Changes and History tabs. */
@@ -450,14 +460,19 @@ final class GitViewController
     {
         $this->shownCommit = $commit;
         $this->shownCommitPath = $path;
-        $this->git->commitFileDiff($commit->sha, $path, function (string $raw) use ($path): void {
-            if (!$this->open || 'history' !== $this->mode) {
-                return;
-            }
-            $document = DiffDocument::parse($raw);
-            $this->diffView->setDocument($document->isEmpty() ? null : $document, $path, $this->hideWhitespace ? 'No patch (whitespace hidden)' : 'No patch for this file');
-            $this->tui->requestRender();
-        }, $this->hideWhitespace);
+        $this->git->commitFileDiff(
+            $commit->sha,
+            $path,
+            function (string $raw) use ($path): void {
+                if (!$this->open || 'history' !== $this->mode) {
+                    return;
+                }
+                $document = DiffDocument::parse($raw);
+                $this->diffView->setDocument($document->isEmpty() ? null : $document, $path, $this->hideWhitespace ? 'No patch (whitespace hidden)' : 'No patch for this file');
+                $this->tui->requestRender();
+            },
+            $this->hideWhitespace,
+        );
     }
 
     private function hasStagedChanges(): bool

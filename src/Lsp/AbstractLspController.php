@@ -5,8 +5,8 @@ declare(strict_types=1);
 namespace Porta\Lsp;
 
 use Porta\I18n\Translator;
+use Porta\Ui\Notifier;
 use Porta\Widget\CodeEditorWidget;
-use Porta\Widget\StatusBarWidget;
 use Symfony\Component\Tui\Tui;
 
 /**
@@ -20,7 +20,7 @@ abstract class AbstractLspController
         protected readonly LspSessionPool $lsp,
         protected readonly CodeEditorWidget $editor,
         protected readonly Tui $tui,
-        protected readonly StatusBarWidget $statusBar,
+        protected readonly Notifier $notifier,
         protected readonly Translator $translator,
     ) {}
 
@@ -67,7 +67,6 @@ abstract class AbstractLspController
     /** Flash a transient status message and repaint. */
     protected function flash(string $message): void
     {
-        $this->statusBar->flash($message);
-        $this->tui->requestRender();
+        $this->notifier->flash($message);
     }
 }

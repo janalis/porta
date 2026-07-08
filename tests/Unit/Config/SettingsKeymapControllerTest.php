@@ -5,10 +5,11 @@ declare(strict_types=1);
 namespace Porta\Tests\Unit\Config;
 
 use PHPUnit\Framework\TestCase;
-use Porta\I18n\Translator;
 use Porta\Config\IdeConfig;
 use Porta\Config\SettingsKeymapController;
+use Porta\I18n\Translator;
 use Porta\Tests\Support\TempProject;
+use Porta\Ui\Notifier;
 use Porta\Widget\CodeEditorWidget;
 use Porta\Widget\StatusBarWidget;
 use Symfony\Component\Tui\Input\Keybindings;
@@ -21,7 +22,7 @@ final class SettingsKeymapControllerTest extends TestCase
     {
         $tui = new Tui(terminal: new VirtualTerminal(columns: 80, rows: 24));
 
-        return new SettingsKeymapController(new CodeEditorWidget(), $ideKeys, $status, $tui, $rootDir, new Translator('en'));
+        return new SettingsKeymapController(new CodeEditorWidget(), $ideKeys, new Notifier($status, $tui), $rootDir, new Translator('en'));
     }
 
     private function flashText(StatusBarWidget $status): string

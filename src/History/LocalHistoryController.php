@@ -4,13 +4,13 @@ declare(strict_types=1);
 
 namespace Porta\History;
 
-use Porta\I18n\Translator;
 use Porta\Editor\BufferManager;
+use Porta\I18n\Translator;
 use Porta\Lsp\CompletionController;
+use Porta\Ui\Notifier;
 use Porta\Ui\PanelManager;
 use Porta\Ui\ResultsPanelMode;
 use Porta\Widget\CodeEditorWidget;
-use Porta\Widget\StatusBarWidget;
 use Symfony\Component\Tui\Tui;
 
 /**
@@ -28,7 +28,7 @@ final class LocalHistoryController
         private readonly PanelManager $panels,
         private readonly CodeEditorWidget $editor,
         private readonly BufferManager $buffers,
-        private readonly StatusBarWidget $statusBar,
+        private readonly Notifier $notifier,
         private readonly Tui $tui,
         private readonly Translator $translator,
         private readonly CompletionController $completion,
@@ -68,7 +68,7 @@ final class LocalHistoryController
         }
         $content = $this->history->read($file);
         if (null === $content) {
-            $this->statusBar->flash($this->translator->trans('Could not read that snapshot'));
+            $this->notifier->flash($this->translator->trans('Could not read that snapshot'));
             $this->tui->requestRender();
 
             return;
@@ -80,7 +80,7 @@ final class LocalHistoryController
         $doc->insert($content);
         $this->editor->invalidate();
         $this->completion->scheduleDidChange($doc);
-        $this->statusBar->flash($this->translator->trans('Restored from local history'));
+        $this->notifier->flash($this->translator->trans('Restored from local history'));
         $this->tui->requestRender();
     }
 }

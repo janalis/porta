@@ -5,9 +5,8 @@ declare(strict_types=1);
 namespace Porta\Config;
 
 use Porta\I18n\Translator;
+use Porta\Ui\Notifier;
 use Porta\Widget\CodeEditorWidget;
-use Porta\Widget\StatusBarWidget;
-use Symfony\Component\Tui\Tui;
 
 /**
  * The per-language indent model behind the settings view's Languages section:
@@ -30,8 +29,7 @@ final class SettingsLanguageController
      */
     public function __construct(
         private readonly CodeEditorWidget $editor,
-        private readonly StatusBarWidget $statusBar,
-        private readonly Tui $tui,
+        private readonly Notifier $notifier,
         private readonly string $rootDir,
         private readonly Translator $translator,
         array $overrides,
@@ -60,7 +58,14 @@ final class SettingsLanguageController
 
         return [
             ['key' => 'indentStyle', 'label' => $this->translator->trans('Indent style'), 'kind' => 'choice', 'value' => $entry->indentStyle, 'restart' => false, 'options' => self::STYLE_OPTIONS],
-            ['key' => 'indentSize', 'label' => $this->translator->trans('Indent size'), 'kind' => 'choice', 'value' => (string) $entry->indentSize, 'restart' => false, 'options' => self::SIZE_OPTIONS],
+            [
+                'key' => 'indentSize',
+                'label' => $this->translator->trans('Indent size'),
+                'kind' => 'choice',
+                'value' => (string) $entry->indentSize,
+                'restart' => false,
+                'options' => self::SIZE_OPTIONS,
+            ],
         ];
     }
 
@@ -71,9 +76,8 @@ final class SettingsLanguageController
     public function changeLanguageSetting(string $language, string $key, int|bool|string $value): void
     {
         $current = $this->config[$language] ?? null;
-        if (null === $current || ('indentStyle' !== $key && 'indentSize' !== $key)) {
-            $this->statusBar->flash($this->translator->trans('Unknown language setting "%key%"', ['%key%' => $language.'.'.$key]));
-            $this->tui->requestRender();
+        if (null === $current || 'indentStyle' !== $key && 'indentSize' !== $key) {
+            $this->notifier->flash($this->translator->trans('Unknown language setting "%key%"', ['%key%' => $language.'.'.$key]));
 
             return;
         }
@@ -87,7 +91,6 @@ final class SettingsLanguageController
         $this->applyToEditor();
         $label = $this->translator->trans('indentSize' === $key ? 'indent size' : 'indent style');
         $saved = $persisted ? '' : ' ('.$this->translator->trans('not saved').')';
-        $this->statusBar->flash(\sprintf('%s %s: %s%s', LanguageCatalog::displayName($language), $label, $stored, $saved));
-        $this->tui->requestRender();
+        $this->notifier->flash(\sprintf('%s %s: %s%s', LanguageCatalog::displayName($language), $label, $stored, $saved));
     }
 }

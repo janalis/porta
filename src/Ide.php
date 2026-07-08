@@ -21,14 +21,11 @@ use Porta\Editor\Document;
 use Porta\Git\GitCommands;
 use Porta\Git\GitInfo;
 use Porta\Git\GitViewController;
-use Porta\I18n\Translator;
-use Porta\Settings\SettingsViewController;
-use Porta\Widget\Settings\KeybindingsListWidget;
-use Porta\Widget\Settings\SettingsFormWidget;
-use Porta\Widget\Settings\SettingsNavWidget;
 use Porta\History\LocalHistory;
 use Porta\History\LocalHistoryController;
 use Porta\History\SessionStore;
+use Porta\I18n\Bidi;
+use Porta\I18n\Translator;
 use Porta\Input\HitTester;
 use Porta\Input\MouseEvent;
 use Porta\Input\MouseRouter;
@@ -46,22 +43,23 @@ use Porta\Run\RunConfigs;
 use Porta\Run\RunController;
 use Porta\Search\ProjectSearch;
 use Porta\Search\ProjectSearchController;
+use Porta\Settings\SettingsViewController;
 use Porta\Support\AsyncProcess;
 use Porta\Support\BrowserOpener;
 use Porta\Support\ProjectPaths;
 use Porta\Terminal\TerminalKeyEncoder;
 use Porta\Tree\TreeOperations;
-use Porta\I18n\Bidi;
 use Porta\Ui\BidiTui;
 use Porta\Ui\CommandPalette;
 use Porta\Ui\ContextMenuBuilder;
 use Porta\Ui\MenuModel;
+use Porta\Ui\Notifier;
 use Porta\Ui\PanelManager;
 use Porta\Ui\ResultsPanelMode;
 use Porta\Widget\BreadcrumbsWidget;
 use Porta\Widget\CodeEditorWidget;
-use Porta\Widget\EditorCallbacks;
 use Porta\Widget\ContextMenu;
+use Porta\Widget\EditorCallbacks;
 use Porta\Widget\FileTreeWidget;
 use Porta\Widget\FindBarWidget;
 use Porta\Widget\Git\ChangesListWidget;
@@ -73,6 +71,9 @@ use Porta\Widget\GoToFileWidget;
 use Porta\Widget\MenuBarWidget;
 use Porta\Widget\ResultsPanelWidget;
 use Porta\Widget\SeparatorWidget;
+use Porta\Widget\Settings\KeybindingsListWidget;
+use Porta\Widget\Settings\SettingsFormWidget;
+use Porta\Widget\Settings\SettingsNavWidget;
 use Porta\Widget\StatusBarWidget;
 use Porta\Widget\TabBarWidget;
 use Porta\Widget\TerminalPanelWidget;
@@ -102,6 +103,7 @@ final class Ide
     private FileTreeWidget $tree;
     private CodeEditorWidget $editor;
     private StatusBarWidget $statusBar;
+    private Notifier $notifier;
     private MenuBarWidget $menuBar;
     private TabBarWidget $tabBar;
     private BreadcrumbsWidget $breadcrumbs;
@@ -195,11 +197,12 @@ final class Ide
         $this->workspaceEditor = new WorkspaceEditor($this->buffers, $this->editor, $this->lsp);
         $this->statusBar = new StatusBarWidget();
         $this->statusBar->setId('status');
+        $this->notifier = new Notifier($this->statusBar, $this->tui);
         $this->menuBar = new MenuBarWidget();
         $this->menuBar->setId('menu');
         $this->contextMenu = new ContextMenu();
         $this->contextMenu->setId('context-menu');
-        $this->completion = new CompletionController($this->lsp, $this->editor, $this->tui, $this->statusBar, $this->translator);
+        $this->completion = new CompletionController($this->lsp, $this->editor, $this->tui, $this->notifier, $this->translator);
         $this->tabBar = new TabBarWidget();
         $this->tabBar->setId('tabs');
         $this->tabBar->setProvider(fn (): array => array_map(fn (Buffer $b) => [
@@ -248,12 +251,12 @@ final class Ide
             fn (string $path, Document $document) => $this->lsp->notifyFullChange($path, $document),
         );
         $this->commandPalette = new CommandPalette($this->resultsPanel, $this->tui);
-        $this->panels = new PanelManager($this->tui, $this->resultsPanel, $this->editor, $this->statusBar);
+        $this->panels = new PanelManager($this->tui, $this->resultsPanel, $this->editor, $this->notifier);
         $this->navigation = new NavigationController(
             $this->lsp,
             $this->editor,
             $this->tui,
-            $this->statusBar,
+            $this->notifier,
             $this->translator,
             $this->buffers,
             $this->resultsPanel,
@@ -266,7 +269,7 @@ final class Ide
             $this->lsp,
             $this->editor,
             $this->tui,
-            $this->statusBar,
+            $this->notifier,
             $this->translator,
             $this->buffers,
             $this->workspaceEditor,
@@ -278,7 +281,7 @@ final class Ide
             $this->terminalPanel,
             new TerminalKeyEncoder(fn (): bool => $this->tui->getTerminal()->isKittyProtocolActive()),
             $this->editor,
-            $this->statusBar,
+            $this->notifier,
             $this->tui,
             $this->translator,
             $this->rootDir,
@@ -287,7 +290,7 @@ final class Ide
         $this->gitCommands = new GitCommands(
             $this->git,
             $this->editor,
-            $this->statusBar,
+            $this->notifier,
             $this->tui,
             $this->translator,
             fn () => $this->refreshActiveGitMarks(),
@@ -332,7 +335,7 @@ final class Ide
             $this->menuBar,
             fn (): array => $this->orderPanes($this->editorPanes),
             $this->tui,
-            $this->statusBar,
+            $this->notifier,
             $this->translator,
             onClosed: function (): void {
                 $this->tui->setFocus($this->editor);
@@ -368,7 +371,16 @@ final class Ide
 
         $this->history = new LocalHistory($this->rootDir);
         $this->session = new SessionStore($this->rootDir);
-        $this->layout = new LayoutController(new LayoutStore($this->rootDir), $this->tui, $this->renderer, $this->tree, $this->terminalPanel, $this->resultsPanel, new GitSidebar($this->gitTabs, $this->gitChanges, $this->gitCommitBox, $this->gitHistory), $settingsNav);
+        $this->layout = new LayoutController(
+            new LayoutStore($this->rootDir),
+            $this->tui,
+            $this->renderer,
+            $this->tree,
+            $this->terminalPanel,
+            $this->resultsPanel,
+            new GitSidebar($this->gitTabs, $this->gitChanges, $this->gitCommitBox, $this->gitHistory),
+            $settingsNav,
+        );
         $this->overlay = new MenuOverlayController(
             $this->renderer,
             $this->menuBar,
@@ -395,7 +407,7 @@ final class Ide
             $this->tree,
             $this->editor,
             $this->tui,
-            $this->statusBar,
+            $this->notifier,
             $this->buffers,
             $this->translator,
             fn (string $p, bool $focus) => $this->openFile($p, focusEditor: $focus),
@@ -418,9 +430,9 @@ final class Ide
         $this->wireStatusBar();
 
         // Apply persisted settings.
-        $this->settings = new SettingsController($config->settings, $this->editor, $this->statusBar, $this->tui, $this->rootDir, $this->translator, fn (string $locale) => $this->applyLanguage($locale));
+        $this->settings = new SettingsController($config->settings, $this->editor, $this->notifier, $this->rootDir, $this->translator, fn (string $locale) => $this->applyLanguage($locale));
         $this->settings->applyAll();
-        $this->settingsLanguages = new SettingsLanguageController($this->editor, $this->statusBar, $this->tui, $this->rootDir, $this->translator, $config->languages);
+        $this->settingsLanguages = new SettingsLanguageController($this->editor, $this->notifier, $this->rootDir, $this->translator, $config->languages);
         $this->settingsLanguages->applyToEditor();
         $this->settingsView = new SettingsViewController(
             $settingsNav,
@@ -433,9 +445,9 @@ final class Ide
             fn (): array => $this->orderPanes($this->editorPanes),
             $this->tui,
             $this->settings,
-            new SettingsKeymapController($this->editor, $this->keybindings, $this->statusBar, $this->tui, $this->rootDir, $this->translator),
+            new SettingsKeymapController($this->editor, $this->keybindings, $this->notifier, $this->rootDir, $this->translator),
             $this->settingsLanguages,
-            new SettingsLspController($this->rootDir, $this->lsp, $config->lspServers, $this->lspCommand, fn () => $this->reopenLspBuffers(), $this->statusBar, $this->tui, $this->translator),
+            new SettingsLspController($this->rootDir, $this->lsp, $config->lspServers, $this->lspCommand, fn () => $this->reopenLspBuffers(), $this->notifier, $this->translator),
             onClosed: function (): void {
                 $this->tui->setFocus($this->editor);
                 $this->tui->requestRender();
@@ -445,7 +457,7 @@ final class Ide
             $this->buffers,
             $this->editor,
             $this->tree,
-            $this->statusBar,
+            $this->notifier,
             $this->tui,
             $this->lsp,
             $this->completion,
@@ -463,7 +475,7 @@ final class Ide
             $this->panels,
             $this->editor,
             $this->buffers,
-            $this->statusBar,
+            $this->notifier,
             $this->tui,
             $this->translator,
             $this->completion,
@@ -507,7 +519,7 @@ final class Ide
         $this->applyDirection();
 
         foreach ($config->warnings as $warning) {
-            $this->statusBar->flash($warning, 5.0);
+            $this->notifier->flash($warning, 5.0);
         }
     }
 
@@ -636,9 +648,7 @@ final class Ide
             onSaveAllRequested: fn () => $this->saveAllBuffers(),
             onChanged: fn (Document $doc) => $this->completion->scheduleDidChange($doc),
             onCompletionRequested: fn (int $line, int $utf16Col) => $this->completion->requestCompletion($line, $utf16Col),
-            onCompletionResolve:
-                /** @param array<string, mixed> $item */
-                fn (array $item) => $this->completion->resolveCompletion($item),
+            onCompletionResolve: /** @param array<string, mixed> $item */ fn (array $item) => $this->completion->resolveCompletion($item),
             onDefinitionRequested: fn (int $line, int $utf16Col) => $this->navigation->requestDefinition($line, $utf16Col),
             onImplementationRequested: fn (int $line, int $utf16Col) => $this->navigation->requestImplementation($line, $utf16Col),
             onTypeDefinitionRequested: fn (int $line, int $utf16Col) => $this->navigation->requestTypeDefinition($line, $utf16Col),
@@ -877,14 +887,12 @@ final class Ide
     {
         $command = BrowserOpener::command($url);
         if (null === $command) {
-            $this->statusBar->flash($this->translator->trans('Docs: %url%', ['%url%' => $url]), 5.0);
-            $this->tui->requestRender();
+            $this->notifier->flash($this->translator->trans('Docs: %url%', ['%url%' => $url]), 5.0);
 
             return;
         }
         new AsyncProcess($command, $this->rootDir)->start(static function (): void {});
-        $this->statusBar->flash($this->translator->trans('Opened %url%', ['%url%' => $url]), 3.0);
-        $this->tui->requestRender();
+        $this->notifier->flash($this->translator->trans('Opened %url%', ['%url%' => $url]), 3.0);
     }
 
     private function wireStatusBar(): void
@@ -1015,8 +1023,7 @@ final class Ide
             $noun = 1 === $dirty
                 ? $this->translator->trans('1 file has')
                 : $this->translator->trans('%count% files have', ['%count%' => $dirty]);
-            $this->statusBar->flash($this->translator->trans('Unsaved changes — %noun% edits. Ctrl+Q again to quit, Ctrl+S to save', ['%noun%' => $noun]), 3.0);
-            $this->tui->requestRender();
+            $this->notifier->flash($this->translator->trans('Unsaved changes — %noun% edits. Ctrl+Q again to quit, Ctrl+S to save', ['%noun%' => $noun]), 3.0);
 
             return;
         }
@@ -1127,10 +1134,11 @@ final class Ide
                 /** @var array<string, mixed> $edit */
                 $count = $this->workspaceEditor->applyWorkspaceEdit($edit);
                 if ($count > 0) {
-                    $this->statusBar->flash(1 === $count
-                        ? $this->translator->trans('Applied server edit to %count% file', ['%count%' => $count])
-                        : $this->translator->trans('Applied server edit to %count% files', ['%count%' => $count]));
-                    $this->tui->requestRender();
+                    $this->notifier->flash(
+                        1 === $count
+                            ? $this->translator->trans('Applied server edit to %count% file', ['%count%' => $count])
+                            : $this->translator->trans('Applied server edit to %count% files', ['%count%' => $count]),
+                    );
                 }
 
                 return $count > 0;
@@ -1204,14 +1212,22 @@ final class Ide
             ->add('toggle_auto_pairs', fn () => $this->settings->toggle('autoPairs'), label: 'Toggle Auto-Pairs')
             ->add('ide_terminal', fn () => $this->run->toggleTerminal(), keyBound: true)
             ->add('ide_run', fn () => $this->run->openRunMenu(), keyBound: true)
-            ->add('ide_git', function (): void {
-                $this->settingsView->close();
-                $this->gitView->toggle();
-            }, keyBound: true)
-            ->add('ide_settings', function (): void {
-                $this->gitView->close();
-                $this->settingsView->toggle();
-            }, keyBound: true)
+            ->add(
+                'ide_git',
+                function (): void {
+                    $this->settingsView->close();
+                    $this->gitView->toggle();
+                },
+                keyBound: true,
+            )
+            ->add(
+                'ide_settings',
+                function (): void {
+                    $this->gitView->close();
+                    $this->settingsView->toggle();
+                },
+                keyBound: true,
+            )
             ->add('git_stage', fn () => $this->gitCommands->stageCurrent(), label: 'Git: Stage Current File')
             ->add('git_commit', fn () => $this->gitCommands->commit(), label: 'Git: Commit…')
             ->add('git_blame', fn () => $this->gitCommands->blameLine(), label: 'Git: Blame Current Line')
@@ -1227,7 +1243,14 @@ final class Ide
     /** (Re)build the menu-bar labels for the current locale. */
     private function rebuildMenu(): void
     {
-        $this->menuBar->setMenus(MenuModel::build($this->commands, $this->editor, $this->keybindings, $this->translator, fn (): bool => $this->gitView->isOpen(), fn (): bool => $this->settingsView->isOpen()));
+        $this->menuBar->setMenus(MenuModel::build(
+            $this->commands,
+            $this->editor,
+            $this->keybindings,
+            $this->translator,
+            fn (): bool => $this->gitView->isOpen(),
+            fn (): bool => $this->settingsView->isOpen(),
+        ));
     }
 
     /** Populate the application menu bar and return focus to the editor on close. */

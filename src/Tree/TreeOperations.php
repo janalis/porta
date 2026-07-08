@@ -9,9 +9,9 @@ use Porta\Editor\BufferManager;
 use Porta\Editor\Document;
 use Porta\I18n\Translator;
 use Porta\Ui\MenuItem;
+use Porta\Ui\Notifier;
 use Porta\Widget\CodeEditorWidget;
 use Porta\Widget\FileTreeWidget;
-use Porta\Widget\StatusBarWidget;
 use Symfony\Component\Filesystem\Exception\IOExceptionInterface;
 use Symfony\Component\Filesystem\Filesystem;
 use Symfony\Component\Tui\Tui;
@@ -36,7 +36,7 @@ final class TreeOperations
         private readonly FileTreeWidget $tree,
         private readonly CodeEditorWidget $editor,
         private readonly Tui $tui,
-        private readonly StatusBarWidget $statusBar,
+        private readonly Notifier $notifier,
         private readonly BufferManager $buffers,
         private readonly Translator $translator,
         private readonly \Closure $openFile,
@@ -96,7 +96,7 @@ final class TreeOperations
                 new Filesystem()->dumpFile($path, '');
                 $this->tree->refresh();
                 ($this->openFile)($path, true);
-                $this->statusBar->flash($this->translator->trans('Created %file%', ['%file%' => ($this->relativePath)($path)]));
+                $this->notifier->flash($this->translator->trans('Created %file%', ['%file%' => ($this->relativePath)($path)]));
             });
         });
     }
@@ -114,7 +114,7 @@ final class TreeOperations
                 new Filesystem()->mkdir($path);
                 $this->tree->refresh();
                 $this->tui->setFocus($this->tree);
-                $this->statusBar->flash($this->translator->trans('Created %file%', ['%file%' => ($this->relativePath)($path)]));
+                $this->notifier->flash($this->translator->trans('Created %file%', ['%file%' => ($this->relativePath)($path)]));
             });
         });
     }
@@ -140,7 +140,7 @@ final class TreeOperations
                 }
                 $this->tree->refresh();
                 $this->tui->setFocus($this->tree);
-                $this->statusBar->flash($this->translator->trans('Renamed to %name%', ['%name%' => $name]));
+                $this->notifier->flash($this->translator->trans('Renamed to %name%', ['%name%' => $name]));
             });
         });
     }
@@ -164,7 +164,7 @@ final class TreeOperations
                 }
                 $this->tree->refresh();
                 $this->tui->setFocus($this->tree);
-                $this->statusBar->flash($this->translator->trans('Deleted %file%', ['%file%' => ($this->relativePath)($path)]));
+                $this->notifier->flash($this->translator->trans('Deleted %file%', ['%file%' => ($this->relativePath)($path)]));
             });
         });
     }
@@ -173,7 +173,7 @@ final class TreeOperations
     {
         $text = $relative ? ($this->relativePath)($path) : $path;
         ($this->copyToClipboard)($text);
-        $this->statusBar->flash($this->translator->trans('Copied %text%', ['%text%' => $text]));
+        $this->notifier->flash($this->translator->trans('Copied %text%', ['%text%' => $text]));
     }
 
     /** Focus the editor and open its single-line prompt (tree file-op names/confirmations). */
@@ -190,7 +190,7 @@ final class TreeOperations
         try {
             $op();
         } catch (IOExceptionInterface) {
-            $this->statusBar->flash($failMessage);
+            $this->notifier->flash($failMessage);
         }
     }
 }

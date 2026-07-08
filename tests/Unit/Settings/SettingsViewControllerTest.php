@@ -10,10 +10,11 @@ use Porta\Config\SettingsController;
 use Porta\Config\SettingsKeymapController;
 use Porta\Config\SettingsLanguageController;
 use Porta\Config\SettingsLspController;
-use Porta\Lsp\LspSessionPool;
 use Porta\I18n\Translator;
+use Porta\Lsp\LspSessionPool;
 use Porta\Settings\SettingsViewController;
 use Porta\Tests\Support\TempProject;
+use Porta\Ui\Notifier;
 use Porta\Widget\CodeEditorWidget;
 use Porta\Widget\MenuBarWidget;
 use Porta\Widget\Settings\KeybindingsListWidget;
@@ -62,11 +63,12 @@ final class SettingsViewControllerTest extends TestCase
         $this->tui = new Tui(terminal: new VirtualTerminal(columns: 100, rows: 24), keybindings: new Keybindings([]), renderer: new Renderer(new StyleSheet()));
         $editor = new CodeEditorWidget();
         $status = new StatusBarWidget();
-        $settings = new SettingsController(IdeConfig::DEFAULT_SETTINGS, $editor, $status, $this->tui, $this->project->dir, new Translator('en'), static function (string $locale): void {});
-        $keymap = new SettingsKeymapController($editor, new Keybindings([]), $status, $this->tui, $this->project->dir, new Translator('en'));
-        $languages = new SettingsLanguageController($editor, $status, $this->tui, $this->project->dir, new Translator('en'), []);
+        $notifier = new Notifier($status, $this->tui);
+        $settings = new SettingsController(IdeConfig::DEFAULT_SETTINGS, $editor, $notifier, $this->project->dir, new Translator('en'), static function (string $locale): void {});
+        $keymap = new SettingsKeymapController($editor, new Keybindings([]), $notifier, $this->project->dir, new Translator('en'));
+        $languages = new SettingsLanguageController($editor, $notifier, $this->project->dir, new Translator('en'), []);
         $pool = new LspSessionPool($this->project->dir, static fn (): ?string => null, new Translator('en'));
-        $lsp = new SettingsLspController($this->project->dir, $pool, [], null, static function (): void {}, $status, $this->tui, new Translator('en'));
+        $lsp = new SettingsLspController($this->project->dir, $pool, [], null, static function (): void {}, $notifier, new Translator('en'));
         $this->closed = 0;
 
         return new SettingsViewController(
@@ -83,7 +85,9 @@ final class SettingsViewControllerTest extends TestCase
             $keymap,
             $languages,
             $lsp,
-            onClosed: function (): void { ++$this->closed; },
+            onClosed: function (): void {
+                ++$this->closed;
+            },
         );
     }
 

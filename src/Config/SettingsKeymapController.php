@@ -5,12 +5,11 @@ declare(strict_types=1);
 namespace Porta\Config;
 
 use Porta\I18n\Translator;
+use Porta\Ui\Notifier;
 use Porta\Ui\ShortcutFormatter;
 use Porta\Widget\CodeEditorWidget;
-use Porta\Widget\StatusBarWidget;
 use Symfony\Component\Tui\Input\Keybindings;
 use Symfony\Component\Tui\Input\KeyParser;
-use Symfony\Component\Tui\Tui;
 
 /**
  * The keybindings model behind the settings view's Keybindings tab: lists every
@@ -26,8 +25,7 @@ final class SettingsKeymapController
     public function __construct(
         private readonly CodeEditorWidget $editor,
         private readonly Keybindings $ideKeys,
-        private readonly StatusBarWidget $statusBar,
-        private readonly Tui $tui,
+        private readonly Notifier $notifier,
         private readonly string $rootDir,
         private readonly Translator $translator,
         private readonly KeyParser $parser = new KeyParser(),
@@ -59,8 +57,7 @@ final class SettingsKeymapController
     {
         $parsed = $this->parser->parse($rawKey);
         if (null === $parsed) {
-            $this->statusBar->flash($this->translator->trans('Unsupported key — try another'));
-            $this->tui->requestRender();
+            $this->notifier->flash($this->translator->trans('Unsupported key — try another'));
 
             return;
         }
@@ -68,10 +65,10 @@ final class SettingsKeymapController
         $token = $parsed['key'];
         $persisted = IdeConfig::persistKeymap($this->rootDir, $action, [$token]);
         $saved = $persisted ? '' : ' ('.$this->translator->trans('not saved').')';
-        $this->statusBar->flash($this->translator->trans('Rebound %action% to %key% · applies on restart', [
+        $this->notifier->flash($this->translator->trans('Rebound %action% to %key% · applies on restart', [
             '%action%' => $this->translator->trans(ActionCatalog::label($action)),
             '%key%' => ShortcutFormatter::format($token),
-        ]).$saved);
-        $this->tui->requestRender();
+        ])
+            .$saved);
     }
 }

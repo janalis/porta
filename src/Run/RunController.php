@@ -8,8 +8,8 @@ use Porta\I18n\Translator;
 use Porta\Terminal\PtyProcess;
 use Porta\Terminal\TerminalBuffer;
 use Porta\Terminal\TerminalKeyEncoder;
+use Porta\Ui\Notifier;
 use Porta\Widget\CodeEditorWidget;
-use Porta\Widget\StatusBarWidget;
 use Porta\Widget\TerminalPanelWidget;
 use Symfony\Component\Tui\Tui;
 
@@ -31,7 +31,7 @@ final class RunController
         private readonly TerminalPanelWidget $terminalPanel,
         private readonly TerminalKeyEncoder $terminalKeys,
         private readonly CodeEditorWidget $editor,
-        private readonly StatusBarWidget $statusBar,
+        private readonly Notifier $notifier,
         private readonly Tui $tui,
         private readonly Translator $translator,
         private readonly string $rootDir,
@@ -41,8 +41,7 @@ final class RunController
     {
         $tasks = $this->runConfigs->discover($this->editor->getFilePath());
         if ([] === $tasks) {
-            $this->statusBar->flash($this->translator->trans('Nothing to run (no PHP file, composer scripts, or Makefile)'));
-            $this->tui->requestRender();
+            $this->notifier->flash($this->translator->trans('Nothing to run (no PHP file, composer scripts, or Makefile)'));
 
             return;
         }
@@ -64,8 +63,7 @@ final class RunController
     public function runLast(): void
     {
         if (null === $this->lastRun) {
-            $this->statusBar->flash($this->translator->trans('No previous run — press Ctrl+Shift+R to pick one'));
-            $this->tui->requestRender();
+            $this->notifier->flash($this->translator->trans('No previous run — press Ctrl+Shift+R to pick one'));
 
             return;
         }
@@ -120,7 +118,7 @@ final class RunController
         if (!$this->terminal->start()) {
             // Spawn failure needs a PTY-less system; unreachable here.
             // @codeCoverageIgnoreStart
-            $this->statusBar->flash($this->translator->trans('Could not start the terminal process'));
+            $this->notifier->flash($this->translator->trans('Could not start the terminal process'));
             $this->terminal = null;
 
             // @codeCoverageIgnoreEnd

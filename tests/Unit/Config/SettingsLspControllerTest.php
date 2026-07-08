@@ -5,11 +5,12 @@ declare(strict_types=1);
 namespace Porta\Tests\Unit\Config;
 
 use PHPUnit\Framework\TestCase;
-use Porta\I18n\Translator;
 use Porta\Config\IdeConfig;
 use Porta\Config\SettingsLspController;
+use Porta\I18n\Translator;
 use Porta\Lsp\LspSessionPool;
 use Porta\Tests\Support\TempProject;
+use Porta\Ui\Notifier;
 use Porta\Widget\StatusBarWidget;
 use Symfony\Component\Tui\Terminal\VirtualTerminal;
 use Symfony\Component\Tui\Tui;
@@ -39,7 +40,17 @@ final class SettingsLspControllerTest extends TestCase
         $tui = new Tui(terminal: new VirtualTerminal(columns: 80, rows: 24));
         $pool = new LspSessionPool($rootDir, static fn (): ?string => null, new Translator('en'));
 
-        return new SettingsLspController($rootDir, $pool, $overrides, $lspOverride, function (): void { ++$this->reopened; }, $status, $tui, new Translator('en'));
+        return new SettingsLspController(
+            $rootDir,
+            $pool,
+            $overrides,
+            $lspOverride,
+            function (): void {
+                ++$this->reopened;
+            },
+            new Notifier($status, $tui),
+            new Translator('en'),
+        );
     }
 
     private function flashText(StatusBarWidget $status): string

@@ -7,8 +7,7 @@ namespace Porta\Config;
 use Porta\I18n\Translator;
 use Porta\Lsp\LspSessionPool;
 use Porta\Lsp\ServerLocator;
-use Porta\Widget\StatusBarWidget;
-use Symfony\Component\Tui\Tui;
+use Porta\Ui\Notifier;
 
 /**
  * The per-language LSP-server model behind the settings view's Languages
@@ -31,8 +30,7 @@ final class SettingsLspController
         private array $overrides,
         private readonly ?string $lspOverride,
         private readonly \Closure $reopenBuffers,
-        private readonly StatusBarWidget $statusBar,
-        private readonly Tui $tui,
+        private readonly Notifier $notifier,
         private readonly Translator $translator,
     ) {}
 
@@ -88,7 +86,6 @@ final class SettingsLspController
 
     private function flash(string $message): void
     {
-        $this->statusBar->flash($message);
-        $this->tui->requestRender();
+        $this->notifier->flash($message);
     }
 }

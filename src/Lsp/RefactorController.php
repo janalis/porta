@@ -4,11 +4,11 @@ declare(strict_types=1);
 
 namespace Porta\Lsp;
 
-use Porta\I18n\Translator;
 use Porta\Editor\BufferManager;
+use Porta\I18n\Translator;
 use Porta\Support\ProjectPaths;
+use Porta\Ui\Notifier;
 use Porta\Widget\CodeEditorWidget;
-use Porta\Widget\StatusBarWidget;
 use Symfony\Component\Tui\Tui;
 
 /**
@@ -25,14 +25,14 @@ final class RefactorController extends AbstractLspController
         LspSessionPool $lsp,
         CodeEditorWidget $editor,
         Tui $tui,
-        StatusBarWidget $statusBar,
+        Notifier $notifier,
         Translator $translator,
         private readonly BufferManager $buffers,
         private readonly WorkspaceEditor $workspaceEditor,
         private readonly string $rootDir,
         private readonly \Closure $lspStatus,
     ) {
-        parent::__construct($lsp, $editor, $tui, $statusBar, $translator);
+        parent::__construct($lsp, $editor, $tui, $notifier, $translator);
     }
 
     /**
@@ -84,9 +84,11 @@ final class RefactorController extends AbstractLspController
                 }
                 /** @var array<string, mixed> $result */
                 $fileCount = $this->workspaceEditor->applyWorkspaceEdit($result);
-                $this->flash(1 === $fileCount
-                    ? $this->trans('Renamed in %count% file', ['%count%' => $fileCount])
-                    : $this->trans('Renamed in %count% files', ['%count%' => $fileCount]));
+                $this->flash(
+                    1 === $fileCount
+                        ? $this->trans('Renamed in %count% file', ['%count%' => $fileCount])
+                        : $this->trans('Renamed in %count% files', ['%count%' => $fileCount]),
+                );
             },
         );
     }
@@ -166,9 +168,11 @@ final class RefactorController extends AbstractLspController
             $edit = $action['edit'];
             $count = $this->workspaceEditor->applyWorkspaceEdit($edit);
             $title = (string) ($action['title'] ?? 'fix');
-            $this->statusBar->flash(1 === $count
-                ? $this->trans('Applied "%title%" to %count% file', ['%title%' => $title, '%count%' => $count])
-                : $this->trans('Applied "%title%" to %count% files', ['%title%' => $title, '%count%' => $count]));
+            $this->flash(
+                1 === $count
+                    ? $this->trans('Applied "%title%" to %count% file', ['%title%' => $title, '%count%' => $count])
+                    : $this->trans('Applied "%title%" to %count% files', ['%title%' => $title, '%count%' => $count]),
+            );
             $applied = true;
         }
 
@@ -187,19 +191,18 @@ final class RefactorController extends AbstractLspController
                     'arguments' => $command['arguments'] ?? [],
                 ],
                 function (mixed $result, ?array $error) use ($title): void {
-                    $this->statusBar->flash(
+                    $this->flash(
                         null !== $error
                             ? $this->trans('"%title%" failed: %message%', ['%title%' => $title, '%message%' => (string) ($error['message'] ?? 'unknown error')])
                             : $this->trans('Ran "%title%"', ['%title%' => $title]),
                     );
-                    $this->tui->requestRender();
                 },
             );
             $applied = true;
         }
 
         if (!$applied) {
-            $this->statusBar->flash($this->trans('Quick fix has nothing to apply'));
+            $this->flash($this->trans('Quick fix has nothing to apply'));
         }
         $this->tui->requestRender();
     }
@@ -249,7 +252,7 @@ final class RefactorController extends AbstractLspController
                     $this->editor->invalidate();
                 }
                 $this->lsp->notifyFullChange($buffer->path, $buffer->document);
-                $this->statusBar->flash($this->trans('Reformatted %file%', ['%file%' => ProjectPaths::relative($this->rootDir, $path)]));
+                $this->flash($this->trans('Reformatted %file%', ['%file%' => ProjectPaths::relative($this->rootDir, $path)]));
             }
             $this->tui->requestRender();
         });

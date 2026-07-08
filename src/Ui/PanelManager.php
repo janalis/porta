@@ -6,7 +6,6 @@ namespace Porta\Ui;
 
 use Porta\Widget\CodeEditorWidget;
 use Porta\Widget\ResultsPanelWidget;
-use Porta\Widget\StatusBarWidget;
 use Symfony\Component\Tui\Tui;
 
 /**
@@ -24,7 +23,7 @@ final class PanelManager
         private readonly Tui $tui,
         private readonly ResultsPanelWidget $panel,
         private readonly CodeEditorWidget $editor,
-        private readonly StatusBarWidget $statusBar,
+        private readonly Notifier $notifier,
     ) {}
 
     /** Which content the panel is currently serving (drives query/jump routing). */
@@ -77,7 +76,6 @@ final class PanelManager
     /** Flash a transient status message and repaint. */
     public function flash(string $message): void
     {
-        $this->statusBar->flash($message);
-        $this->tui->requestRender();
+        $this->notifier->flash($message);
     }
 }

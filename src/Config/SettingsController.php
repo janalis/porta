@@ -5,9 +5,8 @@ declare(strict_types=1);
 namespace Porta\Config;
 
 use Porta\I18n\Translator;
+use Porta\Ui\Notifier;
 use Porta\Widget\CodeEditorWidget;
-use Porta\Widget\StatusBarWidget;
-use Symfony\Component\Tui\Tui;
 
 /**
  * The editor settings model: applies the persisted values on boot and
@@ -34,16 +33,26 @@ final class SettingsController
     public function __construct(
         private array $settings,
         CodeEditorWidget $editor,
-        private readonly StatusBarWidget $statusBar,
-        private readonly Tui $tui,
+        private readonly Notifier $notifier,
         private readonly string $rootDir,
         private readonly Translator $translator,
         \Closure $onLanguageChange,
     ) {
         $this->descriptors = [
-            'language' => ['label' => 'Language', 'kind' => 'choice', 'restart' => false, 'apply' => static fn (int|bool|string $v) => $onLanguageChange((string) $v), 'options' => Translator::LOCALES],
+            'language' => [
+                'label' => 'Language',
+                'kind' => 'choice',
+                'restart' => false,
+                'apply' => static fn (int|bool|string $v) => $onLanguageChange((string) $v),
+                'options' => Translator::LOCALES,
+            ],
             'inlineDiagnostics' => ['label' => 'Inline diagnostics', 'kind' => 'bool', 'restart' => false, 'apply' => static fn (int|bool|string $v) => $editor->setInlineDiagnostics((bool) $v)],
-            'relativeLineNumbers' => ['label' => 'Relative line numbers', 'kind' => 'bool', 'restart' => false, 'apply' => static fn (int|bool|string $v) => $editor->setRelativeLineNumbers((bool) $v)],
+            'relativeLineNumbers' => [
+                'label' => 'Relative line numbers',
+                'kind' => 'bool',
+                'restart' => false,
+                'apply' => static fn (int|bool|string $v) => $editor->setRelativeLineNumbers((bool) $v),
+            ],
             'autoPairs' => ['label' => 'Auto-pairs', 'kind' => 'bool', 'restart' => false, 'apply' => static fn (int|bool|string $v) => $editor->setAutoPairs((bool) $v)],
             'editorConfig' => ['label' => 'Respect .editorconfig', 'kind' => 'bool', 'restart' => true, 'apply' => null],
             'theme' => ['label' => 'Theme', 'kind' => 'choice', 'restart' => true, 'apply' => null, 'options' => ['dark', 'light']],
@@ -55,7 +64,7 @@ final class SettingsController
     {
         foreach ($this->descriptors as $key => $descriptor) {
             if (null !== $descriptor['apply']) {
-                ($descriptor['apply'])($this->settings[$key]);
+                $descriptor['apply']($this->settings[$key]);
             }
         }
     }
@@ -88,8 +97,7 @@ final class SettingsController
     public function toggle(string $key): void
     {
         if (!isset($this->descriptors[$key])) {
-            $this->statusBar->flash($this->translator->trans('Unknown setting "%key%"', ['%key%' => $key]));
-            $this->tui->requestRender();
+            $this->notifier->flash($this->translator->trans('Unknown setting "%key%"', ['%key%' => $key]));
 
             return;
         }
@@ -105,22 +113,20 @@ final class SettingsController
     {
         $descriptor = $this->descriptors[$key] ?? null;
         if (null === $descriptor) {
-            $this->statusBar->flash($this->translator->trans('Unknown setting "%key%"', ['%key%' => $key]));
-            $this->tui->requestRender();
+            $this->notifier->flash($this->translator->trans('Unknown setting "%key%"', ['%key%' => $key]));
 
             return;
         }
 
         $this->settings[$key] = $value;
         if (null !== $descriptor['apply']) {
-            ($descriptor['apply'])($value);
+            $descriptor['apply']($value);
         }
 
         $persisted = IdeConfig::persistSetting($this->rootDir, $key, $value);
         $state = \is_bool($value) ? $this->translator->trans($value ? 'on' : 'off') : (string) $value;
         $note = $descriptor['restart'] ? ' · '.$this->translator->trans('applies on restart') : '';
         $saved = $persisted ? '' : ' ('.$this->translator->trans('not saved').')';
-        $this->statusBar->flash(\sprintf('%s %s%s%s', $this->translator->trans($descriptor['label']), $state, $note, $saved));
-        $this->tui->requestRender();
+        $this->notifier->flash(\sprintf('%s %s%s%s', $this->translator->trans($descriptor['label']), $state, $note, $saved));
     }
 }

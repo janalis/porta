@@ -5,8 +5,8 @@ declare(strict_types=1);
 namespace Porta\Git;
 
 use Porta\I18n\Translator;
+use Porta\Ui\Notifier;
 use Porta\Widget\CodeEditorWidget;
-use Porta\Widget\StatusBarWidget;
 use Symfony\Component\Tui\Tui;
 
 /**
@@ -30,7 +30,7 @@ final class GitCommands
     public function __construct(
         private readonly GitInfo $git,
         private readonly CodeEditorWidget $editor,
-        private readonly StatusBarWidget $statusBar,
+        private readonly Notifier $notifier,
         private readonly Tui $tui,
         private readonly Translator $translator,
         private readonly \Closure $refreshActiveMarks,
@@ -47,9 +47,11 @@ final class GitCommands
             return;
         }
         $this->git->stage($path, function (bool $ok) use ($path): void {
-            $this->statusBar->flash($ok
-                ? $this->translator->trans('Staged %path%', ['%path%' => ($this->relativePath)($path)])
-                : $this->translator->trans('Stage failed'));
+            $this->notifier->flash(
+                $ok
+                    ? $this->translator->trans('Staged %path%', ['%path%' => ($this->relativePath)($path)])
+                    : $this->translator->trans('Stage failed'),
+            );
             ($this->refreshActiveMarks)();
             $this->tui->requestRender();
         });
@@ -68,9 +70,11 @@ final class GitCommands
                 return;
             }
             $this->git->commit($message, function (bool $ok) use ($message): void {
-                $this->statusBar->flash($ok
-                    ? $this->translator->trans('Committed: %summary%', ['%summary%' => $message])
-                    : $this->translator->trans('Commit failed (nothing staged?)'));
+                $this->notifier->flash(
+                    $ok
+                        ? $this->translator->trans('Committed: %summary%', ['%summary%' => $message])
+                        : $this->translator->trans('Commit failed (nothing staged?)'),
+                );
                 ($this->refreshBranch)();
                 ($this->refreshActiveMarks)();
                 $this->tui->requestRender();
@@ -91,7 +95,7 @@ final class GitCommands
             $path,
             $this->editor->getDocument()->getCursorLine(),
             /** @param array{sha: string, author: string, summary: string}|null $blame */ function (?array $blame): void {
-                $this->statusBar->flash(
+                $this->notifier->flash(
                     null === $blame
                         ? $this->translator->trans('No blame for this line')
                         : \sprintf('%s  %s: %s', $blame['sha'], $blame['author'], $blame['summary']),
@@ -110,9 +114,11 @@ final class GitCommands
             return;
         }
         $this->git->undoLastCommit(function (bool $ok): void {
-            $this->statusBar->flash($ok
-                ? $this->translator->trans('Last commit undone (changes kept staged)')
-                : $this->translator->trans('Nothing to undo'));
+            $this->notifier->flash(
+                $ok
+                    ? $this->translator->trans('Last commit undone (changes kept staged)')
+                    : $this->translator->trans('Nothing to undo'),
+            );
             ($this->refreshBranch)();
             ($this->refreshActiveMarks)();
             $this->tui->requestRender();
@@ -121,7 +127,6 @@ final class GitCommands
 
     private function unavailable(): void
     {
-        $this->statusBar->flash($this->translator->trans('Git not available'));
-        $this->tui->requestRender();
+        $this->notifier->flash($this->translator->trans('Git not available'));
     }
 }
