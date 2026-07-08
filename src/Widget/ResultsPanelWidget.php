@@ -4,8 +4,11 @@ declare(strict_types=1);
 
 namespace Porta\Widget;
 
+use Porta\Ui\ColorPalette;
 use Porta\Ui\ListNavigation;
 use Porta\Ui\ListSelection;
+use Porta\Ui\Palette;
+use Porta\Ui\Role;
 use Porta\Ui\Style;
 use Porta\Ui\TextField;
 use Porta\Widget\Render\HeaderRenderer;
@@ -56,8 +59,11 @@ final class ResultsPanelWidget extends OverlayWidget implements FocusableInterfa
     /** @var (callable(string): void)|null replace all matches with the given text */
     private $onReplaceAll = null;
 
-    public function __construct()
+    private readonly Palette $palette;
+
+    public function __construct(?Palette $palette = null)
     {
+        $this->palette = $palette ?? ColorPalette::dark();
         $this->list = new ListSelection();
         $this->query = new TextField();
         $this->replace = new TextField();
@@ -272,7 +278,7 @@ final class ResultsPanelWidget extends OverlayWidget implements FocusableInterfa
         }
 
         $header = $prefix.$options;
-        $lines[] = HeaderRenderer::render($header, $columns);
+        $lines[] = HeaderRenderer::render($header, $columns, $this->palette->of(Role::HeaderBar)."\x1b[1m");
 
         if ($this->withReplace) {
             $replaceField = $this->replace->render(cursor: $showCursor && 'replace' === $this->activeField);

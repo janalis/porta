@@ -15,13 +15,11 @@ use Symfony\Component\Tui\Ansi\AnsiUtils;
 final class HeaderRenderer
 {
     /**
-     * @param int      $bg 256-color background index (default matches the panels)
-     * @param int|null $fg optional 256-color foreground index
+     * @param string $prefix the SGR that opens the bar — background/foreground
+     *                        plus bold — built by the caller from its Palette
      */
-    public static function render(string $text, int $width, int $bg = 237, ?int $fg = null): string
+    public static function render(string $text, int $width, string $prefix): string
     {
-        $prefix = "\x1b[48;5;{$bg}m".(null !== $fg ? "\x1b[38;5;{$fg}m" : '')."\x1b[1m";
-
         return $prefix.AnsiUtils::truncateToWidth($text, $width, '…', pad: true)."\x1b[0m";
     }
 }

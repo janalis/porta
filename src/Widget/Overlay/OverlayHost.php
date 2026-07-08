@@ -5,6 +5,9 @@ declare(strict_types=1);
 namespace Porta\Widget\Overlay;
 
 use Porta\Support\AnsiText;
+use Porta\Ui\ColorPalette;
+use Porta\Ui\Palette;
+use Porta\Ui\Role;
 use Porta\Ui\TextField;
 use Porta\Widget\Render\EditorRenderer;
 use Symfony\Component\Tui\Ansi\AnsiUtils;
@@ -27,12 +30,17 @@ final class OverlayHost
     /** @var array{label: string, value: TextField, onSubmit: callable(string): void}|null single-line mini prompt */
     private ?array $prompt = null;
 
+    private readonly Palette $palette;
+
     /**
      * @param \Closure(): void $invalidate repaint request back into the widget
      */
     public function __construct(
         private readonly \Closure $invalidate,
-    ) {}
+        ?Palette $palette = null,
+    ) {
+        $this->palette = $palette ?? ColorPalette::dark();
+    }
 
     /**
      * Open the modal list overlay (no-op for an empty list).
@@ -224,14 +232,14 @@ final class OverlayHost
     {
         $this->overlayBox = null;
         if (null !== $this->overlay) {
-            $this->overlayBox = EditorRenderer::listOverlay($lines, $columns, $rows, $this->overlay);
+            $this->overlayBox = EditorRenderer::listOverlay($lines, $columns, $rows, $this->overlay, $this->palette);
         }
 
         if (null !== $this->prompt) {
             $text = ' '.$this->prompt['label'].': '.$this->prompt['value']->value();
             $width = min($columns, max(30, mb_strwidth($text) + 4));
             $rendered = ' '.$this->prompt['label'].': '.$this->prompt['value']->render(cursor: $focused);
-            $box = "\x1b[48;5;237m\x1b[38;5;231m".AnsiUtils::truncateToWidth($rendered.' ', $width, '…', pad: true)."\x1b[0m";
+            $box = $this->palette->of(Role::HeaderBar).$this->palette->of(Role::Bright).AnsiUtils::truncateToWidth($rendered.' ', $width, '…', pad: true)."\x1b[0m";
             $tail = AnsiUtils::sliceByColumn($lines[0] ?? '', $width, $columns - $width);
             $lines[0] = AnsiText::padRight($box.$tail."\x1b[0m", $columns);
         }

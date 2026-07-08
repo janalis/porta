@@ -267,15 +267,15 @@ final class CodeEditorWidgetTest extends TestCase
 
         $rendered = $editor->render(new RenderContext(80, 10));
         // Both occurrences of $total pick up the occurrence background.
-        $this->assertStringContainsString(LineDecorator::OCCURRENCE_BG, $rendered[1]);
-        $this->assertStringContainsString(LineDecorator::OCCURRENCE_BG, $rendered[2]);
+        $this->assertStringContainsString("\x1b[48;5;23m", $rendered[1]);
+        $this->assertStringContainsString("\x1b[48;5;23m", $rendered[2]);
 
         // A selection suppresses the highlight.
         $doc->setCursor(1, 1);
         $doc->beginSelect();
         $doc->setCursor(1, 6, keepSelection: true);
         $rendered = $editor->render(new RenderContext(80, 10));
-        $this->assertStringNotContainsString(LineDecorator::OCCURRENCE_BG, $rendered[2]);
+        $this->assertStringNotContainsString("\x1b[48;5;23m", $rendered[2]);
     }
 
     public function testSingleOccurrenceNotHighlighted(): void
@@ -283,7 +283,7 @@ final class CodeEditorWidgetTest extends TestCase
         $editor = $this->editor("<?php\n\$only = 1;\necho 2;\n");
         $editor->getDocument()->setCursor(1, 3); // inside $only (appears once)
         $rendered = $editor->render(new RenderContext(80, 10));
-        $this->assertStringNotContainsString(LineDecorator::OCCURRENCE_BG, implode('', $rendered));
+        $this->assertStringNotContainsString("\x1b[48;5;23m", implode('', $rendered));
     }
 
     public function testOccurrenceHighlightSkipsShortAndNumericTokens(): void
@@ -294,11 +294,11 @@ final class CodeEditorWidgetTest extends TestCase
 
         $editor->getDocument()->setCursor(1, 1); // on $i
         $short = $editor->render(new RenderContext(80, 10));
-        $this->assertStringNotContainsString(LineDecorator::OCCURRENCE_BG, implode('', $short));
+        $this->assertStringNotContainsString("\x1b[48;5;23m", implode('', $short));
 
         $editor->getDocument()->setCursor(1, 6); // on 11
         $numeric = $editor->render(new RenderContext(80, 10));
-        $this->assertStringNotContainsString(LineDecorator::OCCURRENCE_BG, implode('', $numeric));
+        $this->assertStringNotContainsString("\x1b[48;5;23m", implode('', $numeric));
     }
 
     public function testIndentGuidesDrawnAtEachLevel(): void

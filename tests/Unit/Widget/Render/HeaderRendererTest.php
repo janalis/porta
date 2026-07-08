@@ -12,7 +12,7 @@ final class HeaderRendererTest extends TestCase
 {
     public function testDefaultBackgroundBoldAndPaddedToWidth(): void
     {
-        $line = HeaderRenderer::render('Title', 10);
+        $line = HeaderRenderer::render('Title', 10, "\x1b[48;5;237m\x1b[1m");
 
         $this->assertStringStartsWith("\x1b[48;5;237m\x1b[1m", $line);
         $this->assertStringEndsWith("\x1b[0m", $line);
@@ -23,21 +23,21 @@ final class HeaderRendererTest extends TestCase
 
     public function testCustomBackground(): void
     {
-        $line = HeaderRenderer::render('X', 5, bg: 235);
+        $line = HeaderRenderer::render('X', 5, "\x1b[48;5;235m\x1b[1m");
 
         $this->assertStringStartsWith("\x1b[48;5;235m\x1b[1m", $line);
     }
 
     public function testForegroundIsEmittedBeforeBold(): void
     {
-        $line = HeaderRenderer::render('X', 5, bg: 237, fg: 231);
+        $line = HeaderRenderer::render('X', 5, "\x1b[48;5;237m\x1b[38;5;231m\x1b[1m");
 
         $this->assertStringStartsWith("\x1b[48;5;237m\x1b[38;5;231m\x1b[1m", $line);
     }
 
     public function testTruncatesWithEllipsis(): void
     {
-        $line = HeaderRenderer::render('A very long header', 6);
+        $line = HeaderRenderer::render('A very long header', 6, "\x1b[48;5;237m\x1b[1m");
 
         $this->assertSame(6, AnsiUtils::visibleWidth($line));
         $this->assertStringContainsString('…', AnsiUtils::stripAnsiCodes($line));

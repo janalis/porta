@@ -6,8 +6,11 @@ namespace Porta\Widget;
 
 use Porta\I18n\Translator;
 use Porta\Support\FuzzyMatcher;
+use Porta\Ui\ColorPalette;
 use Porta\Ui\ListNavigation;
 use Porta\Ui\ListSelection;
+use Porta\Ui\Palette;
+use Porta\Ui\Role;
 use Porta\Ui\Style;
 use Porta\Ui\TextField;
 use Porta\Widget\Render\HeaderRenderer;
@@ -48,10 +51,14 @@ final class GoToFileWidget extends OverlayWidget implements FocusableInterface
     /** @var (callable(string): void)|null absolute path picked */
     private $onPick = null;
 
+    private readonly Palette $palette;
+
     public function __construct(
         private readonly Translator $translator,
         private readonly string $rootDir,
+        ?Palette $palette = null,
     ) {
+        $this->palette = $palette ?? ColorPalette::dark();
         $this->query = new TextField();
         $this->list = new ListSelection();
     }
@@ -153,7 +160,7 @@ final class GoToFileWidget extends OverlayWidget implements FocusableInterface
 
         $lines = [];
         $header = ' '.$this->translator->trans('Go to File:').' '.$this->query->render(cursor: $this->focused);
-        $lines[] = HeaderRenderer::render($header, $columns);
+        $lines[] = HeaderRenderer::render($header, $columns, $this->palette->of(Role::HeaderBar)."\x1b[1m");
 
         foreach (\array_slice($this->results, 0, self::MAX_RESULTS) as $i => $path) {
             $selected = $i === $this->list->selected();

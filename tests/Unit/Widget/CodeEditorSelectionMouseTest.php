@@ -127,7 +127,7 @@ final class CodeEditorSelectionMouseTest extends TestCase
 
         $line = $editor->render(new RenderContext(80, 3))[0];
 
-        $this->assertSame(1, substr_count($line, LineDecorator::SELECTION_BG), 'selection background must open once, not re-open past the caret');
+        $this->assertSame(1, substr_count($line, "\x1b[48;5;24m"), 'selection background must open once, not re-open past the caret');
         $this->assertStringContainsString("\x1b_pi:c", $line, 'caret marker present');
     }
 
@@ -141,7 +141,7 @@ final class CodeEditorSelectionMouseTest extends TestCase
 
         $line = $editor->render(new RenderContext(80, 3))[0];
 
-        $this->assertSame(1, substr_count($line, LineDecorator::SELECTION_BG));
+        $this->assertSame(1, substr_count($line, "\x1b[48;5;24m"));
     }
 
     public function testForwardSelectionHighlightWithHorizontalScroll(): void
@@ -157,7 +157,7 @@ final class CodeEditorSelectionMouseTest extends TestCase
         $scroll = new \ReflectionProperty($editor, 'scroll')->getValue($editor);
         \assert($scroll instanceof EditorScroll);
         $this->assertGreaterThan(0, $scroll->hScroll(), 'a caret near end-of-line scrolls horizontally');
-        $this->assertSame(1, substr_count($line, LineDecorator::SELECTION_BG));
+        $this->assertSame(1, substr_count($line, "\x1b[48;5;24m"));
     }
 
     public function testAltClickAddsThenRemovesCaret(): void
@@ -223,7 +223,7 @@ final class CodeEditorSelectionMouseTest extends TestCase
 
         $rendered = $editor->render(new RenderContext(80, 6));
         // The extra carets (rows 0,1) each draw a selection background + a caret cell.
-        $this->assertGreaterThanOrEqual(2, substr_count(implode('', $rendered), LineDecorator::SELECTION_BG));
+        $this->assertGreaterThanOrEqual(2, substr_count(implode('', $rendered), "\x1b[48;5;24m"));
         $this->assertStringContainsString("\x1b[7m", implode('', $rendered));
     }
 }

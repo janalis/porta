@@ -36,4 +36,36 @@ enum Role
     case Dim;
     case Muted;
     case Bright;
+
+    // Diagnostics by severity: foreground, a dimmer end-of-line shade, and the
+    // curly-underline color (SGR 58 channel).
+    case DiagError;
+    case DiagWarn;
+    case DiagInfo;
+    case DiagHint;
+    case DiagErrorDim;
+    case DiagWarnDim;
+    case DiagInfoDim;
+    case DiagHintDim;
+    case DiagErrorUnderline;
+    case DiagWarnUnderline;
+    case DiagInfoUnderline;
+    case DiagHintUnderline;
+
+    // Editor rendering: gutter shades, git marks, inlay hints, indent guides, popups.
+    case CurrentLineNumber;
+    case Placeholder;
+    case Inlay;
+    case IndentGuide;
+    case GitAdded;
+    case GitModified;
+    case GitDeleted;
+    case InlayPopupBg;
+    case InlayPopupFg;
+    case CompletionHint;
+    case CompletionKind;
+    case SelectionBg;
+    case SearchBg;
+    case SearchCurrentBg;
+    case OccurrenceBg;
 }

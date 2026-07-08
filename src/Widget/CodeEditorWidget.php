@@ -23,7 +23,9 @@ use Porta\Input\TextInput;
 use Porta\Support\AnsiText;
 use Porta\Support\IntMath;
 use Porta\Support\ProjectPaths;
-use Porta\Ui\Style;
+use Porta\Ui\ColorPalette;
+use Porta\Ui\Palette;
+use Porta\Ui\Role;
 use Porta\Widget\Overlay\OverlayHost;
 use Porta\Widget\Render\EditorDecorations;
 use Porta\Widget\Render\EditorGeometry;
@@ -133,10 +135,13 @@ final class CodeEditorWidget extends AbstractWidget implements FocusableInterfac
     /** Editor-level action dispatch (keymap actions + menu items). */
     private readonly EditorActionRouter $actionRouter;
 
-    public function __construct()
+    private readonly Palette $palette;
+
+    public function __construct(?Palette $palette = null)
     {
+        $this->palette = $palette ?? ColorPalette::dark();
         $this->callbacks = new EditorCallbacks();
-        $this->overlayHost = new OverlayHost(fn () => $this->invalidate());
+        $this->overlayHost = new OverlayHost(fn () => $this->invalidate(), $this->palette);
         $this->document = new Document('');
         $this->highlighter = new CodeHighlighter();
         $this->foldModel = new FoldModel($this->document);
@@ -797,14 +802,14 @@ final class CodeEditorWidget extends AbstractWidget implements FocusableInterfac
     {
         if (null !== $this->signatureHint) {
             $cursorScreenRow = max(0, $this->foldModel->screenRowFor($geo->vScroll, $geo->cursorLine)) + $geo->stickyCount;
-            EditorRenderer::signatureHint($result, $geo->columns, $geo->gutterWidth, $cursorScreenRow, $this->signatureHint);
+            EditorRenderer::signatureHint($result, $geo->columns, $geo->gutterWidth, $cursorScreenRow, $this->signatureHint, $this->palette);
         }
 
         $this->completion->setBox(null);
         if (null !== ($popup = $this->completion->popupState())) {
             $cursorScreenRow = max(0, $this->foldModel->screenRowFor($geo->vScroll, $geo->cursorLine)) + $geo->stickyCount;
             $anchorCol = $geo->gutterWidth + ($geo->cursorDisplayCol - $geo->hScroll) - mb_strwidth($this->document->getWordBeforeCursor());
-            $this->completion->setBox(EditorRenderer::completionPopup($result, $geo->columns, $geo->rows, $cursorScreenRow, $anchorCol, $popup['items'], $popup['selected']));
+            $this->completion->setBox(EditorRenderer::completionPopup($result, $geo->columns, $geo->rows, $cursorScreenRow, $anchorCol, $popup['items'], $popup['selected'], $this->palette));
         }
 
         /** @var list<string> $result signatureHint() rewrites rows in place, keeping the shape */
@@ -868,6 +873,7 @@ final class CodeEditorWidget extends AbstractWidget implements FocusableInterfac
             $this->relativeLineNumbers,
             $this->inlineDiagnostics,
             $this->focused,
+            $this->palette,
         );
         $result = $assembler->assemble($geo, $decorations, $sticky, $highlighted, $stripe, $contentRows, $vScroll, $cursorLine, $cursorDisplayCol, $hScroll);
 
@@ -961,7 +967,7 @@ final class CodeEditorWidget extends AbstractWidget implements FocusableInterfac
         $text = AnsiUtils::truncateToWidth($hint, $columns, '…');
         $textWidth = AnsiUtils::visibleWidth($text);
         $left = max(0, intdiv($columns - $textWidth, 2));
-        $hintRow = AnsiText::padRight(str_repeat(' ', $left)."\x1b[38;5;244m".$text."\x1b[39m", $columns);
+        $hintRow = AnsiText::padRight(str_repeat(' ', $left).$this->palette->of(Role::CompletionHint).$text."\x1b[39m", $columns);
 
         $middle = intdiv($rows, 2);
         $lines = [];
@@ -1001,9 +1007,9 @@ final class CodeEditorWidget extends AbstractWidget implements FocusableInterfac
 
         $cells = [];
         for ($r = 0; $r < $rows; ++$r) {
-            $bg = $showThumb && $r >= $thumbTop && $r <= $thumbBottom ? Style::POPUP_ROW_BG : '';
+            $bg = $showThumb && $r >= $thumbTop && $r <= $thumbBottom ? $this->palette->of(Role::RowHighlightBg) : '';
             $cells[] = 0 !== $sev[$r]
-                ? "\x1b[0m".$bg."\x1b[38;5;".DiagnosticStyle::fg($sev[$r]).'m'.DiagnosticStyle::MARK."\x1b[0m"
+                ? "\x1b[0m".$bg.$this->palette->of(DiagnosticStyle::role($sev[$r])).DiagnosticStyle::MARK."\x1b[0m"
                 : "\x1b[0m".$bg.' '."\x1b[0m";
         }
 

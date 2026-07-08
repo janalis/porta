@@ -6,6 +6,9 @@ namespace Porta\Widget;
 
 use Porta\Support\IntMath;
 use Porta\Terminal\TerminalBuffer;
+use Porta\Ui\ColorPalette;
+use Porta\Ui\Palette;
+use Porta\Ui\Role;
 use Porta\Widget\Render\HeaderRenderer;
 use Symfony\Component\Tui\Ansi\AnsiUtils;
 use Symfony\Component\Tui\Input\Key;
@@ -32,8 +35,11 @@ final class TerminalPanelWidget extends OverlayWidget implements FocusableInterf
     /** @var (callable(string): void)|null forwards input bytes to the process */
     private $onInputForward = null;
 
-    public function __construct()
+    private readonly Palette $palette;
+
+    public function __construct(?Palette $palette = null)
     {
+        $this->palette = $palette ?? ColorPalette::dark();
         $this->buffer = new TerminalBuffer();
         $this->visibleRows = 12;
     }
@@ -128,7 +134,7 @@ final class TerminalPanelWidget extends OverlayWidget implements FocusableInterf
         $rows = IntMath::clamp($this->visibleRows, 2, $context->getRows() > 0 ? $context->getRows() : $this->visibleRows);
 
         $header = ' '.$this->title.($this->scrollBack > 0 ? \sprintf('  [scrolled +%d]', $this->scrollBack) : '');
-        $lines = [HeaderRenderer::render($header, $columns, bg: 235)];
+        $lines = [HeaderRenderer::render($header, $columns, $this->palette->of(Role::Toolbar)."\x1b[1m")];
 
         $bodyRows = $rows - 1;
         $all = $this->buffer->getLines();

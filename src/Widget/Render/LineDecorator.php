@@ -16,9 +16,6 @@ use Symfony\Component\Tui\Ansi\AnsiUtils;
  */
 final class LineDecorator
 {
-    public const string SELECTION_BG = "\x1b[48;5;24m";
-    public const string SEARCH_BG = "\x1b[48;5;58m";
-    public const string OCCURRENCE_BG = "\x1b[48;5;23m";
     public const string BRACKET_SGR = "\x1b[1m\x1b[7m";
     public const string UNDERLINE_SGR = "\x1b[4m";
 

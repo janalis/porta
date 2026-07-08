@@ -686,7 +686,7 @@ final class DiffViewWidget extends AbstractWidget implements FocusableInterface,
         // Re-apply the bg after any reset inside the span (syntax SGR resets,
         // truncateToWidth's pad boundary) — without it the highlight dies
         // mid-selection on highlighted lines.
-        return $end <= $start ? $line : LineDecorator::apply($line, $start, $end, LineDecorator::SELECTION_BG, "\x1b[49m", LineDecorator::SELECTION_BG);
+        return $end <= $start ? $line : LineDecorator::apply($line, $start, $end, $this->palette->of(Role::SelectionBg), "\x1b[49m", $this->palette->of(Role::SelectionBg));
     }
 
     /**

@@ -7,7 +7,9 @@ namespace Porta\Widget\Render;
 use Porta\Editor\DiagnosticStyle;
 use Porta\Editor\Document;
 use Porta\Editor\FoldModel;
-use Porta\Ui\Style;
+use Porta\Ui\ColorPalette;
+use Porta\Ui\Palette;
+use Porta\Ui\Role;
 use Symfony\Component\Tui\Ansi\AnsiUtils;
 
 /**
@@ -21,6 +23,8 @@ use Symfony\Component\Tui\Ansi\AnsiUtils;
  */
 final readonly class EditorRowAssembler
 {
+    private readonly Palette $palette;
+
     /**
      * @param array<int, string>                                                          $gitMarks      0-based line => 'added'|'modified'|'deleted'
      * @param array<int, list<array{col: int, endCol?: int, message: string, severity: int}>> $diagnostics per-line diagnostics
@@ -37,7 +41,10 @@ final readonly class EditorRowAssembler
         private bool $relativeLineNumbers,
         private bool $inlineDiagnostics,
         private bool $focused,
-    ) {}
+        ?Palette $palette = null,
+    ) {
+        $this->palette = $palette ?? ColorPalette::dark();
+    }
 
     /**
      * @param list<array{label: string, line: int}> $sticky      pinned headers, top-first
@@ -70,7 +77,7 @@ final readonly class EditorRowAssembler
             $lineIndex = $this->foldModel->docLineAtRow($vScroll, $row);
 
             if (null === $lineIndex) {
-                $result[] = "\x1b[38;5;238m".str_pad('~', $geo->gutterWidth)."\x1b[0m".str_repeat(' ', $geo->contentWidth).$stripe[$stickyCount + $row];
+                $result[] = $this->palette->of(Role::Placeholder).str_pad('~', $geo->gutterWidth)."\x1b[0m".str_repeat(' ', $geo->contentWidth).$stripe[$stickyCount + $row];
                 continue;
             }
 
@@ -100,14 +107,14 @@ final readonly class EditorRowAssembler
 
             // Current-line background (skip when a selection is being shown)
             if ($isCursorLine && $this->focused && null === $decorations->selection) {
-                $content = LineDecorator::applyFullWidth($content, $geo->contentWidth, Style::POPUP_ROW_BG);
+                $content = LineDecorator::applyFullWidth($content, $geo->contentWidth, $this->palette->of(Role::RowHighlightBg));
             }
 
             // Inline diagnostic message in the trailing space (PhpStorm-style):
             // the worst-severity message on the line, colored by severity, with a
             // "+N" count when the line carries more than one diagnostic.
             if ($this->inlineDiagnostics && [] !== $lineDiags) {
-                $content = EditorRenderer::appendInlineDiagnostic($hScroll, $this->document->lineDisplayWidth($lineIndex), $lineDiags, $content, $geo->contentWidth);
+                $content = EditorRenderer::appendInlineDiagnostic($hScroll, $this->document->lineDisplayWidth($lineIndex), $lineDiags, $content, $geo->contentWidth, $this->palette);
             }
 
             $result[] = $gutter.$content.$stripe[$stickyCount + $row];
@@ -124,11 +131,16 @@ final readonly class EditorRowAssembler
      */
     private function renderStickyRow(int $docLine, EditorGeometry $geo, array $highlighted, int $hScroll): string
     {
-        $gutter = EditorRenderer::gitCell($this->gitMarks[$docLine] ?? null)."\x1b[38;5;240m".str_pad((string) ($docLine + 1), $geo->numberWidth, ' ', \STR_PAD_LEFT).' '."\x1b[0m ";
-        $hl = EditorRenderer::applyIndentGuides($this->document, $highlighted[$docLine] ?? '', $docLine);
+        $gutter =
+            EditorRenderer::gitCell($this->gitMarks[$docLine] ?? null, $this->palette)
+            .$this->palette->of(Role::Gutter)
+            .str_pad((string) ($docLine + 1), $geo->numberWidth, ' ', \STR_PAD_LEFT)
+            .' '
+            ."\x1b[0m ";
+        $hl = EditorRenderer::applyIndentGuides($this->document, $highlighted[$docLine] ?? '', $docLine, $this->palette);
         $content = EditorRenderer::renderContentLine($hScroll, $hl, $geo->contentWidth, false, 0);
 
-        return LineDecorator::applyFullWidth($gutter.$content, $geo->gutterWidth + $geo->contentWidth, "\x1b[48;5;237m");
+        return LineDecorator::applyFullWidth($gutter.$content, $geo->gutterWidth + $geo->contentWidth, $this->palette->of(Role::HeaderBar));
     }
 
     /**
@@ -140,9 +152,9 @@ final readonly class EditorRowAssembler
     private function gutterCell(int $lineIndex, bool $isCursorLine, array $lineDiags, int $numberWidth): string
     {
         $numColor = match (true) {
-            [] !== $lineDiags => "\x1b[38;5;".DiagnosticStyle::fg(DiagnosticStyle::worst($lineDiags)).'m',
-            $isCursorLine => "\x1b[38;5;252m",
-            default => "\x1b[38;5;240m",
+            [] !== $lineDiags => $this->palette->of(DiagnosticStyle::role(DiagnosticStyle::worst($lineDiags))),
+            $isCursorLine => $this->palette->of(Role::CurrentLineNumber),
+            default => $this->palette->of(Role::Gutter),
         };
         // No icon in the left gutter — the severity reads from the line-number
         // color here and from the colored block in the right stripe.
@@ -155,7 +167,7 @@ final readonly class EditorRowAssembler
             $numberLabel = (string) ($lineIndex + 1);
         }
 
-        return EditorRenderer::gitCell($this->gitMarks[$lineIndex] ?? null).$numColor.str_pad($numberLabel, $numberWidth, ' ', \STR_PAD_LEFT).$marker."\x1b[0m ";
+        return EditorRenderer::gitCell($this->gitMarks[$lineIndex] ?? null, $this->palette).$numColor.str_pad($numberLabel, $numberWidth, ' ', \STR_PAD_LEFT).$marker."\x1b[0m ";
     }
 
     /**
@@ -181,7 +193,7 @@ final readonly class EditorRowAssembler
         int $contentWidth,
     ): string {
         $doc = $this->document;
-        $hlLine = EditorRenderer::applyIndentGuides($doc, $highlighted, $lineIndex);
+        $hlLine = EditorRenderer::applyIndentGuides($doc, $highlighted, $lineIndex, $this->palette);
 
         // Gather decoration spans in layering order, then apply them all at
         // once. Each span is [startCol, endCol, openSgr, closeSgr, bgReapply].
@@ -194,6 +206,7 @@ final readonly class EditorRowAssembler
             $occurrences,
             $brackets,
             $lineDiags,
+            $this->palette,
         );
         if ($padTo > 0) {
             // Pad so an end-of-line caret has a cell to invert (the window
@@ -210,12 +223,12 @@ final readonly class EditorRowAssembler
 
         // Inlay hints: dim virtual text inserted after all decorations so
         // their SGR spans stay attached to the real characters.
-        $hlLine = EditorRenderer::applyInlayHints($doc, $lineIndex, $this->inlayHints[$lineIndex] ?? [], $hlLine);
+        $hlLine = EditorRenderer::applyInlayHints($doc, $lineIndex, $this->inlayHints[$lineIndex] ?? [], $hlLine, $this->palette);
 
         // Collapsed-region marker on the fold-start line.
         if (null !== ($foldEnd = $this->foldModel->foldEndAt($lineIndex))) {
             $hidden = $foldEnd - $lineIndex;
-            $hlLine .= "\x1b[38;5;238m ⋯ ".$hidden." lines\x1b[0m";
+            $hlLine .= $this->palette->of(Role::Placeholder).' ⋯ '.$hidden." lines\x1b[0m";
         }
 
         return $hlLine;

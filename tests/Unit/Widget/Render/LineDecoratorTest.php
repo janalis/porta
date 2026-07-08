@@ -14,10 +14,10 @@ final class LineDecoratorTest extends TestCase
 {
     public function testSpanOnPlainText(): void
     {
-        $decorated = LineDecorator::apply('hello world', 6, 11, LineDecorator::SELECTION_BG, "\x1b[49m", LineDecorator::SELECTION_BG);
+        $decorated = LineDecorator::apply('hello world', 6, 11, "\x1b[48;5;24m", "\x1b[49m", "\x1b[48;5;24m");
 
         $this->assertSame(11, AnsiUtils::visibleWidth($decorated));
-        $this->assertStringContainsString(LineDecorator::SELECTION_BG.'world', $decorated);
+        $this->assertStringContainsString("\x1b[48;5;24m".'world', $decorated);
         $this->assertSame('hello world', AnsiUtils::stripAnsiCodes($decorated));
     }
 
@@ -28,7 +28,7 @@ final class LineDecoratorTest extends TestCase
         $line = $highlighter->highlight(["<?php echo 'hello world';"], 1)[0];
         $before = AnsiUtils::visibleWidth($line);
 
-        $decorated = LineDecorator::apply($line, 6, 10, LineDecorator::SELECTION_BG, "\x1b[49m", LineDecorator::SELECTION_BG);
+        $decorated = LineDecorator::apply($line, 6, 10, "\x1b[48;5;24m", "\x1b[49m", "\x1b[48;5;24m");
 
         $this->assertSame($before, AnsiUtils::visibleWidth($decorated));
         $this->assertStringContainsString("\x1b[48;5;24m", $decorated);
@@ -37,7 +37,7 @@ final class LineDecoratorTest extends TestCase
 
     public function testSpanWithWideCharacters(): void
     {
-        $decorated = LineDecorator::apply('日本語 test', 2, 7, LineDecorator::SELECTION_BG, "\x1b[49m");
+        $decorated = LineDecorator::apply('日本語 test', 2, 7, "\x1b[48;5;24m", "\x1b[49m");
 
         $this->assertSame('日本語 test', AnsiUtils::stripAnsiCodes($decorated));
     }

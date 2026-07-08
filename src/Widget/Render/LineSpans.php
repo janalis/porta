@@ -6,6 +6,8 @@ namespace Porta\Widget\Render;
 
 use Porta\Editor\DiagnosticStyle;
 use Porta\Editor\Document;
+use Porta\Ui\Palette;
+use Porta\Ui\Role;
 use Porta\Widget\Render\EditorRenderer;
 
 /**
@@ -38,20 +40,21 @@ final class LineSpans
         array $occurrences,
         ?array $brackets,
         array $diags,
+        Palette $palette,
     ): array {
         $spans = [];
         $padTo = 0;
 
         if (null !== $selection && $lineIndex >= $selection['startLine'] && $lineIndex <= $selection['endLine']) {
-            $spans[] = self::selectionSpan($doc, $lineIndex, $selection['startLine'], $selection['startCol'], $selection['endLine'], $selection['endCol']);
+            $spans[] = self::selectionSpan($doc, $lineIndex, $selection['startLine'], $selection['startCol'], $selection['endLine'], $selection['endCol'], $palette);
         }
         foreach ($matches as $match) {
-            $bg = $match['current'] ? "\x1b[48;5;130m" : LineDecorator::SEARCH_BG;
+            $bg = $match['current'] ? $palette->of(Role::SearchCurrentBg) : $palette->of(Role::SearchBg);
             $spans[] = [$doc->displayColAt($lineIndex, $match['start']), $doc->displayColAt($lineIndex, $match['end']), $bg, "\x1b[49m", $bg];
         }
         foreach ($occurrences as [$oLine, $oStart, $oEnd]) {
             if ($oLine === $lineIndex) {
-                $spans[] = [$oStart, $oEnd, LineDecorator::OCCURRENCE_BG, "\x1b[49m", LineDecorator::OCCURRENCE_BG];
+                $spans[] = [$oStart, $oEnd, $palette->of(Role::OccurrenceBg), "\x1b[49m", $palette->of(Role::OccurrenceBg)];
             }
         }
         if (null !== $brackets) {
@@ -66,7 +69,7 @@ final class LineSpans
             $endUtf16 = $diag['endCol'] ?? ($diag['col'] + 1);
             $endDisp = \PHP_INT_MAX === $endUtf16 ? \PHP_INT_MAX : max($startDisp + 1, EditorRenderer::utf16ToDisplayCol($doc, $lineIndex, $endUtf16));
             // Curly, severity-colored underline (degrades to a plain underline).
-            $spans[] = [$startDisp, $endDisp, DiagnosticStyle::underlineOpen($diag['severity']), DiagnosticStyle::underlineClose(), null];
+            $spans[] = [$startDisp, $endDisp, DiagnosticStyle::underlineOpen($diag['severity'], $palette), DiagnosticStyle::underlineClose(), null];
         }
         foreach ($carets as $caret) {
             // Each caret's selection (possibly spanning lines), drawn before
@@ -75,7 +78,7 @@ final class LineSpans
             $el = max($caret['line'], $caret['anchorLine']);
             if (($caret['line'] !== $caret['anchorLine'] || $caret['col'] !== $caret['anchorCol']) && $lineIndex >= $sl && $lineIndex <= $el) {
                 [, $startCol, , $endCol] = self::caretRange($caret);
-                $spans[] = self::selectionSpan($doc, $lineIndex, $sl, $startCol, $el, $endCol);
+                $spans[] = self::selectionSpan($doc, $lineIndex, $sl, $startCol, $el, $endCol, $palette);
             }
             // The caret cell (reverse video), for the primary and extras alike.
             if ($caret['line'] === $lineIndex) {
@@ -96,12 +99,12 @@ final class LineSpans
      *
      * @return array{0: int, 1: int, 2: string, 3: string, 4: ?string}
      */
-    private static function selectionSpan(Document $doc, int $lineIndex, int $startLine, int $startCol, int $endLine, int $endCol): array
+    private static function selectionSpan(Document $doc, int $lineIndex, int $startLine, int $startCol, int $endLine, int $endCol, Palette $palette): array
     {
         $startDisp = $lineIndex === $startLine ? $doc->displayColAt($lineIndex, $startCol) : 0;
         $endDisp = $lineIndex === $endLine ? $doc->displayColAt($lineIndex, $endCol) : $doc->lineDisplayWidth($lineIndex);
 
-        return [$startDisp, $endDisp, LineDecorator::SELECTION_BG, "\x1b[49m", LineDecorator::SELECTION_BG];
+        return [$startDisp, $endDisp, $palette->of(Role::SelectionBg), "\x1b[49m", $palette->of(Role::SelectionBg)];
     }
 
     /**
