@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Porta\Editor;
 
 use Porta\Config\EditorConfig\ResolvedEditorConfig;
+use Porta\Support\IntMath;
 
 /**
  * Multi-line text buffer with cursor, undo/redo and change tracking.
@@ -254,13 +255,13 @@ final class Document
     /** Clamp a line index into the document's bounds. */
     public function clampLine(int $line): int
     {
-        return max(0, min($line, \count($this->lines) - 1));
+        return IntMath::clamp($line, 0, \count($this->lines) - 1);
     }
 
     /** Clamp a byte column into the given line's bounds (the line is clamped too). */
     public function clampCol(int $line, int $col): int
     {
-        return max(0, min($col, \strlen($this->lines[$this->clampLine($line)])));
+        return IntMath::clamp($col, 0, \strlen($this->lines[$this->clampLine($line)]));
     }
 
     /** Byte column → UTF-16 code-unit column on the given line (for LSP positions). */
@@ -442,7 +443,7 @@ final class Document
     {
         $text = $this->lines[$line] ?? '';
         $len = \strlen($text);
-        $col = max(0, min($col, $len));
+        $col = IntMath::clamp($col, 0, $len);
 
         $start = $col;
         while ($start > 0 && 1 === preg_match('/[\w$]/', $text[$start - 1])) {

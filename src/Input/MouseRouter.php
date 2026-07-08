@@ -8,6 +8,7 @@ use Porta\Editor\BufferManager;
 use Porta\Editor\BufferService;
 use Porta\Layout\LayoutController;
 use Porta\Overlay\MenuOverlayController;
+use Porta\Support\IntMath;
 use Porta\Tree\TreeOperations;
 use Porta\Ui\ContextMenuBuilder;
 use Porta\Widget\BreadcrumbsWidget;
@@ -210,8 +211,8 @@ final class MouseRouter
      */
     private function clampedRelative(WidgetRect $rect, MouseEvent $mouse): array
     {
-        $row = max($rect->row, min($mouse->row, $rect->row + $rect->rows - 1));
-        $col = max($rect->col, min($mouse->col, $rect->col + $rect->columns - 1));
+        $row = IntMath::clamp($mouse->row, $rect->row, $rect->row + $rect->rows - 1);
+        $col = IntMath::clamp($mouse->col, $rect->col, $rect->col + $rect->columns - 1);
 
         return $rect->toRelative($row, $col);
     }
@@ -265,7 +266,7 @@ final class MouseRouter
             return false;
         }
         if (null !== $tabsRect && null !== $this->tabDragPath) {
-            $col = max($tabsRect->col, min($mouse->col, $tabsRect->col + $tabsRect->columns - 1));
+            $col = IntMath::clamp($mouse->col, $tabsRect->col, $tabsRect->col + $tabsRect->columns - 1);
             $rel = $tabsRect->toRelative($mouse->row, $col);
             $target = $this->tabBar->tabIndexAtColumn($rel['col']);
             if (null !== $target) {

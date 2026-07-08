@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace Porta\Editor;
 
+use Porta\Support\IntMath;
+
 /**
  * The editor's viewport scroll state: vertical/horizontal offsets, the rows
  * available for scrolled content, and the clamp math that keeps the caret
@@ -70,10 +72,10 @@ final class EditorScroll
     {
         $doc = $this->document;
         $max = max(0, $doc->getLineCount() - 1);
-        $this->vScroll = max(0, min($max, $this->vScroll + $delta));
+        $this->vScroll = IntMath::clamp($this->vScroll + $delta, 0, $max);
         // Keep the cursor within the visible window so a later render does
         // not immediately scroll back.
-        $line = max($this->vScroll, min($doc->getCursorLine(), $this->vScroll + $this->contentRows - 1));
+        $line = IntMath::clamp($doc->getCursorLine(), $this->vScroll, $this->vScroll + $this->contentRows - 1);
         if ($line !== $doc->getCursorLine()) {
             $doc->setCursor($line, min($doc->getCursorCol(), \strlen($doc->getLine($line))));
         }
@@ -93,7 +95,7 @@ final class EditorScroll
     {
         $cursorLine = $this->document->getCursorLine();
         $this->foldModel->revealCaretLine();
-        $this->vScroll = $this->foldModel->snapVisible(max(0, min($this->vScroll, $this->document->getLineCount() - 1)));
+        $this->vScroll = $this->foldModel->snapVisible(IntMath::clamp($this->vScroll, 0, $this->document->getLineCount() - 1));
         for ($iter = 0; $iter <= self::MAX_STICKY_ROWS; ++$iter) {
             $stickyCount = $stickyCountAt($this->vScroll);
             $cursorRow = $this->foldModel->screenRowFor($this->vScroll, $cursorLine);
@@ -128,7 +130,7 @@ final class EditorScroll
     /** Scroll the view horizontally without touching the caret, clamped to [0, $max]. */
     public function scrollHBy(int $cols, int $max): void
     {
-        $this->hScroll = max(0, min($this->hScroll + $cols, max(0, $max)));
+        $this->hScroll = IntMath::clamp($this->hScroll + $cols, 0, max(0, $max));
         ($this->invalidate)();
     }
 }

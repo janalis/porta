@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Porta\Widget;
 
+use Porta\Support\IntMath;
 use Porta\Ui\ListNavigation;
 use Porta\Ui\ListSelection;
 use Porta\Ui\Style;
@@ -72,7 +73,7 @@ final class FileTreeWidget extends AbstractWidget implements FocusableInterface,
     /** Resize the sidebar to $width columns (clamped to a sensible range). */
     public function setWidth(int $width): void
     {
-        $width = max(12, min($width, 200));
+        $width = IntMath::clamp($width, 12, 200);
         if ($width !== $this->width) {
             $this->width = $width;
             $this->invalidate();

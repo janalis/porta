@@ -6,6 +6,7 @@ namespace Porta\Widget\Settings;
 
 use Porta\Config\LanguageCatalog;
 use Porta\I18n\Translator;
+use Porta\Support\IntMath;
 use Porta\Ui\ListSelection;
 use Porta\Ui\Style;
 use Porta\Widget\FillsPaneTrait;
@@ -71,7 +72,7 @@ final class SettingsNavWidget extends AbstractWidget implements FocusableInterfa
     /** Resize the sidebar to $width columns (clamped sane). */
     public function setWidth(int $width): void
     {
-        $width = max(14, min($width, 60));
+        $width = IntMath::clamp($width, 14, 60);
         if ($width !== $this->width) {
             $this->width = $width;
             $this->invalidate();

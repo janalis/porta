@@ -6,6 +6,7 @@ namespace Porta\Widget\Settings;
 
 use Porta\Config\SettingsRow;
 use Porta\I18n\Translator;
+use Porta\Support\IntMath;
 use Porta\Ui\Style;
 use Porta\Ui\TextField;
 use Porta\Widget\FillsPaneTrait;
@@ -99,7 +100,7 @@ final class SettingsFormWidget extends AbstractWidget implements FocusableInterf
     public function setRows(array $rows): void
     {
         $this->rows = $rows;
-        $this->selected = max(0, min($this->selected, \count($rows) - 1));
+        $this->selected = IntMath::clamp($this->selected, 0, \count($rows) - 1);
         $this->editing = null;
         $this->invalidate();
     }
@@ -156,7 +157,7 @@ final class SettingsFormWidget extends AbstractWidget implements FocusableInterf
 
     private function moveTo(int $index): void
     {
-        $index = max(0, min($index, \count($this->rows) - 1));
+        $index = IntMath::clamp($index, 0, \count($this->rows) - 1);
         if ($index !== $this->selected) {
             $this->selected = $index;
             $this->invalidate();
@@ -236,7 +237,7 @@ final class SettingsFormWidget extends AbstractWidget implements FocusableInterf
         $min = $row->min ?? 1;
         $max = $row->max ?? \PHP_INT_MAX;
 
-        return max($min, min($max, (int) $row->value + $delta));
+        return IntMath::clamp((int) $row->value + $delta, $min, $max);
     }
 
     /** @param (callable(): void)|null $callback */

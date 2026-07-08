@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace Porta\Widget;
 
+use Porta\Support\IntMath;
+
 /**
  * Shared row-count state for the resizable bottom panels (results, diff,
  * terminal). Each widget sets its own default in its constructor; the layout
@@ -19,7 +21,7 @@ trait PanelRows
     /** Resize the panel to $rows visible rows (clamped). */
     public function setVisibleRows(int $rows): void
     {
-        $rows = max(2, min($rows, 200));
+        $rows = IntMath::clamp($rows, 2, 200);
         if ($rows !== $this->visibleRows) {
             $this->visibleRows = $rows;
             $this->invalidate();

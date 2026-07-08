@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace Porta\Editor;
 
+use Porta\Support\IntMath;
+
 /**
  * Pure "expand selection" engine (PhpStorm's Ctrl+W). Given the document text
  * and a byte-offset range, it returns the next-larger syntactic range that
@@ -29,8 +31,8 @@ final class StructuralSelection
     public static function expand(string $text, int $start, int $end): ?array
     {
         $n = \strlen($text);
-        $start = max(0, min($start, $n));
-        $end = max($start, min($end, $n));
+        $start = IntMath::clamp($start, 0, $n);
+        $end = IntMath::clamp($end, $start, $n);
 
         /** @var list<array{0: int, 1: int}> $candidates */
         $candidates = [];

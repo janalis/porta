@@ -8,6 +8,7 @@ use Porta\Git\DiffDocument;
 use Porta\Git\DiffLine;
 use Porta\Highlight\CodeHighlighter;
 use Porta\I18n\Translator;
+use Porta\Support\IntMath;
 use Porta\Ui\Style;
 use Porta\Widget\FillsPaneTrait;
 use Porta\Widget\InputHook;
@@ -269,14 +270,14 @@ final class DiffViewWidget extends AbstractWidget implements FocusableInterface,
     public function scrollBy(int $lines): void
     {
         $max = max(0, \count($this->rows) - max(1, $this->lastRows - 1));
-        $this->scroll = max(0, min($this->scroll + $lines, $max));
+        $this->scroll = IntMath::clamp($this->scroll + $lines, 0, $max);
         $this->invalidate();
     }
 
     /** Scroll the line texts horizontally; gutters and ± markers stay pinned. */
     public function scrollHBy(int $cols): void
     {
-        $this->hScroll = max(0, min($this->hScroll + $cols, max(0, $this->maxLineWidth - 20)));
+        $this->hScroll = IntMath::clamp($this->hScroll + $cols, 0, max(0, $this->maxLineWidth - 20));
         $this->invalidate();
     }
 
@@ -356,7 +357,7 @@ final class DiffViewWidget extends AbstractWidget implements FocusableInterface,
         }
         if ([] !== $this->rows) {
             $this->anchor = null; // a fresh click starts a new selection
-            $this->cursor = max(0, min($this->scroll + $relRow - 1, \count($this->rows) - 1));
+            $this->cursor = IntMath::clamp($this->scroll + $relRow - 1, 0, \count($this->rows) - 1);
             // Seed a (zero-width) char selection at the press point; a drag
             // extends it, a plain click leaves it degenerate (row-copy rules).
             $side = $this->sideAt($relCol);
@@ -382,7 +383,7 @@ final class DiffViewWidget extends AbstractWidget implements FocusableInterface,
         if ([] === $this->rows || null === $sel) {
             return;
         }
-        $row = max(0, min($this->scroll + $relRow - 1, \count($this->rows) - 1));
+        $row = IntMath::clamp($this->scroll + $relRow - 1, 0, \count($this->rows) - 1);
         $this->charSel = [
             'fromRow' => $sel['fromRow'],
             'fromCol' => $sel['fromCol'],
@@ -433,7 +434,7 @@ final class DiffViewWidget extends AbstractWidget implements FocusableInterface,
         if ([] === $this->rows) {
             return;
         }
-        $this->cursor = max(0, min($this->cursor + $delta, \count($this->rows) - 1));
+        $this->cursor = IntMath::clamp($this->cursor + $delta, 0, \count($this->rows) - 1);
         // Keep the cursor inside the visible window (header takes one row).
         $visible = max(1, $this->lastRows - 1);
         if ($this->cursor < $this->scroll) {

@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Porta\Widget;
 
+use Porta\Support\IntMath;
 use Porta\Terminal\TerminalBuffer;
 use Porta\Widget\Render\HeaderRenderer;
 use Symfony\Component\Tui\Ansi\AnsiUtils;
@@ -73,7 +74,7 @@ final class TerminalPanelWidget extends OverlayWidget implements FocusableInterf
     public function scroll(int $lines): void
     {
         $max = max(0, $this->buffer->lineCount() - $this->visibleRows);
-        $this->scrollBack = max(0, min($this->scrollBack + $lines, $max));
+        $this->scrollBack = IntMath::clamp($this->scrollBack + $lines, 0, $max);
         $this->invalidate();
     }
 
@@ -124,7 +125,7 @@ final class TerminalPanelWidget extends OverlayWidget implements FocusableInterf
         }
 
         $columns = $context->getColumns();
-        $rows = max(2, min($this->visibleRows, $context->getRows() > 0 ? $context->getRows() : $this->visibleRows));
+        $rows = IntMath::clamp($this->visibleRows, 2, $context->getRows() > 0 ? $context->getRows() : $this->visibleRows);
 
         $header = ' '.$this->title.($this->scrollBack > 0 ? \sprintf('  [scrolled +%d]', $this->scrollBack) : '');
         $lines = [HeaderRenderer::render($header, $columns, bg: 235)];

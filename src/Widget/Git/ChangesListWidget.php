@@ -6,6 +6,7 @@ namespace Porta\Widget\Git;
 
 use Porta\Git\ChangeEntry;
 use Porta\I18n\Translator;
+use Porta\Support\IntMath;
 use Porta\Ui\ListNavigation;
 use Porta\Ui\ListSelection;
 use Porta\Ui\Style;
@@ -76,7 +77,7 @@ final class ChangesListWidget extends AbstractWidget implements FocusableInterfa
     /** Resize the git sidebar column to $width columns (clamped sane). */
     public function setWidth(int $width): void
     {
-        $width = max(24, min($width, 200));
+        $width = IntMath::clamp($width, 24, 200);
         if ($width !== $this->width) {
             $this->width = $width;
             $this->invalidate();

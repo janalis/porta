@@ -20,6 +20,7 @@ use Porta\Editor\FoldModel;
 use Porta\Editor\MultiCaret;
 use Porta\Highlight\CodeHighlighter;
 use Porta\Input\TextInput;
+use Porta\Support\IntMath;
 use Porta\Support\ProjectPaths;
 use Porta\Ui\Style;
 use Porta\Widget\Overlay\OverlayHost;
@@ -836,7 +837,7 @@ final class CodeEditorWidget extends AbstractWidget implements FocusableInterfac
     {
         $top = $this->foldModel->docLineAtRow($vScroll, 0) ?? 0;
 
-        return BreadcrumbScanner::stickyHeaders($this->scopes(), $top, max(0, min(EditorScroll::MAX_STICKY_ROWS, $rows - 4)));
+        return BreadcrumbScanner::stickyHeaders($this->scopes(), $top, IntMath::clamp($rows - 4, 0, EditorScroll::MAX_STICKY_ROWS));
     }
 
     /**
@@ -1227,7 +1228,7 @@ final class CodeEditorWidget extends AbstractWidget implements FocusableInterfac
             if ([] === $list) {
                 continue;
             }
-            $r = $lineCount <= 1 ? 0 : max(0, min($rows - 1, intdiv($line * $rows, $lineCount)));
+            $r = $lineCount <= 1 ? 0 : IntMath::clamp(intdiv($line * $rows, $lineCount), 0, $rows - 1);
             $worst = DiagnosticStyle::worst($list);
             $sev[$r] = 0 === $sev[$r] ? $worst : min($sev[$r], $worst);
         }
@@ -1235,8 +1236,8 @@ final class CodeEditorWidget extends AbstractWidget implements FocusableInterfac
         // Viewport thumb: the stripe rows covering the visible doc-line range,
         // shown only when the file actually scrolls.
         $showThumb = $lineCount > $rows;
-        $thumbTop = $lineCount <= 1 ? 0 : max(0, min($rows - 1, intdiv($vScroll * $rows, $lineCount)));
-        $thumbBottom = $lineCount <= 1 ? 0 : max(0, min($rows - 1, intdiv($lastVisible * $rows, $lineCount)));
+        $thumbTop = $lineCount <= 1 ? 0 : IntMath::clamp(intdiv($vScroll * $rows, $lineCount), 0, $rows - 1);
+        $thumbBottom = $lineCount <= 1 ? 0 : IntMath::clamp(intdiv($lastVisible * $rows, $lineCount), 0, $rows - 1);
 
         $cells = [];
         for ($r = 0; $r < $rows; ++$r) {

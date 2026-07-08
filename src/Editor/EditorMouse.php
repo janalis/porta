@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace Porta\Editor;
 
+use Porta\Support\IntMath;
+
 /**
  * Mouse hit-testing and selection for the code editor: maps an editor-relative
  * click cell to a document position (honouring the gutter, pinned sticky-scroll
@@ -151,7 +153,7 @@ final class EditorMouse
     {
         $lineCount = $this->document->getLineCount();
         $line = (int) ((($relRow + 0.5) * $lineCount) / max(1, $vp->renderRows));
-        $line = max(0, min($lineCount - 1, $line));
+        $line = IntMath::clamp($line, 0, $lineCount - 1);
         $this->document->setCursor($line, 0);
         ($this->centerOnLine)($line);
         ($this->closeCompletion)();

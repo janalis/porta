@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace Porta\Editor;
 
+use Porta\Support\IntMath;
+
 /**
  * Holds all open editor buffers. Each buffer keeps its own Document (and
  * therefore cursor + undo history) and its own diagnostics, so switching
@@ -106,7 +108,7 @@ final class BufferManager
         if ($from < 0 || $from >= $count) {
             return;
         }
-        $to = max(0, min($to, $count - 1));
+        $to = IntMath::clamp($to, 0, $count - 1);
         if ($from === $to) {
             return;
         }

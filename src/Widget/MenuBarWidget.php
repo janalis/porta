@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Porta\Widget;
 
+use Porta\Support\IntMath;
 use Porta\Ui\Menu;
 use Porta\Ui\MenuPanel;
 use Porta\Ui\Style;
@@ -64,7 +65,7 @@ final class MenuBarWidget extends OverlayWidget implements FocusableInterface
             return;
         }
         $this->open = true;
-        $this->openIndex = max(0, min($index, \count($this->menus) - 1));
+        $this->openIndex = IntMath::clamp($index, 0, \count($this->menus) - 1);
         $this->selected = $this->firstSelectable($this->openIndex);
         $this->afterNavigate();
     }

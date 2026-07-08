@@ -7,6 +7,7 @@ namespace Porta\Widget\Render;
 use Porta\Editor\DiagnosticStyle;
 use Porta\Editor\Document;
 use Porta\Support\AnsiText;
+use Porta\Support\IntMath;
 use Porta\Ui\Style;
 use Symfony\Component\Tui\Ansi\AnsiUtils;
 use Symfony\Component\Tui\Style\CursorShape;
@@ -346,7 +347,7 @@ final class EditorRenderer
         $items = $overlay['items'];
         $selected = $overlay['selected'];
         $maxItems = max(1, min(\count($items), $rows - 3, 12));
-        $windowStart = max(0, min($selected - $maxItems + 1, \count($items) - $maxItems));
+        $windowStart = IntMath::clamp($selected - $maxItems + 1, 0, \count($items) - $maxItems);
         $visible = \array_slice($items, $windowStart, $maxItems);
 
         $width = mb_strwidth($overlay['title']) + 4;
@@ -407,7 +408,7 @@ final class EditorRenderer
         $below = ($cursorScreenRow + 1 + $popupHeight) <= $rows;
         $startRow = $below ? $cursorScreenRow + 1 : max(0, $cursorScreenRow - $popupHeight);
 
-        $col = max(0, min($anchorCol, $columns - $width));
+        $col = IntMath::clamp($anchorCol, 0, $columns - $width);
 
         foreach ($visible as $i => $item) {
             $row = $startRow + $i;

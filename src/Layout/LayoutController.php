@@ -7,6 +7,7 @@ namespace Porta\Layout;
 use Porta\Config\LayoutPrefs;
 use Porta\Config\LayoutStore;
 use Porta\Input\MouseEvent;
+use Porta\Support\IntMath;
 use Porta\Widget\FileTreeWidget;
 use Porta\Widget\ResultsPanelWidget;
 use Porta\Widget\Settings\SettingsNavWidget;
@@ -265,7 +266,7 @@ final class LayoutController
     /** Clamp a bottom-panel height so the editor keeps room above it. */
     private function clampPanel(int $height, int $rows): int
     {
-        return max(3, min($height, $rows - 8));
+        return IntMath::clamp($height, 3, $rows - 8);
     }
 
     private function commitSidebarWidth(int $cols): void

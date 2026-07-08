@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Porta\Widget\Git;
 
 use Porta\I18n\Translator;
+use Porta\Support\IntMath;
 use Porta\Ui\MultilineInput;
 use Porta\Ui\Style;
 use Porta\Ui\TextField;
@@ -61,7 +62,7 @@ final class CommitBoxWidget extends AbstractWidget implements FocusableInterface
     /** Resize the git sidebar column to $width columns (clamped sane). */
     public function setWidth(int $width): void
     {
-        $width = max(24, min($width, 200));
+        $width = IntMath::clamp($width, 24, 200);
         if ($width !== $this->width) {
             $this->width = $width;
             $this->invalidate();
@@ -149,7 +150,7 @@ final class CommitBoxWidget extends AbstractWidget implements FocusableInterface
         }
 
         // Amending only the message needs no staged changes.
-        return $this->amend || (null !== $this->hasStagedChanges && ($this->hasStagedChanges)());
+        return $this->amend || null !== $this->hasStagedChanges && ($this->hasStagedChanges)();
     }
 
     /** The assembled commit message: summary, blank line, description. */
@@ -239,7 +240,7 @@ final class CommitBoxWidget extends AbstractWidget implements FocusableInterface
 
             return;
         }
-        $this->activeField = $relRow >= 2 && $relRow < 2 + self::DESCRIPTION_ROWS ? 1 : 0;
+        $this->activeField = $relRow >= 2 && $relRow < (2 + self::DESCRIPTION_ROWS) ? 1 : 0;
         $this->invalidate();
     }
 

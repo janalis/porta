@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Porta\Overlay;
 
+use Porta\Support\IntMath;
 use Porta\Widget\CodeEditorWidget;
 use Porta\Widget\ContextMenu;
 use Porta\Widget\MenuBarWidget;
@@ -128,7 +129,7 @@ final class MenuOverlayController
         $screenRight = $editorRect->col + $editorRect->columns;
         $screenBottom = $editorRect->row + $editorRect->rows;
         $panelWidth = min($this->contextMenu->panelWidth(), $screenRight);
-        $col = max(0, min($this->contextAnchorCol, $screenRight - $panelWidth));
+        $col = IntMath::clamp($this->contextAnchorCol, 0, $screenRight - $panelWidth);
         $count = $this->contextMenu->itemCount();
         $top = ($this->contextAnchorRow + $count) > $screenBottom
             ? max(0, $this->contextAnchorRow - $count)

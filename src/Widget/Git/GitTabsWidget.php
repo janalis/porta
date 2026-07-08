@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Porta\Widget\Git;
 
 use Porta\I18n\Translator;
+use Porta\Support\IntMath;
 use Porta\Ui\Style;
 use Porta\Widget\Render\MenuOverlayHost;
 use Porta\Widget\Render\MenuOverlayHostTrait;
@@ -39,7 +40,7 @@ final class GitTabsWidget extends AbstractWidget implements MenuOverlayHost
     /** Resize the git sidebar column to $width columns (clamped sane). */
     public function setWidth(int $width): void
     {
-        $width = max(24, min($width, 200));
+        $width = IntMath::clamp($width, 24, 200);
         if ($width !== $this->width) {
             $this->width = $width;
             $this->invalidate();
@@ -71,7 +72,7 @@ final class GitTabsWidget extends AbstractWidget implements MenuOverlayHost
     public function modeAtColumn(int $relCol): ?string
     {
         foreach ($this->layout as $tab) {
-            if ($relCol >= $tab['start'] && $relCol < $tab['start'] + $tab['width']) {
+            if ($relCol >= $tab['start'] && $relCol < ($tab['start'] + $tab['width'])) {
                 return $tab['mode'];
             }
         }
