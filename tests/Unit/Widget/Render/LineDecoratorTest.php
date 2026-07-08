@@ -6,7 +6,6 @@ namespace Porta\Tests\Unit\Widget\Render;
 
 use PHPUnit\Framework\TestCase;
 use Porta\Highlight\CodeHighlighter;
-use Porta\Ui\Style;
 use Porta\Widget\Render\LineDecorator;
 use Symfony\Component\Tui\Ansi\AnsiUtils;
 
@@ -58,11 +57,11 @@ final class LineDecoratorTest extends TestCase
 
     public function testApplyFullWidthPadsAndReappliesBackground(): void
     {
-        $decorated = LineDecorator::applyFullWidth('ab'."\x1b[0m".'cd', 8, Style::POPUP_ROW_BG);
+        $decorated = LineDecorator::applyFullWidth('ab'."\x1b[0m".'cd', 8, "\x1b[48;5;236m");
 
         $this->assertSame(8, AnsiUtils::visibleWidth($decorated));
-        $this->assertStringStartsWith(Style::POPUP_ROW_BG, $decorated);
-        $this->assertStringContainsString("\x1b[0m".Style::POPUP_ROW_BG, $decorated, 'background survives a reset inside the line');
+        $this->assertStringStartsWith("\x1b[48;5;236m", $decorated);
+        $this->assertStringContainsString("\x1b[0m"."\x1b[48;5;236m", $decorated, 'background survives a reset inside the line');
         $this->assertStringEndsWith("\x1b[49m", $decorated);
     }
 }

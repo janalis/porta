@@ -5,7 +5,6 @@ declare(strict_types=1);
 namespace Porta\Tests\Unit\Widget;
 
 use PHPUnit\Framework\TestCase;
-use Porta\Ui\Style;
 use Porta\Widget\BufferCallbacks;
 use Porta\Widget\CodeEditorWidget;
 use Porta\Widget\CompletionCallbacks;
@@ -429,7 +428,7 @@ final class CodeEditorWidgetTest extends TestCase
 
         $rendered = $editor->render(new RenderContext(80, 10));
 
-        $this->assertStringContainsString(Style::POPUP_ROW_BG, $rendered[2]);
+        $this->assertStringContainsString("\x1b[48;5;236m", $rendered[2]);
         $bracketRows = $rendered[2]."\n".$rendered[4];
         $this->assertSame(2, substr_count($bracketRows, LineDecorator::BRACKET_SGR), 'both brackets highlighted');
         $this->assertExactWidth($rendered, 80);

@@ -8,8 +8,10 @@ use Porta\Config\LanguageCatalog;
 use Porta\I18n\Translator;
 use Porta\Layout\ResizableSidebar;
 use Porta\Support\IntMath;
+use Porta\Ui\ColorPalette;
 use Porta\Ui\ListSelection;
-use Porta\Ui\Style;
+use Porta\Ui\Palette;
+use Porta\Ui\Role;
 use Porta\Widget\FillsPaneTrait;
 use Porta\Widget\InputHook;
 use Porta\Widget\PaneNavigationCallbacks;
@@ -52,10 +54,14 @@ final class SettingsNavWidget extends AbstractWidget implements FocusableInterfa
     /** @var (callable(string): void)|null selection moved to this entry id */
     private $onSelect = null;
 
+    private readonly Palette $palette;
+
     public function __construct(
         private readonly Translator $translator,
         private int $width = 22,
+        ?Palette $palette = null,
     ) {
+        $this->palette = $palette ?? ColorPalette::dark();
         $entries = [];
         foreach (self::SECTIONS as $id => $label) {
             $entries[] = ['id' => $id, 'label' => $label, 'kind' => 'section'];
@@ -217,14 +223,19 @@ final class SettingsNavWidget extends AbstractWidget implements FocusableInterfa
             }
 
             if ('header' === $entry['kind']) {
-                $lines[] = "\x1b[48;5;235m\x1b[38;5;245m\x1b[1m".AnsiUtils::truncateToWidth(' '.$this->translator->trans($entry['label']), $width, '…', pad: true)."\x1b[0m";
+                $lines[] =
+                    $this->palette->of(Role::Toolbar)
+                    .$this->palette->of(Role::Dim)
+                    ."\x1b[1m"
+                    .AnsiUtils::truncateToWidth(' '.$this->translator->trans($entry['label']), $width, '…', pad: true)
+                    ."\x1b[0m";
                 continue;
             }
 
             $selected = $index === $this->list->selected();
             $bg = $selected
-                ? ($this->focused ? Style::SELECTED_ROW : "\x1b[48;5;237m")
-                : ($index === $this->hoveredIndex ? Style::POPUP_ROW_BG : '');
+                ? ($this->focused ? $this->palette->of(Role::SelectedRow) : $this->palette->of(Role::HeaderBar))
+                : ($index === $this->hoveredIndex ? $this->palette->of(Role::RowHighlightBg) : '');
             $text = 'language' === $entry['kind'] ? '   '.$entry['label'] : ' '.$this->translator->trans($entry['label']);
             $lines[] = $bg.AnsiUtils::truncateToWidth($text, $width, '…', pad: true)."\x1b[0m";
         }

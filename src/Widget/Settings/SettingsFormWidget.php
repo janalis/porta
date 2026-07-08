@@ -7,7 +7,9 @@ namespace Porta\Widget\Settings;
 use Porta\Config\SettingsRow;
 use Porta\I18n\Translator;
 use Porta\Support\IntMath;
-use Porta\Ui\Style;
+use Porta\Ui\ColorPalette;
+use Porta\Ui\Palette;
+use Porta\Ui\Role;
 use Porta\Ui\TextField;
 use Porta\Widget\FillsPaneTrait;
 use Porta\Widget\InputHook;
@@ -45,9 +47,14 @@ final class SettingsFormWidget extends AbstractWidget implements FocusableInterf
     use KeybindingsTrait;
     use PaneNavigationCallbacks;
 
+    private readonly Palette $palette;
+
     public function __construct(
         private readonly Translator $translator,
-    ) {}
+        ?Palette $palette = null,
+    ) {
+        $this->palette = $palette ?? ColorPalette::dark();
+    }
 
     /** @var list<SettingsRow> */
     private array $rows = [];
@@ -238,14 +245,14 @@ final class SettingsFormWidget extends AbstractWidget implements FocusableInterf
             }
 
             $selected = $i === $this->selected;
-            $bg = $selected ? ($this->focused ? Style::SELECTED_ROW : "\x1b[48;5;237m") : '';
+            $bg = $selected ? ($this->focused ? $this->palette->of(Role::SelectedRow) : $this->palette->of(Role::HeaderBar)) : '';
             $text = match ($row->kind) {
                 'bool' => ' '.((bool) $row->value ? '[x]' : '[ ]').' '.$row->label,
                 'text' => ' '.$row->label.'  '.$this->textValue($row, $i),
                 default => ' '.$row->label.'  < '.(string) $row->value.' >',
             };
             if ($row->restart) {
-                $text .= "\x1b[38;5;245m · ".$this->translator->trans('applies on restart')."\x1b[39m";
+                $text .= $this->palette->of(Role::Dim).' · '.$this->translator->trans('applies on restart')."\x1b[39m";
             }
             $lines[] = $bg.AnsiUtils::truncateToWidth($text, $width, '…', pad: true)."\x1b[0m";
         }
@@ -266,7 +273,7 @@ final class SettingsFormWidget extends AbstractWidget implements FocusableInterf
         }
         $value = (string) $row->value;
         if ('' === $value && null !== $row->hint) {
-            return "\x1b[38;5;245m".$row->hint."\x1b[39m";
+            return $this->palette->of(Role::Dim).$row->hint."\x1b[39m";
         }
 
         return $value;

@@ -9,7 +9,7 @@ use Symfony\Component\Tui\Ansi\AnsiUtils;
 /**
  * Renders the bold, full-width title bar shared by the overlay/panel widgets
  * (find, go-to-file, results, diff, terminal) and the editor's completion popup.
- * Centralizes the `\x1b[48;5;<bg>m\x1b[1m…truncateToWidth…\x1b[0m` idiom that was
+ * Centralizes the `<prefix>…truncateToWidth…reset` header-bar idiom that was
  * copy-pasted across those widgets.
  */
 final class HeaderRenderer
