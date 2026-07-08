@@ -66,6 +66,11 @@ final class ColorPalette implements Palette
             Role::SearchBg->name => Color::from(58)->toBackgroundCode(),
             Role::SearchCurrentBg->name => Color::from(130)->toBackgroundCode(),
             Role::OccurrenceBg->name => Color::from(23)->toBackgroundCode(),
+            Role::TabAccent->name => Color::from(110)->toForegroundCode(),
+            Role::MenuActiveBg->name => Color::from(240)->toBackgroundCode(),
+            Role::Faint->name => Color::from(242)->toForegroundCode(),
+            Role::Subtle->name => Color::from(246)->toForegroundCode(),
+            Role::Emphasis->name => Color::from(255)->toForegroundCode(),
         ]);
     }
 

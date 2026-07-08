@@ -6,6 +6,9 @@ namespace Porta\Widget;
 
 use Porta\Editor\Document;
 use Porta\I18n\Translator;
+use Porta\Ui\ColorPalette;
+use Porta\Ui\Palette;
+use Porta\Ui\Role;
 use Porta\Ui\TextField;
 use Symfony\Component\Tui\Ansi\AnsiUtils;
 use Symfony\Component\Tui\Input\Key;
@@ -44,9 +47,13 @@ final class FindBarWidget extends OverlayWidget implements FocusableInterface
     /** @var (callable(): void)|null called when matches/current change */
     private $onUpdate = null;
 
+    private readonly Palette $palette;
+
     public function __construct(
         private readonly Translator $translator,
+        ?Palette $palette = null,
     ) {
+        $this->palette = $palette ?? ColorPalette::dark();
         $this->query = new TextField();
         $this->replacement = new TextField();
     }
@@ -195,11 +202,11 @@ final class FindBarWidget extends OverlayWidget implements FocusableInterface
             ? $this->translator->trans('⏎/F3 next  ⇧F3 prev  ⇥ field  ⌥R replace  ⌥A all  esc')
             : $this->translator->trans('⏎/F3 next  ⇧F3 prev  esc');
 
-        $left = $findField.$replaceField."\x1b[38;5;245m[{$position}]\x1b[39m";
-        $line = $left.'  '."\x1b[38;5;242m".$hints."\x1b[39m";
+        $left = $findField.$replaceField.$this->palette->of(Role::Dim)."[{$position}]\x1b[39m";
+        $line = $left.'  '.$this->palette->of(Role::Faint).$hints."\x1b[39m";
         $line = AnsiUtils::truncateToWidth($line, $columns, '…', pad: true);
 
-        return ["\x1b[48;5;235m".$line."\x1b[0m"];
+        return [$this->palette->of(Role::Toolbar).$line."\x1b[0m"];
     }
 
     // --- Search internals ---------------------------------------------------

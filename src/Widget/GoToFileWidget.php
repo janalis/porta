@@ -164,15 +164,19 @@ final class GoToFileWidget extends OverlayWidget implements FocusableInterface
 
         foreach (\array_slice($this->results, 0, self::MAX_RESULTS) as $i => $path) {
             $selected = $i === $this->list->selected();
-            $bg = $selected ? Style::SELECTED_ROW : Style::POPUP_ROW;
+            $bg = $selected ? $this->palette->of(Role::SelectedRow) : $this->palette->of(Role::PopupRow);
             $name = basename($path);
             $dir = ltrim(substr($path, 0, -\strlen($name)), '/');
-            $text = ' '.$name.'  '."\x1b[38;5;244m".$dir;
+            $text = ' '.$name.'  '.$this->palette->of(Role::CompletionHint).$dir;
             $lines[] = $bg.AnsiUtils::truncateToWidth($text, $columns, '…', pad: true)."\x1b[0m";
         }
 
         if ([] === $this->results && '' !== $this->query->value()) {
-            $lines[] = Style::POPUP_ROW_BG."\x1b[38;5;244m".AnsiUtils::truncateToWidth(' '.$this->translator->trans('no matches'), $columns, '', pad: true)."\x1b[0m";
+            $lines[] =
+                $this->palette->of(Role::RowHighlightBg)
+                .$this->palette->of(Role::CompletionHint)
+                .AnsiUtils::truncateToWidth(' '.$this->translator->trans('no matches'), $columns, '', pad: true)
+                ."\x1b[0m";
         }
 
         return $lines;

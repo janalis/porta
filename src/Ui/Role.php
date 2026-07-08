@@ -68,4 +68,11 @@ enum Role
     case SearchBg;
     case SearchCurrentBg;
     case OccurrenceBg;
+
+    // Chrome shades: tab/breadcrumb accent, menu highlight, extra greys.
+    case TabAccent;
+    case MenuActiveBg;
+    case Faint;
+    case Subtle;
+    case Emphasis;
 }

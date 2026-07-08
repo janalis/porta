@@ -5,8 +5,11 @@ declare(strict_types=1);
 namespace Porta\Widget;
 
 use Porta\Support\IntMath;
+use Porta\Ui\ColorPalette;
 use Porta\Ui\Menu;
 use Porta\Ui\MenuPanel;
+use Porta\Ui\Palette;
+use Porta\Ui\Role;
 use Porta\Ui\Style;
 use Symfony\Component\Tui\Input\Key;
 use Symfony\Component\Tui\Render\RenderContext;
@@ -30,6 +33,13 @@ final class MenuBarWidget extends OverlayWidget implements FocusableInterface
 {
     use FocusableTrait;
     use KeybindingsTrait;
+
+    private readonly Palette $palette;
+
+    public function __construct(?Palette $palette = null)
+    {
+        $this->palette = $palette ?? ColorPalette::dark();
+    }
 
     /** @var list<Menu> */
     private array $menus = [];
@@ -141,17 +151,17 @@ final class MenuBarWidget extends OverlayWidget implements FocusableInterface
             $active = $this->open && $i === $this->openIndex;
             $hovered = !$this->open && $i === $this->hoveredIndex;
             if ($active) {
-                $line .= Style::SELECTED_ROW."\x1b[1m".$label."\x1b[22m";
+                $line .= $this->palette->of(Role::SelectedRow)."\x1b[1m".$label."\x1b[22m";
             } elseif ($hovered) {
-                $line .= "\x1b[48;5;240m\x1b[38;5;231m".$label;
+                $line .= $this->palette->of(Role::MenuActiveBg).$this->palette->of(Role::Bright).$label;
             } else {
-                $line .= "\x1b[48;5;237m\x1b[38;5;250m".$label;
+                $line .= $this->palette->of(Role::HeaderBar).$this->palette->of(Role::Muted).$label;
             }
             $this->titleLayout[] = ['index' => $i, 'start' => $used, 'width' => $width];
             $used += $width;
         }
 
-        return $line."\x1b[48;5;237m".str_repeat(' ', max(0, $columns - $used))."\x1b[0m";
+        return $line.$this->palette->of(Role::HeaderBar).str_repeat(' ', max(0, $columns - $used))."\x1b[0m";
     }
 
     /** Natural width of the open menu's dropdown panel (unclamped; caller clamps to fit). */
@@ -188,7 +198,7 @@ final class MenuBarWidget extends OverlayWidget implements FocusableInterface
             return [];
         }
 
-        return MenuPanel::segments($this->menus[$this->openIndex]->items, $this->selected, $panelWidth);
+        return MenuPanel::segments($this->menus[$this->openIndex]->items, $this->selected, $panelWidth, $this->palette);
     }
 
     public function handleInput(string $data): void

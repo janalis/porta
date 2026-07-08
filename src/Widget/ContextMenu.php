@@ -4,8 +4,10 @@ declare(strict_types=1);
 
 namespace Porta\Widget;
 
+use Porta\Ui\ColorPalette;
 use Porta\Ui\MenuItem;
 use Porta\Ui\MenuPanel;
+use Porta\Ui\Palette;
 use Symfony\Component\Tui\Input\Key;
 use Symfony\Component\Tui\Render\RenderContext;
 use Symfony\Component\Tui\Widget\KeybindingsTrait;
@@ -22,6 +24,13 @@ use Symfony\Component\Tui\Widget\KeybindingsTrait;
 final class ContextMenu extends OverlayWidget
 {
     use KeybindingsTrait;
+
+    private readonly Palette $palette;
+
+    public function __construct(?Palette $palette = null)
+    {
+        $this->palette = $palette ?? ColorPalette::dark();
+    }
 
     /** @var list<MenuItem> */
     private array $items = [];
@@ -77,7 +86,7 @@ final class ContextMenu extends OverlayWidget
      */
     public function segments(int $panelWidth): array
     {
-        return $this->open ? MenuPanel::segments($this->items, $this->selected, $panelWidth) : [];
+        return $this->open ? MenuPanel::segments($this->items, $this->selected, $panelWidth, $this->palette) : [];
     }
 
     public function render(RenderContext $context): array

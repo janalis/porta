@@ -64,6 +64,11 @@ final class PaletteTest extends TestCase
         yield 'search-bg' => [Role::SearchBg, "\x1b[48;5;58m"];
         yield 'search-current-bg' => [Role::SearchCurrentBg, "\x1b[48;5;130m"];
         yield 'occurrence-bg' => [Role::OccurrenceBg, "\x1b[48;5;23m"];
+        yield 'tab-accent' => [Role::TabAccent, "\x1b[38;5;110m"];
+        yield 'menu-active-bg' => [Role::MenuActiveBg, "\x1b[48;5;240m"];
+        yield 'faint' => [Role::Faint, "\x1b[38;5;242m"];
+        yield 'subtle' => [Role::Subtle, "\x1b[38;5;246m"];
+        yield 'emphasis' => [Role::Emphasis, "\x1b[38;5;255m"];
     }
 
     #[DataProvider('darkRoles')]

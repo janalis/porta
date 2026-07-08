@@ -4,6 +4,9 @@ declare(strict_types=1);
 
 namespace Porta\Widget;
 
+use Porta\Ui\ColorPalette;
+use Porta\Ui\Palette;
+use Porta\Ui\Role;
 use Porta\Widget\Render\MenuOverlayHost;
 use Porta\Widget\Render\MenuOverlayHostTrait;
 use Symfony\Component\Tui\Ansi\AnsiUtils;
@@ -20,7 +23,18 @@ final class BreadcrumbsWidget extends AbstractWidget implements MenuOverlayHost
 {
     use MenuOverlayHostTrait;
 
-    private const SEPARATOR = "\x1b[38;5;240m › \x1b[39m"; // visible width 3
+    private readonly Palette $palette;
+
+    public function __construct(?Palette $palette = null)
+    {
+        $this->palette = $palette ?? ColorPalette::dark();
+    }
+
+    /** The ` › ` scope separator, dimmed (visible width 3). */
+    private function separator(): string
+    {
+        return $this->palette->of(Role::Gutter).' › '."\x1b[39m";
+    }
 
     /** @var (callable(): list<array{label: string, line: int}>)|null */
     private $provider = null;
@@ -59,20 +73,20 @@ final class BreadcrumbsWidget extends AbstractWidget implements MenuOverlayHost
         }
 
         $columns = $context->getColumns();
-        $content = "\x1b[48;5;235m "; // bar background + a leading space
+        $content = $this->palette->of(Role::Toolbar).' '; // bar background + a leading space
         $col = 1;
         $last = \count($crumbs) - 1;
         foreach ($crumbs as $i => $crumb) {
             if ($i > 0) {
-                $content .= self::SEPARATOR;
+                $content .= $this->separator();
                 $col += 3;
             }
             $label = $crumb['label'];
             $width = mb_strwidth($label);
             $this->lastLayout[] = ['start' => $col, 'width' => $width, 'line' => $crumb['line']];
             $content .= $i === $last
-                ? "\x1b[38;5;255m\x1b[1m".$label."\x1b[22m\x1b[39m" // current scope: bright + bold
-                : "\x1b[38;5;250m".$label."\x1b[39m";
+                ? $this->palette->of(Role::Emphasis)."\x1b[1m".$label."\x1b[22m\x1b[39m" // current scope: bright + bold
+                : $this->palette->of(Role::Muted).$label."\x1b[39m";
             $col += $width;
         }
 

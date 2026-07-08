@@ -5,6 +5,9 @@ declare(strict_types=1);
 namespace Porta\Widget;
 
 use Porta\Support\AnsiText;
+use Porta\Ui\ColorPalette;
+use Porta\Ui\Palette;
+use Porta\Ui\Role;
 use Porta\Widget\Render\MenuOverlayHost;
 use Porta\Widget\Render\MenuOverlayHostTrait;
 use Symfony\Component\Tui\Render\RenderContext;
@@ -17,6 +20,13 @@ use Symfony\Component\Tui\Widget\AbstractWidget;
 final class TabBarWidget extends AbstractWidget implements MenuOverlayHost
 {
     use MenuOverlayHostTrait;
+
+    private readonly Palette $palette;
+
+    public function __construct(?Palette $palette = null)
+    {
+        $this->palette = $palette ?? ColorPalette::dark();
+    }
 
     /** @var (callable(): list<array{name: string, dirty: bool, active: bool}>)|null */
     private $provider = null;
@@ -92,11 +102,11 @@ final class TabBarWidget extends AbstractWidget implements MenuOverlayHost
             if (($used + $part['width']) > $columns) {
                 break;
             }
-            $style = $part['active'] ? "\x1b[48;5;238m\x1b[38;5;231m\x1b[1m" : "\x1b[38;5;246m";
+            $style = $part['active'] ? $this->palette->of(Role::InlayPopupBg).$this->palette->of(Role::Bright)."\x1b[1m" : $this->palette->of(Role::Subtle);
             // Dim the close × (bright on the active tab) so it reads as an affordance.
-            $closeStyle = $part['active'] ? "\x1b[38;5;252m" : "\x1b[38;5;240m";
+            $closeStyle = $part['active'] ? $this->palette->of(Role::CurrentLineNumber) : $this->palette->of(Role::Gutter);
             $text = str_replace('×', $closeStyle.'×'."\x1b[39m", $part['text']);
-            $line .= $style.$text."\x1b[0m\x1b[38;5;238m│\x1b[0m";
+            $line .= $style.$text."\x1b[0m".$this->palette->of(Role::Placeholder)."│\x1b[0m";
             $this->lastLayout[] = [
                 'index' => $index,
                 'start' => $used,

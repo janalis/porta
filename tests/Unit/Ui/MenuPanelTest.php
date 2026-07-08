@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Porta\Tests\Unit\Ui;
 
 use PHPUnit\Framework\TestCase;
+use Porta\Ui\ColorPalette;
 use Porta\Ui\MenuItem;
 use Porta\Ui\MenuPanel;
 use Symfony\Component\Tui\Ansi\AnsiUtils;
@@ -38,7 +39,7 @@ final class MenuPanelTest extends TestCase
     public function testDisabledItemRendersDimAndIsNeverHighlighted(): void
     {
         $items = [new MenuItem('Save', 'Ctrl+S', static fn () => null, false, static fn (): bool => false)];
-        $segment = MenuPanel::segments($items, 0, 20)[0]['segment']; // selected index 0, yet disabled
+        $segment = MenuPanel::segments($items, 0, 20, ColorPalette::dark())[0]['segment']; // selected index 0, yet disabled
 
         $this->assertStringContainsString("\x1b[38;5;240m", $segment, 'disabled item uses the dim foreground');
         $this->assertStringNotContainsString("\x1b[48;5;31m", $segment, 'disabled item is not highlighted even when selected');
@@ -56,7 +57,7 @@ final class MenuPanelTest extends TestCase
     public function testSegmentsRenderExactWidthWithSelectionHighlight(): void
     {
         $width = MenuPanel::width($this->items());
-        $segments = MenuPanel::segments($this->items(), 2, $width);
+        $segments = MenuPanel::segments($this->items(), 2, $width, ColorPalette::dark());
 
         $this->assertCount(3, $segments);
         $this->assertTrue($segments[1]['separator']);
@@ -75,7 +76,7 @@ final class MenuPanelTest extends TestCase
     public function testLongLabelIsTruncatedToFit(): void
     {
         $items = [new MenuItem('A very long menu item label indeed', 'F2', static fn () => null)];
-        $segments = MenuPanel::segments($items, 0, 20);
+        $segments = MenuPanel::segments($items, 0, 20, ColorPalette::dark());
         $this->assertSame(20, AnsiUtils::visibleWidth($segments[0]['segment']));
         $this->assertStringContainsString('…', AnsiUtils::stripAnsiCodes($segments[0]['segment']));
     }

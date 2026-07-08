@@ -41,14 +41,14 @@ final class MenuPanel
      *
      * @return list<array{segment: string, separator: bool}>
      */
-    public static function segments(array $items, int $selected, int $panelWidth): array
+    public static function segments(array $items, int $selected, int $panelWidth, Palette $palette): array
     {
         $out = [];
         foreach ($items as $index => $item) {
             $out[] = [
                 'segment' => $item->separator
-                    ? Style::POPUP_ROW_BG."\x1b[38;5;238m".str_repeat('─', $panelWidth)."\x1b[0m"
-                    : self::itemSegment($item, $panelWidth, $index === $selected, $item->enabled()),
+                    ? $palette->of(Role::RowHighlightBg).$palette->of(Role::Placeholder).str_repeat('─', $panelWidth)."\x1b[0m"
+                    : self::itemSegment($item, $panelWidth, $index === $selected, $item->enabled(), $palette),
                 'separator' => $item->separator,
             ];
         }
@@ -98,7 +98,7 @@ final class MenuPanel
         return !$item->separator && $item->enabled();
     }
 
-    private static function itemSegment(MenuItem $item, int $panelWidth, bool $selected, bool $enabled): string
+    private static function itemSegment(MenuItem $item, int $panelWidth, bool $selected, bool $enabled, Palette $palette): string
     {
         $inner = max(0, $panelWidth - 2);
         $shortcut = $item->shortcut;
@@ -108,9 +108,9 @@ final class MenuPanel
 
         // Disabled always reads dim and never shows the selected highlight.
         $bg = !$enabled
-            ? Style::POPUP_ROW_BG."\x1b[38;5;240m"
-            : ($selected ? Style::SELECTED_ROW : Style::POPUP_ROW);
-        $tail = '' !== $shortcut ? "\x1b[38;5;244m".$shortcut."\x1b[39m" : str_repeat(' ', mb_strwidth($shortcut));
+            ? $palette->of(Role::RowHighlightBg).$palette->of(Role::Gutter)
+            : ($selected ? $palette->of(Role::SelectedRow) : $palette->of(Role::PopupRow));
+        $tail = '' !== $shortcut ? $palette->of(Role::CompletionHint).$shortcut."\x1b[39m" : str_repeat(' ', mb_strwidth($shortcut));
 
         return $bg.' '.$label.str_repeat(' ', $gap).$tail.' '."\x1b[0m";
     }

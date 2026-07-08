@@ -6,8 +6,11 @@ namespace Porta\Widget;
 
 use Porta\Layout\ResizableSidebar;
 use Porta\Support\IntMath;
+use Porta\Ui\ColorPalette;
 use Porta\Ui\ListNavigation;
 use Porta\Ui\ListSelection;
+use Porta\Ui\Palette;
+use Porta\Ui\Role;
 use Porta\Ui\Style;
 use Porta\Widget\Render\MenuOverlayHost;
 use Porta\Widget\Render\MenuOverlayHostTrait;
@@ -66,13 +69,16 @@ final class FileTreeWidget extends AbstractWidget implements FocusableInterface,
     private $onOpenFile = null;
 
     private readonly ClockInterface $clock;
+    private readonly Palette $palette;
 
     public function __construct(
         private readonly string $rootDir,
         ?ClockInterface $clock = null,
         private int $width = 30,
+        ?Palette $palette = null,
     ) {
         $this->clock = $clock ?? new NativeClock();
+        $this->palette = $palette ?? ColorPalette::dark();
         $this->list = new ListSelection();
         $this->rebuild();
     }
@@ -247,7 +253,7 @@ final class FileTreeWidget extends AbstractWidget implements FocusableInterface,
 
         $lines = [];
         $header = AnsiUtils::truncateToWidth(' '.basename($this->rootDir).'/', $width, '…', pad: true);
-        $lines[] = "\x1b[1m\x1b[38;5;110m".$header."\x1b[0m";
+        $lines[] = "\x1b[1m".$this->palette->of(Role::TabAccent).$header."\x1b[0m";
 
         for ($row = 1; $row < $rows; ++$row) {
             $index = $scroll + $row - 1;
@@ -265,14 +271,14 @@ final class FileTreeWidget extends AbstractWidget implements FocusableInterface,
             $text = AnsiUtils::truncateToWidth($text, $width, '…', pad: true);
 
             if ($index === $this->list->selected()) {
-                $style = $this->focused ? Style::SELECTED_ROW : "\x1b[48;5;237m";
+                $style = $this->focused ? $this->palette->of(Role::SelectedRow) : $this->palette->of(Role::HeaderBar);
                 $lines[] = $style.$text."\x1b[0m";
             } elseif ($index === $this->hoveredIndex) {
                 // Subtle hover background beneath the pointer, keeping the dir/file foreground.
-                $fg = $node['isDir'] ? "\x1b[38;5;110m" : '';
-                $lines[] = Style::POPUP_ROW_BG.$fg.$text."\x1b[0m";
+                $fg = $node['isDir'] ? $this->palette->of(Role::TabAccent) : '';
+                $lines[] = $this->palette->of(Role::RowHighlightBg).$fg.$text."\x1b[0m";
             } elseif ($node['isDir']) {
-                $lines[] = "\x1b[38;5;110m".$text."\x1b[0m";
+                $lines[] = $this->palette->of(Role::TabAccent).$text."\x1b[0m";
             } else {
                 $lines[] = $text;
             }

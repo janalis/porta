@@ -261,7 +261,7 @@ final class ResultsPanelWidget extends OverlayWidget implements FocusableInterfa
         $status = $this->searching ? ' searching…' : \sprintf(' %d results', \count($this->results));
         $showCursor = $this->focused && $this->withQuery;
         $queryField = $this->query->render(cursor: $showCursor && 'query' === $this->activeField);
-        $prefix = ' '.$this->title.($this->withQuery ? ': '.$queryField : '')."\x1b[38;5;245m".$status."\x1b[39m";
+        $prefix = ' '.$this->title.($this->withQuery ? ': '.$queryField : '').$this->palette->of(Role::Dim).$status."\x1b[39m";
 
         $this->optionZones = [];
         $options = '';
@@ -282,22 +282,22 @@ final class ResultsPanelWidget extends OverlayWidget implements FocusableInterfa
 
         if ($this->withReplace) {
             $replaceField = $this->replace->render(cursor: $showCursor && 'replace' === $this->activeField);
-            $replaceLine = ' Replace: '.$replaceField."\x1b[38;5;245m  (Tab switch · Alt+A replace all)\x1b[39m";
-            $lines[] = Style::POPUP_ROW_BG.AnsiUtils::truncateToWidth($replaceLine, $columns, '…', pad: true)."\x1b[0m";
+            $replaceLine = ' Replace: '.$replaceField.$this->palette->of(Role::Dim)."  (Tab switch · Alt+A replace all)\x1b[39m";
+            $lines[] = $this->palette->of(Role::RowHighlightBg).AnsiUtils::truncateToWidth($replaceLine, $columns, '…', pad: true)."\x1b[0m";
         }
 
         $scroll = $this->list->follow($this->visibleRows);
 
         foreach (\array_slice($this->results, $scroll, $this->visibleRows) as $i => $result) {
             $isSelected = $this->list->isSelected($scroll + $i);
-            $bg = $isSelected ? ($this->focused ? Style::SELECTED_ROW : "\x1b[48;5;238m") : "\x1b[48;5;235m";
+            $bg = $isSelected ? ($this->focused ? $this->palette->of(Role::SelectedRow) : $this->palette->of(Role::InlayPopupBg)) : $this->palette->of(Role::Toolbar);
             $location = $result['path'].':'.($result['line'] + 1);
-            $text = ' '."\x1b[38;5;110m".$location."\x1b[39m".'  '.$result['text'];
+            $text = ' '.$this->palette->of(Role::TabAccent).$location."\x1b[39m".'  '.$result['text'];
             $lines[] = $bg.AnsiUtils::truncateToWidth($text, $columns, '…', pad: true)."\x1b[0m";
         }
 
         if ([] === $this->results && !$this->searching && '' !== $this->query->value()) {
-            $lines[] = "\x1b[48;5;235m\x1b[38;5;244m".AnsiUtils::truncateToWidth(' no results', $columns, '', pad: true)."\x1b[0m";
+            $lines[] = $this->palette->of(Role::Toolbar).$this->palette->of(Role::CompletionHint).AnsiUtils::truncateToWidth(' no results', $columns, '', pad: true)."\x1b[0m";
         }
 
         return $lines;
@@ -321,8 +321,8 @@ final class ResultsPanelWidget extends OverlayWidget implements FocusableInterfa
     private function optionTag(string $glyph, bool $on): string
     {
         return $on
-            ? Style::SELECTED_ROW.' '.$glyph." \x1b[0m"
-            : "\x1b[38;5;242m ".$glyph." \x1b[39m";
+            ? $this->palette->of(Role::SelectedRow).' '.$glyph." \x1b[0m"
+            : $this->palette->of(Role::Faint).' '.$glyph." \x1b[39m";
     }
 
     /** @return array<string, string[]> */
