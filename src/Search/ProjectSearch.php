@@ -29,7 +29,7 @@ final class ProjectSearch
     /**
      * @param callable(list<array{path: string, line: int, text: string}>): void $onDone
      */
-    public function search(string $query, callable $onDone, bool $regex = false, bool $caseSensitive = false, bool $wholeWord = false): void
+    public function search(string $query, callable $onDone, SearchOptions $options = new SearchOptions()): void
     {
         $this->cancel();
         if ('' === trim($query)) {
@@ -38,7 +38,7 @@ final class ProjectSearch
             return;
         }
         // A malformed regex yields no results rather than a crash.
-        if ($regex && false === @preg_match($this->pattern($query, true, $caseSensitive, $wholeWord), '')) {
+        if ($options->regex && false === @preg_match($this->pattern($query, $options), '')) {
             $onDone([]);
 
             return;
@@ -46,16 +46,16 @@ final class ProjectSearch
 
         $grep = $this->findGrep();
         if (null === $grep) {
-            $onDone($this->searchWithPhp($query, $regex, $caseSensitive, $wholeWord));
+            $onDone($this->searchWithPhp($query, $options));
 
             return;
         }
 
-        $flags = ['-rn', '--binary-files=without-match', $regex ? '-E' : '-F'];
-        if (!$caseSensitive) {
+        $flags = ['-rn', '--binary-files=without-match', $options->regex ? '-E' : '-F'];
+        if (!$options->caseSensitive) {
             $flags[] = '-i';
         }
-        if ($wholeWord) {
+        if ($options->wholeWord) {
             $flags[] = '-w';
         }
         $command = [$grep, ...$flags, '--', $query, '.'];
@@ -78,7 +78,7 @@ final class ProjectSearch
             // failure surfaces later as an exit code), so this is unreachable
             // in tests.
             // @codeCoverageIgnoreStart
-            $onDone($this->searchWithPhp($query, $regex, $caseSensitive, $wholeWord));
+            $onDone($this->searchWithPhp($query, $options));
 
             return;
 
@@ -120,9 +120,9 @@ final class ProjectSearch
     }
 
     /** @return list<array{path: string, line: int, text: string}> */
-    private function searchWithPhp(string $query, bool $regex, bool $caseSensitive, bool $wholeWord): array
+    private function searchWithPhp(string $query, SearchOptions $options): array
     {
-        $pattern = $this->pattern($query, $regex, $caseSensitive, $wholeWord);
+        $pattern = $this->pattern($query, $options);
         $finder = new Finder()
             ->files()
             ->in($this->rootDir)
@@ -157,24 +157,24 @@ final class ProjectSearch
      * replacement is literal (backslashes and `$` are escaped); in regex mode
      * it may use backreferences. Returns the content unchanged on a bad regex.
      */
-    public function applyReplacement(string $content, string $query, string $replacement, bool $regex, bool $caseSensitive, bool $wholeWord): string
+    public function applyReplacement(string $content, string $query, string $replacement, SearchOptions $options): string
     {
-        $pattern = $this->pattern($query, $regex, $caseSensitive, $wholeWord);
-        $repl = $regex ? $replacement : (string) preg_replace('/[\\\\$]/', '\\\\$0', $replacement);
+        $pattern = $this->pattern($query, $options);
+        $repl = $options->regex ? $replacement : (string) preg_replace('/[\\\\$]/', '\\\\$0', $replacement);
         $result = @preg_replace($pattern, $repl, $content);
 
         return null === $result ? $content : $result;
     }
 
     /** Build a PCRE pattern mirroring the grep flags, for the PHP fallback. */
-    private function pattern(string $query, bool $regex, bool $caseSensitive, bool $wholeWord): string
+    private function pattern(string $query, SearchOptions $options): string
     {
-        $body = $regex ? $query : preg_quote($query, '/');
-        if ($wholeWord) {
+        $body = $options->regex ? $query : preg_quote($query, '/');
+        if ($options->wholeWord) {
             $body = '\b(?:'.$body.')\b';
         }
 
-        return '/'.$body.'/'.($caseSensitive ? '' : 'i');
+        return '/'.$body.'/'.($options->caseSensitive ? '' : 'i');
     }
 
     private function findGrep(): ?string

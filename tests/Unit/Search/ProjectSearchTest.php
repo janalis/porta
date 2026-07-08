@@ -6,6 +6,7 @@ namespace Porta\Tests\Unit\Search;
 
 use PHPUnit\Framework\TestCase;
 use Porta\Search\ProjectSearch;
+use Porta\Search\SearchOptions;
 use Porta\Tests\Support\TempProject;
 use Revolt\EventLoop;
 
@@ -32,9 +33,7 @@ final class ProjectSearchTest extends TestCase
             function (array $r) use (&$results): void {
                 $results = $r;
             },
-            $regex,
-            $caseSensitive,
-            $wholeWord,
+            new SearchOptions($regex, $caseSensitive, $wholeWord),
         );
 
         $elapsed = 0.0;
@@ -140,16 +139,16 @@ final class ProjectSearchTest extends TestCase
         // Fixed, literal replacement: $ and \ in the replacement stay literal.
         $this->assertSame(
             'take $5.00',
-            $search->applyReplacement('take 5 bucks', '5 bucks', '$5.00', false, false, false),
+            $search->applyReplacement('take 5 bucks', '5 bucks', '$5.00', new SearchOptions()),
         );
         // Case-insensitive fixed: both casings are replaced.
-        $this->assertSame('x x', $search->applyReplacement('ab AB', 'ab', 'x', false, false, false));
+        $this->assertSame('x x', $search->applyReplacement('ab AB', 'ab', 'x', new SearchOptions()));
         // Whole-word fixed: the standalone X is replaced, "Xy" is not.
-        $this->assertSame('a Y b Xy', $search->applyReplacement('a X b Xy', 'X', 'Y', false, true, true));
+        $this->assertSame('a Y b Xy', $search->applyReplacement('a X b Xy', 'X', 'Y', new SearchOptions(caseSensitive: true, wholeWord: true)));
         // Regex with a backreference.
-        $this->assertSame('b=a', $search->applyReplacement('a=b', '(\w)=(\w)', '$2=$1', true, true, false));
+        $this->assertSame('b=a', $search->applyReplacement('a=b', '(\w)=(\w)', '$2=$1', new SearchOptions(regex: true, caseSensitive: true)));
         // Bad regex leaves the content untouched.
-        $this->assertSame('a=b', $search->applyReplacement('a=b', '(', 'X', true, false, false));
+        $this->assertSame('a=b', $search->applyReplacement('a=b', '(', 'X', new SearchOptions(regex: true)));
     }
 
     public function testResultCapWithGrep(): void

@@ -21,8 +21,7 @@ use Symfony\Component\Tui\Tui;
  */
 final class ProjectSearchController
 {
-    /** @var array{regex: bool, case: bool, word: bool} */
-    private array $searchOptions = ['regex' => false, 'case' => false, 'word' => false];
+    private SearchOptions $searchOptions;
     private string $lastSearchQuery = '';
     /** @var list<array{path: string, line: int, text: string}> */
     private array $lastSearchResults = [];
@@ -40,16 +39,18 @@ final class ProjectSearchController
         private readonly BufferManager $buffers,
         private readonly string $rootDir,
         private readonly \Closure $notifyFullChange,
-    ) {}
+    ) {
+        $this->searchOptions = new SearchOptions();
+    }
 
     /** Open the panel in find-in-project mode with a fresh query and options. */
     public function open(): void
     {
-        $this->searchOptions = ['regex' => false, 'case' => false, 'word' => false];
+        $this->searchOptions = new SearchOptions();
         $this->lastSearchQuery = '';
         $this->lastSearchResults = [];
         $this->resultsPanel->open($this->translator->trans('Find in Project'), withQuery: true, withOptions: true, withReplace: true);
-        $this->resultsPanel->setOptions($this->searchOptions);
+        $this->resultsPanel->setOptions($this->searchOptions->panelState());
         $this->tui->setFocus($this->resultsPanel);
         $this->tui->requestRender();
     }
@@ -64,9 +65,8 @@ final class ProjectSearchController
     /** Toggle a search option and re-run the last query with it applied. */
     public function toggleOption(string $name): void
     {
-        /** @var 'case'|'regex'|'word' $name */
-        $this->searchOptions[$name] = !$this->searchOptions[$name];
-        $this->resultsPanel->setOptions($this->searchOptions);
+        $this->searchOptions = $this->searchOptions->toggled($name);
+        $this->resultsPanel->setOptions($this->searchOptions->panelState());
         $this->run($this->lastSearchQuery);
         $this->tui->requestRender();
     }
@@ -129,9 +129,7 @@ final class ProjectSearchController
             $content,
             $this->lastSearchQuery,
             $replacement,
-            $this->searchOptions['regex'],
-            $this->searchOptions['case'],
-            $this->searchOptions['word'],
+            $this->searchOptions,
         );
     }
 
@@ -146,9 +144,7 @@ final class ProjectSearchController
                     $this->tui->requestRender();
                 }
             },
-            $this->searchOptions['regex'],
-            $this->searchOptions['case'],
-            $this->searchOptions['word'],
+            $this->searchOptions,
         );
     }
 }
