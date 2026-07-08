@@ -422,33 +422,50 @@ final class MouseRouter
     /** A left press on the panes, tried front-to-back; the editor is the final target. */
     private function handlePaneClick(MouseEvent $mouse, ?WidgetRect $treeRect, ?WidgetRect $tabsRect, ?WidgetRect $editorRect): void
     {
-        // Git view panes (rects exist only while the view is swapped in).
+        if ($this->tryGitPaneClick($mouse)) {
+            return;
+        }
+        if ($this->trySettingsPaneClick($mouse)) {
+            return;
+        }
+        if ($this->tryOverlayPanelClick($mouse)) {
+            return;
+        }
+        if ($this->tryChromeClick($mouse, $tabsRect, $treeRect)) {
+            return;
+        }
+        $this->handleEditorClick($mouse, $editorRect);
+    }
+
+    /** Git view panes (rects exist only while the view is swapped in). */
+    private function tryGitPaneClick(MouseEvent $mouse): bool
+    {
         if (null !== ($rel = $this->hit->hit($this->gitTabs, $mouse->row, $mouse->col))) {
             $this->gitTabs->handleClick($rel['col']);
             $this->tui->requestRender();
 
-            return;
+            return true;
         }
         if (null !== ($rel = $this->hit->hit($this->gitChanges, $mouse->row, $mouse->col))) {
             $this->tui->setFocus($this->gitChanges);
             $this->gitChanges->handleClick($rel['row'], $rel['col']);
             $this->tui->requestRender();
 
-            return;
+            return true;
         }
         if (null !== ($rel = $this->hit->hit($this->gitHistory, $mouse->row, $mouse->col))) {
             $this->tui->setFocus($this->gitHistory);
             $this->gitHistory->handleClick($rel['row']);
             $this->tui->requestRender();
 
-            return;
+            return true;
         }
         if (null !== ($rel = $this->hit->hit($this->gitCommitBox, $mouse->row, $mouse->col))) {
             $this->tui->setFocus($this->gitCommitBox);
             $this->gitCommitBox->handleClick($rel['row']);
             $this->tui->requestRender();
 
-            return;
+            return true;
         }
         if (null !== ($rel = $this->hit->hit($this->gitDiff, $mouse->row, $mouse->col))) {
             $this->tui->setFocus($this->gitDiff);
@@ -458,38 +475,49 @@ final class MouseRouter
             $this->diffSelecting = $rel['row'] > 0;
             $this->tui->requestRender();
 
-            return;
+            return true;
         }
 
-        // Settings view panes (rects exist only while the view is swapped in).
+        return false;
+    }
+
+    /** Settings view panes (rects exist only while the view is swapped in). */
+    private function trySettingsPaneClick(MouseEvent $mouse): bool
+    {
         if (null !== ($rel = $this->hit->hit($this->settingsNav, $mouse->row, $mouse->col))) {
             $this->tui->setFocus($this->settingsNav);
             $this->settingsNav->handleClick($rel['row']);
             $this->tui->requestRender();
 
-            return;
+            return true;
         }
         if (null !== ($rel = $this->hit->hit($this->settingsForm, $mouse->row, $mouse->col))) {
             $this->tui->setFocus($this->settingsForm);
             $this->settingsForm->handleClick($rel['row']);
             $this->tui->requestRender();
 
-            return;
+            return true;
         }
         if (null !== ($rel = $this->hit->hit($this->settingsKeys, $mouse->row, $mouse->col))) {
             $this->tui->setFocus($this->settingsKeys);
             $this->settingsKeys->handleClick($rel['row']);
             $this->tui->requestRender();
 
-            return;
+            return true;
         }
 
+        return false;
+    }
+
+    /** The floating bottom/overlay panels: terminal, results and go-to-file. */
+    private function tryOverlayPanelClick(MouseEvent $mouse): bool
+    {
         // A click in the open terminal pane focuses it, so typing reaches the shell.
         if ($this->terminalPanel->isOpen() && null !== $this->hit->hit($this->terminalPanel, $mouse->row, $mouse->col)) {
             $this->tui->setFocus($this->terminalPanel);
             $this->tui->requestRender();
 
-            return;
+            return true;
         }
 
         // Results panel: click an option toggle in the header or a result row.
@@ -497,7 +525,7 @@ final class MouseRouter
             $this->resultsPanel->handleClick($rel['row'], $rel['col']);
             $this->tui->requestRender();
 
-            return;
+            return true;
         }
 
         // Go-to-file strip: click a result row to open that file.
@@ -505,9 +533,15 @@ final class MouseRouter
             $this->goToFile->handleClick($rel['row']);
             $this->tui->requestRender();
 
-            return;
+            return true;
         }
 
+        return false;
+    }
+
+    /** Editor-pane chrome: the tab bar, breadcrumbs bar and file tree. */
+    private function tryChromeClick(MouseEvent $mouse, ?WidgetRect $tabsRect, ?WidgetRect $treeRect): bool
+    {
         // Tab bar click: the close × closes that tab; the body switches to it and
         // arms a drag-to-reorder.
         if (null !== $tabsRect && $tabsRect->contains($mouse->row, $mouse->col)) {
@@ -518,7 +552,7 @@ final class MouseRouter
                     $this->bufferService->closeTab($buffers[$closeIndex]->path);
                 }
 
-                return;
+                return true;
             }
             $index = $this->tabBar->tabIndexAtColumn($rel['col']);
             if (null !== $index && isset($buffers[$index])) {
@@ -529,7 +563,7 @@ final class MouseRouter
                 $this->tabDragPath = $buffers[$index]->path;
             }
 
-            return;
+            return true;
         }
 
         // Breadcrumbs click: jump the caret to the clicked scope's declaration.
@@ -540,7 +574,7 @@ final class MouseRouter
                 $this->tui->requestRender();
             }
 
-            return;
+            return true;
         }
 
         // Tree click: select + open/toggle.
@@ -550,13 +584,20 @@ final class MouseRouter
             $this->tree->clickRow($rel['row']);
             $this->tui->requestRender();
 
-            return;
+            return true;
         }
 
-        // Editor press. Ctrl+Click navigates to the declaration (PhpStorm);
-        // Alt+Shift begins a column selection; Alt toggles a caret; otherwise
-        // place/extend a selection (drag extends it, double-click a word,
-        // triple-click a line, Shift+click extends) — collapsing any extra carets.
+        return false;
+    }
+
+    /**
+     * Editor press. Ctrl+Click navigates to the declaration (PhpStorm);
+     * Alt+Shift begins a column selection; Alt toggles a caret; otherwise
+     * place/extend a selection (drag extends it, double-click a word,
+     * triple-click a line, Shift+click extends) — collapsing any extra carets.
+     */
+    private function handleEditorClick(MouseEvent $mouse, ?WidgetRect $editorRect): void
+    {
         if (null !== $editorRect && $editorRect->contains($mouse->row, $mouse->col)) {
             $rel = $editorRect->toRelative($mouse->row, $mouse->col);
             $this->tui->setFocus($this->editor);
