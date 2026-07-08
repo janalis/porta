@@ -13,6 +13,7 @@ use Porta\Config\SettingsController;
 use Porta\Config\SettingsKeymapController;
 use Porta\Config\SettingsLanguageController;
 use Porta\Config\SettingsLspController;
+use Porta\Container\IdeContainerFactory;
 use Porta\Editor\BreadcrumbScanner;
 use Porta\Editor\Buffer;
 use Porta\Editor\BufferManager;
@@ -90,6 +91,7 @@ use Porta\Widget\StatusBarWidget;
 use Porta\Widget\TabBarWidget;
 use Porta\Widget\TerminalPanelWidget;
 use Revolt\EventLoop;
+use Symfony\Component\DependencyInjection\ContainerInterface;
 use Symfony\Component\Tui\Event\InputEvent;
 use Symfony\Component\Tui\Input\Keybindings;
 use Symfony\Component\Tui\Render\Renderer;
@@ -127,6 +129,7 @@ final class Ide
     private CommandPalette $commandPalette;
     private TerminalPanelWidget $terminalPanel;
     private RunController $run;
+    private readonly ContainerInterface $container;
     private GitInfo $git;
     private GitCommands $gitCommands;
     private ?string $gitBranch = null;
@@ -192,7 +195,8 @@ final class Ide
         private readonly bool $lspDisabled = false,
     ) {
         $config = IdeConfig::load($this->rootDir);
-        $this->translator = new Translator((string) ($config->settings['language'] ?? 'en'));
+        $this->container = new IdeContainerFactory()->build($this->rootDir, (string) ($config->settings['language'] ?? 'en'));
+        $this->translator = $this->service(Translator::class);
         $keybindings = new Keybindings(array_merge(ActionCatalog::ideDefaults(), $config->keymap));
         $this->keybindings = $keybindings;
 
@@ -209,7 +213,7 @@ final class Ide
 
         $this->buildSidePanels();
 
-        $this->git = new GitInfo($this->rootDir);
+        $this->git = $this->service(GitInfo::class);
         $this->gitCommands = new GitCommands(
             $this->git,
             $this->editor,
@@ -224,8 +228,8 @@ final class Ide
 
         $this->buildSettingsWidgets();
 
-        $this->history = new LocalHistory($this->rootDir);
-        $this->session = new SessionStore($this->rootDir);
+        $this->history = $this->service(LocalHistory::class);
+        $this->session = $this->service(SessionStore::class);
         $this->buildLayoutAndOverlay();
 
         $this->tui
@@ -274,7 +278,7 @@ final class Ide
             $this->lsp,
             $this->completion,
             $this->history,
-            new EditorConfigResolver(),
+            $this->service(EditorConfigResolver::class),
             $this->rootDir,
             (bool) ($config->settings['editorConfig'] ?? true),
             $this->translator,
@@ -321,6 +325,23 @@ final class Ide
         foreach ($config->warnings as $warning) {
             $this->notifier->flash($warning, 5.0);
         }
+    }
+
+    /**
+     * Resolve a shared service from the container, typed to the requested class.
+     *
+     * @template T of object
+     *
+     * @param class-string<T> $id
+     *
+     * @return T
+     */
+    private function service(string $id): object
+    {
+        $service = $this->container->get($id);
+        \assert($service instanceof $id);
+
+        return $service;
     }
 
     /**
