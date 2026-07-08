@@ -15,8 +15,10 @@ use Porta\Layout\LayoutController;
 use Porta\Lsp\CompletionController;
 use Porta\Lsp\LspSessionPool;
 use Porta\Lsp\WorkspaceEditor;
+use Porta\Ui\ColorPalette;
 use Porta\Ui\CommandPalette;
 use Porta\Ui\Notifier;
+use Porta\Ui\Palette;
 use Porta\Ui\PanelManager;
 use Porta\Widget\CodeEditorWidget;
 use Porta\Widget\FileTreeWidget;
@@ -76,6 +78,11 @@ return static function (ContainerConfigurator $container): void {
     // The wall clock (symfony/clock). A NativeClock backs Psr\Clock\ClockInterface
     // so time-dependent services autowire it; tests inject a MockClock.
     $services->set(ClockInterface::class, NativeClock::class);
+
+    // The IDE color scheme. Widgets autowire Palette; the concrete instance
+    // (dark/light/monochrome) is selected at container build in a later step —
+    // dark for now. Public so it can be resolved and smoke-tested.
+    $services->set(Palette::class)->factory([ColorPalette::class, 'dark'])->public();
 
     // Ide resolves these by id (service-locator boundary), so they must be
     // public to survive compilation rather than being pruned.
