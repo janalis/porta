@@ -379,108 +379,90 @@ final class EditorActions
      */
     public function run(string $action): void
     {
-        $doc = $this->document;
-        switch ($action) {
-            case 'undo':
-                if ($doc->undo()) {
-                    ($this->notifyChange)();
-                }
+        // A verb → handler map: each arm is the single source of truth for one
+        // editor operation. The conditional/multi-statement verbs live in named
+        // helpers below; unknown verbs fall through to a safe no-op.
+        match ($action) {
+            'undo' => $this->notifyIfChanged($this->document->undo()),
+            'redo' => $this->notifyIfChanged($this->document->redo()),
+            'copy' => $this->copySelection(),
+            'cut' => $this->cutSelection(),
+            'paste' => $this->pasteClipboard(),
+            'duplicate_line' => $this->duplicateCurrentLines(),
+            'delete_line' => $this->notifyIfChanged($this->document->deleteLines()),
+            'move_line_up' => $this->notifyIfChanged($this->document->moveLines(-1)),
+            'move_line_down' => $this->notifyIfChanged($this->document->moveLines(1)),
+            'toggle_comment' => $this->toggleLineComment(),
+            'toggle_fold' => $this->toggleFold(),
+            'select_all' => $this->selectAllText(),
+            'expand_selection' => $this->structural->expandSelection(),
+            'shrink_selection' => $this->structural->shrinkSelection(),
+            'surround_with' => $this->structural->openSurroundMenu(),
+            'add_caret_above' => $this->multiCaret->addVertically(-1),
+            'add_caret_below' => $this->multiCaret->addVertically(1),
+            'add_next_occurrence' => $this->multiCaret->addNextOccurrence(),
+            'trigger_completion' => $this->completion->requestCompletion(),
+            'goto_line' => $this->promptGotoLine(),
+            'rename_symbol' => $this->promptRename(),
+            default => null,
+        };
+    }
 
-                return;
-            case 'redo':
-                if ($doc->redo()) {
-                    ($this->notifyChange)();
-                }
-
-                return;
-            case 'copy':
-                $this->copySelection();
-
-                return;
-            case 'cut':
-                $this->cutSelection();
-
-                return;
-            case 'paste':
-                if ('' !== $this->clipboard) {
-                    $doc->insert($this->clipboard);
-                    ($this->notifyChange)();
-                }
-
-                return;
-            case 'duplicate_line':
-                $doc->duplicateLines();
-                ($this->notifyChange)();
-
-                return;
-            case 'delete_line':
-                if ($doc->deleteLines()) {
-                    ($this->notifyChange)();
-                }
-
-                return;
-            case 'move_line_up':
-            case 'move_line_down':
-                if ($doc->moveLines('move_line_up' === $action ? -1 : 1)) {
-                    ($this->notifyChange)();
-                }
-
-                return;
-            case 'toggle_comment':
-                if (null !== ($prefix = ($this->commentPrefix)())) {
-                    $doc->toggleComment($prefix);
-                    ($this->notifyChange)();
-                }
-
-                return;
-            case 'toggle_fold':
-                $this->foldModel->toggle();
-                ($this->invalidate)();
-
-                return;
-            case 'select_all':
-                $doc->selectAll();
-                ($this->invalidate)();
-
-                return;
-            case 'expand_selection':
-                $this->structural->expandSelection();
-
-                return;
-            case 'shrink_selection':
-                $this->structural->shrinkSelection();
-
-                return;
-            case 'surround_with':
-                $this->structural->openSurroundMenu();
-
-                return;
-            case 'add_caret_above':
-            case 'add_caret_below':
-                $this->multiCaret->addVertically('add_caret_above' === $action ? -1 : 1);
-
-                return;
-            case 'add_next_occurrence':
-                $this->multiCaret->addNextOccurrence();
-
-                return;
-            case 'trigger_completion':
-                $this->completion->requestCompletion();
-
-                return;
-            case 'goto_line':
-                ($this->openPrompt)('Go to line', '', function (string $value): void {
-                    if (ctype_digit($value)) {
-                        ($this->jumpTo)((int) $value - 1, 0);
-                    }
-                });
-
-                return;
-            case 'rename_symbol':
-                ($this->requestRename)($doc->getCursorLine(), $doc->getCursorColUtf16(), ltrim($doc->getWordBeforeCursor(), '$'));
-
-                return;
+    /** Fire the document-change hook only when a mutation actually happened. */
+    private function notifyIfChanged(bool $changed): void
+    {
+        if ($changed) {
+            ($this->notifyChange)();
         }
+    }
+
+    private function pasteClipboard(): void
+    {
+        if ('' !== $this->clipboard) {
+            $this->document->insert($this->clipboard);
+            ($this->notifyChange)();
+        }
+    }
+
+    private function duplicateCurrentLines(): void
+    {
+        $this->document->duplicateLines();
+        ($this->notifyChange)();
+    }
+
+    private function toggleLineComment(): void
+    {
+        if (null !== ($prefix = ($this->commentPrefix)())) {
+            $this->document->toggleComment($prefix);
+            ($this->notifyChange)();
+        }
+    }
+
+    private function toggleFold(): void
+    {
+        $this->foldModel->toggle();
+        ($this->invalidate)();
+    }
+
+    private function selectAllText(): void
+    {
+        $this->document->selectAll();
+        ($this->invalidate)();
+    }
+
+    private function promptGotoLine(): void
+    {
+        ($this->openPrompt)('Go to line', '', function (string $value): void {
+            if (ctype_digit($value)) {
+                ($this->jumpTo)((int) $value - 1, 0);
+            }
+        });
+    }
+
+    private function promptRename(): void
+    {
+        $doc = $this->document;
+        ($this->requestRename)($doc->getCursorLine(), $doc->getCursorColUtf16(), ltrim($doc->getWordBeforeCursor(), '$'));
     }
 
     private function maybeAutoTrigger(string $typed): void
