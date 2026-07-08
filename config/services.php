@@ -83,12 +83,12 @@ return static function (ContainerConfigurator $container): void {
 
     // The IDE color scheme. Widgets autowire Palette; PaletteFactory picks the
     // concrete instance (dark/light, or monochrome for --no-ansi) from the
-    // porta.ansi parameter set by IdeContainerFactory. The theme is wired to the
-    // porta.theme parameter separately. Public so Ide can resolve it too.
+    // porta.ansi and porta.theme parameters set by IdeContainerFactory. Public
+    // so Ide can resolve it too.
     $services
         ->set(Palette::class)
         ->factory([PaletteFactory::class, 'create'])
-        ->args([param('porta.ansi'), 'dark'])
+        ->args([param('porta.ansi'), param('porta.theme')])
         ->public();
 
     // The syntax-highlighting theme. Buffers and the editor/diff widgets autowire
@@ -97,7 +97,7 @@ return static function (ContainerConfigurator $container): void {
     $services
         ->set(TerminalTheme::class)
         ->factory([TerminalThemeFactory::class, 'create'])
-        ->args([param('porta.ansi'), 'dark']);
+        ->args([param('porta.ansi'), param('porta.theme')]);
 
     // Ide resolves these by id (service-locator boundary), so they must be
     // public to survive compilation rather than being pruned.

@@ -194,7 +194,7 @@ final class Ide
         bool $ansi = true,
     ) {
         $config = IdeConfig::load($this->rootDir);
-        $this->container = new IdeContainerFactory()->build($this->rootDir, (string) ($config->settings['language'] ?? 'en'), $ansi);
+        $this->container = new IdeContainerFactory()->build($this->rootDir, (string) ($config->settings['language'] ?? 'en'), $ansi, (string) ($config->settings['theme'] ?? 'dark'));
         $this->translator = $this->service(Translator::class);
         $keybindings = new Keybindings(array_merge(ActionCatalog::ideDefaults(), $config->keymap));
         $this->keybindings = $keybindings;
