@@ -36,13 +36,8 @@ final class Document
     /** Display columns per hard tab (EditorConfig tab_width); seeded from {@see self::TAB_SIZE}. */
     private int $tabWidth = self::TAB_SIZE;
 
-    /**
-     * Cache of tab-expanded lines for rendering, keyed by document version.
-     *
-     * @var string[]|null
-     */
-    private ?array $visualLines = null;
-    private int $visualLinesVersion = -1;
+    /** Byte/UTF-16/display-column conversions + the tab-expanded visual-line cache. */
+    private readonly PositionMapper $positionMapper;
 
     /** Preferred display column kept while moving vertically. */
     private ?int $goalCol = null;
@@ -93,6 +88,7 @@ final class Document
         $this->savedText = implode("\n", $this->lines);
         $this->usesTabs = $this->detectTabIndentation();
         $this->history = new UndoHistory();
+        $this->positionMapper = new PositionMapper($this);
     }
 
     /**
@@ -142,7 +138,7 @@ final class Document
         $this->usesTabs = $usesTabs;
         $this->indentSize = max(1, $size);
         $this->tabWidth = max(1, $size);
-        $this->visualLinesVersion = -1;
+        $this->positionMapper->invalidateVisualLines();
     }
 
     /** The indentation unit for one level: a tab, or {@see $indentSize} spaces. */
@@ -187,7 +183,7 @@ final class Document
         if (null !== $config->tabWidth) {
             $this->tabWidth = $config->tabWidth;
         }
-        $this->visualLinesVersion = -1;
+        $this->positionMapper->invalidateVisualLines();
     }
 
     // --- Accessors -------------------------------------------------------
@@ -270,7 +266,7 @@ final class Document
     /** Byte column → UTF-16 code-unit column on the given line (for LSP positions). */
     public function byteColToUtf16(int $line, int $byteCol): int
     {
-        return TextMetrics::byteColToUtf16($this->lines[$this->clampLine($line)], $byteCol);
+        return $this->positionMapper->byteColToUtf16($line, $byteCol);
     }
 
     /**
@@ -278,7 +274,7 @@ final class Document
      */
     public function getCursorColUtf16(): int
     {
-        return TextMetrics::byteColToUtf16($this->lines[$this->cursorLine], $this->cursorCol);
+        return $this->positionMapper->byteColToUtf16($this->cursorLine, $this->cursorCol);
     }
 
     /**
@@ -286,7 +282,7 @@ final class Document
      */
     public function utf16ColToByteCol(int $line, int $utf16Col): int
     {
-        return TextMetrics::utf16ColToByteCol($this->lines[$this->clampLine($line)], $utf16Col);
+        return $this->positionMapper->utf16ColToByteCol($line, $utf16Col);
     }
 
     /**
@@ -294,19 +290,19 @@ final class Document
      */
     public function getCursorDisplayCol(): int
     {
-        return TextMetrics::displayWidth(substr($this->lines[$this->cursorLine], 0, $this->cursorCol), $this->tabWidth);
+        return $this->positionMapper->displayColAt($this->cursorLine, $this->cursorCol);
     }
 
     /** Display column (terminal cells) of a byte offset on the given line. */
     public function displayColAt(int $line, int $byteCol): int
     {
-        return TextMetrics::displayWidth(substr($this->lines[$line] ?? '', 0, $byteCol), $this->tabWidth);
+        return $this->positionMapper->displayColAt($line, $byteCol);
     }
 
     /** Full display width (terminal cells) of a line. */
     public function lineDisplayWidth(int $line): int
     {
-        return TextMetrics::displayWidth($this->lines[$line] ?? '', $this->tabWidth);
+        return $this->positionMapper->lineDisplayWidth($line);
     }
 
     /**
@@ -318,17 +314,7 @@ final class Document
      */
     public function getVisualLines(): array
     {
-        if ($this->visualLinesVersion === $this->version && null !== $this->visualLines) {
-            return $this->visualLines;
-        }
-        $this->visualLinesVersion = $this->version;
-
-        $out = [];
-        foreach ($this->lines as $line) {
-            $out[] = str_contains($line, "\t") ? TextMetrics::expandTabs($line, $this->tabWidth) : $line;
-        }
-
-        return $this->visualLines = $out;
+        return $this->positionMapper->visualLines();
     }
 
     /**
@@ -337,13 +323,7 @@ final class Document
      */
     public function offsetAt(int $line, int $col): int
     {
-        $line = $this->clampLine($line);
-        $offset = 0;
-        for ($i = 0; $i < $line; ++$i) {
-            $offset += \strlen($this->lines[$i]) + 1; // +1 for the newline
-        }
-
-        return $offset + $this->clampCol($line, $col);
+        return $this->positionMapper->offsetAt($line, $col);
     }
 
     /**
@@ -354,19 +334,7 @@ final class Document
      */
     public function positionAt(int $offset): array
     {
-        $offset = max(0, $offset);
-        $line = 0;
-        $count = \count($this->lines);
-        while ($line < ($count - 1)) {
-            $lineLen = \strlen($this->lines[$line]) + 1; // include newline
-            if ($offset < $lineLen) {
-                break;
-            }
-            $offset -= $lineLen;
-            ++$line;
-        }
-
-        return ['line' => $line, 'col' => min($offset, \strlen($this->lines[$line]))];
+        return $this->positionMapper->positionAt($offset);
     }
 
     /**
@@ -766,7 +734,7 @@ final class Document
      */
     public function byteColForDisplayCol(int $line, int $displayCol): int
     {
-        return TextMetrics::byteColForDisplayCol($this->lines[$this->clampLine($line)], $displayCol, $this->tabWidth);
+        return $this->positionMapper->byteColForDisplayCol($line, $displayCol);
     }
 
     /**
