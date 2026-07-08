@@ -36,44 +36,7 @@ final class PatchBuilder
                 continue;
             }
 
-            $body = [];
-            $newCount = 0;
-            $prevKeptOriginal = false; // whether the previous source line was emitted with its own origin
-            foreach ($hunk->lines as $i => $line) {
-                $isSelected = isset($sel[$i]);
-                switch ($line->origin) {
-                    case ' ':
-                        $body[] = ' '.$line->text;
-                        ++$newCount;
-                        $prevKeptOriginal = true;
-                        break;
-                    case '-':
-                        if ($isSelected) {
-                            $body[] = '-'.$line->text;
-                            $prevKeptOriginal = true;
-                        } else {
-                            // Unselected deletion: the line still exists in the preimage.
-                            $body[] = ' '.$line->text;
-                            ++$newCount;
-                            $prevKeptOriginal = false;
-                        }
-                        break;
-                    case '+':
-                        if ($isSelected) {
-                            $body[] = '+'.$line->text;
-                            ++$newCount;
-                            $prevKeptOriginal = true;
-                        } else {
-                            // Unselected addition: absent from the preimage, dropped.
-                            $prevKeptOriginal = false;
-                        }
-                        break;
-                    default: // '\' No-newline marker follows its line's fate.
-                        if ($prevKeptOriginal) {
-                            $body[] = '\\'.$line->text;
-                        }
-                }
-            }
+            ['body' => $body, 'newCount' => $newCount] = self::renderHunkBody($hunk, $sel);
 
             $newStart = (0 === $hunk->oldCount ? $hunk->oldStart + 1 : $hunk->oldStart) + $delta - (0 === $newCount ? 1 : 0);
             $heading = '' === $hunk->heading ? '' : ' '.$hunk->heading;
@@ -89,6 +52,60 @@ final class PatchBuilder
         $envelope = \sprintf("diff --git a/%s b/%s\n--- a/%s\n+++ b/%s\n", $relPath, $relPath, $relPath, $relPath);
 
         return $envelope.implode("\n", $out)."\n";
+    }
+
+    /**
+     * Emit one hunk's body lines under $sel, preserving the old side exactly: an
+     * unselected deletion demotes to context (' '), an unselected addition drops,
+     * and a no-newline marker follows its line's fate. Returns the body lines and
+     * the recounted new-side length.
+     *
+     * @param array<int, true> $sel selected line indices within the hunk
+     *
+     * @return array{body: list<string>, newCount: int}
+     */
+    private static function renderHunkBody(DiffHunk $hunk, array $sel): array
+    {
+        $body = [];
+        $newCount = 0;
+        $prevKeptOriginal = false; // whether the previous source line was emitted with its own origin
+        foreach ($hunk->lines as $i => $line) {
+            $isSelected = isset($sel[$i]);
+            switch ($line->origin) {
+                case ' ':
+                    $body[] = ' '.$line->text;
+                    ++$newCount;
+                    $prevKeptOriginal = true;
+                    break;
+                case '-':
+                    if ($isSelected) {
+                        $body[] = '-'.$line->text;
+                        $prevKeptOriginal = true;
+                    } else {
+                        // Unselected deletion: the line still exists in the preimage.
+                        $body[] = ' '.$line->text;
+                        ++$newCount;
+                        $prevKeptOriginal = false;
+                    }
+                    break;
+                case '+':
+                    if ($isSelected) {
+                        $body[] = '+'.$line->text;
+                        ++$newCount;
+                        $prevKeptOriginal = true;
+                    } else {
+                        // Unselected addition: absent from the preimage, dropped.
+                        $prevKeptOriginal = false;
+                    }
+                    break;
+                default: // '\' No-newline marker follows its line's fate.
+                    if ($prevKeptOriginal) {
+                        $body[] = '\\'.$line->text;
+                    }
+            }
+        }
+
+        return ['body' => $body, 'newCount' => $newCount];
     }
 
     /**
