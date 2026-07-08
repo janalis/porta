@@ -694,49 +694,67 @@ final class MouseRouter
      */
     private function handleHover(MouseEvent $mouse, ?WidgetRect $editorRect, bool $gitViewOpen = false, bool $settingsViewOpen = false): void
     {
+        // Each full-view state owns its hover targets exclusively; the tree/editor
+        // targets are detached while a view is swapped in.
         if ($settingsViewOpen) {
-            if ($this->handleMenuHover($mouse)) {
-                return; // the menu bar rides along into the settings view
-            }
-            // The nav sidebar and the keybindings list tint on hover; a miss clears them.
-            $changed = null !== ($rel = $this->hit->hit($this->settingsNav, $mouse->row, $mouse->col))
-                ? $this->settingsNav->hoverRow($rel['row'])
-                : $this->settingsNav->clearHover();
-            $changed =
-                (
-                    null !== ($rel = $this->hit->hit($this->settingsKeys, $mouse->row, $mouse->col))
-                        ? $this->settingsKeys->hoverRow($rel['row'])
-                        : $this->settingsKeys->clearHover()
-                ) || $changed;
-            if ($changed) {
-                $this->tui->requestRender();
-            }
+            $this->handleSettingsHover($mouse);
 
-            return; // the tree/editor hover targets below are all detached
+            return;
         }
-
         if ($gitViewOpen) {
-            if ($this->handleMenuHover($mouse)) {
-                return; // the menu bar rides along into the git view
-            }
-            // Hover tints the row under the pointer in whichever list is
-            // attached; a miss clears the tint (pointer over another pane).
-            $changed = null !== ($rel = $this->hit->hit($this->gitChanges, $mouse->row, $mouse->col))
-                ? $this->gitChanges->hoverRow($rel['row'])
-                : $this->gitChanges->clearHover();
-            $changed =
-                (
-                    null !== ($rel = $this->hit->hit($this->gitHistory, $mouse->row, $mouse->col))
-                        ? $this->gitHistory->hoverRow($rel['row'])
-                        : $this->gitHistory->clearHover()
-                ) || $changed;
-            if ($changed) {
-                $this->tui->requestRender();
-            }
+            $this->handleGitHover($mouse);
 
-            return; // the tree/editor hover targets below are all detached
+            return;
         }
+        $this->handleMainHover($mouse, $editorRect);
+    }
 
+    /** Hover routing while the settings view owns the main area. */
+    private function handleSettingsHover(MouseEvent $mouse): void
+    {
+        if ($this->handleMenuHover($mouse)) {
+            return; // the menu bar rides along into the settings view
+        }
+        // The nav sidebar and the keybindings list tint on hover; a miss clears them.
+        $changed = null !== ($rel = $this->hit->hit($this->settingsNav, $mouse->row, $mouse->col))
+            ? $this->settingsNav->hoverRow($rel['row'])
+            : $this->settingsNav->clearHover();
+        $changed =
+            (
+                null !== ($rel = $this->hit->hit($this->settingsKeys, $mouse->row, $mouse->col))
+                    ? $this->settingsKeys->hoverRow($rel['row'])
+                    : $this->settingsKeys->clearHover()
+            ) || $changed;
+        if ($changed) {
+            $this->tui->requestRender();
+        }
+    }
+
+    /** Hover routing while the git view owns the main area. */
+    private function handleGitHover(MouseEvent $mouse): void
+    {
+        if ($this->handleMenuHover($mouse)) {
+            return; // the menu bar rides along into the git view
+        }
+        // Hover tints the row under the pointer in whichever list is
+        // attached; a miss clears the tint (pointer over another pane).
+        $changed = null !== ($rel = $this->hit->hit($this->gitChanges, $mouse->row, $mouse->col))
+            ? $this->gitChanges->hoverRow($rel['row'])
+            : $this->gitChanges->clearHover();
+        $changed =
+            (
+                null !== ($rel = $this->hit->hit($this->gitHistory, $mouse->row, $mouse->col))
+                    ? $this->gitHistory->hoverRow($rel['row'])
+                    : $this->gitHistory->clearHover()
+            ) || $changed;
+        if ($changed) {
+            $this->tui->requestRender();
+        }
+    }
+
+    /** Hover routing for the normal editor layout: tree, menu, editor popup, panels. */
+    private function handleMainHover(MouseEvent $mouse, ?WidgetRect $editorRect): void
+    {
         $this->updateTreeHover($mouse);
 
         if ($this->handleMenuHover($mouse)) {

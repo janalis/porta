@@ -41,6 +41,14 @@ final class MultiCaret
         'select_line_end' => 'moveToLineEnd',
     ];
 
+    /** Editing verbs applied at every caret, keyed by action → Document method. */
+    private const array EDIT_METHODS = [
+        'new_line' => 'insertNewLine',
+        'delete_char_backward' => 'deleteBackward',
+        'delete_char_forward' => 'deleteForward',
+        'delete_word_backward' => 'deleteWordBackward',
+    ];
+
     /**
      * Secondary carets (the primary caret is the Document's own cursor). Each
      * caret carries a full selection anchor `(anchorLine, anchorCol)`;
@@ -208,29 +216,17 @@ final class MultiCaret
             }
         }
 
-        // Editing operations applied at every caret.
-        if ($kb->matches($data, 'new_line')) {
-            $this->applyEdit(static fn (Document $d) => $d->insertNewLine());
+        // Editing operations applied at every caret: the bare Document verbs are
+        // table-driven; indent and paste carry an argument, so they stay explicit.
+        foreach (self::EDIT_METHODS as $action => $method) {
+            if ($kb->matches($data, $action)) {
+                $this->applyEdit(static fn (Document $d) => $d->{$method}());
 
-            return true;
+                return true;
+            }
         }
         if ($kb->matches($data, 'indent')) {
             $this->applyEdit(static fn (Document $d) => $d->insert($d->indentUnit()));
-
-            return true;
-        }
-        if ($kb->matches($data, 'delete_char_backward')) {
-            $this->applyEdit(static fn (Document $d) => $d->deleteBackward());
-
-            return true;
-        }
-        if ($kb->matches($data, 'delete_char_forward')) {
-            $this->applyEdit(static fn (Document $d) => $d->deleteForward());
-
-            return true;
-        }
-        if ($kb->matches($data, 'delete_word_backward')) {
-            $this->applyEdit(static fn (Document $d) => $d->deleteWordBackward());
 
             return true;
         }

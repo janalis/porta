@@ -44,8 +44,9 @@ final class FindBarWidget extends OverlayWidget implements FocusableInterface
     /** @var (callable(): void)|null called when matches/current change */
     private $onUpdate = null;
 
-    public function __construct(private readonly Translator $translator)
-    {
+    public function __construct(
+        private readonly Translator $translator,
+    ) {
         $this->query = new TextField();
         $this->replacement = new TextField();
     }
@@ -150,20 +151,26 @@ final class FindBarWidget extends OverlayWidget implements FocusableInterface
         }
 
         if ($kb->matches($data, 'delete_char_backward')) {
-            $field = 0 === $this->activeField ? $this->query : $this->replacement;
-            if ($field->backspace()) {
-                if ($field === $this->query) {
-                    $this->recompute(jumpToNearest: true);
-                }
-                $this->invalidate();
-            }
+            $this->editActiveField(static fn (TextField $field): bool => $field->backspace());
 
             return;
         }
 
         // Plain text input
+        $this->editActiveField(static fn (TextField $field): bool => $field->insert($data));
+    }
+
+    /**
+     * Apply an edit to whichever field is focused (query or replacement); when it
+     * changes the query, re-run the search and jump to the nearest match, then
+     * repaint. The op returns whether the field actually changed.
+     *
+     * @param \Closure(TextField): bool $op
+     */
+    private function editActiveField(\Closure $op): void
+    {
         $field = 0 === $this->activeField ? $this->query : $this->replacement;
-        if ($field->insert($data)) {
+        if ($op($field)) {
             if ($field === $this->query) {
                 $this->recompute(jumpToNearest: true);
             }
