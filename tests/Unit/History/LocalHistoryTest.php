@@ -7,26 +7,25 @@ namespace Porta\Tests\Unit\History;
 use PHPUnit\Framework\TestCase;
 use Porta\History\LocalHistory;
 use Porta\Tests\Support\TempProject;
+use Symfony\Component\Clock\MockClock;
 
 final class LocalHistoryTest extends TestCase
 {
-    /** A deterministic monotonic clock. */
-    private function clock(): \Closure
+    /** A deterministic clock; advance it with ->sleep() to get distinct stamps. */
+    private function clock(): MockClock
     {
-        $t = 1_000;
-
-        return function () use (&$t): int {
-            return $t += 1000;
-        };
+        return new MockClock('2020-01-01T00:00:00+00:00');
     }
 
     public function testSnapshotAndList(): void
     {
         $project = new TempProject(['a.php' => "v1\n"]);
-        $history = new LocalHistory($project->dir, $this->clock());
+        $clock = $this->clock();
+        $history = new LocalHistory($project->dir, $clock);
         $path = $project->path('a.php');
 
         $this->assertSame(0, $history->snapshot($path, "v1\n"));
+        $clock->sleep(1);
         $this->assertSame(0, $history->snapshot($path, "v2\n"));
 
         $list = $history->list($path);
@@ -50,11 +49,13 @@ final class LocalHistoryTest extends TestCase
     public function testPruneKeepsOnlyTheCap(): void
     {
         $project = new TempProject(['a.php' => 'x']);
-        $history = new LocalHistory($project->dir, $this->clock(), maxPerFile: 3);
+        $clock = $this->clock();
+        $history = new LocalHistory($project->dir, $clock, maxPerFile: 3);
         $path = $project->path('a.php');
 
         for ($i = 0; $i < 6; ++$i) {
             $pruned = $history->snapshot($path, "content {$i}");
+            $clock->sleep(1);
         }
         $this->assertSame(1, $pruned, 'each save past the cap prunes one');
         $list = $history->list($path);
@@ -67,14 +68,14 @@ final class LocalHistoryTest extends TestCase
     public function testListForUnknownFileIsEmpty(): void
     {
         $project = new TempProject();
-        $history = new LocalHistory($project->dir);
+        $history = new LocalHistory($project->dir, $this->clock());
         $this->assertSame([], $history->list($project->path('never.php')));
     }
 
     public function testReadMissingSnapshotReturnsNull(): void
     {
         $project = new TempProject();
-        $history = new LocalHistory($project->dir);
+        $history = new LocalHistory($project->dir, $this->clock());
         $this->assertNull($history->read($project->path('.porta/history/x/1.snap')));
     }
 

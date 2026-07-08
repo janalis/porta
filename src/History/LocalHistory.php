@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Porta\History;
 
+use Psr\Clock\ClockInterface;
 use Symfony\Component\Filesystem\Exception\IOExceptionInterface;
 use Symfony\Component\Filesystem\Filesystem;
 
@@ -16,20 +17,14 @@ use Symfony\Component\Filesystem\Filesystem;
 final readonly class LocalHistory
 {
     private string $baseDir;
-    /** @var \Closure(): int monotonic timestamp source (ms), injectable for tests */
-    private \Closure $clock;
     private Filesystem $fs;
 
-    /**
-     * @param (callable(): int)|null $clock monotonic timestamp source (ms), injectable for tests
-     */
     public function __construct(
         string $rootDir,
-        ?callable $clock = null,
+        private ClockInterface $clock,
         private int $maxPerFile = 25,
     ) {
         $this->baseDir = $rootDir.'/.porta/history';
-        $this->clock = null !== $clock ? $clock(...) : static fn (): int => (int) (microtime(true) * 1000);
         $this->fs = new Filesystem();
     }
 
@@ -52,7 +47,7 @@ final readonly class LocalHistory
             return 0;
         }
 
-        $stamp = ($this->clock)();
+        $stamp = (int) $this->clock->now()->format('Uv');
         try {
             $this->fs->dumpFile($dir.'/'.$stamp.'.snap', $content);
         } catch (IOExceptionInterface) {

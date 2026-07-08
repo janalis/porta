@@ -33,6 +33,8 @@ use Porta\Widget\Settings\SettingsFormWidget;
 use Porta\Widget\Settings\SettingsNavWidget;
 use Porta\Widget\StatusBarWidget;
 use Porta\Widget\TerminalPanelWidget;
+use Psr\Clock\ClockInterface;
+use Symfony\Component\Clock\NativeClock;
 use Symfony\Component\DependencyInjection\Loader\Configurator\ContainerConfigurator;
 use Symfony\Component\Tui\Render\Renderer;
 use Symfony\Component\Tui\Style\Style;
@@ -70,6 +72,10 @@ return static function (ContainerConfigurator $container): void {
             '../src/Ide.php',
             '../src/Container/',
         ]);
+
+    // The wall clock (symfony/clock). A NativeClock backs Psr\Clock\ClockInterface
+    // so time-dependent services autowire it; tests inject a MockClock.
+    $services->set(ClockInterface::class, NativeClock::class);
 
     // Ide resolves these by id (service-locator boundary), so they must be
     // public to survive compilation rather than being pruned.

@@ -21,6 +21,7 @@
         "ext-pcntl": "*",
         "ext-simplexml": "*",
         "revolt/event-loop": "^1.0",
+        "symfony/clock": "^8.1",
         "symfony/config": "^8.1",
         "symfony/console": "^8.1",
         "symfony/dependency-injection": "^8.1",
