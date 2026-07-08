@@ -43,7 +43,7 @@ final class CommitBoxWidget extends AbstractWidget implements FocusableInterface
     private bool $amend = false;
 
     /** @var (callable(): bool)|null anything staged to commit? */
-    private $hasStagedChanges = null;
+    private $stagedChangesProvider = null;
     /** @var (callable(string, bool): void)|null commit with the assembled message (+ amend flag) */
     private $onCommit = null;
     /** @var (callable(bool): void)|null amend toggled: the controller prefills/clears the message */
@@ -73,9 +73,9 @@ final class CommitBoxWidget extends AbstractWidget implements FocusableInterface
     }
 
     /** @param callable(): bool $predicate */
-    public function hasStagedChanges(callable $predicate): self
+    public function setStagedChangesProvider(callable $predicate): self
     {
-        $this->hasStagedChanges = $predicate;
+        $this->stagedChangesProvider = $predicate;
 
         return $this;
     }
@@ -134,7 +134,7 @@ final class CommitBoxWidget extends AbstractWidget implements FocusableInterface
         }
 
         // Amending only the message needs no staged changes.
-        return $this->amend || null !== $this->hasStagedChanges && ($this->hasStagedChanges)();
+        return $this->amend || null !== $this->stagedChangesProvider && ($this->stagedChangesProvider)();
     }
 
     /** The assembled commit message: summary, blank line, description. */

@@ -18,7 +18,7 @@ final class CommitBoxWidgetTest extends TestCase
     {
         $widget = new CommitBoxWidget(new Translator('en'));
         $widget->setFocused(true);
-        $widget->hasStagedChanges(fn (): bool => $this->staged);
+        $widget->setStagedChangesProvider(fn (): bool => $this->staged);
         $widget->onCommit(function (string $message, bool $amend) use (&$committed, &$amended): void {
             $committed = $message;
             $amended = $amend;
@@ -104,7 +104,7 @@ final class CommitBoxWidgetTest extends TestCase
     public function testRenderShowsPlaceholdersButtonStateAndClearResets(): void
     {
         $widget = new CommitBoxWidget(new Translator('en'));
-        $widget->hasStagedChanges(static fn (): bool => true);
+        $widget->setStagedChangesProvider(static fn (): bool => true);
 
         $screen = $this->plain($widget);
         $this->assertStringContainsString('Summary (required)', $screen);

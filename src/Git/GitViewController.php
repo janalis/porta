@@ -110,7 +110,7 @@ final class GitViewController
             ->onExit($exit);
         $this->tabs->onSelect(fn (string $mode) => $this->switchMode($mode));
         $this->commitBox
-            ->hasStagedChanges(fn (): bool => $this->hasStagedChanges())
+            ->setStagedChangesProvider(fn (): bool => $this->hasStagedChanges())
             ->onCommit(fn (string $message, bool $amend) => $this->commit($message, $amend))
             ->onAmendToggle(fn (bool $amend) => $this->amendToggled($amend))
             ->onFocusNext($next)
