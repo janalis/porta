@@ -6,6 +6,7 @@ namespace Porta\Widget\Settings;
 
 use Porta\Config\LanguageCatalog;
 use Porta\I18n\Translator;
+use Porta\Layout\ResizableSidebar;
 use Porta\Support\IntMath;
 use Porta\Ui\ListSelection;
 use Porta\Ui\Style;
@@ -32,7 +33,7 @@ use Symfony\Component\Tui\Widget\VerticallyExpandableInterface;
  *
  * @phpstan-type Entry array{id: string|null, label: string, kind: string}
  */
-final class SettingsNavWidget extends AbstractWidget implements FocusableInterface, MenuOverlayHost, VerticallyExpandableInterface
+final class SettingsNavWidget extends AbstractWidget implements FocusableInterface, MenuOverlayHost, VerticallyExpandableInterface, ResizableSidebar
 {
     use FillsPaneTrait;
     use FocusableTrait;

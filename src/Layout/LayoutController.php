@@ -90,54 +90,28 @@ final class LayoutController
      */
     public function continueResizeDrag(MouseEvent $mouse, ?WidgetRect $treeRect, ?WidgetRect $gitLeftRect = null, ?WidgetRect $settingsLeftRect = null): bool
     {
-        // Sidebar resize: dragging the tree↔editor separator sets the sidebar width.
-        if ($this->sidebarResizing && ($mouse->isLeftDrag() || $mouse->isLeftRelease())) {
-            if (null !== $treeRect) {
-                $cols = $this->tui->getTerminal()->getColumns();
-                $this->tree->setWidth($this->clampSidebarWidth($mouse->col - $treeRect->col, $cols, 12, 0.6));
-                $this->tui->requestRender();
-                if ($mouse->isLeftRelease() && $this->tree->width() !== $this->sidebarResizeStartWidth) {
-                    $this->commitPercent($this->tree->width(), $cols, $this->sidebarWidthPercent);
-                }
-            }
-            if ($mouse->isLeftRelease()) {
-                $this->sidebarResizing = false;
-            }
-
+        // Sidebar resize: dragging a pane's separator sets that pane's width. Only
+        // one sidebar is ever armed at a time (see cancelDrags), so the first
+        // match wins and the rest fall through untouched.
+        if ($this->continueSidebarResize($mouse, $treeRect, new SidebarResize($this->tree, 12, 0.6, $this->sidebarResizeStartWidth), $this->sidebarResizing, $this->sidebarWidthPercent)) {
             return true;
         }
-
-        // Git-sidebar resize: dragging the git separator sets the left column's width.
-        if ($this->gitSidebarResizing && ($mouse->isLeftDrag() || $mouse->isLeftRelease())) {
-            if (null !== $gitLeftRect) {
-                $cols = $this->tui->getTerminal()->getColumns();
-                $this->gitSidebar->setWidth($this->clampSidebarWidth($mouse->col - $gitLeftRect->col, $cols, 30, 0.6));
-                $this->tui->requestRender();
-                if ($mouse->isLeftRelease() && $this->gitSidebar->width() !== $this->gitSidebarResizeStartWidth) {
-                    $this->commitPercent($this->gitSidebar->width(), $cols, $this->gitSidebarWidthPercent);
-                }
-            }
-            if ($mouse->isLeftRelease()) {
-                $this->gitSidebarResizing = false;
-            }
-
+        if ($this->continueSidebarResize(
+            $mouse,
+            $gitLeftRect,
+            new SidebarResize($this->gitSidebar, 30, 0.6, $this->gitSidebarResizeStartWidth),
+            $this->gitSidebarResizing,
+            $this->gitSidebarWidthPercent,
+        )) {
             return true;
         }
-
-        // Settings-sidebar resize: dragging the settings separator sets the nav width.
-        if ($this->settingsSidebarResizing && ($mouse->isLeftDrag() || $mouse->isLeftRelease())) {
-            if (null !== $settingsLeftRect) {
-                $cols = $this->tui->getTerminal()->getColumns();
-                $this->settingsSidebar->setWidth($this->clampSidebarWidth($mouse->col - $settingsLeftRect->col, $cols, 14, 0.5));
-                $this->tui->requestRender();
-                if ($mouse->isLeftRelease() && $this->settingsSidebar->width() !== $this->settingsSidebarResizeStartWidth) {
-                    $this->commitPercent($this->settingsSidebar->width(), $cols, $this->settingsSidebarWidthPercent);
-                }
-            }
-            if ($mouse->isLeftRelease()) {
-                $this->settingsSidebarResizing = false;
-            }
-
+        if ($this->continueSidebarResize(
+            $mouse,
+            $settingsLeftRect,
+            new SidebarResize($this->settingsSidebar, 14, 0.5, $this->settingsSidebarResizeStartWidth),
+            $this->settingsSidebarResizing,
+            $this->settingsSidebarWidthPercent,
+        )) {
             return true;
         }
 
@@ -158,6 +132,31 @@ final class LayoutController
         }
 
         return false;
+    }
+
+    /**
+     * Apply one armed sidebar's drag: resize on left-drag/release, persist on
+     * release, and disarm on release. $resizing and $percent are the controller's
+     * per-sidebar state, updated in place. Returns true when it consumed the event.
+     */
+    private function continueSidebarResize(MouseEvent $mouse, ?WidgetRect $rect, SidebarResize $spec, bool &$resizing, ?int &$percent): bool
+    {
+        if (!$resizing || !($mouse->isLeftDrag() || $mouse->isLeftRelease())) {
+            return false;
+        }
+        if (null !== $rect) {
+            $cols = $this->tui->getTerminal()->getColumns();
+            $spec->sidebar->setWidth($this->clampSidebarWidth($mouse->col - $rect->col, $cols, $spec->min, $spec->ratio));
+            $this->tui->requestRender();
+            if ($mouse->isLeftRelease() && $spec->sidebar->width() !== $spec->startWidth) {
+                $this->commitPercent($spec->sidebar->width(), $cols, $percent);
+            }
+        }
+        if ($mouse->isLeftRelease()) {
+            $resizing = false;
+        }
+
+        return true;
     }
 
     /**

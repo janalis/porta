@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Porta\Widget;
 
+use Porta\Layout\ResizableSidebar;
 use Porta\Support\IntMath;
 use Porta\Ui\ListNavigation;
 use Porta\Ui\ListSelection;
@@ -22,7 +23,7 @@ use Symfony\Component\Tui\Widget\VerticallyExpandableInterface;
 /**
  * Project file tree with lazy directory expansion.
  */
-final class FileTreeWidget extends AbstractWidget implements FocusableInterface, MenuOverlayHost, VerticallyExpandableInterface
+final class FileTreeWidget extends AbstractWidget implements FocusableInterface, MenuOverlayHost, VerticallyExpandableInterface, ResizableSidebar
 {
     use FillsPaneTrait;
     use FocusableTrait;

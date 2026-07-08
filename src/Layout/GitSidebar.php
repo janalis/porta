@@ -14,7 +14,7 @@ use Porta\Widget\Git\HistoryListWidget;
  * each render their own width, so a drag on the git separator fans the new
  * width out to all of them (see {@see LayoutController}).
  */
-final readonly class GitSidebar
+final readonly class GitSidebar implements ResizableSidebar
 {
     public function __construct(
         private GitTabsWidget $tabs,
