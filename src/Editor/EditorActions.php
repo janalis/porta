@@ -394,11 +394,11 @@ final class EditorActions
 
                 return;
             case 'copy':
-                $this->copySelection(cut: false);
+                $this->copySelection();
 
                 return;
             case 'cut':
-                $this->copySelection(cut: true);
+                $this->cutSelection();
 
                 return;
             case 'paste':
@@ -499,19 +499,31 @@ final class EditorActions
         }
     }
 
-    private function copySelection(bool $cut): void
+    private function copySelection(): void
+    {
+        if ($this->captureSelection()) {
+            ($this->invalidate)();
+        }
+    }
+
+    private function cutSelection(): void
+    {
+        if ($this->captureSelection()) {
+            $this->document->deleteSelection();
+            ($this->notifyChange)();
+        }
+    }
+
+    /** Copy the current selection to the clipboard; false when nothing is selected. */
+    private function captureSelection(): bool
     {
         $doc = $this->document;
         if (!$doc->hasSelection()) {
-            return;
+            return false;
         }
         $this->clipboard = $doc->getSelectedText();
         ($this->fireCopy)($this->clipboard);
-        if ($cut) {
-            $doc->deleteSelection();
-            ($this->notifyChange)();
-        } else {
-            ($this->invalidate)();
-        }
+
+        return true;
     }
 }

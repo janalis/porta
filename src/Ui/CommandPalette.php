@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Porta\Ui;
 
+use Porta\Widget\ResultsPanelFields;
 use Porta\Widget\ResultsPanelWidget;
 use Symfony\Component\Tui\Tui;
 
@@ -32,7 +33,7 @@ final class CommandPalette
     public function open(array $commands): void
     {
         $this->commands = $commands;
-        $this->resultsPanel->open('Find Action', withQuery: true);
+        $this->resultsPanel->open('Find Action', ResultsPanelFields::queryOnly());
         $this->filter('');
         $this->tui->setFocus($this->resultsPanel);
         $this->tui->requestRender();

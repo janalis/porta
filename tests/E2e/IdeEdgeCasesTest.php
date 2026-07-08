@@ -7,6 +7,7 @@ namespace Porta\Tests\E2e;
 use PHPUnit\Framework\TestCase;
 use Porta\Config\IdeConfig;
 use Porta\Ide;
+use Porta\Widget\ResultsPanelFields;
 use Porta\Tests\Support\TempProject;
 use Revolt\EventLoop;
 use Symfony\Component\Tui\Ansi\AnsiUtils;
@@ -4914,7 +4915,7 @@ final class IdeEdgeCasesTest extends TestCase
             [
                 200 => function ($tui, $terminal, $ide): void {
                     $results = $tui->getById('results');
-                    $results->open('Find in Project', withQuery: true);
+                    $results->open('Find in Project', ResultsPanelFields::queryOnly());
                     $results->setResults([
                         ['path' => 'b.php', 'line' => 0, 'text' => 'one'],
                         ['path' => 'c.php', 'line' => 0, 'text' => 'two'],

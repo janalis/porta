@@ -99,12 +99,12 @@ final class ResultsPanelWidget extends OverlayWidget implements FocusableInterfa
         return $this;
     }
 
-    public function open(string $title, bool $withQuery, bool $withOptions = false, bool $withReplace = false): void
+    public function open(string $title, ResultsPanelFields $fields): void
     {
         $this->open = true;
-        $this->withQuery = $withQuery;
-        $this->withOptions = $withOptions;
-        $this->withReplace = $withReplace;
+        $this->withQuery = $fields->query;
+        $this->withOptions = $fields->options;
+        $this->withReplace = $fields->replace;
         $this->activeField = 'query';
         $this->title = $title;
         $this->query->clear();

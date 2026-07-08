@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Porta\Tests\Unit\Widget;
 
 use PHPUnit\Framework\TestCase;
+use Porta\Widget\ResultsPanelFields;
 use Porta\Widget\ResultsPanelWidget;
 use Symfony\Component\Tui\Ansi\AnsiUtils;
 use Symfony\Component\Tui\Render\RenderContext;
@@ -37,7 +38,7 @@ final class ResultsPanelWidgetTest extends TestCase
         $panel->onQueryChanged(function (string $q) use (&$queries): void {
             $queries[] = $q;
         });
-        $panel->open('Find in Project', withQuery: true);
+        $panel->open('Find in Project', ResultsPanelFields::queryOnly());
 
         $panel->handleInput('a');
         $panel->handleInput('b');
@@ -60,7 +61,7 @@ final class ResultsPanelWidgetTest extends TestCase
         $panel->onToggleOption(function (string $name) use (&$toggled): void {
             $toggled[] = $name;
         });
-        $panel->open('Find in Project', withQuery: true, withOptions: true);
+        $panel->open('Find in Project', new ResultsPanelFields(query: true, options: true));
 
         $panel->handleInput("\x1br"); // alt+r regex
         $panel->handleInput("\x1bc"); // alt+c case
@@ -85,7 +86,7 @@ final class ResultsPanelWidgetTest extends TestCase
         $panel->onToggleOption(function () use (&$fired): void {
             $fired = true;
         });
-        $panel->open('Find in Project', withQuery: true); // withOptions defaults to false
+        $panel->open('Find in Project', ResultsPanelFields::queryOnly()); // withOptions defaults to false
 
         $panel->handleInput("\x1br"); // alt+r has no effect here
         $this->assertFalse($fired);
@@ -105,7 +106,7 @@ final class ResultsPanelWidgetTest extends TestCase
         $panel->onReplaceAll(function (string $r) use (&$replaced): void {
             $replaced = $r;
         });
-        $panel->open('Find in Project', withQuery: true, withOptions: true, withReplace: true);
+        $panel->open('Find in Project', ResultsPanelFields::fullSearch());
 
         // Typing goes to the query field first.
         $panel->handleInput('a');
@@ -138,7 +139,7 @@ final class ResultsPanelWidgetTest extends TestCase
         $panel->onQueryChanged(function (string $q) use (&$queries): void {
             $queries[] = $q;
         });
-        $panel->open('Usages', withQuery: false);
+        $panel->open('Usages', ResultsPanelFields::resultsOnly());
         $panel->setResults($this->results(2));
 
         $panel->handleInput('x');
@@ -152,7 +153,7 @@ final class ResultsPanelWidgetTest extends TestCase
         $panel->onJump(function (string $path, int $line) use (&$jumped): void {
             $jumped = [$path, $line];
         });
-        $panel->open('Usages', withQuery: false);
+        $panel->open('Usages', ResultsPanelFields::resultsOnly());
         $panel->setResults($this->results(3));
 
         $panel->handleInput("\x1b[B"); // down to second
@@ -169,7 +170,7 @@ final class ResultsPanelWidgetTest extends TestCase
         $panel->onJump(function () use (&$jumped): void {
             $jumped = true;
         });
-        $panel->open('Usages', withQuery: false);
+        $panel->open('Usages', ResultsPanelFields::resultsOnly());
 
         $panel->handleInput("\r");
         $this->assertFalse($jumped);
@@ -180,7 +181,7 @@ final class ResultsPanelWidgetTest extends TestCase
     {
         $panel = new ResultsPanelWidget();
         $panel->setFocused(true);
-        $panel->open('Find in Project', withQuery: true);
+        $panel->open('Find in Project', ResultsPanelFields::queryOnly());
         $panel->setResults($this->results(25));
 
         for ($i = 0; $i < 15; ++$i) {
@@ -200,7 +201,7 @@ final class ResultsPanelWidgetTest extends TestCase
     public function testNoResultsRowShownForNonEmptyQuery(): void
     {
         $panel = new ResultsPanelWidget();
-        $panel->open('Find in Project', withQuery: true);
+        $panel->open('Find in Project', ResultsPanelFields::queryOnly());
         $panel->handleInput('q');
         $panel->setResults([]);
 
@@ -213,7 +214,7 @@ final class ResultsPanelWidgetTest extends TestCase
     {
         $panel = new ResultsPanelWidget();
         $panel->setFocused(false);
-        $panel->open('Usages', withQuery: false);
+        $panel->open('Usages', ResultsPanelFields::resultsOnly());
         $panel->setResults($this->results(2));
 
         $lines = $panel->render(new RenderContext(44, 12));
@@ -230,7 +231,7 @@ final class ResultsPanelWidgetTest extends TestCase
         $panel->onQueryChanged(function (string $q) use (&$queries): void {
             $queries[] = $q;
         });
-        $panel->open('X', withQuery: true);
+        $panel->open('X', ResultsPanelFields::queryOnly());
         $panel->onInput(static fn (string $data): bool => 'Z' === $data);
 
         $panel->handleInput('Z');
@@ -244,7 +245,7 @@ final class ResultsPanelWidgetTest extends TestCase
         $panel->onJump(function (string $path, int $line) use (&$jumped): void {
             $jumped = [$path, $line];
         });
-        $panel->open('Usages', withQuery: false);
+        $panel->open('Usages', ResultsPanelFields::resultsOnly());
         $panel->setResults($this->results(3));
         $panel->render(new RenderContext(60, 12)); // establish geometry (scroll = 0)
 
@@ -260,7 +261,7 @@ final class ResultsPanelWidgetTest extends TestCase
         $panel->onJump(function (string $path, int $line) use (&$jumped): void {
             $jumped = [$path, $line];
         });
-        $panel->open('Find in Project', withQuery: true, withReplace: true);
+        $panel->open('Find in Project', new ResultsPanelFields(query: true, replace: true));
         $panel->setResults($this->results(3));
         $panel->render(new RenderContext(80, 12));
 
@@ -276,7 +277,7 @@ final class ResultsPanelWidgetTest extends TestCase
         $panel->onJump(function () use (&$jumped): void {
             $jumped = true;
         });
-        $panel->open('Usages', withQuery: false);
+        $panel->open('Usages', ResultsPanelFields::resultsOnly());
         $panel->setResults($this->results(2));
         $panel->render(new RenderContext(60, 12));
 
@@ -293,7 +294,7 @@ final class ResultsPanelWidgetTest extends TestCase
         $panel->onToggleOption(function (string $name) use (&$toggled): void {
             $toggled[] = $name;
         });
-        $panel->open('Find in Project', withQuery: true, withOptions: true);
+        $panel->open('Find in Project', new ResultsPanelFields(query: true, options: true));
         $panel->render(new RenderContext(80, 12));
 
         // Unfocused header ' Find in Project: ' (18) + ' 0 results' (10) = col 28;
@@ -308,7 +309,7 @@ final class ResultsPanelWidgetTest extends TestCase
     public function testHoverRowTracksPointer(): void
     {
         $panel = new ResultsPanelWidget();
-        $panel->open('Usages', withQuery: false);
+        $panel->open('Usages', ResultsPanelFields::resultsOnly());
         $panel->setResults($this->results(5));
         $panel->render(new RenderContext(60, 12));
 
@@ -320,7 +321,7 @@ final class ResultsPanelWidgetTest extends TestCase
     public function testSetVisibleRowsLimitsRenderedResultRows(): void
     {
         $panel = new ResultsPanelWidget();
-        $panel->open('Usages', withQuery: false);
+        $panel->open('Usages', ResultsPanelFields::resultsOnly());
         $panel->setResults($this->results(10));
 
         $panel->setVisibleRows(3);
@@ -336,7 +337,7 @@ final class ResultsPanelWidgetTest extends TestCase
         $panel->onClose(function () use (&$closed): void {
             $closed = true;
         });
-        $panel->open('X', withQuery: true);
+        $panel->open('X', ResultsPanelFields::queryOnly());
 
         $panel->handleInput("\x1b");
         $this->assertTrue($closed);

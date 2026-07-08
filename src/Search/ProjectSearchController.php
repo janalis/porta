@@ -4,10 +4,11 @@ declare(strict_types=1);
 
 namespace Porta\Search;
 
-use Porta\I18n\Translator;
 use Porta\Editor\BufferManager;
 use Porta\Editor\Document;
+use Porta\I18n\Translator;
 use Porta\Widget\CodeEditorWidget;
+use Porta\Widget\ResultsPanelFields;
 use Porta\Widget\ResultsPanelWidget;
 use Porta\Widget\StatusBarWidget;
 use Symfony\Component\Filesystem\Filesystem;
@@ -49,7 +50,7 @@ final class ProjectSearchController
         $this->searchOptions = new SearchOptions();
         $this->lastSearchQuery = '';
         $this->lastSearchResults = [];
-        $this->resultsPanel->open($this->translator->trans('Find in Project'), withQuery: true, withOptions: true, withReplace: true);
+        $this->resultsPanel->open($this->translator->trans('Find in Project'), ResultsPanelFields::fullSearch());
         $this->resultsPanel->setOptions($this->searchOptions->panelState());
         $this->tui->setFocus($this->resultsPanel);
         $this->tui->requestRender();
@@ -115,9 +116,11 @@ final class ProjectSearchController
             }
         }
 
-        $this->statusBar->flash(1 === $touched
-            ? $this->translator->trans('Replaced in %count% file', ['%count%' => $touched])
-            : $this->translator->trans('Replaced in %count% files', ['%count%' => $touched]));
+        $this->statusBar->flash(
+            1 === $touched
+                ? $this->translator->trans('Replaced in %count% file', ['%count%' => $touched])
+                : $this->translator->trans('Replaced in %count% files', ['%count%' => $touched]),
+        );
         $this->resultsPanel->close();
         $this->tui->setFocus($this->editor);
         $this->tui->requestRender();

@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Porta\Ui;
 
 use Porta\Widget\CodeEditorWidget;
+use Porta\Widget\ResultsPanelFields;
 use Porta\Widget\ResultsPanelWidget;
 use Symfony\Component\Tui\Tui;
 
@@ -45,7 +46,7 @@ final class PanelManager
     public function openQuery(ResultsPanelMode $mode, string $title): void
     {
         $this->mode = $mode;
-        $this->panel->open($title, withQuery: true);
+        $this->panel->open($title, ResultsPanelFields::queryOnly());
         $this->tui->setFocus($this->panel);
         $this->tui->requestRender();
     }
@@ -58,7 +59,7 @@ final class PanelManager
     public function showList(ResultsPanelMode $mode, string $title, array $rows): void
     {
         $this->mode = $mode;
-        $this->panel->open($title, withQuery: false);
+        $this->panel->open($title, ResultsPanelFields::resultsOnly());
         $this->panel->setResults($rows);
         $this->tui->setFocus($this->panel);
         $this->tui->requestRender();
