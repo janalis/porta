@@ -35,7 +35,6 @@ use Porta\Input\MouseEvent;
 use Porta\Input\MouseRouter;
 use Porta\Input\OverlayPanels;
 use Porta\Input\SettingsMouseRouter;
-use Porta\Layout\GitSidebar;
 use Porta\Layout\LayoutController;
 use Porta\Lsp\CompletionController;
 use Porta\Lsp\LspMapper;
@@ -802,7 +801,6 @@ final class Ide
     /** The resize/layout controller, the menu/context overlay compositor and the tree operations. */
     private function buildLayoutAndOverlay(): void
     {
-        $this->container->set(GitSidebar::class, new GitSidebar($this->gitTabs, $this->gitChanges, $this->gitCommitBox, $this->gitHistory));
         $this->layout = $this->service(LayoutController::class);
         $this->overlay = new MenuOverlayController(
             $this->renderer,
@@ -937,16 +935,11 @@ final class Ide
 
     private function buildGitView(): void
     {
-        $this->gitChanges = new ChangesListWidget($this->translator);
-        $this->gitChanges->setId('git-changes')->setStyle(new Style(flex: 0));
-        $this->gitDiff = new DiffViewWidget($this->translator);
-        $this->gitDiff->setId('git-diff')->setStyle(new Style(flex: 1));
-        $this->gitCommitBox = new CommitBoxWidget($this->translator);
-        $this->gitCommitBox->setId('git-commit');
-        $this->gitHistory = new HistoryListWidget($this->translator);
-        $this->gitHistory->setId('git-history');
-        $this->gitTabs = new GitTabsWidget($this->translator);
-        $this->gitTabs->setId('git-tabs')->setStyle(new Style(flex: 0));
+        $this->gitChanges = $this->service(ChangesListWidget::class);
+        $this->gitDiff = $this->service(DiffViewWidget::class);
+        $this->gitCommitBox = $this->service(CommitBoxWidget::class);
+        $this->gitHistory = $this->service(HistoryListWidget::class);
+        $this->gitTabs = $this->service(GitTabsWidget::class);
         $gitLeft = new ContainerWidget();
         $gitLeft->setId('git-left');
         $gitLeft->setStyle(new Style(flex: 0));

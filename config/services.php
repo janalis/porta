@@ -18,10 +18,15 @@ use Porta\Lsp\WorkspaceEditor;
 use Porta\Ui\CommandPalette;
 use Porta\Ui\Notifier;
 use Porta\Ui\PanelManager;
-use Porta\Widget\Settings\SettingsNavWidget;
 use Porta\Widget\CodeEditorWidget;
 use Porta\Widget\FileTreeWidget;
+use Porta\Widget\Git\ChangesListWidget;
+use Porta\Widget\Git\CommitBoxWidget;
+use Porta\Widget\Git\DiffViewWidget;
+use Porta\Widget\Git\GitTabsWidget;
+use Porta\Widget\Git\HistoryListWidget;
 use Porta\Widget\ResultsPanelWidget;
+use Porta\Widget\Settings\SettingsNavWidget;
 use Porta\Widget\StatusBarWidget;
 use Porta\Widget\TerminalPanelWidget;
 use Symfony\Component\DependencyInjection\Loader\Configurator\ContainerConfigurator;
@@ -45,7 +50,8 @@ return static function (ContainerConfigurator $container): void {
     // pruning the ~137 non-service classes (closure-wired controllers, DTOs,
     // value objects, per-buffer objects) that register but nothing public
     // references. Making defaults public would keep them all and fail autowiring.
-    $services->defaults()
+    $services
+        ->defaults()
         ->autowire()
         ->autoconfigure()
         ->bind('$rootDir', param('porta.root_dir'))
@@ -54,7 +60,8 @@ return static function (ContainerConfigurator $container): void {
     // Autoregister every Porta\ class. Only the orchestrator and the container
     // factory are excluded; everything else that isn't a real service registers
     // private and is pruned at compile.
-    $services->load('Porta\\', '../src/*')
+    $services
+        ->load('Porta\\', '../src/*')
         ->exclude([
             '../src/Ide.php',
             '../src/Container/',
@@ -88,13 +95,38 @@ return static function (ContainerConfigurator $container): void {
     $services->set(StatusBarWidget::class)->public()->call('setId', ['status']);
     $services->set(ResultsPanelWidget::class)->public()->call('setId', ['results']);
     $services->set(TerminalPanelWidget::class)->public()->call('setId', ['terminal']);
-    $services->set(FileTreeWidget::class)->public()->call('setId', ['tree'])->call('setStyle', [inline_service(Style::class)->args(['$flex' => 0])]);
+    $services
+        ->set(FileTreeWidget::class)
+        ->public()
+        ->call('setId', ['tree'])
+        ->call('setStyle', [inline_service(Style::class)->args(['$flex' => 0])]);
     $services->set(Notifier::class)->public();
 
-    // Synthetic infrastructure: external (Renderer/Tui) or closure/composite-wired
-    // objects the container can't build. Ide constructs these and ->set()s the
-    // instances after boot; declared here so services can depend on them by type.
-    foreach ([Renderer::class, Tui::class, LspSessionPool::class, SettingsNavWidget::class, GitSidebar::class] as $syntheticId) {
+    // Git-view widgets (each takes the Translator). GitSidebar autowires from the
+    // four it fans a width across; Ide does the git-pane tree assembly.
+    $services
+        ->set(ChangesListWidget::class)
+        ->public()
+        ->call('setId', ['git-changes'])
+        ->call('setStyle', [inline_service(Style::class)->args(['$flex' => 0])]);
+    $services
+        ->set(DiffViewWidget::class)
+        ->public()
+        ->call('setId', ['git-diff'])
+        ->call('setStyle', [inline_service(Style::class)->args(['$flex' => 1])]);
+    $services->set(CommitBoxWidget::class)->public()->call('setId', ['git-commit']);
+    $services->set(HistoryListWidget::class)->public()->call('setId', ['git-history']);
+    $services
+        ->set(GitTabsWidget::class)
+        ->public()
+        ->call('setId', ['git-tabs'])
+        ->call('setStyle', [inline_service(Style::class)->args(['$flex' => 0])]);
+    $services->set(GitSidebar::class)->public();
+
+    // Synthetic infrastructure: external (Renderer/Tui) or closure-wired objects
+    // the container can't build. Ide constructs these and ->set()s the instances
+    // after boot; declared here so services can depend on them by type.
+    foreach ([Renderer::class, Tui::class, LspSessionPool::class, SettingsNavWidget::class] as $syntheticId) {
         $services->set($syntheticId)->synthetic();
     }
 };
