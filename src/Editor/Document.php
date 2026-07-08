@@ -13,7 +13,7 @@ use Porta\Support\IntMath;
  * Lines are stored without trailing newlines. The cursor column is a byte
  * offset into the current line; movement helpers keep it on UTF-8 character
  * boundaries. Tabs are preserved verbatim; display columns are computed with
- * tab stops of {@see $tabWidth} cells (seeded from {@see self::TAB_SIZE}, and
+ * tab stops from the {@see IndentModel} (seeded from {@see self::TAB_SIZE}, and
  * overridable per file via {@see applyEditorConfig()}) so a file's original
  * indentation round-trips through load and save unchanged.
  */
@@ -28,14 +28,8 @@ final class Document
     private int $version = 1;
     private bool $dirty = false;
 
-    /** Whether the file's leading indentation is tabs (vs spaces). */
-    private bool $usesTabs = false;
-
-    /** Spaces inserted per indent level (EditorConfig indent_size); seeded from {@see self::TAB_SIZE}. */
-    private int $indentSize = self::TAB_SIZE;
-
-    /** Display columns per hard tab (EditorConfig tab_width); seeded from {@see self::TAB_SIZE}. */
-    private int $tabWidth = self::TAB_SIZE;
+    /** Tabs-vs-spaces, indent size and tab width for this file. */
+    private readonly IndentModel $indent;
 
     /** Byte/UTF-16/display-column conversions + the tab-expanded visual-line cache. */
     private readonly PositionMapper $positionMapper;
@@ -87,7 +81,7 @@ final class Document
         $text = str_replace(["\r\n", "\r"], "\n", $text);
         $this->lines = '' === $text ? [''] : explode("\n", $text);
         $this->savedText = implode("\n", $this->lines);
-        $this->usesTabs = $this->detectTabIndentation();
+        $this->indent = new IndentModel($this->detectTabIndentation(), self::TAB_SIZE, self::TAB_SIZE);
         $this->history = new UndoHistory();
         $this->positionMapper = new PositionMapper($this);
     }
@@ -125,65 +119,52 @@ final class Document
 
     public function usesTabs(): bool
     {
-        return $this->usesTabs;
+        return $this->indent->usesTabs();
     }
 
     /**
-     * Force the effective indentation: the unit (tabs vs spaces) and its size —
-     * one indent level is $size spaces, or one hard tab displayed $size columns
-     * wide. Used by the editor's per-language indent settings, which win over
-     * auto-detection and `.editorconfig`. Invalidates the tab-expansion cache.
+     * Force the effective indentation (tabs vs spaces and its size). Used by the
+     * editor's per-language indent settings, which win over auto-detection and
+     * `.editorconfig`. Invalidates the tab-expansion cache.
      */
     public function setIndent(bool $usesTabs, int $size): void
     {
-        $this->usesTabs = $usesTabs;
-        $this->indentSize = max(1, $size);
-        $this->tabWidth = max(1, $size);
+        $this->indent->set($usesTabs, $size);
         $this->positionMapper->invalidateVisualLines();
     }
 
-    /** The indentation unit for one level: a tab, or {@see $indentSize} spaces. */
+    /** The indentation unit for one level: a tab, or {@see IndentModel} spaces. */
     public function indentUnit(): string
     {
-        return $this->usesTabs ? "\t" : str_repeat(' ', $this->indentSize);
+        return $this->indent->unit();
     }
 
     /** Spaces per indent level (EditorConfig indent_size). */
     public function indentSize(): int
     {
-        return $this->indentSize;
+        return $this->indent->indentSize();
     }
 
     /** Display columns per hard tab (EditorConfig tab_width). */
     public function tabWidth(): int
     {
-        return $this->tabWidth;
+        return $this->indent->tabWidth();
     }
 
     /** Display width of one indent level: the tab width for tabbed files, else the indent size. */
     public function indentDisplayWidth(): int
     {
-        return $this->usesTabs ? $this->tabWidth : $this->indentSize;
+        return $this->indent->displayWidth();
     }
 
     /**
-     * Override indentation/save defaults from a resolved `.editorconfig`. Only
-     * properties the config actually specified take effect, so a file without a
-     * matching `.editorconfig` keeps its auto-detected tabs/spaces and default
-     * size. Invalidates the tab-expansion cache so the next render reflects a
-     * changed tab width.
+     * Override indentation/save defaults from a resolved `.editorconfig`.
+     * Invalidates the tab-expansion cache so the next render reflects a changed
+     * tab width.
      */
     public function applyEditorConfig(ResolvedEditorConfig $config): void
     {
-        if (null !== $config->usesTabs) {
-            $this->usesTabs = $config->usesTabs;
-        }
-        if (null !== $config->indentSize) {
-            $this->indentSize = $config->indentSize;
-        }
-        if (null !== $config->tabWidth) {
-            $this->tabWidth = $config->tabWidth;
-        }
+        $this->indent->applyEditorConfig($config);
         $this->positionMapper->invalidateVisualLines();
     }
 
@@ -813,7 +794,7 @@ final class Document
 
         $this->goalCol ??= $this->getCursorDisplayCol();
         --$this->cursorLine;
-        $this->cursorCol = TextMetrics::byteColForDisplayCol($this->lines[$this->cursorLine], $this->goalCol, $this->tabWidth);
+        $this->cursorCol = TextMetrics::byteColForDisplayCol($this->lines[$this->cursorLine], $this->goalCol, $this->tabWidth());
 
         return true;
     }
@@ -834,7 +815,7 @@ final class Document
 
         $this->goalCol ??= $this->getCursorDisplayCol();
         ++$this->cursorLine;
-        $this->cursorCol = TextMetrics::byteColForDisplayCol($this->lines[$this->cursorLine], $this->goalCol, $this->tabWidth);
+        $this->cursorCol = TextMetrics::byteColForDisplayCol($this->lines[$this->cursorLine], $this->goalCol, $this->tabWidth());
 
         return true;
     }
