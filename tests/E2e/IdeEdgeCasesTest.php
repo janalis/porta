@@ -3521,6 +3521,44 @@ final class IdeEdgeCasesTest extends TestCase
         $this->assertSame('my-ls --stdio', IdeConfig::load($project->dir)->lspServers['php'], 'the PHP LSP server persisted');
     }
 
+    public function testThemeSwitchLiveRecolorsChromeAndSyntax(): void
+    {
+        putenv('PATH=/nonexistent'); // no git/LSP subprocesses needed
+        $project = new TempProject(['a.php' => "<?php\nreturn 1;\n"]);
+
+        $terminal = $this->runIde(
+            $project,
+            $project->path('a.php'),
+            [
+                300 => function ($tui, $terminal): void {
+                    $tui->tick();
+                    // Dark theme baseline: the `return` keyword is the dark KEYWORD color.
+                    $this->assertStringContainsString("\x1b[38;5;176m", $terminal->getOutput(), 'dark syntax at boot');
+                    $terminal->clearOutput(); // capture only the frames rendered after the switch
+                },
+                500 => function ($tui, $terminal, $ide): void {
+                    // Change the theme setting live, as the settings form would.
+                    new \ReflectionProperty($ide, 'settings')
+                        ->getValue($ide)
+                        ->changeSetting('theme', 'light');
+                    $tui->tick();
+                },
+                700 => function ($tui, $terminal): void {
+                    $tui->tick();
+                    $out = $terminal->getOutput(); // only post-switch frames (cleared at step 300)
+                    // The buffer re-highlighted: light KEYWORD color in, dark gone.
+                    $this->assertStringContainsString("\x1b[38;5;91m", $out, 'light syntax after the switch');
+                    $this->assertStringNotContainsString("\x1b[38;5;176m", $out, 'no dark syntax remains');
+                    // Chrome recolored: light header bar in, dark gone.
+                    $this->assertStringContainsString("\x1b[48;5;253m", $out, 'light header bar present');
+                    $this->assertStringNotContainsString("\x1b[48;5;237m", $out, 'no dark header bar remains');
+                },
+            ],
+        );
+
+        $this->assertSame('light', IdeConfig::load($project->dir)->settings['theme'], 'the theme persisted');
+    }
+
     public function testSettingsSidebarResizesAndPersists(): void
     {
         putenv('PATH=/nonexistent');

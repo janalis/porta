@@ -23,6 +23,8 @@ use Porta\Git\GitInfo;
 use Porta\Git\GitPanes;
 use Porta\Git\GitViewCallbacks;
 use Porta\Git\GitViewController;
+use Porta\Highlight\SwitchableTerminalTheme;
+use Porta\Highlight\TerminalThemeFactory;
 use Porta\History\LocalHistory;
 use Porta\History\LocalHistoryController;
 use Porta\History\SessionStore;
@@ -60,8 +62,10 @@ use Porta\Ui\CommandPalette;
 use Porta\Ui\ContextMenuBuilder;
 use Porta\Ui\MenuModel;
 use Porta\Ui\Notifier;
+use Porta\Ui\PaletteFactory;
 use Porta\Ui\PanelManager;
 use Porta\Ui\ResultsPanelMode;
+use Porta\Ui\SwitchablePalette;
 use Porta\Widget\BreadcrumbsWidget;
 use Porta\Widget\BufferCallbacks;
 use Porta\Widget\CodeEditorWidget;
@@ -182,6 +186,8 @@ final class Ide
     private SettingsLanguageController $settingsLanguages;
     private BufferService $bufferService;
     private MouseRouter $mouseRouter;
+    private readonly SwitchablePalette $palette;
+    private readonly SwitchableTerminalTheme $syntaxTheme;
 
     public function __construct(
         private readonly string $rootDir,
@@ -191,11 +197,15 @@ final class Ide
         private readonly ?int $initialLine = null,
         private readonly ?string $lspCommand = null,
         private readonly bool $lspDisabled = false,
-        bool $ansi = true,
+        private readonly bool $ansi = true,
     ) {
         $config = IdeConfig::load($this->rootDir);
-        $this->container = new IdeContainerFactory()->build($this->rootDir, (string) ($config->settings['language'] ?? 'en'), $ansi, (string) ($config->settings['theme'] ?? 'dark'));
+        $this->container = new IdeContainerFactory()->build($this->rootDir, (string) ($config->settings['language'] ?? 'en'), $this->ansi, (string) ($config->settings['theme'] ?? 'dark'));
         $this->translator = $this->service(Translator::class);
+        // The live-swappable theme holders (see applyTheme): widgets and buffers
+        // hold these same instances via the Palette/TerminalTheme aliases.
+        $this->palette = $this->service(SwitchablePalette::class);
+        $this->syntaxTheme = $this->service(SwitchableTerminalTheme::class);
         $keybindings = new Keybindings(array_merge(ActionCatalog::ideDefaults(), $config->keymap));
         $this->keybindings = $keybindings;
 
@@ -250,7 +260,15 @@ final class Ide
         $this->wireStatusBar();
 
         // Apply persisted settings.
-        $this->settings = new SettingsController($config->settings, $this->editor, $this->notifier, $this->rootDir, $this->translator, fn (string $locale) => $this->applyLanguage($locale));
+        $this->settings = new SettingsController(
+            $config->settings,
+            $this->editor,
+            $this->notifier,
+            $this->rootDir,
+            $this->translator,
+            fn (string $locale) => $this->applyLanguage($locale),
+            fn (string $theme) => $this->applyTheme($theme),
+        );
         $this->settings->applyAll();
         $this->settingsLanguages = new SettingsLanguageController($this->editor, $this->notifier, $this->rootDir, $this->translator, $config->languages);
         $this->settingsLanguages->applyToEditor();
@@ -1076,6 +1094,30 @@ final class Ide
         $this->applyDirection();
         // Widgets cache their rendered lines; clear the whole tree so the next
         // frame rebuilds every label under the new locale.
+        foreach ([$this->menuBar, $this->main, $this->statusBar, $this->goToFile, $this->findBar, $this->resultsPanel, $this->terminalPanel, $this->contextMenu] as $widget) {
+            $this->invalidateTree($widget);
+        }
+        $this->tui->requestRender();
+    }
+
+    /**
+     * Live theme switch: swap the shared palette + syntax-theme holders every
+     * widget and buffer holds, then flush the colored caches so the next frame
+     * repaints. Chrome re-renders from the tree clear; buffers and the git diff
+     * cache colored output by content, so those are busted explicitly.
+     */
+    private function applyTheme(string $theme): void
+    {
+        $this->palette->switchTo(PaletteFactory::create($this->ansi, $theme));
+        $this->syntaxTheme->switchTo(TerminalThemeFactory::create($this->ansi, $theme));
+        // Existing highlighters baked the old theme at construction, so rebuild
+        // them (the diff view re-highlights its shown hunks in the same step);
+        // buffers opened later pick up the new theme from the swapped holder.
+        foreach ($this->buffers->all() as $buffer) {
+            $buffer->highlighter->refreshTheme();
+        }
+        $this->gitDiff->refreshTheme();
+        $this->rebuildMenu(); // the menu bakes its colored labels at setMenus time
         foreach ([$this->menuBar, $this->main, $this->statusBar, $this->goToFile, $this->findBar, $this->resultsPanel, $this->terminalPanel, $this->contextMenu] as $widget) {
             $this->invalidateTree($widget);
         }

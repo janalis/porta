@@ -34,6 +34,9 @@ final class SettingsControllerTest extends TestCase
     /** @var list<string> */
     private array $languageChanges = [];
 
+    /** @var list<string> */
+    private array $themeChanges = [];
+
     /**
      * @param array<string, int|bool|string> $settings
      */
@@ -41,10 +44,21 @@ final class SettingsControllerTest extends TestCase
     {
         $tui = new Tui(terminal: new VirtualTerminal(columns: 80, rows: 24));
         $this->languageChanges = [];
+        $this->themeChanges = [];
 
-        return new SettingsController($settings + IdeConfig::DEFAULT_SETTINGS, $editor, new Notifier($status, $tui), $rootDir, new Translator('en'), function (string $locale): void {
-            $this->languageChanges[] = $locale;
-        });
+        return new SettingsController(
+            $settings + IdeConfig::DEFAULT_SETTINGS,
+            $editor,
+            new Notifier($status, $tui),
+            $rootDir,
+            new Translator('en'),
+            function (string $locale): void {
+                $this->languageChanges[] = $locale;
+            },
+            function (string $theme): void {
+                $this->themeChanges[] = $theme;
+            },
+        );
     }
 
     private function flashText(StatusBarWidget $status): string
@@ -103,15 +117,27 @@ final class SettingsControllerTest extends TestCase
         $this->assertStringNotContainsString('restart', $this->flashText($status), 'language switches live');
     }
 
-    public function testChangingARestartSettingPersistsWithoutApplyingLive(): void
+    public function testChangingThemeFiresTheThemeHookAndPersists(): void
     {
         $project = new TempProject();
         $controller = $this->controller($project->dir, new CodeEditorWidget(), $status = new StatusBarWidget());
 
         $controller->changeSetting('theme', 'light');
 
-        $this->assertSame('light', IdeConfig::load($project->dir)->settings['theme']);
-        $this->assertStringContainsString('Theme light · applies on restart', $this->flashText($status));
+        $this->assertSame(['light'], $this->themeChanges, 'the theme hook fired live');
+        $this->assertSame('light', IdeConfig::load($project->dir)->settings['theme'], 'persisted');
+        $this->assertStringNotContainsString('restart', $this->flashText($status), 'theme switches live');
+    }
+
+    public function testChangingARestartSettingPersistsWithoutApplyingLive(): void
+    {
+        $project = new TempProject();
+        $controller = $this->controller($project->dir, new CodeEditorWidget(), $status = new StatusBarWidget());
+
+        $controller->changeSetting('editorConfig', false);
+
+        $this->assertFalse(IdeConfig::load($project->dir)->settings['editorConfig']);
+        $this->assertStringContainsString('applies on restart', $this->flashText($status));
     }
 
     public function testChangingAnUnknownSettingFlashesAndPersistsNothing(): void
@@ -144,6 +170,7 @@ final class SettingsControllerTest extends TestCase
 
         $controller->applyAll(); // must not choke on the null-apply descriptors
         $this->assertTrue($editor->hasRelativeLineNumbers());
+        $this->assertSame(['light'], $this->themeChanges, 'the theme hook applies at boot too');
     }
 
     public function testUnknownKeyFlashesInsteadOfTogglingAnything(): void

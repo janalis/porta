@@ -39,6 +39,7 @@ final class CodeHighlighter
     private const REPAIR_EVERY = 25;
 
     private Highlighter $highlighter;
+    private readonly TerminalTheme $syntaxTheme;
 
     /** @var string[] */
     private array $cache = [];
@@ -98,7 +99,8 @@ final class CodeHighlighter
      */
     public function __construct(?\Closure $parser = null, ?TerminalTheme $syntaxTheme = null)
     {
-        $this->highlighter = new Highlighter($syntaxTheme ?? new DarkTerminalTheme());
+        $this->syntaxTheme = $syntaxTheme ?? new DarkTerminalTheme();
+        $this->highlighter = new Highlighter($this->syntaxTheme);
         $this->parser = $parser ?? fn (string $content, string $language): string => $this->highlighter->parse($content, $language);
     }
 
@@ -121,6 +123,31 @@ final class CodeHighlighter
     public function getLanguage(): ?string
     {
         return $this->language;
+    }
+
+    /**
+     * Drop the memoized highlight so the next {@see highlight()} re-parses. The
+     * cache keys on the document version, not the theme, so a live theme switch
+     * must bust it explicitly to re-color already-highlighted lines.
+     */
+    public function invalidate(): void
+    {
+        $this->cacheVersion = -1;
+        $this->cache = [];
+        $this->lastRawLines = null;
+        $this->staleEdits = 0;
+    }
+
+    /**
+     * Re-color under a live theme switch. Tempest bakes the theme's escape codes
+     * when the Highlighter is constructed, so swapping the {@see SwitchableTerminalTheme}
+     * inner is not enough — the Highlighter must be rebuilt (from the same holder,
+     * which already points at the new scheme), then the cache dropped.
+     */
+    public function refreshTheme(): void
+    {
+        $this->highlighter = new Highlighter($this->syntaxTheme);
+        $this->invalidate();
     }
 
     /**

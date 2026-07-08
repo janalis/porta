@@ -255,6 +255,18 @@ final class DiffViewWidget extends AbstractWidget implements FocusableInterface,
         }
     }
 
+    /**
+     * Re-highlight the shown diff under the current theme, after a live theme
+     * switch. The pre-highlighted lines cache by content (not theme), so they
+     * must be rebuilt explicitly; the bumped version forces a fresh parse.
+     */
+    public function refreshTheme(): void
+    {
+        $this->highlighter->refreshTheme();
+        $this->highlightRows();
+        $this->invalidate();
+    }
+
     public function scrollBy(int $lines): void
     {
         $max = max(0, \count($this->rows) - max(1, $this->lastRows - 1));

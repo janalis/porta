@@ -14,9 +14,9 @@ use Porta\Widget\CodeEditorWidget;
  * the live ones) applier live in a single descriptor table, which also feeds
  * the settings screen's form rows.
  *
- * Three booleans apply live (their `apply` closure mutates the editor); the
- * rest (`editorConfig`, `theme`, `tabWidth`) are persist-only and take effect
- * next launch, flagged with a "applies on restart" note.
+ * Most settings apply live (their `apply` closure mutates the running UI);
+ * `editorConfig` alone persists and takes effect next launch, flagged with an
+ * "applies on restart" note.
  *
  * @phpstan-type Descriptor array{label: string, kind: string, restart: bool, apply: (\Closure(int|bool|string): void)|null, options?: list<string>, min?: int, max?: int}
  */
@@ -28,6 +28,7 @@ final class SettingsController
     /**
      * @param array<string, int|bool|string> $settings         resolved settings (defaults merged)
      * @param \Closure(string): void         $onLanguageChange switch the UI locale + repaint
+     * @param \Closure(string): void         $onThemeChange    switch the dark/light theme + repaint
      */
     public function __construct(
         private array $settings,
@@ -36,6 +37,7 @@ final class SettingsController
         private readonly string $rootDir,
         private readonly Translator $translator,
         \Closure $onLanguageChange,
+        \Closure $onThemeChange,
     ) {
         $this->descriptors = [
             'language' => [
@@ -54,7 +56,13 @@ final class SettingsController
             ],
             'autoPairs' => ['label' => 'Auto-pairs', 'kind' => 'bool', 'restart' => false, 'apply' => static fn (int|bool|string $v) => $editor->setAutoPairs((bool) $v)],
             'editorConfig' => ['label' => 'Respect .editorconfig', 'kind' => 'bool', 'restart' => true, 'apply' => null],
-            'theme' => ['label' => 'Theme', 'kind' => 'choice', 'restart' => true, 'apply' => null, 'options' => ['dark', 'light']],
+            'theme' => [
+                'label' => 'Theme',
+                'kind' => 'choice',
+                'restart' => false,
+                'apply' => static fn (int|bool|string $v) => $onThemeChange((string) $v),
+                'options' => ['dark', 'light'],
+            ],
         ];
     }
 

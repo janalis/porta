@@ -64,7 +64,15 @@ final class SettingsViewControllerTest extends TestCase
         $editor = new CodeEditorWidget();
         $status = new StatusBarWidget();
         $notifier = new Notifier($status, $this->tui);
-        $settings = new SettingsController(IdeConfig::DEFAULT_SETTINGS, $editor, $notifier, $this->project->dir, new Translator('en'), static function (string $locale): void {});
+        $settings = new SettingsController(
+            IdeConfig::DEFAULT_SETTINGS,
+            $editor,
+            $notifier,
+            $this->project->dir,
+            new Translator('en'),
+            static function (string $locale): void {},
+            static function (string $theme): void {},
+        );
         $keymap = new SettingsKeymapController($editor, new Keybindings([]), $notifier, $this->project->dir, new Translator('en'));
         $languages = new SettingsLanguageController($editor, $notifier, $this->project->dir, new Translator('en'), []);
         $pool = new LspSessionPool($this->project->dir, static fn (): ?string => null, new Translator('en'));

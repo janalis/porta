@@ -6,7 +6,10 @@ namespace Porta\Tests\Unit\Highlight;
 
 use PHPUnit\Framework\TestCase;
 use Porta\Highlight\CodeHighlighter;
+use Porta\Highlight\DarkTerminalTheme;
+use Porta\Highlight\LightTerminalTheme;
 use Porta\Highlight\PlainTerminalTheme;
+use Porta\Highlight\SwitchableTerminalTheme;
 use Symfony\Component\Tui\Ansi\AnsiUtils;
 
 final class CodeHighlighterTest extends TestCase
@@ -60,6 +63,35 @@ final class CodeHighlighterTest extends TestCase
         $second = $highlighter->highlight(['<?php CHANGED — but same version, cache hit'], 7);
 
         $this->assertSame($first, $second);
+    }
+
+    public function testInvalidateBustsTheCacheSoTheSameVersionReParses(): void
+    {
+        $highlighter = new CodeHighlighter();
+        $highlighter->setFile('a.php');
+
+        $first = $highlighter->highlight(['<?php $a = 1;'], 7);
+        $highlighter->invalidate();
+        $reparsed = $highlighter->highlight(['<?php $b = 2;'], 7);
+
+        $this->assertNotSame($first, $reparsed, 'invalidate forces a fresh parse at the same version');
+    }
+
+    public function testRefreshThemeRecolorsAfterASwitch(): void
+    {
+        $theme = new SwitchableTerminalTheme(new DarkTerminalTheme());
+        $highlighter = new CodeHighlighter(syntaxTheme: $theme);
+        $highlighter->setFile('a.php');
+
+        $dark = $highlighter->highlight(['<?php return 1;'], 1);
+        $this->assertStringContainsString("\x1b[38;5;176m", $dark[0], 'dark keyword');
+
+        $theme->switchTo(new LightTerminalTheme());
+        $highlighter->refreshTheme();
+        $light = $highlighter->highlight(['<?php return 1;'], 1);
+
+        $this->assertStringContainsString("\x1b[38;5;91m", $light[0], 'light keyword after refreshTheme');
+        $this->assertStringNotContainsString("\x1b[38;5;176m", $light[0], 'no dark keyword remains');
     }
 
     public function testUnknownExtensionReturnsPlainLines(): void
