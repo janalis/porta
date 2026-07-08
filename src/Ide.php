@@ -838,18 +838,11 @@ final class Ide
         $this->lsp = new LspSessionPool($this->rootDir, fn (): ?string => $this->editor->getFilePath(), $this->translator);
         $this->container->set(LspSessionPool::class, $this->lsp);
 
-        $this->tree = new FileTreeWidget($this->rootDir);
-        $this->tree->setId('tree')->setStyle(new Style(flex: 0));
-        $this->container->set(FileTreeWidget::class, $this->tree);
-        $this->editor = new CodeEditorWidget();
-        $this->editor->setId('editor');
-        $this->container->set(CodeEditorWidget::class, $this->editor);
+        $this->tree = $this->service(FileTreeWidget::class);
+        $this->editor = $this->service(CodeEditorWidget::class);
         $this->workspaceEditor = $this->service(WorkspaceEditor::class);
-        $this->statusBar = new StatusBarWidget();
-        $this->statusBar->setId('status');
-        $this->container->set(StatusBarWidget::class, $this->statusBar);
-        $this->notifier = new Notifier($this->statusBar, $this->tui);
-        $this->container->set(Notifier::class, $this->notifier);
+        $this->statusBar = $this->service(StatusBarWidget::class);
+        $this->notifier = $this->service(Notifier::class);
         $this->menuBar = new MenuBarWidget();
         $this->menuBar->setId('menu');
         $this->contextMenu = new ContextMenu();
@@ -891,12 +884,8 @@ final class Ide
         $this->goToFile->setId('goto-file');
         $this->findBar = new FindBarWidget($this->translator);
         $this->findBar->setId('find-bar');
-        $this->resultsPanel = new ResultsPanelWidget();
-        $this->resultsPanel->setId('results');
-        $this->container->set(ResultsPanelWidget::class, $this->resultsPanel);
-        $this->terminalPanel = new TerminalPanelWidget();
-        $this->terminalPanel->setId('terminal');
-        $this->container->set(TerminalPanelWidget::class, $this->terminalPanel);
+        $this->resultsPanel = $this->service(ResultsPanelWidget::class);
+        $this->terminalPanel = $this->service(TerminalPanelWidget::class);
         $this->projectSearchController = new ProjectSearchController(
             new ProjectSearch($this->rootDir),
             $this->resultsPanel,

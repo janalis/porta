@@ -26,8 +26,10 @@ use Porta\Widget\StatusBarWidget;
 use Porta\Widget\TerminalPanelWidget;
 use Symfony\Component\DependencyInjection\Loader\Configurator\ContainerConfigurator;
 use Symfony\Component\Tui\Render\Renderer;
+use Symfony\Component\Tui\Style\Style;
 use Symfony\Component\Tui\Tui;
 
+use function Symfony\Component\DependencyInjection\Loader\Configurator\inline_service;
 use function Symfony\Component\DependencyInjection\Loader\Configurator\param;
 
 /**
@@ -78,10 +80,21 @@ return static function (ContainerConfigurator $container): void {
         $services->set($publicId)->public();
     }
 
-    // Synthetic infrastructure: Ide builds these manually (they need per-instance
-    // setId/setStyle or the terminal), then ->set()s the instances after boot.
-    // Declared here so container-built controllers can depend on them by type.
-    foreach ([Renderer::class, Tui::class, Notifier::class, LspSessionPool::class, CodeEditorWidget::class, FileTreeWidget::class, StatusBarWidget::class, ResultsPanelWidget::class, TerminalPanelWidget::class, SettingsNavWidget::class, GitSidebar::class] as $syntheticId) {
+    // Singleton widgets built and configured by the container. Ide resolves each
+    // (public) and does only the tree assembly / setProvider(fn…) wiring a
+    // container can't express. Only `flex` styles appear here; the direction/gap
+    // ContainerWidgets stay hand-assembled in Ide.
+    $services->set(CodeEditorWidget::class)->public()->call('setId', ['editor']);
+    $services->set(StatusBarWidget::class)->public()->call('setId', ['status']);
+    $services->set(ResultsPanelWidget::class)->public()->call('setId', ['results']);
+    $services->set(TerminalPanelWidget::class)->public()->call('setId', ['terminal']);
+    $services->set(FileTreeWidget::class)->public()->call('setId', ['tree'])->call('setStyle', [inline_service(Style::class)->args(['$flex' => 0])]);
+    $services->set(Notifier::class)->public();
+
+    // Synthetic infrastructure: external (Renderer/Tui) or closure/composite-wired
+    // objects the container can't build. Ide constructs these and ->set()s the
+    // instances after boot; declared here so services can depend on them by type.
+    foreach ([Renderer::class, Tui::class, LspSessionPool::class, SettingsNavWidget::class, GitSidebar::class] as $syntheticId) {
         $services->set($syntheticId)->synthetic();
     }
 };
