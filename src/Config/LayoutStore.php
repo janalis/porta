@@ -24,26 +24,26 @@ final readonly class LayoutStore
         $this->fs = new Filesystem();
     }
 
-    public function save(?int $sidebarWidthPercent, ?int $bottomPanelHeightPercent, ?int $gitSidebarWidthPercent = null, ?bool $gitDiffSplit = null, ?bool $gitDiffHideWhitespace = null, ?int $settingsSidebarWidthPercent = null): bool
+    public function save(LayoutPrefs $prefs): bool
     {
         $data = [];
-        if (null !== $sidebarWidthPercent) {
-            $data['sidebarWidthPercent'] = $sidebarWidthPercent;
+        if (null !== $prefs->sidebarWidthPercent) {
+            $data['sidebarWidthPercent'] = $prefs->sidebarWidthPercent;
         }
-        if (null !== $bottomPanelHeightPercent) {
-            $data['bottomPanelHeightPercent'] = $bottomPanelHeightPercent;
+        if (null !== $prefs->bottomPanelHeightPercent) {
+            $data['bottomPanelHeightPercent'] = $prefs->bottomPanelHeightPercent;
         }
-        if (null !== $gitSidebarWidthPercent) {
-            $data['gitSidebarWidthPercent'] = $gitSidebarWidthPercent;
+        if (null !== $prefs->gitSidebarWidthPercent) {
+            $data['gitSidebarWidthPercent'] = $prefs->gitSidebarWidthPercent;
         }
-        if (null !== $settingsSidebarWidthPercent) {
-            $data['settingsSidebarWidthPercent'] = $settingsSidebarWidthPercent;
+        if (null !== $prefs->settingsSidebarWidthPercent) {
+            $data['settingsSidebarWidthPercent'] = $prefs->settingsSidebarWidthPercent;
         }
-        if (null !== $gitDiffSplit) {
-            $data['gitDiffSplit'] = $gitDiffSplit;
+        if (null !== $prefs->gitDiffSplit) {
+            $data['gitDiffSplit'] = $prefs->gitDiffSplit;
         }
-        if (null !== $gitDiffHideWhitespace) {
-            $data['gitDiffHideWhitespace'] = $gitDiffHideWhitespace;
+        if (null !== $prefs->gitDiffHideWhitespace) {
+            $data['gitDiffHideWhitespace'] = $prefs->gitDiffHideWhitespace;
         }
 
         try {
@@ -58,24 +58,22 @@ final readonly class LayoutStore
         return true;
     }
 
-    /**
-     * @return array{sidebarWidthPercent: ?int, bottomPanelHeightPercent: ?int, gitSidebarWidthPercent: ?int, gitDiffSplit: ?bool, gitDiffHideWhitespace: ?bool, settingsSidebarWidthPercent: ?int}|null null when no file exists
-     */
-    public function load(): ?array
+    /** The persisted prefs, or null when no file exists. */
+    public function load(): ?LayoutPrefs
     {
         $data = JsonFile::read($this->file);
         if (null === $data) {
             return null;
         }
 
-        return [
-            'sidebarWidthPercent' => $this->percent($data['sidebarWidthPercent'] ?? null),
-            'bottomPanelHeightPercent' => $this->percent($data['bottomPanelHeightPercent'] ?? null),
-            'gitSidebarWidthPercent' => $this->percent($data['gitSidebarWidthPercent'] ?? null),
-            'gitDiffSplit' => $this->bool($data['gitDiffSplit'] ?? null),
-            'gitDiffHideWhitespace' => $this->bool($data['gitDiffHideWhitespace'] ?? null),
-            'settingsSidebarWidthPercent' => $this->percent($data['settingsSidebarWidthPercent'] ?? null),
-        ];
+        return new LayoutPrefs(
+            sidebarWidthPercent: $this->percent($data['sidebarWidthPercent'] ?? null),
+            bottomPanelHeightPercent: $this->percent($data['bottomPanelHeightPercent'] ?? null),
+            gitSidebarWidthPercent: $this->percent($data['gitSidebarWidthPercent'] ?? null),
+            settingsSidebarWidthPercent: $this->percent($data['settingsSidebarWidthPercent'] ?? null),
+            gitDiffSplit: $this->bool($data['gitDiffSplit'] ?? null),
+            gitDiffHideWhitespace: $this->bool($data['gitDiffHideWhitespace'] ?? null),
+        );
     }
 
     private function bool(mixed $value): ?bool

@@ -22,6 +22,7 @@ use Porta\Highlight\CodeHighlighter;
 use Porta\Input\TextInput;
 use Porta\Support\ProjectPaths;
 use Porta\Widget\Overlay\OverlayHost;
+use Porta\Widget\Render\EditorPopupGeometry;
 use Porta\Widget\Render\EditorRenderer;
 use Porta\Widget\Render\LineDecorator;
 use Porta\Widget\Render\LineSpans;
@@ -993,18 +994,18 @@ final class CodeEditorWidget extends AbstractWidget implements FocusableInterfac
      *
      * @return list<string>
      */
-    private function composePopups(array $result, int $columns, int $rows, int $vScroll, int $cursorLine, int $stickyCount, int $gutterWidth, int $cursorDisplayCol, int $hScroll): array
+    private function composePopups(array $result, EditorPopupGeometry $geo): array
     {
         if (null !== $this->signatureHint) {
-            $cursorScreenRow = max(0, $this->foldModel->screenRowFor($vScroll, $cursorLine)) + $stickyCount;
-            EditorRenderer::signatureHint($result, $columns, $gutterWidth, $cursorScreenRow, $this->signatureHint);
+            $cursorScreenRow = max(0, $this->foldModel->screenRowFor($geo->vScroll, $geo->cursorLine)) + $geo->stickyCount;
+            EditorRenderer::signatureHint($result, $geo->columns, $geo->gutterWidth, $cursorScreenRow, $this->signatureHint);
         }
 
         $this->completion->setBox(null);
         if (null !== ($popup = $this->completion->popupState())) {
-            $cursorScreenRow = max(0, $this->foldModel->screenRowFor($vScroll, $cursorLine)) + $stickyCount;
-            $anchorCol = $gutterWidth + ($cursorDisplayCol - $hScroll) - mb_strwidth($this->document->getWordBeforeCursor());
-            $this->completion->setBox(EditorRenderer::completionPopup($result, $columns, $rows, $cursorScreenRow, $anchorCol, $popup['items'], $popup['selected']));
+            $cursorScreenRow = max(0, $this->foldModel->screenRowFor($geo->vScroll, $geo->cursorLine)) + $geo->stickyCount;
+            $anchorCol = $geo->gutterWidth + ($geo->cursorDisplayCol - $geo->hScroll) - mb_strwidth($this->document->getWordBeforeCursor());
+            $this->completion->setBox(EditorRenderer::completionPopup($result, $geo->columns, $geo->rows, $cursorScreenRow, $anchorCol, $popup['items'], $popup['selected']));
         }
 
         /** @var list<string> $result signatureHint() rewrites rows in place, keeping the shape */
@@ -1120,7 +1121,16 @@ final class CodeEditorWidget extends AbstractWidget implements FocusableInterfac
             $result[] = $gutter.$content.$stripe[$stickyCount + $row];
         }
 
-        $result = $this->composePopups($result, $columns, $rows, $vScroll, $cursorLine, $stickyCount, $gutterWidth, $cursorDisplayCol, $hScroll);
+        $result = $this->composePopups($result, new EditorPopupGeometry(
+            columns: $columns,
+            rows: $rows,
+            vScroll: $vScroll,
+            hScroll: $hScroll,
+            cursorLine: $cursorLine,
+            cursorDisplayCol: $cursorDisplayCol,
+            gutterWidth: $gutterWidth,
+            stickyCount: $stickyCount,
+        ));
 
         // The overlay/prompt chrome composites over the content; the
         // application-menu dropdown floats above everything else.

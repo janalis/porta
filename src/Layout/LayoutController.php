@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Porta\Layout;
 
+use Porta\Config\LayoutPrefs;
 use Porta\Config\LayoutStore;
 use Porta\Input\MouseEvent;
 use Porta\Widget\FileTreeWidget;
@@ -60,12 +61,12 @@ final class LayoutController
         $terminal = $this->tui->getTerminal();
         $cols = $terminal->getColumns();
         $rows = $terminal->getRows();
-        $this->sidebarWidthPercent = $layout['sidebarWidthPercent'];
-        $this->bottomPanelHeightPercent = $layout['bottomPanelHeightPercent'];
-        $this->gitSidebarWidthPercent = $layout['gitSidebarWidthPercent'];
-        $this->settingsSidebarWidthPercent = $layout['settingsSidebarWidthPercent'];
-        $this->gitDiffSplit = $layout['gitDiffSplit'] ?? false;
-        $this->gitDiffHideWhitespace = $layout['gitDiffHideWhitespace'] ?? false;
+        $this->sidebarWidthPercent = $layout->sidebarWidthPercent;
+        $this->bottomPanelHeightPercent = $layout->bottomPanelHeightPercent;
+        $this->gitSidebarWidthPercent = $layout->gitSidebarWidthPercent;
+        $this->settingsSidebarWidthPercent = $layout->settingsSidebarWidthPercent;
+        $this->gitDiffSplit = $layout->gitDiffSplit ?? false;
+        $this->gitDiffHideWhitespace = $layout->gitDiffHideWhitespace ?? false;
 
         if (null !== $this->sidebarWidthPercent) {
             $this->tree->setWidth($this->clampSidebar((int) round(($this->sidebarWidthPercent * $cols) / 100), $cols));
@@ -322,13 +323,13 @@ final class LayoutController
 
     private function persistLayout(): void
     {
-        $this->store->save(
-            $this->sidebarWidthPercent,
-            $this->bottomPanelHeightPercent,
-            $this->gitSidebarWidthPercent,
-            $this->gitDiffSplit ?: null,
-            $this->gitDiffHideWhitespace ?: null,
-            $this->settingsSidebarWidthPercent,
-        );
+        $this->store->save(new LayoutPrefs(
+            sidebarWidthPercent: $this->sidebarWidthPercent,
+            bottomPanelHeightPercent: $this->bottomPanelHeightPercent,
+            gitSidebarWidthPercent: $this->gitSidebarWidthPercent,
+            settingsSidebarWidthPercent: $this->settingsSidebarWidthPercent,
+            gitDiffSplit: $this->gitDiffSplit ?: null,
+            gitDiffHideWhitespace: $this->gitDiffHideWhitespace ?: null,
+        ));
     }
 }
