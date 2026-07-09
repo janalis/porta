@@ -39,4 +39,22 @@ final class AnsiText
 
         return $left.$marker.$right;
     }
+
+    /**
+     * Clip a fully-assembled line to $width, padded, keeping any embedded cursor
+     * $marker visible by horizontally scrolling the whole line to the caret. For
+     * a mid-line input (find bar, results) whose field can't tail-scroll on its
+     * own; a line with no marker just clips from the start.
+     */
+    public static function scrollLineToCaret(string $line, int $width, string $marker): string
+    {
+        $pos = strpos($line, $marker);
+        if (false === $pos) {
+            return self::padRight(AnsiUtils::truncateToWidth($line, $width, '…'), $width);
+        }
+        $caretCol = AnsiUtils::visibleWidth(substr($line, 0, $pos));
+        $bare = substr($line, 0, $pos).substr($line, $pos + \strlen($marker));
+
+        return self::padRight(self::caretWindow($bare, $caretCol, $width, $marker), $width);
+    }
 }

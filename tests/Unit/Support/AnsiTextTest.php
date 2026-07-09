@@ -42,6 +42,28 @@ final class AnsiTextTest extends TestCase
         $this->assertLessThanOrEqual(3, AnsiUtils::visibleWidth($out));
     }
 
+    public function testScrollLineToCaretClipsAndPadsAMarkerlessLine(): void
+    {
+        $out = AnsiText::scrollLineToCaret('a short line', 20, "\x1b_pi:c;bar\x07");
+
+        $this->assertSame(20, AnsiUtils::visibleWidth($out), 'padded to width');
+        $this->assertStringStartsWith('a short line', AnsiUtils::stripAnsiCodes($out), 'clipped from the start');
+    }
+
+    public function testScrollLineToCaretScrollsAMidLineCaretIntoView(): void
+    {
+        $m = AnsiUtils::cursorMarker(CursorShape::Bar);
+        // "Find: " + long query + marker at the caret, then trailing chrome.
+        $line = 'Find: '.str_repeat('q', 40).$m.'  [0/0]';
+
+        $out = AnsiText::scrollLineToCaret($line, 20, $m);
+
+        $this->assertSame(1, substr_count($out, $m), 'the caret survives');
+        $this->assertSame(20, AnsiUtils::visibleWidth($out), 'clipped and padded to width');
+        // The window scrolled past the label to keep the caret visible.
+        $this->assertStringNotContainsString('Find:', AnsiUtils::stripAnsiCodes($out));
+    }
+
     public function testPadsWithTrailingSpacesToReachTheWidth(): void
     {
         $this->assertSame('ab   ', AnsiText::padRight('ab', 5));

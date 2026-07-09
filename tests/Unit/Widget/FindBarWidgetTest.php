@@ -10,6 +10,7 @@ use Porta\I18n\Translator;
 use Porta\Widget\FindBarWidget;
 use Symfony\Component\Tui\Ansi\AnsiUtils;
 use Symfony\Component\Tui\Render\RenderContext;
+use Symfony\Component\Tui\Style\CursorShape;
 
 final class FindBarWidgetTest extends TestCase
 {
@@ -204,5 +205,19 @@ final class FindBarWidgetTest extends TestCase
 
         $flat = array_merge(...array_values($bar->getMatchesByLine()));
         $this->assertCount(5000, $flat);
+    }
+
+    public function testLongQueryScrollsTheBarToKeepTheCaretVisible(): void
+    {
+        $bar = new FindBarWidget(new Translator('en'));
+        $bar->setFocused(true);
+        $bar->open(new Document("x\n"), withReplace: false);
+        $this->type($bar, str_repeat('q', 100)); // overflow the 80-column bar
+
+        $line = $bar->render(new RenderContext(80, 1))[0];
+        $marker = AnsiUtils::cursorMarker(CursorShape::Bar);
+
+        $this->assertSame(1, substr_count($line, $marker), 'the caret scrolls into view');
+        $this->assertSame(80, AnsiUtils::visibleWidth($line), 'the bar stays the terminal width');
     }
 }
