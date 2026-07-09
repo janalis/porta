@@ -218,4 +218,28 @@ final class CommitBoxWidgetTest extends TestCase
         $this->assertSame(1, $markers, 'the description caret marker stays inside the visible window');
         $this->assertStringContainsString('l5', $this->plain($widget), 'the window scrolled to the caret line');
     }
+
+    private function markerCount(CommitBoxWidget $widget): int
+    {
+        $marker = AnsiUtils::cursorMarker(CursorShape::Bar);
+
+        return array_sum(array_map(fn (string $l): int => substr_count($l, $marker), $widget->render(new RenderContext(44, 10))));
+    }
+
+    public function testLongDescriptionLineKeepsTheCaretVisible(): void
+    {
+        $widget = $this->widget();
+        $widget->handleInput("\t"); // focus the description
+        $this->type($widget, str_repeat('x', 60)); // overflow the 44-column box
+
+        $this->assertSame(1, $this->markerCount($widget), 'the description caret survives horizontal overflow');
+    }
+
+    public function testLongSummaryLineKeepsTheCaretVisible(): void
+    {
+        $widget = $this->widget();
+        $this->type($widget, str_repeat('x', 60)); // summary is the default field
+
+        $this->assertSame(1, $this->markerCount($widget), 'the summary caret survives horizontal overflow');
+    }
 }

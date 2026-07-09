@@ -6,9 +6,42 @@ namespace Porta\Tests\Unit\Support;
 
 use PHPUnit\Framework\TestCase;
 use Porta\Support\AnsiText;
+use Symfony\Component\Tui\Ansi\AnsiUtils;
+use Symfony\Component\Tui\Style\CursorShape;
 
 final class AnsiTextTest extends TestCase
 {
+    public function testCaretWindowKeepsShortTextIntactWithTheMarkerAtTheCaret(): void
+    {
+        $m = AnsiUtils::cursorMarker(CursorShape::Bar);
+        $this->assertSame('abc'.$m, AnsiText::caretWindow('abc', 3, 10, $m), 'caret at end');
+        $this->assertSame('a'.$m.'bc', AnsiText::caretWindow('abc', 1, 10, $m), 'caret mid-line');
+    }
+
+    public function testCaretWindowScrollsToTheTailWhenTheCaretIsAtTheEnd(): void
+    {
+        $m = AnsiUtils::cursorMarker(CursorShape::Bar);
+        $out = AnsiText::caretWindow('0123456789', 10, 5, $m);
+        $this->assertSame('6789'.$m, $out, 'shows the trailing window with the marker');
+        $this->assertLessThanOrEqual(5, AnsiUtils::visibleWidth($out));
+    }
+
+    public function testCaretWindowBracketsAMidLineCaret(): void
+    {
+        $m = AnsiUtils::cursorMarker(CursorShape::Bar);
+        $out = AnsiText::caretWindow('0123456789', 5, 5, $m);
+        $this->assertSame('1234'.$m.'5', $out);
+        $this->assertLessThanOrEqual(5, AnsiUtils::visibleWidth($out));
+    }
+
+    public function testCaretWindowHandlesWideCharacters(): void
+    {
+        $m = AnsiUtils::cursorMarker(CursorShape::Bar);
+        $out = AnsiText::caretWindow('あいうえお', 10, 3, $m); // 5 wide chars = 10 columns, caret at end
+        $this->assertSame(1, substr_count($out, $m), 'exactly one marker');
+        $this->assertLessThanOrEqual(3, AnsiUtils::visibleWidth($out));
+    }
+
     public function testPadsWithTrailingSpacesToReachTheWidth(): void
     {
         $this->assertSame('ab   ', AnsiText::padRight('ab', 5));

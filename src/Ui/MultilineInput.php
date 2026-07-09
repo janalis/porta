@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Porta\Ui;
 
 use Porta\Input\TextInput;
+use Porta\Support\AnsiText;
 use Symfony\Component\Tui\Ansi\AnsiUtils;
 use Symfony\Component\Tui\Style\CursorShape;
 
@@ -134,7 +135,11 @@ final class MultilineInput
         for ($i = $top; $i < min($top + $rows, \count($this->lines)); ++$i) {
             $line = $this->lines[$i];
             if ($cursor && $i === $this->line) {
-                $line = substr($line, 0, $this->col).AnsiUtils::cursorMarker(CursorShape::Bar).substr($line, $this->col);
+                // Horizontally window the caret line so the marker stays visible.
+                $caretCol = AnsiUtils::visibleWidth(substr($line, 0, $this->col));
+                $out[] = AnsiText::caretWindow($line, $caretCol, $width, AnsiUtils::cursorMarker(CursorShape::Bar));
+
+                continue;
             }
             $out[] = AnsiUtils::truncateToWidth($line, $width, '…', pad: false);
         }

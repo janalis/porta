@@ -152,4 +152,16 @@ final class MultilineInputTest extends TestCase
         $this->assertCount(1, $window);
         $this->assertSame(1, $this->markers(...$window), 'the caret marker shows on the empty line');
     }
+
+    public function testRenderHorizontallyWindowsALongCaretLine(): void
+    {
+        $input = new MultilineInput();
+        $this->type($input, str_repeat('x', 60)); // one 60-column line, caret at the end
+
+        $window = $input->render(10, 3, cursor: true);
+
+        $this->assertCount(1, $window);
+        $this->assertSame(1, $this->markers(...$window), 'the caret marker survives horizontal overflow');
+        $this->assertLessThanOrEqual(10, AnsiUtils::visibleWidth($window[0]), 'the caret line is clipped to width');
+    }
 }

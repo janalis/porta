@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Porta\Ui;
 
 use Porta\Input\TextInput;
+use Porta\Support\AnsiText;
 use Symfony\Component\Tui\Ansi\AnsiUtils;
 use Symfony\Component\Tui\Style\CursorShape;
 
@@ -57,9 +58,17 @@ final class TextField
         return true;
     }
 
-    /** The value, followed by a bar cursor marker when $cursor is true. */
-    public function render(bool $cursor): string
+    /**
+     * The value, followed by a bar cursor marker when $cursor is true. When
+     * $width is given and the focused value overflows it, the value is scrolled
+     * to its tail so the end caret (and its marker) stays visible.
+     */
+    public function render(bool $cursor, ?int $width = null): string
     {
+        if ($cursor && null !== $width) {
+            return AnsiText::caretWindow($this->value, AnsiUtils::visibleWidth($this->value), $width, AnsiUtils::cursorMarker(CursorShape::Bar));
+        }
+
         return $this->value.($cursor ? AnsiUtils::cursorMarker(CursorShape::Bar) : '');
     }
 }

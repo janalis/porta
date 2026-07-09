@@ -241,7 +241,7 @@ final class CommitBoxWidget extends AbstractWidget implements FocusableInterface
         $header = $this->amend ? $this->translator->trans(' Commit  [amend · alt+m]') : $this->translator->trans(' Commit  ·  alt+m: amend');
         $lines[] = $this->palette->of(Role::HeaderBar)."\x1b[1m".AnsiUtils::truncateToWidth($header, $width, '…', pad: true)."\x1b[0m";
 
-        $summary = ' '.$this->summary->render(cursor: $focused && 0 === $this->activeField);
+        $summary = ' '.$this->summary->render(cursor: $focused && 0 === $this->activeField, width: $width - 1);
         $summaryHint = '' === $this->summary->value() && !($focused && 0 === $this->activeField)
             ? $this->palette->of(Role::Dim).' '.$this->translator->trans('Summary (required)')."\x1b[0m"
             : $summary;

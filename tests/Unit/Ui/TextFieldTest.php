@@ -73,4 +73,22 @@ final class TextFieldTest extends TestCase
         $this->assertSame('abc', $field->render(cursor: false));
         $this->assertSame('abc'.AnsiUtils::cursorMarker(CursorShape::Bar), $field->render(cursor: true));
     }
+
+    public function testRenderWithWidthKeepsAShortValueWithTheMarkerAtTheEnd(): void
+    {
+        $field = new TextField('abc');
+        $this->assertSame('abc'.AnsiUtils::cursorMarker(CursorShape::Bar), $field->render(cursor: true, width: 10));
+    }
+
+    public function testRenderScrollsToTheTailWhenTheFocusedValueOverflowsWidth(): void
+    {
+        $field = new TextField(str_repeat('x', 60));
+        $marker = AnsiUtils::cursorMarker(CursorShape::Bar);
+
+        $out = $field->render(cursor: true, width: 10);
+
+        $this->assertSame(1, substr_count($out, $marker), 'the end caret marker stays visible');
+        $this->assertStringEndsWith($marker, $out, 'scrolled to the tail, caret last');
+        $this->assertLessThanOrEqual(10, AnsiUtils::visibleWidth($out), 'clipped to width');
+    }
 }
