@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Porta\Widget;
 
+use Porta\Support\AnsiText;
 use Porta\Ui\ColorPalette;
 use Porta\Ui\ListNavigation;
 use Porta\Ui\ListSelection;
@@ -16,6 +17,7 @@ use Porta\Widget\Render\HeaderRenderer;
 use Symfony\Component\Tui\Ansi\AnsiUtils;
 use Symfony\Component\Tui\Input\Key;
 use Symfony\Component\Tui\Render\RenderContext;
+use Symfony\Component\Tui\Style\CursorShape;
 use Symfony\Component\Tui\Widget\FocusableInterface;
 use Symfony\Component\Tui\Widget\FocusableTrait;
 use Symfony\Component\Tui\Widget\KeybindingsTrait;
@@ -284,7 +286,7 @@ final class ResultsPanelWidget extends OverlayWidget implements FocusableInterfa
         if ($this->withReplace) {
             $replaceField = $this->replace->render(cursor: $showCursor && 'replace' === $this->activeField);
             $replaceLine = ' Replace: '.$replaceField.$this->palette->of(Role::Dim)."  (Tab switch · Alt+A replace all)\x1b[39m";
-            $lines[] = $this->palette->of(Role::RowHighlightBg).AnsiUtils::truncateToWidth($replaceLine, $columns, '…', pad: true)."\x1b[0m";
+            $lines[] = $this->palette->of(Role::RowHighlightBg).AnsiText::scrollLineToCaret($replaceLine, $columns, AnsiUtils::cursorMarker(CursorShape::Bar))."\x1b[0m";
         }
 
         $scroll = $this->list->follow($this->visibleRows);

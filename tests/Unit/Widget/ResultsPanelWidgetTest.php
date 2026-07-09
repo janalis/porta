@@ -9,6 +9,7 @@ use Porta\Widget\ResultsPanelFields;
 use Porta\Widget\ResultsPanelWidget;
 use Symfony\Component\Tui\Ansi\AnsiUtils;
 use Symfony\Component\Tui\Render\RenderContext;
+use Symfony\Component\Tui\Style\CursorShape;
 
 final class ResultsPanelWidgetTest extends TestCase
 {
@@ -341,5 +342,28 @@ final class ResultsPanelWidgetTest extends TestCase
 
         $panel->handleInput("\x1b");
         $this->assertTrue($closed);
+    }
+
+    public function testLongQueryAndReplacementKeepTheCaretVisible(): void
+    {
+        $panel = new ResultsPanelWidget();
+        $panel->setFocused(true);
+        $panel->open('Find in Project', ResultsPanelFields::fullSearch());
+        $marker = AnsiUtils::cursorMarker(CursorShape::Bar);
+
+        foreach (str_split(str_repeat('q', 100)) as $ch) {
+            $panel->handleInput($ch); // overflow the query in the header
+        }
+        $header = $panel->render(new RenderContext(80, 12))[0];
+        $this->assertSame(1, substr_count($header, $marker), 'query caret stays visible');
+        $this->assertSame(80, AnsiUtils::visibleWidth($header));
+
+        $panel->handleInput("\t"); // switch to the replace field
+        foreach (str_split(str_repeat('r', 100)) as $ch) {
+            $panel->handleInput($ch);
+        }
+        $replaceLine = $panel->render(new RenderContext(80, 12))[1];
+        $this->assertSame(1, substr_count($replaceLine, $marker), 'replace caret stays visible');
+        $this->assertSame(80, AnsiUtils::visibleWidth($replaceLine));
     }
 }

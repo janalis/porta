@@ -159,9 +159,7 @@ final class GoToFileWidget extends OverlayWidget implements FocusableInterface
         $columns = $context->getColumns();
 
         $lines = [];
-        $prefix = ' '.$this->translator->trans('Go to File:').' ';
-        $fieldWidth = max(1, $columns - AnsiUtils::visibleWidth($prefix));
-        $header = $prefix.$this->query->render(cursor: $this->focused, width: $fieldWidth);
+        $header = ' '.$this->translator->trans('Go to File:').' '.$this->query->render(cursor: $this->focused);
         $lines[] = HeaderRenderer::render($header, $columns, $this->palette->of(Role::HeaderBar)."\x1b[1m");
 
         foreach (\array_slice($this->results, 0, self::MAX_RESULTS) as $i => $path) {
