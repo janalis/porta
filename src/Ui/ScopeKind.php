@@ -17,6 +17,7 @@ enum ScopeKind: string
     case Directory = 'directory';
     case CurrentFile = 'file';
     case OpenFiles = 'open';
+    case Module = 'module';
 
     public function label(): string
     {
@@ -25,6 +26,7 @@ enum ScopeKind: string
             self::Directory => 'Directory',
             self::CurrentFile => 'Current File',
             self::OpenFiles => 'Open Files',
+            self::Module => 'Module',
         };
     }
 
@@ -34,7 +36,8 @@ enum ScopeKind: string
             self::Project => self::Directory,
             self::Directory => self::CurrentFile,
             self::CurrentFile => self::OpenFiles,
-            self::OpenFiles => self::Project,
+            self::OpenFiles => self::Module,
+            self::Module => self::Project,
         };
     }
 }

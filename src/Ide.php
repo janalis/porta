@@ -1402,6 +1402,9 @@ final class Ide
         if (null === $file) {
             return ['.']; // no file open → fall back to the whole project
         }
+        if (ScopeKind::Module === $kind) {
+            return $this->moduleScope($file);
+        }
         $target = ScopeKind::CurrentFile === $kind ? $file : \dirname($file);
         $relative = $this->relativePath($target);
 
@@ -1431,6 +1434,28 @@ final class Ide
         }
 
         return $context;
+    }
+
+    /**
+     * The scope for the "Module" kind: the nearest ancestor directory of $file
+     * (below the project root) that holds a `composer.json`, or the whole project
+     * when none is found.
+     *
+     * @return list<string>
+     */
+    private function moduleScope(string $file): array
+    {
+        // Climb the file's root-relative directory looking for a composer.json;
+        // the loop stops at the project root ('.'), a blank, or an out-of-tree path.
+        $dir = \dirname($this->relativePath($file));
+        while ('.' !== $dir && '' !== $dir && !str_starts_with($dir, '/')) {
+            if (is_file($this->rootDir.'/'.$dir.'/composer.json')) {
+                return [$dir];
+            }
+            $dir = \dirname($dir);
+        }
+
+        return ['.']; // no package root below the project → the whole project
     }
 
     private function openSymbolSearch(): void

@@ -695,16 +695,63 @@ final class IdeEdgeCasesTest extends TestCase
                     $this->assertStringContainsString('Scope: Open Files', $panel);
                     $this->assertStringContainsString('src/A.php', $panel);
                     $this->assertStringNotContainsString('src/C.php', $panel, 'open-files scope keeps only the open buffers');
-                    $tui->handleInput("\x1bs"); // alt+s → Whole Project (wraps)
+                    $tui->handleInput("\x1bs"); // alt+s → Module (no composer.json → whole project)
                 },
                 1400 => function ($tui) use ($panelText): void {
+                    $tui->tick();
+                    $panel = $panelText($tui);
+                    $this->assertStringContainsString('Scope: Module', $panel);
+                    $this->assertStringContainsString('other/B.php', $panel, 'no package root → module falls back to the whole project');
+                    $tui->handleInput("\x1bs"); // alt+s → Whole Project (wraps)
+                },
+                1600 => function ($tui) use ($panelText): void {
                     $tui->tick();
                     $panel = $panelText($tui);
                     $this->assertStringContainsString('Scope: Whole Project', $panel);
                     $this->assertStringContainsString('other/B.php', $panel, 'wrapping back to Whole Project widens again');
                 },
             ],
-            1.7,
+            1.9,
+        );
+
+        $this->addToAssertionCount(1);
+    }
+
+    public function testFindInProjectModuleScopeUsesComposerPackageRoot(): void
+    {
+        $project = new TempProject([
+            'pkg/composer.json' => "{}\n",
+            'pkg/src/A.php' => "<?php\n// tok here\n",
+            'other/B.php' => "<?php\n// tok here\n",
+        ]);
+        $panelText = static fn ($tui): string => AnsiUtils::stripAnsiCodes(implode("\n", $tui->getById('results')->render(new \Symfony\Component\Tui\Render\RenderContext(160, 16))));
+
+        $this->runIde(
+            $project,
+            $project->path('pkg/src/A.php'), // a file inside the pkg/ package
+            [
+                200 => static function ($tui): void {
+                    $tui->handleInput("\x1b[102;6u"); // ctrl+shift+f
+                    foreach (str_split('tok') as $ch) {
+                        $tui->handleInput($ch);
+                    }
+                },
+                600 => static function ($tui): void {
+                    $tui->tick();
+                    $tui->handleInput("\x1bs"); // → Directory
+                    $tui->handleInput("\x1bs"); // → Current File
+                    $tui->handleInput("\x1bs"); // → Open Files
+                    $tui->handleInput("\x1bs"); // → Module
+                },
+                1000 => function ($tui) use ($panelText): void {
+                    $tui->tick();
+                    $panel = $panelText($tui);
+                    $this->assertStringContainsString('Scope: Module', $panel);
+                    $this->assertStringContainsString('pkg/src/A.php', $panel, 'the module scope keeps the package');
+                    $this->assertStringNotContainsString('other/B.php', $panel, 'files outside the package are excluded');
+                },
+            ],
+            1.4,
         );
 
         $this->addToAssertionCount(1);

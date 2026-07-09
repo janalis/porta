@@ -310,8 +310,11 @@ final class ResultsPanelWidgetTest extends TestCase
         $panel->handleInput("\x1bs"); // → Open Files
         $this->assertStringContainsString('Scope: Open Files', $plain());
 
+        $panel->handleInput("\x1bs"); // → Module
+        $this->assertStringContainsString('Scope: Module', $plain());
+
         $panel->handleInput("\x1bs"); // → Whole Project (wraps)
-        $this->assertSame([ScopeKind::Directory, ScopeKind::CurrentFile, ScopeKind::OpenFiles, ScopeKind::Project], $kinds);
+        $this->assertSame([ScopeKind::Directory, ScopeKind::CurrentFile, ScopeKind::OpenFiles, ScopeKind::Module, ScopeKind::Project], $kinds);
         $this->assertStringContainsString('Scope: Whole Project', $plain());
     }
 
