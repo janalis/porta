@@ -8,6 +8,7 @@ use Porta\Editor\BufferManager;
 use Porta\Editor\Document;
 use Porta\History\SearchHistoryStore;
 use Porta\History\SearchPrefsStore;
+use Porta\History\SearchScopeStore;
 use Porta\I18n\Translator;
 use Porta\Support\ProjectPaths;
 use Porta\Ui\ScopeKind;
@@ -26,9 +27,15 @@ use Symfony\Component\Tui\Tui;
  */
 final class ProjectSearchController
 {
+    /** The built-in scope kinds, in Alt+S cycle order (saved scopes follow them). */
+    private const array BUILT_INS = [ScopeKind::Project, ScopeKind::Directory, ScopeKind::CurrentFile, ScopeKind::OpenFiles, ScopeKind::Module];
+
     private SearchOptions $searchOptions;
     private string $lastSearchQuery = '';
     private ScopeKind $scopeKind = ScopeKind::Project;
+    /** @var list<ScopeChoice> the Alt+S choices (built-in kinds + saved scopes), rebuilt on open */
+    private array $scopeChoices = [];
+    private int $scopeIndex = 0;
     /** @var list<string> grep path(s) relative to the project root; `['.']` is the whole project. */
     private array $scope = ['.'];
     /** file mask (e.g. `*.php`, `*.{php,js}`); empty searches all files. */
@@ -54,6 +61,7 @@ final class ProjectSearchController
         private readonly SearchPrefsStore $prefs,
         private readonly \Closure $resolveScope,
         private readonly LanguageFilter $languageFilter,
+        private readonly SearchScopeStore $scopeStore,
     ) {
         $this->searchOptions = new SearchOptions();
     }
@@ -61,9 +69,36 @@ final class ProjectSearchController
     /** Open the panel in find-in-project mode with a fresh query, restoring the last scope + mask. */
     public function open(): void
     {
+        $this->rebuildScopeChoices();
         $this->scopeKind = $this->prefs->lastScope();
-        $this->scope = ($this->resolveScope)($this->scopeKind);
+        $this->scopeIndex = (int) array_search($this->scopeKind, self::BUILT_INS, true);
+        $this->scope = $this->resolveChoice($this->scopeChoices[$this->scopeIndex]);
         $this->reopen($this->translator->trans('Find in Project'));
+    }
+
+    /** Rebuild the Alt+S choices: the built-in kinds followed by the saved scopes. */
+    private function rebuildScopeChoices(): void
+    {
+        $choices = [];
+        foreach (self::BUILT_INS as $kind) {
+            $choices[] = ScopeChoice::builtin($kind);
+        }
+        foreach ($this->scopeStore->all() as $saved) {
+            $choices[] = ScopeChoice::saved($saved['label'], $saved['paths']);
+        }
+        $this->scopeChoices = $choices;
+    }
+
+    /** @return list<string> */
+    private function resolveChoice(ScopeChoice $choice): array
+    {
+        return null !== $choice->kind ? ($this->resolveScope)($choice->kind) : $choice->paths ?? ['.'];
+    }
+
+    /** @return list<string> the choice labels shown in the panel's Alt+S selector */
+    private function scopeLabels(): array
+    {
+        return array_map(static fn (ScopeChoice $choice): string => $choice->label, $this->scopeChoices);
     }
 
     /**
@@ -99,9 +134,37 @@ final class ProjectSearchController
 
             return;
         }
-        $this->scopeKind = ScopeKind::Directory;
+        // Remember the folder as a recent scope and select it in the Alt+S cycle.
+        $this->scopeStore->addRecent($relative, [$relative]);
+        $this->rebuildScopeChoices();
+        $this->scopeIndex = $this->indexOfSaved($relative);
         $this->scope = [$relative];
         $this->reopen($this->translator->trans($titleKey, ['%dir%' => $relative]));
+    }
+
+    /** The choice index of the saved scope labelled $label (falls back to the whole project). */
+    private function indexOfSaved(string $label): int
+    {
+        $labels = array_map(static fn (ScopeChoice $choice): ?string => null === $choice->kind ? $choice->label : null, $this->scopeChoices);
+        $index = array_search($label, $labels, true);
+
+        return false === $index ? 0 : $index;
+    }
+
+    /**
+     * Save a folder as a **pinned** search scope (tree "Add to Search Scopes"),
+     * so it stays available in the Alt+S cycle. A folder resolving to the root
+     * (or outside it) is ignored.
+     */
+    public function addSearchScope(string $absDir): void
+    {
+        $relative = ProjectPaths::relative($this->rootDir, $absDir);
+        if ('' === $relative || str_starts_with($relative, '/')) {
+            return;
+        }
+        $this->scopeStore->addPinned($relative, [$relative]);
+        $this->statusBar->flash($this->translator->trans('Added %dir% to search scopes', ['%dir%' => $relative]));
+        $this->tui->requestRender();
     }
 
     /** Reset the query/options/results and (re)open the panel with $title, restoring scope + mask. */
@@ -114,7 +177,7 @@ final class ProjectSearchController
         $this->resultsPanel->open($title, ResultsPanelFields::fullSearch());
         $this->resultsPanel->setOptions($this->searchOptions->panelState());
         $this->resultsPanel->setHistory($this->history->all());
-        $this->resultsPanel->setScopeKind($this->scopeKind);
+        $this->resultsPanel->setScopes($this->scopeLabels(), $this->scopeIndex);
         $this->resultsPanel->setMaskValue($this->mask);
         $this->resultsPanel->setMaskHistory($this->prefs->recentMasks());
         $this->tui->setFocus($this->resultsPanel);
@@ -136,12 +199,16 @@ final class ProjectSearchController
         $this->run($this->lastSearchQuery);
     }
 
-    /** Set the scope (from the panel's Alt+S selector), persist it, resolve its paths, and re-run. */
-    public function setScopeKind(ScopeKind $kind): void
+    /** Select a scope choice (from the panel's Alt+S selector), persist built-ins, resolve, and re-run. */
+    public function setScopeIndex(int $index): void
     {
-        $this->scopeKind = $kind;
-        $this->scope = ($this->resolveScope)($kind);
-        $this->prefs->setScope($kind);
+        $this->scopeIndex = $index;
+        $choice = $this->scopeChoices[$index] ?? $this->scopeChoices[0];
+        $this->scope = $this->resolveChoice($choice);
+        if (null !== $choice->kind) {
+            $this->scopeKind = $choice->kind;
+            $this->prefs->setScope($choice->kind);
+        }
         $this->run($this->lastSearchQuery);
     }
 

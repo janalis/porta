@@ -5,7 +5,6 @@ declare(strict_types=1);
 namespace Porta\Tests\Unit\Widget;
 
 use PHPUnit\Framework\TestCase;
-use Porta\Ui\ScopeKind;
 use Porta\Widget\ResultsPanelFields;
 use Porta\Widget\ResultsPanelWidget;
 use Symfony\Component\Tui\Ansi\AnsiUtils;
@@ -290,39 +289,36 @@ final class ResultsPanelWidgetTest extends TestCase
         $this->assertFalse($panel->isOpen());
     }
 
-    public function testScopeSelectorCyclesFiresAndRendersTheKind(): void
+    public function testScopeSelectorCyclesThroughItsChoicesByIndex(): void
     {
         $panel = new ResultsPanelWidget();
         $panel->setFocused(true);
-        $kinds = [];
-        $panel->onScopeCycle(function (ScopeKind $k) use (&$kinds): void {
-            $kinds[] = $k;
+        $indices = [];
+        $panel->onScopeCycle(function (int $index) use (&$indices): void {
+            $indices[] = $index;
         });
         $panel->open('Find in Project', ResultsPanelFields::fullSearch());
+        $panel->setScopes(['Whole Project', 'Directory', 'Custom: src'], 0);
         $plain = fn (): string => AnsiUtils::stripAnsiCodes(implode("\n", $panel->render(new RenderContext(80, 12))));
 
-        $this->assertStringContainsString('Scope: Whole Project', $plain(), 'defaults to the whole project');
+        $this->assertStringContainsString('Scope: Whole Project', $plain(), 'starts on the seeded index');
 
-        $panel->handleInput("\x1bs"); // alt+s → Directory
+        $panel->handleInput("\x1bs"); // → index 1
         $this->assertStringContainsString('Scope: Directory', $plain());
 
-        $panel->handleInput("\x1bs"); // → Current File
-        $panel->handleInput("\x1bs"); // → Open Files
-        $this->assertStringContainsString('Scope: Open Files', $plain());
+        $panel->handleInput("\x1bs"); // → index 2 (a saved scope, after the built-ins)
+        $this->assertStringContainsString('Scope: Custom: src', $plain());
 
-        $panel->handleInput("\x1bs"); // → Module
-        $this->assertStringContainsString('Scope: Module', $plain());
-
-        $panel->handleInput("\x1bs"); // → Whole Project (wraps)
-        $this->assertSame([ScopeKind::Directory, ScopeKind::CurrentFile, ScopeKind::OpenFiles, ScopeKind::Module, ScopeKind::Project], $kinds);
+        $panel->handleInput("\x1bs"); // → wraps to index 0
         $this->assertStringContainsString('Scope: Whole Project', $plain());
+        $this->assertSame([1, 2, 0], $indices);
     }
 
-    public function testScopeKindCanBePreset(): void
+    public function testScopeSelectionCanBePreset(): void
     {
         $panel = new ResultsPanelWidget();
         $panel->open('Find in Project', ResultsPanelFields::fullSearch());
-        $panel->setScopeKind(ScopeKind::Directory);
+        $panel->setScopes(['Whole Project', 'Directory'], 1);
 
         $plain = AnsiUtils::stripAnsiCodes(implode("\n", $panel->render(new RenderContext(80, 12))));
         $this->assertStringContainsString('Scope: Directory', $plain);

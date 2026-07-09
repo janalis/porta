@@ -29,6 +29,7 @@ use Porta\History\LocalHistory;
 use Porta\History\LocalHistoryController;
 use Porta\History\SearchHistoryStore;
 use Porta\History\SearchPrefsStore;
+use Porta\History\SearchScopeStore;
 use Porta\History\SessionStore;
 use Porta\I18n\PaneReorder;
 use Porta\I18n\Translator;
@@ -654,8 +655,8 @@ final class Ide
 
         // The scope selector (Alt+S) hands the chosen kind to the controller,
         // which resolves it (via the injected resolver), persists it, and re-runs.
-        $this->resultsPanel->onScopeCycle(function (ScopeKind $kind): void {
-            $this->projectSearchController->setScopeKind($kind);
+        $this->resultsPanel->onScopeCycle(function (int $index): void {
+            $this->projectSearchController->setScopeIndex($index);
         });
 
         // F5 re-runs the current find-in-project query (picks up on-disk changes).
@@ -916,6 +917,7 @@ final class Ide
             fn (string $t) => $this->copyToClipboard($t),
             fn (string $dir) => $this->openFindInFolder($dir),
             fn (string $dir) => $this->openReplaceInFolder($dir),
+            fn (string $dir) => $this->projectSearchController->addSearchScope($dir),
         );
 
         // RTL bidi reorder, applied per pane by BidiTui when the locale is RTL.
@@ -996,6 +998,7 @@ final class Ide
             new SearchPrefsStore($this->rootDir),
             fn (ScopeKind $kind): array => $this->resolveScopePath($kind),
             new LanguageFilter(new TokenClassifier(), $projectSearch, $this->rootDir),
+            new SearchScopeStore($this->rootDir),
         );
         $this->commandPalette = $this->service(CommandPalette::class);
         $this->panels = $this->service(PanelManager::class);

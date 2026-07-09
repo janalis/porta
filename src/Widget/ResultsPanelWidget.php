@@ -12,7 +12,6 @@ use Porta\Ui\ListSelection;
 use Porta\Ui\LtrPane;
 use Porta\Ui\Palette;
 use Porta\Ui\Role;
-use Porta\Ui\ScopeKind;
 use Porta\Ui\Style;
 use Porta\Ui\TextField;
 use Porta\Widget\Render\HeaderRenderer;
@@ -42,7 +41,9 @@ final class ResultsPanelWidget extends OverlayWidget implements FocusableInterfa
     private bool $withMask = false;
     private bool $withScope = false;
     private bool $withFilter = false;
-    private ScopeKind $scopeKind = ScopeKind::Project;
+    /** @var list<string> the scope-selector choices cycled by Alt+S (built-in kinds + saved scopes) */
+    private array $scopeLabels = ['Whole Project'];
+    private int $scopeIndex = 0;
     private string $title = '';
     private readonly TextField $query;
     private readonly TextField $replace;
@@ -86,7 +87,7 @@ final class ResultsPanelWidget extends OverlayWidget implements FocusableInterfa
     private $onQueryChanged = null;
     /** @var (callable(string): void)|null the file mask changed (re-run the search) */
     private $onMaskChanged = null;
-    /** @var (callable(ScopeKind): void)|null the search scope was cycled (Alt+S) */
+    /** @var (callable(int): void)|null the search scope was cycled (Alt+S) — the new choice index */
     private $onScopeCycle = null;
     /** @var (callable(): void)|null re-run the current search (F5) */
     private $onRerun = null;
@@ -144,10 +145,16 @@ final class ResultsPanelWidget extends OverlayWidget implements FocusableInterfa
         return $this;
     }
 
-    /** Reflect the active scope kind in the panel (set when it opens). */
-    public function setScopeKind(ScopeKind $kind): void
+    /**
+     * Seed the scope-selector choices and the current selection (set when the
+     * panel opens).
+     *
+     * @param list<string> $labels
+     */
+    public function setScopes(array $labels, int $index): void
     {
-        $this->scopeKind = $kind;
+        $this->scopeLabels = [] === $labels ? ['Whole Project'] : $labels;
+        $this->scopeIndex = $index;
         $this->invalidate();
     }
 
@@ -245,7 +252,8 @@ final class ResultsPanelWidget extends OverlayWidget implements FocusableInterfa
         $this->withMask = $fields->mask;
         $this->withScope = $fields->scope;
         $this->withFilter = $fields->filter;
-        $this->scopeKind = ScopeKind::Project;
+        $this->scopeLabels = ['Whole Project'];
+        $this->scopeIndex = 0;
         $this->grouped = $fields->grouped;
         $this->grouping = ResultGrouping::File;
         $this->activeField = 'query';
@@ -367,9 +375,12 @@ final class ResultsPanelWidget extends OverlayWidget implements FocusableInterfa
         } elseif ($this->withOptions && $kb->matches($data, 'toggle_tokens')) {
             $this->fireToggle('tokens');
         } elseif ($this->withScope && $kb->matches($data, 'cycle_scope')) {
-            $this->scopeKind = $this->scopeKind->next();
-            if (null !== $this->onScopeCycle) {
-                ($this->onScopeCycle)($this->scopeKind);
+            $count = \count($this->scopeLabels);
+            if ($count > 0) {
+                $this->scopeIndex = ($this->scopeIndex + 1) % $count;
+                if (null !== $this->onScopeCycle) {
+                    ($this->onScopeCycle)($this->scopeIndex);
+                }
             }
             $this->invalidate();
         } elseif ($this->grouped && $kb->matches($data, 'toggle_all')) {
@@ -723,7 +734,8 @@ final class ResultsPanelWidget extends OverlayWidget implements FocusableInterfa
         $lines[] = HeaderRenderer::render($header, $columns, $this->palette->of(Role::HeaderBar)."\x1b[1m");
 
         if ($this->withScope) {
-            $scopeLine = ' Scope: '.$this->palette->of(Role::TabAccent).$this->scopeKind->label()."\x1b[39m".$this->palette->of(Role::Dim).'  (Alt+S to change)'."\x1b[39m";
+            $scopeLabel = $this->scopeLabels[$this->scopeIndex] ?? 'Whole Project';
+            $scopeLine = ' Scope: '.$this->palette->of(Role::TabAccent).$scopeLabel."\x1b[39m".$this->palette->of(Role::Dim).'  (Alt+S to change)'."\x1b[39m";
             $lines[] = $this->palette->of(Role::RowHighlightBg).AnsiUtils::truncateToWidth($scopeLine, $columns, '…', pad: true)."\x1b[0m";
         }
         if ($this->withMask) {

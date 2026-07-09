@@ -717,6 +717,64 @@ final class IdeEdgeCasesTest extends TestCase
         $this->addToAssertionCount(1);
     }
 
+    public function testAddToSearchScopesFromTreeThenSelectItInTheCycle(): void
+    {
+        $project = new TempProject([
+            'lib/Inside.php' => "<?php\n// mark inside\n",
+            'other/Outside.php' => "<?php\n// mark at the root\n",
+        ]);
+
+        $rightClickFolder = function ($tui, $terminal, $ide): void {
+            $renderer = new \ReflectionProperty($ide, 'renderer')->getValue($ide);
+            $rect = $renderer->getWidgetRect($tui->getById('tree'));
+            // `lib` sorts first among the directories → the first tree entry (row 1).
+            $tui->handleInput(\sprintf("\x1b[<2;%d;%dM", $rect->col + 3, $rect->row + 2));
+        };
+        $panelText = static fn ($tui): string => AnsiUtils::stripAnsiCodes(implode("\n", $tui->getById('results')->render(new \Symfony\Component\Tui\Render\RenderContext(160, 14))));
+
+        $this->runIde(
+            $project,
+            null, // tree focused
+            [
+                200 => $rightClickFolder,
+                280 => function ($tui): void {
+                    $tui->tick();
+                    $this->assertTrue($tui->getById('context-menu')->isOpen(), 'folder context menu opened');
+                    // New File → New Folder → Find in Files → Replace in Files → Add to Search Scopes.
+                    $tui->handleInput("\x1b[B");
+                    $tui->handleInput("\x1b[B");
+                    $tui->handleInput("\x1b[B");
+                    $tui->handleInput("\x1b[B");
+                    $tui->handleInput("\r"); // Add to Search Scopes
+                },
+                400 => function ($tui): void {
+                    $tui->tick();
+                    $tui->handleInput("\x1b[102;6u"); // ctrl+shift+f
+                    foreach (str_split('mark') as $ch) {
+                        $tui->handleInput($ch);
+                    }
+                },
+                700 => function ($tui) use ($panelText): void {
+                    $tui->tick();
+                    $this->assertStringContainsString('other/Outside.php', $panelText($tui), 'whole project finds both first');
+                    for ($i = 0; $i < 5; ++$i) {
+                        $tui->handleInput("\x1bs"); // cycle past the 5 built-ins to the saved lib scope
+                    }
+                },
+                1000 => function ($tui) use ($panelText): void {
+                    $tui->tick();
+                    $panel = $panelText($tui);
+                    $this->assertStringContainsString('Scope: lib', $panel, 'the saved scope is selectable in the Alt+S cycle');
+                    $this->assertStringContainsString('lib/Inside.php', $panel);
+                    $this->assertStringNotContainsString('other/Outside.php', $panel, 'the saved scope narrows to its folder');
+                },
+            ],
+            1.5,
+        );
+
+        $this->addToAssertionCount(1);
+    }
+
     public function testFindInProjectModuleScopeUsesComposerPackageRoot(): void
     {
         $project = new TempProject([

@@ -33,6 +33,7 @@ final class TreeOperations
      * @param \Closure(string): void       $copyToClipboard copy text to the system clipboard
      * @param \Closure(string): void       $findInFolder    open a folder-scoped text search
      * @param \Closure(string): void       $replaceInFolder open a folder-scoped search-and-replace
+     * @param \Closure(string): void       $addSearchScope  save a folder as a pinned search scope
      */
     public function __construct(
         private readonly FileTreeWidget $tree,
@@ -47,6 +48,7 @@ final class TreeOperations
         private readonly \Closure $copyToClipboard,
         private readonly \Closure $findInFolder,
         private readonly \Closure $replaceInFolder,
+        private readonly \Closure $addSearchScope,
     ) {}
 
     /**
@@ -67,6 +69,7 @@ final class TreeOperations
         if ($node['isDir']) {
             $items[] = new MenuItem($this->translator->trans('Find in Files…'), '', fn () => ($this->findInFolder)($node['path']));
             $items[] = new MenuItem($this->translator->trans('Replace in Files…'), '', fn () => ($this->replaceInFolder)($node['path']));
+            $items[] = new MenuItem($this->translator->trans('Add to Search Scopes'), '', fn () => ($this->addSearchScope)($node['path']));
             $items[] = MenuItem::separator();
         }
         $items[] = new MenuItem($this->translator->trans('Copy Path'), '', fn () => $this->copyPath($node['path'], false));

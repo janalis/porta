@@ -41,6 +41,7 @@ final class ProjectSearchControllerTest extends TestCase
             new \Porta\History\SearchPrefsStore($rootDir),
             static fn (\Porta\Ui\ScopeKind $kind): array => ['.'],
             new \Porta\Search\LanguageFilter(new \Porta\Search\TokenClassifier(), $projectSearch, $rootDir),
+            new \Porta\History\SearchScopeStore($rootDir),
         );
     }
 
@@ -64,7 +65,7 @@ final class ProjectSearchControllerTest extends TestCase
 
         $header = $this->header();
         $this->assertStringContainsString('Find in src/sub', $header);
-        $this->assertStringContainsString('Scope: Directory', $header, 'a folder search preselects the Directory scope');
+        $this->assertStringContainsString('Scope: src/sub', $header, 'a folder search preselects (and saves) that folder as the scope');
     }
 
     public function testOpenInFolderOnTheRootFallsBackToTheWholeProject(): void
@@ -95,6 +96,20 @@ final class ProjectSearchControllerTest extends TestCase
 
         $this->assertSame('', $controller->exportResults(), 'nothing to export → no file, empty path');
         $this->assertFileDoesNotExist($project->dir.'/.porta/search-results.txt');
+    }
+
+    public function testAddSearchScopeIgnoresTheProjectRoot(): void
+    {
+        $project = new TempProject(['A.php' => "<?php\n"]);
+        $controller = $this->controller($project->dir);
+        $controller->addSearchScope($project->dir); // the root resolves to no sub-path → ignored
+        $controller->open();
+
+        // Only the five built-in kinds remain; cycling through them wraps to Whole Project.
+        for ($i = 0; $i < 5; ++$i) {
+            $this->panel->handleInput("\x1bs");
+        }
+        $this->assertStringContainsString('Scope: Whole Project', $this->header(), 'no saved scope was added');
     }
 
     public function testReplaceInFolderScopesTheTitleToTheRelativeDir(): void
