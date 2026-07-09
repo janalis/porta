@@ -1,0 +1,191 @@
+<?php
+
+declare(strict_types=1);
+
+namespace Porta\Tests\Unit\Search\Everywhere;
+
+use PHPUnit\Framework\TestCase;
+use Porta\Config\CommandRegistry;
+use Porta\Search\Everywhere\ActionsSource;
+use Porta\Search\Everywhere\FilesSource;
+use Porta\Search\Everywhere\SearchCategory;
+use Porta\Search\Everywhere\SearchHit;
+use Porta\Search\Everywhere\TextSource;
+use Porta\Search\Everywhere\WorkspaceSymbolSource;
+use Porta\Search\FileIndex;
+use Porta\Search\ProjectSearch;
+use Porta\Tests\Support\TempProject;
+
+final class SourcesTest extends TestCase
+{
+    private string $originalPath;
+
+    protected function setUp(): void
+    {
+        // No grep on PATH → ProjectSearch takes its synchronous PHP fallback, so
+        // the TextSource emit is deterministic in-test.
+        $this->originalPath = (string) getenv('PATH');
+        putenv('PATH=/nonexistent');
+    }
+
+    protected function tearDown(): void
+    {
+        putenv('PATH='.$this->originalPath);
+    }
+
+    /** @return list<SearchHit> */
+    private function collect(callable $run): array
+    {
+        $hits = null;
+        $run(function (array $emitted) use (&$hits): void {
+            $hits = $emitted;
+        });
+        \assert(null !== $hits);
+
+        return $hits;
+    }
+
+    public function testFilesSourceRanksBasenamesAndActivatesOpen(): void
+    {
+        $project = new TempProject(['src/Entity/User.php' => '', 'src/Controller/UserController.php' => '', 'other.txt' => '']);
+        $opened = null;
+        $source = new FilesSource(new FileIndex($project->dir), $project->dir, function (string $path, bool $focus) use (&$opened): void {
+            $opened = [$path, $focus];
+        });
+
+        $this->assertSame(SearchCategory::Files, $source->category());
+        $hits = $this->collect(fn (\Closure $emit) => $source->query('user', $emit));
+
+        $this->assertSame(SearchCategory::Files, $hits[0]->category);
+        $this->assertSame('User.php', $hits[0]->label, 'shortest basename match first');
+        $this->assertSame('src/Entity', $hits[0]->detail);
+        ($hits[0]->activate)();
+        $this->assertSame([$project->dir.'/src/Entity/User.php', true], $opened);
+        $source->cancel(); // no-op for a synchronous source
+
+        // A root-level match has no directory detail.
+        $rootHits = $this->collect(fn (\Closure $emit) => $source->query('other', $emit));
+        $this->assertSame('', $rootHits[0]->detail);
+    }
+
+    public function testActionsSourceFuzzyFiltersSortsAndRuns(): void
+    {
+        $registry = new CommandRegistry();
+        $ran = null;
+        $registry->add(
+            'a',
+            function () use (&$ran): void {
+                $ran = 'save';
+            },
+            label: 'Save File',
+        );
+        $registry->add('b', static function (): void {}, label: 'Reformat File');
+        $registry->add('c', static function (): void {}, label: 'Nothing Here');
+        $source = new ActionsSource($registry);
+
+        $this->assertSame(SearchCategory::Actions, $source->category());
+        $hits = $this->collect(fn (\Closure $emit) => $source->query('save', $emit));
+
+        $labels = array_map(static fn (SearchHit $h): string => $h->label, $hits);
+        $this->assertContains('Save File', $labels);
+        $this->assertNotContains('Nothing Here', $labels, 'non-subsequence dropped');
+        $this->assertSame('Save File', $hits[0]->label, 'best score first');
+        ($hits[0]->activate)();
+        $this->assertSame('save', $ran);
+        $source->cancel(); // no-op for a synchronous source
+    }
+
+    public function testWorkspaceSymbolSourceFiltersByKindAndJumps(): void
+    {
+        $canned = [
+            ['path' => 'src/User.php', 'line' => 9, 'name' => 'User', 'kind' => 5, 'label' => '[class] User'],
+            ['path' => 'src/f.php', 'line' => 2, 'name' => 'helper', 'kind' => 12, 'label' => '[fn] helper'],
+        ];
+        $search = static function (string $query, \Closure $onResult) use ($canned): void {
+            $onResult($canned);
+        };
+        $opened = null;
+        $jumped = null;
+        $classes = new WorkspaceSymbolSource(
+            $search,
+            SearchCategory::Classes,
+            [5, 10, 11, 23],
+            '/proj',
+            function (string $p, bool $f) use (&$opened): void {
+                $opened = [$p, $f];
+            },
+            function (int $l, int $c) use (&$jumped): void {
+                $jumped = [$l, $c];
+            },
+        );
+
+        $this->assertSame(SearchCategory::Classes, $classes->category());
+        $hits = $this->collect(fn (\Closure $emit) => $classes->query('u', $emit));
+
+        $this->assertCount(1, $hits, 'only the class kind passes');
+        $this->assertSame('User', $hits[0]->label);
+        $this->assertSame('src/User.php:10', $hits[0]->detail, '1-based line in the detail');
+        ($hits[0]->activate)();
+        $this->assertSame(['/proj/src/User.php', true], $opened);
+        $this->assertSame([9, 0], $jumped);
+
+        // Symbols (empty kind filter) keeps everything.
+        $symbols = new WorkspaceSymbolSource($search, SearchCategory::Symbols, [], '/proj', static fn () => null, static fn () => null);
+        $this->assertCount(2, $this->collect(fn (\Closure $emit) => $symbols->query('u', $emit)));
+    }
+
+    public function testWorkspaceSymbolSourceDropsSupersededAndCancelledResponses(): void
+    {
+        $stashed = [];
+        $search = static function (string $query, \Closure $onResult) use (&$stashed): void {
+            $stashed[] = $onResult; // don't answer yet
+        };
+        $source = new WorkspaceSymbolSource($search, SearchCategory::Symbols, [], '/proj', static fn () => null, static fn () => null);
+
+        $seen = [];
+        $emit = function (array $hits) use (&$seen): void {
+            $seen[] = $hits;
+        };
+
+        $source->query('a', $emit); // stashed[0]
+        $source->query('b', $emit); // stashed[1], token bumped
+        $stashed[0]([['path' => 'x', 'line' => 0, 'name' => 'a', 'kind' => 5, 'label' => 'a']]); // stale → dropped
+        $this->assertSame([], $seen, 'the superseded response is ignored');
+
+        $stashed[1]([['path' => 'y', 'line' => 0, 'name' => 'b', 'kind' => 5, 'label' => 'b']]); // current
+        $this->assertCount(1, $seen, 'the current response is delivered');
+
+        $source->query('c', $emit); // stashed[2]
+        $source->cancel(); // token bumped again
+        $stashed[2]([['path' => 'z', 'line' => 0, 'name' => 'c', 'kind' => 5, 'label' => 'c']]);
+        $this->assertCount(1, $seen, 'a cancelled response is ignored');
+    }
+
+    public function testTextSourceGrepsAndJumps(): void
+    {
+        $project = new TempProject(['a.php' => "<?php\n\$needle = 1;\n"]);
+        $opened = null;
+        $jumped = null;
+        $source = new TextSource(
+            new ProjectSearch($project->dir),
+            $project->dir,
+            function (string $p, bool $f) use (&$opened): void {
+                $opened = [$p, $f];
+            },
+            function (int $l, int $c) use (&$jumped): void {
+                $jumped = [$l, $c];
+            },
+        );
+
+        $this->assertSame(SearchCategory::Text, $source->category());
+        $hits = $this->collect(fn (\Closure $emit) => $source->query('needle', $emit));
+
+        $this->assertNotEmpty($hits);
+        $this->assertSame(SearchCategory::Text, $hits[0]->category);
+        $this->assertStringContainsString('needle', $hits[0]->label);
+        ($hits[0]->activate)();
+        $this->assertSame($project->dir.'/a.php', $opened[0]);
+        $this->assertSame(1, $jumped[0], 'the match is on line index 1');
+        $source->cancel(); // idempotent; delegates to ProjectSearch::cancel
+    }
+}
