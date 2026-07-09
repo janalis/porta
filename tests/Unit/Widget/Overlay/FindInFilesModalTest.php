@@ -159,15 +159,50 @@ final class FindInFilesModalTest extends TestCase
         $this->assertSame(['regex', 'case', 'word', 'preserve', 'tokens'], $toggled);
         $this->assertStringContainsString('Scope: Directory', $this->screen($modal), 'scope label advanced');
 
+        $modal->handleInput("\t", $this->kb); // tab → replace field
         $modal->handleInput("\t", $this->kb); // tab → mask field
         $modal->handleInput('p', $this->kb);
         $this->assertSame(['p'], $masks);
+
+        $modal->handleInput("\t", $this->kb); // tab → wraps back to query
+        $modal->handleInput('q', $this->kb);
+        $this->assertSame([1], $scopeIdx, 'still no re-scope'); // sanity: the wrap edited the query, not scope
 
         $modal->handleInput("\x1b\r", $this->kb); // alt+enter → open in find window
         $this->assertTrue($opened);
 
         $modal->handleInput("\x1b", $this->kb); // esc → close
         $this->assertTrue($closed);
+    }
+
+    public function testReplacePreviewExcludeAndReplaceAll(): void
+    {
+        $modal = $this->modal();
+        $replaced = null;
+        $modal->onReplaceAll(function (string $r, array $excluded) use (&$replaced): void {
+            $replaced = [$r, $excluded];
+        });
+        $modal->setPreviewTransformer(static fn (string $old, string $repl): string => str_replace('foo', $repl, $old));
+        $modal->open('Find in Files');
+        $modal->setPreview($this->results()); // rows: [hdr A, match(4), match(9), hdr B, match(2)]
+
+        // Type a replacement → the preview flips to old → new with checkboxes.
+        $modal->handleInput("\t", $this->kb); // query → replace
+        foreach (str_split('bar') as $ch) {
+            $modal->handleInput($ch, $this->kb);
+        }
+        $screen = $this->screen($modal);
+        $this->assertStringContainsString('→', $screen, 'preview shows old → new');
+        $this->assertStringContainsString('[x]', $screen, 'kept matches are checked');
+        $this->assertStringContainsString('bar one', $screen, 'the replacement is previewed');
+
+        // Exclude the first match (Del on the selected row).
+        $modal->handleInput("\x1b[3~", $this->kb);
+        $this->assertStringContainsString('(excluded)', $this->screen($modal));
+
+        // Alt+A replaces the kept matches (index 0 excluded).
+        $modal->handleInput("\x1ba", $this->kb);
+        $this->assertSame(['bar', [0]], $replaced);
     }
 
     public function testEdges(): void

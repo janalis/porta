@@ -391,7 +391,7 @@ final class ProjectSearchController
         $this->finishReplace($touched);
     }
 
-    /** Flash the touched-file count, close the panel, and refocus the editor. */
+    /** Flash the touched-file count, close whichever surface drove the replace, and refocus the editor. */
     private function finishReplace(int $touched): void
     {
         $this->statusBar->flash(
@@ -399,7 +399,11 @@ final class ProjectSearchController
                 ? $this->translator->trans('Replaced in %count% file', ['%count%' => $touched])
                 : $this->translator->trans('Replaced in %count% files', ['%count%' => $touched]),
         );
-        $this->resultsPanel->close();
+        if ($this->editor->findModal()->isOpen()) {
+            $this->editor->findModal()->close();
+        } else {
+            $this->resultsPanel->close();
+        }
         $this->tui->setFocus($this->editor);
         $this->tui->requestRender();
     }

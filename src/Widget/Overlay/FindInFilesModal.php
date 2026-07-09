@@ -48,12 +48,17 @@ final class FindInFilesModal
         'toggle_word' => ['alt+w'],
         'toggle_preserve' => ['alt+p'],
         'toggle_tokens' => ['alt+t'],
+        'replace_all' => ['alt+a'],
+        'toggle_exclude' => [Key::DELETE],
     ];
 
     private bool $open = false;
     private string $title = '';
     private readonly TextField $query;
+    private readonly TextField $replace;
     private readonly TextField $mask;
+    /** @var array<int, bool> matchIndex => excluded from replace (preview mode only) */
+    private array $excluded = [];
     /** @var list<string> the Alt+S scope choices */
     private array $scopeLabels = ['Whole Project'];
     private int $scopeIndex = 0;
@@ -64,7 +69,7 @@ final class FindInFilesModal
     /** @var list<\Porta\Widget\DisplayRow> */
     private array $displayRows = [];
     private int $selected = 0;
-    /** 'query' | 'mask' — which field typing edits (Tab cycles) */
+    /** 'query' | 'replace' | 'mask' — which field typing edits (Tab cycles) */
     private string $activeField = 'query';
     private bool $searching = false;
 
@@ -86,6 +91,10 @@ final class FindInFilesModal
     private $onJump = null;
     /** @var (callable(): void)|null */
     private $onOpenInFindWindow = null;
+    /** @var (callable(string, list<int>): void)|null replace kept matches (excluding the given indices) */
+    private $onReplaceAll = null;
+    /** @var (\Closure(string, string): string)|null renders a match line's old → new preview */
+    private $previewReplacement = null;
     /** @var (callable(): void)|null */
     private $onClose = null;
 
@@ -97,6 +106,7 @@ final class FindInFilesModal
     ) {
         $this->palette = $palette ?? ColorPalette::dark();
         $this->query = new TextField();
+        $this->replace = new TextField();
         $this->mask = new TextField();
     }
 
@@ -142,6 +152,19 @@ final class FindInFilesModal
         return $this;
     }
 
+    public function onReplaceAll(callable $cb): self
+    {
+        $this->onReplaceAll = $cb;
+
+        return $this;
+    }
+
+    /** @param \Closure(string, string): string $transformer (lineText, replacement) => replacedLine */
+    public function setPreviewTransformer(\Closure $transformer): void
+    {
+        $this->previewReplacement = $transformer;
+    }
+
     public function onClose(callable $cb): self
     {
         $this->onClose = $cb;
@@ -154,10 +177,12 @@ final class FindInFilesModal
         $this->open = true;
         $this->title = $title;
         $this->query->clear();
+        $this->replace->clear();
         $this->mask->clear();
         $this->activeField = 'query';
         $this->results = [];
         $this->displayRows = [];
+        $this->excluded = [];
         $this->selected = 0;
         $this->searching = false;
         ($this->invalidate)();
@@ -206,6 +231,7 @@ final class FindInFilesModal
     {
         $this->results = $results;
         $this->displayRows = ResultsView::build($results, [], true, '', ResultGrouping::File);
+        $this->excluded = [];
         $this->searching = false;
         // Land on the first match row so Enter opens it.
         $this->selected = 0;
@@ -242,8 +268,20 @@ final class FindInFilesModal
         } elseif ($kb->matches($data, 'cursor_down')) {
             $this->step(1);
         } elseif ($kb->matches($data, 'switch_field')) {
-            $this->activeField = 'query' === $this->activeField ? 'mask' : 'query';
+            $this->activeField = match ($this->activeField) {
+                'query' => 'replace',
+                'replace' => 'mask',
+                default => 'query',
+            };
             ($this->invalidate)();
+        } elseif ($kb->matches($data, 'replace_all')) {
+            if (null !== $this->onReplaceAll) {
+                ($this->onReplaceAll)($this->replace->value(), $this->excludedIndices());
+            }
+        } elseif ($kb->matches($data, 'toggle_exclude')) {
+            if ($this->inPreview()) {
+                $this->toggleExcludeSelected();
+            }
         } elseif ($kb->matches($data, 'insert_newline')) {
             $this->activeTextField()->insertNewline();
             $this->notifyField();
@@ -274,7 +312,11 @@ final class FindInFilesModal
 
     private function activeTextField(): TextField
     {
-        return 'mask' === $this->activeField ? $this->mask : $this->query;
+        return match ($this->activeField) {
+            'replace' => $this->replace,
+            'mask' => $this->mask,
+            default => $this->query,
+        };
     }
 
     private function notifyField(): void
@@ -283,10 +325,41 @@ final class FindInFilesModal
             if (null !== $this->onMaskChanged) {
                 ($this->onMaskChanged)($this->mask->value());
             }
-        } elseif (null !== $this->onQuery) {
-            ($this->onQuery)($this->query->value());
+        } elseif ('query' === $this->activeField) {
+            if (null !== $this->onQuery) {
+                ($this->onQuery)($this->query->value());
+            }
         }
+        // Replace edits only re-render the old → new preview; they don't re-search.
         ($this->invalidate)();
+    }
+
+    /** Preview shows the match lines as `old → new` with exclude checkboxes once a replacement is typed. */
+    private function inPreview(): bool
+    {
+        return '' !== $this->replace->value();
+    }
+
+    /** @return list<int> the match indices currently excluded from replace-all */
+    private function excludedIndices(): array
+    {
+        $indices = [];
+        foreach ($this->excluded as $matchIndex => $isExcluded) {
+            if ($isExcluded) {
+                $indices[] = $matchIndex;
+            }
+        }
+
+        return $indices;
+    }
+
+    private function toggleExcludeSelected(): void
+    {
+        $row = $this->displayRows[$this->selected] ?? null;
+        if (null !== $row && null === $row->filePath) {
+            $this->excluded[$row->matchIndex] = !($this->excluded[$row->matchIndex] ?? false);
+            ($this->invalidate)();
+        }
     }
 
     private function fireToggle(string $name): void
@@ -338,7 +411,7 @@ final class FindInFilesModal
             return $lines;
         }
 
-        $maxPreview = max(1, min(\count($this->displayRows), $rows - 8, 10));
+        $maxPreview = max(1, min(\count($this->displayRows), $rows - 9, 10));
         $windowStart = $this->windowStart($maxPreview);
         $visible = \array_slice($this->displayRows, $windowStart, $maxPreview);
 
@@ -346,12 +419,15 @@ final class FindInFilesModal
         $col = max(0, intdiv($columns - $width, 2));
 
         $popup = $this->headerRows($width, $focused);
-        $this->optionsRow = 2; // title(0), query(1), options(2) — index into $popup
+        $this->optionsRow = 3; // title(0), query(1), replace(2), options(3) — index into $popup
         $previewIndex = \count($popup);
         foreach ($visible as $i => $row) {
-            $popup[] = null !== $row->filePath
-                ? $this->fileHeaderRow($row->filePath, $row->count, $width)
-                : $this->matchRow($this->results[$row->matchIndex], ($windowStart + $i) === $this->selected, $width);
+            $selected = ($windowStart + $i) === $this->selected;
+            $popup[] = match (true) {
+                null !== $row->filePath => $this->fileHeaderRow($row->filePath, $row->count, $width),
+                $this->inPreview() => $this->previewMatchRow($this->results[$row->matchIndex], $row->matchIndex, $selected, $width),
+                default => $this->matchRow($this->results[$row->matchIndex], $selected, $width),
+            };
         }
         if ([] === $visible) {
             $popup[] = $this->emptyRow($width);
@@ -406,7 +482,7 @@ final class FindInFilesModal
     }
 
     /**
-     * The fixed header rows: title, query, options+scope, mask.
+     * The fixed header rows: title, query, replace, options+scope, mask.
      *
      * @return list<string>
      */
@@ -418,6 +494,11 @@ final class FindInFilesModal
         $queryShown = $focused && 'query' === $this->activeField;
         $queryRow = $this->palette->of(Role::Toolbar).AnsiText::scrollLineToCaret(' > '.$this->query->render(cursor: $queryShown), $width, $marker)."\x1b[0m";
 
+        $replaceShown = $focused && 'replace' === $this->activeField;
+        $replaceHint = $this->inPreview() ? \sprintf('  (Del exclude · Alt+A replace %d)', $this->keptCount()) : '  (Tab · Alt+A)';
+        $replaceLine = ' ⇄ '.$this->replace->render(cursor: $replaceShown).$this->palette->of(Role::Dim).$replaceHint."\x1b[39m";
+        $replaceRow = $this->palette->of(Role::Toolbar).AnsiText::scrollLineToCaret($replaceLine, $width, $marker)."\x1b[0m";
+
         $maskShown = $focused && 'mask' === $this->activeField;
         $maskLine = ' Mask: '.$this->mask->render(cursor: $maskShown).$this->palette->of(Role::Dim).'  (Tab)'."\x1b[39m";
         $maskRow = $this->palette->of(Role::Toolbar).AnsiText::scrollLineToCaret($maskLine, $width, $marker)."\x1b[0m";
@@ -425,9 +506,23 @@ final class FindInFilesModal
         return [
             HeaderRenderer::render($title, $width, $this->palette->of(Role::HeaderBar)."\x1b[1m"),
             $queryRow,
+            $replaceRow,
             $this->optionsRowLine($width),
             $maskRow,
         ];
+    }
+
+    /** How many matches would be replaced (all minus the excluded). */
+    private function keptCount(): int
+    {
+        $kept = 0;
+        foreach (array_keys($this->results) as $matchIndex) {
+            if (!($this->excluded[$matchIndex] ?? false)) {
+                ++$kept;
+            }
+        }
+
+        return $kept;
     }
 
     private function statusText(): string
@@ -490,6 +585,39 @@ final class FindInFilesModal
         $label = (string) ($result['line'] + 1);
         $prefixWidth = 4 + mb_strwidth($label) + 2;
         $text = '    '.$this->palette->of(Role::TabAccent).$label."\x1b[39m".'  '.$result['text'];
+        $line = $bg.AnsiUtils::truncateToWidth($text, $width, '…', pad: true)."\x1b[0m";
+        $searchBg = $this->palette->of(Role::SearchBg);
+        foreach ($result['ranges'] ?? [] as $range) {
+            $start = $prefixWidth + $range['start'];
+            $line = LineDecorator::apply($line, $start, $start + $range['length'], $searchBg, $bg, $searchBg);
+        }
+
+        return $line;
+    }
+
+    /**
+     * A match row in replace-preview mode: a `[x]/[ ]` checkbox, the line number,
+     * and either the original line (highlighted, when excluded) or `old → new`.
+     *
+     * @param array{path: string, line: int, text: string, ranges?: list<array{start: int, length: int}>} $result
+     */
+    private function previewMatchRow(array $result, int $matchIndex, bool $selected, int $width): string
+    {
+        $bg = $selected ? $this->palette->of(Role::SelectedRow) : $this->palette->of(Role::PopupRow);
+        $excluded = $this->excluded[$matchIndex] ?? false;
+        $label = (string) ($result['line'] + 1);
+        $old = $result['text'];
+        $checkbox = '  '.($excluded ? '[ ]' : '[x]').' ';
+        $prefixWidth = mb_strwidth($checkbox) + mb_strwidth($label) + 2;
+        $head = $checkbox.$this->palette->of(Role::TabAccent).$label."\x1b[39m".'  ';
+
+        if ($excluded) {
+            $text = $head.$old.$this->palette->of(Role::Dim).'   (excluded)'."\x1b[39m";
+        } else {
+            $new = null !== $this->previewReplacement ? ($this->previewReplacement)($old, $this->replace->value()) : $old;
+            $text = $head.$old.'  →  '.$this->palette->of(Role::Added).$new."\x1b[39m";
+        }
+
         $line = $bg.AnsiUtils::truncateToWidth($text, $width, '…', pad: true)."\x1b[0m";
         $searchBg = $this->palette->of(Role::SearchBg);
         foreach ($result['ranges'] ?? [] as $range) {

@@ -1063,6 +1063,84 @@ final class IdeEdgeCasesTest extends TestCase
         $this->addToAssertionCount(1);
     }
 
+    public function testFindInProjectModalMaskFilters(): void
+    {
+        $project = new TempProject([
+            'src/A.php' => "<?php\n// token here\n",
+            'src/B.js' => "// token here\n",
+        ]);
+
+        $this->runIde(
+            $project,
+            $project->path('src/A.php'),
+            [
+                200 => static function ($tui): void {
+                    $tui->handleInput("\x1b[102;6u"); // ctrl+shift+f → modal
+                    foreach (str_split('token') as $ch) {
+                        $tui->handleInput($ch);
+                    }
+                },
+                600 => function ($tui): void {
+                    $tui->tick();
+                    // In the modal: Tab query → replace → Mask, then restrict to PHP.
+                    $tui->handleInput("\t");
+                    $tui->handleInput("\t");
+                    foreach (str_split('*.php') as $ch) {
+                        $tui->handleInput($ch);
+                    }
+                },
+                1050 => function ($tui): void {
+                    $tui->tick();
+                    $modal = $this->modalText($tui);
+                    $this->assertStringContainsString('A.php', $modal, 'the PHP file still matches in the modal preview');
+                    $this->assertStringNotContainsString('B.js', $modal, 'the *.php mask excludes the JS file');
+                },
+            ],
+            1.4,
+        );
+
+        $this->addToAssertionCount(1);
+    }
+
+    public function testFindInProjectReplaceInTheModal(): void
+    {
+        $project = new TempProject([
+            'src/A.php' => "<?php\n\$foo = 1;\n", // opened (active buffer)
+            'src/B.php' => "<?php\n\$foo = 2;\n", // only on disk
+        ]);
+
+        $this->runIde(
+            $project,
+            $project->path('src/A.php'),
+            [
+                200 => static function ($tui): void {
+                    $tui->handleInput("\x1b[102;6u"); // ctrl+shift+f → modal
+                    foreach (str_split('foo') as $ch) {
+                        $tui->handleInput($ch);
+                    }
+                },
+                600 => function ($tui): void {
+                    $tui->tick();
+                    // Replace directly in the modal (no promote): the preview flips to old → new.
+                    $this->assertStringContainsString('$foo = 1;', $this->modalText($tui), 'the modal previews the matches');
+                    $tui->handleInput("\t"); // query → replace
+                    foreach (str_split('bar') as $ch) {
+                        $tui->handleInput($ch);
+                    }
+                    $this->assertStringContainsString('→', $this->modalText($tui), 'the modal shows the replacement preview');
+                    $tui->handleInput("\x1ba"); // alt+a → replace all
+                },
+                1000 => function ($tui) use ($project): void {
+                    $tui->tick();
+                    $this->assertFalse($tui->getById('editor')->isFindModalOpen(), 'the modal closes after replacing');
+                    $this->assertStringContainsString('$bar = 1;', $tui->getById('editor')->getDocument()->getText(), 'open buffer replaced');
+                    $this->assertStringContainsString('$bar = 2;', (string) file_get_contents($project->path('src/B.php')), 'on-disk file replaced');
+                },
+            ],
+            1.3,
+        );
+    }
+
     public function testFindInProjectPinAndRestoreResults(): void
     {
         $project = new TempProject([
@@ -1178,7 +1256,8 @@ final class IdeEdgeCasesTest extends TestCase
                 },
                 500 => static function ($tui): void {
                     $tui->tick();
-                    $tui->handleInput("\t"); // query → mask
+                    $tui->handleInput("\t"); // query → replace
+                    $tui->handleInput("\t"); // replace → mask
                     foreach (str_split('*.php') as $ch) {
                         $tui->handleInput($ch);
                     }

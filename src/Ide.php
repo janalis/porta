@@ -756,6 +756,13 @@ final class Ide
             $this->panels->setMode(ResultsPanelMode::Search);
             $this->projectSearchController->promoteToPane();
         });
+        $modal->onReplaceAll(
+            /** @param list<int> $excluded */
+            function (string $replacement, array $excluded): void {
+                $this->projectSearchController->replaceAll($replacement, $excluded);
+            },
+        );
+        $modal->setPreviewTransformer(fn (string $text, string $replacement): string => $this->projectSearchController->previewLine($text, $replacement));
         $modal->onClose(function (): void {
             $this->editor->findModal()->close();
             $this->projectSearchController->cancel();
