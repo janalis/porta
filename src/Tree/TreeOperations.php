@@ -32,6 +32,7 @@ final class TreeOperations
      * @param \Closure(string): string     $relativePath    project-relative form of a path
      * @param \Closure(string): void       $copyToClipboard copy text to the system clipboard
      * @param \Closure(string): void       $findInFolder    open a folder-scoped text search
+     * @param \Closure(string): void       $replaceInFolder open a folder-scoped search-and-replace
      */
     public function __construct(
         private readonly FileTreeWidget $tree,
@@ -45,6 +46,7 @@ final class TreeOperations
         private readonly \Closure $relativePath,
         private readonly \Closure $copyToClipboard,
         private readonly \Closure $findInFolder,
+        private readonly \Closure $replaceInFolder,
     ) {}
 
     /**
@@ -61,9 +63,10 @@ final class TreeOperations
             new MenuItem($this->translator->trans('New Folder…'), '', fn () => $this->treeNewFolder($node)),
             MenuItem::separator(),
         ];
-        // Folder-only: a text search scoped to the clicked directory subtree.
+        // Folder-only: search / search-and-replace scoped to the clicked subtree.
         if ($node['isDir']) {
             $items[] = new MenuItem($this->translator->trans('Find in Files…'), '', fn () => ($this->findInFolder)($node['path']));
+            $items[] = new MenuItem($this->translator->trans('Replace in Files…'), '', fn () => ($this->replaceInFolder)($node['path']));
             $items[] = MenuItem::separator();
         }
         $items[] = new MenuItem($this->translator->trans('Copy Path'), '', fn () => $this->copyPath($node['path'], false));

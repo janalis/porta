@@ -55,13 +55,31 @@ final class ProjectSearchController
     }
 
     /**
-     * Open the panel scoped to a single folder (from the tree "Find in Files…"
-     * context menu). Results stay project-root-relative — only grep's search
-     * path narrows — so jump and replace-all keep working unchanged. A folder
-     * that resolves to the root itself (or outside it) falls back to a whole-
-     * project search.
+     * Open the panel scoped to a single folder for searching (tree "Find in
+     * Files…"). Results stay project-root-relative — only grep's search path
+     * narrows — so jump and replace-all keep working unchanged.
      */
     public function openInFolder(string $absDir): void
+    {
+        $this->scopedOpen($absDir, 'Find in %dir%');
+    }
+
+    /**
+     * Open the same scoped panel for replacing (tree "Replace in Files…"). The
+     * panel already carries the replace box (Tab, Alt+A); replace-all confines
+     * itself to the scope because it iterates the scoped result set.
+     */
+    public function replaceInFolder(string $absDir): void
+    {
+        $this->scopedOpen($absDir, 'Replace in %dir%');
+    }
+
+    /**
+     * Scope the search to a folder and (re)open the panel with a titled by
+     * $titleKey (a `… %dir% …` message). A folder that resolves to the root
+     * itself (or outside it) falls back to a whole-project search.
+     */
+    private function scopedOpen(string $absDir, string $titleKey): void
     {
         $relative = ProjectPaths::relative($this->rootDir, $absDir);
         if ('' === $relative || str_starts_with($relative, '/')) {
@@ -70,7 +88,7 @@ final class ProjectSearchController
             return;
         }
         $this->scope = $relative;
-        $this->reopen($this->translator->trans('Find in %dir%', ['%dir%' => $relative]));
+        $this->reopen($this->translator->trans($titleKey, ['%dir%' => $relative]));
     }
 
     /** Reset the query/options/results and (re)open the panel with $title. */

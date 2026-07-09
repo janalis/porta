@@ -868,6 +868,7 @@ final class Ide
             fn (string $p) => $this->relativePath($p),
             fn (string $t) => $this->copyToClipboard($t),
             fn (string $dir) => $this->openFindInFolder($dir),
+            fn (string $dir) => $this->openReplaceInFolder($dir),
         );
 
         // RTL bidi reorder, applied per pane by BidiTui when the locale is RTL.
@@ -1314,6 +1315,13 @@ final class Ide
     {
         $this->panels->setMode(ResultsPanelMode::Search);
         $this->projectSearchController->openInFolder($absDir);
+    }
+
+    /** Open the same scoped panel titled for replacing (tree "Replace in Files…"). */
+    private function openReplaceInFolder(string $absDir): void
+    {
+        $this->panels->setMode(ResultsPanelMode::Search);
+        $this->projectSearchController->replaceInFolder($absDir);
     }
 
     private function openSymbolSearch(): void

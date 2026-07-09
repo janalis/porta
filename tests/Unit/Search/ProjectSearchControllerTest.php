@@ -68,4 +68,20 @@ final class ProjectSearchControllerTest extends TestCase
 
         $this->assertStringContainsString('Find in Project', $this->header());
     }
+
+    public function testReplaceInFolderScopesTheTitleToTheRelativeDir(): void
+    {
+        $project = new TempProject(['src/sub/A.php' => "<?php\n"]);
+        $this->controller($project->dir)->replaceInFolder($project->dir.'/src/sub');
+
+        $this->assertStringContainsString('Replace in src/sub', $this->header());
+    }
+
+    public function testReplaceInFolderOnTheRootFallsBackToTheWholeProject(): void
+    {
+        $project = new TempProject(['src/A.php' => "<?php\n"]);
+        $this->controller($project->dir)->replaceInFolder($project->dir);
+
+        $this->assertStringContainsString('Find in Project', $this->header());
+    }
 }

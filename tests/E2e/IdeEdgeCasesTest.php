@@ -546,6 +546,61 @@ final class IdeEdgeCasesTest extends TestCase
         $this->addToAssertionCount(1);
     }
 
+    public function testReplaceInFilesFromFolderContextMenuScopesTheReplacement(): void
+    {
+        // Both files contain $token; a folder-scoped replace must rewrite only the
+        // in-folder file. Directories sort first, so `sub` is the first tree entry.
+        $project = new TempProject([
+            'sub/Inside.php' => "<?php\n\$token = 1;\n",
+            'Outside.php' => "<?php\n\$token = 2;\n",
+        ]);
+
+        $rightClickFolder = function ($tui, $terminal, $ide): void {
+            $renderer = new \ReflectionProperty($ide, 'renderer')->getValue($ide);
+            $rect = $renderer->getWidgetRect($tui->getById('tree'));
+            $tui->handleInput(\sprintf("\x1b[<2;%d;%dM", $rect->col + 3, $rect->row + 2));
+        };
+        $screen = static fn ($tui, $terminal): string => AnsiUtils::stripAnsiCodes($terminal->getOutput());
+
+        $this->runIde(
+            $project,
+            null, // no initial file → the tree is focused
+            [
+                200 => $rightClickFolder,
+                280 => function ($tui, $terminal) use ($screen): void {
+                    $tui->tick();
+                    $this->assertStringContainsString('Replace in Files', $screen($tui, $terminal), 'folder menu offers Replace in Files');
+                    // New File → New Folder → (skip sep) → Find in Files → Replace in Files.
+                    $tui->handleInput("\x1b[B");
+                    $tui->handleInput("\x1b[B");
+                    $tui->handleInput("\x1b[B");
+                    $tui->handleInput("\r");
+                },
+                360 => function ($tui, $terminal) use ($screen): void {
+                    $tui->tick();
+                    $this->assertSame('results', $tui->getFocus()?->getId(), 'the results panel is focused');
+                    $this->assertStringContainsString('Replace in sub', $screen($tui, $terminal), 'header shows the scoped folder');
+                    foreach (str_split('token') as $ch) {
+                        $tui->handleInput($ch); // the search term (query field)
+                    }
+                },
+                760 => static function ($tui): void {
+                    $tui->tick();
+                    $tui->handleInput("\t"); // switch to the replace field
+                    foreach (str_split('renamed') as $ch) {
+                        $tui->handleInput($ch);
+                    }
+                    $tui->handleInput("\x1ba"); // alt+a → replace all (scoped)
+                },
+                1000 => function ($tui) use ($project): void {
+                    $this->assertStringContainsString('$renamed = 1;', (string) file_get_contents($project->path('sub/Inside.php')), 'the in-folder file is replaced');
+                    $this->assertStringContainsString('$token = 2;', (string) file_get_contents($project->path('Outside.php')), 'the out-of-scope file is untouched');
+                },
+            ],
+            1.3,
+        );
+    }
+
     public function testStickyScrollPinsHeaderAndClickJumps(): void
     {
         putenv('PATH=/nonexistent');

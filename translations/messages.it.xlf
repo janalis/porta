@@ -1158,6 +1158,14 @@
         <source>Find in %dir%</source>
         <target>Cerca in %dir%</target>
       </trans-unit>
+      <trans-unit id="290">
+        <source>Replace in Files…</source>
+        <target>Sostituisci nei file…</target>
+      </trans-unit>
+      <trans-unit id="291">
+        <source>Replace in %dir%</source>
+        <target>Sostituisci in %dir%</target>
+      </trans-unit>
     </body>
   </file>
 </xliff>
