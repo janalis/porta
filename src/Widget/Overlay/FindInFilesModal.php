@@ -41,6 +41,7 @@ final class FindInFilesModal
         'cursor_down' => [Key::DOWN],
         'delete_char_backward' => [Key::BACKSPACE],
         'switch_field' => [Key::TAB],
+        'insert_newline' => ['shift+enter'],
         'cycle_scope' => ['alt+s'],
         'toggle_regex' => ['alt+r'],
         'toggle_case' => ['alt+c'],
@@ -243,6 +244,9 @@ final class FindInFilesModal
         } elseif ($kb->matches($data, 'switch_field')) {
             $this->activeField = 'query' === $this->activeField ? 'mask' : 'query';
             ($this->invalidate)();
+        } elseif ($kb->matches($data, 'insert_newline')) {
+            $this->activeTextField()->insertNewline();
+            $this->notifyField();
         } elseif ($kb->matches($data, 'cycle_scope')) {
             $this->scopeIndex = ($this->scopeIndex + 1) % \count($this->scopeLabels);
             if (null !== $this->onScopeCycle) {
@@ -394,7 +398,7 @@ final class FindInFilesModal
         $status = $this->statusText();
         $width = max(mb_strwidth($this->title) + mb_strwidth($status) + 5, mb_strwidth($this->query->value()) + 6, 48);
         foreach ($visible as $row) {
-            $text = null !== $row->filePath ? $row->filePath : ($this->results[$row->matchIndex]['text'] ?? '');
+            $text = null !== $row->filePath ? $row->filePath : $this->results[$row->matchIndex]['text'] ?? '';
             $width = max($width, mb_strwidth($text) + 8);
         }
 
@@ -442,12 +446,23 @@ final class FindInFilesModal
             $this->optionZones[] = ['name' => $name, 'start' => $col, 'end' => $col + $w];
             $col += $w;
         }
-        $tags = $this->optionTag('.*', $this->options['regex'])
+        $tags =
+            $this->optionTag('.*', $this->options['regex'])
             .$this->optionTag('Aa', $this->options['case'])
             .$this->optionTag('\\b', $this->options['word'])
             .$this->optionTag('Pc', $this->options['preserve'])
             .$this->optionTag($tokenGlyph, 'any' !== $this->options['tokens']);
-        $scope = '  '.$this->palette->of(Role::Dim).'Scope: '."\x1b[39m".$this->palette->of(Role::TabAccent).($this->scopeLabels[$this->scopeIndex] ?? 'Whole Project')."\x1b[39m".$this->palette->of(Role::Dim).' (Alt+S)'."\x1b[39m";
+        $scope =
+            '  '
+            .$this->palette->of(Role::Dim)
+            .'Scope: '
+            ."\x1b[39m"
+            .$this->palette->of(Role::TabAccent)
+            .($this->scopeLabels[$this->scopeIndex] ?? 'Whole Project')
+            ."\x1b[39m"
+            .$this->palette->of(Role::Dim)
+            .' (Alt+S)'
+            ."\x1b[39m";
 
         return $this->palette->of(Role::Toolbar).AnsiUtils::truncateToWidth(' '.$tags.$scope, $width, '…', pad: true)."\x1b[0m";
     }
@@ -517,7 +532,7 @@ final class FindInFilesModal
             return false;
         }
         $box = $this->box;
-        if (null === $box || $relCol < $box['col'] || $relCol >= $box['col'] + $box['width']) {
+        if (null === $box || $relCol < $box['col'] || $relCol >= ($box['col'] + $box['width'])) {
             if (null !== $this->onClose) {
                 ($this->onClose)();
             }

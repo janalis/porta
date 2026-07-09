@@ -30,6 +30,7 @@ use Porta\Ui\ColorPalette;
 use Porta\Ui\LtrPane;
 use Porta\Ui\Palette;
 use Porta\Ui\Role;
+use Porta\Widget\Overlay\FindInFilesModal;
 use Porta\Widget\Overlay\OverlayHost;
 use Porta\Widget\Render\EditorDecorations;
 use Porta\Widget\Render\EditorGeometry;
@@ -137,6 +138,9 @@ final class CodeEditorWidget extends AbstractWidget implements FocusableInterfac
     /** Modal list-overlay + prompt chrome composited over the editor pane. */
     private readonly OverlayHost $overlayHost;
 
+    /** The PhpStorm-style Find-in-Files search dialog composited over the editor pane. */
+    private readonly FindInFilesModal $findModal;
+
     /** Editor-level action dispatch (keymap actions + menu items). */
     private readonly EditorActionRouter $actionRouter;
 
@@ -150,6 +154,7 @@ final class CodeEditorWidget extends AbstractWidget implements FocusableInterfac
         $this->syntaxTheme = $syntaxTheme ?? new DarkTerminalTheme();
         $this->callbacks = new EditorCallbacks();
         $this->overlayHost = new OverlayHost(fn () => $this->invalidate(), $this->palette);
+        $this->findModal = new FindInFilesModal(fn () => $this->invalidate(), $this->palette);
         $this->document = new Document('');
         $this->highlighter = new CodeHighlighter(syntaxTheme: $this->syntaxTheme);
         $this->foldModel = new FoldModel($this->document);
@@ -337,6 +342,23 @@ final class CodeEditorWidget extends AbstractWidget implements FocusableInterfac
     public function handleSearchOverlayInput(string $data): void
     {
         $this->overlayHost->handleSearchInput($data, $this->getKeybindings());
+    }
+
+    /** The Find-in-Files search dialog, so the project-search controller can drive it. */
+    public function findModal(): FindInFilesModal
+    {
+        return $this->findModal;
+    }
+
+    public function isFindModalOpen(): bool
+    {
+        return $this->findModal->isOpen();
+    }
+
+    /** Feed one key event to the open Find-in-Files modal (from the global input path). */
+    public function handleFindModalInput(string $data): void
+    {
+        $this->findModal->handleInput($data, $this->getKeybindings());
     }
 
     public function setInlineDiagnostics(bool $enabled): void
@@ -707,6 +729,9 @@ final class CodeEditorWidget extends AbstractWidget implements FocusableInterfac
      */
     public function handlePopupClick(int $relRow, int $relCol): bool
     {
+        if ($this->findModal->isOpen()) {
+            return $this->findModal->clickAt($relRow, $relCol);
+        }
         if ($this->overlayHost->isSearchOpen()) {
             return $this->overlayHost->searchClickAt($relRow, $relCol);
         }
@@ -724,6 +749,9 @@ final class CodeEditorWidget extends AbstractWidget implements FocusableInterfac
      */
     public function handlePopupHover(int $relRow, int $relCol): bool
     {
+        if ($this->findModal->isOpen()) {
+            return $this->findModal->hoverAt($relRow, $relCol);
+        }
         if ($this->overlayHost->isSearchOpen()) {
             return $this->overlayHost->searchHoverAt($relRow, $relCol);
         }
@@ -863,12 +891,14 @@ final class CodeEditorWidget extends AbstractWidget implements FocusableInterfac
         $rows = max(1, $context->getRows() > 0 ? $context->getRows() : min(30, $this->document->getLineCount()));
 
         // No file open: show a centered hint instead of a blank editable buffer,
-        // still compositing the app-menu dropdown so File/Edit stay reachable.
+        // still compositing the Find-in-Files modal + the app-menu dropdown so
+        // both stay reachable over the empty pane.
         if (null === $this->filePath) {
             $this->lastGutterWidth = 0;
             $this->lastStripeCol = \PHP_INT_MAX; // no stripe over the empty-state pane
+            $empty = $this->findModal->composite($this->renderEmptyState($columns, $rows), $columns, $rows, $this->focused);
 
-            return $this->withMenuOverlay($this->renderEmptyState($columns, $rows), $columns);
+            return $this->withMenuOverlay($empty, $columns);
         }
 
         $doc = $this->document;
@@ -931,7 +961,10 @@ final class CodeEditorWidget extends AbstractWidget implements FocusableInterfac
 
         // The overlay/prompt chrome composites over the content; the
         // application-menu dropdown floats above everything else.
-        return $this->withMenuOverlay($this->overlayHost->composite($result, $columns, $rows, $this->focused), $columns);
+        $composited = $this->overlayHost->composite($result, $columns, $rows, $this->focused);
+        $composited = $this->findModal->composite($composited, $columns, $rows, $this->focused);
+
+        return $this->withMenuOverlay($composited, $columns);
     }
 
     /**

@@ -21,16 +21,18 @@ use Symfony\Component\Tui\Tui;
 final class ProjectSearchControllerTest extends TestCase
 {
     private ResultsPanelWidget $panel;
+    private CodeEditorWidget $editor;
 
     private function controller(string $rootDir): ProjectSearchController
     {
         $this->panel = new ResultsPanelWidget();
+        $this->editor = new CodeEditorWidget();
         $projectSearch = new ProjectSearch($rootDir);
 
         return new ProjectSearchController(
             $projectSearch,
             $this->panel,
-            new CodeEditorWidget(),
+            $this->editor,
             new StatusBarWidget(),
             new Tui(terminal: new VirtualTerminal(columns: 100, rows: 20)),
             new \Porta\I18n\Translator('en'),
@@ -45,27 +47,28 @@ final class ProjectSearchControllerTest extends TestCase
         );
     }
 
-    private function header(): string
+    /** The Find-in-Files modal composites over the editor pane. */
+    private function modal(): string
     {
-        return AnsiUtils::stripAnsiCodes(implode("\n", $this->panel->render(new RenderContext(100, 20))));
+        return AnsiUtils::stripAnsiCodes(implode("\n", $this->editor->render(new RenderContext(100, 40))));
     }
 
-    public function testOpenUsesTheWholeProjectTitle(): void
+    public function testOpenShowsTheFindModal(): void
     {
         $project = new TempProject(['src/A.php' => "<?php\n"]);
         $this->controller($project->dir)->open();
 
-        $this->assertStringContainsString('Find in Project', $this->header());
+        $modal = $this->modal();
+        $this->assertStringContainsString('Find in Files', $modal);
+        $this->assertStringContainsString('Scope: Whole Project', $modal);
     }
 
-    public function testOpenInFolderScopesTheTitleToTheRelativeDir(): void
+    public function testOpenInFolderPreselectsTheFolderScope(): void
     {
         $project = new TempProject(['src/sub/A.php' => "<?php\n"]);
         $this->controller($project->dir)->openInFolder($project->dir.'/src/sub');
 
-        $header = $this->header();
-        $this->assertStringContainsString('Find in src/sub', $header);
-        $this->assertStringContainsString('Scope: src/sub', $header, 'a folder search preselects (and saves) that folder as the scope');
+        $this->assertStringContainsString('Scope: src/sub', $this->modal(), 'a folder search preselects (and saves) that folder as the scope');
     }
 
     public function testOpenInFolderOnTheRootFallsBackToTheWholeProject(): void
@@ -74,7 +77,7 @@ final class ProjectSearchControllerTest extends TestCase
         // The project root resolves to no relative sub-path → whole-project search.
         $this->controller($project->dir)->openInFolder($project->dir);
 
-        $this->assertStringContainsString('Find in Project', $this->header());
+        $this->assertStringContainsString('Scope: Whole Project', $this->modal());
     }
 
     public function testTheCommittedQueryIsRecordedInHistoryOnClose(): void
@@ -107,17 +110,17 @@ final class ProjectSearchControllerTest extends TestCase
 
         // Only the five built-in kinds remain; cycling through them wraps to Whole Project.
         for ($i = 0; $i < 5; ++$i) {
-            $this->panel->handleInput("\x1bs");
+            $this->editor->handleFindModalInput("\x1bs");
         }
-        $this->assertStringContainsString('Scope: Whole Project', $this->header(), 'no saved scope was added');
+        $this->assertStringContainsString('Scope: Whole Project', $this->modal(), 'no saved scope was added');
     }
 
-    public function testReplaceInFolderScopesTheTitleToTheRelativeDir(): void
+    public function testReplaceInFolderPreselectsTheFolderScope(): void
     {
         $project = new TempProject(['src/sub/A.php' => "<?php\n"]);
         $this->controller($project->dir)->replaceInFolder($project->dir.'/src/sub');
 
-        $this->assertStringContainsString('Replace in src/sub', $this->header());
+        $this->assertStringContainsString('Scope: src/sub', $this->modal());
     }
 
     public function testReplaceInFolderOnTheRootFallsBackToTheWholeProject(): void
@@ -125,6 +128,6 @@ final class ProjectSearchControllerTest extends TestCase
         $project = new TempProject(['src/A.php' => "<?php\n"]);
         $this->controller($project->dir)->replaceInFolder($project->dir);
 
-        $this->assertStringContainsString('Find in Project', $this->header());
+        $this->assertStringContainsString('Scope: Whole Project', $this->modal());
     }
 }

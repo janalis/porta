@@ -291,7 +291,10 @@ final class MouseRouter
     {
         // Editor popups are unreachable while a full view (git/settings) owns the
         // main area (the editor is detached); only the menus below can claim it.
-        if (!$fullViewOpen && ($this->panes->editor()->isOverlayOpen() || $this->panes->editor()->isCompletionOpen() || $this->panes->editor()->isSearchOverlayOpen())) {
+        if (
+            !$fullViewOpen
+            && ($this->panes->editor()->isOverlayOpen() || $this->panes->editor()->isCompletionOpen() || $this->panes->editor()->isSearchOverlayOpen() || $this->panes->editor()->isFindModalOpen())
+        ) {
             if (null !== $editorRect && $editorRect->contains($mouse->row, $mouse->col)) {
                 $rel = $editorRect->toRelative($mouse->row, $mouse->col);
                 if ($this->panes->editor()->handlePopupClick($rel['row'], $rel['col'])) {
@@ -299,7 +302,7 @@ final class MouseRouter
 
                     return true;
                 }
-            } elseif ($this->panes->editor()->isOverlayOpen() || $this->panes->editor()->isSearchOverlayOpen()) {
+            } elseif ($this->panes->editor()->isOverlayOpen() || $this->panes->editor()->isSearchOverlayOpen() || $this->panes->editor()->isFindModalOpen()) {
                 $this->panes->editor()->handlePopupClick(-1, -1); // outside the modal overlay → dismiss
                 $this->tui->requestRender();
 
@@ -583,7 +586,7 @@ final class MouseRouter
         }
 
         if (
-            ($this->panes->editor()->isOverlayOpen() || $this->panes->editor()->isCompletionOpen() || $this->panes->editor()->isSearchOverlayOpen())
+            ($this->panes->editor()->isOverlayOpen() || $this->panes->editor()->isCompletionOpen() || $this->panes->editor()->isSearchOverlayOpen() || $this->panes->editor()->isFindModalOpen())
             && null !== $editorRect
             && $editorRect->contains($mouse->row, $mouse->col)
         ) {

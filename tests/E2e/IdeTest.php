@@ -203,15 +203,15 @@ final class IdeTest extends TestCase
         });
 
         // --- Project search --------------------------------------------------------------
-        $this->step(3.35, function () use ($tui): void {
-            $tui->handleInput("\x1b[102;6u"); // ctrl+shift+f
-            $this->assertSame('results', $tui->getFocus()?->getId());
+        $this->step(3.35, function () use ($editor, $tui): void {
+            $tui->handleInput("\x1b[102;6u"); // ctrl+shift+f → the Find-in-Files modal
+            $this->assertTrue($editor()->isFindModalOpen(), 'the find modal opened');
             foreach (str_split('class Target') as $ch) {
                 $tui->handleInput($ch);
             }
         });
         $this->step(3.75, function () use ($screen, $tui): void {
-            // Results group under a file header; the match line follows it.
+            // The modal's live preview groups matches under a file header.
             $this->assertStringContainsString('src/Target.php', $screen(), 'grouped under its file header');
             $this->assertStringContainsString('1 results', $screen());
             $tui->handleInput("\r"); // the first match is pre-selected → jump

@@ -39,6 +39,23 @@ final class IdeEdgeCasesTest extends TestCase
      *
      * @param array<int|string, callable> $steps delay-ms => callback(Tui, VirtualTerminal)
      */
+    /**
+     * Promote the open Find-in-Files modal to the results pane (Alt+Enter =
+     * "Open in Find Window"), so a test can drive the persistent pane as before.
+     * Call it after the initial query has settled.
+     */
+    private function promote(Tui $tui): void
+    {
+        $tui->handleInput("\x1b\r"); // alt+enter
+        $tui->tick();
+    }
+
+    /** The Find-in-Files modal's text (it composites over the editor pane). */
+    private function modalText(Tui $tui): string
+    {
+        return AnsiUtils::stripAnsiCodes(implode("\n", $tui->getById('editor')->render(new \Symfony\Component\Tui\Render\RenderContext(160, 40))));
+    }
+
     private function runIde(TempProject $project, ?string $file, array $steps, ?float $duration = null): VirtualTerminal
     {
         // Default duration: the last step plus a settle margin for its async
@@ -517,16 +534,17 @@ final class IdeEdgeCasesTest extends TestCase
                     $tui->handleInput("\x1b[B");
                     $tui->handleInput("\r");
                 },
-                340 => function ($tui, $terminal) use ($screen): void {
+                340 => function ($tui): void {
                     $tui->tick();
-                    $this->assertSame('results', $tui->getFocus()?->getId(), 'the results panel is focused');
-                    $this->assertStringContainsString('Find in sub', $screen($tui, $terminal), 'header shows the scoped folder');
+                    $this->assertTrue($tui->getById('editor')->isFindModalOpen(), 'the find modal opened, scoped to the folder');
+                    $this->assertStringContainsString('Scope: sub', $this->modalText($tui), 'the modal is scoped to the clicked folder');
                     foreach (str_split('scopedMarker') as $ch) {
                         $tui->handleInput($ch);
                     }
                 },
                 650 => function ($tui): void {
                     $tui->tick();
+                    $this->promote($tui); // modal → results pane
                     // Assert on the results panel itself (the tree sidebar also lists
                     // Outside.php, so the whole screen is the wrong surface).
                     $panel = AnsiUtils::stripAnsiCodes(implode("\n", $tui->getById('results')->render(new \Symfony\Component\Tui\Render\RenderContext(160, 14))));
@@ -576,16 +594,17 @@ final class IdeEdgeCasesTest extends TestCase
                     $tui->handleInput("\x1b[B");
                     $tui->handleInput("\r");
                 },
-                360 => function ($tui, $terminal) use ($screen): void {
+                360 => function ($tui): void {
                     $tui->tick();
-                    $this->assertSame('results', $tui->getFocus()?->getId(), 'the results panel is focused');
-                    $this->assertStringContainsString('Replace in sub', $screen($tui, $terminal), 'header shows the scoped folder');
+                    $this->assertTrue($tui->getById('editor')->isFindModalOpen(), 'the find modal opened, scoped to the folder');
+                    $this->assertStringContainsString('Scope: sub', $this->modalText($tui), 'the modal is scoped to the clicked folder');
                     foreach (str_split('token') as $ch) {
                         $tui->handleInput($ch); // the search term (query field)
                     }
                 },
-                760 => static function ($tui): void {
+                760 => function ($tui): void {
                     $tui->tick();
+                    $this->promote($tui); // modal → results pane (replace runs from the pane)
                     $tui->handleInput("\t"); // query → mask
                     $tui->handleInput("\t"); // mask → filter
                     $tui->handleInput("\t"); // filter → replace
@@ -623,6 +642,7 @@ final class IdeEdgeCasesTest extends TestCase
                 },
                 600 => function ($tui) use ($panelText): void {
                     $tui->tick();
+                    $this->promote($tui); // modal → results pane
                     $panel = $panelText($tui);
                     $this->assertStringContainsString('A.php', $panel, 'both files match before masking');
                     $this->assertStringContainsString('B.js', $panel);
@@ -666,6 +686,7 @@ final class IdeEdgeCasesTest extends TestCase
                 },
                 600 => function ($tui) use ($panelText): void {
                     $tui->tick();
+                    $this->promote($tui); // modal → results pane
                     $panel = $panelText($tui);
                     $this->assertStringContainsString('src/A.php', $panel, 'whole project finds all three');
                     $this->assertStringContainsString('src/C.php', $panel);
@@ -756,6 +777,7 @@ final class IdeEdgeCasesTest extends TestCase
                 },
                 700 => function ($tui) use ($panelText): void {
                     $tui->tick();
+                    $this->promote($tui); // modal → results pane
                     $this->assertStringContainsString('other/Outside.php', $panelText($tui), 'whole project finds both first');
                     for ($i = 0; $i < 5; ++$i) {
                         $tui->handleInput("\x1bs"); // cycle past the 5 built-ins to the saved lib scope
@@ -803,6 +825,7 @@ final class IdeEdgeCasesTest extends TestCase
                 },
                 1000 => function ($tui) use ($panelText): void {
                     $tui->tick();
+                    $this->promote($tui); // modal → results pane (carries the modal's scope)
                     $panel = $panelText($tui);
                     $this->assertStringContainsString('Scope: Module', $panel);
                     $this->assertStringContainsString('pkg/src/A.php', $panel, 'the module scope keeps the package');
@@ -836,6 +859,7 @@ final class IdeEdgeCasesTest extends TestCase
                 },
                 800 => function ($tui) use ($panelText): void {
                     $tui->tick();
+                    $this->promote($tui); // modal → results pane
                     $panel = $panelText($tui);
                     $this->assertStringContainsString('Scope: Directory', $panel);
                     $this->assertStringContainsString('src/A.php', $panel);
@@ -865,6 +889,7 @@ final class IdeEdgeCasesTest extends TestCase
                 },
                 600 => function ($tui) use ($panelText): void {
                     $tui->tick();
+                    $this->promote($tui); // modal → results pane
                     $panel = $panelText($tui);
                     $this->assertStringContainsString('$needle = 1;', $panel, 'the code occurrence matches first');
                     $this->assertStringContainsString('// needle here', $panel);
@@ -898,8 +923,9 @@ final class IdeEdgeCasesTest extends TestCase
                         $tui->handleInput($ch);
                     }
                 },
-                600 => static function ($tui): void {
+                600 => function ($tui): void {
                     $tui->tick();
+                    $this->promote($tui); // modal → results pane (context lines live on the pane)
                     $tui->handleInput("\x1bm"); // alt+m → expand context on the first match
                 },
                 800 => function ($tui) use ($panelText): void {
@@ -930,8 +956,9 @@ final class IdeEdgeCasesTest extends TestCase
                         $tui->handleInput($ch);
                     }
                 },
-                600 => static function ($tui): void {
+                600 => function ($tui): void {
                     $tui->tick();
+                    $this->promote($tui); // modal → results pane (context lines live on the pane)
                     $tui->handleInput("\x1bm"); // alt+m → expand context
                 },
                 800 => function ($tui) use ($panelText): void {
@@ -969,6 +996,7 @@ final class IdeEdgeCasesTest extends TestCase
                 },
                 600 => function ($tui) use ($panelText): void {
                     $tui->tick();
+                    $this->promote($tui); // modal → results pane (replace runs from the pane)
                     $panel = $panelText($tui);
                     $this->assertStringContainsString('foo()⏎{', $panel, 'the multiline query renders the newline as ⏎');
                     $this->assertStringContainsString('2 results', $panel, 'the pattern matches across the line break in both files');
@@ -1015,8 +1043,9 @@ final class IdeEdgeCasesTest extends TestCase
                         $tui->handleInput($ch);
                     }
                 },
-                600 => static function ($tui): void {
+                600 => function ($tui): void {
                     $tui->tick();
+                    $this->promote($tui); // modal → results pane (replace runs from the pane)
                     $tui->handleInput("\t");
                     $tui->handleInput("\t");
                     $tui->handleInput("\t"); // → replace
@@ -1054,6 +1083,7 @@ final class IdeEdgeCasesTest extends TestCase
                 },
                 500 => function ($tui) use ($panelText): void {
                     $tui->tick();
+                    $this->promote($tui); // modal → results pane (pin lives on the pane)
                     $this->assertStringContainsString('src/A.php', $panelText($tui), 'the foo search finds A.php');
                     $tui->handleInput("\x1bk"); // alt+k → pin
                     $this->assertStringContainsString('pinned: foo', $panelText($tui), 'the pin indicator appears');
@@ -1064,6 +1094,7 @@ final class IdeEdgeCasesTest extends TestCase
                 },
                 900 => function ($tui) use ($panelText): void {
                     $tui->tick();
+                    $this->promote($tui); // reopened modal → results pane (carries the pin)
                     $this->assertStringContainsString('pinned: foo', $panelText($tui), 'the pin survives close/reopen');
                     foreach (str_split('bar') as $ch) {
                         $tui->handleInput($ch);
@@ -1107,8 +1138,9 @@ final class IdeEdgeCasesTest extends TestCase
                         $tui->handleInput($ch);
                     }
                 },
-                600 => static function ($tui): void {
+                600 => function ($tui): void {
                     $tui->tick();
+                    $this->promote($tui); // modal → results pane (export runs from the pane)
                     $tui->handleInput("\x1bx"); // alt+x → export
                 },
                 900 => function ($tui) use ($project): void {
@@ -1159,11 +1191,11 @@ final class IdeEdgeCasesTest extends TestCase
                 1000 => static function ($tui): void {
                     $tui->handleInput("\x1b[102;6u"); // reopen
                 },
-                1200 => function ($tui) use ($panelText): void {
+                1200 => function ($tui): void {
                     $tui->tick();
-                    $panel = $panelText($tui);
-                    $this->assertStringContainsString('Scope: Directory', $panel, 'the last scope is restored');
-                    $this->assertStringContainsString('Mask: *.php', $panel, 'the last mask is restored');
+                    $modal = $this->modalText($tui); // the reopened modal restores the config
+                    $this->assertStringContainsString('Scope: Directory', $modal, 'the last scope is restored');
+                    $this->assertStringContainsString('Mask: *.php', $modal, 'the last mask is restored');
                 },
             ],
             1.5,
@@ -1189,6 +1221,7 @@ final class IdeEdgeCasesTest extends TestCase
                 },
                 600 => function ($tui) use ($panelText, $project): void {
                     $tui->tick();
+                    $this->promote($tui); // modal → results pane (F5 rerun lives on the pane)
                     $this->assertStringContainsString('1 results', $panelText($tui));
                     $project->write('src/B.php', "// tok added later\n"); // a new match on disk
                     $tui->handleInput("\x1b[15~"); // F5 → rerun
@@ -1220,8 +1253,9 @@ final class IdeEdgeCasesTest extends TestCase
                         $tui->handleInput($ch);
                     }
                 },
-                600 => static function ($tui): void {
+                600 => function ($tui): void {
                     $tui->tick();
+                    $this->promote($tui); // modal → results pane (replace runs from the pane)
                     $tui->handleInput("\x1bp"); // alt+p → preserve case
                     $tui->handleInput("\t"); // query → mask
                     $tui->handleInput("\t"); // mask → filter
@@ -1269,6 +1303,7 @@ final class IdeEdgeCasesTest extends TestCase
                 },
                 900 => function ($tui) use ($panelText): void {
                     $tui->tick();
+                    $this->promote($tui); // modal → results pane (query history recall lives on the pane)
                     $this->assertStringNotContainsString('Find in Project: tok', $panelText($tui), 'reopens empty');
                     $tui->handleInput("\x1b[1;3A"); // alt+up → recall the prior query
                 },
@@ -1303,6 +1338,7 @@ final class IdeEdgeCasesTest extends TestCase
                 },
                 600 => function ($tui) use ($panelText): void {
                     $tui->tick();
+                    $this->promote($tui); // modal → results pane (the filter field lives on the pane)
                     $panel = $panelText($tui);
                     $this->assertStringContainsString('src/A.php', $panel, 'both files match');
                     $this->assertStringContainsString('other/B.php', $panel);
@@ -2066,8 +2102,9 @@ final class IdeEdgeCasesTest extends TestCase
                         $tui->handleInput($ch);
                     }
                 },
-                700 => static function ($tui): void {
+                700 => function ($tui): void {
                     $tui->tick();
+                    $this->promote($tui); // modal → results pane (replace runs from the pane)
                     $tui->handleInput("\t"); // query → mask
                     $tui->handleInput("\t"); // mask → filter
                     $tui->handleInput("\t"); // filter → replace
@@ -2103,8 +2140,9 @@ final class IdeEdgeCasesTest extends TestCase
                         $tui->handleInput($ch);
                     }
                 },
-                700 => static function ($tui): void {
+                700 => function ($tui): void {
                     $tui->tick();
+                    $this->promote($tui); // modal → results pane (replace runs from the pane)
                     $tui->handleInput("\t"); // query → mask
                     $tui->handleInput("\t"); // mask → filter
                     $tui->handleInput("\t"); // filter → replace
@@ -2130,8 +2168,9 @@ final class IdeEdgeCasesTest extends TestCase
             $project,
             $project->path('src/A.php'),
             [
-                300 => static function ($tui): void {
-                    $tui->handleInput("\x1b[102;6u"); // open project search
+                300 => function ($tui): void {
+                    $tui->handleInput("\x1b[102;6u"); // open project search (modal)
+                    $this->promote($tui); // modal → results pane (empty; replace runs from the pane)
                     $tui->handleInput("\t"); // query → mask
                     $tui->handleInput("\t"); // mask → filter
                     $tui->handleInput("\t"); // filter → replace
@@ -2163,6 +2202,7 @@ final class IdeEdgeCasesTest extends TestCase
                 },
                 600 => function ($tui) use ($panelText): void {
                     $tui->tick();
+                    $this->promote($tui); // modal → results pane (replace preview + exclude live on the pane)
                     $tui->handleInput("\t"); // query → mask
                     $tui->handleInput("\t"); // mask → filter
                     $tui->handleInput("\t"); // filter → replace
@@ -2207,6 +2247,7 @@ final class IdeEdgeCasesTest extends TestCase
                 },
                 600 => function ($tui) use ($panelText): void {
                     $tui->tick();
+                    $this->promote($tui); // modal → results pane (replace preview + exclude live on the pane)
                     $tui->handleInput("\t");
                     $tui->handleInput("\t");
                     $tui->handleInput("\t"); // → replace

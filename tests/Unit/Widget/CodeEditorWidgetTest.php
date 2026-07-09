@@ -625,6 +625,32 @@ final class CodeEditorWidgetTest extends TestCase
         $this->assertNotNull($picked);
     }
 
+    public function testFindModalMouseClickAndHoverDelegate(): void
+    {
+        $editor = $this->editor();
+        $jumped = null;
+        $editor
+            ->findModal()
+            ->onJump(function (string $p, int $l) use (&$jumped): void {
+                $jumped = [$p, $l];
+            });
+        $editor->findModal()->open('Find in Files');
+        $editor
+            ->findModal()
+            ->setPreview([
+                ['path' => 'src/A.php', 'line' => 4, 'text' => 'foo one', 'ranges' => []],
+                ['path' => 'src/A.php', 'line' => 9, 'text' => 'foo two', 'ranges' => []],
+            ]);
+        $editor->render(new RenderContext(100, 40)); // composites the modal → records its box
+
+        $box = $editor->findModal()->lastBox();
+        $this->assertNotNull($box);
+        // Hover the second match row (the first is already selected), then click the first → jump.
+        $this->assertTrue($editor->handlePopupHover($box['previewRow'] + 2, $box['col'] + 3));
+        $this->assertTrue($editor->handlePopupClick($box['previewRow'] + 1, $box['col'] + 3));
+        $this->assertSame(['src/A.php', 4], $jumped);
+    }
+
     private function overlayEditor(\ArrayObject $sink): CodeEditorWidget
     {
         $editor = $this->editor();

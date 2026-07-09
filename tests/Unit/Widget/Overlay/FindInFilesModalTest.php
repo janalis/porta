@@ -91,7 +91,10 @@ final class FindInFilesModalTest extends TestCase
         $modal->handleInput('f', $this->kb);
         $modal->handleInput('o', $this->kb);
         $modal->handleInput("\x7f", $this->kb); // backspace
-        $this->assertSame(['f', 'fo', 'f'], $queries);
+        $modal->handleInput("\x1b[13;2u", $this->kb); // shift+enter → newline in the query
+        $modal->handleInput('o', $this->kb);
+        $this->assertSame(['f', 'fo', 'f', "f\n", "f\no"], $queries, 'multiline query via shift+enter');
+        $this->assertStringContainsString('f⏎o', $this->screen($modal), 'the newline renders as ⏎');
     }
 
     public function testNavigateAndJump(): void

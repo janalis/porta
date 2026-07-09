@@ -497,6 +497,7 @@ final class Ide
         $this->wireEditor();
         $this->wireFindAndGoto();
         $this->wireResultsPanel();
+        $this->wireFindModal();
         $this->wireInputDispatch($keybindings);
         $this->wirePanels();
     }
@@ -713,6 +714,54 @@ final class Ide
         });
     }
 
+    /** Wire the Find-in-Files modal callbacks to the project-search controller. */
+    private function wireFindModal(): void
+    {
+        $modal = $this->editor->findModal();
+
+        // The query and mask edits re-run the search, debounced like the pane.
+        $modal->onQuery(function (string $query): void {
+            if (null !== $this->searchDebounce) {
+                EventLoop::cancel($this->searchDebounce);
+            }
+            $this->editor->findModal()->setSearching();
+            $this->searchDebounce = EventLoop::delay(0.25, function () use ($query): void {
+                $this->searchDebounce = null;
+                $this->projectSearchController->search($query);
+            });
+        });
+        $modal->onMaskChanged(function (string $mask): void {
+            if (null !== $this->searchDebounce) {
+                EventLoop::cancel($this->searchDebounce);
+            }
+            $this->editor->findModal()->setSearching();
+            $this->searchDebounce = EventLoop::delay(0.25, function () use ($mask): void {
+                $this->searchDebounce = null;
+                $this->projectSearchController->setMask($mask);
+            });
+        });
+        $modal->onScopeCycle(function (int $index): void {
+            $this->projectSearchController->setScopeIndex($index);
+        });
+        $modal->onToggleOption(function (string $name): void {
+            $this->projectSearchController->toggleOption($name);
+        });
+        $modal->onJump(function (string $relativePath, int $line): void {
+            $this->editor->findModal()->close();
+            $this->openFile($this->rootDir.'/'.$relativePath, focusEditor: true);
+            $this->editor->jumpTo($line, 0);
+            $this->tui->requestRender();
+        });
+        $modal->onOpenInFindWindow(function (): void {
+            $this->panels->setMode(ResultsPanelMode::Search);
+            $this->projectSearchController->promoteToPane();
+        });
+        $modal->onClose(function (): void {
+            $this->editor->findModal()->close();
+            $this->projectSearchController->cancel();
+        });
+    }
+
     /** Command registry, menu bar, and the raw input listener (mouse + key-bound commands). */
     private function wireInputDispatch(Keybindings $keybindings): void
     {
@@ -744,6 +793,15 @@ final class Ide
             if ($this->editor->isSearchOverlayOpen()) {
                 $event->stopPropagation();
                 $this->editor->handleSearchOverlayInput($data);
+                $this->tui->requestRender();
+
+                return;
+            }
+
+            // The Find-in-Files modal captures the keyboard the same way.
+            if ($this->editor->isFindModalOpen()) {
+                $event->stopPropagation();
+                $this->editor->handleFindModalInput($data);
                 $this->tui->requestRender();
 
                 return;

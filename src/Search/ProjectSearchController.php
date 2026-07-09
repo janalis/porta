@@ -68,14 +68,50 @@ final class ProjectSearchController
         $this->searchOptions = new SearchOptions();
     }
 
-    /** Open the panel in find-in-project mode with a fresh query, restoring the last scope + mask. */
+    /** Open the Find-in-Files modal with a fresh query, restoring the last scope + mask. */
     public function open(): void
     {
         $this->rebuildScopeChoices();
         $this->scopeKind = $this->prefs->lastScope();
         $this->scopeIndex = (int) array_search($this->scopeKind, self::BUILT_INS, true);
         $this->scope = $this->resolveChoice($this->scopeChoices[$this->scopeIndex]);
-        $this->reopen($this->translator->trans('Find in Project'));
+        $this->openModal();
+    }
+
+    /** Reset the query/options/mask/results and open the modal seeded from the current config. */
+    private function openModal(): void
+    {
+        $this->searchOptions = new SearchOptions();
+        $this->lastSearchQuery = '';
+        $this->mask = $this->prefs->lastMask();
+        $this->lastSearchResults = [];
+        $modal = $this->editor->findModal();
+        $modal->open($this->translator->trans('Find in Files'));
+        $modal->setScopes($this->scopeLabels(), $this->scopeIndex);
+        $modal->setOptions($this->searchOptions->panelState());
+        $modal->setMaskValue($this->mask);
+        $this->tui->requestRender();
+    }
+
+    /**
+     * "Open in Find Window": hand the current results off to the persistent
+     * results tool window (the shared pane, in full find-in-project mode), seeded
+     * from the modal's query/scope/mask/options, and focus it.
+     */
+    public function promoteToPane(): void
+    {
+        $this->editor->findModal()->close();
+        $this->resultsPanel->open($this->translator->trans('Find in Project'), ResultsPanelFields::fullSearch());
+        $this->resultsPanel->setOptions($this->searchOptions->panelState());
+        $this->resultsPanel->setHistory($this->history->all());
+        $this->resultsPanel->setScopes($this->scopeLabels(), $this->scopeIndex);
+        $this->resultsPanel->setMaskValue($this->mask);
+        $this->resultsPanel->setMaskHistory($this->prefs->recentMasks());
+        $this->resultsPanel->setPinIndicator(null === $this->pinned ? null : $this->pinned['query']);
+        $this->resultsPanel->setQueryValue($this->lastSearchQuery);
+        $this->resultsPanel->setResults($this->lastSearchResults);
+        $this->tui->setFocus($this->resultsPanel);
+        $this->tui->requestRender();
     }
 
     /** Rebuild the Alt+S choices: the built-in kinds followed by the saved scopes. */
@@ -104,31 +140,27 @@ final class ProjectSearchController
     }
 
     /**
-     * Open the panel scoped to a single folder for searching (tree "Find in
+     * Open the modal scoped to a single folder for searching (tree "Find in
      * Files…"). Results stay project-root-relative — only grep's search path
      * narrows — so jump and replace-all keep working unchanged.
      */
     public function openInFolder(string $absDir): void
     {
-        $this->scopedOpen($absDir, 'Find in %dir%');
+        $this->scopedOpen($absDir);
     }
 
-    /**
-     * Open the same scoped panel for replacing (tree "Replace in Files…"). The
-     * panel already carries the replace box (Tab, Alt+A); replace-all confines
-     * itself to the scope because it iterates the scoped result set.
-     */
+    /** Open the same scoped modal (tree "Replace in Files…"); replace runs from the promoted pane. */
     public function replaceInFolder(string $absDir): void
     {
-        $this->scopedOpen($absDir, 'Replace in %dir%');
+        $this->scopedOpen($absDir);
     }
 
     /**
-     * Scope the search to a folder and (re)open the panel with a titled by
-     * $titleKey (a `… %dir% …` message). A folder that resolves to the root
-     * itself (or outside it) falls back to a whole-project search.
+     * Open the modal scoped to a folder: remember it as a recent scope and
+     * preselect it in the Alt+S cycle. A folder resolving to the root itself
+     * (or outside it) falls back to a whole-project search.
      */
-    private function scopedOpen(string $absDir, string $titleKey): void
+    private function scopedOpen(string $absDir): void
     {
         $relative = ProjectPaths::relative($this->rootDir, $absDir);
         if ('' === $relative || str_starts_with($relative, '/')) {
@@ -136,12 +168,11 @@ final class ProjectSearchController
 
             return;
         }
-        // Remember the folder as a recent scope and select it in the Alt+S cycle.
         $this->scopeStore->addRecent($relative, [$relative]);
         $this->rebuildScopeChoices();
         $this->scopeIndex = $this->indexOfSaved($relative);
         $this->scope = [$relative];
-        $this->reopen($this->translator->trans($titleKey, ['%dir%' => $relative]));
+        $this->openModal();
     }
 
     /** The choice index of the saved scope labelled $label (falls back to the whole project). */
@@ -193,25 +224,7 @@ final class ProjectSearchController
         $this->tui->requestRender();
     }
 
-    /** Reset the query/options/results and (re)open the panel with $title, restoring scope + mask. */
-    private function reopen(string $title): void
-    {
-        $this->searchOptions = new SearchOptions();
-        $this->lastSearchQuery = '';
-        $this->mask = $this->prefs->lastMask();
-        $this->lastSearchResults = [];
-        $this->resultsPanel->open($title, ResultsPanelFields::fullSearch());
-        $this->resultsPanel->setOptions($this->searchOptions->panelState());
-        $this->resultsPanel->setHistory($this->history->all());
-        $this->resultsPanel->setScopes($this->scopeLabels(), $this->scopeIndex);
-        $this->resultsPanel->setMaskValue($this->mask);
-        $this->resultsPanel->setMaskHistory($this->prefs->recentMasks());
-        $this->resultsPanel->setPinIndicator(null === $this->pinned ? null : $this->pinned['query']);
-        $this->tui->setFocus($this->resultsPanel);
-        $this->tui->requestRender();
-    }
-
-    /** Run a new query (from the debounced panel input). */
+    /** Run a new query (from the debounced modal/panel input). */
     public function search(string $query): void
     {
         $this->lastSearchQuery = $query;
@@ -245,11 +258,16 @@ final class ProjectSearchController
         $this->run($this->lastSearchQuery);
     }
 
-    /** Toggle a search option and re-run the last query with it applied. */
+    /** Toggle a search option, reflect it on whichever surface is open, and re-run. */
     public function toggleOption(string $name): void
     {
         $this->searchOptions = $this->searchOptions->toggled($name);
-        $this->resultsPanel->setOptions($this->searchOptions->panelState());
+        $state = $this->searchOptions->panelState();
+        if ($this->editor->findModal()->isOpen()) {
+            $this->editor->findModal()->setOptions($state);
+        } else {
+            $this->resultsPanel->setOptions($state);
+        }
         $this->run($this->lastSearchQuery);
         $this->tui->requestRender();
     }
@@ -445,10 +463,14 @@ final class ProjectSearchController
             $query,
             function (array $results) use ($query): void {
                 // A language-aware token scope narrows the grep hits to (or away
-                // from) comments/strings before they reach the panel.
+                // from) comments/strings before they reach whichever surface is live.
                 $results = $this->languageFilter->apply($results, $query, $this->searchOptions);
                 $this->lastSearchResults = $results;
-                if ($this->resultsPanel->isOpen()) {
+                $modal = $this->editor->findModal();
+                if ($modal->isOpen()) {
+                    $modal->setPreview($results);
+                    $this->tui->requestRender();
+                } elseif ($this->resultsPanel->isOpen()) {
                     $this->resultsPanel->setResults($results);
                     $this->tui->requestRender();
                 }

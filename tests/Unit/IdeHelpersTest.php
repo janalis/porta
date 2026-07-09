@@ -329,9 +329,11 @@ final class IdeHelpersTest extends TestCase
             $byLabel[$command['label']] = $command['run'];
         }
 
-        // Panel-opening commands focus the right widget.
+        // Find in Project opens the centered modal (composited over the editor);
+        // the other panel-opening commands focus their widget.
         $byLabel['Find in Project']();
-        $this->assertSame('results', $tui->getFocus()?->getId());
+        $this->assertTrue($tui->getById('editor')->isFindModalOpen(), 'find-in-project opens the modal');
+        $tui->getById('editor')->findModal()->close();
 
         $byLabel['Go to Symbol in Project']();
         $this->assertSame('results', $tui->getFocus()?->getId());

@@ -484,6 +484,19 @@ final class ResultsPanelWidgetTest extends TestCase
         $this->assertStringNotContainsString('foo one', $collapsedFile, 'the file\'s matches are hidden');
     }
 
+    public function testShiftEnterInsertsANewlineInTheQuery(): void
+    {
+        $panel = new ResultsPanelWidget();
+        $panel->setFocused(true);
+        $panel->open('Find in Project', ResultsPanelFields::fullSearch());
+        $panel->handleInput('a');
+        $panel->handleInput("\x1b[13;2u"); // shift+enter → newline
+        $panel->handleInput('b');
+
+        $plain = AnsiUtils::stripAnsiCodes(implode("\n", $panel->render(new RenderContext(80, 12))));
+        $this->assertStringContainsString('a⏎b', $plain, 'the multiline query renders the newline as ⏎');
+    }
+
     public function testMaskValueSeededAndHistoryRecalled(): void
     {
         $panel = new ResultsPanelWidget();
