@@ -813,6 +813,42 @@ final class IdeEdgeCasesTest extends TestCase
         );
     }
 
+    public function testRtlClickInTheTreeRoutesToTheClickedEntry(): void
+    {
+        // End-to-end mouse chain in RTL: SGR click → MouseRouter → per-pane
+        // logicalColumn → rect hit-test → open. A broken RTL column map would
+        // misroute the click out of the (right-hand) tree pane and B would never open.
+        putenv('PATH=/nonexistent');
+        $project = new TempProject([
+            '.porta.json' => json_encode(['settings' => ['language' => 'he']]),
+            'A.php' => "<?php\n",
+            'B.php' => "<?php\n",
+        ]);
+
+        $this->runIde(
+            $project,
+            $project->path('A.php'),
+            [
+                300 => function ($tui): void {
+                    $tui->tick();
+                    $renderer = new \ReflectionProperty(\Symfony\Component\Tui\Tui::class, 'renderer')->getValue($tui);
+                    $rect = $renderer->getWidgetRect($tui->getById('tree'));
+                    $this->assertNotNull($rect);
+                    $this->assertGreaterThan(0, $rect->col, 'RTL puts the file tree on the right');
+                    // Tree lists .porta.json, A.php, B.php → B.php is screen row 5.
+                    // Click inside the (right-hand) tree columns; the RTL column map
+                    // must keep the click in the tree pane, not spill to the editor.
+                    $col = $rect->col + 6;
+                    $tui->handleInput("\x1b[<0;{$col};5M");
+                },
+                500 => function ($tui): void {
+                    $this->assertStringEndsWith('B.php', (string) $tui->getById('editor')->getFilePath(), 'the RTL click opened the tree entry');
+                },
+            ],
+            0.8,
+        );
+    }
+
     public function testWarningDiagnosticsShowInStatusBar(): void
     {
         putenv('PATH=/nonexistent');
