@@ -74,6 +74,10 @@ final class ResultsPanelWidget extends OverlayWidget implements FocusableInterfa
     private array $collapsed = [];
     /** @var array<int, bool> matchIndex => excluded from replace (preview mode only) */
     private array $excluded = [];
+    /** @var array<int, bool> matchIndex => its context lines are expanded (Alt+.) */
+    private array $contextExpanded = [];
+    /** @var array<int, list<array{line: int, text: string}>> matchIndex => cached neighbouring lines */
+    private array $contextCache = [];
     /** @var list<DisplayRow> the flattened rows actually rendered/navigated */
     private array $displayRows = [];
 
@@ -95,6 +99,8 @@ final class ResultsPanelWidget extends OverlayWidget implements FocusableInterfa
     private $previewReplacement = null;
     /** @var (callable(): void)|null export the current results to a file (Alt+X) */
     private $onExport = null;
+    /** @var (\Closure(string, int): list<array{line: int, text: string}>)|null neighbouring source lines around a match (path, line) => lines */
+    private $contextProvider = null;
 
     private readonly Palette $palette;
 
@@ -204,6 +210,17 @@ final class ResultsPanelWidget extends OverlayWidget implements FocusableInterfa
         $this->previewReplacement = $transformer;
     }
 
+    /**
+     * Set the provider of the neighbouring source lines shown around an expanded
+     * match (Alt+.).
+     *
+     * @param \Closure(string, int): list<array{line: int, text: string}> $provider (relativePath, line) => lines
+     */
+    public function setContextProvider(\Closure $provider): void
+    {
+        $this->contextProvider = $provider;
+    }
+
     /** @param array{regex: bool, case: bool, word: bool, preserve: bool} $options */
     public function setOptions(array $options): void
     {
@@ -239,6 +256,8 @@ final class ResultsPanelWidget extends OverlayWidget implements FocusableInterfa
         $this->results = [];
         $this->collapsed = [];
         $this->excluded = [];
+        $this->contextExpanded = [];
+        $this->contextCache = [];
         $this->rebuildView();
         $this->list->reset();
         $this->searching = false;
@@ -251,6 +270,8 @@ final class ResultsPanelWidget extends OverlayWidget implements FocusableInterfa
         $this->results = $results;
         $this->collapsed = [];
         $this->excluded = [];
+        $this->contextExpanded = [];
+        $this->contextCache = [];
         $this->rebuildView();
         $this->list->reset();
         // Start on the first match, not the leading file header, so Enter jumps.
@@ -268,7 +289,7 @@ final class ResultsPanelWidget extends OverlayWidget implements FocusableInterfa
     /** Recompute the flattened display rows from the current results + collapse state. */
     private function rebuildView(): void
     {
-        $this->displayRows = ResultsView::build($this->results, $this->collapsed, $this->grouped, $this->filter->value(), $this->grouping);
+        $this->displayRows = ResultsView::build($this->results, $this->collapsed, $this->grouped, $this->filter->value(), $this->grouping, $this->contextExpanded, $this->contextCache);
         // Collapsing/filtering can shrink the list under the selection.
         $count = \count($this->displayRows);
         if ($count > 0 && $this->list->selected() >= $count) {
@@ -354,6 +375,8 @@ final class ResultsPanelWidget extends OverlayWidget implements FocusableInterfa
             if (null !== $this->onExport) {
                 ($this->onExport)();
             }
+        } elseif ($this->grouped && $kb->matches($data, 'toggle_context')) {
+            $this->toggleContext($this->list->selected());
         } elseif ($kb->matches($data, 'toggle_exclude')) {
             if ($this->inPreview()) {
                 $this->toggleExcludeRow($this->list->selected());
@@ -512,6 +535,9 @@ final class ResultsPanelWidget extends OverlayWidget implements FocusableInterfa
 
             return;
         }
+        if (null !== $row->contextText) {
+            return; // context rows are inert
+        }
         $result = $this->results[$row->matchIndex];
         if (null !== $this->onJump) {
             $this->close();
@@ -537,10 +563,31 @@ final class ResultsPanelWidget extends OverlayWidget implements FocusableInterfa
                 }
             }
             $this->invalidate();
-        } elseif (null !== $row) {
+        } elseif (null !== $row && null === $row->contextText) {
             $this->excluded[$row->matchIndex] = !($this->excluded[$row->matchIndex] ?? false);
             $this->invalidate();
         }
+    }
+
+    /** Alt+. on a match row toggles the neighbouring source lines shown beneath it. */
+    private function toggleContext(int $index): void
+    {
+        $row = $this->displayRows[$index] ?? null;
+        if (null === $row || null !== $row->filePath || null !== $row->contextText) {
+            return; // only real match rows expand
+        }
+        $matchIndex = $row->matchIndex;
+        if ($this->contextExpanded[$matchIndex] ?? false) {
+            unset($this->contextExpanded[$matchIndex]);
+        } else {
+            $this->contextExpanded[$matchIndex] = true;
+            if (!isset($this->contextCache[$matchIndex]) && null !== $this->contextProvider) {
+                $result = $this->results[$matchIndex];
+                $this->contextCache[$matchIndex] = ($this->contextProvider)($result['path'], $result['line']);
+            }
+        }
+        $this->rebuildView();
+        $this->invalidate();
     }
 
     /** Whether every match under the group header $key (file or directory) is currently excluded. */
@@ -674,9 +721,11 @@ final class ResultsPanelWidget extends OverlayWidget implements FocusableInterfa
         foreach (\array_slice($this->displayRows, $scroll, $this->visibleRows) as $i => $row) {
             $isSelected = $this->list->isSelected($scroll + $i);
             $bg = $isSelected ? ($this->focused ? $this->palette->of(Role::SelectedRow) : $this->palette->of(Role::InlayPopupBg)) : $this->palette->of(Role::Toolbar);
-            $lines[] = null !== $row->filePath
-                ? $this->fileHeaderLine($row->filePath, $row->count, $row->collapsed, $bg, $columns)
-                : $this->matchLine($this->results[$row->matchIndex], $row->matchIndex, $bg, $columns);
+            $lines[] = match (true) {
+                null !== $row->filePath => $this->fileHeaderLine($row->filePath, $row->count, $row->collapsed, $bg, $columns),
+                null !== $row->contextText => $this->contextRowLine($row->contextLine, $row->contextText, $bg, $columns),
+                default => $this->matchLine($this->results[$row->matchIndex], $row->matchIndex, $bg, $columns),
+            };
         }
 
         if ([] === $this->results && !$this->searching && '' !== $this->query->value()) {
@@ -700,6 +749,14 @@ final class ResultsPanelWidget extends OverlayWidget implements FocusableInterfa
         $line = ' '.$label.': '.$rendered.$this->palette->of(Role::Dim).$hint."\x1b[39m";
 
         return $this->palette->of(Role::RowHighlightBg).AnsiText::scrollLineToCaret($line, $columns, AnsiUtils::cursorMarker(CursorShape::Bar))."\x1b[0m";
+    }
+
+    /** A dimmed context row shown around an expanded match: `<line>  text`, indented under the match. */
+    private function contextRowLine(int $line, string $text, string $bg, int $columns): string
+    {
+        $content = '      '.$this->palette->of(Role::Dim).(string) ($line + 1).'  '.$text."\x1b[39m";
+
+        return $bg.AnsiUtils::truncateToWidth($content, $columns, '…', pad: true)."\x1b[0m";
     }
 
     /** A collapsible file-group header: `▾ path  (count)` (grouped mode only). */
@@ -822,6 +879,7 @@ final class ResultsPanelWidget extends OverlayWidget implements FocusableInterfa
             'cycle_scope' => ['alt+s'],
             'toggle_all' => ['alt+e'],
             'toggle_group' => ['alt+g'],
+            'toggle_context' => ['alt+m'],
             'toggle_exclude' => [Key::DELETE],
             'export' => ['alt+x'],
             'rerun' => [Key::F5],

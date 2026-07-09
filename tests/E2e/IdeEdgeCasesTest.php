@@ -743,6 +743,70 @@ final class IdeEdgeCasesTest extends TestCase
         $this->addToAssertionCount(1);
     }
 
+    public function testFindInProjectContextLinesFromOpenBuffer(): void
+    {
+        $project = new TempProject(['src/A.php' => "<?php\n\$x = 1;\n// tok here\n\$y = 2;\n"]);
+        $panelText = static fn ($tui): string => AnsiUtils::stripAnsiCodes(implode("\n", $tui->getById('results')->render(new \Symfony\Component\Tui\Render\RenderContext(160, 20))));
+
+        $this->runIde(
+            $project,
+            $project->path('src/A.php'), // open → context reads from the buffer
+            [
+                200 => static function ($tui): void {
+                    $tui->handleInput("\x1b[102;6u"); // ctrl+shift+f
+                    foreach (str_split('tok') as $ch) {
+                        $tui->handleInput($ch);
+                    }
+                },
+                600 => static function ($tui): void {
+                    $tui->tick();
+                    $tui->handleInput("\x1bm"); // alt+m → expand context on the first match
+                },
+                800 => function ($tui) use ($panelText): void {
+                    $tui->tick();
+                    $panel = $panelText($tui);
+                    $this->assertStringContainsString('$x = 1;', $panel, 'the preceding line is shown');
+                    $this->assertStringContainsString('$y = 2;', $panel, 'the following line is shown');
+                },
+            ],
+            1.1,
+        );
+
+        $this->addToAssertionCount(1);
+    }
+
+    public function testFindInProjectContextLinesFromDisk(): void
+    {
+        $project = new TempProject(['src/A.php' => "<?php\n// alpha\n// tok here\n// beta\n"]);
+        $panelText = static fn ($tui): string => AnsiUtils::stripAnsiCodes(implode("\n", $tui->getById('results')->render(new \Symfony\Component\Tui\Render\RenderContext(160, 20))));
+
+        $this->runIde(
+            $project,
+            null, // nothing open → context reads from disk
+            [
+                200 => static function ($tui): void {
+                    $tui->handleInput("\x1b[102;6u"); // ctrl+shift+f
+                    foreach (str_split('tok') as $ch) {
+                        $tui->handleInput($ch);
+                    }
+                },
+                600 => static function ($tui): void {
+                    $tui->tick();
+                    $tui->handleInput("\x1bm"); // alt+m → expand context
+                },
+                800 => function ($tui) use ($panelText): void {
+                    $tui->tick();
+                    $panel = $panelText($tui);
+                    $this->assertStringContainsString('// alpha', $panel, 'the preceding line is read from disk');
+                    $this->assertStringContainsString('// beta', $panel, 'the following line is read from disk');
+                },
+            ],
+            1.1,
+        );
+
+        $this->addToAssertionCount(1);
+    }
+
     public function testFindInProjectExportWritesAndOpensResults(): void
     {
         $project = new TempProject([

@@ -325,6 +325,38 @@ final class ResultsPanelWidgetTest extends TestCase
         $this->assertStringContainsString('Scope: Directory', $plain);
     }
 
+    public function testContextLinesExpandCollapseAndAreInert(): void
+    {
+        $panel = new ResultsPanelWidget();
+        $panel->setFocused(true);
+        $panel->setContextProvider(static fn (string $path, int $line): array => [
+            ['line' => $line - 1, 'text' => 'above line'],
+            ['line' => $line + 1, 'text' => 'below line'],
+        ]);
+        $panel->open('Find in Project', ResultsPanelFields::fullSearch());
+        $panel->setResults([['path' => 'src/A.php', 'line' => 4, 'text' => 'the match', 'ranges' => []]]);
+        $plain = fn (): string => AnsiUtils::stripAnsiCodes(implode("\n", $panel->render(new RenderContext(120, 20))));
+
+        $this->assertStringNotContainsString('above line', $plain(), 'no context until expanded');
+
+        $panel->handleInput("\x1bm"); // alt+m on the auto-selected match → expand
+        $expanded = $plain();
+        $this->assertStringContainsString('above line', $expanded);
+        $this->assertStringContainsString('below line', $expanded);
+
+        $panel->handleInput("\x1b[B"); // down → onto a context row
+        $panel->handleInput("\r"); // enter → inert (no jump/close)
+        $this->assertTrue($panel->isOpen(), 'context rows are inert');
+
+        $panel->handleInput("\x1b[A"); // up → back to the match row
+        $panel->handleInput("\x1bm"); // alt+m → collapse
+        $this->assertStringNotContainsString('above line', $plain(), 'context collapses');
+
+        $panel->handleInput("\x1b[A"); // up → the file header
+        $panel->handleInput("\x1bm"); // alt+m on a header → no-op
+        $this->assertStringNotContainsString('above line', $plain());
+    }
+
     public function testGroupByDirectoryTogglesHeadersAndLabels(): void
     {
         $panel = new ResultsPanelWidget();

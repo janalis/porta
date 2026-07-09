@@ -672,6 +672,8 @@ final class Ide
 
         $this->resultsPanel->setPreviewTransformer(fn (string $text, string $replacement): string => $this->projectSearchController->previewLine($text, $replacement));
 
+        $this->resultsPanel->setContextProvider(fn (string $relativePath, int $line): array => $this->contextLinesAround($relativePath, $line));
+
         // Alt+X writes the current results to a file and opens it in the editor.
         $this->resultsPanel->onExport(function (): void {
             $path = $this->projectSearchController->exportResults();
@@ -1400,6 +1402,31 @@ final class Ide
         $relative = $this->relativePath($target);
 
         return '' === $relative || str_starts_with($relative, '/') ? ['.'] : [$relative];
+    }
+
+    /**
+     * The source lines just above and below a match (for the results panel's
+     * Alt+. context expansion), read from the open buffer or from disk. The
+     * match line itself is omitted — it is already shown as the result row.
+     *
+     * @return list<array{line: int, text: string}>
+     */
+    private function contextLinesAround(string $relativePath, int $line): array
+    {
+        $abs = $this->rootDir.'/'.$relativePath;
+        $buffer = $this->buffers->get($abs) ?? $this->buffers->get(realpath($abs) ?: $abs);
+        $lines = null !== $buffer
+            ? $buffer->document->getLines()
+            : explode("\n", (string) @file_get_contents($abs));
+
+        $context = [];
+        for ($i = max(0, $line - 2); $i <= min(\count($lines) - 1, $line + 2); ++$i) {
+            if ($i !== $line) {
+                $context[] = ['line' => $i, 'text' => rtrim($lines[$i])];
+            }
+        }
+
+        return $context;
     }
 
     private function openSymbolSearch(): void

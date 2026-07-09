@@ -19,11 +19,20 @@ final class ResultsView
      * @param list<array{path: string, line: int, text: string, ranges?: list<array{start: int, length: int}>}> $results
      * @param array<string, bool>                                                                                $collapsed group key => collapsed
      * @param string                                                                                             $filter    keep only matches whose text/path contains this (case-insensitive)
+     * @param array<int, bool>                                                                                   $expanded  match index => show its context lines
+     * @param array<int, list<array{line: int, text: string}>>                                                   $context   match index => its cached neighbouring lines
      *
      * @return list<DisplayRow>
      */
-    public static function build(array $results, array $collapsed, bool $grouped, string $filter = '', ResultGrouping $grouping = ResultGrouping::File): array
-    {
+    public static function build(
+        array $results,
+        array $collapsed,
+        bool $grouped,
+        string $filter = '',
+        ResultGrouping $grouping = ResultGrouping::File,
+        array $expanded = [],
+        array $context = [],
+    ): array {
         $needle = mb_strtolower($filter);
 
         if (!$grouped) {
@@ -54,6 +63,11 @@ final class ResultsView
             if (!$isCollapsed) {
                 foreach ($indices as $index) {
                     $rows[] = DisplayRow::match($index);
+                    if ($expanded[$index] ?? false) {
+                        foreach ($context[$index] ?? [] as $line) {
+                            $rows[] = DisplayRow::context($line['line'], $line['text']);
+                        }
+                    }
                 }
             }
         }
