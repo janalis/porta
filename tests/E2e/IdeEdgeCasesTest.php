@@ -771,6 +771,48 @@ final class IdeEdgeCasesTest extends TestCase
         );
     }
 
+    public function testRtlEveryPaneRowKeepsItsWidth(): void
+    {
+        // The garble that broke RTL was over-wide rows bleeding across panes.
+        // Assert the per-pane reorder keeps every row exactly the terminal width,
+        // in the editor view and the (also-reported) settings view.
+        putenv('PATH=/nonexistent');
+        $project = new TempProject([
+            '.porta.json' => json_encode(['settings' => ['language' => 'he']]),
+            'demo.php' => "<?php\necho \$name;\n",
+        ]);
+
+        $assertWidths = function ($tui, $ide): void {
+            $tui->tick();
+            $renderer = new \ReflectionProperty(\Symfony\Component\Tui\Tui::class, 'renderer')->getValue($tui);
+            $root = new \ReflectionProperty(\Symfony\Component\Tui\Tui::class, 'root')->getValue($tui);
+            $segmenter = new \ReflectionProperty($ide, 'paneSegmenter')->getValue($ide);
+            $reorder = new \ReflectionProperty($ide, 'paneReorder')->getValue($ide);
+            $terminal = $tui->getTerminal();
+            $columns = $terminal->getColumns();
+            $lines = array_values($renderer->render($root, $columns, $terminal->getRows()));
+            $runs = $segmenter->segment($root, $columns, $terminal->getRows());
+            foreach ($lines as $row => $line) {
+                $this->assertSame($columns, AnsiUtils::visibleWidth($reorder->reorderRow($line, $runs[$row])), "row {$row} kept its width");
+            }
+        };
+
+        $this->runIde(
+            $project,
+            $project->path('demo.php'),
+            [
+                300 => function ($tui, $terminal, $ide) use ($assertWidths): void {
+                    $assertWidths($tui, $ide); // editor view
+                    new \ReflectionProperty($ide, 'commands')->getValue($ide)->run('ide_settings');
+                },
+                500 => function ($tui, $terminal, $ide) use ($assertWidths): void {
+                    $assertWidths($tui, $ide); // settings view
+                },
+            ],
+            0.8,
+        );
+    }
+
     public function testWarningDiagnosticsShowInStatusBar(): void
     {
         putenv('PATH=/nonexistent');
