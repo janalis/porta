@@ -26,6 +26,8 @@ final class NavigationController extends AbstractLspController
     /** @var list<array{path: string, line: int, col: int}> positions to return to after jumps */
     private array $jumpStack = [];
 
+    private readonly WorkspaceSymbolClient $symbolClient;
+
     /**
      * @param \Closure(string, bool): void $openFile fn(path, focusEditor)
      * @param \Closure(string): void       $openUrl  open a docs URL in the browser
@@ -42,8 +44,10 @@ final class NavigationController extends AbstractLspController
         private readonly string $rootDir,
         private readonly \Closure $openFile,
         private readonly \Closure $openUrl,
+        ?WorkspaceSymbolClient $symbolClient = null,
     ) {
         parent::__construct($lsp, $editor, $tui, $notifier, $translator);
+        $this->symbolClient = $symbolClient ?? new WorkspaceSymbolClient($lsp, $rootDir);
     }
 
     public function requestDefinition(int $line, int $utf16Col): void
@@ -364,33 +368,14 @@ final class NavigationController extends AbstractLspController
 
     public function requestWorkspaceSymbols(string $query): void
     {
-        if (!$this->lsp->isInitialized()) {
-            $this->resultsPanel->setResults([]);
-            $this->tui->requestRender();
-
-            return;
-        }
-
-        $this->lsp->request('workspace/symbol', ['query' => $query], function (mixed $result) use ($query): void {
+        $this->symbolClient->search($query, function (array $symbols): void {
             if (!$this->resultsPanel->isOpen() || ResultsPanelMode::Symbol !== $this->panels->mode()) {
                 return;
             }
-            /** @var list<array{location?: array{uri?: mixed, range?: array{start?: array<string, mixed>}}, kind?: mixed, name?: mixed}> $symbols */
-            $symbols = \is_array($result) ? $result : [];
-            $results = [];
-            foreach ($symbols as $symbol) {
-                $target = Uri::toPath((string) ($symbol['location']['uri'] ?? ''));
-                if (null === $target) {
-                    continue;
-                }
-                $start = $symbol['location']['range']['start'] ?? ['line' => 0];
-                $kind = LspMapper::SYMBOL_KINDS[$symbol['kind'] ?? 0] ?? '';
-                $results[] = [
-                    'path' => ProjectPaths::relative($this->rootDir, $target),
-                    'line' => (int) ($start['line'] ?? 0),
-                    'text' => trim(($kind ? "[{$kind}] " : '').(string) ($symbol['name'] ?? '')),
-                ];
-            }
+            $results = array_map(
+                static fn (array $symbol): array => ['path' => $symbol['path'], 'line' => $symbol['line'], 'text' => $symbol['label']],
+                $symbols,
+            );
             $this->resultsPanel->setResults($results);
             $this->tui->requestRender();
         });
