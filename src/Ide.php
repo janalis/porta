@@ -28,7 +28,7 @@ use Porta\Highlight\TerminalThemeFactory;
 use Porta\History\LocalHistory;
 use Porta\History\LocalHistoryController;
 use Porta\History\SessionStore;
-use Porta\I18n\Bidi;
+use Porta\I18n\PaneReorder;
 use Porta\I18n\Translator;
 use Porta\Input\EditorLayoutPanes;
 use Porta\Input\GitMouseRouter;
@@ -64,6 +64,7 @@ use Porta\Ui\MenuModel;
 use Porta\Ui\Notifier;
 use Porta\Ui\PaletteFactory;
 use Porta\Ui\PanelManager;
+use Porta\Ui\PaneSegmenter;
 use Porta\Ui\ResultsPanelMode;
 use Porta\Ui\SwitchablePalette;
 use Porta\Widget\BreadcrumbsWidget;
@@ -116,6 +117,8 @@ final class Ide
 
     private Tui $tui;
     private BidiTui $bidiTui;
+    private PaneSegmenter $paneSegmenter;
+    private PaneReorder $paneReorder;
     private FileTreeWidget $tree;
     private CodeEditorWidget $editor;
     private StatusBarWidget $statusBar;
@@ -845,6 +848,15 @@ final class Ide
             fn (string $p) => $this->relativePath($p),
             fn (string $t) => $this->copyToClipboard($t),
         );
+
+        // RTL bidi reorder, applied per pane by BidiTui when the locale is RTL.
+        // The floating menu/context dropdowns are the only true overlays; they
+        // feed in as topmost runs so the reorder flips them within their box.
+        $this->paneReorder = new PaneReorder();
+        $this->paneSegmenter = new PaneSegmenter(
+            $this->renderer,
+            fn (): array => array_values(array_filter([$this->overlay->menuDropdown(), $this->overlay->contextMenuDropdown()])),
+        );
     }
 
     /** The editor workspace: tree, editor + LSP backend, chrome widgets and the main horizontal layout. */
@@ -1165,9 +1177,9 @@ final class Ide
         if (!isset($this->gitView, $this->settingsView)) {
             return;
         }
-        $this->bidiTui->setLineReorderer(
-            $this->translator->isRtl() ? static fn (string $line): string => Bidi::reorder($line, true) : null,
-        );
+        $this->translator->isRtl()
+            ? $this->bidiTui->setPaneReorder($this->paneSegmenter, $this->paneReorder)
+            : $this->bidiTui->setPaneReorder(null, null);
         $this->setPanes($this->gitAreaContainer, $this->gitPanes);
         $this->setPanes($this->settingsAreaContainer, $this->settingsPanes);
         if (!$this->gitView->isOpen() && !$this->settingsView->isOpen()) {

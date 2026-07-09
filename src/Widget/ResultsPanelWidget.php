@@ -7,6 +7,7 @@ namespace Porta\Widget;
 use Porta\Ui\ColorPalette;
 use Porta\Ui\ListNavigation;
 use Porta\Ui\ListSelection;
+use Porta\Ui\LtrPane;
 use Porta\Ui\Palette;
 use Porta\Ui\Role;
 use Porta\Ui\Style;
@@ -23,7 +24,7 @@ use Symfony\Component\Tui\Widget\KeybindingsTrait;
  * Bottom results panel: project-wide search (Ctrl+Shift+F) and, later,
  * find-usages results. Hidden (zero rows) when closed.
  */
-final class ResultsPanelWidget extends OverlayWidget implements FocusableInterface
+final class ResultsPanelWidget extends OverlayWidget implements FocusableInterface, LtrPane
 {
     use FocusableTrait;
     use InputHook;

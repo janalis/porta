@@ -11,6 +11,7 @@ use Porta\Highlight\DarkTerminalTheme;
 use Porta\I18n\Translator;
 use Porta\Support\IntMath;
 use Porta\Ui\ColorPalette;
+use Porta\Ui\LtrPane;
 use Porta\Ui\Palette;
 use Porta\Ui\Role;
 use Porta\Widget\FillsPaneTrait;
@@ -36,7 +37,7 @@ use Tempest\Highlight\TerminalTheme;
  * pre-image no longer matches the file's highlight state). The title row is
  * a toolbar with clickable display toggles. Scrollable; read-only for history.
  */
-final class DiffViewWidget extends AbstractWidget implements FocusableInterface, MenuOverlayHost, VerticallyExpandableInterface
+final class DiffViewWidget extends AbstractWidget implements FocusableInterface, LtrPane, MenuOverlayHost, VerticallyExpandableInterface
 {
     use FillsPaneTrait;
     use FocusableTrait;

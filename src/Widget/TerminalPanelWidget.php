@@ -7,6 +7,7 @@ namespace Porta\Widget;
 use Porta\Support\IntMath;
 use Porta\Terminal\TerminalBuffer;
 use Porta\Ui\ColorPalette;
+use Porta\Ui\LtrPane;
 use Porta\Ui\Palette;
 use Porta\Ui\Role;
 use Porta\Widget\Render\HeaderRenderer;
@@ -21,7 +22,7 @@ use Symfony\Component\Tui\Widget\KeybindingsTrait;
  * Bottom terminal panel: renders a {@see TerminalBuffer}'s scrollback and
  * forwards keystrokes to the running process. Hidden (zero rows) when closed.
  */
-final class TerminalPanelWidget extends OverlayWidget implements FocusableInterface
+final class TerminalPanelWidget extends OverlayWidget implements FocusableInterface, LtrPane
 {
     use FocusableTrait;
     use InputHook;

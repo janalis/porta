@@ -745,6 +745,32 @@ final class IdeEdgeCasesTest extends TestCase
         );
     }
 
+    public function testRtlEditorCodeIsNotTornOrMirrored(): void
+    {
+        putenv('PATH=/nonexistent');
+        $project = new TempProject([
+            '.porta.json' => json_encode(['settings' => ['language' => 'he']]),
+            'demo.php' => "<?php\necho \$name;\n",
+        ]);
+
+        $this->runIde(
+            $project,
+            $project->path('demo.php'),
+            [
+                300 => function ($tui, $terminal): void {
+                    $tui->tick();
+                    $screen = AnsiUtils::stripAnsiCodes($terminal->getOutput());
+                    // The code pane stays LTR: the open tag is intact, its
+                    // punctuation is not bidi-mirrored, and the line is whole.
+                    $this->assertStringContainsString('<?php', $screen, 'open tag intact (not split)');
+                    $this->assertStringNotContainsString('?>', $screen, 'punctuation not mirrored to ?>');
+                    $this->assertStringContainsString('echo $name;', $screen, 'the code line is not reordered');
+                },
+            ],
+            0.6,
+        );
+    }
+
     public function testWarningDiagnosticsShowInStatusBar(): void
     {
         putenv('PATH=/nonexistent');

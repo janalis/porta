@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace Porta\Ui;
 
-use Porta\I18n\Bidi;
+use Porta\I18n\PaneReorder;
 use Symfony\Component\Tui\Render\Renderer;
 use Symfony\Component\Tui\Render\ScreenWriter;
 use Symfony\Component\Tui\Tui;
@@ -14,52 +14,60 @@ use Symfony\Component\Tui\Widget\ContainerWidget;
  * A {@see Tui} that can post-process each composed frame line before it reaches
  * the screen — the single choke point for the RTL bidi reorder, which the
  * framework's final {@see Renderer}/{@see ScreenWriter} (both final) don't
- * otherwise expose. When no reorderer is set it defers entirely to the parent,
+ * otherwise expose. When no reorder is set it defers entirely to the parent,
  * so left-to-right locales run the stock render path untouched.
  *
  * The parent renders and writes privately inside {@see Tui::processRender()};
- * with a reorderer active we reproduce that step, mapping every line through it,
- * reading the parent's private collaborators reflectively (the class is pinned).
+ * with a reorder active we reproduce that step, reordering each row *per pane*
+ * (a {@see PaneSegmenter} splits the row into pane column runs, a
+ * {@see PaneReorder} flips each within its own span), reading the parent's
+ * private collaborators reflectively (the class is pinned).
  */
 final class BidiTui extends Tui
 {
-    /** @var (\Closure(string): string)|null the per-line visual reorder, or null for the stock path */
-    private ?\Closure $reorder = null;
+    private ?PaneSegmenter $segmenter = null;
+    private ?PaneReorder $reorder = null;
 
     /** @var list<string> the last frame's pre-reorder lines, for visual→logical column mapping */
     private array $lastLines = [];
 
+    /** @var array<int, list<array{start: int, width: int, ltr: bool}>> the last frame's pane runs, per row */
+    private array $lastRuns = [];
+
     /**
-     * Install (or clear, with null) the per-line reorder applied to every frame.
-     *
-     * @param (\Closure(string): string)|null $reorder
+     * Install (or clear, with nulls) the per-pane reorder applied to every frame.
+     * Both are set together: null on the left-to-right stock path.
      */
-    public function setLineReorderer(?\Closure $reorder): void
+    public function setPaneReorder(?PaneSegmenter $segmenter, ?PaneReorder $reorder): void
     {
+        $this->segmenter = $segmenter;
         $this->reorder = $reorder;
         if (null === $reorder) {
             $this->lastLines = [];
+            $this->lastRuns = [];
         }
     }
 
     /**
      * Map a screen (visual) column on $row back to the logical column that the
-     * widgets rendered, inverting the RTL reorder. Identity when no reorder is
-     * active or the row was not part of the last frame.
+     * widgets rendered, inverting the RTL reorder within the pane the column
+     * falls in. Identity when no reorder is active or the row was not in the
+     * last frame.
      */
     public function logicalColumn(int $row, int $visualCol): int
     {
-        if (null === $this->reorder || !isset($this->lastLines[$row])) {
+        if (null === $this->reorder || !isset($this->lastLines[$row], $this->lastRuns[$row])) {
             return $visualCol;
         }
 
-        return Bidi::visualToLogicalColumn($this->lastLines[$row], $visualCol, true);
+        return $this->reorder->logicalColumn($this->lastLines[$row], $visualCol, $this->lastRuns[$row]);
     }
 
     public function processRender(): void
     {
+        $segmenter = $this->segmenter;
         $reorder = $this->reorder;
-        if (null === $reorder) {
+        if (null === $segmenter || null === $reorder) {
             parent::processRender();
 
             return;
@@ -79,9 +87,16 @@ final class BidiTui extends Tui
         $screenWriter = new \ReflectionProperty(Tui::class, 'screenWriter')->getValue($this);
 
         $terminal = $this->getTerminal();
-        $lines = array_values($renderer->render($root, $terminal->getColumns(), $terminal->getRows()));
+        $columns = $terminal->getColumns();
+        $rows = $terminal->getRows();
+        $lines = array_values($renderer->render($root, $columns, $rows));
         $this->lastLines = $lines; // pre-reorder, row-indexed, for click column mapping
+        $this->lastRuns = $segmenter->segment($root, $columns, $rows);
 
-        $screenWriter->writeLines(array_map(static fn (string $line): string => $reorder($line), $lines));
+        $out = [];
+        foreach ($lines as $row => $line) {
+            $out[] = isset($this->lastRuns[$row]) ? $reorder->reorderRow($line, $this->lastRuns[$row]) : $line;
+        }
+        $screenWriter->writeLines($out);
     }
 }

@@ -130,9 +130,12 @@ relabels the tree (`Ide::applyLanguage`), and `.editorconfig` re-resolves open b
 
 **i18n / RTL.** `I18n/Translator` wraps `symfony/translation`; the English source string *is* the
 message id (so untranslated lookups fall back to English) with XLIFF catalogs in `translations/`
-(`messages.<locale>.xlf`). RTL (Hebrew) mirrors the layout (reversed pane order) and reorders each
-composed line via `I18n/Bidi` (a UAX#9 subset) hooked through `Ui/BidiTui`; mouse clicks are
-mapped visual→logical via `Bidi::visualToLogicalColumn` before hit-testing.
+(`messages.<locale>.xlf`). RTL (Hebrew) mirrors the layout (reversed pane order) and, via `Ui/BidiTui`,
+reorders each composed row **per pane** — `Ui/PaneSegmenter` splits the row into each pane's column
+run (from the renderer's `WidgetRect`s + the menu/context dropdown regions), and `I18n/PaneReorder`
+flips each run within its own span via `I18n/Bidi` (a UAX#9 subset), so the reorder never crosses a
+pane boundary. Code panes marked `Ui/LtrPane` (editor, diff, terminal, results) stay verbatim. Mouse
+clicks map visual→logical per pane (`BidiTui::logicalColumn` → `PaneReorder`) before hit-testing.
 
 ## Tests
 

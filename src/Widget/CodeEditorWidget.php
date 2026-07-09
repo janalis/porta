@@ -25,6 +25,7 @@ use Porta\Support\AnsiText;
 use Porta\Support\IntMath;
 use Porta\Support\ProjectPaths;
 use Porta\Ui\ColorPalette;
+use Porta\Ui\LtrPane;
 use Porta\Ui\Palette;
 use Porta\Ui\Role;
 use Porta\Widget\Overlay\OverlayHost;
@@ -51,7 +52,7 @@ use Tempest\Highlight\TerminalTheme;
  * IDE-style code editor: line-number gutter, syntax highlighting,
  * vertical + horizontal scrolling, LSP diagnostics and a completion popup.
  */
-final class CodeEditorWidget extends AbstractWidget implements FocusableInterface, MenuOverlayHost, VerticallyExpandableInterface
+final class CodeEditorWidget extends AbstractWidget implements FocusableInterface, LtrPane, MenuOverlayHost, VerticallyExpandableInterface
 {
     use BracketedPasteTrait;
     use FillsPaneTrait;

@@ -5,8 +5,9 @@ declare(strict_types=1);
 namespace Porta\Tests\Unit\Ui;
 
 use PHPUnit\Framework\TestCase;
-use Porta\I18n\Bidi;
+use Porta\I18n\PaneReorder;
 use Porta\Ui\BidiTui;
+use Porta\Ui\PaneSegmenter;
 use Symfony\Component\Tui\Render\RenderContext;
 use Symfony\Component\Tui\Render\Renderer;
 use Symfony\Component\Tui\Style\StyleSheet;
@@ -14,18 +15,22 @@ use Symfony\Component\Tui\Terminal\VirtualTerminal;
 use Symfony\Component\Tui\Widget\AbstractWidget;
 
 /**
- * The bidi-aware Tui: with a reorderer installed it maps every rendered line to
- * visual order before it reaches the screen; without one it defers to the stock
- * render path, and a frame with nothing pending is a no-op.
+ * The bidi-aware Tui: with a per-pane reorder installed it maps every rendered
+ * line to visual order before it reaches the screen; without one it defers to
+ * the stock render path, and a frame with nothing pending is a no-op. A single
+ * full-width widget is one pane, so the whole line reorders.
  */
 final class BidiTuiTest extends TestCase
 {
     private const string SHALOM = "\u{05E9}\u{05DC}\u{05D5}\u{05DD}";
     private const string SHALOM_VISUAL = "\u{05DD}\u{05D5}\u{05DC}\u{05E9}";
 
+    private Renderer $renderer;
+
     private function tuiWith(VirtualTerminal $terminal): BidiTui
     {
-        $tui = new BidiTui(terminal: $terminal, renderer: new Renderer(new StyleSheet()));
+        $this->renderer = new Renderer(new StyleSheet());
+        $tui = new BidiTui(terminal: $terminal, renderer: $this->renderer);
         $tui->add(new class extends AbstractWidget {
             public function render(RenderContext $context): array
             {
@@ -36,12 +41,18 @@ final class BidiTuiTest extends TestCase
         return $tui;
     }
 
+    /** Enable the per-pane RTL reorder (no dropdown regions in these single-widget frames). */
+    private function enableRtl(BidiTui $tui): void
+    {
+        $tui->setPaneReorder(new PaneSegmenter($this->renderer, static fn (): array => []), new PaneReorder());
+    }
+
     public static function wordLine(): string
     {
         return self::SHALOM;
     }
 
-    public function testWithoutAReordererTheStockLineIsWritten(): void
+    public function testWithoutAReorderTheStockLineIsWritten(): void
     {
         $terminal = new VirtualTerminal(columns: 20, rows: 2);
         $tui = $this->tuiWith($terminal);
@@ -51,11 +62,11 @@ final class BidiTuiTest extends TestCase
         self::assertStringContainsString(self::SHALOM, $terminal->getOutput());
     }
 
-    public function testARtlReordererRewritesEachLineToVisualOrder(): void
+    public function testARtlReorderRewritesEachLineToVisualOrder(): void
     {
         $terminal = new VirtualTerminal(columns: 20, rows: 2);
         $tui = $this->tuiWith($terminal);
-        $tui->setLineReorderer(static fn (string $line): string => Bidi::reorder($line, true));
+        $this->enableRtl($tui);
         $tui->requestRender();
         $tui->processRender();
 
@@ -68,19 +79,19 @@ final class BidiTuiTest extends TestCase
     {
         $terminal = new VirtualTerminal(columns: 20, rows: 2);
         $tui = $this->tuiWith($terminal);
-        $tui->setLineReorderer(static fn (string $line): string => Bidi::reorder($line, true));
+        $this->enableRtl($tui);
         // No requestRender(): the reorder branch must early-return without writing.
         $tui->processRender();
 
         self::assertSame('', $terminal->getOutput());
     }
 
-    public function testClearingTheReordererRestoresTheStockPath(): void
+    public function testClearingTheReorderRestoresTheStockPath(): void
     {
         $terminal = new VirtualTerminal(columns: 20, rows: 2);
         $tui = $this->tuiWith($terminal);
-        $tui->setLineReorderer(static fn (string $line): string => Bidi::reorder($line, true));
-        $tui->setLineReorderer(null);
+        $this->enableRtl($tui);
+        $tui->setPaneReorder(null, null);
         $tui->requestRender();
         $tui->processRender();
 
@@ -91,7 +102,7 @@ final class BidiTuiTest extends TestCase
     {
         $terminal = new VirtualTerminal(columns: 20, rows: 2);
         $tui = $this->tuiWith($terminal);
-        $tui->setLineReorderer(static fn (string $line): string => Bidi::reorder($line, true));
+        $this->enableRtl($tui);
         $tui->requestRender();
         $tui->processRender();
 
@@ -101,21 +112,21 @@ final class BidiTuiTest extends TestCase
         self::assertSame(0, $tui->logicalColumn(0, 3));
     }
 
-    public function testLogicalColumnIsIdentityWithoutAReorderer(): void
+    public function testLogicalColumnIsIdentityWithoutAReorder(): void
     {
         $terminal = new VirtualTerminal(columns: 20, rows: 2);
         $tui = $this->tuiWith($terminal);
         $tui->requestRender();
         $tui->processRender();
 
-        self::assertSame(5, $tui->logicalColumn(0, 5)); // no reorderer → identity
+        self::assertSame(5, $tui->logicalColumn(0, 5)); // no reorder → identity
     }
 
     public function testLogicalColumnIsIdentityForAnUnknownRow(): void
     {
         $terminal = new VirtualTerminal(columns: 20, rows: 2);
         $tui = $this->tuiWith($terminal);
-        $tui->setLineReorderer(static fn (string $line): string => Bidi::reorder($line, true));
+        $this->enableRtl($tui);
         $tui->requestRender();
         $tui->processRender();
 
