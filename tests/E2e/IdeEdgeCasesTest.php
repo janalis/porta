@@ -947,6 +947,93 @@ final class IdeEdgeCasesTest extends TestCase
         $this->addToAssertionCount(1);
     }
 
+    public function testFindInProjectMultilineSearchAndReplace(): void
+    {
+        $project = new TempProject([
+            'src/A.php' => "<?php\nfunction foo()\n{\n    return 1;\n}\n", // opened (active buffer)
+            'src/B.php' => "<?php\nfunction foo()\n{\n    return 2;\n}\n", // only on disk
+        ]);
+        $panelText = static fn ($tui): string => AnsiUtils::stripAnsiCodes(implode("\n", $tui->getById('results')->render(new \Symfony\Component\Tui\Render\RenderContext(160, 16))));
+
+        $this->runIde(
+            $project,
+            $project->path('src/A.php'),
+            [
+                200 => static function ($tui): void {
+                    $tui->handleInput("\x1b[102;6u"); // ctrl+shift+f
+                    foreach (str_split('foo()') as $ch) {
+                        $tui->handleInput($ch);
+                    }
+                    $tui->handleInput("\x1b[13;2u"); // shift+enter → newline in the query
+                    $tui->handleInput('{');
+                },
+                600 => function ($tui) use ($panelText): void {
+                    $tui->tick();
+                    $panel = $panelText($tui);
+                    $this->assertStringContainsString('foo()⏎{', $panel, 'the multiline query renders the newline as ⏎');
+                    $this->assertStringContainsString('2 results', $panel, 'the pattern matches across the line break in both files');
+                    $this->assertStringContainsString('foo() ⏎…', $panel, 'the match preview shows its first line + continuation');
+                    // Replace the multiline match across the whole file (open buffer + disk).
+                    $tui->handleInput("\t"); // query → mask
+                    $tui->handleInput("\t"); // mask → filter
+                    $tui->handleInput("\t"); // filter → replace
+                    foreach (str_split('renamed') as $ch) {
+                        $tui->handleInput($ch);
+                    }
+                    $tui->handleInput("\x1ba"); // alt+a → replace all
+                },
+                1000 => function ($tui) use ($project): void {
+                    $tui->tick();
+                    $text = $tui->getById('editor')->getDocument()->getText();
+                    $this->assertStringContainsString('function renamed', $text, 'the open buffer is replaced across the line break');
+                    $this->assertStringNotContainsString('foo()', $text);
+                    $this->assertStringContainsString('return 1;', $text, 'the rest of the file is intact');
+                    $this->assertStringContainsString('function renamed', (string) file_get_contents($project->path('src/B.php')), 'the on-disk file is replaced too');
+                },
+            ],
+            1.4,
+        );
+
+        $this->addToAssertionCount(1);
+    }
+
+    public function testFindInProjectMultilineReplaceWithNoMatchesFlashes(): void
+    {
+        $project = new TempProject(['src/A.php' => "<?php\nfoo\n"]);
+
+        $terminal = $this->runIde(
+            $project,
+            $project->path('src/A.php'),
+            [
+                200 => static function ($tui): void {
+                    $tui->handleInput("\x1b[102;6u"); // ctrl+shift+f
+                    foreach (str_split('zzz') as $ch) {
+                        $tui->handleInput($ch);
+                    }
+                    $tui->handleInput("\x1b[13;2u"); // shift+enter
+                    foreach (str_split('qqq') as $ch) {
+                        $tui->handleInput($ch);
+                    }
+                },
+                600 => static function ($tui): void {
+                    $tui->tick();
+                    $tui->handleInput("\t");
+                    $tui->handleInput("\t");
+                    $tui->handleInput("\t"); // → replace
+                    $tui->handleInput('x');
+                    $tui->handleInput("\x1ba"); // alt+a with a multiline query but no matches
+                },
+                900 => function ($tui, $terminal): void {
+                    $tui->tick();
+                    $this->assertStringContainsString('Nothing to replace', AnsiUtils::stripAnsiCodes($terminal->getOutput()));
+                },
+            ],
+            1.1,
+        );
+
+        $this->addToAssertionCount(1);
+    }
+
     public function testFindInProjectPinAndRestoreResults(): void
     {
         $project = new TempProject([

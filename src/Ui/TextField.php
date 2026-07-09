@@ -48,6 +48,12 @@ final class TextField
         return true;
     }
 
+    /** Append a literal newline (multiline query/replace); rendered as a visible ⏎. */
+    public function insertNewline(): void
+    {
+        $this->value .= "\n";
+    }
+
     /** Delete the last UTF-8 character; returns whether the value changed. */
     public function backspace(): bool
     {
@@ -66,10 +72,12 @@ final class TextField
      */
     public function render(bool $cursor, ?int $width = null): string
     {
+        // Newlines (multiline query/replace) show as a visible ⏎ so the row stays one line.
+        $display = str_replace("\n", '⏎', $this->value);
         if ($cursor && null !== $width) {
-            return AnsiText::caretWindow($this->value, AnsiUtils::visibleWidth($this->value), $width, AnsiUtils::cursorMarker(CursorShape::Bar));
+            return AnsiText::caretWindow($display, AnsiUtils::visibleWidth($display), $width, AnsiUtils::cursorMarker(CursorShape::Bar));
         }
 
-        return $this->value.($cursor ? AnsiUtils::cursorMarker(CursorShape::Bar) : '');
+        return $display.($cursor ? AnsiUtils::cursorMarker(CursorShape::Bar) : '');
     }
 }

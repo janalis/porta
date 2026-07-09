@@ -47,6 +47,13 @@ final class ProjectSearch
             return;
         }
 
+        // A query spanning lines can't go through line-based grep: scan whole files.
+        if (str_contains($query, "\n")) {
+            $onDone($this->searchMultiline($pattern, $paths, $mask));
+
+            return;
+        }
+
         $grep = $this->findGrep();
         if (null === $grep) {
             $onDone($this->searchWithPhp($query, $options, $paths, $mask));
@@ -189,6 +196,62 @@ final class ProjectSearch
         }
 
         return $results;
+    }
+
+    /**
+     * Whole-file scan for a query that spans lines (grep is line-based). Each
+     * match reports its 0-based start line and a single-line preview (its first
+     * line, with `⏎…` appended when the match continues onto further lines).
+     *
+     * @param list<string> $paths
+     *
+     * @return list<array{path: string, line: int, text: string, ranges: list<array{start: int, length: int}>}>
+     */
+    private function searchMultiline(string $pattern, array $paths, string $mask): array
+    {
+        $globs = $this->maskGlobs($mask);
+        $results = [];
+        $seen = [];
+        foreach ($paths as $scope) {
+            foreach ($this->scopeFiles($scope, $globs) as $rel => $abs) {
+                if (isset($seen[$rel])) {
+                    continue;
+                }
+                $seen[$rel] = true;
+                $content = (string) @file_get_contents($abs);
+                $matches = [];
+                if (str_contains($content, "\0") || false === @preg_match_all($pattern, $content, $matches, \PREG_OFFSET_CAPTURE)) {
+                    continue;
+                }
+                // A multiline query always contains a real newline, so its matches
+                // are never zero-width — no empty-match guard needed here.
+                foreach ($matches[0] as $hit) {
+                    $results[] = $this->multilineResult($rel, $content, $hit[0], (int) $hit[1]);
+                    if (\count($results) >= self::MAX_RESULTS) {
+                        return $results;
+                    }
+                }
+            }
+        }
+
+        return $results;
+    }
+
+    /**
+     * Build one multiline result: its start line (0-based) and a first-line
+     * preview with the matched portion highlighted.
+     *
+     * @return array{path: string, line: int, text: string, ranges: list<array{start: int, length: int}>}
+     */
+    private function multilineResult(string $rel, string $content, string $match, int $offset): array
+    {
+        $line = substr_count(substr($content, 0, $offset), "\n");
+        $firstLine = explode("\n", $match)[0];
+        $preview = str_contains($match, "\n") ? $firstLine.' ⏎…' : $firstLine;
+        $width = mb_strwidth($firstLine);
+        $ranges = 0 === $width ? [] : [['start' => 0, 'length' => $width]];
+
+        return ['path' => $rel, 'line' => $line, 'text' => $preview, 'ranges' => $ranges];
     }
 
     /**

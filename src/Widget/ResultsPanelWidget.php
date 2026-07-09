@@ -451,6 +451,13 @@ final class ResultsPanelWidget extends OverlayWidget implements FocusableInterfa
             if (null !== $this->onReplaceAll) {
                 ($this->onReplaceAll)($this->replace->value(), $this->excludedIndices());
             }
+        } elseif ($kb->matches($data, 'insert_newline') && ('query' === $this->activeField || 'replace' === $this->activeField)) {
+            $field = $this->activeTextField();
+            if (null !== $field) {
+                $field->insertNewline();
+                $this->afterFieldEdit();
+                $this->invalidate();
+            }
         } elseif ($kb->matches($data, 'delete_char_backward')) {
             $field = $this->activeTextField();
             if (null !== $field && $field->backspace()) {
@@ -978,6 +985,7 @@ final class ResultsPanelWidget extends OverlayWidget implements FocusableInterfa
             'history_prev' => ['alt+up'],
             'history_next' => ['alt+down'],
             'switch_field' => [Key::TAB],
+            'insert_newline' => ['shift+enter'],
             'replace_all' => ['alt+a'],
         ];
     }

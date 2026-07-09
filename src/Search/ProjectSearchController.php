@@ -282,6 +282,15 @@ final class ProjectSearchController
      */
     public function replaceAll(string $replacement, array $excluded = []): void
     {
+        // A multiline query's matches span lines, so the per-kept-line rewrite
+        // can't apply — replace over each matched file's whole text instead
+        // (no per-occurrence exclude for multiline queries).
+        if (str_contains($this->lastSearchQuery, "\n")) {
+            $this->replaceAllMultiline($replacement);
+
+            return;
+        }
+
         $excludedSet = array_fill_keys($excluded, true);
         /** @var array<string, list<int>> $keptLinesByPath */
         $keptLinesByPath = [];
@@ -323,6 +332,50 @@ final class ProjectSearchController
             }
         }
 
+        $this->finishReplace($touched);
+    }
+
+    /** Replace every match of a multiline query across matched files' whole text. */
+    private function replaceAllMultiline(string $replacement): void
+    {
+        if ([] === $this->lastSearchResults) {
+            $this->statusBar->flash($this->translator->trans('Nothing to replace'));
+            $this->tui->requestRender();
+
+            return;
+        }
+
+        $touched = 0;
+        foreach (array_unique(array_column($this->lastSearchResults, 'path')) as $relPath) {
+            $abs = $this->rootDir.'/'.$relPath;
+            $buffer = $this->buffers->get($abs) ?? $this->buffers->get(realpath($abs) ?: $abs);
+            if (null !== $buffer) {
+                $old = $buffer->document->getText();
+                $new = $this->projectSearch->applyReplacement($old, $this->lastSearchQuery, $replacement, $this->searchOptions);
+                if ($new !== $old) {
+                    $buffer->document->replaceAll($new);
+                    if ($buffer === $this->buffers->active()) {
+                        $this->editor->invalidate();
+                    }
+                    ($this->notifyFullChange)($buffer->path, $buffer->document);
+                    ++$touched;
+                }
+            } elseif (is_file($abs) && is_writable($abs)) {
+                $old = (string) file_get_contents($abs);
+                $new = $this->projectSearch->applyReplacement($old, $this->lastSearchQuery, $replacement, $this->searchOptions);
+                if ($new !== $old) {
+                    new Filesystem()->dumpFile($abs, $new);
+                    ++$touched;
+                }
+            }
+        }
+
+        $this->finishReplace($touched);
+    }
+
+    /** Flash the touched-file count, close the panel, and refocus the editor. */
+    private function finishReplace(int $touched): void
+    {
         $this->statusBar->flash(
             1 === $touched
                 ? $this->translator->trans('Replaced in %count% file', ['%count%' => $touched])

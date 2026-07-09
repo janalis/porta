@@ -25,6 +25,17 @@ final class TextFieldTest extends TestCase
         $this->assertSame('abc', $field->value());
     }
 
+    public function testInsertNewlineAppendsAndRendersAsAGlyph(): void
+    {
+        $field = new TextField('foo');
+        $field->insertNewline();
+        $this->assertTrue($field->insert('bar'));
+
+        $this->assertSame("foo\nbar", $field->value(), 'the value holds a real newline');
+        $this->assertSame('foo⏎bar', $field->render(cursor: false), 'the newline renders as a visible glyph');
+        $this->assertStringContainsString('foo⏎bar', $field->render(cursor: true, width: 40));
+    }
+
     public function testInsertRejectsNonPrintableInput(): void
     {
         $field = new TextField('kept');

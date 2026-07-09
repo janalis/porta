@@ -119,6 +119,38 @@ final class ProjectSearchTest extends TestCase
         $this->assertSame([], $search->matchOffsets('', 'needle', new SearchOptions()), 'an empty line has no offsets');
     }
 
+    public function testMultilineQueryMatchesAcrossLinesWithAPreview(): void
+    {
+        $project = new TempProject([
+            'src/A.php' => "<?php\nfunction foo()\n{\n    return 1;\n}\n",
+            'src/B.php' => "<?php\nfunction foo() { return 2; }\n", // one line → no cross-line match
+        ]);
+        $results = $this->await(new ProjectSearch($project->dir), "foo()\n{");
+
+        $this->assertCount(1, $results, 'only the file whose foo() spans lines matches');
+        $this->assertSame('src/A.php', $results[0]['path']);
+        $this->assertSame(1, $results[0]['line'], '0-based start line of the match');
+        $this->assertSame('foo() ⏎…', $results[0]['text'], 'the preview shows the first line + a continuation marker');
+        $this->assertSame([['start' => 0, 'length' => 5]], $results[0]['ranges'], 'the first-line portion is highlighted');
+    }
+
+    public function testMultilineScanDeduplicatesSkipsBinaryAndCaps(): void
+    {
+        $project = new TempProject([
+            'src/A.php' => "x\nfoo\nbar\ny\n",
+            'src/bin.dat' => "foo\nbar\n\0\n", // contains a NUL → skipped as binary
+        ]);
+        // Overlapping scopes (the file and its directory) must still match A.php once.
+        $results = $this->await(new ProjectSearch($project->dir), "foo\nbar", scope: ['src/A.php', 'src']);
+        $paths = array_column($results, 'path');
+        $this->assertSame(['src/A.php'], $paths, 'deduplicated across overlapping scopes; the binary file is skipped');
+
+        // The result cap applies to the whole-file scan too.
+        $many = new TempProject(['big.txt' => str_repeat("A\nB\n", ProjectSearch::MAX_RESULTS + 5)]);
+        $capped = $this->await(new ProjectSearch($many->dir), "A\nB");
+        $this->assertCount(ProjectSearch::MAX_RESULTS, $capped);
+    }
+
     public function testEmptyScopeListMatchesNothing(): void
     {
         // An empty scope (e.g. Open Files with nothing open) short-circuits to no results.
