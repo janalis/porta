@@ -45,10 +45,18 @@ use Porta\Lsp\NavigationController;
 use Porta\Lsp\RefactorController;
 use Porta\Lsp\ServerLocator;
 use Porta\Lsp\WorkspaceEditor;
+use Porta\Lsp\WorkspaceSymbolClient;
 use Porta\Overlay\MenuOverlayController;
 use Porta\Overlay\MenuOverlayPanes;
 use Porta\Run\RunConfigs;
 use Porta\Run\RunController;
+use Porta\Search\Everywhere\ActionsSource;
+use Porta\Search\Everywhere\FilesSource;
+use Porta\Search\Everywhere\SearchCategory;
+use Porta\Search\Everywhere\SearchEverywhereController;
+use Porta\Search\Everywhere\TextSource;
+use Porta\Search\Everywhere\WorkspaceSymbolSource;
+use Porta\Search\FileIndex;
 use Porta\Search\ProjectSearch;
 use Porta\Search\ProjectSearchController;
 use Porta\Settings\SettingsViewController;
@@ -147,6 +155,7 @@ final class Ide
     private ?string $searchDebounce = null;
     private PanelManager $panels;
     private CommandRegistry $commands;
+    private SearchEverywhereController $searchEverywhere;
 
     private LspSessionPool $lsp;
     private WorkspaceEditor $workspaceEditor;
@@ -261,6 +270,7 @@ final class Ide
 
         $this->wireWidgets($keybindings);
         $this->wireStatusBar();
+        $this->buildSearchEverywhere();
 
         $this->bufferService = new BufferService(
             $this->buffers,
@@ -677,6 +687,16 @@ final class Ide
                 return;
             }
 
+            // The Search Everywhere modal likewise captures the keyboard while
+            // open, so its query field and result navigation take every key.
+            if ($this->editor->isSearchOverlayOpen()) {
+                $event->stopPropagation();
+                $this->editor->handleSearchOverlayInput($data);
+                $this->tui->requestRender();
+
+                return;
+            }
+
             foreach ($this->commands->keyBoundIds() as $id) {
                 if ($keybindings->matches($data, $id)) {
                     $event->stopPropagation();
@@ -958,6 +978,39 @@ final class Ide
             $this->tui,
             $this->translator,
             $this->rootDir,
+        );
+    }
+
+    /**
+     * The Search Everywhere modal: five sources (Files/Classes/Symbols/Actions/
+     * Text) feeding one aggregator that drives the editor's centered overlay.
+     * Hand-built here because the sources close over Ide's open/jump orchestration
+     * and the debounce needs the shared event loop. Runs after wireCommands() so
+     * ActionsSource sees the populated CommandRegistry.
+     */
+    private function buildSearchEverywhere(): void
+    {
+        $openFile = fn (string $path, bool $focus) => $this->openFile($path, focusEditor: $focus);
+        $jumpTo = fn (int $line, int $col) => $this->editor->jumpTo($line, $col);
+        $searchSymbols = new WorkspaceSymbolClient($this->lsp, $this->rootDir)->search(...);
+
+        $this->searchEverywhere = new SearchEverywhereController(
+            $this->editor,
+            [
+                new FilesSource(new FileIndex($this->rootDir), $this->rootDir, $openFile),
+                new ActionsSource($this->commands),
+            ],
+            [
+                new WorkspaceSymbolSource($searchSymbols, SearchCategory::Classes, [5, 10, 11, 23], $this->rootDir, $openFile, $jumpTo),
+                new WorkspaceSymbolSource($searchSymbols, SearchCategory::Symbols, [], $this->rootDir, $openFile, $jumpTo),
+                new TextSource(new ProjectSearch($this->rootDir), $this->rootDir, $openFile, $jumpTo),
+            ],
+            $this->buffers,
+            $this->tui,
+            $this->rootDir,
+            $openFile,
+            fn (float $seconds, \Closure $callback): string => EventLoop::delay($seconds, $callback),
+            fn (string $id) => EventLoop::cancel($id),
         );
     }
 
@@ -1282,6 +1335,7 @@ final class Ide
                 inPalette: false,
             )
             ->add('ide_command_palette', fn () => $this->openCommandPalette(), keyBound: true, inPalette: false)
+            ->add('ide_search_everywhere', fn () => $this->searchEverywhere->open(), keyBound: true, inPalette: false)
             ->add('ide_local_history', fn () => $this->localHistory->show(), keyBound: true, inPalette: false)
             ->add('ide_run_last', fn () => $this->run->runLast(), keyBound: true, inPalette: false)
             ->add('ide_menu', fn () => $this->openMenu(), keyBound: true, inPalette: false);

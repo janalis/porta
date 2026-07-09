@@ -297,4 +297,82 @@ final class IdeTest extends TestCase
 
         $this->assertFalse($tui->isRunning(), 'run() returned after ctrl+q');
     }
+
+    /**
+     * Search Everywhere: Ctrl+Shift+E opens the centered modal; the empty query
+     * seeds recent files; a filename finds a file (sync) and Enter opens it; a
+     * class name drives the async LSP workspace/symbol source and Enter jumps to
+     * it; typing then Esc cancels the pending debounce and refocuses the editor.
+     */
+    public function testSearchEverywhere(): void
+    {
+        $tui = $this->ide->getTui();
+        $screen = fn (): string => $this->screen();
+        $editor = static fn () => $tui->getById('editor');
+
+        // Ctrl+Shift+E → modal opens; the empty query seeds recent files.
+        $this->step(0.5, function () use ($screen, $tui, $editor): void {
+            $tui->handleInput("\x1b[101;6u"); // ctrl+shift+e
+            $this->assertTrue($editor()->isSearchOverlayOpen());
+            $s = $screen();
+            $this->assertStringContainsString('Search Everywhere', $s, 'the modal title');
+            $this->assertStringContainsString('Demo.php', $s, 'empty query shows recent files');
+        });
+
+        // Type a filename → the Files source lists it (synchronously); Enter opens it.
+        $this->step(0.7, static function () use ($tui): void {
+            foreach (str_split('Target') as $ch) {
+                $tui->handleInput($ch);
+            }
+        });
+        $this->step(0.9, function () use ($screen, $tui): void {
+            $this->assertStringContainsString('Target.php', $screen(), 'Files result for the typed name');
+            $tui->handleInput("\r"); // pick → opens the file
+        });
+        $this->step(1.0, function () use ($editor): void {
+            $this->assertStringEndsWith('Target.php', (string) $editor()->getFilePath(), 'picking a file opens it');
+            $this->assertFalse($editor()->isSearchOverlayOpen(), 'picking closes the modal');
+        });
+
+        // Reopen; a class name drives the async LSP workspace/symbol source.
+        $this->step(1.1, static function () use ($tui): void {
+            $tui->handleInput("\x1b[101;6u");
+            foreach (str_split('Greeter') as $ch) {
+                $tui->handleInput($ch);
+            }
+        });
+        $this->step(1.7, function () use ($screen, $tui): void {
+            // after the 0.25s debounce and the mock-LSP round-trip
+            $this->assertStringContainsString('Greeter', $screen(), 'Classes/Symbols results from the mock LSP');
+            $tui->handleInput("\r"); // jump to the symbol
+        });
+        $this->step(1.85, function () use ($editor, $tui): void {
+            $this->assertStringEndsWith('Target.php', (string) $editor()->getFilePath());
+            $this->assertSame(3, $editor()->getDocument()->getCursorLine(), 'jumped to the symbol line');
+            $this->assertSame('editor', $tui->getFocus()?->getId(), 'editor refocused after the jump');
+        });
+
+        // Reopen, type (which schedules an async debounce), then Esc before it
+        // fires → close cancels the pending debounce and the modal disappears.
+        $this->step(1.95, function () use ($tui, $editor): void {
+            $tui->handleInput("\x1b[101;6u");
+            $tui->handleInput('z'); // schedules the async debounce
+            $tui->handleInput("\x1b"); // esc → close (cancels the debounce)
+            $this->assertFalse($editor()->isSearchOverlayOpen(), 'Esc closes the modal');
+            $this->assertSame('editor', $tui->getFocus()?->getId());
+        });
+
+        $this->step(2.1, static fn () => $tui->handleInput("\x11")); // ctrl+q
+
+        $watchdog = EventLoop::delay(9.0, static function () use ($tui): void {
+            $tui->stop();
+
+            throw new \RuntimeException('watchdog: IDE did not quit before timeout');
+        });
+
+        $this->ide->run();
+        EventLoop::cancel($watchdog);
+
+        $this->assertFalse($tui->isRunning(), 'run() returned after ctrl+q');
+    }
 }
