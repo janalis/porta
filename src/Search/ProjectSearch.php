@@ -30,7 +30,7 @@ final class ProjectSearch
      * @param callable(list<array{path: string, line: int, text: string, ranges: list<array{start: int, length: int}>}>): void $onDone
      * @param string                                                                                                            $scope grep path relative to the project root; `.` searches the whole project
      */
-    public function search(string $query, callable $onDone, SearchOptions $options = new SearchOptions(), string $scope = '.'): void
+    public function search(string $query, callable $onDone, SearchOptions $options = new SearchOptions(), string $scope = '.', string $mask = ''): void
     {
         $this->cancel();
         if ('' === trim($query)) {
@@ -48,7 +48,7 @@ final class ProjectSearch
 
         $grep = $this->findGrep();
         if (null === $grep) {
-            $onDone($this->searchWithPhp($query, $options, $scope));
+            $onDone($this->searchWithPhp($query, $options, $scope, $mask));
 
             return;
         }
@@ -59,6 +59,11 @@ final class ProjectSearch
         }
         if ($options->wholeWord) {
             $flags[] = '-w';
+        }
+        // A file mask restricts matching to basenames (grep's fnmatch globbing
+        // does not expand braces, so `*.{php,js}` is pre-expanded to two globs).
+        foreach ($this->maskGlobs($mask) as $glob) {
+            $flags[] = '--include='.$glob;
         }
         // The scope is a path argument, not the cwd: grep still runs in $rootDir
         // (AsyncProcess below), so a `subdir/file:line` match stays root-relative.
@@ -82,7 +87,7 @@ final class ProjectSearch
             // failure surfaces later as an exit code), so this is unreachable
             // in tests.
             // @codeCoverageIgnoreStart
-            $onDone($this->searchWithPhp($query, $options));
+            $onDone($this->searchWithPhp($query, $options, $scope, $mask));
 
             return;
 
@@ -150,7 +155,7 @@ final class ProjectSearch
     }
 
     /** @return list<array{path: string, line: int, text: string, ranges: list<array{start: int, length: int}>}> */
-    private function searchWithPhp(string $query, SearchOptions $options, string $scope = '.'): array
+    private function searchWithPhp(string $query, SearchOptions $options, string $scope = '.', string $mask = ''): array
     {
         $pattern = $this->pattern($query, $options);
         // Finder paths are relative to its `in()` root, so when scoped to a
@@ -163,6 +168,10 @@ final class ProjectSearch
             ->ignoreVCS(false)
             ->exclude(self::EXCLUDES)
             ->size('<= 1Mi');
+        $globs = $this->maskGlobs($mask);
+        if ([] !== $globs) {
+            $finder->name($globs); // OR of basename globs, mirroring grep --include
+        }
 
         $results = [];
         foreach ($finder as $file) {
@@ -183,6 +192,64 @@ final class ProjectSearch
         }
 
         return $results;
+    }
+
+    /**
+     * Expand a user file mask into a flat list of basename globs. Handles a
+     * comma-separated list and a single brace group per token, so `*.php`,
+     * `*.{php,js}` and `*.php,*.twig` all yield plain `fnmatch` globs that both
+     * grep `--include` and Finder `->name()` accept.
+     *
+     * @return list<string>
+     */
+    private function maskGlobs(string $mask): array
+    {
+        $globs = [];
+        foreach ($this->splitTopLevel($mask) as $token) {
+            $token = trim($token);
+            if ('' === $token) {
+                continue;
+            }
+            $m = [];
+            if (1 === preg_match('/^(.*)\{([^{}]*)\}(.*)$/', $token, $m)) {
+                foreach (explode(',', $m[2]) as $option) {
+                    $globs[] = $m[1].trim($option).$m[3];
+                }
+            } else {
+                $globs[] = $token;
+            }
+        }
+
+        return $globs;
+    }
+
+    /**
+     * Split a mask on its top-level commas only — a comma inside a `{…}` brace
+     * group belongs to that group (`*.php, *.{js,ts}` → `*.php`, `*.{js,ts}`).
+     *
+     * @return list<string>
+     */
+    private function splitTopLevel(string $mask): array
+    {
+        $tokens = [];
+        $current = '';
+        $depth = 0;
+        foreach (str_split($mask) as $ch) {
+            if ('{' === $ch) {
+                ++$depth;
+            } elseif ('}' === $ch) {
+                $depth = max(0, $depth - 1);
+            }
+            if (',' === $ch && 0 === $depth) {
+                $tokens[] = $current;
+                $current = '';
+            } else {
+                $current .= $ch;
+            }
+        }
+        $tokens[] = $current;
+
+        return $tokens;
     }
 
     /**

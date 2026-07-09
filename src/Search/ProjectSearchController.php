@@ -27,6 +27,8 @@ final class ProjectSearchController
     private string $lastSearchQuery = '';
     /** grep path relative to the project root; `.` is the whole project. */
     private string $scope = '.';
+    /** file mask (e.g. `*.php`, `*.{php,js}`); empty searches all files. */
+    private string $mask = '';
     /** @var list<array{path: string, line: int, text: string, ranges: list<array{start: int, length: int}>}> */
     private array $lastSearchResults = [];
 
@@ -91,11 +93,12 @@ final class ProjectSearchController
         $this->reopen($this->translator->trans($titleKey, ['%dir%' => $relative]));
     }
 
-    /** Reset the query/options/results and (re)open the panel with $title. */
+    /** Reset the query/options/mask/results and (re)open the panel with $title. */
     private function reopen(string $title): void
     {
         $this->searchOptions = new SearchOptions();
         $this->lastSearchQuery = '';
+        $this->mask = '';
         $this->lastSearchResults = [];
         $this->resultsPanel->open($title, ResultsPanelFields::fullSearch());
         $this->resultsPanel->setOptions($this->searchOptions->panelState());
@@ -108,6 +111,13 @@ final class ProjectSearchController
     {
         $this->lastSearchQuery = $query;
         $this->run($query);
+    }
+
+    /** Apply a file mask (from the panel's Mask field) and re-run the last query. */
+    public function setMask(string $mask): void
+    {
+        $this->mask = $mask;
+        $this->run($this->lastSearchQuery);
     }
 
     /** Toggle a search option and re-run the last query with it applied. */
@@ -196,6 +206,7 @@ final class ProjectSearchController
             },
             $this->searchOptions,
             $this->scope,
+            $this->mask,
         );
     }
 }

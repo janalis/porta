@@ -586,7 +586,8 @@ final class IdeEdgeCasesTest extends TestCase
                 },
                 760 => static function ($tui): void {
                     $tui->tick();
-                    $tui->handleInput("\t"); // switch to the replace field
+                    $tui->handleInput("\t"); // query → mask
+                    $tui->handleInput("\t"); // mask → replace
                     foreach (str_split('renamed') as $ch) {
                         $tui->handleInput($ch);
                     }
@@ -599,6 +600,48 @@ final class IdeEdgeCasesTest extends TestCase
             ],
             1.3,
         );
+    }
+
+    public function testFindInProjectFileMaskFiltersResults(): void
+    {
+        $project = new TempProject([
+            'src/A.php' => "<?php\n// token here\n",
+            'src/B.js' => "// token here\n",
+        ]);
+        $panelText = static fn ($tui): string => AnsiUtils::stripAnsiCodes(implode("\n", $tui->getById('results')->render(new \Symfony\Component\Tui\Render\RenderContext(160, 14))));
+
+        $this->runIde(
+            $project,
+            $project->path('src/A.php'),
+            [
+                200 => static function ($tui): void {
+                    $tui->handleInput("\x1b[102;6u"); // ctrl+shift+f
+                    foreach (str_split('token') as $ch) {
+                        $tui->handleInput($ch);
+                    }
+                },
+                600 => function ($tui) use ($panelText): void {
+                    $tui->tick();
+                    $panel = $panelText($tui);
+                    $this->assertStringContainsString('A.php', $panel, 'both files match before masking');
+                    $this->assertStringContainsString('B.js', $panel);
+                    // Tab from the query to the Mask field, then restrict to PHP.
+                    $tui->handleInput("\t");
+                    foreach (str_split('*.php') as $ch) {
+                        $tui->handleInput($ch);
+                    }
+                },
+                1050 => function ($tui) use ($panelText): void {
+                    $tui->tick();
+                    $panel = $panelText($tui);
+                    $this->assertStringContainsString('A.php', $panel, 'the PHP file still matches');
+                    $this->assertStringNotContainsString('B.js', $panel, 'the *.php mask excludes the JS file');
+                },
+            ],
+            1.4,
+        );
+
+        $this->addToAssertionCount(1);
     }
 
     public function testStickyScrollPinsHeaderAndClickJumps(): void
@@ -1342,7 +1385,8 @@ final class IdeEdgeCasesTest extends TestCase
                 },
                 700 => static function ($tui): void {
                     $tui->tick();
-                    $tui->handleInput("\t"); // switch to the replace field
+                    $tui->handleInput("\t"); // query → mask
+                    $tui->handleInput("\t"); // mask → replace
                     foreach (str_split('bar') as $ch) {
                         $tui->handleInput($ch);
                     }
@@ -1377,7 +1421,8 @@ final class IdeEdgeCasesTest extends TestCase
                 },
                 700 => static function ($tui): void {
                     $tui->tick();
-                    $tui->handleInput("\t"); // switch to the replace field
+                    $tui->handleInput("\t"); // query → mask
+                    $tui->handleInput("\t"); // mask → replace
                     foreach (str_split('baz') as $ch) {
                         $tui->handleInput($ch);
                     }
@@ -1402,7 +1447,8 @@ final class IdeEdgeCasesTest extends TestCase
             [
                 300 => static function ($tui): void {
                     $tui->handleInput("\x1b[102;6u"); // open project search
-                    $tui->handleInput("\t"); // to replace field
+                    $tui->handleInput("\t"); // query → mask
+                    $tui->handleInput("\t"); // mask → replace
                     $tui->handleInput("\x1ba"); // replace all with no query/results
                 },
                 500 => function ($tui, $terminal): void {

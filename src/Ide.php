@@ -635,6 +635,18 @@ final class Ide
             $this->projectSearchController->toggleOption($name);
         });
 
+        // The file mask (find-in-project only) re-runs the search, debounced like the query.
+        $this->resultsPanel->onMaskChanged(function (string $mask): void {
+            if (null !== $this->searchDebounce) {
+                EventLoop::cancel($this->searchDebounce);
+            }
+            $this->resultsPanel->setSearching();
+            $this->searchDebounce = EventLoop::delay(0.25, function () use ($mask): void {
+                $this->searchDebounce = null;
+                $this->projectSearchController->setMask($mask);
+            });
+        });
+
         $this->resultsPanel->onReplaceAll(function (string $replacement): void {
             $this->projectSearchController->replaceAll($replacement);
         });

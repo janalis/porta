@@ -113,8 +113,9 @@ final class ResultsPanelWidgetTest extends TestCase
         $panel->handleInput('a');
         $this->assertSame(['a'], $queries);
 
-        // Tab switches to the replace field; typing there does not re-query.
-        $panel->handleInput("\t");
+        // Tab cycles query → mask → replace; land on replace. Typing there does not re-query.
+        $panel->handleInput("\t"); // mask
+        $panel->handleInput("\t"); // replace
         $panel->handleInput('X');
         $panel->handleInput('Y');
         $panel->handleInput("\x7f"); // backspace in replace field
@@ -127,8 +128,8 @@ final class ResultsPanelWidgetTest extends TestCase
         $panel->handleInput("\x1ba");
         $this->assertSame('X', $replaced);
 
-        // Backspace on the query field after switching back still edits the query.
-        $panel->handleInput("\t");
+        // Tab from replace wraps back to the query; backspace still edits the query.
+        $panel->handleInput("\t"); // query (wrap)
         $panel->handleInput("\x7f");
         $this->assertSame(['a', ''], $queries);
     }
@@ -283,6 +284,48 @@ final class ResultsPanelWidgetTest extends TestCase
         $panel->handleClick(2, 5); // header row 0 → result rows 1,2 → index 1
         $this->assertSame(['src/File1.php', 1], $jumped);
         $this->assertFalse($panel->isOpen());
+    }
+
+    public function testMaskFieldIsTabReachableAndNotifiesOnEdit(): void
+    {
+        $panel = new ResultsPanelWidget();
+        $panel->setFocused(true);
+        $masks = [];
+        $queries = [];
+        $panel->onMaskChanged(function (string $m) use (&$masks): void {
+            $masks[] = $m;
+        });
+        $panel->onQueryChanged(function (string $q) use (&$queries): void {
+            $queries[] = $q;
+        });
+        $panel->open('Find in Project', ResultsPanelFields::fullSearch());
+
+        // Tab query → mask; typing fires onMaskChanged (not a query), backspace too.
+        $panel->handleInput("\t"); // mask
+        $panel->handleInput('*');
+        $panel->handleInput('x');
+        $panel->handleInput("\x7f"); // backspace
+        $this->assertSame(['*', '*x', '*'], $masks);
+        $this->assertSame([], $queries, 'mask edits are not queries');
+
+        $plain = AnsiUtils::stripAnsiCodes(implode("\n", $panel->render(new RenderContext(80, 12))));
+        $this->assertStringContainsString('Mask: *', $plain);
+    }
+
+    public function testClickWithMaskAndReplaceHeaderOffset(): void
+    {
+        $panel = new ResultsPanelWidget();
+        $jumped = null;
+        $panel->onJump(function (string $path, int $line) use (&$jumped): void {
+            $jumped = [$path, $line];
+        });
+        $panel->open('Find in Project', ResultsPanelFields::fullSearch());
+        $panel->setResults($this->results(3));
+        $panel->render(new RenderContext(80, 12));
+
+        // Rows: 0 title/query, 1 mask, 2 replace → results begin at row 3.
+        $panel->handleClick(3, 5);
+        $this->assertSame(['src/File0.php', 0], $jumped);
     }
 
     public function testClickWithReplaceHeaderOffset(): void

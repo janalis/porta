@@ -24,9 +24,17 @@ final class ProjectSearchTest extends TestCase
         putenv('PATH='.$this->originalPath);
     }
 
-    /** @return list<array{path: string, line: int, text: string}> */
-    private function await(ProjectSearch $search, string $query, bool $regex = false, bool $caseSensitive = false, bool $wholeWord = false, float $timeout = 3.0, string $scope = '.'): array
-    {
+    /** @return list<array{path: string, line: int, text: string, ranges: list<array{start: int, length: int}>}> */
+    private function await(
+        ProjectSearch $search,
+        string $query,
+        bool $regex = false,
+        bool $caseSensitive = false,
+        bool $wholeWord = false,
+        float $timeout = 3.0,
+        string $scope = '.',
+        string $mask = '',
+    ): array {
         $results = null;
         $search->search(
             $query,
@@ -35,6 +43,7 @@ final class ProjectSearchTest extends TestCase
             },
             new SearchOptions($regex, $caseSensitive, $wholeWord),
             $scope,
+            $mask,
         );
 
         $elapsed = 0.0;
@@ -144,6 +153,36 @@ final class ProjectSearchTest extends TestCase
     {
         $this->assertSame([['start' => 4, 'length' => 6]], $this->rangesOf(true, 'the needle here', 'needle'));
         $this->assertSame([['start' => 5, 'length' => 6]], $this->rangesOf(true, 'café needle x', 'needle'));
+    }
+
+    /** @return list<string> sorted result paths for a mask over a fixed fixture */
+    private function maskedPaths(bool $phpFallback, string $mask): array
+    {
+        $project = new TempProject([
+            'src/A.php' => "<?php\n// needle\n",
+            'src/B.js' => "// needle\n",
+            'src/C.twig' => "{# needle #}\n",
+        ]);
+        if ($phpFallback) {
+            putenv('PATH=/nonexistent');
+        }
+        $paths = array_column($this->await(new ProjectSearch($project->dir), 'needle', mask: $mask), 'path');
+        sort($paths);
+
+        return $paths;
+    }
+
+    public function testFileMaskRestrictsMatchedFilesWithGrep(): void
+    {
+        $this->assertSame(['src/A.php'], $this->maskedPaths(false, '*.php'));
+        $this->assertSame(['src/A.php', 'src/B.js'], $this->maskedPaths(false, '*.{php,js}'), 'brace mask');
+        $this->assertSame(['src/A.php', 'src/C.twig'], $this->maskedPaths(false, '*.php, *.twig'), 'comma mask');
+    }
+
+    public function testFileMaskRestrictsMatchedFilesWithPhpFallback(): void
+    {
+        $this->assertSame(['src/A.php'], $this->maskedPaths(true, '*.php'));
+        $this->assertSame(['src/A.php', 'src/B.js'], $this->maskedPaths(true, '*.{php,js}'), 'brace mask via Finder');
     }
 
     public function testEmptyQueryReturnsNothing(): void

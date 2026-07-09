@@ -16,6 +16,7 @@ final readonly class ResultsPanelFields
         public bool $query = false,
         public bool $options = false,
         public bool $replace = false,
+        public bool $mask = false,
     ) {}
 
     /** Live query only (command palette, symbol search). */
@@ -30,9 +31,9 @@ final readonly class ResultsPanelFields
         return new self();
     }
 
-    /** Query + regex/case/word toggles + replace box (find-in-project). */
+    /** Query + regex/case/word toggles + file mask + replace box (find-in-project). */
     public static function fullSearch(): self
     {
-        return new self(query: true, options: true, replace: true);
+        return new self(query: true, options: true, replace: true, mask: true);
     }
 }

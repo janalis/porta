@@ -37,10 +37,12 @@ final class ResultsPanelWidget extends OverlayWidget implements FocusableInterfa
     private bool $withQuery = false;
     private bool $withOptions = false;
     private bool $withReplace = false;
+    private bool $withMask = false;
     private string $title = '';
     private readonly TextField $query;
     private readonly TextField $replace;
-    /** 'query' | 'replace' — which field typing edits (only when withReplace) */
+    private readonly TextField $mask;
+    /** 'query' | 'mask' | 'replace' — which field typing edits; cycled by Tab */
     private string $activeField = 'query';
     private readonly ListSelection $list;
     private bool $searching = false;
@@ -56,6 +58,8 @@ final class ResultsPanelWidget extends OverlayWidget implements FocusableInterfa
 
     /** @var (callable(string): void)|null */
     private $onQueryChanged = null;
+    /** @var (callable(string): void)|null the file mask changed (re-run the search) */
+    private $onMaskChanged = null;
     /** @var (callable(string, int): void)|null */
     private $onJump = null;
     /** @var (callable(string): void)|null toggled a search option ('regex'|'case'|'word') */
@@ -71,12 +75,20 @@ final class ResultsPanelWidget extends OverlayWidget implements FocusableInterfa
         $this->list = new ListSelection();
         $this->query = new TextField();
         $this->replace = new TextField();
+        $this->mask = new TextField();
         $this->visibleRows = 10;
     }
 
     public function onQueryChanged(callable $callback): self
     {
         $this->onQueryChanged = $callback;
+
+        return $this;
+    }
+
+    public function onMaskChanged(callable $callback): self
+    {
+        $this->onMaskChanged = $callback;
 
         return $this;
     }
@@ -115,10 +127,12 @@ final class ResultsPanelWidget extends OverlayWidget implements FocusableInterfa
         $this->withQuery = $fields->query;
         $this->withOptions = $fields->options;
         $this->withReplace = $fields->replace;
+        $this->withMask = $fields->mask;
         $this->activeField = 'query';
         $this->title = $title;
         $this->query->clear();
         $this->replace->clear();
+        $this->mask->clear();
         $this->results = [];
         $this->list->reset();
         $this->searching = false;
@@ -172,29 +186,71 @@ final class ResultsPanelWidget extends OverlayWidget implements FocusableInterfa
             $this->fireToggle('case');
         } elseif ($this->withOptions && $kb->matches($data, 'toggle_word')) {
             $this->fireToggle('word');
-        } elseif ($this->withReplace && $kb->matches($data, 'switch_field')) {
-            $this->activeField = 'query' === $this->activeField ? 'replace' : 'query';
+        } elseif ($kb->matches($data, 'switch_field') && \count($this->focusableFields()) > 1) {
+            $fields = $this->focusableFields();
+            $pos = (int) array_search($this->activeField, $fields, true);
+            $this->activeField = $fields[($pos + 1) % \count($fields)];
             $this->invalidate();
         } elseif ($this->withReplace && $kb->matches($data, 'replace_all')) {
             if (null !== $this->onReplaceAll) {
                 ($this->onReplaceAll)($this->replace->value());
             }
         } elseif ($kb->matches($data, 'delete_char_backward')) {
-            if ($this->withReplace && 'replace' === $this->activeField) {
-                $this->replace->backspace();
-                $this->invalidate();
-            } elseif ($this->withQuery && $this->query->backspace()) {
-                $this->notifyQuery();
+            $field = $this->activeTextField();
+            if (null !== $field && $field->backspace()) {
+                $this->afterFieldEdit();
                 $this->invalidate();
             }
-        } elseif ($this->withQuery) {
-            $field = $this->withReplace && 'replace' === $this->activeField ? $this->replace : $this->query;
-            if ($field->insert($data)) {
-                if ($field === $this->query) {
-                    $this->notifyQuery();
-                }
+        } else {
+            $field = $this->activeTextField();
+            if (null !== $field && $field->insert($data)) {
+                $this->afterFieldEdit();
                 $this->invalidate();
             }
+        }
+    }
+
+    /** @return list<string> the shown text fields, in Tab-cycle order */
+    private function focusableFields(): array
+    {
+        $fields = [];
+        if ($this->withQuery) {
+            $fields[] = 'query';
+        }
+        if ($this->withMask) {
+            $fields[] = 'mask';
+        }
+        if ($this->withReplace) {
+            $fields[] = 'replace';
+        }
+
+        return $fields;
+    }
+
+    /** The TextField typing currently edits, or null when no field is shown. */
+    private function activeTextField(): ?TextField
+    {
+        return match ($this->activeField) {
+            'mask' => $this->withMask ? $this->mask : null,
+            'replace' => $this->withReplace ? $this->replace : null,
+            default => $this->withQuery ? $this->query : null,
+        };
+    }
+
+    /** Notify the right listener after an edit: query/mask re-run, replace does not. */
+    private function afterFieldEdit(): void
+    {
+        if ('query' === $this->activeField) {
+            $this->notifyQuery();
+        } elseif ('mask' === $this->activeField) {
+            $this->notifyMask();
+        }
+    }
+
+    private function notifyMask(): void
+    {
+        if (null !== $this->onMaskChanged) {
+            ($this->onMaskChanged)($this->mask->value());
         }
     }
 
@@ -243,7 +299,8 @@ final class ResultsPanelWidget extends OverlayWidget implements FocusableInterfa
     /** Result index at the given widget-relative row, or null if it is not a result row. */
     private function rowIndexAt(int $relRow): ?int
     {
-        $headerRows = $this->withReplace ? 2 : 1;
+        // Row 0 is the title/query row; the mask and replace rows follow.
+        $headerRows = 1 + ($this->withMask ? 1 : 0) + ($this->withReplace ? 1 : 0);
         $i = $relRow - $headerRows;
         if ($i < 0) {
             return null;
@@ -284,10 +341,11 @@ final class ResultsPanelWidget extends OverlayWidget implements FocusableInterfa
         $header = $prefix.$options;
         $lines[] = HeaderRenderer::render($header, $columns, $this->palette->of(Role::HeaderBar)."\x1b[1m");
 
+        if ($this->withMask) {
+            $lines[] = $this->fieldRow('Mask', $this->mask, 'mask', $showCursor, '  (e.g. *.php, *.{php,js})', $columns);
+        }
         if ($this->withReplace) {
-            $replaceField = $this->replace->render(cursor: $showCursor && 'replace' === $this->activeField);
-            $replaceLine = ' Replace: '.$replaceField.$this->palette->of(Role::Dim)."  (Tab switch · Alt+A replace all)\x1b[39m";
-            $lines[] = $this->palette->of(Role::RowHighlightBg).AnsiText::scrollLineToCaret($replaceLine, $columns, AnsiUtils::cursorMarker(CursorShape::Bar))."\x1b[0m";
+            $lines[] = $this->fieldRow('Replace', $this->replace, 'replace', $showCursor, '  (Tab switch · Alt+A replace all)', $columns);
         }
 
         $scroll = $this->list->follow($this->visibleRows);
@@ -320,6 +378,15 @@ final class ResultsPanelWidget extends OverlayWidget implements FocusableInterfa
         if (null !== $this->onQueryChanged) {
             ($this->onQueryChanged)($this->query->value());
         }
+    }
+
+    /** A labelled input header row (mask/replace), with a cursor when it is the active field. */
+    private function fieldRow(string $label, TextField $field, string $name, bool $showCursor, string $hint, int $columns): string
+    {
+        $rendered = $field->render(cursor: $showCursor && $name === $this->activeField);
+        $line = ' '.$label.': '.$rendered.$this->palette->of(Role::Dim).$hint."\x1b[39m";
+
+        return $this->palette->of(Role::RowHighlightBg).AnsiText::scrollLineToCaret($line, $columns, AnsiUtils::cursorMarker(CursorShape::Bar))."\x1b[0m";
     }
 
     private function fireToggle(string $name): void
