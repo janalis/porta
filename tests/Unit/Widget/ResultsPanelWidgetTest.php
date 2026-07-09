@@ -345,6 +345,69 @@ final class ResultsPanelWidgetTest extends TestCase
         $this->assertStringContainsString('Mask: *', $plain);
     }
 
+    /** @return list<array{path: string, line: int, text: string, ranges: list<array{start: int, length: int}>}> */
+    private function groupedResults(): array
+    {
+        return [
+            ['path' => 'src/A.php', 'line' => 0, 'text' => 'match zero', 'ranges' => []],
+            ['path' => 'src/A.php', 'line' => 4, 'text' => 'match one', 'ranges' => []],
+            ['path' => 'src/B.php', 'line' => 2, 'text' => 'match two', 'ranges' => []],
+        ];
+    }
+
+    public function testGroupedRenderShowsFileHeadersWithCountsAndIndentedMatches(): void
+    {
+        $panel = new ResultsPanelWidget();
+        $panel->setFocused(true);
+        $panel->open('Find in Project', ResultsPanelFields::fullSearch());
+        $panel->setResults($this->groupedResults());
+
+        $plain = AnsiUtils::stripAnsiCodes(implode("\n", $panel->render(new RenderContext(80, 12))));
+        $this->assertStringContainsString('▾ src/A.php  (2)', $plain, 'file header with match count');
+        $this->assertStringContainsString('▾ src/B.php  (1)', $plain);
+        $this->assertStringContainsString('match zero', $plain);
+        $this->assertStringNotContainsString('src/A.php:1', $plain, 'grouped match rows omit the per-line path');
+    }
+
+    public function testGroupedEnterOnThePreselectedMatchJumps(): void
+    {
+        $panel = new ResultsPanelWidget();
+        $panel->setFocused(true);
+        $jumped = null;
+        $panel->onJump(function (string $path, int $line) use (&$jumped): void {
+            $jumped = [$path, $line];
+        });
+        $panel->open('Find in Project', ResultsPanelFields::fullSearch());
+        $panel->setResults($this->groupedResults());
+
+        // The first match (not the file header) is pre-selected → Enter jumps.
+        $panel->handleInput("\r");
+        $this->assertSame(['src/A.php', 0], $jumped);
+    }
+
+    public function testGroupedClickFileHeaderTogglesCollapse(): void
+    {
+        $panel = new ResultsPanelWidget();
+        $panel->setFocused(true);
+        $panel->open('Find in Project', ResultsPanelFields::fullSearch());
+        $panel->setResults($this->groupedResults());
+        $panel->render(new RenderContext(80, 12));
+
+        // Header rows 0-3; row 4 = file header src/A.php. Click it → collapse.
+        $panel->handleClick(4, 3);
+        $collapsed = AnsiUtils::stripAnsiCodes(implode("\n", $panel->render(new RenderContext(80, 12))));
+        $this->assertStringContainsString('▸ src/A.php  (2)', $collapsed, 'collapsed arrow');
+        $this->assertStringNotContainsString('match zero', $collapsed, "A's matches are hidden");
+        $this->assertStringNotContainsString('match one', $collapsed);
+        $this->assertStringContainsString('match two', $collapsed, 'B stays expanded');
+
+        // Click again → expand.
+        $panel->handleClick(4, 3);
+        $expanded = AnsiUtils::stripAnsiCodes(implode("\n", $panel->render(new RenderContext(80, 12))));
+        $this->assertStringContainsString('▾ src/A.php', $expanded);
+        $this->assertStringContainsString('match zero', $expanded);
+    }
+
     public function testClickWithMaskAndReplaceHeaderOffset(): void
     {
         $panel = new ResultsPanelWidget();
@@ -356,8 +419,9 @@ final class ResultsPanelWidgetTest extends TestCase
         $panel->setResults($this->results(3));
         $panel->render(new RenderContext(80, 12));
 
-        // Rows: 0 title/query, 1 scope, 2 mask, 3 replace → results begin at row 4.
-        $panel->handleClick(4, 5);
+        // Header rows 0-3 (title/query, scope, mask, replace); grouped display then
+        // begins with a file header at row 4, its match at row 5.
+        $panel->handleClick(5, 5);
         $this->assertSame(['src/File0.php', 0], $jumped);
     }
 

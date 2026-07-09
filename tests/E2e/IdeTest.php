@@ -211,9 +211,10 @@ final class IdeTest extends TestCase
             }
         });
         $this->step(3.75, function () use ($screen, $tui): void {
-            $this->assertStringContainsString('Target.php:4', $screen());
+            // Results group under a file header; the match line follows it.
+            $this->assertStringContainsString('src/Target.php', $screen(), 'grouped under its file header');
             $this->assertStringContainsString('1 results', $screen());
-            $tui->handleInput("\r");
+            $tui->handleInput("\r"); // the first match is pre-selected → jump
         });
         $this->step(3.85, function () use ($editor, $tui): void {
             $this->assertStringEndsWith('Target.php', (string) $editor()->getFilePath());

@@ -58,6 +58,11 @@ final class ResultsPanelWidget extends OverlayWidget implements FocusableInterfa
 
     /** @var list<array{path: string, line: int, text: string, ranges?: list<array{start: int, length: int}>}> ranges (search mode only) are display-column match spans */
     private array $results = [];
+    private bool $grouped = false;
+    /** @var array<string, bool> path => collapsed (grouped mode only) */
+    private array $collapsed = [];
+    /** @var list<DisplayRow> the flattened rows actually rendered/navigated */
+    private array $displayRows = [];
 
     /** @var (callable(string): void)|null */
     private $onQueryChanged = null;
@@ -149,12 +154,15 @@ final class ResultsPanelWidget extends OverlayWidget implements FocusableInterfa
         $this->withMask = $fields->mask;
         $this->withScope = $fields->scope;
         $this->scopeKind = ScopeKind::Project;
+        $this->grouped = $fields->grouped;
         $this->activeField = 'query';
         $this->title = $title;
         $this->query->clear();
         $this->replace->clear();
         $this->mask->clear();
         $this->results = [];
+        $this->collapsed = [];
+        $this->rebuildView();
         $this->list->reset();
         $this->searching = false;
         $this->invalidate();
@@ -164,9 +172,25 @@ final class ResultsPanelWidget extends OverlayWidget implements FocusableInterfa
     public function setResults(array $results): void
     {
         $this->results = $results;
+        $this->collapsed = [];
+        $this->rebuildView();
         $this->list->reset();
+        // Start on the first match, not the leading file header, so Enter jumps.
+        foreach ($this->displayRows as $i => $row) {
+            if (null === $row->filePath) {
+                $this->list->select($i);
+
+                break;
+            }
+        }
         $this->searching = false;
         $this->invalidate();
+    }
+
+    /** Recompute the flattened display rows from the current results + collapse state. */
+    private function rebuildView(): void
+    {
+        $this->displayRows = ResultsView::build($this->results, $this->collapsed, $this->grouped);
     }
 
     public function setSearching(): void
@@ -193,14 +217,10 @@ final class ResultsPanelWidget extends OverlayWidget implements FocusableInterfa
 
         if ($kb->matches($data, 'close')) {
             $this->close();
-        } elseif (ListNavigation::handleKey($data, $kb, $this->list, \count($this->results))) {
+        } elseif (ListNavigation::handleKey($data, $kb, $this->list, \count($this->displayRows))) {
             $this->invalidate();
         } elseif ($kb->matches($data, 'jump')) {
-            $result = $this->results[$this->list->selected()] ?? null;
-            if (null !== $result && null !== $this->onJump) {
-                $this->close();
-                ($this->onJump)($result['path'], $result['line']);
-            }
+            $this->activateRow($this->list->selected());
         } elseif ($this->withOptions && $kb->matches($data, 'toggle_regex')) {
             $this->fireToggle('regex');
         } elseif ($this->withOptions && $kb->matches($data, 'toggle_case')) {
@@ -283,7 +303,7 @@ final class ResultsPanelWidget extends OverlayWidget implements FocusableInterfa
 
     /**
      * Route a left-click at the given widget-relative row/col: an option tag in
-     * the header toggles it; a result row selects and jumps to it.
+     * the header toggles it; a file header collapses/expands; a match row jumps.
      */
     public function handleClick(int $relRow, int $relCol): void
     {
@@ -304,14 +324,31 @@ final class ResultsPanelWidget extends OverlayWidget implements FocusableInterfa
             return;
         }
         $this->list->select($index);
-        $result = $this->results[$index];
+        $this->activateRow($index);
+    }
+
+    /** Activate a display row: a file header collapses/expands, a match row jumps. */
+    private function activateRow(int $index): void
+    {
+        $row = $this->displayRows[$index] ?? null;
+        if (null === $row) {
+            return;
+        }
+        if (null !== $row->filePath) {
+            $this->collapsed[$row->filePath] = !($this->collapsed[$row->filePath] ?? false);
+            $this->rebuildView();
+            $this->invalidate();
+
+            return;
+        }
+        $result = $this->results[$row->matchIndex];
         if (null !== $this->onJump) {
             $this->close();
             ($this->onJump)($result['path'], $result['line']);
         }
     }
 
-    /** Highlight the result row under the pointer (widget-relative row); returns whether it changed. */
+    /** Highlight the display row under the pointer (widget-relative row); returns whether it changed. */
     public function hoverRow(int $relRow): bool
     {
         if ($this->list->selectIfChanged($this->rowIndexAt($relRow))) {
@@ -323,7 +360,7 @@ final class ResultsPanelWidget extends OverlayWidget implements FocusableInterfa
         return false;
     }
 
-    /** Result index at the given widget-relative row, or null if it is not a result row. */
+    /** Display-row index at the given widget-relative row, or null if it is not a result/header row. */
     private function rowIndexAt(int $relRow): ?int
     {
         // Row 0 is the title/query row; the scope, mask and replace rows follow.
@@ -334,7 +371,7 @@ final class ResultsPanelWidget extends OverlayWidget implements FocusableInterfa
         }
         $index = $this->list->scroll() + $i;
 
-        return $index < \count($this->results) ? $index : null;
+        return $index < \count($this->displayRows) ? $index : null;
     }
 
     public function render(RenderContext $context): array
@@ -381,20 +418,12 @@ final class ResultsPanelWidget extends OverlayWidget implements FocusableInterfa
 
         $scroll = $this->list->follow($this->visibleRows);
 
-        $searchBg = $this->palette->of(Role::SearchBg);
-        foreach (\array_slice($this->results, $scroll, $this->visibleRows) as $i => $result) {
+        foreach (\array_slice($this->displayRows, $scroll, $this->visibleRows) as $i => $row) {
             $isSelected = $this->list->isSelected($scroll + $i);
             $bg = $isSelected ? ($this->focused ? $this->palette->of(Role::SelectedRow) : $this->palette->of(Role::InlayPopupBg)) : $this->palette->of(Role::Toolbar);
-            $location = $result['path'].':'.($result['line'] + 1);
-            $prefixWidth = 1 + mb_strwidth($location) + 2; // ` ` + `path:line` + `  `
-            $text = ' '.$this->palette->of(Role::TabAccent).$location."\x1b[39m".'  '.$result['text'];
-            $line = $bg.AnsiUtils::truncateToWidth($text, $columns, '…', pad: true)."\x1b[0m";
-            // Highlight each match span; close with the row bg so the tail keeps its colour.
-            foreach ($result['ranges'] ?? [] as $range) {
-                $start = $prefixWidth + $range['start'];
-                $line = LineDecorator::apply($line, $start, $start + $range['length'], $searchBg, $bg, $searchBg);
-            }
-            $lines[] = $line;
+            $lines[] = null !== $row->filePath
+                ? $this->fileHeaderLine($row->filePath, $row->count, $row->collapsed, $bg, $columns)
+                : $this->matchLine($this->results[$row->matchIndex], $bg, $columns);
         }
 
         if ([] === $this->results && !$this->searching && '' !== $this->query->value()) {
@@ -418,6 +447,43 @@ final class ResultsPanelWidget extends OverlayWidget implements FocusableInterfa
         $line = ' '.$label.': '.$rendered.$this->palette->of(Role::Dim).$hint."\x1b[39m";
 
         return $this->palette->of(Role::RowHighlightBg).AnsiText::scrollLineToCaret($line, $columns, AnsiUtils::cursorMarker(CursorShape::Bar))."\x1b[0m";
+    }
+
+    /** A collapsible file-group header: `▾ path  (count)` (grouped mode only). */
+    private function fileHeaderLine(string $path, int $count, bool $collapsed, string $bg, int $columns): string
+    {
+        $arrow = $collapsed ? '▸' : '▾';
+        $text = ' '.$arrow.' '.$this->palette->of(Role::TabAccent).$path."\x1b[39m".$this->palette->of(Role::Dim).'  ('.$count.')'."\x1b[39m";
+
+        return $bg.AnsiUtils::truncateToWidth($text, $columns, '…', pad: true)."\x1b[0m";
+    }
+
+    /**
+     * One match row — `path:line  text` when flat, or an indented `line  text`
+     * under its file header when grouped — with the match spans highlighted.
+     *
+     * @param array{path: string, line: int, text: string, ranges?: list<array{start: int, length: int}>} $result
+     */
+    private function matchLine(array $result, string $bg, int $columns): string
+    {
+        if ($this->grouped) {
+            $label = (string) ($result['line'] + 1);
+            $prefixWidth = 4 + mb_strwidth($label) + 2; // `    ` + line + `  `
+            $text = '    '.$this->palette->of(Role::TabAccent).$label."\x1b[39m".'  '.$result['text'];
+        } else {
+            $location = $result['path'].':'.($result['line'] + 1);
+            $prefixWidth = 1 + mb_strwidth($location) + 2; // ` ` + `path:line` + `  `
+            $text = ' '.$this->palette->of(Role::TabAccent).$location."\x1b[39m".'  '.$result['text'];
+        }
+        $line = $bg.AnsiUtils::truncateToWidth($text, $columns, '…', pad: true)."\x1b[0m";
+        // Highlight each match span; close with the row bg so the tail keeps its colour.
+        $searchBg = $this->palette->of(Role::SearchBg);
+        foreach ($result['ranges'] ?? [] as $range) {
+            $start = $prefixWidth + $range['start'];
+            $line = LineDecorator::apply($line, $start, $start + $range['length'], $searchBg, $bg, $searchBg);
+        }
+
+        return $line;
     }
 
     private function fireToggle(string $name): void
