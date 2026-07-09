@@ -768,6 +768,44 @@ final class IdeEdgeCasesTest extends TestCase
         $this->addToAssertionCount(1);
     }
 
+    public function testFindInProjectPreserveCaseReplace(): void
+    {
+        $project = new TempProject(['src/A.php' => "<?php\n// oldname Oldname OLDNAME\n"]);
+
+        $this->runIde(
+            $project,
+            null, // no open buffer → replace-all writes the file on disk
+            [
+                200 => static function ($tui): void {
+                    $tui->handleInput("\x1b[102;6u"); // ctrl+shift+f
+                    foreach (str_split('oldname') as $ch) {
+                        $tui->handleInput($ch);
+                    }
+                },
+                600 => static function ($tui): void {
+                    $tui->tick();
+                    $tui->handleInput("\x1bp"); // alt+p → preserve case
+                    $tui->handleInput("\t"); // query → mask
+                    $tui->handleInput("\t"); // mask → replace
+                    foreach (str_split('newname') as $ch) {
+                        $tui->handleInput($ch);
+                    }
+                    $tui->handleInput("\x1ba"); // alt+a → replace all
+                },
+                900 => function ($tui) use ($project): void {
+                    $this->assertStringContainsString(
+                        'newname Newname NEWNAME',
+                        (string) file_get_contents($project->path('src/A.php')),
+                        'each occurrence keeps its original casing',
+                    );
+                },
+            ],
+            1.2,
+        );
+
+        $this->addToAssertionCount(1);
+    }
+
     public function testStickyScrollPinsHeaderAndClickJumps(): void
     {
         putenv('PATH=/nonexistent');

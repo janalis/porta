@@ -68,15 +68,17 @@ final class ResultsPanelWidgetTest extends TestCase
         $panel->handleInput("\x1br"); // alt+r regex
         $panel->handleInput("\x1bc"); // alt+c case
         $panel->handleInput("\x1bw"); // alt+w word
-        $this->assertSame(['regex', 'case', 'word'], $toggled);
+        $panel->handleInput("\x1bp"); // alt+p preserve case
+        $this->assertSame(['regex', 'case', 'word', 'preserve'], $toggled);
 
         // Header shows the indicators; enabling one highlights it.
-        $panel->setOptions(['regex' => true, 'case' => false, 'word' => false]);
+        $panel->setOptions(['regex' => true, 'case' => false, 'word' => false, 'preserve' => false]);
         $header = $panel->render(new RenderContext(80, 12))[0];
         $plain = AnsiUtils::stripAnsiCodes($header);
         $this->assertStringContainsString('.*', $plain);
         $this->assertStringContainsString('Aa', $plain);
         $this->assertStringContainsString('\\b', $plain);
+        $this->assertStringContainsString('Pc', $plain, 'preserve-case tag shown');
         $this->assertStringContainsString("\x1b[48;5;31m", $header, 'enabled option highlighted');
     }
 

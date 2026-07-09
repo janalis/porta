@@ -16,7 +16,8 @@ final class SearchOptionsTest extends TestCase
         $this->assertFalse($options->regex);
         $this->assertFalse($options->caseSensitive);
         $this->assertFalse($options->wholeWord);
-        $this->assertSame(['regex' => false, 'case' => false, 'word' => false], $options->panelState());
+        $this->assertFalse($options->preserveCase);
+        $this->assertSame(['regex' => false, 'case' => false, 'word' => false, 'preserve' => false], $options->panelState());
     }
 
     public function testToggledFlipsTheKeyedFlagAndLeavesTheRest(): void
@@ -24,6 +25,7 @@ final class SearchOptionsTest extends TestCase
         $this->assertTrue(new SearchOptions()->toggled('regex')->regex);
         $this->assertTrue(new SearchOptions()->toggled('case')->caseSensitive);
         $this->assertTrue(new SearchOptions()->toggled('word')->wholeWord);
+        $this->assertTrue(new SearchOptions()->toggled('preserve')->preserveCase);
 
         // Toggling one leaves the others untouched.
         $onlyWord = new SearchOptions()->toggled('word');
@@ -42,7 +44,7 @@ final class SearchOptionsTest extends TestCase
 
     public function testPanelStateMapsFieldsToTheShortKeys(): void
     {
-        $options = new SearchOptions(regex: true, caseSensitive: false, wholeWord: true);
-        $this->assertSame(['regex' => true, 'case' => false, 'word' => true], $options->panelState());
+        $options = new SearchOptions(regex: true, caseSensitive: false, wholeWord: true, preserveCase: true);
+        $this->assertSame(['regex' => true, 'case' => false, 'word' => true, 'preserve' => true], $options->panelState());
     }
 }

@@ -261,10 +261,42 @@ final class ProjectSearch
     public function applyReplacement(string $content, string $query, string $replacement, SearchOptions $options): string
     {
         $pattern = $this->pattern($query, $options);
+        // Preserve-case (literal replace only): map each match's casing onto the
+        // replacement so foo→bar, Foo→Bar and FOO→BAR in one pass.
+        if ($options->preserveCase && !$options->regex) {
+            $result = @preg_replace_callback($pattern, fn (array $m): string => $this->applyCasePattern($m[0], $replacement), $content);
+
+            return null === $result ? $content : $result;
+        }
         $repl = $options->regex ? $replacement : (string) preg_replace('/[\\\\$]/', '\\\\$0', $replacement);
         $result = @preg_replace($pattern, $repl, $content);
 
         return null === $result ? $content : $result;
+    }
+
+    /**
+     * Recast $replacement to match $match's case pattern: all-lowercase → lower,
+     * ALL-UPPERCASE → upper, Titlecase → Title, anything else → verbatim.
+     */
+    private function applyCasePattern(string $match, string $replacement): string
+    {
+        if ('' === $replacement) {
+            return $replacement;
+        }
+        $lower = mb_strtolower($match);
+        $upper = mb_strtoupper($match);
+        if ($match === $upper && $match !== $lower) {
+            return mb_strtoupper($replacement); // ALL CAPS (and has letters)
+        }
+        if ($match === $lower) {
+            return mb_strtolower($replacement); // all lowercase
+        }
+        $title = mb_strtoupper(mb_substr($match, 0, 1)).mb_strtolower(mb_substr($match, 1));
+        if ($match === $title) {
+            return mb_strtoupper(mb_substr($replacement, 0, 1)).mb_strtolower(mb_substr($replacement, 1)); // Titlecase
+        }
+
+        return $replacement; // mixed / unknown → leave the replacement as typed
     }
 
     /** Build a PCRE pattern mirroring the grep flags, for the PHP fallback. */

@@ -252,6 +252,27 @@ final class ProjectSearchTest extends TestCase
         $this->assertSame('a=b', $search->applyReplacement('a=b', '(', 'X', new SearchOptions(regex: true)));
     }
 
+    public function testApplyReplacementPreservesCase(): void
+    {
+        $search = new ProjectSearch('/tmp');
+        $preserve = new SearchOptions(preserveCase: true);
+
+        // Each occurrence's casing is mapped onto the replacement, overriding the
+        // typed casing: lowercase→lower, Title→Title, UPPER→UPPER.
+        $this->assertSame(
+            'newname Newname NEWNAME',
+            $search->applyReplacement('oldname Oldname OLDNAME', 'oldname', 'newName', $preserve),
+        );
+        // A mixed-case match keeps the replacement verbatim.
+        $this->assertSame('newName', $search->applyReplacement('oLdNaMe', 'oldname', 'newName', $preserve));
+        // An empty replacement deletes the match (nothing to recase).
+        $this->assertSame('', $search->applyReplacement('oldname', 'oldname', '', $preserve));
+        // Multibyte title-case (case-sensitive match; PCRE `i` is not UTF-8-aware here).
+        $this->assertSame('Éclair', $search->applyReplacement('Ötür', 'Ötür', 'éclair', new SearchOptions(preserveCase: true, caseSensitive: true)));
+        // Preserve-case is inert in regex mode (falls back to the plain replacement).
+        $this->assertSame('newName', $search->applyReplacement('OLDNAME', 'oldname', 'newName', new SearchOptions(regex: true, preserveCase: true)));
+    }
+
     public function testResultCapWithGrep(): void
     {
         $project = new TempProject([

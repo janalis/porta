@@ -53,8 +53,8 @@ final class ResultsPanelWidget extends OverlayWidget implements FocusableInterfa
     /** @var list<array{name: string, start: int, end: int}> option-tag click zones (columns) from the last render */
     private array $optionZones = [];
 
-    /** @var array{regex: bool, case: bool, word: bool} search toggles shown in the header */
-    private array $options = ['regex' => false, 'case' => false, 'word' => false];
+    /** @var array{regex: bool, case: bool, word: bool, preserve: bool} search toggles shown in the header */
+    private array $options = ['regex' => false, 'case' => false, 'word' => false, 'preserve' => false];
 
     /** @var list<array{path: string, line: int, text: string, ranges?: list<array{start: int, length: int}>}> ranges (search mode only) are display-column match spans */
     private array $results = [];
@@ -140,7 +140,7 @@ final class ResultsPanelWidget extends OverlayWidget implements FocusableInterfa
         return $this;
     }
 
-    /** @param array{regex: bool, case: bool, word: bool} $options */
+    /** @param array{regex: bool, case: bool, word: bool, preserve: bool} $options */
     public function setOptions(array $options): void
     {
         $this->options = $options;
@@ -266,6 +266,8 @@ final class ResultsPanelWidget extends OverlayWidget implements FocusableInterfa
             $this->fireToggle('case');
         } elseif ($this->withOptions && $kb->matches($data, 'toggle_word')) {
             $this->fireToggle('word');
+        } elseif ($this->withOptions && $kb->matches($data, 'toggle_preserve')) {
+            $this->fireToggle('preserve');
         } elseif ($this->withScope && $kb->matches($data, 'cycle_scope')) {
             $this->scopeKind = $this->scopeKind->next();
             if (null !== $this->onScopeCycle) {
@@ -439,12 +441,17 @@ final class ResultsPanelWidget extends OverlayWidget implements FocusableInterfa
             // Each tag renders as ' glyph ' (glyph + two padding spaces); the block
             // is prefixed by two spaces. Record each tag's column span for clicks.
             $col = AnsiUtils::visibleWidth($prefix) + 2;
-            foreach (['regex' => '.*', 'case' => 'Aa', 'word' => '\\b'] as $name => $glyph) {
+            foreach (['regex' => '.*', 'case' => 'Aa', 'word' => '\\b', 'preserve' => 'Pc'] as $name => $glyph) {
                 $width = mb_strwidth($glyph) + 2;
                 $this->optionZones[] = ['name' => $name, 'start' => $col, 'end' => $col + $width];
                 $col += $width;
             }
-            $options = '  '.$this->optionTag('.*', $this->options['regex']).$this->optionTag('Aa', $this->options['case']).$this->optionTag('\\b', $this->options['word']);
+            $options =
+                '  '
+                .$this->optionTag('.*', $this->options['regex'])
+                .$this->optionTag('Aa', $this->options['case'])
+                .$this->optionTag('\\b', $this->options['word'])
+                .$this->optionTag('Pc', $this->options['preserve']);
         }
 
         $header = $prefix.$options;
@@ -558,6 +565,7 @@ final class ResultsPanelWidget extends OverlayWidget implements FocusableInterfa
             'toggle_regex' => ['alt+r'],
             'toggle_case' => ['alt+c'],
             'toggle_word' => ['alt+w'],
+            'toggle_preserve' => ['alt+p'],
             'cycle_scope' => ['alt+s'],
             'toggle_all' => ['alt+e'],
             'rerun' => [Key::F5],
