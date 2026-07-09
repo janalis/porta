@@ -27,6 +27,7 @@ use Porta\Highlight\SwitchableTerminalTheme;
 use Porta\Highlight\TerminalThemeFactory;
 use Porta\History\LocalHistory;
 use Porta\History\LocalHistoryController;
+use Porta\History\SearchHistoryStore;
 use Porta\History\SessionStore;
 use Porta\I18n\PaneReorder;
 use Porta\I18n\Translator;
@@ -970,6 +971,7 @@ final class Ide
             $this->buffers,
             $this->rootDir,
             fn (string $path, Document $document) => $this->lsp->notifyFullChange($path, $document),
+            new SearchHistoryStore($this->rootDir),
         );
         $this->commandPalette = $this->service(CommandPalette::class);
         $this->panels = $this->service(PanelManager::class);

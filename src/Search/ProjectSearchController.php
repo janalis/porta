@@ -6,6 +6,7 @@ namespace Porta\Search;
 
 use Porta\Editor\BufferManager;
 use Porta\Editor\Document;
+use Porta\History\SearchHistoryStore;
 use Porta\I18n\Translator;
 use Porta\Support\ProjectPaths;
 use Porta\Ui\ScopeKind;
@@ -46,6 +47,7 @@ final class ProjectSearchController
         private readonly BufferManager $buffers,
         private readonly string $rootDir,
         private readonly \Closure $notifyFullChange,
+        private readonly SearchHistoryStore $history,
     ) {
         $this->searchOptions = new SearchOptions();
     }
@@ -104,6 +106,7 @@ final class ProjectSearchController
         $this->lastSearchResults = [];
         $this->resultsPanel->open($title, ResultsPanelFields::fullSearch());
         $this->resultsPanel->setOptions($this->searchOptions->panelState());
+        $this->resultsPanel->setHistory($this->history->all());
         $this->tui->setFocus($this->resultsPanel);
         $this->tui->requestRender();
     }
@@ -144,9 +147,10 @@ final class ProjectSearchController
         $this->tui->requestRender();
     }
 
-    /** Cancel any in-flight search (panel closed). */
+    /** Cancel any in-flight search and record the committed query in history (panel closed). */
     public function cancel(): void
     {
+        $this->history->add($this->lastSearchQuery);
         $this->projectSearch->cancel();
     }
 

@@ -806,6 +806,44 @@ final class IdeEdgeCasesTest extends TestCase
         $this->addToAssertionCount(1);
     }
 
+    public function testFindInProjectSearchHistoryRecall(): void
+    {
+        $project = new TempProject(['src/A.php' => "<?php\n// tok here\n"]);
+        $panelText = static fn ($tui): string => AnsiUtils::stripAnsiCodes(implode("\n", $tui->getById('results')->render(new \Symfony\Component\Tui\Render\RenderContext(160, 16))));
+
+        $this->runIde(
+            $project,
+            $project->path('src/A.php'),
+            [
+                200 => static function ($tui): void {
+                    $tui->handleInput("\x1b[102;6u"); // ctrl+shift+f
+                    foreach (str_split('tok') as $ch) {
+                        $tui->handleInput($ch);
+                    }
+                },
+                500 => static function ($tui): void {
+                    $tui->tick();
+                    $tui->handleInput("\x1b"); // esc → close (records "tok" in history)
+                },
+                700 => static function ($tui): void {
+                    $tui->handleInput("\x1b[102;6u"); // reopen (fresh, empty query)
+                },
+                900 => function ($tui) use ($panelText): void {
+                    $tui->tick();
+                    $this->assertStringNotContainsString('Find in Project: tok', $panelText($tui), 'reopens empty');
+                    $tui->handleInput("\x1b[1;3A"); // alt+up → recall the prior query
+                },
+                1100 => function ($tui) use ($panelText): void {
+                    $tui->tick();
+                    $this->assertStringContainsString('Find in Project: tok', $panelText($tui), 'the prior search is recalled');
+                },
+            ],
+            1.4,
+        );
+
+        $this->addToAssertionCount(1);
+    }
+
     public function testStickyScrollPinsHeaderAndClickJumps(): void
     {
         putenv('PATH=/nonexistent');

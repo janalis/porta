@@ -47,6 +47,10 @@ final class ResultsPanelWidget extends OverlayWidget implements FocusableInterfa
     private readonly TextField $mask;
     /** 'query' | 'mask' | 'replace' — which field typing edits; cycled by Tab */
     private string $activeField = 'query';
+    /** @var list<string> recent queries, most-recent-first (Alt+↑/↓ recall) */
+    private array $history = [];
+    /** cursor into $history while browsing it, or -1 when not */
+    private int $historyCursor = -1;
     private readonly ListSelection $list;
     private bool $searching = false;
 
@@ -124,6 +128,17 @@ final class ResultsPanelWidget extends OverlayWidget implements FocusableInterfa
     {
         $this->scopeKind = $kind;
         $this->invalidate();
+    }
+
+    /**
+     * Seed the recent-query list recalled with Alt+↑/↓ (set when the panel opens).
+     *
+     * @param list<string> $history most-recent-first
+     */
+    public function setHistory(array $history): void
+    {
+        $this->history = $history;
+        $this->historyCursor = -1;
     }
 
     public function onToggleOption(callable $callback): self
@@ -280,6 +295,10 @@ final class ResultsPanelWidget extends OverlayWidget implements FocusableInterfa
             if (null !== $this->onRerun) {
                 ($this->onRerun)();
             }
+        } elseif ('query' === $this->activeField && $kb->matches($data, 'history_prev')) {
+            $this->recallHistory(1);
+        } elseif ('query' === $this->activeField && $kb->matches($data, 'history_next')) {
+            $this->recallHistory(-1);
         } elseif ($kb->matches($data, 'switch_field') && \count($this->focusableFields()) > 1) {
             $fields = $this->focusableFields();
             $pos = (int) array_search($this->activeField, $fields, true);
@@ -335,10 +354,24 @@ final class ResultsPanelWidget extends OverlayWidget implements FocusableInterfa
     private function afterFieldEdit(): void
     {
         if ('query' === $this->activeField) {
+            $this->historyCursor = -1; // typing leaves history-browsing
             $this->notifyQuery();
         } elseif ('mask' === $this->activeField) {
             $this->notifyMask();
         }
+    }
+
+    /** Walk the recent-query history into the query field: $step +1 = older, -1 = newer. */
+    private function recallHistory(int $step): void
+    {
+        $next = $this->historyCursor + $step;
+        if ($next < -1 || $next >= \count($this->history)) {
+            return; // past either end
+        }
+        $this->historyCursor = $next;
+        $this->query->setValue(-1 === $next ? '' : $this->history[$next]);
+        $this->notifyQuery();
+        $this->invalidate();
     }
 
     private function notifyMask(): void
@@ -569,6 +602,8 @@ final class ResultsPanelWidget extends OverlayWidget implements FocusableInterfa
             'cycle_scope' => ['alt+s'],
             'toggle_all' => ['alt+e'],
             'rerun' => [Key::F5],
+            'history_prev' => ['alt+up'],
+            'history_next' => ['alt+down'],
             'switch_field' => [Key::TAB],
             'replace_all' => ['alt+a'],
         ];

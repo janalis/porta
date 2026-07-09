@@ -436,6 +436,34 @@ final class ResultsPanelWidgetTest extends TestCase
         $this->assertStringContainsString('match two', $expanded);
     }
 
+    public function testHistoryRecallCyclesQueriesWithAltArrows(): void
+    {
+        $panel = new ResultsPanelWidget();
+        $panel->setFocused(true);
+        $queries = [];
+        $panel->onQueryChanged(function (string $q) use (&$queries): void {
+            $queries[] = $q;
+        });
+        $panel->open('Find in Project', ResultsPanelFields::fullSearch());
+        $panel->setHistory(['recent', 'older']);
+        $shown = fn (): string => AnsiUtils::stripAnsiCodes($panel->render(new RenderContext(80, 12))[0]);
+
+        $panel->handleInput("\x1b[1;3A"); // alt+up → 'recent'
+        $this->assertStringContainsString('recent', $shown());
+        $panel->handleInput("\x1b[1;3A"); // alt+up → 'older'
+        $this->assertStringContainsString('older', $shown());
+        $panel->handleInput("\x1b[1;3A"); // alt+up at the end → no change
+        $this->assertStringContainsString('older', $shown());
+        $panel->handleInput("\x1b[1;3B"); // alt+down → 'recent'
+        $panel->handleInput("\x1b[1;3B"); // alt+down past the newest → '' (in-progress)
+        $this->assertSame(['recent', 'older', 'recent', ''], $queries);
+
+        // Typing leaves history-browsing; alt+up then recalls the newest again.
+        $panel->handleInput('z');
+        $panel->handleInput("\x1b[1;3A");
+        $this->assertStringContainsString('recent', $shown());
+    }
+
     public function testRerunKeyFiresTheCallback(): void
     {
         $panel = new ResultsPanelWidget();

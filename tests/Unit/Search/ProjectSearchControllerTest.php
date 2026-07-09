@@ -36,6 +36,7 @@ final class ProjectSearchControllerTest extends TestCase
             new BufferManager(),
             $rootDir,
             static fn (string $path, Document $document): mixed => null,
+            new \Porta\History\SearchHistoryStore($rootDir),
         );
     }
 
@@ -69,6 +70,17 @@ final class ProjectSearchControllerTest extends TestCase
         $this->controller($project->dir)->openInFolder($project->dir);
 
         $this->assertStringContainsString('Find in Project', $this->header());
+    }
+
+    public function testTheCommittedQueryIsRecordedInHistoryOnClose(): void
+    {
+        $project = new TempProject(['src/A.php' => "<?php\n"]);
+        $controller = $this->controller($project->dir);
+        $controller->open();
+        $controller->search('needle');
+        $controller->cancel(); // panel closed → history recorded
+
+        $this->assertSame(['needle'], new \Porta\History\SearchHistoryStore($project->dir)->all());
     }
 
     public function testReplaceInFolderScopesTheTitleToTheRelativeDir(): void
