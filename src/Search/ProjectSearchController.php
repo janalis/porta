@@ -42,6 +42,8 @@ final class ProjectSearchController
     private string $mask = '';
     /** @var list<array{path: string, line: int, text: string, ranges: list<array{start: int, length: int}>}> */
     private array $lastSearchResults = [];
+    /** @var array{query: string, results: list<array{path: string, line: int, text: string, ranges: list<array{start: int, length: int}>}>}|null a pinned result set (session-lived) */
+    private ?array $pinned = null;
 
     /**
      * @param \Closure(string, Document): void $notifyFullChange re-sync a buffer's full text to the LSP
@@ -152,6 +154,30 @@ final class ProjectSearchController
     }
 
     /**
+     * Alt+K: pin the current result set when nothing is pinned, otherwise
+     * restore the pinned set into the live panel (and clear the pin). One slot —
+     * a "bookmark one search, wander, jump back". The pin survives panel close.
+     */
+    public function togglePin(): void
+    {
+        if (null === $this->pinned) {
+            $this->pinned = ['query' => $this->lastSearchQuery, 'results' => $this->lastSearchResults];
+            $this->resultsPanel->setPinIndicator($this->lastSearchQuery);
+            $this->statusBar->flash($this->translator->trans('Pinned the current results'));
+        } else {
+            $pin = $this->pinned;
+            $this->pinned = null;
+            $this->lastSearchQuery = $pin['query'];
+            $this->lastSearchResults = $pin['results'];
+            $this->resultsPanel->setQueryValue($pin['query']);
+            $this->resultsPanel->setResults($pin['results']);
+            $this->resultsPanel->setPinIndicator(null);
+            $this->statusBar->flash($this->translator->trans('Restored the pinned results'));
+        }
+        $this->tui->requestRender();
+    }
+
+    /**
      * Save a folder as a **pinned** search scope (tree "Add to Search Scopes"),
      * so it stays available in the Alt+S cycle. A folder resolving to the root
      * (or outside it) is ignored.
@@ -180,6 +206,7 @@ final class ProjectSearchController
         $this->resultsPanel->setScopes($this->scopeLabels(), $this->scopeIndex);
         $this->resultsPanel->setMaskValue($this->mask);
         $this->resultsPanel->setMaskHistory($this->prefs->recentMasks());
+        $this->resultsPanel->setPinIndicator(null === $this->pinned ? null : $this->pinned['query']);
         $this->tui->setFocus($this->resultsPanel);
         $this->tui->requestRender();
     }

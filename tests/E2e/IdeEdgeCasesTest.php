@@ -947,6 +947,62 @@ final class IdeEdgeCasesTest extends TestCase
         $this->addToAssertionCount(1);
     }
 
+    public function testFindInProjectPinAndRestoreResults(): void
+    {
+        $project = new TempProject([
+            'src/A.php' => "<?php\n// foo here\n",
+            'src/B.php' => "<?php\n// bar here\n",
+        ]);
+        $panelText = static fn ($tui): string => AnsiUtils::stripAnsiCodes(implode("\n", $tui->getById('results')->render(new \Symfony\Component\Tui\Render\RenderContext(160, 16))));
+
+        $this->runIde(
+            $project,
+            $project->path('src/A.php'),
+            [
+                200 => static function ($tui): void {
+                    $tui->handleInput("\x1b[102;6u"); // ctrl+shift+f
+                    foreach (str_split('foo') as $ch) {
+                        $tui->handleInput($ch);
+                    }
+                },
+                500 => function ($tui) use ($panelText): void {
+                    $tui->tick();
+                    $this->assertStringContainsString('src/A.php', $panelText($tui), 'the foo search finds A.php');
+                    $tui->handleInput("\x1bk"); // alt+k → pin
+                    $this->assertStringContainsString('pinned: foo', $panelText($tui), 'the pin indicator appears');
+                    $tui->handleInput("\x1b"); // esc → close
+                },
+                700 => static function ($tui): void {
+                    $tui->handleInput("\x1b[102;6u"); // reopen
+                },
+                900 => function ($tui) use ($panelText): void {
+                    $tui->tick();
+                    $this->assertStringContainsString('pinned: foo', $panelText($tui), 'the pin survives close/reopen');
+                    foreach (str_split('bar') as $ch) {
+                        $tui->handleInput($ch);
+                    }
+                },
+                1200 => function ($tui) use ($panelText): void {
+                    $tui->tick();
+                    $panel = $panelText($tui);
+                    $this->assertStringContainsString('src/B.php', $panel, 'the live search moved on to bar');
+                    $this->assertStringNotContainsString('src/A.php', $panel);
+                    $tui->handleInput("\x1bk"); // alt+k → restore the pinned foo results
+                },
+                1500 => function ($tui) use ($panelText): void {
+                    $tui->tick();
+                    $panel = $panelText($tui);
+                    $this->assertStringContainsString('Find in Project: foo', $panel, 'the pinned query is restored');
+                    $this->assertStringContainsString('src/A.php', $panel, 'the pinned results are restored');
+                    $this->assertStringNotContainsString('pinned:', $panel, 'the pin is cleared after restoring');
+                },
+            ],
+            1.8,
+        );
+
+        $this->addToAssertionCount(1);
+    }
+
     public function testFindInProjectExportWritesAndOpensResults(): void
     {
         $project = new TempProject([

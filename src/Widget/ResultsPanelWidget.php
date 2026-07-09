@@ -101,6 +101,10 @@ final class ResultsPanelWidget extends OverlayWidget implements FocusableInterfa
     private $previewReplacement = null;
     /** @var (callable(): void)|null export the current results to a file (Alt+X) */
     private $onExport = null;
+    /** @var (callable(): void)|null pin/restore the result set (Alt+K) */
+    private $onPin = null;
+    /** the pinned search's label shown in the header, or null when nothing is pinned */
+    private ?string $pinLabel = null;
     /** @var (\Closure(string, int): list<array{line: int, text: string}>)|null neighbouring source lines around a match (path, line) => lines */
     private $contextProvider = null;
 
@@ -208,6 +212,27 @@ final class ResultsPanelWidget extends OverlayWidget implements FocusableInterfa
         return $this;
     }
 
+    public function onPin(callable $callback): self
+    {
+        $this->onPin = $callback;
+
+        return $this;
+    }
+
+    /** Show (or clear) the "pinned: <label>" indicator in the header. */
+    public function setPinIndicator(?string $label): void
+    {
+        $this->pinLabel = $label;
+        $this->invalidate();
+    }
+
+    /** Set the query field's text (restoring a pinned search). */
+    public function setQueryValue(string $query): void
+    {
+        $this->query->setValue($query);
+        $this->invalidate();
+    }
+
     /**
      * Set the transformer that renders a match line's `old → new` preview (find-in-project only).
      *
@@ -254,6 +279,7 @@ final class ResultsPanelWidget extends OverlayWidget implements FocusableInterfa
         $this->withFilter = $fields->filter;
         $this->scopeLabels = ['Whole Project'];
         $this->scopeIndex = 0;
+        $this->pinLabel = null;
         $this->grouped = $fields->grouped;
         $this->grouping = ResultGrouping::File;
         $this->activeField = 'query';
@@ -393,6 +419,10 @@ final class ResultsPanelWidget extends OverlayWidget implements FocusableInterfa
         } elseif ($this->grouped && $kb->matches($data, 'export')) {
             if (null !== $this->onExport) {
                 ($this->onExport)();
+            }
+        } elseif ($this->grouped && $kb->matches($data, 'pin')) {
+            if (null !== $this->onPin) {
+                ($this->onPin)();
             }
         } elseif ($this->grouped && $kb->matches($data, 'toggle_context')) {
             $this->toggleContext($this->list->selected());
@@ -705,6 +735,9 @@ final class ResultsPanelWidget extends OverlayWidget implements FocusableInterfa
             }
             $status .= \sprintf(' · %d shown', $shown);
         }
+        if (null !== $this->pinLabel) {
+            $status .= \sprintf(' · pinned: %s', $this->pinLabel);
+        }
         $showCursor = $this->focused && $this->withQuery;
         $queryField = $this->query->render(cursor: $showCursor && 'query' === $this->activeField);
         $prefix = ' '.$this->title.($this->withQuery ? ': '.$queryField : '').$this->palette->of(Role::Dim).$status."\x1b[39m";
@@ -938,6 +971,7 @@ final class ResultsPanelWidget extends OverlayWidget implements FocusableInterfa
             'toggle_all' => ['alt+e'],
             'toggle_group' => ['alt+g'],
             'toggle_context' => ['alt+m'],
+            'pin' => ['alt+k'],
             'toggle_exclude' => [Key::DELETE],
             'export' => ['alt+x'],
             'rerun' => [Key::F5],

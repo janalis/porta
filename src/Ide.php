@@ -687,6 +687,10 @@ final class Ide
             }
         });
 
+        $this->resultsPanel->onPin(function (): void {
+            $this->projectSearchController->togglePin();
+        });
+
         $this->resultsPanel->onJump(function (string $relativePath, int $line): void {
             if (ResultsPanelMode::Action === $this->panels->mode()) {
                 $this->commandPalette->runAt($line);
