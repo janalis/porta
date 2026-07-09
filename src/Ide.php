@@ -867,6 +867,7 @@ final class Ide
             fn (Buffer $b) => $this->showBuffer($b),
             fn (string $p) => $this->relativePath($p),
             fn (string $t) => $this->copyToClipboard($t),
+            fn (string $dir) => $this->openFindInFolder($dir),
         );
 
         // RTL bidi reorder, applied per pane by BidiTui when the locale is RTL.
@@ -1306,6 +1307,13 @@ final class Ide
     {
         $this->panels->setMode(ResultsPanelMode::Search);
         $this->projectSearchController->open();
+    }
+
+    /** Open the results panel as a text search scoped to a folder (tree "Find in Files…"). */
+    private function openFindInFolder(string $absDir): void
+    {
+        $this->panels->setMode(ResultsPanelMode::Search);
+        $this->projectSearchController->openInFolder($absDir);
     }
 
     private function openSymbolSearch(): void

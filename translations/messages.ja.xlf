@@ -1150,6 +1150,14 @@
         <source>Whitespace changes shown</source>
         <target>空白の変更を表示</target>
       </trans-unit>
+      <trans-unit id="288">
+        <source>Find in Files…</source>
+        <target>ファイル内を検索…</target>
+      </trans-unit>
+      <trans-unit id="289">
+        <source>Find in %dir%</source>
+        <target>%dir% 内を検索</target>
+      </trans-unit>
     </body>
   </file>
 </xliff>

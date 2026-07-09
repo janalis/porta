@@ -485,6 +485,67 @@ final class IdeEdgeCasesTest extends TestCase
         $this->addToAssertionCount(1);
     }
 
+    public function testFindInFilesFromFolderContextMenuScopesTheSearch(): void
+    {
+        // `sub/` and the root both contain the marker; a folder-scoped search
+        // must return only the in-folder match. Directories sort first, so `sub`
+        // is the first tree entry.
+        $project = new TempProject([
+            'sub/Inside.php' => "<?php\n// scopedMarker inside\n",
+            'Outside.php' => "<?php\n// scopedMarker at the root\n",
+        ]);
+
+        $rightClickFolder = function ($tui, $terminal, $ide): void {
+            $renderer = new \ReflectionProperty($ide, 'renderer')->getValue($ide);
+            $rect = $renderer->getWidgetRect($tui->getById('tree'));
+            // Header is relative row 0; the first entry (the `sub` folder) is row 1.
+            $tui->handleInput(\sprintf("\x1b[<2;%d;%dM", $rect->col + 3, $rect->row + 2));
+        };
+        $screen = static fn ($tui, $terminal): string => AnsiUtils::stripAnsiCodes($terminal->getOutput());
+
+        $this->runIde(
+            $project,
+            null, // no initial file → the tree is focused
+            [
+                200 => $rightClickFolder,
+                280 => function ($tui, $terminal) use ($screen): void {
+                    $tui->tick();
+                    $this->assertTrue($tui->getById('context-menu')->isOpen(), 'folder context menu opened');
+                    $this->assertStringContainsString('Find in Files', $screen($tui, $terminal), 'folder menu offers Find in Files');
+                    // New File → New Folder → (skip separator) → Find in Files.
+                    $tui->handleInput("\x1b[B");
+                    $tui->handleInput("\x1b[B");
+                    $tui->handleInput("\r");
+                },
+                340 => function ($tui, $terminal) use ($screen): void {
+                    $tui->tick();
+                    $this->assertSame('results', $tui->getFocus()?->getId(), 'the results panel is focused');
+                    $this->assertStringContainsString('Find in sub', $screen($tui, $terminal), 'header shows the scoped folder');
+                    foreach (str_split('scopedMarker') as $ch) {
+                        $tui->handleInput($ch);
+                    }
+                },
+                650 => function ($tui): void {
+                    $tui->tick();
+                    // Assert on the results panel itself (the tree sidebar also lists
+                    // Outside.php, so the whole screen is the wrong surface).
+                    $panel = AnsiUtils::stripAnsiCodes(implode("\n", $tui->getById('results')->render(new \Symfony\Component\Tui\Render\RenderContext(160, 14))));
+                    $this->assertStringContainsString('1 results', $panel, 'only the in-folder match counts (root is out of scope)');
+                    $this->assertStringContainsString('sub/Inside.php', $panel, 'the in-folder match is listed');
+                    $this->assertStringNotContainsString('Outside.php', $panel, 'the root match is excluded');
+                    $tui->handleInput("\r"); // jump to the match
+                },
+                760 => function ($tui): void {
+                    $this->assertStringEndsWith('sub/Inside.php', (string) $tui->getById('editor')->getFilePath());
+                    $this->assertSame('editor', $tui->getFocus()?->getId(), 'editor refocused after the jump');
+                },
+            ],
+            1.1,
+        );
+
+        $this->addToAssertionCount(1);
+    }
+
     public function testStickyScrollPinsHeaderAndClickJumps(): void
     {
         putenv('PATH=/nonexistent');

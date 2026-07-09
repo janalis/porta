@@ -28,8 +28,9 @@ final class ProjectSearch
 
     /**
      * @param callable(list<array{path: string, line: int, text: string}>): void $onDone
+     * @param string                                                             $scope grep path relative to the project root; `.` searches the whole project
      */
-    public function search(string $query, callable $onDone, SearchOptions $options = new SearchOptions()): void
+    public function search(string $query, callable $onDone, SearchOptions $options = new SearchOptions(), string $scope = '.'): void
     {
         $this->cancel();
         if ('' === trim($query)) {
@@ -46,7 +47,7 @@ final class ProjectSearch
 
         $grep = $this->findGrep();
         if (null === $grep) {
-            $onDone($this->searchWithPhp($query, $options));
+            $onDone($this->searchWithPhp($query, $options, $scope));
 
             return;
         }
@@ -58,7 +59,9 @@ final class ProjectSearch
         if ($options->wholeWord) {
             $flags[] = '-w';
         }
-        $command = [$grep, ...$flags, '--', $query, '.'];
+        // The scope is a path argument, not the cwd: grep still runs in $rootDir
+        // (AsyncProcess below), so a `subdir/file:line` match stays root-relative.
+        $command = [$grep, ...$flags, '--', $query, $scope];
         foreach (self::EXCLUDES as $dir) {
             array_splice($command, 1, 0, ['--exclude-dir='.$dir]);
         }
@@ -120,12 +123,15 @@ final class ProjectSearch
     }
 
     /** @return list<array{path: string, line: int, text: string}> */
-    private function searchWithPhp(string $query, SearchOptions $options): array
+    private function searchWithPhp(string $query, SearchOptions $options, string $scope = '.'): array
     {
         $pattern = $this->pattern($query, $options);
+        // Finder paths are relative to its `in()` root, so when scoped to a
+        // subdir we prefix it back on to keep every `path` root-relative.
+        $prefix = '.' === $scope ? '' : rtrim($scope, '/').'/';
         $finder = new Finder()
             ->files()
-            ->in($this->rootDir)
+            ->in('.' === $scope ? $this->rootDir : $this->rootDir.'/'.$scope)
             ->ignoreDotFiles(false)
             ->ignoreVCS(false)
             ->exclude(self::EXCLUDES)
@@ -137,7 +143,7 @@ final class ProjectSearch
             if (str_contains($content, "\0")) {
                 continue;
             }
-            $rel = $file->getRelativePathname();
+            $rel = $prefix.$file->getRelativePathname();
             foreach (explode("\n", $content) as $lineIndex => $line) {
                 if (1 === preg_match($pattern, $line)) {
                     $results[] = ['path' => $rel, 'line' => $lineIndex, 'text' => trim($line)];

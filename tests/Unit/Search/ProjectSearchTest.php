@@ -25,7 +25,7 @@ final class ProjectSearchTest extends TestCase
     }
 
     /** @return list<array{path: string, line: int, text: string}> */
-    private function await(ProjectSearch $search, string $query, bool $regex = false, bool $caseSensitive = false, bool $wholeWord = false, float $timeout = 3.0): array
+    private function await(ProjectSearch $search, string $query, bool $regex = false, bool $caseSensitive = false, bool $wholeWord = false, float $timeout = 3.0, string $scope = '.'): array
     {
         $results = null;
         $search->search(
@@ -34,6 +34,7 @@ final class ProjectSearchTest extends TestCase
                 $results = $r;
             },
             new SearchOptions($regex, $caseSensitive, $wholeWord),
+            $scope,
         );
 
         $elapsed = 0.0;
@@ -67,6 +68,38 @@ final class ProjectSearchTest extends TestCase
         sort($paths);
         $this->assertSame(['src/A.php', 'src/B.php'], $paths);
         $this->assertSame(1, $results[0]['line'], '0-based line index');
+    }
+
+    /** @return list<string> the sorted result paths */
+    private function scopedPaths(bool $phpFallback): array
+    {
+        $project = new TempProject([
+            'src/A.php' => "<?php\n// needle in src\n",
+            'src/sub/B.php' => "<?php\n// needle deeper in src\n",
+            'app/D.php' => "<?php\n// needle in app\n",
+            'README.md' => "needle at the root\n",
+        ]);
+        if ($phpFallback) {
+            putenv('PATH=/nonexistent');
+        }
+
+        $paths = array_column($this->await(new ProjectSearch($project->dir), 'needle', scope: 'src'), 'path');
+        sort($paths);
+
+        return $paths;
+    }
+
+    public function testGrepSearchScopedToAFolder(): void
+    {
+        // Only the src/ subtree is searched; app/ and the root README are excluded,
+        // and the returned paths stay project-root-relative.
+        $this->assertSame(['src/A.php', 'src/sub/B.php'], $this->scopedPaths(phpFallback: false));
+    }
+
+    public function testPhpFallbackScopedToAFolder(): void
+    {
+        // The Finder-based fallback prefixes the scope back on so paths match grep.
+        $this->assertSame(['src/A.php', 'src/sub/B.php'], $this->scopedPaths(phpFallback: true));
     }
 
     public function testPhpFallbackWhenGrepUnavailable(): void

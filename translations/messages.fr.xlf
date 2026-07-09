@@ -1150,6 +1150,14 @@
         <source>Whitespace changes shown</source>
         <target>Modifications d’espaces affichées</target>
       </trans-unit>
+      <trans-unit id="288">
+        <source>Find in Files…</source>
+        <target>Rechercher dans les fichiers…</target>
+      </trans-unit>
+      <trans-unit id="289">
+        <source>Find in %dir%</source>
+        <target>Rechercher dans %dir%</target>
+      </trans-unit>
     </body>
   </file>
 </xliff>

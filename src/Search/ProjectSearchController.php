@@ -7,6 +7,7 @@ namespace Porta\Search;
 use Porta\Editor\BufferManager;
 use Porta\Editor\Document;
 use Porta\I18n\Translator;
+use Porta\Support\ProjectPaths;
 use Porta\Widget\CodeEditorWidget;
 use Porta\Widget\ResultsPanelFields;
 use Porta\Widget\ResultsPanelWidget;
@@ -24,6 +25,8 @@ final class ProjectSearchController
 {
     private SearchOptions $searchOptions;
     private string $lastSearchQuery = '';
+    /** grep path relative to the project root; `.` is the whole project. */
+    private string $scope = '.';
     /** @var list<array{path: string, line: int, text: string}> */
     private array $lastSearchResults = [];
 
@@ -47,10 +50,36 @@ final class ProjectSearchController
     /** Open the panel in find-in-project mode with a fresh query and options. */
     public function open(): void
     {
+        $this->scope = '.';
+        $this->reopen($this->translator->trans('Find in Project'));
+    }
+
+    /**
+     * Open the panel scoped to a single folder (from the tree "Find in Files…"
+     * context menu). Results stay project-root-relative — only grep's search
+     * path narrows — so jump and replace-all keep working unchanged. A folder
+     * that resolves to the root itself (or outside it) falls back to a whole-
+     * project search.
+     */
+    public function openInFolder(string $absDir): void
+    {
+        $relative = ProjectPaths::relative($this->rootDir, $absDir);
+        if ('' === $relative || str_starts_with($relative, '/')) {
+            $this->open();
+
+            return;
+        }
+        $this->scope = $relative;
+        $this->reopen($this->translator->trans('Find in %dir%', ['%dir%' => $relative]));
+    }
+
+    /** Reset the query/options/results and (re)open the panel with $title. */
+    private function reopen(string $title): void
+    {
         $this->searchOptions = new SearchOptions();
         $this->lastSearchQuery = '';
         $this->lastSearchResults = [];
-        $this->resultsPanel->open($this->translator->trans('Find in Project'), ResultsPanelFields::fullSearch());
+        $this->resultsPanel->open($title, ResultsPanelFields::fullSearch());
         $this->resultsPanel->setOptions($this->searchOptions->panelState());
         $this->tui->setFocus($this->resultsPanel);
         $this->tui->requestRender();
@@ -148,6 +177,7 @@ final class ProjectSearchController
                 }
             },
             $this->searchOptions,
+            $this->scope,
         );
     }
 }
