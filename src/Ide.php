@@ -662,9 +662,14 @@ final class Ide
             }
         });
 
-        $this->resultsPanel->onReplaceAll(function (string $replacement): void {
-            $this->projectSearchController->replaceAll($replacement);
-        });
+        $this->resultsPanel->onReplaceAll(
+            /** @param list<int> $excluded */
+            function (string $replacement, array $excluded): void {
+                $this->projectSearchController->replaceAll($replacement, $excluded);
+            },
+        );
+
+        $this->resultsPanel->setPreviewTransformer(fn (string $text, string $replacement): string => $this->projectSearchController->previewLine($text, $replacement));
 
         $this->resultsPanel->onJump(function (string $relativePath, int $line): void {
             if (ResultsPanelMode::Action === $this->panels->mode()) {

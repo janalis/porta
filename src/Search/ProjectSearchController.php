@@ -155,12 +155,35 @@ final class ProjectSearchController
     }
 
     /**
-     * Replace every match of the last project search with $replacement across
-     * matched files — open buffers as one undoable edit, others on disk.
+     * Preview a single match line's replacement (for the panel's inline
+     * `old → new` display). Uses the same matching semantics as replace-all.
      */
-    public function replaceAll(string $replacement): void
+    public function previewLine(string $text, string $replacement): string
     {
-        if ('' === trim($this->lastSearchQuery) || [] === $this->lastSearchResults) {
+        return $this->projectSearch->applyReplacement($text, $this->lastSearchQuery, $replacement, $this->searchOptions);
+    }
+
+    /**
+     * Replace the kept matches of the last project search with $replacement
+     * across matched files — open buffers as one undoable edit, others on disk.
+     * Excluded matches (by index into the last result set) are left untouched;
+     * to keep those lines intact, only the kept matches' own lines are rewritten
+     * rather than running the pattern over the whole file.
+     *
+     * @param list<int> $excluded match indices to skip
+     */
+    public function replaceAll(string $replacement, array $excluded = []): void
+    {
+        $excludedSet = array_fill_keys($excluded, true);
+        /** @var array<string, list<int>> $keptLinesByPath */
+        $keptLinesByPath = [];
+        foreach ($this->lastSearchResults as $index => $result) {
+            if (!isset($excludedSet[$index])) {
+                $keptLinesByPath[$result['path']][] = $result['line'];
+            }
+        }
+
+        if ('' === trim($this->lastSearchQuery) || [] === $keptLinesByPath) {
             $this->statusBar->flash($this->translator->trans('Nothing to replace'));
             $this->tui->requestRender();
 
@@ -168,12 +191,12 @@ final class ProjectSearchController
         }
 
         $touched = 0;
-        foreach (array_unique(array_column($this->lastSearchResults, 'path')) as $relPath) {
+        foreach ($keptLinesByPath as $relPath => $lineIndices) {
             $abs = $this->rootDir.'/'.$relPath;
             $buffer = $this->buffers->get($abs) ?? $this->buffers->get(realpath($abs) ?: $abs);
             if (null !== $buffer) {
                 $old = $buffer->document->getText();
-                $new = $this->replaceInText($old, $replacement);
+                $new = $this->replaceLines($old, $lineIndices, $replacement);
                 if ($new !== $old) {
                     $buffer->document->replaceAll($new);
                     if ($buffer === $this->buffers->active()) {
@@ -184,7 +207,7 @@ final class ProjectSearchController
                 }
             } elseif (is_file($abs) && is_writable($abs)) {
                 $old = (string) file_get_contents($abs);
-                $new = $this->replaceInText($old, $replacement);
+                $new = $this->replaceLines($old, $lineIndices, $replacement);
                 if ($new !== $old) {
                     new Filesystem()->dumpFile($abs, $new);
                     ++$touched;
@@ -202,14 +225,23 @@ final class ProjectSearchController
         $this->tui->requestRender();
     }
 
-    private function replaceInText(string $content, string $replacement): string
+    /**
+     * Apply the replacement to only the given (0-based) line indices of
+     * $content, leaving every other line — including excluded matches and
+     * non-matching lines — byte-for-byte unchanged.
+     *
+     * @param list<int> $lineIndices
+     */
+    private function replaceLines(string $content, array $lineIndices, string $replacement): string
     {
-        return $this->projectSearch->applyReplacement(
-            $content,
-            $this->lastSearchQuery,
-            $replacement,
-            $this->searchOptions,
-        );
+        $lines = explode("\n", $content);
+        foreach ($lineIndices as $index) {
+            if (isset($lines[$index])) {
+                $lines[$index] = $this->projectSearch->applyReplacement($lines[$index], $this->lastSearchQuery, $replacement, $this->searchOptions);
+            }
+        }
+
+        return implode("\n", $lines);
     }
 
     private function run(string $query): void

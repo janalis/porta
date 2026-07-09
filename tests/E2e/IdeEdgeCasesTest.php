@@ -1709,6 +1709,87 @@ final class IdeEdgeCasesTest extends TestCase
         );
     }
 
+    public function testProjectReplacePreviewExcludesSelectedMatch(): void
+    {
+        $project = new TempProject(['src/A.php' => "<?php\n\$foo = 1;\n\$foo = 2;\n"]); // two matching lines
+        $panelText = static fn ($tui): string => AnsiUtils::stripAnsiCodes(implode("\n", $tui->getById('results')->render(new \Symfony\Component\Tui\Render\RenderContext(160, 16))));
+
+        $this->runIde(
+            $project,
+            $project->path('src/A.php'),
+            [
+                200 => static function ($tui): void {
+                    $tui->handleInput("\x1b[102;6u"); // ctrl+shift+f
+                    foreach (str_split('foo') as $ch) {
+                        $tui->handleInput($ch);
+                    }
+                },
+                600 => function ($tui) use ($panelText): void {
+                    $tui->tick();
+                    $tui->handleInput("\t"); // query → mask
+                    $tui->handleInput("\t"); // mask → filter
+                    $tui->handleInput("\t"); // filter → replace
+                    foreach (str_split('bar') as $ch) {
+                        $tui->handleInput($ch);
+                    }
+                    $panel = $panelText($tui);
+                    $this->assertStringContainsString('→', $panel, 'preview shows old → new');
+                    $this->assertStringContainsString('[x]', $panel, 'kept matches are checked');
+                    // Select the second match (Down past the first) and exclude it.
+                    $tui->handleInput("\x1b[B"); // down → second match
+                    $tui->handleInput("\x1b[3~"); // delete → exclude this line
+                    $this->assertStringContainsString('(excluded)', $panelText($tui), 'excluded line is marked');
+                    $tui->handleInput("\x1ba"); // alt+a → replace kept
+                },
+                1000 => function ($tui): void {
+                    $tui->tick();
+                    $text = $tui->getById('editor')->getDocument()->getText();
+                    $this->assertStringContainsString('$bar = 1;', $text, 'kept match replaced');
+                    $this->assertStringContainsString('$foo = 2;', $text, 'excluded match left intact');
+                    $this->assertStringNotContainsString('$bar = 2;', $text);
+                },
+            ],
+            1.3,
+        );
+    }
+
+    public function testProjectReplaceExcludeWholeFileFromHeader(): void
+    {
+        $project = new TempProject(['src/A.php' => "<?php\n\$foo = 1;\n\$foo = 2;\n"]);
+        $panelText = static fn ($tui): string => AnsiUtils::stripAnsiCodes(implode("\n", $tui->getById('results')->render(new \Symfony\Component\Tui\Render\RenderContext(160, 16))));
+
+        $this->runIde(
+            $project,
+            $project->path('src/A.php'),
+            [
+                200 => static function ($tui): void {
+                    $tui->handleInput("\x1b[102;6u"); // ctrl+shift+f
+                    foreach (str_split('foo') as $ch) {
+                        $tui->handleInput($ch);
+                    }
+                },
+                600 => function ($tui) use ($panelText): void {
+                    $tui->tick();
+                    $tui->handleInput("\t");
+                    $tui->handleInput("\t");
+                    $tui->handleInput("\t"); // → replace
+                    foreach (str_split('bar') as $ch) {
+                        $tui->handleInput($ch);
+                    }
+                    $this->assertStringContainsString('replace 2', $panelText($tui), 'both matches kept initially');
+                    $tui->handleInput("\x1b[A"); // up → the file header row
+                    $tui->handleInput("\x1b[3~"); // delete → exclude every match in the file
+                    $this->assertStringContainsString('replace 0', $panelText($tui), 'whole file excluded');
+                    $tui->handleInput("\x1b[3~"); // delete again → re-include every match
+                    $this->assertStringContainsString('replace 2', $panelText($tui), 'whole file re-included');
+                },
+            ],
+            1.0,
+        );
+
+        $this->addToAssertionCount(1);
+    }
+
     public function testGitStageCommitBlameViaPalette(): void
     {
         if (!$this->hasGit()) {

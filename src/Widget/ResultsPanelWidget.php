@@ -67,6 +67,8 @@ final class ResultsPanelWidget extends OverlayWidget implements FocusableInterfa
     private bool $grouped = false;
     /** @var array<string, bool> path => collapsed (grouped mode only) */
     private array $collapsed = [];
+    /** @var array<int, bool> matchIndex => excluded from replace (preview mode only) */
+    private array $excluded = [];
     /** @var list<DisplayRow> the flattened rows actually rendered/navigated */
     private array $displayRows = [];
 
@@ -82,8 +84,10 @@ final class ResultsPanelWidget extends OverlayWidget implements FocusableInterfa
     private $onJump = null;
     /** @var (callable(string): void)|null toggled a search option ('regex'|'case'|'word') */
     private $onToggleOption = null;
-    /** @var (callable(string): void)|null replace all matches with the given text */
+    /** @var (callable(string, list<int>): void)|null replace kept matches with the given text (excluding the given match indices) */
     private $onReplaceAll = null;
+    /** @var (\Closure(string, string): string)|null applies the live query+replacement to a match line for the inline preview */
+    private $previewReplacement = null;
 
     private readonly Palette $palette;
 
@@ -158,6 +162,16 @@ final class ResultsPanelWidget extends OverlayWidget implements FocusableInterfa
         return $this;
     }
 
+    /**
+     * Set the transformer that renders a match line's `old → new` preview (find-in-project only).
+     *
+     * @param \Closure(string, string): string $transformer (lineText, replacement) => replacedLine
+     */
+    public function setPreviewTransformer(\Closure $transformer): void
+    {
+        $this->previewReplacement = $transformer;
+    }
+
     /** @param array{regex: bool, case: bool, word: bool, preserve: bool} $options */
     public function setOptions(array $options): void
     {
@@ -191,6 +205,7 @@ final class ResultsPanelWidget extends OverlayWidget implements FocusableInterfa
         $this->filter->clear();
         $this->results = [];
         $this->collapsed = [];
+        $this->excluded = [];
         $this->rebuildView();
         $this->list->reset();
         $this->searching = false;
@@ -202,6 +217,7 @@ final class ResultsPanelWidget extends OverlayWidget implements FocusableInterfa
     {
         $this->results = $results;
         $this->collapsed = [];
+        $this->excluded = [];
         $this->rebuildView();
         $this->list->reset();
         // Start on the first match, not the leading file header, so Enter jumps.
@@ -296,6 +312,10 @@ final class ResultsPanelWidget extends OverlayWidget implements FocusableInterfa
             $this->invalidate();
         } elseif ($this->grouped && $kb->matches($data, 'toggle_all')) {
             $this->toggleAllGroups();
+        } elseif ($kb->matches($data, 'toggle_exclude')) {
+            if ($this->inPreview()) {
+                $this->toggleExcludeRow($this->list->selected());
+            }
         } elseif ($kb->matches($data, 'rerun')) {
             if (null !== $this->onRerun) {
                 ($this->onRerun)();
@@ -311,7 +331,7 @@ final class ResultsPanelWidget extends OverlayWidget implements FocusableInterfa
             $this->invalidate();
         } elseif ($this->withReplace && $kb->matches($data, 'replace_all')) {
             if (null !== $this->onReplaceAll) {
-                ($this->onReplaceAll)($this->replace->value());
+                ($this->onReplaceAll)($this->replace->value(), $this->excludedIndices());
             }
         } elseif ($kb->matches($data, 'delete_char_backward')) {
             $field = $this->activeTextField();
@@ -439,6 +459,68 @@ final class ResultsPanelWidget extends OverlayWidget implements FocusableInterfa
         }
     }
 
+    /** Replace previews the match lines (checkbox + `old → new`) once a replacement is typed. */
+    private function inPreview(): bool
+    {
+        return $this->withReplace && '' !== $this->replace->value();
+    }
+
+    /** Delete on a match row excludes/includes that line; on a file header, toggles all of its matches. */
+    private function toggleExcludeRow(int $index): void
+    {
+        $row = $this->displayRows[$index] ?? null;
+        if (null !== $row && null !== $row->filePath) {
+            $exclude = !$this->allExcludedForPath($row->filePath);
+            foreach ($this->results as $matchIndex => $result) {
+                if ($result['path'] === $row->filePath) {
+                    $this->excluded[$matchIndex] = $exclude;
+                }
+            }
+            $this->invalidate();
+        } elseif (null !== $row) {
+            $this->excluded[$row->matchIndex] = !($this->excluded[$row->matchIndex] ?? false);
+            $this->invalidate();
+        }
+    }
+
+    /** Whether every match belonging to $path is currently excluded. */
+    private function allExcludedForPath(string $path): bool
+    {
+        foreach ($this->results as $matchIndex => $result) {
+            if ($result['path'] === $path && !($this->excluded[$matchIndex] ?? false)) {
+                return false;
+            }
+        }
+
+        return true;
+    }
+
+    /** @return list<int> the match indices currently excluded from replace-all */
+    private function excludedIndices(): array
+    {
+        $indices = [];
+        foreach ($this->excluded as $matchIndex => $isExcluded) {
+            if ($isExcluded) {
+                $indices[] = $matchIndex;
+            }
+        }
+
+        return $indices;
+    }
+
+    /** How many matches would be replaced (all results minus the excluded ones). */
+    private function keptCount(): int
+    {
+        $kept = 0;
+        foreach (array_keys($this->results) as $matchIndex) {
+            if (!($this->excluded[$matchIndex] ?? false)) {
+                ++$kept;
+            }
+        }
+
+        return $kept;
+    }
+
     /** Highlight the display row under the pointer (widget-relative row); returns whether it changed. */
     public function hoverRow(int $relRow): bool
     {
@@ -521,7 +603,10 @@ final class ResultsPanelWidget extends OverlayWidget implements FocusableInterfa
             $lines[] = $this->fieldRow('Filter', $this->filter, 'filter', $showCursor, '  (narrows the results below)', $columns);
         }
         if ($this->withReplace) {
-            $lines[] = $this->fieldRow('Replace', $this->replace, 'replace', $showCursor, '  (Tab switch · Alt+A replace all)', $columns);
+            $replaceHint = $this->inPreview()
+                ? \sprintf('  (Del exclude · Alt+A replace %d)', $this->keptCount())
+                : '  (Tab switch · Alt+A replace all)';
+            $lines[] = $this->fieldRow('Replace', $this->replace, 'replace', $showCursor, $replaceHint, $columns);
         }
 
         $scroll = $this->list->follow($this->visibleRows);
@@ -531,7 +616,7 @@ final class ResultsPanelWidget extends OverlayWidget implements FocusableInterfa
             $bg = $isSelected ? ($this->focused ? $this->palette->of(Role::SelectedRow) : $this->palette->of(Role::InlayPopupBg)) : $this->palette->of(Role::Toolbar);
             $lines[] = null !== $row->filePath
                 ? $this->fileHeaderLine($row->filePath, $row->count, $row->collapsed, $bg, $columns)
-                : $this->matchLine($this->results[$row->matchIndex], $bg, $columns);
+                : $this->matchLine($this->results[$row->matchIndex], $row->matchIndex, $bg, $columns);
         }
 
         if ([] === $this->results && !$this->searching && '' !== $this->query->value()) {
@@ -572,8 +657,12 @@ final class ResultsPanelWidget extends OverlayWidget implements FocusableInterfa
      *
      * @param array{path: string, line: int, text: string, ranges?: list<array{start: int, length: int}>} $result
      */
-    private function matchLine(array $result, string $bg, int $columns): string
+    private function matchLine(array $result, int $matchIndex, string $bg, int $columns): string
     {
+        if ($this->inPreview()) {
+            return $this->previewMatchLine($result, $matchIndex, $bg, $columns);
+        }
+
         if ($this->grouped) {
             $label = (string) ($result['line'] + 1);
             $prefixWidth = 4 + mb_strwidth($label) + 2; // `    ` + line + `  `
@@ -585,6 +674,40 @@ final class ResultsPanelWidget extends OverlayWidget implements FocusableInterfa
         }
         $line = $bg.AnsiUtils::truncateToWidth($text, $columns, '…', pad: true)."\x1b[0m";
         // Highlight each match span; close with the row bg so the tail keeps its colour.
+        $searchBg = $this->palette->of(Role::SearchBg);
+        foreach ($result['ranges'] ?? [] as $range) {
+            $start = $prefixWidth + $range['start'];
+            $line = LineDecorator::apply($line, $start, $start + $range['length'], $searchBg, $bg, $searchBg);
+        }
+
+        return $line;
+    }
+
+    /**
+     * One match row in replace-preview mode: a `[x]/[ ]` checkbox, the line
+     * number, and either the original line (highlighted, when excluded) or
+     * `old → new` with the replacement in the "added" colour (when kept).
+     *
+     * @param array{path: string, line: int, text: string, ranges?: list<array{start: int, length: int}>} $result
+     */
+    private function previewMatchLine(array $result, int $matchIndex, string $bg, int $columns): string
+    {
+        $excluded = $this->excluded[$matchIndex] ?? false;
+        $label = (string) ($result['line'] + 1);
+        $old = $result['text'];
+        $checkbox = '  '.($excluded ? '[ ]' : '[x]').' ';
+        $prefixWidth = mb_strwidth($checkbox) + mb_strwidth($label) + 2; // checkbox + line + `  `
+        $head = $checkbox.$this->palette->of(Role::TabAccent).$label."\x1b[39m".'  ';
+
+        if ($excluded) {
+            $text = $head.$old.$this->palette->of(Role::Dim).'   (excluded)'."\x1b[39m";
+        } else {
+            $new = null !== $this->previewReplacement ? ($this->previewReplacement)($old, $this->replace->value()) : $old;
+            $text = $head.$old.'  →  '.$this->palette->of(Role::Added).$new."\x1b[39m";
+        }
+
+        $line = $bg.AnsiUtils::truncateToWidth($text, $columns, '…', pad: true)."\x1b[0m";
+        // Highlight the original match spans so the user sees what is being replaced.
         $searchBg = $this->palette->of(Role::SearchBg);
         foreach ($result['ranges'] ?? [] as $range) {
             $start = $prefixWidth + $range['start'];
@@ -624,6 +747,7 @@ final class ResultsPanelWidget extends OverlayWidget implements FocusableInterfa
             'toggle_preserve' => ['alt+p'],
             'cycle_scope' => ['alt+s'],
             'toggle_all' => ['alt+e'],
+            'toggle_exclude' => [Key::DELETE],
             'rerun' => [Key::F5],
             'history_prev' => ['alt+up'],
             'history_next' => ['alt+down'],
