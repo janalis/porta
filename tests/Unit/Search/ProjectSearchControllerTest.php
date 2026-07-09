@@ -85,6 +85,16 @@ final class ProjectSearchControllerTest extends TestCase
         $this->assertSame(['needle'], new \Porta\History\SearchHistoryStore($project->dir)->all());
     }
 
+    public function testExportWithNoResultsReturnsEmpty(): void
+    {
+        $project = new TempProject(['src/A.php' => "<?php\n"]);
+        $controller = $this->controller($project->dir);
+        $controller->open();
+
+        $this->assertSame('', $controller->exportResults(), 'nothing to export → no file, empty path');
+        $this->assertFileDoesNotExist($project->dir.'/.porta/search-results.txt');
+    }
+
     public function testReplaceInFolderScopesTheTitleToTheRelativeDir(): void
     {
         $project = new TempProject(['src/sub/A.php' => "<?php\n"]);

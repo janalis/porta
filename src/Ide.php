@@ -672,6 +672,16 @@ final class Ide
 
         $this->resultsPanel->setPreviewTransformer(fn (string $text, string $replacement): string => $this->projectSearchController->previewLine($text, $replacement));
 
+        // Alt+X writes the current results to a file and opens it in the editor.
+        $this->resultsPanel->onExport(function (): void {
+            $path = $this->projectSearchController->exportResults();
+            if ('' !== $path) {
+                $this->resultsPanel->close();
+                $this->openFile($path, focusEditor: true);
+                $this->tui->requestRender();
+            }
+        });
+
         $this->resultsPanel->onJump(function (string $relativePath, int $line): void {
             if (ResultsPanelMode::Action === $this->panels->mode()) {
                 $this->commandPalette->runAt($line);

@@ -69,7 +69,8 @@ final class ResultsPanelWidget extends OverlayWidget implements FocusableInterfa
     /** @var list<array{path: string, line: int, text: string, ranges?: list<array{start: int, length: int}>}> ranges (search mode only) are display-column match spans */
     private array $results = [];
     private bool $grouped = false;
-    /** @var array<string, bool> path => collapsed (grouped mode only) */
+    private ResultGrouping $grouping = ResultGrouping::File;
+    /** @var array<string, bool> group key (file or directory) => collapsed (grouped mode only) */
     private array $collapsed = [];
     /** @var array<int, bool> matchIndex => excluded from replace (preview mode only) */
     private array $excluded = [];
@@ -92,6 +93,8 @@ final class ResultsPanelWidget extends OverlayWidget implements FocusableInterfa
     private $onReplaceAll = null;
     /** @var (\Closure(string, string): string)|null applies the live query+replacement to a match line for the inline preview */
     private $previewReplacement = null;
+    /** @var (callable(): void)|null export the current results to a file (Alt+X) */
+    private $onExport = null;
 
     private readonly Palette $palette;
 
@@ -184,6 +187,13 @@ final class ResultsPanelWidget extends OverlayWidget implements FocusableInterfa
         return $this;
     }
 
+    public function onExport(callable $callback): self
+    {
+        $this->onExport = $callback;
+
+        return $this;
+    }
+
     /**
      * Set the transformer that renders a match line's `old → new` preview (find-in-project only).
      *
@@ -219,6 +229,7 @@ final class ResultsPanelWidget extends OverlayWidget implements FocusableInterfa
         $this->withFilter = $fields->filter;
         $this->scopeKind = ScopeKind::Project;
         $this->grouped = $fields->grouped;
+        $this->grouping = ResultGrouping::File;
         $this->activeField = 'query';
         $this->title = $title;
         $this->query->clear();
@@ -257,7 +268,7 @@ final class ResultsPanelWidget extends OverlayWidget implements FocusableInterfa
     /** Recompute the flattened display rows from the current results + collapse state. */
     private function rebuildView(): void
     {
-        $this->displayRows = ResultsView::build($this->results, $this->collapsed, $this->grouped, $this->filter->value());
+        $this->displayRows = ResultsView::build($this->results, $this->collapsed, $this->grouped, $this->filter->value(), $this->grouping);
         // Collapsing/filtering can shrink the list under the selection.
         $count = \count($this->displayRows);
         if ($count > 0 && $this->list->selected() >= $count) {
@@ -268,13 +279,13 @@ final class ResultsPanelWidget extends OverlayWidget implements FocusableInterfa
     /** Alt+E: expand every group when all are collapsed, otherwise collapse every group. */
     private function toggleAllGroups(): void
     {
-        $paths = [];
+        $keys = [];
         foreach ($this->results as $result) {
-            $paths[$result['path']] = true;
+            $keys[$this->grouping->keyFor($result['path'])] = true;
         }
         $allCollapsed = true;
-        foreach (array_keys($paths) as $path) {
-            if (!($this->collapsed[$path] ?? false)) {
+        foreach (array_keys($keys) as $key) {
+            if (!($this->collapsed[$key] ?? false)) {
                 $allCollapsed = false;
 
                 break;
@@ -282,8 +293,8 @@ final class ResultsPanelWidget extends OverlayWidget implements FocusableInterfa
         }
         $this->collapsed = [];
         if (!$allCollapsed) {
-            foreach (array_keys($paths) as $path) {
-                $this->collapsed[$path] = true;
+            foreach (array_keys($keys) as $key) {
+                $this->collapsed[$key] = true;
             }
         }
         $this->rebuildView();
@@ -334,6 +345,15 @@ final class ResultsPanelWidget extends OverlayWidget implements FocusableInterfa
             $this->invalidate();
         } elseif ($this->grouped && $kb->matches($data, 'toggle_all')) {
             $this->toggleAllGroups();
+        } elseif ($this->grouped && $kb->matches($data, 'toggle_group')) {
+            $this->grouping = $this->grouping->next();
+            $this->collapsed = [];
+            $this->rebuildView();
+            $this->invalidate();
+        } elseif ($this->grouped && $kb->matches($data, 'export')) {
+            if (null !== $this->onExport) {
+                ($this->onExport)();
+            }
         } elseif ($kb->matches($data, 'toggle_exclude')) {
             if ($this->inPreview()) {
                 $this->toggleExcludeRow($this->list->selected());
@@ -510,9 +530,9 @@ final class ResultsPanelWidget extends OverlayWidget implements FocusableInterfa
     {
         $row = $this->displayRows[$index] ?? null;
         if (null !== $row && null !== $row->filePath) {
-            $exclude = !$this->allExcludedForPath($row->filePath);
+            $exclude = !$this->allExcludedForGroup($row->filePath);
             foreach ($this->results as $matchIndex => $result) {
-                if ($result['path'] === $row->filePath) {
+                if ($this->grouping->keyFor($result['path']) === $row->filePath) {
                     $this->excluded[$matchIndex] = $exclude;
                 }
             }
@@ -523,11 +543,11 @@ final class ResultsPanelWidget extends OverlayWidget implements FocusableInterfa
         }
     }
 
-    /** Whether every match belonging to $path is currently excluded. */
-    private function allExcludedForPath(string $path): bool
+    /** Whether every match under the group header $key (file or directory) is currently excluded. */
+    private function allExcludedForGroup(string $key): bool
     {
         foreach ($this->results as $matchIndex => $result) {
-            if ($result['path'] === $path && !($this->excluded[$matchIndex] ?? false)) {
+            if ($this->grouping->keyFor($result['path']) === $key && !($this->excluded[$matchIndex] ?? false)) {
                 return false;
             }
         }
@@ -692,6 +712,20 @@ final class ResultsPanelWidget extends OverlayWidget implements FocusableInterfa
     }
 
     /**
+     * The per-match label under a group header: the line number alone (grouped
+     * by file), or `basename:line` (grouped by directory, so files within a
+     * directory stay distinguishable).
+     *
+     * @param array{path: string, line: int, text: string, ranges?: list<array{start: int, length: int}>} $result
+     */
+    private function groupedLabel(array $result): string
+    {
+        $line = (string) ($result['line'] + 1);
+
+        return ResultGrouping::Directory === $this->grouping ? basename($result['path']).':'.$line : $line;
+    }
+
+    /**
      * One match row — `path:line  text` when flat, or an indented `line  text`
      * under its file header when grouped — with the match spans highlighted.
      *
@@ -704,8 +738,8 @@ final class ResultsPanelWidget extends OverlayWidget implements FocusableInterfa
         }
 
         if ($this->grouped) {
-            $label = (string) ($result['line'] + 1);
-            $prefixWidth = 4 + mb_strwidth($label) + 2; // `    ` + line + `  `
+            $label = $this->groupedLabel($result);
+            $prefixWidth = 4 + mb_strwidth($label) + 2; // `    ` + label + `  `
             $text = '    '.$this->palette->of(Role::TabAccent).$label."\x1b[39m".'  '.$result['text'];
         } else {
             $location = $result['path'].':'.($result['line'] + 1);
@@ -733,7 +767,7 @@ final class ResultsPanelWidget extends OverlayWidget implements FocusableInterfa
     private function previewMatchLine(array $result, int $matchIndex, string $bg, int $columns): string
     {
         $excluded = $this->excluded[$matchIndex] ?? false;
-        $label = (string) ($result['line'] + 1);
+        $label = $this->groupedLabel($result);
         $old = $result['text'];
         $checkbox = '  '.($excluded ? '[ ]' : '[x]').' ';
         $prefixWidth = mb_strwidth($checkbox) + mb_strwidth($label) + 2; // checkbox + line + `  `
@@ -787,7 +821,9 @@ final class ResultsPanelWidget extends OverlayWidget implements FocusableInterfa
             'toggle_preserve' => ['alt+p'],
             'cycle_scope' => ['alt+s'],
             'toggle_all' => ['alt+e'],
+            'toggle_group' => ['alt+g'],
             'toggle_exclude' => [Key::DELETE],
+            'export' => ['alt+x'],
             'rerun' => [Key::F5],
             'history_prev' => ['alt+up'],
             'history_next' => ['alt+down'],

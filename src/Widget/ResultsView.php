@@ -17,12 +17,12 @@ final class ResultsView
 {
     /**
      * @param list<array{path: string, line: int, text: string, ranges?: list<array{start: int, length: int}>}> $results
-     * @param array<string, bool>                                                                                $collapsed path => collapsed
+     * @param array<string, bool>                                                                                $collapsed group key => collapsed
      * @param string                                                                                             $filter    keep only matches whose text/path contains this (case-insensitive)
      *
      * @return list<DisplayRow>
      */
-    public static function build(array $results, array $collapsed, bool $grouped, string $filter = ''): array
+    public static function build(array $results, array $collapsed, bool $grouped, string $filter = '', ResultGrouping $grouping = ResultGrouping::File): array
     {
         $needle = mb_strtolower($filter);
 
@@ -37,19 +37,20 @@ final class ResultsView
             return $rows;
         }
 
-        // Group the passing matches by path, preserving grep's first-seen file order.
-        $byPath = [];
+        // Group the passing matches by file or directory, preserving grep's first-seen order.
+        $byKey = [];
         foreach ($results as $index => $result) {
             if (self::passes($result, $needle)) {
-                $byPath[$result['path']] ??= [];
-                $byPath[$result['path']][] = $index;
+                $key = $grouping->keyFor($result['path']);
+                $byKey[$key] ??= [];
+                $byKey[$key][] = $index;
             }
         }
 
         $rows = [];
-        foreach ($byPath as $path => $indices) {
-            $isCollapsed = $collapsed[$path] ?? false;
-            $rows[] = DisplayRow::fileHeader($path, \count($indices), $isCollapsed);
+        foreach ($byKey as $key => $indices) {
+            $isCollapsed = $collapsed[$key] ?? false;
+            $rows[] = DisplayRow::fileHeader($key, \count($indices), $isCollapsed);
             if (!$isCollapsed) {
                 foreach ($indices as $index) {
                     $rows[] = DisplayRow::match($index);

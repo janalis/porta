@@ -257,6 +257,40 @@ final class ProjectSearchController
         return implode("\n", $lines);
     }
 
+    /**
+     * Write the current result set (grouped by file, `line: text`) to
+     * `.porta/search-results.txt` and return its absolute path so the caller
+     * can open it; returns '' (and flashes) when there is nothing to export.
+     */
+    public function exportResults(): string
+    {
+        if ([] === $this->lastSearchResults) {
+            $this->statusBar->flash($this->translator->trans('Nothing to export'));
+            $this->tui->requestRender();
+
+            return '';
+        }
+
+        $lines = [\sprintf('Search: %s   (%d results)', $this->lastSearchQuery, \count($this->lastSearchResults)), ''];
+        $currentPath = null;
+        foreach ($this->lastSearchResults as $result) {
+            if ($result['path'] !== $currentPath) {
+                if (null !== $currentPath) {
+                    $lines[] = '';
+                }
+                $currentPath = $result['path'];
+                $lines[] = $currentPath;
+            }
+            $lines[] = \sprintf('  %d: %s', $result['line'] + 1, $result['text']);
+        }
+
+        $abs = $this->rootDir.'/.porta/search-results.txt';
+        new Filesystem()->dumpFile($abs, implode("\n", $lines)."\n");
+        $this->statusBar->flash($this->translator->trans('Exported %count% results', ['%count%' => \count($this->lastSearchResults)]));
+
+        return $abs;
+    }
+
     private function run(string $query): void
     {
         $this->projectSearch->search(

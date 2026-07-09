@@ -325,6 +325,34 @@ final class ResultsPanelWidgetTest extends TestCase
         $this->assertStringContainsString('Scope: Directory', $plain);
     }
 
+    public function testGroupByDirectoryTogglesHeadersAndLabels(): void
+    {
+        $panel = new ResultsPanelWidget();
+        $panel->setFocused(true);
+        $panel->open('Find in Project', ResultsPanelFields::fullSearch());
+        $panel->setResults([
+            ['path' => 'src/A.php', 'line' => 4, 'text' => 'foo one', 'ranges' => []],
+            ['path' => 'src/B.php', 'line' => 9, 'text' => 'foo two', 'ranges' => []],
+            ['path' => 'other/C.php', 'line' => 2, 'text' => 'foo three', 'ranges' => []],
+        ]);
+        $plain = fn (): string => AnsiUtils::stripAnsiCodes(implode("\n", $panel->render(new RenderContext(120, 20))));
+
+        // Default: one header per file.
+        $byFile = $plain();
+        $this->assertStringContainsString('src/A.php', $byFile);
+        $this->assertStringContainsString('src/B.php', $byFile);
+
+        $panel->handleInput("\x1bg"); // alt+g → group by directory
+        $byDir = $plain();
+        $this->assertStringContainsString('src  (2)', $byDir, 'src/ groups its two files');
+        $this->assertStringContainsString('other  (1)', $byDir);
+        $this->assertStringContainsString('A.php:5', $byDir, 'directory rows show basename:line');
+        $this->assertStringContainsString('B.php:10', $byDir);
+
+        $panel->handleInput("\x1bg"); // alt+g → back to grouping by file
+        $this->assertStringContainsString('src/A.php', $plain(), 'toggles back to file grouping');
+    }
+
     public function testMaskValueSeededAndHistoryRecalled(): void
     {
         $panel = new ResultsPanelWidget();

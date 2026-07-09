@@ -743,6 +743,42 @@ final class IdeEdgeCasesTest extends TestCase
         $this->addToAssertionCount(1);
     }
 
+    public function testFindInProjectExportWritesAndOpensResults(): void
+    {
+        $project = new TempProject([
+            'src/A.php' => "<?php\n// tok here\n",
+            'src/B.php' => "<?php\n// tok too\n", // a second file → the export separates file groups
+        ]);
+
+        $this->runIde(
+            $project,
+            $project->path('src/A.php'),
+            [
+                200 => static function ($tui): void {
+                    $tui->handleInput("\x1b[102;6u"); // ctrl+shift+f
+                    foreach (str_split('tok') as $ch) {
+                        $tui->handleInput($ch);
+                    }
+                },
+                600 => static function ($tui): void {
+                    $tui->tick();
+                    $tui->handleInput("\x1bx"); // alt+x → export
+                },
+                900 => function ($tui) use ($project): void {
+                    $tui->tick();
+                    $exportPath = $project->path('.porta/search-results.txt');
+                    $this->assertFileExists($exportPath);
+                    $content = (string) file_get_contents($exportPath);
+                    $this->assertStringContainsString('src/A.php', $content);
+                    $this->assertStringContainsString('src/B.php', $content, 'every matched file is listed');
+                    $this->assertStringContainsString('2: // tok here', $content, 'line numbers are 1-based');
+                    $this->assertStringContainsString('search-results.txt', (string) $tui->getById('editor')->getFilePath(), 'the export opens in the editor');
+                },
+            ],
+            1.1,
+        );
+    }
+
     public function testFindInProjectRestoresScopeAndMaskOnReopen(): void
     {
         $project = new TempProject([
