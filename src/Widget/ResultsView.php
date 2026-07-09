@@ -46,6 +46,10 @@ final class ResultsView
             return $rows;
         }
 
+        if (ResultGrouping::Nested === $grouping) {
+            return self::buildNested($results, $collapsed, $needle, $expanded, $context);
+        }
+
         // Group the passing matches by file or directory, preserving grep's first-seen order.
         $byKey = [];
         foreach ($results as $index => $result) {
@@ -62,17 +66,81 @@ final class ResultsView
             $rows[] = DisplayRow::fileHeader($key, \count($indices), $isCollapsed);
             if (!$isCollapsed) {
                 foreach ($indices as $index) {
-                    $rows[] = DisplayRow::match($index);
-                    if ($expanded[$index] ?? false) {
-                        foreach ($context[$index] ?? [] as $line) {
-                            $rows[] = DisplayRow::context($line['line'], $line['text']);
-                        }
-                    }
+                    self::appendMatch($rows, $index, $expanded, $context);
                 }
             }
         }
 
         return $rows;
+    }
+
+    /**
+     * The nested `directory → file → matches` view: a directory header, then
+     * (unless collapsed) each file header, then (unless collapsed) its matches.
+     * Directory and file collapse keys never collide — a name can't be both a
+     * file and a directory in the same parent.
+     *
+     * @param list<array{path: string, line: int, text: string, ranges?: list<array{start: int, length: int}>}> $results
+     * @param array<string, bool>                                                                                $collapsed
+     * @param array<int, bool>                                                                                   $expanded
+     * @param array<int, list<array{line: int, text: string}>>                                                   $context
+     *
+     * @return list<DisplayRow>
+     */
+    private static function buildNested(array $results, array $collapsed, string $needle, array $expanded, array $context): array
+    {
+        /** @var array<string, array<string, list<int>>> $byDir directory => file path => match indices */
+        $byDir = [];
+        foreach ($results as $index => $result) {
+            if (self::passes($result, $needle)) {
+                $dir = \dirname($result['path']);
+                $byDir[$dir] ??= [];
+                $byDir[$dir][$result['path']] ??= [];
+                $byDir[$dir][$result['path']][] = $index;
+            }
+        }
+
+        $rows = [];
+        foreach ($byDir as $dir => $files) {
+            $dirCount = 0;
+            foreach ($files as $indices) {
+                $dirCount += \count($indices);
+            }
+            $dirCollapsed = $collapsed[$dir] ?? false;
+            $rows[] = DisplayRow::dirHeader($dir, $dirCount, $dirCollapsed);
+            if ($dirCollapsed) {
+                continue;
+            }
+            foreach ($files as $path => $indices) {
+                $fileCollapsed = $collapsed[$path] ?? false;
+                $rows[] = DisplayRow::fileHeader($path, \count($indices), $fileCollapsed);
+                if ($fileCollapsed) {
+                    continue;
+                }
+                foreach ($indices as $index) {
+                    self::appendMatch($rows, $index, $expanded, $context);
+                }
+            }
+        }
+
+        return $rows;
+    }
+
+    /**
+     * Append a match row and, when expanded, its cached context rows.
+     *
+     * @param list<DisplayRow>                                 $rows
+     * @param array<int, bool>                                 $expanded
+     * @param array<int, list<array{line: int, text: string}>> $context
+     */
+    private static function appendMatch(array &$rows, int $index, array $expanded, array $context): void
+    {
+        $rows[] = DisplayRow::match($index);
+        if ($expanded[$index] ?? false) {
+            foreach ($context[$index] ?? [] as $line) {
+                $rows[] = DisplayRow::context($line['line'], $line['text']);
+            }
+        }
     }
 
     /**

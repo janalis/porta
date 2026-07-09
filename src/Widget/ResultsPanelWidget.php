@@ -303,7 +303,12 @@ final class ResultsPanelWidget extends OverlayWidget implements FocusableInterfa
     {
         $keys = [];
         foreach ($this->results as $result) {
-            $keys[$this->grouping->keyFor($result['path'])] = true;
+            if (ResultGrouping::Nested === $this->grouping) {
+                $keys[\dirname($result['path'])] = true;
+                $keys[$result['path']] = true;
+            } else {
+                $keys[$this->grouping->keyFor($result['path'])] = true;
+            }
         }
         $allCollapsed = true;
         foreach (array_keys($keys) as $key) {
@@ -554,14 +559,14 @@ final class ResultsPanelWidget extends OverlayWidget implements FocusableInterfa
         return $this->withReplace && '' !== $this->replace->value();
     }
 
-    /** Delete on a match row excludes/includes that line; on a file header, toggles all of its matches. */
+    /** Delete on a match row excludes/includes that line; on a header, toggles every match under it. */
     private function toggleExcludeRow(int $index): void
     {
         $row = $this->displayRows[$index] ?? null;
         if (null !== $row && null !== $row->filePath) {
-            $exclude = !$this->allExcludedForGroup($row->filePath);
+            $exclude = !$this->allExcludedForHeader($row);
             foreach ($this->results as $matchIndex => $result) {
-                if ($this->grouping->keyFor($result['path']) === $row->filePath) {
+                if ($this->headerMatches($row, $result)) {
                     $this->excluded[$matchIndex] = $exclude;
                 }
             }
@@ -593,11 +598,24 @@ final class ResultsPanelWidget extends OverlayWidget implements FocusableInterfa
         $this->invalidate();
     }
 
-    /** Whether every match under the group header $key (file or directory) is currently excluded. */
-    private function allExcludedForGroup(string $key): bool
+    /**
+     * Whether a result belongs under the given header row (a directory header
+     * matches by `dirname`, any other header by the grouping's leaf key).
+     *
+     * @param array{path: string, line: int, text: string, ranges?: list<array{start: int, length: int}>} $result
+     */
+    private function headerMatches(DisplayRow $header, array $result): bool
+    {
+        return $header->isDirectory
+            ? \dirname($result['path']) === $header->filePath
+            : $this->grouping->keyFor($result['path']) === $header->filePath;
+    }
+
+    /** Whether every match under the given header is currently excluded. */
+    private function allExcludedForHeader(DisplayRow $header): bool
     {
         foreach ($this->results as $matchIndex => $result) {
-            if ($this->grouping->keyFor($result['path']) === $key && !($this->excluded[$matchIndex] ?? false)) {
+            if ($this->headerMatches($header, $result) && !($this->excluded[$matchIndex] ?? false)) {
                 return false;
             }
         }
@@ -727,7 +745,7 @@ final class ResultsPanelWidget extends OverlayWidget implements FocusableInterfa
             $isSelected = $this->list->isSelected($scroll + $i);
             $bg = $isSelected ? ($this->focused ? $this->palette->of(Role::SelectedRow) : $this->palette->of(Role::InlayPopupBg)) : $this->palette->of(Role::Toolbar);
             $lines[] = match (true) {
-                null !== $row->filePath => $this->fileHeaderLine($row->filePath, $row->count, $row->collapsed, $bg, $columns),
+                null !== $row->filePath => $this->headerLine($row, $bg, $columns),
                 null !== $row->contextText => $this->contextRowLine($row->contextLine, $row->contextText, $bg, $columns),
                 default => $this->matchLine($this->results[$row->matchIndex], $row->matchIndex, $bg, $columns),
             };
@@ -756,19 +774,40 @@ final class ResultsPanelWidget extends OverlayWidget implements FocusableInterfa
         return $this->palette->of(Role::RowHighlightBg).AnsiText::scrollLineToCaret($line, $columns, AnsiUtils::cursorMarker(CursorShape::Bar))."\x1b[0m";
     }
 
+    /** The indent for grouped match rows — deeper in the nested view (below a dir + file header). */
+    private function matchIndent(): string
+    {
+        return ResultGrouping::Nested === $this->grouping ? '      ' : '    ';
+    }
+
     /** A dimmed context row shown around an expanded match: `<line>  text`, indented under the match. */
     private function contextRowLine(int $line, string $text, string $bg, int $columns): string
     {
-        $content = '      '.$this->palette->of(Role::Dim).(string) ($line + 1).'  '.$text."\x1b[39m";
+        $content = $this->matchIndent().'  '.$this->palette->of(Role::Dim).(string) ($line + 1).'  '.$text."\x1b[39m";
 
         return $bg.AnsiUtils::truncateToWidth($content, $columns, '…', pad: true)."\x1b[0m";
     }
 
-    /** A collapsible file-group header: `▾ path  (count)` (grouped mode only). */
-    private function fileHeaderLine(string $path, int $count, bool $collapsed, string $bg, int $columns): string
+    /**
+     * A collapsible group header `▾ label  (count)`: a file (`path`, or its
+     * basename indented under a directory in the nested view) or, in the nested
+     * view, a directory (`dir/`).
+     */
+    private function headerLine(DisplayRow $row, string $bg, int $columns): string
     {
-        $arrow = $collapsed ? '▸' : '▾';
-        $text = ' '.$arrow.' '.$this->palette->of(Role::TabAccent).$path."\x1b[39m".$this->palette->of(Role::Dim).'  ('.$count.')'."\x1b[39m";
+        $path = (string) $row->filePath;
+        if ($row->isDirectory) {
+            $display = $path.'/';
+            $indent = '';
+        } elseif (ResultGrouping::Nested === $this->grouping) {
+            $display = basename($path);
+            $indent = '  ';
+        } else {
+            $display = $path;
+            $indent = '';
+        }
+        $arrow = $row->collapsed ? '▸' : '▾';
+        $text = $indent.' '.$arrow.' '.$this->palette->of(Role::TabAccent).$display."\x1b[39m".$this->palette->of(Role::Dim).'  ('.$row->count.')'."\x1b[39m";
 
         return $bg.AnsiUtils::truncateToWidth($text, $columns, '…', pad: true)."\x1b[0m";
     }
@@ -800,9 +839,10 @@ final class ResultsPanelWidget extends OverlayWidget implements FocusableInterfa
         }
 
         if ($this->grouped) {
+            $indent = $this->matchIndent();
             $label = $this->groupedLabel($result);
-            $prefixWidth = 4 + mb_strwidth($label) + 2; // `    ` + label + `  `
-            $text = '    '.$this->palette->of(Role::TabAccent).$label."\x1b[39m".'  '.$result['text'];
+            $prefixWidth = mb_strwidth($indent) + mb_strwidth($label) + 2; // indent + label + `  `
+            $text = $indent.$this->palette->of(Role::TabAccent).$label."\x1b[39m".'  '.$result['text'];
         } else {
             $location = $result['path'].':'.($result['line'] + 1);
             $prefixWidth = 1 + mb_strwidth($location) + 2; // ` ` + `path:line` + `  `

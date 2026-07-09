@@ -325,6 +325,38 @@ final class ResultsPanelWidgetTest extends TestCase
         $this->assertStringContainsString('Scope: Directory', $plain);
     }
 
+    public function testNestedCollapseAllAndDirectoryExclude(): void
+    {
+        $panel = new ResultsPanelWidget();
+        $panel->setFocused(true);
+        $panel->open('Find in Project', ResultsPanelFields::fullSearch());
+        $panel->setResults([
+            ['path' => 'src/A.php', 'line' => 4, 'text' => 'foo one', 'ranges' => []],
+            ['path' => 'src/B.php', 'line' => 2, 'text' => 'foo two', 'ranges' => []],
+        ]);
+        $plain = fn (): string => AnsiUtils::stripAnsiCodes(implode("\n", $panel->render(new RenderContext(120, 20))));
+
+        $panel->handleInput("\x1bg"); // → Directory
+        $panel->handleInput("\x1bg"); // → Nested
+
+        // Alt+E collapses every level; again expands them.
+        $panel->handleInput("\x1be");
+        $this->assertStringNotContainsString('foo one', $plain(), 'collapse-all hides matches at both levels');
+        $panel->handleInput("\x1be");
+        $this->assertStringContainsString('foo one', $plain(), 'expand-all restores them');
+
+        // Enter replace-preview, land on the src/ directory header, and Delete to exclude its subtree.
+        $panel->handleInput("\t"); // query → mask
+        $panel->handleInput("\t"); // mask → filter
+        $panel->handleInput("\t"); // filter → replace
+        $panel->handleInput('x');
+        for ($i = 0; $i < 6; ++$i) {
+            $panel->handleInput("\x1b[A"); // up to the top (src/ directory header)
+        }
+        $panel->handleInput("\x1b[3~"); // delete → exclude every match under src/
+        $this->assertStringContainsString('replace 0', $plain(), 'excluding the directory drops all its matches');
+    }
+
     public function testTokenScopeTagCyclesAndRenders(): void
     {
         $panel = new ResultsPanelWidget();
@@ -404,8 +436,53 @@ final class ResultsPanelWidgetTest extends TestCase
         $this->assertStringContainsString('A.php:5', $byDir, 'directory rows show basename:line');
         $this->assertStringContainsString('B.php:10', $byDir);
 
-        $panel->handleInput("\x1bg"); // alt+g → back to grouping by file
-        $this->assertStringContainsString('src/A.php', $plain(), 'toggles back to file grouping');
+        $panel->handleInput("\x1bg"); // alt+g → nested directory → file → match
+        $nested = $plain();
+        $this->assertStringContainsString('src/  (2)', $nested, 'nested directory header');
+        $this->assertStringContainsString('other/  (1)', $nested);
+        $this->assertStringContainsString('A.php  (1)', $nested, 'nested file header shows the basename');
+        $this->assertStringContainsString('B.php  (1)', $nested);
+
+        $panel->handleInput("\x1bg"); // alt+g → back to grouping by file (cycle wraps)
+        $this->assertStringContainsString('src/A.php', $plain(), 'wraps back to file grouping');
+    }
+
+    public function testNestedGroupingCollapsesDirectoriesAndFilesIndependently(): void
+    {
+        $panel = new ResultsPanelWidget();
+        $panel->setFocused(true);
+        $panel->open('Find in Project', ResultsPanelFields::fullSearch());
+        $panel->setResults([
+            ['path' => 'src/A.php', 'line' => 4, 'text' => 'foo one', 'ranges' => []],
+            ['path' => 'src/A.php', 'line' => 9, 'text' => 'foo two', 'ranges' => []],
+            ['path' => 'other/C.php', 'line' => 2, 'text' => 'foo three', 'ranges' => []],
+        ]);
+        $plain = fn (): string => AnsiUtils::stripAnsiCodes(implode("\n", $panel->render(new RenderContext(120, 20))));
+
+        $panel->handleInput("\x1bg"); // → Directory
+        $panel->handleInput("\x1bg"); // → Nested
+        $this->assertStringContainsString('src/  (2)', $plain(), 'directory counts its files\' matches');
+        $this->assertStringContainsString('foo one', $plain());
+
+        // Land deterministically on the top row (the src/ directory header).
+        for ($i = 0; $i < 6; ++$i) {
+            $panel->handleInput("\x1b[A"); // up (clamps at row 0)
+        }
+
+        // Collapse the directory — its whole subtree (file header + matches) disappears.
+        $panel->handleInput("\r");
+        $collapsedDir = $plain();
+        $this->assertStringContainsString('src/  (2)', $collapsedDir, 'directory header still shows its count');
+        $this->assertStringNotContainsString('A.php', $collapsedDir, 'the file header is hidden under the collapsed directory');
+        $this->assertStringContainsString('other/', $collapsedDir, 'sibling directories are unaffected');
+
+        // Re-expand the directory, then collapse just its file header.
+        $panel->handleInput("\r"); // expand src/
+        $panel->handleInput("\x1b[B"); // down → the src/A.php file header
+        $panel->handleInput("\r"); // collapse the file
+        $collapsedFile = $plain();
+        $this->assertStringContainsString('A.php', $collapsedFile, 'the file header remains');
+        $this->assertStringNotContainsString('foo one', $collapsedFile, 'the file\'s matches are hidden');
     }
 
     public function testMaskValueSeededAndHistoryRecalled(): void
