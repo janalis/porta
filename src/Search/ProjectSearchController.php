@@ -129,6 +129,12 @@ final class ProjectSearchController
         $this->run($this->lastSearchQuery);
     }
 
+    /** Re-run the current query (F5) with the current scope/mask/options — picks up on-disk changes. */
+    public function rerun(): void
+    {
+        $this->run($this->lastSearchQuery);
+    }
+
     /** Toggle a search option and re-run the last query with it applied. */
     public function toggleOption(string $name): void
     {

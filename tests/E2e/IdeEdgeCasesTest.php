@@ -734,6 +734,40 @@ final class IdeEdgeCasesTest extends TestCase
         $this->addToAssertionCount(1);
     }
 
+    public function testFindInProjectF5RerunsPicksUpDiskChanges(): void
+    {
+        $project = new TempProject(['src/A.php' => "<?php\n// tok here\n"]);
+        $panelText = static fn ($tui): string => AnsiUtils::stripAnsiCodes(implode("\n", $tui->getById('results')->render(new \Symfony\Component\Tui\Render\RenderContext(160, 16))));
+
+        $this->runIde(
+            $project,
+            $project->path('src/A.php'),
+            [
+                200 => static function ($tui): void {
+                    $tui->handleInput("\x1b[102;6u"); // ctrl+shift+f
+                    foreach (str_split('tok') as $ch) {
+                        $tui->handleInput($ch);
+                    }
+                },
+                600 => function ($tui) use ($panelText, $project): void {
+                    $tui->tick();
+                    $this->assertStringContainsString('1 results', $panelText($tui));
+                    $project->write('src/B.php', "// tok added later\n"); // a new match on disk
+                    $tui->handleInput("\x1b[15~"); // F5 → rerun
+                },
+                900 => function ($tui) use ($panelText): void {
+                    $tui->tick();
+                    $panel = $panelText($tui);
+                    $this->assertStringContainsString('2 results', $panel, 'rerun sees the new file');
+                    $this->assertStringContainsString('src/B.php', $panel);
+                },
+            ],
+            1.2,
+        );
+
+        $this->addToAssertionCount(1);
+    }
+
     public function testStickyScrollPinsHeaderAndClickJumps(): void
     {
         putenv('PATH=/nonexistent');

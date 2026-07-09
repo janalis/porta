@@ -654,6 +654,13 @@ final class Ide
             $this->projectSearchController->setScope($this->resolveScopePath($kind));
         });
 
+        // F5 re-runs the current find-in-project query (picks up on-disk changes).
+        $this->resultsPanel->onRerun(function (): void {
+            if (ResultsPanelMode::Search === $this->panels->mode()) {
+                $this->projectSearchController->rerun();
+            }
+        });
+
         $this->resultsPanel->onReplaceAll(function (string $replacement): void {
             $this->projectSearchController->replaceAll($replacement);
         });

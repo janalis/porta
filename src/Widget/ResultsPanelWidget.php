@@ -70,6 +70,8 @@ final class ResultsPanelWidget extends OverlayWidget implements FocusableInterfa
     private $onMaskChanged = null;
     /** @var (callable(ScopeKind): void)|null the search scope was cycled (Alt+S) */
     private $onScopeCycle = null;
+    /** @var (callable(): void)|null re-run the current search (F5) */
+    private $onRerun = null;
     /** @var (callable(string, int): void)|null */
     private $onJump = null;
     /** @var (callable(string): void)|null toggled a search option ('regex'|'case'|'word') */
@@ -106,6 +108,13 @@ final class ResultsPanelWidget extends OverlayWidget implements FocusableInterfa
     public function onScopeCycle(callable $callback): self
     {
         $this->onScopeCycle = $callback;
+
+        return $this;
+    }
+
+    public function onRerun(callable $callback): self
+    {
+        $this->onRerun = $callback;
 
         return $this;
     }
@@ -191,6 +200,36 @@ final class ResultsPanelWidget extends OverlayWidget implements FocusableInterfa
     private function rebuildView(): void
     {
         $this->displayRows = ResultsView::build($this->results, $this->collapsed, $this->grouped);
+        // Collapsing/filtering can shrink the list under the selection.
+        $count = \count($this->displayRows);
+        if ($count > 0 && $this->list->selected() >= $count) {
+            $this->list->select($count - 1);
+        }
+    }
+
+    /** Alt+E: expand every group when all are collapsed, otherwise collapse every group. */
+    private function toggleAllGroups(): void
+    {
+        $paths = [];
+        foreach ($this->results as $result) {
+            $paths[$result['path']] = true;
+        }
+        $allCollapsed = true;
+        foreach (array_keys($paths) as $path) {
+            if (!($this->collapsed[$path] ?? false)) {
+                $allCollapsed = false;
+
+                break;
+            }
+        }
+        $this->collapsed = [];
+        if (!$allCollapsed) {
+            foreach (array_keys($paths) as $path) {
+                $this->collapsed[$path] = true;
+            }
+        }
+        $this->rebuildView();
+        $this->invalidate();
     }
 
     public function setSearching(): void
@@ -233,6 +272,12 @@ final class ResultsPanelWidget extends OverlayWidget implements FocusableInterfa
                 ($this->onScopeCycle)($this->scopeKind);
             }
             $this->invalidate();
+        } elseif ($this->grouped && $kb->matches($data, 'toggle_all')) {
+            $this->toggleAllGroups();
+        } elseif ($kb->matches($data, 'rerun')) {
+            if (null !== $this->onRerun) {
+                ($this->onRerun)();
+            }
         } elseif ($kb->matches($data, 'switch_field') && \count($this->focusableFields()) > 1) {
             $fields = $this->focusableFields();
             $pos = (int) array_search($this->activeField, $fields, true);
@@ -514,6 +559,8 @@ final class ResultsPanelWidget extends OverlayWidget implements FocusableInterfa
             'toggle_case' => ['alt+c'],
             'toggle_word' => ['alt+w'],
             'cycle_scope' => ['alt+s'],
+            'toggle_all' => ['alt+e'],
+            'rerun' => [Key::F5],
             'switch_field' => [Key::TAB],
             'replace_all' => ['alt+a'],
         ];

@@ -408,6 +408,45 @@ final class ResultsPanelWidgetTest extends TestCase
         $this->assertStringContainsString('match zero', $expanded);
     }
 
+    public function testToggleAllGroupsCollapsesThenExpandsEveryGroup(): void
+    {
+        $panel = new ResultsPanelWidget();
+        $panel->setFocused(true);
+        $panel->open('Find in Project', ResultsPanelFields::fullSearch());
+        $panel->setResults($this->groupedResults());
+        $render = fn (): string => AnsiUtils::stripAnsiCodes(implode("\n", $panel->render(new RenderContext(80, 12))));
+
+        // Move the selection to the last match so collapse clamps it.
+        for ($i = 0; $i < 6; ++$i) {
+            $panel->handleInput("\x1b[B");
+        }
+        $panel->handleInput("\x1be"); // alt+e → collapse all (some were expanded)
+        $collapsed = $render();
+        $this->assertStringContainsString('▸ src/A.php', $collapsed, 'both groups collapsed');
+        $this->assertStringContainsString('▸ src/B.php', $collapsed);
+        $this->assertStringNotContainsString('match zero', $collapsed, 'matches hidden');
+        $this->assertStringNotContainsString('match two', $collapsed);
+
+        $panel->handleInput("\x1be"); // alt+e again → expand all (all were collapsed)
+        $expanded = $render();
+        $this->assertStringContainsString('▾ src/A.php', $expanded);
+        $this->assertStringContainsString('match zero', $expanded);
+        $this->assertStringContainsString('match two', $expanded);
+    }
+
+    public function testRerunKeyFiresTheCallback(): void
+    {
+        $panel = new ResultsPanelWidget();
+        $reran = 0;
+        $panel->onRerun(function () use (&$reran): void {
+            ++$reran;
+        });
+        $panel->open('Find in Project', ResultsPanelFields::fullSearch());
+
+        $panel->handleInput("\x1b[15~"); // F5
+        $this->assertSame(1, $reran);
+    }
+
     public function testClickWithMaskAndReplaceHeaderOffset(): void
     {
         $panel = new ResultsPanelWidget();
