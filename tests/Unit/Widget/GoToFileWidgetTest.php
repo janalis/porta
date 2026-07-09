@@ -10,6 +10,7 @@ use Porta\Tests\Support\TempProject;
 use Porta\Widget\GoToFileWidget;
 use Symfony\Component\Tui\Ansi\AnsiUtils;
 use Symfony\Component\Tui\Render\RenderContext;
+use Symfony\Component\Tui\Style\CursorShape;
 
 final class GoToFileWidgetTest extends TestCase
 {
@@ -53,6 +54,19 @@ final class GoToFileWidgetTest extends TestCase
         foreach ($lines as $line) {
             $this->assertSame(60, AnsiUtils::visibleWidth($line));
         }
+    }
+
+    public function testLongQueryKeepsTheCaretVisible(): void
+    {
+        $project = new TempProject(['a.php' => '']);
+        $widget = $this->widget($project);
+        $this->type($widget, str_repeat('x', 100)); // overflow the 80-column bar
+
+        $header = $widget->render(new RenderContext(80, 10))[0];
+        $marker = AnsiUtils::cursorMarker(CursorShape::Bar);
+
+        $this->assertSame(1, substr_count($header, $marker), 'the caret scrolls into view instead of being clipped');
+        $this->assertSame(80, AnsiUtils::visibleWidth($header), 'the header stays the terminal width');
     }
 
     public function testFuzzyScoringPrefersBasenameAndSegmentStarts(): void
