@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Porta\Ui;
 
+use Porta\Editor\TextMetrics;
 use Porta\Input\TextInput;
 use Porta\Support\AnsiText;
 use Symfony\Component\Tui\Ansi\AnsiUtils;
@@ -63,8 +64,9 @@ final class MultilineInput
             case "\x08":
                 if ($this->col > 0) {
                     $line = $this->lines[$this->line];
-                    $this->lines[$this->line] = substr($line, 0, $this->col - 1).substr($line, $this->col);
-                    --$this->col;
+                    $prev = TextMetrics::prevCharBoundary($line, $this->col);
+                    $this->lines[$this->line] = substr($line, 0, $prev).substr($line, $this->col);
+                    $this->col = $prev;
                 } elseif ($this->line > 0) {
                     $tail = $this->lines[$this->line];
                     array_splice($this->lines, $this->line, 1);
@@ -77,20 +79,20 @@ final class MultilineInput
             case "\x1b[A": // up
                 if ($this->line > 0) {
                     --$this->line;
-                    $this->col = min($this->col, \strlen($this->lines[$this->line]));
+                    $this->col = TextMetrics::charBoundaryAtOrBefore($this->lines[$this->line], $this->col);
                 }
 
                 return true;
             case "\x1b[B": // down
                 if ($this->line < (\count($this->lines) - 1)) {
                     ++$this->line;
-                    $this->col = min($this->col, \strlen($this->lines[$this->line]));
+                    $this->col = TextMetrics::charBoundaryAtOrBefore($this->lines[$this->line], $this->col);
                 }
 
                 return true;
             case "\x1b[D": // left
                 if ($this->col > 0) {
-                    --$this->col;
+                    $this->col = TextMetrics::prevCharBoundary($this->lines[$this->line], $this->col);
                 } elseif ($this->line > 0) {
                     --$this->line;
                     $this->col = \strlen($this->lines[$this->line]);
@@ -99,7 +101,7 @@ final class MultilineInput
                 return true;
             case "\x1b[C": // right
                 if ($this->col < \strlen($this->lines[$this->line])) {
-                    ++$this->col;
+                    $this->col = TextMetrics::nextCharBoundary($this->lines[$this->line], $this->col);
                 } elseif ($this->line < (\count($this->lines) - 1)) {
                     ++$this->line;
                     $this->col = 0;

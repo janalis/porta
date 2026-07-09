@@ -84,4 +84,16 @@ final class TextMetricsTest extends TestCase
         // Beyond the end clamps to the last line's end (offset of 'cd' end = 5).
         $this->assertSame(5, $doc->offsetAt(99, 99));
     }
+
+    public function testCharBoundaryAtOrBeforeSnapsOffMidCharacterBytes(): void
+    {
+        // "a—b": 'a' (1) + em-dash (3 bytes: 2..4) + 'b' (5).
+        $line = "a\u{2014}b";
+        $this->assertSame(1, TextMetrics::charBoundaryAtOrBefore($line, 1), 'already a boundary');
+        $this->assertSame(1, TextMetrics::charBoundaryAtOrBefore($line, 2), 'mid em-dash → its start');
+        $this->assertSame(1, TextMetrics::charBoundaryAtOrBefore($line, 3), 'mid em-dash → its start');
+        $this->assertSame(4, TextMetrics::charBoundaryAtOrBefore($line, 4), 'after the em-dash');
+        $this->assertSame(5, TextMetrics::charBoundaryAtOrBefore($line, 99), 'past the end clamps to length');
+        $this->assertSame(0, TextMetrics::charBoundaryAtOrBefore($line, -3), 'before the start clamps to 0');
+    }
 }

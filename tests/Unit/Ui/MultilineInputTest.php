@@ -153,6 +153,45 @@ final class MultilineInputTest extends TestCase
         $this->assertSame(1, $this->markers(...$window), 'the caret marker shows on the empty line');
     }
 
+    public function testBackspaceDeletesAWholeMultibyteCharacter(): void
+    {
+        $input = new MultilineInput();
+        $this->type($input, 'slow ', "\u{2014}"); // trailing em-dash (3 bytes)
+
+        $this->assertTrue($input->handleKey("\x7f"));
+        $this->assertSame('slow ', $input->value(), 'the whole em-dash is removed');
+        $this->assertTrue(mb_check_encoding($input->value(), 'UTF-8'), 'never leaves a partial sequence');
+    }
+
+    public function testArrowsMoveByWholeCharacterAcrossMultibyte(): void
+    {
+        $input = new MultilineInput();
+        $this->type($input, "a\u{2014}b"); // 'a' + 3-byte em-dash + 'b', caret at end (col 5)
+
+        $input->handleKey("\x1b[D"); // left over 'b'
+        $input->handleKey("\x1b[D"); // left over the em-dash in one step
+        // Inserting here must land between 'a' and the em-dash, not mid-sequence.
+        $input->handleKey('X');
+        $this->assertSame("aX\u{2014}b", $input->value());
+        $this->assertTrue(mb_check_encoding($input->value(), 'UTF-8'));
+
+        $input->handleKey("\x1b[C"); // right over the em-dash in one step
+        $input->handleKey('Y');
+        $this->assertSame("aX\u{2014}Yb", $input->value());
+        $this->assertTrue(mb_check_encoding($input->value(), 'UTF-8'));
+    }
+
+    public function testUpDownNeverLandMidCharacter(): void
+    {
+        $input = new MultilineInput();
+        $this->type($input, "a\u{2014}bc", "\r", 'xy'); // line 0 has a wide char, caret on line 1 col 2
+
+        $input->handleKey("\x1b[A"); // up onto the multibyte line at byte col 2 (mid em-dash)
+        $input->handleKey('Z'); // insert must not split the em-dash
+        $this->assertTrue(mb_check_encoding($input->value(), 'UTF-8'));
+        $this->assertStringContainsString("\u{2014}", $input->value(), 'the em-dash survived intact');
+    }
+
     public function testRenderHorizontallyWindowsALongCaretLine(): void
     {
         $input = new MultilineInput();

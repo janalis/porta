@@ -242,4 +242,41 @@ final class CommitBoxWidgetTest extends TestCase
 
         $this->assertSame(1, $this->markerCount($widget), 'the summary caret survives horizontal overflow');
     }
+
+    /** @return list<int> the visible width of every rendered line */
+    private function lineWidths(CommitBoxWidget $widget): array
+    {
+        return array_map(AnsiUtils::visibleWidth(...), $widget->render(new RenderContext(44, 10)));
+    }
+
+    public function testBackspacingIntoAMultibyteDescriptionKeepsEveryLineAtWidth(): void
+    {
+        $widget = $this->widget();
+        $widget->handleInput("\t"); // focus the description
+        // Amend prefills the last commit — commonly with a multibyte char (em-dash).
+        $widget->setMessage("summary\n\nRefactor the parser \u{2014} it was slow");
+
+        // Backspace all the way through the em-dash and out; every frame must stay 44 wide.
+        for ($i = 0; $i < 25; ++$i) {
+            foreach ($this->lineWidths($widget) as $width) {
+                $this->assertSame(44, $width, "a line overflowed the sidebar at backspace {$i}");
+            }
+            $widget->handleInput("\x7f");
+        }
+    }
+
+    public function testBackspacingIntoAMultibyteSummaryKeepsEveryLineAtWidth(): void
+    {
+        $widget = $this->widget();
+        $this->type($widget, 'release '); // summary is the default field
+        $widget->handleInput("\u{2014}"); // an em-dash
+
+        foreach ($this->lineWidths($widget) as $width) {
+            $this->assertSame(44, $width);
+        }
+        $widget->handleInput("\x7f"); // backspace into the em-dash
+        foreach ($this->lineWidths($widget) as $width) {
+            $this->assertSame(44, $width, 'the summary row must not overflow after a multibyte backspace');
+        }
+    }
 }

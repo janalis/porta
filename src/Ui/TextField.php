@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Porta\Ui;
 
+use Porta\Editor\TextMetrics;
 use Porta\Input\TextInput;
 use Porta\Support\AnsiText;
 use Symfony\Component\Tui\Ansi\AnsiUtils;
@@ -47,13 +48,13 @@ final class TextField
         return true;
     }
 
-    /** Delete the last byte; returns whether the value changed. */
+    /** Delete the last UTF-8 character; returns whether the value changed. */
     public function backspace(): bool
     {
         if ('' === $this->value) {
             return false;
         }
-        $this->value = substr($this->value, 0, -1);
+        $this->value = substr($this->value, 0, TextMetrics::prevCharBoundary($this->value, \strlen($this->value)));
 
         return true;
     }

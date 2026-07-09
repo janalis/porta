@@ -91,4 +91,26 @@ final class TextFieldTest extends TestCase
         $this->assertStringEndsWith($marker, $out, 'scrolled to the tail, caret last');
         $this->assertLessThanOrEqual(10, AnsiUtils::visibleWidth($out), 'clipped to width');
     }
+
+    public function testBackspaceDeletesAWholeMultibyteCharacterKeepingValidUtf8(): void
+    {
+        $field = new TextField('café'); // 'é' is 2 bytes
+
+        $this->assertTrue($field->backspace());
+        $this->assertSame('caf', $field->value(), 'the whole é is removed, not one byte');
+        $this->assertTrue(mb_check_encoding($field->value(), 'UTF-8'), 'never leaves a partial sequence');
+    }
+
+    public function testBackspaceDeletesAWholeEmojiAndEmDash(): void
+    {
+        $field = new TextField("done \u{1F41B}"); // 4-byte emoji
+        $field->backspace();
+        $this->assertSame('done ', $field->value());
+        $this->assertTrue(mb_check_encoding($field->value(), 'UTF-8'));
+
+        $dash = new TextField("slow \u{2014}"); // 3-byte em-dash
+        $dash->backspace();
+        $this->assertSame('slow ', $dash->value());
+        $this->assertTrue(mb_check_encoding($dash->value(), 'UTF-8'));
+    }
 }

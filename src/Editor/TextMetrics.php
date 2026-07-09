@@ -37,6 +37,20 @@ final class TextMetrics
     }
 
     /**
+     * The largest UTF-8 character boundary at or before $col in $line, so a byte
+     * offset carried onto another line (e.g. Up/Down) never lands mid-character.
+     */
+    public static function charBoundaryAtOrBefore(string $line, int $col): int
+    {
+        $col = max(0, min($col, \strlen($line)));
+        while ($col > 0 && $col < \strlen($line) && (\ord($line[$col]) & 0xC0) === 0x80) {
+            --$col;
+        }
+
+        return $col;
+    }
+
+    /**
      * Visual width of a string in terminal cells, expanding tabs to the next
      * multiple of $tabSize. Tab-free text takes the mb_strwidth fast path.
      */
