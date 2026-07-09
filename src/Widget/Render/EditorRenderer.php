@@ -376,6 +376,60 @@ final class EditorRenderer
     }
 
     /**
+     * Draw the centered Search Everywhere modal: a title bar, a query row, then
+     * the grouped result rows (category headers + hits), windowed around
+     * $selected (a hit-row index into $rowModels). The first list row sits at
+     * `startRow + 2` (after the title and query rows), so a click on screen row R
+     * maps to `windowStart + (R - startRow - 2)` in $rowModels.
+     *
+     * @param string[]                                                       $lines
+     * @param list<array{header: string|null, label: string, detail: string}> $rowModels a header row when `header` is set
+     *
+     * @return array{col: int, width: int, startRow: int, windowStart: int, count: int}
+     */
+    public static function searchOverlay(array &$lines, int $columns, int $rows, string $title, string $query, bool $focused, array $rowModels, int $selected, Palette $palette): array
+    {
+        $maxRows = max(1, min(\count($rowModels), $rows - 4, 12));
+        $windowStart = IntMath::clamp($selected - $maxRows + 1, 0, max(0, \count($rowModels) - $maxRows));
+        $visible = \array_slice($rowModels, $windowStart, $maxRows);
+
+        $width = max(mb_strwidth($title) + 4, mb_strwidth($query) + 6, 24);
+        foreach ($visible as $row) {
+            $width = max($width, mb_strwidth($row['label']) + mb_strwidth($row['detail']) + 6);
+        }
+        $width = min($width, $columns - 4, 70);
+        $col = max(0, intdiv($columns - $width, 2));
+
+        $marker = AnsiUtils::cursorMarker(CursorShape::Bar);
+        $popup = [
+            HeaderRenderer::render(' '.$title, $width, $palette->of(Role::HeaderBar).$palette->of(Role::Bright)."\x1b[1m"),
+            $palette->of(Role::Toolbar).AnsiText::scrollLineToCaret(' > '.$query.($focused ? $marker : ''), $width, $marker)."\x1b[0m",
+        ];
+        foreach ($visible as $i => $row) {
+            if (null !== $row['header']) {
+                $popup[] = $palette->of(Role::PopupRow).$palette->of(Role::Dim).AnsiUtils::truncateToWidth(' '.$row['header'], $width, '…', pad: true)."\x1b[0m";
+
+                continue;
+            }
+            $bg = ($windowStart + $i) === $selected ? $palette->of(Role::SelectedRow) : $palette->of(Role::PopupRow);
+            $detailWidth = mb_strwidth($row['detail']);
+            $label = AnsiUtils::truncateToWidth($row['label'], max(1, $width - $detailWidth - 3), '…', pad: true);
+            $popup[] = $bg.' '.$label.' '.$palette->of(Role::CompletionHint).$row['detail'].' '."\x1b[0m";
+        }
+
+        $startRow = max(0, intdiv($rows - \count($popup), 3));
+        foreach ($popup as $i => $popupLine) {
+            $row = $startRow + $i;
+            if ($row >= \count($lines)) {
+                break;
+            }
+            $lines[$row] = OverlayCompositor::into($lines[$row], $col, $width, $columns, $popupLine);
+        }
+
+        return ['col' => $col, 'width' => $width, 'startRow' => $startRow, 'windowStart' => $windowStart, 'count' => \count($visible)];
+    }
+
+    /**
      * Draw the autocomplete popup anchored at the caret.
      *
      * Returns the on-screen box geometry so callers can hit-test mouse clicks:

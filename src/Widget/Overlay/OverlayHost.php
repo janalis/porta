@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace Porta\Widget\Overlay;
 
+use Porta\Search\Everywhere\SearchHit;
+use Porta\Search\Everywhere\SearchRow;
 use Porta\Support\AnsiText;
 use Porta\Ui\ColorPalette;
 use Porta\Ui\Palette;
@@ -29,6 +31,9 @@ final class OverlayHost
     private ?array $overlayBox = null;
     /** @var array{label: string, value: TextField, onSubmit: callable(string): void}|null single-line mini prompt */
     private ?array $prompt = null;
+    private ?SearchModalState $search = null;
+    /** @var array{col: int, width: int, startRow: int, windowStart: int, count: int}|null last-rendered search box, for mouse hit-testing */
+    private ?array $searchBox = null;
 
     private readonly Palette $palette;
 
@@ -73,6 +78,135 @@ final class OverlayHost
     {
         $this->prompt = ['label' => $label, 'value' => new TextField($initial), 'onSubmit' => $onSubmit];
         ($this->invalidate)();
+    }
+
+    /**
+     * Open the Search Everywhere modal with the query/pick/close callbacks. The
+     * controller pushes rows via {@see setSearchRows}; keys are fed through the
+     * global path to {@see handleSearchInput} (not {@see handleInput}).
+     *
+     * @param \Closure(string): void    $onQuery
+     * @param \Closure(SearchHit): void $onPick
+     * @param \Closure(): void          $onClose
+     */
+    public function openSearch(string $title, \Closure $onQuery, \Closure $onPick, \Closure $onClose): void
+    {
+        $this->search = new SearchModalState($title, new TextField(), $onQuery, $onPick, $onClose);
+        ($this->invalidate)();
+    }
+
+    public function isSearchOpen(): bool
+    {
+        return null !== $this->search;
+    }
+
+    /**
+     * Replace the modal's rows, keeping selection on a hit row.
+     *
+     * @param list<SearchRow> $rows
+     */
+    public function setSearchRows(array $rows): void
+    {
+        $search = $this->search;
+        if (null === $search) {
+            return;
+        }
+        $search->rows = $rows;
+        $search->selected = $this->firstHitAtOrAfter($rows, $search->selected);
+        ($this->invalidate)();
+    }
+
+    public function closeSearch(): void
+    {
+        $this->search = null;
+        ($this->invalidate)();
+    }
+
+    /**
+     * Modal keyboard handling for the search box (driven by the global input
+     * path): Esc closes, Up/Down move over hit rows only (headers skipped),
+     * Enter picks the selected hit, everything else edits the query.
+     */
+    public function handleSearchInput(string $keys, Keybindings $kb): void
+    {
+        $search = $this->search;
+        if (null === $search) {
+            return;
+        }
+        if ($kb->matches($keys, 'select_cancel')) {
+            ($search->onClose)();
+
+            return;
+        }
+        if ($kb->matches($keys, 'accept_completion')) { // Enter
+            $hit = $search->rows[$search->selected]->hit ?? null;
+            if (null !== $hit) {
+                ($search->onPick)($hit);
+            }
+
+            return;
+        }
+        if ($kb->matches($keys, 'cursor_up')) {
+            $search->selected = $this->stepHit($search, -1);
+            ($this->invalidate)();
+
+            return;
+        }
+        if ($kb->matches($keys, 'cursor_down')) {
+            $search->selected = $this->stepHit($search, 1);
+            ($this->invalidate)();
+
+            return;
+        }
+        if ($kb->matches($keys, 'delete_char_backward')) {
+            if ($search->query->backspace()) {
+                ($search->onQuery)($search->query->value());
+            }
+
+            return;
+        }
+        if ($search->query->insert($keys)) {
+            ($search->onQuery)($search->query->value());
+        }
+    }
+
+    /**
+     * A left-click while the search modal is open: on a hit row it picks it,
+     * anywhere else it closes. Returns false when the modal is not open.
+     */
+    public function searchClickAt(int $relRow, int $relCol): bool
+    {
+        $search = $this->search;
+        if (null === $search) {
+            return false;
+        }
+        $index = $this->searchItemAt($relRow, $relCol);
+        $hit = null === $index ? null : $search->rows[$index]->hit ?? null;
+        if (null !== $hit) {
+            ($search->onPick)($hit);
+        } else {
+            ($search->onClose)();
+        }
+
+        return true;
+    }
+
+    /** Highlight the search hit row under the pointer; returns whether it changed. */
+    public function searchHoverAt(int $relRow, int $relCol): bool
+    {
+        $search = $this->search;
+        if (null === $search) {
+            return false;
+        }
+        $index = $this->searchItemAt($relRow, $relCol);
+        if (null !== $index && !$search->rows[$index]->isHeader() && $index !== $search->selected) {
+            $search->selected = $index;
+            ($this->invalidate)();
+
+            return true;
+        }
+
+        return false;
     }
 
     /**
@@ -221,6 +355,54 @@ final class OverlayHost
     }
 
     /**
+     * The first hit-row index at or after $from, else the first hit, else $from.
+     *
+     * @param list<SearchRow> $rows
+     */
+    private function firstHitAtOrAfter(array $rows, int $from): int
+    {
+        if (isset($rows[$from]) && !$rows[$from]->isHeader()) {
+            return $from;
+        }
+        foreach ($rows as $i => $row) {
+            if (!$row->isHeader()) {
+                return $i;
+            }
+        }
+
+        return $from;
+    }
+
+    /** Move the selection $dir hit rows, wrapping and skipping headers. */
+    private function stepHit(SearchModalState $search, int $dir): int
+    {
+        $count = \count($search->rows);
+        for ($step = 1; $step <= $count; ++$step) {
+            $i = ((($search->selected + ($dir * $step)) % $count) + $count) % $count;
+            if (!$search->rows[$i]->isHeader()) {
+                return $i;
+            }
+        }
+
+        return $search->selected;
+    }
+
+    /** Absolute search-row index at the given relative cell, or null if outside its rows. */
+    private function searchItemAt(int $relRow, int $relCol): ?int
+    {
+        $box = $this->searchBox;
+        if (null === $box || $relCol < $box['col'] || $relCol >= ($box['col'] + $box['width'])) {
+            return null;
+        }
+        $i = $relRow - ($box['startRow'] + 2); // rows `startRow`, `startRow+1` are the title and query
+        if ($i < 0 || $i >= $box['count']) {
+            return null;
+        }
+
+        return $box['windowStart'] + $i;
+    }
+
+    /**
      * Composite the open overlay and/or prompt over the rendered editor
      * lines, recording the overlay's box for mouse hit-testing.
      *
@@ -233,6 +415,27 @@ final class OverlayHost
         $this->overlayBox = null;
         if (null !== $this->overlay) {
             $this->overlayBox = EditorRenderer::listOverlay($lines, $columns, $rows, $this->overlay, $this->palette);
+        }
+
+        $this->searchBox = null;
+        $search = $this->search;
+        if (null !== $search) {
+            $rowModels = array_map(static fn (SearchRow $r): array => [
+                'header' => $r->header?->title(),
+                'label' => $r->hit?->label ?? '',
+                'detail' => $r->hit?->detail ?? '',
+            ], $search->rows);
+            $this->searchBox = EditorRenderer::searchOverlay(
+                $lines,
+                $columns,
+                $rows,
+                $search->title,
+                $search->query->value(),
+                $focused,
+                $rowModels,
+                $search->selected,
+                $this->palette,
+            );
         }
 
         if (null !== $this->prompt) {

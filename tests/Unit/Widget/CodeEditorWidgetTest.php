@@ -5,6 +5,9 @@ declare(strict_types=1);
 namespace Porta\Tests\Unit\Widget;
 
 use PHPUnit\Framework\TestCase;
+use Porta\Search\Everywhere\SearchCategory;
+use Porta\Search\Everywhere\SearchHit;
+use Porta\Search\Everywhere\SearchRow;
 use Porta\Widget\BufferCallbacks;
 use Porta\Widget\CodeEditorWidget;
 use Porta\Widget\CompletionCallbacks;
@@ -555,6 +558,71 @@ final class CodeEditorWidgetTest extends TestCase
 
         $editor->handleInput("\x1b");
         $this->assertFalse($editor->isOverlayOpen());
+    }
+
+    /** @return list<SearchRow> */
+    private function searchRows(): array
+    {
+        return [
+            SearchRow::header(SearchCategory::Files),
+            SearchRow::hit(new SearchHit(SearchCategory::Files, 'alpha.php', 'src', static fn () => null)),
+            SearchRow::hit(new SearchHit(SearchCategory::Files, 'beta.php', 'src', static fn () => null)),
+        ];
+    }
+
+    public function testSearchOverlayKeyboardPassThrough(): void
+    {
+        $editor = $this->editor();
+        $picked = null;
+        $editor->openSearch(
+            'Search Everywhere',
+            static fn () => null,
+            function (SearchHit $h) use (&$picked): void {
+                $picked = $h->label;
+            },
+            static fn () => null,
+        );
+        $this->assertTrue($editor->isSearchOverlayOpen());
+        $editor->setSearchRows($this->searchRows());
+
+        $rendered = $editor->render(new RenderContext(80, 20));
+        $this->assertStringContainsString('Search Everywhere', implode("\n", $rendered));
+        $this->assertExactWidth($rendered, 80);
+
+        $editor->handleSearchOverlayInput("\x1b[B"); // down → beta.php
+        $editor->handleSearchOverlayInput("\r"); // pick
+        $this->assertSame('beta.php', $picked);
+
+        $editor->closeSearch();
+        $this->assertFalse($editor->isSearchOverlayOpen());
+    }
+
+    public function testSearchOverlayMouseClickPicksAndHoverSelects(): void
+    {
+        $editor = $this->editor();
+        $picked = null;
+        $editor->openSearch(
+            'Search',
+            static fn () => null,
+            function (SearchHit $h) use (&$picked): void {
+                $picked = $h->label;
+            },
+            static fn () => null,
+        );
+        $editor->setSearchRows($this->searchRows());
+        $editor->render(new RenderContext(80, 20));
+
+        // Hover finds a hit row (the search branch of handlePopupHover); clicking
+        // it picks that hit (the search branch of handlePopupClick).
+        $hitRow = -1;
+        for ($row = 0; $row < 20 && $hitRow < 0; ++$row) {
+            if ($editor->handlePopupHover($row, 40)) {
+                $hitRow = $row;
+            }
+        }
+        $this->assertGreaterThanOrEqual(0, $hitRow);
+        $this->assertTrue($editor->handlePopupClick($hitRow, 40));
+        $this->assertNotNull($picked);
     }
 
     private function overlayEditor(\ArrayObject $sink): CodeEditorWidget

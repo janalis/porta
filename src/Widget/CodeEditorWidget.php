@@ -21,6 +21,8 @@ use Porta\Editor\MultiCaret;
 use Porta\Highlight\CodeHighlighter;
 use Porta\Highlight\DarkTerminalTheme;
 use Porta\Input\TextInput;
+use Porta\Search\Everywhere\SearchOverlay;
+use Porta\Search\Everywhere\SearchRow;
 use Porta\Support\AnsiText;
 use Porta\Support\IntMath;
 use Porta\Support\ProjectPaths;
@@ -52,7 +54,7 @@ use Tempest\Highlight\TerminalTheme;
  * IDE-style code editor: line-number gutter, syntax highlighting,
  * vertical + horizontal scrolling, LSP diagnostics and a completion popup.
  */
-final class CodeEditorWidget extends AbstractWidget implements FocusableInterface, LtrPane, MenuOverlayHost, VerticallyExpandableInterface
+final class CodeEditorWidget extends AbstractWidget implements FocusableInterface, LtrPane, MenuOverlayHost, SearchOverlay, VerticallyExpandableInterface
 {
     use BracketedPasteTrait;
     use FillsPaneTrait;
@@ -308,6 +310,33 @@ final class CodeEditorWidget extends AbstractWidget implements FocusableInterfac
     public function isOverlayOpen(): bool
     {
         return $this->overlayHost->isListOpen();
+    }
+
+    public function openSearch(string $title, \Closure $onQuery, \Closure $onPick, \Closure $onClose): void
+    {
+        $this->overlayHost->openSearch($title, $onQuery, $onPick, $onClose);
+    }
+
+    /** @param list<SearchRow> $rows */
+    public function setSearchRows(array $rows): void
+    {
+        $this->overlayHost->setSearchRows($rows);
+    }
+
+    public function closeSearch(): void
+    {
+        $this->overlayHost->closeSearch();
+    }
+
+    public function isSearchOverlayOpen(): bool
+    {
+        return $this->overlayHost->isSearchOpen();
+    }
+
+    /** Feed one key event to the open search modal (from the global input path). */
+    public function handleSearchOverlayInput(string $data): void
+    {
+        $this->overlayHost->handleSearchInput($data, $this->getKeybindings());
     }
 
     public function setInlineDiagnostics(bool $enabled): void
@@ -678,6 +707,9 @@ final class CodeEditorWidget extends AbstractWidget implements FocusableInterfac
      */
     public function handlePopupClick(int $relRow, int $relCol): bool
     {
+        if ($this->overlayHost->isSearchOpen()) {
+            return $this->overlayHost->searchClickAt($relRow, $relCol);
+        }
         if ($this->overlayHost->isListOpen()) {
             return $this->overlayHost->clickAt($relRow, $relCol);
         }
@@ -692,6 +724,9 @@ final class CodeEditorWidget extends AbstractWidget implements FocusableInterfac
      */
     public function handlePopupHover(int $relRow, int $relCol): bool
     {
+        if ($this->overlayHost->isSearchOpen()) {
+            return $this->overlayHost->searchHoverAt($relRow, $relCol);
+        }
         if ($this->overlayHost->isListOpen()) {
             return $this->overlayHost->hoverAt($relRow, $relCol);
         }
