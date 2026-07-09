@@ -225,6 +225,36 @@ final class ResultsPanelWidgetTest extends TestCase
         $this->assertStringContainsString("\x1b[48;5;238m", implode('', $lines), 'unfocused selection background');
     }
 
+    public function testSearchResultRowHighlightsMatchRangesWithoutChangingWidth(): void
+    {
+        $panel = new ResultsPanelWidget();
+        $panel->setFocused(true);
+        $panel->open('Find in Project', ResultsPanelFields::fullSearch());
+        $panel->setResults([
+            ['path' => 'src/A.php', 'line' => 4, 'text' => 'the needle here', 'ranges' => [['start' => 4, 'length' => 6]]],
+        ]);
+
+        $lines = $panel->render(new RenderContext(60, 12));
+        foreach ($lines as $line) {
+            $this->assertSame(60, AnsiUtils::visibleWidth($line), 'the highlight only inserts zero-width SGR');
+        }
+        $body = implode("\n", $lines);
+        $this->assertStringContainsString("\x1b[48;5;58m", $body, 'the matched span carries the SearchBg background');
+        $this->assertStringContainsString('needle', AnsiUtils::stripAnsiCodes($body), 'the match text is still shown');
+    }
+
+    public function testResultsWithoutRangesRenderUnhighlighted(): void
+    {
+        // Non-search modes provide no `ranges` key → no SearchBg, no crash.
+        $panel = new ResultsPanelWidget();
+        $panel->setFocused(true);
+        $panel->open('Usages', ResultsPanelFields::resultsOnly());
+        $panel->setResults($this->results(2));
+
+        $body = implode('', $panel->render(new RenderContext(60, 12)));
+        $this->assertStringNotContainsString("\x1b[48;5;58m", $body, 'no highlight without ranges');
+    }
+
     public function testOnInputHookConsumes(): void
     {
         $panel = new ResultsPanelWidget();

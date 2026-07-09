@@ -117,6 +117,35 @@ final class ProjectSearchTest extends TestCase
         $this->assertSame(['src/A.php', 'src/B.php'], $paths);
     }
 
+    /** @return list<array{start: int, length: int}> the ranges of the sole result */
+    private function rangesOf(bool $phpFallback, string $content, string $query, bool $regex = false): array
+    {
+        $project = new TempProject(['a.txt' => $content."\n"]);
+        if ($phpFallback) {
+            putenv('PATH=/nonexistent');
+        }
+        $results = $this->await(new ProjectSearch($project->dir), $query, regex: $regex);
+        $this->assertCount(1, $results);
+
+        return $results[0]['ranges'];
+    }
+
+    public function testGrepMatchRangesAreDisplayColumns(): void
+    {
+        // "the needle here" → 'needle' starts at column 4, length 6.
+        $this->assertSame([['start' => 4, 'length' => 6]], $this->rangesOf(false, 'the needle here', 'needle'));
+        // Regex matches map the same way.
+        $this->assertSame([['start' => 4, 'length' => 6]], $this->rangesOf(false, 'the needle here', 'ne+dle', regex: true));
+        // A multibyte prefix ("café " is 6 bytes but 5 display columns) → start 5.
+        $this->assertSame([['start' => 5, 'length' => 6]], $this->rangesOf(false, 'café needle x', 'needle'));
+    }
+
+    public function testPhpFallbackMatchRangesMatchGrep(): void
+    {
+        $this->assertSame([['start' => 4, 'length' => 6]], $this->rangesOf(true, 'the needle here', 'needle'));
+        $this->assertSame([['start' => 5, 'length' => 6]], $this->rangesOf(true, 'café needle x', 'needle'));
+    }
+
     public function testEmptyQueryReturnsNothing(): void
     {
         $project = $this->fixtures();
@@ -225,12 +254,27 @@ final class ProjectSearchTest extends TestCase
         $search = new ProjectSearch('/tmp');
         $parse = new \ReflectionMethod($search, 'parse');
 
-        $results = $parse->invoke($search, "src/A.php:3:match\ngarbage without line number\n\n./src/B.php:7:other\n");
+        $results = $parse->invoke($search, "src/A.php:3:a match here\ngarbage without line number\n\n./src/B.php:7:no hit\n", '/match/');
 
         $this->assertSame(
-            [['path' => 'src/A.php', 'line' => 2, 'text' => 'match'], ['path' => 'src/B.php', 'line' => 6, 'text' => 'other']],
+            [
+                ['path' => 'src/A.php', 'line' => 2, 'text' => 'a match here', 'ranges' => [['start' => 2, 'length' => 5]]],
+                ['path' => 'src/B.php', 'line' => 6, 'text' => 'no hit', 'ranges' => []],
+            ],
             $results,
         );
+    }
+
+    public function testMatchRangesHandleEmptyLinesAndZeroWidthMatches(): void
+    {
+        $search = new ProjectSearch('/tmp');
+        $ranges = new \ReflectionMethod($search, 'rangesFor');
+
+        // An empty (whitespace-only, trimmed) line yields no ranges.
+        $this->assertSame([], $ranges->invoke($search, '', '/x/'));
+        // A pattern that can match empty (`l*`) skips its zero-width matches but
+        // keeps the real one ("ll" at column 2).
+        $this->assertSame([['start' => 2, 'length' => 2]], $ranges->invoke($search, 'hello', '/l*/'));
     }
 
     public function testCancelStopsInFlightSearch(): void

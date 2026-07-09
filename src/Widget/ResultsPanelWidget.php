@@ -14,6 +14,7 @@ use Porta\Ui\Role;
 use Porta\Ui\Style;
 use Porta\Ui\TextField;
 use Porta\Widget\Render\HeaderRenderer;
+use Porta\Widget\Render\LineDecorator;
 use Symfony\Component\Tui\Ansi\AnsiUtils;
 use Symfony\Component\Tui\Input\Key;
 use Symfony\Component\Tui\Render\RenderContext;
@@ -50,7 +51,7 @@ final class ResultsPanelWidget extends OverlayWidget implements FocusableInterfa
     /** @var array{regex: bool, case: bool, word: bool} search toggles shown in the header */
     private array $options = ['regex' => false, 'case' => false, 'word' => false];
 
-    /** @var list<array{path: string, line: int, text: string}> */
+    /** @var list<array{path: string, line: int, text: string, ranges?: list<array{start: int, length: int}>}> ranges (search mode only) are display-column match spans */
     private array $results = [];
 
     /** @var (callable(string): void)|null */
@@ -124,7 +125,7 @@ final class ResultsPanelWidget extends OverlayWidget implements FocusableInterfa
         $this->invalidate();
     }
 
-    /** @param list<array{path: string, line: int, text: string}> $results */
+    /** @param list<array{path: string, line: int, text: string, ranges?: list<array{start: int, length: int}>}> $results */
     public function setResults(array $results): void
     {
         $this->results = $results;
@@ -291,12 +292,20 @@ final class ResultsPanelWidget extends OverlayWidget implements FocusableInterfa
 
         $scroll = $this->list->follow($this->visibleRows);
 
+        $searchBg = $this->palette->of(Role::SearchBg);
         foreach (\array_slice($this->results, $scroll, $this->visibleRows) as $i => $result) {
             $isSelected = $this->list->isSelected($scroll + $i);
             $bg = $isSelected ? ($this->focused ? $this->palette->of(Role::SelectedRow) : $this->palette->of(Role::InlayPopupBg)) : $this->palette->of(Role::Toolbar);
             $location = $result['path'].':'.($result['line'] + 1);
+            $prefixWidth = 1 + mb_strwidth($location) + 2; // ` ` + `path:line` + `  `
             $text = ' '.$this->palette->of(Role::TabAccent).$location."\x1b[39m".'  '.$result['text'];
-            $lines[] = $bg.AnsiUtils::truncateToWidth($text, $columns, '…', pad: true)."\x1b[0m";
+            $line = $bg.AnsiUtils::truncateToWidth($text, $columns, '…', pad: true)."\x1b[0m";
+            // Highlight each match span; close with the row bg so the tail keeps its colour.
+            foreach ($result['ranges'] ?? [] as $range) {
+                $start = $prefixWidth + $range['start'];
+                $line = LineDecorator::apply($line, $start, $start + $range['length'], $searchBg, $bg, $searchBg);
+            }
+            $lines[] = $line;
         }
 
         if ([] === $this->results && !$this->searching && '' !== $this->query->value()) {

@@ -27,7 +27,7 @@ final class ProjectSearchController
     private string $lastSearchQuery = '';
     /** grep path relative to the project root; `.` is the whole project. */
     private string $scope = '.';
-    /** @var list<array{path: string, line: int, text: string}> */
+    /** @var list<array{path: string, line: int, text: string, ranges: list<array{start: int, length: int}>}> */
     private array $lastSearchResults = [];
 
     /**

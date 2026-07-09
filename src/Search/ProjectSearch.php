@@ -27,8 +27,8 @@ final class ProjectSearch
     ) {}
 
     /**
-     * @param callable(list<array{path: string, line: int, text: string}>): void $onDone
-     * @param string                                                             $scope grep path relative to the project root; `.` searches the whole project
+     * @param callable(list<array{path: string, line: int, text: string, ranges: list<array{start: int, length: int}>}>): void $onDone
+     * @param string                                                                                                            $scope grep path relative to the project root; `.` searches the whole project
      */
     public function search(string $query, callable $onDone, SearchOptions $options = new SearchOptions(), string $scope = '.'): void
     {
@@ -38,8 +38,9 @@ final class ProjectSearch
 
             return;
         }
+        $pattern = $this->pattern($query, $options);
         // A malformed regex yields no results rather than a crash.
-        if ($options->regex && false === @preg_match($this->pattern($query, $options), '')) {
+        if ($options->regex && false === @preg_match($pattern, '')) {
             $onDone([]);
 
             return;
@@ -68,11 +69,11 @@ final class ProjectSearch
 
         $process = new AsyncProcess($command, $this->rootDir);
         $started = $process->start(
-            onExit: fn (int $code, string $out) => $this->finish($out, $onDone),
-            onChunk: function () use ($process, $onDone): void {
+            onExit: fn (int $code, string $out) => $this->finish($out, $onDone, $pattern),
+            onChunk: function () use ($process, $onDone, $pattern): void {
                 if (substr_count($process->output(), "\n") > self::MAX_RESULTS) {
                     // Enough results; stop early
-                    $this->finish($process->output(), $onDone);
+                    $this->finish($process->output(), $onDone, $pattern);
                 }
             },
         );
@@ -96,16 +97,16 @@ final class ProjectSearch
         $this->process = null;
     }
 
-    /** @param callable(list<array{path: string, line: int, text: string}>): void $onDone */
-    private function finish(string $output, callable $onDone): void
+    /** @param callable(list<array{path: string, line: int, text: string, ranges: list<array{start: int, length: int}>}>): void $onDone */
+    private function finish(string $output, callable $onDone, string $pattern): void
     {
-        $results = $this->parse($output);
+        $results = $this->parse($output, $pattern);
         $this->cancel();
         $onDone($results);
     }
 
-    /** @return list<array{path: string, line: int, text: string}> */
-    private function parse(string $output): array
+    /** @return list<array{path: string, line: int, text: string, ranges: list<array{start: int, length: int}>}> */
+    private function parse(string $output, string $pattern): array
     {
         $results = [];
         foreach (explode("\n", $output) as $line) {
@@ -113,7 +114,8 @@ final class ProjectSearch
             if ('' === $line || !preg_match('/^(?:\.\/)?(.+?):(\d+):(.*)$/', $line, $m)) {
                 continue;
             }
-            $results[] = ['path' => $m[1], 'line' => (int) $m[2] - 1, 'text' => trim($m[3])];
+            $text = trim($m[3]);
+            $results[] = ['path' => $m[1], 'line' => (int) $m[2] - 1, 'text' => $text, 'ranges' => $this->rangesFor($text, $pattern)];
             if (\count($results) >= self::MAX_RESULTS) {
                 break;
             }
@@ -122,7 +124,32 @@ final class ProjectSearch
         return $results;
     }
 
-    /** @return list<array{path: string, line: int, text: string}> */
+    /**
+     * Locate every match of $pattern within a result line, as display-column
+     * spans (so the panel can highlight them). Byte offsets from
+     * `PREG_OFFSET_CAPTURE` are converted to display columns via `mb_strwidth`.
+     *
+     * @return list<array{start: int, length: int}>
+     */
+    private function rangesFor(string $text, string $pattern): array
+    {
+        $matches = [];
+        if ('' === $text || false === @preg_match_all($pattern, $text, $matches, \PREG_OFFSET_CAPTURE)) {
+            return [];
+        }
+        $ranges = [];
+        foreach ($matches[0] as $hit) {
+            $match = $hit[0];
+            if ('' === $match) {
+                continue; // a zero-width match highlights nothing
+            }
+            $ranges[] = ['start' => mb_strwidth(substr($text, 0, (int) $hit[1])), 'length' => mb_strwidth($match)];
+        }
+
+        return $ranges;
+    }
+
+    /** @return list<array{path: string, line: int, text: string, ranges: list<array{start: int, length: int}>}> */
     private function searchWithPhp(string $query, SearchOptions $options, string $scope = '.'): array
     {
         $pattern = $this->pattern($query, $options);
@@ -146,7 +173,8 @@ final class ProjectSearch
             $rel = $prefix.$file->getRelativePathname();
             foreach (explode("\n", $content) as $lineIndex => $line) {
                 if (1 === preg_match($pattern, $line)) {
-                    $results[] = ['path' => $rel, 'line' => $lineIndex, 'text' => trim($line)];
+                    $text = trim($line);
+                    $results[] = ['path' => $rel, 'line' => $lineIndex, 'text' => $text, 'ranges' => $this->rangesFor($text, $pattern)];
                     if (\count($results) >= self::MAX_RESULTS) {
                         break 2;
                     }
