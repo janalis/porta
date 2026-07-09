@@ -111,6 +111,14 @@ final class ProjectSearchTest extends TestCase
         $this->assertSame(['src/A.php', 'src/sub/B.php'], $this->scopedPaths(phpFallback: true));
     }
 
+    public function testMatchOffsetsReturnsByteOffsetsOfEachHit(): void
+    {
+        $search = new ProjectSearch(new TempProject([])->dir);
+
+        $this->assertSame([0, 12], $search->matchOffsets('needle here needle', 'needle', new SearchOptions()));
+        $this->assertSame([], $search->matchOffsets('', 'needle', new SearchOptions()), 'an empty line has no offsets');
+    }
+
     public function testEmptyScopeListMatchesNothing(): void
     {
         // An empty scope (e.g. Open Files with nothing open) short-circuits to no results.

@@ -6,6 +6,7 @@ namespace Porta\Tests\Unit\Search;
 
 use PHPUnit\Framework\TestCase;
 use Porta\Search\SearchOptions;
+use Porta\Search\TokenScope;
 
 final class SearchOptionsTest extends TestCase
 {
@@ -17,7 +18,8 @@ final class SearchOptionsTest extends TestCase
         $this->assertFalse($options->caseSensitive);
         $this->assertFalse($options->wholeWord);
         $this->assertFalse($options->preserveCase);
-        $this->assertSame(['regex' => false, 'case' => false, 'word' => false, 'preserve' => false], $options->panelState());
+        $this->assertSame(TokenScope::Any, $options->tokenScope);
+        $this->assertSame(['regex' => false, 'case' => false, 'word' => false, 'preserve' => false, 'tokens' => 'any'], $options->panelState());
     }
 
     public function testToggledFlipsTheKeyedFlagAndLeavesTheRest(): void
@@ -34,6 +36,11 @@ final class SearchOptionsTest extends TestCase
 
         // Toggling twice returns to off.
         $this->assertFalse(new SearchOptions()->toggled('regex')->toggled('regex')->regex);
+
+        // 'tokens' cycles the three-way token scope: any → in → except → any.
+        $this->assertSame(TokenScope::InCommentsStrings, new SearchOptions()->toggled('tokens')->tokenScope);
+        $this->assertSame(TokenScope::ExceptCommentsStrings, new SearchOptions()->toggled('tokens')->toggled('tokens')->tokenScope);
+        $this->assertSame(TokenScope::Any, new SearchOptions()->toggled('tokens')->toggled('tokens')->toggled('tokens')->tokenScope);
     }
 
     public function testAnUnknownKeyIsANoOp(): void
@@ -44,7 +51,7 @@ final class SearchOptionsTest extends TestCase
 
     public function testPanelStateMapsFieldsToTheShortKeys(): void
     {
-        $options = new SearchOptions(regex: true, caseSensitive: false, wholeWord: true, preserveCase: true);
-        $this->assertSame(['regex' => true, 'case' => false, 'word' => true, 'preserve' => true], $options->panelState());
+        $options = new SearchOptions(regex: true, caseSensitive: false, wholeWord: true, preserveCase: true, tokenScope: TokenScope::InCommentsStrings);
+        $this->assertSame(['regex' => true, 'case' => false, 'word' => true, 'preserve' => true, 'tokens' => 'in'], $options->panelState());
     }
 }

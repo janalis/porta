@@ -330,6 +330,29 @@ final class ProjectSearch
         return $replacement; // mixed / unknown → leave the replacement as typed
     }
 
+    /**
+     * The byte offsets of every match of $query within a single $line, using the
+     * same matching semantics as {@see search()} — for the language-aware filter
+     * to place each occurrence against the file's comment/string spans.
+     *
+     * @return list<int>
+     */
+    public function matchOffsets(string $line, string $query, SearchOptions $options): array
+    {
+        $matches = [];
+        if ('' === $line || false === @preg_match_all($this->pattern($query, $options), $line, $matches, \PREG_OFFSET_CAPTURE)) {
+            return [];
+        }
+        $offsets = [];
+        foreach ($matches[0] as $hit) {
+            if ('' !== $hit[0]) {
+                $offsets[] = (int) $hit[1];
+            }
+        }
+
+        return $offsets;
+    }
+
     /** Build a PCRE pattern mirroring the grep flags, for the PHP fallback. */
     private function pattern(string $query, SearchOptions $options): string
     {

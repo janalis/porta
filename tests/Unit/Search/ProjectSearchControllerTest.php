@@ -25,9 +25,10 @@ final class ProjectSearchControllerTest extends TestCase
     private function controller(string $rootDir): ProjectSearchController
     {
         $this->panel = new ResultsPanelWidget();
+        $projectSearch = new ProjectSearch($rootDir);
 
         return new ProjectSearchController(
-            new ProjectSearch($rootDir),
+            $projectSearch,
             $this->panel,
             new CodeEditorWidget(),
             new StatusBarWidget(),
@@ -39,6 +40,7 @@ final class ProjectSearchControllerTest extends TestCase
             new \Porta\History\SearchHistoryStore($rootDir),
             new \Porta\History\SearchPrefsStore($rootDir),
             static fn (\Porta\Ui\ScopeKind $kind): array => ['.'],
+            new \Porta\Search\LanguageFilter(new \Porta\Search\TokenClassifier(), $projectSearch, $rootDir),
         );
     }
 

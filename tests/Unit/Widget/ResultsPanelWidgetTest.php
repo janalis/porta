@@ -72,7 +72,7 @@ final class ResultsPanelWidgetTest extends TestCase
         $this->assertSame(['regex', 'case', 'word', 'preserve'], $toggled);
 
         // Header shows the indicators; enabling one highlights it.
-        $panel->setOptions(['regex' => true, 'case' => false, 'word' => false, 'preserve' => false]);
+        $panel->setOptions(['regex' => true, 'case' => false, 'word' => false, 'preserve' => false, 'tokens' => 'any']);
         $header = $panel->render(new RenderContext(80, 12))[0];
         $plain = AnsiUtils::stripAnsiCodes($header);
         $this->assertStringContainsString('.*', $plain);
@@ -323,6 +323,29 @@ final class ResultsPanelWidgetTest extends TestCase
 
         $plain = AnsiUtils::stripAnsiCodes(implode("\n", $panel->render(new RenderContext(80, 12))));
         $this->assertStringContainsString('Scope: Directory', $plain);
+    }
+
+    public function testTokenScopeTagCyclesAndRenders(): void
+    {
+        $panel = new ResultsPanelWidget();
+        $panel->setFocused(true);
+        $toggled = [];
+        $panel->onToggleOption(function (string $name) use (&$toggled): void {
+            $toggled[] = $name;
+        });
+        $panel->open('Find in Project', ResultsPanelFields::fullSearch());
+        $plain = fn (): string => AnsiUtils::stripAnsiCodes(implode("\n", $panel->render(new RenderContext(120, 12))));
+
+        $this->assertStringContainsString('·"', $plain(), 'the token-scope tag defaults to "any"');
+
+        $panel->handleInput("\x1bt"); // alt+t → request a token-scope cycle
+        $this->assertSame(['tokens'], $toggled);
+
+        // The controller reflects the cycled state back; the tag glyph tracks it.
+        $panel->setOptions(['regex' => false, 'case' => false, 'word' => false, 'preserve' => false, 'tokens' => 'in']);
+        $this->assertStringContainsString('i"', $plain(), 'in-comments/strings glyph');
+        $panel->setOptions(['regex' => false, 'case' => false, 'word' => false, 'preserve' => false, 'tokens' => 'except']);
+        $this->assertStringContainsString('x"', $plain(), 'except-comments/strings glyph');
     }
 
     public function testContextLinesExpandCollapseAndAreInert(): void

@@ -59,8 +59,10 @@ use Porta\Search\Everywhere\SearchEverywhereController;
 use Porta\Search\Everywhere\TextSource;
 use Porta\Search\Everywhere\WorkspaceSymbolSource;
 use Porta\Search\FileIndex;
+use Porta\Search\LanguageFilter;
 use Porta\Search\ProjectSearch;
 use Porta\Search\ProjectSearchController;
+use Porta\Search\TokenClassifier;
 use Porta\Settings\SettingsViewController;
 use Porta\Support\AsyncProcess;
 use Porta\Support\BrowserOpener;
@@ -979,8 +981,9 @@ final class Ide
         $this->findBar = $this->service(FindBarWidget::class);
         $this->resultsPanel = $this->service(ResultsPanelWidget::class);
         $this->terminalPanel = $this->service(TerminalPanelWidget::class);
+        $projectSearch = new ProjectSearch($this->rootDir);
         $this->projectSearchController = new ProjectSearchController(
-            new ProjectSearch($this->rootDir),
+            $projectSearch,
             $this->resultsPanel,
             $this->editor,
             $this->statusBar,
@@ -992,6 +995,7 @@ final class Ide
             new SearchHistoryStore($this->rootDir),
             new SearchPrefsStore($this->rootDir),
             fn (ScopeKind $kind): array => $this->resolveScopePath($kind),
+            new LanguageFilter(new TokenClassifier(), $projectSearch, $this->rootDir),
         );
         $this->commandPalette = $this->service(CommandPalette::class);
         $this->panels = $this->service(PanelManager::class);

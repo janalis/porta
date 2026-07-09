@@ -53,6 +53,7 @@ final class ProjectSearchController
         private readonly SearchHistoryStore $history,
         private readonly SearchPrefsStore $prefs,
         private readonly \Closure $resolveScope,
+        private readonly LanguageFilter $languageFilter,
     ) {
         $this->searchOptions = new SearchOptions();
     }
@@ -295,7 +296,10 @@ final class ProjectSearchController
     {
         $this->projectSearch->search(
             $query,
-            function (array $results): void {
+            function (array $results) use ($query): void {
+                // A language-aware token scope narrows the grep hits to (or away
+                // from) comments/strings before they reach the panel.
+                $results = $this->languageFilter->apply($results, $query, $this->searchOptions);
                 $this->lastSearchResults = $results;
                 if ($this->resultsPanel->isOpen()) {
                     $this->resultsPanel->setResults($results);

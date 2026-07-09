@@ -743,6 +743,41 @@ final class IdeEdgeCasesTest extends TestCase
         $this->addToAssertionCount(1);
     }
 
+    public function testFindInProjectInCommentsStringsScopeNarrowsMatches(): void
+    {
+        $project = new TempProject(['src/A.php' => "<?php\n\$needle = 1;\n// needle here\n"]);
+        $panelText = static fn ($tui): string => AnsiUtils::stripAnsiCodes(implode("\n", $tui->getById('results')->render(new \Symfony\Component\Tui\Render\RenderContext(160, 16))));
+
+        $this->runIde(
+            $project,
+            $project->path('src/A.php'),
+            [
+                200 => static function ($tui): void {
+                    $tui->handleInput("\x1b[102;6u"); // ctrl+shift+f
+                    foreach (str_split('needle') as $ch) {
+                        $tui->handleInput($ch);
+                    }
+                },
+                600 => function ($tui) use ($panelText): void {
+                    $tui->tick();
+                    $panel = $panelText($tui);
+                    $this->assertStringContainsString('$needle = 1;', $panel, 'the code occurrence matches first');
+                    $this->assertStringContainsString('// needle here', $panel);
+                    $tui->handleInput("\x1bt"); // alt+t → in comments/strings
+                },
+                1000 => function ($tui) use ($panelText): void {
+                    $tui->tick();
+                    $panel = $panelText($tui);
+                    $this->assertStringContainsString('// needle here', $panel, 'the comment match is kept');
+                    $this->assertStringNotContainsString('$needle = 1;', $panel, 'the code match is filtered out');
+                },
+            ],
+            1.5,
+        );
+
+        $this->addToAssertionCount(1);
+    }
+
     public function testFindInProjectContextLinesFromOpenBuffer(): void
     {
         $project = new TempProject(['src/A.php' => "<?php\n\$x = 1;\n// tok here\n\$y = 2;\n"]);

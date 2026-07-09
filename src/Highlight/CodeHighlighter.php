@@ -106,18 +106,24 @@ final class CodeHighlighter
 
     public function setFile(string $path): void
     {
-        $name = strtolower(basename($path));
-        $ext = strtolower(pathinfo($path, \PATHINFO_EXTENSION));
-
-        $this->language = match (true) {
-            'dockerfile' === $name => 'dockerfile',
-            str_starts_with($name, '.env') => 'dotenv',
-            default => self::EXTENSION_MAP[$ext] ?? null,
-        };
+        $this->language = self::languageFor($path);
         $this->cacheVersion = -1;
         $this->cache = [];
         $this->lastRawLines = null;
         $this->staleEdits = 0;
+    }
+
+    /** The Tempest highlighting language for a file path, or null when unknown. */
+    public static function languageFor(string $path): ?string
+    {
+        $name = strtolower(basename($path));
+        $ext = strtolower(pathinfo($path, \PATHINFO_EXTENSION));
+
+        return match (true) {
+            'dockerfile' === $name => 'dockerfile',
+            str_starts_with($name, '.env') => 'dotenv',
+            default => self::EXTENSION_MAP[$ext] ?? null,
+        };
     }
 
     public function getLanguage(): ?string
