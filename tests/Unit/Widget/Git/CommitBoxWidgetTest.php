@@ -9,6 +9,7 @@ use Porta\I18n\Translator;
 use Porta\Widget\Git\CommitBoxWidget;
 use Symfony\Component\Tui\Ansi\AnsiUtils;
 use Symfony\Component\Tui\Render\RenderContext;
+use Symfony\Component\Tui\Style\CursorShape;
 
 final class CommitBoxWidgetTest extends TestCase
 {
@@ -200,5 +201,21 @@ final class CommitBoxWidgetTest extends TestCase
 
         $widget->handleInput("\x1b");
         $this->assertTrue($exited);
+    }
+
+    public function testAmendPrefillOfAMultiLineBodyKeepsTheCaretVisible(): void
+    {
+        $widget = $this->widget();
+        $widget->handleInput("\t"); // focus the description field (activeField = 1)
+        // Amend prefills the last commit; a 4+-line body used to park the caret
+        // below the 3-row window and drop its cursor marker (frozen UI on backspace).
+        $widget->setMessage("summary\n\nl1\nl2\nl3\nl4\nl5");
+
+        $lines = $widget->render(new RenderContext(44, 10));
+        $marker = AnsiUtils::cursorMarker(CursorShape::Bar);
+        $markers = array_sum(array_map(fn (string $l): int => substr_count($l, $marker), $lines));
+
+        $this->assertSame(1, $markers, 'the description caret marker stays inside the visible window');
+        $this->assertStringContainsString('l5', $this->plain($widget), 'the window scrolled to the caret line');
     }
 }

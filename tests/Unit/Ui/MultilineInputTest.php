@@ -7,6 +7,7 @@ namespace Porta\Tests\Unit\Ui;
 use PHPUnit\Framework\TestCase;
 use Porta\Ui\MultilineInput;
 use Symfony\Component\Tui\Ansi\AnsiUtils;
+use Symfony\Component\Tui\Style\CursorShape;
 
 final class MultilineInputTest extends TestCase
 {
@@ -103,11 +104,52 @@ final class MultilineInputTest extends TestCase
         $input = new MultilineInput();
         $this->type($input, 'ab', "\r", 'cd', "\x1b[D");
 
-        $plain = $input->render(10, cursor: false);
+        $plain = $input->render(10, 3, cursor: false);
         $this->assertSame(['ab', 'cd'], $plain);
 
-        $withCursor = $input->render(10, cursor: true);
+        $withCursor = $input->render(10, 3, cursor: true);
         $this->assertStringContainsString('c', AnsiUtils::stripAnsiCodes($withCursor[1]));
         $this->assertNotSame('cd', $withCursor[1], 'cursor marker embedded in the caret line');
+    }
+
+    private function markers(string ...$lines): int
+    {
+        return array_sum(array_map(fn (string $l): int => substr_count($l, AnsiUtils::cursorMarker(CursorShape::Bar)), $lines));
+    }
+
+    public function testRenderScrollsToKeepTheCaretLineVisible(): void
+    {
+        $input = new MultilineInput();
+        $this->type($input, 'l1', "\r", 'l2', "\r", 'l3', "\r", 'l4', "\r", 'l5'); // caret on line 4 (0-based)
+
+        $window = $input->render(10, 3, cursor: true);
+
+        $this->assertCount(3, $window, 'only the 3-row window is returned');
+        $this->assertSame(['l3', 'l4', 'l5'], array_map(AnsiUtils::stripAnsiCodes(...), $window), 'scrolled so the caret line shows');
+        $this->assertSame(1, $this->markers(...$window), 'the caret marker is inside the window');
+        $this->assertNotSame('l5', $window[2], 'the marker is on the caret (last) line');
+    }
+
+    public function testRenderKeepsTheTopWhenTheCaretIsHigh(): void
+    {
+        $input = new MultilineInput();
+        $this->type($input, 'l1', "\r", 'l2', "\r", 'l3', "\r", 'l4');
+        $this->type($input, "\x1b[A", "\x1b[A", "\x1b[A"); // caret back up to line 0
+
+        $window = $input->render(10, 3, cursor: true);
+
+        $this->assertSame(['l1', 'l2', 'l3'], array_map(AnsiUtils::stripAnsiCodes(...), $window), 'window anchored at the top');
+        $this->assertSame(1, $this->markers(...$window), 'the caret marker is still shown');
+        $this->assertNotSame('l1', $window[0], 'the marker is on the caret (first) line');
+    }
+
+    public function testRenderEmptyWithCursorReturnsOneMarkedLine(): void
+    {
+        $input = new MultilineInput();
+
+        $window = $input->render(10, 3, cursor: true);
+
+        $this->assertCount(1, $window);
+        $this->assertSame(1, $this->markers(...$window), 'the caret marker shows on the empty line');
     }
 }

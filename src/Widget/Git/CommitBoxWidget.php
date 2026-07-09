@@ -247,7 +247,7 @@ final class CommitBoxWidget extends AbstractWidget implements FocusableInterface
             : $summary;
         $lines[] = $this->palette->of(Role::RowHighlightBg).AnsiUtils::truncateToWidth($summaryHint, $width, '…', pad: true)."\x1b[0m";
 
-        $descriptionLines = $this->description->render($width - 1, cursor: $focused && 1 === $this->activeField);
+        $descriptionLines = $this->description->render($width - 1, self::DESCRIPTION_ROWS, cursor: $focused && 1 === $this->activeField);
         if ($this->description->isEmpty() && !($focused && 1 === $this->activeField)) {
             $descriptionLines = [$this->palette->of(Role::Dim).$this->translator->trans('Description')."\x1b[0m"];
         }

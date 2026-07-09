@@ -119,15 +119,20 @@ final class MultilineInput
     }
 
     /**
-     * The lines clipped to $width, with a bar cursor marker at the caret when
-     * $cursor is true. Always at least one line.
+     * The visible window of at most $rows lines clipped to $width, scrolled so
+     * the caret line is always shown, with a bar cursor marker at the caret when
+     * $cursor is true. Fewer than $rows lines when the content is shorter; always
+     * at least one line. Scrolling keeps the caret (and its marker) inside the
+     * window, so a caller that renders a fixed row count never drops the cursor.
      *
      * @return list<string>
      */
-    public function render(int $width, bool $cursor): array
+    public function render(int $width, int $rows, bool $cursor): array
     {
+        $top = $this->line < $rows ? 0 : $this->line - $rows + 1;
         $out = [];
-        foreach ($this->lines as $i => $line) {
+        for ($i = $top; $i < min($top + $rows, \count($this->lines)); ++$i) {
+            $line = $this->lines[$i];
             if ($cursor && $i === $this->line) {
                 $line = substr($line, 0, $this->col).AnsiUtils::cursorMarker(CursorShape::Bar).substr($line, $this->col);
             }
