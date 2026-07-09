@@ -587,7 +587,8 @@ final class IdeEdgeCasesTest extends TestCase
                 760 => static function ($tui): void {
                     $tui->tick();
                     $tui->handleInput("\t"); // query → mask
-                    $tui->handleInput("\t"); // mask → replace
+                    $tui->handleInput("\t"); // mask → filter
+                    $tui->handleInput("\t"); // filter → replace
                     foreach (str_split('renamed') as $ch) {
                         $tui->handleInput($ch);
                     }
@@ -786,7 +787,8 @@ final class IdeEdgeCasesTest extends TestCase
                     $tui->tick();
                     $tui->handleInput("\x1bp"); // alt+p → preserve case
                     $tui->handleInput("\t"); // query → mask
-                    $tui->handleInput("\t"); // mask → replace
+                    $tui->handleInput("\t"); // mask → filter
+                    $tui->handleInput("\t"); // filter → replace
                     foreach (str_split('newname') as $ch) {
                         $tui->handleInput($ch);
                     }
@@ -839,6 +841,50 @@ final class IdeEdgeCasesTest extends TestCase
                 },
             ],
             1.4,
+        );
+
+        $this->addToAssertionCount(1);
+    }
+
+    public function testFindInProjectFilterNarrowsLoadedResults(): void
+    {
+        $project = new TempProject([
+            'src/A.php' => "<?php\n// tok here\n",
+            'other/B.php' => "<?php\n// tok here\n",
+        ]);
+        $panelText = static fn ($tui): string => AnsiUtils::stripAnsiCodes(implode("\n", $tui->getById('results')->render(new \Symfony\Component\Tui\Render\RenderContext(160, 16))));
+
+        $this->runIde(
+            $project,
+            $project->path('src/A.php'),
+            [
+                200 => static function ($tui): void {
+                    $tui->handleInput("\x1b[102;6u"); // ctrl+shift+f
+                    foreach (str_split('tok') as $ch) {
+                        $tui->handleInput($ch);
+                    }
+                },
+                600 => function ($tui) use ($panelText): void {
+                    $tui->tick();
+                    $panel = $panelText($tui);
+                    $this->assertStringContainsString('src/A.php', $panel, 'both files match');
+                    $this->assertStringContainsString('other/B.php', $panel);
+                    // Tab query → mask → filter, then narrow to the src/ tree.
+                    $tui->handleInput("\t");
+                    $tui->handleInput("\t");
+                    foreach (str_split('src') as $ch) {
+                        $tui->handleInput($ch);
+                    }
+                },
+                800 => function ($tui) use ($panelText): void {
+                    $tui->tick();
+                    $panel = $panelText($tui);
+                    $this->assertStringContainsString('· 1 shown', $panel, 'filtered count');
+                    $this->assertStringContainsString('src/A.php', $panel);
+                    $this->assertStringNotContainsString('other/B.php', $panel, 'the non-matching file is filtered out');
+                },
+            ],
+            1.1,
         );
 
         $this->addToAssertionCount(1);
@@ -1586,7 +1632,8 @@ final class IdeEdgeCasesTest extends TestCase
                 700 => static function ($tui): void {
                     $tui->tick();
                     $tui->handleInput("\t"); // query → mask
-                    $tui->handleInput("\t"); // mask → replace
+                    $tui->handleInput("\t"); // mask → filter
+                    $tui->handleInput("\t"); // filter → replace
                     foreach (str_split('bar') as $ch) {
                         $tui->handleInput($ch);
                     }
@@ -1622,7 +1669,8 @@ final class IdeEdgeCasesTest extends TestCase
                 700 => static function ($tui): void {
                     $tui->tick();
                     $tui->handleInput("\t"); // query → mask
-                    $tui->handleInput("\t"); // mask → replace
+                    $tui->handleInput("\t"); // mask → filter
+                    $tui->handleInput("\t"); // filter → replace
                     foreach (str_split('baz') as $ch) {
                         $tui->handleInput($ch);
                     }
@@ -1648,7 +1696,8 @@ final class IdeEdgeCasesTest extends TestCase
                 300 => static function ($tui): void {
                     $tui->handleInput("\x1b[102;6u"); // open project search
                     $tui->handleInput("\t"); // query → mask
-                    $tui->handleInput("\t"); // mask → replace
+                    $tui->handleInput("\t"); // mask → filter
+                    $tui->handleInput("\t"); // filter → replace
                     $tui->handleInput("\x1ba"); // replace all with no query/results
                 },
                 500 => function ($tui, $terminal): void {

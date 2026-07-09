@@ -116,8 +116,9 @@ final class ResultsPanelWidgetTest extends TestCase
         $panel->handleInput('a');
         $this->assertSame(['a'], $queries);
 
-        // Tab cycles query → mask → replace; land on replace. Typing there does not re-query.
+        // Tab cycles query → mask → filter → replace; land on replace. Typing there does not re-query.
         $panel->handleInput("\t"); // mask
+        $panel->handleInput("\t"); // filter
         $panel->handleInput("\t"); // replace
         $panel->handleInput('X');
         $panel->handleInput('Y');
@@ -395,8 +396,8 @@ final class ResultsPanelWidgetTest extends TestCase
         $panel->setResults($this->groupedResults());
         $panel->render(new RenderContext(80, 12));
 
-        // Header rows 0-3; row 4 = file header src/A.php. Click it → collapse.
-        $panel->handleClick(4, 3);
+        // Header rows 0-4; row 5 = file header src/A.php. Click it → collapse.
+        $panel->handleClick(5, 3);
         $collapsed = AnsiUtils::stripAnsiCodes(implode("\n", $panel->render(new RenderContext(80, 12))));
         $this->assertStringContainsString('▸ src/A.php  (2)', $collapsed, 'collapsed arrow');
         $this->assertStringNotContainsString('match zero', $collapsed, "A's matches are hidden");
@@ -404,7 +405,7 @@ final class ResultsPanelWidgetTest extends TestCase
         $this->assertStringContainsString('match two', $collapsed, 'B stays expanded');
 
         // Click again → expand.
-        $panel->handleClick(4, 3);
+        $panel->handleClick(5, 3);
         $expanded = AnsiUtils::stripAnsiCodes(implode("\n", $panel->render(new RenderContext(80, 12))));
         $this->assertStringContainsString('▾ src/A.php', $expanded);
         $this->assertStringContainsString('match zero', $expanded);
@@ -477,6 +478,35 @@ final class ResultsPanelWidgetTest extends TestCase
         $this->assertSame(1, $reran);
     }
 
+    public function testFilterFieldNarrowsResultsWithoutRegrepAndShowsShownCount(): void
+    {
+        $panel = new ResultsPanelWidget();
+        $panel->setFocused(true);
+        $queries = [];
+        $panel->onQueryChanged(function (string $q) use (&$queries): void {
+            $queries[] = $q;
+        });
+        $panel->open('Find in Project', ResultsPanelFields::fullSearch());
+        $panel->setResults([
+            ['path' => 'src/Api.php', 'line' => 0, 'text' => 'match here', 'ranges' => []],
+            ['path' => 'src/Web.php', 'line' => 1, 'text' => 'other', 'ranges' => []],
+        ]);
+
+        // Tab query → mask → filter, then narrow.
+        $panel->handleInput("\t"); // mask
+        $panel->handleInput("\t"); // filter
+        foreach (str_split('Api') as $ch) {
+            $panel->handleInput($ch);
+        }
+
+        $this->assertSame([], $queries, 'filtering does not re-run the search');
+        $plain = AnsiUtils::stripAnsiCodes(implode("\n", $panel->render(new RenderContext(90, 16))));
+        $this->assertStringContainsString('Filter: Api', $plain);
+        $this->assertStringContainsString('· 1 shown', $plain, 'the filtered count is shown');
+        $this->assertStringContainsString('src/Api.php', $plain);
+        $this->assertStringNotContainsString('src/Web.php', $plain, 'the non-matching file is hidden');
+    }
+
     public function testClickWithMaskAndReplaceHeaderOffset(): void
     {
         $panel = new ResultsPanelWidget();
@@ -488,9 +518,9 @@ final class ResultsPanelWidgetTest extends TestCase
         $panel->setResults($this->results(3));
         $panel->render(new RenderContext(80, 12));
 
-        // Header rows 0-3 (title/query, scope, mask, replace); grouped display then
-        // begins with a file header at row 4, its match at row 5.
-        $panel->handleClick(5, 5);
+        // Header rows 0-4 (title/query, scope, mask, filter, replace); grouped
+        // display then begins with a file header at row 5, its match at row 6.
+        $panel->handleClick(6, 5);
         $this->assertSame(['src/File0.php', 0], $jumped);
     }
 
@@ -598,12 +628,13 @@ final class ResultsPanelWidgetTest extends TestCase
         $this->assertSame(80, AnsiUtils::visibleWidth($header));
 
         $panel->handleInput("\t"); // query → mask
-        $panel->handleInput("\t"); // mask → replace
+        $panel->handleInput("\t"); // mask → filter
+        $panel->handleInput("\t"); // filter → replace
         foreach (str_split(str_repeat('r', 100)) as $ch) {
             $panel->handleInput($ch);
         }
-        // Rows: 0 title/query, 1 scope, 2 mask, 3 replace.
-        $replaceLine = $panel->render(new RenderContext(80, 12))[3];
+        // Rows: 0 title/query, 1 scope, 2 mask, 3 filter, 4 replace.
+        $replaceLine = $panel->render(new RenderContext(80, 12))[4];
         $this->assertSame(1, substr_count($replaceLine, $marker), 'replace caret stays visible');
         $this->assertSame(80, AnsiUtils::visibleWidth($replaceLine));
     }

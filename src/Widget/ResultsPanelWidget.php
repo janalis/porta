@@ -40,11 +40,13 @@ final class ResultsPanelWidget extends OverlayWidget implements FocusableInterfa
     private bool $withReplace = false;
     private bool $withMask = false;
     private bool $withScope = false;
+    private bool $withFilter = false;
     private ScopeKind $scopeKind = ScopeKind::Project;
     private string $title = '';
     private readonly TextField $query;
     private readonly TextField $replace;
     private readonly TextField $mask;
+    private readonly TextField $filter;
     /** 'query' | 'mask' | 'replace' — which field typing edits; cycled by Tab */
     private string $activeField = 'query';
     /** @var list<string> recent queries, most-recent-first (Alt+↑/↓ recall) */
@@ -92,6 +94,7 @@ final class ResultsPanelWidget extends OverlayWidget implements FocusableInterfa
         $this->query = new TextField();
         $this->replace = new TextField();
         $this->mask = new TextField();
+        $this->filter = new TextField();
         $this->visibleRows = 10;
     }
 
@@ -177,6 +180,7 @@ final class ResultsPanelWidget extends OverlayWidget implements FocusableInterfa
         $this->withReplace = $fields->replace;
         $this->withMask = $fields->mask;
         $this->withScope = $fields->scope;
+        $this->withFilter = $fields->filter;
         $this->scopeKind = ScopeKind::Project;
         $this->grouped = $fields->grouped;
         $this->activeField = 'query';
@@ -184,6 +188,7 @@ final class ResultsPanelWidget extends OverlayWidget implements FocusableInterfa
         $this->query->clear();
         $this->replace->clear();
         $this->mask->clear();
+        $this->filter->clear();
         $this->results = [];
         $this->collapsed = [];
         $this->rebuildView();
@@ -214,7 +219,7 @@ final class ResultsPanelWidget extends OverlayWidget implements FocusableInterfa
     /** Recompute the flattened display rows from the current results + collapse state. */
     private function rebuildView(): void
     {
-        $this->displayRows = ResultsView::build($this->results, $this->collapsed, $this->grouped);
+        $this->displayRows = ResultsView::build($this->results, $this->collapsed, $this->grouped, $this->filter->value());
         // Collapsing/filtering can shrink the list under the selection.
         $count = \count($this->displayRows);
         if ($count > 0 && $this->list->selected() >= $count) {
@@ -333,6 +338,9 @@ final class ResultsPanelWidget extends OverlayWidget implements FocusableInterfa
         if ($this->withMask) {
             $fields[] = 'mask';
         }
+        if ($this->withFilter) {
+            $fields[] = 'filter';
+        }
         if ($this->withReplace) {
             $fields[] = 'replace';
         }
@@ -345,12 +353,13 @@ final class ResultsPanelWidget extends OverlayWidget implements FocusableInterfa
     {
         return match ($this->activeField) {
             'mask' => $this->withMask ? $this->mask : null,
+            'filter' => $this->withFilter ? $this->filter : null,
             'replace' => $this->withReplace ? $this->replace : null,
             default => $this->withQuery ? $this->query : null,
         };
     }
 
-    /** Notify the right listener after an edit: query/mask re-run, replace does not. */
+    /** After an edit: query/mask re-run the search, filter re-narrows the view, replace does neither. */
     private function afterFieldEdit(): void
     {
         if ('query' === $this->activeField) {
@@ -358,6 +367,8 @@ final class ResultsPanelWidget extends OverlayWidget implements FocusableInterfa
             $this->notifyQuery();
         } elseif ('mask' === $this->activeField) {
             $this->notifyMask();
+        } elseif ('filter' === $this->activeField) {
+            $this->rebuildView(); // client-side; no re-grep
         }
     }
 
@@ -443,8 +454,8 @@ final class ResultsPanelWidget extends OverlayWidget implements FocusableInterfa
     /** Display-row index at the given widget-relative row, or null if it is not a result/header row. */
     private function rowIndexAt(int $relRow): ?int
     {
-        // Row 0 is the title/query row; the scope, mask and replace rows follow.
-        $headerRows = 1 + ($this->withScope ? 1 : 0) + ($this->withMask ? 1 : 0) + ($this->withReplace ? 1 : 0);
+        // Row 0 is the title/query row; the scope, mask, filter and replace rows follow.
+        $headerRows = 1 + ($this->withScope ? 1 : 0) + ($this->withMask ? 1 : 0) + ($this->withFilter ? 1 : 0) + ($this->withReplace ? 1 : 0);
         $i = $relRow - $headerRows;
         if ($i < 0) {
             return null;
@@ -464,6 +475,15 @@ final class ResultsPanelWidget extends OverlayWidget implements FocusableInterfa
         $lines = [];
 
         $status = $this->searching ? ' searching…' : \sprintf(' %d results', \count($this->results));
+        if (!$this->searching && '' !== $this->filter->value()) {
+            $shown = 0;
+            foreach ($this->displayRows as $row) {
+                if (null === $row->filePath) {
+                    ++$shown;
+                }
+            }
+            $status .= \sprintf(' · %d shown', $shown);
+        }
         $showCursor = $this->focused && $this->withQuery;
         $queryField = $this->query->render(cursor: $showCursor && 'query' === $this->activeField);
         $prefix = ' '.$this->title.($this->withQuery ? ': '.$queryField : '').$this->palette->of(Role::Dim).$status."\x1b[39m";
@@ -496,6 +516,9 @@ final class ResultsPanelWidget extends OverlayWidget implements FocusableInterfa
         }
         if ($this->withMask) {
             $lines[] = $this->fieldRow('Mask', $this->mask, 'mask', $showCursor, '  (e.g. *.php, *.{php,js})', $columns);
+        }
+        if ($this->withFilter) {
+            $lines[] = $this->fieldRow('Filter', $this->filter, 'filter', $showCursor, '  (narrows the results below)', $columns);
         }
         if ($this->withReplace) {
             $lines[] = $this->fieldRow('Replace', $this->replace, 'replace', $showCursor, '  (Tab switch · Alt+A replace all)', $columns);

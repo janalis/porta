@@ -19,6 +19,7 @@ final readonly class ResultsPanelFields
         public bool $mask = false,
         public bool $scope = false,
         public bool $grouped = false,
+        public bool $filter = false,
     ) {}
 
     /** Live query only (command palette, symbol search). */
@@ -33,9 +34,9 @@ final readonly class ResultsPanelFields
         return new self();
     }
 
-    /** Query + regex/case/word toggles + scope + file mask + replace box, grouped by file (find-in-project). */
+    /** Query + regex/case/word toggles + scope + file mask + result filter + replace box, grouped by file (find-in-project). */
     public static function fullSearch(): self
     {
-        return new self(query: true, options: true, replace: true, mask: true, scope: true, grouped: true);
+        return new self(query: true, options: true, replace: true, mask: true, scope: true, grouped: true, filter: true);
     }
 }
