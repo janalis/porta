@@ -644,6 +644,96 @@ final class IdeEdgeCasesTest extends TestCase
         $this->addToAssertionCount(1);
     }
 
+    public function testFindInProjectScopeSelectorNarrowsResults(): void
+    {
+        $project = new TempProject([
+            'src/A.php' => "<?php\n// tok here\n",
+            'src/C.php' => "<?php\n// tok here\n",
+            'other/B.php' => "<?php\n// tok here\n",
+        ]);
+        $panelText = static fn ($tui): string => AnsiUtils::stripAnsiCodes(implode("\n", $tui->getById('results')->render(new \Symfony\Component\Tui\Render\RenderContext(160, 16))));
+
+        $this->runIde(
+            $project,
+            $project->path('src/A.php'), // the active file drives Directory/Current File scope
+            [
+                200 => static function ($tui): void {
+                    $tui->handleInput("\x1b[102;6u"); // ctrl+shift+f
+                    foreach (str_split('tok') as $ch) {
+                        $tui->handleInput($ch);
+                    }
+                },
+                600 => function ($tui) use ($panelText): void {
+                    $tui->tick();
+                    $panel = $panelText($tui);
+                    $this->assertStringContainsString('src/A.php', $panel, 'whole project finds all three');
+                    $this->assertStringContainsString('src/C.php', $panel);
+                    $this->assertStringContainsString('other/B.php', $panel);
+                    $tui->handleInput("\x1bs"); // alt+s → Directory (src/)
+                },
+                800 => function ($tui) use ($panelText): void {
+                    $tui->tick();
+                    $panel = $panelText($tui);
+                    $this->assertStringContainsString('Scope: Directory', $panel);
+                    $this->assertStringContainsString('src/A.php', $panel);
+                    $this->assertStringContainsString('src/C.php', $panel);
+                    $this->assertStringNotContainsString('other/B.php', $panel, 'directory scope drops the sibling folder');
+                    $tui->handleInput("\x1bs"); // alt+s → Current File (src/A.php)
+                },
+                1000 => function ($tui) use ($panelText): void {
+                    $tui->tick();
+                    $panel = $panelText($tui);
+                    $this->assertStringContainsString('Scope: Current File', $panel);
+                    $this->assertStringContainsString('src/A.php', $panel);
+                    $this->assertStringNotContainsString('src/C.php', $panel, 'current-file scope keeps only the open file');
+                    $tui->handleInput("\x1bs"); // alt+s → Whole Project (wraps)
+                },
+                1200 => function ($tui) use ($panelText): void {
+                    $tui->tick();
+                    $panel = $panelText($tui);
+                    $this->assertStringContainsString('Scope: Whole Project', $panel);
+                    $this->assertStringContainsString('other/B.php', $panel, 'wrapping back to Whole Project widens again');
+                },
+            ],
+            1.5,
+        );
+
+        $this->addToAssertionCount(1);
+    }
+
+    public function testScopeSelectorWithNoFileOpenStaysWholeProject(): void
+    {
+        $project = new TempProject(['src/A.php' => "<?php\n// tok\n", 'other/B.php' => "<?php\n// tok\n"]);
+        $panelText = static fn ($tui): string => AnsiUtils::stripAnsiCodes(implode("\n", $tui->getById('results')->render(new \Symfony\Component\Tui\Render\RenderContext(160, 16))));
+
+        $this->runIde(
+            $project,
+            null, // no file open → Directory/Current File resolve to the whole project
+            [
+                200 => static function ($tui): void {
+                    $tui->handleInput("\x1b[102;6u"); // ctrl+shift+f
+                    foreach (str_split('tok') as $ch) {
+                        $tui->handleInput($ch);
+                    }
+                },
+                600 => function ($tui): void {
+                    $tui->tick();
+                    $tui->handleInput("\x1bs"); // alt+s → Directory, but no file → whole project
+                },
+                800 => function ($tui) use ($panelText): void {
+                    $tui->tick();
+                    $panel = $panelText($tui);
+                    $this->assertStringContainsString('Scope: Directory', $panel);
+                    $this->assertStringContainsString('src/A.php', $panel);
+                    $this->assertStringContainsString('other/B.php', $panel, 'no open file → the scope stays the whole project');
+                },
+            ],
+            1.1,
+        );
+
+        $this->addToAssertionCount(1);
+    }
+
     public function testStickyScrollPinsHeaderAndClickJumps(): void
     {
         putenv('PATH=/nonexistent');

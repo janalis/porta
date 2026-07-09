@@ -8,6 +8,7 @@ use Porta\Editor\BufferManager;
 use Porta\Editor\Document;
 use Porta\I18n\Translator;
 use Porta\Support\ProjectPaths;
+use Porta\Ui\ScopeKind;
 use Porta\Widget\CodeEditorWidget;
 use Porta\Widget\ResultsPanelFields;
 use Porta\Widget\ResultsPanelWidget;
@@ -91,6 +92,7 @@ final class ProjectSearchController
         }
         $this->scope = $relative;
         $this->reopen($this->translator->trans($titleKey, ['%dir%' => $relative]));
+        $this->resultsPanel->setScopeKind(ScopeKind::Directory);
     }
 
     /** Reset the query/options/mask/results and (re)open the panel with $title. */
@@ -117,6 +119,13 @@ final class ProjectSearchController
     public function setMask(string $mask): void
     {
         $this->mask = $mask;
+        $this->run($this->lastSearchQuery);
+    }
+
+    /** Set the grep scope path (from the panel's scope selector) and re-run. */
+    public function setScope(string $scope): void
+    {
+        $this->scope = $scope;
         $this->run($this->lastSearchQuery);
     }
 

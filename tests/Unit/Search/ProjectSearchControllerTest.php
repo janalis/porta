@@ -57,7 +57,9 @@ final class ProjectSearchControllerTest extends TestCase
         $project = new TempProject(['src/sub/A.php' => "<?php\n"]);
         $this->controller($project->dir)->openInFolder($project->dir.'/src/sub');
 
-        $this->assertStringContainsString('Find in src/sub', $this->header());
+        $header = $this->header();
+        $this->assertStringContainsString('Find in src/sub', $header);
+        $this->assertStringContainsString('Scope: Directory', $header, 'a folder search preselects the Directory scope');
     }
 
     public function testOpenInFolderOnTheRootFallsBackToTheWholeProject(): void

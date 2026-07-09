@@ -11,6 +11,7 @@ use Porta\Ui\ListSelection;
 use Porta\Ui\LtrPane;
 use Porta\Ui\Palette;
 use Porta\Ui\Role;
+use Porta\Ui\ScopeKind;
 use Porta\Ui\Style;
 use Porta\Ui\TextField;
 use Porta\Widget\Render\HeaderRenderer;
@@ -38,6 +39,8 @@ final class ResultsPanelWidget extends OverlayWidget implements FocusableInterfa
     private bool $withOptions = false;
     private bool $withReplace = false;
     private bool $withMask = false;
+    private bool $withScope = false;
+    private ScopeKind $scopeKind = ScopeKind::Project;
     private string $title = '';
     private readonly TextField $query;
     private readonly TextField $replace;
@@ -60,6 +63,8 @@ final class ResultsPanelWidget extends OverlayWidget implements FocusableInterfa
     private $onQueryChanged = null;
     /** @var (callable(string): void)|null the file mask changed (re-run the search) */
     private $onMaskChanged = null;
+    /** @var (callable(ScopeKind): void)|null the search scope was cycled (Alt+S) */
+    private $onScopeCycle = null;
     /** @var (callable(string, int): void)|null */
     private $onJump = null;
     /** @var (callable(string): void)|null toggled a search option ('regex'|'case'|'word') */
@@ -91,6 +96,20 @@ final class ResultsPanelWidget extends OverlayWidget implements FocusableInterfa
         $this->onMaskChanged = $callback;
 
         return $this;
+    }
+
+    public function onScopeCycle(callable $callback): self
+    {
+        $this->onScopeCycle = $callback;
+
+        return $this;
+    }
+
+    /** Reflect the active scope kind in the panel (set when it opens). */
+    public function setScopeKind(ScopeKind $kind): void
+    {
+        $this->scopeKind = $kind;
+        $this->invalidate();
     }
 
     public function onToggleOption(callable $callback): self
@@ -128,6 +147,8 @@ final class ResultsPanelWidget extends OverlayWidget implements FocusableInterfa
         $this->withOptions = $fields->options;
         $this->withReplace = $fields->replace;
         $this->withMask = $fields->mask;
+        $this->withScope = $fields->scope;
+        $this->scopeKind = ScopeKind::Project;
         $this->activeField = 'query';
         $this->title = $title;
         $this->query->clear();
@@ -186,6 +207,12 @@ final class ResultsPanelWidget extends OverlayWidget implements FocusableInterfa
             $this->fireToggle('case');
         } elseif ($this->withOptions && $kb->matches($data, 'toggle_word')) {
             $this->fireToggle('word');
+        } elseif ($this->withScope && $kb->matches($data, 'cycle_scope')) {
+            $this->scopeKind = $this->scopeKind->next();
+            if (null !== $this->onScopeCycle) {
+                ($this->onScopeCycle)($this->scopeKind);
+            }
+            $this->invalidate();
         } elseif ($kb->matches($data, 'switch_field') && \count($this->focusableFields()) > 1) {
             $fields = $this->focusableFields();
             $pos = (int) array_search($this->activeField, $fields, true);
@@ -299,8 +326,8 @@ final class ResultsPanelWidget extends OverlayWidget implements FocusableInterfa
     /** Result index at the given widget-relative row, or null if it is not a result row. */
     private function rowIndexAt(int $relRow): ?int
     {
-        // Row 0 is the title/query row; the mask and replace rows follow.
-        $headerRows = 1 + ($this->withMask ? 1 : 0) + ($this->withReplace ? 1 : 0);
+        // Row 0 is the title/query row; the scope, mask and replace rows follow.
+        $headerRows = 1 + ($this->withScope ? 1 : 0) + ($this->withMask ? 1 : 0) + ($this->withReplace ? 1 : 0);
         $i = $relRow - $headerRows;
         if ($i < 0) {
             return null;
@@ -341,6 +368,10 @@ final class ResultsPanelWidget extends OverlayWidget implements FocusableInterfa
         $header = $prefix.$options;
         $lines[] = HeaderRenderer::render($header, $columns, $this->palette->of(Role::HeaderBar)."\x1b[1m");
 
+        if ($this->withScope) {
+            $scopeLine = ' Scope: '.$this->palette->of(Role::TabAccent).$this->scopeKind->label()."\x1b[39m".$this->palette->of(Role::Dim).'  (Alt+S to change)'."\x1b[39m";
+            $lines[] = $this->palette->of(Role::RowHighlightBg).AnsiUtils::truncateToWidth($scopeLine, $columns, '…', pad: true)."\x1b[0m";
+        }
         if ($this->withMask) {
             $lines[] = $this->fieldRow('Mask', $this->mask, 'mask', $showCursor, '  (e.g. *.php, *.{php,js})', $columns);
         }
@@ -416,6 +447,7 @@ final class ResultsPanelWidget extends OverlayWidget implements FocusableInterfa
             'toggle_regex' => ['alt+r'],
             'toggle_case' => ['alt+c'],
             'toggle_word' => ['alt+w'],
+            'cycle_scope' => ['alt+s'],
             'switch_field' => [Key::TAB],
             'replace_all' => ['alt+a'],
         ];

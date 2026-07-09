@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Porta\Tests\Unit\Widget;
 
 use PHPUnit\Framework\TestCase;
+use Porta\Ui\ScopeKind;
 use Porta\Widget\ResultsPanelFields;
 use Porta\Widget\ResultsPanelWidget;
 use Symfony\Component\Tui\Ansi\AnsiUtils;
@@ -286,6 +287,38 @@ final class ResultsPanelWidgetTest extends TestCase
         $this->assertFalse($panel->isOpen());
     }
 
+    public function testScopeSelectorCyclesFiresAndRendersTheKind(): void
+    {
+        $panel = new ResultsPanelWidget();
+        $panel->setFocused(true);
+        $kinds = [];
+        $panel->onScopeCycle(function (ScopeKind $k) use (&$kinds): void {
+            $kinds[] = $k;
+        });
+        $panel->open('Find in Project', ResultsPanelFields::fullSearch());
+        $plain = fn (): string => AnsiUtils::stripAnsiCodes(implode("\n", $panel->render(new RenderContext(80, 12))));
+
+        $this->assertStringContainsString('Scope: Whole Project', $plain(), 'defaults to the whole project');
+
+        $panel->handleInput("\x1bs"); // alt+s → Directory
+        $this->assertStringContainsString('Scope: Directory', $plain());
+
+        $panel->handleInput("\x1bs"); // → Current File
+        $panel->handleInput("\x1bs"); // → Whole Project (wraps)
+        $this->assertSame([ScopeKind::Directory, ScopeKind::CurrentFile, ScopeKind::Project], $kinds);
+        $this->assertStringContainsString('Scope: Whole Project', $plain());
+    }
+
+    public function testScopeKindCanBePreset(): void
+    {
+        $panel = new ResultsPanelWidget();
+        $panel->open('Find in Project', ResultsPanelFields::fullSearch());
+        $panel->setScopeKind(ScopeKind::Directory);
+
+        $plain = AnsiUtils::stripAnsiCodes(implode("\n", $panel->render(new RenderContext(80, 12))));
+        $this->assertStringContainsString('Scope: Directory', $plain);
+    }
+
     public function testMaskFieldIsTabReachableAndNotifiesOnEdit(): void
     {
         $panel = new ResultsPanelWidget();
@@ -323,8 +356,8 @@ final class ResultsPanelWidgetTest extends TestCase
         $panel->setResults($this->results(3));
         $panel->render(new RenderContext(80, 12));
 
-        // Rows: 0 title/query, 1 mask, 2 replace → results begin at row 3.
-        $panel->handleClick(3, 5);
+        // Rows: 0 title/query, 1 scope, 2 mask, 3 replace → results begin at row 4.
+        $panel->handleClick(4, 5);
         $this->assertSame(['src/File0.php', 0], $jumped);
     }
 
@@ -431,11 +464,13 @@ final class ResultsPanelWidgetTest extends TestCase
         $this->assertSame(1, substr_count($header, $marker), 'query caret stays visible');
         $this->assertSame(80, AnsiUtils::visibleWidth($header));
 
-        $panel->handleInput("\t"); // switch to the replace field
+        $panel->handleInput("\t"); // query → mask
+        $panel->handleInput("\t"); // mask → replace
         foreach (str_split(str_repeat('r', 100)) as $ch) {
             $panel->handleInput($ch);
         }
-        $replaceLine = $panel->render(new RenderContext(80, 12))[1];
+        // Rows: 0 title/query, 1 scope, 2 mask, 3 replace.
+        $replaceLine = $panel->render(new RenderContext(80, 12))[3];
         $this->assertSame(1, substr_count($replaceLine, $marker), 'replace caret stays visible');
         $this->assertSame(80, AnsiUtils::visibleWidth($replaceLine));
     }

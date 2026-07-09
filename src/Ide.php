@@ -74,6 +74,7 @@ use Porta\Ui\PaletteFactory;
 use Porta\Ui\PanelManager;
 use Porta\Ui\PaneSegmenter;
 use Porta\Ui\ResultsPanelMode;
+use Porta\Ui\ScopeKind;
 use Porta\Ui\SwitchablePalette;
 use Porta\Widget\BreadcrumbsWidget;
 use Porta\Widget\BufferCallbacks;
@@ -645,6 +646,12 @@ final class Ide
                 $this->searchDebounce = null;
                 $this->projectSearchController->setMask($mask);
             });
+        });
+
+        // The scope selector (Alt+S) resolves the chosen kind against the live
+        // editor and re-runs the search immediately.
+        $this->resultsPanel->onScopeCycle(function (ScopeKind $kind): void {
+            $this->projectSearchController->setScope($this->resolveScopePath($kind));
         });
 
         $this->resultsPanel->onReplaceAll(function (string $replacement): void {
@@ -1334,6 +1341,22 @@ final class Ide
     {
         $this->panels->setMode(ResultsPanelMode::Search);
         $this->projectSearchController->replaceInFolder($absDir);
+    }
+
+    /** The grep scope path for a scope kind, resolved against the current editor file. */
+    private function resolveScopePath(ScopeKind $kind): string
+    {
+        if (ScopeKind::Project === $kind) {
+            return '.';
+        }
+        $file = $this->editor->getFilePath();
+        if (null === $file) {
+            return '.'; // no file open → fall back to the whole project
+        }
+        $target = ScopeKind::CurrentFile === $kind ? $file : \dirname($file);
+        $relative = $this->relativePath($target);
+
+        return '' === $relative || str_starts_with($relative, '/') ? '.' : $relative;
     }
 
     private function openSymbolSearch(): void
