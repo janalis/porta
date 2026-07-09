@@ -7,6 +7,7 @@ namespace Porta\Search;
 use Porta\Editor\BufferManager;
 use Porta\Editor\Document;
 use Porta\History\SearchHistoryStore;
+use Porta\History\SearchPrefsStore;
 use Porta\I18n\Translator;
 use Porta\Support\ProjectPaths;
 use Porta\Ui\ScopeKind;
@@ -27,8 +28,9 @@ final class ProjectSearchController
 {
     private SearchOptions $searchOptions;
     private string $lastSearchQuery = '';
-    /** grep path relative to the project root; `.` is the whole project. */
-    private string $scope = '.';
+    private ScopeKind $scopeKind = ScopeKind::Project;
+    /** @var list<string> grep path(s) relative to the project root; `['.']` is the whole project. */
+    private array $scope = ['.'];
     /** file mask (e.g. `*.php`, `*.{php,js}`); empty searches all files. */
     private string $mask = '';
     /** @var list<array{path: string, line: int, text: string, ranges: list<array{start: int, length: int}>}> */
@@ -36,6 +38,7 @@ final class ProjectSearchController
 
     /**
      * @param \Closure(string, Document): void $notifyFullChange re-sync a buffer's full text to the LSP
+     * @param \Closure(ScopeKind): list<string> $resolveScope resolve a scope kind to grep path(s) from the live editor context
      */
     public function __construct(
         private readonly ProjectSearch $projectSearch,
@@ -48,14 +51,17 @@ final class ProjectSearchController
         private readonly string $rootDir,
         private readonly \Closure $notifyFullChange,
         private readonly SearchHistoryStore $history,
+        private readonly SearchPrefsStore $prefs,
+        private readonly \Closure $resolveScope,
     ) {
         $this->searchOptions = new SearchOptions();
     }
 
-    /** Open the panel in find-in-project mode with a fresh query and options. */
+    /** Open the panel in find-in-project mode with a fresh query, restoring the last scope + mask. */
     public function open(): void
     {
-        $this->scope = '.';
+        $this->scopeKind = $this->prefs->lastScope();
+        $this->scope = ($this->resolveScope)($this->scopeKind);
         $this->reopen($this->translator->trans('Find in Project'));
     }
 
@@ -92,21 +98,24 @@ final class ProjectSearchController
 
             return;
         }
-        $this->scope = $relative;
+        $this->scopeKind = ScopeKind::Directory;
+        $this->scope = [$relative];
         $this->reopen($this->translator->trans($titleKey, ['%dir%' => $relative]));
-        $this->resultsPanel->setScopeKind(ScopeKind::Directory);
     }
 
-    /** Reset the query/options/mask/results and (re)open the panel with $title. */
+    /** Reset the query/options/results and (re)open the panel with $title, restoring scope + mask. */
     private function reopen(string $title): void
     {
         $this->searchOptions = new SearchOptions();
         $this->lastSearchQuery = '';
-        $this->mask = '';
+        $this->mask = $this->prefs->lastMask();
         $this->lastSearchResults = [];
         $this->resultsPanel->open($title, ResultsPanelFields::fullSearch());
         $this->resultsPanel->setOptions($this->searchOptions->panelState());
         $this->resultsPanel->setHistory($this->history->all());
+        $this->resultsPanel->setScopeKind($this->scopeKind);
+        $this->resultsPanel->setMaskValue($this->mask);
+        $this->resultsPanel->setMaskHistory($this->prefs->recentMasks());
         $this->tui->setFocus($this->resultsPanel);
         $this->tui->requestRender();
     }
@@ -118,17 +127,20 @@ final class ProjectSearchController
         $this->run($query);
     }
 
-    /** Apply a file mask (from the panel's Mask field) and re-run the last query. */
+    /** Apply a file mask (from the panel's Mask field), persist it, and re-run the last query. */
     public function setMask(string $mask): void
     {
         $this->mask = $mask;
+        $this->prefs->setMask($mask);
         $this->run($this->lastSearchQuery);
     }
 
-    /** Set the grep scope path (from the panel's scope selector) and re-run. */
-    public function setScope(string $scope): void
+    /** Set the scope (from the panel's Alt+S selector), persist it, resolve its paths, and re-run. */
+    public function setScopeKind(ScopeKind $kind): void
     {
-        $this->scope = $scope;
+        $this->scopeKind = $kind;
+        $this->scope = ($this->resolveScope)($kind);
+        $this->prefs->setScope($kind);
         $this->run($this->lastSearchQuery);
     }
 
@@ -147,10 +159,11 @@ final class ProjectSearchController
         $this->tui->requestRender();
     }
 
-    /** Cancel any in-flight search and record the committed query in history (panel closed). */
+    /** Cancel any in-flight search and record the committed query + mask (panel closed). */
     public function cancel(): void
     {
         $this->history->add($this->lastSearchQuery);
+        $this->prefs->addRecentMask($this->mask);
         $this->projectSearch->cancel();
     }
 

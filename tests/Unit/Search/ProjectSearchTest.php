@@ -32,7 +32,7 @@ final class ProjectSearchTest extends TestCase
         bool $caseSensitive = false,
         bool $wholeWord = false,
         float $timeout = 3.0,
-        string $scope = '.',
+        string|array $scope = '.',
         string $mask = '',
     ): array {
         $results = null;
@@ -109,6 +109,27 @@ final class ProjectSearchTest extends TestCase
     {
         // The Finder-based fallback prefixes the scope back on so paths match grep.
         $this->assertSame(['src/A.php', 'src/sub/B.php'], $this->scopedPaths(phpFallback: true));
+    }
+
+    public function testEmptyScopeListMatchesNothing(): void
+    {
+        // An empty scope (e.g. Open Files with nothing open) short-circuits to no results.
+        $project = new TempProject(['src/A.php' => "<?php\n// needle\n"]);
+        $this->assertSame([], $this->await(new ProjectSearch($project->dir), 'needle', scope: []));
+    }
+
+    public function testScopeListOfExplicitFilesAndDirsDeduplicates(): void
+    {
+        putenv('PATH=/nonexistent'); // force the PHP walk so scopeFiles is exercised
+        $project = new TempProject([
+            'src/A.php' => "<?php\n// needle in A\n",
+            'src/B.php' => "<?php\n// needle in B\n",
+            'other/C.php' => "<?php\n// needle in C\n",
+        ]);
+        // 'src/A.php' (a file) overlaps 'src' (a dir); A.php is matched once, C.php stays out of scope.
+        $paths = array_column($this->await(new ProjectSearch($project->dir), 'needle', scope: ['src/A.php', 'src']), 'path');
+        sort($paths);
+        $this->assertSame(['src/A.php', 'src/B.php'], $paths);
     }
 
     public function testPhpFallbackWhenGrepUnavailable(): void

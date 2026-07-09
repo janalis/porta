@@ -28,12 +28,13 @@ final class ProjectSearch
 
     /**
      * @param callable(list<array{path: string, line: int, text: string, ranges: list<array{start: int, length: int}>}>): void $onDone
-     * @param string                                                                                                            $scope grep path relative to the project root; `.` searches the whole project
+     * @param string|list<string>                                                                                               $scope grep path(s) relative to the project root; `.` searches the whole project, a list searches each path (a directory or a single file), an empty list matches nothing
      */
-    public function search(string $query, callable $onDone, SearchOptions $options = new SearchOptions(), string $scope = '.', string $mask = ''): void
+    public function search(string $query, callable $onDone, SearchOptions $options = new SearchOptions(), string|array $scope = '.', string $mask = ''): void
     {
         $this->cancel();
-        if ('' === trim($query)) {
+        $paths = \is_array($scope) ? array_values($scope) : [$scope];
+        if ('' === trim($query) || [] === $paths) {
             $onDone([]);
 
             return;
@@ -48,7 +49,7 @@ final class ProjectSearch
 
         $grep = $this->findGrep();
         if (null === $grep) {
-            $onDone($this->searchWithPhp($query, $options, $scope, $mask));
+            $onDone($this->searchWithPhp($query, $options, $paths, $mask));
 
             return;
         }
@@ -65,9 +66,9 @@ final class ProjectSearch
         foreach ($this->maskGlobs($mask) as $glob) {
             $flags[] = '--include='.$glob;
         }
-        // The scope is a path argument, not the cwd: grep still runs in $rootDir
+        // The scope paths are arguments, not the cwd: grep still runs in $rootDir
         // (AsyncProcess below), so a `subdir/file:line` match stays root-relative.
-        $command = [$grep, ...$flags, '--', $query, $scope];
+        $command = [$grep, ...$flags, '--', $query, ...$paths];
         foreach (self::EXCLUDES as $dir) {
             array_splice($command, 1, 0, ['--exclude-dir='.$dir]);
         }
@@ -87,7 +88,7 @@ final class ProjectSearch
             // failure surfaces later as an exit code), so this is unreachable
             // in tests.
             // @codeCoverageIgnoreStart
-            $onDone($this->searchWithPhp($query, $options, $scope, $mask));
+            $onDone($this->searchWithPhp($query, $options, $paths, $mask));
 
             return;
 
@@ -154,44 +155,74 @@ final class ProjectSearch
         return $ranges;
     }
 
-    /** @return list<array{path: string, line: int, text: string, ranges: list<array{start: int, length: int}>}> */
-    private function searchWithPhp(string $query, SearchOptions $options, string $scope = '.', string $mask = ''): array
+    /**
+     * @param list<string> $paths scope paths (each a directory, a single file, or `.`)
+     *
+     * @return list<array{path: string, line: int, text: string, ranges: list<array{start: int, length: int}>}>
+     */
+    private function searchWithPhp(string $query, SearchOptions $options, array $paths, string $mask): array
     {
         $pattern = $this->pattern($query, $options);
-        // Finder paths are relative to its `in()` root, so when scoped to a
-        // subdir we prefix it back on to keep every `path` root-relative.
-        $prefix = '.' === $scope ? '' : rtrim($scope, '/').'/';
-        $finder = new Finder()
-            ->files()
-            ->in('.' === $scope ? $this->rootDir : $this->rootDir.'/'.$scope)
-            ->ignoreDotFiles(false)
-            ->ignoreVCS(false)
-            ->exclude(self::EXCLUDES)
-            ->size('<= 1Mi');
         $globs = $this->maskGlobs($mask);
-        if ([] !== $globs) {
-            $finder->name($globs); // OR of basename globs, mirroring grep --include
-        }
-
         $results = [];
-        foreach ($finder as $file) {
-            $content = (string) @file_get_contents($file->getPathname());
-            if (str_contains($content, "\0")) {
-                continue;
-            }
-            $rel = $prefix.$file->getRelativePathname();
-            foreach (explode("\n", $content) as $lineIndex => $line) {
-                if (1 === preg_match($pattern, $line)) {
-                    $text = trim($line);
-                    $results[] = ['path' => $rel, 'line' => $lineIndex, 'text' => $text, 'ranges' => $this->rangesFor($text, $pattern)];
-                    if (\count($results) >= self::MAX_RESULTS) {
-                        break 2;
+        $seen = [];
+        foreach ($paths as $scope) {
+            foreach ($this->scopeFiles($scope, $globs) as $rel => $abs) {
+                if (isset($seen[$rel])) {
+                    continue; // overlapping scopes (e.g. open files under a dir) match once
+                }
+                $seen[$rel] = true;
+                $content = (string) @file_get_contents($abs);
+                if (str_contains($content, "\0")) {
+                    continue;
+                }
+                foreach (explode("\n", $content) as $lineIndex => $line) {
+                    if (1 === preg_match($pattern, $line)) {
+                        $text = trim($line);
+                        $results[] = ['path' => $rel, 'line' => $lineIndex, 'text' => $text, 'ranges' => $this->rangesFor($text, $pattern)];
+                        if (\count($results) >= self::MAX_RESULTS) {
+                            return $results;
+                        }
                     }
                 }
             }
         }
 
         return $results;
+    }
+
+    /**
+     * The `[rootRelativePath => absolutePath]` files a scope entry covers: a
+     * single file yields itself; a directory (or `.`) is walked with Finder,
+     * whose relative paths are prefixed back on so every result stays
+     * root-relative.
+     *
+     * @param list<string> $globs basename globs, mirroring grep --include (dir scopes only)
+     *
+     * @return iterable<string, string>
+     */
+    private function scopeFiles(string $scope, array $globs): iterable
+    {
+        $abs = '.' === $scope ? $this->rootDir : $this->rootDir.'/'.$scope;
+        if (is_file($abs)) {
+            yield $scope => $abs; // an explicit file is searched regardless of the mask
+
+            return;
+        }
+        $prefix = '.' === $scope ? '' : rtrim($scope, '/').'/';
+        $finder = new Finder()
+            ->files()
+            ->in($abs)
+            ->ignoreDotFiles(false)
+            ->ignoreVCS(false)
+            ->exclude(self::EXCLUDES)
+            ->size('<= 1Mi');
+        if ([] !== $globs) {
+            $finder->name($globs); // OR of basename globs, mirroring grep --include
+        }
+        foreach ($finder as $file) {
+            yield $prefix.$file->getRelativePathname() => $file->getPathname();
+        }
     }
 
     /**

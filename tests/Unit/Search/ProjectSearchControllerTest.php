@@ -37,6 +37,8 @@ final class ProjectSearchControllerTest extends TestCase
             $rootDir,
             static fn (string $path, Document $document): mixed => null,
             new \Porta\History\SearchHistoryStore($rootDir),
+            new \Porta\History\SearchPrefsStore($rootDir),
+            static fn (\Porta\Ui\ScopeKind $kind): array => ['.'],
         );
     }
 

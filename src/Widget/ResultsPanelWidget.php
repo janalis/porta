@@ -53,6 +53,10 @@ final class ResultsPanelWidget extends OverlayWidget implements FocusableInterfa
     private array $history = [];
     /** cursor into $history while browsing it, or -1 when not */
     private int $historyCursor = -1;
+    /** @var list<string> recent file masks, most-recent-first (Alt+↑/↓ recall on the Mask field) */
+    private array $maskHistory = [];
+    /** cursor into $maskHistory while browsing it, or -1 when not */
+    private int $maskHistoryCursor = -1;
     private readonly ListSelection $list;
     private bool $searching = false;
 
@@ -146,6 +150,24 @@ final class ResultsPanelWidget extends OverlayWidget implements FocusableInterfa
     {
         $this->history = $history;
         $this->historyCursor = -1;
+    }
+
+    /**
+     * Seed the recent-mask list recalled with Alt+↑/↓ on the Mask field.
+     *
+     * @param list<string> $history most-recent-first
+     */
+    public function setMaskHistory(array $history): void
+    {
+        $this->maskHistory = $history;
+        $this->maskHistoryCursor = -1;
+    }
+
+    /** Set the Mask field's text (restoring a persisted mask when the panel opens). */
+    public function setMaskValue(string $mask): void
+    {
+        $this->mask->setValue($mask);
+        $this->invalidate();
     }
 
     public function onToggleOption(callable $callback): self
@@ -324,6 +346,10 @@ final class ResultsPanelWidget extends OverlayWidget implements FocusableInterfa
             $this->recallHistory(1);
         } elseif ('query' === $this->activeField && $kb->matches($data, 'history_next')) {
             $this->recallHistory(-1);
+        } elseif ('mask' === $this->activeField && $kb->matches($data, 'history_prev')) {
+            $this->recallMaskHistory(1);
+        } elseif ('mask' === $this->activeField && $kb->matches($data, 'history_next')) {
+            $this->recallMaskHistory(-1);
         } elseif ($kb->matches($data, 'switch_field') && \count($this->focusableFields()) > 1) {
             $fields = $this->focusableFields();
             $pos = (int) array_search($this->activeField, $fields, true);
@@ -386,10 +412,24 @@ final class ResultsPanelWidget extends OverlayWidget implements FocusableInterfa
             $this->historyCursor = -1; // typing leaves history-browsing
             $this->notifyQuery();
         } elseif ('mask' === $this->activeField) {
+            $this->maskHistoryCursor = -1; // typing leaves mask-history browsing
             $this->notifyMask();
         } elseif ('filter' === $this->activeField) {
             $this->rebuildView(); // client-side; no re-grep
         }
+    }
+
+    /** Walk the recent-mask history into the Mask field: $step +1 = older, -1 = newer. */
+    private function recallMaskHistory(int $step): void
+    {
+        $next = $this->maskHistoryCursor + $step;
+        if ($next < -1 || $next >= \count($this->maskHistory)) {
+            return; // past either end
+        }
+        $this->maskHistoryCursor = $next;
+        $this->mask->setValue(-1 === $next ? '' : $this->maskHistory[$next]);
+        $this->notifyMask();
+        $this->invalidate();
     }
 
     /** Walk the recent-query history into the query field: $step +1 = older, -1 = newer. */

@@ -28,6 +28,7 @@ use Porta\Highlight\TerminalThemeFactory;
 use Porta\History\LocalHistory;
 use Porta\History\LocalHistoryController;
 use Porta\History\SearchHistoryStore;
+use Porta\History\SearchPrefsStore;
 use Porta\History\SessionStore;
 use Porta\I18n\PaneReorder;
 use Porta\I18n\Translator;
@@ -649,10 +650,10 @@ final class Ide
             });
         });
 
-        // The scope selector (Alt+S) resolves the chosen kind against the live
-        // editor and re-runs the search immediately.
+        // The scope selector (Alt+S) hands the chosen kind to the controller,
+        // which resolves it (via the injected resolver), persists it, and re-runs.
         $this->resultsPanel->onScopeCycle(function (ScopeKind $kind): void {
-            $this->projectSearchController->setScope($this->resolveScopePath($kind));
+            $this->projectSearchController->setScopeKind($kind);
         });
 
         // F5 re-runs the current find-in-project query (picks up on-disk changes).
@@ -977,6 +978,8 @@ final class Ide
             $this->rootDir,
             fn (string $path, Document $document) => $this->lsp->notifyFullChange($path, $document),
             new SearchHistoryStore($this->rootDir),
+            new SearchPrefsStore($this->rootDir),
+            fn (ScopeKind $kind): array => $this->resolveScopePath($kind),
         );
         $this->commandPalette = $this->service(CommandPalette::class);
         $this->panels = $this->service(PanelManager::class);
@@ -1357,20 +1360,36 @@ final class Ide
         $this->projectSearchController->replaceInFolder($absDir);
     }
 
-    /** The grep scope path for a scope kind, resolved against the current editor file. */
-    private function resolveScopePath(ScopeKind $kind): string
+    /**
+     * The grep scope path(s) for a scope kind, resolved against the current
+     * editor file and open buffers.
+     *
+     * @return list<string>
+     */
+    private function resolveScopePath(ScopeKind $kind): array
     {
         if (ScopeKind::Project === $kind) {
-            return '.';
+            return ['.'];
+        }
+        if (ScopeKind::OpenFiles === $kind) {
+            $paths = [];
+            foreach ($this->buffers->all() as $buffer) {
+                $relative = $this->relativePath($buffer->path);
+                if ('' !== $relative && !str_starts_with($relative, '/')) {
+                    $paths[] = $relative;
+                }
+            }
+
+            return $paths; // empty (no open files) → matches nothing
         }
         $file = $this->editor->getFilePath();
         if (null === $file) {
-            return '.'; // no file open → fall back to the whole project
+            return ['.']; // no file open → fall back to the whole project
         }
         $target = ScopeKind::CurrentFile === $kind ? $file : \dirname($file);
         $relative = $this->relativePath($target);
 
-        return '' === $relative || str_starts_with($relative, '/') ? '.' : $relative;
+        return '' === $relative || str_starts_with($relative, '/') ? ['.'] : [$relative];
     }
 
     private function openSymbolSearch(): void

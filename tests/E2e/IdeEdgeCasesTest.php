@@ -687,16 +687,24 @@ final class IdeEdgeCasesTest extends TestCase
                     $this->assertStringContainsString('Scope: Current File', $panel);
                     $this->assertStringContainsString('src/A.php', $panel);
                     $this->assertStringNotContainsString('src/C.php', $panel, 'current-file scope keeps only the open file');
-                    $tui->handleInput("\x1bs"); // alt+s → Whole Project (wraps)
+                    $tui->handleInput("\x1bs"); // alt+s → Open Files (only src/A.php is open)
                 },
                 1200 => function ($tui) use ($panelText): void {
+                    $tui->tick();
+                    $panel = $panelText($tui);
+                    $this->assertStringContainsString('Scope: Open Files', $panel);
+                    $this->assertStringContainsString('src/A.php', $panel);
+                    $this->assertStringNotContainsString('src/C.php', $panel, 'open-files scope keeps only the open buffers');
+                    $tui->handleInput("\x1bs"); // alt+s → Whole Project (wraps)
+                },
+                1400 => function ($tui) use ($panelText): void {
                     $tui->tick();
                     $panel = $panelText($tui);
                     $this->assertStringContainsString('Scope: Whole Project', $panel);
                     $this->assertStringContainsString('other/B.php', $panel, 'wrapping back to Whole Project widens again');
                 },
             ],
-            1.5,
+            1.7,
         );
 
         $this->addToAssertionCount(1);
@@ -730,6 +738,52 @@ final class IdeEdgeCasesTest extends TestCase
                 },
             ],
             1.1,
+        );
+
+        $this->addToAssertionCount(1);
+    }
+
+    public function testFindInProjectRestoresScopeAndMaskOnReopen(): void
+    {
+        $project = new TempProject([
+            'src/A.php' => "<?php\n// tok here\n",
+            'other/B.php' => "<?php\n// tok here\n",
+        ]);
+        $panelText = static fn ($tui): string => AnsiUtils::stripAnsiCodes(implode("\n", $tui->getById('results')->render(new \Symfony\Component\Tui\Render\RenderContext(160, 16))));
+
+        $this->runIde(
+            $project,
+            $project->path('src/A.php'),
+            [
+                200 => static function ($tui): void {
+                    $tui->handleInput("\x1b[102;6u"); // ctrl+shift+f
+                    foreach (str_split('tok') as $ch) {
+                        $tui->handleInput($ch);
+                    }
+                },
+                500 => static function ($tui): void {
+                    $tui->tick();
+                    $tui->handleInput("\t"); // query → mask
+                    foreach (str_split('*.php') as $ch) {
+                        $tui->handleInput($ch);
+                    }
+                    $tui->handleInput("\x1bs"); // alt+s → Directory scope
+                },
+                800 => static function ($tui): void {
+                    $tui->tick();
+                    $tui->handleInput("\x1b"); // esc → close (persists scope + mask)
+                },
+                1000 => static function ($tui): void {
+                    $tui->handleInput("\x1b[102;6u"); // reopen
+                },
+                1200 => function ($tui) use ($panelText): void {
+                    $tui->tick();
+                    $panel = $panelText($tui);
+                    $this->assertStringContainsString('Scope: Directory', $panel, 'the last scope is restored');
+                    $this->assertStringContainsString('Mask: *.php', $panel, 'the last mask is restored');
+                },
+            ],
+            1.5,
         );
 
         $this->addToAssertionCount(1);

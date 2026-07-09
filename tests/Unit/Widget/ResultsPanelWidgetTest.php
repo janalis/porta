@@ -307,8 +307,11 @@ final class ResultsPanelWidgetTest extends TestCase
         $this->assertStringContainsString('Scope: Directory', $plain());
 
         $panel->handleInput("\x1bs"); // → Current File
+        $panel->handleInput("\x1bs"); // → Open Files
+        $this->assertStringContainsString('Scope: Open Files', $plain());
+
         $panel->handleInput("\x1bs"); // → Whole Project (wraps)
-        $this->assertSame([ScopeKind::Directory, ScopeKind::CurrentFile, ScopeKind::Project], $kinds);
+        $this->assertSame([ScopeKind::Directory, ScopeKind::CurrentFile, ScopeKind::OpenFiles, ScopeKind::Project], $kinds);
         $this->assertStringContainsString('Scope: Whole Project', $plain());
     }
 
@@ -320,6 +323,34 @@ final class ResultsPanelWidgetTest extends TestCase
 
         $plain = AnsiUtils::stripAnsiCodes(implode("\n", $panel->render(new RenderContext(80, 12))));
         $this->assertStringContainsString('Scope: Directory', $plain);
+    }
+
+    public function testMaskValueSeededAndHistoryRecalled(): void
+    {
+        $panel = new ResultsPanelWidget();
+        $panel->setFocused(true);
+        $masks = [];
+        $panel->onMaskChanged(function (string $m) use (&$masks): void {
+            $masks[] = $m;
+        });
+        $panel->open('Find in Project', ResultsPanelFields::fullSearch());
+        $panel->setMaskValue('*.php');
+        $panel->setMaskHistory(['*.twig', '*.js']);
+        $plain = fn (): string => AnsiUtils::stripAnsiCodes(implode("\n", $panel->render(new RenderContext(80, 12))));
+
+        $this->assertStringContainsString('Mask: *.php', $plain(), 'the persisted mask is restored');
+
+        $panel->handleInput("\t"); // query → mask
+        $panel->handleInput("\x1b[1;3A"); // alt+up → older mask
+        $this->assertStringContainsString('Mask: *.twig', $plain());
+        $panel->handleInput("\x1b[1;3A"); // alt+up → the oldest mask
+        $this->assertStringContainsString('Mask: *.js', $plain());
+        $panel->handleInput("\x1b[1;3A"); // alt+up past the end → no change
+        $this->assertStringContainsString('Mask: *.js', $plain());
+        $panel->handleInput("\x1b[1;3B"); // alt+down → back to the newer mask
+        $this->assertStringContainsString('Mask: *.twig', $plain());
+
+        $this->assertSame(['*.twig', '*.js', '*.twig'], $masks, 'each recall re-runs the mask');
     }
 
     public function testMaskFieldIsTabReachableAndNotifiesOnEdit(): void
