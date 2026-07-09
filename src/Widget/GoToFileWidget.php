@@ -5,7 +5,7 @@ declare(strict_types=1);
 namespace Porta\Widget;
 
 use Porta\I18n\Translator;
-use Porta\Support\FuzzyMatcher;
+use Porta\Search\FileIndex;
 use Porta\Ui\ColorPalette;
 use Porta\Ui\ListNavigation;
 use Porta\Ui\ListSelection;
@@ -14,7 +14,6 @@ use Porta\Ui\Role;
 use Porta\Ui\Style;
 use Porta\Ui\TextField;
 use Porta\Widget\Render\HeaderRenderer;
-use Symfony\Component\Finder\Finder;
 use Symfony\Component\Tui\Ansi\AnsiUtils;
 use Symfony\Component\Tui\Input\Key;
 use Symfony\Component\Tui\Render\RenderContext;
@@ -32,19 +31,12 @@ final class GoToFileWidget extends OverlayWidget implements FocusableInterface
     use InputHook;
     use KeybindingsTrait;
 
-    private const int MAX_FILES = 20000;
     private const int MAX_RESULTS = 8;
 
     private readonly TextField $query;
     private readonly ListSelection $list;
+    private readonly FileIndex $files;
 
-    /**
-     * Candidates cached per open, with the lowered path and basename-boundary
-     * offset precomputed once so per-keystroke filtering does no string prep.
-     *
-     * @var list<array{path: string, lower: string, boundary: int}>|null
-     */
-    private ?array $files = null;
     /** @var list<string> current filtered results (relative paths) */
     private array $results = [];
 
@@ -56,9 +48,11 @@ final class GoToFileWidget extends OverlayWidget implements FocusableInterface
     public function __construct(
         private readonly Translator $translator,
         private readonly string $rootDir,
+        ?FileIndex $files = null,
         ?Palette $palette = null,
     ) {
         $this->palette = $palette ?? ColorPalette::dark();
+        $this->files = $files ?? new FileIndex($rootDir);
         $this->query = new TextField();
         $this->list = new ListSelection();
     }
@@ -75,7 +69,7 @@ final class GoToFileWidget extends OverlayWidget implements FocusableInterface
         $this->open = true;
         $this->query->clear();
         $this->list->reset();
-        $this->files = null; // re-walk lazily
+        $this->files->refresh(); // re-walk lazily
         $this->refilter();
         $this->invalidate();
     }
@@ -186,54 +180,8 @@ final class GoToFileWidget extends OverlayWidget implements FocusableInterface
 
     private function refilter(): void
     {
-        $this->files ??= $this->walk();
         $this->list->reset();
-
-        if ('' === $this->query->value()) {
-            $this->results = array_map(static fn (array $entry): string => $entry['path'], \array_slice($this->files, 0, self::MAX_RESULTS));
-
-            return;
-        }
-
-        /** @var list<array{0: int, 1: string}> $scored */
-        $scored = [];
-        $query = strtolower($this->query->value());
-        foreach ($this->files as $entry) {
-            // Pre-lowered haystack (no camelCase noise on paths, by design);
-            // the basename offset is the primary segment.
-            $score = FuzzyMatcher::scoreLowered($entry['lower'], $query, $entry['boundary']);
-            if (null !== $score) {
-                $scored[] = [$score, $entry['path']];
-            }
-        }
-        usort($scored, static fn (array $a, array $b) => $b[0] <=> $a[0] ?: \strlen($a[1]) <=> \strlen($b[1]));
-        /** @var list<string> $paths */
-        $paths = array_column(\array_slice($scored, 0, self::MAX_RESULTS), 1);
-        $this->results = $paths;
-    }
-
-    /** @return list<array{path: string, lower: string, boundary: int}> sorted by path */
-    private function walk(): array
-    {
-        $finder = new Finder()
-            ->files()
-            ->in($this->rootDir)
-            ->ignoreDotFiles(false)
-            ->ignoreVCS(false)
-            ->exclude(['.git', 'node_modules', '.idea', '.vscode'])
-            ->notName('.DS_Store');
-
-        $paths = [];
-        foreach (new \LimitIterator($finder->getIterator(), 0, self::MAX_FILES) as $file) {
-            $paths[] = $file->getRelativePathname();
-        }
-        sort($paths);
-
-        return array_map(static function (string $path): array {
-            $lower = strtolower($path);
-
-            return ['path' => $path, 'lower' => $lower, 'boundary' => \strlen($lower) - \strlen(basename($lower))];
-        }, $paths);
+        $this->results = $this->files->search($this->query->value(), self::MAX_RESULTS);
     }
 
     /** @return array<string, string[]> */
