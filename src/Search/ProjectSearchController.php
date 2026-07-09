@@ -90,6 +90,7 @@ final class ProjectSearchController
         $modal->setScopes($this->scopeLabels(), $this->scopeIndex);
         $modal->setOptions($this->searchOptions->panelState());
         $modal->setMaskValue($this->mask);
+        $modal->setHistory($this->history->all());
         $this->tui->requestRender();
     }
 
@@ -101,14 +102,17 @@ final class ProjectSearchController
     public function promoteToPane(): void
     {
         $this->editor->findModal()->close();
-        $this->resultsPanel->open($this->translator->trans('Find in Project'), ResultsPanelFields::fullSearch());
-        $this->resultsPanel->setOptions($this->searchOptions->panelState());
-        $this->resultsPanel->setHistory($this->history->all());
-        $this->resultsPanel->setScopes($this->scopeLabels(), $this->scopeIndex);
-        $this->resultsPanel->setMaskValue($this->mask);
-        $this->resultsPanel->setMaskHistory($this->prefs->recentMasks());
+        $this->showResultsPane();
+    }
+
+    /** Open (or refresh) the results tool window with the current query + results. */
+    private function showResultsPane(): void
+    {
+        $title = '' === trim($this->lastSearchQuery)
+            ? $this->translator->trans('Find in Project')
+            : $this->translator->trans('Find in Project: %query%', ['%query%' => $this->lastSearchQuery]);
+        $this->resultsPanel->open($title, ResultsPanelFields::searchResults());
         $this->resultsPanel->setPinIndicator(null === $this->pinned ? null : $this->pinned['query']);
-        $this->resultsPanel->setQueryValue($this->lastSearchQuery);
         $this->resultsPanel->setResults($this->lastSearchResults);
         $this->tui->setFocus($this->resultsPanel);
         $this->tui->requestRender();
@@ -200,9 +204,7 @@ final class ProjectSearchController
             $this->pinned = null;
             $this->lastSearchQuery = $pin['query'];
             $this->lastSearchResults = $pin['results'];
-            $this->resultsPanel->setQueryValue($pin['query']);
-            $this->resultsPanel->setResults($pin['results']);
-            $this->resultsPanel->setPinIndicator(null);
+            $this->showResultsPane(); // re-title the tool window to the restored query
             $this->statusBar->flash($this->translator->trans('Restored the pinned results'));
         }
         $this->tui->requestRender();
@@ -258,16 +260,11 @@ final class ProjectSearchController
         $this->run($this->lastSearchQuery);
     }
 
-    /** Toggle a search option, reflect it on whichever surface is open, and re-run. */
+    /** Toggle a search option (from the modal), reflect it there, and re-run. */
     public function toggleOption(string $name): void
     {
         $this->searchOptions = $this->searchOptions->toggled($name);
-        $state = $this->searchOptions->panelState();
-        if ($this->editor->findModal()->isOpen()) {
-            $this->editor->findModal()->setOptions($state);
-        } else {
-            $this->resultsPanel->setOptions($state);
-        }
+        $this->editor->findModal()->setOptions($this->searchOptions->panelState());
         $this->run($this->lastSearchQuery);
         $this->tui->requestRender();
     }
@@ -399,11 +396,7 @@ final class ProjectSearchController
                 ? $this->translator->trans('Replaced in %count% file', ['%count%' => $touched])
                 : $this->translator->trans('Replaced in %count% files', ['%count%' => $touched]),
         );
-        if ($this->editor->findModal()->isOpen()) {
-            $this->editor->findModal()->close();
-        } else {
-            $this->resultsPanel->close();
-        }
+        $this->editor->findModal()->close(); // replace runs from the modal
         $this->tui->setFocus($this->editor);
         $this->tui->requestRender();
     }

@@ -382,9 +382,9 @@ final class MouseRouter
             return true;
         }
 
-        // Results panel: click an option toggle in the header or a result row.
+        // Results panel: click a result row (file header collapse/expand or jump).
         if ($this->overlayPanels->resultsPanel()->isOpen() && null !== ($rel = $this->hit->hit($this->overlayPanels->resultsPanel(), $mouse->row, $mouse->col))) {
-            $this->overlayPanels->resultsPanel()->handleClick($rel['row'], $rel['col']);
+            $this->overlayPanels->resultsPanel()->handleClick($rel['row']);
             $this->tui->requestRender();
 
             return true;

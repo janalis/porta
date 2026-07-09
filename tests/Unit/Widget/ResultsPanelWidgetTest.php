@@ -22,6 +22,16 @@ final class ResultsPanelWidgetTest extends TestCase
         );
     }
 
+    /** @return list<array{path: string, line: int, text: string, ranges: list<array{start: int, length: int}>}> */
+    private function groupedResults(): array
+    {
+        return [
+            ['path' => 'src/A.php', 'line' => 0, 'text' => 'match zero', 'ranges' => []],
+            ['path' => 'src/A.php', 'line' => 4, 'text' => 'match one', 'ranges' => []],
+            ['path' => 'src/B.php', 'line' => 2, 'text' => 'match two', 'ranges' => []],
+        ];
+    }
+
     public function testClosedRendersNothingAndIgnoresInput(): void
     {
         $panel = new ResultsPanelWidget();
@@ -52,89 +62,6 @@ final class ResultsPanelWidgetTest extends TestCase
         $panel->setSearching();
         $line = $panel->render(new RenderContext(60, 12))[0];
         $this->assertStringContainsString('searching…', AnsiUtils::stripAnsiCodes($line));
-    }
-
-    public function testSearchOptionTogglesFireAndRender(): void
-    {
-        $panel = new ResultsPanelWidget();
-        $panel->setFocused(true);
-        $toggled = [];
-        $panel->onToggleOption(function (string $name) use (&$toggled): void {
-            $toggled[] = $name;
-        });
-        $panel->open('Find in Project', new ResultsPanelFields(query: true, options: true));
-
-        $panel->handleInput("\x1br"); // alt+r regex
-        $panel->handleInput("\x1bc"); // alt+c case
-        $panel->handleInput("\x1bw"); // alt+w word
-        $panel->handleInput("\x1bp"); // alt+p preserve case
-        $this->assertSame(['regex', 'case', 'word', 'preserve'], $toggled);
-
-        // Header shows the indicators; enabling one highlights it.
-        $panel->setOptions(['regex' => true, 'case' => false, 'word' => false, 'preserve' => false, 'tokens' => 'any']);
-        $header = $panel->render(new RenderContext(80, 12))[0];
-        $plain = AnsiUtils::stripAnsiCodes($header);
-        $this->assertStringContainsString('.*', $plain);
-        $this->assertStringContainsString('Aa', $plain);
-        $this->assertStringContainsString('\\b', $plain);
-        $this->assertStringContainsString('Pc', $plain, 'preserve-case tag shown');
-        $this->assertStringContainsString("\x1b[48;5;31m", $header, 'enabled option highlighted');
-    }
-
-    public function testOptionTogglesIgnoredWithoutOptionsMode(): void
-    {
-        $panel = new ResultsPanelWidget();
-        $panel->setFocused(true);
-        $fired = false;
-        $panel->onToggleOption(function () use (&$fired): void {
-            $fired = true;
-        });
-        $panel->open('Find in Project', ResultsPanelFields::queryOnly()); // withOptions defaults to false
-
-        $panel->handleInput("\x1br"); // alt+r has no effect here
-        $this->assertFalse($fired);
-        $header = AnsiUtils::stripAnsiCodes($panel->render(new RenderContext(80, 12))[0]);
-        $this->assertStringNotContainsString('.*', $header, 'no option indicators without options mode');
-    }
-
-    public function testReplaceFieldSwitchingTypingAndReplaceAll(): void
-    {
-        $panel = new ResultsPanelWidget();
-        $panel->setFocused(true);
-        $queries = [];
-        $replaced = null;
-        $panel->onQueryChanged(function (string $q) use (&$queries): void {
-            $queries[] = $q;
-        });
-        $panel->onReplaceAll(function (string $r) use (&$replaced): void {
-            $replaced = $r;
-        });
-        $panel->open('Find in Project', ResultsPanelFields::fullSearch());
-
-        // Typing goes to the query field first.
-        $panel->handleInput('a');
-        $this->assertSame(['a'], $queries);
-
-        // Tab cycles query → mask → filter → replace; land on replace. Typing there does not re-query.
-        $panel->handleInput("\t"); // mask
-        $panel->handleInput("\t"); // filter
-        $panel->handleInput("\t"); // replace
-        $panel->handleInput('X');
-        $panel->handleInput('Y');
-        $panel->handleInput("\x7f"); // backspace in replace field
-        $this->assertSame(['a'], $queries, 'replace typing is not a query');
-
-        $plain = AnsiUtils::stripAnsiCodes(implode("\n", $panel->render(new RenderContext(80, 12))));
-        $this->assertStringContainsString('Replace: X', $plain);
-
-        // Alt+A fires replace-all with the field's contents.
-        $panel->handleInput("\x1ba");
-        $this->assertSame('X', $replaced);
-
-        // Tab from replace wraps back to the query; backspace still edits the query.
-        $panel->handleInput("\t"); // query (wrap)
-        $panel->handleInput("\x7f");
-        $this->assertSame(['a', ''], $queries);
     }
 
     public function testResultsOnlyModeIgnoresTyping(): void
@@ -233,7 +160,7 @@ final class ResultsPanelWidgetTest extends TestCase
     {
         $panel = new ResultsPanelWidget();
         $panel->setFocused(true);
-        $panel->open('Find in Project', ResultsPanelFields::fullSearch());
+        $panel->open('Find in Project', ResultsPanelFields::searchResults());
         $panel->setResults([
             ['path' => 'src/A.php', 'line' => 4, 'text' => 'the needle here', 'ranges' => [['start' => 4, 'length' => 6]]],
         ]);
@@ -284,463 +211,9 @@ final class ResultsPanelWidgetTest extends TestCase
         $panel->setResults($this->results(3));
         $panel->render(new RenderContext(60, 12)); // establish geometry (scroll = 0)
 
-        $panel->handleClick(2, 5); // header row 0 → result rows 1,2 → index 1
+        $panel->handleClick(2); // header row 0 → result rows 1,2 → index 1
         $this->assertSame(['src/File1.php', 1], $jumped);
         $this->assertFalse($panel->isOpen());
-    }
-
-    public function testScopeSelectorCyclesThroughItsChoicesByIndex(): void
-    {
-        $panel = new ResultsPanelWidget();
-        $panel->setFocused(true);
-        $indices = [];
-        $panel->onScopeCycle(function (int $index) use (&$indices): void {
-            $indices[] = $index;
-        });
-        $panel->open('Find in Project', ResultsPanelFields::fullSearch());
-        $panel->setScopes(['Whole Project', 'Directory', 'Custom: src'], 0);
-        $plain = fn (): string => AnsiUtils::stripAnsiCodes(implode("\n", $panel->render(new RenderContext(80, 12))));
-
-        $this->assertStringContainsString('Scope: Whole Project', $plain(), 'starts on the seeded index');
-
-        $panel->handleInput("\x1bs"); // → index 1
-        $this->assertStringContainsString('Scope: Directory', $plain());
-
-        $panel->handleInput("\x1bs"); // → index 2 (a saved scope, after the built-ins)
-        $this->assertStringContainsString('Scope: Custom: src', $plain());
-
-        $panel->handleInput("\x1bs"); // → wraps to index 0
-        $this->assertStringContainsString('Scope: Whole Project', $plain());
-        $this->assertSame([1, 2, 0], $indices);
-    }
-
-    public function testScopeSelectionCanBePreset(): void
-    {
-        $panel = new ResultsPanelWidget();
-        $panel->open('Find in Project', ResultsPanelFields::fullSearch());
-        $panel->setScopes(['Whole Project', 'Directory'], 1);
-
-        $plain = AnsiUtils::stripAnsiCodes(implode("\n", $panel->render(new RenderContext(80, 12))));
-        $this->assertStringContainsString('Scope: Directory', $plain);
-    }
-
-    public function testNestedCollapseAllAndDirectoryExclude(): void
-    {
-        $panel = new ResultsPanelWidget();
-        $panel->setFocused(true);
-        $panel->open('Find in Project', ResultsPanelFields::fullSearch());
-        $panel->setResults([
-            ['path' => 'src/A.php', 'line' => 4, 'text' => 'foo one', 'ranges' => []],
-            ['path' => 'src/B.php', 'line' => 2, 'text' => 'foo two', 'ranges' => []],
-        ]);
-        $plain = fn (): string => AnsiUtils::stripAnsiCodes(implode("\n", $panel->render(new RenderContext(120, 20))));
-
-        $panel->handleInput("\x1bg"); // → Directory
-        $panel->handleInput("\x1bg"); // → Nested
-
-        // Alt+E collapses every level; again expands them.
-        $panel->handleInput("\x1be");
-        $this->assertStringNotContainsString('foo one', $plain(), 'collapse-all hides matches at both levels');
-        $panel->handleInput("\x1be");
-        $this->assertStringContainsString('foo one', $plain(), 'expand-all restores them');
-
-        // Enter replace-preview, land on the src/ directory header, and Delete to exclude its subtree.
-        $panel->handleInput("\t"); // query → mask
-        $panel->handleInput("\t"); // mask → filter
-        $panel->handleInput("\t"); // filter → replace
-        $panel->handleInput('x');
-        for ($i = 0; $i < 6; ++$i) {
-            $panel->handleInput("\x1b[A"); // up to the top (src/ directory header)
-        }
-        $panel->handleInput("\x1b[3~"); // delete → exclude every match under src/
-        $this->assertStringContainsString('replace 0', $plain(), 'excluding the directory drops all its matches');
-    }
-
-    public function testTokenScopeTagCyclesAndRenders(): void
-    {
-        $panel = new ResultsPanelWidget();
-        $panel->setFocused(true);
-        $toggled = [];
-        $panel->onToggleOption(function (string $name) use (&$toggled): void {
-            $toggled[] = $name;
-        });
-        $panel->open('Find in Project', ResultsPanelFields::fullSearch());
-        $plain = fn (): string => AnsiUtils::stripAnsiCodes(implode("\n", $panel->render(new RenderContext(120, 12))));
-
-        $this->assertStringContainsString('·"', $plain(), 'the token-scope tag defaults to "any"');
-
-        $panel->handleInput("\x1bt"); // alt+t → request a token-scope cycle
-        $this->assertSame(['tokens'], $toggled);
-
-        // The controller reflects the cycled state back; the tag glyph tracks it.
-        $panel->setOptions(['regex' => false, 'case' => false, 'word' => false, 'preserve' => false, 'tokens' => 'in']);
-        $this->assertStringContainsString('i"', $plain(), 'in-comments/strings glyph');
-        $panel->setOptions(['regex' => false, 'case' => false, 'word' => false, 'preserve' => false, 'tokens' => 'except']);
-        $this->assertStringContainsString('x"', $plain(), 'except-comments/strings glyph');
-    }
-
-    public function testContextLinesExpandCollapseAndAreInert(): void
-    {
-        $panel = new ResultsPanelWidget();
-        $panel->setFocused(true);
-        $panel->setContextProvider(static fn (string $path, int $line): array => [
-            ['line' => $line - 1, 'text' => 'above line'],
-            ['line' => $line + 1, 'text' => 'below line'],
-        ]);
-        $panel->open('Find in Project', ResultsPanelFields::fullSearch());
-        $panel->setResults([['path' => 'src/A.php', 'line' => 4, 'text' => 'the match', 'ranges' => []]]);
-        $plain = fn (): string => AnsiUtils::stripAnsiCodes(implode("\n", $panel->render(new RenderContext(120, 20))));
-
-        $this->assertStringNotContainsString('above line', $plain(), 'no context until expanded');
-
-        $panel->handleInput("\x1bm"); // alt+m on the auto-selected match → expand
-        $expanded = $plain();
-        $this->assertStringContainsString('above line', $expanded);
-        $this->assertStringContainsString('below line', $expanded);
-
-        $panel->handleInput("\x1b[B"); // down → onto a context row
-        $panel->handleInput("\r"); // enter → inert (no jump/close)
-        $this->assertTrue($panel->isOpen(), 'context rows are inert');
-
-        $panel->handleInput("\x1b[A"); // up → back to the match row
-        $panel->handleInput("\x1bm"); // alt+m → collapse
-        $this->assertStringNotContainsString('above line', $plain(), 'context collapses');
-
-        $panel->handleInput("\x1b[A"); // up → the file header
-        $panel->handleInput("\x1bm"); // alt+m on a header → no-op
-        $this->assertStringNotContainsString('above line', $plain());
-    }
-
-    public function testGroupByDirectoryTogglesHeadersAndLabels(): void
-    {
-        $panel = new ResultsPanelWidget();
-        $panel->setFocused(true);
-        $panel->open('Find in Project', ResultsPanelFields::fullSearch());
-        $panel->setResults([
-            ['path' => 'src/A.php', 'line' => 4, 'text' => 'foo one', 'ranges' => []],
-            ['path' => 'src/B.php', 'line' => 9, 'text' => 'foo two', 'ranges' => []],
-            ['path' => 'other/C.php', 'line' => 2, 'text' => 'foo three', 'ranges' => []],
-        ]);
-        $plain = fn (): string => AnsiUtils::stripAnsiCodes(implode("\n", $panel->render(new RenderContext(120, 20))));
-
-        // Default: one header per file.
-        $byFile = $plain();
-        $this->assertStringContainsString('src/A.php', $byFile);
-        $this->assertStringContainsString('src/B.php', $byFile);
-
-        $panel->handleInput("\x1bg"); // alt+g → group by directory
-        $byDir = $plain();
-        $this->assertStringContainsString('src  (2)', $byDir, 'src/ groups its two files');
-        $this->assertStringContainsString('other  (1)', $byDir);
-        $this->assertStringContainsString('A.php:5', $byDir, 'directory rows show basename:line');
-        $this->assertStringContainsString('B.php:10', $byDir);
-
-        $panel->handleInput("\x1bg"); // alt+g → nested directory → file → match
-        $nested = $plain();
-        $this->assertStringContainsString('src/  (2)', $nested, 'nested directory header');
-        $this->assertStringContainsString('other/  (1)', $nested);
-        $this->assertStringContainsString('A.php  (1)', $nested, 'nested file header shows the basename');
-        $this->assertStringContainsString('B.php  (1)', $nested);
-
-        $panel->handleInput("\x1bg"); // alt+g → back to grouping by file (cycle wraps)
-        $this->assertStringContainsString('src/A.php', $plain(), 'wraps back to file grouping');
-    }
-
-    public function testNestedGroupingCollapsesDirectoriesAndFilesIndependently(): void
-    {
-        $panel = new ResultsPanelWidget();
-        $panel->setFocused(true);
-        $panel->open('Find in Project', ResultsPanelFields::fullSearch());
-        $panel->setResults([
-            ['path' => 'src/A.php', 'line' => 4, 'text' => 'foo one', 'ranges' => []],
-            ['path' => 'src/A.php', 'line' => 9, 'text' => 'foo two', 'ranges' => []],
-            ['path' => 'other/C.php', 'line' => 2, 'text' => 'foo three', 'ranges' => []],
-        ]);
-        $plain = fn (): string => AnsiUtils::stripAnsiCodes(implode("\n", $panel->render(new RenderContext(120, 20))));
-
-        $panel->handleInput("\x1bg"); // → Directory
-        $panel->handleInput("\x1bg"); // → Nested
-        $this->assertStringContainsString('src/  (2)', $plain(), 'directory counts its files\' matches');
-        $this->assertStringContainsString('foo one', $plain());
-
-        // Land deterministically on the top row (the src/ directory header).
-        for ($i = 0; $i < 6; ++$i) {
-            $panel->handleInput("\x1b[A"); // up (clamps at row 0)
-        }
-
-        // Collapse the directory — its whole subtree (file header + matches) disappears.
-        $panel->handleInput("\r");
-        $collapsedDir = $plain();
-        $this->assertStringContainsString('src/  (2)', $collapsedDir, 'directory header still shows its count');
-        $this->assertStringNotContainsString('A.php', $collapsedDir, 'the file header is hidden under the collapsed directory');
-        $this->assertStringContainsString('other/', $collapsedDir, 'sibling directories are unaffected');
-
-        // Re-expand the directory, then collapse just its file header.
-        $panel->handleInput("\r"); // expand src/
-        $panel->handleInput("\x1b[B"); // down → the src/A.php file header
-        $panel->handleInput("\r"); // collapse the file
-        $collapsedFile = $plain();
-        $this->assertStringContainsString('A.php', $collapsedFile, 'the file header remains');
-        $this->assertStringNotContainsString('foo one', $collapsedFile, 'the file\'s matches are hidden');
-    }
-
-    public function testShiftEnterInsertsANewlineInTheQuery(): void
-    {
-        $panel = new ResultsPanelWidget();
-        $panel->setFocused(true);
-        $panel->open('Find in Project', ResultsPanelFields::fullSearch());
-        $panel->handleInput('a');
-        $panel->handleInput("\x1b[13;2u"); // shift+enter → newline
-        $panel->handleInput('b');
-
-        $plain = AnsiUtils::stripAnsiCodes(implode("\n", $panel->render(new RenderContext(80, 12))));
-        $this->assertStringContainsString('a⏎b', $plain, 'the multiline query renders the newline as ⏎');
-    }
-
-    public function testMaskValueSeededAndHistoryRecalled(): void
-    {
-        $panel = new ResultsPanelWidget();
-        $panel->setFocused(true);
-        $masks = [];
-        $panel->onMaskChanged(function (string $m) use (&$masks): void {
-            $masks[] = $m;
-        });
-        $panel->open('Find in Project', ResultsPanelFields::fullSearch());
-        $panel->setMaskValue('*.php');
-        $panel->setMaskHistory(['*.twig', '*.js']);
-        $plain = fn (): string => AnsiUtils::stripAnsiCodes(implode("\n", $panel->render(new RenderContext(80, 12))));
-
-        $this->assertStringContainsString('Mask: *.php', $plain(), 'the persisted mask is restored');
-
-        $panel->handleInput("\t"); // query → mask
-        $panel->handleInput("\x1b[1;3A"); // alt+up → older mask
-        $this->assertStringContainsString('Mask: *.twig', $plain());
-        $panel->handleInput("\x1b[1;3A"); // alt+up → the oldest mask
-        $this->assertStringContainsString('Mask: *.js', $plain());
-        $panel->handleInput("\x1b[1;3A"); // alt+up past the end → no change
-        $this->assertStringContainsString('Mask: *.js', $plain());
-        $panel->handleInput("\x1b[1;3B"); // alt+down → back to the newer mask
-        $this->assertStringContainsString('Mask: *.twig', $plain());
-
-        $this->assertSame(['*.twig', '*.js', '*.twig'], $masks, 'each recall re-runs the mask');
-    }
-
-    public function testMaskFieldIsTabReachableAndNotifiesOnEdit(): void
-    {
-        $panel = new ResultsPanelWidget();
-        $panel->setFocused(true);
-        $masks = [];
-        $queries = [];
-        $panel->onMaskChanged(function (string $m) use (&$masks): void {
-            $masks[] = $m;
-        });
-        $panel->onQueryChanged(function (string $q) use (&$queries): void {
-            $queries[] = $q;
-        });
-        $panel->open('Find in Project', ResultsPanelFields::fullSearch());
-
-        // Tab query → mask; typing fires onMaskChanged (not a query), backspace too.
-        $panel->handleInput("\t"); // mask
-        $panel->handleInput('*');
-        $panel->handleInput('x');
-        $panel->handleInput("\x7f"); // backspace
-        $this->assertSame(['*', '*x', '*'], $masks);
-        $this->assertSame([], $queries, 'mask edits are not queries');
-
-        $plain = AnsiUtils::stripAnsiCodes(implode("\n", $panel->render(new RenderContext(80, 12))));
-        $this->assertStringContainsString('Mask: *', $plain);
-    }
-
-    /** @return list<array{path: string, line: int, text: string, ranges: list<array{start: int, length: int}>}> */
-    private function groupedResults(): array
-    {
-        return [
-            ['path' => 'src/A.php', 'line' => 0, 'text' => 'match zero', 'ranges' => []],
-            ['path' => 'src/A.php', 'line' => 4, 'text' => 'match one', 'ranges' => []],
-            ['path' => 'src/B.php', 'line' => 2, 'text' => 'match two', 'ranges' => []],
-        ];
-    }
-
-    public function testGroupedRenderShowsFileHeadersWithCountsAndIndentedMatches(): void
-    {
-        $panel = new ResultsPanelWidget();
-        $panel->setFocused(true);
-        $panel->open('Find in Project', ResultsPanelFields::fullSearch());
-        $panel->setResults($this->groupedResults());
-
-        $plain = AnsiUtils::stripAnsiCodes(implode("\n", $panel->render(new RenderContext(80, 12))));
-        $this->assertStringContainsString('▾ src/A.php  (2)', $plain, 'file header with match count');
-        $this->assertStringContainsString('▾ src/B.php  (1)', $plain);
-        $this->assertStringContainsString('match zero', $plain);
-        $this->assertStringNotContainsString('src/A.php:1', $plain, 'grouped match rows omit the per-line path');
-    }
-
-    public function testGroupedEnterOnThePreselectedMatchJumps(): void
-    {
-        $panel = new ResultsPanelWidget();
-        $panel->setFocused(true);
-        $jumped = null;
-        $panel->onJump(function (string $path, int $line) use (&$jumped): void {
-            $jumped = [$path, $line];
-        });
-        $panel->open('Find in Project', ResultsPanelFields::fullSearch());
-        $panel->setResults($this->groupedResults());
-
-        // The first match (not the file header) is pre-selected → Enter jumps.
-        $panel->handleInput("\r");
-        $this->assertSame(['src/A.php', 0], $jumped);
-    }
-
-    public function testGroupedClickFileHeaderTogglesCollapse(): void
-    {
-        $panel = new ResultsPanelWidget();
-        $panel->setFocused(true);
-        $panel->open('Find in Project', ResultsPanelFields::fullSearch());
-        $panel->setResults($this->groupedResults());
-        $panel->render(new RenderContext(80, 12));
-
-        // Header rows 0-4; row 5 = file header src/A.php. Click it → collapse.
-        $panel->handleClick(5, 3);
-        $collapsed = AnsiUtils::stripAnsiCodes(implode("\n", $panel->render(new RenderContext(80, 12))));
-        $this->assertStringContainsString('▸ src/A.php  (2)', $collapsed, 'collapsed arrow');
-        $this->assertStringNotContainsString('match zero', $collapsed, "A's matches are hidden");
-        $this->assertStringNotContainsString('match one', $collapsed);
-        $this->assertStringContainsString('match two', $collapsed, 'B stays expanded');
-
-        // Click again → expand.
-        $panel->handleClick(5, 3);
-        $expanded = AnsiUtils::stripAnsiCodes(implode("\n", $panel->render(new RenderContext(80, 12))));
-        $this->assertStringContainsString('▾ src/A.php', $expanded);
-        $this->assertStringContainsString('match zero', $expanded);
-    }
-
-    public function testToggleAllGroupsCollapsesThenExpandsEveryGroup(): void
-    {
-        $panel = new ResultsPanelWidget();
-        $panel->setFocused(true);
-        $panel->open('Find in Project', ResultsPanelFields::fullSearch());
-        $panel->setResults($this->groupedResults());
-        $render = fn (): string => AnsiUtils::stripAnsiCodes(implode("\n", $panel->render(new RenderContext(80, 12))));
-
-        // Move the selection to the last match so collapse clamps it.
-        for ($i = 0; $i < 6; ++$i) {
-            $panel->handleInput("\x1b[B");
-        }
-        $panel->handleInput("\x1be"); // alt+e → collapse all (some were expanded)
-        $collapsed = $render();
-        $this->assertStringContainsString('▸ src/A.php', $collapsed, 'both groups collapsed');
-        $this->assertStringContainsString('▸ src/B.php', $collapsed);
-        $this->assertStringNotContainsString('match zero', $collapsed, 'matches hidden');
-        $this->assertStringNotContainsString('match two', $collapsed);
-
-        $panel->handleInput("\x1be"); // alt+e again → expand all (all were collapsed)
-        $expanded = $render();
-        $this->assertStringContainsString('▾ src/A.php', $expanded);
-        $this->assertStringContainsString('match zero', $expanded);
-        $this->assertStringContainsString('match two', $expanded);
-    }
-
-    public function testHistoryRecallCyclesQueriesWithAltArrows(): void
-    {
-        $panel = new ResultsPanelWidget();
-        $panel->setFocused(true);
-        $queries = [];
-        $panel->onQueryChanged(function (string $q) use (&$queries): void {
-            $queries[] = $q;
-        });
-        $panel->open('Find in Project', ResultsPanelFields::fullSearch());
-        $panel->setHistory(['recent', 'older']);
-        $shown = fn (): string => AnsiUtils::stripAnsiCodes($panel->render(new RenderContext(80, 12))[0]);
-
-        $panel->handleInput("\x1b[1;3A"); // alt+up → 'recent'
-        $this->assertStringContainsString('recent', $shown());
-        $panel->handleInput("\x1b[1;3A"); // alt+up → 'older'
-        $this->assertStringContainsString('older', $shown());
-        $panel->handleInput("\x1b[1;3A"); // alt+up at the end → no change
-        $this->assertStringContainsString('older', $shown());
-        $panel->handleInput("\x1b[1;3B"); // alt+down → 'recent'
-        $panel->handleInput("\x1b[1;3B"); // alt+down past the newest → '' (in-progress)
-        $this->assertSame(['recent', 'older', 'recent', ''], $queries);
-
-        // Typing leaves history-browsing; alt+up then recalls the newest again.
-        $panel->handleInput('z');
-        $panel->handleInput("\x1b[1;3A");
-        $this->assertStringContainsString('recent', $shown());
-    }
-
-    public function testRerunKeyFiresTheCallback(): void
-    {
-        $panel = new ResultsPanelWidget();
-        $reran = 0;
-        $panel->onRerun(function () use (&$reran): void {
-            ++$reran;
-        });
-        $panel->open('Find in Project', ResultsPanelFields::fullSearch());
-
-        $panel->handleInput("\x1b[15~"); // F5
-        $this->assertSame(1, $reran);
-    }
-
-    public function testFilterFieldNarrowsResultsWithoutRegrepAndShowsShownCount(): void
-    {
-        $panel = new ResultsPanelWidget();
-        $panel->setFocused(true);
-        $queries = [];
-        $panel->onQueryChanged(function (string $q) use (&$queries): void {
-            $queries[] = $q;
-        });
-        $panel->open('Find in Project', ResultsPanelFields::fullSearch());
-        $panel->setResults([
-            ['path' => 'src/Api.php', 'line' => 0, 'text' => 'match here', 'ranges' => []],
-            ['path' => 'src/Web.php', 'line' => 1, 'text' => 'other', 'ranges' => []],
-        ]);
-
-        // Tab query → mask → filter, then narrow.
-        $panel->handleInput("\t"); // mask
-        $panel->handleInput("\t"); // filter
-        foreach (str_split('Api') as $ch) {
-            $panel->handleInput($ch);
-        }
-
-        $this->assertSame([], $queries, 'filtering does not re-run the search');
-        $plain = AnsiUtils::stripAnsiCodes(implode("\n", $panel->render(new RenderContext(90, 16))));
-        $this->assertStringContainsString('Filter: Api', $plain);
-        $this->assertStringContainsString('· 1 shown', $plain, 'the filtered count is shown');
-        $this->assertStringContainsString('src/Api.php', $plain);
-        $this->assertStringNotContainsString('src/Web.php', $plain, 'the non-matching file is hidden');
-    }
-
-    public function testClickWithMaskAndReplaceHeaderOffset(): void
-    {
-        $panel = new ResultsPanelWidget();
-        $jumped = null;
-        $panel->onJump(function (string $path, int $line) use (&$jumped): void {
-            $jumped = [$path, $line];
-        });
-        $panel->open('Find in Project', ResultsPanelFields::fullSearch());
-        $panel->setResults($this->results(3));
-        $panel->render(new RenderContext(80, 12));
-
-        // Header rows 0-4 (title/query, scope, mask, filter, replace); grouped
-        // display then begins with a file header at row 5, its match at row 6.
-        $panel->handleClick(6, 5);
-        $this->assertSame(['src/File0.php', 0], $jumped);
-    }
-
-    public function testClickWithReplaceHeaderOffset(): void
-    {
-        $panel = new ResultsPanelWidget();
-        $jumped = null;
-        $panel->onJump(function (string $path, int $line) use (&$jumped): void {
-            $jumped = [$path, $line];
-        });
-        $panel->open('Find in Project', new ResultsPanelFields(query: true, replace: true));
-        $panel->setResults($this->results(3));
-        $panel->render(new RenderContext(80, 12));
-
-        // Header row 0 + replace row 1 → results begin at row 2.
-        $panel->handleClick(2, 5); // → index 0
-        $this->assertSame(['src/File0.php', 0], $jumped);
     }
 
     public function testClickHeaderAndBelowResultsAreNoOps(): void
@@ -754,29 +227,10 @@ final class ResultsPanelWidgetTest extends TestCase
         $panel->setResults($this->results(2));
         $panel->render(new RenderContext(60, 12));
 
-        $panel->handleClick(0, 5); // header (no option tags) → nothing
-        $panel->handleClick(9, 5); // past the last result → nothing
+        $panel->handleClick(0); // header row → nothing
+        $panel->handleClick(9); // past the last result → nothing
         $this->assertFalse($jumped);
         $this->assertTrue($panel->isOpen());
-    }
-
-    public function testClickOptionTagToggles(): void
-    {
-        $panel = new ResultsPanelWidget();
-        $toggled = [];
-        $panel->onToggleOption(function (string $name) use (&$toggled): void {
-            $toggled[] = $name;
-        });
-        $panel->open('Find in Project', new ResultsPanelFields(query: true, options: true));
-        $panel->render(new RenderContext(80, 12));
-
-        // Unfocused header ' Find in Project: ' (18) + ' 0 results' (10) = col 28;
-        // the two-space gap puts the ' .* ' / ' Aa ' / ' \b ' tags at 30/34/38.
-        $panel->handleClick(0, 31); // regex  [30,34)
-        $panel->handleClick(0, 35); // case   [34,38)
-        $panel->handleClick(0, 39); // word   [38,42)
-        $panel->handleClick(0, 5); // title area → no toggle
-        $this->assertSame(['regex', 'case', 'word'], $toggled);
     }
 
     public function testHoverRowTracksPointer(): void
@@ -816,11 +270,24 @@ final class ResultsPanelWidgetTest extends TestCase
         $this->assertTrue($closed);
     }
 
-    public function testLongQueryAndReplacementKeepTheCaretVisible(): void
+    public function testShiftEnterInsertsANewlineInTheQuery(): void
     {
         $panel = new ResultsPanelWidget();
         $panel->setFocused(true);
-        $panel->open('Find in Project', ResultsPanelFields::fullSearch());
+        $panel->open('Find in Project', ResultsPanelFields::queryOnly());
+        $panel->handleInput('a');
+        $panel->handleInput("\x1b[13;2u"); // shift+enter → newline
+        $panel->handleInput('b');
+
+        $plain = AnsiUtils::stripAnsiCodes(implode("\n", $panel->render(new RenderContext(80, 12))));
+        $this->assertStringContainsString('a⏎b', $plain, 'the multiline query renders the newline as ⏎');
+    }
+
+    public function testLongQueryKeepsTheCaretVisible(): void
+    {
+        $panel = new ResultsPanelWidget();
+        $panel->setFocused(true);
+        $panel->open('Find in Project', ResultsPanelFields::queryOnly());
         $marker = AnsiUtils::cursorMarker(CursorShape::Bar);
 
         foreach (str_split(str_repeat('q', 100)) as $ch) {
@@ -829,16 +296,307 @@ final class ResultsPanelWidgetTest extends TestCase
         $header = $panel->render(new RenderContext(80, 12))[0];
         $this->assertSame(1, substr_count($header, $marker), 'query caret stays visible');
         $this->assertSame(80, AnsiUtils::visibleWidth($header));
+    }
 
-        $panel->handleInput("\t"); // query → mask
-        $panel->handleInput("\t"); // mask → filter
-        $panel->handleInput("\t"); // filter → replace
-        foreach (str_split(str_repeat('r', 100)) as $ch) {
+    public function testRerunKeyFiresTheCallback(): void
+    {
+        $panel = new ResultsPanelWidget();
+        $reran = 0;
+        $panel->onRerun(function () use (&$reran): void {
+            ++$reran;
+        });
+        $panel->open('Find in Project', ResultsPanelFields::searchResults());
+
+        $panel->handleInput("\x1b[15~"); // F5
+        $this->assertSame(1, $reran);
+    }
+
+    public function testExportPinAndPinIndicator(): void
+    {
+        $panel = new ResultsPanelWidget();
+        $panel->setFocused(true);
+        $exported = 0;
+        $pinned = 0;
+        $panel->onExport(function () use (&$exported): void {
+            ++$exported;
+        });
+        $panel->onPin(function () use (&$pinned): void {
+            ++$pinned;
+        });
+        $panel->open('Find in Project', ResultsPanelFields::searchResults());
+        $panel->setResults($this->groupedResults());
+
+        $panel->handleInput("\x1bx"); // alt+x → export
+        $panel->handleInput("\x1bk"); // alt+k → pin
+        $this->assertSame(1, $exported);
+        $this->assertSame(1, $pinned);
+
+        // The controller reflects the pinned label back into the header.
+        $panel->setPinIndicator('needle');
+        $header = AnsiUtils::stripAnsiCodes($panel->render(new RenderContext(80, 12))[0]);
+        $this->assertStringContainsString('pinned: needle', $header);
+    }
+
+    public function testFilterFieldNarrowsResultsWithoutRegrepAndShowsShownCount(): void
+    {
+        $panel = new ResultsPanelWidget();
+        $panel->setFocused(true);
+        $panel->open('Find in Project', ResultsPanelFields::searchResults());
+        $panel->setResults([
+            ['path' => 'src/Api.php', 'line' => 0, 'text' => 'match here', 'ranges' => []],
+            ['path' => 'src/Web.php', 'line' => 1, 'text' => 'other', 'ranges' => []],
+        ]);
+
+        // The results window opens focused on the filter field — typing narrows.
+        foreach (str_split('Api') as $ch) {
             $panel->handleInput($ch);
         }
-        // Rows: 0 title/query, 1 scope, 2 mask, 3 filter, 4 replace.
-        $replaceLine = $panel->render(new RenderContext(80, 12))[4];
-        $this->assertSame(1, substr_count($replaceLine, $marker), 'replace caret stays visible');
-        $this->assertSame(80, AnsiUtils::visibleWidth($replaceLine));
+
+        $plain = AnsiUtils::stripAnsiCodes(implode("\n", $panel->render(new RenderContext(90, 16))));
+        $this->assertStringContainsString('Filter: Api', $plain);
+        $this->assertStringContainsString('· 1 shown', $plain, 'the filtered count is shown');
+        $this->assertStringContainsString('src/Api.php', $plain);
+        $this->assertStringNotContainsString('src/Web.php', $plain, 'the non-matching file is hidden');
+    }
+
+    public function testSwitchFieldCyclesBetweenQueryAndFilter(): void
+    {
+        // A mode with both a query and a filter: Tab cycles between the two.
+        $panel = new ResultsPanelWidget();
+        $panel->setFocused(true);
+        $queries = [];
+        $panel->onQueryChanged(function (string $q) use (&$queries): void {
+            $queries[] = $q;
+        });
+        $panel->open('Find in Project', new ResultsPanelFields(query: true, filter: true));
+        $panel->setResults([
+            ['path' => 'src/Api.php', 'line' => 0, 'text' => 'match here', 'ranges' => []],
+            ['path' => 'src/Web.php', 'line' => 1, 'text' => 'other', 'ranges' => []],
+        ]);
+
+        // Typing starts in the query.
+        $panel->handleInput('a');
+        $this->assertSame(['a'], $queries);
+
+        // Tab → filter; typing there narrows client-side, not a re-query.
+        $panel->handleInput("\t");
+        foreach (str_split('Api') as $ch) {
+            $panel->handleInput($ch);
+        }
+        $this->assertSame(['a'], $queries, 'filter typing is not a query');
+        $plain = AnsiUtils::stripAnsiCodes(implode("\n", $panel->render(new RenderContext(90, 16))));
+        $this->assertStringContainsString('Filter: Api', $plain);
+        $this->assertStringContainsString('src/Api.php', $plain);
+        $this->assertStringNotContainsString('src/Web.php', $plain);
+
+        // Tab wraps back to the query; backspace still edits it.
+        $panel->handleInput("\t");
+        $panel->handleInput("\x7f");
+        $this->assertSame(['a', ''], $queries);
+    }
+
+    public function testGroupedRenderShowsFileHeadersWithCountsAndIndentedMatches(): void
+    {
+        $panel = new ResultsPanelWidget();
+        $panel->setFocused(true);
+        $panel->open('Find in Project', ResultsPanelFields::searchResults());
+        $panel->setResults($this->groupedResults());
+
+        $plain = AnsiUtils::stripAnsiCodes(implode("\n", $panel->render(new RenderContext(80, 12))));
+        $this->assertStringContainsString('▾ src/A.php  (2)', $plain, 'file header with match count');
+        $this->assertStringContainsString('▾ src/B.php  (1)', $plain);
+        $this->assertStringContainsString('match zero', $plain);
+        $this->assertStringNotContainsString('src/A.php:1', $plain, 'grouped match rows omit the per-line path');
+    }
+
+    public function testGroupedEnterOnThePreselectedMatchJumps(): void
+    {
+        $panel = new ResultsPanelWidget();
+        $panel->setFocused(true);
+        $jumped = null;
+        $panel->onJump(function (string $path, int $line) use (&$jumped): void {
+            $jumped = [$path, $line];
+        });
+        $panel->open('Find in Project', ResultsPanelFields::searchResults());
+        $panel->setResults($this->groupedResults());
+
+        // The first match (not the file header) is pre-selected → Enter jumps.
+        $panel->handleInput("\r");
+        $this->assertSame(['src/A.php', 0], $jumped);
+    }
+
+    public function testGroupedClickFileHeaderTogglesCollapse(): void
+    {
+        $panel = new ResultsPanelWidget();
+        $panel->setFocused(true);
+        $panel->open('Find in Project', ResultsPanelFields::searchResults());
+        $panel->setResults($this->groupedResults());
+        $panel->render(new RenderContext(80, 12));
+
+        // Row 0 title, row 1 filter → grouped rows begin at row 2 (the src/A.php header).
+        $panel->handleClick(2);
+        $collapsed = AnsiUtils::stripAnsiCodes(implode("\n", $panel->render(new RenderContext(80, 12))));
+        $this->assertStringContainsString('▸ src/A.php  (2)', $collapsed, 'collapsed arrow');
+        $this->assertStringNotContainsString('match zero', $collapsed, "A's matches are hidden");
+        $this->assertStringNotContainsString('match one', $collapsed);
+        $this->assertStringContainsString('match two', $collapsed, 'B stays expanded');
+
+        // Click again → expand.
+        $panel->handleClick(2);
+        $expanded = AnsiUtils::stripAnsiCodes(implode("\n", $panel->render(new RenderContext(80, 12))));
+        $this->assertStringContainsString('▾ src/A.php', $expanded);
+        $this->assertStringContainsString('match zero', $expanded);
+    }
+
+    public function testToggleAllGroupsCollapsesThenExpandsEveryGroup(): void
+    {
+        $panel = new ResultsPanelWidget();
+        $panel->setFocused(true);
+        $panel->open('Find in Project', ResultsPanelFields::searchResults());
+        $panel->setResults($this->groupedResults());
+        $render = fn (): string => AnsiUtils::stripAnsiCodes(implode("\n", $panel->render(new RenderContext(80, 12))));
+
+        // Move the selection to the last match so collapse clamps it.
+        for ($i = 0; $i < 6; ++$i) {
+            $panel->handleInput("\x1b[B");
+        }
+        $panel->handleInput("\x1be"); // alt+e → collapse all (some were expanded)
+        $collapsed = $render();
+        $this->assertStringContainsString('▸ src/A.php', $collapsed, 'both groups collapsed');
+        $this->assertStringContainsString('▸ src/B.php', $collapsed);
+        $this->assertStringNotContainsString('match zero', $collapsed, 'matches hidden');
+        $this->assertStringNotContainsString('match two', $collapsed);
+
+        $panel->handleInput("\x1be"); // alt+e again → expand all (all were collapsed)
+        $expanded = $render();
+        $this->assertStringContainsString('▾ src/A.php', $expanded);
+        $this->assertStringContainsString('match zero', $expanded);
+        $this->assertStringContainsString('match two', $expanded);
+    }
+
+    public function testGroupByDirectoryTogglesHeadersAndLabels(): void
+    {
+        $panel = new ResultsPanelWidget();
+        $panel->setFocused(true);
+        $panel->open('Find in Project', ResultsPanelFields::searchResults());
+        $panel->setResults([
+            ['path' => 'src/A.php', 'line' => 4, 'text' => 'foo one', 'ranges' => []],
+            ['path' => 'src/B.php', 'line' => 9, 'text' => 'foo two', 'ranges' => []],
+            ['path' => 'other/C.php', 'line' => 2, 'text' => 'foo three', 'ranges' => []],
+        ]);
+        $plain = fn (): string => AnsiUtils::stripAnsiCodes(implode("\n", $panel->render(new RenderContext(120, 20))));
+
+        // Default: one header per file.
+        $byFile = $plain();
+        $this->assertStringContainsString('src/A.php', $byFile);
+        $this->assertStringContainsString('src/B.php', $byFile);
+
+        $panel->handleInput("\x1bg"); // alt+g → group by directory
+        $byDir = $plain();
+        $this->assertStringContainsString('src  (2)', $byDir, 'src/ groups its two files');
+        $this->assertStringContainsString('other  (1)', $byDir);
+        $this->assertStringContainsString('A.php:5', $byDir, 'directory rows show basename:line');
+        $this->assertStringContainsString('B.php:10', $byDir);
+
+        $panel->handleInput("\x1bg"); // alt+g → nested directory → file → match
+        $nested = $plain();
+        $this->assertStringContainsString('src/  (2)', $nested, 'nested directory header');
+        $this->assertStringContainsString('other/  (1)', $nested);
+        $this->assertStringContainsString('A.php  (1)', $nested, 'nested file header shows the basename');
+        $this->assertStringContainsString('B.php  (1)', $nested);
+
+        $panel->handleInput("\x1bg"); // alt+g → back to grouping by file (cycle wraps)
+        $this->assertStringContainsString('src/A.php', $plain(), 'wraps back to file grouping');
+    }
+
+    public function testNestedGroupingCollapsesDirectoriesAndFilesIndependently(): void
+    {
+        $panel = new ResultsPanelWidget();
+        $panel->setFocused(true);
+        $panel->open('Find in Project', ResultsPanelFields::searchResults());
+        $panel->setResults([
+            ['path' => 'src/A.php', 'line' => 4, 'text' => 'foo one', 'ranges' => []],
+            ['path' => 'src/A.php', 'line' => 9, 'text' => 'foo two', 'ranges' => []],
+            ['path' => 'other/C.php', 'line' => 2, 'text' => 'foo three', 'ranges' => []],
+        ]);
+        $plain = fn (): string => AnsiUtils::stripAnsiCodes(implode("\n", $panel->render(new RenderContext(120, 20))));
+
+        $panel->handleInput("\x1bg"); // → Directory
+        $panel->handleInput("\x1bg"); // → Nested
+        $this->assertStringContainsString('src/  (2)', $plain(), 'directory counts its files\' matches');
+        $this->assertStringContainsString('foo one', $plain());
+
+        // Land deterministically on the top row (the src/ directory header).
+        for ($i = 0; $i < 6; ++$i) {
+            $panel->handleInput("\x1b[A"); // up (clamps at row 0)
+        }
+
+        // Collapse the directory — its whole subtree (file header + matches) disappears.
+        $panel->handleInput("\r");
+        $collapsedDir = $plain();
+        $this->assertStringContainsString('src/  (2)', $collapsedDir, 'directory header still shows its count');
+        $this->assertStringNotContainsString('A.php', $collapsedDir, 'the file header is hidden under the collapsed directory');
+        $this->assertStringContainsString('other/', $collapsedDir, 'sibling directories are unaffected');
+
+        // Re-expand the directory, then collapse just its file header.
+        $panel->handleInput("\r"); // expand src/
+        $panel->handleInput("\x1b[B"); // down → the src/A.php file header
+        $panel->handleInput("\r"); // collapse the file
+        $collapsedFile = $plain();
+        $this->assertStringContainsString('A.php', $collapsedFile, 'the file header remains');
+        $this->assertStringNotContainsString('foo one', $collapsedFile, 'the file\'s matches are hidden');
+    }
+
+    public function testNestedToggleAllCollapsesAndExpandsEveryLevel(): void
+    {
+        $panel = new ResultsPanelWidget();
+        $panel->setFocused(true);
+        $panel->open('Find in Project', ResultsPanelFields::searchResults());
+        $panel->setResults([
+            ['path' => 'src/A.php', 'line' => 4, 'text' => 'foo one', 'ranges' => []],
+            ['path' => 'src/B.php', 'line' => 2, 'text' => 'foo two', 'ranges' => []],
+        ]);
+        $plain = fn (): string => AnsiUtils::stripAnsiCodes(implode("\n", $panel->render(new RenderContext(120, 20))));
+
+        $panel->handleInput("\x1bg"); // → Directory
+        $panel->handleInput("\x1bg"); // → Nested
+
+        // Alt+E collapses every level (directories and files); again expands them.
+        $panel->handleInput("\x1be");
+        $this->assertStringNotContainsString('foo one', $plain(), 'collapse-all hides matches at both levels');
+        $panel->handleInput("\x1be");
+        $this->assertStringContainsString('foo one', $plain(), 'expand-all restores them');
+    }
+
+    public function testContextLinesExpandCollapseAndAreInert(): void
+    {
+        $panel = new ResultsPanelWidget();
+        $panel->setFocused(true);
+        $panel->setContextProvider(static fn (string $path, int $line): array => [
+            ['line' => $line - 1, 'text' => 'above line'],
+            ['line' => $line + 1, 'text' => 'below line'],
+        ]);
+        $panel->open('Find in Project', ResultsPanelFields::searchResults());
+        $panel->setResults([['path' => 'src/A.php', 'line' => 4, 'text' => 'the match', 'ranges' => []]]);
+        $plain = fn (): string => AnsiUtils::stripAnsiCodes(implode("\n", $panel->render(new RenderContext(120, 20))));
+
+        $this->assertStringNotContainsString('above line', $plain(), 'no context until expanded');
+
+        $panel->handleInput("\x1bm"); // alt+m on the auto-selected match → expand
+        $expanded = $plain();
+        $this->assertStringContainsString('above line', $expanded);
+        $this->assertStringContainsString('below line', $expanded);
+
+        $panel->handleInput("\x1b[B"); // down → onto a context row
+        $panel->handleInput("\r"); // enter → inert (no jump/close)
+        $this->assertTrue($panel->isOpen(), 'context rows are inert');
+
+        $panel->handleInput("\x1b[A"); // up → back to the match row
+        $panel->handleInput("\x1bm"); // alt+m → collapse
+        $this->assertStringNotContainsString('above line', $plain(), 'context collapses');
+
+        $panel->handleInput("\x1b[A"); // up → the file header
+        $panel->handleInput("\x1bm"); // alt+m on a header → no-op
+        $this->assertStringNotContainsString('above line', $plain());
     }
 }

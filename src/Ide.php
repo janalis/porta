@@ -614,8 +614,9 @@ final class Ide
     /** The shared bottom results panel: live queries, toggles, jumps, close. */
     private function wireResultsPanel(): void
     {
-        // The results panel serves two live-query modes (project text search
-        // and workspace symbol search); the PanelManager's mode selects the handler.
+        // The results panel's query row serves the command palette and workspace
+        // symbol search (find-in-project's query lives in the modal). The
+        // PanelManager's mode selects the handler.
         $this->resultsPanel->onQueryChanged(function (string $query): void {
             if (null !== $this->searchDebounce) {
                 EventLoop::cancel($this->searchDebounce);
@@ -627,37 +628,12 @@ final class Ide
 
                 return;
             }
+            // Workspace symbol search is the only other query mode; debounce it.
             $this->resultsPanel->setSearching();
             $this->searchDebounce = EventLoop::delay(0.25, function () use ($query): void {
                 $this->searchDebounce = null;
-                if (ResultsPanelMode::Symbol === $this->panels->mode()) {
-                    $this->navigation->requestWorkspaceSymbols($query);
-                } else {
-                    $this->projectSearchController->search($query);
-                }
+                $this->navigation->requestWorkspaceSymbols($query);
             });
-        });
-
-        $this->resultsPanel->onToggleOption(function (string $name): void {
-            $this->projectSearchController->toggleOption($name);
-        });
-
-        // The file mask (find-in-project only) re-runs the search, debounced like the query.
-        $this->resultsPanel->onMaskChanged(function (string $mask): void {
-            if (null !== $this->searchDebounce) {
-                EventLoop::cancel($this->searchDebounce);
-            }
-            $this->resultsPanel->setSearching();
-            $this->searchDebounce = EventLoop::delay(0.25, function () use ($mask): void {
-                $this->searchDebounce = null;
-                $this->projectSearchController->setMask($mask);
-            });
-        });
-
-        // The scope selector (Alt+S) hands the chosen kind to the controller,
-        // which resolves it (via the injected resolver), persists it, and re-runs.
-        $this->resultsPanel->onScopeCycle(function (int $index): void {
-            $this->projectSearchController->setScopeIndex($index);
         });
 
         // F5 re-runs the current find-in-project query (picks up on-disk changes).
@@ -666,15 +642,6 @@ final class Ide
                 $this->projectSearchController->rerun();
             }
         });
-
-        $this->resultsPanel->onReplaceAll(
-            /** @param list<int> $excluded */
-            function (string $replacement, array $excluded): void {
-                $this->projectSearchController->replaceAll($replacement, $excluded);
-            },
-        );
-
-        $this->resultsPanel->setPreviewTransformer(fn (string $text, string $replacement): string => $this->projectSearchController->previewLine($text, $replacement));
 
         $this->resultsPanel->setContextProvider(fn (string $relativePath, int $line): array => $this->contextLinesAround($relativePath, $line));
 

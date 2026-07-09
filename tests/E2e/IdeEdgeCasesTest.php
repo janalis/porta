@@ -604,10 +604,7 @@ final class IdeEdgeCasesTest extends TestCase
                 },
                 760 => function ($tui): void {
                     $tui->tick();
-                    $this->promote($tui); // modal → results pane (replace runs from the pane)
-                    $tui->handleInput("\t"); // query → mask
-                    $tui->handleInput("\t"); // mask → filter
-                    $tui->handleInput("\t"); // filter → replace
+                    $tui->handleInput("\t"); // modal: query → replace
                     foreach (str_split('renamed') as $ch) {
                         $tui->handleInput($ch);
                     }
@@ -622,49 +619,6 @@ final class IdeEdgeCasesTest extends TestCase
         );
     }
 
-    public function testFindInProjectFileMaskFiltersResults(): void
-    {
-        $project = new TempProject([
-            'src/A.php' => "<?php\n// token here\n",
-            'src/B.js' => "// token here\n",
-        ]);
-        $panelText = static fn ($tui): string => AnsiUtils::stripAnsiCodes(implode("\n", $tui->getById('results')->render(new \Symfony\Component\Tui\Render\RenderContext(160, 14))));
-
-        $this->runIde(
-            $project,
-            $project->path('src/A.php'),
-            [
-                200 => static function ($tui): void {
-                    $tui->handleInput("\x1b[102;6u"); // ctrl+shift+f
-                    foreach (str_split('token') as $ch) {
-                        $tui->handleInput($ch);
-                    }
-                },
-                600 => function ($tui) use ($panelText): void {
-                    $tui->tick();
-                    $this->promote($tui); // modal → results pane
-                    $panel = $panelText($tui);
-                    $this->assertStringContainsString('A.php', $panel, 'both files match before masking');
-                    $this->assertStringContainsString('B.js', $panel);
-                    // Tab from the query to the Mask field, then restrict to PHP.
-                    $tui->handleInput("\t");
-                    foreach (str_split('*.php') as $ch) {
-                        $tui->handleInput($ch);
-                    }
-                },
-                1050 => function ($tui) use ($panelText): void {
-                    $tui->tick();
-                    $panel = $panelText($tui);
-                    $this->assertStringContainsString('A.php', $panel, 'the PHP file still matches');
-                    $this->assertStringNotContainsString('B.js', $panel, 'the *.php mask excludes the JS file');
-                },
-            ],
-            1.4,
-        );
-
-        $this->addToAssertionCount(1);
-    }
-
     public function testFindInProjectScopeSelectorNarrowsResults(): void
     {
         $project = new TempProject([
@@ -672,7 +626,7 @@ final class IdeEdgeCasesTest extends TestCase
             'src/C.php' => "<?php\n// tok here\n",
             'other/B.php' => "<?php\n// tok here\n",
         ]);
-        $panelText = static fn ($tui): string => AnsiUtils::stripAnsiCodes(implode("\n", $tui->getById('results')->render(new \Symfony\Component\Tui\Render\RenderContext(160, 16))));
+        $panelText = fn ($tui): string => $this->modalText($tui); // scope is configured in the modal
 
         $this->runIde(
             $project,
@@ -686,7 +640,6 @@ final class IdeEdgeCasesTest extends TestCase
                 },
                 600 => function ($tui) use ($panelText): void {
                     $tui->tick();
-                    $this->promote($tui); // modal → results pane
                     $panel = $panelText($tui);
                     $this->assertStringContainsString('src/A.php', $panel, 'whole project finds all three');
                     $this->assertStringContainsString('src/C.php', $panel);
@@ -751,7 +704,7 @@ final class IdeEdgeCasesTest extends TestCase
             // `lib` sorts first among the directories → the first tree entry (row 1).
             $tui->handleInput(\sprintf("\x1b[<2;%d;%dM", $rect->col + 3, $rect->row + 2));
         };
-        $panelText = static fn ($tui): string => AnsiUtils::stripAnsiCodes(implode("\n", $tui->getById('results')->render(new \Symfony\Component\Tui\Render\RenderContext(160, 14))));
+        $panelText = fn ($tui): string => $this->modalText($tui); // scope is configured in the modal
 
         $this->runIde(
             $project,
@@ -777,7 +730,6 @@ final class IdeEdgeCasesTest extends TestCase
                 },
                 700 => function ($tui) use ($panelText): void {
                     $tui->tick();
-                    $this->promote($tui); // modal → results pane
                     $this->assertStringContainsString('other/Outside.php', $panelText($tui), 'whole project finds both first');
                     for ($i = 0; $i < 5; ++$i) {
                         $tui->handleInput("\x1bs"); // cycle past the 5 built-ins to the saved lib scope
@@ -804,7 +756,7 @@ final class IdeEdgeCasesTest extends TestCase
             'pkg/src/A.php' => "<?php\n// tok here\n",
             'other/B.php' => "<?php\n// tok here\n",
         ]);
-        $panelText = static fn ($tui): string => AnsiUtils::stripAnsiCodes(implode("\n", $tui->getById('results')->render(new \Symfony\Component\Tui\Render\RenderContext(160, 16))));
+        $panelText = fn ($tui): string => $this->modalText($tui); // scope is configured in the modal
 
         $this->runIde(
             $project,
@@ -825,7 +777,6 @@ final class IdeEdgeCasesTest extends TestCase
                 },
                 1000 => function ($tui) use ($panelText): void {
                     $tui->tick();
-                    $this->promote($tui); // modal → results pane (carries the modal's scope)
                     $panel = $panelText($tui);
                     $this->assertStringContainsString('Scope: Module', $panel);
                     $this->assertStringContainsString('pkg/src/A.php', $panel, 'the module scope keeps the package');
@@ -841,7 +792,7 @@ final class IdeEdgeCasesTest extends TestCase
     public function testScopeSelectorWithNoFileOpenStaysWholeProject(): void
     {
         $project = new TempProject(['src/A.php' => "<?php\n// tok\n", 'other/B.php' => "<?php\n// tok\n"]);
-        $panelText = static fn ($tui): string => AnsiUtils::stripAnsiCodes(implode("\n", $tui->getById('results')->render(new \Symfony\Component\Tui\Render\RenderContext(160, 16))));
+        $panelText = fn ($tui): string => $this->modalText($tui); // scope is configured in the modal
 
         $this->runIde(
             $project,
@@ -859,7 +810,6 @@ final class IdeEdgeCasesTest extends TestCase
                 },
                 800 => function ($tui) use ($panelText): void {
                     $tui->tick();
-                    $this->promote($tui); // modal → results pane
                     $panel = $panelText($tui);
                     $this->assertStringContainsString('Scope: Directory', $panel);
                     $this->assertStringContainsString('src/A.php', $panel);
@@ -875,11 +825,11 @@ final class IdeEdgeCasesTest extends TestCase
     public function testFindInProjectInCommentsStringsScopeNarrowsMatches(): void
     {
         $project = new TempProject(['src/A.php' => "<?php\n\$needle = 1;\n// needle here\n"]);
-        $panelText = static fn ($tui): string => AnsiUtils::stripAnsiCodes(implode("\n", $tui->getById('results')->render(new \Symfony\Component\Tui\Render\RenderContext(160, 16))));
+        $panelText = fn ($tui): string => $this->modalText($tui); // the token-scope option is in the modal
 
         $this->runIde(
             $project,
-            $project->path('src/A.php'),
+            null, // no open file → the modal composites over an empty pane (no file text leaks into asserts)
             [
                 200 => static function ($tui): void {
                     $tui->handleInput("\x1b[102;6u"); // ctrl+shift+f
@@ -889,7 +839,6 @@ final class IdeEdgeCasesTest extends TestCase
                 },
                 600 => function ($tui) use ($panelText): void {
                     $tui->tick();
-                    $this->promote($tui); // modal → results pane
                     $panel = $panelText($tui);
                     $this->assertStringContainsString('$needle = 1;', $panel, 'the code occurrence matches first');
                     $this->assertStringContainsString('// needle here', $panel);
@@ -980,7 +929,7 @@ final class IdeEdgeCasesTest extends TestCase
             'src/A.php' => "<?php\nfunction foo()\n{\n    return 1;\n}\n", // opened (active buffer)
             'src/B.php' => "<?php\nfunction foo()\n{\n    return 2;\n}\n", // only on disk
         ]);
-        $panelText = static fn ($tui): string => AnsiUtils::stripAnsiCodes(implode("\n", $tui->getById('results')->render(new \Symfony\Component\Tui\Render\RenderContext(160, 16))));
+        $panelText = fn ($tui): string => $this->modalText($tui); // find + replace happen in the modal
 
         $this->runIde(
             $project,
@@ -996,15 +945,12 @@ final class IdeEdgeCasesTest extends TestCase
                 },
                 600 => function ($tui) use ($panelText): void {
                     $tui->tick();
-                    $this->promote($tui); // modal → results pane (replace runs from the pane)
                     $panel = $panelText($tui);
                     $this->assertStringContainsString('foo()⏎{', $panel, 'the multiline query renders the newline as ⏎');
                     $this->assertStringContainsString('2 results', $panel, 'the pattern matches across the line break in both files');
                     $this->assertStringContainsString('foo() ⏎…', $panel, 'the match preview shows its first line + continuation');
                     // Replace the multiline match across the whole file (open buffer + disk).
-                    $tui->handleInput("\t"); // query → mask
-                    $tui->handleInput("\t"); // mask → filter
-                    $tui->handleInput("\t"); // filter → replace
+                    $tui->handleInput("\t"); // query → replace
                     foreach (str_split('renamed') as $ch) {
                         $tui->handleInput($ch);
                     }
@@ -1045,10 +991,7 @@ final class IdeEdgeCasesTest extends TestCase
                 },
                 600 => function ($tui): void {
                     $tui->tick();
-                    $this->promote($tui); // modal → results pane (replace runs from the pane)
-                    $tui->handleInput("\t");
-                    $tui->handleInput("\t");
-                    $tui->handleInput("\t"); // → replace
+                    $tui->handleInput("\t"); // query → replace
                     $tui->handleInput('x');
                     $tui->handleInput("\x1ba"); // alt+a with a multiline query but no matches
                 },
@@ -1161,28 +1104,25 @@ final class IdeEdgeCasesTest extends TestCase
                 },
                 500 => function ($tui) use ($panelText): void {
                     $tui->tick();
-                    $this->promote($tui); // modal → results pane (pin lives on the pane)
+                    $this->promote($tui); // modal → results tool window (pin lives on the pane)
                     $this->assertStringContainsString('src/A.php', $panelText($tui), 'the foo search finds A.php');
                     $tui->handleInput("\x1bk"); // alt+k → pin
                     $this->assertStringContainsString('pinned: foo', $panelText($tui), 'the pin indicator appears');
-                    $tui->handleInput("\x1b"); // esc → close
+                    $tui->handleInput("\x1b"); // esc → close the tool window
                 },
                 700 => static function ($tui): void {
-                    $tui->handleInput("\x1b[102;6u"); // reopen
-                },
-                900 => function ($tui) use ($panelText): void {
-                    $tui->tick();
-                    $this->promote($tui); // reopened modal → results pane (carries the pin)
-                    $this->assertStringContainsString('pinned: foo', $panelText($tui), 'the pin survives close/reopen');
+                    $tui->handleInput("\x1b[102;6u"); // reopen the modal
                     foreach (str_split('bar') as $ch) {
-                        $tui->handleInput($ch);
+                        $tui->handleInput($ch); // run a fresh search in the modal
                     }
                 },
-                1200 => function ($tui) use ($panelText): void {
+                1100 => function ($tui) use ($panelText): void {
                     $tui->tick();
+                    $this->promote($tui); // bar results → tool window (still carries the pin)
                     $panel = $panelText($tui);
                     $this->assertStringContainsString('src/B.php', $panel, 'the live search moved on to bar');
                     $this->assertStringNotContainsString('src/A.php', $panel);
+                    $this->assertStringContainsString('pinned: foo', $panel, 'the pin survives close/reopen');
                     $tui->handleInput("\x1bk"); // alt+k → restore the pinned foo results
                 },
                 1500 => function ($tui) use ($panelText): void {
@@ -1334,11 +1274,8 @@ final class IdeEdgeCasesTest extends TestCase
                 },
                 600 => function ($tui): void {
                     $tui->tick();
-                    $this->promote($tui); // modal → results pane (replace runs from the pane)
-                    $tui->handleInput("\x1bp"); // alt+p → preserve case
-                    $tui->handleInput("\t"); // query → mask
-                    $tui->handleInput("\t"); // mask → filter
-                    $tui->handleInput("\t"); // filter → replace
+                    $tui->handleInput("\x1bv"); // alt+v → preserve case (modal option)
+                    $tui->handleInput("\t"); // query → replace
                     foreach (str_split('newname') as $ch) {
                         $tui->handleInput($ch);
                     }
@@ -1361,11 +1298,10 @@ final class IdeEdgeCasesTest extends TestCase
     public function testFindInProjectSearchHistoryRecall(): void
     {
         $project = new TempProject(['src/A.php' => "<?php\n// tok here\n"]);
-        $panelText = static fn ($tui): string => AnsiUtils::stripAnsiCodes(implode("\n", $tui->getById('results')->render(new \Symfony\Component\Tui\Render\RenderContext(160, 16))));
 
         $this->runIde(
             $project,
-            $project->path('src/A.php'),
+            null, // no open buffer → the editor never bleeds "tok" behind the modal
             [
                 200 => static function ($tui): void {
                     $tui->handleInput("\x1b[102;6u"); // ctrl+shift+f
@@ -1380,15 +1316,14 @@ final class IdeEdgeCasesTest extends TestCase
                 700 => static function ($tui): void {
                     $tui->handleInput("\x1b[102;6u"); // reopen (fresh, empty query)
                 },
-                900 => function ($tui) use ($panelText): void {
+                900 => function ($tui): void {
                     $tui->tick();
-                    $this->promote($tui); // modal → results pane (query history recall lives on the pane)
-                    $this->assertStringNotContainsString('Find in Project: tok', $panelText($tui), 'reopens empty');
-                    $tui->handleInput("\x1b[1;3A"); // alt+up → recall the prior query
+                    $this->assertStringNotContainsString('tok', $this->modalText($tui), 'reopens empty');
+                    $tui->handleInput("\x1bp"); // legacy alt+up → recall the prior query in the modal
                 },
-                1100 => function ($tui) use ($panelText): void {
+                1100 => function ($tui): void {
                     $tui->tick();
-                    $this->assertStringContainsString('Find in Project: tok', $panelText($tui), 'the prior search is recalled');
+                    $this->assertStringContainsString('tok', $this->modalText($tui), 'the prior search is recalled');
                 },
             ],
             1.4,
@@ -2183,10 +2118,7 @@ final class IdeEdgeCasesTest extends TestCase
                 },
                 700 => function ($tui): void {
                     $tui->tick();
-                    $this->promote($tui); // modal → results pane (replace runs from the pane)
-                    $tui->handleInput("\t"); // query → mask
-                    $tui->handleInput("\t"); // mask → filter
-                    $tui->handleInput("\t"); // filter → replace
+                    $tui->handleInput("\t"); // modal: query → replace
                     foreach (str_split('bar') as $ch) {
                         $tui->handleInput($ch);
                     }
@@ -2221,10 +2153,7 @@ final class IdeEdgeCasesTest extends TestCase
                 },
                 700 => function ($tui): void {
                     $tui->tick();
-                    $this->promote($tui); // modal → results pane (replace runs from the pane)
-                    $tui->handleInput("\t"); // query → mask
-                    $tui->handleInput("\t"); // mask → filter
-                    $tui->handleInput("\t"); // filter → replace
+                    $tui->handleInput("\t"); // modal: query → replace
                     foreach (str_split('baz') as $ch) {
                         $tui->handleInput($ch);
                     }
@@ -2248,11 +2177,8 @@ final class IdeEdgeCasesTest extends TestCase
             $project->path('src/A.php'),
             [
                 300 => function ($tui): void {
-                    $tui->handleInput("\x1b[102;6u"); // open project search (modal)
-                    $this->promote($tui); // modal → results pane (empty; replace runs from the pane)
-                    $tui->handleInput("\t"); // query → mask
-                    $tui->handleInput("\t"); // mask → filter
-                    $tui->handleInput("\t"); // filter → replace
+                    $tui->handleInput("\x1b[102;6u"); // open the modal
+                    $tui->handleInput("\t"); // query → replace
                     $tui->handleInput("\x1ba"); // replace all with no query/results
                 },
                 500 => function ($tui, $terminal): void {
@@ -2267,7 +2193,7 @@ final class IdeEdgeCasesTest extends TestCase
     public function testProjectReplacePreviewExcludesSelectedMatch(): void
     {
         $project = new TempProject(['src/A.php' => "<?php\n\$foo = 1;\n\$foo = 2;\n"]); // two matching lines
-        $panelText = static fn ($tui): string => AnsiUtils::stripAnsiCodes(implode("\n", $tui->getById('results')->render(new \Symfony\Component\Tui\Render\RenderContext(160, 16))));
+        $panelText = fn ($tui): string => $this->modalText($tui); // replace preview + exclude happen in the modal
 
         $this->runIde(
             $project,
@@ -2281,10 +2207,7 @@ final class IdeEdgeCasesTest extends TestCase
                 },
                 600 => function ($tui) use ($panelText): void {
                     $tui->tick();
-                    $this->promote($tui); // modal → results pane (replace preview + exclude live on the pane)
-                    $tui->handleInput("\t"); // query → mask
-                    $tui->handleInput("\t"); // mask → filter
-                    $tui->handleInput("\t"); // filter → replace
+                    $tui->handleInput("\t"); // modal: query → replace
                     foreach (str_split('bar') as $ch) {
                         $tui->handleInput($ch);
                     }
@@ -2307,44 +2230,6 @@ final class IdeEdgeCasesTest extends TestCase
             ],
             1.3,
         );
-    }
-
-    public function testProjectReplaceExcludeWholeFileFromHeader(): void
-    {
-        $project = new TempProject(['src/A.php' => "<?php\n\$foo = 1;\n\$foo = 2;\n"]);
-        $panelText = static fn ($tui): string => AnsiUtils::stripAnsiCodes(implode("\n", $tui->getById('results')->render(new \Symfony\Component\Tui\Render\RenderContext(160, 16))));
-
-        $this->runIde(
-            $project,
-            $project->path('src/A.php'),
-            [
-                200 => static function ($tui): void {
-                    $tui->handleInput("\x1b[102;6u"); // ctrl+shift+f
-                    foreach (str_split('foo') as $ch) {
-                        $tui->handleInput($ch);
-                    }
-                },
-                600 => function ($tui) use ($panelText): void {
-                    $tui->tick();
-                    $this->promote($tui); // modal → results pane (replace preview + exclude live on the pane)
-                    $tui->handleInput("\t");
-                    $tui->handleInput("\t");
-                    $tui->handleInput("\t"); // → replace
-                    foreach (str_split('bar') as $ch) {
-                        $tui->handleInput($ch);
-                    }
-                    $this->assertStringContainsString('replace 2', $panelText($tui), 'both matches kept initially');
-                    $tui->handleInput("\x1b[A"); // up → the file header row
-                    $tui->handleInput("\x1b[3~"); // delete → exclude every match in the file
-                    $this->assertStringContainsString('replace 0', $panelText($tui), 'whole file excluded');
-                    $tui->handleInput("\x1b[3~"); // delete again → re-include every match
-                    $this->assertStringContainsString('replace 2', $panelText($tui), 'whole file re-included');
-                },
-            ],
-            1.0,
-        );
-
-        $this->addToAssertionCount(1);
     }
 
     public function testGitStageCommitBlameViaPalette(): void

@@ -46,10 +46,12 @@ final class FindInFilesModal
         'toggle_regex' => ['alt+r'],
         'toggle_case' => ['alt+c'],
         'toggle_word' => ['alt+w'],
-        'toggle_preserve' => ['alt+p'],
+        'toggle_preserve' => ['alt+v'], // alt+p's legacy encoding (\x1bp) collides with alt+up (history recall)
         'toggle_tokens' => ['alt+t'],
         'replace_all' => ['alt+a'],
         'toggle_exclude' => [Key::DELETE],
+        'history_prev' => ['alt+up'],
+        'history_next' => ['alt+down'],
     ];
 
     private bool $open = false;
@@ -72,6 +74,10 @@ final class FindInFilesModal
     /** 'query' | 'replace' | 'mask' — which field typing edits (Tab cycles) */
     private string $activeField = 'query';
     private bool $searching = false;
+    /** @var list<string> recent queries, most-recent-first (Alt+↑/↓ recall on the query field) */
+    private array $history = [];
+    /** cursor into $history while browsing it, or -1 when not */
+    private int $historyCursor = -1;
 
     /** @var array{col: int, width: int, previewRow: int, windowStart: int, count: int}|null last-rendered geometry, for hit-testing */
     private ?array $box = null;
@@ -199,6 +205,17 @@ final class FindInFilesModal
         return $this->open;
     }
 
+    /**
+     * Seed the recent-query list recalled with Alt+↑/↓ on the query field.
+     *
+     * @param list<string> $history most-recent-first
+     */
+    public function setHistory(array $history): void
+    {
+        $this->history = $history;
+        $this->historyCursor = -1;
+    }
+
     /** @param list<string> $labels */
     public function setScopes(array $labels, int $index): void
     {
@@ -263,6 +280,10 @@ final class FindInFilesModal
             }
         } elseif ($kb->matches($data, 'accept_completion')) {
             $this->jumpSelected();
+        } elseif ('query' === $this->activeField && $kb->matches($data, 'history_prev')) {
+            $this->recallHistory(1);
+        } elseif ('query' === $this->activeField && $kb->matches($data, 'history_next')) {
+            $this->recallHistory(-1);
         } elseif ($kb->matches($data, 'cursor_up')) {
             $this->step(-1);
         } elseif ($kb->matches($data, 'cursor_down')) {
@@ -326,11 +347,27 @@ final class FindInFilesModal
                 ($this->onMaskChanged)($this->mask->value());
             }
         } elseif ('query' === $this->activeField) {
+            $this->historyCursor = -1; // typing leaves history-browsing
             if (null !== $this->onQuery) {
                 ($this->onQuery)($this->query->value());
             }
         }
         // Replace edits only re-render the old → new preview; they don't re-search.
+        ($this->invalidate)();
+    }
+
+    /** Walk the recent-query history into the query field: $step +1 = older, -1 = newer. */
+    private function recallHistory(int $step): void
+    {
+        $next = $this->historyCursor + $step;
+        if ($next < -1 || $next >= \count($this->history)) {
+            return; // past either end
+        }
+        $this->historyCursor = $next;
+        $this->query->setValue(-1 === $next ? '' : $this->history[$next]);
+        if (null !== $this->onQuery) {
+            ($this->onQuery)($this->query->value());
+        }
         ($this->invalidate)();
     }
 

@@ -91,6 +91,18 @@ final class ProjectSearchControllerTest extends TestCase
         $this->assertSame(['needle'], new \Porta\History\SearchHistoryStore($project->dir)->all());
     }
 
+    public function testPromotingWithoutAQueryTitlesTheToolWindowGenerically(): void
+    {
+        $project = new TempProject(['src/A.php' => "<?php\n"]);
+        $controller = $this->controller($project->dir);
+        $controller->open();
+        $controller->promoteToPane(); // Alt+Enter before typing anything
+
+        $pane = AnsiUtils::stripAnsiCodes(implode("\n", $this->panel->render(new RenderContext(100, 20))));
+        $this->assertStringContainsString('Find in Project', $pane);
+        $this->assertStringNotContainsString('Find in Project:', $pane, 'an empty query drops the colon suffix');
+    }
+
     public function testExportWithNoResultsReturnsEmpty(): void
     {
         $project = new TempProject(['src/A.php' => "<?php\n"]);

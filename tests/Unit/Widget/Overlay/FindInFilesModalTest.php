@@ -97,6 +97,26 @@ final class FindInFilesModalTest extends TestCase
         $this->assertStringContainsString('f⏎o', $this->screen($modal), 'the newline renders as ⏎');
     }
 
+    public function testQueryHistoryRecallCyclesWithAltArrows(): void
+    {
+        $modal = $this->modal();
+        $recalled = [];
+        $modal->onQuery(function (string $q) use (&$recalled): void {
+            $recalled[] = $q;
+        });
+        $modal->open('Find in Files');
+        $modal->setHistory(['recent', 'older']); // most-recent-first
+
+        $modal->handleInput("\x1bn", $this->kb); // alt+down at the start: nothing newer → no-op
+        $modal->handleInput("\x1bp", $this->kb); // alt+up → 'recent'
+        $modal->handleInput("\x1bp", $this->kb); // alt+up → 'older'
+        $modal->handleInput("\x1bp", $this->kb); // alt+up past the end → no-op
+        $modal->handleInput("\x1bn", $this->kb); // alt+down → 'recent'
+        $modal->handleInput("\x1bn", $this->kb); // alt+down → '' (back to a blank query)
+
+        $this->assertSame(['recent', 'older', 'recent', ''], $recalled);
+    }
+
     public function testNavigateAndJump(): void
     {
         $modal = $this->modal();
@@ -153,7 +173,7 @@ final class FindInFilesModalTest extends TestCase
         $modal->handleInput("\x1br", $this->kb); // alt+r regex
         $modal->handleInput("\x1bc", $this->kb); // alt+c case
         $modal->handleInput("\x1bw", $this->kb); // alt+w word
-        $modal->handleInput("\x1bp", $this->kb); // alt+p preserve
+        $modal->handleInput("\x1bv", $this->kb); // alt+v preserve
         $modal->handleInput("\x1bt", $this->kb); // alt+t tokens
         $this->assertSame([1], $scopeIdx);
         $this->assertSame(['regex', 'case', 'word', 'preserve', 'tokens'], $toggled);

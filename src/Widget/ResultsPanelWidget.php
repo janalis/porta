@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 namespace Porta\Widget;
 
-use Porta\Search\TokenScope;
 use Porta\Support\AnsiText;
 use Porta\Ui\ColorPalette;
 use Porta\Ui\ListNavigation;
@@ -36,37 +35,14 @@ final class ResultsPanelWidget extends OverlayWidget implements FocusableInterfa
     use PanelRows;
 
     private bool $withQuery = false;
-    private bool $withOptions = false;
-    private bool $withReplace = false;
-    private bool $withMask = false;
-    private bool $withScope = false;
     private bool $withFilter = false;
-    /** @var list<string> the scope-selector choices cycled by Alt+S (built-in kinds + saved scopes) */
-    private array $scopeLabels = ['Whole Project'];
-    private int $scopeIndex = 0;
     private string $title = '';
     private readonly TextField $query;
-    private readonly TextField $replace;
-    private readonly TextField $mask;
     private readonly TextField $filter;
-    /** 'query' | 'mask' | 'replace' — which field typing edits; cycled by Tab */
+    /** 'query' | 'filter' — which field typing edits; cycled by Tab */
     private string $activeField = 'query';
-    /** @var list<string> recent queries, most-recent-first (Alt+↑/↓ recall) */
-    private array $history = [];
-    /** cursor into $history while browsing it, or -1 when not */
-    private int $historyCursor = -1;
-    /** @var list<string> recent file masks, most-recent-first (Alt+↑/↓ recall on the Mask field) */
-    private array $maskHistory = [];
-    /** cursor into $maskHistory while browsing it, or -1 when not */
-    private int $maskHistoryCursor = -1;
     private readonly ListSelection $list;
     private bool $searching = false;
-
-    /** @var list<array{name: string, start: int, end: int}> option-tag click zones (columns) from the last render */
-    private array $optionZones = [];
-
-    /** @var array{regex: bool, case: bool, word: bool, preserve: bool, tokens: string} search toggles shown in the header ('tokens' is a TokenScope value) */
-    private array $options = ['regex' => false, 'case' => false, 'word' => false, 'preserve' => false, 'tokens' => 'any'];
 
     /** @var list<array{path: string, line: int, text: string, ranges?: list<array{start: int, length: int}>}> ranges (search mode only) are display-column match spans */
     private array $results = [];
@@ -74,8 +50,6 @@ final class ResultsPanelWidget extends OverlayWidget implements FocusableInterfa
     private ResultGrouping $grouping = ResultGrouping::File;
     /** @var array<string, bool> group key (file or directory) => collapsed (grouped mode only) */
     private array $collapsed = [];
-    /** @var array<int, bool> matchIndex => excluded from replace (preview mode only) */
-    private array $excluded = [];
     /** @var array<int, bool> matchIndex => its context lines are expanded (Alt+.) */
     private array $contextExpanded = [];
     /** @var array<int, list<array{line: int, text: string}>> matchIndex => cached neighbouring lines */
@@ -85,20 +59,10 @@ final class ResultsPanelWidget extends OverlayWidget implements FocusableInterfa
 
     /** @var (callable(string): void)|null */
     private $onQueryChanged = null;
-    /** @var (callable(string): void)|null the file mask changed (re-run the search) */
-    private $onMaskChanged = null;
-    /** @var (callable(int): void)|null the search scope was cycled (Alt+S) — the new choice index */
-    private $onScopeCycle = null;
     /** @var (callable(): void)|null re-run the current search (F5) */
     private $onRerun = null;
     /** @var (callable(string, int): void)|null */
     private $onJump = null;
-    /** @var (callable(string): void)|null toggled a search option ('regex'|'case'|'word') */
-    private $onToggleOption = null;
-    /** @var (callable(string, list<int>): void)|null replace kept matches with the given text (excluding the given match indices) */
-    private $onReplaceAll = null;
-    /** @var (\Closure(string, string): string)|null applies the live query+replacement to a match line for the inline preview */
-    private $previewReplacement = null;
     /** @var (callable(): void)|null export the current results to a file (Alt+X) */
     private $onExport = null;
     /** @var (callable(): void)|null pin/restore the result set (Alt+K) */
@@ -115,8 +79,6 @@ final class ResultsPanelWidget extends OverlayWidget implements FocusableInterfa
         $this->palette = $palette ?? ColorPalette::dark();
         $this->list = new ListSelection();
         $this->query = new TextField();
-        $this->replace = new TextField();
-        $this->mask = new TextField();
         $this->filter = new TextField();
         $this->visibleRows = 10;
     }
@@ -128,79 +90,9 @@ final class ResultsPanelWidget extends OverlayWidget implements FocusableInterfa
         return $this;
     }
 
-    public function onMaskChanged(callable $callback): self
-    {
-        $this->onMaskChanged = $callback;
-
-        return $this;
-    }
-
-    public function onScopeCycle(callable $callback): self
-    {
-        $this->onScopeCycle = $callback;
-
-        return $this;
-    }
-
     public function onRerun(callable $callback): self
     {
         $this->onRerun = $callback;
-
-        return $this;
-    }
-
-    /**
-     * Seed the scope-selector choices and the current selection (set when the
-     * panel opens).
-     *
-     * @param list<string> $labels
-     */
-    public function setScopes(array $labels, int $index): void
-    {
-        $this->scopeLabels = [] === $labels ? ['Whole Project'] : $labels;
-        $this->scopeIndex = $index;
-        $this->invalidate();
-    }
-
-    /**
-     * Seed the recent-query list recalled with Alt+↑/↓ (set when the panel opens).
-     *
-     * @param list<string> $history most-recent-first
-     */
-    public function setHistory(array $history): void
-    {
-        $this->history = $history;
-        $this->historyCursor = -1;
-    }
-
-    /**
-     * Seed the recent-mask list recalled with Alt+↑/↓ on the Mask field.
-     *
-     * @param list<string> $history most-recent-first
-     */
-    public function setMaskHistory(array $history): void
-    {
-        $this->maskHistory = $history;
-        $this->maskHistoryCursor = -1;
-    }
-
-    /** Set the Mask field's text (restoring a persisted mask when the panel opens). */
-    public function setMaskValue(string $mask): void
-    {
-        $this->mask->setValue($mask);
-        $this->invalidate();
-    }
-
-    public function onToggleOption(callable $callback): self
-    {
-        $this->onToggleOption = $callback;
-
-        return $this;
-    }
-
-    public function onReplaceAll(callable $callback): self
-    {
-        $this->onReplaceAll = $callback;
 
         return $this;
     }
@@ -226,23 +118,6 @@ final class ResultsPanelWidget extends OverlayWidget implements FocusableInterfa
         $this->invalidate();
     }
 
-    /** Set the query field's text (restoring a pinned search). */
-    public function setQueryValue(string $query): void
-    {
-        $this->query->setValue($query);
-        $this->invalidate();
-    }
-
-    /**
-     * Set the transformer that renders a match line's `old → new` preview (find-in-project only).
-     *
-     * @param \Closure(string, string): string $transformer (lineText, replacement) => replacedLine
-     */
-    public function setPreviewTransformer(\Closure $transformer): void
-    {
-        $this->previewReplacement = $transformer;
-    }
-
     /**
      * Set the provider of the neighbouring source lines shown around an expanded
      * match (Alt+.).
@@ -252,13 +127,6 @@ final class ResultsPanelWidget extends OverlayWidget implements FocusableInterfa
     public function setContextProvider(\Closure $provider): void
     {
         $this->contextProvider = $provider;
-    }
-
-    /** @param array{regex: bool, case: bool, word: bool, preserve: bool, tokens: string} $options */
-    public function setOptions(array $options): void
-    {
-        $this->options = $options;
-        $this->invalidate();
     }
 
     public function onJump(callable $callback): self
@@ -272,25 +140,17 @@ final class ResultsPanelWidget extends OverlayWidget implements FocusableInterfa
     {
         $this->open = true;
         $this->withQuery = $fields->query;
-        $this->withOptions = $fields->options;
-        $this->withReplace = $fields->replace;
-        $this->withMask = $fields->mask;
-        $this->withScope = $fields->scope;
         $this->withFilter = $fields->filter;
-        $this->scopeLabels = ['Whole Project'];
-        $this->scopeIndex = 0;
         $this->pinLabel = null;
         $this->grouped = $fields->grouped;
         $this->grouping = ResultGrouping::File;
-        $this->activeField = 'query';
+        // Focus the first shown field (the results-window mode has only the filter).
+        $this->activeField = $this->focusableFields()[0] ?? 'query';
         $this->title = $title;
         $this->query->clear();
-        $this->replace->clear();
-        $this->mask->clear();
         $this->filter->clear();
         $this->results = [];
         $this->collapsed = [];
-        $this->excluded = [];
         $this->contextExpanded = [];
         $this->contextCache = [];
         $this->rebuildView();
@@ -304,7 +164,6 @@ final class ResultsPanelWidget extends OverlayWidget implements FocusableInterfa
     {
         $this->results = $results;
         $this->collapsed = [];
-        $this->excluded = [];
         $this->contextExpanded = [];
         $this->contextCache = [];
         $this->rebuildView();
@@ -390,25 +249,6 @@ final class ResultsPanelWidget extends OverlayWidget implements FocusableInterfa
             $this->invalidate();
         } elseif ($kb->matches($data, 'jump')) {
             $this->activateRow($this->list->selected());
-        } elseif ($this->withOptions && $kb->matches($data, 'toggle_regex')) {
-            $this->fireToggle('regex');
-        } elseif ($this->withOptions && $kb->matches($data, 'toggle_case')) {
-            $this->fireToggle('case');
-        } elseif ($this->withOptions && $kb->matches($data, 'toggle_word')) {
-            $this->fireToggle('word');
-        } elseif ($this->withOptions && $kb->matches($data, 'toggle_preserve')) {
-            $this->fireToggle('preserve');
-        } elseif ($this->withOptions && $kb->matches($data, 'toggle_tokens')) {
-            $this->fireToggle('tokens');
-        } elseif ($this->withScope && $kb->matches($data, 'cycle_scope')) {
-            $count = \count($this->scopeLabels);
-            if ($count > 0) {
-                $this->scopeIndex = ($this->scopeIndex + 1) % $count;
-                if (null !== $this->onScopeCycle) {
-                    ($this->onScopeCycle)($this->scopeIndex);
-                }
-            }
-            $this->invalidate();
         } elseif ($this->grouped && $kb->matches($data, 'toggle_all')) {
             $this->toggleAllGroups();
         } elseif ($this->grouped && $kb->matches($data, 'toggle_group')) {
@@ -426,32 +266,16 @@ final class ResultsPanelWidget extends OverlayWidget implements FocusableInterfa
             }
         } elseif ($this->grouped && $kb->matches($data, 'toggle_context')) {
             $this->toggleContext($this->list->selected());
-        } elseif ($kb->matches($data, 'toggle_exclude')) {
-            if ($this->inPreview()) {
-                $this->toggleExcludeRow($this->list->selected());
-            }
         } elseif ($kb->matches($data, 'rerun')) {
             if (null !== $this->onRerun) {
                 ($this->onRerun)();
             }
-        } elseif ('query' === $this->activeField && $kb->matches($data, 'history_prev')) {
-            $this->recallHistory(1);
-        } elseif ('query' === $this->activeField && $kb->matches($data, 'history_next')) {
-            $this->recallHistory(-1);
-        } elseif ('mask' === $this->activeField && $kb->matches($data, 'history_prev')) {
-            $this->recallMaskHistory(1);
-        } elseif ('mask' === $this->activeField && $kb->matches($data, 'history_next')) {
-            $this->recallMaskHistory(-1);
         } elseif ($kb->matches($data, 'switch_field') && \count($this->focusableFields()) > 1) {
             $fields = $this->focusableFields();
             $pos = (int) array_search($this->activeField, $fields, true);
             $this->activeField = $fields[($pos + 1) % \count($fields)];
             $this->invalidate();
-        } elseif ($this->withReplace && $kb->matches($data, 'replace_all')) {
-            if (null !== $this->onReplaceAll) {
-                ($this->onReplaceAll)($this->replace->value(), $this->excludedIndices());
-            }
-        } elseif ($kb->matches($data, 'insert_newline') && ('query' === $this->activeField || 'replace' === $this->activeField)) {
+        } elseif ($kb->matches($data, 'insert_newline') && 'query' === $this->activeField) {
             $field = $this->activeTextField();
             if (null !== $field) {
                 $field->insertNewline();
@@ -480,14 +304,8 @@ final class ResultsPanelWidget extends OverlayWidget implements FocusableInterfa
         if ($this->withQuery) {
             $fields[] = 'query';
         }
-        if ($this->withMask) {
-            $fields[] = 'mask';
-        }
         if ($this->withFilter) {
             $fields[] = 'filter';
-        }
-        if ($this->withReplace) {
-            $fields[] = 'replace';
         }
 
         return $fields;
@@ -497,78 +315,27 @@ final class ResultsPanelWidget extends OverlayWidget implements FocusableInterfa
     private function activeTextField(): ?TextField
     {
         return match ($this->activeField) {
-            'mask' => $this->withMask ? $this->mask : null,
             'filter' => $this->withFilter ? $this->filter : null,
-            'replace' => $this->withReplace ? $this->replace : null,
             default => $this->withQuery ? $this->query : null,
         };
     }
 
-    /** After an edit: query/mask re-run the search, filter re-narrows the view, replace does neither. */
+    /** After an edit: the query re-runs the search, the filter re-narrows the loaded view. */
     private function afterFieldEdit(): void
     {
         if ('query' === $this->activeField) {
-            $this->historyCursor = -1; // typing leaves history-browsing
             $this->notifyQuery();
-        } elseif ('mask' === $this->activeField) {
-            $this->maskHistoryCursor = -1; // typing leaves mask-history browsing
-            $this->notifyMask();
         } elseif ('filter' === $this->activeField) {
             $this->rebuildView(); // client-side; no re-grep
         }
     }
 
-    /** Walk the recent-mask history into the Mask field: $step +1 = older, -1 = newer. */
-    private function recallMaskHistory(int $step): void
-    {
-        $next = $this->maskHistoryCursor + $step;
-        if ($next < -1 || $next >= \count($this->maskHistory)) {
-            return; // past either end
-        }
-        $this->maskHistoryCursor = $next;
-        $this->mask->setValue(-1 === $next ? '' : $this->maskHistory[$next]);
-        $this->notifyMask();
-        $this->invalidate();
-    }
-
-    /** Walk the recent-query history into the query field: $step +1 = older, -1 = newer. */
-    private function recallHistory(int $step): void
-    {
-        $next = $this->historyCursor + $step;
-        if ($next < -1 || $next >= \count($this->history)) {
-            return; // past either end
-        }
-        $this->historyCursor = $next;
-        $this->query->setValue(-1 === $next ? '' : $this->history[$next]);
-        $this->notifyQuery();
-        $this->invalidate();
-    }
-
-    private function notifyMask(): void
-    {
-        if (null !== $this->onMaskChanged) {
-            ($this->onMaskChanged)($this->mask->value());
-        }
-    }
-
     /**
-     * Route a left-click at the given widget-relative row/col: an option tag in
-     * the header toggles it; a file header collapses/expands; a match row jumps.
+     * Route a left-click at the given widget-relative row: a file header
+     * collapses/expands; a match row jumps.
      */
-    public function handleClick(int $relRow, int $relCol): void
+    public function handleClick(int $relRow): void
     {
-        if (0 === $relRow) {
-            foreach ($this->optionZones as $zone) {
-                if ($relCol >= $zone['start'] && $relCol < $zone['end']) {
-                    $this->fireToggle($zone['name']);
-
-                    return;
-                }
-            }
-
-            return;
-        }
-
         $index = $this->rowIndexAt($relRow);
         if (null === $index) {
             return;
@@ -601,30 +368,6 @@ final class ResultsPanelWidget extends OverlayWidget implements FocusableInterfa
         }
     }
 
-    /** Replace previews the match lines (checkbox + `old → new`) once a replacement is typed. */
-    private function inPreview(): bool
-    {
-        return $this->withReplace && '' !== $this->replace->value();
-    }
-
-    /** Delete on a match row excludes/includes that line; on a header, toggles every match under it. */
-    private function toggleExcludeRow(int $index): void
-    {
-        $row = $this->displayRows[$index] ?? null;
-        if (null !== $row && null !== $row->filePath) {
-            $exclude = !$this->allExcludedForHeader($row);
-            foreach ($this->results as $matchIndex => $result) {
-                if ($this->headerMatches($row, $result)) {
-                    $this->excluded[$matchIndex] = $exclude;
-                }
-            }
-            $this->invalidate();
-        } elseif (null !== $row && null === $row->contextText) {
-            $this->excluded[$row->matchIndex] = !($this->excluded[$row->matchIndex] ?? false);
-            $this->invalidate();
-        }
-    }
-
     /** Alt+. on a match row toggles the neighbouring source lines shown beneath it. */
     private function toggleContext(int $index): void
     {
@@ -646,57 +389,6 @@ final class ResultsPanelWidget extends OverlayWidget implements FocusableInterfa
         $this->invalidate();
     }
 
-    /**
-     * Whether a result belongs under the given header row (a directory header
-     * matches by `dirname`, any other header by the grouping's leaf key).
-     *
-     * @param array{path: string, line: int, text: string, ranges?: list<array{start: int, length: int}>} $result
-     */
-    private function headerMatches(DisplayRow $header, array $result): bool
-    {
-        return $header->isDirectory
-            ? \dirname($result['path']) === $header->filePath
-            : $this->grouping->keyFor($result['path']) === $header->filePath;
-    }
-
-    /** Whether every match under the given header is currently excluded. */
-    private function allExcludedForHeader(DisplayRow $header): bool
-    {
-        foreach ($this->results as $matchIndex => $result) {
-            if ($this->headerMatches($header, $result) && !($this->excluded[$matchIndex] ?? false)) {
-                return false;
-            }
-        }
-
-        return true;
-    }
-
-    /** @return list<int> the match indices currently excluded from replace-all */
-    private function excludedIndices(): array
-    {
-        $indices = [];
-        foreach ($this->excluded as $matchIndex => $isExcluded) {
-            if ($isExcluded) {
-                $indices[] = $matchIndex;
-            }
-        }
-
-        return $indices;
-    }
-
-    /** How many matches would be replaced (all results minus the excluded ones). */
-    private function keptCount(): int
-    {
-        $kept = 0;
-        foreach (array_keys($this->results) as $matchIndex) {
-            if (!($this->excluded[$matchIndex] ?? false)) {
-                ++$kept;
-            }
-        }
-
-        return $kept;
-    }
-
     /** Highlight the display row under the pointer (widget-relative row); returns whether it changed. */
     public function hoverRow(int $relRow): bool
     {
@@ -712,8 +404,8 @@ final class ResultsPanelWidget extends OverlayWidget implements FocusableInterfa
     /** Display-row index at the given widget-relative row, or null if it is not a result/header row. */
     private function rowIndexAt(int $relRow): ?int
     {
-        // Row 0 is the title/query row; the scope, mask, filter and replace rows follow.
-        $headerRows = 1 + ($this->withScope ? 1 : 0) + ($this->withMask ? 1 : 0) + ($this->withFilter ? 1 : 0) + ($this->withReplace ? 1 : 0);
+        // Row 0 is the title/query row; the filter row (when shown) follows.
+        $headerRows = 1 + ($this->withFilter ? 1 : 0);
         $i = $relRow - $headerRows;
         if ($i < 0) {
             return null;
@@ -749,46 +441,10 @@ final class ResultsPanelWidget extends OverlayWidget implements FocusableInterfa
         $queryField = $this->query->render(cursor: $showCursor && 'query' === $this->activeField);
         $prefix = ' '.$this->title.($this->withQuery ? ': '.$queryField : '').$this->palette->of(Role::Dim).$status."\x1b[39m";
 
-        $this->optionZones = [];
-        $options = '';
-        if ($this->withOptions) {
-            // Each tag renders as ' glyph ' (glyph + two padding spaces); the block
-            // is prefixed by two spaces. Record each tag's column span for clicks.
-            $tokenGlyph = TokenScope::from($this->options['tokens'])->glyph();
-            $col = AnsiUtils::visibleWidth($prefix) + 2;
-            foreach (['regex' => '.*', 'case' => 'Aa', 'word' => '\\b', 'preserve' => 'Pc', 'tokens' => $tokenGlyph] as $name => $glyph) {
-                $width = mb_strwidth($glyph) + 2;
-                $this->optionZones[] = ['name' => $name, 'start' => $col, 'end' => $col + $width];
-                $col += $width;
-            }
-            $options =
-                '  '
-                .$this->optionTag('.*', $this->options['regex'])
-                .$this->optionTag('Aa', $this->options['case'])
-                .$this->optionTag('\\b', $this->options['word'])
-                .$this->optionTag('Pc', $this->options['preserve'])
-                .$this->optionTag($tokenGlyph, 'any' !== $this->options['tokens']);
-        }
+        $lines[] = HeaderRenderer::render($prefix, $columns, $this->palette->of(Role::HeaderBar)."\x1b[1m");
 
-        $header = $prefix.$options;
-        $lines[] = HeaderRenderer::render($header, $columns, $this->palette->of(Role::HeaderBar)."\x1b[1m");
-
-        if ($this->withScope) {
-            $scopeLabel = $this->scopeLabels[$this->scopeIndex] ?? 'Whole Project';
-            $scopeLine = ' Scope: '.$this->palette->of(Role::TabAccent).$scopeLabel."\x1b[39m".$this->palette->of(Role::Dim).'  (Alt+S to change)'."\x1b[39m";
-            $lines[] = $this->palette->of(Role::RowHighlightBg).AnsiUtils::truncateToWidth($scopeLine, $columns, '…', pad: true)."\x1b[0m";
-        }
-        if ($this->withMask) {
-            $lines[] = $this->fieldRow('Mask', $this->mask, 'mask', $showCursor, '  (e.g. *.php, *.{php,js})', $columns);
-        }
         if ($this->withFilter) {
             $lines[] = $this->fieldRow('Filter', $this->filter, 'filter', $showCursor, '  (narrows the results below)', $columns);
-        }
-        if ($this->withReplace) {
-            $replaceHint = $this->inPreview()
-                ? \sprintf('  (Del exclude · Alt+A replace %d)', $this->keptCount())
-                : '  (Tab switch · Alt+A replace all)';
-            $lines[] = $this->fieldRow('Replace', $this->replace, 'replace', $showCursor, $replaceHint, $columns);
         }
 
         $scroll = $this->list->follow($this->visibleRows);
@@ -799,7 +455,7 @@ final class ResultsPanelWidget extends OverlayWidget implements FocusableInterfa
             $lines[] = match (true) {
                 null !== $row->filePath => $this->headerLine($row, $bg, $columns),
                 null !== $row->contextText => $this->contextRowLine($row->contextLine, $row->contextText, $bg, $columns),
-                default => $this->matchLine($this->results[$row->matchIndex], $row->matchIndex, $bg, $columns),
+                default => $this->matchLine($this->results[$row->matchIndex], $bg, $columns),
             };
         }
 
@@ -884,12 +540,8 @@ final class ResultsPanelWidget extends OverlayWidget implements FocusableInterfa
      *
      * @param array{path: string, line: int, text: string, ranges?: list<array{start: int, length: int}>} $result
      */
-    private function matchLine(array $result, int $matchIndex, string $bg, int $columns): string
+    private function matchLine(array $result, string $bg, int $columns): string
     {
-        if ($this->inPreview()) {
-            return $this->previewMatchLine($result, $matchIndex, $bg, $columns);
-        }
-
         if ($this->grouped) {
             $indent = $this->matchIndent();
             $label = $this->groupedLabel($result);
@@ -911,55 +563,6 @@ final class ResultsPanelWidget extends OverlayWidget implements FocusableInterfa
         return $line;
     }
 
-    /**
-     * One match row in replace-preview mode: a `[x]/[ ]` checkbox, the line
-     * number, and either the original line (highlighted, when excluded) or
-     * `old → new` with the replacement in the "added" colour (when kept).
-     *
-     * @param array{path: string, line: int, text: string, ranges?: list<array{start: int, length: int}>} $result
-     */
-    private function previewMatchLine(array $result, int $matchIndex, string $bg, int $columns): string
-    {
-        $excluded = $this->excluded[$matchIndex] ?? false;
-        $label = $this->groupedLabel($result);
-        $old = $result['text'];
-        $checkbox = '  '.($excluded ? '[ ]' : '[x]').' ';
-        $prefixWidth = mb_strwidth($checkbox) + mb_strwidth($label) + 2; // checkbox + line + `  `
-        $head = $checkbox.$this->palette->of(Role::TabAccent).$label."\x1b[39m".'  ';
-
-        if ($excluded) {
-            $text = $head.$old.$this->palette->of(Role::Dim).'   (excluded)'."\x1b[39m";
-        } else {
-            $new = null !== $this->previewReplacement ? ($this->previewReplacement)($old, $this->replace->value()) : $old;
-            $text = $head.$old.'  →  '.$this->palette->of(Role::Added).$new."\x1b[39m";
-        }
-
-        $line = $bg.AnsiUtils::truncateToWidth($text, $columns, '…', pad: true)."\x1b[0m";
-        // Highlight the original match spans so the user sees what is being replaced.
-        $searchBg = $this->palette->of(Role::SearchBg);
-        foreach ($result['ranges'] ?? [] as $range) {
-            $start = $prefixWidth + $range['start'];
-            $line = LineDecorator::apply($line, $start, $start + $range['length'], $searchBg, $bg, $searchBg);
-        }
-
-        return $line;
-    }
-
-    private function fireToggle(string $name): void
-    {
-        if (null !== $this->onToggleOption) {
-            ($this->onToggleOption)($name);
-        }
-    }
-
-    /** Header indicator for one search option, highlighted when enabled. */
-    private function optionTag(string $glyph, bool $on): string
-    {
-        return $on
-            ? $this->palette->of(Role::SelectedRow).' '.$glyph." \x1b[0m"
-            : $this->palette->of(Role::Faint).' '.$glyph." \x1b[39m";
-    }
-
     /** @return array<string, string[]> */
     protected static function getDefaultKeybindings(): array
     {
@@ -969,24 +572,14 @@ final class ResultsPanelWidget extends OverlayWidget implements FocusableInterfa
             'move_down' => [Key::DOWN],
             'jump' => [Key::ENTER],
             'delete_char_backward' => [Key::BACKSPACE],
-            'toggle_regex' => ['alt+r'],
-            'toggle_case' => ['alt+c'],
-            'toggle_word' => ['alt+w'],
-            'toggle_preserve' => ['alt+p'],
-            'toggle_tokens' => ['alt+t'],
-            'cycle_scope' => ['alt+s'],
             'toggle_all' => ['alt+e'],
             'toggle_group' => ['alt+g'],
             'toggle_context' => ['alt+m'],
             'pin' => ['alt+k'],
-            'toggle_exclude' => [Key::DELETE],
             'export' => ['alt+x'],
             'rerun' => [Key::F5],
-            'history_prev' => ['alt+up'],
-            'history_next' => ['alt+down'],
             'switch_field' => [Key::TAB],
             'insert_newline' => ['shift+enter'],
-            'replace_all' => ['alt+a'],
         ];
     }
 }
