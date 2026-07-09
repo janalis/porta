@@ -22,6 +22,17 @@ final class Translator
     /** The supported UI locales, in menu order (English first). */
     public const array LOCALES = ['en', 'fr', 'de', 'es', 'it', 'ja', 'he'];
 
+    /** Native display name per locale, for the settings language picker. */
+    public const array LOCALE_NAMES = [
+        'en' => 'English',
+        'fr' => 'Français',
+        'de' => 'Deutsch',
+        'es' => 'Español',
+        'it' => 'Italiano',
+        'ja' => '日本語',
+        'he' => 'עברית',
+    ];
+
     /** Locales written right-to-left. */
     private const array RTL = ['he'];
 

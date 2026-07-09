@@ -103,4 +103,13 @@ final class TranslatorTest extends TestCase
         $this->assertSame('Some Menu Item', $translator->trans('Some Menu Item'));
         $this->assertContains('fr', Translator::LOCALES);
     }
+
+    public function testEveryLocaleHasANativeName(): void
+    {
+        foreach (Translator::LOCALES as $locale) {
+            $this->assertArrayHasKey($locale, Translator::LOCALE_NAMES, "{$locale} needs a display name");
+            $this->assertNotSame('', Translator::LOCALE_NAMES[$locale]);
+        }
+        $this->assertSame('English', Translator::LOCALE_NAMES['en']);
+    }
 }

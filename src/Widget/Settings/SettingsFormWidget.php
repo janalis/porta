@@ -220,6 +220,14 @@ final class SettingsFormWidget extends AbstractWidget implements FocusableInterf
         return $options[((($index + $delta) % $count) + $count) % $count];
     }
 
+    /** The display label for a choice value (e.g. `en` → `English`), or the value itself. */
+    private function choiceLabel(SettingsRow $row): string
+    {
+        $value = (string) $row->value;
+
+        return $row->optionLabels[$value] ?? $value;
+    }
+
     /**
      * @param SettingsRow $row
      */
@@ -249,7 +257,7 @@ final class SettingsFormWidget extends AbstractWidget implements FocusableInterf
             $text = match ($row->kind) {
                 'bool' => ' '.((bool) $row->value ? '[x]' : '[ ]').' '.$row->label,
                 'text' => ' '.$row->label.'  '.$this->textValue($row, $i),
-                default => ' '.$row->label.'  < '.(string) $row->value.' >',
+                default => ' '.$row->label.'  < '.$this->choiceLabel($row).' >',
             };
             if ($row->restart) {
                 $text .= $this->palette->of(Role::Dim).' · '.$this->translator->trans('applies on restart')."\x1b[39m";

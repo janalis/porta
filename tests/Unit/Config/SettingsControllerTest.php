@@ -89,6 +89,7 @@ final class SettingsControllerTest extends TestCase
             'language first; indent settings moved to the Languages section',
         );
         $this->assertSame(['en', 'fr', 'de', 'es', 'it', 'ja', 'he'], $byKey['language']->options);
+        $this->assertSame(Translator::LOCALE_NAMES, $byKey['language']->optionLabels, 'the picker shows language names');
         $this->assertFalse($byKey['autoPairs']->value);
         $this->assertSame('bool', $byKey['autoPairs']->kind);
         $this->assertFalse($byKey['inlineDiagnostics']->restart, 'live toggles need no restart');

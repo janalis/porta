@@ -20,7 +20,7 @@ use Porta\Widget\CodeEditorWidget;
  * form's "applies on restart" note) is retained for any future setting that
  * genuinely needs a relaunch, but none do today.
  *
- * @phpstan-type Descriptor array{label: string, kind: string, restart: bool, apply: (\Closure(int|bool|string): void)|null, options?: list<string>, min?: int, max?: int}
+ * @phpstan-type Descriptor array{label: string, kind: string, restart: bool, apply: (\Closure(int|bool|string): void)|null, options?: list<string>, optionLabels?: array<string, string>, min?: int, max?: int}
  */
 final class SettingsController
 {
@@ -50,6 +50,7 @@ final class SettingsController
                 'restart' => false,
                 'apply' => static fn (int|bool|string $v) => $onLanguageChange((string) $v),
                 'options' => Translator::LOCALES,
+                'optionLabels' => Translator::LOCALE_NAMES,
             ],
             'inlineDiagnostics' => ['label' => 'Inline diagnostics', 'kind' => 'bool', 'restart' => false, 'apply' => static fn (int|bool|string $v) => $editor->setInlineDiagnostics((bool) $v)],
             'relativeLineNumbers' => [
@@ -98,6 +99,7 @@ final class SettingsController
                 value: $value,
                 restart: $descriptor['restart'],
                 options: $descriptor['options'] ?? null,
+                optionLabels: $descriptor['optionLabels'] ?? null,
             );
         }
 

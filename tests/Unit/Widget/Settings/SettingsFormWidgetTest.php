@@ -54,6 +54,37 @@ final class SettingsFormWidgetTest extends TestCase
         $this->assertStringContainsString('· applies on restart', $screen, 'restart rows are annotated');
     }
 
+    public function testChoiceRowRendersOptionLabelInsteadOfValue(): void
+    {
+        $widget = new SettingsFormWidget(new Translator('en'));
+        $widget->setFocused(true);
+        $widget->setRows([
+            new SettingsRow(key: 'language', label: 'Language', kind: 'choice', value: 'fr', restart: false, options: Translator::LOCALES, optionLabels: Translator::LOCALE_NAMES),
+        ]);
+
+        $screen = $this->plain($widget->render(new RenderContext(60, 8)));
+
+        $this->assertStringContainsString('Language  < Français >', $screen, 'shows the language name');
+        $this->assertStringNotContainsString('< fr >', $screen, 'not the language code');
+    }
+
+    public function testCyclingALabelledChoiceStillEmitsTheCodeValue(): void
+    {
+        $changes = [];
+        $widget = new SettingsFormWidget(new Translator('en'));
+        $widget->setFocused(true);
+        $widget->setRows([
+            new SettingsRow(key: 'language', label: 'Language', kind: 'choice', value: 'en', restart: false, options: Translator::LOCALES, optionLabels: Translator::LOCALE_NAMES),
+        ]);
+        $widget->onChange(function (string $key, bool|int|string $value) use (&$changes): void {
+            $changes[] = [$key, $value];
+        });
+
+        $widget->handleInput("\x1b[C"); // right → next
+
+        $this->assertSame([['language', 'fr']], $changes, 'persists the code, not the display name');
+    }
+
     public function testFocusedSelectionIsHighlightedAndMovesWithArrows(): void
     {
         $widget = $this->widget();
