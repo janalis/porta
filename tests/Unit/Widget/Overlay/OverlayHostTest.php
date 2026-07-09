@@ -9,6 +9,7 @@ use Porta\Search\Everywhere\SearchCategory;
 use Porta\Search\Everywhere\SearchHit;
 use Porta\Search\Everywhere\SearchRow;
 use Porta\Widget\Overlay\OverlayHost;
+use Symfony\Component\Tui\Ansi\AnsiUtils;
 use Symfony\Component\Tui\Input\Key;
 use Symfony\Component\Tui\Input\Keybindings;
 
@@ -282,6 +283,28 @@ final class OverlayHostTest extends TestCase
         // compositor stops early rather than writing past the last line.
         $lines = $host->composite(['', '', ''], 80, 20, false);
         $this->assertCount(3, $lines);
+    }
+
+    public function testSearchRowsWithLongLabelsAndDetailsNeverExceedThePaneWidth(): void
+    {
+        $host = $this->host();
+        $host->openSearch('Search', static fn () => null, static fn () => null, static fn () => null);
+        // A Text hit whose label (the matched line) and detail (a deep path:line)
+        // are both far wider than the box — the exact case that overflowed.
+        $host->setSearchRows([
+            SearchRow::header(SearchCategory::Text),
+            SearchRow::hit(new SearchHit(
+                SearchCategory::Text,
+                str_repeat('"ext-simplexml": "*", ', 8),
+                'vendor/phpunit/phpunit/src/Framework/Constraint/Traversable/ArraySubset/DeeplyNested.php:1234',
+                static fn () => null,
+            )),
+        ]);
+
+        $lines = $host->composite(array_fill(0, 20, str_repeat(' ', 80)), 80, 20, true);
+        foreach ($lines as $i => $line) {
+            $this->assertSame(80, AnsiUtils::visibleWidth($line), "composited row {$i} must stay 80 columns");
+        }
     }
 
     public function testSearchMouseClickPicksAHitAndClicksElsewhereClose(): void

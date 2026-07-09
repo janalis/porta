@@ -412,9 +412,14 @@ final class EditorRenderer
                 continue;
             }
             $bg = ($windowStart + $i) === $selected ? $palette->of(Role::SelectedRow) : $palette->of(Role::PopupRow);
-            $detailWidth = mb_strwidth($row['detail']);
-            $label = AnsiUtils::truncateToWidth($row['label'], max(1, $width - $detailWidth - 3), '…', pad: true);
-            $popup[] = $bg.' '.$label.' '.$palette->of(Role::CompletionHint).$row['detail'].' '."\x1b[0m";
+            // ` label · detail ` — three chrome columns (leading, gap, trailing).
+            // Bound the detail first (leaving ≥1 column for the label) so a long
+            // path can never push the row past $width and overflow the pane.
+            $avail = max(1, $width - 3);
+            $detail = AnsiUtils::truncateToWidth($row['detail'], max(0, $avail - 1), '…', pad: false);
+            $detailWidth = AnsiUtils::visibleWidth($detail);
+            $label = AnsiUtils::truncateToWidth($row['label'], max(1, $avail - $detailWidth), '…', pad: true);
+            $popup[] = $bg.' '.$label.' '.$palette->of(Role::CompletionHint).$detail.' '."\x1b[0m";
         }
 
         $startRow = max(0, intdiv($rows - \count($popup), 3));
