@@ -58,6 +58,8 @@ final class MenuModel
             'i:reformat',
         ],
         'Navigate' => [
+            'i:ide_search_everywhere',
+            self::SEP,
             'e:goto_definition',
             'e:goto_implementation',
             'e:goto_type_definition',

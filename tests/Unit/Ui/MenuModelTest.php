@@ -20,6 +20,7 @@ final class MenuModelTest extends TestCase
         $ideKeys = new Keybindings([
             'ide_run' => ['ctrl+shift+r'],
             'ide_goto_symbol' => ['ctrl+alt+shift+n'],
+            'ide_search_everywhere' => ['ctrl+shift+e'],
         ]);
 
         return MenuModel::build($commands, $editor, $ideKeys, $translator ?? new Translator('en'));
@@ -202,6 +203,28 @@ final class MenuModelTest extends TestCase
 
         $this->assertSame('Ctrl+Shift+R', $run->shortcut, 'shortcut resolved from IDE keybindings');
         ($run->run)();
+        $this->assertTrue($ran, 'run() invoked CommandRegistry::run');
+    }
+
+    public function testSearchEverywhereIsInTheNavigateMenu(): void
+    {
+        $ran = false;
+        $commands = new CommandRegistry();
+        $commands->add(
+            'ide_search_everywhere',
+            function () use (&$ran): void {
+                $ran = true;
+            },
+            keyBound: true,
+            inPalette: false,
+        );
+
+        $menus = $this->build($commands, new CodeEditorWidget());
+        $item = $this->item($menus, 'Navigate', 'Search Everywhere');
+
+        $this->assertSame('Ctrl+Shift+E', $item->shortcut, 'shortcut resolved from IDE keybindings');
+        $this->assertTrue($item->enabled(), 'available without an open file');
+        ($item->run)();
         $this->assertTrue($ran, 'run() invoked CommandRegistry::run');
     }
 
