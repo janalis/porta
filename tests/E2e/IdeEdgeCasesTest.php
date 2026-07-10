@@ -502,6 +502,45 @@ final class IdeEdgeCasesTest extends TestCase
         $this->addToAssertionCount(1);
     }
 
+    public function testContextMenuHighlightsTheItemUnderTheHoveringPointer(): void
+    {
+        putenv('PATH=/nonexistent');
+        $project = new TempProject(['alpha.php' => "<?php\n"]);
+
+        $this->runIde(
+            $project,
+            null, // no file open → the tree is focused
+            [
+                200 => static function ($tui): void {
+                    $tui->handleInput("\x1b[<2;21;3M"); // right-click a tree entry → context menu
+                },
+                280 => function ($tui, $terminal, $ide): void {
+                    $menu = $tui->getById('context-menu');
+                    $this->assertTrue($menu->isOpen(), 'the context menu is open');
+
+                    $overlay = new \ReflectionProperty($ide, 'overlay')->getValue($ide);
+                    $region = $overlay->contextMenuDropdown();
+                    $this->assertNotNull($region, 'the menu overlay was placed');
+
+                    $selected = new \ReflectionProperty($menu, 'selected');
+                    $before = $selected->getValue($menu);
+
+                    // Hover up from the bottom row until the highlight lands on a
+                    // selectable item other than the initially-selected first one.
+                    $moved = false;
+                    for ($row = $region['count'] - 1; $row >= 0 && !$moved; --$row) {
+                        $tui->handleInput(\sprintf("\x1b[<35;%d;%dM", $region['col'] + 3, $region['top'] + $row + 1));
+                        $moved = $selected->getValue($menu) !== $before;
+                    }
+                    $this->assertTrue($moved, 'hovering a menu item moves the highlight to it');
+                },
+            ],
+            0.6,
+        );
+
+        $this->addToAssertionCount(1);
+    }
+
     public function testFindInFilesFromFolderContextMenuScopesTheSearch(): void
     {
         // `sub/` and the root both contain the marker; a folder-scoped search

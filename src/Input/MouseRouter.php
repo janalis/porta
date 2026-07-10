@@ -556,6 +556,16 @@ final class MouseRouter
      */
     private function handleHover(MouseEvent $mouse, ?WidgetRect $editorRect, bool $gitViewOpen = false, bool $settingsViewOpen = false): void
     {
+        // A right-click context menu floats over every view and is modal, so it
+        // gets first refusal: highlight the item under the pointer.
+        if ($this->contextMenu->isOpen()) {
+            if (null !== ($item = $this->hit->hitRegion($this->overlay->contextMenuDropdown(), $mouse->row, $mouse->col)) && $this->contextMenu->hoverItem($item)) {
+                $this->tui->requestRender();
+            }
+
+            return;
+        }
+
         // Each full-view state owns its hover targets exclusively; the tree/editor
         // targets are detached while a view is swapped in. The menu bar rides
         // along into either view, so it gets first refusal before the region.

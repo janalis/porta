@@ -121,6 +121,22 @@ final class ContextMenu extends OverlayWidget
         $this->runItemObject($this->items[$index] ?? null);
     }
 
+    /**
+     * Highlight the item at $index (from a hover). Skips separators/disabled and
+     * no-ops when already selected; returns whether the highlight changed.
+     */
+    public function hoverItem(int $index): bool
+    {
+        $item = $this->items[$index] ?? null;
+        if (null === $item || $item->separator || !$item->enabled() || $index === $this->selected) {
+            return false;
+        }
+        $this->selected = $index;
+        $this->afterNavigate();
+
+        return true;
+    }
+
     private function runSelected(): void
     {
         $this->runItemObject($this->items[$this->selected] ?? null);

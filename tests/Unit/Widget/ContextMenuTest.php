@@ -112,6 +112,37 @@ final class ContextMenuTest extends TestCase
         $this->assertFalse($menu->isOpen(), 'the menu still closes');
     }
 
+    public function testHoverItemHighlightsSelectableRowsOnly(): void
+    {
+        $menu = new ContextMenu();
+        $navigations = 0;
+        $menu->onNavigate(function () use (&$navigations): void {
+            ++$navigations;
+        });
+        $ran = [];
+        $menu->open([
+            new MenuItem('Cut', 'Ctrl+X', static fn () => null), // 0: selectable (selected)
+            MenuItem::separator(), // 1: separator
+            new MenuItem('Paste', 'Ctrl+V', static fn () => null, false, static fn (): bool => false), // 2: disabled
+            new MenuItem('Copy', 'Ctrl+C', function () use (&$ran): void {
+                $ran[] = 'copy';
+            }), // 3: selectable
+        ]);
+        $navigations = 0; // ignore the open() navigation
+
+        $this->assertFalse($menu->hoverItem(1), 'a separator cannot be highlighted');
+        $this->assertFalse($menu->hoverItem(2), 'a disabled item cannot be highlighted');
+        $this->assertFalse($menu->hoverItem(9), 'an out-of-range row is a no-op');
+        $this->assertFalse($menu->hoverItem(0), 'the already-selected row is a no-op');
+        $this->assertSame(0, $navigations, 'no re-placement for a no-op hover');
+
+        $this->assertTrue($menu->hoverItem(3), 'hovering a selectable row highlights it');
+        $this->assertSame(1, $navigations, 'the highlight re-places the overlay');
+
+        $menu->handleInput("\r"); // Enter runs the hovered row
+        $this->assertSame(['copy'], $ran);
+    }
+
     public function testUpWrapsPastSeparator(): void
     {
         $menu = $this->menu(); // Cut (0)
