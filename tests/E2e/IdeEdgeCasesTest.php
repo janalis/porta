@@ -1456,6 +1456,85 @@ final class IdeEdgeCasesTest extends TestCase
         $this->addToAssertionCount(1);
     }
 
+    public function testMouseWheelScrollsTheModalPreview(): void
+    {
+        $content = '<?php';
+        for ($i = 0; $i < 20; ++$i) {
+            $content .= "\n// tok {$i}";
+        }
+        $project = new TempProject(['src/A.php' => $content."\n"]);
+
+        $this->runIde(
+            $project,
+            null, // no open buffer → the file content never bleeds behind the modal
+            [
+                200 => static function ($tui): void {
+                    $tui->handleInput("\x1b[102;6u"); // ctrl+shift+f → modal
+                    foreach (str_split('tok') as $ch) {
+                        $tui->handleInput($ch);
+                    }
+                },
+                700 => function ($tui): void {
+                    $tui->tick();
+                    $before = $this->modalText($tui);
+                    $this->assertStringContainsString('tok 0', $before, 'the first matches show initially');
+                    $this->assertStringNotContainsString('tok 18', $before, 'later matches start below the fold');
+
+                    // Wheel down over the editor pane scrolls the modal preview, not the editor.
+                    for ($i = 0; $i < 6; ++$i) {
+                        $tui->handleInput("\x1b[<65;80;10M"); // SGR wheel-down at col 80, row 10
+                    }
+                    $this->assertStringContainsString('tok 18', $this->modalText($tui), 'the wheel scrolled the preview to later matches');
+                },
+            ],
+            1.4,
+        );
+
+        $this->addToAssertionCount(1);
+    }
+
+    public function testMouseWheelScrollsTheResultsToolWindow(): void
+    {
+        $files = [];
+        for ($i = 0; $i < 20; ++$i) {
+            $files["src/File{$i}.php"] = "<?php\n// tok\n";
+        }
+        $project = new TempProject($files);
+        $panelText = static fn ($tui): string => AnsiUtils::stripAnsiCodes(implode("\n", $tui->getById('results')->render(new \Symfony\Component\Tui\Render\RenderContext(160, 16))));
+
+        $this->runIde(
+            $project,
+            null,
+            [
+                200 => static function ($tui): void {
+                    $tui->handleInput("\x1b[102;6u"); // ctrl+shift+f
+                    foreach (str_split('tok') as $ch) {
+                        $tui->handleInput($ch);
+                    }
+                },
+                700 => function ($tui) use ($panelText): void {
+                    $tui->tick();
+                    $this->promote($tui); // Alt+Enter → results tool window
+                    $this->assertStringContainsString('File0.php', $panelText($tui), 'the first files show initially');
+                },
+                900 => function ($tui, $terminal, $ide) use ($panelText): void {
+                    $renderer = new \ReflectionProperty($ide, 'renderer')->getValue($ide);
+                    $rect = $renderer->getWidgetRect($tui->getById('results'));
+                    $this->assertNotNull($rect, 'the results pane has a rect');
+
+                    // Wheel down over the pane scrolls its list past the first files.
+                    for ($i = 0; $i < 8; ++$i) {
+                        $tui->handleInput(\sprintf("\x1b[<65;%d;%dM", $rect->col + 3, $rect->row + 2));
+                    }
+                    $this->assertStringNotContainsString('File0.php', $panelText($tui), 'the wheel scrolled the first files out of view');
+                },
+            ],
+            1.4,
+        );
+
+        $this->addToAssertionCount(1);
+    }
+
     public function testFindInProjectFilterNarrowsLoadedResults(): void
     {
         $project = new TempProject([

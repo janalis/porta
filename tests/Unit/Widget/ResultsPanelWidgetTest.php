@@ -130,6 +130,22 @@ final class ResultsPanelWidgetTest extends TestCase
         $this->assertStringContainsString('File0.php:1', $plain);
     }
 
+    public function testScrollByWithTheWheelMovesThroughResults(): void
+    {
+        $panel = new ResultsPanelWidget();
+        $panel->setFocused(true);
+        $panel->open('Find in Project', ResultsPanelFields::searchResults());
+        $panel->setResults($this->results(25));
+
+        $panel->scrollBy(100); // wheel down past the end → clamps at the last row
+        $plain = implode("\n", array_map(AnsiUtils::stripAnsiCodes(...), $panel->render(new RenderContext(60, 12))));
+        $this->assertStringContainsString('File24.php', $plain, 'scrolled to the bottom');
+
+        $panel->scrollBy(-100); // wheel up past the top → clamps at the first row
+        $plain = implode("\n", array_map(AnsiUtils::stripAnsiCodes(...), $panel->render(new RenderContext(60, 12))));
+        $this->assertStringContainsString('File0.php', $plain, 'scrolled back to the top');
+    }
+
     public function testNoResultsRowShownForNonEmptyQuery(): void
     {
         $panel = new ResultsPanelWidget();

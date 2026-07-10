@@ -389,6 +389,17 @@ final class ResultsPanelWidget extends OverlayWidget implements FocusableInterfa
         $this->invalidate();
     }
 
+    /** Scroll the results by $delta rows (mouse wheel); moves the selection, the window follows. */
+    public function scrollBy(int $delta): void
+    {
+        if ($delta < 0) {
+            $this->list->moveUp(-$delta);
+        } else {
+            $this->list->moveDown(\count($this->displayRows), $delta);
+        }
+        $this->invalidate();
+    }
+
     /** Highlight the display row under the pointer (widget-relative row); returns whether it changed. */
     public function hoverRow(int $relRow): bool
     {

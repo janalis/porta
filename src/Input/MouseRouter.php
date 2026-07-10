@@ -173,6 +173,24 @@ final class MouseRouter
             return;
         }
 
+        // The Find modal composites inside the editor pane and owns input while
+        // open — scroll its preview instead of the editor behind it.
+        if (null !== $editorRect && $editorRect->contains($mouse->row, $mouse->col) && $this->panes->editor()->isFindModalOpen()) {
+            $this->panes->editor()->scrollFindModal(3 * $mouse->wheelDelta);
+            $this->tui->requestRender();
+
+            return;
+        }
+
+        // The results tool window (its own bottom rect).
+        $resultsRect = $this->hit->rect($this->overlayPanels->resultsPanel());
+        if ($this->overlayPanels->resultsPanel()->isOpen() && null !== $resultsRect && $resultsRect->contains($mouse->row, $mouse->col)) {
+            $this->overlayPanels->resultsPanel()->scrollBy(3 * $mouse->wheelDelta);
+            $this->tui->requestRender();
+
+            return;
+        }
+
         $step = 3 * $mouse->wheelDelta;
         $terminalRect = $this->hit->rect($this->overlayPanels->terminalPanel());
         if ($this->overlayPanels->terminalPanel()->isOpen() && null !== $terminalRect && $terminalRect->contains($mouse->row, $mouse->col)) {

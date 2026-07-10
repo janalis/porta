@@ -283,6 +283,31 @@ final class FindInFilesModalTest extends TestCase
         $this->assertFalse($modal->hoverAt($box['previewRow'] + 99, $box['col'] + 2), 'below the preview');
     }
 
+    public function testScrollPreviewWithTheWheelMovesTheWindow(): void
+    {
+        $modal = $this->modal();
+        $modal->open('Find in Files');
+        $many = [];
+        for ($i = 0; $i < 14; ++$i) {
+            $many[] = ['path' => 'src/A.php', 'line' => $i, 'text' => "hit {$i}", 'ranges' => []];
+        }
+        $modal->setPreview($many);
+
+        $box = static function () use ($modal): array {
+            $modal->composite(array_fill(0, 24, str_repeat(' ', 100)), 100, 24, true);
+
+            return $modal->lastBox() ?? [];
+        };
+
+        $this->assertSame(0, $box()['windowStart'], 'starts at the top');
+
+        $modal->scrollPreview(6); // wheel down
+        $this->assertGreaterThan(0, $box()['windowStart'], 'the preview scrolled down');
+
+        $modal->scrollPreview(-20); // wheel up past the top → clamps
+        $this->assertSame(0, $box()['windowStart'], 'scrolled back to the top');
+    }
+
     public function testTinyTerminalDoesNotOverflow(): void
     {
         $modal = $this->modal();

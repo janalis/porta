@@ -425,6 +425,15 @@ final class FindInFilesModal
         }
     }
 
+    /** Scroll the preview by $delta match rows (mouse wheel); like arrow keys, skips headers. */
+    public function scrollPreview(int $delta): void
+    {
+        $dir = $delta <=> 0;
+        for ($i = 0, $n = abs($delta); $i < $n; ++$i) {
+            $this->step($dir);
+        }
+    }
+
     /** Move the selection $dir match rows, skipping headers, clamped to the list. */
     private function step(int $dir): void
     {

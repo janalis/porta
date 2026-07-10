@@ -361,6 +361,12 @@ final class CodeEditorWidget extends AbstractWidget implements FocusableInterfac
         $this->findModal->handleInput($data, $this->getKeybindings());
     }
 
+    /** Scroll the open Find-in-Files modal's result preview (mouse wheel). */
+    public function scrollFindModal(int $delta): void
+    {
+        $this->findModal->scrollPreview($delta);
+    }
+
     public function setInlineDiagnostics(bool $enabled): void
     {
         if ($this->inlineDiagnostics !== $enabled) {
