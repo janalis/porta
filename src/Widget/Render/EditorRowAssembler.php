@@ -41,6 +41,7 @@ final readonly class EditorRowAssembler
         private bool $relativeLineNumbers,
         private bool $inlineDiagnostics,
         private bool $focused,
+        private bool $showCaret,
         ?Palette $palette = null,
     ) {
         $this->palette = $palette ?? ColorPalette::dark();
@@ -101,7 +102,7 @@ final readonly class EditorRowAssembler
                 $hScroll,
                 $hlLine,
                 $geo->contentWidth,
-                $isCursorLine && $this->focused && !$decorations->multiActive,
+                $isCursorLine && $this->showCaret && !$decorations->multiActive,
                 $cursorDisplayCol,
             );
 

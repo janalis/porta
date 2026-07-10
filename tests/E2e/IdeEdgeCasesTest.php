@@ -56,6 +56,30 @@ final class IdeEdgeCasesTest extends TestCase
         return AnsiUtils::stripAnsiCodes(implode("\n", $tui->getById('editor')->render(new \Symfony\Component\Tui\Render\RenderContext(160, 40))));
     }
 
+    /** The editor pane's raw (styled) rendered rows. */
+    private function editorRows(Tui $tui): array
+    {
+        return $tui->getById('editor')->render(new \Symfony\Component\Tui\Render\RenderContext(160, 40));
+    }
+
+    /** How many hardware-cursor markers the rendered rows carry (there must be exactly one). */
+    private function caretMarkerCount(array $rows): int
+    {
+        return array_sum(array_map(static fn (string $l): int => substr_count($l, AnsiUtils::CURSOR_MARKER_PREFIX), $rows));
+    }
+
+    /** The index of the row carrying the hardware-cursor marker, or null. */
+    private function caretMarkerRow(array $rows): ?int
+    {
+        foreach ($rows as $i => $line) {
+            if (str_contains($line, AnsiUtils::CURSOR_MARKER_PREFIX)) {
+                return $i;
+            }
+        }
+
+        return null;
+    }
+
     private function runIde(TempProject $project, ?string $file, array $steps, ?float $duration = null): VirtualTerminal
     {
         // Default duration: the last step plus a settle margin for its async
@@ -1366,6 +1390,67 @@ final class IdeEdgeCasesTest extends TestCase
                 },
             ],
             1.4,
+        );
+
+        $this->addToAssertionCount(1);
+    }
+
+    public function testFindModalShowsTheCaretInTheFocusedFieldOverAFile(): void
+    {
+        $project = new TempProject(['src/A.php' => "<?php\n\$x = 1;\n\$y = 2;\n"]);
+
+        $this->runIde(
+            $project,
+            $project->path('src/A.php'), // a file is open → the editor is focused and draws its own caret
+            [
+                200 => function ($tui): void {
+                    // While editing, the editor owns the single caret.
+                    $this->assertSame(1, $this->caretMarkerCount($this->editorRows($tui)), 'the editor caret shows while editing');
+
+                    $tui->handleInput("\x1b[102;6u"); // ctrl+shift+f → open the modal
+                    $tui->tick();
+                    $rows = $this->editorRows($tui);
+                    $this->assertSame(1, $this->caretMarkerCount($rows), 'exactly one caret while the modal is open');
+                    $caretRow = $this->caretMarkerRow($rows);
+                    $this->assertNotNull($caretRow);
+                    $this->assertStringContainsString('Find:', AnsiUtils::stripAnsiCodes($rows[$caretRow]), 'the caret sits in the Find field, not the editor');
+
+                    // Tab to the Replace field and type — the caret follows the text
+                    // (replace edits re-render the preview only; no project re-search).
+                    $tui->handleInput("\t");
+                    $tui->handleInput('x');
+                    $rows = $this->editorRows($tui);
+                    $caretRow = $this->caretMarkerRow($rows);
+                    $this->assertNotNull($caretRow);
+                    $this->assertSame(1, $this->caretMarkerCount($rows), 'still a single caret');
+                    $this->assertStringContainsString('Replace: x', AnsiUtils::stripAnsiCodes($rows[$caretRow]), 'the caret moved to the Replace field');
+                },
+            ],
+            0.6,
+        );
+
+        $this->addToAssertionCount(1);
+    }
+
+    public function testFindModalCaretShowsEvenWhenOpenedFromAnUnfocusedEditor(): void
+    {
+        $project = new TempProject(['src/A.php' => "<?php\n// tok\n"]);
+
+        $this->runIde(
+            $project,
+            null, // no file open → the tree is focused, the editor pane is not
+            [
+                200 => function ($tui): void {
+                    $tui->handleInput("\x1b[102;6u"); // ctrl+shift+f
+                    $tui->tick();
+                    $rows = $this->editorRows($tui);
+                    $this->assertSame(1, $this->caretMarkerCount($rows), 'the modal caret shows even though the editor pane is unfocused');
+                    $caretRow = $this->caretMarkerRow($rows);
+                    $this->assertNotNull($caretRow);
+                    $this->assertStringContainsString('Find:', AnsiUtils::stripAnsiCodes($rows[$caretRow]));
+                },
+            ],
+            0.6,
         );
 
         $this->addToAssertionCount(1);

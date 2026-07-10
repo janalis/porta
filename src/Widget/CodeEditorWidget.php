@@ -896,7 +896,7 @@ final class CodeEditorWidget extends AbstractWidget implements FocusableInterfac
         if (null === $this->filePath) {
             $this->lastGutterWidth = 0;
             $this->lastStripeCol = \PHP_INT_MAX; // no stripe over the empty-state pane
-            $empty = $this->findModal->composite($this->renderEmptyState($columns, $rows), $columns, $rows, $this->focused);
+            $empty = $this->findModal->composite($this->renderEmptyState($columns, $rows), $columns, $rows, $this->focused || $this->findModal->isOpen());
 
             return $this->withMenuOverlay($empty, $columns);
         }
@@ -944,6 +944,7 @@ final class CodeEditorWidget extends AbstractWidget implements FocusableInterfac
             $this->relativeLineNumbers,
             $this->inlineDiagnostics,
             $this->focused,
+            $this->focused && !$this->findModal->isOpen(), // the modal owns the caret while it is open
             $this->palette,
         );
         $result = $assembler->assemble($geo, $decorations, $sticky, $highlighted, $stripe, $contentRows, $vScroll, $cursorLine, $cursorDisplayCol, $hScroll);
@@ -962,7 +963,7 @@ final class CodeEditorWidget extends AbstractWidget implements FocusableInterfac
         // The overlay/prompt chrome composites over the content; the
         // application-menu dropdown floats above everything else.
         $composited = $this->overlayHost->composite($result, $columns, $rows, $this->focused);
-        $composited = $this->findModal->composite($composited, $columns, $rows, $this->focused);
+        $composited = $this->findModal->composite($composited, $columns, $rows, $this->focused || $this->findModal->isOpen());
 
         return $this->withMenuOverlay($composited, $columns);
     }
