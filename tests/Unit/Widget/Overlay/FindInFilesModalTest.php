@@ -56,6 +56,9 @@ final class FindInFilesModalTest extends TestCase
         $screen = $this->screen($modal);
         $this->assertStringContainsString('Find in Files', $screen);
         $this->assertStringContainsString('3 results', $screen);
+        $this->assertStringContainsString('Find:', $screen, 'the query field is labelled');
+        $this->assertStringContainsString('Replace:', $screen, 'the replace field is labelled');
+        $this->assertStringContainsString('Mask:', $screen, 'the mask field is labelled');
         $this->assertStringContainsString('Scope: Whole Project', $screen);
         $this->assertStringContainsString('Aa', $screen, 'option tags render');
         $this->assertStringContainsString('src/A.php', $screen, 'grouped file header');

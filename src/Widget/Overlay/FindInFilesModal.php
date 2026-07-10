@@ -509,7 +509,7 @@ final class FindInFilesModal
     private function boxWidth(int $columns, array $visible): int
     {
         $status = $this->statusText();
-        $width = max(mb_strwidth($this->title) + mb_strwidth($status) + 5, mb_strwidth($this->query->value()) + 6, 48);
+        $width = max(mb_strwidth($this->title) + mb_strwidth($status) + 5, mb_strwidth($this->query->value()) + 9, 48);
         foreach ($visible as $row) {
             $text = null !== $row->filePath ? $row->filePath : $this->results[$row->matchIndex]['text'] ?? '';
             $width = max($width, mb_strwidth($text) + 8);
@@ -528,25 +528,26 @@ final class FindInFilesModal
         $marker = AnsiUtils::cursorMarker(CursorShape::Bar);
         $title = ' '.$this->title.$this->palette->of(Role::Dim).'  '.$this->statusText()."\x1b[39m";
 
-        $queryShown = $focused && 'query' === $this->activeField;
-        $queryRow = $this->palette->of(Role::Toolbar).AnsiText::scrollLineToCaret(' > '.$this->query->render(cursor: $queryShown), $width, $marker)."\x1b[0m";
-
-        $replaceShown = $focused && 'replace' === $this->activeField;
         $replaceHint = $this->inPreview() ? \sprintf('  (Del exclude · Alt+A replace %d)', $this->keptCount()) : '  (Tab · Alt+A)';
-        $replaceLine = ' ⇄ '.$this->replace->render(cursor: $replaceShown).$this->palette->of(Role::Dim).$replaceHint."\x1b[39m";
-        $replaceRow = $this->palette->of(Role::Toolbar).AnsiText::scrollLineToCaret($replaceLine, $width, $marker)."\x1b[0m";
-
-        $maskShown = $focused && 'mask' === $this->activeField;
-        $maskLine = ' Mask: '.$this->mask->render(cursor: $maskShown).$this->palette->of(Role::Dim).'  (Tab)'."\x1b[39m";
-        $maskRow = $this->palette->of(Role::Toolbar).AnsiText::scrollLineToCaret($maskLine, $width, $marker)."\x1b[0m";
 
         return [
             HeaderRenderer::render($title, $width, $this->palette->of(Role::HeaderBar)."\x1b[1m"),
-            $queryRow,
-            $replaceRow,
+            $this->fieldRow('Find', $this->query, $focused && 'query' === $this->activeField, '', $width, $marker),
+            $this->fieldRow('Replace', $this->replace, $focused && 'replace' === $this->activeField, $replaceHint, $width, $marker),
             $this->optionsRowLine($width),
-            $maskRow,
+            $this->fieldRow('Mask', $this->mask, $focused && 'mask' === $this->activeField, '  (Tab)', $width, $marker),
         ];
+    }
+
+    /** A labelled input row (`Find:`/`Replace:`/`Mask:` + field), scrolled to keep the caret visible. */
+    private function fieldRow(string $label, TextField $field, bool $shown, string $hint, int $width, string $marker): string
+    {
+        $line = ' '.$label.': '.$field->render(cursor: $shown);
+        if ('' !== $hint) {
+            $line .= $this->palette->of(Role::Dim).$hint."\x1b[39m";
+        }
+
+        return $this->palette->of(Role::Toolbar).AnsiText::scrollLineToCaret($line, $width, $marker)."\x1b[0m";
     }
 
     /** How many matches would be replaced (all minus the excluded). */
