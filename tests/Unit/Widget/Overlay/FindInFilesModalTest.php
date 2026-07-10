@@ -64,7 +64,7 @@ final class FindInFilesModalTest extends TestCase
         $this->assertStringContainsString('src/A.php', $screen, 'grouped file header');
         $this->assertStringContainsString('other/B.php', $screen);
         $this->assertStringContainsString('foo one', $screen, 'match rows render');
-        $this->assertStringContainsString('Alt+Enter Find window', $screen, 'footer hint');
+        $this->assertStringContainsString('Find window · Scope · Close', $screen, 'footer actions');
     }
 
     public function testEmptyAndSearchingStates(): void
@@ -327,6 +327,172 @@ final class FindInFilesModalTest extends TestCase
 
         // A click outside the box dismisses.
         $modal->clickAt($box['previewRow'], $box['col'] + $box['width'] + 5);
+        $this->assertTrue($closed);
+    }
+
+    public function testMouseClickFocusesFieldRows(): void
+    {
+        $modal = $this->modal();
+        $queries = [];
+        $masks = [];
+        $modal->onQuery(function (string $q) use (&$queries): void {
+            $queries[] = $q;
+        });
+        $modal->onMaskChanged(function (string $m) use (&$masks): void {
+            $masks[] = $m;
+        });
+        $modal->open('Find in Files');
+        $modal->setPreview($this->results());
+        $this->screen($modal);
+        $box = $modal->lastBox();
+        $this->assertNotNull($box);
+        $optionsRow = $box['previewRow'] - 2;
+
+        // Click the Replace row (optionsRow - 1) → focus it; typing has no callback, observe via render.
+        $modal->clickAt($optionsRow - 1, $box['col'] + 2);
+        $modal->handleInput('X', $this->kb);
+        $this->assertStringContainsString('Replace: X', $this->screen($modal), 'the replace field took the keystroke');
+
+        // Click the Mask row (optionsRow + 1) → focus it; typing fires onMaskChanged.
+        $modal->clickAt($optionsRow + 1, $box['col'] + 2);
+        $modal->handleInput('y', $this->kb);
+        $this->assertSame(['y'], $masks);
+
+        // Click the Find row (optionsRow - 2) → focus the query; typing fires onQuery.
+        $modal->clickAt($optionsRow - 2, $box['col'] + 2);
+        $modal->handleInput('z', $this->kb);
+        $this->assertSame(['z'], $queries);
+    }
+
+    public function testMouseClickCyclesScope(): void
+    {
+        $modal = $this->modal();
+        $scopeIdx = [];
+        $modal->onScopeCycle(function (int $i) use (&$scopeIdx): void {
+            $scopeIdx[] = $i;
+        });
+        $modal->setScopes(['Whole Project', 'Directory', 'Current File'], 0);
+        $modal->open('Find in Files');
+        $modal->setPreview($this->results());
+        $lines = $modal->composite(array_fill(0, 24, str_repeat(' ', 100)), 100, 24, true);
+        $box = $modal->lastBox();
+        $this->assertNotNull($box);
+        $optionsRow = $box['previewRow'] - 2;
+        $optionsLine = AnsiUtils::stripAnsiCodes($lines[$optionsRow]);
+
+        // The two-space gap between the last tag and the scope label hits no zone.
+        $scopeCol = mb_strpos($optionsLine, 'Scope:');
+        $this->assertIsInt($scopeCol);
+        $modal->clickAt($optionsRow, $scopeCol - 1);
+        $this->assertSame([], $scopeIdx, 'the gap before the scope label is inert');
+
+        // Clicking the scope label cycles to the next scope.
+        $modal->clickAt($optionsRow, $scopeCol + 2);
+        $this->assertSame([1], $scopeIdx);
+        $this->assertStringContainsString('Scope: Directory', $this->screen($modal));
+    }
+
+    public function testMouseHoverHighlightsTagsAndScope(): void
+    {
+        $modal = $this->modal();
+        $modal->setScopes(['Whole Project', 'Directory'], 0);
+        $modal->open('Find in Files');
+        $modal->setPreview($this->results());
+        $lines = $modal->composite(array_fill(0, 24, str_repeat(' ', 100)), 100, 24, true);
+        $box = $modal->lastBox();
+        $this->assertNotNull($box);
+        $optionsRow = $box['previewRow'] - 2;
+
+        // Hover the first option tag → highlight changes; the same spot → no change.
+        $this->assertTrue($modal->hoverAt($optionsRow, $box['col'] + 1));
+        $this->assertFalse($modal->hoverAt($optionsRow, $box['col'] + 1));
+        $this->assertStringContainsString('.*', $this->screen($modal), 'the hovered tag still renders');
+
+        // A different tag → changes.
+        $this->assertTrue($modal->hoverAt($optionsRow, $box['col'] + 5));
+
+        // Hover the scope label → changes and still renders.
+        $optionsLine = AnsiUtils::stripAnsiCodes($lines[$optionsRow]);
+        $scopeCol = mb_strpos($optionsLine, 'Scope:');
+        $this->assertIsInt($scopeCol);
+        $this->assertTrue($modal->hoverAt($optionsRow, $scopeCol + 2));
+        $this->assertStringContainsString('Scope: Whole Project', $this->screen($modal));
+
+        // Moving off the options row (onto the Find field row) clears the hover.
+        $this->assertTrue($modal->hoverAt($optionsRow - 2, $box['col'] + 2));
+    }
+
+    public function testMouseClickTogglesExcludeCheckbox(): void
+    {
+        $modal = $this->modal();
+        $jumped = null;
+        $modal->onJump(function (string $p, int $l) use (&$jumped): void {
+            $jumped = [$p, $l];
+        });
+        $modal->setPreviewTransformer(static fn (string $old, string $repl): string => str_replace('foo', $repl, $old));
+        $modal->open('Find in Files');
+        $modal->setPreview($this->results());
+        $modal->handleInput("\t", $this->kb); // query → replace
+        foreach (str_split('bar') as $ch) {
+            $modal->handleInput($ch, $this->kb);
+        }
+        $this->screen($modal);
+        $box = $modal->lastBox();
+        $this->assertNotNull($box);
+
+        // Click the [x] checkbox on the first match row (inner cols 2-4) → exclude it.
+        $modal->clickAt($box['previewRow'] + 1, $box['col'] + 3);
+        $this->assertStringContainsString('(excluded)', $this->screen($modal));
+
+        // Click it again → re-include.
+        $modal->clickAt($box['previewRow'] + 1, $box['col'] + 3);
+        $this->assertStringNotContainsString('(excluded)', $this->screen($modal));
+
+        // Click past the checkbox on the same row → jump to the match.
+        $modal->clickAt($box['previewRow'] + 1, $box['col'] + 12);
+        $this->assertSame(['src/A.php', 4], $jumped);
+    }
+
+    public function testMouseFooterActionsClickAndHover(): void
+    {
+        $modal = $this->modal();
+        $opened = false;
+        $closed = false;
+        $scopeIdx = [];
+        $modal->onOpenInFindWindow(function () use (&$opened): void {
+            $opened = true;
+        });
+        $modal->onScopeCycle(function (int $i) use (&$scopeIdx): void {
+            $scopeIdx[] = $i;
+        });
+        $modal->onClose(function () use (&$closed): void {
+            $closed = true;
+        });
+        $modal->setScopes(['Whole Project', 'Directory'], 0);
+        $modal->open('Find in Files');
+        $modal->setPreview($this->results());
+        $lines = $modal->composite(array_fill(0, 24, str_repeat(' ', 100)), 100, 24, true);
+        $footerRow = $modal->lastFooterRow();
+        $footerLine = AnsiUtils::stripAnsiCodes($lines[$footerRow]);
+
+        // Hover the "Find window" action → highlight changes and still renders.
+        $fwCol = mb_strpos($footerLine, 'Find window');
+        $this->assertIsInt($fwCol);
+        $this->assertTrue($modal->hoverAt($footerRow, $fwCol));
+        $this->assertStringContainsString('Find window', $this->screen($modal));
+
+        // Click each footer action.
+        $modal->clickAt($footerRow, $fwCol);
+        $this->assertTrue($opened, 'Find window promotes to the results pane');
+
+        $scopeCol = mb_strpos($footerLine, 'Scope');
+        $this->assertIsInt($scopeCol);
+        $modal->clickAt($footerRow, $scopeCol);
+        $this->assertSame([1], $scopeIdx, 'the footer Scope action cycles the scope');
+
+        $closeCol = mb_strpos($footerLine, 'Close');
+        $this->assertIsInt($closeCol);
+        $modal->clickAt($footerRow, $closeCol);
         $this->assertTrue($closed);
     }
 }
