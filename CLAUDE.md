@@ -54,41 +54,67 @@ Run gate commands capturing output rather than piping to a pager, e.g.
 
 ## Architecture
 
-**`Ide` (`src/Ide.php`) is the coordinator, over a Symfony DI container.** Its constructor builds
-a `ContainerBuilder` via `Container/IdeContainerFactory` (runtime `rootDir`/`locale` become
-container parameters; compiled fresh per boot because `rootDir` differs per project, so it can't
-be dumped/cached), then delegates to a sequence of named `build*` steps (`buildEditorArea`,
-`buildSidePanels`, `buildGitView`, `buildSettingsWidgets`, `buildLayoutAndOverlay`) so it reads
-top-to-bottom as a composition root. `run()` sets up the terminal (alternate screen + SGR mouse
-modes 1000/1003/1006), arms a 1s filesystem-poll timer, and enters `tui->run()`. Teardown (mouse
-disable, session save, LSP/git/run shutdown) is in the `finally`.
+**`Ide` (`src/Ide.php`, ~980 lines) is a thin composition root over a Symfony DI container.**
+Its constructor builds the container via `Container/IdeContainerFactory`, resolves the shared
+services/widgets into its private properties (kept as aliases because ~100 reflection-based test
+seams read them), delegates to named `build*` steps (`buildEditorArea`, `buildSidePanels`,
+`buildGitView`, `buildSettingsWidgets`, `buildLayoutAndOverlay`), hand-constructs the closure-wired
+controllers the container can't express, and finishes with `registerCommands()` (the
+`Command/*Commands` providers), `wireMenuBar` and the `Input/InputDispatcher` listener — commands
+register and menus bake at the **end** of the constructor, once every provider dependency exists.
+`run()` sets up the terminal (alternate screen + SGR mouse modes 1000/1003/1006), calls
+`LspBootstrapper::start()`, arms a 1s filesystem-poll timer, and enters `tui->run()`. Teardown
+(mouse disable, `History/SessionRestorer::save`, LSP/git/run shutdown) is in the `finally`.
 
-The container owns construction of every service+scalar-injectable class **and every singleton
-widget** — the leaves (`Translator`/`GitInfo`), the autowired controllers (`WorkspaceEditor`,
-`CompletionController`, `PanelManager`, `LayoutController`), and the widgets (`FileTreeWidget`,
-`CodeEditorWidget`, the git/settings widgets, …), whose per-instance `setId`/`setStyle` is applied
-in-config via `->call()`. `Ide` resolves each via the typed `service()` helper and stores it into
-its existing private property (so reflection-based tests keep working). What the container
-**cannot** express stays hand-built in the matching `build*` step: the composite `ContainerWidget`
-tree assembly (`->add`/`setPanes`, the 6 `ContainerWidget`s / 3 `SeparatorWidget`s which are
-duplicate-typed and un-autowirable), the `setProvider(fn…)` closures on `TabBar`/`Breadcrumbs`/
-`StatusBar`, RTL pane ordering, the `tui->add` Z-order chain, per-buffer runtime objects
-(`Buffer`/`Document`/`CodeHighlighter`), and the ~100 `$this`-closures that wire widgets to `Ide`'s
-orchestration methods. Only three objects the container can't build are handed to it as
-**synthetic** services after `Ide` constructs them: `Renderer` and `Tui` (external `symfony/tui`
-infra) and `LspSessionPool` (a required `$this` closure).
+**The container is dumped and cached across boots.** Per-boot values (`rootDir`, `locale`, `ansi`,
+`theme`) travel through `$_ENV` (never `putenv` — `PtyProcess` leaks `getenv()` into child shells)
+and resolve at runtime via `%env()%` placeholders, so the compiled container is
+project-independent. `IdeContainerFactory` dumps it once into the user cache dir
+(`$PORTA_CACHE_DIR`, else XDG/`~/.cache` + `/porta`), guarded by a debug-mode `ConfigCache` whose
+tracked resources (services.php, the src/ glob, per-class reflection incl. method attributes)
+rebuild it automatically on any wiring-relevant change. `PORTA_CONTAINER_CACHE=off` forces an
+in-memory build (a builder used directly must `compile(resolveEnvPlaceholders: true)`; the dump
+path keeps placeholders unresolved), and deleting the cache dir is always safe — do that if a
+stale-container symptom ever survives an edit. `tests/bootstrap.php` pins the cache into
+`.phpunit.cache/` and forces fresh compiles under pcov (dump-served workers skew coverage line maps).
+
+The container owns every service+scalar-injectable class **and every singleton widget** — widgets
+declare their tree id/flex with the `#[Container/AsWidget]` attribute (autoconfigured into
+`setId`/`setStyle` calls). Typed factories cover what plain autowiring can't: `Keybindings` via
+`Config/KeybindingsFactory` (resolving it triggers `Plugin/PluginHost::ensureLoaded()`, the
+idempotent one-time plugin load, so plugin default keys merge into the immutable map) and
+`Overlay/MenuOverlayPanes` via its factory service. What stays hand-built in `Ide`: the composite
+`ContainerWidget` assembly (owned by `Layout/WorkspaceLayout` + `Layout/PaneLayout`), per-buffer
+runtime objects (`Buffer`/`Document`/`CodeHighlighter`), and the closure-wired controllers
+(`BufferService`, `DebugController`, `RunController`, `NavigationController`/`RefactorController`,
+`GitViewController`, `SettingsViewController`, `TreeOperations`, `Search/SearchUiWiring`,
+`Search/Everywhere/SearchEverywhereFactory`, the `Command/*` providers…). Four objects are handed
+to the container as **synthetic** services right after `Ide` creates them: `Renderer`, `Tui`,
+`BidiTui` (external `symfony/tui` infra) and `IdeConfig` (parsed before the container exists —
+its settings steer the env parameters).
 
 **Rules for the container** (`config/services.php`, deliberately **outside `src/`** so the wiring
 stays off the 100%-line-coverage gate): services are **autoregistered** via
-`$services->load('Porta\\', '../src/*')` excluding only `Ide.php` and `Container/` — the ~137
+`$services->load('Porta\\', '../src/*')` excluding only `Ide.php` and `Container/` — the
 non-service classes register private and are pruned at compile because nothing public references
 them (*fragile*: if a **public** service ever gains a dependency on a closure-wired/DTO class,
 compile fails with a Symfony autowiring error — explicit at boot, caught by the first E2e test).
-`_defaults` stays **private**; only the ids `Ide` resolves by id are marked `->public()`. Every def
-is **shared**; **never `lazy: true`** — it proxy-subclasses, which breaks `final` classes. Widgets
-needing per-instance config get an explicit `set()->public()->call('setId'|'setStyle', …)` override
-(Style via `inline_service(Style::class)->args(['$flex'=>N])`). Add construction the container can't
-own to the matching `build*` step, not as another extracted class.
+`_defaults` stays **private**; the single public boundary is the `porta.ide` `ServiceLocator`
+(plus the synthetics) — `Ide` resolves everything through its typed `service()` helper, and a new
+class `Ide` needs by type must be added to the locator's entry list. Every def is **shared**;
+**never `lazy: true`** — it proxy-subclasses, which breaks `final` classes. Add construction the
+container can't own to the matching `build*` step, not as another extracted class.
+
+**Events.** `symfony/event-dispatcher`, kernel-less: `config/services.php` registers the
+`#[AsEventListener]` attribute autoconfiguration and the `RegisterListenersPass` (the service id
+must be exactly `event_dispatcher`). Typed domain events live in `src/Event/`: the buffer
+lifecycle (`BufferOpened`/`BufferSwitched`/`BufferSaved`, emitted by `BufferService`),
+`GitCommitted`, `DebugStatusChanged`/`LspStatusChanged` (status-bar refresh), and the live-setting
+events (`ThemeChanged`/`LocaleChanged`/`CursorShapeChanged`/`TabBarPositionChanged`, dispatched by
+`Settings/LiveSettingsApplier`). Emitters autowire the **PSR** interface; `Ide` uses the component
+interface for runtime `addListener` on hand-assembled state (menu rebuild, RTL re-mirroring).
+Priorities are contractual: plugin bridge (`PluginEvents`) and the chrome sweep
+(`Ui/ChromeRefreshListener`) run at **-100**, after core listeners.
 
 **Single event loop.** `revolt/event-loop` drives both the `symfony/tui` render/input loop and
 all async work (LSP over stdio, git subprocesses, the integrated terminal PTY, run
@@ -118,15 +144,86 @@ APC marker that `ScreenWriter` converts to a hardware cursor position).
 server). Feature controllers (`Lsp/NavigationController`, `Lsp/RefactorController`,
 `Lsp/CompletionController`) extend `Lsp/AbstractLspController`.
 
+**Debugger (DAP).** `Debug/DapClient` speaks the Debug Adapter Protocol over a child process's
+stdio (framing shared with LSP via `Support/JsonRpcFramer`); `Debug/DapSession` is one launch's
+order-agnostic state machine (0-based lines internally, 1-based on the wire); `Debug/DebugController`
+(hand-built in `Ide`) owns the in-memory `BreakpointStore`, the editor decorations (gutter `●`,
+`Role::DebugLineBg` stopped-line band), the `Widget/DebugPanelWidget` bottom panel (frames +
+lazily-expanded variables) and the debuggee-output terminal buffer. Adapters are config-only:
+`.porta.json` `languages.<id>.debug = {adapter, launch}` (Settings → language section), registry
+in `Debug/DebugAdapters`. Keys: Shift+F9 debug, Ctrl+F8 breakpoint (also gutter click); F7/F8/F9/
+Shift+F8/Ctrl+F2 are gated by `CommandRegistry`'s `when` closures so they fall through to widget
+bindings when no session runs. Tests script `tests/Support/mock-dap-adapter.php`.
+
 **Input routing.** `Input/MouseRouter` maps every SGR mouse event to the pane under the pointer
 and owns cross-event drag/click state. Hit-testing uses the renderer's per-widget rects.
 
-**Per-project config: `.porta.json`** (parsed by `Config/IdeConfig`) with keys `keymap`,
-`settings`, `languages`, `lsp`. Settings (`Config/SettingsController` + the `Settings/` view)
-all apply live via per-descriptor `apply` closures — theme swaps the `SwitchablePalette`/
-`SwitchableTerminalTheme` holders and rebuilds the highlighters (`Ide::applyTheme`), the locale
-relabels the tree (`Ide::applyLanguage`), and `.editorconfig` re-resolves open buffers
-(`BufferService::setEditorConfigEnabled`). The `restart` descriptor flag is retained but unused.
+**Plugins.** User PHP loaded at boot from three sources in precedence order —
+`<project>/.porta/plugins/*/plugin.php`, `~/.porta/plugins/*/plugin.php` (`PORTA_HOME` overrides
+the home dir), and the plugins **bundled in the Porta package** (`PORTA_EMBEDDED_PLUGINS`
+overrides; earlier sources shadow later ones by directory name; phpunit pins BOTH env vars to
+`/nonexistent`, so tests opt in via putenv). Names in `.porta.json`'s `disabledPlugins` are
+skipped at boot. The subsystem is container-owned: `Plugin/PluginHost` builds the
+settings/manager/loader triple from the synthetic `IdeConfig`, and `ensureLoaded()` (idempotent,
+triggered by the `Keybindings` factory) runs each file's `activate(PluginApi)` **before** the
+(immutable) `Keybindings` map is built so plugin default keys merge into it (user `.porta.json`
+overrides them; ids are
+namespaced `plugin:command` and bypass the ActionCatalog keymap validation — plugin ids stay
+OUT of `ActionCatalog::ACTIONS`). Registration buffers in the per-plugin `PluginApi` and commits
+atomically after `activate()`; action methods (flash/editor access/openFile) resolve services
+lazily via `Plugin/PluginRuntime` (wired late in the ctor) and throw during `activate()`. Every
+plugin handler and hook is wrapped in try/catch → status-bar flash, so a faulting plugin never
+kills the loop. Hooks (`fileOpened`/`fileSaved`/`bufferSwitched`) fan out from
+`Plugin/PluginEvents`, which is a `#[AsEventListener(priority: -100)]` bridge on the app event
+bus: `BufferService` dispatches typed `Event/BufferOpened`/`BufferSwitched`/`BufferSaved`
+events (symfony/event-dispatcher, wired kernel-less in `config/services.php` — the
+`event_dispatcher` service id is mandatory for `RegisterListenersPass`), core listeners
+(git marks, debug decorations, LSP save/inlay) react at priority 0, and the plugin bridge
+observes last, deduplicating consecutive switch paths for plugins only. Plugin commands land in
+`CommandRegistry` after core (core wins key collisions) and surface in the palette plus a
+trailing translated "Plugins" menu (`MenuModel::build`'s `$pluginSpecs`, grouped per plugin
+with separators). Prefer anonymous
+classes in plugin files — cross-plugin class redeclaration is an uncatchable fatal. Four complete
+reference plugins ship in this repo under `.porta/plugins/`: `php-cs-fixer` (async process via
+`Support/AsyncProcess`, binary discovery via `PluginApi::projectRoot()`, persisted
+`autoFormat` on-save setting), `phpstan` (publishes editor diagnostics via
+`PluginApi::setDiagnostics`, which rides `BufferService::applyDiagnostics` — inline messages,
+stripe, Problems panel — persisted `autoLint`), `mago` (both patterns in one: format-in-place +
+JSON-lint diagnostics, separate `autoFormat`/`autoLint` settings, both on chains format→lint),
+and `psalm` (the phpstan pattern for Psalm's JSON array output — 1-based lines/columns,
+exit 2 = issues found). The on-save toggle commands flip the persisted settings via
+`PluginApi::changeSetting()` (an action method mirroring `flash()`'s runtime gate).
+Their E2e tests load the real files from those paths.
+Settings → Plugins installs/removes plugin dirs (`Plugin/PluginInstaller`: git clone for URLs,
+recursive copy for local dirs; per-install project/global scope; bundled plugins list as
+built-in and refuse removal). The live lifecycle lives in `Plugin/PluginLifecycle`
+(activate/deactivate/setEnabled + the settings-nav sync): **live activation** —
+`PluginLoader::loadFile` + `PluginManager::registerCommands` (incremental via a watermark) +
+`Ui/MenuRebuilder::rebuild` — and **live
+deactivation** on removal/disable: `PluginManager::deactivate` filters its state, resets the
+watermark to the filtered count (safe: everything is registered before any deactivate),
+`CommandRegistry::remove` kills palette + key dispatch, `PluginEvents::removeFor` (listeners
+are keyed per plugin) drops hooks; removing a shadowing copy reactivates the next copy down.
+Default keys still need a restart (immutable `Keybindings`) — a dead binding just falls
+through. Every plugin's settings page (a `plugin:<name>` nav sub-item) has an Enabled toggle
+(persisted in `disabledPlugins`) plus its `PluginApi::registerSetting` rows
+(`Plugin/PluginSettings`, values in `.porta.json` `plugins.<name>.<key>`, read via
+`PluginApi::setting()` — works during activate() because the config seeds first). Menu items
+take an `enabledWhen` closure (dimmed when false; the Plugins menu sits between Code and Run).
+Removal rows use the settings form's `'action'` row kind (two-press confirm in
+`Config/SettingsPluginsController`).
+
+**Per-project config: `.porta.json`** (parsed by `Config/IdeConfig`, handed to the container as
+a synthetic service) with keys `keymap`, `settings`, `languages`, `lsp`. Settings
+(`Config/SettingsController` + the `Settings/` view) all apply live through
+`Settings/LiveSettingsApplier` — theme swaps the `SwitchablePalette`/`SwitchableTerminalTheme`
+holders and rebuilds the highlighters, the locale relabels the tree, the cursor shape swaps the
+`CursorStyle` holder, the tab-bar position re-arranges the strip — each apply ends in a typed
+`src/Event/` event (menu rebuild + RTL re-mirroring listen in `Ide`; the -100
+`ChromeRefreshListener` sweeps the chrome caches last).
+`.editorconfig` is always honored (superseded per language by the indent settings); legacy
+setting keys (`IdeConfig::LEGACY_SETTINGS`) load silently. The `restart` descriptor flag is
+retained but unused.
 
 **i18n / RTL.** `I18n/Translator` wraps `symfony/translation`; the English source string *is* the
 message id (so untranslated lookups fall back to English) with XLIFF catalogs in `translations/`

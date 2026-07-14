@@ -1,0 +1,184 @@
+# Keybindings
+
+The keymap follows PhpStorm wherever the terminal allows. Every action is
+rebindable — see [Custom keymap](#custom-keymap) below, or use
+**Settings → Keybindings** (`Ctrl+,`) to capture a new key interactively.
+
+Heavily modified chords (e.g. `Alt+Shift+↑`) work best in terminals with the
+Kitty keyboard protocol (kitty, WezTerm, iTerm2 3.5+, foot, Ghostty).
+
+## Application
+
+| Key | Action |
+| --- | --- |
+| `Ctrl+Q` | Quit (twice within 3 s to discard unsaved changes) |
+| `Ctrl+T` / `F2` | Switch focus between file tree and editor |
+| `F6` / `Ctrl+F6` | Cycle focus forward / backward across panes (in the git and settings views, cycles their panes) |
+| `Ctrl+F10` | Open the context menu for the focused pane (editor: at the caret; tree: at the selected node; image/help tab: the tab menu) |
+| `Shift+F11` / `Shift+F12` | Shrink / grow the focused pane (file tree, git and settings sidebars, and the bottom panels) |
+| `F10` | Open the application menu |
+| `F1` | Open the documentation browser (these guides, fully rendered; see the Help viewer table below) |
+| `Ctrl+Shift+A` | Find Action (command palette) |
+| `Ctrl+Shift+E` | Search Everywhere |
+| `Ctrl+,` | Settings |
+| `Ctrl+Alt+D` | Git view (changes, staging, history) |
+| `Ctrl+\`` / `Alt+F12` | Toggle the integrated terminal |
+| `Alt+6` | Problems panel |
+| `Ctrl+Alt+H` | Local history |
+
+## Files and buffers
+
+| Key | Action |
+| --- | --- |
+| `Ctrl+S` | Save |
+| `Ctrl+Alt+S` | Save all |
+| `Ctrl+Shift+N` / `Ctrl+P` | Go to file (fuzzy finder) |
+| `Ctrl+E` | Recent files popup (`Ctrl+E` again cycles, `Enter` opens) |
+| `Ctrl+←` / `Ctrl+→` | Previous / next editor tab |
+| `Ctrl+Shift+←` / `Ctrl+Shift+→` | Move the active tab left / right |
+| `Ctrl+F4` / `Alt+W` | Close the active buffer (unsaved changes prompt) |
+
+## Editing
+
+| Key | Action |
+| --- | --- |
+| `Ctrl+Z` / `Ctrl+Shift+Z` | Undo / redo (typing runs coalesce) |
+| `Ctrl+C` / `Ctrl+X` / `Ctrl+V` | Copy / cut / paste (also the system clipboard via OSC 52) |
+| `Ctrl+D` | Duplicate line or selection |
+| `Ctrl+Y` / `Ctrl+Shift+K` | Delete line or selected lines |
+| `Ctrl+K` | Delete to end of line |
+| `Alt+Backspace` | Delete word backwards |
+| `Ctrl+/` / `Ctrl+-` | Toggle line comment |
+| `Alt+Shift+↑/↓` | Move line or selection up / down |
+| `Ctrl+Shift+↑/↓` | Move statement up / down (hops blank-line gaps) |
+| `Ctrl+W` / `Ctrl+Shift+W` | Extend / shrink selection (word → brackets → line → file) |
+| `Ctrl+Alt+T` | Surround selection (bracket pair, quotes, `if`/`foreach`/`try`) |
+| `Ctrl+.` | Collapse / expand the code fold at the caret |
+| `Ctrl+A` | Select all |
+| `Home` | Smart home (first non-blank, then column 0) |
+| `Tab` / `Shift+Tab` | Indent; next / previous tab stop while a snippet is active |
+
+## Multiple carets
+
+| Key | Action |
+| --- | --- |
+| `Ctrl+Alt+↑` / `Ctrl+Alt+↓` | Add a caret above / below |
+| `Alt+J` | Add a caret at the next occurrence of the word |
+| `Ctrl+Alt+Shift+J` | Add carets at all occurrences |
+| `Esc` | Collapse back to a single caret |
+| `Alt+Click` | Add / remove a caret (mouse) |
+| `Alt+Shift+drag` | Column (rectangular) selection (mouse) |
+
+## Code intelligence (LSP)
+
+| Key | Action |
+| --- | --- |
+| `Ctrl+Space` | Trigger completion (auto after `->` and `::`) |
+| `Ctrl+B` / `F12` | Go to declaration |
+| `Ctrl+Alt+B` | Go to implementation (chooser when several) |
+| `Ctrl+Shift+B` | Go to type definition |
+| `Ctrl+Alt+Left` | Navigate back after a definition jump |
+| `Ctrl+Shift+I` | Peek definition (inline; `Enter` jumps) |
+| `Alt+F7` | Find usages |
+| `Shift+F6` | Rename symbol (cross-file `WorkspaceEdit`) |
+| `Alt+Enter` | Quick fixes / code actions |
+| `Shift+F1` | Quick documentation |
+| `Ctrl+F12` / `Alt+7` | File structure popup |
+| `Ctrl+Alt+Shift+N` / `Ctrl+Alt+O` | Go to symbol in project |
+| `Ctrl+Alt+L` | Reformat file (or the selection when one exists) |
+
+## Search
+
+| Key | Action |
+| --- | --- |
+| `Ctrl+F` / `Ctrl+R` | Find / find-and-replace in file (`F3`/`Shift+F3` cycle, `Tab` switches field, `Alt+R` replace, `Alt+A` replace all) |
+| `Ctrl+Shift+F` | Find in Files (regex `Alt+R`, case `Alt+C`, whole word `Alt+W`; `Tab` to the replace field, `Alt+A` replaces across the project) |
+| `Ctrl+G` | Go to line |
+| `Ctrl+Shift+T` | Go to test / go to tested class |
+
+## Run, debug, git
+
+| Key | Action |
+| --- | --- |
+| `Ctrl+Shift+R` | Run… (current file, composer script, Makefile target) |
+| `Shift+F10` | Repeat the last run |
+| `Shift+F9` | Debug the current file |
+| `Ctrl+F8` | Toggle a breakpoint (also: click the gutter) |
+| `F8` / `F7` / `Shift+F8` | Step over / into / out *(while paused)* |
+| `F9` | Resume *(while paused)* |
+| `Ctrl+F2` | Stop the debugger *(while a session runs)* |
+| `F7` / `Shift+F7` | Next / previous merge conflict *(when not debugging)* |
+| `Alt+M` | Resolve the conflict under the caret (ours / theirs / both) |
+
+The debugger's `F7`/`F8`/`F9`/`Shift+F8`/`Ctrl+F2` keys are gated on a
+running session — without one they fall through to their editor meanings.
+
+## File tree
+
+| Key | Action |
+| --- | --- |
+| `↑` / `↓`, `PageUp` / `PageDown` | Move the selection |
+| `←` / `→` | Collapse / expand a directory |
+| `Enter` | Open file / toggle directory |
+| `r` | Reload the tree |
+
+## Help viewer
+
+When the F1 documentation browser is active:
+
+| Key | Action |
+| --- | --- |
+| `Tab` / `Shift+Tab` | Cycle through the page's links (scrolling the focused one into view) |
+| `Enter` (or a click) | Follow the focused link — doc pages render in place, `http(s)` links open in the browser |
+| `Backspace` / `Ctrl+Alt+Left` | Back to the previous page (scroll position restored) |
+| Arrows, `PageUp`/`PageDown`, `Home`/`End`, wheel | Scroll |
+
+The header row above the page is clickable: `‹` / `›` navigate back and
+forward through the history, and the breadcrumb mirrors the page's place in
+the docs file tree (`Documentation › folder › page`) — the root and any
+folder with a `README.md` index navigate on click, and clicking the current
+page scrolls back to the top. Following a link clears
+the forward trail, like a browser. All navigation happens inside the single
+Documentation tab.
+
+Tab-management keys (`Ctrl+←/→`, `Ctrl+F4`, `Ctrl+P`…) keep working on the
+help tab.
+
+## Image viewer
+
+When an image tab is active:
+
+| Key | Action |
+| --- | --- |
+| `=` / `-` | Zoom in / out (also `Ctrl+wheel`, anchored at the pointer) |
+| `0` / `f` | Fit to window |
+| `1` | Actual size |
+| Arrows / `Shift+arrows` | Pan |
+
+## Mouse
+
+SGR mouse reporting (modes 1000/1003/1006) is enabled: click to place the
+cursor, drag to select (double-click a word, triple-click a line,
+`Shift+Click` extends), wheel to scroll, hover highlights, click tree
+entries / tabs / menu items / panel rows, drag pane separators to resize,
+and right-click for a context menu.
+
+## Custom keymap
+
+Override any action in `.porta.json` (project root):
+
+```json
+{
+    "keymap": {
+        "duplicate_line": ["ctrl+shift+d"],
+        "save": ["f10", "ctrl+s"]
+    }
+}
+```
+
+Action ids are listed in `Porta\Config\ActionCatalog::ACTIONS` (they match
+the tables above); unknown ids are reported in the status bar at startup.
+Plugin commands are rebindable through their namespaced id
+(`"php-cs-fixer:fix": ["ctrl+alt+f"]`). Keymap changes apply on the next
+launch; **Settings → Keybindings** writes the same block for you after
+capturing a keypress.
