@@ -220,4 +220,100 @@ final class FindBarWidgetTest extends TestCase
         $this->assertSame(1, substr_count($line, $marker), 'the caret scrolls into view');
         $this->assertSame(80, AnsiUtils::visibleWidth($line), 'the bar stays the terminal width');
     }
+
+    public function testRegexToggleMatchesPatterns(): void
+    {
+        $doc = new Document("aaa b\nab c\nxyz\n");
+        $bar = new FindBarWidget(new Translator('en'));
+        $bar->setFocused(true);
+        $bar->open($doc, withReplace: false);
+        $this->type($bar, 'a+');
+
+        $this->assertSame([], $bar->getMatchesByLine(), 'literal mode: no "a+" in the text');
+
+        $bar->handleInput("\x1bx"); // alt+x → regex mode
+        $matches = $bar->getMatchesByLine();
+        $this->assertCount(2, $matches, 'regex matches on two lines');
+        $this->assertSame([['start' => 0, 'end' => 3]], array_map(static fn (array $m): array => ['start' => $m['start'], 'end' => $m['end']], $matches[0]), 'greedy run of a\'s');
+
+        $bar->handleInput("\x1bx"); // back to literal
+        $this->assertSame([], $bar->getMatchesByLine());
+    }
+
+    public function testWholeWordToggleNarrowsMatches(): void
+    {
+        $doc = new Document("foo foobar\nfoo\n");
+        $bar = new FindBarWidget(new Translator('en'));
+        $bar->setFocused(true);
+        $bar->open($doc, withReplace: false);
+        $this->type($bar, 'foo');
+        $this->assertCount(3, array_merge(...array_values($bar->getMatchesByLine())), 'substring mode hits foobar too');
+
+        $bar->handleInput("\x1bw"); // alt+w → whole word
+        $this->assertCount(2, array_merge(...array_values($bar->getMatchesByLine())), 'foobar no longer matches');
+
+        $screen = AnsiUtils::stripAnsiCodes(implode('', $bar->render(new RenderContext(120, 1))));
+        $this->assertStringContainsString('[\b]', $screen, 'the whole-word tag renders');
+        $this->assertStringContainsString('[.*]', $screen, 'the regex tag renders (off)');
+    }
+
+    public function testInvalidRegexShowsAnInlineIndicatorAndMatchesNothing(): void
+    {
+        $doc = new Document("abc\n");
+        $bar = new FindBarWidget(new Translator('en'));
+        $bar->setFocused(true);
+        $bar->open($doc, withReplace: false);
+        $bar->handleInput("\x1bx"); // regex mode
+        $this->type($bar, 'a(');
+
+        $this->assertSame([], $bar->getMatchesByLine(), 'a half-typed regex matches nothing');
+        $screen = AnsiUtils::stripAnsiCodes(implode('', $bar->render(new RenderContext(120, 1))));
+        $this->assertStringContainsString('bad regex', $screen);
+
+        $this->type($bar, ')'); // completing it recovers
+        $this->assertCount(1, array_merge(...array_values($bar->getMatchesByLine())));
+    }
+
+    public function testZeroWidthRegexMatchesAreSkipped(): void
+    {
+        $doc = new Document("abc\n");
+        $bar = new FindBarWidget(new Translator('en'));
+        $bar->setFocused(true);
+        $bar->open($doc, withReplace: false);
+        $bar->handleInput("\x1bx");
+        $this->type($bar, 'z*');
+
+        $this->assertSame([], $bar->getMatchesByLine(), 'zero-width hits highlight nothing (and never loop)');
+    }
+
+    public function testSmartCaseAppliesInRegexMode(): void
+    {
+        $doc = new Document("Foo\nfoo\n");
+        $bar = new FindBarWidget(new Translator('en'));
+        $bar->setFocused(true);
+        $bar->open($doc, withReplace: false);
+        $bar->handleInput("\x1bx");
+        $this->type($bar, 'fo+');
+        $this->assertCount(2, $bar->getMatchesByLine(), 'lowercase regex is case-insensitive');
+
+        $bar->open($doc, withReplace: false, initialQuery: 'Fo+');
+        $bar->handleInput("\x1bx"); // toggles OFF (state survived) — toggle back on
+        $bar->handleInput("\x1bx");
+        $matches = $bar->getMatchesByLine();
+        $this->assertArrayHasKey(0, $matches);
+        $this->assertArrayNotHasKey(1, $matches, 'uppercase regex is exact');
+    }
+
+    public function testRegexModeRespectsTheMatchCap(): void
+    {
+        // 5001 single-char matches across two lines exceed MAX_MATCHES (5000).
+        $doc = new Document(str_repeat('a', 4000)."\n".str_repeat('a', 1001)."\n");
+        $bar = new FindBarWidget(new Translator('en'));
+        $bar->setFocused(true);
+        $bar->open($doc, withReplace: false);
+        $bar->handleInput("\x1bx");
+        $this->type($bar, 'a');
+
+        $this->assertSame(5000, \count(array_merge(...array_values($bar->getMatchesByLine()))), 'the scan stops at the cap');
+    }
 }

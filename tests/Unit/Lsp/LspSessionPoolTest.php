@@ -33,7 +33,7 @@ final class LspSessionPoolTest extends TestCase
             new Translator('en'),
             function (array $command, string $rootDir, \Closure $onLog): FakeLspClient {
                 $client = new FakeLspClient();
-                $this->clients[] = ['command' => $command, 'client' => $client];
+                $this->clients[] = ['command' => $command, 'client' => $client, 'onLog' => $onLog];
 
                 return $client;
             },
@@ -56,6 +56,25 @@ final class LspSessionPoolTest extends TestCase
         'javascript' => ['command' => ['ts-ls', '--stdio'], 'name' => 'ts-ls'],
         'typescript' => ['command' => ['ts-ls', '--stdio'], 'name' => 'ts-ls'],
     ];
+
+    public function testLogLinesArePrefixedWithTheServerName(): void
+    {
+        $logged = [];
+        $pool = $this->pool(self::SERVERS, configure: false);
+        $pool->configure(
+            self::SERVERS,
+            static function (string $line) use (&$logged): void {
+                $logged[] = $line;
+            },
+            static function (array $params): void {},
+            static fn (array $edit): bool => false,
+        );
+        $pool->notifyDidOpen('/tmp/proj/a.php', '<?php', 'php', 1);
+
+        $this->clients[0]['onLog']('stderr says hi');
+
+        $this->assertSame(['[php-ls] stderr says hi'], $logged, 'the shared hook identifies the server');
+    }
 
     public function testDidOpenLazilyStartsTheMatchingServer(): void
     {

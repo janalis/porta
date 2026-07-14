@@ -6968,6 +6968,81 @@ final class IdeEdgeCasesTest extends TestCase
         );
     }
 
+    public function testFormatOnSaveSavesThroughTheFormatPath(): void
+    {
+        putenv('PATH=/nonexistent');
+        $project = new TempProject([
+            'a.php' => "<?php\n\$a = 1;\n",
+            '.porta.json' => json_encode(['settings' => ['formatOnSave' => true]]),
+        ]);
+
+        $this->runIde(
+            $project,
+            $project->path('a.php'),
+            [
+                200 => function ($tui, $terminal, $ide) use ($project): void {
+                    // No LSP server exists (empty PATH): the format round is
+                    // skipped and Ctrl+S still saves exactly once, immediately.
+                    $tui->handleInput('x');
+                    $tui->handleInput("\x13"); // ctrl+s
+                    $tui->tick();
+                    $this->assertStringContainsString('Saved a.php', AnsiUtils::stripAnsiCodes($terminal->getOutput()));
+                    $this->assertStringContainsString('x', (string) file_get_contents($project->path('a.php')));
+                },
+            ],
+            0.5,
+        );
+    }
+
+    public function testLspLogCommandShowsCapturedServerOutput(): void
+    {
+        putenv('PATH=/nonexistent');
+        $project = new TempProject(['a.php' => "<?php\n\$a = 1;\n"]);
+
+        $this->runIde(
+            $project,
+            $project->path('a.php'),
+            [
+                200 => function ($tui, $terminal, $ide): void {
+                    // No server ran (PATH is empty): the command just flashes.
+                    new \ReflectionProperty($ide, 'commands')->getValue($ide)->run('ide_lsp_log');
+                    $tui->tick();
+                    $this->assertStringContainsString('No LSP server output yet', AnsiUtils::stripAnsiCodes($terminal->getOutput()));
+
+                    $locator = new \ReflectionProperty($ide, 'locator')->getValue($ide);
+                    $locator->get(\Porta\Lsp\LspLog::class)->append("[php-ls] fatal: cannot index\n");
+                },
+                400 => function ($tui, $terminal, $ide): void {
+                    $terminal->clearOutput();
+                    new \ReflectionProperty($ide, 'commands')->getValue($ide)->run('ide_lsp_log');
+                    $tui->tick();
+                    $screen = AnsiUtils::stripAnsiCodes($terminal->getOutput());
+                    $this->assertStringContainsString('LSP Server Log', $screen, 'the log overlay opened');
+                    $this->assertStringContainsString('[php-ls] fatal: cannot index', $screen, 'the captured server line is reviewable');
+                    $tui->handleInput("\x1b"); // Esc closes the overlay
+                },
+            ],
+            0.8,
+        );
+
+        // With only an image open, the editor-hosted overlay refuses with a flash.
+        $imageProject = new TempProject(['img.png' => $this->twoColorPng(4, 4)]);
+        $this->runIde(
+            $imageProject,
+            $imageProject->path('img.png'),
+            [
+                200 => function ($tui, $terminal, $ide): void {
+                    $locator = new \ReflectionProperty($ide, 'locator')->getValue($ide);
+                    $locator->get(\Porta\Lsp\LspLog::class)->append('logged');
+                    new \ReflectionProperty($ide, 'commands')->getValue($ide)->run('ide_lsp_log');
+                    $tui->tick();
+                    $this->assertStringContainsString('Not available while viewing an image', AnsiUtils::stripAnsiCodes($terminal->getOutput()));
+                },
+            ],
+            0.5,
+        );
+    }
+
     public function testF6CyclesFocusAcrossPanesAndDelegatesToViews(): void
     {
         putenv('PATH=/nonexistent');

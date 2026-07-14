@@ -56,6 +56,7 @@ final class SettingsController
                 'apply' => static fn (int|bool|string $v) => $editor->setRelativeLineNumbers((bool) $v),
             ],
             'autoPairs' => ['label' => 'Auto-pairs', 'kind' => 'bool', 'restart' => false, 'apply' => static fn (int|bool|string $v) => $editor->setAutoPairs((bool) $v)],
+            'formatOnSave' => ['label' => 'Format on save (LSP)', 'kind' => 'bool', 'restart' => false, 'apply' => static fn (int|bool|string $v) => $applier->applyFormatOnSave((bool) $v)],
             'theme' => [
                 'label' => 'Theme',
                 'kind' => 'choice',

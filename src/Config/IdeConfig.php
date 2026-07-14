@@ -36,6 +36,7 @@ final class IdeConfig
         'inlineDiagnostics' => true,
         'relativeLineNumbers' => false,
         'autoPairs' => true,
+        'formatOnSave' => false,
         'cursorShape' => 'bar',
         'tabBarPosition' => 'top',
     ];

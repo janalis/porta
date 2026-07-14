@@ -88,7 +88,7 @@ class FakeLspClient implements LspClientInterface
 
     public function request(string $method, mixed $params, callable $onResult): void
     {
-        $this->requests[] = ['method' => $method, 'params' => $params];
+        $this->requests[] = ['method' => $method, 'params' => $params, 'respond' => $onResult(...)];
     }
 
     public function notify(string $method, mixed $params): void

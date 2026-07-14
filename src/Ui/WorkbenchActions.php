@@ -8,6 +8,7 @@ use Porta\Config\CommandRegistry;
 use Porta\Editor\BufferManager;
 use Porta\Editor\BufferService;
 use Porta\I18n\Translator;
+use Porta\Lsp\LspLog;
 use Porta\Widget\CodeEditorWidget;
 use Porta\Widget\MenuBarWidget;
 use Symfony\Component\Tui\Tui;
@@ -32,6 +33,7 @@ final class WorkbenchActions
         private readonly CommandPalette $commandPalette,
         private readonly CommandRegistry $commands,
         private readonly NotificationLog $notificationLog,
+        private readonly LspLog $lspLog,
         private readonly CodeEditorWidget $editor,
     ) {}
 
@@ -84,6 +86,30 @@ final class WorkbenchActions
             $items[] = ['label' => $entry['text'], 'hint' => $entry['time']->format('H:i:s'), 'value' => $entry['text']];
         }
         $this->editor->openListOverlay($this->translator->trans('Notifications'), $items, static function (string $value): void {});
+        $this->tui->requestRender();
+    }
+
+    /**
+     * Show the captured language-server output (newest first) in the editor's
+     * list overlay — the only way to see why a server misbehaves without
+     * leaving the IDE.
+     */
+    public function showLspLog(): void
+    {
+        $entries = $this->lspLog->entries();
+        if ([] === $entries) {
+            $this->notifier->flash($this->translator->trans('No LSP server output yet'));
+
+            return;
+        }
+        if (!$this->bufferService->ensureTextEditorActive()) {
+            return;
+        }
+        $items = [];
+        foreach (array_reverse($entries) as $entry) {
+            $items[] = ['label' => $entry['text'], 'hint' => $entry['time']->format('H:i:s'), 'value' => $entry['text']];
+        }
+        $this->editor->openListOverlay($this->translator->trans('LSP Server Log'), $items, static function (string $value): void {});
         $this->tui->requestRender();
     }
 

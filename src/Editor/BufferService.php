@@ -14,6 +14,7 @@ use Porta\History\LocalHistory;
 use Porta\I18n\Translator;
 use Porta\Image\ImageDecoder;
 use Porta\Lsp\BufferReopener;
+use Porta\Lsp\FormatOnSave;
 use Porta\Lsp\LspSessionPool;
 use Porta\Lsp\Uri;
 use Porta\Support\ProjectPaths;
@@ -60,6 +61,7 @@ final class BufferService implements FileOpener, BufferReopener
         private readonly ImageDecoder $imageDecoder,
         private readonly ContainerWidget $editorBody,
         private readonly EventDispatcherInterface $dispatcher,
+        private readonly FormatOnSave $formatOnSave,
     ) {}
 
     public function openFile(string $path, bool $focusEditor = false): void
@@ -399,6 +401,18 @@ final class BufferService implements FileOpener, BufferReopener
     {
         $active = $this->buffers->active();
         if (null === $active) {
+            return;
+        }
+        // Format-on-save only covers the single-file save: saveAllBuffers()
+        // and Save & Close keep the synchronous bool contract of saveBuffer().
+        if ($this->formatOnSave->isEnabled() && !$active->isImage() && !$active->isHelp()) {
+            $this->formatOnSave->formatThenSave($active, function () use ($active): void {
+                if ($this->saveBuffer($active)) {
+                    $this->notifier->flash($this->translator->trans('Saved %file%', ['%file%' => $this->relativePath($active->path)]));
+                }
+                $this->tui->requestRender();
+            });
+
             return;
         }
         if ($this->saveBuffer($active)) {

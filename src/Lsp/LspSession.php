@@ -52,6 +52,10 @@ final class LspSession
     {
         $this->client = ($this->clientFactory)($command, $this->rootDir, $onLog);
         $this->client->onNotification('textDocument/publishDiagnostics', $onDiagnostics);
+        // Many servers log through LSP rather than stderr — same sink.
+        $this->client->onNotification('window/logMessage', static function (array $params) use ($onLog): void {
+            $onLog(\is_string($params['message'] ?? null) ? $params['message'] : '');
+        });
         $this->client->onApplyEdit($onApplyEdit);
         $this->client->start(function (bool $ok) use ($onStarted): void {
             if (!$ok) {

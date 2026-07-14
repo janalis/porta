@@ -16,7 +16,12 @@ use Porta\Highlight\TerminalThemeFactory;
 use Porta\I18n\Translator;
 use Porta\Ide;
 use Porta\Layout\WorkspaceLayout;
+use Porta\Lsp\FormatOnSave;
+use Porta\Lsp\LspSessionPool;
+use Porta\Lsp\WorkspaceEditor;
 use Porta\Settings\LiveSettingsApplier;
+use Porta\Tests\Support\FakeScheduler;
+use Porta\Tests\Support\FixedActiveFile;
 use Porta\Tests\Support\TempProject;
 use Porta\Ui\CursorStyle;
 use Porta\Ui\Notifier;
@@ -44,6 +49,9 @@ use Porta\Widget\StatusBarWidget;
 use Porta\Widget\TabBarWidget;
 use Porta\Widget\TerminalPanelWidget;
 use Symfony\Component\EventDispatcher\EventDispatcher;
+use Symfony\Component\Tui\Input\Keybindings;
+use Symfony\Component\Tui\Render\Renderer;
+use Symfony\Component\Tui\Style\StyleSheet;
 use Symfony\Component\Tui\Terminal\VirtualTerminal;
 use Symfony\Component\Tui\Tui;
 
@@ -133,6 +141,7 @@ final class SettingsControllerTest extends TestCase
                 new StatusBarWidget(),
             ),
             $dispatcher,
+            self::formatOnSave(),
             true,
         );
 
@@ -162,7 +171,7 @@ final class SettingsControllerTest extends TestCase
         $byKey = array_column($rows, null, 'key');
 
         $this->assertSame(
-            ['language', 'inlineDiagnostics', 'relativeLineNumbers', 'autoPairs', 'theme', 'cursorShape', 'tabBarPosition'],
+            ['language', 'inlineDiagnostics', 'relativeLineNumbers', 'autoPairs', 'formatOnSave', 'theme', 'cursorShape', 'tabBarPosition'],
             array_column($rows, 'key'),
             'language first; indent settings moved to the Languages section',
         );
@@ -290,5 +299,19 @@ final class SettingsControllerTest extends TestCase
         $flash = new \ReflectionProperty($status, 'flash')->getValue($status);
         $this->assertStringContainsString('Unknown setting "doesNotExist"', (string) ($flash['text'] ?? ''));
         $this->assertFalse(is_file($project->path('.porta.json')), 'nothing was persisted');
+    }
+
+    private static function formatOnSave(): FormatOnSave
+    {
+        $editor = new CodeEditorWidget();
+        $pool = new LspSessionPool(sys_get_temp_dir(), new FixedActiveFile(), new Translator('en'));
+
+        return new FormatOnSave(
+            $pool,
+            new WorkspaceEditor(new BufferManager(), $editor, $pool),
+            $editor,
+            new FakeScheduler(),
+            new Tui(terminal: new VirtualTerminal(columns: 80, rows: 24), keybindings: new Keybindings([]), renderer: new Renderer(new StyleSheet())),
+        );
     }
 }

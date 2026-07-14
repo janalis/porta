@@ -13,6 +13,7 @@ use Porta\Highlight\SwitchableTerminalTheme;
 use Porta\Highlight\TerminalThemeFactory;
 use Porta\I18n\Translator;
 use Porta\Layout\WorkspaceLayout;
+use Porta\Lsp\FormatOnSave;
 use Porta\Ui\CursorStyle;
 use Porta\Ui\PaletteFactory;
 use Porta\Ui\SwitchablePalette;
@@ -41,6 +42,7 @@ final class LiveSettingsApplier
         private readonly TabBarWidget $tabBar,
         private readonly WorkspaceLayout $workspaceLayout,
         private readonly EventDispatcherInterface $dispatcher,
+        private readonly FormatOnSave $formatOnSave,
         private readonly bool $ansi,
     ) {}
 
@@ -63,6 +65,12 @@ final class LiveSettingsApplier
         $this->gitDiff->refreshTheme();
         $this->helpViewer->refreshTheme(); // rendered help lines bake palette codes
         $this->dispatcher->dispatch(new ThemeChanged($theme));
+    }
+
+    /** Live formatOnSave toggle: the flag holder the save path consults. */
+    public function applyFormatOnSave(bool $enabled): void
+    {
+        $this->formatOnSave->setEnabled($enabled);
     }
 
     /** Live UI-locale switch: point the translator at $locale and announce it. */

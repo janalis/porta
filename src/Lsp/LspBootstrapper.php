@@ -19,6 +19,7 @@ final class LspBootstrapper
 {
     public function __construct(
         private readonly LspSessionPool $lsp,
+        private readonly LspLog $log,
         private readonly WorkspaceEditor $workspaceEditor,
         private readonly BufferService $bufferService,
         private readonly Notifier $notifier,
@@ -37,9 +38,7 @@ final class LspBootstrapper
         }
         $this->lsp->configure(
             ServerLocator::locateAll($this->rootDir, $this->lspCommand),
-            static function (string $line): void {
-                // LSP server log lines are currently discarded.
-            },
+            fn (string $line) => $this->log->append($line),
             function (array $params): void {
                 /** @var array{uri?: string, diagnostics?: list<array{severity?: int, message?: string, range: array{start: array{line?: int, character?: int}, end: array{line?: int, character?: int}}}>} $params */
                 $this->bufferService->applyDiagnostics($params['uri'] ?? '', LspMapper::diagnosticsByLine($params));

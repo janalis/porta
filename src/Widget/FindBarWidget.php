@@ -7,6 +7,7 @@ namespace Porta\Widget;
 use Porta\Container\AsWidget;
 use Porta\Editor\Document;
 use Porta\I18n\Translator;
+use Porta\Search\SearchPattern;
 use Porta\Support\AnsiText;
 use Porta\Ui\ColorPalette;
 use Porta\Ui\CursorStyle;
@@ -25,7 +26,10 @@ use Symfony\Component\Tui\Widget\KeybindingsTrait;
  * the status bar; hidden (zero rows) when closed.
  *
  * Search is incremental and smart-case: an all-lowercase query matches
- * case-insensitively, any uppercase makes it exact.
+ * case-insensitively, any uppercase makes it exact. Alt+X toggles regex mode
+ * and Alt+W whole-word (the Find-in-Files modal uses Alt+R for regex, but
+ * that key is replace-one here — muscle memory wins). Replacement text is
+ * always literal: no $1 backreferences in regex mode.
  */
 #[AsWidget('find-bar')]
 final class FindBarWidget extends OverlayWidget implements FocusableInterface
@@ -40,6 +44,11 @@ final class FindBarWidget extends OverlayWidget implements FocusableInterface
     private readonly TextField $query;
     private readonly TextField $replacement;
     private int $activeField = 0; // 0 = find, 1 = replace
+
+    /** Session-lifetime search options (survive close/reopen, like the modal's). */
+    private bool $regex = false;
+    private bool $wholeWord = false;
+    private bool $patternInvalid = false;
 
     /** @var list<array{line: int, start: int, end: int}> byte offsets */
     private array $matches = [];
@@ -150,6 +159,22 @@ final class FindBarWidget extends OverlayWidget implements FocusableInterface
             return;
         }
 
+        if ($kb->matches($data, 'toggle_regex')) {
+            $this->regex = !$this->regex;
+            $this->recompute(jumpToNearest: true);
+            $this->invalidate();
+
+            return;
+        }
+
+        if ($kb->matches($data, 'toggle_word')) {
+            $this->wholeWord = !$this->wholeWord;
+            $this->recompute(jumpToNearest: true);
+            $this->invalidate();
+
+            return;
+        }
+
         if ($kb->matches($data, 'replace_one')) {
             $this->replaceCurrent();
 
@@ -198,16 +223,19 @@ final class FindBarWidget extends OverlayWidget implements FocusableInterface
 
         $columns = $context->getColumns();
         $count = \count($this->matches);
-        $position = $count > 0 ? \sprintf('%d/%d', $this->currentIndex + 1, $count) : '0/0';
+        $position = $this->patternInvalid
+            ? $this->translator->trans('bad regex')
+            : ($count > 0 ? \sprintf('%d/%d', $this->currentIndex + 1, $count) : '0/0');
 
         $findField = ' '.$this->translator->trans('Find:').' '.$this->query->render(cursor: $this->focused && 0 === $this->activeField).'  ';
         $replaceField = $this->withReplace ? $this->translator->trans('Replace:').' '.$this->replacement->render(cursor: $this->focused && 1 === $this->activeField).'  ' : '';
 
         $hints = $this->withReplace
-            ? $this->translator->trans('⏎/F3 next  ⇧F3 prev  ⇥ field  ⌥R replace  ⌥A all  esc')
-            : $this->translator->trans('⏎/F3 next  ⇧F3 prev  esc');
+            ? $this->translator->trans('⏎/F3 next  ⇧F3 prev  ⇥ field  ⌥R replace  ⌥A all  ⌥X .*  ⌥W \b  esc')
+            : $this->translator->trans('⏎/F3 next  ⇧F3 prev  ⌥X .*  ⌥W \b  esc');
 
-        $left = $findField.$replaceField.$this->palette->of(Role::Dim)."[{$position}]\x1b[39m";
+        $tags = $this->optionTag('.*', $this->regex).$this->optionTag('\b', $this->wholeWord);
+        $left = $findField.$replaceField.$this->palette->of(Role::Dim)."[{$position}]\x1b[39m".$tags;
         $line = $left.'  '.$this->palette->of(Role::Faint).$hints."\x1b[39m";
         // Scroll the whole bar to the focused field's caret so a long query or
         // replacement never clips its cursor off the right edge.
@@ -237,19 +265,48 @@ final class FindBarWidget extends OverlayWidget implements FocusableInterface
         }
 
         $this->lastDocVersion = $this->document->getVersion();
+        $this->patternInvalid = false;
         $query = $this->query->value();
-        $caseInsensitive = strtolower($query) === $query;
-        $needle = $caseInsensitive ? strtolower($query) : $query;
-        $needleLen = \strlen($query);
+        $caseInsensitive = strtolower($query) === $query; // smart-case carries into regex mode via the i flag
 
-        foreach ($this->document->getLines() as $lineIndex => $line) {
-            $haystack = $caseInsensitive ? strtolower($line) : $line;
-            $offset = 0;
-            while (false !== ($pos = strpos($haystack, $needle, $offset))) {
-                $this->matches[] = ['line' => (int) $lineIndex, 'start' => $pos, 'end' => $pos + $needleLen];
-                $offset = $pos + max(1, $needleLen);
-                if (\count($this->matches) >= self::MAX_MATCHES) {
-                    break 2;
+        if ($this->regex || $this->wholeWord) {
+            $pattern = SearchPattern::build($query, $this->regex, $this->wholeWord, !$caseInsensitive);
+            if (false === @preg_match($pattern, '')) {
+                $this->patternInvalid = true;
+                $this->notifyUpdate();
+
+                return;
+            }
+            foreach ($this->document->getLines() as $lineIndex => $line) {
+                $found = [];
+                if ('' === $line || false === @preg_match_all($pattern, $line, $found, \PREG_OFFSET_CAPTURE)) {
+                    continue;
+                }
+                foreach ($found[0] as $hit) {
+                    // PREG_OFFSET_CAPTURE: every hit is a [text, byte offset] pair.
+                    $text = $hit[0];
+                    if ('' === $text) {
+                        continue; // zero-width matches highlight nothing
+                    }
+                    $this->matches[] = ['line' => (int) $lineIndex, 'start' => (int) $hit[1], 'end' => (int) $hit[1] + \strlen($text)];
+                    if (\count($this->matches) >= self::MAX_MATCHES) {
+                        break 2;
+                    }
+                }
+            }
+        } else {
+            $needle = $caseInsensitive ? strtolower($query) : $query;
+            $needleLen = \strlen($query);
+
+            foreach ($this->document->getLines() as $lineIndex => $line) {
+                $haystack = $caseInsensitive ? strtolower($line) : $line;
+                $offset = 0;
+                while (false !== ($pos = strpos($haystack, $needle, $offset))) {
+                    $this->matches[] = ['line' => (int) $lineIndex, 'start' => $pos, 'end' => $pos + $needleLen];
+                    $offset = $pos + max(1, $needleLen);
+                    if (\count($this->matches) >= self::MAX_MATCHES) {
+                        break 2;
+                    }
                 }
             }
         }
@@ -332,6 +389,14 @@ final class FindBarWidget extends OverlayWidget implements FocusableInterface
         }
     }
 
+    /** The [.*] / [\b] mode tags after the counter, lit when the option is on. */
+    private function optionTag(string $label, bool $on): string
+    {
+        $role = $on ? Role::SelectedRow : Role::Faint;
+
+        return ' '.$this->palette->of($role).'['.$label.']'."\x1b[0m";
+    }
+
     /** @return array<string, string[]> */
     protected static function getDefaultKeybindings(): array
     {
@@ -341,6 +406,8 @@ final class FindBarWidget extends OverlayWidget implements FocusableInterface
             'find_prev' => ['shift+f3'],
             'switch_field' => [Key::TAB],
             'replace_one' => ['alt+r'],
+            'toggle_regex' => ['alt+x'],
+            'toggle_word' => ['alt+w'],
             'replace_all' => ['alt+a'],
             'delete_char_backward' => [Key::BACKSPACE],
         ];

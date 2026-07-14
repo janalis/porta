@@ -18,12 +18,15 @@ use Porta\Highlight\TerminalThemeFactory;
 use Porta\I18n\Translator;
 use Porta\Layout\WorkspaceLayout;
 use Porta\Lsp\BufferReopener;
+use Porta\Lsp\FormatOnSave;
 use Porta\Lsp\LspSessionPool;
+use Porta\Lsp\WorkspaceEditor;
 use Porta\Plugin\PluginInstaller;
 use Porta\Plugin\PluginSettings;
 use Porta\Settings\LiveSettingsApplier;
 use Porta\Settings\SettingsViewController;
 use Porta\Tests\Support\FakePluginLifecycle;
+use Porta\Tests\Support\FakeScheduler;
 use Porta\Tests\Support\FixedActiveFile;
 use Porta\Tests\Support\TempProject;
 use Porta\Ui\CursorStyle;
@@ -129,6 +132,7 @@ final class SettingsViewControllerTest extends TestCase
                 $status,
             ),
             new EventDispatcher(),
+            self::formatOnSave(),
             true,
         );
         $settings = new SettingsController(
@@ -437,5 +441,19 @@ final class SettingsViewControllerTest extends TestCase
 
         $controller->close(); // already closed
         $this->assertSame(1, $this->closed);
+    }
+
+    private static function formatOnSave(): FormatOnSave
+    {
+        $editor = new CodeEditorWidget();
+        $pool = new LspSessionPool(sys_get_temp_dir(), new FixedActiveFile(), new Translator('en'));
+
+        return new FormatOnSave(
+            $pool,
+            new WorkspaceEditor(new BufferManager(), $editor, $pool),
+            $editor,
+            new FakeScheduler(),
+            new Tui(terminal: new VirtualTerminal(columns: 80, rows: 24), keybindings: new Keybindings([]), renderer: new Renderer(new StyleSheet())),
+        );
     }
 }

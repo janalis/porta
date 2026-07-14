@@ -1422,6 +1422,34 @@
         <source>Tab bar position</source>
         <target>Tab bar position</target>
       </trans-unit>
+      <trans-unit id="359">
+        <source>LSP Server Log</source>
+        <target>LSP Server Log</target>
+      </trans-unit>
+      <trans-unit id="360">
+        <source>No LSP server output yet</source>
+        <target>No LSP server output yet</target>
+      </trans-unit>
+      <trans-unit id="361">
+        <source>Format on save (LSP)</source>
+        <target>Format on save (LSP)</target>
+      </trans-unit>
+      <trans-unit id="362">
+        <source>Toggle Format on Save</source>
+        <target>Toggle Format on Save</target>
+      </trans-unit>
+      <trans-unit id="363">
+        <source>bad regex</source>
+        <target>bad regex</target>
+      </trans-unit>
+      <trans-unit id="364">
+        <source>⏎/F3 next  ⇧F3 prev  ⇥ field  ⌥R replace  ⌥A all  ⌥X .*  ⌥W \b  esc</source>
+        <target>⏎/F3 next  ⇧F3 prev  ⇥ field  ⌥R replace  ⌥A all  ⌥X .*  ⌥W \b  esc</target>
+      </trans-unit>
+      <trans-unit id="365">
+        <source>⏎/F3 next  ⇧F3 prev  ⌥X .*  ⌥W \b  esc</source>
+        <target>⏎/F3 next  ⇧F3 prev  ⌥X .*  ⌥W \b  esc</target>
+      </trans-unit>
     </body>
   </file>
 </xliff>

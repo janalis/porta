@@ -1422,6 +1422,34 @@
         <source>Tab bar position</source>
         <target>Position der Tab-Leiste</target>
       </trans-unit>
+      <trans-unit id="359">
+        <source>LSP Server Log</source>
+        <target>LSP-Server-Protokoll</target>
+      </trans-unit>
+      <trans-unit id="360">
+        <source>No LSP server output yet</source>
+        <target>Noch keine LSP-Server-Ausgabe</target>
+      </trans-unit>
+      <trans-unit id="361">
+        <source>Format on save (LSP)</source>
+        <target>Beim Speichern formatieren (LSP)</target>
+      </trans-unit>
+      <trans-unit id="362">
+        <source>Toggle Format on Save</source>
+        <target>Beim Speichern formatieren umschalten</target>
+      </trans-unit>
+      <trans-unit id="363">
+        <source>bad regex</source>
+        <target>ungültiger Regex</target>
+      </trans-unit>
+      <trans-unit id="364">
+        <source>⏎/F3 next  ⇧F3 prev  ⇥ field  ⌥R replace  ⌥A all  ⌥X .*  ⌥W \b  esc</source>
+        <target>⏎/F3 weiter  ⇧F3 zurück  ⇥ Feld  ⌥R ersetzen  ⌥A alle  ⌥X .*  ⌥W \b  esc</target>
+      </trans-unit>
+      <trans-unit id="365">
+        <source>⏎/F3 next  ⇧F3 prev  ⌥X .*  ⌥W \b  esc</source>
+        <target>⏎/F3 weiter  ⇧F3 zurück  ⌥X .*  ⌥W \b  esc</target>
+      </trans-unit>
     </body>
   </file>
 </xliff>

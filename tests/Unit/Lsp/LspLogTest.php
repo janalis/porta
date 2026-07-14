@@ -1,0 +1,43 @@
+<?php
+
+declare(strict_types=1);
+
+namespace Porta\Tests\Unit\Lsp;
+
+use PHPUnit\Framework\TestCase;
+use Porta\Lsp\LspLog;
+use Symfony\Component\Clock\MockClock;
+
+final class LspLogTest extends TestCase
+{
+    public function testSplitsChunksIntoTrimmedNonEmptyLines(): void
+    {
+        $log = new LspLog(new MockClock('2026-07-14 10:00:00'));
+        $log->append("first line\n  second line  \n\n");
+        $log->append('partial');
+
+        $this->assertSame(['first line', 'second line', 'partial'], array_column($log->entries(), 'text'));
+        $this->assertSame('10:00:00', $log->entries()[0]['time']->format('H:i:s'));
+    }
+
+    public function testCapsTheHistoryAtTheNewestEntries(): void
+    {
+        $log = new LspLog(new MockClock());
+        for ($i = 1; $i <= 205; ++$i) {
+            $log->append("line {$i}");
+        }
+
+        $entries = $log->entries();
+        $this->assertCount(200, $entries);
+        $this->assertSame('line 6', $entries[0]['text'], 'the oldest lines fell off');
+        $this->assertSame('line 205', $entries[199]['text']);
+    }
+
+    public function testTruncatesOverlongLines(): void
+    {
+        $log = new LspLog(new MockClock());
+        $log->append(str_repeat('x', 600));
+
+        $this->assertSame(500, mb_strlen($log->entries()[0]['text']));
+    }
+}

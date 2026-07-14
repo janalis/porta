@@ -44,6 +44,28 @@ final class LspSessionTest extends TestCase
         $this->assertTrue($session->isInitialized());
     }
 
+    public function testWindowLogMessagesFeedTheLogHook(): void
+    {
+        $client = new FakeLspClient();
+        $session = $this->session($client);
+        $logged = [];
+        $noop = static function (): void {};
+        $session->start(
+            ['fake'],
+            function (string $line) use (&$logged): void {
+                $logged[] = $line;
+            },
+            static fn (array $p): null => null,
+            static fn (array $e): bool => false,
+            $noop,
+        );
+
+        $client->notificationHandlers['window/logMessage'](['message' => 'indexing 42 files']);
+        $client->notificationHandlers['window/logMessage'](['type' => 3]); // no message field
+
+        $this->assertSame(['indexing 42 files', ''], $logged, 'LSP-level logs ride the same hook as stderr');
+    }
+
     public function testNotifyDidOpenSendsEncodedUri(): void
     {
         $client = new FakeLspClient();

@@ -59,7 +59,9 @@ use Porta\Layout\PaneLayout;
 use Porta\Layout\PaneResizer;
 use Porta\Layout\WorkspaceLayout;
 use Porta\Lsp\CompletionController;
+use Porta\Lsp\FormatOnSave;
 use Porta\Lsp\LspBootstrapper;
+use Porta\Lsp\LspLog;
 use Porta\Lsp\LspSessionPool;
 use Porta\Lsp\NavigationController;
 use Porta\Lsp\RefactorController;
@@ -369,6 +371,7 @@ final class Ide
             $this->service(ImageDecoder::class),
             $this->editorBody,
             $this->dispatcher,
+            $this->service(FormatOnSave::class),
         );
         $this->bufferNavigator = new BufferNavigator($this->buffers, $this->bufferService, $this->goToFile, $this->editor, $this->tui, $this->rootDir);
         $this->wireEditorCallbacks();
@@ -383,10 +386,12 @@ final class Ide
             $this->commandPalette,
             $this->commands,
             $this->notificationLog,
+            $this->service(LspLog::class),
             $this->editor,
         );
         $this->lspBootstrapper = new LspBootstrapper(
             $this->lsp,
+            $this->service(LspLog::class),
             $this->workspaceEditor,
             $this->bufferService,
             $this->notifier,

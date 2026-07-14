@@ -1422,6 +1422,34 @@
         <source>Tab bar position</source>
         <target>タブバーの位置</target>
       </trans-unit>
+      <trans-unit id="359">
+        <source>LSP Server Log</source>
+        <target>LSP サーバーログ</target>
+      </trans-unit>
+      <trans-unit id="360">
+        <source>No LSP server output yet</source>
+        <target>LSP サーバーの出力はまだありません</target>
+      </trans-unit>
+      <trans-unit id="361">
+        <source>Format on save (LSP)</source>
+        <target>保存時にフォーマット (LSP)</target>
+      </trans-unit>
+      <trans-unit id="362">
+        <source>Toggle Format on Save</source>
+        <target>保存時フォーマットの切り替え</target>
+      </trans-unit>
+      <trans-unit id="363">
+        <source>bad regex</source>
+        <target>不正な正規表現</target>
+      </trans-unit>
+      <trans-unit id="364">
+        <source>⏎/F3 next  ⇧F3 prev  ⇥ field  ⌥R replace  ⌥A all  ⌥X .*  ⌥W \b  esc</source>
+        <target>⏎/F3 次へ  ⇧F3 前へ  ⇥ フィールド  ⌥R 置換  ⌥A すべて  ⌥X .*  ⌥W \b  esc</target>
+      </trans-unit>
+      <trans-unit id="365">
+        <source>⏎/F3 next  ⇧F3 prev  ⌥X .*  ⌥W \b  esc</source>
+        <target>⏎/F3 次へ  ⇧F3 前へ  ⌥X .*  ⌥W \b  esc</target>
+      </trans-unit>
     </body>
   </file>
 </xliff>

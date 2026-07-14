@@ -245,9 +245,10 @@ final class LspSessionPool
     {
         $session = new LspSession($this->rootDir, $this->clientFactory);
         $this->statuses[$signature] = $this->translator->trans('starting…');
+        $onLog = $this->onLog;
         $session->start(
             $server['command'],
-            $this->onLog ?? static function (string $line): void {},
+            null === $onLog ? static function (string $line): void {} : static fn (string $line) => $onLog('['.$server['name'].'] '.$line),
             $this->onDiagnostics ?? static function (array $params): void {},
             $this->onApplyEdit ?? static fn (array $edit): bool => false,
             function (bool $ok) use ($server, $signature): void {

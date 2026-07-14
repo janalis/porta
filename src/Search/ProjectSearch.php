@@ -419,12 +419,7 @@ final class ProjectSearch
     /** Build a PCRE pattern mirroring the grep flags, for the PHP fallback. */
     private function pattern(string $query, SearchOptions $options): string
     {
-        $body = $options->regex ? $query : preg_quote($query, '/');
-        if ($options->wholeWord) {
-            $body = '\b(?:'.$body.')\b';
-        }
-
-        return '/'.$body.'/'.($options->caseSensitive ? '' : 'i');
+        return SearchPattern::build($query, $options->regex, $options->wholeWord, $options->caseSensitive);
     }
 
     private function findGrep(): ?string

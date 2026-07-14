@@ -1,0 +1,100 @@
+<?php
+
+declare(strict_types=1);
+
+namespace Porta\Lsp;
+
+use Porta\Editor\Buffer;
+use Porta\Support\Scheduler;
+use Porta\Widget\CodeEditorWidget;
+use Symfony\Component\Tui\Tui;
+
+/**
+ * Formats the active buffer through the language server before a save. The
+ * LSP round-trip is async, so the save itself becomes the continuation: the
+ * response applies the edits (only if the document did not change underneath
+ * the request), then saves; a timeout saves anyway and drops the late
+ * response; a re-entrant save supersedes the pending round and starts its
+ * own — whichever path wins, each call's continuation runs at most once and
+ * Ctrl+S can never hang on a dead server.
+ *
+ * Rejected shapes: format-after-save-then-resave double-dispatches BufferSaved
+ * (LSP didSave, local history, git refresh, plugin hooks) and can loop with a
+ * non-idempotent formatter; willSaveWaitUntil needs a client capability we
+ * don't advertise and has spotty server support.
+ */
+final class FormatOnSave
+{
+    private bool $enabled = false;
+
+    /** The current round's token; bumping it invalidates any pending response/timeout. */
+    private int $round = 0;
+
+    public function __construct(
+        private readonly LspSessionPool $lsp,
+        private readonly WorkspaceEditor $workspaceEditor,
+        private readonly CodeEditorWidget $editor,
+        private readonly Scheduler $scheduler,
+        private readonly Tui $tui,
+    ) {}
+
+    public function setEnabled(bool $enabled): void
+    {
+        $this->enabled = $enabled;
+    }
+
+    public function isEnabled(): bool
+    {
+        return $this->enabled;
+    }
+
+    /** @param \Closure(): void $save the actual write; runs exactly once per call unless superseded by a newer save */
+    public function formatThenSave(Buffer $buffer, \Closure $save): void
+    {
+        // ready() flushes the debounced didChange so the server formats the
+        // current text; no ready server → plain save.
+        $path = $this->lsp->ready($buffer->path, $buffer->document);
+        if (null === $path) {
+            $save();
+
+            return;
+        }
+
+        $token = ++$this->round;
+        $doc = $buffer->document;
+        $version = $doc->getVersion();
+        $options = ['tabSize' => $doc->usesTabs() ? $doc->tabWidth() : $doc->indentSize(), 'insertSpaces' => !$doc->usesTabs()];
+
+        // Ctrl+S must never hang: after 2 s the save proceeds unformatted and
+        // the late response is dropped.
+        $timer = $this->scheduler->delay(2.0, function () use ($token, $save): void {
+            if ($token !== $this->round) {
+                return;
+            }
+            ++$this->round;
+            $save();
+        });
+
+        $this->lsp->request(
+            'textDocument/formatting',
+            ['textDocument' => ['uri' => Uri::fromPath($path)], 'options' => $options],
+            function (mixed $result, ?array $error) use ($token, $timer, $buffer, $version, $save): void {
+                if ($token !== $this->round) {
+                    return; // superseded by the timeout or a newer save
+                }
+                ++$this->round;
+                $this->scheduler->cancel($timer);
+                // Edits computed against stale text must never apply — the
+                // version guard skips them and the save keeps the user's text.
+                if (null === $error && \is_array($result) && [] !== $result && $buffer->document->getVersion() === $version) {
+                    /** @var list<array{range: array{start: array{line?: int, character?: int}, end: array{line?: int, character?: int}}, newText: string}> $result */
+                    $this->workspaceEditor->applyTextEdits($buffer->document, $result);
+                    $this->lsp->notifyFullChange($buffer->path, $buffer->document);
+                    $this->editor->invalidate();
+                    $this->tui->requestRender();
+                }
+                $save();
+            },
+        );
+    }
+}

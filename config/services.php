@@ -31,6 +31,8 @@ use Porta\Layout\PaneLayout;
 use Porta\Layout\PaneResizer;
 use Porta\Layout\WorkspaceLayout;
 use Porta\Lsp\CompletionController;
+use Porta\Lsp\FormatOnSave;
+use Porta\Lsp\LspLog;
 use Porta\Lsp\LspSessionPool;
 use Porta\Lsp\WorkspaceEditor;
 use Porta\Overlay\FloatingRegions;
@@ -297,6 +299,8 @@ return static function (ContainerConfigurator $container, ContainerBuilder $buil
         PluginHost::class,
         Keybindings::class,
         LspSessionPool::class,
+        LspLog::class,
+        FormatOnSave::class,
     ] as $locatorId) {
         $locatorEntries[$locatorId] = service($locatorId);
     }
