@@ -2922,12 +2922,81 @@ final class IdeEdgeCasesTest extends TestCase
                 550 => static fn ($tui) => $palette($tui, 'Git: Commit'),
                 700 => static fn ($tui) => $palette($tui, 'Git: Blame'),
                 850 => static fn ($tui) => $palette($tui, 'Git: Undo'),
+                925 => static fn ($tui) => $palette($tui, 'Git: Branches'),
                 1000 => function ($tui, $terminal): void {
                     $tui->tick();
                     $this->assertStringContainsString('Git not available', AnsiUtils::stripAnsiCodes($terminal->getOutput()));
                 },
             ],
             1.25,
+        );
+    }
+
+    public function testGitBranchPickerSwitchesAndCreatesBranches(): void
+    {
+        putenv('PATH='.$this->originalPath);
+        $project = new TempProject(['src/A.php' => "<?php\n"]);
+        $d = escapeshellarg($project->dir);
+        exec("git -C {$d} init -q && git -C {$d} config user.email t@t && git -C {$d} config user.name t && git -C {$d} add -A && git -C {$d} commit -qm init && git -C {$d} branch feature");
+
+        $palette = static function ($tui, string $label): void {
+            $tui->handleInput("\x1b[97;6u");
+            foreach (str_split($label) as $ch) {
+                $tui->handleInput($ch);
+            }
+            $tui->handleInput("\r");
+        };
+
+        $this->runIde(
+            $project,
+            $project->path('src/A.php'),
+            [
+                300 => static fn ($tui) => $palette($tui, 'Git: Branches'),
+                700 => function ($tui, $terminal): void {
+                    $tui->tick();
+                    $screen = AnsiUtils::stripAnsiCodes($terminal->getOutput());
+                    $this->assertStringContainsString('Branches', $screen, 'the picker overlay opened');
+                    $this->assertStringContainsString('+ Create new branch…', $screen);
+                    $this->assertStringContainsString('feature', $screen);
+                    // Rows: create sentinel, then feature, then main (ties
+                    // sort by refname) — one step down picks "feature".
+                    $tui->handleInput("\x1b[B");
+                    $tui->handleInput("\r");
+                },
+                1200 => function ($tui, $terminal, $ide) use ($d, $palette): void {
+                    $tui->tick();
+                    $this->assertStringContainsString('Switched to feature', AnsiUtils::stripAnsiCodes($terminal->getOutput()));
+                    exec("git -C {$d} rev-parse --abbrev-ref HEAD", $head);
+                    $this->assertSame('feature', $head[0] ?? '', 'the checkout really happened');
+
+                    // Round 2: create a branch through the sentinel row.
+                    $terminal->clearOutput();
+                    $palette($tui, 'Git: Branches');
+                },
+                1600 => function ($tui) use ($d, $palette): void {
+                    $tui->tick();
+                    $tui->handleInput("\r"); // the "+ Create new branch…" row leads the list
+                    $tui->handleInput("\r"); // an empty name is a no-op
+                    exec("git -C {$d} branch --list", $branches);
+                    $this->assertCount(2, $branches, 'no branch was created from the empty prompt');
+                    $palette($tui, 'Git: Branches');
+                },
+                2000 => function ($tui): void {
+                    $tui->tick();
+                    $tui->handleInput("\r"); // create sentinel again
+                    foreach (str_split('fresh') as $ch) {
+                        $tui->handleInput($ch);
+                    }
+                    $tui->handleInput("\r");
+                },
+                2500 => function ($tui, $terminal) use ($d): void {
+                    $tui->tick();
+                    $this->assertStringContainsString('Created and switched to fresh', AnsiUtils::stripAnsiCodes($terminal->getOutput()));
+                    exec("git -C {$d} rev-parse --abbrev-ref HEAD", $head);
+                    $this->assertSame('fresh', $head[0] ?? '');
+                },
+            ],
+            2.8,
         );
     }
 

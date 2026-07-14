@@ -85,4 +85,70 @@ final class AsyncProcessTest extends TestCase
         $process->cancel();
         $this->assertSame(0, $exit);
     }
+
+    public function testCapturesStderrAlongsideStdout(): void
+    {
+        $process = new AsyncProcess(
+            [\PHP_BINARY, '-r', 'fwrite(STDOUT, "out"); fwrite(STDERR, "boom"); exit(1);'],
+            getcwd(),
+            captureStderr: true,
+        );
+        $exit = null;
+        $this->assertTrue($process->start(function (int $code) use (&$exit): void {
+            $exit = $code;
+        }));
+
+        $this->await(static fn () => null !== $exit);
+        $this->assertSame(1, $exit);
+        $this->assertSame('out', $process->output());
+        $this->assertSame('boom', $process->errorOutput(), 'stderr drained into its own buffer');
+    }
+
+    public function testStderrStaysEmptyWhenNotCaptured(): void
+    {
+        $process = new AsyncProcess([\PHP_BINARY, '-r', 'fwrite(STDERR, "dropped");'], getcwd());
+        $exit = null;
+        $process->start(function (int $code) use (&$exit): void {
+            $exit = $code;
+        });
+
+        $this->await(static fn () => null !== $exit);
+        $this->assertSame('', $process->errorOutput());
+    }
+
+    public function testExplicitEnvironmentReachesTheChild(): void
+    {
+        $process = new AsyncProcess(
+            [\PHP_BINARY, '-r', 'echo getenv("PORTA_PROBE") ?: "unset";'],
+            getcwd(),
+            captureStderr: true,
+            env: ['PORTA_PROBE' => '42', 'PATH' => (string) getenv('PATH')],
+        );
+        $out = null;
+        $process->start(function (int $code, string $stdout) use (&$out): void {
+            $out = $stdout;
+        });
+
+        $this->await(static fn () => null !== $out);
+        $this->assertSame('42', $out);
+    }
+
+    public function testCancelMidFlightWithStderrCaptureIsClean(): void
+    {
+        $process = new AsyncProcess(
+            [\PHP_BINARY, '-r', 'fwrite(STDERR, "start"); sleep(5); fwrite(STDERR, "late");'],
+            getcwd(),
+            captureStderr: true,
+        );
+        $exited = false;
+        $process->start(function () use (&$exited): void {
+            $exited = true;
+        });
+        $this->await(static fn () => false, 0.06); // a few ticks: mid-flight
+        $process->cancel();
+        $process->cancel(); // idempotent
+
+        $this->await(static fn () => false, 0.1);
+        $this->assertFalse($exited, 'the exit callback never fires after cancel');
+    }
 }

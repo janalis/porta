@@ -43,6 +43,9 @@ final class ChangesListWidget extends AbstractWidget implements FocusableInterfa
     use KeybindingsTrait;
     use PaneNavigationCallbacks;
 
+    /** @var (callable(string): void)|null a remote-operation key: 'fetch' | 'pull' | 'push' */
+    private $onRemote = null;
+
     /** @var array<string, Role> file-status char → color role */
     private const array STATUS_ROLE = [
         'A' => Role::Added,
@@ -184,6 +187,15 @@ final class ChangesListWidget extends AbstractWidget implements FocusableInterfa
             return;
         }
 
+        foreach (['fetch', 'pull', 'push'] as $remoteOp) {
+            if ($kb->matches($data, $remoteOp)) {
+                if (null !== $this->onRemote) {
+                    ($this->onRemote)($remoteOp);
+                }
+
+                return;
+            }
+        }
         if ($kb->matches($data, 'exit_view')) {
             $this->fire($this->onExit);
         } elseif ($kb->matches($data, 'focus_next_pane')) {
@@ -314,6 +326,13 @@ final class ChangesListWidget extends AbstractWidget implements FocusableInterfa
         return $this->withMenuOverlay($lines, $width);
     }
 
+    public function onRemote(callable $callback): self
+    {
+        $this->onRemote = $callback;
+
+        return $this;
+    }
+
     /** @return array<string, string[]> */
     protected static function getDefaultKeybindings(): array
     {
@@ -325,6 +344,9 @@ final class ChangesListWidget extends AbstractWidget implements FocusableInterfa
             'toggle_stage' => [Key::SPACE],
             'discard' => ['d', Key::DELETE],
             'show_history' => ['2'],
+            'fetch' => ['f'],
+            'pull' => ['p'],
+            'push' => ['shift+p'],
             'focus_next_pane' => [Key::TAB],
             'exit_view' => [Key::ESCAPE],
         ];

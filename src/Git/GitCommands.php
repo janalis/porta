@@ -7,6 +7,7 @@ namespace Porta\Git;
 use Porta\I18n\Translator;
 use Porta\Support\ProjectPaths;
 use Porta\Ui\Notifier;
+use Porta\Ui\WorkspaceViews;
 use Porta\Widget\CodeEditorWidget;
 use Symfony\Component\Tui\Tui;
 
@@ -28,6 +29,7 @@ final class GitCommands
         private readonly Translator $translator,
         private readonly GitRefresher $refresher,
         private readonly string $rootDir,
+        private readonly WorkspaceViews $views,
     ) {}
 
     public function stageCurrent(): void
@@ -120,5 +122,69 @@ final class GitCommands
     private function unavailable(): void
     {
         $this->notifier->flash($this->translator->trans('Git not available'));
+    }
+
+    /**
+     * The branch picker: list local branches (newest activity first) in the
+     * editor's list overlay, switch on pick, or create a new branch via the
+     * leading "+ Create new branch…" row. Checkout failures flash git's own
+     * message (the dirty-working-tree refusal in particular) — no auto-stash.
+     */
+    public function branches(): void
+    {
+        if (!$this->git->isAvailable()) {
+            $this->unavailable();
+
+            return;
+        }
+        $this->git->branches(function (array $branches): void {
+            // The overlay lives inside the editor: close whichever full view
+            // owns the main area so the picker is actually visible.
+            $this->views->closeAll();
+            $this->tui->setFocus($this->editor);
+            $items = [['label' => $this->translator->trans('+ Create new branch…'), 'hint' => '', 'value' => '}
+create']];
+            foreach ($branches as $branch) {
+                $items[] = [
+                    'label' => ($branch['current'] ? '✓ ' : '  ').$branch['name'],
+                    'hint' => $branch['current'] ? $this->translator->trans('current') : '',
+                    'value' => $branch['name'],
+                ];
+            }
+            $this->editor->openListOverlay($this->translator->trans('Branches'), $items, function (string $value): void {
+                '}
+create' === $value ? $this->promptNewBranch() : $this->checkout($value);
+            });
+            $this->tui->requestRender();
+        });
+    }
+
+    private function promptNewBranch(): void
+    {
+        $this->editor->openPrompt($this->translator->trans('New branch name'), '', function (string $name): void {
+            $name = trim($name);
+            if ('' === $name) {
+                return;
+            }
+            $this->git->createBranch($name, fn (bool $ok, string $error) => $this->finishSwitch($ok, $error, $this->translator->trans('Created and switched to %branch%', ['%branch%' => $name])));
+        });
+        $this->tui->requestRender();
+    }
+
+    private function checkout(string $branch): void
+    {
+        $this->git->checkout($branch, fn (bool $ok, string $error) => $this->finishSwitch($ok, $error, $this->translator->trans('Switched to %branch%', ['%branch%' => $branch])));
+    }
+
+    private function finishSwitch(bool $ok, string $error, string $success): void
+    {
+        $this->notifier->flash($ok ? $success : $error, $ok ? 3.0 : 6.0);
+        if ($ok) {
+            // HEAD moved and files may have changed on disk; the filesystem
+            // poll reconciles open buffers, these refresh the chrome now.
+            $this->refresher->refreshBranch();
+            $this->refresher->refreshActiveMarks();
+        }
+        $this->tui->requestRender();
     }
 }

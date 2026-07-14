@@ -106,6 +106,11 @@ final class MenuModel
             'i:git_commit',
             'i:git_undo_commit',
             'i:git_blame',
+            'i:git_branches',
+            self::SEP,
+            'i:git_fetch',
+            'i:git_pull',
+            'i:git_push',
         ],
         'View' => [
             'i:ide_problems',
@@ -217,7 +222,7 @@ final class MenuModel
      * The only commands that stay enabled while the git view owns the main area:
      * everything else targets the detached editor/tree and would act invisibly.
      */
-    private const array GIT_VIEW_SAFE = ['ide_quit', 'ide_git', 'git_commit', 'git_undo_commit', 'ide_command_palette', 'ide_help'];
+    private const array GIT_VIEW_SAFE = ['ide_quit', 'ide_git', 'git_commit', 'git_undo_commit', 'git_fetch', 'git_pull', 'git_push', 'git_branches', 'ide_command_palette', 'ide_help'];
 
     /**
      * The only commands that stay enabled while the settings view owns the main

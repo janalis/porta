@@ -71,8 +71,13 @@ final class GitViewController
         private readonly LayoutController $layout,
         private readonly Clipboard $clipboard,
         WorkspaceViews $views,
+        private readonly ?GitRemoteCommands $remoteCommands = null,
+        private readonly int $historyPageSize = 200,
     ) {
         $views->attachGit($this);
+        $this->panes->history->onLoadMore(fn () => $this->loadMoreHistory());
+        $this->panes->changes->onRemote(fn (string $operation) => $this->remoteCommands?->runOperation($operation));
+        $this->panes->history->onRemote(fn (string $operation) => $this->remoteCommands?->runOperation($operation));
         $this->staging = new GitStagingService($this->git, $this->rootDir, $this->panes->commitBox, $this->notifier, $this->translator);
 
         $exit = fn () => $this->close();
@@ -355,11 +360,12 @@ final class GitViewController
             $this->panes->diffView->setReadOnly(true);
             $this->panes->diffView->setDocument(null, null, 'Select a commit file');
             $this->tui->setFocus($this->panes->history);
-            $this->git->log(200, function (array $commits): void {
+            $this->git->log($this->historyPageSize, function (array $commits): void {
                 if (!$this->open || 'history' !== $this->mode) {
                     return;
                 }
                 $this->panes->history->setCommits($commits);
+                $this->panes->history->setHasMore(\count($commits) === $this->historyPageSize);
                 if (null !== ($first = $this->panes->history->selectedCommit())) {
                     $this->loadCommitFiles($first);
                 }
@@ -373,6 +379,41 @@ final class GitViewController
             $this->refresh();
         }
         $this->tui->requestRender();
+    }
+
+    /**
+     * After a fetch/pull/push: the history tab shows stale commits — reload
+     * page 0 (the changes list self-heals via its poll).
+     */
+    public function onRemoteCompleted(): void
+    {
+        if ($this->open && 'history' === $this->mode) {
+            $this->git->log($this->historyPageSize, function (array $commits): void {
+                if (!$this->open || 'history' !== $this->mode) {
+                    return;
+                }
+                $this->panes->history->setCommits($commits);
+                $this->panes->history->setHasMore(\count($commits) === $this->historyPageSize);
+                $this->tui->requestRender();
+            });
+        }
+    }
+
+    /** Pull the next page of history under the loaded commits. */
+    private function loadMoreHistory(): void
+    {
+        $this->git->log(
+            $this->historyPageSize,
+            function (array $commits): void {
+                if (!$this->open || 'history' !== $this->mode) {
+                    return;
+                }
+                $this->panes->history->appendCommits($commits);
+                $this->panes->history->setHasMore(\count($commits) === $this->historyPageSize);
+                $this->tui->requestRender();
+            },
+            skip: $this->panes->history->commitCount(),
+        );
     }
 
     private function loadCommitFiles(LogEntry $commit): void

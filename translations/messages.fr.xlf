@@ -1450,6 +1450,86 @@
         <source>⏎/F3 next  ⇧F3 prev  ⌥X .*  ⌥W \b  esc</source>
         <target>⏎/F3 suiv.  ⇧F3 préc.  ⌥X .*  ⌥W \b  esc</target>
       </trans-unit>
+      <trans-unit id="366">
+        <source>Fetching…</source>
+        <target>Récupération…</target>
+      </trans-unit>
+      <trans-unit id="367">
+        <source>Fetched</source>
+        <target>Récupéré</target>
+      </trans-unit>
+      <trans-unit id="368">
+        <source>Pulling…</source>
+        <target>Tirage…</target>
+      </trans-unit>
+      <trans-unit id="369">
+        <source>Pulled</source>
+        <target>Tiré</target>
+      </trans-unit>
+      <trans-unit id="370">
+        <source>Pushing…</source>
+        <target>Poussée…</target>
+      </trans-unit>
+      <trans-unit id="371">
+        <source>Pushed</source>
+        <target>Poussé</target>
+      </trans-unit>
+      <trans-unit id="372">
+        <source>%operation% failed: %error%</source>
+        <target>%operation% a échoué : %error%</target>
+      </trans-unit>
+      <trans-unit id="373">
+        <source>A git remote operation is already running</source>
+        <target>Une opération distante git est déjà en cours</target>
+      </trans-unit>
+      <trans-unit id="374">
+        <source>Not a git repository (or git missing)</source>
+        <target>Pas un dépôt git (ou git manquant)</target>
+      </trans-unit>
+      <trans-unit id="375">
+        <source>Git: Fetch</source>
+        <target>Git : Récupérer</target>
+      </trans-unit>
+      <trans-unit id="376">
+        <source>Git: Pull</source>
+        <target>Git : Tirer</target>
+      </trans-unit>
+      <trans-unit id="377">
+        <source>Git: Push</source>
+        <target>Git : Pousser</target>
+      </trans-unit>
+      <trans-unit id="378">
+        <source>Git: Push (Set Upstream)</source>
+        <target>Git : Pousser (définir l’upstream)</target>
+      </trans-unit>
+      <trans-unit id="379">
+        <source>Git: Branches…</source>
+        <target>Git : Branches…</target>
+      </trans-unit>
+      <trans-unit id="380">
+        <source>Branches</source>
+        <target>Branches</target>
+      </trans-unit>
+      <trans-unit id="381">
+        <source>+ Create new branch…</source>
+        <target>+ Créer une branche…</target>
+      </trans-unit>
+      <trans-unit id="382">
+        <source>current</source>
+        <target>actuelle</target>
+      </trans-unit>
+      <trans-unit id="383">
+        <source>New branch name</source>
+        <target>Nom de la nouvelle branche</target>
+      </trans-unit>
+      <trans-unit id="384">
+        <source>Switched to %branch%</source>
+        <target>Basculé sur %branch%</target>
+      </trans-unit>
+      <trans-unit id="385">
+        <source>Created and switched to %branch%</source>
+        <target>Créée et basculé sur %branch%</target>
+      </trans-unit>
     </body>
   </file>
 </xliff>

@@ -155,4 +155,60 @@ final class HistoryListWidgetTest extends TestCase
         $widget->setCommits([]); // reset clears files and focus
         $this->assertNull($widget->selectedCommit());
     }
+
+    public function testLoadMoreFiresOnceAtTheBottomAndAppendPreservesSelection(): void
+    {
+        $widget = new HistoryListWidget(new Translator('en'));
+        $widget->setFocused(true);
+        $widget->setCommits([
+            new LogEntry('s1', 'aaa111', 'A', 1700000300, 'one'),
+            new LogEntry('s2', 'bbb222', 'B', 1700000200, 'two'),
+            new LogEntry('s3', 'ccc333', 'C', 1700000100, 'three'),
+        ]);
+        $loads = 0;
+        $widget->setHasMore(true);
+        $widget->onLoadMore(function () use (&$loads): void {
+            ++$loads;
+        });
+
+        $widget->handleInput("\x1b[B");
+        $this->assertSame(0, $loads, 'mid-list navigation never loads');
+        $widget->handleInput("\x1b[B"); // bottom row
+        $this->assertSame(1, $loads);
+        $widget->handleInput("\x1b[A");
+        $widget->handleInput("\x1b[B"); // bottom again, latch still armed
+        $this->assertSame(1, $loads, 'one in-flight load at a time');
+
+        // The append lands: dedupe by sha, selection preserved, latch cleared.
+        $widget->appendCommits([
+            new LogEntry('s3', 'ccc333', 'C', 1700000100, 'three'), // --skip drift duplicate
+            new LogEntry('s4', 'ddd444', 'D', 1700000000, 'four'),
+        ]);
+        $this->assertSame(4, $widget->commitCount());
+        $this->assertSame('three', $widget->selectedCommit()?->subject, 'the selection survived the append');
+
+        $widget->handleInput("\x1b[B"); // the new bottom re-arms
+        $this->assertSame(2, $loads);
+
+        // No older page: bottom navigation stays quiet.
+        $widget->setHasMore(false);
+        $widget->handleInput("\x1b[A");
+        $widget->handleInput("\x1b[B");
+        $widget->handleInput("\x1b[B");
+        $this->assertSame(2, $loads);
+    }
+
+    public function testRemoteKeysRouteToTheHook(): void
+    {
+        $widget = $this->widget();
+        $widget->handleInput('f'); // no hook attached: a safe no-op
+
+        $operations = [];
+        $widget->onRemote(function (string $operation) use (&$operations): void {
+            $operations[] = $operation;
+        });
+        $widget->handleInput('p');
+        $widget->handleInput('P');
+        $this->assertSame(['pull', 'push'], $operations);
+    }
 }

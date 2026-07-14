@@ -259,14 +259,51 @@ final class GitInfo
      *
      * @param callable(list<LogEntry>): void $onDone
      */
-    public function log(int $limit, callable $onDone): void
+    public function log(int $limit, callable $onDone, int $skip = 0): void
     {
         if (!$this->available) {
             $onDone([]);
 
             return;
         }
-        $this->run(['log', '-z', '-n', (string) $limit, '--format=%H%x1f%h%x1f%an%x1f%at%x1f%s'], static fn (string $out) => $onDone(LogParser::parseLog($out)));
+        $args = ['log', '-z', '-n', (string) $limit, '--format=%H%x1f%h%x1f%an%x1f%at%x1f%s'];
+        if ($skip > 0) {
+            $args[] = '--skip';
+            $args[] = (string) $skip;
+        }
+        $this->run($args, static fn (string $out) => $onDone(LogParser::parseLog($out)));
+    }
+
+    /**
+     * Local branches, newest activity first.
+     *
+     * @param callable(list<array{name: string, current: bool}>): void $onDone
+     */
+    public function branches(callable $onDone): void
+    {
+        if (!$this->available) {
+            $onDone([]);
+
+            return;
+        }
+        $this->run(['branch', '--sort=-committerdate', '--format=%(refname:short)%09%(HEAD)'], static fn (string $out) => $onDone(BranchParser::parse($out)));
+    }
+
+    /**
+     * Switch branches. Failure surfaces git's own stderr (the dirty-working-
+     * tree refusal in particular) — no auto-stash.
+     *
+     * @param callable(bool, string): void $onDone (ok, first stderr line on failure)
+     */
+    public function checkout(string $branch, callable $onDone): void
+    {
+        $this->runWithErrors(['checkout', $branch], $onDone);
+    }
+
+    /** @param callable(bool, string): void $onDone (ok, first stderr line on failure — "already exists", invalid name) */
+    public function createBranch(string $name, callable $onDone): void
+    {
+        $this->runWithErrors(['checkout', '-b', $name], $onDone);
     }
 
     /**
@@ -418,6 +455,40 @@ final class GitInfo
             // @codeCoverageIgnoreEnd
         }
 
+        $this->running[$key] = $process;
+    }
+
+    /**
+     * Like runStatus, but with stderr captured — for verbs whose failure
+     * message the user must see verbatim (checkout, branch creation).
+     *
+     * @param list<string>                 $args
+     * @param callable(bool, string): void $onDone (ok, trimmed first stderr line)
+     */
+    private function runWithErrors(array $args, callable $onDone): void
+    {
+        if (!$this->available) {
+            $onDone(false, 'git is not available');
+
+            return;
+        }
+        /** @var list<string> $command */
+        $command = [$this->git, '-C', $this->rootDir, ...$args];
+        $key = $this->nextKey++;
+        $process = new AsyncProcess($command, $this->rootDir, captureStderr: true);
+        $started = $process->start(function (int $code) use ($key, $process, $onDone): void {
+            unset($this->running[$key]);
+            $firstLine = strtok(trim($process->errorOutput()), "\n");
+            $onDone(0 === $code, \is_string($firstLine) ? $firstLine : '');
+        });
+        if (!$started) {
+            // @codeCoverageIgnoreStart
+            $onDone(false, 'could not start git');
+
+            return;
+
+            // @codeCoverageIgnoreEnd
+        }
         $this->running[$key] = $process;
     }
 

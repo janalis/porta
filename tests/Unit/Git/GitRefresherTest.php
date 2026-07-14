@@ -8,6 +8,7 @@ use PHPUnit\Framework\TestCase;
 use Porta\Editor\BufferManager;
 use Porta\Event\BufferOpened;
 use Porta\Event\BufferSaved;
+use Porta\Event\GitRemoteCompleted;
 use Porta\Git\GitInfo;
 use Porta\Git\GitRefresher;
 use Porta\Image\ImageData;
@@ -117,6 +118,17 @@ final class GitRefresherTest extends TestCase
         $buffer->gitMarks = [];
         $refresher->onBufferSaved(new BufferSaved($buffer));
         $this->await(static fn (): bool => [] !== $buffer->gitMarks && null !== $refresher->branch(), 'the save listener refreshed marks and branch');
+    }
+
+    public function testRemoteCompletedRefreshesBranchAndActiveMarks(): void
+    {
+        $refresher = $this->refresher();
+        file_put_contents($this->project->path('a.txt'), "one\nchanged\n");
+        $buffer = $this->buffers->open($this->project->path('a.txt'), "one\nchanged\n");
+        $this->buffers->setActive($buffer->path);
+
+        $refresher->onGitRemoteCompleted(new GitRemoteCompleted('pull', true));
+        $this->await(static fn (): bool => [] !== $buffer->gitMarks && null !== $refresher->branch(), 'a completed remote op refreshed branch + active marks');
     }
 
     private static function findGit(): ?string

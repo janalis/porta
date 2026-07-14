@@ -9,6 +9,7 @@ use Porta\Editor\BufferManager;
 use Porta\Event\BufferOpened;
 use Porta\Event\BufferSaved;
 use Porta\Event\GitCommitted;
+use Porta\Event\GitRemoteCompleted;
 use Porta\Widget\CodeEditorWidget;
 use Porta\Widget\StatusBarWidget;
 use Symfony\Component\EventDispatcher\Attribute\AsEventListener;
@@ -86,6 +87,15 @@ final class GitRefresher
     {
         $this->refreshMarks($event->buffer);
         $this->refreshBranch();
+    }
+
+    #[AsEventListener]
+    public function onGitRemoteCompleted(GitRemoteCompleted $event): void
+    {
+        // A pull can move HEAD and rewrite file contents; a fetch updates
+        // the remote-tracking state the branch segment may reflect.
+        $this->refreshBranch();
+        $this->refreshActiveMarks();
     }
 
     #[AsEventListener]

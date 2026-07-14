@@ -1,0 +1,120 @@
+<?php
+
+declare(strict_types=1);
+
+namespace Porta\Git;
+
+use Porta\Support\AsyncProcess;
+use Symfony\Component\Process\ExecutableFinder;
+
+/**
+ * Asynchronous git remote operations (fetch / pull / push). Separate from the
+ * local read/index client ({@see GitInfo}) because remote commands have
+ * different needs: stderr carries everything human-relevant (progress, auth
+ * failures, "not possible to fast-forward"), credential prompts must be
+ * forced non-interactive, and only one remote operation runs at a time.
+ *
+ * `GIT_TERMINAL_PROMPT=0` turns a would-be credential prompt into a clean
+ * non-zero exit with the reason on stderr. Known limitation: ssh itself can
+ * still prompt for an agent-less key passphrase; forcing BatchMode would
+ * break ssh-agent users, so it stays unset — an agent is expected.
+ */
+final class GitRemote
+{
+    private readonly bool $available;
+
+    private readonly ?string $git;
+
+    /** @var array<int, AsyncProcess> in-flight processes */
+    private array $running = [];
+
+    private int $nextKey = 0;
+
+    public function __construct(
+        private readonly string $rootDir,
+    ) {
+        $this->git = new ExecutableFinder()->find('git');
+        $this->available = null !== $this->git && is_dir($rootDir.'/.git');
+    }
+
+    public function isAvailable(): bool
+    {
+        return $this->available;
+    }
+
+    /** One remote operation at a time — a second invocation must be refused. */
+    public function isBusy(): bool
+    {
+        return [] !== $this->running;
+    }
+
+    /** @param callable(bool, string): void $onDone (ok, trimmed stderr+stdout — stderr first: it's where git talks) */
+    public function fetch(callable $onDone): void
+    {
+        $this->run(['fetch', '--prune'], $onDone);
+    }
+
+    /**
+     * `--ff-only`: either fast-forwards or fails cleanly with git's message.
+     * A merging/rebasing pull creates conflict state the git view can't drive
+     * yet; a `pull.rebase`-respecting mode is a future setting.
+     *
+     * @param callable(bool, string): void $onDone
+     */
+    public function pull(callable $onDone): void
+    {
+        $this->run(['pull', '--ff-only'], $onDone);
+    }
+
+    /** @param callable(bool, string): void $onDone */
+    public function push(callable $onDone): void
+    {
+        $this->run(['push'], $onDone);
+    }
+
+    /** @param callable(bool, string): void $onDone */
+    public function pushSetUpstream(callable $onDone): void
+    {
+        $this->run(['push', '-u', 'origin', 'HEAD'], $onDone);
+    }
+
+    public function cancelAll(): void
+    {
+        foreach ($this->running as $process) {
+            $process->cancel();
+        }
+        $this->running = [];
+    }
+
+    /**
+     * @param list<string>                 $args
+     * @param callable(bool, string): void $onDone
+     */
+    private function run(array $args, callable $onDone): void
+    {
+        if (!$this->available) {
+            $onDone(false, 'git is not available');
+
+            return;
+        }
+        /** @var list<string> $command */
+        $command = [$this->git, '-C', $this->rootDir, ...$args];
+        $env = array_merge(getenv(), ['GIT_TERMINAL_PROMPT' => '0']);
+        /** @var array<string, string> $env */
+        $key = $this->nextKey++;
+        $process = new AsyncProcess($command, $this->rootDir, captureStderr: true, env: $env);
+        $started = $process->start(function (int $code, string $out) use ($key, $process, $onDone): void {
+            unset($this->running[$key]);
+            $onDone(0 === $code, trim(trim($process->errorOutput())."\n".trim($out)));
+        });
+        if (!$started) {
+            // @codeCoverageIgnoreStart
+            $onDone(false, 'could not start git');
+
+            return;
+
+            // @codeCoverageIgnoreEnd
+        }
+        $this->running[$key] = $process;
+    }
+}

@@ -122,6 +122,7 @@ final class ActionCatalog
         'debug_continue' => ['label' => 'Resume Program', 'keys' => ['f9']],
         'debug_stop' => ['label' => 'Stop Debugger', 'keys' => ['ctrl+f2']],
         'ide_git' => ['label' => 'Git: Changes', 'keys' => ['ctrl+alt+d']],
+        'git_push' => ['label' => 'Git: Push', 'keys' => ['ctrl+shift+k']],
         'ide_settings' => ['label' => 'Settings…', 'keys' => ['ctrl+,']],
         'ide_help' => ['label' => 'Documentation', 'keys' => ['f1']],
         'ide_menu' => ['label' => 'Open Menu', 'keys' => ['f10']],

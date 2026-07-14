@@ -17,6 +17,7 @@ use Porta\Editor\BreadcrumbTrailProvider;
 use Porta\Editor\BufferManager;
 use Porta\Git\GitInfo;
 use Porta\Git\GitRefresher;
+use Porta\Git\GitRemote;
 use Porta\Highlight\SwitchableTerminalTheme;
 use Porta\Highlight\TerminalThemeFactory;
 use Porta\History\LocalHistory;
@@ -236,6 +237,7 @@ return static function (ContainerConfigurator $container, ContainerBuilder $buil
         WorkspaceViews::class,
         ChromeInvalidator::class,
         GitRefresher::class,
+        GitRemote::class,
         BreakpointStore::class,
         DebugSessionState::class,
         EditorDecorations::class,

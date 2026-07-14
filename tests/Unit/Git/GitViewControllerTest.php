@@ -69,7 +69,7 @@ final class GitViewControllerTest extends TestCase
     private CodeEditorWidget $editor;
     private LayoutController $layoutController;
 
-    private function controller(bool $realRepo = true): GitViewController
+    private function controller(bool $realRepo = true, int $historyPageSize = 200): GitViewController
     {
         if ($realRepo && null === self::findGit()) {
             $this->markTestSkipped('git not available');
@@ -154,6 +154,7 @@ final class GitViewControllerTest extends TestCase
             $this->layoutController,
             new Clipboard($this->tui),
             new WorkspaceViews(),
+            historyPageSize: $historyPageSize,
         );
     }
 
@@ -815,5 +816,76 @@ final class GitViewControllerTest extends TestCase
         }
 
         return null;
+    }
+
+    public function testHistoryPagesInOlderCommitsAtTheListBottom(): void
+    {
+        $controller = $this->controller(historyPageSize: 2);
+        $d = escapeshellarg($this->project->dir);
+        foreach (['second', 'third', 'fourth', 'fifth'] as $n) {
+            exec("git -C {$d} commit -q --allow-empty -m {$n}");
+        }
+        $controller->open();
+        $this->await(fn (): bool => $controller->isOpen());
+
+        $this->changes->setFocused(true);
+        $this->changes->handleInput('2'); // History tab
+        $this->await(fn (): bool => 2 === $this->history->commitCount(), 'page 0 loads');
+        $this->assertSame('fifth', $this->history->selectedCommit()?->subject);
+
+        // Walking to the bottom pulls page 1; selection stays put.
+        $this->history->setFocused(true);
+        $this->history->handleInput("\x1b[B");
+        $this->await(fn (): bool => 4 === $this->history->commitCount(), 'page 1 appended');
+        $this->assertSame('fourth', $this->history->selectedCommit()?->subject);
+
+        // And the final partial page ends the paging.
+        $this->history->handleInput("\x1b[B");
+        $this->history->handleInput("\x1b[B");
+        $this->await(fn (): bool => 5 === $this->history->commitCount(), 'the last page appended (partial: paging ends)');
+        $this->history->handleInput("\x1b[B");
+        $this->history->handleInput("\x1b[B");
+        $this->awaitTicks(5);
+        $this->assertSame(5, $this->history->commitCount(), 'no further loads past the end');
+    }
+
+    public function testRemoteCompletedReloadsHistoryPageZero(): void
+    {
+        $controller = $this->controller(historyPageSize: 2);
+        $d = escapeshellarg($this->project->dir);
+        exec("git -C {$d} commit -q --allow-empty -m second");
+        $controller->open();
+        $this->await(fn (): bool => $controller->isOpen());
+
+        $controller->onRemoteCompleted(); // changes mode: a no-op
+        $this->changes->setFocused(true);
+        $this->changes->handleInput('2'); // History tab
+        $this->await(fn (): bool => 2 === $this->history->commitCount());
+
+        // A commit lands "remotely" (same repo here); the completed event reloads page 0.
+        exec("git -C {$d} commit -q --allow-empty -m fromremote");
+        $controller->onRemoteCompleted();
+        $this->await(fn (): bool => 'fromremote' === ($this->history->selectedCommit()->subject ?? ''), 'the newest commit appears at the top');
+    }
+
+    public function testHistoryCallbacksLandingAfterCloseAreIgnored(): void
+    {
+        $controller = $this->controller(historyPageSize: 1);
+        $d = escapeshellarg($this->project->dir);
+        exec("git -C {$d} commit -q --allow-empty -m second");
+        $controller->open();
+        $this->await(fn (): bool => $controller->isOpen());
+        $this->changes->setFocused(true);
+        $this->changes->handleInput('2');
+        $this->await(fn (): bool => 1 === $this->history->commitCount());
+
+        // Fire a reload and a load-more, then close before either can land:
+        // both callbacks must hit the open/mode guard and change nothing.
+        $controller->onRemoteCompleted();
+        $this->history->setFocused(true);
+        $this->history->handleInput("\x1b[B"); // bottom row: arms load-more
+        $controller->close();
+        $this->awaitTicks(10);
+        $this->assertSame(1, $this->history->commitCount(), 'no page landed after close');
     }
 }

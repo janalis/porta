@@ -32,12 +32,15 @@ use Porta\Editor\BufferNavigator;
 use Porta\Editor\BufferService;
 use Porta\Editor\Document;
 use Porta\Editor\EditorFileActions;
+use Porta\Event\GitRemoteCompleted;
 use Porta\Event\LocaleChanged;
 use Porta\Event\ThemeChanged;
 use Porta\Git\GitCommands;
 use Porta\Git\GitInfo;
 use Porta\Git\GitPanes;
 use Porta\Git\GitRefresher;
+use Porta\Git\GitRemote;
+use Porta\Git\GitRemoteCommands;
 use Porta\Git\GitViewController;
 use Porta\Help\HelpViewerActions;
 use Porta\History\LocalHistory;
@@ -207,6 +210,7 @@ final class Ide
     private readonly ServiceLocator $locator;
     private GitInfo $git;
     private GitRefresher $gitRefresher;
+    private GitRemoteCommands $gitRemoteCommands;
     private WorkspaceLayout $workspaceLayout;
     private PaneLayout $paneLayout;
     private SearchActions $searchActions;
@@ -339,7 +343,8 @@ final class Ide
 
         $this->git = $this->service(GitInfo::class);
         $this->gitRefresher = $this->service(GitRefresher::class);
-        $this->gitCommands = new GitCommands($this->git, $this->editor, $this->notifier, $this->tui, $this->translator, $this->gitRefresher, $this->rootDir);
+        $this->gitCommands = new GitCommands($this->git, $this->editor, $this->notifier, $this->tui, $this->translator, $this->gitRefresher, $this->rootDir, $this->views);
+        $this->gitRemoteCommands = new GitRemoteCommands($this->service(GitRemote::class), $this->notifier, $this->translator, $this->dispatcher);
         $this->buildGitView();
 
         $this->buildSettingsWidgets();
@@ -868,7 +873,7 @@ final class Ide
         $this->gitSeparator = $this->workspaceLayout->gitSeparator();
         $this->gitAreaContainer = $this->workspaceLayout->gitArea();
         $this->paneLayout->arrangeGitArea();
-        new GitViewController(
+        $gitView = new GitViewController(
             $this->git,
             $this->rootDir,
             new GitPanes($this->gitChanges, $this->gitDiff, $this->gitCommitBox, $this->gitHistory, $this->gitTabs),
@@ -885,7 +890,11 @@ final class Ide
             $this->service(LayoutController::class),
             $this->clipboard,
             $this->views,
+            $this->gitRemoteCommands,
         );
+        // The controller is hand-built, so its remote-completed refresh is a
+        // runtime listener instead of an #[AsEventListener] method.
+        $this->dispatcher->addListener(GitRemoteCompleted::class, static fn () => $gitView->onRemoteCompleted());
     }
 
     // --- File handling ----------------------------------------------------------
@@ -953,7 +962,7 @@ final class Ide
             new FileCommands($this->bufferService, $this->refactor),
             new SearchCommands($this->searchActions),
             new ViewCommands($this->workbench, $this->goToFile, $this->tui, $this->settings, $this->run, $this->views, $this->bufferService, $this->docsDir),
-            new GitCommandProvider($this->gitCommands),
+            new GitCommandProvider($this->gitCommands, $this->gitRemoteCommands),
         ];
         foreach ($palette as $provider) {
             $provider->register($this->commands);

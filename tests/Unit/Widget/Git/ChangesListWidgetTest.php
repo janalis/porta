@@ -212,4 +212,20 @@ final class ChangesListWidgetTest extends TestCase
 
         $this->assertSame(['next', 'exit'], $events);
     }
+
+    public function testRemoteKeysRouteToTheHook(): void
+    {
+        $widget = new ChangesListWidget(new Translator('en'));
+        $widget->setFocused(true);
+        $widget->handleInput('f'); // no hook attached: a safe no-op
+
+        $operations = [];
+        $widget->onRemote(function (string $operation) use (&$operations): void {
+            $operations[] = $operation;
+        });
+        $widget->handleInput('f');
+        $widget->handleInput('p');
+        $widget->handleInput('P');
+        $this->assertSame(['fetch', 'pull', 'push'], $operations);
+    }
 }

@@ -43,6 +43,9 @@ final class HistoryListWidget extends AbstractWidget implements FocusableInterfa
     use KeybindingsTrait;
     use PaneNavigationCallbacks;
 
+    /** @var (callable(string): void)|null a remote-operation key: 'fetch' | 'pull' | 'push' */
+    private $onRemote = null;
+
     private const int FILE_ROWS = 8;
 
     /** @var list<LogEntry> */
@@ -59,6 +62,12 @@ final class HistoryListWidget extends AbstractWidget implements FocusableInterfa
 
     /** @var (callable(LogEntry): void)|null */
     private $onSelectCommit = null;
+    /** @var (callable(): void)|null fired once when the selection reaches the last loaded commit */
+    private $onLoadMore = null;
+    /** Whether an older page exists past the loaded commits. */
+    private bool $hasMore = false;
+    /** Latch: one load-more in flight at a time. */
+    private bool $loadingMore = false;
     /** @var (callable(LogEntry, string): void)|null commit + file path */
     private $onSelectFile = null;
     /** @var (callable(): void)|null `1`: switch back to the Changes tab */
@@ -115,6 +124,7 @@ final class HistoryListWidget extends AbstractWidget implements FocusableInterfa
     /** @param list<LogEntry> $commits */
     public function setCommits(array $commits): void
     {
+        $this->loadingMore = false;
         $this->commits = $commits;
         $this->commitList->reset();
         $this->hoveredCommit = $this->hoveredFile = null;
@@ -122,6 +132,42 @@ final class HistoryListWidget extends AbstractWidget implements FocusableInterfa
         $this->fileList->reset();
         $this->filesFocused = false;
         $this->invalidate();
+    }
+
+    /**
+     * Append an older page, preserving the selection/scroll and the files
+     * pane. Deduped by sha — `--skip` offsets drift when new commits land
+     * between pages.
+     *
+     * @param list<LogEntry> $commits
+     */
+    public function appendCommits(array $commits): void
+    {
+        $this->loadingMore = false;
+        $known = array_flip(array_column($this->commits, 'sha'));
+        foreach ($commits as $commit) {
+            if (!isset($known[$commit->sha])) {
+                $this->commits[] = $commit;
+            }
+        }
+        $this->invalidate();
+    }
+
+    public function setHasMore(bool $hasMore): void
+    {
+        $this->hasMore = $hasMore;
+    }
+
+    public function commitCount(): int
+    {
+        return \count($this->commits);
+    }
+
+    public function onLoadMore(callable $callback): self
+    {
+        $this->onLoadMore = $callback;
+
+        return $this;
     }
 
     /** @param list<array{status: string, path: string}> $files */
@@ -145,6 +191,15 @@ final class HistoryListWidget extends AbstractWidget implements FocusableInterfa
         }
         $kb = $this->getKeybindings();
 
+        foreach (['fetch', 'pull', 'push'] as $remoteOp) {
+            if ($kb->matches($data, $remoteOp)) {
+                if (null !== $this->onRemote) {
+                    ($this->onRemote)($remoteOp);
+                }
+
+                return;
+            }
+        }
         if ($kb->matches($data, 'exit_view')) {
             $this->fire($this->onExit);
 
@@ -179,6 +234,12 @@ final class HistoryListWidget extends AbstractWidget implements FocusableInterfa
         }
         if (ListNavigation::handleKey($data, $kb, $this->commitList, \count($this->commits), page: $this->lastRows)) {
             $this->fireSelectCommit();
+            // Hitting the bottom of the loaded page pulls the next one in
+            // (keyboard and wheel — GitMouseRouter translates scroll to keys).
+            if ($this->hasMore && !$this->loadingMore && null !== $this->onLoadMore && $this->commitList->selected() === (\count($this->commits) - 1)) {
+                $this->loadingMore = true;
+                ($this->onLoadMore)();
+            }
             $this->invalidate();
         }
     }
@@ -322,6 +383,13 @@ final class HistoryListWidget extends AbstractWidget implements FocusableInterfa
         return $this->withMenuOverlay($lines, $width);
     }
 
+    public function onRemote(callable $callback): self
+    {
+        $this->onRemote = $callback;
+
+        return $this;
+    }
+
     /** @return array<string, string[]> */
     protected static function getDefaultKeybindings(): array
     {
@@ -332,6 +400,9 @@ final class HistoryListWidget extends AbstractWidget implements FocusableInterfa
             'page_down' => [Key::PAGE_DOWN],
             'switch_list' => [Key::ENTER],
             'show_changes' => ['1'],
+            'fetch' => ['f'],
+            'pull' => ['p'],
+            'push' => ['shift+p'],
             'focus_next_pane' => [Key::TAB],
             'exit_view' => [Key::ESCAPE],
         ];

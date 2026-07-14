@@ -281,6 +281,12 @@ final class GitInfoStatusTest extends TestCase
         $git->log(10, function (array $commits) use (&$calls): void {
             $calls[] = ['log', $commits];
         });
+        $git->branches(function (array $branches) use (&$calls): void {
+            $calls[] = ['branches', $branches];
+        });
+        $git->checkout('main', function (bool $ok, string $error) use (&$calls): void {
+            $calls[] = ['checkout', $ok, $error];
+        });
         $git->commitFiles('deadbeef', function (array $files) use (&$calls): void {
             $calls[] = ['files', $files];
         });
@@ -307,6 +313,8 @@ final class GitInfoStatusTest extends TestCase
                 ['discard', false],
                 ['apply', false],
                 ['log', []],
+                ['branches', []],
+                ['checkout', false, 'git is not available'],
                 ['files', []],
                 ['show', ''],
                 ['commit', false, ''],
@@ -345,6 +353,74 @@ final class GitInfoStatusTest extends TestCase
         }
     }
 
+    public function testBranchListSwitchAndCreate(): void
+    {
+        $git = $this->repo($project, ['a.txt' => "x\n"]);
+        $d = escapeshellarg($project->dir);
+        exec("git -C {$d} branch feature 2>/dev/null");
+
+        $results = [];
+        $git->branches(function (array $branches) use (&$results): void {
+            $results['list'] = $branches;
+        });
+        $this->await(function () use (&$results): bool {
+            return isset($results['list']);
+        });
+        $names = array_column($results['list'], 'name');
+        $this->assertContains('feature', $names);
+        $current = array_values(array_filter($results['list'], static fn (array $b): bool => $b['current']));
+        $this->assertCount(1, $current, 'exactly one branch is current');
+
+        $git->checkout('feature', function (bool $ok, string $error) use (&$results): void {
+            $results['checkout'] = $ok;
+        });
+        $this->await(function () use (&$results): bool {
+            return isset($results['checkout']);
+        });
+        $this->assertTrue($results['checkout']);
+        exec("git -C {$d} rev-parse --abbrev-ref HEAD", $head);
+        $this->assertSame('feature', $head[0] ?? '');
+
+        $git->createBranch('fresh', function (bool $ok, string $error) use (&$results): void {
+            $results['create'] = $ok;
+        });
+        $this->await(function () use (&$results): bool {
+            return isset($results['create']);
+        });
+        $this->assertTrue($results['create']);
+
+        // Duplicate creation fails with git's message.
+        $git->createBranch('feature', function (bool $ok, string $error) use (&$results): void {
+            $results['dup'] = ['ok' => $ok, 'error' => $error];
+        });
+        $this->await(function () use (&$results): bool {
+            return isset($results['dup']);
+        });
+        $this->assertFalse($results['dup']['ok']);
+        $this->assertNotSame('', $results['dup']['error']);
+    }
+
+    public function testDirtyWorkingTreeCheckoutFailsWithGitsMessage(): void
+    {
+        $git = $this->repo($project, ['a.txt' => "x\n"]);
+        $d = escapeshellarg($project->dir);
+        exec("git -C {$d} branch other 2>/dev/null");
+        // Diverge the branches on the same file, then dirty the worktree so
+        // the checkout must refuse.
+        exec("git -C {$d} checkout -q other && printf 'theirs\\n' > ".escapeshellarg($project->path('a.txt'))." && git -C {$d} commit -aqm theirs && git -C {$d} checkout -q -");
+        file_put_contents($project->path('a.txt'), "dirty\n");
+
+        $result = null;
+        $git->checkout('other', function (bool $ok, string $error) use (&$result): void {
+            $result = ['ok' => $ok, 'error' => $error];
+        });
+        $this->await(function () use (&$result): bool {
+            return null !== $result;
+        });
+        $this->assertFalse($result['ok']);
+        $this->assertNotSame('', $result['error'], "git's refusal reaches the caller verbatim");
+    }
+
     private static function findGit(): ?string
     {
         foreach (explode(\PATH_SEPARATOR, (string) getenv('PATH')) as $d) {
@@ -354,5 +430,29 @@ final class GitInfoStatusTest extends TestCase
         }
 
         return null;
+    }
+
+    public function testLogSkipReturnsTheOlderPage(): void
+    {
+        $git = $this->repo($project, ['a.txt' => "x\n"]);
+        $d = escapeshellarg($project->dir);
+        exec("git -C {$d} commit -q --allow-empty -m second 2>/dev/null");
+        exec("git -C {$d} commit -q --allow-empty -m third 2>/dev/null");
+
+        $pages = [];
+        $git->log(2, function (array $commits) use (&$pages): void {
+            $pages[0] = array_column($commits, 'subject');
+        });
+        $git->log(
+            2,
+            function (array $commits) use (&$pages): void {
+                $pages[1] = array_column($commits, 'subject');
+            },
+            skip: 2,
+        );
+
+        $this->await(static fn (): bool => 2 === \count($pages));
+        $this->assertSame(['third', 'second'], $pages[0]);
+        $this->assertSame(['init'], $pages[1], '--skip lands on the older page');
     }
 }
