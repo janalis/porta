@@ -11,7 +11,7 @@ final class LogParserTest extends TestCase
 {
     public function testParsesNulRecordsWithUnitSeparatedFields(): void
     {
-        $raw = "abc123full\x1fabc123\x1fAlice\x1f1700000000\x1fFix the parser\0"."def456full\x1fdef456\x1fBob\x1f1700000100\x1fAdd tests\0";
+        $raw = "abc123full\x1fabc123\x1fAlice\x1f1700000000\x1fFix the parser\0def456full\x1fdef456\x1fBob\x1f1700000100\x1fAdd tests\0";
 
         $entries = LogParser::parseLog($raw);
 

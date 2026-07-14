@@ -219,7 +219,7 @@ final class DiffViewWidget extends AbstractWidget implements FocusableInterface,
             $this->hScroll = 0;
         }
         $this->maxLineWidth = 0;
-        foreach ($document?->hunks ?? [] as $hunk) {
+        foreach ($document->hunks ?? [] as $hunk) {
             foreach ($hunk->lines as $line) {
                 $this->maxLineWidth = max($this->maxLineWidth, mb_strwidth($line->text));
             }

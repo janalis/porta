@@ -96,7 +96,7 @@ final class GitInfoTest extends TestCase
 
     public function testParseBlameLine(): void
     {
-        $porcelain = "0123456789abcdef0123456789abcdef01234567 1 1 1\n"."author Jane Dev\n"."author-mail <jane@example.com>\n"."summary Add the thing\n"."\tcode line\n";
+        $porcelain = "0123456789abcdef0123456789abcdef01234567 1 1 1\nauthor Jane Dev\n"."author-mail <jane@example.com>\n"."summary Add the thing\n"."\tcode line\n";
         $this->assertSame(
             ['sha' => '01234567', 'author' => 'Jane Dev', 'summary' => 'Add the thing'],
             GitInfo::parseBlameLine($porcelain),

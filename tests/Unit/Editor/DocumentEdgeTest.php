@@ -264,6 +264,7 @@ final class DocumentEdgeTest extends TestCase
             $doc->insertNewLine(); // non-coalescing edit
         }
         while ($doc->undo()) {
+            // drain the undo stack completely
         }
 
         $this->assertGreaterThan(1, $doc->getLineCount(), 'earliest edits fell off the undo stack');

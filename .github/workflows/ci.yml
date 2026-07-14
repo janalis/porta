@@ -1,0 +1,52 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  gates:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.4'
+          coverage: pcov
+          extensions: mbstring, intl
+
+      - uses: actions/cache@v4
+        with:
+          path: ~/.composer/cache
+          key: composer-${{ hashFiles('composer.lock') }}
+          restore-keys: composer-
+
+      - run: composer install --no-interaction --no-progress
+
+      - name: Format check
+        run: composer format:check
+
+      - name: Lint
+        run: composer lint
+
+      - name: Static analysis
+        run: composer analyze
+
+      - name: Tests
+        id: tests
+        run: composer test
+        continue-on-error: true
+
+      # Two tests are known-flaky under load (real git subprocesses / real
+      # timers) and pass on isolated re-run — the documented local policy.
+      - name: Re-run known-flaky tests in isolation
+        if: steps.tests.outcome == 'failure'
+        run: |
+          vendor/bin/phpunit --filter testLineStagingAndUnstagingThroughTheDiffPane
+          vendor/bin/phpunit tests/E2e/IdeDocsTest.php
+          composer test
+
+      - name: Coverage gate (100% lines)
+        run: composer coverage:check

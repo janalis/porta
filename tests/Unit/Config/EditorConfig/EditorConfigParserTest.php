@@ -12,7 +12,7 @@ final class EditorConfigParserTest extends TestCase
     public function testRootPreambleAndSections(): void
     {
         $parsed = EditorConfigParser::parse(
-            "root = true\n"."\n"."# a comment\n"."; another comment\n"."[*]\n"."indent_style = space\n"."INDENT_SIZE = 2\n"."[*.md]\n"."trim_trailing_whitespace = false\n",
+            "root = true\n\n"."# a comment\n"."; another comment\n"."[*]\n"."indent_style = space\n"."INDENT_SIZE = 2\n"."[*.md]\n"."trim_trailing_whitespace = false\n",
         );
 
         $this->assertTrue($parsed['root']);

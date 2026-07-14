@@ -36,7 +36,7 @@ final class DebugAdapters
     /** The configured adapter command as one string ('' when unset), for the settings row. */
     public function adapterCommand(string $languageId): string
     {
-        return implode(' ', ($this->configs[$languageId] ?? null)?->adapterArgv ?? []);
+        return implode(' ', ($this->configs[$languageId] ?? null)->adapterArgv ?? []);
     }
 
     /**
@@ -46,7 +46,7 @@ final class DebugAdapters
      */
     public function launchOverrides(string $languageId): array
     {
-        return ($this->configs[$languageId] ?? null)?->launch ?? [];
+        return ($this->configs[$languageId] ?? null)->launch ?? [];
     }
 
     /**

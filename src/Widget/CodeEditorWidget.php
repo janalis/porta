@@ -423,10 +423,10 @@ final class CodeEditorWidget extends AbstractWidget implements ActiveFileProvide
         $usesTabs = match ($config->indentStyle) {
             'spaces' => false,
             'tabs' => true,
-            default => $this->currentEditorConfig?->usesTabs ?? false,
+            default => $this->currentEditorConfig->usesTabs ?? false,
         };
         $size = 'auto' === $config->indentSize
-            ? $this->currentEditorConfig?->indentSize ?? 2
+            ? $this->currentEditorConfig->indentSize ?? 2
             : (int) $config->indentSize;
 
         $this->document->setIndent($usesTabs, $size);

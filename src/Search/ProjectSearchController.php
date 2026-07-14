@@ -46,8 +46,6 @@ final class ProjectSearchController
     /** @var array{query: string, results: list<array{path: string, line: int, text: string, ranges: list<array{start: int, length: int}>}>}|null a pinned result set (session-lived) */
     private ?array $pinned = null;
 
-    /**
-     */
     public function __construct(
         private readonly ProjectSearch $projectSearch,
         private readonly ResultsPanelWidget $resultsPanel,

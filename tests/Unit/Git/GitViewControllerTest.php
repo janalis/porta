@@ -436,8 +436,24 @@ final class GitViewControllerTest extends TestCase
         $this->await(fn (): bool => 'full' === $this->changes->selectedEntry()?->stagedState());
         $this->await(fn (): bool => str_contains($this->diffText(), '+two CHANGED'), 'cached diff loads');
 
-        // The raced same-path reloads leave the cursor wherever clamping put
-        // it — page up pins it on the hunk header before unstaging the WHOLE hunk.
+        // refresh() and the selection change race same-path diff reloads; a
+        // late one would reset the cursor after we position it. Wait until the
+        // rendered diff and the cursor hold still before driving the cursor.
+        $snapshot = '';
+        $stable = 0;
+        $this->await(
+            function () use (&$snapshot, &$stable): bool {
+                $now = $this->diffText().new \ReflectionProperty($this->diffView, 'cursor')->getValue($this->diffView);
+                $stable = $now === $snapshot ? $stable + 1 : 0;
+                $snapshot = $now;
+
+                return $stable >= 8;
+            },
+            'diff reloads settled',
+            timeout: 5.0,
+        );
+
+        // Page up pins the cursor on the hunk header before unstaging the WHOLE hunk.
         $this->diffView->handleInput("\x1b[5~");
         $this->diffView->handleInput(' ');
         $this->await(fn (): bool => 'none' === ($this->changes->selectedEntry()?->stagedState() ?? 'gone'));

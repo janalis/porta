@@ -24,7 +24,7 @@ use Symfony\Component\Tui\Ansi\AnsiUtils;
  */
 final readonly class EditorRowAssembler
 {
-    private readonly Palette $palette;
+    private Palette $palette;
 
     /**
      * @param array<int, string>                                                          $gitMarks      0-based line => 'added'|'modified'|'deleted'
@@ -33,9 +33,9 @@ final readonly class EditorRowAssembler
      * @param array<int, list<array{col: int, text: string}>>                              $inlayHints    per-line inlay hints (byte col => dim label)
      */
     /** @var array<int, true> */
-    private readonly array $breakpointSet;
+    private array $breakpointSet;
 
-    private readonly CursorStyle $cursorStyle;
+    private CursorStyle $cursorStyle;
 
     /**
      * @param array<int, string>                                                              $gitMarks        0-based line => 'added'|'modified'|'deleted'

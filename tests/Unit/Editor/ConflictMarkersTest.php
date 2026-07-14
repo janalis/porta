@@ -18,7 +18,7 @@ final class ConflictMarkersTest extends TestCase
     public function testFindsWellFormedRegions(): void
     {
         $lines = $this->lines(
-            "before\n"."<<<<<<< HEAD\n"."ours line\n"."=======\n"."their line\n".">>>>>>> branch\n".'after',
+            "before\n<<<<<<< HEAD\n"."ours line\n"."=======\n"."their line\n".">>>>>>> branch\n".'after',
         );
 
         $this->assertSame(
@@ -30,7 +30,7 @@ final class ConflictMarkersTest extends TestCase
     public function testFindsMultipleRegions(): void
     {
         $lines = $this->lines(
-            "<<<<<<< a\nx\n=======\ny\n>>>>>>> b\n"."mid\n"."<<<<<<< c\nz\n=======\nw\n>>>>>>> d",
+            "<<<<<<< a\nx\n=======\ny\n>>>>>>> b\nmid\n"."<<<<<<< c\nz\n=======\nw\n>>>>>>> d",
         );
 
         $regions = ConflictMarkers::find($lines);

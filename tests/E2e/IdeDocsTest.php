@@ -230,6 +230,13 @@ final class IdeDocsTest extends TestCase
                 2600 => function ($tui, $terminal, $ide) use ($captureFile, $docs): void {
                     $tui->tick();
                     $this->assertStringContainsString('Opened https://example.com/x', AnsiUtils::stripAnsiCodes($terminal->getOutput()));
+                    // The shim runs as an independent OS process — poll for its
+                    // write instead of racing it at a fixed tick (blocking here
+                    // is fine: the shim needs no event-loop cooperation).
+                    $deadline = microtime(true) + 3.0;
+                    while (!str_contains((string) @file_get_contents($captureFile), 'https://example.com/x') && microtime(true) < $deadline) {
+                        usleep(20_000);
+                    }
                     $this->assertStringContainsString('https://example.com/x', (string) file_get_contents($captureFile));
 
                     // Quit-time session excludes the help tab (asserted after the run).

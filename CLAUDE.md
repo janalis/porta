@@ -26,14 +26,18 @@ vendor/bin/phpunit tests/Unit/I18n/BidiTest.php
 Run gate commands capturing output rather than piping to a pager, e.g.
 `composer analyze > /tmp/x.log 2>&1; echo "exit=$?"`.
 
-### Definition of done (every commit must pass all three)
+### Definition of done (every commit must pass all four)
 
-- `composer test` green (two tests are known-flaky and pass on isolated re-run:
-  `GitViewControllerTest::testLineStagingAndUnstagingThroughTheDiffPane`, and an async
-  URL-open E2e; re-run with `--filter` to confirm before assuming a regression).
+- `composer test` green. Two tests drive real git/opener subprocesses and were hardened
+  against timing (`GitViewControllerTest::testLineStagingAndUnstagingThroughTheDiffPane`,
+  the async URL-open E2e in `IdeDocsTest`); if one ever fails under heavy machine load,
+  re-run with `--filter` to confirm before assuming a regression.
 - `composer coverage:check` — **100% line coverage is required**. New code needs tests that
   hit every branch; a new branch with no covering test fails the gate.
 - `composer analyze` — mago reports **zero** issues, warnings, or help messages.
+- `composer lint` — **zero** findings. The `[linter.rules]` section of `mago.toml` disables
+  the rules that conflict with house style (with rationale comments); everything else
+  applies at full strength. CI (`.github/workflows/ci.yml`) runs all four gates.
 
 ## Conventions
 

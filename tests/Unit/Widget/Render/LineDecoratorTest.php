@@ -61,7 +61,7 @@ final class LineDecoratorTest extends TestCase
 
         $this->assertSame(8, AnsiUtils::visibleWidth($decorated));
         $this->assertStringStartsWith("\x1b[48;5;236m", $decorated);
-        $this->assertStringContainsString("\x1b[0m"."\x1b[48;5;236m", $decorated, 'background survives a reset inside the line');
+        $this->assertStringContainsString("\x1b[0m\x1b[48;5;236m", $decorated, 'background survives a reset inside the line');
         $this->assertStringEndsWith("\x1b[49m", $decorated);
     }
 }

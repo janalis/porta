@@ -427,8 +427,8 @@ final class OverlayHost
         if (null !== $search) {
             $rowModels = array_map(static fn (SearchRow $r): array => [
                 'header' => $r->header?->title(),
-                'label' => $r->hit?->label ?? '',
-                'detail' => $r->hit?->detail ?? '',
+                'label' => $r->hit->label ?? '',
+                'detail' => $r->hit->detail ?? '',
             ], $search->rows);
             $this->searchBox = EditorRenderer::searchOverlay(
                 $lines,

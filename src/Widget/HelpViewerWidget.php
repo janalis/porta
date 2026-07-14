@@ -486,7 +486,7 @@ final class HelpViewerWidget extends AbstractWidget implements FocusableInterfac
 
     private function clampScroll(int $scrollTop): int
     {
-        $max = max(0, \count($this->doc?->lines ?? []) - $this->bodyRows());
+        $max = max(0, \count($this->doc->lines ?? []) - $this->bodyRows());
 
         return max(0, min($max, $scrollTop));
     }
