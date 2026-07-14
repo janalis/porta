@@ -8,6 +8,7 @@ use Porta\Config\LayoutPrefs;
 use Porta\Config\LayoutStore;
 use Porta\Input\MouseEvent;
 use Porta\Support\IntMath;
+use Porta\Widget\DebugPanelWidget;
 use Porta\Widget\FileTreeWidget;
 use Porta\Widget\ResultsPanelWidget;
 use Porta\Widget\Settings\SettingsNavWidget;
@@ -48,6 +49,7 @@ final class LayoutController
         private readonly FileTreeWidget $tree,
         private readonly TerminalPanelWidget $terminalPanel,
         private readonly ResultsPanelWidget $resultsPanel,
+        private readonly DebugPanelWidget $debugPanel,
         private readonly GitSidebar $gitSidebar,
         private readonly SettingsNavWidget $settingsSidebar,
     ) {}
@@ -208,10 +210,10 @@ final class LayoutController
     }
 
     /**
-     * Arm a bottom-panel resize when a left-press lands on the panel's top edge.
-     * Focuses the panel too, preserving the click-to-focus behaviour.
+     * Arm a bottom-panel (terminal or results) resize when a left-press lands on
+     * the panel's top edge. Focuses the panel too, preserving click-to-focus.
      */
-    public function armPanelResize(TerminalPanelWidget $panel, MouseEvent $mouse): bool
+    public function armPanelResize(TerminalPanelWidget|ResultsPanelWidget|DebugPanelWidget $panel, MouseEvent $mouse): bool
     {
         if (!$panel->isOpen()) {
             return false;
@@ -229,6 +231,58 @@ final class LayoutController
         return true;
     }
 
+    /** Keyboard resize of the file-tree sidebar (Shift+F11/F12): widen/narrow by $delta columns. */
+    public function nudgeSidebar(int $delta): void
+    {
+        $this->nudgeSidebarWidth($this->tree, $delta, 12, 0.6, $this->sidebarWidthPercent);
+    }
+
+    /** Keyboard resize of the git sidebar. */
+    public function nudgeGitSidebar(int $delta): void
+    {
+        $this->nudgeSidebarWidth($this->gitSidebar, $delta, 30, 0.6, $this->gitSidebarWidthPercent);
+    }
+
+    /** Keyboard resize of the settings sidebar. */
+    public function nudgeSettingsSidebar(int $delta): void
+    {
+        $this->nudgeSidebarWidth($this->settingsSidebar, $delta, 14, 0.5, $this->settingsSidebarWidthPercent);
+    }
+
+    /**
+     * Keyboard resize of the open bottom panel (terminal/results/debug): grow or
+     * shrink by $delta rows. A no-op when none of the panels is on screen (their
+     * shared height would have nothing to anchor to without a rendered rect).
+     */
+    public function nudgeBottomPanel(int $delta): void
+    {
+        $rect = null;
+        foreach ([$this->terminalPanel, $this->resultsPanel, $this->debugPanel] as $panel) {
+            if ($panel->isOpen()) {
+                $rect = $this->renderer->getWidgetRect($panel);
+                break;
+            }
+        }
+        if (null === $rect) {
+            return;
+        }
+
+        $rows = $this->tui->getTerminal()->getRows();
+        $height = $this->clampPanel($rect->rows + $delta, $rows);
+        $this->resizeBottomPanels($height);
+        $this->commitPercent($height, $rows, $this->bottomPanelHeightPercent);
+        $this->tui->requestRender();
+    }
+
+    /** Shared keyboard-nudge path: clamp like the drags do, persist, repaint. */
+    private function nudgeSidebarWidth(ResizableSidebar $sidebar, int $delta, int $min, float $ratio, ?int &$percent): void
+    {
+        $cols = $this->tui->getTerminal()->getColumns();
+        $sidebar->setWidth($this->clampSidebarWidth($sidebar->width() + $delta, $cols, $min, $ratio));
+        $this->commitPercent($sidebar->width(), $cols, $percent);
+        $this->tui->requestRender();
+    }
+
     /** A fresh left-press ends any armed resize drag. */
     public function cancelDrags(): void
     {
@@ -242,6 +296,7 @@ final class LayoutController
     {
         $this->terminalPanel->setVisibleRows($height);
         $this->resultsPanel->setVisibleRows($height);
+        $this->debugPanel->setVisibleRows($height);
     }
 
     /**

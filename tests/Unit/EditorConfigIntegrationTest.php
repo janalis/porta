@@ -94,24 +94,47 @@ final class EditorConfigIntegrationTest extends TestCase
         $this->assertSame("hello\r\nworld\r\n", (string) file_get_contents($project->path('note.txt')));
     }
 
-    public function testDisabledSettingSkipsEditorConfig(): void
+    public function testLegacyEditorConfigKeyIsSilentlyIgnored(): void
     {
+        // "editorConfig" was the removed "Respect .editorconfig" toggle: a stale
+        // false in an old .porta.json must neither disable .editorconfig nor warn.
         $project = new TempProject([
             'composer.json' => '{}',
             '.porta.json' => json_encode(['settings' => ['editorConfig' => false]]),
-            '.editorconfig' => "root = true\n[*.txt]\nindent_size = 2\ntrim_trailing_whitespace = true\n",
+            '.editorconfig' => "root = true\n[*.txt]\nindent_size = 2\ntrim_trailing_whitespace = true\ninsert_final_newline = true\n",
             'note.txt' => "keep  \n",
         ]);
         $ide = $this->ide($project);
         $buffer = $this->open($ide, $project->path('note.txt'));
 
-        // No config applied to the document, and none stashed on the buffer.
-        $this->assertSame(4, $buffer->document->indentSize());
-        $this->assertNull($buffer->editorConfig);
+        // .editorconfig still applies: to the document and stashed on the buffer.
+        $this->assertSame(2, $buffer->document->indentSize());
+        $this->assertNotNull($buffer->editorConfig);
 
-        // Save writes the untouched (LF, untrimmed) bytes.
+        // The legacy key raised no boot warning.
+        $this->assertStringNotContainsString('Unknown setting', (string) $this->flashText($ide));
+
+        // Save runs the .editorconfig transforms (trailing spaces trimmed).
         $this->save($ide, $buffer);
-        $this->assertSame("keep  \n", (string) file_get_contents($project->path('note.txt')));
+        $this->assertSame("keep\n", (string) file_get_contents($project->path('note.txt')));
+    }
+
+    public function testSaveWithoutAResolvedConfigWritesThePlainBytes(): void
+    {
+        // Defensive fallback: every text open resolves a config, but a buffer
+        // whose config was dropped (nullable property) saves its bytes verbatim.
+        $project = new TempProject([
+            'composer.json' => '{}',
+            '.editorconfig' => "root = true\n[*.txt]\ntrim_trailing_whitespace = true\n",
+            'note.txt' => "keep  \nno final newline",
+        ]);
+        $ide = $this->ide($project);
+        $buffer = $this->open($ide, $project->path('note.txt'));
+
+        $buffer->editorConfig = null;
+        $this->save($ide, $buffer);
+
+        $this->assertSame("keep  \nno final newline", (string) file_get_contents($project->path('note.txt')), 'no transforms without a config');
     }
 
     public function testUnsupportedCharsetFlashesWarning(): void

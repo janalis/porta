@@ -106,9 +106,10 @@ final class MenuPanel
         $label = AnsiUtils::truncateToWidth($item->label, $labelMax, '…');
         $gap = max(1, $inner - AnsiUtils::visibleWidth($label) - mb_strwidth($shortcut));
 
-        // Disabled always reads dim and never shows the selected highlight.
+        // Disabled always reads dim and never shows the selected highlight; the
+        // SGR dim attribute keeps the state visible without color (monochrome).
         $bg = !$enabled
-            ? $palette->of(Role::RowHighlightBg).$palette->of(Role::Gutter)
+            ? "\x1b[2m".$palette->of(Role::RowHighlightBg).$palette->of(Role::Gutter)
             : ($selected ? $palette->of(Role::SelectedRow) : $palette->of(Role::PopupRow));
         $tail = '' !== $shortcut ? $palette->of(Role::CompletionHint).$shortcut."\x1b[39m" : str_repeat(' ', mb_strwidth($shortcut));
 

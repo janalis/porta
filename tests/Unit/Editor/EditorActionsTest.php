@@ -14,6 +14,7 @@ use Porta\Editor\EditorStructural;
 use Porta\Editor\FoldModel;
 use Porta\Editor\MultiCaret;
 use Porta\Input\TextInput;
+use Porta\Widget\EditorKeymap;
 use Symfony\Component\Tui\Input\Keybindings;
 
 /**

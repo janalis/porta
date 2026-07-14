@@ -49,8 +49,11 @@ final class LineSpans
             $spans[] = self::selectionSpan($doc, $lineIndex, $selection['startLine'], $selection['startCol'], $selection['endLine'], $selection['endCol'], $palette);
         }
         foreach ($matches as $match) {
-            $bg = $match['current'] ? $palette->of(Role::SearchCurrentBg) : $palette->of(Role::SearchBg);
-            $spans[] = [$doc->displayColAt($lineIndex, $match['start']), $doc->displayColAt($lineIndex, $match['end']), $bg, "\x1b[49m", $bg];
+            // The current match is additionally bold, so it stands out from the
+            // other matches without relying on the background color.
+            $open = $match['current'] ? $palette->of(Role::SearchCurrentBg)."\x1b[1m" : $palette->of(Role::SearchBg);
+            $close = $match['current'] ? "\x1b[49m\x1b[22m" : "\x1b[49m";
+            $spans[] = [$doc->displayColAt($lineIndex, $match['start']), $doc->displayColAt($lineIndex, $match['end']), $open, $close, $open];
         }
         foreach ($occurrences as [$oLine, $oStart, $oEnd]) {
             if ($oLine === $lineIndex) {

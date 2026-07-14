@@ -48,6 +48,100 @@ final class MenuModelTest extends TestCase
         $this->assertSame(['File', 'Edit', 'Navigate', 'Code', 'Run', 'Git', 'View', 'Help'], $titles);
     }
 
+    public function testPluginSpecsInsertAPluginsMenuBetweenCodeAndRun(): void
+    {
+        $commands = new CommandRegistry();
+        $ran = 0;
+        $commands->add(
+            'demo:hello',
+            function () use (&$ran): void {
+                ++$ran;
+            },
+            keyBound: true,
+            label: 'Say Hello',
+        );
+        $ideKeys = new Keybindings(['demo:hello' => ['ctrl+alt+y']]);
+
+        $menus = MenuModel::build($commands, new CodeEditorWidget(), $ideKeys, new Translator('en'), pluginSpecs: [['plugin' => 'demo', 'spec' => 'i:demo:hello', 'when' => null]]);
+        $titles = array_map(static fn (Menu $m) => $m->title, $menus);
+        $this->assertSame(['File', 'Edit', 'Navigate', 'Code', 'Plugins', 'Run', 'Git', 'View', 'Help'], $titles, 'the Plugins menu sits between Code and Run');
+        $plugins = $menus[4];
+        $this->assertSame('Say Hello', $plugins->items[0]->label, 'label resolves from the registry');
+        $this->assertStringContainsString('Y', $plugins->items[0]->shortcut, 'shortcut from the merged keybindings');
+        $this->assertTrue($plugins->items[0]->enabled(), 'no when-closure means always enabled');
+
+        ($plugins->items[0]->run)();
+        $this->assertSame(1, $ran, 'the item runs through the registry');
+
+        $bare = MenuModel::build($commands, new CodeEditorWidget(), $ideKeys, new Translator('en'));
+        $this->assertCount(8, $bare, 'no Plugins menu without specs');
+    }
+
+    public function testPluginItemsAreGroupedPerPluginWithSeparators(): void
+    {
+        $commands = new CommandRegistry();
+        $commands->add('alpha:one', static function (): void {}, keyBound: true, label: 'Alpha One');
+        $commands->add('alpha:two', static function (): void {}, keyBound: true, label: 'Alpha Two');
+        $commands->add('beta:one', static function (): void {}, keyBound: true, label: 'Beta One');
+
+        $menus = MenuModel::build($commands, new CodeEditorWidget(), new Keybindings([]), new Translator('en'), pluginSpecs: [
+            ['plugin' => 'alpha', 'spec' => 'i:alpha:one', 'when' => null],
+            ['plugin' => 'alpha', 'spec' => 'i:alpha:two', 'when' => null],
+            ['plugin' => 'beta', 'spec' => 'i:beta:one', 'when' => null],
+        ]);
+
+        $items = $menus[4]->items;
+        $this->assertCount(4, $items, 'three entries plus one separator');
+        $this->assertSame([false, false, true, false], array_map(static fn (MenuItem $i) => $i->separator, $items), 'one separator, exactly where the owning plugin changes');
+        $this->assertSame(['Alpha One', 'Alpha Two', 'Beta One'], array_values(array_map(static fn (MenuItem $i) => $i->label, array_filter($items, static fn (MenuItem $i) => !$i->separator))));
+    }
+
+    public function testASinglePluginGetsNoSeparators(): void
+    {
+        $commands = new CommandRegistry();
+        $commands->add('demo:a', static function (): void {}, keyBound: true, label: 'A');
+        $commands->add('demo:b', static function (): void {}, keyBound: true, label: 'B');
+
+        $menus = MenuModel::build($commands, new CodeEditorWidget(), new Keybindings([]), new Translator('en'), pluginSpecs: [
+            ['plugin' => 'demo', 'spec' => 'i:demo:a', 'when' => null],
+            ['plugin' => 'demo', 'spec' => 'i:demo:b', 'when' => null],
+        ]);
+
+        $this->assertSame([false, false], array_map(static fn (MenuItem $i) => $i->separator, $menus[4]->items), 'a single plugin keeps a flat, separator-free list');
+    }
+
+    public function testPluginWhenClosureGatesTheMenuItemOnTopOfViewGating(): void
+    {
+        $commands = new CommandRegistry();
+        $commands->add('demo:hello', static function (): void {}, keyBound: true, label: 'Say Hello');
+        $usable = false;
+        $settingsOpen = false;
+
+        $menus = MenuModel::build(
+            $commands,
+            new CodeEditorWidget(),
+            new Keybindings([]),
+            new Translator('en'),
+            settingsViewOpen: static function () use (&$settingsOpen): bool {
+                return $settingsOpen;
+            },
+            pluginSpecs: [[
+                'plugin' => 'demo',
+                'spec' => 'i:demo:hello',
+                'when' => static function () use (&$usable): bool {
+                    return $usable;
+                },
+            ]],
+        );
+        $item = $menus[4]->items[0];
+
+        $this->assertFalse($item->enabled(), 'unusable plugin → disabled');
+        $usable = true;
+        $this->assertTrue($item->enabled(), 'usable plugin → enabled');
+        $settingsOpen = true;
+        $this->assertFalse($item->enabled(), 'the settings-view gate still applies on top');
+    }
+
     public function testTitlesAndItemsAreTranslated(): void
     {
         $project = new \Porta\Tests\Support\TempProject([

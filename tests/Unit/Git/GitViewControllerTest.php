@@ -5,21 +5,38 @@ declare(strict_types=1);
 namespace Porta\Tests\Unit\Git;
 
 use PHPUnit\Framework\TestCase;
+use Porta\Config\LayoutStore;
+use Porta\Editor\BufferManager;
+use Porta\Event\GitCommitted;
 use Porta\Git\GitInfo;
 use Porta\Git\GitPanes;
-use Porta\Git\GitViewCallbacks;
 use Porta\Git\GitViewController;
 use Porta\I18n\Translator;
+use Porta\Layout\EditorAreaPanes;
+use Porta\Layout\GitSidebar;
+use Porta\Layout\LayoutController;
+use Porta\Support\Clipboard;
 use Porta\Tests\Support\TempProject;
+use Porta\Ui\EditorArea;
 use Porta\Ui\Notifier;
+use Porta\Ui\WorkspaceViews;
+use Porta\Widget\CodeEditorWidget;
+use Porta\Widget\DebugPanelWidget;
+use Porta\Widget\FileTreeWidget;
 use Porta\Widget\Git\ChangesListWidget;
 use Porta\Widget\Git\CommitBoxWidget;
 use Porta\Widget\Git\DiffViewWidget;
 use Porta\Widget\Git\GitTabsWidget;
 use Porta\Widget\Git\HistoryListWidget;
+use Porta\Widget\HelpViewerWidget;
+use Porta\Widget\ImageViewerWidget;
 use Porta\Widget\MenuBarWidget;
+use Porta\Widget\ResultsPanelWidget;
+use Porta\Widget\Settings\SettingsNavWidget;
 use Porta\Widget\StatusBarWidget;
+use Porta\Widget\TerminalPanelWidget;
 use Revolt\EventLoop;
+use Symfony\Component\EventDispatcher\EventDispatcher;
 use Symfony\Component\Tui\Ansi\AnsiUtils;
 use Symfony\Component\Tui\Input\Keybindings;
 use Symfony\Component\Tui\Render\RenderContext;
@@ -48,21 +65,18 @@ final class GitViewControllerTest extends TestCase
     private ContainerWidget $gitLeft;
     private ContainerWidget $main;
     private StatusBarWidget $statusBar;
-    private int $closed = 0;
     private int $committed = 0;
-    /** @var array{split: bool, hideWhitespace: bool} */
-    private array $diffPrefs = ['split' => false, 'hideWhitespace' => false];
-    /** @var list<array{bool, bool}> */
-    private array $savedPrefs = [];
-    /** @var list<string> */
-    private array $clipboard = [];
+    private CodeEditorWidget $editor;
+    private LayoutController $layoutController;
 
     private function controller(bool $realRepo = true): GitViewController
     {
         if ($realRepo && null === self::findGit()) {
             $this->markTestSkipped('git not available');
         }
-        $this->project = new TempProject(['a.txt' => "one\ntwo\n"]);
+        // .porta/ is ignored so the real LayoutController's pref writes never
+        // dirty the porcelain assertions.
+        $this->project = new TempProject(['a.txt' => "one\ntwo\n", '.gitignore' => ".porta/\n"]);
         if ($realRepo) {
             $d = escapeshellarg($this->project->dir);
             exec("git -C {$d} init -q && git -C {$d} config user.email t@t && git -C {$d} config user.name t && git -C {$d} add -A && git -C {$d} commit -qm init");
@@ -90,11 +104,29 @@ final class GitViewControllerTest extends TestCase
         $gitArea->add($this->gitLeft)->add($this->diffView);
         $this->statusBar = new StatusBarWidget();
         $this->tui = new Tui(terminal: new VirtualTerminal(columns: 100, rows: 24), keybindings: new Keybindings([]), renderer: new Renderer(new StyleSheet()));
-        $this->closed = 0;
         $this->committed = 0;
-        $this->diffPrefs = ['split' => false, 'hideWhitespace' => false];
-        $this->savedPrefs = [];
-        $this->clipboard = [];
+        $dispatcher = new EventDispatcher();
+        $dispatcher->addListener(GitCommitted::class, function (): void {
+            ++$this->committed;
+        });
+        // The restored editor area holds a focusable editor so close() has a
+        // real focus target (EditorArea resolves to it with no buffers open).
+        $this->editor = new CodeEditorWidget();
+        $this->editor->setId('editor');
+        $editWidget->add($this->editor);
+        $editorArea = new EditorArea(new BufferManager(), $this->editor, new ImageViewerWidget(), new HelpViewerWidget(), $this->tui);
+        $t = new Translator('en');
+        $this->layoutController = new LayoutController(
+            new LayoutStore($this->project->dir),
+            $this->tui,
+            new Renderer(new StyleSheet()),
+            new FileTreeWidget($this->project->dir),
+            new TerminalPanelWidget(),
+            new ResultsPanelWidget(),
+            new DebugPanelWidget(),
+            new GitSidebar($this->tabs, $this->changes, $this->commitBox, $this->history),
+            new SettingsNavWidget($t),
+        );
 
         return new GitViewController(
             $this->git,
@@ -106,23 +138,22 @@ final class GitViewControllerTest extends TestCase
             $this->menuBar,
             $this->tui,
             new Notifier($this->statusBar, $this->tui),
-            new Translator('en'),
-            new GitViewCallbacks(
-                editArea: static fn (): array => [$editWidget],
-                onClosed: function (): void {
-                    ++$this->closed;
-                },
-                onCommitted: function (): void {
-                    ++$this->committed;
-                },
-                loadDiffPrefs: fn (): array => $this->diffPrefs,
-                saveDiffPrefs: function (bool $split, bool $hideWhitespace): void {
-                    $this->savedPrefs[] = [$split, $hideWhitespace];
-                },
-                copyToClipboard: function (string $text): void {
-                    $this->clipboard[] = $text;
-                },
-            ),
+            $t,
+            new class($editWidget) implements EditorAreaPanes {
+                public function __construct(
+                    private readonly ContainerWidget $editWidget,
+                ) {}
+
+                public function orderedEditorPanes(): array
+                {
+                    return [$this->editWidget];
+                }
+            },
+            $editorArea,
+            $dispatcher,
+            $this->layoutController,
+            new Clipboard($this->tui),
+            new WorkspaceViews(),
         );
     }
 
@@ -164,9 +195,9 @@ final class GitViewControllerTest extends TestCase
         $controller->toggle();
         $this->assertFalse($controller->isOpen());
         $this->assertSame(['edit-stub'], array_map(static fn ($w) => $w->getId(), $this->main->all()));
-        $this->assertSame(1, $this->closed);
+        $this->assertSame($this->editor, $this->tui->getFocus(), 'close restores focus to the editor area');
         $controller->close(); // idempotent
-        $this->assertSame(1, $this->closed);
+        $this->assertSame(['edit-stub'], array_map(static fn ($w) => $w->getId(), $this->main->all()));
 
         $controller->toggle(); // second round trip stays stable
         $controller->toggle();
@@ -184,6 +215,31 @@ final class GitViewControllerTest extends TestCase
         $this->changes->handleInput('2');
         $this->await(fn (): bool => 2 === \count($this->gitLeft->all()));
         $this->assertSame($this->history, $controller->focusTarget());
+    }
+
+    public function testFocusNextAndPreviousWalkThePanesBothWays(): void
+    {
+        $controller = $this->controller();
+        $controller->open();
+        $this->await(fn (): bool => $controller->isOpen());
+
+        $this->tui->setFocus($this->changes);
+        $controller->focusNext();
+        $this->assertSame($this->diffView, $this->tui->getFocus(), 'changes → diff');
+        $controller->focusNext();
+        $this->assertSame($this->commitBox, $this->tui->getFocus(), 'diff → commit box');
+        $controller->focusNext();
+        $this->assertSame($this->changes, $this->tui->getFocus(), 'wraps back to the changes list');
+
+        $controller->focusPrevious();
+        $this->assertSame($this->commitBox, $this->tui->getFocus(), 'reverse: changes → commit box');
+        $controller->focusPrevious();
+        $this->assertSame($this->diffView, $this->tui->getFocus(), 'commit box → diff');
+
+        // Focus outside the git panes enters at the changes list either way.
+        $this->tui->setFocus($this->menuBar);
+        $controller->focusPrevious();
+        $this->assertSame($this->changes, $this->tui->getFocus());
     }
 
     public function testRefreshPopulatesEntriesAndLoadsTheWorktreeDiff(): void
@@ -428,14 +484,14 @@ final class GitViewControllerTest extends TestCase
     public function testDiffPrefsApplyOnOpenAndPersistOnToggle(): void
     {
         $controller = $this->controller();
-        $this->diffPrefs = ['split' => true, 'hideWhitespace' => false];
+        $this->layoutController->setGitDiffPrefs(true, false);
         $controller->open();
         $this->await(fn (): bool => $controller->isOpen());
         $this->assertTrue($this->diffView->isSplit(), 'the persisted split preference applies on open');
 
         $this->diffView->setFocused(true);
         $this->diffView->handleInput('s'); // back to unified: persists
-        $this->assertSame([[false, false]], $this->savedPrefs);
+        $this->assertSame(['split' => false, 'hideWhitespace' => false], $this->layoutController->gitDiffPrefs(), 'the unified toggle persisted');
     }
 
     public function testCtrlCCopiesTheSelectedDiffLines(): void
@@ -452,7 +508,7 @@ final class GitViewControllerTest extends TestCase
         $this->diffView->handleInput("\x1b[B"); // -two
         $this->diffView->handleInput("\x03");
 
-        $this->assertSame(["one\ntwo\n"], $this->clipboard);
+        $this->assertStringContainsString("\x1b]52;c;".base64_encode("one\ntwo\n"), $this->tui->getTerminal()->getOutput(), 'the diff selection reached the OSC 52 clipboard');
         $this->assertStringContainsString('Copied 2 lines', $this->statusFlash());
     }
 
@@ -469,7 +525,7 @@ final class GitViewControllerTest extends TestCase
         $this->await(fn (): bool => !str_contains($this->diffText(), '+  one'), 'the indent-only pair disappears');
         $this->assertStringContainsString('+two CHANGED', $this->diffText(), 'real changes survive');
         $this->assertStringContainsString('Whitespace changes hidden', $this->statusFlash());
-        $this->assertSame([[false, true]], $this->savedPrefs, 'the preference persisted');
+        $this->assertSame(['split' => false, 'hideWhitespace' => true], $this->layoutController->gitDiffPrefs(), 'the preference persisted');
 
         // Staging is blocked while whitespace is hidden: a -w diff cannot
         // produce an appliable patch.
@@ -486,7 +542,7 @@ final class GitViewControllerTest extends TestCase
     public function testWhitespaceOnlyChangeShowsThePlaceholder(): void
     {
         $controller = $this->controller();
-        $this->diffPrefs = ['split' => false, 'hideWhitespace' => true]; // persisted from a previous session
+        $this->layoutController->setGitDiffPrefs(false, true); // persisted from a previous session
         $this->project->write('a.txt', "  one\ntwo\n"); // reindent only
         $controller->open();
 

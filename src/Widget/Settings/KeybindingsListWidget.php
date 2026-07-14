@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Porta\Widget\Settings;
 
 use Porta\Config\KeybindingRow;
+use Porta\Container\AsWidget;
 use Porta\I18n\Translator;
 use Porta\Ui\ColorPalette;
 use Porta\Ui\ListNavigation;
@@ -33,6 +34,7 @@ use Symfony\Component\Tui\Widget\VerticallyExpandableInterface;
  * cancels capture instead of leaving the view. Rebinds take effect next launch.
  *
  */
+#[AsWidget('settings-keys', flex: 1)]
 final class KeybindingsListWidget extends AbstractWidget implements FocusableInterface, MenuOverlayHost, VerticallyExpandableInterface
 {
     use FillsPaneTrait;
@@ -212,7 +214,7 @@ final class KeybindingsListWidget extends AbstractWidget implements FocusableInt
 
             $selected = $index === $this->list->selected();
             $bg = $selected
-                ? ($this->focused ? $this->palette->of(Role::SelectedRow) : $this->palette->of(Role::HeaderBar))
+                ? ($this->focused ? $this->palette->of(Role::SelectedRow) : $this->palette->of(Role::SelectedRowUnfocused))
                 : ($index === $this->hoveredIndex ? $this->palette->of(Role::RowHighlightBg) : '');
 
             if ($index === $this->capturingIndex) {

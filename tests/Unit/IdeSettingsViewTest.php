@@ -48,8 +48,9 @@ final class IdeSettingsViewTest extends TestCase
 
         $this->ide = new Ide($project->dir, $project->path('a.php'), new VirtualTerminal(columns: 100, rows: 24));
         $this->commands = new \ReflectionProperty($this->ide, 'commands')->getValue($this->ide);
-        $this->gitView = new \ReflectionProperty($this->ide, 'gitView')->getValue($this->ide);
-        $this->settingsView = new \ReflectionProperty($this->ide, 'settingsView')->getValue($this->ide);
+        $views = new \ReflectionProperty($this->ide, 'views')->getValue($this->ide);
+        $this->gitView = new \ReflectionProperty($views, 'git')->getValue($views);
+        $this->settingsView = new \ReflectionProperty($views, 'settings')->getValue($views);
         $this->main = new \ReflectionProperty($this->ide, 'main')->getValue($this->ide);
     }
 

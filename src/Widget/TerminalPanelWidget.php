@@ -4,9 +4,11 @@ declare(strict_types=1);
 
 namespace Porta\Widget;
 
+use Porta\Container\AsWidget;
 use Porta\Support\IntMath;
 use Porta\Terminal\TerminalBuffer;
 use Porta\Ui\ColorPalette;
+use Porta\Ui\CursorStyle;
 use Porta\Ui\LtrPane;
 use Porta\Ui\Palette;
 use Porta\Ui\Role;
@@ -22,6 +24,7 @@ use Symfony\Component\Tui\Widget\KeybindingsTrait;
  * Bottom terminal panel: renders a {@see TerminalBuffer}'s scrollback and
  * forwards keystrokes to the running process. Hidden (zero rows) when closed.
  */
+#[AsWidget('terminal')]
 final class TerminalPanelWidget extends OverlayWidget implements FocusableInterface, LtrPane
 {
     use FocusableTrait;
@@ -37,10 +40,12 @@ final class TerminalPanelWidget extends OverlayWidget implements FocusableInterf
     private $onInputForward = null;
 
     private readonly Palette $palette;
+    private readonly CursorStyle $cursorStyle;
 
-    public function __construct(?Palette $palette = null)
+    public function __construct(?Palette $palette = null, ?CursorStyle $cursorStyle = null)
     {
         $this->palette = $palette ?? ColorPalette::dark();
+        $this->cursorStyle = $cursorStyle ?? new CursorStyle();
         $this->buffer = new TerminalBuffer();
         $this->visibleRows = 12;
     }
@@ -149,6 +154,16 @@ final class TerminalPanelWidget extends OverlayWidget implements FocusableInterf
         // Pad to a stable height.
         for ($i = \count($window); $i < $bodyRows; ++$i) {
             $lines[] = str_repeat(' ', $columns);
+        }
+
+        // Place the hardware cursor at the child's prompt position when the
+        // panel owns the focus and shows the live tail — screen readers follow
+        // it. The buffer is line oriented, so the cursor is on its last line.
+        if ($this->focused && 0 === $this->scrollBack && [] !== $window) {
+            $row = \count($window); // header + window: the last body line's index
+            $col = min($this->buffer->cursorColumn(), max(0, $columns - 1));
+            $byte = \strlen(AnsiUtils::sliceByColumn($lines[$row], 0, $col));
+            $lines[$row] = substr($lines[$row], 0, $byte).$this->cursorStyle->marker().substr($lines[$row], $byte);
         }
 
         return $lines;

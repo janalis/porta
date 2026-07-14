@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Porta\Config;
 
 use Porta\I18n\Translator;
+use Porta\Lsp\BufferReopener;
 use Porta\Lsp\LspSessionPool;
 use Porta\Lsp\ServerLocator;
 use Porta\Ui\Notifier;
@@ -20,14 +21,13 @@ final class SettingsLspController
 {
     /**
      * @param array<string, string> $overrides languageId => command from {@see IdeConfig::$lspServers}
-     * @param \Closure(): void       $reopenBuffers re-send didOpen for every open buffer
      */
     public function __construct(
         private readonly string $rootDir,
         private readonly LspSessionPool $lsp,
         private array $overrides,
         private readonly ?string $lspOverride,
-        private readonly \Closure $reopenBuffers,
+        private readonly BufferReopener $reopener,
         private readonly Notifier $notifier,
         private readonly Translator $translator,
     ) {}
@@ -75,7 +75,7 @@ final class SettingsLspController
         }
 
         $this->lsp->reconfigure(ServerLocator::locateAll($this->rootDir, $this->lspOverride));
-        ($this->reopenBuffers)();
+        $this->reopener->reopenAllInLsp();
 
         $shown = '' === $command ? $this->translator->trans('auto-detect') : $command;
         $saved = $persisted ? '' : ' ('.$this->translator->trans('not saved').')';

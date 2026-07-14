@@ -5,7 +5,9 @@ declare(strict_types=1);
 namespace Porta\Search\Everywhere;
 
 use Porta\Editor\BufferManager;
+use Porta\Editor\FileOpener;
 use Porta\Support\ProjectPaths;
+use Porta\Support\Scheduler;
 use Symfony\Component\Tui\Tui;
 
 /**
@@ -29,9 +31,6 @@ final class SearchEverywhereController
     /**
      * @param list<SearchSource>                $syncSources  files, actions (run immediately)
      * @param list<SearchSource>                $asyncSources classes, symbols, text (debounced)
-     * @param \Closure(string, bool): void      $openFile     fn(absolutePath, focusEditor), for recent files
-     * @param \Closure(float, \Closure): string $delay        schedule; returns a cancel handle
-     * @param \Closure(string): void            $cancelDelay  cancel a scheduled handle
      */
     public function __construct(
         private readonly SearchOverlay $overlay,
@@ -40,9 +39,8 @@ final class SearchEverywhereController
         private readonly BufferManager $buffers,
         private readonly Tui $tui,
         private readonly string $rootDir,
-        private readonly \Closure $openFile,
-        private readonly \Closure $delay,
-        private readonly \Closure $cancelDelay,
+        private readonly FileOpener $files,
+        private readonly Scheduler $scheduler,
     ) {}
 
     public function open(): void
@@ -76,7 +74,7 @@ final class SearchEverywhereController
         }
 
         $this->cancelDebounce();
-        $this->debounceWatcher = ($this->delay)(0.25, function () use ($generation, $text): void {
+        $this->debounceWatcher = $this->scheduler->delay(0.25, function () use ($generation, $text): void {
             if ($generation !== $this->generation) {
                 return;
             }
@@ -128,7 +126,7 @@ final class SearchEverywhereController
     private function cancelDebounce(): void
     {
         if (null !== $this->debounceWatcher) {
-            ($this->cancelDelay)($this->debounceWatcher);
+            $this->scheduler->cancel($this->debounceWatcher);
             $this->debounceWatcher = null;
         }
     }
@@ -145,7 +143,7 @@ final class SearchEverywhereController
                 basename($relative),
                 '.' === $dir ? '' : $dir,
                 function () use ($absolute): void {
-                    ($this->openFile)($absolute, true);
+                    $this->files->openFile($absolute, true);
                 },
             );
         }

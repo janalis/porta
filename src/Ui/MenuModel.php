@@ -67,6 +67,7 @@ final class MenuModel
             self::SEP,
             'e:goto_line',
             'i:ide_goto_symbol',
+            'i:ide_goto_test',
             'e:file_structure',
             self::SEP,
             'e:rename_symbol',
@@ -88,6 +89,14 @@ final class MenuModel
             'i:ide_run',
             'i:ide_run_last',
             self::SEP,
+            'i:ide_debug',
+            'i:debug_toggle_breakpoint',
+            'i:debug_step_over',
+            'i:debug_step_into',
+            'i:debug_step_out',
+            'i:debug_continue',
+            'i:debug_stop',
+            self::SEP,
             'i:ide_terminal',
         ],
         'Git' => [
@@ -107,14 +116,17 @@ final class MenuModel
             'i:toggle_auto_pairs',
         ],
         'Help' => [
+            'i:ide_help',
+            self::SEP,
             'i:ide_command_palette',
             'e:quick_doc',
         ],
     ];
 
     /**
-     * @param (\Closure(): bool)|null $gitViewOpen      while true, only GIT_VIEW_SAFE items stay enabled
-     * @param (\Closure(): bool)|null $settingsViewOpen while true, only SETTINGS_VIEW_SAFE items stay enabled
+     * @param (\Closure(): bool)|null                                            $gitViewOpen      while true, only GIT_VIEW_SAFE items stay enabled
+     * @param (\Closure(): bool)|null                                            $settingsViewOpen while true, only SETTINGS_VIEW_SAFE items stay enabled
+     * @param list<array{plugin: string, spec: string, when: (\Closure(): bool)|null}> $pluginSpecs runtime plugin entries — a Plugins menu between Code and Run when non-empty
      *
      * @return list<Menu>
      */
@@ -125,23 +137,52 @@ final class MenuModel
         Translator $translator,
         ?\Closure $gitViewOpen = null,
         ?\Closure $settingsViewOpen = null,
+        array $pluginSpecs = [],
     ): array {
         $menus = [];
         foreach (self::DEFS as $title => $specs) {
             $menus[] = new Menu($translator->trans($title), self::items($specs, $commands, $editor, $ideKeys, $translator, $gitViewOpen, $settingsViewOpen));
+            if ('Code' === $title && [] !== $pluginSpecs) {
+                $menus[] = new Menu($translator->trans('Plugins'), self::items(self::groupByPlugin($pluginSpecs), $commands, $editor, $ideKeys, $translator, $gitViewOpen, $settingsViewOpen));
+            }
         }
 
         return $menus;
     }
 
     /**
+     * Interleave a separator wherever the owning plugin changes between two
+     * consecutive specs, so each plugin's entries read as one group. No leading
+     * or trailing separators by construction; a single plugin gets none.
+     *
+     * @param list<array{plugin: string, spec: string, when: (\Closure(): bool)|null}> $pluginSpecs
+     *
+     * @return list<string|array{plugin: string, spec: string, when: (\Closure(): bool)|null}>
+     */
+    private static function groupByPlugin(array $pluginSpecs): array
+    {
+        $grouped = [];
+        $previous = null;
+        foreach ($pluginSpecs as $entry) {
+            if (null !== $previous && $previous !== $entry['plugin']) {
+                $grouped[] = self::SEP;
+            }
+            $grouped[] = $entry;
+            $previous = $entry['plugin'];
+        }
+
+        return $grouped;
+    }
+
+    /**
      * Build a list of menu items from `scope:id` specs (or {@see SEP}). Shared by
      * the menu bar and the right-click context menus so labels, shortcuts and
-     * run handlers stay a single source of truth.
+     * run handlers stay a single source of truth. Plugin entries arrive as
+     * arrays carrying an optional enabled-closure; core specs stay plain strings.
      *
-     * @param list<string>            $specs
-     * @param (\Closure(): bool)|null $gitViewOpen
-     * @param (\Closure(): bool)|null $settingsViewOpen
+     * @param list<string|array{plugin?: string, spec: string, when: (\Closure(): bool)|null}> $specs
+     * @param (\Closure(): bool)|null                                         $gitViewOpen
+     * @param (\Closure(): bool)|null                                         $settingsViewOpen
      *
      * @return list<MenuItem>
      */
@@ -155,10 +196,12 @@ final class MenuModel
         ?\Closure $settingsViewOpen = null,
     ): array {
         $items = [];
-        foreach ($specs as $spec) {
+        foreach ($specs as $entry) {
+            $spec = \is_array($entry) ? $entry['spec'] : $entry;
+            $when = \is_array($entry) ? $entry['when'] : null;
             $items[] = self::SEP === $spec
                 ? MenuItem::separator()
-                : self::item($spec, $commands, $editor, $ideKeys, $translator, $gitViewOpen, $settingsViewOpen);
+                : self::item($spec, $commands, $editor, $ideKeys, $translator, $gitViewOpen, $settingsViewOpen, $when);
         }
 
         return $items;
@@ -174,18 +217,19 @@ final class MenuModel
      * The only commands that stay enabled while the git view owns the main area:
      * everything else targets the detached editor/tree and would act invisibly.
      */
-    private const array GIT_VIEW_SAFE = ['ide_quit', 'ide_git', 'git_commit', 'git_undo_commit', 'ide_command_palette'];
+    private const array GIT_VIEW_SAFE = ['ide_quit', 'ide_git', 'git_commit', 'git_undo_commit', 'ide_command_palette', 'ide_help'];
 
     /**
      * The only commands that stay enabled while the settings view owns the main
      * area: leaving it, closing the app, or the palette. Everything else targets
      * the detached editor/tree and would act invisibly.
      */
-    private const array SETTINGS_VIEW_SAFE = ['ide_quit', 'ide_settings', 'ide_command_palette'];
+    private const array SETTINGS_VIEW_SAFE = ['ide_quit', 'ide_settings', 'ide_command_palette', 'ide_help'];
 
     /**
      * @param (\Closure(): bool)|null $gitViewOpen
      * @param (\Closure(): bool)|null $settingsViewOpen
+     * @param (\Closure(): bool)|null $pluginWhen       a plugin item's own enabled gate, ANDed with the view gating
      */
     private static function item(
         string $spec,
@@ -195,6 +239,7 @@ final class MenuModel
         Translator $translator,
         ?\Closure $gitViewOpen,
         ?\Closure $settingsViewOpen,
+        ?\Closure $pluginWhen = null,
     ): MenuItem {
         [$scope, $id] = explode(':', $spec, 2);
         $label = $translator->trans(
@@ -217,6 +262,10 @@ final class MenuModel
                 null !== $gitViewOpen && $gitViewOpen() => $gitSafe,
                 default => !$requiresFile || null !== $editor->getFilePath(),
             };
+        if (null !== $pluginWhen) {
+            $base = $isEnabled;
+            $isEnabled = static fn (): bool => (null === $base || $base()) && $pluginWhen();
+        }
 
         return new MenuItem($label, $shortcut, $run, isEnabled: $isEnabled);
     }

@@ -291,4 +291,83 @@ final class LspClientTest extends TestCase
 
         $this->assertFalse($client->isRunning());
     }
+
+    public function testAWedgedServerNeverBlocksTheEventLoop(): void
+    {
+        // The freeze regression: a server that stops draining its stdin used to
+        // park the whole loop inside a blocking fwrite once a frame exceeded
+        // the OS pipe buffer — screen, keyboard and mouse all dead.
+        $client = $this->client('deaf-lsp-server.php');
+        $client->start(static function (): void {});
+
+        $start = microtime(true);
+        $client->notify('porta/blob', ['data' => str_repeat('a', 262144)]);
+        $client->notify('porta/blob', ['data' => str_repeat('b', 262144)]);
+        $this->assertLessThan(0.5, microtime(true) - $start, 'sends return immediately, bytes queue instead of blocking');
+
+        // The loop stays live: this timer would never fire on the blocking code.
+        $ticked = false;
+        \Revolt\EventLoop::delay(0.05, static function () use (&$ticked): void {
+            $ticked = true;
+        });
+        $this->await(static fn (): bool => $ticked, 2.0);
+        $this->assertTrue($ticked, 'the event loop kept running while the server sat on a full pipe');
+
+        $client->stop();
+        $this->assertFalse($client->isRunning());
+    }
+
+    public function testQueuedFramesArriveIntactAndInOrderAcrossPartialWrites(): void
+    {
+        $digests = [];
+        $client = $this->client('slow-reading-lsp-server.php');
+        $client->onNotification('porta/digest', static function (array $params) use (&$digests): void {
+            if ('porta/blob' === ($params['method'] ?? '')) {
+                $digests[] = $params['md5'] ?? '';
+            }
+        });
+        $ready = false;
+        $client->start(static function (bool $ok) use (&$ready): void {
+            $ready = $ok;
+        });
+        $this->await(static fn (): bool => $ready);
+        $this->assertTrue($ready);
+
+        $expected = [];
+        foreach (['x', 'y', 'z'] as $fill) {
+            $message = ['jsonrpc' => '2.0', 'method' => 'porta/blob', 'params' => ['data' => str_repeat($fill, 131072)]];
+            $frame = \Porta\Support\JsonRpcFramer::encode($message);
+            $expected[] = md5(substr($frame, strpos($frame, "\r\n\r\n") + 4));
+            $client->notify('porta/blob', $message['params']);
+        }
+
+        $this->await(static fn (): bool => 3 === \count($digests), 15.0);
+        $this->assertSame($expected, $digests, 'all frames crossed the slow pipe intact and in send order');
+    }
+
+    public function testWriteQueueOverflowTerminatesTheWedgedServer(): void
+    {
+        $log = [];
+        $client =
+            $this->clients[] = new LspClient(
+                [\PHP_BINARY, __DIR__.'/../Support/deaf-lsp-server.php'],
+                \dirname(__DIR__, 2),
+                static function (string $line) use (&$log): void {
+                    $log[] = $line;
+                },
+                maxWriteBuffer: 65536,
+            );
+        $client->start(static function (): void {});
+
+        $client->notify('porta/blob', ['data' => str_repeat('a', 65536)]);
+        $client->notify('porta/blob', ['data' => str_repeat('b', 65536)]);
+
+        $overflowed = static fn (array $log): bool => [] !== array_filter($log, static fn (string $l): bool => str_contains($l, 'overflow'));
+        $this->await(static fn (): bool => $overflowed($log), 2.0);
+        $this->assertTrue($overflowed($log), 'the overflow was logged');
+
+        // The wedged server was terminated — the session ends like any crash.
+        $this->await(static fn (): bool => !$client->isRunning(), 3.0);
+        $this->assertFalse($client->isRunning());
+    }
 }

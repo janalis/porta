@@ -75,6 +75,30 @@ final class TerminalBufferTest extends TestCase
         $this->assertSame('new text', AnsiUtils::stripAnsiCodes($b->getLines()[0]));
     }
 
+    public function testCursorColumnTracksWritesReturnsBackspacesAndNewlines(): void
+    {
+        $buffer = new TerminalBuffer();
+        $this->assertSame(0, $buffer->cursorColumn(), 'starts at column 0');
+
+        $buffer->feed('prompt$ ');
+        $this->assertSame(8, $buffer->cursorColumn());
+
+        $buffer->feed("\x08");
+        $this->assertSame(7, $buffer->cursorColumn(), 'backspace steps left');
+
+        $buffer->feed("\r");
+        $this->assertSame(0, $buffer->cursorColumn(), 'carriage return rewinds');
+
+        $buffer->feed("\tx");
+        $this->assertSame(9, $buffer->cursorColumn(), 'tab expands to the next stop');
+
+        $buffer->feed("\n");
+        $this->assertSame(0, $buffer->cursorColumn(), 'a new line starts at column 0');
+
+        $buffer->feed("abc\x1b[K");
+        $this->assertSame(3, $buffer->cursorColumn(), 'erase-to-end keeps the column');
+    }
+
     public function testEraseToLineEnd(): void
     {
         $b = new TerminalBuffer();

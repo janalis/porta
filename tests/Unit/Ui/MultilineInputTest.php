@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Porta\Tests\Unit\Ui;
 
 use PHPUnit\Framework\TestCase;
+use Porta\Ui\CursorStyle;
 use Porta\Ui\MultilineInput;
 use Symfony\Component\Tui\Ansi\AnsiUtils;
 use Symfony\Component\Tui\Style\CursorShape;
@@ -16,6 +17,16 @@ final class MultilineInputTest extends TestCase
         foreach ($keys as $key) {
             $input->handleKey($key);
         }
+    }
+
+    public function testRenderUsesTheSharedCursorStyleShape(): void
+    {
+        $style = new CursorStyle(CursorShape::Underline);
+        $input = new MultilineInput($style);
+        $input->handleKey('a');
+
+        $out = implode('', $input->render(20, 3, cursor: true));
+        $this->assertStringContainsString(AnsiUtils::cursorMarker(CursorShape::Underline), $out, 'the marker carries the holder shape');
     }
 
     public function testTypingAndEnterBuildLines(): void

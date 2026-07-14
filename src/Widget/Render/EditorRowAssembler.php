@@ -8,6 +8,7 @@ use Porta\Editor\DiagnosticStyle;
 use Porta\Editor\Document;
 use Porta\Editor\FoldModel;
 use Porta\Ui\ColorPalette;
+use Porta\Ui\CursorStyle;
 use Porta\Ui\Palette;
 use Porta\Ui\Role;
 use Symfony\Component\Tui\Ansi\AnsiUtils;
@@ -31,6 +32,18 @@ final readonly class EditorRowAssembler
      * @param array<int, list<array{start: int, end: int, current: bool}>>                 $searchMatches per-line search matches (byte cols)
      * @param array<int, list<array{col: int, text: string}>>                              $inlayHints    per-line inlay hints (byte col => dim label)
      */
+    /** @var array<int, true> */
+    private readonly array $breakpointSet;
+
+    private readonly CursorStyle $cursorStyle;
+
+    /**
+     * @param array<int, string>                                                              $gitMarks        0-based line => 'added'|'modified'|'deleted'
+     * @param array<int, list<array{col: int, endCol?: int, message: string, severity: int}>> $diagnostics     per-line diagnostics
+     * @param array<int, list<array{start: int, end: int, current: bool}>>                    $searchMatches   per-line search matches (byte cols)
+     * @param array<int, list<array{col: int, text: string}>>                                 $inlayHints      per-line inlay hints (byte col => dim label)
+     * @param list<int>                                                                       $breakpointLines 0-based lines carrying a breakpoint
+     */
     public function __construct(
         private Document $document,
         private FoldModel $foldModel,
@@ -43,8 +56,13 @@ final readonly class EditorRowAssembler
         private bool $focused,
         private bool $showCaret,
         ?Palette $palette = null,
+        array $breakpointLines = [],
+        private ?int $debugLine = null,
+        ?CursorStyle $cursorStyle = null,
     ) {
         $this->palette = $palette ?? ColorPalette::dark();
+        $this->breakpointSet = array_fill_keys($breakpointLines, true);
+        $this->cursorStyle = $cursorStyle ?? new CursorStyle();
     }
 
     /**
@@ -104,10 +122,14 @@ final readonly class EditorRowAssembler
                 $geo->contentWidth,
                 $isCursorLine && $this->showCaret && !$decorations->multiActive,
                 $cursorDisplayCol,
+                $this->cursorStyle->marker(),
             );
 
-            // Current-line background (skip when a selection is being shown)
-            if ($isCursorLine && $this->focused && null === $decorations->selection) {
+            // The debugger's stopped line outranks the current-line background.
+            if ($lineIndex === $this->debugLine) {
+                $content = LineDecorator::applyFullWidth($content, $geo->contentWidth, $this->palette->of(Role::DebugLineBg));
+            } elseif ($isCursorLine && $this->focused && null === $decorations->selection) {
+                // Current-line background (skip when a selection is being shown)
                 $content = LineDecorator::applyFullWidth($content, $geo->contentWidth, $this->palette->of(Role::RowHighlightBg));
             }
 
@@ -139,7 +161,7 @@ final readonly class EditorRowAssembler
             .' '
             ."\x1b[0m ";
         $hl = EditorRenderer::applyIndentGuides($this->document, $highlighted[$docLine] ?? '', $docLine, $this->palette);
-        $content = EditorRenderer::renderContentLine($hScroll, $hl, $geo->contentWidth, false, 0);
+        $content = EditorRenderer::renderContentLine($hScroll, $hl, $geo->contentWidth, false, 0, $this->cursorStyle->marker());
 
         return LineDecorator::applyFullWidth($gutter.$content, $geo->gutterWidth + $geo->contentWidth, $this->palette->of(Role::HeaderBar));
     }
@@ -157,9 +179,15 @@ final readonly class EditorRowAssembler
             $isCursorLine => $this->palette->of(Role::CurrentLineNumber),
             default => $this->palette->of(Role::Gutter),
         };
-        // No icon in the left gutter — the severity reads from the line-number
-        // color here and from the colored block in the right stripe.
-        $marker = ' ';
+        // The marker column, one glyph by priority: the debugger's stopped line,
+        // then the breakpoint dot, then the worst diagnostic's severity glyph —
+        // so each state also reads without color.
+        $marker = match (true) {
+            $lineIndex === $this->debugLine => $this->palette->of(Role::Breakpoint).'▶'."\x1b[39m",
+            isset($this->breakpointSet[$lineIndex]) => $this->palette->of(Role::Breakpoint).'●'."\x1b[39m",
+            [] !== $lineDiags => $numColor.DiagnosticStyle::glyph(DiagnosticStyle::worst($lineDiags))."\x1b[39m",
+            default => ' ',
+        };
         // Relative line numbers: distance from the cursor line, absolute on
         // the cursor line itself (PhpStorm/Vim "relativenumber" style).
         if ($this->relativeLineNumbers && !$isCursorLine) {

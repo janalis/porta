@@ -6,11 +6,14 @@ namespace Porta\Editor;
 
 use Porta\Config\EditorConfig\ResolvedEditorConfig;
 use Porta\Highlight\CodeHighlighter;
+use Porta\Image\ImageData;
 use Tempest\Highlight\TerminalTheme;
 
 /**
  * One open file: its document (cursor, undo history), diagnostics and its
  * own syntax-highlight cache, so switching buffers never re-highlights.
+ * An image buffer carries decoded pixels beside a permanently-empty document
+ * (never dirty, cursor pinned at 0:0), so text-path consumers stay safe.
  */
 final class Buffer
 {
@@ -35,9 +38,23 @@ final class Buffer
         public readonly string $path,
         public readonly Document $document,
         ?TerminalTheme $syntaxTheme = null,
+        public ?ImageData $image = null,
+        public ?string $helpMarkdown = null,
     ) {
         $this->highlighter = new CodeHighlighter(syntaxTheme: $syntaxTheme);
         $this->highlighter->setFile($path);
+    }
+
+    /** Whether this tab is an image shown by the viewer rather than the editor. */
+    public function isImage(): bool
+    {
+        return null !== $this->image;
+    }
+
+    /** Whether this tab is a rendered documentation page (the F1 help browser). */
+    public function isHelp(): bool
+    {
+        return null !== $this->helpMarkdown;
     }
 
     /** Whether the document has unsaved changes. */

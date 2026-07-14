@@ -7,8 +7,8 @@ namespace Porta\Ui;
 /**
  * Selects the active {@see Palette} at container-build time from the boot flags:
  * a {@see MonochromePalette} for `--no-ansi`, otherwise a colored
- * {@see ColorPalette} in the requested theme (`light` or, by default, `dark`).
- * Bound to the `porta.ansi` and `porta.theme` container parameters.
+ * {@see ColorPalette} in the requested theme (`light`, `high-contrast` or, by
+ * default, `dark`). Bound to the `porta.ansi` and `porta.theme` container parameters.
  */
 final class PaletteFactory
 {
@@ -18,7 +18,11 @@ final class PaletteFactory
             return new MonochromePalette();
         }
 
-        return 'light' === $theme ? ColorPalette::light() : ColorPalette::dark();
+        return match ($theme) {
+            'light' => ColorPalette::light(),
+            'high-contrast' => ColorPalette::highContrast(),
+            default => ColorPalette::dark(),
+        };
     }
 
     /**

@@ -6,6 +6,8 @@ namespace Porta\Widget;
 
 use Porta\Config\EditorConfig\ResolvedEditorConfig;
 use Porta\Config\LanguageIndent;
+use Porta\Container\AsWidget;
+use Porta\Editor\ActiveFileProvider;
 use Porta\Editor\AutoPairService;
 use Porta\Editor\BreadcrumbScanner;
 use Porta\Editor\DiagnosticStyle;
@@ -27,6 +29,7 @@ use Porta\Support\AnsiText;
 use Porta\Support\IntMath;
 use Porta\Support\ProjectPaths;
 use Porta\Ui\ColorPalette;
+use Porta\Ui\CursorStyle;
 use Porta\Ui\LtrPane;
 use Porta\Ui\Palette;
 use Porta\Ui\Role;
@@ -42,7 +45,6 @@ use Porta\Widget\Render\MenuOverlayHost;
 use Porta\Widget\Render\MenuOverlayHostTrait;
 use Symfony\Component\Tui\Ansi\AnsiUtils;
 use Symfony\Component\Tui\Render\RenderContext;
-use Symfony\Component\Tui\Style\CursorShape;
 use Symfony\Component\Tui\Widget\AbstractWidget;
 use Symfony\Component\Tui\Widget\BracketedPasteTrait;
 use Symfony\Component\Tui\Widget\FocusableInterface;
@@ -55,7 +57,8 @@ use Tempest\Highlight\TerminalTheme;
  * IDE-style code editor: line-number gutter, syntax highlighting,
  * vertical + horizontal scrolling, LSP diagnostics and a completion popup.
  */
-final class CodeEditorWidget extends AbstractWidget implements FocusableInterface, LtrPane, MenuOverlayHost, SearchOverlay, VerticallyExpandableInterface
+#[AsWidget('editor')]
+final class CodeEditorWidget extends AbstractWidget implements ActiveFileProvider, FocusableInterface, LtrPane, MenuOverlayHost, SearchOverlay, VerticallyExpandableInterface
 {
     use BracketedPasteTrait;
     use FillsPaneTrait;
@@ -126,6 +129,12 @@ final class CodeEditorWidget extends AbstractWidget implements FocusableInterfac
     /** @var array<int, string> 0-based line => 'added'|'modified'|'deleted' */
     private array $gitMarks = [];
 
+    /** @var list<int> 0-based lines with a breakpoint (● in the gutter) */
+    private array $breakpointLines = [];
+
+    /** The debugger's stopped line (full-width band), or null when not paused here. */
+    private ?int $debugLine = null;
+
     /** @var array{int, int}|null caret (line, col) at the last render, to gate hScroll following */
     private ?array $lastFollowedCursor = null;
 
@@ -148,13 +157,17 @@ final class CodeEditorWidget extends AbstractWidget implements FocusableInterfac
 
     private readonly TerminalTheme $syntaxTheme;
 
-    public function __construct(?Palette $palette = null, ?TerminalTheme $syntaxTheme = null)
+    /** Shared hardware-cursor shape holder (the `cursorShape` setting swaps it live). */
+    private readonly CursorStyle $cursorStyle;
+
+    public function __construct(?Palette $palette = null, ?TerminalTheme $syntaxTheme = null, ?CursorStyle $cursorStyle = null)
     {
         $this->palette = $palette ?? ColorPalette::dark();
         $this->syntaxTheme = $syntaxTheme ?? new DarkTerminalTheme();
+        $this->cursorStyle = $cursorStyle ?? new CursorStyle();
         $this->callbacks = new EditorCallbacks();
-        $this->overlayHost = new OverlayHost(fn () => $this->invalidate(), $this->palette);
-        $this->findModal = new FindInFilesModal(fn () => $this->invalidate(), $this->palette);
+        $this->overlayHost = new OverlayHost(fn () => $this->invalidate(), $this->palette, $this->cursorStyle);
+        $this->findModal = new FindInFilesModal(fn () => $this->invalidate(), $this->palette, $this->cursorStyle);
         $this->document = new Document('');
         $this->highlighter = new CodeHighlighter(syntaxTheme: $this->syntaxTheme);
         $this->foldModel = new FoldModel($this->document);
@@ -210,8 +223,8 @@ final class CodeEditorWidget extends AbstractWidget implements FocusableInterfac
             fn () => $this->invalidate(),
             fn () => $this->notifyChange(),
             fn (string $d) => $this->isInsertable($d),
-            fn (int $l, int $c) => null !== $this->callbacks->onCompletionRequested ? ($this->callbacks->onCompletionRequested)($l, $c) : null,
-            fn (array $raw) => null !== $this->callbacks->onCompletionResolve ? ($this->callbacks->onCompletionResolve)($raw) : null,
+            fn (int $l, int $c) => $this->callbacks->completion?->requestCompletion($l, $c),
+            fn (array $raw) => $this->callbacks->completion?->resolveCompletion($raw),
         );
     }
 
@@ -229,21 +242,10 @@ final class CodeEditorWidget extends AbstractWidget implements FocusableInterfac
             fn (string $label, string $initial, callable $onSubmit) => $this->openPrompt($label, $initial, $onSubmit),
             fn (int $line, int $col) => $this->jumpTo($line, $col),
             fn (?string $hint) => $this->setSignatureHint($hint),
-            fn (string $text) => null !== $this->callbacks->onCopy ? ($this->callbacks->onCopy)($text) : null,
-            fn (int $line, int $col) => null !== $this->callbacks->onSignatureHelp ? ($this->callbacks->onSignatureHelp)($line, $col) : null,
-            function (int $line, int $col, string $word): void {
-                if (null !== $this->callbacks->onRenameRequested) {
-                    // The IDE validates via prepareRename, then opens the prompt.
-                    ($this->callbacks->onRenameRequested)($line, $col, $word);
-                } elseif (null !== $this->callbacks->onRename) {
-                    $this->openPrompt('Rename to', $word, function (string $value) use ($line, $col): void {
-                        if ('' !== trim($value)) {
-                            /** @var callable(string, int, int): void $this->callbacks->onRename */
-                            ($this->callbacks->onRename)(trim($value), $line, $col);
-                        }
-                    });
-                }
-            },
+            fn (string $text) => $this->callbacks->file?->copy($text),
+            fn (int $line, int $col) => $this->callbacks->completion?->requestSignatureHelp($line, $col),
+            // The handler validates via prepareRename, then owns the prompt + rename.
+            fn (int $line, int $col, string $word) => $this->callbacks->refactor?->requestPrepareRename($line, $col, $word),
             fn (): int => $this->scroll->contentRows(),
             fn (): ?string => $this->commentPrefix(),
             fn (): bool => $this->autoPairs,
@@ -296,6 +298,8 @@ final class CodeEditorWidget extends AbstractWidget implements FocusableInterfac
         $this->structural = $this->newEditorStructural($document);
         $this->actions = $this->newEditorActions($document, $this->actions->clipboardValue());
         $this->inlayHints = [];
+        $this->breakpointLines = []; // the debug controller re-applies per buffer
+        $this->debugLine = null;
         $this->closeCompletion();
         $this->overlayHost->closeList();
         $this->invalidate();
@@ -472,6 +476,22 @@ final class CodeEditorWidget extends AbstractWidget implements FocusableInterfac
         $this->invalidate();
     }
 
+    /**
+     * @param list<int> $lines 0-based lines carrying a breakpoint in this file
+     */
+    public function setBreakpointLines(array $lines): void
+    {
+        $this->breakpointLines = $lines;
+        $this->invalidate();
+    }
+
+    /** Highlight (or clear) the debugger's stopped line. */
+    public function setDebugLine(?int $line): void
+    {
+        $this->debugLine = $line;
+        $this->invalidate();
+    }
+
     /** Install the coordinator's outbound hooks (see {@see EditorCallbacks}). */
     public function setCallbacks(EditorCallbacks $callbacks): void
     {
@@ -522,6 +542,38 @@ final class CodeEditorWidget extends AbstractWidget implements FocusableInterfac
     public function clickAt(int $relRow, int $relCol): void
     {
         $this->mouse->clickAt($relRow, $relCol, $this->viewport());
+    }
+
+    /** The gutter's rendered width in columns (git strip + numbers + marker). */
+    public function gutterWidth(): int
+    {
+        return $this->lastGutterWidth;
+    }
+
+    /**
+     * The caret's widget-relative screen cell (row includes the sticky band,
+     * column includes the gutter), for anchoring keyboard-opened popups at the
+     * caret the way mouse-opened ones anchor at the pointer.
+     *
+     * @return array{row: int, col: int}
+     */
+    public function caretScreenCell(): array
+    {
+        $row = max(0, $this->foldModel->screenRowFor($this->scroll->vScroll(), $this->document->getCursorLine())) + \count($this->stickyLines);
+        $col = max($this->lastGutterWidth, $this->lastGutterWidth + $this->document->getCursorDisplayCol() - $this->scroll->hScroll());
+
+        return ['row' => $row, 'col' => $col];
+    }
+
+    /** The document line rendered at a widget-relative row (sticky/fold-aware), or null past the end. */
+    public function documentLineAt(int $relRow): ?int
+    {
+        $stickyCount = \count($this->stickyLines);
+        if ($relRow >= 0 && $relRow < $stickyCount) {
+            return $this->stickyLines[$relRow];
+        }
+
+        return $this->foldModel->docLineAtRow($this->scroll->vScroll(), max(0, $relRow - $stickyCount));
     }
 
     /** Begin a mouse selection: place the caret at the press and drop the anchor there. */
@@ -602,6 +654,17 @@ final class CodeEditorWidget extends AbstractWidget implements FocusableInterfac
             $widest = max($widest, $doc->lineDisplayWidth($line));
         }
         $this->scroll->scrollHBy($cols, $widest - 10);
+    }
+
+    /**
+     * Insert text at the caret through the full change pipeline (undo history,
+     * LSP didChange, invalidation) — the programmatic seam for plugins.
+     */
+    public function insertText(string $text): void
+    {
+        $this->document->insert($text);
+        $this->notifyChange();
+        $this->invalidate();
     }
 
     /**
@@ -814,9 +877,7 @@ final class CodeEditorWidget extends AbstractWidget implements FocusableInterfac
     private function notifyChange(): void
     {
         $this->invalidate();
-        if (null !== $this->callbacks->onChanged) {
-            ($this->callbacks->onChanged)($this->document);
-        }
+        $this->callbacks->completion?->scheduleDidChange($this->document);
     }
 
     private function hasControlBytes(string $data): bool
@@ -952,6 +1013,9 @@ final class CodeEditorWidget extends AbstractWidget implements FocusableInterfac
             $this->focused,
             $this->focused && !$this->findModal->isOpen(), // the modal owns the caret while it is open
             $this->palette,
+            $this->breakpointLines,
+            $this->debugLine,
+            $this->cursorStyle,
         );
         $result = $assembler->assemble($geo, $decorations, $sticky, $highlighted, $stripe, $contentRows, $vScroll, $cursorLine, $cursorDisplayCol, $hScroll);
 
@@ -1090,7 +1154,7 @@ final class CodeEditorWidget extends AbstractWidget implements FocusableInterfac
         for ($r = 0; $r < $rows; ++$r) {
             $bg = $showThumb && $r >= $thumbTop && $r <= $thumbBottom ? $this->palette->of(Role::RowHighlightBg) : '';
             $cells[] = 0 !== $sev[$r]
-                ? "\x1b[0m".$bg.$this->palette->of(DiagnosticStyle::role($sev[$r])).DiagnosticStyle::MARK."\x1b[0m"
+                ? "\x1b[0m".$bg.$this->palette->of(DiagnosticStyle::role($sev[$r])).DiagnosticStyle::mark($sev[$r])."\x1b[0m"
                 : "\x1b[0m".$bg.' '."\x1b[0m";
         }
 

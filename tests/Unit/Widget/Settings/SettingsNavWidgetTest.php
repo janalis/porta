@@ -35,6 +35,7 @@ final class SettingsNavWidgetTest extends TestCase
 
         $this->assertStringContainsString('General', $screen);
         $this->assertStringContainsString('Keybindings', $screen);
+        $this->assertStringContainsString('Plugins', $screen);
         $this->assertStringContainsString('Languages', $screen);
         $this->assertStringContainsString('PHP', $screen);
         $this->assertStringContainsString('TypeScript', $screen);
@@ -49,12 +50,13 @@ final class SettingsNavWidgetTest extends TestCase
         $widget->handleInput("\x1b[B"); // → Keybindings
         $this->assertSame('keybindings', $widget->selectedId());
 
+        $widget->handleInput("\x1b[B"); // → Plugins
         $widget->handleInput("\x1b[B"); // skips the Languages header → PHP
         $this->assertSame('lang:php', $widget->selectedId());
-        $this->assertSame(['keybindings', 'lang:php'], $selected);
+        $this->assertSame(['keybindings', 'plugins', 'lang:php'], $selected);
 
-        $widget->handleInput("\x1b[A"); // back up, skipping the header → Keybindings
-        $this->assertSame('keybindings', $widget->selectedId());
+        $widget->handleInput("\x1b[A"); // back up, skipping the header → Plugins
+        $this->assertSame('plugins', $widget->selectedId());
     }
 
     public function testNavigationClampsAtBothEnds(): void
@@ -77,14 +79,36 @@ final class SettingsNavWidgetTest extends TestCase
         $widget->handleClick(1); // Keybindings (row 1)
         $this->assertSame('keybindings', $widget->selectedId());
 
-        $widget->handleClick(2); // the Languages header → no-op
+        $widget->handleClick(3); // the Languages header → no-op
         $this->assertSame('keybindings', $widget->selectedId());
         $this->assertSame(['keybindings'], $selected, 'the header fires nothing');
 
-        $widget->handleClick(3); // PHP
+        $widget->handleClick(4); // PHP
         $this->assertSame('lang:php', $widget->selectedId());
         $widget->handleClick(99); // dead space
         $this->assertSame('lang:php', $widget->selectedId());
+    }
+
+    public function testSetPluginEntriesInsertsIndentedSubItemsUnderPlugins(): void
+    {
+        $widget = $this->widget($selected);
+        $widget->setPluginEntries(['phpstan', 'mago']);
+
+        $screen = $this->plain($widget->render(new RenderContext(24, 24)));
+        $this->assertStringContainsString('   phpstan', $screen, 'plugin sub-items indent like languages');
+        $this->assertMatchesRegularExpression('/Plugins\s*\n\s{3}phpstan\s*\n\s{3}mago/', $screen, 'they sit right under the Plugins section');
+
+        $widget->setActive('plugin:mago');
+        $this->assertSame('plugin:mago', $widget->selectedId());
+
+        // A rebuild without mago falls the selection back to the Plugins section.
+        $widget->setPluginEntries(['phpstan']);
+        $this->assertSame('plugins', $widget->selectedId());
+
+        // A rebuild that keeps the selected id preserves it.
+        $widget->setActive('plugin:phpstan');
+        $widget->setPluginEntries(['phpstan', 'late']);
+        $this->assertSame('plugin:phpstan', $widget->selectedId());
     }
 
     public function testSetActiveHighlightsAnEntry(): void
@@ -103,10 +127,10 @@ final class SettingsNavWidgetTest extends TestCase
         $this->assertStringContainsString("\x1b[48;5;31m", $rendered[0], 'General selected + focused');
 
         $widget->setFocused(false);
-        $this->assertTrue($widget->hoverRow(3)); // hover PHP
+        $this->assertTrue($widget->hoverRow(4)); // hover PHP
         $rendered = $widget->render(new RenderContext(24, 20));
-        $this->assertStringContainsString("\x1b[48;5;236m", $rendered[3], 'hovered language tinted');
-        $this->assertTrue($widget->hoverRow(2), 'hovering the header clears the language tint');
+        $this->assertStringContainsString("\x1b[48;5;236m", $rendered[4], 'hovered language tinted');
+        $this->assertTrue($widget->hoverRow(3), 'hovering the header clears the language tint');
         $this->assertFalse($widget->clearHover(), 'already cleared');
     }
 

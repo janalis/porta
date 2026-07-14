@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Porta\Widget\Git;
 
+use Porta\Container\AsWidget;
 use Porta\Git\DiffDocument;
 use Porta\Git\DiffLine;
 use Porta\Highlight\CodeHighlighter;
@@ -37,6 +38,7 @@ use Tempest\Highlight\TerminalTheme;
  * pre-image no longer matches the file's highlight state). The title row is
  * a toolbar with clickable display toggles. Scrollable; read-only for history.
  */
+#[AsWidget('git-diff', flex: 1)]
 final class DiffViewWidget extends AbstractWidget implements FocusableInterface, LtrPane, MenuOverlayHost, VerticallyExpandableInterface
 {
     use FillsPaneTrait;

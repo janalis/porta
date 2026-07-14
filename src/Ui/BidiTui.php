@@ -65,6 +65,16 @@ final class BidiTui extends Tui
 
     public function processRender(): void
     {
+        // Frame pacing: while the terminal still holds undelivered bytes, skip
+        // generating a new frame. renderRequested stays set (nothing clears
+        // it), so the active ticker retries and paints the *current* state the
+        // moment the queue drains — the back-pressure the old blocking write
+        // provided, without blocking the loop and without dropping bytes.
+        $paced = $this->getTerminal();
+        if ($paced instanceof NonBlockingTerminal && $paced->pendingBytes() > 0) {
+            return;
+        }
+
         $segmenter = $this->segmenter;
         $reorder = $this->reorder;
         if (null === $segmenter || null === $reorder) {

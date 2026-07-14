@@ -4,9 +4,11 @@ declare(strict_types=1);
 
 namespace Porta\Widget\Git;
 
+use Porta\Container\AsWidget;
 use Porta\I18n\Translator;
 use Porta\Support\IntMath;
 use Porta\Ui\ColorPalette;
+use Porta\Ui\CursorStyle;
 use Porta\Ui\MultilineInput;
 use Porta\Ui\Palette;
 use Porta\Ui\Role;
@@ -29,6 +31,7 @@ use Symfony\Component\Tui\Widget\KeybindingsTrait;
  * Commit is enabled when the summary is non-empty and anything is staged
  * (via the injected predicate); Ctrl+Enter or a button click commits.
  */
+#[AsWidget('git-commit')]
 final class CommitBoxWidget extends AbstractWidget implements FocusableInterface, MenuOverlayHost
 {
     use FocusableTrait;
@@ -57,10 +60,11 @@ final class CommitBoxWidget extends AbstractWidget implements FocusableInterface
         private readonly Translator $translator,
         private int $width = 44,
         ?Palette $palette = null,
+        ?CursorStyle $cursorStyle = null,
     ) {
         $this->palette = $palette ?? ColorPalette::dark();
-        $this->summary = new TextField();
-        $this->description = new MultilineInput();
+        $this->summary = new TextField(style: $cursorStyle);
+        $this->description = new MultilineInput($cursorStyle);
     }
 
     /** Resize the git sidebar column to $width columns (clamped sane). */

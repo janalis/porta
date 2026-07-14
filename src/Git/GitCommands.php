@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Porta\Git;
 
 use Porta\I18n\Translator;
+use Porta\Support\ProjectPaths;
 use Porta\Ui\Notifier;
 use Porta\Widget\CodeEditorWidget;
 use Symfony\Component\Tui\Tui;
@@ -16,26 +17,17 @@ use Symfony\Component\Tui\Tui;
  * here leaves the IDE coordinator out of the git-command business. The full
  * changes/diff experience lives in {@see GitViewController}.
  *
- * The three closures are the seams back to the coordinator: refresh the active
- * buffer's change marks, refresh the branch indicator, and format a path for
- * display.
  */
 final class GitCommands
 {
-    /**
-     * @param \Closure(): void       $refreshActiveMarks
-     * @param \Closure(): void       $refreshBranch
-     * @param \Closure(string): string $relativePath
-     */
     public function __construct(
         private readonly GitInfo $git,
         private readonly CodeEditorWidget $editor,
         private readonly Notifier $notifier,
         private readonly Tui $tui,
         private readonly Translator $translator,
-        private readonly \Closure $refreshActiveMarks,
-        private readonly \Closure $refreshBranch,
-        private readonly \Closure $relativePath,
+        private readonly GitRefresher $refresher,
+        private readonly string $rootDir,
     ) {}
 
     public function stageCurrent(): void
@@ -49,10 +41,10 @@ final class GitCommands
         $this->git->stage($path, function (bool $ok) use ($path): void {
             $this->notifier->flash(
                 $ok
-                    ? $this->translator->trans('Staged %path%', ['%path%' => ($this->relativePath)($path)])
+                    ? $this->translator->trans('Staged %path%', ['%path%' => ProjectPaths::relative($this->rootDir, $path)])
                     : $this->translator->trans('Stage failed'),
             );
-            ($this->refreshActiveMarks)();
+            $this->refresher->refreshActiveMarks();
             $this->tui->requestRender();
         });
     }
@@ -75,8 +67,8 @@ final class GitCommands
                         ? $this->translator->trans('Committed: %summary%', ['%summary%' => $message])
                         : $this->translator->trans('Commit failed (nothing staged?)'),
                 );
-                ($this->refreshBranch)();
-                ($this->refreshActiveMarks)();
+                $this->refresher->refreshBranch();
+                $this->refresher->refreshActiveMarks();
                 $this->tui->requestRender();
             });
         });
@@ -119,8 +111,8 @@ final class GitCommands
                     ? $this->translator->trans('Last commit undone (changes kept staged)')
                     : $this->translator->trans('Nothing to undo'),
             );
-            ($this->refreshBranch)();
-            ($this->refreshActiveMarks)();
+            $this->refresher->refreshBranch();
+            $this->refresher->refreshActiveMarks();
             $this->tui->requestRender();
         });
     }

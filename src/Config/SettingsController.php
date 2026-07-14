@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Porta\Config;
 
 use Porta\I18n\Translator;
+use Porta\Settings\LiveSettingsApplier;
 use Porta\Ui\Notifier;
 use Porta\Widget\CodeEditorWidget;
 
@@ -15,7 +16,7 @@ use Porta\Widget\CodeEditorWidget;
  * the settings screen's form rows.
  *
  * Every setting applies live: its `apply` closure mutates the running UI (the
- * editor, the theme, .editorconfig resolution, or the locale) the instant it
+ * editor, the theme, the cursor shape, or the locale) the instant it
  * changes, and the value is persisted. The `restart` descriptor flag (and the
  * form's "applies on restart" note) is retained for any future setting that
  * genuinely needs a relaunch, but none do today.
@@ -29,9 +30,6 @@ final class SettingsController
 
     /**
      * @param array<string, int|bool|string> $settings         resolved settings (defaults merged)
-     * @param \Closure(string): void         $onLanguageChange     switch the UI locale + repaint
-     * @param \Closure(string): void         $onThemeChange        switch the dark/light theme + repaint
-     * @param \Closure(bool): void           $onEditorConfigChange toggle .editorconfig + re-resolve buffers
      */
     public function __construct(
         private array $settings,
@@ -39,16 +37,14 @@ final class SettingsController
         private readonly Notifier $notifier,
         private readonly string $rootDir,
         private readonly Translator $translator,
-        \Closure $onLanguageChange,
-        \Closure $onThemeChange,
-        \Closure $onEditorConfigChange,
+        LiveSettingsApplier $applier,
     ) {
         $this->descriptors = [
             'language' => [
                 'label' => 'Language',
                 'kind' => 'choice',
                 'restart' => false,
-                'apply' => static fn (int|bool|string $v) => $onLanguageChange((string) $v),
+                'apply' => static fn (int|bool|string $v) => $applier->applyLocale((string) $v),
                 'options' => Translator::LOCALES,
                 'optionLabels' => Translator::LOCALE_NAMES,
             ],
@@ -60,13 +56,26 @@ final class SettingsController
                 'apply' => static fn (int|bool|string $v) => $editor->setRelativeLineNumbers((bool) $v),
             ],
             'autoPairs' => ['label' => 'Auto-pairs', 'kind' => 'bool', 'restart' => false, 'apply' => static fn (int|bool|string $v) => $editor->setAutoPairs((bool) $v)],
-            'editorConfig' => ['label' => 'Respect .editorconfig', 'kind' => 'bool', 'restart' => false, 'apply' => static fn (int|bool|string $v) => $onEditorConfigChange((bool) $v)],
             'theme' => [
                 'label' => 'Theme',
                 'kind' => 'choice',
                 'restart' => false,
-                'apply' => static fn (int|bool|string $v) => $onThemeChange((string) $v),
-                'options' => ['dark', 'light'],
+                'apply' => static fn (int|bool|string $v) => $applier->applyTheme((string) $v),
+                'options' => ['dark', 'light', 'high-contrast'],
+            ],
+            'cursorShape' => [
+                'label' => 'Cursor shape',
+                'kind' => 'choice',
+                'restart' => false,
+                'apply' => static fn (int|bool|string $v) => $applier->applyCursorShape((string) $v),
+                'options' => ['bar', 'block', 'underline'],
+            ],
+            'tabBarPosition' => [
+                'label' => 'Tab bar position',
+                'kind' => 'choice',
+                'restart' => false,
+                'apply' => static fn (int|bool|string $v) => $applier->applyTabBarPosition((string) $v),
+                'options' => ['top', 'bottom', 'left', 'right'],
             ],
         ];
     }

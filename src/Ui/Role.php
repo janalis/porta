@@ -21,7 +21,10 @@ enum Role
     case DelEmphasisBg;
 
     // Shared row highlights (menus, popups, lists, the current editor line).
+    // SelectedRow marks the selection in the focused pane; SelectedRowUnfocused
+    // is the dimmer variant every pane uses while unfocused.
     case SelectedRow;
+    case SelectedRowUnfocused;
     case RowHighlightBg;
     case PopupRow;
 
@@ -69,10 +72,20 @@ enum Role
     case SearchCurrentBg;
     case OccurrenceBg;
 
+    // Debugger: the gutter breakpoint dot and the stopped-line band.
+    case Breakpoint;
+    case DebugLineBg;
+
     // Chrome shades: tab/breadcrumb accent, menu highlight, extra greys.
     case TabAccent;
     case MenuActiveBg;
     case Faint;
     case Subtle;
     case Emphasis;
+
+    // Status bar segments: git branch, debug indicator, problem counts.
+    case StatusBranch;
+    case StatusDebug;
+    case StatusError;
+    case StatusWarning;
 }

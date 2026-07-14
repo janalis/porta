@@ -1054,10 +1054,6 @@
         <source>Auto-pairs</source>
         <target>Coppie automatiche</target>
       </trans-unit>
-      <trans-unit id="264">
-        <source>Respect .editorconfig</source>
-        <target>Rispetta .editorconfig</target>
-      </trans-unit>
       <trans-unit id="265">
         <source>Theme</source>
         <target>Tema</target>
@@ -1165,6 +1161,266 @@
       <trans-unit id="291">
         <source>Replace in %dir%</source>
         <target>Sostituisci in %dir%</target>
+      </trans-unit>
+      <trans-unit id="292">
+        <source>Go to Test</source>
+        <target>Vai al test</target>
+      </trans-unit>
+      <trans-unit id="293">
+        <source>No test found</source>
+        <target>Nessun test trovato</target>
+      </trans-unit>
+      <trans-unit id="294">
+        <source>No test subject found</source>
+        <target>Nessun soggetto di test trovato</target>
+      </trans-unit>
+      <trans-unit id="295">
+        <source>Image too large (&gt; 20 MB)</source>
+        <target>Immagine troppo grande (&gt; 20 MB)</target>
+      </trans-unit>
+      <trans-unit id="296">
+        <source>Cannot display image %file%</source>
+        <target>Impossibile visualizzare l’immagine %file%</target>
+      </trans-unit>
+      <trans-unit id="297">
+        <source>Not available while viewing an image</source>
+        <target>Non disponibile durante la visualizzazione di un’immagine</target>
+      </trans-unit>
+      <trans-unit id="298">
+        <source>+/- zoom  0 fit  arrows pan  ^Q quit</source>
+        <target>+/- zoom  0 adatta  frecce sposta  ^Q esci</target>
+      </trans-unit>
+      <trans-unit id="299">
+        <source>Image: Zoom In</source>
+        <target>Immagine: Ingrandisci</target>
+      </trans-unit>
+      <trans-unit id="300">
+        <source>Image: Zoom Out</source>
+        <target>Immagine: Riduci</target>
+      </trans-unit>
+      <trans-unit id="301">
+        <source>Image: Fit to Window</source>
+        <target>Immagine: Adatta alla finestra</target>
+      </trans-unit>
+      <trans-unit id="302">
+        <source>Image: Actual Size</source>
+        <target>Immagine: Dimensione reale</target>
+      </trans-unit>
+      <trans-unit id="303">
+        <source>Image: Pan Left</source>
+        <target>Immagine: Sposta a sinistra</target>
+      </trans-unit>
+      <trans-unit id="304">
+        <source>Image: Pan Right</source>
+        <target>Immagine: Sposta a destra</target>
+      </trans-unit>
+      <trans-unit id="305">
+        <source>Image: Pan Up</source>
+        <target>Immagine: Sposta in alto</target>
+      </trans-unit>
+      <trans-unit id="306">
+        <source>Image: Pan Down</source>
+        <target>Immagine: Sposta in basso</target>
+      </trans-unit>
+      <trans-unit id="307">
+        <source>Debug Current File</source>
+        <target>Esegui il debug del file corrente</target>
+      </trans-unit>
+      <trans-unit id="308">
+        <source>Toggle Breakpoint</source>
+        <target>Attiva/disattiva breakpoint</target>
+      </trans-unit>
+      <trans-unit id="309">
+        <source>Step Over</source>
+        <target>Passa oltre</target>
+      </trans-unit>
+      <trans-unit id="310">
+        <source>Step Into</source>
+        <target>Entra nel passo</target>
+      </trans-unit>
+      <trans-unit id="311">
+        <source>Step Out</source>
+        <target>Esci dal passo</target>
+      </trans-unit>
+      <trans-unit id="312">
+        <source>Resume Program</source>
+        <target>Riprendi il programma</target>
+      </trans-unit>
+      <trans-unit id="313">
+        <source>Stop Debugger</source>
+        <target>Arresta il debugger</target>
+      </trans-unit>
+      <trans-unit id="314">
+        <source>Nothing to debug — open a file first</source>
+        <target>Niente da debuggare — apri prima un file</target>
+      </trans-unit>
+      <trans-unit id="315">
+        <source>Debugger already running — stop it first (Ctrl+F2)</source>
+        <target>Debugger già in esecuzione — arrestalo prima (Ctrl+F2)</target>
+      </trans-unit>
+      <trans-unit id="316">
+        <source>No debug adapter configured for %language% — set one in Settings</source>
+        <target>Nessun adattatore di debug configurato per %language% — impostalo nelle impostazioni</target>
+      </trans-unit>
+      <trans-unit id="317">
+        <source>Debug: %label%</source>
+        <target>Debug: %label%</target>
+      </trans-unit>
+      <trans-unit id="318">
+        <source>Could not start the debug adapter</source>
+        <target>Impossibile avviare l’adattatore di debug</target>
+      </trans-unit>
+      <trans-unit id="319">
+        <source>Plugins</source>
+        <target>Plugin</target>
+      </trans-unit>
+      <trans-unit id="320">
+        <source>Plugin "%name%" failed: %message%</source>
+        <target>Il plugin «%name%» ha fallito: %message%</target>
+      </trans-unit>
+      <trans-unit id="321">
+        <source>Install into</source>
+        <target>Installa in</target>
+      </trans-unit>
+      <trans-unit id="322">
+        <source>This project</source>
+        <target>Questo progetto</target>
+      </trans-unit>
+      <trans-unit id="323">
+        <source>Global (all projects)</source>
+        <target>Globale (tutti i progetti)</target>
+      </trans-unit>
+      <trans-unit id="324">
+        <source>Install plugin</source>
+        <target>Installa plugin</target>
+      </trans-unit>
+      <trans-unit id="325">
+        <source>git URL or local path</source>
+        <target>URL git o percorso locale</target>
+      </trans-unit>
+      <trans-unit id="326">
+        <source>Remove</source>
+        <target>Rimuovi</target>
+      </trans-unit>
+      <trans-unit id="327">
+        <source>project</source>
+        <target>progetto</target>
+      </trans-unit>
+      <trans-unit id="328">
+        <source>global</source>
+        <target>globale</target>
+      </trans-unit>
+      <trans-unit id="329">
+        <source>Press Enter again to remove "%name%"</source>
+        <target>Premi di nuovo Invio per rimuovere «%name%»</target>
+      </trans-unit>
+      <trans-unit id="330">
+        <source>Plugin installed — default keybindings apply on restart</source>
+        <target>Plugin installato — le scorciatoie predefinite si applicano al riavvio</target>
+      </trans-unit>
+      <trans-unit id="331">
+        <source>Plugin "%name%" removed</source>
+        <target>Plugin «%name%» rimosso</target>
+      </trans-unit>
+      <trans-unit id="332">
+        <source>Plugin "%name%" is already installed</source>
+        <target>Il plugin «%name%» è già installato</target>
+      </trans-unit>
+      <trans-unit id="333">
+        <source>"%name%" is not a valid plugin name</source>
+        <target>«%name%» non è un nome di plugin valido</target>
+      </trans-unit>
+      <trans-unit id="334">
+        <source>No plugin.php found in %source%</source>
+        <target>Nessun plugin.php trovato in %source%</target>
+      </trans-unit>
+      <trans-unit id="335">
+        <source>git is not available</source>
+        <target>git non è disponibile</target>
+      </trans-unit>
+      <trans-unit id="336">
+        <source>git clone failed (exit code %code%)</source>
+        <target>git clone non riuscito (codice di uscita %code%)</target>
+      </trans-unit>
+      <trans-unit id="337">
+        <source>The repository contains no plugin.php</source>
+        <target>Il repository non contiene plugin.php</target>
+      </trans-unit>
+      <trans-unit id="338">
+        <source>Another install is already running</source>
+        <target>Un’altra installazione è già in corso</target>
+      </trans-unit>
+      <trans-unit id="339">
+        <source>Cannot install globally (no home directory)</source>
+        <target>Impossibile installare globalmente (nessuna directory home)</target>
+      </trans-unit>
+      <trans-unit id="340">
+        <source>Cannot remove "%name%"</source>
+        <target>Impossibile rimuovere «%name%»</target>
+      </trans-unit>
+      <trans-unit id="341">
+        <source>Cannot install into %dest%</source>
+        <target>Impossibile installare in %dest%</target>
+      </trans-unit>
+      <trans-unit id="344">
+        <source>Built-in plugins cannot be removed</source>
+        <target>I plugin integrati non possono essere rimossi</target>
+      </trans-unit>
+      <trans-unit id="345">
+        <source>built-in</source>
+        <target>integrato</target>
+      </trans-unit>
+      <trans-unit id="346">
+        <source>Built-in</source>
+        <target>Integrato</target>
+      </trans-unit>
+      <trans-unit id="347">
+        <source>"%name%" has no settings</source>
+        <target>«%name%» non ha impostazioni</target>
+      </trans-unit>
+      <trans-unit id="348">
+        <source>Enabled</source>
+        <target>Attivo</target>
+      </trans-unit>
+      <trans-unit id="349">
+        <source>Plugin "%name%" disabled</source>
+        <target>Plugin «%name%» disattivato</target>
+      </trans-unit>
+      <trans-unit id="350">
+        <source>Plugin "%name%" enabled — default keybindings apply on restart</source>
+        <target>Plugin «%name%» attivato — le scorciatoie predefinite si applicano al riavvio</target>
+      </trans-unit>
+      <trans-unit id="351">
+        <source>Show Context Menu</source>
+        <target>Mostra il menu contestuale</target>
+      </trans-unit>
+      <trans-unit id="352">
+        <source>Shrink Pane</source>
+        <target>Riduci il pannello</target>
+      </trans-unit>
+      <trans-unit id="353">
+        <source>Grow Pane</source>
+        <target>Ingrandisci il pannello</target>
+      </trans-unit>
+      <trans-unit id="354">
+        <source>No context menu here</source>
+        <target>Qui non c'è un menu contestuale</target>
+      </trans-unit>
+      <trans-unit id="355">
+        <source>Cursor shape</source>
+        <target>Forma del cursore</target>
+      </trans-unit>
+      <trans-unit id="356">
+        <source>Notifications</source>
+        <target>Notifiche</target>
+      </trans-unit>
+      <trans-unit id="357">
+        <source>No notifications yet</source>
+        <target>Ancora nessuna notifica</target>
+      </trans-unit>
+      <trans-unit id="358">
+        <source>Tab bar position</source>
+        <target>Posizione della barra delle schede</target>
       </trans-unit>
     </body>
   </file>

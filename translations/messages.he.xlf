@@ -1054,10 +1054,6 @@
         <source>Auto-pairs</source>
         <target>זוגות אוטומטיים</target>
       </trans-unit>
-      <trans-unit id="264">
-        <source>Respect .editorconfig</source>
-        <target>כבד את .editorconfig</target>
-      </trans-unit>
       <trans-unit id="265">
         <source>Theme</source>
         <target>ערכת נושא</target>
@@ -1165,6 +1161,266 @@
       <trans-unit id="291">
         <source>Replace in %dir%</source>
         <target>החלפה ב-%dir%</target>
+      </trans-unit>
+      <trans-unit id="292">
+        <source>Go to Test</source>
+        <target>עבור לבדיקה</target>
+      </trans-unit>
+      <trans-unit id="293">
+        <source>No test found</source>
+        <target>לא נמצאה בדיקה</target>
+      </trans-unit>
+      <trans-unit id="294">
+        <source>No test subject found</source>
+        <target>לא נמצא נושא בדיקה</target>
+      </trans-unit>
+      <trans-unit id="295">
+        <source>Image too large (&gt; 20 MB)</source>
+        <target>התמונה גדולה מדי (&gt; 20 MB)</target>
+      </trans-unit>
+      <trans-unit id="296">
+        <source>Cannot display image %file%</source>
+        <target>לא ניתן להציג את התמונה %file%</target>
+      </trans-unit>
+      <trans-unit id="297">
+        <source>Not available while viewing an image</source>
+        <target>לא זמין בזמן הצגת תמונה</target>
+      </trans-unit>
+      <trans-unit id="298">
+        <source>+/- zoom  0 fit  arrows pan  ^Q quit</source>
+        <target>+/- זום  0 התאמה  חצים הזזה  ^Q יציאה</target>
+      </trans-unit>
+      <trans-unit id="299">
+        <source>Image: Zoom In</source>
+        <target>תמונה: התקרבות</target>
+      </trans-unit>
+      <trans-unit id="300">
+        <source>Image: Zoom Out</source>
+        <target>תמונה: התרחקות</target>
+      </trans-unit>
+      <trans-unit id="301">
+        <source>Image: Fit to Window</source>
+        <target>תמונה: התאמה לחלון</target>
+      </trans-unit>
+      <trans-unit id="302">
+        <source>Image: Actual Size</source>
+        <target>תמונה: גודל אמיתי</target>
+      </trans-unit>
+      <trans-unit id="303">
+        <source>Image: Pan Left</source>
+        <target>תמונה: הזזה שמאלה</target>
+      </trans-unit>
+      <trans-unit id="304">
+        <source>Image: Pan Right</source>
+        <target>תמונה: הזזה ימינה</target>
+      </trans-unit>
+      <trans-unit id="305">
+        <source>Image: Pan Up</source>
+        <target>תמונה: הזזה למעלה</target>
+      </trans-unit>
+      <trans-unit id="306">
+        <source>Image: Pan Down</source>
+        <target>תמונה: הזזה למטה</target>
+      </trans-unit>
+      <trans-unit id="307">
+        <source>Debug Current File</source>
+        <target>ניפוי הקובץ הנוכחי</target>
+      </trans-unit>
+      <trans-unit id="308">
+        <source>Toggle Breakpoint</source>
+        <target>החלפת נקודת עצירה</target>
+      </trans-unit>
+      <trans-unit id="309">
+        <source>Step Over</source>
+        <target>צעד מעל</target>
+      </trans-unit>
+      <trans-unit id="310">
+        <source>Step Into</source>
+        <target>צעד פנימה</target>
+      </trans-unit>
+      <trans-unit id="311">
+        <source>Step Out</source>
+        <target>צעד החוצה</target>
+      </trans-unit>
+      <trans-unit id="312">
+        <source>Resume Program</source>
+        <target>המשך התוכנית</target>
+      </trans-unit>
+      <trans-unit id="313">
+        <source>Stop Debugger</source>
+        <target>עצירת המנפה</target>
+      </trans-unit>
+      <trans-unit id="314">
+        <source>Nothing to debug — open a file first</source>
+        <target>אין מה לנפות — פתחו קובץ תחילה</target>
+      </trans-unit>
+      <trans-unit id="315">
+        <source>Debugger already running — stop it first (Ctrl+F2)</source>
+        <target>המנפה כבר פועל — עצרו אותו תחילה (Ctrl+F2)</target>
+      </trans-unit>
+      <trans-unit id="316">
+        <source>No debug adapter configured for %language% — set one in Settings</source>
+        <target>לא הוגדר מתאם ניפוי עבור %language% — הגדירו אותו בהגדרות</target>
+      </trans-unit>
+      <trans-unit id="317">
+        <source>Debug: %label%</source>
+        <target>ניפוי: %label%</target>
+      </trans-unit>
+      <trans-unit id="318">
+        <source>Could not start the debug adapter</source>
+        <target>לא ניתן להפעיל את מתאם הניפוי</target>
+      </trans-unit>
+      <trans-unit id="319">
+        <source>Plugins</source>
+        <target>תוספים</target>
+      </trans-unit>
+      <trans-unit id="320">
+        <source>Plugin "%name%" failed: %message%</source>
+        <target>התוסף „%name%” נכשל: %message%</target>
+      </trans-unit>
+      <trans-unit id="321">
+        <source>Install into</source>
+        <target>התקנה אל</target>
+      </trans-unit>
+      <trans-unit id="322">
+        <source>This project</source>
+        <target>הפרויקט הזה</target>
+      </trans-unit>
+      <trans-unit id="323">
+        <source>Global (all projects)</source>
+        <target>גלובלי (כל הפרויקטים)</target>
+      </trans-unit>
+      <trans-unit id="324">
+        <source>Install plugin</source>
+        <target>התקנת תוסף</target>
+      </trans-unit>
+      <trans-unit id="325">
+        <source>git URL or local path</source>
+        <target>כתובת git או נתיב מקומי</target>
+      </trans-unit>
+      <trans-unit id="326">
+        <source>Remove</source>
+        <target>הסרה</target>
+      </trans-unit>
+      <trans-unit id="327">
+        <source>project</source>
+        <target>פרויקט</target>
+      </trans-unit>
+      <trans-unit id="328">
+        <source>global</source>
+        <target>גלובלי</target>
+      </trans-unit>
+      <trans-unit id="329">
+        <source>Press Enter again to remove "%name%"</source>
+        <target>הקש Enter שוב כדי להסיר את „%name%”</target>
+      </trans-unit>
+      <trans-unit id="330">
+        <source>Plugin installed — default keybindings apply on restart</source>
+        <target>התוסף הותקן — קיצורי המקשים המוגדרים כברירת מחדל יחולו לאחר הפעלה מחדש</target>
+      </trans-unit>
+      <trans-unit id="331">
+        <source>Plugin "%name%" removed</source>
+        <target>התוסף „%name%” הוסר</target>
+      </trans-unit>
+      <trans-unit id="332">
+        <source>Plugin "%name%" is already installed</source>
+        <target>התוסף „%name%” כבר מותקן</target>
+      </trans-unit>
+      <trans-unit id="333">
+        <source>"%name%" is not a valid plugin name</source>
+        <target>„%name%” אינו שם תוסף חוקי</target>
+      </trans-unit>
+      <trans-unit id="334">
+        <source>No plugin.php found in %source%</source>
+        <target>לא נמצא plugin.php ב־%source%</target>
+      </trans-unit>
+      <trans-unit id="335">
+        <source>git is not available</source>
+        <target>git אינו זמין</target>
+      </trans-unit>
+      <trans-unit id="336">
+        <source>git clone failed (exit code %code%)</source>
+        <target>git clone נכשל (קוד יציאה %code%)</target>
+      </trans-unit>
+      <trans-unit id="337">
+        <source>The repository contains no plugin.php</source>
+        <target>המאגר אינו מכיל plugin.php</target>
+      </trans-unit>
+      <trans-unit id="338">
+        <source>Another install is already running</source>
+        <target>התקנה אחרת כבר פועלת</target>
+      </trans-unit>
+      <trans-unit id="339">
+        <source>Cannot install globally (no home directory)</source>
+        <target>לא ניתן להתקין גלובלית (אין ספריית בית)</target>
+      </trans-unit>
+      <trans-unit id="340">
+        <source>Cannot remove "%name%"</source>
+        <target>לא ניתן להסיר את „%name%”</target>
+      </trans-unit>
+      <trans-unit id="341">
+        <source>Cannot install into %dest%</source>
+        <target>לא ניתן להתקין אל %dest%</target>
+      </trans-unit>
+      <trans-unit id="344">
+        <source>Built-in plugins cannot be removed</source>
+        <target>לא ניתן להסיר תוספים מובנים</target>
+      </trans-unit>
+      <trans-unit id="345">
+        <source>built-in</source>
+        <target>מובנה</target>
+      </trans-unit>
+      <trans-unit id="346">
+        <source>Built-in</source>
+        <target>מובנה</target>
+      </trans-unit>
+      <trans-unit id="347">
+        <source>"%name%" has no settings</source>
+        <target>ל־„%name%” אין הגדרות</target>
+      </trans-unit>
+      <trans-unit id="348">
+        <source>Enabled</source>
+        <target>מופעל</target>
+      </trans-unit>
+      <trans-unit id="349">
+        <source>Plugin "%name%" disabled</source>
+        <target>התוסף „%name%” הושבת</target>
+      </trans-unit>
+      <trans-unit id="350">
+        <source>Plugin "%name%" enabled — default keybindings apply on restart</source>
+        <target>התוסף „%name%” הופעל — קיצורי המקשים המוגדרים כברירת מחדל יחולו לאחר הפעלה מחדש</target>
+      </trans-unit>
+      <trans-unit id="351">
+        <source>Show Context Menu</source>
+        <target>הצג תפריט הקשר</target>
+      </trans-unit>
+      <trans-unit id="352">
+        <source>Shrink Pane</source>
+        <target>הקטן את הפאנל</target>
+      </trans-unit>
+      <trans-unit id="353">
+        <source>Grow Pane</source>
+        <target>הגדל את הפאנל</target>
+      </trans-unit>
+      <trans-unit id="354">
+        <source>No context menu here</source>
+        <target>אין כאן תפריט הקשר</target>
+      </trans-unit>
+      <trans-unit id="355">
+        <source>Cursor shape</source>
+        <target>צורת הסמן</target>
+      </trans-unit>
+      <trans-unit id="356">
+        <source>Notifications</source>
+        <target>התראות</target>
+      </trans-unit>
+      <trans-unit id="357">
+        <source>No notifications yet</source>
+        <target>אין התראות עדיין</target>
+      </trans-unit>
+      <trans-unit id="358">
+        <source>Tab bar position</source>
+        <target>מיקום שורת הכרטיסיות</target>
       </trans-unit>
     </body>
   </file>

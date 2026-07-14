@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Porta\Widget;
 
+use Porta\Container\AsWidget;
 use Porta\Ui\ColorPalette;
 use Porta\Ui\Palette;
 use Porta\Ui\Role;
@@ -19,6 +20,7 @@ use Symfony\Component\Tui\Widget\AbstractWidget;
  * tracks the caret for free on every frame. Renders zero rows (no bar) when the
  * caret is not inside any scope, so a structureless file keeps its full editor.
  */
+#[AsWidget('breadcrumbs')]
 final class BreadcrumbsWidget extends AbstractWidget implements MenuOverlayHost
 {
     use MenuOverlayHostTrait;

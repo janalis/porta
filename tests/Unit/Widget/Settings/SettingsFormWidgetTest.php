@@ -54,6 +54,36 @@ final class SettingsFormWidgetTest extends TestCase
         $this->assertStringContainsString('· applies on restart', $screen, 'restart rows are annotated');
     }
 
+    public function testActionRowRendersABracketedButtonAndActuatesForwardOnly(): void
+    {
+        $changes = [];
+        $widget = new SettingsFormWidget(new Translator('en'));
+        $widget->setFocused(true);
+        $widget->setRows([
+            new SettingsRow(key: 'pluginRemove:project:demo', label: 'demo (project)', kind: 'action', value: 'Remove', restart: false),
+        ]);
+
+        $screen = $this->plain($widget->render(new RenderContext(60, 4)));
+        $this->assertStringContainsString('demo (project)  [Remove]', $screen);
+
+        $widget->handleInput("\x1b[D"); // ← is a no-op on a button, even without onChange
+        $widget->onChange(function (string $key, bool|int|string $value) use (&$changes): void {
+            $changes[] = [$key, $value];
+        });
+        $widget->handleInput("\x1b[D");
+        $this->assertSame([], $changes, 'a button has no value to step back');
+
+        $widget->handleInput("\r"); // Enter actuates
+        $widget->handleClick(0); // so does a click
+        $this->assertSame(
+            [
+                ['pluginRemove:project:demo', 'Remove'],
+                ['pluginRemove:project:demo', 'Remove'],
+            ],
+            $changes,
+        );
+    }
+
     public function testChoiceRowRendersOptionLabelInsteadOfValue(): void
     {
         $widget = new SettingsFormWidget(new Translator('en'));

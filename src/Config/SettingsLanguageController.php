@@ -23,7 +23,7 @@ final class SettingsLanguageController
     private array $config = [];
 
     /**
-     * @param array<string, array{indentStyle?: string, indentSize?: int|string}> $overrides from {@see IdeConfig::$languages}
+     * @param array<string, array{indentStyle?: string, indentSize?: int|string, debug?: array{adapter?: string, launch?: array<string, mixed>}}> $overrides from {@see IdeConfig::$languages}
      */
     public function __construct(
         private readonly CodeEditorWidget $editor,

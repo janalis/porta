@@ -11,7 +11,8 @@ use Symfony\Component\Tui\Input\Key;
  * {@see CodeEditorWidget} so the widget is not padded by ~90 lines of pure
  * data. It is the PhpStorm-first keymap; deliberate deviations (terminal
  * constraints): quit stays Ctrl+Q on the app level (PhpStorm quick-doc moves to
- * F1), Ctrl+W stays delete-word, Ctrl+K stays delete-to-line-end.
+ * Shift+F1 — plain F1 opens the IDE's documentation browser), Ctrl+W stays
+ * delete-word, Ctrl+K stays delete-to-line-end.
  */
 final class EditorKeymap
 {
@@ -95,7 +96,7 @@ final class EditorKeymap
             'replace' => ['ctrl+r'],
             'goto_file' => ['ctrl+shift+n', 'ctrl+p'],
 
-            'quick_doc' => [Key::F1],
+            'quick_doc' => ['shift+f1'], // plain F1 is the IDE-level docs browser
             'code_action' => ['alt+enter'],
             'file_structure' => ['ctrl+f12', 'alt+7'],
             'peek_definition' => ['ctrl+shift+i'],

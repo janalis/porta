@@ -4,9 +4,11 @@ declare(strict_types=1);
 
 namespace Porta\Widget;
 
+use Porta\Container\AsWidget;
 use Porta\I18n\Translator;
 use Porta\Search\FileIndex;
 use Porta\Ui\ColorPalette;
+use Porta\Ui\CursorStyle;
 use Porta\Ui\ListNavigation;
 use Porta\Ui\ListSelection;
 use Porta\Ui\Palette;
@@ -25,6 +27,7 @@ use Symfony\Component\Tui\Widget\KeybindingsTrait;
  * Fuzzy go-to-file palette (Ctrl+P), rendered as a strip at the top:
  * a query line plus up to N scored results. Hidden (zero rows) when closed.
  */
+#[AsWidget('goto-file')]
 final class GoToFileWidget extends OverlayWidget implements FocusableInterface
 {
     use FocusableTrait;
@@ -50,10 +53,11 @@ final class GoToFileWidget extends OverlayWidget implements FocusableInterface
         private readonly string $rootDir,
         ?FileIndex $files = null,
         ?Palette $palette = null,
+        ?CursorStyle $cursorStyle = null,
     ) {
         $this->palette = $palette ?? ColorPalette::dark();
         $this->files = $files ?? new FileIndex($rootDir);
-        $this->query = new TextField();
+        $this->query = new TextField(style: $cursorStyle);
         $this->list = new ListSelection();
     }
 

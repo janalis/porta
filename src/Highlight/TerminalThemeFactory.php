@@ -9,9 +9,10 @@ use Tempest\Highlight\TerminalTheme;
 /**
  * Selects the syntax-highlighting {@see TerminalTheme} at container-build time
  * from the boot flags: a colorless {@see PlainTerminalTheme} for `--no-ansi`,
- * otherwise the {@see LightTerminalTheme} or (by default) {@see DarkTerminalTheme}
- * per the `theme` setting. The syntax-layer mirror of {@see \Porta\Ui\PaletteFactory};
- * bound to the `porta.ansi` and `porta.theme` container parameters.
+ * otherwise the {@see LightTerminalTheme}, {@see HighContrastTerminalTheme} or
+ * (by default) {@see DarkTerminalTheme} per the `theme` setting. The syntax-layer
+ * mirror of {@see \Porta\Ui\PaletteFactory}; bound to the `porta.ansi` and
+ * `porta.theme` container parameters.
  */
 final class TerminalThemeFactory
 {
@@ -21,7 +22,11 @@ final class TerminalThemeFactory
             return new PlainTerminalTheme();
         }
 
-        return 'light' === $theme ? new LightTerminalTheme() : new DarkTerminalTheme();
+        return match ($theme) {
+            'light' => new LightTerminalTheme(),
+            'high-contrast' => new HighContrastTerminalTheme(),
+            default => new DarkTerminalTheme(),
+        };
     }
 
     /**

@@ -1,0 +1,78 @@
+<?php
+
+declare(strict_types=1);
+
+namespace Porta\History;
+
+use Porta\Editor\Buffer;
+use Porta\Editor\BufferManager;
+use Porta\Editor\BufferService;
+use Porta\Ui\EditorArea;
+use Symfony\Component\Tui\Tui;
+
+/**
+ * Persists and restores the open-buffer set across launches: which files were
+ * open, each cursor position, and which tab was active. Help buffers are
+ * skipped on save — a restored help path would reopen as editable source.
+ */
+final class SessionRestorer
+{
+    public function __construct(
+        private readonly SessionStore $store,
+        private readonly BufferManager $buffers,
+        private readonly BufferService $bufferService,
+        private readonly EditorArea $editorArea,
+        private readonly Tui $tui,
+    ) {}
+
+    /**
+     * Reopen the previous session's buffers. Returns true if any were opened.
+     */
+    public function restore(): bool
+    {
+        $data = $this->store->load();
+        if (null === $data || [] === $data['buffers']) {
+            return false;
+        }
+
+        $opened = false;
+        foreach ($data['buffers'] as $buffer) {
+            if (!is_file($buffer['path'])) {
+                continue;
+            }
+            $this->bufferService->openFile($buffer['path']);
+            $active = $this->buffers->active();
+            if (null !== $active) {
+                $active->document->setCursor($buffer['line'], $buffer['col']);
+            }
+            $opened = true;
+        }
+
+        if ($opened && null !== $data['active'] && $this->buffers->has(realpath($data['active']) ?: $data['active'])) {
+            /** @var Buffer $active */
+            $active = $this->buffers->setActive(realpath($data['active']) ?: $data['active']);
+            $this->bufferService->showBuffer($active);
+        }
+        if ($opened) {
+            $this->tui->setFocus($this->editorArea->widget());
+        }
+
+        return $opened;
+    }
+
+    public function save(): void
+    {
+        $buffers = [];
+        foreach ($this->buffers->all() as $buffer) {
+            if ($buffer->isHelp()) {
+                continue; // a restored help path would reopen as editable source
+            }
+            $buffers[] = [
+                'path' => $buffer->path,
+                'line' => $buffer->document->getCursorLine(),
+                'col' => $buffer->document->getCursorCol(),
+            ];
+        }
+        $this->store->save($buffers, $this->buffers->active()?->path);
+    }
+}

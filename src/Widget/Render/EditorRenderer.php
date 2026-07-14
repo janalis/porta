@@ -11,7 +11,6 @@ use Porta\Support\IntMath;
 use Porta\Ui\Palette;
 use Porta\Ui\Role;
 use Symfony\Component\Tui\Ansi\AnsiUtils;
-use Symfony\Component\Tui\Style\CursorShape;
 
 /**
  * Stateless rendering algorithms for the code editor: matching-bracket lookup,
@@ -152,12 +151,12 @@ final class EditorRenderer
         return \count($occurrences) >= 2 ? $occurrences : [];
     }
 
-    /** One-cell git change indicator for the gutter's leftmost column. */
+    /** One-cell git change indicator for the gutter's leftmost column — shape-distinct glyphs so the states read without color. */
     public static function gitCell(?string $mark, Palette $palette): string
     {
         return match ($mark) {
-            'added' => $palette->of(Role::GitAdded)."▎\x1b[0m", // green bar
-            'modified' => $palette->of(Role::GitModified)."▎\x1b[0m", // blue bar
+            'added' => $palette->of(Role::GitAdded)."▎\x1b[0m", // green solid bar
+            'modified' => $palette->of(Role::GitModified)."┆\x1b[0m", // blue dashed bar
             'deleted' => $palette->of(Role::GitDeleted)."▁\x1b[0m", // red underline
             default => ' ',
         };
@@ -229,7 +228,7 @@ final class EditorRenderer
      * Slice a highlighted line to the visible window, inserting the caret marker
      * on the cursor line. Output is exactly $contentWidth cells wide.
      */
-    public static function renderContentLine(int $hScroll, string $highlightedLine, int $contentWidth, bool $withCursor, int $cursorDisplayCol): string
+    public static function renderContentLine(int $hScroll, string $highlightedLine, int $contentWidth, bool $withCursor, int $cursorDisplayCol, string $cursorMarker): string
     {
         if (!$withCursor) {
             $slice = AnsiUtils::sliceWithWidth($highlightedLine, $hScroll, $contentWidth);
@@ -249,7 +248,7 @@ final class EditorRenderer
         $text = $windowed['text'];
         $cursorOffset = max(0, $cursorDisplayCol - $hScroll);
         $byte = \strlen(AnsiUtils::sliceByColumn($text, 0, $cursorOffset));
-        $withCursorText = substr($text, 0, $byte).AnsiUtils::cursorMarker(CursorShape::Bar).substr($text, $byte);
+        $withCursorText = substr($text, 0, $byte).$cursorMarker.substr($text, $byte);
 
         return AnsiText::padRight($withCursorText."\x1b[0m", $contentWidth);
     }
@@ -291,7 +290,8 @@ final class EditorRenderer
 
         $color = $palette->of(DiagnosticStyle::dimRole($worst));
         $extra = \count($diags) > 1 ? ' +'.(\count($diags) - 1) : '';
-        $label = AnsiUtils::truncateToWidth('‹ '.(string) preg_replace('/\s+/', ' ', $message).$extra.' ›', $available, '…');
+        // Severity glyph prefix, so error vs warning reads without color.
+        $label = AnsiUtils::truncateToWidth('‹ '.DiagnosticStyle::glyph($worst).' '.(string) preg_replace('/\s+/', ' ', $message).$extra.' ›', $available, '…');
         $head = AnsiText::padRight(AnsiUtils::sliceByColumn($content, 0, $start), $start);
 
         return AnsiText::padRight($head.$color.$label."\x1b[0m", $contentWidth);
@@ -387,8 +387,18 @@ final class EditorRenderer
      *
      * @return array{col: int, width: int, startRow: int, windowStart: int, count: int}
      */
-    public static function searchOverlay(array &$lines, int $columns, int $rows, string $title, string $query, bool $focused, array $rowModels, int $selected, Palette $palette): array
-    {
+    public static function searchOverlay(
+        array &$lines,
+        int $columns,
+        int $rows,
+        string $title,
+        string $query,
+        bool $focused,
+        array $rowModels,
+        int $selected,
+        Palette $palette,
+        string $cursorMarker,
+    ): array {
         $maxRows = max(1, min(\count($rowModels), $rows - 4, 12));
         $windowStart = IntMath::clamp($selected - $maxRows + 1, 0, max(0, \count($rowModels) - $maxRows));
         $visible = \array_slice($rowModels, $windowStart, $maxRows);
@@ -400,10 +410,9 @@ final class EditorRenderer
         $width = min($width, $columns - 4, 70);
         $col = max(0, intdiv($columns - $width, 2));
 
-        $marker = AnsiUtils::cursorMarker(CursorShape::Bar);
         $popup = [
             HeaderRenderer::render(' '.$title, $width, $palette->of(Role::HeaderBar).$palette->of(Role::Bright)."\x1b[1m"),
-            $palette->of(Role::Toolbar).AnsiText::scrollLineToCaret(' > '.$query.($focused ? $marker : ''), $width, $marker)."\x1b[0m",
+            $palette->of(Role::Toolbar).AnsiText::scrollLineToCaret(' > '.$query.($focused ? $cursorMarker : ''), $width)."\x1b[0m",
         ];
         foreach ($visible as $i => $row) {
             if (null !== $row['header']) {

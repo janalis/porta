@@ -50,6 +50,16 @@ final class TerminalBuffer
         return \count($this->lines);
     }
 
+    /**
+     * The cursor's display column on the last line (this buffer is line
+     * oriented, so the cursor is always on the last line). Lets the terminal
+     * panel place the hardware cursor for screen readers.
+     */
+    public function cursorColumn(): int
+    {
+        return $this->col;
+    }
+
     public function clear(): void
     {
         $this->lines = [''];

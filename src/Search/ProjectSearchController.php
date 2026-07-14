@@ -10,6 +10,7 @@ use Porta\History\SearchHistoryStore;
 use Porta\History\SearchPrefsStore;
 use Porta\History\SearchScopeStore;
 use Porta\I18n\Translator;
+use Porta\Lsp\LspSessionPool;
 use Porta\Support\ProjectPaths;
 use Porta\Ui\ScopeKind;
 use Porta\Widget\CodeEditorWidget;
@@ -46,8 +47,6 @@ final class ProjectSearchController
     private ?array $pinned = null;
 
     /**
-     * @param \Closure(string, Document): void $notifyFullChange re-sync a buffer's full text to the LSP
-     * @param \Closure(ScopeKind): list<string> $resolveScope resolve a scope kind to grep path(s) from the live editor context
      */
     public function __construct(
         private readonly ProjectSearch $projectSearch,
@@ -58,10 +57,10 @@ final class ProjectSearchController
         private readonly Translator $translator,
         private readonly BufferManager $buffers,
         private readonly string $rootDir,
-        private readonly \Closure $notifyFullChange,
+        private readonly LspSessionPool $lsp,
         private readonly SearchHistoryStore $history,
         private readonly SearchPrefsStore $prefs,
-        private readonly \Closure $resolveScope,
+        private readonly SearchScopeResolver $scopes,
         private readonly LanguageFilter $languageFilter,
         private readonly SearchScopeStore $scopeStore,
     ) {
@@ -134,7 +133,7 @@ final class ProjectSearchController
     /** @return list<string> */
     private function resolveChoice(ScopeChoice $choice): array
     {
-        return null !== $choice->kind ? ($this->resolveScope)($choice->kind) : $choice->paths ?? ['.'];
+        return null !== $choice->kind ? $this->scopes->resolve($choice->kind) : $choice->paths ?? ['.'];
     }
 
     /** @return list<string> the choice labels shown in the panel's Alt+S selector */
@@ -334,7 +333,7 @@ final class ProjectSearchController
                     if ($buffer === $this->buffers->active()) {
                         $this->editor->invalidate();
                     }
-                    ($this->notifyFullChange)($buffer->path, $buffer->document);
+                    $this->lsp->notifyFullChange($buffer->path, $buffer->document);
                     ++$touched;
                 }
             } elseif (is_file($abs) && is_writable($abs)) {
@@ -372,7 +371,7 @@ final class ProjectSearchController
                     if ($buffer === $this->buffers->active()) {
                         $this->editor->invalidate();
                     }
-                    ($this->notifyFullChange)($buffer->path, $buffer->document);
+                    $this->lsp->notifyFullChange($buffer->path, $buffer->document);
                     ++$touched;
                 }
             } elseif (is_file($abs) && is_writable($abs)) {

@@ -44,7 +44,7 @@ final class AnsiTextTest extends TestCase
 
     public function testScrollLineToCaretClipsAndPadsAMarkerlessLine(): void
     {
-        $out = AnsiText::scrollLineToCaret('a short line', 20, "\x1b_pi:c;bar\x07");
+        $out = AnsiText::scrollLineToCaret('a short line', 20);
 
         $this->assertSame(20, AnsiUtils::visibleWidth($out), 'padded to width');
         $this->assertStringStartsWith('a short line', AnsiUtils::stripAnsiCodes($out), 'clipped from the start');
@@ -56,12 +56,29 @@ final class AnsiTextTest extends TestCase
         // "Find: " + long query + marker at the caret, then trailing chrome.
         $line = 'Find: '.str_repeat('q', 40).$m.'  [0/0]';
 
-        $out = AnsiText::scrollLineToCaret($line, 20, $m);
+        $out = AnsiText::scrollLineToCaret($line, 20);
 
         $this->assertSame(1, substr_count($out, $m), 'the caret survives');
         $this->assertSame(20, AnsiUtils::visibleWidth($out), 'clipped and padded to width');
         // The window scrolled past the label to keep the caret visible.
         $this->assertStringNotContainsString('Find:', AnsiUtils::stripAnsiCodes($out));
+    }
+
+    public function testScrollLineToCaretDiscoversAnyMarkerShape(): void
+    {
+        // The marker is found by its APC prefix, whatever the configured shape.
+        $block = AnsiUtils::cursorMarker(CursorShape::Block);
+        $out = AnsiText::scrollLineToCaret('ab'.$block.'cd', 10);
+
+        $this->assertSame(1, substr_count($out, $block), 'a block marker survives untouched');
+        $this->assertSame(10, AnsiUtils::visibleWidth($out));
+    }
+
+    public function testScrollLineToCaretTreatsAnUnterminatedMarkerPrefixAsPlainText(): void
+    {
+        $out = AnsiText::scrollLineToCaret('ab'.AnsiUtils::CURSOR_MARKER_PREFIX, 10);
+
+        $this->assertSame(10, AnsiUtils::visibleWidth($out), 'falls back to a plain clip');
     }
 
     public function testPadsWithTrailingSpacesToReachTheWidth(): void

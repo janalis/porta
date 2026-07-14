@@ -36,24 +36,37 @@ final class IdeConfig
         'inlineDiagnostics' => true,
         'relativeLineNumbers' => false,
         'autoPairs' => true,
-        'editorConfig' => true,
+        'cursorShape' => 'bar',
+        'tabBarPosition' => 'top',
     ];
+
+    /**
+     * Setting keys that used to exist: silently skipped at load so a stale
+     * value in an older .porta.json never warns. `editorConfig` was the
+     * "Respect .editorconfig" toggle — .editorconfig is always honored now,
+     * superseded per language by the indent settings.
+     */
+    private const LEGACY_SETTINGS = ['editorConfig'];
 
     /** The per-language indent override keys and their allowed values. */
     private const INDENT_STYLES = ['auto', 'spaces', 'tabs'];
 
     /**
-     * @param array<string, list<string>>                                          $keymap
-     * @param array<string, int|bool|string>                                       $settings   resolved settings (defaults merged)
-     * @param array<string, array{indentStyle?: string, indentSize?: int|string}>  $languages  per-language indent overrides
-     * @param array<string, string>                                                $lspServers per-language LSP command overrides (map form)
-     * @param list<string>                                                         $warnings
+     * @param array<string, list<string>>                                                                                                    $keymap
+     * @param array<string, int|bool|string>                                                                                                 $settings   resolved settings (defaults merged)
+     * @param array<string, array{indentStyle?: string, indentSize?: int|string, debug?: array{adapter?: string, launch?: array<string, mixed>}}> $languages  per-language overrides
+     * @param array<string, string>                                                                                                          $lspServers per-language LSP command overrides (map form)
+     * @param array<string, array<string, bool|int|string>>                                                                                  $plugins    raw per-plugin setting values (coerced at read by PluginSettings)
+     * @param list<string>                                                                                                                   $disabledPlugins plugin names skipped at boot (bundled plugins are disableable, not removable)
+     * @param list<string>                                                                                                                   $warnings
      */
     private function __construct(
         public readonly array $keymap,
         public readonly array $settings,
         public readonly array $languages,
         public readonly array $lspServers,
+        public readonly array $plugins,
+        public readonly array $disabledPlugins,
         public readonly array $warnings,
     ) {}
 
@@ -61,12 +74,12 @@ final class IdeConfig
     {
         $file = $rootDir.'/.porta.json';
         if (!is_file($file)) {
-            return new self([], self::DEFAULT_SETTINGS, [], [], []);
+            return new self([], self::DEFAULT_SETTINGS, [], [], [], [], []);
         }
 
         $config = JsonFile::read($file);
         if (null === $config) {
-            return new self([], self::DEFAULT_SETTINGS, [], [], ['.porta.json is not valid JSON']);
+            return new self([], self::DEFAULT_SETTINGS, [], [], [], [], ['.porta.json is not valid JSON']);
         }
 
         $keymap = [];
@@ -74,7 +87,9 @@ final class IdeConfig
         /** @var array<string, string|int|list<string>> $keymapConfig */
         $keymapConfig = $config['keymap'] ?? [];
         foreach ($keymapConfig as $action => $keys) {
-            if (!isset(ActionCatalog::ACTIONS[$action])) {
+            // Namespaced ids ("plugin:command") belong to plugins registered at
+            // runtime — they bypass the catalog check and bind if the plugin loads.
+            if (!isset(ActionCatalog::ACTIONS[$action]) && !str_contains($action, ':')) {
                 $warnings[] = \sprintf('Unknown keymap action "%s" in .porta.json', $action);
                 continue;
             }
@@ -90,6 +105,9 @@ final class IdeConfig
         /** @var array<string, scalar> $settingsConfig */
         $settingsConfig = $config['settings'] ?? [];
         foreach ($settingsConfig as $key => $value) {
+            if (\in_array($key, self::LEGACY_SETTINGS, true)) {
+                continue;
+            }
             if (!\array_key_exists($key, self::DEFAULT_SETTINGS)) {
                 $warnings[] = \sprintf('Unknown setting "%s" in .porta.json', $key);
                 continue;
@@ -102,8 +120,43 @@ final class IdeConfig
         $languagesConfig = \is_array($config['languages'] ?? null) ? $config['languages'] : [];
         $languages = self::parseLanguages($languagesConfig, $warnings);
         $lspServers = self::parseLspServers($config['lsp'] ?? null);
+        $plugins = self::parsePluginSettings(\is_array($config['plugins'] ?? null) ? $config['plugins'] : [], $warnings);
+        $disabledPlugins = [];
+        if (\is_array($config['disabledPlugins'] ?? null)) {
+            $disabledPlugins = array_values(array_map(strval(...), array_filter($config['disabledPlugins'], is_scalar(...))));
+        }
 
-        return new self($keymap, $settings, $languages, $lspServers, $warnings);
+        return new self($keymap, $settings, $languages, $lspServers, $plugins, $disabledPlugins, $warnings);
+    }
+
+    /**
+     * The raw per-plugin setting values from the top-level `plugins` block.
+     * Values stay uncoerced — descriptors are only known once plugins load;
+     * {@see \Porta\Plugin\PluginSettings} coerces at read time.
+     *
+     * @param array<array-key, mixed> $config
+     * @param list<string>            $warnings
+     *
+     * @return array<string, array<string, bool|int|string>>
+     */
+    private static function parsePluginSettings(array $config, array &$warnings): array
+    {
+        $plugins = [];
+        /** @var mixed $values */
+        foreach ($config as $plugin => $values) {
+            if (!\is_array($values)) {
+                $warnings[] = \sprintf('Plugin settings for "%s" must be an object', $plugin);
+                continue;
+            }
+            /** @var mixed $value */
+            foreach ($values as $key => $value) {
+                if (\is_scalar($value)) {
+                    $plugins[(string) $plugin][(string) $key] = \is_float($value) ? (string) $value : $value;
+                }
+            }
+        }
+
+        return $plugins;
     }
 
     /**
@@ -146,7 +199,7 @@ final class IdeConfig
      * @param array<array-key, mixed> $config
      * @param list<string>            $warnings
      *
-     * @return array<string, array{indentStyle?: string, indentSize?: int|string}>
+     * @return array<string, array{indentStyle?: string, indentSize?: int|string, debug?: array{adapter?: string, launch?: array<string, mixed>}}>
      */
     private static function parseLanguages(array $config, array &$warnings): array
     {
@@ -169,10 +222,11 @@ final class IdeConfig
     }
 
     /**
-     * Extract the valid indent overrides from one language's raw value, or null
-     * when it is not an object.
+     * Extract the valid overrides from one language's raw value, or null when
+     * it is not an object. Invalid sub-values are dropped like invalid indent
+     * values are.
      *
-     * @return array{indentStyle?: string, indentSize?: int|string}|null
+     * @return array{indentStyle?: string, indentSize?: int|string, debug?: array{adapter?: string, launch?: array<string, mixed>}}|null
      */
     private static function languageEntry(mixed $props): ?array
     {
@@ -188,6 +242,37 @@ final class IdeConfig
         $size = self::indentSizeValue($props['indentSize'] ?? null);
         if (null !== $size) {
             $entry['indentSize'] = $size;
+        }
+        $debug = self::debugValue($props['debug'] ?? null);
+        if ([] !== $debug) {
+            $entry['debug'] = $debug;
+        }
+
+        return $entry;
+    }
+
+    /**
+     * The valid parts of a language's `debug` block: `adapter` (command string
+     * or argv list) and `launch` (a JSON object merged into the DAP launch
+     * request). Anything invalid is dropped.
+     *
+     * @return array{adapter?: string, launch?: array<string, mixed>}
+     */
+    private static function debugValue(mixed $debug): array
+    {
+        if (!\is_array($debug)) {
+            return [];
+        }
+        $entry = [];
+        $adapter = self::commandString($debug['adapter'] ?? null);
+        if ('' !== $adapter) {
+            $entry['adapter'] = $adapter;
+        }
+        /** @var mixed $launch */
+        $launch = $debug['launch'] ?? null;
+        if (\is_array($launch) && !array_is_list($launch)) {
+            /** @var array<string, mixed> $launch */
+            $entry['launch'] = $launch;
         }
 
         return $entry;
@@ -249,6 +334,39 @@ final class IdeConfig
      * block, merging with and preserving existing content. Returns true on
      * success.
      */
+    /** Persist a plugin's enabled state in the top-level `disabledPlugins` list. */
+    public static function persistPluginEnabled(string $rootDir, string $plugin, bool $enabled): bool
+    {
+        $file = $rootDir.'/.porta.json';
+        $config = JsonFile::read($file) ?? [];
+        $disabled = \is_array($config['disabledPlugins'] ?? null) ? array_values(array_map(strval(...), array_filter($config['disabledPlugins'], is_scalar(...)))) : [];
+        $disabled = array_values(array_diff($disabled, [$plugin]));
+        if (!$enabled) {
+            $disabled[] = $plugin;
+        }
+        if ([] === $disabled) {
+            unset($config['disabledPlugins']);
+        } else {
+            $config['disabledPlugins'] = $disabled;
+        }
+
+        return self::write($file, $config);
+    }
+
+    /** Persist one plugin-defined setting value under the top-level `plugins.<name>.<key>`. */
+    public static function persistPluginSetting(string $rootDir, string $plugin, string $key, bool|int|string $value): bool
+    {
+        $file = $rootDir.'/.porta.json';
+        $config = JsonFile::read($file) ?? [];
+        $plugins = \is_array($config['plugins'] ?? null) ? $config['plugins'] : [];
+        $entry = \is_array($plugins[$plugin] ?? null) ? $plugins[$plugin] : [];
+        $entry[$key] = $value;
+        $plugins[$plugin] = $entry;
+        $config['plugins'] = $plugins;
+
+        return self::write($file, $config);
+    }
+
     public static function persistLanguageSetting(string $rootDir, string $language, string $key, int|string $value): bool
     {
         $file = $rootDir.'/.porta.json';
@@ -256,6 +374,39 @@ final class IdeConfig
         $languages = \is_array($config['languages'] ?? null) ? $config['languages'] : [];
         $entry = \is_array($languages[$language] ?? null) ? $languages[$language] : [];
         $entry[$key] = $value;
+        $languages[$language] = $entry;
+        $config['languages'] = $languages;
+
+        return self::write($file, $config);
+    }
+
+    /**
+     * Persist one per-language debug override (`adapter` command string or
+     * `launch` object) into .porta.json's `languages.<id>.debug` block. A null
+     * / blank / empty value removes the key; an emptied `debug` block is
+     * dropped (the language entry itself is preserved). True on success.
+     *
+     * @param string|array<string, mixed>|null $value
+     */
+    public static function persistLanguageDebug(string $rootDir, string $language, string $key, string|array|null $value): bool
+    {
+        $file = $rootDir.'/.porta.json';
+        $config = JsonFile::read($file) ?? [];
+        $languages = \is_array($config['languages'] ?? null) ? $config['languages'] : [];
+        $entry = \is_array($languages[$language] ?? null) ? $languages[$language] : [];
+        $debug = \is_array($entry['debug'] ?? null) ? $entry['debug'] : [];
+
+        if (null === $value || '' === $value || [] === $value) {
+            unset($debug[$key]);
+        } else {
+            $debug[$key] = $value;
+        }
+
+        if ([] === $debug) {
+            unset($entry['debug']);
+        } else {
+            $entry['debug'] = $debug;
+        }
         $languages[$language] = $entry;
         $config['languages'] = $languages;
 

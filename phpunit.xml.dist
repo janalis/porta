@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <phpunit xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
          xsi:noNamespaceSchemaLocation="vendor/phpunit/phpunit/phpunit.xsd"
-         bootstrap="vendor/autoload.php"
+         bootstrap="tests/bootstrap.php"
          cacheDirectory=".phpunit.cache"
          colors="true"
          failOnRisky="true"
@@ -9,6 +9,12 @@
          displayDetailsOnTestsThatTriggerWarnings="true"
          displayDetailsOnTestsThatTriggerNotices="true"
 >
+    <php>
+        <!-- Keep tests away from the developer's real ~/.porta/plugins. -->
+        <env name="PORTA_HOME" value="/nonexistent" force="true"/>
+        <!-- The bundled plugins load only in scenarios that opt in via putenv. -->
+        <env name="PORTA_EMBEDDED_PLUGINS" value="/nonexistent" force="true"/>
+    </php>
     <testsuites>
         <testsuite name="Unit">
             <directory>tests/Unit</directory>

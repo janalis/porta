@@ -8,19 +8,24 @@ use Porta\Editor\TextMetrics;
 use Porta\Input\TextInput;
 use Porta\Support\AnsiText;
 use Symfony\Component\Tui\Ansi\AnsiUtils;
-use Symfony\Component\Tui\Style\CursorShape;
 
 /**
  * A single-line text field: the value plus the append/backspace/cursor
  * mechanics that the find bar, go-to-file, results query, and overlay prompt
  * each hand-rolled. Owns no styling beyond the cursor marker — widgets keep
- * their own labels and colors around {@see render()}.
+ * their own labels and colors around {@see render()}. The marker's shape comes
+ * from the shared {@see CursorStyle} holder (widgets pass theirs through).
  */
 final class TextField
 {
+    private readonly CursorStyle $style;
+
     public function __construct(
         private string $value = '',
-    ) {}
+        ?CursorStyle $style = null,
+    ) {
+        $this->style = $style ?? new CursorStyle();
+    }
 
     public function value(): string
     {
@@ -66,7 +71,7 @@ final class TextField
     }
 
     /**
-     * The value, followed by a bar cursor marker when $cursor is true. When
+     * The value, followed by the cursor marker when $cursor is true. When
      * $width is given and the focused value overflows it, the value is scrolled
      * to its tail so the end caret (and its marker) stays visible.
      */
@@ -75,9 +80,9 @@ final class TextField
         // Newlines (multiline query/replace) show as a visible ⏎ so the row stays one line.
         $display = str_replace("\n", '⏎', $this->value);
         if ($cursor && null !== $width) {
-            return AnsiText::caretWindow($display, AnsiUtils::visibleWidth($display), $width, AnsiUtils::cursorMarker(CursorShape::Bar));
+            return AnsiText::caretWindow($display, AnsiUtils::visibleWidth($display), $width, $this->style->marker());
         }
 
-        return $display.($cursor ? AnsiUtils::cursorMarker(CursorShape::Bar) : '');
+        return $display.($cursor ? $this->style->marker() : '');
     }
 }

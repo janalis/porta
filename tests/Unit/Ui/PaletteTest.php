@@ -26,7 +26,8 @@ final class PaletteTest extends TestCase
         yield 'hunk' => [Role::Hunk, "\x1b[38;5;75m"];
         yield 'add-emphasis-bg' => [Role::AddEmphasisBg, "\x1b[48;5;22m"];
         yield 'del-emphasis-bg' => [Role::DelEmphasisBg, "\x1b[48;5;88m"];
-        yield 'selected-row' => [Role::SelectedRow, "\x1b[48;5;31m\x1b[38;5;231m"];
+        yield 'selected-row' => [Role::SelectedRow, "\x1b[48;5;31m\x1b[38;5;231m\x1b[1m"];
+        yield 'selected-row-unfocused' => [Role::SelectedRowUnfocused, "\x1b[48;5;237m"];
         yield 'row-highlight-bg' => [Role::RowHighlightBg, "\x1b[48;5;236m"];
         yield 'popup-row' => [Role::PopupRow, "\x1b[48;5;236m\x1b[38;5;250m"];
         yield 'header-bar' => [Role::HeaderBar, "\x1b[48;5;237m"];
@@ -69,6 +70,10 @@ final class PaletteTest extends TestCase
         yield 'faint' => [Role::Faint, "\x1b[38;5;242m"];
         yield 'subtle' => [Role::Subtle, "\x1b[38;5;246m"];
         yield 'emphasis' => [Role::Emphasis, "\x1b[38;5;255m"];
+        yield 'status-branch' => [Role::StatusBranch, "\x1b[38;5;114m"];
+        yield 'status-debug' => [Role::StatusDebug, "\x1b[38;5;203m"];
+        yield 'status-error' => [Role::StatusError, "\x1b[38;5;203m"];
+        yield 'status-warning' => [Role::StatusWarning, "\x1b[38;5;179m"];
     }
 
     #[DataProvider('darkRoles')]
@@ -91,7 +96,8 @@ final class PaletteTest extends TestCase
         yield 'hunk' => [Role::Hunk, "\x1b[38;5;25m"];
         yield 'add-emphasis-bg' => [Role::AddEmphasisBg, "\x1b[48;5;194m"];
         yield 'del-emphasis-bg' => [Role::DelEmphasisBg, "\x1b[48;5;224m"];
-        yield 'selected-row' => [Role::SelectedRow, "\x1b[48;5;111m\x1b[38;5;16m"];
+        yield 'selected-row' => [Role::SelectedRow, "\x1b[48;5;111m\x1b[38;5;16m\x1b[1m"];
+        yield 'selected-row-unfocused' => [Role::SelectedRowUnfocused, "\x1b[48;5;253m"];
         yield 'row-highlight-bg' => [Role::RowHighlightBg, "\x1b[48;5;253m"];
         yield 'popup-row' => [Role::PopupRow, "\x1b[48;5;253m\x1b[38;5;240m"];
         yield 'header-bar' => [Role::HeaderBar, "\x1b[48;5;253m"];
@@ -134,6 +140,10 @@ final class PaletteTest extends TestCase
         yield 'faint' => [Role::Faint, "\x1b[38;5;245m"];
         yield 'subtle' => [Role::Subtle, "\x1b[38;5;246m"];
         yield 'emphasis' => [Role::Emphasis, "\x1b[38;5;16m"];
+        yield 'status-branch' => [Role::StatusBranch, "\x1b[38;5;28m"];
+        yield 'status-debug' => [Role::StatusDebug, "\x1b[38;5;160m"];
+        yield 'status-error' => [Role::StatusError, "\x1b[38;5;160m"];
+        yield 'status-warning' => [Role::StatusWarning, "\x1b[38;5;130m"];
     }
 
     #[DataProvider('lightRoles')]
@@ -150,6 +160,26 @@ final class PaletteTest extends TestCase
         }
     }
 
+    public function testHighContrastCoversEveryRole(): void
+    {
+        $hc = ColorPalette::highContrast();
+        foreach (Role::cases() as $role) {
+            $this->assertNotSame('', $hc->of($role), $role->name.' must have a high-contrast color');
+        }
+    }
+
+    public function testHighContrastKeyPairings(): void
+    {
+        // Spot-locks for the accessibility-critical picks; the full table is free
+        // to be tuned as long as every pairing stays at WCAG-AAA contrast.
+        $hc = ColorPalette::highContrast();
+        $this->assertSame("\x1b[48;5;19m\x1b[38;5;231m\x1b[1m", $hc->of(Role::SelectedRow), 'white-on-deep-blue selection, bold');
+        $this->assertSame("\x1b[38;5;231m", $hc->of(Role::Bright), 'near-white base text');
+        $this->assertSame("\x1b[38;5;226m", $hc->of(Role::DiagWarn), 'bright yellow warnings');
+        $this->assertSame($hc->of(Role::DiagError), $hc->of(Role::DiagErrorDim), 'no dim tier in high contrast');
+        $this->assertSame($hc->of(Role::DiagInfo), $hc->of(Role::DiagInfoDim), 'no dim tier in high contrast');
+    }
+
     public function testDarkResets(): void
     {
         $dark = ColorPalette::dark();
@@ -159,10 +189,22 @@ final class PaletteTest extends TestCase
 
     public function testMonochromeEmitsNoColorForEveryRole(): void
     {
+        // The selection roles are the deliberate exception: without color, the
+        // selected row would otherwise be invisible, so they map to reverse video.
         $mono = new MonochromePalette();
         foreach (Role::cases() as $role) {
+            if (Role::SelectedRow === $role || Role::SelectedRowUnfocused === $role) {
+                continue;
+            }
             $this->assertSame('', $mono->of($role), $role->name.' must emit no color');
         }
+    }
+
+    public function testMonochromeSelectionUsesReverseVideo(): void
+    {
+        $mono = new MonochromePalette();
+        $this->assertSame("\x1b[7m", $mono->of(Role::SelectedRow));
+        $this->assertSame("\x1b[2;7m", $mono->of(Role::SelectedRowUnfocused));
     }
 
     public function testMonochromeResets(): void

@@ -9,6 +9,7 @@ use Porta\Config\IdeConfig;
 use Porta\Ide;
 use Porta\Tests\Support\TempProject;
 use Porta\Widget\ResultsPanelFields;
+use Porta\Widget\TabBarWidget;
 use Revolt\EventLoop;
 use Symfony\Component\Tui\Ansi\AnsiUtils;
 use Symfony\Component\Tui\Terminal\VirtualTerminal;
@@ -146,7 +147,7 @@ final class IdeEdgeCasesTest extends TestCase
                 300 => static function ($tui): void {
                     $tui->handleInput("\x00"); // completion: silently ignored
                     $tui->handleInput("\x1b[24~"); // definition: ignored
-                    $tui->handleInput("\x1bOP"); // hover: ignored
+                    $tui->handleInput("\x1b[1;2P"); // hover: ignored
                     $tui->handleInput("\x1b[18;3~"); // usages: ignored
                     $tui->handleInput('('); // signature: ignored
                     $tui->handleInput("\x1b[17;2~"); // rename prompt opens...
@@ -326,6 +327,360 @@ final class IdeEdgeCasesTest extends TestCase
                 },
             ],
             0.5,
+        );
+
+        $this->addToAssertionCount(1);
+    }
+
+    public function testMouseDragResizesResultsPaneAndPersists(): void
+    {
+        putenv('PATH=/nonexistent');
+        $project = new TempProject(['a.php' => "<?php\n"]);
+        $expected = 0;
+
+        $this->runIde(
+            $project,
+            $project->path('a.php'),
+            [
+                200 => function ($tui, $terminal, $ide) use (&$expected): void {
+                    $results = $tui->getById('results');
+                    $results->open('Find in Project', ResultsPanelFields::queryOnly());
+                    $results->setResults([
+                        ['path' => 'b.php', 'line' => 0, 'text' => 'one'],
+                        ['path' => 'c.php', 'line' => 0, 'text' => 'two'],
+                    ]);
+                    $tui->requestRender();
+                    $tui->tick(); // force a frame so the pane gets a positioned rect
+                    $renderer = new \ReflectionProperty($ide, 'renderer')->getValue($ide);
+                    $rect = $renderer->getWidgetRect($results);
+                    $expected = $rect->rows + 4;
+                    $top = $rect->row + 1; // 1-based screen row of the pane's top edge
+                    $tui->handleInput(\sprintf("\x1b[<0;5;%dM", $top)); // arm on the top edge
+                    $tui->handleInput(\sprintf("\x1b[<32;5;%dM", $top - 4)); // drag the edge up 4 rows
+                    $tui->handleInput(\sprintf("\x1b[<0;5;%dm", $top - 4)); // release
+                },
+                320 => function ($tui) use ($project, &$expected): void {
+                    $this->assertSame($expected, $tui->getById('results')->visibleRows(), 'the results pane grew by the drag');
+                    $this->assertSame($expected, $tui->getById('terminal')->visibleRows(), 'shared bottom-panel height stays in sync');
+                    $layout = json_decode((string) file_get_contents($project->path('.porta/layout.json')), true);
+                    $this->assertSame((int) round(($expected * 100) / 24), $layout['bottomPanelHeightPercent'], 'saved as a percentage of the 24 rows');
+                },
+            ],
+            0.5,
+        );
+
+        $this->addToAssertionCount(1);
+    }
+
+    public function testGoToTestRoundTripsBetweenClassAndTest(): void
+    {
+        putenv('PATH=/nonexistent');
+        $project = new TempProject([
+            'src/Foo.php' => "<?php\n",
+            'tests/Unit/FooTest.php' => "<?php\n",
+        ]);
+
+        $this->runIde(
+            $project,
+            $project->path('src/Foo.php'),
+            [
+                200 => static function ($tui): void {
+                    $tui->handleInput("\x1b[116;6u"); // ctrl+shift+t → the single test
+                },
+                340 => function ($tui): void {
+                    $this->assertStringEndsWith('tests/Unit/FooTest.php', (string) $tui->getById('editor')->getFilePath());
+                    $tui->handleInput("\x1b[116;6u"); // ctrl+shift+t again → back to the subject
+                },
+                480 => function ($tui): void {
+                    $this->assertStringEndsWith('src/Foo.php', (string) $tui->getById('editor')->getFilePath());
+                },
+            ],
+            0.7,
+        );
+
+        $this->addToAssertionCount(1);
+    }
+
+    public function testGoToTestFlashesWhenNothingIsFound(): void
+    {
+        putenv('PATH=/nonexistent');
+        $project = new TempProject(['src/Alone.php' => "<?php\n", 'tests/OrphanTest.php' => "<?php\n"]);
+
+        // From a class with no test.
+        $this->runIde(
+            $project,
+            $project->path('src/Alone.php'),
+            [
+                200 => static function ($tui): void {
+                    $tui->handleInput("\x1b[116;6u");
+                },
+                340 => function ($tui, $terminal): void {
+                    $tui->tick();
+                    $this->assertStringContainsString('No test found', AnsiUtils::stripAnsiCodes($terminal->getOutput()));
+                },
+            ],
+            0.5,
+        );
+
+        // From a test with no subject.
+        $this->runIde(
+            $project,
+            $project->path('tests/OrphanTest.php'),
+            [
+                200 => static function ($tui): void {
+                    $tui->handleInput("\x1b[116;6u");
+                },
+                340 => function ($tui, $terminal): void {
+                    $tui->tick();
+                    $this->assertStringContainsString('No test subject found', AnsiUtils::stripAnsiCodes($terminal->getOutput()));
+                },
+            ],
+            0.5,
+        );
+
+        $this->addToAssertionCount(1);
+    }
+
+    public function testGoToTestOffersChooserForMultipleCandidates(): void
+    {
+        putenv('PATH=/nonexistent');
+        $project = new TempProject([
+            'src/Multi.php' => "<?php\n",
+            'tests/Unit/MultiTest.php' => "<?php\n",
+            'tests/E2e/MultiTest.php' => "<?php\n",
+        ]);
+
+        $this->runIde(
+            $project,
+            $project->path('src/Multi.php'),
+            [
+                200 => static function ($tui): void {
+                    $tui->handleInput("\x1b[116;6u");
+                },
+                340 => function ($tui, $terminal): void {
+                    $tui->tick();
+                    $screen = AnsiUtils::stripAnsiCodes($terminal->getOutput());
+                    $this->assertStringContainsString('Choose target', $screen, 'two candidate tests show a chooser');
+                    $this->assertStringContainsString('tests/E2e/MultiTest.php', $screen);
+                    $this->assertStringContainsString('tests/Unit/MultiTest.php', $screen);
+                    $tui->handleInput("\r"); // open the selected candidate
+                },
+                480 => function ($tui): void {
+                    $this->assertStringEndsWith('MultiTest.php', (string) $tui->getById('editor')->getFilePath());
+                },
+            ],
+            0.7,
+        );
+
+        $this->addToAssertionCount(1);
+    }
+
+    /** PNG bytes for a $width×$height image split vertically: left half red, right half blue. */
+    private function twoColorPng(int $width, int $height): string
+    {
+        $gd = imagecreatetruecolor($width, $height);
+        imagefilledrectangle($gd, 0, 0, intdiv($width, 2) - 1, $height - 1, (int) imagecolorallocate($gd, 255, 0, 0));
+        imagefilledrectangle($gd, intdiv($width, 2), 0, $width - 1, $height - 1, (int) imagecolorallocate($gd, 0, 0, 255));
+        ob_start();
+        imagepng($gd);
+
+        return (string) ob_get_clean();
+    }
+
+    public function testImageOpensInlineWithHalfBlocksZoomAndPan(): void
+    {
+        putenv('PATH=/nonexistent');
+        $project = new TempProject(['img.png' => $this->twoColorPng(64, 64)]);
+
+        $this->runIde(
+            $project,
+            $project->path('img.png'),
+            [
+                200 => function ($tui, $terminal): void {
+                    $tui->tick();
+                    $this->assertSame('image-viewer', $tui->getFocus()?->getId(), 'the viewer takes editor-area focus');
+                    $output = $terminal->getOutput();
+                    $this->assertStringContainsString('▀', $output, 'half-block cells rendered');
+                    $this->assertStringContainsString('38;2;255;0;0', $output, 'red pixels as truecolor fg');
+                    $this->assertStringContainsString('48;2;0;0;255', $output, 'blue pixels as truecolor bg');
+                    $this->assertStringContainsString('img.png', $output);
+                    $this->assertStringContainsString('64 × 64', $output, 'dimensions in the status bar');
+                    $this->assertStringContainsString('Fit', $output, 'fit zoom label');
+                    $tui->handleInput('='); // zoom in one ladder step
+                },
+                340 => function ($tui, $terminal): void {
+                    $tui->tick();
+                    $this->assertStringContainsString('100%', $terminal->getOutput(), 'zoomed to the next step');
+                    // Pan with arrows; wheel + click routing over the image pane.
+                    $tui->handleInput("\x1b[C");
+                    $tui->handleInput("\x1b[<64;80;10M"); // wheel down over the image → pans
+                    $tui->handleInput("\x1b[<67;80;10M"); // horizontal wheel → pans sideways
+                    $tui->handleInput("\x1b[<0;80;10M"); // left click → keeps viewer focus
+                    $tui->handleInput("\x1b[<0;80;10m");
+                    $tui->handleInput("\x1b[<80;80;10M"); // ctrl+wheel up → zoom in toward the pointer
+                },
+                480 => function ($tui, $terminal): void {
+                    $tui->tick();
+                    $this->assertStringContainsString('200%', $terminal->getOutput(), 'ctrl+wheel zoomed a ladder step');
+                    $tui->handleInput("\x1b[<81;80;10M"); // ctrl+wheel down → back out
+                    $this->assertSame('100%', $tui->getById('image-viewer')->zoomLabel());
+                    $this->assertSame('image-viewer', $tui->getFocus()?->getId(), 'click over the image keeps the viewer focused');
+                    // Ctrl+P still opens the go-to-file palette from the viewer.
+                    $tui->handleInput("\x10");
+                    $this->assertSame('goto-file', $tui->getFocus()?->getId(), 'go-to-file opens over an image tab');
+                    $tui->handleInput("\x1b"); // dismiss it
+                    // The menu composites over the image pane (no hole), and closing
+                    // it restores focus to the viewer (editor-area-aware default).
+                    $tui->handleInput("\x1b[21~"); // F10 → menu
+                    $tui->tick();
+                    $this->assertStringContainsString('Ctrl+Q', AnsiUtils::stripAnsiCodes($terminal->getOutput()), 'the File dropdown composites over the image');
+                    $tui->handleInput("\x1b"); // close the menu
+                },
+                620 => function ($tui): void {
+                    $this->assertSame('image-viewer', $tui->getFocus()?->getId(), 'menu close returns focus to the viewer');
+                },
+            ],
+            0.9,
+        );
+
+        $this->addToAssertionCount(1);
+    }
+
+    public function testImageTabSwitchingSavingAndClosingKeepTheEditorSafe(): void
+    {
+        putenv('PATH=/nonexistent');
+        $png = $this->twoColorPng(8, 4);
+        $project = new TempProject(['a.php' => "<?php\n// code\n", 'img.png' => $png]);
+
+        $this->runIde(
+            $project,
+            $project->path('a.php'),
+            [
+                200 => function ($tui, $terminal, $ide) use ($project): void {
+                    $service = new \ReflectionProperty($ide, 'bufferService')->getValue($ide);
+                    $service->openFile($project->path('img.png'), true);
+                    $tui->tick();
+                    $editor = new \ReflectionProperty($ide, 'editor')->getValue($ide);
+                    $this->assertNull($editor->getContext(), 'the editor is detached under an image tab');
+                    $this->assertSame('image-viewer', $tui->getFocus()?->getId());
+                    // Ctrl+S reaches the viewer (unbound) and saveBuffer guards anyway.
+                    $tui->handleInput("\x13");
+                    $service->saveCurrentFile();
+                },
+                340 => function ($tui, $terminal, $ide) use ($project, $png): void {
+                    $this->assertSame($png, (string) file_get_contents($project->path('img.png')), 'saving never writes over the image');
+                    $tui->handleInput("\x1b[1;5D"); // ctrl+left → back to the code tab
+                    $tui->tick();
+                    $this->assertStringEndsWith('a.php', (string) $tui->getById('editor')->getFilePath());
+                    $this->assertNotNull($tui->getById('editor')->getContext(), 'the editor is re-attached');
+                    $tui->handleInput("\x1b[1;5C"); // ctrl+right → the image again
+                },
+                480 => function ($tui, $terminal, $ide) use ($project): void {
+                    $tui->tick();
+                    $this->assertSame('image-viewer', $tui->getFocus()?->getId());
+                    // An external change re-decodes on the next poll; garbage keeps the old pixels.
+                    file_put_contents($project->path('img.png'), $this->twoColorPng(16, 2));
+                    touch($project->path('img.png'), time() + 2); // force a new disk stamp within the same second
+                    $service = new \ReflectionProperty($ide, 'bufferService')->getValue($ide);
+                    $service->pollFilesystem();
+                    $buffers = new \ReflectionProperty($ide, 'buffers')->getValue($ide);
+                    $this->assertSame(16, $buffers->active()?->image?->width, 'externally changed image reloaded');
+                    $tui->tick();
+                    $this->assertStringContainsString('Reloaded img.png', AnsiUtils::stripAnsiCodes($terminal->getOutput()));
+                    file_put_contents($project->path('img.png'), 'not a png anymore');
+                    touch($project->path('img.png'), time() + 4);
+                    $service->pollFilesystem();
+                    $this->assertSame(16, $buffers->active()?->image?->width, 'undecodable bytes keep the old pixels');
+                    $tui->handleInput("\x1bw"); // alt+w → close the image tab
+                },
+                620 => function ($tui, $terminal): void {
+                    $tui->tick();
+                    $this->assertStringEndsWith('a.php', (string) $tui->getById('editor')->getFilePath(), 'closing the image tab restores the editor');
+                    $this->assertNotNull($tui->getById('editor')->getContext());
+                },
+            ],
+            0.9,
+        );
+
+        $this->addToAssertionCount(1);
+    }
+
+    public function testImageTabGuardsEditorHostedModals(): void
+    {
+        putenv('PATH=/nonexistent');
+        $project = new TempProject(['a.php' => "<?php\n", 'img.png' => $this->twoColorPng(4, 4)]);
+
+        // With only the image open, the editor-hosted modals refuse with a flash.
+        $this->runIde(
+            $project,
+            $project->path('img.png'),
+            [
+                200 => function ($tui, $terminal): void {
+                    $tui->handleInput("\x1b[101;6u"); // ctrl+shift+e → search everywhere
+                    $tui->handleInput("\x1b[102;6u"); // ctrl+shift+f → find in files (same guard)
+                    $tui->tick();
+                    $this->assertStringContainsString('Not available while viewing an image', AnsiUtils::stripAnsiCodes($terminal->getOutput()));
+                },
+            ],
+            0.5,
+        );
+
+        // With a text tab open too, the modal hops to it first.
+        $this->runIde(
+            $project,
+            $project->path('a.php'),
+            [
+                200 => static function ($tui, $terminal, $ide) use ($project): void {
+                    new \ReflectionProperty($ide, 'bufferService')
+                        ->getValue($ide)
+                        ->openFile($project->path('img.png'), true);
+                    $tui->handleInput("\x1b[102;6u"); // ctrl+shift+f → find in files
+                },
+                340 => function ($tui, $terminal): void {
+                    $tui->tick();
+                    $this->assertStringEndsWith('a.php', (string) $tui->getById('editor')->getFilePath(), 'hopped to the text tab');
+                    $this->assertStringContainsString('Find in Files', AnsiUtils::stripAnsiCodes($terminal->getOutput()), 'the modal opened over it');
+                },
+            ],
+            0.6,
+        );
+
+        $this->addToAssertionCount(1);
+    }
+
+    public function testImageOpenRejectsOversizedCorruptAndLastTabCloseEmptiesTheEditor(): void
+    {
+        putenv('PATH=/nonexistent');
+        $project = new TempProject([
+            'fake.png' => 'not an image at all',
+            'img.png' => $this->twoColorPng(4, 4),
+        ]);
+        file_put_contents($project->path('big.png'), str_repeat('x', 21 * 1024 * 1024));
+
+        $this->runIde(
+            $project,
+            null,
+            [
+                200 => function ($tui, $terminal, $ide) use ($project): void {
+                    $service = new \ReflectionProperty($ide, 'bufferService')->getValue($ide);
+                    $service->openFile($project->path('big.png'));
+                    $tui->tick();
+                    $this->assertStringContainsString('Image too large (> 20 MB)', AnsiUtils::stripAnsiCodes($terminal->getOutput()));
+                    $service->openFile($project->path('fake.png'));
+                    $tui->tick();
+                    $this->assertStringContainsString('Cannot display image fake.png', AnsiUtils::stripAnsiCodes($terminal->getOutput()));
+                    // Open the good one, then close the last tab: the editor pane empties.
+                    $service->openFile($project->path('img.png'), true);
+                    $tui->handleInput("\x1bw");
+                },
+                340 => function ($tui): void {
+                    $tui->tick();
+                    $this->assertNull($tui->getById('editor')->getFilePath(), 'empty editor after the last tab closed');
+                    $this->assertNotNull($tui->getById('editor')->getContext(), 'editor pane restored');
+                    $this->assertSame('tree', $tui->getFocus()?->getId());
+                },
+            ],
+            0.6,
         );
 
         $this->addToAssertionCount(1);
@@ -619,6 +974,7 @@ final class IdeEdgeCasesTest extends TestCase
                 760 => function ($tui): void {
                     $this->assertStringEndsWith('sub/Inside.php', (string) $tui->getById('editor')->getFilePath());
                     $this->assertSame('editor', $tui->getFocus()?->getId(), 'editor refocused after the jump');
+                    $this->assertTrue($tui->getById('results')->isOpen(), 'the pane stays open after the jump');
                 },
             ],
             1.1,
@@ -1881,8 +2237,9 @@ final class IdeEdgeCasesTest extends TestCase
             $tui->tick();
             $renderer = new \ReflectionProperty(\Symfony\Component\Tui\Tui::class, 'renderer')->getValue($tui);
             $root = new \ReflectionProperty(\Symfony\Component\Tui\Tui::class, 'root')->getValue($tui);
-            $segmenter = new \ReflectionProperty($ide, 'paneSegmenter')->getValue($ide);
-            $reorder = new \ReflectionProperty($ide, 'paneReorder')->getValue($ide);
+            $locator = new \ReflectionProperty($ide, 'locator')->getValue($ide);
+            $segmenter = $locator->get(\Porta\Ui\PaneSegmenter::class);
+            $reorder = $locator->get(\Porta\I18n\PaneReorder::class);
             $terminal = $tui->getTerminal();
             $columns = $terminal->getColumns();
             $lines = array_values($renderer->render($root, $columns, $terminal->getRows()));
@@ -2796,6 +3153,7 @@ final class IdeEdgeCasesTest extends TestCase
                     // First row sorts to A.php; jumping opens it in the editor
                     $this->assertStringEndsWith('A.php', (string) $tui->getById('editor')->getFilePath());
                     $this->assertSame('editor', $tui->getFocus()?->getId());
+                    $this->assertTrue($tui->getById('results')->isOpen(), 'the pane stays open after the jump');
                 },
             ],
             1.2,
@@ -2858,8 +3216,8 @@ final class IdeEdgeCasesTest extends TestCase
                     $editor = $tui->getById('editor');
                     $rendered = $editor->render(new \Symfony\Component\Tui\Render\RenderContext(80, 10));
                     $joined = implode('', $rendered);
-                    // Modified (blue ▎) on line 2, added (green ▎) on line 4
-                    $this->assertStringContainsString("\x1b[38;5;75m▎", $joined, 'modified mark present');
+                    // Modified (blue ┆) on line 2, added (green ▎) on line 4
+                    $this->assertStringContainsString("\x1b[38;5;75m┆", $joined, 'modified mark present');
                     $this->assertStringContainsString("\x1b[38;5;114m▎", $joined, 'added mark present');
                     // Exact width contract still holds with the git strip
                     foreach ($rendered as $line) {
@@ -4321,7 +4679,7 @@ final class IdeEdgeCasesTest extends TestCase
                 },
                 500 => static function ($tui): void {
                     $tui->tick(); // flush the previous flash
-                    $tui->handleInput("\x1bOP"); // hover -> none
+                    $tui->handleInput("\x1b[1;2P"); // hover -> none
                 },
                 600 => static function ($tui): void {
                     $tui->tick();
@@ -4724,9 +5082,9 @@ final class IdeEdgeCasesTest extends TestCase
                 },
                 1100 => function ($tui): void {
                     $tui->tick();
-                    // Select PHP in the nav (screen row 5) → the content shows its indent rows.
-                    $tui->handleInput("\x1b[<0;5;5M");
-                    $tui->handleInput("\x1b[<0;5;5m");
+                    // Select PHP in the nav (screen row 6, after Plugins) → the content shows its indent rows.
+                    $tui->handleInput("\x1b[<0;5;6M");
+                    $tui->handleInput("\x1b[<0;5;6m");
                 },
                 1300 => function ($tui, $terminal): void {
                     $tui->tick();
@@ -4784,7 +5142,7 @@ final class IdeEdgeCasesTest extends TestCase
                         ->changeSetting('theme', 'light');
                     $tui->tick();
                 },
-                700 => function ($tui, $terminal): void {
+                700 => function ($tui, $terminal, $ide): void {
                     $tui->tick();
                     $out = $terminal->getOutput(); // only post-switch frames (cleared at step 300)
                     // The buffer re-highlighted: light KEYWORD color in, dark gone.
@@ -4793,43 +5151,219 @@ final class IdeEdgeCasesTest extends TestCase
                     // Chrome recolored: light header bar in, dark gone.
                     $this->assertStringContainsString("\x1b[48;5;253m", $out, 'light header bar present');
                     $this->assertStringNotContainsString("\x1b[48;5;237m", $out, 'no dark header bar remains');
+
+                    // Second live switch: the accessibility theme.
+                    $terminal->clearOutput();
+                    new \ReflectionProperty($ide, 'settings')
+                        ->getValue($ide)
+                        ->changeSetting('theme', 'high-contrast');
+                    $tui->tick();
+                },
+                900 => function ($tui, $terminal): void {
+                    $tui->tick();
+                    $out = $terminal->getOutput(); // only post-high-contrast frames
+                    $this->assertStringContainsString("\x1b[38;5;213m", $out, 'high-contrast syntax after the switch');
+                    $this->assertStringNotContainsString("\x1b[38;5;91m", $out, 'no light syntax remains');
+                    $this->assertStringContainsString("\x1b[48;5;236m", $out, 'high-contrast header bar present');
+                    $this->assertStringNotContainsString("\x1b[48;5;253m", $out, 'no light header bar remains');
                 },
             ],
         );
 
-        $this->assertSame('light', IdeConfig::load($project->dir)->settings['theme'], 'the theme persisted');
+        $this->assertSame('high-contrast', IdeConfig::load($project->dir)->settings['theme'], 'the theme persisted');
     }
 
-    public function testEditorConfigToggleLiveReResolvesOpenBuffers(): void
+    public function testTabBarPositionSwitchesLiveAndPersists(): void
     {
-        putenv('PATH=/nonexistent'); // no git/LSP subprocesses needed
+        putenv('PATH=/nonexistent');
+        $project = new TempProject(['a.php' => "<?php\n"]);
+
+        $changePosition = static function ($ide, string $position): void {
+            new \ReflectionProperty($ide, 'settings')
+                ->getValue($ide)
+                ->changeSetting('tabBarPosition', $position);
+        };
+        $rects = static function ($tui, $ide): array {
+            $renderer = new \ReflectionProperty($ide, 'renderer')->getValue($ide);
+
+            return [$renderer->getWidgetRect($tui->getById('tabs')), $renderer->getWidgetRect($tui->getById('editor'))];
+        };
+
+        $this->runIde(
+            $project,
+            $project->path('a.php'),
+            [
+                200 => function ($tui, $terminal, $ide) use ($rects): void {
+                    $tui->tick();
+                    [$tabs, $editor] = $rects($tui, $ide);
+                    $this->assertSame(1, $tabs->rows, 'top: a one-row strip');
+                    $this->assertLessThan($editor->row, $tabs->row, 'top: the strip sits above the editor');
+                },
+                400 => function ($tui, $terminal, $ide) use ($changePosition): void {
+                    $changePosition($ide, 'bottom');
+                    $tui->tick();
+                },
+                600 => function ($tui, $terminal, $ide) use ($rects, $changePosition): void {
+                    $tui->tick();
+                    [$tabs, $editor] = $rects($tui, $ide);
+                    $this->assertSame(1, $tabs->rows, 'bottom: still a one-row strip');
+                    $this->assertGreaterThan($editor->row + $editor->rows - 1, $tabs->row, 'bottom: the strip sits below the editor');
+                    $changePosition($ide, 'left');
+                    $tui->tick();
+                },
+                800 => function ($tui, $terminal, $ide) use ($rects, $changePosition): void {
+                    $tui->tick();
+                    [$tabs, $editor] = $rects($tui, $ide);
+                    $this->assertSame(TabBarWidget::VERTICAL_WIDTH, $tabs->columns, 'left: a fixed-width vertical list');
+                    $this->assertGreaterThan(1, $tabs->rows, 'left: the list fills the pane height');
+                    $this->assertLessThan($editor->col, $tabs->col, 'left: the list sits left of the editor');
+                    $changePosition($ide, 'right');
+                    $tui->tick();
+                },
+                1000 => function ($tui, $terminal, $ide) use ($rects): void {
+                    $tui->tick();
+                    [$tabs, $editor] = $rects($tui, $ide);
+                    $this->assertSame(TabBarWidget::VERTICAL_WIDTH, $tabs->columns, 'right: the fixed-width list again');
+                    $this->assertGreaterThan($editor->col, $tabs->col, 'right: the list sits right of the editor');
+                },
+            ],
+            1.4,
+        );
+
+        $this->assertSame('right', IdeConfig::load($project->dir)->settings['tabBarPosition'], 'the position persisted');
+    }
+
+    public function testAnUnknownTabBarPositionValueFallsBackToTop(): void
+    {
+        putenv('PATH=/nonexistent');
         $project = new TempProject([
-            '.editorconfig' => "[*]\nindent_style = space\nindent_size = 2\n",
             'a.php' => "<?php\n",
+            '.porta.json' => json_encode(['settings' => ['tabBarPosition' => 'sideways']]),
         ]);
 
         $this->runIde(
             $project,
             $project->path('a.php'),
             [
-                300 => function ($tui, $terminal, $ide): void {
-                    $settings = new \ReflectionProperty($ide, 'settings')->getValue($ide);
-                    $buffers = new \ReflectionProperty($ide, 'buffers')->getValue($ide);
-                    \assert($settings instanceof \Porta\Config\SettingsController);
-                    \assert($buffers instanceof \Porta\Editor\BufferManager);
-
-                    // Disabling drops the resolved config from every open buffer.
-                    $settings->changeSetting('editorConfig', false);
-                    $this->assertNull($buffers->active()?->editorConfig, 'disabling clears the resolved config');
-
-                    // Re-enabling re-resolves it live.
-                    $settings->changeSetting('editorConfig', true);
-                    $this->assertNotNull($buffers->active()?->editorConfig, 'enabling re-resolves .editorconfig');
+                200 => function ($tui, $terminal, $ide): void {
+                    $tui->tick();
+                    $renderer = new \ReflectionProperty($ide, 'renderer')->getValue($ide);
+                    $tabs = $renderer->getWidgetRect($tui->getById('tabs'));
+                    $editor = $renderer->getWidgetRect($tui->getById('editor'));
+                    $this->assertSame(1, $tabs->rows, 'an unknown persisted value boots the top strip');
+                    $this->assertLessThan($editor->row, $tabs->row);
                 },
             ],
+            0.5,
         );
 
-        $this->assertTrue(IdeConfig::load($project->dir)->settings['editorConfig'], 'the final state persisted');
+        $this->addToAssertionCount(1);
+    }
+
+    public function testVerticalTabListMouseInteractions(): void
+    {
+        putenv('PATH=/nonexistent');
+        $project = new TempProject([
+            'A.php' => "<?php\n",
+            'B.php' => "<?php\n",
+            'C.php' => "<?php\n",
+            '.porta.json' => json_encode(['settings' => ['tabBarPosition' => 'left']]),
+        ]);
+
+        $tabsRect = static fn ($tui, $ide) => new \ReflectionProperty($ide, 'renderer')
+            ->getValue($ide)
+            ->getWidgetRect($tui->getById('tabs'));
+
+        $this->runIde(
+            $project,
+            $project->path('A.php'),
+            [
+                150 => function ($tui, $terminal, $ide) use ($project): void {
+                    $service = new \ReflectionProperty($ide, 'bufferService')->getValue($ide);
+                    $service->openFile($project->path('B.php'), true);
+                    $service->openFile($project->path('C.php'), true);
+                    $tui->tick();
+                    $this->assertSame(['A.php', 'B.php', 'C.php'], $this->tabNames($tui));
+                },
+                300 => function ($tui, $terminal, $ide) use ($tabsRect): void {
+                    $rect = $tabsRect($tui, $ide);
+                    // Left-click row 0's body → switch to A (SGR coords are 1-based).
+                    $tui->handleInput(\sprintf("\x1b[<0;%d;%dM", $rect->col + 3, $rect->row + 1));
+                    $tui->handleInput(\sprintf("\x1b[<0;%d;%dm", $rect->col + 3, $rect->row + 1));
+                    $tui->tick();
+                    $this->assertStringEndsWith('A.php', (string) $tui->getById('editor')->getFilePath(), 'clicking a list row switches to that tab');
+                },
+                450 => function ($tui, $terminal, $ide) use ($tabsRect): void {
+                    $rect = $tabsRect($tui, $ide);
+                    // The × of row 1 (B) sits in the right-aligned close zone.
+                    $tui->handleInput(\sprintf("\x1b[<0;%d;%dM", $rect->col + TabBarWidget::VERTICAL_WIDTH - 1, $rect->row + 2));
+                    $tui->tick();
+                    $this->assertSame(['A.php', 'C.php'], $this->tabNames($tui), "clicking a row's × closed that tab");
+                },
+                600 => function ($tui, $terminal, $ide) use ($tabsRect): void {
+                    $rect = $tabsRect($tui, $ide);
+                    // Press row 0 (A), drag onto row 1 (C), release → A moves last.
+                    $tui->handleInput(\sprintf("\x1b[<0;%d;%dM", $rect->col + 3, $rect->row + 1));
+                    $tui->handleInput(\sprintf("\x1b[<32;%d;%dM", $rect->col + 3, $rect->row + 2));
+                    $tui->handleInput(\sprintf("\x1b[<0;%d;%dm", $rect->col + 3, $rect->row + 2));
+                    $tui->tick();
+                    $this->assertSame(['C.php', 'A.php'], $this->tabNames($tui), 'dragging down the list reordered the tabs');
+                },
+                750 => function ($tui, $terminal, $ide) use ($tabsRect): void {
+                    $terminal->clearOutput();
+                    $rect = $tabsRect($tui, $ide);
+                    // Right-click row 0 (C) → the tab context menu.
+                    $tui->handleInput(\sprintf("\x1b[<2;%d;%dM", $rect->col + 3, $rect->row + 1));
+                    $tui->tick();
+                    $this->assertTrue($tui->getById('context-menu')->isOpen(), 'right-clicking a list row opened the tab menu');
+                    $this->assertStringContainsString('Close Others', AnsiUtils::stripAnsiCodes($terminal->getOutput()));
+                    $tui->handleInput("\x1b"); // Esc closes it
+                },
+                900 => function ($tui, $terminal, $ide): void {
+                    // A content swap (the help viewer) lands inside the editor body,
+                    // not beside the vertical list in the horizontal editor pane.
+                    new \ReflectionProperty($ide, 'commands')->getValue($ide)->run('ide_help');
+                    $tui->tick();
+                    $this->assertContains($tui->getById('help-viewer'), $tui->getById('editor-body')->all(), 'the viewer swapped into the editor body slot');
+                    $this->assertCount(2, $tui->getById('editor-pane')->all(), 'the editor pane keeps exactly the list and the body');
+                },
+            ],
+            1.3,
+        );
+
+        $this->addToAssertionCount(1);
+    }
+
+    public function testKeyboardTabMenuAnchorsOnTheBottomStripsOwnRow(): void
+    {
+        putenv('PATH=/nonexistent');
+        $project = new TempProject([
+            'a.php' => "<?php\n",
+            '.porta.json' => json_encode(['settings' => ['tabBarPosition' => 'bottom']]),
+        ]);
+
+        $this->runIde(
+            $project,
+            $project->path('a.php'),
+            [
+                200 => function ($tui, $terminal, $ide): void {
+                    new \ReflectionProperty($ide, 'commands')->getValue($ide)->run('ide_help');
+                    $tui->tick();
+                    $tui->handleInput("\x1b[21;5~"); // Ctrl+F10 on the help viewer: the tab menu
+                    $tui->tick();
+                    $this->assertTrue($tui->getById('context-menu')->isOpen(), 'the keyboard tab menu opened');
+                    // A top strip anchors one row below the tab; the bottom strip anchors on
+                    // its own row so the overlay's overflow flip opens the panel above it.
+                    $renderer = new \ReflectionProperty($ide, 'renderer')->getValue($ide);
+                    $tabsRow = $renderer->getWidgetRect($tui->getById('tabs'))->row;
+                    $overlay = new \ReflectionProperty($ide, 'overlay')->getValue($ide);
+                    $this->assertSame($tabsRow, new \ReflectionProperty($overlay, 'contextAnchorRow')->getValue($overlay));
+                },
+            ],
+            0.6,
+        );
+
+        $this->addToAssertionCount(1);
     }
 
     public function testSettingsSidebarResizesAndPersists(): void
@@ -5878,6 +6412,45 @@ final class IdeEdgeCasesTest extends TestCase
         $this->addToAssertionCount(1);
     }
 
+    public function testTabDragReorderRepaintsTheStripImmediately(): void
+    {
+        putenv('PATH=/nonexistent');
+        $project = new TempProject(['A.php' => "<?php\n", 'B.php' => "<?php\n"]);
+
+        $this->runIde(
+            $project,
+            $project->path('A.php'),
+            [
+                150 => function ($tui): void {
+                    $tui->tick();
+                    $tui->handleInput("\x1b[<0;3;4M"); // open B (tree row 2)
+                },
+                300 => function ($tui): void {
+                    $tui->tick();
+                    $this->assertSame(['A.php', 'B.php'], $this->tabNames($tui));
+                    // Press tab A's body and let this frame render, so the press's
+                    // own invalidations (buffer switch, focus) are consumed before
+                    // the reorder — the drag frame must repaint on its own.
+                    $tui->handleInput("\x1b[<0;34;2M");
+                    $tui->tick();
+                },
+                450 => function ($tui, $terminal): void {
+                    $terminal->clearOutput(); // capture only the frames after the reorder
+                    $tui->handleInput("\x1b[<32;45;2M"); // drag A over tab B
+                    $tui->handleInput("\x1b[<0;45;2m"); // release
+                    $tui->tick();
+                    $this->assertSame(['B.php', 'A.php'], $this->tabNames($tui));
+                    // A pure reorder mutates no widget, so the strip must be
+                    // invalidated explicitly for this frame to repaint it.
+                    $this->assertMatchesRegularExpression('/B\.php.*A\.php/', AnsiUtils::stripAnsiCodes($terminal->getOutput()), 'the strip repainted in the new order without further input');
+                },
+            ],
+            0.9,
+        );
+
+        $this->addToAssertionCount(1);
+    }
+
     public function testTabDragReorders(): void
     {
         putenv('PATH=/nonexistent');
@@ -6240,7 +6813,7 @@ final class IdeEdgeCasesTest extends TestCase
                 },
                 340 => function ($tui): void {
                     $this->assertStringEndsWith('c.php', (string) $tui->getById('editor')->getFilePath(), 'clicked the second result');
-                    $this->assertFalse($tui->getById('results')->isOpen(), 'jumping closed the panel');
+                    $this->assertTrue($tui->getById('results')->isOpen(), 'the pane stays open after the jump');
                 },
                 480 => function ($tui, $terminal, $ide): void {
                     $goto = $tui->getById('goto-file');
@@ -6296,6 +6869,260 @@ final class IdeEdgeCasesTest extends TestCase
                 },
             ],
             0.8,
+        );
+    }
+
+    public function testCursorShapeSettingSwitchesTheMarkerLiveAndTerminalPanelPlacesTheCursor(): void
+    {
+        putenv('PATH=/nonexistent');
+        $project = new TempProject(['a.php' => "<?php\n\$a = 1;\n"]);
+
+        $this->runIde(
+            $project,
+            $project->path('a.php'),
+            [
+                200 => function ($tui, $terminal, $ide): void {
+                    $tui->tick();
+                    // ScreenWriter converts the zero-width marker into a hardware
+                    // cursor position plus a DECSCUSR shape: 5 = bar (default).
+                    $this->assertStringContainsString("\x1b[5 q", $terminal->getOutput(), 'the default bar shape is emitted');
+
+                    new \ReflectionProperty($ide, 'settings')
+                        ->getValue($ide)
+                        ->changeSetting('cursorShape', 'block');
+                    $terminal->clearOutput();
+                    $tui->tick();
+                },
+                400 => function ($tui, $terminal): void {
+                    $tui->tick();
+                    $out = $terminal->getOutput();
+                    $this->assertStringContainsString("\x1b[1 q", $out, 'the block shape (DECSCUSR 1) after the live switch');
+                    $this->assertStringNotContainsString("\x1b[5 q", $out, 'no stale bar shape survives the cache flush');
+                },
+                600 => function ($tui, $terminal, $ide): void {
+                    new \ReflectionProperty($ide, 'commands')->getValue($ide)->run('ide_terminal');
+                    $terminal->clearOutput();
+                    $tui->tick();
+                    $rows = $tui->getById('terminal')->render(new \Symfony\Component\Tui\Render\RenderContext(160, 12));
+                    $this->assertSame(1, $this->caretMarkerCount($rows), 'the focused terminal panel places the hardware cursor');
+                },
+            ],
+            1.0,
+        );
+
+        $this->assertSame('block', IdeConfig::load($project->dir)->settings['cursorShape'], 'the shape persisted');
+    }
+
+    public function testNotificationLogShowsExpiredFlashes(): void
+    {
+        putenv('PATH=/nonexistent');
+        $project = new TempProject(['a.php' => "<?php\n\$a = 1;\n"]);
+
+        $this->runIde(
+            $project,
+            $project->path('a.php'),
+            [
+                200 => function ($tui, $terminal, $ide): void {
+                    // Empty log (boot may have flashed): the command just flashes.
+                    $log = new \ReflectionProperty($ide, 'notificationLog')->getValue($ide);
+                    new \ReflectionProperty($log, 'entries')->setValue($log, []);
+                    new \ReflectionProperty($ide, 'commands')->getValue($ide)->run('ide_notifications');
+                    $tui->tick();
+                    $this->assertStringContainsString('No notifications yet', AnsiUtils::stripAnsiCodes($terminal->getOutput()));
+
+                    new \ReflectionProperty($ide, 'notifier')
+                        ->getValue($ide)
+                        ->flash('the answer is 42', 0.1);
+                },
+                400 => function ($tui, $terminal, $ide): void {
+                    $tui->tick();
+                    // The 0.1 s flash has long expired; the log is the only way back to it.
+                    $terminal->clearOutput();
+                    new \ReflectionProperty($ide, 'commands')->getValue($ide)->run('ide_notifications');
+                    $tui->tick();
+                    $screen = AnsiUtils::stripAnsiCodes($terminal->getOutput());
+                    $this->assertStringContainsString('Notifications', $screen, 'the log overlay opened');
+                    $this->assertStringContainsString('the answer is 42', $screen, 'the expired flash is reviewable');
+                    $tui->handleInput("\x1b"); // Esc closes the overlay
+                },
+            ],
+            0.8,
+        );
+
+        // With only an image open, the editor-hosted overlay refuses with a flash.
+        $imageProject = new TempProject(['img.png' => $this->twoColorPng(4, 4)]);
+        $this->runIde(
+            $imageProject,
+            $imageProject->path('img.png'),
+            [
+                200 => function ($tui, $terminal, $ide): void {
+                    new \ReflectionProperty($ide, 'notifier')
+                        ->getValue($ide)
+                        ->flash('logged', 0.1);
+                    new \ReflectionProperty($ide, 'commands')->getValue($ide)->run('ide_notifications');
+                    $tui->tick();
+                    $this->assertStringContainsString('Not available while viewing an image', AnsiUtils::stripAnsiCodes($terminal->getOutput()));
+                },
+            ],
+            0.5,
+        );
+    }
+
+    public function testF6CyclesFocusAcrossPanesAndDelegatesToViews(): void
+    {
+        putenv('PATH=/nonexistent');
+        $project = new TempProject(['a.php' => "<?php\n\$a = 1;\n"]);
+
+        $this->runIde(
+            $project,
+            $project->path('a.php'),
+            [
+                200 => function ($tui): void {
+                    $this->assertSame('editor', $tui->getFocus()?->getId());
+                    $tui->handleInput("\x1b[17~"); // F6: editor wraps to the tree
+                    $this->assertSame('tree', $tui->getFocus()?->getId());
+                    $tui->handleInput("\x1b[17~"); // F6: tree → editor
+                    $this->assertSame('editor', $tui->getFocus()?->getId());
+                },
+                350 => function ($tui, $terminal, $ide): void {
+                    new \ReflectionProperty($ide, 'commands')->getValue($ide)->run('ide_terminal');
+                    $this->assertSame('terminal', $tui->getFocus()?->getId());
+                    $tui->handleInput("\x1b[17;5~"); // Ctrl+F6: terminal → editor (backward)
+                    $this->assertSame('editor', $tui->getFocus()?->getId());
+                    $tui->handleInput("\x1b[17~"); // F6 forward returns to the terminal
+                    $this->assertSame('terminal', $tui->getFocus()?->getId());
+                    new \ReflectionProperty($ide, 'commands')->getValue($ide)->run('ide_terminal'); // close it again
+                },
+                500 => function ($tui, $terminal, $ide): void {
+                    new \ReflectionProperty($ide, 'commands')->getValue($ide)->run('ide_settings');
+                    $this->assertSame('settings-form', $tui->getFocus()?->getId(), 'settings opens on the form');
+                    $tui->handleInput("\x1b[17~"); // F6 delegates to the settings view
+                    $this->assertSame('settings-nav', $tui->getFocus()?->getId());
+                    $tui->handleInput("\x1b[17;5~"); // either direction bounces the two panes
+                    $this->assertSame('settings-form', $tui->getFocus()?->getId());
+                    new \ReflectionProperty($ide, 'commands')->getValue($ide)->run('ide_settings');
+                },
+            ],
+            1.2,
+        );
+    }
+
+    public function testF6InsideTheGitViewWalksItsPanes(): void
+    {
+        if (!$this->hasGit()) {
+            $this->markTestSkipped('git binary not available');
+        }
+        putenv('PATH='.$this->originalPath); // git must be reachable
+
+        $project = new TempProject([]);
+        exec('git -C '.escapeshellarg($project->dir).' init -q');
+        exec('git -C '.escapeshellarg($project->dir).' config user.email t@t');
+        exec('git -C '.escapeshellarg($project->dir).' config user.name tester');
+        $project->write('a.php', "<?php\n\$a = 1;\n");
+
+        $this->runIde(
+            $project,
+            $project->path('a.php'),
+            [
+                400 => function ($tui, $terminal, $ide): void {
+                    new \ReflectionProperty($ide, 'commands')->getValue($ide)->run('ide_git');
+                    $this->assertSame('git-changes', $tui->getFocus()?->getId(), 'git view opens on the changes list');
+                    $tui->handleInput("\x1b[17~"); // F6 delegates to the git view's pane order
+                    $this->assertSame('git-diff', $tui->getFocus()?->getId());
+                    $tui->handleInput("\x1b[17;5~"); // Ctrl+F6 walks back
+                    $this->assertSame('git-changes', $tui->getFocus()?->getId());
+                },
+            ],
+            1.0,
+        );
+    }
+
+    public function testCtrlF10OpensTheContextMenuForTheFocusedPane(): void
+    {
+        putenv('PATH=/nonexistent');
+        $project = new TempProject(['a.php' => "<?php\n\$a = 1;\n"]);
+
+        $this->runIde(
+            $project,
+            $project->path('a.php'),
+            [
+                200 => function ($tui, $terminal, $ide): void {
+                    $tui->tick();
+                    $tui->handleInput("\x1b[21;5~"); // Ctrl+F10 in the editor
+                    $tui->tick();
+                    $context = new \ReflectionProperty($ide, 'contextMenu')->getValue($ide);
+                    $this->assertTrue($context->isOpen(), 'the editor context menu opened at the caret');
+                    $screen = AnsiUtils::stripAnsiCodes($terminal->getOutput());
+                    $this->assertStringContainsString('Go to Declaration or Usages', $screen);
+                    $tui->handleInput("\x1b"); // Esc closes it
+                    $this->assertFalse($context->isOpen());
+                },
+                350 => function ($tui, $terminal, $ide): void {
+                    $tui->setFocus($tui->getById('tree'));
+                    $terminal->clearOutput();
+                    $tui->handleInput("\x1b[21;5~"); // Ctrl+F10 on the tree's selected node
+                    $tui->tick();
+                    $this->assertStringContainsString('New File', AnsiUtils::stripAnsiCodes($terminal->getOutput()), 'tree file operations under the selection');
+                    $tui->handleInput("\x1b");
+                },
+                500 => function ($tui, $terminal, $ide): void {
+                    new \ReflectionProperty($ide, 'commands')->getValue($ide)->run('ide_help');
+                    $tui->tick();
+                    $terminal->clearOutput();
+                    $tui->handleInput("\x1b[21;5~"); // Ctrl+F10 on the help viewer: the tab menu
+                    $tui->tick();
+                    $this->assertStringContainsString('Close Others', AnsiUtils::stripAnsiCodes($terminal->getOutput()), 'viewer tabs get the tab context menu');
+                    $tui->handleInput("\x1b");
+                },
+                650 => function ($tui, $terminal, $ide): void {
+                    new \ReflectionProperty($ide, 'commands')->getValue($ide)->run('goto_file');
+                    $tui->handleInput("\x1b[21;5~"); // no context menu for the go-to-file popup
+                    $tui->tick();
+                    $this->assertFalse(
+                        new \ReflectionProperty($ide, 'contextMenu')
+                            ->getValue($ide)
+                            ->isOpen(),
+                    );
+                    $this->assertStringContainsString('No context menu here', AnsiUtils::stripAnsiCodes($terminal->getOutput()), 'the flash explains the no-op');
+                },
+            ],
+            1.2,
+        );
+    }
+
+    public function testShiftF11AndF12ResizeTheFocusedPaneAndPersist(): void
+    {
+        putenv('PATH=/nonexistent');
+        $project = new TempProject(['a.php' => "<?php\n\$a = 1;\n"]);
+
+        $this->runIde(
+            $project,
+            $project->path('a.php'),
+            [
+                200 => function ($tui): void {
+                    $tui->handleInput("\x1b[24;2~"); // Shift+F12 with editor focus: not resizable, falls through
+                    $this->assertSame(30, $tui->getById('tree')->width(), 'editor focus resizes nothing');
+
+                    $tui->setFocus($tui->getById('tree'));
+                    $tui->handleInput("\x1b[24;2~"); // grow
+                    $this->assertSame(32, $tui->getById('tree')->width());
+                    $tui->handleInput("\x1b[23;2~"); // Shift+F11 shrinks it back
+                    $this->assertSame(30, $tui->getById('tree')->width());
+                },
+                350 => function ($tui, $terminal, $ide): void {
+                    new \ReflectionProperty($ide, 'commands')->getValue($ide)->run('ide_terminal');
+                    $tui->tick(); // render a frame so the panel has a rect to resize from
+                    $rows = $tui->getById('terminal')->visibleRows();
+                    $tui->handleInput("\x1b[24;2~"); // grow the focused bottom panel
+                    $this->assertSame($rows + 1, $tui->getById('terminal')->visibleRows());
+                },
+                500 => function () use ($project): void {
+                    $layout = json_decode((string) file_get_contents($project->dir.'/.porta/layout.json'), true);
+                    $this->assertSame(19, $layout['sidebarWidthPercent'], 'the last tree width (30 of 160 cols) persisted');
+                    $this->assertArrayHasKey('bottomPanelHeightPercent', $layout, 'the panel grow persisted too');
+                },
+            ],
+            1.0,
         );
     }
 }

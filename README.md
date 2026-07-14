@@ -3,6 +3,12 @@
 A terminal IDE for PHP projects, built on the experimental
 [symfony/tui](https://github.com/symfony/tui) component.
 
+**Full documentation lives in [`docs/`](docs/README.md)** — getting
+started, editor features, keybindings, git, debugger, configuration,
+plugins, and architecture. Press **F1** inside the IDE to browse it fully
+rendered: `Tab` cycles the links, `Enter` or a click follows them, and
+`Backspace` goes back.
+
 - **Syntax highlighting** for PHP, JS/TS, JSON, YAML, Twig, Markdown, CSS,
   SQL and more (via [tempest/highlight](https://github.com/tempestphp/highlight)),
   including correct coloring of multi-line docblocks and heredocs
@@ -29,7 +35,7 @@ A terminal IDE for PHP projects, built on the experimental
   surround the selection with a bracket pair, quotes or an `if`/`foreach`/`try`
   snippet (`Ctrl+Alt+T`); and smart-Enter between a `{}`/`()`/`[]` pair opens a
   blank indented line with the closer dropped below
-- **Multiple buffers** with an editor tab bar, `Alt+←/→` switching and a
+- **Multiple buffers** with an editor tab bar, `Ctrl+←/→` switching and a
   `Ctrl+E` recent-files popup — every buffer keeps its cursor, undo history
   and diagnostics
 - **Integrated terminal** (`Ctrl+\`` or `Alt+F12`): a real shell in a bottom
@@ -42,9 +48,9 @@ A terminal IDE for PHP projects, built on the experimental
 - **Git integration**: change markers in the gutter (added / modified /
   deleted vs `HEAD`, refreshed on open and save) and the current branch in
   the status bar — silently disabled outside a git working tree
-- **Diff viewer** (`Ctrl+Alt+D`): the current file's unified diff against
-  `HEAD` in a scrollable bottom panel, coloured per line (additions green,
-  deletions red, hunk headers cyan); flashes when there is nothing to show
+- **Git view** (`Ctrl+Alt+D`): a full-screen changes/staging/history view —
+  stage files or individual lines, commit and amend, browse the last 200
+  commits, with a unified or side-by-side diff pane
 - **Merge-conflict navigator**: jump between `<<<<<<<`/`=======`/`>>>>>>>`
   conflict regions (`F7` / `Shift+F7`) and resolve the one under the caret
   (`Alt+M`) by keeping ours, theirs or both — applied as a single undoable edit
@@ -75,7 +81,7 @@ A terminal IDE for PHP projects, built on the experimental
 - **Refactoring & navigation via LSP**: quick fixes / code actions
   (`Alt+Enter`, applying edits or running server commands), rename symbol
   (`Shift+F6`, validated first via `prepareRename` — refuses positions the
-  server won't rename), find usages (`Alt+F7`), quick documentation (`F1`),
+  server won't rename), find usages (`Alt+F7`), quick documentation (`Shift+F1`),
   signature help while typing arguments, go to line (`Ctrl+G`),
   **go to implementation** (`Ctrl+Alt+B`) and **type definition**
   (`Ctrl+Shift+B`) — when the server returns several targets a chooser opens in
@@ -176,12 +182,12 @@ The keymap follows PhpStorm wherever the terminal allows.
 | `Alt+M` | Resolve the conflict under the caret (keep ours / theirs / both) |
 | `Alt+Shift+↑/↓` | Move line or selection up / down |
 | `Alt+W` / `Ctrl+F4` | Close the active buffer (unsaved changes prompt Save / Discard / Cancel) |
-| `Alt+←` / `Alt+→` | Previous / next editor tab |
+| `Ctrl+←` / `Ctrl+→` | Previous / next editor tab |
 | `Ctrl+.` | Collapse / expand the code fold at the caret |
 | `Ctrl+/` | Toggle line comment |
 | `Ctrl+A` | Select all |
 | `Ctrl+Alt+B` | Go to implementation (chooser when several) |
-| `Ctrl+Alt+D` | Show the current file's diff vs `HEAD` (`Esc` hides it) |
+| `Ctrl+Alt+D` | Git view: changes, staging, commit, history (`Esc` closes it) |
 | `Ctrl+Alt+H` | Show local history (restore an earlier snapshot) |
 | `Ctrl+Alt+L` | Reformat file (via LSP formatting) |
 | `Ctrl+Alt+Left` | Navigate back after a definition jump |
@@ -216,7 +222,8 @@ The keymap follows PhpStorm wherever the terminal allows.
 | `Ctrl+\`` / `Alt+F12` | Toggle the integrated terminal (`Esc` or the same key hides it) |
 | `Enter` (tree) | Open file / toggle directory |
 | `Esc` (multi-caret) | Collapse back to a single caret |
-| `F1` | Quick documentation popup |
+| `F1` | Documentation browser (the guides in `docs/`, rendered; `Tab` cycles links, `Enter`/click follows, `Backspace` back) |
+| `Shift+F1` | Quick documentation popup |
 | `F6` / `Ctrl+F6` | Cycle focus forward / backward |
 | `F7` / `Shift+F7` | Jump to next / previous merge conflict |
 | `Home` | Smart home (first non-blank, then column 0) |

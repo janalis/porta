@@ -42,18 +42,22 @@ final class AnsiText
 
     /**
      * Clip a fully-assembled line to $width, padded, keeping any embedded cursor
-     * $marker visible by horizontally scrolling the whole line to the caret. For
-     * a mid-line input (find bar, results) whose field can't tail-scroll on its
-     * own; a line with no marker just clips from the start.
+     * marker visible by horizontally scrolling the whole line to the caret. The
+     * marker is located by its APC prefix (shape-agnostic, so callers need not
+     * know the configured cursor shape). For a mid-line input (find bar, results)
+     * whose field can't tail-scroll on its own; a line with no marker just clips
+     * from the start.
      */
-    public static function scrollLineToCaret(string $line, int $width, string $marker): string
+    public static function scrollLineToCaret(string $line, int $width): string
     {
-        $pos = strpos($line, $marker);
-        if (false === $pos) {
+        $pos = strpos($line, AnsiUtils::CURSOR_MARKER_PREFIX);
+        $end = false === $pos ? false : strpos($line, "\x07", $pos);
+        if (false === $pos || false === $end) {
             return self::padRight(AnsiUtils::truncateToWidth($line, $width, '…'), $width);
         }
+        $marker = substr($line, $pos, $end - $pos + 1);
         $caretCol = AnsiUtils::visibleWidth(substr($line, 0, $pos));
-        $bare = substr($line, 0, $pos).substr($line, $pos + \strlen($marker));
+        $bare = substr($line, 0, $pos).substr($line, $end + 1);
 
         return self::padRight(self::caretWindow($bare, $caretCol, $width, $marker), $width);
     }

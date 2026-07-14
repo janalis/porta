@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace Porta\Lsp;
 
+use Porta\Support\JsonRpcFramer;
+use Porta\Support\NonBlockingWriter;
 use Revolt\EventLoop;
 
 /**
@@ -24,9 +26,11 @@ final class LspClient implements LspClientInterface
     /** @var resource|null */
     private $stderr;
 
-    private string $readBuffer = '';
+    private readonly JsonRpcFramer $framer;
     private ?string $stdoutWatcher = null;
     private ?string $stderrWatcher = null;
+    /** Queued non-blocking stdin writes — a wedged server must never block the event loop. */
+    private ?NonBlockingWriter $writer = null;
 
     private int $nextId = 1;
     /** @var array<int, callable(mixed, ?array): void> id => callback(result, error) */
@@ -56,8 +60,10 @@ final class LspClient implements LspClientInterface
         private readonly array $command,
         private readonly string $rootDir,
         ?callable $logger = null,
+        private readonly int $maxWriteBuffer = NonBlockingWriter::DEFAULT_LIMIT,
     ) {
         $this->logger = $logger;
+        $this->framer = new JsonRpcFramer();
     }
 
     public function isRunning(): bool
@@ -158,8 +164,13 @@ final class LspClient implements LspClientInterface
     private function attachStreamWatchers(array $pipes): void
     {
         [$this->stdin, $this->stdout, $this->stderr] = [$pipes[0], $pipes[1], $pipes[2]];
+        // stdin non-blocking too: a server that stops draining its stdin must
+        // never park the whole event loop inside a blocking fwrite (the classic
+        // stdio deadlock once a frame exceeds the OS pipe buffer).
+        stream_set_blocking($this->stdin, false);
         stream_set_blocking($this->stdout, false);
         stream_set_blocking($this->stderr, false);
+        $this->writer = new NonBlockingWriter($this->stdin, $this->onWriteError(...), $this->maxWriteBuffer);
 
         $this->stdoutWatcher = EventLoop::onReadable($this->stdout, fn () => $this->drainStdout());
         $this->stderrWatcher = EventLoop::onReadable($this->stderr, function (): void {
@@ -264,6 +275,9 @@ final class LspClient implements LspClientInterface
             // Best-effort polite shutdown (send() never throws), then terminate
             $this->send(['jsonrpc' => '2.0', 'id' => $this->nextId++, 'method' => 'shutdown', 'params' => null]);
             $this->send(['jsonrpc' => '2.0', 'method' => 'exit', 'params' => null]);
+            // The drain watcher must die before its fd is closed below.
+            $this->writer?->close();
+            $this->writer = null;
 
             foreach ([$this->stdin, $this->stdout, $this->stderr] as $pipe) {
                 if (\is_resource($pipe)) {
@@ -284,24 +298,20 @@ final class LspClient implements LspClientInterface
 
     private function send(array $message): void
     {
-        if (!\is_resource($this->stdin)) {
-            return;
-        }
-        $json = json_encode($message, JSON_THROW_ON_ERROR | \JSON_UNESCAPED_SLASHES | \JSON_INVALID_UTF8_SUBSTITUTE);
-        $frame = 'Content-Length: '.\strlen($json)."\r\n\r\n".$json;
+        $this->writer?->write(JsonRpcFramer::encode($message));
+    }
 
-        $total = \strlen($frame);
-        $written = 0;
-        while ($written < $total) {
-            $n = @fwrite($this->stdin, substr($frame, $written));
-            if (false === $n || 0 === $n) {
-                $this->log('write to LSP server failed');
-
-                return;
-            }
-            $written += $n;
+    /**
+     * A stdin write failed (dead server) or the outbound queue overflowed
+     * (wedged server). Terminating the child converges both on the existing
+     * stdout-EOF path, so the session ends exactly like any server crash.
+     */
+    private function onWriteError(string $reason): void
+    {
+        $this->log('write to LSP server failed: '.$reason);
+        if (null !== $this->process) {
+            @proc_terminate($this->process);
         }
-        @fflush($this->stdin);
     }
 
     private function drainStdout(): void
@@ -322,36 +332,9 @@ final class LspClient implements LspClientInterface
             return;
         }
 
-        $this->readBuffer .= $data;
-
-        while (true) {
-            $headerEnd = strpos($this->readBuffer, "\r\n\r\n");
-            if (false === $headerEnd) {
-                return;
-            }
-
-            $headers = substr($this->readBuffer, 0, $headerEnd);
-            $m = [];
-            if (!preg_match('/Content-Length:\s*(\d+)/i', $headers, $m)) {
-                // Corrupt frame; drop the header block and resync
-                $this->readBuffer = substr($this->readBuffer, $headerEnd + 4);
-                continue;
-            }
-
-            $length = (int) $m[1];
-            $bodyStart = $headerEnd + 4;
-            if (\strlen($this->readBuffer) < ($bodyStart + $length)) {
-                return; // wait for more data
-            }
-
-            $body = substr($this->readBuffer, $bodyStart, $length);
-            $this->readBuffer = substr($this->readBuffer, $bodyStart + $length);
-
-            /** @var array{id?: mixed, method?: string, result?: mixed, error?: array<array-key, mixed>, params?: array{items?: array<array-key, mixed>, edit?: array<array-key, mixed>}}|null $message */
-            $message = json_decode($body, true);
-            if (\is_array($message)) {
-                $this->handleMessage($message);
-            }
+        foreach ($this->framer->feed($data) as $message) {
+            /** @var array{id?: mixed, method?: string, result?: mixed, error?: array<array-key, mixed>, params?: array{items?: array<array-key, mixed>, edit?: array<array-key, mixed>}} $message */
+            $this->handleMessage($message);
         }
     }
 

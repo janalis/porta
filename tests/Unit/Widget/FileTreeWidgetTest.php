@@ -33,6 +33,20 @@ final class FileTreeWidgetTest extends TestCase
         $this->assertLessThan(strpos($plain, 'a.php'), strpos($plain, 'sub/'), 'directories sort first');
     }
 
+    public function testSelectedNodeAndRowMirrorTheListSelection(): void
+    {
+        $project = new TempProject(['a.php' => "<?php\n", 'b.php' => "<?php\n"]);
+        $tree = new FileTreeWidget($project->dir);
+        $tree->render(new RenderContext(30, 10));
+
+        $this->assertSame('a.php', $tree->selectedNode()['name'] ?? null, 'boot selects the first entry');
+        $this->assertSame(1, $tree->selectedRow(), 'first entry sits just under the header row');
+
+        $tree->nodeAt(2); // select b.php the way a click would
+        $this->assertSame('b.php', $tree->selectedNode()['name'] ?? null);
+        $this->assertSame(2, $tree->selectedRow());
+    }
+
     public function testHoverHighlightsRowUnderPointer(): void
     {
         $project = new TempProject(['a.php' => "<?php\n", 'b.php' => "<?php\n", 'sub/c.php' => "<?php\n"]);

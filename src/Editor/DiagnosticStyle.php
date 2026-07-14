@@ -16,8 +16,34 @@ use Porta\Ui\Role;
  */
 final class DiagnosticStyle
 {
-    /** The severity marker drawn in the right stripe — a plain block, colored per severity. */
-    public const string MARK = '▉';
+    /**
+     * The severity glyph shown in the gutter marker column and as the inline
+     * message prefix, so severity reads without color (matches the status bar's
+     * ✗/▲ problem counts). All glyphs are one display column wide.
+     */
+    public static function glyph(int $severity): string
+    {
+        return match (self::normalize($severity)) {
+            1 => '✗',
+            2 => '▲',
+            3 => '◆',
+            default => '·',
+        };
+    }
+
+    /**
+     * The severity marker drawn in the right stripe: block density mirrors
+     * severity so the stripe stays readable without color.
+     */
+    public static function mark(int $severity): string
+    {
+        return match (self::normalize($severity)) {
+            1 => '█',
+            2 => '▓',
+            3 => '▒',
+            default => '░',
+        };
+    }
 
     /**
      * The worst (lowest-numbered) severity present; 4 (hint) when the list is empty.
@@ -63,20 +89,22 @@ final class DiagnosticStyle
     }
 
     /**
-     * Open a curly, severity-colored underline. Terminals that support neither
-     * escape degrade gracefully: `4:3` falls back to a plain underline and the
-     * `58;5` underline color is simply ignored (the text's own color is used).
+     * Open a severity-colored underline whose style also encodes the severity
+     * (curly/dashed/dotted/straight), so severities stay distinguishable without
+     * color. Terminals that support neither escape degrade gracefully: `4:n`
+     * falls back to a plain underline and the `58;5` underline color is simply
+     * ignored (the text's own color is used).
      */
     public static function underlineOpen(int $severity, Palette $palette): string
     {
-        $role = match (self::normalize($severity)) {
-            1 => Role::DiagErrorUnderline,
-            2 => Role::DiagWarnUnderline,
-            3 => Role::DiagInfoUnderline,
-            default => Role::DiagHintUnderline,
+        [$style, $role] = match (self::normalize($severity)) {
+            1 => ['4:3', Role::DiagErrorUnderline],
+            2 => ['4:5', Role::DiagWarnUnderline],
+            3 => ['4:4', Role::DiagInfoUnderline],
+            default => ['4:1', Role::DiagHintUnderline],
         };
 
-        return "\x1b[4:3m".$palette->of($role);
+        return "\x1b[{$style}m".$palette->of($role);
     }
 
     /** Close an underline opened by {@see underlineOpen}: reset its color and style. */

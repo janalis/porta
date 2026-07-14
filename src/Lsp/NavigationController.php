@@ -12,6 +12,7 @@ use Porta\Ui\Notifier;
 use Porta\Ui\PanelManager;
 use Porta\Ui\ResultsPanelMode;
 use Porta\Widget\CodeEditorWidget;
+use Porta\Widget\EditorNavigationHandler;
 use Porta\Widget\ResultsPanelWidget;
 use Symfony\Component\Tui\Tui;
 
@@ -21,7 +22,7 @@ use Symfony\Component\Tui\Tui;
  * jump-back stack that go-to pushes onto. Presents multi-result lists through
  * the {@see PanelManager} and opens targets via the injected openFile callback.
  */
-final class NavigationController extends AbstractLspController
+final class NavigationController extends AbstractLspController implements EditorNavigationHandler
 {
     /** @var list<array{path: string, line: int, col: int}> positions to return to after jumps */
     private array $jumpStack = [];
@@ -159,14 +160,7 @@ final class NavigationController extends AbstractLspController
             return;
         }
 
-        $from = $this->editor->getFilePath();
-        $doc = $this->editor->getDocument();
-        if (null !== $from) {
-            $this->jumpStack[] = ['path' => $from, 'line' => $doc->getCursorLine(), 'col' => $doc->getCursorCol()];
-            if (\count($this->jumpStack) > 50) {
-                array_shift($this->jumpStack);
-            }
-        }
+        $this->pushCurrentLocation();
 
         $line = (int) ($location['range']['start']['line'] ?? 0);
         $character = (int) ($location['range']['start']['character'] ?? 0);
@@ -219,6 +213,20 @@ final class NavigationController extends AbstractLspController
         }
 
         return $rows;
+    }
+
+    /** Record the current position so navigate-back can return to it. */
+    public function pushCurrentLocation(): void
+    {
+        $from = $this->editor->getFilePath();
+        if (null === $from) {
+            return;
+        }
+        $doc = $this->editor->getDocument();
+        $this->jumpStack[] = ['path' => $from, 'line' => $doc->getCursorLine(), 'col' => $doc->getCursorCol()];
+        if (\count($this->jumpStack) > 50) {
+            array_shift($this->jumpStack);
+        }
     }
 
     public function navigateBack(): void

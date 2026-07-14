@@ -6,12 +6,14 @@ namespace Porta\Tests\Unit\Search\Everywhere;
 
 use PHPUnit\Framework\TestCase;
 use Porta\Editor\BufferManager;
+use Porta\Editor\FileOpener;
 use Porta\Search\Everywhere\SearchCategory;
 use Porta\Search\Everywhere\SearchEverywhereController;
 use Porta\Search\Everywhere\SearchHit;
 use Porta\Search\Everywhere\SearchOverlay;
 use Porta\Search\Everywhere\SearchRow;
 use Porta\Search\Everywhere\SearchSource;
+use Porta\Support\Scheduler;
 use Symfony\Component\Tui\Terminal\VirtualTerminal;
 use Symfony\Component\Tui\Tui;
 
@@ -87,6 +89,10 @@ final class SearchEverywhereControllerTest extends TestCase
      */
     private function controller(SearchOverlay $overlay, array $sync, array $async, BufferManager $buffers): SearchEverywhereController
     {
+        $opened = &$this->opened;
+        $scheduled = &$this->scheduled;
+        $cancelled = &$this->cancelled;
+
         return new SearchEverywhereController(
             $overlay,
             $sync,
@@ -94,16 +100,38 @@ final class SearchEverywhereControllerTest extends TestCase
             $buffers,
             new Tui(terminal: new VirtualTerminal(columns: 80, rows: 24)),
             '/proj',
-            function (string $path, bool $focus): void {
-                $this->opened[] = [$path, $focus];
-            },
-            function (float $seconds, \Closure $callback): string {
-                $this->scheduled[] = $callback;
+            new class($opened) implements FileOpener {
+                /** @param list<array{string, bool}> $opened */
+                public function __construct(
+                    private array &$opened,
+                ) {}
 
-                return (string) \count($this->scheduled);
+                public function openFile(string $path, bool $focusEditor = false): void
+                {
+                    $this->opened[] = [$path, $focusEditor];
+                }
             },
-            function (string $handle): void {
-                $this->cancelled[] = $handle;
+            new class($scheduled, $cancelled) implements Scheduler {
+                /**
+                 * @param list<\Closure> $scheduled
+                 * @param list<string>   $cancelled
+                 */
+                public function __construct(
+                    private array &$scheduled,
+                    private array &$cancelled,
+                ) {}
+
+                public function delay(float $seconds, \Closure $callback): string
+                {
+                    $this->scheduled[] = $callback;
+
+                    return (string) \count($this->scheduled);
+                }
+
+                public function cancel(string $timerId): void
+                {
+                    $this->cancelled[] = $timerId;
+                }
             },
         );
     }

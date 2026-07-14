@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Porta\Ui;
 
+use Porta\Overlay\FloatingRegions;
 use Symfony\Component\Tui\Render\Renderer;
 use Symfony\Component\Tui\Render\WidgetRect;
 use Symfony\Component\Tui\Widget\AbstractWidget;
@@ -24,10 +25,9 @@ use Symfony\Component\Tui\Widget\ContainerWidget;
  */
 final class PaneSegmenter
 {
-    /** @param \Closure(): list<array{top: int, col: int, width: int, count: int}> $dropdownRegions topmost floating dropdowns */
     public function __construct(
         private readonly Renderer $renderer,
-        private readonly \Closure $dropdownRegions,
+        private readonly FloatingRegions $dropdowns,
     ) {}
 
     /**
@@ -39,7 +39,7 @@ final class PaneSegmenter
     {
         $leaves = [];
         $this->collectLeaves($root, $leaves);
-        $regions = ($this->dropdownRegions)();
+        $regions = $this->dropdowns->regions();
 
         $byRow = [];
         for ($row = 0; $row < $rows; ++$row) {

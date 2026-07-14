@@ -1054,10 +1054,6 @@
         <source>Auto-pairs</source>
         <target>Auto-pairs</target>
       </trans-unit>
-      <trans-unit id="264">
-        <source>Respect .editorconfig</source>
-        <target>Respect .editorconfig</target>
-      </trans-unit>
       <trans-unit id="265">
         <source>Theme</source>
         <target>Theme</target>
@@ -1165,6 +1161,266 @@
       <trans-unit id="291">
         <source>Replace in %dir%</source>
         <target>Replace in %dir%</target>
+      </trans-unit>
+      <trans-unit id="292">
+        <source>Go to Test</source>
+        <target>Go to Test</target>
+      </trans-unit>
+      <trans-unit id="293">
+        <source>No test found</source>
+        <target>No test found</target>
+      </trans-unit>
+      <trans-unit id="294">
+        <source>No test subject found</source>
+        <target>No test subject found</target>
+      </trans-unit>
+      <trans-unit id="295">
+        <source>Image too large (&gt; 20 MB)</source>
+        <target>Image too large (&gt; 20 MB)</target>
+      </trans-unit>
+      <trans-unit id="296">
+        <source>Cannot display image %file%</source>
+        <target>Cannot display image %file%</target>
+      </trans-unit>
+      <trans-unit id="297">
+        <source>Not available while viewing an image</source>
+        <target>Not available while viewing an image</target>
+      </trans-unit>
+      <trans-unit id="298">
+        <source>+/- zoom  0 fit  arrows pan  ^Q quit</source>
+        <target>+/- zoom  0 fit  arrows pan  ^Q quit</target>
+      </trans-unit>
+      <trans-unit id="299">
+        <source>Image: Zoom In</source>
+        <target>Image: Zoom In</target>
+      </trans-unit>
+      <trans-unit id="300">
+        <source>Image: Zoom Out</source>
+        <target>Image: Zoom Out</target>
+      </trans-unit>
+      <trans-unit id="301">
+        <source>Image: Fit to Window</source>
+        <target>Image: Fit to Window</target>
+      </trans-unit>
+      <trans-unit id="302">
+        <source>Image: Actual Size</source>
+        <target>Image: Actual Size</target>
+      </trans-unit>
+      <trans-unit id="303">
+        <source>Image: Pan Left</source>
+        <target>Image: Pan Left</target>
+      </trans-unit>
+      <trans-unit id="304">
+        <source>Image: Pan Right</source>
+        <target>Image: Pan Right</target>
+      </trans-unit>
+      <trans-unit id="305">
+        <source>Image: Pan Up</source>
+        <target>Image: Pan Up</target>
+      </trans-unit>
+      <trans-unit id="306">
+        <source>Image: Pan Down</source>
+        <target>Image: Pan Down</target>
+      </trans-unit>
+      <trans-unit id="307">
+        <source>Debug Current File</source>
+        <target>Debug Current File</target>
+      </trans-unit>
+      <trans-unit id="308">
+        <source>Toggle Breakpoint</source>
+        <target>Toggle Breakpoint</target>
+      </trans-unit>
+      <trans-unit id="309">
+        <source>Step Over</source>
+        <target>Step Over</target>
+      </trans-unit>
+      <trans-unit id="310">
+        <source>Step Into</source>
+        <target>Step Into</target>
+      </trans-unit>
+      <trans-unit id="311">
+        <source>Step Out</source>
+        <target>Step Out</target>
+      </trans-unit>
+      <trans-unit id="312">
+        <source>Resume Program</source>
+        <target>Resume Program</target>
+      </trans-unit>
+      <trans-unit id="313">
+        <source>Stop Debugger</source>
+        <target>Stop Debugger</target>
+      </trans-unit>
+      <trans-unit id="314">
+        <source>Nothing to debug — open a file first</source>
+        <target>Nothing to debug — open a file first</target>
+      </trans-unit>
+      <trans-unit id="315">
+        <source>Debugger already running — stop it first (Ctrl+F2)</source>
+        <target>Debugger already running — stop it first (Ctrl+F2)</target>
+      </trans-unit>
+      <trans-unit id="316">
+        <source>No debug adapter configured for %language% — set one in Settings</source>
+        <target>No debug adapter configured for %language% — set one in Settings</target>
+      </trans-unit>
+      <trans-unit id="317">
+        <source>Debug: %label%</source>
+        <target>Debug: %label%</target>
+      </trans-unit>
+      <trans-unit id="318">
+        <source>Could not start the debug adapter</source>
+        <target>Could not start the debug adapter</target>
+      </trans-unit>
+      <trans-unit id="319">
+        <source>Plugins</source>
+        <target>Plugins</target>
+      </trans-unit>
+      <trans-unit id="320">
+        <source>Plugin "%name%" failed: %message%</source>
+        <target>Plugin "%name%" failed: %message%</target>
+      </trans-unit>
+      <trans-unit id="321">
+        <source>Install into</source>
+        <target>Install into</target>
+      </trans-unit>
+      <trans-unit id="322">
+        <source>This project</source>
+        <target>This project</target>
+      </trans-unit>
+      <trans-unit id="323">
+        <source>Global (all projects)</source>
+        <target>Global (all projects)</target>
+      </trans-unit>
+      <trans-unit id="324">
+        <source>Install plugin</source>
+        <target>Install plugin</target>
+      </trans-unit>
+      <trans-unit id="325">
+        <source>git URL or local path</source>
+        <target>git URL or local path</target>
+      </trans-unit>
+      <trans-unit id="326">
+        <source>Remove</source>
+        <target>Remove</target>
+      </trans-unit>
+      <trans-unit id="327">
+        <source>project</source>
+        <target>project</target>
+      </trans-unit>
+      <trans-unit id="328">
+        <source>global</source>
+        <target>global</target>
+      </trans-unit>
+      <trans-unit id="329">
+        <source>Press Enter again to remove "%name%"</source>
+        <target>Press Enter again to remove "%name%"</target>
+      </trans-unit>
+      <trans-unit id="330">
+        <source>Plugin installed — default keybindings apply on restart</source>
+        <target>Plugin installed — default keybindings apply on restart</target>
+      </trans-unit>
+      <trans-unit id="331">
+        <source>Plugin "%name%" removed</source>
+        <target>Plugin "%name%" removed</target>
+      </trans-unit>
+      <trans-unit id="332">
+        <source>Plugin "%name%" is already installed</source>
+        <target>Plugin "%name%" is already installed</target>
+      </trans-unit>
+      <trans-unit id="333">
+        <source>"%name%" is not a valid plugin name</source>
+        <target>"%name%" is not a valid plugin name</target>
+      </trans-unit>
+      <trans-unit id="334">
+        <source>No plugin.php found in %source%</source>
+        <target>No plugin.php found in %source%</target>
+      </trans-unit>
+      <trans-unit id="335">
+        <source>git is not available</source>
+        <target>git is not available</target>
+      </trans-unit>
+      <trans-unit id="336">
+        <source>git clone failed (exit code %code%)</source>
+        <target>git clone failed (exit code %code%)</target>
+      </trans-unit>
+      <trans-unit id="337">
+        <source>The repository contains no plugin.php</source>
+        <target>The repository contains no plugin.php</target>
+      </trans-unit>
+      <trans-unit id="338">
+        <source>Another install is already running</source>
+        <target>Another install is already running</target>
+      </trans-unit>
+      <trans-unit id="339">
+        <source>Cannot install globally (no home directory)</source>
+        <target>Cannot install globally (no home directory)</target>
+      </trans-unit>
+      <trans-unit id="340">
+        <source>Cannot remove "%name%"</source>
+        <target>Cannot remove "%name%"</target>
+      </trans-unit>
+      <trans-unit id="341">
+        <source>Cannot install into %dest%</source>
+        <target>Cannot install into %dest%</target>
+      </trans-unit>
+      <trans-unit id="344">
+        <source>Built-in plugins cannot be removed</source>
+        <target>Built-in plugins cannot be removed</target>
+      </trans-unit>
+      <trans-unit id="345">
+        <source>built-in</source>
+        <target>built-in</target>
+      </trans-unit>
+      <trans-unit id="346">
+        <source>Built-in</source>
+        <target>Built-in</target>
+      </trans-unit>
+      <trans-unit id="347">
+        <source>"%name%" has no settings</source>
+        <target>"%name%" has no settings</target>
+      </trans-unit>
+      <trans-unit id="348">
+        <source>Enabled</source>
+        <target>Enabled</target>
+      </trans-unit>
+      <trans-unit id="349">
+        <source>Plugin "%name%" disabled</source>
+        <target>Plugin "%name%" disabled</target>
+      </trans-unit>
+      <trans-unit id="350">
+        <source>Plugin "%name%" enabled — default keybindings apply on restart</source>
+        <target>Plugin "%name%" enabled — default keybindings apply on restart</target>
+      </trans-unit>
+      <trans-unit id="351">
+        <source>Show Context Menu</source>
+        <target>Show Context Menu</target>
+      </trans-unit>
+      <trans-unit id="352">
+        <source>Shrink Pane</source>
+        <target>Shrink Pane</target>
+      </trans-unit>
+      <trans-unit id="353">
+        <source>Grow Pane</source>
+        <target>Grow Pane</target>
+      </trans-unit>
+      <trans-unit id="354">
+        <source>No context menu here</source>
+        <target>No context menu here</target>
+      </trans-unit>
+      <trans-unit id="355">
+        <source>Cursor shape</source>
+        <target>Cursor shape</target>
+      </trans-unit>
+      <trans-unit id="356">
+        <source>Notifications</source>
+        <target>Notifications</target>
+      </trans-unit>
+      <trans-unit id="357">
+        <source>No notifications yet</source>
+        <target>No notifications yet</target>
+      </trans-unit>
+      <trans-unit id="358">
+        <source>Tab bar position</source>
+        <target>Tab bar position</target>
       </trans-unit>
     </body>
   </file>

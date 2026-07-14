@@ -7,6 +7,7 @@ namespace Porta\Widget\Overlay;
 use Porta\Search\TokenScope;
 use Porta\Support\AnsiText;
 use Porta\Ui\ColorPalette;
+use Porta\Ui\CursorStyle;
 use Porta\Ui\Palette;
 use Porta\Ui\Role;
 use Porta\Ui\TextField;
@@ -18,7 +19,6 @@ use Porta\Widget\ResultsView;
 use Symfony\Component\Tui\Ansi\AnsiUtils;
 use Symfony\Component\Tui\Input\Key;
 use Symfony\Component\Tui\Input\Keybindings;
-use Symfony\Component\Tui\Style\CursorShape;
 
 /**
  * The PhpStorm-style Find-in-Files search dialog: a centered modal composited
@@ -71,6 +71,8 @@ final class FindInFilesModal
     /** @var list<\Porta\Widget\DisplayRow> */
     private array $displayRows = [];
     private int $selected = 0;
+    /** first visible display-row index; sticky so hover-selection never scrolls the list */
+    private int $windowStart = 0;
     /** 'query' | 'replace' | 'mask' — which field typing edits (Tab cycles) */
     private string $activeField = 'query';
     private bool $searching = false;
@@ -114,11 +116,12 @@ final class FindInFilesModal
     public function __construct(
         private readonly \Closure $invalidate,
         ?Palette $palette = null,
+        ?CursorStyle $cursorStyle = null,
     ) {
         $this->palette = $palette ?? ColorPalette::dark();
-        $this->query = new TextField();
-        $this->replace = new TextField();
-        $this->mask = new TextField();
+        $this->query = new TextField(style: $cursorStyle);
+        $this->replace = new TextField(style: $cursorStyle);
+        $this->mask = new TextField(style: $cursorStyle);
     }
 
     public function onQuery(callable $cb): self
@@ -195,6 +198,7 @@ final class FindInFilesModal
         $this->displayRows = [];
         $this->excluded = [];
         $this->selected = 0;
+        $this->windowStart = 0;
         $this->searching = false;
         $this->hovered = null;
         ($this->invalidate)();
@@ -258,6 +262,7 @@ final class FindInFilesModal
         $this->searching = false;
         // Land on the first match row so Enter opens it.
         $this->selected = 0;
+        $this->windowStart = 0;
         foreach ($this->displayRows as $i => $row) {
             if (null === $row->filePath) {
                 $this->selected = $i;
@@ -522,15 +527,22 @@ final class FindInFilesModal
         return $lines;
     }
 
-    /** The scrolling window's first display-row index, keeping $selected visible. */
+    /**
+     * The scrolling window's first display-row index. Sticky: it only moves as far
+     * as needed to keep $selected visible (no recentering), so hovering a visible
+     * row never shifts the list under the pointer.
+     */
     private function windowStart(int $maxPreview): int
     {
         $count = \count($this->displayRows);
         if ($count <= $maxPreview) {
-            return 0;
+            return $this->windowStart = 0;
         }
+        // Scrolling up onto a group's first match also reveals its file-header row.
+        $top = $this->selected - (null !== ($this->displayRows[$this->selected - 1] ?? null)?->filePath ? 1 : 0);
+        $start = min($this->windowStart, $count - $maxPreview, $top);
 
-        return max(0, min($this->selected - intdiv($maxPreview, 2), $count - $maxPreview));
+        return $this->windowStart = max($start, $this->selected - $maxPreview + 1, 0);
     }
 
     /**
@@ -555,29 +567,28 @@ final class FindInFilesModal
      */
     private function headerRows(int $width, bool $focused): array
     {
-        $marker = AnsiUtils::cursorMarker(CursorShape::Bar);
         $title = ' '.$this->title.$this->palette->of(Role::Dim).'  '.$this->statusText()."\x1b[39m";
 
         $replaceHint = $this->inPreview() ? \sprintf('  (Del exclude · Alt+A replace %d)', $this->keptCount()) : '  (Tab · Alt+A)';
 
         return [
             HeaderRenderer::render($title, $width, $this->palette->of(Role::HeaderBar)."\x1b[1m"),
-            $this->fieldRow('Find', $this->query, $focused && 'query' === $this->activeField, '', $width, $marker),
-            $this->fieldRow('Replace', $this->replace, $focused && 'replace' === $this->activeField, $replaceHint, $width, $marker),
+            $this->fieldRow('Find', $this->query, $focused && 'query' === $this->activeField, '', $width),
+            $this->fieldRow('Replace', $this->replace, $focused && 'replace' === $this->activeField, $replaceHint, $width),
             $this->optionsRowLine($width),
-            $this->fieldRow('Mask', $this->mask, $focused && 'mask' === $this->activeField, '  (Tab)', $width, $marker),
+            $this->fieldRow('Mask', $this->mask, $focused && 'mask' === $this->activeField, '  (Tab)', $width),
         ];
     }
 
     /** A labelled input row (`Find:`/`Replace:`/`Mask:` + field), scrolled to keep the caret visible. */
-    private function fieldRow(string $label, TextField $field, bool $shown, string $hint, int $width, string $marker): string
+    private function fieldRow(string $label, TextField $field, bool $shown, string $hint, int $width): string
     {
         $line = ' '.$label.': '.$field->render(cursor: $shown);
         if ('' !== $hint) {
             $line .= $this->palette->of(Role::Dim).$hint."\x1b[39m";
         }
 
-        return $this->palette->of(Role::Toolbar).AnsiText::scrollLineToCaret($line, $width, $marker)."\x1b[0m";
+        return $this->palette->of(Role::Toolbar).AnsiText::scrollLineToCaret($line, $width)."\x1b[0m";
     }
 
     /** How many matches would be replaced (all minus the excluded). */

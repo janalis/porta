@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Porta\Widget\Git;
 
+use Porta\Container\AsWidget;
 use Porta\I18n\Translator;
 use Porta\Support\IntMath;
 use Porta\Ui\ColorPalette;
@@ -21,6 +22,7 @@ use Symfony\Component\Tui\Widget\AbstractWidget;
  * The active tab is set by the controller, and a click on the inactive one
  * fires onSelect with its mode.
  */
+#[AsWidget('git-tabs', flex: 0)]
 final class GitTabsWidget extends AbstractWidget implements MenuOverlayHost
 {
     use MenuOverlayHostTrait;

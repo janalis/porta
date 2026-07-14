@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Porta\Editor;
 
 use Porta\Highlight\DarkTerminalTheme;
+use Porta\Image\ImageData;
 use Porta\Support\IntMath;
 use Tempest\Highlight\TerminalTheme;
 
@@ -29,6 +30,27 @@ final class BufferManager
     public function open(string $path, string $content): Buffer
     {
         $buffer = $this->buffers[$path] ??= new Buffer($path, new Document($content), $this->syntaxTheme);
+        $this->activePath = $path;
+        $buffer->lastFocused = ++$this->focusCounter;
+
+        return $buffer;
+    }
+
+    /** Open an image tab: an empty document plus the decoded pixels. */
+    public function openImage(string $path, ImageData $image): Buffer
+    {
+        $buffer = $this->buffers[$path] ??= new Buffer($path, new Document(''), $this->syntaxTheme, $image);
+        $this->activePath = $path;
+        $buffer->lastFocused = ++$this->focusCounter;
+
+        return $buffer;
+    }
+
+    /** Open (or re-activate) a rendered help tab carrying the page's markdown. */
+    public function openHelp(string $path, string $markdown): Buffer
+    {
+        $buffer = $this->buffers[$path] ??= new Buffer($path, new Document(''), $this->syntaxTheme, helpMarkdown: $markdown);
+        $buffer->helpMarkdown = $markdown; // refresh when the page changed on disk
         $this->activePath = $path;
         $buffer->lastFocused = ++$this->focusCounter;
 

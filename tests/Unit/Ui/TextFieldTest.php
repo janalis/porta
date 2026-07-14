@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Porta\Tests\Unit\Ui;
 
 use PHPUnit\Framework\TestCase;
+use Porta\Ui\CursorStyle;
 use Porta\Ui\TextField;
 use Symfony\Component\Tui\Ansi\AnsiUtils;
 use Symfony\Component\Tui\Style\CursorShape;
@@ -83,6 +84,17 @@ final class TextFieldTest extends TestCase
         $field = new TextField('abc');
         $this->assertSame('abc', $field->render(cursor: false));
         $this->assertSame('abc'.AnsiUtils::cursorMarker(CursorShape::Bar), $field->render(cursor: true));
+    }
+
+    public function testRenderUsesTheSharedCursorStyleShape(): void
+    {
+        $style = new CursorStyle(CursorShape::Block);
+        $field = new TextField('abc', $style);
+        $this->assertSame('abc'.AnsiUtils::cursorMarker(CursorShape::Block), $field->render(cursor: true), 'block marker from the holder');
+
+        $style->switchTo(CursorShape::Underline);
+        $this->assertSame('abc'.AnsiUtils::cursorMarker(CursorShape::Underline), $field->render(cursor: true), 'a live switch changes the next render');
+        $this->assertStringContainsString(AnsiUtils::cursorMarker(CursorShape::Underline), $field->render(cursor: true, width: 10), 'the windowed path follows too');
     }
 
     public function testRenderWithWidthKeepsAShortValueWithTheMarkerAtTheEnd(): void

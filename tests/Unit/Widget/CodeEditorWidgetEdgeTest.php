@@ -5,9 +5,9 @@ declare(strict_types=1);
 namespace Porta\Tests\Unit\Widget;
 
 use PHPUnit\Framework\TestCase;
+use Porta\Tests\Support\FakeEditorNavigation;
 use Porta\Widget\CodeEditorWidget;
 use Porta\Widget\EditorCallbacks;
-use Porta\Widget\NavigationCallbacks;
 use Symfony\Component\Tui\Ansi\AnsiUtils;
 use Symfony\Component\Tui\Render\RenderContext;
 
@@ -47,7 +47,7 @@ final class CodeEditorWidgetEdgeTest extends TestCase
     public function testActionKeysWithoutCallbacksAreNoOps(): void
     {
         $editor = $this->editor();
-        foreach (["\x1b[1;3C", "\x05", "\x1bw", "\x06", "\x10", "\x1bOP", "\x1b[18;3~", "\x1b[17;2~", "\x00", "\x13", "\x1b[24~", "\x1b[1;7D"] as $key) {
+        foreach (["\x1b[1;3C", "\x05", "\x1bw", "\x06", "\x10", "\x1b[1;2P", "\x1b[18;3~", "\x1b[17;2~", "\x00", "\x13", "\x1b[24~", "\x1b[1;7D"] as $key) {
             $editor->handleInput($key);
         }
         $this->assertStringStartsWith('<?php', $editor->getDocument()->getLine(0), 'nothing crashed or typed');
@@ -610,7 +610,7 @@ final class CodeEditorWidgetEdgeTest extends TestCase
         $editor->setDiagnostics([1 => [['severity' => 2, 'message' => 'multi-line issue', 'col' => 2, 'endCol' => \PHP_INT_MAX]]]);
 
         $rendered = $editor->render(new RenderContext(60, 5));
-        $this->assertStringContainsString("\x1b[4:3m\x1b[58;5;179m", $rendered[1], 'curly amber underline to line end');
+        $this->assertStringContainsString("\x1b[4:5m\x1b[58;5;179m", $rendered[1], 'dashed amber underline to line end');
         $this->assertSame(1, $editor->getDiagnosticCounts()['warnings']);
         $this->assertSame(60, AnsiUtils::visibleWidth($rendered[1]));
     }
@@ -726,8 +726,8 @@ final class CodeEditorWidgetEdgeTest extends TestCase
         $editor = $this->editor("<?php\n\$x;\n");
         $peekedAt = null;
         $editor->setCallbacks(new EditorCallbacks(
-            navigation: new NavigationCallbacks(
-                onPeek: function (int $l, int $c) use (&$peekedAt): void {
+            navigation: new FakeEditorNavigation(
+                requestPeek: function (int $l, int $c) use (&$peekedAt): void {
                     $peekedAt = [$l, $c];
                 },
             ),
@@ -744,11 +744,12 @@ final class CodeEditorWidgetEdgeTest extends TestCase
         $editor->setGitMarks([0 => 'modified', 1 => 'added', 2 => 'deleted']);
 
         $rendered = $editor->render(new RenderContext(60, 6));
-        $this->assertStringContainsString("\x1b[38;5;75m▎", $rendered[0], 'modified: blue bar');
-        $this->assertStringContainsString("\x1b[38;5;114m▎", $rendered[1], 'added: green bar');
+        $this->assertStringContainsString("\x1b[38;5;75m┆", $rendered[0], 'modified: blue dashed bar');
+        $this->assertStringContainsString("\x1b[38;5;114m▎", $rendered[1], 'added: green solid bar');
         $this->assertStringContainsString("\x1b[38;5;203m▁", $rendered[2], 'deleted: red underline');
         // Unmarked line and the exact-width contract both hold
         $this->assertStringNotContainsString('▎', $rendered[3]);
+        $this->assertStringNotContainsString('┆', $rendered[3]);
         foreach ($rendered as $line) {
             $this->assertSame(60, AnsiUtils::visibleWidth($line));
         }

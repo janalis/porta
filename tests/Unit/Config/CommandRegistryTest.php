@@ -24,4 +24,21 @@ final class CommandRegistryTest extends TestCase
     {
         $this->assertNull(new CommandRegistry()->label('nope'));
     }
+
+    public function testWhenGuardGatesKeyDispatchEnablement(): void
+    {
+        $enabled = false;
+        $registry = new CommandRegistry();
+        $registry
+            ->add('save', static function (): void {})
+            ->add('debug_step_over', static function (): void {}, keyBound: true, when: function () use (&$enabled): bool {
+                return $enabled;
+            });
+
+        $this->assertTrue($registry->isEnabled('save'), 'no guard → always enabled');
+        $this->assertFalse($registry->isEnabled('debug_step_over'), 'guard says no');
+        $enabled = true;
+        $this->assertTrue($registry->isEnabled('debug_step_over'), 'guard is re-evaluated live');
+        $this->assertFalse($registry->isEnabled('nope'), 'unknown ids are never enabled');
+    }
 }

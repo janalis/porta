@@ -78,7 +78,7 @@ final class ResultsPanelWidgetTest extends TestCase
         $this->assertSame([], $queries);
     }
 
-    public function testJumpOnSelectedResultClosesAndNotifies(): void
+    public function testJumpOnSelectedResultNotifiesAndStaysOpen(): void
     {
         $panel = new ResultsPanelWidget();
         $jumped = null;
@@ -92,7 +92,7 @@ final class ResultsPanelWidgetTest extends TestCase
         $panel->handleInput("\r");
 
         $this->assertSame(['src/File1.php', 1], $jumped);
-        $this->assertFalse($panel->isOpen());
+        $this->assertTrue($panel->isOpen(), 'the pane stays open after a jump');
     }
 
     public function testJumpWithNoResultsIsNoOp(): void
@@ -169,7 +169,7 @@ final class ResultsPanelWidgetTest extends TestCase
         foreach ($lines as $line) {
             $this->assertSame(44, AnsiUtils::visibleWidth($line));
         }
-        $this->assertStringContainsString("\x1b[48;5;238m", implode('', $lines), 'unfocused selection background');
+        $this->assertStringContainsString("\x1b[48;5;237m", implode('', $lines), 'unfocused selection background');
     }
 
     public function testSearchResultRowHighlightsMatchRangesWithoutChangingWidth(): void
@@ -229,7 +229,7 @@ final class ResultsPanelWidgetTest extends TestCase
 
         $panel->handleClick(2); // header row 0 → result rows 1,2 → index 1
         $this->assertSame(['src/File1.php', 1], $jumped);
-        $this->assertFalse($panel->isOpen());
+        $this->assertTrue($panel->isOpen(), 'the pane stays open after a jump');
     }
 
     public function testClickHeaderAndBelowResultsAreNoOps(): void

@@ -40,16 +40,39 @@ final class DiagnosticStyleTest extends TestCase
         $this->assertSame(Role::DiagHint, DiagnosticStyle::role(9), 'unknown → hint role');
 
         $this->assertSame(Role::DiagErrorDim, DiagnosticStyle::dimRole(1));
-
-        // The stripe marker is a single plain block; severity is conveyed by color.
-        $this->assertSame('▉', DiagnosticStyle::MARK);
+        $this->assertSame(Role::DiagWarnDim, DiagnosticStyle::dimRole(2));
+        $this->assertSame(Role::DiagInfoDim, DiagnosticStyle::dimRole(3));
+        $this->assertSame(Role::DiagHintDim, DiagnosticStyle::dimRole(9), 'unknown → hint dim role');
     }
 
-    public function testUnderlineOpenIsCurlyAndColored(): void
+    public function testGlyphPerSeverity(): void
+    {
+        $this->assertSame('✗', DiagnosticStyle::glyph(1));
+        $this->assertSame('▲', DiagnosticStyle::glyph(2));
+        $this->assertSame('◆', DiagnosticStyle::glyph(3));
+        $this->assertSame('·', DiagnosticStyle::glyph(4));
+        $this->assertSame('·', DiagnosticStyle::glyph(9), 'unknown → hint glyph');
+        foreach ([1, 2, 3, 4] as $severity) {
+            $this->assertSame(1, mb_strwidth(DiagnosticStyle::glyph($severity)), 'glyphs are one column wide');
+        }
+    }
+
+    public function testMarkDensityPerSeverity(): void
+    {
+        $this->assertSame('█', DiagnosticStyle::mark(1));
+        $this->assertSame('▓', DiagnosticStyle::mark(2));
+        $this->assertSame('▒', DiagnosticStyle::mark(3));
+        $this->assertSame('░', DiagnosticStyle::mark(4));
+        $this->assertSame('░', DiagnosticStyle::mark(0), 'unknown → hint mark');
+    }
+
+    public function testUnderlineOpenEncodesSeverityInStyleAndColor(): void
     {
         $palette = ColorPalette::dark();
-        $this->assertSame("\x1b[4:3m\x1b[58;5;203m", DiagnosticStyle::underlineOpen(1, $palette));
-        $this->assertSame("\x1b[4:3m\x1b[58;5;179m", DiagnosticStyle::underlineOpen(2, $palette));
+        $this->assertSame("\x1b[4:3m\x1b[58;5;203m", DiagnosticStyle::underlineOpen(1, $palette), 'error: curly');
+        $this->assertSame("\x1b[4:5m\x1b[58;5;179m", DiagnosticStyle::underlineOpen(2, $palette), 'warning: dashed');
+        $this->assertSame("\x1b[4:4m\x1b[58;5;75m", DiagnosticStyle::underlineOpen(3, $palette), 'info: dotted');
+        $this->assertSame("\x1b[4:1m\x1b[58;5;244m", DiagnosticStyle::underlineOpen(4, $palette), 'hint: straight');
         $this->assertSame("\x1b[59m\x1b[24m", DiagnosticStyle::underlineClose());
     }
 }

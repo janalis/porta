@@ -8,7 +8,6 @@ use Porta\Editor\TextMetrics;
 use Porta\Input\TextInput;
 use Porta\Support\AnsiText;
 use Symfony\Component\Tui\Ansi\AnsiUtils;
-use Symfony\Component\Tui\Style\CursorShape;
 
 /**
  * A small multi-line text input (the commit description box): a list of
@@ -22,6 +21,12 @@ final class MultilineInput
     private array $lines = [''];
     private int $line = 0;
     private int $col = 0;
+    private readonly CursorStyle $style;
+
+    public function __construct(?CursorStyle $style = null)
+    {
+        $this->style = $style ?? new CursorStyle();
+    }
 
     public function value(): string
     {
@@ -139,7 +144,7 @@ final class MultilineInput
             if ($cursor && $i === $this->line) {
                 // Horizontally window the caret line so the marker stays visible.
                 $caretCol = AnsiUtils::visibleWidth(substr($line, 0, $this->col));
-                $out[] = AnsiText::caretWindow($line, $caretCol, $width, AnsiUtils::cursorMarker(CursorShape::Bar));
+                $out[] = AnsiText::caretWindow($line, $caretCol, $width, $this->style->marker());
 
                 continue;
             }

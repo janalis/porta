@@ -14,13 +14,18 @@ namespace Porta\Config;
  */
 final class CommandRegistry
 {
-    /** @var list<array{id: string, label: string, handler: \Closure(): void, keyBound: bool, inPalette: bool}> */
+    /** @var list<array{id: string, label: string, handler: \Closure(): void, keyBound: bool, inPalette: bool, when: (\Closure(): bool)|null}> */
     private array $commands = [];
 
-    /** @var array<string, array{id: string, label: string, handler: \Closure(): void, keyBound: bool, inPalette: bool}> first registration per id, for O(1) dispatch */
+    /** @var array<string, array{id: string, label: string, handler: \Closure(): void, keyBound: bool, inPalette: bool, when: (\Closure(): bool)|null}> first registration per id, for O(1) dispatch */
     private array $byId = [];
 
-    public function add(string $id, \Closure $handler, bool $keyBound = false, bool $inPalette = true, ?string $label = null): self
+    /**
+     * @param (\Closure(): bool)|null $when gates KEY dispatch only (a false `when` lets the key
+     *                                      fall through to the focused widget); the palette and
+     *                                      menus still run the handler, which must self-guard
+     */
+    public function add(string $id, \Closure $handler, bool $keyBound = false, bool $inPalette = true, ?string $label = null, ?\Closure $when = null): self
     {
         $command = [
             'id' => $id,
@@ -28,11 +33,41 @@ final class CommandRegistry
             'handler' => $handler,
             'keyBound' => $keyBound,
             'inPalette' => $inPalette,
+            'when' => $when,
         ];
         $this->commands[] = $command;
         $this->byId[$id] ??= $command;
 
         return $this;
+    }
+
+    /**
+     * Remove commands by id (live plugin deactivation): key dispatch and the
+     * palette pick the change up automatically since both derive from the list.
+     *
+     * @param list<string> $ids
+     */
+    public function remove(array $ids): void
+    {
+        $drop = array_fill_keys($ids, true);
+        $this->commands = array_values(array_filter($this->commands, static fn (array $c): bool => !isset($drop[$c['id']])));
+        foreach ($ids as $id) {
+            unset($this->byId[$id]);
+        }
+        foreach ($this->commands as $command) {
+            $this->byId[$command['id']] ??= $command; // restore first-wins for surviving duplicates
+        }
+    }
+
+    /** Whether $id's key dispatch is currently enabled (unknown ids are not). */
+    public function isEnabled(string $id): bool
+    {
+        if (!isset($this->byId[$id])) {
+            return false;
+        }
+        $when = $this->byId[$id]['when'];
+
+        return null === $when || $when();
     }
 
     /** @return list<string> ids that carry a keybinding, for the input dispatcher */

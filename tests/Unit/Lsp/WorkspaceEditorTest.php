@@ -10,13 +10,14 @@ use Porta\Editor\Document;
 use Porta\I18n\Translator;
 use Porta\Lsp\LspSessionPool;
 use Porta\Lsp\WorkspaceEditor;
+use Porta\Tests\Support\FixedActiveFile;
 use Porta\Widget\CodeEditorWidget;
 
 final class WorkspaceEditorTest extends TestCase
 {
     private function workspaceEditor(): WorkspaceEditor
     {
-        return new WorkspaceEditor(new BufferManager(), new CodeEditorWidget(), new LspSessionPool(sys_get_temp_dir(), static fn (): ?string => null, new Translator('en')));
+        return new WorkspaceEditor(new BufferManager(), new CodeEditorWidget(), new LspSessionPool(sys_get_temp_dir(), new FixedActiveFile(), new Translator('en')));
     }
 
     public function testMultiEditRenameIsASingleUndoStep(): void

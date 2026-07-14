@@ -5,9 +5,11 @@ declare(strict_types=1);
 namespace Porta\Widget\Settings;
 
 use Porta\Config\SettingsRow;
+use Porta\Container\AsWidget;
 use Porta\I18n\Translator;
 use Porta\Support\IntMath;
 use Porta\Ui\ColorPalette;
+use Porta\Ui\CursorStyle;
 use Porta\Ui\Palette;
 use Porta\Ui\Role;
 use Porta\Ui\TextField;
@@ -38,6 +40,7 @@ use Symfony\Component\Tui\Widget\VerticallyExpandableInterface;
  * change the value, Enter commits (fires onChange), Esc cancels.
  *
  */
+#[AsWidget('settings-form', flex: 1)]
 final class SettingsFormWidget extends AbstractWidget implements FocusableInterface, MenuOverlayHost, VerticallyExpandableInterface
 {
     use FillsPaneTrait;
@@ -49,11 +52,15 @@ final class SettingsFormWidget extends AbstractWidget implements FocusableInterf
 
     private readonly Palette $palette;
 
+    private readonly CursorStyle $cursorStyle;
+
     public function __construct(
         private readonly Translator $translator,
         ?Palette $palette = null,
+        ?CursorStyle $cursorStyle = null,
     ) {
         $this->palette = $palette ?? ColorPalette::dark();
+        $this->cursorStyle = $cursorStyle ?? new CursorStyle();
     }
 
     /** @var list<SettingsRow> */
@@ -163,7 +170,7 @@ final class SettingsFormWidget extends AbstractWidget implements FocusableInterf
             return;
         }
         if ('text' === $row->kind) {
-            $this->editField = new TextField((string) $row->value);
+            $this->editField = new TextField((string) $row->value, $this->cursorStyle);
             $this->editing = $this->selected;
             $this->invalidate();
 
@@ -171,6 +178,13 @@ final class SettingsFormWidget extends AbstractWidget implements FocusableInterf
         }
         if (null === $this->onChange) {
             return;
+        }
+        if ('action' === $row->kind) {
+            if ($delta > 0) {
+                ($this->onChange)($row->key, (string) $row->value);
+            }
+
+            return; // a button has no value to step back
         }
 
         $new = match ($row->kind) {
@@ -253,10 +267,11 @@ final class SettingsFormWidget extends AbstractWidget implements FocusableInterf
             }
 
             $selected = $i === $this->selected;
-            $bg = $selected ? ($this->focused ? $this->palette->of(Role::SelectedRow) : $this->palette->of(Role::HeaderBar)) : '';
+            $bg = $selected ? ($this->focused ? $this->palette->of(Role::SelectedRow) : $this->palette->of(Role::SelectedRowUnfocused)) : '';
             $text = match ($row->kind) {
                 'bool' => ' '.((bool) $row->value ? '[x]' : '[ ]').' '.$row->label,
                 'text' => ' '.$row->label.'  '.$this->textValue($row, $i),
+                'action' => ' '.$row->label.'  ['.(string) $row->value.']',
                 default => ' '.$row->label.'  < '.$this->choiceLabel($row).' >',
             };
             if ($row->restart) {

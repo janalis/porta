@@ -4,8 +4,10 @@ declare(strict_types=1);
 
 namespace Porta\Widget;
 
+use Porta\Container\AsWidget;
 use Porta\Support\AnsiText;
 use Porta\Ui\ColorPalette;
+use Porta\Ui\CursorStyle;
 use Porta\Ui\ListNavigation;
 use Porta\Ui\ListSelection;
 use Porta\Ui\LtrPane;
@@ -18,7 +20,6 @@ use Porta\Widget\Render\LineDecorator;
 use Symfony\Component\Tui\Ansi\AnsiUtils;
 use Symfony\Component\Tui\Input\Key;
 use Symfony\Component\Tui\Render\RenderContext;
-use Symfony\Component\Tui\Style\CursorShape;
 use Symfony\Component\Tui\Widget\FocusableInterface;
 use Symfony\Component\Tui\Widget\FocusableTrait;
 use Symfony\Component\Tui\Widget\KeybindingsTrait;
@@ -27,6 +28,7 @@ use Symfony\Component\Tui\Widget\KeybindingsTrait;
  * Bottom results panel: project-wide search (Ctrl+Shift+F) and, later,
  * find-usages results. Hidden (zero rows) when closed.
  */
+#[AsWidget('results')]
 final class ResultsPanelWidget extends OverlayWidget implements FocusableInterface, LtrPane
 {
     use FocusableTrait;
@@ -74,12 +76,12 @@ final class ResultsPanelWidget extends OverlayWidget implements FocusableInterfa
 
     private readonly Palette $palette;
 
-    public function __construct(?Palette $palette = null)
+    public function __construct(?Palette $palette = null, ?CursorStyle $cursorStyle = null)
     {
         $this->palette = $palette ?? ColorPalette::dark();
         $this->list = new ListSelection();
-        $this->query = new TextField();
-        $this->filter = new TextField();
+        $this->query = new TextField(style: $cursorStyle);
+        $this->filter = new TextField(style: $cursorStyle);
         $this->visibleRows = 10;
     }
 
@@ -363,7 +365,6 @@ final class ResultsPanelWidget extends OverlayWidget implements FocusableInterfa
         }
         $result = $this->results[$row->matchIndex];
         if (null !== $this->onJump) {
-            $this->close();
             ($this->onJump)($result['path'], $result['line']);
         }
     }
@@ -462,7 +463,7 @@ final class ResultsPanelWidget extends OverlayWidget implements FocusableInterfa
 
         foreach (\array_slice($this->displayRows, $scroll, $this->visibleRows) as $i => $row) {
             $isSelected = $this->list->isSelected($scroll + $i);
-            $bg = $isSelected ? ($this->focused ? $this->palette->of(Role::SelectedRow) : $this->palette->of(Role::InlayPopupBg)) : $this->palette->of(Role::Toolbar);
+            $bg = $isSelected ? ($this->focused ? $this->palette->of(Role::SelectedRow) : $this->palette->of(Role::SelectedRowUnfocused)) : $this->palette->of(Role::Toolbar);
             $lines[] = match (true) {
                 null !== $row->filePath => $this->headerLine($row, $bg, $columns),
                 null !== $row->contextText => $this->contextRowLine($row->contextLine, $row->contextText, $bg, $columns),
@@ -490,7 +491,7 @@ final class ResultsPanelWidget extends OverlayWidget implements FocusableInterfa
         $rendered = $field->render(cursor: $showCursor && $name === $this->activeField);
         $line = ' '.$label.': '.$rendered.$this->palette->of(Role::Dim).$hint."\x1b[39m";
 
-        return $this->palette->of(Role::RowHighlightBg).AnsiText::scrollLineToCaret($line, $columns, AnsiUtils::cursorMarker(CursorShape::Bar))."\x1b[0m";
+        return $this->palette->of(Role::RowHighlightBg).AnsiText::scrollLineToCaret($line, $columns)."\x1b[0m";
     }
 
     /** The indent for grouped match rows — deeper in the nested view (below a dir + file header). */

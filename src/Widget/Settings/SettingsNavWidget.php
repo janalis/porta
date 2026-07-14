@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Porta\Widget\Settings;
 
 use Porta\Config\LanguageCatalog;
+use Porta\Container\AsWidget;
 use Porta\I18n\Translator;
 use Porta\Layout\ResizableSidebar;
 use Porta\Support\IntMath;
@@ -35,6 +36,7 @@ use Symfony\Component\Tui\Widget\VerticallyExpandableInterface;
  *
  * @phpstan-type Entry array{id: string|null, label: string, kind: string}
  */
+#[AsWidget('settings-nav', flex: 0)]
 final class SettingsNavWidget extends AbstractWidget implements FocusableInterface, MenuOverlayHost, VerticallyExpandableInterface, ResizableSidebar
 {
     use FillsPaneTrait;
@@ -44,10 +46,10 @@ final class SettingsNavWidget extends AbstractWidget implements FocusableInterfa
     use KeybindingsTrait;
     use PaneNavigationCallbacks;
 
-    private const array SECTIONS = ['general' => 'General', 'keybindings' => 'Keybindings'];
+    private const array SECTIONS = ['general' => 'General', 'keybindings' => 'Keybindings', 'plugins' => 'Plugins'];
 
     /** @var list<Entry> */
-    private readonly array $entries;
+    private array $entries;
     private readonly ListSelection $list;
     private ?int $hoveredIndex = null;
 
@@ -62,16 +64,51 @@ final class SettingsNavWidget extends AbstractWidget implements FocusableInterfa
         ?Palette $palette = null,
     ) {
         $this->palette = $palette ?? ColorPalette::dark();
+        $this->entries = $this->buildEntries([]);
+        $this->list = new ListSelection();
+    }
+
+    /**
+     * The nav rows: sections, one sub-item per active plugin under Plugins,
+     * then the Languages header and its rows.
+     *
+     * @param list<string> $pluginNames
+     *
+     * @return list<Entry>
+     */
+    private function buildEntries(array $pluginNames): array
+    {
         $entries = [];
         foreach (self::SECTIONS as $id => $label) {
             $entries[] = ['id' => $id, 'label' => $label, 'kind' => 'section'];
+            if ('plugins' === $id) {
+                foreach ($pluginNames as $name) {
+                    $entries[] = ['id' => 'plugin:'.$name, 'label' => $name, 'kind' => 'plugin'];
+                }
+            }
         }
         $entries[] = ['id' => null, 'label' => 'Languages', 'kind' => 'header'];
         foreach (LanguageCatalog::LANGUAGES as $id => $name) {
             $entries[] = ['id' => 'lang:'.$id, 'label' => $name, 'kind' => 'language'];
         }
-        $this->entries = $entries;
-        $this->list = new ListSelection();
+
+        return $entries;
+    }
+
+    /**
+     * Rebuild the per-plugin sub-items (a plugin was installed or removed),
+     * keeping the selection on the same id — or falling back to the Plugins
+     * section when the selected plugin just vanished.
+     *
+     * @param list<string> $names
+     */
+    public function setPluginEntries(array $names): void
+    {
+        $selected = $this->selectedId();
+        $this->entries = $this->buildEntries($names);
+        $ids = array_column($this->entries, 'id');
+        $this->setActive(null !== $selected && \in_array($selected, $ids, true) ? $selected : 'plugins');
+        $this->invalidate();
     }
 
     /** Resize the sidebar to $width columns (clamped sane). */
@@ -96,7 +133,7 @@ final class SettingsNavWidget extends AbstractWidget implements FocusableInterfa
         return $this;
     }
 
-    /** The id of the currently selected entry ('general' | 'keybindings' | 'lang:<id>'). */
+    /** The id of the currently selected entry ('general' | 'keybindings' | 'plugins' | 'plugin:<name>' | 'lang:<id>'). */
     public function selectedId(): ?string
     {
         return $this->entries[$this->list->selected()]['id'] ?? null;
@@ -234,9 +271,11 @@ final class SettingsNavWidget extends AbstractWidget implements FocusableInterfa
 
             $selected = $index === $this->list->selected();
             $bg = $selected
-                ? ($this->focused ? $this->palette->of(Role::SelectedRow) : $this->palette->of(Role::HeaderBar))
+                ? ($this->focused ? $this->palette->of(Role::SelectedRow) : $this->palette->of(Role::SelectedRowUnfocused))
                 : ($index === $this->hoveredIndex ? $this->palette->of(Role::RowHighlightBg) : '');
-            $text = 'language' === $entry['kind'] ? '   '.$entry['label'] : ' '.$this->translator->trans($entry['label']);
+            // Language and plugin sub-items indent under their section and keep
+            // their own (untranslated) names.
+            $text = \in_array($entry['kind'], ['language', 'plugin'], true) ? '   '.$entry['label'] : ' '.$this->translator->trans($entry['label']);
             $lines[] = $bg.AnsiUtils::truncateToWidth($text, $width, '…', pad: true)."\x1b[0m";
         }
 

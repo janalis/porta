@@ -46,6 +46,56 @@ final class TerminalPanelWidgetTest extends TestCase
         }
     }
 
+    public function testFocusedPanelPlacesTheHardwareCursorAtTheBufferColumn(): void
+    {
+        $buffer = new TerminalBuffer();
+        $buffer->feed("one\nprompt$ ");
+        $panel = new TerminalPanelWidget();
+        $panel->open('bash', $buffer);
+
+        $panel->setFocused(true);
+        $lines = $panel->render(new RenderContext(40, 6));
+        $joined = implode('', $lines);
+        $this->assertSame(1, substr_count($joined, AnsiUtils::CURSOR_MARKER_PREFIX), 'exactly one marker on the live tail');
+        $markerLine = null;
+        foreach ($lines as $line) {
+            if (str_contains($line, AnsiUtils::CURSOR_MARKER_PREFIX)) {
+                $markerLine = $line;
+            }
+        }
+        $this->assertNotNull($markerLine);
+        $this->assertStringContainsString('prompt$', AnsiUtils::stripAnsiCodes($markerLine), 'the marker sits on the last body line');
+        $pos = strpos($markerLine, AnsiUtils::CURSOR_MARKER_PREFIX);
+        $this->assertSame(8, AnsiUtils::visibleWidth(substr($markerLine, 0, (int) $pos)), 'at the buffer cursor column');
+        foreach ($lines as $line) {
+            $this->assertSame(40, AnsiUtils::visibleWidth($line), 'the zero-width marker keeps the width contract');
+        }
+
+        $panel->setFocused(false);
+        $this->assertStringNotContainsString(AnsiUtils::CURSOR_MARKER_PREFIX, implode('', $panel->render(new RenderContext(40, 6))), 'unfocused: no marker');
+
+        $panel->setFocused(true);
+        $buffer->feed(str_repeat("history\n", 30)); // enough scrollback to page up into
+        $panel->handleInput("\x1b[5~"); // PageUp: scrolled back
+        $this->assertStringNotContainsString(AnsiUtils::CURSOR_MARKER_PREFIX, implode('', $panel->render(new RenderContext(40, 6))), 'scrolled back: no marker');
+    }
+
+    public function testCursorColumnIsClampedToThePanelWidth(): void
+    {
+        $buffer = new TerminalBuffer();
+        $buffer->feed(str_repeat('x', 60));
+        $panel = new TerminalPanelWidget();
+        $panel->setFocused(true);
+        $panel->open('bash', $buffer);
+
+        $lines = $panel->render(new RenderContext(20, 6));
+        $joined = implode('', $lines);
+        $this->assertSame(1, substr_count($joined, AnsiUtils::CURSOR_MARKER_PREFIX), 'a cursor past the width clamps to the last column');
+        foreach ($lines as $line) {
+            $this->assertSame(20, AnsiUtils::visibleWidth($line));
+        }
+    }
+
     public function testTitleAndGetTitle(): void
     {
         $panel = new TerminalPanelWidget();

@@ -117,7 +117,12 @@ final class PaneSegmenterTest extends TestCase
         // A freshly built (unrendered) root has no render context, so the walk
         // collects no leaves — mirroring HitTester's detached-widget guard.
         $root = new ContainerWidget();
-        $segmenter = new PaneSegmenter(new Renderer(new StyleSheet()), static fn (): array => []);
+        $segmenter = new PaneSegmenter(new Renderer(new StyleSheet()), new class implements \Porta\Overlay\FloatingRegions {
+            public function regions(): array
+            {
+                return [];
+            }
+        });
 
         $byRow = $segmenter->segment($root, 6, 2);
 

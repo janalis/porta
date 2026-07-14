@@ -4,9 +4,12 @@ declare(strict_types=1);
 
 namespace Porta\Lsp;
 
+use Porta\Editor\ActiveFileProvider;
 use Porta\Editor\Document;
+use Porta\Event\LspStatusChanged;
 use Porta\I18n\Translator;
 use Porta\Support\ProjectPaths;
+use Psr\EventDispatcher\EventDispatcherInterface;
 
 /**
  * Routes LSP traffic to per-language sessions. Servers are declared once via
@@ -35,19 +38,19 @@ final class LspSessionPool
     private ?\Closure $onDiagnostics = null;
     /** @var (\Closure(array): bool)|null */
     private ?\Closure $onApplyEdit = null;
+
     /** @var (\Closure(): void)|null */
-    private ?\Closure $onStatusChanged = null;
 
     /**
-     * @param \Closure(): ?string $activePath the editor's current file, for calls that carry no path
      * @param (\Closure(list<string>, string, \Closure(string): void): LspClientInterface)|null $clientFactory
      *        forwarded to every session; inject a fake to test without processes
      */
     public function __construct(
         private readonly string $rootDir,
-        private readonly \Closure $activePath,
+        private readonly ActiveFileProvider $activeFile,
         private readonly Translator $translator,
         private readonly ?\Closure $clientFactory = null,
+        private readonly ?EventDispatcherInterface $dispatcher = null,
     ) {}
 
     /**
@@ -58,15 +61,13 @@ final class LspSessionPool
      * @param \Closure(string): void $onLog
      * @param \Closure(array): void  $onDiagnostics
      * @param \Closure(array): bool  $onApplyEdit
-     * @param \Closure(): void       $onStatusChanged repaint hook for the status bar
      */
-    public function configure(array $servers, \Closure $onLog, \Closure $onDiagnostics, \Closure $onApplyEdit, \Closure $onStatusChanged): void
+    public function configure(array $servers, \Closure $onLog, \Closure $onDiagnostics, \Closure $onApplyEdit): void
     {
         $this->servers = $servers;
         $this->onLog = $onLog;
         $this->onDiagnostics = $onDiagnostics;
         $this->onApplyEdit = $onApplyEdit;
-        $this->onStatusChanged = $onStatusChanged;
         $this->configured = true;
     }
 
@@ -185,7 +186,7 @@ final class LspSessionPool
 
     private function activeSession(): ?LspSession
     {
-        $session = $this->sessionFor(($this->activePath)());
+        $session = $this->sessionFor($this->activeFile->getFilePath());
         if (null !== $session) {
             return $session;
         }
@@ -251,9 +252,7 @@ final class LspSessionPool
             $this->onApplyEdit ?? static fn (array $edit): bool => false,
             function (bool $ok) use ($server, $signature): void {
                 $this->statuses[$signature] = $ok ? $server['name'] : $this->translator->trans('failed');
-                if (null !== $this->onStatusChanged) {
-                    ($this->onStatusChanged)();
-                }
+                $this->dispatcher?->dispatch(new LspStatusChanged());
             },
         );
 

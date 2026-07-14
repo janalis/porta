@@ -8,13 +8,13 @@ use PHPUnit\Framework\TestCase;
 use Porta\Search\Everywhere\SearchCategory;
 use Porta\Search\Everywhere\SearchHit;
 use Porta\Search\Everywhere\SearchRow;
-use Porta\Widget\BufferCallbacks;
+use Porta\Tests\Support\FakeBufferNavigation;
+use Porta\Tests\Support\FakeEditorCompletion;
+use Porta\Tests\Support\FakeEditorFileActions;
+use Porta\Tests\Support\FakeEditorNavigation;
+use Porta\Tests\Support\FakeEditorRefactor;
 use Porta\Widget\CodeEditorWidget;
-use Porta\Widget\CompletionCallbacks;
 use Porta\Widget\EditorCallbacks;
-use Porta\Widget\FileActionCallbacks;
-use Porta\Widget\NavigationCallbacks;
-use Porta\Widget\RefactorCallbacks;
 use Porta\Widget\Render\LineDecorator;
 use Symfony\Component\Tui\Ansi\AnsiUtils;
 use Symfony\Component\Tui\Render\RenderContext;
@@ -28,6 +28,33 @@ final class CodeEditorWidgetTest extends TestCase
         $editor->setFocused(true);
 
         return $editor;
+    }
+
+    public function testCaretScreenCellTracksCursorScrollAndGutter(): void
+    {
+        $editor = $this->editor("<?php\n\$a = 1;\n\$bb = 22;\n");
+        $editor->render(new RenderContext(80, 10));
+
+        $editor->getDocument()->setCursor(0, 0);
+        $cell = $editor->caretScreenCell();
+        $this->assertSame(0, $cell['row']);
+        $this->assertSame($editor->gutterWidth(), $cell['col'], 'column 0 sits right after the gutter');
+
+        $editor->getDocument()->setCursor(2, 4);
+        $cell = $editor->caretScreenCell();
+        $this->assertSame(2, $cell['row']);
+        $this->assertSame($editor->gutterWidth() + 4, $cell['col']);
+    }
+
+    public function testCaretScreenCellClampsToTheGutterWhenScrolledPastTheCaret(): void
+    {
+        $long = "<?php\n\$x = '".str_repeat('a', 120)."';\n";
+        $editor = $this->editor($long);
+        $editor->getDocument()->setCursor(1, 100);
+        $editor->render(new RenderContext(40, 10)); // narrow: forces hScroll to follow the caret
+
+        $editor->getDocument()->setCursor(1, 0); // move back without re-rendering
+        $this->assertSame($editor->gutterWidth(), $editor->caretScreenCell()['col'], 'a caret left of the viewport clamps to the gutter edge');
     }
 
     /** @param string[] $lines */
@@ -230,8 +257,8 @@ final class CodeEditorWidgetTest extends TestCase
 
         $resolved = null;
         $editor->setCallbacks(new EditorCallbacks(
-            completion: new CompletionCallbacks(
-                onCompletionResolve: function (array $item) use (&$resolved): void {
+            completion: new FakeEditorCompletion(
+                resolveCompletion: function (array $item) use (&$resolved): void {
                     $resolved = $item;
                 },
             ),
@@ -349,15 +376,15 @@ final class CodeEditorWidgetTest extends TestCase
         $this->assertSame(0, $counts['warnings']);
 
         $rendered = $editor->render(new RenderContext(80, 20));
-        // The left gutter carries no icon (the line number is colored red); the
-        // error reads from the colored block in the right stripe.
-        $this->assertStringNotContainsString('▉', AnsiUtils::stripAnsiCodes(AnsiUtils::sliceByColumn($rendered[2], 0, 10)), 'no icon in the left gutter');
+        // The left gutter shows the severity glyph in the marker column and the
+        // line number colored red; the stripe repeats it as a density block.
+        $this->assertStringContainsString('✗', AnsiUtils::stripAnsiCodes(AnsiUtils::sliceByColumn($rendered[2], 0, 10)), 'error glyph in the left gutter');
         $this->assertStringContainsString("\x1b[38;5;203m", $rendered[2], 'line number colored for the error');
         $stripe = '';
         foreach ($rendered as $row) {
             $stripe .= AnsiUtils::stripAnsiCodes(AnsiUtils::sliceByColumn($row, 79, 1));
         }
-        $this->assertStringContainsString('▉', $stripe, 'error block in the right stripe');
+        $this->assertStringContainsString('█', $stripe, 'error block in the right stripe');
 
         $editor->getDocument()->setCursor(2, 0);
         $this->assertSame('Boom', $editor->getCursorDiagnostic());
@@ -404,8 +431,8 @@ final class CodeEditorWidgetTest extends TestCase
 
         $copied = null;
         $editor->setCallbacks(new EditorCallbacks(
-            file: new FileActionCallbacks(
-                onCopy: function (string $text) use (&$copied): void {
+            file: new FakeEditorFileActions(
+                copy: function (string $text) use (&$copied): void {
                     $copied = $text;
                 },
             ),
@@ -475,9 +502,16 @@ final class CodeEditorWidgetTest extends TestCase
         $this->assertStringContainsString("\x1b[58;5;179m", $rendered[1], 'warning underline color');
         $this->assertStringContainsString("\x1b[58;5;75m", $rendered[2], 'info underline color');
 
-        // The stripe carries the plain block colored per worst-severity, mapped to
-        // its proportional row (the block is unique to the stripe).
-        $this->assertStringContainsString("\x1b[38;5;203m▉", implode('', $rendered), 'error block colored red in the stripe');
+        // The stripe carries a block whose density encodes the worst severity,
+        // mapped to its proportional row.
+        $this->assertStringContainsString("\x1b[38;5;203m█", implode('', $rendered), 'error: full block, colored red, in the stripe');
+        $this->assertStringContainsString("\x1b[38;5;75m▒", implode('', $rendered), 'info: medium-shade block in the stripe');
+        $this->assertStringContainsString("\x1b[38;5;244m░", implode('', $rendered), 'hint: light-shade block in the stripe');
+
+        // The gutter marker column repeats the severity as a glyph.
+        $this->assertStringContainsString('✗', AnsiUtils::stripAnsiCodes($rendered[1]), 'error glyph in the gutter');
+        $this->assertStringContainsString('◆', AnsiUtils::stripAnsiCodes($rendered[2]), 'info glyph in the gutter');
+        $this->assertStringContainsString('·', AnsiUtils::stripAnsiCodes($rendered[3]), 'hint glyph in the gutter');
 
         // Inline message on line 1 shows the worst (error) message + a "+1" count.
         $plain1 = AnsiUtils::stripAnsiCodes($rendered[1]);
@@ -500,9 +534,10 @@ final class CodeEditorWidgetTest extends TestCase
 
         // The stripe (last column) marks both problems even though line 55 is off-screen.
         $all = implode('', $rendered);
-        $this->assertStringContainsString("\x1b[38;5;203m▉", $all, 'error block in the stripe');
-        $this->assertStringContainsString("\x1b[38;5;179m▉", $all, 'off-screen warning also shown as an amber block');
-        $this->assertSame(2, substr_count($all, '▉'), 'the empty list draws no stripe mark');
+        $this->assertStringContainsString("\x1b[38;5;203m█", $all, 'error block in the stripe');
+        $this->assertStringContainsString("\x1b[38;5;179m▓", $all, 'off-screen warning shown as a dashed amber block');
+        $this->assertSame(1, substr_count($all, '█'), 'the empty list draws no stripe mark');
+        $this->assertSame(1, substr_count($all, '▓'), 'one warning mark');
 
         // Clicking low in the stripe jumps deep into the file (near the warning).
         $editor->clickAt(18, 79);
@@ -832,11 +867,11 @@ final class CodeEditorWidgetTest extends TestCase
         $completionRequests = [];
         $signatureRequests = [];
         $editor->setCallbacks(new EditorCallbacks(
-            completion: new CompletionCallbacks(
-                onCompletionRequested: function (int $l, int $c) use (&$completionRequests): void {
+            completion: new FakeEditorCompletion(
+                requestCompletion: function (int $l, int $c) use (&$completionRequests): void {
                     $completionRequests[] = [$l, $c];
                 },
-                onSignatureHelp: function (int $l, int $c) use (&$signatureRequests): void {
+                requestSignatureHelp: function (int $l, int $c) use (&$signatureRequests): void {
                     $signatureRequests[] = [$l, $c];
                 },
             ),
@@ -860,11 +895,11 @@ final class CodeEditorWidgetTest extends TestCase
         $definitionAt = null;
         $navigatedBack = false;
         $editor->setCallbacks(new EditorCallbacks(
-            navigation: new NavigationCallbacks(
-                onDefinitionRequested: function (int $l, int $c) use (&$definitionAt): void {
+            navigation: new FakeEditorNavigation(
+                requestDefinition: function (int $l, int $c) use (&$definitionAt): void {
                     $definitionAt = [$l, $c];
                 },
-                onNavigateBack: function () use (&$navigatedBack): void {
+                navigateBack: function () use (&$navigatedBack): void {
                     $navigatedBack = true;
                 },
             ),
@@ -934,30 +969,30 @@ final class CodeEditorWidgetTest extends TestCase
         $editor = $this->editor();
         $events = [];
         $editor->setCallbacks(new EditorCallbacks(
-            file: new FileActionCallbacks(
-                onFindRequested: function (bool $r) use (&$events): void {
+            file: new FakeEditorFileActions(
+                openFind: function (bool $r) use (&$events): void {
                     $events[] = 'find:'.var_export($r, true);
                 },
-                onGotoFile: function () use (&$events): void {
+                openGotoFile: function () use (&$events): void {
                     $events[] = 'goto';
                 },
             ),
-            navigation: new NavigationCallbacks(
-                onQuickDoc: function () use (&$events): void {
+            navigation: new FakeEditorNavigation(
+                requestHover: function () use (&$events): void {
                     $events[] = 'doc';
                 },
-                onFindUsages: function () use (&$events): void {
+                requestReferences: function () use (&$events): void {
                     $events[] = 'usages';
                 },
             ),
-            buffer: new BufferCallbacks(
-                onBufferCycle: function (int $d) use (&$events): void {
+            buffer: new FakeBufferNavigation(
+                cycleBuffer: function (int $d) use (&$events): void {
                     $events[] = "cycle:{$d}";
                 },
-                onRecentFiles: function () use (&$events): void {
+                openRecentFiles: function () use (&$events): void {
                     $events[] = 'recent';
                 },
-                onCloseBuffer: function () use (&$events): void {
+                closeBuffer: function () use (&$events): void {
                     $events[] = 'close';
                 },
             ),
@@ -970,7 +1005,7 @@ final class CodeEditorWidgetTest extends TestCase
         $editor->handleInput("\x06"); // ctrl+f
         $editor->handleInput("\x12"); // ctrl+r
         $editor->handleInput("\x10"); // ctrl+p
-        $editor->handleInput("\x1bOP"); // f1
+        $editor->handleInput("\x1b[1;2P"); // f1
         $editor->handleInput("\x1b[18;3~"); // alt+f7
 
         $this->assertSame(
@@ -984,8 +1019,8 @@ final class CodeEditorWidgetTest extends TestCase
         $editor = $this->editor();
         $saved = false;
         $editor->setCallbacks(new EditorCallbacks(
-            file: new FileActionCallbacks(
-                onSaveRequested: function () use (&$saved): void {
+            file: new FakeEditorFileActions(
+                save: function () use (&$saved): void {
                     $saved = true;
                 },
             ),
@@ -1015,9 +1050,12 @@ final class CodeEditorWidgetTest extends TestCase
         $editor = $this->editor("<?php\n\$subject\n");
         $renamed = null;
         $editor->setCallbacks(new EditorCallbacks(
-            refactor: new RefactorCallbacks(
-                onRename: function (string $n, int $l, int $c) use (&$renamed): void {
-                    $renamed = [$n, $l, $c];
+            refactor: new FakeEditorRefactor(
+                // Mirror RefactorController's flow: prompt for the new name, then rename.
+                requestPrepareRename: static function (int $l, int $c, string $word) use ($editor, &$renamed): void {
+                    $editor->openPrompt('Rename to', $word, function (string $value) use ($l, $c, &$renamed): void {
+                        $renamed = [trim($value), $l, $c];
+                    });
                 },
             ),
         ));
@@ -1068,13 +1106,13 @@ final class CodeEditorWidgetTest extends TestCase
         $reformatted = false;
         $usagesAt = null;
         $editor->setCallbacks(new EditorCallbacks(
-            navigation: new NavigationCallbacks(
-                onFindUsages: function (int $l, int $c) use (&$usagesAt): void {
+            navigation: new FakeEditorNavigation(
+                requestReferences: function (int $l, int $c) use (&$usagesAt): void {
                     $usagesAt = [$l, $c];
                 },
             ),
-            refactor: new RefactorCallbacks(
-                onReformat: function () use (&$reformatted): void {
+            refactor: new FakeEditorRefactor(
+                requestReformat: function () use (&$reformatted): void {
                     $reformatted = true;
                 },
             ),
@@ -1094,5 +1132,26 @@ final class CodeEditorWidgetTest extends TestCase
         $before = $editor->getDocument()->getText();
         $editor->runAction('does_not_exist');
         $this->assertSame($before, $editor->getDocument()->getText());
+    }
+
+    public function testInsertTextGoesThroughTheFullChangePipeline(): void
+    {
+        $editor = $this->editor("ab\ncd\n");
+        $editor->getDocument()->setCursor(1, 1);
+        $changed = 0;
+        $editor->setCallbacks(new EditorCallbacks(
+            completion: new FakeEditorCompletion(
+                scheduleDidChange: function () use (&$changed): void {
+                    ++$changed;
+                },
+            ),
+        ));
+
+        $editor->insertText('XY');
+
+        $this->assertSame("ab\ncXYd\n", $editor->getDocument()->getText(), 'inserted at the caret');
+        $this->assertSame(1, $changed, 'the change notification (LSP didChange path) fired');
+        $editor->getDocument()->undo();
+        $this->assertSame("ab\ncd\n", $editor->getDocument()->getText(), 'undoable like typed input');
     }
 }

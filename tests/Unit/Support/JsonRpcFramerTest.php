@@ -1,0 +1,65 @@
+<?php
+
+declare(strict_types=1);
+
+namespace Porta\Tests\Unit\Support;
+
+use PHPUnit\Framework\TestCase;
+use Porta\Support\JsonRpcFramer;
+
+final class JsonRpcFramerTest extends TestCase
+{
+    public function testEncodeProducesAContentLengthFrame(): void
+    {
+        $frame = JsonRpcFramer::encode(['seq' => 1, 'type' => 'request']);
+        $json = '{"seq":1,"type":"request"}';
+
+        $this->assertSame('Content-Length: '.\strlen($json)."\r\n\r\n".$json, $frame);
+    }
+
+    public function testEncodeMeasuresBytesNotCharacters(): void
+    {
+        $frame = JsonRpcFramer::encode(['msg' => 'héllo⏎']);
+        $this->assertSame(1, preg_match('/Content-Length: (\d+)/', $frame, $m));
+        [$header, $body] = explode("\r\n\r\n", $frame, 2);
+        $this->assertSame((int) $m[1], \strlen($body), 'length is the UTF-8 byte count');
+    }
+
+    public function testFeedDecodesFramesSplitAcrossArbitraryChunks(): void
+    {
+        $framer = new JsonRpcFramer();
+        $frame = JsonRpcFramer::encode(['id' => 7]);
+
+        $messages = [];
+        foreach (str_split($frame, 3) as $chunk) {
+            $messages = [...$messages, ...$framer->feed($chunk)];
+        }
+
+        $this->assertSame([['id' => 7]], $messages);
+    }
+
+    public function testFeedDecodesMultipleFramesFromOneChunk(): void
+    {
+        $framer = new JsonRpcFramer();
+        $data = JsonRpcFramer::encode(['n' => 1]).JsonRpcFramer::encode(['n' => 2]);
+
+        $this->assertSame([['n' => 1], ['n' => 2]], $framer->feed($data));
+    }
+
+    public function testCorruptHeaderBlockIsDroppedAndTheStreamResyncs(): void
+    {
+        $framer = new JsonRpcFramer();
+        $data = "X-Garbage: yes\r\n\r\n".JsonRpcFramer::encode(['ok' => true]);
+
+        $this->assertSame([['ok' => true]], $framer->feed($data));
+    }
+
+    public function testNonArrayJsonBodiesAreSkipped(): void
+    {
+        $framer = new JsonRpcFramer();
+        $body = '"just a string"';
+        $data = 'Content-Length: '.\strlen($body)."\r\n\r\n".$body.JsonRpcFramer::encode(['ok' => 1]);
+
+        $this->assertSame([['ok' => 1]], $framer->feed($data));
+    }
+}

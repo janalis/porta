@@ -25,7 +25,7 @@ use Symfony\Component\Tui\Widget\AbstractWidget;
  *
  * @phpstan-type Dropdown array{top: int, col: int, width: int, count: int}
  */
-final class MenuOverlayController
+final class MenuOverlayController implements FloatingRegions
 {
     /** @var Dropdown|null */
     private ?array $menuDropdown = null;
@@ -60,6 +60,11 @@ final class MenuOverlayController
     public function contextMenuDropdown(): ?array
     {
         return $this->contextMenuDropdown;
+    }
+
+    public function regions(): array
+    {
+        return array_values(array_filter([$this->menuDropdown(), $this->contextMenuDropdown()]));
     }
 
     /** Remember the right-click point the context menu anchors at. */

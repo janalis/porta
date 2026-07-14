@@ -31,7 +31,7 @@ final class LineSpansTest extends TestCase
 
         $opens = array_column($result['spans'], 2);
         $this->assertSame($palette->of(Role::SelectionBg), $opens[0], 'selection first');
-        $this->assertSame($palette->of(Role::SearchCurrentBg), $opens[1], 'current search match next');
+        $this->assertSame($palette->of(Role::SearchCurrentBg)."\x1b[1m", $opens[1], 'current search match next, bold for a non-color cue');
         $this->assertSame($palette->of(Role::OccurrenceBg), $opens[2]);
         $this->assertSame(LineDecorator::BRACKET_SGR, $opens[3]);
         $this->assertSame("\x1b[7m", $opens[\count($opens) - 1], 'caret cell layers last');

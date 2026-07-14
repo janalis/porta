@@ -9,6 +9,7 @@ use Porta\I18n\Translator;
 use Porta\Support\ProjectPaths;
 use Porta\Ui\Notifier;
 use Porta\Widget\CodeEditorWidget;
+use Porta\Widget\EditorRefactorHandler;
 use Symfony\Component\Tui\Tui;
 
 /**
@@ -16,7 +17,7 @@ use Symfony\Component\Tui\Tui;
  * / code actions, and reformatting. All apply their results through the shared
  * {@see WorkspaceEditor}.
  */
-final class RefactorController extends AbstractLspController
+final class RefactorController extends AbstractLspController implements EditorRefactorHandler
 {
     /**
      * @param \Closure(): string $lspStatus current server status label, for messages

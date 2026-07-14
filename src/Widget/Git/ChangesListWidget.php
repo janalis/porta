@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Porta\Widget\Git;
 
+use Porta\Container\AsWidget;
 use Porta\Git\ChangeEntry;
 use Porta\I18n\Translator;
 use Porta\Support\IntMath;
@@ -32,6 +33,7 @@ use Symfony\Component\Tui\Widget\VerticallyExpandableInterface;
  * staged state. Space toggles staging, `d` arms an inline discard
  * confirmation, Enter/selection drives the diff pane via onSelect.
  */
+#[AsWidget('git-changes', flex: 0)]
 final class ChangesListWidget extends AbstractWidget implements FocusableInterface, MenuOverlayHost, VerticallyExpandableInterface
 {
     use FillsPaneTrait;
@@ -303,7 +305,7 @@ final class ChangesListWidget extends AbstractWidget implements FocusableInterfa
 
             $selected = $this->list->isSelected($index);
             $bg = $selected
-                ? ($this->focused ? $this->palette->of(Role::SelectedRow) : $this->palette->of(Role::HeaderBar))
+                ? ($this->focused ? $this->palette->of(Role::SelectedRow) : $this->palette->of(Role::SelectedRowUnfocused))
                 : ($index === $this->hoveredIndex ? $this->palette->of(Role::RowHighlightBg) : '');
             $text = ' '.$checkbox.' '.$statusFg.$status."\x1b[39m".' '.$label;
             $lines[] = $bg.AnsiUtils::truncateToWidth($text, $width, '…', pad: true)."\x1b[0m";

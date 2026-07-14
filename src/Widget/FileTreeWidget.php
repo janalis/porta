@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Porta\Widget;
 
+use Porta\Container\AsWidget;
 use Porta\Layout\ResizableSidebar;
 use Porta\Support\IntMath;
 use Porta\Ui\ColorPalette;
@@ -28,6 +29,7 @@ use Symfony\Component\Tui\Widget\VerticallyExpandableInterface;
 /**
  * Project file tree with lazy directory expansion.
  */
+#[AsWidget('tree', flex: 0)]
 final class FileTreeWidget extends AbstractWidget implements FocusableInterface, MenuOverlayHost, VerticallyExpandableInterface, ResizableSidebar
 {
     use FillsPaneTrait;
@@ -81,6 +83,23 @@ final class FileTreeWidget extends AbstractWidget implements FocusableInterface,
         $this->palette = $palette ?? ColorPalette::dark();
         $this->list = new ListSelection();
         $this->rebuild();
+    }
+
+    /**
+     * The currently selected node, or null when the tree is empty. The keyboard
+     * counterpart of {@see nodeAt} for opening the context menu without a click.
+     *
+     * @return array{path: string, name: string, isDir: bool, depth: int}|null
+     */
+    public function selectedNode(): ?array
+    {
+        return $this->visible[$this->list->selected()] ?? null;
+    }
+
+    /** The selected entry's widget-relative row (row 0 is the header). */
+    public function selectedRow(): int
+    {
+        return $this->list->selected() - $this->list->scroll() + 1;
     }
 
     /** Resize the sidebar to $width columns (clamped to a sensible range). */
@@ -271,7 +290,7 @@ final class FileTreeWidget extends AbstractWidget implements FocusableInterface,
             $text = AnsiUtils::truncateToWidth($text, $width, '…', pad: true);
 
             if ($index === $this->list->selected()) {
-                $style = $this->focused ? $this->palette->of(Role::SelectedRow) : $this->palette->of(Role::HeaderBar);
+                $style = $this->focused ? $this->palette->of(Role::SelectedRow) : $this->palette->of(Role::SelectedRowUnfocused);
                 $lines[] = $style.$text."\x1b[0m";
             } elseif ($index === $this->hoveredIndex) {
                 // Subtle hover background beneath the pointer, keeping the dir/file foreground.

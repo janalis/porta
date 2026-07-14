@@ -5,13 +5,14 @@ declare(strict_types=1);
 namespace Porta\Lsp;
 
 use Porta\Editor\Document;
+use Porta\Widget\EditorCompletionHandler;
 
 /**
  * "As you type" language features: completion, its deferred resolve
  * (auto-imports), inlay hints, signature help, and the debounced didChange that
  * re-requests inlay hints once the server has the new text.
  */
-final class CompletionController extends AbstractLspController
+final class CompletionController extends AbstractLspController implements EditorCompletionHandler
 {
     /** Debounce a didChange for $doc, then refresh inlay hints. */
     public function scheduleDidChange(Document $doc): void

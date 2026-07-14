@@ -28,6 +28,7 @@ final class ProjectSearchControllerTest extends TestCase
         $this->panel = new ResultsPanelWidget();
         $this->editor = new CodeEditorWidget();
         $projectSearch = new ProjectSearch($rootDir);
+        $buffers = new BufferManager();
 
         return new ProjectSearchController(
             $projectSearch,
@@ -36,12 +37,12 @@ final class ProjectSearchControllerTest extends TestCase
             new StatusBarWidget(),
             new Tui(terminal: new VirtualTerminal(columns: 100, rows: 20)),
             new \Porta\I18n\Translator('en'),
-            new BufferManager(),
+            $buffers,
             $rootDir,
-            static fn (string $path, Document $document): mixed => null,
+            new \Porta\Lsp\LspSessionPool($rootDir, new \Porta\Tests\Support\FixedActiveFile(), new \Porta\I18n\Translator('en')),
             new \Porta\History\SearchHistoryStore($rootDir),
             new \Porta\History\SearchPrefsStore($rootDir),
-            static fn (\Porta\Ui\ScopeKind $kind): array => ['.'],
+            new \Porta\Search\SearchScopeResolver($buffers, $this->editor, $rootDir),
             new \Porta\Search\LanguageFilter(new \Porta\Search\TokenClassifier(), $projectSearch, $rootDir),
             new \Porta\History\SearchScopeStore($rootDir),
         );

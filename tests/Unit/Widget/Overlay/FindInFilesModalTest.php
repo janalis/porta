@@ -301,11 +301,75 @@ final class FindInFilesModalTest extends TestCase
 
         $this->assertSame(0, $box()['windowStart'], 'starts at the top');
 
-        $modal->scrollPreview(6); // wheel down
+        $modal->scrollPreview(12); // wheel down past the bottom edge
         $this->assertGreaterThan(0, $box()['windowStart'], 'the preview scrolled down');
 
         $modal->scrollPreview(-20); // wheel up past the top → clamps
         $this->assertSame(0, $box()['windowStart'], 'scrolled back to the top');
+    }
+
+    public function testHoverSelectsWithoutScrollingTheWindow(): void
+    {
+        $modal = $this->modal();
+        $modal->open('Find in Files');
+        $many = [];
+        for ($i = 0; $i < 14; ++$i) {
+            $many[] = ['path' => 'src/A.php', 'line' => $i, 'text' => "hit {$i}", 'ranges' => []];
+        }
+        $modal->setPreview($many); // 15 display rows (1 header + 14 matches), 10 visible
+
+        $box = static function () use ($modal): array {
+            $modal->composite(array_fill(0, 24, str_repeat(' ', 100)), 100, 24, true);
+
+            return $modal->lastBox() ?? [];
+        };
+
+        // Hovering the bottom-most visible row moves the selection but never the window.
+        $b = $box();
+        $this->assertSame(0, $b['windowStart']);
+        $this->assertTrue($modal->hoverAt($b['previewRow'] + $b['count'] - 1, $b['col'] + 3));
+        $this->assertSame(0, $box()['windowStart'], 'hover at the bottom edge did not scroll');
+
+        // Scroll to the end, then hover the top-most visible row: still no scroll.
+        $modal->scrollPreview(20);
+        $this->assertSame(5, $box()['windowStart'], 'wheel to the last match');
+        $b = $box();
+        $this->assertTrue($modal->hoverAt($b['previewRow'], $b['col'] + 3));
+        $this->assertSame(5, $box()['windowStart'], 'hover at the top edge did not scroll');
+    }
+
+    public function testKeyboardScrollsMinimallyIntoView(): void
+    {
+        $modal = $this->modal();
+        $modal->open('Find in Files');
+        $many = [];
+        for ($i = 0; $i < 14; ++$i) {
+            $many[] = ['path' => 'src/A.php', 'line' => $i, 'text' => "hit {$i}", 'ranges' => []];
+        }
+        $modal->setPreview($many); // selection on the first match (display index 1)
+
+        $box = static function () use ($modal): array {
+            $modal->composite(array_fill(0, 24, str_repeat(' ', 100)), 100, 24, true);
+
+            return $modal->lastBox() ?? [];
+        };
+
+        $this->assertSame(0, $box()['windowStart']);
+        for ($i = 0; $i < 9; ++$i) {
+            $modal->handleInput("\x1b[B", $this->kb); // down to display index 10, one past the bottom edge
+        }
+        $this->assertSame(1, $box()['windowStart'], 'scrolled by exactly the overflow, no recentering');
+
+        for ($i = 0; $i < 9; ++$i) {
+            $modal->handleInput("\x1b[A", $this->kb); // back up to the first match
+        }
+        $this->assertSame(0, $box()['windowStart'], 'the first match reveals its file-header row above');
+
+        // A new search resets the window to the top.
+        $modal->scrollPreview(20);
+        $this->assertSame(5, $box()['windowStart']);
+        $modal->setPreview($many);
+        $this->assertSame(0, $box()['windowStart'], 'new results start at the top');
     }
 
     public function testTinyTerminalDoesNotOverflow(): void

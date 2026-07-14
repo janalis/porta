@@ -9,12 +9,18 @@ namespace Porta\Ui;
  * IDE renders without any SGR color while its text, layout and structural ANSI
  * (cursor, mouse, alt-screen) are left intact. {@see reset()} still emits the
  * attribute reset so bold/reverse runs (which stay in monochrome) are closed.
+ * Selection is the one state that must survive without color, so the selected
+ * row maps to reverse video (dimmed while its pane is unfocused).
  */
 final class MonochromePalette implements Palette
 {
     public function of(Role $role): string
     {
-        return '';
+        return match ($role) {
+            Role::SelectedRow => "\x1b[7m",
+            Role::SelectedRowUnfocused => "\x1b[2;7m",
+            default => '',
+        };
     }
 
     public function fgReset(): string

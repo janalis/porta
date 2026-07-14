@@ -1,0 +1,50 @@
+<?php
+
+declare(strict_types=1);
+
+namespace Porta\Image;
+
+/**
+ * Decodes an image file into truecolor pixels via GD. Palette images (GIF,
+ * indexed PNG) are normalized to truecolor so {@see HalfBlockRasterizer} can
+ * read every pixel with one `imagecolorat` contract. Caps both the encoded
+ * bytes and the decoded pixel count — a small JPEG can decode to a huge bitmap.
+ */
+final class ImageDecoder
+{
+    /** @var list<string> extensions routed to the viewer instead of the text editor */
+    public const array EXTENSIONS = ['png', 'jpg', 'jpeg', 'gif', 'webp', 'bmp'];
+
+    public const int MAX_BYTES = 20 * 1024 * 1024;
+    public const int MAX_PIXELS = 16_000_000;
+
+    public function __construct(
+        private readonly int $maxPixels = self::MAX_PIXELS,
+    ) {}
+
+    /** Whether the path names an image by extension (the viewer's routing test). */
+    public static function isImagePath(string $path): bool
+    {
+        return \in_array(strtolower(pathinfo($path, \PATHINFO_EXTENSION)), self::EXTENSIONS, true);
+    }
+
+    /** Decode the file, or null when the bytes are not a displayable image. */
+    public function decode(string $path): ?ImageData
+    {
+        $bytes = (string) @file_get_contents($path);
+        $gd = @imagecreatefromstring($bytes);
+        if (!$gd instanceof \GdImage) {
+            return null;
+        }
+        $width = imagesx($gd);
+        $height = imagesy($gd);
+        if (($width * $height) > $this->maxPixels) {
+            return null;
+        }
+        if (!imageistruecolor($gd)) {
+            imagepalettetotruecolor($gd);
+        }
+
+        return new ImageData($gd, $width, $height, \strlen($bytes));
+    }
+}

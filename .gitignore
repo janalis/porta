@@ -1,5 +1,6 @@
 /.phpunit.cache/
-/.porta/
+/.porta/*
+!/.porta/plugins/
 /coverage/
 /vendor/
 .porta.json

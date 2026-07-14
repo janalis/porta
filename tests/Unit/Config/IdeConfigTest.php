@@ -53,6 +53,7 @@ final class IdeConfigTest extends TestCase
                 'inlineDiagnostics' => 0,
                 'relativeLineNumbers' => true,
                 'theme' => 'light',
+                'tabBarPosition' => 'left',
                 'bogusSetting' => 'x',
             ],
         ])]);
@@ -62,8 +63,23 @@ final class IdeConfigTest extends TestCase
         $this->assertFalse($config->settings['inlineDiagnostics'], '0 coerced to bool');
         $this->assertTrue($config->settings['relativeLineNumbers']);
         $this->assertSame('light', $config->settings['theme']);
+        $this->assertSame('left', $config->settings['tabBarPosition']);
         $this->assertTrue($config->settings['autoPairs'], 'default preserved when unset');
         $this->assertContains('Unknown setting "bogusSetting" in .porta.json', $config->warnings);
+    }
+
+    public function testLegacySettingKeysAreSkippedWithoutWarning(): void
+    {
+        // "editorConfig" was the removed "Respect .editorconfig" toggle: stale
+        // values in older configs load silently, unlike genuinely-unknown keys.
+        $project = new TempProject(['.porta.json' => json_encode([
+            'settings' => ['editorConfig' => false, 'bogusSetting' => 'x'],
+        ])]);
+
+        $config = IdeConfig::load($project->dir);
+
+        $this->assertArrayNotHasKey('editorConfig', $config->settings, 'the legacy key never reaches the settings');
+        $this->assertSame(['Unknown setting "bogusSetting" in .porta.json'], $config->warnings, 'no warning for the legacy key; unknown keys still warn');
     }
 
     public function testLanguagesParsingAndValidation(): void
@@ -312,5 +328,105 @@ final class IdeConfigTest extends TestCase
         $project = new TempProject();
         mkdir($project->path('.porta.json'));
         $this->assertFalse(IdeConfig::persistLspServer($project->dir, 'php', 'phpactor'));
+    }
+
+    public function testLanguageDebugBlockParsesAndDropsInvalidParts(): void
+    {
+        $project = new TempProject(['.porta.json' => json_encode([
+            'languages' => [
+                'php' => ['debug' => ['adapter' => ['node', '/x/phpDebug.js'], 'launch' => ['runtimeExecutable' => 'php']]],
+                'python' => ['debug' => ['adapter' => 'python -m debugpy.adapter', 'launch' => ['a', 'list']]],
+                'javascript' => ['debug' => 'not an object'],
+                'typescript' => ['debug' => ['adapter' => 42]],
+            ],
+        ])]);
+        $config = IdeConfig::load($project->dir);
+
+        $this->assertSame(['adapter' => 'node /x/phpDebug.js', 'launch' => ['runtimeExecutable' => 'php']], $config->languages['php']['debug'] ?? null, 'argv adapter normalized to a string');
+        $this->assertSame(['adapter' => 'python -m debugpy.adapter'], $config->languages['python']['debug'] ?? null, 'a list launch value is dropped');
+        $this->assertArrayNotHasKey('javascript', $config->languages, 'a non-object debug block contributes nothing');
+        $this->assertArrayNotHasKey('typescript', $config->languages, 'a non-string adapter is dropped');
+        $this->assertSame([], $config->warnings);
+    }
+
+    public function testPersistLanguageDebugMergesRemovesAndPrunes(): void
+    {
+        $project = new TempProject(['.porta.json' => json_encode(['languages' => ['php' => ['indentStyle' => 'spaces']]])]);
+
+        $this->assertTrue(IdeConfig::persistLanguageDebug($project->dir, 'php', 'adapter', 'node /x/phpDebug.js'));
+        $this->assertTrue(IdeConfig::persistLanguageDebug($project->dir, 'php', 'launch', ['env' => ['X' => '1']]));
+        $written = json_decode((string) file_get_contents($project->path('.porta.json')), true);
+        $this->assertSame('spaces', $written['languages']['php']['indentStyle'], 'sibling keys preserved');
+        $this->assertSame('node /x/phpDebug.js', $written['languages']['php']['debug']['adapter']);
+        $this->assertSame(['env' => ['X' => '1']], $written['languages']['php']['debug']['launch']);
+
+        // Blank removes a key; removing the last key drops the debug block but keeps the language.
+        $this->assertTrue(IdeConfig::persistLanguageDebug($project->dir, 'php', 'launch', null));
+        $this->assertTrue(IdeConfig::persistLanguageDebug($project->dir, 'php', 'adapter', ''));
+        $written = json_decode((string) file_get_contents($project->path('.porta.json')), true);
+        $this->assertArrayNotHasKey('debug', $written['languages']['php']);
+        $this->assertSame('spaces', $written['languages']['php']['indentStyle']);
+    }
+
+    public function testPersistLanguageDebugReturnsFalseWhenWriteFails(): void
+    {
+        $project = new TempProject();
+        mkdir($project->path('.porta.json'));
+        $this->assertFalse(IdeConfig::persistLanguageDebug($project->dir, 'php', 'adapter', 'x'));
+    }
+
+    public function testPluginsBlockParsesScalarsAndWarnsOnNonObjects(): void
+    {
+        $project = new TempProject(['.porta.json' => json_encode([
+            'plugins' => [
+                'phpstan' => ['binary' => '/opt/phpstan', 'strict' => true, 'level' => 7, 'junk' => ['nested']],
+                'broken' => 'not-an-object',
+            ],
+            'disabledPlugins' => ['psalm', 42, ['nested']],
+        ])]);
+        $config = IdeConfig::load($project->dir);
+
+        $this->assertSame(['binary' => '/opt/phpstan', 'strict' => true, 'level' => 7], $config->plugins['phpstan'], 'scalars kept raw, non-scalars dropped');
+        $this->assertArrayNotHasKey('broken', $config->plugins);
+        $this->assertContains('Plugin settings for "broken" must be an object', $config->warnings);
+        $this->assertSame(['psalm', '42'], $config->disabledPlugins, 'scalar names kept, stringified');
+    }
+
+    public function testPersistPluginSettingAndEnabledMergePreserving(): void
+    {
+        $project = new TempProject(['.porta.json' => json_encode(['settings' => ['theme' => 'light']])]);
+
+        $this->assertTrue(IdeConfig::persistPluginSetting($project->dir, 'phpstan', 'binary', '/opt/x'));
+        $this->assertTrue(IdeConfig::persistPluginSetting($project->dir, 'phpstan', 'strict', true));
+        $this->assertTrue(IdeConfig::persistPluginEnabled($project->dir, 'psalm', false));
+        $this->assertTrue(IdeConfig::persistPluginEnabled($project->dir, 'mago', false));
+        $this->assertTrue(IdeConfig::persistPluginEnabled($project->dir, 'psalm', true));
+
+        $written = json_decode((string) file_get_contents($project->path('.porta.json')), true);
+        $this->assertSame(['binary' => '/opt/x', 'strict' => true], $written['plugins']['phpstan']);
+        $this->assertSame('light', $written['settings']['theme'], 'unrelated keys preserved');
+        $this->assertSame(['mago'], $written['disabledPlugins'], 're-enabling removes the entry');
+
+        $this->assertTrue(IdeConfig::persistPluginEnabled($project->dir, 'mago', true));
+        $written = json_decode((string) file_get_contents($project->path('.porta.json')), true);
+        $this->assertArrayNotHasKey('disabledPlugins', $written, 'an emptied list is dropped');
+    }
+
+    public function testNamespacedPluginKeymapIdsBypassTheCatalogCheck(): void
+    {
+        $project = new TempProject(['.porta.json' => json_encode([
+            'keymap' => [
+                'demo:hello' => 'f8',
+                'still_unknown' => ['f9'],
+                'demo:bad_value' => 42,
+            ],
+        ])]);
+        $config = IdeConfig::load($project->dir);
+
+        $this->assertSame(['f8'], $config->keymap['demo:hello'], 'plugin ids bind without catalog validation');
+        $this->assertArrayNotHasKey('still_unknown', $config->keymap);
+        $this->assertContains('Unknown keymap action "still_unknown" in .porta.json', $config->warnings);
+        $this->assertArrayNotHasKey('demo:bad_value', $config->keymap, 'the value-shape check still applies');
+        $this->assertContains('Keymap action "demo:bad_value" must map to a key or list of keys', $config->warnings);
     }
 }

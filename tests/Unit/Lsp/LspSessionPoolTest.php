@@ -6,23 +6,30 @@ namespace Porta\Tests\Unit\Lsp;
 
 use PHPUnit\Framework\TestCase;
 use Porta\Editor\Document;
+use Porta\Event\LspStatusChanged;
 use Porta\I18n\Translator;
 use Porta\Lsp\LspSessionPool;
 use Porta\Tests\Support\FakeLspClient;
+use Porta\Tests\Support\FixedActiveFile;
+use Symfony\Component\EventDispatcher\EventDispatcher;
 
 final class LspSessionPoolTest extends TestCase
 {
     /** @var list<array{command: list<string>, client: FakeLspClient}> every client the pool built */
     private array $clients = [];
-    private ?string $activePath = null;
+    private FixedActiveFile $activeFile;
     private int $statusRepaints = 0;
 
     private function pool(array $servers, bool $configure = true): LspSessionPool
     {
         $this->clients = [];
+        $dispatcher = new EventDispatcher();
+        $dispatcher->addListener(LspStatusChanged::class, function (): void {
+            ++$this->statusRepaints;
+        });
         $pool = new LspSessionPool(
             '/tmp/proj',
-            fn (): ?string => $this->activePath,
+            $this->activeFile = new FixedActiveFile(),
             new Translator('en'),
             function (array $command, string $rootDir, \Closure $onLog): FakeLspClient {
                 $client = new FakeLspClient();
@@ -30,6 +37,7 @@ final class LspSessionPoolTest extends TestCase
 
                 return $client;
             },
+            $dispatcher,
         );
         if ($configure) {
             $pool->configure(
@@ -37,9 +45,6 @@ final class LspSessionPoolTest extends TestCase
                 static function (string $line): void {},
                 static function (array $params): void {},
                 static fn (array $edit): bool => false,
-                function (): void {
-                    ++$this->statusRepaints;
-                },
             );
         }
 
@@ -121,7 +126,7 @@ final class LspSessionPoolTest extends TestCase
         $pool->notifyDidOpen('/tmp/proj/a.php', 'x', 'php', 1);
         $pool->notifyDidOpen('/tmp/proj/b.ts', 'y', 'typescript', 1);
 
-        $this->activePath = '/tmp/proj/b.ts';
+        $this->activeFile->set('/tmp/proj/b.ts');
         $pool->request('textDocument/definition', ['x' => 1], static function (): void {});
 
         $this->assertCount(0, array_filter($this->clients[0]['client']->requests));
@@ -131,7 +136,7 @@ final class LspSessionPoolTest extends TestCase
 
         // With no active file, workspace-level calls (symbol search,
         // executeCommand) fall back to the running PHP/catch-all session.
-        $this->activePath = null;
+        $this->activeFile->set(null);
         $this->assertTrue($pool->isActive());
         $pool->request('workspace/symbol', ['query' => 'x'], static function (): void {});
         $this->assertSame('workspace/symbol', $this->clients[0]['client']->requests[0]['method'] ?? null);

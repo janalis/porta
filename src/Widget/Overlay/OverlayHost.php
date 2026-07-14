@@ -8,6 +8,7 @@ use Porta\Search\Everywhere\SearchHit;
 use Porta\Search\Everywhere\SearchRow;
 use Porta\Support\AnsiText;
 use Porta\Ui\ColorPalette;
+use Porta\Ui\CursorStyle;
 use Porta\Ui\Palette;
 use Porta\Ui\Role;
 use Porta\Ui\TextField;
@@ -40,11 +41,15 @@ final class OverlayHost
     /**
      * @param \Closure(): void $invalidate repaint request back into the widget
      */
+    private readonly CursorStyle $cursorStyle;
+
     public function __construct(
         private readonly \Closure $invalidate,
         ?Palette $palette = null,
+        ?CursorStyle $cursorStyle = null,
     ) {
         $this->palette = $palette ?? ColorPalette::dark();
+        $this->cursorStyle = $cursorStyle ?? new CursorStyle();
     }
 
     /**
@@ -76,7 +81,7 @@ final class OverlayHost
     /** Open the single-line input prompt (go to line, rename symbol). */
     public function openPrompt(string $label, string $initial, callable $onSubmit): void
     {
-        $this->prompt = ['label' => $label, 'value' => new TextField($initial), 'onSubmit' => $onSubmit];
+        $this->prompt = ['label' => $label, 'value' => new TextField($initial, $this->cursorStyle), 'onSubmit' => $onSubmit];
         ($this->invalidate)();
     }
 
@@ -91,7 +96,7 @@ final class OverlayHost
      */
     public function openSearch(string $title, \Closure $onQuery, \Closure $onPick, \Closure $onClose): void
     {
-        $this->search = new SearchModalState($title, new TextField(), $onQuery, $onPick, $onClose);
+        $this->search = new SearchModalState($title, new TextField(style: $this->cursorStyle), $onQuery, $onPick, $onClose);
         ($this->invalidate)();
     }
 
@@ -435,6 +440,7 @@ final class OverlayHost
                 $rowModels,
                 $search->selected,
                 $this->palette,
+                $this->cursorStyle->marker(),
             );
         }
 

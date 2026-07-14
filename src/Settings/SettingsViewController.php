@@ -5,10 +5,13 @@ declare(strict_types=1);
 namespace Porta\Settings;
 
 use Porta\Config\SettingsController;
+use Porta\Config\SettingsDebugController;
 use Porta\Config\SettingsKeymapController;
 use Porta\Config\SettingsLanguageController;
 use Porta\Config\SettingsLspController;
+use Porta\Config\SettingsPluginsController;
 use Porta\Config\SettingsRow;
+use Porta\Ui\WorkspaceViews;
 use Porta\Widget\MenuBarWidget;
 use Porta\Widget\Settings\KeybindingsListWidget;
 use Porta\Widget\Settings\SettingsFormWidget;
@@ -21,8 +24,8 @@ use Symfony\Component\Tui\Widget\FocusableInterface;
 /**
  * The full-screen settings view: swaps the main area's tree|editor children for
  * a [nav sidebar | separator | content] column. The sidebar selects a section —
- * General, Keybindings, or a language — and the content pane shows the matching
- * form/list. Structured like {@see \Porta\Git\GitViewController} but simpler (no
+ * General, Keybindings, Plugins, or a language — and the content pane shows the
+ * matching form/list. Structured like {@see \Porta\Git\GitViewController} but simpler (no
  * poll loop, no availability gate).
  */
 final class SettingsViewController
@@ -49,8 +52,12 @@ final class SettingsViewController
         private readonly SettingsKeymapController $keymap,
         private readonly SettingsLanguageController $languages,
         private readonly SettingsLspController $lsp,
+        private readonly SettingsDebugController $debug,
+        private readonly SettingsPluginsController $plugins,
         private readonly \Closure $onClosed,
+        WorkspaceViews $views,
     ) {
+        $views->attachSettings($this);
         $exit = fn () => $this->close();
 
         $this->nav
@@ -140,12 +147,18 @@ final class SettingsViewController
      */
     private function rowsForSection(): array
     {
+        if ('plugins' === $this->section) {
+            return $this->plugins->rows();
+        }
+        if (str_starts_with($this->section, 'plugin:')) {
+            return $this->plugins->pluginRows(substr($this->section, 7));
+        }
         if (!str_starts_with($this->section, 'lang:')) {
             return $this->settings->formRows();
         }
         $language = substr($this->section, 5);
 
-        return [...$this->languages->rows($language), ...$this->lsp->rows($language)];
+        return [...$this->languages->rows($language), ...$this->lsp->rows($language), ...$this->debug->rows($language)];
     }
 
     private function changeSetting(string $key, bool|int|string $value): void
@@ -154,13 +167,42 @@ final class SettingsViewController
             $language = substr($this->section, 5);
             if ('lspServer' === $key) {
                 $this->lsp->changeLspServer($language, (string) $value);
+            } elseif ('debugAdapter' === $key || 'debugLaunch' === $key) {
+                $this->debug->change($language, $key, (string) $value);
             } else {
                 $this->languages->changeLanguageSetting($language, $key, $value);
             }
+        } elseif ('plugins' === $this->section) {
+            $this->plugins->change($key, (string) $value);
+        } elseif (str_starts_with($this->section, 'plugin:')) {
+            // The scalar passes through untouched — bool/int rows need their types.
+            $this->plugins->changePlugin(substr($this->section, 7), $key, $value);
         } else {
             $this->settings->changeSetting($key, $value);
         }
         $this->form->setRows($this->rowsForSection());
+    }
+
+    /**
+     * Re-push the plugin rows when plugin state changed outside the form's own
+     * change flow (an async install landed, a plugin was removed). When the
+     * shown plugin page's plugin just vanished, fall back to the Plugins
+     * section. No-op elsewhere.
+     */
+    public function refresh(): void
+    {
+        if (!$this->open) {
+            return;
+        }
+        if (str_starts_with($this->section, 'plugin:') && !$this->plugins->hasPlugin(substr($this->section, 7))) {
+            $this->selectSection('plugins');
+
+            return;
+        }
+        if ('plugins' === $this->section || str_starts_with($this->section, 'plugin:')) {
+            $this->form->setRows($this->rowsForSection());
+            $this->tui->requestRender();
+        }
     }
 
     private function rebind(string $action, string $key): void
@@ -172,6 +214,16 @@ final class SettingsViewController
     private function contentWidget(): AbstractWidget&FocusableInterface
     {
         return 'keybindings' === $this->section ? $this->keymapList : $this->form;
+    }
+
+    /** F6/Ctrl+F6 while the settings view is open: bounce between nav and content. */
+    public function cycleFocus(): void
+    {
+        if ($this->tui->getFocus() === $this->nav) {
+            $this->focusContent();
+        } else {
+            $this->focusNav();
+        }
     }
 
     private function focusNav(): void

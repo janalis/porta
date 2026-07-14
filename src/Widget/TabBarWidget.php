@@ -4,24 +4,34 @@ declare(strict_types=1);
 
 namespace Porta\Widget;
 
+use Porta\Container\AsWidget;
 use Porta\Support\AnsiText;
 use Porta\Ui\ColorPalette;
 use Porta\Ui\Palette;
 use Porta\Ui\Role;
 use Porta\Widget\Render\MenuOverlayHost;
 use Porta\Widget\Render\MenuOverlayHostTrait;
+use Symfony\Component\Tui\Ansi\AnsiUtils;
 use Symfony\Component\Tui\Render\RenderContext;
 use Symfony\Component\Tui\Widget\AbstractWidget;
 
 /**
- * One-line editor tab strip. Content comes from a provider closure so it
- * always reflects the BufferManager state.
+ * The editor tab strip. Content comes from a provider closure so it always
+ * reflects the BufferManager state. Renders as a one-row horizontal bar
+ * (top/bottom positions) or as a fixed-width vertical list with one tab per
+ * row (left/right positions).
  */
+#[AsWidget('tabs', flex: 0)]
 final class TabBarWidget extends AbstractWidget implements MenuOverlayHost
 {
     use MenuOverlayHostTrait;
 
+    /** Display columns of the vertical (left/right) tab list. */
+    public const VERTICAL_WIDTH = 24;
+
     private readonly Palette $palette;
+
+    private TabBarPosition $position = TabBarPosition::Top;
 
     public function __construct(?Palette $palette = null)
     {
@@ -33,7 +43,7 @@ final class TabBarWidget extends AbstractWidget implements MenuOverlayHost
 
     private string $lastFingerprint = '';
 
-    /** @var list<array{index: int, start: int, width: int, closeStart: int, closeWidth: int}> layout from the last render */
+    /** @var list<array{index: int, row: int, start: int, width: int, closeStart: int, closeWidth: int}> layout from the last render */
     private array $lastLayout = [];
 
     /** @param callable(): list<array{name: string, dirty: bool, active: bool}> $provider */
@@ -42,6 +52,21 @@ final class TabBarWidget extends AbstractWidget implements MenuOverlayHost
         $this->provider = $provider;
 
         return $this;
+    }
+
+    public function setPosition(TabBarPosition $position): void
+    {
+        if ($position === $this->position) {
+            return;
+        }
+        $this->position = $position;
+        $this->lastLayout = [];
+        $this->invalidate();
+    }
+
+    public function position(): TabBarPosition
+    {
+        return $this->position;
     }
 
     public function beforeRender(): void
@@ -58,6 +83,10 @@ final class TabBarWidget extends AbstractWidget implements MenuOverlayHost
 
     public function render(RenderContext $context): array
     {
+        if ($this->position->isSide()) {
+            return $this->renderVertical($context);
+        }
+
         $columns = $context->getColumns();
         $tabs = null !== $this->provider ? ($this->provider)() : [];
 
@@ -109,6 +138,7 @@ final class TabBarWidget extends AbstractWidget implements MenuOverlayHost
             $line .= $style.$text."\x1b[0m".$this->palette->of(Role::Placeholder)."│\x1b[0m";
             $this->lastLayout[] = [
                 'index' => $index,
+                'row' => 0,
                 'start' => $used,
                 'width' => $part['width'],
                 'closeStart' => $used + $part['closeOffset'],
@@ -121,12 +151,68 @@ final class TabBarWidget extends AbstractWidget implements MenuOverlayHost
     }
 
     /**
-     * Which tab index (into the full provider list) sits at column $col of
-     * the last-rendered strip, or null when the click missed every tab.
+     * The vertical (left/right) tab list: one tab per row, every line exactly
+     * {@see VERTICAL_WIDTH} columns so the layout engine measures a stable
+     * intrinsic width, blank rows filling the pane below the last tab.
+     *
+     * @return list<string>
      */
-    public function tabIndexAtColumn(int $col): ?int
+    private function renderVertical(RenderContext $context): array
+    {
+        $rows = max(1, $context->getRows());
+        $tabs = null !== $this->provider ? ($this->provider)() : [];
+
+        $this->lastLayout = [];
+        $lines = [];
+        if ([] !== $tabs) {
+            $activeIndex = 0;
+            foreach ($tabs as $i => $tab) {
+                if ($tab['active']) {
+                    $activeIndex = $i;
+                    break;
+                }
+            }
+            // Rows are uniform height, so keeping the active tab visible is a
+            // plain window: drop just enough leading tabs for it to fit.
+            $start = max(0, $activeIndex - $rows + 1);
+            // ' name…    ●× ': the dirty ● and the close × are right-aligned.
+            $nameWidth = self::VERTICAL_WIDTH - 5;
+            foreach (\array_slice($tabs, $start, $rows, true) as $index => $tab) {
+                $name = AnsiUtils::truncateToWidth($tab['name'], $nameWidth, '…', pad: true);
+                $marker = $tab['dirty'] ? '●' : ' ';
+                $style = $tab['active'] ? $this->palette->of(Role::InlayPopupBg).$this->palette->of(Role::Bright)."\x1b[1m" : $this->palette->of(Role::Subtle);
+                // Dim the close × (bright on the active tab) so it reads as an affordance.
+                $closeStyle = $tab['active'] ? $this->palette->of(Role::CurrentLineNumber) : $this->palette->of(Role::Gutter);
+                $lines[] = $style.' '.$name.' '.$marker.$closeStyle.'×'."\x1b[39m".' '."\x1b[0m";
+                $this->lastLayout[] = [
+                    'index' => $index,
+                    'row' => \count($lines) - 1,
+                    'start' => 0,
+                    'width' => self::VERTICAL_WIDTH,
+                    'closeStart' => self::VERTICAL_WIDTH - 2,
+                    'closeWidth' => 2, // the × cell plus its trailing space
+                ];
+            }
+        }
+        while (\count($lines) < $rows) {
+            $lines[] = str_repeat(' ', self::VERTICAL_WIDTH);
+        }
+
+        return $this->withMenuOverlay($lines, self::VERTICAL_WIDTH);
+    }
+
+    /**
+     * Which tab index (into the full provider list) sits at the given
+     * widget-relative cell of the last-rendered strip, or null when the click
+     * missed every tab. The horizontal strip ignores the row (it is one row
+     * tall, and a reorder-drag may wander off it); the vertical list matches it.
+     */
+    public function tabIndexAt(int $row, int $col): ?int
     {
         foreach ($this->lastLayout as $entry) {
+            if ($this->position->isSide() && $entry['row'] !== $row) {
+                continue;
+            }
             if ($col >= $entry['start'] && $col < ($entry['start'] + $entry['width'])) {
                 return $entry['index'];
             }
@@ -136,13 +222,34 @@ final class TabBarWidget extends AbstractWidget implements MenuOverlayHost
     }
 
     /**
-     * Which tab's close × zone sits at column $col of the last-rendered strip, or
-     * null. Checked before {@see tabIndexAtColumn} so a click on the × closes the
-     * tab instead of switching to it.
+     * The widget-relative cell where tab $index starts in the last-rendered
+     * layout, or null when that tab is scrolled out of view. Anchors the
+     * keyboard-opened tab context menu.
+     *
+     * @return array{row: int, col: int}|null
      */
-    public function closeIndexAtColumn(int $col): ?int
+    public function tabAnchor(int $index): ?array
     {
         foreach ($this->lastLayout as $entry) {
+            if ($entry['index'] === $index) {
+                return ['row' => $entry['row'], 'col' => $entry['start']];
+            }
+        }
+
+        return null;
+    }
+
+    /**
+     * Which tab's close × zone sits at the given widget-relative cell, or
+     * null. Checked before {@see tabIndexAt} so a click on the × closes the
+     * tab instead of switching to it.
+     */
+    public function closeIndexAt(int $row, int $col): ?int
+    {
+        foreach ($this->lastLayout as $entry) {
+            if ($this->position->isSide() && $entry['row'] !== $row) {
+                continue;
+            }
             if ($col >= $entry['closeStart'] && $col < ($entry['closeStart'] + $entry['closeWidth'])) {
                 return $entry['index'];
             }

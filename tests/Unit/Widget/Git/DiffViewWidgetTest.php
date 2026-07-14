@@ -421,11 +421,11 @@ final class DiffViewWidgetTest extends TestCase
 
         // The tag reflects the controller-owned state.
         $off = $widget->render(new RenderContext(80, 12))[0];
-        $this->assertStringNotContainsString("\x1b[48;5;31m\x1b[38;5;231m w:hide-ws ", $off, 'inactive until the controller says so');
+        $this->assertStringNotContainsString("\x1b[48;5;31m\x1b[38;5;231m\x1b[1m w:hide-ws ", $off, 'inactive until the controller says so');
         $widget->setWhitespaceHidden(true);
         $widget->setWhitespaceHidden(true); // idempotent
         $on = $widget->render(new RenderContext(80, 12))[0];
-        $this->assertStringContainsString("\x1b[48;5;31m\x1b[38;5;231m w:hide-ws ", $on, 'active tag renders selected');
+        $this->assertStringContainsString("\x1b[48;5;31m\x1b[38;5;231m\x1b[1m w:hide-ws ", $on, 'active tag renders selected');
     }
 
     public function testHorizontalScrollSlidesTextUnderPinnedGutters(): void

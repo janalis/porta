@@ -42,6 +42,7 @@ final class MenuPanelTest extends TestCase
         $segment = MenuPanel::segments($items, 0, 20, ColorPalette::dark())[0]['segment']; // selected index 0, yet disabled
 
         $this->assertStringContainsString("\x1b[38;5;240m", $segment, 'disabled item uses the dim foreground');
+        $this->assertStringStartsWith("\x1b[2m", $segment, 'SGR dim attribute keeps the state visible without color');
         $this->assertStringNotContainsString("\x1b[48;5;31m", $segment, 'disabled item is not highlighted even when selected');
     }
 

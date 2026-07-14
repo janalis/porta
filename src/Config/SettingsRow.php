@@ -11,7 +11,8 @@ namespace Porta\Config;
  *
  * `kind` drives how the value renders and cycles: 'bool' (checkbox), 'choice'
  * (cycle through `options`), 'text' (inline editor, with an optional `hint` when
- * empty), or a stepped integer (bounded by `min`/`max`).
+ * empty), 'action' (a button — `value` is its caption, actuating fires onChange
+ * with it), or a stepped integer (bounded by `min`/`max`).
  *
  * A 'choice' row cycles and persists the `options` values, but renders each via
  * `optionLabels` when present — e.g. the language picker stores `en` but shows

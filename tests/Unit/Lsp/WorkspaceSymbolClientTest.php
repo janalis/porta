@@ -8,6 +8,7 @@ use PHPUnit\Framework\TestCase;
 use Porta\I18n\Translator;
 use Porta\Lsp\LspSessionPool;
 use Porta\Lsp\WorkspaceSymbolClient;
+use Porta\Tests\Support\FixedActiveFile;
 
 final class WorkspaceSymbolClientTest extends TestCase
 {
@@ -53,7 +54,7 @@ final class WorkspaceSymbolClientTest extends TestCase
 
     public function testSearchWithoutAReadyServerReturnsEmptyImmediately(): void
     {
-        $pool = new LspSessionPool('/nowhere', static fn (): ?string => null, new Translator('en'));
+        $pool = new LspSessionPool('/nowhere', new FixedActiveFile(), new Translator('en'));
         $client = new WorkspaceSymbolClient($pool, '/nowhere');
 
         $got = null;

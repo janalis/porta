@@ -223,7 +223,7 @@ final class IdeTest extends TestCase
         });
 
         // --- Hover quick-doc ----------------------------------------------------------------
-        $this->step(3.95, static fn () => $tui->handleInput("\x1bOP")); // F1
+        $this->step(3.95, static fn () => $tui->handleInput("\x1b[1;2P")); // F1
         $this->step(4.05, function () use ($editor, $screen, $tui): void {
             $this->assertTrue($editor()->isOverlayOpen());
             $this->assertStringContainsString('greet(): string', $screen());

@@ -168,7 +168,7 @@ final class IdeHelpersTest extends TestCase
 
     public function testRelativePathOutsideRoot(): void
     {
-        $this->assertSame('/elsewhere/file.php', $this->call('relativePath', '/elsewhere/file.php'));
+        $this->assertSame('/elsewhere/file.php', ProjectPaths::relative($this->project->dir, '/elsewhere/file.php'));
     }
 
     public function testLineAtReadsFromDiskForUnopenedFiles(): void
@@ -314,7 +314,9 @@ final class IdeHelpersTest extends TestCase
             ['path' => $real, 'line' => 0, 'col' => 1],
         ], $real);
 
-        $this->assertTrue($this->call('restoreSession'), 'restored at least the real file');
+        $restorer = new \ReflectionProperty($this->ide, 'sessionRestorer')->getValue($this->ide);
+        \assert($restorer instanceof \Porta\History\SessionRestorer);
+        $this->assertTrue($restorer->restore(), 'restored at least the real file');
         $this->assertStringEndsWith('Real.php', (string) $this->ide->getTui()->getById('editor')->getFilePath());
     }
 
@@ -475,7 +477,9 @@ final class IdeHelpersTest extends TestCase
             0 => [['severity' => 1, 'message' => 'top error', 'col' => 0]],
         ];
 
-        $this->call('showProblems');
+        new \ReflectionProperty($this->ide, 'searchActions')
+            ->getValue($this->ide)
+            ->showProblems();
 
         $panel = $this->ide->getTui()->getById('results');
         $this->assertTrue($panel->isOpen());
@@ -515,7 +519,9 @@ final class IdeHelpersTest extends TestCase
         $buffers = new \ReflectionProperty($this->ide, 'buffers')->getValue($this->ide);
         $path = $this->project->write('src/noformat.php', "<?php\n\$b=2;\n");
         $buffer = $buffers->open($path, (string) file_get_contents($path));
-        new \ReflectionMethod($this->ide, 'showBuffer')->invoke($this->ide, $buffer);
+        new \ReflectionProperty($this->ide, 'bufferService')
+            ->getValue($this->ide)
+            ->showBuffer($buffer);
 
         $this->refactor()->requestReformat();
         $this->await(fn () => str_contains(
@@ -562,5 +568,130 @@ final class IdeHelpersTest extends TestCase
         ]);
 
         $this->assertStringContainsString('CHANGED', (string) file_get_contents($onDisk));
+    }
+
+    public function testPushCurrentLocationWithoutAnOpenFileRecordsNothing(): void
+    {
+        $this->navigation()->pushCurrentLocation();
+        $this->navigation()->navigateBack();
+        $this->assertNull($this->ide->getTui()->getById('editor')->getFilePath(), 'the empty push left no stack entry');
+    }
+
+    public function testOpenHelpShowsARenderedTabAndSharesThePathWithSourceBuffers(): void
+    {
+        $readme = (string) realpath($this->project->write('docs/README.md', "# Guides\n\n[Editor](editor.md)\n"));
+        $this->project->write('docs/editor.md', "# Editor guide\n");
+
+        /** @var \Porta\Editor\BufferService $buffers */
+        $buffers = new \ReflectionProperty($this->ide, 'bufferService')->getValue($this->ide);
+        /** @var \Porta\Widget\HelpViewerWidget $viewer */
+        $viewer = new \ReflectionProperty($this->ide, 'helpViewer')->getValue($this->ide);
+        /** @var \Porta\Editor\BufferManager $manager */
+        $manager = new \ReflectionProperty($this->ide, 'buffers')->getValue($this->ide);
+
+        $buffers->openHelp($readme);
+        $active = $manager->active();
+        $this->assertNotNull($active);
+        $this->assertTrue($active->isHelp());
+        $this->assertSame($readme, $viewer->path(), 'the viewer shows the page');
+        $this->assertFalse($active->isDirty(), 'the backing document stays empty');
+        $this->assertFalse($buffers->saveBuffer($active), 'help tabs never save');
+
+        // Unreadable page → flash, no tab.
+        $buffers->openHelp($this->project->path('docs/nope.md'));
+        $this->assertSame($readme, $manager->active()?->path);
+
+        // A page changed on disk reloads through the filesystem poller.
+        file_put_contents($readme, "# Guides v2\n");
+        clearstatcache();
+        touch($readme, time() + 2);
+        $buffers->pollFilesystem();
+        $this->assertSame("# Guides v2\n", $manager->active()?->helpMarkdown, 'the poller refreshed the page');
+
+        // The same path already open as SOURCE re-shows the text buffer.
+        $buffers->closeActiveBuffer();
+        $buffers->openFile($readme, focusEditor: true);
+        $buffers->openHelp($readme);
+        $this->assertFalse($manager->active()?->isHelp(), 'the editable source tab wins');
+    }
+
+    public function testHelpNavigationStaysInOneTabAndSurvivesTabSwitches(): void
+    {
+        $readme = (string) realpath($this->project->write('docs/README.md', "# Guides\n\n[Editor](editor.md)\n"));
+        $editor = (string) realpath($this->project->write('docs/editor.md', "# Editor guide\n"));
+        $code = (string) realpath($this->project->write('a.php', "<?php\n"));
+
+        /** @var \Porta\Editor\BufferService $buffers */
+        $buffers = new \ReflectionProperty($this->ide, 'bufferService')->getValue($this->ide);
+        /** @var \Porta\Widget\HelpViewerWidget $viewer */
+        $viewer = new \ReflectionProperty($this->ide, 'helpViewer')->getValue($this->ide);
+        /** @var \Porta\Editor\BufferManager $manager */
+        $manager = new \ReflectionProperty($this->ide, 'buffers')->getValue($this->ide);
+
+        // In-place navigation: the viewer moves, no second help buffer appears.
+        $buffers->openHelp($readme);
+        $buffers->showHelpPage($editor);
+        $this->assertSame($editor, $viewer->path(), 'the viewer navigated in place');
+        $this->assertSame($readme, $manager->active()?->path, 'still the one help tab, keyed by the root page');
+        $this->assertCount(1, $manager->all());
+
+        // An unreadable page flashes and leaves the viewer where it was.
+        $buffers->showHelpPage($this->project->path('docs/nope.md'));
+        $this->assertSame($editor, $viewer->path());
+
+        // A round trip through a code tab keeps the navigated page and history.
+        $buffers->openFile($code, focusEditor: true);
+        $this->assertSame($editor, $viewer->path(), 'switching tabs no longer clears the viewer');
+        $buffers->openHelp($readme);
+        $this->assertSame($editor, $viewer->path(), 're-activating the help tab keeps the navigated page');
+
+        // The poller only re-shows the root page when the viewer is on it.
+        file_put_contents($readme, "# Guides v2\n");
+        clearstatcache();
+        touch($readme, time() + 2);
+        $buffers->pollFilesystem();
+        $this->assertSame("# Guides v2\n", $manager->active()?->helpMarkdown);
+        $this->assertSame($editor, $viewer->path(), 'a background root reload does not yank the navigated page');
+
+        // Closing the help tab is what drops the viewer state.
+        $buffers->closeActiveBuffer();
+        $this->assertNull($viewer->path(), 'the history dies with the tab');
+
+        // closeTabsExcept clears it the same way.
+        $buffers->openHelp($readme);
+        $buffers->showHelpPage($editor);
+        $buffers->closeTabsExcept($code);
+        $this->assertNull($viewer->path(), 'closing the help tab via close-others clears the viewer');
+        $this->assertSame([$code], array_map(static fn ($b): string => $b->path, $manager->all()));
+    }
+
+    public function testViewerHandlerHooksDelegateToTheBufferStack(): void
+    {
+        $tui = $this->ide->getTui();
+        $statusBar = $tui->getById('status');
+        $flash = fn (): string => (string) (new \ReflectionProperty($statusBar, 'flash')->getValue($statusBar)['text'] ?? '');
+
+        $file = $this->project->write('src/Hooked.php', "<?php\n");
+        $helpViewer = new \ReflectionProperty($this->ide, 'helpViewer')->getValue($this->ide);
+        $help = new \ReflectionProperty($helpViewer, 'handler')->getValue($helpViewer);
+        \assert($help instanceof \Porta\Help\HelpViewerActions);
+
+        $help->openFile($file);
+        $this->assertStringEndsWith('Hooked.php', (string) $tui->getById('editor')->getFilePath(), 'a plain-file link opens in the editor');
+
+        $help->missingTarget('ghost.md');
+        $this->assertStringContainsString('Cannot read ghost.md', $flash(), 'a dangling link target flashes');
+
+        $help->saveAll(); // nothing dirty: a silent sweep
+        $help->closeBuffer();
+        $buffers = new \ReflectionProperty($this->ide, 'buffers')->getValue($this->ide);
+        $this->assertNull($buffers->active(), 'the viewer close hook closed the only tab');
+
+        $imageViewer = new \ReflectionProperty($this->ide, 'imageViewer')->getValue($this->ide);
+        $image = new \ReflectionProperty($imageViewer, 'handler')->getValue($imageViewer);
+        \assert($image instanceof \Porta\Image\ImageViewerActions);
+        $image->saveAll(); // same silent sweep through the shared navigator
+
+        $this->addToAssertionCount(1);
     }
 }

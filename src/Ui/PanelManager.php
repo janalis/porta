@@ -4,7 +4,9 @@ declare(strict_types=1);
 
 namespace Porta\Ui;
 
+use Porta\Editor\BufferManager;
 use Porta\Widget\CodeEditorWidget;
+use Porta\Widget\ImageViewerWidget;
 use Porta\Widget\ResultsPanelFields;
 use Porta\Widget\ResultsPanelWidget;
 use Symfony\Component\Tui\Tui;
@@ -25,6 +27,8 @@ final class PanelManager
         private readonly ResultsPanelWidget $panel,
         private readonly CodeEditorWidget $editor,
         private readonly Notifier $notifier,
+        private readonly BufferManager $buffers,
+        private readonly ImageViewerWidget $imageViewer,
     ) {}
 
     /** Which content the panel is currently serving (drives query/jump routing). */
@@ -65,11 +69,12 @@ final class PanelManager
         $this->tui->requestRender();
     }
 
-    /** Return focus to the editor when the panel currently holds it, then repaint. */
+    /** Return focus to the editor area when the panel currently holds it, then repaint. */
     public function focusEditor(): void
     {
         if ($this->tui->getFocus() === $this->panel) {
-            $this->tui->setFocus($this->editor);
+            $active = $this->buffers->active();
+            $this->tui->setFocus(null !== $active && $active->isImage() ? $this->imageViewer : $this->editor);
         }
         $this->tui->requestRender();
     }

@@ -106,6 +106,7 @@ final class ActionCatalog
         'reformat' => ['label' => 'Reformat File'],
         'ide_find_in_project' => ['label' => 'Find in Project', 'keys' => ['ctrl+shift+f']],
         'ide_goto_symbol' => ['label' => 'Go to Symbol in Project', 'keys' => ['ctrl+alt+shift+n', 'ctrl+alt+o']],
+        'ide_goto_test' => ['label' => 'Go to Test', 'keys' => ['ctrl+shift+t']],
         'ide_problems' => ['label' => 'Show Problems', 'keys' => ['alt+6']],
         'ide_command_palette' => ['label' => 'Find Action', 'keys' => ['ctrl+shift+a']],
         'ide_search_everywhere' => ['label' => 'Search Everywhere', 'keys' => ['ctrl+shift+e']],
@@ -113,9 +114,37 @@ final class ActionCatalog
         'ide_terminal' => ['label' => 'Open Terminal', 'keys' => ['ctrl+`', 'alt+f12']],
         'ide_run' => ['label' => 'Run…', 'keys' => ['ctrl+shift+r']],
         'ide_run_last' => ['label' => 'Run Last', 'keys' => ['shift+f10']],
+        'ide_debug' => ['label' => 'Debug Current File', 'keys' => ['shift+f9']],
+        'debug_toggle_breakpoint' => ['label' => 'Toggle Breakpoint', 'keys' => ['ctrl+f8']],
+        'debug_step_over' => ['label' => 'Step Over', 'keys' => ['f8']],
+        'debug_step_into' => ['label' => 'Step Into', 'keys' => ['f7']],
+        'debug_step_out' => ['label' => 'Step Out', 'keys' => ['shift+f8']],
+        'debug_continue' => ['label' => 'Resume Program', 'keys' => ['f9']],
+        'debug_stop' => ['label' => 'Stop Debugger', 'keys' => ['ctrl+f2']],
         'ide_git' => ['label' => 'Git: Changes', 'keys' => ['ctrl+alt+d']],
         'ide_settings' => ['label' => 'Settings…', 'keys' => ['ctrl+,']],
+        'ide_help' => ['label' => 'Documentation', 'keys' => ['f1']],
         'ide_menu' => ['label' => 'Open Menu', 'keys' => ['f10']],
+        // Help viewer (bound by HelpViewerWidget)
+        'help_next_link' => ['label' => 'Help: Next Link'],
+        'help_prev_link' => ['label' => 'Help: Previous Link'],
+        'help_follow_link' => ['label' => 'Help: Follow Link'],
+        'help_back' => ['label' => 'Help: Back'],
+        'help_scroll_up' => ['label' => 'Help: Scroll Up'],
+        'help_scroll_down' => ['label' => 'Help: Scroll Down'],
+        'help_page_up' => ['label' => 'Help: Page Up'],
+        'help_page_down' => ['label' => 'Help: Page Down'],
+        'help_home' => ['label' => 'Help: Go to Top'],
+        'help_end' => ['label' => 'Help: Go to Bottom'],
+        // Image viewer (bound by ImageViewerWidget)
+        'image_zoom_in' => ['label' => 'Image: Zoom In'],
+        'image_zoom_out' => ['label' => 'Image: Zoom Out'],
+        'image_zoom_fit' => ['label' => 'Image: Fit to Window'],
+        'image_zoom_actual' => ['label' => 'Image: Actual Size'],
+        'image_pan_left' => ['label' => 'Image: Pan Left'],
+        'image_pan_right' => ['label' => 'Image: Pan Right'],
+        'image_pan_up' => ['label' => 'Image: Pan Up'],
+        'image_pan_down' => ['label' => 'Image: Pan Down'],
         // Tree
         'move_up' => ['label' => 'Tree: Select Previous'],
         'move_down' => ['label' => 'Tree: Select Next'],
@@ -129,6 +158,13 @@ final class ActionCatalog
         // Shift+F6 is rename (PhpStorm); cycle focus with F6 / Ctrl+F6.
         'focus_next' => ['label' => 'Focus Next Pane', 'keys' => ['f6']],
         'focus_previous' => ['label' => 'Focus Previous Pane', 'keys' => ['ctrl+f6']],
+        // Shift+F10 is run-last (PhpStorm) and the Menu key never reaches the
+        // parser, so the context menu opens on Ctrl+F10 (legacy-encodable).
+        'show_context_menu' => ['label' => 'Show Context Menu', 'keys' => ['ctrl+f10']],
+        // Every modifier+arrow chord is taken and punctuation chords need the
+        // kitty protocol; Shift+F11/F12 deliver everywhere and read as −/+.
+        'resize_pane_shrink' => ['label' => 'Shrink Pane', 'keys' => ['shift+f11']],
+        'resize_pane_grow' => ['label' => 'Grow Pane', 'keys' => ['shift+f12']],
     ];
 
     /** @return list<string> every rebindable action id */

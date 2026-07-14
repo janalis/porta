@@ -4,17 +4,18 @@ declare(strict_types=1);
 
 namespace Porta\Widget;
 
+use Porta\Container\AsWidget;
 use Porta\Editor\Document;
 use Porta\I18n\Translator;
 use Porta\Support\AnsiText;
 use Porta\Ui\ColorPalette;
+use Porta\Ui\CursorStyle;
 use Porta\Ui\Palette;
 use Porta\Ui\Role;
 use Porta\Ui\TextField;
 use Symfony\Component\Tui\Ansi\AnsiUtils;
 use Symfony\Component\Tui\Input\Key;
 use Symfony\Component\Tui\Render\RenderContext;
-use Symfony\Component\Tui\Style\CursorShape;
 use Symfony\Component\Tui\Widget\FocusableInterface;
 use Symfony\Component\Tui\Widget\FocusableTrait;
 use Symfony\Component\Tui\Widget\KeybindingsTrait;
@@ -26,6 +27,7 @@ use Symfony\Component\Tui\Widget\KeybindingsTrait;
  * Search is incremental and smart-case: an all-lowercase query matches
  * case-insensitively, any uppercase makes it exact.
  */
+#[AsWidget('find-bar')]
 final class FindBarWidget extends OverlayWidget implements FocusableInterface
 {
     use FocusableTrait;
@@ -54,10 +56,11 @@ final class FindBarWidget extends OverlayWidget implements FocusableInterface
     public function __construct(
         private readonly Translator $translator,
         ?Palette $palette = null,
+        ?CursorStyle $cursorStyle = null,
     ) {
         $this->palette = $palette ?? ColorPalette::dark();
-        $this->query = new TextField();
-        $this->replacement = new TextField();
+        $this->query = new TextField(style: $cursorStyle);
+        $this->replacement = new TextField(style: $cursorStyle);
     }
 
     public function open(Document $document, bool $withReplace, string $initialQuery = ''): void
@@ -208,7 +211,7 @@ final class FindBarWidget extends OverlayWidget implements FocusableInterface
         $line = $left.'  '.$this->palette->of(Role::Faint).$hints."\x1b[39m";
         // Scroll the whole bar to the focused field's caret so a long query or
         // replacement never clips its cursor off the right edge.
-        $line = AnsiText::scrollLineToCaret($line, $columns, AnsiUtils::cursorMarker(CursorShape::Bar));
+        $line = AnsiText::scrollLineToCaret($line, $columns);
 
         return [$this->palette->of(Role::Toolbar).$line."\x1b[0m"];
     }

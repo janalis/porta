@@ -8,7 +8,9 @@ use PHPUnit\Framework\TestCase;
 use Porta\Config\IdeConfig;
 use Porta\Config\SettingsLspController;
 use Porta\I18n\Translator;
+use Porta\Lsp\BufferReopener;
 use Porta\Lsp\LspSessionPool;
+use Porta\Tests\Support\FixedActiveFile;
 use Porta\Tests\Support\TempProject;
 use Porta\Ui\Notifier;
 use Porta\Widget\StatusBarWidget;
@@ -38,15 +40,24 @@ final class SettingsLspControllerTest extends TestCase
     {
         $this->reopened = 0;
         $tui = new Tui(terminal: new VirtualTerminal(columns: 80, rows: 24));
-        $pool = new LspSessionPool($rootDir, static fn (): ?string => null, new Translator('en'));
+        $pool = new LspSessionPool($rootDir, new FixedActiveFile(), new Translator('en'));
+
+        $reopened = &$this->reopened;
 
         return new SettingsLspController(
             $rootDir,
             $pool,
             $overrides,
             $lspOverride,
-            function (): void {
-                ++$this->reopened;
+            new class($reopened) implements BufferReopener {
+                public function __construct(
+                    private int &$reopened,
+                ) {}
+
+                public function reopenAllInLsp(): void
+                {
+                    ++$this->reopened;
+                }
             },
             new Notifier($status, $tui),
             new Translator('en'),

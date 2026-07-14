@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Porta\Widget\Git;
 
+use Porta\Container\AsWidget;
 use Porta\Git\LogEntry;
 use Porta\I18n\Translator;
 use Porta\Support\IntMath;
@@ -32,6 +33,7 @@ use Symfony\Component\Tui\Widget\VerticallyExpandableInterface;
  * file drives the read-only diff pane. Selection changes fire onSelectCommit
  * / onSelectFile so the controller can load `git show` data.
  */
+#[AsWidget('git-history')]
 final class HistoryListWidget extends AbstractWidget implements FocusableInterface, MenuOverlayHost, VerticallyExpandableInterface
 {
     use FillsPaneTrait;

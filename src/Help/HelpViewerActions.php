@@ -1,0 +1,77 @@
+<?php
+
+declare(strict_types=1);
+
+namespace Porta\Help;
+
+use Porta\Editor\BufferNavigator;
+use Porta\Editor\BufferService;
+use Porta\I18n\Translator;
+use Porta\Support\DocsUrlOpener;
+use Porta\Ui\Notifier;
+use Porta\Widget\HelpViewerHandler;
+
+/** The IDE-side implementation of the help viewer's link and tab hooks. */
+final class HelpViewerActions implements HelpViewerHandler
+{
+    public function __construct(
+        private readonly BufferService $bufferService,
+        private readonly BufferNavigator $navigator,
+        private readonly DocsUrlOpener $docsUrls,
+        private readonly Notifier $notifier,
+        private readonly Translator $translator,
+        private readonly string $docsDir,
+    ) {}
+
+    public function openHelp(string $path): void
+    {
+        $this->bufferService->showHelpPage($path);
+    }
+
+    public function openFile(string $path): void
+    {
+        $this->bufferService->openFile($path, focusEditor: true);
+    }
+
+    public function openUrl(string $url): void
+    {
+        $this->docsUrls->open($url);
+    }
+
+    public function missingTarget(string $target): void
+    {
+        $this->notifier->flash($this->translator->trans('Cannot read %file%', ['%file%' => $target]));
+    }
+
+    public function labelFor(string $path): string
+    {
+        return realpath($path) === realpath($this->docsDir.'/README.md')
+            ? $this->translator->trans('Documentation')
+            : basename($path, '.md');
+    }
+
+    public function backEmpty(): void
+    {
+        $this->notifier->flash($this->translator->trans('Nowhere to go back to'));
+    }
+
+    public function cycleBuffer(int $offset): void
+    {
+        $this->navigator->cycle($offset);
+    }
+
+    public function closeBuffer(): void
+    {
+        $this->navigator->closeActive();
+    }
+
+    public function openGotoFile(): void
+    {
+        $this->navigator->openGoToFile();
+    }
+
+    public function saveAll(): void
+    {
+        $this->navigator->saveAll();
+    }
+}

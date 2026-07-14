@@ -4,9 +4,16 @@ declare(strict_types=1);
 
 namespace Porta\Git;
 
+use Porta\Event\GitCommitted;
 use Porta\I18n\Translator;
+use Porta\Layout\EditorAreaPanes;
+use Porta\Layout\LayoutController;
+use Porta\Support\Clipboard;
+use Porta\Ui\EditorArea;
 use Porta\Ui\Notifier;
+use Porta\Ui\WorkspaceViews;
 use Porta\Widget\MenuBarWidget;
+use Psr\EventDispatcher\EventDispatcherInterface;
 use Revolt\EventLoop;
 use Symfony\Component\Tui\Tui;
 use Symfony\Component\Tui\Widget\AbstractWidget;
@@ -58,8 +65,14 @@ final class GitViewController
         private readonly Tui $tui,
         private readonly Notifier $notifier,
         private readonly Translator $translator,
-        private readonly GitViewCallbacks $callbacks,
+        private readonly EditorAreaPanes $editArea,
+        private readonly EditorArea $editorArea,
+        private readonly EventDispatcherInterface $dispatcher,
+        private readonly LayoutController $layout,
+        private readonly Clipboard $clipboard,
+        WorkspaceViews $views,
     ) {
+        $views->attachGit($this);
         $this->staging = new GitStagingService($this->git, $this->rootDir, $this->panes->commitBox, $this->notifier, $this->translator);
 
         $exit = fn () => $this->close();
@@ -84,7 +97,7 @@ final class GitViewController
             ->diffView
             ->onStageSelection(fn (array $selected) => $this->stageSelection($selected))
             ->onCycleContext(fn () => $this->cycleContext())
-            ->onLayoutToggle(fn (bool $split) => ($this->callbacks->saveDiffPrefs)($split, $this->hideWhitespace))
+            ->onLayoutToggle(fn (bool $split) => $this->layout->setGitDiffPrefs($split, $this->hideWhitespace))
             ->onToggleWhitespace(fn () => $this->toggleWhitespace())
             ->onCopy(fn (string $text) => $this->copyDiffText($text))
             ->onFocusNext($next)
@@ -139,7 +152,7 @@ final class GitViewController
         $this->tui->setFocus($this->panes->changes);
         $this->lastStatusRaw = "\0unset";
         $this->contextStep = 0;
-        $prefs = ($this->callbacks->loadDiffPrefs)();
+        $prefs = $this->layout->gitDiffPrefs();
         $this->panes->diffView->setSplit($prefs['split']);
         $this->hideWhitespace = $prefs['hideWhitespace'];
         $this->panes->diffView->setWhitespaceHidden($this->hideWhitespace);
@@ -160,10 +173,10 @@ final class GitViewController
         }
         $this->menuBar->close();
         $this->main->clear();
-        foreach (($this->callbacks->editArea)() as $widget) {
+        foreach ($this->editArea->orderedEditorPanes() as $widget) {
             $this->main->add($widget);
         }
-        ($this->callbacks->onClosed)();
+        $this->editorArea->focus();
     }
 
     /** Re-read `git status`; $quiet skips the repaint when nothing changed. */
@@ -227,7 +240,7 @@ final class GitViewController
     /** ctrl+c in the diff pane: selected plain-code lines onto the clipboard. */
     private function copyDiffText(string $text): void
     {
-        ($this->callbacks->copyToClipboard)($text);
+        $this->clipboard->copy($text);
         $lines = substr_count(rtrim($text, "\n"), "\n") + 1;
         $this->notifier->flash(
             1 === $lines
@@ -245,7 +258,7 @@ final class GitViewController
     {
         $this->hideWhitespace = !$this->hideWhitespace;
         $this->panes->diffView->setWhitespaceHidden($this->hideWhitespace);
-        ($this->callbacks->saveDiffPrefs)($this->panes->diffView->isSplit(), $this->hideWhitespace);
+        $this->layout->setGitDiffPrefs($this->panes->diffView->isSplit(), $this->hideWhitespace);
         $this->notifier->flash($this->translator->trans($this->hideWhitespace ? 'Whitespace changes hidden' : 'Whitespace changes shown'));
 
         if ('history' === $this->mode) {
@@ -324,7 +337,7 @@ final class GitViewController
 
     private function commit(string $message, bool $amend = false): void
     {
-        $this->staging->commit($message, $amend, fn () => ($this->callbacks->onCommitted)(), fn () => $this->refresh());
+        $this->staging->commit($message, $amend, fn () => $this->dispatcher->dispatch(new GitCommitted()), fn () => $this->refresh());
     }
 
     /** Swap the left pane between the Changes and History tabs. */
@@ -410,15 +423,26 @@ final class GitViewController
     }
 
     /** Tab order: changes list → diff → commit box → changes list (history: list ↔ diff). */
-    private function focusNext(): void
+    public function focusNext(): void
+    {
+        $this->cycleFocus(1);
+    }
+
+    /** The reverse walk of {@see focusNext} (Ctrl+F6). */
+    public function focusPrevious(): void
+    {
+        $this->cycleFocus(-1);
+    }
+
+    private function cycleFocus(int $direction): void
     {
         /** @var list<FocusableInterface&AbstractWidget> $order */
         $order = 'history' === $this->mode
             ? [$this->panes->history, $this->panes->diffView]
             : [$this->panes->changes, $this->panes->diffView, $this->panes->commitBox];
-        $current = $this->tui->getFocus();
-        $index = array_search($current, $order, true);
-        $target = $order[(false === $index ? 0 : $index + 1) % \count($order)];
+        $count = \count($order);
+        $index = array_search($this->tui->getFocus(), $order, true);
+        $target = $order[false === $index ? 0 : ($index + $direction + $count) % $count];
         if ($target === $this->panes->commitBox) {
             $this->panes->commitBox->resetField();
         }

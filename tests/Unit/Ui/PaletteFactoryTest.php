@@ -33,6 +33,14 @@ final class PaletteFactoryTest extends TestCase
         $this->assertNotSame(ColorPalette::dark()->of(Role::HeaderBar), $palette->of(Role::HeaderBar));
     }
 
+    public function testHighContrastPaletteWhenThemeIsHighContrast(): void
+    {
+        $palette = PaletteFactory::create(true, 'high-contrast');
+        $this->assertInstanceOf(ColorPalette::class, $palette);
+        $this->assertSame(ColorPalette::highContrast()->of(Role::HeaderBar), $palette->of(Role::HeaderBar));
+        $this->assertNotSame(ColorPalette::dark()->of(Role::Bright), $palette->of(Role::Muted), 'high contrast brightens the muted shade');
+    }
+
     public function testUnknownThemeFallsBackToDark(): void
     {
         $palette = PaletteFactory::create(true, 'solarized');
