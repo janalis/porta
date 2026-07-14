@@ -6,9 +6,9 @@ namespace Porta\Tests\Unit\Debug;
 
 use PHPUnit\Framework\TestCase;
 use Porta\Debug\DapSession;
-use Porta\Debug\DebugSessionCallbacks;
 use Porta\Debug\DebugState;
 use Porta\Tests\Support\FakeDapClient;
+use Porta\Tests\Support\RecordingDebugObserver;
 
 final class DapSessionTest extends TestCase
 {
@@ -20,23 +20,9 @@ final class DapSessionTest extends TestCase
     {
         $this->events = [];
 
-        return new DapSession($client, 'php', fn (): array => $breakpoints, new DebugSessionCallbacks(
-            onStopped: function (string $reason): void {
-                $this->events[] = "stopped:{$reason}";
-            },
-            onContinued: function (): void {
-                $this->events[] = 'continued';
-            },
-            onOutput: function (string $category, string $text): void {
-                $this->events[] = "output:{$category}:".trim($text);
-            },
-            onTerminated: function (): void {
-                $this->events[] = 'terminated';
-            },
-            onError: function (string $message): void {
-                $this->events[] = "error:{$message}";
-            },
-        ));
+        return new DapSession($client, 'php', fn (): array => $breakpoints, new RecordingDebugObserver(function (string $event): void {
+            $this->events[] = $event;
+        }));
     }
 
     public function testHandshakeWithInitializedEventBeforeTheLaunchResponse(): void

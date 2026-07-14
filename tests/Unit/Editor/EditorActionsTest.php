@@ -14,6 +14,7 @@ use Porta\Editor\EditorStructural;
 use Porta\Editor\FoldModel;
 use Porta\Editor\MultiCaret;
 use Porta\Input\TextInput;
+use Porta\Tests\Support\FakeEditorHost;
 use Porta\Widget\EditorKeymap;
 use Symfony\Component\Tui\Input\Keybindings;
 
@@ -57,27 +58,11 @@ final class EditorActionsTest extends TestCase
         $structural = new EditorStructural($this->doc, $autoPair, $invalidate, $notifyChange, $this->record('openListOverlay'));
         $this->foldModel = new FoldModel($this->doc);
 
-        return new EditorActions(
-            $this->doc,
-            $this->multiCaret,
-            $completion,
-            $structural,
-            $this->foldModel,
-            $autoPair,
-            $invalidate,
-            $notifyChange,
-            $this->record('openPrompt'),
-            $this->record('jumpTo'),
-            $this->record('setSignatureHint'),
-            $this->record('fireCopy'),
-            $this->record('fireSignatureHelp'),
-            $this->record('requestRename'),
-            static fn (): int => 5,
-            static fn (): ?string => '//',
-            static fn (): bool => true,
-            static fn (string $d): bool => TextInput::isPrintable($d),
-            $clipboard,
-        );
+        $host = new FakeEditorHost(function (string $method, array $args): void {
+            $this->calls[$method][] = $args;
+        });
+
+        return new EditorActions($this->doc, $this->multiCaret, $completion, $structural, $this->foldModel, $autoPair, $host, $clipboard);
     }
 
     private function count_(string $name): int

@@ -6,6 +6,7 @@ namespace Porta\Config;
 
 use Porta\I18n\Translator;
 use Porta\Plugin\PluginInstaller;
+use Porta\Plugin\PluginLifecycleOps;
 use Porta\Plugin\PluginSettings;
 use Porta\Ui\Notifier;
 
@@ -14,12 +15,12 @@ use Porta\Ui\Notifier;
  * an install field (git URL or local path, handed to {@see PluginInstaller})
  * and one row per installed plugin — a removal button, or an inert "Built-in"
  * marker for the plugins bundled with Porta. A successful install is activated
- * live through the $activate closure — its commands land in the palette and
- * Plugins menu immediately; only default keybindings wait for a restart (the
- * Keybindings map is immutable). Removal deletes the directory AND deactivates
- * the plugin live via the $deactivate closure (menu, palette, keys, hooks).
- * Removal is guarded by a two-press confirm ($armed). Each active plugin also
- * gets its own settings page ({@see pluginRows}) fed by {@see PluginSettings}.
+ * live through {@see PluginLifecycleOps} — its commands land in the palette
+ * and Plugins menu immediately; only default keybindings wait for a restart
+ * (the Keybindings map is immutable). Removal deletes the directory AND
+ * deactivates the plugin live (menu, palette, keys, hooks). Removal is guarded
+ * by a two-press confirm ($armed). Each active plugin also gets its own
+ * settings page ({@see pluginRows}) fed by {@see PluginSettings}.
  */
 final class SettingsPluginsController
 {
@@ -28,25 +29,12 @@ final class SettingsPluginsController
     /** The removal row key awaiting its confirming second press. */
     private ?string $armed = null;
 
-    /**
-     * @param \Closure(string): ?string    $activate    live-load an installed plugin.php; returns the failure message or null
-     * @param \Closure(string): void       $deactivate  live-deactivate a removed plugin (and reactivate a shadowed copy)
-     * @param \Closure(): void             $refresh     re-push the section rows (an async clone lands after the view already re-rendered)
-     * @param \Closure(): list<string>     $listedNames every installed plugin name (disabled ones included), for the per-plugin pages
-     * @param \Closure(string): bool       $isDisabled  whether a plugin is currently disabled
-     * @param \Closure(string, bool): void $setEnabled  toggle a plugin live (persisting the choice)
-     */
     public function __construct(
         private readonly PluginInstaller $installer,
         private readonly PluginSettings $pluginSettings,
         private readonly Notifier $notifier,
         private readonly Translator $translator,
-        private readonly \Closure $activate,
-        private readonly \Closure $deactivate,
-        private readonly \Closure $refresh,
-        private readonly \Closure $listedNames,
-        private readonly \Closure $isDisabled,
-        private readonly \Closure $setEnabled,
+        private readonly PluginLifecycleOps $lifecycle,
     ) {}
 
     /** @return list<SettingsRow> */
@@ -98,7 +86,7 @@ final class SettingsPluginsController
     /** Whether a plugin is installed (its settings page is reachable — disabled ones too). */
     public function hasPlugin(string $name): bool
     {
-        return \in_array($name, ($this->listedNames)(), true);
+        return \in_array($name, $this->lifecycle->listedNames(), true);
     }
 
     /**
@@ -110,7 +98,7 @@ final class SettingsPluginsController
      */
     public function pluginRows(string $name): array
     {
-        $enabled = !($this->isDisabled)($name);
+        $enabled = !$this->lifecycle->isDisabled($name);
 
         return [
             new SettingsRow(
@@ -129,7 +117,7 @@ final class SettingsPluginsController
     {
         if ('pluginEnabled' === $key) {
             $this->armed = null;
-            ($this->setEnabled)($name, (bool) $value);
+            $this->lifecycle->setEnabled($name, (bool) $value);
 
             return;
         }
@@ -165,9 +153,9 @@ final class SettingsPluginsController
             return;
         }
         $this->installer->install($source, $this->scope, function (?string $error, ?string $file): void {
-            $message = $error ?? ($this->activate)((string) $file) ?? $this->translator->trans('Plugin installed — default keybindings apply on restart');
+            $message = $error ?? $this->lifecycle->activateInstalled((string) $file) ?? $this->translator->trans('Plugin installed — default keybindings apply on restart');
             $this->notifier->flash($message, 5.0);
-            ($this->refresh)();
+            $this->lifecycle->refreshView();
         });
     }
 
@@ -188,7 +176,7 @@ final class SettingsPluginsController
         // its own error, which must win over the removal confirmation.
         $this->notifier->flash($error ?? $this->translator->trans('Plugin "%name%" removed', ['%name%' => $name]), 5.0);
         if (null === $error) {
-            ($this->deactivate)($name);
+            $this->lifecycle->deactivate($name);
         }
     }
 }

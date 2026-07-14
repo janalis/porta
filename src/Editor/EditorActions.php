@@ -21,20 +21,6 @@ use Symfony\Component\Tui\Input\Keybindings;
  */
 final class EditorActions
 {
-    /**
-     * @param \Closure(): void                                   $invalidate
-     * @param \Closure(): void                                   $notifyChange
-     * @param \Closure(string, string, callable(string): void): void $openPrompt
-     * @param \Closure(int, int): void                           $jumpTo
-     * @param \Closure(?string): void                            $setSignatureHint
-     * @param \Closure(string): void                             $fireCopy          copied text → OSC 52 hook
-     * @param \Closure(int, int): void                           $fireSignatureHelp
-     * @param \Closure(int, int, string): void                   $requestRename     (line, utf16 col, word)
-     * @param \Closure(): int                                    $contentRows       viewport rows for page up/down
-     * @param \Closure(): ?string                                $commentPrefix
-     * @param \Closure(): bool                                   $autoPairsEnabled
-     * @param \Closure(string): bool                             $isInsertable
-     */
     public function __construct(
         private readonly Document $document,
         private readonly MultiCaret $multiCaret,
@@ -42,18 +28,7 @@ final class EditorActions
         private readonly EditorStructural $structural,
         private readonly FoldModel $foldModel,
         private readonly AutoPairService $autoPair,
-        private readonly \Closure $invalidate,
-        private readonly \Closure $notifyChange,
-        private readonly \Closure $openPrompt,
-        private readonly \Closure $jumpTo,
-        private readonly \Closure $setSignatureHint,
-        private readonly \Closure $fireCopy,
-        private readonly \Closure $fireSignatureHelp,
-        private readonly \Closure $requestRename,
-        private readonly \Closure $contentRows,
-        private readonly \Closure $commentPrefix,
-        private readonly \Closure $autoPairsEnabled,
-        private readonly \Closure $isInsertable,
+        private readonly EditorHost $host,
         private string $clipboard = '',
     ) {}
 
@@ -140,11 +115,11 @@ final class EditorActions
         // not know the copy/cut verbs and would collapse the carets first).
         if ($this->multiCaret->hasMultiple() && ($kb->matches($keys, 'copy') || $kb->matches($keys, 'cut'))) {
             $this->clipboard = $this->multiCaret->selectedBlockText();
-            ($this->fireCopy)($this->clipboard);
+            $this->host->fireCopy($this->clipboard);
             if ($kb->matches($keys, 'cut')) {
                 $this->multiCaret->deleteSelections();
             } else {
-                ($this->invalidate)();
+                $this->host->invalidate();
             }
 
             return true;
@@ -152,7 +127,7 @@ final class EditorActions
 
         // With multiple carets active, most editing/movement keys apply to
         // every caret; unhandled keys collapse back to a single caret.
-        return $this->multiCaret->hasMultiple() && $this->multiCaret->handleInput($keys, $kb, $this->clipboard, fn (string $d) => ($this->isInsertable)($d));
+        return $this->multiCaret->hasMultiple() && $this->multiCaret->handleInput($keys, $kb, $this->clipboard, fn (string $d) => $this->host->isInsertable($d));
     }
 
     /** Undo/redo + structural selection, statement moves, surround, and conflict nav. */
@@ -168,7 +143,7 @@ final class EditorActions
         // Move the current statement over blank-line gaps.
         if ($kb->matches($keys, 'move_statement_up') || $kb->matches($keys, 'move_statement_down')) {
             if ($doc->moveStatement($kb->matches($keys, 'move_statement_up') ? -1 : 1)) {
-                ($this->notifyChange)();
+                $this->host->notifyChange();
             }
 
             return true;
@@ -207,18 +182,18 @@ final class EditorActions
         foreach (MultiCaret::MOVE_METHODS as $action => $method) {
             if ($kb->matches($keys, $action)) {
                 if ('cursor_up' === $action || 'cursor_down' === $action) {
-                    ($this->setSignatureHint)(null);
+                    $this->host->setSignatureHint(null);
                 }
                 $doc->clearSelection();
                 $doc->{$method}();
-                ($this->invalidate)();
+                $this->host->invalidate();
 
                 return true;
             }
             if ($kb->matches($keys, substr_replace($action, 'select', 0, 6))) {
                 $doc->beginSelect();
                 $doc->{$method}();
-                ($this->invalidate)();
+                $this->host->invalidate();
 
                 return true;
             }
@@ -233,7 +208,7 @@ final class EditorActions
         if ($kb->matches($keys, 'document_start')) {
             $doc->clearSelection();
             $doc->moveToDocumentStart();
-            ($this->invalidate)();
+            $this->host->invalidate();
 
             return true;
         }
@@ -241,16 +216,16 @@ final class EditorActions
         if ($kb->matches($keys, 'document_end')) {
             $doc->clearSelection();
             $doc->moveToDocumentEnd();
-            ($this->invalidate)();
+            $this->host->invalidate();
 
             return true;
         }
 
         if ($kb->matches($keys, 'page_up') || $kb->matches($keys, 'page_down')) {
-            $delta = $kb->matches($keys, 'page_up') ? -($this->contentRows)() : ($this->contentRows)();
+            $delta = $kb->matches($keys, 'page_up') ? -$this->host->contentRows() : $this->host->contentRows();
             $doc->clearSelection();
             $doc->setCursor($doc->getCursorLine() + $delta, $doc->getCursorCol());
-            ($this->invalidate)();
+            $this->host->invalidate();
 
             return true;
         }
@@ -271,7 +246,7 @@ final class EditorActions
         // Editing
         if ($kb->matches($keys, 'new_line')) {
             $doc->insertNewLine();
-            ($this->notifyChange)();
+            $this->host->notifyChange();
 
             return true;
         }
@@ -281,20 +256,20 @@ final class EditorActions
         // Tab all returned earlier).
         if ($kb->matches($keys, 'indent') && $doc->hasSelection()) {
             $doc->indentSelection();
-            ($this->notifyChange)();
+            $this->host->notifyChange();
 
             return true;
         }
         if ($kb->matches($keys, 'prev_tab_stop')) {
             $doc->dedentSelection();
-            ($this->notifyChange)();
+            $this->host->notifyChange();
 
             return true;
         }
 
         if ($kb->matches($keys, 'indent')) {
             $doc->insert($doc->indentUnit());
-            ($this->notifyChange)();
+            $this->host->notifyChange();
 
             return true;
         }
@@ -308,12 +283,12 @@ final class EditorActions
         $doc = $this->document;
 
         // Auto-pairs: backspacing between an empty pair removes both chars.
-        if (($this->autoPairsEnabled)() && $kb->matches($keys, 'delete_char_backward') && !$doc->hasSelection() && $this->autoPair->isBetweenEmptyPair($doc)) {
+        if ($this->host->autoPairsEnabled() && $kb->matches($keys, 'delete_char_backward') && !$doc->hasSelection() && $this->autoPair->isBetweenEmptyPair($doc)) {
             $doc->transact(function () use ($doc): void {
                 $doc->deleteForward();
                 $doc->deleteBackward();
             });
-            ($this->notifyChange)();
+            $this->host->notifyChange();
 
             return true;
         }
@@ -333,7 +308,7 @@ final class EditorActions
         };
         if (null !== $edited) {
             if ($edited) {
-                ($this->notifyChange)();
+                $this->host->notifyChange();
             }
 
             return true;
@@ -342,7 +317,7 @@ final class EditorActions
         if ($kb->matches($keys, 'select_cancel')) {
             if ($doc->hasSelection()) {
                 $doc->clearSelection();
-                ($this->invalidate)();
+                $this->host->invalidate();
             }
 
             return true;
@@ -354,19 +329,19 @@ final class EditorActions
     /** Plain text insertion (with auto-pairing), the final fall-through. */
     private function tryTextInput(string $keys, Keybindings $kb): bool
     {
-        if (!($this->isInsertable)($keys)) {
+        if (!$this->host->isInsertable($keys)) {
             return false;
         }
 
         $doc = $this->document;
-        if (($this->autoPairsEnabled)() && $this->autoPair->handle($doc, $keys)) {
-            ($this->notifyChange)();
+        if ($this->host->autoPairsEnabled() && $this->autoPair->handle($doc, $keys)) {
+            $this->host->notifyChange();
             $this->maybeAutoTrigger($keys);
 
             return true;
         }
         $doc->insert($keys);
-        ($this->notifyChange)();
+        $this->host->notifyChange();
         $this->maybeAutoTrigger($keys);
 
         return true;
@@ -412,7 +387,7 @@ final class EditorActions
     private function notifyIfChanged(bool $changed): void
     {
         if ($changed) {
-            ($this->notifyChange)();
+            $this->host->notifyChange();
         }
     }
 
@@ -420,41 +395,41 @@ final class EditorActions
     {
         if ('' !== $this->clipboard) {
             $this->document->insert($this->clipboard);
-            ($this->notifyChange)();
+            $this->host->notifyChange();
         }
     }
 
     private function duplicateCurrentLines(): void
     {
         $this->document->duplicateLines();
-        ($this->notifyChange)();
+        $this->host->notifyChange();
     }
 
     private function toggleLineComment(): void
     {
-        if (null !== ($prefix = ($this->commentPrefix)())) {
+        if (null !== ($prefix = $this->host->commentPrefix())) {
             $this->document->toggleComment($prefix);
-            ($this->notifyChange)();
+            $this->host->notifyChange();
         }
     }
 
     private function toggleFold(): void
     {
         $this->foldModel->toggle();
-        ($this->invalidate)();
+        $this->host->invalidate();
     }
 
     private function selectAllText(): void
     {
         $this->document->selectAll();
-        ($this->invalidate)();
+        $this->host->invalidate();
     }
 
     private function promptGotoLine(): void
     {
-        ($this->openPrompt)('Go to line', '', function (string $value): void {
+        $this->host->openPrompt('Go to line', '', function (string $value): void {
             if (ctype_digit($value)) {
-                ($this->jumpTo)((int) $value - 1, 0);
+                $this->host->jumpTo((int) $value - 1, 0);
             }
         });
     }
@@ -462,7 +437,7 @@ final class EditorActions
     private function promptRename(): void
     {
         $doc = $this->document;
-        ($this->requestRename)($doc->getCursorLine(), $doc->getCursorColUtf16(), ltrim($doc->getWordBeforeCursor(), '$'));
+        $this->host->requestRename($doc->getCursorLine(), $doc->getCursorColUtf16(), ltrim($doc->getWordBeforeCursor(), '$'));
     }
 
     private function maybeAutoTrigger(string $typed): void
@@ -475,16 +450,16 @@ final class EditorActions
         }
 
         if ('(' === $typed || ',' === $typed) {
-            ($this->fireSignatureHelp)($this->document->getCursorLine(), $this->document->getCursorColUtf16());
+            $this->host->fireSignatureHelp($this->document->getCursorLine(), $this->document->getCursorColUtf16());
         } elseif (')' === $typed) {
-            ($this->setSignatureHint)(null);
+            $this->host->setSignatureHint(null);
         }
     }
 
     private function copySelection(): void
     {
         if ($this->captureSelection()) {
-            ($this->invalidate)();
+            $this->host->invalidate();
         }
     }
 
@@ -492,7 +467,7 @@ final class EditorActions
     {
         if ($this->captureSelection()) {
             $this->document->deleteSelection();
-            ($this->notifyChange)();
+            $this->host->notifyChange();
         }
     }
 
@@ -504,7 +479,7 @@ final class EditorActions
             return false;
         }
         $this->clipboard = $doc->getSelectedText();
-        ($this->fireCopy)($this->clipboard);
+        $this->host->fireCopy($this->clipboard);
 
         return true;
     }

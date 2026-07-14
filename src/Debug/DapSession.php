@@ -25,7 +25,7 @@ final class DapSession
         private readonly DapClientInterface $client,
         private readonly string $languageId,
         private readonly \Closure $breakpointsProvider,
-        private readonly DebugSessionCallbacks $callbacks,
+        private readonly DebugSessionObserver $observer,
     ) {}
 
     public function state(): DebugState
@@ -56,8 +56,8 @@ final class DapSession
         $this->client->onEvent('output', function (array $body): void {
             $category = \is_string($body['category'] ?? null) ? $body['category'] : 'console';
             $text = \is_string($body['output'] ?? null) ? $body['output'] : '';
-            if (null !== $this->callbacks->onOutput && '' !== $text) {
-                ($this->callbacks->onOutput)($category, $text);
+            if ('' !== $text) {
+                $this->observer->onOutput($category, $text);
             }
         });
         $this->client->onEvent('terminated', fn () => $this->handleTerminated());
@@ -256,9 +256,7 @@ final class DapSession
     /** @param array<string, mixed> $body */
     private function reportStopped(array $body): void
     {
-        if (null !== $this->callbacks->onStopped) {
-            ($this->callbacks->onStopped)(\is_string($body['reason'] ?? null) ? $body['reason'] : 'pause');
-        }
+        $this->observer->onStopped(\is_string($body['reason'] ?? null) ? $body['reason'] : 'pause');
     }
 
     private function step(string $command): void
@@ -276,9 +274,7 @@ final class DapSession
             return;
         }
         $this->state = DebugState::Running;
-        if (null !== $this->callbacks->onContinued) {
-            ($this->callbacks->onContinued)();
-        }
+        $this->observer->onContinued();
     }
 
     private function fail(string $message): void
@@ -286,8 +282,8 @@ final class DapSession
         $wasUnreported = !$this->terminationReported;
         $this->terminationReported = true;
         $this->state = DebugState::Terminated;
-        if ($wasUnreported && null !== $this->callbacks->onError) {
-            ($this->callbacks->onError)($message);
+        if ($wasUnreported) {
+            $this->observer->onError($message);
         }
         $this->client->stop();
     }
@@ -299,8 +295,6 @@ final class DapSession
         }
         $this->terminationReported = true;
         $this->state = DebugState::Terminated;
-        if (null !== $this->callbacks->onTerminated) {
-            ($this->callbacks->onTerminated)();
-        }
+        $this->observer->onTerminated();
     }
 }

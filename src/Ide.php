@@ -484,18 +484,7 @@ final class Ide
             $this->settingsLanguages,
             new SettingsLspController($this->rootDir, $this->lsp, $config->lspServers, $this->lspCommand, $this->bufferService, $this->notifier, $this->translator),
             new SettingsDebugController($this->rootDir, $this->debugAdapters, $this->notifier, $this->translator),
-            new SettingsPluginsController(
-                $pluginInstaller,
-                $this->pluginSettings,
-                $this->notifier,
-                $this->translator,
-                activate: fn (string $file): ?string => $this->pluginLifecycle->activateInstalled($file),
-                deactivate: fn (string $name) => $this->pluginLifecycle->deactivate($name),
-                refresh: fn () => $this->views->refreshSettings(),
-                listedNames: fn (): array => $this->pluginLifecycle->listedNames(),
-                isDisabled: fn (string $name): bool => $this->pluginLifecycle->isDisabled($name),
-                setEnabled: fn (string $name, bool $enabled) => $this->pluginLifecycle->setEnabled($name, $enabled),
-            ),
+            new SettingsPluginsController($pluginInstaller, $this->pluginSettings, $this->notifier, $this->translator, $this->pluginLifecycle),
             onClosed: function (): void {
                 $this->tui->setFocus($this->editorArea->widget());
                 $this->tui->requestRender();
@@ -738,12 +727,7 @@ final class Ide
     private function wirePanels(): void
     {
         $this->terminalPanel->onInputForward(fn (string $data) => $this->run->forwardInput($data));
-        $this->terminalPanel->onClose(function (): void {
-            if ($this->tui->getFocus() === $this->terminalPanel) {
-                $this->tui->setFocus($this->editorArea->widget());
-            }
-            $this->tui->requestRender();
-        });
+        $this->terminalPanel->onClose(fn () => $this->panels->returnFocusFrom($this->terminalPanel));
     }
 
     /**
@@ -865,12 +849,7 @@ final class Ide
             $this->rootDir,
         );
         $this->debugPanel = $this->service(DebugPanelWidget::class);
-        $this->debugPanel->onClose(function (): void {
-            if ($this->tui->getFocus() === $this->debugPanel) {
-                $this->tui->setFocus($this->editorArea->widget());
-            }
-            $this->tui->requestRender();
-        });
+        $this->debugPanel->onClose(fn () => $this->panels->returnFocusFrom($this->debugPanel));
     }
 
     private function buildGitView(): void

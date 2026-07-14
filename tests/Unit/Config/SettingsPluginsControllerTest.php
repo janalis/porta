@@ -9,6 +9,7 @@ use Porta\Config\SettingsPluginsController;
 use Porta\I18n\Translator;
 use Porta\Plugin\PluginInstaller;
 use Porta\Plugin\PluginSettings;
+use Porta\Tests\Support\FakePluginLifecycle;
 use Porta\Tests\Support\TempProject;
 use Porta\Ui\Notifier;
 use Porta\Widget\StatusBarWidget;
@@ -23,18 +24,7 @@ final class SettingsPluginsControllerTest extends TestCase
     private TempProject $project;
     private TempProject $global;
     private StatusBarWidget $status;
-    /** @var list<string> */
-    private array $activated = [];
-    private ?string $activateResult = null;
-    private int $refreshed = 0;
-    /** @var list<string> */
-    private array $deactivated = [];
-    /** @var list<string> */
-    private array $activeNames = [];
-    /** @var list<string> */
-    private array $disabledNames = [];
-    /** @var list<array{0: string, 1: bool}> */
-    private array $toggled = [];
+    private FakePluginLifecycle $lifecycle;
     private ?string $embeddedDir = null;
     private PluginSettings $pluginSettings;
 
@@ -43,13 +33,7 @@ final class SettingsPluginsControllerTest extends TestCase
         $this->project = new TempProject();
         $this->global = new TempProject();
         $this->status = new StatusBarWidget();
-        $this->activated = [];
-        $this->activateResult = null;
-        $this->refreshed = 0;
-        $this->deactivated = [];
-        $this->activeNames = [];
-        $this->disabledNames = [];
-        $this->toggled = [];
+        $this->lifecycle = new FakePluginLifecycle();
         $tui = new Tui(terminal: new VirtualTerminal(columns: 80, rows: 24), keybindings: new Keybindings([]), renderer: new Renderer(new StyleSheet()));
 
         $this->pluginSettings = new PluginSettings($this->project->dir, []);
@@ -59,22 +43,7 @@ final class SettingsPluginsControllerTest extends TestCase
             $this->pluginSettings,
             new Notifier($this->status, $tui),
             new Translator('en'),
-            activate: function (string $file): ?string {
-                $this->activated[] = $file;
-
-                return $this->activateResult;
-            },
-            deactivate: function (string $name): void {
-                $this->deactivated[] = $name;
-            },
-            refresh: function (): void {
-                ++$this->refreshed;
-            },
-            listedNames: fn (): array => $this->activeNames,
-            isDisabled: fn (string $name): bool => \in_array($name, $this->disabledNames, true),
-            setEnabled: function (string $name, bool $enabled): void {
-                $this->toggled[] = [$name, $enabled];
-            },
+            $this->lifecycle,
         );
     }
 
@@ -129,7 +98,7 @@ final class SettingsPluginsControllerTest extends TestCase
         $this->assertSame('Built-in', $rows[2]->value);
 
         $controller->change('pluginInfo:bundled', 'Built-in'); // inert
-        $this->assertSame([], $this->deactivated);
+        $this->assertSame([], $this->lifecycle->deactivated);
         $this->assertDirectoryExists($embedded->dir.'/bundled');
         $this->embeddedDir = null;
     }
@@ -141,13 +110,13 @@ final class SettingsPluginsControllerTest extends TestCase
 
         $controller->change('pluginRemove:project:demo', 'Remove');
         $controller->change('pluginRemove:project:demo', 'Remove');
-        $this->assertSame(['demo'], $this->deactivated, 'a successful removal deactivates the plugin live');
+        $this->assertSame(['demo'], $this->lifecycle->deactivated, 'a successful removal deactivates the plugin live');
     }
 
     public function testPluginSettingsPageRowsAndChanges(): void
     {
         $controller = $this->controller();
-        $this->activeNames = ['demo'];
+        $this->lifecycle->names = ['demo'];
         $this->assertTrue($controller->hasPlugin('demo'));
         $this->assertFalse($controller->hasPlugin('other'));
 
@@ -170,27 +139,27 @@ final class SettingsPluginsControllerTest extends TestCase
     public function testTheEnabledToggleRoutesToSetEnabledAndReflectsDisabledState(): void
     {
         $controller = $this->controller();
-        $this->disabledNames = ['demo'];
+        $this->lifecycle->disabledNames = ['demo'];
         $this->assertFalse($controller->pluginRows('demo')[0]->value, 'a disabled plugin shows unchecked');
 
         $controller->changePlugin('demo', 'pluginEnabled', true);
         $controller->changePlugin('demo', 'pluginEnabled', false);
-        $this->assertSame([['demo', true], ['demo', false]], $this->toggled);
+        $this->assertSame([['demo', true], ['demo', false]], $this->lifecycle->toggled);
     }
 
     public function testScopeChangeRoutesInstallsAndAnEmptyInstallIsANoOp(): void
     {
         $controller = $this->controller();
         $controller->change('pluginInstall', '   ');
-        $this->assertSame(0, $this->refreshed, 'an empty source does nothing');
+        $this->assertSame(0, $this->lifecycle->refreshed, 'an empty source does nothing');
 
         $controller->change('pluginScope', 'global');
         $this->assertSame('global', $controller->rows()[0]->value);
 
         $controller->change('pluginInstall', $this->sourceDir('demo'));
-        $this->assertSame([$this->global->dir.'/.porta/plugins/demo/plugin.php'], $this->activated, 'installed into the chosen scope and activated');
+        $this->assertSame([$this->global->dir.'/.porta/plugins/demo/plugin.php'], $this->lifecycle->activated, 'installed into the chosen scope and activated');
         $this->assertStringContainsString('Plugin installed — default keybindings apply on restart', $this->flash());
-        $this->assertSame(1, $this->refreshed);
+        $this->assertSame(1, $this->lifecycle->refreshed);
     }
 
     public function testInstallAndActivationErrorsFlashInstead(): void
@@ -198,10 +167,10 @@ final class SettingsPluginsControllerTest extends TestCase
         $controller = $this->controller();
         $controller->change('pluginInstall', $this->project->dir.'/missing');
         $this->assertStringContainsString('git is not available', $this->flash(), 'a nonexistent path falls through to the clone branch');
-        $this->assertSame([], $this->activated);
-        $this->assertSame(1, $this->refreshed, 'the section still refreshes after a failure');
+        $this->assertSame([], $this->lifecycle->activated);
+        $this->assertSame(1, $this->lifecycle->refreshed, 'the section still refreshes after a failure');
 
-        $this->activateResult = 'Plugin "demo" failed to load: nope';
+        $this->lifecycle->activateResult = 'Plugin "demo" failed to load: nope';
         $controller->change('pluginInstall', $this->sourceDir('demo'));
         $this->assertStringContainsString('Plugin "demo" failed to load: nope', $this->flash());
     }

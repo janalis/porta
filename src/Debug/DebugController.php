@@ -22,7 +22,7 @@ use Symfony\Component\Tui\Tui;
  * and the status bar, and carries the step/stop commands. Hand-built in `Ide`
  * (it hangs off closure-wired collaborators the container cannot express).
  */
-final class DebugController
+final class DebugController implements DebugSessionObserver
 {
     private ?DapSession $session = null;
     private ?TerminalBuffer $outputBuffer = null;
@@ -150,13 +150,7 @@ final class DebugController
             $this->clients->create($config->adapterArgv),
             $languageId,
             fn (): array => $this->breakpoints->all(),
-            new DebugSessionCallbacks(
-                onStopped: fn () => $this->handleStopped(),
-                onContinued: fn () => $this->handleContinued(),
-                onOutput: fn (string $category, string $text) => $this->handleOutput($text),
-                onTerminated: fn () => $this->handleTerminated(),
-                onError: fn (string $message) => $this->handleError($message),
-            ),
+            $this,
         );
         if (!$this->session->start(LaunchArguments::build($path, $this->rootDir, $config->launch))) {
             $this->session = null;
@@ -193,7 +187,7 @@ final class DebugController
         $this->session?->disconnect();
     }
 
-    private function handleStopped(): void
+    public function onStopped(string $reason): void
     {
         $session = $this->session;
         if (null === $session) {
@@ -250,7 +244,7 @@ final class DebugController
         $this->tui->requestRender();
     }
 
-    private function handleContinued(): void
+    public function onContinued(): void
     {
         $this->state->clear();
         $this->editor->setDebugLine(null);
@@ -259,14 +253,14 @@ final class DebugController
         $this->tui->requestRender();
     }
 
-    private function handleOutput(string $text): void
+    public function onOutput(string $category, string $text): void
     {
         $this->outputBuffer?->feed(str_replace("\n", "\r\n", $text));
         $this->terminalPanel->refresh();
         $this->tui->requestRender();
     }
 
-    private function handleTerminated(): void
+    public function onTerminated(): void
     {
         $this->state->clear();
         $this->frames = [];
@@ -276,9 +270,9 @@ final class DebugController
         $this->tui->requestRender();
     }
 
-    private function handleError(string $message): void
+    public function onError(string $message): void
     {
         $this->notifier->flash($this->translator->trans('Could not start the debug adapter').' — '.$message, 5.0);
-        $this->handleTerminated();
+        $this->onTerminated();
     }
 }

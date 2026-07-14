@@ -4,12 +4,10 @@ declare(strict_types=1);
 
 namespace Porta\Ui;
 
-use Porta\Editor\BufferManager;
-use Porta\Widget\CodeEditorWidget;
-use Porta\Widget\ImageViewerWidget;
 use Porta\Widget\ResultsPanelFields;
 use Porta\Widget\ResultsPanelWidget;
 use Symfony\Component\Tui\Tui;
+use Symfony\Component\Tui\Widget\AbstractWidget;
 
 /**
  * Owns the shared bottom results panel and the {@see ResultsPanelMode} it is
@@ -25,10 +23,8 @@ final class PanelManager
     public function __construct(
         private readonly Tui $tui,
         private readonly ResultsPanelWidget $panel,
-        private readonly CodeEditorWidget $editor,
         private readonly Notifier $notifier,
-        private readonly BufferManager $buffers,
-        private readonly ImageViewerWidget $imageViewer,
+        private readonly EditorArea $editorArea,
     ) {}
 
     /** Which content the panel is currently serving (drives query/jump routing). */
@@ -72,9 +68,14 @@ final class PanelManager
     /** Return focus to the editor area when the panel currently holds it, then repaint. */
     public function focusEditor(): void
     {
-        if ($this->tui->getFocus() === $this->panel) {
-            $active = $this->buffers->active();
-            $this->tui->setFocus(null !== $active && $active->isImage() ? $this->imageViewer : $this->editor);
+        $this->returnFocusFrom($this->panel);
+    }
+
+    /** Return focus to the editor area when $widget currently holds it, then repaint. */
+    public function returnFocusFrom(AbstractWidget $widget): void
+    {
+        if ($this->tui->getFocus() === $widget) {
+            $this->tui->setFocus($this->editorArea->widget());
         }
         $this->tui->requestRender();
     }

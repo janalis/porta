@@ -21,7 +21,7 @@ use Symfony\Component\Tui\Tui;
  * keybindings still need a restart: the immutable Keybindings map was built
  * at boot.
  */
-final class PluginLifecycle
+final class PluginLifecycle implements PluginLifecycleOps
 {
     /** @var array<string, true> live disabled-plugin set (persisted as .porta.json `disabledPlugins`) */
     private array $disabled;
@@ -147,5 +147,10 @@ final class PluginLifecycle
     public function refreshNav(): void
     {
         $this->settingsNav->setPluginEntries($this->listedNames());
+    }
+
+    public function refreshView(): void
+    {
+        $this->views->refreshSettings();
     }
 }

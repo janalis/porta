@@ -14,6 +14,7 @@ use Porta\Editor\DiagnosticStyle;
 use Porta\Editor\Document;
 use Porta\Editor\EditorActions;
 use Porta\Editor\EditorCompletion;
+use Porta\Editor\EditorHost;
 use Porta\Editor\EditorMouse;
 use Porta\Editor\EditorScroll;
 use Porta\Editor\EditorStructural;
@@ -58,7 +59,7 @@ use Tempest\Highlight\TerminalTheme;
  * vertical + horizontal scrolling, LSP diagnostics and a completion popup.
  */
 #[AsWidget('editor')]
-final class CodeEditorWidget extends AbstractWidget implements ActiveFileProvider, FocusableInterface, LtrPane, MenuOverlayHost, SearchOverlay, VerticallyExpandableInterface
+final class CodeEditorWidget extends AbstractWidget implements ActiveFileProvider, EditorHost, FocusableInterface, LtrPane, MenuOverlayHost, SearchOverlay, VerticallyExpandableInterface
 {
     use BracketedPasteTrait;
     use FillsPaneTrait;
@@ -230,28 +231,7 @@ final class CodeEditorWidget extends AbstractWidget implements ActiveFileProvide
 
     private function newEditorActions(Document $document, string $clipboard): EditorActions
     {
-        return new EditorActions(
-            $document,
-            $this->multiCaret,
-            $this->completion,
-            $this->structural,
-            $this->foldModel,
-            $this->autoPair,
-            fn () => $this->invalidate(),
-            fn () => $this->notifyChange(),
-            fn (string $label, string $initial, callable $onSubmit) => $this->openPrompt($label, $initial, $onSubmit),
-            fn (int $line, int $col) => $this->jumpTo($line, $col),
-            fn (?string $hint) => $this->setSignatureHint($hint),
-            fn (string $text) => $this->callbacks->file?->copy($text),
-            fn (int $line, int $col) => $this->callbacks->completion?->requestSignatureHelp($line, $col),
-            // The handler validates via prepareRename, then owns the prompt + rename.
-            fn (int $line, int $col, string $word) => $this->callbacks->refactor?->requestPrepareRename($line, $col, $word),
-            fn (): int => $this->scroll->contentRows(),
-            fn (): ?string => $this->commentPrefix(),
-            fn (): bool => $this->autoPairs,
-            fn (string $d): bool => $this->isInsertable($d),
-            $clipboard,
-        );
+        return new EditorActions($document, $this->multiCaret, $this->completion, $this->structural, $this->foldModel, $this->autoPair, $this, $clipboard);
     }
 
     // --- Public API --------------------------------------------------------
@@ -456,6 +436,32 @@ final class CodeEditorWidget extends AbstractWidget implements ActiveFileProvide
             $this->signatureHint = $hint;
             $this->invalidate();
         }
+    }
+
+    public function fireCopy(string $text): void
+    {
+        $this->callbacks->file?->copy($text);
+    }
+
+    public function fireSignatureHelp(int $line, int $utf16Col): void
+    {
+        $this->callbacks->completion?->requestSignatureHelp($line, $utf16Col);
+    }
+
+    /** The handler validates via prepareRename, then owns the prompt + rename. */
+    public function requestRename(int $line, int $utf16Col, string $word): void
+    {
+        $this->callbacks->refactor?->requestPrepareRename($line, $utf16Col, $word);
+    }
+
+    public function contentRows(): int
+    {
+        return $this->scroll->contentRows();
+    }
+
+    public function autoPairsEnabled(): bool
+    {
+        return $this->autoPairs;
     }
 
     /**
@@ -840,7 +846,7 @@ final class CodeEditorWidget extends AbstractWidget implements ActiveFileProvide
     /**
      * Line-comment prefix for the current language, or null when unsupported.
      */
-    private function commentPrefix(): ?string
+    public function commentPrefix(): ?string
     {
         return match ($this->highlighter->getLanguage()) {
             'php', 'javascript', 'typescript', 'css', 'scss' => '//',
@@ -874,7 +880,7 @@ final class CodeEditorWidget extends AbstractWidget implements ActiveFileProvide
         $this->multiCaret->clear();
     }
 
-    private function notifyChange(): void
+    public function notifyChange(): void
     {
         $this->invalidate();
         $this->callbacks->completion?->scheduleDidChange($this->document);
@@ -886,7 +892,7 @@ final class CodeEditorWidget extends AbstractWidget implements ActiveFileProvide
     }
 
     /** True when $data is a printable character safe to insert (not a control key). */
-    private function isInsertable(string $data): bool
+    public function isInsertable(string $data): bool
     {
         return '' !== $data && !$this->hasControlBytes($data);
     }

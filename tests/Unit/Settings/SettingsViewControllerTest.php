@@ -23,6 +23,7 @@ use Porta\Plugin\PluginInstaller;
 use Porta\Plugin\PluginSettings;
 use Porta\Settings\LiveSettingsApplier;
 use Porta\Settings\SettingsViewController;
+use Porta\Tests\Support\FakePluginLifecycle;
 use Porta\Tests\Support\FixedActiveFile;
 use Porta\Tests\Support\TempProject;
 use Porta\Ui\CursorStyle;
@@ -69,12 +70,8 @@ final class SettingsViewControllerTest extends TestCase
     private ContainerWidget $main;
     private ContainerWidget $content;
     private int $closed = 0;
-    private int $refreshed = 0;
-    /** @var list<string> */
-    private array $deactivated = [];
-    /** @var list<string> */
-    private array $activeNames = [];
     private PluginSettings $pluginSettings;
+    private FakePluginLifecycle $lifecycle;
 
     private function controller(?WorkspaceViews $views = null): SettingsViewController
     {
@@ -150,24 +147,15 @@ final class SettingsViewControllerTest extends TestCase
         }, $notifier, new Translator('en'));
         $debug = new SettingsDebugController($this->project->dir, new DebugAdapters([]), $notifier, new Translator('en'));
         $this->pluginSettings = new PluginSettings($this->project->dir, []);
+        $this->lifecycle = new FakePluginLifecycle();
         $plugins = new SettingsPluginsController(
             new PluginInstaller($this->project->dir, null, new Translator('en'), null),
             $this->pluginSettings,
             $notifier,
             new Translator('en'),
-            activate: static fn (string $file): ?string => null,
-            deactivate: function (string $name): void {
-                $this->deactivated[] = $name;
-            },
-            refresh: function (): void {
-                ++$this->refreshed;
-            },
-            listedNames: fn (): array => $this->activeNames,
-            isDisabled: static fn (string $name): bool => false,
-            setEnabled: static function (string $name, bool $enabled): void {},
+            $this->lifecycle,
         );
         $this->closed = 0;
-        $this->refreshed = 0;
 
         return new SettingsViewController(
             $this->nav,
@@ -404,7 +392,7 @@ final class SettingsViewControllerTest extends TestCase
     public function testPluginPageRoutesRowsAndChangesAndFallsBackWhenRemoved(): void
     {
         $controller = $this->controller();
-        $this->activeNames = ['demo'];
+        $this->lifecycle->names = ['demo'];
         $this->pluginSettings->registerFor('demo', [
             ['key' => 'binary', 'label' => 'Binary path', 'kind' => 'text', 'default' => '', 'options' => null, 'hint' => null],
         ]);
@@ -430,7 +418,7 @@ final class SettingsViewControllerTest extends TestCase
         $this->assertSame('/opt/x', $this->pluginSettings->value('demo', 'binary'));
 
         // When the shown plugin vanishes, refresh() falls back to the Plugins section.
-        $this->activeNames = [];
+        $this->lifecycle->names = [];
         $controller->refresh();
         $this->assertSame('plugins', $this->nav->selectedId());
         $screen = implode("\n", $this->form->render(new \Symfony\Component\Tui\Render\RenderContext(80, 8)));
