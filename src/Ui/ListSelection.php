@@ -92,4 +92,17 @@ final class ListSelection
 
         return $this->scroll;
     }
+
+    /**
+     * Map a widget-relative pointer row to the item index under it, or null
+     * when the row is a header or falls past the list. $headerRows is how many
+     * non-item rows precede the list (1 for a single title row — the common
+     * case; 0 when the list starts at the very top).
+     */
+    public function rowIndexAt(int $relRow, int $count, int $headerRows = 1): ?int
+    {
+        $index = $this->scroll + $relRow - $headerRows;
+
+        return $relRow >= $headerRows && $index < $count ? $index : null;
+    }
 }

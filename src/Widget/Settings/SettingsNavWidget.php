@@ -232,9 +232,7 @@ final class SettingsNavWidget extends AbstractWidget implements FocusableInterfa
 
     private function rowIndexAt(int $relRow): ?int
     {
-        $index = $this->list->scroll() + $relRow;
-
-        return $relRow >= 0 && array_key_exists($index, $this->entries) ? $index : null;
+        return $this->list->rowIndexAt($relRow, \count($this->entries), headerRows: 0);
     }
 
     public function render(RenderContext $context): array

@@ -412,12 +412,6 @@ final class DebugPanelWidget extends OverlayWidget implements FocusableInterface
     /** Display-row index at the widget-relative row (row 0 is the header), or null. */
     private function rowIndexAt(int $relRow): ?int
     {
-        $i = $relRow - 1;
-        if ($i < 0) {
-            return null;
-        }
-        $index = $this->list->scroll() + $i;
-
-        return $index < \count($this->rows) ? $index : null;
+        return $this->list->rowIndexAt($relRow, \count($this->rows));
     }
 }

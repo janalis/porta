@@ -262,12 +262,7 @@ final class ChangesListWidget extends AbstractWidget implements FocusableInterfa
 
     private function rowIndexAt(int $relRow): ?int
     {
-        $index = $this->list->scroll() + $relRow - 1; // row 0 is the header
-        if ($relRow < 1 || !\array_key_exists($index, $this->entries)) {
-            return null;
-        }
-
-        return $index;
+        return $this->list->rowIndexAt($relRow, \count($this->entries));
     }
 
     private function fireSelect(): void

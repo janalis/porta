@@ -474,13 +474,8 @@ final class ResultsPanelWidget extends OverlayWidget implements FocusableInterfa
     {
         // Row 0 is the title/query row; the filter row (when shown) follows.
         $headerRows = 1 + ($this->withFilter ? 1 : 0);
-        $i = $relRow - $headerRows;
-        if ($i < 0) {
-            return null;
-        }
-        $index = $this->list->scroll() + $i;
 
-        return $index < \count($this->displayRows) ? $index : null;
+        return $this->list->rowIndexAt($relRow, \count($this->displayRows), $headerRows);
     }
 
     public function render(RenderContext $context): array

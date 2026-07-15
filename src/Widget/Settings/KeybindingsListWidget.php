@@ -184,12 +184,7 @@ final class KeybindingsListWidget extends AbstractWidget implements FocusableInt
 
     private function rowIndexAt(int $relRow): ?int
     {
-        $index = $this->list->scroll() + $relRow - 1; // row 0 is the header
-        if ($relRow < 1 || !array_key_exists($index, $this->rows)) {
-            return null;
-        }
-
-        return $index;
+        return $this->list->rowIndexAt($relRow, \count($this->rows));
     }
 
     public function render(RenderContext $context): array

@@ -127,11 +127,8 @@ final class FileTreeWidget extends AbstractWidget implements FocusableInterface,
      */
     public function nodeAt(int $relRow): ?array
     {
-        if ($relRow < 1) {
-            return null; // header row
-        }
-        $index = $this->list->scroll() + $relRow - 1;
-        if (!array_key_exists($index, $this->visible)) {
+        $index = $this->list->rowIndexAt($relRow, \count($this->visible));
+        if (null === $index) {
             return null;
         }
         $this->list->select($index);
@@ -224,11 +221,8 @@ final class FileTreeWidget extends AbstractWidget implements FocusableInterface,
      */
     public function clickRow(int $relRow): void
     {
-        if ($relRow < 1) {
-            return; // header row
-        }
-        $index = $this->list->scroll() + $relRow - 1;
-        if (!array_key_exists($index, $this->visible)) {
+        $index = $this->list->rowIndexAt($relRow, \count($this->visible));
+        if (null === $index) {
             return;
         }
         $this->list->select($index);
@@ -253,15 +247,7 @@ final class FileTreeWidget extends AbstractWidget implements FocusableInterface,
      */
     public function hoverRow(int $relRow): bool
     {
-        $index = null;
-        if ($relRow >= 1) {
-            $candidate = $this->list->scroll() + $relRow - 1;
-            if (array_key_exists($candidate, $this->visible)) {
-                $index = $candidate;
-            }
-        }
-
-        return $this->setHovered($index);
+        return $this->setHovered($this->list->rowIndexAt($relRow, \count($this->visible)));
     }
 
     public function render(RenderContext $context): array
