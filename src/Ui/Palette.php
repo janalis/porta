@@ -17,10 +17,10 @@ interface Palette
     /** The full SGR sequence for $role (foreground, background, or both), or '' in monochrome. */
     public function of(Role $role): string;
 
-    /** Reset the foreground to the terminal default ("\x1b[39m"), or '' in monochrome. */
+    /** Reset the foreground to the terminal default (Sgr::DEFAULT_FG), or '' in monochrome. */
     public function fgReset(): string;
 
-    /** Reset all attributes ("\x1b[0m"); kept in monochrome to close bold/reverse runs. */
+    /** Reset all attributes (Sgr::RESET); kept in monochrome to close bold/reverse runs. */
     public function reset(): string;
 
     /** Whether this palette emits color (false in monochrome) — drives the syntax theme too. */

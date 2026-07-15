@@ -9,6 +9,7 @@ use Porta\I18n\Translator;
 use Porta\Ui\ColorPalette;
 use Porta\Ui\Palette;
 use Porta\Ui\Role;
+use Porta\Ui\Sgr;
 use Porta\Widget\PanelWidth;
 use Porta\Widget\Render\MenuOverlayHost;
 use Porta\Widget\Render\MenuOverlayHostTrait;
@@ -107,14 +108,14 @@ final class GitTabsWidget extends AbstractWidget implements MenuOverlayHost
             $tabWidth = mb_strwidth($label);
             $this->layout[] = ['mode' => $mode, 'start' => $col, 'width' => $tabWidth];
             $line .=
-                ($mode === $this->active ? $this->palette->of(Role::SelectedRow)."\x1b[1m" : $this->palette->of(Role::HeaderBar).$this->palette->of(Role::Muted))
+                ($mode === $this->active ? $this->palette->of(Role::SelectedRow).Sgr::BOLD : $this->palette->of(Role::HeaderBar).$this->palette->of(Role::Muted))
                 .$label
-                ."\x1b[0m"
+                .Sgr::RESET
                 .$this->palette->of(Role::Toolbar);
             $col += $tabWidth + 1;
             $line .= ' ';
         }
 
-        return $this->withMenuOverlay([$this->palette->of(Role::Toolbar).AnsiUtils::truncateToWidth($line, $width, '…', pad: true)."\x1b[0m"], $width);
+        return $this->withMenuOverlay([$this->palette->of(Role::Toolbar).AnsiUtils::truncateToWidth($line, $width, '…', pad: true).Sgr::RESET], $width);
     }
 }

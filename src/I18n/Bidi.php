@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace Porta\I18n;
 
+use Porta\Ui\Sgr;
+
 /**
  * A pragmatic UAX#9-subset reorderer for a single already-composed terminal
  * line: it splits the visible text into directional runs (Hebrew/Arabic → RTL,
@@ -57,7 +59,7 @@ final class Bidi
         $active = '';
         foreach ($matches[0] as $seq) {
             if (str_starts_with($seq, "\x1b[")) { // SGR: updates the active style
-                $active = "\x1b[0m" === $seq || "\x1b[m" === $seq ? '' : $active.$seq;
+                $active = Sgr::RESET === $seq || "\x1b[m" === $seq ? '' : $active.$seq;
                 continue;
             }
             // A grapheme, or the zero-width cursor marker carried as a neutral cell
@@ -262,7 +264,7 @@ final class Bidi
         foreach ($order as $index) {
             $sgr = $cells[$index]['sgr'];
             if ($sgr !== $emitted) {
-                $out .= '' === $sgr ? "\x1b[0m" : "\x1b[0m".$sgr;
+                $out .= '' === $sgr ? Sgr::RESET : Sgr::RESET.$sgr;
                 $emitted = $sgr;
             }
             $glyph = $cells[$index]['g'];
@@ -272,7 +274,7 @@ final class Bidi
             $out .= $glyph;
         }
         if ('' !== $emitted) {
-            $out .= "\x1b[0m";
+            $out .= Sgr::RESET;
         }
 
         return $out;

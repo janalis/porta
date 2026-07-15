@@ -11,6 +11,7 @@ use Porta\Ui\Menu;
 use Porta\Ui\MenuPanel;
 use Porta\Ui\Palette;
 use Porta\Ui\Role;
+use Porta\Ui\Sgr;
 use Symfony\Component\Tui\Input\Key;
 use Symfony\Component\Tui\Render\RenderContext;
 use Symfony\Component\Tui\Widget\FocusableInterface;
@@ -152,7 +153,7 @@ final class MenuBarWidget extends OverlayWidget implements FocusableInterface
             $active = $this->open && $i === $this->openIndex;
             $hovered = !$this->open && $i === $this->hoveredIndex;
             $line .= match (true) {
-                $active => $this->palette->of(Role::SelectedRow)."\x1b[1m".$label."\x1b[22m",
+                $active => $this->palette->of(Role::SelectedRow).Sgr::BOLD.$label.Sgr::NORMAL_INTENSITY,
                 $hovered => $this->palette->of(Role::MenuActiveBg).$this->palette->of(Role::Bright).$label,
                 default => $this->palette->of(Role::HeaderBar).$this->palette->of(Role::Muted).$label,
             };
@@ -160,7 +161,7 @@ final class MenuBarWidget extends OverlayWidget implements FocusableInterface
             $used += $width;
         }
 
-        return $line.$this->palette->of(Role::HeaderBar).str_repeat(' ', max(0, $columns - $used))."\x1b[0m";
+        return $line.$this->palette->of(Role::HeaderBar).str_repeat(' ', max(0, $columns - $used)).Sgr::RESET;
     }
 
     /** Natural width of the open menu's dropdown panel (unclamped; caller clamps to fit). */

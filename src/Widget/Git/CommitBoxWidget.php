@@ -13,6 +13,7 @@ use Porta\Ui\CursorStyle;
 use Porta\Ui\MultilineInput;
 use Porta\Ui\Palette;
 use Porta\Ui\Role;
+use Porta\Ui\Sgr;
 use Porta\Ui\TextField;
 use Porta\Widget\InputHook;
 use Porta\Widget\PanelWidth;
@@ -248,27 +249,27 @@ final class CommitBoxWidget extends AbstractWidget implements FocusableInterface
 
         $lines = [];
         $header = CommitMode::Amend === $this->amend ? $this->translator->trans(' Commit  [amend · alt+m]') : $this->translator->trans(' Commit  ·  alt+m: amend');
-        $lines[] = $this->palette->of(Role::HeaderBar)."\x1b[1m".AnsiUtils::truncateToWidth($header, $width, '…', pad: true)."\x1b[0m";
+        $lines[] = $this->palette->of(Role::HeaderBar).Sgr::BOLD.AnsiUtils::truncateToWidth($header, $width, '…', pad: true).Sgr::RESET;
 
         $summary = ' '.$this->summary->render(cursor: $focused && 0 === $this->activeField ? CaretVisibility::Shown : CaretVisibility::Hidden, width: $width - 1);
         $summaryHint = '' === $this->summary->value() && !($focused && 0 === $this->activeField)
-            ? $this->palette->of(Role::Dim).' '.$this->translator->trans('Summary (required)')."\x1b[0m"
+            ? $this->palette->of(Role::Dim).' '.$this->translator->trans('Summary (required)').Sgr::RESET
             : $summary;
-        $lines[] = $this->palette->of(Role::RowHighlightBg).AnsiUtils::truncateToWidth($summaryHint, $width, '…', pad: true)."\x1b[0m";
+        $lines[] = $this->palette->of(Role::RowHighlightBg).AnsiUtils::truncateToWidth($summaryHint, $width, '…', pad: true).Sgr::RESET;
 
         $descriptionLines = $this->description->render($width - 1, self::DESCRIPTION_ROWS, cursor: $focused && 1 === $this->activeField ? CaretVisibility::Shown : CaretVisibility::Hidden);
         if ($this->description->isEmpty() && !($focused && 1 === $this->activeField)) {
-            $descriptionLines = [$this->palette->of(Role::Dim).$this->translator->trans('Description')."\x1b[0m"];
+            $descriptionLines = [$this->palette->of(Role::Dim).$this->translator->trans('Description').Sgr::RESET];
         }
         for ($i = 0; $i < self::DESCRIPTION_ROWS; ++$i) {
-            $lines[] = $this->palette->of(Role::Toolbar).AnsiUtils::truncateToWidth(' '.($descriptionLines[$i] ?? ''), $width, '…', pad: true)."\x1b[0m";
+            $lines[] = $this->palette->of(Role::Toolbar).AnsiUtils::truncateToWidth(' '.($descriptionLines[$i] ?? ''), $width, '…', pad: true).Sgr::RESET;
         }
 
         $lines[] = str_repeat(' ', max(0, $width));
         $label = CommitMode::Amend === $this->amend ? $this->translator->trans('  Amend last commit  ') : $this->translator->trans('  Commit to branch  ');
         $button = $this->commitEnabled()
-            ? $this->palette->of(Role::SelectedRow).AnsiUtils::truncateToWidth($label, $width, '…', pad: true)."\x1b[0m"
-            : $this->palette->of(Role::RowHighlightBg).$this->palette->of(Role::Dim).AnsiUtils::truncateToWidth($label, $width, '…', pad: true)."\x1b[0m";
+            ? $this->palette->of(Role::SelectedRow).AnsiUtils::truncateToWidth($label, $width, '…', pad: true).Sgr::RESET
+            : $this->palette->of(Role::RowHighlightBg).$this->palette->of(Role::Dim).AnsiUtils::truncateToWidth($label, $width, '…', pad: true).Sgr::RESET;
         $lines[] = $button;
 
         return $this->withMenuOverlay($lines, $width);

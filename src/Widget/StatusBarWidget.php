@@ -8,6 +8,7 @@ use Porta\Container\AsWidget;
 use Porta\Ui\ColorPalette;
 use Porta\Ui\Palette;
 use Porta\Ui\Role;
+use Porta\Ui\Sgr;
 use Psr\Clock\ClockInterface;
 use Symfony\Component\Clock\NativeClock;
 use Symfony\Component\Tui\Ansi\AnsiUtils;
@@ -103,6 +104,6 @@ final class StatusBarWidget extends AbstractWidget
         $line = ' '.$left.str_repeat(' ', $gap).$right.' ';
         $line = AnsiUtils::truncateToWidth($line, $columns, '', pad: true);
 
-        return [$this->palette->of(Role::HeaderBar).$this->palette->of(Role::CurrentLineNumber).$line."\x1b[0m"];
+        return [$this->palette->of(Role::HeaderBar).$this->palette->of(Role::CurrentLineNumber).$line.Sgr::RESET];
     }
 }

@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Porta\Widget\Render;
 
+use Porta\Ui\Sgr;
 use Symfony\Component\Tui\Ansi\AnsiUtils;
 
 /**
@@ -17,13 +18,13 @@ use Symfony\Component\Tui\Ansi\AnsiUtils;
 final class LineDecorator
 {
     public const string BRACKET_SGR = "\x1b[1m\x1b[7m";
-    public const string UNDERLINE_SGR = "\x1b[4m";
+    public const string UNDERLINE_SGR = Sgr::UNDERLINE;
 
     /**
      * Apply one SGR span over [$startCol, $endCol) display columns.
      *
      * @param string      $openSgr   SGR sequence starting the effect (e.g. background)
-     * @param string      $closeSgr  SGR sequence ending it (e.g. "\x1b[49m" or "\x1b[24m")
+     * @param string      $closeSgr  SGR sequence ending it (e.g. Sgr::DEFAULT_BG or "\x1b[24m")
      * @param string|null $bgReapply When the effect is a background, pass its SGR code
      *                               again so it is re-applied after any reset inside the span
      */
@@ -59,7 +60,7 @@ final class LineDecorator
         $before = 0 === $col ? '' : AnsiUtils::sliceByColumn($line, 0, $col);
         $after = AnsiUtils::sliceByColumn($line, $col + 1, $lineWidth - $col - 1);
 
-        return $before.$sgr.$glyph."\x1b[39m".$after;
+        return $before.$sgr.$glyph.Sgr::DEFAULT_FG.$after;
     }
 
     /**
@@ -91,6 +92,6 @@ final class LineDecorator
             $line .= str_repeat(' ', max(0, $width - $lineWidth));
         }
 
-        return $bgSgr.AnsiUtils::reapplyBackgroundAfterResets($line, $bgSgr)."\x1b[49m";
+        return $bgSgr.AnsiUtils::reapplyBackgroundAfterResets($line, $bgSgr).Sgr::DEFAULT_BG;
     }
 }

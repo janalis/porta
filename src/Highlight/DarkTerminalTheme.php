@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Porta\Highlight;
 
+use Porta\Ui\Sgr;
 use Tempest\Highlight\TerminalTheme;
 use Tempest\Highlight\Themes\EscapesTerminalTheme;
 use Tempest\Highlight\Tokens\TokenType;
@@ -35,6 +36,6 @@ final class DarkTerminalTheme implements TerminalTheme
 
     public function after(TokenType $tokenType): string
     {
-        return "\x1b[39m";
+        return Sgr::DEFAULT_FG;
     }
 }

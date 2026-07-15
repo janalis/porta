@@ -13,6 +13,7 @@ use Porta\Ui\ColorPalette;
 use Porta\Ui\CursorStyle;
 use Porta\Ui\Palette;
 use Porta\Ui\Role;
+use Porta\Ui\Sgr;
 use Porta\Ui\TextField;
 use Porta\Widget\FillsPaneTrait;
 use Porta\Widget\InputHook;
@@ -307,9 +308,9 @@ final class SettingsFormWidget extends AbstractWidget implements FocusableInterf
                 default => ' '.$row->label.'  < '.$this->choiceLabel($row).' >',
             };
             if ($row->restart) {
-                $text .= $this->palette->of(Role::Dim).' · '.$this->translator->trans('applies on restart')."\x1b[39m";
+                $text .= $this->palette->of(Role::Dim).' · '.$this->translator->trans('applies on restart').Sgr::DEFAULT_FG;
             }
-            $lines[] = $bg.AnsiUtils::truncateToWidth($text, $width, '…', pad: true)."\x1b[0m";
+            $lines[] = $bg.AnsiUtils::truncateToWidth($text, $width, '…', pad: true).Sgr::RESET;
         }
 
         return $this->withMenuOverlay($lines, $width);
@@ -328,7 +329,7 @@ final class SettingsFormWidget extends AbstractWidget implements FocusableInterf
         }
         $value = (string) $row->value;
         if ('' === $value && null !== $row->hint) {
-            return $this->palette->of(Role::Dim).$row->hint."\x1b[39m";
+            return $this->palette->of(Role::Dim).$row->hint.Sgr::DEFAULT_FG;
         }
 
         return $value;

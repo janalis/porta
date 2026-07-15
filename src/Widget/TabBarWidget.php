@@ -9,6 +9,7 @@ use Porta\Support\AnsiText;
 use Porta\Ui\ColorPalette;
 use Porta\Ui\Palette;
 use Porta\Ui\Role;
+use Porta\Ui\Sgr;
 use Porta\Widget\Render\MenuOverlayHost;
 use Porta\Widget\Render\MenuOverlayHostTrait;
 use Symfony\Component\Tui\Ansi\AnsiUtils;
@@ -133,11 +134,11 @@ final class TabBarWidget extends AbstractWidget implements MenuOverlayHost
             if (($used + $part['width']) > $columns) {
                 break;
             }
-            $style = $part['active'] ? $this->palette->of(Role::InlayPopupBg).$this->palette->of(Role::Bright)."\x1b[1m" : $this->palette->of(Role::Subtle);
+            $style = $part['active'] ? $this->palette->of(Role::InlayPopupBg).$this->palette->of(Role::Bright).Sgr::BOLD : $this->palette->of(Role::Subtle);
             // Dim the close × (bright on the active tab) so it reads as an affordance.
             $closeStyle = $part['active'] ? $this->palette->of(Role::CurrentLineNumber) : $this->palette->of(Role::Gutter);
-            $text = str_replace('×', $closeStyle.'×'."\x1b[39m", $part['text']);
-            $line .= $style.$text."\x1b[0m".$this->palette->of(Role::Placeholder)."│\x1b[0m";
+            $text = str_replace('×', $closeStyle.'×'.Sgr::DEFAULT_FG, $part['text']);
+            $line .= $style.$text.Sgr::RESET.$this->palette->of(Role::Placeholder)."│\x1b[0m";
             $this->lastLayout[] = [
                 'index' => $index,
                 'row' => 0,
@@ -184,10 +185,10 @@ final class TabBarWidget extends AbstractWidget implements MenuOverlayHost
             foreach (\array_slice($tabs, $start, $rows, preserve_keys: true) as $index => $tab) {
                 $name = AnsiUtils::truncateToWidth($tab['name'], $nameWidth, '…', pad: true);
                 $marker = $tab['dirty'] ? '●' : ' ';
-                $style = $tab['active'] ? $this->palette->of(Role::InlayPopupBg).$this->palette->of(Role::Bright)."\x1b[1m" : $this->palette->of(Role::Subtle);
+                $style = $tab['active'] ? $this->palette->of(Role::InlayPopupBg).$this->palette->of(Role::Bright).Sgr::BOLD : $this->palette->of(Role::Subtle);
                 // Dim the close × (bright on the active tab) so it reads as an affordance.
                 $closeStyle = $tab['active'] ? $this->palette->of(Role::CurrentLineNumber) : $this->palette->of(Role::Gutter);
-                $lines[] = $style.' '.$name.' '.$marker.$closeStyle.'×'."\x1b[39m".' '."\x1b[0m";
+                $lines[] = $style.' '.$name.' '.$marker.$closeStyle.'×'.Sgr::DEFAULT_FG.' '.Sgr::RESET;
                 $this->lastLayout[] = [
                     'index' => $index,
                     'row' => \count($lines) - 1,

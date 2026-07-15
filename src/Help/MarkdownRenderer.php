@@ -7,6 +7,7 @@ namespace Porta\Help;
 use Porta\Support\AnsiText;
 use Porta\Ui\Palette;
 use Porta\Ui\Role;
+use Porta\Ui\Sgr;
 use Symfony\Component\Tui\Ansi\AnsiUtils;
 
 /**
@@ -418,7 +419,7 @@ final class MarkdownRenderer
             'bold' => $this->bold(),
             'italic' => $this->palette->hasColor() ? "\x1b[3m" : '',
             'code' => $this->palette->of(Role::Emphasis),
-            'link' => ($this->palette->hasColor() ? "\x1b[4m" : '').$this->palette->of(Role::TabAccent),
+            'link' => ($this->palette->hasColor() ? Sgr::UNDERLINE : '').$this->palette->of(Role::TabAccent),
             default => '',
         };
     }
@@ -426,7 +427,7 @@ final class MarkdownRenderer
     private function close(string $style): string
     {
         return match ($style) {
-            'bold' => $this->palette->hasColor() ? "\x1b[22m" : '',
+            'bold' => $this->palette->hasColor() ? Sgr::NORMAL_INTENSITY : '',
             'italic' => $this->palette->hasColor() ? "\x1b[23m" : '',
             'code' => $this->palette->fgReset(),
             'link' => $this->palette->fgReset().($this->palette->hasColor() ? "\x1b[24m" : ''),
@@ -436,7 +437,7 @@ final class MarkdownRenderer
 
     private function bold(): string
     {
-        return $this->palette->hasColor() ? "\x1b[1m" : '';
+        return $this->palette->hasColor() ? Sgr::BOLD : '';
     }
 
     private function resetAll(): string

@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Porta\Widget\Render;
 
 use Porta\Support\AnsiText;
+use Porta\Ui\Sgr;
 
 /**
  * Renders the bold, full-width title bar shared by the overlay/panel widgets
@@ -21,6 +22,6 @@ final class HeaderRenderer
      */
     public static function render(string $text, int $width, string $prefix): string
     {
-        return $prefix.AnsiText::scrollLineToCaret($text, $width)."\x1b[0m";
+        return $prefix.AnsiText::scrollLineToCaret($text, $width).Sgr::RESET;
     }
 }

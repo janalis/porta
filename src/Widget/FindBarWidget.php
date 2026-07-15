@@ -19,6 +19,7 @@ use Porta\Ui\ColorPalette;
 use Porta\Ui\CursorStyle;
 use Porta\Ui\Palette;
 use Porta\Ui\Role;
+use Porta\Ui\Sgr;
 use Porta\Ui\TextField;
 use Symfony\Component\Tui\Input\Key;
 use Symfony\Component\Tui\Render\RenderContext;
@@ -246,12 +247,12 @@ final class FindBarWidget extends OverlayWidget implements FocusableInterface
 
         $tags = $this->optionTag('.*', $this->regex ? ToggleState::On : ToggleState::Off).$this->optionTag('\b', $this->wholeWord ? ToggleState::On : ToggleState::Off);
         $left = $findField.$replaceField.$this->palette->of(Role::Dim)."[{$position}]\x1b[39m".$tags;
-        $line = $left.'  '.$this->palette->of(Role::Faint).$hints."\x1b[39m";
+        $line = $left.'  '.$this->palette->of(Role::Faint).$hints.Sgr::DEFAULT_FG;
         // Scroll the whole bar to the focused field's caret so a long query or
         // replacement never clips its cursor off the right edge.
         $line = AnsiText::scrollLineToCaret($line, $columns);
 
-        return [$this->palette->of(Role::Toolbar).$line."\x1b[0m"];
+        return [$this->palette->of(Role::Toolbar).$line.Sgr::RESET];
     }
 
     // --- Search internals ---------------------------------------------------
@@ -450,7 +451,7 @@ final class FindBarWidget extends OverlayWidget implements FocusableInterface
     {
         $role = ToggleState::On === $on ? Role::SelectedRow : Role::Faint;
 
-        return ' '.$this->palette->of($role).'['.$label.']'."\x1b[0m";
+        return ' '.$this->palette->of($role).'['.$label.']'.Sgr::RESET;
     }
 
     /** @return array<string, string[]> */

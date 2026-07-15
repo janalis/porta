@@ -10,6 +10,7 @@ use Porta\Support\AnsiText;
 use Porta\Support\IntMath;
 use Porta\Ui\Palette;
 use Porta\Ui\Role;
+use Porta\Ui\Sgr;
 use Symfony\Component\Tui\Ansi\AnsiUtils;
 
 /**
@@ -202,7 +203,7 @@ final class EditorRenderer
         usort($lineHints, static fn (array $a, array $b) => $b['col'] <=> $a['col']);
         foreach ($lineHints as $hint) {
             $col = $doc->displayColAt($line, $hint['col']);
-            $hlLine = LineDecorator::insertAt($hlLine, $col, $palette->of(Role::Inlay).$hint['text']."\x1b[39m");
+            $hlLine = LineDecorator::insertAt($hlLine, $col, $palette->of(Role::Inlay).$hint['text'].Sgr::DEFAULT_FG);
         }
 
         return $hlLine;
@@ -236,7 +237,7 @@ final class EditorRenderer
         if (CursorVisibility::Hidden === $withCursor) {
             $slice = AnsiUtils::sliceWithWidth($highlightedLine, $hScroll, $contentWidth);
 
-            return AnsiText::padRight($slice['text']."\x1b[0m", $contentWidth);
+            return AnsiText::padRight($slice['text'].Sgr::RESET, $contentWidth);
         }
 
         // Slice the whole visible window in one pass (correct SGR throughout),
@@ -253,7 +254,7 @@ final class EditorRenderer
         $byte = \strlen(AnsiUtils::sliceByColumn($text, 0, $cursorOffset));
         $withCursorText = substr($text, offset: 0, length: $byte).$cursorMarker.substr($text, $byte);
 
-        return AnsiText::padRight($withCursorText."\x1b[0m", $contentWidth);
+        return AnsiText::padRight($withCursorText.Sgr::RESET, $contentWidth);
     }
 
     /**
@@ -299,7 +300,7 @@ final class EditorRenderer
         $label = AnsiUtils::truncateToWidth('‹ '.DiagnosticStyle::glyph($worst).' '.(string) preg_replace('/\s+/', replacement: ' ', subject: $message).$extra.' ›', $available, '…');
         $head = AnsiText::padRight(AnsiUtils::sliceByColumn($content, 0, $start), $start);
 
-        return AnsiText::padRight($head.$color.$label."\x1b[0m", $contentWidth);
+        return AnsiText::padRight($head.$color.$label.Sgr::RESET, $contentWidth);
     }
 
     /**
@@ -319,7 +320,7 @@ final class EditorRenderer
         $label = AnsiUtils::truncateToWidth((string) preg_replace('/\s+/', replacement: ' ', subject: $text), $available, '…');
         $head = AnsiText::padRight(AnsiUtils::sliceByColumn($content, 0, $start), $start);
 
-        return AnsiText::padRight($head.$palette->of(Role::Inlay).$label."\x1b[0m", $contentWidth);
+        return AnsiText::padRight($head.$palette->of(Role::Inlay).$label.Sgr::RESET, $contentWidth);
     }
 
     // --- Overlays ----------------------------------------------------------
@@ -345,7 +346,7 @@ final class EditorRenderer
             return;
         }
         $col = $gutterWidth;
-        $popup = $palette->of(Role::InlayPopupBg).$palette->of(Role::InlayPopupFg).AnsiUtils::truncateToWidth($text, $width, '…', pad: true)."\x1b[0m";
+        $popup = $palette->of(Role::InlayPopupBg).$palette->of(Role::InlayPopupFg).AnsiUtils::truncateToWidth($text, $width, '…', pad: true).Sgr::RESET;
 
         $lines[$row] = OverlayCompositor::into($lines[$row], $col, $width, $columns, $popup);
     }
@@ -379,13 +380,13 @@ final class EditorRenderer
         $col = max(0, intdiv($columns - $width, num2: 2));
 
         $popup = [];
-        $popup[] = HeaderRenderer::render(' '.$overlay['title'], $width, $palette->of(Role::HeaderBar).$palette->of(Role::Bright)."\x1b[1m");
+        $popup[] = HeaderRenderer::render(' '.$overlay['title'], $width, $palette->of(Role::HeaderBar).$palette->of(Role::Bright).Sgr::BOLD);
         foreach ($visible as $i => $item) {
             $isSelected = ($windowStart + $i) === $selected;
             $bg = $isSelected ? $palette->of(Role::SelectedRow) : $palette->of(Role::PopupRow);
             $hintWidth = mb_strwidth($item['hint']);
             $label = AnsiUtils::truncateToWidth($item['label'], $width - $hintWidth - 3, '…', pad: true);
-            $popup[] = $bg.' '.$label.' '.$palette->of(Role::CompletionHint).$item['hint'].' '."\x1b[0m";
+            $popup[] = $bg.' '.$label.' '.$palette->of(Role::CompletionHint).$item['hint'].' '.Sgr::RESET;
         }
 
         return self::placeCenteredPopup($lines, $popup, $col, $width, $columns, $rows, $windowStart, \count($visible));
@@ -427,12 +428,12 @@ final class EditorRenderer
         $col = max(0, intdiv($columns - $width, num2: 2));
 
         $popup = [
-            HeaderRenderer::render(' '.$title, $width, $palette->of(Role::HeaderBar).$palette->of(Role::Bright)."\x1b[1m"),
-            $palette->of(Role::Toolbar).AnsiText::scrollLineToCaret(' > '.$query.(PaneFocus::Focused === $focused ? $cursorMarker : ''), $width)."\x1b[0m",
+            HeaderRenderer::render(' '.$title, $width, $palette->of(Role::HeaderBar).$palette->of(Role::Bright).Sgr::BOLD),
+            $palette->of(Role::Toolbar).AnsiText::scrollLineToCaret(' > '.$query.(PaneFocus::Focused === $focused ? $cursorMarker : ''), $width).Sgr::RESET,
         ];
         foreach ($visible as $i => $row) {
             if (null !== $row['header']) {
-                $popup[] = $palette->of(Role::PopupRow).$palette->of(Role::Dim).AnsiUtils::truncateToWidth(' '.$row['header'], $width, '…', pad: true)."\x1b[0m";
+                $popup[] = $palette->of(Role::PopupRow).$palette->of(Role::Dim).AnsiUtils::truncateToWidth(' '.$row['header'], $width, '…', pad: true).Sgr::RESET;
 
                 continue;
             }
@@ -444,7 +445,7 @@ final class EditorRenderer
             $detail = AnsiUtils::truncateToWidth($row['detail'], max(0, $avail - 1), '…', pad: false);
             $detailWidth = AnsiUtils::visibleWidth($detail);
             $label = AnsiUtils::truncateToWidth($row['label'], max(1, $avail - $detailWidth), '…', pad: true);
-            $popup[] = $bg.' '.$label.' '.$palette->of(Role::CompletionHint).$detail.' '."\x1b[0m";
+            $popup[] = $bg.' '.$label.' '.$palette->of(Role::CompletionHint).$detail.' '.Sgr::RESET;
         }
 
         return self::placeCenteredPopup($lines, $popup, $col, $width, $columns, $rows, $windowStart, \count($visible));
@@ -489,10 +490,10 @@ final class EditorRenderer
 
             $isSelected = $i === $selectedInWindow;
             $bg = $isSelected ? $palette->of(Role::SelectedRow) : $palette->of(Role::PopupRow);
-            $kindTag = $palette->of(Role::CompletionKind).$item['kind']."\x1b[39m";
+            $kindTag = $palette->of(Role::CompletionKind).$item['kind'].Sgr::DEFAULT_FG;
             $labelWidth = $width - mb_strwidth($item['kind']) - 3;
             $label = AnsiUtils::truncateToWidth($item['label'], $labelWidth, '…', pad: true);
-            $popupLine = $bg.' '.$label.' '.$kindTag.' '."\x1b[0m";
+            $popupLine = $bg.' '.$label.' '.$kindTag.' '.Sgr::RESET;
 
             $lines[$row] = OverlayCompositor::into($lines[$row], $col, $width, $columns, $popupLine);
         }

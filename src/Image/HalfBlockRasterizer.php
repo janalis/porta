@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace Porta\Image;
 
+use Porta\Ui\Sgr;
+
 /**
  * Rasterizes an image into terminal lines: each `▀` cell shows 2 vertical
  * pixels (24-bit foreground = top, background = bottom), nearest-neighbor
@@ -32,7 +34,7 @@ final class HalfBlockRasterizer
                 $bottom = self::sample($image, $rect, $scale, $col, (2 * $row) + 1);
                 if (null === $top && null === $bottom) {
                     if (null !== $current) {
-                        $line .= "\x1b[0m";
+                        $line .= Sgr::RESET;
                         $current = null;
                     }
                     $line .= ' ';
@@ -49,7 +51,7 @@ final class HalfBlockRasterizer
                 $line .= '▀';
             }
             if (null !== $current) {
-                $line .= "\x1b[0m";
+                $line .= Sgr::RESET;
             }
             $lines[] = $line;
         }

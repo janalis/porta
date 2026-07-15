@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Porta\I18n;
 
+use Porta\Ui\Sgr;
 use Symfony\Component\Tui\Ansi\AnsiUtils;
 
 /**
@@ -27,7 +28,7 @@ final class PaneReorder
             // Reset after every run: redundant after a (self-balanced) reordered
             // run, load-bearing after a verbatim run that may end mid-SGR — that
             // stray background is exactly what used to bleed across panes.
-            $out .= ($run['ltr'] ? $slice : Bidi::reorder($slice, BaseDirection::Rtl))."\x1b[0m";
+            $out .= ($run['ltr'] ? $slice : Bidi::reorder($slice, BaseDirection::Rtl)).Sgr::RESET;
         }
 
         return $out;

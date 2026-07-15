@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Porta\Widget\Render;
 
 use Porta\Support\AnsiText;
+use Porta\Ui\Sgr;
 use Symfony\Component\Tui\Ansi\AnsiUtils;
 
 /**
@@ -32,6 +33,6 @@ final class OverlayCompositor
         // trailing reset may have been sliced off, and without this its
         // background would bleed across the tail — visible as a menu box painted
         // full-width over a blank pane.
-        return AnsiText::padRight($head."\x1b[0m".$popup."\x1b[0m".$tail."\x1b[0m", $columns);
+        return AnsiText::padRight($head.Sgr::RESET.$popup.Sgr::RESET.$tail.Sgr::RESET, $columns);
     }
 }

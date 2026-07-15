@@ -12,6 +12,7 @@ use Porta\Ui\ListNavigation;
 use Porta\Ui\ListSelection;
 use Porta\Ui\Palette;
 use Porta\Ui\Role;
+use Porta\Ui\Sgr;
 use Porta\Widget\FillsPaneTrait;
 use Porta\Widget\HoverTrait;
 use Porta\Widget\InputHook;
@@ -282,7 +283,7 @@ final class ChangesListWidget extends AbstractWidget implements FocusableInterfa
         $title = 1 === $count
             ? $this->translator->trans(' %count% changed file', ['%count%' => $count])
             : $this->translator->trans(' %count% changed files', ['%count%' => $count]);
-        $lines = [$this->palette->of(Role::HeaderBar)."\x1b[1m".AnsiUtils::truncateToWidth($title, $width, '…', pad: true)."\x1b[0m"];
+        $lines = [$this->palette->of(Role::HeaderBar).Sgr::BOLD.AnsiUtils::truncateToWidth($title, $width, '…', pad: true).Sgr::RESET];
 
         $scroll = $this->list->follow($rows - 1);
         for ($row = 1; $row < $rows; ++$row) {
@@ -294,7 +295,7 @@ final class ChangesListWidget extends AbstractWidget implements FocusableInterfa
             }
             if ($index === $this->confirmDiscard) {
                 $confirm = $this->translator->trans(' Discard changes? y = yes · any key = no');
-                $lines[] = $this->palette->of(Role::DangerBg).$this->palette->of(Role::Bright).AnsiUtils::truncateToWidth($confirm, $width, '…', pad: true)."\x1b[0m";
+                $lines[] = $this->palette->of(Role::DangerBg).$this->palette->of(Role::Bright).AnsiUtils::truncateToWidth($confirm, $width, '…', pad: true).Sgr::RESET;
                 continue;
             }
 
@@ -315,8 +316,8 @@ final class ChangesListWidget extends AbstractWidget implements FocusableInterfa
             if (!$selected && $index === $this->hoveredIndex) {
                 $bg = $this->palette->of(Role::RowHighlightBg);
             }
-            $text = ' '.$checkbox.' '.$statusFg.$status."\x1b[39m".' '.$label;
-            $lines[] = $bg.AnsiUtils::truncateToWidth($text, $width, '…', pad: true)."\x1b[0m";
+            $text = ' '.$checkbox.' '.$statusFg.$status.Sgr::DEFAULT_FG.' '.$label;
+            $lines[] = $bg.AnsiUtils::truncateToWidth($text, $width, '…', pad: true).Sgr::RESET;
         }
 
         return $this->withMenuOverlay($lines, $width);

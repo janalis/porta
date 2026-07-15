@@ -14,6 +14,7 @@ use Porta\Ui\ListNavigation;
 use Porta\Ui\ListSelection;
 use Porta\Ui\Palette;
 use Porta\Ui\Role;
+use Porta\Ui\Sgr;
 use Porta\Ui\TextField;
 use Porta\Widget\Render\HeaderRenderer;
 use Symfony\Component\Tui\Ansi\AnsiUtils;
@@ -170,7 +171,7 @@ final class GoToFileWidget extends OverlayWidget implements FocusableInterface
 
         $lines = [];
         $header = ' '.$this->translator->trans('Go to File:').' '.$this->query->render(cursor: $this->focused ? CaretVisibility::Shown : CaretVisibility::Hidden);
-        $lines[] = HeaderRenderer::render($header, $columns, $this->palette->of(Role::HeaderBar)."\x1b[1m");
+        $lines[] = HeaderRenderer::render($header, $columns, $this->palette->of(Role::HeaderBar).Sgr::BOLD);
 
         foreach (\array_slice($this->results, offset: 0, length: self::MAX_RESULTS) as $i => $path) {
             $selected = $i === $this->list->selected();
@@ -178,7 +179,7 @@ final class GoToFileWidget extends OverlayWidget implements FocusableInterface
             $name = basename($path);
             $dir = ltrim(substr($path, offset: 0, length: -\strlen($name)), characters: '/');
             $text = ' '.$name.'  '.$this->palette->of(Role::CompletionHint).$dir;
-            $lines[] = $bg.AnsiUtils::truncateToWidth($text, $columns, '…', pad: true)."\x1b[0m";
+            $lines[] = $bg.AnsiUtils::truncateToWidth($text, $columns, '…', pad: true).Sgr::RESET;
         }
 
         if ([] === $this->results && '' !== $this->query->value()) {
@@ -186,7 +187,7 @@ final class GoToFileWidget extends OverlayWidget implements FocusableInterface
                 $this->palette->of(Role::RowHighlightBg)
                 .$this->palette->of(Role::CompletionHint)
                 .AnsiUtils::truncateToWidth(' '.$this->translator->trans('no matches'), $columns, '', pad: true)
-                ."\x1b[0m";
+                .Sgr::RESET;
         }
 
         return $lines;

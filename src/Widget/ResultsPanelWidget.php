@@ -14,6 +14,7 @@ use Porta\Ui\ListSelection;
 use Porta\Ui\LtrPane;
 use Porta\Ui\Palette;
 use Porta\Ui\Role;
+use Porta\Ui\Sgr;
 use Porta\Ui\TextField;
 use Porta\Widget\Render\HeaderRenderer;
 use Porta\Widget\Render\LineDecorator;
@@ -504,9 +505,9 @@ final class ResultsPanelWidget extends OverlayWidget implements FocusableInterfa
         }
         $showCursor = $this->focused && $this->withQuery;
         $queryField = $this->query->render(cursor: $showCursor && 'query' === $this->activeField ? CaretVisibility::Shown : CaretVisibility::Hidden);
-        $prefix = ' '.$this->title.($this->withQuery ? ': '.$queryField : '').$this->palette->of(Role::Dim).$status."\x1b[39m";
+        $prefix = ' '.$this->title.($this->withQuery ? ': '.$queryField : '').$this->palette->of(Role::Dim).$status.Sgr::DEFAULT_FG;
 
-        $lines[] = HeaderRenderer::render($prefix, $columns, $this->palette->of(Role::HeaderBar)."\x1b[1m");
+        $lines[] = HeaderRenderer::render($prefix, $columns, $this->palette->of(Role::HeaderBar).Sgr::BOLD);
 
         if ($this->withFilter) {
             $lines[] = $this->fieldRow(
@@ -535,7 +536,7 @@ final class ResultsPanelWidget extends OverlayWidget implements FocusableInterfa
         }
 
         if ([] === $this->results && !$this->searching && '' !== $this->query->value()) {
-            $lines[] = $this->palette->of(Role::Toolbar).$this->palette->of(Role::CompletionHint).AnsiUtils::truncateToWidth(' no results', $columns, '', pad: true)."\x1b[0m";
+            $lines[] = $this->palette->of(Role::Toolbar).$this->palette->of(Role::CompletionHint).AnsiUtils::truncateToWidth(' no results', $columns, '', pad: true).Sgr::RESET;
         }
 
         return $lines;
@@ -552,9 +553,9 @@ final class ResultsPanelWidget extends OverlayWidget implements FocusableInterfa
     private function fieldRow(string $label, TextField $field, CaretVisibility $caret, string $hint, int $columns): string
     {
         $rendered = $field->render(cursor: $caret);
-        $line = ' '.$label.': '.$rendered.$this->palette->of(Role::Dim).$hint."\x1b[39m";
+        $line = ' '.$label.': '.$rendered.$this->palette->of(Role::Dim).$hint.Sgr::DEFAULT_FG;
 
-        return $this->palette->of(Role::RowHighlightBg).AnsiText::scrollLineToCaret($line, $columns)."\x1b[0m";
+        return $this->palette->of(Role::RowHighlightBg).AnsiText::scrollLineToCaret($line, $columns).Sgr::RESET;
     }
 
     /** The indent for grouped match rows — deeper in the nested view (below a dir + file header). */
@@ -566,9 +567,9 @@ final class ResultsPanelWidget extends OverlayWidget implements FocusableInterfa
     /** A dimmed context row shown around an expanded match: `<line>  text`, indented under the match. */
     private function contextRowLine(int $line, string $text, string $bg, int $columns): string
     {
-        $content = $this->matchIndent().'  '.$this->palette->of(Role::Dim).(string) ($line + 1).'  '.$text."\x1b[39m";
+        $content = $this->matchIndent().'  '.$this->palette->of(Role::Dim).(string) ($line + 1).'  '.$text.Sgr::DEFAULT_FG;
 
-        return $bg.AnsiUtils::truncateToWidth($content, $columns, '…', pad: true)."\x1b[0m";
+        return $bg.AnsiUtils::truncateToWidth($content, $columns, '…', pad: true).Sgr::RESET;
     }
 
     /**
@@ -585,9 +586,9 @@ final class ResultsPanelWidget extends OverlayWidget implements FocusableInterfa
             default => [$path, ''],
         };
         $arrow = $row->collapsed ? '▸' : '▾';
-        $text = $indent.' '.$arrow.' '.$this->palette->of(Role::TabAccent).$display."\x1b[39m".$this->palette->of(Role::Dim).'  ('.$row->count.')'."\x1b[39m";
+        $text = $indent.' '.$arrow.' '.$this->palette->of(Role::TabAccent).$display.Sgr::DEFAULT_FG.$this->palette->of(Role::Dim).'  ('.$row->count.')'.Sgr::DEFAULT_FG;
 
-        return $bg.AnsiUtils::truncateToWidth($text, $columns, '…', pad: true)."\x1b[0m";
+        return $bg.AnsiUtils::truncateToWidth($text, $columns, '…', pad: true).Sgr::RESET;
     }
 
     /**
@@ -616,13 +617,13 @@ final class ResultsPanelWidget extends OverlayWidget implements FocusableInterfa
             $indent = $this->matchIndent();
             $label = $this->groupedLabel($result);
             $prefixWidth = mb_strwidth($indent) + mb_strwidth($label) + 2; // indent + label + `  `
-            $text = $indent.$this->palette->of(Role::TabAccent).$label."\x1b[39m".'  '.$result['text'];
+            $text = $indent.$this->palette->of(Role::TabAccent).$label.Sgr::DEFAULT_FG.'  '.$result['text'];
 
             return $this->highlightMatch($text, $prefixWidth, $result, $bg, $columns);
         }
         $location = $result['path'].':'.($result['line'] + 1);
         $prefixWidth = 1 + mb_strwidth($location) + 2; // ` ` + `path:line` + `  `
-        $text = ' '.$this->palette->of(Role::TabAccent).$location."\x1b[39m".'  '.$result['text'];
+        $text = ' '.$this->palette->of(Role::TabAccent).$location.Sgr::DEFAULT_FG.'  '.$result['text'];
 
         return $this->highlightMatch($text, $prefixWidth, $result, $bg, $columns);
     }
@@ -635,7 +636,7 @@ final class ResultsPanelWidget extends OverlayWidget implements FocusableInterfa
      */
     private function highlightMatch(string $text, int $prefixWidth, array $result, string $bg, int $columns): string
     {
-        $line = $bg.AnsiUtils::truncateToWidth($text, $columns, '…', pad: true)."\x1b[0m";
+        $line = $bg.AnsiUtils::truncateToWidth($text, $columns, '…', pad: true).Sgr::RESET;
         // Highlight each match span; close with the row bg so the tail keeps its colour.
         $searchBg = $this->palette->of(Role::SearchBg);
         foreach ($result['ranges'] ?? [] as $range) {

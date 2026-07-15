@@ -36,6 +36,7 @@ use Porta\Ui\CursorStyle;
 use Porta\Ui\LtrPane;
 use Porta\Ui\Palette;
 use Porta\Ui\Role;
+use Porta\Ui\Sgr;
 use Porta\Widget\Overlay\FindInFilesModal;
 use Porta\Widget\Overlay\OverlayHost;
 use Porta\Widget\Render\EditorDecorations;
@@ -1179,7 +1180,7 @@ final class CodeEditorWidget extends AbstractWidget implements ActiveFileProvide
         $text = AnsiUtils::truncateToWidth($hint, $columns, '…');
         $textWidth = AnsiUtils::visibleWidth($text);
         $left = max(0, intdiv($columns - $textWidth, num2: 2));
-        $hintRow = AnsiText::padRight(str_repeat(' ', $left).$this->palette->of(Role::CompletionHint).$text."\x1b[39m", $columns);
+        $hintRow = AnsiText::padRight(str_repeat(' ', $left).$this->palette->of(Role::CompletionHint).$text.Sgr::DEFAULT_FG, $columns);
 
         $middle = intdiv($rows, num2: 2);
         $lines = [];
@@ -1221,8 +1222,8 @@ final class CodeEditorWidget extends AbstractWidget implements ActiveFileProvide
         for ($r = 0; $r < $rows; ++$r) {
             $bg = $showThumb && $r >= $thumbTop && $r <= $thumbBottom ? $this->palette->of(Role::RowHighlightBg) : '';
             $cells[] = 0 !== $sev[$r]
-                ? "\x1b[0m".$bg.$this->palette->of(DiagnosticStyle::role($sev[$r])).DiagnosticStyle::mark($sev[$r])."\x1b[0m"
-                : "\x1b[0m".$bg.' '."\x1b[0m";
+                ? Sgr::RESET.$bg.$this->palette->of(DiagnosticStyle::role($sev[$r])).DiagnosticStyle::mark($sev[$r]).Sgr::RESET
+                : Sgr::RESET.$bg.' '.Sgr::RESET;
         }
 
         return $cells;

@@ -12,6 +12,7 @@ use Porta\Ui\ListSelection;
 use Porta\Ui\LtrPane;
 use Porta\Ui\Palette;
 use Porta\Ui\Role;
+use Porta\Ui\Sgr;
 use Porta\Widget\Render\HeaderRenderer;
 use Symfony\Component\Tui\Ansi\AnsiUtils;
 use Symfony\Component\Tui\Input\Key;
@@ -242,8 +243,8 @@ final class DebugPanelWidget extends OverlayWidget implements FocusableInterface
             DebugState::Terminated => 'terminated',
         };
         $legend = '  F8 over · F7 into · ⇧F8 out · F9 resume · ^F2 stop';
-        $prefix = ' Debug: '.$this->title.$this->palette->of(Role::Dim).'  '.$status.$legend."\x1b[39m";
-        $lines = [HeaderRenderer::render($prefix, $columns, $this->palette->of(Role::HeaderBar)."\x1b[1m")];
+        $prefix = ' Debug: '.$this->title.$this->palette->of(Role::Dim).'  '.$status.$legend.Sgr::DEFAULT_FG;
+        $lines = [HeaderRenderer::render($prefix, $columns, $this->palette->of(Role::HeaderBar).Sgr::BOLD)];
 
         $scroll = $this->list->follow($this->visibleRows);
         foreach (\array_slice($this->rows, $scroll, $this->visibleRows) as $i => $row) {
@@ -253,7 +254,7 @@ final class DebugPanelWidget extends OverlayWidget implements FocusableInterface
                 $this->focused => $this->palette->of(Role::SelectedRow),
                 default => $this->palette->of(Role::SelectedRowUnfocused),
             };
-            $lines[] = $bg.AnsiUtils::truncateToWidth($this->rowText($row), $columns, '…', pad: true)."\x1b[0m";
+            $lines[] = $bg.AnsiUtils::truncateToWidth($this->rowText($row), $columns, '…', pad: true).Sgr::RESET;
         }
 
         return $lines;
@@ -289,9 +290,9 @@ final class DebugPanelWidget extends OverlayWidget implements FocusableInterface
 
         return match ($row['kind']) {
             'watch' => $this->watchText($row),
-            'section' => ' '.$this->palette->of(Role::Dim).$row['label']."\x1b[39m",
-            'frame' => ' '.$indent.$row['label'].'  '.$this->palette->of(Role::TabAccent).$row['path'].':'.($row['line'] + 1)."\x1b[39m",
-            'scope' => ' '.$indent.(array_key_exists($row['ref'], $this->expanded) ? '▾ ' : '▸ ').$this->palette->of(Role::Bright).$row['label']."\x1b[39m",
+            'section' => ' '.$this->palette->of(Role::Dim).$row['label'].Sgr::DEFAULT_FG,
+            'frame' => ' '.$indent.$row['label'].'  '.$this->palette->of(Role::TabAccent).$row['path'].':'.($row['line'] + 1).Sgr::DEFAULT_FG,
+            'scope' => ' '.$indent.(array_key_exists($row['ref'], $this->expanded) ? '▾ ' : '▸ ').$this->palette->of(Role::Bright).$row['label'].Sgr::DEFAULT_FG,
             default => ' '.$indent.$this->expandArrow($row['ref']).$row['label'],
         };
     }
@@ -314,8 +315,8 @@ final class DebugPanelWidget extends OverlayWidget implements FocusableInterface
         $arrow = $this->expandArrow($row['ref']);
         $value = match (true) {
             null === $watch => '',
-            null !== $watch['error'] => $this->palette->of(Role::Dim).$watch['error']."\x1b[39m",
-            null === $watch['value'] => $this->palette->of(Role::Dim).'…'."\x1b[39m",
+            null !== $watch['error'] => $this->palette->of(Role::Dim).$watch['error'].Sgr::DEFAULT_FG,
+            null === $watch['value'] => $this->palette->of(Role::Dim).'…'.Sgr::DEFAULT_FG,
             default => $watch['value'],
         };
 

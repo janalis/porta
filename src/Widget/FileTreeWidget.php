@@ -11,6 +11,7 @@ use Porta\Ui\ListNavigation;
 use Porta\Ui\ListSelection;
 use Porta\Ui\Palette;
 use Porta\Ui\Role;
+use Porta\Ui\Sgr;
 use Porta\Widget\Render\MenuOverlayHost;
 use Porta\Widget\Render\MenuOverlayHostTrait;
 use Psr\Clock\ClockInterface;
@@ -261,7 +262,7 @@ final class FileTreeWidget extends AbstractWidget implements FocusableInterface,
 
         $lines = [];
         $header = AnsiUtils::truncateToWidth(' '.basename($this->rootDir).'/', $width, '…', pad: true);
-        $lines[] = "\x1b[1m".$this->palette->of(Role::TabAccent).$header."\x1b[0m";
+        $lines[] = Sgr::BOLD.$this->palette->of(Role::TabAccent).$header.Sgr::RESET;
 
         for ($row = 1; $row < $rows; ++$row) {
             $index = $scroll + $row - 1;
@@ -282,9 +283,9 @@ final class FileTreeWidget extends AbstractWidget implements FocusableInterface,
 
             // Subtle hover background beneath the pointer keeps the dir/file foreground.
             $lines[] = match (true) {
-                $index === $this->list->selected() => ($this->focused ? $this->palette->of(Role::SelectedRow) : $this->palette->of(Role::SelectedRowUnfocused)).$text."\x1b[0m",
-                $index === $this->hoveredIndex => $this->palette->of(Role::RowHighlightBg).($node['isDir'] ? $this->palette->of(Role::TabAccent) : '').$text."\x1b[0m",
-                $node['isDir'] => $this->palette->of(Role::TabAccent).$text."\x1b[0m",
+                $index === $this->list->selected() => ($this->focused ? $this->palette->of(Role::SelectedRow) : $this->palette->of(Role::SelectedRowUnfocused)).$text.Sgr::RESET,
+                $index === $this->hoveredIndex => $this->palette->of(Role::RowHighlightBg).($node['isDir'] ? $this->palette->of(Role::TabAccent) : '').$text.Sgr::RESET,
+                $node['isDir'] => $this->palette->of(Role::TabAccent).$text.Sgr::RESET,
                 default => $text,
             };
         }

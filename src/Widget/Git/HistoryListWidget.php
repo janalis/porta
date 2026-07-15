@@ -12,6 +12,7 @@ use Porta\Ui\ListNavigation;
 use Porta\Ui\ListSelection;
 use Porta\Ui\Palette;
 use Porta\Ui\Role;
+use Porta\Ui\Sgr;
 use Porta\Widget\FillsPaneTrait;
 use Porta\Widget\InputHook;
 use Porta\Widget\PanelWidth;
@@ -358,7 +359,7 @@ final class HistoryListWidget extends AbstractWidget implements FocusableInterfa
             // "label: message" specially whenever %count% is a parameter.
             : $this->translator->trans(' History — %path% (%count%)', ['%path%' => $this->filterLabel, '%count%' => \count($this->commits)]);
         $lines = [
-            $this->palette->of(Role::HeaderBar)."\x1b[1m".AnsiUtils::truncateToWidth($header, $width, '…', pad: true)."\x1b[0m",
+            $this->palette->of(Role::HeaderBar).Sgr::BOLD.AnsiUtils::truncateToWidth($header, $width, '…', pad: true).Sgr::RESET,
         ];
 
         $commitRows = $this->commitRowCount();
@@ -377,15 +378,15 @@ final class HistoryListWidget extends AbstractWidget implements FocusableInterfa
             if (!$selected && ($scroll + $row) === $this->hoveredCommit) {
                 $bg = $this->palette->of(Role::RowHighlightBg);
             }
-            $text = ' '.$this->palette->of(Role::Modified).$commit->shortSha."\x1b[39m".' '.$commit->subject.$this->palette->of(Role::Dim).'  '.$commit->author."\x1b[39m";
-            $lines[] = $bg.AnsiUtils::truncateToWidth($text, $width, '…', pad: true)."\x1b[0m";
+            $text = ' '.$this->palette->of(Role::Modified).$commit->shortSha.Sgr::DEFAULT_FG.' '.$commit->subject.$this->palette->of(Role::Dim).'  '.$commit->author.Sgr::DEFAULT_FG;
+            $lines[] = $bg.AnsiUtils::truncateToWidth($text, $width, '…', pad: true).Sgr::RESET;
         }
 
         $lines[] =
             $this->palette->of(Role::RowHighlightBg)
-            ."\x1b[1m"
+            .Sgr::BOLD
             .AnsiUtils::truncateToWidth($this->translator->trans(' Files (%count%)', ['%count%' => \count($this->files)]), $width, '…', pad: true)
-            ."\x1b[0m";
+            .Sgr::RESET;
         $fileScroll = $this->fileList->follow(self::FILE_ROWS);
         for ($row = 0; $row < self::FILE_ROWS && \count($lines) < $rows; ++$row) {
             $file = $this->files[$fileScroll + $row] ?? null;
@@ -401,7 +402,7 @@ final class HistoryListWidget extends AbstractWidget implements FocusableInterfa
             if (!$selected && ($fileScroll + $row) === $this->hoveredFile) {
                 $bg = $this->palette->of(Role::RowHighlightBg);
             }
-            $lines[] = $bg.AnsiUtils::truncateToWidth(' '.$file['status'].' '.$file['path'], $width, '…', pad: true)."\x1b[0m";
+            $lines[] = $bg.AnsiUtils::truncateToWidth(' '.$file['status'].' '.$file['path'], $width, '…', pad: true).Sgr::RESET;
         }
 
         // commitRowCount + the two headers + FILE_ROWS always fill $rows exactly

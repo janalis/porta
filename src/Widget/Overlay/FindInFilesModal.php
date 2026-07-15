@@ -11,6 +11,7 @@ use Porta\Ui\ColorPalette;
 use Porta\Ui\CursorStyle;
 use Porta\Ui\Palette;
 use Porta\Ui\Role;
+use Porta\Ui\Sgr;
 use Porta\Ui\TextField;
 use Porta\Widget\Render\HeaderRenderer;
 use Porta\Widget\Render\LineDecorator;
@@ -626,12 +627,12 @@ final class FindInFilesModal
      */
     private function headerRows(int $width, CaretVisibility $focused): array
     {
-        $title = ' '.$this->title.$this->palette->of(Role::Dim).'  '.$this->statusText()."\x1b[39m";
+        $title = ' '.$this->title.$this->palette->of(Role::Dim).'  '.$this->statusText().Sgr::DEFAULT_FG;
 
         $replaceHint = $this->inPreview() ? \sprintf('  (Del exclude · Alt+A replace %d)', $this->keptCount()) : '  (Tab · Alt+A)';
 
         return [
-            HeaderRenderer::render($title, $width, $this->palette->of(Role::HeaderBar)."\x1b[1m"),
+            HeaderRenderer::render($title, $width, $this->palette->of(Role::HeaderBar).Sgr::BOLD),
             $this->fieldRow('Find', $this->query, CaretVisibility::Shown === $focused && 'query' === $this->activeField ? CaretVisibility::Shown : CaretVisibility::Hidden, '', $width),
             $this->fieldRow(
                 'Replace',
@@ -650,10 +651,10 @@ final class FindInFilesModal
     {
         $line = ' '.$label.': '.$field->render(cursor: $shown);
         if ('' !== $hint) {
-            $line .= $this->palette->of(Role::Dim).$hint."\x1b[39m";
+            $line .= $this->palette->of(Role::Dim).$hint.Sgr::DEFAULT_FG;
         }
 
-        return $this->palette->of(Role::Toolbar).AnsiText::scrollLineToCaret($line, $width)."\x1b[0m";
+        return $this->palette->of(Role::Toolbar).AnsiText::scrollLineToCaret($line, $width).Sgr::RESET;
     }
 
     /** How many matches would be replaced (all minus the excluded). */
@@ -697,13 +698,13 @@ final class FindInFilesModal
 
         $label = $this->scopeLabels[$this->scopeIndex] ?? 'Whole Project';
         $labelPart = 'scope' === $this->hovered
-            ? $this->palette->of(Role::RowHighlightBg).$this->palette->of(Role::Bright).$label."\x1b[0m".$this->palette->of(Role::Toolbar)
-            : $this->palette->of(Role::TabAccent).$label."\x1b[39m";
-        $scope = '  '.$this->palette->of(Role::Dim).'Scope: '."\x1b[39m".$labelPart.$this->palette->of(Role::Dim).' (Alt+S)'."\x1b[39m";
+            ? $this->palette->of(Role::RowHighlightBg).$this->palette->of(Role::Bright).$label.Sgr::RESET.$this->palette->of(Role::Toolbar)
+            : $this->palette->of(Role::TabAccent).$label.Sgr::DEFAULT_FG;
+        $scope = '  '.$this->palette->of(Role::Dim).'Scope: '.Sgr::DEFAULT_FG.$labelPart.$this->palette->of(Role::Dim).' (Alt+S)'.Sgr::DEFAULT_FG;
         // The scope zone starts past the two-space gap; clamp so a truncated box can't hit past the edge.
         $this->optionZones[] = ['name' => 'scope', 'start' => $col + 2, 'end' => min($col + 2 + mb_strwidth('Scope: '.$label.' (Alt+S)'), $width)];
 
-        return $this->palette->of(Role::Toolbar).AnsiUtils::truncateToWidth(' '.$tags.$scope, $width, '…', pad: true)."\x1b[0m";
+        return $this->palette->of(Role::Toolbar).AnsiUtils::truncateToWidth(' '.$tags.$scope, $width, '…', pad: true).Sgr::RESET;
     }
 
     private function optionTag(string $glyph, OptionTagState $state): string
@@ -717,9 +718,9 @@ final class FindInFilesModal
 
     private function fileHeaderRow(string $path, int $count, int $width): string
     {
-        $text = ' '.$this->palette->of(Role::TabAccent).$path."\x1b[39m".$this->palette->of(Role::Dim).'  ('.$count.')'."\x1b[39m";
+        $text = ' '.$this->palette->of(Role::TabAccent).$path.Sgr::DEFAULT_FG.$this->palette->of(Role::Dim).'  ('.$count.')'.Sgr::DEFAULT_FG;
 
-        return $this->palette->of(Role::PopupRow).AnsiUtils::truncateToWidth($text, $width, '…', pad: true)."\x1b[0m";
+        return $this->palette->of(Role::PopupRow).AnsiUtils::truncateToWidth($text, $width, '…', pad: true).Sgr::RESET;
     }
 
     /**
@@ -730,8 +731,8 @@ final class FindInFilesModal
         $bg = RowSelection::Selected === $selected ? $this->palette->of(Role::SelectedRow) : $this->palette->of(Role::PopupRow);
         $label = (string) ($result['line'] + 1);
         $prefixWidth = 4 + mb_strwidth($label) + 2;
-        $text = '    '.$this->palette->of(Role::TabAccent).$label."\x1b[39m".'  '.$result['text'];
-        $line = $bg.AnsiUtils::truncateToWidth($text, $width, '…', pad: true)."\x1b[0m";
+        $text = '    '.$this->palette->of(Role::TabAccent).$label.Sgr::DEFAULT_FG.'  '.$result['text'];
+        $line = $bg.AnsiUtils::truncateToWidth($text, $width, '…', pad: true).Sgr::RESET;
         $searchBg = $this->palette->of(Role::SearchBg);
         foreach ($result['ranges'] ?? [] as $range) {
             $start = $prefixWidth + $range['start'];
@@ -755,15 +756,15 @@ final class FindInFilesModal
         $old = $result['text'];
         $checkbox = '  '.($excluded ? '[ ]' : '[x]').' ';
         $prefixWidth = mb_strwidth($checkbox) + mb_strwidth($label) + 2;
-        $head = $checkbox.$this->palette->of(Role::TabAccent).$label."\x1b[39m".'  ';
+        $head = $checkbox.$this->palette->of(Role::TabAccent).$label.Sgr::DEFAULT_FG.'  ';
 
-        $text = $head.$old.$this->palette->of(Role::Dim).'   (excluded)'."\x1b[39m";
+        $text = $head.$old.$this->palette->of(Role::Dim).'   (excluded)'.Sgr::DEFAULT_FG;
         if (!$excluded) {
             $new = null !== $this->previewReplacement ? ($this->previewReplacement)($old, $this->replace->value()) : $old;
-            $text = $head.$old.'  →  '.$this->palette->of(Role::Added).$new."\x1b[39m";
+            $text = $head.$old.'  →  '.$this->palette->of(Role::Added).$new.Sgr::DEFAULT_FG;
         }
 
-        $line = $bg.AnsiUtils::truncateToWidth($text, $width, '…', pad: true)."\x1b[0m";
+        $line = $bg.AnsiUtils::truncateToWidth($text, $width, '…', pad: true).Sgr::RESET;
         $searchBg = $this->palette->of(Role::SearchBg);
         foreach ($result['ranges'] ?? [] as $range) {
             $start = $prefixWidth + $range['start'];
@@ -777,7 +778,7 @@ final class FindInFilesModal
     {
         $text = '' === $this->query->value() ? ' type to search…' : ' no results';
 
-        return $this->palette->of(Role::PopupRow).$this->palette->of(Role::CompletionHint).AnsiUtils::truncateToWidth($text, $width, '', pad: true)."\x1b[0m";
+        return $this->palette->of(Role::PopupRow).$this->palette->of(Role::CompletionHint).AnsiUtils::truncateToWidth($text, $width, '', pad: true).Sgr::RESET;
     }
 
     /** The footer hint row; the action words are clickable/hoverable zones. */
@@ -792,7 +793,7 @@ final class FindInFilesModal
         foreach (['Find window' => 'find_window', 'Scope' => 'footer_scope', 'Close' => 'close'] as $label => $name) {
             $this->footerZones[] = ['name' => $name, 'start' => $col, 'end' => $col + mb_strwidth($label)];
             $line .= $name === $this->hovered
-                ? $this->palette->of(Role::RowHighlightBg).$this->palette->of(Role::Bright).$label."\x1b[0m".$bg.$dim
+                ? $this->palette->of(Role::RowHighlightBg).$this->palette->of(Role::Bright).$label.Sgr::RESET.$bg.$dim
                 : $label;
             $col += mb_strwidth($label);
             if ('close' !== $name) {
@@ -801,7 +802,7 @@ final class FindInFilesModal
             }
         }
 
-        return $bg.$dim.AnsiUtils::truncateToWidth($line, $width, '…', pad: true)."\x1b[0m";
+        return $bg.$dim.AnsiUtils::truncateToWidth($line, $width, '…', pad: true).Sgr::RESET;
     }
 
     /**

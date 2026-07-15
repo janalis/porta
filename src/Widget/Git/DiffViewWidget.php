@@ -15,6 +15,7 @@ use Porta\Ui\ColorPalette;
 use Porta\Ui\LtrPane;
 use Porta\Ui\Palette;
 use Porta\Ui\Role;
+use Porta\Ui\Sgr;
 use Porta\Widget\FillsPaneTrait;
 use Porta\Widget\InputHook;
 use Porta\Widget\PaneNavigationCallbacks;
@@ -733,7 +734,7 @@ final class DiffViewWidget extends AbstractWidget implements FocusableInterface,
         $lines = [$this->renderToolbar($title, $width)];
 
         if (null === $this->document || [] === $this->rows) {
-            $message = $this->palette->of(Role::Dim).' '.$this->translator->trans($this->placeholder)."\x1b[0m";
+            $message = $this->palette->of(Role::Dim).' '.$this->translator->trans($this->placeholder).Sgr::RESET;
             $lines[] = AnsiUtils::truncateToWidth($message, $width, '…', pad: true);
             while (\count($lines) < $rows) {
                 $lines[] = str_repeat(' ', max(0, $width));
@@ -797,7 +798,7 @@ final class DiffViewWidget extends AbstractWidget implements FocusableInterface,
         // Re-apply the bg after any reset inside the span (syntax SGR resets,
         // truncateToWidth's pad boundary) — without it the highlight dies
         // mid-selection on highlighted lines.
-        return $end <= $start ? $line : LineDecorator::apply($line, $start, $end, $this->palette->of(Role::SelectionBg), "\x1b[49m", $this->palette->of(Role::SelectionBg));
+        return $end <= $start ? $line : LineDecorator::apply($line, $start, $end, $this->palette->of(Role::SelectionBg), Sgr::DEFAULT_BG, $this->palette->of(Role::SelectionBg));
     }
 
     /**
@@ -817,7 +818,7 @@ final class DiffViewWidget extends AbstractWidget implements FocusableInterface,
         $startCol = mb_strwidth(substr($line->text, offset: 0, length: $from));
         $endCol = $startCol + mb_strwidth(substr($line->text, $from, $to - $from));
 
-        return LineDecorator::apply($rendered, $startCol, $endCol, $bg, "\x1b[49m", $bg);
+        return LineDecorator::apply($rendered, $startCol, $endCol, $bg, Sgr::DEFAULT_BG, $bg);
     }
 
     /** Whether $rowIndex sits inside the armed `v` range. */
@@ -854,11 +855,11 @@ final class DiffViewWidget extends AbstractWidget implements FocusableInterface,
             $tagWidth = mb_strwidth($tag['label']);
             $this->buttonZones[] = ['name' => $tag['name'], 'start' => $col, 'end' => $col + $tagWidth];
             $style = $tag['on'] ? $this->palette->of(Role::SelectedRow) : $this->palette->of(Role::TagOffBg).$this->palette->of(Role::Muted);
-            $rendered .= $style.$tag['label']."\x1b[0m".$this->palette->of(Role::HeaderBar)."\x1b[1m".' ';
+            $rendered .= $style.$tag['label'].Sgr::RESET.$this->palette->of(Role::HeaderBar).Sgr::BOLD.' ';
             $col += $tagWidth + 1;
         }
 
-        return $this->palette->of(Role::HeaderBar)."\x1b[1m".$left.$rendered."\x1b[0m";
+        return $this->palette->of(Role::HeaderBar).Sgr::BOLD.$left.$rendered.Sgr::RESET;
     }
 
     /** @param array{kind: string, hunk: int, line?: int, left?: int, right?: int} $row */
@@ -868,7 +869,7 @@ final class DiffViewWidget extends AbstractWidget implements FocusableInterface,
         $hunk = $this->document->hunks[$row['hunk']];
 
         if ('hunk' === $row['kind']) {
-            return $this->palette->of(Role::Hunk).AnsiUtils::truncateToWidth(' '.$hunk->header(), $width, '…', pad: true)."\x1b[0m";
+            return $this->palette->of(Role::Hunk).AnsiUtils::truncateToWidth(' '.$hunk->header(), $width, '…', pad: true).Sgr::RESET;
         }
         if ('pair' === $row['kind']) {
             $leftW = intdiv($width - 1, num2: 2);
@@ -878,9 +879,9 @@ final class DiffViewWidget extends AbstractWidget implements FocusableInterface,
                 $this->renderHalf($row['hunk'], $row['left'] ?? -1, $leftW, DiffSide::Old)
                 .$this->palette->of(Role::Gutter)
                 .'│'
-                ."\x1b[39m"
+                .Sgr::DEFAULT_FG
                 .$this->renderHalf($row['hunk'], $row['right'] ?? -1, $rightW, DiffSide::New)
-                ."\x1b[0m"
+                .Sgr::RESET
             );
         }
 
@@ -891,11 +892,11 @@ final class DiffViewWidget extends AbstractWidget implements FocusableInterface,
             .' '
             .str_pad(null === $line->newNo ? '' : (string) $line->newNo, length: 4, pad_string: ' ', pad_type: \STR_PAD_LEFT)
             .' │'
-            ."\x1b[39m";
+            .Sgr::DEFAULT_FG;
 
         [$marker, $text] = $this->lineBody($line, $row['hunk'].':'.($row['line'] ?? -1));
 
-        return $gutter.$marker.$this->scrolledText($text, max(1, $width - 12))."\x1b[0m";
+        return $gutter.$marker.$this->scrolledText($text, max(1, $width - 12)).Sgr::RESET;
     }
 
     /**
@@ -910,7 +911,7 @@ final class DiffViewWidget extends AbstractWidget implements FocusableInterface,
     private function lineBody(DiffLine $line, string $key): array
     {
         return match ($line->origin) {
-            '+' => [$this->palette->of(Role::Added).'+'."\x1b[39m", $this->withEmphasis($this->highlighted[$key] ?? $line->text, $line, $this->palette->of(Role::AddEmphasisBg))],
+            '+' => [$this->palette->of(Role::Added).'+'.Sgr::DEFAULT_FG, $this->withEmphasis($this->highlighted[$key] ?? $line->text, $line, $this->palette->of(Role::AddEmphasisBg))],
             '-' => [$this->palette->of(Role::Deleted).'-', $this->withEmphasis($line->text, $line, $this->palette->of(Role::DelEmphasisBg))],
             '\\' => [$this->palette->of(Role::Dim).' ', $line->text],
             default => [' ', $this->highlighted[$key] ?? $line->text],
@@ -946,11 +947,11 @@ final class DiffViewWidget extends AbstractWidget implements FocusableInterface,
         }
         $line = $this->document->hunks[$hunkIndex]->lines[$lineIndex];
         $no = $side->lineNo($line);
-        $gutter = $this->palette->of(Role::Gutter).str_pad(null === $no ? '' : (string) $no, length: 4, pad_string: ' ', pad_type: \STR_PAD_LEFT).' '."\x1b[39m";
+        $gutter = $this->palette->of(Role::Gutter).str_pad(null === $no ? '' : (string) $no, length: 4, pad_string: ' ', pad_type: \STR_PAD_LEFT).' '.Sgr::DEFAULT_FG;
 
         [$marker, $text] = $this->lineBody($line, $hunkIndex.':'.$lineIndex);
 
-        return $gutter.$marker.$this->scrolledText($text, max(1, $width - 6))."\x1b[39m";
+        return $gutter.$marker.$this->scrolledText($text, max(1, $width - 6)).Sgr::DEFAULT_FG;
     }
 
     /** @return array<string, string[]> */

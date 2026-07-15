@@ -11,6 +11,7 @@ use Porta\Ui\ColorPalette;
 use Porta\Ui\CursorStyle;
 use Porta\Ui\Palette;
 use Porta\Ui\Role;
+use Porta\Ui\Sgr;
 use Symfony\Component\Tui\Ansi\AnsiUtils;
 
 /**
@@ -104,7 +105,7 @@ final readonly class EditorRowAssembler
             $lineIndex = $this->foldModel->docLineAtRow($vScroll, $row);
 
             if (null === $lineIndex) {
-                $result[] = $this->palette->of(Role::Placeholder).str_pad('~', max(0, $geo->gutterWidth))."\x1b[0m".str_repeat(' ', max(0, $geo->contentWidth)).$stripe[$stickyCount + $row];
+                $result[] = $this->palette->of(Role::Placeholder).str_pad('~', max(0, $geo->gutterWidth)).Sgr::RESET.str_repeat(' ', max(0, $geo->contentWidth)).$stripe[$stickyCount + $row];
                 continue;
             }
 
@@ -196,10 +197,10 @@ final readonly class EditorRowAssembler
         // then the breakpoint dot, then the worst diagnostic's severity glyph —
         // so each state also reads without color.
         $marker = match (true) {
-            $lineIndex === $this->debugLine => $this->palette->of(Role::Breakpoint).'▶'."\x1b[39m",
-            ($this->conditionalBreakpointSet[$lineIndex] ?? null) !== null => $this->palette->of(Role::Breakpoint).'◆'."\x1b[39m",
-            ($this->breakpointSet[$lineIndex] ?? null) !== null => $this->palette->of(Role::Breakpoint).'●'."\x1b[39m",
-            [] !== $lineDiags => $numColor.DiagnosticStyle::glyph(DiagnosticStyle::worst($lineDiags))."\x1b[39m",
+            $lineIndex === $this->debugLine => $this->palette->of(Role::Breakpoint).'▶'.Sgr::DEFAULT_FG,
+            ($this->conditionalBreakpointSet[$lineIndex] ?? null) !== null => $this->palette->of(Role::Breakpoint).'◆'.Sgr::DEFAULT_FG,
+            ($this->breakpointSet[$lineIndex] ?? null) !== null => $this->palette->of(Role::Breakpoint).'●'.Sgr::DEFAULT_FG,
+            [] !== $lineDiags => $numColor.DiagnosticStyle::glyph(DiagnosticStyle::worst($lineDiags)).Sgr::DEFAULT_FG,
             default => ' ',
         };
         // Relative line numbers: distance from the cursor line, absolute on

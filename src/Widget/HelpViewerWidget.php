@@ -14,6 +14,7 @@ use Porta\Ui\ColorPalette;
 use Porta\Ui\LtrPane;
 use Porta\Ui\Palette;
 use Porta\Ui\Role;
+use Porta\Ui\Sgr;
 use Porta\Widget\Render\MenuOverlayHost;
 use Porta\Widget\Render\MenuOverlayHostTrait;
 use Symfony\Component\Tui\Ansi\AnsiUtils;
@@ -213,8 +214,8 @@ final class HelpViewerWidget extends AbstractWidget implements FocusableInterfac
         }
 
         $hasColor = $this->palette->hasColor();
-        $bold = $hasColor ? "\x1b[1m" : '';
-        $unbold = $hasColor ? "\x1b[22m" : '';
+        $bold = $hasColor ? Sgr::BOLD : '';
+        $unbold = $hasColor ? Sgr::NORMAL_INTENSITY : '';
         $text = ' ';
         $col = 1;
         foreach ([['back', '‹', [] !== $this->history], ['forward', '›', [] !== $this->forward]] as [$action, $glyph, $active]) {

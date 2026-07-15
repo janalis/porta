@@ -12,6 +12,7 @@ use Porta\Ui\ColorPalette;
 use Porta\Ui\CursorStyle;
 use Porta\Ui\Palette;
 use Porta\Ui\Role;
+use Porta\Ui\Sgr;
 use Porta\Ui\TextField;
 use Porta\Widget\Render\EditorRenderer;
 use Porta\Widget\Render\PaneFocus;
@@ -467,9 +468,9 @@ final class OverlayHost
             $text = ' '.$this->prompt['label'].': '.$this->prompt['value']->value();
             $width = min($columns, max(30, mb_strwidth($text) + 4));
             $rendered = ' '.$this->prompt['label'].': '.$this->prompt['value']->render(cursor: $focused);
-            $box = $this->palette->of(Role::HeaderBar).$this->palette->of(Role::Bright).AnsiUtils::truncateToWidth($rendered.' ', $width, '…', pad: true)."\x1b[0m";
+            $box = $this->palette->of(Role::HeaderBar).$this->palette->of(Role::Bright).AnsiUtils::truncateToWidth($rendered.' ', $width, '…', pad: true).Sgr::RESET;
             $tail = AnsiUtils::sliceByColumn($lines[0] ?? '', $width, $columns - $width);
-            $lines[0] = AnsiText::padRight($box.$tail."\x1b[0m", $columns);
+            $lines[0] = AnsiText::padRight($box.$tail.Sgr::RESET, $columns);
         }
 
         /** @var list<string> $lines writing index 0 keeps the shape */

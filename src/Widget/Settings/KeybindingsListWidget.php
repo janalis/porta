@@ -12,6 +12,7 @@ use Porta\Ui\ListNavigation;
 use Porta\Ui\ListSelection;
 use Porta\Ui\Palette;
 use Porta\Ui\Role;
+use Porta\Ui\Sgr;
 use Porta\Ui\ShortcutFormatter;
 use Porta\Widget\FillsPaneTrait;
 use Porta\Widget\HoverTrait;
@@ -194,7 +195,7 @@ final class KeybindingsListWidget extends AbstractWidget implements FocusableInt
         $this->lastRows = $rows;
 
         $title = ' '.$this->translator->trans('Keybindings — %count% actions · Enter to rebind', ['%count%' => \count($this->rows)]);
-        $lines = [$this->palette->of(Role::HeaderBar)."\x1b[1m".AnsiUtils::truncateToWidth($title, $width, '…', pad: true)."\x1b[0m"];
+        $lines = [$this->palette->of(Role::HeaderBar).Sgr::BOLD.AnsiUtils::truncateToWidth($title, $width, '…', pad: true).Sgr::RESET];
 
         $scroll = $this->list->follow($rows - 1);
         for ($row = 1; $row < $rows; ++$row) {
@@ -218,13 +219,13 @@ final class KeybindingsListWidget extends AbstractWidget implements FocusableInt
             $rightWidth = '' === $shortcut ? 1 : mb_strwidth($shortcut);
             if ($index === $this->capturingIndex) {
                 $prompt = $this->translator->trans('Press a key… (Esc to cancel)');
-                $right = $this->palette->of(Role::Modified).$prompt."\x1b[39m";
+                $right = $this->palette->of(Role::Modified).$prompt.Sgr::DEFAULT_FG;
                 $rightWidth = mb_strwidth($prompt);
             }
 
             $labelWidth = max(0, $width - $rightWidth - 2);
             $label = AnsiUtils::truncateToWidth(' '.$entry->label, $labelWidth, '…', pad: true);
-            $lines[] = $bg.$label.' '.$right.' '."\x1b[0m";
+            $lines[] = $bg.$label.' '.$right.' '.Sgr::RESET;
         }
 
         return $this->withMenuOverlay($lines, $width);

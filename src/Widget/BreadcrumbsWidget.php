@@ -8,6 +8,7 @@ use Porta\Container\AsWidget;
 use Porta\Ui\ColorPalette;
 use Porta\Ui\Palette;
 use Porta\Ui\Role;
+use Porta\Ui\Sgr;
 use Porta\Widget\Render\MenuOverlayHost;
 use Porta\Widget\Render\MenuOverlayHostTrait;
 use Symfony\Component\Tui\Ansi\AnsiUtils;
@@ -35,7 +36,7 @@ final class BreadcrumbsWidget extends AbstractWidget implements MenuOverlayHost
     /** The ` › ` scope separator, dimmed (visible width 3). */
     private function separator(): string
     {
-        return $this->palette->of(Role::Gutter).' › '."\x1b[39m";
+        return $this->palette->of(Role::Gutter).' › '.Sgr::DEFAULT_FG;
     }
 
     /** @var (callable(): list<array{label: string, line: int}>)|null */
@@ -87,12 +88,12 @@ final class BreadcrumbsWidget extends AbstractWidget implements MenuOverlayHost
             $width = mb_strwidth($label);
             $this->lastLayout[] = ['start' => $col, 'width' => $width, 'line' => $crumb['line']];
             $content .= $i === $last
-                ? $this->palette->of(Role::Emphasis)."\x1b[1m".$label."\x1b[22m\x1b[39m" // current scope: bright + bold
-                : $this->palette->of(Role::Muted).$label."\x1b[39m";
+                ? $this->palette->of(Role::Emphasis).Sgr::BOLD.$label."\x1b[22m\x1b[39m" // current scope: bright + bold
+                : $this->palette->of(Role::Muted).$label.Sgr::DEFAULT_FG;
             $col += $width;
         }
 
-        return $this->withMenuOverlay([AnsiUtils::truncateToWidth($content, $columns, '…', pad: true)."\x1b[0m"], $columns);
+        return $this->withMenuOverlay([AnsiUtils::truncateToWidth($content, $columns, '…', pad: true).Sgr::RESET], $columns);
     }
 
     /** The jump line of the crumb at column $col of the last render, or null. */

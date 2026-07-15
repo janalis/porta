@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Porta\Terminal;
 
 use Porta\Support\AnsiText;
+use Porta\Ui\Sgr;
 use Symfony\Component\Tui\Ansi\AnsiUtils;
 
 /**
@@ -122,7 +123,7 @@ final class TerminalBuffer
         // follows even across a carriage-return overwrite. A full reset
         // collapses the accumulated state to keep it bounded.
         if (str_ends_with($code, 'm') && str_starts_with($code, "\x1b[")) {
-            $this->pendingSgr = "\x1b[0m" === $code || "\x1b[m" === $code ? $code : $this->pendingSgr.$code;
+            $this->pendingSgr = Sgr::RESET === $code || "\x1b[m" === $code ? $code : $this->pendingSgr.$code;
 
             return;
         }

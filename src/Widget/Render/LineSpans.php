@@ -8,6 +8,7 @@ use Porta\Editor\DiagnosticStyle;
 use Porta\Editor\Document;
 use Porta\Ui\Palette;
 use Porta\Ui\Role;
+use Porta\Ui\Sgr;
 
 /**
  * Pure builder for one content line's decoration spans, gathered in layering
@@ -50,8 +51,8 @@ final class LineSpans
         foreach ($matches as $match) {
             // The current match is additionally bold, so it stands out from the
             // other matches without relying on the background color.
-            $open = $match['current'] ? $palette->of(Role::SearchCurrentBg)."\x1b[1m" : $palette->of(Role::SearchBg);
-            $close = $match['current'] ? "\x1b[49m\x1b[22m" : "\x1b[49m";
+            $open = $match['current'] ? $palette->of(Role::SearchCurrentBg).Sgr::BOLD : $palette->of(Role::SearchBg);
+            $close = $match['current'] ? "\x1b[49m\x1b[22m" : Sgr::DEFAULT_BG;
             $spans[] = [$doc->displayColAt($lineIndex, $match['start']), $doc->displayColAt($lineIndex, $match['end']), $open, $close, $open];
         }
         foreach ($occurrences as [$oLine, $oStart, $oEnd]) {
@@ -59,7 +60,7 @@ final class LineSpans
                 continue;
             }
 
-            $spans[] = [$oStart, $oEnd, $palette->of(Role::OccurrenceBg), "\x1b[49m", $palette->of(Role::OccurrenceBg)];
+            $spans[] = [$oStart, $oEnd, $palette->of(Role::OccurrenceBg), Sgr::DEFAULT_BG, $palette->of(Role::OccurrenceBg)];
         }
         if (null !== $brackets) {
             foreach ($brackets as [$bLine, $bDispCol]) {
@@ -89,7 +90,7 @@ final class LineSpans
             // The caret cell (reverse video), for the primary and extras alike.
             if ($caret['line'] === $lineIndex) {
                 $col = $doc->displayColAt($lineIndex, $caret['col']);
-                $spans[] = [$col, $col + 1, "\x1b[7m", "\x1b[27m", null];
+                $spans[] = [$col, $col + 1, Sgr::REVERSE, "\x1b[27m", null];
                 // An end-of-line caret needs a padded cell to invert.
                 $padTo = max($padTo, $col + 1);
             }
@@ -110,7 +111,7 @@ final class LineSpans
         $startDisp = $lineIndex === $startLine ? $doc->displayColAt($lineIndex, $startCol) : 0;
         $endDisp = $lineIndex === $endLine ? $doc->displayColAt($lineIndex, $endCol) : $doc->lineDisplayWidth($lineIndex);
 
-        return [$startDisp, $endDisp, $palette->of(Role::SelectionBg), "\x1b[49m", $palette->of(Role::SelectionBg)];
+        return [$startDisp, $endDisp, $palette->of(Role::SelectionBg), Sgr::DEFAULT_BG, $palette->of(Role::SelectionBg)];
     }
 
     /**

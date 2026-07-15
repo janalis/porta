@@ -13,6 +13,7 @@ use Porta\Ui\CursorStyle;
 use Porta\Ui\LtrPane;
 use Porta\Ui\Palette;
 use Porta\Ui\Role;
+use Porta\Ui\Sgr;
 use Symfony\Component\Tui\Ansi\AnsiUtils;
 use Symfony\Component\Tui\Input\Key;
 use Symfony\Component\Tui\Render\RenderContext;
@@ -259,7 +260,7 @@ final class TerminalPanelWidget extends OverlayWidget implements FocusableInterf
         $window = \array_slice($all, $start, $bodyRows);
 
         foreach ($window as $line) {
-            $lines[] = AnsiUtils::truncateToWidth($line, $columns, '', pad: true)."\x1b[0m";
+            $lines[] = AnsiUtils::truncateToWidth($line, $columns, '', pad: true).Sgr::RESET;
         }
         // Pad to a stable height.
         for ($i = \count($window); $i < $bodyRows; ++$i) {
@@ -326,10 +327,10 @@ final class TerminalPanelWidget extends OverlayWidget implements FocusableInterf
             if (($used + $part['width']) > $columns) {
                 break;
             }
-            $style = $part['active'] ? $this->palette->of(Role::Toolbar).$this->palette->of(Role::Bright)."\x1b[1m" : $this->palette->of(Role::Toolbar).$this->palette->of(Role::Subtle);
+            $style = $part['active'] ? $this->palette->of(Role::Toolbar).$this->palette->of(Role::Bright).Sgr::BOLD : $this->palette->of(Role::Toolbar).$this->palette->of(Role::Subtle);
             $closeStyle = $part['active'] ? $this->palette->of(Role::CurrentLineNumber) : $this->palette->of(Role::Gutter);
-            $text = str_replace('×', $closeStyle.'×'."\x1b[39m", $part['text']);
-            $line .= $style.$text."\x1b[0m".$this->palette->of(Role::Placeholder)."│\x1b[0m";
+            $text = str_replace('×', $closeStyle.'×'.Sgr::DEFAULT_FG, $part['text']);
+            $line .= $style.$text.Sgr::RESET.$this->palette->of(Role::Placeholder)."│\x1b[0m";
             $this->lastTabLayout[] = ['index' => $index, 'start' => $used, 'width' => $part['width'], 'closeStart' => $used + $part['closeOffset'], 'closeWidth' => 2];
             $used += $part['width'];
         }
@@ -338,7 +339,7 @@ final class TerminalPanelWidget extends OverlayWidget implements FocusableInterf
         }
 
         // A Toolbar-background base under the whole row, then the styled tabs.
-        return $this->palette->of(Role::Toolbar).AnsiText::padRight($line, $columns)."\x1b[0m";
+        return $this->palette->of(Role::Toolbar).AnsiText::padRight($line, $columns).Sgr::RESET;
     }
 
     /** @return array<string, string[]> */

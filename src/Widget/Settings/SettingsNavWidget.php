@@ -12,6 +12,7 @@ use Porta\Ui\ColorPalette;
 use Porta\Ui\ListSelection;
 use Porta\Ui\Palette;
 use Porta\Ui\Role;
+use Porta\Ui\Sgr;
 use Porta\Widget\FillsPaneTrait;
 use Porta\Widget\HoverTrait;
 use Porta\Widget\InputHook;
@@ -254,9 +255,9 @@ final class SettingsNavWidget extends AbstractWidget implements FocusableInterfa
                 $lines[] =
                     $this->palette->of(Role::Toolbar)
                     .$this->palette->of(Role::Dim)
-                    ."\x1b[1m"
+                    .Sgr::BOLD
                     .AnsiUtils::truncateToWidth(' '.$this->translator->trans($entry['label']), $width, '…', pad: true)
-                    ."\x1b[0m";
+                    .Sgr::RESET;
                 continue;
             }
 
@@ -270,7 +271,7 @@ final class SettingsNavWidget extends AbstractWidget implements FocusableInterfa
             // Language and plugin sub-items indent under their section and keep
             // their own (untranslated) names.
             $text = \in_array($entry['kind'], ['language', 'plugin'], strict: true) ? '   '.$entry['label'] : ' '.$this->translator->trans($entry['label']);
-            $lines[] = $bg.AnsiUtils::truncateToWidth($text, $width, '…', pad: true)."\x1b[0m";
+            $lines[] = $bg.AnsiUtils::truncateToWidth($text, $width, '…', pad: true).Sgr::RESET;
         }
 
         return $this->withMenuOverlay($lines, $width);

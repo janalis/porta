@@ -17,7 +17,7 @@ final class MonochromePalette implements Palette
     public function of(Role $role): string
     {
         return match ($role) {
-            Role::SelectedRow => "\x1b[7m",
+            Role::SelectedRow => Sgr::REVERSE,
             Role::SelectedRowUnfocused => "\x1b[2;7m",
             default => '',
         };
@@ -30,7 +30,7 @@ final class MonochromePalette implements Palette
 
     public function reset(): string
     {
-        return "\x1b[0m";
+        return Sgr::RESET;
     }
 
     public function hasColor(): bool

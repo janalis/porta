@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Porta\Highlight;
 
+use Porta\Ui\Sgr;
 use Symfony\Component\Tui\Ansi\AnsiCodeTracker;
 use Tempest\Highlight\Highlighter;
 use Tempest\Highlight\TerminalTheme;
@@ -209,7 +210,7 @@ final class CodeHighlighter
         foreach ($hlLines as $line) {
             $prefix = $tracker->getActiveCodes();
             $tracker->processText($line);
-            $result[] = $prefix.$line.($tracker->hasActiveCodes() ? "\x1b[0m" : '');
+            $result[] = $prefix.$line.($tracker->hasActiveCodes() ? Sgr::RESET : '');
         }
 
         ++$this->fullParses;
