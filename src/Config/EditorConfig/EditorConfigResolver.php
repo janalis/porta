@@ -25,7 +25,7 @@ final class EditorConfigResolver
         while (true) {
             $path = ('/' === $dir ? '' : $dir).'/.editorconfig';
             if (is_file($path)) {
-                $parsed = EditorConfigParser::parse((string) @file_get_contents($path));
+                $parsed = EditorConfigParser::parse((string) file_get_contents($path));
                 $collected[] = ['dir' => $dir, 'parsed' => $parsed];
                 if ($parsed['root']) {
                     break;
@@ -47,10 +47,12 @@ final class EditorConfigResolver
         foreach (array_reverse($collected) as $entry) {
             $relative = self::relativePath($entry['dir'], $file);
             foreach ($entry['parsed']['sections'] as $section) {
-                if (EditorConfigGlob::matches($section['glob'], $relative)) {
-                    foreach ($section['props'] as $key => $value) {
-                        $props[$key] = $value;
-                    }
+                if (!EditorConfigGlob::matches($section['glob'], $relative)) {
+                    continue;
+                }
+
+                foreach ($section['props'] as $key => $value) {
+                    $props[$key] = $value;
                 }
             }
         }

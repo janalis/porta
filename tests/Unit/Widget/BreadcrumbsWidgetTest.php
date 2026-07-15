@@ -58,7 +58,7 @@ final class BreadcrumbsWidgetTest extends TestCase
     {
         $bar = new BreadcrumbsWidget();
         $crumbs = [['label' => 'A', 'line' => 0]];
-        $bar->setProvider(function () use (&$crumbs): array {
+        $bar->setProvider(static function () use (&$crumbs): array {
             return $crumbs;
         });
 

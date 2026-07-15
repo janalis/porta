@@ -56,13 +56,13 @@ final class DapSession
      */
     public function start(array $launchArguments): bool
     {
-        $this->client->onEvent('initialized', fn () => $this->sendConfiguration());
+        $this->client->onEvent('initialized', $this->sendConfiguration(...));
         $this->client->onEvent(
             'stopped',
             /** @param array<string, mixed> $body */
-            fn (array $body) => $this->handleStopped($body),
+            $this->handleStopped(...),
         );
-        $this->client->onEvent('continued', fn () => $this->markRunning());
+        $this->client->onEvent('continued', $this->markRunning(...));
         $this->client->onEvent('output', function (array $body): void {
             $category = \is_string($body['category'] ?? null) ? $body['category'] : 'console';
             $text = \is_string($body['output'] ?? null) ? $body['output'] : '';
@@ -70,9 +70,9 @@ final class DapSession
                 $this->observer->onOutput($category, $text);
             }
         });
-        $this->client->onEvent('terminated', fn () => $this->handleTerminated());
-        $this->client->onEvent('exited', fn () => $this->handleTerminated());
-        $this->client->onClose(fn () => $this->handleTerminated());
+        $this->client->onEvent('terminated', $this->handleTerminated(...));
+        $this->client->onEvent('exited', $this->handleTerminated(...));
+        $this->client->onClose($this->handleTerminated(...));
 
         if (!$this->client->start()) {
             $this->state = DebugState::Terminated;
@@ -142,16 +142,17 @@ final class DapSession
                 }
                 if ($supported) {
                     $entry[$field] = $breakpoint[$field];
-                } else {
-                    $this->observer->onOutput('console', \sprintf("Breakpoint at %s:%d: the adapter does not support '%s' — set unconditionally.\n", $path, $breakpoint['line'] + 1, $field));
+
+                    continue;
                 }
+                $this->observer->onOutput('console', \sprintf("Breakpoint at %s:%d: the adapter does not support '%s' — set unconditionally.\n", $path, $breakpoint['line'] + 1, $field));
             }
             $wire[] = $entry;
         }
         // Run-to-cursor's one-shot rides along on every send for its file, so
         // a user toggling another breakpoint mid-run cannot wipe it.
         $temp = $this->tempBreakpoint;
-        if (null !== $temp && $temp['path'] === $path && !\in_array($temp['line'] + 1, array_column($wire, 'line'), true)) {
+        if (null !== $temp && $temp['path'] === $path && !\in_array($temp['line'] + 1, array_column($wire, 'line'), strict: true)) {
             $wire[] = ['line' => $temp['line'] + 1];
         }
         $this->client->request('setBreakpoints', [
@@ -212,7 +213,7 @@ final class DapSession
             return;
         }
         $existing = ($this->breakpointsProvider)()[$path] ?? [];
-        if (!\in_array($line, array_column($existing, 'line'), true)) {
+        if (!\in_array($line, array_column($existing, 'line'), strict: true)) {
             $this->tempBreakpoint = ['path' => $path, 'line' => $line];
             $this->setBreakpoints($path, $existing);
         }

@@ -55,14 +55,16 @@ final class FuzzyMatcher
                 $score += 3; // inside the primary segment
             }
             $prev = $pos > 0 ? $lowerHaystack[$pos - 1] : '';
-            if (0 === $pos || '/' === $prev || '_' === $prev || '-' === $prev || '.' === $prev) {
+            $wordBoundary = 0 === $pos || '/' === $prev || '_' === $prev || '-' === $prev || '.' === $prev;
+            if ($wordBoundary) {
                 $score += 4; // word-boundary start
-            } elseif (null !== $original && ctype_lower($original[$pos - 1]) && ctype_upper($original[$pos])) {
+            }
+            if (!$wordBoundary && null !== $original && ctype_lower($original[$pos - 1]) && ctype_upper($original[$pos])) {
                 $score += 4; // camelCase hump
             }
             $prevPos = $pos;
         }
 
-        return $score - intdiv($length, 10);
+        return $score - intdiv($length, num2: 10);
     }
 }

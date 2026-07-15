@@ -40,7 +40,7 @@ final class TerminalSessions
     /** Make an existing session active (by identity); a no-op if it isn't a member. */
     public function makeActive(TerminalSession $session): void
     {
-        $index = array_search($session, $this->sessions, true);
+        $index = array_search($session, $this->sessions, strict: true);
         if (false !== $index) {
             $this->active = $index;
         }
@@ -111,11 +111,11 @@ final class TerminalSessions
      */
     public function close(int $index): ?TerminalSession
     {
-        if (!isset($this->sessions[$index])) {
+        if (!array_key_exists($index, $this->sessions)) {
             return $this->active();
         }
         $this->sessions[$index]->stop();
-        array_splice($this->sessions, $index, 1);
+        array_splice($this->sessions, $index, length: 1);
         if ([] === $this->sessions) {
             $this->active = 0;
 

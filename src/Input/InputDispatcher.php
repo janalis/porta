@@ -72,12 +72,14 @@ final class InputDispatcher
         }
 
         foreach ($this->commands->keyBoundIds() as $id) {
-            if ($this->keybindings->matches($data, $id) && $this->commands->isEnabled($id)) {
-                $event->stopPropagation();
-                $this->commands->run($id);
-
-                return;
+            if (!($this->keybindings->matches($data, $id) && $this->commands->isEnabled($id))) {
+                continue;
             }
+
+            $event->stopPropagation();
+            $this->commands->run($id);
+
+            return;
         }
     }
 }

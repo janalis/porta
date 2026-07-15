@@ -20,7 +20,7 @@ final class CompletionController extends AbstractLspController implements Editor
         $this->lsp->scheduleDidChange(
             $doc,
             fn () => $this->editor->getFilePath(),
-            fn () => $this->requestInlayHints(),
+            $this->requestInlayHints(...),
         );
     }
 

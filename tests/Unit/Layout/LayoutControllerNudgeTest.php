@@ -67,7 +67,7 @@ final class LayoutControllerNudgeTest extends TestCase
         }
 
         /** @var array<string, int|bool> */
-        return json_decode((string) file_get_contents($file), true);
+        return json_decode((string) file_get_contents($file), associative: true);
     }
 
     public function testNudgeSidebarResizesTheTreeAndPersistsThePercent(): void

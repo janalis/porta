@@ -31,7 +31,7 @@ final class CommandRegistryTest extends TestCase
         $registry = new CommandRegistry();
         $registry
             ->add('save', static function (): void {})
-            ->add('debug_step_over', static function (): void {}, keyBound: true, when: function () use (&$enabled): bool {
+            ->add('debug_step_over', static function (): void {}, keyBound: true, when: static function () use (&$enabled): bool {
                 return $enabled;
             });
 

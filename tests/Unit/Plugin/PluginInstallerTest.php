@@ -37,7 +37,7 @@ final class PluginInstallerTest extends TestCase
         $elapsed = 0.0;
         while (null === $result && $elapsed < 5.0) {
             $suspension = EventLoop::getSuspension();
-            EventLoop::delay(0.02, static fn () => $suspension->resume());
+            EventLoop::delay(0.02, $suspension->resume(...));
             $suspension->suspend();
             $elapsed += 0.02;
         }
@@ -50,7 +50,7 @@ final class PluginInstallerTest extends TestCase
     private function sourceDir(string $name, bool $withPluginPhp = true): string
     {
         $dir = $this->project->dir.'/src-plugins/'.$name;
-        mkdir($dir, 0777, true);
+        mkdir($dir, permissions: 0o777, recursive: true);
         if ($withPluginPhp) {
             file_put_contents($dir.'/plugin.php', "<?php\n// {$name}\n");
         }
@@ -111,8 +111,8 @@ final class PluginInstallerTest extends TestCase
     public function testCopyFailureCleansUpTheDestination(): void
     {
         // The plugins base is an existing *file*: mirror() cannot create the dir.
-        mkdir($this->project->dir.'/.porta', 0777, true);
-        file_put_contents($this->project->dir.'/.porta/plugins', '');
+        mkdir($this->project->dir.'/.porta', permissions: 0o777, recursive: true);
+        file_put_contents($this->project->dir.'/.porta/plugins', data: '');
         [$error] = $this->install($this->installer(), $this->sourceDir('demo'));
         $this->assertStringContainsString('Cannot install into', (string) $error);
         $this->assertFileDoesNotExist($this->project->dir.'/.porta/plugins/demo');
@@ -148,7 +148,7 @@ final class PluginInstallerTest extends TestCase
         $elapsed = 0.0;
         while (null === $first && $elapsed < 5.0) {
             $suspension = EventLoop::getSuspension();
-            EventLoop::delay(0.02, static fn () => $suspension->resume());
+            EventLoop::delay(0.02, $suspension->resume(...));
             $suspension->suspend();
             $elapsed += 0.02;
         }
@@ -202,8 +202,8 @@ final class PluginInstallerTest extends TestCase
     public function testAPortaDevCheckoutClassifiesItsProjectPluginsAsEmbedded(): void
     {
         // rootDir/.porta/plugins IS the embedded dir (developing Porta itself).
-        mkdir($this->project->dir.'/.porta/plugins/bundled', 0777, true);
-        file_put_contents($this->project->dir.'/.porta/plugins/bundled/plugin.php', "<?php\n");
+        mkdir($this->project->dir.'/.porta/plugins/bundled', permissions: 0o777, recursive: true);
+        file_put_contents($this->project->dir.'/.porta/plugins/bundled/plugin.php', data: "<?php\n");
         $installer = new PluginInstaller($this->project->dir, null, new Translator('en'), null, $this->project->dir.'/.porta/plugins');
 
         $this->assertSame(

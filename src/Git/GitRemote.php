@@ -105,7 +105,8 @@ final class GitRemote
     private function run(array $args, callable $onDone): void
     {
         if (!$this->available) {
-            $onDone(false, 'git is not available');
+            $reason = 'git is not available';
+            $onDone(false, $reason);
 
             return;
         }
@@ -121,7 +122,8 @@ final class GitRemote
         });
         if (!$started) {
             // @codeCoverageIgnoreStart
-            $onDone(false, 'could not start git');
+            $reason = 'could not start git';
+            $onDone(false, $reason);
 
             return;
 

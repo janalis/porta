@@ -21,7 +21,7 @@ final class JsonRpcFramerTest extends TestCase
     {
         $frame = JsonRpcFramer::encode(['msg' => 'héllo⏎']);
         $this->assertSame(1, preg_match('/Content-Length: (\d+)/', $frame, $m));
-        [$header, $body] = explode("\r\n\r\n", $frame, 2);
+        [$header, $body] = explode("\r\n\r\n", $frame, limit: 2);
         $this->assertSame((int) $m[1], \strlen($body), 'length is the UTF-8 byte count');
     }
 
@@ -31,7 +31,7 @@ final class JsonRpcFramerTest extends TestCase
         $frame = JsonRpcFramer::encode(['id' => 7]);
 
         $messages = [];
-        foreach (str_split($frame, 3) as $chunk) {
+        foreach (str_split($frame, length: 3) as $chunk) {
             $messages = [...$messages, ...$framer->feed($chunk)];
         }
 

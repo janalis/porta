@@ -21,8 +21,13 @@ final class BreadcrumbScanner
      */
     public static function scan(string $source): array
     {
+        // Editing buffers are often mid-edit (unbalanced braces, partial
+        // syntax): swallow the tokenizer's warnings, keeping the tokens it
+        // still returns.
+        set_error_handler(static fn (): bool => true);
         /** @var list<array{0: int, 1: string, 2: int}|string> $tokens */
-        $tokens = @token_get_all($source);
+        $tokens = token_get_all($source);
+        restore_error_handler();
 
         /** @var list<array{label: string, startLine: int, endLine: int, kind: string}> $scopes */
         $scopes = [];
@@ -42,7 +47,7 @@ final class BreadcrumbScanner
         foreach ($tokens as $token) {
             if (\is_array($token)) {
                 [$id, $text, $tokLine] = $token;
-                $maxLine = max($maxLine, $tokLine + substr_count($text, "\n"));
+                $maxLine = max($maxLine, $tokLine + substr_count($text, needle: "\n"));
 
                 if (\T_WHITESPACE === $id || \T_COMMENT === $id || \T_DOC_COMMENT === $id) {
                     continue; // insignificant: leave $prev/$declKind untouched
@@ -63,13 +68,14 @@ final class BreadcrumbScanner
 
                 if (\T_NAMESPACE === $id) {
                     $nsPending = ['label' => '', 'startLine' => $tokLine, 'kind' => 'namespace'];
-                } elseif (\T_CLASS === $id) {
-                    if (\T_DOUBLE_COLON !== $prev && \T_NEW !== $prev) {
-                        $declKind = 'type';
-                    }
-                } elseif (\T_INTERFACE === $id || \T_TRAIT === $id || \T_ENUM === $id) {
+                }
+                if (\T_CLASS === $id && \T_DOUBLE_COLON !== $prev && \T_NEW !== $prev) {
                     $declKind = 'type';
-                } elseif (\T_FUNCTION === $id && \T_USE !== $prev) {
+                }
+                if (\T_INTERFACE === $id || \T_TRAIT === $id || \T_ENUM === $id) {
+                    $declKind = 'type';
+                }
+                if (\T_FUNCTION === $id && \T_USE !== $prev) {
                     $declKind = 'function';
                 }
 
@@ -80,22 +86,31 @@ final class BreadcrumbScanner
             // Single-character token ({ } ; ( …): no line number of its own.
             $declKind = null; // a decl name is an array token; a symbol here means anonymous
             $prev = $token;
+            // @mago-expect lint:no-insecure-comparison -- $token is a lexer token, not sensitive data
             if ('{' === $token) {
                 if (null !== $nsPending && '' !== $nsPending['label']) {
                     $stack[] = $nsPending;
                     $nsPending = null;
-                } elseif (null !== $pending) {
+                    continue;
+                }
+                if (null !== $pending) {
                     $stack[] = $pending;
                     $pending = null;
-                } else {
-                    $stack[] = null;
+                    continue;
                 }
-            } elseif ('}' === $token) {
+                $stack[] = null;
+                continue;
+            }
+            // @mago-expect lint:no-insecure-comparison -- $token is a lexer token, not sensitive data
+            if ('}' === $token) {
                 $top = array_pop($stack);
                 if (\is_array($top)) {
                     $scopes[] = ['label' => $top['label'], 'startLine' => $top['startLine'], 'endLine' => $maxLine, 'kind' => $top['kind']];
                 }
-            } elseif (';' === $token) {
+                continue;
+            }
+            // @mago-expect lint:no-insecure-comparison -- $token is a lexer token, not sensitive data
+            if (';' === $token) {
                 if (null !== $nsPending && '' !== $nsPending['label']) {
                     $namespaces[] = $nsPending;
                 }
@@ -116,12 +131,12 @@ final class BreadcrumbScanner
             $scopes[] = [
                 'label' => $ns['label'],
                 'startLine' => $ns['startLine'],
-                'endLine' => isset($namespaces[$i + 1]) ? $namespaces[$i + 1]['startLine'] - 1 : $maxLine,
+                'endLine' => \array_key_exists($i + 1, $namespaces) ? $namespaces[$i + 1]['startLine'] - 1 : $maxLine,
                 'kind' => 'namespace',
             ];
         }
 
-        usort($scopes, static fn (array $a, array $b): int => $a['startLine'] <=> $b['startLine'] ?: $b['endLine'] <=> $a['endLine']);
+        usort($scopes, static fn (array $a, array $b): int => ($cmp = $a['startLine'] <=> $b['startLine']) ? $cmp : $b['endLine'] <=> $a['endLine']);
 
         return array_values($scopes);
     }
@@ -139,9 +154,11 @@ final class BreadcrumbScanner
         $line = $caretLine + 1; // scopes are 1-based (token space)
         $trail = [];
         foreach ($scopes as $scope) {
-            if ($scope['startLine'] <= $line && $line <= $scope['endLine']) {
-                $trail[] = ['label' => $scope['label'], 'line' => $scope['startLine'] - 1];
+            if (!($scope['startLine'] <= $line && $line <= $scope['endLine'])) {
+                continue;
             }
+
+            $trail[] = ['label' => $scope['label'], 'line' => $scope['startLine'] - 1];
         }
 
         return $trail;
@@ -168,6 +185,6 @@ final class BreadcrumbScanner
             }
         }
 
-        return \array_slice($headers, 0, max(0, $max));
+        return \array_slice($headers, offset: 0, length: max(0, $max));
     }
 }

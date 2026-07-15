@@ -60,7 +60,7 @@ final class GoToFileWidgetTest extends TestCase
     {
         $project = new TempProject(['a.php' => '']);
         $widget = $this->widget($project);
-        $this->type($widget, str_repeat('x', 100)); // overflow the 80-column bar
+        $this->type($widget, str_repeat('x', times: 100)); // overflow the 80-column bar
 
         $header = $widget->render(new RenderContext(80, 10))[0];
         $marker = AnsiUtils::cursorMarker(CursorShape::Bar);
@@ -79,7 +79,7 @@ final class GoToFileWidgetTest extends TestCase
         $widget = $this->widget($project);
 
         $picked = null;
-        $widget->onPick(function (string $path) use (&$picked): void {
+        $widget->onPick(static function (string $path) use (&$picked): void {
             $picked = $path;
         });
 
@@ -94,7 +94,7 @@ final class GoToFileWidgetTest extends TestCase
         $project = new TempProject(['aa.php' => '', 'ab.php' => '']);
         $widget = $this->widget($project);
         $picked = null;
-        $widget->onPick(function (string $path) use (&$picked): void {
+        $widget->onPick(static function (string $path) use (&$picked): void {
             $picked = $path;
         });
 
@@ -134,7 +134,7 @@ final class GoToFileWidgetTest extends TestCase
         $project = new TempProject(['a.php' => '']);
         $widget = $this->widget($project);
         $closed = false;
-        $widget->onClose(function () use (&$closed): void {
+        $widget->onClose(static function () use (&$closed): void {
             $closed = true;
         });
 
@@ -159,7 +159,7 @@ final class GoToFileWidgetTest extends TestCase
         $project = new TempProject(['aa.php' => '', 'ab.php' => '']);
         $widget = $this->widget($project);
         $picked = null;
-        $widget->onPick(function (string $path) use (&$picked): void {
+        $widget->onPick(static function (string $path) use (&$picked): void {
             $picked = $path;
         });
         $widget->render(new RenderContext(60, 12)); // establish geometry
@@ -174,7 +174,7 @@ final class GoToFileWidgetTest extends TestCase
         $project = new TempProject(['aa.php' => '']);
         $widget = $this->widget($project);
         $picked = false;
-        $widget->onPick(function () use (&$picked): void {
+        $widget->onPick(static function () use (&$picked): void {
             $picked = true;
         });
         $widget->render(new RenderContext(60, 12));

@@ -65,7 +65,7 @@ final class TextField
         if ('' === $this->value) {
             return false;
         }
-        $this->value = substr($this->value, 0, TextMetrics::prevCharBoundary($this->value, \strlen($this->value)));
+        $this->value = substr($this->value, offset: 0, length: TextMetrics::prevCharBoundary($this->value, \strlen($this->value)));
 
         return true;
     }
@@ -78,7 +78,7 @@ final class TextField
     public function render(bool $cursor, ?int $width = null): string
     {
         // Newlines (multiline query/replace) show as a visible ⏎ so the row stays one line.
-        $display = str_replace("\n", '⏎', $this->value);
+        $display = str_replace("\n", replace: '⏎', subject: $this->value);
         if ($cursor && null !== $width) {
             return AnsiText::caretWindow($display, AnsiUtils::visibleWidth($display), $width, $this->style->marker());
         }

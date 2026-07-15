@@ -245,7 +245,7 @@ final class SearchEverywhereControllerTest extends TestCase
         $this->controller($overlay, [], [], new BufferManager())->open();
 
         $activated = false;
-        $hit = new SearchHit(SearchCategory::Files, 'X', '', function () use (&$activated): void {
+        $hit = new SearchHit(SearchCategory::Files, 'X', '', static function () use (&$activated): void {
             $activated = true;
         });
         ($overlay->onPick)($hit);

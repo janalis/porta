@@ -38,7 +38,7 @@ final class ProjectSearchTest extends TestCase
         $results = null;
         $search->search(
             $query,
-            function (array $r) use (&$results): void {
+            static function (array $r) use (&$results): void {
                 $results = $r;
             },
             new SearchOptions($regex, $caseSensitive, $wholeWord),
@@ -49,7 +49,7 @@ final class ProjectSearchTest extends TestCase
         $elapsed = 0.0;
         while (null === $results && $elapsed < $timeout) {
             $suspension = EventLoop::getSuspension();
-            EventLoop::delay(0.02, static fn () => $suspension->resume());
+            EventLoop::delay(0.02, $suspension->resume(...));
             $suspension->suspend();
             $elapsed += 0.02;
         }
@@ -117,6 +117,22 @@ final class ProjectSearchTest extends TestCase
 
         $this->assertSame([0, 12], $search->matchOffsets('needle here needle', 'needle', new SearchOptions()));
         $this->assertSame([], $search->matchOffsets('', 'needle', new SearchOptions()), 'an empty line has no offsets');
+        // An invalid user regex makes preg_match_all fail → no offsets (no crash).
+        $this->assertSame([], $search->matchOffsets('needle', '(', new SearchOptions(regex: true)), 'a malformed regex yields no offsets');
+        // A pattern that also matches empty (`a*`) skips its zero-width hits and
+        // keeps only the real one (the leading 'a' at offset 0).
+        $this->assertSame([0], $search->matchOffsets('abc', 'a*', new SearchOptions(regex: true)), 'zero-width matches are skipped');
+    }
+
+    public function testMultilineScanSkipsFilesThatBlowThePcreBacktrackLimit(): void
+    {
+        // A catastrophic-backtracking regex that is valid against '' but exceeds
+        // the PCRE backtrack limit on the file's long run: preg_match_all returns
+        // false for that file, which the whole-file scan skips (no results).
+        $project = new TempProject(['src/A.php' => str_repeat('a', times: 30)."!\nz\n"]);
+        $results = $this->await(new ProjectSearch($project->dir), "(a+)+\nz", regex: true);
+
+        $this->assertSame([], $results);
     }
 
     public function testMultilineQueryMatchesAcrossLinesWithAPreview(): void
@@ -177,7 +193,7 @@ final class ProjectSearchTest extends TestCase
         $project = $this->fixtures();
         // Also exercise the binary-file and oversized-file skips
         $project->write('src/bin.dat', "nee\0dle");
-        $project->write('src/huge.txt', str_repeat('needle filler ', 80_000)); // > 1 MB, skipped
+        $project->write('src/huge.txt', str_repeat('needle filler ', times: 80_000)); // > 1 MB, skipped
         putenv('PATH=/nonexistent');
 
         $results = $this->await(new ProjectSearch($project->dir), 'needle');
@@ -361,7 +377,7 @@ final class ProjectSearchTest extends TestCase
     {
         $tools = new TempProject([], 'porta-badgrep-');
         $badGrep = $tools->write('grep', "\x00\x01 not an executable format");
-        chmod($badGrep, 0755);
+        chmod($badGrep, permissions: 0o755);
         putenv('PATH='.$tools->dir);
 
         $project = $this->fixtures();
@@ -396,6 +412,8 @@ final class ProjectSearchTest extends TestCase
         // A pattern that can match empty (`l*`) skips its zero-width matches but
         // keeps the real one ("ll" at column 2).
         $this->assertSame([['start' => 2, 'length' => 2]], $ranges->invoke($search, 'hello', '/l*/'));
+        // A malformed pattern makes preg_match_all fail → no ranges.
+        $this->assertSame([], $ranges->invoke($search, 'hello', '/(/'));
     }
 
     public function testCancelStopsInFlightSearch(): void
@@ -404,14 +422,14 @@ final class ProjectSearchTest extends TestCase
         $search = new ProjectSearch($project->dir);
 
         $called = false;
-        $search->search('needle', function () use (&$called): void {
+        $search->search('needle', static function () use (&$called): void {
             $called = true;
         });
         $search->cancel();
 
         // Give the (cancelled) watcher time to have fired if cancel failed
         $suspension = EventLoop::getSuspension();
-        EventLoop::delay(0.3, static fn () => $suspension->resume());
+        EventLoop::delay(0.3, $suspension->resume(...));
         $suspension->suspend();
 
         $this->assertFalse($called);
@@ -423,7 +441,7 @@ final class ProjectSearchTest extends TestCase
         $search = new ProjectSearch($project->dir);
 
         $firstCompleted = false;
-        $search->search('needle', function () use (&$firstCompleted): void {
+        $search->search('needle', static function () use (&$firstCompleted): void {
             $firstCompleted = true;
         });
         $results = $this->await($search, 'needle');

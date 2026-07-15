@@ -5,13 +5,10 @@ declare(strict_types=1);
 namespace Porta\Tests\E2e;
 
 use PHPUnit\Framework\TestCase;
-use Porta\Ide;
 use Porta\Tests\Support\RunsIde;
 use Porta\Tests\Support\TempProject;
-use Revolt\EventLoop;
 use Symfony\Component\Process\ExecutableFinder;
 use Symfony\Component\Tui\Ansi\AnsiUtils;
-use Symfony\Component\Tui\Terminal\VirtualTerminal;
 
 /**
  * Settings → Plugins: installing (local path copy, git clone) with live
@@ -28,7 +25,8 @@ final class IdePluginInstallTest extends TestCase
     protected function setUp(): void
     {
         $this->originalPath = (string) getenv('PATH');
-        $this->portaHome = getenv('PORTA_HOME') ?: null;
+        $portaHome = getenv('PORTA_HOME');
+        $this->portaHome = $portaHome ? $portaHome : null;
         putenv('PORTA_LSP');
         putenv('PATH=/nonexistent');
     }
@@ -212,7 +210,7 @@ final class IdePluginInstallTest extends TestCase
                     $tui->handleInput("\r"); // commit → async clone
                 },
                 300 => function ($tui, $terminal, $ide) use ($project): void {
-                    $this->await(fn (): bool => str_contains(AnsiUtils::stripAnsiCodes($terminal->getOutput()), 'Plugin installed — default keybindings apply on restart'));
+                    $this->await(static fn (): bool => str_contains(AnsiUtils::stripAnsiCodes($terminal->getOutput()), 'Plugin installed — default keybindings apply on restart'));
                     $tui->tick();
                     $screen = AnsiUtils::stripAnsiCodes($terminal->getOutput());
                     $this->assertStringContainsString('Plugin installed — default keybindings apply on restart', $screen);

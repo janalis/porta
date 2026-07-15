@@ -29,7 +29,8 @@ final class BufferManager
 
     public function open(string $path, string $content): Buffer
     {
-        $buffer = $this->buffers[$path] ??= new Buffer($path, new Document($content), $this->syntaxTheme);
+        $this->buffers[$path] ??= new Buffer($path, new Document($content), $this->syntaxTheme);
+        $buffer = $this->buffers[$path];
         $this->activePath = $path;
         $buffer->lastFocused = ++$this->focusCounter;
 
@@ -39,7 +40,8 @@ final class BufferManager
     /** Open an image tab: an empty document plus the decoded pixels. */
     public function openImage(string $path, ImageData $image): Buffer
     {
-        $buffer = $this->buffers[$path] ??= new Buffer($path, new Document(''), $this->syntaxTheme, $image);
+        $this->buffers[$path] ??= new Buffer($path, new Document(''), $this->syntaxTheme, $image);
+        $buffer = $this->buffers[$path];
         $this->activePath = $path;
         $buffer->lastFocused = ++$this->focusCounter;
 
@@ -49,7 +51,8 @@ final class BufferManager
     /** Open (or re-activate) a rendered help tab carrying the page's markdown. */
     public function openHelp(string $path, string $markdown): Buffer
     {
-        $buffer = $this->buffers[$path] ??= new Buffer($path, new Document(''), $this->syntaxTheme, helpMarkdown: $markdown);
+        $this->buffers[$path] ??= new Buffer($path, new Document(''), $this->syntaxTheme, helpMarkdown: $markdown);
+        $buffer = $this->buffers[$path];
         $buffer->helpMarkdown = $markdown; // refresh when the page changed on disk
         $this->activePath = $path;
         $buffer->lastFocused = ++$this->focusCounter;
@@ -59,7 +62,7 @@ final class BufferManager
 
     public function has(string $path): bool
     {
-        return isset($this->buffers[$path]);
+        return \array_key_exists($path, $this->buffers);
     }
 
     public function get(string $path): ?Buffer
@@ -74,7 +77,7 @@ final class BufferManager
 
     public function setActive(string $path): ?Buffer
     {
-        if (!isset($this->buffers[$path])) {
+        if (!\array_key_exists($path, $this->buffers)) {
             return null;
         }
         $this->activePath = $path;
@@ -92,7 +95,7 @@ final class BufferManager
         if (\count($paths) < 2 || null === $this->activePath) {
             return null;
         }
-        $index = array_search($this->activePath, $paths, true);
+        $index = array_search($this->activePath, $paths, strict: true);
         $next = $paths[((((int) $index + $offset) % \count($paths)) + \count($paths)) % \count($paths)];
 
         return $this->setActive($next);
@@ -103,7 +106,7 @@ final class BufferManager
      */
     public function close(string $path): ?Buffer
     {
-        if (!isset($this->buffers[$path])) {
+        if (!\array_key_exists($path, $this->buffers)) {
             return $this->active();
         }
         unset($this->buffers[$path]);
@@ -114,9 +117,11 @@ final class BufferManager
 
         $next = null;
         foreach ($this->buffers as $buffer) {
-            if (null === $next || $buffer->lastFocused > $next->lastFocused) {
-                $next = $buffer;
+            if (!(null === $next || $buffer->lastFocused > $next->lastFocused)) {
+                continue;
             }
+
+            $next = $buffer;
         }
         $this->activePath = $next?->path;
         if (null !== $next) {
@@ -143,8 +148,8 @@ final class BufferManager
             return;
         }
         $moved = $paths[$from];
-        array_splice($paths, $from, 1);
-        array_splice($paths, $to, 0, $moved);
+        array_splice($paths, $from, length: 1);
+        array_splice($paths, $to, length: 0, replacement: $moved);
 
         $reordered = [];
         foreach ($paths as $path) {
@@ -163,7 +168,7 @@ final class BufferManager
             return false;
         }
         $paths = array_keys($this->buffers);
-        $from = (int) array_search($this->activePath, $paths, true);
+        $from = (int) array_search($this->activePath, $paths, strict: true);
         $to = $from + $offset;
         if ($to < 0 || $to >= \count($paths)) {
             return false;

@@ -75,7 +75,7 @@ final class SearchPrefsStore
         }
         $this->recentMasks = array_values(array_filter($this->recentMasks, static fn (string $m): bool => $m !== $mask));
         array_unshift($this->recentMasks, $mask);
-        $this->recentMasks = \array_slice($this->recentMasks, 0, self::MAX_MASKS);
+        $this->recentMasks = \array_slice($this->recentMasks, offset: 0, length: self::MAX_MASKS);
         $this->save();
     }
 
@@ -92,7 +92,7 @@ final class SearchPrefsStore
         $masks = array_values(array_filter($entries, static fn (mixed $entry): bool => \is_string($entry) && '' !== $entry));
 
         /** @var list<string> $masks */
-        return \array_slice($masks, 0, self::MAX_MASKS);
+        return \array_slice($masks, offset: 0, length: self::MAX_MASKS);
     }
 
     private function save(): void
@@ -111,6 +111,7 @@ final class SearchPrefsStore
             );
         } catch (IOExceptionInterface) {
             // best-effort persistence; prefs are non-critical
+            return;
         }
     }
 }

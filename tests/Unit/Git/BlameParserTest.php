@@ -34,9 +34,9 @@ final class BlameParserTest extends TestCase
 
         $this->assertSame(
             [
-                0 => ['sha' => 'aaaaaaaa', 'author' => 'Alice', 'date' => date('Y-m-d', 1700000000)],
-                1 => ['sha' => 'bbbbbbbb', 'author' => 'Bob', 'date' => date('Y-m-d', 1710000000)],
-                2 => ['sha' => 'aaaaaaaa', 'author' => 'Alice', 'date' => date('Y-m-d', 1700000000)],
+                0 => ['sha' => 'aaaaaaaa', 'author' => 'Alice', 'date' => date('Y-m-d', timestamp: 1_700_000_000)],
+                1 => ['sha' => 'bbbbbbbb', 'author' => 'Bob', 'date' => date('Y-m-d', timestamp: 1_710_000_000)],
+                2 => ['sha' => 'aaaaaaaa', 'author' => 'Alice', 'date' => date('Y-m-d', timestamp: 1_700_000_000)],
             ],
             BlameParser::parse($porcelain),
         );

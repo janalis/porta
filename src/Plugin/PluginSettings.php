@@ -111,7 +111,7 @@ final class PluginSettings
         return match ($descriptor['kind']) {
             'bool' => (bool) $value,
             'int' => (int) $value,
-            'choice' => \in_array((string) $value, $descriptor['options'] ?? [], true) ? (string) $value : $descriptor['default'],
+            'choice' => \in_array((string) $value, $descriptor['options'] ?? [], strict: true) ? (string) $value : $descriptor['default'],
             default => (string) $value,
         };
     }

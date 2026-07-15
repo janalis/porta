@@ -37,12 +37,12 @@ final class UriTest extends TestCase
 
     public function testRoundTripThroughRealPath(): void
     {
-        $file = tempnam(sys_get_temp_dir(), 'uri');
+        $file = tempnam(sys_get_temp_dir(), prefix: 'uri');
         $this->assertNotFalse($file);
         try {
             $this->assertSame(realpath($file), Uri::toPath(Uri::fromPath($file)));
         } finally {
-            @unlink($file);
+            is_file($file) && unlink($file);
         }
     }
 }

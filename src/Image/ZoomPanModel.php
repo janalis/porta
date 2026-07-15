@@ -117,8 +117,8 @@ final class ZoomPanModel
         return [
             'srcX' => $this->clampPan($this->panX, $this->imgW, $cols / $scale),
             'srcY' => $this->clampPan($this->panY, $this->imgH, $pxRows / $scale),
-            'padCols' => intdiv($cols - $outCols, 2),
-            'padHalfRows' => intdiv($pxRows - $outHalfRows, 2),
+            'padCols' => intdiv($cols - $outCols, num2: 2),
+            'padHalfRows' => intdiv($pxRows - $outHalfRows, num2: 2),
             'outCols' => max(1, $outCols),
             'outHalfRows' => max(1, $outHalfRows),
         ];

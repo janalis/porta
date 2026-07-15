@@ -25,7 +25,7 @@ final class LspClientTest extends TestCase
     {
         return $this->clients[] = new LspClient(
             [\PHP_BINARY, __DIR__.'/../Support/'.$server],
-            \dirname(__DIR__, 2),
+            \dirname(__DIR__, levels: 2),
             $logger,
         );
     }
@@ -38,10 +38,30 @@ final class LspClientTest extends TestCase
         $elapsed = 0.0;
         while (!$done() && $elapsed < $timeout) {
             $suspension = EventLoop::getSuspension();
-            EventLoop::delay(0.02, static fn () => $suspension->resume());
+            EventLoop::delay(0.02, $suspension->resume(...));
             $suspension->suspend();
             $elapsed += 0.02;
         }
+    }
+
+    public function testStopSkipsAnAlreadyClosedPipe(): void
+    {
+        $client = $this->client();
+        $ready = false;
+        $client->start(static function () use (&$ready): void {
+            $ready = true;
+        });
+        $this->await(static fn (): bool => $ready);
+
+        // Close stderr behind the client's back: stop() must skip the dead
+        // resource in its pipe-closing loop and still close the rest cleanly.
+        $stderr = new \ReflectionProperty($client, 'stderr')->getValue($client);
+        if (\is_resource($stderr)) {
+            fclose($stderr);
+        }
+
+        $client->stop();
+        $this->assertFalse($client->isRunning());
     }
 
     public function testInitializeDidOpenDiagnosticsAndCompletion(): void
@@ -52,13 +72,13 @@ final class LspClientTest extends TestCase
         $diagnostics = null;
         $completions = null;
 
-        $client->onNotification('textDocument/publishDiagnostics', function (array $params) use (&$diagnostics): void {
+        $client->onNotification('textDocument/publishDiagnostics', static function (array $params) use (&$diagnostics): void {
             if ('file:///tmp/x.php' === ($params['uri'] ?? '')) { // the mock also publishes for an unknown uri
                 $diagnostics = $params;
             }
         });
 
-        $client->start(function (bool $ok) use (&$initialized, $client): void {
+        $client->start(static function (bool $ok) use (&$initialized, $client): void {
             $initialized = $ok;
             $client->notify('textDocument/didOpen', [
                 'textDocument' => ['uri' => 'file:///tmp/x.php', 'languageId' => 'php', 'version' => 1, 'text' => "<?php\n"],
@@ -77,7 +97,7 @@ final class LspClientTest extends TestCase
                 'textDocument' => ['uri' => 'file:///tmp/x.php'],
                 'position' => ['line' => 0, 'character' => 0],
             ],
-            function (mixed $result) use (&$completions): void {
+            static function (mixed $result) use (&$completions): void {
                 $completions = $result;
             },
         );
@@ -94,18 +114,18 @@ final class LspClientTest extends TestCase
         $client = $this->client();
 
         $order = [];
-        $client->whenReady(function () use (&$order): void {
+        $client->whenReady(static function () use (&$order): void {
             $order[] = 'queued';
         });
 
         $ready = false;
-        $client->start(function () use (&$ready, &$order): void {
+        $client->start(static function () use (&$ready, &$order): void {
             $order[] = 'init';
             $ready = true;
         });
 
         $this->await(static fn () => $ready);
-        $client->whenReady(function () use (&$order): void {
+        $client->whenReady(static function () use (&$order): void {
             $order[] = 'immediate';
         });
 
@@ -116,14 +136,14 @@ final class LspClientTest extends TestCase
     {
         $client = $this->client();
         $ready = false;
-        $client->start(function () use (&$ready): void {
+        $client->start(static function () use (&$ready): void {
             $ready = true;
         });
         $this->await(static fn () => $ready);
 
         $responses = [];
-        $collect = function (string $key) use (&$responses): callable {
-            return function (mixed $result, ?array $error) use ($key, &$responses): void {
+        $collect = static function (string $key) use (&$responses): callable {
+            return static function (mixed $result, ?array $error) use ($key, &$responses): void {
                 $responses[$key] = ['result' => $result, 'error' => $error];
             };
         };
@@ -148,15 +168,15 @@ final class LspClientTest extends TestCase
 
         $ready = null;
         $logs = [];
-        $client =
-            $this->clients[] = new LspClient(
-                [\PHP_BINARY, __DIR__.'/../Support/crashing-lsp-server.php'],
-                \dirname(__DIR__, 2),
-                function (string $line) use (&$logs): void {
-                    $logs[] = $line;
-                },
-            );
-        $client->start(function (bool $ok) use (&$ready): void {
+        $client = new LspClient(
+            [\PHP_BINARY, __DIR__.'/../Support/crashing-lsp-server.php'],
+            \dirname(__DIR__, levels: 2),
+            static function (string $line) use (&$logs): void {
+                $logs[] = $line;
+            },
+        );
+        $this->clients[] = $client;
+        $client->start(static function (bool $ok) use (&$ready): void {
             $ready = $ok;
         });
 
@@ -171,7 +191,7 @@ final class LspClientTest extends TestCase
         $client = $this->client('garbage-lsp-server.php');
 
         $ready = null;
-        $client->start(function (bool $ok) use (&$ready): void {
+        $client->start(static function (bool $ok) use (&$ready): void {
             $ready = $ok;
         });
 
@@ -184,14 +204,14 @@ final class LspClientTest extends TestCase
         $client = $this->client('demanding-lsp-server.php');
 
         $applied = null;
-        $client->onApplyEdit(function (array $edit) use (&$applied): bool {
+        $client->onApplyEdit(static function (array $edit) use (&$applied): bool {
             $applied = $edit;
 
             return true;
         });
 
         $echoed = null;
-        $client->onNotification('mock/echo', function (array $params) use (&$echoed): void {
+        $client->onNotification('mock/echo', static function (array $params) use (&$echoed): void {
             $echoed = $params;
         });
 
@@ -209,10 +229,10 @@ final class LspClientTest extends TestCase
 
     public function testInitializeErrorReportsNotReady(): void
     {
-        $client = $this->client('error-lsp-server.php', function (): void {});
+        $client = $this->client('error-lsp-server.php', static function (): void {});
 
         $ready = null;
-        $client->start(function (bool $ok) use (&$ready): void {
+        $client->start(static function (bool $ok) use (&$ready): void {
             $ready = $ok;
         });
         $this->await(static fn () => null !== $ready);
@@ -226,7 +246,7 @@ final class LspClientTest extends TestCase
         $client = $this->client('chunked-lsp-server.php');
 
         $ready = null;
-        $client->start(function (bool $ok) use (&$ready): void {
+        $client->start(static function (bool $ok) use (&$ready): void {
             $ready = $ok;
         });
         $this->await(static fn () => null !== $ready);
@@ -238,7 +258,7 @@ final class LspClientTest extends TestCase
     {
         $client = $this->client();
         $ready = false;
-        $client->start(function () use (&$ready): void {
+        $client->start(static function () use (&$ready): void {
             $ready = true;
         });
         $this->await(static fn () => $ready);
@@ -257,10 +277,11 @@ final class LspClientTest extends TestCase
 
     public function testStartFailureWithBogusCommand(): void
     {
-        $client = $this->clients[] = new LspClient(['/nonexistent-binary-xyz'], \dirname(__DIR__, 2));
+        $client = new LspClient(['/nonexistent-binary-xyz'], \dirname(__DIR__, levels: 2));
+        $this->clients[] = $client;
 
         $ready = null;
-        $client->start(function (bool $ok) use (&$ready): void {
+        $client->start(static function (bool $ok) use (&$ready): void {
             $ready = $ok;
         });
         $this->await(static fn () => null !== $ready, 2.0);
@@ -281,7 +302,7 @@ final class LspClientTest extends TestCase
     {
         $client = $this->client();
         $ready = false;
-        $client->start(function () use (&$ready): void {
+        $client->start(static function () use (&$ready): void {
             $ready = true;
         });
         $this->await(static fn () => $ready);
@@ -301,8 +322,8 @@ final class LspClientTest extends TestCase
         $client->start(static function (): void {});
 
         $start = microtime(true);
-        $client->notify('porta/blob', ['data' => str_repeat('a', 262144)]);
-        $client->notify('porta/blob', ['data' => str_repeat('b', 262144)]);
+        $client->notify('porta/blob', ['data' => str_repeat('a', times: 262_144)]);
+        $client->notify('porta/blob', ['data' => str_repeat('b', times: 262_144)]);
         $this->assertLessThan(0.5, microtime(true) - $start, 'sends return immediately, bytes queue instead of blocking');
 
         // The loop stays live: this timer would never fire on the blocking code.
@@ -335,9 +356,9 @@ final class LspClientTest extends TestCase
 
         $expected = [];
         foreach (['x', 'y', 'z'] as $fill) {
-            $message = ['jsonrpc' => '2.0', 'method' => 'porta/blob', 'params' => ['data' => str_repeat($fill, 131072)]];
+            $message = ['jsonrpc' => '2.0', 'method' => 'porta/blob', 'params' => ['data' => str_repeat($fill, times: 131_072)]];
             $frame = \Porta\Support\JsonRpcFramer::encode($message);
-            $expected[] = md5(substr($frame, strpos($frame, "\r\n\r\n") + 4));
+            $expected[] = md5(substr($frame, strpos($frame, needle: "\r\n\r\n") + 4));
             $client->notify('porta/blob', $message['params']);
         }
 
@@ -348,19 +369,19 @@ final class LspClientTest extends TestCase
     public function testWriteQueueOverflowTerminatesTheWedgedServer(): void
     {
         $log = [];
-        $client =
-            $this->clients[] = new LspClient(
-                [\PHP_BINARY, __DIR__.'/../Support/deaf-lsp-server.php'],
-                \dirname(__DIR__, 2),
-                static function (string $line) use (&$log): void {
-                    $log[] = $line;
-                },
-                maxWriteBuffer: 65536,
-            );
+        $client = new LspClient(
+            [\PHP_BINARY, __DIR__.'/../Support/deaf-lsp-server.php'],
+            \dirname(__DIR__, levels: 2),
+            static function (string $line) use (&$log): void {
+                $log[] = $line;
+            },
+            maxWriteBuffer: 65_536,
+        );
+        $this->clients[] = $client;
         $client->start(static function (): void {});
 
-        $client->notify('porta/blob', ['data' => str_repeat('a', 65536)]);
-        $client->notify('porta/blob', ['data' => str_repeat('b', 65536)]);
+        $client->notify('porta/blob', ['data' => str_repeat('a', times: 65_536)]);
+        $client->notify('porta/blob', ['data' => str_repeat('b', times: 65_536)]);
 
         $overflowed = static fn (array $log): bool => [] !== array_filter($log, static fn (string $l): bool => str_contains($l, 'overflow'));
         $this->await(static fn (): bool => $overflowed($log), 2.0);

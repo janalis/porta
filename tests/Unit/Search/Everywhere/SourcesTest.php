@@ -37,10 +37,10 @@ final class SourcesTest extends TestCase
     private function collect(callable $run): array
     {
         $hits = null;
-        $run(function (array $emitted) use (&$hits): void {
+        $run(static function (array $emitted) use (&$hits): void {
             $hits = $emitted;
         });
-        \assert(null !== $hits);
+        \assert(null !== $hits, description: 'the run invoked the emit callback with a batch of hits');
 
         return $hits;
     }
@@ -49,12 +49,12 @@ final class SourcesTest extends TestCase
     {
         $project = new TempProject(['src/Entity/User.php' => '', 'src/Controller/UserController.php' => '', 'other.txt' => '']);
         $opened = null;
-        $source = new FilesSource(new FileIndex($project->dir), $project->dir, function (string $path, bool $focus) use (&$opened): void {
+        $source = new FilesSource(new FileIndex($project->dir), $project->dir, static function (string $path, bool $focus) use (&$opened): void {
             $opened = [$path, $focus];
         });
 
         $this->assertSame(SearchCategory::Files, $source->category());
-        $hits = $this->collect(fn (\Closure $emit) => $source->query('user', $emit));
+        $hits = $this->collect(static fn (\Closure $emit) => $source->query('user', $emit));
 
         $this->assertSame(SearchCategory::Files, $hits[0]->category);
         $this->assertSame('User.php', $hits[0]->label, 'shortest basename match first');
@@ -64,7 +64,7 @@ final class SourcesTest extends TestCase
         $source->cancel(); // no-op for a synchronous source
 
         // A root-level match has no directory detail.
-        $rootHits = $this->collect(fn (\Closure $emit) => $source->query('other', $emit));
+        $rootHits = $this->collect(static fn (\Closure $emit) => $source->query('other', $emit));
         $this->assertSame('', $rootHits[0]->detail);
     }
 
@@ -74,7 +74,7 @@ final class SourcesTest extends TestCase
         $ran = null;
         $registry->add(
             'a',
-            function () use (&$ran): void {
+            static function () use (&$ran): void {
                 $ran = 'save';
             },
             label: 'Save File',
@@ -84,7 +84,7 @@ final class SourcesTest extends TestCase
         $source = new ActionsSource($registry);
 
         $this->assertSame(SearchCategory::Actions, $source->category());
-        $hits = $this->collect(fn (\Closure $emit) => $source->query('save', $emit));
+        $hits = $this->collect(static fn (\Closure $emit) => $source->query('save', $emit));
 
         $labels = array_map(static fn (SearchHit $h): string => $h->label, $hits);
         $this->assertContains('Save File', $labels);
@@ -111,16 +111,16 @@ final class SourcesTest extends TestCase
             SearchCategory::Classes,
             [5, 10, 11, 23],
             '/proj',
-            function (string $p, bool $f) use (&$opened): void {
+            static function (string $p, bool $f) use (&$opened): void {
                 $opened = [$p, $f];
             },
-            function (int $l, int $c) use (&$jumped): void {
+            static function (int $l, int $c) use (&$jumped): void {
                 $jumped = [$l, $c];
             },
         );
 
         $this->assertSame(SearchCategory::Classes, $classes->category());
-        $hits = $this->collect(fn (\Closure $emit) => $classes->query('u', $emit));
+        $hits = $this->collect(static fn (\Closure $emit) => $classes->query('u', $emit));
 
         $this->assertCount(1, $hits, 'only the class kind passes');
         $this->assertSame('User', $hits[0]->label);
@@ -131,7 +131,7 @@ final class SourcesTest extends TestCase
 
         // Symbols (empty kind filter) keeps everything.
         $symbols = new WorkspaceSymbolSource($search, SearchCategory::Symbols, [], '/proj', static fn () => null, static fn () => null);
-        $this->assertCount(2, $this->collect(fn (\Closure $emit) => $symbols->query('u', $emit)));
+        $this->assertCount(2, $this->collect(static fn (\Closure $emit) => $symbols->query('u', $emit)));
     }
 
     public function testWorkspaceSymbolSourceDropsSupersededAndCancelledResponses(): void
@@ -143,7 +143,7 @@ final class SourcesTest extends TestCase
         $source = new WorkspaceSymbolSource($search, SearchCategory::Symbols, [], '/proj', static fn () => null, static fn () => null);
 
         $seen = [];
-        $emit = function (array $hits) use (&$seen): void {
+        $emit = static function (array $hits) use (&$seen): void {
             $seen[] = $hits;
         };
 
@@ -169,16 +169,16 @@ final class SourcesTest extends TestCase
         $source = new TextSource(
             new ProjectSearch($project->dir),
             $project->dir,
-            function (string $p, bool $f) use (&$opened): void {
+            static function (string $p, bool $f) use (&$opened): void {
                 $opened = [$p, $f];
             },
-            function (int $l, int $c) use (&$jumped): void {
+            static function (int $l, int $c) use (&$jumped): void {
                 $jumped = [$l, $c];
             },
         );
 
         $this->assertSame(SearchCategory::Text, $source->category());
-        $hits = $this->collect(fn (\Closure $emit) => $source->query('needle', $emit));
+        $hits = $this->collect(static fn (\Closure $emit) => $source->query('needle', $emit));
 
         $this->assertNotEmpty($hits);
         $this->assertSame(SearchCategory::Text, $hits[0]->category);

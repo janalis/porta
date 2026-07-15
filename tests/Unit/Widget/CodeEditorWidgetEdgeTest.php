@@ -198,8 +198,8 @@ final class CodeEditorWidgetEdgeTest extends TestCase
         $this->assertStringContainsString('getMessage', $plain);
         $this->assertStringContainsString('genericmoment', $plain);
         $this->assertLessThan(
-            strpos($plain, 'genericmoment'),
-            strpos($plain, 'getMessage'),
+            strpos($plain, needle: 'genericmoment'),
+            strpos($plain, needle: 'getMessage'),
             'camelCase-hump match ranks first',
         );
     }
@@ -484,7 +484,7 @@ final class CodeEditorWidgetEdgeTest extends TestCase
                 ['label' => 'one', 'hint' => '', 'value' => '1'],
                 ['label' => 'two', 'hint' => '', 'value' => '2'],
             ],
-            function (string $v) use (&$picked): void {
+            static function (string $v) use (&$picked): void {
                 $picked = $v;
             },
         );
@@ -557,7 +557,7 @@ final class CodeEditorWidgetEdgeTest extends TestCase
 
     public function testScrollClampsWhenJumpingBackToTop(): void
     {
-        $lines = implode("\n", array_map(static fn (int $i) => "row {$i}", range(0, 99)));
+        $lines = implode("\n", array_map(static fn (int $i) => "row {$i}", range(0, end: 99)));
         $editor = $this->editor($lines);
         $editor->getDocument()->setCursor(80, 0);
         $editor->render(new RenderContext(40, 10)); // scrolls down
@@ -569,7 +569,7 @@ final class CodeEditorWidgetEdgeTest extends TestCase
 
     public function testHorizontalScrollSnapsLeftward(): void
     {
-        $long = str_repeat('x', 200);
+        $long = str_repeat('x', times: 200);
         $editor = $this->editor("<?php\n{$long}\n");
         $doc = $editor->getDocument();
         $doc->setCursor(1, 150);
@@ -586,11 +586,11 @@ final class CodeEditorWidgetEdgeTest extends TestCase
     public function testBracketScanGivesUpAtCapAndOnUnmatched(): void
     {
         // Unmatched opening brace with > 20k characters of scan distance
-        $filler = str_repeat(str_repeat('x', 100)."\n", 250);
+        $filler = str_repeat(str_repeat('x', times: 100)."\n", times: 250);
         $editor = $this->editor("{\n".$filler);
         $editor->getDocument()->setCursor(0, 0);
         $rendered = $editor->render(new RenderContext(120, 5));
-        $this->assertSame(0, substr_count($rendered[0], "\x1b[1m\x1b[7m"), 'no highlight for unmatched bracket');
+        $this->assertSame(0, substr_count($rendered[0], needle: "\x1b[1m\x1b[7m"), 'no highlight for unmatched bracket');
 
         // No bracket near the cursor at all
         $editor2 = $this->editor("plain text\n");
@@ -601,7 +601,7 @@ final class CodeEditorWidgetEdgeTest extends TestCase
         $editor3 = $this->editor("(a)\n");
         $editor3->getDocument()->setCursor(0, 3); // just after ')'
         $rendered = $editor3->render(new RenderContext(40, 3));
-        $this->assertSame(2, substr_count($rendered[0], "\x1b[1m\x1b[7m"));
+        $this->assertSame(2, substr_count($rendered[0], needle: "\x1b[1m\x1b[7m"));
     }
 
     public function testDiagnosticSpanningToLineEnd(): void
@@ -700,7 +700,7 @@ final class CodeEditorWidgetEdgeTest extends TestCase
     public function testInlineDiagnosticSkippedWhenNoRoom(): void
     {
         // A long line leaves no trailing room for the message.
-        $long = str_repeat('x', 70);
+        $long = str_repeat('x', times: 70);
         $editor = $this->editor("<?php\n{$long}\n");
         $editor->getDocument()->setCursor(1, 0);
         $editor->setDiagnostics([1 => [['severity' => 2, 'message' => 'a warning here', 'col' => 0]]]);
@@ -727,7 +727,7 @@ final class CodeEditorWidgetEdgeTest extends TestCase
         $peekedAt = null;
         $editor->setCallbacks(new EditorCallbacks(
             navigation: new FakeEditorNavigation(
-                requestPeek: function (int $l, int $c) use (&$peekedAt): void {
+                requestPeek: static function (int $l, int $c) use (&$peekedAt): void {
                     $peekedAt = [$l, $c];
                 },
             ),

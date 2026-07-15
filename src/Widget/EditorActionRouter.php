@@ -53,19 +53,23 @@ final class EditorActionRouter
     public function dispatchKey(string $keys, Keybindings $kb): bool
     {
         foreach (self::SIMPLE_ACTIONS as $action) {
-            if ($kb->matches($keys, $action)) {
-                $this->fireSimple($action);
-
-                return true;
+            if (!$kb->matches($keys, $action)) {
+                continue;
             }
+
+            $this->fireSimple($action);
+
+            return true;
         }
 
         foreach (self::POSITIONAL_ACTIONS as $action) {
-            if ($kb->matches($keys, $action)) {
-                $this->firePositional($action);
-
-                return true;
+            if (!$kb->matches($keys, $action)) {
+                continue;
             }
+
+            $this->firePositional($action);
+
+            return true;
         }
 
         // The remaining actions carry extra logic beyond firing a single hook.
@@ -90,12 +94,12 @@ final class EditorActionRouter
      */
     public function run(string $action): bool
     {
-        if (\in_array($action, self::SIMPLE_ACTIONS, true)) {
+        if (\in_array($action, self::SIMPLE_ACTIONS, strict: true)) {
             $this->fireSimple($action);
 
             return true;
         }
-        if (\in_array($action, self::POSITIONAL_ACTIONS, true)) {
+        if (\in_array($action, self::POSITIONAL_ACTIONS, strict: true)) {
             $this->firePositional($action);
 
             return true;

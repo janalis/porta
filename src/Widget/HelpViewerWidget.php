@@ -77,13 +77,15 @@ final class HelpViewerWidget extends AbstractWidget implements FocusableInterfac
 
     public function setDocsRoot(string $dir): void
     {
-        $this->docsRoot = realpath($dir) ?: $dir;
+        $resolved = realpath($dir);
+        $this->docsRoot = $resolved ? $resolved : $dir;
     }
 
     /** Show a page from the top; the back history survives page changes. */
     public function show(string $path, string $markdown): void
     {
-        $this->path = realpath($path) ?: $path;
+        $resolved = realpath($path);
+        $this->path = $resolved ? $resolved : $path;
         $this->markdown = $markdown;
         $this->doc = null;
         $this->scrollTop = 0;
@@ -128,16 +130,18 @@ final class HelpViewerWidget extends AbstractWidget implements FocusableInterfac
     {
         if (0 === $relRow) {
             foreach ($this->headerZones as $zone) {
-                if ($relCol >= $zone['start'] && $relCol < $zone['end']) {
-                    match (true) {
-                        'back' === $zone['action'] => $this->back(),
-                        'forward' === $zone['action'] => $this->forward(),
-                        'top' === $zone['action'] => $this->scrollBy(-\PHP_INT_MAX),
-                        default => $this->follow(substr($zone['action'], 4)),
-                    };
-
-                    return true;
+                if (!($relCol >= $zone['start'] && $relCol < $zone['end'])) {
+                    continue;
                 }
+
+                match (true) {
+                    'back' === $zone['action'] => $this->back(),
+                    'forward' === $zone['action'] => $this->forward(),
+                    'top' === $zone['action'] => $this->scrollBy(-\PHP_INT_MAX),
+                    default => $this->follow(substr($zone['action'], offset: 4)),
+                };
+
+                return true;
             }
 
             return false;
@@ -149,12 +153,14 @@ final class HelpViewerWidget extends AbstractWidget implements FocusableInterfac
         }
         $line = $this->scrollTop + $relRow - self::HEADER_ROWS;
         foreach ($doc->links as $span) {
-            if ($span->line === $line && $relCol >= $span->col && $relCol < $span->endCol) {
-                $this->currentLink = $span->group;
-                $this->follow($span->target);
-
-                return true;
+            if (!($span->line === $line && $relCol >= $span->col && $relCol < $span->endCol)) {
+                continue;
             }
+
+            $this->currentLink = $span->group;
+            $this->follow($span->target);
+
+            return true;
         }
 
         return false;
@@ -228,15 +234,18 @@ final class HelpViewerWidget extends AbstractWidget implements FocusableInterfac
         }
         foreach ($crumbs as $i => $crumb) {
             $width = AnsiUtils::visibleWidth($crumb['label']);
+            $isLast = $i === (\count($crumbs) - 1);
             if ('' !== $crumb['action']) {
                 $this->headerZones[] = ['action' => $crumb['action'], 'start' => $col - 1, 'end' => $col + $width + 1];
                 $text .= $this->palette->of(Role::TabAccent).$crumb['label'].$this->palette->fgReset();
-            } elseif ($i === (\count($crumbs) - 1)) {
+            }
+            if ('' === $crumb['action'] && $isLast) {
                 // The current page: clicking it scrolls back to the top rather
                 // than doing nothing (the only crumb on the root page).
                 $this->headerZones[] = ['action' => 'top', 'start' => $col - 1, 'end' => $col + $width + 1];
                 $text .= $bold.$crumb['label'].$unbold;
-            } else {
+            }
+            if ('' === $crumb['action'] && !$isLast) {
                 // A folder with no README.md index: part of the path, not a page.
                 $text .= $this->palette->of(Role::Dim).$crumb['label'].$this->palette->fgReset();
             }
@@ -255,7 +264,7 @@ final class HelpViewerWidget extends AbstractWidget implements FocusableInterfac
     /** A page's crumb label: the host's naming (e.g. the docs root as "Documentation"), else the file name. */
     private function crumbLabel(string $path): string
     {
-        return $this->handler?->labelFor($path) ?? basename($path, '.md');
+        return $this->handler?->labelFor($path) ?? basename($path, suffix: '.md');
     }
 
     /**
@@ -276,7 +285,7 @@ final class HelpViewerWidget extends AbstractWidget implements FocusableInterfac
         if (null !== $root && null !== $rootReadme && $rootReadme !== $path) {
             $crumbs[] = ['action' => is_file($rootReadme) ? 'nav:'.$rootReadme : '', 'label' => $this->crumbLabel($rootReadme)];
             if (str_starts_with($path, $root.'/')) {
-                $dirs = array_filter(explode('/', trim(substr(\dirname($path), \strlen($root)), '/')), static fn (string $d): bool => '' !== $d);
+                $dirs = array_filter(explode('/', trim(substr(\dirname($path), \strlen($root)), characters: '/')), static fn (string $d): bool => '' !== $d);
                 if ('README.md' === basename($path) && [] !== $dirs) {
                     $label = array_pop($dirs);
                 }
@@ -354,11 +363,11 @@ final class HelpViewerWidget extends AbstractWidget implements FocusableInterfac
 
         $first = $doc->spansOfGroup($this->currentLink)[0] ?? null;
         if (null !== $first) {
-            if ($first->line < $this->scrollTop) {
-                $this->scrollTop = $this->clampScroll($first->line);
-            } elseif ($first->line > ($this->scrollTop + $this->bodyRows() - 1)) {
-                $this->scrollTop = $this->clampScroll($first->line - $this->bodyRows() + 1);
-            }
+            $this->scrollTop = match (true) {
+                $first->line < $this->scrollTop => $this->clampScroll($first->line),
+                $first->line > ($this->scrollTop + $this->bodyRows() - 1) => $this->clampScroll($first->line - $this->bodyRows() + 1),
+                default => $this->scrollTop,
+            };
         }
         $this->invalidate();
     }
@@ -448,7 +457,7 @@ final class HelpViewerWidget extends AbstractWidget implements FocusableInterfac
             $start = $this->byteAtColumn($line, $span->col);
             $end = $this->byteAtColumn($line, $span->endCol);
             $mid = AnsiUtils::stripAnsiCodes(substr($line, $start, $end - $start));
-            $line = substr($line, 0, $start).$this->palette->reset().$this->palette->of(Role::SelectedRow).$mid.$this->palette->reset().substr($line, $end);
+            $line = substr($line, offset: 0, length: $start).$this->palette->reset().$this->palette->of(Role::SelectedRow).$mid.$this->palette->reset().substr($line, $end);
         }
 
         return $line;
@@ -468,10 +477,11 @@ final class HelpViewerWidget extends AbstractWidget implements FocusableInterfac
             if ($current >= $col) {
                 break;
             }
-            $next = strpos($line, "\x1b", $offset + 1);
+            $next = strpos($line, needle: "\x1b", offset: $offset + 1);
             $segment = substr($line, $offset, (false === $next ? $len : $next) - $offset);
+            $split = grapheme_str_split($segment);
             /** @var list<string> $graphemes */
-            $graphemes = grapheme_str_split($segment) ?: [];
+            $graphemes = $split ? $split : [];
             foreach ($graphemes as $grapheme) {
                 $current += AnsiUtils::graphemeWidth($grapheme);
                 $offset += \strlen($grapheme);

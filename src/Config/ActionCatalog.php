@@ -188,9 +188,11 @@ final class ActionCatalog
     {
         $defaults = [];
         foreach (self::ACTIONS as $id => $spec) {
-            if (isset($spec['keys'])) {
-                $defaults[$id] = $spec['keys'];
+            if (($spec['keys'] ?? null) === null) {
+                continue;
             }
+
+            $defaults[$id] = $spec['keys'];
         }
 
         return $defaults;
@@ -205,6 +207,6 @@ final class ActionCatalog
     /** Palette label for an action id; unknown actions fall back to a title-cased slug. */
     public static function label(string $action): string
     {
-        return self::ACTIONS[$action]['label'] ?? ucwords(str_replace('_', ' ', $action));
+        return self::ACTIONS[$action]['label'] ?? ucwords(str_replace('_', replace: ' ', subject: $action));
     }
 }

@@ -49,23 +49,27 @@ final class TokenClassifier
         $spanStart = 0;
         $length = \strlen($marked);
         for ($i = 0; $i < $length;) {
-            $pair = substr($marked, $i, 2);
+            $pair = substr($marked, $i, length: 2);
             if (CommentStringTheme::OPEN === $pair) {
                 if (0 === $depth) {
                     $spanStart = $sourceOffset;
                 }
                 ++$depth;
                 $i += 2;
-            } elseif (CommentStringTheme::CLOSE === $pair) {
+
+                continue;
+            }
+            if (CommentStringTheme::CLOSE === $pair) {
                 --$depth;
                 if (0 === $depth) {
                     $spans[] = ['start' => $spanStart, 'end' => $sourceOffset];
                 }
                 $i += 2;
-            } else {
-                ++$sourceOffset;
-                ++$i;
+
+                continue;
             }
+            ++$sourceOffset;
+            ++$i;
         }
 
         return $spans;

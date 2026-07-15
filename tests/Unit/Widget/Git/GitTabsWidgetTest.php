@@ -25,8 +25,8 @@ final class GitTabsWidgetTest extends TestCase
 
         $widget->setActive('history');
         $lines = $widget->render(new RenderContext(44, 1));
-        $changesPos = mb_strpos(AnsiUtils::stripAnsiCodes($lines[0]), 'Changes');
-        $highlightPos = strpos($lines[0], "\x1b[48;5;31m");
+        $changesPos = mb_strpos(AnsiUtils::stripAnsiCodes($lines[0]), needle: 'Changes');
+        $highlightPos = strpos($lines[0], needle: "\x1b[48;5;31m");
         $this->assertNotFalse($highlightPos);
         $this->assertStringContainsString('History', substr($lines[0], $highlightPos), 'the highlight moved to History');
         $this->assertNotFalse($changesPos);
@@ -36,7 +36,7 @@ final class GitTabsWidgetTest extends TestCase
     {
         $selected = [];
         $widget = new GitTabsWidget(new Translator('en'));
-        $widget->onSelect(function (string $mode) use (&$selected): void {
+        $widget->onSelect(static function (string $mode) use (&$selected): void {
             $selected[] = $mode;
         });
         $widget->render(new RenderContext(44, 1)); // populate the layout map

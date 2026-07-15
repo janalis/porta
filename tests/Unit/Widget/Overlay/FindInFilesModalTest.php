@@ -37,7 +37,7 @@ final class FindInFilesModalTest extends TestCase
 
     private function screen(FindInFilesModal $modal): string
     {
-        $lines = array_fill(0, 24, str_repeat(' ', 100));
+        $lines = array_fill(0, count: 24, value: str_repeat(' ', times: 100));
 
         return AnsiUtils::stripAnsiCodes(implode("\n", $modal->composite($lines, 100, 24, true)));
     }
@@ -45,7 +45,7 @@ final class FindInFilesModalTest extends TestCase
     public function testRendersTitleQueryScopeOptionsAndGroupedPreview(): void
     {
         $modal = $this->modal();
-        $blank = array_fill(0, 24, '');
+        $blank = array_fill(0, count: 24, value: '');
         $this->assertSame($blank, $modal->composite($blank, 100, 24, true), 'closed → lines unchanged');
 
         $modal->open('Find in Files');
@@ -86,7 +86,7 @@ final class FindInFilesModalTest extends TestCase
     {
         $modal = $this->modal();
         $queries = [];
-        $modal->onQuery(function (string $q) use (&$queries): void {
+        $modal->onQuery(static function (string $q) use (&$queries): void {
             $queries[] = $q;
         });
         $modal->open('Find in Files');
@@ -104,7 +104,7 @@ final class FindInFilesModalTest extends TestCase
     {
         $modal = $this->modal();
         $recalled = [];
-        $modal->onQuery(function (string $q) use (&$recalled): void {
+        $modal->onQuery(static function (string $q) use (&$recalled): void {
             $recalled[] = $q;
         });
         $modal->open('Find in Files');
@@ -124,7 +124,7 @@ final class FindInFilesModalTest extends TestCase
     {
         $modal = $this->modal();
         $jumped = null;
-        $modal->onJump(function (string $p, int $l) use (&$jumped): void {
+        $modal->onJump(static function (string $p, int $l) use (&$jumped): void {
             $jumped = [$p, $l];
         });
         $modal->open('Find in Files');
@@ -154,19 +154,19 @@ final class FindInFilesModalTest extends TestCase
         $masks = [];
         $opened = false;
         $closed = false;
-        $modal->onScopeCycle(function (int $i) use (&$scopeIdx): void {
+        $modal->onScopeCycle(static function (int $i) use (&$scopeIdx): void {
             $scopeIdx[] = $i;
         });
-        $modal->onToggleOption(function (string $n) use (&$toggled): void {
+        $modal->onToggleOption(static function (string $n) use (&$toggled): void {
             $toggled[] = $n;
         });
-        $modal->onMaskChanged(function (string $m) use (&$masks): void {
+        $modal->onMaskChanged(static function (string $m) use (&$masks): void {
             $masks[] = $m;
         });
-        $modal->onOpenInFindWindow(function () use (&$opened): void {
+        $modal->onOpenInFindWindow(static function () use (&$opened): void {
             $opened = true;
         });
-        $modal->onClose(function () use (&$closed): void {
+        $modal->onClose(static function () use (&$closed): void {
             $closed = true;
         });
         $modal->open('Find in Files');
@@ -202,7 +202,7 @@ final class FindInFilesModalTest extends TestCase
     {
         $modal = $this->modal();
         $replaced = null;
-        $modal->onReplaceAll(function (string $r, array $excluded) use (&$replaced): void {
+        $modal->onReplaceAll(static function (string $r, array $excluded) use (&$replaced): void {
             $replaced = [$r, $excluded];
         });
         $modal->setPreviewTransformer(static fn (string $old, string $repl): string => str_replace('foo', $repl, $old));
@@ -228,6 +228,31 @@ final class FindInFilesModalTest extends TestCase
         $this->assertSame(['bar', [0]], $replaced);
     }
 
+    public function testAReIncludedMatchIsOmittedFromTheExcludedSet(): void
+    {
+        $modal = $this->modal();
+        $replaced = null;
+        $modal->onReplaceAll(static function (string $r, array $excluded) use (&$replaced): void {
+            $replaced = [$r, $excluded];
+        });
+        $modal->setPreviewTransformer(static fn (string $old, string $repl): string => str_replace('foo', $repl, $old));
+        $modal->open('Find in Files');
+        $modal->setPreview($this->results());
+
+        $modal->handleInput("\t", $this->kb); // query → replace
+        foreach (str_split('bar') as $ch) {
+            $modal->handleInput($ch, $this->kb);
+        }
+
+        // Toggle the first match's exclude on, then off again: its `false` entry
+        // is skipped when the excluded set is collected for replace-all.
+        $modal->handleInput("\x1b[3~", $this->kb); // exclude match 0
+        $modal->handleInput("\x1b[3~", $this->kb); // re-include match 0 (excluded[0] = false)
+
+        $modal->handleInput("\x1ba", $this->kb); // replace all
+        $this->assertSame(['bar', []], $replaced, 'a re-included match is not reported as excluded');
+    }
+
     public function testEdges(): void
     {
         $modal = $this->modal();
@@ -250,7 +275,7 @@ final class FindInFilesModalTest extends TestCase
         $modal->setPreview($this->results()); // selection on the first match (display index 1)
         $modal->handleInput("\x1b[A", $this->kb); // up past the file header → stays put
         $jumped = null;
-        $modal->onJump(function (string $p, int $l) use (&$jumped): void {
+        $modal->onJump(static function (string $p, int $l) use (&$jumped): void {
             $jumped = [$p, $l];
         });
         $modal->handleInput("\r", $this->kb);
@@ -266,8 +291,8 @@ final class FindInFilesModalTest extends TestCase
             $modal->handleInput("\x1b[B", $this->kb); // page down through the matches
         }
         $box = null;
-        $screen = (function () use ($modal, &$box): string {
-            $lines = array_fill(0, 24, str_repeat(' ', 100));
+        $screen = (static function () use ($modal, &$box): string {
+            $lines = array_fill(0, count: 24, value: str_repeat(' ', times: 100));
             $out = $modal->composite($lines, 100, 24, true);
             $box = $modal->lastBox();
 
@@ -294,7 +319,7 @@ final class FindInFilesModalTest extends TestCase
         $modal->setPreview($many);
 
         $box = static function () use ($modal): array {
-            $modal->composite(array_fill(0, 24, str_repeat(' ', 100)), 100, 24, true);
+            $modal->composite(array_fill(0, count: 24, value: str_repeat(' ', times: 100)), 100, 24, true);
 
             return $modal->lastBox() ?? [];
         };
@@ -319,7 +344,7 @@ final class FindInFilesModalTest extends TestCase
         $modal->setPreview($many); // 15 display rows (1 header + 14 matches), 10 visible
 
         $box = static function () use ($modal): array {
-            $modal->composite(array_fill(0, 24, str_repeat(' ', 100)), 100, 24, true);
+            $modal->composite(array_fill(0, count: 24, value: str_repeat(' ', times: 100)), 100, 24, true);
 
             return $modal->lastBox() ?? [];
         };
@@ -349,7 +374,7 @@ final class FindInFilesModalTest extends TestCase
         $modal->setPreview($many); // selection on the first match (display index 1)
 
         $box = static function () use ($modal): array {
-            $modal->composite(array_fill(0, 24, str_repeat(' ', 100)), 100, 24, true);
+            $modal->composite(array_fill(0, count: 24, value: str_repeat(' ', times: 100)), 100, 24, true);
 
             return $modal->lastBox() ?? [];
         };
@@ -378,7 +403,7 @@ final class FindInFilesModalTest extends TestCase
         $modal->open('Find in Files');
         $modal->setPreview($this->results());
         // A 4-row terminal can't fit the box; compositing must clip, not error.
-        $out = $modal->composite(array_fill(0, 4, str_repeat(' ', 40)), 40, 4, true);
+        $out = $modal->composite(array_fill(0, count: 4, value: str_repeat(' ', times: 40)), 40, 4, true);
         $this->assertCount(4, $out);
     }
 
@@ -388,13 +413,13 @@ final class FindInFilesModalTest extends TestCase
         $jumped = null;
         $toggled = [];
         $closed = false;
-        $modal->onJump(function (string $p, int $l) use (&$jumped): void {
+        $modal->onJump(static function (string $p, int $l) use (&$jumped): void {
             $jumped = [$p, $l];
         });
-        $modal->onToggleOption(function (string $n) use (&$toggled): void {
+        $modal->onToggleOption(static function (string $n) use (&$toggled): void {
             $toggled[] = $n;
         });
-        $modal->onClose(function () use (&$closed): void {
+        $modal->onClose(static function () use (&$closed): void {
             $closed = true;
         });
         $modal->open('Find in Files');
@@ -424,10 +449,10 @@ final class FindInFilesModalTest extends TestCase
         $modal = $this->modal();
         $queries = [];
         $masks = [];
-        $modal->onQuery(function (string $q) use (&$queries): void {
+        $modal->onQuery(static function (string $q) use (&$queries): void {
             $queries[] = $q;
         });
-        $modal->onMaskChanged(function (string $m) use (&$masks): void {
+        $modal->onMaskChanged(static function (string $m) use (&$masks): void {
             $masks[] = $m;
         });
         $modal->open('Find in Files');
@@ -457,20 +482,20 @@ final class FindInFilesModalTest extends TestCase
     {
         $modal = $this->modal();
         $scopeIdx = [];
-        $modal->onScopeCycle(function (int $i) use (&$scopeIdx): void {
+        $modal->onScopeCycle(static function (int $i) use (&$scopeIdx): void {
             $scopeIdx[] = $i;
         });
         $modal->setScopes(['Whole Project', 'Directory', 'Current File'], 0);
         $modal->open('Find in Files');
         $modal->setPreview($this->results());
-        $lines = $modal->composite(array_fill(0, 24, str_repeat(' ', 100)), 100, 24, true);
+        $lines = $modal->composite(array_fill(0, count: 24, value: str_repeat(' ', times: 100)), 100, 24, true);
         $box = $modal->lastBox();
         $this->assertNotNull($box);
         $optionsRow = $box['previewRow'] - 2;
         $optionsLine = AnsiUtils::stripAnsiCodes($lines[$optionsRow]);
 
         // The two-space gap between the last tag and the scope label hits no zone.
-        $scopeCol = mb_strpos($optionsLine, 'Scope:');
+        $scopeCol = mb_strpos($optionsLine, needle: 'Scope:');
         $this->assertIsInt($scopeCol);
         $modal->clickAt($optionsRow, $scopeCol - 1);
         $this->assertSame([], $scopeIdx, 'the gap before the scope label is inert');
@@ -487,7 +512,7 @@ final class FindInFilesModalTest extends TestCase
         $modal->setScopes(['Whole Project', 'Directory'], 0);
         $modal->open('Find in Files');
         $modal->setPreview($this->results());
-        $lines = $modal->composite(array_fill(0, 24, str_repeat(' ', 100)), 100, 24, true);
+        $lines = $modal->composite(array_fill(0, count: 24, value: str_repeat(' ', times: 100)), 100, 24, true);
         $box = $modal->lastBox();
         $this->assertNotNull($box);
         $optionsRow = $box['previewRow'] - 2;
@@ -502,7 +527,7 @@ final class FindInFilesModalTest extends TestCase
 
         // Hover the scope label → changes and still renders.
         $optionsLine = AnsiUtils::stripAnsiCodes($lines[$optionsRow]);
-        $scopeCol = mb_strpos($optionsLine, 'Scope:');
+        $scopeCol = mb_strpos($optionsLine, needle: 'Scope:');
         $this->assertIsInt($scopeCol);
         $this->assertTrue($modal->hoverAt($optionsRow, $scopeCol + 2));
         $this->assertStringContainsString('Scope: Whole Project', $this->screen($modal));
@@ -515,7 +540,7 @@ final class FindInFilesModalTest extends TestCase
     {
         $modal = $this->modal();
         $jumped = null;
-        $modal->onJump(function (string $p, int $l) use (&$jumped): void {
+        $modal->onJump(static function (string $p, int $l) use (&$jumped): void {
             $jumped = [$p, $l];
         });
         $modal->setPreviewTransformer(static fn (string $old, string $repl): string => str_replace('foo', $repl, $old));
@@ -548,24 +573,24 @@ final class FindInFilesModalTest extends TestCase
         $opened = false;
         $closed = false;
         $scopeIdx = [];
-        $modal->onOpenInFindWindow(function () use (&$opened): void {
+        $modal->onOpenInFindWindow(static function () use (&$opened): void {
             $opened = true;
         });
-        $modal->onScopeCycle(function (int $i) use (&$scopeIdx): void {
+        $modal->onScopeCycle(static function (int $i) use (&$scopeIdx): void {
             $scopeIdx[] = $i;
         });
-        $modal->onClose(function () use (&$closed): void {
+        $modal->onClose(static function () use (&$closed): void {
             $closed = true;
         });
         $modal->setScopes(['Whole Project', 'Directory'], 0);
         $modal->open('Find in Files');
         $modal->setPreview($this->results());
-        $lines = $modal->composite(array_fill(0, 24, str_repeat(' ', 100)), 100, 24, true);
+        $lines = $modal->composite(array_fill(0, count: 24, value: str_repeat(' ', times: 100)), 100, 24, true);
         $footerRow = $modal->lastFooterRow();
         $footerLine = AnsiUtils::stripAnsiCodes($lines[$footerRow]);
 
         // Hover the "Find window" action → highlight changes and still renders.
-        $fwCol = mb_strpos($footerLine, 'Find window');
+        $fwCol = mb_strpos($footerLine, needle: 'Find window');
         $this->assertIsInt($fwCol);
         $this->assertTrue($modal->hoverAt($footerRow, $fwCol));
         $this->assertStringContainsString('Find window', $this->screen($modal));
@@ -574,12 +599,12 @@ final class FindInFilesModalTest extends TestCase
         $modal->clickAt($footerRow, $fwCol);
         $this->assertTrue($opened, 'Find window promotes to the results pane');
 
-        $scopeCol = mb_strpos($footerLine, 'Scope');
+        $scopeCol = mb_strpos($footerLine, needle: 'Scope');
         $this->assertIsInt($scopeCol);
         $modal->clickAt($footerRow, $scopeCol);
         $this->assertSame([1], $scopeIdx, 'the footer Scope action cycles the scope');
 
-        $closeCol = mb_strpos($footerLine, 'Close');
+        $closeCol = mb_strpos($footerLine, needle: 'Close');
         $this->assertIsInt($closeCol);
         $modal->clickAt($footerRow, $closeCol);
         $this->assertTrue($closed);

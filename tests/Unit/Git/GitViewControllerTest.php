@@ -210,7 +210,7 @@ final class GitViewControllerTest extends TestCase
     {
         $controller = $this->controller();
         $controller->open();
-        $this->await(fn (): bool => $controller->isOpen());
+        $this->await($controller->isOpen(...));
         $this->assertSame($this->changes, $controller->focusTarget());
 
         $this->changes->setFocused(true);
@@ -223,7 +223,7 @@ final class GitViewControllerTest extends TestCase
     {
         $controller = $this->controller();
         $controller->open();
-        $this->await(fn (): bool => $controller->isOpen());
+        $this->await($controller->isOpen(...));
 
         $this->tui->setFocus($this->changes);
         $controller->focusNext();
@@ -337,7 +337,7 @@ final class GitViewControllerTest extends TestCase
     {
         $controller = $this->controller();
         $controller->open();
-        $this->await(fn (): bool => $controller->isOpen());
+        $this->await($controller->isOpen(...));
 
         // alt+m arms amend and prefills the last commit's message.
         $this->commitBox->setFocused(true);
@@ -366,7 +366,7 @@ final class GitViewControllerTest extends TestCase
     {
         $controller = $this->controller();
         $controller->open();
-        $this->await(fn (): bool => $controller->isOpen());
+        $this->await($controller->isOpen(...));
 
         // Fire the prefill, then disarm before git answers: the late message
         // must not repopulate a box the user already toggled back off.
@@ -393,7 +393,7 @@ final class GitViewControllerTest extends TestCase
     {
         $controller = $this->controller();
         $controller->open();
-        $this->await(fn (): bool => $controller->isOpen());
+        $this->await($controller->isOpen(...));
 
         $ghost = new \Porta\Git\ChangeEntry('does-not-exist.txt', ' ', 'M');
         new \ReflectionMethod($controller, 'toggleStage')->invoke($controller, $ghost);
@@ -504,7 +504,7 @@ final class GitViewControllerTest extends TestCase
         $controller = $this->controller();
         $this->layoutController->setGitDiffPrefs(true, false);
         $controller->open();
-        $this->await(fn (): bool => $controller->isOpen());
+        $this->await($controller->isOpen(...));
         $this->assertTrue($this->diffView->isSplit(), 'the persisted split preference applies on open');
 
         $this->diffView->setFocused(true);
@@ -574,7 +574,7 @@ final class GitViewControllerTest extends TestCase
         $d = escapeshellarg($this->project->dir);
         exec("git -C {$d} add -A && git -C {$d} commit -qm reindent");
         $controller->open();
-        $this->await(fn (): bool => $controller->isOpen());
+        $this->await($controller->isOpen(...));
 
         $this->changes->setFocused(true);
         $this->changes->handleInput('2'); // History: the reindent commit auto-loads a.txt
@@ -590,10 +590,10 @@ final class GitViewControllerTest extends TestCase
     {
         $controller = $this->controller();
         $d = escapeshellarg($this->project->dir);
-        $body = implode("\n", array_map(static fn (int $i): string => 'line '.$i, range(1, 30)))."\n";
+        $body = implode("\n", array_map(static fn (int $i): string => 'line '.$i, range(1, end: 30)))."\n";
         $this->project->write('big.txt', $body);
         exec("git -C {$d} add -A && git -C {$d} commit -qm big");
-        $this->project->write('big.txt', str_replace('line 15', 'line 15 EDITED', $body));
+        $this->project->write('big.txt', str_replace('line 15', replace: 'line 15 EDITED', subject: $body));
         $controller->open();
         $this->await(fn (): bool => str_contains($this->diffText(), '+line 15 EDITED'));
         $this->assertStringNotContainsString('line 5 ', $this->diffText(), 'default context stops three lines out');
@@ -638,7 +638,7 @@ final class GitViewControllerTest extends TestCase
         $this->project->write('a.txt', "one\ntwo\nthree\n");
         exec('git -C '.escapeshellarg($this->project->dir).' add -A && git -C '.escapeshellarg($this->project->dir).' commit -qm second');
         $controller->open();
-        $this->await(fn (): bool => $controller->isOpen());
+        $this->await($controller->isOpen(...));
 
         $this->changes->setFocused(true);
         $this->changes->handleInput('2'); // switch to History
@@ -676,7 +676,7 @@ final class GitViewControllerTest extends TestCase
         $controller = $this->controller();
         exec('git -C '.escapeshellarg($this->project->dir).' commit -q --allow-empty -m hollow');
         $controller->open();
-        $this->await(fn (): bool => $controller->isOpen());
+        $this->await($controller->isOpen(...));
 
         $this->changes->setFocused(true);
         $this->changes->handleInput('2'); // History: the empty commit is newest
@@ -688,7 +688,7 @@ final class GitViewControllerTest extends TestCase
     {
         $controller = $this->controller();
         $controller->open();
-        $this->await(fn (): bool => $controller->isOpen());
+        $this->await($controller->isOpen(...));
         $this->changes->setFocused(true);
         $this->changes->handleInput('2');
         $this->await(fn (): bool => 'git-history' === ($this->gitLeft->all()[1] ?? null)?->getId());
@@ -714,7 +714,7 @@ final class GitViewControllerTest extends TestCase
     {
         $controller = $this->controller();
         $controller->open();
-        $this->await(fn (): bool => $controller->isOpen());
+        $this->await($controller->isOpen(...));
         $this->changes->setFocused(true);
         $this->changes->handleInput('2');
         new \ReflectionMethod($controller, 'switchMode')->invoke($controller, 'history'); // same mode: no-op
@@ -792,7 +792,7 @@ final class GitViewControllerTest extends TestCase
         $elapsed = 0.0;
         while (!$done() && $elapsed < $timeout) {
             $suspension = EventLoop::getSuspension();
-            EventLoop::delay(0.02, static fn () => $suspension->resume());
+            EventLoop::delay(0.02, $suspension->resume(...));
             $suspension->suspend();
             $elapsed += 0.02;
         }
@@ -803,7 +803,7 @@ final class GitViewControllerTest extends TestCase
     {
         for ($i = 0; $i < $ticks; ++$i) {
             $suspension = EventLoop::getSuspension();
-            EventLoop::delay(0.01, static fn () => $suspension->resume());
+            EventLoop::delay(0.01, $suspension->resume(...));
             $suspension->suspend();
         }
     }
@@ -827,7 +827,7 @@ final class GitViewControllerTest extends TestCase
             exec("git -C {$d} commit -q --allow-empty -m {$n}");
         }
         $controller->open();
-        $this->await(fn (): bool => $controller->isOpen());
+        $this->await($controller->isOpen(...));
 
         $this->changes->setFocused(true);
         $this->changes->handleInput('2'); // History tab
@@ -856,7 +856,7 @@ final class GitViewControllerTest extends TestCase
         $d = escapeshellarg($this->project->dir);
         exec("git -C {$d} commit -q --allow-empty -m second");
         $controller->open();
-        $this->await(fn (): bool => $controller->isOpen());
+        $this->await($controller->isOpen(...));
 
         $controller->onRemoteCompleted(new GitRemoteCompleted('pull', true)); // changes mode: a no-op
         $this->changes->setFocused(true);
@@ -875,7 +875,7 @@ final class GitViewControllerTest extends TestCase
         $d = escapeshellarg($this->project->dir);
         exec("git -C {$d} commit -q --allow-empty -m second");
         $controller->open();
-        $this->await(fn (): bool => $controller->isOpen());
+        $this->await($controller->isOpen(...));
         $this->changes->setFocused(true);
         $this->changes->handleInput('2');
         $this->await(fn (): bool => 1 === $this->history->commitCount());
@@ -927,7 +927,7 @@ final class GitViewControllerTest extends TestCase
         exec('git -C '.$d.' add -A && git -C '.$d.' commit -qm touch-a');
 
         $controller->open();
-        $this->await(fn (): bool => $controller->isOpen());
+        $this->await($controller->isOpen(...));
         $this->changes->setFocused(true);
         $this->changes->handleInput('2'); // History, repo-wide
         $this->await(fn (): bool => null !== $this->history->selectedCommit());

@@ -30,7 +30,7 @@ final class FileTreeWidgetTest extends TestCase
 
         $this->assertStringContainsString('sub/', $plain);
         $this->assertStringContainsString('a.php', $plain);
-        $this->assertLessThan(strpos($plain, 'a.php'), strpos($plain, 'sub/'), 'directories sort first');
+        $this->assertLessThan(strpos($plain, needle: 'a.php'), strpos($plain, needle: 'sub/'), 'directories sort first');
     }
 
     public function testSelectedNodeAndRowMirrorTheListSelection(): void
@@ -122,7 +122,7 @@ final class FileTreeWidgetTest extends TestCase
         $tree = new FileTreeWidget($project->dir);
         $tree->setFocused(true);
         $opened = null;
-        $tree->onOpenFile(function (string $path) use (&$opened): void {
+        $tree->onOpenFile(static function (string $path) use (&$opened): void {
             $opened = $path;
         });
         $context = new RenderContext(30, 10);
@@ -140,6 +140,24 @@ final class FileTreeWidgetTest extends TestCase
 
         $tree->handleInput("\x1b[C"); // right: expand
         $this->assertStringContainsString('b.php', $this->plain($tree->render($context)));
+    }
+
+    public function testCollapseJumpsToParentSkippingSiblingsAtTheSameDepth(): void
+    {
+        $project = new TempProject(['sub/b.php' => "<?php\n", 'sub/c.php' => "<?php\n"]);
+        $tree = new FileTreeWidget($project->dir);
+        $tree->setFocused(true);
+        $context = new RenderContext(30, 10);
+        $tree->render($context);
+
+        $tree->handleInput("\r"); // expand sub/
+        $tree->handleInput("\x1b[B"); // → b.php (depth 1)
+        $tree->handleInput("\x1b[B"); // → c.php (depth 1, the second child)
+
+        // Left/collapse on the second child scans upward past its sibling b.php
+        // (same depth → skipped) before landing on the sub/ parent.
+        $tree->handleInput("\x1b[D");
+        $this->assertSame('sub', $tree->selectedNode()['name'] ?? null);
     }
 
     public function testRefreshIfChangedDetectsAddedAndRemovedEntries(): void
@@ -219,7 +237,7 @@ final class FileTreeWidgetTest extends TestCase
         $tree = new FileTreeWidget($project->dir);
         $tree->setFocused(true);
         $opened = null;
-        $tree->onOpenFile(function (string $p) use (&$opened): void {
+        $tree->onOpenFile(static function (string $p) use (&$opened): void {
             $opened = $p;
         });
         $context = new RenderContext(30, 10);
@@ -275,7 +293,7 @@ final class FileTreeWidgetTest extends TestCase
         $tree->handleInput("\x1b[B");
         $tree->handleInput("\x1b[A");
         $opened = null;
-        $tree->onOpenFile(function (string $p) use (&$opened): void {
+        $tree->onOpenFile(static function (string $p) use (&$opened): void {
             $opened = $p;
         });
         $tree->handleInput("\r");
@@ -290,7 +308,7 @@ final class FileTreeWidgetTest extends TestCase
 
         $tree->handleInput("\x1b[B"); // no entries: early return, no crash
         $this->assertSame([], array_filter(
-            array_map(fn ($l) => trim(\Symfony\Component\Tui\Ansi\AnsiUtils::stripAnsiCodes($l)), array_slice($tree->render(new RenderContext(20, 4)), 1)),
+            array_map(static fn ($l) => trim(\Symfony\Component\Tui\Ansi\AnsiUtils::stripAnsiCodes($l)), array_slice($tree->render(new RenderContext(20, 4)), offset: 1)),
         ));
     }
 
@@ -345,7 +363,7 @@ final class FileTreeWidgetTest extends TestCase
         $tree->setFocused(true);
         $context = new RenderContext(30, 8);
 
-        foreach (range(1, 20) as $_) {
+        foreach (range(1, end: 20) as $_) {
             $tree->handleInput("\x1b[B");
         }
         $lines = $tree->render($context);

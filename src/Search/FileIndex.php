@@ -15,7 +15,7 @@ use Symfony\Component\Finder\Finder;
  */
 final class FileIndex
 {
-    private const int MAX_FILES = 20000;
+    private const int MAX_FILES = 20_000;
 
     /** @var list<array{path: string, lower: string, boundary: int}>|null */
     private ?array $entries = null;
@@ -46,7 +46,7 @@ final class FileIndex
     {
         $entries = $this->entries();
         if ('' === $query) {
-            return array_map(static fn (array $entry): string => $entry['path'], \array_slice($entries, 0, $limit));
+            return array_map(static fn (array $entry): string => $entry['path'], \array_slice($entries, offset: 0, length: $limit));
         }
 
         /** @var list<array{0: int, 1: string}> $scored */
@@ -60,12 +60,9 @@ final class FileIndex
                 $scored[] = [$score, $entry['path']];
             }
         }
-        usort($scored, static fn (array $a, array $b) => $b[0] <=> $a[0] ?: \strlen($a[1]) <=> \strlen($b[1]));
+        usort($scored, static fn (array $a, array $b) => $b[0] <=> $a[0] ? $b[0] <=> $a[0] : \strlen($a[1]) <=> \strlen($b[1]));
 
-        /** @var list<string> $paths */
-        $paths = array_column(\array_slice($scored, 0, $limit), 1);
-
-        return $paths;
+        return array_map(static fn (array $row): string => $row[1], \array_slice($scored, offset: 0, length: $limit));
     }
 
     /** @return list<array{path: string, lower: string, boundary: int}> sorted by path */

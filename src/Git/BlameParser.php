@@ -29,10 +29,16 @@ final class BlameParser
             if (1 === preg_match('/^([0-9a-f]{40}) \d+ (\d+)/', $line, $m)) {
                 $sha = $m[1];
                 $lines[(int) $m[2] - 1] = $sha; // porcelain lines are 1-based
-            } elseif (str_starts_with($line, 'author ') && '' !== $sha) {
-                $authors[$sha] = substr($line, 7);
-            } elseif (str_starts_with($line, 'author-time ') && '' !== $sha) {
-                $times[$sha] = (int) substr($line, 12);
+
+                continue;
+            }
+            if (str_starts_with($line, 'author ') && '' !== $sha) {
+                $authors[$sha] = substr($line, offset: 7);
+
+                continue;
+            }
+            if (str_starts_with($line, 'author-time ') && '' !== $sha) {
+                $times[$sha] = (int) substr($line, offset: 12);
             }
         }
 
@@ -40,7 +46,7 @@ final class BlameParser
         foreach ($lines as $no => $lineSha) {
             $time = $times[$lineSha] ?? 0;
             $entries[$no] = [
-                'sha' => substr($lineSha, 0, 8),
+                'sha' => substr($lineSha, offset: 0, length: 8),
                 'author' => $authors[$lineSha] ?? '',
                 // Uncommitted lines carry no author-time — no fake epoch date.
                 'date' => 0 === $time ? '' : date('Y-m-d', $time),

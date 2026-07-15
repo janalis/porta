@@ -166,22 +166,26 @@ final class TerminalPanelWidget extends OverlayWidget implements FocusableInterf
     public function handleTabClick(int $col): bool
     {
         foreach ($this->lastTabLayout as $entry) {
-            if ($col >= $entry['closeStart'] && $col < ($entry['closeStart'] + $entry['closeWidth'])) {
-                if (null !== $this->onSessionClosed) {
-                    ($this->onSessionClosed)($entry['index']);
-                }
-
-                return true;
+            if (!($col >= $entry['closeStart'] && $col < ($entry['closeStart'] + $entry['closeWidth']))) {
+                continue;
             }
+
+            if (null !== $this->onSessionClosed) {
+                ($this->onSessionClosed)($entry['index']);
+            }
+
+            return true;
         }
         foreach ($this->lastTabLayout as $entry) {
-            if ($col >= $entry['start'] && $col < ($entry['start'] + $entry['width'])) {
-                if (null !== $this->onSessionSelected) {
-                    ($this->onSessionSelected)($entry['index']);
-                }
-
-                return true;
+            if (!($col >= $entry['start'] && $col < ($entry['start'] + $entry['width']))) {
+                continue;
             }
+
+            if (null !== $this->onSessionSelected) {
+                ($this->onSessionSelected)($entry['index']);
+            }
+
+            return true;
         }
 
         return false;
@@ -269,7 +273,7 @@ final class TerminalPanelWidget extends OverlayWidget implements FocusableInterf
             $row = \count($window); // header + window: the last body line's index
             $col = min($this->buffer->cursorColumn(), max(0, $columns - 1));
             $byte = \strlen(AnsiUtils::sliceByColumn($lines[$row], 0, $col));
-            $lines[$row] = substr($lines[$row], 0, $byte).$this->cursorStyle->marker().substr($lines[$row], $byte);
+            $lines[$row] = substr($lines[$row], offset: 0, length: $byte).$this->cursorStyle->marker().substr($lines[$row], $byte);
         }
 
         return $lines;
@@ -301,11 +305,13 @@ final class TerminalPanelWidget extends OverlayWidget implements FocusableInterf
         }
 
         $activeIndex = 0;
-        foreach ($parts as $i => $part) {
-            if ($part['active']) {
-                $activeIndex = $i;
-                break;
+        foreach ($parts as $i => $candidate) {
+            if (!$candidate['active']) {
+                continue;
             }
+
+            $activeIndex = $i;
+            break;
         }
         // Drop leading tabs until the active one fits.
         $start = 0;
@@ -316,7 +322,7 @@ final class TerminalPanelWidget extends OverlayWidget implements FocusableInterf
         $line = '';
         $used = 0;
         $this->lastTabLayout = [];
-        foreach (\array_slice($parts, $start, null, true) as $index => $part) {
+        foreach (\array_slice($parts, $start, length: null, preserve_keys: true) as $index => $part) {
             if (($used + $part['width']) > $columns) {
                 break;
             }
@@ -328,7 +334,7 @@ final class TerminalPanelWidget extends OverlayWidget implements FocusableInterf
             $used += $part['width'];
         }
         if ($this->scrollBack > 0) {
-            $line .= $this->palette->of(Role::Toolbar).$this->palette->of(Role::Dim).\sprintf('  [scrolled +%d]', $this->scrollBack)."\x1b[0m";
+            $line .= \sprintf("%s%s  [scrolled +%d]\x1b[0m", $this->palette->of(Role::Toolbar), $this->palette->of(Role::Dim), $this->scrollBack);
         }
 
         // A Toolbar-background base under the whole row, then the styled tabs.

@@ -96,14 +96,14 @@ final class BidiTuiTest extends TestCase
     {
         // The scroll-lag regression: frame generation must self-pace to the
         // terminal's drain rate instead of queueing stale frames.
-        $pair = stream_socket_pair(\STREAM_PF_UNIX, \STREAM_SOCK_STREAM, 0);
-        \assert(false !== $pair);
-        stream_set_blocking($pair[1], false);
+        $pair = stream_socket_pair(\STREAM_PF_UNIX, \STREAM_SOCK_STREAM, protocol: 0);
+        \assert(false !== $pair, description: 'stream_socket_pair created a socket pair');
+        stream_set_blocking($pair[1], enable: false);
         $terminal = new \Porta\Ui\NonBlockingTerminal(new VirtualTerminal(columns: 20, rows: 2), $pair[0]);
         $terminal->start(static function (): void {}, static function (): void {}, static function (): void {});
         $tui = $this->tuiWith($terminal);
 
-        $terminal->write(str_repeat('#', 524288)); // a wedged tty: backlog past the socket buffer
+        $terminal->write(str_repeat('#', times: 524_288)); // a wedged tty: backlog past the socket buffer
         $backlog = $terminal->pendingBytes();
         $this->assertGreaterThan(0, $backlog);
 
@@ -117,7 +117,7 @@ final class BidiTuiTest extends TestCase
         // Drain the peer; the writer's watcher empties the queue as the loop runs.
         $suspension = \Revolt\EventLoop::getSuspension();
         $drain = \Revolt\EventLoop::repeat(0.01, static function () use ($pair, $terminal, $suspension): void {
-            fread($pair[1], 65536);
+            fread($pair[1], length: 65_536);
             if (0 === $terminal->pendingBytes()) {
                 $suspension->resume();
             }
@@ -127,7 +127,7 @@ final class BidiTuiTest extends TestCase
 
         $tui->processRender();
         $this->assertFalse((bool) $requested->getValue($tui), 'the queued request rendered once the tty caught up');
-        $this->assertGreaterThan(0, $terminal->pendingBytes() + \strlen((string) fread($pair[1], 65536)), 'the frame reached the terminal');
+        $this->assertGreaterThan(0, $terminal->pendingBytes() + \strlen((string) fread($pair[1], length: 65_536)), 'the frame reached the terminal');
 
         $terminal->stop();
         fclose($pair[1]);

@@ -70,7 +70,8 @@ final class SettingsLspController
         $persisted = IdeConfig::persistLspServer($this->rootDir, $language, $command);
         if ('' === $command) {
             unset($this->overrides[$language]);
-        } else {
+        }
+        if ('' !== $command) {
             $this->overrides[$language] = $command;
         }
 

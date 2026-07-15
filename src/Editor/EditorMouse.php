@@ -80,9 +80,12 @@ final class EditorMouse
         $range = $this->document->wordRangeAt($line, $col);
         if (null === $range) {
             $this->document->setCursor($line, $col);
-        } else {
-            $this->document->setSelectionRange($line, $range['startCol'], $line, $range['endCol']);
+            ($this->closeCompletion)();
+            ($this->invalidate)();
+
+            return;
         }
+        $this->document->setSelectionRange($line, $range['startCol'], $line, $range['endCol']);
         ($this->closeCompletion)();
         ($this->invalidate)();
     }

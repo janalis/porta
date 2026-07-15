@@ -183,7 +183,10 @@ final class DiffViewWidget extends AbstractWidget implements FocusableInterface,
     /** Rebuild the render rows for the current mode, keeping cursor/scroll sane. */
     private function rebuildRows(): void
     {
-        $this->rows = null === $this->document ? [] : ($this->split ? $this->document->splitRows() : $this->document->rows());
+        $this->rows = [];
+        if (null !== $this->document) {
+            $this->rows = $this->split ? $this->document->splitRows() : $this->document->rows();
+        }
         $maxRow = max(0, \count($this->rows) - 1);
         $this->cursor = min($this->cursor, $maxRow);
         $this->scroll = min($this->scroll, $maxRow);
@@ -245,10 +248,12 @@ final class DiffViewWidget extends AbstractWidget implements FocusableInterface,
         $texts = [];
         foreach ($this->document->hunks as $h => $hunk) {
             foreach ($hunk->lines as $l => $line) {
-                if ('+' === $line->origin || ' ' === $line->origin) {
-                    $keys[] = $h.':'.$l;
-                    $texts[] = $line->text;
+                if (!('+' === $line->origin || ' ' === $line->origin)) {
+                    continue;
                 }
+
+                $keys[] = $h.':'.$l;
+                $texts[] = $line->text;
             }
         }
 
@@ -298,40 +303,79 @@ final class DiffViewWidget extends AbstractWidget implements FocusableInterface,
 
         if ($kb->matches($data, 'exit_view')) {
             $this->fire($this->onExit);
-        } elseif ($kb->matches($data, 'focus_next_pane')) {
+
+            return;
+        }
+        if ($kb->matches($data, 'focus_next_pane')) {
             $this->fire($this->onFocusNext);
-        } elseif ($kb->matches($data, 'cursor_up')) {
+
+            return;
+        }
+        if ($kb->matches($data, 'cursor_up')) {
             $this->moveCursor(-1);
-        } elseif ($kb->matches($data, 'cursor_down')) {
+
+            return;
+        }
+        if ($kb->matches($data, 'cursor_down')) {
             $this->moveCursor(1);
-        } elseif ($kb->matches($data, 'page_up')) {
+
+            return;
+        }
+        if ($kb->matches($data, 'page_up')) {
             $this->moveCursor(-max(1, $this->lastRows - 2));
-        } elseif ($kb->matches($data, 'page_down')) {
+
+            return;
+        }
+        if ($kb->matches($data, 'page_down')) {
             $this->moveCursor(max(1, $this->lastRows - 2));
-        } elseif ($kb->matches($data, 'range_anchor')) {
+
+            return;
+        }
+        if ($kb->matches($data, 'range_anchor')) {
             // Allowed in read-only mode too: the range doubles as a COPY
             // selection there (staging stays blocked in fireStageSelection).
             if ([] !== $this->rows) {
                 $this->anchor = null === $this->anchor ? $this->cursor : null;
                 $this->invalidate();
             }
-        } elseif ($kb->matches($data, 'copy')) {
+
+            return;
+        }
+        if ($kb->matches($data, 'copy')) {
             $this->fireCopy();
-        } elseif ($kb->matches($data, 'stage_selection')) {
+
+            return;
+        }
+        if ($kb->matches($data, 'stage_selection')) {
             $this->fireStageSelection();
-        } elseif ($kb->matches($data, 'cycle_context')) {
+
+            return;
+        }
+        if ($kb->matches($data, 'cycle_context')) {
             if (!$this->readOnly && [] !== $this->rows && null !== $this->onCycleContext) {
                 ($this->onCycleContext)();
             }
-        } elseif ($kb->matches($data, 'toggle_layout')) {
+
+            return;
+        }
+        if ($kb->matches($data, 'toggle_layout')) {
             $this->toggleLayout(); // display-only: allowed in read-only mode too
-        } elseif ($kb->matches($data, 'toggle_whitespace')) {
+
+            return;
+        }
+        if ($kb->matches($data, 'toggle_whitespace')) {
             if (null !== $this->onToggleWhitespace) {
                 ($this->onToggleWhitespace)(); // allowed in read-only mode too
             }
-        } elseif ($kb->matches($data, 'scroll_left')) {
+
+            return;
+        }
+        if ($kb->matches($data, 'scroll_left')) {
             $this->scrollHBy(-8);
-        } elseif ($kb->matches($data, 'scroll_right')) {
+
+            return;
+        }
+        if ($kb->matches($data, 'scroll_right')) {
             $this->scrollHBy(8);
         }
     }
@@ -345,11 +389,13 @@ final class DiffViewWidget extends AbstractWidget implements FocusableInterface,
     {
         if (0 === $relRow) {
             foreach ($this->buttonZones as $zone) {
-                if ($relCol >= $zone['start'] && $relCol < $zone['end']) {
-                    $this->fireButton($zone['name']);
-
-                    return;
+                if (!($relCol >= $zone['start'] && $relCol < $zone['end'])) {
+                    continue;
                 }
+
+                $this->fireButton($zone['name']);
+
+                return;
             }
 
             return;
@@ -401,7 +447,7 @@ final class DiffViewWidget extends AbstractWidget implements FocusableInterface,
             return null;
         }
 
-        return $relCol <= intdiv($this->lastWidth - 1, 2) ? 'left' : 'right';
+        return $relCol <= intdiv($this->lastWidth - 1, num2: 2) ? 'left' : 'right';
     }
 
     /**
@@ -413,7 +459,7 @@ final class DiffViewWidget extends AbstractWidget implements FocusableInterface,
         $textStart = match ($side) {
             null => 12,
             'left' => 6,
-            default => intdiv($this->lastWidth - 1, 2) + 7,
+            default => intdiv($this->lastWidth - 1, num2: 2) + 7,
         };
 
         return max(0, $relCol - $textStart + $this->hScroll);
@@ -423,7 +469,10 @@ final class DiffViewWidget extends AbstractWidget implements FocusableInterface,
     {
         if ('split' === $name) {
             $this->toggleLayout();
-        } elseif ('whitespace' === $name && null !== $this->onToggleWhitespace) {
+
+            return;
+        }
+        if ('whitespace' === $name && null !== $this->onToggleWhitespace) {
             ($this->onToggleWhitespace)();
         }
     }
@@ -438,7 +487,8 @@ final class DiffViewWidget extends AbstractWidget implements FocusableInterface,
         $visible = max(1, $this->lastRows - 1);
         if ($this->cursor < $this->scroll) {
             $this->scroll = $this->cursor;
-        } elseif ($this->cursor > ($this->scroll + $visible - 1)) {
+        }
+        if ($this->cursor > ($this->scroll + $visible - 1)) {
             $this->scroll = $this->cursor - $visible + 1;
         }
         $this->invalidate();
@@ -451,7 +501,7 @@ final class DiffViewWidget extends AbstractWidget implements FocusableInterface,
      */
     private function fireStageSelection(): void
     {
-        if ($this->readOnly || null === $this->onStageSelection || !isset($this->rows[$this->cursor])) {
+        if ($this->readOnly || null === $this->onStageSelection || !\array_key_exists($this->cursor, $this->rows)) {
             return;
         }
 
@@ -467,7 +517,7 @@ final class DiffViewWidget extends AbstractWidget implements FocusableInterface,
     {
         $document = $this->document;
         $onCopy = $this->onCopy;
-        if (null === $onCopy || null === $document || !isset($this->rows[$this->cursor])) {
+        if (null === $onCopy || null === $document || !\array_key_exists($this->cursor, $this->rows)) {
             return;
         }
 
@@ -489,9 +539,11 @@ final class DiffViewWidget extends AbstractWidget implements FocusableInterface,
         $texts = [];
         foreach ($document->hunks as $h => $hunk) {
             foreach ($hunk->lines as $l => $line) {
-                if (isset($selected[$h][$l]) && '\\' !== $line->origin) {
-                    $texts[] = $line->text;
+                if (!(($selected[$h][$l] ?? null) !== null && '\\' !== $line->origin)) {
+                    continue;
                 }
+
+                $texts[] = $line->text;
             }
         }
         if ([] !== $texts) {
@@ -517,14 +569,18 @@ final class DiffViewWidget extends AbstractWidget implements FocusableInterface,
             }
             $this->anchor = null;
             $this->invalidate();
-        } elseif ('hunk' === $row['kind']) {
-            \assert(null !== $this->document);
+
+            return $selected;
+        }
+        if ('hunk' === $row['kind']) {
+            \assert(null !== $this->document, description: 'document is loaded');
             foreach ($this->document->hunks[$row['hunk']]->lines as $i => $line) {
                 $selected[$row['hunk']][$i] = true;
             }
-        } else {
-            $this->selectRowLines($row, $selected);
+
+            return $selected;
         }
+        $this->selectRowLines($row, $selected);
 
         return $selected;
     }
@@ -540,11 +596,16 @@ final class DiffViewWidget extends AbstractWidget implements FocusableInterface,
     {
         if ('line' === $row['kind']) {
             $selected[$row['hunk']][$row['line'] ?? -1] = true;
-        } elseif ('pair' === $row['kind']) {
+
+            return;
+        }
+        if ('pair' === $row['kind']) {
             foreach ([$row['left'] ?? -1, $row['right'] ?? -1] as $index) {
-                if ($index >= 0) {
-                    $selected[$row['hunk']][$index] = true;
+                if ($index < 0) {
+                    continue;
                 }
+
+                $selected[$row['hunk']][$index] = true;
             }
         }
     }
@@ -583,7 +644,7 @@ final class DiffViewWidget extends AbstractWidget implements FocusableInterface,
      */
     private function charSelectionText(array $sel): string
     {
-        \assert(null !== $this->document);
+        \assert(null !== $this->document, description: 'document is loaded');
         $texts = [];
         for ($r = $sel['fromRow']; $r <= min($sel['toRow'], \count($this->rows) - 1); ++$r) {
             $line = $this->lineAtRow($this->rows[$r], $sel['side']);
@@ -607,13 +668,14 @@ final class DiffViewWidget extends AbstractWidget implements FocusableInterface,
      */
     private function lineAtRow(array $row, ?string $side): ?DiffLine
     {
-        \assert(null !== $this->document);
+        \assert(null !== $this->document, description: 'document is loaded');
         if ('hunk' === $row['kind']) {
             return null;
         }
-        $index = 'line' === $row['kind']
-            ? $row['line'] ?? -1
-            : ('left' === ($side ?? 'left') ? $row['left'] ?? -1 : $row['right'] ?? -1);
+        $index = $row['line'] ?? -1;
+        if ('line' !== $row['kind']) {
+            $index = 'left' === ($side ?? 'left') ? $row['left'] ?? -1 : $row['right'] ?? -1;
+        }
 
         return $index >= 0 ? $this->document->hunks[$row['hunk']]->lines[$index] : null;
     }
@@ -625,7 +687,7 @@ final class DiffViewWidget extends AbstractWidget implements FocusableInterface,
         $width = 0;
         $len = mb_strlen($text);
         for ($i = 0; $i < $len && $width < $col; ++$i) {
-            $ch = mb_substr($text, $i, 1);
+            $ch = mb_substr($text, $i, length: 1);
             $width += mb_strwidth($ch);
             $offset += \strlen($ch);
         }
@@ -660,18 +722,26 @@ final class DiffViewWidget extends AbstractWidget implements FocusableInterface,
         foreach (\array_slice($this->rows, $this->scroll, $rows - 1) as $i => $row) {
             $rowIndex = $this->scroll + $i;
             $line = $this->applyCharSelectionTint($rowIndex, $row, $this->renderRow($rowIndex, $row, $width), $width);
-            if ($this->focused && $rowIndex === $this->cursor) {
-                $line = $this->palette->of(Role::HeaderBar).$line;
-            } elseif ($this->inRange($rowIndex)) {
-                $line = $this->palette->of(Role::RowHighlightBg).$line;
-            }
-            $lines[] = $line;
+            $lines[] = $this->decorateRowLine($rowIndex, $line);
         }
         while (\count($lines) < $rows) {
             $lines[] = str_repeat(' ', max(0, $width));
         }
 
         return $this->withMenuOverlay($lines, $width);
+    }
+
+    /** The cursor/range background applied to a rendered diff row. */
+    private function decorateRowLine(int $rowIndex, string $line): string
+    {
+        if ($this->focused && $rowIndex === $this->cursor) {
+            return $this->palette->of(Role::HeaderBar).$line;
+        }
+        if ($this->inRange($rowIndex)) {
+            return $this->palette->of(Role::RowHighlightBg).$line;
+        }
+
+        return $line;
     }
 
     /**
@@ -693,9 +763,9 @@ final class DiffViewWidget extends AbstractWidget implements FocusableInterface,
         $textStart = match ($sel['side']) {
             null => 12,
             'left' => 6,
-            default => intdiv($width - 1, 2) + 7,
+            default => intdiv($width - 1, num2: 2) + 7,
         };
-        $segEnd = 'left' === $sel['side'] ? intdiv($width - 1, 2) : $width;
+        $segEnd = 'left' === $sel['side'] ? intdiv($width - 1, num2: 2) : $width;
         $fromCol = $rowIndex === $sel['fromRow'] ? $sel['fromCol'] : 0;
         $toCol = $rowIndex === $sel['toRow'] ? $sel['toCol'] : mb_strwidth($target->text);
         $start = max($textStart, $textStart + $fromCol - $this->hScroll);
@@ -721,7 +791,7 @@ final class DiffViewWidget extends AbstractWidget implements FocusableInterface,
         if ($from >= $to) {
             return $rendered;
         }
-        $startCol = mb_strwidth(substr($line->text, 0, $from));
+        $startCol = mb_strwidth(substr($line->text, offset: 0, length: $from));
         $endCol = $startCol + mb_strwidth(substr($line->text, $from, $to - $from));
 
         return LineDecorator::apply($rendered, $startCol, $endCol, $bg, "\x1b[49m", $bg);
@@ -771,14 +841,14 @@ final class DiffViewWidget extends AbstractWidget implements FocusableInterface,
     /** @param array{kind: string, hunk: int, line?: int, left?: int, right?: int} $row */
     private function renderRow(int $rowIndex, array $row, int $width): string
     {
-        \assert(null !== $this->document);
+        \assert(null !== $this->document, description: 'document is loaded');
         $hunk = $this->document->hunks[$row['hunk']];
 
         if ('hunk' === $row['kind']) {
             return $this->palette->of(Role::Hunk).AnsiUtils::truncateToWidth(' '.$hunk->header(), $width, '…', pad: true)."\x1b[0m";
         }
         if ('pair' === $row['kind']) {
-            $leftW = intdiv($width - 1, 2);
+            $leftW = intdiv($width - 1, num2: 2);
             $rightW = $width - 1 - $leftW;
 
             return (
@@ -794,9 +864,9 @@ final class DiffViewWidget extends AbstractWidget implements FocusableInterface,
         $line = $hunk->lines[$row['line'] ?? -1];
         $gutter =
             $this->palette->of(Role::Gutter)
-            .str_pad(null === $line->oldNo ? '' : (string) $line->oldNo, 4, ' ', \STR_PAD_LEFT)
+            .str_pad(null === $line->oldNo ? '' : (string) $line->oldNo, length: 4, pad_string: ' ', pad_type: \STR_PAD_LEFT)
             .' '
-            .str_pad(null === $line->newNo ? '' : (string) $line->newNo, 4, ' ', \STR_PAD_LEFT)
+            .str_pad(null === $line->newNo ? '' : (string) $line->newNo, length: 4, pad_string: ' ', pad_type: \STR_PAD_LEFT)
             .' │'
             ."\x1b[39m";
 
@@ -847,13 +917,13 @@ final class DiffViewWidget extends AbstractWidget implements FocusableInterface,
      */
     private function renderHalf(int $hunkIndex, int $lineIndex, int $width, DiffSide $side): string
     {
-        \assert(null !== $this->document);
+        \assert(null !== $this->document, description: 'document is loaded');
         if ($lineIndex < 0) {
             return str_repeat(' ', max(0, $width));
         }
         $line = $this->document->hunks[$hunkIndex]->lines[$lineIndex];
         $no = $side->lineNo($line);
-        $gutter = $this->palette->of(Role::Gutter).str_pad(null === $no ? '' : (string) $no, 4, ' ', \STR_PAD_LEFT).' '."\x1b[39m";
+        $gutter = $this->palette->of(Role::Gutter).str_pad(null === $no ? '' : (string) $no, length: 4, pad_string: ' ', pad_type: \STR_PAD_LEFT).' '."\x1b[39m";
 
         [$marker, $text] = $this->lineBody($line, $hunkIndex.':'.$lineIndex);
 

@@ -66,7 +66,7 @@ final class BufferService implements BufferReopener, DiagnosticsSink, FileOpener
 
     public function openFile(string $path, bool $focusEditor = false): void
     {
-        $path = realpath($path) ?: $path;
+        $path = ($resolved = realpath($path)) ? $resolved : $path;
 
         if ($this->buffers->has($path)) {
             /** @var Buffer $active */
@@ -96,7 +96,7 @@ final class BufferService implements BufferReopener, DiagnosticsSink, FileOpener
         }
 
         $content = (string) file_get_contents($path);
-        if ('' !== $content && !mb_check_encoding($content, 'UTF-8')) {
+        if ('' !== $content && !mb_check_encoding($content, encoding: 'UTF-8')) {
             $this->notifier->flash($this->translator->trans('Not a UTF-8 text file'));
 
             return;
@@ -160,7 +160,7 @@ final class BufferService implements BufferReopener, DiagnosticsSink, FileOpener
      */
     public function openHelp(string $path): void
     {
-        $path = realpath($path) ?: $path;
+        $path = ($resolved = realpath($path)) ? $resolved : $path;
 
         if ($this->buffers->has($path)) {
             /** @var Buffer $active */
@@ -193,7 +193,7 @@ final class BufferService implements BufferReopener, DiagnosticsSink, FileOpener
      */
     public function showHelpPage(string $path): void
     {
-        $path = realpath($path) ?: $path;
+        $path = ($resolved = realpath($path)) ? $resolved : $path;
         if (!is_file($path) || !is_readable($path)) {
             $this->notifier->flash($this->translator->trans('Cannot read %file%', ['%file%' => $this->relativePath($path)]));
 
@@ -226,7 +226,7 @@ final class BufferService implements BufferReopener, DiagnosticsSink, FileOpener
         $config = $this->editorConfigResolver->resolve($buffer->path);
         $buffer->document->applyEditorConfig($config);
         $buffer->editorConfig = $config;
-        if (null !== $config->charset && !\in_array($config->charset, ['utf-8', 'utf-8-bom'], true)) {
+        if (null !== $config->charset && !\in_array($config->charset, ['utf-8', 'utf-8-bom'], strict: true)) {
             $this->notifier->flash($this->translator->trans('.editorconfig charset "%charset%" ignored (UTF-8 only)', ['%charset%' => $config->charset]), 5.0);
         }
     }
@@ -272,7 +272,7 @@ final class BufferService implements BufferReopener, DiagnosticsSink, FileOpener
      */
     private function swapEditorPaneTo(AbstractWidget $widget): void
     {
-        if (\in_array($widget, $this->editorBody->all(), true)) {
+        if (\in_array($widget, $this->editorBody->all(), strict: true)) {
             return;
         }
         $hadFocus = false;
@@ -329,19 +329,14 @@ final class BufferService implements BufferReopener, DiagnosticsSink, FileOpener
             }
             if (!$buffer->isImage() && !$buffer->isHelp()) {
                 $this->lsp->notifyDidClose($buffer->path);
-            } elseif ($buffer->isHelp()) {
+            }
+            if ($buffer->isHelp()) {
                 $this->helpViewer->clear();
             }
             $this->buffers->close($buffer->path);
         }
 
-        if (null !== $keep && null !== ($kept = $this->buffers->setActive($keep))) {
-            $this->showBuffer($kept);
-        } elseif (null !== ($active = $this->buffers->active())) {
-            $this->showBuffer($active);
-        } else {
-            $this->showEmptyEditor();
-        }
+        $this->showAfterBulkClose($keep);
 
         if ($dirtyKept > 0) {
             $this->notifier->flash(
@@ -351,6 +346,23 @@ final class BufferService implements BufferReopener, DiagnosticsSink, FileOpener
             );
         }
         $this->tui->requestRender();
+    }
+
+    /** Show the buffer that should be visible after a bulk close: $keep, else the most recent, else empty. */
+    private function showAfterBulkClose(?string $keep): void
+    {
+        if (null !== $keep && null !== ($kept = $this->buffers->setActive($keep))) {
+            $this->showBuffer($kept);
+
+            return;
+        }
+        $active = $this->buffers->active();
+        if (null !== $active) {
+            $this->showBuffer($active);
+
+            return;
+        }
+        $this->showEmptyEditor();
     }
 
     public function closeActiveBuffer(bool $force = false): void
@@ -371,7 +383,10 @@ final class BufferService implements BufferReopener, DiagnosticsSink, FileOpener
                 function (string $choice) use ($active): void {
                     if ('save' === $choice && $this->saveBuffer($active)) {
                         $this->closeActiveBuffer();
-                    } elseif ('discard' === $choice) {
+
+                        return;
+                    }
+                    if ('discard' === $choice) {
                         $this->closeActiveBuffer(force: true);
                     }
                 },
@@ -391,10 +406,11 @@ final class BufferService implements BufferReopener, DiagnosticsSink, FileOpener
         }
         if (null !== $next) {
             $this->showBuffer($next);
-        } else {
-            $this->showEmptyEditor();
-            $this->tui->requestRender();
+
+            return;
         }
+        $this->showEmptyEditor();
+        $this->tui->requestRender();
     }
 
     public function saveCurrentFile(): void
@@ -425,9 +441,11 @@ final class BufferService implements BufferReopener, DiagnosticsSink, FileOpener
     {
         $saved = 0;
         foreach ($this->buffers->all() as $buffer) {
-            if ($buffer->isDirty() && $this->saveBuffer($buffer)) {
-                ++$saved;
+            if (!($buffer->isDirty() && $this->saveBuffer($buffer))) {
+                continue;
             }
+
+            ++$saved;
         }
         $this->notifier->flash(match (true) {
             0 === $saved => $this->translator->trans('Nothing to save'),
@@ -558,12 +576,14 @@ final class BufferService implements BufferReopener, DiagnosticsSink, FileOpener
     public function activateAdjacentTextBuffer(): ?Buffer
     {
         foreach ($this->buffers->recent() as $buffer) {
-            if (!$buffer->isImage() && !$buffer->isHelp()) {
-                $this->buffers->setActive($buffer->path);
-                $this->showBuffer($buffer);
-
-                return $buffer;
+            if (!(!$buffer->isImage() && !$buffer->isHelp())) {
+                continue;
             }
+
+            $this->buffers->setActive($buffer->path);
+            $this->showBuffer($buffer);
+
+            return $buffer;
         }
 
         return null;
@@ -605,7 +625,7 @@ final class BufferService implements BufferReopener, DiagnosticsSink, FileOpener
         }
         $content = (string) file_get_contents($path);
 
-        return '' === $content || mb_check_encoding($content, 'UTF-8') ? $content : null;
+        return '' === $content || mb_check_encoding($content, encoding: 'UTF-8') ? $content : null;
     }
 
     /**
@@ -618,10 +638,12 @@ final class BufferService implements BufferReopener, DiagnosticsSink, FileOpener
     {
         $target = null;
         foreach ($this->buffers->all() as $buffer) {
-            if ($uri === Uri::fromPath($buffer->path)) {
-                $target = $buffer;
-                break;
+            if ($uri !== Uri::fromPath($buffer->path)) {
+                continue;
             }
+
+            $target = $buffer;
+            break;
         }
         if (null === $target) {
             return;

@@ -31,7 +31,7 @@ final class PluginEvents
     /** @param \Closure(string): void $listener receives the absolute path */
     public function subscribe(string $plugin, string $event, \Closure $listener): void
     {
-        if (!\in_array($event, self::EVENTS, true)) {
+        if (!\in_array($event, self::EVENTS, strict: true)) {
             throw new PluginException(\sprintf('unknown event "%s"', $event));
         }
         $this->listeners[$event][$plugin][] = $listener;

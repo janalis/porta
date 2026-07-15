@@ -13,7 +13,6 @@ use Porta\Ui\ListSelection;
 use Porta\Ui\LtrPane;
 use Porta\Ui\Palette;
 use Porta\Ui\Role;
-use Porta\Ui\Style;
 use Porta\Ui\TextField;
 use Porta\Widget\Render\HeaderRenderer;
 use Porta\Widget\Render\LineDecorator;
@@ -172,11 +171,13 @@ final class ResultsPanelWidget extends OverlayWidget implements FocusableInterfa
         $this->list->reset();
         // Start on the first match, not the leading file header, so Enter jumps.
         foreach ($this->displayRows as $i => $row) {
-            if (null === $row->filePath) {
-                $this->list->select($i);
-
-                break;
+            if (null !== $row->filePath) {
+                continue;
             }
+
+            $this->list->select($i);
+
+            break;
         }
         $this->searching = false;
         $this->invalidate();
@@ -201,17 +202,21 @@ final class ResultsPanelWidget extends OverlayWidget implements FocusableInterfa
             if (ResultGrouping::Nested === $this->grouping) {
                 $keys[\dirname($result['path'])] = true;
                 $keys[$result['path']] = true;
-            } else {
-                $keys[$this->grouping->keyFor($result['path'])] = true;
+
+                continue;
             }
+
+            $keys[$this->grouping->keyFor($result['path'])] = true;
         }
         $allCollapsed = true;
         foreach (array_keys($keys) as $key) {
-            if (!($this->collapsed[$key] ?? false)) {
-                $allCollapsed = false;
-
-                break;
+            if ($this->collapsed[$key] ?? false) {
+                continue;
             }
+
+            $allCollapsed = false;
+
+            break;
         }
         $this->collapsed = [];
         if (!$allCollapsed) {
@@ -247,55 +252,90 @@ final class ResultsPanelWidget extends OverlayWidget implements FocusableInterfa
 
         if ($kb->matches($data, 'close')) {
             $this->close();
-        } elseif (ListNavigation::handleKey($data, $kb, $this->list, \count($this->displayRows))) {
+
+            return;
+        }
+        if (ListNavigation::handleKey($data, $kb, $this->list, \count($this->displayRows))) {
             $this->invalidate();
-        } elseif ($kb->matches($data, 'jump')) {
+
+            return;
+        }
+        if ($kb->matches($data, 'jump')) {
             $this->activateRow($this->list->selected());
-        } elseif ($this->grouped && $kb->matches($data, 'toggle_all')) {
+
+            return;
+        }
+        if ($this->grouped && $kb->matches($data, 'toggle_all')) {
             $this->toggleAllGroups();
-        } elseif ($this->grouped && $kb->matches($data, 'toggle_group')) {
+
+            return;
+        }
+        if ($this->grouped && $kb->matches($data, 'toggle_group')) {
             $this->grouping = $this->grouping->next();
             $this->collapsed = [];
             $this->rebuildView();
             $this->invalidate();
-        } elseif ($this->grouped && $kb->matches($data, 'export')) {
+
+            return;
+        }
+        if ($this->grouped && $kb->matches($data, 'export')) {
             if (null !== $this->onExport) {
                 ($this->onExport)();
             }
-        } elseif ($this->grouped && $kb->matches($data, 'pin')) {
+
+            return;
+        }
+        if ($this->grouped && $kb->matches($data, 'pin')) {
             if (null !== $this->onPin) {
                 ($this->onPin)();
             }
-        } elseif ($this->grouped && $kb->matches($data, 'toggle_context')) {
+
+            return;
+        }
+        if ($this->grouped && $kb->matches($data, 'toggle_context')) {
             $this->toggleContext($this->list->selected());
-        } elseif ($kb->matches($data, 'rerun')) {
+
+            return;
+        }
+        if ($kb->matches($data, 'rerun')) {
             if (null !== $this->onRerun) {
                 ($this->onRerun)();
             }
-        } elseif ($kb->matches($data, 'switch_field') && \count($this->focusableFields()) > 1) {
+
+            return;
+        }
+        if ($kb->matches($data, 'switch_field') && \count($this->focusableFields()) > 1) {
             $fields = $this->focusableFields();
-            $pos = (int) array_search($this->activeField, $fields, true);
+            $pos = (int) array_search($this->activeField, $fields, strict: true);
             $this->activeField = $fields[($pos + 1) % \count($fields)];
             $this->invalidate();
-        } elseif ($kb->matches($data, 'insert_newline') && 'query' === $this->activeField) {
+
+            return;
+        }
+        if ($kb->matches($data, 'insert_newline') && 'query' === $this->activeField) {
             $field = $this->activeTextField();
             if (null !== $field) {
                 $field->insertNewline();
                 $this->afterFieldEdit();
                 $this->invalidate();
             }
-        } elseif ($kb->matches($data, 'delete_char_backward')) {
+
+            return;
+        }
+        if ($kb->matches($data, 'delete_char_backward')) {
             $field = $this->activeTextField();
             if (null !== $field && $field->backspace()) {
                 $this->afterFieldEdit();
                 $this->invalidate();
             }
-        } else {
-            $field = $this->activeTextField();
-            if (null !== $field && $field->insert($data)) {
-                $this->afterFieldEdit();
-                $this->invalidate();
-            }
+
+            return;
+        }
+
+        $field = $this->activeTextField();
+        if (null !== $field && $field->insert($data)) {
+            $this->afterFieldEdit();
+            $this->invalidate();
         }
     }
 
@@ -327,7 +367,10 @@ final class ResultsPanelWidget extends OverlayWidget implements FocusableInterfa
     {
         if ('query' === $this->activeField) {
             $this->notifyQuery();
-        } elseif ('filter' === $this->activeField) {
+
+            return;
+        }
+        if ('filter' === $this->activeField) {
             $this->rebuildView(); // client-side; no re-grep
         }
     }
@@ -377,11 +420,13 @@ final class ResultsPanelWidget extends OverlayWidget implements FocusableInterfa
             return; // only real match rows expand
         }
         $matchIndex = $row->matchIndex;
-        if ($this->contextExpanded[$matchIndex] ?? false) {
+        $expanded = $this->contextExpanded[$matchIndex] ?? false;
+        if ($expanded) {
             unset($this->contextExpanded[$matchIndex]);
-        } else {
+        }
+        if (!$expanded) {
             $this->contextExpanded[$matchIndex] = true;
-            if (!isset($this->contextCache[$matchIndex]) && null !== $this->contextProvider) {
+            if (!array_key_exists($matchIndex, $this->contextCache) && null !== $this->contextProvider) {
                 $result = $this->results[$matchIndex];
                 $this->contextCache[$matchIndex] = ($this->contextProvider)($result['path'], $result['line']);
             }
@@ -395,9 +440,11 @@ final class ResultsPanelWidget extends OverlayWidget implements FocusableInterfa
     {
         if ($delta < 0) {
             $this->list->moveUp(-$delta);
-        } else {
-            $this->list->moveDown(\count($this->displayRows), $delta);
+            $this->invalidate();
+
+            return;
         }
+        $this->list->moveDown(\count($this->displayRows), $delta);
         $this->invalidate();
     }
 
@@ -440,9 +487,11 @@ final class ResultsPanelWidget extends OverlayWidget implements FocusableInterfa
         if (!$this->searching && '' !== $this->filter->value()) {
             $shown = 0;
             foreach ($this->displayRows as $row) {
-                if (null === $row->filePath) {
-                    ++$shown;
+                if (null !== $row->filePath) {
+                    continue;
                 }
+
+                ++$shown;
             }
             $status .= \sprintf(' · %d shown', $shown);
         }
@@ -463,7 +512,11 @@ final class ResultsPanelWidget extends OverlayWidget implements FocusableInterfa
 
         foreach (\array_slice($this->displayRows, $scroll, $this->visibleRows) as $i => $row) {
             $isSelected = $this->list->isSelected($scroll + $i);
-            $bg = $isSelected ? ($this->focused ? $this->palette->of(Role::SelectedRow) : $this->palette->of(Role::SelectedRowUnfocused)) : $this->palette->of(Role::Toolbar);
+            $bg = match (true) {
+                !$isSelected => $this->palette->of(Role::Toolbar),
+                $this->focused => $this->palette->of(Role::SelectedRow),
+                default => $this->palette->of(Role::SelectedRowUnfocused),
+            };
             $lines[] = match (true) {
                 null !== $row->filePath => $this->headerLine($row, $bg, $columns),
                 null !== $row->contextText => $this->contextRowLine($row->contextLine, $row->contextText, $bg, $columns),
@@ -516,16 +569,11 @@ final class ResultsPanelWidget extends OverlayWidget implements FocusableInterfa
     private function headerLine(DisplayRow $row, string $bg, int $columns): string
     {
         $path = (string) $row->filePath;
-        if ($row->isDirectory) {
-            $display = $path.'/';
-            $indent = '';
-        } elseif (ResultGrouping::Nested === $this->grouping) {
-            $display = basename($path);
-            $indent = '  ';
-        } else {
-            $display = $path;
-            $indent = '';
-        }
+        [$display, $indent] = match (true) {
+            $row->isDirectory => [$path.'/', ''],
+            ResultGrouping::Nested === $this->grouping => [basename($path), '  '],
+            default => [$path, ''],
+        };
         $arrow = $row->collapsed ? '▸' : '▾';
         $text = $indent.' '.$arrow.' '.$this->palette->of(Role::TabAccent).$display."\x1b[39m".$this->palette->of(Role::Dim).'  ('.$row->count.')'."\x1b[39m";
 
@@ -559,11 +607,24 @@ final class ResultsPanelWidget extends OverlayWidget implements FocusableInterfa
             $label = $this->groupedLabel($result);
             $prefixWidth = mb_strwidth($indent) + mb_strwidth($label) + 2; // indent + label + `  `
             $text = $indent.$this->palette->of(Role::TabAccent).$label."\x1b[39m".'  '.$result['text'];
-        } else {
-            $location = $result['path'].':'.($result['line'] + 1);
-            $prefixWidth = 1 + mb_strwidth($location) + 2; // ` ` + `path:line` + `  `
-            $text = ' '.$this->palette->of(Role::TabAccent).$location."\x1b[39m".'  '.$result['text'];
+
+            return $this->highlightMatch($text, $prefixWidth, $result, $bg, $columns);
         }
+        $location = $result['path'].':'.($result['line'] + 1);
+        $prefixWidth = 1 + mb_strwidth($location) + 2; // ` ` + `path:line` + `  `
+        $text = ' '.$this->palette->of(Role::TabAccent).$location."\x1b[39m".'  '.$result['text'];
+
+        return $this->highlightMatch($text, $prefixWidth, $result, $bg, $columns);
+    }
+
+    /**
+     * Truncate a match row to width and highlight each match span, closing with
+     * the row bg so the tail keeps its colour.
+     *
+     * @param array{path: string, line: int, text: string, ranges?: list<array{start: int, length: int}>} $result
+     */
+    private function highlightMatch(string $text, int $prefixWidth, array $result, string $bg, int $columns): string
+    {
         $line = $bg.AnsiUtils::truncateToWidth($text, $columns, '…', pad: true)."\x1b[0m";
         // Highlight each match span; close with the row bg so the tail keeps its colour.
         $searchBg = $this->palette->of(Role::SearchBg);

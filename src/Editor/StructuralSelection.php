@@ -55,10 +55,12 @@ final class StructuralSelection
         // Enclosing bracket pairs and string literals: both the inner contents
         // and the delimiter-inclusive span become candidates.
         foreach (self::scan($text) as [$open, $close]) {
-            if ($open < $start && $close >= $end) {
-                $candidates[] = [$open + 1, $close];
-                $candidates[] = [$open, $close + 1];
+            if (!($open < $start && $close >= $end)) {
+                continue;
             }
+
+            $candidates[] = [$open + 1, $close];
+            $candidates[] = [$open, $close + 1];
         }
 
         // The line(s) the range sits on.
@@ -125,9 +127,12 @@ final class StructuralSelection
                 continue;
             }
 
-            if (isset(self::OPENERS[$ch])) {
+            if (array_key_exists($ch, self::OPENERS)) {
                 $stack[] = [$ch, $i];
-            } elseif (\in_array($ch, self::OPENERS, true) && [] !== $stack) {
+
+                continue;
+            }
+            if (\in_array($ch, self::OPENERS, strict: true) && [] !== $stack) {
                 [$openCh, $openPos] = $stack[\count($stack) - 1];
                 if (self::OPENERS[$openCh] === $ch) {
                     array_pop($stack);

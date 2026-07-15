@@ -41,8 +41,10 @@ final class TextSource implements SearchSource
                     trim($result['text']),
                     $result['path'].':'.($line + 1),
                     function () use ($absolute, $line): void {
-                        ($this->openFile)($absolute, true);
-                        ($this->jumpTo)($line, 0);
+                        $focusEditor = true;
+                        $column = 0;
+                        ($this->openFile)($absolute, $focusEditor);
+                        ($this->jumpTo)($line, $column);
                     },
                 );
             }

@@ -90,7 +90,7 @@ final class MarkdownRenderer
             if (str_starts_with($line, '> ')) {
                 $this->flushParagraph($paragraph, $width);
                 $prefix = $this->palette->of(Role::Muted).'│ '.$this->palette->fgReset();
-                $this->wrapSegments($this->inline(substr($line, 2)), $width, $prefix, 2, $prefix);
+                $this->wrapSegments($this->inline(substr($line, offset: 2)), $width, $prefix, 2, $prefix);
                 continue;
             }
             if (1 === preg_match('/^(\s*)- (.+)$/', $line, $m)) {
@@ -194,7 +194,7 @@ final class MarkdownRenderer
         $cells = [];
         $separator = [];
         foreach ($rows as $index => $row) {
-            $parts = array_map(trim(...), \array_slice(explode('|', trim($row, '|')), 0));
+            $parts = array_map(trim(...), \array_slice(explode('|', trim($row, characters: '|')), offset: 0));
             if ([] !== $parts && 1 === preg_match('/^:?-{3,}:?$/', $parts[0])) {
                 $separator[$index] = true;
                 continue;
@@ -211,7 +211,7 @@ final class MarkdownRenderer
 
         $headerSeen = false;
         foreach ($rows as $index => $row) {
-            if (isset($separator[$index])) {
+            if (array_key_exists($index, $separator)) {
                 $rule = ' ';
                 foreach ($widths as $columnWidth) {
                     $rule .= str_repeat('─', $columnWidth).'  ';
@@ -259,16 +259,17 @@ final class MarkdownRenderer
                 if (null === $target) {
                     // A pure in-page anchor: styled, but not a followable link.
                     $segments[] = ['text' => $label, 'style' => 'italic', 'target' => null, 'group' => -1];
-                } else {
-                    $segments[] = ['text' => $label, 'style' => 'link', 'target' => $target, 'group' => $this->nextGroup++];
+                    continue;
                 }
+                $segments[] = ['text' => $label, 'style' => 'link', 'target' => $target, 'group' => $this->nextGroup++];
                 continue;
             }
-            foreach (preg_split('/(`[^`]+`|\*\*[^*]+\*\*|\*[^*]+\*)/', $parts[$i], -1, \PREG_SPLIT_DELIM_CAPTURE | \PREG_SPLIT_NO_EMPTY) ?: [] as $chunk) {
+            $chunks = preg_split('/(`[^`]+`|\*\*[^*]+\*\*|\*[^*]+\*)/', $parts[$i], -1, \PREG_SPLIT_DELIM_CAPTURE | \PREG_SPLIT_NO_EMPTY);
+            foreach (\is_array($chunks) ? $chunks : [] as $chunk) {
                 $segments[] = match (true) {
-                    str_starts_with($chunk, '`') => ['text' => trim($chunk, '`'), 'style' => 'code', 'target' => null, 'group' => -1],
-                    str_starts_with($chunk, '**') => ['text' => trim($chunk, '*'), 'style' => 'bold', 'target' => null, 'group' => -1],
-                    str_starts_with($chunk, '*') => ['text' => trim($chunk, '*'), 'style' => 'italic', 'target' => null, 'group' => -1],
+                    str_starts_with($chunk, '`') => ['text' => trim($chunk, characters: '`'), 'style' => 'code', 'target' => null, 'group' => -1],
+                    str_starts_with($chunk, '**') => ['text' => trim($chunk, characters: '*'), 'style' => 'bold', 'target' => null, 'group' => -1],
+                    str_starts_with($chunk, '*') => ['text' => trim($chunk, characters: '*'), 'style' => 'italic', 'target' => null, 'group' => -1],
                     default => ['text' => $chunk, 'style' => 'plain', 'target' => null, 'group' => -1],
                 };
             }
@@ -281,8 +282,8 @@ final class MarkdownRenderer
     private function normalizeTarget(string $target): ?string
     {
         $target = trim($target);
-        $target = str_starts_with($target, '<') ? trim($target, '<>') : explode(' ', $target, 2)[0];
-        $file = explode('#', $target, 2)[0];
+        $target = str_starts_with($target, '<') ? trim($target, characters: '<>') : explode(' ', $target, limit: 2)[0];
+        $file = explode('#', $target, limit: 2)[0];
 
         return '' === $file ? null : $file;
     }
@@ -297,7 +298,8 @@ final class MarkdownRenderer
     {
         $words = [];
         foreach ($segments as $segment) {
-            foreach (preg_split('/ +/', $segment['text'], -1, \PREG_SPLIT_NO_EMPTY) ?: [] as $word) {
+            $splitWords = preg_split('/ +/', $segment['text'], -1, \PREG_SPLIT_NO_EMPTY);
+            foreach (\is_array($splitWords) ? $splitWords : [] as $word) {
                 $wordWidth = AnsiUtils::visibleWidth($word);
                 $room = $width - max($hang, 2);
                 while ($wordWidth > $room) {

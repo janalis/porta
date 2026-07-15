@@ -85,9 +85,11 @@ final class SettingsController
     public function applyAll(): void
     {
         foreach ($this->descriptors as $key => $descriptor) {
-            if (null !== $descriptor['apply']) {
-                $descriptor['apply']($this->settings[$key]);
+            if (null === $descriptor['apply']) {
+                continue;
             }
+
+            $descriptor['apply']($this->settings[$key]);
         }
     }
 
@@ -122,7 +124,7 @@ final class SettingsController
      */
     public function toggle(string $key): void
     {
-        if (!isset($this->descriptors[$key])) {
+        if (($this->descriptors[$key] ?? null) === null) {
             $this->notifier->flash($this->translator->trans('Unknown setting "%key%"', ['%key%' => $key]));
 
             return;

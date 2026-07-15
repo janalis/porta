@@ -150,6 +150,7 @@ final class LspClient implements LspClientInterface
         $descriptors = [0 => ['pipe', 'r'], 1 => ['pipe', 'w'], 2 => ['pipe', 'w']];
         /** @var non-empty-string $cwd */
         $cwd = $this->rootDir;
+        // @mago-expect lint:no-error-control-operator -- proc_open on a nonexistent/unusable binary emits a spawn ("posix_spawn() failed") warning that guarding the inputs cannot reliably prevent; the false return is handled below.
         $process = @proc_open($this->command, $descriptors, $pipes, $cwd);
 
         return \is_resource($process) ? $process : null;
@@ -167,16 +168,16 @@ final class LspClient implements LspClientInterface
         // stdin non-blocking too: a server that stops draining its stdin must
         // never park the whole event loop inside a blocking fwrite (the classic
         // stdio deadlock once a frame exceeds the OS pipe buffer).
-        stream_set_blocking($this->stdin, false);
-        stream_set_blocking($this->stdout, false);
-        stream_set_blocking($this->stderr, false);
+        stream_set_blocking($this->stdin, enable: false);
+        stream_set_blocking($this->stdout, enable: false);
+        stream_set_blocking($this->stderr, enable: false);
         $this->writer = new NonBlockingWriter($this->stdin, $this->onWriteError(...), $this->maxWriteBuffer);
 
-        $this->stdoutWatcher = EventLoop::onReadable($this->stdout, fn () => $this->drainStdout());
+        $this->stdoutWatcher = EventLoop::onReadable($this->stdout, $this->drainStdout(...));
         $this->stderrWatcher = EventLoop::onReadable($this->stderr, function (): void {
             /** @var resource $stderr */
             $stderr = $this->stderr;
-            $data = @fread($stderr, 8192);
+            $data = \is_resource($stderr) ? fread($stderr, length: 8192) : false;
             if (\is_string($data) && '' !== $data && null !== $this->logger) {
                 ($this->logger)(rtrim($data));
             }
@@ -191,7 +192,7 @@ final class LspClient implements LspClientInterface
      */
     private function initializeParams(): array
     {
-        $rootUri = 'file://'.str_replace(\DIRECTORY_SEPARATOR, '/', $this->rootDir);
+        $rootUri = 'file://'.str_replace(\DIRECTORY_SEPARATOR, replace: '/', subject: $this->rootDir);
 
         return [
             'processId' => getmypid(),
@@ -241,9 +242,10 @@ final class LspClient implements LspClientInterface
     {
         if ($this->initialized) {
             $action();
-        } else {
-            $this->whenReady[] = $action;
+
+            return;
         }
+        $this->whenReady[] = $action;
     }
 
     /**
@@ -282,12 +284,16 @@ final class LspClient implements LspClientInterface
             $this->writer = null;
 
             foreach ([$this->stdin, $this->stdout, $this->stderr] as $pipe) {
-                if (\is_resource($pipe)) {
-                    @fclose($pipe);
+                if (!\is_resource($pipe)) {
+                    continue;
                 }
+
+                fclose($pipe);
             }
-            @proc_terminate($process);
-            @proc_close($process);
+            if (\is_resource($process)) {
+                proc_terminate($process);
+                proc_close($process);
+            }
             $this->process = null;
         }
 
@@ -311,8 +317,8 @@ final class LspClient implements LspClientInterface
     private function onWriteError(string $reason): void
     {
         $this->log('write to LSP server failed: '.$reason);
-        if (null !== $this->process) {
-            @proc_terminate($this->process);
+        if (\is_resource($this->process)) {
+            proc_terminate($this->process);
         }
     }
 
@@ -321,7 +327,7 @@ final class LspClient implements LspClientInterface
         if (!\is_resource($this->stdout)) {
             return;
         }
-        $data = @fread($this->stdout, 65536);
+        $data = fread($this->stdout, length: 65_536);
         if (!\is_string($data) || '' === $data) {
             if (feof($this->stdout)) {
                 $this->log('LSP server closed its stdout');
@@ -346,7 +352,7 @@ final class LspClient implements LspClientInterface
     private function handleMessage(array $message): void
     {
         // Response to one of our requests
-        if (isset($message['id']) && !isset($message['method'])) {
+        if (($message['id'] ?? null) !== null && ($message['method'] ?? null) === null) {
             $id = (int) $message['id'];
             $callback = $this->pending[$id] ?? null;
             unset($this->pending[$id]);
@@ -358,9 +364,10 @@ final class LspClient implements LspClientInterface
         }
 
         // Request from the server: answer with a sane default so it does not hang
-        if (isset($message['id'], $message['method'])) {
+        // (an id-bearing message without a method already returned above).
+        if (($message['id'] ?? null) !== null) {
             $result = match ($message['method']) {
-                'workspace/configuration' => array_fill(0, \count($message['params']['items'] ?? [null]), null),
+                'workspace/configuration' => array_fill(0, \count($message['params']['items'] ?? [null]), value: null),
                 'window/workDoneProgress/create', 'client/registerCapability', 'client/unregisterCapability' => null,
                 'workspace/applyEdit' => [
                     'applied' => null !== $this->applyEditHandler && ($this->applyEditHandler)($message['params']['edit'] ?? []),
@@ -373,7 +380,7 @@ final class LspClient implements LspClientInterface
         }
 
         // Notification from the server
-        if (isset($message['method'])) {
+        if (($message['method'] ?? null) !== null) {
             $handler = $this->notificationHandlers[$message['method']] ?? null;
             if (null !== $handler) {
                 $handler($message['params'] ?? []);

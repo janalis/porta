@@ -270,7 +270,7 @@ final class IdeHelpersTest extends TestCase
     private function localHistory(): LocalHistoryController
     {
         $controller = $this->ide->getLocalHistory();
-        \assert($controller instanceof LocalHistoryController);
+        \assert($controller instanceof LocalHistoryController, description: 'the coordinator wires a LocalHistoryController');
 
         return $controller;
     }
@@ -315,7 +315,7 @@ final class IdeHelpersTest extends TestCase
         ], $real);
 
         $restorer = new \ReflectionProperty($this->ide, 'sessionRestorer')->getValue($this->ide);
-        \assert($restorer instanceof \Porta\History\SessionRestorer);
+        \assert($restorer instanceof \Porta\History\SessionRestorer, description: 'the sessionRestorer property holds a SessionRestorer');
         $this->assertTrue($restorer->restore(), 'restored at least the real file');
         $this->assertStringEndsWith('Real.php', (string) $this->ide->getTui()->getById('editor')->getFilePath());
     }
@@ -323,7 +323,7 @@ final class IdeHelpersTest extends TestCase
     public function testProviderPriorityOrderMatchesTheContractualPaletteOrder(): void
     {
         $registry = $this->ide->getCommands();
-        \assert($registry instanceof \Porta\Config\CommandRegistry);
+        \assert($registry instanceof \Porta\Config\CommandRegistry, description: 'the IDE exposes a CommandRegistry');
         $labels = array_column($registry->paletteCommands(), 'label');
 
         // The tagged providers register in #[AsTaggedItem] priority order:
@@ -331,8 +331,8 @@ final class IdeHelpersTest extends TestCase
         // first, git commands last.
         $this->assertSame('Debug Current File', $labels[0], 'the debug group has always led the palette');
         $this->assertSame('Git: Toggle Blame Annotations', $labels[array_key_last($labels)]);
-        $this->assertLessThan(array_search('Show Problems', $labels, true), array_search('Save All', $labels, true), 'file group precedes the search group');
-        $this->assertLessThan(array_search('Git: Stage Current File', $labels, true), array_search('Documentation', $labels, true), 'view group precedes the git group');
+        $this->assertLessThan(array_search('Show Problems', $labels, strict: true), array_search('Save All', $labels, strict: true), 'file group precedes the search group');
+        $this->assertLessThan(array_search('Git: Stage Current File', $labels, strict: true), array_search('Documentation', $labels, strict: true), 'view group precedes the git group');
     }
 
     public function testEveryPaletteCommandRuns(): void
@@ -426,7 +426,7 @@ final class IdeHelpersTest extends TestCase
             $this->project->dir,
         );
         $ready = false;
-        $client->start(function () use (&$ready): void {
+        $client->start(static function () use (&$ready): void {
             $ready = true;
         });
         $this->await(static fn () => $ready);
@@ -435,7 +435,7 @@ final class IdeHelpersTest extends TestCase
         // The results panel is never opened, so the response callback's
         // guard drops the result without touching the panel.
         $this->navigation()->requestWorkspaceSymbols('greet');
-        $this->await(fn () => false, 0.4); // pump the loop briefly
+        $this->await(static fn () => false, 0.4); // pump the loop briefly
 
         $this->assertFalse($this->ide->getTui()->getById('results')->isOpen());
         $client->stop();
@@ -449,14 +449,14 @@ final class IdeHelpersTest extends TestCase
             $this->project->dir,
         );
         $ready = false;
-        $client->start(function () use (&$ready): void {
+        $client->start(static function () use (&$ready): void {
             $ready = true;
         });
         $this->await(static fn () => $ready);
         $this->injectLspClient($client);
 
         $results = [];
-        $client->onNotification('mock/ran', function (array $p) use (&$results): void {
+        $client->onNotification('mock/ran', static function (array $p) use (&$results): void {
             $results[] = $p['command'];
         });
 
@@ -488,7 +488,7 @@ final class IdeHelpersTest extends TestCase
         $elapsed = 0.0;
         while (!$done() && $elapsed < $timeout) {
             $suspension = \Revolt\EventLoop::getSuspension();
-            \Revolt\EventLoop::delay(0.02, static fn () => $suspension->resume());
+            \Revolt\EventLoop::delay(0.02, $suspension->resume(...));
             $suspension->suspend();
             $elapsed += 0.02;
         }
@@ -516,8 +516,8 @@ final class IdeHelpersTest extends TestCase
         $this->assertStringContainsString('✗ top error', $rendered);
         $this->assertStringContainsString('▲ warn here', $rendered);
         // A.php sorts before B.php; within A.php line 0 before line 2
-        $this->assertLessThan(strpos($rendered, 'error here'), strpos($rendered, 'top error'));
-        $this->assertLessThan(strpos($rendered, 'warn here'), strpos($rendered, 'top error'));
+        $this->assertLessThan(strpos($rendered, needle: 'error here'), strpos($rendered, needle: 'top error'));
+        $this->assertLessThan(strpos($rendered, needle: 'warn here'), strpos($rendered, needle: 'top error'));
     }
 
     public function testRequestReformatWithoutLspIsNoOp(): void
@@ -533,7 +533,7 @@ final class IdeHelpersTest extends TestCase
             $this->project->dir,
         );
         $ready = false;
-        $client->start(function () use (&$ready): void {
+        $client->start(static function () use (&$ready): void {
             $ready = true;
         });
         $this->await(static fn () => $ready);
@@ -628,7 +628,7 @@ final class IdeHelpersTest extends TestCase
         $this->assertSame($readme, $manager->active()?->path);
 
         // A page changed on disk reloads through the filesystem poller.
-        file_put_contents($readme, "# Guides v2\n");
+        file_put_contents($readme, data: "# Guides v2\n");
         clearstatcache();
         touch($readme, time() + 2);
         $buffers->pollFilesystem();
@@ -672,7 +672,7 @@ final class IdeHelpersTest extends TestCase
         $this->assertSame($editor, $viewer->path(), 're-activating the help tab keeps the navigated page');
 
         // The poller only re-shows the root page when the viewer is on it.
-        file_put_contents($readme, "# Guides v2\n");
+        file_put_contents($readme, data: "# Guides v2\n");
         clearstatcache();
         touch($readme, time() + 2);
         $buffers->pollFilesystem();
@@ -695,12 +695,12 @@ final class IdeHelpersTest extends TestCase
     {
         $tui = $this->ide->getTui();
         $statusBar = $tui->getById('status');
-        $flash = fn (): string => (string) (new \ReflectionProperty($statusBar, 'flash')->getValue($statusBar)['text'] ?? '');
+        $flash = static fn (): string => (string) (new \ReflectionProperty($statusBar, 'flash')->getValue($statusBar)['text'] ?? '');
 
         $file = $this->project->write('src/Hooked.php', "<?php\n");
         $helpViewer = new \ReflectionProperty($this->ide, 'locator')->getValue($this->ide)->get(\Porta\Widget\HelpViewerWidget::class);
         $help = new \ReflectionProperty($helpViewer, 'handler')->getValue($helpViewer);
-        \assert($help instanceof \Porta\Help\HelpViewerActions);
+        \assert($help instanceof \Porta\Help\HelpViewerActions, description: 'the help viewer exposes its actions handler');
 
         $help->openFile($file);
         $this->assertStringEndsWith('Hooked.php', (string) $tui->getById('editor')->getFilePath(), 'a plain-file link opens in the editor');
@@ -715,7 +715,7 @@ final class IdeHelpersTest extends TestCase
 
         $imageViewer = new \ReflectionProperty($this->ide, 'locator')->getValue($this->ide)->get(\Porta\Widget\ImageViewerWidget::class);
         $image = new \ReflectionProperty($imageViewer, 'handler')->getValue($imageViewer);
-        \assert($image instanceof \Porta\Image\ImageViewerActions);
+        \assert($image instanceof \Porta\Image\ImageViewerActions, description: 'the image viewer exposes its actions handler');
         $image->saveAll(); // same silent sweep through the shared navigator
 
         $this->addToAssertionCount(1);

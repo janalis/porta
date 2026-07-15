@@ -34,16 +34,19 @@ final class FocusRing
     {
         $members = [$this->tree, $this->editorArea->widget()];
         foreach ([$this->terminalPanel, $this->resultsPanel, $this->debugPanel] as $panel) {
-            if ($panel->isOpen()) {
-                $members[] = $panel;
+            if (!$panel->isOpen()) {
+                continue;
             }
+
+            $members[] = $panel;
         }
 
         $count = \count($members);
-        $current = array_search($this->tui->getFocus(), $members, true);
+        $current = array_search($this->tui->getFocus(), $members, strict: true);
         // Focus outside the ring (menu bar, popups): enter at the edge.
+        $edge = $direction > 0 ? 0 : $count - 1;
         $index = false === $current
-            ? ($direction > 0 ? 0 : $count - 1)
+            ? $edge
             : ($current + $direction + $count) % $count;
 
         $this->tui->setFocus($members[$index]);

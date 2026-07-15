@@ -56,7 +56,7 @@ final class PluginSettingsTest extends TestCase
         $this->assertSame('/opt/tool', $settings->value('demo', 'binary'), 'the live map updated');
         $this->assertSame('low', $settings->value('demo', 'level'));
         $this->assertSame(9, $settings->value('demo', 'jobs'));
-        $config = json_decode((string) file_get_contents($project->path('.porta.json')), true);
+        $config = json_decode((string) file_get_contents($project->path('.porta.json')), associative: true);
         $this->assertSame('/opt/tool', $config['plugins']['demo']['binary'], 'persisted to .porta.json');
         $this->assertArrayNotHasKey('ghost', $config['plugins']['demo']);
 

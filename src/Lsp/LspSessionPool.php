@@ -209,7 +209,7 @@ final class LspSessionPool
         }
         $server = $this->servers[$key];
         $signature = self::signature($server['command']);
-        if (!isset($this->sessions[$signature])) {
+        if (($this->sessions[$signature] ?? null) === null) {
             if (!$startIfNeeded) {
                 return null;
             }
@@ -223,21 +223,21 @@ final class LspSessionPool
     private function serverKeyFor(string $path): ?string
     {
         $language = ProjectPaths::languageId($path);
-        if (isset($this->servers[$language])) {
+        if (($this->servers[$language] ?? null) !== null) {
             return $language;
         }
 
-        return isset($this->servers['*']) ? '*' : null;
+        return ($this->servers['*'] ?? null) !== null ? '*' : null;
     }
 
     /** The status-bar server when no file is open: the catch-all, else PHP. */
     private function fallbackKey(): ?string
     {
-        if (isset($this->servers['*'])) {
+        if (($this->servers['*'] ?? null) !== null) {
             return '*';
         }
 
-        return isset($this->servers['php']) ? 'php' : null;
+        return ($this->servers['php'] ?? null) !== null ? 'php' : null;
     }
 
     /** @param array{command: list<string>, name: string} $server */

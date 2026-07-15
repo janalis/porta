@@ -68,9 +68,11 @@ final class FoldingControllerTest extends TestCase
     {
         $request = null;
         foreach ($this->client->requests as $sent) {
-            if ('textDocument/foldingRange' === $sent['method']) {
-                $request = $sent;
+            if ('textDocument/foldingRange' !== $sent['method']) {
+                continue;
             }
+
+            $request = $sent;
         }
         $this->assertNotNull($request, 'a foldingRange request was sent');
         $request['respond']($result, $error);
@@ -79,7 +81,7 @@ final class FoldingControllerTest extends TestCase
     private function foldEndAt(int $line): ?int
     {
         $foldModel = new \ReflectionProperty($this->editor, 'foldModel')->getValue($this->editor);
-        \assert($foldModel instanceof \Porta\Editor\FoldModel);
+        \assert($foldModel instanceof \Porta\Editor\FoldModel, description: 'the editor exposes a FoldModel for fold queries');
 
         return $foldModel->foldEndAt($line);
     }
@@ -129,7 +131,7 @@ final class FoldingControllerTest extends TestCase
         $this->pool->notifyDidOpen('/tmp/proj/a.php', $doc->getText(), 'php', 1);
 
         $controller->foldAll();
-        $this->respond(null, ['code' => -32601, 'message' => 'unsupported']);
+        $this->respond(null, ['code' => -32_601, 'message' => 'unsupported']);
         $this->assertSame(3, $this->foldEndAt(1), 'fell back to the brace scan');
     }
 

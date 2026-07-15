@@ -81,9 +81,10 @@ class FakeLspClient implements LspClientInterface
     {
         if ($this->initialized) {
             $action();
-        } else {
-            $this->queued[] = $action;
+
+            return;
         }
+        $this->queued[] = $action;
     }
 
     public function request(string $method, mixed $params, callable $onResult): void

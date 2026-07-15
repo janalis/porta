@@ -12,7 +12,7 @@ final class OverlayCompositorTest extends TestCase
 {
     public function testCompositesPopupAndKeepsTheLineExactlyTheTerminalWidth(): void
     {
-        $line = str_repeat(' ', 20);
+        $line = str_repeat(' ', times: 20);
         $popup = "\x1b[7m[popup]\x1b[0m"; // 7 visible columns
 
         $out = OverlayCompositor::into($line, 5, 7, 20, $popup);
@@ -27,7 +27,7 @@ final class OverlayCompositorTest extends TestCase
         // an overlay spills across a widget boundary): the background must not
         // bleed across the tail. Regression: a menu spilling into a blank editor
         // pane painted its box background across the whole pane.
-        $line = str_repeat(' ', 40); // blank pane (no styling of its own)
+        $line = str_repeat(' ', times: 40); // blank pane (no styling of its own)
         $clippedPopup = "\x1b[48;5;236mBOX"; // opens a background, never resets
 
         $out = OverlayCompositor::into($line, 4, 3, 40, $clippedPopup);
@@ -47,7 +47,10 @@ final class OverlayCompositorTest extends TestCase
             foreach ($codes[1] as $params) {
                 if ('' === $params || '0' === $params || '49' === $params) {
                     $bg = 'default';
-                } elseif (preg_match('/48;5;(\d+)/', $params, $m)) {
+
+                    continue;
+                }
+                if (preg_match('/48;5;(\d+)/', $params, $m)) {
                     $bg = '48;5;'.$m[1];
                 }
             }

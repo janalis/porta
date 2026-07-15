@@ -55,14 +55,14 @@ final class Bidi
         /** @var list<array{g: string, sgr: string}> $cells */
         $cells = [];
         $active = '';
-        foreach ($matches[0] as $token) {
-            if (str_starts_with($token, "\x1b[")) { // SGR: updates the active style
-                $active = "\x1b[0m" === $token || "\x1b[m" === $token ? '' : $active.$token;
+        foreach ($matches[0] as $seq) {
+            if (str_starts_with($seq, "\x1b[")) { // SGR: updates the active style
+                $active = "\x1b[0m" === $seq || "\x1b[m" === $seq ? '' : $active.$seq;
                 continue;
             }
             // A grapheme, or the zero-width cursor marker carried as a neutral cell
             // so the reorder lands it at the caret's visual column.
-            $cells[] = ['g' => $token, 'sgr' => $active];
+            $cells[] = ['g' => $seq, 'sgr' => $active];
         }
 
         if ([] === $cells) {
@@ -70,7 +70,7 @@ final class Bidi
         }
 
         $classes = array_map(static fn (array $c): string => self::classify($c['g']), $cells);
-        if (!$baseRtl && !\in_array('R', $classes, true)) {
+        if (!$baseRtl && !\in_array('R', $classes, strict: true)) {
             return $line; // LTR base with no RTL runs: already in visual order
         }
 
@@ -100,7 +100,7 @@ final class Bidi
                 continue; // SGR carries no column
             }
             // The APC cursor marker prints nothing; only real graphemes take width.
-            $width = str_starts_with($token, "\x1b") ? 0 : mb_strwidth($token, 'UTF-8');
+            $width = str_starts_with($token, "\x1b") ? 0 : mb_strwidth($token, encoding: 'UTF-8');
             $glyphs[] = ['g' => $token, 'w' => $width];
         }
         if ([] === $glyphs) {
@@ -108,7 +108,7 @@ final class Bidi
         }
 
         $classes = array_map(static fn (array $c): string => self::classify($c['g']), $glyphs);
-        if (!$baseRtl && !\in_array('R', $classes, true)) {
+        if (!$baseRtl && !\in_array('R', $classes, strict: true)) {
             return $visualCol;
         }
 
@@ -146,7 +146,7 @@ final class Bidi
         }
         // A grapheme cluster may carry combining marks; classify by its base
         // codepoint (always present — \X matches at least one).
-        $cp = mb_ord(mb_substr($grapheme, 0, 1, 'UTF-8'), 'UTF-8');
+        $cp = mb_ord(mb_substr($grapheme, start: 0, length: 1, encoding: 'UTF-8'), encoding: 'UTF-8');
         // Hebrew, Arabic and their presentation forms → right-to-left.
         if ($cp >= 0x0590 && $cp <= 0x05FF || $cp >= 0x0600 && $cp <= 0x06FF || $cp >= 0x0700 && $cp <= 0x08FF || $cp >= 0xFB1D && $cp <= 0xFDFF || $cp >= 0xFE70 && $cp <= 0xFEFF) {
             return 'R';
@@ -180,6 +180,7 @@ final class Bidi
         // treating numbers as R for the boundary test and the base at the edges.
         $resolved = $classes;
         $boundary = static fn (string $c): string => 'L' === $c ? 'L' : 'R'; // R, EN, (resolved) → R
+        $baseDir = $baseRtl ? 'R' : 'L';
         $i = 0;
         while ($i < $count) {
             if ('N' !== $classes[$i]) {
@@ -190,9 +191,9 @@ final class Bidi
             while ($i < $count && 'N' === $classes[$i]) {
                 ++$i;
             }
-            $before = $start > 0 ? $boundary($classes[$start - 1]) : ($baseRtl ? 'R' : 'L');
-            $after = $i < $count ? $boundary($classes[$i]) : ($baseRtl ? 'R' : 'L');
-            $dir = $before === $after ? $before : ($baseRtl ? 'R' : 'L');
+            $before = $start > 0 ? $boundary($classes[$start - 1]) : $baseDir;
+            $after = $i < $count ? $boundary($classes[$i]) : $baseDir;
+            $dir = $before === $after ? $before : $baseDir;
             for ($j = $start; $j < $i; ++$j) {
                 $resolved[$j] = $dir;
             }
@@ -264,7 +265,7 @@ final class Bidi
                 $emitted = $sgr;
             }
             $glyph = $cells[$index]['g'];
-            if (1 === ($levels[$index] % 2) && isset(self::MIRROR[$glyph])) {
+            if (1 === ($levels[$index] % 2) && array_key_exists($glyph, self::MIRROR)) {
                 $glyph = self::MIRROR[$glyph];
             }
             $out .= $glyph;

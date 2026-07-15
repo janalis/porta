@@ -21,7 +21,7 @@ final class HelpViewerWidgetTest extends TestCase
         $this->docs = new TempProject([
             'README.md' =>
                 "# Guides\n\nSee [Editor](editor.md) and [Porta](https://porta.dev) and [demo](demo.php) and [gone](missing.md).\n\n"
-                    .implode("\n\n", array_map(static fn (int $i): string => "Paragraph {$i}.", range(1, 30)))
+                    .implode("\n\n", array_map(static fn (int $i): string => "Paragraph {$i}.", range(1, end: 30)))
                     ."\n\n[Bottom](editor.md)\n",
             'editor.md' => "# Editor guide\n\nBack home: [Home](README.md)\n",
             'demo.php' => "<?php\n",

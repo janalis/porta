@@ -24,13 +24,13 @@ final class PluginEventsTest extends TestCase
     {
         $events = new PluginEvents();
         $log = [];
-        $events->subscribe('demo', 'fileOpened', function (string $p) use (&$log): void {
+        $events->subscribe('demo', 'fileOpened', static function (string $p) use (&$log): void {
             $log[] = "opened1:{$p}";
         });
-        $events->subscribe('other', 'fileOpened', function (string $p) use (&$log): void {
+        $events->subscribe('other', 'fileOpened', static function (string $p) use (&$log): void {
             $log[] = "opened2:{$p}";
         });
-        $events->subscribe('demo', 'fileSaved', function (string $p) use (&$log): void {
+        $events->subscribe('demo', 'fileSaved', static function (string $p) use (&$log): void {
             $log[] = "saved:{$p}";
         });
 
@@ -45,7 +45,7 @@ final class PluginEventsTest extends TestCase
     {
         $events = new PluginEvents();
         $log = [];
-        $events->subscribe('demo', 'bufferSwitched', function (string $p) use (&$log): void {
+        $events->subscribe('demo', 'bufferSwitched', static function (string $p) use (&$log): void {
             $log[] = $p;
         });
 
@@ -61,10 +61,10 @@ final class PluginEventsTest extends TestCase
     {
         $events = new PluginEvents();
         $log = [];
-        $events->subscribe('gone', 'fileSaved', function (string $p) use (&$log): void {
+        $events->subscribe('gone', 'fileSaved', static function (string $p) use (&$log): void {
             $log[] = "gone:{$p}";
         });
-        $events->subscribe('kept', 'fileSaved', function (string $p) use (&$log): void {
+        $events->subscribe('kept', 'fileSaved', static function (string $p) use (&$log): void {
             $log[] = "kept:{$p}";
         });
 

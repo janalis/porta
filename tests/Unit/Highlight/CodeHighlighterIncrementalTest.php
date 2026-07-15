@@ -55,12 +55,12 @@ final class CodeHighlighterIncrementalTest extends TestCase
         $doc = $this->bigDocument();
         $highlighter->highlight($doc, 1);
 
-        array_splice($doc, 100, 0, ['$inserted = true;']);
+        array_splice($doc, offset: 100, length: 0, replacement: ['$inserted = true;']);
         $afterInsert = $highlighter->highlight($doc, 2);
         $this->assertSame('$inserted = true;', AnsiUtils::stripAnsiCodes($afterInsert[100]));
         $this->assertCount(\count($doc), $afterInsert);
 
-        array_splice($doc, 100, 1);
+        array_splice($doc, offset: 100, length: 1);
         $afterDelete = $highlighter->highlight($doc, 3);
         $this->assertCount(\count($doc), $afterDelete);
         $this->assertSame(1, $highlighter->getStats()['fullParses']);
@@ -138,9 +138,7 @@ final class CodeHighlighterIncrementalTest extends TestCase
 
     public function testSingleLineParserProducingNewlinesFallsBackToRaw(): void
     {
-        $mangler = new CodeHighlighter(static function (string $content): string {
-            return str_contains($content, "\n") ? $content : $content."\nEXTRA";
-        });
+        $mangler = new CodeHighlighter(static fn (string $content): string => str_contains($content, "\n") ? $content : $content."\nEXTRA");
         $mangler->setFile('big.php');
         $doc = $this->bigDocument();
         $mangler->highlight($doc, 1);

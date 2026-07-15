@@ -98,7 +98,7 @@ final class ContextMenuTest extends TestCase
             new MenuItem(
                 'Cut',
                 'Ctrl+X',
-                function () use (&$ran): void {
+                static function () use (&$ran): void {
                     $ran = true;
                 },
                 false,
@@ -116,7 +116,7 @@ final class ContextMenuTest extends TestCase
     {
         $menu = new ContextMenu();
         $navigations = 0;
-        $menu->onNavigate(function () use (&$navigations): void {
+        $menu->onNavigate(static function () use (&$navigations): void {
             ++$navigations;
         });
         $ran = [];
@@ -124,7 +124,7 @@ final class ContextMenuTest extends TestCase
             new MenuItem('Cut', 'Ctrl+X', static fn () => null), // 0: selectable (selected)
             MenuItem::separator(), // 1: separator
             new MenuItem('Paste', 'Ctrl+V', static fn () => null, false, static fn (): bool => false), // 2: disabled
-            new MenuItem('Copy', 'Ctrl+C', function () use (&$ran): void {
+            new MenuItem('Copy', 'Ctrl+C', static function () use (&$ran): void {
                 $ran[] = 'copy';
             }), // 3: selectable
         ]);
@@ -188,7 +188,7 @@ final class ContextMenuTest extends TestCase
     {
         $menu = new ContextMenu();
         $hits = 0;
-        $menu->onNavigate(function () use (&$hits): void {
+        $menu->onNavigate(static function () use (&$hits): void {
             ++$hits;
         });
 
@@ -203,7 +203,7 @@ final class ContextMenuTest extends TestCase
     {
         $menu = $this->menu();
         $closed = false;
-        $menu->onClose(function () use (&$closed): void {
+        $menu->onClose(static function () use (&$closed): void {
             $closed = true;
         });
         $menu->handleInput("\x1b");

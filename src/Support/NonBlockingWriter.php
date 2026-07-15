@@ -83,19 +83,22 @@ final class NonBlockingWriter
             EventLoop::cancel($this->watcher);
             $this->watcher = null;
         }
-        stream_set_blocking($this->stream, true);
+        stream_set_blocking($this->stream, enable: true);
         while ('' !== $this->buffer) {
+            // @mago-expect lint:no-error-control-operator -- fwrite to a pipe whose peer has died (the local fd is still a live resource) raises an unavoidable EPIPE warning that no is_resource guard prevents; the false/0 return is the handled failure signal.
             $n = @fwrite($this->stream, $this->buffer);
             if (false === $n || 0 === $n) {
-                stream_set_blocking($this->stream, false);
+                stream_set_blocking($this->stream, enable: false);
                 $this->fail('write failed');
 
                 return;
             }
             $this->buffer = substr($this->buffer, $n);
         }
-        @fflush($this->stream);
-        stream_set_blocking($this->stream, false);
+        if (\is_resource($this->stream)) {
+            fflush($this->stream);
+        }
+        stream_set_blocking($this->stream, enable: false);
     }
 
     /** Cancel the drain watcher and forget the stream (the owner fcloses the fd). */
@@ -114,6 +117,7 @@ final class NonBlockingWriter
         if (null === $this->stream || '' === $this->buffer) {
             return;
         }
+        // @mago-expect lint:no-error-control-operator -- fwrite to a pipe whose peer has died (the local fd is still a live resource) raises an unavoidable EPIPE warning that no is_resource guard prevents; the false return is the handled failure signal.
         $n = @fwrite($this->stream, $this->buffer);
         if (false === $n) {
             $this->fail('write failed');
@@ -123,7 +127,9 @@ final class NonBlockingWriter
         // PHP's stream layer may hold a small tail in its own write buffer
         // (stream_set_write_buffer fails on proc pipes); push it to the fd —
         // on a non-blocking stream this never blocks.
-        @fflush($this->stream);
+        if (\is_resource($this->stream)) {
+            fflush($this->stream);
+        }
         $this->buffer = substr($this->buffer, $n);
 
         if ('' === $this->buffer) {
@@ -137,7 +143,7 @@ final class NonBlockingWriter
         // Remainder queued: drain when the peer accepts more. A peer that dies
         // while bytes are queued reports writable-with-error, and the next
         // fwrite returns false → the error path above.
-        $this->watcher ??= EventLoop::onWritable($this->stream, fn () => $this->flush());
+        $this->watcher ??= EventLoop::onWritable($this->stream, $this->flush(...));
     }
 
     private function fail(string $reason): void

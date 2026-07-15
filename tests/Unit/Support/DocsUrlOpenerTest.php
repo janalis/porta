@@ -30,7 +30,7 @@ final class DocsUrlOpenerTest extends TestCase
     private function flashText(StatusBarWidget $status): string
     {
         $flash = new \ReflectionProperty($status, 'flash')->getValue($status);
-        \assert(\is_array($flash));
+        \assert(\is_array($flash), description: 'the reflected flash payload is an array');
 
         return (string) ($flash['text'] ?? '');
     }
@@ -53,8 +53,8 @@ final class DocsUrlOpenerTest extends TestCase
         $bin = $project->path('bin');
         mkdir($bin);
         $opener = 'Darwin' === \PHP_OS_FAMILY ? 'open' : 'xdg-open';
-        file_put_contents($bin.'/'.$opener, "#!/bin/sh\nexit 0\n");
-        chmod($bin.'/'.$opener, 0755);
+        file_put_contents($bin.'/'.$opener, data: "#!/bin/sh\nexit 0\n");
+        chmod($bin.'/'.$opener, permissions: 0o755);
         putenv('PATH='.$bin);
 
         $status = new StatusBarWidget();

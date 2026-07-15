@@ -17,16 +17,25 @@ final class ListNavigation
     {
         if ($kb->matches($keys, 'move_up')) {
             $list->moveUp();
-        } elseif ($kb->matches($keys, 'move_down')) {
+
+            return true;
+        }
+        if ($kb->matches($keys, 'move_down')) {
             $list->moveDown($count);
-        } elseif ($page > 0 && $kb->matches($keys, 'page_up')) {
+
+            return true;
+        }
+        if ($page > 0 && $kb->matches($keys, 'page_up')) {
             $list->moveUp($page);
-        } elseif ($page > 0 && $kb->matches($keys, 'page_down')) {
+
+            return true;
+        }
+        if ($page > 0 && $kb->matches($keys, 'page_down')) {
             $list->moveDown($count, $page);
-        } else {
-            return false;
+
+            return true;
         }
 
-        return true;
+        return false;
     }
 }

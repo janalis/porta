@@ -30,7 +30,7 @@ final class IdeContainerFactoryTest extends TestCase
             $this->savedEnv[$key] = getenv($key);
         }
         foreach (['PORTA_CACHE_DIR', 'PORTA_ROOT_DIR', 'PORTA_LOCALE', 'PORTA_ANSI', 'PORTA_THEME'] as $key) {
-            $this->savedDollarEnv[$key] = isset($_ENV[$key]) && \is_string($_ENV[$key]) ? $_ENV[$key] : null;
+            $this->savedDollarEnv[$key] = array_key_exists($key, $_ENV) && \is_string($_ENV[$key]) ? $_ENV[$key] : null;
         }
         // These tests exercise the caching paths themselves; an inherited
         // kill switch (e.g. a PORTA_CONTAINER_CACHE=off suite run) must not
@@ -46,9 +46,9 @@ final class IdeContainerFactoryTest extends TestCase
         foreach ($this->savedDollarEnv as $key => $value) {
             if (null === $value) {
                 unset($_ENV[$key]);
-            } else {
-                $_ENV[$key] = $value;
+                continue;
             }
+            $_ENV[$key] = $value;
         }
     }
 
@@ -66,8 +66,10 @@ final class IdeContainerFactoryTest extends TestCase
 
         $this->assertInstanceOf(Container::class, $container);
         $this->assertNotInstanceOf(ContainerBuilder::class, $container, 'the dumped class is served, not the builder');
-        $this->assertCount(1, glob($project->path('container-*.php')) ?: [], 'one dump file written');
-        $this->assertCount(1, glob($project->path('container-*.php.meta')) ?: [], 'resource metadata written');
+        $dumps = glob($project->path('container-*.php'));
+        $this->assertCount(1, $dumps ? $dumps : [], 'one dump file written');
+        $meta = glob($project->path('container-*.php.meta'));
+        $this->assertCount(1, $meta ? $meta : [], 'resource metadata written');
         $this->assertSame('/tmp/porta-factory-test', $_ENV['PORTA_ROOT_DIR'], 'per-boot values seeded into $_ENV');
         $this->assertSame('1', $_ENV['PORTA_ANSI']);
         $locator = $container->get('porta.ide');
@@ -81,7 +83,8 @@ final class IdeContainerFactoryTest extends TestCase
         putenv('PORTA_CACHE_DIR='.$project->dir);
 
         $first = $this->build();
-        [$file] = glob($project->path('container-*.php')) ?: [''];
+        $files = glob($project->path('container-*.php'));
+        [$file] = $files ? $files : [''];
         $mtime = filemtime($file);
 
         $second = $this->build();
@@ -98,8 +101,9 @@ final class IdeContainerFactoryTest extends TestCase
         putenv('PORTA_CACHE_DIR='.$project->dir);
 
         $this->build(); // loads the dumped class into this process
-        [$file] = glob($project->path('container-*.php')) ?: [''];
-        touch($file, 1); // epoch: older than every tracked resource → stale
+        $files = glob($project->path('container-*.php'));
+        [$file] = $files ? $files : [''];
+        touch($file, mtime: 1); // epoch: older than every tracked resource → stale
 
         $container = $this->build();
 
@@ -117,7 +121,8 @@ final class IdeContainerFactoryTest extends TestCase
         $container = $this->build();
 
         $this->assertInstanceOf(ContainerBuilder::class, $container);
-        $this->assertSame([], glob($project->path('container-*')) ?: [], 'no dump files written');
+        $dumps = glob($project->path('container-*'));
+        $this->assertSame([], $dumps ? $dumps : [], 'no dump files written');
     }
 
     public function testWithoutAnyCacheLocationTheBuildFallsBackToInMemory(): void
@@ -132,7 +137,7 @@ final class IdeContainerFactoryTest extends TestCase
         // A directly-served builder must resolve %env()% at build time — a
         // leaked placeholder here would corrupt every $rootDir in the app.
         $locator = $container->get('porta.ide');
-        \assert($locator instanceof ServiceLocator);
+        \assert($locator instanceof ServiceLocator, description: 'porta.ide resolves to a service locator');
         $store = $locator->get(SessionStore::class);
         $this->assertSame('/tmp/porta-factory-test/.porta/session.json', new \ReflectionProperty($store, 'file')->getValue($store));
     }
@@ -143,29 +148,32 @@ final class IdeContainerFactoryTest extends TestCase
         putenv('PORTA_CACHE_DIR=');
         putenv('XDG_CACHE_HOME='.$xdg->dir);
         $this->build();
-        $this->assertCount(1, glob($xdg->path('porta/container-*.php')) ?: [], 'XDG_CACHE_HOME/porta is used');
+        $xdgDumps = glob($xdg->path('porta/container-*.php'));
+        $this->assertCount(1, $xdgDumps ? $xdgDumps : [], 'XDG_CACHE_HOME/porta is used');
 
         $home = new TempProject();
         putenv('XDG_CACHE_HOME=');
         putenv('HOME='.$home->dir);
         $this->build();
-        $this->assertCount(1, glob($home->path('.cache/porta/container-*.php')) ?: [], 'HOME/.cache/porta is the last fallback');
+        $homeDumps = glob($home->path('.cache/porta/container-*.php'));
+        $this->assertCount(1, $homeDumps ? $homeDumps : [], 'HOME/.cache/porta is the last fallback');
     }
 
     public function testUnwritableCacheDirServesTheFreshBuildUncached(): void
     {
         $project = new TempProject();
         $locked = $project->path('locked');
-        mkdir($locked, 0500);
+        mkdir($locked, permissions: 0o500);
         putenv('PORTA_CACHE_DIR='.$locked);
 
         try {
             $container = $this->build();
 
             $this->assertInstanceOf(ContainerBuilder::class, $container, 'an unwritable cache dir falls back to the in-memory build');
-            $this->assertSame([], glob($locked.'/container-*') ?: []);
+            $lockedDumps = glob($locked.'/container-*');
+            $this->assertSame([], $lockedDumps ? $lockedDumps : [], 'no dump files written to the locked cache dir');
         } finally {
-            chmod($locked, 0700);
+            chmod($locked, permissions: 0o700);
         }
     }
 }

@@ -38,9 +38,11 @@ final class ResultsView
         if (!$grouped) {
             $rows = [];
             foreach ($results as $index => $result) {
-                if (self::passes($result, $needle)) {
-                    $rows[] = DisplayRow::match($index);
+                if (!self::passes($result, $needle)) {
+                    continue;
                 }
+
+                $rows[] = DisplayRow::match($index);
             }
 
             return $rows;
@@ -53,11 +55,13 @@ final class ResultsView
         // Group the passing matches by file or directory, preserving grep's first-seen order.
         $byKey = [];
         foreach ($results as $index => $result) {
-            if (self::passes($result, $needle)) {
-                $key = $grouping->keyFor($result['path']);
-                $byKey[$key] ??= [];
-                $byKey[$key][] = $index;
+            if (!self::passes($result, $needle)) {
+                continue;
             }
+
+            $key = $grouping->keyFor($result['path']);
+            $byKey[$key] ??= [];
+            $byKey[$key][] = $index;
         }
 
         $rows = [];
@@ -92,12 +96,14 @@ final class ResultsView
         /** @var array<string, array<string, list<int>>> $byDir directory => file path => match indices */
         $byDir = [];
         foreach ($results as $index => $result) {
-            if (self::passes($result, $needle)) {
-                $dir = \dirname($result['path']);
-                $byDir[$dir] ??= [];
-                $byDir[$dir][$result['path']] ??= [];
-                $byDir[$dir][$result['path']][] = $index;
+            if (!self::passes($result, $needle)) {
+                continue;
             }
+
+            $dir = \dirname($result['path']);
+            $byDir[$dir] ??= [];
+            $byDir[$dir][$result['path']] ??= [];
+            $byDir[$dir][$result['path']][] = $index;
         }
 
         $rows = [];

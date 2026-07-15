@@ -12,7 +12,6 @@ use Porta\Ui\ListNavigation;
 use Porta\Ui\ListSelection;
 use Porta\Ui\Palette;
 use Porta\Ui\Role;
-use Porta\Ui\Style;
 use Porta\Widget\Render\MenuOverlayHost;
 use Porta\Widget\Render\MenuOverlayHostTrait;
 use Psr\Clock\ClockInterface;
@@ -131,7 +130,7 @@ final class FileTreeWidget extends AbstractWidget implements FocusableInterface,
             return null; // header row
         }
         $index = $this->list->scroll() + $relRow - 1;
-        if (!isset($this->visible[$index])) {
+        if (!array_key_exists($index, $this->visible)) {
             return null;
         }
         $this->list->select($index);
@@ -166,38 +165,59 @@ final class FileTreeWidget extends AbstractWidget implements FocusableInterface,
 
         if (ListNavigation::handleKey($data, $kb, $this->list, $count, page: $this->lastRows)) {
             $this->invalidate();
-        } elseif ($kb->matches($data, 'collapse')) {
+
+            return;
+        }
+        if ($kb->matches($data, 'collapse')) {
             $node = $this->visible[$this->list->selected()];
             if ($node['isDir'] && ($this->expanded[$node['path']] ?? false)) {
                 $this->expanded[$node['path']] = false;
                 $this->rebuild();
-            } elseif ($node['depth'] > 0) {
+                $this->invalidate();
+
+                return;
+            }
+            if ($node['depth'] > 0) {
                 // Jump to parent
                 for ($i = $this->list->selected() - 1; $i >= 0; --$i) {
-                    if ($this->visible[$i]['depth'] < $node['depth']) {
-                        $this->list->select($i);
-                        break;
+                    if ($this->visible[$i]['depth'] >= $node['depth']) {
+                        continue;
                     }
+
+                    $this->list->select($i);
+                    break;
                 }
             }
             $this->invalidate();
-        } elseif ($kb->matches($data, 'expand')) {
+
+            return;
+        }
+        if ($kb->matches($data, 'expand')) {
             $node = $this->visible[$this->list->selected()];
             if ($node['isDir'] && !($this->expanded[$node['path']] ?? false)) {
                 $this->expanded[$node['path']] = true;
                 $this->rebuild();
                 $this->invalidate();
             }
-        } elseif ($kb->matches($data, 'open')) {
+
+            return;
+        }
+        if ($kb->matches($data, 'open')) {
             $node = $this->visible[$this->list->selected()];
             if ($node['isDir']) {
                 $this->expanded[$node['path']] = !($this->expanded[$node['path']] ?? false);
                 $this->rebuild();
                 $this->invalidate();
-            } elseif (null !== $this->onOpenFile) {
+
+                return;
+            }
+            if (null !== $this->onOpenFile) {
                 ($this->onOpenFile)($node['path']);
             }
-        } elseif ($kb->matches($data, 'reload')) {
+
+            return;
+        }
+        if ($kb->matches($data, 'reload')) {
             $this->refresh();
         }
     }
@@ -212,7 +232,7 @@ final class FileTreeWidget extends AbstractWidget implements FocusableInterface,
             return; // header row
         }
         $index = $this->list->scroll() + $relRow - 1;
-        if (!isset($this->visible[$index])) {
+        if (!array_key_exists($index, $this->visible)) {
             return;
         }
         $this->list->select($index);
@@ -220,7 +240,11 @@ final class FileTreeWidget extends AbstractWidget implements FocusableInterface,
         if ($node['isDir']) {
             $this->expanded[$node['path']] = !($this->expanded[$node['path']] ?? false);
             $this->rebuild();
-        } elseif (null !== $this->onOpenFile) {
+            $this->invalidate();
+
+            return;
+        }
+        if (null !== $this->onOpenFile) {
             ($this->onOpenFile)($node['path']);
         }
         $this->invalidate();
@@ -236,7 +260,7 @@ final class FileTreeWidget extends AbstractWidget implements FocusableInterface,
         $index = null;
         if ($relRow >= 1) {
             $candidate = $this->list->scroll() + $relRow - 1;
-            if (isset($this->visible[$candidate])) {
+            if (array_key_exists($candidate, $this->visible)) {
                 $index = $candidate;
             }
         }
@@ -283,24 +307,21 @@ final class FileTreeWidget extends AbstractWidget implements FocusableInterface,
                 continue;
             }
 
-            $icon = $node['isDir']
-                ? ($this->expanded[$node['path']] ?? false ? '▾ ' : '▸ ')
-                : '  ';
+            $icon = match (true) {
+                !$node['isDir'] => '  ',
+                $this->expanded[$node['path']] ?? false => '▾ ',
+                default => '▸ ',
+            };
             $text = str_repeat(' ', max(0, $node['depth'] + 1)).$icon.$node['name'].($node['isDir'] ? '/' : '');
             $text = AnsiUtils::truncateToWidth($text, $width, '…', pad: true);
 
-            if ($index === $this->list->selected()) {
-                $style = $this->focused ? $this->palette->of(Role::SelectedRow) : $this->palette->of(Role::SelectedRowUnfocused);
-                $lines[] = $style.$text."\x1b[0m";
-            } elseif ($index === $this->hoveredIndex) {
-                // Subtle hover background beneath the pointer, keeping the dir/file foreground.
-                $fg = $node['isDir'] ? $this->palette->of(Role::TabAccent) : '';
-                $lines[] = $this->palette->of(Role::RowHighlightBg).$fg.$text."\x1b[0m";
-            } elseif ($node['isDir']) {
-                $lines[] = $this->palette->of(Role::TabAccent).$text."\x1b[0m";
-            } else {
-                $lines[] = $text;
-            }
+            // Subtle hover background beneath the pointer keeps the dir/file foreground.
+            $lines[] = match (true) {
+                $index === $this->list->selected() => ($this->focused ? $this->palette->of(Role::SelectedRow) : $this->palette->of(Role::SelectedRowUnfocused)).$text."\x1b[0m",
+                $index === $this->hoveredIndex => $this->palette->of(Role::RowHighlightBg).($node['isDir'] ? $this->palette->of(Role::TabAccent) : '').$text."\x1b[0m",
+                $node['isDir'] => $this->palette->of(Role::TabAccent).$text."\x1b[0m",
+                default => $text,
+            };
         }
 
         // Composite against the tree's own line width ($width), not the context
@@ -332,7 +353,7 @@ final class FileTreeWidget extends AbstractWidget implements FocusableInterface,
         foreach ($this->scannedSigs as $dir => $scan) {
             // Read the mtime BEFORE the signature it vouches for: a change
             // landing after this read bumps the mtime again → caught next tick.
-            $mtime = is_dir($dir) ? (int) @filemtime($dir) : -1;
+            $mtime = is_dir($dir) ? (int) filemtime($dir) : -1;
             if ($mtime === $scan['mtime'] && $mtime < $freshBefore && -1 !== $mtime) {
                 continue;
             }
@@ -350,18 +371,25 @@ final class FileTreeWidget extends AbstractWidget implements FocusableInterface,
     /** A stable fingerprint of a directory's entries, or '' when it is gone. */
     private function dirSignature(string $dir): string
     {
-        return is_dir($dir) ? implode("\0", @scandir($dir) ?: []) : '';
+        if (!is_dir($dir)) {
+            return '';
+        }
+        $entries = scandir($dir);
+
+        return implode("\0", $entries ? $entries : []);
     }
 
     private function walk(string $dir, int $depth): void
     {
-        $mtime = is_dir($dir) ? (int) @filemtime($dir) : -1; // before the scandir it vouches for
+        $mtime = is_dir($dir) ? (int) filemtime($dir) : -1; // before the scandir it vouches for
         $this->scannedSigs[$dir] = ['sig' => $this->dirSignature($dir), 'mtime' => $mtime];
-        $entries = @scandir($dir) ?: [];
-        $dirs = $files = [];
+        $scanned = is_dir($dir) ? scandir($dir) : false;
+        $entries = $scanned ? $scanned : [];
+        $dirs = [];
+        $files = [];
 
         foreach ($entries as $entry) {
-            if ('.' === $entry || '..' === $entry || \in_array($entry, self::IGNORED, true)) {
+            if ('.' === $entry || '..' === $entry || \in_array($entry, self::IGNORED, strict: true)) {
                 continue;
             }
             $path = $dir.\DIRECTORY_SEPARATOR.$entry;

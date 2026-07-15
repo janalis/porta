@@ -64,7 +64,7 @@ final class SearchPrefsStoreTest extends TestCase
 
     public function testToleratesAnUnwritableLocation(): void
     {
-        $file = (string) tempnam(sys_get_temp_dir(), 'porta-prefs-');
+        $file = (string) tempnam(sys_get_temp_dir(), prefix: 'porta-prefs-');
 
         try {
             $store = new SearchPrefsStore($file);
@@ -73,7 +73,7 @@ final class SearchPrefsStoreTest extends TestCase
             $this->assertSame('*.php', $store->lastMask());
             $this->assertSame(['*.php'], $store->recentMasks());
         } finally {
-            @unlink($file);
+            is_file($file) && unlink($file);
         }
     }
 

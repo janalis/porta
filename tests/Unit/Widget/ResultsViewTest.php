@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Porta\Tests\Unit\Widget;
 
 use PHPUnit\Framework\TestCase;
+use Porta\Widget\ResultGrouping;
 use Porta\Widget\ResultsView;
 
 final class ResultsViewTest extends TestCase
@@ -77,6 +78,22 @@ final class ResultsViewTest extends TestCase
         $this->assertSame('src/A.php', $rows[0]->filePath);
         $this->assertSame(1, $rows[0]->count, 'count reflects the filtered matches');
         $this->assertSame(0, $rows[1]->matchIndex);
+    }
+
+    public function testNestedGroupingFiltersOutNonMatchingResults(): void
+    {
+        $results = [
+            ['path' => 'src/A.php', 'line' => 0, 'text' => 'keep me', 'ranges' => []],
+            ['path' => 'src/B.php', 'line' => 2, 'text' => 'drop me', 'ranges' => []],
+        ];
+        $rows = ResultsView::build($results, [], grouped: true, filter: 'keep', grouping: ResultGrouping::Nested);
+
+        // Only src/ (dir header) + src/A.php (file header) + its match survive;
+        // the filtered-out B.php never reaches a row.
+        $this->assertCount(3, $rows);
+        $filePaths = array_values(array_filter(array_map(static fn ($r) => $r->filePath, $rows)));
+        $this->assertContains('src/A.php', $filePaths);
+        $this->assertNotContains('src/B.php', $filePaths);
     }
 
     public function testCollapsedFileHidesItsMatchesButKeepsTheHeader(): void

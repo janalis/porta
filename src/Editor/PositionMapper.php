@@ -38,7 +38,7 @@ final class PositionMapper
     /** Display column (terminal cells) of a byte offset on the given line. */
     public function displayColAt(int $line, int $byteCol): int
     {
-        return TextMetrics::displayWidth(substr($this->document->getLine($line), 0, $byteCol), $this->document->tabWidth());
+        return TextMetrics::displayWidth(substr($this->document->getLine($line), offset: 0, length: $byteCol), $this->document->tabWidth());
     }
 
     /** Full display width (terminal cells) of a line. */

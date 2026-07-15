@@ -13,7 +13,6 @@ use Porta\Ui\ListNavigation;
 use Porta\Ui\ListSelection;
 use Porta\Ui\Palette;
 use Porta\Ui\Role;
-use Porta\Ui\Style;
 use Porta\Ui\TextField;
 use Porta\Widget\Render\HeaderRenderer;
 use Symfony\Component\Tui\Ansi\AnsiUtils;
@@ -91,20 +90,32 @@ final class GoToFileWidget extends OverlayWidget implements FocusableInterface
 
         if ($kb->matches($data, 'close')) {
             $this->close();
-        } elseif (ListNavigation::handleKey($data, $kb, $this->list, \count($this->results))) {
+
+            return;
+        }
+        if (ListNavigation::handleKey($data, $kb, $this->list, \count($this->results))) {
             $this->invalidate();
-        } elseif ($kb->matches($data, 'pick')) {
+
+            return;
+        }
+        if ($kb->matches($data, 'pick')) {
             $picked = $this->results[$this->list->selected()] ?? null;
             $this->close();
             if (null !== $picked && null !== $this->onPick) {
                 ($this->onPick)($this->rootDir.'/'.$picked);
             }
-        } elseif ($kb->matches($data, 'delete_char_backward')) {
+
+            return;
+        }
+        if ($kb->matches($data, 'delete_char_backward')) {
             if ($this->query->backspace()) {
                 $this->refilter();
                 $this->invalidate();
             }
-        } elseif ($this->query->insert($data)) {
+
+            return;
+        }
+        if ($this->query->insert($data)) {
             $this->refilter();
             $this->invalidate();
         }
@@ -160,11 +171,11 @@ final class GoToFileWidget extends OverlayWidget implements FocusableInterface
         $header = ' '.$this->translator->trans('Go to File:').' '.$this->query->render(cursor: $this->focused);
         $lines[] = HeaderRenderer::render($header, $columns, $this->palette->of(Role::HeaderBar)."\x1b[1m");
 
-        foreach (\array_slice($this->results, 0, self::MAX_RESULTS) as $i => $path) {
+        foreach (\array_slice($this->results, offset: 0, length: self::MAX_RESULTS) as $i => $path) {
             $selected = $i === $this->list->selected();
             $bg = $selected ? $this->palette->of(Role::SelectedRow) : $this->palette->of(Role::PopupRow);
             $name = basename($path);
-            $dir = ltrim(substr($path, 0, -\strlen($name)), '/');
+            $dir = ltrim(substr($path, offset: 0, length: -\strlen($name)), characters: '/');
             $text = ' '.$name.'  '.$this->palette->of(Role::CompletionHint).$dir;
             $lines[] = $bg.AnsiUtils::truncateToWidth($text, $columns, '…', pad: true)."\x1b[0m";
         }

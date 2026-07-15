@@ -46,7 +46,7 @@ final class StatusBarWidgetTest extends TestCase
     public function testLongLeftContentTruncates(): void
     {
         $status = new StatusBarWidget();
-        $status->setProvider(static fn () => ['left' => str_repeat('x', 200), 'right' => 'RIGHT']);
+        $status->setProvider(static fn () => ['left' => str_repeat('x', times: 200), 'right' => 'RIGHT']);
         $status->beforeRender();
 
         $line = $status->render(new RenderContext(50, 1))[0];

@@ -42,7 +42,7 @@ final class EditorConfigIntegrationTest extends TestCase
     {
         new \ReflectionMethod($ide, 'openFile')->invoke($ide, $path);
         $buffers = new \ReflectionProperty($ide, 'buffers')->getValue($ide);
-        \assert($buffers instanceof BufferManager);
+        \assert($buffers instanceof BufferManager, description: 'the buffers property is a BufferManager');
 
         return $buffers->active();
     }
@@ -50,14 +50,14 @@ final class EditorConfigIntegrationTest extends TestCase
     private function save(Ide $ide, Buffer $buffer): void
     {
         $service = new \ReflectionProperty($ide, 'bufferService')->getValue($ide);
-        \assert($service instanceof BufferService);
+        \assert($service instanceof BufferService, description: 'the bufferService property is a BufferService');
         $service->saveBuffer($buffer);
     }
 
     private function flashText(Ide $ide): ?string
     {
         $status = $ide->getTui()->getById('status');
-        \assert($status instanceof StatusBarWidget);
+        \assert($status instanceof StatusBarWidget, description: 'the status widget is a StatusBarWidget');
         $flash = new \ReflectionProperty($status, 'flash')->getValue($status);
 
         return $flash['text'] ?? null;

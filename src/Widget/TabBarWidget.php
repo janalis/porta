@@ -113,11 +113,13 @@ final class TabBarWidget extends AbstractWidget implements MenuOverlayHost
         }
 
         $activeIndex = 0;
-        foreach ($parts as $i => $part) {
-            if ($part['active']) {
-                $activeIndex = $i;
-                break;
+        foreach ($parts as $i => $candidate) {
+            if (!$candidate['active']) {
+                continue;
             }
+
+            $activeIndex = $i;
+            break;
         }
         $start = 0;
         while ($start < $activeIndex && array_sum(array_column(\array_slice($parts, $start, $activeIndex - $start + 1), 'width')) > $columns) {
@@ -127,7 +129,7 @@ final class TabBarWidget extends AbstractWidget implements MenuOverlayHost
         $line = '';
         $used = 0;
         $this->lastLayout = [];
-        foreach (\array_slice($parts, $start, null, true) as $index => $part) {
+        foreach (\array_slice($parts, $start, length: null, preserve_keys: true) as $index => $part) {
             if (($used + $part['width']) > $columns) {
                 break;
             }
@@ -166,18 +168,20 @@ final class TabBarWidget extends AbstractWidget implements MenuOverlayHost
         $lines = [];
         if ([] !== $tabs) {
             $activeIndex = 0;
-            foreach ($tabs as $i => $tab) {
-                if ($tab['active']) {
-                    $activeIndex = $i;
-                    break;
+            foreach ($tabs as $i => $candidate) {
+                if (!$candidate['active']) {
+                    continue;
                 }
+
+                $activeIndex = $i;
+                break;
             }
             // Rows are uniform height, so keeping the active tab visible is a
             // plain window: drop just enough leading tabs for it to fit.
             $start = max(0, $activeIndex - $rows + 1);
             // ' name…    ●× ': the dirty ● and the close × are right-aligned.
             $nameWidth = self::VERTICAL_WIDTH - 5;
-            foreach (\array_slice($tabs, $start, $rows, true) as $index => $tab) {
+            foreach (\array_slice($tabs, $start, $rows, preserve_keys: true) as $index => $tab) {
                 $name = AnsiUtils::truncateToWidth($tab['name'], $nameWidth, '…', pad: true);
                 $marker = $tab['dirty'] ? '●' : ' ';
                 $style = $tab['active'] ? $this->palette->of(Role::InlayPopupBg).$this->palette->of(Role::Bright)."\x1b[1m" : $this->palette->of(Role::Subtle);

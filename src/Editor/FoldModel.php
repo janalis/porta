@@ -37,7 +37,7 @@ final class FoldModel
     /** The next visible line at or after $line, skipping any fold interior. */
     public function nextVisibleLine(int $line): int
     {
-        return isset($this->folds[$line]) ? $this->folds[$line] + 1 : $line + 1;
+        return array_key_exists($line, $this->folds) ? $this->folds[$line] + 1 : $line + 1;
     }
 
     /** Snap a line to the nearest visible line at or above it (fold starts are visible). */
@@ -47,11 +47,13 @@ final class FoldModel
         do {
             $moved = false;
             foreach ($this->folds as $start => $end) {
-                if ($start < $line && $line <= $end) {
-                    $line = $start;
-                    $moved = true;
-                    break;
+                if (!($start < $line && $line <= $end)) {
+                    continue;
                 }
+
+                $line = $start;
+                $moved = true;
+                break;
             }
         } while ($moved && ++$guard < 1000);
 
@@ -108,9 +110,11 @@ final class FoldModel
     {
         $caret = $this->document->getCursorLine();
         foreach ($this->folds as $start => $end) {
-            if ($start < $caret && $caret <= $end) {
-                unset($this->folds[$start]);
+            if (!($start < $caret && $caret <= $end)) {
+                continue;
             }
+
+            unset($this->folds[$start]);
         }
     }
 
@@ -146,7 +150,7 @@ final class FoldModel
     public function toggle(): void
     {
         $line = $this->document->getCursorLine();
-        if (isset($this->folds[$line])) {
+        if (array_key_exists($line, $this->folds)) {
             unset($this->folds[$line]);
 
             return;
@@ -167,9 +171,11 @@ final class FoldModel
     {
         $best = null;
         foreach ($this->foldRegions() as [$start, $end]) {
-            if ($start <= $line && $line <= $end && (null === $best || $start > $best[0])) {
-                $best = [$start, $end];
+            if (!($start <= $line && $line <= $end && (null === $best || $start > $best[0]))) {
+                continue;
             }
+
+            $best = [$start, $end];
         }
 
         return $best;
@@ -206,7 +212,10 @@ final class FoldModel
             for ($c = 0; $c < $len; ++$c) {
                 if ('{' === $text[$c]) {
                     $stack[] = (int) $lineIndex;
-                } elseif ('}' === $text[$c] && [] !== $stack) {
+
+                    continue;
+                }
+                if ('}' === $text[$c] && [] !== $stack) {
                     $start = array_pop($stack);
                     if ($lineIndex > $start) {
                         $regions[] = [$start, (int) $lineIndex];

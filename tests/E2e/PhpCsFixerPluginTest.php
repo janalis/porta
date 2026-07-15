@@ -5,12 +5,9 @@ declare(strict_types=1);
 namespace Porta\Tests\E2e;
 
 use PHPUnit\Framework\TestCase;
-use Porta\Ide;
 use Porta\Tests\Support\RunsIde;
 use Porta\Tests\Support\TempProject;
-use Revolt\EventLoop;
 use Symfony\Component\Tui\Ansi\AnsiUtils;
-use Symfony\Component\Tui\Terminal\VirtualTerminal;
 
 /**
  * The shipped php-cs-fixer plugin (.porta/plugins/php-cs-fixer/plugin.php),
@@ -48,9 +45,9 @@ final class PhpCsFixerPluginTest extends TestCase
         if (null !== $stubExitCode) {
             // PATH is /nonexistent, so the shebang must point at the php binary directly.
             $stub = '#!'.\PHP_BINARY.' -n'."\n<?php\n"."file_put_contents(\$argv[2], file_get_contents(\$argv[2]).\"// fixed\\n\");\n"."exit({$stubExitCode});\n";
-            mkdir($project->path('vendor/bin'), 0777, true);
+            mkdir($project->path('vendor/bin'), permissions: 0o777, recursive: true);
             file_put_contents($project->path('vendor/bin/php-cs-fixer'), $stub);
-            chmod($project->path('vendor/bin/php-cs-fixer'), 0o755);
+            chmod($project->path('vendor/bin/php-cs-fixer'), permissions: 0o755);
         }
 
         return $project;
@@ -68,10 +65,10 @@ final class PhpCsFixerPluginTest extends TestCase
                     $tui->handleInput("\x1b\x06"); // ctrl+alt+f → php-cs-fixer:fix
                 },
                 300 => function ($tui, $terminal, $ide) use ($project): void {
-                    $this->await(fn (): bool => str_contains(AnsiUtils::stripAnsiCodes($terminal->getOutput()), 'php-cs-fixer: fixed a.php'));
+                    $this->await(static fn (): bool => str_contains(AnsiUtils::stripAnsiCodes($terminal->getOutput()), 'php-cs-fixer: fixed a.php'));
                     $tui->tick();
                     $this->assertStringContainsString('php-cs-fixer: fixed a.php', AnsiUtils::stripAnsiCodes($terminal->getOutput()));
-                    $this->await(fn (): bool => str_contains((string) @file_get_contents($project->path('a.php')), '// fixed'));
+                    $this->await(static fn (): bool => str_contains((string) (is_file($project->path('a.php')) ? file_get_contents($project->path('a.php')) : false), '// fixed'));
                     $this->assertStringContainsString('// fixed', (string) file_get_contents($project->path('a.php')), 'the stub rewrote the file');
 
                     // The filesystem poller reloads the clean buffer with the fixed content.
@@ -102,8 +99,8 @@ final class PhpCsFixerPluginTest extends TestCase
                     $tui->handleInput("\x13"); // ctrl+s → save → the hook runs the fixer
                 },
                 300 => function ($tui, $terminal, $ide) use ($project): void {
-                    $this->await(fn (): bool => substr_count((string) @file_get_contents($project->path('a.php')), '// fixed') >= 1);
-                    $this->assertSame(1, substr_count((string) file_get_contents($project->path('a.php')), '// fixed'), 'save triggered one fix');
+                    $this->await(static fn (): bool => substr_count((string) (is_file($project->path('a.php')) ? file_get_contents($project->path('a.php')) : false), needle: '// fixed') >= 1);
+                    $this->assertSame(1, substr_count((string) file_get_contents($project->path('a.php')), needle: '// fixed'), 'save triggered one fix');
 
                     // Toggling off stops the hook.
                     new \ReflectionProperty($ide, 'commands')->getValue($ide)->run('php-cs-fixer:toggle-on-save');
@@ -116,7 +113,7 @@ final class PhpCsFixerPluginTest extends TestCase
                     $tui->handleInput("\x13");
                 },
                 450 => function ($tui, $terminal, $ide) use ($project): void {
-                    $this->assertSame(1, substr_count((string) file_get_contents($project->path('a.php')), '// fixed'), 'no fix while toggled off');
+                    $this->assertSame(1, substr_count((string) file_get_contents($project->path('a.php')), needle: '// fixed'), 'no fix while toggled off');
                 },
             ],
         );
@@ -164,7 +161,7 @@ final class PhpCsFixerPluginTest extends TestCase
                     $tui->handleInput("\x1b\x06");
                 },
                 300 => function ($tui, $terminal): void {
-                    $this->await(fn (): bool => str_contains(AnsiUtils::stripAnsiCodes($terminal->getOutput()), 'php-cs-fixer: exited with code 3'));
+                    $this->await(static fn (): bool => str_contains(AnsiUtils::stripAnsiCodes($terminal->getOutput()), 'php-cs-fixer: exited with code 3'));
                     $tui->tick();
                     $this->assertStringContainsString('php-cs-fixer: exited with code 3', AnsiUtils::stripAnsiCodes($terminal->getOutput()));
                 },

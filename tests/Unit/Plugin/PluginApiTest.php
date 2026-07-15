@@ -107,12 +107,12 @@ final class PluginApiTest extends TestCase
         $this->assertCount(4, $api->bufferedSettings());
 
         foreach ([
-            ['bad key', fn () => $api->registerSetting('bad:key', 'X')],
-            ['duplicate', fn () => $api->registerSetting('binary', 'Again')],
-            ['bad kind', fn () => $api->registerSetting('x', 'X', 'float')],
-            ['choice needs options', fn () => $api->registerSetting('y', 'Y', 'choice', 'a')],
-            ['default not in options', fn () => $api->registerSetting('z', 'Z', 'choice', 'a', ['b'])],
-            ['unknown read', fn () => $api->setting('ghost')],
+            ['bad key', static fn () => $api->registerSetting('bad:key', 'X')],
+            ['duplicate', static fn () => $api->registerSetting('binary', 'Again')],
+            ['bad kind', static fn () => $api->registerSetting('x', 'X', 'float')],
+            ['choice needs options', static fn () => $api->registerSetting('y', 'Y', 'choice', 'a')],
+            ['default not in options', static fn () => $api->registerSetting('z', 'Z', 'choice', 'a', ['b'])],
+            ['unknown read', static fn () => $api->setting('ghost')],
         ] as [$label, $action]) {
             try {
                 $action();
@@ -128,15 +128,15 @@ final class PluginApiTest extends TestCase
         $api = $this->api(wired: false);
         $api->registerSetting('flag', 'Flag', 'bool', false); // a registered key, so changeSetting reaches the runtime gate
         $actions = [
-            fn () => $api->flash('x'),
-            fn () => $api->activeFile(),
-            fn () => $api->documentText(),
-            fn () => $api->caretPosition(),
-            fn () => $api->insertAtCaret('x'),
-            fn () => $api->openFile('/x'),
-            fn () => $api->jumpTo(0),
-            fn () => $api->setDiagnostics('/x', []),
-            fn () => $api->changeSetting('flag', true),
+            static fn () => $api->flash('x'),
+            $api->activeFile(...),
+            $api->documentText(...),
+            $api->caretPosition(...),
+            static fn () => $api->insertAtCaret('x'),
+            static fn () => $api->openFile('/x'),
+            static fn () => $api->jumpTo(0),
+            static fn () => $api->setDiagnostics('/x', []),
+            static fn () => $api->changeSetting('flag', true),
         ];
         foreach ($actions as $i => $action) {
             try {

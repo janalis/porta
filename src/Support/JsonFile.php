@@ -23,7 +23,7 @@ final class JsonFile
         }
         try {
             /** @var array<array-key, mixed>|scalar|null $data */
-            $data = json_decode((string) file_get_contents($path), true, 512, JSON_THROW_ON_ERROR);
+            $data = json_decode((string) file_get_contents($path), associative: true, depth: 512, flags: JSON_THROW_ON_ERROR);
         } catch (\JsonException) {
             return null;
         }

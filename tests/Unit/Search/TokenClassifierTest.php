@@ -58,7 +58,7 @@ final class TokenClassifierTest extends TestCase
         // The four occurrences of "needle": variable (code), comment, string, function name (code).
         $offsets = [];
         $at = 0;
-        while (false !== ($at = strpos($src, 'needle', $at))) {
+        while (false !== ($at = strpos($src, needle: 'needle', offset: $at))) {
             $offsets[] = $at;
             $at += 6;
         }
@@ -75,12 +75,14 @@ final class TokenClassifierTest extends TestCase
         $src = "<?php\n/**\n * needle in a docblock\n */\nfunction f() {}\n";
         $spans = $classifier->commentStringSpans($src, 'php');
 
-        $offset = (int) strpos($src, 'needle');
+        $offset = (int) strpos($src, needle: 'needle');
         $inside = false;
         foreach ($spans as $span) {
-            if ($offset >= $span['start'] && $offset < $span['end']) {
-                $inside = true;
+            if (!($offset >= $span['start'] && $offset < $span['end'])) {
+                continue;
             }
+
+            $inside = true;
         }
 
         $this->assertTrue($inside, 'a match inside a multi-line docblock is classified as a comment');

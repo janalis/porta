@@ -49,8 +49,8 @@ final class CommandRegistry
      */
     public function remove(array $ids): void
     {
-        $drop = array_fill_keys($ids, true);
-        $this->commands = array_values(array_filter($this->commands, static fn (array $c): bool => !isset($drop[$c['id']])));
+        $drop = array_fill_keys($ids, value: true);
+        $this->commands = array_values(array_filter($this->commands, static fn (array $c): bool => ($drop[$c['id']] ?? null) === null));
         foreach ($ids as $id) {
             unset($this->byId[$id]);
         }
@@ -62,7 +62,7 @@ final class CommandRegistry
     /** Whether $id's key dispatch is currently enabled (unknown ids are not). */
     public function isEnabled(string $id): bool
     {
-        if (!isset($this->byId[$id])) {
+        if (($this->byId[$id] ?? null) === null) {
             return false;
         }
         $when = $this->byId[$id]['when'];
@@ -88,7 +88,7 @@ final class CommandRegistry
     /** Run the handler registered under $id (no-op when unknown). */
     public function run(string $id): void
     {
-        if (isset($this->byId[$id])) {
+        if (($this->byId[$id] ?? null) !== null) {
             $this->byId[$id]['handler']();
         }
     }
@@ -102,9 +102,11 @@ final class CommandRegistry
     {
         $out = [];
         foreach ($this->commands as $command) {
-            if ($command['inPalette']) {
-                $out[] = ['label' => $command['label'], 'run' => $command['handler']];
+            if (!$command['inPalette']) {
+                continue;
             }
+
+            $out[] = ['label' => $command['label'], 'run' => $command['handler']];
         }
 
         return $out;

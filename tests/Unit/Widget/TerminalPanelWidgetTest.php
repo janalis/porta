@@ -19,7 +19,7 @@ final class TerminalPanelWidgetTest extends TestCase
 
         // Input while closed is a no-op.
         $forwarded = '';
-        $panel->onInputForward(function (string $d) use (&$forwarded): void {
+        $panel->onInputForward(static function (string $d) use (&$forwarded): void {
             $forwarded .= $d;
         });
         $panel->handleInput('x');
@@ -59,14 +59,16 @@ final class TerminalPanelWidgetTest extends TestCase
         $this->assertSame(1, substr_count($joined, AnsiUtils::CURSOR_MARKER_PREFIX), 'exactly one marker on the live tail');
         $markerLine = null;
         foreach ($lines as $line) {
-            if (str_contains($line, AnsiUtils::CURSOR_MARKER_PREFIX)) {
-                $markerLine = $line;
+            if (!str_contains($line, AnsiUtils::CURSOR_MARKER_PREFIX)) {
+                continue;
             }
+
+            $markerLine = $line;
         }
         $this->assertNotNull($markerLine);
         $this->assertStringContainsString('prompt$', AnsiUtils::stripAnsiCodes($markerLine), 'the marker sits on the last body line');
         $pos = strpos($markerLine, AnsiUtils::CURSOR_MARKER_PREFIX);
-        $this->assertSame(8, AnsiUtils::visibleWidth(substr($markerLine, 0, (int) $pos)), 'at the buffer cursor column');
+        $this->assertSame(8, AnsiUtils::visibleWidth(substr($markerLine, offset: 0, length: (int) $pos)), 'at the buffer cursor column');
         foreach ($lines as $line) {
             $this->assertSame(40, AnsiUtils::visibleWidth($line), 'the zero-width marker keeps the width contract');
         }
@@ -75,7 +77,7 @@ final class TerminalPanelWidgetTest extends TestCase
         $this->assertStringNotContainsString(AnsiUtils::CURSOR_MARKER_PREFIX, implode('', $panel->render(new RenderContext(40, 6))), 'unfocused: no marker');
 
         $panel->setFocused(true);
-        $buffer->feed(str_repeat("history\n", 30)); // enough scrollback to page up into
+        $buffer->feed(str_repeat("history\n", times: 30)); // enough scrollback to page up into
         $panel->handleInput("\x1b[5~"); // PageUp: scrolled back
         $this->assertStringNotContainsString(AnsiUtils::CURSOR_MARKER_PREFIX, implode('', $panel->render(new RenderContext(40, 6))), 'scrolled back: no marker');
     }
@@ -83,7 +85,7 @@ final class TerminalPanelWidgetTest extends TestCase
     public function testCursorColumnIsClampedToThePanelWidth(): void
     {
         $buffer = new TerminalBuffer();
-        $buffer->feed(str_repeat('x', 60));
+        $buffer->feed(str_repeat('x', times: 60));
         $panel = new TerminalPanelWidget();
         $panel->setFocused(true);
         $panel->open('bash', $buffer);
@@ -163,7 +165,7 @@ final class TerminalPanelWidgetTest extends TestCase
         $panel->open('sh', $buffer);
 
         $forwarded = '';
-        $panel->onInputForward(function (string $d) use (&$forwarded): void {
+        $panel->onInputForward(static function (string $d) use (&$forwarded): void {
             $forwarded .= $d;
         });
 
@@ -187,7 +189,7 @@ final class TerminalPanelWidgetTest extends TestCase
     {
         $panel = new TerminalPanelWidget();
         $closed = false;
-        $panel->onClose(function () use (&$closed): void {
+        $panel->onClose(static function () use (&$closed): void {
             $closed = true;
         });
         $panel->open('sh', new TerminalBuffer());
@@ -204,7 +206,7 @@ final class TerminalPanelWidgetTest extends TestCase
         $panel->onInput(static fn (string $d): bool => 'Z' === $d);
 
         $forwarded = '';
-        $panel->onInputForward(function (string $d) use (&$forwarded): void {
+        $panel->onInputForward(static function (string $d) use (&$forwarded): void {
             $forwarded .= $d;
         });
         $panel->handleInput('Z'); // consumed by hook, not forwarded
@@ -227,19 +229,20 @@ final class TerminalPanelWidgetTest extends TestCase
         $this->assertStringContainsString('×', $strip, 'each tab has a close affordance');
 
         // A click on "build"'s label selects it; a click on its × closes it.
-        $selected = $closed = null;
-        $panel->onSessionSelected(function (int $i) use (&$selected): void {
+        $closed = null;
+        $selected = null;
+        $panel->onSessionSelected(static function (int $i) use (&$selected): void {
             $selected = $i;
         });
-        $panel->onSessionClosed(function (int $i) use (&$closed): void {
+        $panel->onSessionClosed(static function (int $i) use (&$closed): void {
             $closed = $i;
         });
         // The strip is "│ sh 1 × │ build ○ × │" — column into the "build" word.
-        $buildCol = mb_strpos($strip, 'build');
+        $buildCol = mb_strpos($strip, needle: 'build');
         $panel->handleTabClick((int) $buildCol);
         $this->assertSame(1, $selected, 'clicking the label selected the tab');
 
-        $closeCol = mb_strpos($strip, '×', (int) $buildCol);
+        $closeCol = mb_strpos($strip, needle: '×', offset: (int) $buildCol);
         $panel->handleTabClick((int) $closeCol);
         $this->assertSame(1, $closed, 'clicking the × closed the tab');
 
@@ -258,13 +261,13 @@ final class TerminalPanelWidgetTest extends TestCase
         $forwarded = '';
         $cycled = [];
         $closed = null;
-        $panel->onInputForward(function (string $d) use (&$forwarded): void {
+        $panel->onInputForward(static function (string $d) use (&$forwarded): void {
             $forwarded .= $d;
         });
-        $panel->onSessionCycled(function (int $d) use (&$cycled): void {
+        $panel->onSessionCycled(static function (int $d) use (&$cycled): void {
             $cycled[] = $d;
         });
-        $panel->onSessionClosed(function (int $i) use (&$closed): void {
+        $panel->onSessionClosed(static function (int $i) use (&$closed): void {
             $closed = $i;
         });
 
@@ -284,7 +287,7 @@ final class TerminalPanelWidgetTest extends TestCase
         // active fits) and trailing tabs overflow the width (the render breaks).
         $panel->setSessionTabsProvider(static fn (): array => array_map(
             static fn (int $i): array => ['title' => 't'.$i, 'running' => true, 'active' => 5 === $i],
-            range(0, 9),
+            range(0, end: 9),
         ));
 
         $strip = AnsiUtils::stripAnsiCodes($panel->render(new RenderContext(20, 6))[0]);
@@ -322,10 +325,10 @@ final class TerminalPanelWidgetTest extends TestCase
         $this->assertStringContainsString('lonely', $strip);
         // Clicking the synthetic tab still routes (selects index 0).
         $selected = null;
-        $panel->onSessionSelected(function (int $i) use (&$selected): void {
+        $panel->onSessionSelected(static function (int $i) use (&$selected): void {
             $selected = $i;
         });
-        $panel->handleTabClick((int) mb_strpos($strip, 'lonely'));
+        $panel->handleTabClick((int) mb_strpos($strip, needle: 'lonely'));
         $this->assertSame(0, $selected);
     }
 }

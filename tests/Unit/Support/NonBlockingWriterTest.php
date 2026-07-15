@@ -16,10 +16,10 @@ final class NonBlockingWriterTest extends TestCase
     /** @return array{0: resource, 1: resource} a connected non-blocking pair [writeSide, readSide] */
     private function pair(): array
     {
-        $pair = stream_socket_pair(\STREAM_PF_UNIX, \STREAM_SOCK_STREAM, 0);
-        \assert(false !== $pair);
-        stream_set_blocking($pair[0], false);
-        stream_set_blocking($pair[1], false);
+        $pair = stream_socket_pair(\STREAM_PF_UNIX, \STREAM_SOCK_STREAM, protocol: 0);
+        \assert(false !== $pair, description: 'the socket pair was created');
+        stream_set_blocking($pair[0], enable: false);
+        stream_set_blocking($pair[1], enable: false);
 
         return [$pair[0], $pair[1]];
     }
@@ -43,7 +43,7 @@ final class NonBlockingWriterTest extends TestCase
         $elapsed = 0.0;
         while (!$done() && $elapsed < $timeout) {
             $suspension = EventLoop::getSuspension();
-            EventLoop::delay(0.02, static fn () => $suspension->resume());
+            EventLoop::delay(0.02, $suspension->resume(...));
             $suspension->suspend();
             $elapsed += 0.02;
         }
@@ -57,7 +57,7 @@ final class NonBlockingWriterTest extends TestCase
         $writer->write('hello');
 
         $this->assertSame(0, $writer->pendingBytes(), 'the stream accepted everything at once');
-        $this->assertSame('hello', fread($read, 64));
+        $this->assertSame('hello', fread($read, length: 64));
         $this->assertSame([], $this->errors);
         $writer->close();
     }
@@ -66,8 +66,8 @@ final class NonBlockingWriterTest extends TestCase
     {
         [$write, $read] = $this->pair();
         $writer = $this->writer($write);
-        $first = str_repeat('a', 262144);
-        $second = str_repeat('b', 262144);
+        $first = str_repeat('a', times: 262_144);
+        $second = str_repeat('b', times: 262_144);
 
         $start = microtime(true);
         $writer->write($first);
@@ -78,8 +78,8 @@ final class NonBlockingWriterTest extends TestCase
         // Drain the peer while the loop runs the onWritable watcher.
         $received = '';
         $expected = \strlen($first) + \strlen($second);
-        $this->await(function () use (&$received, $read, $expected): bool {
-            $chunk = fread($read, 65536);
+        $this->await(static function () use (&$received, $read, $expected): bool {
+            $chunk = fread($read, length: 65_536);
             if (\is_string($chunk)) {
                 $received .= $chunk;
             }
@@ -102,7 +102,7 @@ final class NonBlockingWriterTest extends TestCase
         // The first write may be absorbed by the socket buffer; keep writing
         // until the broken pipe surfaces.
         $this->await(function () use ($writer): bool {
-            $writer->write(str_repeat('x', 65536));
+            $writer->write(str_repeat('x', times: 65_536));
 
             return [] !== $this->errors;
         });
@@ -119,7 +119,7 @@ final class NonBlockingWriterTest extends TestCase
         [$write, $read] = $this->pair();
         $writer = $this->writer($write, limit: 1024);
 
-        $writer->write(str_repeat('x', 2048));
+        $writer->write(str_repeat('x', times: 2048));
 
         $this->assertSame(['write queue overflow'], $this->errors);
         $this->assertSame(0, $writer->pendingBytes());
@@ -133,17 +133,17 @@ final class NonBlockingWriterTest extends TestCase
         // The peer drains only after a pause, so flushBlocking genuinely blocks
         // (briefly) instead of deadlocking against a never-reading socketpair.
         // Its echo goes to a FILE — an echo pipe could fill and deadlock too.
-        $sink = tempnam(sys_get_temp_dir(), 'porta-nbw');
-        \assert(\is_string($sink));
+        $sink = tempnam(sys_get_temp_dir(), prefix: 'porta-nbw');
+        \assert(\is_string($sink), description: 'tempnam returned a path');
         $process = proc_open(
             [\PHP_BINARY, __DIR__.'/../../Support/slow-drain-peer.php'],
             [0 => ['pipe', 'r'], 1 => ['file', $sink, 'w'], 2 => ['file', '/dev/null', 'w']],
             $pipes,
         );
-        \assert(\is_resource($process));
-        stream_set_blocking($pipes[0], false);
+        \assert(\is_resource($process), description: 'the peer process launched');
+        stream_set_blocking($pipes[0], enable: false);
         $writer = $this->writer($pipes[0]);
-        $payload = str_repeat('q', 262144); // larger than the ~64KiB pipe → remainder queued
+        $payload = str_repeat('q', times: 262_144); // larger than the ~64KiB pipe → remainder queued
         $writer->write($payload);
         $this->assertGreaterThan(0, $writer->pendingBytes());
 
@@ -165,7 +165,7 @@ final class NonBlockingWriterTest extends TestCase
         fclose($pipes[0]); // EOF: the peer's fpassthru finishes
         proc_close($process); // waits for the child, so the sink is complete
         $this->assertSame($payload, (string) file_get_contents($sink), 'bytes intact and in order');
-        @unlink($sink);
+        is_file($sink) && unlink($sink);
     }
 
     public function testFlushBlockingIsANoOpWhenIdleClosedOrDead(): void
@@ -193,7 +193,7 @@ final class NonBlockingWriterTest extends TestCase
     {
         [$write, $read] = $this->pair();
         $writer = $this->writer($write);
-        $writer->write(str_repeat('x', 524288)); // remainder queued
+        $writer->write(str_repeat('x', times: 524_288)); // remainder queued
         $this->assertGreaterThan(0, $writer->pendingBytes());
         fclose($read);
 
@@ -221,7 +221,7 @@ final class NonBlockingWriterTest extends TestCase
     {
         [$write, $read] = $this->pair();
         $writer = $this->writer($write);
-        $writer->write(str_repeat('x', 524288)); // larger than the socket buffer → watcher armed
+        $writer->write(str_repeat('x', times: 524_288)); // larger than the socket buffer → watcher armed
         $this->assertGreaterThan(0, $writer->pendingBytes());
 
         $writer->close();

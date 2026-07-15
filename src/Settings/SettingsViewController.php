@@ -56,19 +56,19 @@ final class SettingsViewController
         WorkspaceViews $views,
     ) {
         $views->attachSettings($this);
-        $exit = fn () => $this->close();
+        $exit = $this->close(...);
 
         $this->nav
-            ->onSelect(fn (string $id) => $this->selectSection($id))
-            ->onFocusNext(fn () => $this->focusContent())
+            ->onSelect($this->selectSection(...))
+            ->onFocusNext($this->focusContent(...))
             ->onExit($exit);
         $this->form
-            ->onChange(fn (string $key, bool|int|string $value) => $this->changeSetting($key, $value))
-            ->onFocusNext(fn () => $this->focusNav())
+            ->onChange($this->changeSetting(...))
+            ->onFocusNext($this->focusNav(...))
             ->onExit($exit);
         $this->keymapList
-            ->onRebind(fn (string $action, string $key) => $this->rebind($action, $key))
-            ->onFocusNext(fn () => $this->focusNav())
+            ->onRebind($this->rebind(...))
+            ->onFocusNext($this->focusNav(...))
             ->onExit($exit);
     }
 
@@ -132,7 +132,8 @@ final class SettingsViewController
         if ('keybindings' === $id) {
             $this->keymapList->setRows($this->keymap->rows());
             $this->settingsContent->add($this->keymapList);
-        } else {
+        }
+        if ('keybindings' !== $id) {
             $this->form->setRows($this->rowsForSection());
             $this->settingsContent->add($this->form);
         }
@@ -150,36 +151,52 @@ final class SettingsViewController
             return $this->plugins->rows();
         }
         if (str_starts_with($this->section, 'plugin:')) {
-            return $this->plugins->pluginRows(substr($this->section, 7));
+            return $this->plugins->pluginRows(substr($this->section, offset: 7));
         }
         if (!str_starts_with($this->section, 'lang:')) {
             return $this->settings->formRows();
         }
-        $language = substr($this->section, 5);
+        $language = substr($this->section, offset: 5);
 
         return [...$this->languages->rows($language), ...$this->lsp->rows($language), ...$this->debug->rows($language)];
     }
 
     private function changeSetting(string $key, bool|int|string $value): void
     {
+        $this->applySettingChange($key, $value);
+        $this->form->setRows($this->rowsForSection());
+    }
+
+    private function applySettingChange(string $key, bool|int|string $value): void
+    {
         if (str_starts_with($this->section, 'lang:')) {
-            $language = substr($this->section, 5);
+            $language = substr($this->section, offset: 5);
             if ('lspServer' === $key) {
                 $this->lsp->changeLspServer($language, (string) $value);
-            } elseif ('debugAdapter' === $key || 'debugLaunch' === $key) {
-                $this->debug->change($language, $key, (string) $value);
-            } else {
-                $this->languages->changeLanguageSetting($language, $key, $value);
+
+                return;
             }
-        } elseif ('plugins' === $this->section) {
-            $this->plugins->change($key, (string) $value);
-        } elseif (str_starts_with($this->section, 'plugin:')) {
-            // The scalar passes through untouched — bool/int rows need their types.
-            $this->plugins->changePlugin(substr($this->section, 7), $key, $value);
-        } else {
-            $this->settings->changeSetting($key, $value);
+            if ('debugAdapter' === $key || 'debugLaunch' === $key) {
+                $this->debug->change($language, $key, (string) $value);
+
+                return;
+            }
+            $this->languages->changeLanguageSetting($language, $key, $value);
+
+            return;
         }
-        $this->form->setRows($this->rowsForSection());
+        if ('plugins' === $this->section) {
+            $this->plugins->change($key, (string) $value);
+
+            return;
+        }
+        if (str_starts_with($this->section, 'plugin:')) {
+            // The scalar passes through untouched — bool/int rows need their types.
+            $this->plugins->changePlugin(substr($this->section, offset: 7), $key, $value);
+
+            return;
+        }
+        $this->settings->changeSetting($key, $value);
     }
 
     /**
@@ -193,7 +210,7 @@ final class SettingsViewController
         if (!$this->open) {
             return;
         }
-        if (str_starts_with($this->section, 'plugin:') && !$this->plugins->hasPlugin(substr($this->section, 7))) {
+        if (str_starts_with($this->section, 'plugin:') && !$this->plugins->hasPlugin(substr($this->section, offset: 7))) {
             $this->selectSection('plugins');
 
             return;
@@ -220,9 +237,10 @@ final class SettingsViewController
     {
         if ($this->tui->getFocus() === $this->nav) {
             $this->focusContent();
-        } else {
-            $this->focusNav();
+
+            return;
         }
+        $this->focusNav();
     }
 
     private function focusNav(): void

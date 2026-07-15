@@ -86,7 +86,7 @@ final class SettingsPluginsController
     /** Whether a plugin is installed (its settings page is reachable — disabled ones too). */
     public function hasPlugin(string $name): bool
     {
-        return \in_array($name, $this->lifecycle->listedNames(), true);
+        return \in_array($name, $this->lifecycle->listedNames(), strict: true);
     }
 
     /**
@@ -122,7 +122,7 @@ final class SettingsPluginsController
             return;
         }
         if (str_starts_with($key, 'pluginSetting:')) {
-            $this->pluginSettings->change($name, substr($key, 14), $value);
+            $this->pluginSettings->change($name, substr($key, offset: 14), $value);
         }
     }
 
@@ -161,7 +161,7 @@ final class SettingsPluginsController
 
     private function removalPressed(string $key): void
     {
-        $parts = explode(':', $key, 3);
+        $parts = explode(':', $key, limit: 3);
         $scope = $parts[1] ?? '';
         $name = $parts[2] ?? '';
         if ($this->armed !== $key) {

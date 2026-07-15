@@ -5,12 +5,9 @@ declare(strict_types=1);
 namespace Porta\Tests\E2e;
 
 use PHPUnit\Framework\TestCase;
-use Porta\Ide;
 use Porta\Tests\Support\RunsIde;
 use Porta\Tests\Support\TempProject;
-use Revolt\EventLoop;
 use Symfony\Component\Tui\Ansi\AnsiUtils;
-use Symfony\Component\Tui\Terminal\VirtualTerminal;
 
 /**
  * Full-app plugin scenarios: a fixture plugin registering a keyed command, a
@@ -27,7 +24,8 @@ final class IdePluginTest extends TestCase
     protected function setUp(): void
     {
         $this->originalPath = (string) getenv('PATH');
-        $this->portaHome = getenv('PORTA_HOME') ?: null;
+        $portaHome = getenv('PORTA_HOME');
+        $this->portaHome = $portaHome ? $portaHome : null;
         putenv('PORTA_LSP');
     }
 
@@ -82,7 +80,7 @@ final class IdePluginTest extends TestCase
             $project->path('a.php'),
             [
                 100 => function ($tui, $terminal): void {
-                    $this->await(fn (): bool => str_contains(AnsiUtils::stripAnsiCodes($terminal->getOutput()), 'Plugins'));
+                    $this->await(static fn (): bool => str_contains(AnsiUtils::stripAnsiCodes($terminal->getOutput()), 'Plugins'));
                     $tui->tick();
                     $this->assertStringContainsString('Plugins', AnsiUtils::stripAnsiCodes($terminal->getOutput()), 'the Plugins menu title is in the bar');
                     $tui->handleInput("\x1b\x19"); // ctrl+alt+y (legacy: ESC + ctrl+y) → demo:hello
@@ -210,7 +208,7 @@ final class IdePluginTest extends TestCase
             $project->path('a.php'),
             [
                 100 => function ($tui, $terminal): void {
-                    $this->await(fn (): bool => str_contains(AnsiUtils::stripAnsiCodes($terminal->getOutput()), 'Plugin "broken" failed to load'));
+                    $this->await(static fn (): bool => str_contains(AnsiUtils::stripAnsiCodes($terminal->getOutput()), 'Plugin "broken" failed to load'));
                     $tui->tick();
                     $this->assertStringContainsString('Plugin "broken" failed to load', AnsiUtils::stripAnsiCodes($terminal->getOutput()));
                     $tui->handleInput('X');

@@ -74,7 +74,7 @@ final class Document
 
     public function __construct(string $text = '')
     {
-        $text = str_replace(["\r\n", "\r"], "\n", $text);
+        $text = str_replace(["\r\n", "\r"], replace: "\n", subject: $text);
         $this->lines = '' === $text ? [''] : explode("\n", $text);
         $this->savedText = implode("\n", $this->lines);
         $this->indent = new IndentModel($this->detectTabIndentation(), self::TAB_SIZE, self::TAB_SIZE);
@@ -322,7 +322,7 @@ final class Document
      */
     public function getWordBeforeCursor(): string
     {
-        $prefix = substr($this->lines[$this->cursorLine], 0, $this->cursorCol);
+        $prefix = substr($this->lines[$this->cursorLine], offset: 0, length: $this->cursorCol);
         $m = [];
         if (preg_match('/[$\w]+$/u', $prefix, $m)) {
             return $m[0];
@@ -385,7 +385,7 @@ final class Document
         for ($i = $startLine + 1; $i < $endLine; ++$i) {
             $parts[] = $this->lines[$i];
         }
-        $parts[] = substr($this->lines[$endLine], 0, $endCol);
+        $parts[] = substr($this->lines[$endLine], offset: 0, length: $endCol);
 
         return implode("\n", $parts);
     }
@@ -443,7 +443,7 @@ final class Document
         if (null === $range) {
             return;
         }
-        $head = substr($this->lines[$range['startLine']], 0, $range['startCol']);
+        $head = substr($this->lines[$range['startLine']], offset: 0, length: $range['startCol']);
         $tail = substr($this->lines[$range['endLine']], $range['endCol']);
         array_splice($this->lines, $range['startLine'], $range['endLine'] - $range['startLine'] + 1, [$head.$tail]);
         $this->cursorLine = $range['startLine'];
@@ -462,7 +462,7 @@ final class Document
         $this->pushUndo();
         [$first, $last] = $this->selectedLineSpan();
         $block = \array_slice($this->lines, $first, $last - $first + 1);
-        array_splice($this->lines, $last + 1, 0, $block);
+        array_splice($this->lines, $last + 1, length: 0, replacement: $block);
         $offset = $last - $first + 1;
         $this->cursorLine += $offset;
         $this->selection->shiftLine($offset);
@@ -504,7 +504,7 @@ final class Document
         $this->pushUndo();
         $block = \array_slice($this->lines, $first, $last - $first + 1);
         array_splice($this->lines, $first, $last - $first + 1);
-        array_splice($this->lines, $target, 0, $block);
+        array_splice($this->lines, $target, length: 0, replacement: $block);
         $this->cursorLine += $delta;
         $this->selection->shiftLine($delta);
         $this->touch();
@@ -520,11 +520,34 @@ final class Document
     public function moveStatement(int $delta): bool
     {
         [$first, $last] = $this->selectedLineSpan();
-        $n = \count($this->lines);
+        $target = $this->statementTargetLine($delta, $first, $last);
+        if (null === $target) {
+            return false;
+        }
 
+        $shift = $target - $first;
+        $this->pushUndo();
+        $block = \array_slice($this->lines, $first, $last - $first + 1);
+        array_splice($this->lines, $first, $last - $first + 1);
+        array_splice($this->lines, $target, length: 0, replacement: $block);
+        $this->cursorLine += $shift;
+        $this->selection->shiftLine($shift);
+        $this->touch();
+
+        return true;
+    }
+
+    /**
+     * The destination line for {@see moveStatement()} in direction $delta,
+     * hopping a run of blank lines in one step, or null when the block is
+     * already at the edge and cannot move.
+     */
+    private function statementTargetLine(int $delta, int $first, int $last): ?int
+    {
+        $n = \count($this->lines);
         if ($delta < 0) {
             if (0 === $first) {
-                return false;
+                return null;
             }
             $step = 1;
             if ('' === trim($this->lines[$first - 1])) {
@@ -534,32 +557,22 @@ final class Document
                 }
                 $step = $first - $g;
             }
-            $target = max(0, $first - $step);
-        } else {
-            if ($last === ($n - 1)) {
-                return false;
+
+            return max(0, $first - $step);
+        }
+        if ($last === ($n - 1)) {
+            return null;
+        }
+        $step = 1;
+        if ('' === trim($this->lines[$last + 1])) {
+            $g = $last + 1;
+            while ($g < ($n - 1) && '' === trim($this->lines[$g + 1])) {
+                ++$g;
             }
-            $step = 1;
-            if ('' === trim($this->lines[$last + 1])) {
-                $g = $last + 1;
-                while ($g < ($n - 1) && '' === trim($this->lines[$g + 1])) {
-                    ++$g;
-                }
-                $step = $g - $last;
-            }
-            $target = min($first + $step, $first + ($n - 1 - $last));
+            $step = $g - $last;
         }
 
-        $shift = $target - $first;
-        $this->pushUndo();
-        $block = \array_slice($this->lines, $first, $last - $first + 1);
-        array_splice($this->lines, $first, $last - $first + 1);
-        array_splice($this->lines, $target, 0, $block);
-        $this->cursorLine += $shift;
-        $this->selection->shiftLine($shift);
-        $this->touch();
-
-        return true;
+        return min($first + $step, $first + ($n - 1 - $last));
     }
 
     /**
@@ -588,10 +601,11 @@ final class Document
             $indent = \strlen($line) - \strlen($trimmed);
             if ($allCommented) {
                 $rest = substr($trimmed, \strlen($prefix));
-                $this->lines[$i] = substr($line, 0, $indent).ltrim($rest, ' ');
-            } else {
-                $this->lines[$i] = substr($line, 0, $indent).$prefix.' '.$trimmed;
+                $this->lines[$i] = substr($line, offset: 0, length: $indent).ltrim($rest, characters: ' ');
+
+                continue;
             }
+            $this->lines[$i] = substr($line, offset: 0, length: $indent).$prefix.' '.$trimmed;
         }
         $this->cursorCol = min($this->cursorCol, \strlen($this->lines[$this->cursorLine]));
         $this->touch();
@@ -645,11 +659,9 @@ final class Document
         $anchorRemoved = 0;
         for ($i = $first; $i <= $last; ++$i) {
             $line = $this->lines[$i];
-            if (str_starts_with($line, "\t")) {
-                $removed = 1;
-            } else {
-                $removed = min($size, \strlen($line) - \strlen(ltrim($line, ' ')));
-            }
+            $removed = str_starts_with($line, "\t")
+                ? 1
+                : min($size, \strlen($line) - \strlen(ltrim($line, characters: ' ')));
             if (0 === $removed) {
                 continue;
             }
@@ -800,7 +812,7 @@ final class Document
         $this->goalCol = null;
         // Smart home: first non-blank, then column 0
         $line = $this->lines[$this->cursorLine];
-        $indent = \strlen($line) - \strlen(ltrim($line, ' '));
+        $indent = \strlen($line) - \strlen(ltrim($line, characters: ' '));
         $target = $this->cursorCol === $indent || $indent === \strlen($line) ? 0 : $indent;
         if ($this->cursorCol === $target) {
             return false;
@@ -842,13 +854,14 @@ final class Document
         if (0 === $this->cursorCol) {
             return $this->moveLeft();
         }
-        $prefix = substr($this->lines[$this->cursorLine], 0, $this->cursorCol);
+        $prefix = substr($this->lines[$this->cursorLine], offset: 0, length: $this->cursorCol);
         $m = [];
         if (preg_match('/(?:[$\w]+|[^\s\w$]+)\s*$/u', $prefix, $m, \PREG_OFFSET_CAPTURE)) {
             $this->cursorCol = (int) $m[0][1];
-        } else {
-            $this->cursorCol = 0;
+
+            return true;
         }
+        $this->cursorCol = 0;
 
         return true;
     }
@@ -864,9 +877,10 @@ final class Document
         $m = [];
         if (preg_match('/^\s*(?:[$\w]+|[^\s\w$]+)/u', $suffix, $m)) {
             $this->cursorCol += \strlen($m[0]);
-        } else {
-            $this->cursorCol = \strlen($line);
+
+            return true;
         }
+        $this->cursorCol = \strlen($line);
 
         return true;
     }
@@ -881,26 +895,28 @@ final class Document
         $coalesce = null === $this->getSelectionRange() && \strlen($text) <= 4 && !str_contains($text, "\n") ? 'type' : null;
         $this->pushUndo($coalesce);
         $this->removeSelectedText();
-        $text = str_replace(["\r\n", "\r"], "\n", $text);
+        $text = str_replace(["\r\n", "\r"], replace: "\n", subject: $text);
 
         $line = $this->lines[$this->cursorLine];
-        $before = substr($line, 0, $this->cursorCol);
+        $before = substr($line, offset: 0, length: $this->cursorCol);
         $after = substr($line, $this->cursorCol);
 
         $parts = explode("\n", $text);
         if (1 === \count($parts)) {
             $this->lines[$this->cursorLine] = $before.$text.$after;
             $this->cursorCol += \strlen($text);
-        } else {
-            $insertLines = $parts;
-            $insertLines[0] = $before.$parts[0];
-            $lastIndex = \count($insertLines) - 1;
-            $lastLen = \strlen($insertLines[$lastIndex]);
-            $insertLines[$lastIndex] .= $after;
-            array_splice($this->lines, $this->cursorLine, 1, $insertLines);
-            $this->cursorLine += $lastIndex;
-            $this->cursorCol = $lastLen;
+            $this->touch();
+
+            return;
         }
+        $insertLines = $parts;
+        $insertLines[0] = $before.$parts[0];
+        $lastIndex = \count($insertLines) - 1;
+        $lastLen = \strlen($insertLines[$lastIndex]);
+        $insertLines[$lastIndex] .= $after;
+        array_splice($this->lines, $this->cursorLine, length: 1, replacement: $insertLines);
+        $this->cursorLine += $lastIndex;
+        $this->cursorCol = $lastLen;
         $this->touch();
     }
 
@@ -912,12 +928,12 @@ final class Document
         $this->pushUndo();
         $this->removeSelectedText();
         $line = $this->lines[$this->cursorLine];
-        $before = substr($line, 0, $this->cursorCol);
+        $before = substr($line, offset: 0, length: $this->cursorCol);
         $after = substr($line, $this->cursorCol);
         $baseIndent = '';
         $m = [];
         if (preg_match('/^[\t ]+/', $line, $m)) {
-            $baseIndent = substr($m[0], 0, min(\strlen($m[0]), $this->cursorCol));
+            $baseIndent = substr($m[0], offset: 0, length: min(\strlen($m[0]), $this->cursorCol));
         }
         $unit = $this->indentUnit();
 
@@ -926,10 +942,10 @@ final class Document
         $pairs = AutoPairService::NEWLINE_PAIRS;
         $openCh = '' !== $before ? $before[\strlen($before) - 1] : '';
         $closeCh = '' !== $after ? $after[0] : '';
-        if (isset($pairs[$openCh]) && $pairs[$openCh] === $closeCh) {
+        if (\array_key_exists($openCh, $pairs) && $pairs[$openCh] === $closeCh) {
             $inner = $baseIndent.$unit;
             $this->lines[$this->cursorLine] = $before;
-            array_splice($this->lines, $this->cursorLine + 1, 0, [$inner, $baseIndent.$after]);
+            array_splice($this->lines, $this->cursorLine + 1, length: 0, replacement: [$inner, $baseIndent.$after]);
             ++$this->cursorLine;
             $this->cursorCol = \strlen($inner);
             $this->touch();
@@ -944,7 +960,7 @@ final class Document
         }
 
         $this->lines[$this->cursorLine] = $before;
-        array_splice($this->lines, $this->cursorLine + 1, 0, [$indent.$after]);
+        array_splice($this->lines, $this->cursorLine + 1, length: 0, replacement: [$indent.$after]);
         ++$this->cursorLine;
         $this->cursorCol = \strlen($indent);
         $this->touch();
@@ -962,15 +978,17 @@ final class Document
         if ($this->cursorCol > 0) {
             $line = $this->lines[$this->cursorLine];
             $newCol = TextMetrics::prevCharBoundary($line, $this->cursorCol);
-            $this->lines[$this->cursorLine] = substr($line, 0, $newCol).substr($line, $this->cursorCol);
+            $this->lines[$this->cursorLine] = substr($line, offset: 0, length: $newCol).substr($line, $this->cursorCol);
             $this->cursorCol = $newCol;
-        } else {
-            $current = $this->lines[$this->cursorLine];
-            $this->cursorCol = \strlen($this->lines[$this->cursorLine - 1]);
-            $this->lines[$this->cursorLine - 1] .= $current;
-            array_splice($this->lines, $this->cursorLine, 1);
-            --$this->cursorLine;
+            $this->touch();
+
+            return true;
         }
+        $current = $this->lines[$this->cursorLine];
+        $this->cursorCol = \strlen($this->lines[$this->cursorLine - 1]);
+        $this->lines[$this->cursorLine - 1] .= $current;
+        array_splice($this->lines, $this->cursorLine, length: 1);
+        --$this->cursorLine;
         $this->touch();
 
         return true;
@@ -988,11 +1006,13 @@ final class Document
         $this->pushUndo();
         if ($this->cursorCol < \strlen($line)) {
             $next = TextMetrics::nextCharBoundary($line, $this->cursorCol);
-            $this->lines[$this->cursorLine] = substr($line, 0, $this->cursorCol).substr($line, $next);
-        } else {
-            $this->lines[$this->cursorLine] .= $this->lines[$this->cursorLine + 1];
-            array_splice($this->lines, $this->cursorLine + 1, 1);
+            $this->lines[$this->cursorLine] = substr($line, offset: 0, length: $this->cursorCol).substr($line, $next);
+            $this->touch();
+
+            return true;
         }
+        $this->lines[$this->cursorLine] .= $this->lines[$this->cursorLine + 1];
+        array_splice($this->lines, $this->cursorLine + 1, length: 1);
         $this->touch();
 
         return true;
@@ -1008,13 +1028,13 @@ final class Document
         }
         $this->pushUndo();
         $line = $this->lines[$this->cursorLine];
-        $prefix = substr($line, 0, $this->cursorCol);
+        $prefix = substr($line, offset: 0, length: $this->cursorCol);
         $newCol = 0;
         $m = [];
         if (preg_match('/(?:[$\w]+|[^\s\w$]+)\s*$/u', $prefix, $m, \PREG_OFFSET_CAPTURE)) {
             $newCol = (int) $m[0][1];
         }
-        $this->lines[$this->cursorLine] = substr($line, 0, $newCol).substr($line, $this->cursorCol);
+        $this->lines[$this->cursorLine] = substr($line, offset: 0, length: $newCol).substr($line, $this->cursorCol);
         $this->cursorCol = $newCol;
         $this->touch();
 
@@ -1031,7 +1051,7 @@ final class Document
             return $this->deleteForward();
         }
         $this->pushUndo();
-        $this->lines[$this->cursorLine] = substr($line, 0, $this->cursorCol);
+        $this->lines[$this->cursorLine] = substr($line, offset: 0, length: $this->cursorCol);
         $this->touch();
 
         return true;
@@ -1046,7 +1066,7 @@ final class Document
         $this->pushUndo();
         $line = $this->lines[$this->cursorLine];
         $start = max(0, $this->cursorCol - $byteCount);
-        $this->lines[$this->cursorLine] = substr($line, 0, $start).$replacement.substr($line, $this->cursorCol);
+        $this->lines[$this->cursorLine] = substr($line, offset: 0, length: $start).$replacement.substr($line, $this->cursorCol);
         $this->cursorCol = $start + \strlen($replacement);
         $this->touch();
     }
@@ -1077,7 +1097,7 @@ final class Document
             $endLine = $edit['range']['end']['line'] ?? 0;
             if ($endLine < $curLine) {
                 $startLine = $edit['range']['start']['line'] ?? 0;
-                $lineShift += substr_count($edit['newText'] ?? '', "\n") - ($endLine - $startLine);
+                $lineShift += substr_count($edit['newText'] ?? '', needle: "\n") - ($endLine - $startLine);
             }
         }
 
@@ -1113,7 +1133,7 @@ final class Document
     public function replaceAll(string $text): void
     {
         $this->pushUndo();
-        $text = str_replace(["\r\n", "\r"], "\n", $text);
+        $text = str_replace(["\r\n", "\r"], replace: "\n", subject: $text);
         $this->lines = '' === $text ? [''] : explode("\n", $text);
         $this->cursorLine = $this->clampLine($this->cursorLine);
         $this->cursorCol = $this->clampCol($this->cursorLine, $this->cursorCol);

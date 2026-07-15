@@ -14,9 +14,9 @@ final class NonBlockingTerminalTest extends TestCase
     /** @return array{0: resource, 1: resource} [decoratorStream, peerReadSide] */
     private function pair(): array
     {
-        $pair = stream_socket_pair(\STREAM_PF_UNIX, \STREAM_SOCK_STREAM, 0);
-        \assert(false !== $pair);
-        stream_set_blocking($pair[1], false);
+        $pair = stream_socket_pair(\STREAM_PF_UNIX, \STREAM_SOCK_STREAM, protocol: 0);
+        \assert(false !== $pair, description: 'stream_socket_pair created a socket pair');
+        stream_set_blocking($pair[1], enable: false);
 
         return [$pair[0], $pair[1]];
     }
@@ -125,7 +125,7 @@ final class NonBlockingTerminalTest extends TestCase
         $elapsed = 0.0;
         while (!$done() && $elapsed < $timeout) {
             $suspension = EventLoop::getSuspension();
-            EventLoop::delay(0.02, static fn () => $suspension->resume());
+            EventLoop::delay(0.02, $suspension->resume(...));
             $suspension->suspend();
             $elapsed += 0.02;
         }
@@ -152,7 +152,7 @@ final class NonBlockingTerminalTest extends TestCase
         $terminal->bell();
 
         $expected = "frame\x1b[?25l\x1b[?25h\x1b[3B\x1b[2A\x1b[2K\x1b[0J\x1b[2J\x1b[H\x1b]0;title\x07\x07";
-        $this->assertSame($expected, fread($peer, 8192), 'byte-identical to the vendor terminal, in call order');
+        $this->assertSame($expected, fread($peer, length: 8192), 'byte-identical to the vendor terminal, in call order');
         $this->assertSame(['start'], $calls, 'no writing method leaked to the inner terminal after start()');
         $this->assertSame(['probe'], $received, 'the onInput callback was passed through verbatim');
         $terminal->stop();
@@ -254,7 +254,7 @@ final class NonBlockingTerminalTest extends TestCase
         $terminal->write('teardown-bytes'); // after stop(): the alt-screen exit
 
         $this->assertContains('write:teardown-bytes', $calls, 'post-stop writes reach the tty via the inner terminal');
-        $this->assertSame('frame', fread($peer, 8192), 'queued bytes were flushed by stop()');
+        $this->assertSame('frame', fread($peer, length: 8192), 'queued bytes were flushed by stop()');
         $terminal->stop(); // double-stop is harmless
         $this->assertSame(2, \count(array_filter($calls, static fn (string $c): bool => 'stop' === $c)));
         fclose($peer);
@@ -267,8 +267,8 @@ final class NonBlockingTerminalTest extends TestCase
         $received = [];
         $terminal = new NonBlockingTerminal($this->inner($calls), $stream);
         $this->start($terminal, $received);
-        $first = str_repeat('a', 524288);
-        $second = str_repeat('b', 524288);
+        $first = str_repeat('a', times: 524_288);
+        $second = str_repeat('b', times: 524_288);
 
         $start = microtime(true);
         $terminal->write($first);
@@ -277,8 +277,8 @@ final class NonBlockingTerminalTest extends TestCase
 
         $drained = '';
         $expected = \strlen($first) + \strlen($second);
-        $this->await(function () use (&$drained, $peer, $expected): bool {
-            $chunk = fread($peer, 65536);
+        $this->await(static function () use (&$drained, $peer, $expected): bool {
+            $chunk = fread($peer, length: 65_536);
             if (\is_string($chunk)) {
                 $drained .= $chunk;
             }
@@ -296,21 +296,21 @@ final class NonBlockingTerminalTest extends TestCase
         // A peer that drains only after a pause: the fallback blocks briefly
         // instead of deadlocking, and every byte still arrives in order. Its
         // echo goes to a FILE — an echo pipe could fill and deadlock too.
-        $sink = tempnam(sys_get_temp_dir(), 'porta-nbt');
-        \assert(\is_string($sink));
+        $sink = tempnam(sys_get_temp_dir(), prefix: 'porta-nbt');
+        \assert(\is_string($sink), description: 'tempnam returned a sink path');
         $process = proc_open(
             [\PHP_BINARY, __DIR__.'/../../Support/slow-drain-peer.php'],
             [0 => ['pipe', 'r'], 1 => ['file', $sink, 'w'], 2 => ['file', '/dev/null', 'w']],
             $pipes,
         );
-        \assert(\is_resource($process));
+        \assert(\is_resource($process), description: 'proc_open started the slow-drain peer');
         $calls = [];
         $received = [];
-        $terminal = new NonBlockingTerminal($this->inner($calls), $pipes[0], limit: 65536);
+        $terminal = new NonBlockingTerminal($this->inner($calls), $pipes[0], limit: 65_536);
         $this->start($terminal, $received);
 
-        $first = str_repeat('x', 131072); // fills the ~64KiB pipe, remainder queued past the limit
-        $second = str_repeat('y', 131072); // trips the pre-check → flushBlocking against the slow peer
+        $first = str_repeat('x', times: 131_072); // fills the ~64KiB pipe, remainder queued past the limit
+        $second = str_repeat('y', times: 131_072); // trips the pre-check → flushBlocking against the slow peer
         $terminal->write($first);
         $terminal->write($second);
         $terminal->stop(); // flushes whatever is still queued
@@ -318,7 +318,7 @@ final class NonBlockingTerminalTest extends TestCase
         fclose($pipes[0]); // EOF ends the peer's fpassthru
         proc_close($process); // waits for the child, so the sink is complete
         $this->assertSame($first.$second, (string) file_get_contents($sink), 'nothing was dropped across the blocking fallback');
-        @unlink($sink);
+        is_file($sink) && unlink($sink);
     }
 
     public function testPendingBytesReportsTheBacklogLifecycle(): void
@@ -330,12 +330,12 @@ final class NonBlockingTerminalTest extends TestCase
         $this->assertSame(0, $terminal->pendingBytes(), 'no writer before start()');
 
         $this->start($terminal, $received);
-        $terminal->write(str_repeat('x', 524288)); // past the socket buffer
+        $terminal->write(str_repeat('x', times: 524_288)); // past the socket buffer
         $this->assertGreaterThan(0, $terminal->pendingBytes(), 'the undelivered tail is visible');
 
         $drained = '';
-        $this->await(function () use (&$drained, $peer, $terminal): bool {
-            $chunk = fread($peer, 65536);
+        $this->await(static function () use (&$drained, $peer, $terminal): bool {
+            $chunk = fread($peer, length: 65_536);
             if (\is_string($chunk)) {
                 $drained .= $chunk;
             }
@@ -361,7 +361,7 @@ final class NonBlockingTerminalTest extends TestCase
         // Write until the broken pipe surfaces and kills the queueing layer.
         $this->await(
             static function () use ($terminal): bool {
-                $terminal->write(str_repeat('x', 65536));
+                $terminal->write(str_repeat('x', times: 65_536));
 
                 return true; // one pass is enough on a closed socketpair; loop tick lets the watcher fire
             },

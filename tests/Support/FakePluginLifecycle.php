@@ -48,7 +48,7 @@ final class FakePluginLifecycle implements PluginLifecycleOps
 
     public function isDisabled(string $name): bool
     {
-        return \in_array($name, $this->disabledNames, true);
+        return \in_array($name, $this->disabledNames, strict: true);
     }
 
     public function listedNames(): array

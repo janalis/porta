@@ -33,14 +33,16 @@ final class TestNavigator
     {
         $name = pathinfo($absolutePath, \PATHINFO_FILENAME);
         $extension = pathinfo($absolutePath, \PATHINFO_EXTENSION);
-        $target = ($this->isTest($absolutePath) ? substr($name, 0, -4) : $name.'Test').('' === $extension ? '' : '.'.$extension);
+        $target = ($this->isTest($absolutePath) ? substr($name, offset: 0, length: -4) : $name.'Test').('' === $extension ? '' : '.'.$extension);
 
         $this->files->refresh();
         $candidates = [];
         foreach ($this->files->entries() as $entry) {
-            if (basename($entry['path']) === $target && !str_starts_with($entry['path'], 'vendor/')) {
-                $candidates[] = $entry['path'];
+            if (!(basename($entry['path']) === $target && !str_starts_with($entry['path'], 'vendor/'))) {
+                continue;
             }
+
+            $candidates[] = $entry['path'];
         }
 
         return $candidates;

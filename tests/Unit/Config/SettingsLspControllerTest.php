@@ -85,7 +85,7 @@ final class SettingsLspControllerTest extends TestCase
 
         // With a detectable server, the hint names it.
         $bin = $project->write('vendor/bin/phpactor', "#!/bin/sh\n");
-        chmod($bin, 0755);
+        chmod($bin, permissions: 0o755);
         $this->assertSame('auto: phpactor', $controller->rows('php')[0]->hint);
     }
 
@@ -110,7 +110,7 @@ final class SettingsLspControllerTest extends TestCase
 
         $controller->changeLspServer('php', '   ');
 
-        $this->assertArrayNotHasKey('lsp', json_decode((string) file_get_contents($project->path('.porta.json')), true), 'empty map pruned');
+        $this->assertArrayNotHasKey('lsp', json_decode((string) file_get_contents($project->path('.porta.json')), associative: true), 'empty map pruned');
         $this->assertSame('', $controller->rows('php')[0]->value);
         $this->assertStringContainsString('PHP LSP: auto-detect', $this->flashText($status));
     }

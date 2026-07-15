@@ -39,7 +39,6 @@ use Porta\Widget\Git\GitTabsWidget;
 use Porta\Widget\Git\HistoryListWidget;
 use Porta\Widget\GoToFileWidget;
 use Porta\Widget\HelpViewerWidget;
-use Porta\Widget\ImageViewerWidget;
 use Porta\Widget\MenuBarWidget;
 use Porta\Widget\ResultsPanelWidget;
 use Porta\Widget\Settings\KeybindingsListWidget;
@@ -285,17 +284,44 @@ final class SettingsControllerTest extends TestCase
         $this->assertSame(['top'], $this->tabBarPositionChanges, 'the tab-bar-position hook applies at boot too');
     }
 
+    public function testApplyAllSkipsADescriptorWithNoApplyClosure(): void
+    {
+        // Every shipping descriptor applies live, but the model type permits a
+        // null-apply (restart-only) descriptor; applyAll must skip such an entry
+        // instead of invoking null. The descriptor table is readonly and built in
+        // the constructor, so exercise the guard on an instance whose table
+        // carries one null-apply row.
+        $controller = new \ReflectionClass(SettingsController::class)->newInstanceWithoutConstructor();
+        $applied = [];
+        new \ReflectionProperty($controller, 'descriptors')->setValue($controller, [
+            'live' => [
+                'label' => 'Live',
+                'kind' => 'bool',
+                'restart' => false,
+                'apply' => static function () use (&$applied): void {
+                    $applied[] = 'live';
+                },
+            ],
+            'restartOnly' => ['label' => 'Restart only', 'kind' => 'bool', 'restart' => true, 'apply' => null],
+        ]);
+        new \ReflectionProperty($controller, 'settings')->setValue($controller, ['live' => true, 'restartOnly' => false]);
+
+        $controller->applyAll();
+
+        $this->assertSame(['live'], $applied, 'the null-apply descriptor is skipped; the live one still applies');
+    }
+
     public function testUnknownKeyFlashesInsteadOfTogglingAnything(): void
     {
         $project = new TempProject(['composer.json' => '{}']);
         $ide = new Ide($project->dir, null, new VirtualTerminal(columns: 80, rows: 24));
         $settings = new \ReflectionProperty($ide, 'settings')->getValue($ide);
-        \assert($settings instanceof SettingsController);
+        \assert($settings instanceof SettingsController, description: 'the settings property is a SettingsController');
 
         $settings->toggle('doesNotExist');
 
         $status = $ide->getTui()->getById('status');
-        \assert($status instanceof StatusBarWidget);
+        \assert($status instanceof StatusBarWidget, description: 'the status widget is a StatusBarWidget');
         $flash = new \ReflectionProperty($status, 'flash')->getValue($status);
         $this->assertStringContainsString('Unknown setting "doesNotExist"', (string) ($flash['text'] ?? ''));
         $this->assertFalse(is_file($project->path('.porta.json')), 'nothing was persisted');

@@ -57,23 +57,27 @@ final class TerminalKeyEncoder
     {
         $parts = explode('+', $name);
         $base = array_pop($parts);
-        $shift = \in_array('shift', $parts, true);
-        $alt = \in_array('alt', $parts, true);
-        $ctrl = \in_array('ctrl', $parts, true);
+        $shift = \in_array('shift', $parts, strict: true);
+        $alt = \in_array('alt', $parts, strict: true);
+        $ctrl = \in_array('ctrl', $parts, strict: true);
         $modifier = 1 + ($shift ? 1 : 0) + ($alt ? 2 : 0) + ($ctrl ? 4 : 0);
 
-        if (isset(self::CSI_LETTER[$base])) {
+        if (array_key_exists($base, self::CSI_LETTER)) {
             $final = self::CSI_LETTER[$base];
 
             return $modifier > 1 ? "\x1b[1;{$modifier}{$final}" : "\x1b[{$final}";
         }
-        if (isset(self::CSI_TILDE[$base])) {
+        if (array_key_exists($base, self::CSI_TILDE)) {
             $number = self::CSI_TILDE[$base];
 
             return $modifier > 1 ? "\x1b[{$number};{$modifier}~" : "\x1b[{$number}~";
         }
         if ('tab' === $base) {
-            return $shift ? "\x1b[Z" : ($alt ? "\x1b\t" : "\t");
+            if ($shift) {
+                return "\x1b[Z";
+            }
+
+            return $alt ? "\x1b\t" : "\t";
         }
 
         $simple = match ($base) {

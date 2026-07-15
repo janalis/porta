@@ -23,7 +23,6 @@ use Porta\Editor\FoldModel;
 use Porta\Editor\MultiCaret;
 use Porta\Highlight\CodeHighlighter;
 use Porta\Highlight\DarkTerminalTheme;
-use Porta\Input\TextInput;
 use Porta\Search\Everywhere\SearchOverlay;
 use Porta\Search\Everywhere\SearchRow;
 use Porta\Support\AnsiText;
@@ -41,7 +40,6 @@ use Porta\Widget\Render\EditorGeometry;
 use Porta\Widget\Render\EditorPopupGeometry;
 use Porta\Widget\Render\EditorRenderer;
 use Porta\Widget\Render\EditorRowAssembler;
-use Porta\Widget\Render\LineDecorator;
 use Porta\Widget\Render\MenuOverlayHost;
 use Porta\Widget\Render\MenuOverlayHostTrait;
 use Symfony\Component\Tui\Ansi\AnsiUtils;
@@ -173,12 +171,12 @@ final class CodeEditorWidget extends AbstractWidget implements ActiveFileProvide
         $this->syntaxTheme = $syntaxTheme ?? new DarkTerminalTheme();
         $this->cursorStyle = $cursorStyle ?? new CursorStyle();
         $this->callbacks = new EditorCallbacks();
-        $this->overlayHost = new OverlayHost(fn () => $this->invalidate(), $this->palette, $this->cursorStyle);
-        $this->findModal = new FindInFilesModal(fn () => $this->invalidate(), $this->palette, $this->cursorStyle);
+        $this->overlayHost = new OverlayHost($this->invalidate(...), $this->palette, $this->cursorStyle);
+        $this->findModal = new FindInFilesModal($this->invalidate(...), $this->palette, $this->cursorStyle);
         $this->document = new Document('');
         $this->highlighter = new CodeHighlighter(syntaxTheme: $this->syntaxTheme);
         $this->foldModel = new FoldModel($this->document);
-        $this->scroll = new EditorScroll($this->document, $this->foldModel, fn () => $this->invalidate());
+        $this->scroll = new EditorScroll($this->document, $this->foldModel, $this->invalidate(...));
         $this->multiCaret = $this->newMultiCaret($this->document);
         $this->completion = $this->newEditorCompletion($this->document);
         $this->autoPair = new AutoPairService();
@@ -196,9 +194,9 @@ final class CodeEditorWidget extends AbstractWidget implements ActiveFileProvide
         return new EditorStructural(
             $document,
             $this->autoPair,
-            fn () => $this->invalidate(),
-            fn () => $this->notifyChange(),
-            fn (string $title, array $items, callable $onPick) => $this->openListOverlay($title, $items, $onPick),
+            $this->invalidate(...),
+            $this->notifyChange(...),
+            $this->openListOverlay(...),
         );
     }
 
@@ -208,9 +206,9 @@ final class CodeEditorWidget extends AbstractWidget implements ActiveFileProvide
             $document,
             $this->foldModel,
             $this->multiCaret,
-            fn () => $this->invalidate(),
-            fn () => $this->closeCompletion(),
-            fn (int $line) => $this->centerOnLine($line),
+            $this->invalidate(...),
+            $this->closeCompletion(...),
+            $this->centerOnLine(...),
         );
     }
 
@@ -218,8 +216,8 @@ final class CodeEditorWidget extends AbstractWidget implements ActiveFileProvide
     {
         return new MultiCaret(
             $document,
-            fn () => $this->invalidate(),
-            fn () => $this->notifyChange(),
+            $this->invalidate(...),
+            $this->notifyChange(...),
         );
     }
 
@@ -227,9 +225,9 @@ final class CodeEditorWidget extends AbstractWidget implements ActiveFileProvide
     {
         return new EditorCompletion(
             $document,
-            fn () => $this->invalidate(),
-            fn () => $this->notifyChange(),
-            fn (string $d) => $this->isInsertable($d),
+            $this->invalidate(...),
+            $this->notifyChange(...),
+            $this->isInsertable(...),
             fn (int $l, int $c) => $this->callbacks->completion?->requestCompletion($l, $c),
             fn (array $raw) => $this->callbacks->completion?->resolveCompletion($raw),
         );
@@ -263,10 +261,8 @@ final class CodeEditorWidget extends AbstractWidget implements ActiveFileProvide
         $this->document = $document;
         $this->currentEditorConfig = $editorConfig;
         $this->applyEffectiveIndent();
-        if (null !== $highlighter) {
-            $this->highlighter = $highlighter;
-        } else {
-            $this->highlighter = new CodeHighlighter(syntaxTheme: $this->syntaxTheme);
+        $this->highlighter = $highlighter ?? new CodeHighlighter(syntaxTheme: $this->syntaxTheme);
+        if (null === $highlighter) {
             $this->highlighter->setFile($path);
         }
         $this->diagnostics = $diagnostics;
@@ -274,12 +270,12 @@ final class CodeEditorWidget extends AbstractWidget implements ActiveFileProvide
         // Let undo/redo snapshots capture and restore this document's secondary
         // carets (bound to this specific MultiCaret, not whichever is active later).
         $mc = $this->multiCaret;
-        $document->setCaretHooks(static fn (): array => $mc->carets(), static function (array $extras) use ($mc): void {
+        $document->setCaretHooks($mc->carets(...), static function (array $extras) use ($mc): void {
             $mc->setExtras($extras);
         });
         $this->completion = $this->newEditorCompletion($document);
         $this->foldModel = new FoldModel($document);
-        $this->scroll = new EditorScroll($document, $this->foldModel, fn () => $this->invalidate());
+        $this->scroll = new EditorScroll($document, $this->foldModel, $this->invalidate(...));
         $this->mouse = $this->newEditorMouse($document);
         $this->structural = $this->newEditorStructural($document);
         $this->actions = $this->newEditorActions($document, $this->actions->clipboardValue());
@@ -716,7 +712,8 @@ final class CodeEditorWidget extends AbstractWidget implements ActiveFileProvide
     /** @return array{errors: int, warnings: int} */
     public function getDiagnosticCounts(): array
     {
-        $errors = $warnings = 0;
+        $warnings = 0;
+        $errors = $warnings;
         foreach ($this->diagnostics as $list) {
             foreach ($list as $d) {
                 1 === $d['severity'] ? ++$errors : ++$warnings;
@@ -761,13 +758,15 @@ final class CodeEditorWidget extends AbstractWidget implements ActiveFileProvide
         }
 
         // Bracketed paste: buffer chunks between ESC[200~ / ESC[201~
-        if (null !== ($pastedText = $this->processBracketedPaste($data))) {
+        $pastedText = $this->processBracketedPaste($data);
+        if (null !== $pastedText) {
             $this->document->insert($pastedText);
             $this->notifyChange();
             if ('' === $data) {
                 return;
             }
-        } elseif ('' === $data && $this->isBufferingPaste()) {
+        }
+        if (null === $pastedText && '' === $data && $this->isBufferingPaste()) {
             return;
         }
 
@@ -1149,10 +1148,10 @@ final class CodeEditorWidget extends AbstractWidget implements ActiveFileProvide
         $hint = 'No file open · press Ctrl+P to open a file';
         $text = AnsiUtils::truncateToWidth($hint, $columns, '…');
         $textWidth = AnsiUtils::visibleWidth($text);
-        $left = max(0, intdiv($columns - $textWidth, 2));
+        $left = max(0, intdiv($columns - $textWidth, num2: 2));
         $hintRow = AnsiText::padRight(str_repeat(' ', $left).$this->palette->of(Role::CompletionHint).$text."\x1b[39m", $columns);
 
-        $middle = intdiv($rows, 2);
+        $middle = intdiv($rows, num2: 2);
         $lines = [];
         for ($i = 0; $i < $rows; ++$i) {
             $lines[] = $i === $middle ? $hintRow : str_repeat(' ', max(0, $columns));
@@ -1172,7 +1171,7 @@ final class CodeEditorWidget extends AbstractWidget implements ActiveFileProvide
     private function buildStripe(int $rows, int $lineCount, int $vScroll, int $lastVisible): array
     {
         // Worst severity landing on each stripe row (0 = none).
-        $sev = array_fill(0, max(0, $rows), 0);
+        $sev = array_fill(0, max(0, $rows), value: 0);
         foreach ($this->diagnostics as $line => $list) {
             if ([] === $list) {
                 continue;

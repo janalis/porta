@@ -5,12 +5,9 @@ declare(strict_types=1);
 namespace Porta\Tests\E2e;
 
 use PHPUnit\Framework\TestCase;
-use Porta\Ide;
 use Porta\Tests\Support\RunsIde;
 use Porta\Tests\Support\TempProject;
-use Revolt\EventLoop;
 use Symfony\Component\Tui\Ansi\AnsiUtils;
-use Symfony\Component\Tui\Terminal\VirtualTerminal;
 
 /**
  * The F1 help browser: docs render styled in the help viewer (no markdown
@@ -149,7 +146,7 @@ final class IdeDocsTest extends TestCase
         $captureFile = $project->path('opened-urls.txt');
         foreach (['open', 'xdg-open'] as $name) {
             $shim = $project->write('shim-bin/'.$name, "#!/bin/sh\nprintf '%s\\n' \"\$@\" >> ".escapeshellarg($captureFile)."\n");
-            chmod($shim, 0o755);
+            chmod($shim, permissions: 0o755);
         }
         putenv('PATH='.$project->path('shim-bin'));
 
@@ -208,7 +205,7 @@ final class IdeDocsTest extends TestCase
                     // write instead of racing it at a fixed tick (blocking here
                     // is fine: the shim needs no event-loop cooperation).
                     $deadline = microtime(true) + 3.0;
-                    while (!str_contains((string) @file_get_contents($captureFile), 'https://example.com/x') && microtime(true) < $deadline) {
+                    while (!str_contains((string) (is_file($captureFile) ? file_get_contents($captureFile) : false), 'https://example.com/x') && microtime(true) < $deadline) {
                         usleep(20_000);
                     }
                     $this->assertStringContainsString('https://example.com/x', (string) file_get_contents($captureFile));
@@ -222,7 +219,7 @@ final class IdeDocsTest extends TestCase
             docsDir: $docs->dir,
         );
 
-        $session = json_decode((string) file_get_contents($project->path('.porta/session.json')), true);
+        $session = json_decode((string) file_get_contents($project->path('.porta/session.json')), associative: true);
         $paths = array_column($session['buffers'] ?? [], 'path');
         $this->assertNotContains(realpath($docs->path('README.md')), $paths, 'help tabs never restore (they would reopen as source)');
         $this->assertNotEmpty(array_filter($paths, static fn (string $p): bool => str_ends_with($p, 'a.php')), 'the code tab persists');

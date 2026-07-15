@@ -37,7 +37,8 @@ final class FilesSource implements SearchSource
                 basename($path),
                 '.' === $dir ? '' : $dir,
                 function () use ($absolute): void {
-                    ($this->openFile)($absolute, true);
+                    $focusEditor = true;
+                    ($this->openFile)($absolute, $focusEditor);
                 },
             );
         }

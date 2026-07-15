@@ -89,6 +89,7 @@ final class PtyProcess
         // proc_open()'s ['pty'] descriptor is a real Linux/macOS feature that
         // mago's stub does not model (it only lists pipe/file/resource forms).
         // @mago-expect analysis:possibly-invalid-argument
+        // @mago-expect lint:no-error-control-operator -- proc_open on a nonexistent/unusable binary emits a spawn ("posix_spawn() failed") warning that guarding the inputs cannot reliably prevent; the false return drives the pipe fallback below.
         $process = @proc_open($this->command, $ptyDescriptors, $pipes, $cwd, $env);
         $this->pty = \is_resource($process);
 
@@ -97,6 +98,7 @@ final class PtyProcess
         // @codeCoverageIgnoreStart
         if (!$this->pty) {
             $pipeDescriptors = [['pipe', 'r'], ['pipe', 'w'], ['pipe', 'w']];
+            // @mago-expect lint:no-error-control-operator -- proc_open on a nonexistent/unusable binary emits a spawn ("posix_spawn() failed") warning that guarding the inputs cannot reliably prevent; the false return is handled below.
             $process = @proc_open($this->command, $pipeDescriptors, $pipes, $cwd, $env);
             if (!\is_resource($process)) {
                 return false;
@@ -110,13 +112,13 @@ final class PtyProcess
         $this->process = $process;
         /** @var array{0: resource, 1?: resource, 2?: resource} $pipes */
         $this->master = $pipes[1] ?? $pipes[0];
-        stream_set_blocking($this->master, false);
+        stream_set_blocking($this->master, enable: false);
         $this->running = true;
 
         $this->watcher = EventLoop::onReadable($this->master, function (string $watcherId): void {
             /** @var resource $master */
             $master = $this->master;
-            $chunk = @fread($master, 65536);
+            $chunk = \is_resource($master) ? fread($master, length: 65_536) : false;
             if (\is_string($chunk) && '' !== $chunk) {
                 if (null !== $this->onOutput) {
                     ($this->onOutput)($chunk);
@@ -139,6 +141,7 @@ final class PtyProcess
     {
         $target = $this->pty ? $this->master : $this->stdin;
         if (\is_resource($target)) {
+            // @mago-expect lint:no-error-control-operator -- fwrite to a pty/pipe whose child has died (the fd is still a live resource) raises an unavoidable EPIPE/EIO warning that no is_resource guard prevents.
             @fwrite($target, $data);
         }
     }
@@ -146,7 +149,7 @@ final class PtyProcess
     public function kill(int $signal = \SIGTERM): void
     {
         if (\is_resource($this->process)) {
-            @proc_terminate($this->process, $signal);
+            proc_terminate($this->process, $signal);
         }
     }
 
@@ -157,8 +160,8 @@ final class PtyProcess
             $this->watcher = null;
         }
         if (\is_resource($this->process)) {
-            @proc_terminate($this->process, \SIGKILL);
-            @proc_close($this->process);
+            proc_terminate($this->process, \SIGKILL);
+            proc_close($this->process);
         }
         $this->process = null;
         $this->running = false;
@@ -185,7 +188,7 @@ final class PtyProcess
                 // @codeCoverageIgnoreEnd
             }
             $this->exitCode = $status['running'] ? -1 : (int) $status['exitcode'];
-            @proc_close($this->process);
+            proc_close($this->process);
         }
         $this->process = null;
         $this->running = false;

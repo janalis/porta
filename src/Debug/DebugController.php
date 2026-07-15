@@ -49,7 +49,7 @@ final class DebugController implements DebugSessionObserver
         private readonly ExceptionFilterStore $exceptionFilters,
         private readonly TerminalSessions $sessions,
     ) {
-        $this->panel->onFrameSelected(fn (int $frameId) => $this->jumpToFrame($frameId));
+        $this->panel->onFrameSelected($this->jumpToFrame(...));
         $this->panel->onRemoveWatch(function (int $index): void {
             $this->watches->remove($index);
             $this->panel->setWatches($this->watches->all());
@@ -57,7 +57,7 @@ final class DebugController implements DebugSessionObserver
             $this->tui->requestRender();
         });
         $this->panel->onExpandVariable(function (int $reference, callable $deliver): void {
-            $this->session?->variables($reference, fn (array $variables) => $deliver($variables));
+            $this->session?->variables($reference, static fn (array $variables) => $deliver($variables));
             $this->tui->requestRender();
         });
     }
@@ -278,7 +278,7 @@ final class DebugController implements DebugSessionObserver
         }
         $enabled = $this->exceptionFilters->enabledFor($filters);
         $items = array_map(static fn (array $filter): array => [
-            'label' => (\in_array($filter['filter'], $enabled, true) ? '[x] ' : '[ ] ').$filter['label'],
+            'label' => (\in_array($filter['filter'], $enabled, strict: true) ? '[x] ' : '[ ] ').$filter['label'],
             'hint' => $filter['filter'],
             'value' => $filter['filter'],
         ], $filters);
@@ -300,13 +300,17 @@ final class DebugController implements DebugSessionObserver
             $this->frames = array_column($frames, null, 'id');
             $display = array_map(fn (array $frame): array => [...$frame, 'path' => ProjectPaths::relative($this->rootDir, $frame['path'])], $frames);
             $top = $frames[0] ?? null;
-            if (null !== $top && '' !== $top['path']) {
-                $this->showStop($top['path'], $top['line']);
-                $this->panel->setSessionState(DebugState::Paused, ProjectPaths::relative($this->rootDir, $top['path']).':'.($top['line'] + 1));
-                $this->loadScopes($session, $top['id']);
-            } else {
+            if (null === $top || '' === $top['path']) {
                 $this->panel->setSessionState(DebugState::Paused, null);
+                $this->panel->setFrames($display);
+                $this->dispatcher->dispatch(new DebugStatusChanged());
+                $this->tui->requestRender();
+
+                return;
             }
+            $this->showStop($top['path'], $top['line']);
+            $this->panel->setSessionState(DebugState::Paused, ProjectPaths::relative($this->rootDir, $top['path']).':'.($top['line'] + 1));
+            $this->loadScopes($session, $top['id']);
             $this->panel->setFrames($display);
             $this->dispatcher->dispatch(new DebugStatusChanged());
             $this->tui->requestRender();
@@ -320,9 +324,11 @@ final class DebugController implements DebugSessionObserver
         $session->scopes($frameId, function (array $scopes) use ($session): void {
             $this->panel->setScopes($scopes);
             foreach ($scopes as $scope) {
-                if ($scope['variablesReference'] > 0) {
-                    $session->variables($scope['variablesReference'], fn (array $variables) => $this->panel->setVariables($scope['variablesReference'], $variables));
+                if ($scope['variablesReference'] <= 0) {
+                    continue;
                 }
+
+                $session->variables($scope['variablesReference'], fn (array $variables) => $this->panel->setVariables($scope['variablesReference'], $variables));
             }
             $this->tui->requestRender();
         });
@@ -407,7 +413,7 @@ final class DebugController implements DebugSessionObserver
     public function onOutput(string $category, string $text): void
     {
         $session = $this->sessions->find('debug');
-        $session?->buffer->feed(str_replace("\n", "\r\n", $text));
+        $session?->buffer->feed(str_replace("\n", replace: "\r\n", subject: $text));
         if (null !== $session && $session === $this->sessions->active()) {
             $this->terminalPanel->refresh();
         }

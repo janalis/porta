@@ -104,13 +104,22 @@ final class ContextMenu extends OverlayWidget
         $kb = $this->getKeybindings();
         if ($kb->matches($data, 'menu_close')) {
             $this->close();
-        } elseif ($kb->matches($data, 'menu_up')) {
+
+            return;
+        }
+        if ($kb->matches($data, 'menu_up')) {
             $this->selected = MenuPanel::step($this->items, $this->selected, -1);
             $this->afterNavigate();
-        } elseif ($kb->matches($data, 'menu_down')) {
+
+            return;
+        }
+        if ($kb->matches($data, 'menu_down')) {
             $this->selected = MenuPanel::step($this->items, $this->selected, 1);
             $this->afterNavigate();
-        } elseif ($kb->matches($data, 'menu_select')) {
+
+            return;
+        }
+        if ($kb->matches($data, 'menu_select')) {
             $this->runSelected();
         }
 

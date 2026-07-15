@@ -108,9 +108,11 @@ final class MenuPanel
 
         // Disabled always reads dim and never shows the selected highlight; the
         // SGR dim attribute keeps the state visible without color (monochrome).
-        $bg = !$enabled
-            ? "\x1b[2m".$palette->of(Role::RowHighlightBg).$palette->of(Role::Gutter)
-            : ($selected ? $palette->of(Role::SelectedRow) : $palette->of(Role::PopupRow));
+        $bg = match (true) {
+            !$enabled => "\x1b[2m".$palette->of(Role::RowHighlightBg).$palette->of(Role::Gutter),
+            $selected => $palette->of(Role::SelectedRow),
+            default => $palette->of(Role::PopupRow),
+        };
         $tail = '' !== $shortcut ? $palette->of(Role::CompletionHint).$shortcut."\x1b[39m" : str_repeat(' ', max(0, mb_strwidth($shortcut)));
 
         return $bg.' '.$label.str_repeat(' ', $gap).$tail.' '."\x1b[0m";

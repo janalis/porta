@@ -90,20 +90,21 @@ final class TerminalSessionsTest extends TestCase
         }
         $sessions = new TerminalSessions();
         $session = $sessions->create('shell:1', 'sh');
-        $process = new PtyProcess(['/bin/sh', '-c', 'sleep 10'], getcwd() ?: '/tmp');
+        $cwd = getcwd();
+        $process = new PtyProcess(['/bin/sh', '-c', 'sleep 10'], $cwd ? $cwd : '/tmp');
         $session->attach($process);
         $this->assertTrue($process->start());
-        $this->await(fn (): bool => $process->isRunning());
+        $this->await($process->isRunning(...));
 
         $sessions->close(0);
         $this->assertFalse($process->isRunning(), 'closing stopped the PTY');
 
         // stopAll over a fresh running session.
         $s2 = $sessions->create('shell:2', 'sh');
-        $p2 = new PtyProcess(['/bin/sh', '-c', 'sleep 10'], getcwd() ?: '/tmp');
+        $p2 = new PtyProcess(['/bin/sh', '-c', 'sleep 10'], $cwd ? $cwd : '/tmp');
         $s2->attach($p2);
         $p2->start();
-        $this->await(fn (): bool => $p2->isRunning());
+        $this->await($p2->isRunning(...));
         $sessions->stopAll();
         $this->assertFalse($p2->isRunning());
     }
@@ -116,16 +117,17 @@ final class TerminalSessionsTest extends TestCase
         $session = new \Porta\Terminal\TerminalSession('x', 'x', new \Porta\Terminal\TerminalBuffer());
         $this->assertFalse($session->isRunning());
 
-        $first = new PtyProcess(['/bin/sh', '-c', 'sleep 10'], getcwd() ?: '/tmp');
+        $cwd = getcwd();
+        $first = new PtyProcess(['/bin/sh', '-c', 'sleep 10'], $cwd ? $cwd : '/tmp');
         $session->attach($first);
         $first->start();
-        $this->await(fn (): bool => $first->isRunning());
+        $this->await($first->isRunning(...));
 
-        $second = new PtyProcess(['/bin/sh', '-c', 'sleep 10'], getcwd() ?: '/tmp');
+        $second = new PtyProcess(['/bin/sh', '-c', 'sleep 10'], $cwd ? $cwd : '/tmp');
         $session->attach($second); // a re-run: the old one stops
         $this->assertFalse($first->isRunning(), 'the previous process was stopped on attach');
         $second->start();
-        $this->await(fn (): bool => $second->isRunning());
+        $this->await($second->isRunning(...));
         $this->assertTrue($session->isRunning());
         $session->stop();
     }
@@ -135,7 +137,7 @@ final class TerminalSessionsTest extends TestCase
         $elapsed = 0.0;
         while (!$done() && $elapsed < $timeout) {
             $suspension = EventLoop::getSuspension();
-            EventLoop::delay(0.02, static fn () => $suspension->resume());
+            EventLoop::delay(0.02, $suspension->resume(...));
             $suspension->suspend();
             $elapsed += 0.02;
         }

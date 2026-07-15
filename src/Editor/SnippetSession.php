@@ -96,10 +96,9 @@ final class SnippetSession
                 $before = \strlen($this->document->getLine($line));
                 if ($printable) {
                     $this->document->insert($keys);
-                } elseif ($this->document->hasSelection()) {
-                    $this->document->deleteSelection();
-                } else {
-                    $this->document->deleteBackward();
+                }
+                if (!$printable) {
+                    $this->deleteAtCaret();
                 }
                 $this->adjustStops($index, $line, \strlen($this->document->getLine($line)) - $before);
                 ($this->onChange)();
@@ -112,6 +111,17 @@ final class SnippetSession
         $this->session = null;
 
         return false;
+    }
+
+    /** Delete the current selection, or the char before the caret when there is none. */
+    private function deleteAtCaret(): void
+    {
+        if ($this->document->hasSelection()) {
+            $this->document->deleteSelection();
+
+            return;
+        }
+        $this->document->deleteBackward();
     }
 
     private function moveStop(int $direction): void
@@ -182,7 +192,7 @@ final class SnippetSession
         $result = [];
         foreach ($stops as $stop) {
             $result[] = [
-                'line' => $startLine + substr_count(substr($text, 0, $stop['start']), "\n"),
+                'line' => $startLine + substr_count(substr($text, offset: 0, length: $stop['start']), needle: "\n"),
                 'start' => $this->offsetToColumn($startCol, $text, $stop['start']),
                 'end' => $this->offsetToColumn($startCol, $text, $stop['end']),
             ];
@@ -194,7 +204,7 @@ final class SnippetSession
     /** Byte column of a text offset once inserted at $startCol on its line. */
     private function offsetToColumn(int $startCol, string $text, int $offset): int
     {
-        $lastNewline = strrpos(substr($text, 0, $offset), "\n");
+        $lastNewline = strrpos(substr($text, offset: 0, length: $offset), needle: "\n");
 
         return false === $lastNewline ? $startCol + $offset : $offset - $lastNewline - 1;
     }

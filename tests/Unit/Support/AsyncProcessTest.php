@@ -15,7 +15,7 @@ final class AsyncProcessTest extends TestCase
         $elapsed = 0.0;
         while (!$done() && $elapsed < $timeout) {
             $suspension = EventLoop::getSuspension();
-            EventLoop::delay(0.02, static fn () => $suspension->resume());
+            EventLoop::delay(0.02, $suspension->resume(...));
             $suspension->suspend();
             $elapsed += 0.02;
         }
@@ -26,7 +26,7 @@ final class AsyncProcessTest extends TestCase
         $process = new AsyncProcess([\PHP_BINARY, '-r', 'echo "hello\nworld\n"; exit(3);'], getcwd());
         $exit = null;
         $out = null;
-        $this->assertTrue($process->start(function (int $code, string $stdout) use (&$exit, &$out): void {
+        $this->assertTrue($process->start(static function (int $code, string $stdout) use (&$exit, &$out): void {
             $exit = $code;
             $out = $stdout;
         }));
@@ -43,10 +43,10 @@ final class AsyncProcessTest extends TestCase
         $chunks = [];
         $exit = null;
         $process->start(
-            onExit: function (int $code) use (&$exit): void {
+            onExit: static function (int $code) use (&$exit): void {
                 $exit = $code;
             },
-            onChunk: function (string $chunk) use (&$chunks): void {
+            onChunk: static function (string $chunk) use (&$chunks): void {
                 $chunks[] = $chunk;
             },
         );
@@ -61,7 +61,7 @@ final class AsyncProcessTest extends TestCase
     {
         $process = new AsyncProcess([\PHP_BINARY, '-r', 'echo "start\n"; sleep(5); echo "never\n";'], getcwd());
         $exited = false;
-        $process->start(function () use (&$exited): void {
+        $process->start(static function () use (&$exited): void {
             $exited = true;
         });
 
@@ -76,7 +76,7 @@ final class AsyncProcessTest extends TestCase
     {
         $process = new AsyncProcess([\PHP_BINARY, '-r', 'echo "x";'], getcwd());
         $exit = null;
-        $process->start(function (int $code) use (&$exit): void {
+        $process->start(static function (int $code) use (&$exit): void {
             $exit = $code;
         });
 
@@ -94,7 +94,7 @@ final class AsyncProcessTest extends TestCase
             captureStderr: true,
         );
         $exit = null;
-        $this->assertTrue($process->start(function (int $code) use (&$exit): void {
+        $this->assertTrue($process->start(static function (int $code) use (&$exit): void {
             $exit = $code;
         }));
 
@@ -108,7 +108,7 @@ final class AsyncProcessTest extends TestCase
     {
         $process = new AsyncProcess([\PHP_BINARY, '-r', 'fwrite(STDERR, "dropped");'], getcwd());
         $exit = null;
-        $process->start(function (int $code) use (&$exit): void {
+        $process->start(static function (int $code) use (&$exit): void {
             $exit = $code;
         });
 
@@ -125,7 +125,7 @@ final class AsyncProcessTest extends TestCase
             env: ['PORTA_PROBE' => '42', 'PATH' => (string) getenv('PATH')],
         );
         $out = null;
-        $process->start(function (int $code, string $stdout) use (&$out): void {
+        $process->start(static function (int $code, string $stdout) use (&$out): void {
             $out = $stdout;
         });
 
@@ -141,7 +141,7 @@ final class AsyncProcessTest extends TestCase
             captureStderr: true,
         );
         $exited = false;
-        $process->start(function () use (&$exited): void {
+        $process->start(static function () use (&$exited): void {
             $exited = true;
         });
         $this->await(static fn () => false, 0.06); // a few ticks: mid-flight

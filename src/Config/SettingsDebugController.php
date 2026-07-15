@@ -74,7 +74,7 @@ final class SettingsDebugController
         $launch = [];
         if ('' !== $json) {
             /** @var array<array-key, mixed>|scalar|null $decoded */
-            $decoded = json_decode($json, true);
+            $decoded = json_decode($json, associative: true);
             if (!\is_array($decoded) || array_is_list($decoded)) {
                 $this->notifier->flash($this->translator->trans('Invalid JSON — not saved'));
 

@@ -246,6 +246,40 @@ final class DebugControllerTest extends TestCase
         $this->assertSame($events + 2, $this->statusEvents, 'termination dispatched DebugStatusChanged');
     }
 
+    public function testScopeWithoutAVariablesReferenceIsNotFetched(): void
+    {
+        $controller = $this->controller();
+        $this->client->responses['stackTrace'] = [
+            ['stackFrames' => [['id' => 1, 'name' => '{main}', 'source' => ['path' => '/p/prog.php'], 'line' => 3]]],
+            null,
+        ];
+        // A real scope plus a synthetic one with no variablesReference (<= 0):
+        // the latter is skipped — no variables request is issued for it.
+        $this->client->responses['scopes'] = [
+            [
+                'scopes' => [
+                    ['name' => 'Locals', 'variablesReference' => 1000],
+                    ['name' => 'Registers', 'variablesReference' => 0],
+                ],
+            ],
+            null,
+        ];
+        $this->client->responses['variables'] = [['variables' => [['name' => '$x', 'value' => '42', 'variablesReference' => 0]]], null];
+
+        $controller->startForCurrentFile();
+        $this->client->respond('initialize', ['supportsConfigurationDoneRequest' => true]);
+        $this->client->respond('launch');
+        $this->client->emit('stopped', ['reason' => 'breakpoint', 'threadId' => 1]);
+
+        $this->assertTrue($controller->isPaused());
+        $variableRequests = array_filter(
+            $this->client->requests,
+            static fn (array $r): bool => 'variables' === $r['command'],
+        );
+        $this->assertCount(1, $variableRequests, 'only the ref>0 scope requested its variables');
+        $this->assertSame(1000, $variableRequests[array_key_first($variableRequests)]['arguments']['variablesReference']);
+    }
+
     public function testBreakpointTogglesSyncTheLiveSessionAndOtherFiles(): void
     {
         $controller = $this->controller();
@@ -282,11 +316,11 @@ final class DebugControllerTest extends TestCase
 
         // Re-editing prefills; submitting both prompts empty clears the conditions.
         $controller->editBreakpointAtCaret();
-        foreach (range(1, 12) as $_) {
+        foreach (range(1, end: 12) as $_) {
             $this->editor->handleInput("\x7f");
         }
         $this->editor->handleInput("\r");
-        foreach (range(1, 6) as $_) {
+        foreach (range(1, end: 6) as $_) {
             $this->editor->handleInput("\x7f");
         }
         $this->editor->handleInput("\r");

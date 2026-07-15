@@ -187,7 +187,7 @@ final class DocumentTest extends TestCase
         $restored = null;
         $doc->setCaretHooks(
             static fn (): array => $extras,
-            function (array $e) use (&$restored): void {
+            static function (array $e) use (&$restored): void {
                 $restored = $e;
             },
         );
@@ -202,7 +202,7 @@ final class DocumentTest extends TestCase
     public function testTransactGroupsEditsIntoOneUndoStep(): void
     {
         $doc = new Document('');
-        $doc->transact(function () use ($doc): void {
+        $doc->transact(static function () use ($doc): void {
             $doc->insert('one ');
             $doc->insert('two ');
             $doc->insert('three');
@@ -217,13 +217,15 @@ final class DocumentTest extends TestCase
     public function testTransactClosesCompoundEvenWhenCallbackThrows(): void
     {
         $doc = new Document('');
+        // The throw is expected; we only care that transact()'s finally closed the
+        // compound group, which the assertions below verify.
+        // @mago-expect lint:no-empty-catch-clause
         try {
-            $doc->transact(function () use ($doc): void {
+            $doc->transact(static function () use ($doc): void {
                 $doc->insert('x');
                 throw new \RuntimeException('boom');
             });
         } catch (\RuntimeException) {
-            // swallow
         }
 
         // The compound was closed by the finally, so a subsequent edit is its

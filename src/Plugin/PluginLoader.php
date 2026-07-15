@@ -30,7 +30,8 @@ final class PluginLoader
     /** The home directory used for the global plugin dir (PORTA_HOME overrides HOME). */
     public static function globalBase(): ?string
     {
-        $base = getenv('PORTA_HOME') ?: getenv('HOME');
+        $portaHome = getenv('PORTA_HOME');
+        $base = $portaHome ? $portaHome : getenv('HOME');
 
         return \is_string($base) && '' !== $base ? $base : null;
     }
@@ -45,7 +46,7 @@ final class PluginLoader
     {
         $dir = getenv('PORTA_EMBEDDED_PLUGINS');
 
-        return \is_string($dir) && '' !== $dir ? $dir : \dirname(__DIR__, 2).'/.porta/plugins';
+        return \is_string($dir) && '' !== $dir ? $dir : \dirname(__DIR__, levels: 2).'/.porta/plugins';
     }
 
     /** Discover, activate and commit every plugin into $manager. */
@@ -71,11 +72,12 @@ final class PluginLoader
     private function discover(): array
     {
         // Disabled names are pre-seeded as "seen" so every copy is skipped.
-        $seen = array_fill_keys($this->disabled, true);
+        $seen = array_fill_keys($this->disabled, value: true);
         $files = [];
-        foreach (glob($this->rootDir.'/.porta/plugins/*/plugin.php') ?: [] as $file) {
+        $projectFiles = glob($this->rootDir.'/.porta/plugins/*/plugin.php');
+        foreach (\is_array($projectFiles) ? $projectFiles : [] as $file) {
             $name = basename(\dirname($file));
-            if (!isset($seen[$name])) {
+            if (!array_key_exists($name, $seen)) {
                 $seen[$name] = true;
                 $files[] = $file;
             }
@@ -86,9 +88,10 @@ final class PluginLoader
             if (null === $dir) {
                 continue;
             }
-            foreach (glob($dir.'/*/plugin.php') ?: [] as $file) {
+            $dirFiles = glob($dir.'/*/plugin.php');
+            foreach (\is_array($dirFiles) ? $dirFiles : [] as $file) {
                 $name = basename(\dirname($file));
-                if (!isset($seen[$name])) {
+                if (!array_key_exists($name, $seen)) {
                     $seen[$name] = true;
                     $files[] = $file;
                 }

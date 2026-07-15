@@ -17,7 +17,9 @@ if (!is_file($cloverPath)) {
     exit(2);
 }
 
-$xml = @simplexml_load_string(file_get_contents($cloverPath));
+libxml_use_internal_errors(true);
+$xml = simplexml_load_string((string) file_get_contents($cloverPath));
+libxml_clear_errors();
 if (false === $xml) {
     fwrite(STDERR, "coverage-check: {$cloverPath} is not valid Clover XML.\n");
     exit(2);

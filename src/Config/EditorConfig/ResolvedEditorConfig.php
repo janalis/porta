@@ -42,14 +42,15 @@ final class ResolvedEditorConfig
      */
     public static function fromProps(array $props): self
     {
-        $rawIndentSize = isset($props['indent_size']) ? strtolower(trim($props['indent_size'])) : null;
+        $rawIndentSize = ($props['indent_size'] ?? null) !== null ? strtolower(trim($props['indent_size'])) : null;
         $rawTabWidth = $props['tab_width'] ?? null;
 
         $tabWidth = self::toPositiveInt($rawTabWidth);
         $indentSize = null;
         if ('tab' === $rawIndentSize) {
             $indentSize = $tabWidth; // "indent_size = tab" follows tab_width
-        } elseif (null !== $rawIndentSize) {
+        }
+        if ('tab' !== $rawIndentSize && null !== $rawIndentSize) {
             $indentSize = self::toPositiveInt($rawIndentSize);
             if (null !== $indentSize && null === $tabWidth) {
                 $tabWidth = $indentSize; // tab_width defaults to a numeric indent_size
@@ -80,7 +81,7 @@ final class ResolvedEditorConfig
     {
         $eol = null === $value ? null : strtolower(trim($value));
 
-        return \in_array($eol, ['lf', 'crlf', 'cr'], true) ? $eol : null;
+        return \in_array($eol, ['lf', 'crlf', 'cr'], strict: true) ? $eol : null;
     }
 
     private static function charset(?string $value): ?string

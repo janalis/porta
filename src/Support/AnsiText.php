@@ -51,13 +51,13 @@ final class AnsiText
     public static function scrollLineToCaret(string $line, int $width): string
     {
         $pos = strpos($line, AnsiUtils::CURSOR_MARKER_PREFIX);
-        $end = false === $pos ? false : strpos($line, "\x07", $pos);
+        $end = false === $pos ? false : strpos($line, needle: "\x07", offset: $pos);
         if (false === $pos || false === $end) {
             return self::padRight(AnsiUtils::truncateToWidth($line, $width, '…'), $width);
         }
         $marker = substr($line, $pos, $end - $pos + 1);
-        $caretCol = AnsiUtils::visibleWidth(substr($line, 0, $pos));
-        $bare = substr($line, 0, $pos).substr($line, $end + 1);
+        $caretCol = AnsiUtils::visibleWidth(substr($line, offset: 0, length: $pos));
+        $bare = substr($line, offset: 0, length: $pos).substr($line, $end + 1);
 
         return self::padRight(self::caretWindow($bare, $caretCol, $width, $marker), $width);
     }

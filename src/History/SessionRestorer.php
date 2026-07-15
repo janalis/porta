@@ -48,10 +48,15 @@ final class SessionRestorer
             $opened = true;
         }
 
-        if ($opened && null !== $data['active'] && $this->buffers->has(realpath($data['active']) ?: $data['active'])) {
-            /** @var Buffer $active */
-            $active = $this->buffers->setActive(realpath($data['active']) ?: $data['active']);
-            $this->bufferService->showBuffer($active);
+        $activePath = $data['active'];
+        if ($opened && null !== $activePath) {
+            $resolved = realpath($activePath);
+            $key = $resolved ? $resolved : $activePath;
+            if ($this->buffers->has($key)) {
+                /** @var Buffer $active */
+                $active = $this->buffers->setActive($key);
+                $this->bufferService->showBuffer($active);
+            }
         }
         if ($opened) {
             $this->tui->setFocus($this->editorArea->widget());

@@ -23,16 +23,18 @@ final class ResultContextProvider
     public function around(string $relativePath, int $line): array
     {
         $abs = $this->rootDir.'/'.$relativePath;
-        $buffer = $this->buffers->get($abs) ?? $this->buffers->get(realpath($abs) ?: $abs);
+        $buffer = $this->buffers->get($abs) ?? $this->buffers->get(($real = realpath($abs)) ? $real : $abs);
         $lines = null !== $buffer
             ? $buffer->document->getLines()
-            : explode("\n", (string) @file_get_contents($abs));
+            : explode("\n", is_file($abs) ? (string) file_get_contents($abs) : '');
 
         $context = [];
         for ($i = max(0, $line - 2); $i <= min(\count($lines) - 1, $line + 2); ++$i) {
-            if ($i !== $line) {
-                $context[] = ['line' => $i, 'text' => rtrim($lines[$i])];
+            if ($i === $line) {
+                continue;
             }
+
+            $context[] = ['line' => $i, 'text' => rtrim($lines[$i])];
         }
 
         return $context;

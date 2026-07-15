@@ -38,7 +38,7 @@ final class LanguageFilter
         foreach ($this->byPath($results) as $path => $indices) {
             $language = CodeHighlighter::languageFor($path);
             $abs = $this->rootDir.'/'.$path;
-            $content = is_file($abs) ? (string) @file_get_contents($abs) : '';
+            $content = is_file($abs) ? (string) file_get_contents($abs) : '';
             if (null === $language || '' === $content) {
                 foreach ($indices as $index) {
                     $keep[$index] = true; // unknown language / unreadable → filter is a no-op
@@ -58,9 +58,11 @@ final class LanguageFilter
 
         $filtered = [];
         foreach ($results as $index => $result) {
-            if ($keep[$index] ?? false) {
-                $filtered[] = $result;
+            if (!($keep[$index] ?? false)) {
+                continue;
             }
+
+            $filtered[] = $result;
         }
 
         return $filtered;

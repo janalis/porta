@@ -37,18 +37,18 @@ final class EditorRenderer
 
         // Bracket under the cursor, else just before it
         $char = $text[$col] ?? '';
-        if (!isset($pairs[$char]) && !\in_array($char, $pairs, true)) {
+        if (!array_key_exists($char, $pairs) && !\in_array($char, $pairs, strict: true)) {
             --$col;
             $char = $col >= 0 ? $text[$col] ?? '' : '';
         }
 
-        $isOpen = isset($pairs[$char]);
-        $isClose = \in_array($char, $pairs, true);
+        $isOpen = array_key_exists($char, $pairs);
+        $isClose = \in_array($char, $pairs, strict: true);
         if (!$isOpen && !$isClose) {
             return null;
         }
 
-        $open = $isOpen ? $char : array_search($char, $pairs, true);
+        $open = $isOpen ? $char : array_search($char, $pairs, strict: true);
         $close = $pairs[$open];
         $direction = $isOpen ? 1 : -1;
 
@@ -59,14 +59,15 @@ final class EditorRenderer
         $lines = $doc->getLines();
         $lineCount = \count($lines);
 
-        while ($l >= 0 && $l < $lineCount && $scanned < 20000) {
+        while ($l >= 0 && $l < $lineCount && $scanned < 20_000) {
             $current = $lines[$l];
             $len = \strlen($current);
             while ($c >= 0 && $c < $len) {
                 $ch = $current[$c];
                 if ($ch === ($isOpen ? $open : $close)) {
                     ++$depth;
-                } elseif ($ch === ($isOpen ? $close : $open)) {
+                }
+                if ($ch === ($isOpen ? $close : $open)) {
                     --$depth;
                     if (0 === $depth) {
                         return [
@@ -124,11 +125,11 @@ final class EditorRenderer
             return [];
         }
         $word = self::identifierUnderCaret($doc);
-        if (null === $word || \strlen(ltrim($word, '$')) < 2) {
+        if (null === $word || \strlen(ltrim($word, characters: '$')) < 2) {
             return [];
         }
 
-        $pattern = '/(?<![\w$])'.preg_quote($word, '/').'(?!\w)/';
+        $pattern = '/(?<![\w$])'.preg_quote($word, delimiter: '/').'(?!\w)/';
         $occurrences = [];
         $matches = [];
         for ($line = $fromLine; $line <= $toLine; ++$line) {
@@ -176,9 +177,11 @@ final class EditorRenderer
     {
         $shift = 0;
         foreach ($lineHints as $hint) {
-            if ($doc->displayColAt($line, $hint['col']) <= $displayCol) {
-                $shift += mb_strwidth($hint['text']);
+            if ($doc->displayColAt($line, $hint['col']) > $displayCol) {
+                continue;
             }
+
+            $shift += mb_strwidth($hint['text']);
         }
 
         return $shift;
@@ -212,7 +215,7 @@ final class EditorRenderer
     public static function applyIndentGuides(Document $doc, string $hlLine, int $lineIndex, Palette $palette): string
     {
         $raw = $doc->getLine($lineIndex);
-        $wsBytes = strspn($raw, " \t");
+        $wsBytes = strspn($raw, characters: " \t");
         if (0 === $wsBytes) {
             return $hlLine;
         }
@@ -248,7 +251,7 @@ final class EditorRenderer
         $text = $windowed['text'];
         $cursorOffset = max(0, $cursorDisplayCol - $hScroll);
         $byte = \strlen(AnsiUtils::sliceByColumn($text, 0, $cursorOffset));
-        $withCursorText = substr($text, 0, $byte).$cursorMarker.substr($text, $byte);
+        $withCursorText = substr($text, offset: 0, length: $byte).$cursorMarker.substr($text, $byte);
 
         return AnsiText::padRight($withCursorText."\x1b[0m", $contentWidth);
     }
@@ -271,10 +274,12 @@ final class EditorRenderer
         $worst = DiagnosticStyle::worst($diags);
         $message = '';
         foreach ($diags as $diag) {
-            if (DiagnosticStyle::normalize($diag['severity'] ?? 1) === $worst) {
-                $message = $diag['message'] ?? '';
-                break;
+            if (DiagnosticStyle::normalize($diag['severity'] ?? 1) !== $worst) {
+                continue;
             }
+
+            $message = $diag['message'] ?? '';
+            break;
         }
         if ('' === $message) {
             return $content;
@@ -291,7 +296,7 @@ final class EditorRenderer
         $color = $palette->of(DiagnosticStyle::dimRole($worst));
         $extra = \count($diags) > 1 ? ' +'.(\count($diags) - 1) : '';
         // Severity glyph prefix, so error vs warning reads without color.
-        $label = AnsiUtils::truncateToWidth('‹ '.DiagnosticStyle::glyph($worst).' '.(string) preg_replace('/\s+/', ' ', $message).$extra.' ›', $available, '…');
+        $label = AnsiUtils::truncateToWidth('‹ '.DiagnosticStyle::glyph($worst).' '.(string) preg_replace('/\s+/', replacement: ' ', subject: $message).$extra.' ›', $available, '…');
         $head = AnsiText::padRight(AnsiUtils::sliceByColumn($content, 0, $start), $start);
 
         return AnsiText::padRight($head.$color.$label."\x1b[0m", $contentWidth);
@@ -311,7 +316,7 @@ final class EditorRenderer
             return $content; // not enough room to be useful
         }
 
-        $label = AnsiUtils::truncateToWidth((string) preg_replace('/\s+/', ' ', $text), $available, '…');
+        $label = AnsiUtils::truncateToWidth((string) preg_replace('/\s+/', replacement: ' ', subject: $text), $available, '…');
         $head = AnsiText::padRight(AnsiUtils::sliceByColumn($content, 0, $start), $start);
 
         return AnsiText::padRight($head.$palette->of(Role::Inlay).$label."\x1b[0m", $contentWidth);
@@ -371,7 +376,7 @@ final class EditorRenderer
             $width = max($width, mb_strwidth($item['label']) + mb_strwidth($item['hint']) + 6);
         }
         $width = min($width, $columns - 4, 70);
-        $col = max(0, intdiv($columns - $width, 2));
+        $col = max(0, intdiv($columns - $width, num2: 2));
 
         $popup = [];
         $popup[] = HeaderRenderer::render(' '.$overlay['title'], $width, $palette->of(Role::HeaderBar).$palette->of(Role::Bright)."\x1b[1m");
@@ -383,7 +388,7 @@ final class EditorRenderer
             $popup[] = $bg.' '.$label.' '.$palette->of(Role::CompletionHint).$item['hint'].' '."\x1b[0m";
         }
 
-        $startRow = max(0, intdiv($rows - \count($popup), 3));
+        $startRow = max(0, intdiv($rows - \count($popup), num2: 3));
         foreach ($popup as $i => $popupLine) {
             $row = $startRow + $i;
             if ($row >= \count($lines)) {
@@ -428,7 +433,7 @@ final class EditorRenderer
             $width = max($width, mb_strwidth($row['label']) + mb_strwidth($row['detail']) + 6);
         }
         $width = min($width, $columns - 4, 70);
-        $col = max(0, intdiv($columns - $width, 2));
+        $col = max(0, intdiv($columns - $width, num2: 2));
 
         $popup = [
             HeaderRenderer::render(' '.$title, $width, $palette->of(Role::HeaderBar).$palette->of(Role::Bright)."\x1b[1m"),
@@ -451,7 +456,7 @@ final class EditorRenderer
             $popup[] = $bg.' '.$label.' '.$palette->of(Role::CompletionHint).$detail.' '."\x1b[0m";
         }
 
-        $startRow = max(0, intdiv($rows - \count($popup), 3));
+        $startRow = max(0, intdiv($rows - \count($popup), num2: 3));
         foreach ($popup as $i => $popupLine) {
             $row = $startRow + $i;
             if ($row >= \count($lines)) {

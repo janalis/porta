@@ -55,7 +55,7 @@ final class EditorScroll
     /** Centre the viewport on a line (the stripe-jump target). */
     public function centerOnLine(int $line): void
     {
-        $this->vScroll = max(0, $line - intdiv($this->contentRows, 2));
+        $this->vScroll = max(0, $line - intdiv($this->contentRows, num2: 2));
     }
 
     /** Centre the viewport on the caret line (after a jump). */
@@ -101,11 +101,15 @@ final class EditorScroll
             $cursorRow = $this->foldModel->screenRowFor($this->vScroll, $cursorLine);
             if ($cursorRow < 0) {
                 $this->vScroll = $this->foldModel->snapVisible($cursorLine);
-            } elseif ($cursorRow > ($rows - $stickyCount - 1)) {
-                $this->vScroll = $this->foldModel->visibleLineAbove($cursorLine, $rows - $stickyCount - 1);
-            } else {
-                break; // caret already visible below the pinned band
+
+                continue;
             }
+            if ($cursorRow > ($rows - $stickyCount - 1)) {
+                $this->vScroll = $this->foldModel->visibleLineAbove($cursorLine, $rows - $stickyCount - 1);
+
+                continue;
+            }
+            break; // caret already visible below the pinned band
         }
     }
 
@@ -122,7 +126,10 @@ final class EditorScroll
         }
         if ($cursorDisplayCol < $this->hScroll) {
             $this->hScroll = max(0, $cursorDisplayCol - 8);
-        } elseif ($cursorDisplayCol > ($this->hScroll + $contentWidth - 1)) {
+
+            return;
+        }
+        if ($cursorDisplayCol > ($this->hScroll + $contentWidth - 1)) {
             $this->hScroll = $cursorDisplayCol - $contentWidth + 1;
         }
     }

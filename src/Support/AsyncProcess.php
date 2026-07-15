@@ -64,6 +64,7 @@ final class AsyncProcess
         if (null !== $this->stdin) {
             $descriptors[0] = ['pipe', 'r'];
         }
+        // @mago-expect lint:no-error-control-operator -- proc_open on a nonexistent/unusable binary emits a spawn ("posix_spawn() failed") warning that guarding the inputs cannot reliably prevent; the false return is handled below.
         $process = @proc_open($this->command, $descriptors, $pipes, $cwd, $this->env);
         if (!\is_resource($process)) {
             // Defensive: proc_open spawns even unusable binaries (exec
@@ -81,8 +82,11 @@ final class AsyncProcess
             // sized (well under the pipe buffer), so a blocking write cannot
             // stall the loop the way streaming would.
             /** @var array{0: resource, 1: resource} $pipes */
+            // @mago-expect lint:no-error-control-operator -- fwrite to a child's stdin that has already exited (fd still a live resource) raises an unavoidable EPIPE warning that no is_resource guard prevents.
             @fwrite($pipes[0], $this->stdin);
-            @fclose($pipes[0]);
+            if (\is_resource($pipes[0])) {
+                fclose($pipes[0]);
+            }
         }
         /** @var array{1: resource, 2?: resource} $pipes */
         $this->openStreams = $this->captureStderr ? 2 : 1;
@@ -92,7 +96,7 @@ final class AsyncProcess
                 $onChunk($chunk);
             }
         });
-        if ($this->captureStderr && isset($pipes[2])) {
+        if ($this->captureStderr && array_key_exists(2, $pipes)) {
             $this->watch($pipes[2], $onExit, function (string $chunk): void {
                 $this->stderr .= $chunk;
             });
@@ -111,9 +115,9 @@ final class AsyncProcess
      */
     private function watch($stream, callable $onExit, \Closure $accumulate): void
     {
-        stream_set_blocking($stream, false);
+        stream_set_blocking($stream, enable: false);
         $this->watchers[] = EventLoop::onReadable($stream, function (string $watcherId) use ($stream, $onExit, $accumulate): void {
-            $chunk = @fread($stream, 65536);
+            $chunk = \is_resource($stream) ? fread($stream, length: 65_536) : false;
             if (\is_string($chunk) && '' !== $chunk) {
                 $accumulate($chunk);
 
@@ -122,7 +126,9 @@ final class AsyncProcess
             if (feof($stream)) {
                 EventLoop::cancel($watcherId);
                 $this->watchers = array_values(array_filter($this->watchers, static fn (string $id): bool => $id !== $watcherId));
-                @fclose($stream);
+                if (\is_resource($stream)) {
+                    fclose($stream);
+                }
                 if (--$this->openStreams > 0) {
                     return; // the other pipe is still draining
                 }
@@ -131,7 +137,7 @@ final class AsyncProcess
                 /** @var resource $process */
                 $process = $this->process;
                 $this->process = null;
-                $onExit(@proc_close($process), $this->stdout);
+                $onExit(\is_resource($process) ? proc_close($process) : -1, $this->stdout);
             }
         });
     }
@@ -156,8 +162,8 @@ final class AsyncProcess
         }
         $this->watchers = [];
         if (\is_resource($this->process)) {
-            @proc_terminate($this->process);
-            @proc_close($this->process);
+            proc_terminate($this->process);
+            proc_close($this->process);
         }
         $this->process = null;
     }

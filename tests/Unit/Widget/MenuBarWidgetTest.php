@@ -127,7 +127,7 @@ final class MenuBarWidgetTest extends TestCase
     {
         $bar = $this->bar();
         $hits = 0;
-        $bar->onNavigate(function () use (&$hits): void {
+        $bar->onNavigate(static function () use (&$hits): void {
             ++$hits;
         });
 
@@ -164,7 +164,7 @@ final class MenuBarWidgetTest extends TestCase
     {
         $bar = $this->bar();
         $closed = false;
-        $bar->onClose(function () use (&$closed): void {
+        $bar->onClose(static function () use (&$closed): void {
             $closed = true;
         });
         $bar->open(0);
@@ -300,7 +300,7 @@ final class MenuBarWidgetTest extends TestCase
             new MenuItem(
                 'Save',
                 'Ctrl+S',
-                function () use (&$ran): void {
+                static function () use (&$ran): void {
                     $ran = true;
                 },
                 false,

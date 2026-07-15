@@ -5,7 +5,6 @@ declare(strict_types=1);
 namespace Porta\Tests\Unit\Git;
 
 use PHPUnit\Framework\TestCase;
-use Porta\Git\ChangeEntry;
 use Porta\Git\GitInfo;
 use Porta\Tests\Support\TempProject;
 use Revolt\EventLoop;
@@ -25,7 +24,7 @@ final class GitInfoStatusTest extends TestCase
 
         $entries = null;
         $raw = '';
-        $git->status(function (array $e, string $r) use (&$entries, &$raw): void {
+        $git->status(static function (array $e, string $r) use (&$entries, &$raw): void {
             $entries = $e;
             $raw = $r;
         });
@@ -48,11 +47,12 @@ final class GitInfoStatusTest extends TestCase
         exec('git -C '.escapeshellarg($project->dir).' add a.txt 2>/dev/null');
         $project->write('a.txt', "one staged\ntwo worktree\n"); // further unstaged edit
 
-        $cached = $worktree = null;
-        $git->cachedFileDiff($project->path('a.txt'), function (string $out) use (&$cached): void {
+        $cached = null;
+        $worktree = null;
+        $git->cachedFileDiff($project->path('a.txt'), static function (string $out) use (&$cached): void {
             $cached = $out;
         });
-        $git->worktreeFileDiff($project->path('a.txt'), function (string $out) use (&$worktree): void {
+        $git->worktreeFileDiff($project->path('a.txt'), static function (string $out) use (&$worktree): void {
             $worktree = $out;
         });
         $this->await(static fn (): bool => null !== $cached && null !== $worktree);
@@ -65,17 +65,18 @@ final class GitInfoStatusTest extends TestCase
 
     public function testDiffContextControlsTheSurroundingLines(): void
     {
-        $body = implode("\n", array_map(static fn (int $i): string => 'line '.$i, range(1, 30)))."\n";
+        $body = implode("\n", array_map(static fn (int $i): string => 'line '.$i, range(1, end: 30)))."\n";
         $git = $this->repo($project, committed: ['a.txt' => $body]);
-        $project->write('a.txt', str_replace('line 15', 'line 15 EDITED', $body));
+        $project->write('a.txt', str_replace('line 15', replace: 'line 15 EDITED', subject: $body));
 
-        $default = $ten = null;
-        $git->worktreeFileDiff($project->path('a.txt'), function (string $out) use (&$default): void {
+        $default = null;
+        $ten = null;
+        $git->worktreeFileDiff($project->path('a.txt'), static function (string $out) use (&$default): void {
             $default = $out;
         });
         $git->worktreeFileDiff(
             $project->path('a.txt'),
-            function (string $out) use (&$ten): void {
+            static function (string $out) use (&$ten): void {
                 $ten = $out;
             },
             context: 10,
@@ -91,7 +92,7 @@ final class GitInfoStatusTest extends TestCase
         $full = null;
         $git->cachedFileDiff(
             $project->path('a.txt'),
-            function (string $out) use (&$full): void {
+            static function (string $out) use (&$full): void {
                 $full = $out;
             },
             context: 999_999,
@@ -107,13 +108,14 @@ final class GitInfoStatusTest extends TestCase
         // One indent-only change (bravo) and one real change (hotel).
         $project->write('a.txt', "alpha\n  bravo\ncharlie\ndelta\necho\nfoxtrot\ngolf\nhotel CHANGED\n");
 
-        $plain = $ignoring = null;
-        $git->worktreeFileDiff($project->path('a.txt'), function (string $out) use (&$plain): void {
+        $plain = null;
+        $ignoring = null;
+        $git->worktreeFileDiff($project->path('a.txt'), static function (string $out) use (&$plain): void {
             $plain = $out;
         });
         $git->worktreeFileDiff(
             $project->path('a.txt'),
-            function (string $out) use (&$ignoring): void {
+            static function (string $out) use (&$ignoring): void {
                 $ignoring = $out;
             },
             ignoreWhitespace: true,
@@ -128,12 +130,13 @@ final class GitInfoStatusTest extends TestCase
         exec('git -C '.escapeshellarg($project->dir).' commit -qm ws 2>/dev/null');
         exec('git -C '.escapeshellarg($project->dir).' log -1 --format=%H 2>/dev/null', $sha);
 
-        $cached = $show = null;
+        $cached = null;
+        $show = null;
         $project->write('a.txt', "alpha\n    bravo\ncharlie\ndelta\necho\nfoxtrot\ngolf\nhotel CHANGED\n");
         exec('git -C '.escapeshellarg($project->dir).' add a.txt 2>/dev/null');
         $git->cachedFileDiff(
             $project->path('a.txt'),
-            function (string $out) use (&$cached): void {
+            static function (string $out) use (&$cached): void {
                 $cached = $out;
             },
             ignoreWhitespace: true,
@@ -141,7 +144,7 @@ final class GitInfoStatusTest extends TestCase
         $git->commitFileDiff(
             $sha[0],
             'a.txt',
-            function (string $out) use (&$show): void {
+            static function (string $out) use (&$show): void {
                 $show = $out;
             },
             ignoreWhitespace: true,
@@ -159,7 +162,7 @@ final class GitInfoStatusTest extends TestCase
         $project->write('brand-new.txt', "alpha\nbeta\n");
 
         $diff = null;
-        $git->untrackedFileDiff($project->path('brand-new.txt'), function (string $out) use (&$diff): void {
+        $git->untrackedFileDiff($project->path('brand-new.txt'), static function (string $out) use (&$diff): void {
             $diff = $out;
         });
         $this->await(static fn (): bool => null !== $diff);
@@ -175,7 +178,7 @@ final class GitInfoStatusTest extends TestCase
         exec('git -C '.escapeshellarg($project->dir).' add a.txt 2>/dev/null');
 
         $unstaged = null;
-        $git->unstageFile($project->path('a.txt'), function (bool $ok) use (&$unstaged): void {
+        $git->unstageFile($project->path('a.txt'), static function (bool $ok) use (&$unstaged): void {
             $unstaged = $ok;
         });
         $this->await(static fn (): bool => null !== $unstaged);
@@ -184,7 +187,7 @@ final class GitInfoStatusTest extends TestCase
         $this->assertSame(' M a.txt', $lines[0], 'the edit moved back to the worktree side');
 
         $discarded = null;
-        $git->discardFile($project->path('a.txt'), function (bool $ok) use (&$discarded): void {
+        $git->discardFile($project->path('a.txt'), static function (bool $ok) use (&$discarded): void {
             $discarded = $ok;
         });
         $this->await(static fn (): bool => null !== $discarded);
@@ -199,14 +202,14 @@ final class GitInfoStatusTest extends TestCase
         exec('git -C '.escapeshellarg($project->dir).' add a.txt 2>/dev/null');
 
         $committed = null;
-        $git->commit("second\n\nwith body", function (bool $ok) use (&$committed): void {
+        $git->commit("second\n\nwith body", static function (bool $ok) use (&$committed): void {
             $committed = $ok;
         });
         $this->await(static fn (): bool => null !== $committed);
         $this->assertTrue($committed);
 
         $message = null;
-        $git->lastCommitMessage(function (string $m) use (&$message): void {
+        $git->lastCommitMessage(static function (string $m) use (&$message): void {
             $message = $m;
         });
         $this->await(static fn (): bool => null !== $message);
@@ -215,7 +218,7 @@ final class GitInfoStatusTest extends TestCase
         $amended = null;
         $git->commit(
             'second, reworded',
-            function (bool $ok) use (&$amended): void {
+            static function (bool $ok) use (&$amended): void {
                 $amended = $ok;
             },
             amend: true,
@@ -234,7 +237,7 @@ final class GitInfoStatusTest extends TestCase
         exec('git -C '.escapeshellarg($project->dir).' commit -qm second 2>/dev/null');
 
         $undone = null;
-        $git->undoLastCommit(function (bool $ok) use (&$undone): void {
+        $git->undoLastCommit(static function (bool $ok) use (&$undone): void {
             $undone = $ok;
         });
         $this->await(static fn (): bool => null !== $undone);
@@ -243,7 +246,7 @@ final class GitInfoStatusTest extends TestCase
         $this->assertSame(['M  a.txt'], $lines, 'the undone commit\'s change is back and still staged');
 
         $refused = null;
-        $git->undoLastCommit(function (bool $ok) use (&$refused): void {
+        $git->undoLastCommit(static function (bool $ok) use (&$refused): void {
             $refused = $ok;
         });
         $this->await(static fn (): bool => null !== $refused);
@@ -257,49 +260,49 @@ final class GitInfoStatusTest extends TestCase
         $this->assertFalse($git->isAvailable());
 
         $calls = [];
-        $git->status(function (array $e, string $r) use (&$calls): void {
+        $git->status(static function (array $e, string $r) use (&$calls): void {
             $calls[] = ['status', $e, $r];
         });
-        $git->cachedFileDiff($project->path('a.txt'), function (string $out) use (&$calls): void {
+        $git->cachedFileDiff($project->path('a.txt'), static function (string $out) use (&$calls): void {
             $calls[] = ['cached', $out];
         });
-        $git->worktreeFileDiff($project->path('a.txt'), function (string $out) use (&$calls): void {
+        $git->worktreeFileDiff($project->path('a.txt'), static function (string $out) use (&$calls): void {
             $calls[] = ['worktree', $out];
         });
-        $git->untrackedFileDiff($project->path('a.txt'), function (string $out) use (&$calls): void {
+        $git->untrackedFileDiff($project->path('a.txt'), static function (string $out) use (&$calls): void {
             $calls[] = ['untracked', $out];
         });
-        $git->unstageFile($project->path('a.txt'), function (bool $ok) use (&$calls): void {
+        $git->unstageFile($project->path('a.txt'), static function (bool $ok) use (&$calls): void {
             $calls[] = ['unstage', $ok];
         });
-        $git->discardFile($project->path('a.txt'), function (bool $ok) use (&$calls): void {
+        $git->discardFile($project->path('a.txt'), static function (bool $ok) use (&$calls): void {
             $calls[] = ['discard', $ok];
         });
-        $git->applyCached("diff --git a/x b/x\n", function (bool $ok) use (&$calls): void {
+        $git->applyCached("diff --git a/x b/x\n", static function (bool $ok) use (&$calls): void {
             $calls[] = ['apply', $ok];
         });
-        $git->log(10, function (array $commits) use (&$calls): void {
+        $git->log(10, static function (array $commits) use (&$calls): void {
             $calls[] = ['log', $commits];
         });
-        $git->branches(function (array $branches) use (&$calls): void {
+        $git->branches(static function (array $branches) use (&$calls): void {
             $calls[] = ['branches', $branches];
         });
-        $git->checkout('main', function (bool $ok, string $error) use (&$calls): void {
+        $git->checkout('main', static function (bool $ok, string $error) use (&$calls): void {
             $calls[] = ['checkout', $ok, $error];
         });
-        $git->commitFiles('deadbeef', function (array $files) use (&$calls): void {
+        $git->commitFiles('deadbeef', static function (array $files) use (&$calls): void {
             $calls[] = ['files', $files];
         });
-        $git->commitFileDiff('deadbeef', 'a.txt', function (string $raw) use (&$calls): void {
+        $git->commitFileDiff('deadbeef', 'a.txt', static function (string $raw) use (&$calls): void {
             $calls[] = ['show', $raw];
         });
-        $git->commit('msg', function (bool $ok, string $out) use (&$calls): void {
+        $git->commit('msg', static function (bool $ok, string $out) use (&$calls): void {
             $calls[] = ['commit', $ok, $out];
         });
-        $git->lastCommitMessage(function (string $m) use (&$calls): void {
+        $git->lastCommitMessage(static function (string $m) use (&$calls): void {
             $calls[] = ['last', $m];
         });
-        $git->undoLastCommit(function (bool $ok) use (&$calls): void {
+        $git->undoLastCommit(static function (bool $ok) use (&$calls): void {
             $calls[] = ['undo', $ok];
         });
 
@@ -347,7 +350,7 @@ final class GitInfoStatusTest extends TestCase
         $elapsed = 0.0;
         while (!$done() && $elapsed < $timeout) {
             $suspension = EventLoop::getSuspension();
-            EventLoop::delay(0.02, static fn () => $suspension->resume());
+            EventLoop::delay(0.02, $suspension->resume(...));
             $suspension->suspend();
             $elapsed += 0.02;
         }
@@ -360,41 +363,41 @@ final class GitInfoStatusTest extends TestCase
         exec("git -C {$d} branch feature 2>/dev/null");
 
         $results = [];
-        $git->branches(function (array $branches) use (&$results): void {
+        $git->branches(static function (array $branches) use (&$results): void {
             $results['list'] = $branches;
         });
-        $this->await(function () use (&$results): bool {
-            return isset($results['list']);
+        $this->await(static function () use (&$results): bool {
+            return array_key_exists('list', $results);
         });
         $names = array_column($results['list'], 'name');
         $this->assertContains('feature', $names);
         $current = array_values(array_filter($results['list'], static fn (array $b): bool => $b['current']));
         $this->assertCount(1, $current, 'exactly one branch is current');
 
-        $git->checkout('feature', function (bool $ok, string $error) use (&$results): void {
+        $git->checkout('feature', static function (bool $ok, string $error) use (&$results): void {
             $results['checkout'] = $ok;
         });
-        $this->await(function () use (&$results): bool {
-            return isset($results['checkout']);
+        $this->await(static function () use (&$results): bool {
+            return array_key_exists('checkout', $results);
         });
         $this->assertTrue($results['checkout']);
         exec("git -C {$d} rev-parse --abbrev-ref HEAD", $head);
         $this->assertSame('feature', $head[0] ?? '');
 
-        $git->createBranch('fresh', function (bool $ok, string $error) use (&$results): void {
+        $git->createBranch('fresh', static function (bool $ok, string $error) use (&$results): void {
             $results['create'] = $ok;
         });
-        $this->await(function () use (&$results): bool {
-            return isset($results['create']);
+        $this->await(static function () use (&$results): bool {
+            return array_key_exists('create', $results);
         });
         $this->assertTrue($results['create']);
 
         // Duplicate creation fails with git's message.
-        $git->createBranch('feature', function (bool $ok, string $error) use (&$results): void {
+        $git->createBranch('feature', static function (bool $ok, string $error) use (&$results): void {
             $results['dup'] = ['ok' => $ok, 'error' => $error];
         });
-        $this->await(function () use (&$results): bool {
-            return isset($results['dup']);
+        $this->await(static function () use (&$results): bool {
+            return array_key_exists('dup', $results);
         });
         $this->assertFalse($results['dup']['ok']);
         $this->assertNotSame('', $results['dup']['error']);
@@ -408,13 +411,13 @@ final class GitInfoStatusTest extends TestCase
         // Diverge the branches on the same file, then dirty the worktree so
         // the checkout must refuse.
         exec("git -C {$d} checkout -q other && printf 'theirs\\n' > ".escapeshellarg($project->path('a.txt'))." && git -C {$d} commit -aqm theirs && git -C {$d} checkout -q -");
-        file_put_contents($project->path('a.txt'), "dirty\n");
+        file_put_contents($project->path('a.txt'), data: "dirty\n");
 
         $result = null;
-        $git->checkout('other', function (bool $ok, string $error) use (&$result): void {
+        $git->checkout('other', static function (bool $ok, string $error) use (&$result): void {
             $result = ['ok' => $ok, 'error' => $error];
         });
-        $this->await(function () use (&$result): bool {
+        $this->await(static function () use (&$result): bool {
             return null !== $result;
         });
         $this->assertFalse($result['ok']);
@@ -429,19 +432,19 @@ final class GitInfoStatusTest extends TestCase
         exec("git -C {$d} checkout -qb unmerged && printf 'diverge\\n' >> ".escapeshellarg($project->path('a.txt'))." && git -C {$d} commit -aqm diverge && git -C {$d} checkout -q - 2>/dev/null");
 
         $results = [];
-        $git->deleteBranch('merged', function (bool $ok, string $error) use (&$results): void {
+        $git->deleteBranch('merged', static function (bool $ok, string $error) use (&$results): void {
             $results['merged'] = $ok;
         });
-        $this->await(function () use (&$results): bool {
-            return isset($results['merged']);
+        $this->await(static function () use (&$results): bool {
+            return array_key_exists('merged', $results);
         });
         $this->assertTrue($results['merged']);
 
-        $git->deleteBranch('unmerged', function (bool $ok, string $error) use (&$results): void {
+        $git->deleteBranch('unmerged', static function (bool $ok, string $error) use (&$results): void {
             $results['unmerged'] = ['ok' => $ok, 'error' => $error];
         });
-        $this->await(function () use (&$results): bool {
-            return isset($results['unmerged']);
+        $this->await(static function () use (&$results): bool {
+            return array_key_exists('unmerged', $results);
         });
         $this->assertFalse($results['unmerged']['ok'], '-d refuses an unmerged branch');
         $this->assertNotSame('', $results['unmerged']['error'], "git's refusal (which names -D) reaches the caller");
@@ -461,10 +464,10 @@ final class GitInfoStatusTest extends TestCase
         );
 
         $result = null;
-        $git->checkoutTracking('origin/feature', function (bool $ok, string $error) use (&$result): void {
+        $git->checkoutTracking('origin/feature', static function (bool $ok, string $error) use (&$result): void {
             $result = ['ok' => $ok, 'error' => $error];
         });
-        $this->await(function () use (&$result): bool {
+        $this->await(static function () use (&$result): bool {
             return null !== $result;
         });
         $this->assertTrue($result['ok'], $result['error']);
@@ -491,12 +494,12 @@ final class GitInfoStatusTest extends TestCase
         exec("git -C {$d} commit -q --allow-empty -m third 2>/dev/null");
 
         $pages = [];
-        $git->log(2, function (array $commits) use (&$pages): void {
+        $git->log(2, static function (array $commits) use (&$pages): void {
             $pages[0] = array_column($commits, 'subject');
         });
         $git->log(
             2,
-            function (array $commits) use (&$pages): void {
+            static function (array $commits) use (&$pages): void {
                 $pages[1] = array_column($commits, 'subject');
             },
             skip: 2,
@@ -514,22 +517,22 @@ final class GitInfoStatusTest extends TestCase
 
         // A clean tree: push succeeds with git's "no local changes" line.
         $result = null;
-        $git->stashPush(function (bool $ok, string $line) use (&$result): void {
+        $git->stashPush(static function (bool $ok, string $line) use (&$result): void {
             $result = [$ok, $line];
         });
-        $this->await(function () use (&$result): bool {
+        $this->await(static function () use (&$result): bool {
             return null !== $result;
         });
         $this->assertTrue($result[0]);
         $this->assertStringContainsString('No local changes', $result[1]);
 
         // A dirty tree stashes; the list carries the subject; pop restores.
-        file_put_contents($project->path('a.txt'), "two\n");
+        file_put_contents($project->path('a.txt'), data: "two\n");
         $result = null;
-        $git->stashPush(function (bool $ok, string $line) use (&$result): void {
+        $git->stashPush(static function (bool $ok, string $line) use (&$result): void {
             $result = [$ok, $line];
         });
-        $this->await(function () use (&$result): bool {
+        $this->await(static function () use (&$result): bool {
             return null !== $result;
         });
         $this->assertTrue($result[0]);
@@ -537,10 +540,10 @@ final class GitInfoStatusTest extends TestCase
         $this->assertSame("one\n", file_get_contents($project->path('a.txt')), 'the tree reverted');
 
         $stashes = null;
-        $git->stashList(function (array $list) use (&$stashes): void {
+        $git->stashList(static function (array $list) use (&$stashes): void {
             $stashes = $list;
         });
-        $this->await(function () use (&$stashes): bool {
+        $this->await(static function () use (&$stashes): bool {
             return null !== $stashes;
         });
         $this->assertCount(1, $stashes);
@@ -550,10 +553,10 @@ final class GitInfoStatusTest extends TestCase
 
         // Apply keeps the stash; drop removes it; a second drop fails.
         $result = null;
-        $git->stashApply('stash@{0}', function (bool $ok, string $error) use (&$result): void {
+        $git->stashApply('stash@{0}', static function (bool $ok, string $error) use (&$result): void {
             $result = [$ok, $error];
         });
-        $this->await(function () use (&$result): bool {
+        $this->await(static function () use (&$result): bool {
             return null !== $result;
         });
         $this->assertTrue($result[0]);
@@ -561,19 +564,19 @@ final class GitInfoStatusTest extends TestCase
 
         exec('git -C '.$d.' checkout -q -- a.txt'); // clean again so drop/pop paths are unambiguous
         $result = null;
-        $git->stashDrop('stash@{0}', function (bool $ok, string $error) use (&$result): void {
+        $git->stashDrop('stash@{0}', static function (bool $ok, string $error) use (&$result): void {
             $result = [$ok, $error];
         });
-        $this->await(function () use (&$result): bool {
+        $this->await(static function () use (&$result): bool {
             return null !== $result;
         });
         $this->assertTrue($result[0]);
 
         $result = null;
-        $git->stashPop(null, function (bool $ok, string $error) use (&$result): void {
+        $git->stashPop(null, static function (bool $ok, string $error) use (&$result): void {
             $result = [$ok, $error];
         });
-        $this->await(function () use (&$result): bool {
+        $this->await(static function () use (&$result): bool {
             return null !== $result;
         });
         $this->assertFalse($result[0], 'nothing left to pop');
@@ -585,16 +588,16 @@ final class GitInfoStatusTest extends TestCase
         $git = $this->repo($project, ['a.txt' => "one\n"]);
         $d = escapeshellarg($project->dir);
 
-        file_put_contents($project->path('a.txt'), "stashed\n");
+        file_put_contents($project->path('a.txt'), data: "stashed\n");
         exec('git -C '.$d.' stash push -q');
-        file_put_contents($project->path('a.txt'), "conflicting\n");
+        file_put_contents($project->path('a.txt'), data: "conflicting\n");
         exec('git -C '.$d.' add -A && git -C '.$d.' commit -qm conflicting');
 
         $result = null;
-        $git->stashPop(null, function (bool $ok, string $error) use (&$result): void {
+        $git->stashPop(null, static function (bool $ok, string $error) use (&$result): void {
             $result = [$ok, $error];
         });
-        $this->await(function () use (&$result): bool {
+        $this->await(static function () use (&$result): bool {
             return null !== $result;
         });
         $this->assertFalse($result[0], 'the conflicting pop failed');
@@ -612,13 +615,13 @@ final class GitInfoStatusTest extends TestCase
         $git = new GitInfo($plain->dir);
 
         $calls = [];
-        $git->stashPush(function (bool $ok, string $line) use (&$calls): void {
+        $git->stashPush(static function (bool $ok, string $line) use (&$calls): void {
             $calls['push'] = [$ok, $line];
         });
-        $git->stashList(function (array $list) use (&$calls): void {
+        $git->stashList(static function (array $list) use (&$calls): void {
             $calls['list'] = $list;
         });
-        $git->blameFile($plain->path('a.txt'), function (array $lines) use (&$calls): void {
+        $git->blameFile($plain->path('a.txt'), static function (array $lines) use (&$calls): void {
             $calls['blame'] = $lines;
         });
         $this->assertSame(['push' => [false, ''], 'list' => [], 'blame' => []], $calls, 'unavailable short-circuits synchronously');
@@ -628,22 +631,22 @@ final class GitInfoStatusTest extends TestCase
     {
         $git = $this->repo($project, ['a.txt' => "a\n", 'b.txt' => "b\n"]);
         $d = escapeshellarg($project->dir);
-        file_put_contents($project->path('a.txt'), "a2\n");
+        file_put_contents($project->path('a.txt'), data: "a2\n");
         exec('git -C '.$d.' commit -aqm touch-a-1');
-        file_put_contents($project->path('b.txt'), "b2\n");
+        file_put_contents($project->path('b.txt'), data: "b2\n");
         exec('git -C '.$d.' commit -aqm touch-b');
-        file_put_contents($project->path('a.txt'), "a3\n");
+        file_put_contents($project->path('a.txt'), data: "a3\n");
         exec('git -C '.$d.' commit -aqm touch-a-2');
 
         $commits = null;
         $git->log(
             10,
-            function (array $entries) use (&$commits): void {
+            static function (array $entries) use (&$commits): void {
                 $commits = $entries;
             },
             path: 'a.txt',
         );
-        $this->await(function () use (&$commits): bool {
+        $this->await(static function () use (&$commits): bool {
             return null !== $commits;
         });
         $this->assertSame(['touch-a-2', 'touch-a-1', 'init'], array_map(static fn ($e) => $e->subject, $commits), 'only commits touching a.txt');
@@ -651,13 +654,13 @@ final class GitInfoStatusTest extends TestCase
         $commits = null;
         $git->log(
             1,
-            function (array $entries) use (&$commits): void {
+            static function (array $entries) use (&$commits): void {
                 $commits = $entries;
             },
             skip: 1,
             path: 'a.txt',
         );
-        $this->await(function () use (&$commits): bool {
+        $this->await(static function () use (&$commits): bool {
             return null !== $commits;
         });
         $this->assertSame(['touch-a-1'], array_map(static fn ($e) => $e->subject, $commits), 'skip pages within the filter');
@@ -666,13 +669,13 @@ final class GitInfoStatusTest extends TestCase
     public function testBlameFileCommittedDirtyAndUntracked(): void
     {
         $git = $this->repo($project, ['a.txt' => "one\ntwo\n"]);
-        file_put_contents($project->path('a.txt'), "one\ntwo\nthree\n"); // a dirty extra line
+        file_put_contents($project->path('a.txt'), data: "one\ntwo\nthree\n"); // a dirty extra line
 
         $lines = null;
-        $git->blameFile($project->path('a.txt'), function (array $result) use (&$lines): void {
+        $git->blameFile($project->path('a.txt'), static function (array $result) use (&$lines): void {
             $lines = $result;
         });
-        $this->await(function () use (&$lines): bool {
+        $this->await(static function () use (&$lines): bool {
             return null !== $lines;
         });
         $this->assertCount(3, $lines);
@@ -681,10 +684,10 @@ final class GitInfoStatusTest extends TestCase
         $this->assertSame('Not Committed Yet', $lines[2]['author'], 'the dirty line is uncommitted');
 
         $untracked = null;
-        $git->blameFile($project->path('nope.txt'), function (array $result) use (&$untracked): void {
+        $git->blameFile($project->path('nope.txt'), static function (array $result) use (&$untracked): void {
             $untracked = $result;
         });
-        $this->await(function () use (&$untracked): bool {
+        $this->await(static function () use (&$untracked): bool {
             return null !== $untracked;
         });
         $this->assertSame([], $untracked, 'blame on a missing file degrades to empty');

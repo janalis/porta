@@ -33,7 +33,7 @@ final class LspLog
             if ('' === $line) {
                 continue;
             }
-            $this->entries[] = ['time' => $this->clock->now(), 'text' => mb_substr($line, 0, self::MAX_LINE_LENGTH)];
+            $this->entries[] = ['time' => $this->clock->now(), 'text' => mb_substr($line, start: 0, length: self::MAX_LINE_LENGTH)];
         }
         if (\count($this->entries) > self::MAX_ENTRIES) {
             $this->entries = \array_slice($this->entries, -self::MAX_ENTRIES);

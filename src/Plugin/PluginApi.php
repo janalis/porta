@@ -61,7 +61,7 @@ final class PluginApi
         if (1 !== preg_match(self::ID_PATTERN, $id)) {
             throw new PluginException(\sprintf('Invalid command id "%s" (expected /^[a-z0-9][a-z0-9_-]*$/i)', $id));
         }
-        if (isset($this->ids[$id])) {
+        if (array_key_exists($id, $this->ids)) {
             throw new PluginException(\sprintf('Duplicate command id "%s"', $id));
         }
         $this->ids[$id] = true;
@@ -84,7 +84,7 @@ final class PluginApi
      */
     public function addMenuItem(string $commandId, ?\Closure $enabledWhen = null): void
     {
-        if (!isset($this->ids[$commandId])) {
+        if (!array_key_exists($commandId, $this->ids)) {
             throw new PluginException(\sprintf('Unknown command id "%s" for a menu item — register it first', $commandId));
         }
         $this->menuItems[] = ['id' => $this->pluginName.':'.$commandId, 'when' => $enabledWhen];
@@ -103,13 +103,13 @@ final class PluginApi
         if (1 !== preg_match(self::ID_PATTERN, $key)) {
             throw new PluginException(\sprintf('Invalid setting key "%s" (expected /^[a-z0-9][a-z0-9_-]*$/i)', $key));
         }
-        if (isset($this->settingDescriptors[$key])) {
+        if (array_key_exists($key, $this->settingDescriptors)) {
             throw new PluginException(\sprintf('Duplicate setting key "%s"', $key));
         }
-        if (!\in_array($kind, self::SETTING_KINDS, true)) {
+        if (!\in_array($kind, self::SETTING_KINDS, strict: true)) {
             throw new PluginException(\sprintf('Unknown setting kind "%s" (expected bool, choice, text or int)', $kind));
         }
-        if ('choice' === $kind && (null === $options || [] === $options || !\in_array($default, $options, true))) {
+        if ('choice' === $kind && (null === $options || [] === $options || !\in_array($default, $options, strict: true))) {
             throw new PluginException(\sprintf('Setting "%s": a choice needs options containing its default', $key));
         }
         $this->settingDescriptors[$key] = [
@@ -139,7 +139,7 @@ final class PluginApi
         return match ($descriptor['kind']) {
             'bool' => (bool) $raw,
             'int' => (int) $raw,
-            'choice' => \in_array((string) $raw, $descriptor['options'] ?? [], true) ? (string) $raw : $descriptor['default'],
+            'choice' => \in_array((string) $raw, $descriptor['options'] ?? [], strict: true) ? (string) $raw : $descriptor['default'],
             default => (string) $raw,
         };
     }
@@ -181,7 +181,7 @@ final class PluginApi
      */
     public function changeSetting(string $key, bool|int|string $value): void
     {
-        if (!isset($this->settingDescriptors[$key])) {
+        if (!array_key_exists($key, $this->settingDescriptors)) {
             throw new PluginException(\sprintf('Unknown setting "%s" — registerSetting() it first', $key));
         }
         $runtime = $this->manager->runtime(); // activate()-phase gate

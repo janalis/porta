@@ -83,8 +83,10 @@ final class LocalHistoryTest extends TestCase
     {
         $project = new TempProject(['a.php' => 'x']);
         // Make the history base path a file so mkdir underneath fails.
-        @mkdir($project->path('.porta'), 0777, true);
-        file_put_contents($project->path('.porta/history'), 'not a dir');
+        if (!is_dir($project->path('.porta'))) {
+            mkdir($project->path('.porta'), permissions: 0o777, recursive: true);
+        }
+        file_put_contents($project->path('.porta/history'), data: 'not a dir');
 
         $history = new LocalHistory($project->dir, $this->clock());
         $this->assertSame(-1, $history->snapshot($project->path('a.php'), 'x'));
@@ -101,10 +103,10 @@ final class LocalHistoryTest extends TestCase
         $history->snapshot($path, 'first');
         $reflection = new \ReflectionMethod($history, 'dirFor');
         $dir = $reflection->invoke($history, $path);
-        chmod($dir, 0555);
+        chmod($dir, permissions: 0o555);
 
         $this->assertSame(-1, $history->snapshot($path, 'second'));
 
-        chmod($dir, 0755); // restore so TempProject cleanup succeeds
+        chmod($dir, permissions: 0o755); // restore so TempProject cleanup succeeds
     }
 }

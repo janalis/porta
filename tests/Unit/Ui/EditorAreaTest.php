@@ -48,8 +48,8 @@ final class EditorAreaTest extends TestCase
 
     public function testViewerTabsResolveToTheirViewer(): void
     {
-        $gd = imagecreatetruecolor(2, 2);
-        \assert(false !== $gd);
+        $gd = imagecreatetruecolor(2, height: 2);
+        \assert(false !== $gd, description: 'the truecolor image handle was created');
         $this->buffers->openImage('/tmp/a.png', new ImageData($gd, 2, 2, 10));
         $this->assertSame($this->imageViewer, $this->area->widget(), 'image tab: the image viewer');
 

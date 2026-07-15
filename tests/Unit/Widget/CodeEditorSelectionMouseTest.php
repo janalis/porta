@@ -7,7 +7,6 @@ namespace Porta\Tests\Unit\Widget;
 use PHPUnit\Framework\TestCase;
 use Porta\Editor\EditorScroll;
 use Porta\Widget\CodeEditorWidget;
-use Porta\Widget\Render\LineDecorator;
 use Symfony\Component\Tui\Render\RenderContext;
 
 final class CodeEditorSelectionMouseTest extends TestCase
@@ -127,7 +126,7 @@ final class CodeEditorSelectionMouseTest extends TestCase
 
         $line = $editor->render(new RenderContext(80, 3))[0];
 
-        $this->assertSame(1, substr_count($line, "\x1b[48;5;24m"), 'selection background must open once, not re-open past the caret');
+        $this->assertSame(1, substr_count($line, needle: "\x1b[48;5;24m"), 'selection background must open once, not re-open past the caret');
         $this->assertStringContainsString("\x1b_pi:c", $line, 'caret marker present');
     }
 
@@ -141,12 +140,12 @@ final class CodeEditorSelectionMouseTest extends TestCase
 
         $line = $editor->render(new RenderContext(80, 3))[0];
 
-        $this->assertSame(1, substr_count($line, "\x1b[48;5;24m"));
+        $this->assertSame(1, substr_count($line, needle: "\x1b[48;5;24m"));
     }
 
     public function testForwardSelectionHighlightWithHorizontalScroll(): void
     {
-        $editor = $this->editor(str_repeat('x', 100));
+        $editor = $this->editor(str_repeat('x', times: 100));
         $doc = $editor->getDocument();
         $doc->setCursor(0, 90);
         $doc->beginSelect();
@@ -155,9 +154,9 @@ final class CodeEditorSelectionMouseTest extends TestCase
         $line = $editor->render(new RenderContext(80, 3))[0];
 
         $scroll = new \ReflectionProperty($editor, 'scroll')->getValue($editor);
-        \assert($scroll instanceof EditorScroll);
+        \assert($scroll instanceof EditorScroll, description: 'the scroll property holds an EditorScroll');
         $this->assertGreaterThan(0, $scroll->hScroll(), 'a caret near end-of-line scrolls horizontally');
-        $this->assertSame(1, substr_count($line, "\x1b[48;5;24m"));
+        $this->assertSame(1, substr_count($line, needle: "\x1b[48;5;24m"));
     }
 
     public function testAltClickAddsThenRemovesCaret(): void
@@ -209,8 +208,8 @@ final class CodeEditorSelectionMouseTest extends TestCase
 
         // Short lines 0 and 2 have empty (clamped) selections but must still show
         // a caret at their end-of-line (clamped), rendered as a reverse-video cell.
-        $this->assertSame(1, substr_count($rendered[0], "\x1b[7m"), 'caret at end of short line 0');
-        $this->assertSame(1, substr_count($rendered[2], "\x1b[7m"), 'caret at end of short line 2');
+        $this->assertSame(1, substr_count($rendered[0], needle: "\x1b[7m"), 'caret at end of short line 0');
+        $this->assertSame(1, substr_count($rendered[2], needle: "\x1b[7m"), 'caret at end of short line 2');
     }
 
     public function testColumnSelectionRendersPerCaretHighlight(): void
@@ -223,7 +222,7 @@ final class CodeEditorSelectionMouseTest extends TestCase
 
         $rendered = $editor->render(new RenderContext(80, 6));
         // The extra carets (rows 0,1) each draw a selection background + a caret cell.
-        $this->assertGreaterThanOrEqual(2, substr_count(implode('', $rendered), "\x1b[48;5;24m"));
+        $this->assertGreaterThanOrEqual(2, substr_count(implode('', $rendered), needle: "\x1b[48;5;24m"));
         $this->assertStringContainsString("\x1b[7m", implode('', $rendered));
     }
 }

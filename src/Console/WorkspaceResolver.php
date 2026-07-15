@@ -27,12 +27,15 @@ final class WorkspaceResolver
 
         $abs = $this->absolute($target, $cwd);
         if (is_file($abs)) {
-            $file = realpath($abs) ?: $abs;
+            $real = realpath($abs);
+            $file = $real ? $real : $abs;
 
             return new Workspace($this->projectRoot(\dirname($file)), $file, $line);
         }
         if (is_dir($abs)) {
-            return new Workspace(realpath($abs) ?: $abs, null, $line);
+            $real = realpath($abs);
+
+            return new Workspace($real ? $real : $abs, null, $line);
         }
 
         throw new \InvalidArgumentException(\sprintf('no such file or directory: %s', $target));
@@ -41,7 +44,7 @@ final class WorkspaceResolver
     /** Resolve $path against $cwd unless it is already absolute. */
     private function absolute(string $path, string $cwd): string
     {
-        return str_starts_with($path, '/') ? $path : rtrim($cwd, '/').'/'.$path;
+        return str_starts_with($path, '/') ? $path : rtrim($cwd, characters: '/').'/'.$path;
     }
 
     /** Nearest ancestor of $dir (inclusive) holding a composer.json, else $dir. */

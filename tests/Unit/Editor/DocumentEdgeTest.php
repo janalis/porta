@@ -203,7 +203,7 @@ final class DocumentEdgeTest extends TestCase
 
         $this->assertTrue($doc->moveLines(1));
         $this->assertSame(['a', 'd', 'b', 'c'], $doc->getLines());
-        $this->assertSame('b\nc', str_replace("\n", '\n', $doc->getSelectedText()), 'selection follows the block');
+        $this->assertSame('b\nc', str_replace("\n", replace: '\n', subject: $doc->getSelectedText()), 'selection follows the block');
     }
 
     public function testDuplicateSelectionBlock(): void
@@ -262,9 +262,6 @@ final class DocumentEdgeTest extends TestCase
         $doc = new Document('');
         for ($i = 0; $i < 205; ++$i) {
             $doc->insertNewLine(); // non-coalescing edit
-        }
-        while ($doc->undo()) {
-            // drain the undo stack completely
         }
 
         $this->assertGreaterThan(1, $doc->getLineCount(), 'earliest edits fell off the undo stack');

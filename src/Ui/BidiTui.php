@@ -56,7 +56,7 @@ final class BidiTui extends Tui
      */
     public function logicalColumn(int $row, int $visualCol): int
     {
-        if (null === $this->reorder || !isset($this->lastLines[$row], $this->lastRuns[$row])) {
+        if (null === $this->reorder || !array_key_exists($row, $this->lastLines) || !array_key_exists($row, $this->lastRuns)) {
             return $visualCol;
         }
 
@@ -105,7 +105,7 @@ final class BidiTui extends Tui
 
         $out = [];
         foreach ($lines as $row => $line) {
-            $out[] = isset($this->lastRuns[$row]) ? $reorder->reorderRow($line, $this->lastRuns[$row]) : $line;
+            $out[] = array_key_exists($row, $this->lastRuns) ? $reorder->reorderRow($line, $this->lastRuns[$row]) : $line;
         }
         $screenWriter->writeLines($out);
     }

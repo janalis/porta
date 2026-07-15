@@ -54,7 +54,7 @@ class FakeDapClient implements DapClientInterface
         if (null === $onResult) {
             return;
         }
-        if (isset($this->responses[$command])) {
+        if (array_key_exists($command, $this->responses)) {
             [$body, $error] = $this->responses[$command];
             $onResult($body, $error);
 
@@ -77,19 +77,21 @@ class FakeDapClient implements DapClientInterface
     public function respond(string $command, array $body = [], ?string $error = null): void
     {
         foreach ($this->pending as $i => $entry) {
-            if ($entry['command'] === $command) {
-                array_splice($this->pending, $i, 1);
-                $entry['callback']($body, $error);
-
-                return;
+            if ($entry['command'] !== $command) {
+                continue;
             }
+
+            array_splice($this->pending, $i, length: 1);
+            $entry['callback']($body, $error);
+
+            return;
         }
     }
 
     /** Push a server event into the session. */
     public function emit(string $event, array $body = []): void
     {
-        if (isset($this->eventHandlers[$event])) {
+        if (array_key_exists($event, $this->eventHandlers)) {
             $this->eventHandlers[$event]($body);
         }
     }

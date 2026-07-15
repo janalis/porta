@@ -60,7 +60,7 @@ final class IdeContainerFactory
 
         // The cache dir is folded into the hash so distinct cache dirs yield
         // distinct class names (each dump loads at most once per process).
-        $hash = hash('xxh128', Ide::VERSION.\PHP_VERSION.\dirname(__DIR__, 2).'/config'.$cacheDir);
+        $hash = hash('xxh128', Ide::VERSION.\PHP_VERSION.\dirname(__DIR__, levels: 2).'/config'.$cacheDir);
         $file = $cacheDir.'/container-'.$hash.'.php';
         /** @var class-string<Container> $class The PhpDumper-generated class (declared by the require below). */
         $class = 'PortaCachedContainer_'.$hash;
@@ -73,7 +73,7 @@ final class IdeContainerFactory
             $builder = $this->compileFresh(forDump: true);
             try {
                 $dump = new PhpDumper($builder)->dump(['class' => $class]);
-                \assert(\is_string($dump));
+                \assert(\is_string($dump), description: 'PhpDumper::dump returns a string when no class array is requested');
                 $cache->write($dump, $builder->getResources());
             } catch (IOException) {
                 return $this->compileFresh(forDump: false); // unwritable cache dir: serve this boot uncached
@@ -102,7 +102,7 @@ final class IdeContainerFactory
     private function compileFresh(bool $forDump): ContainerBuilder
     {
         $container = new ContainerBuilder();
-        new PhpFileLoader($container, new FileLocator(\dirname(__DIR__, 2).'/config'))->load('services.php');
+        new PhpFileLoader($container, new FileLocator(\dirname(__DIR__, levels: 2).'/config'))->load('services.php');
         $container->compile(resolveEnvPlaceholders: !$forDump);
 
         return $container;

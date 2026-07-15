@@ -7,7 +7,6 @@ namespace Porta;
 use Porta\Bootstrap\WidgetHooks;
 use Porta\Command\CommandRegistryPopulator;
 use Porta\Config\CommandRegistry;
-use Porta\Config\EditorConfig\EditorConfigResolver;
 use Porta\Config\IdeConfig;
 use Porta\Config\SettingsController;
 use Porta\Config\SettingsLanguageController;
@@ -16,32 +15,17 @@ use Porta\Debug\DebugController;
 use Porta\Debug\DebugStatePersistence;
 use Porta\Editor\BufferManager;
 use Porta\Editor\BufferService;
-use Porta\Editor\Document;
-use Porta\Editor\EditorFileActions;
-use Porta\Event\GitRemoteCompleted;
 use Porta\Git\GitInfo;
-use Porta\Git\GitPanes;
 use Porta\Git\GitRefresher;
 use Porta\Git\GitViewController;
-use Porta\Help\HelpViewerActions;
 use Porta\History\LocalHistoryController;
 use Porta\History\SessionRestorer;
-use Porta\Image\ImageDecoder;
-use Porta\Image\ImageViewerActions;
-use Porta\Input\EditorLayoutPanes;
-use Porta\Input\GitMouseRouter;
 use Porta\Input\HitTester;
 use Porta\Input\InputDispatcher;
-use Porta\Input\MouseRouter;
-use Porta\Input\OverlayPanels;
-use Porta\Input\SettingsMouseRouter;
 use Porta\Layout\LayoutController;
 use Porta\Layout\PaneLayout;
-use Porta\Layout\PaneResizer;
 use Porta\Layout\WorkspaceLayout;
-use Porta\Lsp\FormatOnSave;
 use Porta\Lsp\LspBootstrapper;
-use Porta\Lsp\LspLog;
 use Porta\Lsp\LspSessionPool;
 use Porta\Lsp\NavigationController;
 use Porta\Lsp\RefactorController;
@@ -51,48 +35,26 @@ use Porta\Plugin\PluginLifecycle;
 use Porta\Plugin\PluginManager;
 use Porta\Plugin\PluginRuntime;
 use Porta\Run\RunController;
-use Porta\Search\ResultContextProvider;
 use Porta\Search\SearchActions;
 use Porta\Search\SearchUiWiring;
-use Porta\Settings\LiveSettingsApplier;
 use Porta\Settings\SettingsViewController;
-use Porta\Support\AsyncProcess;
-use Porta\Support\BrowserOpener;
 use Porta\Support\FreezeWatchdog;
-use Porta\Support\Scheduler;
-use Porta\Tree\TreeOperations;
 use Porta\Ui\BidiTui;
 use Porta\Ui\ChromeInvalidator;
-use Porta\Ui\CommandPalette;
-use Porta\Ui\ContextMenuBuilder;
 use Porta\Ui\EditorArea;
 use Porta\Ui\MenuRebuilder;
 use Porta\Ui\NonBlockingTerminal;
 use Porta\Ui\Notifier;
 use Porta\Ui\PanelManager;
-use Porta\Ui\ResultsPanelMode;
-use Porta\Ui\Role;
-use Porta\Ui\StatusBarProvider;
 use Porta\Ui\TerminalStateRefresher;
-use Porta\Ui\WorkspaceViews;
 use Porta\Widget\CodeEditorWidget;
 use Porta\Widget\ContextMenu;
 use Porta\Widget\DebugPanelWidget;
-use Porta\Widget\EditorCallbacks;
 use Porta\Widget\FileTreeWidget;
 use Porta\Widget\FindBarWidget;
-use Porta\Widget\Git\ChangesListWidget;
-use Porta\Widget\Git\CommitBoxWidget;
-use Porta\Widget\Git\DiffViewWidget;
-use Porta\Widget\Git\GitTabsWidget;
-use Porta\Widget\Git\HistoryListWidget;
 use Porta\Widget\GoToFileWidget;
 use Porta\Widget\MenuBarWidget;
 use Porta\Widget\ResultsPanelWidget;
-use Porta\Widget\SeparatorWidget;
-use Porta\Widget\Settings\KeybindingsListWidget;
-use Porta\Widget\Settings\SettingsFormWidget;
-use Porta\Widget\Settings\SettingsNavWidget;
 use Porta\Widget\StatusBarWidget;
 use Porta\Widget\TerminalPanelWidget;
 use Revolt\EventLoop;
@@ -106,7 +68,6 @@ use Symfony\Component\Tui\Style\StyleSheet;
 use Symfony\Component\Tui\Terminal\Terminal;
 use Symfony\Component\Tui\Terminal\TerminalInterface;
 use Symfony\Component\Tui\Tui;
-use Symfony\Component\Tui\Widget\AbstractWidget;
 use Symfony\Component\Tui\Widget\ContainerWidget;
 
 /**
@@ -189,7 +150,7 @@ final class Ide
         $config = IdeConfig::load($this->rootDir);
         $this->container = new IdeContainerFactory()->build($this->rootDir, $config, $this->ansi, $this->lspCommand, $this->lspDisabled, $this->docsDir);
         $locator = $this->container->get('porta.ide');
-        \assert($locator instanceof ServiceLocator);
+        \assert($locator instanceof ServiceLocator, description: 'The porta.ide service is the ServiceLocator boundary');
         $this->locator = $locator;
         // The parsed .porta.json is a synthetic service: it exists before the
         // container does (its settings steer the env parameters above), and
@@ -302,7 +263,7 @@ final class Ide
     {
         /** @var T $service */
         $service = $this->locator->get($id);
-        \assert($service instanceof $id);
+        \assert($service instanceof $id, description: 'The locator entry id matches the requested service type');
 
         return $service;
     }
@@ -381,7 +342,7 @@ final class Ide
         // timer only fires once the event loop runs (inside tui->run()), so it is
         // safe to arm before setup; arming it before the try guarantees the finally
         // can always cancel it.
-        $watcher = EventLoop::repeat(1.0, fn () => $this->pollFilesystem());
+        $watcher = EventLoop::repeat(1.0, $this->pollFilesystem(...));
 
         // Loop-stall detector: evidence for "the app froze" reports lands in
         // .porta/freeze.log (drift lines + a backtrace on a hard hang).
@@ -402,13 +363,16 @@ final class Ide
             // paints restored breakpoints into the gutter for free.
             $this->debugState->restore();
 
+            $openedInitial = false;
             if (null !== $this->initialFile) {
                 $this->openFile($this->initialFile);
                 if (null !== $this->initialLine) {
                     $this->editor->jumpTo($this->initialLine - 1, 0); // CLI lines are 1-based
                 }
                 $this->tui->setFocus($this->editorArea->widget());
-            } elseif (!$this->sessionRestorer->restore()) {
+                $openedInitial = true;
+            }
+            if (!$openedInitial && !$this->sessionRestorer->restore()) {
                 $this->tui->setFocus($this->tree);
             }
 

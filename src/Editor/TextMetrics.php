@@ -60,7 +60,7 @@ final class TextMetrics
             return 0;
         }
         if (!str_contains($text, "\t")) {
-            return mb_strwidth($text, 'UTF-8');
+            return mb_strwidth($text, encoding: 'UTF-8');
         }
 
         $width = 0;
@@ -74,7 +74,7 @@ final class TextMetrics
                 continue;
             }
             $next = self::nextCharBoundary($text, $col);
-            $width += mb_strwidth(substr($text, $col, $next - $col), 'UTF-8');
+            $width += mb_strwidth(substr($text, $col, $next - $col), encoding: 'UTF-8');
             $col = $next;
         }
 
@@ -100,7 +100,7 @@ final class TextMetrics
             $next = self::nextCharBoundary($line, $col);
             $seg = substr($line, $col, $next - $col);
             $result .= $seg;
-            $width += mb_strwidth($seg, 'UTF-8');
+            $width += mb_strwidth($seg, encoding: 'UTF-8');
             $col = $next;
         }
 
@@ -130,7 +130,7 @@ final class TextMetrics
             }
             $next = self::nextCharBoundary($line, $col);
             $char = substr($line, $col, $next - $col);
-            $width += mb_strwidth($char, 'UTF-8');
+            $width += mb_strwidth($char, encoding: 'UTF-8');
             $col = $next;
         }
 
@@ -140,9 +140,9 @@ final class TextMetrics
     /** UTF-16 code-unit column for a byte offset on $line (for LSP positions). */
     public static function byteColToUtf16(string $line, int $byteCol): int
     {
-        $prefix = substr($line, 0, $byteCol);
+        $prefix = substr($line, offset: 0, length: $byteCol);
 
-        return '' === $prefix ? 0 : \strlen((string) mb_convert_encoding($prefix, 'UTF-16LE', 'UTF-8')) >> 1;
+        return '' === $prefix ? 0 : \strlen((string) mb_convert_encoding($prefix, to_encoding: 'UTF-16LE', from_encoding: 'UTF-8')) >> 1;
     }
 
     /** Byte offset on $line for a UTF-16 code-unit column (LSP position). */
@@ -162,7 +162,7 @@ final class TextMetrics
         while ($bytes < $len && $units < $utf16Col) {
             $next = self::nextCharBoundary($line, $bytes);
             $char = substr($line, $bytes, $next - $bytes);
-            $units += \strlen((string) mb_convert_encoding($char, 'UTF-16LE', 'UTF-8')) >> 1;
+            $units += \strlen((string) mb_convert_encoding($char, to_encoding: 'UTF-16LE', from_encoding: 'UTF-8')) >> 1;
             $bytes = $next;
         }
 

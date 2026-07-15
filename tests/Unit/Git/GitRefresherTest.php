@@ -49,7 +49,7 @@ final class GitRefresherTest extends TestCase
         $elapsed = 0.0;
         while (!$done() && $elapsed < $timeout) {
             $suspension = EventLoop::getSuspension();
-            EventLoop::delay(0.02, static fn () => $suspension->resume());
+            EventLoop::delay(0.02, $suspension->resume(...));
             $suspension->suspend();
             $elapsed += 0.02;
         }
@@ -70,7 +70,7 @@ final class GitRefresherTest extends TestCase
     public function testRefreshMarksLoadsChangeMarksAndUpdatesTheActiveEditor(): void
     {
         $refresher = $this->refresher();
-        file_put_contents($this->project->path('a.txt'), "one\nchanged\n");
+        file_put_contents($this->project->path('a.txt'), data: "one\nchanged\n");
         $buffer = $this->buffers->open($this->project->path('a.txt'), "one\nchanged\n");
 
         $refresher->refreshActiveMarks();
@@ -83,8 +83,8 @@ final class GitRefresherTest extends TestCase
     public function testImageBuffersAndMissingGitShortCircuit(): void
     {
         $refresher = $this->refresher();
-        $gd = imagecreatetruecolor(2, 2);
-        \assert(false !== $gd);
+        $gd = imagecreatetruecolor(2, height: 2);
+        \assert(false !== $gd, description: 'the truecolor image was created');
         $image = $this->buffers->openImage($this->project->path('i.png'), new ImageData($gd, 2, 2, 9));
         $refresher->refreshMarks($image); // image buffers have no git marks
 
@@ -105,7 +105,7 @@ final class GitRefresherTest extends TestCase
     public function testBufferEventListenersRefreshMarksForTextBuffersOnly(): void
     {
         $refresher = $this->refresher();
-        file_put_contents($this->project->path('a.txt'), "one\nchanged\n");
+        file_put_contents($this->project->path('a.txt'), data: "one\nchanged\n");
         $buffer = $this->buffers->open($this->project->path('a.txt'), "one\nchanged\n");
 
         $refresher->onBufferOpened(new BufferOpened($buffer));
@@ -123,7 +123,7 @@ final class GitRefresherTest extends TestCase
     public function testRemoteCompletedRefreshesBranchAndActiveMarks(): void
     {
         $refresher = $this->refresher();
-        file_put_contents($this->project->path('a.txt'), "one\nchanged\n");
+        file_put_contents($this->project->path('a.txt'), data: "one\nchanged\n");
         $buffer = $this->buffers->open($this->project->path('a.txt'), "one\nchanged\n");
         $this->buffers->setActive($buffer->path);
 

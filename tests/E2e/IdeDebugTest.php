@@ -5,12 +5,9 @@ declare(strict_types=1);
 namespace Porta\Tests\E2e;
 
 use PHPUnit\Framework\TestCase;
-use Porta\Ide;
 use Porta\Tests\Support\RunsIde;
 use Porta\Tests\Support\TempProject;
-use Revolt\EventLoop;
 use Symfony\Component\Tui\Ansi\AnsiUtils;
-use Symfony\Component\Tui\Terminal\VirtualTerminal;
 
 /**
  * Full-app debugger scenarios against the scripted mock DAP adapter:
@@ -336,10 +333,10 @@ final class IdeDebugTest extends TestCase
                     // The defaults went out during configuration.
                     $this->assertStringContainsString('xfilters: exception', AnsiUtils::stripAnsiCodes($terminal->getOutput()));
 
-                    $palette($tui, 'Debug: Exception Breakpoints');
-                    $this->await(fn (): bool => $tui->getById('editor')->isOverlayOpen());
+                    $palette($tui, label: 'Debug: Exception Breakpoints');
+                    $this->await(static fn (): bool => $tui->getById('editor')->isOverlayOpen());
                     $tui->handleInput("\r"); // toggle Warnings on → re-sync + re-open
-                    $this->await(fn (): bool => str_contains(AnsiUtils::stripAnsiCodes($terminal->getOutput()), 'xfilters: exception,warning'));
+                    $this->await(static fn (): bool => str_contains(AnsiUtils::stripAnsiCodes($terminal->getOutput()), 'xfilters: exception,warning'));
                     $tui->handleInput("\x1b"); // leave the chooser
                 },
             ],
@@ -357,7 +354,7 @@ final class IdeDebugTest extends TestCase
             $project,
             $project->path('prog.php'),
             [
-                200 => function ($tui): void {
+                200 => static function ($tui): void {
                     $tui->getById('editor')->getDocument()->setCursor(4, 0);
                     $tui->handleInput("\x1b[19;6~"); // ctrl+shift+f8: conditional breakpoint
                     foreach (str_split('$x > 1') as $ch) {
@@ -374,7 +371,7 @@ final class IdeDebugTest extends TestCase
             ],
         );
 
-        $saved = json_decode((string) file_get_contents($project->path('.porta/debug.json')), true);
+        $saved = json_decode((string) file_get_contents($project->path('.porta/debug.json')), associative: true);
         $this->assertSame('$x > 1', array_values($saved['breakpoints'])[0][0]['condition'], 'the condition persisted');
         $this->assertSame(4, array_values($saved['breakpoints'])[0][0]['line']);
         $this->assertSame(['$x'], $saved['watches']);

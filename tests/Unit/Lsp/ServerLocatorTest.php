@@ -96,7 +96,7 @@ final class ServerLocatorTest extends TestCase
     {
         $project = new TempProject();
         $bin = $project->write('vendor/bin/phpactor', "#!/bin/sh\necho hi\n");
-        chmod($bin, 0755);
+        chmod($bin, permissions: 0o755);
         putenv('PATH=/nonexistent');
 
         $server = ServerLocator::locate($project->dir);
@@ -111,13 +111,13 @@ final class ServerLocatorTest extends TestCase
         $tools = new TempProject([], 'porta-bin-');
 
         $phpactor = $tools->write('phpactor', "#!/bin/sh\n");
-        chmod($phpactor, 0755);
+        chmod($phpactor, permissions: 0o755);
         putenv('PATH='.$tools->dir);
         $this->assertSame('phpactor', ServerLocator::locate($project->dir)['name']);
 
         unlink($phpactor);
         $intelephense = $tools->write('intelephense', "#!/bin/sh\n");
-        chmod($intelephense, 0755);
+        chmod($intelephense, permissions: 0o755);
         $server = ServerLocator::locate($project->dir);
         $this->assertSame([$intelephense, '--stdio'], $server['command']);
         $this->assertSame('intelephense', $server['name']);
@@ -186,7 +186,7 @@ final class ServerLocatorTest extends TestCase
         // A map that only overrides typescript leaves php on its auto-detected default.
         $project = new TempProject(['.porta.json' => json_encode(['lsp' => ['typescript' => 'my-tsls --stdio']])]);
         $bin = $project->write('vendor/bin/phpactor', "#!/bin/sh\n");
-        chmod($bin, 0755);
+        chmod($bin, permissions: 0o755);
         putenv('PATH=/nonexistent');
 
         $servers = ServerLocator::locateAll($project->dir);
@@ -199,7 +199,7 @@ final class ServerLocatorTest extends TestCase
     {
         $project = new TempProject();
         $bin = $project->write('vendor/bin/phpactor', "#!/bin/sh\n");
-        chmod($bin, 0755);
+        chmod($bin, permissions: 0o755);
         putenv('PATH=/nonexistent');
 
         $this->assertSame('phpactor', ServerLocator::autoDetected($project->dir)['php']['name']);
@@ -223,7 +223,7 @@ final class ServerLocatorTest extends TestCase
         $project = new TempProject();
         $tools = new TempProject([], 'porta-bin-');
         foreach (['phpactor', 'typescript-language-server', 'pyright-langserver'] as $bin) {
-            chmod($tools->write($bin, "#!/bin/sh\n"), 0755);
+            chmod($tools->write($bin, "#!/bin/sh\n"), permissions: 0o755);
         }
         putenv('PATH='.$tools->dir);
 
@@ -239,7 +239,7 @@ final class ServerLocatorTest extends TestCase
     {
         $project = new TempProject();
         $tools = new TempProject([], 'porta-bin-');
-        chmod($tools->write('pylsp', "#!/bin/sh\n"), 0755);
+        chmod($tools->write('pylsp', "#!/bin/sh\n"), permissions: 0o755);
         putenv('PATH='.$tools->dir);
 
         $servers = ServerLocator::locateAll($project->dir);

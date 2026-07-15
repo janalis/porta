@@ -21,7 +21,7 @@ final class DebugAdapters
     {
         foreach ($languages as $languageId => $entry) {
             $debug = $entry['debug'] ?? [];
-            if (isset($debug['adapter'])) {
+            if (($debug['adapter'] ?? null) !== null) {
                 $this->configs[$languageId] = new DebugConfig(self::split($debug['adapter']), $debug['launch'] ?? []);
             }
         }
@@ -68,6 +68,8 @@ final class DebugAdapters
     /** @return list<string> */
     private static function split(string $command): array
     {
-        return array_values(array_filter(preg_split('/\s+/', trim($command)) ?: []));
+        $parts = preg_split('/\s+/', trim($command));
+
+        return array_values(array_filter(false === $parts ? [] : $parts));
     }
 }

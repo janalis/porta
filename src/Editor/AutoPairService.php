@@ -28,7 +28,7 @@ final class AutoPairService
     {
         // Note: with multiple carets, MultiCaret::handleInput intercepts typing
         // before this is reached, so no extra-caret guard is needed here.
-        $isOpen = isset(self::PAIRS[$keys]);
+        $isOpen = array_key_exists($keys, self::PAIRS);
 
         // Wrap a selection in the pair.
         if ($isOpen && null !== ($range = $doc->getSelectionRange())) {
@@ -41,7 +41,7 @@ final class AutoPairService
         $nextChar = $line[$doc->getCursorCol()] ?? '';
 
         // Type over an existing closer/quote instead of inserting a new one.
-        if ($keys === $nextChar && \in_array($keys, self::PAIRS, true)) {
+        if ($keys === $nextChar && \in_array($keys, self::PAIRS, strict: true)) {
             $doc->moveRight();
 
             return true;
@@ -104,6 +104,6 @@ final class AutoPairService
         $before = $line[$col - 1];
         $after = $line[$col];
 
-        return isset(self::PAIRS[$before]) && self::PAIRS[$before] === $after;
+        return array_key_exists($before, self::PAIRS) && self::PAIRS[$before] === $after;
     }
 }

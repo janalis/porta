@@ -20,7 +20,7 @@ final class DocumentWriter
     {
         $lines = $document->getLines();
         if (true === $config->trimTrailingWhitespace) {
-            $lines = array_map(static fn (string $line): string => rtrim($line, " \t"), $lines);
+            $lines = array_map(static fn (string $line): string => rtrim($line, characters: " \t"), $lines);
         }
 
         $eol = match ($config->eol) {
@@ -30,13 +30,12 @@ final class DocumentWriter
         };
         $text = implode($eol, $lines);
 
-        if (true === $config->insertFinalNewline) {
-            if (!str_ends_with($text, $eol)) {
-                $text .= $eol;
-            }
-        } elseif (false === $config->insertFinalNewline) {
+        if (true === $config->insertFinalNewline && !str_ends_with($text, $eol)) {
+            $text .= $eol;
+        }
+        if (false === $config->insertFinalNewline) {
             while ('' !== $text && str_ends_with($text, $eol)) {
-                $text = substr($text, 0, -\strlen($eol));
+                $text = substr($text, offset: 0, length: -\strlen($eol));
             }
         }
 

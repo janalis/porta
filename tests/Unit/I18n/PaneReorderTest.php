@@ -46,7 +46,7 @@ final class PaneReorderTest extends TestCase
 
         // Each run is closed with a reset, so the open background can't paint the
         // next pane — the exact cross-pane bleed this fix removes.
-        $this->assertGreaterThanOrEqual(2, substr_count($out, "\x1b[0m"), 'a reset per run');
+        $this->assertGreaterThanOrEqual(2, substr_count($out, needle: "\x1b[0m"), 'a reset per run');
         $this->assertStringEndsWith("\x1b[0m", $out, 'the row ends reset');
     }
 

@@ -131,9 +131,11 @@ final class DebugPanelWidget extends OverlayWidget implements FocusableInterface
     {
         $this->scopes = $scopes;
         foreach ($scopes as $scope) {
-            if ($scope['variablesReference'] > 0) {
-                $this->expanded[$scope['variablesReference']] = true;
+            if ($scope['variablesReference'] <= 0) {
+                continue;
             }
+
+            $this->expanded[$scope['variablesReference']] = true;
         }
         $this->rebuild();
     }
@@ -155,7 +157,7 @@ final class DebugPanelWidget extends OverlayWidget implements FocusableInterface
     /** Index-addressed delivery; a stale index (the watch was removed meanwhile) is ignored. */
     public function setWatchResult(int $index, string $value, int $ref, ?string $error = null): void
     {
-        if (!isset($this->watches[$index])) {
+        if (!array_key_exists($index, $this->watches)) {
             return;
         }
         $this->watches[$index] = [...$this->watches[$index], 'value' => $value, 'ref' => $ref, 'error' => $error];
@@ -167,9 +169,11 @@ final class DebugPanelWidget extends OverlayWidget implements FocusableInterface
     {
         if ($delta < 0) {
             $this->list->moveUp(-$delta);
-        } else {
-            $this->list->moveDown(\count($this->rows), $delta);
+            $this->invalidate();
+
+            return;
         }
+        $this->list->moveDown(\count($this->rows), $delta);
         $this->invalidate();
     }
 
@@ -201,15 +205,27 @@ final class DebugPanelWidget extends OverlayWidget implements FocusableInterface
         $kb = $this->getKeybindings();
         if ($kb->matches($data, 'close')) {
             $this->close();
-        } elseif ($kb->matches($data, 'move_up')) {
+
+            return;
+        }
+        if ($kb->matches($data, 'move_up')) {
             $this->list->moveUp(1);
             $this->invalidate();
-        } elseif ($kb->matches($data, 'move_down')) {
+
+            return;
+        }
+        if ($kb->matches($data, 'move_down')) {
             $this->list->moveDown(\count($this->rows), 1);
             $this->invalidate();
-        } elseif ($kb->matches($data, 'jump')) {
+
+            return;
+        }
+        if ($kb->matches($data, 'jump')) {
             $this->activateRow($this->list->selected());
-        } elseif ($kb->matches($data, 'remove_watch')) {
+
+            return;
+        }
+        if ($kb->matches($data, 'remove_watch')) {
             $row = $this->rows[$this->list->selected()] ?? null;
             if (null !== $row && 'watch' === $row['kind'] && null !== $this->onRemoveWatch) {
                 ($this->onRemoveWatch)($row['watchIndex']);
@@ -238,7 +254,11 @@ final class DebugPanelWidget extends OverlayWidget implements FocusableInterface
         $scroll = $this->list->follow($this->visibleRows);
         foreach (\array_slice($this->rows, $scroll, $this->visibleRows) as $i => $row) {
             $isSelected = $this->list->isSelected($scroll + $i);
-            $bg = $isSelected ? ($this->focused ? $this->palette->of(Role::SelectedRow) : $this->palette->of(Role::SelectedRowUnfocused)) : $this->palette->of(Role::Toolbar);
+            $bg = match (true) {
+                !$isSelected => $this->palette->of(Role::Toolbar),
+                $this->focused => $this->palette->of(Role::SelectedRow),
+                default => $this->palette->of(Role::SelectedRowUnfocused),
+            };
             $lines[] = $bg.AnsiUtils::truncateToWidth($this->rowText($row), $columns, '…', pad: true)."\x1b[0m";
         }
 
@@ -277,9 +297,19 @@ final class DebugPanelWidget extends OverlayWidget implements FocusableInterface
             'watch' => $this->watchText($row),
             'section' => ' '.$this->palette->of(Role::Dim).$row['label']."\x1b[39m",
             'frame' => ' '.$indent.$row['label'].'  '.$this->palette->of(Role::TabAccent).$row['path'].':'.($row['line'] + 1)."\x1b[39m",
-            'scope' => ' '.$indent.(isset($this->expanded[$row['ref']]) ? '▾ ' : '▸ ').$this->palette->of(Role::Bright).$row['label']."\x1b[39m",
-            default => ' '.$indent.($row['ref'] > 0 ? (isset($this->expanded[$row['ref']]) ? '▾ ' : '▸ ') : '  ').$row['label'],
+            'scope' => ' '.$indent.(array_key_exists($row['ref'], $this->expanded) ? '▾ ' : '▸ ').$this->palette->of(Role::Bright).$row['label']."\x1b[39m",
+            default => ' '.$indent.$this->expandArrow($row['ref']).$row['label'],
         };
+    }
+
+    /** The expand/collapse arrow for a reference-bearing row: an open/closed triangle when expandable, else two spaces. */
+    private function expandArrow(int $ref): string
+    {
+        if ($ref <= 0) {
+            return '  ';
+        }
+
+        return array_key_exists($ref, $this->expanded) ? '▾ ' : '▸ ';
     }
 
     /** @param array{kind: string, label: string, frameId: int, path: string, line: int, ref: int, depth: int, watchIndex: int} $row */
@@ -287,7 +317,7 @@ final class DebugPanelWidget extends OverlayWidget implements FocusableInterface
     {
         $indent = str_repeat('  ', max(0, $row['depth']));
         $watch = $this->watches[$row['watchIndex']] ?? null;
-        $arrow = $row['ref'] > 0 ? (isset($this->expanded[$row['ref']]) ? '▾ ' : '▸ ') : '  ';
+        $arrow = $this->expandArrow($row['ref']);
         $value = match (true) {
             null === $watch => '',
             null !== $watch['error'] => $this->palette->of(Role::Dim).$watch['error']."\x1b[39m",
@@ -312,7 +342,7 @@ final class DebugPanelWidget extends OverlayWidget implements FocusableInterface
             $rows[] = self::row('section', 'Watches');
             foreach ($this->watches as $i => $watch) {
                 $rows[] = self::row('watch', $watch['expr'], ref: $watch['ref'], depth: 1, watchIndex: $i);
-                if ($watch['ref'] > 0 && isset($this->expanded[$watch['ref']])) {
+                if ($watch['ref'] > 0 && array_key_exists($watch['ref'], $this->expanded)) {
                     $this->appendChildren($rows, $watch['ref'], 2);
                 }
             }
@@ -321,7 +351,7 @@ final class DebugPanelWidget extends OverlayWidget implements FocusableInterface
             $rows[] = self::row('section', 'Variables');
             foreach ($this->scopes as $scope) {
                 $rows[] = self::row('scope', $scope['name'], ref: $scope['variablesReference'], depth: 1);
-                if (isset($this->expanded[$scope['variablesReference']])) {
+                if (array_key_exists($scope['variablesReference'], $this->expanded)) {
                     $this->appendChildren($rows, $scope['variablesReference'], 2);
                 }
             }
@@ -336,7 +366,7 @@ final class DebugPanelWidget extends OverlayWidget implements FocusableInterface
     {
         foreach ($this->children[$reference] ?? [] as $variable) {
             $rows[] = self::row('variable', "{$variable['name']} = {$variable['value']}", ref: $variable['variablesReference'], depth: $depth);
-            if ($variable['variablesReference'] > 0 && isset($this->expanded[$variable['variablesReference']])) {
+            if ($variable['variablesReference'] > 0 && array_key_exists($variable['variablesReference'], $this->expanded)) {
                 $this->appendChildren($rows, $variable['variablesReference'], $depth + 1);
             }
         }
@@ -359,21 +389,21 @@ final class DebugPanelWidget extends OverlayWidget implements FocusableInterface
 
             return;
         }
-        if (\in_array($row['kind'], ['scope', 'variable', 'watch'], true) && $row['ref'] > 0) {
+        if (\in_array($row['kind'], ['scope', 'variable', 'watch'], strict: true) && $row['ref'] > 0) {
             $this->toggleExpand($row['ref']);
         }
     }
 
     private function toggleExpand(int $reference): void
     {
-        if (isset($this->expanded[$reference])) {
+        if (array_key_exists($reference, $this->expanded)) {
             unset($this->expanded[$reference]);
             $this->rebuild();
 
             return;
         }
         $this->expanded[$reference] = true;
-        if (!isset($this->children[$reference]) && null !== $this->onExpandVariable) {
+        if (!array_key_exists($reference, $this->children) && null !== $this->onExpandVariable) {
             ($this->onExpandVariable)($reference, fn (array $variables) => $this->setVariables($reference, $variables));
         }
         $this->rebuild();

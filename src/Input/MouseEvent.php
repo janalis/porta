@@ -51,6 +51,7 @@ final class MouseEvent
         // 64/65 = wheel up/down, 66/67 = wheel left/right (bit 2 is the axis);
         // shift+vertical is the mouse convention for horizontal scrolling.
         $horizontal = $wheel && (0 !== ($code & 2) || 0 !== ($code & 4));
+        $wheelSign = 0 === ($code & 1) ? -1 : 1;
 
         return new self(
             button: $wheel ? -1 : $code & 3,
@@ -59,8 +60,8 @@ final class MouseEvent
             pressed: 'M' === $m[4],
             motion: $motion,
             wheel: $wheel,
-            wheelDelta: $wheel && !$horizontal ? (0 === ($code & 1) ? -1 : 1) : 0,
-            wheelHDelta: $horizontal ? (0 === ($code & 1) ? -1 : 1) : 0,
+            wheelDelta: $wheel && !$horizontal ? $wheelSign : 0,
+            wheelHDelta: $horizontal ? $wheelSign : 0,
             shift: (bool) ($code & 4),
             alt: (bool) ($code & 8),
             ctrl: (bool) ($code & 16),

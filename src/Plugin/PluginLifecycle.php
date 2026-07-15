@@ -41,7 +41,7 @@ final class PluginLifecycle implements PluginLifecycleOps
         private readonly string $rootDir,
         array $disabledPlugins,
     ) {
-        $this->disabled = array_fill_keys($disabledPlugins, true);
+        $this->disabled = array_fill_keys($disabledPlugins, value: true);
     }
 
     /**
@@ -72,15 +72,18 @@ final class PluginLifecycle implements PluginLifecycleOps
     {
         $this->plugins->deactivate($name, $this->commands);
         foreach ($this->installer->installed() as $candidate) {
-            if ($candidate['name'] === $name) {
-                $error = $this->loader->loadFile($candidate['dir'].'/plugin.php', $this->plugins);
-                if (null !== $error) {
-                    $this->notifier->flash($error, 5.0);
-                } else {
-                    $this->plugins->registerCommands($this->commands);
-                }
-                break;
+            if ($candidate['name'] !== $name) {
+                continue;
             }
+
+            $error = $this->loader->loadFile($candidate['dir'].'/plugin.php', $this->plugins);
+            if (null !== $error) {
+                $this->notifier->flash($error, 5.0);
+            }
+            if (null === $error) {
+                $this->plugins->registerCommands($this->commands);
+            }
+            break;
         }
         $this->menuRebuilder->rebuild();
         $this->refreshNav();
@@ -100,20 +103,24 @@ final class PluginLifecycle implements PluginLifecycleOps
             IdeConfig::persistPluginEnabled($this->rootDir, $name, false);
             $this->plugins->deactivate($name, $this->commands); // no shadow fallback: the NAME is off
             $this->notifier->flash($this->translator->trans('Plugin "%name%" disabled', ['%name%' => $name]));
-        } else {
+        }
+        if ($enabled) {
             unset($this->disabled[$name]);
             IdeConfig::persistPluginEnabled($this->rootDir, $name, true);
             foreach ($this->installer->installed() as $candidate) {
-                if ($candidate['name'] === $name) {
-                    $error = $this->loader->loadFile($candidate['dir'].'/plugin.php', $this->plugins);
-                    if (null !== $error) {
-                        $this->notifier->flash($error, 5.0);
-                    } else {
-                        $this->plugins->registerCommands($this->commands);
-                        $this->notifier->flash($this->translator->trans('Plugin "%name%" enabled — default keybindings apply on restart', ['%name%' => $name]));
-                    }
-                    break;
+                if ($candidate['name'] !== $name) {
+                    continue;
                 }
+
+                $error = $this->loader->loadFile($candidate['dir'].'/plugin.php', $this->plugins);
+                if (null !== $error) {
+                    $this->notifier->flash($error, 5.0);
+                }
+                if (null === $error) {
+                    $this->plugins->registerCommands($this->commands);
+                    $this->notifier->flash($this->translator->trans('Plugin "%name%" enabled — default keybindings apply on restart', ['%name%' => $name]));
+                }
+                break;
             }
         }
         $this->menuRebuilder->rebuild();
@@ -123,7 +130,7 @@ final class PluginLifecycle implements PluginLifecycleOps
 
     public function isDisabled(string $name): bool
     {
-        return isset($this->disabled[$name]);
+        return array_key_exists($name, $this->disabled);
     }
 
     /**

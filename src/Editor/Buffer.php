@@ -66,7 +66,7 @@ final class Buffer
     /** The file's on-disk fingerprint right now, or null when it is not a file. */
     public function diskStampNow(): ?string
     {
-        return is_file($this->path) ? (int) @filemtime($this->path).':'.(int) @filesize($this->path) : null;
+        return is_file($this->path) ? (int) filemtime($this->path).':'.(int) filesize($this->path) : null;
     }
 
     /** Record the current on-disk fingerprint (after open and after save). */

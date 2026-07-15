@@ -98,7 +98,10 @@ final class IdeEdgeCasesTest extends TestCase
             foreach ($codes[1] as $params) {
                 if ('' === $params || '0' === $params || '49' === $params) {
                     $bg = 'default';
-                } elseif (preg_match('/48;5;(\d+)/', $params, $m)) {
+
+                    continue;
+                }
+                if (preg_match('/48;5;(\d+)/', $params, $m)) {
                     $bg = '48;5;'.$m[1];
                 }
             }
@@ -189,7 +192,7 @@ final class IdeEdgeCasesTest extends TestCase
         putenv('PATH=/nonexistent');
         $project = new TempProject(['ok.php' => "<?php\n"]);
         $unreadable = $project->write('secret.php', 'nope');
-        chmod($unreadable, 0000);
+        chmod($unreadable, permissions: 0o000);
         $project->write('huge.bin', str_repeat('x', (2 * 1024 * 1024) + 1));
         $project->write('latin1.txt', "caf\xE9");
 
@@ -212,7 +215,7 @@ final class IdeEdgeCasesTest extends TestCase
             ],
         );
 
-        chmod($unreadable, 0644);
+        chmod($unreadable, permissions: 0o644);
         $screen = AnsiUtils::stripAnsiCodes($terminal->getOutput());
         $this->assertStringContainsString('File too large', $screen);
         $this->assertStringContainsString('Not a UTF-8 text file', $screen);
@@ -257,7 +260,7 @@ final class IdeEdgeCasesTest extends TestCase
                 },
                 320 => function ($tui) use ($project): void {
                     $this->assertSame(44, $tui->getById('tree')->width(), 'sidebar resized by the drag');
-                    $layout = json_decode((string) file_get_contents($project->path('.porta/layout.json')), true);
+                    $layout = json_decode((string) file_get_contents($project->path('.porta/layout.json')), associative: true);
                     $this->assertSame(28, $layout['sidebarWidthPercent'], 'saved as a percentage (round(44/160))');
                 },
             ],
@@ -275,7 +278,7 @@ final class IdeEdgeCasesTest extends TestCase
             $project,
             $project->path('a.php'),
             [
-                200 => function ($tui, $terminal, $ide): void {
+                200 => static function ($tui, $terminal, $ide): void {
                     $tp = $tui->getById('terminal');
                     $tp->open('sh', new \Porta\Terminal\TerminalBuffer());
                     $tui->requestRender();
@@ -292,7 +295,7 @@ final class IdeEdgeCasesTest extends TestCase
                 },
                 320 => function ($tui) use ($project): void {
                     $this->assertSame(16, $tui->getById('terminal')->visibleRows(), 'panel grew by the drag (clamped at rows-8)');
-                    $layout = json_decode((string) file_get_contents($project->path('.porta/layout.json')), true);
+                    $layout = json_decode((string) file_get_contents($project->path('.porta/layout.json')), associative: true);
                     $this->assertSame(67, $layout['bottomPanelHeightPercent'], 'saved as a percentage (round(16/24))');
                 },
             ],
@@ -311,7 +314,7 @@ final class IdeEdgeCasesTest extends TestCase
             $project,
             $project->path('a.php'),
             [
-                200 => function ($tui, $terminal, $ide) use (&$expected): void {
+                200 => static function ($tui, $terminal, $ide) use (&$expected): void {
                     $results = $tui->getById('results');
                     $results->open('Find in Project', ResultsPanelFields::queryOnly());
                     $results->setResults([
@@ -331,7 +334,7 @@ final class IdeEdgeCasesTest extends TestCase
                 320 => function ($tui) use ($project, &$expected): void {
                     $this->assertSame($expected, $tui->getById('results')->visibleRows(), 'the results pane grew by the drag');
                     $this->assertSame($expected, $tui->getById('terminal')->visibleRows(), 'shared bottom-panel height stays in sync');
-                    $layout = json_decode((string) file_get_contents($project->path('.porta/layout.json')), true);
+                    $layout = json_decode((string) file_get_contents($project->path('.porta/layout.json')), associative: true);
                     $this->assertSame((int) round(($expected * 100) / 24), $layout['bottomPanelHeightPercent'], 'saved as a percentage of the 24 rows');
                 },
             ],
@@ -443,8 +446,8 @@ final class IdeEdgeCasesTest extends TestCase
     private function twoColorPng(int $width, int $height): string
     {
         $gd = imagecreatetruecolor($width, $height);
-        imagefilledrectangle($gd, 0, 0, intdiv($width, 2) - 1, $height - 1, (int) imagecolorallocate($gd, 255, 0, 0));
-        imagefilledrectangle($gd, intdiv($width, 2), 0, $width - 1, $height - 1, (int) imagecolorallocate($gd, 0, 0, 255));
+        imagefilledrectangle($gd, x1: 0, y1: 0, x2: intdiv($width, num2: 2) - 1, y2: $height - 1, color: (int) imagecolorallocate($gd, red: 255, green: 0, blue: 0));
+        imagefilledrectangle($gd, intdiv($width, num2: 2), y1: 0, x2: $width - 1, y2: $height - 1, color: (int) imagecolorallocate($gd, red: 0, green: 0, blue: 255));
         ob_start();
         imagepng($gd);
 
@@ -550,7 +553,7 @@ final class IdeEdgeCasesTest extends TestCase
                     $this->assertSame(16, $buffers->active()?->image?->width, 'externally changed image reloaded');
                     $tui->tick();
                     $this->assertStringContainsString('Reloaded img.png', AnsiUtils::stripAnsiCodes($terminal->getOutput()));
-                    file_put_contents($project->path('img.png'), 'not a png anymore');
+                    file_put_contents($project->path('img.png'), data: 'not a png anymore');
                     touch($project->path('img.png'), time() + 4);
                     $service->pollFilesystem();
                     $this->assertSame(16, $buffers->active()?->image?->width, 'undecodable bytes keep the old pixels');
@@ -655,7 +658,9 @@ final class IdeEdgeCasesTest extends TestCase
         $dir = escapeshellarg($project->dir);
         exec("git -C {$dir} init -q && git -C {$dir} config user.email t@t && git -C {$dir} config user.name t && git -C {$dir} add -A && git -C {$dir} commit -qm init");
         // A seeded percent must be applied at startup (25% of 160 cols = 40).
-        @mkdir($project->path('.porta'), 0777, true);
+        if (!is_dir($project->path('.porta'))) {
+            mkdir($project->path('.porta'), permissions: 0o777, recursive: true);
+        }
         file_put_contents($project->path('.porta/layout.json'), json_encode(['gitSidebarWidthPercent' => 25]));
 
         $this->runIde(
@@ -678,7 +683,7 @@ final class IdeEdgeCasesTest extends TestCase
                     $this->assertSame(60, $tui->getById('git-changes')->width(), 'the drag resized the sidebar');
                     $this->assertSame(60, $tui->getById('git-tabs')->width(), 'the tab strip follows');
                     $this->assertSame(60, $tui->getById('git-commit')->width(), 'the commit box follows');
-                    $layout = json_decode((string) file_get_contents($project->path('.porta/layout.json')), true);
+                    $layout = json_decode((string) file_get_contents($project->path('.porta/layout.json')), associative: true);
                     $this->assertSame(38, $layout['gitSidebarWidthPercent'], 'saved as a percentage (round(60/160))');
                 },
             ],
@@ -691,7 +696,9 @@ final class IdeEdgeCasesTest extends TestCase
     {
         putenv('PATH=/nonexistent');
         $project = new TempProject(['a.php' => "<?php\n"]);
-        @mkdir($project->path('.porta'), 0777, true);
+        if (!is_dir($project->path('.porta'))) {
+            mkdir($project->path('.porta'), permissions: 0o777, recursive: true);
+        }
         file_put_contents(
             $project->path('.porta/layout.json'),
             json_encode(['sidebarWidthPercent' => 25, 'bottomPanelHeightPercent' => 40]),
@@ -742,7 +749,7 @@ final class IdeEdgeCasesTest extends TestCase
             $project,
             $project->path('Service.php'),
             [
-                200 => function ($tui): void {
+                200 => static function ($tui): void {
                     for ($i = 0; $i < 8; ++$i) {
                         $tui->handleInput("\x1b[B"); // into handle() → breadcrumb bar shows
                     }
@@ -818,7 +825,7 @@ final class IdeEdgeCasesTest extends TestCase
             $project,
             null, // no initial file → the tree is focused
             [
-                200 => function ($tui): void {
+                200 => static function ($tui): void {
                     // Right-click a tree entry; the menu is wide enough to spill past the sidebar.
                     $tui->handleInput("\x1b[<2;21;3M"); // right-press col 20, row 1 (first entry)
                 },
@@ -882,7 +889,7 @@ final class IdeEdgeCasesTest extends TestCase
             'Outside.php' => "<?php\n// scopedMarker at the root\n",
         ]);
 
-        $rightClickFolder = function ($tui, $terminal, $ide): void {
+        $rightClickFolder = static function ($tui, $terminal, $ide): void {
             $renderer = new \ReflectionProperty($ide, 'renderer')->getValue($ide);
             $rect = $renderer->getWidgetRect($tui->getById('tree'));
             // Header is relative row 0; the first entry (the `sub` folder) is row 1.
@@ -943,7 +950,7 @@ final class IdeEdgeCasesTest extends TestCase
             'Outside.php' => "<?php\n\$token = 2;\n",
         ]);
 
-        $rightClickFolder = function ($tui, $terminal, $ide): void {
+        $rightClickFolder = static function ($tui, $terminal, $ide): void {
             $renderer = new \ReflectionProperty($ide, 'renderer')->getValue($ide);
             $rect = $renderer->getWidgetRect($tui->getById('tree'));
             $tui->handleInput(\sprintf("\x1b[<2;%d;%dM", $rect->col + 3, $rect->row + 2));
@@ -972,7 +979,7 @@ final class IdeEdgeCasesTest extends TestCase
                         $tui->handleInput($ch); // the search term (query field)
                     }
                 },
-                760 => function ($tui): void {
+                760 => static function ($tui): void {
                     $tui->tick();
                     $tui->handleInput("\t"); // modal: query → replace
                     foreach (str_split('renamed') as $ch) {
@@ -995,7 +1002,7 @@ final class IdeEdgeCasesTest extends TestCase
             'src/C.php' => "<?php\n// tok here\n",
             'other/B.php' => "<?php\n// tok here\n",
         ]);
-        $panelText = fn ($tui): string => $this->modalText($tui); // scope is configured in the modal
+        $panelText = $this->modalText(...); // scope is configured in the modal
 
         $this->runIde(
             $project,
@@ -1066,13 +1073,13 @@ final class IdeEdgeCasesTest extends TestCase
             'other/Outside.php' => "<?php\n// mark at the root\n",
         ]);
 
-        $rightClickFolder = function ($tui, $terminal, $ide): void {
+        $rightClickFolder = static function ($tui, $terminal, $ide): void {
             $renderer = new \ReflectionProperty($ide, 'renderer')->getValue($ide);
             $rect = $renderer->getWidgetRect($tui->getById('tree'));
             // `lib` sorts first among the directories → the first tree entry (row 1).
             $tui->handleInput(\sprintf("\x1b[<2;%d;%dM", $rect->col + 3, $rect->row + 2));
         };
-        $panelText = fn ($tui): string => $this->modalText($tui); // scope is configured in the modal
+        $panelText = $this->modalText(...); // scope is configured in the modal
 
         $this->runIde(
             $project,
@@ -1089,7 +1096,7 @@ final class IdeEdgeCasesTest extends TestCase
                     $tui->handleInput("\x1b[B");
                     $tui->handleInput("\r"); // Add to Search Scopes
                 },
-                400 => function ($tui): void {
+                400 => static function ($tui): void {
                     $tui->tick();
                     $tui->handleInput("\x1b[102;6u"); // ctrl+shift+f
                     foreach (str_split('mark') as $ch) {
@@ -1123,7 +1130,7 @@ final class IdeEdgeCasesTest extends TestCase
             'pkg/src/A.php' => "<?php\n// tok here\n",
             'other/B.php' => "<?php\n// tok here\n",
         ]);
-        $panelText = fn ($tui): string => $this->modalText($tui); // scope is configured in the modal
+        $panelText = $this->modalText(...); // scope is configured in the modal
 
         $this->runIde(
             $project,
@@ -1158,7 +1165,7 @@ final class IdeEdgeCasesTest extends TestCase
     public function testScopeSelectorWithNoFileOpenStaysWholeProject(): void
     {
         $project = new TempProject(['src/A.php' => "<?php\n// tok\n", 'other/B.php' => "<?php\n// tok\n"]);
-        $panelText = fn ($tui): string => $this->modalText($tui); // scope is configured in the modal
+        $panelText = $this->modalText(...); // scope is configured in the modal
 
         $this->runIde(
             $project,
@@ -1170,7 +1177,7 @@ final class IdeEdgeCasesTest extends TestCase
                         $tui->handleInput($ch);
                     }
                 },
-                600 => function ($tui): void {
+                600 => static function ($tui): void {
                     $tui->tick();
                     $tui->handleInput("\x1bs"); // alt+s → Directory, but no file → whole project
                 },
@@ -1190,7 +1197,7 @@ final class IdeEdgeCasesTest extends TestCase
     public function testFindInProjectInCommentsStringsScopeNarrowsMatches(): void
     {
         $project = new TempProject(['src/A.php' => "<?php\n\$needle = 1;\n// needle here\n"]);
-        $panelText = fn ($tui): string => $this->modalText($tui); // the token-scope option is in the modal
+        $panelText = $this->modalText(...); // the token-scope option is in the modal
 
         $this->runIde(
             $project,
@@ -1291,7 +1298,7 @@ final class IdeEdgeCasesTest extends TestCase
             'src/A.php' => "<?php\nfunction foo()\n{\n    return 1;\n}\n", // opened (active buffer)
             'src/B.php' => "<?php\nfunction foo()\n{\n    return 2;\n}\n", // only on disk
         ]);
-        $panelText = fn ($tui): string => $this->modalText($tui); // find + replace happen in the modal
+        $panelText = $this->modalText(...); // find + replace happen in the modal
 
         $this->runIde(
             $project,
@@ -1350,7 +1357,7 @@ final class IdeEdgeCasesTest extends TestCase
                         $tui->handleInput($ch);
                     }
                 },
-                600 => function ($tui): void {
+                600 => static function ($tui): void {
                     $tui->tick();
                     $tui->handleInput("\t"); // query → replace
                     $tui->handleInput('x');
@@ -1383,7 +1390,7 @@ final class IdeEdgeCasesTest extends TestCase
                         $tui->handleInput($ch);
                     }
                 },
-                600 => function ($tui): void {
+                600 => static function ($tui): void {
                     $tui->tick();
                     // In the modal: Tab query → replace → Mask, then restrict to PHP.
                     $tui->handleInput("\t");
@@ -1626,7 +1633,7 @@ final class IdeEdgeCasesTest extends TestCase
                         $tui->handleInput($ch);
                     }
                 },
-                600 => function ($tui): void {
+                600 => static function ($tui): void {
                     $tui->tick();
                     $tui->handleInput("\x1bv"); // alt+v → preserve case (modal option)
                     $tui->handleInput("\t"); // query → replace
@@ -1867,14 +1874,14 @@ final class IdeEdgeCasesTest extends TestCase
     public function testStickyScrollPinsHeaderAndClickJumps(): void
     {
         putenv('PATH=/nonexistent');
-        $code = "<?php\n\nnamespace App;\n\nclass Service\n{\n    public function handle(): void\n    {\n".str_repeat("        \$x = 1;\n", 30)."    }\n}\n";
+        $code = "<?php\n\nnamespace App;\n\nclass Service\n{\n    public function handle(): void\n    {\n".str_repeat("        \$x = 1;\n", times: 30)."    }\n}\n";
         $project = new TempProject(['Service.php' => $code]);
 
         $this->runIde(
             $project,
             $project->path('Service.php'),
             [
-                200 => function ($tui): void {
+                200 => static function ($tui): void {
                     for ($i = 0; $i < 30; ++$i) {
                         $tui->handleInput("\x1b[B"); // scroll deep into the method
                     }
@@ -1919,7 +1926,7 @@ final class IdeEdgeCasesTest extends TestCase
                     $plain = AnsiUtils::stripAnsiCodes($tui->getById('breadcrumbs')->render(new \Symfony\Component\Tui\Render\RenderContext(120, 1))[0]);
                     $this->assertStringContainsString('App › Service › handle', $plain, 'the scope path is shown');
                 },
-                340 => function ($tui, $terminal, $ide): void {
+                340 => static function ($tui, $terminal, $ide): void {
                     $tui->requestRender();
                     $tui->tick();
                     $renderer = new \ReflectionProperty($ide, 'renderer')->getValue($ide);
@@ -1937,6 +1944,42 @@ final class IdeEdgeCasesTest extends TestCase
         $this->addToAssertionCount(1);
     }
 
+    public function testLeftClickBelowTheEditorIsIgnored(): void
+    {
+        putenv('PATH=/nonexistent');
+        $project = new TempProject(['a.php' => "<?php\necho 1;\necho 2;\necho 3;\n"]);
+
+        $this->runIde(
+            $project,
+            $project->path('a.php'),
+            [
+                200 => function ($tui, $terminal, $ide): void {
+                    $renderer = new \ReflectionProperty($ide, 'renderer')->getValue($ide);
+                    $rect = $renderer->getWidgetRect($tui->getById('editor'));
+
+                    // Control: a click INSIDE the editor (row for line 2) routes
+                    // through handleEditorClick and moves the caret.
+                    $tui->handleInput(\sprintf("\x1b[<0;%d;%dM", $rect->col + 8, $rect->row + 3));
+                    $tui->handleInput(\sprintf("\x1b[<0;%d;%dm", $rect->col + 8, $rect->row + 3));
+                    $this->assertSame(2, $tui->getById('editor')->getDocument()->getCursorLine(), 'an in-editor click places the caret');
+
+                    // A left press one row below the editor's last row (the status
+                    // band) still reaches handleEditorClick, whose guard rejects the
+                    // coordinate outside the editor rect — the caret does not move.
+                    $row = $rect->row + $rect->rows + 1; // 1-based screen row just below the editor
+                    $this->assertLessThanOrEqual(24, $row, 'the click lands on-screen below the editor');
+                    $tui->handleInput(\sprintf("\x1b[<0;%d;%dM", $rect->col + 8, $row));
+                    $tui->handleInput(\sprintf("\x1b[<0;%d;%dm", $rect->col + 8, $row));
+                },
+                300 => function ($tui): void {
+                    $this->assertSame(2, $tui->getById('editor')->getDocument()->getCursorLine(), 'the click below the editor did not move the caret');
+                },
+            ],
+        );
+
+        $this->addToAssertionCount(1);
+    }
+
     public function testSidebarHoverHighlightsRow(): void
     {
         putenv('PATH=/nonexistent');
@@ -1946,7 +1989,7 @@ final class IdeEdgeCasesTest extends TestCase
             $project,
             $project->path('a.php'),
             [
-                200 => function ($tui, $terminal, $ide): void {
+                200 => static function ($tui, $terminal, $ide): void {
                     $renderer = new \ReflectionProperty($ide, 'renderer')->getValue($ide);
                     $rect = $renderer->getWidgetRect($tui->getById('tree'));
                     // Header is relative row 0, a.php (selected) is row 1; hover b.php at row 2.
@@ -1981,7 +2024,7 @@ final class IdeEdgeCasesTest extends TestCase
             $project,
             null, // start with no file
             [
-                200 => function ($tui): void {
+                200 => static function ($tui): void {
                     $tui->handleInput("\x1b[<0;9;1M"); // open the Edit menu (title cols 7-12)
                 },
                 280 => function ($tui): void {
@@ -1993,7 +2036,7 @@ final class IdeEdgeCasesTest extends TestCase
                     $this->assertStringNotContainsString("\x1b[48;5;31m", $undo, 'disabled item not highlighted');
                     $menu->close();
                 },
-                360 => function ($tui) use ($project): void {
+                360 => static function ($tui) use ($project): void {
                     // Open a file so the document actions re-enable, then reopen Edit.
                     $tui->getById('editor')->openFile($project->path('a.php'), "<?php\necho 1;\n");
                     $tui->handleInput("\x1b[<0;9;1M");
@@ -2172,11 +2215,11 @@ final class IdeEdgeCasesTest extends TestCase
             $project,
             $project->path('demo.php'),
             [
-                300 => function ($tui, $terminal, $ide) use ($assertWidths): void {
+                300 => static function ($tui, $terminal, $ide) use ($assertWidths): void {
                     $assertWidths($tui, $ide); // editor view
                     new \ReflectionProperty($ide, 'commands')->getValue($ide)->run('ide_settings');
                 },
-                500 => function ($tui, $terminal, $ide) use ($assertWidths): void {
+                500 => static function ($tui, $terminal, $ide) use ($assertWidths): void {
                     $assertWidths($tui, $ide); // settings view
                 },
             ],
@@ -2277,7 +2320,7 @@ final class IdeEdgeCasesTest extends TestCase
 
     public function testCompletionWithNullResultIsIgnored(): void
     {
-        $tall = "<?php\n".str_repeat("// filler\n", 110);
+        $tall = "<?php\n".str_repeat("// filler\n", times: 110);
         $project = new TempProject([
             '.porta.json' => $this->mockLspConfig(),
             'src/Tall.php' => $tall,
@@ -2418,7 +2461,7 @@ final class IdeEdgeCasesTest extends TestCase
         $project = new TempProject([
             '.porta.json' => $this->mockLspConfig(),
             'src/Target.php' => "<?php\n\n// line 2\nclass Target\n{\n}\n",
-            'src/Demo.php' => "<?php\n\nclass Demo\n{\n    public function greet(): string\n    {\n        return 'x';\n    }\n}\n".str_repeat("//\n", 100),
+            'src/Demo.php' => "<?php\n\nclass Demo\n{\n    public function greet(): string\n    {\n        return 'x';\n    }\n}\n".str_repeat("//\n", times: 100),
         ]);
 
         $terminal = $this->runIde(
@@ -2453,7 +2496,7 @@ final class IdeEdgeCasesTest extends TestCase
     {
         $project = new TempProject([
             '.porta.json' => $this->mockLspConfig(),
-            'src/Big.php' => "<?php\n".str_repeat("noop();\n", 120),
+            'src/Big.php' => "<?php\n".str_repeat("noop();\n", times: 120),
         ]);
 
         $terminal = $this->runIde(
@@ -2511,7 +2554,7 @@ final class IdeEdgeCasesTest extends TestCase
     {
         $project = new TempProject([
             '.porta.json' => $this->mockLspConfig(),
-            'src/Big.php' => "<?php\n".str_repeat("noop();\n", 120),
+            'src/Big.php' => "<?php\n".str_repeat("noop();\n", times: 120),
         ]);
 
         $terminal = $this->runIde(
@@ -2581,7 +2624,7 @@ final class IdeEdgeCasesTest extends TestCase
                         $tui->handleInput($ch);
                     }
                 },
-                700 => function ($tui): void {
+                700 => static function ($tui): void {
                     $tui->tick();
                     $tui->handleInput("\t"); // modal: query → replace
                     foreach (str_split('bar') as $ch) {
@@ -2615,7 +2658,7 @@ final class IdeEdgeCasesTest extends TestCase
                         $tui->handleInput($ch);
                     }
                 },
-                700 => function ($tui): void {
+                700 => static function ($tui): void {
                     $tui->tick();
                     $tui->handleInput("\t"); // modal: query → replace
                     foreach (str_split('baz') as $ch) {
@@ -2639,7 +2682,7 @@ final class IdeEdgeCasesTest extends TestCase
             $project,
             $project->path('src/A.php'),
             [
-                300 => function ($tui): void {
+                300 => static function ($tui): void {
                     $tui->handleInput("\x1b[102;6u"); // open the modal
                     $tui->handleInput("\t"); // query → replace
                     $tui->handleInput("\x1ba"); // replace all with no query/results
@@ -2655,7 +2698,7 @@ final class IdeEdgeCasesTest extends TestCase
     public function testProjectReplacePreviewExcludesSelectedMatch(): void
     {
         $project = new TempProject(['src/A.php' => "<?php\n\$foo = 1;\n\$foo = 2;\n"]); // two matching lines
-        $panelText = fn ($tui): string => $this->modalText($tui); // replace preview + exclude happen in the modal
+        $panelText = $this->modalText(...); // replace preview + exclude happen in the modal
 
         $this->runIde(
             $project,
@@ -2721,17 +2764,17 @@ final class IdeEdgeCasesTest extends TestCase
             $project,
             $project->path('src/A.php'),
             [
-                400 => static fn ($tui) => $palette($tui, 'Git: Stage'),
+                400 => static fn ($tui) => $palette($tui, label: 'Git: Stage'),
                 650 => function ($tui, $terminal) use ($palette): void {
                     $tui->tick();
                     $this->assertStringContainsString('Staged src/A.php', AnsiUtils::stripAnsiCodes($terminal->getOutput()));
-                    $palette($tui, 'Git: Commit'); // opens the message prompt
+                    $palette($tui, label: 'Git: Commit'); // opens the message prompt
                 },
                 850 => static function ($tui): void {
                     $tui->handleInput("\r"); // empty message -> no-op, prompt closes
                 },
                 1000 => static function ($tui) use ($palette): void {
-                    $palette($tui, 'Git: Commit');
+                    $palette($tui, label: 'Git: Commit');
                 },
                 1150 => static function ($tui): void {
                     foreach (str_split('my commit') as $ch) {
@@ -2743,12 +2786,12 @@ final class IdeEdgeCasesTest extends TestCase
                     $tui->tick();
                     $this->assertStringContainsString('Committed: my commit', AnsiUtils::stripAnsiCodes($terminal->getOutput()));
                     $tui->getById('editor')->getDocument()->setCursor(1, 0);
-                    $palette($tui, 'Git: Blame');
+                    $palette($tui, label: 'Git: Blame');
                 },
                 1750 => function ($tui, $terminal) use ($palette): void {
                     $tui->tick();
                     $this->assertStringContainsString('tester', AnsiUtils::stripAnsiCodes($terminal->getOutput()), 'blame flashes the author');
-                    $palette($tui, 'Git: Undo');
+                    $palette($tui, label: 'Git: Undo');
                 },
                 2100 => function ($tui, $terminal) use ($project): void {
                     $tui->tick();
@@ -2817,16 +2860,16 @@ final class IdeEdgeCasesTest extends TestCase
             $project,
             $project->path('src/A.php'),
             [
-                400 => static fn ($tui) => $palette($tui, 'Git: Stage'),
-                550 => static fn ($tui) => $palette($tui, 'Git: Commit'),
-                700 => static fn ($tui) => $palette($tui, 'Git: Blame'),
-                850 => static fn ($tui) => $palette($tui, 'Git: Undo'),
-                925 => static fn ($tui) => $palette($tui, 'Git: Branches'),
-                1000 => static fn ($tui) => $palette($tui, 'Git: Stash Pop'),
-                1075 => static fn ($tui) => $palette($tui, 'Git: Stashes'),
-                1150 => static fn ($tui) => $palette($tui, 'Git: File History'),
+                400 => static fn ($tui) => $palette($tui, label: 'Git: Stage'),
+                550 => static fn ($tui) => $palette($tui, label: 'Git: Commit'),
+                700 => static fn ($tui) => $palette($tui, label: 'Git: Blame'),
+                850 => static fn ($tui) => $palette($tui, label: 'Git: Undo'),
+                925 => static fn ($tui) => $palette($tui, label: 'Git: Branches'),
+                1000 => static fn ($tui) => $palette($tui, label: 'Git: Stash Pop'),
+                1075 => static fn ($tui) => $palette($tui, label: 'Git: Stashes'),
+                1150 => static fn ($tui) => $palette($tui, label: 'Git: File History'),
                 1225 => static function ($tui) use ($palette): void {
-                    $palette($tui, 'Git: Stash');
+                    $palette($tui, label: 'Git: Stash');
                 },
                 1300 => function ($tui, $terminal): void {
                     $tui->tick();
@@ -2860,7 +2903,7 @@ final class IdeEdgeCasesTest extends TestCase
             $project,
             $project->path('src/A.php'),
             [
-                300 => static fn ($tui) => $palette($tui, 'Git: Branches'),
+                300 => static fn ($tui) => $palette($tui, label: 'Git: Branches'),
                 700 => function ($tui, $terminal): void {
                     $tui->tick();
                     $screen = AnsiUtils::stripAnsiCodes($terminal->getOutput());
@@ -2885,7 +2928,7 @@ final class IdeEdgeCasesTest extends TestCase
 
                     // Round 2: create a branch through the sentinel row.
                     $terminal->clearOutput();
-                    $palette($tui, 'Git: Branches');
+                    $palette($tui, label: 'Git: Branches');
                 },
                 1600 => function ($tui) use ($d, $palette): void {
                     $tui->tick();
@@ -2893,9 +2936,9 @@ final class IdeEdgeCasesTest extends TestCase
                     $tui->handleInput("\r"); // an empty name is a no-op
                     exec("git -C {$d} branch --list", $branches);
                     $this->assertCount(2, $branches, 'no branch was created from the empty prompt');
-                    $palette($tui, 'Git: Branches');
+                    $palette($tui, label: 'Git: Branches');
                 },
-                2000 => function ($tui): void {
+                2000 => static function ($tui): void {
                     $tui->tick();
                     $tui->handleInput("\r"); // create sentinel again
                     foreach (str_split('fresh') as $ch) {
@@ -2911,13 +2954,13 @@ final class IdeEdgeCasesTest extends TestCase
 
                     // Round 3: check out the remote branch as a tracking branch.
                     $terminal->clearOutput();
-                    $palette($tui, 'Git: Branches');
+                    $palette($tui, label: 'Git: Branches');
                 },
-                2900 => function ($tui): void {
+                2900 => static function ($tui): void {
                     $tui->tick();
                     // Rows: 2 sentinels + 3 locals (feature/fresh/main-or-master,
                     // fresh current) + the remote row last — five steps down.
-                    foreach (range(1, 5) as $_) {
+                    foreach (range(1, end: 5) as $_) {
                         $tui->handleInput("\x1b[B");
                     }
                     $tui->handleInput("\r");
@@ -2930,9 +2973,9 @@ final class IdeEdgeCasesTest extends TestCase
 
                     // Round 4: delete "feature" through the delete sentinel.
                     $terminal->clearOutput();
-                    $palette($tui, 'Git: Branches');
+                    $palette($tui, label: 'Git: Branches');
                 },
-                3700 => function ($tui): void {
+                3700 => static function ($tui): void {
                     $tui->tick();
                     $tui->handleInput("\x1b[B"); // the "− Delete branch…" row
                     $tui->handleInput("\r");
@@ -2948,14 +2991,14 @@ final class IdeEdgeCasesTest extends TestCase
                     $this->assertCount(1, $kept, 'cancelling the confirm deletes nothing');
 
                     // Round 5: same flow, but confirm the delete this time.
-                    $palette($tui, 'Git: Branches');
+                    $palette($tui, label: 'Git: Branches');
                 },
-                4500 => function ($tui): void {
+                4500 => static function ($tui): void {
                     $tui->tick();
                     $tui->handleInput("\x1b[B"); // the "− Delete branch…" row
                     $tui->handleInput("\r");
                 },
-                4900 => function ($tui): void {
+                4900 => static function ($tui): void {
                     $tui->tick();
                     $tui->handleInput("\r"); // "feature" again
                     $tui->tick();
@@ -2990,7 +3033,7 @@ final class IdeEdgeCasesTest extends TestCase
                     }
                     $tui->handleInput("\r");
                 },
-                700 => function ($tui): void {
+                700 => static function ($tui): void {
                     $tui->tick();
                     $tui->handleInput("\x1b[B"); // the "− Delete branch…" row
                     $tui->handleInput("\r");
@@ -3005,7 +3048,7 @@ final class IdeEdgeCasesTest extends TestCase
 
     public function testQuickFixesEditCommandAndEmptyPaths(): void
     {
-        $tall = "<?php\n\nclass QuickFixMe {}\n".str_repeat("// filler\n", 110);
+        $tall = "<?php\n\nclass QuickFixMe {}\n".str_repeat("// filler\n", times: 110);
         $project = new TempProject([
             '.porta.json' => $this->mockLspConfig(),
             'src/Q.php' => $tall,
@@ -3315,7 +3358,7 @@ final class IdeEdgeCasesTest extends TestCase
             $project,
             $project->path('A.php'),
             [
-                200 => function ($tui): void {
+                200 => static function ($tui): void {
                     $tui->tick();
                     $editor = $tui->getById('editor');
                     $editor->getDocument()->setCursor(0, 0);
@@ -3357,7 +3400,7 @@ final class IdeEdgeCasesTest extends TestCase
             $project,
             $project->path('A.php'),
             [
-                200 => function ($tui): void {
+                200 => static function ($tui): void {
                     $tui->tick();
                     $editor = $tui->getById('editor');
                     $editor->getDocument()->setCursor(0, 0);
@@ -3415,7 +3458,7 @@ final class IdeEdgeCasesTest extends TestCase
             $project,
             $project->path('A.php'),
             [
-                200 => function ($tui): void {
+                200 => static function ($tui): void {
                     $tui->tick();
                     // Closed bar: hover the File title (cols 1-6, SGR move code 35).
                     $tui->handleInput("\x1b[<35;3;1M");
@@ -3545,10 +3588,10 @@ final class IdeEdgeCasesTest extends TestCase
         $tui->requestRender(force: true); // reset the writer -> next frame is full
         $tui->processRender();
         $raw = $terminal->consumeOutput();
-        $body = preg_replace('/^.*\x1b\[H/s', '', $raw); // strip up to cursor-home
+        $body = preg_replace('/^.*\x1b\[H/s', replacement: '', subject: $raw); // strip up to cursor-home
 
         return array_map(
-            static fn (string $row): string => AnsiUtils::stripAnsiCodes($row),
+            AnsiUtils::stripAnsiCodes(...),
             explode("\r\n", (string) $body),
         );
     }
@@ -3575,7 +3618,7 @@ final class IdeEdgeCasesTest extends TestCase
         // Root-level files so the tree lists them directly (dirs sort first,
         // so keeping it flat makes row math simple).
         // Line 3 is long so the horizontal-wheel step has room to scroll.
-        $long = "<?php\n".implode("\n", array_map(static fn (int $i) => "// line {$i}".(3 === $i ? str_repeat(' pad', 30) : ''), range(1, 60)))."\n";
+        $long = "<?php\n".implode("\n", array_map(static fn (int $i) => "// line {$i}".(3 === $i ? str_repeat(' pad', times: 30) : ''), range(1, end: 60)))."\n";
         $project = new TempProject(['A.php' => $long, 'B.php' => "<?php\n// this is B\n"]);
 
         $terminal = $this->runIde(
@@ -3583,7 +3626,7 @@ final class IdeEdgeCasesTest extends TestCase
             $project->path('A.php'),
             [
                 // Editor click: place the cursor on a lower line.
-                300 => function ($tui): void {
+                300 => static function ($tui): void {
                     $tui->tick(); // ensure a frame rendered so widget rects exist
                     // Menu bar owns row 0, tab bar row 1, so the editor content
                     // starts at screen row 2; a click at screen row 4 lands on
@@ -3681,7 +3724,7 @@ final class IdeEdgeCasesTest extends TestCase
             $project,
             $project->path('A.php'),
             [
-                300 => function ($tui): void {
+                300 => static function ($tui): void {
                     $tui->tick();
                     $tui->handleInput("\x1b[<0;38;3M"); // press at line 0, col 0
                     $tui->handleInput("\x1b[<32;43;3M"); // drag to col 5
@@ -3705,7 +3748,7 @@ final class IdeEdgeCasesTest extends TestCase
             $project,
             $project->path('A.php'),
             [
-                300 => function ($tui): void {
+                300 => static function ($tui): void {
                     $tui->tick();
                     $tui->handleInput("\x1b[<0;39;3M"); // line 0, col 1
                     $tui->handleInput("\x1b[<32;39;5M"); // drag down to line 2, col 1
@@ -3729,7 +3772,7 @@ final class IdeEdgeCasesTest extends TestCase
             $project,
             $project->path('A.php'),
             [
-                300 => function ($tui): void {
+                300 => static function ($tui): void {
                     $tui->tick();
                     $tui->handleInput("\x1b[<0;40;3M"); // press inside "hello"
                     $tui->handleInput("\x1b[<0;40;3M"); // second press same cell -> word
@@ -3752,7 +3795,7 @@ final class IdeEdgeCasesTest extends TestCase
             $project,
             $project->path('A.php'),
             [
-                300 => function ($tui): void {
+                300 => static function ($tui): void {
                     $tui->tick();
                     $tui->handleInput("\x1b[<0;42;3M");
                     $tui->handleInput("\x1b[<0;42;3M");
@@ -3776,7 +3819,7 @@ final class IdeEdgeCasesTest extends TestCase
             $project,
             $project->path('A.php'),
             [
-                300 => function ($tui): void {
+                300 => static function ($tui): void {
                     $tui->tick();
                     $tui->handleInput("\x1b[<0;38;3M"); // plain click -> caret at col 0
                     $tui->handleInput("\x1b[<4;43;3M"); // Shift+click at col 5 -> extend
@@ -3957,7 +4000,7 @@ final class IdeEdgeCasesTest extends TestCase
 
     public function testPeekWithNoDefinition(): void
     {
-        $tall = "<?php\n".str_repeat("// filler\n", 110);
+        $tall = "<?php\n".str_repeat("// filler\n", times: 110);
         $project = new TempProject([
             '.porta.json' => $this->mockLspConfig(),
             'src/T.php' => $tall,
@@ -4052,7 +4095,7 @@ final class IdeEdgeCasesTest extends TestCase
                     $this->assertTrue($tui->getById('editor')->hasRelativeLineNumbers());
                     $this->assertStringContainsString('Relative line numbers on', AnsiUtils::stripAnsiCodes($terminal->getOutput()));
                     // Persisted into .porta.json.
-                    $config = json_decode((string) file_get_contents($project->path('.porta.json')), true);
+                    $config = json_decode((string) file_get_contents($project->path('.porta.json')), associative: true);
                     $this->assertTrue($config['settings']['relativeLineNumbers']);
                 },
             ],
@@ -4219,8 +4262,8 @@ final class IdeEdgeCasesTest extends TestCase
                     $renderer = new \ReflectionProperty($ide, 'renderer')->getValue($ide);
                     $rect = $renderer->getWidgetRect($tui->getById('terminal'));
                     $this->assertNotNull($rect, 'terminal pane is laid out');
-                    $row = $rect->row + intdiv($rect->rows, 2);
-                    $col = $rect->col + intdiv($rect->columns, 2);
+                    $row = $rect->row + intdiv($rect->rows, num2: 2);
+                    $col = $rect->col + intdiv($rect->columns, num2: 2);
                     $tui->handleInput(\sprintf("\x1b[<0;%d;%dM", $col + 1, $row + 1)); // SGR is 1-based
                     $this->assertSame('terminal', $tui->getFocus()?->getId(), 'clicking the terminal pane refocused it');
                 },
@@ -4240,7 +4283,7 @@ final class IdeEdgeCasesTest extends TestCase
             $project,
             $project->path('A.php'),
             [
-                300 => function ($tui): void {
+                300 => static function ($tui): void {
                     $tui->handleInput("\x1b[96;5u"); // open the terminal
                     foreach (str_split("seq 30\n") as $ch) {
                         $tui->handleInput($ch); // produce more than a screenful of output
@@ -4250,8 +4293,8 @@ final class IdeEdgeCasesTest extends TestCase
                     $tui->tick();
                     $renderer = new \ReflectionProperty($ide, 'renderer')->getValue($ide);
                     $rect = $renderer->getWidgetRect($tui->getById('terminal'));
-                    $row = $rect->row + intdiv($rect->rows, 2);
-                    $col = $rect->col + intdiv($rect->columns, 2);
+                    $row = $rect->row + intdiv($rect->rows, num2: 2);
+                    $col = $rect->col + intdiv($rect->columns, num2: 2);
                     // Wheel up (SGR code 64) over the terminal pane → scroll into history.
                     $tui->handleInput(\sprintf("\x1b[<64;%d;%dM", $col + 1, $row + 1));
                     $tui->tick();
@@ -4506,10 +4549,10 @@ final class IdeEdgeCasesTest extends TestCase
 
         $navigation = $ide->getNavigation();
         $stack = new \ReflectionProperty($navigation, 'jumpStack');
-        $stack->setValue($navigation, array_fill(0, 50, ['path' => $project->path('src/Demo.php'), 'line' => 0, 'col' => 0]));
+        $stack->setValue($navigation, array_fill(0, count: 50, value: ['path' => $project->path('src/Demo.php'), 'line' => 0, 'col' => 0]));
 
         EventLoop::delay(0.4, static fn () => $tui->handleInput("\x1b[24~")); // F12
-        EventLoop::delay(0.8, static fn () => $tui->stop());
+        EventLoop::delay(0.8, $tui->stop(...));
         $ide->run();
 
         $this->assertCount(50, $stack->getValue($navigation), 'oldest entry evicted at the cap');
@@ -4567,7 +4610,7 @@ final class IdeEdgeCasesTest extends TestCase
             $project,
             $project->path('a.php'),
             [
-                300 => function ($tui): void {
+                300 => static function ($tui): void {
                     $tui->handleInput("\x14");
                     $tui->handleInput("\x1b[B");
                     $tui->handleInput("\r"); // open b.php
@@ -4597,13 +4640,13 @@ final class IdeEdgeCasesTest extends TestCase
             [
                 200 => static function ($tui) use ($project): void {
                     $tui->handleInput('x'); // dirty it
-                    chmod($project->path('dir/locked.php'), 0444);
-                    chmod($project->path('dir'), 0555);
+                    chmod($project->path('dir/locked.php'), permissions: 0o444);
+                    chmod($project->path('dir'), permissions: 0o555);
                     $tui->handleInput("\x13"); // ctrl+s fails
                 },
                 400 => static function ($tui) use ($project): void {
-                    chmod($project->path('dir'), 0755);
-                    chmod($project->path('dir/locked.php'), 0644);
+                    chmod($project->path('dir'), permissions: 0o755);
+                    chmod($project->path('dir/locked.php'), permissions: 0o644);
                     $tui->handleInput("\x1a"); // undo -> clean
                     $tui->handleInput("\x1bw"); // close buffer
                     $tui->handleInput("\x13"); // save with no file: no-op
@@ -4654,7 +4697,7 @@ final class IdeEdgeCasesTest extends TestCase
         // is restored to its pre-launch state (no leftover IDE frame).
         $this->assertStringContainsString("\x1b[?1049h", $out, 'entered the alternate screen');
         $this->assertStringContainsString("\x1b[?1049l", $out, 'left the alternate screen on quit');
-        $this->assertGreaterThan(strpos($out, "\x1b[?1049h"), strrpos($out, "\x1b[?1049l"), 'leave comes after enter');
+        $this->assertGreaterThan(strpos($out, needle: "\x1b[?1049h"), strrpos($out, needle: "\x1b[?1049l"), 'leave comes after enter');
         $this->assertStringContainsString("\x1b[?1000l", $out, 'mouse tracking disabled on quit');
     }
 
@@ -4691,7 +4734,7 @@ final class IdeEdgeCasesTest extends TestCase
 
     public function testLspNegativePathsWithMockServer(): void
     {
-        $tall = "<?php\n".str_repeat("// filler\n", 110);
+        $tall = "<?php\n".str_repeat("// filler\n", times: 110);
         $project = new TempProject([
             '.porta.json' => $this->mockLspConfig(),
             'src/Tall.php' => $tall,
@@ -4751,7 +4794,7 @@ final class IdeEdgeCasesTest extends TestCase
     {
         foreach (['open', 'xdg-open'] as $name) {
             $shim = $project->write('shim-bin/'.$name, "#!/bin/sh\nprintf '%s\\n' \"\$@\" >> ".escapeshellarg($captureFile)."\n");
-            chmod($shim, 0o755);
+            chmod($shim, permissions: 0o755);
         }
         putenv('PATH='.$project->path('shim-bin'));
     }
@@ -4786,7 +4829,7 @@ final class IdeEdgeCasesTest extends TestCase
         $this->assertStringContainsString('Opened https://www.php.net', $screen);
         $urls = (string) file_get_contents($captureFile);
         $this->assertStringContainsString('https://www.php.net/manual/en/function.strlen.php', $urls);
-        $this->assertSame(2, substr_count($urls, "\n"), 'both F12 and ctrl+click opened the docs');
+        $this->assertSame(2, substr_count($urls, needle: "\n"), 'both F12 and ctrl+click opened the docs');
     }
 
     public function testGotoDeclarationOnJsBuiltinOpensMdn(): void
@@ -4808,7 +4851,7 @@ final class IdeEdgeCasesTest extends TestCase
                     $tui->getById('editor')->getDocument()->setCursor(0, 6); // 'parse': not curated, no LSP
                     $tui->handleInput("\x1b[24~");
                     // The opener shim is an independent OS process — await its write.
-                    $this->await(static fn (): bool => str_contains((string) @file_get_contents($captureFile), 'mozilla.org'));
+                    $this->await(static fn (): bool => str_contains((string) (is_file($captureFile) ? file_get_contents($captureFile) : false), 'mozilla.org'));
                 },
             ],
         );
@@ -4956,7 +4999,7 @@ final class IdeEdgeCasesTest extends TestCase
         $dir = escapeshellarg($project->dir);
         exec("git -C {$dir} init -q && git -C {$dir} config user.email t@t && git -C {$dir} config user.name t && git -C {$dir} add -A && git -C {$dir} commit -qm init");
         $project->write('a.txt', "one!\ntwo\nthree changed\n");
-        $project->write('b.txt', 'new '.str_repeat('long-tail ', 8)."\n"); // long enough to h-scroll
+        $project->write('b.txt', 'new '.str_repeat('long-tail ', times: 8)."\n"); // long enough to h-scroll
 
         $terminal = $this->runIde(
             $project,
@@ -4965,7 +5008,7 @@ final class IdeEdgeCasesTest extends TestCase
                 300 => static function ($tui): void {
                     $tui->handleInput("\x1b\x04"); // open the git view
                 },
-                600 => function ($tui): void {
+                600 => static function ($tui): void {
                     $tui->tick();
                     // F10 opens the app menu OVER the git view now.
                     $tui->handleInput("\x1b[21~");
@@ -5059,7 +5102,7 @@ final class IdeEdgeCasesTest extends TestCase
 
         $screen = AnsiUtils::stripAnsiCodes($terminal->getOutput());
         $this->assertStringContainsString('b.txt', $screen);
-        $layout = json_decode((string) file_get_contents($project->path('.porta/layout.json')), true);
+        $layout = json_decode((string) file_get_contents($project->path('.porta/layout.json')), associative: true);
         $this->assertTrue($layout['gitDiffSplit'], 'the split preference persisted');
         $this->assertTrue($layout['gitDiffHideWhitespace'], 'the whitespace preference persisted');
     }
@@ -5091,7 +5134,7 @@ final class IdeEdgeCasesTest extends TestCase
                     // Hover the nav sidebar (a tint).
                     $tui->handleInput("\x1b[<35;5;3M");
                 },
-                700 => function ($tui): void {
+                700 => static function ($tui): void {
                     $tui->tick();
                     // Click the 'Keybindings' entry in the nav (screen row 3).
                     $tui->handleInput("\x1b[<0;5;3M");
@@ -5107,7 +5150,7 @@ final class IdeEdgeCasesTest extends TestCase
                     $tui->handleInput("\x1b[<0;40;5M"); // click a list row
                     $tui->handleInput("\x1b[<0;40;5m");
                 },
-                1100 => function ($tui): void {
+                1100 => static function ($tui): void {
                     $tui->tick();
                     // Select PHP in the nav (screen row 6, after Plugins) → the content shows its indent rows.
                     $tui->handleInput("\x1b[<0;5;6M");
@@ -5161,7 +5204,7 @@ final class IdeEdgeCasesTest extends TestCase
                     $this->assertStringContainsString("\x1b[38;5;176m", $terminal->getOutput(), 'dark syntax at boot');
                     $terminal->clearOutput(); // capture only the frames rendered after the switch
                 },
-                500 => function ($tui, $terminal, $ide): void {
+                500 => static function ($tui, $terminal, $ide): void {
                     // Change the theme setting live, as the settings form would.
                     new \ReflectionProperty($ide, 'settings')
                         ->getValue($ide)
@@ -5225,8 +5268,8 @@ final class IdeEdgeCasesTest extends TestCase
                     $this->assertSame(1, $tabs->rows, 'top: a one-row strip');
                     $this->assertLessThan($editor->row, $tabs->row, 'top: the strip sits above the editor');
                 },
-                400 => function ($tui, $terminal, $ide) use ($changePosition): void {
-                    $changePosition($ide, 'bottom');
+                400 => static function ($tui, $terminal, $ide) use ($changePosition): void {
+                    $changePosition($ide, position: 'bottom');
                     $tui->tick();
                 },
                 600 => function ($tui, $terminal, $ide) use ($rects, $changePosition): void {
@@ -5234,7 +5277,7 @@ final class IdeEdgeCasesTest extends TestCase
                     [$tabs, $editor] = $rects($tui, $ide);
                     $this->assertSame(1, $tabs->rows, 'bottom: still a one-row strip');
                     $this->assertGreaterThan($editor->row + $editor->rows - 1, $tabs->row, 'bottom: the strip sits below the editor');
-                    $changePosition($ide, 'left');
+                    $changePosition($ide, position: 'left');
                     $tui->tick();
                 },
                 800 => function ($tui, $terminal, $ide) use ($rects, $changePosition): void {
@@ -5243,7 +5286,7 @@ final class IdeEdgeCasesTest extends TestCase
                     $this->assertSame(TabBarWidget::VERTICAL_WIDTH, $tabs->columns, 'left: a fixed-width vertical list');
                     $this->assertGreaterThan(1, $tabs->rows, 'left: the list fills the pane height');
                     $this->assertLessThan($editor->col, $tabs->col, 'left: the list sits left of the editor');
-                    $changePosition($ide, 'right');
+                    $changePosition($ide, position: 'right');
                     $tui->tick();
                 },
                 1000 => function ($tui, $terminal, $ide) use ($rects): void {
@@ -5393,7 +5436,9 @@ final class IdeEdgeCasesTest extends TestCase
         putenv('PATH=/nonexistent');
         $project = new TempProject(['a.php' => "<?php\n"]);
         // A seeded percent must be applied at startup (25% of 160 cols = 40).
-        @mkdir($project->path('.porta'), 0777, true);
+        if (!is_dir($project->path('.porta'))) {
+            mkdir($project->path('.porta'), permissions: 0o777, recursive: true);
+        }
         file_put_contents($project->path('.porta/layout.json'), json_encode(['settingsSidebarWidthPercent' => 25]));
 
         $this->runIde(
@@ -5413,7 +5458,7 @@ final class IdeEdgeCasesTest extends TestCase
                 },
                 900 => function ($tui) use ($project): void {
                     $this->assertSame(30, $tui->getById('settings-nav')->width(), 'the drag resized the sidebar');
-                    $layout = json_decode((string) file_get_contents($project->path('.porta/layout.json')), true);
+                    $layout = json_decode((string) file_get_contents($project->path('.porta/layout.json')), associative: true);
                     $this->assertSame(19, $layout['settingsSidebarWidthPercent'], 'saved as a percentage (round(30/160))');
                 },
             ],
@@ -5571,7 +5616,7 @@ final class IdeEdgeCasesTest extends TestCase
 
     public function testGotoDeclarationOnDeclarationShowsUsages(): void
     {
-        $tall = "<?php\n".str_repeat("// filler\n", 110);
+        $tall = "<?php\n".str_repeat("// filler\n", times: 110);
         $project = new TempProject([
             '.porta.json' => $this->mockLspConfig(),
             'src/Tall.php' => $tall,
@@ -5735,7 +5780,7 @@ final class IdeEdgeCasesTest extends TestCase
             $project,
             $project->path('A.php'),
             [
-                200 => function ($tui): void {
+                200 => static function ($tui): void {
                     $tui->tick();
                     $tui->handleInput("\x1b[<0;38;3M"); // press line 0 col 0
                     $tui->handleInput("\x1b[<32;43;3M"); // drag to col 5
@@ -5767,7 +5812,7 @@ final class IdeEdgeCasesTest extends TestCase
             $project,
             $project->path('A.php'),
             [
-                200 => function ($tui): void {
+                200 => static function ($tui): void {
                     $tui->tick();
                     $tui->getById('editor')->getDocument()->setCursor(0, 0);
                     $tui->handleInput("\x1b[<2;40;4M"); // right-click on line 1, no selection
@@ -5797,7 +5842,7 @@ final class IdeEdgeCasesTest extends TestCase
             $project,
             $project->path('A.php'),
             [
-                200 => function ($tui): void {
+                200 => static function ($tui): void {
                     $tui->tick();
                     $tui->handleInput("\x1b[21~"); // F10 opens the application menu
                 },
@@ -5824,7 +5869,7 @@ final class IdeEdgeCasesTest extends TestCase
             $project,
             $project->path('A.php'),
             [
-                200 => function ($tui): void {
+                200 => static function ($tui): void {
                     $tui->tick();
                     $tui->handleInput("\x1b[<2;3;2M"); // tree header row → nodeAt() null
                 },
@@ -5850,11 +5895,11 @@ final class IdeEdgeCasesTest extends TestCase
             $project,
             $project->path('A.php'),
             [
-                150 => function ($tui): void {
+                150 => static function ($tui): void {
                     $tui->tick();
                     $tui->handleInput("\x1b[<0;3;4M"); // open B (tree row 2)
                 },
-                300 => function ($tui): void {
+                300 => static function ($tui): void {
                     $tui->tick();
                     $tui->handleInput("\x1b[<2;34;2M"); // right-click the first tab (A)
                 },
@@ -5880,15 +5925,15 @@ final class IdeEdgeCasesTest extends TestCase
             $project,
             $project->path('A.php'),
             [
-                120 => function ($tui): void {
+                120 => static function ($tui): void {
                     $tui->tick();
                     $tui->handleInput("\x1b[<0;3;4M"); // open B (row 2)
                 },
-                200 => function ($tui): void {
+                200 => static function ($tui): void {
                     $tui->tick();
                     $tui->handleInput("\x1b[<0;3;5M"); // open C (row 3)
                 },
-                300 => function ($tui): void {
+                300 => static function ($tui): void {
                     // Make C (the active buffer) dirty, then Close Others from A's tab.
                     $editor = $tui->getById('editor');
                     $editor->getDocument()->setCursor(0, 0);
@@ -5909,7 +5954,7 @@ final class IdeEdgeCasesTest extends TestCase
                     $editor->handleInput('y');
                     $tui->handleInput("\x1b[<2;34;2M"); // right-click a tab
                 },
-                560 => function ($tui): void {
+                560 => static function ($tui): void {
                     $tui->handleInput("\x1b[B"); // down → Close Others
                     $tui->handleInput("\x1b[B"); // down → Close All
                     $tui->handleInput("\r");
@@ -5931,15 +5976,15 @@ final class IdeEdgeCasesTest extends TestCase
             $project,
             $project->path('A.php'),
             [
-                150 => function ($tui): void {
+                150 => static function ($tui): void {
                     $tui->tick();
                     $tui->handleInput("\x1b[<0;3;4M"); // open B (row 2)
                 },
-                300 => function ($tui): void {
+                300 => static function ($tui): void {
                     $tui->tick();
                     $tui->handleInput("\x1b[<2;34;2M"); // right-click a tab
                 },
-                400 => function ($tui): void {
+                400 => static function ($tui): void {
                     $tui->handleInput("\x1b[B"); // Close Others
                     $tui->handleInput("\x1b[B"); // Close All
                     $tui->handleInput("\r");
@@ -5962,7 +6007,7 @@ final class IdeEdgeCasesTest extends TestCase
             $project,
             $project->path('src/keep.php'),
             [
-                200 => function ($tui): void {
+                200 => static function ($tui): void {
                     $tui->tick();
                     $tui->handleInput("\x1b[<2;3;3M"); // right-click src/ (a directory)
                 },
@@ -5974,10 +6019,10 @@ final class IdeEdgeCasesTest extends TestCase
                     $this->typeString($tui, 'new.php');
                     $tui->handleInput("\r"); // submit
                 },
-                460 => function ($tui): void {
+                460 => static function ($tui): void {
                     $tui->handleInput("\x1b[<2;3;3M"); // right-click src/ again
                 },
-                540 => function ($tui): void {
+                540 => static function ($tui): void {
                     $tui->handleInput("\x1b[B"); // down → New Folder
                     $tui->handleInput("\r");
                 },
@@ -6001,24 +6046,24 @@ final class IdeEdgeCasesTest extends TestCase
             $project,
             $project->path('src/keep.php'),
             [
-                200 => function ($tui): void {
+                200 => static function ($tui): void {
                     $tui->tick();
                     $tui->handleInput("\x1b[<2;3;3M"); // right-click src/
                 },
-                300 => function ($tui): void {
+                300 => static function ($tui): void {
                     $tui->handleInput("\r"); // New File
                 },
-                360 => function ($tui): void {
+                360 => static function ($tui): void {
                     $tui->handleInput("\r"); // submit an empty name → no-op
                 },
-                460 => function ($tui): void {
+                460 => static function ($tui): void {
                     $tui->handleInput("\x1b[<2;3;3M"); // right-click src/
                 },
-                540 => function ($tui): void {
+                540 => static function ($tui): void {
                     $tui->handleInput("\x1b[B"); // New Folder
                     $tui->handleInput("\r");
                 },
-                600 => function ($tui): void {
+                600 => static function ($tui): void {
                     $tui->handleInput('   '); // whitespace-only name → no-op
                     $tui->handleInput("\r");
                 },
@@ -6037,18 +6082,18 @@ final class IdeEdgeCasesTest extends TestCase
             $project,
             $project->path('A.php'),
             [
-                150 => function ($tui): void {
+                150 => static function ($tui): void {
                     $tui->tick();
                     $tui->handleInput("\x1b[<2;3;3M"); // right-click A.php
                 },
-                230 => function ($tui): void {
+                230 => static function ($tui): void {
                     $tui->handleInput("\x1b[B"); // New Folder
                     $tui->handleInput("\x1b[B"); // Copy Path
                     $tui->handleInput("\x1b[B"); // Copy Relative Path
                     $tui->handleInput("\x1b[B"); // Rename…
                     $tui->handleInput("\r");
                 },
-                300 => function ($tui): void {
+                300 => static function ($tui): void {
                     // The prompt is prefilled with the current name; submitting it
                     // unchanged is a no-op.
                     $tui->handleInput("\r");
@@ -6057,14 +6102,14 @@ final class IdeEdgeCasesTest extends TestCase
                     $this->assertFileExists($project->path('A.php'), 'renaming to the same name changed nothing');
                     $tui->handleInput("\x1b[<2;3;3M"); // right-click A.php again
                 },
-                460 => function ($tui): void {
-                    foreach (range(1, 4) as $_) {
+                460 => static function ($tui): void {
+                    foreach (range(1, end: 4) as $_) {
                         $tui->handleInput("\x1b[B"); // → Rename…
                     }
                     $tui->handleInput("\r");
                 },
                 540 => function ($tui): void {
-                    foreach (range(1, 10) as $_) {
+                    foreach (range(1, end: 10) as $_) {
                         $tui->handleInput("\x7f"); // backspace out the prefill
                     }
                     $this->typeString($tui, 'renamed.php');
@@ -6089,7 +6134,7 @@ final class IdeEdgeCasesTest extends TestCase
             $project,
             $project->path('A.php'),
             [
-                200 => function ($tui): void {
+                200 => static function ($tui): void {
                     $tui->tick();
                     // Right-click near the bottom of the editor: the panel would
                     // overflow, so it is flipped to sit above the pointer.
@@ -6114,7 +6159,7 @@ final class IdeEdgeCasesTest extends TestCase
             $project,
             $project->path('A.php'),
             [
-                200 => function ($tui): void {
+                200 => static function ($tui): void {
                     $tui->tick();
                     // Right-click near the tree's right edge: the panel spills past
                     // the tree into the editor pane, exercising the per-pane clip.
@@ -6139,11 +6184,11 @@ final class IdeEdgeCasesTest extends TestCase
             $project,
             $project->path('A.php'),
             [
-                200 => function ($tui): void {
+                200 => static function ($tui): void {
                     $tui->tick();
                     $tui->handleInput("\x1b[<2;3;3M"); // right-click A.php (row 1)
                 },
-                300 => function ($tui): void {
+                300 => static function ($tui): void {
                     // Rename is the 4th selectable item after New File/New Folder/Copy×2.
                     $tui->handleInput("\x1b[B"); // New Folder
                     $tui->handleInput("\x1b[B"); // Copy Path
@@ -6152,7 +6197,7 @@ final class IdeEdgeCasesTest extends TestCase
                     $tui->handleInput("\r");
                 },
                 380 => function ($tui): void {
-                    foreach (range(1, 10) as $_) {
+                    foreach (range(1, end: 10) as $_) {
                         $tui->handleInput("\x7f");
                     }
                     $this->typeString($tui, 'B.php'); // clashes with an existing file
@@ -6174,19 +6219,19 @@ final class IdeEdgeCasesTest extends TestCase
             $project,
             $project->path('A.php'),
             [
-                200 => function ($tui): void {
+                200 => static function ($tui): void {
                     $tui->tick();
                     $tui->handleInput("\x1b[<2;3;3M"); // right-click A.php
                 },
-                300 => function ($tui): void {
+                300 => static function ($tui): void {
                     $tui->handleInput("\x1b[B"); // New Folder
                     $tui->handleInput("\x1b[B"); // Copy Path
                     $tui->handleInput("\r");
                 },
-                400 => function ($tui): void {
+                400 => static function ($tui): void {
                     $tui->handleInput("\x1b[<2;3;3M"); // right-click A.php again
                 },
-                500 => function ($tui): void {
+                500 => static function ($tui): void {
                     $tui->handleInput("\x1b[B"); // New Folder
                     $tui->handleInput("\x1b[B"); // Copy Path
                     $tui->handleInput("\x1b[B"); // Copy Relative Path
@@ -6212,17 +6257,17 @@ final class IdeEdgeCasesTest extends TestCase
             $project,
             $project->path('A.php'),
             [
-                150 => function ($tui): void {
+                150 => static function ($tui): void {
                     $tui->tick();
                     $tui->handleInput("\x1b[<0;3;4M"); // open B (row 2) as well
                 },
-                250 => function ($tui): void {
+                250 => static function ($tui): void {
                     $tui->tick();
                     $tui->handleInput("\x1b[<2;3;3M"); // right-click A.php (row 1)
                 },
-                350 => function ($tui): void {
+                350 => static function ($tui): void {
                     // Delete is the 6th selectable item.
-                    foreach (range(1, 5) as $_) {
+                    foreach (range(1, end: 5) as $_) {
                         $tui->handleInput("\x1b[B");
                     }
                     $tui->handleInput("\r"); // Delete… → confirm prompt
@@ -6249,12 +6294,12 @@ final class IdeEdgeCasesTest extends TestCase
             $project,
             $project->path('A.php'),
             [
-                200 => function ($tui): void {
+                200 => static function ($tui): void {
                     $tui->tick();
                     $tui->handleInput("\x1b[<2;3;3M"); // right-click A.php
                 },
-                300 => function ($tui): void {
-                    foreach (range(1, 5) as $_) {
+                300 => static function ($tui): void {
+                    foreach (range(1, end: 5) as $_) {
                         $tui->handleInput("\x1b[B");
                     }
                     $tui->handleInput("\r"); // Delete…
@@ -6278,17 +6323,17 @@ final class IdeEdgeCasesTest extends TestCase
             $project,
             $project->path('A.php'),
             [
-                200 => function ($tui): void {
+                200 => static function ($tui): void {
                     $tui->tick();
                     $tui->handleInput("\x1b[<2;3;3M");
                 },
-                300 => function ($tui): void {
-                    foreach (range(1, 5) as $_) {
+                300 => static function ($tui): void {
+                    foreach (range(1, end: 5) as $_) {
                         $tui->handleInput("\x1b[B");
                     }
                     $tui->handleInput("\r"); // Delete…
                 },
-                380 => function ($tui): void {
+                380 => static function ($tui): void {
                     $tui->handleInput('n'); // decline
                     $tui->handleInput("\r");
                 },
@@ -6310,12 +6355,12 @@ final class IdeEdgeCasesTest extends TestCase
             $project,
             $project->path('A.php'),
             [
-                200 => function ($tui): void {
+                200 => static function ($tui): void {
                     $tui->tick();
                     $tui->getById('editor')->showDocument('', new \Porta\Editor\Document(''));
                     $tui->handleInput("\x1b[<2;3;3M"); // right-click A.php (row 1)
                 },
-                300 => function ($tui): void {
+                300 => static function ($tui): void {
                     // The menu anchors at the click (SGR row 2), so item i sits at
                     // SGR row 2+i. "Open" is item 9 for a file node → SGR row 11.
                     $tui->handleInput("\x1b[<0;4;12M"); // left-click "Open"
@@ -6326,7 +6371,7 @@ final class IdeEdgeCasesTest extends TestCase
                     $project->write('late.php', "<?php\n");
                     $tui->handleInput("\x1b[<2;3;3M"); // right-click A.php again
                 },
-                500 => function ($tui): void {
+                500 => static function ($tui): void {
                     // "Refresh" is the last item (10) → SGR row 12.
                     $tui->handleInput("\x1b[<0;4;13M");
                     $tui->tick();
@@ -6350,7 +6395,7 @@ final class IdeEdgeCasesTest extends TestCase
             $project,
             $project->path('A.php'),
             [
-                200 => function ($tui): void {
+                200 => static function ($tui): void {
                     $tui->tick();
                     $tui->handleInput("\x1b[<2;45;3M"); // open the editor menu
                 },
@@ -6387,7 +6432,7 @@ final class IdeEdgeCasesTest extends TestCase
             $project,
             $project->path('A.php'),
             [
-                200 => function ($tui): void {
+                200 => static function ($tui): void {
                     $tui->tick();
                     $tui->handleInput("\x1b[<0;3;4M"); // open B (tree row 2)
                 },
@@ -6416,7 +6461,7 @@ final class IdeEdgeCasesTest extends TestCase
             $project,
             $project->path('A.php'),
             [
-                150 => function ($tui): void {
+                150 => static function ($tui): void {
                     $tui->tick();
                     $tui->handleInput("\x1b[<0;3;4M"); // open B (tree row 2)
                 },
@@ -6454,11 +6499,11 @@ final class IdeEdgeCasesTest extends TestCase
             $project,
             $project->path('A.php'),
             [
-                150 => function ($tui): void {
+                150 => static function ($tui): void {
                     $tui->tick();
                     $tui->handleInput("\x1b[<0;3;4M"); // open B (row 2)
                 },
-                250 => function ($tui): void {
+                250 => static function ($tui): void {
                     $tui->tick();
                     $tui->handleInput("\x1b[<0;3;5M"); // open C (row 3)
                 },
@@ -6488,11 +6533,11 @@ final class IdeEdgeCasesTest extends TestCase
             $project,
             $project->path('A.php'),
             [
-                150 => function ($tui): void {
+                150 => static function ($tui): void {
                     $tui->tick();
                     $tui->handleInput("\x1b[<0;3;4M"); // open B (row 2)
                 },
-                250 => function ($tui): void {
+                250 => static function ($tui): void {
                     $tui->tick();
                     $tui->handleInput("\x1b[<0;3;5M"); // open C (row 3) → active = C
                 },
@@ -6599,7 +6644,7 @@ final class IdeEdgeCasesTest extends TestCase
             $project,
             $project->path('A.php'),
             [
-                200 => function ($tui, $terminal, $ide) use ($project): void {
+                200 => static function ($tui, $terminal, $ide) use ($project): void {
                     $tui->tick();
                     // The file grows beyond the 2 MB text limit → the poll must not
                     // try to load it, leaving the open buffer as-is.
@@ -6626,7 +6671,7 @@ final class IdeEdgeCasesTest extends TestCase
             $project,
             $project->path('A.php'),
             [
-                200 => function ($tui, $terminal, $ide) use ($project): void {
+                200 => static function ($tui, $terminal, $ide) use ($project): void {
                     $tui->tick();
                     $tui->getById('editor')->getDocument()->setCursor(0, 0);
                     $tui->getById('editor')->handleInput('X'); // unsaved edit → dirty
@@ -6653,7 +6698,7 @@ final class IdeEdgeCasesTest extends TestCase
             $project,
             $project->path('A.php'),
             [
-                200 => function ($tui, $terminal, $ide) use ($project): void {
+                200 => static function ($tui, $terminal, $ide) use ($project): void {
                     $tui->tick();
                     unlink($project->path('A.php')); // deleted on disk
                     $ide->pollFilesystem();
@@ -6667,7 +6712,7 @@ final class IdeEdgeCasesTest extends TestCase
 
         $screen = AnsiUtils::stripAnsiCodes($terminal->getOutput());
         $this->assertStringContainsString('A.php deleted on disk', $screen);
-        $this->assertSame(1, substr_count($screen, 'deleted on disk'), 'warns exactly once');
+        $this->assertSame(1, substr_count($screen, needle: 'deleted on disk'), 'warns exactly once');
     }
 
     public function testOwnSaveDoesNotTriggerReload(): void
@@ -6679,7 +6724,7 @@ final class IdeEdgeCasesTest extends TestCase
             $project,
             $project->path('A.php'),
             [
-                200 => function ($tui, $terminal, $ide): void {
+                200 => static function ($tui, $terminal, $ide): void {
                     $tui->tick();
                     $tui->getById('editor')->handleInput('Y'); // dirty
                     $tui->handleInput("\x13"); // ctrl+s → save (records our own disk stamp)
@@ -6737,7 +6782,7 @@ final class IdeEdgeCasesTest extends TestCase
                     $tui->handleInput("\x1bw"); // close → unsaved-changes overlay
                     $this->assertTrue($tui->getById('editor')->isOverlayOpen());
                 },
-                320 => function ($tui): void {
+                320 => static function ($tui): void {
                     // A click outside the editor pane dismisses the modal overlay (kept, not discarded).
                     $tui->handleInput("\x1b[<0;1;1M");
                 },
@@ -6779,7 +6824,7 @@ final class IdeEdgeCasesTest extends TestCase
             $project,
             $project->path('a.php'),
             [
-                200 => function ($tui, $terminal, $ide): void {
+                200 => static function ($tui, $terminal, $ide): void {
                     $results = $tui->getById('results');
                     $results->open('Find in Project', ResultsPanelFields::queryOnly());
                     $results->setResults([
@@ -6800,7 +6845,7 @@ final class IdeEdgeCasesTest extends TestCase
                     $this->assertStringEndsWith('c.php', (string) $tui->getById('editor')->getFilePath(), 'clicked the second result');
                     $this->assertTrue($tui->getById('results')->isOpen(), 'the pane stays open after the jump');
                 },
-                480 => function ($tui, $terminal, $ide): void {
+                480 => static function ($tui, $terminal, $ide): void {
                     $goto = $tui->getById('goto-file');
                     $goto->open();
                     $tui->requestRender();
@@ -6840,7 +6885,7 @@ final class IdeEdgeCasesTest extends TestCase
                     ]);
                     $this->assertTrue($editor->isCompletionOpen());
                 },
-                320 => function ($tui, $terminal, $ide): void {
+                320 => static function ($tui, $terminal, $ide): void {
                     $renderer = new \ReflectionProperty($ide, 'renderer')->getValue($ide);
                     $rect = $renderer->getWidgetRect($tui->getById('editor'));
                     // Click at the bottom of the editor, far from the caret-anchored popup.
@@ -7166,7 +7211,7 @@ final class IdeEdgeCasesTest extends TestCase
                     $this->assertSame($rows + 1, $tui->getById('terminal')->visibleRows());
                 },
                 500 => function () use ($project): void {
-                    $layout = json_decode((string) file_get_contents($project->dir.'/.porta/layout.json'), true);
+                    $layout = json_decode((string) file_get_contents($project->dir.'/.porta/layout.json'), associative: true);
                     $this->assertSame(19, $layout['sidebarWidthPercent'], 'the last tree width (30 of 160 cols) persisted');
                     $this->assertArrayHasKey('bottomPanelHeightPercent', $layout, 'the panel grow persisted too');
                 },
@@ -7176,7 +7221,7 @@ final class IdeEdgeCasesTest extends TestCase
 
     public function testCallHierarchyFoldAllAndMatchingBracket(): void
     {
-        $body = "<?php\n\nfunction greet(string \$n): string {\n    return 'hi '.\$n;\n}\n\nfunction caller(): string {\n    return greet('x');\n}\n".str_repeat("// filler\n", 85);
+        $body = "<?php\n\nfunction greet(string \$n): string {\n    return 'hi '.\$n;\n}\n\nfunction caller(): string {\n    return greet('x');\n}\n".str_repeat("// filler\n", times: 85);
         $project = new TempProject([
             '.porta.json' => $this->mockLspConfig(),
             'src/H.php' => $body,
@@ -7195,23 +7240,23 @@ final class IdeEdgeCasesTest extends TestCase
             $project->path('src/H.php'),
             [
                 300 => function ($tui, $terminal): void {
-                    $this->await(fn (): bool => null !== $tui->getById('editor')->getFilePath());
+                    $this->await(static fn (): bool => null !== $tui->getById('editor')->getFilePath());
 
                     // No symbol at the caret → flash, no panel.
                     $tui->getById('editor')->getDocument()->setCursor(70, 0);
                     $tui->handleInput("\x1b[104;6u"); // ctrl+shift+h → call hierarchy
-                    $this->await(fn () => str_contains(AnsiUtils::stripAnsiCodes($terminal->getOutput()), 'No callers found'));
+                    $this->await(static fn () => str_contains(AnsiUtils::stripAnsiCodes($terminal->getOutput()), 'No callers found'));
 
                     // A symbol nobody calls → the incoming list is empty.
                     $terminal->clearOutput();
                     $tui->getById('editor')->getDocument()->setCursor(88, 0);
                     $tui->handleInput("\x1b[104;6u");
-                    $this->await(fn () => str_contains(AnsiUtils::stripAnsiCodes($terminal->getOutput()), 'No callers found'));
+                    $this->await(static fn () => str_contains(AnsiUtils::stripAnsiCodes($terminal->getOutput()), 'No callers found'));
 
                     // The happy path: callers of greet land in the results panel.
                     $tui->getById('editor')->getDocument()->setCursor(2, 10); // on "greet"
                     $tui->handleInput("\x1b[104;6u");
-                    $this->await(fn (): bool => 'results' === $tui->getFocus()?->getId());
+                    $this->await(static fn (): bool => 'results' === $tui->getFocus()?->getId());
                 },
                 700 => function ($tui, $terminal): void {
                     $tui->tick();
@@ -7224,10 +7269,10 @@ final class IdeEdgeCasesTest extends TestCase
                     // Fold All: the LSP foldingRange says 2-4 → the body line hides.
                     $editorScreen = static fn (): string => AnsiUtils::stripAnsiCodes(implode("\n", $tui->getById('editor')->render(new \Symfony\Component\Tui\Render\RenderContext(120, 20))));
                     $this->assertStringContainsString("return 'hi '", $editorScreen());
-                    $palette($tui, 'Fold All');
-                    $this->await(fn (): bool => !str_contains($editorScreen(), "return 'hi '"));
+                    $palette($tui, label: 'Fold All');
+                    $this->await(static fn (): bool => !str_contains($editorScreen(), "return 'hi '"));
 
-                    $palette($tui, 'Unfold All');
+                    $palette($tui, label: 'Unfold All');
                     $this->assertStringContainsString("return 'hi '", $editorScreen(), 'unfold restored the line');
                 },
                 1500 => function ($tui): void {
@@ -7235,7 +7280,7 @@ final class IdeEdgeCasesTest extends TestCase
                     // Matching bracket: from the opening brace of greet() to its closer.
                     $tui->setFocus($tui->getById('editor'));
                     $doc = $tui->getById('editor')->getDocument();
-                    $doc->setCursor(2, (int) strpos($doc->getLine(2), '{'));
+                    $doc->setCursor(2, (int) strpos($doc->getLine(2), needle: '{'));
                     $tui->handleInput("\x1b[109;6u"); // ctrl+shift+m
                     $this->assertSame(4, $doc->getCursorLine(), 'jumped to the closing brace line');
                     $tui->handleInput("\x1b[109;6u"); // and back again
@@ -7269,28 +7314,28 @@ final class IdeEdgeCasesTest extends TestCase
             [
                 300 => function ($tui, $terminal) use ($palette, $project): void {
                     // A clean tree: git's own "nothing to stash" line is the flash.
-                    $palette($tui, 'Git: Stash');
-                    $this->await(fn (): bool => str_contains(AnsiUtils::stripAnsiCodes($terminal->getOutput()), 'No local changes'));
+                    $palette($tui, label: 'Git: Stash');
+                    $this->await(static fn (): bool => str_contains(AnsiUtils::stripAnsiCodes($terminal->getOutput()), 'No local changes'));
 
-                    file_put_contents($project->path('src/A.php'), "<?php\n\$x = 2;\n");
+                    file_put_contents($project->path('src/A.php'), data: "<?php\n\$x = 2;\n");
                     $terminal->clearOutput();
-                    $palette($tui, 'Git: Stash');
-                    $this->await(fn (): bool => str_contains(AnsiUtils::stripAnsiCodes($terminal->getOutput()), 'Saved working directory'));
+                    $palette($tui, label: 'Git: Stash');
+                    $this->await(static fn (): bool => str_contains(AnsiUtils::stripAnsiCodes($terminal->getOutput()), 'Saved working directory'));
                     $this->assertStringContainsString('$x = 1;', (string) file_get_contents($project->path('src/A.php')), 'the tree reverted');
 
                     $terminal->clearOutput();
-                    $palette($tui, 'Git: Stash Pop');
-                    $this->await(fn (): bool => str_contains(AnsiUtils::stripAnsiCodes($terminal->getOutput()), 'Stash popped'));
+                    $palette($tui, label: 'Git: Stash Pop');
+                    $this->await(static fn (): bool => str_contains(AnsiUtils::stripAnsiCodes($terminal->getOutput()), 'Stash popped'));
                     $this->assertStringContainsString('$x = 2;', (string) file_get_contents($project->path('src/A.php')));
                 },
                 700 => function ($tui, $terminal) use ($palette, $project): void {
                     $terminal->clearOutput();
-                    $palette($tui, 'Git: Stash');
-                    $this->await(fn (): bool => str_contains(AnsiUtils::stripAnsiCodes($terminal->getOutput()), 'Saved working directory'));
+                    $palette($tui, label: 'Git: Stash');
+                    $this->await(static fn (): bool => str_contains(AnsiUtils::stripAnsiCodes($terminal->getOutput()), 'Saved working directory'));
 
                     // Round 1: Cancel leaves everything untouched.
-                    $palette($tui, 'Git: Stashes…');
-                    $this->await(fn (): bool => $tui->getById('editor')->isOverlayOpen());
+                    $palette($tui, label: 'Git: Stashes…');
+                    $this->await(static fn (): bool => $tui->getById('editor')->isOverlayOpen());
                     $tui->handleInput("\r"); // pick the stash → the action chooser
                     $tui->tick();
                     $this->assertStringContainsString('apply, pop or drop?', AnsiUtils::stripAnsiCodes($terminal->getOutput()));
@@ -7302,38 +7347,38 @@ final class IdeEdgeCasesTest extends TestCase
 
                     // Round 2: Apply restores the change but keeps the stash.
                     $terminal->clearOutput();
-                    $palette($tui, 'Git: Stashes…');
-                    $this->await(fn (): bool => $tui->getById('editor')->isOverlayOpen());
+                    $palette($tui, label: 'Git: Stashes…');
+                    $this->await(static fn (): bool => $tui->getById('editor')->isOverlayOpen());
                     $tui->handleInput("\r");
                     $tui->handleInput("\r"); // Apply leads the chooser
-                    $this->await(fn (): bool => str_contains(AnsiUtils::stripAnsiCodes($terminal->getOutput()), 'Applied stash@{0}'));
+                    $this->await(static fn (): bool => str_contains(AnsiUtils::stripAnsiCodes($terminal->getOutput()), 'Applied stash@{0}'));
                     $this->assertStringContainsString('$x = 2;', (string) file_get_contents($project->path('src/A.php')));
                     exec('git -C '.escapeshellarg($project->dir).' checkout -q -- .'); // clean for the pop round
 
                     // Round 3: Pop restores AND consumes a fresh stash.
-                    file_put_contents($project->path('src/A.php'), "<?php\n\$x = 3;\n");
+                    file_put_contents($project->path('src/A.php'), data: "<?php\n\$x = 3;\n");
                     $terminal->clearOutput();
-                    $palette($tui, 'Git: Stash');
-                    $this->await(fn (): bool => str_contains(AnsiUtils::stripAnsiCodes($terminal->getOutput()), 'Saved working directory'));
-                    $palette($tui, 'Git: Stashes…');
-                    $this->await(fn (): bool => $tui->getById('editor')->isOverlayOpen());
+                    $palette($tui, label: 'Git: Stash');
+                    $this->await(static fn (): bool => str_contains(AnsiUtils::stripAnsiCodes($terminal->getOutput()), 'Saved working directory'));
+                    $palette($tui, label: 'Git: Stashes…');
+                    $this->await(static fn (): bool => $tui->getById('editor')->isOverlayOpen());
                     $tui->handleInput("\r");
                     $tui->handleInput("\x1b[B"); // down to Pop
                     $tui->handleInput("\r");
-                    $this->await(fn (): bool => str_contains(AnsiUtils::stripAnsiCodes($terminal->getOutput()), 'Popped stash@{0}'));
+                    $this->await(static fn (): bool => str_contains(AnsiUtils::stripAnsiCodes($terminal->getOutput()), 'Popped stash@{0}'));
                     $this->assertStringContainsString('$x = 3;', (string) file_get_contents($project->path('src/A.php')));
                     exec('git -C '.escapeshellarg($project->dir).' checkout -q -- .');
 
                     // Round 4: Drop the remaining stash.
                     $terminal->clearOutput();
-                    $palette($tui, 'Git: Stashes…');
-                    $this->await(fn (): bool => $tui->getById('editor')->isOverlayOpen());
+                    $palette($tui, label: 'Git: Stashes…');
+                    $this->await(static fn (): bool => $tui->getById('editor')->isOverlayOpen());
                     $tui->handleInput("\r");
                     $tui->tick();
                     $tui->handleInput("\x1b[B");
                     $tui->handleInput("\x1b[B"); // down to Drop
                     $tui->handleInput("\r");
-                    $this->await(fn (): bool => str_contains(AnsiUtils::stripAnsiCodes($terminal->getOutput()), 'Dropped stash@{0}'));
+                    $this->await(static fn (): bool => str_contains(AnsiUtils::stripAnsiCodes($terminal->getOutput()), 'Dropped stash@{0}'));
                 },
                 1100 => function ($tui, $terminal) use ($palette, $d): void {
                     exec("git -C {$d} stash list", $left);
@@ -7341,21 +7386,21 @@ final class IdeEdgeCasesTest extends TestCase
 
                     // An empty stash list flashes instead of opening the picker.
                     $terminal->clearOutput();
-                    $palette($tui, 'Git: Stashes…');
-                    $this->await(fn (): bool => str_contains(AnsiUtils::stripAnsiCodes($terminal->getOutput()), 'No stashes'));
+                    $palette($tui, label: 'Git: Stashes…');
+                    $this->await(static fn (): bool => str_contains(AnsiUtils::stripAnsiCodes($terminal->getOutput()), 'No stashes'));
 
                     // Blame annotations on, then off.
                     $editorScreen = static fn (): string => AnsiUtils::stripAnsiCodes(implode("\n", $tui->getById('editor')->render(new \Symfony\Component\Tui\Render\RenderContext(120, 20))));
-                    $palette($tui, 'Git: Toggle Blame Annotations');
-                    $this->await(fn (): bool => str_contains($editorScreen(), 'tester'));
-                    $palette($tui, 'Git: Toggle Blame Annotations');
+                    $palette($tui, label: 'Git: Toggle Blame Annotations');
+                    $this->await(static fn (): bool => str_contains($editorScreen(), 'tester'));
+                    $palette($tui, label: 'Git: Toggle Blame Annotations');
                     $this->assertStringNotContainsString('tester', $editorScreen(), 'annotations cleared');
                 },
                 1500 => function ($tui, $terminal) use ($palette): void {
                     // File history: the git view opens filtered to the open file.
                     $terminal->clearOutput();
-                    $palette($tui, 'Git: File History');
-                    $this->await(fn (): bool => str_contains(AnsiUtils::stripAnsiCodes($terminal->getOutput()), 'History — src/A.php (1)'));
+                    $palette($tui, label: 'Git: File History');
+                    $this->await(static fn (): bool => str_contains(AnsiUtils::stripAnsiCodes($terminal->getOutput()), 'History — src/A.php (1)'));
                     $screenText = AnsiUtils::stripAnsiCodes($terminal->getOutput());
                     $this->assertStringContainsString('init', $screenText);
                     $this->assertStringNotContainsString(' other ', $screenText, "the commit that didn't touch the file is hidden");

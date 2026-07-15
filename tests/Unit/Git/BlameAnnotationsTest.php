@@ -36,7 +36,7 @@ final class BlameAnnotationsTest extends TestCase
         $elapsed = 0.0;
         while (!$done() && $elapsed < $timeout) {
             $suspension = EventLoop::getSuspension();
-            EventLoop::delay(0.02, static fn () => $suspension->resume());
+            EventLoop::delay(0.02, $suspension->resume(...));
             $suspension->suspend();
             $elapsed += 0.02;
         }
@@ -146,7 +146,7 @@ final class BlameAnnotationsTest extends TestCase
         $blame->toggle(); // off again before the subprocess lands
         // Pump long enough for the blame subprocess to complete and be dropped.
         $deadline = microtime(true) + 0.6;
-        $this->await(fn (): bool => microtime(true) > $deadline, 2.0);
+        $this->await(static fn (): bool => microtime(true) > $deadline, 2.0);
         $this->assertStringNotContainsString('tester', $this->editorScreen(), 'the stale response annotated nothing');
     }
 }

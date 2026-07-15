@@ -44,7 +44,9 @@ final class LayoutStoreTest extends TestCase
     public function testMissingKeysAndNonNumericBecomeNull(): void
     {
         $project = new TempProject();
-        @mkdir($project->path('.porta'), 0777, true);
+        if (!is_dir($project->path('.porta'))) {
+            mkdir($project->path('.porta'), permissions: 0o777, recursive: true);
+        }
         file_put_contents($project->path('.porta/layout.json'), json_encode(['sidebarWidthPercent' => 'nope', 'gitDiffSplit' => 'yes']));
 
         $loaded = new LayoutStore($project->dir)->load();
@@ -60,7 +62,9 @@ final class LayoutStoreTest extends TestCase
     public function testHandEditedNumericStringIsAccepted(): void
     {
         $project = new TempProject();
-        @mkdir($project->path('.porta'), 0777, true);
+        if (!is_dir($project->path('.porta'))) {
+            mkdir($project->path('.porta'), permissions: 0o777, recursive: true);
+        }
         file_put_contents($project->path('.porta/layout.json'), json_encode(['sidebarWidthPercent' => '18']));
 
         $this->assertSame(18, new LayoutStore($project->dir)->load()?->sidebarWidthPercent);
@@ -85,7 +89,7 @@ final class LayoutStoreTest extends TestCase
     public function testSaveFailsWhenDirCannotBeCreated(): void
     {
         $project = new TempProject();
-        file_put_contents($project->path('.porta'), 'not a dir'); // block mkdir of .porta/
+        file_put_contents($project->path('.porta'), data: 'not a dir'); // block mkdir of .porta/
 
         $this->assertFalse(new LayoutStore($project->dir)->save(new LayoutPrefs(sidebarWidthPercent: 20, bottomPanelHeightPercent: 30)));
     }

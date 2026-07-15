@@ -276,7 +276,7 @@ final class CodeHighlighter
         ++$this->staleEdits;
 
         return [
-            ...\array_slice($this->cache, 0, $prefix),
+            ...\array_slice($this->cache, offset: 0, length: $prefix),
             ...$middle,
             ...($suffix > 0 ? \array_slice($this->cache, -$suffix) : []),
         ];

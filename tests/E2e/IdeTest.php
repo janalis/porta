@@ -78,7 +78,7 @@ final class IdeTest extends TestCase
     public function testFullScenario(): void
     {
         $tui = $this->ide->getTui();
-        $screen = fn (): string => $this->screen();
+        $screen = $this->screen(...);
         $editor = static fn () => $tui->getById('editor');
 
         // --- Startup ---------------------------------------------------------
@@ -308,7 +308,7 @@ final class IdeTest extends TestCase
     public function testSearchEverywhere(): void
     {
         $tui = $this->ide->getTui();
-        $screen = fn (): string => $this->screen();
+        $screen = $this->screen(...);
         $editor = static fn () => $tui->getById('editor');
 
         // Ctrl+Shift+E → modal opens; the empty query seeds recent files.

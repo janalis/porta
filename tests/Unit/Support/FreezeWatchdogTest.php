@@ -122,7 +122,7 @@ final class FreezeWatchdogTest extends TestCase
     private function runLoopFor(float $seconds): void
     {
         $suspension = EventLoop::getSuspension();
-        EventLoop::delay($seconds, static fn () => $suspension->resume());
+        EventLoop::delay($seconds, $suspension->resume(...));
         $suspension->suspend();
     }
 }

@@ -258,10 +258,12 @@ final class LayoutController
     {
         $rect = null;
         foreach ([$this->terminalPanel, $this->resultsPanel, $this->debugPanel] as $panel) {
-            if ($panel->isOpen()) {
-                $rect = $this->renderer->getWidgetRect($panel);
-                break;
+            if (!$panel->isOpen()) {
+                continue;
             }
+
+            $rect = $this->renderer->getWidgetRect($panel);
+            break;
         }
         if (null === $rect) {
             return;
@@ -353,8 +355,8 @@ final class LayoutController
             bottomPanelHeightPercent: $this->bottomPanelHeightPercent,
             gitSidebarWidthPercent: $this->gitSidebarWidthPercent,
             settingsSidebarWidthPercent: $this->settingsSidebarWidthPercent,
-            gitDiffSplit: $this->gitDiffSplit ?: null,
-            gitDiffHideWhitespace: $this->gitDiffHideWhitespace ?: null,
+            gitDiffSplit: $this->gitDiffSplit ? true : null,
+            gitDiffHideWhitespace: $this->gitDiffHideWhitespace ? true : null,
         ));
     }
 }

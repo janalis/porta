@@ -18,7 +18,7 @@ final class EditorConfigParser
      */
     public static function parse(string $text): array
     {
-        $text = str_replace(["\r\n", "\r"], "\n", $text);
+        $text = str_replace(["\r\n", "\r"], replace: "\n", subject: $text);
         $root = false;
         $sections = [];
         $current = null; // index into $sections, or null while still in the preamble
@@ -30,16 +30,16 @@ final class EditorConfigParser
             }
 
             if ('[' === $trimmed[0] && str_ends_with($trimmed, ']')) {
-                $sections[] = ['glob' => substr($trimmed, 1, -1), 'props' => []];
+                $sections[] = ['glob' => substr($trimmed, offset: 1, length: -1), 'props' => []];
                 $current = \count($sections) - 1;
                 continue;
             }
 
-            $eq = strpos($trimmed, '=');
+            $eq = strpos($trimmed, needle: '=');
             if (false === $eq) {
                 continue;
             }
-            $key = strtolower(trim(substr($trimmed, 0, $eq)));
+            $key = strtolower(trim(substr($trimmed, offset: 0, length: $eq)));
             $value = trim(substr($trimmed, $eq + 1));
             if ('' === $key) {
                 continue;

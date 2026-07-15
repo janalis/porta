@@ -151,7 +151,7 @@ final class EditorStructural
             $choices,
         );
         ($this->openListOverlay)('Surround With', $items, function (string $template): void {
-            [$open, $close] = explode('|', $template, 2);
+            [$open, $close] = explode('|', $template, limit: 2);
             $range = $this->document->getSelectionRange();
             if (null !== $range) {
                 $this->autoPair->wrapSelection($this->document, $open, $close, $range);
@@ -171,27 +171,40 @@ final class EditorStructural
         }
         $cursor = $this->document->getCursorLine();
 
-        if ($dir > 0) {
-            $target = $regions[0];
-            foreach ($regions as $region) {
-                if ($region['start'] > $cursor) {
-                    $target = $region;
-                    break;
-                }
-            }
-        } else {
-            $target = $regions[\count($regions) - 1];
-            foreach (array_reverse($regions) as $region) {
-                if ($region['start'] < $cursor) {
-                    $target = $region;
-                    break;
-                }
-            }
-        }
+        $target = $this->conflictTarget($regions, $cursor, $dir);
 
         $this->document->clearSelection();
         $this->document->setCursor($target['start'], 0);
         ($this->invalidate)();
+    }
+
+    /**
+     * The conflict region to jump to: the first region past the caret when
+     * moving forward, the last region before it when moving back, wrapping to
+     * the far end when the caret sits outside every region in that direction.
+     *
+     * @param list<array{start: int, sep: int, end: int}> $regions non-empty
+     *
+     * @return array{start: int, sep: int, end: int}
+     */
+    private function conflictTarget(array $regions, int $cursor, int $dir): array
+    {
+        if ($dir > 0) {
+            foreach ($regions as $region) {
+                if ($region['start'] > $cursor) {
+                    return $region;
+                }
+            }
+
+            return $regions[0];
+        }
+        foreach (array_reverse($regions) as $region) {
+            if ($region['start'] < $cursor) {
+                return $region;
+            }
+        }
+
+        return $regions[\count($regions) - 1];
     }
 
     /** Offer keep-ours/theirs/both for the conflict enclosing the caret. */
@@ -231,9 +244,11 @@ final class EditorStructural
         $doc->setCursor($region['end'], \strlen($lines[$region['end']]), keepSelection: true);
         if ('' === $replacement) {
             $doc->deleteSelection();
-        } else {
-            $doc->insert($replacement);
+            ($this->notifyChange)();
+
+            return;
         }
+        $doc->insert($replacement);
         ($this->notifyChange)();
     }
 }

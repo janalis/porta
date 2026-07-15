@@ -33,7 +33,7 @@ final class DocumentEditorConfigTest extends TestCase
         $doc = new Document("\tx"); // leading tab -> auto-detects tabs
         $this->assertTrue($doc->usesTabs());
         $this->assertSame(5, $doc->lineDisplayWidth(0), 'tab expands to 4 columns by default');
-        $this->assertSame(str_repeat(' ', 4).'x', $doc->getVisualLines()[0]);
+        $this->assertSame(str_repeat(' ', times: 4).'x', $doc->getVisualLines()[0]);
 
         $doc->applyEditorConfig($this->config(['tab_width' => '8']));
 
@@ -41,7 +41,7 @@ final class DocumentEditorConfigTest extends TestCase
         $this->assertSame(8, $doc->indentDisplayWidth(), 'tabbed files use tab_width for indent display');
         $this->assertSame("\t", $doc->indentUnit(), 'still a hard tab');
         $this->assertSame(9, $doc->lineDisplayWidth(0), 'tab now expands to 8 columns');
-        $this->assertSame(str_repeat(' ', 8).'x', $doc->getVisualLines()[0], 'visual cache re-expanded');
+        $this->assertSame(str_repeat(' ', times: 8).'x', $doc->getVisualLines()[0], 'visual cache re-expanded');
     }
 
     public function testIndentStyleOverridesAutoDetection(): void

@@ -82,7 +82,7 @@ final readonly class RunConfigs
             // "target: deps" at column 0 — skip pattern rules and variables.
             $m = [];
             if (preg_match('/^([a-zA-Z0-9][a-zA-Z0-9_.-]*)\s*:(?!=)/', $line, $m)) {
-                if (!\in_array($m[1], $targets, true)) {
+                if (!\in_array($m[1], $targets, strict: true)) {
                     $targets[] = $m[1];
                 }
             }

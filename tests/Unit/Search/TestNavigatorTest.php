@@ -79,7 +79,7 @@ final class TestNavigatorTest extends TestCase
         $navigator = $this->navigator($project);
         $this->assertSame([], $navigator->locate($project->path('src/Foo.php')));
 
-        file_put_contents($project->path('FooTest.php'), "<?php\n");
+        file_put_contents($project->path('FooTest.php'), data: "<?php\n");
         $this->assertSame(['FooTest.php'], $navigator->locate($project->path('src/Foo.php')), 'each lookup re-walks the index');
     }
 }

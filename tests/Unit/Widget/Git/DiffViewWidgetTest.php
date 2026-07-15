@@ -71,8 +71,8 @@ final class DiffViewWidgetTest extends TestCase
         $addRow = AnsiUtils::stripAnsiCodes($raw[4]);
         $this->assertStringContainsString('$new = 2;', $addRow);
         $this->assertGreaterThan(
-            substr_count($raw[3], "\x1b["),
-            substr_count($raw[4], "\x1b["),
+            substr_count($raw[3], needle: "\x1b["),
+            substr_count($raw[4], needle: "\x1b["),
             'the addition carries syntax SGR spans, the deletion stays plain',
         );
     }
@@ -118,7 +118,7 @@ final class DiffViewWidgetTest extends TestCase
         $widget = $this->widget();
         $widget->setFocused(true);
         $captured = null;
-        $widget->onStageSelection(function (array $selected) use (&$captured): void {
+        $widget->onStageSelection(static function (array $selected) use (&$captured): void {
             $captured = $selected;
         });
 
@@ -132,7 +132,7 @@ final class DiffViewWidgetTest extends TestCase
         $widget = $this->widget();
         $widget->setFocused(true);
         $captured = null;
-        $widget->onStageSelection(function (array $selected) use (&$captured): void {
+        $widget->onStageSelection(static function (array $selected) use (&$captured): void {
             $captured = $selected;
         });
 
@@ -148,7 +148,7 @@ final class DiffViewWidgetTest extends TestCase
         $widget = $this->widget();
         $widget->setFocused(true);
         $captured = null;
-        $widget->onStageSelection(function (array $selected) use (&$captured): void {
+        $widget->onStageSelection(static function (array $selected) use (&$captured): void {
             $captured = $selected;
         });
 
@@ -173,7 +173,7 @@ final class DiffViewWidgetTest extends TestCase
         $widget->handleInput("\x1b[B");
         $widget->handleInput("\x1b[A"); // back to the top
         $captured = null;
-        $widget->onStageSelection(function (array $selected) use (&$captured): void {
+        $widget->onStageSelection(static function (array $selected) use (&$captured): void {
             $captured = $selected;
         });
         $widget->handleInput(' ');
@@ -206,7 +206,7 @@ final class DiffViewWidgetTest extends TestCase
         $widget->setFocused(true);
         $widget->setReadOnly(true);
         $fired = false;
-        $widget->onStageSelection(function () use (&$fired): void {
+        $widget->onStageSelection(static function () use (&$fired): void {
             $fired = true;
         });
 
@@ -227,7 +227,7 @@ final class DiffViewWidgetTest extends TestCase
         // Reload the SAME path with a shorter diff: cursor clamps, not resets.
         $widget->setDocument(DiffDocument::parse("@@ -1,1 +1,1 @@\n-a\n+b\n"), 'src/demo.php');
         $captured = null;
-        $widget->onStageSelection(function (array $selected) use (&$captured): void {
+        $widget->onStageSelection(static function (array $selected) use (&$captured): void {
             $captured = $selected;
         });
         $widget->handleInput(' ');
@@ -244,10 +244,10 @@ final class DiffViewWidgetTest extends TestCase
         $widget = $this->widget();
         $widget->setFocused(true);
         $events = [];
-        $widget->onFocusNext(function () use (&$events): void {
+        $widget->onFocusNext(static function () use (&$events): void {
             $events[] = 'next';
         });
-        $widget->onExit(function () use (&$events): void {
+        $widget->onExit(static function () use (&$events): void {
             $events[] = 'exit';
         });
 
@@ -317,7 +317,7 @@ final class DiffViewWidgetTest extends TestCase
         $widget->setFocused(true);
         $widget->handleInput('s');
         $captured = null;
-        $widget->onStageSelection(function (array $selected) use (&$captured): void {
+        $widget->onStageSelection(static function (array $selected) use (&$captured): void {
             $captured = $selected;
         });
 
@@ -337,7 +337,7 @@ final class DiffViewWidgetTest extends TestCase
     {
         $widget = $this->widget();
         $toggles = [];
-        $widget->onLayoutToggle(function (bool $split) use (&$toggles): void {
+        $widget->onLayoutToggle(static function (bool $split) use (&$toggles): void {
             $toggles[] = $split;
         });
         $raw = $widget->render(new RenderContext(80, 12));
@@ -364,7 +364,7 @@ final class DiffViewWidgetTest extends TestCase
         $widget->setFocused(true);
         $this->plainLines($widget); // teach the viewport
         $captured = null;
-        $widget->onStageSelection(function (array $selected) use (&$captured): void {
+        $widget->onStageSelection(static function (array $selected) use (&$captured): void {
             $captured = $selected;
         });
 
@@ -392,7 +392,7 @@ final class DiffViewWidgetTest extends TestCase
 
         // setSplit applies a preference silently (no hook fire).
         $fired = false;
-        $widget->onLayoutToggle(function () use (&$fired): void {
+        $widget->onLayoutToggle(static function () use (&$fired): void {
             $fired = true;
         });
         $widget->setSplit(false);
@@ -405,7 +405,7 @@ final class DiffViewWidgetTest extends TestCase
     {
         $widget = $this->widget();
         $fired = 0;
-        $widget->onToggleWhitespace(function () use (&$fired): void {
+        $widget->onToggleWhitespace(static function () use (&$fired): void {
             ++$fired;
         });
         $widget->render(new RenderContext(80, 12));
@@ -430,7 +430,7 @@ final class DiffViewWidgetTest extends TestCase
 
     public function testHorizontalScrollSlidesTextUnderPinnedGutters(): void
     {
-        $long = str_repeat('x', 30).'NEEDLE'.str_repeat('y', 30);
+        $long = str_repeat('x', times: 30).'NEEDLE'.str_repeat('y', times: 30);
         $widget = new DiffViewWidget(new Translator('en'));
         $widget->setDocument(DiffDocument::parse("@@ -1,1 +1,1 @@\n-old\n+{$long}\n"), 'x.txt');
         $widget->setFocused(true);
@@ -461,8 +461,8 @@ final class DiffViewWidgetTest extends TestCase
 
     public function testHorizontalScrollAppliesToBothSplitHalvesAndResetsPerPath(): void
     {
-        $long = str_repeat('a', 25).'LEFT'.str_repeat('b', 20);
-        $longer = str_repeat('c', 25).'RIGHT'.str_repeat('d', 20);
+        $long = str_repeat('a', times: 25).'LEFT'.str_repeat('b', times: 20);
+        $longer = str_repeat('c', times: 25).'RIGHT'.str_repeat('d', times: 20);
         $widget = new DiffViewWidget(new Translator('en'));
         $widget->setDocument(DiffDocument::parse("@@ -1,1 +1,1 @@\n-{$long}\n+{$longer}\n"), 'x.txt');
         $widget->setSplit(true);
@@ -488,7 +488,7 @@ final class DiffViewWidgetTest extends TestCase
         // Paired lines sharing prefix/suffix get an intraline range; scroll so
         // the emphasized middle is inside the window and check its bg code.
         $widget = new DiffViewWidget(new Translator('en'));
-        $widget->setDocument(DiffDocument::parse("@@ -1,1 +1,1 @@\n-".str_repeat('p', 30)."OLD tail\n+".str_repeat('p', 30)."NEW tail\n"), 'x.txt');
+        $widget->setDocument(DiffDocument::parse("@@ -1,1 +1,1 @@\n-".str_repeat('p', times: 30)."OLD tail\n+".str_repeat('p', times: 30)."NEW tail\n"), 'x.txt');
         $widget->setFocused(true);
         for ($i = 0; $i < 3; ++$i) {
             $widget->handleInput("\x1b[C"); // 24 cols: the changed middle is in view
@@ -504,7 +504,7 @@ final class DiffViewWidgetTest extends TestCase
         $widget = $this->widget();
         $widget->setFocused(true);
         $copies = [];
-        $widget->onCopy(function (string $text) use (&$copies): void {
+        $widget->onCopy(static function (string $text) use (&$copies): void {
             $copies[] = $text;
         });
 
@@ -534,11 +534,11 @@ final class DiffViewWidgetTest extends TestCase
         $widget->setFocused(true);
         $widget->setReadOnly(true); // history diffs can select + copy...
         $staged = false;
-        $widget->onStageSelection(function () use (&$staged): void {
+        $widget->onStageSelection(static function () use (&$staged): void {
             $staged = true;
         });
         $copies = [];
-        $widget->onCopy(function (string $text) use (&$copies): void {
+        $widget->onCopy(static function (string $text) use (&$copies): void {
             $copies[] = $text;
         });
 
@@ -554,7 +554,7 @@ final class DiffViewWidgetTest extends TestCase
 
         $empty = new DiffViewWidget(new Translator('en'));
         $empty->setDocument(null, null);
-        $empty->onCopy(function () use (&$copies): void {
+        $empty->onCopy(static function () use (&$copies): void {
             $copies[] = 'never';
         });
         $empty->handleInput("\x03");
@@ -569,7 +569,7 @@ final class DiffViewWidgetTest extends TestCase
         $widget->setFocused(true);
         $this->plainLines($widget); // teach the viewport geometry
         $copies = [];
-        $widget->onCopy(function (string $text) use (&$copies): void {
+        $widget->onCopy(static function (string $text) use (&$copies): void {
             $copies[] = $text;
         });
 
@@ -617,7 +617,7 @@ final class DiffViewWidgetTest extends TestCase
         $widget->setFocused(true);
         $widget->render(new RenderContext(80, 6)); // leftW = 39: right half text starts at col 46
         $copies = [];
-        $widget->onCopy(function (string $text) use (&$copies): void {
+        $widget->onCopy(static function (string $text) use (&$copies): void {
             $copies[] = $text;
         });
 
@@ -641,7 +641,7 @@ final class DiffViewWidgetTest extends TestCase
 
         // Staging Space is unaffected by a char selection (no v anchor armed).
         $staged = null;
-        $widget->onStageSelection(function (array $sel) use (&$staged): void {
+        $widget->onStageSelection(static function (array $sel) use (&$staged): void {
             $staged = $sel;
         });
         $widget->handleClick(2, 6);
@@ -670,11 +670,11 @@ final class DiffViewWidgetTest extends TestCase
 
         $this->assertGreaterThanOrEqual(
             2,
-            substr_count($row, "\x1b[48;5;24m"),
+            substr_count($row, needle: "\x1b[48;5;24m"),
             'the selection bg is re-applied after resets inside the span',
         );
         // After a bg reset inside the span (the intraline emphasis closes with
         // \x1b[49m) the selection bg must come straight back.
-        $this->assertNotFalse(strpos($row, "\x1b[49m\x1b[48;5;24m"), 'a re-applied bg follows a reset inside the span');
+        $this->assertNotFalse(strpos($row, needle: "\x1b[49m\x1b[48;5;24m"), 'a re-applied bg follows a reset inside the span');
     }
 }

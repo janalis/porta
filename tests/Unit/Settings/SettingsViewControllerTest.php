@@ -358,8 +358,8 @@ final class SettingsViewControllerTest extends TestCase
     public function testPluginsSectionShowsItsRowsAndRoutesChanges(): void
     {
         $controller = $this->controller();
-        mkdir($this->project->dir.'/.porta/plugins/demo', 0777, true);
-        file_put_contents($this->project->dir.'/.porta/plugins/demo/plugin.php', "<?php\n");
+        mkdir($this->project->dir.'/.porta/plugins/demo', permissions: 0o777, recursive: true);
+        file_put_contents($this->project->dir.'/.porta/plugins/demo/plugin.php', data: "<?php\n");
         $controller->open();
 
         $this->nav->handleInput("\x1b[B"); // Keybindings
@@ -395,8 +395,8 @@ final class SettingsViewControllerTest extends TestCase
 
         $this->nav->handleInput("\x1b[B"); // Keybindings
         $this->nav->handleInput("\x1b[B"); // Plugins
-        mkdir($this->project->dir.'/.porta/plugins/late', 0777, true);
-        file_put_contents($this->project->dir.'/.porta/plugins/late/plugin.php', "<?php\n");
+        mkdir($this->project->dir.'/.porta/plugins/late', permissions: 0o777, recursive: true);
+        file_put_contents($this->project->dir.'/.porta/plugins/late/plugin.php', data: "<?php\n");
         $controller->refresh(); // re-reads the rows: the late plugin appears
         $screen = implode("\n", $this->form->render(new \Symfony\Component\Tui\Render\RenderContext(80, 8)));
         $this->assertStringContainsString('late (project)  [Remove]', $screen);

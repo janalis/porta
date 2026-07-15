@@ -11,7 +11,6 @@ use Porta\Ui\Menu;
 use Porta\Ui\MenuPanel;
 use Porta\Ui\Palette;
 use Porta\Ui\Role;
-use Porta\Ui\Style;
 use Symfony\Component\Tui\Input\Key;
 use Symfony\Component\Tui\Render\RenderContext;
 use Symfony\Component\Tui\Widget\FocusableInterface;
@@ -152,13 +151,11 @@ final class MenuBarWidget extends OverlayWidget implements FocusableInterface
             }
             $active = $this->open && $i === $this->openIndex;
             $hovered = !$this->open && $i === $this->hoveredIndex;
-            if ($active) {
-                $line .= $this->palette->of(Role::SelectedRow)."\x1b[1m".$label."\x1b[22m";
-            } elseif ($hovered) {
-                $line .= $this->palette->of(Role::MenuActiveBg).$this->palette->of(Role::Bright).$label;
-            } else {
-                $line .= $this->palette->of(Role::HeaderBar).$this->palette->of(Role::Muted).$label;
-            }
+            $line .= match (true) {
+                $active => $this->palette->of(Role::SelectedRow)."\x1b[1m".$label."\x1b[22m",
+                $hovered => $this->palette->of(Role::MenuActiveBg).$this->palette->of(Role::Bright).$label,
+                default => $this->palette->of(Role::HeaderBar).$this->palette->of(Role::Muted).$label,
+            };
             $this->titleLayout[] = ['index' => $i, 'start' => $used, 'width' => $width];
             $used += $width;
         }
@@ -213,17 +210,32 @@ final class MenuBarWidget extends OverlayWidget implements FocusableInterface
 
         if ($kb->matches($data, 'menu_close')) {
             $this->close();
-        } elseif ($kb->matches($data, 'menu_left')) {
+
+            return;
+        }
+        if ($kb->matches($data, 'menu_left')) {
             $this->open(($this->openIndex - 1 + $count) % $count);
-        } elseif ($kb->matches($data, 'menu_right')) {
+
+            return;
+        }
+        if ($kb->matches($data, 'menu_right')) {
             $this->open(($this->openIndex + 1) % $count);
-        } elseif ($kb->matches($data, 'menu_up')) {
+
+            return;
+        }
+        if ($kb->matches($data, 'menu_up')) {
             $this->selected = $this->step(-1);
             $this->afterNavigate();
-        } elseif ($kb->matches($data, 'menu_down')) {
+
+            return;
+        }
+        if ($kb->matches($data, 'menu_down')) {
             $this->selected = $this->step(1);
             $this->afterNavigate();
-        } elseif ($kb->matches($data, 'menu_select')) {
+
+            return;
+        }
+        if ($kb->matches($data, 'menu_select')) {
             $this->runSelected();
         }
 

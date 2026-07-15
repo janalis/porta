@@ -59,12 +59,12 @@ final class ActionCatalogTest extends TestCase
         }
 
         foreach (ActionCatalog::ACTIONS as $id => $spec) {
-            if (isset($spec['keys'])) {
-                $this->assertNotEmpty($spec['keys'], "Ide-scope action '{$id}' has an empty default");
-                $this->assertArrayNotHasKey($id, $widgetBound, "action '{$id}' is bound both in the catalog and by a widget");
-            } else {
+            if (!array_key_exists('keys', $spec)) {
                 $this->assertArrayHasKey($id, $widgetBound, "action '{$id}' has no default binding anywhere");
+                continue;
             }
+            $this->assertNotEmpty($spec['keys'], "Ide-scope action '{$id}' has an empty default");
+            $this->assertArrayNotHasKey($id, $widgetBound, "action '{$id}' is bound both in the catalog and by a widget");
         }
     }
 

@@ -252,7 +252,7 @@ final class MenuModel
         ?\Closure $settingsViewOpen,
         ?\Closure $pluginWhen = null,
     ): MenuItem {
-        [$scope, $id] = explode(':', $spec, 2);
+        [$scope, $id] = explode(':', $spec, limit: 2);
         $label = $translator->trans(
             'i' === $scope
                 ? $commands->label($id) ?? ActionCatalog::label($id)
@@ -264,8 +264,8 @@ final class MenuModel
             : static fn () => $editor->runAction($id);
 
         $requiresFile = self::requiresOpenFile($scope, $id);
-        $gitSafe = 'i' === $scope && \in_array($id, self::GIT_VIEW_SAFE, true);
-        $settingsSafe = 'i' === $scope && \in_array($id, self::SETTINGS_VIEW_SAFE, true);
+        $gitSafe = 'i' === $scope && \in_array($id, self::GIT_VIEW_SAFE, strict: true);
+        $settingsSafe = 'i' === $scope && \in_array($id, self::SETTINGS_VIEW_SAFE, strict: true);
         $isEnabled = null === $gitViewOpen && null === $settingsViewOpen && !$requiresFile
             ? null
             : static fn (): bool => match (true) {
@@ -289,7 +289,7 @@ final class MenuModel
     {
         return 'e' === $scope
             ? 'recent_files' !== $id
-            : \in_array($id, self::FILE_SCOPED_IDE, true);
+            : \in_array($id, self::FILE_SCOPED_IDE, strict: true);
     }
 
     /**

@@ -73,6 +73,7 @@ final class FormatOnSave
         // the late response is dropped — with a flash, so a skipped format is
         // distinguishable from an already-clean file.
         $timer = $this->scheduler->delay(2.0, function () use ($token, $save): void {
+            // @mago-expect lint:no-insecure-comparison -- $token is a round-generation counter, not sensitive data
             if ($token !== $this->round) {
                 return;
             }
@@ -85,6 +86,7 @@ final class FormatOnSave
             'textDocument/formatting',
             ['textDocument' => ['uri' => Uri::fromPath($path)], 'options' => $options],
             function (mixed $result, ?array $error) use ($token, $timer, $buffer, $version, $save): void {
+                // @mago-expect lint:no-insecure-comparison -- $token is a round-generation counter, not sensitive data
                 if ($token !== $this->round) {
                     return; // superseded by the timeout or a newer save
                 }

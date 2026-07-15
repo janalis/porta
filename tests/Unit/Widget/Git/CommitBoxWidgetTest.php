@@ -20,7 +20,7 @@ final class CommitBoxWidgetTest extends TestCase
         $widget = new CommitBoxWidget(new Translator('en'));
         $widget->setFocused(true);
         $widget->setStagedChangesProvider(fn (): bool => $this->staged);
-        $widget->onCommit(function (string $message, bool $amend) use (&$committed, &$amended): void {
+        $widget->onCommit(static function (string $message, bool $amend) use (&$committed, &$amended): void {
             $committed = $message;
             $amended = $amend;
         });
@@ -92,7 +92,7 @@ final class CommitBoxWidgetTest extends TestCase
     {
         $widget = $this->widget();
         $focusNext = 0;
-        $widget->onFocusNext(function () use (&$focusNext): void {
+        $widget->onFocusNext(static function () use (&$focusNext): void {
             ++$focusNext;
         });
 
@@ -150,7 +150,7 @@ final class CommitBoxWidgetTest extends TestCase
         $this->staged = false;
         $widget = $this->widget($committed, $amended);
         $toggles = [];
-        $widget->onAmendToggle(function (bool $amend) use (&$toggles): void {
+        $widget->onAmendToggle(static function (bool $amend) use (&$toggles): void {
             $toggles[] = $amend;
         });
 
@@ -195,7 +195,7 @@ final class CommitBoxWidgetTest extends TestCase
     {
         $widget = $this->widget();
         $exited = false;
-        $widget->onExit(function () use (&$exited): void {
+        $widget->onExit(static function () use (&$exited): void {
             $exited = true;
         });
 
@@ -213,7 +213,7 @@ final class CommitBoxWidgetTest extends TestCase
 
         $lines = $widget->render(new RenderContext(44, 10));
         $marker = AnsiUtils::cursorMarker(CursorShape::Bar);
-        $markers = array_sum(array_map(fn (string $l): int => substr_count($l, $marker), $lines));
+        $markers = array_sum(array_map(static fn (string $l): int => substr_count($l, $marker), $lines));
 
         $this->assertSame(1, $markers, 'the description caret marker stays inside the visible window');
         $this->assertStringContainsString('l5', $this->plain($widget), 'the window scrolled to the caret line');
@@ -223,14 +223,14 @@ final class CommitBoxWidgetTest extends TestCase
     {
         $marker = AnsiUtils::cursorMarker(CursorShape::Bar);
 
-        return array_sum(array_map(fn (string $l): int => substr_count($l, $marker), $widget->render(new RenderContext(44, 10))));
+        return array_sum(array_map(static fn (string $l): int => substr_count($l, $marker), $widget->render(new RenderContext(44, 10))));
     }
 
     public function testLongDescriptionLineKeepsTheCaretVisible(): void
     {
         $widget = $this->widget();
         $widget->handleInput("\t"); // focus the description
-        $this->type($widget, str_repeat('x', 60)); // overflow the 44-column box
+        $this->type($widget, str_repeat('x', times: 60)); // overflow the 44-column box
 
         $this->assertSame(1, $this->markerCount($widget), 'the description caret survives horizontal overflow');
     }
@@ -238,7 +238,7 @@ final class CommitBoxWidgetTest extends TestCase
     public function testLongSummaryLineKeepsTheCaretVisible(): void
     {
         $widget = $this->widget();
-        $this->type($widget, str_repeat('x', 60)); // summary is the default field
+        $this->type($widget, str_repeat('x', times: 60)); // summary is the default field
 
         $this->assertSame(1, $this->markerCount($widget), 'the summary caret survives horizontal overflow');
     }

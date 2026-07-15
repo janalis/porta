@@ -57,7 +57,7 @@ final class StatusBarProvider
 
         if (null !== $image) {
             // An image tab: dimensions + zoom instead of cursor/LSP/problems.
-            $right = \sprintf('%d × %d  %s  ', $image->width, $image->height, $this->imageViewer->zoomLabel()).$this->translator->trans('+/- zoom  0 fit  arrows pan  ^Q quit');
+            $right = \sprintf('%d × %d  %s  %s', $image->width, $image->height, $this->imageViewer->zoomLabel(), $this->translator->trans('+/- zoom  0 fit  arrows pan  ^Q quit'));
 
             return ['left' => $left, 'right' => $right];
         }

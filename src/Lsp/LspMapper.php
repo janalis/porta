@@ -84,7 +84,7 @@ final class LspMapper
         usort($items, static fn (array $a, array $b) => (string) ($a['sortText'] ?? $a['label'] ?? '') <=> (string) ($b['sortText'] ?? $b['label'] ?? ''));
 
         $mapped = [];
-        foreach (\array_slice($items, 0, 80) as $item) {
+        foreach (\array_slice($items, offset: 0, length: 80) as $item) {
             $label = (string) ($item['label'] ?? '');
             if ('' === $label) {
                 continue;
@@ -97,8 +97,8 @@ final class LspMapper
             // placeholders ${1:foo} → foo, $0 → ''.
             $insert = $raw;
             if ($isSnippet) {
-                $insert = preg_replace('/\$\{\d+:?([^}]*)}/', '$1', $insert) ?? $insert;
-                $insert = preg_replace('/\$\d+/', '', $insert) ?? $insert;
+                $insert = preg_replace('/\$\{\d+:?([^}]*)}/', replacement: '$1', subject: $insert) ?? $insert;
+                $insert = preg_replace('/\$\d+/', replacement: '', subject: $insert) ?? $insert;
             }
 
             // additionalTextEdits carry auto-import / use-statement insertions that
@@ -133,7 +133,7 @@ final class LspMapper
     {
         $byLine = [];
         foreach ($hints as $hint) {
-            if (!isset($hint['position']['line'], $hint['position']['character'])) {
+            if (($hint['position']['line'] ?? null) === null || ($hint['position']['character'] ?? null) === null) {
                 continue;
             }
             /** @var scalar|array<array-key, mixed> $label */
@@ -172,7 +172,9 @@ final class LspMapper
         foreach (\is_array($contents) && array_is_list($contents) ? $contents : [$contents] as $chunk) {
             if (\is_string($chunk)) {
                 $parts[] = $chunk;
-            } elseif (\is_array($chunk)) {
+                continue;
+            }
+            if (\is_array($chunk)) {
                 $parts[] = (string) ($chunk['value'] ?? '');
             }
         }
@@ -182,10 +184,9 @@ final class LspMapper
             return null;
         }
         // Light markdown cleanup: drop code fences, collapse blank runs
-        $text = preg_replace('/^```\w*$/m', '', $text) ?? $text;
-        $text = preg_replace("/\n{3,}/", "\n\n", trim($text)) ?? $text;
+        $text = preg_replace('/^```\w*$/m', replacement: '', subject: $text) ?? $text;
 
-        return $text;
+        return preg_replace("/\n{3,}/", replacement: "\n\n", subject: trim($text)) ?? $text;
     }
 
     /**
@@ -206,9 +207,11 @@ final class LspMapper
             if (!\is_array($candidate)) {
                 continue;
             }
-            if (isset($candidate['uri'], $candidate['range'])) {
+            if (($candidate['uri'] ?? null) !== null && ($candidate['range'] ?? null) !== null) {
                 $out[] = ['uri' => $candidate['uri'], 'range' => $candidate['range']];
-            } elseif (isset($candidate['targetUri'])) {
+                continue;
+            }
+            if (($candidate['targetUri'] ?? null) !== null) {
                 $out[] = [
                     'uri' => $candidate['targetUri'],
                     'range' => $candidate['targetSelectionRange'] ?? $candidate['targetRange'] ?? [],
@@ -257,12 +260,12 @@ final class LspMapper
             return null;
         }
 
-        if (isset($candidate['uri'], $candidate['range'])) {
+        if (($candidate['uri'] ?? null) !== null && ($candidate['range'] ?? null) !== null) {
             return ['uri' => $candidate['uri'], 'range' => $candidate['range']];
         }
 
         // LocationLink
-        if (isset($candidate['targetUri'])) {
+        if (($candidate['targetUri'] ?? null) !== null) {
             return [
                 'uri' => $candidate['targetUri'],
                 'range' => $candidate['targetSelectionRange'] ?? $candidate['targetRange'] ?? [],
@@ -332,7 +335,7 @@ final class LspMapper
             $sameLine = ($diag['range']['end']['line'] ?? $line) === $line;
             $byLine[$line][] = [
                 'severity' => (int) ($diag['severity'] ?? 1),
-                'message' => trim((string) preg_replace('/\s+/', ' ', $diag['message'] ?? '')),
+                'message' => trim((string) preg_replace('/\s+/', replacement: ' ', subject: $diag['message'] ?? '')),
                 'col' => $diag['range']['start']['character'] ?? 0,
                 'endCol' => $sameLine ? $diag['range']['end']['character'] ?? 0 : \PHP_INT_MAX,
             ];

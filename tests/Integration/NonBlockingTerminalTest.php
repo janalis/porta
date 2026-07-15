@@ -18,16 +18,16 @@ final class NonBlockingTerminalTest extends TestCase
      */
     public function testAWedgedTerminalNeverBlocksTheEventLoop(): void
     {
-        $pair = stream_socket_pair(\STREAM_PF_UNIX, \STREAM_SOCK_STREAM, 0);
-        \assert(false !== $pair);
-        stream_set_blocking($pair[1], false);
+        $pair = stream_socket_pair(\STREAM_PF_UNIX, \STREAM_SOCK_STREAM, protocol: 0);
+        \assert(false !== $pair, description: 'stream_socket_pair returned a valid socket pair');
+        stream_set_blocking($pair[1], enable: false);
         // The inner "terminal" is a VirtualTerminal: writes are decorated away
         // from it after start(), it just provides the delegated surface.
         $terminal = new NonBlockingTerminal(new VirtualTerminal(columns: 160, rows: 48), $pair[0]);
         $terminal->start(static function (): void {}, static function (): void {}, static function (): void {});
 
-        $first = "\x1b[?2026h".str_repeat('a', 262144)."\x1b[?2026l"; // an oversized "frame"
-        $second = "\x1b[?2026h".str_repeat('b', 262144)."\x1b[?2026l";
+        $first = "\x1b[?2026h".str_repeat('a', times: 262_144)."\x1b[?2026l"; // an oversized "frame"
+        $second = "\x1b[?2026h".str_repeat('b', times: 262_144)."\x1b[?2026l";
         $start = microtime(true);
         $terminal->write($first);
         $terminal->hideCursor();
@@ -46,8 +46,8 @@ final class NonBlockingTerminalTest extends TestCase
         // Once the terminal drains, everything arrives byte-identical and in order.
         $drained = '';
         $expected = $first."\x1b[?25l".$second."\x1b[?25h";
-        $this->await(function () use (&$drained, $pair, $expected): bool {
-            $chunk = fread($pair[1], 65536);
+        $this->await(static function () use (&$drained, $pair, $expected): bool {
+            $chunk = fread($pair[1], length: 65_536);
             if (\is_string($chunk)) {
                 $drained .= $chunk;
             }
@@ -66,7 +66,7 @@ final class NonBlockingTerminalTest extends TestCase
         $elapsed = 0.0;
         while (!$done() && $elapsed < $timeout) {
             $suspension = EventLoop::getSuspension();
-            EventLoop::delay(0.02, static fn () => $suspension->resume());
+            EventLoop::delay(0.02, $suspension->resume(...));
             $suspension->suspend();
             $elapsed += 0.02;
         }

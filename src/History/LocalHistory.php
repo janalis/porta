@@ -43,7 +43,7 @@ final readonly class LocalHistory
 
         // Skip if identical to the newest snapshot (no-op saves are common).
         $existing = $this->list($path);
-        if ([] !== $existing && @file_get_contents($existing[0]['file']) === $content) {
+        if ([] !== $existing && (is_file($existing[0]['file']) ? file_get_contents($existing[0]['file']) : false) === $content) {
             return 0;
         }
 
@@ -66,7 +66,8 @@ final readonly class LocalHistory
     {
         $dir = $this->dirFor($path);
         $entries = [];
-        foreach (@scandir($dir) ?: [] as $name) {
+        $names = is_dir($dir) ? scandir($dir) : false;
+        foreach (\is_array($names) ? $names : [] as $name) {
             $m = [];
             if (preg_match('/^(\d+)\.snap$/', $name, $m)) {
                 $entries[] = ['stamp' => (int) $m[1], 'file' => $dir.'/'.$name];
@@ -79,7 +80,7 @@ final readonly class LocalHistory
 
     public function read(string $snapFile): ?string
     {
-        $content = @file_get_contents($snapFile);
+        $content = is_file($snapFile) ? file_get_contents($snapFile) : false;
 
         return false === $content ? null : $content;
     }
@@ -96,8 +97,9 @@ final readonly class LocalHistory
 
     private function dirFor(string $path): string
     {
-        $real = realpath($path) ?: $path;
+        $resolved = realpath($path);
+        $real = $resolved ? $resolved : $path;
 
-        return $this->baseDir.'/'.substr(md5($real), 0, 16);
+        return $this->baseDir.'/'.substr(md5($real), offset: 0, length: 16);
     }
 }

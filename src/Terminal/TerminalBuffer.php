@@ -161,10 +161,12 @@ final class TerminalBuffer
         $cur = $this->lines[\count($this->lines) - 1];
         $width = AnsiUtils::visibleWidth($text);
 
-        if ($this->col >= AnsiUtils::visibleWidth($cur)) {
+        $append = $this->col >= AnsiUtils::visibleWidth($cur);
+        if ($append) {
             // Append (common case), padding any gap left by \t or cursor moves.
             $this->lines[\count($this->lines) - 1] = AnsiText::padRight($cur, $this->col).$text;
-        } else {
+        }
+        if (!$append) {
             // Overwrite from the cursor column (e.g. after \r).
             $head = AnsiUtils::sliceByColumn($cur, 0, $this->col);
             $tail = AnsiUtils::sliceByColumn($cur, $this->col + $width, AnsiUtils::visibleWidth($cur));

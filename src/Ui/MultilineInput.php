@@ -59,8 +59,8 @@ final class MultilineInput
             case "\r":
             case "\n":
                 $current = $this->lines[$this->line];
-                $this->lines[$this->line] = substr($current, 0, $this->col);
-                array_splice($this->lines, $this->line + 1, 0, [substr($current, $this->col)]);
+                $this->lines[$this->line] = substr($current, offset: 0, length: $this->col);
+                array_splice($this->lines, $this->line + 1, length: 0, replacement: [substr($current, $this->col)]);
                 ++$this->line;
                 $this->col = 0;
 
@@ -70,11 +70,14 @@ final class MultilineInput
                 if ($this->col > 0) {
                     $line = $this->lines[$this->line];
                     $prev = TextMetrics::prevCharBoundary($line, $this->col);
-                    $this->lines[$this->line] = substr($line, 0, $prev).substr($line, $this->col);
+                    $this->lines[$this->line] = substr($line, offset: 0, length: $prev).substr($line, $this->col);
                     $this->col = $prev;
-                } elseif ($this->line > 0) {
+
+                    return true;
+                }
+                if ($this->line > 0) {
                     $tail = $this->lines[$this->line];
-                    array_splice($this->lines, $this->line, 1);
+                    array_splice($this->lines, $this->line, length: 1);
                     --$this->line;
                     $this->col = \strlen($this->lines[$this->line]);
                     $this->lines[$this->line] .= $tail;
@@ -98,7 +101,10 @@ final class MultilineInput
             case "\x1b[D": // left
                 if ($this->col > 0) {
                     $this->col = TextMetrics::prevCharBoundary($this->lines[$this->line], $this->col);
-                } elseif ($this->line > 0) {
+
+                    return true;
+                }
+                if ($this->line > 0) {
                     --$this->line;
                     $this->col = \strlen($this->lines[$this->line]);
                 }
@@ -107,7 +113,10 @@ final class MultilineInput
             case "\x1b[C": // right
                 if ($this->col < \strlen($this->lines[$this->line])) {
                     $this->col = TextMetrics::nextCharBoundary($this->lines[$this->line], $this->col);
-                } elseif ($this->line < (\count($this->lines) - 1)) {
+
+                    return true;
+                }
+                if ($this->line < (\count($this->lines) - 1)) {
                     ++$this->line;
                     $this->col = 0;
                 }
@@ -117,7 +126,7 @@ final class MultilineInput
 
         if (TextInput::isPrintable($keys)) {
             $line = $this->lines[$this->line];
-            $this->lines[$this->line] = substr($line, 0, $this->col).$keys.substr($line, $this->col);
+            $this->lines[$this->line] = substr($line, offset: 0, length: $this->col).$keys.substr($line, $this->col);
             $this->col += \strlen($keys);
 
             return true;
@@ -143,7 +152,7 @@ final class MultilineInput
             $line = $this->lines[$i];
             if ($cursor && $i === $this->line) {
                 // Horizontally window the caret line so the marker stays visible.
-                $caretCol = AnsiUtils::visibleWidth(substr($line, 0, $this->col));
+                $caretCol = AnsiUtils::visibleWidth(substr($line, offset: 0, length: $this->col));
                 $out[] = AnsiText::caretWindow($line, $caretCol, $width, $this->style->marker());
 
                 continue;

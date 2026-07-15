@@ -43,10 +43,10 @@ final class FreezeWatchdog
     {
         $this->signalsAvailable ??= \function_exists('pcntl_alarm');
         $this->lastBeat = null;
-        $this->timer = EventLoop::repeat($this->interval, fn () => $this->heartbeat());
+        $this->timer = EventLoop::repeat($this->interval, $this->heartbeat(...));
         if ($this->signalsAvailable) {
             pcntl_async_signals(true);
-            pcntl_signal(\SIGALRM, fn () => $this->handleAlarm());
+            pcntl_signal(\SIGALRM, $this->handleAlarm(...));
             pcntl_alarm($this->alarmSeconds);
         }
     }
@@ -98,7 +98,12 @@ final class FreezeWatchdog
 
     private function append(string $entry): void
     {
-        @mkdir($this->rootDir.'/.porta', 0777, true);
-        @file_put_contents($this->logFile(), $entry."\n", \FILE_APPEND);
+        $dir = $this->rootDir.'/.porta';
+        if (!is_dir($dir) && is_dir($this->rootDir)) {
+            mkdir($dir, permissions: 0o777, recursive: true);
+        }
+        if (is_dir($dir)) {
+            file_put_contents($this->logFile(), $entry."\n", \FILE_APPEND);
+        }
     }
 }

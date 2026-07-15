@@ -107,7 +107,7 @@ final class SettingsNavWidget extends AbstractWidget implements FocusableInterfa
         $selected = $this->selectedId();
         $this->entries = $this->buildEntries($names);
         $ids = array_column($this->entries, 'id');
-        $this->setActive(null !== $selected && \in_array($selected, $ids, true) ? $selected : 'plugins');
+        $this->setActive(null !== $selected && \in_array($selected, $ids, strict: true) ? $selected : 'plugins');
         $this->invalidate();
     }
 
@@ -143,12 +143,14 @@ final class SettingsNavWidget extends AbstractWidget implements FocusableInterfa
     public function setActive(string $id): void
     {
         foreach ($this->entries as $i => $entry) {
-            if ($entry['id'] === $id) {
-                $this->list->select($i);
-                $this->invalidate();
-
-                return;
+            if ($entry['id'] !== $id) {
+                continue;
             }
+
+            $this->list->select($i);
+            $this->invalidate();
+
+            return;
         }
     }
 
@@ -161,11 +163,20 @@ final class SettingsNavWidget extends AbstractWidget implements FocusableInterfa
 
         if ($kb->matches($data, 'exit_view')) {
             $this->fire($this->onExit);
-        } elseif ($kb->matches($data, 'focus_next_pane')) {
+
+            return;
+        }
+        if ($kb->matches($data, 'focus_next_pane')) {
             $this->fire($this->onFocusNext);
-        } elseif ($kb->matches($data, 'move_up')) {
+
+            return;
+        }
+        if ($kb->matches($data, 'move_up')) {
             $this->moveTo($this->prevSelectable($this->list->selected()));
-        } elseif ($kb->matches($data, 'move_down')) {
+
+            return;
+        }
+        if ($kb->matches($data, 'move_down')) {
             $this->moveTo($this->nextSelectable($this->list->selected()));
         }
     }
@@ -241,7 +252,7 @@ final class SettingsNavWidget extends AbstractWidget implements FocusableInterfa
     {
         $index = $this->list->scroll() + $relRow;
 
-        return $relRow >= 0 && isset($this->entries[$index]) ? $index : null;
+        return $relRow >= 0 && array_key_exists($index, $this->entries) ? $index : null;
     }
 
     public function render(RenderContext $context): array
@@ -270,12 +281,15 @@ final class SettingsNavWidget extends AbstractWidget implements FocusableInterfa
             }
 
             $selected = $index === $this->list->selected();
-            $bg = $selected
-                ? ($this->focused ? $this->palette->of(Role::SelectedRow) : $this->palette->of(Role::SelectedRowUnfocused))
-                : ($index === $this->hoveredIndex ? $this->palette->of(Role::RowHighlightBg) : '');
+            $bg = match (true) {
+                $selected && $this->focused => $this->palette->of(Role::SelectedRow),
+                $selected => $this->palette->of(Role::SelectedRowUnfocused),
+                $index === $this->hoveredIndex => $this->palette->of(Role::RowHighlightBg),
+                default => '',
+            };
             // Language and plugin sub-items indent under their section and keep
             // their own (untranslated) names.
-            $text = \in_array($entry['kind'], ['language', 'plugin'], true) ? '   '.$entry['label'] : ' '.$this->translator->trans($entry['label']);
+            $text = \in_array($entry['kind'], ['language', 'plugin'], strict: true) ? '   '.$entry['label'] : ' '.$this->translator->trans($entry['label']);
             $lines[] = $bg.AnsiUtils::truncateToWidth($text, $width, '…', pad: true)."\x1b[0m";
         }
 

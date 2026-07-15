@@ -29,7 +29,7 @@ final class KeybindingsListWidgetTest extends TestCase
         $widget = new KeybindingsListWidget(new Translator('en'));
         $widget->setFocused(true);
         $widget->setRows($this->rows());
-        $widget->onRebind(function (string $action, string $key) use (&$rebinds): void {
+        $widget->onRebind(static function (string $action, string $key) use (&$rebinds): void {
             $rebinds[] = [$action, $key];
         });
 
@@ -79,7 +79,7 @@ final class KeybindingsListWidgetTest extends TestCase
     {
         $exited = false;
         $widget = $this->widget($rebinds);
-        $widget->onExit(function () use (&$exited): void {
+        $widget->onExit(static function () use (&$exited): void {
             $exited = true;
         });
 
@@ -94,7 +94,7 @@ final class KeybindingsListWidgetTest extends TestCase
     {
         $exited = false;
         $widget = $this->widget();
-        $widget->onExit(function () use (&$exited): void {
+        $widget->onExit(static function () use (&$exited): void {
             $exited = true;
         });
         $widget->handleInput("\x1b");
@@ -105,10 +105,10 @@ final class KeybindingsListWidgetTest extends TestCase
     {
         $fired = [];
         $widget = $this->widget();
-        $widget->onShowSettings(function () use (&$fired): void {
+        $widget->onShowSettings(static function () use (&$fired): void {
             $fired[] = 'settings';
         });
-        $widget->onFocusNext(function () use (&$fired): void {
+        $widget->onFocusNext(static function () use (&$fired): void {
             $fired[] = 'next';
         });
         $widget->handleInput('1');

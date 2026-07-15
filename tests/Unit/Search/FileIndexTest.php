@@ -66,7 +66,7 @@ final class FileIndexTest extends TestCase
         $index = new FileIndex($project->dir);
         $this->assertSame(['a.php'], array_column($index->entries(), 'path'));
 
-        file_put_contents($project->path('b.php'), '');
+        file_put_contents($project->path('b.php'), data: '');
         $this->assertNotContains('b.php', array_column($index->entries(), 'path'), 'cached until refreshed');
 
         $index->refresh();

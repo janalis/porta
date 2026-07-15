@@ -46,7 +46,7 @@ final class GitInfo
             return;
         }
 
-        $this->run(['rev-parse', '--abbrev-ref', 'HEAD'], function (string $out) use ($onDone): void {
+        $this->run(['rev-parse', '--abbrev-ref', 'HEAD'], static function (string $out) use ($onDone): void {
             $branch = trim($out);
             $onDone('' === $branch || 'HEAD' === $branch ? null : $branch);
         });
@@ -65,7 +65,7 @@ final class GitInfo
             return;
         }
 
-        $this->run(['diff', '--no-color', '--unified=0', 'HEAD', '--', $absPath], function (string $out) use ($onDone): void {
+        $this->run(['diff', '--no-color', '--unified=0', 'HEAD', '--', $absPath], static function (string $out) use ($onDone): void {
             $onDone(self::parseHunks($out));
         });
     }
@@ -80,7 +80,8 @@ final class GitInfo
     public function status(callable $onDone): void
     {
         if (!$this->available) {
-            $onDone([], '');
+            $empty = '';
+            $onDone([], $empty);
 
             return;
         }
@@ -208,7 +209,8 @@ final class GitInfo
     public function commit(string $message, callable $onDone, bool $amend = false): void
     {
         if (!$this->available) {
-            $onDone(false, '');
+            $empty = '';
+            $onDone(false, $empty);
 
             return;
         }
@@ -291,12 +293,14 @@ final class GitInfo
     public function stashPush(callable $onDone): void
     {
         if (!$this->available) {
-            $onDone(false, '');
+            $empty = '';
+            $onDone(false, $empty);
 
             return;
         }
         $this->runStatus(['stash', 'push'], static function (int $code, string $out) use ($onDone): void {
-            $firstLine = strtok(trim($out), "\n");
+            // @mago-expect lint:no-literal-password -- strtok's token: is a newline delimiter, not a credential
+            $firstLine = strtok(trim($out), token: "\n");
             $onDone(0 === $code, \is_string($firstLine) ? $firstLine : '');
         });
     }
@@ -375,7 +379,7 @@ final class GitInfo
      */
     public function checkoutTracking(string $remoteBranch, callable $onDone): void
     {
-        $slash = strpos($remoteBranch, '/');
+        $slash = strpos($remoteBranch, needle: '/');
         $local = false === $slash ? $remoteBranch : substr($remoteBranch, $slash + 1);
         $this->runWithErrors(['checkout', '-b', $local, '--track', $remoteBranch], $onDone);
     }
@@ -455,11 +459,17 @@ final class GitInfo
         foreach (explode("\n", $out) as $line) {
             $m = [];
             if (1 === preg_match('/^([0-9a-f]{40}) /', $line, $m)) {
-                $sha = substr($m[1], 0, 8);
-            } elseif (str_starts_with($line, 'author ')) {
-                $author = substr($line, 7);
-            } elseif (str_starts_with($line, 'summary ')) {
-                $summary = substr($line, 8);
+                $sha = substr($m[1], offset: 0, length: 8);
+
+                continue;
+            }
+            if (str_starts_with($line, 'author ')) {
+                $author = substr($line, offset: 7);
+
+                continue;
+            }
+            if (str_starts_with($line, 'summary ')) {
+                $summary = substr($line, offset: 8);
             }
         }
 
@@ -554,7 +564,8 @@ final class GitInfo
         });
         if (!$started) {
             // @codeCoverageIgnoreStart
-            $onDone(1, '');
+            $empty = '';
+            $onDone(1, $empty);
 
             return;
 
@@ -574,7 +585,8 @@ final class GitInfo
     private function runWithErrors(array $args, callable $onDone): void
     {
         if (!$this->available) {
-            $onDone(false, 'git is not available');
+            $reason = 'git is not available';
+            $onDone(false, $reason);
 
             return;
         }
@@ -584,12 +596,14 @@ final class GitInfo
         $process = new AsyncProcess($command, $this->rootDir, captureStderr: true);
         $started = $process->start(function (int $code) use ($key, $process, $onDone): void {
             unset($this->running[$key]);
-            $firstLine = strtok(trim($process->errorOutput()), "\n");
+            // @mago-expect lint:no-literal-password -- strtok's token: is a newline delimiter, not a credential
+            $firstLine = strtok(trim($process->errorOutput()), token: "\n");
             $onDone(0 === $code, \is_string($firstLine) ? $firstLine : '');
         });
         if (!$started) {
             // @codeCoverageIgnoreStart
-            $onDone(false, 'could not start git');
+            $reason = 'could not start git';
+            $onDone(false, $reason);
 
             return;
 

@@ -140,13 +140,15 @@ final class ChangesListWidget extends AbstractWidget implements FocusableInterfa
         $this->hoveredIndex = null; // rows moved under the pointer
         if (null !== $previous) {
             foreach ($entries as $i => $entry) {
-                if ($entry->path === $previous) {
-                    $this->list->select($i);
-                    $this->confirmDiscard = null !== $this->confirmDiscard ? $i : null;
-                    $this->invalidate();
-
-                    return;
+                if ($entry->path !== $previous) {
+                    continue;
                 }
+
+                $this->list->select($i);
+                $this->confirmDiscard = null !== $this->confirmDiscard ? $i : null;
+                $this->invalidate();
+
+                return;
             }
         }
         $this->list->clamp(\count($entries));
@@ -174,13 +176,9 @@ final class ChangesListWidget extends AbstractWidget implements FocusableInterfa
         // An armed discard confirmation captures y / Esc first.
         if (null !== $this->confirmDiscard) {
             $entry = $this->entries[$this->confirmDiscard] ?? null;
-            if (('y' === $data || 'Y' === $data) && null !== $entry) {
-                $this->confirmDiscard = null;
-                if (null !== $this->onDiscard) {
-                    ($this->onDiscard)($entry);
-                }
-            } else {
-                $this->confirmDiscard = null;
+            $this->confirmDiscard = null;
+            if (('y' === $data || 'Y' === $data) && null !== $entry && null !== $this->onDiscard) {
+                ($this->onDiscard)($entry);
             }
             $this->invalidate();
 
@@ -188,30 +186,47 @@ final class ChangesListWidget extends AbstractWidget implements FocusableInterfa
         }
 
         foreach (['fetch', 'pull', 'push'] as $remoteOp) {
-            if ($kb->matches($data, $remoteOp)) {
-                if (null !== $this->onRemote) {
-                    ($this->onRemote)($remoteOp);
-                }
-
-                return;
+            if (!$kb->matches($data, $remoteOp)) {
+                continue;
             }
+
+            if (null !== $this->onRemote) {
+                ($this->onRemote)($remoteOp);
+            }
+
+            return;
         }
         if ($kb->matches($data, 'exit_view')) {
             $this->fire($this->onExit);
-        } elseif ($kb->matches($data, 'focus_next_pane')) {
+
+            return;
+        }
+        if ($kb->matches($data, 'focus_next_pane')) {
             $this->fire($this->onFocusNext);
-        } elseif (ListNavigation::handleKey($data, $kb, $this->list, \count($this->entries), page: $this->lastRows)) {
+
+            return;
+        }
+        if (ListNavigation::handleKey($data, $kb, $this->list, \count($this->entries), page: $this->lastRows)) {
             $this->fireSelect();
             $this->invalidate();
-        } elseif ($kb->matches($data, 'toggle_stage')) {
+
+            return;
+        }
+        if ($kb->matches($data, 'toggle_stage')) {
             if (null !== ($entry = $this->selectedEntry()) && null !== $this->onToggleStage) {
                 ($this->onToggleStage)($entry);
             }
-        } elseif ($kb->matches($data, 'show_history')) {
+
+            return;
+        }
+        if ($kb->matches($data, 'show_history')) {
             if (null !== $this->onShowHistory) {
                 ($this->onShowHistory)();
             }
-        } elseif ($kb->matches($data, 'discard')) {
+
+            return;
+        }
+        if ($kb->matches($data, 'discard')) {
             if (null !== $this->selectedEntry()) {
                 $this->confirmDiscard = $this->list->selected();
                 $this->invalidate();
@@ -230,9 +245,11 @@ final class ChangesListWidget extends AbstractWidget implements FocusableInterfa
         $entry = $this->entries[$index];
         if ($relCol <= 3 && null !== $this->onToggleStage) {
             ($this->onToggleStage)($entry);
-        } else {
-            $this->fireSelect();
+            $this->invalidate();
+
+            return;
         }
+        $this->fireSelect();
         $this->invalidate();
     }
 
@@ -266,7 +283,7 @@ final class ChangesListWidget extends AbstractWidget implements FocusableInterfa
     private function rowIndexAt(int $relRow): ?int
     {
         $index = $this->list->scroll() + $relRow - 1; // row 0 is the header
-        if ($relRow < 1 || !isset($this->entries[$index])) {
+        if ($relRow < 1 || !\array_key_exists($index, $this->entries)) {
             return null;
         }
 
@@ -312,13 +329,17 @@ final class ChangesListWidget extends AbstractWidget implements FocusableInterfa
                 default => '[ ]',
             };
             $status = $entry->displayStatus();
-            $statusFg = isset(self::STATUS_ROLE[$status]) ? $this->palette->of(self::STATUS_ROLE[$status]) : '';
+            $statusFg = \array_key_exists($status, self::STATUS_ROLE) ? $this->palette->of(self::STATUS_ROLE[$status]) : '';
             $label = $entry->path.(null !== $entry->renamedFrom ? ' ← '.$entry->renamedFrom : '');
 
             $selected = $this->list->isSelected($index);
-            $bg = $selected
-                ? ($this->focused ? $this->palette->of(Role::SelectedRow) : $this->palette->of(Role::SelectedRowUnfocused))
-                : ($index === $this->hoveredIndex ? $this->palette->of(Role::RowHighlightBg) : '');
+            $bg = '';
+            if ($selected) {
+                $bg = $this->focused ? $this->palette->of(Role::SelectedRow) : $this->palette->of(Role::SelectedRowUnfocused);
+            }
+            if (!$selected && $index === $this->hoveredIndex) {
+                $bg = $this->palette->of(Role::RowHighlightBg);
+            }
             $text = ' '.$checkbox.' '.$statusFg.$status."\x1b[39m".' '.$label;
             $lines[] = $bg.AnsiUtils::truncateToWidth($text, $width, '…', pad: true)."\x1b[0m";
         }

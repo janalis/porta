@@ -52,7 +52,7 @@ final class LocalHistoryController
         $results = [];
         foreach ($snapshots as $index => $snapshot) {
             $this->snapshots[] = $snapshot['file'];
-            $when = date('Y-m-d H:i:s', intdiv($snapshot['stamp'], 1000));
+            $when = date('Y-m-d H:i:s', intdiv($snapshot['stamp'], num2: 1000));
             $results[] = ['path' => basename($path), 'line' => $index, 'text' => $when.(0 === $index ? '  (latest)' : '')];
         }
 

@@ -29,11 +29,13 @@ final class MenuModelTest extends TestCase
     private function item(array $menus, string $title, string $label): MenuItem
     {
         foreach ($menus as $menu) {
-            if ($menu->title === $title) {
-                foreach ($menu->items as $item) {
-                    if ($item->label === $label) {
-                        return $item;
-                    }
+            if ($menu->title !== $title) {
+                continue;
+            }
+
+            foreach ($menu->items as $item) {
+                if ($item->label === $label) {
+                    return $item;
                 }
             }
         }
@@ -54,7 +56,7 @@ final class MenuModelTest extends TestCase
         $ran = 0;
         $commands->add(
             'demo:hello',
-            function () use (&$ran): void {
+            static function () use (&$ran): void {
                 ++$ran;
             },
             keyBound: true,
@@ -213,7 +215,7 @@ final class MenuModelTest extends TestCase
             ->gitCommands()
             ->add('git_undo_commit', static function (): void {}, label: 'Git: Undo Last Commit')
             ->add('ide_git', static function (): void {}, label: 'Git: Changes');
-        $menus = MenuModel::build($commands, $editor, $ideKeys, new Translator('en'), function () use (&$gitViewOpen): bool {
+        $menus = MenuModel::build($commands, $editor, $ideKeys, new Translator('en'), static function () use (&$gitViewOpen): bool {
             return $gitViewOpen;
         });
 
@@ -248,7 +250,7 @@ final class MenuModelTest extends TestCase
         $settingsOpen = true;
         $ideKeys = new Keybindings([]);
         $commands = $this->gitCommands()->add('ide_settings', static function (): void {}, label: 'Settings…');
-        $menus = MenuModel::build($commands, $editor, $ideKeys, new Translator('en'), null, function () use (&$settingsOpen): bool {
+        $menus = MenuModel::build($commands, $editor, $ideKeys, new Translator('en'), null, static function () use (&$settingsOpen): bool {
             return $settingsOpen;
         });
 
@@ -286,7 +288,7 @@ final class MenuModelTest extends TestCase
         $commands = new CommandRegistry();
         $commands->add(
             'ide_run',
-            function () use (&$ran): void {
+            static function () use (&$ran): void {
                 $ran = true;
             },
             keyBound: true,
@@ -306,7 +308,7 @@ final class MenuModelTest extends TestCase
         $commands = new CommandRegistry();
         $commands->add(
             'ide_search_everywhere',
-            function () use (&$ran): void {
+            static function () use (&$ran): void {
                 $ran = true;
             },
             keyBound: true,

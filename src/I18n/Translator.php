@@ -40,7 +40,7 @@ final class Translator
 
     public function __construct(string $locale = 'en', ?string $translationsDir = null)
     {
-        $dir = $translationsDir ?? \dirname(__DIR__, 2).'/translations';
+        $dir = $translationsDir ?? \dirname(__DIR__, levels: 2).'/translations';
         $this->translator = new SymfonyTranslator(self::normalize($locale));
         $this->translator->setFallbackLocales(['en']);
         $this->translator->addLoader('array', new ArrayLoader());
@@ -69,7 +69,8 @@ final class Translator
         $xml->registerXPathNamespace('x', 'urn:oasis:names:tc:xliff:document:1.2');
 
         $map = [];
-        foreach ($xml->xpath('//x:trans-unit') ?: [] as $unit) {
+        $units = $xml->xpath('//x:trans-unit');
+        foreach (\is_array($units) ? $units : [] as $unit) {
             $source = self::childText($unit, 'source');
             $target = self::childText($unit, 'target');
             if ('' !== $source) {
@@ -84,7 +85,8 @@ final class Translator
     private static function childText(\SimpleXMLElement $unit, string $tag): string
     {
         $unit->registerXPathNamespace('x', 'urn:oasis:names:tc:xliff:document:1.2');
-        $nodes = $unit->xpath('x:'.$tag) ?: [];
+        $found = $unit->xpath('x:'.$tag);
+        $nodes = \is_array($found) ? $found : [];
 
         return [] !== $nodes ? (string) $nodes[0] : '';
     }
@@ -113,7 +115,7 @@ final class Translator
     /** 'rtl' for right-to-left locales (Hebrew), else 'ltr'. */
     public function direction(): string
     {
-        return \in_array($this->locale(), self::RTL, true) ? 'rtl' : 'ltr';
+        return \in_array($this->locale(), self::RTL, strict: true) ? 'rtl' : 'ltr';
     }
 
     public function isRtl(): bool
@@ -124,6 +126,6 @@ final class Translator
     /** An unknown locale falls back to English. */
     private static function normalize(string $locale): string
     {
-        return \in_array($locale, self::LOCALES, true) ? $locale : 'en';
+        return \in_array($locale, self::LOCALES, strict: true) ? $locale : 'en';
     }
 }

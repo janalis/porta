@@ -89,7 +89,7 @@ final class PaneSegmenter
         $columns = max(0, $columns);
         /** @var list<int|string> $owner -1 = uncovered gap (verbatim) */
         $owner = array_fill(0, $columns, -1);
-        $ltr = array_fill(0, $columns, true);
+        $ltr = array_fill(0, $columns, value: true);
 
         foreach ($leaves as $index => $leaf) {
             $rect = $leaf['rect'];
@@ -113,10 +113,12 @@ final class PaneSegmenter
 
         $runs = [];
         for ($start = 0, $col = 1; $col <= $columns; ++$col) {
-            if ($col === $columns || $owner[$col] !== $owner[$start]) {
-                $runs[] = ['start' => $start, 'width' => $col - $start, 'ltr' => $ltr[$start]];
-                $start = $col;
+            if (!($col === $columns || $owner[$col] !== $owner[$start])) {
+                continue;
             }
+
+            $runs[] = ['start' => $start, 'width' => $col - $start, 'ltr' => $ltr[$start]];
+            $start = $col;
         }
 
         return $runs;

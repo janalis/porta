@@ -90,7 +90,7 @@ final class IdeConfig
         foreach ($keymapConfig as $action => $keys) {
             // Namespaced ids ("plugin:command") belong to plugins registered at
             // runtime — they bypass the catalog check and bind if the plugin loads.
-            if (!isset(ActionCatalog::ACTIONS[$action]) && !str_contains($action, ':')) {
+            if ((ActionCatalog::ACTIONS[$action] ?? null) === null && !str_contains($action, ':')) {
                 $warnings[] = \sprintf('Unknown keymap action "%s" in .porta.json', $action);
                 continue;
             }
@@ -106,7 +106,7 @@ final class IdeConfig
         /** @var array<string, scalar> $settingsConfig */
         $settingsConfig = $config['settings'] ?? [];
         foreach ($settingsConfig as $key => $value) {
-            if (\in_array($key, self::LEGACY_SETTINGS, true)) {
+            if (\in_array($key, self::LEGACY_SETTINGS, strict: true)) {
                 continue;
             }
             if (!\array_key_exists($key, self::DEFAULT_SETTINGS)) {
@@ -151,9 +151,11 @@ final class IdeConfig
             }
             /** @var mixed $value */
             foreach ($values as $key => $value) {
-                if (\is_scalar($value)) {
-                    $plugins[(string) $plugin][(string) $key] = \is_float($value) ? (string) $value : $value;
+                if (!\is_scalar($value)) {
+                    continue;
                 }
+
+                $plugins[(string) $plugin][(string) $key] = \is_float($value) ? (string) $value : $value;
             }
         }
 
@@ -214,7 +216,9 @@ final class IdeConfig
             $entry = self::languageEntry($config[$lang]);
             if (null === $entry) {
                 $warnings[] = \sprintf('Language "%s" must map to an object of indent settings', $lang);
-            } elseif ([] !== $entry) {
+                continue;
+            }
+            if ([] !== $entry) {
                 $languages[$lang] = $entry;
             }
         }
@@ -281,7 +285,7 @@ final class IdeConfig
 
     private static function indentStyleValue(mixed $value): ?string
     {
-        return \is_string($value) && \in_array($value, self::INDENT_STYLES, true) ? $value : null;
+        return \is_string($value) && \in_array($value, self::INDENT_STYLES, strict: true) ? $value : null;
     }
 
     private static function indentSizeValue(mixed $value): int|string|null
@@ -347,7 +351,8 @@ final class IdeConfig
         }
         if ([] === $disabled) {
             unset($config['disabledPlugins']);
-        } else {
+        }
+        if ([] !== $disabled) {
             $config['disabledPlugins'] = $disabled;
         }
 
@@ -397,15 +402,18 @@ final class IdeConfig
         $entry = \is_array($languages[$language] ?? null) ? $languages[$language] : [];
         $debug = \is_array($entry['debug'] ?? null) ? $entry['debug'] : [];
 
-        if (null === $value || '' === $value || [] === $value) {
+        $removeKey = null === $value || '' === $value || [] === $value;
+        if ($removeKey) {
             unset($debug[$key]);
-        } else {
+        }
+        if (!$removeKey) {
             $debug[$key] = $value;
         }
 
         if ([] === $debug) {
             unset($entry['debug']);
-        } else {
+        }
+        if ([] !== $debug) {
             $entry['debug'] = $debug;
         }
         $languages[$language] = $entry;
@@ -429,13 +437,15 @@ final class IdeConfig
         $command = trim($command);
         if ('' === $command) {
             unset($map[$languageId]);
-        } else {
+        }
+        if ('' !== $command) {
             $map[$languageId] = $command;
         }
 
         if ([] === $map) {
             unset($config['lsp']);
-        } else {
+        }
+        if ([] !== $map) {
             $config['lsp'] = $map;
         }
 

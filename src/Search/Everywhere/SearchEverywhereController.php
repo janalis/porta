@@ -50,9 +50,9 @@ final class SearchEverywhereController
         $this->seedRecentFiles();
         $this->overlay->openSearch(
             'Search Everywhere',
-            fn (string $query): mixed => $this->onQuery($query),
-            fn (SearchHit $hit): mixed => $this->onPick($hit),
-            fn (): mixed => $this->onClose(),
+            $this->onQuery(...),
+            $this->onPick(...),
+            $this->onClose(...),
         );
         $this->render();
     }
@@ -154,7 +154,7 @@ final class SearchEverywhereController
     {
         $rows = [];
         foreach (SearchCategory::cases() as $category) {
-            $hits = \array_slice($this->hitsByCategory[$category->order()] ?? [], 0, $category->cap());
+            $hits = \array_slice($this->hitsByCategory[$category->order()] ?? [], offset: 0, length: $category->cap());
             if ([] === $hits) {
                 continue;
             }

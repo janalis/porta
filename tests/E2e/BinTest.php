@@ -11,7 +11,7 @@ final class BinTest extends TestCase
     /** @return array{0: int, 1: string} exit code + combined output */
     private function porta(string $args): array
     {
-        $bin = escapeshellarg(\dirname(__DIR__, 2).'/bin/porta');
+        $bin = escapeshellarg(\dirname(__DIR__, levels: 2).'/bin/porta');
         exec(\PHP_BINARY.' '.$bin.' '.$args.' 2>&1', $output, $exitCode);
 
         return [$exitCode, implode("\n", $output)];

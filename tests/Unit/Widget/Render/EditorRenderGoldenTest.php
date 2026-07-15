@@ -26,13 +26,15 @@ final class EditorRenderGoldenTest extends TestCase
         $actual = $this->renderAllScenarios();
 
         if (getenv('UPDATE_EDITOR_GOLDEN')) {
-            @mkdir(\dirname(self::GOLDEN), 0777, true);
+            if (!is_dir(\dirname(self::GOLDEN))) {
+                mkdir(\dirname(self::GOLDEN), permissions: 0o777, recursive: true);
+            }
             file_put_contents(self::GOLDEN, json_encode($actual, \JSON_PRETTY_PRINT | \JSON_UNESCAPED_SLASHES | \JSON_UNESCAPED_UNICODE));
             $this->markTestSkipped('Golden regenerated.');
         }
 
         $this->assertFileExists(self::GOLDEN, 'run once with UPDATE_EDITOR_GOLDEN=1 to seed');
-        $expected = json_decode((string) file_get_contents(self::GOLDEN), true);
+        $expected = json_decode((string) file_get_contents(self::GOLDEN), associative: true);
 
         // Compare scenario by scenario for a readable diff on failure.
         foreach ($expected as $name => $rows) {
@@ -64,7 +66,7 @@ final class EditorRenderGoldenTest extends TestCase
 
         return [
             'plain-focused' => [
-                function (CodeEditorWidget $e) use ($php): void {
+                static function (CodeEditorWidget $e) use ($php): void {
                     $e->openFile('demo.php', $php);
                     $e->setFocused(true);
                 },
@@ -73,7 +75,7 @@ final class EditorRenderGoldenTest extends TestCase
             ],
 
             'plain-unfocused' => [
-                function (CodeEditorWidget $e) use ($php): void {
+                static function (CodeEditorWidget $e) use ($php): void {
                     $e->openFile('demo.php', $php);
                     $e->setFocused(false);
                 },
@@ -82,7 +84,7 @@ final class EditorRenderGoldenTest extends TestCase
             ],
 
             'selection' => [
-                function (CodeEditorWidget $e) use ($php): void {
+                static function (CodeEditorWidget $e) use ($php): void {
                     $e->openFile('demo.php', $php);
                     $e->setFocused(true);
                     $doc = $e->getDocument();
@@ -95,7 +97,7 @@ final class EditorRenderGoldenTest extends TestCase
             ],
 
             'search-matches' => [
-                function (CodeEditorWidget $e) use ($php): void {
+                static function (CodeEditorWidget $e) use ($php): void {
                     $e->openFile('demo.php', $php);
                     $e->setFocused(true);
                     $e->setSearchMatches([
@@ -108,7 +110,7 @@ final class EditorRenderGoldenTest extends TestCase
             ],
 
             'diagnostics' => [
-                function (CodeEditorWidget $e) use ($php): void {
+                static function (CodeEditorWidget $e) use ($php): void {
                     $e->openFile('demo.php', $php);
                     $e->setFocused(true);
                     $e->setDiagnostics([
@@ -126,7 +128,7 @@ final class EditorRenderGoldenTest extends TestCase
             ],
 
             'multi-caret' => [
-                function (CodeEditorWidget $e) use ($php): void {
+                static function (CodeEditorWidget $e) use ($php): void {
                     $e->openFile('demo.php', $php);
                     $e->setFocused(true);
                     $e->getDocument()->setCursor(2, 0);
@@ -138,7 +140,7 @@ final class EditorRenderGoldenTest extends TestCase
             ],
 
             'column-selection' => [
-                function (CodeEditorWidget $e) use ($php): void {
+                static function (CodeEditorWidget $e) use ($php): void {
                     $e->openFile('demo.php', $php);
                     $e->setFocused(true);
                     $e->render(new RenderContext(80, 10)); // establish gutter width
@@ -150,7 +152,7 @@ final class EditorRenderGoldenTest extends TestCase
             ],
 
             'inlay-hints' => [
-                function (CodeEditorWidget $e) use ($php): void {
+                static function (CodeEditorWidget $e) use ($php): void {
                     $e->openFile('demo.php', $php);
                     $e->setFocused(true);
                     $e->setInlayHints([
@@ -162,7 +164,7 @@ final class EditorRenderGoldenTest extends TestCase
             ],
 
             'git-marks' => [
-                function (CodeEditorWidget $e) use ($php): void {
+                static function (CodeEditorWidget $e) use ($php): void {
                     $e->openFile('demo.php', $php);
                     $e->setFocused(true);
                     $e->setGitMarks([0 => 'modified', 2 => 'added', 4 => 'deleted']);
@@ -172,7 +174,7 @@ final class EditorRenderGoldenTest extends TestCase
             ],
 
             'relative-numbers' => [
-                function (CodeEditorWidget $e) use ($php): void {
+                static function (CodeEditorWidget $e) use ($php): void {
                     $e->openFile('demo.php', $php);
                     $e->setFocused(true);
                     $e->setRelativeLineNumbers(true);
@@ -183,7 +185,7 @@ final class EditorRenderGoldenTest extends TestCase
             ],
 
             'tabs-and-wide' => [
-                function (CodeEditorWidget $e): void {
+                static function (CodeEditorWidget $e): void {
                     $e->openFile('t.php', "<?php\n\tif (\$好 === '😀') {\n\t\techo \$好;\n\t}\n");
                     $e->setFocused(true);
                     $e->getDocument()->setCursor(1, 1);
@@ -193,7 +195,7 @@ final class EditorRenderGoldenTest extends TestCase
             ],
 
             'completion-popup' => [
-                function (CodeEditorWidget $e) use ($php): void {
+                static function (CodeEditorWidget $e) use ($php): void {
                     $e->openFile('demo.php', $php);
                     $e->setFocused(true);
                     $e->getDocument()->setCursor(4, 11);
@@ -207,7 +209,7 @@ final class EditorRenderGoldenTest extends TestCase
             ],
 
             'list-overlay' => [
-                function (CodeEditorWidget $e) use ($php): void {
+                static function (CodeEditorWidget $e) use ($php): void {
                     $e->openFile('demo.php', $php);
                     $e->setFocused(true);
                     $e->openListOverlay(
@@ -224,7 +226,7 @@ final class EditorRenderGoldenTest extends TestCase
             ],
 
             'prompt' => [
-                function (CodeEditorWidget $e) use ($php): void {
+                static function (CodeEditorWidget $e) use ($php): void {
                     $e->openFile('demo.php', $php);
                     $e->setFocused(true);
                     $e->openPrompt('Rename to', 'greet', static function (): void {});
@@ -234,7 +236,7 @@ final class EditorRenderGoldenTest extends TestCase
             ],
 
             'signature-hint' => [
-                function (CodeEditorWidget $e) use ($php): void {
+                static function (CodeEditorWidget $e) use ($php): void {
                     $e->openFile('demo.php', $php);
                     $e->setFocused(true);
                     $e->getDocument()->setCursor(4, 11);
@@ -245,7 +247,7 @@ final class EditorRenderGoldenTest extends TestCase
             ],
 
             'scrolled' => [
-                function (CodeEditorWidget $e): void {
+                static function (CodeEditorWidget $e): void {
                     $lines = [];
                     for ($i = 1; $i <= 40; ++$i) {
                         $lines[] = "line {$i} content";

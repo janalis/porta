@@ -45,6 +45,7 @@ final class FoldingController
         $token = ++$this->round;
         $version = $doc->getVersion();
         $timer = $this->scheduler->delay(2.0, function () use ($token): void {
+            // @mago-expect lint:no-insecure-comparison -- $token is a round-generation counter, not sensitive data
             if ($token !== $this->round) {
                 return;
             }
@@ -56,6 +57,7 @@ final class FoldingController
             'textDocument/foldingRange',
             ['textDocument' => ['uri' => Uri::fromPath($path)]],
             function (mixed $result, ?array $error) use ($token, $timer, $doc, $version): void {
+                // @mago-expect lint:no-insecure-comparison -- $token is a round-generation counter, not sensitive data
                 if ($token !== $this->round) {
                     return; // superseded by the timeout or a newer command
                 }

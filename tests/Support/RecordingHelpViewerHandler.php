@@ -40,7 +40,7 @@ final class RecordingHelpViewerHandler implements HelpViewerHandler
 
     public function labelFor(string $path): string
     {
-        return basename($path, '.md');
+        return basename($path, suffix: '.md');
     }
 
     public function backEmpty(): void

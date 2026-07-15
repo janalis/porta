@@ -120,7 +120,7 @@ final class ImageViewerWidget extends AbstractWidget implements FocusableInterfa
         match (true) {
             $kb->matches($data, 'image_zoom_in') => $this->zoom(1),
             $kb->matches($data, 'image_zoom_out') => $this->zoom(-1),
-            $kb->matches($data, 'image_zoom_fit') => $this->withView(fn (ZoomPanModel $v) => $v->fit()),
+            $kb->matches($data, 'image_zoom_fit') => $this->withView(static fn (ZoomPanModel $v) => $v->fit()),
             $kb->matches($data, 'image_zoom_actual') => $this->withView(fn (ZoomPanModel $v) => $v->actualSize($this->lastCols, $pxRows)),
             $kb->matches($data, 'image_pan_left') => $this->pan(-2, 0, $data),
             $kb->matches($data, 'image_pan_right') => $this->pan(2, 0, $data),

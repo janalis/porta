@@ -15,10 +15,10 @@ final class ImageViewerWidgetTest extends TestCase
     /** A 64×8 horizontal gradient (red channel = x*4) for pan-visible sampling. */
     private function gradient(): ImageData
     {
-        $gd = imagecreatetruecolor(64, 8);
+        $gd = imagecreatetruecolor(64, height: 8);
         for ($x = 0; $x < 64; ++$x) {
             for ($y = 0; $y < 8; ++$y) {
-                imagesetpixel($gd, $x, $y, (int) imagecolorallocate($gd, $x * 4, 0, 0));
+                imagesetpixel($gd, $x, $y, (int) imagecolorallocate($gd, $x * 4, green: 0, blue: 0));
             }
         }
 
@@ -29,7 +29,7 @@ final class ImageViewerWidgetTest extends TestCase
     {
         $widget = new ImageViewerWidget();
         $this->assertSame([], $widget->render(new RenderContext(10, 0)), 'zero rows');
-        $this->assertSame(array_fill(0, 3, str_repeat(' ', 10)), $widget->render(new RenderContext(10, 3)));
+        $this->assertSame(array_fill(0, count: 3, value: str_repeat(' ', times: 10)), $widget->render(new RenderContext(10, 3)));
         $this->assertSame('', $widget->zoomLabel(), 'no image, no label');
 
         $widget->handleInput('='); // zoom without an image is a no-op, not an error

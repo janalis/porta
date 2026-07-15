@@ -58,7 +58,7 @@ final class WorkspaceSymbolClientTest extends TestCase
         $client = new WorkspaceSymbolClient($pool, '/nowhere');
 
         $got = null;
-        $client->search('x', function (array $result) use (&$got): void {
+        $client->search('x', static function (array $result) use (&$got): void {
             $got = $result;
         });
 

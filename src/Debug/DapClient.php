@@ -64,6 +64,7 @@ final class DapClient implements DapClientInterface
         /** @var non-empty-string $cwd */
         $cwd = $this->rootDir;
         $pipes = [];
+        // @mago-expect lint:no-error-control-operator -- proc_open on a nonexistent/unusable binary emits a spawn ("posix_spawn() failed") warning that guarding the inputs cannot reliably prevent; the false return is handled below.
         $process = @proc_open($this->command, $descriptors, $pipes, $cwd);
         if (!\is_resource($process)) {
             return false;
@@ -74,16 +75,16 @@ final class DapClient implements DapClientInterface
         [$this->stdin, $this->stdout, $this->stderr] = [$pipes[0], $pipes[1], $pipes[2]];
         // stdin non-blocking too: an adapter that stops draining its stdin must
         // never park the whole event loop inside a blocking fwrite.
-        stream_set_blocking($this->stdin, false);
-        stream_set_blocking($this->stdout, false);
-        stream_set_blocking($this->stderr, false);
+        stream_set_blocking($this->stdin, enable: false);
+        stream_set_blocking($this->stdout, enable: false);
+        stream_set_blocking($this->stderr, enable: false);
         $this->writer = new NonBlockingWriter($this->stdin, $this->onWriteError(...), $this->maxWriteBuffer);
 
-        $this->stdoutWatcher = EventLoop::onReadable($this->stdout, fn () => $this->drainStdout());
+        $this->stdoutWatcher = EventLoop::onReadable($this->stdout, $this->drainStdout(...));
         $this->stderrWatcher = EventLoop::onReadable($this->stderr, function (): void {
             /** @var resource $stderr */
             $stderr = $this->stderr;
-            $data = @fread($stderr, 8192);
+            $data = \is_resource($stderr) ? fread($stderr, length: 8192) : false;
             if (\is_string($data) && '' !== $data && null !== $this->logger) {
                 ($this->logger)(rtrim($data));
             }
@@ -132,12 +133,16 @@ final class DapClient implements DapClientInterface
             $this->writer?->close();
             $this->writer = null;
             foreach ([$this->stdin, $this->stdout, $this->stderr] as $pipe) {
-                if (\is_resource($pipe)) {
-                    @fclose($pipe);
+                if (!\is_resource($pipe)) {
+                    continue;
                 }
+
+                fclose($pipe);
             }
-            @proc_terminate($process);
-            @proc_close($process);
+            if (\is_resource($process)) {
+                proc_terminate($process);
+                proc_close($process);
+            }
             $this->process = null;
         }
         $this->pending = [];
@@ -148,7 +153,7 @@ final class DapClient implements DapClientInterface
         if (!\is_resource($this->stdout)) {
             return;
         }
-        $data = @fread($this->stdout, 65536);
+        $data = fread($this->stdout, length: 65_536);
         if (!\is_string($data) || '' === $data) {
             if (feof($this->stdout)) {
                 $this->log('debug adapter closed its stdout');
@@ -229,8 +234,8 @@ final class DapClient implements DapClientInterface
     private function onWriteError(string $reason): void
     {
         $this->log('write to debug adapter failed: '.$reason);
-        if (null !== $this->process) {
-            @proc_terminate($this->process);
+        if (\is_resource($this->process)) {
+            proc_terminate($this->process);
         }
     }
 

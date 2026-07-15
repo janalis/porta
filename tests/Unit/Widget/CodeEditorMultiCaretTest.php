@@ -139,6 +139,23 @@ final class CodeEditorMultiCaretTest extends TestCase
         $this->assertFalse($editor->hasMultipleCarets());
     }
 
+    public function testAltClickRemovesAMiddleCaretSkippingTheEarlierOne(): void
+    {
+        $editor = $this->editor("aaa\nbbb\nccc\nddd\n");
+        $editor->render(new RenderContext(80, 10)); // establish the gutter width (6)
+        $editor->getDocument()->setCursor(0, 0);
+        $editor->handleInput("\x1b[1;7B"); // extra caret on line 0, primary → line 1
+        $editor->handleInput("\x1b[1;7B"); // extras: lines 0 and 1, primary → line 2
+        $this->assertCount(2, $editor->getExtraCarets());
+
+        // Alt+click the second extra caret (line 1). Toggling it iterates past the
+        // line-0 extra (a non-match → skipped) before removing the line-1 one.
+        $editor->addOrRemoveCaretAt(1, 6); // relRow 1 → line 1, relCol 6 → col 0
+        $extras = $editor->getExtraCarets();
+        $this->assertCount(1, $extras, 'the middle caret was removed, the line-0 one stays');
+        $this->assertSame(0, $extras[0]['line'], 'the surviving extra is the line-0 caret the loop skipped over');
+    }
+
     public function testMovementMovesAllCaretsAndDedupes(): void
     {
         $editor = $this->editor("abc\nabc\n");
@@ -291,7 +308,7 @@ final class CodeEditorMultiCaretTest extends TestCase
         $copied = '';
         $editor->setCallbacks(new EditorCallbacks(
             file: new FakeEditorFileActions(
-                copy: function (string $text) use (&$copied): void {
+                copy: static function (string $text) use (&$copied): void {
                     $copied = $text;
                 },
             ),
@@ -350,8 +367,8 @@ final class CodeEditorMultiCaretTest extends TestCase
         $rendered = $editor->render(new RenderContext(30, 5));
 
         // Both carets sit past their line's text; each must still render a cell.
-        $this->assertSame(1, substr_count($rendered[0], "\x1b[7m"), 'end-of-line caret on line 0 is visible');
-        $this->assertSame(1, substr_count($rendered[1], "\x1b[7m"), 'end-of-line caret on line 1 is visible');
+        $this->assertSame(1, substr_count($rendered[0], needle: "\x1b[7m"), 'end-of-line caret on line 0 is visible');
+        $this->assertSame(1, substr_count($rendered[1], needle: "\x1b[7m"), 'end-of-line caret on line 1 is visible');
         foreach ($rendered as $line) {
             $this->assertSame(30, AnsiUtils::visibleWidth($line));
         }
@@ -367,7 +384,7 @@ final class CodeEditorMultiCaretTest extends TestCase
         $joined = implode('', $rendered);
 
         // Every caret (primary + extra) is the same reverse-video cell; no bar.
-        $this->assertSame(2, substr_count($joined, "\x1b[7m"), 'both carets render as reverse-video cells');
+        $this->assertSame(2, substr_count($joined, needle: "\x1b[7m"), 'both carets render as reverse-video cells');
         $this->assertStringNotContainsString("\x1b_pi:c", $joined, 'the hardware-cursor bar is suppressed in multi-caret mode');
     }
 
@@ -378,7 +395,7 @@ final class CodeEditorMultiCaretTest extends TestCase
         $copied = null;
         $editor->setCallbacks(new EditorCallbacks(
             file: new FakeEditorFileActions(
-                copy: function (string $text) use (&$copied): void {
+                copy: static function (string $text) use (&$copied): void {
                     $copied = $text;
                 },
             ),

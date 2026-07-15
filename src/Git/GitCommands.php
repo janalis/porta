@@ -260,9 +260,14 @@ final class GitCommands
                 ['label' => $this->translator->trans('− Delete branch…'), 'hint' => '', 'value' => self::DELETE],
             ];
             foreach ($branches as $branch) {
+                $hint = match (true) {
+                    $branch['remote'] => $this->translator->trans('remote'),
+                    $branch['current'] => $this->translator->trans('current'),
+                    default => '',
+                };
                 $items[] = [
                     'label' => ($branch['current'] ? '✓ ' : '  ').$branch['name'],
-                    'hint' => $branch['remote'] ? $this->translator->trans('remote') : ($branch['current'] ? $this->translator->trans('current') : ''),
+                    'hint' => $hint,
                     'value' => $branch['remote'] ? self::REMOTE_PREFIX.$branch['name'] : $branch['name'],
                 ];
             }
@@ -289,7 +294,7 @@ final class GitCommands
 
                 return;
             }
-            $items = array_map(fn (array $b): array => ['label' => '  '.$b['name'], 'hint' => '', 'value' => $b['name']], $deletable);
+            $items = array_map(static fn (array $b): array => ['label' => '  '.$b['name'], 'hint' => '', 'value' => $b['name']], $deletable);
             $this->editor->openListOverlay($this->translator->trans('Delete branch'), $items, function (string $name): void {
                 $this->editor->openListOverlay(
                     $this->translator->trans('Delete %branch%?', ['%branch%' => $name]),
@@ -317,7 +322,7 @@ final class GitCommands
     /** Check out origin/x as a local tracking branch x. */
     private function checkoutTracking(string $remoteBranch): void
     {
-        $slash = strpos($remoteBranch, '/');
+        $slash = strpos($remoteBranch, needle: '/');
         $local = false === $slash ? $remoteBranch : substr($remoteBranch, $slash + 1);
         $this->git->checkoutTracking($remoteBranch, fn (bool $ok, string $error) => $this->finishSwitch($ok, $error, $this->translator->trans('Switched to %branch% (tracking %remote%)', [
             '%branch%' => $local,

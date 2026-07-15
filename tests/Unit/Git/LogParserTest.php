@@ -16,7 +16,7 @@ final class LogParserTest extends TestCase
         $entries = LogParser::parseLog($raw);
 
         $this->assertCount(2, $entries);
-        $this->assertSame(['abc123full', 'abc123', 'Alice', 1700000000, 'Fix the parser'], [
+        $this->assertSame(['abc123full', 'abc123', 'Alice', 1_700_000_000, 'Fix the parser'], [
             $entries[0]->sha,
             $entries[0]->shortSha,
             $entries[0]->author,
@@ -62,8 +62,8 @@ final class LogParserTest extends TestCase
         $raw = "stash@{0}\x1f1700000000\x1fWIP on main: 1234abc fix\0stash@{1}\x1f1690000000\x1fOn feature: spike\0";
         $this->assertSame(
             [
-                ['ref' => 'stash@{0}', 'timestamp' => 1700000000, 'subject' => 'WIP on main: 1234abc fix'],
-                ['ref' => 'stash@{1}', 'timestamp' => 1690000000, 'subject' => 'On feature: spike'],
+                ['ref' => 'stash@{0}', 'timestamp' => 1_700_000_000, 'subject' => 'WIP on main: 1234abc fix'],
+                ['ref' => 'stash@{1}', 'timestamp' => 1_690_000_000, 'subject' => 'On feature: spike'],
             ],
             LogParser::parseStashList($raw),
         );

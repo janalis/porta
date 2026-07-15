@@ -172,9 +172,10 @@ final class MultiCaret
             $end = $col + \strlen($word);
             if (0 === $i) {
                 $doc->setCursor($line, $end);
-            } else {
-                $this->extraCarets[] = $this->point($line, $end);
+
+                continue;
             }
+            $this->extraCarets[] = $this->point($line, $end);
         }
         $this->dedupeCarets();
         ($this->onInvalidate)();
@@ -200,30 +201,36 @@ final class MultiCaret
 
         // Movement: move every caret, then dedupe.
         foreach (self::MOVE_METHODS as $action => $method) {
-            if ($kb->matches($keys, $action)) {
-                $this->moveAll($method);
-
-                return true;
+            if (!$kb->matches($keys, $action)) {
+                continue;
             }
+
+            $this->moveAll($method);
+
+            return true;
         }
 
         // Shift+movement: extend every caret's selection.
         foreach (self::SELECT_METHODS as $action => $method) {
-            if ($kb->matches($keys, $action)) {
-                $this->extendAll($method);
-
-                return true;
+            if (!$kb->matches($keys, $action)) {
+                continue;
             }
+
+            $this->extendAll($method);
+
+            return true;
         }
 
         // Editing operations applied at every caret: the bare Document verbs are
         // table-driven; indent and paste carry an argument, so they stay explicit.
         foreach (self::EDIT_METHODS as $action => $method) {
-            if ($kb->matches($keys, $action)) {
-                $this->applyEdit(static fn (Document $d) => $d->{$method}());
-
-                return true;
+            if (!$kb->matches($keys, $action)) {
+                continue;
             }
+
+            $this->applyEdit(static fn (Document $d) => $d->{$method}());
+
+            return true;
         }
         if ($kb->matches($keys, 'indent')) {
             $this->applyEdit(static fn (Document $d) => $d->insert($d->indentUnit()));
@@ -307,7 +314,7 @@ final class MultiCaret
         [$pl, $pc] = $positions[0];
         $this->document->setCursor($pl, $pc);
         $this->extraCarets = [];
-        foreach (\array_slice($positions, 1) as [$line, $col]) {
+        foreach (\array_slice($positions, offset: 1) as [$line, $col]) {
             $this->extraCarets[] = $this->point($line, $col);
         }
     }
@@ -370,9 +377,10 @@ final class MultiCaret
     {
         if ($record['anchorLine'] === $record['line'] && $record['anchorCol'] === $record['col']) {
             $this->document->setCursor($record['line'], $record['col']);
-        } else {
-            $this->document->setSelectionRange($record['anchorLine'], $record['anchorCol'], $record['line'], $record['col']);
+
+            return;
         }
+        $this->document->setSelectionRange($record['anchorLine'], $record['anchorCol'], $record['line'], $record['col']);
     }
 
     /**
@@ -407,14 +415,14 @@ final class MultiCaret
         $unique = [];
         foreach ($records as $record) {
             $key = $record['line'].':'.$record['col'];
-            if (!isset($seen[$key])) {
+            if (!array_key_exists($key, $seen)) {
                 $seen[$key] = true;
                 $unique[] = $record;
             }
         }
         /** @var non-empty-list<array{line: int, col: int, anchorLine: int, anchorCol: int}> $unique */
         $this->restore($unique[0]);
-        $this->extraCarets = \array_slice($unique, 1);
+        $this->extraCarets = \array_slice($unique, offset: 1);
     }
 
     /**
@@ -433,15 +441,17 @@ final class MultiCaret
         for ($row = $top; $row <= $bottom; ++$row) {
             $aByte = $doc->byteColForDisplayCol($row, $anchorDisplayCol);
             $cByte = $doc->byteColForDisplayCol($row, $caretDisplayCol);
-            if ($row === $caretRow) {
-                if ($aByte !== $cByte) {
-                    $doc->setSelectionRange($row, $aByte, $row, $cByte);
-                } else {
-                    $doc->setCursor($row, $cByte);
-                }
-            } else {
+            if ($row !== $caretRow) {
                 $this->extraCarets[] = ['line' => $row, 'col' => $cByte, 'anchorLine' => $row, 'anchorCol' => $aByte];
+
+                continue;
             }
+            if ($aByte !== $cByte) {
+                $doc->setSelectionRange($row, $aByte, $row, $cByte);
+
+                continue;
+            }
+            $doc->setCursor($row, $cByte);
         }
         $this->dedupeCarets();
         ($this->onInvalidate)();
@@ -467,12 +477,14 @@ final class MultiCaret
         }
 
         foreach ($this->extraCarets as $i => $caret) {
-            if ($caret['line'] === $line && $caret['col'] === $col) {
-                array_splice($this->extraCarets, $i, 1);
-                ($this->onInvalidate)();
-
-                return;
+            if (!($caret['line'] === $line && $caret['col'] === $col)) {
+                continue;
             }
+
+            array_splice($this->extraCarets, $i, length: 1);
+            ($this->onInvalidate)();
+
+            return;
         }
 
         // New caret: make the click the primary, push the old primary to extras.
@@ -532,7 +544,7 @@ final class MultiCaret
         $unique = [];
         foreach ($this->extraCarets as $caret) {
             $key = $caret['line'].':'.$caret['col'];
-            if (!isset($seen[$key])) {
+            if (!array_key_exists($key, $seen)) {
                 $seen[$key] = true;
                 $unique[] = $caret;
             }
@@ -545,7 +557,7 @@ final class MultiCaret
         $doc = $this->document;
         $line = $doc->getLine($doc->getCursorLine());
         // Grab the identifier surrounding the cursor.
-        $before = substr($line, 0, $doc->getCursorCol());
+        $before = substr($line, offset: 0, length: $doc->getCursorCol());
         $after = substr($line, $doc->getCursorCol());
         $m = [];
         $left = preg_match('/[\w$]+$/u', $before, $m) ? $m[0] : '';

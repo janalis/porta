@@ -15,9 +15,10 @@ final class Uri
 {
     public static function fromPath(string $path): string
     {
-        $real = realpath($path) ?: $path;
+        $resolved = realpath($path);
+        $real = $resolved ? $resolved : $path;
 
-        return 'file://'.implode('/', array_map('rawurlencode', explode('/', str_replace(\DIRECTORY_SEPARATOR, '/', $real))));
+        return 'file://'.implode(separator: '/', array: array_map('rawurlencode', explode(separator: '/', string: str_replace(\DIRECTORY_SEPARATOR, replace: '/', subject: $real))));
     }
 
     public static function toPath(string $uri): ?string
@@ -25,7 +26,7 @@ final class Uri
         if (!str_starts_with($uri, 'file://')) {
             return null;
         }
-        $path = rawurldecode(substr($uri, 7));
+        $path = rawurldecode(substr($uri, offset: 7));
 
         return '' !== $path ? $path : null;
     }

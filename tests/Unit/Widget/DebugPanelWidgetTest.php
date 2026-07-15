@@ -33,7 +33,7 @@ final class DebugPanelWidgetTest extends TestCase
     /** @return list<string> */
     private function screen(DebugPanelWidget $panel): array
     {
-        return array_map(static fn (string $l): string => AnsiUtils::stripAnsiCodes($l), $panel->render(new RenderContext(80, 14)));
+        return array_map(AnsiUtils::stripAnsiCodes(...), $panel->render(new RenderContext(80, 14)));
     }
 
     public function testClosedRendersNothingAndStatesLabelTheHeader(): void
@@ -53,6 +53,23 @@ final class DebugPanelWidgetTest extends TestCase
         $this->assertStringContainsString('F8 over', $this->screen($panel)[0], 'the step legend rides in the header');
     }
 
+    public function testScopeWithoutAVariablesReferenceIsNotAutoExpanded(): void
+    {
+        $panel = new DebugPanelWidget();
+        $panel->open('a.php');
+        $panel->setSessionState(DebugState::Paused, 'src/a.php:5');
+        // The second scope has no variablesReference (<= 0): it is not marked
+        // expanded, but still renders as a (leaf) scope header.
+        $panel->setScopes([
+            ['name' => 'Locals', 'variablesReference' => 1000],
+            ['name' => 'Registers', 'variablesReference' => 0],
+        ]);
+
+        $screen = implode("\n", $this->screen($panel));
+        $this->assertStringContainsString('Locals', $screen);
+        $this->assertStringContainsString('Registers', $screen);
+    }
+
     public function testFramesScopesAndVariablesFlattenIntoRows(): void
     {
         $screen = implode("\n", $this->screen($this->panel()));
@@ -70,11 +87,11 @@ final class DebugPanelWidgetTest extends TestCase
     {
         $panel = $this->panel();
         $jumped = null;
-        $panel->onFrameSelected(function (int $frameId, string $path, int $line) use (&$jumped): void {
+        $panel->onFrameSelected(static function (int $frameId, string $path, int $line) use (&$jumped): void {
             $jumped = [$frameId, $path, $line];
         });
         $expanded = [];
-        $panel->onExpandVariable(function (int $ref, callable $deliver) use (&$expanded): void {
+        $panel->onExpandVariable(static function (int $ref, callable $deliver) use (&$expanded): void {
             $expanded[] = $ref;
             $deliver([['name' => '0', 'value' => "'a'", 'variablesReference' => 0]]);
         });
@@ -106,7 +123,7 @@ final class DebugPanelWidgetTest extends TestCase
     {
         $panel = $this->panel();
         $jumped = null;
-        $panel->onFrameSelected(function (int $frameId) use (&$jumped): void {
+        $panel->onFrameSelected(static function (int $frameId) use (&$jumped): void {
             $jumped = $frameId;
         });
 
@@ -125,7 +142,7 @@ final class DebugPanelWidgetTest extends TestCase
         $this->assertNotSame([], $panel->render(new RenderContext(80, 14)));
 
         $closed = false;
-        $panel->onClose(function () use (&$closed): void {
+        $panel->onClose(static function () use (&$closed): void {
             $closed = true;
         });
         $panel->handleInput("\x1b"); // Escape
@@ -175,12 +192,12 @@ final class DebugPanelWidgetTest extends TestCase
         $panel->setWatches(['$arr']);
         $panel->setWatchResult(0, 'array(2)', 2000);
         $expanded = [];
-        $panel->onExpandVariable(function (int $ref, callable $deliver) use (&$expanded): void {
+        $panel->onExpandVariable(static function (int $ref, callable $deliver) use (&$expanded): void {
             $expanded[] = $ref;
             $deliver([['name' => '0', 'value' => "'a'", 'variablesReference' => 0]]);
         });
         $removed = [];
-        $panel->onRemoveWatch(function (int $index) use (&$removed): void {
+        $panel->onRemoveWatch(static function (int $index) use (&$removed): void {
             $removed[] = $index;
         });
 

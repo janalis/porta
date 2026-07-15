@@ -25,7 +25,7 @@ final class GitRemoteTest extends TestCase
         $elapsed = 0.0;
         while (!$done() && $elapsed < $timeout) {
             $suspension = EventLoop::getSuspension();
-            EventLoop::delay(0.02, static fn () => $suspension->resume());
+            EventLoop::delay(0.02, $suspension->resume(...));
             $suspension->suspend();
             $elapsed += 0.02;
         }
@@ -57,7 +57,7 @@ final class GitRemoteTest extends TestCase
             $this->git($clone->dir, 'config push.autoSetupRemote false');
             $this->git($clone->dir, 'config push.default simple');
         }
-        file_put_contents($this->clone1->path('a.txt'), "one\n");
+        file_put_contents($this->clone1->path('a.txt'), data: "one\n");
         $this->git($this->clone1->dir, 'add -A');
         $this->git($this->clone1->dir, 'commit -qm init');
         $this->git($this->clone1->dir, 'push -qu origin HEAD');
@@ -70,7 +70,7 @@ final class GitRemoteTest extends TestCase
     /** Commit in clone1 and push, so clone2's origin is ahead. */
     private function advanceOrigin(): void
     {
-        file_put_contents($this->clone1->path('a.txt'), "one\ntwo\n");
+        file_put_contents($this->clone1->path('a.txt'), data: "one\ntwo\n");
         $this->git($this->clone1->dir, 'commit -aqm second');
         $this->git($this->clone1->dir, 'push -q origin HEAD');
     }
@@ -81,19 +81,19 @@ final class GitRemoteTest extends TestCase
         $this->advanceOrigin();
 
         $results = [];
-        $remote->fetch(function (bool $ok, string $out) use (&$results): void {
+        $remote->fetch(static function (bool $ok, string $out) use (&$results): void {
             $results['fetch'] = $ok;
         });
-        $this->await(function () use (&$results): bool {
-            return isset($results['fetch']);
+        $this->await(static function () use (&$results): bool {
+            return array_key_exists('fetch', $results);
         });
         $this->assertTrue($results['fetch']);
 
-        $remote->pull(function (bool $ok, string $out) use (&$results): void {
+        $remote->pull(static function (bool $ok, string $out) use (&$results): void {
             $results['pull'] = $ok;
         });
-        $this->await(function () use (&$results): bool {
-            return isset($results['pull']);
+        $this->await(static function () use (&$results): bool {
+            return array_key_exists('pull', $results);
         });
         $this->assertTrue($results['pull']);
         $this->assertSame("one\ntwo\n", file_get_contents($this->clone2->path('a.txt')), 'the pull fast-forwarded the file');
@@ -104,14 +104,14 @@ final class GitRemoteTest extends TestCase
         $remote = $this->remotes();
         $this->advanceOrigin();
         // A local commit in clone2 diverges from origin.
-        file_put_contents($this->clone2->path('a.txt'), "one\nlocal\n");
+        file_put_contents($this->clone2->path('a.txt'), data: "one\nlocal\n");
         $this->git($this->clone2->dir, 'commit -aqm local');
 
         $result = null;
-        $remote->pull(function (bool $ok, string $out) use (&$result): void {
+        $remote->pull(static function (bool $ok, string $out) use (&$result): void {
             $result = ['ok' => $ok, 'out' => $out];
         });
-        $this->await(function () use (&$result): bool {
+        $this->await(static function () use (&$result): bool {
             return null !== $result;
         });
         $this->assertFalse($result['ok']);
@@ -121,15 +121,15 @@ final class GitRemoteTest extends TestCase
     public function testPushLandsOnTheBareRemote(): void
     {
         $remote = $this->remotes();
-        file_put_contents($this->clone2->path('b.txt'), "new\n");
+        file_put_contents($this->clone2->path('b.txt'), data: "new\n");
         $this->git($this->clone2->dir, 'add -A');
         $this->git($this->clone2->dir, 'commit -qm frompush');
 
         $result = null;
-        $remote->push(function (bool $ok, string $out) use (&$result): void {
+        $remote->push(static function (bool $ok, string $out) use (&$result): void {
             $result = $ok;
         });
-        $this->await(function () use (&$result): bool {
+        $this->await(static function () use (&$result): bool {
             return null !== $result;
         });
         $this->assertTrue($result);
@@ -140,25 +140,25 @@ final class GitRemoteTest extends TestCase
     {
         $remote = $this->remotes();
         $this->git($this->clone2->dir, 'checkout -qb feature');
-        file_put_contents($this->clone2->path('c.txt'), "x\n");
+        file_put_contents($this->clone2->path('c.txt'), data: "x\n");
         $this->git($this->clone2->dir, 'add -A');
         $this->git($this->clone2->dir, 'commit -qm feature');
 
         $result = null;
-        $remote->push(function (bool $ok, string $out) use (&$result): void {
+        $remote->push(static function (bool $ok, string $out) use (&$result): void {
             $result = ['ok' => $ok, 'out' => $out];
         });
-        $this->await(function () use (&$result): bool {
+        $this->await(static function () use (&$result): bool {
             return null !== $result;
         });
         $this->assertFalse($result['ok']);
         $this->assertStringContainsString('upstream', $result['out']);
 
         $upstream = null;
-        $remote->pushSetUpstream(function (bool $ok) use (&$upstream): void {
+        $remote->pushSetUpstream(static function (bool $ok) use (&$upstream): void {
             $upstream = $ok;
         });
-        $this->await(function () use (&$upstream): bool {
+        $this->await(static function () use (&$upstream): bool {
             return null !== $upstream;
         });
         $this->assertTrue($upstream);
@@ -171,10 +171,10 @@ final class GitRemoteTest extends TestCase
         $this->git($this->clone2->dir, 'remote set-url origin /nonexistent-origin');
 
         $result = null;
-        $remote->fetch(function (bool $ok, string $out) use (&$result): void {
+        $remote->fetch(static function (bool $ok, string $out) use (&$result): void {
             $result = ['ok' => $ok, 'out' => $out];
         });
-        $this->await(function () use (&$result): bool {
+        $this->await(static function () use (&$result): bool {
             return null !== $result;
         });
         $this->assertFalse($result['ok']);
@@ -201,7 +201,7 @@ final class GitRemoteTest extends TestCase
 
         $this->assertFalse($remote->isAvailable());
         $result = null;
-        $remote->pull(function (bool $ok, string $out) use (&$result): void {
+        $remote->pull(static function (bool $ok, string $out) use (&$result): void {
             $result = ['ok' => $ok, 'out' => $out];
         });
         $this->assertSame(['ok' => false, 'out' => 'git is not available'], $result);
@@ -211,15 +211,15 @@ final class GitRemoteTest extends TestCase
     {
         $remote = $this->remotes();
         $this->advanceOrigin();
-        file_put_contents($this->clone2->path('b.txt'), "local\n");
+        file_put_contents($this->clone2->path('b.txt'), data: "local\n");
         $this->git($this->clone2->dir, 'add -A');
         $this->git($this->clone2->dir, 'commit -qm local');
 
         $result = null;
-        $remote->pullRebase(function (bool $ok, string $out) use (&$result): void {
+        $remote->pullRebase(static function (bool $ok, string $out) use (&$result): void {
             $result = ['ok' => $ok, 'out' => $out];
         });
-        $this->await(function () use (&$result): bool {
+        $this->await(static function () use (&$result): bool {
             return null !== $result;
         });
         $this->assertTrue($result['ok'], $result['out']);
@@ -231,15 +231,15 @@ final class GitRemoteTest extends TestCase
     {
         $remote = $this->remotes();
         $this->advanceOrigin();
-        file_put_contents($this->clone2->path('b.txt'), "local\n");
+        file_put_contents($this->clone2->path('b.txt'), data: "local\n");
         $this->git($this->clone2->dir, 'add -A');
         $this->git($this->clone2->dir, 'commit -qm local');
 
         $result = null;
-        $remote->pullMerge(function (bool $ok, string $out) use (&$result): void {
+        $remote->pullMerge(static function (bool $ok, string $out) use (&$result): void {
             $result = ['ok' => $ok, 'out' => $out];
         });
-        $this->await(function () use (&$result): bool {
+        $this->await(static function () use (&$result): bool {
             return null !== $result;
         });
         $this->assertTrue($result['ok'], $result['out']);

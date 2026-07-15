@@ -68,8 +68,8 @@ final readonly class EditorRowAssembler
         private array $lineAnnotations = [],
     ) {
         $this->palette = $palette ?? ColorPalette::dark();
-        $this->breakpointSet = array_fill_keys($breakpointLines, true);
-        $this->conditionalBreakpointSet = array_fill_keys($conditionalBreakpointLines, true);
+        $this->breakpointSet = array_fill_keys($breakpointLines, value: true);
+        $this->conditionalBreakpointSet = array_fill_keys($conditionalBreakpointLines, value: true);
         $this->cursorStyle = $cursorStyle ?? new CursorStyle();
     }
 
@@ -136,17 +136,20 @@ final readonly class EditorRowAssembler
             // The debugger's stopped line outranks the current-line background.
             if ($lineIndex === $this->debugLine) {
                 $content = LineDecorator::applyFullWidth($content, $geo->contentWidth, $this->palette->of(Role::DebugLineBg));
-            } elseif ($isCursorLine && $this->focused && null === $decorations->selection) {
-                // Current-line background (skip when a selection is being shown)
+            }
+            // Current-line background (skip when a selection is being shown)
+            if ($lineIndex !== $this->debugLine && $isCursorLine && $this->focused && null === $decorations->selection) {
                 $content = LineDecorator::applyFullWidth($content, $geo->contentWidth, $this->palette->of(Role::RowHighlightBg));
             }
 
             // Inline diagnostic message in the trailing space (PhpStorm-style):
             // the worst-severity message on the line, colored by severity, with a
             // "+N" count when the line carries more than one diagnostic.
-            if ($this->inlineDiagnostics && [] !== $lineDiags) {
+            $hasInlineDiagnostic = $this->inlineDiagnostics && [] !== $lineDiags;
+            if ($hasInlineDiagnostic) {
                 $content = EditorRenderer::appendInlineDiagnostic($hScroll, $this->document->lineDisplayWidth($lineIndex), $lineDiags, $content, $geo->contentWidth, $this->palette);
-            } elseif ('' !== ($this->lineAnnotations[$lineIndex] ?? '')) {
+            }
+            if (!$hasInlineDiagnostic && '' !== ($this->lineAnnotations[$lineIndex] ?? '')) {
                 $content = EditorRenderer::appendAnnotation($hScroll, $this->document->lineDisplayWidth($lineIndex), $this->lineAnnotations[$lineIndex], $content, $geo->contentWidth, $this->palette);
             }
 
@@ -167,7 +170,7 @@ final readonly class EditorRowAssembler
         $gutter =
             EditorRenderer::gitCell($this->gitMarks[$docLine] ?? null, $this->palette)
             .$this->palette->of(Role::Gutter)
-            .str_pad((string) ($docLine + 1), $geo->numberWidth, ' ', \STR_PAD_LEFT)
+            .str_pad((string) ($docLine + 1), $geo->numberWidth, pad_string: ' ', pad_type: \STR_PAD_LEFT)
             .' '
             ."\x1b[0m ";
         $hl = EditorRenderer::applyIndentGuides($this->document, $highlighted[$docLine] ?? '', $docLine, $this->palette);
@@ -194,20 +197,19 @@ final readonly class EditorRowAssembler
         // so each state also reads without color.
         $marker = match (true) {
             $lineIndex === $this->debugLine => $this->palette->of(Role::Breakpoint).'▶'."\x1b[39m",
-            isset($this->conditionalBreakpointSet[$lineIndex]) => $this->palette->of(Role::Breakpoint).'◆'."\x1b[39m",
-            isset($this->breakpointSet[$lineIndex]) => $this->palette->of(Role::Breakpoint).'●'."\x1b[39m",
+            ($this->conditionalBreakpointSet[$lineIndex] ?? null) !== null => $this->palette->of(Role::Breakpoint).'◆'."\x1b[39m",
+            ($this->breakpointSet[$lineIndex] ?? null) !== null => $this->palette->of(Role::Breakpoint).'●'."\x1b[39m",
             [] !== $lineDiags => $numColor.DiagnosticStyle::glyph(DiagnosticStyle::worst($lineDiags))."\x1b[39m",
             default => ' ',
         };
         // Relative line numbers: distance from the cursor line, absolute on
         // the cursor line itself (PhpStorm/Vim "relativenumber" style).
+        $numberLabel = (string) ($lineIndex + 1);
         if ($this->relativeLineNumbers && !$isCursorLine) {
             $numberLabel = (string) abs($lineIndex - $this->document->getCursorLine());
-        } else {
-            $numberLabel = (string) ($lineIndex + 1);
         }
 
-        return EditorRenderer::gitCell($this->gitMarks[$lineIndex] ?? null, $this->palette).$numColor.str_pad($numberLabel, $numberWidth, ' ', \STR_PAD_LEFT).$marker."\x1b[0m ";
+        return EditorRenderer::gitCell($this->gitMarks[$lineIndex] ?? null, $this->palette).$numColor.str_pad($numberLabel, $numberWidth, pad_string: ' ', pad_type: \STR_PAD_LEFT).$marker."\x1b[0m ";
     }
 
     /**

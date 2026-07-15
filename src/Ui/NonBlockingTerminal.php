@@ -59,7 +59,7 @@ final class NonBlockingTerminal implements TerminalInterface
         // The inner terminal's boot writes (bracketed paste, kitty query) run
         // while the stream is still blocking; only then flip to non-blocking.
         $this->inner->start($onInput, $onResize, $onKittyProtocolActivated);
-        stream_set_blocking($this->stream, false);
+        stream_set_blocking($this->stream, enable: false);
         // The writer's own cap is out of the picture (PHP_INT_MAX): overflow is
         // enforced here as a flush-first pre-check, because the writer's cap
         // would DROP the queue — never acceptable for terminal bytes.
@@ -77,7 +77,9 @@ final class NonBlockingTerminal implements TerminalInterface
             $this->writer = null;
         }
         if ($this->nonBlockingActive) {
-            @stream_set_blocking($this->stream, true);
+            if (\is_resource($this->stream)) {
+                stream_set_blocking($this->stream, enable: true);
+            }
             $this->nonBlockingActive = false;
         }
         $this->inner->stop();
@@ -129,7 +131,10 @@ final class NonBlockingTerminal implements TerminalInterface
     {
         if ($lines > 0) {
             $this->write("\x1b[{$lines}B");
-        } elseif ($lines < 0) {
+
+            return;
+        }
+        if ($lines < 0) {
             $this->write("\x1b[".-$lines.'A');
         }
     }
@@ -161,7 +166,7 @@ final class NonBlockingTerminal implements TerminalInterface
 
     public function setTitle(string $title): void
     {
-        $safe = (string) preg_replace("/[\x00-\x1f\x7f]|\xc2[\x80-\x9f]/", '', $title);
+        $safe = (string) preg_replace("/[\x00-\x1f\x7f]|\xc2[\x80-\x9f]/", replacement: '', subject: $title);
         $this->write("\x1b]0;{$safe}\x07");
     }
 

@@ -18,7 +18,7 @@ final class BidiTest extends TestCase
 
     private static function strip(string $s): string
     {
-        return (string) preg_replace('/\x1b\[[0-9;]*m/', '', $s);
+        return (string) preg_replace('/\x1b\[[0-9;]*m/', replacement: '', subject: $s);
     }
 
     public function testEmptyLineIsReturnedUnchanged(): void
@@ -67,7 +67,7 @@ final class BidiTest extends TestCase
     public function testWideCharacterWidthIsPreserved(): void
     {
         $out = self::strip(Bidi::reorder("a\u{65E5}b", true)); // 日 is two columns
-        self::assertSame(4, mb_strwidth($out, 'UTF-8'));
+        self::assertSame(4, mb_strwidth($out, encoding: 'UTF-8'));
     }
 
     public function testSgrColourSpansTravelWithTheirText(): void
@@ -122,7 +122,7 @@ final class BidiTest extends TestCase
 
         // Caret inside Hebrew: the marker rides the reversed run to the matching gap.
         $he = self::SHALOM;
-        $withCaret = mb_substr($he, 0, 2, 'UTF-8').$marker.mb_substr($he, 2, null, 'UTF-8');
+        $withCaret = mb_substr($he, start: 0, length: 2, encoding: 'UTF-8').$marker.mb_substr($he, start: 2, length: null, encoding: 'UTF-8');
         $reordered = Bidi::reorder($withCaret, true);
         self::assertSame(1, substr_count($reordered, $marker));
     }

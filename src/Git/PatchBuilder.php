@@ -70,7 +70,7 @@ final class PatchBuilder
         $newCount = 0;
         $prevKeptOriginal = false; // whether the previous source line was emitted with its own origin
         foreach ($hunk->lines as $i => $line) {
-            $isSelected = isset($sel[$i]);
+            $isSelected = ($sel[$i] ?? null) !== null;
             switch ($line->origin) {
                 case ' ':
                     $body[] = ' '.$line->text;
@@ -81,22 +81,24 @@ final class PatchBuilder
                     if ($isSelected) {
                         $body[] = '-'.$line->text;
                         $prevKeptOriginal = true;
-                    } else {
-                        // Unselected deletion: the line still exists in the preimage.
-                        $body[] = ' '.$line->text;
-                        ++$newCount;
-                        $prevKeptOriginal = false;
+
+                        break;
                     }
+                    // Unselected deletion: the line still exists in the preimage.
+                    $body[] = ' '.$line->text;
+                    ++$newCount;
+                    $prevKeptOriginal = false;
                     break;
                 case '+':
                     if ($isSelected) {
                         $body[] = '+'.$line->text;
                         ++$newCount;
                         $prevKeptOriginal = true;
-                    } else {
-                        // Unselected addition: absent from the preimage, dropped.
-                        $prevKeptOriginal = false;
+
+                        break;
                     }
+                    // Unselected addition: absent from the preimage, dropped.
+                    $prevKeptOriginal = false;
                     break;
                 default: // '\' No-newline marker follows its line's fate.
                     if ($prevKeptOriginal) {
@@ -133,7 +135,7 @@ final class PatchBuilder
     private static function hasSelectedChange(DiffHunk $hunk, array $sel): bool
     {
         foreach ($hunk->lines as $i => $line) {
-            if (isset($sel[$i]) && ('+' === $line->origin || '-' === $line->origin)) {
+            if (($sel[$i] ?? null) !== null && ('+' === $line->origin || '-' === $line->origin)) {
                 return true;
             }
         }

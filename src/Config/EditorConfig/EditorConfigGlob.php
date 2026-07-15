@@ -24,14 +24,13 @@ final class EditorConfigGlob
     public static function compile(string $glob): string
     {
         if (str_contains($glob, '/')) {
-            $body = '/' === $glob[0] ? substr($glob, 1) : $glob;
-            $prefix = '';
-        } else {
-            $body = $glob;
-            $prefix = '(?:.*/)?'; // no separator: match the basename at any depth
+            $body = '/' === $glob[0] ? substr($glob, offset: 1) : $glob;
+
+            return '#^'.self::compileSegment($body).'$#D';
         }
 
-        return '#^'.$prefix.self::compileSegment($body).'$#D';
+        // no separator: match the basename at any depth
+        return '#^(?:.*/)?'.self::compileSegment($glob).'$#D';
     }
 
     private static function compileSegment(string $s): string
@@ -41,29 +40,37 @@ final class EditorConfigGlob
         for ($i = 0; $i < $len; ++$i) {
             $c = $s[$i];
             if ('\\' === $c && ($i + 1) < $len) {
-                $out .= preg_quote($s[$i + 1], '#');
+                $out .= preg_quote($s[$i + 1], delimiter: '#');
                 ++$i;
-            } elseif ('*' === $c) {
+                continue;
+            }
+            if ('*' === $c) {
                 if (($i + 1) < $len && '*' === $s[$i + 1]) {
                     if (($i + 2) < $len && '/' === $s[$i + 2]) {
                         $out .= '(?:.*/)?'; // `**/` also matches zero directories
                         $i += 2;
-                    } else {
-                        $out .= '.*';
-                        ++$i;
+                        continue;
                     }
-                } else {
-                    $out .= '[^/]*';
+                    $out .= '.*';
+                    ++$i;
+                    continue;
                 }
-            } elseif ('?' === $c) {
-                $out .= '[^/]';
-            } elseif ('[' === $c) {
-                $out .= self::compileClass($s, $i);
-            } elseif ('{' === $c) {
-                $out .= self::compileBrace($s, $i);
-            } else {
-                $out .= preg_quote($c, '#');
+                $out .= '[^/]*';
+                continue;
             }
+            if ('?' === $c) {
+                $out .= '[^/]';
+                continue;
+            }
+            if ('[' === $c) {
+                $out .= self::compileClass($s, $i);
+                continue;
+            }
+            if ('{' === $c) {
+                $out .= self::compileBrace($s, $i);
+                continue;
+            }
+            $out .= preg_quote($c, delimiter: '#');
         }
 
         return $out;
@@ -89,7 +96,7 @@ final class EditorConfigGlob
             ++$j;
         }
         if ($j >= $len) {
-            return preg_quote('[', '#'); // unterminated: treat `[` as a literal
+            return preg_quote('[', delimiter: '#'); // unterminated: treat `[` as a literal
         }
 
         $inner = substr($s, $start, $j - $start);
@@ -103,7 +110,7 @@ final class EditorConfigGlob
     {
         $close = self::matchingBrace($s, $i);
         if (-1 === $close) {
-            return preg_quote('{', '#'); // unmatched: treat `{` as a literal
+            return preg_quote('{', delimiter: '#'); // unmatched: treat `{` as a literal
         }
 
         $content = substr($s, $i + 1, $close - $i - 1);
@@ -117,7 +124,7 @@ final class EditorConfigGlob
             }
 
             // A single choice with no comma is a literal `{...}`.
-            return preg_quote('{', '#').self::compileSegment($content).preg_quote('}', '#');
+            return preg_quote('{', delimiter: '#').self::compileSegment($content).preg_quote('}', delimiter: '#');
         }
 
         return '(?:'.implode('|', array_map(self::compileSegment(...), $parts)).')';
@@ -130,13 +137,14 @@ final class EditorConfigGlob
             for ($n = $from; $n <= $to; ++$n) {
                 $nums[] = $n;
             }
-        } else {
+        }
+        if ($from > $to) {
             for ($n = $from; $n >= $to; --$n) {
                 $nums[] = $n;
             }
         }
 
-        return '(?:'.implode('|', array_map(static fn (int $n): string => preg_quote((string) $n, '#'), $nums)).')';
+        return '(?:'.implode('|', array_map(static fn (int $n): string => preg_quote((string) $n, delimiter: '#'), $nums)).')';
     }
 
     /** Index of the `}` matching the `{` at $open (respecting nesting and classes), or -1. */
@@ -159,9 +167,13 @@ final class EditorConfigGlob
             }
             if ('[' === $c) {
                 $inClass = true;
-            } elseif ('{' === $c) {
+                continue;
+            }
+            if ('{' === $c) {
                 ++$depth;
-            } elseif ('}' === $c) {
+                continue;
+            }
+            if ('}' === $c) {
                 --$depth;
                 if (0 === $depth) {
                     return $j;
@@ -194,15 +206,19 @@ final class EditorConfigGlob
             if ('{' === $c || '[' === $c) {
                 ++$depth;
                 $buf .= $c;
-            } elseif ('}' === $c || ']' === $c) {
+                continue;
+            }
+            if ('}' === $c || ']' === $c) {
                 $depth = max(0, $depth - 1);
                 $buf .= $c;
-            } elseif (',' === $c && 0 === $depth) {
+                continue;
+            }
+            if (',' === $c && 0 === $depth) {
                 $parts[] = $buf;
                 $buf = '';
-            } else {
-                $buf .= $c;
+                continue;
             }
+            $buf .= $c;
         }
         $parts[] = $buf;
 

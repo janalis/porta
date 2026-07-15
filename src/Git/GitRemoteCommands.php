@@ -47,7 +47,7 @@ final class GitRemoteCommands
             $this->translator->trans('Pulled'),
             fn (callable $onDone) => $this->remote->pull($onDone),
             onFailure: function (string $output): bool {
-                if (false === stripos($output, 'fast-forward')) {
+                if (false === stripos($output, needle: 'fast-forward')) {
                     return false;
                 }
                 $this->offer(
@@ -79,7 +79,7 @@ final class GitRemoteCommands
             $this->translator->trans('Pushed'),
             fn (callable $onDone) => $this->remote->push($onDone),
             onFailure: function (string $output): bool {
-                if (false === stripos($output, 'no upstream')) {
+                if (false === stripos($output, needle: 'no upstream')) {
                     return false;
                 }
                 // The branch name is parsed from git's own hint for the LABEL
@@ -162,7 +162,8 @@ final class GitRemoteCommands
 
                 return;
             }
-            $firstLine = strtok($output, "\n");
+            // @mago-expect lint:no-literal-password -- strtok's token: is a newline delimiter, not a credential
+            $firstLine = strtok($output, token: "\n");
             $this->notifier->flash(
                 $ok ? $succeeded : $this->translator->trans('%operation% failed: %error%', ['%operation%' => ucfirst($operation), '%error%' => \is_string($firstLine) ? $firstLine : '']),
                 $ok ? 3.0 : 6.0,

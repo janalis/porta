@@ -49,13 +49,13 @@ final class PluginInstaller
     public function install(string $source, string $scope, \Closure $onDone): void
     {
         if (null !== $this->running) {
-            $onDone($this->translator->trans('Another install is already running'), null);
+            $this->fail($onDone, $this->translator->trans('Another install is already running'));
 
             return;
         }
         $base = $this->baseDir($scope);
         if (null === $base) {
-            $onDone($this->translator->trans('Cannot install globally (no home directory)'), null);
+            $this->fail($onDone, $this->translator->trans('Cannot install globally (no home directory)'));
 
             return;
         }
@@ -64,15 +64,15 @@ final class PluginInstaller
         // file:// URLs into the copy branch via PHP's stream wrapper.
         $isUrl = 1 === preg_match('#^(?:[a-z][a-z0-9+.-]*://|git@)#i', $source);
         $isDir = !$isUrl && is_dir($source);
-        $name = $isDir ? basename(rtrim($source, '/')) : basename(preg_replace('/\.git$/', '', rtrim($source, '/')) ?? '');
+        $name = $isDir ? basename(rtrim($source, characters: '/')) : basename(preg_replace('/\.git$/', replacement: '', subject: rtrim($source, characters: '/')) ?? '');
         if (1 !== preg_match(PluginLoader::NAME_PATTERN, $name)) {
-            $onDone($this->translator->trans('"%name%" is not a valid plugin name', ['%name%' => $name]), null);
+            $this->fail($onDone, $this->translator->trans('"%name%" is not a valid plugin name', ['%name%' => $name]));
 
             return;
         }
         $dest = $base.'/'.$name;
         if (is_dir($dest)) {
-            $onDone($this->translator->trans('Plugin "%name%" is already installed', ['%name%' => $name]), null);
+            $this->fail($onDone, $this->translator->trans('Plugin "%name%" is already installed', ['%name%' => $name]));
 
             return;
         }
@@ -80,11 +80,24 @@ final class PluginInstaller
         $isDir ? $this->copy($source, $dest, $onDone) : $this->clone($source, $dest, $onDone);
     }
 
+    /**
+     * Report a failed install: invoke $onDone with the error message and no
+     * plugin file. Extracted so the null second argument stays a variable
+     * (named arguments are not allowed on closure calls).
+     *
+     * @param \Closure(?string, ?string): void $onDone
+     */
+    private function fail(\Closure $onDone, string $message): void
+    {
+        $noFile = null;
+        $onDone($message, $noFile);
+    }
+
     /** @param \Closure(?string, ?string): void $onDone */
     private function copy(string $source, string $dest, \Closure $onDone): void
     {
         if (!is_file($source.'/plugin.php')) {
-            $onDone($this->translator->trans('No plugin.php found in %source%', ['%source%' => $source]), null);
+            $this->fail($onDone, $this->translator->trans('No plugin.php found in %source%', ['%source%' => $source]));
 
             return;
         }
@@ -93,7 +106,7 @@ final class PluginInstaller
             $fs->mirror($source, $dest);
         } catch (IOExceptionInterface) {
             $fs->remove($dest);
-            $onDone($this->translator->trans('Cannot install into %dest%', ['%dest%' => $dest]), null);
+            $this->fail($onDone, $this->translator->trans('Cannot install into %dest%', ['%dest%' => $dest]));
 
             return;
         }
@@ -104,7 +117,7 @@ final class PluginInstaller
     private function clone(string $source, string $dest, \Closure $onDone): void
     {
         if (null === $this->gitBinary) {
-            $onDone($this->translator->trans('git is not available'), null);
+            $this->fail($onDone, $this->translator->trans('git is not available'));
 
             return;
         }
@@ -114,13 +127,13 @@ final class PluginInstaller
             $this->running = null;
             if (0 !== $code) {
                 new Filesystem()->remove($dest);
-                $onDone($this->translator->trans('git clone failed (exit code %code%)', ['%code%' => $code]), null);
+                $this->fail($onDone, $this->translator->trans('git clone failed (exit code %code%)', ['%code%' => $code]));
 
                 return;
             }
             if (!is_file($dest.'/plugin.php')) {
                 new Filesystem()->remove($dest);
-                $onDone($this->translator->trans('The repository contains no plugin.php'), null);
+                $this->fail($onDone, $this->translator->trans('The repository contains no plugin.php'));
 
                 return;
             }
@@ -130,7 +143,7 @@ final class PluginInstaller
             // proc_open failure is environmental (fd exhaustion)
             // @codeCoverageIgnoreStart
             $this->running = null;
-            $onDone($this->translator->trans('git is not available'), null);
+            $this->fail($onDone, $this->translator->trans('git is not available'));
 
             // @codeCoverageIgnoreEnd
         }
@@ -167,7 +180,11 @@ final class PluginInstaller
      */
     public function installed(): array
     {
-        $embeddedReal = null !== $this->embeddedDir ? (realpath($this->embeddedDir) ?: null) : null;
+        $embeddedReal = null;
+        if (null !== $this->embeddedDir) {
+            $resolvedEmbedded = realpath($this->embeddedDir);
+            $embeddedReal = $resolvedEmbedded ? $resolvedEmbedded : null;
+        }
 
         $plugins = [];
         $embeddedSeen = [];
@@ -176,7 +193,8 @@ final class PluginInstaller
                 continue;
             }
             $isEmbedded = null !== $embeddedReal && realpath($pluginsDir) === $embeddedReal;
-            foreach (glob($pluginsDir.'/*/plugin.php') ?: [] as $file) {
+            $scopeFiles = glob($pluginsDir.'/*/plugin.php');
+            foreach (\is_array($scopeFiles) ? $scopeFiles : [] as $file) {
                 $dir = \dirname($file);
                 $name = basename($dir);
                 $plugins[] = ['name' => $name, 'scope' => $isEmbedded ? 'embedded' : $scope, 'dir' => $dir];
@@ -186,10 +204,11 @@ final class PluginInstaller
             }
         }
         if (null !== $this->embeddedDir) {
-            foreach (glob($this->embeddedDir.'/*/plugin.php') ?: [] as $file) {
+            $embeddedFiles = glob($this->embeddedDir.'/*/plugin.php');
+            foreach (\is_array($embeddedFiles) ? $embeddedFiles : [] as $file) {
                 $dir = \dirname($file);
                 $name = basename($dir);
-                if (!isset($embeddedSeen[$name])) {
+                if (!array_key_exists($name, $embeddedSeen)) {
                     $plugins[] = ['name' => $name, 'scope' => 'embedded', 'dir' => $dir];
                 }
             }

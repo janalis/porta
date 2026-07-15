@@ -41,7 +41,7 @@ final class PluginManager
 
     public function hasPlugin(string $name): bool
     {
-        return isset($this->names[$name]);
+        return array_key_exists($name, $this->names);
     }
 
     /** @return list<string> the active plugin names, in load order */
@@ -85,7 +85,7 @@ final class PluginManager
      */
     public function deactivate(string $name, CommandRegistry $registry): void
     {
-        if (!isset($this->names[$name])) {
+        if (!array_key_exists($name, $this->names)) {
             return;
         }
         unset($this->names[$name]);
@@ -207,7 +207,7 @@ final class PluginManager
             try {
                 return $when();
             } catch (\Throwable $error) {
-                if (!isset($this->reportedWhens[$plugin])) {
+                if (!array_key_exists($plugin, $this->reportedWhens)) {
                     $this->reportedWhens[$plugin] = true;
                     $this->reportFailure($plugin, $error);
                 }

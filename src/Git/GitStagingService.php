@@ -7,6 +7,8 @@ namespace Porta\Git;
 use Porta\I18n\Translator;
 use Porta\Ui\Notifier;
 use Porta\Widget\Git\CommitBoxWidget;
+use Symfony\Component\Filesystem\Exception\IOExceptionInterface;
+use Symfony\Component\Filesystem\Filesystem;
 
 /**
  * The index-mutating half of the git view: stage/unstage a file, stage a
@@ -92,7 +94,11 @@ final class GitStagingService
     public function discard(ChangeEntry $entry, \Closure $onChanged): void
     {
         if ($entry->isUntracked()) {
-            @unlink($this->rootDir.'/'.$entry->path);
+            // @mago-expect lint:no-empty-catch-clause -- best-effort delete: a vanished or unremovable file still flashes below
+            try {
+                new Filesystem()->remove($this->rootDir.'/'.$entry->path);
+            } catch (IOExceptionInterface) {
+            }
             $this->notifier->flash($this->translator->trans('Deleted %path%', ['%path%' => $entry->path]));
             $onChanged();
 
@@ -119,15 +125,18 @@ final class GitStagingService
         $this->git->commit(
             $message,
             function (bool $ok, string $out) use ($onCommitted, $onChanged): void {
-                $firstLine = strtok($out, "\n");
+                // @mago-expect lint:no-literal-password -- strtok's token: is a newline delimiter, not a credential
+                $firstLine = strtok($out, token: "\n");
                 $summary = false === $firstLine ? '' : $firstLine;
                 if ($ok) {
                     $this->commitBox->clear();
                     $this->notifier->flash($this->translator->trans('Committed: %summary%', ['%summary%' => $summary]));
                     $onCommitted();
-                } else {
-                    $this->notifier->flash($this->translator->trans('Commit failed: %summary%', ['%summary%' => $summary]));
+                    $onChanged();
+
+                    return;
                 }
+                $this->notifier->flash($this->translator->trans('Commit failed: %summary%', ['%summary%' => $summary]));
                 $onChanged();
             },
             $amend,

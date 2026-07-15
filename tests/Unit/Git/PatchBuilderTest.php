@@ -132,9 +132,11 @@ final class PatchBuilderTest extends TestCase
         $selected = [];
         foreach ($doc->hunks as $h => $hunk) {
             foreach ($hunk->lines as $i => $line) {
-                if (str_contains($line->text, 'alpha')) {
-                    $selected[$h][$i] = true;
+                if (!str_contains($line->text, 'alpha')) {
+                    continue;
                 }
+
+                $selected[$h][$i] = true;
             }
         }
         $patch = PatchBuilder::build('f.txt', $doc->hunks, $selected);
@@ -159,9 +161,11 @@ final class PatchBuilderTest extends TestCase
         $selected = [];
         foreach ($doc->hunks as $h => $hunk) {
             foreach ($hunk->lines as $i => $line) {
-                if ('-' === $line->origin && 'three' === $line->text) {
-                    $selected[$h][$i] = true;
+                if (!('-' === $line->origin && 'three' === $line->text)) {
+                    continue;
                 }
+
+                $selected[$h][$i] = true;
             }
         }
         $this->applyOk($git, (string) PatchBuilder::build('f.txt', $doc->hunks, $selected));
@@ -184,9 +188,11 @@ final class PatchBuilderTest extends TestCase
         $selected = [];
         foreach ($inverted as $h => $hunk) {
             foreach ($hunk->lines as $i => $line) {
-                if (str_contains($line->text, 'beta')) {
-                    $selected[$h][$i] = true;
+                if (!str_contains($line->text, 'beta')) {
+                    continue;
                 }
+
+                $selected[$h][$i] = true;
             }
         }
         $this->applyOk($git, (string) PatchBuilder::build('f.txt', $inverted, $selected));
@@ -215,7 +221,7 @@ final class PatchBuilderTest extends TestCase
     private function awaitDiff(GitInfo $git, string $abs, bool $worktree): string
     {
         $raw = null;
-        $cb = function (string $out) use (&$raw): void {
+        $cb = static function (string $out) use (&$raw): void {
             $raw = $out;
         };
         $worktree ? $git->worktreeFileDiff($abs, $cb) : $git->cachedFileDiff($abs, $cb);
@@ -227,7 +233,7 @@ final class PatchBuilderTest extends TestCase
     private function applyOk(GitInfo $git, string $patch): void
     {
         $ok = null;
-        $git->applyCached($patch, function (bool $result) use (&$ok): void {
+        $git->applyCached($patch, static function (bool $result) use (&$ok): void {
             $ok = $result;
         });
         $this->await(static fn (): bool => null !== $ok);
@@ -246,7 +252,7 @@ final class PatchBuilderTest extends TestCase
         $elapsed = 0.0;
         while (!$done() && $elapsed < $timeout) {
             $suspension = EventLoop::getSuspension();
-            EventLoop::delay(0.02, static fn () => $suspension->resume());
+            EventLoop::delay(0.02, $suspension->resume(...));
             $suspension->suspend();
             $elapsed += 0.02;
         }

@@ -37,7 +37,10 @@ final class LaunchArguments
         foreach ($values as $key => $value) {
             if (\is_string($value)) {
                 $values[$key] = str_replace(['${file}', '${workspaceRoot}'], [$file, $rootDir], $value);
-            } elseif (\is_array($value)) {
+
+                continue;
+            }
+            if (\is_array($value)) {
                 /** @var array<string, mixed> $value */
                 $values[$key] = self::substitute($value, $file, $rootDir);
             }

@@ -129,13 +129,25 @@ final class KeybindingsListWidget extends AbstractWidget implements FocusableInt
 
         if ($kb->matches($data, 'exit_view')) {
             $this->fire($this->onExit);
-        } elseif ($kb->matches($data, 'focus_next_pane')) {
+
+            return;
+        }
+        if ($kb->matches($data, 'focus_next_pane')) {
             $this->fire($this->onFocusNext);
-        } elseif ($kb->matches($data, 'show_settings')) {
+
+            return;
+        }
+        if ($kb->matches($data, 'show_settings')) {
             $this->fire($this->onShowSettings);
-        } elseif ($kb->matches($data, 'rebind')) {
+
+            return;
+        }
+        if ($kb->matches($data, 'rebind')) {
             $this->armCapture();
-        } elseif (ListNavigation::handleKey($data, $kb, $this->list, \count($this->rows), page: $this->lastRows)) {
+
+            return;
+        }
+        if (ListNavigation::handleKey($data, $kb, $this->list, \count($this->rows), page: $this->lastRows)) {
             $this->invalidate();
         }
     }
@@ -147,9 +159,11 @@ final class KeybindingsListWidget extends AbstractWidget implements FocusableInt
         if (null === $index) {
             return;
         }
-        if ($index === $this->list->selected() && null === $this->capturingIndex) {
+        $armCapture = $index === $this->list->selected() && null === $this->capturingIndex;
+        if ($armCapture) {
             $this->capturingIndex = $index;
-        } else {
+        }
+        if (!$armCapture) {
             $this->list->select($index);
         }
         $this->invalidate();
@@ -187,7 +201,7 @@ final class KeybindingsListWidget extends AbstractWidget implements FocusableInt
     private function rowIndexAt(int $relRow): ?int
     {
         $index = $this->list->scroll() + $relRow - 1; // row 0 is the header
-        if ($relRow < 1 || !isset($this->rows[$index])) {
+        if ($relRow < 1 || !array_key_exists($index, $this->rows)) {
             return null;
         }
 
@@ -213,18 +227,20 @@ final class KeybindingsListWidget extends AbstractWidget implements FocusableInt
             }
 
             $selected = $index === $this->list->selected();
-            $bg = $selected
-                ? ($this->focused ? $this->palette->of(Role::SelectedRow) : $this->palette->of(Role::SelectedRowUnfocused))
-                : ($index === $this->hoveredIndex ? $this->palette->of(Role::RowHighlightBg) : '');
+            $bg = match (true) {
+                $selected && $this->focused => $this->palette->of(Role::SelectedRow),
+                $selected => $this->palette->of(Role::SelectedRowUnfocused),
+                $index === $this->hoveredIndex => $this->palette->of(Role::RowHighlightBg),
+                default => '',
+            };
 
+            $shortcut = ShortcutFormatter::format($entry->binding);
+            $right = '' === $shortcut ? $this->palette->of(Role::Dim)."—\x1b[39m" : $shortcut;
+            $rightWidth = '' === $shortcut ? 1 : mb_strwidth($shortcut);
             if ($index === $this->capturingIndex) {
                 $prompt = $this->translator->trans('Press a key… (Esc to cancel)');
                 $right = $this->palette->of(Role::Modified).$prompt."\x1b[39m";
                 $rightWidth = mb_strwidth($prompt);
-            } else {
-                $shortcut = ShortcutFormatter::format($entry->binding);
-                $right = '' === $shortcut ? $this->palette->of(Role::Dim)."—\x1b[39m" : $shortcut;
-                $rightWidth = '' === $shortcut ? 1 : mb_strwidth($shortcut);
             }
 
             $labelWidth = max(0, $width - $rightWidth - 2);

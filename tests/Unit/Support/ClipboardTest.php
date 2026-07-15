@@ -26,7 +26,7 @@ final class ClipboardTest extends TestCase
         $terminal = new VirtualTerminal(columns: 40, rows: 10);
         $clipboard = new Clipboard(new Tui(terminal: $terminal));
 
-        $clipboard->copy(str_repeat('x', 100_000));
+        $clipboard->copy(str_repeat('x', times: 100_000));
 
         $this->assertStringNotContainsString(']52;c;', $terminal->getOutput(), 'a 100k+ payload would overflow many terminals');
     }

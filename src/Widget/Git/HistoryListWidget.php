@@ -127,7 +127,8 @@ final class HistoryListWidget extends AbstractWidget implements FocusableInterfa
         $this->loadingMore = false;
         $this->commits = $commits;
         $this->commitList->reset();
-        $this->hoveredCommit = $this->hoveredFile = null;
+        $this->hoveredFile = null;
+        $this->hoveredCommit = null;
         $this->files = [];
         $this->fileList->reset();
         $this->filesFocused = false;
@@ -146,9 +147,11 @@ final class HistoryListWidget extends AbstractWidget implements FocusableInterfa
         $this->loadingMore = false;
         $known = array_flip(array_column($this->commits, 'sha'));
         foreach ($commits as $commit) {
-            if (!isset($known[$commit->sha])) {
-                $this->commits[] = $commit;
+            if (\array_key_exists($commit->sha, $known)) {
+                continue;
             }
+
+            $this->commits[] = $commit;
         }
         $this->invalidate();
     }
@@ -192,13 +195,15 @@ final class HistoryListWidget extends AbstractWidget implements FocusableInterfa
         $kb = $this->getKeybindings();
 
         foreach (['fetch', 'pull', 'push'] as $remoteOp) {
-            if ($kb->matches($data, $remoteOp)) {
-                if (null !== $this->onRemote) {
-                    ($this->onRemote)($remoteOp);
-                }
-
-                return;
+            if (!$kb->matches($data, $remoteOp)) {
+                continue;
             }
+
+            if (null !== $this->onRemote) {
+                ($this->onRemote)($remoteOp);
+            }
+
+            return;
         }
         if ($kb->matches($data, 'exit_view')) {
             $this->fire($this->onExit);
@@ -250,7 +255,7 @@ final class HistoryListWidget extends AbstractWidget implements FocusableInterfa
         $commitRows = $this->commitRowCount();
         if ($relRow >= 1 && $relRow < (1 + $commitRows)) {
             $index = $this->commitList->scroll() + $relRow - 1;
-            if (isset($this->commits[$index])) {
+            if (\array_key_exists($index, $this->commits)) {
                 $this->filesFocused = false;
                 // Re-clicking the selected commit must not reload its files —
                 // that would clobber a diff the user already opened.
@@ -264,7 +269,7 @@ final class HistoryListWidget extends AbstractWidget implements FocusableInterfa
         }
         $fileHeader = 1 + $commitRows;
         $index = $this->fileList->scroll() + $relRow - $fileHeader - 1;
-        if ($relRow > $fileHeader && isset($this->files[$index])) {
+        if ($relRow > $fileHeader && \array_key_exists($index, $this->files)) {
             $this->filesFocused = true;
             $this->fileList->select($index);
             $this->fireSelectFile();
@@ -282,12 +287,12 @@ final class HistoryListWidget extends AbstractWidget implements FocusableInterfa
         if ($relRow >= 1 && $relRow < (1 + $commitRows)) {
             $index = $this->commitList->scroll() + $relRow - 1;
 
-            return $this->setHovered(isset($this->commits[$index]) ? $index : null, null);
+            return $this->setHovered(\array_key_exists($index, $this->commits) ? $index : null, null);
         }
         $fileHeader = 1 + $commitRows;
         $index = $this->fileList->scroll() + $relRow - $fileHeader - 1;
 
-        return $this->setHovered(null, $relRow > $fileHeader && isset($this->files[$index]) ? $index : null);
+        return $this->setHovered(null, $relRow > $fileHeader && \array_key_exists($index, $this->files) ? $index : null);
     }
 
     /** The pointer left the list: drop the hover tint. */
@@ -363,9 +368,13 @@ final class HistoryListWidget extends AbstractWidget implements FocusableInterfa
                 continue;
             }
             $selected = $this->commitList->isSelected($scroll + $row);
-            $bg = $selected
-                ? ($this->focused && !$this->filesFocused ? $this->palette->of(Role::SelectedRow) : $this->palette->of(Role::HeaderBar))
-                : (($scroll + $row) === $this->hoveredCommit ? $this->palette->of(Role::RowHighlightBg) : '');
+            $bg = '';
+            if ($selected) {
+                $bg = $this->focused && !$this->filesFocused ? $this->palette->of(Role::SelectedRow) : $this->palette->of(Role::HeaderBar);
+            }
+            if (!$selected && ($scroll + $row) === $this->hoveredCommit) {
+                $bg = $this->palette->of(Role::RowHighlightBg);
+            }
             $text = ' '.$this->palette->of(Role::Modified).$commit->shortSha."\x1b[39m".' '.$commit->subject.$this->palette->of(Role::Dim).'  '.$commit->author."\x1b[39m";
             $lines[] = $bg.AnsiUtils::truncateToWidth($text, $width, '…', pad: true)."\x1b[0m";
         }
@@ -383,9 +392,13 @@ final class HistoryListWidget extends AbstractWidget implements FocusableInterfa
                 continue;
             }
             $selected = $this->fileList->isSelected($fileScroll + $row);
-            $bg = $selected
-                ? ($this->focused && $this->filesFocused ? $this->palette->of(Role::SelectedRow) : $this->palette->of(Role::HeaderBar))
-                : (($fileScroll + $row) === $this->hoveredFile ? $this->palette->of(Role::RowHighlightBg) : '');
+            $bg = '';
+            if ($selected) {
+                $bg = $this->focused && $this->filesFocused ? $this->palette->of(Role::SelectedRow) : $this->palette->of(Role::HeaderBar);
+            }
+            if (!$selected && ($fileScroll + $row) === $this->hoveredFile) {
+                $bg = $this->palette->of(Role::RowHighlightBg);
+            }
             $lines[] = $bg.AnsiUtils::truncateToWidth(' '.$file['status'].' '.$file['path'], $width, '…', pad: true)."\x1b[0m";
         }
 

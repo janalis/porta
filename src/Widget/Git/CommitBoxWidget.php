@@ -114,9 +114,9 @@ final class CommitBoxWidget extends AbstractWidget implements FocusableInterface
     /** Prefill the fields from an existing message (amend), caret at the end. */
     public function setMessage(string $message): void
     {
-        $parts = explode("\n\n", $message, 2);
+        $parts = explode("\n\n", $message, limit: 2);
         $description = $parts[1] ?? '';
-        $this->summary->setValue(str_replace("\n", ' ', $parts[0]));
+        $this->summary->setValue(str_replace("\n", replace: ' ', subject: $parts[0]));
         '' === $description ? $this->description->clear() : $this->description->setValue($description);
         $this->invalidate();
     }
@@ -199,7 +199,10 @@ final class CommitBoxWidget extends AbstractWidget implements FocusableInterface
             if (0 === $this->activeField) {
                 $this->activeField = 1;
                 $this->invalidate();
-            } elseif (null !== $this->onFocusNext) {
+
+                return;
+            }
+            if (null !== $this->onFocusNext) {
                 $this->activeField = 0;
                 ($this->onFocusNext)();
             }
@@ -212,7 +215,10 @@ final class CommitBoxWidget extends AbstractWidget implements FocusableInterface
                 if ($this->summary->backspace()) {
                     $this->invalidate();
                 }
-            } elseif ($this->summary->insert($data)) {
+
+                return;
+            }
+            if ($this->summary->insert($data)) {
                 $this->invalidate();
             }
 

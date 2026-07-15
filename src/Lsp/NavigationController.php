@@ -260,7 +260,7 @@ final class NavigationController extends AbstractLspController implements Editor
 
                     return;
                 }
-                $lines = \array_slice(explode("\n", $text), 0, 12);
+                $lines = \array_slice(explode("\n", $text), offset: 0, length: 12);
                 $items = array_map(static fn (string $l) => ['label' => $l, 'hint' => '', 'value' => ''], $lines);
                 $this->editor->openListOverlay($this->trans('Documentation'), $items, static function (): void {});
                 $this->tui->requestRender();
@@ -316,11 +316,13 @@ final class NavigationController extends AbstractLspController implements Editor
                     /** @var list<array<string, mixed>|scalar|null> $callList */
                     $callList = \is_array($calls) ? $calls : [];
                     foreach ($callList as $call) {
-                        if (\is_array($call) && \is_array($call['from'] ?? null)) {
-                            /** @var array{uri?: string, selectionRange?: array<array-key, mixed>} $from */
-                            $from = $call['from'];
-                            $locations[] = ['uri' => $from['uri'] ?? '', 'range' => $from['selectionRange'] ?? []];
+                        if (!(\is_array($call) && \is_array($call['from'] ?? null))) {
+                            continue;
                         }
+
+                        /** @var array{uri?: string, selectionRange?: array<array-key, mixed>} $from */
+                        $from = $call['from'];
+                        $locations[] = ['uri' => $from['uri'] ?? '', 'range' => $from['selectionRange'] ?? []];
                     }
                     if (null !== $callsError || [] === $locations) {
                         $this->panels->flash($this->trans('No callers found'));
@@ -376,7 +378,7 @@ final class NavigationController extends AbstractLspController implements Editor
 
                 $title = 'Peek: '.ProjectPaths::relative($this->rootDir, $target).':'.($targetLine + 1);
                 $this->editor->openListOverlay($title, $items, function (string $value): void {
-                    [$file, $lineNo] = [substr($value, 0, (int) strrpos($value, ':')), (int) substr($value, (int) strrpos($value, ':') + 1)];
+                    [$file, $lineNo] = [substr($value, offset: 0, length: (int) strrpos($value, needle: ':')), (int) substr($value, (int) strrpos($value, needle: ':') + 1)];
                     $this->files->openFile($file, focusEditor: true);
                     $this->editor->jumpTo($lineNo, 0);
                     $this->tui->requestRender();
@@ -433,11 +435,11 @@ final class NavigationController extends AbstractLspController implements Editor
 
     private function lineAt(string $path, int $line): string
     {
-        $buffer = $this->buffers->get($path) ?? $this->buffers->get(realpath($path) ?: $path);
+        $buffer = $this->buffers->get($path) ?? $this->buffers->get(($resolved = realpath($path)) ? $resolved : $path);
         if (null !== $buffer) {
             return $buffer->document->getLine($line);
         }
-        $lines = @file($path, \FILE_IGNORE_NEW_LINES);
+        $lines = is_file($path) ? file($path, \FILE_IGNORE_NEW_LINES) : false;
 
         return \is_array($lines) ? $lines[$line] ?? '' : '';
     }

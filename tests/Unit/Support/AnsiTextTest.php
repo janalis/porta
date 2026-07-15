@@ -54,7 +54,7 @@ final class AnsiTextTest extends TestCase
     {
         $m = AnsiUtils::cursorMarker(CursorShape::Bar);
         // "Find: " + long query + marker at the caret, then trailing chrome.
-        $line = 'Find: '.str_repeat('q', 40).$m.'  [0/0]';
+        $line = 'Find: '.str_repeat('q', times: 40).$m.'  [0/0]';
 
         $out = AnsiText::scrollLineToCaret($line, 20);
 

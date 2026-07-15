@@ -250,6 +250,25 @@ final class EditorCompletion
 
         $prefix = $doc->getWordBeforeCursor();
 
+        $this->expandOrInsert($doc, $item, $snippet, $prefix);
+
+        ($this->notifyChange)();
+
+        // No inline edits but the server may defer auto-imports to
+        // completionItem/resolve — ask the IDE to fetch and apply them.
+        if ([] === $additional && array_key_exists('raw', $item)) {
+            ($this->resolveCompletion)($item['raw']);
+        }
+    }
+
+    /**
+     * Expand an accepted item as a snippet tab-stop session when the server
+     * marked it one, else replace the prefix with its plain insert text.
+     *
+     * @param Item $item
+     */
+    private function expandOrInsert(Document $doc, array $item, ?string $snippet, string $prefix): void
+    {
         if (null !== $snippet && '' !== $snippet) {
             $doc->replaceBeforeCursor(\strlen($prefix), '');
             $startLine = $doc->getCursorLine();
@@ -260,19 +279,12 @@ final class EditorCompletion
 
             $this->close();
             $this->snippet->begin($startLine, $startCol, $parsed['text'], $parsed['stops']);
-        } else {
-            $doc->replaceBeforeCursor(\strlen($prefix), $item['insertText']);
-            $doc->endCompound();
-            $this->close();
-        }
 
-        ($this->notifyChange)();
-
-        // No inline edits but the server may defer auto-imports to
-        // completionItem/resolve — ask the IDE to fetch and apply them.
-        if ([] === $additional && isset($item['raw'])) {
-            ($this->resolveCompletion)($item['raw']);
+            return;
         }
+        $doc->replaceBeforeCursor(\strlen($prefix), $item['insertText']);
+        $doc->endCompound();
+        $this->close();
     }
 
     /** @return list<Item> */
@@ -283,18 +295,18 @@ final class EditorCompletion
             return $this->items;
         }
 
-        $needle = ltrim($word, '$');
+        $needle = ltrim($word, characters: '$');
 
         // Fuzzy/camel-hump match, ranked best-first; the server's original
         // ordering (sortText) breaks ties.
         $scored = [];
         foreach ($this->items as $index => $item) {
-            $score = FuzzyMatcher::score(ltrim($item['label'], '$'), $needle);
+            $score = FuzzyMatcher::score(ltrim($item['label'], characters: '$'), $needle);
             if (null !== $score) {
                 $scored[] = ['score' => $score, 'index' => $index, 'item' => $item];
             }
         }
-        usort($scored, static fn (array $a, array $b) => $b['score'] <=> $a['score'] ?: $a['index'] <=> $b['index']);
+        usort($scored, static fn (array $a, array $b) => ($cmp = $b['score'] <=> $a['score']) ? $cmp : $a['index'] <=> $b['index']);
 
         return array_map(static fn (array $e) => $e['item'], $scored);
     }

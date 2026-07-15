@@ -102,7 +102,7 @@ final class PluginManagerTest extends TestCase
         $api->registerCommand('hi', 'Say Hi', static function (): void {}, ['ctrl+alt+y']);
         $api->addMenuItem('hi');
         $hookRan = 0;
-        $api->onFileSaved(function () use (&$hookRan): void {
+        $api->onFileSaved(static function () use (&$hookRan): void {
             ++$hookRan;
         });
         $manager->commit($api);
@@ -160,7 +160,7 @@ final class PluginManagerTest extends TestCase
         $manager = $this->wiredManager(new PluginEvents());
         $api = new PluginApi('demo', $manager, '/p', new PluginSettings('/p', []));
         $ran = false;
-        $api->registerCommand('ok', 'Ok', function () use (&$ran): void {
+        $api->registerCommand('ok', 'Ok', static function () use (&$ran): void {
             $ran = true;
         });
         $api->registerCommand('boom', 'Boom', static function (): void {
@@ -183,13 +183,13 @@ final class PluginManagerTest extends TestCase
         $manager = $this->wiredManager($events);
         $api = new PluginApi('demo', $manager, '/p', new PluginSettings('/p', []));
         $seen = [];
-        $api->onFileSaved(function (string $p) use (&$seen): void {
+        $api->onFileSaved(static function (string $p) use (&$seen): void {
             $seen[] = $p;
         });
         $api->onFileOpened(static function (): void {
             throw new \LogicException('bad hook');
         });
-        $api->onBufferSwitched(function (string $p) use (&$seen): void {
+        $api->onBufferSwitched(static function (string $p) use (&$seen): void {
             $seen[] = "switch:{$p}";
         });
         $manager->commit($api);

@@ -89,7 +89,7 @@ final class CodeEditorDebugTest extends TestCase
     public function testDocumentLineAtResolvesStickyHeadersAndScrolledRows(): void
     {
         $editor = new CodeEditorWidget();
-        $code = "<?php\n\nnamespace App;\n\nclass Service\n{\n    public function handle(): void\n    {\n".str_repeat("        \$x = 1;\n", 20)."    }\n}\n";
+        $code = "<?php\n\nnamespace App;\n\nclass Service\n{\n    public function handle(): void\n    {\n".str_repeat("        \$x = 1;\n", times: 20)."    }\n}\n";
         $editor->showDocument('/p/Service.php', new Document($code));
         $editor->getDocument()->setCursor(24, 8); // deep inside handle(): class + method pin
         $editor->render(new RenderContext(60, 12));

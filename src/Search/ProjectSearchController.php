@@ -5,7 +5,6 @@ declare(strict_types=1);
 namespace Porta\Search;
 
 use Porta\Editor\BufferManager;
-use Porta\Editor\Document;
 use Porta\History\SearchHistoryStore;
 use Porta\History\SearchPrefsStore;
 use Porta\History\SearchScopeStore;
@@ -70,7 +69,7 @@ final class ProjectSearchController
     {
         $this->rebuildScopeChoices();
         $this->scopeKind = $this->prefs->lastScope();
-        $this->scopeIndex = (int) array_search($this->scopeKind, self::BUILT_INS, true);
+        $this->scopeIndex = (int) array_search($this->scopeKind, self::BUILT_INS, strict: true);
         $this->scope = $this->resolveChoice($this->scopeChoices[$this->scopeIndex]);
         $this->openModal();
     }
@@ -180,7 +179,7 @@ final class ProjectSearchController
     private function indexOfSaved(string $label): int
     {
         $labels = array_map(static fn (ScopeChoice $choice): ?string => null === $choice->kind ? $choice->label : null, $this->scopeChoices);
-        $index = array_search($label, $labels, true);
+        $index = array_search($label, $labels, strict: true);
 
         return false === $index ? 0 : $index;
     }
@@ -196,14 +195,16 @@ final class ProjectSearchController
             $this->pinned = ['query' => $this->lastSearchQuery, 'results' => $this->lastSearchResults];
             $this->resultsPanel->setPinIndicator($this->lastSearchQuery);
             $this->statusBar->flash($this->translator->trans('Pinned the current results'));
-        } else {
-            $pin = $this->pinned;
-            $this->pinned = null;
-            $this->lastSearchQuery = $pin['query'];
-            $this->lastSearchResults = $pin['results'];
-            $this->showResultsPane(); // re-title the tool window to the restored query
-            $this->statusBar->flash($this->translator->trans('Restored the pinned results'));
+            $this->tui->requestRender();
+
+            return;
         }
+        $pin = $this->pinned;
+        $this->pinned = null;
+        $this->lastSearchQuery = $pin['query'];
+        $this->lastSearchResults = $pin['results'];
+        $this->showResultsPane(); // re-title the tool window to the restored query
+        $this->statusBar->flash($this->translator->trans('Restored the pinned results'));
         $this->tui->requestRender();
     }
 
@@ -303,13 +304,15 @@ final class ProjectSearchController
             return;
         }
 
-        $excludedSet = array_fill_keys($excluded, true);
+        $excludedSet = array_fill_keys($excluded, value: true);
         /** @var array<string, list<int>> $keptLinesByPath */
         $keptLinesByPath = [];
         foreach ($this->lastSearchResults as $index => $result) {
-            if (!isset($excludedSet[$index])) {
-                $keptLinesByPath[$result['path']][] = $result['line'];
+            if (($excludedSet[$index] ?? null) !== null) {
+                continue;
             }
+
+            $keptLinesByPath[$result['path']][] = $result['line'];
         }
 
         if ('' === trim($this->lastSearchQuery) || [] === $keptLinesByPath) {
@@ -322,7 +325,7 @@ final class ProjectSearchController
         $touched = 0;
         foreach ($keptLinesByPath as $relPath => $lineIndices) {
             $abs = $this->rootDir.'/'.$relPath;
-            $buffer = $this->buffers->get($abs) ?? $this->buffers->get(realpath($abs) ?: $abs);
+            $buffer = $this->buffers->get($abs) ?? $this->buffers->get(($real = realpath($abs)) ? $real : $abs);
             if (null !== $buffer) {
                 $old = $buffer->document->getText();
                 $new = $this->replaceLines($old, $lineIndices, $replacement);
@@ -334,7 +337,10 @@ final class ProjectSearchController
                     $this->lsp->notifyFullChange($buffer->path, $buffer->document);
                     ++$touched;
                 }
-            } elseif (is_file($abs) && is_writable($abs)) {
+
+                continue;
+            }
+            if (is_file($abs) && is_writable($abs)) {
                 $old = (string) file_get_contents($abs);
                 $new = $this->replaceLines($old, $lineIndices, $replacement);
                 if ($new !== $old) {
@@ -360,7 +366,7 @@ final class ProjectSearchController
         $touched = 0;
         foreach (array_unique(array_column($this->lastSearchResults, 'path')) as $relPath) {
             $abs = $this->rootDir.'/'.$relPath;
-            $buffer = $this->buffers->get($abs) ?? $this->buffers->get(realpath($abs) ?: $abs);
+            $buffer = $this->buffers->get($abs) ?? $this->buffers->get(($real = realpath($abs)) ? $real : $abs);
             if (null !== $buffer) {
                 $old = $buffer->document->getText();
                 $new = $this->projectSearch->applyReplacement($old, $this->lastSearchQuery, $replacement, $this->searchOptions);
@@ -372,7 +378,10 @@ final class ProjectSearchController
                     $this->lsp->notifyFullChange($buffer->path, $buffer->document);
                     ++$touched;
                 }
-            } elseif (is_file($abs) && is_writable($abs)) {
+
+                continue;
+            }
+            if (is_file($abs) && is_writable($abs)) {
                 $old = (string) file_get_contents($abs);
                 $new = $this->projectSearch->applyReplacement($old, $this->lastSearchQuery, $replacement, $this->searchOptions);
                 if ($new !== $old) {
@@ -409,9 +418,11 @@ final class ProjectSearchController
     {
         $lines = explode("\n", $content);
         foreach ($lineIndices as $index) {
-            if (isset($lines[$index])) {
-                $lines[$index] = $this->projectSearch->applyReplacement($lines[$index], $this->lastSearchQuery, $replacement, $this->searchOptions);
+            if (($lines[$index] ?? null) === null) {
+                continue;
             }
+
+            $lines[$index] = $this->projectSearch->applyReplacement($lines[$index], $this->lastSearchQuery, $replacement, $this->searchOptions);
         }
 
         return implode("\n", $lines);
@@ -464,7 +475,10 @@ final class ProjectSearchController
                 if ($modal->isOpen()) {
                     $modal->setPreview($results);
                     $this->tui->requestRender();
-                } elseif ($this->resultsPanel->isOpen()) {
+
+                    return;
+                }
+                if ($this->resultsPanel->isOpen()) {
                     $this->resultsPanel->setResults($results);
                     $this->tui->requestRender();
                 }

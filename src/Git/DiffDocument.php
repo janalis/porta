@@ -60,7 +60,7 @@ final readonly class DiffDocument
 
             $last = array_key_last($pending);
             $origin = $line[0] ?? ' ';
-            $text = substr($line, 1);
+            $text = substr($line, offset: 1);
             switch ($origin) {
                 case '+':
                     $pending[$last]['lines'][] = new DiffLine('+', $text, null, $pending[$last]['newNo']++);

@@ -17,7 +17,8 @@ final class PluginLoaderTest extends TestCase
 
     protected function setUp(): void
     {
-        $this->portaHome = getenv('PORTA_HOME') ?: null;
+        $home = getenv('PORTA_HOME');
+        $this->portaHome = $home ? $home : null;
     }
 
     protected function tearDown(): void

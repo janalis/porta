@@ -87,7 +87,7 @@ final class SnippetParser
     /** @param array<int, array{index: int, start: int, end: int}> $stops */
     private static function recordStop(array &$stops, int $index, int $start, int $end): void
     {
-        if (!isset($stops[$index])) {
+        if (!array_key_exists($index, $stops)) {
             $stops[$index] = ['index' => $index, 'start' => $start, 'end' => $end];
         }
     }
@@ -150,7 +150,10 @@ final class SnippetParser
             }
             if ('{' === $s[$i]) {
                 ++$depth;
-            } elseif ('}' === $s[$i]) {
+
+                continue;
+            }
+            if ('}' === $s[$i]) {
                 if (0 === --$depth) {
                     return $i;
                 }

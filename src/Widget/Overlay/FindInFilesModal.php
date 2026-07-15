@@ -264,11 +264,13 @@ final class FindInFilesModal
         $this->selected = 0;
         $this->windowStart = 0;
         foreach ($this->displayRows as $i => $row) {
-            if (null === $row->filePath) {
-                $this->selected = $i;
-
-                break;
+            if (null !== $row->filePath) {
+                continue;
             }
+
+            $this->selected = $i;
+
+            break;
         }
         ($this->invalidate)();
     }
@@ -285,55 +287,109 @@ final class FindInFilesModal
             if (null !== $this->onClose) {
                 ($this->onClose)();
             }
-        } elseif ($kb->matches($data, 'open_in_find_window')) {
+
+            return;
+        }
+        if ($kb->matches($data, 'open_in_find_window')) {
             if (null !== $this->onOpenInFindWindow) {
                 ($this->onOpenInFindWindow)();
             }
-        } elseif ($kb->matches($data, 'accept_completion')) {
+
+            return;
+        }
+        if ($kb->matches($data, 'accept_completion')) {
             $this->jumpSelected();
-        } elseif ('query' === $this->activeField && $kb->matches($data, 'history_prev')) {
+
+            return;
+        }
+        if ('query' === $this->activeField && $kb->matches($data, 'history_prev')) {
             $this->recallHistory(1);
-        } elseif ('query' === $this->activeField && $kb->matches($data, 'history_next')) {
+
+            return;
+        }
+        if ('query' === $this->activeField && $kb->matches($data, 'history_next')) {
             $this->recallHistory(-1);
-        } elseif ($kb->matches($data, 'cursor_up')) {
+
+            return;
+        }
+        if ($kb->matches($data, 'cursor_up')) {
             $this->step(-1);
-        } elseif ($kb->matches($data, 'cursor_down')) {
+
+            return;
+        }
+        if ($kb->matches($data, 'cursor_down')) {
             $this->step(1);
-        } elseif ($kb->matches($data, 'switch_field')) {
+
+            return;
+        }
+        if ($kb->matches($data, 'switch_field')) {
             $this->activeField = match ($this->activeField) {
                 'query' => 'replace',
                 'replace' => 'mask',
                 default => 'query',
             };
             ($this->invalidate)();
-        } elseif ($kb->matches($data, 'replace_all')) {
+
+            return;
+        }
+        if ($kb->matches($data, 'replace_all')) {
             if (null !== $this->onReplaceAll) {
                 ($this->onReplaceAll)($this->replace->value(), $this->excludedIndices());
             }
-        } elseif ($kb->matches($data, 'toggle_exclude')) {
+
+            return;
+        }
+        if ($kb->matches($data, 'toggle_exclude')) {
             if ($this->inPreview()) {
                 $this->toggleExcludeSelected();
             }
-        } elseif ($kb->matches($data, 'insert_newline')) {
+
+            return;
+        }
+        if ($kb->matches($data, 'insert_newline')) {
             $this->activeTextField()->insertNewline();
             $this->notifyField();
-        } elseif ($kb->matches($data, 'cycle_scope')) {
+
+            return;
+        }
+        if ($kb->matches($data, 'cycle_scope')) {
             $this->cycleScope();
-        } elseif ($kb->matches($data, 'toggle_regex')) {
+
+            return;
+        }
+        if ($kb->matches($data, 'toggle_regex')) {
             $this->fireToggle('regex');
-        } elseif ($kb->matches($data, 'toggle_case')) {
+
+            return;
+        }
+        if ($kb->matches($data, 'toggle_case')) {
             $this->fireToggle('case');
-        } elseif ($kb->matches($data, 'toggle_word')) {
+
+            return;
+        }
+        if ($kb->matches($data, 'toggle_word')) {
             $this->fireToggle('word');
-        } elseif ($kb->matches($data, 'toggle_preserve')) {
+
+            return;
+        }
+        if ($kb->matches($data, 'toggle_preserve')) {
             $this->fireToggle('preserve');
-        } elseif ($kb->matches($data, 'toggle_tokens')) {
+
+            return;
+        }
+        if ($kb->matches($data, 'toggle_tokens')) {
             $this->fireToggle('tokens');
-        } elseif ($kb->matches($data, 'delete_char_backward')) {
+
+            return;
+        }
+        if ($kb->matches($data, 'delete_char_backward')) {
             if ($this->activeTextField()->backspace()) {
                 $this->notifyField();
             }
-        } elseif ($this->activeTextField()->insert($data)) {
+
+            return;
+        }
+        if ($this->activeTextField()->insert($data)) {
             $this->notifyField();
         }
     }
@@ -366,11 +422,10 @@ final class FindInFilesModal
 
     private function notifyField(): void
     {
-        if ('mask' === $this->activeField) {
-            if (null !== $this->onMaskChanged) {
-                ($this->onMaskChanged)($this->mask->value());
-            }
-        } elseif ('query' === $this->activeField) {
+        if ('mask' === $this->activeField && null !== $this->onMaskChanged) {
+            ($this->onMaskChanged)($this->mask->value());
+        }
+        if ('query' === $this->activeField) {
             $this->historyCursor = -1; // typing leaves history-browsing
             if (null !== $this->onQuery) {
                 ($this->onQuery)($this->query->value());
@@ -406,9 +461,11 @@ final class FindInFilesModal
     {
         $indices = [];
         foreach ($this->excluded as $matchIndex => $isExcluded) {
-            if ($isExcluded) {
-                $indices[] = $matchIndex;
+            if (!$isExcluded) {
+                continue;
             }
+
+            $indices[] = $matchIndex;
         }
 
         return $indices;
@@ -486,7 +543,7 @@ final class FindInFilesModal
         $visible = \array_slice($this->displayRows, $windowStart, $maxPreview);
 
         $width = $this->boxWidth($columns, $visible);
-        $col = max(0, intdiv($columns - $width, 2));
+        $col = max(0, intdiv($columns - $width, num2: 2));
 
         $popup = $this->headerRows($width, $focused);
         $this->optionsRow = 3; // title(0), query(1), replace(2), options(3) — index into $popup
@@ -505,7 +562,7 @@ final class FindInFilesModal
         $popup[] = $this->footerRow($width);
         $footerIndex = \count($popup) - 1;
 
-        $startRow = max(0, intdiv($rows - \count($popup), 3));
+        $startRow = max(0, intdiv($rows - \count($popup), num2: 3));
         foreach ($popup as $i => $popupLine) {
             $screen = $startRow + $i;
             if ($screen >= \count($lines)) {
@@ -596,9 +653,11 @@ final class FindInFilesModal
     {
         $kept = 0;
         foreach (array_keys($this->results) as $matchIndex) {
-            if (!($this->excluded[$matchIndex] ?? false)) {
-                ++$kept;
+            if ($this->excluded[$matchIndex] ?? false) {
+                continue;
             }
+
+            ++$kept;
         }
 
         return $kept;
@@ -692,9 +751,8 @@ final class FindInFilesModal
         $prefixWidth = mb_strwidth($checkbox) + mb_strwidth($label) + 2;
         $head = $checkbox.$this->palette->of(Role::TabAccent).$label."\x1b[39m".'  ';
 
-        if ($excluded) {
-            $text = $head.$old.$this->palette->of(Role::Dim).'   (excluded)'."\x1b[39m";
-        } else {
+        $text = $head.$old.$this->palette->of(Role::Dim).'   (excluded)'."\x1b[39m";
+        if (!$excluded) {
             $new = null !== $this->previewReplacement ? ($this->previewReplacement)($old, $this->replace->value()) : $old;
             $text = $head.$old.'  →  '.$this->palette->of(Role::Added).$new."\x1b[39m";
         }
@@ -795,7 +853,10 @@ final class FindInFilesModal
             $zone = $this->zoneNameAt($innerCol, $this->optionZones);
             if ('scope' === $zone) {
                 $this->cycleScope();
-            } elseif (null !== $zone) {
+
+                return true;
+            }
+            if (null !== $zone) {
                 $this->fireToggle($zone);
             }
 
@@ -811,9 +872,10 @@ final class FindInFilesModal
             $this->selected = $index;
             if ($this->inPreview() && $innerCol >= 2 && $innerCol < 5) {
                 $this->toggleExcludeSelected();
-            } else {
-                $this->jumpSelected();
+
+                return true;
             }
+            $this->jumpSelected();
         }
 
         return true;
@@ -826,9 +888,15 @@ final class FindInFilesModal
             if (null !== $this->onOpenInFindWindow) {
                 ($this->onOpenInFindWindow)();
             }
-        } elseif ('footer_scope' === $name) {
+
+            return;
+        }
+        if ('footer_scope' === $name) {
             $this->cycleScope();
-        } elseif ('close' === $name) {
+
+            return;
+        }
+        if ('close' === $name) {
             if (null !== $this->onClose) {
                 ($this->onClose)();
             }

@@ -46,7 +46,7 @@ final class ResultsPanelWidgetTest extends TestCase
         $panel = new ResultsPanelWidget();
         $panel->setFocused(true);
         $queries = [];
-        $panel->onQueryChanged(function (string $q) use (&$queries): void {
+        $panel->onQueryChanged(static function (string $q) use (&$queries): void {
             $queries[] = $q;
         });
         $panel->open('Find in Project', ResultsPanelFields::queryOnly());
@@ -68,7 +68,7 @@ final class ResultsPanelWidgetTest extends TestCase
     {
         $panel = new ResultsPanelWidget();
         $queries = [];
-        $panel->onQueryChanged(function (string $q) use (&$queries): void {
+        $panel->onQueryChanged(static function (string $q) use (&$queries): void {
             $queries[] = $q;
         });
         $panel->open('Usages', ResultsPanelFields::resultsOnly());
@@ -82,7 +82,7 @@ final class ResultsPanelWidgetTest extends TestCase
     {
         $panel = new ResultsPanelWidget();
         $jumped = null;
-        $panel->onJump(function (string $path, int $line) use (&$jumped): void {
+        $panel->onJump(static function (string $path, int $line) use (&$jumped): void {
             $jumped = [$path, $line];
         });
         $panel->open('Usages', ResultsPanelFields::resultsOnly());
@@ -99,7 +99,7 @@ final class ResultsPanelWidgetTest extends TestCase
     {
         $panel = new ResultsPanelWidget();
         $jumped = false;
-        $panel->onJump(function () use (&$jumped): void {
+        $panel->onJump(static function () use (&$jumped): void {
             $jumped = true;
         });
         $panel->open('Usages', ResultsPanelFields::resultsOnly());
@@ -206,7 +206,7 @@ final class ResultsPanelWidgetTest extends TestCase
     {
         $panel = new ResultsPanelWidget();
         $queries = [];
-        $panel->onQueryChanged(function (string $q) use (&$queries): void {
+        $panel->onQueryChanged(static function (string $q) use (&$queries): void {
             $queries[] = $q;
         });
         $panel->open('X', ResultsPanelFields::queryOnly());
@@ -220,7 +220,7 @@ final class ResultsPanelWidgetTest extends TestCase
     {
         $panel = new ResultsPanelWidget();
         $jumped = null;
-        $panel->onJump(function (string $path, int $line) use (&$jumped): void {
+        $panel->onJump(static function (string $path, int $line) use (&$jumped): void {
             $jumped = [$path, $line];
         });
         $panel->open('Usages', ResultsPanelFields::resultsOnly());
@@ -236,7 +236,7 @@ final class ResultsPanelWidgetTest extends TestCase
     {
         $panel = new ResultsPanelWidget();
         $jumped = false;
-        $panel->onJump(function () use (&$jumped): void {
+        $panel->onJump(static function () use (&$jumped): void {
             $jumped = true;
         });
         $panel->open('Usages', ResultsPanelFields::resultsOnly());
@@ -277,7 +277,7 @@ final class ResultsPanelWidgetTest extends TestCase
     {
         $panel = new ResultsPanelWidget();
         $closed = false;
-        $panel->onClose(function () use (&$closed): void {
+        $panel->onClose(static function () use (&$closed): void {
             $closed = true;
         });
         $panel->open('X', ResultsPanelFields::queryOnly());
@@ -306,7 +306,7 @@ final class ResultsPanelWidgetTest extends TestCase
         $panel->open('Find in Project', ResultsPanelFields::queryOnly());
         $marker = AnsiUtils::cursorMarker(CursorShape::Bar);
 
-        foreach (str_split(str_repeat('q', 100)) as $ch) {
+        foreach (str_split(str_repeat('q', times: 100)) as $ch) {
             $panel->handleInput($ch); // overflow the query in the header
         }
         $header = $panel->render(new RenderContext(80, 12))[0];
@@ -318,7 +318,7 @@ final class ResultsPanelWidgetTest extends TestCase
     {
         $panel = new ResultsPanelWidget();
         $reran = 0;
-        $panel->onRerun(function () use (&$reran): void {
+        $panel->onRerun(static function () use (&$reran): void {
             ++$reran;
         });
         $panel->open('Find in Project', ResultsPanelFields::searchResults());
@@ -333,10 +333,10 @@ final class ResultsPanelWidgetTest extends TestCase
         $panel->setFocused(true);
         $exported = 0;
         $pinned = 0;
-        $panel->onExport(function () use (&$exported): void {
+        $panel->onExport(static function () use (&$exported): void {
             ++$exported;
         });
-        $panel->onPin(function () use (&$pinned): void {
+        $panel->onPin(static function () use (&$pinned): void {
             ++$pinned;
         });
         $panel->open('Find in Project', ResultsPanelFields::searchResults());
@@ -381,7 +381,7 @@ final class ResultsPanelWidgetTest extends TestCase
         $panel = new ResultsPanelWidget();
         $panel->setFocused(true);
         $queries = [];
-        $panel->onQueryChanged(function (string $q) use (&$queries): void {
+        $panel->onQueryChanged(static function (string $q) use (&$queries): void {
             $queries[] = $q;
         });
         $panel->open('Find in Project', new ResultsPanelFields(query: true, filter: true));
@@ -430,7 +430,7 @@ final class ResultsPanelWidgetTest extends TestCase
         $panel = new ResultsPanelWidget();
         $panel->setFocused(true);
         $jumped = null;
-        $panel->onJump(function (string $path, int $line) use (&$jumped): void {
+        $panel->onJump(static function (string $path, int $line) use (&$jumped): void {
             $jumped = [$path, $line];
         });
         $panel->open('Find in Project', ResultsPanelFields::searchResults());
@@ -470,7 +470,7 @@ final class ResultsPanelWidgetTest extends TestCase
         $panel->setFocused(true);
         $panel->open('Find in Project', ResultsPanelFields::searchResults());
         $panel->setResults($this->groupedResults());
-        $render = fn (): string => AnsiUtils::stripAnsiCodes(implode("\n", $panel->render(new RenderContext(80, 12))));
+        $render = static fn (): string => AnsiUtils::stripAnsiCodes(implode("\n", $panel->render(new RenderContext(80, 12))));
 
         // Move the selection to the last match so collapse clamps it.
         for ($i = 0; $i < 6; ++$i) {
@@ -500,7 +500,7 @@ final class ResultsPanelWidgetTest extends TestCase
             ['path' => 'src/B.php', 'line' => 9, 'text' => 'foo two', 'ranges' => []],
             ['path' => 'other/C.php', 'line' => 2, 'text' => 'foo three', 'ranges' => []],
         ]);
-        $plain = fn (): string => AnsiUtils::stripAnsiCodes(implode("\n", $panel->render(new RenderContext(120, 20))));
+        $plain = static fn (): string => AnsiUtils::stripAnsiCodes(implode("\n", $panel->render(new RenderContext(120, 20))));
 
         // Default: one header per file.
         $byFile = $plain();
@@ -535,7 +535,7 @@ final class ResultsPanelWidgetTest extends TestCase
             ['path' => 'src/A.php', 'line' => 9, 'text' => 'foo two', 'ranges' => []],
             ['path' => 'other/C.php', 'line' => 2, 'text' => 'foo three', 'ranges' => []],
         ]);
-        $plain = fn (): string => AnsiUtils::stripAnsiCodes(implode("\n", $panel->render(new RenderContext(120, 20))));
+        $plain = static fn (): string => AnsiUtils::stripAnsiCodes(implode("\n", $panel->render(new RenderContext(120, 20))));
 
         $panel->handleInput("\x1bg"); // → Directory
         $panel->handleInput("\x1bg"); // → Nested
@@ -572,7 +572,7 @@ final class ResultsPanelWidgetTest extends TestCase
             ['path' => 'src/A.php', 'line' => 4, 'text' => 'foo one', 'ranges' => []],
             ['path' => 'src/B.php', 'line' => 2, 'text' => 'foo two', 'ranges' => []],
         ]);
-        $plain = fn (): string => AnsiUtils::stripAnsiCodes(implode("\n", $panel->render(new RenderContext(120, 20))));
+        $plain = static fn (): string => AnsiUtils::stripAnsiCodes(implode("\n", $panel->render(new RenderContext(120, 20))));
 
         $panel->handleInput("\x1bg"); // → Directory
         $panel->handleInput("\x1bg"); // → Nested
@@ -594,7 +594,7 @@ final class ResultsPanelWidgetTest extends TestCase
         ]);
         $panel->open('Find in Project', ResultsPanelFields::searchResults());
         $panel->setResults([['path' => 'src/A.php', 'line' => 4, 'text' => 'the match', 'ranges' => []]]);
-        $plain = fn (): string => AnsiUtils::stripAnsiCodes(implode("\n", $panel->render(new RenderContext(120, 20))));
+        $plain = static fn (): string => AnsiUtils::stripAnsiCodes(implode("\n", $panel->render(new RenderContext(120, 20))));
 
         $this->assertStringNotContainsString('above line', $plain(), 'no context until expanded');
 

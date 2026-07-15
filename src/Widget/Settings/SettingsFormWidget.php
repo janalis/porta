@@ -128,17 +128,35 @@ final class SettingsFormWidget extends AbstractWidget implements FocusableInterf
 
         if ($kb->matches($data, 'exit_view')) {
             $this->fire($this->onExit);
-        } elseif ($kb->matches($data, 'focus_next_pane')) {
+
+            return;
+        }
+        if ($kb->matches($data, 'focus_next_pane')) {
             $this->fire($this->onFocusNext);
-        } elseif ($kb->matches($data, 'show_keybindings')) {
+
+            return;
+        }
+        if ($kb->matches($data, 'show_keybindings')) {
             $this->fire($this->onShowKeybindings);
-        } elseif ($kb->matches($data, 'move_up')) {
+
+            return;
+        }
+        if ($kb->matches($data, 'move_up')) {
             $this->moveTo($this->selected - 1);
-        } elseif ($kb->matches($data, 'move_down')) {
+
+            return;
+        }
+        if ($kb->matches($data, 'move_down')) {
             $this->moveTo($this->selected + 1);
-        } elseif ($kb->matches($data, 'increment')) {
+
+            return;
+        }
+        if ($kb->matches($data, 'increment')) {
             $this->actuate(1);
-        } elseif ($kb->matches($data, 'decrement')) {
+
+            return;
+        }
+        if ($kb->matches($data, 'decrement')) {
             $this->actuate(-1);
         }
     }
@@ -146,7 +164,7 @@ final class SettingsFormWidget extends AbstractWidget implements FocusableInterf
     /** A click selects the row under the pointer and advances it one step. */
     public function handleClick(int $relRow): void
     {
-        if (!isset($this->rows[$relRow])) {
+        if (!array_key_exists($relRow, $this->rows)) {
             return;
         }
         $this->selected = $relRow;
@@ -201,7 +219,10 @@ final class SettingsFormWidget extends AbstractWidget implements FocusableInterf
         if ($kb->matches($data, 'exit_view')) {
             $this->editing = null;
             $this->invalidate();
-        } elseif ($kb->matches($data, 'confirm')) {
+
+            return;
+        }
+        if ($kb->matches($data, 'confirm')) {
             $key = ($this->rows[$index] ?? null)?->key;
             $value = $field->value();
             $this->editing = null;
@@ -209,11 +230,17 @@ final class SettingsFormWidget extends AbstractWidget implements FocusableInterf
             if (null !== $key && null !== $this->onChange) {
                 ($this->onChange)($key, $value);
             }
-        } elseif ($kb->matches($data, 'delete_char_backward')) {
+
+            return;
+        }
+        if ($kb->matches($data, 'delete_char_backward')) {
             if ($field->backspace()) {
                 $this->invalidate();
             }
-        } elseif ($field->insert($data)) {
+
+            return;
+        }
+        if ($field->insert($data)) {
             $this->invalidate();
         }
     }
@@ -227,7 +254,7 @@ final class SettingsFormWidget extends AbstractWidget implements FocusableInterf
         if ([] === $options) {
             return (string) $row->value;
         }
-        $index = array_search($row->value, $options, true);
+        $index = array_search($row->value, $options, strict: true);
         $index = false === $index ? 0 : $index;
         $count = \count($options);
 
@@ -267,7 +294,11 @@ final class SettingsFormWidget extends AbstractWidget implements FocusableInterf
             }
 
             $selected = $i === $this->selected;
-            $bg = $selected ? ($this->focused ? $this->palette->of(Role::SelectedRow) : $this->palette->of(Role::SelectedRowUnfocused)) : '';
+            $bg = match (true) {
+                $selected && $this->focused => $this->palette->of(Role::SelectedRow),
+                $selected => $this->palette->of(Role::SelectedRowUnfocused),
+                default => '',
+            };
             $text = match ($row->kind) {
                 'bool' => ' '.((bool) $row->value ? '[x]' : '[ ]').' '.$row->label,
                 'text' => ' '.$row->label.'  '.$this->textValue($row, $i),

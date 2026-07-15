@@ -33,12 +33,12 @@ final class JsonRpcFramer
 
         $messages = [];
         while (true) {
-            $headerEnd = strpos($this->buffer, "\r\n\r\n");
+            $headerEnd = strpos($this->buffer, needle: "\r\n\r\n");
             if (false === $headerEnd) {
                 return $messages;
             }
 
-            $headers = substr($this->buffer, 0, $headerEnd);
+            $headers = substr($this->buffer, offset: 0, length: $headerEnd);
             $m = [];
             if (!preg_match('/Content-Length:\s*(\d+)/i', $headers, $m)) {
                 // Corrupt frame; drop the header block and resync.
@@ -56,7 +56,7 @@ final class JsonRpcFramer
             $this->buffer = substr($this->buffer, $bodyStart + $length);
 
             /** @var array<array-key, mixed>|scalar|null $message */
-            $message = json_decode($body, true);
+            $message = json_decode($body, associative: true);
             if (\is_array($message)) {
                 $messages[] = $message;
             }

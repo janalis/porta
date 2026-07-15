@@ -32,7 +32,7 @@ final class MarkdownRendererTest extends TestCase
         $this->assertSame('Title', $plain[0]);
         $this->assertStringContainsString("\x1b[1m", $doc->lines[0], 'headings are bold');
         $this->assertSame('═════', $plain[1], 'an H1 carries a double rule as wide as its title');
-        $this->assertSame('───────', $plain[array_search('Section', $plain, true) + 1], 'an H2 carries a single rule');
+        $this->assertSame('───────', $plain[array_search('Section', $plain, strict: true) + 1], 'an H2 carries a single rule');
         $this->assertContains('Sub', $plain);
         $this->assertSame('Sub', $plain[array_key_last($plain)], 'H3+ has no trailing rule');
         $this->assertNotContains('# Title', $plain);
@@ -84,12 +84,12 @@ final class MarkdownRendererTest extends TestCase
         $this->assertSame('1. first', rtrim($plain[0]));
         $this->assertSame('2. second', rtrim($plain[1]));
         $this->assertContains('│ quoted words', array_map(rtrim(...), $plain));
-        $this->assertContains(str_repeat('─', 80), $plain, 'horizontal rule spans the width');
+        $this->assertContains(str_repeat('─', times: 80), $plain, 'horizontal rule spans the width');
     }
 
     public function testFencedCodeBlocksBandTruncateAndNeverWrap(): void
     {
-        $doc = $this->render("```php\n\$x = 1;\n".str_repeat('x', 200)."\n```", 30);
+        $doc = $this->render("```php\n\$x = 1;\n".str_repeat('x', times: 200)."\n```", 30);
         $plain = $this->plain($doc);
 
         $this->assertSame('  $x = 1;', rtrim($plain[0]));
@@ -107,7 +107,7 @@ final class MarkdownRendererTest extends TestCase
         $this->assertStringContainsString("\x1b[1m", $doc->lines[0], 'header row is bold');
         $this->assertMatchesRegularExpression('/^─+\s+─+/u', trim($plain[1]), 'separator renders as rules');
         $this->assertSame(' F1   Open docs now', rtrim($plain[2]));
-        $this->assertSame(strpos($plain[0], 'Action'), strpos($plain[2], 'Open'), 'columns align to natural widths');
+        $this->assertSame(strpos($plain[0], needle: 'Action'), strpos($plain[2], needle: 'Open'), 'columns align to natural widths');
 
         $this->assertSame(1, $doc->groupCount());
         $span = $doc->links[0];

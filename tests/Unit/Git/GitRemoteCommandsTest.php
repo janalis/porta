@@ -37,7 +37,7 @@ final class GitRemoteCommandsTest extends TestCase
         $elapsed = 0.0;
         while (!$done() && $elapsed < $timeout) {
             $suspension = EventLoop::getSuspension();
-            EventLoop::delay(0.02, static fn () => $suspension->resume());
+            EventLoop::delay(0.02, $suspension->resume(...));
             $suspension->suspend();
             $elapsed += 0.02;
         }
@@ -172,16 +172,16 @@ final class GitRemoteCommandsTest extends TestCase
                 .' config push.default simple',
             );
         }
-        file_put_contents($other->path('a.txt'), "one\n");
+        file_put_contents($other->path('a.txt'), data: "one\n");
         exec('git -C '.escapeshellarg($other->dir).' add -A && git -C '.escapeshellarg($other->dir).' commit -qm init && git -C '.escapeshellarg($other->dir).' push -qu origin HEAD');
         exec(
             'git -C '.escapeshellarg($mine->dir).' pull -q origin && git -C '.escapeshellarg($mine->dir).' branch -q --set-upstream-to origin/'
                 .trim((string) shell_exec('git -C '.escapeshellarg($mine->dir).' rev-parse --abbrev-ref HEAD')),
         );
         // Diverge both sides on different files so a rebase/merge is clean.
-        file_put_contents($other->path('remote.txt'), "remote\n");
+        file_put_contents($other->path('remote.txt'), data: "remote\n");
         exec('git -C '.escapeshellarg($other->dir).' add -A && git -C '.escapeshellarg($other->dir).' commit -qm remote && git -C '.escapeshellarg($other->dir).' push -q origin HEAD');
-        file_put_contents($mine->path('local.txt'), "local\n");
+        file_put_contents($mine->path('local.txt'), data: "local\n");
         exec('git -C '.escapeshellarg($mine->dir).' add -A && git -C '.escapeshellarg($mine->dir).' commit -qm local');
         $this->mine = $mine;
 

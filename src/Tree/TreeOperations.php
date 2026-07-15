@@ -136,7 +136,8 @@ final class TreeOperations
             $new = \dirname($old).'/'.$name;
             // Buffers are keyed by realpath(); resolve the old path the same way
             // so an open file's buffer is re-pointed at the new name.
-            $oldKey = realpath($old) ?: $old;
+            $resolvedOld = realpath($old);
+            $oldKey = $resolvedOld ? $resolvedOld : $old;
             $this->withFs($this->translator->trans('Cannot rename %file%', ['%file%' => $this->relativePath($old)]), function () use ($old, $new, $name, $oldKey): void {
                 new Filesystem()->rename($old, $new); // no overwrite: a name clash is an error
                 if ($this->buffers->has($oldKey)) {
@@ -155,12 +156,14 @@ final class TreeOperations
     {
         $path = $node['path'];
         $this->promptName($this->translator->trans('Delete %name%? (y/N)', ['%name%' => $node['name']]), '', function (string $answer) use ($path): void {
-            if (!\in_array(strtolower(trim($answer)), ['y', 'yes'], true)) {
+            if (!\in_array(strtolower(trim($answer)), ['y', 'yes'], strict: true)) {
                 $this->tui->setFocus($this->tree);
 
                 return;
             }
-            $key = realpath($path) ?: $path; // buffers are keyed by realpath()
+            // buffers are keyed by realpath()
+            $resolved = realpath($path);
+            $key = $resolved ? $resolved : $path;
             $this->withFs($this->translator->trans('Cannot delete %file%', ['%file%' => $this->relativePath($path)]), function () use ($path, $key): void {
                 new Filesystem()->remove($path);
                 if ($this->buffers->has($key)) {

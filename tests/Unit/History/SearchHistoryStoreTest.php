@@ -54,14 +54,14 @@ final class SearchHistoryStoreTest extends TestCase
     public function testAddToleratesAnUnwritableLocation(): void
     {
         // A regular file as the "root" → `<file>/.porta/...` cannot be written.
-        $file = (string) tempnam(sys_get_temp_dir(), 'porta-hist-');
+        $file = (string) tempnam(sys_get_temp_dir(), prefix: 'porta-hist-');
 
         try {
             $store = new SearchHistoryStore($file);
             $store->add('x'); // dumpFile throws → caught, in-memory list still updated
             $this->assertSame(['x'], $store->all());
         } finally {
-            @unlink($file);
+            is_file($file) && unlink($file);
         }
     }
 

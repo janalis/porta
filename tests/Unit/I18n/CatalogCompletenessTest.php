@@ -24,9 +24,11 @@ final class CatalogCompletenessTest extends TestCase
         $xml->registerXPathNamespace('x', 'urn:oasis:names:tc:xliff:document:1.2');
 
         $sources = [];
-        foreach ($xml->xpath('//x:trans-unit') ?: [] as $unit) {
+        $units = $xml->xpath('//x:trans-unit');
+        foreach ($units ? $units : [] as $unit) {
             $unit->registerXPathNamespace('x', 'urn:oasis:names:tc:xliff:document:1.2');
-            $node = $unit->xpath('x:source') ?: [];
+            $node = $unit->xpath('x:source');
+            $node = $node ? $node : [];
             if ([] !== $node) {
                 $sources[] = (string) $node[0];
             }
@@ -54,9 +56,11 @@ final class CatalogCompletenessTest extends TestCase
             self::assertNotFalse($xml);
             $xml->registerXPathNamespace('x', 'urn:oasis:names:tc:xliff:document:1.2');
 
-            foreach ($xml->xpath('//x:trans-unit') ?: [] as $unit) {
+            $units = $xml->xpath('//x:trans-unit');
+            foreach ($units ? $units : [] as $unit) {
                 $unit->registerXPathNamespace('x', 'urn:oasis:names:tc:xliff:document:1.2');
-                $target = $unit->xpath('x:target') ?: [];
+                $target = $unit->xpath('x:target');
+                $target = $target ? $target : [];
                 self::assertNotSame([], $target, "a trans-unit in messages.{$locale}.xlf has no <target>");
                 self::assertNotSame('', (string) $target[0], "a trans-unit in messages.{$locale}.xlf has an empty <target>");
             }
@@ -68,7 +72,8 @@ final class CatalogCompletenessTest extends TestCase
         foreach (Translator::LOCALES as $locale) {
             $xml = simplexml_load_file(self::DIR.'/messages.'.$locale.'.xlf');
             self::assertNotFalse($xml);
-            $file = ($xml->xpath('//*[local-name()="file"]') ?: [])[0] ?? null;
+            $files = $xml->xpath('//*[local-name()="file"]');
+            $file = ($files ? $files : [])[0] ?? null;
             self::assertNotNull($file);
             self::assertSame($locale, (string) $file['target-language']);
         }

@@ -36,7 +36,7 @@ final class LspLogTest extends TestCase
     public function testTruncatesOverlongLines(): void
     {
         $log = new LspLog(new MockClock());
-        $log->append(str_repeat('x', 600));
+        $log->append(str_repeat('x', times: 600));
 
         $this->assertSame(500, mb_strlen($log->entries()[0]['text']));
     }

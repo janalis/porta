@@ -5,23 +5,27 @@ declare(strict_types=1);
 // Fault server: emits a corrupt header block (no Content-Length) before
 // answering the initialize request correctly — exercises frame resync.
 
-$in = fopen('php://stdin', 'rb');
-$out = fopen('php://stdout', 'wb');
+$in = fopen('php://stdin', mode: 'rb');
+$out = fopen('php://stdout', mode: 'wb');
 
 // Corrupt frame first: header terminator without a Content-Length
-fwrite($out, "X-Garbage: yes\r\n\r\n");
+fwrite($out, data: "X-Garbage: yes\r\n\r\n");
 fflush($out);
 
 $buffer = '';
 while (!feof($in)) {
-    $chunk = fread($in, 8192);
+    $chunk = fread($in, length: 8192);
     if (false === $chunk) {
         break;
     }
     $buffer .= $chunk;
 
-    if (false !== ($headerEnd = strpos($buffer, "\r\n\r\n")) && preg_match('/Content-Length:\s*(\d+)/i', substr($buffer, 0, $headerEnd), $m) && \strlen($buffer) >= ($headerEnd + 4 + (int) $m[1])) {
-        $message = json_decode(substr($buffer, $headerEnd + 4, (int) $m[1]), true);
+    if (
+        false !== ($headerEnd = strpos($buffer, needle: "\r\n\r\n"))
+        && preg_match('/Content-Length:\s*(\d+)/i', substr($buffer, offset: 0, length: $headerEnd), $m)
+        && \strlen($buffer) >= ($headerEnd + 4 + (int) $m[1])
+    ) {
+        $message = json_decode(substr($buffer, $headerEnd + 4, (int) $m[1]), associative: true);
         $buffer = substr($buffer, $headerEnd + 4 + (int) $m[1]);
 
         if ('initialize' === ($message['method'] ?? '')) {

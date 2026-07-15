@@ -63,32 +63,32 @@ final class GitInfoTest extends TestCase
         $this->assertFalse($git->isAvailable());
 
         $branch = 'unset';
-        $git->branch(function (?string $b) use (&$branch): void {
+        $git->branch(static function (?string $b) use (&$branch): void {
             $branch = $b;
         });
         $this->assertNull($branch, 'branch resolves synchronously to null when disabled');
 
         $marks = 'unset';
-        $git->diff($project->path('a.txt'), function (array $m) use (&$marks): void {
+        $git->diff($project->path('a.txt'), static function (array $m) use (&$marks): void {
             $marks = $m;
         });
         $this->assertSame([], $marks);
 
         // Write operations short-circuit too.
         $staged = 'unset';
-        $git->stage($project->path('a.txt'), function (bool $ok) use (&$staged): void {
+        $git->stage($project->path('a.txt'), static function (bool $ok) use (&$staged): void {
             $staged = $ok;
         });
         $this->assertFalse($staged);
 
         $committed = 'unset';
-        $git->commit('msg', function (bool $ok) use (&$committed): void {
+        $git->commit('msg', static function (bool $ok) use (&$committed): void {
             $committed = $ok;
         });
         $this->assertFalse($committed);
 
         $blame = 'unset';
-        $git->blameLine($project->path('a.txt'), 0, function (?array $b) use (&$blame): void {
+        $git->blameLine($project->path('a.txt'), 0, static function (?array $b) use (&$blame): void {
             $blame = $b;
         });
         $this->assertNull($blame);
@@ -96,7 +96,7 @@ final class GitInfoTest extends TestCase
 
     public function testParseBlameLine(): void
     {
-        $porcelain = "0123456789abcdef0123456789abcdef01234567 1 1 1\nauthor Jane Dev\n"."author-mail <jane@example.com>\n"."summary Add the thing\n"."\tcode line\n";
+        $porcelain = "0123456789abcdef0123456789abcdef01234567 1 1 1\nauthor Jane Dev\nauthor-mail <jane@example.com>\nsummary Add the thing\n\tcode line\n";
         $this->assertSame(
             ['sha' => '01234567', 'author' => 'Jane Dev', 'summary' => 'Add the thing'],
             GitInfo::parseBlameLine($porcelain),
@@ -120,7 +120,7 @@ final class GitInfoTest extends TestCase
         // Stage a new change.
         $project->write('a.txt', "first\nsecond\n");
         $staged = null;
-        $git->stage($project->path('a.txt'), function (bool $ok) use (&$staged): void {
+        $git->stage($project->path('a.txt'), static function (bool $ok) use (&$staged): void {
             $staged = $ok;
         });
         $this->await(static fn () => null !== $staged);
@@ -128,7 +128,7 @@ final class GitInfoTest extends TestCase
 
         // Commit it.
         $committed = null;
-        $git->commit('add second line', function (bool $ok) use (&$committed): void {
+        $git->commit('add second line', static function (bool $ok) use (&$committed): void {
             $committed = $ok;
         });
         $this->await(static fn () => null !== $committed);
@@ -136,7 +136,7 @@ final class GitInfoTest extends TestCase
 
         // Blame the committed second line.
         $blame = 'pending';
-        $git->blameLine($project->path('a.txt'), 1, function (?array $b) use (&$blame): void {
+        $git->blameLine($project->path('a.txt'), 1, static function (?array $b) use (&$blame): void {
             $blame = $b;
         });
         $this->await(static fn () => 'pending' !== $blame);
@@ -165,12 +165,12 @@ final class GitInfoTest extends TestCase
         $this->assertTrue($git->isAvailable());
 
         $branch = 'pending';
-        $git->branch(function (?string $b) use (&$branch): void {
+        $git->branch(static function (?string $b) use (&$branch): void {
             $branch = $b;
         });
 
         $marks = null;
-        $git->diff($project->path('a.txt'), function (array $m) use (&$marks): void {
+        $git->diff($project->path('a.txt'), static function (array $m) use (&$marks): void {
             $marks = $m;
         });
 
@@ -199,17 +199,17 @@ final class GitInfoTest extends TestCase
         // Start requests but cancel before the event loop drains them, so the
         // processes are still live when cancelAll() runs.
         $done = false;
-        $git->branch(function () use (&$done): void {
+        $git->branch(static function () use (&$done): void {
             $done = true;
         });
-        $git->diff($project->path('a.txt'), function () use (&$done): void {
+        $git->diff($project->path('a.txt'), static function () use (&$done): void {
             $done = true;
         });
         $git->cancelAll();
 
         // Give any (cancelled) watchers a chance to have fired.
         $suspension = EventLoop::getSuspension();
-        EventLoop::delay(0.2, static fn () => $suspension->resume());
+        EventLoop::delay(0.2, $suspension->resume(...));
         $suspension->suspend();
 
         $this->assertFalse($done, 'cancelled requests never invoke their callbacks');
@@ -220,7 +220,7 @@ final class GitInfoTest extends TestCase
         $elapsed = 0.0;
         while (!$done() && $elapsed < $timeout) {
             $suspension = EventLoop::getSuspension();
-            EventLoop::delay(0.02, static fn () => $suspension->resume());
+            EventLoop::delay(0.02, $suspension->resume(...));
             $suspension->suspend();
             $elapsed += 0.02;
         }

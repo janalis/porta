@@ -12,11 +12,7 @@ use Porta\Event\BufferSaved;
 use Porta\Event\BufferSwitched;
 use Porta\Event\LocaleChanged;
 use Porta\Event\ThemeChanged;
-use Porta\I18n\Translator;
-use Porta\Lsp\LspSessionPool;
 use Porta\Plugin\PluginEvents;
-use Porta\Tests\Support\FixedActiveFile;
-use Porta\Tests\Support\TempProject;
 use Porta\Ui\ChromeRefreshListener;
 use Porta\Ui\MenuLayoutRefreshListener;
 use Symfony\Component\DependencyInjection\ServiceLocator;
@@ -66,9 +62,9 @@ final class EventListenerWiringTest extends TestCase
             new \Porta\Ui\BidiTui(terminal: new VirtualTerminal(columns: 80, rows: 10), keybindings: new \Symfony\Component\Tui\Input\Keybindings([]), renderer: new Renderer(new StyleSheet())),
         );
         $locator = $container->get('porta.ide');
-        \assert($locator instanceof ServiceLocator);
+        \assert($locator instanceof ServiceLocator, description: 'the public boundary is a ServiceLocator');
         $dispatcher = $locator->get(EventDispatcherInterface::class);
-        \assert($dispatcher instanceof EventDispatcherInterface);
+        \assert($dispatcher instanceof EventDispatcherInterface, description: 'the locator yields the event dispatcher');
 
         return $dispatcher;
     }
@@ -77,7 +73,7 @@ final class EventListenerWiringTest extends TestCase
     {
         $container = new IdeContainerFactory()->build('/tmp/porta-event-wiring', IdeConfig::load('/tmp/porta-event-wiring'), true);
         $locator = $container->get('porta.ide');
-        \assert($locator instanceof ServiceLocator);
+        \assert($locator instanceof ServiceLocator, description: 'the public boundary is a ServiceLocator');
 
         $dispatcher = $locator->get(EventDispatcherInterface::class);
 
@@ -115,7 +111,7 @@ final class EventListenerWiringTest extends TestCase
         foreach ([BufferOpened::class, BufferSaved::class, BufferSwitched::class] as $event) {
             $listeners = $dispatcher->getListeners($event);
             $last = end($listeners);
-            \assert(\is_array($last));
+            \assert(\is_array($last), description: 'a listener entry is a [service, method] pair');
             $this->assertInstanceOf(PluginEvents::class, $last[0], $event.': third-party hooks run after every core listener');
         }
     }
@@ -128,7 +124,7 @@ final class EventListenerWiringTest extends TestCase
             $listeners = $dispatcher->getListeners($event);
             $first = reset($listeners);
             $last = end($listeners);
-            \assert(\is_array($first) && \is_array($last));
+            \assert(\is_array($first) && \is_array($last), description: 'listener entries are [service, method] pairs');
             $this->assertInstanceOf(MenuLayoutRefreshListener::class, $first[0], $event.': the menu/layout refresh runs first');
             $this->assertInstanceOf(ChromeRefreshListener::class, $last[0], $event.': the -100 chrome sweep runs last');
         }

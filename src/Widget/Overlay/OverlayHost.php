@@ -189,9 +189,10 @@ final class OverlayHost
         $hit = null === $index ? null : $search->rows[$index]->hit ?? null;
         if (null !== $hit) {
             ($search->onPick)($hit);
-        } else {
-            ($search->onClose)();
+
+            return true;
         }
+        ($search->onClose)();
 
         return true;
     }
@@ -273,25 +274,39 @@ final class OverlayHost
 
         if ($kb->matches($keys, 'select_cancel')) {
             $this->overlay = null;
-        } elseif ($kb->matches($keys, 'cursor_up')) {
+            ($this->invalidate)();
+
+            return;
+        }
+        if ($kb->matches($keys, 'cursor_up')) {
             $overlay['selected'] = ($overlay['selected'] - 1 + $count) % $count;
             $this->overlay = $overlay;
-        } elseif ($kb->matches($keys, 'cursor_down')) {
+            ($this->invalidate)();
+
+            return;
+        }
+        if ($kb->matches($keys, 'cursor_down')) {
             $overlay['selected'] = ($overlay['selected'] + 1) % $count;
             $this->overlay = $overlay;
-        } elseif ($kb->matches($keys, 'accept_completion')) {
+            ($this->invalidate)();
+
+            return;
+        }
+        if ($kb->matches($keys, 'accept_completion')) {
             $item = $overlay['items'][$overlay['selected']];
             $onPick = $overlay['onPick'];
             $this->overlay = null;
             $onPick($item['value']);
-        } elseif ($kb->matches($keys, 'recent_files')) {
+            ($this->invalidate)();
+
+            return;
+        }
+        if ($kb->matches($keys, 'recent_files')) {
             // Ctrl+E again cycles like PhpStorm
             $overlay['selected'] = ($overlay['selected'] + 1) % $count;
             $this->overlay = $overlay;
-        } else {
-            return;
+            ($this->invalidate)();
         }
-        ($this->invalidate)();
     }
 
     /**
@@ -313,10 +328,11 @@ final class OverlayHost
             $this->overlay = null;
             ($this->invalidate)();
             $onPick($item['value']);
-        } else {
-            $this->overlay = null;
-            ($this->invalidate)();
+
+            return true;
         }
+        $this->overlay = null;
+        ($this->invalidate)();
 
         return true;
     }
@@ -367,7 +383,7 @@ final class OverlayHost
      */
     private function firstHitAtOrAfter(array $rows, int $from): int
     {
-        if (isset($rows[$from]) && !$rows[$from]->isHeader()) {
+        if (($rows[$from] ?? null) !== null && !$rows[$from]->isHeader()) {
             return $from;
         }
         foreach ($rows as $i => $row) {

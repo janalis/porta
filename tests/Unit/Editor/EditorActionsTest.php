@@ -15,7 +15,6 @@ use Porta\Editor\FoldModel;
 use Porta\Editor\MultiCaret;
 use Porta\Input\TextInput;
 use Porta\Tests\Support\FakeEditorHost;
-use Porta\Widget\EditorKeymap;
 use Symfony\Component\Tui\Input\Keybindings;
 
 /**
@@ -51,7 +50,7 @@ final class EditorActionsTest extends TestCase
             $this->doc,
             $invalidate,
             $notifyChange,
-            static fn (string $d): bool => TextInput::isPrintable($d),
+            TextInput::isPrintable(...),
             $this->record('requestCompletion'),
             $this->record('resolveCompletion'),
         );
@@ -331,7 +330,7 @@ final class EditorActionsTest extends TestCase
     public function testPageMovementUsesTheViewportRows(): void
     {
         $kb = new Keybindings(['page_down' => ['page_down']]);
-        $actions = $this->actions(str_repeat("line\n", 20));
+        $actions = $this->actions(str_repeat("line\n", times: 20));
         $actions->handleKey("\x1b[6~", $kb);
         $this->assertSame(5, $this->doc->getCursorLine(), 'contentRows closure supplies the page size');
     }

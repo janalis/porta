@@ -47,7 +47,9 @@ final class ServerLocator
             foreach ($lsp as $language => $command) {
                 if (\is_string($command) && '' !== $command) {
                     $servers[(string) $language] = self::server(self::split($command));
-                } elseif (\is_array($command) && [] !== $command) {
+                    continue;
+                }
+                if (\is_array($command) && [] !== $command) {
                     $servers[(string) $language] = self::server(array_values(array_map(strval(...), $command)));
                 }
             }
@@ -125,12 +127,14 @@ final class ServerLocator
         $local = $rootDir.'/vendor/bin/phpactor';
         $phpactor = self::which('phpactor');
         $intelephense = self::which('intelephense');
-        if (is_file($local) && is_executable($local)) {
-            $servers['php'] = ['command' => [$local, 'language-server'], 'name' => 'phpactor'];
-        } elseif (null !== $phpactor) {
-            $servers['php'] = ['command' => [$phpactor, 'language-server'], 'name' => 'phpactor'];
-        } elseif (null !== $intelephense) {
-            $servers['php'] = ['command' => [$intelephense, '--stdio'], 'name' => 'intelephense'];
+        $php = match (true) {
+            is_file($local) && is_executable($local) => ['command' => [$local, 'language-server'], 'name' => 'phpactor'],
+            null !== $phpactor => ['command' => [$phpactor, 'language-server'], 'name' => 'phpactor'],
+            null !== $intelephense => ['command' => [$intelephense, '--stdio'], 'name' => 'intelephense'],
+            default => null,
+        };
+        if (null !== $php) {
+            $servers['php'] = $php;
         }
 
         $tls = self::which('typescript-language-server');
@@ -142,10 +146,13 @@ final class ServerLocator
 
         $pyright = self::which('pyright-langserver');
         $pylsp = self::which('pylsp');
-        if (null !== $pyright) {
-            $servers['python'] = ['command' => [$pyright, '--stdio'], 'name' => 'pyright'];
-        } elseif (null !== $pylsp) {
-            $servers['python'] = ['command' => [$pylsp], 'name' => 'pylsp'];
+        $python = match (true) {
+            null !== $pyright => ['command' => [$pyright, '--stdio'], 'name' => 'pyright'],
+            null !== $pylsp => ['command' => [$pylsp], 'name' => 'pylsp'],
+            default => null,
+        };
+        if (null !== $python) {
+            $servers['python'] = $python;
         }
 
         return $servers;
@@ -192,8 +199,8 @@ final class ServerLocator
     {
         foreach ($command as $token) {
             $base = strtolower(basename($token));
-            if (!\in_array(preg_replace('/\d+(\.\d+)*$/', '', $base), ['php', 'node', 'python', ''], true)) {
-                return preg_replace('/\.(phar|js|php)$/', '', basename($token)) ?? basename($token);
+            if (!\in_array(preg_replace('/\d+(\.\d+)*$/', replacement: '', subject: $base), ['php', 'node', 'python', ''], strict: true)) {
+                return preg_replace('/\.(phar|js|php)$/', replacement: '', subject: basename($token)) ?? basename($token);
             }
         }
 
@@ -203,7 +210,7 @@ final class ServerLocator
     /** @return list<string> */
     private static function split(string $command): array
     {
-        return array_values(array_filter(preg_split('/\s+/', trim($command)) ?: []));
+        return array_values(array_filter(($parts = preg_split('/\s+/', trim($command))) ? $parts : []));
     }
 
     private static function which(string $binary): ?string

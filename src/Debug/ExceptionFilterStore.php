@@ -59,7 +59,7 @@ final class ExceptionFilterStore
     public function toggle(string $id, array $advertised): void
     {
         $enabled = $this->enabledFor($advertised);
-        $this->selection = \in_array($id, $enabled, true)
+        $this->selection = \in_array($id, $enabled, strict: true)
             ? array_values(array_diff($enabled, [$id]))
             : [...$enabled, $id];
     }

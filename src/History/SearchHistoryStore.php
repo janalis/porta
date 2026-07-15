@@ -43,7 +43,7 @@ final class SearchHistoryStore
         }
         $this->queries = array_values(array_filter($this->queries, static fn (string $q): bool => $q !== $query));
         array_unshift($this->queries, $query);
-        $this->queries = \array_slice($this->queries, 0, self::MAX);
+        $this->queries = \array_slice($this->queries, offset: 0, length: self::MAX);
         $this->save();
     }
 
@@ -58,12 +58,14 @@ final class SearchHistoryStore
         $entries = $data['queries'];
         $queries = [];
         foreach ($entries as $entry) {
-            if (\is_string($entry) && '' !== $entry) {
-                $queries[] = $entry;
+            if (!(\is_string($entry) && '' !== $entry)) {
+                continue;
             }
+
+            $queries[] = $entry;
         }
 
-        return \array_slice($queries, 0, self::MAX);
+        return \array_slice($queries, offset: 0, length: self::MAX);
     }
 
     private function save(): void
@@ -72,6 +74,7 @@ final class SearchHistoryStore
             $this->fs->dumpFile($this->file, json_encode(['queries' => $this->queries], JSON_THROW_ON_ERROR | \JSON_PRETTY_PRINT | \JSON_UNESCAPED_SLASHES));
         } catch (IOExceptionInterface) {
             // best-effort persistence; history is non-critical
+            return;
         }
     }
 }

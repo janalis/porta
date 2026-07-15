@@ -17,7 +17,7 @@ final class SettingsNavWidgetTest extends TestCase
         $selected = [];
         $widget = new SettingsNavWidget(new Translator('en'));
         $widget->setFocused(true);
-        $widget->onSelect(function (string $id) use (&$selected): void {
+        $widget->onSelect(static function (string $id) use (&$selected): void {
             $selected[] = $id;
         });
 
@@ -138,10 +138,10 @@ final class SettingsNavWidgetTest extends TestCase
     {
         $fired = [];
         $widget = $this->widget();
-        $widget->onFocusNext(function () use (&$fired): void {
+        $widget->onFocusNext(static function () use (&$fired): void {
             $fired[] = 'next';
         });
-        $widget->onExit(function () use (&$fired): void {
+        $widget->onExit(static function () use (&$fired): void {
             $fired[] = 'exit';
         });
         $widget->handleInput("\t");

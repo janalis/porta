@@ -59,10 +59,10 @@ final class OverlayHostTest extends TestCase
         $host = $this->host();
         $picked = null;
         $submitted = null;
-        $host->openList('L', [['label' => 'a', 'hint' => '', 'value' => 'A']], function (string $v) use (&$picked): void {
+        $host->openList('L', [['label' => 'a', 'hint' => '', 'value' => 'A']], static function (string $v) use (&$picked): void {
             $picked = $v;
         });
-        $host->openPrompt('Rename to', 'old', function (string $v) use (&$submitted): void {
+        $host->openPrompt('Rename to', 'old', static function (string $v) use (&$submitted): void {
             $submitted = $v;
         });
 
@@ -91,7 +91,7 @@ final class OverlayHostTest extends TestCase
     {
         $host = $this->host();
         $submitted = null;
-        $host->openPrompt('P', 'ab', function (string $v) use (&$submitted): void {
+        $host->openPrompt('P', 'ab', static function (string $v) use (&$submitted): void {
             $submitted = $v;
         });
         $kb = $this->keybindings();
@@ -116,7 +116,7 @@ final class OverlayHostTest extends TestCase
             static fn () => null,
         );
 
-        $host->composite(array_fill(0, 20, str_repeat(' ', 80)), 80, 20, true);
+        $host->composite(array_fill(0, count: 20, value: str_repeat(' ', times: 80)), 80, 20, true);
 
         // Hovering the second item row moves the selection exactly once.
         $moved = false;
@@ -169,7 +169,7 @@ final class OverlayHostTest extends TestCase
         $queries = [];
         $host->openSearch(
             'Search',
-            function (string $q) use (&$queries): void {
+            static function (string $q) use (&$queries): void {
                 $queries[] = $q;
             },
             static fn () => null,
@@ -191,7 +191,7 @@ final class OverlayHostTest extends TestCase
         $host->openSearch(
             'Search',
             static fn () => null,
-            function (SearchHit $h) use (&$picked): void {
+            static function (SearchHit $h) use (&$picked): void {
                 $picked = $h->label;
             },
             static fn () => null,
@@ -206,7 +206,7 @@ final class OverlayHostTest extends TestCase
     {
         $host = $this->host();
         $picked = null;
-        $onPick = function (SearchHit $h) use (&$picked): void {
+        $onPick = static function (SearchHit $h) use (&$picked): void {
             $picked = $h->label;
         };
         $host->openSearch('Search', static fn () => null, $onPick, static fn () => null);
@@ -232,10 +232,10 @@ final class OverlayHostTest extends TestCase
         $host->openSearch(
             'Search',
             static fn () => null,
-            function () use (&$picked): void {
+            static function () use (&$picked): void {
                 $picked = true;
             },
-            function () use (&$closed): void {
+            static function () use (&$closed): void {
                 ++$closed;
             },
         );
@@ -258,7 +258,7 @@ final class OverlayHostTest extends TestCase
         $host->openSearch(
             'Search',
             static fn () => null,
-            function (SearchHit $h) use (&$picked): void {
+            static function (SearchHit $h) use (&$picked): void {
                 $picked = $h->label;
             },
             static fn () => null,
@@ -295,13 +295,13 @@ final class OverlayHostTest extends TestCase
             SearchRow::header(SearchCategory::Text),
             SearchRow::hit(new SearchHit(
                 SearchCategory::Text,
-                str_repeat('"ext-simplexml": "*", ', 8),
+                str_repeat('"ext-simplexml": "*", ', times: 8),
                 'vendor/phpunit/phpunit/src/Framework/Constraint/Traversable/ArraySubset/DeeplyNested.php:1234',
                 static fn () => null,
             )),
         ]);
 
-        $lines = $host->composite(array_fill(0, 20, str_repeat(' ', 80)), 80, 20, true);
+        $lines = $host->composite(array_fill(0, count: 20, value: str_repeat(' ', times: 80)), 80, 20, true);
         foreach ($lines as $i => $line) {
             $this->assertSame(80, AnsiUtils::visibleWidth($line), "composited row {$i} must stay 80 columns");
         }
@@ -315,22 +315,24 @@ final class OverlayHostTest extends TestCase
         $host->openSearch(
             'Search',
             static fn () => null,
-            function (SearchHit $h) use (&$picked): void {
+            static function (SearchHit $h) use (&$picked): void {
                 $picked = $h->label;
             },
-            function () use (&$closed): void {
+            static function () use (&$closed): void {
                 ++$closed;
             },
         );
         $host->setSearchRows($this->searchRows(static fn () => null));
-        $host->composite(array_fill(0, 20, str_repeat(' ', 80)), 80, 20, true);
+        $host->composite(array_fill(0, count: 20, value: str_repeat(' ', times: 80)), 80, 20, true);
 
         // Hover finds a hit row; clicking it picks that hit.
         $hitRow = -1;
         for ($row = 0; $row < 20 && $hitRow < 0; ++$row) {
-            if ($host->searchHoverAt($row, 40)) {
-                $hitRow = $row;
+            if (!$host->searchHoverAt($row, 40)) {
+                continue;
             }
+
+            $hitRow = $row;
         }
         $this->assertGreaterThanOrEqual(0, $hitRow, 'a hit row is hoverable');
         $this->assertTrue($host->searchClickAt($hitRow, 40));
@@ -347,11 +349,11 @@ final class OverlayHostTest extends TestCase
     {
         $host = $this->host();
         $closed = 0;
-        $host->openSearch('Search', static fn () => null, static fn () => null, function () use (&$closed): void {
+        $host->openSearch('Search', static fn () => null, static fn () => null, static function () use (&$closed): void {
             ++$closed;
         });
         $host->setSearchRows($this->searchRows(static fn () => null));
-        $host->composite(array_fill(0, 20, str_repeat(' ', 80)), 80, 20, true);
+        $host->composite(array_fill(0, count: 20, value: str_repeat(' ', times: 80)), 80, 20, true);
 
         // Move the selection off the top hit so its row becomes hover-selectable,
         // then the topmost hover-selectable row is the first hit — its category
@@ -359,9 +361,11 @@ final class OverlayHostTest extends TestCase
         $host->handleSearchInput("\x1b[B", $this->keybindings()); // Down → second hit
         $topHitRow = -1;
         for ($row = 0; $row < 20 && $topHitRow < 0; ++$row) {
-            if ($host->searchHoverAt($row, 40)) {
-                $topHitRow = $row;
+            if (!$host->searchHoverAt($row, 40)) {
+                continue;
             }
+
+            $topHitRow = $row;
         }
         $this->assertGreaterThan(0, $topHitRow);
 

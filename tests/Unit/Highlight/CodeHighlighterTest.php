@@ -20,7 +20,7 @@ final class CodeHighlighterTest extends TestCase
         $highlighter->setFile('test.php');
         $this->assertSame('php', $highlighter->getLanguage());
 
-        $lines = $highlighter->highlight(explode("\n", "<?php\n/* multi\nline comment */\nreturn 'str';"), 1);
+        $lines = $highlighter->highlight(explode("\n", string: "<?php\n/* multi\nline comment */\nreturn 'str';"), 1);
 
         $this->assertCount(4, $lines);
         $this->assertStringContainsString("\x1b[", implode('', $lines));
@@ -34,7 +34,7 @@ final class CodeHighlighterTest extends TestCase
     {
         $highlighter = new CodeHighlighter(syntaxTheme: new PlainTerminalTheme());
         $highlighter->setFile('test.php');
-        $lines = $highlighter->highlight(explode("\n", "<?php\nreturn 'str';"), 1);
+        $lines = $highlighter->highlight(explode("\n", string: "<?php\nreturn 'str';"), 1);
 
         $joined = implode('', $lines);
         $this->assertStringNotContainsString("\x1b[38;5;", $joined, 'no syntax color in monochrome');
@@ -45,7 +45,7 @@ final class CodeHighlighterTest extends TestCase
     {
         $highlighter = new CodeHighlighter();
         $highlighter->setFile('test.php');
-        $lines = $highlighter->highlight(explode("\n", "<?php\n/* multi\nline comment */\nreturn 'str';"), 1);
+        $lines = $highlighter->highlight(explode("\n", string: "<?php\n/* multi\nline comment */\nreturn 'str';"), 1);
 
         $commentGray = "\x1b[38;5;243m";
         $this->assertTrue(

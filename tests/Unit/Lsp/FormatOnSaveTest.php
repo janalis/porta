@@ -7,7 +7,6 @@ namespace Porta\Tests\Unit\Lsp;
 use PHPUnit\Framework\TestCase;
 use Porta\Editor\Buffer;
 use Porta\Editor\BufferManager;
-use Porta\Editor\Document;
 use Porta\I18n\Translator;
 use Porta\Lsp\FormatOnSave;
 use Porta\Lsp\LspSessionPool;
@@ -88,9 +87,11 @@ final class FormatOnSaveTest extends TestCase
     {
         $request = null;
         foreach ($this->client->requests as $sent) {
-            if ('textDocument/formatting' === $sent['method']) {
-                $request = $sent;
+            if ('textDocument/formatting' !== $sent['method']) {
+                continue;
             }
+
+            $request = $sent;
         }
         $this->assertNotNull($request, 'a formatting request was sent');
         $request['respond']($result, $error);
@@ -180,7 +181,7 @@ final class FormatOnSaveTest extends TestCase
         $this->assertSame(1, $this->saves, 'an empty result just saves');
 
         $formatOnSave->formatThenSave($buffer, $this->save());
-        $this->respond(null, ['code' => -32601, 'message' => 'unsupported']);
+        $this->respond(null, ['code' => -32_601, 'message' => 'unsupported']);
         $this->assertSame(2, $this->saves, 'an error result just saves');
     }
 

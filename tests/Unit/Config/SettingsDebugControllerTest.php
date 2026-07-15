@@ -57,7 +57,7 @@ final class SettingsDebugControllerTest extends TestCase
         $controller = $this->controller();
         $controller->change('php', 'debugAdapter', ' node b.js ');
 
-        $written = json_decode((string) file_get_contents($this->project->path('.porta.json')), true);
+        $written = json_decode((string) file_get_contents($this->project->path('.porta.json')), associative: true);
         $this->assertSame('node b.js', $written['languages']['php']['debug']['adapter']);
         $this->assertSame(['node', 'b.js'], $this->adapters->adapterFor('php')?->adapterArgv, 'live registry updated');
         $this->assertSame(['env' => ['X' => '1']], $this->adapters->adapterFor('php')?->launch, 'launch overrides preserved');
@@ -73,7 +73,7 @@ final class SettingsDebugControllerTest extends TestCase
         $controller = $this->controller();
         $controller->change('php', 'debugLaunch', '{"stopOnEntry": true}');
 
-        $written = json_decode((string) file_get_contents($this->project->path('.porta.json')), true);
+        $written = json_decode((string) file_get_contents($this->project->path('.porta.json')), associative: true);
         $this->assertSame(['stopOnEntry' => true], $written['languages']['php']['debug']['launch']);
         $this->assertSame(['stopOnEntry' => true], $this->adapters->launchOverrides('php'));
 
@@ -86,7 +86,7 @@ final class SettingsDebugControllerTest extends TestCase
 
         $controller->change('php', 'debugLaunch', '');
         $this->assertSame([], $this->adapters->launchOverrides('php'), 'blank clears the overrides');
-        $written = json_decode((string) file_get_contents($this->project->path('.porta.json')), true);
+        $written = json_decode((string) file_get_contents($this->project->path('.porta.json')), associative: true);
         $this->assertArrayNotHasKey('launch', $written['languages']['php']['debug'] ?? []);
     }
 }

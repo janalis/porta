@@ -125,7 +125,7 @@ final class MultilineInputTest extends TestCase
 
     private function markers(string ...$lines): int
     {
-        return array_sum(array_map(fn (string $l): int => substr_count($l, AnsiUtils::cursorMarker(CursorShape::Bar)), $lines));
+        return array_sum(array_map(static fn (string $l): int => substr_count($l, AnsiUtils::cursorMarker(CursorShape::Bar)), $lines));
     }
 
     public function testRenderScrollsToKeepTheCaretLineVisible(): void
@@ -171,7 +171,7 @@ final class MultilineInputTest extends TestCase
 
         $this->assertTrue($input->handleKey("\x7f"));
         $this->assertSame('slow ', $input->value(), 'the whole em-dash is removed');
-        $this->assertTrue(mb_check_encoding($input->value(), 'UTF-8'), 'never leaves a partial sequence');
+        $this->assertTrue(mb_check_encoding($input->value(), encoding: 'UTF-8'), 'never leaves a partial sequence');
     }
 
     public function testArrowsMoveByWholeCharacterAcrossMultibyte(): void
@@ -184,12 +184,12 @@ final class MultilineInputTest extends TestCase
         // Inserting here must land between 'a' and the em-dash, not mid-sequence.
         $input->handleKey('X');
         $this->assertSame("aX\u{2014}b", $input->value());
-        $this->assertTrue(mb_check_encoding($input->value(), 'UTF-8'));
+        $this->assertTrue(mb_check_encoding($input->value(), encoding: 'UTF-8'), 'never leaves a partial sequence');
 
         $input->handleKey("\x1b[C"); // right over the em-dash in one step
         $input->handleKey('Y');
         $this->assertSame("aX\u{2014}Yb", $input->value());
-        $this->assertTrue(mb_check_encoding($input->value(), 'UTF-8'));
+        $this->assertTrue(mb_check_encoding($input->value(), encoding: 'UTF-8'), 'never leaves a partial sequence');
     }
 
     public function testUpDownNeverLandMidCharacter(): void
@@ -199,14 +199,14 @@ final class MultilineInputTest extends TestCase
 
         $input->handleKey("\x1b[A"); // up onto the multibyte line at byte col 2 (mid em-dash)
         $input->handleKey('Z'); // insert must not split the em-dash
-        $this->assertTrue(mb_check_encoding($input->value(), 'UTF-8'));
+        $this->assertTrue(mb_check_encoding($input->value(), encoding: 'UTF-8'), 'never leaves a partial sequence');
         $this->assertStringContainsString("\u{2014}", $input->value(), 'the em-dash survived intact');
     }
 
     public function testRenderHorizontallyWindowsALongCaretLine(): void
     {
         $input = new MultilineInput();
-        $this->type($input, str_repeat('x', 60)); // one 60-column line, caret at the end
+        $this->type($input, str_repeat('x', times: 60)); // one 60-column line, caret at the end
 
         $window = $input->render(10, 3, cursor: true);
 

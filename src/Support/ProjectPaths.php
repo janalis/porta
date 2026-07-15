@@ -13,8 +13,10 @@ final class ProjectPaths
     /** Path relative to the project root, or the absolute path when outside it. */
     public static function relative(string $rootDir, string $path): string
     {
-        $real = realpath($path) ?: $path;
-        $root = rtrim(realpath($rootDir) ?: $rootDir, '/');
+        $realPath = realpath($path);
+        $real = $realPath ? $realPath : $path;
+        $realRoot = realpath($rootDir);
+        $root = rtrim($realRoot ? $realRoot : $rootDir, characters: '/');
 
         return str_starts_with($real, $root.'/') ? substr($real, \strlen($root) + 1) : $real;
     }

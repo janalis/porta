@@ -105,7 +105,7 @@ final class TextFieldTest extends TestCase
 
     public function testRenderScrollsToTheTailWhenTheFocusedValueOverflowsWidth(): void
     {
-        $field = new TextField(str_repeat('x', 60));
+        $field = new TextField(str_repeat('x', times: 60));
         $marker = AnsiUtils::cursorMarker(CursorShape::Bar);
 
         $out = $field->render(cursor: true, width: 10);
@@ -121,7 +121,7 @@ final class TextFieldTest extends TestCase
 
         $this->assertTrue($field->backspace());
         $this->assertSame('caf', $field->value(), 'the whole é is removed, not one byte');
-        $this->assertTrue(mb_check_encoding($field->value(), 'UTF-8'), 'never leaves a partial sequence');
+        $this->assertTrue(mb_check_encoding($field->value(), encoding: 'UTF-8'), 'never leaves a partial sequence');
     }
 
     public function testBackspaceDeletesAWholeEmojiAndEmDash(): void
@@ -129,11 +129,11 @@ final class TextFieldTest extends TestCase
         $field = new TextField("done \u{1F41B}"); // 4-byte emoji
         $field->backspace();
         $this->assertSame('done ', $field->value());
-        $this->assertTrue(mb_check_encoding($field->value(), 'UTF-8'));
+        $this->assertTrue(mb_check_encoding($field->value(), encoding: 'UTF-8'));
 
         $dash = new TextField("slow \u{2014}"); // 3-byte em-dash
         $dash->backspace();
         $this->assertSame('slow ', $dash->value());
-        $this->assertTrue(mb_check_encoding($dash->value(), 'UTF-8'));
+        $this->assertTrue(mb_check_encoding($dash->value(), encoding: 'UTF-8'));
     }
 }

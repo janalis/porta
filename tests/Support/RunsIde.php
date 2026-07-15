@@ -36,13 +36,16 @@ trait RunsIde
         $timers = [];
         ksort($steps);
         $keys = array_keys($steps);
-        $schedule = function (int $index, int $previousKey) use (&$schedule, &$timers, $steps, $keys, $tui, $terminal, $ide, $duration): void {
+        $schedule = static function (int $index, int $previousKey) use (&$schedule, &$timers, $steps, $keys, $tui, $terminal, $ide, $duration): void {
             $key = $keys[$index];
-            $timers[] = EventLoop::delay(($key - $previousKey) / 1000, function () use ($index, $key, $steps, $keys, $tui, $terminal, $ide, $duration, $schedule): void {
+            $timers[] = EventLoop::delay(($key - $previousKey) / 1000, static function () use ($index, $key, $steps, $keys, $tui, $terminal, $ide, $duration, $schedule): void {
                 $steps[$key]($tui, $terminal, $ide);
-                if (isset($keys[$index + 1])) {
+                if (array_key_exists($index + 1, $keys)) {
                     $schedule($index + 1, $key);
-                } elseif (null === $duration) {
+
+                    return;
+                }
+                if (null === $duration) {
                     EventLoop::delay(0.08, static function () use ($tui): void {
                         $tui->tick();
                         $tui->stop();
@@ -51,10 +54,10 @@ trait RunsIde
             });
         };
         if ([] !== $keys) {
-            $schedule(0, 0);
+            $schedule(index: 0, previousKey: 0);
         }
         if (null !== $duration || [] === $keys) {
-            $timers[] = EventLoop::delay($duration ?? 0.7, static fn () => $tui->stop());
+            $timers[] = EventLoop::delay($duration ?? 0.7, $tui->stop(...));
         }
 
         try {
@@ -78,7 +81,7 @@ trait RunsIde
         $elapsed = 0.0;
         while (!$done() && $elapsed < $timeout) {
             $suspension = EventLoop::getSuspension();
-            EventLoop::delay(0.02, static fn () => $suspension->resume());
+            EventLoop::delay(0.02, $suspension->resume(...));
             $suspension->suspend();
             $elapsed += 0.02;
         }

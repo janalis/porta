@@ -5,12 +5,9 @@ declare(strict_types=1);
 namespace Porta\Tests\E2e;
 
 use PHPUnit\Framework\TestCase;
-use Porta\Ide;
 use Porta\Tests\Support\RunsIde;
 use Porta\Tests\Support\TempProject;
-use Revolt\EventLoop;
 use Symfony\Component\Tui\Ansi\AnsiUtils;
-use Symfony\Component\Tui\Terminal\VirtualTerminal;
 
 /**
  * Plugins bundled with Porta (the embedded source, PORTA_EMBEDDED_PLUGINS):
@@ -117,7 +114,7 @@ final class IdeEmbeddedPluginsTest extends TestCase
                     $tui->handleInput("\r");
                     $tui->tick();
 
-                    $config = json_decode((string) file_get_contents($project->path('.porta.json')), true);
+                    $config = json_decode((string) file_get_contents($project->path('.porta.json')), associative: true);
                     $this->assertSame('/opt/tool', $config['plugins']['bundled']['binary'] ?? null, 'the setting persisted');
 
                     // Outside the settings view (which gates every non-safe item),
@@ -146,7 +143,7 @@ final class IdeEmbeddedPluginsTest extends TestCase
                     $this->assertNotContains('Plugins', array_column($this->menus($tui), 'title'), 'the only plugin gone → no Plugins menu');
                     $commands = new \ReflectionProperty($ide, 'commands')->getValue($ide);
                     $this->assertNotContains('Bundled Run', array_column($commands->paletteCommands(), 'label'));
-                    $config = json_decode((string) file_get_contents($project->path('.porta.json')), true);
+                    $config = json_decode((string) file_get_contents($project->path('.porta.json')), associative: true);
                     $this->assertSame(['bundled'], $config['disabledPlugins'] ?? null);
 
                     // And re-enable it live from the same page.
@@ -155,7 +152,7 @@ final class IdeEmbeddedPluginsTest extends TestCase
                     $this->assertStringContainsString('Plugin "bundled" enabled', AnsiUtils::stripAnsiCodes($terminal->getOutput()));
                     $this->assertContains('Plugins', array_column($this->menus($tui), 'title'));
                     $this->assertContains('Bundled Run', array_column($commands->paletteCommands(), 'label'));
-                    $config = json_decode((string) file_get_contents($project->path('.porta.json')), true);
+                    $config = json_decode((string) file_get_contents($project->path('.porta.json')), associative: true);
                     $this->assertArrayNotHasKey('disabledPlugins', $config, 're-enabling cleared the list');
                 },
             ],

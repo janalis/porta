@@ -22,8 +22,8 @@ final class WatchStore
 
     public function remove(int $index): void
     {
-        if (isset($this->expressions[$index])) {
-            array_splice($this->expressions, $index, 1);
+        if (($this->expressions[$index] ?? null) !== null) {
+            array_splice($this->expressions, $index, length: 1);
         }
     }
 

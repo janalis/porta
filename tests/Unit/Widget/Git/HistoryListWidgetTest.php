@@ -18,8 +18,8 @@ final class HistoryListWidgetTest extends TestCase
         $widget = new HistoryListWidget(new Translator('en'));
         $widget->setFocused(true);
         $widget->setCommits([
-            new LogEntry('full1', 'aaa111', 'Alice', 1700000100, 'Newest work'),
-            new LogEntry('full2', 'bbb222', 'Bob', 1700000000, 'Older work'),
+            new LogEntry('full1', 'aaa111', 'Alice', 1_700_000_100, 'Newest work'),
+            new LogEntry('full2', 'bbb222', 'Bob', 1_700_000_000, 'Older work'),
         ]);
         $widget->setFiles([
             ['status' => 'M', 'path' => 'src/a.php'],
@@ -40,7 +40,7 @@ final class HistoryListWidgetTest extends TestCase
 
         $this->assertStringContainsString('History (2)', $screen);
         // With 16 rows and 2 files, filler rows pad the files section.
-        $this->assertGreaterThan(10, substr_count($screen, "\n"), 'padded to full height');
+        $this->assertGreaterThan(10, substr_count($screen, needle: "\n"), 'padded to full height');
         $this->assertStringContainsString('aaa111 Newest work  Alice', $screen);
         $this->assertStringContainsString('Files (2)', $screen);
         $this->assertStringContainsString('M src/a.php', $screen);
@@ -50,10 +50,10 @@ final class HistoryListWidgetTest extends TestCase
     {
         $widget = $this->widget();
         $events = [];
-        $widget->onSelectCommit(function (LogEntry $c) use (&$events): void {
+        $widget->onSelectCommit(static function (LogEntry $c) use (&$events): void {
             $events[] = 'commit:'.$c->shortSha;
         });
-        $widget->onSelectFile(function (LogEntry $c, string $path) use (&$events): void {
+        $widget->onSelectFile(static function (LogEntry $c, string $path) use (&$events): void {
             $events[] = 'file:'.$path;
         });
 
@@ -70,10 +70,10 @@ final class HistoryListWidgetTest extends TestCase
         $widget = $this->widget();
         $widget->render(new RenderContext(44, 16)); // commitRowCount = 6, Files header row 7
         $fired = 0;
-        $widget->onSelectCommit(function () use (&$fired): void {
+        $widget->onSelectCommit(static function () use (&$fired): void {
             ++$fired;
         });
-        $widget->onSelectFile(function () use (&$fired): void {
+        $widget->onSelectFile(static function () use (&$fired): void {
             ++$fired;
         });
 
@@ -95,7 +95,7 @@ final class HistoryListWidgetTest extends TestCase
         $this->assertSame(0, $fired, 'hover fires no selection callbacks');
 
         $widget->hoverRow(1);
-        $widget->setCommits([new LogEntry('x', 'ccc333', 'Cara', 1700000200, 'Reset')]);
+        $widget->setCommits([new LogEntry('x', 'ccc333', 'Cara', 1_700_000_200, 'Reset')]);
         $this->assertFalse($widget->clearHover(), 'setCommits already dropped the tint');
 
         $widget->setFiles([['status' => 'M', 'path' => 'z.txt']]);
@@ -109,10 +109,10 @@ final class HistoryListWidgetTest extends TestCase
     {
         $widget = $this->widget();
         $events = [];
-        $widget->onSelectCommit(function (LogEntry $c) use (&$events): void {
+        $widget->onSelectCommit(static function (LogEntry $c) use (&$events): void {
             $events[] = 'commit:'.$c->shortSha;
         });
-        $widget->onSelectFile(function (LogEntry $c, string $path) use (&$events): void {
+        $widget->onSelectFile(static function (LogEntry $c, string $path) use (&$events): void {
             $events[] = 'file:'.$path;
         });
         $widget->render(new RenderContext(44, 16)); // teach it its height
@@ -130,13 +130,13 @@ final class HistoryListWidgetTest extends TestCase
     {
         $widget = $this->widget();
         $events = [];
-        $widget->onShowChanges(function () use (&$events): void {
+        $widget->onShowChanges(static function () use (&$events): void {
             $events[] = 'changes';
         });
-        $widget->onFocusNext(function () use (&$events): void {
+        $widget->onFocusNext(static function () use (&$events): void {
             $events[] = 'next';
         });
-        $widget->onExit(function () use (&$events): void {
+        $widget->onExit(static function () use (&$events): void {
             $events[] = 'exit';
         });
         $widget->onInput(static fn (string $d): bool => false);
@@ -161,13 +161,13 @@ final class HistoryListWidgetTest extends TestCase
         $widget = new HistoryListWidget(new Translator('en'));
         $widget->setFocused(true);
         $widget->setCommits([
-            new LogEntry('s1', 'aaa111', 'A', 1700000300, 'one'),
-            new LogEntry('s2', 'bbb222', 'B', 1700000200, 'two'),
-            new LogEntry('s3', 'ccc333', 'C', 1700000100, 'three'),
+            new LogEntry('s1', 'aaa111', 'A', 1_700_000_300, 'one'),
+            new LogEntry('s2', 'bbb222', 'B', 1_700_000_200, 'two'),
+            new LogEntry('s3', 'ccc333', 'C', 1_700_000_100, 'three'),
         ]);
         $loads = 0;
         $widget->setHasMore(true);
-        $widget->onLoadMore(function () use (&$loads): void {
+        $widget->onLoadMore(static function () use (&$loads): void {
             ++$loads;
         });
 
@@ -181,8 +181,8 @@ final class HistoryListWidgetTest extends TestCase
 
         // The append lands: dedupe by sha, selection preserved, latch cleared.
         $widget->appendCommits([
-            new LogEntry('s3', 'ccc333', 'C', 1700000100, 'three'), // --skip drift duplicate
-            new LogEntry('s4', 'ddd444', 'D', 1700000000, 'four'),
+            new LogEntry('s3', 'ccc333', 'C', 1_700_000_100, 'three'), // --skip drift duplicate
+            new LogEntry('s4', 'ddd444', 'D', 1_700_000_000, 'four'),
         ]);
         $this->assertSame(4, $widget->commitCount());
         $this->assertSame('three', $widget->selectedCommit()?->subject, 'the selection survived the append');
@@ -204,7 +204,7 @@ final class HistoryListWidgetTest extends TestCase
         $widget->handleInput('f'); // no hook attached: a safe no-op
 
         $operations = [];
-        $widget->onRemote(function (string $operation) use (&$operations): void {
+        $widget->onRemote(static function (string $operation) use (&$operations): void {
             $operations[] = $operation;
         });
         $widget->handleInput('p');

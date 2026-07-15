@@ -18,14 +18,14 @@ final class TabBarWidgetTest extends TestCase
         $bar->beforeRender();
 
         $line = $bar->render(new RenderContext(40, 1))[0];
-        $this->assertSame(str_repeat(' ', 40), $line);
+        $this->assertSame(str_repeat(' ', times: 40), $line);
     }
 
     public function testWithoutProviderRendersBlankLine(): void
     {
         $bar = new TabBarWidget();
 
-        $this->assertSame(str_repeat(' ', 20), $bar->render(new RenderContext(20, 1))[0]);
+        $this->assertSame(str_repeat(' ', times: 20), $bar->render(new RenderContext(20, 1))[0]);
     }
 
     public function testRendersTabsWithDirtyDotAndActiveStyle(): void
@@ -50,7 +50,7 @@ final class TabBarWidgetTest extends TestCase
     {
         $tabs = [['name' => 'a.php', 'dirty' => false, 'active' => true]];
         $bar = new TabBarWidget();
-        $bar->setProvider(function () use (&$tabs) {
+        $bar->setProvider(static function () use (&$tabs) {
             return $tabs;
         });
 
@@ -124,7 +124,7 @@ final class TabBarWidgetTest extends TestCase
         $bar->beforeRender();
         $plain = AnsiUtils::stripAnsiCodes($bar->render(new RenderContext(60, 1))[0]);
 
-        $this->assertSame(2, substr_count($plain, '×'), 'a close × per tab');
+        $this->assertSame(2, substr_count($plain, needle: '×'), 'a close × per tab');
         $this->assertStringContainsString('a.php ×', $plain, 'clean tab: name then ×');
         $this->assertStringContainsString('b.php ●×', $plain, 'dirty tab: name, dirty dot, then ×');
     }
@@ -278,7 +278,7 @@ final class TabBarWidgetTest extends TestCase
     public function testVerticalEmptyAndProviderlessStatesRenderABlankColumn(): void
     {
         $empty = $this->verticalBar([]);
-        $this->assertSame(array_fill(0, 4, str_repeat(' ', TabBarWidget::VERTICAL_WIDTH)), $empty->render(new RenderContext(80, 4)));
+        $this->assertSame(array_fill(0, count: 4, value: str_repeat(' ', TabBarWidget::VERTICAL_WIDTH)), $empty->render(new RenderContext(80, 4)));
 
         $bare = new TabBarWidget();
         $bare->setPosition(TabBarPosition::Right);

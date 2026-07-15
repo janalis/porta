@@ -56,7 +56,7 @@ final class WorkbenchCommands implements CommandProvider
             ->add(
                 'ide_toggle_focus',
                 function (): void {
-                    $inEditorArea = \in_array($this->tui->getFocus(), [$this->editor, $this->imageViewer], true);
+                    $inEditorArea = \in_array($this->tui->getFocus(), [$this->editor, $this->imageViewer], strict: true);
                     $this->tui->setFocus($inEditorArea ? $this->tree : $this->editorArea->widget());
                     $this->tui->requestRender();
                 },

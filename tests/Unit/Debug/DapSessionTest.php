@@ -26,7 +26,7 @@ final class DapSessionTest extends TestCase
         return new DapSession(
             $client,
             'php',
-            fn (): array => $breakpoints,
+            static fn (): array => $breakpoints,
             new RecordingDebugObserver(function (string $event): void {
                 $this->events[] = $event;
             }),
@@ -167,14 +167,16 @@ final class DapSessionTest extends TestCase
         $client->respond('launch');
         $client->emit('stopped', ['reason' => 'breakpoint', 'threadId' => 1]);
 
-        $frames = $scopes = $variables = null;
-        $session->stackTrace(function (array $f) use (&$frames): void {
+        $frames = null;
+        $scopes = null;
+        $variables = null;
+        $session->stackTrace(static function (array $f) use (&$frames): void {
             $frames = $f;
         });
-        $session->scopes(1, function (array $s) use (&$scopes): void {
+        $session->scopes(1, static function (array $s) use (&$scopes): void {
             $scopes = $s;
         });
-        $session->variables(9, function (array $v) use (&$variables): void {
+        $session->variables(9, static function (array $v) use (&$variables): void {
             $variables = $v;
         });
 
@@ -191,7 +193,7 @@ final class DapSessionTest extends TestCase
 
         // Error responses degrade to empty lists.
         $client->responses['stackTrace'] = [[], 'no stack available'];
-        $session->stackTrace(function (array $f) use (&$frames): void {
+        $session->stackTrace(static function (array $f) use (&$frames): void {
             $frames = $f;
         });
         $this->assertSame([], $frames);
@@ -248,7 +250,7 @@ final class DapSessionTest extends TestCase
         $session = $this->session($client);
 
         $delivered = null;
-        $session->evaluate('$x', 7, 'watch', function (array $r) use (&$delivered): void {
+        $session->evaluate('$x', 7, 'watch', static function (array $r) use (&$delivered): void {
             $delivered = $r;
         });
         $this->assertNotContains('evaluate', $client->commands(), 'an inactive session evaluates nothing');
@@ -258,14 +260,14 @@ final class DapSessionTest extends TestCase
         $client->respond('launch');
 
         $client->responses['evaluate'] = [['result' => '42', 'variablesReference' => 9], null];
-        $session->evaluate('$x', 7, 'watch', function (array $r) use (&$delivered): void {
+        $session->evaluate('$x', 7, 'watch', static function (array $r) use (&$delivered): void {
             $delivered = $r;
         });
         $this->assertSame(['expression' => '$x', 'context' => 'watch', 'frameId' => 7], $client->argumentsOf('evaluate'));
         $this->assertSame(['result' => '42', 'variablesReference' => 9, 'error' => null], $delivered);
 
         $client->responses['evaluate'] = [[], 'cannot evaluate'];
-        $session->evaluate('$bad', null, 'repl', function (array $r) use (&$delivered): void {
+        $session->evaluate('$bad', null, 'repl', static function (array $r) use (&$delivered): void {
             $delivered = $r;
         });
         $this->assertArrayNotHasKey('frameId', $client->argumentsOf('evaluate'), 'no frame → no frameId key');
@@ -276,7 +278,7 @@ final class DapSessionTest extends TestCase
     {
         $client = new FakeDapClient();
         $captured = null;
-        $this->exceptionFiltersProvider = function (array $advertised) use (&$captured): array {
+        $this->exceptionFiltersProvider = static function (array $advertised) use (&$captured): array {
             $captured = $advertised;
 
             return ['exception'];
@@ -306,8 +308,8 @@ final class DapSessionTest extends TestCase
         $this->assertSame($session->exceptionBreakpointFilters(), $captured, 'the provider saw the advertised set');
         $commands = $client->commands();
         $this->assertGreaterThan(
-            array_search('setExceptionBreakpoints', $commands, true),
-            array_search('configurationDone', $commands, true),
+            array_search('setExceptionBreakpoints', $commands, strict: true),
+            array_search('configurationDone', $commands, strict: true),
             'filters are sent before configurationDone',
         );
 

@@ -81,7 +81,9 @@ final class MouseRouter
         $gitViewOpen = $this->views->isGitOpen();
         $settingsViewOpen = $this->views->isSettingsOpen();
         if ($gitViewOpen || $settingsViewOpen) {
-            $treeRect = $tabsRect = $editorRect = null;
+            $treeRect = null;
+            $tabsRect = null;
+            $editorRect = null;
         }
         // The git/settings sidebars' drag columns and left edges (each router
         // owns its widgets; the rects exist only while its view is swapped in).
@@ -175,10 +177,16 @@ final class MouseRouter
         if (0 !== $mouse->wheelHDelta) {
             if ($this->git->scrollHorizontal($mouse)) {
                 $this->tui->requestRender();
-            } elseif (null !== $editorRect && $editorRect->contains($mouse->row, $mouse->col)) {
+
+                return;
+            }
+            if (null !== $editorRect && $editorRect->contains($mouse->row, $mouse->col)) {
                 $this->panes->editor()->scrollHBy(6 * $mouse->wheelHDelta);
                 $this->tui->requestRender();
-            } elseif (null !== $imageRect && $imageRect->contains($mouse->row, $mouse->col)) {
+
+                return;
+            }
+            if (null !== $imageRect && $imageRect->contains($mouse->row, $mouse->col)) {
                 $this->panes->imageViewer()->scrollBy(6 * $mouse->wheelHDelta, 0);
                 $this->tui->requestRender();
             }
@@ -217,22 +225,42 @@ final class MouseRouter
         $terminalRect = $this->hit->rect($this->overlayPanels->terminalPanel());
         if ($this->overlayPanels->terminalPanel()->isOpen() && null !== $terminalRect && $terminalRect->contains($mouse->row, $mouse->col)) {
             $this->overlayPanels->terminalPanel()->scroll($mouse->wheelDelta < 0 ? 3 : -3); // wheel up → into history
-        } elseif (null !== $editorRect && $editorRect->contains($mouse->row, $mouse->col)) {
+            $this->tui->requestRender();
+
+            return;
+        }
+        if (null !== $editorRect && $editorRect->contains($mouse->row, $mouse->col)) {
             $this->panes->editor()->scrollBy($step);
-        } elseif (null !== $imageRect && $imageRect->contains($mouse->row, $mouse->col)) {
+            $this->tui->requestRender();
+
+            return;
+        }
+        if (null !== $imageRect && $imageRect->contains($mouse->row, $mouse->col)) {
             // Plain wheel pans the image; Ctrl+wheel zooms toward the pointer.
             $rel = $imageRect->toRelative($mouse->row, $mouse->col);
             $mouse->ctrl
                 ? $this->panes->imageViewer()->zoomAt($mouse->wheelDelta < 0 ? 1 : -1, $rel['col'], $rel['row'])
                 : $this->panes->imageViewer()->scrollBy(0, 2 * $step);
-        } elseif (null !== ($helpRect = $this->hit->rect($this->panes->helpViewer())) && $helpRect->contains($mouse->row, $mouse->col)) {
+            $this->tui->requestRender();
+
+            return;
+        }
+        if (null !== ($helpRect = $this->hit->rect($this->panes->helpViewer())) && $helpRect->contains($mouse->row, $mouse->col)) {
             $this->panes->helpViewer()->scrollBy($step);
-        } elseif (null !== $treeRect && $treeRect->contains($mouse->row, $mouse->col)) {
+            $this->tui->requestRender();
+
+            return;
+        }
+        if (null !== $treeRect && $treeRect->contains($mouse->row, $mouse->col)) {
             $key = $mouse->wheelDelta < 0 ? "\x1b[A" : "\x1b[B";
             for ($i = 0; $i < 3; ++$i) {
                 $this->panes->tree()->handleInput($key);
             }
-        } elseif (!$this->git->scrollVertical($mouse, $step) && !$this->settings->scrollVertical($mouse)) {
+            $this->tui->requestRender();
+
+            return;
+        }
+        if (!$this->git->scrollVertical($mouse, $step) && !$this->settings->scrollVertical($mouse)) {
             // Neither the git panes nor the settings list are under the pointer.
             return;
         }
@@ -312,10 +340,12 @@ final class MouseRouter
                 $order = $this->buffers->all();
                 $current = null;
                 foreach ($order as $i => $buffer) {
-                    if ($buffer->path === $this->tabDragPath) {
-                        $current = $i;
-                        break;
+                    if ($buffer->path !== $this->tabDragPath) {
+                        continue;
                     }
+
+                    $current = $i;
+                    break;
                 }
                 if (null !== $current && $current !== $target) {
                     $this->buffers->reorder($current, $target);
@@ -359,7 +389,11 @@ final class MouseRouter
 
                     return true;
                 }
-            } elseif ($this->panes->editor()->isOverlayOpen() || $this->panes->editor()->isSearchOverlayOpen() || $this->panes->editor()->isFindModalOpen()) {
+            }
+            if (
+                (null === $editorRect || !$editorRect->contains($mouse->row, $mouse->col))
+                && ($this->panes->editor()->isOverlayOpen() || $this->panes->editor()->isSearchOverlayOpen() || $this->panes->editor()->isFindModalOpen())
+            ) {
                 $this->panes->editor()->handlePopupClick(-1, -1); // outside the modal overlay → dismiss
                 $this->tui->requestRender();
 
@@ -370,9 +404,11 @@ final class MouseRouter
         // An open context menu: a click on an item runs it; a click anywhere else
         // dismisses it (the panel floats over the panes, so hit-test its region).
         if ($this->contextMenu->isOpen()) {
-            if (null !== ($item = $this->hit->hitRegion($this->overlay->contextMenuDropdown(), $mouse->row, $mouse->col))) {
+            $item = $this->hit->hitRegion($this->overlay->contextMenuDropdown(), $mouse->row, $mouse->col);
+            if (null !== $item) {
                 $this->contextMenu->runItem($item);
-            } else {
+            }
+            if (null === $item) {
                 $this->contextMenu->close();
             }
             $this->tui->requestRender();
@@ -383,9 +419,11 @@ final class MouseRouter
         // Menu bar: click a title to open (or switch) its dropdown.
         if (null !== ($rel = $this->hit->hit($this->menuBar, $mouse->row, $mouse->col))) {
             if (null !== ($title = $this->menuBar->titleAtColumn($rel['col']))) {
-                if ($this->menuBar->isOpen() && $this->menuBar->openIndex() === $title) {
+                $closeOpenTitle = $this->menuBar->isOpen() && $this->menuBar->openIndex() === $title;
+                if ($closeOpenTitle) {
                     $this->menuBar->close(); // second click on the open title → close
-                } else {
+                }
+                if (!$closeOpenTitle) {
                     $this->menuBar->open($title); // open, or switch to a different title
                     $this->tui->setFocus($this->menuBar);
                 }
@@ -397,9 +435,11 @@ final class MouseRouter
         // Dropdown item: the panel floats over the editor pane, outside the menu
         // bar's rect, so hit-test the tracked overlay region directly.
         if ($this->menuBar->isOpen()) {
-            if (null !== ($item = $this->hit->hitRegion($this->overlay->menuDropdown(), $mouse->row, $mouse->col))) {
+            $item = $this->hit->hitRegion($this->overlay->menuDropdown(), $mouse->row, $mouse->col);
+            if (null !== $item) {
                 $this->menuBar->runItem($item);
-            } else {
+            }
+            if (null === $item) {
                 $this->menuBar->close(); // a click anywhere else dismisses an open menu
             }
             $this->tui->requestRender();
@@ -515,14 +555,14 @@ final class MouseRouter
             $rel = $tabsRect->toRelative($mouse->row, $mouse->col);
             $buffers = $this->buffers->all();
             if (null !== ($closeIndex = $this->panes->tabBar()->closeIndexAt($rel['row'], $rel['col']))) {
-                if (isset($buffers[$closeIndex])) {
+                if (array_key_exists($closeIndex, $buffers)) {
                     $this->bufferService->closeTab($buffers[$closeIndex]->path);
                 }
 
                 return true;
             }
             $index = $this->panes->tabBar()->tabIndexAt($rel['row'], $rel['col']);
-            if (null !== $index && isset($buffers[$index])) {
+            if (null !== $index && array_key_exists($index, $buffers)) {
                 $this->buffers->setActive($buffers[$index]->path);
                 $this->bufferService->showBuffer($buffers[$index]);
                 $this->bufferService->focusEditorArea(); // an image tab focuses the viewer
@@ -567,41 +607,64 @@ final class MouseRouter
      */
     private function handleEditorClick(MouseEvent $mouse, ?WidgetRect $editorRect): void
     {
-        if (null !== $editorRect && $editorRect->contains($mouse->row, $mouse->col)) {
-            $rel = $editorRect->toRelative($mouse->row, $mouse->col);
-            $this->tui->setFocus($this->panes->editor());
-
-            if ($mouse->ctrl && !$mouse->alt && !$mouse->shift) {
-                // Place the caret at the click (fold/scroll-aware), then fire the
-                // same action as Ctrl+B. A ctrl-click is a navigation, not a
-                // selection start, so no drag is armed.
-                $this->panes->editor()->clearExtraCarets();
-                $this->panes->editor()->clickAt($rel['row'], $rel['col']);
-                $this->panes->editor()->runAction('goto_definition');
-            } elseif ($mouse->alt && $mouse->shift) {
-                $this->panes->editor()->beginColumnSelectionAt($rel['row'], $rel['col']);
-                $this->columnSelecting = true;
-            } elseif ($mouse->alt) {
-                $this->panes->editor()->addOrRemoveCaretAt($rel['row'], $rel['col']);
-            } elseif ($rel['col'] < $this->panes->editor()->gutterWidth() && null !== ($docLine = $this->panes->editor()->documentLineAt($rel['row']))) {
-                // A plain click in the gutter toggles a breakpoint on that line.
-                $this->debug->toggleBreakpointAtDocLine($docLine);
-            } else {
-                $this->panes->editor()->clearExtraCarets();
-                $count = $this->clickCountAt($mouse->row, $mouse->col);
-                if ($mouse->shift) {
-                    $this->panes->editor()->extendSelectionTo($rel['row'], $rel['col']);
-                } elseif ($count >= 3) {
-                    $this->panes->editor()->selectLineAt($rel['row'], $rel['col']);
-                } elseif (2 === $count) {
-                    $this->panes->editor()->selectWordAt($rel['row'], $rel['col']);
-                } else {
-                    $this->panes->editor()->beginSelectionAt($rel['row'], $rel['col']);
-                }
-                $this->mouseSelecting = true;
-            }
-            $this->tui->requestRender();
+        if (null === $editorRect || !$editorRect->contains($mouse->row, $mouse->col)) {
+            return;
         }
+        $rel = $editorRect->toRelative($mouse->row, $mouse->col);
+        $this->tui->setFocus($this->panes->editor());
+        $this->dispatchEditorPress($mouse, $rel);
+        $this->tui->requestRender();
+    }
+
+    /**
+     * Dispatch a left press inside the editor pane to the matching gesture.
+     *
+     * @param array{row: int, col: int} $rel the click in editor-relative coordinates
+     */
+    private function dispatchEditorPress(MouseEvent $mouse, array $rel): void
+    {
+        if ($mouse->ctrl && !$mouse->alt && !$mouse->shift) {
+            // Place the caret at the click (fold/scroll-aware), then fire the
+            // same action as Ctrl+B. A ctrl-click is a navigation, not a
+            // selection start, so no drag is armed.
+            $this->panes->editor()->clearExtraCarets();
+            $this->panes->editor()->clickAt($rel['row'], $rel['col']);
+            $this->panes->editor()->runAction('goto_definition');
+
+            return;
+        }
+        if ($mouse->alt && $mouse->shift) {
+            $this->panes->editor()->beginColumnSelectionAt($rel['row'], $rel['col']);
+            $this->columnSelecting = true;
+
+            return;
+        }
+        if ($mouse->alt) {
+            $this->panes->editor()->addOrRemoveCaretAt($rel['row'], $rel['col']);
+
+            return;
+        }
+        if ($rel['col'] < $this->panes->editor()->gutterWidth() && null !== ($docLine = $this->panes->editor()->documentLineAt($rel['row']))) {
+            // A plain click in the gutter toggles a breakpoint on that line.
+            $this->debug->toggleBreakpointAtDocLine($docLine);
+
+            return;
+        }
+        $this->panes->editor()->clearExtraCarets();
+        $count = $this->clickCountAt($mouse->row, $mouse->col);
+        if ($mouse->shift) {
+            $this->panes->editor()->extendSelectionTo($rel['row'], $rel['col']);
+        }
+        if (!$mouse->shift && $count >= 3) {
+            $this->panes->editor()->selectLineAt($rel['row'], $rel['col']);
+        }
+        if (!$mouse->shift && 2 === $count) {
+            $this->panes->editor()->selectWordAt($rel['row'], $rel['col']);
+        }
+        if (!$mouse->shift && $count < 2) {
+            $this->panes->editor()->beginSelectionAt($rel['row'], $rel['col']);
+        }
+        $this->mouseSelecting = true;
     }
 
     /**
@@ -750,7 +813,10 @@ final class MouseRouter
     {
         $this->menuBar->close();
 
+        $items = null;
+        $handled = false;
         if (null !== $editorRect && $editorRect->contains($mouse->row, $mouse->col)) {
+            $handled = true;
             $rel = $editorRect->toRelative($mouse->row, $mouse->col);
             $this->tui->setFocus($this->panes->editor());
             // Keep an existing selection (so Cut/Copy act on it); otherwise place
@@ -760,15 +826,19 @@ final class MouseRouter
                 $this->panes->editor()->clickAt($rel['row'], $rel['col']);
             }
             $items = $this->contextItems->editorItems();
-        } elseif (null !== $tabsRect && $tabsRect->contains($mouse->row, $mouse->col)) {
+        }
+        if (!$handled && null !== $tabsRect && $tabsRect->contains($mouse->row, $mouse->col)) {
+            $handled = true;
             $rel = $tabsRect->toRelative($mouse->row, $mouse->col);
             $index = $this->panes->tabBar()->tabIndexAt($rel['row'], $rel['col']);
             $buffers = $this->buffers->all();
-            if (null === $index || !isset($buffers[$index])) {
+            if (null === $index || !array_key_exists($index, $buffers)) {
                 return;
             }
             $items = $this->contextItems->tabItems($buffers[$index]->path);
-        } elseif (null !== $treeRect && $treeRect->contains($mouse->row, $mouse->col)) {
+        }
+        if (!$handled && null !== $treeRect && $treeRect->contains($mouse->row, $mouse->col)) {
+            $handled = true;
             $rel = $treeRect->toRelative($mouse->row, $mouse->col);
             $this->tui->setFocus($this->panes->tree());
             $node = $this->panes->tree()->nodeAt($rel['row']);
@@ -776,7 +846,8 @@ final class MouseRouter
                 return;
             }
             $items = $this->treeOps->contextItems($node);
-        } else {
+        }
+        if (null === $items) {
             return;
         }
 
@@ -792,9 +863,11 @@ final class MouseRouter
     private function clickCountAt(int $row, int $col): int
     {
         $now = microtime(true);
-        if (($now - $this->lastClickTime) < 0.4 && $row === $this->lastClickRow && $col === $this->lastClickCol) {
+        $sameCell = ($now - $this->lastClickTime) < 0.4 && $row === $this->lastClickRow && $col === $this->lastClickCol;
+        if ($sameCell) {
             $this->clickCount = min($this->clickCount + 1, 3);
-        } else {
+        }
+        if (!$sameCell) {
             $this->clickCount = 1;
         }
         $this->lastClickTime = $now;

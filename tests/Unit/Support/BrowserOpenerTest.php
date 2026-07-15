@@ -13,7 +13,8 @@ final class BrowserOpenerTest extends TestCase
 
     protected function setUp(): void
     {
-        $this->savedPath = getenv('PATH') ?: null;
+        $path = getenv('PATH');
+        $this->savedPath = $path ? $path : null;
     }
 
     protected function tearDown(): void
@@ -27,8 +28,8 @@ final class BrowserOpenerTest extends TestCase
         $dir = sys_get_temp_dir().'/porta-opener-'.bin2hex(random_bytes(4));
         mkdir($dir);
         foreach ($names as $name) {
-            file_put_contents($dir.'/'.$name, "#!/bin/sh\n");
-            chmod($dir.'/'.$name, 0o755);
+            file_put_contents($dir.'/'.$name, data: "#!/bin/sh\n");
+            chmod($dir.'/'.$name, permissions: 0o755);
         }
         putenv('PATH='.$dir);
 
@@ -65,10 +66,12 @@ final class BrowserOpenerTest extends TestCase
         // Whatever this machine resolves to, the shape is stable: null or an
         // argv whose last element is the URL.
         $command = BrowserOpener::command('https://x.test');
-        if (null !== $command) {
-            $this->assertSame('https://x.test', $command[array_key_last($command)]);
-        } else {
+        if (null === $command) {
             $this->assertNull($command);
+
+            return;
         }
+
+        $this->assertSame('https://x.test', $command[array_key_last($command)]);
     }
 }

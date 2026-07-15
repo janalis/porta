@@ -47,7 +47,7 @@ final class SessionStoreTest extends TestCase
     {
         $project = new TempProject();
         // Make .porta a file so mkdir of the session dir fails.
-        file_put_contents($project->path('.porta'), 'not a dir');
+        file_put_contents($project->path('.porta'), data: 'not a dir');
 
         $store = new SessionStore($project->dir);
         $this->assertFalse($store->save([['path' => '/p/a.php', 'line' => 0, 'col' => 0]], '/p/a.php'));
@@ -56,8 +56,10 @@ final class SessionStoreTest extends TestCase
     public function testLoadIgnoresCorruptSession(): void
     {
         $project = new TempProject();
-        @mkdir($project->path('.porta'), 0777, true);
-        file_put_contents($project->path('.porta/session.json'), '{not json');
+        if (!is_dir($project->path('.porta'))) {
+            mkdir($project->path('.porta'), permissions: 0o777, recursive: true);
+        }
+        file_put_contents($project->path('.porta/session.json'), data: '{not json');
 
         $this->assertNull(new SessionStore($project->dir)->load());
     }
@@ -66,8 +68,10 @@ final class SessionStoreTest extends TestCase
     {
         // Valid JSON but not a session shape (no buffers array).
         $project = new TempProject();
-        @mkdir($project->path('.porta'), 0777, true);
-        file_put_contents($project->path('.porta/session.json'), '{"active": "x"}');
+        if (!is_dir($project->path('.porta'))) {
+            mkdir($project->path('.porta'), permissions: 0o777, recursive: true);
+        }
+        file_put_contents($project->path('.porta/session.json'), data: '{"active": "x"}');
 
         $this->assertNull(new SessionStore($project->dir)->load());
     }
@@ -75,7 +79,9 @@ final class SessionStoreTest extends TestCase
     public function testLoadSkipsMalformedBufferEntries(): void
     {
         $project = new TempProject();
-        @mkdir($project->path('.porta'), 0777, true);
+        if (!is_dir($project->path('.porta'))) {
+            mkdir($project->path('.porta'), permissions: 0o777, recursive: true);
+        }
         file_put_contents(
             $project->path('.porta/session.json'),
             json_encode([

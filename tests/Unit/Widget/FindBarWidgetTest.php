@@ -35,7 +35,7 @@ final class FindBarWidgetTest extends TestCase
         $bar = new FindBarWidget(new Translator('en'));
         $bar->setFocused(true);
         $updates = 0;
-        $bar->onUpdate(function () use (&$updates): void {
+        $bar->onUpdate(static function () use (&$updates): void {
             ++$updates;
         });
         $bar->open($doc, withReplace: false);
@@ -160,7 +160,7 @@ final class FindBarWidgetTest extends TestCase
         $doc = new Document("x\n");
         $bar = new FindBarWidget(new Translator('en'));
         $closed = false;
-        $bar->onClose(function () use (&$closed): void {
+        $bar->onClose(static function () use (&$closed): void {
             $closed = true;
         });
         $bar->open($doc, withReplace: false, initialQuery: 'x');
@@ -199,7 +199,7 @@ final class FindBarWidgetTest extends TestCase
 
     public function testMatchCap(): void
     {
-        $doc = new Document(str_repeat("x\n", 6000));
+        $doc = new Document(str_repeat("x\n", times: 6000));
         $bar = new FindBarWidget(new Translator('en'));
         $bar->open($doc, withReplace: false, initialQuery: 'x');
 
@@ -212,7 +212,7 @@ final class FindBarWidgetTest extends TestCase
         $bar = new FindBarWidget(new Translator('en'));
         $bar->setFocused(true);
         $bar->open(new Document("x\n"), withReplace: false);
-        $this->type($bar, str_repeat('q', 100)); // overflow the 80-column bar
+        $this->type($bar, str_repeat('q', times: 100)); // overflow the 80-column bar
 
         $line = $bar->render(new RenderContext(80, 1))[0];
         $marker = AnsiUtils::cursorMarker(CursorShape::Bar);
@@ -286,6 +286,21 @@ final class FindBarWidgetTest extends TestCase
         $this->assertSame([], $bar->getMatchesByLine(), 'zero-width hits highlight nothing (and never loop)');
     }
 
+    public function testCatastrophicRegexIsSkippedPerLineWithoutMatches(): void
+    {
+        // A pattern valid against '' but that exhausts the PCRE backtrack limit
+        // on a long line: preg_match_all returns false for that line, which the
+        // per-line scan skips — so the final match set is empty.
+        $doc = new Document(str_repeat('a', times: 30)."!\n");
+        $bar = new FindBarWidget(new Translator('en'));
+        $bar->setFocused(true);
+        $bar->open($doc, withReplace: false);
+        $bar->handleInput("\x1bx"); // regex mode
+        $this->type($bar, '(a+)+$');
+
+        $this->assertSame([], $bar->getMatchesByLine(), 'the un-matchable long line is skipped, not matched');
+    }
+
     public function testSmartCaseAppliesInRegexMode(): void
     {
         $doc = new Document("Foo\nfoo\n");
@@ -307,7 +322,7 @@ final class FindBarWidgetTest extends TestCase
     public function testRegexModeRespectsTheMatchCap(): void
     {
         // 5001 single-char matches across two lines exceed MAX_MATCHES (5000).
-        $doc = new Document(str_repeat('a', 4000)."\n".str_repeat('a', 1001)."\n");
+        $doc = new Document(str_repeat('a', times: 4000)."\n".str_repeat('a', times: 1001)."\n");
         $bar = new FindBarWidget(new Translator('en'));
         $bar->setFocused(true);
         $bar->open($doc, withReplace: false);

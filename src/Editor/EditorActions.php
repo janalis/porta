@@ -60,11 +60,13 @@ final class EditorActions
     private function runFirstMatch(string $keys, Keybindings $kb, array $actions): bool
     {
         foreach ($actions as $action) {
-            if ($kb->matches($keys, $action)) {
-                $this->run($action);
-
-                return true;
+            if (!$kb->matches($keys, $action)) {
+                continue;
             }
+
+            $this->run($action);
+
+            return true;
         }
 
         return false;
@@ -119,9 +121,10 @@ final class EditorActions
             $this->host->fireCopy($this->clipboard);
             if ($kb->matches($keys, 'cut')) {
                 $this->multiCaret->deleteSelections();
-            } else {
-                $this->host->invalidate();
+
+                return true;
             }
+            $this->host->invalidate();
 
             return true;
         }
@@ -191,7 +194,7 @@ final class EditorActions
 
                 return true;
             }
-            if ($kb->matches($keys, substr_replace($action, 'select', 0, 6))) {
+            if ($kb->matches($keys, substr_replace($action, replace: 'select', offset: 0, length: 6))) {
                 $doc->beginSelect();
                 $doc->{$method}();
                 $this->host->invalidate();
@@ -285,7 +288,7 @@ final class EditorActions
 
         // Auto-pairs: backspacing between an empty pair removes both chars.
         if ($this->host->autoPairsEnabled() && $kb->matches($keys, 'delete_char_backward') && !$doc->hasSelection() && $this->autoPair->isBetweenEmptyPair($doc)) {
-            $doc->transact(function () use ($doc): void {
+            $doc->transact(static function () use ($doc): void {
                 $doc->deleteForward();
                 $doc->deleteBackward();
             });
@@ -464,13 +467,13 @@ final class EditorActions
     private function promptRename(): void
     {
         $doc = $this->document;
-        $this->host->requestRename($doc->getCursorLine(), $doc->getCursorColUtf16(), ltrim($doc->getWordBeforeCursor(), '$'));
+        $this->host->requestRename($doc->getCursorLine(), $doc->getCursorColUtf16(), ltrim($doc->getWordBeforeCursor(), characters: '$'));
     }
 
     private function maybeAutoTrigger(string $typed): void
     {
         $line = $this->document->getLine($this->document->getCursorLine());
-        $prefix = substr($line, 0, $this->document->getCursorCol());
+        $prefix = substr($line, offset: 0, length: $this->document->getCursorCol());
 
         if (str_ends_with($prefix, '->') || str_ends_with($prefix, '::')) {
             $this->completion->requestCompletion();
@@ -478,7 +481,10 @@ final class EditorActions
 
         if ('(' === $typed || ',' === $typed) {
             $this->host->fireSignatureHelp($this->document->getCursorLine(), $this->document->getCursorColUtf16());
-        } elseif (')' === $typed) {
+
+            return;
+        }
+        if (')' === $typed) {
             $this->host->setSignatureHint(null);
         }
     }

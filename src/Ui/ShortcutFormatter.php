@@ -54,12 +54,12 @@ final class ShortcutFormatter
         return implode('+', $parts);
     }
 
-    private static function formatToken(string $token): string
+    private static function formatToken(#[\SensitiveParameter] string $token): string
     {
-        if (isset(self::MODIFIERS[$token])) {
+        if (array_key_exists($token, self::MODIFIERS)) {
             return self::MODIFIERS[$token];
         }
-        if (isset(self::KEYS[$token])) {
+        if (array_key_exists($token, self::KEYS)) {
             return self::KEYS[$token];
         }
         // Function keys: f1..f12 → F1..F12.

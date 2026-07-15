@@ -66,11 +66,11 @@ final class TextDiff
      */
     private static function offsetToPosition(string $text, int $offset): array
     {
-        $before = substr($text, 0, $offset);
-        $line = substr_count($before, "\n");
-        $lastNewline = strrpos($before, "\n");
+        $before = substr($text, offset: 0, length: $offset);
+        $line = substr_count($before, needle: "\n");
+        $lastNewline = strrpos($before, needle: "\n");
         $lineStart = false === $lastNewline ? $before : substr($before, $lastNewline + 1);
-        $character = '' === $lineStart ? 0 : \strlen((string) mb_convert_encoding($lineStart, 'UTF-16LE', 'UTF-8')) >> 1;
+        $character = '' === $lineStart ? 0 : \strlen((string) mb_convert_encoding($lineStart, to_encoding: 'UTF-16LE', from_encoding: 'UTF-8')) >> 1;
 
         return ['line' => $line, 'character' => $character];
     }

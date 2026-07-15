@@ -36,7 +36,7 @@ final class IdeTerminalTest extends TestCase
     {
         $run = new \ReflectionProperty($ide, 'run')->getValue($ide);
         $sessions = new \ReflectionProperty($run, 'sessions')->getValue($run);
-        \assert($sessions instanceof \Porta\Terminal\TerminalSessions);
+        \assert($sessions instanceof \Porta\Terminal\TerminalSessions, description: 'run sessions property holds a TerminalSessions instance');
 
         return $sessions->all();
     }
@@ -85,7 +85,7 @@ final class IdeTerminalTest extends TestCase
 
                     // The tab strip shows both sessions.
                     $strip = AnsiUtils::stripAnsiCodes($tui->getById('terminal')->render(new \Symfony\Component\Tui\Render\RenderContext(100, 14))[0]);
-                    $this->assertSame(2, substr_count($strip, 'sh'), 'both shell tabs render');
+                    $this->assertSame(2, substr_count($strip, needle: 'sh'), 'both shell tabs render');
                 },
                 1000 => function ($tui, $terminal, $ide): void {
                     $tui->tick();
@@ -100,7 +100,7 @@ final class IdeTerminalTest extends TestCase
                     $rect = $renderer->getWidgetRect($tui->getById('terminal'));
                     $strip = AnsiUtils::stripAnsiCodes($tui->getById('terminal')->render(new \Symfony\Component\Tui\Render\RenderContext($rect->columns, 14))[0]);
                     // The second "sh" occurrence is shell 2's tab.
-                    $secondTab = (int) mb_strpos($strip, 'sh', (int) mb_strpos($strip, 'sh') + 1);
+                    $secondTab = (int) mb_strpos($strip, needle: 'sh', offset: (int) mb_strpos($strip, needle: 'sh') + 1);
                     $tui->handleInput(\sprintf("\x1b[<0;%d;%dM", $rect->col + $secondTab + 1, $rect->row + 1));
                     $this->assertSame('shell:2', $sessionsOf()->active()?->id, 'clicking the tab activated shell 2');
                 },
@@ -133,7 +133,7 @@ final class IdeTerminalTest extends TestCase
                     $renderer = new \ReflectionProperty($ide, 'renderer')->getValue($ide);
                     $rect = $renderer->getWidgetRect($tui->getById('terminal'));
                     $strip = AnsiUtils::stripAnsiCodes($tui->getById('terminal')->render(new \Symfony\Component\Tui\Render\RenderContext($rect->columns, 14))[0]);
-                    $closeCol = (int) mb_strpos($strip, '×');
+                    $closeCol = (int) mb_strpos($strip, needle: '×');
                     $tui->handleInput(\sprintf("\x1b[<0;%d;%dM", $rect->col + $closeCol + 1, $rect->row + 1));
 
                     $this->assertCount(1, $this->sessions($ide), 'the clicked tab closed');
@@ -171,7 +171,7 @@ final class IdeTerminalTest extends TestCase
                 500 => function ($tui, $terminal, $ide): void {
                     $tui->tick();
                     $tui->handleInput("\x1b[114;6u"); // ctrl+shift+r → Run menu
-                    $this->await(fn (): bool => $tui->getById('editor')->isOverlayOpen());
+                    $this->await(static fn (): bool => $tui->getById('editor')->isOverlayOpen());
                     $tui->handleInput("\r"); // "Run current file: run.php" leads the list
                 },
                 900 => function ($tui, $terminal, $ide): void {
@@ -183,9 +183,11 @@ final class IdeTerminalTest extends TestCase
 
                     $run = null;
                     foreach ($sessions as $session) {
-                        if (str_starts_with($session->id, 'run:')) {
-                            $run = $session;
+                        if (!str_starts_with($session->id, 'run:')) {
+                            continue;
                         }
+
+                        $run = $session;
                     }
                     self::assertNotNull($run);
                     $this->await(fn (): bool => str_contains($this->bufferText($run), 'RAN-'));

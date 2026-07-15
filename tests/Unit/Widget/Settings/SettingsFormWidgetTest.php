@@ -31,7 +31,7 @@ final class SettingsFormWidgetTest extends TestCase
         $widget = new SettingsFormWidget(new Translator('en'));
         $widget->setFocused(true);
         $widget->setRows($this->rows());
-        $widget->onChange(function (string $key, bool|int|string $value) use (&$changes): void {
+        $widget->onChange(static function (string $key, bool|int|string $value) use (&$changes): void {
             $changes[] = [$key, $value];
         });
 
@@ -67,7 +67,7 @@ final class SettingsFormWidgetTest extends TestCase
         $this->assertStringContainsString('demo (project)  [Remove]', $screen);
 
         $widget->handleInput("\x1b[D"); // ← is a no-op on a button, even without onChange
-        $widget->onChange(function (string $key, bool|int|string $value) use (&$changes): void {
+        $widget->onChange(static function (string $key, bool|int|string $value) use (&$changes): void {
             $changes[] = [$key, $value];
         });
         $widget->handleInput("\x1b[D");
@@ -106,7 +106,7 @@ final class SettingsFormWidgetTest extends TestCase
         $widget->setRows([
             new SettingsRow(key: 'language', label: 'Language', kind: 'choice', value: 'en', restart: false, options: Translator::LOCALES, optionLabels: Translator::LOCALE_NAMES),
         ]);
-        $widget->onChange(function (string $key, bool|int|string $value) use (&$changes): void {
+        $widget->onChange(static function (string $key, bool|int|string $value) use (&$changes): void {
             $changes[] = [$key, $value];
         });
 
@@ -210,13 +210,13 @@ final class SettingsFormWidgetTest extends TestCase
     {
         $fired = [];
         $widget = $this->widget();
-        $widget->onShowKeybindings(function () use (&$fired): void {
+        $widget->onShowKeybindings(static function () use (&$fired): void {
             $fired[] = 'kb';
         });
-        $widget->onFocusNext(function () use (&$fired): void {
+        $widget->onFocusNext(static function () use (&$fired): void {
             $fired[] = 'next';
         });
-        $widget->onExit(function () use (&$fired): void {
+        $widget->onExit(static function () use (&$fired): void {
             $fired[] = 'exit';
         });
 
@@ -303,7 +303,7 @@ final class SettingsFormWidgetTest extends TestCase
             new SettingsRow(key: 'lspServer', label: 'LSP server', kind: 'text', value: 'phpactor', restart: false),
             new SettingsRow(key: 'other', label: 'Other', kind: 'text', value: '', restart: false, hint: 'auto: none'),
         ]);
-        $widget->onChange(function (string $key, bool|int|string $value) use (&$changes): void {
+        $widget->onChange(static function (string $key, bool|int|string $value) use (&$changes): void {
             $changes[] = [$key, $value];
         });
 

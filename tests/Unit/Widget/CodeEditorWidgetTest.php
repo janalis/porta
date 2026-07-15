@@ -48,7 +48,7 @@ final class CodeEditorWidgetTest extends TestCase
 
     public function testCaretScreenCellClampsToTheGutterWhenScrolledPastTheCaret(): void
     {
-        $long = "<?php\n\$x = '".str_repeat('a', 120)."';\n";
+        $long = "<?php\n\$x = '".str_repeat('a', times: 120)."';\n";
         $editor = $this->editor($long);
         $editor->getDocument()->setCursor(1, 100);
         $editor->render(new RenderContext(40, 10)); // narrow: forces hScroll to follow the caret
@@ -78,7 +78,7 @@ final class CodeEditorWidgetTest extends TestCase
 
     private function stickyEditor(): CodeEditorWidget
     {
-        $code = "<?php\n\nnamespace App;\n\nclass Service\n{\n    public function handle(): void\n    {\n".str_repeat("        \$x = 1;\n", 20)."    }\n}\n";
+        $code = "<?php\n\nnamespace App;\n\nclass Service\n{\n    public function handle(): void\n    {\n".str_repeat("        \$x = 1;\n", times: 20)."    }\n}\n";
 
         return $this->editor($code, 'Service.php');
     }
@@ -126,7 +126,7 @@ final class CodeEditorWidgetTest extends TestCase
 
     public function testNoStickyRowsForStructurelessFile(): void
     {
-        $editor = $this->editor("<?php\n".str_repeat("echo 1;\n", 30), 'flat.php');
+        $editor = $this->editor("<?php\n".str_repeat("echo 1;\n", times: 30), 'flat.php');
         $editor->getDocument()->setCursor(25, 0);
         $rendered = $editor->render(new RenderContext(60, 12));
 
@@ -258,7 +258,7 @@ final class CodeEditorWidgetTest extends TestCase
         $resolved = null;
         $editor->setCallbacks(new EditorCallbacks(
             completion: new FakeEditorCompletion(
-                resolveCompletion: function (array $item) use (&$resolved): void {
+                resolveCompletion: static function (array $item) use (&$resolved): void {
                     $resolved = $item;
                 },
             ),
@@ -340,7 +340,7 @@ final class CodeEditorWidgetTest extends TestCase
         $line2 = AnsiUtils::stripAnsiCodes($rendered[2]); // "        deep();" — 2 levels
 
         $this->assertStringNotContainsString('│', $line1, 'unindented line has no guide');
-        $this->assertSame(2, substr_count($line2, '│'), 'a guide per indent level');
+        $this->assertSame(2, substr_count($line2, needle: '│'), 'a guide per indent level');
         $this->assertStringContainsString('deep();', $line2);
     }
 
@@ -432,7 +432,7 @@ final class CodeEditorWidgetTest extends TestCase
         $copied = null;
         $editor->setCallbacks(new EditorCallbacks(
             file: new FakeEditorFileActions(
-                copy: function (string $text) use (&$copied): void {
+                copy: static function (string $text) use (&$copied): void {
                     $copied = $text;
                 },
             ),
@@ -521,7 +521,7 @@ final class CodeEditorWidgetTest extends TestCase
 
     public function testErrorStripeShowsWholeFileAndClickJumps(): void
     {
-        $src = "<?php\n".str_repeat("\$x = 1;\n", 60);
+        $src = "<?php\n".str_repeat("\$x = 1;\n", times: 60);
         $editor = $this->editor($src, 'stripe.php');
         $editor->setDiagnostics([
             5 => [['severity' => 1, 'message' => 'err', 'col' => 0, 'endCol' => 2]],
@@ -536,8 +536,8 @@ final class CodeEditorWidgetTest extends TestCase
         $all = implode('', $rendered);
         $this->assertStringContainsString("\x1b[38;5;203m█", $all, 'error block in the stripe');
         $this->assertStringContainsString("\x1b[38;5;179m▓", $all, 'off-screen warning shown as a dashed amber block');
-        $this->assertSame(1, substr_count($all, '█'), 'the empty list draws no stripe mark');
-        $this->assertSame(1, substr_count($all, '▓'), 'one warning mark');
+        $this->assertSame(1, substr_count($all, needle: '█'), 'the empty list draws no stripe mark');
+        $this->assertSame(1, substr_count($all, needle: '▓'), 'one warning mark');
 
         // Clicking low in the stripe jumps deep into the file (near the warning).
         $editor->clickAt(18, 79);
@@ -569,7 +569,7 @@ final class CodeEditorWidgetTest extends TestCase
                 ['label' => 'a.php', 'hint' => 'src/a.php', 'value' => 'A'],
                 ['label' => 'b.php', 'hint' => 'src/b.php', 'value' => 'B'],
             ],
-            function (string $value) use (&$picked): void {
+            static function (string $value) use (&$picked): void {
                 $picked = $value;
             },
         );
@@ -612,7 +612,7 @@ final class CodeEditorWidgetTest extends TestCase
         $editor->openSearch(
             'Search Everywhere',
             static fn () => null,
-            function (SearchHit $h) use (&$picked): void {
+            static function (SearchHit $h) use (&$picked): void {
                 $picked = $h->label;
             },
             static fn () => null,
@@ -639,7 +639,7 @@ final class CodeEditorWidgetTest extends TestCase
         $editor->openSearch(
             'Search',
             static fn () => null,
-            function (SearchHit $h) use (&$picked): void {
+            static function (SearchHit $h) use (&$picked): void {
                 $picked = $h->label;
             },
             static fn () => null,
@@ -651,9 +651,11 @@ final class CodeEditorWidgetTest extends TestCase
         // it picks that hit (the search branch of handlePopupClick).
         $hitRow = -1;
         for ($row = 0; $row < 20 && $hitRow < 0; ++$row) {
-            if ($editor->handlePopupHover($row, 40)) {
-                $hitRow = $row;
+            if (!$editor->handlePopupHover($row, 40)) {
+                continue;
             }
+
+            $hitRow = $row;
         }
         $this->assertGreaterThanOrEqual(0, $hitRow);
         $this->assertTrue($editor->handlePopupClick($hitRow, 40));
@@ -666,7 +668,7 @@ final class CodeEditorWidgetTest extends TestCase
         $jumped = null;
         $editor
             ->findModal()
-            ->onJump(function (string $p, int $l) use (&$jumped): void {
+            ->onJump(static function (string $p, int $l) use (&$jumped): void {
                 $jumped = [$p, $l];
             });
         $editor->findModal()->open('Find in Files');
@@ -695,7 +697,7 @@ final class CodeEditorWidgetTest extends TestCase
                 ['label' => 'a.php', 'hint' => 'src/a.php', 'value' => 'A'],
                 ['label' => 'b.php', 'hint' => 'src/b.php', 'value' => 'B'],
             ],
-            function (string $value) use ($sink): void {
+            static function (string $value) use ($sink): void {
                 $sink['picked'] = $value;
             },
         );
@@ -815,7 +817,7 @@ final class CodeEditorWidgetTest extends TestCase
         $editor = $this->editor();
 
         $submitted = null;
-        $editor->openPrompt('Go to line', '', function (string $v) use (&$submitted): void {
+        $editor->openPrompt('Go to line', '', static function (string $v) use (&$submitted): void {
             $submitted = $v;
         });
         $rendered = $editor->render(new RenderContext(80, 20));
@@ -828,7 +830,7 @@ final class CodeEditorWidgetTest extends TestCase
         $editor->handleInput("\r");
         $this->assertSame('4', $submitted);
 
-        $editor->openPrompt('Rename to', 'old', function (string $v) use (&$submitted): void {
+        $editor->openPrompt('Rename to', 'old', static function (string $v) use (&$submitted): void {
             $submitted = $v;
         });
         $editor->handleInput("\x1b"); // cancel
@@ -868,10 +870,10 @@ final class CodeEditorWidgetTest extends TestCase
         $signatureRequests = [];
         $editor->setCallbacks(new EditorCallbacks(
             completion: new FakeEditorCompletion(
-                requestCompletion: function (int $l, int $c) use (&$completionRequests): void {
+                requestCompletion: static function (int $l, int $c) use (&$completionRequests): void {
                     $completionRequests[] = [$l, $c];
                 },
-                requestSignatureHelp: function (int $l, int $c) use (&$signatureRequests): void {
+                requestSignatureHelp: static function (int $l, int $c) use (&$signatureRequests): void {
                     $signatureRequests[] = [$l, $c];
                 },
             ),
@@ -896,10 +898,10 @@ final class CodeEditorWidgetTest extends TestCase
         $navigatedBack = false;
         $editor->setCallbacks(new EditorCallbacks(
             navigation: new FakeEditorNavigation(
-                requestDefinition: function (int $l, int $c) use (&$definitionAt): void {
+                requestDefinition: static function (int $l, int $c) use (&$definitionAt): void {
                     $definitionAt = [$l, $c];
                 },
-                navigateBack: function () use (&$navigatedBack): void {
+                navigateBack: static function () use (&$navigatedBack): void {
                     $navigatedBack = true;
                 },
             ),
@@ -915,7 +917,7 @@ final class CodeEditorWidgetTest extends TestCase
 
     public function testJumpToCentersAndConverts(): void
     {
-        $lines = implode("\n", array_map(static fn (int $i) => "line {$i}", range(0, 99)));
+        $lines = implode("\n", array_map(static fn (int $i) => "line {$i}", range(0, end: 99)));
         $editor = $this->editor($lines);
         $editor->jumpTo(50, 3);
 
@@ -970,29 +972,29 @@ final class CodeEditorWidgetTest extends TestCase
         $events = [];
         $editor->setCallbacks(new EditorCallbacks(
             file: new FakeEditorFileActions(
-                openFind: function (bool $r) use (&$events): void {
-                    $events[] = 'find:'.var_export($r, true);
+                openFind: static function (bool $r) use (&$events): void {
+                    $events[] = 'find:'.var_export($r, return: true);
                 },
-                openGotoFile: function () use (&$events): void {
+                openGotoFile: static function () use (&$events): void {
                     $events[] = 'goto';
                 },
             ),
             navigation: new FakeEditorNavigation(
-                requestHover: function () use (&$events): void {
+                requestHover: static function () use (&$events): void {
                     $events[] = 'doc';
                 },
-                requestReferences: function () use (&$events): void {
+                requestReferences: static function () use (&$events): void {
                     $events[] = 'usages';
                 },
             ),
             buffer: new FakeBufferNavigation(
-                cycleBuffer: function (int $d) use (&$events): void {
+                cycleBuffer: static function (int $d) use (&$events): void {
                     $events[] = "cycle:{$d}";
                 },
-                openRecentFiles: function () use (&$events): void {
+                openRecentFiles: static function () use (&$events): void {
                     $events[] = 'recent';
                 },
-                closeBuffer: function () use (&$events): void {
+                closeBuffer: static function () use (&$events): void {
                     $events[] = 'close';
                 },
             ),
@@ -1020,7 +1022,7 @@ final class CodeEditorWidgetTest extends TestCase
         $saved = false;
         $editor->setCallbacks(new EditorCallbacks(
             file: new FakeEditorFileActions(
-                save: function () use (&$saved): void {
+                save: static function () use (&$saved): void {
                     $saved = true;
                 },
             ),
@@ -1036,7 +1038,7 @@ final class CodeEditorWidgetTest extends TestCase
 
     public function testHorizontalScrollKeepsCursorVisible(): void
     {
-        $long = str_repeat('abcdefghij', 20);
+        $long = str_repeat('abcdefghij', times: 20);
         $editor = $this->editor("<?php\n{$long}\n");
         $editor->getDocument()->setCursor(1, 150);
 
@@ -1053,7 +1055,7 @@ final class CodeEditorWidgetTest extends TestCase
             refactor: new FakeEditorRefactor(
                 // Mirror RefactorController's flow: prompt for the new name, then rename.
                 requestPrepareRename: static function (int $l, int $c, string $word) use ($editor, &$renamed): void {
-                    $editor->openPrompt('Rename to', $word, function (string $value) use ($l, $c, &$renamed): void {
+                    $editor->openPrompt('Rename to', $word, static function (string $value) use ($l, $c, &$renamed): void {
                         $renamed = [trim($value), $l, $c];
                     });
                 },
@@ -1107,12 +1109,12 @@ final class CodeEditorWidgetTest extends TestCase
         $usagesAt = null;
         $editor->setCallbacks(new EditorCallbacks(
             navigation: new FakeEditorNavigation(
-                requestReferences: function (int $l, int $c) use (&$usagesAt): void {
+                requestReferences: static function (int $l, int $c) use (&$usagesAt): void {
                     $usagesAt = [$l, $c];
                 },
             ),
             refactor: new FakeEditorRefactor(
-                requestReformat: function () use (&$reformatted): void {
+                requestReformat: static function () use (&$reformatted): void {
                     $reformatted = true;
                 },
             ),
@@ -1141,7 +1143,7 @@ final class CodeEditorWidgetTest extends TestCase
         $changed = 0;
         $editor->setCallbacks(new EditorCallbacks(
             completion: new FakeEditorCompletion(
-                scheduleDidChange: function () use (&$changed): void {
+                scheduleDidChange: static function () use (&$changed): void {
                     ++$changed;
                 },
             ),
@@ -1161,14 +1163,14 @@ final class CodeEditorWidgetTest extends TestCase
         $editor->setLineAnnotations([0 => 'abc12345 tester 2026-01-01', 1 => 'abc12345 tester 2026-01-01']);
 
         $screen = implode("\n", array_map(AnsiUtils::stripAnsiCodes(...), $editor->render(new RenderContext(80, 6))));
-        $this->assertSame(2, substr_count($screen, 'abc12345 tester'), 'both annotations render in the trailing space');
+        $this->assertSame(2, substr_count($screen, needle: 'abc12345 tester'), 'both annotations render in the trailing space');
 
         // A diagnostic on line 0 wins the trailing slot; line 1 keeps its blame.
         $editor->setInlineDiagnostics(true);
         $editor->setDiagnostics([0 => [['severity' => 1, 'message' => 'Boom', 'col' => 0]]]);
         $screen = implode("\n", array_map(AnsiUtils::stripAnsiCodes(...), $editor->render(new RenderContext(80, 6))));
         $this->assertStringContainsString('Boom', $screen);
-        $this->assertSame(1, substr_count($screen, 'abc12345 tester'), 'the diagnosed line dropped its annotation');
+        $this->assertSame(1, substr_count($screen, needle: 'abc12345 tester'), 'the diagnosed line dropped its annotation');
 
         // Too narrow: the annotation is dropped rather than truncated to noise.
         $editor->setDiagnostics([]);

@@ -83,7 +83,10 @@ final class ListSelection
     {
         if ($this->selected < $this->scroll) {
             $this->scroll = $this->selected;
-        } elseif ($this->selected > ($this->scroll + $visibleRows - 1)) {
+
+            return $this->scroll;
+        }
+        if ($this->selected > ($this->scroll + $visibleRows - 1)) {
             $this->scroll = $this->selected - $visibleRows + 1;
         }
 

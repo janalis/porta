@@ -89,14 +89,14 @@ final class SearchScopeStoreTest extends TestCase
 
     public function testAddToleratesAnUnwritableLocation(): void
     {
-        $file = (string) tempnam(sys_get_temp_dir(), 'porta-scopes-');
+        $file = (string) tempnam(sys_get_temp_dir(), prefix: 'porta-scopes-');
 
         try {
             $store = new SearchScopeStore($file);
             $store->addRecent('src', ['src']); // dumpFile throws → caught, in-memory list still updated
             $this->assertSame(['src'], array_column($store->all(), 'label'));
         } finally {
-            @unlink($file);
+            is_file($file) && unlink($file);
         }
     }
 }

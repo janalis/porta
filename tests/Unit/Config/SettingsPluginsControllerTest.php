@@ -49,16 +49,16 @@ final class SettingsPluginsControllerTest extends TestCase
 
     private function seedPlugin(TempProject $base, string $name): void
     {
-        mkdir($base->dir.'/.porta/plugins/'.$name, 0777, true);
-        file_put_contents($base->dir.'/.porta/plugins/'.$name.'/plugin.php', "<?php\n");
+        mkdir($base->dir.'/.porta/plugins/'.$name, permissions: 0o777, recursive: true);
+        file_put_contents($base->dir.'/.porta/plugins/'.$name.'/plugin.php', data: "<?php\n");
     }
 
     /** A plugin source dir outside the scope bases. */
     private function sourceDir(string $name): string
     {
         $dir = $this->project->dir.'/src/'.$name;
-        mkdir($dir, 0777, true);
-        file_put_contents($dir.'/plugin.php', "<?php\n");
+        mkdir($dir, permissions: 0o777, recursive: true);
+        file_put_contents($dir.'/plugin.php', data: "<?php\n");
 
         return $dir;
     }

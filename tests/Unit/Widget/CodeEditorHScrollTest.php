@@ -20,7 +20,7 @@ final class CodeEditorHScrollTest extends TestCase
     private function editor(): CodeEditorWidget
     {
         $editor = new CodeEditorWidget();
-        $editor->openFile('x.php', str_repeat('x', 40).'NEEDLE'.str_repeat('y', 10)."\nshort\n");
+        $editor->openFile('x.php', str_repeat('x', times: 40).'NEEDLE'.str_repeat('y', times: 10)."\nshort\n");
 
         return $editor;
     }
@@ -33,7 +33,7 @@ final class CodeEditorHScrollTest extends TestCase
     private function hScroll(CodeEditorWidget $editor): int
     {
         $scroll = new \ReflectionProperty($editor, 'scroll')->getValue($editor);
-        \assert($scroll instanceof EditorScroll);
+        \assert($scroll instanceof EditorScroll, description: 'the scroll property holds an EditorScroll');
 
         return $scroll->hScroll();
     }

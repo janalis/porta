@@ -84,9 +84,11 @@ final class RunController
             return;
         }
         // Reopen the active session, or spawn the first shell.
-        if (null !== ($active = $this->sessions->active())) {
+        $active = $this->sessions->active();
+        if (null !== $active) {
             $this->showActive($active);
-        } else {
+        }
+        if (null === $active) {
             $this->newTerminalSession();
         }
     }
@@ -94,7 +96,8 @@ final class RunController
     /** Ctrl+Shift+` (or Alt+F11): spawn another interactive shell session. */
     public function newTerminalSession(): void
     {
-        $shell = getenv('SHELL') ?: '/bin/sh';
+        $shellEnv = getenv('SHELL');
+        $shell = $shellEnv ? $shellEnv : '/bin/sh';
         $session = $this->sessions->create('shell:'.++$this->shellCounter, basename($shell).' '.$this->shellCounter);
         $this->spawn($session, [$shell, '-i']);
     }
@@ -107,14 +110,13 @@ final class RunController
      */
     private function runInTerminal(array $command, string $title): void
     {
-        $session = $this->sessions->find('run:'.$title);
-        if (null === $session) {
-            $session = $this->sessions->create('run:'.$title, $title);
-        } else {
-            $session->buffer->clear();
-            $session->setTitle($title); // drop any stale "— exited" suffix
-            $this->sessions->makeActive($session);
+        $found = $this->sessions->find('run:'.$title);
+        if (null !== $found) {
+            $found->buffer->clear();
+            $found->setTitle($title); // drop any stale "— exited" suffix
+            $this->sessions->makeActive($found);
         }
+        $session = $found ?? $this->sessions->create('run:'.$title, $title);
         $this->spawn($session, $command);
     }
 

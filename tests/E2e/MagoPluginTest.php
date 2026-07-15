@@ -5,12 +5,9 @@ declare(strict_types=1);
 namespace Porta\Tests\E2e;
 
 use PHPUnit\Framework\TestCase;
-use Porta\Ide;
 use Porta\Tests\Support\RunsIde;
 use Porta\Tests\Support\TempProject;
-use Revolt\EventLoop;
 use Symfony\Component\Tui\Ansi\AnsiUtils;
-use Symfony\Component\Tui\Terminal\VirtualTerminal;
 
 /**
  * The shipped mago plugin (.porta/plugins/mago/plugin.php) against a stub
@@ -54,9 +51,11 @@ final class MagoPluginTest extends TestCase
     private function installStub(TempProject $project, string $body): void
     {
         // PATH is /nonexistent, so the shebang must point at the php binary directly.
-        @mkdir($project->path('vendor/bin'), 0777, true);
+        if (!is_dir($project->path('vendor/bin'))) {
+            mkdir($project->path('vendor/bin'), permissions: 0o777, recursive: true);
+        }
         file_put_contents($project->path('vendor/bin/mago'), '#!'.\PHP_BINARY.' -n'."\n<?php\n".$body);
-        chmod($project->path('vendor/bin/mago'), 0o755);
+        chmod($project->path('vendor/bin/mago'), permissions: 0o755);
     }
 
     /** A stub handling both subcommands: format appends a marker, lint reports one Error on 0-based line 1. */
@@ -90,10 +89,10 @@ final class MagoPluginTest extends TestCase
                     $tui->handleInput("\x1b\x07"); // ctrl+alt+g → mago:format
                 },
                 300 => function ($tui, $terminal, $ide) use ($project): void {
-                    $this->await(fn (): bool => str_contains(AnsiUtils::stripAnsiCodes($terminal->getOutput()), 'mago: formatted a.php'));
+                    $this->await(static fn (): bool => str_contains(AnsiUtils::stripAnsiCodes($terminal->getOutput()), 'mago: formatted a.php'));
                     $tui->tick();
                     $this->assertStringContainsString('mago: formatted a.php', AnsiUtils::stripAnsiCodes($terminal->getOutput()));
-                    $this->await(fn (): bool => str_contains((string) @file_get_contents($project->path('a.php')), '// formatted'));
+                    $this->await(static fn (): bool => str_contains((string) (is_file($project->path('a.php')) ? file_get_contents($project->path('a.php')) : false), '// formatted'));
                     $this->assertStringContainsString('// formatted', (string) file_get_contents($project->path('a.php')));
 
                     new \ReflectionProperty($ide, 'bufferService')
@@ -119,7 +118,7 @@ final class MagoPluginTest extends TestCase
                     $tui->handleInput("\x1b\x05"); // ctrl+alt+e → mago:lint
                 },
                 300 => function ($tui, $terminal) use ($project): void {
-                    $this->await(fn (): bool => str_contains(AnsiUtils::stripAnsiCodes($terminal->getOutput()), 'mago: 1 issue in a.php'));
+                    $this->await(static fn (): bool => str_contains(AnsiUtils::stripAnsiCodes($terminal->getOutput()), 'mago: 1 issue in a.php'));
                     $tui->tick();
                     $screen = AnsiUtils::stripAnsiCodes($terminal->getOutput());
                     $this->assertStringContainsString('mago: 1 issue in a.php', $screen);
@@ -134,7 +133,7 @@ final class MagoPluginTest extends TestCase
                     $tui->handleInput("\x1b\x05");
                 },
                 450 => function ($tui, $terminal): void {
-                    $this->await(fn (): bool => str_contains(AnsiUtils::stripAnsiCodes($terminal->getOutput()), 'mago: no issues in a.php'));
+                    $this->await(static fn (): bool => str_contains(AnsiUtils::stripAnsiCodes($terminal->getOutput()), 'mago: no issues in a.php'));
                     $tui->tick();
                     $this->assertStringContainsString('mago: no issues in a.php', AnsiUtils::stripAnsiCodes($terminal->getOutput()));
                     $editorScreen = implode("\n", $tui->getById('editor')->render(new \Symfony\Component\Tui\Render\RenderContext(120, 20)));
@@ -170,9 +169,9 @@ final class MagoPluginTest extends TestCase
                 },
                 300 => function ($tui, $terminal, $ide) use ($project): void {
                     $tui->tick();
-                    $this->await(fn (): bool => str_contains((string) @file_get_contents($project->path('a.php')), '// formatted'));
+                    $this->await(static fn (): bool => str_contains((string) (is_file($project->path('a.php')) ? file_get_contents($project->path('a.php')) : false), '// formatted'));
                     $this->assertStringContainsString('// formatted', (string) file_get_contents($project->path('a.php')), 'save formatted the file');
-                    $this->await(function () use ($tui, $terminal): bool {
+                    $this->await(static function () use ($tui, $terminal): bool {
                         $tui->tick();
 
                         return str_contains(AnsiUtils::stripAnsiCodes($terminal->getOutput()), 'mago: 1 issue in a.php');
@@ -192,7 +191,7 @@ final class MagoPluginTest extends TestCase
                     $tui->handleInput("\x13");
                 },
                 450 => function ($tui, $terminal, $ide) use ($project): void {
-                    $this->assertSame(1, substr_count((string) file_get_contents($project->path('a.php')), '// formatted'), 'no format while toggled off');
+                    $this->assertSame(1, substr_count((string) file_get_contents($project->path('a.php')), needle: '// formatted'), 'no format while toggled off');
                 },
             ],
         );
@@ -215,7 +214,7 @@ final class MagoPluginTest extends TestCase
                     $tui->handleInput("\x13"); // ctrl+s → save → lint only
                 },
                 300 => function ($tui, $terminal) use ($project): void {
-                    $this->await(function () use ($tui, $terminal): bool {
+                    $this->await(static function () use ($tui, $terminal): bool {
                         $tui->tick();
 
                         return str_contains(AnsiUtils::stripAnsiCodes($terminal->getOutput()), 'mago: 1 issue in a.php');
@@ -267,13 +266,13 @@ final class MagoPluginTest extends TestCase
                     $tui->handleInput("\x1b\x07"); // format path → exit 9
                 },
                 300 => function ($tui, $terminal): void {
-                    $this->await(fn (): bool => str_contains(AnsiUtils::stripAnsiCodes($terminal->getOutput()), 'mago: exited with code 9'));
+                    $this->await(static fn (): bool => str_contains(AnsiUtils::stripAnsiCodes($terminal->getOutput()), 'mago: exited with code 9'));
                     $tui->tick();
                     $this->assertStringContainsString('mago: exited with code 9', AnsiUtils::stripAnsiCodes($terminal->getOutput()));
                     $tui->handleInput("\x1b\x05"); // lint path → garbage JSON, exit 7
                 },
                 450 => function ($tui, $terminal): void {
-                    $this->await(fn (): bool => str_contains(AnsiUtils::stripAnsiCodes($terminal->getOutput()), 'mago: exited with code 7'));
+                    $this->await(static fn (): bool => str_contains(AnsiUtils::stripAnsiCodes($terminal->getOutput()), 'mago: exited with code 7'));
                     $tui->tick();
                     $this->assertStringContainsString('mago: exited with code 7', AnsiUtils::stripAnsiCodes($terminal->getOutput()), 'the broken-lint path flashed too');
                 },

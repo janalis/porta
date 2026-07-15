@@ -40,9 +40,11 @@ final readonly class WorkspaceEditor
         /** @var list<array{textDocument?: array{uri?: string}, edits?: list<array{range: array{start: array{line?: int, character?: int}, end: array{line?: int, character?: int}}, newText: string}>}> $documentChanges */
         $documentChanges = $edit['documentChanges'] ?? [];
         foreach ($documentChanges as $change) {
-            if (isset($change['textDocument']['uri'], $change['edits'])) {
-                $byUri[$change['textDocument']['uri']] = array_merge($byUri[$change['textDocument']['uri']] ?? [], $change['edits']);
+            if (($change['textDocument']['uri'] ?? null) === null || ($change['edits'] ?? null) === null) {
+                continue;
             }
+
+            $byUri[$change['textDocument']['uri']] = array_merge($byUri[$change['textDocument']['uri']] ?? [], $change['edits']);
         }
 
         $touched = 0;
@@ -52,21 +54,22 @@ final readonly class WorkspaceEditor
                 continue;
             }
 
-            $buffer = $this->buffers->get($target) ?? $this->buffers->get(realpath($target) ?: $target);
+            $buffer = $this->buffers->get($target) ?? $this->buffers->get(($resolved = realpath($target)) ? $resolved : $target);
             if (null !== $buffer) {
                 $this->applyTextEdits($buffer->document, $edits);
                 if ($buffer === $this->buffers->active()) {
                     $this->editor->invalidate();
                 }
                 $this->lsp->notifyFullChange($buffer->path, $buffer->document);
-            } elseif (is_file($target) && is_writable($target)) {
+                ++$touched;
+                continue;
+            }
+            if (is_file($target) && is_writable($target)) {
                 $document = new Document((string) file_get_contents($target));
                 $this->applyTextEdits($document, $edits);
                 new Filesystem()->dumpFile($target, $document->getText());
-            } else {
-                continue;
+                ++$touched;
             }
-            ++$touched;
         }
 
         return $touched;
@@ -76,9 +79,12 @@ final readonly class WorkspaceEditor
     public function applyTextEdits(Document $document, array $edits): void
     {
         // Bottom-up so earlier positions stay valid
-        usort($edits, static function (array $a, array $b): int {
-            return [$b['range']['start']['line'] ?? 0, $b['range']['start']['character'] ?? 0] <=> [$a['range']['start']['line'] ?? 0, $a['range']['start']['character'] ?? 0];
-        });
+        usort(
+            $edits,
+            static fn (array $a, array $b): int => (
+                [$b['range']['start']['line'] ?? 0, $b['range']['start']['character'] ?? 0] <=> [$a['range']['start']['line'] ?? 0, $a['range']['start']['character'] ?? 0]
+            ),
+        );
 
         // One compound so a rename / reformat / code-action is a single undo step.
         $document->transact(static function () use ($document, $edits): void {

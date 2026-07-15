@@ -23,10 +23,10 @@ final class StatusParser
             }
             $index = $token[0];
             $worktree = $token[1];
-            $path = substr($token, 3);
+            $path = substr($token, offset: 3);
 
             $renamedFrom = null;
-            if (('R' === $index || 'C' === $index) && isset($tokens[$i + 1]) && '' !== $tokens[$i + 1]) {
+            if (('R' === $index || 'C' === $index) && ($tokens[$i + 1] ?? null) !== null && '' !== $tokens[$i + 1]) {
                 $renamedFrom = $tokens[++$i];
             }
 

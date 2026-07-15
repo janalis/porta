@@ -151,8 +151,8 @@ final class NativeDocs
         return match ($language) {
             'php' => self::phpUrl($word),
             'javascript', 'typescript' => null === $mdnSuffix ? null : self::MDN.$mdnSuffix,
-            'css', 'scss' => \in_array($word, self::CSS_PROPERTIES, true) ? self::MDN.'Web/CSS/'.$word : null,
-            'python' => \in_array($word, self::PYTHON_BUILTINS, true) ? 'https://docs.python.org/3/library/functions.html#'.$word : null,
+            'css', 'scss' => \in_array($word, self::CSS_PROPERTIES, strict: true) ? self::MDN.'Web/CSS/'.$word : null,
+            'python' => \in_array($word, self::PYTHON_BUILTINS, strict: true) ? 'https://docs.python.org/3/library/functions.html#'.$word : null,
             default => null,
         };
     }
@@ -165,7 +165,7 @@ final class NativeDocs
     private static function phpUrl(string $word): ?string
     {
         if (\function_exists($word) && new \ReflectionFunction($word)->isInternal()) {
-            return 'https://www.php.net/manual/en/function.'.str_replace('_', '-', strtolower($word)).'.php';
+            return 'https://www.php.net/manual/en/function.'.str_replace('_', replace: '-', subject: strtolower($word)).'.php';
         }
         if (\class_exists($word, false) && new \ReflectionClass($word)->isInternal()) {
             return 'https://www.php.net/manual/en/class.'.strtolower($word).'.php';

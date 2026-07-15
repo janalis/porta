@@ -22,9 +22,11 @@ final class MenuOverlay
     public static function apply(array $lines, array $spans, int $columns): array
     {
         foreach ($spans as $span) {
-            if ($span['row'] >= 0 && $span['row'] < \count($lines)) {
-                $lines[$span['row']] = OverlayCompositor::into($lines[$span['row']], $span['col'], $span['width'], $columns, $span['segment']);
+            if (!($span['row'] >= 0 && $span['row'] < \count($lines))) {
+                continue;
             }
+
+            $lines[$span['row']] = OverlayCompositor::into($lines[$span['row']], $span['col'], $span['width'], $columns, $span['segment']);
         }
 
         return $lines;

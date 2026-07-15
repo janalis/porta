@@ -34,9 +34,15 @@ final class ConflictMarkers
             if (str_starts_with($line, '<<<<<<<')) {
                 $start = $i;
                 $sep = null;
-            } elseif (null !== $start && null === $sep && str_starts_with($line, '=======')) {
+
+                continue;
+            }
+            if (null !== $start && null === $sep && str_starts_with($line, '=======')) {
                 $sep = $i;
-            } elseif (null !== $start && null !== $sep && str_starts_with($line, '>>>>>>>')) {
+
+                continue;
+            }
+            if (null !== $start && null !== $sep && str_starts_with($line, '>>>>>>>')) {
                 $regions[] = ['start' => (int) $start, 'sep' => (int) $sep, 'end' => $i];
                 $start = null;
                 $sep = null;

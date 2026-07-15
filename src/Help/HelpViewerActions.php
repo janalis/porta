@@ -47,7 +47,7 @@ final class HelpViewerActions implements HelpViewerHandler
     {
         return realpath($path) === realpath($this->docsDir.'/README.md')
             ? $this->translator->trans('Documentation')
-            : basename($path, '.md');
+            : basename($path, suffix: '.md');
     }
 
     public function backEmpty(): void

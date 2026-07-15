@@ -35,7 +35,7 @@ final class UndoHistoryTest extends TestCase
     public function testSameKeyEditsCoalesceWithinOneSecond(): void
     {
         $t = 1000.0;
-        $h = new UndoHistory(function () use (&$t): float {
+        $h = new UndoHistory(static function () use (&$t): float {
             return $t;
         });
 
@@ -53,7 +53,7 @@ final class UndoHistoryTest extends TestCase
     public function testDifferentKeyDoesNotCoalesce(): void
     {
         $t = 1000.0;
-        $h = new UndoHistory(function () use (&$t): float {
+        $h = new UndoHistory(static function () use (&$t): float {
             return $t;
         });
 
@@ -104,7 +104,7 @@ final class UndoHistoryTest extends TestCase
     public function testCheckpointBreaksCoalescing(): void
     {
         $t = 5.0;
-        $h = new UndoHistory(function () use (&$t): float {
+        $h = new UndoHistory(static function () use (&$t): float {
             return $t;
         });
         $h->push($this->snap(1), 'type'); // stored
@@ -148,7 +148,7 @@ final class UndoHistoryTest extends TestCase
     public function testCapEvictsOldestBeyondLimit(): void
     {
         $t = 0.0;
-        $h = new UndoHistory(function () use (&$t): float {
+        $h = new UndoHistory(static function () use (&$t): float {
             return $t;
         });
 

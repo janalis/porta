@@ -57,8 +57,8 @@ final class PaneResizer
         return match (true) {
             $focus === $this->tree => fn () => $this->layout->nudgeSidebar(2 * $direction),
             $focus === $this->terminalPanel, $focus === $this->resultsPanel, $focus === $this->debugPanel => fn () => $this->layout->nudgeBottomPanel($direction),
-            \in_array($focus, [$this->gitChanges, $this->gitHistory, $this->gitCommitBox], true) => fn () => $this->layout->nudgeGitSidebar(2 * $direction),
-            \in_array($focus, [$this->settingsNav, $this->settingsForm, $this->settingsKeys], true) => fn () => $this->layout->nudgeSettingsSidebar(2 * $direction),
+            \in_array($focus, [$this->gitChanges, $this->gitHistory, $this->gitCommitBox], strict: true) => fn () => $this->layout->nudgeGitSidebar(2 * $direction),
+            \in_array($focus, [$this->settingsNav, $this->settingsForm, $this->settingsKeys], strict: true) => fn () => $this->layout->nudgeSettingsSidebar(2 * $direction),
             default => null,
         };
     }

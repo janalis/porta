@@ -19,7 +19,7 @@ final class LogParser
     {
         $entries = [];
         foreach (explode("\0", $raw) as $record) {
-            $fields = explode("\x1f", trim($record, "\n"));
+            $fields = explode("\x1f", trim($record, characters: "\n"));
             if (5 !== \count($fields) || '' === $fields[0]) {
                 continue;
             }
@@ -38,7 +38,7 @@ final class LogParser
     {
         $stashes = [];
         foreach (explode("\0", $raw) as $record) {
-            $fields = explode("\x1f", trim($record, "\n"));
+            $fields = explode("\x1f", trim($record, characters: "\n"));
             if (3 !== \count($fields) || '' === $fields[0]) {
                 continue;
             }
@@ -56,7 +56,7 @@ final class LogParser
      */
     public static function parseNameStatus(string $raw): array
     {
-        $tokens = explode("\0", trim($raw, "\n\0"));
+        $tokens = explode("\0", trim($raw, characters: "\n\0"));
         $count = \count($tokens);
         $files = [];
         $i = 0;
@@ -70,12 +70,17 @@ final class LogParser
             if (('R' === $letter || 'C' === $letter) && ($i + 2) < $count) {
                 $files[] = ['status' => $letter, 'path' => $tokens[$i + 2]]; // old path skipped
                 $i += 3;
-            } elseif (($i + 1) < $count) {
+
+                continue;
+            }
+            if (($i + 1) < $count) {
                 $files[] = ['status' => $letter, 'path' => $tokens[$i + 1]];
                 $i += 2;
-            } else {
-                break; // trailing status without a path: malformed tail
+
+                continue;
             }
+
+            break; // trailing status without a path: malformed tail
         }
 
         return $files;

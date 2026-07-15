@@ -21,7 +21,7 @@ final class LspSessionTest extends TestCase
     {
         return new LspSession(
             '/tmp/project',
-            fn (array $command, string $rootDir, \Closure $onLog): LspClientInterface => $client,
+            static fn (array $command, string $rootDir, \Closure $onLog): LspClientInterface => $client,
         );
     }
 
@@ -52,7 +52,7 @@ final class LspSessionTest extends TestCase
         $noop = static function (): void {};
         $session->start(
             ['fake'],
-            function (string $line) use (&$logged): void {
+            static function (string $line) use (&$logged): void {
                 $logged[] = $line;
             },
             static fn (array $p): null => null,

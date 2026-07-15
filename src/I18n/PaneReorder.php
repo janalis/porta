@@ -43,14 +43,16 @@ final class PaneReorder
     public function logicalColumn(string $line, int $visualCol, array $runs): int
     {
         foreach ($runs as $run) {
-            if ($visualCol < ($run['start'] + $run['width'])) {
-                if ($run['ltr']) {
-                    return $visualCol;
-                }
-                $slice = AnsiUtils::sliceByColumn($line, $run['start'], $run['width'], strict: true);
-
-                return $run['start'] + Bidi::visualToLogicalColumn($slice, $visualCol - $run['start'], true);
+            if ($visualCol >= ($run['start'] + $run['width'])) {
+                continue;
             }
+
+            if ($run['ltr']) {
+                return $visualCol;
+            }
+            $slice = AnsiUtils::sliceByColumn($line, $run['start'], $run['width'], strict: true);
+
+            return $run['start'] + Bidi::visualToLogicalColumn($slice, $visualCol - $run['start'], true);
         }
 
         return $visualCol;

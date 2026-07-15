@@ -57,7 +57,7 @@ final class ChangesListWidgetTest extends TestCase
         $widget->setFocused(true);
         $widget->setEntries($this->entries());
         $selected = [];
-        $widget->onSelect(function (ChangeEntry $entry) use (&$selected): void {
+        $widget->onSelect(static function (ChangeEntry $entry) use (&$selected): void {
             $selected[] = $entry->path;
         });
 
@@ -74,7 +74,7 @@ final class ChangesListWidgetTest extends TestCase
         $widget->setFocused(true);
         $widget->setEntries($this->entries());
         $toggled = null;
-        $widget->onToggleStage(function (ChangeEntry $entry) use (&$toggled): void {
+        $widget->onToggleStage(static function (ChangeEntry $entry) use (&$toggled): void {
             $toggled = $entry->path;
         });
 
@@ -89,7 +89,7 @@ final class ChangesListWidgetTest extends TestCase
         $widget->setFocused(true);
         $widget->setEntries($this->entries());
         $discarded = null;
-        $widget->onDiscard(function (ChangeEntry $entry) use (&$discarded): void {
+        $widget->onDiscard(static function (ChangeEntry $entry) use (&$discarded): void {
             $discarded = $entry->path;
         });
 
@@ -129,11 +129,12 @@ final class ChangesListWidgetTest extends TestCase
     {
         $widget = new ChangesListWidget(new Translator('en'));
         $widget->setEntries($this->entries());
-        $toggled = $selected = null;
-        $widget->onToggleStage(function (ChangeEntry $entry) use (&$toggled): void {
+        $toggled = null;
+        $selected = null;
+        $widget->onToggleStage(static function (ChangeEntry $entry) use (&$toggled): void {
             $toggled = $entry->path;
         });
-        $widget->onSelect(function (ChangeEntry $entry) use (&$selected): void {
+        $widget->onSelect(static function (ChangeEntry $entry) use (&$selected): void {
             $selected = $entry->path;
         });
 
@@ -153,7 +154,7 @@ final class ChangesListWidgetTest extends TestCase
         $widget = new ChangesListWidget(new Translator('en'));
         $widget->setEntries($this->entries());
         $selectFired = 0;
-        $widget->onSelect(function () use (&$selectFired): void {
+        $widget->onSelect(static function () use (&$selectFired): void {
             ++$selectFired;
         });
 
@@ -200,10 +201,10 @@ final class ChangesListWidgetTest extends TestCase
         $widget->setFocused(true);
         $widget->setEntries($this->entries());
         $events = [];
-        $widget->onFocusNext(function () use (&$events): void {
+        $widget->onFocusNext(static function () use (&$events): void {
             $events[] = 'next';
         });
-        $widget->onExit(function () use (&$events): void {
+        $widget->onExit(static function () use (&$events): void {
             $events[] = 'exit';
         });
 
@@ -220,7 +221,7 @@ final class ChangesListWidgetTest extends TestCase
         $widget->handleInput('f'); // no hook attached: a safe no-op
 
         $operations = [];
-        $widget->onRemote(function (string $operation) use (&$operations): void {
+        $widget->onRemote(static function (string $operation) use (&$operations): void {
             $operations[] = $operation;
         });
         $widget->handleInput('f');

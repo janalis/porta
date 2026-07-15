@@ -25,14 +25,18 @@ final class ImageDecoder
     /** Whether the path names an image by extension (the viewer's routing test). */
     public static function isImagePath(string $path): bool
     {
-        return \in_array(strtolower(pathinfo($path, \PATHINFO_EXTENSION)), self::EXTENSIONS, true);
+        return \in_array(strtolower(pathinfo($path, \PATHINFO_EXTENSION)), self::EXTENSIONS, strict: true);
     }
 
     /** Decode the file, or null when the bytes are not a displayable image. */
     public function decode(string $path): ?ImageData
     {
-        $bytes = (string) @file_get_contents($path);
-        $gd = @imagecreatefromstring($bytes);
+        $bytes = is_file($path) ? (string) file_get_contents($path) : '';
+        // Arbitrary bytes can't be pre-validated: swallow the warning GD raises
+        // on non-image data and rely on the false return below.
+        set_error_handler(static fn (): bool => true);
+        $gd = imagecreatefromstring($bytes);
+        restore_error_handler();
         if (!$gd instanceof \GdImage) {
             return null;
         }

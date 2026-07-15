@@ -14,6 +14,7 @@ namespace Porta\Search\Everywhere;
  */
 final class WorkspaceSymbolSource implements SearchSource
 {
+    // @mago-expect lint:no-literal-password -- $token is a request-sequence counter, not a credential
     private int $token = 0;
 
     /**
@@ -40,12 +41,13 @@ final class WorkspaceSymbolSource implements SearchSource
     {
         $token = ++$this->token;
         ($this->searchSymbols)($query, function (array $symbols) use ($emit, $token): void {
+            // @mago-expect lint:no-insecure-comparison -- $token is a request-sequence counter, not sensitive data
             if ($token !== $this->token) {
                 return; // a newer query or a cancel superseded this response
             }
             $hits = [];
             foreach ($symbols as $symbol) {
-                if ([] !== $this->kinds && !\in_array($symbol['kind'], $this->kinds, true)) {
+                if ([] !== $this->kinds && !\in_array($symbol['kind'], $this->kinds, strict: true)) {
                     continue;
                 }
                 $absolute = $this->rootDir.'/'.$symbol['path'];
@@ -55,8 +57,10 @@ final class WorkspaceSymbolSource implements SearchSource
                     $symbol['name'],
                     $symbol['path'].':'.($line + 1),
                     function () use ($absolute, $line): void {
-                        ($this->openFile)($absolute, true);
-                        ($this->jumpTo)($line, 0);
+                        $focusEditor = true;
+                        $column = 0;
+                        ($this->openFile)($absolute, $focusEditor);
+                        ($this->jumpTo)($line, $column);
                     },
                 );
             }

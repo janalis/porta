@@ -28,7 +28,7 @@ final class PtyProcessTest extends TestCase
         $elapsed = 0.0;
         while (!$done() && $elapsed < $timeout) {
             $suspension = EventLoop::getSuspension();
-            EventLoop::delay(0.02, static fn () => $suspension->resume());
+            EventLoop::delay(0.02, $suspension->resume(...));
             $suspension->suspend();
             $elapsed += 0.02;
         }
@@ -38,8 +38,9 @@ final class PtyProcessTest extends TestCase
     {
         $buffer = new TerminalBuffer();
         $exit = null;
-        $p = $this->procs[] = new PtyProcess(['/bin/sh', '-c', 'printf "line1\nline2\n"; exit 3'], getcwd());
-        $p->onOutput(fn (string $d) => $buffer->feed($d))->onExit(function (int $c) use (&$exit): void {
+        $p = new PtyProcess(['/bin/sh', '-c', 'printf "line1\nline2\n"; exit 3'], getcwd());
+        $this->procs[] = $p;
+        $p->onOutput($buffer->feed(...))->onExit(static function (int $c) use (&$exit): void {
             $exit = $c;
         });
 
@@ -59,8 +60,9 @@ final class PtyProcessTest extends TestCase
     {
         // `cat` echoes stdin back through the PTY.
         $buffer = new TerminalBuffer();
-        $p = $this->procs[] = new PtyProcess(['/bin/cat'], getcwd());
-        $p->onOutput(fn (string $d) => $buffer->feed($d));
+        $p = new PtyProcess(['/bin/cat'], getcwd());
+        $this->procs[] = $p;
+        $p->onOutput($buffer->feed(...));
         $this->assertTrue($p->start());
 
         $p->write("ping\n");
@@ -73,7 +75,8 @@ final class PtyProcessTest extends TestCase
 
     public function testStopIsIdempotentAndSafeBeforeStart(): void
     {
-        $p = $this->procs[] = new PtyProcess(['/bin/sh', '-c', 'sleep 5'], getcwd());
+        $p = new PtyProcess(['/bin/sh', '-c', 'sleep 5'], getcwd());
+        $this->procs[] = $p;
         $p->start();
         $this->assertTrue($p->isRunning());
 

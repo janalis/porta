@@ -8,7 +8,6 @@ use Porta\Editor\DiagnosticStyle;
 use Porta\Editor\Document;
 use Porta\Ui\Palette;
 use Porta\Ui\Role;
-use Porta\Widget\Render\EditorRenderer;
 
 /**
  * Pure builder for one content line's decoration spans, gathered in layering
@@ -56,15 +55,19 @@ final class LineSpans
             $spans[] = [$doc->displayColAt($lineIndex, $match['start']), $doc->displayColAt($lineIndex, $match['end']), $open, $close, $open];
         }
         foreach ($occurrences as [$oLine, $oStart, $oEnd]) {
-            if ($oLine === $lineIndex) {
-                $spans[] = [$oStart, $oEnd, $palette->of(Role::OccurrenceBg), "\x1b[49m", $palette->of(Role::OccurrenceBg)];
+            if ($oLine !== $lineIndex) {
+                continue;
             }
+
+            $spans[] = [$oStart, $oEnd, $palette->of(Role::OccurrenceBg), "\x1b[49m", $palette->of(Role::OccurrenceBg)];
         }
         if (null !== $brackets) {
             foreach ($brackets as [$bLine, $bDispCol]) {
-                if ($bLine === $lineIndex) {
-                    $spans[] = [$bDispCol, $bDispCol + 1, LineDecorator::BRACKET_SGR, "\x1b[22m\x1b[27m", null];
+                if ($bLine !== $lineIndex) {
+                    continue;
                 }
+
+                $spans[] = [$bDispCol, $bDispCol + 1, LineDecorator::BRACKET_SGR, "\x1b[22m\x1b[27m", null];
             }
         }
         foreach ($diags as $diag) {

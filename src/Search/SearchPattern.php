@@ -12,7 +12,7 @@ final class SearchPattern
 {
     public static function build(string $query, bool $regex, bool $wholeWord, bool $caseSensitive): string
     {
-        $body = $regex ? $query : preg_quote($query, '/');
+        $body = $regex ? $query : preg_quote($query, delimiter: '/');
         if ($wholeWord) {
             $body = '\b(?:'.$body.')\b';
         }
