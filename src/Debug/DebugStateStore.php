@@ -65,12 +65,14 @@ final readonly class DebugStateStore
         }
 
         $breakpoints = [];
-        /** @var array<array-key, mixed> $files */
+        /** @var array<array-key, array<array-key, mixed>|scalar|null> $files */
         $files = \is_array($data['breakpoints'] ?? null) ? $data['breakpoints'] : [];
-        foreach ($files as $path => $entries) {
-            if (!\is_string($path) || !\is_array($entries)) {
+        foreach ($files as $path => $rawEntries) {
+            if (!\is_string($path) || !\is_array($rawEntries)) {
                 continue;
             }
+            /** @var list<array<string, mixed>|scalar|null> $entries */
+            $entries = array_values($rawEntries);
             foreach ($entries as $entry) {
                 if (!\is_array($entry) || !\is_int($entry['line'] ?? null)) {
                     continue;
@@ -84,7 +86,9 @@ final readonly class DebugStateStore
         }
 
         $watches = [];
-        foreach (\is_array($data['watches'] ?? null) ? $data['watches'] : [] as $watch) {
+        /** @var list<scalar|array<array-key, mixed>|null> $rawWatches */
+        $rawWatches = \is_array($data['watches'] ?? null) ? $data['watches'] : [];
+        foreach ($rawWatches as $watch) {
             if (\is_string($watch) && '' !== $watch) {
                 $watches[] = $watch;
             }

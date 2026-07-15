@@ -397,7 +397,9 @@ final class DapSession
     private static function normalizeExceptionFilters(mixed $raw): array
     {
         $filters = [];
-        foreach (\is_array($raw) ? $raw : [] as $filter) {
+        /** @var list<array<string, mixed>|scalar|null> $rawFilters */
+        $rawFilters = \is_array($raw) ? $raw : [];
+        foreach ($rawFilters as $filter) {
             if (!\is_array($filter) || !\is_string($filter['filter'] ?? null)) {
                 continue;
             }

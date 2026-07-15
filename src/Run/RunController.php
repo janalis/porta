@@ -6,8 +6,9 @@ namespace Porta\Run;
 
 use Porta\I18n\Translator;
 use Porta\Terminal\PtyProcess;
-use Porta\Terminal\TerminalBuffer;
 use Porta\Terminal\TerminalKeyEncoder;
+use Porta\Terminal\TerminalSession;
+use Porta\Terminal\TerminalSessions;
 use Porta\Ui\Notifier;
 use Porta\Widget\CodeEditorWidget;
 use Porta\Widget\TerminalPanelWidget;
@@ -15,16 +16,17 @@ use Symfony\Component\Tui\Tui;
 
 /**
  * The run/terminal feature: discovering runnable tasks (Run… menu), re-running
- * the last one, the interactive terminal toggle, and the PTY process whose
- * output streams into the terminal panel. Owns the process/buffer/last-run
- * state the coordinator used to carry.
+ * the last one, the interactive terminal tabs, and the PTY processes whose
+ * output streams into the shared panel. Owns the {@see TerminalSessions}
+ * lifecycle: shells (`shell:N`), run configurations (`run:<label>`, re-run
+ * replaces only that session's process) and the last-run state.
  */
 final class RunController
 {
-    private ?PtyProcess $terminal = null;
-    private ?TerminalBuffer $terminalBuffer = null;
     /** @var array{label: string, command: list<string>}|null */
     private ?array $lastRun = null;
+
+    private int $shellCounter = 0;
 
     public function __construct(
         private readonly RunConfigs $runConfigs,
@@ -35,6 +37,7 @@ final class RunController
         private readonly Tui $tui,
         private readonly Translator $translator,
         private readonly string $rootDir,
+        private readonly TerminalSessions $sessions,
     ) {}
 
     public function openRunMenu(): void
@@ -50,6 +53,9 @@ final class RunController
         foreach ($tasks as $index => $task) {
             $items[] = ['label' => $task['label'], 'hint' => '', 'value' => (string) $index];
         }
+        // The overlay lives on the editor: focus it so the picker is drivable
+        // even when the terminal panel currently owns the focus.
+        $this->tui->setFocus($this->editor);
         $this->editor->openListOverlay($this->translator->trans('Run'), $items, function (string $index) use ($tasks): void {
             $task = $tasks[(int) $index] ?? null;
             if (null !== $task) {
@@ -77,68 +83,124 @@ final class RunController
 
             return;
         }
-        // A default interactive shell; keeps running while the panel is hidden.
-        if (null === $this->terminal || !$this->terminal->isRunning()) {
-            $shell = getenv('SHELL') ?: '/bin/sh';
-            $this->runInTerminal([$shell, '-i'], basename($shell));
+        // Reopen the active session, or spawn the first shell.
+        if (null !== ($active = $this->sessions->active())) {
+            $this->showActive($active);
         } else {
-            /** @var TerminalBuffer $buffer */
-            $buffer = $this->terminalBuffer;
-            $this->terminalPanel->open($this->terminalPanel->getTitle(), $buffer);
+            $this->newTerminalSession();
         }
-        $this->tui->setFocus($this->terminalPanel);
-        $this->tui->requestRender();
+    }
+
+    /** Ctrl+Shift+` (or Alt+F11): spawn another interactive shell session. */
+    public function newTerminalSession(): void
+    {
+        $shell = getenv('SHELL') ?: '/bin/sh';
+        $session = $this->sessions->create('shell:'.++$this->shellCounter, basename($shell).' '.$this->shellCounter);
+        $this->spawn($session, [$shell, '-i']);
     }
 
     /**
-     * Run a command in the terminal panel, streaming its output live.
+     * Run a command in its own `run:<title>` session (reused across re-runs),
+     * replacing only that session's process — the shell and other runs survive.
      *
      * @param list<string> $command
      */
     private function runInTerminal(array $command, string $title): void
     {
-        $this->terminal?->stop();
-        $this->terminalBuffer = new TerminalBuffer();
+        $session = $this->sessions->find('run:'.$title);
+        if (null === $session) {
+            $session = $this->sessions->create('run:'.$title, $title);
+        } else {
+            $session->buffer->clear();
+            $session->setTitle($title); // drop any stale "— exited" suffix
+            $this->sessions->makeActive($session);
+        }
+        $this->spawn($session, $command);
+    }
 
-        $this->terminal = new PtyProcess($command, $this->rootDir, columns: 100, rows: 24);
-        $this->terminal
-            ->onOutput(function (string $chunk): void {
-                /** @var TerminalBuffer $buffer */
-                $buffer = $this->terminalBuffer;
-                $buffer->feed($chunk);
-                $this->terminalPanel->refresh();
+    /**
+     * Spawn a PTY into a session and stream its output. The panel only
+     * refreshes for the active session — background output must not yank the
+     * live tab's scroll position.
+     *
+     * @param list<string> $command
+     */
+    private function spawn(TerminalSession $session, array $command): void
+    {
+        $process = new PtyProcess($command, $this->rootDir, columns: 100, rows: 24);
+        $process
+            ->onOutput(function (string $chunk) use ($session): void {
+                $session->buffer->feed($chunk);
+                if ($session === $this->sessions->active()) {
+                    $this->terminalPanel->refresh();
+                }
                 $this->tui->requestRender();
             })
-            ->onExit(function (int $code): void {
-                $this->terminalPanel->setTitle(\sprintf('%s — exited (%d)', $this->terminalPanel->getTitle(), $code));
+            ->onExit(function (int $code) use ($session): void {
+                $session->setTitle(\sprintf('%s — exited (%d)', $session->title(), $code));
                 $this->tui->requestRender();
             });
+        $session->attach($process);
 
-        $this->terminalPanel->open($title, $this->terminalBuffer);
-        if (!$this->terminal->start()) {
+        $this->showActive($session);
+        if (!$process->start()) {
             // Spawn failure needs a PTY-less system; unreachable here.
             // @codeCoverageIgnoreStart
             $this->notifier->flash($this->translator->trans('Could not start the terminal process'));
-            $this->terminal = null;
 
             // @codeCoverageIgnoreEnd
         }
+    }
+
+    /** Activate a session by tab index (mouse/keys), reopening or closing the panel. */
+    public function activateSession(int $index): void
+    {
+        if (null !== ($session = $this->sessions->activate($index))) {
+            $this->showActive($session);
+        }
+    }
+
+    /** Cycle to the next (+1) or previous (-1) session tab. */
+    public function cycleSession(int $delta): void
+    {
+        if (null !== ($session = $delta > 0 ? $this->sessions->next() : $this->sessions->prev())) {
+            $this->showActive($session);
+        }
+    }
+
+    /** Close a session tab ($index, or -1 for the active one); closes the panel when the last goes. */
+    public function closeSession(int $index): void
+    {
+        $target = -1 === $index ? $this->sessions->activeIndex() : $index;
+        $survivor = $this->sessions->close($target);
+        if (null === $survivor) {
+            $this->terminalPanel->close();
+
+            return;
+        }
+        $this->showActive($survivor);
+    }
+
+    /** Show a session in the panel and focus it. */
+    private function showActive(TerminalSession $session): void
+    {
+        $this->terminalPanel->open($session->title(), $session->buffer);
         $this->tui->setFocus($this->terminalPanel);
         $this->tui->requestRender();
     }
 
-    /** Forward panel keystrokes to the child process (terminal key encoding applied). */
+    /** Forward panel keystrokes to the active session's process (terminal key encoding applied). */
     public function forwardInput(string $data): void
     {
         $bytes = $this->terminalKeys->encode($data);
         if ('' !== $bytes) {
-            $this->terminal?->write($bytes);
+            $this->sessions->active()?->process()?->write($bytes);
         }
     }
 
-    /** Stop the child process (app shutdown). */
+    /** Stop every session's process (app shutdown). */
     public function stop(): void
     {
-        $this->terminal?->stop();
+        $this->sessions->stopAll();
     }
 }

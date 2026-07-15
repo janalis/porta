@@ -210,4 +210,122 @@ final class TerminalPanelWidgetTest extends TestCase
         $panel->handleInput('Z'); // consumed by hook, not forwarded
         $this->assertSame('', $forwarded);
     }
+
+    public function testTabStripRendersSessionsWithActiveStylingAndCloseZones(): void
+    {
+        $panel = new TerminalPanelWidget();
+        $panel->open('ignored', new TerminalBuffer());
+        $panel->setSessionTabsProvider(static fn (): array => [
+            ['title' => 'sh 1', 'running' => true, 'active' => false],
+            ['title' => 'build', 'running' => false, 'active' => true],
+        ]);
+
+        $strip = AnsiUtils::stripAnsiCodes($panel->render(new RenderContext(60, 6))[0]);
+        $this->assertStringContainsString('sh 1', $strip);
+        $this->assertStringContainsString('build', $strip);
+        $this->assertStringContainsString('○', $strip, 'the exited session shows a stopped glyph');
+        $this->assertStringContainsString('×', $strip, 'each tab has a close affordance');
+
+        // A click on "build"'s label selects it; a click on its × closes it.
+        $selected = $closed = null;
+        $panel->onSessionSelected(function (int $i) use (&$selected): void {
+            $selected = $i;
+        });
+        $panel->onSessionClosed(function (int $i) use (&$closed): void {
+            $closed = $i;
+        });
+        // The strip is "│ sh 1 × │ build ○ × │" — column into the "build" word.
+        $buildCol = mb_strpos($strip, 'build');
+        $panel->handleTabClick((int) $buildCol);
+        $this->assertSame(1, $selected, 'clicking the label selected the tab');
+
+        $closeCol = mb_strpos($strip, '×', (int) $buildCol);
+        $panel->handleTabClick((int) $closeCol);
+        $this->assertSame(1, $closed, 'clicking the × closed the tab');
+
+        // A click in the empty tail hits nothing.
+        $selected = null;
+        $panel->handleTabClick(59);
+        $this->assertNull($selected);
+    }
+
+    public function testSessionKeysCycleAndCloseWithoutForwarding(): void
+    {
+        $panel = new TerminalPanelWidget();
+        $panel->setFocused(true);
+        $panel->open('sh', new TerminalBuffer());
+
+        $forwarded = '';
+        $cycled = [];
+        $closed = null;
+        $panel->onInputForward(function (string $d) use (&$forwarded): void {
+            $forwarded .= $d;
+        });
+        $panel->onSessionCycled(function (int $d) use (&$cycled): void {
+            $cycled[] = $d;
+        });
+        $panel->onSessionClosed(function (int $i) use (&$closed): void {
+            $closed = $i;
+        });
+
+        $panel->handleInput("\x1b[6^"); // ctrl+page_down → next
+        $panel->handleInput("\x1b[5^"); // ctrl+page_up → prev
+        $panel->handleInput("\x1b[119;6u"); // ctrl+shift+w → close active
+        $this->assertSame([1, -1], $cycled);
+        $this->assertSame(-1, $closed, 'the active session (-1) closes');
+        $this->assertSame('', $forwarded, 'none of the session keys reached the process');
+    }
+
+    public function testTabStripDropsLeadingTabsToKeepTheActiveVisible(): void
+    {
+        $panel = new TerminalPanelWidget();
+        $panel->open('ignored', new TerminalBuffer());
+        // Ten short tabs with the middle one active: leading tabs drop (so the
+        // active fits) and trailing tabs overflow the width (the render breaks).
+        $panel->setSessionTabsProvider(static fn (): array => array_map(
+            static fn (int $i): array => ['title' => 't'.$i, 'running' => true, 'active' => 5 === $i],
+            range(0, 9),
+        ));
+
+        $strip = AnsiUtils::stripAnsiCodes($panel->render(new RenderContext(20, 6))[0]);
+        $this->assertStringContainsString('t5', $strip, 'the active tab is visible');
+        $this->assertStringNotContainsString('t0', $strip, 'leading tabs were dropped');
+        $this->assertStringNotContainsString('t9', $strip, 'trailing tabs beyond the width were cut');
+        $this->assertSame(20, AnsiUtils::visibleWidth($panel->render(new RenderContext(20, 6))[0]), 'the strip honours the width');
+    }
+
+    public function testBeforeRenderRepaintsWhenASessionIsRenamed(): void
+    {
+        $panel = new TerminalPanelWidget();
+        $panel->open('sh', new TerminalBuffer());
+        $title = 'build';
+        $panel->setSessionTabsProvider(static function () use (&$title): array {
+            return [['title' => $title, 'running' => true, 'active' => true]];
+        });
+
+        $panel->beforeRender(); // establishes the baseline fingerprint
+        $rev = $panel->getRenderRevision();
+        $panel->beforeRender(); // unchanged: no invalidation
+        $this->assertSame($rev, $panel->getRenderRevision());
+
+        $title = 'build — exited (0)';
+        $panel->beforeRender();
+        $this->assertGreaterThan($rev, $panel->getRenderRevision(), 'the rename invalidated the strip');
+    }
+
+    public function testWithoutAProviderASingleSyntheticTabRenders(): void
+    {
+        $panel = new TerminalPanelWidget();
+        $panel->open('lonely', new TerminalBuffer());
+        $panel->beforeRender(); // no provider: a no-op
+        $strip = AnsiUtils::stripAnsiCodes($panel->render(new RenderContext(40, 6))[0]);
+        $this->assertStringContainsString('lonely', $strip);
+        // Clicking the synthetic tab still routes (selects index 0).
+        $selected = null;
+        $panel->onSessionSelected(function (int $i) use (&$selected): void {
+            $selected = $i;
+        });
+        $panel->handleTabClick((int) mb_strpos($strip, 'lonely'));
+        $this->assertSame(0, $selected);
+    }
 }

@@ -148,6 +148,11 @@ final class MouseRouter
         if ($this->layout->armSettingsSidebarResize($settingsSepRect, $mouse)) {
             return;
         }
+        // The terminal's top row is both the tab strip and the resize grab: a
+        // click on a tab wins, a click on its empty tail falls through to resize.
+        if ($this->tryTerminalTabClick($mouse)) {
+            return;
+        }
         if ($this->layout->armPanelResize($this->overlayPanels->terminalPanel(), $mouse)) {
             return;
         }
@@ -442,9 +447,28 @@ final class MouseRouter
     }
 
     /** The floating bottom/overlay panels: terminal, results and go-to-file. */
+    /** A press on the terminal tab strip (row 0): select/close a tab, or false to fall through to resize. */
+    private function tryTerminalTabClick(MouseEvent $mouse): bool
+    {
+        $panel = $this->overlayPanels->terminalPanel();
+        $rect = $this->hit->rect($panel);
+        if (!$panel->isOpen() || null === $rect || $mouse->row !== $rect->row || $mouse->col < $rect->col || $mouse->col >= ($rect->col + $rect->columns)) {
+            return false;
+        }
+        if (!$panel->handleTabClick($mouse->col - $rect->col)) {
+            return false;
+        }
+        $this->tui->setFocus($panel);
+        $this->tui->requestRender();
+
+        return true;
+    }
+
     private function tryOverlayPanelClick(MouseEvent $mouse): bool
     {
-        // A click in the open terminal pane focuses it, so typing reaches the shell.
+        // A click in the open terminal pane focuses it, so typing reaches the
+        // shell. (The tab strip on row 0 is handled before resize, in the press
+        // path, so a body click here just refocuses.)
         if ($this->overlayPanels->terminalPanel()->isOpen() && null !== $this->hit->hit($this->overlayPanels->terminalPanel(), $mouse->row, $mouse->col)) {
             $this->tui->setFocus($this->overlayPanels->terminalPanel());
             $this->tui->requestRender();

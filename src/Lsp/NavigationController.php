@@ -313,7 +313,9 @@ final class NavigationController extends AbstractLspController implements Editor
                 $item = $result[0];
                 $this->lsp->request('callHierarchy/incomingCalls', ['item' => $item], function (mixed $calls, ?array $callsError) use ($item): void {
                     $locations = [];
-                    foreach (\is_array($calls) ? $calls : [] as $call) {
+                    /** @var list<array<string, mixed>|scalar|null> $callList */
+                    $callList = \is_array($calls) ? $calls : [];
+                    foreach ($callList as $call) {
                         if (\is_array($call) && \is_array($call['from'] ?? null)) {
                             /** @var array{uri?: string, selectionRange?: array<array-key, mixed>} $from */
                             $from = $call['from'];

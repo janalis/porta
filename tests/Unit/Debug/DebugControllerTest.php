@@ -18,6 +18,7 @@ use Porta\Editor\Document;
 use Porta\Editor\FileOpener;
 use Porta\Event\DebugStatusChanged;
 use Porta\I18n\Translator;
+use Porta\Terminal\TerminalSessions;
 use Porta\Tests\Support\FakeDapClient;
 use Porta\Ui\Notifier;
 use Porta\Widget\CodeEditorWidget;
@@ -37,6 +38,7 @@ final class DebugControllerTest extends TestCase
     private StatusBarWidget $statusBar;
     private FakeDapClient $client;
     private ExceptionFilterStore $filters;
+    private TerminalSessions $sessions;
     private int $statusEvents = 0;
     /** @var list<string> */
     private array $opened = [];
@@ -98,6 +100,7 @@ final class DebugControllerTest extends TestCase
             new EditorDecorations($breakpoints, $state, $this->editor),
             new WatchStore(),
             $this->filters = new ExceptionFilterStore(),
+            $this->sessions = new TerminalSessions(),
         );
     }
 

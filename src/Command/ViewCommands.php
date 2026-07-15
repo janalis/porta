@@ -61,6 +61,7 @@ final class ViewCommands implements CommandProvider
             ->add('fold_all', fn () => $this->folding->foldAll(), label: 'Fold All')
             ->add('unfold_all', fn () => $this->folding->unfoldAll(), label: 'Unfold All')
             ->add('ide_terminal', fn () => $this->run->toggleTerminal(), keyBound: true)
+            ->add('ide_terminal_new', fn () => $this->run->newTerminalSession(), keyBound: true)
             ->add('ide_run', fn () => $this->run->openRunMenu(), keyBound: true)
             ->add('ide_git', fn () => $this->views->toggleGit(), keyBound: true)
             ->add('ide_settings', fn () => $this->views->toggleSettings(), keyBound: true)

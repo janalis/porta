@@ -283,9 +283,12 @@ final class IdeEdgeCasesTest extends TestCase
                     $renderer = new \ReflectionProperty($ide, 'renderer')->getValue($ide);
                     $rect = $renderer->getWidgetRect($tp);
                     $top = $rect->row + 1; // 1-based screen row of the panel's top edge
-                    $tui->handleInput(\sprintf("\x1b[<0;5;%dM", $top)); // arm on the top edge
-                    $tui->handleInput(\sprintf("\x1b[<32;5;%dM", $top - 4)); // drag the edge up 4 rows
-                    $tui->handleInput(\sprintf("\x1b[<0;5;%dm", $top - 4)); // release
+                    // Arm past the tab strip's tabs (the tail of the top row is
+                    // the resize grab; a tab hit would select instead).
+                    $grabCol = $rect->col + $rect->columns - 5;
+                    $tui->handleInput(\sprintf("\x1b[<0;%d;%dM", $grabCol, $top)); // arm on the top edge
+                    $tui->handleInput(\sprintf("\x1b[<32;%d;%dM", $grabCol, $top - 4)); // drag the edge up 4 rows
+                    $tui->handleInput(\sprintf("\x1b[<0;%d;%dm", $grabCol, $top - 4)); // release
                 },
                 320 => function ($tui) use ($project): void {
                     $this->assertSame(16, $tui->getById('terminal')->visibleRows(), 'panel grew by the drag (clamped at rows-8)');

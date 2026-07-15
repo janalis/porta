@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Porta\Widget;
 
 use Porta\Container\AsWidget;
+use Porta\Support\AnsiText;
 use Porta\Support\IntMath;
 use Porta\Terminal\TerminalBuffer;
 use Porta\Ui\ColorPalette;
@@ -12,7 +13,6 @@ use Porta\Ui\CursorStyle;
 use Porta\Ui\LtrPane;
 use Porta\Ui\Palette;
 use Porta\Ui\Role;
-use Porta\Widget\Render\HeaderRenderer;
 use Symfony\Component\Tui\Ansi\AnsiUtils;
 use Symfony\Component\Tui\Input\Key;
 use Symfony\Component\Tui\Render\RenderContext;
@@ -21,8 +21,11 @@ use Symfony\Component\Tui\Widget\FocusableTrait;
 use Symfony\Component\Tui\Widget\KeybindingsTrait;
 
 /**
- * Bottom terminal panel: renders a {@see TerminalBuffer}'s scrollback and
- * forwards keystrokes to the running process. Hidden (zero rows) when closed.
+ * Bottom terminal panel: a session tab strip over a {@see TerminalBuffer}'s
+ * scrollback, forwarding keystrokes to the active session's process. Hidden
+ * (zero rows) when closed. Sessions are model objects owned by the
+ * {@see \Porta\Run\RunController}; the widget stays dumb, reading a tab
+ * provider and firing select/close/cycle callbacks.
  */
 #[AsWidget('terminal')]
 final class TerminalPanelWidget extends OverlayWidget implements FocusableInterface, LtrPane
@@ -38,6 +41,21 @@ final class TerminalPanelWidget extends OverlayWidget implements FocusableInterf
 
     /** @var (callable(string): void)|null forwards input bytes to the process */
     private $onInputForward = null;
+
+    /** @var (callable(): list<array{title: string, running: bool, active: bool}>)|null */
+    private $tabsProvider = null;
+
+    private string $lastFingerprint = '';
+
+    /** @var list<array{index: int, start: int, width: int, closeStart: int, closeWidth: int}> the last tab strip's hit map */
+    private array $lastTabLayout = [];
+
+    /** @var (callable(int): void)|null */
+    private $onSessionSelected = null;
+    /** @var (callable(int): void)|null */
+    private $onSessionClosed = null;
+    /** @var (callable(int): void)|null +1 next / -1 prev */
+    private $onSessionCycled = null;
 
     private readonly Palette $palette;
     private readonly CursorStyle $cursorStyle;
@@ -97,6 +115,78 @@ final class TerminalPanelWidget extends OverlayWidget implements FocusableInterf
         return $this;
     }
 
+    /** @param callable(): list<array{title: string, running: bool, active: bool}> $provider */
+    public function setSessionTabsProvider(callable $provider): self
+    {
+        $this->tabsProvider = $provider;
+
+        return $this;
+    }
+
+    public function onSessionSelected(callable $callback): self
+    {
+        $this->onSessionSelected = $callback;
+
+        return $this;
+    }
+
+    public function onSessionClosed(callable $callback): self
+    {
+        $this->onSessionClosed = $callback;
+
+        return $this;
+    }
+
+    public function onSessionCycled(callable $callback): self
+    {
+        $this->onSessionCycled = $callback;
+
+        return $this;
+    }
+
+    /** Repaint when a session is renamed (e.g. '— exited') without an explicit open/refresh. */
+    public function beforeRender(): void
+    {
+        if (null === $this->tabsProvider) {
+            return;
+        }
+        $fingerprint = (string) json_encode(($this->tabsProvider)());
+        if ($fingerprint !== $this->lastFingerprint) {
+            $this->lastFingerprint = $fingerprint;
+            $this->invalidate();
+        }
+    }
+
+    /**
+     * A click on the tab strip (widget-relative row 0): the close × zone
+     * fires onSessionClosed, elsewhere onSessionSelected. Returns whether the
+     * column landed on a tab — the caller lets a miss (the empty tail) fall
+     * through to the panel-resize grab.
+     */
+    public function handleTabClick(int $col): bool
+    {
+        foreach ($this->lastTabLayout as $entry) {
+            if ($col >= $entry['closeStart'] && $col < ($entry['closeStart'] + $entry['closeWidth'])) {
+                if (null !== $this->onSessionClosed) {
+                    ($this->onSessionClosed)($entry['index']);
+                }
+
+                return true;
+            }
+        }
+        foreach ($this->lastTabLayout as $entry) {
+            if ($col >= $entry['start'] && $col < ($entry['start'] + $entry['width'])) {
+                if (null !== $this->onSessionSelected) {
+                    ($this->onSessionSelected)($entry['index']);
+                }
+
+                return true;
+            }
+        }
+
+        return false;
+    }
+
     public function handleInput(string $data): void
     {
         if ($this->inputHookHandled($data)) {
@@ -123,6 +213,23 @@ final class TerminalPanelWidget extends OverlayWidget implements FocusableInterf
 
             return;
         }
+        if ($kb->matches($data, 'terminal_next_session')) {
+            $this->cycle(1);
+
+            return;
+        }
+        if ($kb->matches($data, 'terminal_prev_session')) {
+            $this->cycle(-1);
+
+            return;
+        }
+        if ($kb->matches($data, 'terminal_close_session')) {
+            if (null !== $this->onSessionClosed) {
+                ($this->onSessionClosed)(-1); // -1 = the active session
+            }
+
+            return;
+        }
 
         // Everything else is forwarded verbatim to the process.
         if (null !== $this->onInputForward) {
@@ -139,8 +246,7 @@ final class TerminalPanelWidget extends OverlayWidget implements FocusableInterf
         $columns = $context->getColumns();
         $rows = IntMath::clamp($this->visibleRows, 2, $context->getRows() > 0 ? $context->getRows() : $this->visibleRows);
 
-        $header = ' '.$this->title.($this->scrollBack > 0 ? \sprintf('  [scrolled +%d]', $this->scrollBack) : '');
-        $lines = [HeaderRenderer::render($header, $columns, $this->palette->of(Role::Toolbar)."\x1b[1m")];
+        $lines = [$this->renderTabStrip($columns)];
 
         $bodyRows = $rows - 1;
         $all = $this->buffer->getLines();
@@ -169,6 +275,66 @@ final class TerminalPanelWidget extends OverlayWidget implements FocusableInterf
         return $lines;
     }
 
+    private function cycle(int $delta): void
+    {
+        if (null !== $this->onSessionCycled) {
+            ($this->onSessionCycled)($delta);
+        }
+    }
+
+    /** The tab strip (widget row 0): one tab per session, or the plain title when no provider is wired. */
+    private function renderTabStrip(int $columns): string
+    {
+        $tabs = null !== $this->tabsProvider ? ($this->tabsProvider)() : [];
+        if ([] === $tabs) {
+            // No provider (unit tests) or no sessions: a single synthetic tab.
+            $tabs = [['title' => $this->title, 'running' => true, 'active' => true]];
+        }
+
+        /** @var list<array{text: string, active: bool, width: int, closeOffset: int}> $parts */
+        $parts = [];
+        foreach ($tabs as $tab) {
+            $prefix = ' '.$tab['title'].($tab['running'] ? '' : ' ○').' ';
+            $closeOffset = mb_strwidth($prefix);
+            $label = $prefix.'×'.' ';
+            $parts[] = ['text' => $label, 'active' => $tab['active'], 'width' => mb_strwidth($label) + 1, 'closeOffset' => $closeOffset];
+        }
+
+        $activeIndex = 0;
+        foreach ($parts as $i => $part) {
+            if ($part['active']) {
+                $activeIndex = $i;
+                break;
+            }
+        }
+        // Drop leading tabs until the active one fits.
+        $start = 0;
+        while ($start < $activeIndex && array_sum(array_column(\array_slice($parts, $start, $activeIndex - $start + 1), 'width')) > $columns) {
+            ++$start;
+        }
+
+        $line = '';
+        $used = 0;
+        $this->lastTabLayout = [];
+        foreach (\array_slice($parts, $start, null, true) as $index => $part) {
+            if (($used + $part['width']) > $columns) {
+                break;
+            }
+            $style = $part['active'] ? $this->palette->of(Role::Toolbar).$this->palette->of(Role::Bright)."\x1b[1m" : $this->palette->of(Role::Toolbar).$this->palette->of(Role::Subtle);
+            $closeStyle = $part['active'] ? $this->palette->of(Role::CurrentLineNumber) : $this->palette->of(Role::Gutter);
+            $text = str_replace('×', $closeStyle.'×'."\x1b[39m", $part['text']);
+            $line .= $style.$text."\x1b[0m".$this->palette->of(Role::Placeholder)."│\x1b[0m";
+            $this->lastTabLayout[] = ['index' => $index, 'start' => $used, 'width' => $part['width'], 'closeStart' => $used + $part['closeOffset'], 'closeWidth' => 2];
+            $used += $part['width'];
+        }
+        if ($this->scrollBack > 0) {
+            $line .= $this->palette->of(Role::Toolbar).$this->palette->of(Role::Dim).\sprintf('  [scrolled +%d]', $this->scrollBack)."\x1b[0m";
+        }
+
+        // A Toolbar-background base under the whole row, then the styled tabs.
+        return $this->palette->of(Role::Toolbar).AnsiText::padRight($line, $columns)."\x1b[0m";
+    }
+
     /** @return array<string, string[]> */
     protected static function getDefaultKeybindings(): array
     {
@@ -176,6 +342,9 @@ final class TerminalPanelWidget extends OverlayWidget implements FocusableInterf
             'hide_terminal' => ['ctrl+`', Key::ESCAPE],
             'scroll_up' => [Key::PAGE_UP],
             'scroll_down' => [Key::PAGE_DOWN],
+            'terminal_next_session' => ['ctrl+page_down'],
+            'terminal_prev_session' => ['ctrl+page_up'],
+            'terminal_close_session' => ['ctrl+shift+w'],
         ];
     }
 }

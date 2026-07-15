@@ -103,6 +103,7 @@ final class MenuModel
             'i:debug_stop',
             self::SEP,
             'i:ide_terminal',
+            'i:ide_terminal_new',
         ],
         'Git' => [
             'i:ide_git',

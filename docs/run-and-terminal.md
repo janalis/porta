@@ -9,9 +9,10 @@
 2. **Composer scripts** — every entry under `scripts` in `composer.json`
 3. **Makefile targets** — every column-0 `target:` in the project Makefile
 
-`Shift+F10` repeats the last run. Output streams live into the terminal
-panel; its title shows `… — exited (<code>)` when the process ends. One
-process runs at a time — starting a new run stops the previous one.
+`Shift+F10` repeats the last run. Each run configuration gets its own
+terminal tab (reused across re-runs — re-running replaces only that tab's
+process, leaving your shells and other runs alone); the tab title shows
+`… — exited (<code>)` when the process ends.
 
 ## Integrated terminal
 
@@ -20,6 +21,13 @@ interactive shell (`$SHELL -i`, falling back to `/bin/sh`) on a
 pseudo-terminal. Colors and progress bars render; keystrokes are forwarded
 with proper terminal encoding. The shell keeps running while the panel is
 hidden.
+
+The panel is multiplexed with a tab strip: `` Ctrl+Shift+` `` (or `Alt+F11`)
+opens another shell, `Ctrl+Page Up` / `Ctrl+Page Down` cycle between tabs,
+`Ctrl+Shift+W` (or a click on a tab's `×`) closes one — closing the last
+closes the panel. Click a tab to switch to it; each session keeps its own
+scrollback and process. Debugger output appears as its own `Debug: <file>`
+tab, so a debug session and your shells coexist.
 
 It is a line-oriented scrollback panel, not a full-screen VT host — running
 `vim` or `htop` inside it is out of scope.

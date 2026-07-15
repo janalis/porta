@@ -1762,6 +1762,22 @@
         <source>Run to cursor needs a paused debugger</source>
         <target>הרצה עד הסמן דורשת מנפה שגיאות מושהה</target>
       </trans-unit>
+      <trans-unit id="444">
+        <source>New Terminal Session</source>
+        <target>סשן טרמינל חדש</target>
+      </trans-unit>
+      <trans-unit id="445">
+        <source>Next Terminal</source>
+        <target>הטרמינל הבא</target>
+      </trans-unit>
+      <trans-unit id="446">
+        <source>Previous Terminal</source>
+        <target>הטרמינל הקודם</target>
+      </trans-unit>
+      <trans-unit id="447">
+        <source>Close Terminal Session</source>
+        <target>סגירת סשן הטרמינל</target>
+      </trans-unit>
     </body>
   </file>
 </xliff>

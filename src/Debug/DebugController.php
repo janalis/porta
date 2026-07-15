@@ -8,7 +8,7 @@ use Porta\Editor\FileOpener;
 use Porta\Event\DebugStatusChanged;
 use Porta\I18n\Translator;
 use Porta\Support\ProjectPaths;
-use Porta\Terminal\TerminalBuffer;
+use Porta\Terminal\TerminalSessions;
 use Porta\Ui\Notifier;
 use Porta\Widget\CodeEditorWidget;
 use Porta\Widget\DebugPanelWidget;
@@ -24,7 +24,7 @@ use Symfony\Component\Tui\Tui;
 final class DebugController implements DebugSessionObserver
 {
     private ?DapSession $session = null;
-    private ?TerminalBuffer $outputBuffer = null;
+
     /** @var array<int, array{id: int, name: string, path: string, line: int}> live frames by id (absolute paths) */
     private array $frames = [];
     /** The frame the panel last selected — watches and evaluate run against it. */
@@ -47,6 +47,7 @@ final class DebugController implements DebugSessionObserver
         private readonly EditorDecorations $decorations,
         private readonly WatchStore $watches,
         private readonly ExceptionFilterStore $exceptionFilters,
+        private readonly TerminalSessions $sessions,
     ) {
         $this->panel->onFrameSelected(fn (int $frameId) => $this->jumpToFrame($frameId));
         $this->panel->onRemoveWatch(function (int $index): void {
@@ -185,8 +186,11 @@ final class DebugController implements DebugSessionObserver
         $this->state->clear();
         $this->frames = [];
         $this->currentFrameId = null;
-        $this->outputBuffer = new TerminalBuffer();
-        $this->terminalPanel->open($this->translator->trans('Debug: %label%', ['%label%' => basename($path)]), $this->outputBuffer);
+        $session = $this->sessions->find('debug') ?? $this->sessions->create('debug', '');
+        $session->buffer->clear();
+        $session->setTitle($this->translator->trans('Debug: %label%', ['%label%' => basename($path)]));
+        $this->sessions->makeActive($session);
+        $this->terminalPanel->open($session->title(), $session->buffer);
         $this->panel->open(basename($path));
         $this->panel->setWatches($this->watches->all());
 
@@ -402,8 +406,11 @@ final class DebugController implements DebugSessionObserver
 
     public function onOutput(string $category, string $text): void
     {
-        $this->outputBuffer?->feed(str_replace("\n", "\r\n", $text));
-        $this->terminalPanel->refresh();
+        $session = $this->sessions->find('debug');
+        $session?->buffer->feed(str_replace("\n", "\r\n", $text));
+        if (null !== $session && $session === $this->sessions->active()) {
+            $this->terminalPanel->refresh();
+        }
         $this->tui->requestRender();
     }
 

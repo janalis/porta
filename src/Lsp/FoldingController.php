@@ -89,7 +89,9 @@ final class FoldingController
     private static function regions(mixed $result): array
     {
         $regions = [];
-        foreach (\is_array($result) ? $result : [] as $range) {
+        /** @var list<array<string, mixed>|scalar|null> $ranges */
+        $ranges = \is_array($result) ? $result : [];
+        foreach ($ranges as $range) {
             if (!\is_array($range) || !\is_int($range['startLine'] ?? null) || !\is_int($range['endLine'] ?? null)) {
                 continue;
             }

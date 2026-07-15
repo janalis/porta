@@ -1762,6 +1762,22 @@
         <source>Run to cursor needs a paused debugger</source>
         <target>Exécuter jusqu’au curseur requiert un débogueur en pause</target>
       </trans-unit>
+      <trans-unit id="444">
+        <source>New Terminal Session</source>
+        <target>Nouvelle session de terminal</target>
+      </trans-unit>
+      <trans-unit id="445">
+        <source>Next Terminal</source>
+        <target>Terminal suivant</target>
+      </trans-unit>
+      <trans-unit id="446">
+        <source>Previous Terminal</source>
+        <target>Terminal précédent</target>
+      </trans-unit>
+      <trans-unit id="447">
+        <source>Close Terminal Session</source>
+        <target>Fermer la session de terminal</target>
+      </trans-unit>
     </body>
   </file>
 </xliff>

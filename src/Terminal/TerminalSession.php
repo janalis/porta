@@ -1,0 +1,53 @@
+<?php
+
+declare(strict_types=1);
+
+namespace Porta\Terminal;
+
+/**
+ * One terminal tab: a title, its own {@see TerminalBuffer} scrollback, and an
+ * optional {@see PtyProcess} (shells and run configurations attach one; the
+ * debugger's output session has none — its lines arrive over DAP). The id is
+ * the reuse key: `shell:N`, `run:<label>` or `debug`.
+ */
+final class TerminalSession
+{
+    public function __construct(
+        public readonly string $id,
+        private string $title,
+        public readonly TerminalBuffer $buffer,
+        private ?PtyProcess $process = null,
+    ) {}
+
+    public function title(): string
+    {
+        return $this->title;
+    }
+
+    public function setTitle(string $title): void
+    {
+        $this->title = $title;
+    }
+
+    public function process(): ?PtyProcess
+    {
+        return $this->process;
+    }
+
+    /** Attach a fresh process, stopping any previous one (a re-run replaces it). */
+    public function attach(PtyProcess $process): void
+    {
+        $this->process?->stop();
+        $this->process = $process;
+    }
+
+    public function isRunning(): bool
+    {
+        return $this->process?->isRunning() ?? false;
+    }
+
+    public function stop(): void
+    {
+        $this->process?->stop();
+    }
+}

@@ -56,6 +56,7 @@ final class WidgetHooks
         private readonly StatusBarProvider $statusSegments,
         private readonly TerminalPanelWidget $terminalPanel,
         private readonly RunController $run,
+        private readonly \Porta\Terminal\TerminalSessions $sessions,
         private readonly PanelManager $panels,
         private readonly MenuBarWidget $menuBar,
         private readonly ContextMenu $contextMenu,
@@ -80,6 +81,21 @@ final class WidgetHooks
 
         $this->terminalPanel->onInputForward(fn (string $data) => $this->run->forwardInput($data));
         $this->terminalPanel->onClose(fn () => $this->panels->returnFocusFrom($this->terminalPanel));
+        $this->terminalPanel->setSessionTabsProvider(function (): array {
+            $active = $this->sessions->active();
+
+            return array_map(
+                static fn (\Porta\Terminal\TerminalSession $session): array => [
+                    'title' => $session->title(),
+                    'running' => $session->isRunning() || null === $session->process(),
+                    'active' => $session === $active,
+                ],
+                $this->sessions->all(),
+            );
+        });
+        $this->terminalPanel->onSessionSelected(fn (int $index) => $this->run->activateSession($index));
+        $this->terminalPanel->onSessionClosed(fn (int $index) => $this->run->closeSession($index));
+        $this->terminalPanel->onSessionCycled(fn (int $delta) => $this->run->cycleSession($delta));
 
         $this->menuBar->onNavigate(function (): void {
             $this->overlay->refreshMenu();

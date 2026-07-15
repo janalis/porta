@@ -1762,6 +1762,22 @@
         <source>Run to cursor needs a paused debugger</source>
         <target>カーソル位置まで実行には一時停止中のデバッガが必要です</target>
       </trans-unit>
+      <trans-unit id="444">
+        <source>New Terminal Session</source>
+        <target>新しいターミナルセッション</target>
+      </trans-unit>
+      <trans-unit id="445">
+        <source>Next Terminal</source>
+        <target>次のターミナル</target>
+      </trans-unit>
+      <trans-unit id="446">
+        <source>Previous Terminal</source>
+        <target>前のターミナル</target>
+      </trans-unit>
+      <trans-unit id="447">
+        <source>Close Terminal Session</source>
+        <target>ターミナルセッションを閉じる</target>
+      </trans-unit>
     </body>
   </file>
 </xliff>
