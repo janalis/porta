@@ -14,13 +14,10 @@ use Porta\Container\IdeContainerFactory;
 use Porta\Debug\DebugController;
 use Porta\Editor\BreadcrumbTrailProvider;
 use Porta\Editor\BufferManager;
-use Porta\Editor\BufferNavigator;
 use Porta\Editor\BufferService;
 use Porta\Editor\Document;
 use Porta\Editor\EditorFileActions;
 use Porta\Event\GitRemoteCompleted;
-use Porta\Event\LocaleChanged;
-use Porta\Event\ThemeChanged;
 use Porta\Git\GitInfo;
 use Porta\Git\GitPanes;
 use Porta\Git\GitRefresher;
@@ -28,7 +25,6 @@ use Porta\Git\GitViewController;
 use Porta\Help\HelpViewerActions;
 use Porta\History\LocalHistoryController;
 use Porta\History\SessionRestorer;
-use Porta\I18n\Translator;
 use Porta\Image\ImageDecoder;
 use Porta\Image\ImageViewerActions;
 use Porta\Input\EditorLayoutPanes;
@@ -42,14 +38,12 @@ use Porta\Layout\LayoutController;
 use Porta\Layout\PaneLayout;
 use Porta\Layout\PaneResizer;
 use Porta\Layout\WorkspaceLayout;
-use Porta\Lsp\CompletionController;
 use Porta\Lsp\FormatOnSave;
 use Porta\Lsp\LspBootstrapper;
 use Porta\Lsp\LspLog;
 use Porta\Lsp\LspSessionPool;
 use Porta\Lsp\NavigationController;
 use Porta\Lsp\RefactorController;
-use Porta\Lsp\Uri;
 use Porta\Lsp\WorkspaceEditor;
 use Porta\Overlay\MenuOverlayController;
 use Porta\Plugin\PluginHost;
@@ -109,7 +103,6 @@ use Porta\Widget\TerminalPanelWidget;
 use Revolt\EventLoop;
 use Symfony\Component\DependencyInjection\ContainerInterface;
 use Symfony\Component\DependencyInjection\ServiceLocator;
-use Symfony\Component\EventDispatcher\EventDispatcherInterface;
 use Symfony\Component\Tui\Input\Keybindings;
 use Symfony\Component\Tui\Render\Renderer;
 use Symfony\Component\Tui\Style\Direction;
@@ -138,7 +131,6 @@ final class Ide
     private StatusBarWidget $statusBar;
     private Notifier $notifier;
     private FreezeWatchdog $watchdog;
-    private BufferNavigator $bufferNavigator;
     private EditorArea $editorArea;
     private WorkspaceViews $views;
     private ChromeInvalidator $chrome;
@@ -154,8 +146,6 @@ final class Ide
     private DebugController $debug;
     private DebugPanelWidget $debugPanel;
 
-    /** The app event bus; the component interface for runtime addListener() on hand-built widgets. */
-    private readonly EventDispatcherInterface $dispatcher;
     private readonly PluginManager $plugins;
     private PluginLifecycle $pluginLifecycle;
     private readonly string $docsDir;
@@ -178,7 +168,6 @@ final class Ide
     private LspBootstrapper $lspBootstrapper;
     private SessionRestorer $sessionRestorer;
     private WorkspaceEditor $workspaceEditor;
-    private CompletionController $completion;
     private NavigationController $navigation;
     private RefactorController $refactor;
 
@@ -189,7 +178,6 @@ final class Ide
     /** Positions + composites the app-menu and context-menu floating overlays. */
     private MenuOverlayController $overlay;
 
-    private Translator $translator;
     private ContainerWidget $main;
     private SettingsController $settings;
     private SettingsLanguageController $settingsLanguages;
@@ -217,16 +205,6 @@ final class Ide
         // container does (its settings steer the env parameters above), and
         // the plugin/keybindings services consume it by type.
         $this->container->set(IdeConfig::class, $config);
-        $this->translator = $this->service(Translator::class);
-        $this->dispatcher = $this->service(EventDispatcherInterface::class);
-        // Live-setting reactions that must run in Ide (the menu bakes labels
-        // from hand-assembled state; RTL re-mirroring walks the pane lists).
-        // Priority 0 → they precede the -100 chrome sweep, like the old tails.
-        $this->dispatcher->addListener(ThemeChanged::class, fn () => $this->menuRebuilder->rebuild());
-        $this->dispatcher->addListener(LocaleChanged::class, function (): void {
-            $this->menuRebuilder->rebuild();
-            $this->paneLayout->applyDirection();
-        });
         $pluginHost = $this->service(PluginHost::class);
         $this->plugins = $pluginHost->manager();
         // Resolving the Keybindings map triggers the one-time plugin load —
@@ -279,7 +257,6 @@ final class Ide
         $this->navigation = $this->service(NavigationController::class);
         $this->refactor = $this->service(RefactorController::class);
         $this->run = $this->service(RunController::class);
-        $this->bufferNavigator = $this->service(BufferNavigator::class);
         $this->wireEditorCallbacks();
         $this->lspBootstrapper = $this->service(LspBootstrapper::class);
         $this->sessionRestorer = $this->service(SessionRestorer::class);
@@ -318,14 +295,7 @@ final class Ide
         $this->tui->addListener($this->service(InputDispatcher::class)->dispatch(...));
 
         // Everything plugin handlers need exists now — hand them the live seams.
-        $this->plugins->wireRuntime(new PluginRuntime(
-            flash: fn (string $message, float $seconds) => $this->notifier->flash($message, $seconds),
-            translator: $this->translator,
-            editor: $this->editor,
-            openFile: fn (string $path) => $this->openFile($path, focusEditor: true),
-            requestRender: fn () => $this->tui->requestRender(),
-            setDiagnostics: fn (string $path, array $byLine) => $this->bufferService->applyDiagnostics(Uri::fromPath($path), $byLine),
-        ));
+        $this->plugins->wireRuntime($this->service(PluginRuntime::class));
 
         foreach ([...$config->warnings, ...$this->plugins->warnings()] as $warning) {
             $this->notifier->flash($warning, 5.0);
@@ -396,6 +366,22 @@ final class Ide
     public function getWorkspaceEditor(): WorkspaceEditor
     {
         return $this->workspaceEditor;
+    }
+
+    /**
+     * @internal exposed for tests
+     */
+    public function getNavigation(): NavigationController
+    {
+        return $this->navigation;
+    }
+
+    /**
+     * @internal exposed for tests
+     */
+    public function getRefactor(): RefactorController
+    {
+        return $this->refactor;
     }
 
     public function run(): void
@@ -476,13 +462,7 @@ final class Ide
      */
     private function wireEditorCallbacks(): void
     {
-        $this->editor->setCallbacks(new EditorCallbacks(
-            file: $this->service(EditorFileActions::class),
-            navigation: $this->navigation,
-            completion: $this->completion,
-            refactor: $this->refactor,
-            buffer: $this->bufferNavigator,
-        ));
+        $this->editor->setCallbacks($this->service(EditorCallbacks::class));
     }
 
     /** The image viewer's IDE hooks: tab management and the status-bar refresh. */
@@ -550,7 +530,6 @@ final class Ide
         $this->watchdog = $this->service(FreezeWatchdog::class);
         $this->menuBar = $this->service(MenuBarWidget::class);
         $this->contextMenu = $this->service(ContextMenu::class);
-        $this->completion = $this->service(CompletionController::class);
         $this->tabBar = $this->service(TabBarWidget::class);
         $this->tabBar->setProvider($this->service(TabListProvider::class)->tabs(...));
 

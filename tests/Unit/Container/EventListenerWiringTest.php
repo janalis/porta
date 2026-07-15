@@ -10,11 +10,15 @@ use Porta\Container\IdeContainerFactory;
 use Porta\Event\BufferOpened;
 use Porta\Event\BufferSaved;
 use Porta\Event\BufferSwitched;
+use Porta\Event\LocaleChanged;
+use Porta\Event\ThemeChanged;
 use Porta\I18n\Translator;
 use Porta\Lsp\LspSessionPool;
 use Porta\Plugin\PluginEvents;
 use Porta\Tests\Support\FixedActiveFile;
 use Porta\Tests\Support\TempProject;
+use Porta\Ui\ChromeRefreshListener;
+use Porta\Ui\MenuLayoutRefreshListener;
 use Symfony\Component\DependencyInjection\ServiceLocator;
 use Symfony\Component\EventDispatcher\EventDispatcher;
 use Symfony\Component\EventDispatcher\EventDispatcherInterface;
@@ -56,6 +60,11 @@ final class EventListenerWiringTest extends TestCase
         $tui = new Tui(terminal: new VirtualTerminal(columns: 80, rows: 10));
         $container->set(Tui::class, $tui);
         $container->set(Renderer::class, new Renderer(new StyleSheet()));
+        $container->set(IdeConfig::class, IdeConfig::load('/tmp/porta-event-wiring'));
+        $container->set(
+            \Porta\Ui\BidiTui::class,
+            new \Porta\Ui\BidiTui(terminal: new VirtualTerminal(columns: 80, rows: 10), keybindings: new \Symfony\Component\Tui\Input\Keybindings([]), renderer: new Renderer(new StyleSheet())),
+        );
         $locator = $container->get('porta.ide');
         \assert($locator instanceof ServiceLocator);
         $dispatcher = $locator->get(EventDispatcherInterface::class);
@@ -108,6 +117,20 @@ final class EventListenerWiringTest extends TestCase
             $last = end($listeners);
             \assert(\is_array($last));
             $this->assertInstanceOf(PluginEvents::class, $last[0], $event.': third-party hooks run after every core listener');
+        }
+    }
+
+    public function testThemeAndLocaleRefreshersAreCompiledListenersAheadOfTheChromeSweep(): void
+    {
+        $dispatcher = $this->dispatcher();
+
+        foreach ([ThemeChanged::class, LocaleChanged::class] as $event) {
+            $listeners = $dispatcher->getListeners($event);
+            $first = reset($listeners);
+            $last = end($listeners);
+            \assert(\is_array($first) && \is_array($last));
+            $this->assertInstanceOf(MenuLayoutRefreshListener::class, $first[0], $event.': the menu/layout refresh runs first');
+            $this->assertInstanceOf(ChromeRefreshListener::class, $last[0], $event.': the -100 chrome sweep runs last');
         }
     }
 }

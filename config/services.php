@@ -25,6 +25,7 @@ use Porta\Editor\BreadcrumbTrailProvider;
 use Porta\Editor\BufferManager;
 use Porta\Editor\BufferNavigator;
 use Porta\Editor\BufferService;
+use Porta\Editor\DiagnosticsSink;
 use Porta\Editor\EditorFileActions;
 use Porta\Editor\FileOpener;
 use Porta\Git\GitCommands;
@@ -75,6 +76,7 @@ use Porta\Plugin\PluginLifecycle;
 use Porta\Plugin\PluginLifecycleOps;
 use Porta\Plugin\PluginLoader;
 use Porta\Plugin\PluginManager;
+use Porta\Plugin\PluginRuntime;
 use Porta\Plugin\PluginSettings;
 use Porta\Run\RunController;
 use Porta\Search\Everywhere\SearchEverywhereController;
@@ -111,9 +113,15 @@ use Porta\Ui\TabListProvider;
 use Porta\Ui\WorkbenchActions;
 use Porta\Ui\WorkspaceViews;
 use Porta\Widget\BreadcrumbsWidget;
+use Porta\Widget\BufferNavigationHandler;
 use Porta\Widget\CodeEditorWidget;
 use Porta\Widget\ContextMenu;
 use Porta\Widget\DebugPanelWidget;
+use Porta\Widget\EditorCallbacks;
+use Porta\Widget\EditorCompletionHandler;
+use Porta\Widget\EditorFileActionHandler;
+use Porta\Widget\EditorNavigationHandler;
+use Porta\Widget\EditorRefactorHandler;
 use Porta\Widget\FileTreeWidget;
 use Porta\Widget\FindBarWidget;
 use Porta\Widget\Git\ChangesListWidget;
@@ -362,6 +370,8 @@ return static function (ContainerConfigurator $container, ContainerBuilder $buil
         SearchUiWiring::class,
         ContextMenuOpener::class,
         CommandRegistryPopulator::class,
+        EditorCallbacks::class,
+        PluginRuntime::class,
     ] as $locatorId) {
         $locatorEntries[$locatorId] = service($locatorId);
     }
@@ -405,8 +415,16 @@ return static function (ContainerConfigurator $container, ContainerBuilder $buil
     // BufferService is both interface seams' implementation.
     $services->alias(FileOpener::class, BufferService::class);
     $services->alias(BufferReopener::class, BufferService::class);
+    $services->alias(DiagnosticsSink::class, BufferService::class);
     $services->alias(EditorAreaPanes::class, PaneLayout::class);
     $services->alias(PluginLifecycleOps::class, PluginLifecycle::class);
+
+    // The editor's outbound handler groups — each interface has one impl.
+    $services->alias(EditorFileActionHandler::class, EditorFileActions::class);
+    $services->alias(EditorNavigationHandler::class, NavigationController::class);
+    $services->alias(EditorCompletionHandler::class, CompletionController::class);
+    $services->alias(EditorRefactorHandler::class, RefactorController::class);
+    $services->alias(BufferNavigationHandler::class, BufferNavigator::class);
 
     // Per-project config arrays travel JSON-encoded through the env channel
     // (seeded by IdeContainerFactory), so these defs stay dump-safe. Args, not

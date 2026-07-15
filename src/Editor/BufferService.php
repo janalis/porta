@@ -42,7 +42,7 @@ use Symfony\Component\Tui\Widget\ContainerWidget;
  * plugin hooks) ride the dispatched BufferOpened/BufferSwitched/BufferSaved
  * events; only intra-flow calls (didOpen ordering, external reloads) stay inline.
  */
-final class BufferService implements FileOpener, BufferReopener
+final class BufferService implements BufferReopener, DiagnosticsSink, FileOpener
 {
     public function __construct(
         private readonly BufferManager $buffers,

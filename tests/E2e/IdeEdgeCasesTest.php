@@ -4541,7 +4541,7 @@ final class IdeEdgeCasesTest extends TestCase
         $ide = new Ide($project->dir, $project->path('src/Demo.php'), $terminal);
         $tui = $ide->getTui();
 
-        $navigation = new \ReflectionProperty($ide, 'navigation')->getValue($ide);
+        $navigation = $ide->getNavigation();
         $stack = new \ReflectionProperty($navigation, 'jumpStack');
         $stack->setValue($navigation, array_fill(0, 50, ['path' => $project->path('src/Demo.php'), 'line' => 0, 'col' => 0]));
 

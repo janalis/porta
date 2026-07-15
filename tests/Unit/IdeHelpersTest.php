@@ -46,7 +46,7 @@ final class IdeHelpersTest extends TestCase
 
     private function navigation(): NavigationController
     {
-        return new \ReflectionProperty($this->ide, 'navigation')->getValue($this->ide);
+        return $this->ide->getNavigation();
     }
 
     private function callNav(string $method, mixed ...$args): mixed
@@ -58,7 +58,7 @@ final class IdeHelpersTest extends TestCase
 
     private function refactor(): RefactorController
     {
-        return new \ReflectionProperty($this->ide, 'refactor')->getValue($this->ide);
+        return $this->ide->getRefactor();
     }
 
     private function callRefactor(string $method, mixed ...$args): mixed

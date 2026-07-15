@@ -4,8 +4,12 @@ declare(strict_types=1);
 
 namespace Porta\Plugin;
 
+use Porta\Editor\DiagnosticsSink;
+use Porta\Editor\FileOpener;
 use Porta\I18n\Translator;
+use Porta\Ui\Notifier;
 use Porta\Widget\CodeEditorWidget;
+use Symfony\Component\Tui\Tui;
 
 /**
  * The live IDE seams a plugin's handlers reach through {@see PluginApi}:
@@ -15,18 +19,12 @@ use Porta\Widget\CodeEditorWidget;
  */
 final readonly class PluginRuntime
 {
-    /**
-     * @param \Closure(string, float): void $flash
-     * @param \Closure(string): void        $openFile       absolute path, focuses the editor
-     * @param \Closure(): void              $requestRender
-     * @param \Closure(string, array<int, list<array{severity: int, message: string, col: int, endCol: int}>>): void $setDiagnostics per-line diagnostics for an open file's buffer
-     */
     public function __construct(
-        public \Closure $flash,
+        public Notifier $notifier,
         public Translator $translator,
         public CodeEditorWidget $editor,
-        public \Closure $openFile,
-        public \Closure $requestRender,
-        public \Closure $setDiagnostics,
+        public FileOpener $files,
+        public Tui $tui,
+        public DiagnosticsSink $diagnostics,
     ) {}
 }

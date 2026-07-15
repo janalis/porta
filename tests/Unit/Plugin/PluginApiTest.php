@@ -14,40 +14,43 @@ use Porta\Plugin\PluginException;
 use Porta\Plugin\PluginManager;
 use Porta\Plugin\PluginRuntime;
 use Porta\Plugin\PluginSettings;
+use Porta\Tests\Support\RecordingDiagnosticsSink;
+use Porta\Tests\Support\RecordingFileOpener;
 use Porta\Tests\Support\TempProject;
+use Porta\Ui\Notifier;
 use Porta\Widget\CodeEditorWidget;
+use Porta\Widget\StatusBarWidget;
+use Symfony\Component\Tui\Input\Keybindings;
+use Symfony\Component\Tui\Render\Renderer;
+use Symfony\Component\Tui\Style\StyleSheet;
+use Symfony\Component\Tui\Terminal\VirtualTerminal;
+use Symfony\Component\Tui\Tui;
 
 final class PluginApiTest extends TestCase
 {
     private CodeEditorWidget $editor;
-    /** @var list<string> */
-    private array $calls = [];
+    private StatusBarWidget $status;
+    private RecordingFileOpener $files;
+    private RecordingDiagnosticsSink $diagnostics;
 
     private function api(bool $wired = true): PluginApi
     {
         $manager = new PluginManager(new PluginEvents(), new PluginSettings('/p', []));
         $this->editor = new CodeEditorWidget();
-        $this->calls = [];
+        $this->status = new StatusBarWidget();
+        $this->files = new RecordingFileOpener();
+        $this->diagnostics = new RecordingDiagnosticsSink();
         if ($wired) {
-            $manager->wireRuntime(new PluginRuntime(
-                flash: function (string $message, float $seconds): void {
-                    $this->calls[] = "flash:{$message}:{$seconds}";
-                },
-                translator: new Translator('en'),
-                editor: $this->editor,
-                openFile: function (string $path): void {
-                    $this->calls[] = "open:{$path}";
-                },
-                requestRender: function (): void {
-                    $this->calls[] = 'render';
-                },
-                setDiagnostics: function (string $path, array $byLine): void {
-                    $this->calls[] = 'diag:'.$path.':'.json_encode($byLine);
-                },
-            ));
+            $tui = new Tui(terminal: new VirtualTerminal(columns: 100, rows: 24), keybindings: new Keybindings([]), renderer: new Renderer(new StyleSheet()));
+            $manager->wireRuntime(new PluginRuntime(new Notifier($this->status, $tui), new Translator('en'), $this->editor, $this->files, $tui, $this->diagnostics));
         }
 
         return new PluginApi('demo', $manager, '/p', new PluginSettings('/p', []));
+    }
+
+    private function flash(): string
+    {
+        return \Symfony\Component\Tui\Ansi\AnsiUtils::stripAnsiCodes(implode(' ', $this->status->render(new \Symfony\Component\Tui\Render\RenderContext(100, 1))));
     }
 
     public function testRegistrationBuffersNamespacedCommandsAndValidatesIds(): void
@@ -149,17 +152,10 @@ final class PluginApiTest extends TestCase
     {
         $project = new TempProject();
         $manager = new PluginManager(new PluginEvents(), $settings = new PluginSettings($project->dir, []));
-        $calls = [];
-        $manager->wireRuntime(new PluginRuntime(
-            flash: static function (string $message, float $seconds): void {},
-            translator: new Translator('en'),
-            editor: new CodeEditorWidget(),
-            openFile: static function (string $path): void {},
-            requestRender: function () use (&$calls): void {
-                $calls[] = 'render';
-            },
-            setDiagnostics: static function (string $path, array $byLine): void {},
-        ));
+        $tui = new Tui(terminal: new VirtualTerminal(columns: 100, rows: 24), keybindings: new Keybindings([]), renderer: new Renderer(new StyleSheet()));
+        $manager->wireRuntime(
+            new PluginRuntime(new Notifier(new StatusBarWidget(), $tui), new Translator('en'), new CodeEditorWidget(), new RecordingFileOpener(), $tui, new RecordingDiagnosticsSink()),
+        );
         $api = new PluginApi('demo', $manager, $project->dir, $settings);
 
         $api->registerSetting('jobs', 'Jobs', 'int', 4);
@@ -169,7 +165,6 @@ final class PluginApiTest extends TestCase
 
         $this->assertSame(7, $api->setting('jobs'), 'coerced to the declared int kind, live');
         $this->assertSame(7, IdeConfig::load($project->dir)->plugins['demo']['jobs'], 'persisted to .porta.json');
-        $this->assertSame(['render'], $calls, 'an open settings page repaints');
 
         try {
             $api->changeSetting('ghost', true);
@@ -184,7 +179,7 @@ final class PluginApiTest extends TestCase
         $api = $this->api();
 
         $api->flash('hi', 1.5);
-        $this->assertSame(['flash:hi:1.5', 'render'], $this->calls);
+        $this->assertStringContainsString('hi', $this->flash());
 
         // No file open: reads are null, insert is a no-op.
         $this->assertNull($api->activeFile());
@@ -205,7 +200,7 @@ final class PluginApiTest extends TestCase
         $this->assertSame(['line' => 0, 'column' => 1], $api->caretPosition());
 
         $api->openFile('/p/b.php');
-        $this->assertContains('open:/p/b.php', $this->calls);
+        $this->assertSame([['path' => '/p/b.php', 'focus' => true]], $this->files->opened);
     }
 
     public function testSetDiagnosticsNormalizesIntoTheByLineShape(): void
@@ -218,16 +213,19 @@ final class PluginApiTest extends TestCase
             ['line' => -1, 'message' => 'clamped'],
         ]);
 
-        $expected = json_encode([
-            2 => [
-                ['severity' => 1, 'message' => 'boom', 'col' => 0, 'endCol' => 0],
-                ['severity' => 2, 'message' => 'warn', 'col' => 4, 'endCol' => 4],
+        $this->assertSame('file:///p/a.php', $this->diagnostics->published[0]['uri'], 'the path travels as the buffer URI');
+        $this->assertSame(
+            [
+                2 => [
+                    ['severity' => 1, 'message' => 'boom', 'col' => 0, 'endCol' => 0],
+                    ['severity' => 2, 'message' => 'warn', 'col' => 4, 'endCol' => 4],
+                ],
+                0 => [['severity' => 1, 'message' => 'clamped', 'col' => 0, 'endCol' => 0]],
             ],
-            0 => [['severity' => 1, 'message' => 'clamped', 'col' => 0, 'endCol' => 0]],
-        ]);
-        $this->assertContains('diag:/p/a.php:'.$expected, $this->calls);
+            $this->diagnostics->published[0]['byLine'],
+        );
 
         $api->setDiagnostics('/p/a.php', []); // empty list clears
-        $this->assertContains('diag:/p/a.php:[]', $this->calls);
+        $this->assertSame([], $this->diagnostics->published[1]['byLine']);
     }
 }

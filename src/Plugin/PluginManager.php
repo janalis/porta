@@ -173,8 +173,8 @@ final class PluginManager
 
             return;
         }
-        ($runtime->flash)($runtime->translator->trans('Plugin "%name%" failed: %message%', ['%name%' => $plugin, '%message%' => $error->getMessage()]), 5.0);
-        ($runtime->requestRender)();
+        $runtime->notifier->flash($runtime->translator->trans('Plugin "%name%" failed: %message%', ['%name%' => $plugin, '%message%' => $error->getMessage()]), 5.0);
+        $runtime->tui->requestRender();
     }
 
     /**

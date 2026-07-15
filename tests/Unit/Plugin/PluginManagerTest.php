@@ -17,7 +17,16 @@ use Porta\Plugin\PluginEvents;
 use Porta\Plugin\PluginManager;
 use Porta\Plugin\PluginRuntime;
 use Porta\Plugin\PluginSettings;
+use Porta\Tests\Support\RecordingDiagnosticsSink;
+use Porta\Tests\Support\RecordingFileOpener;
+use Porta\Ui\Notifier;
 use Porta\Widget\CodeEditorWidget;
+use Porta\Widget\StatusBarWidget;
+use Symfony\Component\Tui\Input\Keybindings;
+use Symfony\Component\Tui\Render\Renderer;
+use Symfony\Component\Tui\Style\StyleSheet;
+use Symfony\Component\Tui\Terminal\VirtualTerminal;
+use Symfony\Component\Tui\Tui;
 
 final class PluginManagerTest extends TestCase
 {
@@ -26,23 +35,14 @@ final class PluginManagerTest extends TestCase
         return new BufferManager()->open($path, '');
     }
 
-    /** @var list<string> */
-    private array $flashes = [];
+    private StatusBarWidget $status;
 
     private function wiredManager(PluginEvents $events): PluginManager
     {
         $manager = new PluginManager($events, new PluginSettings('/p', []));
-        $this->flashes = [];
-        $manager->wireRuntime(new PluginRuntime(
-            flash: function (string $message, float $seconds): void {
-                $this->flashes[] = $message;
-            },
-            translator: new Translator('en'),
-            editor: new CodeEditorWidget(),
-            openFile: static function (): void {},
-            requestRender: static function (): void {},
-            setDiagnostics: static function (): void {},
-        ));
+        $tui = new Tui(terminal: new VirtualTerminal(columns: 120, rows: 24), keybindings: new Keybindings([]), renderer: new Renderer(new StyleSheet()));
+        $this->status = new StatusBarWidget();
+        $manager->wireRuntime(new PluginRuntime(new Notifier($this->status, $tui), new Translator('en'), new CodeEditorWidget(), new RecordingFileOpener(), $tui, new RecordingDiagnosticsSink()));
 
         return $manager;
     }
@@ -152,7 +152,7 @@ final class PluginManagerTest extends TestCase
         $this->assertNotNull($when);
         $this->assertFalse($when(), 'a throw reads as disabled');
         $this->assertFalse($when(), 'still disabled on re-render');
-        $this->assertSame(['Plugin "demo" failed: broken when'], $this->flashes, 'reported exactly once');
+        $this->assertStringContainsString('Plugin "demo" failed: broken when', $this->renderedStatus(), 'reported as a flash');
     }
 
     public function testWrappedCommandHandlersCatchAndFlash(): void
@@ -174,7 +174,7 @@ final class PluginManagerTest extends TestCase
         $this->assertTrue($ran);
 
         $registry->run('demo:boom');
-        $this->assertSame(['Plugin "demo" failed: kaboom'], $this->flashes, 'the throw became a flash, not a crash');
+        $this->assertStringContainsString('Plugin "demo" failed: kaboom', $this->renderedStatus(), 'the throw became a flash, not a crash');
     }
 
     public function testWrappedHooksCatchAndUnwiredFailuresBecomeWarnings(): void
@@ -198,11 +198,16 @@ final class PluginManagerTest extends TestCase
         $events->onBufferOpened(new BufferOpened($this->buffer('/a')));
         $events->onBufferSwitched(new BufferSwitched($this->buffer('/a')));
         $this->assertSame(['/a', 'switch:/a'], $seen);
-        $this->assertSame(['Plugin "demo" failed: bad hook'], $this->flashes);
+        $this->assertStringContainsString('Plugin "demo" failed: bad hook', $this->renderedStatus());
 
         // Before the runtime exists, failures collect as boot warnings instead.
         $cold = new PluginManager(new PluginEvents(), new PluginSettings('/p', []));
         $cold->reportFailure('demo', new \RuntimeException('early'));
         $this->assertSame(['Plugin "demo" failed: early'], $cold->warnings());
+    }
+
+    private function renderedStatus(): string
+    {
+        return \Symfony\Component\Tui\Ansi\AnsiUtils::stripAnsiCodes(implode(' ', $this->status->render(new \Symfony\Component\Tui\Render\RenderContext(120, 1))));
     }
 }

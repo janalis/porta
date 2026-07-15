@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace Porta\Plugin;
 
+use Porta\Lsp\Uri;
+
 /**
  * A plugin's handle into Porta. Registration methods buffer during
  * `activate()` and land atomically when it returns (a throwing plugin
@@ -166,8 +168,8 @@ final class PluginApi
     public function flash(string $message, float $seconds = 2.5): void
     {
         $runtime = $this->manager->runtime();
-        ($runtime->flash)($message, $seconds);
-        ($runtime->requestRender)();
+        $runtime->notifier->flash($message, $seconds);
+        $runtime->tui->requestRender();
     }
 
     /**
@@ -184,7 +186,7 @@ final class PluginApi
         }
         $runtime = $this->manager->runtime(); // activate()-phase gate
         $this->settings->change($this->pluginName, $key, $value);
-        ($runtime->requestRender)();
+        $runtime->tui->requestRender();
     }
 
     /** The active file's absolute path, or null (no file / an image tab). */
@@ -227,13 +229,13 @@ final class PluginApi
             return;
         }
         $runtime->editor->insertText($text);
-        ($runtime->requestRender)();
+        $runtime->tui->requestRender();
     }
 
     /** Open a file (absolute path) and focus the editor. */
     public function openFile(string $path): void
     {
-        ($this->manager->runtime()->openFile)($path);
+        $this->manager->runtime()->files->openFile($path, focusEditor: true);
     }
 
     /** Move the caret (0-based line, UTF-16 column) in the active file. */
@@ -241,7 +243,7 @@ final class PluginApi
     {
         $runtime = $this->manager->runtime();
         $runtime->editor->jumpTo($line, $column);
-        ($runtime->requestRender)();
+        $runtime->tui->requestRender();
     }
 
     /**
@@ -265,8 +267,8 @@ final class PluginApi
                 'endCol' => $column,
             ];
         }
-        ($runtime->setDiagnostics)($path, $byLine);
-        ($runtime->requestRender)();
+        $runtime->diagnostics->applyDiagnostics(Uri::fromPath($path), $byLine);
+        $runtime->tui->requestRender();
     }
 
     // --- Loader/manager plumbing ---------------------------------------------

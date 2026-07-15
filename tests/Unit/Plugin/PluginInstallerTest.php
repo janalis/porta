@@ -187,10 +187,13 @@ final class PluginInstallerTest extends TestCase
         $installer = new PluginInstaller($this->project->dir, $this->global->dir, new Translator('en'), null, $embedded->dir);
         $this->install($installer, $this->sourceDir('mine'));
 
-        $this->assertSame([
-            ['name' => 'mine', 'scope' => 'project', 'dir' => $this->project->dir.'/.porta/plugins/mine'],
-            ['name' => 'bundled', 'scope' => 'embedded', 'dir' => $embedded->dir.'/bundled'],
-        ], $installer->installed());
+        $this->assertSame(
+            [
+                ['name' => 'mine', 'scope' => 'project', 'dir' => $this->project->dir.'/.porta/plugins/mine'],
+                ['name' => 'bundled', 'scope' => 'embedded', 'dir' => $embedded->dir.'/bundled'],
+            ],
+            $installer->installed(),
+        );
 
         $this->assertSame('Built-in plugins cannot be removed', $installer->remove('bundled', 'embedded'));
         $this->assertDirectoryExists($embedded->dir.'/bundled');
