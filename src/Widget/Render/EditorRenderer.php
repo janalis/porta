@@ -388,16 +388,7 @@ final class EditorRenderer
             $popup[] = $bg.' '.$label.' '.$palette->of(Role::CompletionHint).$item['hint'].' '."\x1b[0m";
         }
 
-        $startRow = max(0, intdiv($rows - \count($popup), num2: 3));
-        foreach ($popup as $i => $popupLine) {
-            $row = $startRow + $i;
-            if ($row >= \count($lines)) {
-                break;
-            }
-            $lines[$row] = OverlayCompositor::into($lines[$row], $col, $width, $columns, $popupLine);
-        }
-
-        return ['col' => $col, 'width' => $width, 'startRow' => $startRow, 'windowStart' => $windowStart, 'count' => \count($visible)];
+        return self::placeCenteredPopup($lines, $popup, $col, $width, $columns, $rows, $windowStart, \count($visible));
     }
 
     /**
@@ -456,16 +447,7 @@ final class EditorRenderer
             $popup[] = $bg.' '.$label.' '.$palette->of(Role::CompletionHint).$detail.' '."\x1b[0m";
         }
 
-        $startRow = max(0, intdiv($rows - \count($popup), num2: 3));
-        foreach ($popup as $i => $popupLine) {
-            $row = $startRow + $i;
-            if ($row >= \count($lines)) {
-                break;
-            }
-            $lines[$row] = OverlayCompositor::into($lines[$row], $col, $width, $columns, $popupLine);
-        }
-
-        return ['col' => $col, 'width' => $width, 'startRow' => $startRow, 'windowStart' => $windowStart, 'count' => \count($visible)];
+        return self::placeCenteredPopup($lines, $popup, $col, $width, $columns, $rows, $windowStart, \count($visible));
     }
 
     /**
@@ -516,5 +498,32 @@ final class EditorRenderer
         }
 
         return ['col' => $col, 'width' => $width, 'startRow' => $startRow, 'windowOffset' => $windowOffset, 'count' => $popupHeight];
+    }
+
+    /**
+     * Centre a fully-built popup a third of the way down the pane and blit it
+     * into $lines at columns [$col, $col + $width); returns the box geometry the
+     * caller hands to its mouse hit-tester. Shared by the centered overlays
+     * ({@see listOverlay()}, {@see searchOverlay()}); the completion popup
+     * anchors to the caret and places itself instead. $count is the number of
+     * selectable item rows (the popup array also holds the header rows).
+     *
+     * @param string[]     $lines
+     * @param list<string> $popup
+     *
+     * @return array{col: int, width: int, startRow: int, windowStart: int, count: int}
+     */
+    private static function placeCenteredPopup(array &$lines, array $popup, int $col, int $width, int $columns, int $rows, int $windowStart, int $count): array
+    {
+        $startRow = max(0, intdiv($rows - \count($popup), num2: 3));
+        foreach ($popup as $i => $popupLine) {
+            $row = $startRow + $i;
+            if ($row >= \count($lines)) {
+                break;
+            }
+            $lines[$row] = OverlayCompositor::into($lines[$row], $col, $width, $columns, $popupLine);
+        }
+
+        return ['col' => $col, 'width' => $width, 'startRow' => $startRow, 'windowStart' => $windowStart, 'count' => $count];
     }
 }
