@@ -6,10 +6,10 @@ namespace Porta\Widget\Git;
 
 use Porta\Container\AsWidget;
 use Porta\I18n\Translator;
-use Porta\Support\IntMath;
 use Porta\Ui\ColorPalette;
 use Porta\Ui\Palette;
 use Porta\Ui\Role;
+use Porta\Widget\PanelWidth;
 use Porta\Widget\Render\MenuOverlayHost;
 use Porta\Widget\Render\MenuOverlayHostTrait;
 use Symfony\Component\Tui\Ansi\AnsiUtils;
@@ -26,6 +26,7 @@ use Symfony\Component\Tui\Widget\AbstractWidget;
 final class GitTabsWidget extends AbstractWidget implements MenuOverlayHost
 {
     use MenuOverlayHostTrait;
+    use PanelWidth;
 
     private const array TABS = ['changes' => ' Changes ', 'history' => ' History '];
 
@@ -40,25 +41,21 @@ final class GitTabsWidget extends AbstractWidget implements MenuOverlayHost
 
     public function __construct(
         private readonly Translator $translator,
-        private int $width = 44,
+        int $width = 44,
         ?Palette $palette = null,
     ) {
+        $this->width = $width;
         $this->palette = $palette ?? ColorPalette::dark();
     }
 
-    /** Resize the git sidebar column to $width columns (clamped sane). */
-    public function setWidth(int $width): void
+    protected function minWidth(): int
     {
-        $width = IntMath::clamp($width, 24, 200);
-        if ($width !== $this->width) {
-            $this->width = $width;
-            $this->invalidate();
-        }
+        return 24;
     }
 
-    public function width(): int
+    protected function maxWidth(): int
     {
-        return $this->width;
+        return 200;
     }
 
     /** @param callable(string): void $callback */

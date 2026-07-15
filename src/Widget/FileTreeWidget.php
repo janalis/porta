@@ -6,7 +6,6 @@ namespace Porta\Widget;
 
 use Porta\Container\AsWidget;
 use Porta\Layout\ResizableSidebar;
-use Porta\Support\IntMath;
 use Porta\Ui\ColorPalette;
 use Porta\Ui\ListNavigation;
 use Porta\Ui\ListSelection;
@@ -36,6 +35,7 @@ final class FileTreeWidget extends AbstractWidget implements FocusableInterface,
     use MenuOverlayHostTrait;
     use InputHook;
     use KeybindingsTrait;
+    use PanelWidth;
 
     // '.porta' is the IDE's own session/history metadata dir; '.porta.json' (the
     // project config file) is not matched by the exact-name check and still shows.
@@ -75,9 +75,10 @@ final class FileTreeWidget extends AbstractWidget implements FocusableInterface,
     public function __construct(
         private readonly string $rootDir,
         ?ClockInterface $clock = null,
-        private int $width = 30,
+        int $width = 30,
         ?Palette $palette = null,
     ) {
+        $this->width = $width;
         $this->clock = $clock ?? new NativeClock();
         $this->palette = $palette ?? ColorPalette::dark();
         $this->list = new ListSelection();
@@ -101,14 +102,14 @@ final class FileTreeWidget extends AbstractWidget implements FocusableInterface,
         return $this->list->selected() - $this->list->scroll() + 1;
     }
 
-    /** Resize the sidebar to $width columns (clamped to a sensible range). */
-    public function setWidth(int $width): void
+    protected function minWidth(): int
     {
-        $width = IntMath::clamp($width, 12, 200);
-        if ($width !== $this->width) {
-            $this->width = $width;
-            $this->invalidate();
-        }
+        return 12;
+    }
+
+    protected function maxWidth(): int
+    {
+        return 200;
     }
 
     public function onOpenFile(callable $callback): self
@@ -137,11 +138,6 @@ final class FileTreeWidget extends AbstractWidget implements FocusableInterface,
         $this->invalidate();
 
         return $this->visible[$index];
-    }
-
-    public function width(): int
-    {
-        return $this->width;
     }
 
     public function refresh(): void

@@ -8,13 +8,13 @@ use Porta\Config\LanguageCatalog;
 use Porta\Container\AsWidget;
 use Porta\I18n\Translator;
 use Porta\Layout\ResizableSidebar;
-use Porta\Support\IntMath;
 use Porta\Ui\ColorPalette;
 use Porta\Ui\ListSelection;
 use Porta\Ui\Palette;
 use Porta\Ui\Role;
 use Porta\Widget\FillsPaneTrait;
 use Porta\Widget\InputHook;
+use Porta\Widget\PanelWidth;
 use Porta\Widget\PaneNavigationCallbacks;
 use Porta\Widget\Render\MenuOverlayHost;
 use Porta\Widget\Render\MenuOverlayHostTrait;
@@ -45,6 +45,7 @@ final class SettingsNavWidget extends AbstractWidget implements FocusableInterfa
     use MenuOverlayHostTrait;
     use KeybindingsTrait;
     use PaneNavigationCallbacks;
+    use PanelWidth;
 
     private const array SECTIONS = ['general' => 'General', 'keybindings' => 'Keybindings', 'plugins' => 'Plugins'];
 
@@ -60,9 +61,10 @@ final class SettingsNavWidget extends AbstractWidget implements FocusableInterfa
 
     public function __construct(
         private readonly Translator $translator,
-        private int $width = 22,
+        int $width = 22,
         ?Palette $palette = null,
     ) {
+        $this->width = $width;
         $this->palette = $palette ?? ColorPalette::dark();
         $this->entries = $this->buildEntries([]);
         $this->list = new ListSelection();
@@ -111,19 +113,14 @@ final class SettingsNavWidget extends AbstractWidget implements FocusableInterfa
         $this->invalidate();
     }
 
-    /** Resize the sidebar to $width columns (clamped sane). */
-    public function setWidth(int $width): void
+    protected function minWidth(): int
     {
-        $width = IntMath::clamp($width, 14, 60);
-        if ($width !== $this->width) {
-            $this->width = $width;
-            $this->invalidate();
-        }
+        return 14;
     }
 
-    public function width(): int
+    protected function maxWidth(): int
     {
-        return $this->width;
+        return 60;
     }
 
     public function onSelect(callable $callback): self

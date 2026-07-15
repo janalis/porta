@@ -7,7 +7,6 @@ namespace Porta\Widget\Git;
 use Porta\Container\AsWidget;
 use Porta\Git\LogEntry;
 use Porta\I18n\Translator;
-use Porta\Support\IntMath;
 use Porta\Ui\ColorPalette;
 use Porta\Ui\ListNavigation;
 use Porta\Ui\ListSelection;
@@ -15,6 +14,7 @@ use Porta\Ui\Palette;
 use Porta\Ui\Role;
 use Porta\Widget\FillsPaneTrait;
 use Porta\Widget\InputHook;
+use Porta\Widget\PanelWidth;
 use Porta\Widget\PaneNavigationCallbacks;
 use Porta\Widget\Render\MenuOverlayHost;
 use Porta\Widget\Render\MenuOverlayHostTrait;
@@ -42,6 +42,7 @@ final class HistoryListWidget extends AbstractWidget implements FocusableInterfa
     use MenuOverlayHostTrait;
     use KeybindingsTrait;
     use PaneNavigationCallbacks;
+    use PanelWidth;
 
     /** @var (callable(string): void)|null a remote-operation key: 'fetch' | 'pull' | 'push' */
     private $onRemote = null;
@@ -77,27 +78,23 @@ final class HistoryListWidget extends AbstractWidget implements FocusableInterfa
 
     public function __construct(
         private readonly Translator $translator,
-        private int $width = 44,
+        int $width = 44,
         ?Palette $palette = null,
     ) {
+        $this->width = $width;
         $this->palette = $palette ?? ColorPalette::dark();
         $this->commitList = new ListSelection();
         $this->fileList = new ListSelection();
     }
 
-    /** Resize the git sidebar column to $width columns (clamped sane). */
-    public function setWidth(int $width): void
+    protected function minWidth(): int
     {
-        $width = IntMath::clamp($width, 24, 200);
-        if ($width !== $this->width) {
-            $this->width = $width;
-            $this->invalidate();
-        }
+        return 24;
     }
 
-    public function width(): int
+    protected function maxWidth(): int
     {
-        return $this->width;
+        return 200;
     }
 
     public function onSelectCommit(callable $callback): self

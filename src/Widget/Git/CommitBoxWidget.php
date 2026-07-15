@@ -7,7 +7,6 @@ namespace Porta\Widget\Git;
 use Porta\Container\AsWidget;
 use Porta\Git\CommitMode;
 use Porta\I18n\Translator;
-use Porta\Support\IntMath;
 use Porta\Ui\CaretVisibility;
 use Porta\Ui\ColorPalette;
 use Porta\Ui\CursorStyle;
@@ -16,6 +15,7 @@ use Porta\Ui\Palette;
 use Porta\Ui\Role;
 use Porta\Ui\TextField;
 use Porta\Widget\InputHook;
+use Porta\Widget\PanelWidth;
 use Porta\Widget\PaneNavigationCallbacks;
 use Porta\Widget\Render\MenuOverlayHost;
 use Porta\Widget\Render\MenuOverlayHostTrait;
@@ -41,6 +41,7 @@ final class CommitBoxWidget extends AbstractWidget implements FocusableInterface
     use MenuOverlayHostTrait;
     use KeybindingsTrait;
     use PaneNavigationCallbacks;
+    use PanelWidth;
 
     private const int DESCRIPTION_ROWS = 3;
 
@@ -60,28 +61,24 @@ final class CommitBoxWidget extends AbstractWidget implements FocusableInterface
 
     public function __construct(
         private readonly Translator $translator,
-        private int $width = 44,
+        int $width = 44,
         ?Palette $palette = null,
         ?CursorStyle $cursorStyle = null,
     ) {
+        $this->width = $width;
         $this->palette = $palette ?? ColorPalette::dark();
         $this->summary = new TextField(style: $cursorStyle);
         $this->description = new MultilineInput($cursorStyle);
     }
 
-    /** Resize the git sidebar column to $width columns (clamped sane). */
-    public function setWidth(int $width): void
+    protected function minWidth(): int
     {
-        $width = IntMath::clamp($width, 24, 200);
-        if ($width !== $this->width) {
-            $this->width = $width;
-            $this->invalidate();
-        }
+        return 24;
     }
 
-    public function width(): int
+    protected function maxWidth(): int
     {
-        return $this->width;
+        return 200;
     }
 
     /** @param callable(): bool $predicate */
