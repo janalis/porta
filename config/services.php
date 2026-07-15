@@ -2,6 +2,7 @@
 
 declare(strict_types=1);
 
+use Porta\Config\CommandRegistry;
 use Porta\Config\EditorConfig\EditorConfigResolver;
 use Porta\Config\IdeConfig;
 use Porta\Config\KeybindingsFactory;
@@ -42,6 +43,10 @@ use Porta\Overlay\MenuOverlayPanes;
 use Porta\Overlay\MenuOverlayPanesFactory;
 use Porta\Plugin\PluginEvents;
 use Porta\Plugin\PluginHost;
+use Porta\Plugin\PluginInstaller;
+use Porta\Plugin\PluginLoader;
+use Porta\Plugin\PluginManager;
+use Porta\Plugin\PluginSettings;
 use Porta\Search\ProjectSearchController;
 use Porta\Search\ResultContextProvider;
 use Porta\Search\TestNavigator;
@@ -303,6 +308,7 @@ return static function (ContainerConfigurator $container, ContainerBuilder $buil
         LspSessionPool::class,
         LspLog::class,
         FormatOnSave::class,
+        CommandRegistry::class,
     ] as $locatorId) {
         $locatorEntries[$locatorId] = service($locatorId);
     }
@@ -316,6 +322,16 @@ return static function (ContainerConfigurator $container, ContainerBuilder $buil
     // The immutable Keybindings map. Built by a factory because plugin default
     // keys must merge in — resolving it forces the one-time plugin load.
     $services->set(Keybindings::class)->factory([service(KeybindingsFactory::class), 'create']);
+
+    // The plugin subsystem triple is built by PluginHost (its scalar inputs
+    // come from IdeConfig + the environment); expose the members as services.
+    $services->set(PluginManager::class)->factory([service(PluginHost::class), 'manager']);
+    $services->set(PluginLoader::class)->factory([service(PluginHost::class), 'loader']);
+    $services->set(PluginSettings::class)->factory([service(PluginHost::class), 'settings']);
+
+    // The installer resolves its plugin dirs and git binary from the
+    // environment at construction — a static named constructor owns that.
+    $services->set(PluginInstaller::class)->factory([PluginInstaller::class, 'create']);
 
     // Synthetic infrastructure: external (Renderer/Tui), closure-wired objects
     // the container can't build, or values that exist before the container does

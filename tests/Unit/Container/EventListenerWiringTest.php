@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Porta\Tests\Unit\Container;
 
 use PHPUnit\Framework\TestCase;
+use Porta\Config\IdeConfig;
 use Porta\Container\IdeContainerFactory;
 use Porta\Event\BufferOpened;
 use Porta\Event\BufferSaved;
@@ -49,7 +50,7 @@ final class EventListenerWiringTest extends TestCase
 
     private function dispatcher(): EventDispatcherInterface
     {
-        $container = new IdeContainerFactory()->build('/tmp/porta-event-wiring', 'en', true, 'dark');
+        $container = new IdeContainerFactory()->build('/tmp/porta-event-wiring', IdeConfig::load('/tmp/porta-event-wiring'), true);
         // Materializing the listener map resolves listener services, some of
         // which depend on the synthetics Ide normally sets right after build.
         $tui = new Tui(terminal: new VirtualTerminal(columns: 80, rows: 10));
@@ -65,7 +66,7 @@ final class EventListenerWiringTest extends TestCase
 
     public function testTheDispatcherResolvesThroughTheLocatorAsASharedInstance(): void
     {
-        $container = new IdeContainerFactory()->build('/tmp/porta-event-wiring', 'en', true, 'dark');
+        $container = new IdeContainerFactory()->build('/tmp/porta-event-wiring', IdeConfig::load('/tmp/porta-event-wiring'), true);
         $locator = $container->get('porta.ide');
         \assert($locator instanceof ServiceLocator);
 

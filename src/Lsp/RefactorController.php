@@ -19,9 +19,6 @@ use Symfony\Component\Tui\Tui;
  */
 final class RefactorController extends AbstractLspController implements EditorRefactorHandler
 {
-    /**
-     * @param \Closure(): string $lspStatus current server status label, for messages
-     */
     public function __construct(
         LspSessionPool $lsp,
         CodeEditorWidget $editor,
@@ -31,7 +28,6 @@ final class RefactorController extends AbstractLspController implements EditorRe
         private readonly BufferManager $buffers,
         private readonly WorkspaceEditor $workspaceEditor,
         private readonly string $rootDir,
-        private readonly \Closure $lspStatus,
     ) {
         parent::__construct($lsp, $editor, $tui, $notifier, $translator);
     }
@@ -240,7 +236,7 @@ final class RefactorController extends AbstractLspController implements EditorRe
 
         $this->lsp->request($method, $params, function (mixed $result, ?array $error) use ($path): void {
             if (null !== $error || !\is_array($result) || [] === $result) {
-                $this->flash($this->trans('Formatting not supported by %server%', ['%server%' => ($this->lspStatus)()]));
+                $this->flash($this->trans('Formatting not supported by %server%', ['%server%' => $this->lsp->statusFor($this->editor->getFilePath())]));
 
                 return;
             }

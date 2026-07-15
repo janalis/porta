@@ -11,6 +11,8 @@ use Porta\Config\SettingsLanguageController;
 use Porta\Config\SettingsLspController;
 use Porta\Config\SettingsPluginsController;
 use Porta\Config\SettingsRow;
+use Porta\Layout\EditorAreaPanes;
+use Porta\Ui\EditorArea;
 use Porta\Ui\WorkspaceViews;
 use Porta\Widget\MenuBarWidget;
 use Porta\Widget\Settings\KeybindingsListWidget;
@@ -34,10 +36,6 @@ final class SettingsViewController
     /** 'general' | 'keybindings' | 'lang:<id>' — the active section. */
     private string $section = 'general';
 
-    /**
-     * @param \Closure(): list<AbstractWidget> $editArea the main container's normal children (tree, separator, editor pane), in the current writing direction's order
-     * @param \Closure(): void     $onClosed restore focus/render after the swap back
-     */
     public function __construct(
         private readonly SettingsNavWidget $nav,
         private readonly SettingsFormWidget $form,
@@ -46,7 +44,7 @@ final class SettingsViewController
         private readonly ContainerWidget $settingsArea,
         private readonly ContainerWidget $settingsContent,
         private readonly MenuBarWidget $menuBar,
-        private readonly \Closure $editArea,
+        private readonly EditorAreaPanes $editArea,
         private readonly Tui $tui,
         private readonly SettingsController $settings,
         private readonly SettingsKeymapController $keymap,
@@ -54,7 +52,7 @@ final class SettingsViewController
         private readonly SettingsLspController $lsp,
         private readonly SettingsDebugController $debug,
         private readonly SettingsPluginsController $plugins,
-        private readonly \Closure $onClosed,
+        private readonly EditorArea $editorArea,
         WorkspaceViews $views,
     ) {
         $views->attachSettings($this);
@@ -115,10 +113,11 @@ final class SettingsViewController
         $this->open = false;
         $this->menuBar->close();
         $this->main->clear();
-        foreach (($this->editArea)() as $widget) {
+        foreach ($this->editArea->orderedEditorPanes() as $widget) {
             $this->main->add($widget);
         }
-        ($this->onClosed)();
+        $this->tui->setFocus($this->editorArea->widget());
+        $this->tui->requestRender();
     }
 
     /**

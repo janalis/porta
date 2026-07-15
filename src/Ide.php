@@ -145,7 +145,6 @@ use Revolt\EventLoop;
 use Symfony\Component\DependencyInjection\ContainerInterface;
 use Symfony\Component\DependencyInjection\ServiceLocator;
 use Symfony\Component\EventDispatcher\EventDispatcherInterface;
-use Symfony\Component\Process\ExecutableFinder;
 use Symfony\Component\Tui\Input\Keybindings;
 use Symfony\Component\Tui\Render\Renderer;
 use Symfony\Component\Tui\Style\Direction;
@@ -280,7 +279,7 @@ final class Ide
         // The shipped user guides (F1), package-relative like the translations.
         $this->docsDir = $docsDir ?? \dirname(__DIR__).'/docs';
         $config = IdeConfig::load($this->rootDir);
-        $this->container = new IdeContainerFactory()->build($this->rootDir, (string) ($config->settings['language'] ?? 'en'), $this->ansi, (string) ($config->settings['theme'] ?? 'dark'));
+        $this->container = new IdeContainerFactory()->build($this->rootDir, $config, $this->ansi, $this->lspCommand, $this->lspDisabled, $this->docsDir);
         $locator = $this->container->get('porta.ide');
         \assert($locator instanceof ServiceLocator);
         $this->locator = $locator;
@@ -378,6 +377,30 @@ final class Ide
             $this->dispatcher,
             $this->service(FormatOnSave::class),
         );
+        $this->navigation = new NavigationController(
+            $this->lsp,
+            $this->editor,
+            $this->tui,
+            $this->notifier,
+            $this->translator,
+            $this->buffers,
+            $this->resultsPanel,
+            $this->panels,
+            $this->rootDir,
+            $this->bufferService,
+            $this->docsUrls,
+        );
+        $this->refactor = new RefactorController($this->lsp, $this->editor, $this->tui, $this->notifier, $this->translator, $this->buffers, $this->workspaceEditor, $this->rootDir);
+        $this->run = new RunController(
+            new RunConfigs($this->rootDir),
+            $this->terminalPanel,
+            new TerminalKeyEncoder($this->tui),
+            $this->editor,
+            $this->notifier,
+            $this->tui,
+            $this->translator,
+            $this->rootDir,
+        );
         $this->bufferNavigator = new BufferNavigator($this->buffers, $this->bufferService, $this->goToFile, $this->editor, $this->tui, $this->rootDir);
         $this->wireEditorCallbacks();
         $this->workbench = new WorkbenchActions(
@@ -464,7 +487,7 @@ final class Ide
         $this->settings->applyAll();
         $this->settingsLanguages = new SettingsLanguageController($this->editor, $this->notifier, $this->rootDir, $this->translator, $config->languages);
         $this->settingsLanguages->applyToEditor();
-        $pluginInstaller = new PluginInstaller($this->rootDir, PluginLoader::globalBase(), $this->translator, new ExecutableFinder()->find('git'), PluginLoader::embeddedDir());
+        $pluginInstaller = PluginInstaller::create($this->rootDir, $this->translator);
         $this->pluginLifecycle = new PluginLifecycle(
             $this->pluginLoader,
             $this->plugins,
@@ -487,7 +510,7 @@ final class Ide
             $this->settingsAreaContainer,
             $this->settingsContent,
             $this->menuBar,
-            fn (): array => $this->paneLayout->orderedEditorPanes(),
+            $this->paneLayout,
             $this->tui,
             $this->settings,
             new SettingsKeymapController($this->editor, $this->keybindings, $this->notifier, $this->rootDir, $this->translator),
@@ -495,10 +518,7 @@ final class Ide
             new SettingsLspController($this->rootDir, $this->lsp, $config->lspServers, $this->lspCommand, $this->bufferService, $this->notifier, $this->translator),
             new SettingsDebugController($this->rootDir, $this->debugAdapters, $this->notifier, $this->translator),
             new SettingsPluginsController($pluginInstaller, $this->pluginSettings, $this->notifier, $this->translator, $this->pluginLifecycle),
-            onClosed: function (): void {
-                $this->tui->setFocus($this->editorArea->widget());
-                $this->tui->requestRender();
-            },
+            editorArea: $this->editorArea,
             views: $this->views,
         );
         $this->pluginLifecycle->refreshNav();
@@ -694,7 +714,7 @@ final class Ide
         // The registry and menu rebuilder objects exist early (later build
         // steps hold them); commands register and menus bake at the end of
         // the constructor, once every provider dependency exists.
-        $this->commands = new CommandRegistry();
+        $this->commands = $this->service(CommandRegistry::class);
         $this->menuRebuilder = new MenuRebuilder($this->menuBar, $this->commands, $this->editor, $this->keybindings, $this->translator, $this->views, $this->plugins);
         $this->wirePanels();
     }
@@ -824,40 +844,6 @@ final class Ide
         $this->commandPalette = $this->service(CommandPalette::class);
         $this->panels = $this->service(PanelManager::class);
         $this->testNavigator = $this->service(TestNavigator::class);
-        $this->navigation = new NavigationController(
-            $this->lsp,
-            $this->editor,
-            $this->tui,
-            $this->notifier,
-            $this->translator,
-            $this->buffers,
-            $this->resultsPanel,
-            $this->panels,
-            $this->rootDir,
-            fn (string $path, bool $focusEditor) => $this->openFile($path, $focusEditor),
-            fn (string $url) => $this->docsUrls->open($url),
-        );
-        $this->refactor = new RefactorController(
-            $this->lsp,
-            $this->editor,
-            $this->tui,
-            $this->notifier,
-            $this->translator,
-            $this->buffers,
-            $this->workspaceEditor,
-            $this->rootDir,
-            fn (): string => $this->lsp->statusFor($this->editor->getFilePath()),
-        );
-        $this->run = new RunController(
-            new RunConfigs($this->rootDir),
-            $this->terminalPanel,
-            new TerminalKeyEncoder(fn (): bool => $this->tui->getTerminal()->isKittyProtocolActive()),
-            $this->editor,
-            $this->notifier,
-            $this->tui,
-            $this->translator,
-            $this->rootDir,
-        );
         $this->debugPanel = $this->service(DebugPanelWidget::class);
         $this->debugPanel->onClose(fn () => $this->panels->returnFocusFrom($this->debugPanel));
     }

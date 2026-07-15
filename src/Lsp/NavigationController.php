@@ -5,7 +5,9 @@ declare(strict_types=1);
 namespace Porta\Lsp;
 
 use Porta\Editor\BufferManager;
+use Porta\Editor\FileOpener;
 use Porta\I18n\Translator;
+use Porta\Support\DocsUrlOpener;
 use Porta\Support\NativeDocs;
 use Porta\Support\ProjectPaths;
 use Porta\Ui\Notifier;
@@ -29,10 +31,6 @@ final class NavigationController extends AbstractLspController implements Editor
 
     private readonly WorkspaceSymbolClient $symbolClient;
 
-    /**
-     * @param \Closure(string, bool): void $openFile fn(path, focusEditor)
-     * @param \Closure(string): void       $openUrl  open a docs URL in the browser
-     */
     public function __construct(
         LspSessionPool $lsp,
         CodeEditorWidget $editor,
@@ -43,8 +41,8 @@ final class NavigationController extends AbstractLspController implements Editor
         private readonly ResultsPanelWidget $resultsPanel,
         private readonly PanelManager $panels,
         private readonly string $rootDir,
-        private readonly \Closure $openFile,
-        private readonly \Closure $openUrl,
+        private readonly FileOpener $files,
+        private readonly DocsUrlOpener $docsUrls,
         ?WorkspaceSymbolClient $symbolClient = null,
     ) {
         parent::__construct($lsp, $editor, $tui, $notifier, $translator);
@@ -57,7 +55,7 @@ final class NavigationController extends AbstractLspController implements Editor
         // official docs instead. Decided before any LSP involvement, so this
         // works even without a language server.
         if (null !== ($url = $this->nativeDocsUrl($line, $utf16Col))) {
-            ($this->openUrl)($url);
+            $this->docsUrls->open($url);
 
             return;
         }
@@ -165,7 +163,7 @@ final class NavigationController extends AbstractLspController implements Editor
         $line = (int) ($location['range']['start']['line'] ?? 0);
         $character = (int) ($location['range']['start']['character'] ?? 0);
         if ($target !== $this->editor->getFilePath()) {
-            ($this->openFile)($target, true);
+            $this->files->openFile($target, focusEditor: true);
         }
         $this->editor->jumpTo($line, $character);
         $this->tui->requestRender();
@@ -239,7 +237,7 @@ final class NavigationController extends AbstractLspController implements Editor
         }
 
         if ($previous['path'] !== $this->editor->getFilePath()) {
-            ($this->openFile)($previous['path'], true);
+            $this->files->openFile($previous['path'], focusEditor: true);
         }
         $this->editor->getDocument()->setCursor($previous['line'], $previous['col']);
         $this->editor->invalidate(); // render pass scrolls the cursor back into view
@@ -335,7 +333,7 @@ final class NavigationController extends AbstractLspController implements Editor
                 $title = 'Peek: '.ProjectPaths::relative($this->rootDir, $target).':'.($targetLine + 1);
                 $this->editor->openListOverlay($title, $items, function (string $value): void {
                     [$file, $lineNo] = [substr($value, 0, (int) strrpos($value, ':')), (int) substr($value, (int) strrpos($value, ':') + 1)];
-                    ($this->openFile)($file, true);
+                    $this->files->openFile($file, focusEditor: true);
                     $this->editor->jumpTo($lineNo, 0);
                     $this->tui->requestRender();
                 });

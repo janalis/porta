@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Porta\Container;
 
+use Porta\Config\IdeConfig;
 use Porta\Ide;
 use Symfony\Component\Config\ConfigCache;
 use Symfony\Component\Config\FileLocator;
@@ -34,15 +35,23 @@ use Symfony\Component\Filesystem\Exception\IOException;
  */
 final class IdeContainerFactory
 {
-    public function build(string $rootDir, string $locale, bool $ansi, string $theme): ContainerInterface
+    public function build(string $rootDir, IdeConfig $config, bool $ansi, ?string $lspCommand = null, bool $lspDisabled = false, string $docsDir = ''): ContainerInterface
     {
         // Per-boot values go through $_ENV — the env processor reads $_ENV
         // first, and unlike putenv() nothing leaks into the PTY shells spawned
-        // later (PtyProcess merges getenv() into child environments).
+        // later (PtyProcess merges getenv() into child environments). Config
+        // arrays travel JSON-encoded and resolve via env()->json() args.
         $_ENV['PORTA_ROOT_DIR'] = $rootDir;
-        $_ENV['PORTA_LOCALE'] = $locale;
+        $_ENV['PORTA_LOCALE'] = (string) ($config->settings['language'] ?? 'en');
         $_ENV['PORTA_ANSI'] = $ansi ? '1' : '0';
-        $_ENV['PORTA_THEME'] = $theme;
+        $_ENV['PORTA_THEME'] = (string) ($config->settings['theme'] ?? 'dark');
+        $_ENV['PORTA_LSP_COMMAND'] = $lspCommand ?? ''; // '' resolves to null via env(default::…)
+        $_ENV['PORTA_LSP_DISABLED'] = $lspDisabled ? '1' : '0';
+        $_ENV['PORTA_DOCS_DIR'] = $docsDir;
+        $_ENV['PORTA_SETTINGS'] = json_encode($config->settings, \JSON_THROW_ON_ERROR);
+        $_ENV['PORTA_LANGUAGES'] = json_encode($config->languages, \JSON_THROW_ON_ERROR);
+        $_ENV['PORTA_LSP_SERVERS'] = json_encode($config->lspServers, \JSON_THROW_ON_ERROR);
+        $_ENV['PORTA_DISABLED_PLUGINS'] = json_encode($config->disabledPlugins, \JSON_THROW_ON_ERROR);
 
         $cacheDir = $this->cacheDir();
         if (null === $cacheDir || 'off' === getenv('PORTA_CONTAINER_CACHE')) {

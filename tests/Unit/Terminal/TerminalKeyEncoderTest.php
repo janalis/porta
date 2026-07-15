@@ -7,6 +7,8 @@ namespace Porta\Tests\Unit\Terminal;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\TestCase;
 use Porta\Terminal\TerminalKeyEncoder;
+use Symfony\Component\Tui\Terminal\VirtualTerminal;
+use Symfony\Component\Tui\Tui;
 
 final class TerminalKeyEncoderTest extends TestCase
 {
@@ -48,14 +50,14 @@ final class TerminalKeyEncoderTest extends TestCase
     #[DataProvider('kittyCases')]
     public function testEncodesWhenKittyActive(string $input, string $expected): void
     {
-        $encoder = new TerminalKeyEncoder(static fn (): bool => true);
+        $encoder = new TerminalKeyEncoder(new Tui(terminal: new VirtualTerminal(kittyProtocolActive: true)));
 
         $this->assertSame($expected, $encoder->encode($input));
     }
 
     public function testForwardsUnchangedWhenKittyInactive(): void
     {
-        $encoder = new TerminalKeyEncoder(static fn (): bool => false);
+        $encoder = new TerminalKeyEncoder(new Tui(terminal: new VirtualTerminal()));
 
         // Nothing is translated or dropped on a legacy terminal.
         $this->assertSame("\x1b[97;1:3u", $encoder->encode("\x1b[97;1:3u"));

@@ -16,6 +16,7 @@ use Porta\Debug\DebugAdapters;
 use Porta\Editor\BufferManager;
 use Porta\Highlight\TerminalThemeFactory;
 use Porta\I18n\Translator;
+use Porta\Layout\EditorAreaPanes;
 use Porta\Layout\WorkspaceLayout;
 use Porta\Lsp\BufferReopener;
 use Porta\Lsp\FormatOnSave;
@@ -30,6 +31,7 @@ use Porta\Tests\Support\FakeScheduler;
 use Porta\Tests\Support\FixedActiveFile;
 use Porta\Tests\Support\TempProject;
 use Porta\Ui\CursorStyle;
+use Porta\Ui\EditorArea;
 use Porta\Ui\Notifier;
 use Porta\Ui\PaletteFactory;
 use Porta\Ui\WorkspaceViews;
@@ -46,6 +48,7 @@ use Porta\Widget\Git\GitTabsWidget;
 use Porta\Widget\Git\HistoryListWidget;
 use Porta\Widget\GoToFileWidget;
 use Porta\Widget\HelpViewerWidget;
+use Porta\Widget\ImageViewerWidget;
 use Porta\Widget\MenuBarWidget;
 use Porta\Widget\ResultsPanelWidget;
 use Porta\Widget\Settings\KeybindingsListWidget;
@@ -72,7 +75,7 @@ final class SettingsViewControllerTest extends TestCase
     private KeybindingsListWidget $keymapList;
     private ContainerWidget $main;
     private ContainerWidget $content;
-    private int $closed = 0;
+    private CodeEditorWidget $editorWidget;
     private PluginSettings $pluginSettings;
     private FakePluginLifecycle $lifecycle;
 
@@ -159,7 +162,6 @@ final class SettingsViewControllerTest extends TestCase
             new Translator('en'),
             $this->lifecycle,
         );
-        $this->closed = 0;
 
         return new SettingsViewController(
             $this->nav,
@@ -169,7 +171,16 @@ final class SettingsViewControllerTest extends TestCase
             $area,
             $this->content,
             $menuBar,
-            static fn (): array => [$editWidget],
+            new class($editWidget) implements EditorAreaPanes {
+                public function __construct(
+                    private readonly ContainerWidget $editWidget,
+                ) {}
+
+                public function orderedEditorPanes(): array
+                {
+                    return [$this->editWidget];
+                }
+            },
             $this->tui,
             $settings,
             $keymap,
@@ -177,9 +188,7 @@ final class SettingsViewControllerTest extends TestCase
             $lsp,
             $debug,
             $plugins,
-            onClosed: function (): void {
-                ++$this->closed;
-            },
+            editorArea: new EditorArea(new BufferManager(), $this->editorWidget = new CodeEditorWidget(), new ImageViewerWidget(), new HelpViewerWidget(), $this->tui),
             views: $views ?? new WorkspaceViews(),
         );
     }
@@ -338,7 +347,7 @@ final class SettingsViewControllerTest extends TestCase
         $this->nav->handleInput("\x1b");
         $this->assertFalse($controller->isOpen());
         $this->assertSame(['edit-stub'], $this->ids($this->main));
-        $this->assertSame(1, $this->closed);
+        $this->assertSame($this->editorWidget, $this->tui->getFocus(), 'close restores focus to the editor area');
 
         $controller = $this->controller();
         $controller->open();
@@ -439,8 +448,9 @@ final class SettingsViewControllerTest extends TestCase
         $controller->toggle();
         $this->assertFalse($controller->isOpen());
 
-        $controller->close(); // already closed
-        $this->assertSame(1, $this->closed);
+        $this->tui->setFocus($this->nav);
+        $controller->close(); // already closed: a no-op that must not steal focus
+        $this->assertSame($this->nav, $this->tui->getFocus());
     }
 
     private static function formatOnSave(): FormatOnSave

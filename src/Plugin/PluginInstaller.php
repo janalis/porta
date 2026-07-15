@@ -9,6 +9,7 @@ use Porta\Support\AsyncProcess;
 use Symfony\Component\Filesystem\Exception\IOException;
 use Symfony\Component\Filesystem\Exception\IOExceptionInterface;
 use Symfony\Component\Filesystem\Filesystem;
+use Symfony\Component\Process\ExecutableFinder;
 
 /**
  * Installs and removes plugin directories under `<project>/.porta/plugins` and
@@ -31,6 +32,12 @@ final class PluginInstaller
         private readonly ?string $gitBinary,
         private readonly ?string $embeddedDir = null,
     ) {}
+
+    /** The production wiring: plugin dirs and the git binary resolved from the environment. */
+    public static function create(string $rootDir, Translator $translator): self
+    {
+        return new self($rootDir, PluginLoader::globalBase(), $translator, new ExecutableFinder()->find('git'), PluginLoader::embeddedDir());
+    }
 
     /**
      * Install from a directory path (copy) or git URL (clone) into the scope's

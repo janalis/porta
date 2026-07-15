@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Porta\Tests\Unit\Container;
 
 use PHPUnit\Framework\TestCase;
+use Porta\Config\IdeConfig;
 use Porta\Container\IdeContainerFactory;
 use Porta\History\SessionStore;
 use Porta\I18n\Translator;
@@ -53,7 +54,7 @@ final class IdeContainerFactoryTest extends TestCase
 
     private function build(): object
     {
-        return new IdeContainerFactory()->build('/tmp/porta-factory-test', 'en', true, 'dark');
+        return new IdeContainerFactory()->build('/tmp/porta-factory-test', IdeConfig::load('/tmp/porta-factory-test'), true);
     }
 
     public function testColdCacheDumpsAndServesTheCompiledContainer(): void
@@ -98,7 +99,7 @@ final class IdeContainerFactoryTest extends TestCase
 
         $this->build(); // loads the dumped class into this process
         [$file] = glob($project->path('container-*.php')) ?: [''];
-        touch($file, time() - 86_400); // older than every tracked resource → stale
+        touch($file, 1); // epoch: older than every tracked resource → stale
 
         $container = $this->build();
 

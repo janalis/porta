@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Porta\Terminal;
 
 use Symfony\Component\Tui\Input\KeyParser;
+use Symfony\Component\Tui\Tui;
 
 /**
  * Translates the IDE's keyboard input into the legacy terminal bytes a shell
@@ -26,21 +27,17 @@ final class TerminalKeyEncoder
 
     private KeyParser $parser;
 
-    /** @var callable(): bool */
-    private $kittyActive;
-
-    /** @param callable(): bool $kittyActive whether the host terminal's kitty protocol is on */
-    public function __construct(callable $kittyActive)
-    {
+    public function __construct(
+        private readonly Tui $tui,
+    ) {
         $this->parser = new KeyParser();
         $this->parser->setKittyProtocolActive(true);
-        $this->kittyActive = $kittyActive;
     }
 
     /** Legacy bytes to forward to the PTY for $data, or '' to drop it. */
     public function encode(string $data): string
     {
-        if (!($this->kittyActive)()) {
+        if (!$this->tui->getTerminal()->isKittyProtocolActive()) {
             return $data; // legacy terminal already sends legacy bytes
         }
         if ($this->parser->isKeyRelease($data)) {
