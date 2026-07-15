@@ -7,8 +7,10 @@ namespace Porta\Command;
 use Porta\Config\CommandRegistry;
 use Porta\Editor\BufferService;
 use Porta\Lsp\RefactorController;
+use Symfony\Component\DependencyInjection\Attribute\AsTaggedItem;
 
 /** File-level palette commands: saving and LSP reformat. */
+#[AsTaggedItem(priority: 400)]
 final class FileCommands implements CommandProvider
 {
     public function __construct(

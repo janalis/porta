@@ -41,7 +41,7 @@ final class IdeHelpersTest extends TestCase
 
     private function workspaceEditor(): WorkspaceEditor
     {
-        return new \ReflectionProperty($this->ide, 'workspaceEditor')->getValue($this->ide);
+        return $this->ide->getWorkspaceEditor();
     }
 
     private function navigation(): NavigationController
@@ -269,7 +269,7 @@ final class IdeHelpersTest extends TestCase
     /** The local-history feature controller wired into the coordinator. */
     private function localHistory(): LocalHistoryController
     {
-        $controller = new \ReflectionProperty($this->ide, 'localHistory')->getValue($this->ide);
+        $controller = $this->ide->getLocalHistory();
         \assert($controller instanceof LocalHistoryController);
 
         return $controller;
@@ -288,7 +288,7 @@ final class IdeHelpersTest extends TestCase
         $this->localHistory()->restore(0);
 
         // Now point at a snapshot file that does not exist, with a buffer open.
-        $buffers = new \ReflectionProperty($this->ide, 'buffers')->getValue($this->ide);
+        $buffers = $this->ide->getBuffers();
         $buffers->open($this->project->path('x.php'), "content\n");
         new \ReflectionProperty($this->localHistory(), 'snapshots')->setValue($this->localHistory(), ['/nonexistent/1.snap']);
 
@@ -320,10 +320,25 @@ final class IdeHelpersTest extends TestCase
         $this->assertStringEndsWith('Real.php', (string) $this->ide->getTui()->getById('editor')->getFilePath());
     }
 
+    public function testProviderPriorityOrderMatchesTheContractualPaletteOrder(): void
+    {
+        $registry = $this->ide->getCommands();
+        \assert($registry instanceof \Porta\Config\CommandRegistry);
+        $labels = array_column($registry->paletteCommands(), 'label');
+
+        // The tagged providers register in #[AsTaggedItem] priority order:
+        // registration order IS the palette display order — file commands
+        // first, git commands last.
+        $this->assertSame('Debug Current File', $labels[0], 'the debug group has always led the palette');
+        $this->assertSame('Git: Push (Set Upstream)', $labels[array_key_last($labels)]);
+        $this->assertLessThan(array_search('Show Problems', $labels, true), array_search('Save All', $labels, true), 'file group precedes the search group');
+        $this->assertLessThan(array_search('Git: Stage Current File', $labels, true), array_search('Documentation', $labels, true), 'view group precedes the git group');
+    }
+
     public function testEveryPaletteCommandRuns(): void
     {
         $tui = $this->ide->getTui();
-        $registry = new \ReflectionProperty($this->ide, 'commands')->getValue($this->ide);
+        $registry = $this->ide->getCommands();
         $commands = $registry->paletteCommands();
 
         $byLabel = [];
@@ -468,7 +483,7 @@ final class IdeHelpersTest extends TestCase
 
     public function testShowProblemsAggregatesAndSortsWithSeverityMarkers(): void
     {
-        $buffers = new \ReflectionProperty($this->ide, 'buffers')->getValue($this->ide);
+        $buffers = $this->ide->getBuffers();
         $b = $buffers->open($this->project->path('src/B.php'), "<?php\n");
         $b->diagnostics = [5 => [['severity' => 2, 'message' => 'warn here', 'col' => 0]]];
         $a = $buffers->open($this->project->path('src/A.php'), "<?php\n");
@@ -477,9 +492,7 @@ final class IdeHelpersTest extends TestCase
             0 => [['severity' => 1, 'message' => 'top error', 'col' => 0]],
         ];
 
-        new \ReflectionProperty($this->ide, 'searchActions')
-            ->getValue($this->ide)
-            ->showProblems();
+        $this->ide->getSearchActions()->showProblems();
 
         $panel = $this->ide->getTui()->getById('results');
         $this->assertTrue($panel->isOpen());
@@ -516,7 +529,7 @@ final class IdeHelpersTest extends TestCase
         new \ReflectionProperty($pool, 'statuses')->setValue($pool, ['injected' => 'mock-lsp-server']);
 
         // Open a "noformat" buffer and make it the active editor document.
-        $buffers = new \ReflectionProperty($this->ide, 'buffers')->getValue($this->ide);
+        $buffers = $this->ide->getBuffers();
         $path = $this->project->write('src/noformat.php', "<?php\n\$b=2;\n");
         $buffer = $buffers->open($path, (string) file_get_contents($path));
         new \ReflectionProperty($this->ide, 'bufferService')
@@ -587,7 +600,7 @@ final class IdeHelpersTest extends TestCase
         /** @var \Porta\Widget\HelpViewerWidget $viewer */
         $viewer = new \ReflectionProperty($this->ide, 'helpViewer')->getValue($this->ide);
         /** @var \Porta\Editor\BufferManager $manager */
-        $manager = new \ReflectionProperty($this->ide, 'buffers')->getValue($this->ide);
+        $manager = $this->ide->getBuffers();
 
         $buffers->openHelp($readme);
         $active = $manager->active();
@@ -626,7 +639,7 @@ final class IdeHelpersTest extends TestCase
         /** @var \Porta\Widget\HelpViewerWidget $viewer */
         $viewer = new \ReflectionProperty($this->ide, 'helpViewer')->getValue($this->ide);
         /** @var \Porta\Editor\BufferManager $manager */
-        $manager = new \ReflectionProperty($this->ide, 'buffers')->getValue($this->ide);
+        $manager = $this->ide->getBuffers();
 
         // In-place navigation: the viewer moves, no second help buffer appears.
         $buffers->openHelp($readme);
@@ -684,7 +697,7 @@ final class IdeHelpersTest extends TestCase
 
         $help->saveAll(); // nothing dirty: a silent sweep
         $help->closeBuffer();
-        $buffers = new \ReflectionProperty($this->ide, 'buffers')->getValue($this->ide);
+        $buffers = $this->ide->getBuffers();
         $this->assertNull($buffers->active(), 'the viewer close hook closed the only tab');
 
         $imageViewer = new \ReflectionProperty($this->ide, 'imageViewer')->getValue($this->ide);

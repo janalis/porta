@@ -4,12 +4,7 @@ declare(strict_types=1);
 
 namespace Porta;
 
-use Porta\Command\DebugCommands;
-use Porta\Command\FileCommands;
-use Porta\Command\GitCommandProvider;
-use Porta\Command\SearchCommands;
-use Porta\Command\ViewCommands;
-use Porta\Command\WorkbenchCommands;
+use Porta\Command\CommandRegistryPopulator;
 use Porta\Config\CommandRegistry;
 use Porta\Config\EditorConfig\EditorConfigResolver;
 use Porta\Config\IdeConfig;
@@ -26,11 +21,9 @@ use Porta\Editor\EditorFileActions;
 use Porta\Event\GitRemoteCompleted;
 use Porta\Event\LocaleChanged;
 use Porta\Event\ThemeChanged;
-use Porta\Git\GitCommands;
 use Porta\Git\GitInfo;
 use Porta\Git\GitPanes;
 use Porta\Git\GitRefresher;
-use Porta\Git\GitRemoteCommands;
 use Porta\Git\GitViewController;
 use Porta\Help\HelpViewerActions;
 use Porta\History\LocalHistoryController;
@@ -63,9 +56,7 @@ use Porta\Plugin\PluginHost;
 use Porta\Plugin\PluginLifecycle;
 use Porta\Plugin\PluginManager;
 use Porta\Plugin\PluginRuntime;
-use Porta\Run\RunConfigs;
 use Porta\Run\RunController;
-use Porta\Search\Everywhere\SearchEverywhereController;
 use Porta\Search\ResultContextProvider;
 use Porta\Search\SearchActions;
 use Porta\Search\SearchUiWiring;
@@ -73,18 +64,14 @@ use Porta\Settings\LiveSettingsApplier;
 use Porta\Settings\SettingsViewController;
 use Porta\Support\AsyncProcess;
 use Porta\Support\BrowserOpener;
-use Porta\Support\DocsUrlOpener;
 use Porta\Support\FreezeWatchdog;
 use Porta\Support\Scheduler;
-use Porta\Terminal\TerminalKeyEncoder;
 use Porta\Tree\TreeOperations;
 use Porta\Ui\BidiTui;
 use Porta\Ui\ChromeInvalidator;
 use Porta\Ui\CommandPalette;
 use Porta\Ui\ContextMenuBuilder;
-use Porta\Ui\ContextMenuOpener;
 use Porta\Ui\EditorArea;
-use Porta\Ui\FocusCoordinator;
 use Porta\Ui\MenuRebuilder;
 use Porta\Ui\NonBlockingTerminal;
 use Porta\Ui\Notifier;
@@ -94,7 +81,6 @@ use Porta\Ui\Role;
 use Porta\Ui\StatusBarProvider;
 use Porta\Ui\TabListProvider;
 use Porta\Ui\TerminalStateRefresher;
-use Porta\Ui\WorkbenchActions;
 use Porta\Ui\WorkspaceViews;
 use Porta\Widget\BreadcrumbsWidget;
 use Porta\Widget\CodeEditorWidget;
@@ -153,7 +139,6 @@ final class Ide
     private Notifier $notifier;
     private FreezeWatchdog $watchdog;
     private BufferNavigator $bufferNavigator;
-    private DocsUrlOpener $docsUrls;
     private EditorArea $editorArea;
     private WorkspaceViews $views;
     private ChromeInvalidator $chrome;
@@ -180,17 +165,14 @@ final class Ide
     private readonly ServiceLocator $locator;
     private GitInfo $git;
     private GitRefresher $gitRefresher;
-    private GitRemoteCommands $gitRemoteCommands;
     private WorkspaceLayout $workspaceLayout;
     private PaneLayout $paneLayout;
     private SearchActions $searchActions;
-    private GitCommands $gitCommands;
     private LocalHistoryController $localHistory;
     private LayoutController $layout;
     private BufferManager $buffers;
     private PanelManager $panels;
     private CommandRegistry $commands;
-    private SearchEverywhereController $searchEverywhere;
 
     private LspSessionPool $lsp;
     private LspBootstrapper $lspBootstrapper;
@@ -202,10 +184,7 @@ final class Ide
 
     private Renderer $renderer;
     private ContextMenu $contextMenu;
-    private ContextMenuOpener $contextMenuOpener;
-    private FocusCoordinator $focusCoordinator;
     private MenuRebuilder $menuRebuilder;
-    private WorkbenchActions $workbench;
 
     /** Positions + composites the app-menu and context-menu floating overlays. */
     private MenuOverlayController $overlay;
@@ -274,7 +253,6 @@ final class Ide
         $this->container->set(BidiTui::class, $this->bidiTui);
 
         // The workbench primitives every later build step delegates to.
-        $this->docsUrls = $this->service(DocsUrlOpener::class);
         $this->editorArea = $this->service(EditorArea::class);
         $this->views = $this->service(WorkspaceViews::class);
         $this->chrome = $this->service(ChromeInvalidator::class);
@@ -285,8 +263,6 @@ final class Ide
 
         $this->git = $this->service(GitInfo::class);
         $this->gitRefresher = $this->service(GitRefresher::class);
-        $this->gitCommands = $this->service(GitCommands::class);
-        $this->gitRemoteCommands = $this->service(GitRemoteCommands::class);
         $this->buildGitView();
 
         $this->buildSettingsWidgets();
@@ -300,33 +276,11 @@ final class Ide
 
         $this->wireWidgets($keybindings);
         $this->bufferService = $this->service(BufferService::class);
-        $this->navigation = new NavigationController(
-            $this->lsp,
-            $this->editor,
-            $this->tui,
-            $this->notifier,
-            $this->translator,
-            $this->buffers,
-            $this->resultsPanel,
-            $this->panels,
-            $this->rootDir,
-            $this->bufferService,
-            $this->docsUrls,
-        );
-        $this->refactor = new RefactorController($this->lsp, $this->editor, $this->tui, $this->notifier, $this->translator, $this->buffers, $this->workspaceEditor, $this->rootDir);
-        $this->run = new RunController(
-            new RunConfigs($this->rootDir),
-            $this->terminalPanel,
-            new TerminalKeyEncoder($this->tui),
-            $this->editor,
-            $this->notifier,
-            $this->tui,
-            $this->translator,
-            $this->rootDir,
-        );
+        $this->navigation = $this->service(NavigationController::class);
+        $this->refactor = $this->service(RefactorController::class);
+        $this->run = $this->service(RunController::class);
         $this->bufferNavigator = $this->service(BufferNavigator::class);
         $this->wireEditorCallbacks();
-        $this->workbench = $this->service(WorkbenchActions::class);
         $this->lspBootstrapper = $this->service(LspBootstrapper::class);
         $this->sessionRestorer = $this->service(SessionRestorer::class);
         // The debugger orchestrator, after the buffer service it opens files
@@ -337,7 +291,6 @@ final class Ide
         // The search entry points; after wireCommands (ActionsSource reads the
         // populated registry) and after the buffer service both depend on.
         $this->searchActions = $this->service(SearchActions::class);
-        $this->searchEverywhere = $this->service(SearchEverywhereController::class);
         $this->wireImageViewer();
         $this->wireHelpViewer();
 
@@ -354,15 +307,13 @@ final class Ide
 
         $this->localHistory = $this->service(LocalHistoryController::class);
         $hit = $this->service(HitTester::class);
-        $this->contextMenuOpener = $this->service(ContextMenuOpener::class);
-        $this->focusCoordinator = $this->service(FocusCoordinator::class);
 
         // Now that both view controllers exist, settle the layout for the
         // persisted locale's writing direction (RTL mirrors the sidebar right).
         $this->paneLayout->applyDirection();
 
         $this->service(SearchUiWiring::class)->wire();
-        $this->registerCommands();
+        $this->service(CommandRegistryPopulator::class)->populate();
         $this->wireMenuBar($keybindings);
         $this->tui->addListener($this->service(InputDispatcher::class)->dispatch(...));
 
@@ -405,6 +356,46 @@ final class Ide
     public function getTui(): Tui
     {
         return $this->tui;
+    }
+
+    /**
+     * @internal exposed for tests
+     */
+    public function getCommands(): CommandRegistry
+    {
+        return $this->commands;
+    }
+
+    /**
+     * @internal exposed for tests
+     */
+    public function getBuffers(): BufferManager
+    {
+        return $this->buffers;
+    }
+
+    /**
+     * @internal exposed for tests
+     */
+    public function getSearchActions(): SearchActions
+    {
+        return $this->searchActions;
+    }
+
+    /**
+     * @internal exposed for tests
+     */
+    public function getLocalHistory(): LocalHistoryController
+    {
+        return $this->localHistory;
+    }
+
+    /**
+     * @internal exposed for tests
+     */
+    public function getWorkspaceEditor(): WorkspaceEditor
+    {
+        return $this->workspaceEditor;
     }
 
     public function run(): void
@@ -619,57 +610,6 @@ final class Ide
     }
 
     // --- LSP -------------------------------------------------------------------
-
-    /**
-     * Register every IDE-level command once: keybinding dispatch, the Find Action
-     * palette, and their labels all read from this single source of truth.
-     * Provider order is contractual — registration order is palette display
-     * order, and core registers before plugins so core wins key collisions.
-     */
-    private function registerCommands(): void
-    {
-        $workbench = new WorkbenchCommands(
-            $this->workbench,
-            $this->focusCoordinator,
-            $this->contextMenuOpener,
-            $this->service(PaneResizer::class),
-            $this->bufferService,
-            $this->searchEverywhere,
-            $this->localHistory,
-            $this->run,
-            $this->views,
-            $this->editorArea,
-            $this->tui,
-            $this->editor,
-            $this->imageViewer,
-            $this->tree,
-            $this->menuBar,
-            $this->goToFile,
-            $this->findBar,
-        );
-        $providers = [
-            $workbench,
-            new DebugCommands($this->debug),
-        ];
-        foreach ($providers as $provider) {
-            $provider->register($this->commands);
-        }
-
-        // Plugin commands after core's key-bound groups: core wins when a
-        // plugin default key collides.
-        $this->plugins->registerCommands($this->commands);
-
-        // Palette commands, in display order (some also key-bound).
-        $palette = [
-            new FileCommands($this->bufferService, $this->refactor),
-            new SearchCommands($this->searchActions),
-            new ViewCommands($this->workbench, $this->goToFile, $this->tui, $this->settings, $this->run, $this->views, $this->bufferService, $this->docsDir),
-            new GitCommandProvider($this->gitCommands, $this->gitRemoteCommands),
-        ];
-        foreach ($palette as $provider) {
-            $provider->register($this->commands);
-        }
-    }
 
     /** Populate the application menu bar and return focus to the editor on close. */
     private function wireMenuBar(Keybindings $keybindings): void

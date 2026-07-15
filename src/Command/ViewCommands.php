@@ -11,9 +11,11 @@ use Porta\Run\RunController;
 use Porta\Ui\WorkbenchActions;
 use Porta\Ui\WorkspaceViews;
 use Porta\Widget\GoToFileWidget;
+use Symfony\Component\DependencyInjection\Attribute\AsTaggedItem;
 use Symfony\Component\Tui\Tui;
 
 /** View/window palette commands: tabs, overlays, panels and the full views. */
+#[AsTaggedItem(priority: 200)]
 final class ViewCommands implements CommandProvider
 {
     public function __construct(

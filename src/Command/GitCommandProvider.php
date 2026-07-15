@@ -7,8 +7,10 @@ namespace Porta\Command;
 use Porta\Config\CommandRegistry;
 use Porta\Git\GitCommands;
 use Porta\Git\GitRemoteCommands;
+use Symfony\Component\DependencyInjection\Attribute\AsTaggedItem;
 
 /** Git palette commands on the current file/repo. */
+#[AsTaggedItem(priority: 100)]
 final class GitCommandProvider implements CommandProvider
 {
     public function __construct(

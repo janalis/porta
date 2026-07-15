@@ -58,56 +58,82 @@ Run gate commands capturing output rather than piping to a pager, e.g.
 
 ## Architecture
 
-**`Ide` (`src/Ide.php`, ~980 lines) is a thin composition root over a Symfony DI container.**
-Its constructor builds the container via `Container/IdeContainerFactory`, resolves the shared
-services/widgets into its private properties (kept as aliases because ~100 reflection-based test
-seams read them), delegates to named `build*` steps (`buildEditorArea`, `buildSidePanels`,
-`buildGitView`, `buildSettingsWidgets`, `buildLayoutAndOverlay`), hand-constructs the closure-wired
-controllers the container can't express, and finishes with `registerCommands()` (the
-`Command/*Commands` providers), `wireMenuBar` and the `Input/InputDispatcher` listener — commands
-register and menus bake at the **end** of the constructor, once every provider dependency exists.
+**`Ide` (`src/Ide.php`, ~700 lines) is a thin composition root over a Symfony DI container.**
+Its constructor builds the container via `Container/IdeContainerFactory`, hand-builds only the
+bootstrap infra (Renderer/`Ui/BidiTui`/NonBlockingTerminal + StyleSheet), and otherwise
+**resolves** the graph: shared services/widgets land in its private properties (kept as aliases
+because ~100 reflection-based test seams read them), the `build*` steps
+(`buildEditorArea`, `buildSidePanels`, `buildGitView`, `buildSettingsWidgets`,
+`buildLayoutAndOverlay`) are now resolution + arrangement only, and the ctor tail runs
+`Command/CommandRegistryPopulator::populate()` (tagged providers), `wireMenuBar` and registers
+the `Input/InputDispatcher` listener — commands register and menus bake at the **end** of the
+constructor. Two services are resolved **eagerly for their side effect**: `GitViewController` and
+`SettingsViewController` attach themselves to `Ui/WorkspaceViews` in their constructors and have
+no inbound service references (without the eager resolve they would never exist).
 `run()` sets up the terminal (alternate screen + SGR mouse modes 1000/1003/1006), calls
 `LspBootstrapper::start()`, arms a 1s filesystem-poll timer, and enters `tui->run()`. Teardown
 (mouse disable, `History/SessionRestorer::save`, LSP/git/run shutdown) is in the `finally`.
 
-**The container is dumped and cached across boots.** Per-boot values (`rootDir`, `locale`, `ansi`,
-`theme`) travel through `$_ENV` (never `putenv` — `PtyProcess` leaks `getenv()` into child shells)
-and resolve at runtime via `%env()%` placeholders, so the compiled container is
-project-independent. `IdeContainerFactory` dumps it once into the user cache dir
-(`$PORTA_CACHE_DIR`, else XDG/`~/.cache` + `/porta`), guarded by a debug-mode `ConfigCache` whose
-tracked resources (services.php, the src/ glob, per-class reflection incl. method attributes)
-rebuild it automatically on any wiring-relevant change. `PORTA_CONTAINER_CACHE=off` forces an
-in-memory build (a builder used directly must `compile(resolveEnvPlaceholders: true)`; the dump
-path keeps placeholders unresolved), and deleting the cache dir is always safe — do that if a
+**The container is dumped and cached across boots.** Per-boot values travel through `$_ENV`
+(never `putenv` — `PtyProcess` leaks `getenv()` into child shells) and resolve at runtime via
+`%env()%` placeholders, so the compiled container is project-independent: scalars
+(`rootDir`/`locale`/`ansi`/`theme`/`lspCommand`/`lspDisabled`/`docsDir` — the nullable one uses
+`env('default::PORTA_LSP_COMMAND')`, where `''` means null) plus the per-project **config arrays**
+JSON-encoded by `IdeContainerFactory` and consumed as `env('PORTA_LANGUAGES')->json()`-style
+per-service args (never binds — `$overrides` means different things per consumer).
+`IdeContainerFactory` dumps once into the user cache dir (`$PORTA_CACHE_DIR`, else
+XDG/`~/.cache` + `/porta`), guarded by a debug-mode `ConfigCache` whose tracked resources
+(services.php, the src/ glob, per-class reflection incl. method attributes) rebuild it
+automatically on any wiring-relevant change. `PORTA_CONTAINER_CACHE=off` forces an in-memory
+build (a builder used directly must `compile(resolveEnvPlaceholders: true)`; the dump path keeps
+placeholders unresolved), and deleting the cache dir is always safe — do that if a
 stale-container symptom ever survives an edit. `tests/bootstrap.php` pins the cache into
 `.phpunit.cache/` and forces fresh compiles under pcov (dump-served workers skew coverage line maps).
 
-The container owns every service+scalar-injectable class **and every singleton widget** — widgets
-declare their tree id/flex with the `#[Container/AsWidget]` attribute (autoconfigured into
-`setId`/`setStyle` calls). Typed factories cover what plain autowiring can't: `Keybindings` via
-`Config/KeybindingsFactory` (resolving it triggers `Plugin/PluginHost::ensureLoaded()`, the
-idempotent one-time plugin load, so plugin default keys merge into the immutable map) and
-`Overlay/MenuOverlayPanes` via its factory service. What stays hand-built in `Ide`: the composite
-`ContainerWidget` assembly (owned by `Layout/WorkspaceLayout` + `Layout/PaneLayout`), per-buffer
-runtime objects (`Buffer`/`Document`/`CodeHighlighter`), and the closure-wired controllers
-(`BufferService`, `DebugController`, `RunController`, `NavigationController`/`RefactorController`,
-`GitViewController`, `SettingsViewController`, `TreeOperations`, `Search/SearchUiWiring`,
-`Search/Everywhere/SearchEverywhereFactory`, the `Command/*` providers…). Four objects are handed
-to the container as **synthetic** services right after `Ide` creates them: `Renderer`, `Tui`,
-`BidiTui` (external `symfony/tui` infra) and `IdeConfig` (parsed before the container exists —
-its settings steer the env parameters).
+The container owns everything expressible as service+scalar injection — **including every
+singleton widget** (`#[Container/AsWidget]` declares tree id/flex, autoconfigured into
+`setId`/`setStyle` calls) and all controllers. The non-obvious mechanics:
+- **Typed factories**: `Keybindings` via `Config/KeybindingsFactory` (resolving it triggers
+  `Plugin/PluginHost::ensureLoaded()`, the idempotent one-time plugin load, so plugin default keys
+  merge into the immutable map); `Overlay/MenuOverlayPanes`; `PluginManager`/`PluginLoader`/
+  `PluginSettings` exposed off `PluginHost`; `PluginInstaller::create` (environment-derived
+  scalars); `SearchEverywhereController` via `Search/Everywhere/SearchEverywhereFactory`.
+- **Duplicate-typed widgets** from the composite tree are per-getter services
+  (`porta.widget.editor_body` → `[WorkspaceLayout, 'editorBody']`, same for main/git/settings
+  areas and separators) fed through **typed-named binds**
+  (`bind(ContainerWidget::class.' $editorBody', …)` — no leading backslash). A configured bind
+  with **zero consumers fails the compile**, and same-type-same-name params
+  (`SeparatorWidget $separator` in both mouse sub-routers) can't bind — those get explicit
+  per-service `->arg('$separator', …)`.
+- **Interface aliases** (one impl each): `FileOpener`/`BufferReopener`→`BufferService`,
+  `EditorAreaPanes`→`PaneLayout`, `PluginLifecycleOps`→`PluginLifecycle`,
+  `ActiveFileProvider`→`CodeEditorWidget`, `DapClientFactory`, `Scheduler`, `FloatingRegions`.
+- **Tagged command providers**: `Command/CommandProvider` autoconfigures into the
+  `porta.command_provider` tag; each provider carries `#[AsTaggedItem(priority: N)]`
+  (Workbench 700 → Debug 600 → PluginCommandProvider 500 → File 400 → Search 300 → View 200 →
+  Git 100) and `CommandRegistryPopulator` iterates them via `#[AutowireIterator]` — **priority
+  order is contractual**: registration order IS the palette display order and core registers
+  before plugins so core wins key collisions.
+
+What stays hand-built in `Ide` (deliberate): the bootstrap infra above, the widget-tree mount +
+pane arrangement calls, per-buffer runtime objects (`Buffer`/`Document`/`CodeHighlighter`), the
+runtime hook registrations (`setCallbacks`/`setProvider(...)` first-class callables/`onOpenFile`/
+`onClose`/dispatcher `addListener` for theme+locale), the `Plugin/PluginRuntime` closure seam,
+the `Widget/EditorCallbacks` DTO assembly, and `$initialFile`/`$initialLine` handling in `run()`.
+Four objects are handed to the container as **synthetic** services right after `Ide` creates
+them: `Renderer`, `Tui`, `BidiTui` (external `symfony/tui` infra) and `IdeConfig` (parsed before
+the container exists — its settings steer the env parameters).
 
 **Rules for the container** (`config/services.php`, deliberately **outside `src/`** so the wiring
 stays off the 100%-line-coverage gate): services are **autoregistered** via
 `$services->load('Porta\\', '../src/*')` excluding only `Ide.php` and `Container/` — the
 non-service classes register private and are pruned at compile because nothing public references
-them (*fragile*: if a **public** service ever gains a dependency on a closure-wired/DTO class,
+them (*fragile*: if a **public** service ever gains a dependency on a non-service class,
 compile fails with a Symfony autowiring error — explicit at boot, caught by the first E2e test).
 `_defaults` stays **private**; the single public boundary is the `porta.ide` `ServiceLocator`
 (plus the synthetics) — `Ide` resolves everything through its typed `service()` helper, and a new
 class `Ide` needs by type must be added to the locator's entry list. Every def is **shared**;
-**never `lazy: true`** — it proxy-subclasses, which breaks `final` classes. Add construction the
-container can't own to the matching `build*` step, not as another extracted class.
+**never `lazy: true`** — it proxy-subclasses, which breaks `final` classes.
 
 **Events.** `symfony/event-dispatcher`, kernel-less: `config/services.php` registers the
 `#[AsEventListener]` attribute autoconfiguration and the `RegisterListenersPass` (the service id

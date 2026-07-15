@@ -6,12 +6,14 @@ namespace Porta\Command;
 
 use Porta\Config\CommandRegistry;
 use Porta\Debug\DebugController;
+use Symfony\Component\DependencyInjection\Attribute\AsTaggedItem;
 
 /**
  * Debugger commands. The step/stop keys (F7/F8/F9/^F2) are shared with
  * editor/widget bindings, so their key dispatch is gated on the session
  * state and falls through to the focused widget when not debugging.
  */
+#[AsTaggedItem(priority: 600)]
 final class DebugCommands implements CommandProvider
 {
     public function __construct(

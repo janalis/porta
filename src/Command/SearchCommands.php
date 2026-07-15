@@ -6,8 +6,10 @@ namespace Porta\Command;
 
 use Porta\Config\CommandRegistry;
 use Porta\Search\SearchActions;
+use Symfony\Component\DependencyInjection\Attribute\AsTaggedItem;
 
 /** Project-wide search/navigation palette commands. */
+#[AsTaggedItem(priority: 300)]
 final class SearchCommands implements CommandProvider
 {
     public function __construct(

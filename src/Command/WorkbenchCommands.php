@@ -21,9 +21,11 @@ use Porta\Widget\FindBarWidget;
 use Porta\Widget\GoToFileWidget;
 use Porta\Widget\ImageViewerWidget;
 use Porta\Widget\MenuBarWidget;
+use Symfony\Component\DependencyInjection\Attribute\AsTaggedItem;
 use Symfony\Component\Tui\Tui;
 
 /** The key-bound-only workbench chords: quit, focus movement, global overlays. */
+#[AsTaggedItem(priority: 700)]
 final class WorkbenchCommands implements CommandProvider
 {
     public function __construct(

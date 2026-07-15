@@ -2,6 +2,8 @@
 
 declare(strict_types=1);
 
+use Porta\Command\CommandProvider;
+use Porta\Command\CommandRegistryPopulator;
 use Porta\Config\CommandRegistry;
 use Porta\Config\EditorConfig\EditorConfigResolver;
 use Porta\Config\IdeConfig;
@@ -193,6 +195,12 @@ return static function (ContainerConfigurator $container, ContainerBuilder $buil
     );
     $builder->addCompilerPass(new RegisterListenersPass(), PassConfig::TYPE_BEFORE_REMOVING);
 
+    // Command providers register in #[AsTaggedItem] priority order (higher
+    // first) — the order is contractual: registration order IS the palette
+    // display order, and core registers before plugins so core wins key
+    // collisions.
+    $builder->registerForAutoconfiguration(CommandProvider::class)->addTag('porta.command_provider');
+
     $services = $container->services();
 
     // Private by default: autoregistration below relies on the removal pass
@@ -282,43 +290,23 @@ return static function (ContainerConfigurator $container, ContainerBuilder $buil
     // Widget ids and flex styles live on the widget classes as #[AsWidget].
     $locatorEntries = [];
     foreach ([
-        SwitchablePalette::class,
-        SwitchableTerminalTheme::class,
-        Clipboard::class,
         DocsUrlOpener::class,
         EditorArea::class,
         WorkspaceViews::class,
         ChromeInvalidator::class,
         GitRefresher::class,
-        GitRemote::class,
-        BreakpointStore::class,
-        DebugSessionState::class,
-        EditorDecorations::class,
-        DapClientFactory::class,
-        ProjectSearchController::class,
-        ResultContextProvider::class,
-        Scheduler::class,
-        PluginEvents::class,
         Translator::class,
         GitInfo::class,
-        LocalHistory::class,
         SessionStore::class,
-        EditorConfigResolver::class,
         BufferManager::class,
-        LayoutStore::class,
         WorkspaceEditor::class,
         CompletionController::class,
         PanelManager::class,
-        CommandPalette::class,
         HitTester::class,
         LayoutController::class,
-        TestNavigator::class,
-        ImageDecoder::class,
-        CursorStyle::class,
         NotificationLog::class,
         FreezeWatchdog::class,
         Notifier::class,
-        GitSidebar::class,
         CodeEditorWidget::class,
         ImageViewerWidget::class,
         HelpViewerWidget::class,
@@ -327,14 +315,6 @@ return static function (ContainerConfigurator $container, ContainerBuilder $buil
         DebugPanelWidget::class,
         TerminalPanelWidget::class,
         FileTreeWidget::class,
-        ChangesListWidget::class,
-        DiffViewWidget::class,
-        CommitBoxWidget::class,
-        HistoryListWidget::class,
-        GitTabsWidget::class,
-        SettingsNavWidget::class,
-        SettingsFormWidget::class,
-        KeybindingsListWidget::class,
         GoToFileWidget::class,
         FindBarWidget::class,
         TabBarWidget::class,
@@ -346,16 +326,13 @@ return static function (ContainerConfigurator $container, ContainerBuilder $buil
         PaneSegmenter::class,
         PaneReorder::class,
         PaneLayout::class,
-        PaneResizer::class,
         TabListProvider::class,
         BreadcrumbTrailProvider::class,
-        LiveSettingsApplier::class,
         FocusCoordinator::class,
         PluginHost::class,
         Keybindings::class,
         LspSessionPool::class,
         LspLog::class,
-        FormatOnSave::class,
         CommandRegistry::class,
         BufferService::class,
         BufferNavigator::class,
@@ -378,13 +355,13 @@ return static function (ContainerConfigurator $container, ContainerBuilder $buil
         PluginLifecycle::class,
         MenuRebuilder::class,
         GitViewController::class,
-        MouseRouter::class,
         InputDispatcher::class,
         NavigationController::class,
         RefactorController::class,
         RunController::class,
         SearchUiWiring::class,
         ContextMenuOpener::class,
+        CommandRegistryPopulator::class,
     ] as $locatorId) {
         $locatorEntries[$locatorId] = service($locatorId);
     }
