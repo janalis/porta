@@ -6,6 +6,8 @@ namespace Porta\Tests\Unit\Ui;
 
 use PHPUnit\Framework\TestCase;
 use Porta\Config\CommandRegistry;
+use Porta\Config\KeyDispatch;
+use Porta\Config\PaletteVisibility;
 use Porta\I18n\Translator;
 use Porta\Ui\Menu;
 use Porta\Ui\MenuItem;
@@ -59,7 +61,7 @@ final class MenuModelTest extends TestCase
             static function () use (&$ran): void {
                 ++$ran;
             },
-            keyBound: true,
+            keyBound: KeyDispatch::Bound,
             label: 'Say Hello',
         );
         $ideKeys = new Keybindings(['demo:hello' => ['ctrl+alt+y']]);
@@ -82,9 +84,9 @@ final class MenuModelTest extends TestCase
     public function testPluginItemsAreGroupedPerPluginWithSeparators(): void
     {
         $commands = new CommandRegistry();
-        $commands->add('alpha:one', static function (): void {}, keyBound: true, label: 'Alpha One');
-        $commands->add('alpha:two', static function (): void {}, keyBound: true, label: 'Alpha Two');
-        $commands->add('beta:one', static function (): void {}, keyBound: true, label: 'Beta One');
+        $commands->add('alpha:one', static function (): void {}, keyBound: KeyDispatch::Bound, label: 'Alpha One');
+        $commands->add('alpha:two', static function (): void {}, keyBound: KeyDispatch::Bound, label: 'Alpha Two');
+        $commands->add('beta:one', static function (): void {}, keyBound: KeyDispatch::Bound, label: 'Beta One');
 
         $menus = MenuModel::build($commands, new CodeEditorWidget(), new Keybindings([]), new Translator('en'), pluginSpecs: [
             ['plugin' => 'alpha', 'spec' => 'i:alpha:one', 'when' => null],
@@ -101,8 +103,8 @@ final class MenuModelTest extends TestCase
     public function testASinglePluginGetsNoSeparators(): void
     {
         $commands = new CommandRegistry();
-        $commands->add('demo:a', static function (): void {}, keyBound: true, label: 'A');
-        $commands->add('demo:b', static function (): void {}, keyBound: true, label: 'B');
+        $commands->add('demo:a', static function (): void {}, keyBound: KeyDispatch::Bound, label: 'A');
+        $commands->add('demo:b', static function (): void {}, keyBound: KeyDispatch::Bound, label: 'B');
 
         $menus = MenuModel::build($commands, new CodeEditorWidget(), new Keybindings([]), new Translator('en'), pluginSpecs: [
             ['plugin' => 'demo', 'spec' => 'i:demo:a', 'when' => null],
@@ -115,7 +117,7 @@ final class MenuModelTest extends TestCase
     public function testPluginWhenClosureGatesTheMenuItemOnTopOfViewGating(): void
     {
         $commands = new CommandRegistry();
-        $commands->add('demo:hello', static function (): void {}, keyBound: true, label: 'Say Hello');
+        $commands->add('demo:hello', static function (): void {}, keyBound: KeyDispatch::Bound, label: 'Say Hello');
         $usable = false;
         $settingsOpen = false;
 
@@ -291,7 +293,7 @@ final class MenuModelTest extends TestCase
             static function () use (&$ran): void {
                 $ran = true;
             },
-            keyBound: true,
+            keyBound: KeyDispatch::Bound,
         );
 
         $menus = $this->build($commands, new CodeEditorWidget());
@@ -311,8 +313,8 @@ final class MenuModelTest extends TestCase
             static function () use (&$ran): void {
                 $ran = true;
             },
-            keyBound: true,
-            inPalette: false,
+            keyBound: KeyDispatch::Bound,
+            inPalette: PaletteVisibility::Hidden,
         );
 
         $menus = $this->build($commands, new CodeEditorWidget());

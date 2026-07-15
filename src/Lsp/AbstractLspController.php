@@ -36,9 +36,9 @@ abstract class AbstractLspController
 
     /**
      * The active file's path when an initialized server is ready for a feature
-     * request (flushing pending edits unless $flush is false), else null.
+     * request (flushing pending edits unless {@see FlushMode::Keep}), else null.
      */
-    protected function ready(bool $flush = true): ?string
+    protected function ready(FlushMode $flush = FlushMode::Flush): ?string
     {
         return $this->lsp->ready($this->editor->getFilePath(), $this->editor->getDocument(), $flush);
     }

@@ -7,24 +7,27 @@ namespace Porta\Tests\Unit\Console;
 use PHPUnit\Framework\TestCase;
 use Porta\Console\PortaCommand;
 use Porta\Console\Workspace;
+use Porta\Container\Ansi;
+use Porta\Container\LspMode;
+use Porta\Tests\Support\Presence;
 use Porta\Tests\Support\TempProject;
 use Symfony\Component\Console\Command\Command;
 use Symfony\Component\Console\Tester\CommandTester;
 
 final class PortaCommandTest extends TestCase
 {
-    /** @var array{0: Workspace, 1: ?string, 2: bool, 3: bool}|null captured launch arguments */
+    /** @var array{0: Workspace, 1: ?string, 2: LspMode, 3: Ansi}|null captured launch arguments */
     private ?array $launched = null;
 
-    private function command(bool $interactive = true): PortaCommand
+    private function command(Presence $interactive = Presence::With): PortaCommand
     {
         $this->launched = null;
 
         return new PortaCommand(
-            launch: function (Workspace $workspace, ?string $lsp, bool $noLsp, bool $ansi): void {
+            launch: function (Workspace $workspace, ?string $lsp, LspMode $noLsp, Ansi $ansi): void {
                 $this->launched = [$workspace, $lsp, $noLsp, $ansi];
             },
-            isInteractive: static fn (): bool => $interactive,
+            isInteractive: static fn (): bool => Presence::With === $interactive,
         );
     }
 
@@ -38,7 +41,7 @@ final class PortaCommandTest extends TestCase
         $this->assertSame(realpath($project->dir), $workspace->rootDir);
         $this->assertNull($workspace->initialFile);
         $this->assertNull($lsp);
-        $this->assertFalse($noLsp);
+        $this->assertSame(LspMode::Enabled, $noLsp);
     }
 
     public function testFileLineShorthandOpensAtLine(): void
@@ -69,7 +72,7 @@ final class PortaCommandTest extends TestCase
         $tester->execute(['path' => $project->dir, '--lsp' => 'my-ls --stdio', '--no-lsp' => true]);
         [, $lsp, $noLsp] = $this->launched;
         $this->assertSame('my-ls --stdio', $lsp);
-        $this->assertTrue($noLsp);
+        $this->assertSame(LspMode::Disabled, $noLsp);
     }
 
     public function testOutputDecorationDrivesTheColorMode(): void
@@ -78,17 +81,17 @@ final class PortaCommandTest extends TestCase
 
         $tester = new CommandTester($this->command());
         $tester->execute(['path' => $project->dir], ['decorated' => false]);
-        $this->assertFalse($this->launched[3], '--no-ansi (undecorated output) launches in monochrome');
+        $this->assertSame(Ansi::Disabled, $this->launched[3], '--no-ansi (undecorated output) launches in monochrome');
 
         $tester = new CommandTester($this->command());
         $tester->execute(['path' => $project->dir], ['decorated' => true]);
-        $this->assertTrue($this->launched[3], '--ansi (decorated output) launches in color');
+        $this->assertSame(Ansi::Enabled, $this->launched[3], '--ansi (decorated output) launches in color');
     }
 
     public function testNonInteractiveTerminalRefusesToLaunch(): void
     {
         $project = new TempProject(['a.php' => '']);
-        $tester = new CommandTester($this->command(interactive: false));
+        $tester = new CommandTester($this->command(interactive: Presence::Without));
 
         $this->assertSame(Command::FAILURE, $tester->execute(['path' => $project->dir]));
         $this->assertNull($this->launched, 'the IDE is never launched');

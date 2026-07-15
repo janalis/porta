@@ -68,7 +68,7 @@ final class EditorMouse
     {
         ['line' => $line, 'col' => $col] = $this->positionAt($relRow, $relCol, $vp);
         $this->document->beginSelect();
-        $this->document->setCursor($line, $col, keepSelection: true);
+        $this->document->setCursor($line, $col, selection: SelectionMode::Keep);
         ($this->closeCompletion)();
         ($this->invalidate)();
     }

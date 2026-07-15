@@ -117,7 +117,7 @@ final class SettingsPluginsController
     {
         if ('pluginEnabled' === $key) {
             $this->armed = null;
-            $this->lifecycle->setEnabled($name, (bool) $value);
+            (bool) $value ? $this->lifecycle->enable($name) : $this->lifecycle->disable($name);
 
             return;
         }

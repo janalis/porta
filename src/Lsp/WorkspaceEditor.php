@@ -6,6 +6,7 @@ namespace Porta\Lsp;
 
 use Porta\Editor\BufferManager;
 use Porta\Editor\Document;
+use Porta\Editor\SelectionMode;
 use Porta\Widget\CodeEditorWidget;
 use Symfony\Component\Filesystem\Filesystem;
 
@@ -93,7 +94,7 @@ final readonly class WorkspaceEditor
                 $end = $edit['range']['end'];
                 $document->setCursor($start['line'] ?? 0, $document->utf16ColToByteCol($start['line'] ?? 0, $start['character'] ?? 0));
                 $document->beginSelect();
-                $document->setCursor($end['line'] ?? 0, $document->utf16ColToByteCol($end['line'] ?? 0, $end['character'] ?? 0), keepSelection: true);
+                $document->setCursor($end['line'] ?? 0, $document->utf16ColToByteCol($end['line'] ?? 0, $end['character'] ?? 0), selection: SelectionMode::Keep);
                 if ($document->hasSelection()) {
                     $document->deleteSelection();
                 }

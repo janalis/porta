@@ -6,6 +6,8 @@ namespace Porta\Tests\E2e;
 
 use PHPUnit\Framework\TestCase;
 use Porta\Config\IdeConfig;
+use Porta\Editor\OpenFocus;
+use Porta\Editor\SelectionMode;
 use Porta\Ide;
 use Porta\Tests\Support\RunsIde;
 use Porta\Tests\Support\TempProject;
@@ -524,7 +526,7 @@ final class IdeEdgeCasesTest extends TestCase
             [
                 200 => function ($tui, $terminal, $ide) use ($project): void {
                     $service = new \ReflectionProperty($ide, 'bufferService')->getValue($ide);
-                    $service->openFile($project->path('img.png'), true);
+                    $service->openFile($project->path('img.png'), OpenFocus::Editor);
                     $tui->tick();
                     $editor = new \ReflectionProperty($ide, 'editor')->getValue($ide);
                     $this->assertNull($editor->getContext(), 'the editor is detached under an image tab');
@@ -597,7 +599,7 @@ final class IdeEdgeCasesTest extends TestCase
                 200 => static function ($tui, $terminal, $ide) use ($project): void {
                     new \ReflectionProperty($ide, 'bufferService')
                         ->getValue($ide)
-                        ->openFile($project->path('img.png'), true);
+                        ->openFile($project->path('img.png'), OpenFocus::Editor);
                     $tui->handleInput("\x1b[102;6u"); // ctrl+shift+f → find in files
                 },
                 340 => function ($tui, $terminal): void {
@@ -633,7 +635,7 @@ final class IdeEdgeCasesTest extends TestCase
                     $tui->tick();
                     $this->assertStringContainsString('Cannot display image fake.png', AnsiUtils::stripAnsiCodes($terminal->getOutput()));
                     // Open the good one, then close the last tab: the editor pane empties.
-                    $service->openFile($project->path('img.png'), true);
+                    $service->openFile($project->path('img.png'), OpenFocus::Editor);
                     $tui->handleInput("\x1bw");
                 },
                 340 => function ($tui): void {
@@ -2537,7 +2539,7 @@ final class IdeEdgeCasesTest extends TestCase
                     $doc = $tui->getById('editor')->getDocument();
                     $doc->setCursor(1, 0);
                     $doc->beginSelect();
-                    $doc->setCursor(1, 8, keepSelection: true); // select "messy( )"
+                    $doc->setCursor(1, 8, selection: SelectionMode::Keep); // select "messy( )"
                     $tui->handleInput("\x1b\x0c"); // ctrl+alt+l reformat
                 },
                 700 => function ($tui): void {
@@ -5347,8 +5349,8 @@ final class IdeEdgeCasesTest extends TestCase
             [
                 150 => function ($tui, $terminal, $ide) use ($project): void {
                     $service = new \ReflectionProperty($ide, 'bufferService')->getValue($ide);
-                    $service->openFile($project->path('B.php'), true);
-                    $service->openFile($project->path('C.php'), true);
+                    $service->openFile($project->path('B.php'), OpenFocus::Editor);
+                    $service->openFile($project->path('C.php'), OpenFocus::Editor);
                     $tui->tick();
                     $this->assertSame(['A.php', 'B.php', 'C.php'], $this->tabNames($tui));
                 },
@@ -5562,7 +5564,7 @@ final class IdeEdgeCasesTest extends TestCase
                 },
                 700 => function ($tui, $terminal, $ide) use ($project): void {
                     $this->assertStringEndsWith('Target.php', (string) $tui->getById('editor')->getFilePath(), 'php-routed definition jumped');
-                    new \ReflectionMethod($ide, 'openFile')->invoke($ide, $project->path('src/app.js'), true);
+                    new \ReflectionMethod($ide, 'openFile')->invoke($ide, $project->path('src/app.js'), OpenFocus::Editor);
                 },
                 1100 => static function ($tui): void {
                     $tui->getById('editor')->getDocument()->setCursor(0, 2); // on doWork
@@ -5570,7 +5572,7 @@ final class IdeEdgeCasesTest extends TestCase
                 },
                 1400 => function ($tui, $terminal, $ide) use ($project): void {
                     $this->assertStringEndsWith('Target.php', (string) $tui->getById('editor')->getFilePath(), 'js-routed definition jumped');
-                    new \ReflectionMethod($ide, 'openFile')->invoke($ide, $project->path('notes.md'), true);
+                    new \ReflectionMethod($ide, 'openFile')->invoke($ide, $project->path('notes.md'), OpenFocus::Editor);
                     $tui->tick();
                 },
             ],

@@ -8,6 +8,7 @@ use PHPUnit\Framework\TestCase;
 use Porta\Git\DiffDocument;
 use Porta\Git\GitInfo;
 use Porta\Git\PatchBuilder;
+use Porta\Support\Outcome;
 use Porta\Tests\Support\TempProject;
 use Revolt\EventLoop;
 
@@ -125,7 +126,7 @@ final class PatchBuilderTest extends TestCase
         [$git, $project] = $this->repo(['f.txt' => "alpha\nbeta\ngamma\n"]);
         $project->write('f.txt', "alpha CHANGED\nbeta\ngamma CHANGED\n");
 
-        $raw = $this->awaitDiff($git, $project->path('f.txt'), worktree: true);
+        $raw = $this->awaitDiff($git, $project->path('f.txt'), DiffSide::Worktree);
         $doc = DiffDocument::parse($raw);
 
         // Select only the FIRST change pair (-alpha/+alpha CHANGED).
@@ -155,7 +156,7 @@ final class PatchBuilderTest extends TestCase
         [$git, $project] = $this->repo(['f.txt' => "one\ntwo\nthree\nfour\n"]);
         $project->write('f.txt', "one\ninserted\ntwo\nfour\n"); // +inserted, -three
 
-        $doc = DiffDocument::parse($this->awaitDiff($git, $project->path('f.txt'), worktree: true));
+        $doc = DiffDocument::parse($this->awaitDiff($git, $project->path('f.txt'), DiffSide::Worktree));
 
         // Stage ONLY the deletion of 'three'.
         $selected = [];
@@ -181,7 +182,7 @@ final class PatchBuilderTest extends TestCase
         $project->write('f.txt', "alpha CHANGED\nbeta CHANGED\n");
         $this->gitOut($project, 'add f.txt'); // everything staged
 
-        $doc = DiffDocument::parse($this->awaitDiff($git, $project->path('f.txt'), worktree: false));
+        $doc = DiffDocument::parse($this->awaitDiff($git, $project->path('f.txt'), DiffSide::Cached));
         $inverted = array_map(PatchBuilder::invertHunk(...), $doc->hunks);
 
         // Unstage only the beta change: select its ± pair in the INVERTED hunks.
@@ -218,13 +219,13 @@ final class PatchBuilderTest extends TestCase
         return [new GitInfo($project->dir), $project];
     }
 
-    private function awaitDiff(GitInfo $git, string $abs, bool $worktree): string
+    private function awaitDiff(GitInfo $git, string $abs, DiffSide $side): string
     {
         $raw = null;
         $cb = static function (string $out) use (&$raw): void {
             $raw = $out;
         };
-        $worktree ? $git->worktreeFileDiff($abs, $cb) : $git->cachedFileDiff($abs, $cb);
+        DiffSide::Worktree === $side ? $git->worktreeFileDiff($abs, $cb) : $git->cachedFileDiff($abs, $cb);
         $this->await(static fn (): bool => null !== $raw);
 
         return (string) $raw;
@@ -233,8 +234,8 @@ final class PatchBuilderTest extends TestCase
     private function applyOk(GitInfo $git, string $patch): void
     {
         $ok = null;
-        $git->applyCached($patch, static function (bool $result) use (&$ok): void {
-            $ok = $result;
+        $git->applyCached($patch, static function (Outcome $result) use (&$ok): void {
+            $ok = $result->isOk();
         });
         $this->await(static fn (): bool => null !== $ok);
         $this->assertTrue($ok, "git apply --cached accepted the patch:\n".$patch);
@@ -268,4 +269,11 @@ final class PatchBuilderTest extends TestCase
 
         return null;
     }
+}
+
+/** Which side of the index a diff is taken against. */
+enum DiffSide
+{
+    case Worktree;
+    case Cached;
 }

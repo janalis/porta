@@ -448,7 +448,12 @@ final class ProjectSearch
     /** Build a PCRE pattern mirroring the grep flags, for the PHP fallback. */
     private function pattern(string $query, SearchOptions $options): string
     {
-        return SearchPattern::build($query, $options->regex, $options->wholeWord, $options->caseSensitive);
+        return SearchPattern::build(
+            $query,
+            $options->regex ? MatchMode::Regex : MatchMode::Literal,
+            $options->wholeWord ? WordMode::WholeWord : WordMode::Anywhere,
+            $options->caseSensitive ? CaseMode::Sensitive : CaseMode::Insensitive,
+        );
     }
 
     /** Whether a user regex compiles, swallowing the warning a malformed pattern raises. */

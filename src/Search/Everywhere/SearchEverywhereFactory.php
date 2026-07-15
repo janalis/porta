@@ -7,6 +7,7 @@ namespace Porta\Search\Everywhere;
 use Porta\Config\CommandRegistry;
 use Porta\Editor\BufferManager;
 use Porta\Editor\BufferService;
+use Porta\Editor\OpenFocus;
 use Porta\Lsp\LspSessionPool;
 use Porta\Lsp\WorkspaceSymbolClient;
 use Porta\Search\FileIndex;
@@ -37,7 +38,7 @@ final class SearchEverywhereFactory
 
     public function create(): SearchEverywhereController
     {
-        $openFile = fn (string $path, bool $focus) => $this->bufferService->openFile($path, focusEditor: $focus);
+        $openFile = fn (string $path, OpenFocus $focus) => $this->bufferService->openFile($path, $focus);
         $jumpTo = fn (int $line, int $col) => $this->editor->jumpTo($line, $col);
         $searchSymbols = new WorkspaceSymbolClient($this->lsp, $this->rootDir)->search(...);
 

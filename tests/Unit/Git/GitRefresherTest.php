@@ -12,6 +12,7 @@ use Porta\Event\GitRemoteCompleted;
 use Porta\Git\GitInfo;
 use Porta\Git\GitRefresher;
 use Porta\Image\ImageData;
+use Porta\Tests\Support\Presence;
 use Porta\Tests\Support\TempProject;
 use Porta\Widget\CodeEditorWidget;
 use Porta\Widget\StatusBarWidget;
@@ -28,13 +29,13 @@ final class GitRefresherTest extends TestCase
 
     private CodeEditorWidget $editor;
 
-    private function refresher(bool $realRepo = true): GitRefresher
+    private function refresher(Presence $realRepo = Presence::With): GitRefresher
     {
-        if ($realRepo && null === self::findGit()) {
+        if (Presence::With === $realRepo && null === self::findGit()) {
             $this->markTestSkipped('git not available');
         }
         $this->project = new TempProject(['a.txt' => "one\ntwo\n"]);
-        if ($realRepo) {
+        if (Presence::With === $realRepo) {
             $d = escapeshellarg($this->project->dir);
             exec("git -C {$d} init -q -b trunk && git -C {$d} config user.email t@t && git -C {$d} config user.name t && git -C {$d} add -A && git -C {$d} commit -qm init");
         }
@@ -88,7 +89,7 @@ final class GitRefresherTest extends TestCase
         $image = $this->buffers->openImage($this->project->path('i.png'), new ImageData($gd, 2, 2, 9));
         $refresher->refreshMarks($image); // image buffers have no git marks
 
-        $unavailable = $this->refresher(realRepo: false);
+        $unavailable = $this->refresher(realRepo: Presence::Without);
         $unavailable->refreshBranch();
         $unavailable->refreshActiveMarks();
         $this->assertNull($unavailable->branch(), 'no repo: the refresh is a silent no-op');

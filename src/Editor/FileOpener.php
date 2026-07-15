@@ -11,5 +11,5 @@ namespace Porta\Editor;
  */
 interface FileOpener
 {
-    public function openFile(string $path, bool $focusEditor = false): void;
+    public function openFile(string $path, OpenFocus $focus = OpenFocus::Keep): void;
 }

@@ -10,11 +10,14 @@ use Porta\Config\CommandRegistry;
 use Porta\Config\IdeConfig;
 use Porta\Config\SettingsController;
 use Porta\Config\SettingsLanguageController;
+use Porta\Container\Ansi;
 use Porta\Container\IdeContainerFactory;
+use Porta\Container\LspMode;
 use Porta\Debug\DebugController;
 use Porta\Debug\DebugStatePersistence;
 use Porta\Editor\BufferManager;
 use Porta\Editor\BufferService;
+use Porta\Editor\OpenFocus;
 use Porta\Git\GitInfo;
 use Porta\Git\GitRefresher;
 use Porta\Git\GitViewController;
@@ -148,7 +151,14 @@ final class Ide
         // The shipped user guides (F1), package-relative like the translations.
         $this->docsDir = $docsDir ?? \dirname(__DIR__).'/docs';
         $config = IdeConfig::load($this->rootDir);
-        $this->container = new IdeContainerFactory()->build($this->rootDir, $config, $this->ansi, $this->lspCommand, $this->lspDisabled, $this->docsDir);
+        $this->container = new IdeContainerFactory()->build(
+            $this->rootDir,
+            $config,
+            $this->ansi ? Ansi::Enabled : Ansi::Disabled,
+            $this->lspCommand,
+            $this->lspDisabled ? LspMode::Disabled : LspMode::Enabled,
+            $this->docsDir,
+        );
         $locator = $this->container->get('porta.ide');
         \assert($locator instanceof ServiceLocator, description: 'The porta.ide service is the ServiceLocator boundary');
         $this->locator = $locator;
@@ -471,9 +481,9 @@ final class Ide
 
     // --- File handling ----------------------------------------------------------
 
-    private function openFile(string $path, bool $focusEditor = false): void
+    private function openFile(string $path): void
     {
-        $this->bufferService->openFile($path, $focusEditor);
+        $this->bufferService->openFile($path, OpenFocus::Keep);
     }
 
     /**

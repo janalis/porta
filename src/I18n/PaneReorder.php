@@ -27,7 +27,7 @@ final class PaneReorder
             // Reset after every run: redundant after a (self-balanced) reordered
             // run, load-bearing after a verbatim run that may end mid-SGR — that
             // stray background is exactly what used to bleed across panes.
-            $out .= ($run['ltr'] ? $slice : Bidi::reorder($slice, true))."\x1b[0m";
+            $out .= ($run['ltr'] ? $slice : Bidi::reorder($slice, BaseDirection::Rtl))."\x1b[0m";
         }
 
         return $out;
@@ -52,7 +52,7 @@ final class PaneReorder
             }
             $slice = AnsiUtils::sliceByColumn($line, $run['start'], $run['width'], strict: true);
 
-            return $run['start'] + Bidi::visualToLogicalColumn($slice, $visualCol - $run['start'], true);
+            return $run['start'] + Bidi::visualToLogicalColumn($slice, $visualCol - $run['start'], BaseDirection::Rtl);
         }
 
         return $visualCol;

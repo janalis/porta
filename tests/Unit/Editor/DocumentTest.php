@@ -6,6 +6,7 @@ namespace Porta\Tests\Unit\Editor;
 
 use PHPUnit\Framework\TestCase;
 use Porta\Editor\Document;
+use Porta\Editor\SelectionMode;
 
 final class DocumentTest extends TestCase
 {
@@ -147,7 +148,7 @@ final class DocumentTest extends TestCase
         $doc = new Document('hello world');
         $doc->setCursor(0, 0);
         $doc->beginSelect();
-        $doc->setCursor(0, 5, keepSelection: true); // select "hello"
+        $doc->setCursor(0, 5, selection: SelectionMode::Keep); // select "hello"
         $doc->insert('X'); // replaces the selection
 
         $this->assertFalse($doc->hasSelection(), 'selection consumed by the edit');
@@ -283,7 +284,7 @@ final class DocumentTest extends TestCase
         $doc = new Document("alpha\nbravo\ncharlie\n");
         $doc->setCursor(0, 2);
         $doc->beginSelect();
-        $doc->setCursor(1, 3, keepSelection: true);
+        $doc->setCursor(1, 3, selection: SelectionMode::Keep);
 
         $this->assertTrue($doc->hasSelection());
         $this->assertSame("pha\nbra", $doc->getSelectedText());
@@ -300,7 +301,7 @@ final class DocumentTest extends TestCase
     {
         $doc = new Document('abcdef');
         $doc->beginSelect();
-        $doc->setCursor(0, 3, keepSelection: true);
+        $doc->setCursor(0, 3, selection: SelectionMode::Keep);
         $this->assertTrue($doc->hasSelection());
 
         $doc->setCursor(0, 1);
@@ -345,7 +346,7 @@ final class DocumentTest extends TestCase
         $doc = new Document("    return 1;\n    echo 2;");
         $doc->setCursor(0, 0);
         $doc->beginSelect();
-        $doc->setCursor(1, 4, keepSelection: true);
+        $doc->setCursor(1, 4, selection: SelectionMode::Keep);
 
         $doc->toggleComment('//');
         $this->assertStringContainsString('// return', $doc->getLine(0));
@@ -360,7 +361,7 @@ final class DocumentTest extends TestCase
         $doc = new Document("a\nb\n\nc\n"); // space-indented (no leading tab)
         $doc->setCursor(0, 1);
         $doc->beginSelect();
-        $doc->setCursor(3, 1, keepSelection: true); // selection spans lines 0..3
+        $doc->setCursor(3, 1, selection: SelectionMode::Keep); // selection spans lines 0..3
 
         $doc->indentSelection();
         $this->assertSame(['    a', '    b', '', '    c', ''], $doc->getLines(), 'each non-blank line gains one level; blank line untouched');
@@ -379,7 +380,7 @@ final class DocumentTest extends TestCase
         $doc = new Document("        deep\n  shallow\nnone\n"); // 8 / 2 / 0 leading spaces
         $doc->setCursor(0, 0);
         $doc->beginSelect();
-        $doc->setCursor(2, 4, keepSelection: true);
+        $doc->setCursor(2, 4, selection: SelectionMode::Keep);
 
         $doc->dedentSelection();
         $this->assertSame(['    deep', 'shallow', 'none', ''], $doc->getLines(), 'removes up to one level; a shallow line goes to the margin, none stays');
@@ -396,7 +397,7 @@ final class DocumentTest extends TestCase
         $this->assertTrue($doc->usesTabs());
         $doc->setCursor(0, 0);
         $doc->beginSelect();
-        $doc->setCursor(1, 2, keepSelection: true);
+        $doc->setCursor(1, 2, selection: SelectionMode::Keep);
 
         $doc->indentSelection();
         $this->assertSame(["\t\tx", "\t\ty", ''], $doc->getLines());
@@ -409,7 +410,7 @@ final class DocumentTest extends TestCase
         $doc = new Document("foo\nbar\n");
         $doc->setCursor(0, 0);
         $doc->beginSelect();
-        $doc->setCursor(0, 3, keepSelection: true); // one-line selection
+        $doc->setCursor(0, 3, selection: SelectionMode::Keep); // one-line selection
 
         $doc->indentSelection();
         $this->assertSame('    foo', $doc->getLine(0));
@@ -637,7 +638,7 @@ final class DocumentTest extends TestCase
         $doc = new Document("x\naa\nbb\ny");
         $doc->setCursor(1, 0);
         $doc->beginSelect();
-        $doc->setCursor(2, 2, keepSelection: true); // select lines 1-2
+        $doc->setCursor(2, 2, selection: SelectionMode::Keep); // select lines 1-2
         $this->assertTrue($doc->moveStatement(1));
         $this->assertSame("x\ny\naa\nbb", $doc->getText());
         $range = $doc->getSelectionRange();

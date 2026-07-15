@@ -74,7 +74,3 @@ too-many-enum-cases = { threshold = 80 }
 excessive-parameter-list = { threshold = 25 }
 kan-defect = { threshold = 60 }
 halstead = { effort-threshold = 25000, difficulty-threshold = 35, volume-threshold = 4000 }
-# TEMPORARY (checkpoint): the 193 boolean-flag params are being split/enum-ized
-# in the follow-up commit; disabled here only so this intermediate state passes
-# the gate. Removed once the conversion lands.
-no-boolean-flag-parameter = { enabled = false }

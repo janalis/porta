@@ -6,6 +6,7 @@ namespace Porta\Lsp;
 
 use Porta\Support\JsonRpcFramer;
 use Porta\Support\NonBlockingWriter;
+use Porta\Support\Outcome;
 use Revolt\EventLoop;
 
 /**
@@ -98,14 +99,14 @@ final class LspClient implements LspClientInterface
     /**
      * Spawn the server and run the initialize handshake.
      *
-     * @param callable(bool): void $onReady called with true on success
+     * @param callable(Outcome): void $onReady called with true on success
      */
     public function start(callable $onReady): void
     {
         $pipes = [];
         $process = $this->openServerProcess($pipes);
         if (null === $process) {
-            $onReady(false);
+            $onReady(Outcome::Failed);
 
             return;
         }
@@ -119,7 +120,7 @@ final class LspClient implements LspClientInterface
             function (mixed $result, ?array $error) use ($onReady): void {
                 if (null !== $error) {
                     $this->log('initialize failed: '.(string) json_encode($error));
-                    $onReady(false);
+                    $onReady(Outcome::Failed);
 
                     return;
                 }
@@ -132,7 +133,7 @@ final class LspClient implements LspClientInterface
                     $action();
                 }
                 $this->whenReady = [];
-                $onReady(true);
+                $onReady(Outcome::Ok);
             },
         );
     }

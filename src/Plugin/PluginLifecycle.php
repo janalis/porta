@@ -91,38 +91,49 @@ final class PluginLifecycle implements PluginLifecycleOps
     }
 
     /**
-     * Enable or disable a plugin live (bundled plugins are disableable, never
-     * removable). Disabling deactivates every registration; enabling loads the
-     * highest-precedence installed copy. The choice persists in .porta.json's
+     * Disable a plugin live (bundled plugins are disableable, never removable):
+     * deactivate every registration. The choice persists in .porta.json's
      * `disabledPlugins` list so the next boot honors it.
      */
-    public function setEnabled(string $name, bool $enabled): void
+    public function disable(string $name): void
     {
-        if (!$enabled) {
-            $this->disabled[$name] = true;
-            IdeConfig::persistPluginEnabled($this->rootDir, $name, false);
-            $this->plugins->deactivate($name, $this->commands); // no shadow fallback: the NAME is off
-            $this->notifier->flash($this->translator->trans('Plugin "%name%" disabled', ['%name%' => $name]));
-        }
-        if ($enabled) {
-            unset($this->disabled[$name]);
-            IdeConfig::persistPluginEnabled($this->rootDir, $name, true);
-            foreach ($this->installer->installed() as $candidate) {
-                if ($candidate['name'] !== $name) {
-                    continue;
-                }
+        $this->disabled[$name] = true;
+        IdeConfig::persistPluginDisabled($this->rootDir, $name);
+        $this->plugins->deactivate($name, $this->commands); // no shadow fallback: the NAME is off
+        $this->notifier->flash($this->translator->trans('Plugin "%name%" disabled', ['%name%' => $name]));
+        $this->afterToggle();
+    }
 
-                $error = $this->loader->loadFile($candidate['dir'].'/plugin.php', $this->plugins);
-                if (null !== $error) {
-                    $this->notifier->flash($error, 5.0);
-                }
-                if (null === $error) {
-                    $this->plugins->registerCommands($this->commands);
-                    $this->notifier->flash($this->translator->trans('Plugin "%name%" enabled — default keybindings apply on restart', ['%name%' => $name]));
-                }
-                break;
+    /**
+     * Enable a plugin live: load the highest-precedence installed copy. The
+     * choice persists in .porta.json's `disabledPlugins` list so the next boot
+     * honors it.
+     */
+    public function enable(string $name): void
+    {
+        unset($this->disabled[$name]);
+        IdeConfig::persistPluginEnabled($this->rootDir, $name);
+        foreach ($this->installer->installed() as $candidate) {
+            if ($candidate['name'] !== $name) {
+                continue;
             }
+
+            $error = $this->loader->loadFile($candidate['dir'].'/plugin.php', $this->plugins);
+            if (null !== $error) {
+                $this->notifier->flash($error, 5.0);
+            }
+            if (null === $error) {
+                $this->plugins->registerCommands($this->commands);
+                $this->notifier->flash($this->translator->trans('Plugin "%name%" enabled — default keybindings apply on restart', ['%name%' => $name]));
+            }
+            break;
         }
+        $this->afterToggle();
+    }
+
+    /** Common tail after an enable/disable: refresh menu, sidebar and screen. */
+    private function afterToggle(): void
+    {
         $this->menuRebuilder->rebuild();
         $this->refreshNav();
         $this->tui->requestRender();

@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Porta\Tests\Unit\Widget;
 
 use PHPUnit\Framework\TestCase;
+use Porta\Editor\SelectionMode;
 use Porta\Widget\CodeEditorWidget;
 
 final class CodeEditorStructuralTest extends TestCase
@@ -94,7 +95,7 @@ final class CodeEditorStructuralTest extends TestCase
         $doc = $editor->getDocument();
         $doc->setCursor(0, 0);
         $doc->beginSelect();
-        $doc->setCursor(0, 5, keepSelection: true); // select "hello"
+        $doc->setCursor(0, 5, selection: SelectionMode::Keep); // select "hello"
 
         $editor->handleInput("\x1b\x14"); // ctrl+alt+t opens the surround menu
         $editor->handleInput("\r"); // accept the first item (parentheses)

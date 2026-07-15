@@ -92,7 +92,7 @@ final class DiffViewWidget extends AbstractWidget implements FocusableInterface,
     private $onStageSelection = null;
     /** @var (callable(): void)|null `c`: cycle the diff context (default → ±10 → whole file) */
     private $onCycleContext = null;
-    /** @var (callable(bool): void)|null the split/unified toggle flipped (for persistence) */
+    /** @var (callable(): void)|null the split/unified toggle flipped (for persistence; read state via isSplit) */
     private $onLayoutToggle = null;
     /** @var (callable(): void)|null `w`: hide/show whitespace changes (state lives in the controller) */
     private $onToggleWhitespace = null;
@@ -124,7 +124,7 @@ final class DiffViewWidget extends AbstractWidget implements FocusableInterface,
         return $this;
     }
 
-    /** @param callable(bool): void $callback */
+    /** @param callable(): void $callback */
     public function onLayoutToggle(callable $callback): self
     {
         $this->onLayoutToggle = $callback;
@@ -149,19 +149,37 @@ final class DiffViewWidget extends AbstractWidget implements FocusableInterface,
     }
 
     /** Reflect the controller's hide-whitespace state on the toolbar tag. */
-    public function setWhitespaceHidden(bool $hidden): void
+    public function hideWhitespace(): void
     {
-        if ($hidden !== $this->whitespaceHidden) {
-            $this->whitespaceHidden = $hidden;
+        if (!$this->whitespaceHidden) {
+            $this->whitespaceHidden = true;
             $this->invalidate();
         }
     }
 
-    /** Apply a split/unified preference without firing the persistence hook. */
-    public function setSplit(bool $split): void
+    /** Reflect the controller's show-whitespace state on the toolbar tag. */
+    public function showWhitespace(): void
     {
-        if ($split !== $this->split) {
-            $this->split = $split;
+        if ($this->whitespaceHidden) {
+            $this->whitespaceHidden = false;
+            $this->invalidate();
+        }
+    }
+
+    /** Apply a split preference without firing the persistence hook. */
+    public function useSplitView(): void
+    {
+        if (!$this->split) {
+            $this->split = true;
+            $this->rebuildRows();
+        }
+    }
+
+    /** Apply a unified preference without firing the persistence hook. */
+    public function useUnifiedView(): void
+    {
+        if ($this->split) {
+            $this->split = false;
             $this->rebuildRows();
         }
     }
@@ -176,7 +194,7 @@ final class DiffViewWidget extends AbstractWidget implements FocusableInterface,
         $this->split = !$this->split;
         $this->rebuildRows();
         if (null !== $this->onLayoutToggle) {
-            ($this->onLayoutToggle)($this->split);
+            ($this->onLayoutToggle)();
         }
     }
 
@@ -195,9 +213,14 @@ final class DiffViewWidget extends AbstractWidget implements FocusableInterface,
         $this->invalidate();
     }
 
-    public function setReadOnly(bool $readOnly): void
+    public function makeReadOnly(): void
     {
-        $this->readOnly = $readOnly;
+        $this->readOnly = true;
+    }
+
+    public function makeEditable(): void
+    {
+        $this->readOnly = false;
     }
 
     public function isReadOnly(): bool

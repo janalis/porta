@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Porta\Plugin;
 
 use Porta\Config\CommandRegistry;
+use Porta\Config\KeyDispatch;
 
 /**
  * The committed plugin state: commands, default keys, menu entries, hook
@@ -147,7 +148,7 @@ final class PluginManager
             $commands->add(
                 $command['id'],
                 $this->wrapCommand($command['plugin'], $command['handler']),
-                keyBound: true,
+                keyBound: KeyDispatch::Bound,
                 label: $command['label'],
             );
         }

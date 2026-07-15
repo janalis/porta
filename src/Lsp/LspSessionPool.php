@@ -8,6 +8,7 @@ use Porta\Editor\ActiveFileProvider;
 use Porta\Editor\Document;
 use Porta\Event\LspStatusChanged;
 use Porta\I18n\Translator;
+use Porta\Support\Outcome;
 use Porta\Support\ProjectPaths;
 use Psr\EventDispatcher\EventDispatcherInterface;
 
@@ -142,7 +143,7 @@ final class LspSessionPool
         $this->activeSession()?->whenReady($action);
     }
 
-    public function ready(?string $path, Document $document, bool $flush = true): ?string
+    public function ready(?string $path, Document $document, FlushMode $flush = FlushMode::Flush): ?string
     {
         return $this->sessionFor($path)?->ready($path, $document, $flush);
     }
@@ -150,7 +151,7 @@ final class LspSessionPool
     /** Opening a document is what lazily launches its language's server. */
     public function notifyDidOpen(string $path, string $text, string $languageId, int $version): void
     {
-        $this->sessionFor($path, startIfNeeded: true)?->notifyDidOpen($path, $text, $languageId, $version);
+        $this->sessionFor($path, StartMode::Start)?->notifyDidOpen($path, $text, $languageId, $version);
     }
 
     public function notifyDidClose(string $path): void
@@ -198,7 +199,7 @@ final class LspSessionPool
         return null === $key ? null : $this->sessions[self::signature($this->servers[$key]['command'])] ?? null;
     }
 
-    private function sessionFor(?string $path, bool $startIfNeeded = false): ?LspSession
+    private function sessionFor(?string $path, StartMode $start = StartMode::Reuse): ?LspSession
     {
         if (null === $path || $this->disabled) {
             return null;
@@ -210,7 +211,7 @@ final class LspSessionPool
         $server = $this->servers[$key];
         $signature = self::signature($server['command']);
         if (($this->sessions[$signature] ?? null) === null) {
-            if (!$startIfNeeded) {
+            if (StartMode::Reuse === $start) {
                 return null;
             }
             $this->sessions[$signature] = $this->startSession($server, $signature);
@@ -251,8 +252,8 @@ final class LspSessionPool
             null === $onLog ? static function (string $line): void {} : static fn (string $line) => $onLog('['.$server['name'].'] '.$line),
             $this->onDiagnostics ?? static function (array $params): void {},
             $this->onApplyEdit ?? static fn (array $edit): bool => false,
-            function (bool $ok) use ($server, $signature): void {
-                $this->statuses[$signature] = $ok ? $server['name'] : $this->translator->trans('failed');
+            function (Outcome $ok) use ($server, $signature): void {
+                $this->statuses[$signature] = $ok->isOk() ? $server['name'] : $this->translator->trans('failed');
                 $this->dispatcher?->dispatch(new LspStatusChanged());
             },
         );

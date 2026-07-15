@@ -204,7 +204,7 @@ final class DiffViewWidgetTest extends TestCase
     {
         $widget = $this->widget();
         $widget->setFocused(true);
-        $widget->setReadOnly(true);
+        $widget->makeReadOnly();
         $fired = false;
         $widget->onStageSelection(static function () use (&$fired): void {
             $fired = true;
@@ -272,7 +272,7 @@ final class DiffViewWidgetTest extends TestCase
     {
         $widget = $this->widget();
         $this->assertFalse($widget->isReadOnly());
-        $widget->setReadOnly(true);
+        $widget->makeReadOnly();
         $this->assertTrue($widget->isReadOnly());
         $this->assertTrue($widget->expandVertically(false)->isVerticallyExpanded(), 'always fills its pane');
     }
@@ -286,7 +286,7 @@ final class DiffViewWidgetTest extends TestCase
         $this->assertStringContainsString('No newline at end of file', $lines[3]);
 
         // In split mode the marker rides the old side of its own row.
-        $widget->setSplit(true);
+        $widget->useSplitView();
         $lines = $this->plainLines($widget, 60, 6);
         $this->assertMatchesRegularExpression('/No newline.*│/', $lines[3], 'the marker rides the old side (truncated to the half width)');
     }
@@ -337,8 +337,8 @@ final class DiffViewWidgetTest extends TestCase
     {
         $widget = $this->widget();
         $toggles = [];
-        $widget->onLayoutToggle(static function (bool $split) use (&$toggles): void {
-            $toggles[] = $split;
+        $widget->onLayoutToggle(static function () use (&$toggles, $widget): void {
+            $toggles[] = $widget->isSplit();
         });
         $raw = $widget->render(new RenderContext(80, 12));
         $this->assertStringNotContainsString("\x1b[48;5;31m", $raw[0], 'inactive tag renders dim');
@@ -386,7 +386,7 @@ final class DiffViewWidgetTest extends TestCase
     {
         $widget = $this->widget();
         $widget->setFocused(true);
-        $widget->setReadOnly(true);
+        $widget->makeReadOnly();
         $widget->handleInput('s');
         $this->assertTrue($widget->isSplit(), 'split is display-only, fine for history diffs');
 
@@ -395,9 +395,9 @@ final class DiffViewWidgetTest extends TestCase
         $widget->onLayoutToggle(static function () use (&$fired): void {
             $fired = true;
         });
-        $widget->setSplit(false);
+        $widget->useUnifiedView();
         $this->assertFalse($widget->isSplit());
-        $widget->setSplit(false); // idempotent
+        $widget->useUnifiedView(); // idempotent
         $this->assertFalse($fired);
     }
 
@@ -415,17 +415,37 @@ final class DiffViewWidgetTest extends TestCase
         $this->assertSame(1, $fired);
 
         $widget->setFocused(true);
-        $widget->setReadOnly(true);
+        $widget->makeReadOnly();
         $widget->handleInput('w'); // allowed on read-only history diffs
         $this->assertSame(2, $fired);
 
         // The tag reflects the controller-owned state.
         $off = $widget->render(new RenderContext(80, 12))[0];
         $this->assertStringNotContainsString("\x1b[48;5;31m\x1b[38;5;231m\x1b[1m w:hide-ws ", $off, 'inactive until the controller says so');
-        $widget->setWhitespaceHidden(true);
-        $widget->setWhitespaceHidden(true); // idempotent
+        $widget->hideWhitespace();
+        $widget->hideWhitespace(); // idempotent
         $on = $widget->render(new RenderContext(80, 12))[0];
         $this->assertStringContainsString("\x1b[48;5;31m\x1b[38;5;231m\x1b[1m w:hide-ws ", $on, 'active tag renders selected');
+    }
+
+    public function testLayoutAndWhitespaceSettersAreIdempotentBothWays(): void
+    {
+        $widget = $this->widget();
+
+        $widget->useSplitView();
+        $this->assertTrue($widget->isSplit());
+        $widget->useSplitView(); // idempotent (already split)
+        $this->assertTrue($widget->isSplit());
+        $widget->useUnifiedView();
+        $this->assertFalse($widget->isSplit());
+
+        $widget->hideWhitespace();
+        $on = $widget->render(new RenderContext(80, 12))[0];
+        $this->assertStringContainsString("\x1b[48;5;31m\x1b[38;5;231m\x1b[1m w:hide-ws ", $on);
+        $widget->showWhitespace();
+        $widget->showWhitespace(); // idempotent (already shown)
+        $off = $widget->render(new RenderContext(80, 12))[0];
+        $this->assertStringNotContainsString("\x1b[48;5;31m\x1b[38;5;231m\x1b[1m w:hide-ws ", $off, 'tag clears once whitespace is shown again');
     }
 
     public function testHorizontalScrollSlidesTextUnderPinnedGutters(): void
@@ -465,10 +485,10 @@ final class DiffViewWidgetTest extends TestCase
         $longer = str_repeat('c', times: 25).'RIGHT'.str_repeat('d', times: 20);
         $widget = new DiffViewWidget(new Translator('en'));
         $widget->setDocument(DiffDocument::parse("@@ -1,1 +1,1 @@\n-{$long}\n+{$longer}\n"), 'x.txt');
-        $widget->setSplit(true);
+        $widget->useSplitView();
         $widget->setFocused(true);
 
-        $widget->setReadOnly(true); // history diffs may scroll sideways too
+        $widget->makeReadOnly(); // history diffs may scroll sideways too
         for ($i = 0; $i < 3; ++$i) {
             $widget->handleInput("\x1b[C");
         }
@@ -532,7 +552,7 @@ final class DiffViewWidgetTest extends TestCase
         $widget = new DiffViewWidget(new Translator('en'));
         $widget->setDocument(DiffDocument::parse("@@ -1,1 +1,1 @@\n-old\n\\ No newline at end of file\n+new\n"), 'x.txt');
         $widget->setFocused(true);
-        $widget->setReadOnly(true); // history diffs can select + copy...
+        $widget->makeReadOnly(); // history diffs can select + copy...
         $staged = false;
         $widget->onStageSelection(static function () use (&$staged): void {
             $staged = true;
@@ -542,7 +562,7 @@ final class DiffViewWidgetTest extends TestCase
             $copies[] = $text;
         });
 
-        $widget->setSplit(true); // the -old/\-marker rows precede the +new pair
+        $widget->useSplitView(); // the -old/\-marker rows precede the +new pair
         $widget->handleInput("\x1b[B"); // first pair row (-old | blank)
         $widget->handleInput('v'); // allowed while read-only now
         $widget->handleInput("\x1b[B");
@@ -613,7 +633,7 @@ final class DiffViewWidgetTest extends TestCase
     {
         $widget = new DiffViewWidget(new Translator('en'));
         $widget->setDocument(DiffDocument::parse("@@ -1,2 +1,2 @@\n-oldA\n-oldB\n+newA\n+newB\n"), 'x.txt');
-        $widget->setSplit(true);
+        $widget->useSplitView();
         $widget->setFocused(true);
         $widget->render(new RenderContext(80, 6)); // leftW = 39: right half text starts at col 46
         $copies = [];
@@ -646,7 +666,7 @@ final class DiffViewWidgetTest extends TestCase
         });
         $widget->handleClick(2, 6);
         $widget->dragSelectTo(3, 8);
-        $widget->setReadOnly(false);
+        $widget->makeEditable();
         $widget->handleInput(' ');
         $this->assertSame([0 => [1 => true, 3 => true]], $staged, 'Space stages the cursor pair row, not the char span');
     }
@@ -658,7 +678,7 @@ final class DiffViewWidgetTest extends TestCase
         // mid-span; the selection must re-apply its bg after every reset.
         $widget = new DiffViewWidget(new Translator('en'));
         $widget->setDocument(DiffDocument::parse("@@ -1,1 +1,1 @@\n-\$a = 1;\n+\$a = 22;\n"), 'src/demo.php');
-        $widget->setSplit(true);
+        $widget->useSplitView();
         $widget->setFocused(false);
         $widget->render(new RenderContext(60, 6)); // leftW = 29: right text starts col 36
 

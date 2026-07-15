@@ -18,8 +18,11 @@ interface PluginLifecycleOps
     /** Live-deactivate a removed plugin (and reactivate a shadowed copy). */
     public function deactivate(string $name): void;
 
-    /** Enable or disable a plugin live, persisting the choice. */
-    public function setEnabled(string $name, bool $enabled): void;
+    /** Enable a plugin live, persisting the choice. */
+    public function enable(string $name): void;
+
+    /** Disable a plugin live, persisting the choice. */
+    public function disable(string $name): void;
 
     public function isDisabled(string $name): bool;
 

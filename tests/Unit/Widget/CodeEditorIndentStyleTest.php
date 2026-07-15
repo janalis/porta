@@ -8,6 +8,7 @@ use PHPUnit\Framework\TestCase;
 use Porta\Config\EditorConfig\ResolvedEditorConfig;
 use Porta\Config\LanguageIndent;
 use Porta\Editor\Document;
+use Porta\Editor\IndentKind;
 use Porta\Widget\CodeEditorWidget;
 
 /**
@@ -29,13 +30,13 @@ final class CodeEditorIndentStyleTest extends TestCase
     public function testDocumentSetIndentSetsUnitAndSize(): void
     {
         $document = new Document("    spaces\n");
-        $document->setIndent(true, 3);
+        $document->setIndent(IndentKind::Tabs, 3);
         $this->assertTrue($document->usesTabs());
         $this->assertSame("\t", $document->indentUnit());
         $this->assertSame(3, $document->indentSize());
         $this->assertSame(3, $document->tabWidth());
 
-        $document->setIndent(false, 2);
+        $document->setIndent(IndentKind::Spaces, 2);
         $this->assertFalse($document->usesTabs());
         $this->assertSame('  ', $document->indentUnit());
     }

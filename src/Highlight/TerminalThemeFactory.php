@@ -16,9 +16,9 @@ use Tempest\Highlight\TerminalTheme;
  */
 final class TerminalThemeFactory
 {
-    public static function create(bool $ansi, string $theme): TerminalTheme
+    public static function create(ColorMode $color, string $theme): TerminalTheme
     {
-        if (!$ansi) {
+        if (ColorMode::Plain === $color) {
             return new PlainTerminalTheme();
         }
 
@@ -34,8 +34,8 @@ final class TerminalThemeFactory
      * theme can be swapped live. This is what the container binds; the buffers'
      * highlighters hold the holder.
      */
-    public static function createSwitchable(bool $ansi, string $theme): SwitchableTerminalTheme
+    public static function createSwitchable(ColorMode $color, string $theme): SwitchableTerminalTheme
     {
-        return new SwitchableTerminalTheme(self::create($ansi, $theme));
+        return new SwitchableTerminalTheme(self::create($color, $theme));
     }
 }

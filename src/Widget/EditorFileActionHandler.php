@@ -20,8 +20,11 @@ interface EditorFileActionHandler
     /** Text copied in the editor (mirror to the system clipboard). */
     public function copy(string $text): void;
 
-    /** Open the find bar (true = with replace). */
-    public function openFind(bool $withReplace): void;
+    /** Open the find bar. */
+    public function openFind(): void;
+
+    /** Open the find bar with the replace field. */
+    public function openFindReplace(): void;
 
     /** Open the go-to-file palette. */
     public function openGotoFile(): void;

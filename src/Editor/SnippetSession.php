@@ -155,7 +155,7 @@ final class SnippetSession
         $doc->setCursor($stop['line'], $stop['start']);
         if ($stop['end'] > $stop['start']) {
             $doc->beginSelect();
-            $doc->setCursor($stop['line'], $stop['end'], keepSelection: true);
+            $doc->setCursor($stop['line'], $stop['end'], selection: SelectionMode::Keep);
         }
     }
 

@@ -6,6 +6,7 @@ namespace Porta\Git;
 
 use Porta\Event\GitRemoteCompleted;
 use Porta\I18n\Translator;
+use Porta\Support\Outcome;
 use Porta\Ui\Notifier;
 use Porta\Ui\WorkspaceViews;
 use Porta\Widget\CodeEditorWidget;
@@ -138,7 +139,7 @@ final class GitRemoteCommands
     }
 
     /**
-     * @param \Closure(callable(bool, string): void): void $start
+     * @param \Closure(callable(Outcome, string): void): void $start
      * @param (\Closure(string): bool)|null                $onFailure sees the full output; true = it owns the follow-up
      *                                                     (the generic failure flash is suppressed; the event still fires)
      */
@@ -156,8 +157,8 @@ final class GitRemoteCommands
         }
         // Sticky until the completion flash replaces it.
         $this->notifier->flash($started, 600.0);
-        $start(function (bool $ok, string $output) use ($operation, $succeeded, $onFailure): void {
-            if (!$ok && null !== $onFailure && $onFailure($output)) {
+        $start(function (Outcome $ok, string $output) use ($operation, $succeeded, $onFailure): void {
+            if (!$ok->isOk() && null !== $onFailure && $onFailure($output)) {
                 $this->dispatcher->dispatch(new GitRemoteCompleted($operation, false));
 
                 return;
@@ -165,10 +166,10 @@ final class GitRemoteCommands
             // @mago-expect lint:no-literal-password -- strtok's token: is a newline delimiter, not a credential
             $firstLine = strtok($output, token: "\n");
             $this->notifier->flash(
-                $ok ? $succeeded : $this->translator->trans('%operation% failed: %error%', ['%operation%' => ucfirst($operation), '%error%' => \is_string($firstLine) ? $firstLine : '']),
-                $ok ? 3.0 : 6.0,
+                $ok->isOk() ? $succeeded : $this->translator->trans('%operation% failed: %error%', ['%operation%' => ucfirst($operation), '%error%' => \is_string($firstLine) ? $firstLine : '']),
+                $ok->isOk() ? 3.0 : 6.0,
             );
-            $this->dispatcher->dispatch(new GitRemoteCompleted($operation, $ok));
+            $this->dispatcher->dispatch(new GitRemoteCompleted($operation, $ok->isOk()));
         });
     }
 

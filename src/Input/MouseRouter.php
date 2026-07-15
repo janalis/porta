@@ -101,7 +101,11 @@ final class MouseRouter
         // Bare hover-move (mouse mode 1003): track the row under the pointer in
         // whichever list popup/panel is open, like PhpStorm's menu hovering.
         if ($mouse->isMove()) {
-            $this->handleHover($mouse, $editorRect, $gitViewOpen, $settingsViewOpen);
+            $this->handleHover($mouse, $editorRect, match (true) {
+                $settingsViewOpen => ActiveView::Settings,
+                $gitViewOpen => ActiveView::Git,
+                default => ActiveView::Editor,
+            });
 
             return;
         }
@@ -135,7 +139,7 @@ final class MouseRouter
         $this->git->cancelDrag();
         $this->layout->cancelDrags();
 
-        if ($this->handleModalPopupClick($mouse, $editorRect, $gitViewOpen || $settingsViewOpen)) {
+        if ($this->handleModalPopupClick($mouse, $editorRect, $gitViewOpen || $settingsViewOpen ? FullView::Open : FullView::Closed)) {
             return;
         }
 
@@ -373,12 +377,12 @@ final class MouseRouter
      * menu or application menu runs/dismisses on its own hit test. Returns
      * whether the click was consumed.
      */
-    private function handleModalPopupClick(MouseEvent $mouse, ?WidgetRect $editorRect, bool $fullViewOpen = false): bool
+    private function handleModalPopupClick(MouseEvent $mouse, ?WidgetRect $editorRect, FullView $fullViewOpen = FullView::Closed): bool
     {
         // Editor popups are unreachable while a full view (git/settings) owns the
         // main area (the editor is detached); only the menus below can claim it.
         if (
-            !$fullViewOpen
+            FullView::Closed === $fullViewOpen
             && null !== $this->panes->editor()->getContext() // detached under an image tab → no invisible modal may eat clicks
             && ($this->panes->editor()->isOverlayOpen() || $this->panes->editor()->isCompletionOpen() || $this->panes->editor()->isSearchOverlayOpen() || $this->panes->editor()->isFindModalOpen())
         ) {
@@ -727,7 +731,7 @@ final class MouseRouter
      * Re-renders only when the highlighted row actually changes, so the extra
      * motion traffic from mouse mode 1003 stays cheap.
      */
-    private function handleHover(MouseEvent $mouse, ?WidgetRect $editorRect, bool $gitViewOpen = false, bool $settingsViewOpen = false): void
+    private function handleHover(MouseEvent $mouse, ?WidgetRect $editorRect, ActiveView $view = ActiveView::Editor): void
     {
         // A right-click context menu floats over every view and is modal, so it
         // gets first refusal: highlight the item under the pointer.
@@ -742,14 +746,14 @@ final class MouseRouter
         // Each full-view state owns its hover targets exclusively; the tree/editor
         // targets are detached while a view is swapped in. The menu bar rides
         // along into either view, so it gets first refusal before the region.
-        if ($settingsViewOpen) {
+        if (ActiveView::Settings === $view) {
             if (!$this->handleMenuHover($mouse)) {
                 $this->settings->hover($mouse);
             }
 
             return;
         }
-        if ($gitViewOpen) {
+        if (ActiveView::Git === $view) {
             if (!$this->handleMenuHover($mouse)) {
                 $this->git->hover($mouse);
             }

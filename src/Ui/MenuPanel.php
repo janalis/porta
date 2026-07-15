@@ -48,7 +48,13 @@ final class MenuPanel
             $out[] = [
                 'segment' => $item->separator
                     ? $palette->of(Role::RowHighlightBg).$palette->of(Role::Placeholder).str_repeat('─', max(0, $panelWidth))."\x1b[0m"
-                    : self::itemSegment($item, $panelWidth, $index === $selected, $item->enabled(), $palette),
+                    : self::itemSegment(
+                        $item,
+                        $panelWidth,
+                        $index === $selected ? MenuSelection::Selected : MenuSelection::Unselected,
+                        $item->enabled() ? MenuAvailability::Enabled : MenuAvailability::Disabled,
+                        $palette,
+                    ),
                 'separator' => $item->separator,
             ];
         }
@@ -98,7 +104,7 @@ final class MenuPanel
         return !$item->separator && $item->enabled();
     }
 
-    private static function itemSegment(MenuItem $item, int $panelWidth, bool $selected, bool $enabled, Palette $palette): string
+    private static function itemSegment(MenuItem $item, int $panelWidth, MenuSelection $selection, MenuAvailability $availability, Palette $palette): string
     {
         $inner = max(0, $panelWidth - 2);
         $shortcut = $item->shortcut;
@@ -109,8 +115,8 @@ final class MenuPanel
         // Disabled always reads dim and never shows the selected highlight; the
         // SGR dim attribute keeps the state visible without color (monochrome).
         $bg = match (true) {
-            !$enabled => "\x1b[2m".$palette->of(Role::RowHighlightBg).$palette->of(Role::Gutter),
-            $selected => $palette->of(Role::SelectedRow),
+            MenuAvailability::Disabled === $availability => "\x1b[2m".$palette->of(Role::RowHighlightBg).$palette->of(Role::Gutter),
+            MenuSelection::Selected === $selection => $palette->of(Role::SelectedRow),
             default => $palette->of(Role::PopupRow),
         };
         $tail = '' !== $shortcut ? $palette->of(Role::CompletionHint).$shortcut."\x1b[39m" : str_repeat(' ', max(0, mb_strwidth($shortcut)));

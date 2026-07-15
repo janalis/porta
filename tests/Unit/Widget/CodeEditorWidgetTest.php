@@ -5,6 +5,8 @@ declare(strict_types=1);
 namespace Porta\Tests\Unit\Widget;
 
 use PHPUnit\Framework\TestCase;
+use Porta\Editor\FindMode;
+use Porta\Editor\SelectionMode;
 use Porta\Search\Everywhere\SearchCategory;
 use Porta\Search\Everywhere\SearchHit;
 use Porta\Search\Everywhere\SearchRow;
@@ -302,7 +304,7 @@ final class CodeEditorWidgetTest extends TestCase
         // A selection suppresses the highlight.
         $doc->setCursor(1, 1);
         $doc->beginSelect();
-        $doc->setCursor(1, 6, keepSelection: true);
+        $doc->setCursor(1, 6, selection: SelectionMode::Keep);
         $rendered = $editor->render(new RenderContext(80, 10));
         $this->assertStringNotContainsString("\x1b[48;5;23m", $rendered[2]);
     }
@@ -396,7 +398,7 @@ final class CodeEditorWidgetTest extends TestCase
         $doc = $editor->getDocument();
         $doc->setCursor(0, 0);
         $doc->beginSelect();
-        $doc->setCursor(2, 0, keepSelection: true); // selection spans lines 0..1
+        $doc->setCursor(2, 0, selection: SelectionMode::Keep); // selection spans lines 0..1
 
         $editor->handleInput("\t"); // Tab indents the block instead of replacing it
         $this->assertSame('    aaa', $doc->getLine(0));
@@ -972,8 +974,8 @@ final class CodeEditorWidgetTest extends TestCase
         $events = [];
         $editor->setCallbacks(new EditorCallbacks(
             file: new FakeEditorFileActions(
-                openFind: static function (bool $r) use (&$events): void {
-                    $events[] = 'find:'.var_export($r, return: true);
+                openFind: static function (FindMode $r) use (&$events): void {
+                    $events[] = 'find:'.var_export(FindMode::Replace === $r, return: true);
                 },
                 openGotoFile: static function () use (&$events): void {
                     $events[] = 'goto';
@@ -1166,7 +1168,7 @@ final class CodeEditorWidgetTest extends TestCase
         $this->assertSame(2, substr_count($screen, needle: 'abc12345 tester'), 'both annotations render in the trailing space');
 
         // A diagnostic on line 0 wins the trailing slot; line 1 keeps its blame.
-        $editor->setInlineDiagnostics(true);
+        $editor->enableInlineDiagnostics();
         $editor->setDiagnostics([0 => [['severity' => 1, 'message' => 'Boom', 'col' => 0]]]);
         $screen = implode("\n", array_map(AnsiUtils::stripAnsiCodes(...), $editor->render(new RenderContext(80, 6))));
         $this->assertStringContainsString('Boom', $screen);

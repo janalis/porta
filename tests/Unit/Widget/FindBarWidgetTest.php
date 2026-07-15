@@ -6,6 +6,7 @@ namespace Porta\Tests\Unit\Widget;
 
 use PHPUnit\Framework\TestCase;
 use Porta\Editor\Document;
+use Porta\Editor\FindMode;
 use Porta\I18n\Translator;
 use Porta\Widget\FindBarWidget;
 use Symfony\Component\Tui\Ansi\AnsiUtils;
@@ -38,7 +39,7 @@ final class FindBarWidgetTest extends TestCase
         $bar->onUpdate(static function () use (&$updates): void {
             ++$updates;
         });
-        $bar->open($doc, withReplace: false);
+        $bar->open($doc, mode: FindMode::Find);
 
         $this->type($bar, 'foo');
         $matches = $bar->getMatchesByLine();
@@ -46,7 +47,7 @@ final class FindBarWidgetTest extends TestCase
         $this->assertGreaterThan(0, $updates);
 
         // Exact case when query has uppercase
-        $bar->open($doc, withReplace: false, initialQuery: 'BAR');
+        $bar->open($doc, mode: FindMode::Find, initialQuery: 'BAR');
         $matches = $bar->getMatchesByLine();
         $this->assertArrayHasKey(1, $matches);
         $this->assertCount(1, $matches[1] ?? []);
@@ -58,7 +59,7 @@ final class FindBarWidgetTest extends TestCase
         $doc = new Document("a match\nb match\nc match\n");
         $doc->setCursor(1, 0);
         $bar = new FindBarWidget(new Translator('en'));
-        $bar->open($doc, withReplace: false, initialQuery: 'match');
+        $bar->open($doc, mode: FindMode::Find, initialQuery: 'match');
 
         $this->assertSame(1, $doc->getCursorLine(), 'nearest match at/after cursor');
 
@@ -74,7 +75,7 @@ final class FindBarWidgetTest extends TestCase
     {
         $doc = new Document("alpha\n");
         $bar = new FindBarWidget(new Translator('en'));
-        $bar->open($doc, withReplace: false);
+        $bar->open($doc, mode: FindMode::Find);
         $this->type($bar, 'al');
         $this->assertNotSame([], $bar->getMatchesByLine());
 
@@ -90,7 +91,7 @@ final class FindBarWidgetTest extends TestCase
     {
         $doc = new Document("aaa bbb aaa\nccc aaa\n");
         $bar = new FindBarWidget(new Translator('en'));
-        $bar->open($doc, withReplace: true, initialQuery: 'aaa');
+        $bar->open($doc, mode: FindMode::Replace, initialQuery: 'aaa');
         $bar->handleInput("\t"); // switch to replace field
         $this->type($bar, 'XX');
 
@@ -107,7 +108,7 @@ final class FindBarWidgetTest extends TestCase
     {
         $doc = new Document("x\n");
         $bar = new FindBarWidget(new Translator('en'));
-        $bar->open($doc, withReplace: false, initialQuery: 'x');
+        $bar->open($doc, mode: FindMode::Find, initialQuery: 'x');
 
         $bar->handleInput("\t");
         $this->type($bar, 'y'); // still edits the find field
@@ -118,7 +119,7 @@ final class FindBarWidgetTest extends TestCase
     {
         $doc = new Document("aaa\n");
         $bar = new FindBarWidget(new Translator('en'));
-        $bar->open($doc, withReplace: false, initialQuery: 'aaa');
+        $bar->open($doc, mode: FindMode::Find, initialQuery: 'aaa');
 
         $bar->handleInput("\x1br");
         $this->assertSame('aaa', $doc->getLine(0));
@@ -128,7 +129,7 @@ final class FindBarWidgetTest extends TestCase
     {
         $doc = new Document("match one\n");
         $bar = new FindBarWidget(new Translator('en'));
-        $bar->open($doc, withReplace: false, initialQuery: 'match');
+        $bar->open($doc, mode: FindMode::Find, initialQuery: 'match');
 
         $doc->moveToDocumentEnd();
         $doc->insert("match two\n"); // document changed behind the bar's back
@@ -143,7 +144,7 @@ final class FindBarWidgetTest extends TestCase
         $doc = new Document("needle\n");
         $bar = new FindBarWidget(new Translator('en'));
         $bar->setFocused(true);
-        $bar->open($doc, withReplace: true, initialQuery: 'needle');
+        $bar->open($doc, mode: FindMode::Replace, initialQuery: 'needle');
 
         $line = $bar->render(new RenderContext(120, 1))[0];
         $plain = AnsiUtils::stripAnsiCodes($line);
@@ -163,7 +164,7 @@ final class FindBarWidgetTest extends TestCase
         $bar->onClose(static function () use (&$closed): void {
             $closed = true;
         });
-        $bar->open($doc, withReplace: false, initialQuery: 'x');
+        $bar->open($doc, mode: FindMode::Find, initialQuery: 'x');
 
         $bar->handleInput("\x1b"); // escape
         $this->assertTrue($closed);
@@ -178,7 +179,7 @@ final class FindBarWidgetTest extends TestCase
     {
         $doc = new Document("x\n");
         $bar = new FindBarWidget(new Translator('en'));
-        $bar->open($doc, withReplace: false);
+        $bar->open($doc, mode: FindMode::Find);
         $bar->onInput(static fn (string $data): bool => 'Z' === $data);
 
         $bar->handleInput('Z'); // consumed
@@ -192,7 +193,7 @@ final class FindBarWidgetTest extends TestCase
         $doc = new Document("match early\nnothing here\n");
         $doc->setCursor(1, 5); // after every match
         $bar = new FindBarWidget(new Translator('en'));
-        $bar->open($doc, withReplace: false, initialQuery: 'match');
+        $bar->open($doc, mode: FindMode::Find, initialQuery: 'match');
 
         $this->assertSame(0, $doc->getCursorLine(), 'wrapped to the first match');
     }
@@ -201,7 +202,7 @@ final class FindBarWidgetTest extends TestCase
     {
         $doc = new Document(str_repeat("x\n", times: 6000));
         $bar = new FindBarWidget(new Translator('en'));
-        $bar->open($doc, withReplace: false, initialQuery: 'x');
+        $bar->open($doc, mode: FindMode::Find, initialQuery: 'x');
 
         $flat = array_merge(...array_values($bar->getMatchesByLine()));
         $this->assertCount(5000, $flat);
@@ -211,7 +212,7 @@ final class FindBarWidgetTest extends TestCase
     {
         $bar = new FindBarWidget(new Translator('en'));
         $bar->setFocused(true);
-        $bar->open(new Document("x\n"), withReplace: false);
+        $bar->open(new Document("x\n"), mode: FindMode::Find);
         $this->type($bar, str_repeat('q', times: 100)); // overflow the 80-column bar
 
         $line = $bar->render(new RenderContext(80, 1))[0];
@@ -226,7 +227,7 @@ final class FindBarWidgetTest extends TestCase
         $doc = new Document("aaa b\nab c\nxyz\n");
         $bar = new FindBarWidget(new Translator('en'));
         $bar->setFocused(true);
-        $bar->open($doc, withReplace: false);
+        $bar->open($doc, mode: FindMode::Find);
         $this->type($bar, 'a+');
 
         $this->assertSame([], $bar->getMatchesByLine(), 'literal mode: no "a+" in the text');
@@ -245,7 +246,7 @@ final class FindBarWidgetTest extends TestCase
         $doc = new Document("foo foobar\nfoo\n");
         $bar = new FindBarWidget(new Translator('en'));
         $bar->setFocused(true);
-        $bar->open($doc, withReplace: false);
+        $bar->open($doc, mode: FindMode::Find);
         $this->type($bar, 'foo');
         $this->assertCount(3, array_merge(...array_values($bar->getMatchesByLine())), 'substring mode hits foobar too');
 
@@ -262,7 +263,7 @@ final class FindBarWidgetTest extends TestCase
         $doc = new Document("abc\n");
         $bar = new FindBarWidget(new Translator('en'));
         $bar->setFocused(true);
-        $bar->open($doc, withReplace: false);
+        $bar->open($doc, mode: FindMode::Find);
         $bar->handleInput("\x1bx"); // regex mode
         $this->type($bar, 'a(');
 
@@ -279,7 +280,7 @@ final class FindBarWidgetTest extends TestCase
         $doc = new Document("abc\n");
         $bar = new FindBarWidget(new Translator('en'));
         $bar->setFocused(true);
-        $bar->open($doc, withReplace: false);
+        $bar->open($doc, mode: FindMode::Find);
         $bar->handleInput("\x1bx");
         $this->type($bar, 'z*');
 
@@ -294,7 +295,7 @@ final class FindBarWidgetTest extends TestCase
         $doc = new Document(str_repeat('a', times: 30)."!\n");
         $bar = new FindBarWidget(new Translator('en'));
         $bar->setFocused(true);
-        $bar->open($doc, withReplace: false);
+        $bar->open($doc, mode: FindMode::Find);
         $bar->handleInput("\x1bx"); // regex mode
         $this->type($bar, '(a+)+$');
 
@@ -306,12 +307,12 @@ final class FindBarWidgetTest extends TestCase
         $doc = new Document("Foo\nfoo\n");
         $bar = new FindBarWidget(new Translator('en'));
         $bar->setFocused(true);
-        $bar->open($doc, withReplace: false);
+        $bar->open($doc, mode: FindMode::Find);
         $bar->handleInput("\x1bx");
         $this->type($bar, 'fo+');
         $this->assertCount(2, $bar->getMatchesByLine(), 'lowercase regex is case-insensitive');
 
-        $bar->open($doc, withReplace: false, initialQuery: 'Fo+');
+        $bar->open($doc, mode: FindMode::Find, initialQuery: 'Fo+');
         $bar->handleInput("\x1bx"); // toggles OFF (state survived) — toggle back on
         $bar->handleInput("\x1bx");
         $matches = $bar->getMatchesByLine();
@@ -325,7 +326,7 @@ final class FindBarWidgetTest extends TestCase
         $doc = new Document(str_repeat('a', times: 4000)."\n".str_repeat('a', times: 1001)."\n");
         $bar = new FindBarWidget(new Translator('en'));
         $bar->setFocused(true);
-        $bar->open($doc, withReplace: false);
+        $bar->open($doc, mode: FindMode::Find);
         $bar->handleInput("\x1bx");
         $this->type($bar, 'a');
 
@@ -337,7 +338,7 @@ final class FindBarWidgetTest extends TestCase
         $doc = new Document("name: alpha\nname: beta\n");
         $bar = new FindBarWidget(new Translator('en'));
         $bar->setFocused(true);
-        $bar->open($doc, withReplace: true);
+        $bar->open($doc, mode: FindMode::Replace);
         $bar->handleInput("\x1bx"); // regex mode
         $this->type($bar, 'name: (\w+)');
         $bar->handleInput("\t"); // → replace field
@@ -355,7 +356,7 @@ final class FindBarWidgetTest extends TestCase
         $doc = new Document("value\n");
         $bar = new FindBarWidget(new Translator('en'));
         $bar->setFocused(true);
-        $bar->open($doc, withReplace: true);
+        $bar->open($doc, mode: FindMode::Replace);
         $this->type($bar, 'value');
         $bar->handleInput("\t");
         $this->type($bar, '$1');

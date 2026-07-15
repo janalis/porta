@@ -25,14 +25,20 @@ final class CommandRegistry
      *                                      fall through to the focused widget); the palette and
      *                                      menus still run the handler, which must self-guard
      */
-    public function add(string $id, \Closure $handler, bool $keyBound = false, bool $inPalette = true, ?string $label = null, ?\Closure $when = null): self
-    {
+    public function add(
+        string $id,
+        \Closure $handler,
+        KeyDispatch $keyBound = KeyDispatch::Unbound,
+        PaletteVisibility $inPalette = PaletteVisibility::Listed,
+        ?string $label = null,
+        ?\Closure $when = null,
+    ): self {
         $command = [
             'id' => $id,
             'label' => $label ?? ActionCatalog::label($id),
             'handler' => $handler,
-            'keyBound' => $keyBound,
-            'inPalette' => $inPalette,
+            'keyBound' => KeyDispatch::Bound === $keyBound,
+            'inPalette' => PaletteVisibility::Listed === $inPalette,
             'when' => $when,
         ];
         $this->commands[] = $command;

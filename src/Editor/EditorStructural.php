@@ -241,7 +241,7 @@ final class EditorStructural
 
         $doc->setCursor($region['start'], 0);
         $doc->beginSelect();
-        $doc->setCursor($region['end'], \strlen($lines[$region['end']]), keepSelection: true);
+        $doc->setCursor($region['end'], \strlen($lines[$region['end']]), selection: SelectionMode::Keep);
         if ('' === $replacement) {
             $doc->deleteSelection();
             ($this->notifyChange)();

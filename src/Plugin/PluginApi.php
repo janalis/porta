@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Porta\Plugin;
 
+use Porta\Editor\OpenFocus;
 use Porta\Lsp\Uri;
 
 /**
@@ -235,7 +236,7 @@ final class PluginApi
     /** Open a file (absolute path) and focus the editor. */
     public function openFile(string $path): void
     {
-        $this->manager->runtime()->files->openFile($path, focusEditor: true);
+        $this->manager->runtime()->files->openFile($path, focus: OpenFocus::Editor);
     }
 
     /** Move the caret (0-based line, UTF-16 column) in the active file. */

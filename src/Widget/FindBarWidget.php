@@ -6,9 +6,15 @@ namespace Porta\Widget;
 
 use Porta\Container\AsWidget;
 use Porta\Editor\Document;
+use Porta\Editor\FindMode;
+use Porta\Editor\SelectionMode;
 use Porta\I18n\Translator;
+use Porta\Search\CaseMode;
+use Porta\Search\MatchMode;
 use Porta\Search\SearchPattern;
+use Porta\Search\WordMode;
 use Porta\Support\AnsiText;
+use Porta\Ui\CaretVisibility;
 use Porta\Ui\ColorPalette;
 use Porta\Ui\CursorStyle;
 use Porta\Ui\Palette;
@@ -72,17 +78,17 @@ final class FindBarWidget extends OverlayWidget implements FocusableInterface
         $this->replacement = new TextField(style: $cursorStyle);
     }
 
-    public function open(Document $document, bool $withReplace, string $initialQuery = ''): void
+    public function open(Document $document, FindMode $mode, string $initialQuery = ''): void
     {
         $this->document = $document;
         $this->open = true;
-        $this->withReplace = $withReplace;
+        $this->withReplace = FindMode::Replace === $mode;
         $this->activeField = 0;
         if ('' !== $initialQuery) {
             $this->query->setValue($initialQuery);
         }
         $this->lastDocVersion = -1;
-        $this->recompute(jumpToNearest: true);
+        $this->recompute(jumpToNearest: MatchJump::ToNearest);
         $this->invalidate();
     }
 
@@ -161,7 +167,7 @@ final class FindBarWidget extends OverlayWidget implements FocusableInterface
 
         if ($kb->matches($data, 'toggle_regex')) {
             $this->regex = !$this->regex;
-            $this->recompute(jumpToNearest: true);
+            $this->recompute(jumpToNearest: MatchJump::ToNearest);
             $this->invalidate();
 
             return;
@@ -169,7 +175,7 @@ final class FindBarWidget extends OverlayWidget implements FocusableInterface
 
         if ($kb->matches($data, 'toggle_word')) {
             $this->wholeWord = !$this->wholeWord;
-            $this->recompute(jumpToNearest: true);
+            $this->recompute(jumpToNearest: MatchJump::ToNearest);
             $this->invalidate();
 
             return;
@@ -209,7 +215,7 @@ final class FindBarWidget extends OverlayWidget implements FocusableInterface
         $field = 0 === $this->activeField ? $this->query : $this->replacement;
         if ($op($field)) {
             if ($field === $this->query) {
-                $this->recompute(jumpToNearest: true);
+                $this->recompute(jumpToNearest: MatchJump::ToNearest);
             }
             $this->invalidate();
         }
@@ -229,14 +235,16 @@ final class FindBarWidget extends OverlayWidget implements FocusableInterface
             default => '0/0',
         };
 
-        $findField = ' '.$this->translator->trans('Find:').' '.$this->query->render(cursor: $this->focused && 0 === $this->activeField).'  ';
-        $replaceField = $this->withReplace ? $this->translator->trans('Replace:').' '.$this->replacement->render(cursor: $this->focused && 1 === $this->activeField).'  ' : '';
+        $findField = ' '.$this->translator->trans('Find:').' '.$this->query->render(cursor: $this->focused && 0 === $this->activeField ? CaretVisibility::Shown : CaretVisibility::Hidden).'  ';
+        $replaceField = $this->withReplace
+            ? $this->translator->trans('Replace:').' '.$this->replacement->render(cursor: $this->focused && 1 === $this->activeField ? CaretVisibility::Shown : CaretVisibility::Hidden).'  '
+            : '';
 
         $hints = $this->withReplace
             ? $this->translator->trans('⏎/F3 next  ⇧F3 prev  ⇥ field  ⌥R replace  ⌥A all  ⌥X .*  ⌥W \b  esc')
             : $this->translator->trans('⏎/F3 next  ⇧F3 prev  ⌥X .*  ⌥W \b  esc');
 
-        $tags = $this->optionTag('.*', $this->regex).$this->optionTag('\b', $this->wholeWord);
+        $tags = $this->optionTag('.*', $this->regex ? ToggleState::On : ToggleState::Off).$this->optionTag('\b', $this->wholeWord ? ToggleState::On : ToggleState::Off);
         $left = $findField.$replaceField.$this->palette->of(Role::Dim)."[{$position}]\x1b[39m".$tags;
         $line = $left.'  '.$this->palette->of(Role::Faint).$hints."\x1b[39m";
         // Scroll the whole bar to the focused field's caret so a long query or
@@ -251,11 +259,11 @@ final class FindBarWidget extends OverlayWidget implements FocusableInterface
     private function refreshIfStale(): void
     {
         if (null !== $this->document && $this->document->getVersion() !== $this->lastDocVersion) {
-            $this->recompute(jumpToNearest: false);
+            $this->recompute(jumpToNearest: MatchJump::None);
         }
     }
 
-    private function recompute(bool $jumpToNearest): void
+    private function recompute(MatchJump $jumpToNearest): void
     {
         $this->matches = [];
         $this->currentIndex = -1;
@@ -272,7 +280,12 @@ final class FindBarWidget extends OverlayWidget implements FocusableInterface
         $caseInsensitive = strtolower($query) === $query; // smart-case carries into regex mode via the i flag
 
         if ($this->regex || $this->wholeWord) {
-            $pattern = SearchPattern::build($query, $this->regex, $this->wholeWord, !$caseInsensitive);
+            $pattern = SearchPattern::build(
+                $query,
+                $this->regex ? MatchMode::Regex : MatchMode::Literal,
+                $this->wholeWord ? WordMode::WholeWord : WordMode::Anywhere,
+                $caseInsensitive ? CaseMode::Insensitive : CaseMode::Sensitive,
+            );
             set_error_handler(static fn (): bool => true);
             $valid = preg_match($pattern, subject: '');
             restore_error_handler();
@@ -323,7 +336,7 @@ final class FindBarWidget extends OverlayWidget implements FocusableInterface
             }
         }
 
-        if ($jumpToNearest && [] !== $this->matches) {
+        if (MatchJump::ToNearest === $jumpToNearest && [] !== $this->matches) {
             $cursorLine = $this->document->getCursorLine();
             $cursorCol = $this->document->getCursorCol();
             foreach ($this->matches as $i => $match) {
@@ -371,11 +384,11 @@ final class FindBarWidget extends OverlayWidget implements FocusableInterface
         $doc = $this->document;
         $doc->setCursor($match['line'], $match['start']);
         $doc->beginSelect();
-        $doc->setCursor($match['line'], $match['end'], keepSelection: true);
+        $doc->setCursor($match['line'], $match['end'], selection: SelectionMode::Keep);
         $doc->insert($this->insertionFor($match));
 
         $keepIndex = $this->currentIndex;
-        $this->recompute(jumpToNearest: false);
+        $this->recompute(jumpToNearest: MatchJump::None);
         $this->gotoMatch(min($keepIndex, \count($this->matches) - 1));
     }
 
@@ -390,10 +403,10 @@ final class FindBarWidget extends OverlayWidget implements FocusableInterface
         foreach (array_reverse($this->matches) as $match) {
             $doc->setCursor($match['line'], $match['start']);
             $doc->beginSelect();
-            $doc->setCursor($match['line'], $match['end'], keepSelection: true);
+            $doc->setCursor($match['line'], $match['end'], selection: SelectionMode::Keep);
             $doc->insert($this->insertionFor($match));
         }
-        $this->recompute(jumpToNearest: false);
+        $this->recompute(jumpToNearest: MatchJump::None);
     }
 
     /**
@@ -412,7 +425,12 @@ final class FindBarWidget extends OverlayWidget implements FocusableInterface
         /** @var Document $doc */
         $doc = $this->document;
         $matched = substr($doc->getLines()[$match['line']] ?? '', $match['start'], $match['end'] - $match['start']);
-        $pattern = SearchPattern::build($this->query->value(), regex: true, wholeWord: $this->wholeWord, caseSensitive: strtolower($this->query->value()) !== $this->query->value());
+        $pattern = SearchPattern::build(
+            $this->query->value(),
+            MatchMode::Regex,
+            $this->wholeWord ? WordMode::WholeWord : WordMode::Anywhere,
+            strtolower($this->query->value()) !== $this->query->value() ? CaseMode::Sensitive : CaseMode::Insensitive,
+        );
         set_error_handler(static fn (): bool => true);
         $expanded = preg_replace($pattern, $replacement, $matched, limit: 1);
         restore_error_handler();
@@ -428,9 +446,9 @@ final class FindBarWidget extends OverlayWidget implements FocusableInterface
     }
 
     /** The [.*] / [\b] mode tags after the counter, lit when the option is on. */
-    private function optionTag(string $label, bool $on): string
+    private function optionTag(string $label, ToggleState $on): string
     {
-        $role = $on ? Role::SelectedRow : Role::Faint;
+        $role = ToggleState::On === $on ? Role::SelectedRow : Role::Faint;
 
         return ' '.$this->palette->of($role).'['.$label.']'."\x1b[0m";
     }

@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Porta\Search\Everywhere;
 
+use Porta\Editor\OpenFocus;
 use Porta\Search\ProjectSearch;
 
 /**
@@ -14,7 +15,7 @@ use Porta\Search\ProjectSearch;
 final class TextSource implements SearchSource
 {
     /**
-     * @param \Closure(string, bool): void $openFile fn(absolutePath, focusEditor)
+     * @param \Closure(string, OpenFocus): void $openFile fn(absolutePath, focus)
      * @param \Closure(int, int): void     $jumpTo   fn(line, col)
      */
     public function __construct(
@@ -41,9 +42,8 @@ final class TextSource implements SearchSource
                     trim($result['text']),
                     $result['path'].':'.($line + 1),
                     function () use ($absolute, $line): void {
-                        $focusEditor = true;
                         $column = 0;
-                        ($this->openFile)($absolute, $focusEditor);
+                        ($this->openFile)($absolute, OpenFocus::Editor);
                         ($this->jumpTo)($line, $column);
                     },
                 );

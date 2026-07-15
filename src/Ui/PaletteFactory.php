@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace Porta\Ui;
 
+use Porta\Highlight\ColorMode;
+
 /**
  * Selects the active {@see Palette} at container-build time from the boot flags:
  * a {@see MonochromePalette} for `--no-ansi`, otherwise a colored
@@ -12,9 +14,9 @@ namespace Porta\Ui;
  */
 final class PaletteFactory
 {
-    public static function create(bool $ansi, string $theme): Palette
+    public static function create(ColorMode $color, string $theme): Palette
     {
-        if (!$ansi) {
+        if (ColorMode::Plain === $color) {
             return new MonochromePalette();
         }
 
@@ -29,8 +31,8 @@ final class PaletteFactory
      * The {@see Palette} wrapped in a {@see SwitchablePalette} so the theme can be
      * swapped live. This is what the container binds; widgets hold the holder.
      */
-    public static function createSwitchable(bool $ansi, string $theme): SwitchablePalette
+    public static function createSwitchable(ColorMode $color, string $theme): SwitchablePalette
     {
-        return new SwitchablePalette(self::create($ansi, $theme));
+        return new SwitchablePalette(self::create($color, $theme));
     }
 }

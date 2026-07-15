@@ -26,15 +26,15 @@ final class DisplayRow
         public readonly bool $isDirectory = false,
     ) {}
 
-    public static function fileHeader(string $path, int $count, bool $collapsed): self
+    public static function fileHeader(string $path, int $count, HeaderState $state): self
     {
-        return new self($path, $count, $collapsed, -1);
+        return new self($path, $count, HeaderState::Collapsed === $state, -1);
     }
 
     /** A directory header (nested grouping only), keyed by its directory path. */
-    public static function dirHeader(string $path, int $count, bool $collapsed): self
+    public static function dirHeader(string $path, int $count, HeaderState $state): self
     {
-        return new self($path, $count, $collapsed, -1, -1, null, true);
+        return new self($path, $count, HeaderState::Collapsed === $state, -1, -1, null, true);
     }
 
     public static function match(int $index): self

@@ -43,7 +43,7 @@ final class Bidi
      * Reorder one composed line to visual order for the given base direction.
      * A line with no strong RTL content and an LTR base is returned unchanged.
      */
-    public static function reorder(string $line, bool $baseRtl): string
+    public static function reorder(string $line, BaseDirection $direction): string
     {
         $matches = [];
         // Tokens: an SGR sequence, the zero-width APC cursor marker
@@ -70,11 +70,11 @@ final class Bidi
         }
 
         $classes = array_map(static fn (array $c): string => self::classify($c['g']), $cells);
-        if (!$baseRtl && !\in_array('R', $classes, strict: true)) {
+        if (BaseDirection::Ltr === $direction && !\in_array('R', $classes, strict: true)) {
             return $line; // LTR base with no RTL runs: already in visual order
         }
 
-        $levels = self::levels($classes, $baseRtl);
+        $levels = self::levels($classes, $direction);
         $order = self::visualOrder($levels);
 
         return self::serialize($cells, $levels, $order);
@@ -86,7 +86,7 @@ final class Bidi
      * with no reordering (ltr base, no rtl runs) maps each column to itself, so
      * mouse hit-testing stays correct for untouched content.
      */
-    public static function visualToLogicalColumn(string $line, int $visualCol, bool $baseRtl): int
+    public static function visualToLogicalColumn(string $line, int $visualCol, BaseDirection $direction): int
     {
         $matches = [];
         if ($visualCol < 0 || !preg_match_all('/\x1b\[[0-9;]*m|\x1b_[^\x07]*\x07|\X/u', $line, $matches)) {
@@ -108,11 +108,11 @@ final class Bidi
         }
 
         $classes = array_map(static fn (array $c): string => self::classify($c['g']), $glyphs);
-        if (!$baseRtl && !\in_array('R', $classes, strict: true)) {
+        if (BaseDirection::Ltr === $direction && !\in_array('R', $classes, strict: true)) {
             return $visualCol;
         }
 
-        $levels = self::levels($classes, $baseRtl);
+        $levels = self::levels($classes, $direction);
         $order = self::visualOrder($levels);
 
         $logicalStart = [];
@@ -171,8 +171,9 @@ final class Bidi
      *
      * @return list<int>
      */
-    private static function levels(array $classes, bool $baseRtl): array
+    private static function levels(array $classes, BaseDirection $direction): array
     {
+        $baseRtl = BaseDirection::Rtl === $direction;
         $base = $baseRtl ? 1 : 0;
         $count = \count($classes);
 

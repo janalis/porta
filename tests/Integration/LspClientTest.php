@@ -6,6 +6,7 @@ namespace Porta\Tests\Integration;
 
 use PHPUnit\Framework\TestCase;
 use Porta\Lsp\LspClient;
+use Porta\Support\Outcome;
 use Revolt\EventLoop;
 
 final class LspClientTest extends TestCase
@@ -78,8 +79,8 @@ final class LspClientTest extends TestCase
             }
         });
 
-        $client->start(static function (bool $ok) use (&$initialized, $client): void {
-            $initialized = $ok;
+        $client->start(static function (Outcome $ok) use (&$initialized, $client): void {
+            $initialized = $ok->isOk();
             $client->notify('textDocument/didOpen', [
                 'textDocument' => ['uri' => 'file:///tmp/x.php', 'languageId' => 'php', 'version' => 1, 'text' => "<?php\n"],
             ]);
@@ -176,8 +177,8 @@ final class LspClientTest extends TestCase
             },
         );
         $this->clients[] = $client;
-        $client->start(static function (bool $ok) use (&$ready): void {
-            $ready = $ok;
+        $client->start(static function (Outcome $ok) use (&$ready): void {
+            $ready = $ok->isOk();
         });
 
         $this->await(static fn () => [] !== $logs, 2.0);
@@ -191,8 +192,8 @@ final class LspClientTest extends TestCase
         $client = $this->client('garbage-lsp-server.php');
 
         $ready = null;
-        $client->start(static function (bool $ok) use (&$ready): void {
-            $ready = $ok;
+        $client->start(static function (Outcome $ok) use (&$ready): void {
+            $ready = $ok->isOk();
         });
 
         $this->await(static fn () => null !== $ready, 2.0);
@@ -232,8 +233,8 @@ final class LspClientTest extends TestCase
         $client = $this->client('error-lsp-server.php', static function (): void {});
 
         $ready = null;
-        $client->start(static function (bool $ok) use (&$ready): void {
-            $ready = $ok;
+        $client->start(static function (Outcome $ok) use (&$ready): void {
+            $ready = $ok->isOk();
         });
         $this->await(static fn () => null !== $ready);
 
@@ -246,8 +247,8 @@ final class LspClientTest extends TestCase
         $client = $this->client('chunked-lsp-server.php');
 
         $ready = null;
-        $client->start(static function (bool $ok) use (&$ready): void {
-            $ready = $ok;
+        $client->start(static function (Outcome $ok) use (&$ready): void {
+            $ready = $ok->isOk();
         });
         $this->await(static fn () => null !== $ready);
 
@@ -281,8 +282,8 @@ final class LspClientTest extends TestCase
         $this->clients[] = $client;
 
         $ready = null;
-        $client->start(static function (bool $ok) use (&$ready): void {
-            $ready = $ok;
+        $client->start(static function (Outcome $ok) use (&$ready): void {
+            $ready = $ok->isOk();
         });
         $this->await(static fn () => null !== $ready, 2.0);
 
@@ -348,8 +349,8 @@ final class LspClientTest extends TestCase
             }
         });
         $ready = false;
-        $client->start(static function (bool $ok) use (&$ready): void {
-            $ready = $ok;
+        $client->start(static function (Outcome $ok) use (&$ready): void {
+            $ready = $ok->isOk();
         });
         $this->await(static fn (): bool => $ready);
         $this->assertTrue($ready);

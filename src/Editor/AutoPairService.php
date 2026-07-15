@@ -90,7 +90,7 @@ final class AutoPairService
         $doc->setCursor($range['startLine'], $range['startCol'] + $openLen);
         $doc->beginSelect();
         $endCol = $range['startLine'] === $range['endLine'] ? $range['endCol'] + $openLen : $range['endCol'];
-        $doc->setCursor($range['endLine'], $endCol, keepSelection: true);
+        $doc->setCursor($range['endLine'], $endCol, selection: SelectionMode::Keep);
     }
 
     /** True when the cursor sits between an empty auto-pair, e.g. "(|)". */

@@ -7,6 +7,7 @@ namespace Porta\Tests\Unit\Plugin;
 use PHPUnit\Framework\TestCase;
 use Porta\I18n\Translator;
 use Porta\Plugin\PluginInstaller;
+use Porta\Tests\Support\Presence;
 use Porta\Tests\Support\TempProject;
 use Revolt\EventLoop;
 use Symfony\Component\Process\ExecutableFinder;
@@ -47,11 +48,11 @@ final class PluginInstallerTest extends TestCase
     }
 
     /** A plugin source dir outside any scope base. */
-    private function sourceDir(string $name, bool $withPluginPhp = true): string
+    private function sourceDir(string $name, Presence $withPluginPhp = Presence::With): string
     {
         $dir = $this->project->dir.'/src-plugins/'.$name;
         mkdir($dir, permissions: 0o777, recursive: true);
-        if ($withPluginPhp) {
+        if (Presence::With === $withPluginPhp) {
             file_put_contents($dir.'/plugin.php', "<?php\n// {$name}\n");
         }
 
@@ -69,7 +70,7 @@ final class PluginInstallerTest extends TestCase
     }
 
     /** A local git repo usable as a clone URL. */
-    private function repo(bool $withPluginPhp): string
+    private function repo(Presence $withPluginPhp): string
     {
         $dir = $this->sourceDir('repo-plugin', $withPluginPhp);
         $q = escapeshellarg($dir);
@@ -93,7 +94,7 @@ final class PluginInstallerTest extends TestCase
 
     public function testCopyGuards(): void
     {
-        [$error] = $this->install($this->installer(), $this->sourceDir('empty', withPluginPhp: false));
+        [$error] = $this->install($this->installer(), $this->sourceDir('empty', withPluginPhp: Presence::Without));
         $this->assertStringContainsString('No plugin.php found in', (string) $error);
 
         $source = $this->sourceDir('demo');
@@ -131,7 +132,7 @@ final class PluginInstallerTest extends TestCase
     public function testCloneInstallsAndRejectsAConcurrentOne(): void
     {
         $git = $this->git();
-        $repo = $this->repo(withPluginPhp: true);
+        $repo = $this->repo(withPluginPhp: Presence::With);
 
         // A plain local path would take the copy branch, so use file://.
         $installer = $this->installer(git: $git);
@@ -164,7 +165,7 @@ final class PluginInstallerTest extends TestCase
         $this->assertStringContainsString('git clone failed (exit code', (string) $error);
         $this->assertDirectoryDoesNotExist($this->project->dir.'/.porta/plugins/nowhere');
 
-        $repo = $this->repo(withPluginPhp: false);
+        $repo = $this->repo(withPluginPhp: Presence::Without);
         [$error] = $this->install($this->installer(git: $git), 'file://'.$repo);
         $this->assertSame('The repository contains no plugin.php', $error);
         $this->assertDirectoryDoesNotExist($this->project->dir.'/.porta/plugins/repo-plugin');

@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Porta\Tests\Support;
 
 use Porta\Lsp\LspClientInterface;
+use Porta\Support\Outcome;
 
 /**
  * In-memory {@see LspClientInterface} for unit-testing {@see \Porta\Lsp\LspSession}
@@ -74,7 +75,7 @@ class FakeLspClient implements LspClientInterface
             $action();
         }
         $this->queued = [];
-        $onReady(true);
+        $onReady(Outcome::Ok);
     }
 
     public function whenReady(callable $action): void

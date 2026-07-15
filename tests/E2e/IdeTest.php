@@ -180,8 +180,13 @@ final class IdeTest extends TestCase
             $this->assertStringContainsString('acme', $doc->getLine($doc->getCursorLine()));
             $tui->handleInput("\x1b"); // esc
         });
-        $this->step(3.0, function () use ($tui): void {
+        $this->step(3.0, function () use ($screen, $tui): void {
             $this->assertSame('editor', $tui->getFocus()?->getId(), 'editor refocused after find close');
+            // Ctrl+R opens the find bar with the replace field (openFindReplace).
+            $tui->handleInput("\x12"); // ctrl+r
+            $this->assertSame('find-bar', $tui->getFocus()?->getId());
+            $this->assertStringContainsString('Replace:', $screen());
+            $tui->handleInput("\x1b"); // esc
         });
 
         // --- Go to file palette -------------------------------------------------------

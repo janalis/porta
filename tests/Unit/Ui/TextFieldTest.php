@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Porta\Tests\Unit\Ui;
 
 use PHPUnit\Framework\TestCase;
+use Porta\Ui\CaretVisibility;
 use Porta\Ui\CursorStyle;
 use Porta\Ui\TextField;
 use Symfony\Component\Tui\Ansi\AnsiUtils;
@@ -33,8 +34,8 @@ final class TextFieldTest extends TestCase
         $this->assertTrue($field->insert('bar'));
 
         $this->assertSame("foo\nbar", $field->value(), 'the value holds a real newline');
-        $this->assertSame('foo⏎bar', $field->render(cursor: false), 'the newline renders as a visible glyph');
-        $this->assertStringContainsString('foo⏎bar', $field->render(cursor: true, width: 40));
+        $this->assertSame('foo⏎bar', $field->render(cursor: CaretVisibility::Hidden), 'the newline renders as a visible glyph');
+        $this->assertStringContainsString('foo⏎bar', $field->render(cursor: CaretVisibility::Shown, width: 40));
     }
 
     public function testInsertRejectsNonPrintableInput(): void
@@ -82,25 +83,25 @@ final class TextFieldTest extends TestCase
     public function testRenderAppendsTheBarCursorOnlyWhenAsked(): void
     {
         $field = new TextField('abc');
-        $this->assertSame('abc', $field->render(cursor: false));
-        $this->assertSame('abc'.AnsiUtils::cursorMarker(CursorShape::Bar), $field->render(cursor: true));
+        $this->assertSame('abc', $field->render(cursor: CaretVisibility::Hidden));
+        $this->assertSame('abc'.AnsiUtils::cursorMarker(CursorShape::Bar), $field->render(cursor: CaretVisibility::Shown));
     }
 
     public function testRenderUsesTheSharedCursorStyleShape(): void
     {
         $style = new CursorStyle(CursorShape::Block);
         $field = new TextField('abc', $style);
-        $this->assertSame('abc'.AnsiUtils::cursorMarker(CursorShape::Block), $field->render(cursor: true), 'block marker from the holder');
+        $this->assertSame('abc'.AnsiUtils::cursorMarker(CursorShape::Block), $field->render(cursor: CaretVisibility::Shown), 'block marker from the holder');
 
         $style->switchTo(CursorShape::Underline);
-        $this->assertSame('abc'.AnsiUtils::cursorMarker(CursorShape::Underline), $field->render(cursor: true), 'a live switch changes the next render');
-        $this->assertStringContainsString(AnsiUtils::cursorMarker(CursorShape::Underline), $field->render(cursor: true, width: 10), 'the windowed path follows too');
+        $this->assertSame('abc'.AnsiUtils::cursorMarker(CursorShape::Underline), $field->render(cursor: CaretVisibility::Shown), 'a live switch changes the next render');
+        $this->assertStringContainsString(AnsiUtils::cursorMarker(CursorShape::Underline), $field->render(cursor: CaretVisibility::Shown, width: 10), 'the windowed path follows too');
     }
 
     public function testRenderWithWidthKeepsAShortValueWithTheMarkerAtTheEnd(): void
     {
         $field = new TextField('abc');
-        $this->assertSame('abc'.AnsiUtils::cursorMarker(CursorShape::Bar), $field->render(cursor: true, width: 10));
+        $this->assertSame('abc'.AnsiUtils::cursorMarker(CursorShape::Bar), $field->render(cursor: CaretVisibility::Shown, width: 10));
     }
 
     public function testRenderScrollsToTheTailWhenTheFocusedValueOverflowsWidth(): void
@@ -108,7 +109,7 @@ final class TextFieldTest extends TestCase
         $field = new TextField(str_repeat('x', times: 60));
         $marker = AnsiUtils::cursorMarker(CursorShape::Bar);
 
-        $out = $field->render(cursor: true, width: 10);
+        $out = $field->render(cursor: CaretVisibility::Shown, width: 10);
 
         $this->assertSame(1, substr_count($out, $marker), 'the end caret marker stays visible');
         $this->assertStringEndsWith($marker, $out, 'scrolled to the tail, caret last');

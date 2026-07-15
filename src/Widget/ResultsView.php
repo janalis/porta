@@ -27,7 +27,7 @@ final class ResultsView
     public static function build(
         array $results,
         array $collapsed,
-        bool $grouped,
+        ResultLayout $grouped,
         string $filter = '',
         ResultGrouping $grouping = ResultGrouping::File,
         array $expanded = [],
@@ -35,7 +35,7 @@ final class ResultsView
     ): array {
         $needle = mb_strtolower($filter);
 
-        if (!$grouped) {
+        if (ResultLayout::Flat === $grouped) {
             $rows = [];
             foreach ($results as $index => $result) {
                 if (!self::passes($result, $needle)) {
@@ -67,7 +67,7 @@ final class ResultsView
         $rows = [];
         foreach ($byKey as $key => $indices) {
             $isCollapsed = $collapsed[$key] ?? false;
-            $rows[] = DisplayRow::fileHeader($key, \count($indices), $isCollapsed);
+            $rows[] = DisplayRow::fileHeader($key, \count($indices), $isCollapsed ? HeaderState::Collapsed : HeaderState::Expanded);
             if (!$isCollapsed) {
                 foreach ($indices as $index) {
                     self::appendMatch($rows, $index, $expanded, $context);
@@ -113,13 +113,13 @@ final class ResultsView
                 $dirCount += \count($indices);
             }
             $dirCollapsed = $collapsed[$dir] ?? false;
-            $rows[] = DisplayRow::dirHeader($dir, $dirCount, $dirCollapsed);
+            $rows[] = DisplayRow::dirHeader($dir, $dirCount, $dirCollapsed ? HeaderState::Collapsed : HeaderState::Expanded);
             if ($dirCollapsed) {
                 continue;
             }
             foreach ($files as $path => $indices) {
                 $fileCollapsed = $collapsed[$path] ?? false;
-                $rows[] = DisplayRow::fileHeader($path, \count($indices), $fileCollapsed);
+                $rows[] = DisplayRow::fileHeader($path, \count($indices), $fileCollapsed ? HeaderState::Collapsed : HeaderState::Expanded);
                 if ($fileCollapsed) {
                     continue;
                 }

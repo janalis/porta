@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Porta\Tests\Unit\Widget\Overlay;
 
 use PHPUnit\Framework\TestCase;
+use Porta\Ui\CaretVisibility;
 use Porta\Widget\Overlay\FindInFilesModal;
 use Symfony\Component\Tui\Ansi\AnsiUtils;
 use Symfony\Component\Tui\Input\Keybindings;
@@ -39,14 +40,14 @@ final class FindInFilesModalTest extends TestCase
     {
         $lines = array_fill(0, count: 24, value: str_repeat(' ', times: 100));
 
-        return AnsiUtils::stripAnsiCodes(implode("\n", $modal->composite($lines, 100, 24, true)));
+        return AnsiUtils::stripAnsiCodes(implode("\n", $modal->composite($lines, 100, 24, CaretVisibility::Shown)));
     }
 
     public function testRendersTitleQueryScopeOptionsAndGroupedPreview(): void
     {
         $modal = $this->modal();
         $blank = array_fill(0, count: 24, value: '');
-        $this->assertSame($blank, $modal->composite($blank, 100, 24, true), 'closed → lines unchanged');
+        $this->assertSame($blank, $modal->composite($blank, 100, 24, CaretVisibility::Shown), 'closed → lines unchanged');
 
         $modal->open('Find in Files');
         $modal->setScopes(['Whole Project', 'Directory'], 0);
@@ -293,7 +294,7 @@ final class FindInFilesModalTest extends TestCase
         $box = null;
         $screen = (static function () use ($modal, &$box): string {
             $lines = array_fill(0, count: 24, value: str_repeat(' ', times: 100));
-            $out = $modal->composite($lines, 100, 24, true);
+            $out = $modal->composite($lines, 100, 24, CaretVisibility::Shown);
             $box = $modal->lastBox();
 
             return AnsiUtils::stripAnsiCodes(implode("\n", $out));
@@ -319,7 +320,7 @@ final class FindInFilesModalTest extends TestCase
         $modal->setPreview($many);
 
         $box = static function () use ($modal): array {
-            $modal->composite(array_fill(0, count: 24, value: str_repeat(' ', times: 100)), 100, 24, true);
+            $modal->composite(array_fill(0, count: 24, value: str_repeat(' ', times: 100)), 100, 24, CaretVisibility::Shown);
 
             return $modal->lastBox() ?? [];
         };
@@ -344,7 +345,7 @@ final class FindInFilesModalTest extends TestCase
         $modal->setPreview($many); // 15 display rows (1 header + 14 matches), 10 visible
 
         $box = static function () use ($modal): array {
-            $modal->composite(array_fill(0, count: 24, value: str_repeat(' ', times: 100)), 100, 24, true);
+            $modal->composite(array_fill(0, count: 24, value: str_repeat(' ', times: 100)), 100, 24, CaretVisibility::Shown);
 
             return $modal->lastBox() ?? [];
         };
@@ -374,7 +375,7 @@ final class FindInFilesModalTest extends TestCase
         $modal->setPreview($many); // selection on the first match (display index 1)
 
         $box = static function () use ($modal): array {
-            $modal->composite(array_fill(0, count: 24, value: str_repeat(' ', times: 100)), 100, 24, true);
+            $modal->composite(array_fill(0, count: 24, value: str_repeat(' ', times: 100)), 100, 24, CaretVisibility::Shown);
 
             return $modal->lastBox() ?? [];
         };
@@ -403,7 +404,7 @@ final class FindInFilesModalTest extends TestCase
         $modal->open('Find in Files');
         $modal->setPreview($this->results());
         // A 4-row terminal can't fit the box; compositing must clip, not error.
-        $out = $modal->composite(array_fill(0, count: 4, value: str_repeat(' ', times: 40)), 40, 4, true);
+        $out = $modal->composite(array_fill(0, count: 4, value: str_repeat(' ', times: 40)), 40, 4, CaretVisibility::Shown);
         $this->assertCount(4, $out);
     }
 
@@ -488,7 +489,7 @@ final class FindInFilesModalTest extends TestCase
         $modal->setScopes(['Whole Project', 'Directory', 'Current File'], 0);
         $modal->open('Find in Files');
         $modal->setPreview($this->results());
-        $lines = $modal->composite(array_fill(0, count: 24, value: str_repeat(' ', times: 100)), 100, 24, true);
+        $lines = $modal->composite(array_fill(0, count: 24, value: str_repeat(' ', times: 100)), 100, 24, CaretVisibility::Shown);
         $box = $modal->lastBox();
         $this->assertNotNull($box);
         $optionsRow = $box['previewRow'] - 2;
@@ -512,7 +513,7 @@ final class FindInFilesModalTest extends TestCase
         $modal->setScopes(['Whole Project', 'Directory'], 0);
         $modal->open('Find in Files');
         $modal->setPreview($this->results());
-        $lines = $modal->composite(array_fill(0, count: 24, value: str_repeat(' ', times: 100)), 100, 24, true);
+        $lines = $modal->composite(array_fill(0, count: 24, value: str_repeat(' ', times: 100)), 100, 24, CaretVisibility::Shown);
         $box = $modal->lastBox();
         $this->assertNotNull($box);
         $optionsRow = $box['previewRow'] - 2;
@@ -585,7 +586,7 @@ final class FindInFilesModalTest extends TestCase
         $modal->setScopes(['Whole Project', 'Directory'], 0);
         $modal->open('Find in Files');
         $modal->setPreview($this->results());
-        $lines = $modal->composite(array_fill(0, count: 24, value: str_repeat(' ', times: 100)), 100, 24, true);
+        $lines = $modal->composite(array_fill(0, count: 24, value: str_repeat(' ', times: 100)), 100, 24, CaretVisibility::Shown);
         $footerRow = $modal->lastFooterRow();
         $footerLine = AnsiUtils::stripAnsiCodes($lines[$footerRow]);
 

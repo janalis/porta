@@ -6,6 +6,7 @@ namespace Porta\Widget\Overlay;
 
 use Porta\Search\TokenScope;
 use Porta\Support\AnsiText;
+use Porta\Ui\CaretVisibility;
 use Porta\Ui\ColorPalette;
 use Porta\Ui\CursorStyle;
 use Porta\Ui\Palette;
@@ -15,6 +16,7 @@ use Porta\Widget\Render\HeaderRenderer;
 use Porta\Widget\Render\LineDecorator;
 use Porta\Widget\Render\OverlayCompositor;
 use Porta\Widget\ResultGrouping;
+use Porta\Widget\ResultLayout;
 use Porta\Widget\ResultsView;
 use Symfony\Component\Tui\Ansi\AnsiUtils;
 use Symfony\Component\Tui\Input\Key;
@@ -257,7 +259,7 @@ final class FindInFilesModal
     public function setPreview(array $results): void
     {
         $this->results = $results;
-        $this->displayRows = ResultsView::build($results, [], true, '', ResultGrouping::File);
+        $this->displayRows = ResultsView::build($results, [], ResultLayout::Grouped, '', ResultGrouping::File);
         $this->excluded = [];
         $this->searching = false;
         // Land on the first match row so Enter opens it.
@@ -531,7 +533,7 @@ final class FindInFilesModal
      *
      * @return list<string>
      */
-    public function composite(array $lines, int $columns, int $rows, bool $focused): array
+    public function composite(array $lines, int $columns, int $rows, CaretVisibility $focused): array
     {
         $this->box = null;
         if (!$this->open) {
@@ -549,7 +551,7 @@ final class FindInFilesModal
         $this->optionsRow = 3; // title(0), query(1), replace(2), options(3) — index into $popup
         $previewIndex = \count($popup);
         foreach ($visible as $i => $row) {
-            $selected = ($windowStart + $i) === $this->selected;
+            $selected = ($windowStart + $i) === $this->selected ? RowSelection::Selected : RowSelection::Unselected;
             $popup[] = match (true) {
                 null !== $row->filePath => $this->fileHeaderRow($row->filePath, $row->count, $width),
                 $this->inPreview() => $this->previewMatchRow($this->results[$row->matchIndex], $row->matchIndex, $selected, $width),
@@ -622,7 +624,7 @@ final class FindInFilesModal
      *
      * @return list<string>
      */
-    private function headerRows(int $width, bool $focused): array
+    private function headerRows(int $width, CaretVisibility $focused): array
     {
         $title = ' '.$this->title.$this->palette->of(Role::Dim).'  '.$this->statusText()."\x1b[39m";
 
@@ -630,15 +632,21 @@ final class FindInFilesModal
 
         return [
             HeaderRenderer::render($title, $width, $this->palette->of(Role::HeaderBar)."\x1b[1m"),
-            $this->fieldRow('Find', $this->query, $focused && 'query' === $this->activeField, '', $width),
-            $this->fieldRow('Replace', $this->replace, $focused && 'replace' === $this->activeField, $replaceHint, $width),
+            $this->fieldRow('Find', $this->query, CaretVisibility::Shown === $focused && 'query' === $this->activeField ? CaretVisibility::Shown : CaretVisibility::Hidden, '', $width),
+            $this->fieldRow(
+                'Replace',
+                $this->replace,
+                CaretVisibility::Shown === $focused && 'replace' === $this->activeField ? CaretVisibility::Shown : CaretVisibility::Hidden,
+                $replaceHint,
+                $width,
+            ),
             $this->optionsRowLine($width),
-            $this->fieldRow('Mask', $this->mask, $focused && 'mask' === $this->activeField, '  (Tab)', $width),
+            $this->fieldRow('Mask', $this->mask, CaretVisibility::Shown === $focused && 'mask' === $this->activeField ? CaretVisibility::Shown : CaretVisibility::Hidden, '  (Tab)', $width),
         ];
     }
 
     /** A labelled input row (`Find:`/`Replace:`/`Mask:` + field), scrolled to keep the caret visible. */
-    private function fieldRow(string $label, TextField $field, bool $shown, string $hint, int $width): string
+    private function fieldRow(string $label, TextField $field, CaretVisibility $shown, string $hint, int $width): string
     {
         $line = ' '.$label.': '.$field->render(cursor: $shown);
         if ('' !== $hint) {
@@ -674,17 +682,18 @@ final class FindInFilesModal
         $tokenGlyph = TokenScope::from($this->options['tokens'])->glyph();
         $this->optionZones = [];
         $col = 1; // leading space
+        $tags = '';
         foreach (['regex' => '.*', 'case' => 'Aa', 'word' => '\\b', 'preserve' => 'Pc', 'tokens' => $tokenGlyph] as $name => $glyph) {
             $w = mb_strwidth($glyph) + 2;
             $this->optionZones[] = ['name' => $name, 'start' => $col, 'end' => $col + $w];
             $col += $w;
+            $on = 'tokens' === $name ? 'any' !== $this->options['tokens'] : $this->options[$name];
+            $tags .= $this->optionTag($glyph, match (true) {
+                $on => OptionTagState::On,
+                $name === $this->hovered => OptionTagState::Hovered,
+                default => OptionTagState::Off,
+            });
         }
-        $tags =
-            $this->optionTag('.*', $this->options['regex'], 'regex' === $this->hovered)
-            .$this->optionTag('Aa', $this->options['case'], 'case' === $this->hovered)
-            .$this->optionTag('\\b', $this->options['word'], 'word' === $this->hovered)
-            .$this->optionTag('Pc', $this->options['preserve'], 'preserve' === $this->hovered)
-            .$this->optionTag($tokenGlyph, 'any' !== $this->options['tokens'], 'tokens' === $this->hovered);
 
         $label = $this->scopeLabels[$this->scopeIndex] ?? 'Whole Project';
         $labelPart = 'scope' === $this->hovered
@@ -697,16 +706,13 @@ final class FindInFilesModal
         return $this->palette->of(Role::Toolbar).AnsiUtils::truncateToWidth(' '.$tags.$scope, $width, '…', pad: true)."\x1b[0m";
     }
 
-    private function optionTag(string $glyph, bool $on, bool $hovered): string
+    private function optionTag(string $glyph, OptionTagState $state): string
     {
-        if ($on) {
-            return $this->palette->of(Role::SelectedRow).' '.$glyph." \x1b[0m".$this->palette->of(Role::Toolbar);
-        }
-        if ($hovered) {
-            return $this->palette->of(Role::RowHighlightBg).' '.$glyph." \x1b[0m".$this->palette->of(Role::Toolbar);
-        }
-
-        return $this->palette->of(Role::Faint).' '.$glyph." \x1b[39m";
+        return match ($state) {
+            OptionTagState::On => $this->palette->of(Role::SelectedRow).' '.$glyph." \x1b[0m".$this->palette->of(Role::Toolbar),
+            OptionTagState::Hovered => $this->palette->of(Role::RowHighlightBg).' '.$glyph." \x1b[0m".$this->palette->of(Role::Toolbar),
+            OptionTagState::Off => $this->palette->of(Role::Faint).' '.$glyph." \x1b[39m",
+        };
     }
 
     private function fileHeaderRow(string $path, int $count, int $width): string
@@ -719,9 +725,9 @@ final class FindInFilesModal
     /**
      * @param array{path: string, line: int, text: string, ranges?: list<array{start: int, length: int}>} $result
      */
-    private function matchRow(array $result, bool $selected, int $width): string
+    private function matchRow(array $result, RowSelection $selected, int $width): string
     {
-        $bg = $selected ? $this->palette->of(Role::SelectedRow) : $this->palette->of(Role::PopupRow);
+        $bg = RowSelection::Selected === $selected ? $this->palette->of(Role::SelectedRow) : $this->palette->of(Role::PopupRow);
         $label = (string) ($result['line'] + 1);
         $prefixWidth = 4 + mb_strwidth($label) + 2;
         $text = '    '.$this->palette->of(Role::TabAccent).$label."\x1b[39m".'  '.$result['text'];
@@ -741,9 +747,9 @@ final class FindInFilesModal
      *
      * @param array{path: string, line: int, text: string, ranges?: list<array{start: int, length: int}>} $result
      */
-    private function previewMatchRow(array $result, int $matchIndex, bool $selected, int $width): string
+    private function previewMatchRow(array $result, int $matchIndex, RowSelection $selected, int $width): string
     {
-        $bg = $selected ? $this->palette->of(Role::SelectedRow) : $this->palette->of(Role::PopupRow);
+        $bg = RowSelection::Selected === $selected ? $this->palette->of(Role::SelectedRow) : $this->palette->of(Role::PopupRow);
         $excluded = $this->excluded[$matchIndex] ?? false;
         $label = (string) ($result['line'] + 1);
         $old = $result['text'];

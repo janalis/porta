@@ -6,6 +6,7 @@ namespace Porta\Tests\Unit\Config;
 
 use PHPUnit\Framework\TestCase;
 use Porta\Config\CommandRegistry;
+use Porta\Config\KeyDispatch;
 
 final class CommandRegistryTest extends TestCase
 {
@@ -31,7 +32,7 @@ final class CommandRegistryTest extends TestCase
         $registry = new CommandRegistry();
         $registry
             ->add('save', static function (): void {})
-            ->add('debug_step_over', static function (): void {}, keyBound: true, when: static function () use (&$enabled): bool {
+            ->add('debug_step_over', static function (): void {}, keyBound: KeyDispatch::Bound, when: static function () use (&$enabled): bool {
                 return $enabled;
             });
 

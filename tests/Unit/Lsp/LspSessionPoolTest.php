@@ -11,6 +11,7 @@ use Porta\I18n\Translator;
 use Porta\Lsp\LspSessionPool;
 use Porta\Tests\Support\FakeLspClient;
 use Porta\Tests\Support\FixedActiveFile;
+use Porta\Tests\Support\Presence;
 use Symfony\Component\EventDispatcher\EventDispatcher;
 
 final class LspSessionPoolTest extends TestCase
@@ -20,7 +21,7 @@ final class LspSessionPoolTest extends TestCase
     private FixedActiveFile $activeFile;
     private int $statusRepaints = 0;
 
-    private function pool(array $servers, bool $configure = true): LspSessionPool
+    private function pool(array $servers, Presence $configure = Presence::With): LspSessionPool
     {
         $this->clients = [];
         $dispatcher = new EventDispatcher();
@@ -39,7 +40,7 @@ final class LspSessionPoolTest extends TestCase
             },
             $dispatcher,
         );
-        if ($configure) {
+        if (Presence::With === $configure) {
             $pool->configure(
                 $servers,
                 static function (string $line): void {},
@@ -60,7 +61,7 @@ final class LspSessionPoolTest extends TestCase
     public function testLogLinesArePrefixedWithTheServerName(): void
     {
         $logged = [];
-        $pool = $this->pool(self::SERVERS, configure: false);
+        $pool = $this->pool(self::SERVERS, configure: Presence::Without);
         $pool->configure(
             self::SERVERS,
             static function (string $line) use (&$logged): void {
@@ -182,7 +183,7 @@ final class LspSessionPoolTest extends TestCase
 
     public function testDisabledAndUnconfiguredStates(): void
     {
-        $pool = $this->pool([], configure: false);
+        $pool = $this->pool([], configure: Presence::Without);
         $this->assertSame('no server', $pool->statusFor('/tmp/proj/a.php'), 'before startLsp runs');
         $pool->notifyDidOpen('/tmp/proj/a.php', 'x', 'php', 1);
         $this->assertCount(0, $this->clients, 'unconfigured pool never starts sessions');

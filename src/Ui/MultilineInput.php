@@ -138,19 +138,20 @@ final class MultilineInput
     /**
      * The visible window of at most $rows lines clipped to $width, scrolled so
      * the caret line is always shown, with a bar cursor marker at the caret when
-     * $cursor is true. Fewer than $rows lines when the content is shorter; always
+     * $cursor is {@see CaretVisibility::Shown}. Fewer than $rows lines when the content is shorter; always
      * at least one line. Scrolling keeps the caret (and its marker) inside the
      * window, so a caller that renders a fixed row count never drops the cursor.
      *
      * @return list<string>
      */
-    public function render(int $width, int $rows, bool $cursor): array
+    public function render(int $width, int $rows, CaretVisibility $cursor): array
     {
+        $shown = CaretVisibility::Shown === $cursor;
         $top = $this->line < $rows ? 0 : $this->line - $rows + 1;
         $out = [];
         for ($i = $top; $i < min($top + $rows, \count($this->lines)); ++$i) {
             $line = $this->lines[$i];
-            if ($cursor && $i === $this->line) {
+            if ($shown && $i === $this->line) {
                 // Horizontally window the caret line so the marker stays visible.
                 $caretCol = AnsiUtils::visibleWidth(substr($line, offset: 0, length: $this->col));
                 $out[] = AnsiText::caretWindow($line, $caretCol, $width, $this->style->marker());

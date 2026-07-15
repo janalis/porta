@@ -12,6 +12,7 @@ use Porta\Event\BufferSwitched;
 use Porta\Git\BlameAnnotations;
 use Porta\Git\GitInfo;
 use Porta\I18n\Translator;
+use Porta\Tests\Support\Presence;
 use Porta\Tests\Support\TempProject;
 use Porta\Ui\Notifier;
 use Porta\Widget\CodeEditorWidget;
@@ -43,13 +44,13 @@ final class BlameAnnotationsTest extends TestCase
         $this->assertTrue($done(), 'condition met before timeout');
     }
 
-    private function blame(bool $withRepo = true): BlameAnnotations
+    private function blame(Presence $withRepo = Presence::With): BlameAnnotations
     {
         if (null === new \Symfony\Component\Process\ExecutableFinder()->find('git')) {
             $this->markTestSkipped('git not available');
         }
         $this->project = new TempProject(['a.php' => "<?php\n\$x = 1;\n"]);
-        if ($withRepo) {
+        if (Presence::With === $withRepo) {
             $d = escapeshellarg($this->project->dir);
             exec("git -C {$d} init -q && git -C {$d} config user.email t@t && git -C {$d} config user.name tester && git -C {$d} add -A && git -C {$d} commit -qm init");
         }
@@ -92,7 +93,7 @@ final class BlameAnnotationsTest extends TestCase
 
     public function testWithoutARepositoryOrFileTheToggleFlashes(): void
     {
-        $blame = $this->blame(withRepo: false);
+        $blame = $this->blame(withRepo: Presence::Without);
         $this->showFile();
         $blame->toggle();
         $this->assertStringContainsString('Git not available', $this->flash());

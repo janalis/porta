@@ -8,6 +8,7 @@ use Porta\Config\SettingsRow;
 use Porta\Container\AsWidget;
 use Porta\I18n\Translator;
 use Porta\Support\IntMath;
+use Porta\Ui\CaretVisibility;
 use Porta\Ui\ColorPalette;
 use Porta\Ui\CursorStyle;
 use Porta\Ui\Palette;
@@ -323,7 +324,7 @@ final class SettingsFormWidget extends AbstractWidget implements FocusableInterf
     private function textValue(SettingsRow $row, int $index): string
     {
         if ($index === $this->editing && null !== $this->editField) {
-            return $this->editField->render(cursor: $this->focused);
+            return $this->editField->render(cursor: $this->focused ? CaretVisibility::Shown : CaretVisibility::Hidden);
         }
         $value = (string) $row->value;
         if ('' === $value && null !== $row->hint) {

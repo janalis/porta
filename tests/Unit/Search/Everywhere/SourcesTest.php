@@ -6,6 +6,7 @@ namespace Porta\Tests\Unit\Search\Everywhere;
 
 use PHPUnit\Framework\TestCase;
 use Porta\Config\CommandRegistry;
+use Porta\Editor\OpenFocus;
 use Porta\Search\Everywhere\ActionsSource;
 use Porta\Search\Everywhere\FilesSource;
 use Porta\Search\Everywhere\SearchCategory;
@@ -49,8 +50,8 @@ final class SourcesTest extends TestCase
     {
         $project = new TempProject(['src/Entity/User.php' => '', 'src/Controller/UserController.php' => '', 'other.txt' => '']);
         $opened = null;
-        $source = new FilesSource(new FileIndex($project->dir), $project->dir, static function (string $path, bool $focus) use (&$opened): void {
-            $opened = [$path, $focus];
+        $source = new FilesSource(new FileIndex($project->dir), $project->dir, static function (string $path, OpenFocus $focus) use (&$opened): void {
+            $opened = [$path, OpenFocus::Editor === $focus];
         });
 
         $this->assertSame(SearchCategory::Files, $source->category());
@@ -111,8 +112,8 @@ final class SourcesTest extends TestCase
             SearchCategory::Classes,
             [5, 10, 11, 23],
             '/proj',
-            static function (string $p, bool $f) use (&$opened): void {
-                $opened = [$p, $f];
+            static function (string $p, OpenFocus $f) use (&$opened): void {
+                $opened = [$p, OpenFocus::Editor === $f];
             },
             static function (int $l, int $c) use (&$jumped): void {
                 $jumped = [$l, $c];
@@ -169,8 +170,8 @@ final class SourcesTest extends TestCase
         $source = new TextSource(
             new ProjectSearch($project->dir),
             $project->dir,
-            static function (string $p, bool $f) use (&$opened): void {
-                $opened = [$p, $f];
+            static function (string $p, OpenFocus $f) use (&$opened): void {
+                $opened = [$p, OpenFocus::Editor === $f];
             },
             static function (int $l, int $c) use (&$jumped): void {
                 $jumped = [$l, $c];

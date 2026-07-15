@@ -166,7 +166,7 @@ final class HistoryListWidgetTest extends TestCase
             new LogEntry('s3', 'ccc333', 'C', 1_700_000_100, 'three'),
         ]);
         $loads = 0;
-        $widget->setHasMore(true);
+        $widget->markHasMore();
         $widget->onLoadMore(static function () use (&$loads): void {
             ++$loads;
         });
@@ -191,7 +191,7 @@ final class HistoryListWidgetTest extends TestCase
         $this->assertSame(2, $loads);
 
         // No older page: bottom navigation stays quiet.
-        $widget->setHasMore(false);
+        $widget->markNoMore();
         $widget->handleInput("\x1b[A");
         $widget->handleInput("\x1b[B");
         $widget->handleInput("\x1b[B");

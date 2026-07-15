@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace Porta\Search\Everywhere;
 
+use Porta\Editor\OpenFocus;
+
 /**
  * Symbols source over LSP `workspace/symbol`: one instance for Classes (kinds
  * restricted to class/enum/interface/struct) and one for all Symbols. Async;
@@ -20,7 +22,7 @@ final class WorkspaceSymbolSource implements SearchSource
     /**
      * @param \Closure(string, \Closure(list<array{path: string, line: int, name: string, kind: int, label: string}>): void): void $searchSymbols
      * @param list<int>                    $kinds    allowed LSP SymbolKinds; empty = all
-     * @param \Closure(string, bool): void $openFile fn(absolutePath, focusEditor)
+     * @param \Closure(string, OpenFocus): void $openFile fn(absolutePath, focus)
      * @param \Closure(int, int): void     $jumpTo   fn(line, col)
      */
     public function __construct(
@@ -57,9 +59,8 @@ final class WorkspaceSymbolSource implements SearchSource
                     $symbol['name'],
                     $symbol['path'].':'.($line + 1),
                     function () use ($absolute, $line): void {
-                        $focusEditor = true;
                         $column = 0;
-                        ($this->openFile)($absolute, $focusEditor);
+                        ($this->openFile)($absolute, OpenFocus::Editor);
                         ($this->jumpTo)($line, $column);
                     },
                 );

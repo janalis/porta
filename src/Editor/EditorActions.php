@@ -362,15 +362,15 @@ final class EditorActions
         // editor operation. The conditional/multi-statement verbs live in named
         // helpers below; unknown verbs fall through to a safe no-op.
         match ($action) {
-            'undo' => $this->notifyIfChanged($this->document->undo()),
-            'redo' => $this->notifyIfChanged($this->document->redo()),
+            'undo' => $this->notifyIfChanged($this->document->undo(...)),
+            'redo' => $this->notifyIfChanged($this->document->redo(...)),
             'copy' => $this->copySelection(),
             'cut' => $this->cutSelection(),
             'paste' => $this->pasteClipboard(),
             'duplicate_line' => $this->duplicateCurrentLines(),
-            'delete_line' => $this->notifyIfChanged($this->document->deleteLines()),
-            'move_line_up' => $this->notifyIfChanged($this->document->moveLines(-1)),
-            'move_line_down' => $this->notifyIfChanged($this->document->moveLines(1)),
+            'delete_line' => $this->notifyIfChanged($this->document->deleteLines(...)),
+            'move_line_up' => $this->notifyIfChanged(fn (): bool => $this->document->moveLines(-1)),
+            'move_line_down' => $this->notifyIfChanged(fn (): bool => $this->document->moveLines(1)),
             'toggle_comment' => $this->toggleLineComment(),
             'toggle_fold' => $this->toggleFold(),
             'fold_all' => $this->foldAll(),
@@ -390,10 +390,15 @@ final class EditorActions
         };
     }
 
-    /** Fire the document-change hook only when a mutation actually happened. */
-    private function notifyIfChanged(bool $changed): void
+    /**
+     * Run a mutation and fire the document-change hook only when it reports a
+     * real change.
+     *
+     * @param \Closure(): bool $mutation returns whether the document changed
+     */
+    private function notifyIfChanged(\Closure $mutation): void
     {
-        if ($changed) {
+        if ($mutation()) {
             $this->host->notifyChange();
         }
     }

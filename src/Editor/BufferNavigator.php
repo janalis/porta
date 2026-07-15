@@ -35,9 +35,9 @@ final class BufferNavigator implements BufferNavigationHandler
         }
     }
 
-    public function closeActive(bool $force = false): void
+    public function closeActive(CloseMode $mode = CloseMode::Guarded): void
     {
-        $this->bufferService->closeActiveBuffer($force);
+        $this->bufferService->closeActiveBuffer($mode);
     }
 
     public function openGoToFile(): void

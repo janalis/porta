@@ -111,7 +111,7 @@ final readonly class EditorRowAssembler
             $isCursorLine = $lineIndex === $cursorLine;
             $lineDiags = $this->diagnostics[$lineIndex] ?? [];
 
-            $gutter = $this->gutterCell($lineIndex, $isCursorLine, $lineDiags, $geo->numberWidth);
+            $gutter = $this->gutterCell($lineIndex, $isCursorLine ? CaretLine::Current : CaretLine::Other, $lineDiags, $geo->numberWidth);
             $hlLine = $this->decoratedLine(
                 $lineIndex,
                 $highlighted[$lineIndex] ?? '',
@@ -128,7 +128,7 @@ final readonly class EditorRowAssembler
                 $hScroll,
                 $hlLine,
                 $geo->contentWidth,
-                $isCursorLine && $this->showCaret && !$decorations->multiActive,
+                $isCursorLine && $this->showCaret && !$decorations->multiActive ? CursorVisibility::Shown : CursorVisibility::Hidden,
                 $cursorDisplayCol,
                 $this->cursorStyle->marker(),
             );
@@ -174,7 +174,7 @@ final readonly class EditorRowAssembler
             .' '
             ."\x1b[0m ";
         $hl = EditorRenderer::applyIndentGuides($this->document, $highlighted[$docLine] ?? '', $docLine, $this->palette);
-        $content = EditorRenderer::renderContentLine($hScroll, $hl, $geo->contentWidth, false, 0, $this->cursorStyle->marker());
+        $content = EditorRenderer::renderContentLine($hScroll, $hl, $geo->contentWidth, CursorVisibility::Hidden, 0, $this->cursorStyle->marker());
 
         return LineDecorator::applyFullWidth($gutter.$content, $geo->gutterWidth + $geo->contentWidth, $this->palette->of(Role::HeaderBar));
     }
@@ -185,11 +185,11 @@ final readonly class EditorRowAssembler
      *
      * @param list<array{col: int, endCol?: int, message: string, severity: int}> $lineDiags
      */
-    private function gutterCell(int $lineIndex, bool $isCursorLine, array $lineDiags, int $numberWidth): string
+    private function gutterCell(int $lineIndex, CaretLine $isCursorLine, array $lineDiags, int $numberWidth): string
     {
         $numColor = match (true) {
             [] !== $lineDiags => $this->palette->of(DiagnosticStyle::role(DiagnosticStyle::worst($lineDiags))),
-            $isCursorLine => $this->palette->of(Role::CurrentLineNumber),
+            CaretLine::Current === $isCursorLine => $this->palette->of(Role::CurrentLineNumber),
             default => $this->palette->of(Role::Gutter),
         };
         // The marker column, one glyph by priority: the debugger's stopped line,
@@ -205,7 +205,7 @@ final readonly class EditorRowAssembler
         // Relative line numbers: distance from the cursor line, absolute on
         // the cursor line itself (PhpStorm/Vim "relativenumber" style).
         $numberLabel = (string) ($lineIndex + 1);
-        if ($this->relativeLineNumbers && !$isCursorLine) {
+        if ($this->relativeLineNumbers && CaretLine::Other === $isCursorLine) {
             $numberLabel = (string) abs($lineIndex - $this->document->getCursorLine());
         }
 

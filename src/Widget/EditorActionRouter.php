@@ -80,7 +80,8 @@ final class EditorActionRouter
         }
 
         if ($kb->matches($keys, 'find') || $kb->matches($keys, 'replace')) {
-            ($this->callbacks)()->file?->openFind($kb->matches($keys, 'replace'));
+            $file = ($this->callbacks)()->file;
+            $kb->matches($keys, 'replace') ? $file?->openFindReplace() : $file?->openFind();
 
             return true;
         }

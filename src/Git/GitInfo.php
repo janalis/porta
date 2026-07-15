@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Porta\Git;
 
 use Porta\Support\AsyncProcess;
+use Porta\Support\Outcome;
 use Symfony\Component\Process\ExecutableFinder;
 
 /**
@@ -91,35 +92,35 @@ final class GitInfo
     /**
      * The staged (index vs HEAD) diff of a file, for viewing/unstaging.
      *
-     * @param callable(string): void $onDone           receives the raw diff
-     * @param int|null               $context          surrounding lines per hunk (null = git's default)
-     * @param bool                   $ignoreWhitespace drop whitespace-only changes (-w)
+     * @param callable(string): void $onDone     receives the raw diff
+     * @param int|null               $context    surrounding lines per hunk (null = git's default)
+     * @param WhitespaceMode         $whitespace {@see WhitespaceMode::Hidden} drops whitespace-only changes (-w)
      */
-    public function cachedFileDiff(string $absPath, callable $onDone, ?int $context = null, bool $ignoreWhitespace = false): void
+    public function cachedFileDiff(string $absPath, callable $onDone, ?int $context = null, WhitespaceMode $whitespace = WhitespaceMode::Shown): void
     {
         if (!$this->available) {
             $onDone('');
 
             return;
         }
-        $this->run(['diff', '--no-color', '--cached', ...(null === $context ? [] : ['-U'.$context]), ...($ignoreWhitespace ? ['-w'] : []), '--', $absPath], $onDone);
+        $this->run(['diff', '--no-color', '--cached', ...(null === $context ? [] : ['-U'.$context]), ...(WhitespaceMode::Hidden === $whitespace ? ['-w'] : []), '--', $absPath], $onDone);
     }
 
     /**
      * The worktree-vs-index diff of a file (what line-staging operates on).
      *
-     * @param callable(string): void $onDone           receives the raw diff
-     * @param int|null               $context          surrounding lines per hunk (null = git's default)
-     * @param bool                   $ignoreWhitespace drop whitespace-only changes (-w)
+     * @param callable(string): void $onDone     receives the raw diff
+     * @param int|null               $context    surrounding lines per hunk (null = git's default)
+     * @param WhitespaceMode         $whitespace {@see WhitespaceMode::Hidden} drops whitespace-only changes (-w)
      */
-    public function worktreeFileDiff(string $absPath, callable $onDone, ?int $context = null, bool $ignoreWhitespace = false): void
+    public function worktreeFileDiff(string $absPath, callable $onDone, ?int $context = null, WhitespaceMode $whitespace = WhitespaceMode::Shown): void
     {
         if (!$this->available) {
             $onDone('');
 
             return;
         }
-        $this->run(['diff', '--no-color', ...(null === $context ? [] : ['-U'.$context]), ...($ignoreWhitespace ? ['-w'] : []), '--', $absPath], $onDone);
+        $this->run(['diff', '--no-color', ...(null === $context ? [] : ['-U'.$context]), ...(WhitespaceMode::Hidden === $whitespace ? ['-w'] : []), '--', $absPath], $onDone);
     }
 
     /**
@@ -141,81 +142,81 @@ final class GitInfo
     /**
      * Take a file's changes out of the index (`git restore --staged`).
      *
-     * @param callable(bool): void $onDone
+     * @param callable(Outcome): void $onDone
      */
     public function unstageFile(string $absPath, callable $onDone): void
     {
         if (!$this->available) {
-            $onDone(false);
+            $onDone(Outcome::Failed);
 
             return;
         }
-        $this->runStatus(['restore', '--staged', '--', $absPath], static fn (int $code) => $onDone(0 === $code));
+        $this->runStatus(['restore', '--staged', '--', $absPath], static fn (int $code) => $onDone(Outcome::of(0 === $code)));
     }
 
     /**
      * Throw away a tracked file's worktree changes (`git restore`).
      * Untracked files are simply unlinked by the caller — no git verb needed.
      *
-     * @param callable(bool): void $onDone
+     * @param callable(Outcome): void $onDone
      */
     public function discardFile(string $absPath, callable $onDone): void
     {
         if (!$this->available) {
-            $onDone(false);
+            $onDone(Outcome::Failed);
 
             return;
         }
-        $this->runStatus(['restore', '--', $absPath], static fn (int $code) => $onDone(0 === $code));
+        $this->runStatus(['restore', '--', $absPath], static fn (int $code) => $onDone(Outcome::of(0 === $code)));
     }
 
     /**
      * Apply a crafted partial patch to the index (`git apply --cached -`),
      * the engine behind line/hunk staging and unstaging.
      *
-     * @param callable(bool): void $onDone
+     * @param callable(Outcome): void $onDone
      */
     public function applyCached(string $patch, callable $onDone): void
     {
         if (!$this->available) {
-            $onDone(false);
+            $onDone(Outcome::Failed);
 
             return;
         }
-        $this->runStatus(['apply', '--cached', '--whitespace=nowarn', '-'], static fn (int $code) => $onDone(0 === $code), stdin: $patch);
+        $this->runStatus(['apply', '--cached', '--whitespace=nowarn', '-'], static fn (int $code) => $onDone(Outcome::of(0 === $code)), stdin: $patch);
     }
 
     /**
      * Stage a file (`git add`). Reports whether git exited cleanly.
      *
-     * @param callable(bool): void $onDone
+     * @param callable(Outcome): void $onDone
      */
     public function stage(string $absPath, callable $onDone): void
     {
         if (!$this->available) {
-            $onDone(false);
+            $onDone(Outcome::Failed);
 
             return;
         }
-        $this->runStatus(['add', '--', $absPath], static fn (int $code) => $onDone(0 === $code));
+        $this->runStatus(['add', '--', $absPath], static fn (int $code) => $onDone(Outcome::of(0 === $code)));
     }
 
     /**
      * Commit the index (`git commit -m`), optionally amending the last
      * commit. Reports success and git's output.
      *
-     * @param callable(bool, string): void $onDone
+     * @param callable(Outcome, string): void $onDone
      */
-    public function commit(string $message, callable $onDone, bool $amend = false): void
+    public function commit(string $message, callable $onDone, CommitMode $mode = CommitMode::Fresh): void
     {
         if (!$this->available) {
             $empty = '';
-            $onDone(false, $empty);
+            $onDone(Outcome::Failed, $empty);
 
             return;
         }
-        $args = $amend ? ['commit', '--amend', '-m', $message] : ['commit', '-m', $message];
-        $this->runStatus($args, static fn (int $code, string $out) => $onDone(0 === $code, trim($out)));
+        $args = CommitMode::Amend === $mode ? ['commit', '--amend', '-m', $message] : ['commit', '-m', $message];
+        $this->runStatus($args, static fn (int $code, string $out) => $onDone(Outcome::of(0 === $code), trim($out)));
     }
 
     /**
@@ -237,22 +238,22 @@ final class GitInfo
      * Undo the last commit, keeping its changes staged (`reset --soft`).
      * Refused when HEAD has no parent (nothing to undo onto).
      *
-     * @param callable(bool): void $onDone
+     * @param callable(Outcome): void $onDone
      */
     public function undoLastCommit(callable $onDone): void
     {
         if (!$this->available) {
-            $onDone(false);
+            $onDone(Outcome::Failed);
 
             return;
         }
         $this->runStatus(['rev-parse', '--verify', 'HEAD~1'], function (int $code) use ($onDone): void {
             if (0 !== $code) {
-                $onDone(false); // the root commit cannot be undone onto a parent
+                $onDone(Outcome::Failed); // the root commit cannot be undone onto a parent
 
                 return;
             }
-            $this->runStatus(['reset', '--soft', 'HEAD~1'], static fn (int $c) => $onDone(0 === $c));
+            $this->runStatus(['reset', '--soft', 'HEAD~1'], static fn (int $c) => $onDone(Outcome::of(0 === $c)));
         });
     }
 
@@ -288,20 +289,20 @@ final class GitInfo
      * it distinguishes "Saved working directory…" from "No local changes to
      * save" without any content branching here.
      *
-     * @param callable(bool, string): void $onDone (ok, first stdout line)
+     * @param callable(Outcome, string): void $onDone (ok, first stdout line)
      */
     public function stashPush(callable $onDone): void
     {
         if (!$this->available) {
             $empty = '';
-            $onDone(false, $empty);
+            $onDone(Outcome::Failed, $empty);
 
             return;
         }
         $this->runStatus(['stash', 'push'], static function (int $code, string $out) use ($onDone): void {
             // @mago-expect lint:no-literal-password -- strtok's token: is a newline delimiter, not a credential
             $firstLine = strtok(trim($out), token: "\n");
-            $onDone(0 === $code, \is_string($firstLine) ? $firstLine : '');
+            $onDone(Outcome::of(0 === $code), \is_string($firstLine) ? $firstLine : '');
         });
     }
 
@@ -309,20 +310,20 @@ final class GitInfo
      * Pop a stash (the newest without $ref). A conflicting pop fails with
      * git's own stderr line; the conflict markers land in the working tree.
      *
-     * @param callable(bool, string): void $onDone
+     * @param callable(Outcome, string): void $onDone
      */
     public function stashPop(?string $ref, callable $onDone): void
     {
         $this->runWithErrors(['stash', 'pop', ...(null === $ref ? [] : [$ref])], $onDone);
     }
 
-    /** Apply a stash without dropping it. @param callable(bool, string): void $onDone */
+    /** Apply a stash without dropping it. @param callable(Outcome, string): void $onDone */
     public function stashApply(string $ref, callable $onDone): void
     {
         $this->runWithErrors(['stash', 'apply', $ref], $onDone);
     }
 
-    /** Drop a stash without touching the worktree. @param callable(bool, string): void $onDone */
+    /** Drop a stash without touching the worktree. @param callable(Outcome, string): void $onDone */
     public function stashDrop(string $ref, callable $onDone): void
     {
         $this->runWithErrors(['stash', 'drop', $ref], $onDone);
@@ -362,7 +363,7 @@ final class GitInfo
      * Delete a local branch with `-d` only: an unmerged branch fails with
      * git's own message (which names the -D escape hatch) — no force here.
      *
-     * @param callable(bool, string): void $onDone
+     * @param callable(Outcome, string): void $onDone
      */
     public function deleteBranch(string $name, callable $onDone): void
     {
@@ -375,7 +376,7 @@ final class GitInfo
      * misfires with multiple remotes).
      *
      * @param string $remoteBranch e.g. "origin/feature"
-     * @param callable(bool, string): void $onDone
+     * @param callable(Outcome, string): void $onDone
      */
     public function checkoutTracking(string $remoteBranch, callable $onDone): void
     {
@@ -388,14 +389,14 @@ final class GitInfo
      * Switch branches. Failure surfaces git's own stderr (the dirty-working-
      * tree refusal in particular) — no auto-stash.
      *
-     * @param callable(bool, string): void $onDone (ok, first stderr line on failure)
+     * @param callable(Outcome, string): void $onDone (ok, first stderr line on failure)
      */
     public function checkout(string $branch, callable $onDone): void
     {
         $this->runWithErrors(['checkout', $branch], $onDone);
     }
 
-    /** @param callable(bool, string): void $onDone (ok, first stderr line on failure — "already exists", invalid name) */
+    /** @param callable(Outcome, string): void $onDone (ok, first stderr line on failure — "already exists", invalid name) */
     public function createBranch(string $name, callable $onDone): void
     {
         $this->runWithErrors(['checkout', '-b', $name], $onDone);
@@ -419,17 +420,17 @@ final class GitInfo
     /**
      * One file's patch within a commit, for the read-only history diff.
      *
-     * @param callable(string): void $onDone           receives the raw diff
-     * @param bool                   $ignoreWhitespace drop whitespace-only changes (-w)
+     * @param callable(string): void $onDone     receives the raw diff
+     * @param WhitespaceMode         $whitespace {@see WhitespaceMode::Hidden} drops whitespace-only changes (-w)
      */
-    public function commitFileDiff(string $sha, string $relPath, callable $onDone, bool $ignoreWhitespace = false): void
+    public function commitFileDiff(string $sha, string $relPath, callable $onDone, WhitespaceMode $whitespace = WhitespaceMode::Shown): void
     {
         if (!$this->available) {
             $onDone('');
 
             return;
         }
-        $this->run(['show', '--no-color', '--format=', ...($ignoreWhitespace ? ['-w'] : []), $sha, '--', $relPath], $onDone);
+        $this->run(['show', '--no-color', '--format=', ...(WhitespaceMode::Hidden === $whitespace ? ['-w'] : []), $sha, '--', $relPath], $onDone);
     }
 
     /**
@@ -580,13 +581,13 @@ final class GitInfo
      * message the user must see verbatim (checkout, branch creation).
      *
      * @param list<string>                 $args
-     * @param callable(bool, string): void $onDone (ok, trimmed first stderr line)
+     * @param callable(Outcome, string): void $onDone (ok, trimmed first stderr line)
      */
     private function runWithErrors(array $args, callable $onDone): void
     {
         if (!$this->available) {
             $reason = 'git is not available';
-            $onDone(false, $reason);
+            $onDone(Outcome::Failed, $reason);
 
             return;
         }
@@ -598,12 +599,12 @@ final class GitInfo
             unset($this->running[$key]);
             // @mago-expect lint:no-literal-password -- strtok's token: is a newline delimiter, not a credential
             $firstLine = strtok(trim($process->errorOutput()), token: "\n");
-            $onDone(0 === $code, \is_string($firstLine) ? $firstLine : '');
+            $onDone(Outcome::of(0 === $code), \is_string($firstLine) ? $firstLine : '');
         });
         if (!$started) {
             // @codeCoverageIgnoreStart
             $reason = 'could not start git';
-            $onDone(false, $reason);
+            $onDone(Outcome::Failed, $reason);
 
             return;
 

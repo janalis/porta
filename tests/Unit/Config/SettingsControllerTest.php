@@ -12,6 +12,7 @@ use Porta\Event\CursorShapeChanged;
 use Porta\Event\LocaleChanged;
 use Porta\Event\TabBarPositionChanged;
 use Porta\Event\ThemeChanged;
+use Porta\Highlight\ColorMode;
 use Porta\Highlight\TerminalThemeFactory;
 use Porta\I18n\Translator;
 use Porta\Ide;
@@ -109,8 +110,8 @@ final class SettingsControllerTest extends TestCase
         });
         $t = new Translator('en');
         $applier = new LiveSettingsApplier(
-            PaletteFactory::createSwitchable(true, 'dark'),
-            TerminalThemeFactory::createSwitchable(true, 'dark'),
+            PaletteFactory::createSwitchable(ColorMode::Ansi, 'dark'),
+            TerminalThemeFactory::createSwitchable(ColorMode::Ansi, 'dark'),
             new CursorStyle(),
             $translator,
             new BufferManager(),

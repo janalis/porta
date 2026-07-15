@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Porta\Git;
 
 use Porta\I18n\Translator;
+use Porta\Support\Outcome;
 use Porta\Ui\Notifier;
 use Porta\Widget\Git\CommitBoxWidget;
 use Symfony\Component\Filesystem\Exception\IOExceptionInterface;
@@ -37,14 +38,14 @@ final class GitStagingService
      * @param array<int, array<int, true>> $selected  hunk index => selected line set
      * @param \Closure(): void              $onApplied refresh + reload the shown diff
      */
-    public function stageSelection(ChangeEntry $entry, DiffDocument $document, string $side, bool $hideWhitespace, array $selected, \Closure $onApplied): void
+    public function stageSelection(ChangeEntry $entry, DiffDocument $document, string $side, WhitespaceMode $whitespace, array $selected, \Closure $onApplied): void
     {
         if ('untracked' === $side) {
             $this->notifier->flash($this->translator->trans('Untracked: stage the whole file with Space in the changes list'));
 
             return;
         }
-        if ($hideWhitespace) {
+        if (WhitespaceMode::Hidden === $whitespace) {
             // A -w diff's hunks omit whitespace-only lines, so a patch built
             // from them no longer matches the preimage — git apply would balk.
             $this->notifier->flash($this->translator->trans('Show whitespace changes to stage lines (w)'));
@@ -60,8 +61,8 @@ final class GitStagingService
             return; // only context rows selected
         }
 
-        $this->git->applyCached($patch, function (bool $ok) use ($onApplied): void {
-            if (!$ok) {
+        $this->git->applyCached($patch, function (Outcome $ok) use ($onApplied): void {
+            if (!$ok->isOk()) {
                 $this->notifier->flash($this->translator->trans('git apply refused the partial patch'));
             }
             $onApplied();
@@ -76,8 +77,8 @@ final class GitStagingService
     public function toggleStage(ChangeEntry $entry, \Closure $onChanged): void
     {
         $abs = $this->rootDir.'/'.$entry->path;
-        $done = function (bool $ok) use ($onChanged): void {
-            if (!$ok) {
+        $done = function (Outcome $ok) use ($onChanged): void {
+            if (!$ok->isOk()) {
                 $this->notifier->flash($this->translator->trans('git refused the staging change'));
             }
             $onChanged();
@@ -104,9 +105,9 @@ final class GitStagingService
 
             return;
         }
-        $this->git->discardFile($this->rootDir.'/'.$entry->path, function (bool $ok) use ($entry, $onChanged): void {
+        $this->git->discardFile($this->rootDir.'/'.$entry->path, function (Outcome $ok) use ($entry, $onChanged): void {
             $this->notifier->flash(
-                $ok
+                $ok->isOk()
                     ? $this->translator->trans('Discarded changes to %path%', ['%path%' => $entry->path])
                     : $this->translator->trans('Discard failed'),
             );
@@ -115,20 +116,21 @@ final class GitStagingService
     }
 
     /**
-     * Commit the staged changes with $message, amending HEAD when $amend.
+     * Commit the staged changes with $message, amending HEAD when $mode is
+     * {@see CommitMode::Amend}.
      *
      * @param \Closure(): void $onCommitted refresh gutter marks + branch on success
      * @param \Closure(): void $onChanged   re-read status after the commit
      */
-    public function commit(string $message, bool $amend, \Closure $onCommitted, \Closure $onChanged): void
+    public function commit(string $message, CommitMode $mode, \Closure $onCommitted, \Closure $onChanged): void
     {
         $this->git->commit(
             $message,
-            function (bool $ok, string $out) use ($onCommitted, $onChanged): void {
+            function (Outcome $ok, string $out) use ($onCommitted, $onChanged): void {
                 // @mago-expect lint:no-literal-password -- strtok's token: is a newline delimiter, not a credential
                 $firstLine = strtok($out, token: "\n");
                 $summary = false === $firstLine ? '' : $firstLine;
-                if ($ok) {
+                if ($ok->isOk()) {
                     $this->commitBox->clear();
                     $this->notifier->flash($this->translator->trans('Committed: %summary%', ['%summary%' => $summary]));
                     $onCommitted();
@@ -139,7 +141,7 @@ final class GitStagingService
                 $this->notifier->flash($this->translator->trans('Commit failed: %summary%', ['%summary%' => $summary]));
                 $onChanged();
             },
-            $amend,
+            $mode,
         );
     }
 }

@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Porta\Tests\E2e;
 
 use PHPUnit\Framework\TestCase;
+use Porta\Editor\OpenFocus;
 use Porta\Tests\Support\RunsIde;
 use Porta\Tests\Support\TempProject;
 use Symfony\Component\Tui\Ansi\AnsiUtils;
@@ -67,7 +68,7 @@ final class IdeDebugTest extends TestCase
                     $editorScreen = static fn (): string => implode("\n", $tui->getById('editor')->render(new \Symfony\Component\Tui\Render\RenderContext(120, 20)));
                     new \ReflectionProperty($ide, 'bufferService')
                         ->getValue($ide)
-                        ->openFile($project->path('other.php'), true);
+                        ->openFile($project->path('other.php'), OpenFocus::Editor);
                     $this->assertStringNotContainsString('●', $editorScreen(), 'no dot in the other file');
                     $tui->handleInput("\x1b[1;5D"); // ctrl+left back to prog.php
                     $this->assertStringContainsString('●', $editorScreen(), 'the mark survived the tab switch');

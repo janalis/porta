@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Porta\Tests\Unit\Widget\Render;
 
 use PHPUnit\Framework\TestCase;
+use Porta\Editor\SelectionMode;
 use Porta\Widget\CodeEditorWidget;
 use Symfony\Component\Tui\Render\RenderContext;
 
@@ -90,7 +91,7 @@ final class EditorRenderGoldenTest extends TestCase
                     $doc = $e->getDocument();
                     $doc->setCursor(2, 0);
                     $doc->beginSelect();
-                    $doc->setCursor(4, 8, keepSelection: true);
+                    $doc->setCursor(4, 8, selection: SelectionMode::Keep);
                 },
                 80,
                 10,
@@ -177,7 +178,7 @@ final class EditorRenderGoldenTest extends TestCase
                 static function (CodeEditorWidget $e) use ($php): void {
                     $e->openFile('demo.php', $php);
                     $e->setFocused(true);
-                    $e->setRelativeLineNumbers(true);
+                    $e->enableRelativeLineNumbers();
                     $e->getDocument()->setCursor(3, 0);
                 },
                 80,

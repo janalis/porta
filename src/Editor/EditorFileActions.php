@@ -38,12 +38,22 @@ final class EditorFileActions implements EditorFileActionHandler
         $this->clipboard->copy($text);
     }
 
-    public function openFind(bool $withReplace): void
+    public function openFind(): void
+    {
+        $this->openFindBar(FindMode::Find);
+    }
+
+    public function openFindReplace(): void
+    {
+        $this->openFindBar(FindMode::Replace);
+    }
+
+    private function openFindBar(FindMode $mode): void
     {
         $initial = $this->editor->getDocument()->getSelectedText();
         $this->findBar->open(
             $this->editor->getDocument(),
-            $withReplace,
+            $mode,
             str_contains($initial, "\n") ? '' : $initial,
         );
         $this->tui->setFocus($this->findBar);

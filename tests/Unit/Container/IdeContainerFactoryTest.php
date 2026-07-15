@@ -6,6 +6,7 @@ namespace Porta\Tests\Unit\Container;
 
 use PHPUnit\Framework\TestCase;
 use Porta\Config\IdeConfig;
+use Porta\Container\Ansi;
 use Porta\Container\IdeContainerFactory;
 use Porta\History\SessionStore;
 use Porta\I18n\Translator;
@@ -54,7 +55,7 @@ final class IdeContainerFactoryTest extends TestCase
 
     private function build(): object
     {
-        return new IdeContainerFactory()->build('/tmp/porta-factory-test', IdeConfig::load('/tmp/porta-factory-test'), true);
+        return new IdeContainerFactory()->build('/tmp/porta-factory-test', IdeConfig::load('/tmp/porta-factory-test'), Ansi::Enabled);
     }
 
     public function testColdCacheDumpsAndServesTheCompiledContainer(): void

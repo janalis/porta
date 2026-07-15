@@ -37,6 +37,7 @@ use Porta\Git\GitRemote;
 use Porta\Git\GitRemoteCommands;
 use Porta\Git\GitViewController;
 use Porta\Help\HelpViewerActions;
+use Porta\Highlight\ColorMode;
 use Porta\Highlight\SwitchableTerminalTheme;
 use Porta\Highlight\TerminalThemeFactory;
 use Porta\History\LocalHistory;
@@ -283,7 +284,7 @@ return static function (ContainerConfigurator $container, ContainerBuilder $buil
     $services
         ->set(SwitchablePalette::class)
         ->factory([PaletteFactory::class, 'createSwitchable'])
-        ->args([env('PORTA_ANSI')->bool(), env('PORTA_THEME')]);
+        ->args([env('enum:'.ColorMode::class.':PORTA_ANSI'), env('PORTA_THEME')]);
     $services->alias(Palette::class, SwitchablePalette::class);
 
     // The syntax-highlighting theme, likewise a live-swappable holder. Buffers and
@@ -292,7 +293,7 @@ return static function (ContainerConfigurator $container, ContainerBuilder $buil
     $services
         ->set(SwitchableTerminalTheme::class)
         ->factory([TerminalThemeFactory::class, 'createSwitchable'])
-        ->args([env('PORTA_ANSI')->bool(), env('PORTA_THEME')]);
+        ->args([env('enum:'.ColorMode::class.':PORTA_ANSI'), env('PORTA_THEME')]);
     $services->alias(TerminalTheme::class, SwitchableTerminalTheme::class);
 
     // The single public boundary: Ide resolves every service through this

@@ -6,6 +6,7 @@ namespace Porta\Search;
 
 use Porta\Editor\BufferManager;
 use Porta\Editor\BufferService;
+use Porta\Editor\OpenFocus;
 use Porta\I18n\Translator;
 use Porta\Support\ProjectPaths;
 use Porta\Ui\Notifier;
@@ -96,7 +97,7 @@ final class SearchActions
             return;
         }
         if (1 === \count($candidates)) {
-            $this->bufferService->openFile($this->rootDir.'/'.$candidates[0], focusEditor: true);
+            $this->bufferService->openFile($this->rootDir.'/'.$candidates[0], focus: OpenFocus::Editor);
 
             return;
         }

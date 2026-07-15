@@ -16,10 +16,12 @@ use Porta\Debug\ExceptionFilterStore;
 use Porta\Debug\WatchStore;
 use Porta\Editor\Document;
 use Porta\Editor\FileOpener;
+use Porta\Editor\OpenFocus;
 use Porta\Event\DebugStatusChanged;
 use Porta\I18n\Translator;
 use Porta\Terminal\TerminalSessions;
 use Porta\Tests\Support\FakeDapClient;
+use Porta\Tests\Support\Presence;
 use Porta\Ui\Notifier;
 use Porta\Widget\CodeEditorWidget;
 use Porta\Widget\DebugPanelWidget;
@@ -43,10 +45,10 @@ final class DebugControllerTest extends TestCase
     /** @var list<string> */
     private array $opened = [];
 
-    private function controller(bool $withAdapter = true, bool $withFile = true): DebugController
+    private function controller(Presence $withAdapter = Presence::With, Presence $withFile = Presence::With): DebugController
     {
         $this->editor = new CodeEditorWidget();
-        if ($withFile) {
+        if (Presence::With === $withFile) {
             $this->editor->showDocument('/p/prog.php', new Document("<?php\n// l2\n// l3\n// l4\n"));
         }
         $this->panel = new DebugPanelWidget();
@@ -66,7 +68,7 @@ final class DebugControllerTest extends TestCase
 
         return new DebugController(
             $breakpoints,
-            new DebugAdapters($withAdapter ? ['php' => ['debug' => ['adapter' => 'mock-adapter']]] : []),
+            new DebugAdapters(Presence::With === $withAdapter ? ['php' => ['debug' => ['adapter' => 'mock-adapter']]] : []),
             $this->editor,
             $this->panel,
             new TerminalPanelWidget(),
@@ -80,7 +82,7 @@ final class DebugControllerTest extends TestCase
                     private array &$opened,
                 ) {}
 
-                public function openFile(string $path, bool $focusEditor = false): void
+                public function openFile(string $path, OpenFocus $focus = OpenFocus::Keep): void
                 {
                     $this->opened[] = $path;
                 }
@@ -137,13 +139,13 @@ final class DebugControllerTest extends TestCase
 
     public function testGuardsFlashWithoutFileAdapterOrWhileRunning(): void
     {
-        $controller = $this->controller(withFile: false);
+        $controller = $this->controller(withFile: Presence::Without);
         $controller->toggleBreakpointAtCaret();
         $this->assertStringContainsString('Nothing to debug', $this->flashed());
         $controller->startForCurrentFile();
         $this->assertStringContainsString('Nothing to debug', $this->flashed());
 
-        $controller = $this->controller(withAdapter: false);
+        $controller = $this->controller(withAdapter: Presence::Without);
         $controller->startForCurrentFile();
         $this->assertStringContainsString('No debug adapter configured for php', $this->flashed());
 
@@ -328,7 +330,7 @@ final class DebugControllerTest extends TestCase
         $this->assertStringNotContainsString('◆', $screen, 'cleared conditions drop the diamond');
         $this->assertStringContainsString('●', $screen, 'the breakpoint itself survives');
 
-        $controllerWithoutFile = $this->controller(withFile: false);
+        $controllerWithoutFile = $this->controller(withFile: Presence::Without);
         $controllerWithoutFile->editBreakpointAtCaret();
         $this->assertStringContainsString('Nothing to debug', $this->flashed());
     }

@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Porta\Tests\Support;
 
+use Porta\Editor\FindMode;
 use Porta\Widget\EditorFileActionHandler;
 
 /** Per-method closure fakes so tests wire only the hooks a scenario needs. */
@@ -38,10 +39,17 @@ final class FakeEditorFileActions implements EditorFileActionHandler
         }
     }
 
-    public function openFind(bool $withReplace): void
+    public function openFind(): void
     {
         if (null !== $this->openFind) {
-            ($this->openFind)($withReplace);
+            ($this->openFind)(FindMode::Find);
+        }
+    }
+
+    public function openFindReplace(): void
+    {
+        if (null !== $this->openFind) {
+            ($this->openFind)(FindMode::Replace);
         }
     }
 

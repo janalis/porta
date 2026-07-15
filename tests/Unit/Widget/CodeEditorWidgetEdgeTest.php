@@ -675,9 +675,34 @@ final class CodeEditorWidgetEdgeTest extends TestCase
         $this->assertStringContainsString('undefined variable', AnsiUtils::stripAnsiCodes($rendered[1]));
         $this->assertSame(80, AnsiUtils::visibleWidth($rendered[1]));
 
-        $editor->setInlineDiagnostics(false);
+        $editor->disableInlineDiagnostics();
         $rendered = $editor->render(new RenderContext(80, 5));
         $this->assertStringNotContainsString('undefined variable', AnsiUtils::stripAnsiCodes($rendered[1]));
+    }
+
+    public function testDiagnosticAndRelativeNumberTogglesAreIdempotentBothWays(): void
+    {
+        $editor = $this->editor("<?php\n\$x = 1;\n");
+        $editor->setDiagnostics([1 => [['severity' => 1, 'message' => 'undefined variable', 'col' => 0, 'endCol' => 2]]]);
+
+        // inlineDiagnostics defaults on: disable (set), disable again (skip), enable (set), enable again (skip).
+        $editor->disableInlineDiagnostics();
+        $this->assertStringNotContainsString('undefined variable', AnsiUtils::stripAnsiCodes(implode("\n", $editor->render(new RenderContext(80, 5)))));
+        $editor->disableInlineDiagnostics();
+        $editor->enableInlineDiagnostics();
+        $this->assertStringContainsString('undefined variable', AnsiUtils::stripAnsiCodes(implode("\n", $editor->render(new RenderContext(80, 5)))));
+        $editor->enableInlineDiagnostics();
+        $this->assertStringContainsString('undefined variable', AnsiUtils::stripAnsiCodes(implode("\n", $editor->render(new RenderContext(80, 5)))));
+
+        // relativeLineNumbers defaults off: enable (set), enable again (skip), disable (set), disable again (skip).
+        $editor->enableRelativeLineNumbers();
+        $this->assertTrue($editor->hasRelativeLineNumbers());
+        $editor->enableRelativeLineNumbers();
+        $this->assertTrue($editor->hasRelativeLineNumbers());
+        $editor->disableRelativeLineNumbers();
+        $this->assertFalse($editor->hasRelativeLineNumbers());
+        $editor->disableRelativeLineNumbers();
+        $this->assertFalse($editor->hasRelativeLineNumbers());
     }
 
     public function testInlineDiagnosticPlacedByTabExpandedWidth(): void

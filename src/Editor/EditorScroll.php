@@ -119,9 +119,9 @@ final class EditorScroll
      * A render with a parked caret ($cursorMoved false) leaves a manual
      * horizontal scroll alone — moving/typing snaps the view back to the caret.
      */
-    public function followCursor(int $cursorDisplayCol, int $contentWidth, bool $cursorMoved = true): void
+    public function followCursor(int $cursorDisplayCol, int $contentWidth, CaretMotion $motion = CaretMotion::Moved): void
     {
-        if (!$cursorMoved) {
+        if (CaretMotion::Parked === $motion) {
             return;
         }
         if ($cursorDisplayCol < $this->hScroll) {

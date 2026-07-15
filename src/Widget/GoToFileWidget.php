@@ -7,6 +7,7 @@ namespace Porta\Widget;
 use Porta\Container\AsWidget;
 use Porta\I18n\Translator;
 use Porta\Search\FileIndex;
+use Porta\Ui\CaretVisibility;
 use Porta\Ui\ColorPalette;
 use Porta\Ui\CursorStyle;
 use Porta\Ui\ListNavigation;
@@ -168,7 +169,7 @@ final class GoToFileWidget extends OverlayWidget implements FocusableInterface
         $columns = $context->getColumns();
 
         $lines = [];
-        $header = ' '.$this->translator->trans('Go to File:').' '.$this->query->render(cursor: $this->focused);
+        $header = ' '.$this->translator->trans('Go to File:').' '.$this->query->render(cursor: $this->focused ? CaretVisibility::Shown : CaretVisibility::Hidden);
         $lines[] = HeaderRenderer::render($header, $columns, $this->palette->of(Role::HeaderBar)."\x1b[1m");
 
         foreach (\array_slice($this->results, offset: 0, length: self::MAX_RESULTS) as $i => $path) {

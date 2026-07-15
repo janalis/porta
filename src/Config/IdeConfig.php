@@ -339,16 +339,46 @@ final class IdeConfig
      * block, merging with and preserving existing content. Returns true on
      * success.
      */
-    /** Persist a plugin's enabled state in the top-level `disabledPlugins` list. */
-    public static function persistPluginEnabled(string $rootDir, string $plugin, bool $enabled): bool
+    /** Persist a plugin as enabled by dropping it from the top-level `disabledPlugins` list. */
+    public static function persistPluginEnabled(string $rootDir, string $plugin): bool
     {
         $file = $rootDir.'/.porta.json';
         $config = JsonFile::read($file) ?? [];
+
+        return self::writeDisabledPlugins($file, $config, self::disabledWithout($config, $plugin));
+    }
+
+    /** Persist a plugin as disabled by adding it to the top-level `disabledPlugins` list. */
+    public static function persistPluginDisabled(string $rootDir, string $plugin): bool
+    {
+        $file = $rootDir.'/.porta.json';
+        $config = JsonFile::read($file) ?? [];
+
+        return self::writeDisabledPlugins($file, $config, [...self::disabledWithout($config, $plugin), $plugin]);
+    }
+
+    /**
+     * The current `disabledPlugins` list, normalized to strings, minus $plugin.
+     *
+     * @param array<array-key, mixed> $config
+     *
+     * @return list<string>
+     */
+    private static function disabledWithout(array $config, string $plugin): array
+    {
         $disabled = \is_array($config['disabledPlugins'] ?? null) ? array_values(array_map(strval(...), array_filter($config['disabledPlugins'], is_scalar(...)))) : [];
-        $disabled = array_values(array_diff($disabled, [$plugin]));
-        if (!$enabled) {
-            $disabled[] = $plugin;
-        }
+
+        return array_values(array_diff($disabled, [$plugin]));
+    }
+
+    /**
+     * Write the `disabledPlugins` list back (dropping the key when empty).
+     *
+     * @param array<array-key, mixed> $config
+     * @param list<string>            $disabled
+     */
+    private static function writeDisabledPlugins(string $file, array $config, array $disabled): bool
+    {
         if ([] === $disabled) {
             unset($config['disabledPlugins']);
         }

@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Porta\Tests\Unit\Widget;
 
 use PHPUnit\Framework\TestCase;
+use Porta\Editor\SelectionMode;
 use Porta\Widget\CodeEditorWidget;
 
 final class CodeEditorAutoPairsTest extends TestCase
@@ -83,7 +84,7 @@ final class CodeEditorAutoPairsTest extends TestCase
         $doc = $editor->getDocument();
         $doc->setCursor(0, 0);
         $doc->beginSelect();
-        $doc->setCursor(0, 3, keepSelection: true);
+        $doc->setCursor(0, 3, selection: SelectionMode::Keep);
 
         $editor->handleInput('(');
         $this->assertSame('(foo) bar', $doc->getLine(0));
@@ -96,7 +97,7 @@ final class CodeEditorAutoPairsTest extends TestCase
         $doc = $editor->getDocument();
         $doc->setCursor(0, 1);
         $doc->beginSelect();
-        $doc->setCursor(2, 1, keepSelection: true);
+        $doc->setCursor(2, 1, selection: SelectionMode::Keep);
 
         $editor->handleInput('{');
         $this->assertSame('a{aa', $doc->getLine(0));
@@ -148,7 +149,7 @@ final class CodeEditorAutoPairsTest extends TestCase
     public function testDisabledFallsBackToPlainInsert(): void
     {
         $editor = $this->editor();
-        $editor->setAutoPairs(false);
+        $editor->disableAutoPairs();
         $editor->getDocument()->setCursor(0, 0);
         $editor->handleInput('(');
 

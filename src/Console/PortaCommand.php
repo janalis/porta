@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace Porta\Console;
 
+use Porta\Container\Ansi;
+use Porta\Container\LspMode;
 use Porta\Ide;
 use Symfony\Component\Console\Attribute\AsCommand;
 use Symfony\Component\Console\Command\Command;
@@ -21,15 +23,15 @@ use Symfony\Component\Console\Output\OutputInterface;
 #[AsCommand(name: 'porta', description: 'Open the Porta terminal IDE for PHP projects')]
 final class PortaCommand extends Command
 {
-    /** @var callable(Workspace, ?string, bool, bool): void */
+    /** @var callable(Workspace, ?string, LspMode, Ansi): void */
     private $launch;
 
     /** @var callable(): bool */
     private $isInteractive;
 
     /**
-     * @param (callable(Workspace, ?string, bool, bool): void)|null $launch        defaults to booting a real {@see Ide}
-     * @param (callable(): bool)|null                               $isInteractive defaults to a POSIX tty check
+     * @param (callable(Workspace, ?string, LspMode, Ansi): void)|null $launch        defaults to booting a real {@see Ide}
+     * @param (callable(): bool)|null                                  $isInteractive defaults to a POSIX tty check
      */
     public function __construct(?callable $launch = null, ?callable $isInteractive = null)
     {
@@ -90,7 +92,7 @@ final class PortaCommand extends Command
         $noLsp = $input->getOption('no-lsp');
         // --ansi/--no-ansi are Symfony's global options; they resolve into the
         // output decoration, which we thread to the IDE as its color mode.
-        ($this->launch)($workspace, $lsp, $noLsp, $output->isDecorated());
+        ($this->launch)($workspace, $lsp, $noLsp ? LspMode::Disabled : LspMode::Enabled, $output->isDecorated() ? Ansi::Enabled : Ansi::Disabled);
 
         return Command::SUCCESS;
     }
@@ -101,15 +103,15 @@ final class PortaCommand extends Command
      *
      * @codeCoverageIgnore
      */
-    private static function launchIde(Workspace $workspace, ?string $lsp, bool $noLsp, bool $ansi): void
+    private static function launchIde(Workspace $workspace, ?string $lspCommand, LspMode $lsp, Ansi $ansi): void
     {
         new Ide(
             rootDir: $workspace->rootDir,
             initialFile: $workspace->initialFile,
             initialLine: $workspace->line,
-            lspCommand: $lsp,
-            lspDisabled: $noLsp,
-            ansi: $ansi,
+            lspCommand: $lspCommand,
+            lspDisabled: LspMode::Disabled === $lsp,
+            ansi: Ansi::Enabled === $ansi,
         )->run();
     }
 }

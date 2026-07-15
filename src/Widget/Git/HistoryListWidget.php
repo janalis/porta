@@ -156,9 +156,14 @@ final class HistoryListWidget extends AbstractWidget implements FocusableInterfa
         $this->invalidate();
     }
 
-    public function setHasMore(bool $hasMore): void
+    public function markHasMore(): void
     {
-        $this->hasMore = $hasMore;
+        $this->hasMore = true;
+    }
+
+    public function markNoMore(): void
+    {
+        $this->hasMore = false;
     }
 
     public function commitCount(): int

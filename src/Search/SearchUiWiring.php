@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Porta\Search;
 
 use Porta\Editor\BufferService;
+use Porta\Editor\OpenFocus;
 use Porta\History\LocalHistoryController;
 use Porta\Lsp\NavigationController;
 use Porta\Support\Scheduler;
@@ -69,7 +70,7 @@ final class SearchUiWiring
         });
 
         $this->goToFile->onPick(function (string $path): void {
-            $this->bufferService->openFile($path, focusEditor: true);
+            $this->bufferService->openFile($path, focus: OpenFocus::Editor);
         });
 
         $this->goToFile->onClose(function (): void {
@@ -116,7 +117,7 @@ final class SearchUiWiring
             $path = $this->projectSearch->exportResults();
             if ('' !== $path) {
                 $this->resultsPanel->close();
-                $this->bufferService->openFile($path, focusEditor: true);
+                $this->bufferService->openFile($path, focus: OpenFocus::Editor);
                 $this->tui->requestRender();
             }
         });
@@ -136,7 +137,7 @@ final class SearchUiWiring
 
                 return;
             }
-            $this->bufferService->openFile($this->rootDir.'/'.$relativePath, focusEditor: true);
+            $this->bufferService->openFile($this->rootDir.'/'.$relativePath, focus: OpenFocus::Editor);
             $this->editor->jumpTo($line, 0);
             $this->tui->requestRender();
         });
@@ -177,7 +178,7 @@ final class SearchUiWiring
         });
         $modal->onJump(function (string $relativePath, int $line): void {
             $this->editor->findModal()->close();
-            $this->bufferService->openFile($this->rootDir.'/'.$relativePath, focusEditor: true);
+            $this->bufferService->openFile($this->rootDir.'/'.$relativePath, focus: OpenFocus::Editor);
             $this->editor->jumpTo($line, 0);
             $this->tui->requestRender();
         });

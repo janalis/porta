@@ -6,6 +6,7 @@ namespace Porta\Layout;
 
 use Porta\Config\LayoutPrefs;
 use Porta\Config\LayoutStore;
+use Porta\Git\WhitespaceMode;
 use Porta\Input\MouseEvent;
 use Porta\Support\IntMath;
 use Porta\Widget\DebugPanelWidget;
@@ -26,9 +27,9 @@ use Symfony\Component\Tui\Tui;
  */
 final class LayoutController
 {
-    private bool $sidebarResizing = false;
-    private bool $gitSidebarResizing = false;
-    private bool $settingsSidebarResizing = false;
+    private ResizeState $sidebarResizing = ResizeState::Idle;
+    private ResizeState $gitSidebarResizing = ResizeState::Idle;
+    private ResizeState $settingsSidebarResizing = ResizeState::Idle;
     private bool $panelResizing = false;
     private int $panelResizeBottom = 0; // the dragged panel's anchored bottom row, captured at press
     private int $sidebarResizeStartWidth = 0; // sidebar/panel sizes at drag start, to skip no-op persists
@@ -141,9 +142,9 @@ final class LayoutController
      * release, and disarm on release. $resizing and $percent are the controller's
      * per-sidebar state, updated in place. Returns true when it consumed the event.
      */
-    private function continueSidebarResize(MouseEvent $mouse, ?WidgetRect $rect, SidebarResize $spec, bool &$resizing, ?int &$percent): bool
+    private function continueSidebarResize(MouseEvent $mouse, ?WidgetRect $rect, SidebarResize $spec, ResizeState &$resizing, ?int &$percent): bool
     {
-        if (!$resizing || !($mouse->isLeftDrag() || $mouse->isLeftRelease())) {
+        if (ResizeState::Idle === $resizing || !($mouse->isLeftDrag() || $mouse->isLeftRelease())) {
             return false;
         }
         if (null !== $rect) {
@@ -155,7 +156,7 @@ final class LayoutController
             }
         }
         if ($mouse->isLeftRelease()) {
-            $resizing = false;
+            $resizing = ResizeState::Idle;
         }
 
         return true;
@@ -169,7 +170,7 @@ final class LayoutController
     {
         if (null !== $treeRect && $mouse->col === ($treeRect->col + $treeRect->columns) && $mouse->row >= $treeRect->row && $mouse->row < ($treeRect->row + $treeRect->rows)) {
             $this->sidebarResizeStartWidth = $this->tree->width();
-            $this->sidebarResizing = true;
+            $this->sidebarResizing = ResizeState::Active;
 
             return true;
         }
@@ -185,7 +186,7 @@ final class LayoutController
     {
         if (null !== $gitSeparatorRect && $gitSeparatorRect->contains($mouse->row, $mouse->col)) {
             $this->gitSidebarResizeStartWidth = $this->gitSidebar->width();
-            $this->gitSidebarResizing = true;
+            $this->gitSidebarResizing = ResizeState::Active;
 
             return true;
         }
@@ -201,7 +202,7 @@ final class LayoutController
     {
         if (null !== $settingsSeparatorRect && $settingsSeparatorRect->contains($mouse->row, $mouse->col)) {
             $this->settingsSidebarResizeStartWidth = $this->settingsSidebar->width();
-            $this->settingsSidebarResizing = true;
+            $this->settingsSidebarResizing = ResizeState::Active;
 
             return true;
         }
@@ -288,9 +289,9 @@ final class LayoutController
     /** A fresh left-press ends any armed resize drag. */
     public function cancelDrags(): void
     {
-        $this->sidebarResizing = false;
-        $this->gitSidebarResizing = false;
-        $this->settingsSidebarResizing = false;
+        $this->sidebarResizing = ResizeState::Idle;
+        $this->gitSidebarResizing = ResizeState::Idle;
+        $this->settingsSidebarResizing = ResizeState::Idle;
         $this->panelResizing = false;
     }
 
@@ -334,17 +335,20 @@ final class LayoutController
     /**
      * The persisted git-diff display toggles (side-by-side, hide whitespace).
      *
-     * @return array{split: bool, hideWhitespace: bool}
+     * @return array{layout: DiffLayout, whitespace: WhitespaceMode}
      */
     public function gitDiffPrefs(): array
     {
-        return ['split' => $this->gitDiffSplit, 'hideWhitespace' => $this->gitDiffHideWhitespace];
+        return [
+            'layout' => $this->gitDiffSplit ? DiffLayout::Split : DiffLayout::Unified,
+            'whitespace' => $this->gitDiffHideWhitespace ? WhitespaceMode::Hidden : WhitespaceMode::Shown,
+        ];
     }
 
-    public function setGitDiffPrefs(bool $split, bool $hideWhitespace): void
+    public function setGitDiffPrefs(DiffLayout $layout, WhitespaceMode $whitespace): void
     {
-        $this->gitDiffSplit = $split;
-        $this->gitDiffHideWhitespace = $hideWhitespace;
+        $this->gitDiffSplit = DiffLayout::Split === $layout;
+        $this->gitDiffHideWhitespace = WhitespaceMode::Hidden === $whitespace;
         $this->persistLayout();
     }
 

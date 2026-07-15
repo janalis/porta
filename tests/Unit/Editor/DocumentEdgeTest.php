@@ -6,6 +6,7 @@ namespace Porta\Tests\Unit\Editor;
 
 use PHPUnit\Framework\TestCase;
 use Porta\Editor\Document;
+use Porta\Editor\SelectionMode;
 
 /**
  * Boundary and branch coverage for Document beyond the happy paths.
@@ -101,7 +102,7 @@ final class DocumentEdgeTest extends TestCase
         // Reversed selection (cursor before anchor) normalizes
         $doc->setCursor(0, 3);
         $doc->beginSelect();
-        $doc->setCursor(0, 1, keepSelection: true);
+        $doc->setCursor(0, 1, selection: SelectionMode::Keep);
         $this->assertSame('bc', $doc->getSelectedText());
     }
 
@@ -110,7 +111,7 @@ final class DocumentEdgeTest extends TestCase
         $doc = new Document("one\ntwo\nthree");
         $doc->setCursor(0, 0);
         $doc->beginSelect();
-        $doc->setCursor(1, 0, keepSelection: true); // selects line 0 + newline only
+        $doc->setCursor(1, 0, selection: SelectionMode::Keep); // selects line 0 + newline only
 
         $doc->duplicateLines();
         $this->assertSame(['one', 'one', 'two', 'three'], $doc->getLines(), 'line "two" not part of the block');
@@ -121,7 +122,7 @@ final class DocumentEdgeTest extends TestCase
         $doc = new Document('hello world');
         $doc->setCursor(0, 0);
         $doc->beginSelect();
-        $doc->setCursor(0, 5, keepSelection: true);
+        $doc->setCursor(0, 5, selection: SelectionMode::Keep);
 
         $doc->insert('goodbye');
         $this->assertSame('goodbye world', $doc->getLine(0));
@@ -132,7 +133,7 @@ final class DocumentEdgeTest extends TestCase
         $doc = new Document('hello world');
         $doc->setCursor(0, 5);
         $doc->beginSelect();
-        $doc->setCursor(0, 11, keepSelection: true);
+        $doc->setCursor(0, 11, selection: SelectionMode::Keep);
 
         $doc->insertNewLine();
         $this->assertSame(['hello', ''], $doc->getLines());
@@ -144,7 +145,7 @@ final class DocumentEdgeTest extends TestCase
             $doc = new Document('hello world');
             $doc->setCursor(0, 0);
             $doc->beginSelect();
-            $doc->setCursor(0, 6, keepSelection: true);
+            $doc->setCursor(0, 6, selection: SelectionMode::Keep);
 
             $this->assertTrue($doc->{$method}(), $method);
             $this->assertSame('world', $doc->getLine(0), $method.' removed only the selection');
@@ -199,7 +200,7 @@ final class DocumentEdgeTest extends TestCase
         $doc = new Document("a\nb\nc\nd");
         $doc->setCursor(1, 0);
         $doc->beginSelect();
-        $doc->setCursor(2, 1, keepSelection: true);
+        $doc->setCursor(2, 1, selection: SelectionMode::Keep);
 
         $this->assertTrue($doc->moveLines(1));
         $this->assertSame(['a', 'd', 'b', 'c'], $doc->getLines());
@@ -211,7 +212,7 @@ final class DocumentEdgeTest extends TestCase
         $doc = new Document("a\nb\nc");
         $doc->setCursor(0, 0);
         $doc->beginSelect();
-        $doc->setCursor(1, 1, keepSelection: true);
+        $doc->setCursor(1, 1, selection: SelectionMode::Keep);
 
         $doc->duplicateLines();
         $this->assertSame(['a', 'b', 'a', 'b', 'c'], $doc->getLines());
@@ -222,7 +223,7 @@ final class DocumentEdgeTest extends TestCase
         $doc = new Document("code\n\nmore");
         $doc->setCursor(0, 0);
         $doc->beginSelect();
-        $doc->setCursor(2, 4, keepSelection: true);
+        $doc->setCursor(2, 4, selection: SelectionMode::Keep);
 
         $doc->toggleComment('//');
         $this->assertSame(['// code', '', '// more'], $doc->getLines());
@@ -351,7 +352,7 @@ final class DocumentEdgeTest extends TestCase
         $doc = new Document("one\ntwo\nthree");
         $doc->setCursor(0, 2);
         $doc->beginSelect();
-        $doc->setCursor(2, 2, keepSelection: true);
+        $doc->setCursor(2, 2, selection: SelectionMode::Keep);
 
         $this->assertSame("e\ntwo\nth", $doc->getSelectedText());
     }

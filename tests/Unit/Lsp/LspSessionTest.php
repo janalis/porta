@@ -8,6 +8,7 @@ use PHPUnit\Framework\TestCase;
 use Porta\Editor\Document;
 use Porta\Lsp\LspClientInterface;
 use Porta\Lsp\LspSession;
+use Porta\Support\Outcome;
 use Porta\Tests\Support\FakeLspClient;
 
 /**
@@ -138,7 +139,7 @@ final class LspSessionTest extends TestCase
             public function start(callable $onReady): void
             {
                 $this->started = true;
-                $onReady(false); // server failed to initialize
+                $onReady(Outcome::Failed); // server failed to initialize
             }
         };
         $session = $this->session($client);

@@ -6,6 +6,7 @@ namespace Porta\Help;
 
 use Porta\Editor\BufferNavigator;
 use Porta\Editor\BufferService;
+use Porta\Editor\OpenFocus;
 use Porta\I18n\Translator;
 use Porta\Support\DocsUrlOpener;
 use Porta\Ui\Notifier;
@@ -30,7 +31,7 @@ final class HelpViewerActions implements HelpViewerHandler
 
     public function openFile(string $path): void
     {
-        $this->bufferService->openFile($path, focusEditor: true);
+        $this->bufferService->openFile($path, focus: OpenFocus::Editor);
     }
 
     public function openUrl(string $url): void

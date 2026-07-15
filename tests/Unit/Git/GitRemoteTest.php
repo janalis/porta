@@ -6,6 +6,7 @@ namespace Porta\Tests\Unit\Git;
 
 use PHPUnit\Framework\TestCase;
 use Porta\Git\GitRemote;
+use Porta\Support\Outcome;
 use Porta\Tests\Support\TempProject;
 use Revolt\EventLoop;
 
@@ -81,16 +82,16 @@ final class GitRemoteTest extends TestCase
         $this->advanceOrigin();
 
         $results = [];
-        $remote->fetch(static function (bool $ok, string $out) use (&$results): void {
-            $results['fetch'] = $ok;
+        $remote->fetch(static function (Outcome $ok, string $out) use (&$results): void {
+            $results['fetch'] = $ok->isOk();
         });
         $this->await(static function () use (&$results): bool {
             return array_key_exists('fetch', $results);
         });
         $this->assertTrue($results['fetch']);
 
-        $remote->pull(static function (bool $ok, string $out) use (&$results): void {
-            $results['pull'] = $ok;
+        $remote->pull(static function (Outcome $ok, string $out) use (&$results): void {
+            $results['pull'] = $ok->isOk();
         });
         $this->await(static function () use (&$results): bool {
             return array_key_exists('pull', $results);
@@ -108,8 +109,8 @@ final class GitRemoteTest extends TestCase
         $this->git($this->clone2->dir, 'commit -aqm local');
 
         $result = null;
-        $remote->pull(static function (bool $ok, string $out) use (&$result): void {
-            $result = ['ok' => $ok, 'out' => $out];
+        $remote->pull(static function (Outcome $ok, string $out) use (&$result): void {
+            $result = ['ok' => $ok->isOk(), 'out' => $out];
         });
         $this->await(static function () use (&$result): bool {
             return null !== $result;
@@ -126,8 +127,8 @@ final class GitRemoteTest extends TestCase
         $this->git($this->clone2->dir, 'commit -qm frompush');
 
         $result = null;
-        $remote->push(static function (bool $ok, string $out) use (&$result): void {
-            $result = $ok;
+        $remote->push(static function (Outcome $ok, string $out) use (&$result): void {
+            $result = $ok->isOk();
         });
         $this->await(static function () use (&$result): bool {
             return null !== $result;
@@ -145,8 +146,8 @@ final class GitRemoteTest extends TestCase
         $this->git($this->clone2->dir, 'commit -qm feature');
 
         $result = null;
-        $remote->push(static function (bool $ok, string $out) use (&$result): void {
-            $result = ['ok' => $ok, 'out' => $out];
+        $remote->push(static function (Outcome $ok, string $out) use (&$result): void {
+            $result = ['ok' => $ok->isOk(), 'out' => $out];
         });
         $this->await(static function () use (&$result): bool {
             return null !== $result;
@@ -155,8 +156,8 @@ final class GitRemoteTest extends TestCase
         $this->assertStringContainsString('upstream', $result['out']);
 
         $upstream = null;
-        $remote->pushSetUpstream(static function (bool $ok) use (&$upstream): void {
-            $upstream = $ok;
+        $remote->pushSetUpstream(static function (Outcome $ok) use (&$upstream): void {
+            $upstream = $ok->isOk();
         });
         $this->await(static function () use (&$upstream): bool {
             return null !== $upstream;
@@ -171,8 +172,8 @@ final class GitRemoteTest extends TestCase
         $this->git($this->clone2->dir, 'remote set-url origin /nonexistent-origin');
 
         $result = null;
-        $remote->fetch(static function (bool $ok, string $out) use (&$result): void {
-            $result = ['ok' => $ok, 'out' => $out];
+        $remote->fetch(static function (Outcome $ok, string $out) use (&$result): void {
+            $result = ['ok' => $ok->isOk(), 'out' => $out];
         });
         $this->await(static function () use (&$result): bool {
             return null !== $result;
@@ -201,8 +202,8 @@ final class GitRemoteTest extends TestCase
 
         $this->assertFalse($remote->isAvailable());
         $result = null;
-        $remote->pull(static function (bool $ok, string $out) use (&$result): void {
-            $result = ['ok' => $ok, 'out' => $out];
+        $remote->pull(static function (Outcome $ok, string $out) use (&$result): void {
+            $result = ['ok' => $ok->isOk(), 'out' => $out];
         });
         $this->assertSame(['ok' => false, 'out' => 'git is not available'], $result);
     }
@@ -216,8 +217,8 @@ final class GitRemoteTest extends TestCase
         $this->git($this->clone2->dir, 'commit -qm local');
 
         $result = null;
-        $remote->pullRebase(static function (bool $ok, string $out) use (&$result): void {
-            $result = ['ok' => $ok, 'out' => $out];
+        $remote->pullRebase(static function (Outcome $ok, string $out) use (&$result): void {
+            $result = ['ok' => $ok->isOk(), 'out' => $out];
         });
         $this->await(static function () use (&$result): bool {
             return null !== $result;
@@ -236,8 +237,8 @@ final class GitRemoteTest extends TestCase
         $this->git($this->clone2->dir, 'commit -qm local');
 
         $result = null;
-        $remote->pullMerge(static function (bool $ok, string $out) use (&$result): void {
-            $result = ['ok' => $ok, 'out' => $out];
+        $remote->pullMerge(static function (Outcome $ok, string $out) use (&$result): void {
+            $result = ['ok' => $ok->isOk(), 'out' => $out];
         });
         $this->await(static function () use (&$result): bool {
             return null !== $result;

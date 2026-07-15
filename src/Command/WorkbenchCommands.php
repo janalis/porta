@@ -5,6 +5,8 @@ declare(strict_types=1);
 namespace Porta\Command;
 
 use Porta\Config\CommandRegistry;
+use Porta\Config\KeyDispatch;
+use Porta\Config\PaletteVisibility;
 use Porta\Editor\BufferService;
 use Porta\History\LocalHistoryController;
 use Porta\Layout\PaneResizer;
@@ -52,7 +54,7 @@ final class WorkbenchCommands implements CommandProvider
     {
         // Key-bound only (not offered in the palette).
         $commands
-            ->add('ide_quit', fn () => $this->workbench->quit(), keyBound: true, inPalette: false)
+            ->add('ide_quit', fn () => $this->workbench->quit(), keyBound: KeyDispatch::Bound, inPalette: PaletteVisibility::Hidden)
             ->add(
                 'ide_toggle_focus',
                 function (): void {
@@ -60,33 +62,39 @@ final class WorkbenchCommands implements CommandProvider
                     $this->tui->setFocus($inEditorArea ? $this->tree : $this->editorArea->widget());
                     $this->tui->requestRender();
                 },
-                keyBound: true,
-                inPalette: false,
+                keyBound: KeyDispatch::Bound,
+                inPalette: PaletteVisibility::Hidden,
             )
             ->add(
                 'focus_next',
                 fn () => $this->focusCoordinator->cycle(1),
-                keyBound: true,
-                inPalette: false,
+                keyBound: KeyDispatch::Bound,
+                inPalette: PaletteVisibility::Hidden,
                 when: fn (): bool => !$this->menuBar->isOpen() && !$this->goToFile->isOpen() && !$this->findBar->isOpen(),
             )
             ->add(
                 'focus_previous',
                 fn () => $this->focusCoordinator->cycle(-1),
-                keyBound: true,
-                inPalette: false,
+                keyBound: KeyDispatch::Bound,
+                inPalette: PaletteVisibility::Hidden,
                 when: fn (): bool => !$this->menuBar->isOpen() && !$this->goToFile->isOpen() && !$this->findBar->isOpen(),
             )
             ->add(
                 'show_context_menu',
                 fn () => $this->contextMenuOpener->openForFocus(),
-                keyBound: true,
-                inPalette: false,
+                keyBound: KeyDispatch::Bound,
+                inPalette: PaletteVisibility::Hidden,
                 when: fn (): bool => !$this->views->isGitOpen() && !$this->views->isSettingsOpen() && !$this->menuBar->isOpen(),
             )
-            ->add('resize_pane_grow', fn () => $this->paneResizer->resize(1), keyBound: true, inPalette: false, when: fn (): bool => $this->paneResizer->canResize())
-            ->add('resize_pane_shrink', fn () => $this->paneResizer->resize(-1), keyBound: true, inPalette: false, when: fn (): bool => $this->paneResizer->canResize())
-            ->add('ide_command_palette', fn () => $this->workbench->openCommandPalette(), keyBound: true, inPalette: false)
+            ->add('resize_pane_grow', fn () => $this->paneResizer->resize(1), keyBound: KeyDispatch::Bound, inPalette: PaletteVisibility::Hidden, when: fn (): bool => $this->paneResizer->canResize())
+            ->add(
+                'resize_pane_shrink',
+                fn () => $this->paneResizer->resize(-1),
+                keyBound: KeyDispatch::Bound,
+                inPalette: PaletteVisibility::Hidden,
+                when: fn (): bool => $this->paneResizer->canResize(),
+            )
+            ->add('ide_command_palette', fn () => $this->workbench->openCommandPalette(), keyBound: KeyDispatch::Bound, inPalette: PaletteVisibility::Hidden)
             ->add(
                 'ide_search_everywhere',
                 function (): void {
@@ -94,11 +102,11 @@ final class WorkbenchCommands implements CommandProvider
                         $this->searchEverywhere->open();
                     }
                 },
-                keyBound: true,
-                inPalette: false,
+                keyBound: KeyDispatch::Bound,
+                inPalette: PaletteVisibility::Hidden,
             )
-            ->add('ide_local_history', fn () => $this->localHistory->show(), keyBound: true, inPalette: false)
-            ->add('ide_run_last', fn () => $this->run->runLast(), keyBound: true, inPalette: false)
-            ->add('ide_menu', fn () => $this->workbench->openMenu(), keyBound: true, inPalette: false);
+            ->add('ide_local_history', fn () => $this->localHistory->show(), keyBound: KeyDispatch::Bound, inPalette: PaletteVisibility::Hidden)
+            ->add('ide_run_last', fn () => $this->run->runLast(), keyBound: KeyDispatch::Bound, inPalette: PaletteVisibility::Hidden)
+            ->add('ide_menu', fn () => $this->workbench->openMenu(), keyBound: KeyDispatch::Bound, inPalette: PaletteVisibility::Hidden);
     }
 }

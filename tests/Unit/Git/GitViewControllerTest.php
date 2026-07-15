@@ -12,11 +12,15 @@ use Porta\Event\GitRemoteCompleted;
 use Porta\Git\GitInfo;
 use Porta\Git\GitPanes;
 use Porta\Git\GitViewController;
+use Porta\Git\RefreshMode;
+use Porta\Git\WhitespaceMode;
 use Porta\I18n\Translator;
+use Porta\Layout\DiffLayout;
 use Porta\Layout\EditorAreaPanes;
 use Porta\Layout\GitSidebar;
 use Porta\Layout\LayoutController;
 use Porta\Support\Clipboard;
+use Porta\Tests\Support\Presence;
 use Porta\Tests\Support\TempProject;
 use Porta\Ui\EditorArea;
 use Porta\Ui\Notifier;
@@ -70,15 +74,15 @@ final class GitViewControllerTest extends TestCase
     private CodeEditorWidget $editor;
     private LayoutController $layoutController;
 
-    private function controller(bool $realRepo = true, int $historyPageSize = 200): GitViewController
+    private function controller(Presence $realRepo = Presence::With, int $historyPageSize = 200): GitViewController
     {
-        if ($realRepo && null === self::findGit()) {
+        if (Presence::With === $realRepo && null === self::findGit()) {
             $this->markTestSkipped('git not available');
         }
         // .porta/ is ignored so the real LayoutController's pref writes never
         // dirty the porcelain assertions.
         $this->project = new TempProject(['a.txt' => "one\ntwo\n", '.gitignore' => ".porta/\n"]);
-        if ($realRepo) {
+        if (Presence::With === $realRepo) {
             $d = escapeshellarg($this->project->dir);
             exec("git -C {$d} init -q && git -C {$d} config user.email t@t && git -C {$d} config user.name t && git -C {$d} add -A && git -C {$d} commit -qm init");
         }
@@ -174,7 +178,7 @@ final class GitViewControllerTest extends TestCase
 
     public function testOpenIsRefusedOutsideARepository(): void
     {
-        $controller = $this->controller(realRepo: false);
+        $controller = $this->controller(realRepo: Presence::Without);
         $controller->open();
 
         $this->assertFalse($controller->isOpen());
@@ -502,14 +506,14 @@ final class GitViewControllerTest extends TestCase
     public function testDiffPrefsApplyOnOpenAndPersistOnToggle(): void
     {
         $controller = $this->controller();
-        $this->layoutController->setGitDiffPrefs(true, false);
+        $this->layoutController->setGitDiffPrefs(DiffLayout::Split, WhitespaceMode::Shown);
         $controller->open();
         $this->await($controller->isOpen(...));
         $this->assertTrue($this->diffView->isSplit(), 'the persisted split preference applies on open');
 
         $this->diffView->setFocused(true);
         $this->diffView->handleInput('s'); // back to unified: persists
-        $this->assertSame(['split' => false, 'hideWhitespace' => false], $this->layoutController->gitDiffPrefs(), 'the unified toggle persisted');
+        $this->assertSame(['layout' => DiffLayout::Unified, 'whitespace' => WhitespaceMode::Shown], $this->layoutController->gitDiffPrefs(), 'the unified toggle persisted');
     }
 
     public function testCtrlCCopiesTheSelectedDiffLines(): void
@@ -543,7 +547,7 @@ final class GitViewControllerTest extends TestCase
         $this->await(fn (): bool => !str_contains($this->diffText(), '+  one'), 'the indent-only pair disappears');
         $this->assertStringContainsString('+two CHANGED', $this->diffText(), 'real changes survive');
         $this->assertStringContainsString('Whitespace changes hidden', $this->statusFlash());
-        $this->assertSame(['split' => false, 'hideWhitespace' => true], $this->layoutController->gitDiffPrefs(), 'the preference persisted');
+        $this->assertSame(['layout' => DiffLayout::Unified, 'whitespace' => WhitespaceMode::Hidden], $this->layoutController->gitDiffPrefs(), 'the preference persisted');
 
         // Staging is blocked while whitespace is hidden: a -w diff cannot
         // produce an appliable patch.
@@ -560,7 +564,7 @@ final class GitViewControllerTest extends TestCase
     public function testWhitespaceOnlyChangeShowsThePlaceholder(): void
     {
         $controller = $this->controller();
-        $this->layoutController->setGitDiffPrefs(false, true); // persisted from a previous session
+        $this->layoutController->setGitDiffPrefs(DiffLayout::Unified, WhitespaceMode::Hidden); // persisted from a previous session
         $this->project->write('a.txt', "  one\ntwo\n"); // reindent only
         $controller->open();
 
@@ -772,7 +776,7 @@ final class GitViewControllerTest extends TestCase
         $this->await(fn (): bool => null !== $this->changes->selectedEntry());
 
         $before = $this->changes->selectedEntry();
-        $controller->refresh(quiet: true);
+        $controller->refresh(RefreshMode::Quiet);
         $this->awaitTicks(10);
         $this->assertSame($before?->path, $this->changes->selectedEntry()?->path, 'identical status output leaves state alone');
 
@@ -939,7 +943,7 @@ final class GitViewControllerTest extends TestCase
 
     public function testFileHistoryOutsideARepositoryFlashesAndStaysClosed(): void
     {
-        $controller = $this->controller(realRepo: false);
+        $controller = $this->controller(realRepo: Presence::Without);
         $controller->openFileHistory($this->project->path('a.txt'));
         $this->assertFalse($controller->isOpen());
         $this->assertStringContainsString('Not a git repository', $this->statusFlash());

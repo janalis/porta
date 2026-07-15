@@ -10,6 +10,7 @@ use Porta\Container\AsWidget;
 use Porta\Editor\ActiveFileProvider;
 use Porta\Editor\AutoPairService;
 use Porta\Editor\BreadcrumbScanner;
+use Porta\Editor\CaretMotion;
 use Porta\Editor\DiagnosticStyle;
 use Porta\Editor\Document;
 use Porta\Editor\EditorActions;
@@ -20,6 +21,7 @@ use Porta\Editor\EditorScroll;
 use Porta\Editor\EditorStructural;
 use Porta\Editor\EditorViewport;
 use Porta\Editor\FoldModel;
+use Porta\Editor\IndentKind;
 use Porta\Editor\MultiCaret;
 use Porta\Highlight\CodeHighlighter;
 use Porta\Highlight\DarkTerminalTheme;
@@ -28,6 +30,7 @@ use Porta\Search\Everywhere\SearchRow;
 use Porta\Support\AnsiText;
 use Porta\Support\IntMath;
 use Porta\Support\ProjectPaths;
+use Porta\Ui\CaretVisibility;
 use Porta\Ui\ColorPalette;
 use Porta\Ui\CursorStyle;
 use Porta\Ui\LtrPane;
@@ -42,6 +45,7 @@ use Porta\Widget\Render\EditorRenderer;
 use Porta\Widget\Render\EditorRowAssembler;
 use Porta\Widget\Render\MenuOverlayHost;
 use Porta\Widget\Render\MenuOverlayHostTrait;
+use Porta\Widget\Render\PaneFocus;
 use Symfony\Component\Tui\Ansi\AnsiUtils;
 use Symfony\Component\Tui\Render\RenderContext;
 use Symfony\Component\Tui\Widget\AbstractWidget;
@@ -355,18 +359,34 @@ final class CodeEditorWidget extends AbstractWidget implements ActiveFileProvide
         $this->findModal->scrollPreview($delta);
     }
 
-    public function setInlineDiagnostics(bool $enabled): void
+    public function enableInlineDiagnostics(): void
     {
-        if ($this->inlineDiagnostics !== $enabled) {
-            $this->inlineDiagnostics = $enabled;
+        if (!$this->inlineDiagnostics) {
+            $this->inlineDiagnostics = true;
             $this->invalidate();
         }
     }
 
-    public function setRelativeLineNumbers(bool $enabled): void
+    public function disableInlineDiagnostics(): void
     {
-        if ($this->relativeLineNumbers !== $enabled) {
-            $this->relativeLineNumbers = $enabled;
+        if ($this->inlineDiagnostics) {
+            $this->inlineDiagnostics = false;
+            $this->invalidate();
+        }
+    }
+
+    public function enableRelativeLineNumbers(): void
+    {
+        if (!$this->relativeLineNumbers) {
+            $this->relativeLineNumbers = true;
+            $this->invalidate();
+        }
+    }
+
+    public function disableRelativeLineNumbers(): void
+    {
+        if ($this->relativeLineNumbers) {
+            $this->relativeLineNumbers = false;
             $this->invalidate();
         }
     }
@@ -413,12 +433,17 @@ final class CodeEditorWidget extends AbstractWidget implements ActiveFileProvide
             ? $this->currentEditorConfig->indentSize ?? 2
             : (int) $config->indentSize;
 
-        $this->document->setIndent($usesTabs, $size);
+        $this->document->setIndent($usesTabs ? IndentKind::Tabs : IndentKind::Spaces, $size);
     }
 
-    public function setAutoPairs(bool $enabled): void
+    public function enableAutoPairs(): void
     {
-        $this->autoPairs = $enabled;
+        $this->autoPairs = true;
+    }
+
+    public function disableAutoPairs(): void
+    {
+        $this->autoPairs = false;
     }
 
     public function hasAutoPairs(): bool
@@ -998,7 +1023,12 @@ final class CodeEditorWidget extends AbstractWidget implements ActiveFileProvide
         if (null === $this->filePath) {
             $this->lastGutterWidth = 0;
             $this->lastStripeCol = \PHP_INT_MAX; // no stripe over the empty-state pane
-            $empty = $this->findModal->composite($this->renderEmptyState($columns, $rows), $columns, $rows, $this->focused || $this->findModal->isOpen());
+            $empty = $this->findModal->composite(
+                $this->renderEmptyState($columns, $rows),
+                $columns,
+                $rows,
+                $this->focused || $this->findModal->isOpen() ? CaretVisibility::Shown : CaretVisibility::Hidden,
+            );
 
             return $this->withMenuOverlay($empty, $columns);
         }
@@ -1069,8 +1099,8 @@ final class CodeEditorWidget extends AbstractWidget implements ActiveFileProvide
 
         // The overlay/prompt chrome composites over the content; the
         // application-menu dropdown floats above everything else.
-        $composited = $this->overlayHost->composite($result, $columns, $rows, $this->focused);
-        $composited = $this->findModal->composite($composited, $columns, $rows, $this->focused || $this->findModal->isOpen());
+        $composited = $this->overlayHost->composite($result, $columns, $rows, $this->focused ? CaretVisibility::Shown : CaretVisibility::Hidden);
+        $composited = $this->findModal->composite($composited, $columns, $rows, $this->focused || $this->findModal->isOpen() ? CaretVisibility::Shown : CaretVisibility::Hidden);
 
         return $this->withMenuOverlay($composited, $columns);
     }
@@ -1102,7 +1132,7 @@ final class CodeEditorWidget extends AbstractWidget implements ActiveFileProvide
         $cursorDisplayCol += EditorRenderer::inlayShiftAt($doc, $cursorLine, $this->inlayHints[$cursorLine] ?? [], $cursorDisplayCol);
         $cursorMoved = [$cursorLine, $doc->getCursorCol()] !== $this->lastFollowedCursor;
         $this->lastFollowedCursor = [$cursorLine, $doc->getCursorCol()];
-        $this->scroll->followCursor($cursorDisplayCol, $contentWidth, $cursorMoved);
+        $this->scroll->followCursor($cursorDisplayCol, $contentWidth, $cursorMoved ? CaretMotion::Moved : CaretMotion::Parked);
 
         return $cursorDisplayCol;
     }
@@ -1120,7 +1150,7 @@ final class CodeEditorWidget extends AbstractWidget implements ActiveFileProvide
             multiActive: $multiActive,
             selection: $doc->getSelectionRange(),
             carets: $multiActive ? $this->multiCaret->allCarets() : [],
-            occurrences: EditorRenderer::identifierOccurrences($doc, $this->focused, $vScroll, $lastVisibleDocLine),
+            occurrences: EditorRenderer::identifierOccurrences($doc, $this->focused ? PaneFocus::Focused : PaneFocus::Blurred, $vScroll, $lastVisibleDocLine),
             brackets: $this->focused ? $this->matchingBrackets($doc) : null,
         );
     }

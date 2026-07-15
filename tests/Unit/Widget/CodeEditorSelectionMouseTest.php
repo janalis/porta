@@ -6,6 +6,7 @@ namespace Porta\Tests\Unit\Widget;
 
 use PHPUnit\Framework\TestCase;
 use Porta\Editor\EditorScroll;
+use Porta\Editor\SelectionMode;
 use Porta\Widget\CodeEditorWidget;
 use Symfony\Component\Tui\Render\RenderContext;
 
@@ -122,7 +123,7 @@ final class CodeEditorSelectionMouseTest extends TestCase
         $doc = $editor->getDocument();
         $doc->setCursor(0, 0);
         $doc->beginSelect();
-        $doc->setCursor(0, 5, keepSelection: true); // caret at the selection END
+        $doc->setCursor(0, 5, selection: SelectionMode::Keep); // caret at the selection END
 
         $line = $editor->render(new RenderContext(80, 3))[0];
 
@@ -136,7 +137,7 @@ final class CodeEditorSelectionMouseTest extends TestCase
         $doc = $editor->getDocument();
         $doc->setCursor(0, 5);
         $doc->beginSelect();
-        $doc->setCursor(0, 0, keepSelection: true); // caret at the selection START
+        $doc->setCursor(0, 0, selection: SelectionMode::Keep); // caret at the selection START
 
         $line = $editor->render(new RenderContext(80, 3))[0];
 
@@ -149,7 +150,7 @@ final class CodeEditorSelectionMouseTest extends TestCase
         $doc = $editor->getDocument();
         $doc->setCursor(0, 90);
         $doc->beginSelect();
-        $doc->setCursor(0, 95, keepSelection: true); // caret far right forces hScroll > 0
+        $doc->setCursor(0, 95, selection: SelectionMode::Keep); // caret far right forces hScroll > 0
 
         $line = $editor->render(new RenderContext(80, 3))[0];
 

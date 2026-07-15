@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Porta\Tests\Unit\Widget\Git;
 
 use PHPUnit\Framework\TestCase;
+use Porta\Git\CommitMode;
 use Porta\I18n\Translator;
 use Porta\Widget\Git\CommitBoxWidget;
 use Symfony\Component\Tui\Ansi\AnsiUtils;
@@ -20,9 +21,9 @@ final class CommitBoxWidgetTest extends TestCase
         $widget = new CommitBoxWidget(new Translator('en'));
         $widget->setFocused(true);
         $widget->setStagedChangesProvider(fn (): bool => $this->staged);
-        $widget->onCommit(static function (string $message, bool $amend) use (&$committed, &$amended): void {
+        $widget->onCommit(static function (string $message, CommitMode $amend) use (&$committed, &$amended): void {
             $committed = $message;
-            $amended = $amend;
+            $amended = CommitMode::Amend === $amend;
         });
 
         return $widget;
@@ -150,8 +151,8 @@ final class CommitBoxWidgetTest extends TestCase
         $this->staged = false;
         $widget = $this->widget($committed, $amended);
         $toggles = [];
-        $widget->onAmendToggle(static function (bool $amend) use (&$toggles): void {
-            $toggles[] = $amend;
+        $widget->onAmendToggle(static function (CommitMode $amend) use (&$toggles): void {
+            $toggles[] = CommitMode::Amend === $amend;
         });
 
         $this->type($widget, 'Reword');

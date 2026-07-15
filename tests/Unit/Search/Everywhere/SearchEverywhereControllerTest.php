@@ -7,6 +7,7 @@ namespace Porta\Tests\Unit\Search\Everywhere;
 use PHPUnit\Framework\TestCase;
 use Porta\Editor\BufferManager;
 use Porta\Editor\FileOpener;
+use Porta\Editor\OpenFocus;
 use Porta\Search\Everywhere\SearchCategory;
 use Porta\Search\Everywhere\SearchEverywhereController;
 use Porta\Search\Everywhere\SearchHit;
@@ -106,9 +107,9 @@ final class SearchEverywhereControllerTest extends TestCase
                     private array &$opened,
                 ) {}
 
-                public function openFile(string $path, bool $focusEditor = false): void
+                public function openFile(string $path, OpenFocus $focus = OpenFocus::Keep): void
                 {
-                    $this->opened[] = [$path, $focusEditor];
+                    $this->opened[] = [$path, OpenFocus::Editor === $focus];
                 }
             },
             new class($scheduled, $cancelled) implements Scheduler {

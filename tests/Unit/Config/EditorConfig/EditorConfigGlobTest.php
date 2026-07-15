@@ -81,6 +81,7 @@ final class EditorConfigGlobTest extends TestCase
     }
 
     #[DataProvider('globCases')]
+    // @mago-expect lint:no-boolean-flag-parameter -- $expected is the data-provider's expected result, not a control flag
     public function testMatches(string $glob, string $path, bool $expected): void
     {
         $this->assertSame(

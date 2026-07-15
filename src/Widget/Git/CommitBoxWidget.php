@@ -5,8 +5,10 @@ declare(strict_types=1);
 namespace Porta\Widget\Git;
 
 use Porta\Container\AsWidget;
+use Porta\Git\CommitMode;
 use Porta\I18n\Translator;
 use Porta\Support\IntMath;
+use Porta\Ui\CaretVisibility;
 use Porta\Ui\ColorPalette;
 use Porta\Ui\CursorStyle;
 use Porta\Ui\MultilineInput;
@@ -45,13 +47,13 @@ final class CommitBoxWidget extends AbstractWidget implements FocusableInterface
     private readonly TextField $summary;
     private readonly MultilineInput $description;
     private int $activeField = 0; // 0 = summary, 1 = description
-    private bool $amend = false;
+    private CommitMode $amend = CommitMode::Fresh;
 
     /** @var (callable(): bool)|null anything staged to commit? */
     private $stagedChangesProvider = null;
-    /** @var (callable(string, bool): void)|null commit with the assembled message (+ amend flag) */
+    /** @var (callable(string, CommitMode): void)|null commit with the assembled message (+ amend mode) */
     private $onCommit = null;
-    /** @var (callable(bool): void)|null amend toggled: the controller prefills/clears the message */
+    /** @var (callable(CommitMode): void)|null amend toggled: the controller prefills/clears the message */
     private $onAmendToggle = null;
 
     private readonly Palette $palette;
@@ -90,7 +92,7 @@ final class CommitBoxWidget extends AbstractWidget implements FocusableInterface
         return $this;
     }
 
-    /** @param callable(string, bool): void $callback */
+    /** @param callable(string, CommitMode): void $callback */
     public function onCommit(callable $callback): self
     {
         $this->onCommit = $callback;
@@ -98,7 +100,7 @@ final class CommitBoxWidget extends AbstractWidget implements FocusableInterface
         return $this;
     }
 
-    /** @param callable(bool): void $callback */
+    /** @param callable(CommitMode): void $callback */
     public function onAmendToggle(callable $callback): self
     {
         $this->onAmendToggle = $callback;
@@ -108,7 +110,7 @@ final class CommitBoxWidget extends AbstractWidget implements FocusableInterface
 
     public function isAmend(): bool
     {
-        return $this->amend;
+        return CommitMode::Amend === $this->amend;
     }
 
     /** Prefill the fields from an existing message (amend), caret at the end. */
@@ -126,7 +128,7 @@ final class CommitBoxWidget extends AbstractWidget implements FocusableInterface
         $this->summary->clear();
         $this->description->clear();
         $this->activeField = 0;
-        $this->amend = false;
+        $this->amend = CommitMode::Fresh;
         $this->invalidate();
     }
 
@@ -144,7 +146,7 @@ final class CommitBoxWidget extends AbstractWidget implements FocusableInterface
         }
 
         // Amending only the message needs no staged changes.
-        return $this->amend || null !== $this->stagedChangesProvider && ($this->stagedChangesProvider)();
+        return CommitMode::Amend === $this->amend || null !== $this->stagedChangesProvider && ($this->stagedChangesProvider)();
     }
 
     /** The assembled commit message: summary, blank line, description. */
@@ -187,7 +189,7 @@ final class CommitBoxWidget extends AbstractWidget implements FocusableInterface
             return;
         }
         if ($kb->matches($data, 'toggle_amend')) {
-            $this->amend = !$this->amend;
+            $this->amend = CommitMode::Amend === $this->amend ? CommitMode::Fresh : CommitMode::Amend;
             if (null !== $this->onAmendToggle) {
                 ($this->onAmendToggle)($this->amend);
             }
@@ -248,16 +250,16 @@ final class CommitBoxWidget extends AbstractWidget implements FocusableInterface
         $focused = $this->focused;
 
         $lines = [];
-        $header = $this->amend ? $this->translator->trans(' Commit  [amend · alt+m]') : $this->translator->trans(' Commit  ·  alt+m: amend');
+        $header = CommitMode::Amend === $this->amend ? $this->translator->trans(' Commit  [amend · alt+m]') : $this->translator->trans(' Commit  ·  alt+m: amend');
         $lines[] = $this->palette->of(Role::HeaderBar)."\x1b[1m".AnsiUtils::truncateToWidth($header, $width, '…', pad: true)."\x1b[0m";
 
-        $summary = ' '.$this->summary->render(cursor: $focused && 0 === $this->activeField, width: $width - 1);
+        $summary = ' '.$this->summary->render(cursor: $focused && 0 === $this->activeField ? CaretVisibility::Shown : CaretVisibility::Hidden, width: $width - 1);
         $summaryHint = '' === $this->summary->value() && !($focused && 0 === $this->activeField)
             ? $this->palette->of(Role::Dim).' '.$this->translator->trans('Summary (required)')."\x1b[0m"
             : $summary;
         $lines[] = $this->palette->of(Role::RowHighlightBg).AnsiUtils::truncateToWidth($summaryHint, $width, '…', pad: true)."\x1b[0m";
 
-        $descriptionLines = $this->description->render($width - 1, self::DESCRIPTION_ROWS, cursor: $focused && 1 === $this->activeField);
+        $descriptionLines = $this->description->render($width - 1, self::DESCRIPTION_ROWS, cursor: $focused && 1 === $this->activeField ? CaretVisibility::Shown : CaretVisibility::Hidden);
         if ($this->description->isEmpty() && !($focused && 1 === $this->activeField)) {
             $descriptionLines = [$this->palette->of(Role::Dim).$this->translator->trans('Description')."\x1b[0m"];
         }
@@ -266,7 +268,7 @@ final class CommitBoxWidget extends AbstractWidget implements FocusableInterface
         }
 
         $lines[] = str_repeat(' ', max(0, $width));
-        $label = $this->amend ? $this->translator->trans('  Amend last commit  ') : $this->translator->trans('  Commit to branch  ');
+        $label = CommitMode::Amend === $this->amend ? $this->translator->trans('  Amend last commit  ') : $this->translator->trans('  Commit to branch  ');
         $button = $this->commitEnabled()
             ? $this->palette->of(Role::SelectedRow).AnsiUtils::truncateToWidth($label, $width, '…', pad: true)."\x1b[0m"
             : $this->palette->of(Role::RowHighlightBg).$this->palette->of(Role::Dim).AnsiUtils::truncateToWidth($label, $width, '…', pad: true)."\x1b[0m";

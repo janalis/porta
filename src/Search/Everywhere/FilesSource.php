@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Porta\Search\Everywhere;
 
+use Porta\Editor\OpenFocus;
 use Porta\Search\FileIndex;
 
 /**
@@ -14,7 +15,7 @@ final class FilesSource implements SearchSource
 {
     private const int LIMIT = 20;
 
-    /** @param \Closure(string, bool): void $openFile fn(absolutePath, focusEditor) */
+    /** @param \Closure(string, OpenFocus): void $openFile fn(absolutePath, focus) */
     public function __construct(
         private readonly FileIndex $index,
         private readonly string $rootDir,
@@ -37,8 +38,7 @@ final class FilesSource implements SearchSource
                 basename($path),
                 '.' === $dir ? '' : $dir,
                 function () use ($absolute): void {
-                    $focusEditor = true;
-                    ($this->openFile)($absolute, $focusEditor);
+                    ($this->openFile)($absolute, OpenFocus::Editor);
                 },
             );
         }

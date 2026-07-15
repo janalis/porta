@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Porta\Command;
 
 use Porta\Config\CommandRegistry;
+use Porta\Config\KeyDispatch;
 use Porta\Config\SettingsController;
 use Porta\Editor\BufferManager;
 use Porta\Editor\BufferService;
@@ -36,8 +37,8 @@ final class ViewCommands implements CommandProvider
     public function register(CommandRegistry $commands): void
     {
         $commands
-            ->add('move_tab_left', fn () => $this->workbench->moveTab(-1), keyBound: true)
-            ->add('move_tab_right', fn () => $this->workbench->moveTab(1), keyBound: true)
+            ->add('move_tab_left', fn () => $this->workbench->moveTab(-1), keyBound: KeyDispatch::Bound)
+            ->add('move_tab_right', fn () => $this->workbench->moveTab(1), keyBound: KeyDispatch::Bound)
             ->add('goto_file', function (): void {
                 $this->goToFile->open();
                 $this->tui->setFocus($this->goToFile);
@@ -60,18 +61,18 @@ final class ViewCommands implements CommandProvider
             ->add('toggle_format_on_save', fn () => $this->settings->toggle('formatOnSave'), label: 'Toggle Format on Save')
             ->add('fold_all', fn () => $this->folding->foldAll(), label: 'Fold All')
             ->add('unfold_all', fn () => $this->folding->unfoldAll(), label: 'Unfold All')
-            ->add('ide_terminal', fn () => $this->run->toggleTerminal(), keyBound: true)
-            ->add('ide_terminal_new', fn () => $this->run->newTerminalSession(), keyBound: true)
-            ->add('ide_run', fn () => $this->run->openRunMenu(), keyBound: true)
-            ->add('ide_git', fn () => $this->views->toggleGit(), keyBound: true)
-            ->add('ide_settings', fn () => $this->views->toggleSettings(), keyBound: true)
+            ->add('ide_terminal', fn () => $this->run->toggleTerminal(), keyBound: KeyDispatch::Bound)
+            ->add('ide_terminal_new', fn () => $this->run->newTerminalSession(), keyBound: KeyDispatch::Bound)
+            ->add('ide_run', fn () => $this->run->openRunMenu(), keyBound: KeyDispatch::Bound)
+            ->add('ide_git', fn () => $this->views->toggleGit(), keyBound: KeyDispatch::Bound)
+            ->add('ide_settings', fn () => $this->views->toggleSettings(), keyBound: KeyDispatch::Bound)
             ->add(
                 'ide_help',
                 function (): void {
                     $this->views->closeAll();
                     $this->bufferService->openHelp($this->docsDir.'/README.md');
                 },
-                keyBound: true,
+                keyBound: KeyDispatch::Bound,
             );
     }
 }

@@ -14,6 +14,7 @@ use Porta\Plugin\PluginException;
 use Porta\Plugin\PluginManager;
 use Porta\Plugin\PluginRuntime;
 use Porta\Plugin\PluginSettings;
+use Porta\Tests\Support\Presence;
 use Porta\Tests\Support\RecordingDiagnosticsSink;
 use Porta\Tests\Support\RecordingFileOpener;
 use Porta\Tests\Support\TempProject;
@@ -33,14 +34,14 @@ final class PluginApiTest extends TestCase
     private RecordingFileOpener $files;
     private RecordingDiagnosticsSink $diagnostics;
 
-    private function api(bool $wired = true): PluginApi
+    private function api(Presence $wired = Presence::With): PluginApi
     {
         $manager = new PluginManager(new PluginEvents(), new PluginSettings('/p', []));
         $this->editor = new CodeEditorWidget();
         $this->status = new StatusBarWidget();
         $this->files = new RecordingFileOpener();
         $this->diagnostics = new RecordingDiagnosticsSink();
-        if ($wired) {
+        if (Presence::With === $wired) {
             $tui = new Tui(terminal: new VirtualTerminal(columns: 100, rows: 24), keybindings: new Keybindings([]), renderer: new Renderer(new StyleSheet()));
             $manager->wireRuntime(new PluginRuntime(new Notifier($this->status, $tui), new Translator('en'), $this->editor, $this->files, $tui, $this->diagnostics));
         }
@@ -55,7 +56,7 @@ final class PluginApiTest extends TestCase
 
     public function testRegistrationBuffersNamespacedCommandsAndValidatesIds(): void
     {
-        $api = $this->api(wired: false);
+        $api = $this->api(wired: Presence::Without);
         $this->assertSame('/p', $api->projectRoot(), 'static config, available during activate()');
         $api->registerCommand('hello', 'Say Hello', static function (): void {}, ['f8']);
         $api->onFileSaved(static function (): void {});
@@ -125,7 +126,7 @@ final class PluginApiTest extends TestCase
 
     public function testEveryActionMethodThrowsBeforeTheRuntimeIsWired(): void
     {
-        $api = $this->api(wired: false);
+        $api = $this->api(wired: Presence::Without);
         $api->registerSetting('flag', 'Flag', 'bool', false); // a registered key, so changeSetting reaches the runtime gate
         $actions = [
             static fn () => $api->flash('x'),

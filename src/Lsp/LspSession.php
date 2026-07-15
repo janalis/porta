@@ -6,6 +6,7 @@ namespace Porta\Lsp;
 
 use Porta\Editor\Document;
 use Porta\Editor\TextDiff;
+use Porta\Support\Outcome;
 use Revolt\EventLoop;
 
 /**
@@ -46,7 +47,7 @@ final class LspSession
      * @param \Closure(string): void $onLog         raw server log line
      * @param \Closure(array): void  $onDiagnostics textDocument/publishDiagnostics params
      * @param \Closure(array): bool  $onApplyEdit   workspace/applyEdit handler (returns applied)
-     * @param \Closure(bool): void   $onStarted     start result (true when initialized)
+     * @param \Closure(Outcome): void   $onStarted     start result (true when initialized)
      */
     public function start(array $command, \Closure $onLog, \Closure $onDiagnostics, \Closure $onApplyEdit, \Closure $onStarted): void
     {
@@ -57,8 +58,8 @@ final class LspSession
             $onLog(\is_string($params['message'] ?? null) ? $params['message'] : '');
         });
         $this->client->onApplyEdit($onApplyEdit);
-        $this->client->start(function (bool $ok) use ($onStarted): void {
-            if (!$ok) {
+        $this->client->start(function (Outcome $ok) use ($onStarted): void {
+            if (!$ok->isOk()) {
                 $this->client = null;
             }
             $onStarted($ok);
@@ -97,15 +98,15 @@ final class LspSession
     /**
      * Precondition for a feature request against the current file $path: an
      * initialized server. Flushes any pending debounced edit first (unless
-     * $flush is false, for navigation that must not disturb the debounce), then
-     * returns $path — or null when a request cannot be made.
+     * {@see FlushMode::Keep}, for navigation that must not disturb the debounce),
+     * then returns $path — or null when a request cannot be made.
      */
-    public function ready(?string $path, Document $document, bool $flush = true): ?string
+    public function ready(?string $path, Document $document, FlushMode $flush = FlushMode::Flush): ?string
     {
         if (null === $path || !$this->isInitialized()) {
             return null;
         }
-        if ($flush) {
+        if (FlushMode::Flush === $flush) {
             $this->flushPendingChange($path, $document);
         }
 

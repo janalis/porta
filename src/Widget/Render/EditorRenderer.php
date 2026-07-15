@@ -119,9 +119,9 @@ final class EditorRenderer
      *
      * @return list<array{0: int, 1: int, 2: int}> [line, startDisplayCol, endDisplayCol]
      */
-    public static function identifierOccurrences(Document $doc, bool $focused, int $fromLine, int $toLine): array
+    public static function identifierOccurrences(Document $doc, PaneFocus $focused, int $fromLine, int $toLine): array
     {
-        if (!$focused || $doc->hasSelection()) {
+        if (PaneFocus::Blurred === $focused || $doc->hasSelection()) {
             return [];
         }
         $word = self::identifierUnderCaret($doc);
@@ -231,9 +231,9 @@ final class EditorRenderer
      * Slice a highlighted line to the visible window, inserting the caret marker
      * on the cursor line. Output is exactly $contentWidth cells wide.
      */
-    public static function renderContentLine(int $hScroll, string $highlightedLine, int $contentWidth, bool $withCursor, int $cursorDisplayCol, string $cursorMarker): string
+    public static function renderContentLine(int $hScroll, string $highlightedLine, int $contentWidth, CursorVisibility $withCursor, int $cursorDisplayCol, string $cursorMarker): string
     {
-        if (!$withCursor) {
+        if (CursorVisibility::Hidden === $withCursor) {
             $slice = AnsiUtils::sliceWithWidth($highlightedLine, $hScroll, $contentWidth);
 
             return AnsiText::padRight($slice['text']."\x1b[0m", $contentWidth);
@@ -418,7 +418,7 @@ final class EditorRenderer
         int $rows,
         string $title,
         string $query,
-        bool $focused,
+        PaneFocus $focused,
         array $rowModels,
         int $selected,
         Palette $palette,
@@ -437,7 +437,7 @@ final class EditorRenderer
 
         $popup = [
             HeaderRenderer::render(' '.$title, $width, $palette->of(Role::HeaderBar).$palette->of(Role::Bright)."\x1b[1m"),
-            $palette->of(Role::Toolbar).AnsiText::scrollLineToCaret(' > '.$query.($focused ? $cursorMarker : ''), $width)."\x1b[0m",
+            $palette->of(Role::Toolbar).AnsiText::scrollLineToCaret(' > '.$query.(PaneFocus::Focused === $focused ? $cursorMarker : ''), $width)."\x1b[0m",
         ];
         foreach ($visible as $i => $row) {
             if (null !== $row['header']) {

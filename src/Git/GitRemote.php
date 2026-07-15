@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Porta\Git;
 
 use Porta\Support\AsyncProcess;
+use Porta\Support\Outcome;
 use Symfony\Component\Process\ExecutableFinder;
 
 /**
@@ -48,7 +49,7 @@ final class GitRemote
         return [] !== $this->running;
     }
 
-    /** @param callable(bool, string): void $onDone (ok, trimmed stderr+stdout — stderr first: it's where git talks) */
+    /** @param callable(Outcome, string): void $onDone (ok, trimmed stderr+stdout — stderr first: it's where git talks) */
     public function fetch(callable $onDone): void
     {
         $this->run(['fetch', '--prune'], $onDone);
@@ -59,32 +60,32 @@ final class GitRemote
      * A merging/rebasing pull creates conflict state the git view can't drive
      * yet; a `pull.rebase`-respecting mode is a future setting.
      *
-     * @param callable(bool, string): void $onDone
+     * @param callable(Outcome, string): void $onDone
      */
     public function pull(callable $onDone): void
     {
         $this->run(['pull', '--ff-only'], $onDone);
     }
 
-    /** Integrate the diverged remote branch by rebasing local commits on top. @param callable(bool, string): void $onDone */
+    /** Integrate the diverged remote branch by rebasing local commits on top. @param callable(Outcome, string): void $onDone */
     public function pullRebase(callable $onDone): void
     {
         $this->run(['pull', '--rebase'], $onDone);
     }
 
-    /** Integrate the diverged remote branch with a merge commit. @param callable(bool, string): void $onDone */
+    /** Integrate the diverged remote branch with a merge commit. @param callable(Outcome, string): void $onDone */
     public function pullMerge(callable $onDone): void
     {
         $this->run(['pull', '--no-rebase', '--no-edit'], $onDone);
     }
 
-    /** @param callable(bool, string): void $onDone */
+    /** @param callable(Outcome, string): void $onDone */
     public function push(callable $onDone): void
     {
         $this->run(['push'], $onDone);
     }
 
-    /** @param callable(bool, string): void $onDone */
+    /** @param callable(Outcome, string): void $onDone */
     public function pushSetUpstream(callable $onDone): void
     {
         $this->run(['push', '-u', 'origin', 'HEAD'], $onDone);
@@ -100,13 +101,13 @@ final class GitRemote
 
     /**
      * @param list<string>                 $args
-     * @param callable(bool, string): void $onDone
+     * @param callable(Outcome, string): void $onDone
      */
     private function run(array $args, callable $onDone): void
     {
         if (!$this->available) {
             $reason = 'git is not available';
-            $onDone(false, $reason);
+            $onDone(Outcome::Failed, $reason);
 
             return;
         }
@@ -118,12 +119,12 @@ final class GitRemote
         $process = new AsyncProcess($command, $this->rootDir, captureStderr: true, env: $env);
         $started = $process->start(function (int $code, string $out) use ($key, $process, $onDone): void {
             unset($this->running[$key]);
-            $onDone(0 === $code, trim(trim($process->errorOutput())."\n".trim($out)));
+            $onDone(Outcome::of(0 === $code), trim(trim($process->errorOutput())."\n".trim($out)));
         });
         if (!$started) {
             // @codeCoverageIgnoreStart
             $reason = 'could not start git';
-            $onDone(false, $reason);
+            $onDone(Outcome::Failed, $reason);
 
             return;
 

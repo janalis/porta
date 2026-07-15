@@ -6,6 +6,7 @@ namespace Porta\Tests\Unit\Editor;
 
 use PHPUnit\Framework\TestCase;
 use Porta\Config\EditorConfig\ResolvedEditorConfig;
+use Porta\Editor\IndentKind;
 use Porta\Editor\IndentModel;
 
 final class IndentModelTest extends TestCase
@@ -32,7 +33,7 @@ final class IndentModelTest extends TestCase
     public function testSetClampsSizeToAtLeastOne(): void
     {
         $indent = new IndentModel(usesTabs: false, indentSize: 4, tabWidth: 4);
-        $indent->set(usesTabs: false, size: 0);
+        $indent->set(IndentKind::Spaces, 0);
 
         $this->assertSame(1, $indent->indentSize());
         $this->assertSame(1, $indent->tabWidth());

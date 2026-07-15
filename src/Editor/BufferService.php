@@ -64,7 +64,7 @@ final class BufferService implements BufferReopener, DiagnosticsSink, FileOpener
         private readonly FormatOnSave $formatOnSave,
     ) {}
 
-    public function openFile(string $path, bool $focusEditor = false): void
+    public function openFile(string $path, OpenFocus $focus = OpenFocus::Keep): void
     {
         $path = ($resolved = realpath($path)) ? $resolved : $path;
 
@@ -72,7 +72,7 @@ final class BufferService implements BufferReopener, DiagnosticsSink, FileOpener
             /** @var Buffer $active */
             $active = $this->buffers->setActive($path);
             $this->showBuffer($active);
-            if ($focusEditor) {
+            if (OpenFocus::Editor === $focus) {
                 $this->focusEditorArea();
             }
 
@@ -85,7 +85,7 @@ final class BufferService implements BufferReopener, DiagnosticsSink, FileOpener
             return;
         }
         if (ImageDecoder::isImagePath($path)) {
-            $this->openImageFile($path, $focusEditor);
+            $this->openImageFile($path, $focus);
 
             return;
         }
@@ -119,7 +119,7 @@ final class BufferService implements BufferReopener, DiagnosticsSink, FileOpener
         $this->showBuffer($buffer);
         $this->dispatcher->dispatch(new BufferOpened($buffer));
 
-        if ($focusEditor) {
+        if (OpenFocus::Editor === $focus) {
             $this->focusEditorArea();
         }
         $this->tui->requestRender();
@@ -129,7 +129,7 @@ final class BufferService implements BufferReopener, DiagnosticsSink, FileOpener
      * Open an image file into a viewer tab: no editorconfig, no LSP didOpen,
      * no git marks — just the decoded pixels behind a normal buffer/tab.
      */
-    private function openImageFile(string $path, bool $focusEditor): void
+    private function openImageFile(string $path, OpenFocus $focus): void
     {
         if ((int) filesize($path) > ImageDecoder::MAX_BYTES) {
             $this->notifier->flash($this->translator->trans('Image too large (> 20 MB)'));
@@ -146,7 +146,7 @@ final class BufferService implements BufferReopener, DiagnosticsSink, FileOpener
         $buffer->stampFromDisk();
         $this->showBuffer($buffer);
         $this->dispatcher->dispatch(new BufferOpened($buffer));
-        if ($focusEditor) {
+        if (OpenFocus::Editor === $focus) {
             $this->focusEditorArea();
         }
         $this->tui->requestRender();
@@ -365,13 +365,13 @@ final class BufferService implements BufferReopener, DiagnosticsSink, FileOpener
         $this->showEmptyEditor();
     }
 
-    public function closeActiveBuffer(bool $force = false): void
+    public function closeActiveBuffer(CloseMode $mode = CloseMode::Guarded): void
     {
         $active = $this->buffers->active();
         if (null === $active) {
             return;
         }
-        if (!$force && $active->isDirty()) {
+        if (CloseMode::Guarded === $mode && $active->isDirty()) {
             $name = basename($active->path);
             $this->editor->openListOverlay(
                 $this->translator->trans('Unsaved changes in %name%', ['%name%' => $name]),
@@ -387,7 +387,7 @@ final class BufferService implements BufferReopener, DiagnosticsSink, FileOpener
                         return;
                     }
                     if ('discard' === $choice) {
-                        $this->closeActiveBuffer(force: true);
+                        $this->closeActiveBuffer(CloseMode::Force);
                     }
                 },
             );

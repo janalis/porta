@@ -124,9 +124,9 @@ final class Document
      * editor's per-language indent settings, which win over auto-detection and
      * `.editorconfig`. Invalidates the tab-expansion cache.
      */
-    public function setIndent(bool $usesTabs, int $size): void
+    public function setIndent(IndentKind $kind, int $size): void
     {
-        $this->indent->set($usesTabs, $size);
+        $this->indent->set($kind, $size);
         $this->positionMapper->invalidateVisualLines();
     }
 
@@ -719,12 +719,12 @@ final class Document
         $this->goalCol = null;
     }
 
-    public function setCursor(int $line, int $col, bool $keepSelection = false): void
+    public function setCursor(int $line, int $col, SelectionMode $selection = SelectionMode::Clear): void
     {
         $this->cursorLine = $this->clampLine($line);
         $this->cursorCol = $this->clampCol($this->cursorLine, $col);
         $this->goalCol = null;
-        if (!$keepSelection) {
+        if (SelectionMode::Clear === $selection) {
             $this->selection->clear();
         }
     }
@@ -1115,7 +1115,7 @@ final class Document
             $end = $edit['range']['end'];
             $this->setCursor($start['line'] ?? 0, $this->utf16ColToByteCol($start['line'] ?? 0, $start['character'] ?? 0));
             $this->beginSelect();
-            $this->setCursor($end['line'] ?? 0, $this->utf16ColToByteCol($end['line'] ?? 0, $end['character'] ?? 0), keepSelection: true);
+            $this->setCursor($end['line'] ?? 0, $this->utf16ColToByteCol($end['line'] ?? 0, $end['character'] ?? 0), selection: SelectionMode::Keep);
             if ($this->hasSelection()) {
                 $this->deleteSelection();
             }
@@ -1148,7 +1148,7 @@ final class Document
             return false;
         }
         $this->restore($state);
-        $this->touch(pushUndo: false);
+        $this->touch();
 
         return true;
     }
@@ -1160,7 +1160,7 @@ final class Document
             return false;
         }
         $this->restore($state);
-        $this->touch(pushUndo: false);
+        $this->touch();
 
         return true;
     }
@@ -1258,7 +1258,7 @@ final class Document
         $this->history->push($this->snapshot(), $coalesceKey);
     }
 
-    private function touch(bool $pushUndo = true): void
+    private function touch(): void
     {
         ++$this->version;
         $this->dirty = true;

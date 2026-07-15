@@ -28,9 +28,7 @@ final class ProjectSearchTest extends TestCase
     private function await(
         ProjectSearch $search,
         string $query,
-        bool $regex = false,
-        bool $caseSensitive = false,
-        bool $wholeWord = false,
+        SearchOptions $options = new SearchOptions(),
         float $timeout = 3.0,
         string|array $scope = '.',
         string $mask = '',
@@ -41,7 +39,7 @@ final class ProjectSearchTest extends TestCase
             static function (array $r) use (&$results): void {
                 $results = $r;
             },
-            new SearchOptions($regex, $caseSensitive, $wholeWord),
+            $options,
             $scope,
             $mask,
         );
@@ -80,7 +78,7 @@ final class ProjectSearchTest extends TestCase
     }
 
     /** @return list<string> the sorted result paths */
-    private function scopedPaths(bool $phpFallback): array
+    private function scopedPaths(SearchBackend $backend): array
     {
         $project = new TempProject([
             'src/A.php' => "<?php\n// needle in src\n",
@@ -88,7 +86,7 @@ final class ProjectSearchTest extends TestCase
             'app/D.php' => "<?php\n// needle in app\n",
             'README.md' => "needle at the root\n",
         ]);
-        if ($phpFallback) {
+        if (SearchBackend::PhpFallback === $backend) {
             putenv('PATH=/nonexistent');
         }
 
@@ -102,13 +100,13 @@ final class ProjectSearchTest extends TestCase
     {
         // Only the src/ subtree is searched; app/ and the root README are excluded,
         // and the returned paths stay project-root-relative.
-        $this->assertSame(['src/A.php', 'src/sub/B.php'], $this->scopedPaths(phpFallback: false));
+        $this->assertSame(['src/A.php', 'src/sub/B.php'], $this->scopedPaths(SearchBackend::Grep));
     }
 
     public function testPhpFallbackScopedToAFolder(): void
     {
         // The Finder-based fallback prefixes the scope back on so paths match grep.
-        $this->assertSame(['src/A.php', 'src/sub/B.php'], $this->scopedPaths(phpFallback: true));
+        $this->assertSame(['src/A.php', 'src/sub/B.php'], $this->scopedPaths(SearchBackend::PhpFallback));
     }
 
     public function testMatchOffsetsReturnsByteOffsetsOfEachHit(): void
@@ -130,7 +128,7 @@ final class ProjectSearchTest extends TestCase
         // the PCRE backtrack limit on the file's long run: preg_match_all returns
         // false for that file, which the whole-file scan skips (no results).
         $project = new TempProject(['src/A.php' => str_repeat('a', times: 30)."!\nz\n"]);
-        $results = $this->await(new ProjectSearch($project->dir), "(a+)+\nz", regex: true);
+        $results = $this->await(new ProjectSearch($project->dir), "(a+)+\nz", options: new SearchOptions(regex: true));
 
         $this->assertSame([], $results);
     }
@@ -204,13 +202,13 @@ final class ProjectSearchTest extends TestCase
     }
 
     /** @return list<array{start: int, length: int}> the ranges of the sole result */
-    private function rangesOf(bool $phpFallback, string $content, string $query, bool $regex = false): array
+    private function rangesOf(SearchBackend $backend, string $content, string $query, SearchOptions $options = new SearchOptions()): array
     {
         $project = new TempProject(['a.txt' => $content."\n"]);
-        if ($phpFallback) {
+        if (SearchBackend::PhpFallback === $backend) {
             putenv('PATH=/nonexistent');
         }
-        $results = $this->await(new ProjectSearch($project->dir), $query, regex: $regex);
+        $results = $this->await(new ProjectSearch($project->dir), $query, options: $options);
         $this->assertCount(1, $results);
 
         return $results[0]['ranges'];
@@ -219,28 +217,28 @@ final class ProjectSearchTest extends TestCase
     public function testGrepMatchRangesAreDisplayColumns(): void
     {
         // "the needle here" → 'needle' starts at column 4, length 6.
-        $this->assertSame([['start' => 4, 'length' => 6]], $this->rangesOf(false, 'the needle here', 'needle'));
+        $this->assertSame([['start' => 4, 'length' => 6]], $this->rangesOf(SearchBackend::Grep, 'the needle here', 'needle'));
         // Regex matches map the same way.
-        $this->assertSame([['start' => 4, 'length' => 6]], $this->rangesOf(false, 'the needle here', 'ne+dle', regex: true));
+        $this->assertSame([['start' => 4, 'length' => 6]], $this->rangesOf(SearchBackend::Grep, 'the needle here', 'ne+dle', options: new SearchOptions(regex: true)));
         // A multibyte prefix ("café " is 6 bytes but 5 display columns) → start 5.
-        $this->assertSame([['start' => 5, 'length' => 6]], $this->rangesOf(false, 'café needle x', 'needle'));
+        $this->assertSame([['start' => 5, 'length' => 6]], $this->rangesOf(SearchBackend::Grep, 'café needle x', 'needle'));
     }
 
     public function testPhpFallbackMatchRangesMatchGrep(): void
     {
-        $this->assertSame([['start' => 4, 'length' => 6]], $this->rangesOf(true, 'the needle here', 'needle'));
-        $this->assertSame([['start' => 5, 'length' => 6]], $this->rangesOf(true, 'café needle x', 'needle'));
+        $this->assertSame([['start' => 4, 'length' => 6]], $this->rangesOf(SearchBackend::PhpFallback, 'the needle here', 'needle'));
+        $this->assertSame([['start' => 5, 'length' => 6]], $this->rangesOf(SearchBackend::PhpFallback, 'café needle x', 'needle'));
     }
 
     /** @return list<string> sorted result paths for a mask over a fixed fixture */
-    private function maskedPaths(bool $phpFallback, string $mask): array
+    private function maskedPaths(SearchBackend $backend, string $mask): array
     {
         $project = new TempProject([
             'src/A.php' => "<?php\n// needle\n",
             'src/B.js' => "// needle\n",
             'src/C.twig' => "{# needle #}\n",
         ]);
-        if ($phpFallback) {
+        if (SearchBackend::PhpFallback === $backend) {
             putenv('PATH=/nonexistent');
         }
         $paths = array_column($this->await(new ProjectSearch($project->dir), 'needle', mask: $mask), 'path');
@@ -251,15 +249,15 @@ final class ProjectSearchTest extends TestCase
 
     public function testFileMaskRestrictsMatchedFilesWithGrep(): void
     {
-        $this->assertSame(['src/A.php'], $this->maskedPaths(false, '*.php'));
-        $this->assertSame(['src/A.php', 'src/B.js'], $this->maskedPaths(false, '*.{php,js}'), 'brace mask');
-        $this->assertSame(['src/A.php', 'src/C.twig'], $this->maskedPaths(false, '*.php, *.twig'), 'comma mask');
+        $this->assertSame(['src/A.php'], $this->maskedPaths(SearchBackend::Grep, '*.php'));
+        $this->assertSame(['src/A.php', 'src/B.js'], $this->maskedPaths(SearchBackend::Grep, '*.{php,js}'), 'brace mask');
+        $this->assertSame(['src/A.php', 'src/C.twig'], $this->maskedPaths(SearchBackend::Grep, '*.php, *.twig'), 'comma mask');
     }
 
     public function testFileMaskRestrictsMatchedFilesWithPhpFallback(): void
     {
-        $this->assertSame(['src/A.php'], $this->maskedPaths(true, '*.php'));
-        $this->assertSame(['src/A.php', 'src/B.js'], $this->maskedPaths(true, '*.{php,js}'), 'brace mask via Finder');
+        $this->assertSame(['src/A.php'], $this->maskedPaths(SearchBackend::PhpFallback, '*.php'));
+        $this->assertSame(['src/A.php', 'src/B.js'], $this->maskedPaths(SearchBackend::PhpFallback, '*.{php,js}'), 'brace mask via Finder');
     }
 
     public function testEmptyQueryReturnsNothing(): void
@@ -278,12 +276,12 @@ final class ProjectSearchTest extends TestCase
         $search = new ProjectSearch($project->dir);
 
         // Regex.
-        $this->assertNotSame([], $this->await($search, 'ne+dle', regex: true));
+        $this->assertNotSame([], $this->await($search, 'ne+dle', options: new SearchOptions(regex: true)));
         // Case-sensitive: NEEDLES does not match lowercase "needle".
-        $lines = array_column($this->await($search, 'needle', caseSensitive: true), 'line');
+        $lines = array_column($this->await($search, 'needle', options: new SearchOptions(caseSensitive: true)), 'line');
         $this->assertNotContains(2, $lines, 'case-sensitive skips $NEEDLES');
         // Whole-word: "needle" must not match inside "needless".
-        $wordLines = array_column($this->await($search, 'needle', wholeWord: true), 'line');
+        $wordLines = array_column($this->await($search, 'needle', options: new SearchOptions(wholeWord: true)), 'line');
         $this->assertNotContains(3, $wordLines, 'whole-word skips needless()');
         $this->assertContains(1, $wordLines);
     }
@@ -296,9 +294,9 @@ final class ProjectSearchTest extends TestCase
         putenv('PATH=/nonexistent');
         $search = new ProjectSearch($project->dir);
 
-        $this->assertNotSame([], $this->await($search, 'ne+dle', regex: true));
-        $this->assertNotContains(2, array_column($this->await($search, 'needle', caseSensitive: true), 'line'));
-        $wordLines = array_column($this->await($search, 'needle', wholeWord: true), 'line');
+        $this->assertNotSame([], $this->await($search, 'ne+dle', options: new SearchOptions(regex: true)));
+        $this->assertNotContains(2, array_column($this->await($search, 'needle', options: new SearchOptions(caseSensitive: true)), 'line'));
+        $wordLines = array_column($this->await($search, 'needle', options: new SearchOptions(wholeWord: true)), 'line');
         $this->assertNotContains(3, $wordLines);
         $this->assertContains(1, $wordLines);
     }
@@ -307,7 +305,7 @@ final class ProjectSearchTest extends TestCase
     {
         $project = $this->fixtures();
         // Unbalanced group is not a valid pattern.
-        $this->assertSame([], $this->await(new ProjectSearch($project->dir), 'needle(', regex: true));
+        $this->assertSame([], $this->await(new ProjectSearch($project->dir), 'needle(', options: new SearchOptions(regex: true)));
     }
 
     public function testApplyReplacement(): void
@@ -449,4 +447,11 @@ final class ProjectSearchTest extends TestCase
         $this->assertFalse($firstCompleted, 'first search superseded');
         $this->assertNotEmpty($results);
     }
+}
+
+/** Which search backend a helper exercises: the grep path or the PHP Finder fallback. */
+enum SearchBackend
+{
+    case Grep;
+    case PhpFallback;
 }

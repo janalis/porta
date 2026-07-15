@@ -6,6 +6,7 @@ namespace Porta\Tests\Unit\Git;
 
 use PHPUnit\Framework\TestCase;
 use Porta\Git\GitInfo;
+use Porta\Support\Outcome;
 use Porta\Tests\Support\TempProject;
 use Revolt\EventLoop;
 
@@ -76,14 +77,14 @@ final class GitInfoTest extends TestCase
 
         // Write operations short-circuit too.
         $staged = 'unset';
-        $git->stage($project->path('a.txt'), static function (bool $ok) use (&$staged): void {
-            $staged = $ok;
+        $git->stage($project->path('a.txt'), static function (Outcome $ok) use (&$staged): void {
+            $staged = $ok->isOk();
         });
         $this->assertFalse($staged);
 
         $committed = 'unset';
-        $git->commit('msg', static function (bool $ok) use (&$committed): void {
-            $committed = $ok;
+        $git->commit('msg', static function (Outcome $ok) use (&$committed): void {
+            $committed = $ok->isOk();
         });
         $this->assertFalse($committed);
 
@@ -120,16 +121,16 @@ final class GitInfoTest extends TestCase
         // Stage a new change.
         $project->write('a.txt', "first\nsecond\n");
         $staged = null;
-        $git->stage($project->path('a.txt'), static function (bool $ok) use (&$staged): void {
-            $staged = $ok;
+        $git->stage($project->path('a.txt'), static function (Outcome $ok) use (&$staged): void {
+            $staged = $ok->isOk();
         });
         $this->await(static fn () => null !== $staged);
         $this->assertTrue($staged, 'git add succeeded');
 
         // Commit it.
         $committed = null;
-        $git->commit('add second line', static function (bool $ok) use (&$committed): void {
-            $committed = $ok;
+        $git->commit('add second line', static function (Outcome $ok) use (&$committed): void {
+            $committed = $ok->isOk();
         });
         $this->await(static fn () => null !== $committed);
         $this->assertTrue($committed, 'git commit succeeded');

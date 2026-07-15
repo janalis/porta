@@ -6,6 +6,7 @@ namespace Porta\Widget;
 
 use Porta\Container\AsWidget;
 use Porta\Support\AnsiText;
+use Porta\Ui\CaretVisibility;
 use Porta\Ui\ColorPalette;
 use Porta\Ui\CursorStyle;
 use Porta\Ui\ListNavigation;
@@ -186,7 +187,15 @@ final class ResultsPanelWidget extends OverlayWidget implements FocusableInterfa
     /** Recompute the flattened display rows from the current results + collapse state. */
     private function rebuildView(): void
     {
-        $this->displayRows = ResultsView::build($this->results, $this->collapsed, $this->grouped, $this->filter->value(), $this->grouping, $this->contextExpanded, $this->contextCache);
+        $this->displayRows = ResultsView::build(
+            $this->results,
+            $this->collapsed,
+            $this->grouped ? ResultLayout::Grouped : ResultLayout::Flat,
+            $this->filter->value(),
+            $this->grouping,
+            $this->contextExpanded,
+            $this->contextCache,
+        );
         // Collapsing/filtering can shrink the list under the selection.
         $count = \count($this->displayRows);
         if ($count > 0 && $this->list->selected() >= $count) {
@@ -499,13 +508,19 @@ final class ResultsPanelWidget extends OverlayWidget implements FocusableInterfa
             $status .= \sprintf(' · pinned: %s', $this->pinLabel);
         }
         $showCursor = $this->focused && $this->withQuery;
-        $queryField = $this->query->render(cursor: $showCursor && 'query' === $this->activeField);
+        $queryField = $this->query->render(cursor: $showCursor && 'query' === $this->activeField ? CaretVisibility::Shown : CaretVisibility::Hidden);
         $prefix = ' '.$this->title.($this->withQuery ? ': '.$queryField : '').$this->palette->of(Role::Dim).$status."\x1b[39m";
 
         $lines[] = HeaderRenderer::render($prefix, $columns, $this->palette->of(Role::HeaderBar)."\x1b[1m");
 
         if ($this->withFilter) {
-            $lines[] = $this->fieldRow('Filter', $this->filter, 'filter', $showCursor, '  (narrows the results below)', $columns);
+            $lines[] = $this->fieldRow(
+                'Filter',
+                $this->filter,
+                $showCursor && 'filter' === $this->activeField ? CaretVisibility::Shown : CaretVisibility::Hidden,
+                '  (narrows the results below)',
+                $columns,
+            );
         }
 
         $scroll = $this->list->follow($this->visibleRows);
@@ -539,9 +554,9 @@ final class ResultsPanelWidget extends OverlayWidget implements FocusableInterfa
     }
 
     /** A labelled input header row (mask/replace), with a cursor when it is the active field. */
-    private function fieldRow(string $label, TextField $field, string $name, bool $showCursor, string $hint, int $columns): string
+    private function fieldRow(string $label, TextField $field, CaretVisibility $caret, string $hint, int $columns): string
     {
-        $rendered = $field->render(cursor: $showCursor && $name === $this->activeField);
+        $rendered = $field->render(cursor: $caret);
         $line = ' '.$label.': '.$rendered.$this->palette->of(Role::Dim).$hint."\x1b[39m";
 
         return $this->palette->of(Role::RowHighlightBg).AnsiText::scrollLineToCaret($line, $columns)."\x1b[0m";

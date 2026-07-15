@@ -32,9 +32,9 @@ final class IndentModel
      * one indent level is $size spaces, or one hard tab displayed $size columns
      * wide.
      */
-    public function set(bool $usesTabs, int $size): void
+    public function set(IndentKind $kind, int $size): void
     {
-        $this->usesTabs = $usesTabs;
+        $this->usesTabs = IndentKind::Tabs === $kind;
         $this->indentSize = max(1, $size);
         $this->tabWidth = max(1, $size);
     }

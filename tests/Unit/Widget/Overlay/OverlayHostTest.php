@@ -8,6 +8,7 @@ use PHPUnit\Framework\TestCase;
 use Porta\Search\Everywhere\SearchCategory;
 use Porta\Search\Everywhere\SearchHit;
 use Porta\Search\Everywhere\SearchRow;
+use Porta\Ui\CaretVisibility;
 use Porta\Widget\Overlay\OverlayHost;
 use Symfony\Component\Tui\Ansi\AnsiUtils;
 use Symfony\Component\Tui\Input\Key;
@@ -83,7 +84,7 @@ final class OverlayHostTest extends TestCase
         $this->assertFalse($host->isListOpen());
         // The prompt still swallows and edits input.
         $this->assertTrue($host->handleInput('4', $this->keybindings()));
-        $lines = $host->composite(['', ''], 40, 2, true);
+        $lines = $host->composite(['', ''], 40, 2, CaretVisibility::Shown);
         $this->assertStringContainsString('Go to line: 4', $lines[0]);
     }
 
@@ -116,7 +117,7 @@ final class OverlayHostTest extends TestCase
             static fn () => null,
         );
 
-        $host->composite(array_fill(0, count: 20, value: str_repeat(' ', times: 80)), 80, 20, true);
+        $host->composite(array_fill(0, count: 20, value: str_repeat(' ', times: 80)), 80, 20, CaretVisibility::Shown);
 
         // Hovering the second item row moves the selection exactly once.
         $moved = false;
@@ -281,7 +282,7 @@ final class OverlayHostTest extends TestCase
 
         // A 3-line canvas cannot hold the box (title + query + rows) → the
         // compositor stops early rather than writing past the last line.
-        $lines = $host->composite(['', '', ''], 80, 20, false);
+        $lines = $host->composite(['', '', ''], 80, 20, CaretVisibility::Hidden);
         $this->assertCount(3, $lines);
     }
 
@@ -301,7 +302,7 @@ final class OverlayHostTest extends TestCase
             )),
         ]);
 
-        $lines = $host->composite(array_fill(0, count: 20, value: str_repeat(' ', times: 80)), 80, 20, true);
+        $lines = $host->composite(array_fill(0, count: 20, value: str_repeat(' ', times: 80)), 80, 20, CaretVisibility::Shown);
         foreach ($lines as $i => $line) {
             $this->assertSame(80, AnsiUtils::visibleWidth($line), "composited row {$i} must stay 80 columns");
         }
@@ -323,7 +324,7 @@ final class OverlayHostTest extends TestCase
             },
         );
         $host->setSearchRows($this->searchRows(static fn () => null));
-        $host->composite(array_fill(0, count: 20, value: str_repeat(' ', times: 80)), 80, 20, true);
+        $host->composite(array_fill(0, count: 20, value: str_repeat(' ', times: 80)), 80, 20, CaretVisibility::Shown);
 
         // Hover finds a hit row; clicking it picks that hit.
         $hitRow = -1;
@@ -353,7 +354,7 @@ final class OverlayHostTest extends TestCase
             ++$closed;
         });
         $host->setSearchRows($this->searchRows(static fn () => null));
-        $host->composite(array_fill(0, count: 20, value: str_repeat(' ', times: 80)), 80, 20, true);
+        $host->composite(array_fill(0, count: 20, value: str_repeat(' ', times: 80)), 80, 20, CaretVisibility::Shown);
 
         // Move the selection off the top hit so its row becomes hover-selectable,
         // then the topmost hover-selectable row is the first hit — its category

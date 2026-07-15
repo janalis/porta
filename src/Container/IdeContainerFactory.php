@@ -35,7 +35,7 @@ use Symfony\Component\Filesystem\Exception\IOException;
  */
 final class IdeContainerFactory
 {
-    public function build(string $rootDir, IdeConfig $config, bool $ansi, ?string $lspCommand = null, bool $lspDisabled = false, string $docsDir = ''): ContainerInterface
+    public function build(string $rootDir, IdeConfig $config, Ansi $ansi, ?string $lspCommand = null, LspMode $lsp = LspMode::Enabled, string $docsDir = ''): ContainerInterface
     {
         // Per-boot values go through $_ENV — the env processor reads $_ENV
         // first, and unlike putenv() nothing leaks into the PTY shells spawned
@@ -43,10 +43,10 @@ final class IdeContainerFactory
         // arrays travel JSON-encoded and resolve via env()->json() args.
         $_ENV['PORTA_ROOT_DIR'] = $rootDir;
         $_ENV['PORTA_LOCALE'] = (string) ($config->settings['language'] ?? 'en');
-        $_ENV['PORTA_ANSI'] = $ansi ? '1' : '0';
+        $_ENV['PORTA_ANSI'] = Ansi::Enabled === $ansi ? '1' : '0';
         $_ENV['PORTA_THEME'] = (string) ($config->settings['theme'] ?? 'dark');
         $_ENV['PORTA_LSP_COMMAND'] = $lspCommand ?? ''; // '' resolves to null via env(default::…)
-        $_ENV['PORTA_LSP_DISABLED'] = $lspDisabled ? '1' : '0';
+        $_ENV['PORTA_LSP_DISABLED'] = LspMode::Disabled === $lsp ? '1' : '0';
         $_ENV['PORTA_DOCS_DIR'] = $docsDir;
         $_ENV['PORTA_SETTINGS'] = json_encode($config->settings, \JSON_THROW_ON_ERROR);
         $_ENV['PORTA_LANGUAGES'] = json_encode($config->languages, \JSON_THROW_ON_ERROR);
@@ -55,7 +55,7 @@ final class IdeContainerFactory
 
         $cacheDir = $this->cacheDir();
         if (null === $cacheDir || 'off' === getenv('PORTA_CONTAINER_CACHE')) {
-            return $this->compileFresh(forDump: false);
+            return $this->compileFresh(CompileTarget::Direct);
         }
 
         // The cache dir is folded into the hash so distinct cache dirs yield
@@ -70,19 +70,19 @@ final class IdeContainerFactory
             // Compiled for the dump: env placeholders stay unresolved so the
             // file is project-independent. A builder served directly instead
             // must be recompiled with build-time env resolution (rare paths).
-            $builder = $this->compileFresh(forDump: true);
+            $builder = $this->compileFresh(CompileTarget::Dump);
             try {
                 $dump = new PhpDumper($builder)->dump(['class' => $class]);
                 \assert(\is_string($dump), description: 'PhpDumper::dump returns a string when no class array is requested');
                 $cache->write($dump, $builder->getResources());
             } catch (IOException) {
-                return $this->compileFresh(forDump: false); // unwritable cache dir: serve this boot uncached
+                return $this->compileFresh(CompileTarget::Direct); // unwritable cache dir: serve this boot uncached
             }
             if (class_exists($class, false)) {
                 // The stale dump is already loaded in this process and PHP
                 // cannot redeclare it. Serve a direct-use build now — the
                 // rewritten file benefits the next process.
-                return $this->compileFresh(forDump: false);
+                return $this->compileFresh(CompileTarget::Direct);
             }
         }
 
@@ -95,15 +95,16 @@ final class IdeContainerFactory
     }
 
     /**
-     * @param bool $forDump false resolves %env()% placeholders at build time from the
-     *                      just-seeded $_ENV (required when the builder is used directly);
-     *                      true keeps them as runtime lookups for the dumped class
+     * @param CompileTarget $target {@see CompileTarget::Direct} resolves %env()% placeholders at build
+     *                              time from the just-seeded $_ENV (required when the builder is used
+     *                              directly); {@see CompileTarget::Dump} keeps them as runtime lookups
+     *                              for the dumped class
      */
-    private function compileFresh(bool $forDump): ContainerBuilder
+    private function compileFresh(CompileTarget $target): ContainerBuilder
     {
         $container = new ContainerBuilder();
         new PhpFileLoader($container, new FileLocator(\dirname(__DIR__, levels: 2).'/config'))->load('services.php');
-        $container->compile(resolveEnvPlaceholders: !$forDump);
+        $container->compile(resolveEnvPlaceholders: CompileTarget::Direct === $target);
 
         return $container;
     }

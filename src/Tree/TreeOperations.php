@@ -7,6 +7,7 @@ namespace Porta\Tree;
 use Porta\Editor\BufferManager;
 use Porta\Editor\BufferService;
 use Porta\Editor\Document;
+use Porta\Editor\OpenFocus;
 use Porta\I18n\Translator;
 use Porta\Search\ProjectSearchController;
 use Porta\Search\SearchActions;
@@ -64,14 +65,14 @@ final class TreeOperations
             $items[] = new MenuItem($this->translator->trans('Add to Search Scopes'), '', fn () => $this->projectSearch->addSearchScope($node['path']));
             $items[] = MenuItem::separator();
         }
-        $items[] = new MenuItem($this->translator->trans('Copy Path'), '', fn () => $this->copyPath($node['path'], false));
-        $items[] = new MenuItem($this->translator->trans('Copy Relative Path'), '', fn () => $this->copyPath($node['path'], true));
+        $items[] = new MenuItem($this->translator->trans('Copy Path'), '', fn () => $this->copyAbsolutePath($node['path']));
+        $items[] = new MenuItem($this->translator->trans('Copy Relative Path'), '', fn () => $this->copyRelativePath($node['path']));
         $items[] = MenuItem::separator();
         $items[] = new MenuItem($this->translator->trans('Rename…'), '', fn () => $this->treeRename($node));
         $items[] = new MenuItem($this->translator->trans('Delete…'), '', fn () => $this->treeDelete($node));
         $items[] = MenuItem::separator();
         if (!$node['isDir']) {
-            $items[] = new MenuItem($this->translator->trans('Open'), '', fn () => $this->bufferService->openFile($node['path'], focusEditor: true));
+            $items[] = new MenuItem($this->translator->trans('Open'), '', fn () => $this->bufferService->openFile($node['path'], focus: OpenFocus::Editor));
         }
         $items[] = new MenuItem($this->translator->trans('Refresh'), '', fn () => $this->tree->refresh());
 
@@ -100,7 +101,7 @@ final class TreeOperations
             $this->withFs($this->translator->trans('Cannot create %file%', ['%file%' => $this->relativePath($path)]), function () use ($path): void {
                 new Filesystem()->dumpFile($path, '');
                 $this->tree->refresh();
-                $this->bufferService->openFile($path, focusEditor: true);
+                $this->bufferService->openFile($path, focus: OpenFocus::Editor);
                 $this->notifier->flash($this->translator->trans('Created %file%', ['%file%' => $this->relativePath($path)]));
             });
         });
@@ -177,9 +178,18 @@ final class TreeOperations
         });
     }
 
-    private function copyPath(string $path, bool $relative): void
+    private function copyAbsolutePath(string $path): void
     {
-        $text = $relative ? $this->relativePath($path) : $path;
+        $this->copyToClipboard($path);
+    }
+
+    private function copyRelativePath(string $path): void
+    {
+        $this->copyToClipboard($this->relativePath($path));
+    }
+
+    private function copyToClipboard(string $text): void
+    {
         $this->clipboard->copy($text);
         $this->notifier->flash($this->translator->trans('Copied %text%', ['%text%' => $text]));
     }

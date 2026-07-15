@@ -6,6 +6,7 @@ namespace Porta\Lsp;
 
 use Porta\Editor\BufferManager;
 use Porta\Editor\FileOpener;
+use Porta\Editor\OpenFocus;
 use Porta\I18n\Translator;
 use Porta\Support\DocsUrlOpener;
 use Porta\Support\NativeDocs;
@@ -60,7 +61,7 @@ final class NavigationController extends AbstractLspController implements Editor
             return;
         }
 
-        $this->requestGoTo('textDocument/definition', $this->trans('No definition found'), $line, $utf16Col, usagesWhenOnDeclaration: true);
+        $this->requestGoTo('textDocument/definition', $this->trans('No definition found'), $line, $utf16Col, NavigationMode::UsagesOnDeclaration);
     }
 
     /** Docs URL when the word at the requested position is a native symbol of the buffer's language. */
@@ -90,27 +91,27 @@ final class NavigationController extends AbstractLspController implements Editor
     /**
      * Shared "go to X" navigation: jumps to the single target, or offers a
      * chooser in the results panel when the server returns several. With
-     * $usagesWhenOnDeclaration, a target that contains the requested position
-     * means the caret already sits on the declaration — PhpStorm's "Go to
-     * Declaration or Usages" then shows the symbol's usages instead.
+     * {@see NavigationMode::UsagesOnDeclaration}, a target that contains the
+     * requested position means the caret already sits on the declaration —
+     * PhpStorm's "Go to Declaration or Usages" then shows the usages instead.
      */
-    private function requestGoTo(string $method, string $notFound, int $line, int $utf16Col, bool $usagesWhenOnDeclaration = false): void
+    private function requestGoTo(string $method, string $notFound, int $line, int $utf16Col, NavigationMode $mode = NavigationMode::Jump): void
     {
-        if (null === ($path = $this->ready(flush: false))) {
+        if (null === ($path = $this->ready(flush: FlushMode::Keep))) {
             return;
         }
 
         $this->lsp->request(
             $method,
             $this->positionParams($path, $line, $utf16Col),
-            function (mixed $result, ?array $error) use ($notFound, $path, $line, $utf16Col, $usagesWhenOnDeclaration): void {
+            function (mixed $result, ?array $error) use ($notFound, $path, $line, $utf16Col, $mode): void {
                 $locations = LspMapper::allLocations($result);
                 if (null !== $error || [] === $locations) {
                     $this->flash($notFound);
 
                     return;
                 }
-                if ($usagesWhenOnDeclaration && $this->caretOnDeclaration($locations, $path, $line, $utf16Col)) {
+                if (NavigationMode::UsagesOnDeclaration === $mode && $this->caretOnDeclaration($locations, $path, $line, $utf16Col)) {
                     $this->requestReferences($line, $utf16Col);
 
                     return;
@@ -163,7 +164,7 @@ final class NavigationController extends AbstractLspController implements Editor
         $line = (int) ($location['range']['start']['line'] ?? 0);
         $character = (int) ($location['range']['start']['character'] ?? 0);
         if ($target !== $this->editor->getFilePath()) {
-            $this->files->openFile($target, focusEditor: true);
+            $this->files->openFile($target, focus: OpenFocus::Editor);
         }
         $this->editor->jumpTo($line, $character);
         $this->tui->requestRender();
@@ -237,7 +238,7 @@ final class NavigationController extends AbstractLspController implements Editor
         }
 
         if ($previous['path'] !== $this->editor->getFilePath()) {
-            $this->files->openFile($previous['path'], focusEditor: true);
+            $this->files->openFile($previous['path'], focus: OpenFocus::Editor);
         }
         $this->editor->getDocument()->setCursor($previous['line'], $previous['col']);
         $this->editor->invalidate(); // render pass scrolls the cursor back into view
@@ -379,7 +380,7 @@ final class NavigationController extends AbstractLspController implements Editor
                 $title = 'Peek: '.ProjectPaths::relative($this->rootDir, $target).':'.($targetLine + 1);
                 $this->editor->openListOverlay($title, $items, function (string $value): void {
                     [$file, $lineNo] = [substr($value, offset: 0, length: (int) strrpos($value, needle: ':')), (int) substr($value, (int) strrpos($value, needle: ':') + 1)];
-                    $this->files->openFile($file, focusEditor: true);
+                    $this->files->openFile($file, focus: OpenFocus::Editor);
                     $this->editor->jumpTo($lineNo, 0);
                     $this->tui->requestRender();
                 });

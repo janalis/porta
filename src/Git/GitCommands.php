@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Porta\Git;
 
 use Porta\I18n\Translator;
+use Porta\Support\Outcome;
 use Porta\Support\ProjectPaths;
 use Porta\Ui\Notifier;
 use Porta\Ui\WorkspaceViews;
@@ -40,9 +41,9 @@ final class GitCommands
 
             return;
         }
-        $this->git->stage($path, function (bool $ok) use ($path): void {
+        $this->git->stage($path, function (Outcome $ok) use ($path): void {
             $this->notifier->flash(
-                $ok
+                $ok->isOk()
                     ? $this->translator->trans('Staged %path%', ['%path%' => ProjectPaths::relative($this->rootDir, $path)])
                     : $this->translator->trans('Stage failed'),
             );
@@ -63,9 +64,9 @@ final class GitCommands
             if ('' === trim($message)) {
                 return;
             }
-            $this->git->commit($message, function (bool $ok) use ($message): void {
+            $this->git->commit($message, function (Outcome $ok) use ($message): void {
                 $this->notifier->flash(
-                    $ok
+                    $ok->isOk()
                         ? $this->translator->trans('Committed: %summary%', ['%summary%' => $message])
                         : $this->translator->trans('Commit failed (nothing staged?)'),
                 );
@@ -107,9 +108,9 @@ final class GitCommands
 
             return;
         }
-        $this->git->stashPush(function (bool $ok, string $line): void {
-            $this->notifier->flash($ok ? $line : $this->translator->trans('Stash failed'), $ok ? 3.0 : 6.0);
-            if ($ok) {
+        $this->git->stashPush(function (Outcome $ok, string $line): void {
+            $this->notifier->flash($ok->isOk() ? $line : $this->translator->trans('Stash failed'), $ok->isOk() ? 3.0 : 6.0);
+            if ($ok->isOk()) {
                 $this->refresher->refreshActiveMarks();
             }
             $this->tui->requestRender();
@@ -124,7 +125,7 @@ final class GitCommands
 
             return;
         }
-        $this->git->stashPop(null, fn (bool $ok, string $error) => $this->finishSwitch($ok, $this->stashError($error), $this->translator->trans('Stash popped')));
+        $this->git->stashPop(null, fn (Outcome $ok, string $error) => $this->finishSwitch($ok, $this->stashError($error), $this->translator->trans('Stash popped')));
     }
 
     /** The stash picker: pick a stash, then apply, pop or drop it. */
@@ -160,19 +161,19 @@ final class GitCommands
                     ],
                     function (string $action) use ($ref): void {
                         match ($action) {
-                            'apply' => $this->git->stashApply($ref, fn (bool $ok, string $error) => $this->finishSwitch(
+                            'apply' => $this->git->stashApply($ref, fn (Outcome $ok, string $error) => $this->finishSwitch(
                                 $ok,
                                 $this->stashError($error),
                                 $this->translator->trans('Applied %stash%', ['%stash%' => $ref]),
                             )),
-                            'pop' => $this->git->stashPop($ref, fn (bool $ok, string $error) => $this->finishSwitch(
+                            'pop' => $this->git->stashPop($ref, fn (Outcome $ok, string $error) => $this->finishSwitch(
                                 $ok,
                                 $this->stashError($error),
                                 $this->translator->trans('Popped %stash%', ['%stash%' => $ref]),
                             )),
                             // Drop never touches the worktree — no marks refresh.
-                            'drop' => $this->git->stashDrop($ref, function (bool $ok, string $error) use ($ref): void {
-                                $this->notifier->flash($ok ? $this->translator->trans('Dropped %stash%', ['%stash%' => $ref]) : $error, $ok ? 3.0 : 6.0);
+                            'drop' => $this->git->stashDrop($ref, function (Outcome $ok, string $error) use ($ref): void {
+                                $this->notifier->flash($ok->isOk() ? $this->translator->trans('Dropped %stash%', ['%stash%' => $ref]) : $error, $ok->isOk() ? 3.0 : 6.0);
                                 $this->tui->requestRender();
                             }),
                             default => null,
@@ -204,9 +205,9 @@ final class GitCommands
 
             return;
         }
-        $this->git->undoLastCommit(function (bool $ok): void {
+        $this->git->undoLastCommit(function (Outcome $ok): void {
             $this->notifier->flash(
-                $ok
+                $ok->isOk()
                     ? $this->translator->trans('Last commit undone (changes kept staged)')
                     : $this->translator->trans('Nothing to undo'),
             );
@@ -308,8 +309,8 @@ final class GitCommands
                         }
                         // -d only: an unmerged branch fails with git's message,
                         // which itself names the -D escape hatch.
-                        $this->git->deleteBranch($name, function (bool $ok, string $error) use ($name): void {
-                            $this->notifier->flash($ok ? $this->translator->trans('Deleted branch %branch%', ['%branch%' => $name]) : $error, $ok ? 3.0 : 6.0);
+                        $this->git->deleteBranch($name, function (Outcome $ok, string $error) use ($name): void {
+                            $this->notifier->flash($ok->isOk() ? $this->translator->trans('Deleted branch %branch%', ['%branch%' => $name]) : $error, $ok->isOk() ? 3.0 : 6.0);
                             $this->tui->requestRender();
                         });
                     },
@@ -324,7 +325,7 @@ final class GitCommands
     {
         $slash = strpos($remoteBranch, needle: '/');
         $local = false === $slash ? $remoteBranch : substr($remoteBranch, $slash + 1);
-        $this->git->checkoutTracking($remoteBranch, fn (bool $ok, string $error) => $this->finishSwitch($ok, $error, $this->translator->trans('Switched to %branch% (tracking %remote%)', [
+        $this->git->checkoutTracking($remoteBranch, fn (Outcome $ok, string $error) => $this->finishSwitch($ok, $error, $this->translator->trans('Switched to %branch% (tracking %remote%)', [
             '%branch%' => $local,
             '%remote%' => $remoteBranch,
         ])));
@@ -337,20 +338,20 @@ final class GitCommands
             if ('' === $name) {
                 return;
             }
-            $this->git->createBranch($name, fn (bool $ok, string $error) => $this->finishSwitch($ok, $error, $this->translator->trans('Created and switched to %branch%', ['%branch%' => $name])));
+            $this->git->createBranch($name, fn (Outcome $ok, string $error) => $this->finishSwitch($ok, $error, $this->translator->trans('Created and switched to %branch%', ['%branch%' => $name])));
         });
         $this->tui->requestRender();
     }
 
     private function checkout(string $branch): void
     {
-        $this->git->checkout($branch, fn (bool $ok, string $error) => $this->finishSwitch($ok, $error, $this->translator->trans('Switched to %branch%', ['%branch%' => $branch])));
+        $this->git->checkout($branch, fn (Outcome $ok, string $error) => $this->finishSwitch($ok, $error, $this->translator->trans('Switched to %branch%', ['%branch%' => $branch])));
     }
 
-    private function finishSwitch(bool $ok, string $error, string $success): void
+    private function finishSwitch(Outcome $ok, string $error, string $success): void
     {
-        $this->notifier->flash($ok ? $success : $error, $ok ? 3.0 : 6.0);
-        if ($ok) {
+        $this->notifier->flash($ok->isOk() ? $success : $error, $ok->isOk() ? 3.0 : 6.0);
+        if ($ok->isOk()) {
             // HEAD moved and files may have changed on disk; the filesystem
             // poll reconciles open buffers, these refresh the chrome now.
             $this->refresher->refreshBranch();

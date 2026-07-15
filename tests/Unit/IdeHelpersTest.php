@@ -6,6 +6,7 @@ namespace Porta\Tests\Unit;
 
 use PHPUnit\Framework\TestCase;
 use Porta\Editor\Document;
+use Porta\Editor\OpenFocus;
 use Porta\History\LocalHistoryController;
 use Porta\Ide;
 use Porta\Lsp\LspMapper;
@@ -636,7 +637,7 @@ final class IdeHelpersTest extends TestCase
 
         // The same path already open as SOURCE re-shows the text buffer.
         $buffers->closeActiveBuffer();
-        $buffers->openFile($readme, focusEditor: true);
+        $buffers->openFile($readme, focus: OpenFocus::Editor);
         $buffers->openHelp($readme);
         $this->assertFalse($manager->active()?->isHelp(), 'the editable source tab wins');
     }
@@ -666,7 +667,7 @@ final class IdeHelpersTest extends TestCase
         $this->assertSame($editor, $viewer->path());
 
         // A round trip through a code tab keeps the navigated page and history.
-        $buffers->openFile($code, focusEditor: true);
+        $buffers->openFile($code, focus: OpenFocus::Editor);
         $this->assertSame($editor, $viewer->path(), 'switching tabs no longer clears the viewer');
         $buffers->openHelp($readme);
         $this->assertSame($editor, $viewer->path(), 're-activating the help tab keeps the navigated page');

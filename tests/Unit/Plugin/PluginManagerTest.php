@@ -6,6 +6,7 @@ namespace Porta\Tests\Unit\Plugin;
 
 use PHPUnit\Framework\TestCase;
 use Porta\Config\CommandRegistry;
+use Porta\Config\KeyDispatch;
 use Porta\Editor\Buffer;
 use Porta\Editor\BufferManager;
 use Porta\Event\BufferOpened;
@@ -95,7 +96,7 @@ final class PluginManagerTest extends TestCase
         $settings = new PluginSettings('/p', []);
         $manager = new PluginManager($events, $settings);
         $registry = new CommandRegistry();
-        $registry->add('core:stay', static function (): void {}, keyBound: true, label: 'Core');
+        $registry->add('core:stay', static function (): void {}, keyBound: KeyDispatch::Bound, label: 'Core');
 
         $api = new PluginApi('demo', $manager, '/p', $settings);
         $api->registerSetting('binary', 'Binary', 'text', '');

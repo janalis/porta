@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace Porta\Lsp;
 
+use Porta\Support\Outcome;
+
 /**
  * The transport surface an {@see LspSession} drives. Extracting it lets the
  * session (and the feature controllers above it) be unit-tested against an
@@ -26,7 +28,7 @@ interface LspClientInterface
     public function onApplyEdit(callable $handler): void;
 
     /**
-     * @param callable(bool): void $onReady called with true on success
+     * @param callable(Outcome): void $onReady called with true on success
      */
     public function start(callable $onReady): void;
 

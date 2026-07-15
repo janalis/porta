@@ -14,6 +14,7 @@ use Porta\Config\SettingsLspController;
 use Porta\Config\SettingsPluginsController;
 use Porta\Debug\DebugAdapters;
 use Porta\Editor\BufferManager;
+use Porta\Highlight\ColorMode;
 use Porta\Highlight\TerminalThemeFactory;
 use Porta\I18n\Translator;
 use Porta\Layout\EditorAreaPanes;
@@ -104,8 +105,8 @@ final class SettingsViewControllerTest extends TestCase
         $status = new StatusBarWidget();
         $notifier = new Notifier($status, $this->tui);
         $applier = new LiveSettingsApplier(
-            PaletteFactory::createSwitchable(true, 'dark'),
-            TerminalThemeFactory::createSwitchable(true, 'dark'),
+            PaletteFactory::createSwitchable(ColorMode::Ansi, 'dark'),
+            TerminalThemeFactory::createSwitchable(ColorMode::Ansi, 'dark'),
             new CursorStyle(),
             new Translator('en'),
             new BufferManager(),

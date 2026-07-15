@@ -6,6 +6,7 @@ namespace Porta\Search\Everywhere;
 
 use Porta\Editor\BufferManager;
 use Porta\Editor\FileOpener;
+use Porta\Editor\OpenFocus;
 use Porta\Support\ProjectPaths;
 use Porta\Support\Scheduler;
 use Symfony\Component\Tui\Tui;
@@ -143,7 +144,7 @@ final class SearchEverywhereController
                 basename($relative),
                 '.' === $dir ? '' : $dir,
                 function () use ($absolute): void {
-                    $this->files->openFile($absolute, true);
+                    $this->files->openFile($absolute, OpenFocus::Editor);
                 },
             );
         }

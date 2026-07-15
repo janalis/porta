@@ -40,17 +40,17 @@ final class SearchScopeStore
     /** @param list<string> $paths */
     public function addRecent(string $label, array $paths): void
     {
-        $this->promote($label, $paths, pinned: false);
+        $this->promote($label, $paths, ScopePersistence::Recent);
     }
 
     /** @param list<string> $paths */
     public function addPinned(string $label, array $paths): void
     {
-        $this->promote($label, $paths, pinned: true);
+        $this->promote($label, $paths, ScopePersistence::Pinned);
     }
 
     /** @param list<string> $paths */
-    private function promote(string $label, array $paths, bool $pinned): void
+    private function promote(string $label, array $paths, ScopePersistence $persistence): void
     {
         $existing = null;
         foreach ($this->scopes as $scope) {
@@ -66,7 +66,7 @@ final class SearchScopeStore
         array_unshift($this->scopes, [
             'label' => $label,
             'paths' => $paths,
-            'pinned' => $pinned || ($existing['pinned'] ?? false), // a pin sticks once set
+            'pinned' => ScopePersistence::Pinned === $persistence || ($existing['pinned'] ?? false), // a pin sticks once set
         ]);
         $this->evictRecent();
         $this->save();

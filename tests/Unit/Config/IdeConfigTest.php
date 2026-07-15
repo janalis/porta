@@ -398,16 +398,16 @@ final class IdeConfigTest extends TestCase
 
         $this->assertTrue(IdeConfig::persistPluginSetting($project->dir, 'phpstan', 'binary', '/opt/x'));
         $this->assertTrue(IdeConfig::persistPluginSetting($project->dir, 'phpstan', 'strict', true));
-        $this->assertTrue(IdeConfig::persistPluginEnabled($project->dir, 'psalm', false));
-        $this->assertTrue(IdeConfig::persistPluginEnabled($project->dir, 'mago', false));
-        $this->assertTrue(IdeConfig::persistPluginEnabled($project->dir, 'psalm', true));
+        $this->assertTrue(IdeConfig::persistPluginDisabled($project->dir, 'psalm'));
+        $this->assertTrue(IdeConfig::persistPluginDisabled($project->dir, 'mago'));
+        $this->assertTrue(IdeConfig::persistPluginEnabled($project->dir, 'psalm'));
 
         $written = json_decode((string) file_get_contents($project->path('.porta.json')), associative: true);
         $this->assertSame(['binary' => '/opt/x', 'strict' => true], $written['plugins']['phpstan']);
         $this->assertSame('light', $written['settings']['theme'], 'unrelated keys preserved');
         $this->assertSame(['mago'], $written['disabledPlugins'], 're-enabling removes the entry');
 
-        $this->assertTrue(IdeConfig::persistPluginEnabled($project->dir, 'mago', true));
+        $this->assertTrue(IdeConfig::persistPluginEnabled($project->dir, 'mago'));
         $written = json_decode((string) file_get_contents($project->path('.porta.json')), associative: true);
         $this->assertArrayNotHasKey('disabledPlugins', $written, 'an emptied list is dropped');
     }

@@ -41,9 +41,14 @@ final class FakePluginLifecycle implements PluginLifecycleOps
         $this->deactivated[] = $name;
     }
 
-    public function setEnabled(string $name, bool $enabled): void
+    public function enable(string $name): void
     {
-        $this->toggled[] = [$name, $enabled];
+        $this->toggled[] = [$name, true];
+    }
+
+    public function disable(string $name): void
+    {
+        $this->toggled[] = [$name, false];
     }
 
     public function isDisabled(string $name): bool

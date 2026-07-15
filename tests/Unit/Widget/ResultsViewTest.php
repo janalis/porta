@@ -6,6 +6,7 @@ namespace Porta\Tests\Unit\Widget;
 
 use PHPUnit\Framework\TestCase;
 use Porta\Widget\ResultGrouping;
+use Porta\Widget\ResultLayout;
 use Porta\Widget\ResultsView;
 
 final class ResultsViewTest extends TestCase
@@ -18,7 +19,7 @@ final class ResultsViewTest extends TestCase
 
     public function testFlatModeIsOneMatchRowPerResult(): void
     {
-        $rows = ResultsView::build([$this->hit('a.php', 0), $this->hit('b.php', 1)], [], grouped: false);
+        $rows = ResultsView::build([$this->hit('a.php', 0), $this->hit('b.php', 1)], [], grouped: ResultLayout::Flat);
 
         $this->assertCount(2, $rows);
         $this->assertNull($rows[0]->filePath, 'flat rows are all matches');
@@ -29,7 +30,7 @@ final class ResultsViewTest extends TestCase
     public function testGroupedModeInsertsFileHeadersWithCounts(): void
     {
         $results = [$this->hit('a.php', 0), $this->hit('a.php', 5), $this->hit('b.php', 2)];
-        $rows = ResultsView::build($results, [], grouped: true);
+        $rows = ResultsView::build($results, [], grouped: ResultLayout::Grouped);
 
         // file a (2) · match0 · match1 · file b (1) · match2
         $this->assertCount(5, $rows);
@@ -51,17 +52,17 @@ final class ResultsViewTest extends TestCase
         ];
 
         // text match
-        $byText = ResultsView::build($results, [], grouped: false, filter: 'alpha');
+        $byText = ResultsView::build($results, [], grouped: ResultLayout::Flat, filter: 'alpha');
         $this->assertCount(1, $byText);
         $this->assertSame(0, $byText[0]->matchIndex);
 
         // path match, case-insensitive
-        $byPath = ResultsView::build($results, [], grouped: false, filter: 'web');
+        $byPath = ResultsView::build($results, [], grouped: ResultLayout::Flat, filter: 'web');
         $this->assertCount(1, $byPath);
         $this->assertSame(1, $byPath[0]->matchIndex);
 
         // empty filter keeps everything
-        $this->assertCount(2, ResultsView::build($results, [], grouped: false, filter: ''));
+        $this->assertCount(2, ResultsView::build($results, [], grouped: ResultLayout::Flat, filter: ''));
     }
 
     public function testFilterDropsEmptyGroupsAndRecountsGrouped(): void
@@ -71,7 +72,7 @@ final class ResultsViewTest extends TestCase
             ['path' => 'src/A.php', 'line' => 4, 'text' => 'drop me', 'ranges' => []],
             ['path' => 'src/B.php', 'line' => 2, 'text' => 'drop me', 'ranges' => []],
         ];
-        $rows = ResultsView::build($results, [], grouped: true, filter: 'keep');
+        $rows = ResultsView::build($results, [], grouped: ResultLayout::Grouped, filter: 'keep');
 
         // Only src/A.php retains a match → header(1) + its one match; src/B.php is gone.
         $this->assertCount(2, $rows);
@@ -86,7 +87,7 @@ final class ResultsViewTest extends TestCase
             ['path' => 'src/A.php', 'line' => 0, 'text' => 'keep me', 'ranges' => []],
             ['path' => 'src/B.php', 'line' => 2, 'text' => 'drop me', 'ranges' => []],
         ];
-        $rows = ResultsView::build($results, [], grouped: true, filter: 'keep', grouping: ResultGrouping::Nested);
+        $rows = ResultsView::build($results, [], grouped: ResultLayout::Grouped, filter: 'keep', grouping: ResultGrouping::Nested);
 
         // Only src/ (dir header) + src/A.php (file header) + its match survive;
         // the filtered-out B.php never reaches a row.
@@ -99,7 +100,7 @@ final class ResultsViewTest extends TestCase
     public function testCollapsedFileHidesItsMatchesButKeepsTheHeader(): void
     {
         $results = [$this->hit('a.php', 0), $this->hit('a.php', 5), $this->hit('b.php', 2)];
-        $rows = ResultsView::build($results, ['a.php' => true], grouped: true);
+        $rows = ResultsView::build($results, ['a.php' => true], grouped: ResultLayout::Grouped);
 
         // file a (collapsed) · file b · match2
         $this->assertCount(3, $rows);

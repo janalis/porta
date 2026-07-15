@@ -7,12 +7,14 @@ namespace Porta\Widget\Overlay;
 use Porta\Search\Everywhere\SearchHit;
 use Porta\Search\Everywhere\SearchRow;
 use Porta\Support\AnsiText;
+use Porta\Ui\CaretVisibility;
 use Porta\Ui\ColorPalette;
 use Porta\Ui\CursorStyle;
 use Porta\Ui\Palette;
 use Porta\Ui\Role;
 use Porta\Ui\TextField;
 use Porta\Widget\Render\EditorRenderer;
+use Porta\Widget\Render\PaneFocus;
 use Symfony\Component\Tui\Ansi\AnsiUtils;
 use Symfony\Component\Tui\Input\Keybindings;
 
@@ -432,7 +434,7 @@ final class OverlayHost
      *
      * @return list<string>
      */
-    public function composite(array $lines, int $columns, int $rows, bool $focused): array
+    public function composite(array $lines, int $columns, int $rows, CaretVisibility $focused): array
     {
         $this->overlayBox = null;
         if (null !== $this->overlay) {
@@ -453,7 +455,7 @@ final class OverlayHost
                 $rows,
                 $search->title,
                 $search->query->value(),
-                $focused,
+                CaretVisibility::Shown === $focused ? PaneFocus::Focused : PaneFocus::Blurred,
                 $rowModels,
                 $search->selected,
                 $this->palette,

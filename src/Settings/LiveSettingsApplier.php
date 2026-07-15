@@ -9,6 +9,7 @@ use Porta\Event\CursorShapeChanged;
 use Porta\Event\LocaleChanged;
 use Porta\Event\TabBarPositionChanged;
 use Porta\Event\ThemeChanged;
+use Porta\Highlight\ColorMode;
 use Porta\Highlight\SwitchableTerminalTheme;
 use Porta\Highlight\TerminalThemeFactory;
 use Porta\I18n\Translator;
@@ -54,8 +55,8 @@ final class LiveSettingsApplier
      */
     public function applyTheme(string $theme): void
     {
-        $this->palette->switchTo(PaletteFactory::create($this->ansi, $theme));
-        $this->syntaxTheme->switchTo(TerminalThemeFactory::create($this->ansi, $theme));
+        $this->palette->switchTo(PaletteFactory::create($this->ansi ? ColorMode::Ansi : ColorMode::Plain, $theme));
+        $this->syntaxTheme->switchTo(TerminalThemeFactory::create($this->ansi ? ColorMode::Ansi : ColorMode::Plain, $theme));
         // Existing highlighters baked the old theme at construction, so rebuild
         // them (the diff view re-highlights its shown hunks in the same step);
         // buffers opened later pick up the new theme from the swapped holder.
@@ -67,10 +68,16 @@ final class LiveSettingsApplier
         $this->dispatcher->dispatch(new ThemeChanged($theme));
     }
 
-    /** Live formatOnSave toggle: the flag holder the save path consults. */
-    public function applyFormatOnSave(bool $enabled): void
+    /** Live formatOnSave enable: the flag holder the save path consults. */
+    public function enableFormatOnSave(): void
     {
-        $this->formatOnSave->setEnabled($enabled);
+        $this->formatOnSave->enable();
+    }
+
+    /** Live formatOnSave disable: the flag holder the save path consults. */
+    public function disableFormatOnSave(): void
+    {
+        $this->formatOnSave->disable();
     }
 
     /** Live UI-locale switch: point the translator at $locale and announce it. */

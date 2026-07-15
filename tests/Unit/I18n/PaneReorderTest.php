@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Porta\Tests\Unit\I18n;
 
 use PHPUnit\Framework\TestCase;
+use Porta\I18n\BaseDirection;
 use Porta\I18n\Bidi;
 use Porta\I18n\PaneReorder;
 use Symfony\Component\Tui\Ansi\AnsiUtils;
@@ -78,7 +79,7 @@ final class PaneReorderTest extends TestCase
         $slice = AnsiUtils::sliceByColumn($line, 2, 4, strict: true);
 
         $this->assertSame(
-            2 + Bidi::visualToLogicalColumn($slice, 1, true),
+            2 + Bidi::visualToLogicalColumn($slice, 1, BaseDirection::Rtl),
             new PaneReorder()->logicalColumn($line, 3, $runs),
         );
     }

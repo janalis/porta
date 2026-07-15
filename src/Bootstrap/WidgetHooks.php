@@ -6,6 +6,7 @@ namespace Porta\Bootstrap;
 
 use Porta\Editor\BreadcrumbTrailProvider;
 use Porta\Editor\FileOpener;
+use Porta\Editor\OpenFocus;
 use Porta\Help\HelpViewerActions;
 use Porta\Image\ImageViewerActions;
 use Porta\Overlay\MenuOverlayController;
@@ -68,7 +69,7 @@ final class WidgetHooks
 
     public function wire(): void
     {
-        $this->tree->onOpenFile(fn (string $path) => $this->files->openFile($path, focusEditor: true));
+        $this->tree->onOpenFile(fn (string $path) => $this->files->openFile($path, focus: OpenFocus::Editor));
 
         $this->editor->setCallbacks($this->editorCallbacks);
         $this->imageViewer->setHandler($this->imageViewerActions);

@@ -71,18 +71,20 @@ final class TextField
     }
 
     /**
-     * The value, followed by the cursor marker when $cursor is true. When
-     * $width is given and the focused value overflows it, the value is scrolled
-     * to its tail so the end caret (and its marker) stays visible.
+     * The value, followed by the cursor marker when $cursor is {@see
+     * CaretVisibility::Shown}. When $width is given and the focused value
+     * overflows it, the value is scrolled to its tail so the end caret (and its
+     * marker) stays visible.
      */
-    public function render(bool $cursor, ?int $width = null): string
+    public function render(CaretVisibility $cursor, ?int $width = null): string
     {
+        $shown = CaretVisibility::Shown === $cursor;
         // Newlines (multiline query/replace) show as a visible ⏎ so the row stays one line.
         $display = str_replace("\n", replace: '⏎', subject: $this->value);
-        if ($cursor && null !== $width) {
+        if ($shown && null !== $width) {
             return AnsiText::caretWindow($display, AnsiUtils::visibleWidth($display), $width, $this->style->marker());
         }
 
-        return $display.($cursor ? $this->style->marker() : '');
+        return $display.($shown ? $this->style->marker() : '');
     }
 }
