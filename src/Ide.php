@@ -14,18 +14,9 @@ use Porta\Config\CommandRegistry;
 use Porta\Config\EditorConfig\EditorConfigResolver;
 use Porta\Config\IdeConfig;
 use Porta\Config\SettingsController;
-use Porta\Config\SettingsDebugController;
-use Porta\Config\SettingsKeymapController;
 use Porta\Config\SettingsLanguageController;
-use Porta\Config\SettingsLspController;
-use Porta\Config\SettingsPluginsController;
 use Porta\Container\IdeContainerFactory;
-use Porta\Debug\BreakpointStore;
-use Porta\Debug\DapClientFactory;
-use Porta\Debug\DebugAdapters;
 use Porta\Debug\DebugController;
-use Porta\Debug\DebugSessionState;
-use Porta\Debug\EditorDecorations;
 use Porta\Editor\BreadcrumbTrailProvider;
 use Porta\Editor\BufferManager;
 use Porta\Editor\BufferNavigator;
@@ -69,12 +60,9 @@ use Porta\Lsp\Uri;
 use Porta\Lsp\WorkspaceEditor;
 use Porta\Overlay\MenuOverlayController;
 use Porta\Plugin\PluginHost;
-use Porta\Plugin\PluginInstaller;
 use Porta\Plugin\PluginLifecycle;
-use Porta\Plugin\PluginLoader;
 use Porta\Plugin\PluginManager;
 use Porta\Plugin\PluginRuntime;
-use Porta\Plugin\PluginSettings;
 use Porta\Run\RunConfigs;
 use Porta\Run\RunController;
 use Porta\Search\Everywhere\SearchEverywhereController;
@@ -106,7 +94,6 @@ use Porta\Ui\PanelManager;
 use Porta\Ui\ResultsPanelMode;
 use Porta\Ui\Role;
 use Porta\Ui\StatusBarProvider;
-use Porta\Ui\SwitchablePalette;
 use Porta\Ui\TabListProvider;
 use Porta\Ui\TerminalStateRefresher;
 use Porta\Ui\WorkbenchActions;
@@ -186,13 +173,10 @@ final class Ide
     private RunController $run;
     private DebugController $debug;
     private DebugPanelWidget $debugPanel;
-    private DebugAdapters $debugAdapters;
 
     /** The app event bus; the component interface for runtime addListener() on hand-built widgets. */
     private readonly EventDispatcherInterface $dispatcher;
     private readonly PluginManager $plugins;
-    private readonly PluginLoader $pluginLoader;
-    private readonly PluginSettings $pluginSettings;
     private PluginLifecycle $pluginLifecycle;
     private readonly string $docsDir;
     private readonly ContainerInterface $container;
@@ -236,7 +220,6 @@ final class Ide
     private Translator $translator;
     private ContainerWidget $main;
     private ContainerWidget $gitAreaContainer;
-    private ContainerWidget $settingsAreaContainer;
     private ChangesListWidget $gitChanges;
     private DiffViewWidget $gitDiff;
     private CommitBoxWidget $gitCommitBox;
@@ -247,12 +230,10 @@ final class Ide
     private SettingsFormWidget $settingsForm;
     private KeybindingsListWidget $settingsKeys;
     private SeparatorWidget $settingsSeparator;
-    private ContainerWidget $settingsContent;
     private SettingsController $settings;
     private SettingsLanguageController $settingsLanguages;
     private BufferService $bufferService;
     private MouseRouter $mouseRouter;
-    private readonly SwitchablePalette $palette;
 
     public function __construct(
         private readonly string $rootDir,
@@ -277,9 +258,6 @@ final class Ide
         // the plugin/keybindings services consume it by type.
         $this->container->set(IdeConfig::class, $config);
         $this->translator = $this->service(Translator::class);
-        // The live-swappable theme holders (see applyTheme): widgets and buffers
-        // hold these same instances via the Palette/TerminalTheme aliases.
-        $this->palette = $this->service(SwitchablePalette::class);
         $this->dispatcher = $this->service(EventDispatcherInterface::class);
         // Live-setting reactions that must run in Ide (the menu bakes labels
         // from hand-assembled state; RTL re-mirroring walks the pane lists).
@@ -290,14 +268,11 @@ final class Ide
             $this->paneLayout->applyDirection();
         });
         $pluginHost = $this->service(PluginHost::class);
-        $this->pluginSettings = $pluginHost->settings();
         $this->plugins = $pluginHost->manager();
-        $this->pluginLoader = $pluginHost->loader();
         // Resolving the Keybindings map triggers the one-time plugin load —
         // plugin default keys must merge into the immutable map.
         $keybindings = $this->service(Keybindings::class);
         $this->keybindings = $keybindings;
-        $this->debugAdapters = new DebugAdapters($config->languages);
 
         // Own the Renderer so mouse hit-testing can query widget rects.
         $this->renderer = $renderer ?? new Renderer($this->buildStyleSheet());
@@ -378,22 +353,7 @@ final class Ide
         // The debugger orchestrator, after the buffer service it opens files
         // through; the decoration/state pieces are the same container-shared
         // instances the buffer service applies on every buffer switch.
-        $this->debug = new DebugController(
-            $this->service(BreakpointStore::class),
-            $this->debugAdapters,
-            $this->editor,
-            $this->debugPanel,
-            $this->terminalPanel,
-            $this->notifier,
-            $this->tui,
-            $this->translator,
-            $this->rootDir,
-            $this->bufferService,
-            $this->service(DapClientFactory::class),
-            $this->dispatcher,
-            $this->service(DebugSessionState::class),
-            $this->service(EditorDecorations::class),
-        );
+        $this->debug = $this->service(DebugController::class);
         $this->wireStatusBar();
         // The search entry points; after wireCommands (ActionsSource reads the
         // populated registry) and after the buffer service both depend on.
@@ -403,51 +363,14 @@ final class Ide
         $this->wireHelpViewer();
 
         // Apply persisted settings.
-        $this->settings = new SettingsController(
-            $config->settings,
-            $this->editor,
-            $this->notifier,
-            $this->rootDir,
-            $this->translator,
-            $this->service(LiveSettingsApplier::class),
-        );
+        $this->settings = $this->service(SettingsController::class);
         $this->settings->applyAll();
-        $this->settingsLanguages = new SettingsLanguageController($this->editor, $this->notifier, $this->rootDir, $this->translator, $config->languages);
+        $this->settingsLanguages = $this->service(SettingsLanguageController::class);
         $this->settingsLanguages->applyToEditor();
-        $pluginInstaller = PluginInstaller::create($this->rootDir, $this->translator);
-        $this->pluginLifecycle = new PluginLifecycle(
-            $this->pluginLoader,
-            $this->plugins,
-            $this->commands,
-            $pluginInstaller,
-            $this->notifier,
-            $this->translator,
-            $this->menuRebuilder,
-            $this->settingsNav,
-            $this->views,
-            $this->tui,
-            $this->rootDir,
-            $config->disabledPlugins,
-        );
-        new SettingsViewController(
-            $this->settingsNav,
-            $this->settingsForm,
-            $this->settingsKeys,
-            $this->main,
-            $this->settingsAreaContainer,
-            $this->settingsContent,
-            $this->menuBar,
-            $this->paneLayout,
-            $this->tui,
-            $this->settings,
-            new SettingsKeymapController($this->editor, $this->keybindings, $this->notifier, $this->rootDir, $this->translator),
-            $this->settingsLanguages,
-            new SettingsLspController($this->rootDir, $this->lsp, $config->lspServers, $this->lspCommand, $this->bufferService, $this->notifier, $this->translator),
-            new SettingsDebugController($this->rootDir, $this->debugAdapters, $this->notifier, $this->translator),
-            new SettingsPluginsController($pluginInstaller, $this->pluginSettings, $this->notifier, $this->translator, $this->pluginLifecycle),
-            editorArea: $this->editorArea,
-            views: $this->views,
-        );
+        $this->pluginLifecycle = $this->service(PluginLifecycle::class);
+        // Eager: constructing the settings view attaches it to WorkspaceViews
+        // (an unreferenced service would otherwise never exist).
+        $this->service(SettingsViewController::class);
         $this->pluginLifecycle->refreshNav();
 
         $this->localHistory = $this->service(LocalHistoryController::class);
@@ -633,7 +556,7 @@ final class Ide
         // steps hold them); commands register and menus bake at the end of
         // the constructor, once every provider dependency exists.
         $this->commands = $this->service(CommandRegistry::class);
-        $this->menuRebuilder = new MenuRebuilder($this->menuBar, $this->commands, $this->editor, $this->keybindings, $this->translator, $this->views, $this->plugins);
+        $this->menuRebuilder = $this->service(MenuRebuilder::class);
         $this->wirePanels();
     }
 
@@ -684,7 +607,7 @@ final class Ide
      */
     private function wireStatusBar(): void
     {
-        $provider = new StatusBarProvider($this->buffers, $this->editor, $this->imageViewer, $this->gitRefresher, $this->debug, $this->lsp, $this->palette, $this->translator, $this->rootDir);
+        $provider = $this->service(StatusBarProvider::class);
         $this->statusBar->setProvider($provider->segments(...));
     }
 
@@ -703,8 +626,6 @@ final class Ide
         $this->settingsForm = $this->service(SettingsFormWidget::class);
         $this->settingsKeys = $this->service(KeybindingsListWidget::class);
         $this->settingsSeparator = $this->workspaceLayout->settingsSeparator();
-        $this->settingsContent = $this->workspaceLayout->settingsContent();
-        $this->settingsAreaContainer = $this->workspaceLayout->settingsArea();
         $this->paneLayout->arrangeSettingsArea();
     }
 

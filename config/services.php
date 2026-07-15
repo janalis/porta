@@ -7,9 +7,14 @@ use Porta\Config\EditorConfig\EditorConfigResolver;
 use Porta\Config\IdeConfig;
 use Porta\Config\KeybindingsFactory;
 use Porta\Config\LayoutStore;
+use Porta\Config\SettingsController;
+use Porta\Config\SettingsLanguageController;
+use Porta\Config\SettingsLspController;
 use Porta\Container\AsWidget;
 use Porta\Debug\BreakpointStore;
 use Porta\Debug\DapClientFactory;
+use Porta\Debug\DebugAdapters;
+use Porta\Debug\DebugController;
 use Porta\Debug\DebugSessionState;
 use Porta\Debug\EditorDecorations;
 use Porta\Debug\ProcessDapClientFactory;
@@ -37,6 +42,7 @@ use Porta\I18n\Translator;
 use Porta\Image\ImageDecoder;
 use Porta\Image\ImageViewerActions;
 use Porta\Input\HitTester;
+use Porta\Layout\EditorAreaPanes;
 use Porta\Layout\GitSidebar;
 use Porta\Layout\LayoutController;
 use Porta\Layout\PaneLayout;
@@ -56,6 +62,8 @@ use Porta\Overlay\MenuOverlayPanesFactory;
 use Porta\Plugin\PluginEvents;
 use Porta\Plugin\PluginHost;
 use Porta\Plugin\PluginInstaller;
+use Porta\Plugin\PluginLifecycle;
+use Porta\Plugin\PluginLifecycleOps;
 use Porta\Plugin\PluginLoader;
 use Porta\Plugin\PluginManager;
 use Porta\Plugin\PluginSettings;
@@ -66,6 +74,7 @@ use Porta\Search\ResultContextProvider;
 use Porta\Search\SearchActions;
 use Porta\Search\TestNavigator;
 use Porta\Settings\LiveSettingsApplier;
+use Porta\Settings\SettingsViewController;
 use Porta\Support\Clipboard;
 use Porta\Support\DocsUrlOpener;
 use Porta\Support\FreezeWatchdog;
@@ -77,12 +86,14 @@ use Porta\Ui\CommandPalette;
 use Porta\Ui\CursorStyle;
 use Porta\Ui\EditorArea;
 use Porta\Ui\FocusCoordinator;
+use Porta\Ui\MenuRebuilder;
 use Porta\Ui\NotificationLog;
 use Porta\Ui\Notifier;
 use Porta\Ui\Palette;
 use Porta\Ui\PaletteFactory;
 use Porta\Ui\PanelManager;
 use Porta\Ui\PaneSegmenter;
+use Porta\Ui\StatusBarProvider;
 use Porta\Ui\SwitchablePalette;
 use Porta\Ui\TabListProvider;
 use Porta\Ui\WorkbenchActions;
@@ -190,7 +201,10 @@ return static function (ContainerConfigurator $container, ContainerBuilder $buil
         ->bind('$lspCommand', env('default::PORTA_LSP_COMMAND'))
         ->bind('$lspDisabled', env('PORTA_LSP_DISABLED')->bool())
         ->bind('$docsDir', env('PORTA_DOCS_DIR'))
-        ->bind(ContainerWidget::class.' $editorBody', service('porta.widget.editor_body'));
+        ->bind(ContainerWidget::class.' $editorBody', service('porta.widget.editor_body'))
+        ->bind(ContainerWidget::class.' $main', service('porta.widget.main'))
+        ->bind(ContainerWidget::class.' $settingsArea', service('porta.widget.settings_area'))
+        ->bind(ContainerWidget::class.' $settingsContent', service('porta.widget.settings_content'));
 
     // Autoregister every Porta\ class. Only the orchestrator and the container
     // factory are excluded; everything else that isn't a real service registers
@@ -343,6 +357,13 @@ return static function (ContainerConfigurator $container, ContainerBuilder $buil
         GitCommands::class,
         GitRemoteCommands::class,
         SearchEverywhereController::class,
+        DebugController::class,
+        StatusBarProvider::class,
+        SettingsController::class,
+        SettingsLanguageController::class,
+        SettingsViewController::class,
+        PluginLifecycle::class,
+        MenuRebuilder::class,
     ] as $locatorId) {
         $locatorEntries[$locatorId] = service($locatorId);
     }
@@ -370,10 +391,27 @@ return static function (ContainerConfigurator $container, ContainerBuilder $buil
     // Duplicate-typed widgets from the composite tree: exposed per getter so
     // typed-named binds (below, in _defaults) can feed them to consumers.
     $services->set('porta.widget.editor_body', ContainerWidget::class)->factory([service(WorkspaceLayout::class), 'editorBody']);
+    $services->set('porta.widget.main', ContainerWidget::class)->factory([service(WorkspaceLayout::class), 'main']);
+    $services->set('porta.widget.settings_area', ContainerWidget::class)->factory([service(WorkspaceLayout::class), 'settingsArea']);
+    $services->set('porta.widget.settings_content', ContainerWidget::class)->factory([service(WorkspaceLayout::class), 'settingsContent']);
 
     // BufferService is both interface seams' implementation.
     $services->alias(FileOpener::class, BufferService::class);
     $services->alias(BufferReopener::class, BufferService::class);
+    $services->alias(EditorAreaPanes::class, PaneLayout::class);
+    $services->alias(PluginLifecycleOps::class, PluginLifecycle::class);
+
+    // Per-project config arrays travel JSON-encoded through the env channel
+    // (seeded by IdeContainerFactory), so these defs stay dump-safe. Args, not
+    // binds: $overrides means languages in one controller, lspServers in the other.
+    $services->set(DebugAdapters::class)->arg('$languages', env('PORTA_LANGUAGES')->json());
+    $services->set(SettingsController::class)->arg('$settings', env('PORTA_SETTINGS')->json());
+    $services->set(SettingsLanguageController::class)->arg('$overrides', env('PORTA_LANGUAGES')->json());
+    $services
+        ->set(SettingsLspController::class)
+        ->arg('$overrides', env('PORTA_LSP_SERVERS')->json())
+        ->arg('$lspOverride', env('default::PORTA_LSP_COMMAND'));
+    $services->set(PluginLifecycle::class)->arg('$disabledPlugins', env('PORTA_DISABLED_PLUGINS')->json());
 
     // The Search Everywhere modal aggregates per-source hooks; its factory
     // owns them (see SearchEverywhereFactory).
