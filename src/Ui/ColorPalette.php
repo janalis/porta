@@ -32,7 +32,7 @@ final class ColorPalette implements Palette
             Role::Hunk->name => Color::from(75)->toForegroundCode(),
             Role::AddEmphasisBg->name => Color::from(22)->toBackgroundCode(),
             Role::DelEmphasisBg->name => Color::from(88)->toBackgroundCode(),
-            Role::SelectedRow->name => Color::from(31)->toBackgroundCode().Color::from(231)->toForegroundCode()."\x1b[1m",
+            Role::SelectedRow->name => Color::from(31)->toBackgroundCode().Color::from(231)->toForegroundCode().Sgr::BOLD,
             Role::SelectedRowUnfocused->name => Color::from(237)->toBackgroundCode(),
             Role::RowHighlightBg->name => Color::from(236)->toBackgroundCode(),
             Role::PopupRow->name => Color::from(236)->toBackgroundCode().Color::from(250)->toForegroundCode(),
@@ -52,10 +52,10 @@ final class ColorPalette implements Palette
             Role::DiagWarnDim->name => Color::from(101)->toForegroundCode(),
             Role::DiagInfoDim->name => Color::from(67)->toForegroundCode(),
             Role::DiagHintDim->name => Color::from(240)->toForegroundCode(),
-            Role::DiagErrorUnderline->name => "\x1b[58;5;203m",
-            Role::DiagWarnUnderline->name => "\x1b[58;5;179m",
-            Role::DiagInfoUnderline->name => "\x1b[58;5;75m",
-            Role::DiagHintUnderline->name => "\x1b[58;5;244m",
+            Role::DiagErrorUnderline->name => Sgr::underlineColor(203),
+            Role::DiagWarnUnderline->name => Sgr::underlineColor(179),
+            Role::DiagInfoUnderline->name => Sgr::underlineColor(75),
+            Role::DiagHintUnderline->name => Sgr::underlineColor(244),
             Role::CurrentLineNumber->name => Color::from(252)->toForegroundCode(),
             Role::Placeholder->name => Color::from(238)->toForegroundCode(),
             Role::Inlay->name => Color::from(243)->toForegroundCode(),
@@ -94,7 +94,7 @@ final class ColorPalette implements Palette
             Role::Hunk->name => Color::from(25)->toForegroundCode(),
             Role::AddEmphasisBg->name => Color::from(194)->toBackgroundCode(),
             Role::DelEmphasisBg->name => Color::from(224)->toBackgroundCode(),
-            Role::SelectedRow->name => Color::from(111)->toBackgroundCode().Color::from(16)->toForegroundCode()."\x1b[1m",
+            Role::SelectedRow->name => Color::from(111)->toBackgroundCode().Color::from(16)->toForegroundCode().Sgr::BOLD,
             Role::SelectedRowUnfocused->name => Color::from(253)->toBackgroundCode(),
             Role::RowHighlightBg->name => Color::from(253)->toBackgroundCode(),
             Role::PopupRow->name => Color::from(253)->toBackgroundCode().Color::from(240)->toForegroundCode(),
@@ -114,10 +114,10 @@ final class ColorPalette implements Palette
             Role::DiagWarnDim->name => Color::from(136)->toForegroundCode(),
             Role::DiagInfoDim->name => Color::from(67)->toForegroundCode(),
             Role::DiagHintDim->name => Color::from(240)->toForegroundCode(),
-            Role::DiagErrorUnderline->name => "\x1b[58;5;160m",
-            Role::DiagWarnUnderline->name => "\x1b[58;5;130m",
-            Role::DiagInfoUnderline->name => "\x1b[58;5;25m",
-            Role::DiagHintUnderline->name => "\x1b[58;5;245m",
+            Role::DiagErrorUnderline->name => Sgr::underlineColor(160),
+            Role::DiagWarnUnderline->name => Sgr::underlineColor(130),
+            Role::DiagInfoUnderline->name => Sgr::underlineColor(25),
+            Role::DiagHintUnderline->name => Sgr::underlineColor(245),
             Role::CurrentLineNumber->name => Color::from(240)->toForegroundCode(),
             Role::Placeholder->name => Color::from(250)->toForegroundCode(),
             Role::Inlay->name => Color::from(245)->toForegroundCode(),
@@ -156,7 +156,7 @@ final class ColorPalette implements Palette
             Role::Hunk->name => Color::from(51)->toForegroundCode(),
             Role::AddEmphasisBg->name => Color::from(22)->toBackgroundCode(),
             Role::DelEmphasisBg->name => Color::from(88)->toBackgroundCode(),
-            Role::SelectedRow->name => Color::from(19)->toBackgroundCode().Color::from(231)->toForegroundCode()."\x1b[1m",
+            Role::SelectedRow->name => Color::from(19)->toBackgroundCode().Color::from(231)->toForegroundCode().Sgr::BOLD,
             Role::SelectedRowUnfocused->name => Color::from(236)->toBackgroundCode(),
             Role::RowHighlightBg->name => Color::from(234)->toBackgroundCode(),
             Role::PopupRow->name => Color::from(236)->toBackgroundCode().Color::from(231)->toForegroundCode(),
@@ -177,10 +177,10 @@ final class ColorPalette implements Palette
             Role::DiagWarnDim->name => Color::from(226)->toForegroundCode(),
             Role::DiagInfoDim->name => Color::from(51)->toForegroundCode(),
             Role::DiagHintDim->name => Color::from(250)->toForegroundCode(),
-            Role::DiagErrorUnderline->name => "\x1b[58;5;203m",
-            Role::DiagWarnUnderline->name => "\x1b[58;5;226m",
-            Role::DiagInfoUnderline->name => "\x1b[58;5;51m",
-            Role::DiagHintUnderline->name => "\x1b[58;5;250m",
+            Role::DiagErrorUnderline->name => Sgr::underlineColor(203),
+            Role::DiagWarnUnderline->name => Sgr::underlineColor(226),
+            Role::DiagInfoUnderline->name => Sgr::underlineColor(51),
+            Role::DiagHintUnderline->name => Sgr::underlineColor(250),
             Role::CurrentLineNumber->name => Color::from(231)->toForegroundCode(),
             Role::Placeholder->name => Color::from(244)->toForegroundCode(),
             Role::Inlay->name => Color::from(250)->toForegroundCode(),
@@ -217,12 +217,12 @@ final class ColorPalette implements Palette
 
     public function fgReset(): string
     {
-        return "\x1b[39m";
+        return Sgr::DEFAULT_FG;
     }
 
     public function reset(): string
     {
-        return "\x1b[0m";
+        return Sgr::RESET;
     }
 
     public function hasColor(): bool
