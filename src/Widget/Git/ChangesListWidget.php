@@ -13,6 +13,7 @@ use Porta\Ui\ListSelection;
 use Porta\Ui\Palette;
 use Porta\Ui\Role;
 use Porta\Widget\FillsPaneTrait;
+use Porta\Widget\HoverTrait;
 use Porta\Widget\InputHook;
 use Porta\Widget\PanelWidth;
 use Porta\Widget\PaneNavigationCallbacks;
@@ -38,6 +39,7 @@ final class ChangesListWidget extends AbstractWidget implements FocusableInterfa
 {
     use FillsPaneTrait;
     use FocusableTrait;
+    use HoverTrait;
     use InputHook;
     use MenuOverlayHostTrait;
     use KeybindingsTrait;
@@ -64,8 +66,6 @@ final class ChangesListWidget extends AbstractWidget implements FocusableInterfa
     private int $lastRows = 10;
     /** Index of the entry an inline discard confirmation is armed for, or null. */
     private ?int $confirmDiscard = null;
-    /** Row tinted under the mouse pointer; visual only, never the selection. */
-    private ?int $hoveredIndex = null;
 
     /** @var (callable(ChangeEntry): void)|null selection moved to this entry */
     private $onSelect = null;
@@ -258,23 +258,6 @@ final class ChangesListWidget extends AbstractWidget implements FocusableInterfa
     public function hoverRow(int $relRow): bool
     {
         return $this->setHovered($this->rowIndexAt($relRow));
-    }
-
-    /** The pointer left the list: drop the hover tint. */
-    public function clearHover(): bool
-    {
-        return $this->setHovered(null);
-    }
-
-    private function setHovered(?int $index): bool
-    {
-        if ($index === $this->hoveredIndex) {
-            return false;
-        }
-        $this->hoveredIndex = $index;
-        $this->invalidate();
-
-        return true;
     }
 
     private function rowIndexAt(int $relRow): ?int

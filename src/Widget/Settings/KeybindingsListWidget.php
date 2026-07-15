@@ -14,6 +14,7 @@ use Porta\Ui\Palette;
 use Porta\Ui\Role;
 use Porta\Ui\ShortcutFormatter;
 use Porta\Widget\FillsPaneTrait;
+use Porta\Widget\HoverTrait;
 use Porta\Widget\InputHook;
 use Porta\Widget\PaneNavigationCallbacks;
 use Porta\Widget\Render\MenuOverlayHost;
@@ -39,6 +40,7 @@ final class KeybindingsListWidget extends AbstractWidget implements FocusableInt
 {
     use FillsPaneTrait;
     use FocusableTrait;
+    use HoverTrait;
     use InputHook;
     use MenuOverlayHostTrait;
     use KeybindingsTrait;
@@ -50,8 +52,6 @@ final class KeybindingsListWidget extends AbstractWidget implements FocusableInt
     private int $lastRows = 10;
     /** The row index awaiting a keypress to rebind, or null when not capturing. */
     private ?int $capturingIndex = null;
-    /** Row tinted under the mouse pointer; visual only, never the selection. */
-    private ?int $hoveredIndex = null;
 
     /** @var (callable(string, string): void)|null a captured key (action, raw key data) to rebind */
     private $onRebind = null;
@@ -174,28 +174,12 @@ final class KeybindingsListWidget extends AbstractWidget implements FocusableInt
         return $this->setHovered($this->rowIndexAt($relRow));
     }
 
-    public function clearHover(): bool
-    {
-        return $this->setHovered(null);
-    }
-
     private function armCapture(): void
     {
         if ([] !== $this->rows) {
             $this->capturingIndex = $this->list->selected();
             $this->invalidate();
         }
-    }
-
-    private function setHovered(?int $index): bool
-    {
-        if ($index === $this->hoveredIndex) {
-            return false;
-        }
-        $this->hoveredIndex = $index;
-        $this->invalidate();
-
-        return true;
     }
 
     private function rowIndexAt(int $relRow): ?int

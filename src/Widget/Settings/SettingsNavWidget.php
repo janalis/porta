@@ -13,6 +13,7 @@ use Porta\Ui\ListSelection;
 use Porta\Ui\Palette;
 use Porta\Ui\Role;
 use Porta\Widget\FillsPaneTrait;
+use Porta\Widget\HoverTrait;
 use Porta\Widget\InputHook;
 use Porta\Widget\PanelWidth;
 use Porta\Widget\PaneNavigationCallbacks;
@@ -41,6 +42,7 @@ final class SettingsNavWidget extends AbstractWidget implements FocusableInterfa
 {
     use FillsPaneTrait;
     use FocusableTrait;
+    use HoverTrait;
     use InputHook;
     use MenuOverlayHostTrait;
     use KeybindingsTrait;
@@ -52,7 +54,6 @@ final class SettingsNavWidget extends AbstractWidget implements FocusableInterfa
     /** @var list<Entry> */
     private array $entries;
     private readonly ListSelection $list;
-    private ?int $hoveredIndex = null;
 
     /** @var (callable(string): void)|null selection moved to this entry id */
     private $onSelect = null;
@@ -194,11 +195,6 @@ final class SettingsNavWidget extends AbstractWidget implements FocusableInterfa
         return $this->setHovered(null !== $index && 'header' !== $this->entries[$index]['kind'] ? $index : null);
     }
 
-    public function clearHover(): bool
-    {
-        return $this->setHovered(null);
-    }
-
     private function moveTo(int $index): void
     {
         if ($index !== $this->list->selected()) {
@@ -232,17 +228,6 @@ final class SettingsNavWidget extends AbstractWidget implements FocusableInterfa
         }
 
         return $from;
-    }
-
-    private function setHovered(?int $index): bool
-    {
-        if ($index === $this->hoveredIndex) {
-            return false;
-        }
-        $this->hoveredIndex = $index;
-        $this->invalidate();
-
-        return true;
     }
 
     private function rowIndexAt(int $relRow): ?int

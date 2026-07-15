@@ -35,6 +35,7 @@ final class FileTreeWidget extends AbstractWidget implements FocusableInterface,
     use MenuOverlayHostTrait;
     use InputHook;
     use KeybindingsTrait;
+    use HoverTrait;
     use PanelWidth;
 
     // '.porta' is the IDE's own session/history metadata dir; '.porta.json' (the
@@ -45,7 +46,6 @@ final class FileTreeWidget extends AbstractWidget implements FocusableInterface,
     private array $expanded = [];
     private readonly ListSelection $list;
     private int $lastRows = 24;
-    private ?int $hoveredIndex = null; // node highlighted under the mouse pointer
 
     /** @var list<array{path: string, name: string, isDir: bool, depth: int}> */
     private array $visible = [];
@@ -262,23 +262,6 @@ final class FileTreeWidget extends AbstractWidget implements FocusableInterface,
         }
 
         return $this->setHovered($index);
-    }
-
-    /** Clear the hover highlight (the pointer left the tree); returns whether it changed. */
-    public function clearHover(): bool
-    {
-        return $this->setHovered(null);
-    }
-
-    private function setHovered(?int $index): bool
-    {
-        if ($index === $this->hoveredIndex) {
-            return false;
-        }
-        $this->hoveredIndex = $index;
-        $this->invalidate();
-
-        return true;
     }
 
     public function render(RenderContext $context): array
