@@ -897,7 +897,7 @@ final class IdeEdgeCasesTest extends TestCase
                     $menu = $tui->getById('context-menu');
                     $this->assertTrue($menu->isOpen(), 'the context menu is open');
 
-                    $overlay = new \ReflectionProperty($ide, 'overlay')->getValue($ide);
+                    $overlay = new \ReflectionProperty($ide, 'locator')->getValue($ide)->get(\Porta\Overlay\MenuOverlayController::class);
                     $region = $overlay->contextMenuDropdown();
                     $this->assertNotNull($region, 'the menu overlay was placed');
 
@@ -5425,7 +5425,7 @@ final class IdeEdgeCasesTest extends TestCase
                     // its own row so the overlay's overflow flip opens the panel above it.
                     $renderer = new \ReflectionProperty($ide, 'renderer')->getValue($ide);
                     $tabsRow = $renderer->getWidgetRect($tui->getById('tabs'))->row;
-                    $overlay = new \ReflectionProperty($ide, 'overlay')->getValue($ide);
+                    $overlay = new \ReflectionProperty($ide, 'locator')->getValue($ide)->get(\Porta\Overlay\MenuOverlayController::class);
                     $this->assertSame($tabsRow, new \ReflectionProperty($overlay, 'contextAnchorRow')->getValue($overlay));
                 },
             ],

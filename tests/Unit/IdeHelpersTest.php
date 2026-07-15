@@ -598,7 +598,7 @@ final class IdeHelpersTest extends TestCase
         /** @var \Porta\Editor\BufferService $buffers */
         $buffers = new \ReflectionProperty($this->ide, 'bufferService')->getValue($this->ide);
         /** @var \Porta\Widget\HelpViewerWidget $viewer */
-        $viewer = new \ReflectionProperty($this->ide, 'helpViewer')->getValue($this->ide);
+        $viewer = new \ReflectionProperty($this->ide, 'locator')->getValue($this->ide)->get(\Porta\Widget\HelpViewerWidget::class);
         /** @var \Porta\Editor\BufferManager $manager */
         $manager = $this->ide->getBuffers();
 
@@ -637,7 +637,7 @@ final class IdeHelpersTest extends TestCase
         /** @var \Porta\Editor\BufferService $buffers */
         $buffers = new \ReflectionProperty($this->ide, 'bufferService')->getValue($this->ide);
         /** @var \Porta\Widget\HelpViewerWidget $viewer */
-        $viewer = new \ReflectionProperty($this->ide, 'helpViewer')->getValue($this->ide);
+        $viewer = new \ReflectionProperty($this->ide, 'locator')->getValue($this->ide)->get(\Porta\Widget\HelpViewerWidget::class);
         /** @var \Porta\Editor\BufferManager $manager */
         $manager = $this->ide->getBuffers();
 
@@ -685,7 +685,7 @@ final class IdeHelpersTest extends TestCase
         $flash = fn (): string => (string) (new \ReflectionProperty($statusBar, 'flash')->getValue($statusBar)['text'] ?? '');
 
         $file = $this->project->write('src/Hooked.php', "<?php\n");
-        $helpViewer = new \ReflectionProperty($this->ide, 'helpViewer')->getValue($this->ide);
+        $helpViewer = new \ReflectionProperty($this->ide, 'locator')->getValue($this->ide)->get(\Porta\Widget\HelpViewerWidget::class);
         $help = new \ReflectionProperty($helpViewer, 'handler')->getValue($helpViewer);
         \assert($help instanceof \Porta\Help\HelpViewerActions);
 
@@ -700,7 +700,7 @@ final class IdeHelpersTest extends TestCase
         $buffers = $this->ide->getBuffers();
         $this->assertNull($buffers->active(), 'the viewer close hook closed the only tab');
 
-        $imageViewer = new \ReflectionProperty($this->ide, 'imageViewer')->getValue($this->ide);
+        $imageViewer = new \ReflectionProperty($this->ide, 'locator')->getValue($this->ide)->get(\Porta\Widget\ImageViewerWidget::class);
         $image = new \ReflectionProperty($imageViewer, 'handler')->getValue($imageViewer);
         \assert($image instanceof \Porta\Image\ImageViewerActions);
         $image->saveAll(); // same silent sweep through the shared navigator

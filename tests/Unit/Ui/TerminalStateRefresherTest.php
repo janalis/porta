@@ -8,6 +8,7 @@ use PHPUnit\Framework\TestCase;
 use Porta\Ui\TerminalStateRefresher;
 use Symfony\Component\Tui\Terminal\TerminalInterface;
 use Symfony\Component\Tui\Terminal\VirtualTerminal;
+use Symfony\Component\Tui\Tui;
 
 final class TerminalStateRefresherTest extends TestCase
 {
@@ -65,7 +66,7 @@ final class TerminalStateRefresherTest extends TestCase
                 return false;
             }
         };
-        $refresher = new TerminalStateRefresher($terminal, every: 3);
+        $refresher = new TerminalStateRefresher(new Tui(terminal: $terminal), every: 3);
 
         $refresher->tick();
         $refresher->tick();
@@ -85,7 +86,7 @@ final class TerminalStateRefresherTest extends TestCase
     public function testAVirtualTerminalIsNeverWrittenTo(): void
     {
         $terminal = new VirtualTerminal(columns: 80, rows: 24);
-        $refresher = new TerminalStateRefresher($terminal, every: 2);
+        $refresher = new TerminalStateRefresher(new Tui(terminal: $terminal), every: 2);
 
         $refresher->tick();
         $refresher->tick();

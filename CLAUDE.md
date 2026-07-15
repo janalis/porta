@@ -58,15 +58,15 @@ Run gate commands capturing output rather than piping to a pager, e.g.
 
 ## Architecture
 
-**`Ide` (`src/Ide.php`, ~700 lines) is a thin composition root over a Symfony DI container.**
+**`Ide` (`src/Ide.php`, ~520 lines) is a thin composition root over a Symfony DI container.**
 Its constructor builds the container via `Container/IdeContainerFactory`, hand-builds only the
 bootstrap infra (Renderer/`Ui/BidiTui`/NonBlockingTerminal + StyleSheet), and otherwise
 **resolves** the graph: shared services/widgets land in its private properties (kept as aliases
 because ~100 reflection-based test seams read them), the `build*` steps
 (`buildEditorArea`, `buildSidePanels`, `buildGitView`, `buildSettingsWidgets`,
 `buildLayoutAndOverlay`) are now resolution + arrangement only, and the ctor tail runs
-`Command/CommandRegistryPopulator::populate()` (tagged providers), `wireMenuBar` and registers
-the `Input/InputDispatcher` listener — commands register and menus bake at the **end** of the
+`Command/CommandRegistryPopulator::populate()` (tagged providers), `Bootstrap/WidgetHooks::wire()`,
+the menu bake and registers the `Input/InputDispatcher` listener — commands register and menus bake at the **end** of the
 constructor. Two services are resolved **eagerly for their side effect**: `GitViewController` and
 `SettingsViewController` attach themselves to `Ui/WorkspaceViews` in their constructors and have
 no inbound service references (without the eager resolve they would never exist).
@@ -115,14 +115,18 @@ singleton widget** (`#[Container/AsWidget]` declares tree id/flex, autoconfigure
   order is contractual**: registration order IS the palette display order and core registers
   before plugins so core wins key collisions.
 
-What stays hand-built in `Ide` (deliberate): the bootstrap infra above, the widget-tree mount +
-pane arrangement calls, per-buffer runtime objects (`Buffer`/`Document`/`CodeHighlighter`), the
-runtime hook registrations (`setCallbacks`/`setProvider(...)` first-class callables/`onOpenFile`/
-`onClose`/dispatcher `addListener` for theme+locale), the `Plugin/PluginRuntime` closure seam,
-the `Widget/EditorCallbacks` DTO assembly, and `$initialFile`/`$initialLine` handling in `run()`.
-Four objects are handed to the container as **synthetic** services right after `Ide` creates
-them: `Renderer`, `Tui`, `BidiTui` (external `symfony/tui` infra) and `IdeConfig` (parsed before
-the container exists — its settings steer the env parameters).
+What stays hand-built in `Ide` (deliberate, ~520 lines total): the bootstrap infra above, the
+widget-tree mount + pane arrangement calls, per-buffer runtime objects
+(`Buffer`/`Document`/`CodeHighlighter`), and `$initialFile`/`$initialLine` handling in `run()`.
+The widgets' runtime hook registrations (providers, viewer handlers, panel/menu close-focus flow,
+the tree's open hook) live in the container-built `Bootstrap/WidgetHooks::wire()`, called once
+at the ctor tail; the theme/locale menu-rebuild + RTL re-mirroring are the compiled
+`Ui/MenuLayoutRefreshListener` (priority 0, ahead of the −100 chrome sweep). `Plugin/PluginRuntime`
+and `Widget/EditorCallbacks` are plain services (the runtime consumes the narrow
+`Editor/DiagnosticsSink` seam instead of BufferService). Four objects are handed to the container
+as **synthetic** services right after `Ide` creates them: `Renderer`, `Tui`, `BidiTui` (external
+`symfony/tui` infra) and `IdeConfig` (parsed before the container exists — its settings steer the
+env parameters).
 
 **Rules for the container** (`config/services.php`, deliberately **outside `src/`** so the wiring
 stays off the 100%-line-coverage gate): services are **autoregistered** via

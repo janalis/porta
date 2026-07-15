@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace Porta\Ui;
 
-use Symfony\Component\Tui\Terminal\TerminalInterface;
+use Symfony\Component\Tui\Tui;
 
 /**
  * Periodically re-asserts terminal state that external events can silently
@@ -22,7 +22,7 @@ final class TerminalStateRefresher
     private int $ticks = 0;
 
     public function __construct(
-        private readonly TerminalInterface $terminal,
+        private readonly Tui $tui,
         private readonly int $every = 30,
     ) {}
 
@@ -30,9 +30,10 @@ final class TerminalStateRefresher
     public function tick(): void
     {
         ++$this->ticks;
-        if (0 !== ($this->ticks % $this->every) || $this->terminal->isVirtual()) {
+        $terminal = $this->tui->getTerminal();
+        if (0 !== ($this->ticks % $this->every) || $terminal->isVirtual()) {
             return;
         }
-        $this->terminal->write(self::REASSERT);
+        $terminal->write(self::REASSERT);
     }
 }

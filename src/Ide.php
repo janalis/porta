@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Porta;
 
+use Porta\Bootstrap\WidgetHooks;
 use Porta\Command\CommandRegistryPopulator;
 use Porta\Config\CommandRegistry;
 use Porta\Config\EditorConfig\EditorConfigResolver;
@@ -12,7 +13,6 @@ use Porta\Config\SettingsController;
 use Porta\Config\SettingsLanguageController;
 use Porta\Container\IdeContainerFactory;
 use Porta\Debug\DebugController;
-use Porta\Editor\BreadcrumbTrailProvider;
 use Porta\Editor\BufferManager;
 use Porta\Editor\BufferService;
 use Porta\Editor\Document;
@@ -45,7 +45,6 @@ use Porta\Lsp\LspSessionPool;
 use Porta\Lsp\NavigationController;
 use Porta\Lsp\RefactorController;
 use Porta\Lsp\WorkspaceEditor;
-use Porta\Overlay\MenuOverlayController;
 use Porta\Plugin\PluginHost;
 use Porta\Plugin\PluginLifecycle;
 use Porta\Plugin\PluginManager;
@@ -73,10 +72,8 @@ use Porta\Ui\PanelManager;
 use Porta\Ui\ResultsPanelMode;
 use Porta\Ui\Role;
 use Porta\Ui\StatusBarProvider;
-use Porta\Ui\TabListProvider;
 use Porta\Ui\TerminalStateRefresher;
 use Porta\Ui\WorkspaceViews;
-use Porta\Widget\BreadcrumbsWidget;
 use Porta\Widget\CodeEditorWidget;
 use Porta\Widget\ContextMenu;
 use Porta\Widget\DebugPanelWidget;
@@ -89,8 +86,6 @@ use Porta\Widget\Git\DiffViewWidget;
 use Porta\Widget\Git\GitTabsWidget;
 use Porta\Widget\Git\HistoryListWidget;
 use Porta\Widget\GoToFileWidget;
-use Porta\Widget\HelpViewerWidget;
-use Porta\Widget\ImageViewerWidget;
 use Porta\Widget\MenuBarWidget;
 use Porta\Widget\ResultsPanelWidget;
 use Porta\Widget\SeparatorWidget;
@@ -98,7 +93,6 @@ use Porta\Widget\Settings\KeybindingsListWidget;
 use Porta\Widget\Settings\SettingsFormWidget;
 use Porta\Widget\Settings\SettingsNavWidget;
 use Porta\Widget\StatusBarWidget;
-use Porta\Widget\TabBarWidget;
 use Porta\Widget\TerminalPanelWidget;
 use Revolt\EventLoop;
 use Symfony\Component\DependencyInjection\ContainerInterface;
@@ -126,18 +120,13 @@ final class Ide
     private BidiTui $bidiTui;
     private FileTreeWidget $tree;
     private CodeEditorWidget $editor;
-    private ImageViewerWidget $imageViewer;
-    private HelpViewerWidget $helpViewer;
     private StatusBarWidget $statusBar;
     private Notifier $notifier;
     private FreezeWatchdog $watchdog;
     private EditorArea $editorArea;
-    private WorkspaceViews $views;
     private ChromeInvalidator $chrome;
     private TerminalStateRefresher $terminalRefresher;
     private MenuBarWidget $menuBar;
-    private TabBarWidget $tabBar;
-    private BreadcrumbsWidget $breadcrumbs;
     private FindBarWidget $findBar;
     private GoToFileWidget $goToFile;
     private ResultsPanelWidget $resultsPanel;
@@ -176,7 +165,6 @@ final class Ide
     private MenuRebuilder $menuRebuilder;
 
     /** Positions + composites the app-menu and context-menu floating overlays. */
-    private MenuOverlayController $overlay;
 
     private ContainerWidget $main;
     private SettingsController $settings;
@@ -222,17 +210,16 @@ final class Ide
             renderer: $this->renderer,
         );
         $this->tui = $this->bidiTui;
-        $this->terminalRefresher = new TerminalStateRefresher($this->tui->getTerminal());
         // Hand the manually-built infrastructure to the container as synthetic
         // services (declared synthetic in config/services.php) right after each
         // is created, so container-built controllers can resolve them by type.
         $this->container->set(Renderer::class, $this->renderer);
         $this->container->set(Tui::class, $this->tui);
         $this->container->set(BidiTui::class, $this->bidiTui);
+        $this->terminalRefresher = $this->service(TerminalStateRefresher::class);
 
         // The workbench primitives every later build step delegates to.
         $this->editorArea = $this->service(EditorArea::class);
-        $this->views = $this->service(WorkspaceViews::class);
         $this->chrome = $this->service(ChromeInvalidator::class);
 
         $this->buildEditorArea();
@@ -257,19 +244,15 @@ final class Ide
         $this->navigation = $this->service(NavigationController::class);
         $this->refactor = $this->service(RefactorController::class);
         $this->run = $this->service(RunController::class);
-        $this->wireEditorCallbacks();
         $this->lspBootstrapper = $this->service(LspBootstrapper::class);
         $this->sessionRestorer = $this->service(SessionRestorer::class);
         // The debugger orchestrator, after the buffer service it opens files
         // through; the decoration/state pieces are the same container-shared
         // instances the buffer service applies on every buffer switch.
         $this->debug = $this->service(DebugController::class);
-        $this->wireStatusBar();
         // The search entry points; after wireCommands (ActionsSource reads the
         // populated registry) and after the buffer service both depend on.
         $this->searchActions = $this->service(SearchActions::class);
-        $this->wireImageViewer();
-        $this->wireHelpViewer();
 
         // Apply persisted settings.
         $this->settings = $this->service(SettingsController::class);
@@ -291,7 +274,8 @@ final class Ide
 
         $this->service(SearchUiWiring::class)->wire();
         $this->service(CommandRegistryPopulator::class)->populate();
-        $this->wireMenuBar($keybindings);
+        $this->service(WidgetHooks::class)->wire();
+        $this->menuRebuilder->rebuild();
         $this->tui->addListener($this->service(InputDispatcher::class)->dispatch(...));
 
         // Everything plugin handlers need exists now — hand them the live seams.
@@ -440,58 +424,11 @@ final class Ide
 
     private function wireWidgets(Keybindings $keybindings): void
     {
-        $this->wireEditor();
         // The registry and menu rebuilder objects exist early (later build
         // steps hold them); commands register and menus bake at the end of
         // the constructor, once every provider dependency exists.
         $this->commands = $this->service(CommandRegistry::class);
         $this->menuRebuilder = $this->service(MenuRebuilder::class);
-        $this->wirePanels();
-    }
-
-    /** The file tree's open hook and the editor's outbound callback struct. */
-    private function wireEditor(): void
-    {
-        $this->tree->onOpenFile(fn (string $path) => $this->openFile($path, focusEditor: true));
-    }
-
-    /**
-     * The editor's outbound hooks, built once the buffer stack exists: file
-     * lifecycle, buffer switching, and every LSP-powered feature routed to
-     * its controller through the typed handler groups.
-     */
-    private function wireEditorCallbacks(): void
-    {
-        $this->editor->setCallbacks($this->service(EditorCallbacks::class));
-    }
-
-    /** The image viewer's IDE hooks: tab management and the status-bar refresh. */
-    private function wireImageViewer(): void
-    {
-        $this->imageViewer->setHandler($this->service(ImageViewerActions::class));
-    }
-
-    private function wireHelpViewer(): void
-    {
-        $this->helpViewer->setDocsRoot($this->docsDir);
-        $this->helpViewer->setHandler($this->service(HelpViewerActions::class));
-    }
-
-    /** Terminal and diff panels: input forwarding and focus restoration on close. */
-    private function wirePanels(): void
-    {
-        $this->terminalPanel->onInputForward(fn (string $data) => $this->run->forwardInput($data));
-        $this->terminalPanel->onClose(fn () => $this->panels->returnFocusFrom($this->terminalPanel));
-    }
-
-    /**
-     * Route a mouse event by hit-testing the tree, tab bar and editor rects
-     * populated by the Renderer on the last frame.
-     */
-    private function wireStatusBar(): void
-    {
-        $provider = $this->service(StatusBarProvider::class);
-        $this->statusBar->setProvider($provider->segments(...));
     }
 
     private function buildStyleSheet(): StyleSheet
@@ -513,7 +450,6 @@ final class Ide
     private function buildLayoutAndOverlay(): void
     {
         $this->layout = $this->service(LayoutController::class);
-        $this->overlay = $this->service(MenuOverlayController::class);
     }
 
     /** The editor workspace: tree, editor + LSP backend, chrome widgets and the main horizontal layout. */
@@ -530,14 +466,6 @@ final class Ide
         $this->watchdog = $this->service(FreezeWatchdog::class);
         $this->menuBar = $this->service(MenuBarWidget::class);
         $this->contextMenu = $this->service(ContextMenu::class);
-        $this->tabBar = $this->service(TabBarWidget::class);
-        $this->tabBar->setProvider($this->service(TabListProvider::class)->tabs(...));
-
-        $this->breadcrumbs = $this->service(BreadcrumbsWidget::class);
-        $this->breadcrumbs->setProvider($this->service(BreadcrumbTrailProvider::class)->trail(...));
-
-        $this->imageViewer = $this->service(ImageViewerWidget::class);
-        $this->helpViewer = $this->service(HelpViewerWidget::class);
 
         // The composite tree (layout containers, separators, assembly) lives in
         // WorkspaceLayout; the properties stay as aliases for the reflection
@@ -589,29 +517,4 @@ final class Ide
     }
 
     // --- LSP -------------------------------------------------------------------
-
-    /** Populate the application menu bar and return focus to the editor on close. */
-    private function wireMenuBar(Keybindings $keybindings): void
-    {
-        $this->menuRebuilder->rebuild();
-        $this->menuBar->onNavigate(function (): void {
-            $this->overlay->refreshMenu();
-        });
-        $this->menuBar->onClose(function (): void {
-            $this->overlay->refreshMenu();
-            $this->tui->setFocus(match (true) {
-                null !== ($target = $this->views->focusTarget()) => $target,
-                default => $this->editorArea->widget(),
-            });
-            $this->tui->requestRender();
-        });
-
-        $this->contextMenu->onNavigate(function (): void {
-            $this->overlay->refreshContextMenu();
-        });
-        $this->contextMenu->onClose(function (): void {
-            $this->overlay->refreshContextMenu();
-            $this->tui->requestRender();
-        });
-    }
 }

@@ -2,6 +2,7 @@
 
 declare(strict_types=1);
 
+use Porta\Bootstrap\WidgetHooks;
 use Porta\Command\CommandProvider;
 use Porta\Command\CommandRegistryPopulator;
 use Porta\Config\CommandRegistry;
@@ -110,6 +111,7 @@ use Porta\Ui\PaneSegmenter;
 use Porta\Ui\StatusBarProvider;
 use Porta\Ui\SwitchablePalette;
 use Porta\Ui\TabListProvider;
+use Porta\Ui\TerminalStateRefresher;
 use Porta\Ui\WorkbenchActions;
 use Porta\Ui\WorkspaceViews;
 use Porta\Widget\BreadcrumbsWidget;
@@ -372,6 +374,8 @@ return static function (ContainerConfigurator $container, ContainerBuilder $buil
         CommandRegistryPopulator::class,
         EditorCallbacks::class,
         PluginRuntime::class,
+        WidgetHooks::class,
+        TerminalStateRefresher::class,
     ] as $locatorId) {
         $locatorEntries[$locatorId] = service($locatorId);
     }
