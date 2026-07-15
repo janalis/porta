@@ -8,6 +8,7 @@ use Porta\Config\CommandRegistry;
 use Porta\Config\SettingsController;
 use Porta\Editor\BufferManager;
 use Porta\Editor\BufferService;
+use Porta\Lsp\FoldingController;
 use Porta\Run\RunController;
 use Porta\Ui\WorkbenchActions;
 use Porta\Ui\WorkspaceViews;
@@ -28,6 +29,7 @@ final class ViewCommands implements CommandProvider
         private readonly RunController $run,
         private readonly WorkspaceViews $views,
         private readonly BufferService $bufferService,
+        private readonly FoldingController $folding,
         private readonly string $docsDir,
     ) {}
 
@@ -56,6 +58,8 @@ final class ViewCommands implements CommandProvider
             ->add('toggle_relative_line_numbers', fn () => $this->settings->toggle('relativeLineNumbers'), label: 'Toggle Relative Line Numbers')
             ->add('toggle_auto_pairs', fn () => $this->settings->toggle('autoPairs'), label: 'Toggle Auto-Pairs')
             ->add('toggle_format_on_save', fn () => $this->settings->toggle('formatOnSave'), label: 'Toggle Format on Save')
+            ->add('fold_all', fn () => $this->folding->foldAll(), label: 'Fold All')
+            ->add('unfold_all', fn () => $this->folding->unfoldAll(), label: 'Unfold All')
             ->add('ide_terminal', fn () => $this->run->toggleTerminal(), keyBound: true)
             ->add('ide_run', fn () => $this->run->openRunMenu(), keyBound: true)
             ->add('ide_git', fn () => $this->views->toggleGit(), keyBound: true)

@@ -65,6 +65,7 @@ final class EditorKeymap
             'resolve_conflict' => ['alt+m'],
             'toggle_comment' => ['ctrl+/', 'ctrl+-'],
             'toggle_fold' => ['ctrl+.'],
+            'goto_matching_bracket' => ['ctrl+shift+m'],
 
             'new_line' => [Key::ENTER, 'shift+enter'],
             'indent' => [Key::TAB],
@@ -104,6 +105,7 @@ final class EditorKeymap
             'goto_line' => ['ctrl+g'],
             'rename_symbol' => ['shift+f6'],
             'find_usages' => ['alt+f7'],
+            'call_hierarchy' => ['ctrl+shift+h'],
         ];
     }
 }

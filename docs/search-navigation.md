@@ -62,3 +62,9 @@ Aggregated diagnostics across all open buffers — `✗` errors, `▲` warnings,
 sorted by file and line; `Enter` jumps to the diagnostic. The status bar
 carries live error/warning counts. Diagnostics come from the language
 server and from plugins that publish them (phpstan, mago, psalm).
+
+## Call hierarchy
+
+`Ctrl+Shift+H` (or Navigate → Call Hierarchy) lists the callers of the
+function or method at the caret in the results panel — pick one to jump to
+the call site. Requires a language server with call-hierarchy support.

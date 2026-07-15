@@ -1634,6 +1634,30 @@
         <source>Evaluate expression</source>
         <target>Évaluer une expression</target>
       </trans-unit>
+      <trans-unit id="412">
+        <source>Go to Matching Bracket</source>
+        <target>Aller au crochet correspondant</target>
+      </trans-unit>
+      <trans-unit id="413">
+        <source>Call Hierarchy</source>
+        <target>Hiérarchie des appels</target>
+      </trans-unit>
+      <trans-unit id="414">
+        <source>Fold All</source>
+        <target>Tout replier</target>
+      </trans-unit>
+      <trans-unit id="415">
+        <source>Unfold All</source>
+        <target>Tout déplier</target>
+      </trans-unit>
+      <trans-unit id="416">
+        <source>No callers found</source>
+        <target>Aucun appelant trouvé</target>
+      </trans-unit>
+      <trans-unit id="417">
+        <source>Callers of %symbol%</source>
+        <target>Appelants de %symbol%</target>
+      </trans-unit>
     </body>
   </file>
 </xliff>

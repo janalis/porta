@@ -1634,6 +1634,30 @@
         <source>Evaluate expression</source>
         <target>Ausdruck auswerten</target>
       </trans-unit>
+      <trans-unit id="412">
+        <source>Go to Matching Bracket</source>
+        <target>Zur passenden Klammer springen</target>
+      </trans-unit>
+      <trans-unit id="413">
+        <source>Call Hierarchy</source>
+        <target>Aufrufhierarchie</target>
+      </trans-unit>
+      <trans-unit id="414">
+        <source>Fold All</source>
+        <target>Alle einklappen</target>
+      </trans-unit>
+      <trans-unit id="415">
+        <source>Unfold All</source>
+        <target>Alle ausklappen</target>
+      </trans-unit>
+      <trans-unit id="416">
+        <source>No callers found</source>
+        <target>Keine Aufrufer gefunden</target>
+      </trans-unit>
+      <trans-unit id="417">
+        <source>Callers of %symbol%</source>
+        <target>Aufrufer von %symbol%</target>
+      </trans-unit>
     </body>
   </file>
 </xliff>

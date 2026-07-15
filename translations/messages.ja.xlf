@@ -1634,6 +1634,30 @@
         <source>Evaluate expression</source>
         <target>式を評価</target>
       </trans-unit>
+      <trans-unit id="412">
+        <source>Go to Matching Bracket</source>
+        <target>対応する括弧へ移動</target>
+      </trans-unit>
+      <trans-unit id="413">
+        <source>Call Hierarchy</source>
+        <target>呼び出し階層</target>
+      </trans-unit>
+      <trans-unit id="414">
+        <source>Fold All</source>
+        <target>すべて折りたたむ</target>
+      </trans-unit>
+      <trans-unit id="415">
+        <source>Unfold All</source>
+        <target>すべて展開</target>
+      </trans-unit>
+      <trans-unit id="416">
+        <source>No callers found</source>
+        <target>呼び出し元が見つかりません</target>
+      </trans-unit>
+      <trans-unit id="417">
+        <source>Callers of %symbol%</source>
+        <target>%symbol% の呼び出し元</target>
+      </trans-unit>
     </body>
   </file>
 </xliff>

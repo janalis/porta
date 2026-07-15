@@ -416,4 +416,54 @@ final class EditorActionsTest extends TestCase
         $this->assertSame("\none\ntwo\n", $this->doc->getText());
         $this->assertSame(1, $this->count_('notifyChange'));
     }
+
+    public function testRunFoldAllAndUnfoldAll(): void
+    {
+        $actions = $this->actions("class A {\n    fn() {\n        x;\n    }\n}\n");
+        $this->doc->setCursor(2, 0); // inside the inner block
+
+        $actions->run('fold_all');
+        $this->assertSame(4, $this->foldModel->foldEndAt(0), 'the outer block folded');
+        $this->assertSame(3, $this->foldModel->foldEndAt(1), 'the inner block folded');
+        $this->assertSame(0, $this->doc->getCursorLine(), 'the caret snapped to a visible fold start');
+        $this->assertSame(1, $this->count_('invalidate'));
+
+        $actions->run('unfold_all');
+        $this->assertNull($this->foldModel->foldEndAt(0));
+        $this->assertNull($this->foldModel->foldEndAt(1));
+        $this->assertSame(2, $this->count_('invalidate'));
+    }
+
+    public function testExternalFoldRegionsWinUntilTheDocumentChanges(): void
+    {
+        $actions = $this->actions("a\nb\nc\nd {\n}\n");
+        $this->foldModel->setRegions([[0, 2]], $this->doc->getVersion());
+
+        $actions->run('fold_all');
+        $this->assertSame(2, $this->foldModel->foldEndAt(0), 'the LSP region folded');
+        $this->assertNull($this->foldModel->foldEndAt(3), 'the brace region was superseded');
+
+        $actions->run('unfold_all');
+        $this->doc->insert('x'); // version moves on → regions stale
+        $actions->run('fold_all');
+        $this->assertNull($this->foldModel->foldEndAt(0), 'stale LSP regions were dropped');
+    }
+
+    public function testRunGotoMatchingBracket(): void
+    {
+        $actions = $this->actions("fn(a, [b])\nend\n");
+        $this->doc->setCursor(0, 2); // on the opening paren
+
+        $actions->run('goto_matching_bracket');
+        $this->assertSame([0, 9], [$this->doc->getCursorLine(), $this->doc->getCursorCol()], 'jumped to the closing paren');
+        $this->assertSame(1, $this->count_('invalidate'));
+
+        $actions->run('goto_matching_bracket');
+        $this->assertSame([0, 2], [$this->doc->getCursorLine(), $this->doc->getCursorCol()], 'jumped back to the opener');
+
+        $this->doc->setCursor(1, 0); // no bracket anywhere near
+        $actions->run('goto_matching_bracket');
+        $this->assertSame([1, 0], [$this->doc->getCursorLine(), $this->doc->getCursorCol()], 'no bracket → no move');
+        $this->assertSame(2, $this->count_('invalidate'), 'no invalidate on the no-op');
+    }
 }

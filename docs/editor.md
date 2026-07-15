@@ -100,3 +100,12 @@ Click to place the cursor, drag to select (double-click a word,
 triple-click a line, `Shift+Click` extends), wheel to scroll, click the
 gutter to toggle a breakpoint, drag pane separators to resize, and
 right-click for a context menu of common actions.
+
+## Structure navigation
+
+`Ctrl+Shift+M` jumps between a bracket and its match (`()`, `[]`, `{}` —
+works with the caret on or just after either end). `Ctrl+.` collapses or
+expands the fold at the caret; **Fold All** / **Unfold All** in the palette
+collapse and restore the whole file — with a language server attached the
+fold regions come from `foldingRange` (real syntax), otherwise from a brace
+scan.

@@ -227,6 +227,65 @@ while (!feof($in)) {
                     ['uri' => 'untitled:scratch', 'range' => ['start' => ['line' => 0, 'character' => 0], 'end' => ['line' => 0, 'character' => 1]]],
                 ],
             ]);
+        } elseif ('textDocument/prepareCallHierarchy' === $method && ($message['params']['position']['line'] ?? 0) >= 88) {
+            // The zero-usages band: a resolvable symbol nobody calls.
+            sendMessage($out, [
+                'jsonrpc' => '2.0',
+                'id' => $message['id'],
+                'result' => [[
+                    'name' => 'orphan',
+                    'kind' => 12,
+                    'uri' => $message['params']['textDocument']['uri'],
+                    'range' => ['start' => ['line' => 88, 'character' => 0], 'end' => ['line' => 88, 'character' => 6]],
+                    'selectionRange' => ['start' => ['line' => 88, 'character' => 0], 'end' => ['line' => 88, 'character' => 6]],
+                ]],
+            ]);
+        } elseif ('textDocument/prepareCallHierarchy' === $method && ($message['params']['position']['line'] ?? 0) >= 60) {
+            // Lines 60+: nothing preparable at the caret.
+            sendMessage($out, ['jsonrpc' => '2.0', 'id' => $message['id'], 'result' => []]);
+        } elseif ('textDocument/prepareCallHierarchy' === $method) {
+            sendMessage($out, [
+                'jsonrpc' => '2.0',
+                'id' => $message['id'],
+                'result' => [[
+                    'name' => 'greet',
+                    'kind' => 12, // function
+                    'uri' => $message['params']['textDocument']['uri'],
+                    'range' => ['start' => ['line' => 2, 'character' => 0], 'end' => ['line' => 4, 'character' => 1]],
+                    'selectionRange' => ['start' => ['line' => 2, 'character' => 9], 'end' => ['line' => 2, 'character' => 14]],
+                ]],
+            ]);
+        } elseif ('callHierarchy/incomingCalls' === $method && 'orphan' === ($message['params']['item']['name'] ?? '')) {
+            sendMessage($out, ['jsonrpc' => '2.0', 'id' => $message['id'], 'result' => []]);
+        } elseif ('callHierarchy/incomingCalls' === $method) {
+            $uri = $message['params']['item']['uri'] ?? '';
+            sendMessage($out, [
+                'jsonrpc' => '2.0',
+                'id' => $message['id'],
+                'result' => [
+                    [
+                        'from' => [
+                            'name' => 'caller',
+                            'kind' => 12,
+                            'uri' => $uri,
+                            'range' => ['start' => ['line' => 6, 'character' => 0], 'end' => ['line' => 8, 'character' => 1]],
+                            'selectionRange' => ['start' => ['line' => 6, 'character' => 9], 'end' => ['line' => 6, 'character' => 15]],
+                        ],
+                        'fromRanges' => [['start' => ['line' => 7, 'character' => 4], 'end' => ['line' => 7, 'character' => 9]]],
+                    ],
+                    ['from' => 'not-an-item'],
+                ],
+            ]);
+        } elseif ('textDocument/foldingRange' === $method) {
+            sendMessage($out, [
+                'jsonrpc' => '2.0',
+                'id' => $message['id'],
+                'result' => [
+                    ['startLine' => 2, 'endLine' => 4, 'kind' => 'region'],
+                    ['startLine' => 6, 'endLine' => 6], // single-line: dropped
+                    ['startLine' => 'x', 'endLine' => 9], // malformed: dropped
+                ],
+            ]);
         } elseif ('textDocument/documentSymbol' === $method && str_contains((string) ($message['params']['textDocument']['uri'] ?? ''), 'Empty')) {
             sendMessage($out, ['jsonrpc' => '2.0', 'id' => $message['id'], 'result' => []]);
         } elseif ('textDocument/documentSymbol' === $method) {

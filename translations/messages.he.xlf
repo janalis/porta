@@ -1634,6 +1634,30 @@
         <source>Evaluate expression</source>
         <target>הערכת ביטוי</target>
       </trans-unit>
+      <trans-unit id="412">
+        <source>Go to Matching Bracket</source>
+        <target>מעבר לסוגר התואם</target>
+      </trans-unit>
+      <trans-unit id="413">
+        <source>Call Hierarchy</source>
+        <target>היררכיית קריאות</target>
+      </trans-unit>
+      <trans-unit id="414">
+        <source>Fold All</source>
+        <target>קיפול הכול</target>
+      </trans-unit>
+      <trans-unit id="415">
+        <source>Unfold All</source>
+        <target>פרישת הכול</target>
+      </trans-unit>
+      <trans-unit id="416">
+        <source>No callers found</source>
+        <target>לא נמצאו קוראים</target>
+      </trans-unit>
+      <trans-unit id="417">
+        <source>Callers of %symbol%</source>
+        <target>הקוראים של %symbol%</target>
+      </trans-unit>
     </body>
   </file>
 </xliff>

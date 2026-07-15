@@ -121,6 +121,7 @@ final class IdeEdgeCasesTest extends TestCase
                     $tui->handleInput("\x1b[24~"); // definition: ignored
                     $tui->handleInput("\x1b[1;2P"); // hover: ignored
                     $tui->handleInput("\x1b[18;3~"); // usages: ignored
+                    $tui->handleInput("\x1b[104;6u"); // call hierarchy: ignored
                     $tui->handleInput('('); // signature: ignored
                     $tui->handleInput("\x1b[17;2~"); // rename prompt opens...
                     $tui->handleInput("\r"); // ...accept prefilled: flashes "needs a language server"... but word empty -> nothing
@@ -7159,6 +7160,77 @@ final class IdeEdgeCasesTest extends TestCase
                     $layout = json_decode((string) file_get_contents($project->dir.'/.porta/layout.json'), true);
                     $this->assertSame(19, $layout['sidebarWidthPercent'], 'the last tree width (30 of 160 cols) persisted');
                     $this->assertArrayHasKey('bottomPanelHeightPercent', $layout, 'the panel grow persisted too');
+                },
+            ],
+        );
+    }
+
+    public function testCallHierarchyFoldAllAndMatchingBracket(): void
+    {
+        $body = "<?php\n\nfunction greet(string \$n): string {\n    return 'hi '.\$n;\n}\n\nfunction caller(): string {\n    return greet('x');\n}\n".str_repeat("// filler\n", 85);
+        $project = new TempProject([
+            '.porta.json' => $this->mockLspConfig(),
+            'src/H.php' => $body,
+        ]);
+
+        $palette = static function ($tui, string $label): void {
+            $tui->handleInput("\x1b[97;6u");
+            foreach (str_split($label) as $ch) {
+                $tui->handleInput($ch);
+            }
+            $tui->handleInput("\r");
+        };
+
+        $this->runIde(
+            $project,
+            $project->path('src/H.php'),
+            [
+                300 => function ($tui, $terminal): void {
+                    $this->await(fn (): bool => null !== $tui->getById('editor')->getFilePath());
+
+                    // No symbol at the caret → flash, no panel.
+                    $tui->getById('editor')->getDocument()->setCursor(70, 0);
+                    $tui->handleInput("\x1b[104;6u"); // ctrl+shift+h → call hierarchy
+                    $this->await(fn () => str_contains(AnsiUtils::stripAnsiCodes($terminal->getOutput()), 'No callers found'));
+
+                    // A symbol nobody calls → the incoming list is empty.
+                    $terminal->clearOutput();
+                    $tui->getById('editor')->getDocument()->setCursor(88, 0);
+                    $tui->handleInput("\x1b[104;6u");
+                    $this->await(fn () => str_contains(AnsiUtils::stripAnsiCodes($terminal->getOutput()), 'No callers found'));
+
+                    // The happy path: callers of greet land in the results panel.
+                    $tui->getById('editor')->getDocument()->setCursor(2, 10); // on "greet"
+                    $tui->handleInput("\x1b[104;6u");
+                    $this->await(fn (): bool => 'results' === $tui->getFocus()?->getId());
+                },
+                700 => function ($tui, $terminal): void {
+                    $tui->tick();
+                    $screen = AnsiUtils::stripAnsiCodes($terminal->getOutput());
+                    $this->assertStringContainsString('Callers of greet', $screen, 'the callers list opened');
+                    $this->assertStringContainsString('caller', $screen);
+                    $tui->handleInput("\x1b"); // close the panel
+                },
+                1100 => function ($tui, $terminal) use ($palette): void {
+                    // Fold All: the LSP foldingRange says 2-4 → the body line hides.
+                    $editorScreen = static fn (): string => AnsiUtils::stripAnsiCodes(implode("\n", $tui->getById('editor')->render(new \Symfony\Component\Tui\Render\RenderContext(120, 20))));
+                    $this->assertStringContainsString("return 'hi '", $editorScreen());
+                    $palette($tui, 'Fold All');
+                    $this->await(fn (): bool => !str_contains($editorScreen(), "return 'hi '"));
+
+                    $palette($tui, 'Unfold All');
+                    $this->assertStringContainsString("return 'hi '", $editorScreen(), 'unfold restored the line');
+                },
+                1500 => function ($tui): void {
+                    $tui->tick();
+                    // Matching bracket: from the opening brace of greet() to its closer.
+                    $tui->setFocus($tui->getById('editor'));
+                    $doc = $tui->getById('editor')->getDocument();
+                    $doc->setCursor(2, (int) strpos($doc->getLine(2), '{'));
+                    $tui->handleInput("\x1b[109;6u"); // ctrl+shift+m
+                    $this->assertSame(4, $doc->getCursorLine(), 'jumped to the closing brace line');
+                    $tui->handleInput("\x1b[109;6u"); // and back again
+                    $this->assertSame(2, $doc->getCursorLine(), 'jumped back to the opener');
                 },
             ],
         );

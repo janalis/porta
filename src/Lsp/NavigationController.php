@@ -290,6 +290,48 @@ final class NavigationController extends AbstractLspController implements Editor
         );
     }
 
+    /**
+     * The callers of the symbol at the caret: prepareCallHierarchy resolves the
+     * symbol, incomingCalls lists its call sites — rendered like Find Usages.
+     */
+    public function requestCallHierarchy(int $line, int $col): void
+    {
+        if (null === ($path = $this->ready())) {
+            return;
+        }
+
+        $this->lsp->request(
+            'textDocument/prepareCallHierarchy',
+            $this->positionParams($path, $line, $col),
+            function (mixed $result, ?array $error): void {
+                if (null !== $error || !\is_array($result) || !\is_array($result[0] ?? null)) {
+                    $this->flash($this->trans('No callers found'));
+
+                    return;
+                }
+                /** @var array{name?: string, uri?: string} $item */
+                $item = $result[0];
+                $this->lsp->request('callHierarchy/incomingCalls', ['item' => $item], function (mixed $calls, ?array $callsError) use ($item): void {
+                    $locations = [];
+                    foreach (\is_array($calls) ? $calls : [] as $call) {
+                        if (\is_array($call) && \is_array($call['from'] ?? null)) {
+                            /** @var array{uri?: string, selectionRange?: array<array-key, mixed>} $from */
+                            $from = $call['from'];
+                            $locations[] = ['uri' => $from['uri'] ?? '', 'range' => $from['selectionRange'] ?? []];
+                        }
+                    }
+                    if (null !== $callsError || [] === $locations) {
+                        $this->panels->flash($this->trans('No callers found'));
+
+                        return;
+                    }
+                    $name = \is_string($item['name'] ?? null) ? $item['name'] : '?';
+                    $this->panels->showList(ResultsPanelMode::Search, $this->trans('Callers of %symbol%', ['%symbol%' => $name]), $this->locationRows($locations));
+                });
+            },
+        );
+    }
+
     public function requestPeek(int $line, int $col): void
     {
         if (null === ($path = $this->ready())) {

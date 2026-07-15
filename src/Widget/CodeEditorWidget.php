@@ -789,6 +789,17 @@ final class CodeEditorWidget extends AbstractWidget implements ActiveFileProvide
     }
 
     /**
+     * Supply LSP fold regions for the current document version — {@see FoldModel}
+     * falls back to its brace scan once the document changes.
+     *
+     * @param list<array{0: int, 1: int}> $regions [startLine, endLine]
+     */
+    public function setFoldRegions(array $regions): void
+    {
+        $this->foldModel->setRegions($regions, $this->document->getVersion());
+    }
+
+    /**
      * Invoke an editor action by its id — the entry point the application menu
      * uses so a menu item fires exactly the same logic as pressing its key.
      * Unknown ids are a safe no-op.

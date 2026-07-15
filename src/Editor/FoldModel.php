@@ -18,6 +18,12 @@ final class FoldModel
     /** @var array<int, int> foldStart line => foldEnd line (interior hidden) */
     private array $folds = [];
 
+    /** @var list<array{0: int, 1: int}>|null externally supplied (LSP) regions, valid for one document version */
+    private ?array $regions = null;
+
+    /** The document version the external regions were computed against. */
+    private int $regionsVersion = -1;
+
     public function __construct(
         private readonly Document $document,
     ) {}
@@ -108,6 +114,34 @@ final class FoldModel
         }
     }
 
+    /**
+     * Supply richer (LSP) fold regions, valid for the current document version.
+     * Edits invalidate them implicitly — {@see foldRegions} falls back to the
+     * brace scan as soon as the version moves on.
+     *
+     * @param list<array{0: int, 1: int}> $regions [startLine, endLine]
+     */
+    public function setRegions(array $regions, int $version): void
+    {
+        $this->regions = $regions;
+        $this->regionsVersion = $version;
+    }
+
+    /** Collapse every foldable region; the caret snaps to a visible fold start. */
+    public function foldAll(): void
+    {
+        foreach ($this->foldRegions() as [$start, $end]) {
+            $this->folds[$start] = $end;
+        }
+        $line = $this->snapVisible($this->document->getCursorLine());
+        $this->document->setCursor($line, min($this->document->getCursorCol(), \strlen($this->document->getLine($line))));
+    }
+
+    public function unfoldAll(): void
+    {
+        $this->folds = [];
+    }
+
     /** Collapse the block at the caret, or expand it if the caret is on a fold start. */
     public function toggle(): void
     {
@@ -132,13 +166,28 @@ final class FoldModel
     private function foldableRegionAt(int $line): ?array
     {
         $best = null;
-        foreach ($this->braceFoldRegions() as [$start, $end]) {
+        foreach ($this->foldRegions() as [$start, $end]) {
             if ($start <= $line && $line <= $end && (null === $best || $start > $best[0])) {
                 $best = [$start, $end];
             }
         }
 
         return $best;
+    }
+
+    /**
+     * All foldable regions: the externally supplied set while it matches the
+     * document version, the naive brace scan otherwise.
+     *
+     * @return list<array{0: int, 1: int}> [startLine, endLine]
+     */
+    private function foldRegions(): array
+    {
+        if (null !== $this->regions && $this->regionsVersion === $this->document->getVersion()) {
+            return $this->regions;
+        }
+
+        return $this->braceFoldRegions();
     }
 
     /**

@@ -28,5 +28,8 @@ interface EditorNavigationHandler
 
     public function requestFileStructure(): void;
 
+    /** Show the callers of the symbol at the caret (LSP call hierarchy, incoming calls). */
+    public function requestCallHierarchy(int $line, int $col): void;
+
     public function requestPeek(int $line, int $col): void;
 }

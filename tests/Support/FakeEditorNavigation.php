@@ -17,6 +17,7 @@ final class FakeEditorNavigation implements EditorNavigationHandler
         private readonly ?\Closure $requestReferences = null,
         private readonly ?\Closure $requestFileStructure = null,
         private readonly ?\Closure $requestPeek = null,
+        private readonly ?\Closure $requestCallHierarchy = null,
     ) {}
 
     public function requestDefinition(int $line, int $utf16Col): void
@@ -72,6 +73,13 @@ final class FakeEditorNavigation implements EditorNavigationHandler
     {
         if (null !== $this->requestPeek) {
             ($this->requestPeek)($line, $col);
+        }
+    }
+
+    public function requestCallHierarchy(int $line, int $col): void
+    {
+        if (null !== $this->requestCallHierarchy) {
+            ($this->requestCallHierarchy)($line, $col);
         }
     }
 }

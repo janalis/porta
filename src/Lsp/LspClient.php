@@ -226,6 +226,8 @@ final class LspClient implements LspClientInterface
                     'codeActionLiteralSupport' => ['codeActionKind' => ['valueSet' => ['quickfix', 'refactor', 'source']]],
                 ],
                 'documentSymbol' => ['hierarchicalDocumentSymbolSupport' => true],
+                'foldingRange' => ['lineFoldingOnly' => true],
+                'callHierarchy' => ['dynamicRegistration' => false],
                 'formatting' => ['dynamicRegistration' => false],
             ],
             'workspace' => ['configuration' => false, 'workspaceFolders' => true, 'symbol' => ['dynamicRegistration' => false]],
