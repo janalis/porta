@@ -99,7 +99,7 @@ final class TerminalBuffer
                     "\n" => $this->newline(),
                     "\r" => $this->col = 0,
                     "\x08" => $this->col = max(0, $this->col - 1),
-                    "\t" => $this->writeText(str_repeat(' ', 8 - ($this->col % 8))),
+                    "\t" => $this->writeText(str_repeat(' ', max(0, 8 - ($this->col % 8)))),
                     default => null, // bell and other C0 controls: ignore
                 };
                 ++$i;

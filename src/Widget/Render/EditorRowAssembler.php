@@ -104,7 +104,7 @@ final readonly class EditorRowAssembler
             $lineIndex = $this->foldModel->docLineAtRow($vScroll, $row);
 
             if (null === $lineIndex) {
-                $result[] = $this->palette->of(Role::Placeholder).str_pad('~', $geo->gutterWidth)."\x1b[0m".str_repeat(' ', $geo->contentWidth).$stripe[$stickyCount + $row];
+                $result[] = $this->palette->of(Role::Placeholder).str_pad('~', max(0, $geo->gutterWidth))."\x1b[0m".str_repeat(' ', max(0, $geo->contentWidth)).$stripe[$stickyCount + $row];
                 continue;
             }
 
@@ -254,7 +254,7 @@ final readonly class EditorRowAssembler
             $need = min($padTo, $hScroll + $contentWidth);
             $width = AnsiUtils::visibleWidth($hlLine);
             if ($need > $width) {
-                $hlLine .= str_repeat(' ', $need - $width);
+                $hlLine .= str_repeat(' ', max(0, $need - $width));
             }
         }
         foreach ($spans as [$spanStart, $spanEnd, $openSgr, $closeSgr, $reapply]) {

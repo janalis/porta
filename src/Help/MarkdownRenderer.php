@@ -180,8 +180,8 @@ final class MarkdownRenderer
         if ($level <= 2) {
             $ruleWidth = min($width, max(1, $assembled['width']));
             $rule = 1 === $level
-                ? $this->palette->of(Role::Bright).str_repeat('═', $ruleWidth)
-                : $this->palette->of(Role::Muted).str_repeat('─', $ruleWidth);
+                ? $this->palette->of(Role::Bright).str_repeat('═', max(0, $ruleWidth))
+                : $this->palette->of(Role::Muted).str_repeat('─', max(0, $ruleWidth));
             $this->lines[] = $rule.$this->resetAll();
         }
         $this->lines[] = '';

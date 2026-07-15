@@ -297,7 +297,7 @@ final class ChangesListWidget extends AbstractWidget implements FocusableInterfa
             $index = $scroll + $row - 1;
             $entry = $this->entries[$index] ?? null;
             if (null === $entry) {
-                $lines[] = str_repeat(' ', $width);
+                $lines[] = str_repeat(' ', max(0, $width));
                 continue;
             }
             if ($index === $this->confirmDiscard) {

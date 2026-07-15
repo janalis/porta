@@ -259,7 +259,7 @@ final class CommitBoxWidget extends AbstractWidget implements FocusableInterface
             $lines[] = $this->palette->of(Role::Toolbar).AnsiUtils::truncateToWidth(' '.($descriptionLines[$i] ?? ''), $width, '…', pad: true)."\x1b[0m";
         }
 
-        $lines[] = str_repeat(' ', $width);
+        $lines[] = str_repeat(' ', max(0, $width));
         $label = $this->amend ? $this->translator->trans('  Amend last commit  ') : $this->translator->trans('  Commit to branch  ');
         $button = $this->commitEnabled()
             ? $this->palette->of(Role::SelectedRow).AnsiUtils::truncateToWidth($label, $width, '…', pad: true)."\x1b[0m"

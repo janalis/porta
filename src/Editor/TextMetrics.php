@@ -91,7 +91,7 @@ final class TextMetrics
         while ($col < $len) {
             if ("\t" === $line[$col]) {
                 $n = $tabSize - ($width % $tabSize);
-                $result .= str_repeat(' ', $n);
+                $result .= str_repeat(' ', max(0, $n));
                 $width += $n;
                 ++$col;
 

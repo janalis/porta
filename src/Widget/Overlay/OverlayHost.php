@@ -222,12 +222,12 @@ final class OverlayHost
     public function handleInput(string $keys, Keybindings $kb): bool
     {
         if (null !== $this->prompt) {
-            $this->handlePromptInput($keys, $kb);
+            $this->handlePromptInput($keys, $kb, $this->prompt);
 
             return true;
         }
         if (null !== $this->overlay) {
-            $this->handleOverlayInput($keys, $kb);
+            $this->handleOverlayInput($keys, $kb, $this->overlay);
 
             return true;
         }
@@ -235,7 +235,8 @@ final class OverlayHost
         return false;
     }
 
-    private function handlePromptInput(string $keys, Keybindings $kb): void
+    /** @param array{label: string, value: TextField, onSubmit: callable(string): void} $prompt the open prompt (non-null, narrowed by the caller) */
+    private function handlePromptInput(string $keys, Keybindings $kb, array $prompt): void
     {
         if ($kb->matches($keys, 'select_cancel')) {
             $this->prompt = null;
@@ -245,8 +246,6 @@ final class OverlayHost
         }
 
         if ($kb->matches($keys, 'accept_completion')) { // Enter
-            /** @var array{label: string, value: TextField, onSubmit: callable(string): void} $prompt */
-            $prompt = $this->prompt;
             $this->prompt = null;
             ($this->invalidate)();
             $prompt['onSubmit']($prompt['value']->value());
@@ -255,39 +254,40 @@ final class OverlayHost
         }
 
         if ($kb->matches($keys, 'delete_char_backward')) {
-            /** @var array{label: string, value: TextField, onSubmit: callable(string): void} $this->prompt */
-            if ($this->prompt['value']->backspace()) {
+            if ($prompt['value']->backspace()) {
                 ($this->invalidate)();
             }
 
             return;
         }
 
-        /** @var array{label: string, value: TextField, onSubmit: callable(string): void} $this->prompt */
-        if ($this->prompt['value']->insert($keys)) {
+        if ($prompt['value']->insert($keys)) {
             ($this->invalidate)();
         }
     }
 
-    private function handleOverlayInput(string $keys, Keybindings $kb): void
+    /** @param array{title: string, items: list<array{label: string, hint: string, value: string}>, selected: int, onPick: callable(string): void} $overlay the open list overlay (non-null) */
+    private function handleOverlayInput(string $keys, Keybindings $kb, array $overlay): void
     {
-        /** @var array{title: string, items: list<array{label: string, hint: string, value: string}>, selected: int, onPick: callable(string): void} $this->overlay */
-        $count = \count($this->overlay['items']);
+        $count = \count($overlay['items']);
 
         if ($kb->matches($keys, 'select_cancel')) {
             $this->overlay = null;
         } elseif ($kb->matches($keys, 'cursor_up')) {
-            $this->overlay['selected'] = ($this->overlay['selected'] - 1 + $count) % $count;
+            $overlay['selected'] = ($overlay['selected'] - 1 + $count) % $count;
+            $this->overlay = $overlay;
         } elseif ($kb->matches($keys, 'cursor_down')) {
-            $this->overlay['selected'] = ($this->overlay['selected'] + 1) % $count;
+            $overlay['selected'] = ($overlay['selected'] + 1) % $count;
+            $this->overlay = $overlay;
         } elseif ($kb->matches($keys, 'accept_completion')) {
-            $item = $this->overlay['items'][$this->overlay['selected']];
-            $onPick = $this->overlay['onPick'];
+            $item = $overlay['items'][$overlay['selected']];
+            $onPick = $overlay['onPick'];
             $this->overlay = null;
             $onPick($item['value']);
         } elseif ($kb->matches($keys, 'recent_files')) {
             // Ctrl+E again cycles like PhpStorm
-            $this->overlay['selected'] = ($this->overlay['selected'] + 1) % $count;
+            $overlay['selected'] = ($overlay['selected'] + 1) % $count;
+            $this->overlay = $overlay;
         } else {
             return;
         }
@@ -305,11 +305,11 @@ final class OverlayHost
             return false;
         }
 
+        $overlay = $this->overlay;
         $index = $this->itemAt($relRow, $relCol);
-        /** @var array{title: string, items: list<array{label: string, hint: string, value: string}>, selected: int, onPick: callable(string): void} $this->overlay */
         if (null !== $index) {
-            $item = $this->overlay['items'][$index];
-            $onPick = $this->overlay['onPick'];
+            $item = $overlay['items'][$index];
+            $onPick = $overlay['onPick'];
             $this->overlay = null;
             ($this->invalidate)();
             $onPick($item['value']);
@@ -332,10 +332,11 @@ final class OverlayHost
             return false;
         }
 
+        $overlay = $this->overlay;
         $index = $this->itemAt($relRow, $relCol);
-        /** @var array{title: string, items: list<array{label: string, hint: string, value: string}>, selected: int, onPick: callable(string): void} $this->overlay */
-        if (null !== $index && $index !== $this->overlay['selected']) {
-            $this->overlay['selected'] = $index;
+        if (null !== $index && $index !== $overlay['selected']) {
+            $overlay['selected'] = $index;
+            $this->overlay = $overlay;
             ($this->invalidate)();
 
             return true;

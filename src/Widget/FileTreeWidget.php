@@ -279,14 +279,14 @@ final class FileTreeWidget extends AbstractWidget implements FocusableInterface,
             $node = $this->visible[$index] ?? null;
 
             if (null === $node) {
-                $lines[] = str_repeat(' ', $width);
+                $lines[] = str_repeat(' ', max(0, $width));
                 continue;
             }
 
             $icon = $node['isDir']
                 ? ($this->expanded[$node['path']] ?? false ? '▾ ' : '▸ ')
                 : '  ';
-            $text = str_repeat(' ', $node['depth'] + 1).$icon.$node['name'].($node['isDir'] ? '/' : '');
+            $text = str_repeat(' ', max(0, $node['depth'] + 1)).$icon.$node['name'].($node['isDir'] ? '/' : '');
             $text = AnsiUtils::truncateToWidth($text, $width, '…', pad: true);
 
             if ($index === $this->list->selected()) {

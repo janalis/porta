@@ -1155,7 +1155,7 @@ final class CodeEditorWidget extends AbstractWidget implements ActiveFileProvide
         $middle = intdiv($rows, 2);
         $lines = [];
         for ($i = 0; $i < $rows; ++$i) {
-            $lines[] = $i === $middle ? $hintRow : str_repeat(' ', $columns);
+            $lines[] = $i === $middle ? $hintRow : str_repeat(' ', max(0, $columns));
         }
 
         return $lines;

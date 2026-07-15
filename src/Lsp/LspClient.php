@@ -361,8 +361,7 @@ final class LspClient implements LspClientInterface
         if (isset($message['id'], $message['method'])) {
             $result = match ($message['method']) {
                 'workspace/configuration' => array_fill(0, \count($message['params']['items'] ?? [null]), null),
-                'window/workDoneProgress/create' => null,
-                'client/registerCapability', 'client/unregisterCapability' => null,
+                'window/workDoneProgress/create', 'client/registerCapability', 'client/unregisterCapability' => null,
                 'workspace/applyEdit' => [
                     'applied' => null !== $this->applyEditHandler && ($this->applyEditHandler)($message['params']['edit'] ?? []),
                 ],

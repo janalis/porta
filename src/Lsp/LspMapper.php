@@ -292,7 +292,7 @@ final class LspMapper
             $start = $range['start'] ?? ['line' => 0, 'character' => 0];
 
             $items[] = [
-                'label' => str_repeat('  ', $depth).(string) $symbol['name'],
+                'label' => str_repeat('  ', max(0, $depth)).(string) $symbol['name'],
                 'hint' => self::SYMBOL_KINDS[$symbol['kind'] ?? 0] ?? '',
                 'value' => (int) ($start['line'] ?? 0).':'.(int) ($start['character'] ?? 0),
             ];

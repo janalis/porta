@@ -47,7 +47,7 @@ final class MenuPanel
         foreach ($items as $index => $item) {
             $out[] = [
                 'segment' => $item->separator
-                    ? $palette->of(Role::RowHighlightBg).$palette->of(Role::Placeholder).str_repeat('─', $panelWidth)."\x1b[0m"
+                    ? $palette->of(Role::RowHighlightBg).$palette->of(Role::Placeholder).str_repeat('─', max(0, $panelWidth))."\x1b[0m"
                     : self::itemSegment($item, $panelWidth, $index === $selected, $item->enabled(), $palette),
                 'separator' => $item->separator,
             ];
@@ -111,7 +111,7 @@ final class MenuPanel
         $bg = !$enabled
             ? "\x1b[2m".$palette->of(Role::RowHighlightBg).$palette->of(Role::Gutter)
             : ($selected ? $palette->of(Role::SelectedRow) : $palette->of(Role::PopupRow));
-        $tail = '' !== $shortcut ? $palette->of(Role::CompletionHint).$shortcut."\x1b[39m" : str_repeat(' ', mb_strwidth($shortcut));
+        $tail = '' !== $shortcut ? $palette->of(Role::CompletionHint).$shortcut."\x1b[39m" : str_repeat(' ', max(0, mb_strwidth($shortcut)));
 
         return $bg.' '.$label.str_repeat(' ', $gap).$tail.' '."\x1b[0m";
     }

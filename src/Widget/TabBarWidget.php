@@ -91,7 +91,7 @@ final class TabBarWidget extends AbstractWidget implements MenuOverlayHost
         $tabs = null !== $this->provider ? ($this->provider)() : [];
 
         if ([] === $tabs) {
-            return $this->withMenuOverlay([str_repeat(' ', $columns)], $columns);
+            return $this->withMenuOverlay([str_repeat(' ', max(0, $columns))], $columns);
         }
 
         // Make sure the active tab is visible: drop leading tabs if needed. Each

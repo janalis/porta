@@ -259,7 +259,7 @@ final class TerminalPanelWidget extends OverlayWidget implements FocusableInterf
         }
         // Pad to a stable height.
         for ($i = \count($window); $i < $bodyRows; ++$i) {
-            $lines[] = str_repeat(' ', $columns);
+            $lines[] = str_repeat(' ', max(0, $columns));
         }
 
         // Place the hardware cursor at the child's prompt position when the

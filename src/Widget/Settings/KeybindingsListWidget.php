@@ -208,7 +208,7 @@ final class KeybindingsListWidget extends AbstractWidget implements FocusableInt
             $index = $scroll + $row - 1;
             $entry = $this->rows[$index] ?? null;
             if (null === $entry) {
-                $lines[] = str_repeat(' ', $width);
+                $lines[] = str_repeat(' ', max(0, $width));
                 continue;
             }
 

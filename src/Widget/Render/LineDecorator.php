@@ -88,7 +88,7 @@ final class LineDecorator
     {
         $lineWidth = AnsiUtils::visibleWidth($line);
         if ($lineWidth < $width) {
-            $line .= str_repeat(' ', $width - $lineWidth);
+            $line .= str_repeat(' ', max(0, $width - $lineWidth));
         }
 
         return $bgSgr.AnsiUtils::reapplyBackgroundAfterResets($line, $bgSgr)."\x1b[49m";

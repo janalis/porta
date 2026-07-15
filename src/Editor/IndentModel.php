@@ -42,7 +42,7 @@ final class IndentModel
     /** The indentation unit for one level: a tab, or {@see $indentSize} spaces. */
     public function unit(): string
     {
-        return $this->usesTabs ? "\t" : str_repeat(' ', $this->indentSize);
+        return $this->usesTabs ? "\t" : str_repeat(' ', max(0, $this->indentSize));
     }
 
     /** Spaces per indent level (EditorConfig indent_size). */

@@ -271,7 +271,7 @@ final class DebugPanelWidget extends OverlayWidget implements FocusableInterface
     /** @param array{kind: string, label: string, frameId: int, path: string, line: int, ref: int, depth: int, watchIndex: int} $row */
     private function rowText(array $row): string
     {
-        $indent = str_repeat('  ', $row['depth']);
+        $indent = str_repeat('  ', max(0, $row['depth']));
 
         return match ($row['kind']) {
             'watch' => $this->watchText($row),
@@ -285,7 +285,7 @@ final class DebugPanelWidget extends OverlayWidget implements FocusableInterface
     /** @param array{kind: string, label: string, frameId: int, path: string, line: int, ref: int, depth: int, watchIndex: int} $row */
     private function watchText(array $row): string
     {
-        $indent = str_repeat('  ', $row['depth']);
+        $indent = str_repeat('  ', max(0, $row['depth']));
         $watch = $this->watches[$row['watchIndex']] ?? null;
         $arrow = $row['ref'] > 0 ? (isset($this->expanded[$row['ref']]) ? '▾ ' : '▸ ') : '  ';
         $value = match (true) {
