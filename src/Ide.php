@@ -39,14 +39,11 @@ use Porta\Git\GitCommands;
 use Porta\Git\GitInfo;
 use Porta\Git\GitPanes;
 use Porta\Git\GitRefresher;
-use Porta\Git\GitRemote;
 use Porta\Git\GitRemoteCommands;
 use Porta\Git\GitViewController;
 use Porta\Help\HelpViewerActions;
-use Porta\History\LocalHistory;
 use Porta\History\LocalHistoryController;
 use Porta\History\SessionRestorer;
-use Porta\History\SessionStore;
 use Porta\I18n\Translator;
 use Porta\Image\ImageDecoder;
 use Porta\Image\ImageViewerActions;
@@ -81,12 +78,10 @@ use Porta\Plugin\PluginSettings;
 use Porta\Run\RunConfigs;
 use Porta\Run\RunController;
 use Porta\Search\Everywhere\SearchEverywhereController;
-use Porta\Search\Everywhere\SearchEverywhereFactory;
 use Porta\Search\ProjectSearchController;
 use Porta\Search\ResultContextProvider;
 use Porta\Search\SearchActions;
 use Porta\Search\SearchUiWiring;
-use Porta\Search\TestNavigator;
 use Porta\Settings\LiveSettingsApplier;
 use Porta\Settings\SettingsViewController;
 use Porta\Support\AsyncProcess;
@@ -106,7 +101,6 @@ use Porta\Ui\EditorArea;
 use Porta\Ui\FocusCoordinator;
 use Porta\Ui\MenuRebuilder;
 use Porta\Ui\NonBlockingTerminal;
-use Porta\Ui\NotificationLog;
 use Porta\Ui\Notifier;
 use Porta\Ui\PanelManager;
 use Porta\Ui\ResultsPanelMode;
@@ -170,7 +164,6 @@ final class Ide
     private CodeEditorWidget $editor;
     private ImageViewerWidget $imageViewer;
     private HelpViewerWidget $helpViewer;
-    private ContainerWidget $editorBody;
     private StatusBarWidget $statusBar;
     private Notifier $notifier;
     private FreezeWatchdog $watchdog;
@@ -188,7 +181,6 @@ final class Ide
     private GoToFileWidget $goToFile;
     private ResultsPanelWidget $resultsPanel;
     private ProjectSearchController $projectSearchController;
-    private TestNavigator $testNavigator;
     private CommandPalette $commandPalette;
     private TerminalPanelWidget $terminalPanel;
     private RunController $run;
@@ -214,9 +206,7 @@ final class Ide
     private PaneLayout $paneLayout;
     private SearchActions $searchActions;
     private GitCommands $gitCommands;
-    private LocalHistory $history;
     private LocalHistoryController $localHistory;
-    private SessionStore $session;
     private LayoutController $layout;
     private TreeOperations $treeOps;
     private BufferManager $buffers;
@@ -238,7 +228,6 @@ final class Ide
     private FocusCoordinator $focusCoordinator;
     private MenuRebuilder $menuRebuilder;
     private WorkbenchActions $workbench;
-    private NotificationLog $notificationLog;
 
     /** Positions + composites the app-menu and context-menu floating overlays. */
     private MenuOverlayController $overlay;
@@ -342,14 +331,12 @@ final class Ide
 
         $this->git = $this->service(GitInfo::class);
         $this->gitRefresher = $this->service(GitRefresher::class);
-        $this->gitCommands = new GitCommands($this->git, $this->editor, $this->notifier, $this->tui, $this->translator, $this->gitRefresher, $this->rootDir, $this->views);
-        $this->gitRemoteCommands = new GitRemoteCommands($this->service(GitRemote::class), $this->notifier, $this->translator, $this->dispatcher);
+        $this->gitCommands = $this->service(GitCommands::class);
+        $this->gitRemoteCommands = $this->service(GitRemoteCommands::class);
         $this->buildGitView();
 
         $this->buildSettingsWidgets();
 
-        $this->history = $this->service(LocalHistory::class);
-        $this->session = $this->service(SessionStore::class);
         $this->buildLayoutAndOverlay();
 
         $this->workspaceLayout->mount($this->tui);
@@ -358,25 +345,7 @@ final class Ide
         $this->chrome->register([$this->menuBar, $this->main, $this->statusBar, $this->goToFile, $this->findBar, $this->resultsPanel, $this->terminalPanel, $this->contextMenu]);
 
         $this->wireWidgets($keybindings);
-        $this->bufferService = new BufferService(
-            $this->buffers,
-            $this->editor,
-            $this->tree,
-            $this->notifier,
-            $this->tui,
-            $this->lsp,
-            $this->history,
-            $this->service(EditorConfigResolver::class),
-            $this->rootDir,
-            $this->translator,
-            $this->gitRefresher,
-            $this->imageViewer,
-            $this->helpViewer,
-            $this->service(ImageDecoder::class),
-            $this->editorBody,
-            $this->dispatcher,
-            $this->service(FormatOnSave::class),
-        );
+        $this->bufferService = $this->service(BufferService::class);
         $this->navigation = new NavigationController(
             $this->lsp,
             $this->editor,
@@ -401,34 +370,11 @@ final class Ide
             $this->translator,
             $this->rootDir,
         );
-        $this->bufferNavigator = new BufferNavigator($this->buffers, $this->bufferService, $this->goToFile, $this->editor, $this->tui, $this->rootDir);
+        $this->bufferNavigator = $this->service(BufferNavigator::class);
         $this->wireEditorCallbacks();
-        $this->workbench = new WorkbenchActions(
-            $this->buffers,
-            $this->bufferService,
-            $this->notifier,
-            $this->translator,
-            $this->tui,
-            $this->menuBar,
-            $this->panels,
-            $this->commandPalette,
-            $this->commands,
-            $this->notificationLog,
-            $this->service(LspLog::class),
-            $this->editor,
-        );
-        $this->lspBootstrapper = new LspBootstrapper(
-            $this->lsp,
-            $this->service(LspLog::class),
-            $this->workspaceEditor,
-            $this->bufferService,
-            $this->notifier,
-            $this->translator,
-            $this->rootDir,
-            $this->lspCommand,
-            $this->lspDisabled,
-        );
-        $this->sessionRestorer = new SessionRestorer($this->session, $this->buffers, $this->bufferService, $this->editorArea, $this->tui);
+        $this->workbench = $this->service(WorkbenchActions::class);
+        $this->lspBootstrapper = $this->service(LspBootstrapper::class);
+        $this->sessionRestorer = $this->service(SessionRestorer::class);
         // The debugger orchestrator, after the buffer service it opens files
         // through; the decoration/state pieces are the same container-shared
         // instances the buffer service applies on every buffer switch.
@@ -451,27 +397,8 @@ final class Ide
         $this->wireStatusBar();
         // The search entry points; after wireCommands (ActionsSource reads the
         // populated registry) and after the buffer service both depend on.
-        $this->searchActions = new SearchActions(
-            $this->panels,
-            $this->projectSearchController,
-            $this->testNavigator,
-            $this->buffers,
-            $this->bufferService,
-            $this->notifier,
-            $this->translator,
-            $this->editor,
-            $this->rootDir,
-        );
-        $this->searchEverywhere = new SearchEverywhereFactory(
-            $this->editor,
-            $this->commands,
-            $this->buffers,
-            $this->bufferService,
-            $this->lsp,
-            $this->tui,
-            $this->service(Scheduler::class),
-            $this->rootDir,
-        )->create();
+        $this->searchActions = $this->service(SearchActions::class);
+        $this->searchEverywhere = $this->service(SearchEverywhereController::class);
         $this->wireImageViewer();
         $this->wireHelpViewer();
 
@@ -523,16 +450,7 @@ final class Ide
         );
         $this->pluginLifecycle->refreshNav();
 
-        $this->localHistory = new LocalHistoryController(
-            $this->history,
-            $this->panels,
-            $this->editor,
-            $this->buffers,
-            $this->notifier,
-            $this->tui,
-            $this->translator,
-            $this->completion,
-        );
+        $this->localHistory = $this->service(LocalHistoryController::class);
 
         $this->treeOps = new TreeOperations(
             $this->tree,
@@ -733,7 +651,7 @@ final class Ide
     private function wireEditorCallbacks(): void
     {
         $this->editor->setCallbacks(new EditorCallbacks(
-            file: new EditorFileActions($this->bufferService, $this->bufferNavigator, $this->clipboard, $this->findBar, $this->editor, $this->tui),
+            file: $this->service(EditorFileActions::class),
             navigation: $this->navigation,
             completion: $this->completion,
             refactor: $this->refactor,
@@ -744,13 +662,13 @@ final class Ide
     /** The image viewer's IDE hooks: tab management and the status-bar refresh. */
     private function wireImageViewer(): void
     {
-        $this->imageViewer->setHandler(new ImageViewerActions($this->bufferNavigator, $this->statusBar, $this->tui));
+        $this->imageViewer->setHandler($this->service(ImageViewerActions::class));
     }
 
     private function wireHelpViewer(): void
     {
         $this->helpViewer->setDocsRoot($this->docsDir);
-        $this->helpViewer->setHandler(new HelpViewerActions($this->bufferService, $this->bufferNavigator, $this->docsUrls, $this->notifier, $this->translator, $this->docsDir));
+        $this->helpViewer->setHandler($this->service(HelpViewerActions::class));
     }
 
     /** Terminal and diff panels: input forwarding and focus restoration on close. */
@@ -809,7 +727,6 @@ final class Ide
         $this->workspaceEditor = $this->service(WorkspaceEditor::class);
         $this->statusBar = $this->service(StatusBarWidget::class);
         $this->notifier = $this->service(Notifier::class);
-        $this->notificationLog = $this->service(NotificationLog::class);
         $this->watchdog = $this->service(FreezeWatchdog::class);
         $this->menuBar = $this->service(MenuBarWidget::class);
         $this->contextMenu = $this->service(ContextMenu::class);
@@ -827,7 +744,6 @@ final class Ide
         // WorkspaceLayout; the properties stay as aliases for the reflection
         // seams tests rely on and the remaining hand-wiring.
         $this->workspaceLayout = $this->service(WorkspaceLayout::class);
-        $this->editorBody = $this->workspaceLayout->editorBody();
         $this->main = $this->workspaceLayout->main();
         $this->paneLayout = $this->service(PaneLayout::class);
         $this->paneLayout->arrangeEditorArea();
@@ -843,7 +759,6 @@ final class Ide
         $this->projectSearchController = $this->service(ProjectSearchController::class);
         $this->commandPalette = $this->service(CommandPalette::class);
         $this->panels = $this->service(PanelManager::class);
-        $this->testNavigator = $this->service(TestNavigator::class);
         $this->debugPanel = $this->service(DebugPanelWidget::class);
         $this->debugPanel->onClose(fn () => $this->panels->returnFocusFrom($this->debugPanel));
     }

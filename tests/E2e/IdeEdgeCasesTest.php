@@ -6993,7 +6993,7 @@ final class IdeEdgeCasesTest extends TestCase
             [
                 200 => function ($tui, $terminal, $ide): void {
                     // Empty log (boot may have flashed): the command just flashes.
-                    $log = new \ReflectionProperty($ide, 'notificationLog')->getValue($ide);
+                    $log = new \ReflectionProperty($ide, 'locator')->getValue($ide)->get(\Porta\Ui\NotificationLog::class);
                     new \ReflectionProperty($log, 'entries')->setValue($log, []);
                     new \ReflectionProperty($ide, 'commands')->getValue($ide)->run('ide_notifications');
                     $tui->tick();

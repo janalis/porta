@@ -16,24 +16,36 @@ use Porta\Debug\ProcessDapClientFactory;
 use Porta\Editor\ActiveFileProvider;
 use Porta\Editor\BreadcrumbTrailProvider;
 use Porta\Editor\BufferManager;
+use Porta\Editor\BufferNavigator;
+use Porta\Editor\BufferService;
+use Porta\Editor\EditorFileActions;
+use Porta\Editor\FileOpener;
+use Porta\Git\GitCommands;
 use Porta\Git\GitInfo;
 use Porta\Git\GitRefresher;
 use Porta\Git\GitRemote;
+use Porta\Git\GitRemoteCommands;
+use Porta\Help\HelpViewerActions;
 use Porta\Highlight\SwitchableTerminalTheme;
 use Porta\Highlight\TerminalThemeFactory;
 use Porta\History\LocalHistory;
+use Porta\History\LocalHistoryController;
+use Porta\History\SessionRestorer;
 use Porta\History\SessionStore;
 use Porta\I18n\PaneReorder;
 use Porta\I18n\Translator;
 use Porta\Image\ImageDecoder;
+use Porta\Image\ImageViewerActions;
 use Porta\Input\HitTester;
 use Porta\Layout\GitSidebar;
 use Porta\Layout\LayoutController;
 use Porta\Layout\PaneLayout;
 use Porta\Layout\PaneResizer;
 use Porta\Layout\WorkspaceLayout;
+use Porta\Lsp\BufferReopener;
 use Porta\Lsp\CompletionController;
 use Porta\Lsp\FormatOnSave;
+use Porta\Lsp\LspBootstrapper;
 use Porta\Lsp\LspLog;
 use Porta\Lsp\LspSessionPool;
 use Porta\Lsp\WorkspaceEditor;
@@ -47,8 +59,11 @@ use Porta\Plugin\PluginInstaller;
 use Porta\Plugin\PluginLoader;
 use Porta\Plugin\PluginManager;
 use Porta\Plugin\PluginSettings;
+use Porta\Search\Everywhere\SearchEverywhereController;
+use Porta\Search\Everywhere\SearchEverywhereFactory;
 use Porta\Search\ProjectSearchController;
 use Porta\Search\ResultContextProvider;
+use Porta\Search\SearchActions;
 use Porta\Search\TestNavigator;
 use Porta\Settings\LiveSettingsApplier;
 use Porta\Support\Clipboard;
@@ -70,6 +85,7 @@ use Porta\Ui\PanelManager;
 use Porta\Ui\PaneSegmenter;
 use Porta\Ui\SwitchablePalette;
 use Porta\Ui\TabListProvider;
+use Porta\Ui\WorkbenchActions;
 use Porta\Ui\WorkspaceViews;
 use Porta\Widget\BreadcrumbsWidget;
 use Porta\Widget\CodeEditorWidget;
@@ -110,6 +126,7 @@ use Symfony\Component\Tui\Input\Keybindings;
 use Symfony\Component\Tui\Render\Renderer;
 use Symfony\Component\Tui\Style\Style;
 use Symfony\Component\Tui\Tui;
+use Symfony\Component\Tui\Widget\ContainerWidget;
 use Tempest\Highlight\TerminalTheme;
 
 use function Symfony\Component\DependencyInjection\Loader\Configurator\env;
@@ -169,7 +186,11 @@ return static function (ContainerConfigurator $container, ContainerBuilder $buil
         ->autoconfigure()
         ->bind('$rootDir', env('PORTA_ROOT_DIR'))
         ->bind('$locale', env('PORTA_LOCALE'))
-        ->bind('$ansi', env('PORTA_ANSI')->bool());
+        ->bind('$ansi', env('PORTA_ANSI')->bool())
+        ->bind('$lspCommand', env('default::PORTA_LSP_COMMAND'))
+        ->bind('$lspDisabled', env('PORTA_LSP_DISABLED')->bool())
+        ->bind('$docsDir', env('PORTA_DOCS_DIR'))
+        ->bind(ContainerWidget::class.' $editorBody', service('porta.widget.editor_body'));
 
     // Autoregister every Porta\ class. Only the orchestrator and the container
     // factory are excluded; everything else that isn't a real service registers
@@ -309,6 +330,19 @@ return static function (ContainerConfigurator $container, ContainerBuilder $buil
         LspLog::class,
         FormatOnSave::class,
         CommandRegistry::class,
+        BufferService::class,
+        BufferNavigator::class,
+        EditorFileActions::class,
+        SessionRestorer::class,
+        SearchActions::class,
+        WorkbenchActions::class,
+        LspBootstrapper::class,
+        HelpViewerActions::class,
+        ImageViewerActions::class,
+        LocalHistoryController::class,
+        GitCommands::class,
+        GitRemoteCommands::class,
+        SearchEverywhereController::class,
     ] as $locatorId) {
         $locatorEntries[$locatorId] = service($locatorId);
     }
@@ -332,6 +366,18 @@ return static function (ContainerConfigurator $container, ContainerBuilder $buil
     // The installer resolves its plugin dirs and git binary from the
     // environment at construction — a static named constructor owns that.
     $services->set(PluginInstaller::class)->factory([PluginInstaller::class, 'create']);
+
+    // Duplicate-typed widgets from the composite tree: exposed per getter so
+    // typed-named binds (below, in _defaults) can feed them to consumers.
+    $services->set('porta.widget.editor_body', ContainerWidget::class)->factory([service(WorkspaceLayout::class), 'editorBody']);
+
+    // BufferService is both interface seams' implementation.
+    $services->alias(FileOpener::class, BufferService::class);
+    $services->alias(BufferReopener::class, BufferService::class);
+
+    // The Search Everywhere modal aggregates per-source hooks; its factory
+    // owns them (see SearchEverywhereFactory).
+    $services->set(SearchEverywhereController::class)->factory([service(SearchEverywhereFactory::class), 'create']);
 
     // Synthetic infrastructure: external (Renderer/Tui), closure-wired objects
     // the container can't build, or values that exist before the container does
