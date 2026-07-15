@@ -997,14 +997,14 @@ final class CodeEditorWidget extends AbstractWidget implements ActiveFileProvide
      */
     private function composePopups(array $result, EditorPopupGeometry $geo): array
     {
+        // Both overlays anchor to the caret's on-screen row (past the sticky headers).
+        $cursorScreenRow = max(0, $this->foldModel->screenRowFor($geo->vScroll, $geo->cursorLine)) + $geo->stickyCount;
         if (null !== $this->signatureHint) {
-            $cursorScreenRow = max(0, $this->foldModel->screenRowFor($geo->vScroll, $geo->cursorLine)) + $geo->stickyCount;
             EditorRenderer::signatureHint($result, $geo->columns, $geo->gutterWidth, $cursorScreenRow, $this->signatureHint, $this->palette);
         }
 
         $this->completion->setBox(null);
         if (null !== ($popup = $this->completion->popupState())) {
-            $cursorScreenRow = max(0, $this->foldModel->screenRowFor($geo->vScroll, $geo->cursorLine)) + $geo->stickyCount;
             $anchorCol = $geo->gutterWidth + ($geo->cursorDisplayCol - $geo->hScroll) - mb_strwidth($this->document->getWordBeforeCursor());
             $this->completion->setBox(EditorRenderer::completionPopup($result, $geo->columns, $geo->rows, $cursorScreenRow, $anchorCol, $popup['items'], $popup['selected'], $this->palette));
         }
