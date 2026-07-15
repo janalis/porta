@@ -53,7 +53,7 @@ final class DebugPanelWidget extends OverlayWidget implements FocusableInterface
     private array $children = [];
     /** @var array<int, true> expanded variablesReferences */
     private array $expanded = [];
-    /** @var list<array{kind: string, label: string, frameId: int, path: string, line: int, ref: int, depth: int, watchIndex: int}> flattened display rows */
+    /** @var list<DebugRow> flattened display rows */
     private array $rows = [];
 
     /** @var (callable(int, string, int): void)|null frameId, path, 0-based line */
@@ -222,8 +222,8 @@ final class DebugPanelWidget extends OverlayWidget implements FocusableInterface
         }
         if ($kb->matches($data, 'remove_watch')) {
             $row = $this->rows[$this->list->selected()] ?? null;
-            if (null !== $row && 'watch' === $row['kind'] && null !== $this->onRemoveWatch) {
-                ($this->onRemoveWatch)($row['watchIndex']);
+            if (null !== $row && DebugRowKind::Watch === $row->kind && null !== $this->onRemoveWatch) {
+                ($this->onRemoveWatch)($row->watchIndex);
             }
         }
     }
@@ -283,17 +283,16 @@ final class DebugPanelWidget extends OverlayWidget implements FocusableInterface
         $this->rows = [];
     }
 
-    /** @param array{kind: string, label: string, frameId: int, path: string, line: int, ref: int, depth: int, watchIndex: int} $row */
-    private function rowText(array $row): string
+    private function rowText(DebugRow $row): string
     {
-        $indent = str_repeat('  ', max(0, $row['depth']));
+        $indent = str_repeat('  ', max(0, $row->depth));
 
-        return match ($row['kind']) {
-            'watch' => $this->watchText($row),
-            'section' => ' '.$this->palette->of(Role::Dim).$row['label'].Sgr::DEFAULT_FG,
-            'frame' => ' '.$indent.$row['label'].'  '.$this->palette->of(Role::TabAccent).$row['path'].':'.($row['line'] + 1).Sgr::DEFAULT_FG,
-            'scope' => ' '.$indent.(array_key_exists($row['ref'], $this->expanded) ? '▾ ' : '▸ ').$this->palette->of(Role::Bright).$row['label'].Sgr::DEFAULT_FG,
-            default => ' '.$indent.$this->expandArrow($row['ref']).$row['label'],
+        return match ($row->kind) {
+            DebugRowKind::Watch => $this->watchText($row),
+            DebugRowKind::Section => ' '.$this->palette->of(Role::Dim).$row->label.Sgr::DEFAULT_FG,
+            DebugRowKind::Frame => ' '.$indent.$row->label.'  '.$this->palette->of(Role::TabAccent).$row->path.':'.($row->line + 1).Sgr::DEFAULT_FG,
+            DebugRowKind::Scope => ' '.$indent.(array_key_exists($row->ref, $this->expanded) ? '▾ ' : '▸ ').$this->palette->of(Role::Bright).$row->label.Sgr::DEFAULT_FG,
+            DebugRowKind::Variable => ' '.$indent.$this->expandArrow($row->ref).$row->label,
         };
     }
 
@@ -307,12 +306,11 @@ final class DebugPanelWidget extends OverlayWidget implements FocusableInterface
         return array_key_exists($ref, $this->expanded) ? '▾ ' : '▸ ';
     }
 
-    /** @param array{kind: string, label: string, frameId: int, path: string, line: int, ref: int, depth: int, watchIndex: int} $row */
-    private function watchText(array $row): string
+    private function watchText(DebugRow $row): string
     {
-        $indent = str_repeat('  ', max(0, $row['depth']));
-        $watch = $this->watches[$row['watchIndex']] ?? null;
-        $arrow = $this->expandArrow($row['ref']);
+        $indent = str_repeat('  ', max(0, $row->depth));
+        $watch = $this->watches[$row->watchIndex] ?? null;
+        $arrow = $this->expandArrow($row->ref);
         $value = match (true) {
             null === $watch => '',
             null !== $watch['error'] => $this->palette->of(Role::Dim).$watch['error'].Sgr::DEFAULT_FG,
@@ -320,7 +318,7 @@ final class DebugPanelWidget extends OverlayWidget implements FocusableInterface
             default => $watch['value'],
         };
 
-        return ' '.$indent.$arrow.$row['label'].' = '.$value;
+        return ' '.$indent.$arrow.$row->label.' = '.$value;
     }
 
     /** Rebuild the flattened rows from frames + scopes + expanded children. */
@@ -328,24 +326,24 @@ final class DebugPanelWidget extends OverlayWidget implements FocusableInterface
     {
         $rows = [];
         if ([] !== $this->frames) {
-            $rows[] = self::row('section', 'Frames');
+            $rows[] = new DebugRow(DebugRowKind::Section, 'Frames');
             foreach ($this->frames as $i => $frame) {
-                $rows[] = self::row('frame', "#{$i} {$frame['name']}", frameId: $frame['id'], path: $frame['path'], line: $frame['line'], depth: 1);
+                $rows[] = new DebugRow(DebugRowKind::Frame, "#{$i} {$frame['name']}", frameId: $frame['id'], path: $frame['path'], line: $frame['line'], depth: 1);
             }
         }
         if ([] !== $this->watches) {
-            $rows[] = self::row('section', 'Watches');
+            $rows[] = new DebugRow(DebugRowKind::Section, 'Watches');
             foreach ($this->watches as $i => $watch) {
-                $rows[] = self::row('watch', $watch['expr'], ref: $watch['ref'], depth: 1, watchIndex: $i);
+                $rows[] = new DebugRow(DebugRowKind::Watch, $watch['expr'], ref: $watch['ref'], depth: 1, watchIndex: $i);
                 if ($watch['ref'] > 0 && array_key_exists($watch['ref'], $this->expanded)) {
                     $this->appendChildren($rows, $watch['ref'], 2);
                 }
             }
         }
         if ([] !== $this->scopes) {
-            $rows[] = self::row('section', 'Variables');
+            $rows[] = new DebugRow(DebugRowKind::Section, 'Variables');
             foreach ($this->scopes as $scope) {
-                $rows[] = self::row('scope', $scope['name'], ref: $scope['variablesReference'], depth: 1);
+                $rows[] = new DebugRow(DebugRowKind::Scope, $scope['name'], ref: $scope['variablesReference'], depth: 1);
                 if (array_key_exists($scope['variablesReference'], $this->expanded)) {
                     $this->appendChildren($rows, $scope['variablesReference'], 2);
                 }
@@ -356,21 +354,15 @@ final class DebugPanelWidget extends OverlayWidget implements FocusableInterface
         $this->invalidate();
     }
 
-    /** @param list<array{kind: string, label: string, frameId: int, path: string, line: int, ref: int, depth: int, watchIndex: int}> $rows */
+    /** @param list<DebugRow> $rows */
     private function appendChildren(array &$rows, int $reference, int $depth): void
     {
         foreach ($this->children[$reference] ?? [] as $variable) {
-            $rows[] = self::row('variable', "{$variable['name']} = {$variable['value']}", ref: $variable['variablesReference'], depth: $depth);
+            $rows[] = new DebugRow(DebugRowKind::Variable, "{$variable['name']} = {$variable['value']}", ref: $variable['variablesReference'], depth: $depth);
             if ($variable['variablesReference'] > 0 && array_key_exists($variable['variablesReference'], $this->expanded)) {
                 $this->appendChildren($rows, $variable['variablesReference'], $depth + 1);
             }
         }
-    }
-
-    /** @return array{kind: string, label: string, frameId: int, path: string, line: int, ref: int, depth: int, watchIndex: int} */
-    private static function row(string $kind, string $label, int $frameId = -1, string $path = '', int $line = 0, int $ref = 0, int $depth = 0, int $watchIndex = -1): array
-    {
-        return ['kind' => $kind, 'label' => $label, 'frameId' => $frameId, 'path' => $path, 'line' => $line, 'ref' => $ref, 'depth' => $depth, 'watchIndex' => $watchIndex];
     }
 
     private function activateRow(int $index): void
@@ -379,13 +371,13 @@ final class DebugPanelWidget extends OverlayWidget implements FocusableInterface
         if (null === $row) {
             return;
         }
-        if ('frame' === $row['kind'] && null !== $this->onFrameSelected) {
-            ($this->onFrameSelected)($row['frameId'], $row['path'], $row['line']);
+        if (DebugRowKind::Frame === $row->kind && null !== $this->onFrameSelected) {
+            ($this->onFrameSelected)($row->frameId, $row->path, $row->line);
 
             return;
         }
-        if (\in_array($row['kind'], ['scope', 'variable', 'watch'], strict: true) && $row['ref'] > 0) {
-            $this->toggleExpand($row['ref']);
+        if (\in_array($row->kind, [DebugRowKind::Scope, DebugRowKind::Variable, DebugRowKind::Watch], strict: true) && $row->ref > 0) {
+            $this->toggleExpand($row->ref);
         }
     }
 
