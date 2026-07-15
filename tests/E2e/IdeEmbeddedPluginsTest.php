@@ -6,6 +6,7 @@ namespace Porta\Tests\E2e;
 
 use PHPUnit\Framework\TestCase;
 use Porta\Ide;
+use Porta\Tests\Support\RunsIde;
 use Porta\Tests\Support\TempProject;
 use Revolt\EventLoop;
 use Symfony\Component\Tui\Ansi\AnsiUtils;
@@ -19,6 +20,8 @@ use Symfony\Component\Tui\Terminal\VirtualTerminal;
  */
 final class IdeEmbeddedPluginsTest extends TestCase
 {
+    use RunsIde;
+
     private string $originalPath;
     private string $originalEmbedded;
 
@@ -34,34 +37,6 @@ final class IdeEmbeddedPluginsTest extends TestCase
     {
         putenv('PATH='.$this->originalPath);
         putenv('PORTA_EMBEDDED_PLUGINS='.$this->originalEmbedded);
-    }
-
-    /**
-     * @param array<int, callable> $steps ms => step($tui, $terminal, $ide)
-     */
-    private function runIde(TempProject $project, ?string $file, array $steps, ?float $duration = null): VirtualTerminal
-    {
-        $duration ??= max([] === $steps ? 0.0 : (max(array_keys($steps)) / 1000) + 0.5, 0.7);
-
-        $terminal = new VirtualTerminal(columns: 160, rows: 24);
-        $ide = new Ide($project->dir, $file, $terminal);
-        $tui = $ide->getTui();
-
-        $timers = [];
-        foreach ($steps as $delayMs => $step) {
-            $timers[] = EventLoop::delay((int) $delayMs / 1000, static fn () => $step($tui, $terminal, $ide));
-        }
-        $timers[] = EventLoop::delay($duration, static fn () => $tui->stop());
-
-        try {
-            $ide->run();
-        } finally {
-            foreach ($timers as $timer) {
-                EventLoop::cancel($timer);
-            }
-        }
-
-        return $terminal;
     }
 
     /** An embedded fixture plugin whose menu item is usable only once its binary setting is set. */
@@ -102,7 +77,7 @@ final class IdeEmbeddedPluginsTest extends TestCase
             $project,
             $project->path('a.php'),
             [
-                200 => function ($tui, $terminal, $ide) use ($embedded): void {
+                100 => function ($tui, $terminal, $ide) use ($embedded): void {
                     $tui->tick();
                     $titles = array_column($this->menus($tui), 'title');
                     $this->assertSame(['File', 'Edit', 'Navigate', 'Code', 'Plugins', 'Run', 'Git', 'View', 'Help'], $titles, 'the Plugins menu sits between Code and Run');
@@ -127,7 +102,7 @@ final class IdeEmbeddedPluginsTest extends TestCase
                     $tui->tick();
                     $this->assertDirectoryExists($embedded->path('bundled'), 'nothing was removed');
                 },
-                400 => function ($tui, $terminal, $ide) use ($project): void {
+                150 => function ($tui, $terminal, $ide) use ($project): void {
                     // The plugin's settings page: set the binary → the menu entry enables.
                     $tui->handleInput("\t"); // form → nav (on Plugins)
                     $tui->handleInput("\x1b[B"); // → the bundled sub-item
@@ -154,7 +129,7 @@ final class IdeEmbeddedPluginsTest extends TestCase
                     $tui->tick();
                     $this->assertStringContainsString('bundled ran /opt/tool', AnsiUtils::stripAnsiCodes($terminal->getOutput()));
                 },
-                600 => function ($tui, $terminal, $ide) use ($project): void {
+                200 => function ($tui, $terminal, $ide) use ($project): void {
                     // Back to the plugin's page to disable it live: menu + palette
                     // die and the choice persists.
                     new \ReflectionProperty($ide, 'commands')->getValue($ide)->run('ide_settings');
@@ -184,7 +159,6 @@ final class IdeEmbeddedPluginsTest extends TestCase
                     $this->assertArrayNotHasKey('disabledPlugins', $config, 're-enabling cleared the list');
                 },
             ],
-            1.0,
         );
 
         $this->addToAssertionCount(1);
@@ -227,7 +201,7 @@ final class IdeEmbeddedPluginsTest extends TestCase
             $project,
             $project->path('a.php'),
             [
-                200 => function ($tui, $terminal, $ide): void {
+                100 => function ($tui, $terminal, $ide): void {
                     $commands = new \ReflectionProperty($ide, 'commands')->getValue($ide);
                     $labels = array_column($commands->paletteCommands(), 'label');
                     $this->assertContains('Project Run', $labels, 'the project copy shadows the embedded one');
@@ -256,7 +230,7 @@ final class IdeEmbeddedPluginsTest extends TestCase
                     $this->assertStringContainsString('Plugin "shadowfail" failed to load', $screen);
                     $this->assertNotContains('Shadow OK', array_column($commands->paletteCommands(), 'label'));
                 },
-                400 => function ($tui, $terminal): void {
+                150 => function ($tui, $terminal): void {
                     // Enabling a disabled plugin whose file is broken flashes too.
                     $tui->handleInput("\t"); // form → nav (on Plugins)
                     $tui->handleInput("\x1b[B"); // bundled
@@ -270,7 +244,6 @@ final class IdeEmbeddedPluginsTest extends TestCase
                     $this->assertStringContainsString('Plugin "sleeper" failed to load', AnsiUtils::stripAnsiCodes($terminal->getOutput()));
                 },
             ],
-            0.8,
         );
 
         $this->addToAssertionCount(1);
@@ -289,7 +262,7 @@ final class IdeEmbeddedPluginsTest extends TestCase
             $project,
             $project->path('a.php'),
             [
-                200 => function ($tui, $terminal, $ide): void {
+                100 => function ($tui, $terminal, $ide): void {
                     $commands = new \ReflectionProperty($ide, 'commands')->getValue($ide);
                     $this->assertNotContains('Bundled Run', array_column($commands->paletteCommands(), 'label'), 'skipped at boot');
                     $this->assertNotContains('Plugins', array_column($this->menus($tui), 'title'));
@@ -305,7 +278,6 @@ final class IdeEmbeddedPluginsTest extends TestCase
                     $this->assertStringContainsString('[ ] Enabled', $screen, 'listed and re-enableable');
                 },
             ],
-            0.6,
         );
 
         $this->addToAssertionCount(1);

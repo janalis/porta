@@ -271,6 +271,10 @@ clicks map visual→logical per pane (`BidiTui::logicalColumn` → `PaneReorder`
 ## Tests
 
 `tests/Unit`, `tests/Integration`, `tests/E2e`. E2e tests boot a real `Ide` against a
-`VirtualTerminal` and a `TempProject`, feed synthetic input (including SGR mouse sequences and
-`.porta.json` fixtures) on scheduled timers, and assert on rendered output / widget state. When a
-constructor gains a dependency, fix the direct construction sites in these tests too.
+`VirtualTerminal` and a `TempProject` through the shared `tests/Support/RunsIde` trait: steps
+(`ms => fn($tui, $terminal, $ide)`) run **sequentially chained** — each schedules the next by
+key delta after it completes, so a step may `$this->await(fn: bool)` (pumping the live loop for
+subprocess/async effects) without a later step firing underneath it. Without an explicit
+`$duration` the loop stops ~80ms after the last step; pass a duration only when effects land
+after the final step — better, await them in the step. When a constructor gains a dependency,
+fix the direct construction sites in these tests too.

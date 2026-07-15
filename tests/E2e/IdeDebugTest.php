@@ -6,6 +6,7 @@ namespace Porta\Tests\E2e;
 
 use PHPUnit\Framework\TestCase;
 use Porta\Ide;
+use Porta\Tests\Support\RunsIde;
 use Porta\Tests\Support\TempProject;
 use Revolt\EventLoop;
 use Symfony\Component\Tui\Ansi\AnsiUtils;
@@ -17,6 +18,8 @@ use Symfony\Component\Tui\Terminal\VirtualTerminal;
  */
 final class IdeDebugTest extends TestCase
 {
+    use RunsIde;
+
     private string $originalPath;
 
     protected function setUp(): void
@@ -28,34 +31,6 @@ final class IdeDebugTest extends TestCase
     protected function tearDown(): void
     {
         putenv('PATH='.$this->originalPath);
-    }
-
-    /**
-     * @param array<int, callable> $steps ms => step($tui, $terminal, $ide)
-     */
-    private function runIde(TempProject $project, ?string $file, array $steps, ?float $duration = null): VirtualTerminal
-    {
-        $duration ??= max([] === $steps ? 0.0 : (max(array_keys($steps)) / 1000) + 0.5, 0.7);
-
-        $terminal = new VirtualTerminal(columns: 160, rows: 24);
-        $ide = new Ide($project->dir, $file, $terminal);
-        $tui = $ide->getTui();
-
-        $timers = [];
-        foreach ($steps as $delayMs => $step) {
-            $timers[] = EventLoop::delay((int) $delayMs / 1000, static fn () => $step($tui, $terminal, $ide));
-        }
-        $timers[] = EventLoop::delay($duration, static fn () => $tui->stop());
-
-        try {
-            $ide->run();
-        } finally {
-            foreach ($timers as $timer) {
-                EventLoop::cancel($timer);
-            }
-        }
-
-        return $terminal;
     }
 
     /** A .porta.json wiring php files to the scripted mock adapter. */
@@ -116,7 +91,6 @@ final class IdeDebugTest extends TestCase
                     $this->assertStringNotContainsString('●', $editorScreen(), 'a second click cleared it');
                 },
             ],
-            0.7,
         );
 
         $this->addToAssertionCount(1);
@@ -160,7 +134,6 @@ final class IdeDebugTest extends TestCase
                     $this->assertStringNotContainsString("\x1b[48;5;52m", $editorScreen, 'the band cleared');
                 },
             ],
-            1.6,
         );
 
         $this->addToAssertionCount(1);
@@ -186,7 +159,6 @@ final class IdeDebugTest extends TestCase
                     $this->assertStringContainsString('No debug adapter configured for php', AnsiUtils::stripAnsiCodes($terminal->getOutput()));
                 },
             ],
-            0.5,
         );
 
         $this->addToAssertionCount(1);
@@ -247,7 +219,6 @@ final class IdeDebugTest extends TestCase
                     $this->assertFalse($debug->isActive(), 'ctrl+f2 disconnected the session');
                 },
             ],
-            1.6,
         );
 
         $this->addToAssertionCount(1);

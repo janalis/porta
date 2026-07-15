@@ -6,6 +6,7 @@ namespace Porta\Tests\E2e;
 
 use PHPUnit\Framework\TestCase;
 use Porta\Ide;
+use Porta\Tests\Support\RunsIde;
 use Porta\Tests\Support\TempProject;
 use Revolt\EventLoop;
 use Symfony\Component\Tui\Ansi\AnsiUtils;
@@ -18,6 +19,8 @@ use Symfony\Component\Tui\Terminal\VirtualTerminal;
  */
 final class IdePluginTest extends TestCase
 {
+    use RunsIde;
+
     private string $originalPath;
     private ?string $portaHome = null;
 
@@ -32,34 +35,6 @@ final class IdePluginTest extends TestCase
     {
         putenv('PATH='.$this->originalPath);
         putenv(null !== $this->portaHome ? 'PORTA_HOME='.$this->portaHome : 'PORTA_HOME');
-    }
-
-    /**
-     * @param array<int, callable> $steps ms => step($tui, $terminal, $ide)
-     */
-    private function runIde(TempProject $project, ?string $file, array $steps, ?float $duration = null): VirtualTerminal
-    {
-        $duration ??= max([] === $steps ? 0.0 : (max(array_keys($steps)) / 1000) + 0.5, 0.7);
-
-        $terminal = new VirtualTerminal(columns: 160, rows: 24);
-        $ide = new Ide($project->dir, $file, $terminal);
-        $tui = $ide->getTui();
-
-        $timers = [];
-        foreach ($steps as $delayMs => $step) {
-            $timers[] = EventLoop::delay((int) $delayMs / 1000, static fn () => $step($tui, $terminal, $ide));
-        }
-        $timers[] = EventLoop::delay($duration, static fn () => $tui->stop());
-
-        try {
-            $ide->run();
-        } finally {
-            foreach ($timers as $timer) {
-                EventLoop::cancel($timer);
-            }
-        }
-
-        return $terminal;
     }
 
     /** The demo fixture: a keyed insert command, a thrower, a menu item and a save hook. */
@@ -106,7 +81,8 @@ final class IdePluginTest extends TestCase
             $project,
             $project->path('a.php'),
             [
-                200 => function ($tui, $terminal): void {
+                100 => function ($tui, $terminal): void {
+                    $this->await(fn (): bool => str_contains(AnsiUtils::stripAnsiCodes($terminal->getOutput()), 'Plugins'));
                     $tui->tick();
                     $this->assertStringContainsString('Plugins', AnsiUtils::stripAnsiCodes($terminal->getOutput()), 'the Plugins menu title is in the bar');
                     $tui->handleInput("\x1b\x19"); // ctrl+alt+y (legacy: ESC + ctrl+y) → demo:hello
@@ -129,7 +105,6 @@ final class IdePluginTest extends TestCase
                     $this->assertStringContainsString('Z', $tui->getById('editor')->getDocument()->getText(), 'input still works after a plugin fault');
                 },
             ],
-            0.8,
         );
 
         $this->addToAssertionCount(1);
@@ -148,7 +123,7 @@ final class IdePluginTest extends TestCase
             $project,
             $project->path('a.php'),
             [
-                200 => function ($tui, $terminal): void {
+                100 => function ($tui, $terminal): void {
                     $tui->handleInput("\x1b[97;6u"); // ctrl+shift+a → command palette
                     $tui->tick();
                     foreach (str_split('Say') as $char) {
@@ -166,7 +141,6 @@ final class IdePluginTest extends TestCase
                     $this->assertStringContainsString('PLUGGED', $tui->getById('editor')->getDocument()->getText(), 'the .porta.json rebind dispatched');
                 },
             ],
-            0.7,
         );
 
         $this->addToAssertionCount(1);
@@ -207,7 +181,7 @@ final class IdePluginTest extends TestCase
             $project,
             $project->path('a.php'),
             [
-                200 => function ($tui, $terminal): void {
+                100 => function ($tui, $terminal): void {
                     $tui->handleInput("\x1b\x19"); // ctrl+alt+y → the PROJECT demo wins
                     $tui->tick(); // render its flash before the next one replaces it
                     $tui->handleInput("\x1b\x17"); // ctrl+alt+w → the global-only plugin
@@ -218,7 +192,6 @@ final class IdePluginTest extends TestCase
                     $this->assertStringContainsString('wave!', $screen, 'non-colliding global plugins load');
                 },
             ],
-            0.5,
         );
 
         $this->addToAssertionCount(1);
@@ -236,7 +209,8 @@ final class IdePluginTest extends TestCase
             $project,
             $project->path('a.php'),
             [
-                200 => function ($tui, $terminal): void {
+                100 => function ($tui, $terminal): void {
+                    $this->await(fn (): bool => str_contains(AnsiUtils::stripAnsiCodes($terminal->getOutput()), 'Plugin "broken" failed to load'));
                     $tui->tick();
                     $this->assertStringContainsString('Plugin "broken" failed to load', AnsiUtils::stripAnsiCodes($terminal->getOutput()));
                     $tui->handleInput('X');
@@ -245,7 +219,6 @@ final class IdePluginTest extends TestCase
                     $this->assertStringContainsString('X', $tui->getById('editor')->getDocument()->getText(), 'the IDE booted fine regardless');
                 },
             ],
-            0.6,
         );
 
         $this->addToAssertionCount(1);

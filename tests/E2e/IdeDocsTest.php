@@ -6,6 +6,7 @@ namespace Porta\Tests\E2e;
 
 use PHPUnit\Framework\TestCase;
 use Porta\Ide;
+use Porta\Tests\Support\RunsIde;
 use Porta\Tests\Support\TempProject;
 use Revolt\EventLoop;
 use Symfony\Component\Tui\Ansi\AnsiUtils;
@@ -18,6 +19,8 @@ use Symfony\Component\Tui\Terminal\VirtualTerminal;
  */
 final class IdeDocsTest extends TestCase
 {
+    use RunsIde;
+
     private string $originalPath;
 
     protected function setUp(): void
@@ -30,34 +33,6 @@ final class IdeDocsTest extends TestCase
     protected function tearDown(): void
     {
         putenv('PATH='.$this->originalPath);
-    }
-
-    /**
-     * @param array<int, callable> $steps ms => step($tui, $terminal, $ide)
-     */
-    private function runIde(TempProject $project, ?string $file, array $steps, ?float $duration = null, ?string $docsDir = null): VirtualTerminal
-    {
-        $duration ??= max([] === $steps ? 0.0 : (max(array_keys($steps)) / 1000) + 0.5, 0.7);
-
-        $terminal = new VirtualTerminal(columns: 160, rows: 24);
-        $ide = new Ide($project->dir, $file, $terminal, docsDir: $docsDir);
-        $tui = $ide->getTui();
-
-        $timers = [];
-        foreach ($steps as $delayMs => $step) {
-            $timers[] = EventLoop::delay((int) $delayMs / 1000, static fn () => $step($tui, $terminal, $ide));
-        }
-        $timers[] = EventLoop::delay($duration, static fn () => $tui->stop());
-
-        try {
-            $ide->run();
-        } finally {
-            foreach ($timers as $timer) {
-                EventLoop::cancel($timer);
-            }
-        }
-
-        return $terminal;
     }
 
     /** A docs fixture with a heading, emphasis, a table, and one link per kind. */
@@ -161,7 +136,6 @@ final class IdeDocsTest extends TestCase
                     $tui->handleInput("\x1b");
                 },
             ],
-            1.6,
             docsDir: $docs->dir,
         );
 
@@ -245,7 +219,6 @@ final class IdeDocsTest extends TestCase
                         ->save();
                 },
             ],
-            2.9,
             docsDir: $docs->dir,
         );
 
@@ -299,7 +272,6 @@ final class IdeDocsTest extends TestCase
                     $this->assertStringEndsWith('README.md', (string) $viewer->path(), 'the stale code-breadcrumbs rect must not eat help-header clicks');
                 },
             ],
-            1.0,
             docsDir: $docs->dir,
         );
 
@@ -326,7 +298,6 @@ final class IdeDocsTest extends TestCase
                     $this->assertStringNotContainsString('# Porta documentation', $screen, 'rendered, not source');
                 },
             ],
-            0.7,
         );
 
         $this->addToAssertionCount(1);

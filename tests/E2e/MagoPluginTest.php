@@ -6,6 +6,7 @@ namespace Porta\Tests\E2e;
 
 use PHPUnit\Framework\TestCase;
 use Porta\Ide;
+use Porta\Tests\Support\RunsIde;
 use Porta\Tests\Support\TempProject;
 use Revolt\EventLoop;
 use Symfony\Component\Tui\Ansi\AnsiUtils;
@@ -18,6 +19,8 @@ use Symfony\Component\Tui\Terminal\VirtualTerminal;
  */
 final class MagoPluginTest extends TestCase
 {
+    use RunsIde;
+
     private string $originalPath;
 
     protected function setUp(): void
@@ -30,34 +33,6 @@ final class MagoPluginTest extends TestCase
     protected function tearDown(): void
     {
         putenv('PATH='.$this->originalPath);
-    }
-
-    /**
-     * @param array<int, callable> $steps ms => step($tui, $terminal, $ide)
-     */
-    private function runIde(TempProject $project, ?string $file, array $steps, ?float $duration = null): VirtualTerminal
-    {
-        $duration ??= max([] === $steps ? 0.0 : (max(array_keys($steps)) / 1000) + 0.5, 0.7);
-
-        $terminal = new VirtualTerminal(columns: 160, rows: 24);
-        $ide = new Ide($project->dir, $file, $terminal);
-        $tui = $ide->getTui();
-
-        $timers = [];
-        foreach ($steps as $delayMs => $step) {
-            $timers[] = EventLoop::delay((int) $delayMs / 1000, static fn () => $step($tui, $terminal, $ide));
-        }
-        $timers[] = EventLoop::delay($duration, static fn () => $tui->stop());
-
-        try {
-            $ide->run();
-        } finally {
-            foreach ($timers as $timer) {
-                EventLoop::cancel($timer);
-            }
-        }
-
-        return $terminal;
     }
 
     private function project(?string $stubBody = null): TempProject
@@ -111,12 +86,14 @@ final class MagoPluginTest extends TestCase
             $project,
             $project->path('a.php'),
             [
-                200 => static function ($tui): void {
+                100 => static function ($tui): void {
                     $tui->handleInput("\x1b\x07"); // ctrl+alt+g → mago:format
                 },
-                1400 => function ($tui, $terminal, $ide) use ($project): void {
+                300 => function ($tui, $terminal, $ide) use ($project): void {
+                    $this->await(fn (): bool => str_contains(AnsiUtils::stripAnsiCodes($terminal->getOutput()), 'mago: formatted a.php'));
                     $tui->tick();
                     $this->assertStringContainsString('mago: formatted a.php', AnsiUtils::stripAnsiCodes($terminal->getOutput()));
+                    $this->await(fn (): bool => str_contains((string) @file_get_contents($project->path('a.php')), '// formatted'));
                     $this->assertStringContainsString('// formatted', (string) file_get_contents($project->path('a.php')));
 
                     new \ReflectionProperty($ide, 'bufferService')
@@ -125,7 +102,6 @@ final class MagoPluginTest extends TestCase
                     $this->assertStringContainsString('// formatted', $tui->getById('editor')->getDocument()->getText(), 'buffer reloaded');
                 },
             ],
-            1.7,
         );
 
         $this->addToAssertionCount(1);
@@ -139,10 +115,11 @@ final class MagoPluginTest extends TestCase
             $project,
             $project->path('a.php'),
             [
-                200 => static function ($tui): void {
+                100 => static function ($tui): void {
                     $tui->handleInput("\x1b\x05"); // ctrl+alt+e → mago:lint
                 },
-                1400 => function ($tui, $terminal) use ($project): void {
+                300 => function ($tui, $terminal) use ($project): void {
+                    $this->await(fn (): bool => str_contains(AnsiUtils::stripAnsiCodes($terminal->getOutput()), 'mago: 1 issue in a.php'));
                     $tui->tick();
                     $screen = AnsiUtils::stripAnsiCodes($terminal->getOutput());
                     $this->assertStringContainsString('mago: 1 issue in a.php', $screen);
@@ -156,14 +133,14 @@ final class MagoPluginTest extends TestCase
                     $this->installStub($project, "echo json_encode(['issues' => []]); exit(0);");
                     $tui->handleInput("\x1b\x05");
                 },
-                2600 => function ($tui, $terminal): void {
+                450 => function ($tui, $terminal): void {
+                    $this->await(fn (): bool => str_contains(AnsiUtils::stripAnsiCodes($terminal->getOutput()), 'mago: no issues in a.php'));
                     $tui->tick();
                     $this->assertStringContainsString('mago: no issues in a.php', AnsiUtils::stripAnsiCodes($terminal->getOutput()));
                     $editorScreen = implode("\n", $tui->getById('editor')->render(new \Symfony\Component\Tui\Render\RenderContext(120, 20)));
                     $this->assertStringNotContainsString('Bad thing', AnsiUtils::stripAnsiCodes($editorScreen), 'clean lint cleared the diagnostic');
                 },
             ],
-            2.9,
         );
 
         $this->addToAssertionCount(1);
@@ -177,7 +154,7 @@ final class MagoPluginTest extends TestCase
             $project,
             $project->path('a.php'),
             [
-                200 => function ($tui, $terminal, $ide) use ($project): void {
+                100 => function ($tui, $terminal, $ide) use ($project): void {
                     $commands = new \ReflectionProperty($ide, 'commands')->getValue($ide);
                     $commands->run('mago:toggle-auto-format');
                     $tui->tick(); // render this flash before the next replaces it
@@ -191,11 +168,16 @@ final class MagoPluginTest extends TestCase
                     $this->assertTrue((bool) ($plugins['autoLint'] ?? false), 'autoLint persisted');
                     $tui->handleInput("\x13"); // ctrl+s → save → format, then lint
                 },
-                1400 => function ($tui, $terminal, $ide) use ($project): void {
+                300 => function ($tui, $terminal, $ide) use ($project): void {
                     $tui->tick();
+                    $this->await(fn (): bool => str_contains((string) @file_get_contents($project->path('a.php')), '// formatted'));
                     $this->assertStringContainsString('// formatted', (string) file_get_contents($project->path('a.php')), 'save formatted the file');
-                    $screen = AnsiUtils::stripAnsiCodes($terminal->getOutput());
-                    $this->assertStringContainsString('mago: 1 issue in a.php', $screen, 'the chained lint ran on the formatted file');
+                    $this->await(function () use ($tui, $terminal): bool {
+                        $tui->tick();
+
+                        return str_contains(AnsiUtils::stripAnsiCodes($terminal->getOutput()), 'mago: 1 issue in a.php');
+                    });
+                    $this->assertStringContainsString('mago: 1 issue in a.php', AnsiUtils::stripAnsiCodes($terminal->getOutput()), 'the chained lint ran on the formatted file');
 
                     // Toggle both off: the next save leaves the file alone.
                     $commands = new \ReflectionProperty($ide, 'commands')->getValue($ide);
@@ -209,11 +191,10 @@ final class MagoPluginTest extends TestCase
                         ->pollFilesystem(); // absorb the change
                     $tui->handleInput("\x13");
                 },
-                2600 => function ($tui, $terminal, $ide) use ($project): void {
+                450 => function ($tui, $terminal, $ide) use ($project): void {
                     $this->assertSame(1, substr_count((string) file_get_contents($project->path('a.php')), '// formatted'), 'no format while toggled off');
                 },
             ],
-            2.9,
         );
 
         $this->addToAssertionCount(1);
@@ -227,19 +208,22 @@ final class MagoPluginTest extends TestCase
             $project,
             $project->path('a.php'),
             [
-                200 => function ($tui, $terminal, $ide): void {
+                100 => function ($tui, $terminal, $ide): void {
                     new \ReflectionProperty($ide, 'commands')->getValue($ide)->run('mago:toggle-auto-lint');
                     $tui->tick();
                     $this->assertStringContainsString('mago lint on save: on', AnsiUtils::stripAnsiCodes($terminal->getOutput()));
                     $tui->handleInput("\x13"); // ctrl+s → save → lint only
                 },
-                1400 => function ($tui, $terminal) use ($project): void {
-                    $tui->tick();
+                300 => function ($tui, $terminal) use ($project): void {
+                    $this->await(function () use ($tui, $terminal): bool {
+                        $tui->tick();
+
+                        return str_contains(AnsiUtils::stripAnsiCodes($terminal->getOutput()), 'mago: 1 issue in a.php');
+                    });
                     $this->assertStringNotContainsString('// formatted', (string) file_get_contents($project->path('a.php')), 'autoFormat off: the file is untouched');
                     $this->assertStringContainsString('mago: 1 issue in a.php', AnsiUtils::stripAnsiCodes($terminal->getOutput()), 'the lint ran on its own');
                 },
             ],
-            1.7,
         );
 
         $this->addToAssertionCount(1);
@@ -252,13 +236,12 @@ final class MagoPluginTest extends TestCase
             $project,
             $project->path('a.php'),
             [
-                200 => function ($tui, $terminal): void {
+                100 => function ($tui, $terminal): void {
                     $tui->handleInput("\x1b\x07");
                     $tui->tick();
                     $this->assertStringContainsString('mago not found (vendor/bin or PATH)', AnsiUtils::stripAnsiCodes($terminal->getOutput()));
                 },
             ],
-            0.5,
         );
 
         $project = $this->project($this->dualStub());
@@ -266,13 +249,12 @@ final class MagoPluginTest extends TestCase
             $project,
             $project->path('notes.txt'),
             [
-                200 => function ($tui, $terminal): void {
+                100 => function ($tui, $terminal): void {
                     $tui->handleInput("\x1b\x05");
                     $tui->tick();
                     $this->assertStringContainsString('mago: open a PHP file first', AnsiUtils::stripAnsiCodes($terminal->getOutput()));
                 },
             ],
-            0.5,
         );
 
         // A failing format and a broken lint (garbage output) each report their code.
@@ -281,20 +263,21 @@ final class MagoPluginTest extends TestCase
             $project,
             $project->path('a.php'),
             [
-                200 => static function ($tui): void {
+                100 => static function ($tui): void {
                     $tui->handleInput("\x1b\x07"); // format path → exit 9
                 },
-                1400 => function ($tui, $terminal): void {
+                300 => function ($tui, $terminal): void {
+                    $this->await(fn (): bool => str_contains(AnsiUtils::stripAnsiCodes($terminal->getOutput()), 'mago: exited with code 9'));
                     $tui->tick();
                     $this->assertStringContainsString('mago: exited with code 9', AnsiUtils::stripAnsiCodes($terminal->getOutput()));
                     $tui->handleInput("\x1b\x05"); // lint path → garbage JSON, exit 7
                 },
-                2600 => function ($tui, $terminal): void {
+                450 => function ($tui, $terminal): void {
+                    $this->await(fn (): bool => str_contains(AnsiUtils::stripAnsiCodes($terminal->getOutput()), 'mago: exited with code 7'));
                     $tui->tick();
                     $this->assertStringContainsString('mago: exited with code 7', AnsiUtils::stripAnsiCodes($terminal->getOutput()), 'the broken-lint path flashed too');
                 },
             ],
-            2.9,
         );
 
         $this->addToAssertionCount(1);

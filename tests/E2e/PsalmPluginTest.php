@@ -6,6 +6,7 @@ namespace Porta\Tests\E2e;
 
 use PHPUnit\Framework\TestCase;
 use Porta\Ide;
+use Porta\Tests\Support\RunsIde;
 use Porta\Tests\Support\TempProject;
 use Revolt\EventLoop;
 use Symfony\Component\Tui\Ansi\AnsiUtils;
@@ -18,6 +19,8 @@ use Symfony\Component\Tui\Terminal\VirtualTerminal;
  */
 final class PsalmPluginTest extends TestCase
 {
+    use RunsIde;
+
     private string $originalPath;
 
     protected function setUp(): void
@@ -30,34 +33,6 @@ final class PsalmPluginTest extends TestCase
     protected function tearDown(): void
     {
         putenv('PATH='.$this->originalPath);
-    }
-
-    /**
-     * @param array<int, callable> $steps ms => step($tui, $terminal, $ide)
-     */
-    private function runIde(TempProject $project, ?string $file, array $steps, ?float $duration = null): VirtualTerminal
-    {
-        $duration ??= max([] === $steps ? 0.0 : (max(array_keys($steps)) / 1000) + 0.5, 0.7);
-
-        $terminal = new VirtualTerminal(columns: 160, rows: 24);
-        $ide = new Ide($project->dir, $file, $terminal);
-        $tui = $ide->getTui();
-
-        $timers = [];
-        foreach ($steps as $delayMs => $step) {
-            $timers[] = EventLoop::delay((int) $delayMs / 1000, static fn () => $step($tui, $terminal, $ide));
-        }
-        $timers[] = EventLoop::delay($duration, static fn () => $tui->stop());
-
-        try {
-            $ide->run();
-        } finally {
-            foreach ($timers as $timer) {
-                EventLoop::cancel($timer);
-            }
-        }
-
-        return $terminal;
     }
 
     /** A project with the real plugin file and (optionally) a stub psalm. */
@@ -108,10 +83,11 @@ final class PsalmPluginTest extends TestCase
             $project,
             $project->path('a.php'),
             [
-                200 => static function ($tui): void {
+                100 => static function ($tui): void {
                     $tui->handleInput("\x1b\x10"); // ctrl+alt+p → psalm:analyse
                 },
-                1400 => function ($tui, $terminal) use ($project): void {
+                300 => function ($tui, $terminal) use ($project): void {
+                    $this->await(fn (): bool => str_contains(AnsiUtils::stripAnsiCodes($terminal->getOutput()), 'psalm: 1 issue in a.php'));
                     $tui->tick();
                     $screen = AnsiUtils::stripAnsiCodes($terminal->getOutput());
                     $this->assertStringContainsString('psalm: 1 issue in a.php', $screen);
@@ -127,14 +103,14 @@ final class PsalmPluginTest extends TestCase
                     $this->installStub($project, 'echo json_encode([]); exit(0);');
                     $tui->handleInput("\x1b\x10");
                 },
-                2600 => function ($tui, $terminal): void {
+                450 => function ($tui, $terminal): void {
+                    $this->await(fn (): bool => str_contains(AnsiUtils::stripAnsiCodes($terminal->getOutput()), 'psalm: no issues in a.php'));
                     $tui->tick();
                     $this->assertStringContainsString('psalm: no issues in a.php', AnsiUtils::stripAnsiCodes($terminal->getOutput()));
                     $editorScreen = implode("\n", $tui->getById('editor')->render(new \Symfony\Component\Tui\Render\RenderContext(120, 20)));
                     $this->assertStringNotContainsString('Boom detected', AnsiUtils::stripAnsiCodes($editorScreen), 'the clean run cleared the diagnostic');
                 },
             ],
-            2.9,
         );
 
         $this->addToAssertionCount(1);
@@ -148,7 +124,7 @@ final class PsalmPluginTest extends TestCase
             $project,
             $project->path('a.php'),
             [
-                200 => function ($tui, $terminal, $ide) use ($project): void {
+                100 => function ($tui, $terminal, $ide) use ($project): void {
                     new \ReflectionProperty($ide, 'commands')->getValue($ide)->run('psalm:toggle-on-save');
                     $tui->tick();
                     $this->assertStringContainsString('psalm on save: on', AnsiUtils::stripAnsiCodes($terminal->getOutput()));
@@ -167,12 +143,12 @@ final class PsalmPluginTest extends TestCase
 
                     $tui->handleInput("\x13"); // ctrl+s → save → analyse
                 },
-                1400 => function ($tui, $terminal): void {
+                300 => function ($tui, $terminal): void {
+                    $this->await(fn (): bool => str_contains(AnsiUtils::stripAnsiCodes($terminal->getOutput()), 'psalm: 1 issue in a.php'));
                     $tui->tick();
                     $this->assertStringContainsString('psalm: 1 issue in a.php', AnsiUtils::stripAnsiCodes($terminal->getOutput()), 'saving analysed the file');
                 },
             ],
-            1.7,
         );
 
         $this->addToAssertionCount(1);
@@ -189,15 +165,15 @@ final class PsalmPluginTest extends TestCase
             $project,
             $project->path('a.php'),
             [
-                200 => static function ($tui): void {
+                100 => static function ($tui): void {
                     $tui->handleInput("\x13"); // ctrl+s → save → analyse (no toggle this session)
                 },
-                1400 => function ($tui, $terminal): void {
+                300 => function ($tui, $terminal): void {
+                    $this->await(fn (): bool => str_contains(AnsiUtils::stripAnsiCodes($terminal->getOutput()), 'psalm: 1 issue in a.php'));
                     $tui->tick();
                     $this->assertStringContainsString('psalm: 1 issue in a.php', AnsiUtils::stripAnsiCodes($terminal->getOutput()), 'the persisted setting survived the restart');
                 },
             ],
-            1.7,
         );
 
         $this->addToAssertionCount(1);
@@ -210,13 +186,12 @@ final class PsalmPluginTest extends TestCase
             $project,
             $project->path('a.php'),
             [
-                200 => function ($tui, $terminal): void {
+                100 => function ($tui, $terminal): void {
                     $tui->handleInput("\x1b\x10");
                     $tui->tick();
                     $this->assertStringContainsString('psalm not found (vendor/bin or PATH)', AnsiUtils::stripAnsiCodes($terminal->getOutput()));
                 },
             ],
-            0.5,
         );
 
         $project = $this->project($this->errorStub());
@@ -224,13 +199,12 @@ final class PsalmPluginTest extends TestCase
             $project,
             $project->path('notes.txt'),
             [
-                200 => function ($tui, $terminal): void {
+                100 => function ($tui, $terminal): void {
                     $tui->handleInput("\x1b\x10");
                     $tui->tick();
                     $this->assertStringContainsString('psalm: open a PHP file first', AnsiUtils::stripAnsiCodes($terminal->getOutput()));
                 },
             ],
-            0.5,
         );
 
         // An internal psalm failure (no JSON, e.g. missing psalm.xml) reports the code.
@@ -239,15 +213,15 @@ final class PsalmPluginTest extends TestCase
             $project,
             $project->path('a.php'),
             [
-                200 => static function ($tui): void {
+                100 => static function ($tui): void {
                     $tui->handleInput("\x1b\x10");
                 },
-                1400 => function ($tui, $terminal): void {
+                300 => function ($tui, $terminal): void {
+                    $this->await(fn (): bool => str_contains(AnsiUtils::stripAnsiCodes($terminal->getOutput()), 'psalm: exited with code 1'));
                     $tui->tick();
                     $this->assertStringContainsString('psalm: exited with code 1', AnsiUtils::stripAnsiCodes($terminal->getOutput()));
                 },
             ],
-            1.7,
         );
 
         $this->addToAssertionCount(1);

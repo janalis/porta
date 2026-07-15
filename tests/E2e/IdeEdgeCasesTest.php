@@ -7,6 +7,7 @@ namespace Porta\Tests\E2e;
 use PHPUnit\Framework\TestCase;
 use Porta\Config\IdeConfig;
 use Porta\Ide;
+use Porta\Tests\Support\RunsIde;
 use Porta\Tests\Support\TempProject;
 use Porta\Widget\ResultsPanelFields;
 use Porta\Widget\TabBarWidget;
@@ -21,6 +22,8 @@ use Symfony\Component\Tui\Tui;
  */
 final class IdeEdgeCasesTest extends TestCase
 {
+    use RunsIde;
+
     private string $originalPath;
 
     protected function setUp(): void
@@ -81,37 +84,6 @@ final class IdeEdgeCasesTest extends TestCase
         return null;
     }
 
-    private function runIde(TempProject $project, ?string $file, array $steps, ?float $duration = null): VirtualTerminal
-    {
-        // Default duration: the last step plus a settle margin for its async
-        // fallout (mock-LSP roundtrips are stdio, ~ms). Tests whose tail work
-        // needs longer pass an explicit duration.
-        $duration ??= max([] === $steps ? 0.0 : (max(array_keys($steps)) / 1000) + 0.5, 0.7);
-
-        // Wide terminal so status-bar flashes are not truncated away
-        $terminal = new VirtualTerminal(columns: 160, rows: 24);
-        $ide = new Ide($project->dir, $file, $terminal);
-        $tui = $ide->getTui();
-
-        $timers = [];
-        foreach ($steps as $delayMs => $step) {
-            $timers[] = EventLoop::delay((int) $delayMs / 1000, static fn () => $step($tui, $terminal, $ide));
-        }
-        $timers[] = EventLoop::delay($duration, static fn () => $tui->stop());
-
-        try {
-            $ide->run();
-        } finally {
-            // A failing step aborts run() early; cancel the remaining timers
-            // so they cannot fire into the next test's event loop.
-            foreach ($timers as $timer) {
-                EventLoop::cancel($timer);
-            }
-        }
-
-        return $terminal;
-    }
-
     private function mockLspConfig(): string
     {
         return json_encode(['lsp' => \PHP_BINARY.' '.__DIR__.'/../Support/mock-lsp-server.php']);
@@ -156,7 +128,6 @@ final class IdeEdgeCasesTest extends TestCase
                     $tui->handleInput('x'); // type (didChange path without LSP)
                 },
             ],
-            0.8,
         );
 
         $screen = AnsiUtils::stripAnsiCodes($terminal->getOutput());
@@ -178,7 +149,6 @@ final class IdeEdgeCasesTest extends TestCase
                     $tui->handleInput("\r"); // accept prefilled "word"
                 },
             ],
-            0.8,
         );
 
         $this->assertStringContainsString('Rename needs a language server', AnsiUtils::stripAnsiCodes($terminal->getOutput()));
@@ -197,7 +167,6 @@ final class IdeEdgeCasesTest extends TestCase
                     $this->assertSame('tree', $tui->getFocus()?->getId());
                 },
             ],
-            0.6,
         );
     }
 
@@ -240,7 +209,6 @@ final class IdeEdgeCasesTest extends TestCase
                     $tui->tick();
                 },
             ],
-            0.9,
         );
 
         chmod($unreadable, 0644);
@@ -265,7 +233,6 @@ final class IdeEdgeCasesTest extends TestCase
                     $this->assertNull($tui->getById('editor')->getFilePath(), 'no file is open');
                 },
             ],
-            0.5,
         );
 
         $this->assertStringContainsString('No file open', AnsiUtils::stripAnsiCodes($terminal->getOutput()));
@@ -293,7 +260,6 @@ final class IdeEdgeCasesTest extends TestCase
                     $this->assertSame(28, $layout['sidebarWidthPercent'], 'saved as a percentage (round(44/160))');
                 },
             ],
-            0.5,
         );
 
         $this->addToAssertionCount(1);
@@ -326,7 +292,6 @@ final class IdeEdgeCasesTest extends TestCase
                     $this->assertSame(67, $layout['bottomPanelHeightPercent'], 'saved as a percentage (round(16/24))');
                 },
             ],
-            0.5,
         );
 
         $this->addToAssertionCount(1);
@@ -366,7 +331,6 @@ final class IdeEdgeCasesTest extends TestCase
                     $this->assertSame((int) round(($expected * 100) / 24), $layout['bottomPanelHeightPercent'], 'saved as a percentage of the 24 rows');
                 },
             ],
-            0.5,
         );
 
         $this->addToAssertionCount(1);
@@ -395,7 +359,6 @@ final class IdeEdgeCasesTest extends TestCase
                     $this->assertStringEndsWith('src/Foo.php', (string) $tui->getById('editor')->getFilePath());
                 },
             ],
-            0.7,
         );
 
         $this->addToAssertionCount(1);
@@ -419,7 +382,6 @@ final class IdeEdgeCasesTest extends TestCase
                     $this->assertStringContainsString('No test found', AnsiUtils::stripAnsiCodes($terminal->getOutput()));
                 },
             ],
-            0.5,
         );
 
         // From a test with no subject.
@@ -435,7 +397,6 @@ final class IdeEdgeCasesTest extends TestCase
                     $this->assertStringContainsString('No test subject found', AnsiUtils::stripAnsiCodes($terminal->getOutput()));
                 },
             ],
-            0.5,
         );
 
         $this->addToAssertionCount(1);
@@ -469,7 +430,6 @@ final class IdeEdgeCasesTest extends TestCase
                     $this->assertStringEndsWith('MultiTest.php', (string) $tui->getById('editor')->getFilePath());
                 },
             ],
-            0.7,
         );
 
         $this->addToAssertionCount(1);
@@ -540,7 +500,6 @@ final class IdeEdgeCasesTest extends TestCase
                     $this->assertSame('image-viewer', $tui->getFocus()?->getId(), 'menu close returns focus to the viewer');
                 },
             ],
-            0.9,
         );
 
         $this->addToAssertionCount(1);
@@ -599,7 +558,6 @@ final class IdeEdgeCasesTest extends TestCase
                     $this->assertNotNull($tui->getById('editor')->getContext());
                 },
             ],
-            0.9,
         );
 
         $this->addToAssertionCount(1);
@@ -622,7 +580,6 @@ final class IdeEdgeCasesTest extends TestCase
                     $this->assertStringContainsString('Not available while viewing an image', AnsiUtils::stripAnsiCodes($terminal->getOutput()));
                 },
             ],
-            0.5,
         );
 
         // With a text tab open too, the modal hops to it first.
@@ -642,7 +599,6 @@ final class IdeEdgeCasesTest extends TestCase
                     $this->assertStringContainsString('Find in Files', AnsiUtils::stripAnsiCodes($terminal->getOutput()), 'the modal opened over it');
                 },
             ],
-            0.6,
         );
 
         $this->addToAssertionCount(1);
@@ -680,7 +636,6 @@ final class IdeEdgeCasesTest extends TestCase
                     $this->assertSame('tree', $tui->getFocus()?->getId());
                 },
             ],
-            0.6,
         );
 
         $this->addToAssertionCount(1);
@@ -723,7 +678,6 @@ final class IdeEdgeCasesTest extends TestCase
                     $this->assertSame(38, $layout['gitSidebarWidthPercent'], 'saved as a percentage (round(60/160))');
                 },
             ],
-            1.2,
         );
 
         $this->addToAssertionCount(1);
@@ -748,7 +702,6 @@ final class IdeEdgeCasesTest extends TestCase
                     $this->assertSame(10, $tui->getById('terminal')->visibleRows(), '40% of 24 rows');
                 },
             ],
-            0.4,
         );
 
         $this->addToAssertionCount(1);
@@ -770,7 +723,6 @@ final class IdeEdgeCasesTest extends TestCase
                     $this->assertFileDoesNotExist($project->path('.porta/layout.json'), 'no file written for a no-op');
                 },
             ],
-            0.4,
         );
 
         $this->addToAssertionCount(1);
@@ -812,7 +764,6 @@ final class IdeEdgeCasesTest extends TestCase
                     $this->assertStringContainsString('Save File', $treeTop, "File's dropdown composites over the tree");
                 },
             ],
-            0.9,
         );
 
         $this->addToAssertionCount(1);
@@ -849,7 +800,6 @@ final class IdeEdgeCasesTest extends TestCase
                     $this->assertSame('default', $this->netBackgroundAt($menuRow, $rect->columns - 5), 'the menu box background must not bleed across the empty editor');
                 },
             ],
-            0.6,
         );
 
         $this->addToAssertionCount(1);
@@ -875,7 +825,6 @@ final class IdeEdgeCasesTest extends TestCase
                     $this->assertNotEmpty($painted, 'the context menu paints over the separator column (no hole)');
                 },
             ],
-            0.6,
         );
 
         $this->addToAssertionCount(1);
@@ -914,7 +863,6 @@ final class IdeEdgeCasesTest extends TestCase
                     $this->assertTrue($moved, 'hovering a menu item moves the highlight to it');
                 },
             ],
-            0.6,
         );
 
         $this->addToAssertionCount(1);
@@ -977,7 +925,6 @@ final class IdeEdgeCasesTest extends TestCase
                     $this->assertTrue($tui->getById('results')->isOpen(), 'the pane stays open after the jump');
                 },
             ],
-            1.1,
         );
 
         $this->addToAssertionCount(1);
@@ -1034,7 +981,6 @@ final class IdeEdgeCasesTest extends TestCase
                     $this->assertStringContainsString('$token = 2;', (string) file_get_contents($project->path('Outside.php')), 'the out-of-scope file is untouched');
                 },
             ],
-            1.3,
         );
     }
 
@@ -1104,7 +1050,6 @@ final class IdeEdgeCasesTest extends TestCase
                     $this->assertStringContainsString('other/B.php', $panel, 'wrapping back to Whole Project widens again');
                 },
             ],
-            1.9,
         );
 
         $this->addToAssertionCount(1);
@@ -1162,7 +1107,6 @@ final class IdeEdgeCasesTest extends TestCase
                     $this->assertStringNotContainsString('other/Outside.php', $panel, 'the saved scope narrows to its folder');
                 },
             ],
-            1.5,
         );
 
         $this->addToAssertionCount(1);
@@ -1202,7 +1146,6 @@ final class IdeEdgeCasesTest extends TestCase
                     $this->assertStringNotContainsString('other/B.php', $panel, 'files outside the package are excluded');
                 },
             ],
-            1.4,
         );
 
         $this->addToAssertionCount(1);
@@ -1235,7 +1178,6 @@ final class IdeEdgeCasesTest extends TestCase
                     $this->assertStringContainsString('other/B.php', $panel, 'no open file → the scope stays the whole project');
                 },
             ],
-            1.1,
         );
 
         $this->addToAssertionCount(1);
@@ -1270,7 +1212,6 @@ final class IdeEdgeCasesTest extends TestCase
                     $this->assertStringNotContainsString('$needle = 1;', $panel, 'the code match is filtered out');
                 },
             ],
-            1.5,
         );
 
         $this->addToAssertionCount(1);
@@ -1303,7 +1244,6 @@ final class IdeEdgeCasesTest extends TestCase
                     $this->assertStringContainsString('$y = 2;', $panel, 'the following line is shown');
                 },
             ],
-            1.1,
         );
 
         $this->addToAssertionCount(1);
@@ -1336,7 +1276,6 @@ final class IdeEdgeCasesTest extends TestCase
                     $this->assertStringContainsString('// beta', $panel, 'the following line is read from disk');
                 },
             ],
-            1.1,
         );
 
         $this->addToAssertionCount(1);
@@ -1384,7 +1323,6 @@ final class IdeEdgeCasesTest extends TestCase
                     $this->assertStringContainsString('function renamed', (string) file_get_contents($project->path('src/B.php')), 'the on-disk file is replaced too');
                 },
             ],
-            1.4,
         );
 
         $this->addToAssertionCount(1);
@@ -1419,7 +1357,6 @@ final class IdeEdgeCasesTest extends TestCase
                     $this->assertStringContainsString('Nothing to replace', AnsiUtils::stripAnsiCodes($terminal->getOutput()));
                 },
             ],
-            1.1,
         );
 
         $this->addToAssertionCount(1);
@@ -1458,7 +1395,6 @@ final class IdeEdgeCasesTest extends TestCase
                     $this->assertStringNotContainsString('B.js', $modal, 'the *.php mask excludes the JS file');
                 },
             ],
-            1.4,
         );
 
         $this->addToAssertionCount(1);
@@ -1499,7 +1435,6 @@ final class IdeEdgeCasesTest extends TestCase
                     $this->assertStringContainsString('$bar = 2;', (string) file_get_contents($project->path('src/B.php')), 'on-disk file replaced');
                 },
             ],
-            1.3,
         );
     }
 
@@ -1552,7 +1487,6 @@ final class IdeEdgeCasesTest extends TestCase
                     $this->assertStringNotContainsString('pinned:', $panel, 'the pin is cleared after restoring');
                 },
             ],
-            1.8,
         );
 
         $this->addToAssertionCount(1);
@@ -1591,7 +1525,6 @@ final class IdeEdgeCasesTest extends TestCase
                     $this->assertStringContainsString('search-results.txt', (string) $tui->getById('editor')->getFilePath(), 'the export opens in the editor');
                 },
             ],
-            1.1,
         );
     }
 
@@ -1636,7 +1569,6 @@ final class IdeEdgeCasesTest extends TestCase
                     $this->assertStringContainsString('Mask: *.php', $modal, 'the last mask is restored');
                 },
             ],
-            1.5,
         );
 
         $this->addToAssertionCount(1);
@@ -1671,7 +1603,6 @@ final class IdeEdgeCasesTest extends TestCase
                     $this->assertStringContainsString('src/B.php', $panel);
                 },
             ],
-            1.2,
         );
 
         $this->addToAssertionCount(1);
@@ -1708,7 +1639,6 @@ final class IdeEdgeCasesTest extends TestCase
                     );
                 },
             ],
-            1.2,
         );
 
         $this->addToAssertionCount(1);
@@ -1745,7 +1675,6 @@ final class IdeEdgeCasesTest extends TestCase
                     $this->assertStringContainsString('tok', $this->modalText($tui), 'the prior search is recalled');
                 },
             ],
-            1.4,
         );
 
         $this->addToAssertionCount(1);
@@ -1782,7 +1711,6 @@ final class IdeEdgeCasesTest extends TestCase
                     $this->assertStringContainsString('Replace: x', AnsiUtils::stripAnsiCodes($rows[$caretRow]), 'the caret moved to the Replace field');
                 },
             ],
-            0.6,
         );
 
         $this->addToAssertionCount(1);
@@ -1806,7 +1734,6 @@ final class IdeEdgeCasesTest extends TestCase
                     $this->assertStringContainsString('Find:', AnsiUtils::stripAnsiCodes($rows[$caretRow]));
                 },
             ],
-            0.6,
         );
 
         $this->addToAssertionCount(1);
@@ -1843,7 +1770,6 @@ final class IdeEdgeCasesTest extends TestCase
                     $this->assertStringContainsString('tok 18', $this->modalText($tui), 'the wheel scrolled the preview to later matches');
                 },
             ],
-            1.4,
         );
 
         $this->addToAssertionCount(1);
@@ -1885,7 +1811,6 @@ final class IdeEdgeCasesTest extends TestCase
                     $this->assertStringNotContainsString('File0.php', $panelText($tui), 'the wheel scrolled the first files out of view');
                 },
             ],
-            1.4,
         );
 
         $this->addToAssertionCount(1);
@@ -1930,7 +1855,6 @@ final class IdeEdgeCasesTest extends TestCase
                     $this->assertStringNotContainsString('other/B.php', $panel, 'the non-matching file is filtered out');
                 },
             ],
-            1.1,
         );
 
         $this->addToAssertionCount(1);
@@ -1964,7 +1888,6 @@ final class IdeEdgeCasesTest extends TestCase
                     $this->assertSame(4, $tui->getById('editor')->getDocument()->getCursorLine(), 'clicking the pinned header jumped to the class declaration');
                 },
             ],
-            0.7,
         );
 
         $this->addToAssertionCount(1);
@@ -2005,7 +1928,6 @@ final class IdeEdgeCasesTest extends TestCase
                     $this->assertSame(4, $tui->getById('editor')->getDocument()->getCursorLine(), 'clicking the Service crumb jumped to the class declaration');
                 },
             ],
-            0.7,
         );
 
         $this->addToAssertionCount(1);
@@ -2041,7 +1963,6 @@ final class IdeEdgeCasesTest extends TestCase
                     $this->assertStringNotContainsString("\x1b[48;5;236m", $joined, 'hover cleared after leaving the tree');
                 },
             ],
-            0.6,
         );
 
         $this->addToAssertionCount(1);
@@ -2079,7 +2000,6 @@ final class IdeEdgeCasesTest extends TestCase
                     $this->assertStringNotContainsString("\x1b[38;5;240m", $undo, 'Undo enabled once a file is open');
                 },
             ],
-            0.7,
         );
 
         $this->addToAssertionCount(1);
@@ -2127,7 +2047,6 @@ final class IdeEdgeCasesTest extends TestCase
                     $tui->handleInput("\x13"); // save with no file: no-op
                 },
             ],
-            1.1,
         );
 
         $this->assertStringContainsString('open a file from the tree', AnsiUtils::stripAnsiCodes($terminal->getOutput()));
@@ -2151,7 +2070,6 @@ final class IdeEdgeCasesTest extends TestCase
                     $this->assertStringContainsString('1 file has edits', AnsiUtils::stripAnsiCodes($terminal->getOutput()));
                 },
             ],
-            0.6,
         );
 
         $this->assertStringContainsString('Unsaved changes', AnsiUtils::stripAnsiCodes($terminal->getOutput()));
@@ -2174,7 +2092,6 @@ final class IdeEdgeCasesTest extends TestCase
                     $this->assertSame(['editor-pane', 'separator', 'tree'], $ids, 'RTL puts the file tree on the right');
                 },
             ],
-            0.5,
         );
     }
 
@@ -2192,7 +2109,6 @@ final class IdeEdgeCasesTest extends TestCase
                     $this->assertSame(['tree', 'separator', 'editor-pane'], $ids, 'LTR keeps the file tree on the left');
                 },
             ],
-            0.5,
         );
     }
 
@@ -2218,7 +2134,6 @@ final class IdeEdgeCasesTest extends TestCase
                     $this->assertStringContainsString('echo $name;', $screen, 'the code line is not reordered');
                 },
             ],
-            0.6,
         );
     }
 
@@ -2261,7 +2176,6 @@ final class IdeEdgeCasesTest extends TestCase
                     $assertWidths($tui, $ide); // settings view
                 },
             ],
-            0.8,
         );
     }
 
@@ -2297,7 +2211,6 @@ final class IdeEdgeCasesTest extends TestCase
                     $this->assertStringEndsWith('B.php', (string) $tui->getById('editor')->getFilePath(), 'the RTL click opened the tree entry');
                 },
             ],
-            0.8,
         );
     }
 
@@ -2318,7 +2231,6 @@ final class IdeEdgeCasesTest extends TestCase
                     $tui->tick();
                 },
             ],
-            0.5,
         );
 
         $this->assertStringContainsString('▲ 1', AnsiUtils::stripAnsiCodes($terminal->getOutput()));
@@ -2354,7 +2266,6 @@ final class IdeEdgeCasesTest extends TestCase
                     $tui->handleInput("\x1bw"); // close: debounce later fires with no file
                 },
             ],
-            1.0,
         ); // > 400ms + 300ms debounce
 
         $this->addToAssertionCount(1); // reaching here without an exception is the assertion
@@ -2380,7 +2291,6 @@ final class IdeEdgeCasesTest extends TestCase
                     $this->assertFalse($tui->getById('editor')->isCompletionOpen());
                 },
             ],
-            0.9,
         );
     }
 
@@ -2413,7 +2323,6 @@ final class IdeEdgeCasesTest extends TestCase
                     $this->assertStringNotContainsString('use ', $doc->getText(), 'no auto-import added');
                 },
             ],
-            1.2,
         );
     }
 
@@ -2444,7 +2353,6 @@ final class IdeEdgeCasesTest extends TestCase
                     $this->assertSame('sync:incremental:Z', $editor->getCursorDiagnostic());
                 },
             ],
-            1.3,
         );
     }
 
@@ -2477,7 +2385,6 @@ final class IdeEdgeCasesTest extends TestCase
                     $this->assertSame('format', $doc->getSelectedText(), 'first tab stop selected');
                 },
             ],
-            1.2,
         );
     }
 
@@ -2499,7 +2406,6 @@ final class IdeEdgeCasesTest extends TestCase
                     $this->assertStringContainsString(': int', $screen, 'inlay type hint rendered inline');
                 },
             ],
-            0.9,
         );
     }
 
@@ -2536,7 +2442,6 @@ final class IdeEdgeCasesTest extends TestCase
                     $tui->getById('editor')->getDocument()->setCursor(0, 0);
                 },
             ],
-            1.3,
         );
     }
 
@@ -2567,7 +2472,6 @@ final class IdeEdgeCasesTest extends TestCase
                     $this->assertStringNotContainsString('Choose target', AnsiUtils::stripAnsiCodes($terminal->getOutput()), 'no chooser when every candidate is unresolvable');
                 },
             ],
-            1.3,
         );
     }
 
@@ -2596,7 +2500,6 @@ final class IdeEdgeCasesTest extends TestCase
                     $this->assertSame('keep();', $doc->getLine(2), 'code outside the selection untouched');
                 },
             ],
-            1.0,
         );
     }
 
@@ -2621,7 +2524,6 @@ final class IdeEdgeCasesTest extends TestCase
                     $this->assertStringContainsString('Cannot rename this element', AnsiUtils::stripAnsiCodes($terminal->getOutput()));
                 },
             ],
-            0.9,
         );
     }
 
@@ -2655,7 +2557,6 @@ final class IdeEdgeCasesTest extends TestCase
                     $this->assertStringContainsString('A.php', $screen);
                 },
             ],
-            1.5,
         );
     }
 
@@ -2690,7 +2591,6 @@ final class IdeEdgeCasesTest extends TestCase
                     $this->assertStringContainsString('$bar = 2;', (string) file_get_contents($project->path('src/B.php')), 'on-disk file replaced');
                 },
             ],
-            1.3,
         );
     }
 
@@ -2724,7 +2624,6 @@ final class IdeEdgeCasesTest extends TestCase
                     $this->assertStringContainsString('Replaced in 1 file', AnsiUtils::stripAnsiCodes($terminal->getOutput()));
                 },
             ],
-            1.3,
         );
     }
 
@@ -2746,7 +2645,6 @@ final class IdeEdgeCasesTest extends TestCase
                     $this->assertStringContainsString('Nothing to replace', AnsiUtils::stripAnsiCodes($terminal->getOutput()));
                 },
             ],
-            0.7,
         );
     }
 
@@ -2788,7 +2686,6 @@ final class IdeEdgeCasesTest extends TestCase
                     $this->assertStringNotContainsString('$bar = 2;', $text);
                 },
             ],
-            1.3,
         );
     }
 
@@ -2856,7 +2753,6 @@ final class IdeEdgeCasesTest extends TestCase
                     $this->assertSame(['init'], $subjects, 'the soft reset removed "my commit"');
                 },
             ],
-            2.4,
         );
     }
 
@@ -2897,7 +2793,6 @@ final class IdeEdgeCasesTest extends TestCase
                     $this->assertStringContainsString('No blame for this line', AnsiUtils::stripAnsiCodes($terminal->getOutput()));
                 },
             ],
-            1.0,
         );
     }
 
@@ -2928,7 +2823,6 @@ final class IdeEdgeCasesTest extends TestCase
                     $this->assertStringContainsString('Git not available', AnsiUtils::stripAnsiCodes($terminal->getOutput()));
                 },
             ],
-            1.25,
         );
     }
 
@@ -2996,7 +2890,6 @@ final class IdeEdgeCasesTest extends TestCase
                     $this->assertSame('fresh', $head[0] ?? '');
                 },
             ],
-            2.8,
         );
     }
 
@@ -3053,7 +2946,6 @@ final class IdeEdgeCasesTest extends TestCase
                     $this->assertStringContainsString('No quick fixes here', AnsiUtils::stripAnsiCodes($terminal->getOutput()));
                 },
             ],
-            1.5,
         );
 
         $this->addToAssertionCount(1);
@@ -3083,7 +2975,6 @@ final class IdeEdgeCasesTest extends TestCase
                     $tui->handleInput("\x1b"); // close without applying
                 },
             ],
-            1.0,
         );
 
         $this->assertStringContainsString('Quick Fixes', AnsiUtils::stripAnsiCodes($terminal->getOutput()));
@@ -3117,7 +3008,6 @@ final class IdeEdgeCasesTest extends TestCase
                     $this->assertSame(4, $tui->getById('editor')->getDocument()->getCursorLine());
                 },
             ],
-            1.0,
         );
 
         $this->assertStringContainsString('File Structure', AnsiUtils::stripAnsiCodes($terminal->getOutput()));
@@ -3141,7 +3031,6 @@ final class IdeEdgeCasesTest extends TestCase
                     $this->assertStringContainsString('No symbols in this file', AnsiUtils::stripAnsiCodes($terminal->getOutput()));
                 },
             ],
-            0.9,
         );
 
         $this->addToAssertionCount(1);
@@ -3178,7 +3067,6 @@ final class IdeEdgeCasesTest extends TestCase
                     $this->assertSame(3, $tui->getById('editor')->getDocument()->getCursorLine());
                 },
             ],
-            1.2,
         );
 
         $this->addToAssertionCount(1);
@@ -3225,7 +3113,6 @@ final class IdeEdgeCasesTest extends TestCase
                     $this->assertTrue($tui->getById('results')->isOpen(), 'the pane stays open after the jump');
                 },
             ],
-            1.2,
         );
 
         $this->addToAssertionCount(1);
@@ -3250,7 +3137,6 @@ final class IdeEdgeCasesTest extends TestCase
                     $this->assertStringContainsString('Reformatted src/Messy.php', AnsiUtils::stripAnsiCodes($terminal->getOutput()));
                 },
             ],
-            0.9,
         );
 
         $this->addToAssertionCount(1);
@@ -3294,7 +3180,6 @@ final class IdeEdgeCasesTest extends TestCase
                     }
                 },
             ],
-            1.0,
         );
 
         $this->addToAssertionCount(1);
@@ -3348,7 +3233,6 @@ final class IdeEdgeCasesTest extends TestCase
                     $this->assertSame('editor', $tui->getFocus()?->getId());
                 },
             ],
-            0.75,
         );
 
         $this->addToAssertionCount(1);
@@ -3407,7 +3291,6 @@ final class IdeEdgeCasesTest extends TestCase
                     $this->assertFalse($tui->getById('menu')->isOpen(), 'outside click dismissed the menu');
                 },
             ],
-            1.0,
         );
 
         $this->addToAssertionCount(1);
@@ -3466,7 +3349,6 @@ final class IdeEdgeCasesTest extends TestCase
                     $this->assertTrue($tui->getById('menu')->isOpen(), 'hovering away from the menu kept it open');
                 },
             ],
-            0.9,
         );
 
         $this->addToAssertionCount(1);
@@ -3518,7 +3400,6 @@ final class IdeEdgeCasesTest extends TestCase
                     $this->assertStringContainsString($label, implode("\n", $after), 'dropdown composited over the editor pane');
                 },
             ],
-            0.6,
         );
 
         $this->addToAssertionCount(1);
@@ -3642,7 +3523,6 @@ final class IdeEdgeCasesTest extends TestCase
                     $this->assertStringEndsWith('A.php', (string) $editor->getFilePath(), 'tab click switched buffer');
                 },
             ],
-            1.0,
         );
 
         // Mouse-enable escape written on startup, disable on shutdown.
@@ -3674,7 +3554,6 @@ final class IdeEdgeCasesTest extends TestCase
                     $this->assertFalse($tui->getById('context-menu')->isOpen());
                 },
             ],
-            0.5,
         );
 
         $this->addToAssertionCount(1);
@@ -3702,7 +3581,6 @@ final class IdeEdgeCasesTest extends TestCase
                     $this->assertSame('hello', $tui->getById('editor')->getDocument()->getSelectedText());
                 },
             ],
-            0.7,
         );
 
         $this->assertStringContainsString("\x1b[?1003h", $terminal->getOutput(), 'any-motion mouse mode enabled');
@@ -3727,7 +3605,6 @@ final class IdeEdgeCasesTest extends TestCase
                     $this->assertSame("bc\ndef\ng", $tui->getById('editor')->getDocument()->getSelectedText());
                 },
             ],
-            0.7,
         );
 
         $this->addToAssertionCount(1);
@@ -3751,7 +3628,6 @@ final class IdeEdgeCasesTest extends TestCase
                     $this->assertSame('hello', $tui->getById('editor')->getDocument()->getSelectedText());
                 },
             ],
-            0.7,
         );
 
         $this->addToAssertionCount(1);
@@ -3776,7 +3652,6 @@ final class IdeEdgeCasesTest extends TestCase
                     $this->assertSame('hello world', $tui->getById('editor')->getDocument()->getSelectedText());
                 },
             ],
-            0.7,
         );
 
         $this->addToAssertionCount(1);
@@ -3800,7 +3675,6 @@ final class IdeEdgeCasesTest extends TestCase
                     $this->assertSame('hello', $tui->getById('editor')->getDocument()->getSelectedText());
                 },
             ],
-            0.7,
         );
 
         $this->addToAssertionCount(1);
@@ -3823,7 +3697,6 @@ final class IdeEdgeCasesTest extends TestCase
                     $this->assertFalse($tui->getById('editor')->hasMultipleCarets(), 'Alt+Click again removed it');
                 },
             ],
-            0.6,
         );
 
         $this->addToAssertionCount(1);
@@ -3846,7 +3719,6 @@ final class IdeEdgeCasesTest extends TestCase
                     $this->assertFalse($tui->getById('editor')->hasMultipleCarets());
                 },
             ],
-            0.6,
         );
 
         $this->addToAssertionCount(1);
@@ -3875,7 +3747,6 @@ final class IdeEdgeCasesTest extends TestCase
                     $this->assertSame("aXa\nbX\ncXc\n", $tui->getById('editor')->getDocument()->getText());
                 },
             ],
-            0.7,
         );
 
         $this->addToAssertionCount(1);
@@ -3902,7 +3773,6 @@ final class IdeEdgeCasesTest extends TestCase
                     $this->assertSame("one\ntwo\nthree\n", $editor->getDocument()->getText());
                 },
             ],
-            0.6,
         );
 
         $this->addToAssertionCount(1);
@@ -3934,7 +3804,6 @@ final class IdeEdgeCasesTest extends TestCase
                     $this->assertSame("XYZaaa\nXYZbbb\nXYZccc\n", $editor->getDocument()->getText());
                 },
             ],
-            0.6,
         );
 
         $this->addToAssertionCount(1);
@@ -3971,7 +3840,6 @@ final class IdeEdgeCasesTest extends TestCase
                     $this->assertStringEndsWith('Target.php', (string) $editor->getFilePath(), 'Enter jumps into the file');
                 },
             ],
-            1.0,
         );
 
         $this->addToAssertionCount(1);
@@ -4006,7 +3874,6 @@ final class IdeEdgeCasesTest extends TestCase
                     $this->assertStringContainsString('Peek target outside the filesystem', AnsiUtils::stripAnsiCodes($terminal->getOutput()));
                 },
             ],
-            1.1,
         );
 
         $this->addToAssertionCount(1);
@@ -4043,7 +3910,6 @@ final class IdeEdgeCasesTest extends TestCase
                     $this->assertStringContainsString('Saved', AnsiUtils::stripAnsiCodes($terminal->getOutput()));
                 },
             ],
-            0.9,
         );
 
         $this->addToAssertionCount(1);
@@ -4080,7 +3946,6 @@ final class IdeEdgeCasesTest extends TestCase
                     $this->assertTrue($config['settings']['relativeLineNumbers']);
                 },
             ],
-            0.9,
         );
 
         $this->addToAssertionCount(1);
@@ -4107,7 +3972,6 @@ final class IdeEdgeCasesTest extends TestCase
                     $this->assertStringNotContainsString('boom', AnsiUtils::stripAnsiCodes($rendered[1]));
                 },
             ],
-            0.5,
         );
 
         $this->addToAssertionCount(1);
@@ -4195,7 +4059,6 @@ final class IdeEdgeCasesTest extends TestCase
                     $this->assertStringContainsString('version three', $tui->getById('editor')->getDocument()->getText());
                 },
             ],
-            1.0,
         );
 
         $this->addToAssertionCount(1);
@@ -4218,7 +4081,6 @@ final class IdeEdgeCasesTest extends TestCase
                     $this->assertStringContainsString('No local history for this file yet', AnsiUtils::stripAnsiCodes($terminal->getOutput()));
                 },
             ],
-            0.6,
         );
 
         $this->addToAssertionCount(1);
@@ -4253,7 +4115,6 @@ final class IdeEdgeCasesTest extends TestCase
                     $this->assertSame('terminal', $tui->getFocus()?->getId(), 'clicking the terminal pane refocused it');
                 },
             ],
-            0.6,
         );
 
         $this->addToAssertionCount(1);
@@ -4288,7 +4149,6 @@ final class IdeEdgeCasesTest extends TestCase
                     $this->assertNotNull($this->rowOf($grid, 'scrolled'), 'the wheel scrolled the terminal back');
                 },
             ],
-            1.2,
         );
 
         $this->addToAssertionCount(1);
@@ -4320,7 +4180,6 @@ final class IdeEdgeCasesTest extends TestCase
                     $this->assertStringContainsString('hi', AnsiUtils::stripAnsiCodes($terminal->getOutput()));
                 },
             ],
-            1.2,
         );
 
         $this->addToAssertionCount(1);
@@ -4368,7 +4227,6 @@ final class IdeEdgeCasesTest extends TestCase
                     $this->assertStringContainsString('exited', AnsiUtils::stripAnsiCodes($terminal->getOutput()));
                 },
             ],
-            1.4,
         );
 
         $this->addToAssertionCount(1);
@@ -4402,7 +4260,6 @@ final class IdeEdgeCasesTest extends TestCase
                     $this->assertFalse($tui->getById('terminal')->isOpen());
                 },
             ],
-            1.1,
         );
 
         $this->addToAssertionCount(1);
@@ -4434,7 +4291,6 @@ final class IdeEdgeCasesTest extends TestCase
                     $this->assertTrue($tui->getById('terminal')->isOpen());
                 },
             ],
-            0.9,
         );
 
         $this->addToAssertionCount(1);
@@ -4467,7 +4323,6 @@ final class IdeEdgeCasesTest extends TestCase
                     $this->assertStringContainsString('run-output-ok', AnsiUtils::stripAnsiCodes($terminal->getOutput()));
                 },
             ],
-            1.3,
         );
 
         $this->addToAssertionCount(1);
@@ -4501,7 +4356,6 @@ final class IdeEdgeCasesTest extends TestCase
                     $this->assertTrue($tui->getById('terminal')->isOpen());
                 },
             ],
-            1.1,
         );
 
         $this->addToAssertionCount(1);
@@ -4523,7 +4377,6 @@ final class IdeEdgeCasesTest extends TestCase
                     $this->assertStringContainsString('Nothing to run', AnsiUtils::stripAnsiCodes($terminal->getOutput()));
                 },
             ],
-            0.6,
         );
 
         $this->addToAssertionCount(1);
@@ -4590,7 +4443,6 @@ final class IdeEdgeCasesTest extends TestCase
                     $this->assertStringContainsString('Z', (string) file_get_contents($project->path('b.php')), 'saved before closing');
                 },
             ],
-            1.0,
         );
 
         $this->assertStringContainsString('Nothing to save', AnsiUtils::stripAnsiCodes($terminal->getOutput()));
@@ -4621,7 +4473,6 @@ final class IdeEdgeCasesTest extends TestCase
                     $this->assertSame(1, $versionBefore, 'no phantom edits from switching');
                 },
             ],
-            0.8,
         );
     }
 
@@ -4648,7 +4499,6 @@ final class IdeEdgeCasesTest extends TestCase
                     $tui->handleInput("\x13"); // save with no file: no-op
                 },
             ],
-            0.7,
         );
 
         $this->assertStringContainsString('Save failed', AnsiUtils::stripAnsiCodes($terminal->getOutput()));
@@ -4772,7 +4622,6 @@ final class IdeEdgeCasesTest extends TestCase
                     $tui->handleInput("\r");
                 },
             ],
-            1.4,
         );
 
         $screen = AnsiUtils::stripAnsiCodes($terminal->getOutput());
@@ -4844,10 +4693,12 @@ final class IdeEdgeCasesTest extends TestCase
                     $tui->getById('editor')->getDocument()->setCursor(0, 2); // inside 'JSON'
                     $tui->handleInput("\x1b[24~");
                 },
-                600 => static function ($tui): void {
+                600 => function ($tui, $terminal, $ide) use ($captureFile): void {
                     $tui->tick();
                     $tui->getById('editor')->getDocument()->setCursor(0, 6); // 'parse': not curated, no LSP
                     $tui->handleInput("\x1b[24~");
+                    // The opener shim is an independent OS process — await its write.
+                    $this->await(static fn (): bool => str_contains((string) @file_get_contents($captureFile), 'mozilla.org'));
                 },
             ],
         );
@@ -4936,7 +4787,6 @@ final class IdeEdgeCasesTest extends TestCase
                     $this->assertNotNull($tui->getById('tree'), 'tree pane restored');
                 },
             ],
-            2.0,
         );
 
         $screen = AnsiUtils::stripAnsiCodes($terminal->getOutput());
@@ -4981,7 +4831,6 @@ final class IdeEdgeCasesTest extends TestCase
                     $tui->handleInput("\x1b");
                 },
             ],
-            1.4,
         );
 
         $this->assertStringContainsString('[~] M f.txt', AnsiUtils::stripAnsiCodes($terminal->getOutput()), 'partial staging shows the mixed checkbox');
@@ -5096,7 +4945,6 @@ final class IdeEdgeCasesTest extends TestCase
                     $tui->handleInput("\x1b");
                 },
             ],
-            2.6,
         );
 
         $screen = AnsiUtils::stripAnsiCodes($terminal->getOutput());
@@ -5181,7 +5029,6 @@ final class IdeEdgeCasesTest extends TestCase
                     $this->assertStringContainsString('Save File', $screen);
                 },
             ],
-            1.9,
         );
 
         $this->assertFalse(IdeConfig::load($project->dir)->settings['inlineDiagnostics'], 'the General toggle persisted');
@@ -5296,7 +5143,6 @@ final class IdeEdgeCasesTest extends TestCase
                     $this->assertGreaterThan($editor->col, $tabs->col, 'right: the list sits right of the editor');
                 },
             ],
-            1.4,
         );
 
         $this->assertSame('right', IdeConfig::load($project->dir)->settings['tabBarPosition'], 'the position persisted');
@@ -5323,7 +5169,6 @@ final class IdeEdgeCasesTest extends TestCase
                     $this->assertLessThan($editor->row, $tabs->row);
                 },
             ],
-            0.5,
         );
 
         $this->addToAssertionCount(1);
@@ -5397,7 +5242,6 @@ final class IdeEdgeCasesTest extends TestCase
                     $this->assertCount(2, $tui->getById('editor-pane')->all(), 'the editor pane keeps exactly the list and the body');
                 },
             ],
-            1.3,
         );
 
         $this->addToAssertionCount(1);
@@ -5429,7 +5273,6 @@ final class IdeEdgeCasesTest extends TestCase
                     $this->assertSame($tabsRow, new \ReflectionProperty($overlay, 'contextAnchorRow')->getValue($overlay));
                 },
             ],
-            0.6,
         );
 
         $this->addToAssertionCount(1);
@@ -5464,7 +5307,6 @@ final class IdeEdgeCasesTest extends TestCase
                     $this->assertSame(19, $layout['settingsSidebarWidthPercent'], 'saved as a percentage (round(30/160))');
                 },
             ],
-            1.2,
         );
     }
 
@@ -5521,7 +5363,6 @@ final class IdeEdgeCasesTest extends TestCase
                     $tui->handleInput("\x1b[<0;4;2m");
                 },
             ],
-            1.9,
         );
 
         $this->assertStringContainsString('Working tree clean', AnsiUtils::stripAnsiCodes($terminal->getOutput()), 'the Changes tab restored');
@@ -5578,7 +5419,6 @@ final class IdeEdgeCasesTest extends TestCase
                     $tui->tick();
                 },
             ],
-            1.7,
         );
 
         $screen = AnsiUtils::stripAnsiCodes($terminal->getOutput());
@@ -5651,7 +5491,6 @@ final class IdeEdgeCasesTest extends TestCase
                     $tui->handleInput("\x1b[24~");
                 },
             ],
-            1.3,
         );
 
         $screen = AnsiUtils::stripAnsiCodes($terminal->getOutput());
@@ -5676,7 +5515,6 @@ final class IdeEdgeCasesTest extends TestCase
                     $tui->handleInput("\x03"); // ctrl+c -> OSC 52 to terminal
                 },
             ],
-            0.6,
         );
 
         $this->assertStringContainsString('Nowhere to go back to', AnsiUtils::stripAnsiCodes($terminal->getOutput()));
@@ -5708,7 +5546,6 @@ final class IdeEdgeCasesTest extends TestCase
                     $tui->handleInput("\x1b[1;7D"); // back again
                 },
             ],
-            1.3,
         );
 
         $screen = AnsiUtils::stripAnsiCodes($terminal->getOutput());
@@ -5735,7 +5572,6 @@ final class IdeEdgeCasesTest extends TestCase
                     $tui->tick();
                 },
             ],
-            0.9,
         );
 
         $screen = AnsiUtils::stripAnsiCodes($terminal->getOutput());
@@ -5807,7 +5643,6 @@ final class IdeEdgeCasesTest extends TestCase
                     $this->assertSame(' world', $tui->getById('editor')->getDocument()->getLine(0), 'Cut removed the selection');
                 },
             ],
-            0.7,
         );
 
         $this->addToAssertionCount(1);
@@ -5838,7 +5673,6 @@ final class IdeEdgeCasesTest extends TestCase
                     $this->assertFalse($tui->getById('context-menu')->isOpen(), 'Esc closed the menu');
                 },
             ],
-            0.7,
         );
 
         $this->addToAssertionCount(1);
@@ -5866,7 +5700,6 @@ final class IdeEdgeCasesTest extends TestCase
                     $this->assertTrue($tui->getById('context-menu')->isOpen(), 'and opened the context menu');
                 },
             ],
-            0.7,
         );
 
         $this->addToAssertionCount(1);
@@ -5893,7 +5726,6 @@ final class IdeEdgeCasesTest extends TestCase
                     $this->assertFalse($tui->getById('context-menu')->isOpen(), 'empty tab-strip space targets no tab');
                 },
             ],
-            0.6,
         );
 
         $this->addToAssertionCount(1);
@@ -5924,7 +5756,6 @@ final class IdeEdgeCasesTest extends TestCase
                     $this->assertStringEndsWith('B.php', (string) $tui->getById('editor')->getFilePath(), 'A closed, B shown');
                 },
             ],
-            0.8,
         );
 
         $this->addToAssertionCount(1);
@@ -5974,7 +5805,6 @@ final class IdeEdgeCasesTest extends TestCase
                     $tui->handleInput("\r");
                 },
             ],
-            0.9,
         );
 
         $screen = AnsiUtils::stripAnsiCodes($terminal->getOutput());
@@ -6008,7 +5838,6 @@ final class IdeEdgeCasesTest extends TestCase
                     $this->assertSame('tree', $tui->getFocus()?->getId(), 'closing every tab returns focus to the tree');
                 },
             ],
-            0.8,
         );
 
         $this->addToAssertionCount(1);
@@ -6047,7 +5876,6 @@ final class IdeEdgeCasesTest extends TestCase
                     $tui->handleInput("\r");
                 },
             ],
-            1.0,
         );
 
         $this->assertFileExists($project->path('src/new.php'), 'New File created the file');
@@ -6085,7 +5913,6 @@ final class IdeEdgeCasesTest extends TestCase
                     $tui->handleInput("\r");
                 },
             ],
-            1.0,
         );
 
         $this->assertSame(['keep.php'], array_values(array_diff(scandir($project->path('src')), ['.', '..'])), 'no blank-named entry was created');
@@ -6137,7 +5964,6 @@ final class IdeEdgeCasesTest extends TestCase
                     $this->assertStringEndsWith('renamed.php', (string) $tui->getById('editor')->getFilePath(), 'the open buffer followed the rename');
                 },
             ],
-            0.9,
         );
 
         $this->assertFileDoesNotExist($project->path('A.php'), 'old name gone');
@@ -6164,7 +5990,6 @@ final class IdeEdgeCasesTest extends TestCase
                     $this->assertTrue($tui->getById('context-menu')->isOpen(), 'menu opened and placed above the click without error');
                 },
             ],
-            0.7,
         );
 
         $this->addToAssertionCount(1);
@@ -6190,7 +6015,6 @@ final class IdeEdgeCasesTest extends TestCase
                     $this->assertTrue($tui->getById('context-menu')->isOpen(), 'a straddling panel renders across both panes without error');
                 },
             ],
-            0.7,
         );
 
         $this->addToAssertionCount(1);
@@ -6225,7 +6049,6 @@ final class IdeEdgeCasesTest extends TestCase
                     $tui->handleInput("\r");
                 },
             ],
-            0.8,
         );
 
         $this->assertStringContainsString('Cannot rename A.php', AnsiUtils::stripAnsiCodes($terminal->getOutput()));
@@ -6260,7 +6083,6 @@ final class IdeEdgeCasesTest extends TestCase
                     $tui->handleInput("\r");
                 },
             ],
-            0.9,
         );
 
         $raw = $terminal->getOutput();
@@ -6303,7 +6125,6 @@ final class IdeEdgeCasesTest extends TestCase
                     $this->assertStringEndsWith('B.php', (string) $tui->getById('editor')->getFilePath(), 'deleted A, showing B');
                 },
             ],
-            0.9,
         );
 
         $this->assertFileDoesNotExist($project->path('A.php'), 'A.php removed from disk');
@@ -6333,7 +6154,6 @@ final class IdeEdgeCasesTest extends TestCase
                     $tui->handleInput("\r");
                 },
             ],
-            0.7,
         );
 
         $this->assertFileDoesNotExist($project->path('A.php'));
@@ -6366,7 +6186,6 @@ final class IdeEdgeCasesTest extends TestCase
                     $this->assertSame('tree', $tui->getFocus()?->getId(), 'declining returns focus to the tree');
                 },
             ],
-            0.7,
         );
 
         $this->assertFileExists($project->path('A.php'), 'declining the confirmation kept the file');
@@ -6407,7 +6226,6 @@ final class IdeEdgeCasesTest extends TestCase
                     $this->assertNotNull($this->rowOf($grid, 'late.php'), 'Refresh picked up the new file');
                 },
             ],
-            0.9,
         );
 
         $this->addToAssertionCount(1);
@@ -6434,7 +6252,6 @@ final class IdeEdgeCasesTest extends TestCase
                     $this->assertFalse($tui->getById('context-menu')->isOpen(), 'a click outside the panel dismissed it');
                 },
             ],
-            0.7,
         );
 
         $this->addToAssertionCount(1);
@@ -6475,7 +6292,6 @@ final class IdeEdgeCasesTest extends TestCase
                     $this->assertStringEndsWith('B.php', (string) $tui->getById('editor')->getFilePath());
                 },
             ],
-            0.8,
         );
 
         $this->addToAssertionCount(1);
@@ -6514,7 +6330,6 @@ final class IdeEdgeCasesTest extends TestCase
                     $this->assertMatchesRegularExpression('/B\.php.*A\.php/', AnsiUtils::stripAnsiCodes($terminal->getOutput()), 'the strip repainted in the new order without further input');
                 },
             ],
-            0.9,
         );
 
         $this->addToAssertionCount(1);
@@ -6549,7 +6364,6 @@ final class IdeEdgeCasesTest extends TestCase
                     $this->assertSame(['B.php', 'C.php', 'A.php'], $this->tabNames($tui), 'A dragged to the end');
                 },
             ],
-            0.9,
         );
 
         $this->addToAssertionCount(1);
@@ -6587,7 +6401,6 @@ final class IdeEdgeCasesTest extends TestCase
                     $this->assertSame(['A.php', 'C.php', 'B.php'], $this->tabNames($tui), 'moved back right');
                 },
             ],
-            0.9,
         );
 
         $this->addToAssertionCount(1);
@@ -6662,7 +6475,6 @@ final class IdeEdgeCasesTest extends TestCase
                     $this->assertStringContainsString('Reloaded A.php', AnsiUtils::stripAnsiCodes($tui->getTerminal()->getOutput()));
                 },
             ],
-            0.6,
         );
 
         $this->addToAssertionCount(1);
@@ -6690,7 +6502,6 @@ final class IdeEdgeCasesTest extends TestCase
                     $this->assertFalse($doc->isDirty());
                 },
             ],
-            0.6,
         );
 
         $this->addToAssertionCount(1);
@@ -6718,7 +6529,6 @@ final class IdeEdgeCasesTest extends TestCase
                     $this->assertTrue($doc->isDirty());
                 },
             ],
-            0.6,
         );
 
         $this->assertStringContainsString('A.php changed on disk', AnsiUtils::stripAnsiCodes($terminal->getOutput()));
@@ -6743,7 +6553,6 @@ final class IdeEdgeCasesTest extends TestCase
                     $this->assertStringContainsString('keep me', $tui->getById('editor')->getDocument()->getText(), 'buffer retained');
                 },
             ],
-            0.6,
         );
 
         $screen = AnsiUtils::stripAnsiCodes($terminal->getOutput());
@@ -6772,7 +6581,6 @@ final class IdeEdgeCasesTest extends TestCase
                     $this->assertStringNotContainsString('changed on disk', $screen);
                 },
             ],
-            0.6,
         );
 
         $this->addToAssertionCount(1);
@@ -6800,7 +6608,6 @@ final class IdeEdgeCasesTest extends TestCase
                     $this->assertNotNull($this->rowOf($grid, 'fresh.php'), 'poll refreshed the tree');
                 },
             ],
-            0.6,
         );
 
         $this->addToAssertionCount(1);
@@ -6848,7 +6655,6 @@ final class IdeEdgeCasesTest extends TestCase
                     $this->assertStringNotContainsString('E', (string) file_get_contents($project->path('a.php')), 'discard did not save the edit');
                 },
             ],
-            0.9,
         );
 
         $this->assertStringContainsString("\x1b[?1003h", $terminal->getOutput());
@@ -6902,7 +6708,6 @@ final class IdeEdgeCasesTest extends TestCase
                     $this->assertFalse($tui->getById('goto-file')->isOpen(), 'clicking a file opened it and closed the palette');
                 },
             ],
-            0.9,
         );
 
         $this->addToAssertionCount(1);
@@ -6937,7 +6742,6 @@ final class IdeEdgeCasesTest extends TestCase
                     $this->assertFalse($tui->getById('editor')->isCompletionOpen(), 'a click off the popup closed completion and placed the caret');
                 },
             ],
-            0.8,
         );
     }
 
@@ -6976,7 +6780,6 @@ final class IdeEdgeCasesTest extends TestCase
                     $this->assertSame(1, $this->caretMarkerCount($rows), 'the focused terminal panel places the hardware cursor');
                 },
             ],
-            1.0,
         );
 
         $this->assertSame('block', IdeConfig::load($project->dir)->settings['cursorShape'], 'the shape persisted');
@@ -7015,7 +6818,6 @@ final class IdeEdgeCasesTest extends TestCase
                     $tui->handleInput("\x1b"); // Esc closes the overlay
                 },
             ],
-            0.8,
         );
 
         // With only an image open, the editor-hosted overlay refuses with a flash.
@@ -7033,7 +6835,6 @@ final class IdeEdgeCasesTest extends TestCase
                     $this->assertStringContainsString('Not available while viewing an image', AnsiUtils::stripAnsiCodes($terminal->getOutput()));
                 },
             ],
-            0.5,
         );
     }
 
@@ -7059,7 +6860,6 @@ final class IdeEdgeCasesTest extends TestCase
                     $this->assertStringContainsString('x', (string) file_get_contents($project->path('a.php')));
                 },
             ],
-            0.5,
         );
     }
 
@@ -7091,7 +6891,6 @@ final class IdeEdgeCasesTest extends TestCase
                     $tui->handleInput("\x1b"); // Esc closes the overlay
                 },
             ],
-            0.8,
         );
 
         // With only an image open, the editor-hosted overlay refuses with a flash.
@@ -7108,7 +6907,6 @@ final class IdeEdgeCasesTest extends TestCase
                     $this->assertStringContainsString('Not available while viewing an image', AnsiUtils::stripAnsiCodes($terminal->getOutput()));
                 },
             ],
-            0.5,
         );
     }
 
@@ -7147,7 +6945,6 @@ final class IdeEdgeCasesTest extends TestCase
                     new \ReflectionProperty($ide, 'commands')->getValue($ide)->run('ide_settings');
                 },
             ],
-            1.2,
         );
     }
 
@@ -7177,7 +6974,6 @@ final class IdeEdgeCasesTest extends TestCase
                     $this->assertSame('git-changes', $tui->getFocus()?->getId());
                 },
             ],
-            1.0,
         );
     }
 
@@ -7230,7 +7026,6 @@ final class IdeEdgeCasesTest extends TestCase
                     $this->assertStringContainsString('No context menu here', AnsiUtils::stripAnsiCodes($terminal->getOutput()), 'the flash explains the no-op');
                 },
             ],
-            1.2,
         );
     }
 
@@ -7266,7 +7061,6 @@ final class IdeEdgeCasesTest extends TestCase
                     $this->assertArrayHasKey('bottomPanelHeightPercent', $layout, 'the panel grow persisted too');
                 },
             ],
-            1.0,
         );
     }
 }

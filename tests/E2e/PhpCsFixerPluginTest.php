@@ -6,6 +6,7 @@ namespace Porta\Tests\E2e;
 
 use PHPUnit\Framework\TestCase;
 use Porta\Ide;
+use Porta\Tests\Support\RunsIde;
 use Porta\Tests\Support\TempProject;
 use Revolt\EventLoop;
 use Symfony\Component\Tui\Ansi\AnsiUtils;
@@ -18,6 +19,8 @@ use Symfony\Component\Tui\Terminal\VirtualTerminal;
  */
 final class PhpCsFixerPluginTest extends TestCase
 {
+    use RunsIde;
+
     private string $originalPath;
 
     protected function setUp(): void
@@ -30,34 +33,6 @@ final class PhpCsFixerPluginTest extends TestCase
     protected function tearDown(): void
     {
         putenv('PATH='.$this->originalPath);
-    }
-
-    /**
-     * @param array<int, callable> $steps ms => step($tui, $terminal, $ide)
-     */
-    private function runIde(TempProject $project, ?string $file, array $steps, ?float $duration = null): VirtualTerminal
-    {
-        $duration ??= max([] === $steps ? 0.0 : (max(array_keys($steps)) / 1000) + 0.5, 0.7);
-
-        $terminal = new VirtualTerminal(columns: 160, rows: 24);
-        $ide = new Ide($project->dir, $file, $terminal);
-        $tui = $ide->getTui();
-
-        $timers = [];
-        foreach ($steps as $delayMs => $step) {
-            $timers[] = EventLoop::delay((int) $delayMs / 1000, static fn () => $step($tui, $terminal, $ide));
-        }
-        $timers[] = EventLoop::delay($duration, static fn () => $tui->stop());
-
-        try {
-            $ide->run();
-        } finally {
-            foreach ($timers as $timer) {
-                EventLoop::cancel($timer);
-            }
-        }
-
-        return $terminal;
     }
 
     /** A project with the real plugin file and (optionally) a stub fixer binary. */
@@ -89,12 +64,14 @@ final class PhpCsFixerPluginTest extends TestCase
             $project,
             $project->path('a.php'),
             [
-                200 => static function ($tui): void {
+                100 => static function ($tui): void {
                     $tui->handleInput("\x1b\x06"); // ctrl+alt+f → php-cs-fixer:fix
                 },
-                1400 => function ($tui, $terminal, $ide) use ($project): void {
+                300 => function ($tui, $terminal, $ide) use ($project): void {
+                    $this->await(fn (): bool => str_contains(AnsiUtils::stripAnsiCodes($terminal->getOutput()), 'php-cs-fixer: fixed a.php'));
                     $tui->tick();
                     $this->assertStringContainsString('php-cs-fixer: fixed a.php', AnsiUtils::stripAnsiCodes($terminal->getOutput()));
+                    $this->await(fn (): bool => str_contains((string) @file_get_contents($project->path('a.php')), '// fixed'));
                     $this->assertStringContainsString('// fixed', (string) file_get_contents($project->path('a.php')), 'the stub rewrote the file');
 
                     // The filesystem poller reloads the clean buffer with the fixed content.
@@ -104,7 +81,6 @@ final class PhpCsFixerPluginTest extends TestCase
                     $this->assertStringContainsString('// fixed', $tui->getById('editor')->getDocument()->getText(), 'buffer reloaded');
                 },
             ],
-            1.7,
         );
 
         $this->addToAssertionCount(1);
@@ -118,14 +94,15 @@ final class PhpCsFixerPluginTest extends TestCase
             $project,
             $project->path('a.php'),
             [
-                200 => function ($tui, $terminal, $ide) use ($project): void {
+                100 => function ($tui, $terminal, $ide) use ($project): void {
                     new \ReflectionProperty($ide, 'commands')->getValue($ide)->run('php-cs-fixer:toggle-on-save');
                     $tui->tick();
                     $this->assertStringContainsString('php-cs-fixer on save: on', AnsiUtils::stripAnsiCodes($terminal->getOutput()));
                     $this->assertTrue((bool) (\Porta\Config\IdeConfig::load($project->dir)->plugins['php-cs-fixer']['autoFormat'] ?? false), 'the toggle persisted to .porta.json');
                     $tui->handleInput("\x13"); // ctrl+s → save → the hook runs the fixer
                 },
-                1400 => function ($tui, $terminal, $ide) use ($project): void {
+                300 => function ($tui, $terminal, $ide) use ($project): void {
+                    $this->await(fn (): bool => substr_count((string) @file_get_contents($project->path('a.php')), '// fixed') >= 1);
                     $this->assertSame(1, substr_count((string) file_get_contents($project->path('a.php')), '// fixed'), 'save triggered one fix');
 
                     // Toggling off stops the hook.
@@ -138,11 +115,10 @@ final class PhpCsFixerPluginTest extends TestCase
                         ->pollFilesystem(); // absorb the on-disk change first
                     $tui->handleInput("\x13");
                 },
-                2600 => function ($tui, $terminal, $ide) use ($project): void {
+                450 => function ($tui, $terminal, $ide) use ($project): void {
                     $this->assertSame(1, substr_count((string) file_get_contents($project->path('a.php')), '// fixed'), 'no fix while toggled off');
                 },
             ],
-            2.9,
         );
 
         $this->addToAssertionCount(1);
@@ -156,13 +132,12 @@ final class PhpCsFixerPluginTest extends TestCase
             $project,
             $project->path('a.php'),
             [
-                200 => function ($tui, $terminal): void {
+                100 => function ($tui, $terminal): void {
                     $tui->handleInput("\x1b\x06");
                     $tui->tick();
                     $this->assertStringContainsString('php-cs-fixer not found (vendor/bin or PATH)', AnsiUtils::stripAnsiCodes($terminal->getOutput()));
                 },
             ],
-            0.5,
         );
 
         // A non-PHP active file refuses politely.
@@ -171,13 +146,12 @@ final class PhpCsFixerPluginTest extends TestCase
             $project,
             $project->path('notes.txt'),
             [
-                200 => function ($tui, $terminal): void {
+                100 => function ($tui, $terminal): void {
                     $tui->handleInput("\x1b\x06");
                     $tui->tick();
                     $this->assertStringContainsString('php-cs-fixer: open a PHP file first', AnsiUtils::stripAnsiCodes($terminal->getOutput()));
                 },
             ],
-            0.5,
         );
 
         // A failing fixer reports its exit code.
@@ -186,15 +160,15 @@ final class PhpCsFixerPluginTest extends TestCase
             $project,
             $project->path('a.php'),
             [
-                200 => static function ($tui): void {
+                100 => static function ($tui): void {
                     $tui->handleInput("\x1b\x06");
                 },
-                1400 => function ($tui, $terminal): void {
+                300 => function ($tui, $terminal): void {
+                    $this->await(fn (): bool => str_contains(AnsiUtils::stripAnsiCodes($terminal->getOutput()), 'php-cs-fixer: exited with code 3'));
                     $tui->tick();
                     $this->assertStringContainsString('php-cs-fixer: exited with code 3', AnsiUtils::stripAnsiCodes($terminal->getOutput()));
                 },
             ],
-            1.7,
         );
 
         $this->addToAssertionCount(1);

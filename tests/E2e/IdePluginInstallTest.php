@@ -6,6 +6,7 @@ namespace Porta\Tests\E2e;
 
 use PHPUnit\Framework\TestCase;
 use Porta\Ide;
+use Porta\Tests\Support\RunsIde;
 use Porta\Tests\Support\TempProject;
 use Revolt\EventLoop;
 use Symfony\Component\Process\ExecutableFinder;
@@ -19,6 +20,8 @@ use Symfony\Component\Tui\Terminal\VirtualTerminal;
  */
 final class IdePluginInstallTest extends TestCase
 {
+    use RunsIde;
+
     private string $originalPath;
     private ?string $portaHome = null;
 
@@ -34,34 +37,6 @@ final class IdePluginInstallTest extends TestCase
     {
         putenv('PATH='.$this->originalPath);
         putenv(null !== $this->portaHome ? 'PORTA_HOME='.$this->portaHome : 'PORTA_HOME');
-    }
-
-    /**
-     * @param array<int, callable> $steps ms => step($tui, $terminal, $ide)
-     */
-    private function runIde(TempProject $project, ?string $file, array $steps, ?float $duration = null): VirtualTerminal
-    {
-        $duration ??= max([] === $steps ? 0.0 : (max(array_keys($steps)) / 1000) + 0.5, 0.7);
-
-        $terminal = new VirtualTerminal(columns: 160, rows: 24);
-        $ide = new Ide($project->dir, $file, $terminal);
-        $tui = $ide->getTui();
-
-        $timers = [];
-        foreach ($steps as $delayMs => $step) {
-            $timers[] = EventLoop::delay((int) $delayMs / 1000, static fn () => $step($tui, $terminal, $ide));
-        }
-        $timers[] = EventLoop::delay($duration, static fn () => $tui->stop());
-
-        try {
-            $ide->run();
-        } finally {
-            foreach ($timers as $timer) {
-                EventLoop::cancel($timer);
-            }
-        }
-
-        return $terminal;
     }
 
     /** A plugin source registering one flashing command. */
@@ -115,7 +90,7 @@ final class IdePluginInstallTest extends TestCase
             $project,
             $project->path('a.php'),
             [
-                200 => function ($tui, $terminal, $ide) use ($project): void {
+                100 => function ($tui, $terminal, $ide) use ($project): void {
                     $this->openPluginsSection($tui, $ide);
                     $tui->tick();
                     $screen = AnsiUtils::stripAnsiCodes($terminal->getOutput());
@@ -148,7 +123,6 @@ final class IdePluginInstallTest extends TestCase
                     $this->assertStringContainsString('Plugin "broken" failed to load: plugin.php must return a PortaPlugin instance', AnsiUtils::stripAnsiCodes($terminal->getOutput()));
                 },
             ],
-            0.7,
         );
 
         $this->addToAssertionCount(1);
@@ -166,7 +140,7 @@ final class IdePluginInstallTest extends TestCase
             $project,
             $project->path('a.php'),
             [
-                200 => function ($tui, $terminal, $ide) use ($project): void {
+                100 => function ($tui, $terminal, $ide) use ($project): void {
                     $commands = new \ReflectionProperty($ide, 'commands')->getValue($ide);
                     $this->assertContains('Hi from demo', array_column($commands->paletteCommands(), 'label'), 'active before removal');
 
@@ -207,7 +181,6 @@ final class IdePluginInstallTest extends TestCase
                     $this->assertStringContainsString('demo says hi', AnsiUtils::stripAnsiCodes($terminal->getOutput()), 'and its boot-time key/handler works again');
                 },
             ],
-            0.7,
         );
 
         $this->addToAssertionCount(1);
@@ -231,14 +204,15 @@ final class IdePluginInstallTest extends TestCase
             $project,
             $project->path('a.php'),
             [
-                200 => function ($tui, $terminal, $ide) use ($host): void {
+                100 => function ($tui, $terminal, $ide) use ($host): void {
                     $this->openPluginsSection($tui, $ide);
                     $tui->handleInput("\x1b[B"); // install row
                     $tui->handleInput("\r");
                     $this->type($tui, 'file://'.$host->path('cloned'));
                     $tui->handleInput("\r"); // commit → async clone
                 },
-                1400 => function ($tui, $terminal, $ide) use ($project): void {
+                300 => function ($tui, $terminal, $ide) use ($project): void {
+                    $this->await(fn (): bool => str_contains(AnsiUtils::stripAnsiCodes($terminal->getOutput()), 'Plugin installed — default keybindings apply on restart'));
                     $tui->tick();
                     $screen = AnsiUtils::stripAnsiCodes($terminal->getOutput());
                     $this->assertStringContainsString('Plugin installed — default keybindings apply on restart', $screen);
@@ -251,7 +225,6 @@ final class IdePluginInstallTest extends TestCase
                     $this->assertStringContainsString('cloned says hi', AnsiUtils::stripAnsiCodes($terminal->getOutput()));
                 },
             ],
-            1.7,
         );
 
         $this->addToAssertionCount(1);
@@ -270,7 +243,7 @@ final class IdePluginInstallTest extends TestCase
             $project,
             $project->path('a.php'),
             [
-                200 => function ($tui, $terminal, $ide) use ($project, $home): void {
+                100 => function ($tui, $terminal, $ide) use ($project, $home): void {
                     $this->openPluginsSection($tui, $ide);
                     $tui->handleInput("\r"); // cycle the scope row: project → global
                     $tui->tick();
@@ -287,7 +260,6 @@ final class IdePluginInstallTest extends TestCase
                     $this->assertStringContainsString('worldwide (global)  [Remove]', AnsiUtils::stripAnsiCodes($terminal->getOutput()));
                 },
             ],
-            0.7,
         );
 
         $this->addToAssertionCount(1);
