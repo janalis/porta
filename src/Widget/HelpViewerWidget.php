@@ -9,6 +9,7 @@ use Porta\Help\LinkSpan;
 use Porta\Help\MarkdownRenderer;
 use Porta\Help\RenderedDoc;
 use Porta\Support\AnsiText;
+use Porta\Support\IntMath;
 use Porta\Ui\ColorPalette;
 use Porta\Ui\LtrPane;
 use Porta\Ui\Palette;
@@ -498,7 +499,7 @@ final class HelpViewerWidget extends AbstractWidget implements FocusableInterfac
     {
         $max = max(0, \count($this->doc->lines ?? []) - $this->bodyRows());
 
-        return max(0, min($max, $scrollTop));
+        return IntMath::clamp($scrollTop, 0, $max);
     }
 
     /** The rows available to page content, below the navigation header. */

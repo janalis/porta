@@ -7,6 +7,7 @@ namespace Porta\Widget;
 use Porta\Container\AsWidget;
 use Porta\Debug\DebugState;
 use Porta\Ui\ColorPalette;
+use Porta\Ui\ListNavigation;
 use Porta\Ui\ListSelection;
 use Porta\Ui\LtrPane;
 use Porta\Ui\Palette;
@@ -208,14 +209,7 @@ final class DebugPanelWidget extends OverlayWidget implements FocusableInterface
 
             return;
         }
-        if ($kb->matches($data, 'move_up')) {
-            $this->list->moveUp(1);
-            $this->invalidate();
-
-            return;
-        }
-        if ($kb->matches($data, 'move_down')) {
-            $this->list->moveDown(\count($this->rows), 1);
+        if (ListNavigation::handleKey($data, $kb, $this->list, \count($this->rows))) {
             $this->invalidate();
 
             return;

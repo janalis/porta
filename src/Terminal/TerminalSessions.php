@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace Porta\Terminal;
 
+use Porta\Support\IntMath;
+
 /**
  * The open terminal sessions and the active-tab pointer. A plain collection
  * (no Tui/widget deps) so the controller choreographs open/focus/render while
@@ -78,7 +80,7 @@ final class TerminalSessions
         if ([] === $this->sessions) {
             return null;
         }
-        $this->active = max(0, min($index, \count($this->sessions) - 1));
+        $this->active = IntMath::clamp($index, 0, \count($this->sessions) - 1);
 
         return $this->sessions[$this->active];
     }
