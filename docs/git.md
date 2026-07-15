@@ -62,5 +62,21 @@ first file's patch; `Enter` switches between the commit list and the file
 list; the diff pane is read-only here. `1` returns to Changes.
 
 The view covers changes, staging (including line-level), commit/amend and
-history browsing; branch operations, push and pull stay in your shell (the
-integrated terminal works well for those).
+history browsing. History loads 200 commits at a time — moving past the last
+loaded commit pulls in the next page.
+
+## Remote & branches
+
+`Git: Fetch`, `Git: Pull` and `Git: Push` live in the command palette and the
+Git menu; inside the git view, `f` / `p` / `Shift+P` run them directly, and
+`Ctrl+Shift+K` pushes from anywhere. Pull is fast-forward-only: a diverged
+branch fails cleanly with git's own message. Push and pull failures (auth,
+missing upstream) flash git's first error line; `Git: Push (Set Upstream)`
+publishes a branch that has none. A remote operation that hangs (for example
+an ssh passphrase prompt without an agent) can be cancelled with
+`Git: Cancel Remote Operation`.
+
+`Git: Branches…` opens a picker over the editor: pick a branch to switch, or
+the leading "+ Create new branch…" row to create and switch in one step.
+Checkout failures (uncommitted changes in the way) flash git's message —
+nothing is stashed for you.

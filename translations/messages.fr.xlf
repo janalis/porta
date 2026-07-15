@@ -1530,6 +1530,18 @@
         <source>Created and switched to %branch%</source>
         <target>Créée et basculé sur %branch%</target>
       </trans-unit>
+      <trans-unit id="386">
+        <source>Close Other Tabs</source>
+        <target>Fermer les autres onglets</target>
+      </trans-unit>
+      <trans-unit id="387">
+        <source>Close All Tabs</source>
+        <target>Fermer tous les onglets</target>
+      </trans-unit>
+      <trans-unit id="388">
+        <source>Formatting timed out — saved unformatted</source>
+        <target>Formatage expiré — enregistré non formaté</target>
+      </trans-unit>
     </body>
   </file>
 </xliff>

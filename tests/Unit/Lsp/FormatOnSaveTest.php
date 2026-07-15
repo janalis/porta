@@ -15,7 +15,9 @@ use Porta\Lsp\WorkspaceEditor;
 use Porta\Tests\Support\FakeLspClient;
 use Porta\Tests\Support\FakeScheduler;
 use Porta\Tests\Support\FixedActiveFile;
+use Porta\Ui\Notifier;
 use Porta\Widget\CodeEditorWidget;
+use Porta\Widget\StatusBarWidget;
 use Symfony\Component\Tui\Input\Keybindings;
 use Symfony\Component\Tui\Render\Renderer;
 use Symfony\Component\Tui\Style\StyleSheet;
@@ -28,6 +30,7 @@ final class FormatOnSaveTest extends TestCase
     private FakeScheduler $scheduler;
     private LspSessionPool $pool;
     private int $saves = 0;
+    private StatusBarWidget $status;
 
     private function formatOnSave(): FormatOnSave
     {
@@ -51,6 +54,11 @@ final class FormatOnSaveTest extends TestCase
             $this->pool,
             new WorkspaceEditor(new BufferManager(), $editor, $this->pool),
             $editor,
+            new Notifier(
+                $this->status = new StatusBarWidget(),
+                $tui = new Tui(terminal: new VirtualTerminal(columns: 80, rows: 24), keybindings: new Keybindings([]), renderer: new Renderer(new StyleSheet())),
+            ),
+            new Translator('en'),
             $this->scheduler,
             new Tui(terminal: new VirtualTerminal(columns: 80, rows: 24), keybindings: new Keybindings([]), renderer: new Renderer(new StyleSheet())),
         );
@@ -134,6 +142,8 @@ final class FormatOnSaveTest extends TestCase
         $this->scheduler->fire(); // the 2 s guard
 
         $this->assertSame(1, $this->saves, 'the save proceeded unformatted');
+        $flash = \Symfony\Component\Tui\Ansi\AnsiUtils::stripAnsiCodes(implode(' ', $this->status->render(new \Symfony\Component\Tui\Render\RenderContext(100, 1))));
+        $this->assertStringContainsString('Formatting timed out — saved unformatted', $flash, 'the skipped format is visible');
 
         $this->respond([[
             'range' => ['start' => ['line' => 0, 'character' => 0], 'end' => ['line' => 0, 'character' => 11]],

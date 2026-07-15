@@ -316,4 +316,36 @@ final class FindBarWidgetTest extends TestCase
 
         $this->assertSame(5000, \count(array_merge(...array_values($bar->getMatchesByLine()))), 'the scan stops at the cap');
     }
+
+    public function testRegexReplaceExpandsBackreferences(): void
+    {
+        $doc = new Document("name: alpha\nname: beta\n");
+        $bar = new FindBarWidget(new Translator('en'));
+        $bar->setFocused(true);
+        $bar->open($doc, withReplace: true);
+        $bar->handleInput("\x1bx"); // regex mode
+        $this->type($bar, 'name: (\w+)');
+        $bar->handleInput("\t"); // → replace field
+        $this->type($bar, '$1!');
+
+        $bar->handleInput("\x1br"); // replace current
+        $this->assertSame("alpha!\nname: beta\n", $doc->getText(), '$1 expanded to the captured group');
+
+        $bar->handleInput("\x1ba"); // replace all (the remaining match)
+        $this->assertSame("alpha!\nbeta!\n", $doc->getText());
+    }
+
+    public function testLiteralModeReplacementKeepsDollarSigns(): void
+    {
+        $doc = new Document("value\n");
+        $bar = new FindBarWidget(new Translator('en'));
+        $bar->setFocused(true);
+        $bar->open($doc, withReplace: true);
+        $this->type($bar, 'value');
+        $bar->handleInput("\t");
+        $this->type($bar, '$1');
+
+        $bar->handleInput("\x1br");
+        $this->assertSame("\$1\n", $doc->getText(), 'literal mode inserts $1 verbatim');
+    }
 }

@@ -25,7 +25,12 @@ file. Find usages (`Alt+F7`) fills the results panel.
 
 `Ctrl+F` finds incrementally with live match highlighting; `Ctrl+R` adds a
 replace field. `F3`/`Shift+F3` cycle matches, `Tab` switches fields,
-`Alt+R` replaces the current match, `Alt+A` replaces all.
+`Alt+R` replaces the current match, `Alt+A` replaces all. `Alt+X` toggles
+regex mode and `Alt+W` whole-word (note: in this bar `Alt+R` means replace —
+the Find-in-Files modal uses `Alt+R` for its regex toggle instead). In regex
+mode the replacement is a preg replacement pattern: `$1` inserts the first
+captured group, `\$` a literal dollar. An invalid half-typed pattern shows
+`[bad regex]` in place of the match counter and matches nothing.
 
 ## Find in Files (`Ctrl+Shift+F`)
 

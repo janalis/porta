@@ -28,8 +28,9 @@ use Symfony\Component\Tui\Widget\KeybindingsTrait;
  * Search is incremental and smart-case: an all-lowercase query matches
  * case-insensitively, any uppercase makes it exact. Alt+X toggles regex mode
  * and Alt+W whole-word (the Find-in-Files modal uses Alt+R for regex, but
- * that key is replace-one here — muscle memory wins). Replacement text is
- * always literal: no $1 backreferences in regex mode.
+ * that key is replace-one here — muscle memory wins). In regex mode the
+ * replacement is a preg replacement pattern ($1/\1 backreferences work,
+ * \$ escapes a literal dollar); in literal mode it is inserted verbatim.
  */
 #[AsWidget('find-bar')]
 final class FindBarWidget extends OverlayWidget implements FocusableInterface
@@ -358,7 +359,7 @@ final class FindBarWidget extends OverlayWidget implements FocusableInterface
         $doc->setCursor($match['line'], $match['start']);
         $doc->beginSelect();
         $doc->setCursor($match['line'], $match['end'], keepSelection: true);
-        $doc->insert($this->replacement->value());
+        $doc->insert($this->insertionFor($match));
 
         $keepIndex = $this->currentIndex;
         $this->recompute(jumpToNearest: false);
@@ -377,9 +378,31 @@ final class FindBarWidget extends OverlayWidget implements FocusableInterface
             $doc->setCursor($match['line'], $match['start']);
             $doc->beginSelect();
             $doc->setCursor($match['line'], $match['end'], keepSelection: true);
-            $doc->insert($this->replacement->value());
+            $doc->insert($this->insertionFor($match));
         }
         $this->recompute(jumpToNearest: false);
+    }
+
+    /**
+     * The text to insert over a match: literal in plain mode; in regex mode
+     * the replacement is a preg replacement pattern ($1/\1 backreferences,
+     * \$ for a literal dollar) applied to the matched text.
+     *
+     * @param array{line: int, start: int, end: int} $match
+     */
+    private function insertionFor(array $match): string
+    {
+        $replacement = $this->replacement->value();
+        if (!$this->regex) {
+            return $replacement;
+        }
+        /** @var Document $doc */
+        $doc = $this->document;
+        $matched = substr($doc->getLines()[$match['line']] ?? '', $match['start'], $match['end'] - $match['start']);
+        $pattern = SearchPattern::build($this->query->value(), regex: true, wholeWord: $this->wholeWord, caseSensitive: strtolower($this->query->value()) !== $this->query->value());
+        $expanded = @preg_replace($pattern, $replacement, $matched, 1);
+
+        return \is_string($expanded) ? $expanded : $replacement;
     }
 
     private function notifyUpdate(): void

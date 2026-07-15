@@ -1530,6 +1530,18 @@
         <source>Created and switched to %branch%</source>
         <target>Creato e passato a %branch%</target>
       </trans-unit>
+      <trans-unit id="386">
+        <source>Close Other Tabs</source>
+        <target>Chiudi le altre schede</target>
+      </trans-unit>
+      <trans-unit id="387">
+        <source>Close All Tabs</source>
+        <target>Chiudi tutte le schede</target>
+      </trans-unit>
+      <trans-unit id="388">
+        <source>Formatting timed out — saved unformatted</source>
+        <target>Formattazione scaduta — salvato non formattato</target>
+      </trans-unit>
     </body>
   </file>
 </xliff>

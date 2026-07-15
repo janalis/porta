@@ -6,6 +6,7 @@ namespace Porta\Command;
 
 use Porta\Config\CommandRegistry;
 use Porta\Config\SettingsController;
+use Porta\Editor\BufferManager;
 use Porta\Editor\BufferService;
 use Porta\Run\RunController;
 use Porta\Ui\WorkbenchActions;
@@ -20,6 +21,7 @@ final class ViewCommands implements CommandProvider
 {
     public function __construct(
         private readonly WorkbenchActions $workbench,
+        private readonly BufferManager $buffers,
         private readonly GoToFileWidget $goToFile,
         private readonly Tui $tui,
         private readonly SettingsController $settings,
@@ -38,6 +40,16 @@ final class ViewCommands implements CommandProvider
                 $this->goToFile->open();
                 $this->tui->setFocus($this->goToFile);
             })
+            ->add(
+                'close_other_tabs',
+                function (): void {
+                    if (null !== ($active = $this->buffers->active())) {
+                        $this->bufferService->closeTabsExcept($active->path);
+                    }
+                },
+                label: 'Close Other Tabs',
+            )
+            ->add('close_all_tabs', fn () => $this->bufferService->closeTabsExcept(null), label: 'Close All Tabs')
             ->add('ide_notifications', fn () => $this->workbench->showNotificationLog(), label: 'Notification Log')
             ->add('ide_lsp_log', fn () => $this->workbench->showLspLog(), label: 'LSP: Show Server Log')
             ->add('toggle_inline_diagnostics', fn () => $this->settings->toggle('inlineDiagnostics'), label: 'Toggle Inline Diagnostics')

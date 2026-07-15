@@ -49,3 +49,10 @@ being swallowed upstream — see the known vendor issues below.
   buffering **all** keyboard and mouse bytes with no timeout. The loop stays
   alive (freeze.log stays clean) but the app is deaf. A stray `Ctrl+G` (BEL
   terminates OSC) sometimes unsticks it; otherwise restart.
+
+## Language server misbehaving?
+
+Run `LSP: Show Server Log` from the command palette. Porta captures each
+server's stderr and `window/logMessage` notifications (newest first, prefixed
+with the server name) — startup crashes, missing binaries and indexing
+failures all show up there.

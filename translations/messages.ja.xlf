@@ -1530,6 +1530,18 @@
         <source>Created and switched to %branch%</source>
         <target>%branch% を作成して切り替えました</target>
       </trans-unit>
+      <trans-unit id="386">
+        <source>Close Other Tabs</source>
+        <target>他のタブを閉じる</target>
+      </trans-unit>
+      <trans-unit id="387">
+        <source>Close All Tabs</source>
+        <target>すべてのタブを閉じる</target>
+      </trans-unit>
+      <trans-unit id="388">
+        <source>Formatting timed out — saved unformatted</source>
+        <target>フォーマットがタイムアウト — 未フォーマットで保存</target>
+      </trans-unit>
     </body>
   </file>
 </xliff>

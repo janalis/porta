@@ -53,6 +53,7 @@ catalog validation and bind if the plugin loads.
 | `inlineDiagnostics` | `true` | Dimmed end-of-line diagnostic messages |
 | `relativeLineNumbers` | `false` | Relative gutter numbering |
 | `autoPairs` | `true` | Auto-closing brackets and quotes |
+| `formatOnSave` | `false` | Format via the language server before each Ctrl+S save (single-file saves only; a 2s timeout saves unformatted with a flash) |
 | `cursorShape` | `"bar"` | Hardware cursor shape: `bar`, `block` or `underline` — screen readers follow the hardware cursor |
 
 All of these apply live when changed from the Settings view or the palette

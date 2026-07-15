@@ -310,6 +310,8 @@ final class SettingsControllerTest extends TestCase
             $pool,
             new WorkspaceEditor(new BufferManager(), $editor, $pool),
             $editor,
+            new Notifier(new StatusBarWidget(), new Tui(terminal: new VirtualTerminal(columns: 80, rows: 24), keybindings: new Keybindings([]), renderer: new Renderer(new StyleSheet()))),
+            new Translator('en'),
             new FakeScheduler(),
             new Tui(terminal: new VirtualTerminal(columns: 80, rows: 24), keybindings: new Keybindings([]), renderer: new Renderer(new StyleSheet())),
         );

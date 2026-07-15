@@ -25,6 +25,11 @@ a second.
 ## Editing
 
 - **Undo/redo** (`Ctrl+Z` / `Ctrl+Shift+Z`) with coalesced typing runs.
+- **Format on save** — enable the `formatOnSave` setting to run the language
+  server's formatter before every `Ctrl+S`. The save never hangs: if the
+  server takes more than 2 seconds the file is saved unformatted with a
+  status-bar note. `Close Other Tabs` / `Close All Tabs` live in the
+  command palette alongside the tab context menu.
 - **Auto-closing brackets & quotes**: typing an opener inserts its pair,
   selections get wrapped, closers type over, and backspacing an empty pair
   removes both — toggleable (`autoPairs`).

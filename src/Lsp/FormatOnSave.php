@@ -5,7 +5,9 @@ declare(strict_types=1);
 namespace Porta\Lsp;
 
 use Porta\Editor\Buffer;
+use Porta\I18n\Translator;
 use Porta\Support\Scheduler;
+use Porta\Ui\Notifier;
 use Porta\Widget\CodeEditorWidget;
 use Symfony\Component\Tui\Tui;
 
@@ -34,6 +36,8 @@ final class FormatOnSave
         private readonly LspSessionPool $lsp,
         private readonly WorkspaceEditor $workspaceEditor,
         private readonly CodeEditorWidget $editor,
+        private readonly Notifier $notifier,
+        private readonly Translator $translator,
         private readonly Scheduler $scheduler,
         private readonly Tui $tui,
     ) {}
@@ -66,12 +70,14 @@ final class FormatOnSave
         $options = ['tabSize' => $doc->usesTabs() ? $doc->tabWidth() : $doc->indentSize(), 'insertSpaces' => !$doc->usesTabs()];
 
         // Ctrl+S must never hang: after 2 s the save proceeds unformatted and
-        // the late response is dropped.
+        // the late response is dropped — with a flash, so a skipped format is
+        // distinguishable from an already-clean file.
         $timer = $this->scheduler->delay(2.0, function () use ($token, $save): void {
             if ($token !== $this->round) {
                 return;
             }
             ++$this->round;
+            $this->notifier->flash($this->translator->trans('Formatting timed out — saved unformatted'));
             $save();
         });
 

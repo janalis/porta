@@ -377,7 +377,20 @@ final class IdeHelpersTest extends TestCase
         $byLabel['Save All']();
         $byLabel['Reformat File']();
         $byLabel['Show Problems']();
-        $this->addToAssertionCount(1);
+
+        // Tab-closing commands: with buffers open, Close Others keeps the
+        // active one; Close All empties the strip; Close Others with nothing
+        // active is a guarded no-op.
+        $buffers = $this->ide->getBuffers();
+        $service = new \ReflectionProperty($this->ide, 'bufferService')->getValue($this->ide);
+        $service->openFile($this->project->write('one.txt', "a\n"));
+        $service->openFile($this->project->write('two.txt', "b\n"));
+        $byLabel['Close Other Tabs']();
+        $this->assertCount(1, $buffers->all(), 'only the active tab survives');
+        $byLabel['Close All Tabs']();
+        $this->assertCount(0, $buffers->all());
+        $byLabel['Close Other Tabs'](); // nothing active: guarded no-op
+        $this->assertCount(0, $buffers->all());
     }
 
     public function testRequestWorkspaceSymbolsWithoutLspClearsResults(): void

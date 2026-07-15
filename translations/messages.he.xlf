@@ -1530,6 +1530,18 @@
         <source>Created and switched to %branch%</source>
         <target>נוצר והוחלף אל %branch%</target>
       </trans-unit>
+      <trans-unit id="386">
+        <source>Close Other Tabs</source>
+        <target>סגירת שאר הכרטיסיות</target>
+      </trans-unit>
+      <trans-unit id="387">
+        <source>Close All Tabs</source>
+        <target>סגירת כל הכרטיסיות</target>
+      </trans-unit>
+      <trans-unit id="388">
+        <source>Formatting timed out — saved unformatted</source>
+        <target>העיצוב חרג מהזמן — נשמר ללא עיצוב</target>
+      </trans-unit>
     </body>
   </file>
 </xliff>
