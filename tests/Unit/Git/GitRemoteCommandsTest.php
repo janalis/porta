@@ -11,6 +11,8 @@ use Porta\Git\GitRemoteCommands;
 use Porta\I18n\Translator;
 use Porta\Tests\Support\TempProject;
 use Porta\Ui\Notifier;
+use Porta\Ui\WorkspaceViews;
+use Porta\Widget\CodeEditorWidget;
 use Porta\Widget\StatusBarWidget;
 use Revolt\EventLoop;
 use Symfony\Component\EventDispatcher\EventDispatcher;
@@ -25,6 +27,7 @@ use Symfony\Component\Tui\Tui;
 final class GitRemoteCommandsTest extends TestCase
 {
     private StatusBarWidget $status;
+    private CodeEditorWidget $editor;
 
     /** @var list<GitRemoteCompleted> */
     private array $events = [];
@@ -51,7 +54,7 @@ final class GitRemoteCommandsTest extends TestCase
             $this->events[] = $event;
         });
 
-        return new GitRemoteCommands($remote, new Notifier($this->status, $tui), new Translator('en'), $dispatcher);
+        return new GitRemoteCommands($remote, new Notifier($this->status, $tui), new Translator('en'), $dispatcher, $this->editor = new CodeEditorWidget(), new WorkspaceViews(), $tui);
     }
 
     private function flash(): string
@@ -139,6 +142,140 @@ final class GitRemoteCommandsTest extends TestCase
         $commands->fetch();
         $this->assertStringContainsString('Not a git repository', $this->flash());
         $this->assertSame([], $this->events, 'nothing ran, nothing dispatched');
+    }
+
+    /** A diverged bare+clone pair whose next plain pull must fail --ff-only. */
+    private function divergedRepo(): GitRemote
+    {
+        if (null === self::findGit()) {
+            $this->markTestSkipped('git not available');
+        }
+        $bare = new TempProject();
+        $other = new TempProject();
+        $mine = new TempProject();
+        $this->fixtures = [$bare, $other, $mine];
+        exec('git -C '.escapeshellarg($bare->dir).' init -q --bare .');
+        foreach ([$other, $mine] as $clone) {
+            exec(
+                'git -C '
+                .escapeshellarg($clone->dir)
+                .' clone -q '
+                .escapeshellarg($bare->dir)
+                .' . && git -C '
+                .escapeshellarg($clone->dir)
+                .' config user.email t@t && git -C '
+                .escapeshellarg($clone->dir)
+                .' config user.name t && git -C '
+                .escapeshellarg($clone->dir)
+                .' config push.autoSetupRemote false && git -C '
+                .escapeshellarg($clone->dir)
+                .' config push.default simple',
+            );
+        }
+        file_put_contents($other->path('a.txt'), "one\n");
+        exec('git -C '.escapeshellarg($other->dir).' add -A && git -C '.escapeshellarg($other->dir).' commit -qm init && git -C '.escapeshellarg($other->dir).' push -qu origin HEAD');
+        exec(
+            'git -C '.escapeshellarg($mine->dir).' pull -q origin && git -C '.escapeshellarg($mine->dir).' branch -q --set-upstream-to origin/'
+                .trim((string) shell_exec('git -C '.escapeshellarg($mine->dir).' rev-parse --abbrev-ref HEAD')),
+        );
+        // Diverge both sides on different files so a rebase/merge is clean.
+        file_put_contents($other->path('remote.txt'), "remote\n");
+        exec('git -C '.escapeshellarg($other->dir).' add -A && git -C '.escapeshellarg($other->dir).' commit -qm remote && git -C '.escapeshellarg($other->dir).' push -q origin HEAD');
+        file_put_contents($mine->path('local.txt'), "local\n");
+        exec('git -C '.escapeshellarg($mine->dir).' add -A && git -C '.escapeshellarg($mine->dir).' commit -qm local');
+        $this->mine = $mine;
+
+        return new GitRemote($mine->dir);
+    }
+
+    /** @var list<TempProject> */
+    private array $fixtures = [];
+    private TempProject $mine;
+
+    public function testDivergedPullOffersRebaseAndRebasing(): void
+    {
+        $commands = $this->commands($this->divergedRepo());
+
+        $commands->pull();
+        $this->await(fn (): bool => [] !== $this->events);
+        $this->assertFalse($this->events[0]->ok);
+        $this->assertTrue($this->editor->isOverlayOpen(), 'the diverged pull opened the choice overlay');
+
+        // Pick "Rebase" (the first row).
+        $this->editor->handleInput("\r");
+        $this->await(fn (): bool => \count($this->events) >= 2);
+        $this->assertTrue($this->events[1]->ok, 'the rebase pull succeeded');
+        $this->assertStringContainsString('Pulled', $this->flash());
+        $this->assertFileExists($this->mine->path('remote.txt'));
+    }
+
+    public function testDivergedPullCancelThenMerge(): void
+    {
+        $commands = $this->commands($this->divergedRepo());
+
+        // Round 1: pick "Cancel" (the third row) — nothing runs.
+        $commands->pull();
+        $this->await(fn (): bool => [] !== $this->events);
+        $this->editor->handleInput("\x1b[B");
+        $this->editor->handleInput("\x1b[B");
+        $this->editor->handleInput("\r");
+        $this->assertFalse($this->editor->isOverlayOpen());
+        $this->assertCount(1, $this->events, 'cancelling the choice starts no second operation');
+
+        // Round 2: pick "Merge" (the second row).
+        $commands->pull();
+        $this->await(fn (): bool => \count($this->events) >= 2);
+        $this->editor->handleInput("\x1b[B");
+        $this->editor->handleInput("\r");
+        $this->await(fn (): bool => \count($this->events) >= 3);
+        $this->assertTrue($this->events[2]->ok, 'the merge pull succeeded');
+        $subject = (string) shell_exec('git -C '.escapeshellarg($this->mine->dir).' log -1 --format=%s');
+        $this->assertStringContainsString('Merge', $subject);
+    }
+
+    public function testNonUpstreamPushFailureKeepsTheGenericFlash(): void
+    {
+        // A diverged push is rejected for a non-upstream reason: the
+        // interceptor declines and the generic failure flash appears.
+        $commands = $this->commands($this->divergedRepo());
+
+        $commands->push();
+        $this->await(fn (): bool => [] !== $this->events);
+        $this->assertFalse($this->events[0]->ok);
+        $this->assertFalse($this->editor->isOverlayOpen(), 'a rejected push is not an upstream offer');
+        $this->assertStringContainsString('Push failed:', $this->flash());
+    }
+
+    public function testPushWithoutUpstreamOffersSetUpstream(): void
+    {
+        $remote = $this->divergedRepo();
+        exec('git -C '.escapeshellarg($this->mine->dir).' checkout -qb feature');
+        $commands = $this->commands($remote);
+
+        $commands->push();
+        $this->await(fn (): bool => [] !== $this->events);
+        $this->assertFalse($this->events[0]->ok);
+        $this->assertTrue($this->editor->isOverlayOpen(), 'the missing-upstream push opened the confirm overlay');
+
+        $this->editor->handleInput("\r"); // "Push with --set-upstream …"
+        $this->await(fn (): bool => \count($this->events) >= 2);
+        $this->assertTrue($this->events[1]->ok, 'the set-upstream push succeeded');
+    }
+
+    public function testCancelOperationIdleAndBusy(): void
+    {
+        $remote = $this->selfRemoteRepo();
+        $commands = $this->commands($remote);
+
+        $commands->cancelOperation();
+        $this->assertStringContainsString('No git remote operation is running', $this->flash());
+
+        $commands->fetch();
+        $this->assertTrue($remote->isBusy());
+        $commands->cancelOperation();
+        $this->assertFalse($remote->isBusy());
+        $this->assertStringContainsString('Git remote operation cancelled', $this->flash());
+        $this->assertSame([], $this->events, 'no completion event is synthesized for a cancel');
     }
 
     private static function findGit(): ?string

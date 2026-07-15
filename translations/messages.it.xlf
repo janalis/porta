@@ -1542,6 +1542,70 @@
         <source>Formatting timed out — saved unformatted</source>
         <target>Formattazione scaduta — salvato non formattato</target>
       </trans-unit>
+      <trans-unit id="389">
+        <source>Pull: branch diverged</source>
+        <target>Pull: il branch è divergente</target>
+      </trans-unit>
+      <trans-unit id="390">
+        <source>Rebase local commits onto the remote</source>
+        <target>Rebase dei commit locali sul remoto</target>
+      </trans-unit>
+      <trans-unit id="391">
+        <source>Merge the remote into the local branch</source>
+        <target>Merge del remoto nel branch locale</target>
+      </trans-unit>
+      <trans-unit id="392">
+        <source>Push: no upstream branch</source>
+        <target>Push: nessun branch upstream</target>
+      </trans-unit>
+      <trans-unit id="393">
+        <source>Push with --set-upstream origin %branch%</source>
+        <target>Push con --set-upstream origin %branch%</target>
+      </trans-unit>
+      <trans-unit id="394">
+        <source>No git remote operation is running</source>
+        <target>Nessuna operazione git remota in corso</target>
+      </trans-unit>
+      <trans-unit id="395">
+        <source>Git remote operation cancelled</source>
+        <target>Operazione git remota annullata</target>
+      </trans-unit>
+      <trans-unit id="396">
+        <source>Git: Cancel Remote Operation</source>
+        <target>Git: annulla operazione remota</target>
+      </trans-unit>
+      <trans-unit id="397">
+        <source>− Delete branch…</source>
+        <target>− Elimina branch…</target>
+      </trans-unit>
+      <trans-unit id="398">
+        <source>remote</source>
+        <target>remoto</target>
+      </trans-unit>
+      <trans-unit id="399">
+        <source>Delete branch</source>
+        <target>Elimina branch</target>
+      </trans-unit>
+      <trans-unit id="400">
+        <source>Delete %branch%?</source>
+        <target>Eliminare %branch%?</target>
+      </trans-unit>
+      <trans-unit id="401">
+        <source>Delete</source>
+        <target>Elimina</target>
+      </trans-unit>
+      <trans-unit id="402">
+        <source>Deleted branch %branch%</source>
+        <target>Branch %branch% eliminato</target>
+      </trans-unit>
+      <trans-unit id="403">
+        <source>No other local branches to delete</source>
+        <target>Nessun altro branch locale da eliminare</target>
+      </trans-unit>
+      <trans-unit id="404">
+        <source>Switched to %branch% (tracking %remote%)</source>
+        <target>Passato a %branch% (traccia %remote%)</target>
+      </trans-unit>
     </body>
   </file>
 </xliff>

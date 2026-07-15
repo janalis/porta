@@ -1542,6 +1542,70 @@
         <source>Formatting timed out — saved unformatted</source>
         <target>העיצוב חרג מהזמן — נשמר ללא עיצוב</target>
       </trans-unit>
+      <trans-unit id="389">
+        <source>Pull: branch diverged</source>
+        <target>Pull: הענף התפצל</target>
+      </trans-unit>
+      <trans-unit id="390">
+        <source>Rebase local commits onto the remote</source>
+        <target>ביצוע rebase לקומיטים המקומיים על המרוחק</target>
+      </trans-unit>
+      <trans-unit id="391">
+        <source>Merge the remote into the local branch</source>
+        <target>מיזוג המרוחק לתוך הענף המקומי</target>
+      </trans-unit>
+      <trans-unit id="392">
+        <source>Push: no upstream branch</source>
+        <target>Push: אין ענף upstream</target>
+      </trans-unit>
+      <trans-unit id="393">
+        <source>Push with --set-upstream origin %branch%</source>
+        <target>ביצוע push עם --set-upstream origin %branch%</target>
+      </trans-unit>
+      <trans-unit id="394">
+        <source>No git remote operation is running</source>
+        <target>אין פעולת git מרוחקת פעילה</target>
+      </trans-unit>
+      <trans-unit id="395">
+        <source>Git remote operation cancelled</source>
+        <target>פעולת git המרוחקת בוטלה</target>
+      </trans-unit>
+      <trans-unit id="396">
+        <source>Git: Cancel Remote Operation</source>
+        <target>Git: ביטול פעולה מרוחקת</target>
+      </trans-unit>
+      <trans-unit id="397">
+        <source>− Delete branch…</source>
+        <target>− מחיקת ענף…</target>
+      </trans-unit>
+      <trans-unit id="398">
+        <source>remote</source>
+        <target>מרוחק</target>
+      </trans-unit>
+      <trans-unit id="399">
+        <source>Delete branch</source>
+        <target>מחיקת ענף</target>
+      </trans-unit>
+      <trans-unit id="400">
+        <source>Delete %branch%?</source>
+        <target>למחוק את %branch%?</target>
+      </trans-unit>
+      <trans-unit id="401">
+        <source>Delete</source>
+        <target>מחיקה</target>
+      </trans-unit>
+      <trans-unit id="402">
+        <source>Deleted branch %branch%</source>
+        <target>הענף %branch% נמחק</target>
+      </trans-unit>
+      <trans-unit id="403">
+        <source>No other local branches to delete</source>
+        <target>אין ענפים מקומיים אחרים למחיקה</target>
+      </trans-unit>
+      <trans-unit id="404">
+        <source>Switched to %branch% (tracking %remote%)</source>
+        <target>המעבר ל-%branch% הושלם (עוקב אחרי %remote%)</target>
+      </trans-unit>
     </body>
   </file>
 </xliff>

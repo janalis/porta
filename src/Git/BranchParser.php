@@ -5,28 +5,48 @@ declare(strict_types=1);
 namespace Porta\Git;
 
 /**
- * Parses `git branch --format='%(refname:short)%09%(HEAD)'` output: one
- * branch per line, a tab, then `*` for the checked-out branch.
+ * Parses `git branch --all --format='%(refname)%09%(HEAD)'` output: one full
+ * refname per line, a tab, then `*` for the checked-out branch. Local
+ * branches come first, then remote branches whose short name no local branch
+ * shadows; the symbolic `refs/remotes/<remote>/HEAD` entries are skipped.
  */
 final class BranchParser
 {
-    /** @return list<array{name: string, current: bool}> */
+    /** @return list<array{name: string, current: bool, remote: bool}> */
     public static function parse(string $output): array
     {
-        $branches = [];
+        $locals = [];
+        $localNames = [];
+        $remotes = [];
         foreach (explode("\n", $output) as $line) {
             $line = trim($line, "\r");
             if ('' === trim($line)) {
                 continue;
             }
-            [$name, $head] = array_pad(explode("\t", $line, 2), 2, '');
-            $name = trim($name);
-            if ('' === $name) {
-                continue;
+            [$ref, $head] = array_pad(explode("\t", $line, 2), 2, '');
+            $ref = trim($ref);
+            if (str_starts_with($ref, 'refs/heads/')) {
+                $name = substr($ref, \strlen('refs/heads/'));
+                $locals[] = ['name' => $name, 'current' => '*' === trim($head), 'remote' => false];
+                $localNames[$name] = true;
+            } elseif (str_starts_with($ref, 'refs/remotes/')) {
+                $short = substr($ref, \strlen('refs/remotes/'));
+                // origin/HEAD is a symbolic pointer, not a branch.
+                if (str_ends_with($short, '/HEAD')) {
+                    continue;
+                }
+                $remotes[] = ['name' => $short, 'current' => false, 'remote' => true];
             }
-            $branches[] = ['name' => $name, 'current' => '*' === trim($head)];
         }
 
-        return $branches;
+        // A remote branch shadowed by a local of the same short name is noise.
+        $remotes = array_values(array_filter($remotes, static function (array $branch) use ($localNames): bool {
+            $slash = strpos($branch['name'], '/');
+            $short = false === $slash ? $branch['name'] : substr($branch['name'], $slash + 1);
+
+            return !isset($localNames[$short]);
+        }));
+
+        return [...$locals, ...$remotes];
     }
 }

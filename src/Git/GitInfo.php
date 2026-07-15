@@ -275,9 +275,9 @@ final class GitInfo
     }
 
     /**
-     * Local branches, newest activity first.
+     * Local branches (newest activity first), then unshadowed remote branches.
      *
-     * @param callable(list<array{name: string, current: bool}>): void $onDone
+     * @param callable(list<array{name: string, current: bool, remote: bool}>): void $onDone
      */
     public function branches(callable $onDone): void
     {
@@ -286,7 +286,33 @@ final class GitInfo
 
             return;
         }
-        $this->run(['branch', '--sort=-committerdate', '--format=%(refname:short)%09%(HEAD)'], static fn (string $out) => $onDone(BranchParser::parse($out)));
+        $this->run(['branch', '--all', '--sort=-committerdate', '--format=%(refname)%09%(HEAD)'], static fn (string $out) => $onDone(BranchParser::parse($out)));
+    }
+
+    /**
+     * Delete a local branch with `-d` only: an unmerged branch fails with
+     * git's own message (which names the -D escape hatch) — no force here.
+     *
+     * @param callable(bool, string): void $onDone
+     */
+    public function deleteBranch(string $name, callable $onDone): void
+    {
+        $this->runWithErrors(['branch', '-d', $name], $onDone);
+    }
+
+    /**
+     * Check out a remote branch as a local tracking branch — explicit
+     * `-b --track`, not checkout's DWIM (which depends on checkout.guess and
+     * misfires with multiple remotes).
+     *
+     * @param string $remoteBranch e.g. "origin/feature"
+     * @param callable(bool, string): void $onDone
+     */
+    public function checkoutTracking(string $remoteBranch, callable $onDone): void
+    {
+        $slash = strpos($remoteBranch, '/');
+        $local = false === $slash ? $remoteBranch : substr($remoteBranch, $slash + 1);
+        $this->runWithErrors(['checkout', '-b', $local, '--track', $remoteBranch], $onDone);
     }
 
     /**

@@ -2832,6 +2832,11 @@ final class IdeEdgeCasesTest extends TestCase
         $project = new TempProject(['src/A.php' => "<?php\n"]);
         $d = escapeshellarg($project->dir);
         exec("git -C {$d} init -q && git -C {$d} config user.email t@t && git -C {$d} config user.name t && git -C {$d} add -A && git -C {$d} commit -qm init && git -C {$d} branch feature");
+        // A local bare remote with a branch no local shadows: the picker must
+        // list it with a "remote" hint and check it out as a tracking branch.
+        $bare = new TempProject();
+        $b = escapeshellarg($bare->dir);
+        exec("git -C {$b} init -q --bare && git -C {$d} remote add origin {$bare->dir} && git -C {$d} push -q origin HEAD:remote-only && git -C {$d} fetch -q origin");
 
         $palette = static function ($tui, string $label): void {
             $tui->handleInput("\x1b[97;6u");
@@ -2851,9 +2856,14 @@ final class IdeEdgeCasesTest extends TestCase
                     $screen = AnsiUtils::stripAnsiCodes($terminal->getOutput());
                     $this->assertStringContainsString('Branches', $screen, 'the picker overlay opened');
                     $this->assertStringContainsString('+ Create new branch…', $screen);
+                    $this->assertStringContainsString('− Delete branch…', $screen);
                     $this->assertStringContainsString('feature', $screen);
-                    // Rows: create sentinel, then feature, then main (ties
-                    // sort by refname) — one step down picks "feature".
+                    $this->assertStringContainsString('remote-only', $screen);
+                    $this->assertStringContainsString('remote', $screen);
+                    // Rows: create + delete sentinels, then feature, then the
+                    // current branch (ties sort by refname), then the remote
+                    // row — two steps down picks "feature".
+                    $tui->handleInput("\x1b[B");
                     $tui->handleInput("\x1b[B");
                     $tui->handleInput("\r");
                 },
@@ -2883,11 +2893,101 @@ final class IdeEdgeCasesTest extends TestCase
                     }
                     $tui->handleInput("\r");
                 },
-                2500 => function ($tui, $terminal) use ($d): void {
+                2500 => function ($tui, $terminal) use ($d, $palette): void {
                     $tui->tick();
                     $this->assertStringContainsString('Created and switched to fresh', AnsiUtils::stripAnsiCodes($terminal->getOutput()));
                     exec("git -C {$d} rev-parse --abbrev-ref HEAD", $head);
                     $this->assertSame('fresh', $head[0] ?? '');
+
+                    // Round 3: check out the remote branch as a tracking branch.
+                    $terminal->clearOutput();
+                    $palette($tui, 'Git: Branches');
+                },
+                2900 => function ($tui): void {
+                    $tui->tick();
+                    // Rows: 2 sentinels + 3 locals (feature/fresh/main-or-master,
+                    // fresh current) + the remote row last — five steps down.
+                    foreach (range(1, 5) as $_) {
+                        $tui->handleInput("\x1b[B");
+                    }
+                    $tui->handleInput("\r");
+                },
+                3300 => function ($tui, $terminal) use ($d, $palette): void {
+                    $tui->tick();
+                    $this->assertStringContainsString('Switched to remote-only (tracking origin/remote-only)', AnsiUtils::stripAnsiCodes($terminal->getOutput()));
+                    exec("git -C {$d} rev-parse --abbrev-ref remote-only@{upstream}", $upstream);
+                    $this->assertSame('origin/remote-only', $upstream[0] ?? '', 'the checkout created a tracking branch');
+
+                    // Round 4: delete "feature" through the delete sentinel.
+                    $terminal->clearOutput();
+                    $palette($tui, 'Git: Branches');
+                },
+                3700 => function ($tui): void {
+                    $tui->tick();
+                    $tui->handleInput("\x1b[B"); // the "− Delete branch…" row
+                    $tui->handleInput("\r");
+                },
+                4100 => function ($tui, $terminal) use ($d, $palette): void {
+                    $tui->tick();
+                    $this->assertStringContainsString('Delete branch', AnsiUtils::stripAnsiCodes($terminal->getOutput()), 'the delete picker opened');
+                    $tui->handleInput("\r"); // "feature" leads (refname tie-break)
+                    $tui->tick();
+                    $tui->handleInput("\x1b[B"); // down to "Cancel"
+                    $tui->handleInput("\r");
+                    exec("git -C {$d} branch --list feature", $kept);
+                    $this->assertCount(1, $kept, 'cancelling the confirm deletes nothing');
+
+                    // Round 5: same flow, but confirm the delete this time.
+                    $palette($tui, 'Git: Branches');
+                },
+                4500 => function ($tui): void {
+                    $tui->tick();
+                    $tui->handleInput("\x1b[B"); // the "− Delete branch…" row
+                    $tui->handleInput("\r");
+                },
+                4900 => function ($tui): void {
+                    $tui->tick();
+                    $tui->handleInput("\r"); // "feature" again
+                    $tui->tick();
+                    $tui->handleInput("\r"); // the "Delete" confirm row leads
+                },
+                5300 => function ($tui, $terminal) use ($d): void {
+                    $tui->tick();
+                    $this->assertStringContainsString('Deleted branch feature', AnsiUtils::stripAnsiCodes($terminal->getOutput()));
+                    exec("git -C {$d} branch --list feature", $gone);
+                    $this->assertSame([], $gone, 'the branch really was deleted');
+                },
+            ],
+        );
+        $bare->path('.'); // hold the bare remote alive through the run
+    }
+
+    public function testDeleteBranchWithOnlyOneLocalBranchFlashes(): void
+    {
+        putenv('PATH='.$this->originalPath);
+        $project = new TempProject(['src/A.php' => "<?php\n"]);
+        $d = escapeshellarg($project->dir);
+        exec("git -C {$d} init -q && git -C {$d} config user.email t@t && git -C {$d} config user.name t && git -C {$d} add -A && git -C {$d} commit -qm init");
+
+        $this->runIde(
+            $project,
+            $project->path('src/A.php'),
+            [
+                300 => static function ($tui): void {
+                    $tui->handleInput("\x1b[97;6u");
+                    foreach (str_split('Git: Branches') as $ch) {
+                        $tui->handleInput($ch);
+                    }
+                    $tui->handleInput("\r");
+                },
+                700 => function ($tui): void {
+                    $tui->tick();
+                    $tui->handleInput("\x1b[B"); // the "− Delete branch…" row
+                    $tui->handleInput("\r");
+                },
+                1100 => function ($tui, $terminal): void {
+                    $tui->tick();
+                    $this->assertStringContainsString('No other local branches to delete', AnsiUtils::stripAnsiCodes($terminal->getOutput()));
                 },
             ],
         );

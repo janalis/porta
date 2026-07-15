@@ -69,14 +69,24 @@ loaded commit pulls in the next page.
 
 `Git: Fetch`, `Git: Pull` and `Git: Push` live in the command palette and the
 Git menu; inside the git view, `f` / `p` / `Shift+P` run them directly, and
-`Ctrl+Shift+K` pushes from anywhere. Pull is fast-forward-only: a diverged
-branch fails cleanly with git's own message. Push and pull failures (auth,
-missing upstream) flash git's first error line; `Git: Push (Set Upstream)`
-publishes a branch that has none. A remote operation that hangs (for example
-an ssh passphrase prompt without an agent) can be cancelled with
+`Ctrl+Shift+K` pushes from anywhere. Pull tries a fast-forward first: when the
+branch has diverged, a chooser offers **Rebase** (local commits replayed on
+top of the remote) or **Merge** (a merge commit) — Cancel leaves everything
+untouched. If the integration hits conflicts it stops with git's first
+message; resolve in the editor and commit as usual. Pushing a branch with no
+upstream offers **Push with --set-upstream origin <branch>** instead of
+failing — nothing is published without a confirmation (`Git: Push (Set
+Upstream)` runs the same thing directly). Other failures (auth, rejected
+push) flash git's first error line. A remote operation that hangs (for
+example an ssh passphrase prompt without an agent) can be cancelled with
 `Git: Cancel Remote Operation`.
 
-`Git: Branches…` opens a picker over the editor: pick a branch to switch, or
-the leading "+ Create new branch…" row to create and switch in one step.
-Checkout failures (uncommitted changes in the way) flash git's message —
-nothing is stashed for you.
+`Git: Branches…` opens a picker over the editor: local branches first (newest
+activity first, the current one checked), then remote branches no local
+shadows, marked *remote* — picking one checks it out as a local tracking
+branch. The leading "+ Create new branch…" row creates and switches in one
+step; "− Delete branch…" picks among the other local branches and asks for
+confirmation before running `git branch -d` — an unmerged branch is refused
+with git's own message (use the shell for a force delete). Checkout failures
+(uncommitted changes in the way) flash git's message — nothing is stashed
+for you.

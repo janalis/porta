@@ -66,6 +66,18 @@ final class GitRemote
         $this->run(['pull', '--ff-only'], $onDone);
     }
 
+    /** Integrate the diverged remote branch by rebasing local commits on top. @param callable(bool, string): void $onDone */
+    public function pullRebase(callable $onDone): void
+    {
+        $this->run(['pull', '--rebase'], $onDone);
+    }
+
+    /** Integrate the diverged remote branch with a merge commit. @param callable(bool, string): void $onDone */
+    public function pullMerge(callable $onDone): void
+    {
+        $this->run(['pull', '--no-rebase', '--no-edit'], $onDone);
+    }
+
     /** @param callable(bool, string): void $onDone */
     public function push(callable $onDone): void
     {
@@ -99,7 +111,7 @@ final class GitRemote
         }
         /** @var list<string> $command */
         $command = [$this->git, '-C', $this->rootDir, ...$args];
-        $env = array_merge(getenv(), ['GIT_TERMINAL_PROMPT' => '0']);
+        $env = array_merge(getenv(), ['GIT_TERMINAL_PROMPT' => '0', 'LC_ALL' => 'C']);
         /** @var array<string, string> $env */
         $key = $this->nextKey++;
         $process = new AsyncProcess($command, $this->rootDir, captureStderr: true, env: $env);

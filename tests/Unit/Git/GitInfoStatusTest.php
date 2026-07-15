@@ -421,6 +421,57 @@ final class GitInfoStatusTest extends TestCase
         $this->assertNotSame('', $result['error'], "git's refusal reaches the caller verbatim");
     }
 
+    public function testDeleteBranchMergedAndUnmerged(): void
+    {
+        $git = $this->repo($project, ['a.txt' => "x\n"]);
+        $d = escapeshellarg($project->dir);
+        exec("git -C {$d} branch merged 2>/dev/null");
+        exec("git -C {$d} checkout -qb unmerged && printf 'diverge\\n' >> ".escapeshellarg($project->path('a.txt'))." && git -C {$d} commit -aqm diverge && git -C {$d} checkout -q - 2>/dev/null");
+
+        $results = [];
+        $git->deleteBranch('merged', function (bool $ok, string $error) use (&$results): void {
+            $results['merged'] = $ok;
+        });
+        $this->await(function () use (&$results): bool {
+            return isset($results['merged']);
+        });
+        $this->assertTrue($results['merged']);
+
+        $git->deleteBranch('unmerged', function (bool $ok, string $error) use (&$results): void {
+            $results['unmerged'] = ['ok' => $ok, 'error' => $error];
+        });
+        $this->await(function () use (&$results): bool {
+            return isset($results['unmerged']);
+        });
+        $this->assertFalse($results['unmerged']['ok'], '-d refuses an unmerged branch');
+        $this->assertNotSame('', $results['unmerged']['error'], "git's refusal (which names -D) reaches the caller");
+    }
+
+    public function testCheckoutTrackingCreatesALocalTrackingBranch(): void
+    {
+        $git = $this->repo($project, ['a.txt' => "x\n"]);
+        $d = escapeshellarg($project->dir);
+        // A local bare remote with a branch the local repo does not have.
+        exec(
+            "git -C {$d} checkout -qb feature && git -C {$d} checkout -q - && git init -q --bare "
+            .escapeshellarg($project->path('origin.git'))
+            ." && git -C {$d} remote add origin "
+            .escapeshellarg($project->path('origin.git'))
+            ." && git -C {$d} push -q origin feature && git -C {$d} branch -q -D feature && git -C {$d} fetch -q origin",
+        );
+
+        $result = null;
+        $git->checkoutTracking('origin/feature', function (bool $ok, string $error) use (&$result): void {
+            $result = ['ok' => $ok, 'error' => $error];
+        });
+        $this->await(function () use (&$result): bool {
+            return null !== $result;
+        });
+        $this->assertTrue($result['ok'], $result['error']);
+        exec("git -C {$d} rev-parse --abbrev-ref feature@{upstream} 2>/dev/null", $upstream);
+        $this->assertSame('origin/feature', $upstream[0] ?? '', 'the new local branch tracks the remote');
+    }
+
     private static function findGit(): ?string
     {
         foreach (explode(\PATH_SEPARATOR, (string) getenv('PATH')) as $d) {

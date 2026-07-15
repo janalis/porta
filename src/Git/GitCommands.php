@@ -130,6 +130,16 @@ final class GitCommands
      * leading "+ Create new branch…" row. Checkout failures flash git's own
      * message (the dirty-working-tree refusal in particular) — no auto-stash.
      */
+    /** Sentinel row values — a "\n" can never appear in a refname. */
+    private const string CREATE = "create\nbranch";
+    private const string DELETE = "delete\nbranch";
+    private const string REMOTE_PREFIX = "remote\n";
+
+    /**
+     * The branch picker: local branches (newest activity first), unshadowed
+     * remote branches (checked out as tracking branches), a create row and a
+     * delete row. Checkout failures flash git's own message — no auto-stash.
+     */
     public function branches(): void
     {
         if (!$this->git->isAvailable()) {
@@ -142,21 +152,74 @@ final class GitCommands
             // owns the main area so the picker is actually visible.
             $this->views->closeAll();
             $this->tui->setFocus($this->editor);
-            $items = [['label' => $this->translator->trans('+ Create new branch…'), 'hint' => '', 'value' => '}
-create']];
+            $items = [
+                ['label' => $this->translator->trans('+ Create new branch…'), 'hint' => '', 'value' => self::CREATE],
+                ['label' => $this->translator->trans('− Delete branch…'), 'hint' => '', 'value' => self::DELETE],
+            ];
             foreach ($branches as $branch) {
                 $items[] = [
                     'label' => ($branch['current'] ? '✓ ' : '  ').$branch['name'],
-                    'hint' => $branch['current'] ? $this->translator->trans('current') : '',
-                    'value' => $branch['name'],
+                    'hint' => $branch['remote'] ? $this->translator->trans('remote') : ($branch['current'] ? $this->translator->trans('current') : ''),
+                    'value' => $branch['remote'] ? self::REMOTE_PREFIX.$branch['name'] : $branch['name'],
                 ];
             }
             $this->editor->openListOverlay($this->translator->trans('Branches'), $items, function (string $value): void {
-                '}
-create' === $value ? $this->promptNewBranch() : $this->checkout($value);
+                match (true) {
+                    self::CREATE === $value => $this->promptNewBranch(),
+                    self::DELETE === $value => $this->pickBranchToDelete(),
+                    str_starts_with($value, self::REMOTE_PREFIX) => $this->checkoutTracking(substr($value, \strlen(self::REMOTE_PREFIX))),
+                    default => $this->checkout($value),
+                };
             });
             $this->tui->requestRender();
         });
+    }
+
+    /** Second picker: local branches minus the current one, then a confirm. */
+    private function pickBranchToDelete(): void
+    {
+        $this->git->branches(function (array $branches): void {
+            $deletable = array_values(array_filter($branches, static fn (array $b): bool => !$b['remote'] && !$b['current']));
+            if ([] === $deletable) {
+                $this->notifier->flash($this->translator->trans('No other local branches to delete'));
+                $this->tui->requestRender();
+
+                return;
+            }
+            $items = array_map(fn (array $b): array => ['label' => '  '.$b['name'], 'hint' => '', 'value' => $b['name']], $deletable);
+            $this->editor->openListOverlay($this->translator->trans('Delete branch'), $items, function (string $name): void {
+                $this->editor->openListOverlay(
+                    $this->translator->trans('Delete %branch%?', ['%branch%' => $name]),
+                    [
+                        ['label' => $this->translator->trans('Delete'), 'hint' => '', 'value' => 'yes'],
+                        ['label' => $this->translator->trans('Cancel'), 'hint' => '', 'value' => 'no'],
+                    ],
+                    function (string $confirm) use ($name): void {
+                        if ('yes' !== $confirm) {
+                            return;
+                        }
+                        // -d only: an unmerged branch fails with git's message,
+                        // which itself names the -D escape hatch.
+                        $this->git->deleteBranch($name, function (bool $ok, string $error) use ($name): void {
+                            $this->notifier->flash($ok ? $this->translator->trans('Deleted branch %branch%', ['%branch%' => $name]) : $error, $ok ? 3.0 : 6.0);
+                            $this->tui->requestRender();
+                        });
+                    },
+                );
+            });
+            $this->tui->requestRender();
+        });
+    }
+
+    /** Check out origin/x as a local tracking branch x. */
+    private function checkoutTracking(string $remoteBranch): void
+    {
+        $slash = strpos($remoteBranch, '/');
+        $local = false === $slash ? $remoteBranch : substr($remoteBranch, $slash + 1);
+        $this->git->checkoutTracking($remoteBranch, fn (bool $ok, string $error) => $this->finishSwitch($ok, $error, $this->translator->trans('Switched to %branch% (tracking %remote%)', [
+            '%branch%' => $local,
+            '%remote%' => $remoteBranch,
+        ])));
     }
 
     private function promptNewBranch(): void

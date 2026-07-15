@@ -330,7 +330,7 @@ final class IdeHelpersTest extends TestCase
         // registration order IS the palette display order — file commands
         // first, git commands last.
         $this->assertSame('Debug Current File', $labels[0], 'the debug group has always led the palette');
-        $this->assertSame('Git: Push (Set Upstream)', $labels[array_key_last($labels)]);
+        $this->assertSame('Git: Cancel Remote Operation', $labels[array_key_last($labels)]);
         $this->assertLessThan(array_search('Show Problems', $labels, true), array_search('Save All', $labels, true), 'file group precedes the search group');
         $this->assertLessThan(array_search('Git: Stage Current File', $labels, true), array_search('Documentation', $labels, true), 'view group precedes the git group');
     }

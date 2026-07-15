@@ -207,6 +207,45 @@ final class GitRemoteTest extends TestCase
         $this->assertSame(['ok' => false, 'out' => 'git is not available'], $result);
     }
 
+    public function testDivergedPullRebaseIntegrates(): void
+    {
+        $remote = $this->remotes();
+        $this->advanceOrigin();
+        file_put_contents($this->clone2->path('b.txt'), "local\n");
+        $this->git($this->clone2->dir, 'add -A');
+        $this->git($this->clone2->dir, 'commit -qm local');
+
+        $result = null;
+        $remote->pullRebase(function (bool $ok, string $out) use (&$result): void {
+            $result = ['ok' => $ok, 'out' => $out];
+        });
+        $this->await(function () use (&$result): bool {
+            return null !== $result;
+        });
+        $this->assertTrue($result['ok'], $result['out']);
+        $this->assertSame("one\ntwo\n", file_get_contents($this->clone2->path('a.txt')), 'the remote commit landed');
+        $this->assertFileExists($this->clone2->path('b.txt'), 'the local commit was rebased on top');
+    }
+
+    public function testDivergedPullMergeIntegrates(): void
+    {
+        $remote = $this->remotes();
+        $this->advanceOrigin();
+        file_put_contents($this->clone2->path('b.txt'), "local\n");
+        $this->git($this->clone2->dir, 'add -A');
+        $this->git($this->clone2->dir, 'commit -qm local');
+
+        $result = null;
+        $remote->pullMerge(function (bool $ok, string $out) use (&$result): void {
+            $result = ['ok' => $ok, 'out' => $out];
+        });
+        $this->await(function () use (&$result): bool {
+            return null !== $result;
+        });
+        $this->assertTrue($result['ok'], $result['out']);
+        $this->assertStringContainsString('Merge', $this->git($this->clone2->dir, 'log -1 --format=%s'), 'a merge commit integrated the branches');
+    }
+
     private static function findGit(): ?string
     {
         foreach (explode(\PATH_SEPARATOR, (string) getenv('PATH')) as $d) {

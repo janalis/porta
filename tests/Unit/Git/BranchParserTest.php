@@ -9,17 +9,25 @@ use Porta\Git\BranchParser;
 
 final class BranchParserTest extends TestCase
 {
-    public function testParsesNamesAndTheCurrentMarker(): void
+    public function testParsesLocalsThenUnshadowedRemotes(): void
     {
-        $out = "main\t*\nfeature/login\t\n\nrelease-1.0\t\n";
+        $out =
+            implode("\n", [
+                "refs/heads/main\t*",
+                "refs/heads/feature/login\t",
+                "refs/remotes/origin/HEAD\t",
+                "refs/remotes/origin/main\t",
+                "refs/remotes/origin/release-1.0\t",
+            ])."\n";
 
         $this->assertSame(
             [
-                ['name' => 'main', 'current' => true],
-                ['name' => 'feature/login', 'current' => false],
-                ['name' => 'release-1.0', 'current' => false],
+                ['name' => 'main', 'current' => true, 'remote' => false],
+                ['name' => 'feature/login', 'current' => false, 'remote' => false],
+                ['name' => 'origin/release-1.0', 'current' => false, 'remote' => true],
             ],
             BranchParser::parse($out),
+            'origin/HEAD skipped; origin/main shadowed by the local main',
         );
     }
 
@@ -27,7 +35,11 @@ final class BranchParserTest extends TestCase
     {
         $this->assertSame([], BranchParser::parse(''));
         $this->assertSame([], BranchParser::parse("\n \n\t\n"));
-        $this->assertSame([], BranchParser::parse("\t*\n"), 'a marker without a name is skipped');
-        $this->assertSame([['name' => 'solo', 'current' => false]], BranchParser::parse("solo\r\n"), 'a line without the tab still parses');
+        $this->assertSame([], BranchParser::parse("not-a-refname\t*\n"), 'lines outside refs/heads|remotes are ignored');
+        $this->assertSame(
+            [['name' => 'solo', 'current' => false, 'remote' => false]],
+            BranchParser::parse("refs/heads/solo\r\n"),
+            'a line without the tab still parses',
+        );
     }
 }

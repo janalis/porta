@@ -29,6 +29,7 @@ final class GitCommandProvider implements CommandProvider
             ->add('git_fetch', fn () => $this->remote->fetch(), label: 'Git: Fetch')
             ->add('git_pull', fn () => $this->remote->pull(), label: 'Git: Pull')
             ->add('git_push', fn () => $this->remote->push(), keyBound: true)
-            ->add('git_push_upstream', fn () => $this->remote->pushSetUpstream(), label: 'Git: Push (Set Upstream)');
+            ->add('git_push_upstream', fn () => $this->remote->pushSetUpstream(), label: 'Git: Push (Set Upstream)')
+            ->add('git_remote_cancel', fn () => $this->remote->cancelOperation(), label: 'Git: Cancel Remote Operation');
     }
 }

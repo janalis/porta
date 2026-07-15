@@ -1542,6 +1542,70 @@
         <source>Formatting timed out — saved unformatted</source>
         <target>Formatting timed out — saved unformatted</target>
       </trans-unit>
+      <trans-unit id="389">
+        <source>Pull: branch diverged</source>
+        <target>Pull: branch diverged</target>
+      </trans-unit>
+      <trans-unit id="390">
+        <source>Rebase local commits onto the remote</source>
+        <target>Rebase local commits onto the remote</target>
+      </trans-unit>
+      <trans-unit id="391">
+        <source>Merge the remote into the local branch</source>
+        <target>Merge the remote into the local branch</target>
+      </trans-unit>
+      <trans-unit id="392">
+        <source>Push: no upstream branch</source>
+        <target>Push: no upstream branch</target>
+      </trans-unit>
+      <trans-unit id="393">
+        <source>Push with --set-upstream origin %branch%</source>
+        <target>Push with --set-upstream origin %branch%</target>
+      </trans-unit>
+      <trans-unit id="394">
+        <source>No git remote operation is running</source>
+        <target>No git remote operation is running</target>
+      </trans-unit>
+      <trans-unit id="395">
+        <source>Git remote operation cancelled</source>
+        <target>Git remote operation cancelled</target>
+      </trans-unit>
+      <trans-unit id="396">
+        <source>Git: Cancel Remote Operation</source>
+        <target>Git: Cancel Remote Operation</target>
+      </trans-unit>
+      <trans-unit id="397">
+        <source>− Delete branch…</source>
+        <target>− Delete branch…</target>
+      </trans-unit>
+      <trans-unit id="398">
+        <source>remote</source>
+        <target>remote</target>
+      </trans-unit>
+      <trans-unit id="399">
+        <source>Delete branch</source>
+        <target>Delete branch</target>
+      </trans-unit>
+      <trans-unit id="400">
+        <source>Delete %branch%?</source>
+        <target>Delete %branch%?</target>
+      </trans-unit>
+      <trans-unit id="401">
+        <source>Delete</source>
+        <target>Delete</target>
+      </trans-unit>
+      <trans-unit id="402">
+        <source>Deleted branch %branch%</source>
+        <target>Deleted branch %branch%</target>
+      </trans-unit>
+      <trans-unit id="403">
+        <source>No other local branches to delete</source>
+        <target>No other local branches to delete</target>
+      </trans-unit>
+      <trans-unit id="404">
+        <source>Switched to %branch% (tracking %remote%)</source>
+        <target>Switched to %branch% (tracking %remote%)</target>
+      </trans-unit>
     </body>
   </file>
 </xliff>
