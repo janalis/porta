@@ -1738,6 +1738,30 @@
         <source>Blame annotations hidden</source>
         <target>Annotazioni blame nascoste</target>
       </trans-unit>
+      <trans-unit id="438">
+        <source>Run to Cursor</source>
+        <target>Esegui fino al cursore</target>
+      </trans-unit>
+      <trans-unit id="439">
+        <source>Debug: Exception Breakpoints</source>
+        <target>Debug: breakpoint delle eccezioni</target>
+      </trans-unit>
+      <trans-unit id="440">
+        <source>Exception Breakpoints</source>
+        <target>Breakpoint delle eccezioni</target>
+      </trans-unit>
+      <trans-unit id="441">
+        <source>No debugger session — exception filters come from the adapter</source>
+        <target>Nessuna sessione di debug — i filtri delle eccezioni provengono dall’adapter</target>
+      </trans-unit>
+      <trans-unit id="442">
+        <source>The adapter has no exception breakpoint filters</source>
+        <target>L’adapter non ha filtri per i breakpoint delle eccezioni</target>
+      </trans-unit>
+      <trans-unit id="443">
+        <source>Run to cursor needs a paused debugger</source>
+        <target>Esegui fino al cursore richiede un debugger in pausa</target>
+      </trans-unit>
     </body>
   </file>
 </xliff>

@@ -19,6 +19,7 @@ use Porta\Debug\DapClientFactory;
 use Porta\Debug\DebugAdapters;
 use Porta\Debug\DebugController;
 use Porta\Debug\DebugSessionState;
+use Porta\Debug\DebugStatePersistence;
 use Porta\Debug\EditorDecorations;
 use Porta\Debug\ProcessDapClientFactory;
 use Porta\Editor\ActiveFileProvider;
@@ -358,6 +359,7 @@ return static function (ContainerConfigurator $container, ContainerBuilder $buil
         GitRemoteCommands::class,
         SearchEverywhereController::class,
         DebugController::class,
+        DebugStatePersistence::class,
         StatusBarProvider::class,
         SettingsController::class,
         SettingsLanguageController::class,

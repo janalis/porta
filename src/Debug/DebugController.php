@@ -19,8 +19,7 @@ use Symfony\Component\Tui\Tui;
 /**
  * The debugger orchestrator: owns the breakpoint store and the (single) DAP
  * session, translates session events into editor decorations, the debug panel
- * and the status bar, and carries the step/stop commands. Hand-built in `Ide`
- * (it hangs off closure-wired collaborators the container cannot express).
+ * and the status bar, and carries the step/stop commands.
  */
 final class DebugController implements DebugSessionObserver
 {
@@ -47,6 +46,7 @@ final class DebugController implements DebugSessionObserver
         private readonly DebugSessionState $state,
         private readonly EditorDecorations $decorations,
         private readonly WatchStore $watches,
+        private readonly ExceptionFilterStore $exceptionFilters,
     ) {
         $this->panel->onFrameSelected(fn (int $frameId) => $this->jumpToFrame($frameId));
         $this->panel->onRemoveWatch(function (int $index): void {
@@ -195,6 +195,7 @@ final class DebugController implements DebugSessionObserver
             $languageId,
             fn (): array => $this->breakpoints->all(),
             $this,
+            fn (array $advertised): array => $this->exceptionFilters->enabledFor($advertised),
         );
         if (!$this->session->start(LaunchArguments::build($path, $this->rootDir, $config->launch))) {
             $this->session = null;
@@ -229,6 +230,60 @@ final class DebugController implements DebugSessionObserver
     public function stop(): void
     {
         $this->session?->disconnect();
+    }
+
+    /** Alt+F9: continue to the caret line via a one-shot breakpoint. */
+    public function runToCursor(): void
+    {
+        if (!$this->isPaused()) {
+            $this->notifier->flash($this->translator->trans('Run to cursor needs a paused debugger'));
+            $this->tui->requestRender();
+
+            return;
+        }
+        $path = $this->editor->getFilePath();
+        if (null === $path) {
+            $this->notifier->flash($this->translator->trans('Nothing to debug — open a file first'));
+            $this->tui->requestRender();
+
+            return;
+        }
+        $this->session?->runTo($path, $this->editor->getDocument()->getCursorLine());
+    }
+
+    /**
+     * The exception-breakpoint chooser: the adapter's advertised filters as
+     * checkbox rows; each pick toggles, re-syncs the live session and
+     * re-opens (Escape leaves the loop).
+     */
+    public function exceptionBreakpointsOverlay(): void
+    {
+        $session = $this->session;
+        if (null === $session || !$session->isActive()) {
+            $this->notifier->flash($this->translator->trans('No debugger session — exception filters come from the adapter'));
+            $this->tui->requestRender();
+
+            return;
+        }
+        $filters = $session->exceptionBreakpointFilters();
+        if ([] === $filters) {
+            $this->notifier->flash($this->translator->trans('The adapter has no exception breakpoint filters'));
+            $this->tui->requestRender();
+
+            return;
+        }
+        $enabled = $this->exceptionFilters->enabledFor($filters);
+        $items = array_map(static fn (array $filter): array => [
+            'label' => (\in_array($filter['filter'], $enabled, true) ? '[x] ' : '[ ] ').$filter['label'],
+            'hint' => $filter['filter'],
+            'value' => $filter['filter'],
+        ], $filters);
+        $this->editor->openListOverlay($this->translator->trans('Exception Breakpoints'), $items, function (string $id) use ($filters): void {
+            $this->exceptionFilters->toggle($id, $filters);
+            $this->session?->syncExceptionBreakpoints();
+            $this->exceptionBreakpointsOverlay();
+        });
+        $this->tui->requestRender();
     }
 
     public function onStopped(string $reason): void

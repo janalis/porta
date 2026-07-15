@@ -40,6 +40,7 @@ Xdebug is a good fit.
 | `Ctrl+F8` (or click the gutter) | Toggle a breakpoint on the caret's line |
 | `Ctrl+Shift+F8` | Edit the caret line's breakpoint condition |
 | `Ctrl+Shift+F9` | Add a watch expression |
+| `Alt+F9` | Run to cursor (paused only) |
 | `F8` | Step over |
 | `F7` | Step into |
 | `Shift+F8` | Step out |
@@ -77,3 +78,19 @@ one-shot expression against the current frame and flashes the result.
 
 The panel header shows the session state and a stepping-key legend. Program
 output streams into a terminal buffer titled `Debug: <file>`.
+
+## Exception breakpoints & persistence
+
+`Debug: Exception Breakpoints` (palette, active session only) lists the
+adapter's exception filters as checkboxes — toggling re-syncs the live
+session immediately; Escape closes the chooser. Adapters that advertise no
+filters get a flash instead.
+
+`Alt+F9` continues to the caret line via a one-shot breakpoint that
+disappears on the next stop, whatever stopped you. If the caret line
+already carries a breakpoint, its condition is respected rather than
+bypassed.
+
+Breakpoints (with conditions), watch expressions and the exception-filter
+selection persist per project in `.porta/debug.json` and restore on the
+next launch — breakpoints in files that no longer exist are dropped.

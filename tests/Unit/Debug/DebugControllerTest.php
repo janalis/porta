@@ -12,6 +12,7 @@ use Porta\Debug\DebugAdapters;
 use Porta\Debug\DebugController;
 use Porta\Debug\DebugSessionState;
 use Porta\Debug\EditorDecorations;
+use Porta\Debug\ExceptionFilterStore;
 use Porta\Debug\WatchStore;
 use Porta\Editor\Document;
 use Porta\Editor\FileOpener;
@@ -35,6 +36,7 @@ final class DebugControllerTest extends TestCase
     private DebugPanelWidget $panel;
     private StatusBarWidget $statusBar;
     private FakeDapClient $client;
+    private ExceptionFilterStore $filters;
     private int $statusEvents = 0;
     /** @var list<string> */
     private array $opened = [];
@@ -95,6 +97,7 @@ final class DebugControllerTest extends TestCase
             $state,
             new EditorDecorations($breakpoints, $state, $this->editor),
             new WatchStore(),
+            $this->filters = new ExceptionFilterStore(),
         );
     }
 
@@ -118,7 +121,13 @@ final class DebugControllerTest extends TestCase
         $this->client->responses['variables'] = [['variables' => [['name' => '$x', 'value' => '42', 'variablesReference' => 1001]]], null];
 
         $controller->startForCurrentFile();
-        $this->client->respond('initialize', ['supportsConfigurationDoneRequest' => true]);
+        $this->client->respond('initialize', [
+            'supportsConfigurationDoneRequest' => true,
+            'exceptionBreakpointFilters' => [
+                ['filter' => 'warning', 'label' => 'Warnings', 'default' => false],
+                ['filter' => 'exception', 'label' => 'Uncaught Exceptions', 'default' => true],
+            ],
+        ]);
         $this->client->respond('launch');
         $this->client->emit('stopped', ['reason' => 'breakpoint', 'threadId' => 1]);
     }
@@ -359,5 +368,67 @@ final class DebugControllerTest extends TestCase
         $controller->evaluatePrompt();
         $this->editor->handleInput("\r"); // empty expression: no request
         $this->assertStringContainsString('$bad = oops', $this->flashed(), 'flash unchanged');
+    }
+
+    public function testRunToCursorGuardsAndDelegation(): void
+    {
+        $controller = $this->controller();
+        $controller->runToCursor();
+        $this->assertStringContainsString('Run to cursor needs a paused debugger', $this->flashed());
+
+        $this->pauseAtBreakpoint($controller, line: 2);
+        $this->editor->getDocument()->setCursor(3, 0);
+        $controller->runToCursor();
+        $this->assertSame([['line' => 4]], $this->client->argumentsOf('setBreakpoints')['breakpoints'], 'the one-shot went to the wire');
+        $this->assertContains('continue', $this->client->commands());
+    }
+
+    public function testRunToCursorWhilePausedWithNoOpenFileFlashes(): void
+    {
+        $controller = $this->controller();
+        $this->pauseAtBreakpoint($controller);
+        // The buffers were all closed while paused: the editor has no path.
+        new \ReflectionProperty($this->editor, 'filePath')->setValue($this->editor, null);
+
+        $controller->runToCursor();
+        $this->assertStringContainsString('Nothing to debug', $this->flashed());
+        $this->assertNotContains('continue', $this->client->commands(), 'nothing ran');
+    }
+
+    public function testExceptionBreakpointsOverlayTogglesAndResyncs(): void
+    {
+        $controller = $this->controller();
+        $controller->exceptionBreakpointsOverlay();
+        $this->assertStringContainsString('No debugger session', $this->flashed());
+
+        $this->pauseAtBreakpoint($controller);
+        $controller->exceptionBreakpointsOverlay();
+        $screen = implode("\n", array_map(AnsiUtils::stripAnsiCodes(...), $this->editor->render(new RenderContext(100, 20))));
+        $this->assertStringContainsString('[ ] Warnings', $screen);
+        $this->assertStringContainsString('[x] Uncaught Exceptions', $screen, 'the default-on filter renders checked');
+
+        $this->editor->handleInput("\r"); // toggle Warnings on → re-sync + re-open
+        $this->assertSame(['filters' => ['exception', 'warning']], $this->client->argumentsOf('setExceptionBreakpoints'));
+        $screen = implode("\n", array_map(AnsiUtils::stripAnsiCodes(...), $this->editor->render(new RenderContext(100, 20))));
+        $this->assertStringContainsString('[x] Warnings', $screen, 'the overlay re-opened with the new state');
+
+        $this->editor->handleInput("\x1b[B");
+        $this->editor->handleInput("\r"); // toggle Uncaught Exceptions off
+        $this->assertSame(['filters' => ['warning']], $this->client->argumentsOf('setExceptionBreakpoints'));
+
+        $this->editor->handleInput("\x1b"); // Escape leaves the loop
+        $this->assertFalse($this->editor->isOverlayOpen());
+        $this->assertSame(['warning'], $this->filters->selection(), 'the selection persisted in the store');
+    }
+
+    public function testExceptionOverlayWithAFilterlessAdapterFlashes(): void
+    {
+        $controller = $this->controller();
+        $this->client->responses['stackTrace'] = [['stackFrames' => []], null];
+        $controller->startForCurrentFile();
+        $this->client->respond('initialize', ['supportsConfigurationDoneRequest' => true]); // no filters advertised
+        $this->client->respond('launch');
+        $controller->exceptionBreakpointsOverlay();
+        $this->assertStringContainsString('no exception breakpoint filters', $this->flashed());
     }
 }

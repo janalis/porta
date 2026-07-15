@@ -273,4 +273,133 @@ final class IdeDebugTest extends TestCase
 
         $this->addToAssertionCount(1);
     }
+
+    public function testRunToCursorStopsAtTheCaretOnce(): void
+    {
+        putenv('PATH=/nonexistent');
+        $project = new TempProject(['.porta.json' => $this->mockDapConfig(), 'prog.php' => $this->program()]);
+
+        $this->runIde(
+            $project,
+            $project->path('prog.php'),
+            [
+                200 => static function ($tui): void {
+                    $tui->getById('editor')->getDocument()->setCursor(2, 0); // breakpoint at wire line 3
+                    $tui->handleInput("\x1b[19;5~"); // ctrl+f8
+                    $tui->handleInput("\x1b[20;2~"); // shift+f9 debug
+                },
+                600 => function ($tui, $terminal): void {
+                    $tui->tick();
+                    $this->assertStringContainsString('paused at prog.php:3', AnsiUtils::stripAnsiCodes($terminal->getOutput()));
+                    $tui->getById('editor')->getDocument()->setCursor(6, 0);
+                    $tui->handleInput("\x1b[20;3~"); // alt+f9 run to cursor
+                },
+                1000 => function ($tui, $terminal): void {
+                    $tui->tick();
+                    $this->assertStringContainsString('paused at prog.php:7', AnsiUtils::stripAnsiCodes($terminal->getOutput()), 'stopped at the one-shot');
+                    $tui->handleInput("\x1b[20~"); // f9 resume: the one-shot is gone → termination
+                },
+                1400 => function ($tui, $terminal): void {
+                    $tui->tick();
+                    $this->assertStringContainsString('terminated', AnsiUtils::stripAnsiCodes($terminal->getOutput()), 'no ghost breakpoint stopped the resume');
+                },
+            ],
+        );
+
+        $this->addToAssertionCount(1);
+    }
+
+    public function testExceptionFiltersReachTheAdapterAndToggleLive(): void
+    {
+        putenv('PATH=/nonexistent');
+        $project = new TempProject(['.porta.json' => $this->mockDapConfig(), 'prog.php' => $this->program()]);
+
+        $palette = static function ($tui, string $label): void {
+            $tui->handleInput("\x1b[97;6u");
+            foreach (str_split($label) as $ch) {
+                $tui->handleInput($ch);
+            }
+            $tui->handleInput("\r");
+        };
+
+        $this->runIde(
+            $project,
+            $project->path('prog.php'),
+            [
+                200 => static function ($tui): void {
+                    $tui->getById('editor')->getDocument()->setCursor(2, 0);
+                    $tui->handleInput("\x1b[19;5~"); // a breakpoint keeps the session paused
+                    $tui->handleInput("\x1b[20;2~"); // shift+f9 debug
+                },
+                600 => function ($tui, $terminal) use ($palette): void {
+                    $tui->tick();
+                    // The defaults went out during configuration.
+                    $this->assertStringContainsString('xfilters: exception', AnsiUtils::stripAnsiCodes($terminal->getOutput()));
+
+                    $palette($tui, 'Debug: Exception Breakpoints');
+                    $this->await(fn (): bool => $tui->getById('editor')->isOverlayOpen());
+                    $tui->handleInput("\r"); // toggle Warnings on → re-sync + re-open
+                    $this->await(fn (): bool => str_contains(AnsiUtils::stripAnsiCodes($terminal->getOutput()), 'xfilters: exception,warning'));
+                    $tui->handleInput("\x1b"); // leave the chooser
+                },
+            ],
+        );
+
+        $this->addToAssertionCount(1);
+    }
+
+    public function testDebugStatePersistsAcrossRelaunch(): void
+    {
+        putenv('PATH=/nonexistent');
+        $project = new TempProject(['.porta.json' => $this->mockDapConfig(), 'prog.php' => $this->program()]);
+
+        $this->runIde(
+            $project,
+            $project->path('prog.php'),
+            [
+                200 => function ($tui): void {
+                    $tui->getById('editor')->getDocument()->setCursor(4, 0);
+                    $tui->handleInput("\x1b[19;6~"); // ctrl+shift+f8: conditional breakpoint
+                    foreach (str_split('$x > 1') as $ch) {
+                        $tui->handleInput($ch);
+                    }
+                    $tui->handleInput("\r");
+                    $tui->handleInput("\r"); // no hit count
+                    $tui->handleInput("\x1b[20;6~"); // ctrl+shift+f9: add a watch
+                    foreach (str_split('$x') as $ch) {
+                        $tui->handleInput($ch);
+                    }
+                    $tui->handleInput("\r");
+                },
+            ],
+        );
+
+        $saved = json_decode((string) file_get_contents($project->path('.porta/debug.json')), true);
+        $this->assertSame('$x > 1', array_values($saved['breakpoints'])[0][0]['condition'], 'the condition persisted');
+        $this->assertSame(4, array_values($saved['breakpoints'])[0][0]['line']);
+        $this->assertSame(['$x'], $saved['watches']);
+
+        // Second boot on the same project: the gutter shows the restored
+        // conditional breakpoint, and a session evaluates the restored watch.
+        $this->runIde(
+            $project,
+            $project->path('prog.php'),
+            [
+                300 => function ($tui): void {
+                    $editorScreen = static fn (): string => implode("\n", $tui->getById('editor')->render(new \Symfony\Component\Tui\Render\RenderContext(120, 20)));
+                    $this->assertStringContainsString('◆', $editorScreen(), 'the restored conditional breakpoint paints at boot');
+                    $tui->handleInput("\x1b[20;2~"); // shift+f9 debug
+                },
+                800 => function ($tui, $terminal): void {
+                    $tui->tick();
+                    $screen = AnsiUtils::stripAnsiCodes($terminal->getOutput());
+                    $this->assertStringContainsString('paused at prog.php:5', $screen, 'the restored breakpoint stopped the program');
+                    $this->assertStringContainsString('cond@5: $x > 1', $screen, 'its condition reached the adapter');
+                    $this->assertStringContainsString('$x = 42#1', $screen, 'the restored watch evaluated');
+                },
+            ],
+        );
+
+        $this->addToAssertionCount(1);
+    }
 }

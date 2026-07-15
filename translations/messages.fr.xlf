@@ -1738,6 +1738,30 @@
         <source>Blame annotations hidden</source>
         <target>Annotations blame masquées</target>
       </trans-unit>
+      <trans-unit id="438">
+        <source>Run to Cursor</source>
+        <target>Exécuter jusqu’au curseur</target>
+      </trans-unit>
+      <trans-unit id="439">
+        <source>Debug: Exception Breakpoints</source>
+        <target>Débogage : points d’arrêt d’exception</target>
+      </trans-unit>
+      <trans-unit id="440">
+        <source>Exception Breakpoints</source>
+        <target>Points d’arrêt d’exception</target>
+      </trans-unit>
+      <trans-unit id="441">
+        <source>No debugger session — exception filters come from the adapter</source>
+        <target>Aucune session de débogage — les filtres d’exception viennent de l’adaptateur</target>
+      </trans-unit>
+      <trans-unit id="442">
+        <source>The adapter has no exception breakpoint filters</source>
+        <target>L’adaptateur n’a aucun filtre de point d’arrêt d’exception</target>
+      </trans-unit>
+      <trans-unit id="443">
+        <source>Run to cursor needs a paused debugger</source>
+        <target>Exécuter jusqu’au curseur requiert un débogueur en pause</target>
+      </trans-unit>
     </body>
   </file>
 </xliff>

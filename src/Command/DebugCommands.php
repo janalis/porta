@@ -33,7 +33,9 @@ final class DebugCommands implements CommandProvider
             ->add('debug_step_into', fn () => $this->debug->stepIn(), keyBound: true, when: $paused)
             ->add('debug_step_out', fn () => $this->debug->stepOut(), keyBound: true, when: $paused)
             ->add('debug_continue', fn () => $this->debug->continueRun(), keyBound: true, when: $paused)
+            ->add('debug_run_to_cursor', fn () => $this->debug->runToCursor(), keyBound: true, when: $paused)
             ->add('debug_stop', fn () => $this->debug->stop(), keyBound: true, when: $active)
-            ->add('debug_evaluate', fn () => $this->debug->evaluatePrompt(), label: 'Debug: Evaluate Expression', when: $paused);
+            ->add('debug_evaluate', fn () => $this->debug->evaluatePrompt(), label: 'Debug: Evaluate Expression', when: $paused)
+            ->add('debug_exception_breakpoints', fn () => $this->debug->exceptionBreakpointsOverlay(), label: 'Debug: Exception Breakpoints', when: $active);
     }
 }

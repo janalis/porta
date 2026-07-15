@@ -13,6 +13,7 @@ use Porta\Config\SettingsController;
 use Porta\Config\SettingsLanguageController;
 use Porta\Container\IdeContainerFactory;
 use Porta\Debug\DebugController;
+use Porta\Debug\DebugStatePersistence;
 use Porta\Editor\BufferManager;
 use Porta\Editor\BufferService;
 use Porta\Editor\Document;
@@ -156,6 +157,7 @@ final class Ide
     private LspSessionPool $lsp;
     private LspBootstrapper $lspBootstrapper;
     private SessionRestorer $sessionRestorer;
+    private DebugStatePersistence $debugState;
     private WorkspaceEditor $workspaceEditor;
     private NavigationController $navigation;
     private RefactorController $refactor;
@@ -246,6 +248,7 @@ final class Ide
         $this->run = $this->service(RunController::class);
         $this->lspBootstrapper = $this->service(LspBootstrapper::class);
         $this->sessionRestorer = $this->service(SessionRestorer::class);
+        $this->debugState = $this->service(DebugStatePersistence::class);
         // The debugger orchestrator, after the buffer service it opens files
         // through; the decoration/state pieces are the same container-shared
         // instances the buffer service applies on every buffer switch.
@@ -395,6 +398,10 @@ final class Ide
 
             $this->layout->applyLayout();
 
+            // Before any buffer opens: the boot-time BufferSwitched pass then
+            // paints restored breakpoints into the gutter for free.
+            $this->debugState->restore();
+
             if (null !== $this->initialFile) {
                 $this->openFile($this->initialFile);
                 if (null !== $this->initialLine) {
@@ -413,6 +420,7 @@ final class Ide
             // the pre-launch terminal). Guaranteed even if startup above threw.
             $this->tui->getTerminal()->write("\x1b[?1000l\x1b[?1003l\x1b[?1006l\x1b[?1049l");
             $this->sessionRestorer->save();
+            $this->debugState->save();
             $this->lsp->stop();
             $this->git->cancelAll();
             $this->run->stop();

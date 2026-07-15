@@ -15,14 +15,23 @@ final class DapSessionTest extends TestCase
     /** @var list<string> */
     private array $events = [];
 
+    /** @var (\Closure(list<array{filter: string, label: string, default: bool}>): list<string>)|null per-test override */
+    private ?\Closure $exceptionFiltersProvider = null;
+
     /** @param array<string, list<array{line: int, condition: ?string, hitCondition: ?string}>> $breakpoints */
     private function session(FakeDapClient $client, array $breakpoints = []): DapSession
     {
         $this->events = [];
 
-        return new DapSession($client, 'php', fn (): array => $breakpoints, new RecordingDebugObserver(function (string $event): void {
-            $this->events[] = $event;
-        }));
+        return new DapSession(
+            $client,
+            'php',
+            fn (): array => $breakpoints,
+            new RecordingDebugObserver(function (string $event): void {
+                $this->events[] = $event;
+            }),
+            $this->exceptionFiltersProvider ?? static fn (array $advertised): array => array_column(array_filter($advertised, static fn (array $f): bool => $f['default']), 'filter'),
+        );
     }
 
     public function testHandshakeWithInitializedEventBeforeTheLaunchResponse(): void
@@ -261,6 +270,111 @@ final class DapSessionTest extends TestCase
         });
         $this->assertArrayNotHasKey('frameId', $client->argumentsOf('evaluate'), 'no frame → no frameId key');
         $this->assertSame(['result' => '', 'variablesReference' => 0, 'error' => 'cannot evaluate'], $delivered);
+    }
+
+    public function testExceptionFiltersAreCapturedSentAndSyncable(): void
+    {
+        $client = new FakeDapClient();
+        $captured = null;
+        $this->exceptionFiltersProvider = function (array $advertised) use (&$captured): array {
+            $captured = $advertised;
+
+            return ['exception'];
+        };
+        $session = $this->session($client);
+        $session->start([]);
+        $client->respond('initialize', [
+            'supportsConfigurationDoneRequest' => true,
+            'exceptionBreakpointFilters' => [
+                ['filter' => 'warning', 'label' => 'Warnings'],
+                ['filter' => 'exception', 'default' => true], // no label: falls back to the id
+                ['nope' => 'malformed'],
+            ],
+        ]);
+        $client->respond('launch');
+
+        $this->assertSame(
+            [
+                ['filter' => 'warning', 'label' => 'Warnings', 'default' => false],
+                ['filter' => 'exception', 'label' => 'exception', 'default' => true],
+            ],
+            $session->exceptionBreakpointFilters(),
+        );
+
+        $client->emit('initialized');
+        $this->assertSame(['filters' => ['exception']], $client->argumentsOf('setExceptionBreakpoints'));
+        $this->assertSame($session->exceptionBreakpointFilters(), $captured, 'the provider saw the advertised set');
+        $commands = $client->commands();
+        $this->assertGreaterThan(
+            array_search('setExceptionBreakpoints', $commands, true),
+            array_search('configurationDone', $commands, true),
+            'filters are sent before configurationDone',
+        );
+
+        // A live toggle re-sends.
+        $this->exceptionFiltersProvider = static fn (): array => [];
+        $session->syncExceptionBreakpoints();
+        $this->assertSame(2, \count(array_filter($client->commands(), static fn (string $c): bool => 'setExceptionBreakpoints' === $c)));
+    }
+
+    public function testAdaptersWithoutFiltersNeverGetTheRequest(): void
+    {
+        $client = new FakeDapClient();
+        $session = $this->session($client);
+        $session->start([]);
+        $client->respond('initialize', ['supportsConfigurationDoneRequest' => true]);
+        $client->respond('launch');
+        $client->emit('initialized');
+        $session->syncExceptionBreakpoints(); // explicitly, too
+
+        $this->assertNotContains('setExceptionBreakpoints', $client->commands());
+    }
+
+    public function testRunToMergesATempBreakpointAndRetiresItOnTheNextStop(): void
+    {
+        $client = new FakeDapClient();
+        $session = $this->session($client, ['/p/a.php' => [self::bp(2, '$x > 1')]]);
+        $session->start([]);
+        $client->respond('initialize', ['supportsConditionalBreakpoints' => true]);
+        $client->respond('launch');
+
+        $session->runTo('/p/a.php', 8); // while running: a no-op
+        $this->assertNotContains('setBreakpoints', $client->commands());
+
+        $client->emit('stopped', ['reason' => 'breakpoint', 'threadId' => 1]);
+        $session->runTo('/p/a.php', 8);
+        $this->assertSame(
+            [['line' => 3, 'condition' => '$x > 1'], ['line' => 9]],
+            $client->argumentsOf('setBreakpoints')['breakpoints'],
+            'the one-shot merged into the wire list',
+        );
+        $this->assertContains('continue', $client->commands());
+
+        // A user toggle in the same file mid-run keeps the temp merged.
+        $session->setBreakpoints('/p/a.php', [self::bp(2, '$x > 1'), self::bp(5)]);
+        $this->assertSame([3, 6, 9], array_column($client->argumentsOf('setBreakpoints')['breakpoints'], 'line'));
+
+        // The next stop (any reason) retires the temp and re-sends without it.
+        $client->emit('stopped', ['reason' => 'step', 'threadId' => 1]);
+        $this->assertSame([3], array_column($client->argumentsOf('setBreakpoints')['breakpoints'], 'line'), 'the store list only (the toggle above never entered the provider)');
+    }
+
+    public function testRunToOntoAnExistingBreakpointJustContinues(): void
+    {
+        $client = new FakeDapClient();
+        $session = $this->session($client, ['/p/a.php' => [self::bp(4)]]);
+        $session->start([]);
+        $client->respond('initialize', []);
+        $client->respond('launch');
+        $client->emit('stopped', ['reason' => 'breakpoint', 'threadId' => 1]);
+
+        $session->runTo('/p/a.php', 4);
+        $this->assertNotContains('setBreakpoints', $client->commands(), 'no wire churn — the real breakpoint (and its condition) stands');
+        $this->assertContains('continue', $client->commands());
+
+        // The next stop has no temp to retire: no extra setBreakpoints either.
+        $client->emit('stopped', ['reason' => 'breakpoint', 'threadId' => 1]);
+        $this->assertNotContains('setBreakpoints', $client->commands());
     }
 
     /** @return array{line: int, condition: ?string, hitCondition: ?string} */

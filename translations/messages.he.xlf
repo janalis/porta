@@ -1738,6 +1738,30 @@
         <source>Blame annotations hidden</source>
         <target>הערות blame מוסתרות</target>
       </trans-unit>
+      <trans-unit id="438">
+        <source>Run to Cursor</source>
+        <target>הרצה עד הסמן</target>
+      </trans-unit>
+      <trans-unit id="439">
+        <source>Debug: Exception Breakpoints</source>
+        <target>ניפוי: נקודות עצירה לחריגות</target>
+      </trans-unit>
+      <trans-unit id="440">
+        <source>Exception Breakpoints</source>
+        <target>נקודות עצירה לחריגות</target>
+      </trans-unit>
+      <trans-unit id="441">
+        <source>No debugger session — exception filters come from the adapter</source>
+        <target>אין סשן ניפוי — מסנני החריגות מגיעים מהמתאם</target>
+      </trans-unit>
+      <trans-unit id="442">
+        <source>The adapter has no exception breakpoint filters</source>
+        <target>למתאם אין מסנני נקודות עצירה לחריגות</target>
+      </trans-unit>
+      <trans-unit id="443">
+        <source>Run to cursor needs a paused debugger</source>
+        <target>הרצה עד הסמן דורשת מנפה שגיאות מושהה</target>
+      </trans-unit>
     </body>
   </file>
 </xliff>

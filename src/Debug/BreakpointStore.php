@@ -8,8 +8,8 @@ namespace Porta\Debug;
  * Line breakpoints, keyed by absolute file path with 0-based lines. Each
  * breakpoint optionally carries a condition and/or a hit-count condition
  * (both DAP pass-through strings). Owned by the debug controller (not the
- * buffers), so breakpoints survive closing and reopening a file. In-memory
- * only — not persisted across IDE restarts.
+ * buffers), so breakpoints survive closing and reopening a file. Persisted
+ * across restarts via {@see DebugStatePersistence} (`.porta/debug.json`).
  */
 final class BreakpointStore
 {

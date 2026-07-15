@@ -7,7 +7,8 @@ namespace Porta\Debug;
 /**
  * The watch expressions, in insertion order. Values are not stored here —
  * they are per-stop, per-frame evaluation results owned by the debug panel.
- * In-memory only, like {@see BreakpointStore}.
+ * Persisted across restarts via {@see DebugStatePersistence}, like
+ * {@see BreakpointStore}.
  */
 final class WatchStore
 {

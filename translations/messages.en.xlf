@@ -1738,6 +1738,30 @@
         <source>Blame annotations hidden</source>
         <target>Blame annotations hidden</target>
       </trans-unit>
+      <trans-unit id="438">
+        <source>Run to Cursor</source>
+        <target>Run to Cursor</target>
+      </trans-unit>
+      <trans-unit id="439">
+        <source>Debug: Exception Breakpoints</source>
+        <target>Debug: Exception Breakpoints</target>
+      </trans-unit>
+      <trans-unit id="440">
+        <source>Exception Breakpoints</source>
+        <target>Exception Breakpoints</target>
+      </trans-unit>
+      <trans-unit id="441">
+        <source>No debugger session — exception filters come from the adapter</source>
+        <target>No debugger session — exception filters come from the adapter</target>
+      </trans-unit>
+      <trans-unit id="442">
+        <source>The adapter has no exception breakpoint filters</source>
+        <target>The adapter has no exception breakpoint filters</target>
+      </trans-unit>
+      <trans-unit id="443">
+        <source>Run to cursor needs a paused debugger</source>
+        <target>Run to cursor needs a paused debugger</target>
+      </trans-unit>
     </body>
   </file>
 </xliff>

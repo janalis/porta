@@ -9,6 +9,7 @@ declare(strict_types=1);
  *    launch response arrives, the awkward ordering) + a `runInTerminal` reverse
  *    request (the client must reject it; the rejection is echoed back as a
  *    `reverseRejected` event so tests can observe it).
+ *  - setExceptionBreakpoints → echoed as console output ("xfilters: a,b").
  *  - setBreakpoints → verified echo; remembered per source path. Received
  *    conditions are echoed as console `output` events ("cond@<line>: <expr>"),
  *    so tests can assert the wire contract on screen.
@@ -100,6 +101,10 @@ while (!feof($in)) {
                     'supportsConfigurationDoneRequest' => true,
                     'supportsConditionalBreakpoints' => true,
                     'supportsHitConditionalBreakpoints' => false,
+                    'exceptionBreakpointFilters' => [
+                        ['filter' => 'warning', 'label' => 'Warnings', 'default' => false],
+                        ['filter' => 'exception', 'label' => 'Uncaught Exceptions', 'default' => true],
+                    ],
                 ]);
                 event($out, 'initialized');
                 sendDap($out, ['type' => 'request', 'command' => 'runInTerminal', 'arguments' => (object) []]);
@@ -196,6 +201,11 @@ while (!feof($in)) {
                     event($out, 'terminated');
                     event($out, 'exited', ['exitCode' => 0]);
                 }
+                break;
+
+            case 'setExceptionBreakpoints':
+                respond($out, $message);
+                event($out, 'output', ['category' => 'console', 'output' => 'xfilters: '.implode(',', $args['filters'] ?? [])."\n"]);
                 break;
 
             case 'evaluate':

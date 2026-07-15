@@ -20,14 +20,22 @@ final class DapSession
     private bool $supportsHitConditionalBreakpoints = false;
     private bool $terminationReported = false;
 
+    /** @var list<array{filter: string, label: string, default: bool}> the adapter's advertised exception filters */
+    private array $exceptionFilters = [];
+
+    /** @var array{path: string, line: int}|null run-to-cursor's one-shot breakpoint (0-based; never in the store) */
+    private ?array $tempBreakpoint = null;
+
     /**
-     * @param \Closure(): array<string, list<array{line: int, condition: ?string, hitCondition: ?string}>> $breakpointsProvider 0-based lines per absolute path
+     * @param \Closure(): array<string, list<array{line: int, condition: ?string, hitCondition: ?string}>> $breakpointsProvider      0-based lines per absolute path
+     * @param \Closure(list<array{filter: string, label: string, default: bool}>): list<string>            $exceptionFiltersProvider enabled ids for the advertised filters
      */
     public function __construct(
         private readonly DapClientInterface $client,
         private readonly string $languageId,
         private readonly \Closure $breakpointsProvider,
         private readonly DebugSessionObserver $observer,
+        private readonly \Closure $exceptionFiltersProvider,
     ) {}
 
     public function state(): DebugState
@@ -95,6 +103,7 @@ final class DapSession
                 $this->supportsConfigurationDone = true === ($body['supportsConfigurationDoneRequest'] ?? false);
                 $this->supportsConditionalBreakpoints = true === ($body['supportsConditionalBreakpoints'] ?? false);
                 $this->supportsHitConditionalBreakpoints = true === ($body['supportsHitConditionalBreakpoints'] ?? false);
+                $this->exceptionFilters = self::normalizeExceptionFilters($body['exceptionBreakpointFilters'] ?? null);
                 $this->client->request('launch', $launchArguments, function (array $ignored, ?string $launchError): void {
                     if (null !== $launchError) {
                         $this->fail('launch failed: '.$launchError);
@@ -139,6 +148,12 @@ final class DapSession
             }
             $wire[] = $entry;
         }
+        // Run-to-cursor's one-shot rides along on every send for its file, so
+        // a user toggling another breakpoint mid-run cannot wipe it.
+        $temp = $this->tempBreakpoint;
+        if (null !== $temp && $temp['path'] === $path && !\in_array($temp['line'] + 1, array_column($wire, 'line'), true)) {
+            $wire[] = ['line' => $temp['line'] + 1];
+        }
         $this->client->request('setBreakpoints', [
             'source' => ['path' => $path],
             'breakpoints' => $wire,
@@ -168,6 +183,40 @@ final class DapSession
                 'error' => $error,
             ]);
         });
+    }
+
+    /** @return list<array{filter: string, label: string, default: bool}> the adapter's advertised exception filters */
+    public function exceptionBreakpointFilters(): array
+    {
+        return $this->exceptionFilters;
+    }
+
+    /** Re-send the enabled exception filters (a live toggle). No-op for adapters without filters. */
+    public function syncExceptionBreakpoints(): void
+    {
+        if (!$this->isActive() || [] === $this->exceptionFilters) {
+            return;
+        }
+        $this->client->request('setExceptionBreakpoints', ['filters' => ($this->exceptionFiltersProvider)($this->exceptionFilters)]);
+    }
+
+    /**
+     * Run to a caret position: a one-shot breakpoint merged at the wire level
+     * (never entering the store), removed on the next stop — any stop. A line
+     * that already carries a real breakpoint just continues (its condition is
+     * respected rather than bypassed).
+     */
+    public function runTo(string $path, int $line): void
+    {
+        if (DebugState::Paused !== $this->state) {
+            return;
+        }
+        $existing = ($this->breakpointsProvider)()[$path] ?? [];
+        if (!\in_array($line, array_column($existing, 'line'), true)) {
+            $this->tempBreakpoint = ['path' => $path, 'line' => $line];
+            $this->setBreakpoints($path, $existing);
+        }
+        $this->continueRun();
     }
 
     public function stepOver(): void
@@ -275,6 +324,7 @@ final class DapSession
         foreach (($this->breakpointsProvider)() as $path => $breakpoints) {
             $this->setBreakpoints($path, $breakpoints);
         }
+        $this->syncExceptionBreakpoints();
         if ($this->supportsConfigurationDone) {
             $this->client->request('configurationDone');
         }
@@ -284,6 +334,11 @@ final class DapSession
     private function handleStopped(array $body): void
     {
         $this->state = DebugState::Paused;
+        if (null !== ($temp = $this->tempBreakpoint)) {
+            // Any stop retires the one-shot: re-send its file without it.
+            $this->tempBreakpoint = null;
+            $this->setBreakpoints($temp['path'], ($this->breakpointsProvider)()[$temp['path']] ?? []);
+        }
         /** @var mixed $threadId */
         $threadId = $body['threadId'] ?? null;
         if (\is_int($threadId)) {
@@ -326,6 +381,7 @@ final class DapSession
 
     private function fail(string $message): void
     {
+        $this->tempBreakpoint = null;
         $wasUnreported = !$this->terminationReported;
         $this->terminationReported = true;
         $this->state = DebugState::Terminated;
@@ -335,11 +391,32 @@ final class DapSession
         $this->client->stop();
     }
 
+    /**
+     * @return list<array{filter: string, label: string, default: bool}>
+     */
+    private static function normalizeExceptionFilters(mixed $raw): array
+    {
+        $filters = [];
+        foreach (\is_array($raw) ? $raw : [] as $filter) {
+            if (!\is_array($filter) || !\is_string($filter['filter'] ?? null)) {
+                continue;
+            }
+            $filters[] = [
+                'filter' => $filter['filter'],
+                'label' => \is_string($filter['label'] ?? null) ? $filter['label'] : $filter['filter'],
+                'default' => true === ($filter['default'] ?? false),
+            ];
+        }
+
+        return $filters;
+    }
+
     private function handleTerminated(): void
     {
         if ($this->terminationReported) {
             return;
         }
+        $this->tempBreakpoint = null;
         $this->terminationReported = true;
         $this->state = DebugState::Terminated;
         $this->observer->onTerminated();
