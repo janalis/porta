@@ -501,13 +501,7 @@ final class Document
         if ($target < 0 || ($last + $delta) >= \count($this->lines)) {
             return false;
         }
-        $this->pushUndo();
-        $block = \array_slice($this->lines, $first, $last - $first + 1);
-        array_splice($this->lines, $first, $last - $first + 1);
-        array_splice($this->lines, $target, length: 0, replacement: $block);
-        $this->cursorLine += $delta;
-        $this->selection->shiftLine($delta);
-        $this->touch();
+        $this->relocateBlock($first, $last, $target);
 
         return true;
     }
@@ -525,6 +519,18 @@ final class Document
             return false;
         }
 
+        $this->relocateBlock($first, $last, $target);
+
+        return true;
+    }
+
+    /**
+     * Lift the [$first, $last] line block out and reinsert it starting at
+     * $target, moving the cursor and selection by the same shift. One undo
+     * step. Shared by {@see moveLines()} and {@see moveStatement()}.
+     */
+    private function relocateBlock(int $first, int $last, int $target): void
+    {
         $shift = $target - $first;
         $this->pushUndo();
         $block = \array_slice($this->lines, $first, $last - $first + 1);
@@ -533,8 +539,6 @@ final class Document
         $this->cursorLine += $shift;
         $this->selection->shiftLine($shift);
         $this->touch();
-
-        return true;
     }
 
     /**
