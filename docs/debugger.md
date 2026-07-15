@@ -38,13 +38,20 @@ Xdebug is a good fit.
 | --- | --- |
 | `Shift+F9` | Start debugging the current file |
 | `Ctrl+F8` (or click the gutter) | Toggle a breakpoint on the caret's line |
+| `Ctrl+Shift+F8` | Edit the caret line's breakpoint condition |
+| `Ctrl+Shift+F9` | Add a watch expression |
 | `F8` | Step over |
 | `F7` | Step into |
 | `Shift+F8` | Step out |
 | `F9` | Resume |
 | `Ctrl+F2` | Stop |
 
-Breakpoints render as gutter dots and survive buffer switches. The
+Breakpoints render as gutter dots (`●`, or `◆` when conditional) and
+survive buffer switches. `Ctrl+Shift+F8` prompts for a condition and a hit
+count (leave both empty to make the breakpoint unconditional again; using it
+on a bare line creates the breakpoint). Conditions are passed through to
+the adapter verbatim — if it doesn't advertise support, they're stripped
+with a warning in the debug output. The
 step/resume/stop keys only capture input while a session runs (paused for
 stepping) — otherwise they keep their editor meanings (`F7`/`Shift+F7`
 conflict navigation, etc.).
@@ -59,8 +66,14 @@ A resizable bottom panel opens with the session:
 
 - **Frames** — the call stack; `Enter` or a click jumps to a frame's source
   and loads its scopes.
+- **Watches** — your watch expressions (`Ctrl+Shift+F9`), re-evaluated on
+  every stop and frame switch; `Delete` removes the selected watch, and
+  structured results expand like variables. Evaluation errors render dimmed.
 - **Variables** — scopes with lazily-expanded children; `Enter`/click
   expands one level.
+
+`Debug: Evaluate Expression` in the palette (paused only) evaluates a
+one-shot expression against the current frame and flashes the result.
 
 The panel header shows the session state and a stepping-key legend. Program
 output streams into a terminal buffer titled `Debug: <file>`.

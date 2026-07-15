@@ -1606,6 +1606,34 @@
         <source>Switched to %branch% (tracking %remote%)</source>
         <target>Switched to %branch% (tracking %remote%)</target>
       </trans-unit>
+      <trans-unit id="405">
+        <source>Edit Breakpoint Condition</source>
+        <target>Edit Breakpoint Condition</target>
+      </trans-unit>
+      <trans-unit id="406">
+        <source>Add Watch Expression</source>
+        <target>Add Watch Expression</target>
+      </trans-unit>
+      <trans-unit id="407">
+        <source>Debug: Evaluate Expression</source>
+        <target>Debug: Evaluate Expression</target>
+      </trans-unit>
+      <trans-unit id="408">
+        <source>Breakpoint condition (empty: always break)</source>
+        <target>Breakpoint condition (empty: always break)</target>
+      </trans-unit>
+      <trans-unit id="409">
+        <source>Hit count condition (empty: every hit)</source>
+        <target>Hit count condition (empty: every hit)</target>
+      </trans-unit>
+      <trans-unit id="410">
+        <source>Watch expression</source>
+        <target>Watch expression</target>
+      </trans-unit>
+      <trans-unit id="411">
+        <source>Evaluate expression</source>
+        <target>Evaluate expression</target>
+      </trans-unit>
     </body>
   </file>
 </xliff>

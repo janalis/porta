@@ -15,7 +15,7 @@ final class DapSessionTest extends TestCase
     /** @var list<string> */
     private array $events = [];
 
-    /** @param array<string, list<int>> $breakpoints */
+    /** @param array<string, list<array{line: int, condition: ?string, hitCondition: ?string}>> $breakpoints */
     private function session(FakeDapClient $client, array $breakpoints = []): DapSession
     {
         $this->events = [];
@@ -28,7 +28,7 @@ final class DapSessionTest extends TestCase
     public function testHandshakeWithInitializedEventBeforeTheLaunchResponse(): void
     {
         $client = new FakeDapClient();
-        $session = $this->session($client, ['/p/a.php' => [4, 9]]);
+        $session = $this->session($client, ['/p/a.php' => [self::bp(4), self::bp(9)]]);
 
         $this->assertTrue($session->start(['program' => '/p/a.php']));
         $this->assertSame(DebugState::Starting, $session->state());
@@ -118,7 +118,7 @@ final class DapSessionTest extends TestCase
         $client->respond('initialize', []);
         $client->respond('launch');
 
-        $session->setBreakpoints('/p/b.php', [2]);
+        $session->setBreakpoints('/p/b.php', [self::bp(2)]);
         $this->assertSame('/p/b.php', $client->argumentsOf('setBreakpoints')['source']['path']);
 
         $client->emit('output', ['category' => 'stdout', 'output' => "hi\n"]);
@@ -134,7 +134,7 @@ final class DapSessionTest extends TestCase
         $client->emit('continued'); // a straggler event after termination stays ignored
         $this->assertNotContains('continued', $this->events);
 
-        $session->setBreakpoints('/p/b.php', [5]);
+        $session->setBreakpoints('/p/b.php', [self::bp(5)]);
         $this->assertSame([2 + 1], array_column($client->argumentsOf('setBreakpoints')['breakpoints'], 'line'), 'no sends after termination');
     }
 
@@ -211,6 +211,62 @@ final class DapSessionTest extends TestCase
         $client->respond('launch', [], 'bad program');
         $this->assertSame(['error:launch failed: bad program'], $this->events);
         $this->assertSame(DebugState::Terminated, $session->state());
+    }
+
+    public function testConditionFieldsAreCapabilityGatedWithAConsoleWarning(): void
+    {
+        $client = new FakeDapClient();
+        $session = $this->session($client);
+        $session->start([]);
+        $client->respond('initialize', ['supportsConditionalBreakpoints' => true]); // hit conditions unsupported
+        $client->respond('launch');
+
+        $session->setBreakpoints('/p/a.php', [self::bp(2, '$x > 1', '3'), self::bp(6)]);
+        $this->assertSame(
+            [['line' => 3, 'condition' => '$x > 1'], ['line' => 7]],
+            $client->argumentsOf('setBreakpoints')['breakpoints'],
+            'the condition rides along; the unsupported hitCondition is stripped',
+        );
+        $warnings = array_values(array_filter($this->events, static fn (string $e): bool => str_contains($e, 'output:console:')));
+        $this->assertCount(1, $warnings);
+        $this->assertStringContainsString("does not support 'hitCondition'", $warnings[0]);
+        $this->assertStringContainsString('/p/a.php:3', $warnings[0]);
+    }
+
+    public function testEvaluateNormalizesResultsErrorsAndFrameContext(): void
+    {
+        $client = new FakeDapClient();
+        $session = $this->session($client);
+
+        $delivered = null;
+        $session->evaluate('$x', 7, 'watch', function (array $r) use (&$delivered): void {
+            $delivered = $r;
+        });
+        $this->assertNotContains('evaluate', $client->commands(), 'an inactive session evaluates nothing');
+
+        $session->start([]);
+        $client->respond('initialize', []);
+        $client->respond('launch');
+
+        $client->responses['evaluate'] = [['result' => '42', 'variablesReference' => 9], null];
+        $session->evaluate('$x', 7, 'watch', function (array $r) use (&$delivered): void {
+            $delivered = $r;
+        });
+        $this->assertSame(['expression' => '$x', 'context' => 'watch', 'frameId' => 7], $client->argumentsOf('evaluate'));
+        $this->assertSame(['result' => '42', 'variablesReference' => 9, 'error' => null], $delivered);
+
+        $client->responses['evaluate'] = [[], 'cannot evaluate'];
+        $session->evaluate('$bad', null, 'repl', function (array $r) use (&$delivered): void {
+            $delivered = $r;
+        });
+        $this->assertArrayNotHasKey('frameId', $client->argumentsOf('evaluate'), 'no frame → no frameId key');
+        $this->assertSame(['result' => '', 'variablesReference' => 0, 'error' => 'cannot evaluate'], $delivered);
+    }
+
+    /** @return array{line: int, condition: ?string, hitCondition: ?string} */
+    private static function bp(int $line, ?string $condition = null, ?string $hitCondition = null): array
+    {
+        return ['line' => $line, 'condition' => $condition, 'hitCondition' => $hitCondition];
     }
 
     public function testDisconnectIsPoliteAndIdempotent(): void

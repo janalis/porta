@@ -32,4 +32,13 @@
             <directory>src</directory>
         </include>
     </source>
+
+    <!-- Never fall back to static analysis for files a worker did not load:
+         its executable-line map disagrees with pcov's on match expressions
+         (the `return match` line), and one static-mapped worker poisons the
+         paratest merge with phantom uncovered lines. Every src file is still
+         compiled under pcov by the container-building tests in some worker
+         (PORTA_CONTAINER_CACHE=off in tests/bootstrap.php), so no file can
+         drop out of the report. -->
+    <coverage includeUncoveredFiles="false"/>
 </phpunit>

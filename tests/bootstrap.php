@@ -12,11 +12,11 @@ putenv('PORTA_CACHE_DIR='.$portaCacheDir);
 $_ENV['PORTA_CACHE_DIR'] = $portaCacheDir;
 
 // Coverage runs compile fresh instead: compiling autoloads every Porta class
-// in every worker, keeping pcov's runtime line maps authoritative everywhere.
-// A dump-served worker never loads rarely-used classes (light/high-contrast
-// themes), so php-code-coverage falls back to static analysis for them — and
-// its executable-line map differs from pcov's on match expressions, yielding
-// phantom uncovered lines that break the 100% gate.
+// in every worker, so every src file lands in some worker's pcov data — the
+// other half of this fix is `includeUncoveredFiles="false"` in
+// phpunit.xml.dist, which keeps php-code-coverage's static analyser (whose
+// executable-line map disagrees with pcov's on match expressions) out of the
+// paratest merge entirely.
 if ('1' === ini_get('pcov.enabled')) {
     putenv('PORTA_CONTAINER_CACHE=off');
 }

@@ -144,4 +144,60 @@ final class DebugPanelWidgetTest extends TestCase
         $panel->setVisibleRows(4);
         $this->assertSame(4, $panel->visibleRows());
     }
+
+    public function testWatchesSectionPendingResultErrorAndStaleIndex(): void
+    {
+        $panel = $this->panel();
+        $panel->setWatches(['$x', '$boom']);
+
+        $screen = implode("\n", $this->screen($panel));
+        $this->assertStringContainsString('Watches', $screen);
+        $this->assertStringContainsString('$x = …', $screen, 'unevaluated watches render pending');
+
+        $panel->setWatchResult(0, '42', 0);
+        $panel->setWatchResult(1, '', 0, 'cannot evaluate');
+        $panel->setWatchResult(5, 'ghost', 0); // stale index after a removal: ignored
+        $screen = implode("\n", $this->screen($panel));
+        $this->assertStringContainsString('$x = 42', $screen);
+        $this->assertStringContainsString('$boom = cannot evaluate', $screen);
+        $this->assertStringNotContainsString('ghost', $screen);
+
+        // Leaving pause resets values to pending but keeps the expressions.
+        $panel->setSessionState(DebugState::Running, null);
+        $screen = implode("\n", $this->screen($panel));
+        $this->assertStringContainsString('$x = …', $screen);
+        $this->assertStringNotContainsString('42', $screen);
+    }
+
+    public function testWatchRowsExpandThroughRefsAndDeleteFiresRemoval(): void
+    {
+        $panel = $this->panel();
+        $panel->setWatches(['$arr']);
+        $panel->setWatchResult(0, 'array(2)', 2000);
+        $expanded = [];
+        $panel->onExpandVariable(function (int $ref, callable $deliver) use (&$expanded): void {
+            $expanded[] = $ref;
+            $deliver([['name' => '0', 'value' => "'a'", 'variablesReference' => 0]]);
+        });
+        $removed = [];
+        $panel->onRemoveWatch(function (int $index) use (&$removed): void {
+            $removed[] = $index;
+        });
+
+        // Rows: 0 Frames, 1 #0, 2 #1, 3 Watches, 4 $arr, then Variables…
+        for ($i = 0; $i < 4; ++$i) {
+            $panel->handleInput("\x1b[B");
+        }
+        $panel->handleInput("\r"); // expand the watch through its ref
+        $this->assertSame([2000], $expanded);
+        $this->assertStringContainsString("0 = 'a'", implode("\n", $this->screen($panel)));
+
+        $panel->handleInput("\x1b[3~"); // Delete on the watch row
+        $this->assertSame([0], $removed);
+
+        // Delete anywhere else is inert.
+        $panel->handleInput("\x1b[A");
+        $panel->handleInput("\x1b[3~");
+        $this->assertSame([0], $removed);
+    }
 }

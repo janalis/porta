@@ -1606,6 +1606,34 @@
         <source>Switched to %branch% (tracking %remote%)</source>
         <target>Passato a %branch% (traccia %remote%)</target>
       </trans-unit>
+      <trans-unit id="405">
+        <source>Edit Breakpoint Condition</source>
+        <target>Modifica condizione del breakpoint</target>
+      </trans-unit>
+      <trans-unit id="406">
+        <source>Add Watch Expression</source>
+        <target>Aggiungi espressione di controllo</target>
+      </trans-unit>
+      <trans-unit id="407">
+        <source>Debug: Evaluate Expression</source>
+        <target>Debug: valuta espressione</target>
+      </trans-unit>
+      <trans-unit id="408">
+        <source>Breakpoint condition (empty: always break)</source>
+        <target>Condizione del breakpoint (vuoto: interrompi sempre)</target>
+      </trans-unit>
+      <trans-unit id="409">
+        <source>Hit count condition (empty: every hit)</source>
+        <target>Condizione sul numero di passaggi (vuoto: ogni passaggio)</target>
+      </trans-unit>
+      <trans-unit id="410">
+        <source>Watch expression</source>
+        <target>Espressione di controllo</target>
+      </trans-unit>
+      <trans-unit id="411">
+        <source>Evaluate expression</source>
+        <target>Valuta espressione</target>
+      </trans-unit>
     </body>
   </file>
 </xliff>

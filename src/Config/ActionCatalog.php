@@ -116,6 +116,8 @@ final class ActionCatalog
         'ide_run_last' => ['label' => 'Run Last', 'keys' => ['shift+f10']],
         'ide_debug' => ['label' => 'Debug Current File', 'keys' => ['shift+f9']],
         'debug_toggle_breakpoint' => ['label' => 'Toggle Breakpoint', 'keys' => ['ctrl+f8']],
+        'debug_edit_breakpoint' => ['label' => 'Edit Breakpoint Condition', 'keys' => ['ctrl+shift+f8']],
+        'debug_add_watch' => ['label' => 'Add Watch Expression', 'keys' => ['ctrl+shift+f9']],
         'debug_step_over' => ['label' => 'Step Over', 'keys' => ['f8']],
         'debug_step_into' => ['label' => 'Step Into', 'keys' => ['f7']],
         'debug_step_out' => ['label' => 'Step Out', 'keys' => ['shift+f8']],

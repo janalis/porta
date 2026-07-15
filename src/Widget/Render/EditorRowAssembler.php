@@ -35,6 +35,9 @@ final readonly class EditorRowAssembler
     /** @var array<int, true> */
     private array $breakpointSet;
 
+    /** @var array<int, true> */
+    private array $conditionalBreakpointSet;
+
     private CursorStyle $cursorStyle;
 
     /**
@@ -43,6 +46,7 @@ final readonly class EditorRowAssembler
      * @param array<int, list<array{start: int, end: int, current: bool}>>                    $searchMatches   per-line search matches (byte cols)
      * @param array<int, list<array{col: int, text: string}>>                                 $inlayHints      per-line inlay hints (byte col => dim label)
      * @param list<int>                                                                       $breakpointLines 0-based lines carrying a breakpoint
+     * @param list<int>                                                                       $conditionalBreakpointLines the subset carrying a condition
      */
     public function __construct(
         private Document $document,
@@ -59,9 +63,11 @@ final readonly class EditorRowAssembler
         array $breakpointLines = [],
         private ?int $debugLine = null,
         ?CursorStyle $cursorStyle = null,
+        array $conditionalBreakpointLines = [],
     ) {
         $this->palette = $palette ?? ColorPalette::dark();
         $this->breakpointSet = array_fill_keys($breakpointLines, true);
+        $this->conditionalBreakpointSet = array_fill_keys($conditionalBreakpointLines, true);
         $this->cursorStyle = $cursorStyle ?? new CursorStyle();
     }
 
@@ -184,6 +190,7 @@ final readonly class EditorRowAssembler
         // so each state also reads without color.
         $marker = match (true) {
             $lineIndex === $this->debugLine => $this->palette->of(Role::Breakpoint).'▶'."\x1b[39m",
+            isset($this->conditionalBreakpointSet[$lineIndex]) => $this->palette->of(Role::Breakpoint).'◆'."\x1b[39m",
             isset($this->breakpointSet[$lineIndex]) => $this->palette->of(Role::Breakpoint).'●'."\x1b[39m",
             [] !== $lineDiags => $numColor.DiagnosticStyle::glyph(DiagnosticStyle::worst($lineDiags))."\x1b[39m",
             default => ' ',

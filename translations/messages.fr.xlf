@@ -1606,6 +1606,34 @@
         <source>Switched to %branch% (tracking %remote%)</source>
         <target>Basculé sur %branch% (suit %remote%)</target>
       </trans-unit>
+      <trans-unit id="405">
+        <source>Edit Breakpoint Condition</source>
+        <target>Modifier la condition du point d’arrêt</target>
+      </trans-unit>
+      <trans-unit id="406">
+        <source>Add Watch Expression</source>
+        <target>Ajouter une expression espionnée</target>
+      </trans-unit>
+      <trans-unit id="407">
+        <source>Debug: Evaluate Expression</source>
+        <target>Débogage : évaluer une expression</target>
+      </trans-unit>
+      <trans-unit id="408">
+        <source>Breakpoint condition (empty: always break)</source>
+        <target>Condition du point d’arrêt (vide : toujours s’arrêter)</target>
+      </trans-unit>
+      <trans-unit id="409">
+        <source>Hit count condition (empty: every hit)</source>
+        <target>Condition de passages (vide : à chaque passage)</target>
+      </trans-unit>
+      <trans-unit id="410">
+        <source>Watch expression</source>
+        <target>Expression espionnée</target>
+      </trans-unit>
+      <trans-unit id="411">
+        <source>Evaluate expression</source>
+        <target>Évaluer une expression</target>
+      </trans-unit>
     </body>
   </file>
 </xliff>

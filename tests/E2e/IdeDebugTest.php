@@ -223,4 +223,54 @@ final class IdeDebugTest extends TestCase
 
         $this->addToAssertionCount(1);
     }
+
+    public function testConditionalBreakpointsAndWatchesEndToEnd(): void
+    {
+        putenv('PATH=/nonexistent');
+        $project = new TempProject(['.porta.json' => $this->mockDapConfig(), 'prog.php' => $this->program()]);
+
+        $this->runIde(
+            $project,
+            $project->path('prog.php'),
+            [
+                200 => function ($tui): void {
+                    $tui->getById('editor')->getDocument()->setCursor(4, 0);
+                    $tui->handleInput("\x1b[19;6~"); // ctrl+shift+f8: edit → creates the breakpoint too
+                    foreach (str_split('$x > 1') as $ch) {
+                        $tui->handleInput($ch);
+                    }
+                    $tui->handleInput("\r"); // condition submitted
+                    $tui->handleInput("\r"); // hit count left empty
+                    $tui->tick();
+                    $editorScreen = implode("\n", $tui->getById('editor')->render(new \Symfony\Component\Tui\Render\RenderContext(120, 20)));
+                    $this->assertStringContainsString('◆', $editorScreen, 'the conditional breakpoint renders a diamond');
+                    $tui->handleInput("\x1b[20;2~"); // shift+f9 debug
+                },
+                700 => function ($tui, $terminal): void {
+                    $tui->tick();
+                    $screen = AnsiUtils::stripAnsiCodes($terminal->getOutput());
+                    $this->assertStringContainsString('paused at prog.php:5', $screen, 'stopped at the conditional breakpoint');
+                    $this->assertStringContainsString('cond@5: $x > 1', $screen, 'the condition reached the adapter and echoed back');
+                    $tui->handleInput("\x1b[20;6~"); // ctrl+shift+f9: add watch
+                    foreach (str_split('$x') as $ch) {
+                        $tui->handleInput($ch);
+                    }
+                    $tui->handleInput("\r");
+                },
+                1000 => function ($tui, $terminal): void {
+                    $tui->tick();
+                    $screen = AnsiUtils::stripAnsiCodes($terminal->getOutput());
+                    $this->assertStringContainsString('Watches', $screen);
+                    $this->assertStringContainsString('$x = 42#1', $screen, 'the watch evaluated against the paused frame');
+                    $tui->handleInput("\x1b[19~"); // f8 step over → stop again → watches re-evaluate
+                },
+                1300 => function ($tui, $terminal): void {
+                    $tui->tick();
+                    $this->assertStringContainsString('$x = 42#2', AnsiUtils::stripAnsiCodes($terminal->getOutput()), 'the step re-evaluated the watch');
+                },
+            ],
+        );
+
+        $this->addToAssertionCount(1);
+    }
 }

@@ -27,10 +27,13 @@ final class DebugCommands implements CommandProvider
         $commands
             ->add('ide_debug', fn () => $this->debug->startForCurrentFile(), keyBound: true)
             ->add('debug_toggle_breakpoint', fn () => $this->debug->toggleBreakpointAtCaret(), keyBound: true)
+            ->add('debug_edit_breakpoint', fn () => $this->debug->editBreakpointAtCaret(), keyBound: true)
+            ->add('debug_add_watch', fn () => $this->debug->addWatch(), keyBound: true)
             ->add('debug_step_over', fn () => $this->debug->stepOver(), keyBound: true, when: $paused)
             ->add('debug_step_into', fn () => $this->debug->stepIn(), keyBound: true, when: $paused)
             ->add('debug_step_out', fn () => $this->debug->stepOut(), keyBound: true, when: $paused)
             ->add('debug_continue', fn () => $this->debug->continueRun(), keyBound: true, when: $paused)
-            ->add('debug_stop', fn () => $this->debug->stop(), keyBound: true, when: $active);
+            ->add('debug_stop', fn () => $this->debug->stop(), keyBound: true, when: $active)
+            ->add('debug_evaluate', fn () => $this->debug->evaluatePrompt(), label: 'Debug: Evaluate Expression', when: $paused);
     }
 }

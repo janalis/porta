@@ -88,7 +88,10 @@ automatically on any wiring-relevant change. `PORTA_CONTAINER_CACHE=off` forces 
 build (a builder used directly must `compile(resolveEnvPlaceholders: true)`; the dump path keeps
 placeholders unresolved), and deleting the cache dir is always safe — do that if a
 stale-container symptom ever survives an edit. `tests/bootstrap.php` pins the cache into
-`.phpunit.cache/` and forces fresh compiles under pcov (dump-served workers skew coverage line maps).
+`.phpunit.cache/` and forces fresh compiles under pcov, and phpunit.xml.dist sets
+`includeUncoveredFiles="false"` — together they keep php-code-coverage's static analyser (whose
+executable-line map disagrees with pcov's on `return match` lines) out of the paratest merge,
+which otherwise poisons the 100% gate with phantom uncovered lines.
 
 The container owns everything expressible as service+scalar injection — **including every
 singleton widget** (`#[Container/AsWidget]` declares tree id/flex, autoconfigured into

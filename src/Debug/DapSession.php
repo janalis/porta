@@ -16,10 +16,12 @@ final class DapSession
     private DebugState $state = DebugState::Idle;
     private ?int $threadId = null;
     private bool $supportsConfigurationDone = false;
+    private bool $supportsConditionalBreakpoints = false;
+    private bool $supportsHitConditionalBreakpoints = false;
     private bool $terminationReported = false;
 
     /**
-     * @param \Closure(): array<string, list<int>> $breakpointsProvider 0-based lines per absolute path
+     * @param \Closure(): array<string, list<array{line: int, condition: ?string, hitCondition: ?string}>> $breakpointsProvider 0-based lines per absolute path
      */
     public function __construct(
         private readonly DapClientInterface $client,
@@ -91,6 +93,8 @@ final class DapSession
                     return;
                 }
                 $this->supportsConfigurationDone = true === ($body['supportsConfigurationDoneRequest'] ?? false);
+                $this->supportsConditionalBreakpoints = true === ($body['supportsConditionalBreakpoints'] ?? false);
+                $this->supportsHitConditionalBreakpoints = true === ($body['supportsHitConditionalBreakpoints'] ?? false);
                 $this->client->request('launch', $launchArguments, function (array $ignored, ?string $launchError): void {
                     if (null !== $launchError) {
                         $this->fail('launch failed: '.$launchError);
@@ -108,19 +112,62 @@ final class DapSession
     }
 
     /**
-     * Push one file's breakpoints (0-based lines) to the adapter.
+     * Push one file's breakpoints (0-based lines) to the adapter. Condition
+     * fields ride along only when the adapter advertised the capability —
+     * otherwise they are stripped with a console warning, so a silently
+     * unconditional breakpoint never masquerades as a conditional one.
      *
-     * @param list<int> $lines
+     * @param list<array{line: int, condition: ?string, hitCondition: ?string}> $breakpoints
      */
-    public function setBreakpoints(string $path, array $lines): void
+    public function setBreakpoints(string $path, array $breakpoints): void
     {
         if (!$this->isActive()) {
             return;
         }
+        $wire = [];
+        foreach ($breakpoints as $breakpoint) {
+            $entry = ['line' => $breakpoint['line'] + 1];
+            foreach (['condition' => $this->supportsConditionalBreakpoints, 'hitCondition' => $this->supportsHitConditionalBreakpoints] as $field => $supported) {
+                if (null === $breakpoint[$field]) {
+                    continue;
+                }
+                if ($supported) {
+                    $entry[$field] = $breakpoint[$field];
+                } else {
+                    $this->observer->onOutput('console', \sprintf("Breakpoint at %s:%d: the adapter does not support '%s' — set unconditionally.\n", $path, $breakpoint['line'] + 1, $field));
+                }
+            }
+            $wire[] = $entry;
+        }
         $this->client->request('setBreakpoints', [
             'source' => ['path' => $path],
-            'breakpoints' => array_map(static fn (int $line): array => ['line' => $line + 1], $lines),
+            'breakpoints' => $wire,
         ]);
+    }
+
+    /**
+     * Evaluate an expression against a frame. Context is 'watch' for the
+     * panel (side-effect-averse) or 'repl' for a one-shot. Delivery is
+     * normalized: an error response arrives as {result: '', ref: 0, error}.
+     *
+     * @param \Closure(array{result: string, variablesReference: int, error: ?string}): void $deliver
+     */
+    public function evaluate(string $expression, ?int $frameId, string $context, \Closure $deliver): void
+    {
+        if (!$this->isActive()) {
+            return;
+        }
+        $arguments = ['expression' => $expression, 'context' => $context];
+        if (null !== $frameId) {
+            $arguments['frameId'] = $frameId;
+        }
+        $this->client->request('evaluate', $arguments, static function (array $body, ?string $error) use ($deliver): void {
+            $deliver([
+                'result' => \is_string($body['result'] ?? null) ? $body['result'] : '',
+                'variablesReference' => \is_int($body['variablesReference'] ?? null) ? $body['variablesReference'] : 0,
+                'error' => $error,
+            ]);
+        });
     }
 
     public function stepOver(): void
@@ -225,8 +272,8 @@ final class DapSession
     /** The adapter announced its readiness for configuration: sync breakpoints. */
     private function sendConfiguration(): void
     {
-        foreach (($this->breakpointsProvider)() as $path => $lines) {
-            $this->setBreakpoints($path, $lines);
+        foreach (($this->breakpointsProvider)() as $path => $breakpoints) {
+            $this->setBreakpoints($path, $breakpoints);
         }
         if ($this->supportsConfigurationDone) {
             $this->client->request('configurationDone');

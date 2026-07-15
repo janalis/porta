@@ -20,11 +20,14 @@ use Symfony\Component\Tui\Widget\FocusableTrait;
 use Symfony\Component\Tui\Widget\KeybindingsTrait;
 
 /**
- * The debugger's bottom panel: session state, the paused call stack and the
+ * The debugger's bottom panel: session state, the paused call stack, the
+ * watch expressions (evaluated per stop/frame; results land index-addressed
+ * via setWatchResult, so out-of-order responses cannot misassign) and the
  * variables tree (scopes expandable one level at a time, children fetched
  * lazily through the onExpandVariable callback). Enter or a click on a frame
- * jumps to its source via onFrameSelected. Structured like
- * {@see ResultsPanelWidget} — the third resizable bottom panel.
+ * jumps to its source via onFrameSelected; Delete on a watch row fires
+ * onRemoveWatch. Structured like {@see ResultsPanelWidget} — the third
+ * resizable bottom panel.
  */
 #[AsWidget('debug')]
 final class DebugPanelWidget extends OverlayWidget implements FocusableInterface, LtrPane
@@ -42,17 +45,21 @@ final class DebugPanelWidget extends OverlayWidget implements FocusableInterface
     private array $frames = [];
     /** @var list<array{name: string, variablesReference: int}> */
     private array $scopes = [];
+    /** @var list<array{expr: string, value: ?string, ref: int, error: ?string}> value null = pending */
+    private array $watches = [];
     /** @var array<int, list<array{name: string, value: string, variablesReference: int}>> children by reference */
     private array $children = [];
     /** @var array<int, true> expanded variablesReferences */
     private array $expanded = [];
-    /** @var list<array{kind: string, label: string, frameId: int, path: string, line: int, ref: int, depth: int}> flattened display rows */
+    /** @var list<array{kind: string, label: string, frameId: int, path: string, line: int, ref: int, depth: int, watchIndex: int}> flattened display rows */
     private array $rows = [];
 
     /** @var (callable(int, string, int): void)|null frameId, path, 0-based line */
     private $onFrameSelected = null;
     /** @var (callable(int, callable(list<array{name: string, value: string, variablesReference: int}>): void): void)|null */
     private $onExpandVariable = null;
+    /** @var (callable(int): void)|null a watch row's Delete key, by watch index */
+    private $onRemoveWatch = null;
 
     private readonly Palette $palette;
 
@@ -73,6 +80,13 @@ final class DebugPanelWidget extends OverlayWidget implements FocusableInterface
     public function onExpandVariable(callable $callback): self
     {
         $this->onExpandVariable = $callback;
+
+        return $this;
+    }
+
+    public function onRemoveWatch(callable $callback): self
+    {
+        $this->onRemoveWatch = $callback;
 
         return $this;
     }
@@ -100,6 +114,7 @@ final class DebugPanelWidget extends OverlayWidget implements FocusableInterface
             $this->scopes = [];
             $this->children = [];
             $this->expanded = [];
+            $this->watches = array_map(static fn (array $watch): array => [...$watch, 'value' => null, 'ref' => 0, 'error' => null], $this->watches);
         }
         $this->rebuild();
     }
@@ -127,6 +142,23 @@ final class DebugPanelWidget extends OverlayWidget implements FocusableInterface
     public function setVariables(int $reference, array $variables): void
     {
         $this->children[$reference] = $variables;
+        $this->rebuild();
+    }
+
+    /** @param list<string> $expressions the watch expressions; all values reset to pending */
+    public function setWatches(array $expressions): void
+    {
+        $this->watches = array_map(static fn (string $expr): array => ['expr' => $expr, 'value' => null, 'ref' => 0, 'error' => null], $expressions);
+        $this->rebuild();
+    }
+
+    /** Index-addressed delivery; a stale index (the watch was removed meanwhile) is ignored. */
+    public function setWatchResult(int $index, string $value, int $ref, ?string $error = null): void
+    {
+        if (!isset($this->watches[$index])) {
+            return;
+        }
+        $this->watches[$index] = [...$this->watches[$index], 'value' => $value, 'ref' => $ref, 'error' => $error];
         $this->rebuild();
     }
 
@@ -177,6 +209,11 @@ final class DebugPanelWidget extends OverlayWidget implements FocusableInterface
             $this->invalidate();
         } elseif ($kb->matches($data, 'jump')) {
             $this->activateRow($this->list->selected());
+        } elseif ($kb->matches($data, 'remove_watch')) {
+            $row = $this->rows[$this->list->selected()] ?? null;
+            if (null !== $row && 'watch' === $row['kind'] && null !== $this->onRemoveWatch) {
+                ($this->onRemoveWatch)($row['watchIndex']);
+            }
         }
     }
 
@@ -216,6 +253,7 @@ final class DebugPanelWidget extends OverlayWidget implements FocusableInterface
             'move_up' => [Key::UP],
             'move_down' => [Key::DOWN],
             'jump' => [Key::ENTER],
+            'remove_watch' => [Key::DELETE],
         ];
     }
 
@@ -223,23 +261,41 @@ final class DebugPanelWidget extends OverlayWidget implements FocusableInterface
     {
         $this->state = DebugState::Idle;
         $this->frames = [];
+        $this->watches = [];
         $this->scopes = [];
         $this->children = [];
         $this->expanded = [];
         $this->rows = [];
     }
 
-    /** @param array{kind: string, label: string, frameId: int, path: string, line: int, ref: int, depth: int} $row */
+    /** @param array{kind: string, label: string, frameId: int, path: string, line: int, ref: int, depth: int, watchIndex: int} $row */
     private function rowText(array $row): string
     {
         $indent = str_repeat('  ', $row['depth']);
 
         return match ($row['kind']) {
+            'watch' => $this->watchText($row),
             'section' => ' '.$this->palette->of(Role::Dim).$row['label']."\x1b[39m",
             'frame' => ' '.$indent.$row['label'].'  '.$this->palette->of(Role::TabAccent).$row['path'].':'.($row['line'] + 1)."\x1b[39m",
             'scope' => ' '.$indent.(isset($this->expanded[$row['ref']]) ? '▾ ' : '▸ ').$this->palette->of(Role::Bright).$row['label']."\x1b[39m",
             default => ' '.$indent.($row['ref'] > 0 ? (isset($this->expanded[$row['ref']]) ? '▾ ' : '▸ ') : '  ').$row['label'],
         };
+    }
+
+    /** @param array{kind: string, label: string, frameId: int, path: string, line: int, ref: int, depth: int, watchIndex: int} $row */
+    private function watchText(array $row): string
+    {
+        $indent = str_repeat('  ', $row['depth']);
+        $watch = $this->watches[$row['watchIndex']] ?? null;
+        $arrow = $row['ref'] > 0 ? (isset($this->expanded[$row['ref']]) ? '▾ ' : '▸ ') : '  ';
+        $value = match (true) {
+            null === $watch => '',
+            null !== $watch['error'] => $this->palette->of(Role::Dim).$watch['error']."\x1b[39m",
+            null === $watch['value'] => $this->palette->of(Role::Dim).'…'."\x1b[39m",
+            default => $watch['value'],
+        };
+
+        return ' '.$indent.$arrow.$row['label'].' = '.$value;
     }
 
     /** Rebuild the flattened rows from frames + scopes + expanded children. */
@@ -250,6 +306,15 @@ final class DebugPanelWidget extends OverlayWidget implements FocusableInterface
             $rows[] = self::row('section', 'Frames');
             foreach ($this->frames as $i => $frame) {
                 $rows[] = self::row('frame', "#{$i} {$frame['name']}", frameId: $frame['id'], path: $frame['path'], line: $frame['line'], depth: 1);
+            }
+        }
+        if ([] !== $this->watches) {
+            $rows[] = self::row('section', 'Watches');
+            foreach ($this->watches as $i => $watch) {
+                $rows[] = self::row('watch', $watch['expr'], ref: $watch['ref'], depth: 1, watchIndex: $i);
+                if ($watch['ref'] > 0 && isset($this->expanded[$watch['ref']])) {
+                    $this->appendChildren($rows, $watch['ref'], 2);
+                }
             }
         }
         if ([] !== $this->scopes) {
@@ -266,7 +331,7 @@ final class DebugPanelWidget extends OverlayWidget implements FocusableInterface
         $this->invalidate();
     }
 
-    /** @param list<array{kind: string, label: string, frameId: int, path: string, line: int, ref: int, depth: int}> $rows */
+    /** @param list<array{kind: string, label: string, frameId: int, path: string, line: int, ref: int, depth: int, watchIndex: int}> $rows */
     private function appendChildren(array &$rows, int $reference, int $depth): void
     {
         foreach ($this->children[$reference] ?? [] as $variable) {
@@ -277,10 +342,10 @@ final class DebugPanelWidget extends OverlayWidget implements FocusableInterface
         }
     }
 
-    /** @return array{kind: string, label: string, frameId: int, path: string, line: int, ref: int, depth: int} */
-    private static function row(string $kind, string $label, int $frameId = -1, string $path = '', int $line = 0, int $ref = 0, int $depth = 0): array
+    /** @return array{kind: string, label: string, frameId: int, path: string, line: int, ref: int, depth: int, watchIndex: int} */
+    private static function row(string $kind, string $label, int $frameId = -1, string $path = '', int $line = 0, int $ref = 0, int $depth = 0, int $watchIndex = -1): array
     {
-        return ['kind' => $kind, 'label' => $label, 'frameId' => $frameId, 'path' => $path, 'line' => $line, 'ref' => $ref, 'depth' => $depth];
+        return ['kind' => $kind, 'label' => $label, 'frameId' => $frameId, 'path' => $path, 'line' => $line, 'ref' => $ref, 'depth' => $depth, 'watchIndex' => $watchIndex];
     }
 
     private function activateRow(int $index): void
@@ -294,7 +359,7 @@ final class DebugPanelWidget extends OverlayWidget implements FocusableInterface
 
             return;
         }
-        if (('scope' === $row['kind'] || 'variable' === $row['kind']) && $row['ref'] > 0) {
+        if (\in_array($row['kind'], ['scope', 'variable', 'watch'], true) && $row['ref'] > 0) {
             $this->toggleExpand($row['ref']);
         }
     }

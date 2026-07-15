@@ -1606,6 +1606,34 @@
         <source>Switched to %branch% (tracking %remote%)</source>
         <target>המעבר ל-%branch% הושלם (עוקב אחרי %remote%)</target>
       </trans-unit>
+      <trans-unit id="405">
+        <source>Edit Breakpoint Condition</source>
+        <target>עריכת תנאי נקודת העצירה</target>
+      </trans-unit>
+      <trans-unit id="406">
+        <source>Add Watch Expression</source>
+        <target>הוספת ביטוי מעקב</target>
+      </trans-unit>
+      <trans-unit id="407">
+        <source>Debug: Evaluate Expression</source>
+        <target>ניפוי: הערכת ביטוי</target>
+      </trans-unit>
+      <trans-unit id="408">
+        <source>Breakpoint condition (empty: always break)</source>
+        <target>תנאי נקודת העצירה (ריק: לעצור תמיד)</target>
+      </trans-unit>
+      <trans-unit id="409">
+        <source>Hit count condition (empty: every hit)</source>
+        <target>תנאי מספר פגיעות (ריק: בכל פגיעה)</target>
+      </trans-unit>
+      <trans-unit id="410">
+        <source>Watch expression</source>
+        <target>ביטוי מעקב</target>
+      </trans-unit>
+      <trans-unit id="411">
+        <source>Evaluate expression</source>
+        <target>הערכת ביטוי</target>
+      </trans-unit>
     </body>
   </file>
 </xliff>

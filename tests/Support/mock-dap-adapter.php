@@ -9,13 +9,17 @@ declare(strict_types=1);
  *    launch response arrives, the awkward ordering) + a `runInTerminal` reverse
  *    request (the client must reject it; the rejection is echoed back as a
  *    `reverseRejected` event so tests can observe it).
- *  - setBreakpoints → verified echo; remembered per source path.
+ *  - setBreakpoints → verified echo; remembered per source path. Received
+ *    conditions are echoed as console `output` events ("cond@<line>: <expr>"),
+ *    so tests can assert the wire contract on screen.
  *  - launch → remembers `program`; emits one stdout `output` event.
  *  - configurationDone → `stopped` at the first breakpoint, or `terminated`.
  *  - threads / stackTrace / scopes / variables → scripted data; a stackTrace
  *    while the current line is >= 90 responds with an error (error-path hook).
  *  - next/stepIn/stepOut → advance one line, `stopped {reason: step}`.
  *  - continue → next breakpoint or `terminated` + `exited`.
+ *  - evaluate → $x: 42 with a bump counter ("42#n", re-eval observable);
+ *    $arr: a variablesReference container; anything else errors.
  *  - disconnect → response, then exit.
  */
 
@@ -92,7 +96,11 @@ while (!feof($in)) {
 
         switch ($command) {
             case 'initialize':
-                respond($out, $message, ['supportsConfigurationDoneRequest' => true]);
+                respond($out, $message, [
+                    'supportsConfigurationDoneRequest' => true,
+                    'supportsConditionalBreakpoints' => true,
+                    'supportsHitConditionalBreakpoints' => false,
+                ]);
                 event($out, 'initialized');
                 sendDap($out, ['type' => 'request', 'command' => 'runInTerminal', 'arguments' => (object) []]);
                 break;
@@ -102,6 +110,11 @@ while (!feof($in)) {
                 $lines = array_map(static fn (array $bp): int => (int) $bp['line'], $args['breakpoints'] ?? []);
                 $breakpoints[$path] = $lines;
                 respond($out, $message, ['breakpoints' => array_map(static fn (int $l): array => ['verified' => true, 'line' => $l], $lines)]);
+                foreach ($args['breakpoints'] ?? [] as $bp) {
+                    if (isset($bp['condition'])) {
+                        event($out, 'output', ['category' => 'console', 'output' => 'cond@'.$bp['line'].': '.$bp['condition']."\n"]);
+                    }
+                }
                 break;
 
             case 'launch':
@@ -182,6 +195,18 @@ while (!feof($in)) {
                 } else {
                     event($out, 'terminated');
                     event($out, 'exited', ['exitCode' => 0]);
+                }
+                break;
+
+            case 'evaluate':
+                $expr = (string) ($args['expression'] ?? '');
+                if ('$x' === $expr) {
+                    static $bump = 0;
+                    respond($out, $message, ['result' => '42#'.++$bump, 'variablesReference' => 0]);
+                } elseif ('$arr' === $expr) {
+                    respond($out, $message, ['result' => 'array(2)', 'variablesReference' => 1001]);
+                } else {
+                    respond($out, $message, [], 'cannot evaluate');
                 }
                 break;
 

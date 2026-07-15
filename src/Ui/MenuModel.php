@@ -91,6 +91,8 @@ final class MenuModel
             self::SEP,
             'i:ide_debug',
             'i:debug_toggle_breakpoint',
+            'i:debug_edit_breakpoint',
+            'i:debug_add_watch',
             'i:debug_step_over',
             'i:debug_step_into',
             'i:debug_step_out',

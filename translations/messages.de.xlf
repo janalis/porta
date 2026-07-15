@@ -1606,6 +1606,34 @@
         <source>Switched to %branch% (tracking %remote%)</source>
         <target>Zu %branch% gewechselt (verfolgt %remote%)</target>
       </trans-unit>
+      <trans-unit id="405">
+        <source>Edit Breakpoint Condition</source>
+        <target>Haltepunkt-Bedingung bearbeiten</target>
+      </trans-unit>
+      <trans-unit id="406">
+        <source>Add Watch Expression</source>
+        <target>Überwachungsausdruck hinzufügen</target>
+      </trans-unit>
+      <trans-unit id="407">
+        <source>Debug: Evaluate Expression</source>
+        <target>Debug: Ausdruck auswerten</target>
+      </trans-unit>
+      <trans-unit id="408">
+        <source>Breakpoint condition (empty: always break)</source>
+        <target>Haltepunkt-Bedingung (leer: immer anhalten)</target>
+      </trans-unit>
+      <trans-unit id="409">
+        <source>Hit count condition (empty: every hit)</source>
+        <target>Trefferzahl-Bedingung (leer: jeder Treffer)</target>
+      </trans-unit>
+      <trans-unit id="410">
+        <source>Watch expression</source>
+        <target>Überwachungsausdruck</target>
+      </trans-unit>
+      <trans-unit id="411">
+        <source>Evaluate expression</source>
+        <target>Ausdruck auswerten</target>
+      </trans-unit>
     </body>
   </file>
 </xliff>

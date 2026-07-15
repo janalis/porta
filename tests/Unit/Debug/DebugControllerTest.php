@@ -12,6 +12,7 @@ use Porta\Debug\DebugAdapters;
 use Porta\Debug\DebugController;
 use Porta\Debug\DebugSessionState;
 use Porta\Debug\EditorDecorations;
+use Porta\Debug\WatchStore;
 use Porta\Editor\Document;
 use Porta\Editor\FileOpener;
 use Porta\Event\DebugStatusChanged;
@@ -93,6 +94,7 @@ final class DebugControllerTest extends TestCase
             $dispatcher,
             $state,
             new EditorDecorations($breakpoints, $state, $this->editor),
+            new WatchStore(),
         );
     }
 
@@ -247,5 +249,115 @@ final class DebugControllerTest extends TestCase
         // Re-applying decorations for another file clears this file's marks.
         $controller->applyEditorDecorations('/p/clean.php');
         $this->assertStringNotContainsString('●', implode("\n", $this->editor->render(new RenderContext(80, 8))));
+    }
+
+    public function testEditBreakpointPromptsStoreConditionAndSyncLive(): void
+    {
+        $controller = $this->controller();
+        $this->pauseAtBreakpoint($controller);
+        $this->editor->jumpTo(1, 0); // off the stopped line — its ▶ outranks the breakpoint glyphs
+
+        $controller->editBreakpointAtCaret();
+        foreach (str_split('$x > 1') as $ch) {
+            $this->editor->handleInput($ch);
+        }
+        $this->editor->handleInput("\r"); // condition submitted → hit-count prompt chains
+        $this->editor->handleInput('3');
+        $this->editor->handleInput("\r");
+
+        $this->assertSame('/p/prog.php', $this->client->argumentsOf('setBreakpoints')['source']['path']);
+        $this->assertStringContainsString('◆', implode("\n", $this->editor->render(new RenderContext(80, 8))), 'the conditional breakpoint renders a diamond');
+
+        // Re-editing prefills; submitting both prompts empty clears the conditions.
+        $controller->editBreakpointAtCaret();
+        foreach (range(1, 12) as $_) {
+            $this->editor->handleInput("\x7f");
+        }
+        $this->editor->handleInput("\r");
+        foreach (range(1, 6) as $_) {
+            $this->editor->handleInput("\x7f");
+        }
+        $this->editor->handleInput("\r");
+        $screen = implode("\n", $this->editor->render(new RenderContext(80, 8)));
+        $this->assertStringNotContainsString('◆', $screen, 'cleared conditions drop the diamond');
+        $this->assertStringContainsString('●', $screen, 'the breakpoint itself survives');
+
+        $controllerWithoutFile = $this->controller(withFile: false);
+        $controllerWithoutFile->editBreakpointAtCaret();
+        $this->assertStringContainsString('Nothing to debug', $this->flashed());
+    }
+
+    public function testWatchesEvaluatePerStopAndRemoveThroughThePanel(): void
+    {
+        $controller = $this->controller();
+        $this->client->responses['evaluate'] = [['result' => '42', 'variablesReference' => 0], null];
+        $this->pauseAtBreakpoint($controller);
+
+        $controller->addWatch();
+        foreach (str_split('$x') as $ch) {
+            $this->editor->handleInput($ch);
+        }
+        $this->editor->handleInput("\r");
+        $this->assertSame(['expression' => '$x', 'context' => 'watch', 'frameId' => 1], $this->client->argumentsOf('evaluate'), 'a new watch evaluates against the paused frame');
+        $panelScreen = implode("\n", array_map(AnsiUtils::stripAnsiCodes(...), $this->panel->render(new RenderContext(100, 14))));
+        $this->assertStringContainsString('$x = 42', $panelScreen);
+
+        // An empty submission adds nothing; the blank prompt is a no-op.
+        $controller->addWatch();
+        $this->editor->handleInput("\r");
+
+        // A frame jump re-evaluates against the new frame.
+        $evaluatesBefore = \count(array_filter($this->client->commands(), static fn (string $c): bool => 'evaluate' === $c));
+        $this->panel->handleClick(3); // the #1 frame row
+        $this->assertSame($evaluatesBefore + 1, \count(array_filter($this->client->commands(), static fn (string $c): bool => 'evaluate' === $c)));
+        $this->assertSame(['expression' => '$x', 'context' => 'watch', 'frameId' => 2], $this->client->argumentsOf('evaluate'));
+
+        // Removing through the panel drops the expression and its row. The
+        // frame click left the selection on row 2 (#1) — two downs reach the
+        // watch row (3 Watches, 4 $x).
+        for ($i = 0; $i < 2; ++$i) {
+            $this->panel->handleInput("\x1b[B");
+        }
+        $this->panel->handleInput("\x1b[3~");
+        $panelScreen = implode("\n", array_map(AnsiUtils::stripAnsiCodes(...), $this->panel->render(new RenderContext(100, 14))));
+        $this->assertStringNotContainsString('Watches', $panelScreen, 'the last watch removed drops the section');
+    }
+
+    public function testAddingAWatchWhileNotPausedDefersEvaluation(): void
+    {
+        $controller = $this->controller();
+        $controller->addWatch();
+        foreach (str_split('$x') as $ch) {
+            $this->editor->handleInput($ch);
+        }
+        $this->editor->handleInput("\r");
+        $this->assertNotContains('evaluate', $this->client->commands(), 'no session — nothing to evaluate against');
+    }
+
+    public function testEvaluatePromptFlashesResultOrError(): void
+    {
+        $controller = $this->controller();
+        $this->client->responses['evaluate'] = [['result' => "'porta'", 'variablesReference' => 0], null];
+        $this->pauseAtBreakpoint($controller);
+
+        $controller->evaluatePrompt();
+        foreach (str_split('$name') as $ch) {
+            $this->editor->handleInput($ch);
+        }
+        $this->editor->handleInput("\r");
+        $this->assertSame(['expression' => '$name', 'context' => 'repl', 'frameId' => 1], $this->client->argumentsOf('evaluate'));
+        $this->assertStringContainsString("\$name = 'porta'", $this->flashed());
+
+        $this->client->responses['evaluate'] = [[], 'oops'];
+        $controller->evaluatePrompt();
+        foreach (str_split('$bad') as $ch) {
+            $this->editor->handleInput($ch);
+        }
+        $this->editor->handleInput("\r");
+        $this->assertStringContainsString('$bad = oops', $this->flashed());
+
+        $controller->evaluatePrompt();
+        $this->editor->handleInput("\r"); // empty expression: no request
+        $this->assertStringContainsString('$bad = oops', $this->flashed(), 'flash unchanged');
     }
 }

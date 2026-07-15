@@ -133,6 +133,9 @@ final class CodeEditorWidget extends AbstractWidget implements ActiveFileProvide
     /** @var list<int> 0-based lines with a breakpoint (● in the gutter) */
     private array $breakpointLines = [];
 
+    /** @var list<int> the subset of breakpoint lines carrying a condition (◆ in the gutter) */
+    private array $conditionalBreakpointLines = [];
+
     /** The debugger's stopped line (full-width band), or null when not paused here. */
     private ?int $debugLine = null;
 
@@ -279,6 +282,7 @@ final class CodeEditorWidget extends AbstractWidget implements ActiveFileProvide
         $this->actions = $this->newEditorActions($document, $this->actions->clipboardValue());
         $this->inlayHints = [];
         $this->breakpointLines = []; // the debug controller re-applies per buffer
+        $this->conditionalBreakpointLines = [];
         $this->debugLine = null;
         $this->closeCompletion();
         $this->overlayHost->closeList();
@@ -483,11 +487,13 @@ final class CodeEditorWidget extends AbstractWidget implements ActiveFileProvide
     }
 
     /**
-     * @param list<int> $lines 0-based lines carrying a breakpoint in this file
+     * @param list<int> $lines            0-based lines carrying a breakpoint in this file
+     * @param list<int> $conditionalLines the subset carrying a condition (◆ instead of ●)
      */
-    public function setBreakpointLines(array $lines): void
+    public function setBreakpointLines(array $lines, array $conditionalLines = []): void
     {
         $this->breakpointLines = $lines;
+        $this->conditionalBreakpointLines = $conditionalLines;
         $this->invalidate();
     }
 
@@ -1022,6 +1028,7 @@ final class CodeEditorWidget extends AbstractWidget implements ActiveFileProvide
             $this->breakpointLines,
             $this->debugLine,
             $this->cursorStyle,
+            $this->conditionalBreakpointLines,
         );
         $result = $assembler->assemble($geo, $decorations, $sticky, $highlighted, $stripe, $contentRows, $vScroll, $cursorLine, $cursorDisplayCol, $hScroll);
 

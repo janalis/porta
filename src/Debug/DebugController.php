@@ -28,6 +28,8 @@ final class DebugController implements DebugSessionObserver
     private ?TerminalBuffer $outputBuffer = null;
     /** @var array<int, array{id: int, name: string, path: string, line: int}> live frames by id (absolute paths) */
     private array $frames = [];
+    /** The frame the panel last selected — watches and evaluate run against it. */
+    private ?int $currentFrameId = null;
 
     public function __construct(
         private readonly BreakpointStore $breakpoints,
@@ -44,8 +46,15 @@ final class DebugController implements DebugSessionObserver
         private readonly EventDispatcherInterface $dispatcher,
         private readonly DebugSessionState $state,
         private readonly EditorDecorations $decorations,
+        private readonly WatchStore $watches,
     ) {
         $this->panel->onFrameSelected(fn (int $frameId) => $this->jumpToFrame($frameId));
+        $this->panel->onRemoveWatch(function (int $index): void {
+            $this->watches->remove($index);
+            $this->panel->setWatches($this->watches->all());
+            $this->reevaluateWatches();
+            $this->tui->requestRender();
+        });
         $this->panel->onExpandVariable(function (int $reference, callable $deliver): void {
             $this->session?->variables($reference, fn (array $variables) => $deliver($variables));
             $this->tui->requestRender();
@@ -93,11 +102,44 @@ final class DebugController implements DebugSessionObserver
     public function toggleBreakpoint(string $path, int $line): void
     {
         $this->breakpoints->toggle($path, $line);
-        $lines = $this->breakpoints->linesFor($path);
-        if ($path === $this->editor->getFilePath()) {
-            $this->editor->setBreakpointLines($lines);
+        $this->syncBreakpoints($path);
+    }
+
+    /** Ctrl+Shift+F8: edit (or create) the caret line's breakpoint condition. */
+    public function editBreakpointAtCaret(): void
+    {
+        $path = $this->editor->getFilePath();
+        if (null === $path) {
+            $this->notifier->flash($this->translator->trans('Nothing to debug — open a file first'));
+
+            return;
         }
-        $this->session?->setBreakpoints($path, $lines);
+        $line = $this->editor->getDocument()->getCursorLine();
+        $existing = $this->breakpoints->conditionAt($path, $line);
+        $this->editor->openPrompt($this->translator->trans('Breakpoint condition (empty: always break)'), $existing['condition'] ?? '', function (string $condition) use (
+            $path,
+            $line,
+            $existing,
+        ): void {
+            $this->editor->openPrompt($this->translator->trans('Hit count condition (empty: every hit)'), $existing['hitCondition'] ?? '', function (string $hitCondition) use (
+                $path,
+                $line,
+                $condition,
+            ): void {
+                $this->breakpoints->setCondition($path, $line, '' === trim($condition) ? null : trim($condition), '' === trim($hitCondition) ? null : trim($hitCondition));
+                $this->syncBreakpoints($path);
+            });
+        });
+        $this->tui->requestRender();
+    }
+
+    /** Refresh the gutter and push the file's breakpoints to a live session. */
+    private function syncBreakpoints(string $path): void
+    {
+        if ($path === $this->editor->getFilePath()) {
+            $this->editor->setBreakpointLines($this->breakpoints->linesFor($path), $this->breakpoints->conditionalLinesFor($path));
+        }
+        $this->session?->setBreakpoints($path, $this->breakpoints->breakpointsFor($path));
         $this->tui->requestRender();
     }
 
@@ -142,9 +184,11 @@ final class DebugController implements DebugSessionObserver
 
         $this->state->clear();
         $this->frames = [];
+        $this->currentFrameId = null;
         $this->outputBuffer = new TerminalBuffer();
         $this->terminalPanel->open($this->translator->trans('Debug: %label%', ['%label%' => basename($path)]), $this->outputBuffer);
         $this->panel->open(basename($path));
+        $this->panel->setWatches($this->watches->all());
 
         $this->session = new DapSession(
             $this->clients->create($config->adapterArgv),
@@ -212,6 +256,8 @@ final class DebugController implements DebugSessionObserver
 
     private function loadScopes(DapSession $session, int $frameId): void
     {
+        $this->currentFrameId = $frameId;
+        $this->reevaluateWatches();
         $session->scopes($frameId, function (array $scopes) use ($session): void {
             $this->panel->setScopes($scopes);
             foreach ($scopes as $scope) {
@@ -242,6 +288,52 @@ final class DebugController implements DebugSessionObserver
         $this->editor->jumpTo($frame['line'], 0);
         $this->loadScopes($session, $frameId);
         $this->tui->requestRender();
+    }
+
+    /** Ctrl+Shift+F9: add a watch expression (evaluated immediately when paused). */
+    public function addWatch(): void
+    {
+        $this->editor->openPrompt($this->translator->trans('Watch expression'), '', function (string $expression): void {
+            $expression = trim($expression);
+            if ('' === $expression) {
+                return;
+            }
+            $this->watches->add($expression);
+            $this->panel->setWatches($this->watches->all());
+            $this->reevaluateWatches();
+        });
+        $this->tui->requestRender();
+    }
+
+    /** The palette's one-shot evaluate (paused only): result lands in a flash. */
+    public function evaluatePrompt(): void
+    {
+        $this->editor->openPrompt($this->translator->trans('Evaluate expression'), '', function (string $expression): void {
+            $expression = trim($expression);
+            if ('' === $expression || null === $this->session) {
+                return;
+            }
+            $this->session->evaluate($expression, $this->currentFrameId, 'repl', function (array $result) use ($expression): void {
+                $this->notifier->flash($expression.' = '.(null !== $result['error'] ? $result['error'] : $result['result']), 5.0);
+                $this->tui->requestRender();
+            });
+        });
+        $this->tui->requestRender();
+    }
+
+    /** Evaluate every watch against the current frame; results land index-addressed. */
+    private function reevaluateWatches(): void
+    {
+        $session = $this->session;
+        if (null === $session || DebugState::Paused !== $session->state()) {
+            return;
+        }
+        foreach ($this->watches->all() as $index => $expression) {
+            $session->evaluate($expression, $this->currentFrameId, 'watch', function (array $result) use ($index): void {
+                $this->panel->setWatchResult($index, $result['result'], $result['variablesReference'], $result['error']);
+                $this->tui->requestRender();
+            });
+        }
     }
 
     public function onContinued(): void
