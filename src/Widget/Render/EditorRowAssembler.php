@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Porta\Widget\Render;
 
+use Porta\Editor\Caret;
 use Porta\Editor\DiagnosticStyle;
 use Porta\Editor\Document;
 use Porta\Editor\FoldModel;
@@ -219,7 +220,7 @@ final readonly class EditorRowAssembler
      * inlay hints, and the collapsed-fold marker.
      *
      * @param array{startLine: int, startCol: int, endLine: int, endCol: int}|null $selection null with multiple carets: every caret draws uniformly through the records
-     * @param list<array{line: int, col: int, anchorLine: int, anchorCol: int}>    $carets
+     * @param list<Caret>    $carets
      * @param list<array{0: int, 1: int, 2: int}>                                  $occurrences
      * @param array{0: array{0: int, 1: int}, 1: array{0: int, 1: int}}|null       $brackets
      * @param list<array{col: int, endCol?: int, message: string, severity: int}>  $lineDiags

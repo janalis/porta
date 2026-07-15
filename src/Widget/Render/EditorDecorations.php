@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace Porta\Widget\Render;
 
+use Porta\Editor\Caret;
+
 /**
  * The per-line decoration inputs for one editor frame, gathered once before the
  * row loop: whether multiple carets are active (which suppresses the range
@@ -16,7 +18,7 @@ final readonly class EditorDecorations
 {
     /**
      * @param array{startLine: int, startCol: int, endLine: int, endCol: int}|null $selection    null while multiple carets are active
-     * @param list<array{line: int, col: int, anchorLine: int, anchorCol: int}>    $carets
+     * @param list<Caret>    $carets
      * @param list<array{0: int, 1: int, 2: int}>                                  $occurrences
      * @param array{0: array{0: int, 1: int}, 1: array{0: int, 1: int}}|null       $brackets
      */

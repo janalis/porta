@@ -54,7 +54,7 @@ final class MultiCaret
      * caret carries a full selection anchor `(anchorLine, anchorCol)`;
      * `anchorLine === line && anchorCol === col` means a bare point (no selection).
      *
-     * @var list<array{line: int, col: int, anchorLine: int, anchorCol: int}>
+     * @var list<Caret>
      */
     private array $extraCarets = [];
 
@@ -73,7 +73,7 @@ final class MultiCaret
         return [] !== $this->extraCarets;
     }
 
-    /** @return list<array{line: int, col: int, anchorLine: int, anchorCol: int}> secondary carets (for tests/render) */
+    /** @return list<Caret> secondary carets (for tests/render) */
     public function carets(): array
     {
         return $this->extraCarets;
@@ -83,7 +83,7 @@ final class MultiCaret
      * Every caret (primary + extras) with its selection, for rendering all carets
      * the same way when multiple are active.
      *
-     * @return list<array{line: int, col: int, anchorLine: int, anchorCol: int}>
+     * @return list<Caret>
      */
     public function allCarets(): array
     {
@@ -102,7 +102,7 @@ final class MultiCaret
      * Replace the secondary carets wholesale (used to restore them on undo/redo);
      * the primary caret stays the Document's own cursor.
      *
-     * @param list<array{line: int, col: int, anchorLine: int, anchorCol: int}> $extras
+     * @param list<Caret> $extras
      */
     public function setExtras(array $extras): void
     {
@@ -125,7 +125,7 @@ final class MultiCaret
         $col = $doc->byteColForDisplayCol($targetLine, $displayCol);
         // The newly added line becomes the primary; the old primary joins the
         // extras, so growing up/down keeps the "active" caret at the frontier.
-        $this->extraCarets[] = $this->point($doc->getCursorLine(), $doc->getCursorCol());
+        $this->extraCarets[] = Caret::point($doc->getCursorLine(), $doc->getCursorCol());
         $doc->setCursor($targetLine, $col);
         $this->dedupeCarets();
         ($this->onInvalidate)();
@@ -149,7 +149,7 @@ final class MultiCaret
             if ([$line, $col] <= $current) {
                 continue;
             }
-            $this->extraCarets[] = $this->point($doc->getCursorLine(), $doc->getCursorCol());
+            $this->extraCarets[] = Caret::point($doc->getCursorLine(), $doc->getCursorCol());
             $doc->setCursor($line, $col + \strlen($word));
             $this->dedupeCarets();
             ($this->onInvalidate)();
@@ -175,7 +175,7 @@ final class MultiCaret
 
                 continue;
             }
-            $this->extraCarets[] = $this->point($line, $end);
+            $this->extraCarets[] = Caret::point($line, $end);
         }
         $this->dedupeCarets();
         ($this->onInvalidate)();
@@ -269,7 +269,7 @@ final class MultiCaret
         $records = $this->caretRecords();
         // Bottom-to-top so earlier (higher) edits never invalidate the
         // positions of carets still to be processed.
-        usort($records, static fn (array $a, array $b) => [$b['line'], $b['col']] <=> [$a['line'], $a['col']]);
+        usort($records, static fn (Caret $a, Caret $b) => [$b->line, $b->col] <=> [$a->line, $a->col]);
 
         $results = [];
         $doc->transact(function () use ($doc, $records, $op, &$results): void {
@@ -315,7 +315,7 @@ final class MultiCaret
         $this->document->setCursor($pl, $pc);
         $this->extraCarets = [];
         foreach (\array_slice($positions, offset: 1) as [$line, $col]) {
-            $this->extraCarets[] = $this->point($line, $col);
+            $this->extraCarets[] = Caret::point($line, $col);
         }
     }
 
@@ -324,63 +324,47 @@ final class MultiCaret
     {
         $positions = [[$this->document->getCursorLine(), $this->document->getCursorCol()]];
         foreach ($this->extraCarets as $caret) {
-            $positions[] = [$caret['line'], $caret['col']];
+            $positions[] = [$caret->line, $caret->col];
         }
 
         return $positions;
     }
 
     /**
-     * A point-caret record (no selection).
-     *
-     * @return array{line: int, col: int, anchorLine: int, anchorCol: int}
-     */
-    private function point(int $line, int $col): array
-    {
-        return ['line' => $line, 'col' => $col, 'anchorLine' => $line, 'anchorCol' => $col];
-    }
-
-    /**
      * The primary caret (the Document's own cursor + selection) as a record; the
      * anchor is whichever end of the selection is not the cursor (else the cursor).
-     *
-     * @return array{line: int, col: int, anchorLine: int, anchorCol: int}
      */
-    private function primaryRecord(): array
+    private function primaryRecord(): Caret
     {
         $doc = $this->document;
         $line = $doc->getCursorLine();
         $col = $doc->getCursorCol();
         $range = $doc->getSelectionRange();
         if (null === $range) {
-            return $this->point($line, $col);
+            return Caret::point($line, $col);
         }
         $atStart = $range['startLine'] === $line && $range['startCol'] === $col;
         $anchorLine = $atStart ? $range['endLine'] : $range['startLine'];
         $anchorCol = $atStart ? $range['endCol'] : $range['startCol'];
 
-        return ['line' => $line, 'col' => $col, 'anchorLine' => $anchorLine, 'anchorCol' => $anchorCol];
+        return new Caret($line, $col, $anchorLine, $anchorCol);
     }
 
-    /** @return list<array{line: int, col: int, anchorLine: int, anchorCol: int}> primary + extras, with selections */
+    /** @return list<Caret> primary + extras, with selections */
     private function caretRecords(): array
     {
         return [$this->primaryRecord(), ...$this->extraCarets];
     }
 
-    /**
-     * Restore a caret's selection (or bare cursor) onto the Document.
-     *
-     * @param array{line: int, col: int, anchorLine: int, anchorCol: int} $record
-     */
-    private function restore(array $record): void
+    /** Restore a caret's selection (or bare cursor) onto the Document. */
+    private function restore(Caret $record): void
     {
-        if ($record['anchorLine'] === $record['line'] && $record['anchorCol'] === $record['col']) {
-            $this->document->setCursor($record['line'], $record['col']);
+        if (!$record->hasSelection()) {
+            $this->document->setCursor($record->line, $record->col);
 
             return;
         }
-        $this->document->setSelectionRange($record['anchorLine'], $record['anchorCol'], $record['line'], $record['col']);
+        $this->document->setSelectionRange($record->anchorLine, $record->anchorCol, $record->line, $record->col);
     }
 
     /**
@@ -406,21 +390,21 @@ final class MultiCaret
      * Reduce a set of caret records to the primary (topmost) plus sorted, deduped
      * extras, preserving each caret's selection anchor.
      *
-     * @param list<array{line: int, col: int, anchorLine: int, anchorCol: int}> $records
+     * @param list<Caret> $records
      */
     private function rebuildFromRecords(array $records): void
     {
-        usort($records, static fn (array $a, array $b) => [$a['line'], $a['col']] <=> [$b['line'], $b['col']]);
+        usort($records, static fn (Caret $a, Caret $b) => [$a->line, $a->col] <=> [$b->line, $b->col]);
         $seen = [];
         $unique = [];
         foreach ($records as $record) {
-            $key = $record['line'].':'.$record['col'];
+            $key = $record->line.':'.$record->col;
             if (!array_key_exists($key, $seen)) {
                 $seen[$key] = true;
                 $unique[] = $record;
             }
         }
-        /** @var non-empty-list<array{line: int, col: int, anchorLine: int, anchorCol: int}> $unique */
+        /** @var non-empty-list<Caret> $unique */
         $this->restore($unique[0]);
         $this->extraCarets = \array_slice($unique, offset: 1);
     }
@@ -442,7 +426,7 @@ final class MultiCaret
             $aByte = $doc->byteColForDisplayCol($row, $anchorDisplayCol);
             $cByte = $doc->byteColForDisplayCol($row, $caretDisplayCol);
             if ($row !== $caretRow) {
-                $this->extraCarets[] = ['line' => $row, 'col' => $cByte, 'anchorLine' => $row, 'anchorCol' => $aByte];
+                $this->extraCarets[] = new Caret($row, $cByte, $row, $aByte);
 
                 continue;
             }
@@ -470,14 +454,14 @@ final class MultiCaret
                 return; // never remove the only caret
             }
             $promoted = array_shift($this->extraCarets);
-            $doc->setCursor($promoted['line'], $promoted['col']);
+            $doc->setCursor($promoted->line, $promoted->col);
             ($this->onInvalidate)();
 
             return;
         }
 
         foreach ($this->extraCarets as $i => $caret) {
-            if (!($caret['line'] === $line && $caret['col'] === $col)) {
+            if (!($caret->line === $line && $caret->col === $col)) {
                 continue;
             }
 
@@ -488,7 +472,7 @@ final class MultiCaret
         }
 
         // New caret: make the click the primary, push the old primary to extras.
-        $this->extraCarets[] = $this->point($doc->getCursorLine(), $doc->getCursorCol());
+        $this->extraCarets[] = Caret::point($doc->getCursorLine(), $doc->getCursorCol());
         $doc->setCursor($line, $col);
         $this->dedupeCarets();
         ($this->onInvalidate)();
@@ -498,17 +482,13 @@ final class MultiCaret
     public function selectedBlockText(): string
     {
         $records = $this->caretRecords();
-        usort($records, static fn (array $a, array $b) => [$a['line'], $a['col']] <=> [$b['line'], $b['col']]);
+        usort($records, static fn (Caret $a, Caret $b) => [$a->line, $a->col] <=> [$b->line, $b->col]);
 
         return implode("\n", array_map($this->rangeText(...), $records));
     }
 
-    /**
-     * The text of a caret's selection (possibly spanning lines); '' for a point.
-     *
-     * @param array{line: int, col: int, anchorLine: int, anchorCol: int} $record
-     */
-    private function rangeText(array $record): string
+    /** The text of a caret's selection (possibly spanning lines); '' for a point. */
+    private function rangeText(Caret $record): string
     {
         [$sl, $sc, $el, $ec] = $this->orderedRange($record);
 
@@ -518,14 +498,12 @@ final class MultiCaret
     /**
      * Normalize a caret record to [startLine, startCol, endLine, endCol].
      *
-     * @param array{line: int, col: int, anchorLine: int, anchorCol: int} $record
-     *
      * @return array{int, int, int, int}
      */
-    private function orderedRange(array $record): array
+    private function orderedRange(Caret $record): array
     {
-        $a = [$record['anchorLine'], $record['anchorCol']];
-        $b = [$record['line'], $record['col']];
+        $a = [$record->anchorLine, $record->anchorCol];
+        $b = [$record->line, $record->col];
         [$start, $end] = $a <= $b ? [$a, $b] : [$b, $a];
 
         return [$start[0], $start[1], $end[0], $end[1]];
@@ -543,7 +521,7 @@ final class MultiCaret
         $seen = [$primary[0].':'.$primary[1] => true];
         $unique = [];
         foreach ($this->extraCarets as $caret) {
-            $key = $caret['line'].':'.$caret['col'];
+            $key = $caret->line.':'.$caret->col;
             if (!array_key_exists($key, $seen)) {
                 $seen[$key] = true;
                 $unique[] = $caret;

@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Porta\Tests\Unit\Widget;
 
 use PHPUnit\Framework\TestCase;
+use Porta\Editor\Caret;
 use Porta\Tests\Support\FakeEditorFileActions;
 use Porta\Widget\CodeEditorWidget;
 use Porta\Widget\EditorCallbacks;
@@ -153,7 +154,7 @@ final class CodeEditorMultiCaretTest extends TestCase
         $editor->addOrRemoveCaretAt(1, 6); // relRow 1 → line 1, relCol 6 → col 0
         $extras = $editor->getExtraCarets();
         $this->assertCount(1, $extras, 'the middle caret was removed, the line-0 one stays');
-        $this->assertSame(0, $extras[0]['line'], 'the surviving extra is the line-0 caret the loop skipped over');
+        $this->assertSame(0, $extras[0]->line, 'the surviving extra is the line-0 caret the loop skipped over');
     }
 
     public function testMovementMovesAllCaretsAndDedupes(): void
@@ -270,7 +271,7 @@ final class CodeEditorMultiCaretTest extends TestCase
         $carets = $editor->getExtraCarets();
         $this->assertCount(2, $carets, 'rows 0 and 1 are extras; the caret row 2 is primary');
         // The short middle line "bb" clamps its selection to the line end.
-        $this->assertSame(['line' => 1, 'col' => 2, 'anchorLine' => 1, 'anchorCol' => 1], $carets[1]);
+        $this->assertEquals(new Caret(1, 2, 1, 1), $carets[1]);
     }
 
     public function testMouseColumnSelectionZeroWidthMakesVerticalCarets(): void
@@ -283,8 +284,8 @@ final class CodeEditorMultiCaretTest extends TestCase
         $this->assertTrue($editor->hasMultipleCarets());
         $this->assertFalse($editor->getDocument()->hasSelection(), 'the caret row has an empty selection');
         foreach ($editor->getExtraCarets() as $caret) {
-            $this->assertSame($caret['col'], $caret['anchorCol']);
-            $this->assertSame($caret['line'], $caret['anchorLine']);
+            $this->assertSame($caret->col, $caret->anchorCol);
+            $this->assertSame($caret->line, $caret->anchorLine);
         }
     }
 
@@ -299,7 +300,7 @@ final class CodeEditorMultiCaretTest extends TestCase
 
         $this->assertSame("aXa\nbX\ncXc\n", $editor->getDocument()->getText());
         foreach ($editor->getExtraCarets() as $caret) {
-            $this->assertSame($caret['col'], $caret['anchorCol'], 'carets collapse to points after the edit');
+            $this->assertSame($caret->col, $caret->anchorCol, 'carets collapse to points after the edit');
         }
     }
 

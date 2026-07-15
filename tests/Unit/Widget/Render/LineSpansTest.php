@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Porta\Tests\Unit\Widget\Render;
 
 use PHPUnit\Framework\TestCase;
+use Porta\Editor\Caret;
 use Porta\Editor\Document;
 use Porta\Ui\ColorPalette;
 use Porta\Ui\Role;
@@ -21,7 +22,7 @@ final class LineSpansTest extends TestCase
             $doc,
             0,
             ['startLine' => 0, 'startCol' => 0, 'endLine' => 0, 'endCol' => 5],
-            [['line' => 0, 'col' => 3, 'anchorLine' => 0, 'anchorCol' => 3]],
+            [new Caret(0, 3, 0, 3)],
             [['start' => 6, 'end' => 11, 'current' => true]],
             [[0, 0, 5]],
             [[0, 4]],
@@ -61,7 +62,7 @@ final class LineSpansTest extends TestCase
                 $doc,
                 $line,
                 null,
-                [['line' => 0, 'col' => 2, 'anchorLine' => 2, 'anchorCol' => 4]],
+                [new Caret(0, 2, 2, 4)],
                 [],
                 [],
                 null,
@@ -76,7 +77,7 @@ final class LineSpansTest extends TestCase
     public function testCollapsedCaretDrawsOnlyItsCell(): void
     {
         $doc = new Document("ab\n");
-        $result = LineSpans::forLine($doc, 0, null, [['line' => 0, 'col' => 2, 'anchorLine' => 0, 'anchorCol' => 2]], [], [], null, [], ColorPalette::dark());
+        $result = LineSpans::forLine($doc, 0, null, [new Caret(0, 2, 0, 2)], [], [], null, [], ColorPalette::dark());
 
         $this->assertCount(1, $result['spans'], 'no selection span for a collapsed caret');
         $this->assertSame([2, 3, "\x1b[7m", "\x1b[27m", null], $result['spans'][0]);
@@ -90,7 +91,7 @@ final class LineSpansTest extends TestCase
             $doc,
             1,
             ['startLine' => 0, 'startCol' => 0, 'endLine' => 0, 'endCol' => 2],
-            [['line' => 0, 'col' => 1, 'anchorLine' => 0, 'anchorCol' => 1]],
+            [new Caret(0, 1, 0, 1)],
             [],
             [[0, 0, 3]],
             [[0, 1]],

@@ -7,6 +7,7 @@ namespace Porta\Tests\Unit\Editor;
 use PHPUnit\Framework\TestCase;
 use Porta\Config\ActionCatalog;
 use Porta\Editor\AutoPairService;
+use Porta\Editor\Caret;
 use Porta\Editor\Document;
 use Porta\Editor\EditorActions;
 use Porta\Editor\EditorCompletion;
@@ -277,7 +278,7 @@ final class EditorActionsTest extends TestCase
     private function selectBothFoos(): void
     {
         $this->doc->setSelectionRange(0, 0, 0, 3);
-        $this->multiCaret->setExtras([['line' => 1, 'col' => 3, 'anchorLine' => 1, 'anchorCol' => 0]]);
+        $this->multiCaret->setExtras([new Caret(1, 3, 1, 0)]);
         $this->assertTrue($this->multiCaret->hasMultiple());
     }
 

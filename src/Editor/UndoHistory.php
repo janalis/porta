@@ -13,7 +13,6 @@ use function Symfony\Component\Clock\now;
  * over ({lines, line, col}); this class never inspects it, it only stores and
  * returns it. The clock is injectable so coalescing is deterministically testable.
  *
- * @phpstan-type Caret array{line: int, col: int, anchorLine: int, anchorCol: int}
  * @phpstan-type Snapshot array{lines: string[], line: int, col: int, anchor: array{line: int, col: int}|null, extras: list<Caret>}
  */
 final class UndoHistory

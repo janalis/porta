@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Porta\Widget\Render;
 
+use Porta\Editor\Caret;
 use Porta\Editor\DiagnosticStyle;
 use Porta\Editor\Document;
 use Porta\Ui\Palette;
@@ -23,7 +24,7 @@ final class LineSpans
     /**
      * @param array{startLine: int, startCol: int, endLine: int, endCol: int}|null $selection   primary selection (null with multiple carets:
      *                                                                                          every caret then draws uniformly via $carets)
-     * @param list<array{line: int, col: int, anchorLine: int, anchorCol: int}>    $carets      all carets incl. the primary (multi-caret mode)
+     * @param list<Caret>    $carets      all carets incl. the primary (multi-caret mode)
      * @param list<array{start: int, end: int, current: bool}>                     $matches     search matches on this line (byte cols)
      * @param list<array{0: int, 1: int, 2: int}>                                  $occurrences [line, startDisp, endDisp] identifier occurrences
      * @param list<array{0: int, 1: int}>|null                                     $brackets    [line, displayCol] matching-bracket cells
@@ -81,15 +82,15 @@ final class LineSpans
         foreach ($carets as $caret) {
             // Each caret's selection (possibly spanning lines), drawn before
             // the caret cell so the reverse-video cell layers on top.
-            $sl = min($caret['line'], $caret['anchorLine']);
-            $el = max($caret['line'], $caret['anchorLine']);
-            if (($caret['line'] !== $caret['anchorLine'] || $caret['col'] !== $caret['anchorCol']) && $lineIndex >= $sl && $lineIndex <= $el) {
+            $sl = min($caret->line, $caret->anchorLine);
+            $el = max($caret->line, $caret->anchorLine);
+            if (($caret->line !== $caret->anchorLine || $caret->col !== $caret->anchorCol) && $lineIndex >= $sl && $lineIndex <= $el) {
                 [, $startCol, , $endCol] = self::caretRange($caret);
                 $spans[] = self::selectionSpan($doc, $lineIndex, $sl, $startCol, $el, $endCol, $palette);
             }
             // The caret cell (reverse video), for the primary and extras alike.
-            if ($caret['line'] === $lineIndex) {
-                $col = $doc->displayColAt($lineIndex, $caret['col']);
+            if ($caret->line === $lineIndex) {
+                $col = $doc->displayColAt($lineIndex, $caret->col);
                 $spans[] = [$col, $col + 1, Sgr::REVERSE, "\x1b[27m", null];
                 // An end-of-line caret needs a padded cell to invert.
                 $padTo = max($padTo, $col + 1);
@@ -117,14 +118,12 @@ final class LineSpans
     /**
      * Ordered [startLine, startCol, endLine, endCol] of a caret record's selection.
      *
-     * @param array{line: int, col: int, anchorLine: int, anchorCol: int} $caret
-     *
      * @return array{int, int, int, int}
      */
-    private static function caretRange(array $caret): array
+    private static function caretRange(Caret $caret): array
     {
-        $a = [$caret['anchorLine'], $caret['anchorCol']];
-        $b = [$caret['line'], $caret['col']];
+        $a = [$caret->anchorLine, $caret->anchorCol];
+        $b = [$caret->line, $caret->col];
         [$start, $end] = $a <= $b ? [$a, $b] : [$b, $a];
 
         return [$start[0], $start[1], $end[0], $end[1]];

@@ -53,10 +53,10 @@ final class Document
      * rejected — undo/redo regressions are the costliest failure class here and
      * the closures already keep the coupling to two narrow, optional hooks.
      *
-     * @var (\Closure(): list<array{line: int, col: int, anchorLine: int, anchorCol: int}>)|null
+     * @var (\Closure(): list<Caret>)|null
      */
     private ?\Closure $captureCarets = null;
-    /** @var (\Closure(list<array{line: int, col: int, anchorLine: int, anchorCol: int}>): void)|null */
+    /** @var (\Closure(list<Caret>): void)|null */
     private ?\Closure $restoreCarets = null;
 
     /**
@@ -64,7 +64,7 @@ final class Document
      * moves the cursor across carets — so the compound's single snapshot records
      * the true pre-edit selection and caret set.
      *
-     * @var array{line: int, col: int, anchor: array{line: int, col: int}|null, extras: list<array{line: int, col: int, anchorLine: int, anchorCol: int}>}|null
+     * @var array{line: int, col: int, anchor: array{line: int, col: int}|null, extras: list<Caret>}|null
      */
     private ?array $compoundCaret = null;
 
@@ -87,8 +87,8 @@ final class Document
      * Register hooks so undo/redo snapshots carry the widget-owned secondary
      * carets. Both are optional (the Document works standalone in tests without them).
      *
-     * @param (\Closure(): list<array{line: int, col: int, anchorLine: int, anchorCol: int}>)|null      $capture
-     * @param (\Closure(list<array{line: int, col: int, anchorLine: int, anchorCol: int}>): void)|null  $restore
+     * @param (\Closure(): list<Caret>)|null      $capture
+     * @param (\Closure(list<Caret>): void)|null  $restore
      */
     public function setCaretHooks(?\Closure $capture, ?\Closure $restore): void
     {
@@ -1172,7 +1172,7 @@ final class Document
     // --- Internals --------------------------------------------------------
 
     /**
-     * @param array{lines: string[], line: int, col: int, anchor?: array{line: int, col: int}|null, extras?: list<array{line: int, col: int, anchorLine: int, anchorCol: int}>} $state
+     * @param array{lines: string[], line: int, col: int, anchor?: array{line: int, col: int}|null, extras?: list<Caret>} $state
      */
     private function restore(array $state): void
     {
@@ -1192,7 +1192,7 @@ final class Document
     }
 
     /**
-     * @return array{lines: string[], line: int, col: int, anchor: array{line: int, col: int}|null, extras: list<array{line: int, col: int, anchorLine: int, anchorCol: int}>}
+     * @return array{lines: string[], line: int, col: int, anchor: array{line: int, col: int}|null, extras: list<Caret>}
      */
     private function snapshot(): array
     {

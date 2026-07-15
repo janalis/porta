@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Porta\Tests\Unit\Editor;
 
 use PHPUnit\Framework\TestCase;
+use Porta\Editor\Caret;
 use Porta\Editor\Document;
 use Porta\Editor\SelectionMode;
 
@@ -184,7 +185,7 @@ final class DocumentTest extends TestCase
     public function testCaretHooksRoundTripThroughASnapshot(): void
     {
         $doc = new Document("l1\nl2\nl3\n");
-        $extras = [['line' => 1, 'col' => 1, 'anchorLine' => 1, 'anchorCol' => 1]];
+        $extras = [new Caret(1, 1, 1, 1)];
         $restored = null;
         $doc->setCaretHooks(
             static fn (): array => $extras,

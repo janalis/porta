@@ -10,6 +10,7 @@ use Porta\Container\AsWidget;
 use Porta\Editor\ActiveFileProvider;
 use Porta\Editor\AutoPairService;
 use Porta\Editor\BreadcrumbScanner;
+use Porta\Editor\Caret;
 use Porta\Editor\CaretMotion;
 use Porta\Editor\DiagnosticStyle;
 use Porta\Editor\Document;
@@ -924,7 +925,7 @@ final class CodeEditorWidget extends AbstractWidget implements ActiveFileProvide
         return $this->multiCaret->hasMultiple();
     }
 
-    /** @return list<array{line: int, col: int, anchorLine: int, anchorCol: int}> secondary carets (for tests/render) */
+    /** @return list<Caret> secondary carets (for tests/render) */
     public function getExtraCarets(): array
     {
         return $this->multiCaret->carets();
