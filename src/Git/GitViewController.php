@@ -10,6 +10,7 @@ use Porta\I18n\Translator;
 use Porta\Layout\EditorAreaPanes;
 use Porta\Layout\LayoutController;
 use Porta\Support\Clipboard;
+use Porta\Support\ProjectPaths;
 use Porta\Ui\EditorArea;
 use Porta\Ui\Notifier;
 use Porta\Ui\WorkspaceViews;
@@ -362,18 +363,11 @@ final class GitViewController
             $this->panes->diffView->setReadOnly(true);
             $this->panes->diffView->setDocument(null, null, 'Select a commit file');
             $this->tui->setFocus($this->panes->history);
-            $this->git->log($this->historyPageSize, function (array $commits): void {
-                if (!$this->open || 'history' !== $this->mode) {
-                    return;
-                }
-                $this->panes->history->setCommits($commits);
-                $this->panes->history->setHasMore(\count($commits) === $this->historyPageSize);
-                if (null !== ($first = $this->panes->history->selectedCommit())) {
-                    $this->loadCommitFiles($first);
-                }
-                $this->tui->requestRender();
-            });
+            $this->reloadHistory(selectFirst: true);
         } else {
+            // Tabbing away drops any file filter — History reopens repo-wide.
+            $this->historyPath = null;
+            $this->panes->history->setFilterLabel(null);
             $this->gitLeft->add($this->panes->changes);
             $this->gitLeft->add($this->panes->commitBox);
             $this->panes->diffView->setReadOnly(false);
@@ -381,6 +375,49 @@ final class GitViewController
             $this->refresh();
         }
         $this->tui->requestRender();
+    }
+
+    /** The repo-relative file the History tab is filtered to, or null for repo-wide. */
+    private ?string $historyPath = null;
+
+    /** Reload history page 0 (honoring the file filter), optionally loading the first commit's files. */
+    private function reloadHistory(bool $selectFirst): void
+    {
+        $this->git->log(
+            $this->historyPageSize,
+            function (array $commits) use ($selectFirst): void {
+                if (!$this->open || 'history' !== $this->mode) {
+                    return;
+                }
+                $this->panes->history->setCommits($commits);
+                $this->panes->history->setHasMore(\count($commits) === $this->historyPageSize);
+                if ($selectFirst && null !== ($first = $this->panes->history->selectedCommit())) {
+                    $this->loadCommitFiles($first);
+                }
+                $this->tui->requestRender();
+            },
+            path: $this->historyPath,
+        );
+    }
+
+    /**
+     * Open the git view on the History tab filtered to one file — the
+     * "commits that touched this file" view. The filter clears when the
+     * user tabs back to Changes.
+     */
+    public function openFileHistory(string $absPath): void
+    {
+        $this->open();
+        if (!$this->open) {
+            return; // not a repository — open() already flashed
+        }
+        $this->historyPath = ProjectPaths::relative($this->rootDir, $absPath);
+        $this->panes->history->setFilterLabel($this->historyPath);
+        if ('history' === $this->mode) {
+            $this->reloadHistory(selectFirst: true);
+        } else {
+            $this->switchMode('history');
+        }
     }
 
     /**
@@ -391,14 +428,7 @@ final class GitViewController
     public function onRemoteCompleted(GitRemoteCompleted $event): void
     {
         if ($this->open && 'history' === $this->mode) {
-            $this->git->log($this->historyPageSize, function (array $commits): void {
-                if (!$this->open || 'history' !== $this->mode) {
-                    return;
-                }
-                $this->panes->history->setCommits($commits);
-                $this->panes->history->setHasMore(\count($commits) === $this->historyPageSize);
-                $this->tui->requestRender();
-            });
+            $this->reloadHistory(selectFirst: false);
         }
     }
 
@@ -416,6 +446,7 @@ final class GitViewController
                 $this->tui->requestRender();
             },
             skip: $this->panes->history->commitCount(),
+            path: $this->historyPath,
         );
     }
 

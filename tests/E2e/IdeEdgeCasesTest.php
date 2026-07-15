@@ -2819,7 +2819,13 @@ final class IdeEdgeCasesTest extends TestCase
                 700 => static fn ($tui) => $palette($tui, 'Git: Blame'),
                 850 => static fn ($tui) => $palette($tui, 'Git: Undo'),
                 925 => static fn ($tui) => $palette($tui, 'Git: Branches'),
-                1000 => function ($tui, $terminal): void {
+                1000 => static fn ($tui) => $palette($tui, 'Git: Stash Pop'),
+                1075 => static fn ($tui) => $palette($tui, 'Git: Stashes'),
+                1150 => static fn ($tui) => $palette($tui, 'Git: File History'),
+                1225 => static function ($tui) use ($palette): void {
+                    $palette($tui, 'Git: Stash');
+                },
+                1300 => function ($tui, $terminal): void {
                     $tui->tick();
                     $this->assertStringContainsString('Git not available', AnsiUtils::stripAnsiCodes($terminal->getOutput()));
                 },
@@ -7231,6 +7237,125 @@ final class IdeEdgeCasesTest extends TestCase
                     $this->assertSame(4, $doc->getCursorLine(), 'jumped to the closing brace line');
                     $tui->handleInput("\x1b[109;6u"); // and back again
                     $this->assertSame(2, $doc->getCursorLine(), 'jumped back to the opener');
+                },
+            ],
+        );
+    }
+
+    public function testStashBlameAndFileHistoryFlows(): void
+    {
+        putenv('PATH='.$this->originalPath);
+        $project = new TempProject(['src/A.php' => "<?php\n\$x = 1;\n"]);
+        $d = escapeshellarg($project->dir);
+        exec("git -C {$d} init -q && git -C {$d} config user.email t@t && git -C {$d} config user.name tester && git -C {$d} add -A && git -C {$d} commit -qm init");
+        // A second commit not touching A.php: file history must hide it.
+        exec("touch {$d}/other.txt && git -C {$d} add -A && git -C {$d} commit -qm other");
+
+        $palette = static function ($tui, string $label): void {
+            $tui->handleInput("\x1b[97;6u");
+            foreach (str_split($label) as $ch) {
+                $tui->handleInput($ch);
+            }
+            $tui->handleInput("\r");
+        };
+        $screen = static fn ($terminal): string => AnsiUtils::stripAnsiCodes($terminal->getOutput());
+
+        $this->runIde(
+            $project,
+            $project->path('src/A.php'),
+            [
+                300 => function ($tui, $terminal) use ($palette, $project): void {
+                    // A clean tree: git's own "nothing to stash" line is the flash.
+                    $palette($tui, 'Git: Stash');
+                    $this->await(fn (): bool => str_contains(AnsiUtils::stripAnsiCodes($terminal->getOutput()), 'No local changes'));
+
+                    file_put_contents($project->path('src/A.php'), "<?php\n\$x = 2;\n");
+                    $terminal->clearOutput();
+                    $palette($tui, 'Git: Stash');
+                    $this->await(fn (): bool => str_contains(AnsiUtils::stripAnsiCodes($terminal->getOutput()), 'Saved working directory'));
+                    $this->assertStringContainsString('$x = 1;', (string) file_get_contents($project->path('src/A.php')), 'the tree reverted');
+
+                    $terminal->clearOutput();
+                    $palette($tui, 'Git: Stash Pop');
+                    $this->await(fn (): bool => str_contains(AnsiUtils::stripAnsiCodes($terminal->getOutput()), 'Stash popped'));
+                    $this->assertStringContainsString('$x = 2;', (string) file_get_contents($project->path('src/A.php')));
+                },
+                700 => function ($tui, $terminal) use ($palette, $project): void {
+                    $terminal->clearOutput();
+                    $palette($tui, 'Git: Stash');
+                    $this->await(fn (): bool => str_contains(AnsiUtils::stripAnsiCodes($terminal->getOutput()), 'Saved working directory'));
+
+                    // Round 1: Cancel leaves everything untouched.
+                    $palette($tui, 'Git: Stashes…');
+                    $this->await(fn (): bool => $tui->getById('editor')->isOverlayOpen());
+                    $tui->handleInput("\r"); // pick the stash → the action chooser
+                    $tui->tick();
+                    $this->assertStringContainsString('apply, pop or drop?', AnsiUtils::stripAnsiCodes($terminal->getOutput()));
+                    $tui->handleInput("\x1b[B");
+                    $tui->handleInput("\x1b[B");
+                    $tui->handleInput("\x1b[B"); // down to Cancel
+                    $tui->handleInput("\r");
+                    $this->assertFalse($tui->getById('editor')->isOverlayOpen());
+
+                    // Round 2: Apply restores the change but keeps the stash.
+                    $terminal->clearOutput();
+                    $palette($tui, 'Git: Stashes…');
+                    $this->await(fn (): bool => $tui->getById('editor')->isOverlayOpen());
+                    $tui->handleInput("\r");
+                    $tui->handleInput("\r"); // Apply leads the chooser
+                    $this->await(fn (): bool => str_contains(AnsiUtils::stripAnsiCodes($terminal->getOutput()), 'Applied stash@{0}'));
+                    $this->assertStringContainsString('$x = 2;', (string) file_get_contents($project->path('src/A.php')));
+                    exec('git -C '.escapeshellarg($project->dir).' checkout -q -- .'); // clean for the pop round
+
+                    // Round 3: Pop restores AND consumes a fresh stash.
+                    file_put_contents($project->path('src/A.php'), "<?php\n\$x = 3;\n");
+                    $terminal->clearOutput();
+                    $palette($tui, 'Git: Stash');
+                    $this->await(fn (): bool => str_contains(AnsiUtils::stripAnsiCodes($terminal->getOutput()), 'Saved working directory'));
+                    $palette($tui, 'Git: Stashes…');
+                    $this->await(fn (): bool => $tui->getById('editor')->isOverlayOpen());
+                    $tui->handleInput("\r");
+                    $tui->handleInput("\x1b[B"); // down to Pop
+                    $tui->handleInput("\r");
+                    $this->await(fn (): bool => str_contains(AnsiUtils::stripAnsiCodes($terminal->getOutput()), 'Popped stash@{0}'));
+                    $this->assertStringContainsString('$x = 3;', (string) file_get_contents($project->path('src/A.php')));
+                    exec('git -C '.escapeshellarg($project->dir).' checkout -q -- .');
+
+                    // Round 4: Drop the remaining stash.
+                    $terminal->clearOutput();
+                    $palette($tui, 'Git: Stashes…');
+                    $this->await(fn (): bool => $tui->getById('editor')->isOverlayOpen());
+                    $tui->handleInput("\r");
+                    $tui->tick();
+                    $tui->handleInput("\x1b[B");
+                    $tui->handleInput("\x1b[B"); // down to Drop
+                    $tui->handleInput("\r");
+                    $this->await(fn (): bool => str_contains(AnsiUtils::stripAnsiCodes($terminal->getOutput()), 'Dropped stash@{0}'));
+                },
+                1100 => function ($tui, $terminal) use ($palette, $d): void {
+                    exec("git -C {$d} stash list", $left);
+                    $this->assertSame([], $left, 'the stash really dropped');
+
+                    // An empty stash list flashes instead of opening the picker.
+                    $terminal->clearOutput();
+                    $palette($tui, 'Git: Stashes…');
+                    $this->await(fn (): bool => str_contains(AnsiUtils::stripAnsiCodes($terminal->getOutput()), 'No stashes'));
+
+                    // Blame annotations on, then off.
+                    $editorScreen = static fn (): string => AnsiUtils::stripAnsiCodes(implode("\n", $tui->getById('editor')->render(new \Symfony\Component\Tui\Render\RenderContext(120, 20))));
+                    $palette($tui, 'Git: Toggle Blame Annotations');
+                    $this->await(fn (): bool => str_contains($editorScreen(), 'tester'));
+                    $palette($tui, 'Git: Toggle Blame Annotations');
+                    $this->assertStringNotContainsString('tester', $editorScreen(), 'annotations cleared');
+                },
+                1500 => function ($tui, $terminal) use ($palette): void {
+                    // File history: the git view opens filtered to the open file.
+                    $terminal->clearOutput();
+                    $palette($tui, 'Git: File History');
+                    $this->await(fn (): bool => str_contains(AnsiUtils::stripAnsiCodes($terminal->getOutput()), 'History — src/A.php (1)'));
+                    $screenText = AnsiUtils::stripAnsiCodes($terminal->getOutput());
+                    $this->assertStringContainsString('init', $screenText);
+                    $this->assertStringNotContainsString(' other ', $screenText, "the commit that didn't touch the file is hidden");
                 },
             ],
         );

@@ -297,6 +297,26 @@ final class EditorRenderer
         return AnsiText::padRight($head.$color.$label."\x1b[0m", $contentWidth);
     }
 
+    /**
+     * Append a dim informational annotation (e.g. a blame line) in the padding
+     * after the code — the same placement as {@see appendInlineDiagnostic},
+     * which wins the slot when both apply.
+     */
+    public static function appendAnnotation(int $hScroll, int $lineDisplayWidth, string $text, string $content, int $contentWidth, Palette $palette): string
+    {
+        $textEnd = max(0, $lineDisplayWidth - $hScroll);
+        $start = min($contentWidth, $textEnd) + 2; // two-space gap
+        $available = $contentWidth - $start;
+        if ($available < 8) {
+            return $content; // not enough room to be useful
+        }
+
+        $label = AnsiUtils::truncateToWidth((string) preg_replace('/\s+/', ' ', $text), $available, '…');
+        $head = AnsiText::padRight(AnsiUtils::sliceByColumn($content, 0, $start), $start);
+
+        return AnsiText::padRight($head.$palette->of(Role::Inlay).$label."\x1b[0m", $contentWidth);
+    }
+
     // --- Overlays ----------------------------------------------------------
 
     private const POPUP_MAX_ITEMS = 8;

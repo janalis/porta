@@ -99,6 +99,103 @@ final class GitCommands
         );
     }
 
+    /** Stash the working tree; git's own stdout line is the flash (covers the clean-tree case). */
+    public function stash(): void
+    {
+        if (!$this->git->isAvailable()) {
+            $this->unavailable();
+
+            return;
+        }
+        $this->git->stashPush(function (bool $ok, string $line): void {
+            $this->notifier->flash($ok ? $line : $this->translator->trans('Stash failed'), $ok ? 3.0 : 6.0);
+            if ($ok) {
+                $this->refresher->refreshActiveMarks();
+            }
+            $this->tui->requestRender();
+        });
+    }
+
+    /** Pop the newest stash back onto the working tree. */
+    public function stashPop(): void
+    {
+        if (!$this->git->isAvailable()) {
+            $this->unavailable();
+
+            return;
+        }
+        $this->git->stashPop(null, fn (bool $ok, string $error) => $this->finishSwitch($ok, $this->stashError($error), $this->translator->trans('Stash popped')));
+    }
+
+    /** The stash picker: pick a stash, then apply, pop or drop it. */
+    public function stashes(): void
+    {
+        if (!$this->git->isAvailable()) {
+            $this->unavailable();
+
+            return;
+        }
+        $this->git->stashList(function (array $stashes): void {
+            if ([] === $stashes) {
+                $this->notifier->flash($this->translator->trans('No stashes'));
+                $this->tui->requestRender();
+
+                return;
+            }
+            $this->views->closeAll();
+            $this->tui->setFocus($this->editor);
+            $items = array_map(static fn (array $stash): array => [
+                'label' => '  '.$stash['subject'],
+                'hint' => date('Y-m-d H:i', $stash['timestamp']),
+                'value' => $stash['ref'],
+            ], $stashes);
+            $this->editor->openListOverlay($this->translator->trans('Stashes'), $items, function (string $ref): void {
+                $this->editor->openListOverlay(
+                    $this->translator->trans('%stash%: apply, pop or drop?', ['%stash%' => $ref]),
+                    [
+                        ['label' => $this->translator->trans('Apply'), 'hint' => '', 'value' => 'apply'],
+                        ['label' => $this->translator->trans('Pop'), 'hint' => '', 'value' => 'pop'],
+                        ['label' => $this->translator->trans('Drop'), 'hint' => '', 'value' => 'drop'],
+                        ['label' => $this->translator->trans('Cancel'), 'hint' => '', 'value' => 'cancel'],
+                    ],
+                    function (string $action) use ($ref): void {
+                        match ($action) {
+                            'apply' => $this->git->stashApply($ref, fn (bool $ok, string $error) => $this->finishSwitch(
+                                $ok,
+                                $this->stashError($error),
+                                $this->translator->trans('Applied %stash%', ['%stash%' => $ref]),
+                            )),
+                            'pop' => $this->git->stashPop($ref, fn (bool $ok, string $error) => $this->finishSwitch(
+                                $ok,
+                                $this->stashError($error),
+                                $this->translator->trans('Popped %stash%', ['%stash%' => $ref]),
+                            )),
+                            // Drop never touches the worktree — no marks refresh.
+                            'drop' => $this->git->stashDrop($ref, function (bool $ok, string $error) use ($ref): void {
+                                $this->notifier->flash($ok ? $this->translator->trans('Dropped %stash%', ['%stash%' => $ref]) : $error, $ok ? 3.0 : 6.0);
+                                $this->tui->requestRender();
+                            }),
+                            default => null,
+                        };
+                    },
+                );
+            });
+            $this->tui->requestRender();
+        });
+    }
+
+    /** Open the git view's History tab filtered to the current file. */
+    public function fileHistory(): void
+    {
+        $path = $this->editor->getFilePath();
+        if (null === $path || !$this->git->isAvailable()) {
+            $this->unavailable();
+
+            return;
+        }
+        $this->views->openGitFileHistory($path);
+    }
+
     /** Undo the last commit (soft reset), keeping its changes staged. */
     public function undoLastCommit(): void
     {
@@ -117,6 +214,12 @@ final class GitCommands
             $this->refresher->refreshActiveMarks();
             $this->tui->requestRender();
         });
+    }
+
+    /** A conflicting pop/apply reports on stdout, not stderr — provide the message git doesn't. */
+    private function stashError(string $error): string
+    {
+        return '' !== $error ? $error : $this->translator->trans('Stash left conflicts — resolve them in the editor');
     }
 
     private function unavailable(): void

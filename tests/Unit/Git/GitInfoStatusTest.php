@@ -506,4 +506,187 @@ final class GitInfoStatusTest extends TestCase
         $this->assertSame(['third', 'second'], $pages[0]);
         $this->assertSame(['init'], $pages[1], '--skip lands on the older page');
     }
+
+    public function testStashPushPopApplyDropAndList(): void
+    {
+        $git = $this->repo($project, ['a.txt' => "one\n"]);
+        $d = escapeshellarg($project->dir);
+
+        // A clean tree: push succeeds with git's "no local changes" line.
+        $result = null;
+        $git->stashPush(function (bool $ok, string $line) use (&$result): void {
+            $result = [$ok, $line];
+        });
+        $this->await(function () use (&$result): bool {
+            return null !== $result;
+        });
+        $this->assertTrue($result[0]);
+        $this->assertStringContainsString('No local changes', $result[1]);
+
+        // A dirty tree stashes; the list carries the subject; pop restores.
+        file_put_contents($project->path('a.txt'), "two\n");
+        $result = null;
+        $git->stashPush(function (bool $ok, string $line) use (&$result): void {
+            $result = [$ok, $line];
+        });
+        $this->await(function () use (&$result): bool {
+            return null !== $result;
+        });
+        $this->assertTrue($result[0]);
+        $this->assertStringContainsString('Saved working directory', $result[1]);
+        $this->assertSame("one\n", file_get_contents($project->path('a.txt')), 'the tree reverted');
+
+        $stashes = null;
+        $git->stashList(function (array $list) use (&$stashes): void {
+            $stashes = $list;
+        });
+        $this->await(function () use (&$stashes): bool {
+            return null !== $stashes;
+        });
+        $this->assertCount(1, $stashes);
+        $this->assertSame('stash@{0}', $stashes[0]['ref']);
+        $this->assertStringContainsString('WIP', $stashes[0]['subject']);
+        $this->assertGreaterThan(0, $stashes[0]['timestamp']);
+
+        // Apply keeps the stash; drop removes it; a second drop fails.
+        $result = null;
+        $git->stashApply('stash@{0}', function (bool $ok, string $error) use (&$result): void {
+            $result = [$ok, $error];
+        });
+        $this->await(function () use (&$result): bool {
+            return null !== $result;
+        });
+        $this->assertTrue($result[0]);
+        $this->assertSame("two\n", file_get_contents($project->path('a.txt')), 'apply restored the change');
+
+        exec('git -C '.$d.' checkout -q -- a.txt'); // clean again so drop/pop paths are unambiguous
+        $result = null;
+        $git->stashDrop('stash@{0}', function (bool $ok, string $error) use (&$result): void {
+            $result = [$ok, $error];
+        });
+        $this->await(function () use (&$result): bool {
+            return null !== $result;
+        });
+        $this->assertTrue($result[0]);
+
+        $result = null;
+        $git->stashPop(null, function (bool $ok, string $error) use (&$result): void {
+            $result = [$ok, $error];
+        });
+        $this->await(function () use (&$result): bool {
+            return null !== $result;
+        });
+        $this->assertFalse($result[0], 'nothing left to pop');
+        $this->assertNotSame('', $result[1], 'git explains');
+    }
+
+    public function testStashPopConflictSurfacesGitsError(): void
+    {
+        $git = $this->repo($project, ['a.txt' => "one\n"]);
+        $d = escapeshellarg($project->dir);
+
+        file_put_contents($project->path('a.txt'), "stashed\n");
+        exec('git -C '.$d.' stash push -q');
+        file_put_contents($project->path('a.txt'), "conflicting\n");
+        exec('git -C '.$d.' add -A && git -C '.$d.' commit -qm conflicting');
+
+        $result = null;
+        $git->stashPop(null, function (bool $ok, string $error) use (&$result): void {
+            $result = [$ok, $error];
+        });
+        $this->await(function () use (&$result): bool {
+            return null !== $result;
+        });
+        $this->assertFalse($result[0], 'the conflicting pop failed');
+        // Git reports the conflict on stdout — stderr (what we surface) is
+        // empty here; GitCommands supplies the fallback message.
+        $this->assertStringContainsString('<<<<<<<', (string) file_get_contents($project->path('a.txt')), 'the markers landed in the tree');
+    }
+
+    public function testStashVerbsWithoutARepository(): void
+    {
+        if (null === self::findGit()) {
+            $this->markTestSkipped('git not available');
+        }
+        $plain = new TempProject();
+        $git = new GitInfo($plain->dir);
+
+        $calls = [];
+        $git->stashPush(function (bool $ok, string $line) use (&$calls): void {
+            $calls['push'] = [$ok, $line];
+        });
+        $git->stashList(function (array $list) use (&$calls): void {
+            $calls['list'] = $list;
+        });
+        $git->blameFile($plain->path('a.txt'), function (array $lines) use (&$calls): void {
+            $calls['blame'] = $lines;
+        });
+        $this->assertSame(['push' => [false, ''], 'list' => [], 'blame' => []], $calls, 'unavailable short-circuits synchronously');
+    }
+
+    public function testLogWithAPathFilterComposesWithSkip(): void
+    {
+        $git = $this->repo($project, ['a.txt' => "a\n", 'b.txt' => "b\n"]);
+        $d = escapeshellarg($project->dir);
+        file_put_contents($project->path('a.txt'), "a2\n");
+        exec('git -C '.$d.' commit -aqm touch-a-1');
+        file_put_contents($project->path('b.txt'), "b2\n");
+        exec('git -C '.$d.' commit -aqm touch-b');
+        file_put_contents($project->path('a.txt'), "a3\n");
+        exec('git -C '.$d.' commit -aqm touch-a-2');
+
+        $commits = null;
+        $git->log(
+            10,
+            function (array $entries) use (&$commits): void {
+                $commits = $entries;
+            },
+            path: 'a.txt',
+        );
+        $this->await(function () use (&$commits): bool {
+            return null !== $commits;
+        });
+        $this->assertSame(['touch-a-2', 'touch-a-1', 'init'], array_map(static fn ($e) => $e->subject, $commits), 'only commits touching a.txt');
+
+        $commits = null;
+        $git->log(
+            1,
+            function (array $entries) use (&$commits): void {
+                $commits = $entries;
+            },
+            skip: 1,
+            path: 'a.txt',
+        );
+        $this->await(function () use (&$commits): bool {
+            return null !== $commits;
+        });
+        $this->assertSame(['touch-a-1'], array_map(static fn ($e) => $e->subject, $commits), 'skip pages within the filter');
+    }
+
+    public function testBlameFileCommittedDirtyAndUntracked(): void
+    {
+        $git = $this->repo($project, ['a.txt' => "one\ntwo\n"]);
+        file_put_contents($project->path('a.txt'), "one\ntwo\nthree\n"); // a dirty extra line
+
+        $lines = null;
+        $git->blameFile($project->path('a.txt'), function (array $result) use (&$lines): void {
+            $lines = $result;
+        });
+        $this->await(function () use (&$lines): bool {
+            return null !== $lines;
+        });
+        $this->assertCount(3, $lines);
+        $this->assertSame('tester', $lines[0]['author']);
+        $this->assertNotSame('', $lines[0]['date']);
+        $this->assertSame('Not Committed Yet', $lines[2]['author'], 'the dirty line is uncommitted');
+
+        $untracked = null;
+        $git->blameFile($project->path('nope.txt'), function (array $result) use (&$untracked): void {
+            $untracked = $result;
+        });
+        $this->await(function () use (&$untracked): bool {
+            return null !== $untracked;
+        });
+        $this->assertSame([], $untracked, 'blame on a missing file degrades to empty');
+    }
 }

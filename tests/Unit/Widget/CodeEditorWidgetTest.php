@@ -1154,4 +1154,30 @@ final class CodeEditorWidgetTest extends TestCase
         $editor->getDocument()->undo();
         $this->assertSame("ab\ncd\n", $editor->getDocument()->getText(), 'undoable like typed input');
     }
+
+    public function testLineAnnotationsRenderAndYieldToDiagnostics(): void
+    {
+        $editor = $this->editor("alpha;\nbeta;\n", '/tmp/a.php');
+        $editor->setLineAnnotations([0 => 'abc12345 tester 2026-01-01', 1 => 'abc12345 tester 2026-01-01']);
+
+        $screen = implode("\n", array_map(AnsiUtils::stripAnsiCodes(...), $editor->render(new RenderContext(80, 6))));
+        $this->assertSame(2, substr_count($screen, 'abc12345 tester'), 'both annotations render in the trailing space');
+
+        // A diagnostic on line 0 wins the trailing slot; line 1 keeps its blame.
+        $editor->setInlineDiagnostics(true);
+        $editor->setDiagnostics([0 => [['severity' => 1, 'message' => 'Boom', 'col' => 0]]]);
+        $screen = implode("\n", array_map(AnsiUtils::stripAnsiCodes(...), $editor->render(new RenderContext(80, 6))));
+        $this->assertStringContainsString('Boom', $screen);
+        $this->assertSame(1, substr_count($screen, 'abc12345 tester'), 'the diagnosed line dropped its annotation');
+
+        // Too narrow: the annotation is dropped rather than truncated to noise.
+        $editor->setDiagnostics([]);
+        $narrow = implode("\n", array_map(AnsiUtils::stripAnsiCodes(...), $editor->render(new RenderContext(16, 6))));
+        $this->assertStringNotContainsString('abc12345', $narrow);
+
+        // A document switch clears the annotations with the other decorations.
+        $editor->openFile('/tmp/b.php', "gamma;\n");
+        $screen = implode("\n", array_map(AnsiUtils::stripAnsiCodes(...), $editor->render(new RenderContext(80, 6))));
+        $this->assertStringNotContainsString('abc12345', $screen);
+    }
 }

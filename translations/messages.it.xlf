@@ -1658,6 +1658,86 @@
         <source>Callers of %symbol%</source>
         <target>Chiamanti di %symbol%</target>
       </trans-unit>
+      <trans-unit id="418">
+        <source>Git: Stash</source>
+        <target>Git: stash</target>
+      </trans-unit>
+      <trans-unit id="419">
+        <source>Git: Stash Pop</source>
+        <target>Git: ripristina stash</target>
+      </trans-unit>
+      <trans-unit id="420">
+        <source>Git: Stashes…</source>
+        <target>Git: stash…</target>
+      </trans-unit>
+      <trans-unit id="421">
+        <source>Git: File History</source>
+        <target>Git: cronologia del file</target>
+      </trans-unit>
+      <trans-unit id="422">
+        <source>Git: Toggle Blame Annotations</source>
+        <target>Git: annotazioni blame</target>
+      </trans-unit>
+      <trans-unit id="423">
+        <source>Stash failed</source>
+        <target>Stash non riuscito</target>
+      </trans-unit>
+      <trans-unit id="424">
+        <source>Stash popped</source>
+        <target>Stash ripristinato</target>
+      </trans-unit>
+      <trans-unit id="425">
+        <source>No stashes</source>
+        <target>Nessuno stash</target>
+      </trans-unit>
+      <trans-unit id="426">
+        <source>Stashes</source>
+        <target>Stash</target>
+      </trans-unit>
+      <trans-unit id="427">
+        <source>%stash%: apply, pop or drop?</source>
+        <target>%stash%: applicare, ripristinare o eliminare?</target>
+      </trans-unit>
+      <trans-unit id="428">
+        <source>Apply</source>
+        <target>Applica</target>
+      </trans-unit>
+      <trans-unit id="429">
+        <source>Pop</source>
+        <target>Ripristina</target>
+      </trans-unit>
+      <trans-unit id="430">
+        <source>Drop</source>
+        <target>Elimina</target>
+      </trans-unit>
+      <trans-unit id="431">
+        <source>Applied %stash%</source>
+        <target>%stash% applicato</target>
+      </trans-unit>
+      <trans-unit id="432">
+        <source>Popped %stash%</source>
+        <target>%stash% ripristinato</target>
+      </trans-unit>
+      <trans-unit id="433">
+        <source>Dropped %stash%</source>
+        <target>%stash% eliminato</target>
+      </trans-unit>
+      <trans-unit id="434">
+        <source>Stash left conflicts — resolve them in the editor</source>
+        <target>Lo stash ha lasciato conflitti — risolvili nell’editor</target>
+      </trans-unit>
+      <trans-unit id="435">
+        <source> History — %path% (%count%)</source>
+        <target> Cronologia — %path% (%count%)</target>
+      </trans-unit>
+      <trans-unit id="436">
+        <source>Blame annotations shown</source>
+        <target>Annotazioni blame visibili</target>
+      </trans-unit>
+      <trans-unit id="437">
+        <source>Blame annotations hidden</source>
+        <target>Annotazioni blame nascoste</target>
+      </trans-unit>
     </body>
   </file>
 </xliff>

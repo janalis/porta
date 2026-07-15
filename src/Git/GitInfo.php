@@ -255,11 +255,14 @@ final class GitInfo
     }
 
     /**
-     * The most recent commits, for the history tab (capped; no paging).
+     * The most recent commits, for the history tab (capped; paged via $skip).
+     * With $path, only the commits that touched that file (no --follow — it
+     * composes badly with --skip paging; a rename truncates the list).
      *
      * @param callable(list<LogEntry>): void $onDone
+     * @param string|null                    $path   repo-relative file filter
      */
-    public function log(int $limit, callable $onDone, int $skip = 0): void
+    public function log(int $limit, callable $onDone, int $skip = 0, ?string $path = null): void
     {
         if (!$this->available) {
             $onDone([]);
@@ -271,7 +274,69 @@ final class GitInfo
             $args[] = '--skip';
             $args[] = (string) $skip;
         }
+        if (null !== $path) {
+            $args[] = '--';
+            $args[] = $path;
+        }
         $this->run($args, static fn (string $out) => $onDone(LogParser::parseLog($out)));
+    }
+
+    /**
+     * Stash the working tree. Success flashes git's own first stdout line —
+     * it distinguishes "Saved working directory…" from "No local changes to
+     * save" without any content branching here.
+     *
+     * @param callable(bool, string): void $onDone (ok, first stdout line)
+     */
+    public function stashPush(callable $onDone): void
+    {
+        if (!$this->available) {
+            $onDone(false, '');
+
+            return;
+        }
+        $this->runStatus(['stash', 'push'], static function (int $code, string $out) use ($onDone): void {
+            $firstLine = strtok(trim($out), "\n");
+            $onDone(0 === $code, \is_string($firstLine) ? $firstLine : '');
+        });
+    }
+
+    /**
+     * Pop a stash (the newest without $ref). A conflicting pop fails with
+     * git's own stderr line; the conflict markers land in the working tree.
+     *
+     * @param callable(bool, string): void $onDone
+     */
+    public function stashPop(?string $ref, callable $onDone): void
+    {
+        $this->runWithErrors(['stash', 'pop', ...(null === $ref ? [] : [$ref])], $onDone);
+    }
+
+    /** Apply a stash without dropping it. @param callable(bool, string): void $onDone */
+    public function stashApply(string $ref, callable $onDone): void
+    {
+        $this->runWithErrors(['stash', 'apply', $ref], $onDone);
+    }
+
+    /** Drop a stash without touching the worktree. @param callable(bool, string): void $onDone */
+    public function stashDrop(string $ref, callable $onDone): void
+    {
+        $this->runWithErrors(['stash', 'drop', $ref], $onDone);
+    }
+
+    /**
+     * The stash list, newest first.
+     *
+     * @param callable(list<array{ref: string, timestamp: int, subject: string}>): void $onDone
+     */
+    public function stashList(callable $onDone): void
+    {
+        if (!$this->available) {
+            $onDone([]);
+
+            return;
+        }
+        $this->run(['stash', 'list', '-z', '--format=%gd%x1f%at%x1f%gs'], static fn (string $out) => $onDone(LogParser::parseStashList($out)));
     }
 
     /**
@@ -399,6 +464,21 @@ final class GitInfo
         }
 
         return '' === $sha ? null : ['sha' => $sha, 'author' => $author, 'summary' => $summary];
+    }
+
+    /**
+     * Blame every line of a file at once, for the annotation overlay.
+     *
+     * @param callable(array<int, array{sha: string, author: string, date: string}>): void $onDone 0-based line => entry; [] when untracked or blame fails
+     */
+    public function blameFile(string $absPath, callable $onDone): void
+    {
+        if (!$this->available) {
+            $onDone([]);
+
+            return;
+        }
+        $this->runStatus(['blame', '--line-porcelain', '--', $absPath], static fn (int $code, string $out) => $onDone(0 !== $code ? [] : BlameParser::parse($out)));
     }
 
     public function cancelAll(): void

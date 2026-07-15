@@ -889,4 +889,59 @@ final class GitViewControllerTest extends TestCase
         $this->awaitTicks(10);
         $this->assertSame(1, $this->history->commitCount(), 'no page landed after close');
     }
+
+    public function testFileHistoryFiltersAndClearsOnTabSwitch(): void
+    {
+        $controller = $this->controller(historyPageSize: 1);
+        $d = escapeshellarg($this->project->dir);
+        $this->project->write('a.txt', "one\ntwo\nthree\n");
+        exec('git -C '.$d.' add -A && git -C '.$d.' commit -qm touch-a');
+        $this->project->write('b.txt', "new\n");
+        exec('git -C '.$d.' add -A && git -C '.$d.' commit -qm touch-b');
+
+        $controller->openFileHistory($this->project->path('a.txt'));
+        $this->await(fn (): bool => 'touch-a' === $this->history->selectedCommit()?->subject);
+        $this->assertStringContainsString('History — a.txt', $this->historyText(), 'the header names the filtered file');
+        $this->assertStringNotContainsString('touch-b', $this->historyText(), 'commits not touching a.txt are hidden');
+
+        // Paging keeps the filter: the next page is "init", not "touch-b".
+        $this->history->setFocused(true);
+        $this->history->handleInput("\x1b[B"); // move past the last loaded commit
+        $this->await(fn (): bool => str_contains($this->historyText(), 'init'));
+        $this->assertStringNotContainsString('touch-b', $this->historyText());
+
+        // Tabbing to Changes drops the filter; History reopens repo-wide.
+        $this->history->handleInput('1');
+        $this->await(fn (): bool => 3 === \count($this->gitLeft->all()));
+        $this->changes->setFocused(true);
+        $this->changes->handleInput('2');
+        $this->await(fn (): bool => str_contains($this->historyText(), 'touch-b'), 'the filter is gone');
+        $this->assertStringNotContainsString('History — a.txt', $this->historyText());
+    }
+
+    public function testFileHistoryWhileAlreadyOnHistoryReloadsInPlace(): void
+    {
+        $controller = $this->controller();
+        $d = escapeshellarg($this->project->dir);
+        $this->project->write('a.txt', "one\ntwo\nthree\n");
+        exec('git -C '.$d.' add -A && git -C '.$d.' commit -qm touch-a');
+
+        $controller->open();
+        $this->await(fn (): bool => $controller->isOpen());
+        $this->changes->setFocused(true);
+        $this->changes->handleInput('2'); // History, repo-wide
+        $this->await(fn (): bool => null !== $this->history->selectedCommit());
+
+        $controller->openFileHistory($this->project->path('a.txt'));
+        $this->await(fn (): bool => str_contains($this->historyText(), 'History — a.txt'));
+        $this->assertSame('touch-a', $this->history->selectedCommit()?->subject);
+    }
+
+    public function testFileHistoryOutsideARepositoryFlashesAndStaysClosed(): void
+    {
+        $controller = $this->controller(realRepo: false);
+        $controller->openFileHistory($this->project->path('a.txt'));
+        $this->assertFalse($controller->isOpen());
+        $this->assertStringContainsString('Not a git repository', $this->statusFlash());
+    }
 }

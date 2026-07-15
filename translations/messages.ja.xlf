@@ -1658,6 +1658,86 @@
         <source>Callers of %symbol%</source>
         <target>%symbol% の呼び出し元</target>
       </trans-unit>
+      <trans-unit id="418">
+        <source>Git: Stash</source>
+        <target>Git: スタッシュ</target>
+      </trans-unit>
+      <trans-unit id="419">
+        <source>Git: Stash Pop</source>
+        <target>Git: スタッシュを復元</target>
+      </trans-unit>
+      <trans-unit id="420">
+        <source>Git: Stashes…</source>
+        <target>Git: スタッシュ一覧…</target>
+      </trans-unit>
+      <trans-unit id="421">
+        <source>Git: File History</source>
+        <target>Git: ファイル履歴</target>
+      </trans-unit>
+      <trans-unit id="422">
+        <source>Git: Toggle Blame Annotations</source>
+        <target>Git: Blame 注釈を切り替え</target>
+      </trans-unit>
+      <trans-unit id="423">
+        <source>Stash failed</source>
+        <target>スタッシュに失敗しました</target>
+      </trans-unit>
+      <trans-unit id="424">
+        <source>Stash popped</source>
+        <target>スタッシュを復元しました</target>
+      </trans-unit>
+      <trans-unit id="425">
+        <source>No stashes</source>
+        <target>スタッシュはありません</target>
+      </trans-unit>
+      <trans-unit id="426">
+        <source>Stashes</source>
+        <target>スタッシュ</target>
+      </trans-unit>
+      <trans-unit id="427">
+        <source>%stash%: apply, pop or drop?</source>
+        <target>%stash%: 適用・復元・削除？</target>
+      </trans-unit>
+      <trans-unit id="428">
+        <source>Apply</source>
+        <target>適用</target>
+      </trans-unit>
+      <trans-unit id="429">
+        <source>Pop</source>
+        <target>復元</target>
+      </trans-unit>
+      <trans-unit id="430">
+        <source>Drop</source>
+        <target>削除</target>
+      </trans-unit>
+      <trans-unit id="431">
+        <source>Applied %stash%</source>
+        <target>%stash% を適用しました</target>
+      </trans-unit>
+      <trans-unit id="432">
+        <source>Popped %stash%</source>
+        <target>%stash% を復元しました</target>
+      </trans-unit>
+      <trans-unit id="433">
+        <source>Dropped %stash%</source>
+        <target>%stash% を削除しました</target>
+      </trans-unit>
+      <trans-unit id="434">
+        <source>Stash left conflicts — resolve them in the editor</source>
+        <target>スタッシュで競合が発生しました — エディタで解決してください</target>
+      </trans-unit>
+      <trans-unit id="435">
+        <source> History — %path% (%count%)</source>
+        <target> 履歴 — %path% (%count%)</target>
+      </trans-unit>
+      <trans-unit id="436">
+        <source>Blame annotations shown</source>
+        <target>Blame 注釈を表示</target>
+      </trans-unit>
+      <trans-unit id="437">
+        <source>Blame annotations hidden</source>
+        <target>Blame 注釈を非表示</target>
+      </trans-unit>
     </body>
   </file>
 </xliff>

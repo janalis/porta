@@ -329,17 +329,29 @@ final class HistoryListWidget extends AbstractWidget implements FocusableInterfa
         return max(1, $this->lastRows - 2 - self::FILE_ROWS);
     }
 
+    /** The repo-relative file this history is filtered to, or null for repo-wide. */
+    private ?string $filterLabel = null;
+
+    /** Show which file the history is filtered to (null = repo-wide). */
+    public function setFilterLabel(?string $label): void
+    {
+        $this->filterLabel = $label;
+        $this->invalidate();
+    }
+
     public function render(RenderContext $context): array
     {
         $width = min($this->width, $context->getColumns());
         $rows = max(4, $context->getRows() > 0 ? $context->getRows() : 12);
         $this->lastRows = $rows;
 
+        $header = null === $this->filterLabel
+            ? $this->translator->trans(' History (%count%)', ['%count%' => \count($this->commits)])
+            // An em dash, not a colon: symfony's legacy plural handling treats
+            // "label: message" specially whenever %count% is a parameter.
+            : $this->translator->trans(' History — %path% (%count%)', ['%path%' => $this->filterLabel, '%count%' => \count($this->commits)]);
         $lines = [
-            $this->palette->of(Role::HeaderBar)
-                ."\x1b[1m"
-                .AnsiUtils::truncateToWidth($this->translator->trans(' History (%count%)', ['%count%' => \count($this->commits)]), $width, '…', pad: true)
-                ."\x1b[0m",
+            $this->palette->of(Role::HeaderBar)."\x1b[1m".AnsiUtils::truncateToWidth($header, $width, '…', pad: true)."\x1b[0m",
         ];
 
         $commitRows = $this->commitRowCount();

@@ -61,6 +61,13 @@ final class WorkspaceViews
         $this->git?->toggle();
     }
 
+    /** Open the git view on the History tab filtered to one file; settings yields first. */
+    public function openGitFileHistory(string $absPath): void
+    {
+        $this->settings?->close();
+        $this->git?->openFileHistory($absPath);
+    }
+
     /** Toggle the settings view; the git view yields first. */
     public function toggleSettings(): void
     {

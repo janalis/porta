@@ -47,6 +47,7 @@ final readonly class EditorRowAssembler
      * @param array<int, list<array{col: int, text: string}>>                                 $inlayHints      per-line inlay hints (byte col => dim label)
      * @param list<int>                                                                       $breakpointLines 0-based lines carrying a breakpoint
      * @param list<int>                                                                       $conditionalBreakpointLines the subset carrying a condition
+     * @param array<int, string>                                                              $lineAnnotations 0-based line => trailing annotation (blame)
      */
     public function __construct(
         private Document $document,
@@ -64,6 +65,7 @@ final readonly class EditorRowAssembler
         private ?int $debugLine = null,
         ?CursorStyle $cursorStyle = null,
         array $conditionalBreakpointLines = [],
+        private array $lineAnnotations = [],
     ) {
         $this->palette = $palette ?? ColorPalette::dark();
         $this->breakpointSet = array_fill_keys($breakpointLines, true);
@@ -144,6 +146,8 @@ final readonly class EditorRowAssembler
             // "+N" count when the line carries more than one diagnostic.
             if ($this->inlineDiagnostics && [] !== $lineDiags) {
                 $content = EditorRenderer::appendInlineDiagnostic($hScroll, $this->document->lineDisplayWidth($lineIndex), $lineDiags, $content, $geo->contentWidth, $this->palette);
+            } elseif ('' !== ($this->lineAnnotations[$lineIndex] ?? '')) {
+                $content = EditorRenderer::appendAnnotation($hScroll, $this->document->lineDisplayWidth($lineIndex), $this->lineAnnotations[$lineIndex], $content, $geo->contentWidth, $this->palette);
             }
 
             $result[] = $gutter.$content.$stripe[$stickyCount + $row];

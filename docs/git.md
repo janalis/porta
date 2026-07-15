@@ -90,3 +90,22 @@ confirmation before running `git branch -d` — an unmerged branch is refused
 with git's own message (use the shell for a force delete). Checkout failures
 (uncommitted changes in the way) flash git's message — nothing is stashed
 for you.
+
+## Stash, file history & blame
+
+`Git: Stash` shelves the working tree (git's own confirmation names the
+saved state); `Git: Stash Pop` restores the newest stash. `Git: Stashes…`
+opens a picker over the stash list — pick one, then **Apply**, **Pop** or
+**Drop** it. A conflicting pop or apply leaves standard conflict markers to
+resolve in the editor (the stash entry survives).
+
+`Git: File History` opens the git view's History tab filtered to the
+current file ("commits that touched this file"); tabbing back to Changes
+clears the filter. Renames are not followed.
+
+`Git: Toggle Blame Annotations` appends a dim `sha author date` annotation
+to every line of the open file (batch `git blame`); lines with an inline
+diagnostic keep the diagnostic instead. Annotations re-sync on save and
+buffer switches, and — like the gutter change marks — drift against unsaved
+edits until the next save. `Git: Blame Current Line` still flashes a single
+line's commit without turning the mode on.

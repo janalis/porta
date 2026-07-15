@@ -56,4 +56,20 @@ final class LogParserTest extends TestCase
         $this->assertSame([], LogParser::parseNameStatus("M\0"), 'trailing status without a path');
         $this->assertSame([['status' => 'C', 'path' => 'copy.txt']], LogParser::parseNameStatus("C75\0orig.txt\0copy.txt\0"));
     }
+
+    public function testParseStashListHappyAndMalformed(): void
+    {
+        $raw = "stash@{0}\x1f1700000000\x1fWIP on main: 1234abc fix\0stash@{1}\x1f1690000000\x1fOn feature: spike\0";
+        $this->assertSame(
+            [
+                ['ref' => 'stash@{0}', 'timestamp' => 1700000000, 'subject' => 'WIP on main: 1234abc fix'],
+                ['ref' => 'stash@{1}', 'timestamp' => 1690000000, 'subject' => 'On feature: spike'],
+            ],
+            LogParser::parseStashList($raw),
+        );
+
+        $this->assertSame([], LogParser::parseStashList(''));
+        $this->assertSame([], LogParser::parseStashList("only-two\x1ffields\0"), 'short records are skipped');
+        $this->assertSame([], LogParser::parseStashList("\x1f1\x1fempty ref\0"), 'an empty ref is skipped');
+    }
 }

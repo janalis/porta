@@ -136,6 +136,9 @@ final class CodeEditorWidget extends AbstractWidget implements ActiveFileProvide
     /** @var list<int> the subset of breakpoint lines carrying a condition (◆ in the gutter) */
     private array $conditionalBreakpointLines = [];
 
+    /** @var array<int, string> 0-based line => trailing annotation (blame) */
+    private array $lineAnnotations = [];
+
     /** The debugger's stopped line (full-width band), or null when not paused here. */
     private ?int $debugLine = null;
 
@@ -281,6 +284,7 @@ final class CodeEditorWidget extends AbstractWidget implements ActiveFileProvide
         $this->structural = $this->newEditorStructural($document);
         $this->actions = $this->newEditorActions($document, $this->actions->clipboardValue());
         $this->inlayHints = [];
+        $this->lineAnnotations = []; // the blame controller re-applies per buffer
         $this->breakpointLines = []; // the debug controller re-applies per buffer
         $this->conditionalBreakpointLines = [];
         $this->debugLine = null;
@@ -483,6 +487,15 @@ final class CodeEditorWidget extends AbstractWidget implements ActiveFileProvide
     public function setGitMarks(array $byLine): void
     {
         $this->gitMarks = $byLine;
+        $this->invalidate();
+    }
+
+    /**
+     * @param array<int, string> $byLine 0-based line => trailing annotation (blame); [] clears
+     */
+    public function setLineAnnotations(array $byLine): void
+    {
+        $this->lineAnnotations = $byLine;
         $this->invalidate();
     }
 
@@ -1040,6 +1053,7 @@ final class CodeEditorWidget extends AbstractWidget implements ActiveFileProvide
             $this->debugLine,
             $this->cursorStyle,
             $this->conditionalBreakpointLines,
+            $this->lineAnnotations,
         );
         $result = $assembler->assemble($geo, $decorations, $sticky, $highlighted, $stripe, $contentRows, $vScroll, $cursorLine, $cursorDisplayCol, $hScroll);
 

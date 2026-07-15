@@ -30,6 +30,25 @@ final class LogParser
     }
 
     /**
+     * Parse `stash list -z --format=%gd%x1f%at%x1f%gs` records.
+     *
+     * @return list<array{ref: string, timestamp: int, subject: string}>
+     */
+    public static function parseStashList(string $raw): array
+    {
+        $stashes = [];
+        foreach (explode("\0", $raw) as $record) {
+            $fields = explode("\x1f", trim($record, "\n"));
+            if (3 !== \count($fields) || '' === $fields[0]) {
+                continue;
+            }
+            $stashes[] = ['ref' => $fields[0], 'timestamp' => (int) $fields[1], 'subject' => $fields[2]];
+        }
+
+        return $stashes;
+    }
+
+    /**
      * Parse `show -z --name-status --format=` output: `STATUS\0path\0`
      * records, with renames/copies carrying two paths (old, then new).
      *
