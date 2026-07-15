@@ -13,8 +13,8 @@ use Porta\Ui\Palette;
 use Porta\Ui\Role;
 use Porta\Ui\Sgr;
 use Porta\Ui\TextField;
+use Porta\Widget\MatchRowDecorator;
 use Porta\Widget\Render\HeaderRenderer;
-use Porta\Widget\Render\LineDecorator;
 use Porta\Widget\Render\OverlayCompositor;
 use Porta\Widget\ResultGrouping;
 use Porta\Widget\ResultLayout;
@@ -732,14 +732,8 @@ final class FindInFilesModal
         $label = (string) ($result['line'] + 1);
         $prefixWidth = 4 + mb_strwidth($label) + 2;
         $text = '    '.$this->palette->of(Role::TabAccent).$label.Sgr::DEFAULT_FG.'  '.$result['text'];
-        $line = $bg.AnsiUtils::truncateToWidth($text, $width, '…', pad: true).Sgr::RESET;
-        $searchBg = $this->palette->of(Role::SearchBg);
-        foreach ($result['ranges'] ?? [] as $range) {
-            $start = $prefixWidth + $range['start'];
-            $line = LineDecorator::apply($line, $start, $start + $range['length'], $searchBg, $bg, $searchBg);
-        }
 
-        return $line;
+        return MatchRowDecorator::highlight($text, $width, $bg, $prefixWidth, $this->palette->of(Role::SearchBg), $result['ranges'] ?? []);
     }
 
     /**
@@ -764,14 +758,7 @@ final class FindInFilesModal
             $text = $head.$old.'  →  '.$this->palette->of(Role::Added).$new.Sgr::DEFAULT_FG;
         }
 
-        $line = $bg.AnsiUtils::truncateToWidth($text, $width, '…', pad: true).Sgr::RESET;
-        $searchBg = $this->palette->of(Role::SearchBg);
-        foreach ($result['ranges'] ?? [] as $range) {
-            $start = $prefixWidth + $range['start'];
-            $line = LineDecorator::apply($line, $start, $start + $range['length'], $searchBg, $bg, $searchBg);
-        }
-
-        return $line;
+        return MatchRowDecorator::highlight($text, $width, $bg, $prefixWidth, $this->palette->of(Role::SearchBg), $result['ranges'] ?? []);
     }
 
     private function emptyRow(int $width): string

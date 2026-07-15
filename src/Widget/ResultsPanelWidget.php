@@ -17,7 +17,6 @@ use Porta\Ui\Role;
 use Porta\Ui\Sgr;
 use Porta\Ui\TextField;
 use Porta\Widget\Render\HeaderRenderer;
-use Porta\Widget\Render\LineDecorator;
 use Symfony\Component\Tui\Ansi\AnsiUtils;
 use Symfony\Component\Tui\Input\Key;
 use Symfony\Component\Tui\Render\RenderContext;
@@ -636,15 +635,7 @@ final class ResultsPanelWidget extends OverlayWidget implements FocusableInterfa
      */
     private function highlightMatch(string $text, int $prefixWidth, array $result, string $bg, int $columns): string
     {
-        $line = $bg.AnsiUtils::truncateToWidth($text, $columns, '…', pad: true).Sgr::RESET;
-        // Highlight each match span; close with the row bg so the tail keeps its colour.
-        $searchBg = $this->palette->of(Role::SearchBg);
-        foreach ($result['ranges'] ?? [] as $range) {
-            $start = $prefixWidth + $range['start'];
-            $line = LineDecorator::apply($line, $start, $start + $range['length'], $searchBg, $bg, $searchBg);
-        }
-
-        return $line;
+        return MatchRowDecorator::highlight($text, $columns, $bg, $prefixWidth, $this->palette->of(Role::SearchBg), $result['ranges'] ?? []);
     }
 
     /** @return array<string, string[]> */
