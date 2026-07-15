@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Porta\Git;
 
 use Porta\Event\GitCommitted;
+use Porta\Event\GitRemoteCompleted;
 use Porta\I18n\Translator;
 use Porta\Layout\EditorAreaPanes;
 use Porta\Layout\LayoutController;
@@ -15,6 +16,7 @@ use Porta\Ui\WorkspaceViews;
 use Porta\Widget\MenuBarWidget;
 use Psr\EventDispatcher\EventDispatcherInterface;
 use Revolt\EventLoop;
+use Symfony\Component\EventDispatcher\Attribute\AsEventListener;
 use Symfony\Component\Tui\Tui;
 use Symfony\Component\Tui\Widget\AbstractWidget;
 use Symfony\Component\Tui\Widget\ContainerWidget;
@@ -385,7 +387,8 @@ final class GitViewController
      * After a fetch/pull/push: the history tab shows stale commits — reload
      * page 0 (the changes list self-heals via its poll).
      */
-    public function onRemoteCompleted(): void
+    #[AsEventListener]
+    public function onRemoteCompleted(GitRemoteCompleted $event): void
     {
         if ($this->open && 'history' === $this->mode) {
             $this->git->log($this->historyPageSize, function (array $commits): void {

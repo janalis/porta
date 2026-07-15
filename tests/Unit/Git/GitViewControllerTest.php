@@ -8,6 +8,7 @@ use PHPUnit\Framework\TestCase;
 use Porta\Config\LayoutStore;
 use Porta\Editor\BufferManager;
 use Porta\Event\GitCommitted;
+use Porta\Event\GitRemoteCompleted;
 use Porta\Git\GitInfo;
 use Porta\Git\GitPanes;
 use Porta\Git\GitViewController;
@@ -857,14 +858,14 @@ final class GitViewControllerTest extends TestCase
         $controller->open();
         $this->await(fn (): bool => $controller->isOpen());
 
-        $controller->onRemoteCompleted(); // changes mode: a no-op
+        $controller->onRemoteCompleted(new GitRemoteCompleted('pull', true)); // changes mode: a no-op
         $this->changes->setFocused(true);
         $this->changes->handleInput('2'); // History tab
         $this->await(fn (): bool => 2 === $this->history->commitCount());
 
         // A commit lands "remotely" (same repo here); the completed event reloads page 0.
         exec("git -C {$d} commit -q --allow-empty -m fromremote");
-        $controller->onRemoteCompleted();
+        $controller->onRemoteCompleted(new GitRemoteCompleted('pull', true));
         $this->await(fn (): bool => 'fromremote' === ($this->history->selectedCommit()->subject ?? ''), 'the newest commit appears at the top');
     }
 
@@ -881,7 +882,7 @@ final class GitViewControllerTest extends TestCase
 
         // Fire a reload and a load-more, then close before either can land:
         // both callbacks must hit the open/mode guard and change nothing.
-        $controller->onRemoteCompleted();
+        $controller->onRemoteCompleted(new GitRemoteCompleted('pull', true));
         $this->history->setFocused(true);
         $this->history->handleInput("\x1b[B"); // bottom row: arms load-more
         $controller->close();

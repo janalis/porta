@@ -66,7 +66,6 @@ use Porta\Plugin\PluginRuntime;
 use Porta\Run\RunConfigs;
 use Porta\Run\RunController;
 use Porta\Search\Everywhere\SearchEverywhereController;
-use Porta\Search\ProjectSearchController;
 use Porta\Search\ResultContextProvider;
 use Porta\Search\SearchActions;
 use Porta\Search\SearchUiWiring;
@@ -74,7 +73,6 @@ use Porta\Settings\LiveSettingsApplier;
 use Porta\Settings\SettingsViewController;
 use Porta\Support\AsyncProcess;
 use Porta\Support\BrowserOpener;
-use Porta\Support\Clipboard;
 use Porta\Support\DocsUrlOpener;
 use Porta\Support\FreezeWatchdog;
 use Porta\Support\Scheduler;
@@ -154,7 +152,6 @@ final class Ide
     private StatusBarWidget $statusBar;
     private Notifier $notifier;
     private FreezeWatchdog $watchdog;
-    private Clipboard $clipboard;
     private BufferNavigator $bufferNavigator;
     private DocsUrlOpener $docsUrls;
     private EditorArea $editorArea;
@@ -167,8 +164,6 @@ final class Ide
     private FindBarWidget $findBar;
     private GoToFileWidget $goToFile;
     private ResultsPanelWidget $resultsPanel;
-    private ProjectSearchController $projectSearchController;
-    private CommandPalette $commandPalette;
     private TerminalPanelWidget $terminalPanel;
     private RunController $run;
     private DebugController $debug;
@@ -192,7 +187,6 @@ final class Ide
     private GitCommands $gitCommands;
     private LocalHistoryController $localHistory;
     private LayoutController $layout;
-    private TreeOperations $treeOps;
     private BufferManager $buffers;
     private PanelManager $panels;
     private CommandRegistry $commands;
@@ -216,24 +210,11 @@ final class Ide
     /** Positions + composites the app-menu and context-menu floating overlays. */
     private MenuOverlayController $overlay;
 
-    private Keybindings $keybindings;
     private Translator $translator;
     private ContainerWidget $main;
-    private ContainerWidget $gitAreaContainer;
-    private ChangesListWidget $gitChanges;
-    private DiffViewWidget $gitDiff;
-    private CommitBoxWidget $gitCommitBox;
-    private HistoryListWidget $gitHistory;
-    private GitTabsWidget $gitTabs;
-    private SeparatorWidget $gitSeparator;
-    private SettingsNavWidget $settingsNav;
-    private SettingsFormWidget $settingsForm;
-    private KeybindingsListWidget $settingsKeys;
-    private SeparatorWidget $settingsSeparator;
     private SettingsController $settings;
     private SettingsLanguageController $settingsLanguages;
     private BufferService $bufferService;
-    private MouseRouter $mouseRouter;
 
     public function __construct(
         private readonly string $rootDir,
@@ -272,7 +253,6 @@ final class Ide
         // Resolving the Keybindings map triggers the one-time plugin load —
         // plugin default keys must merge into the immutable map.
         $keybindings = $this->service(Keybindings::class);
-        $this->keybindings = $keybindings;
 
         // Own the Renderer so mouse hit-testing can query widget rects.
         $this->renderer = $renderer ?? new Renderer($this->buildStyleSheet());
@@ -294,7 +274,6 @@ final class Ide
         $this->container->set(BidiTui::class, $this->bidiTui);
 
         // The workbench primitives every later build step delegates to.
-        $this->clipboard = $this->service(Clipboard::class);
         $this->docsUrls = $this->service(DocsUrlOpener::class);
         $this->editorArea = $this->service(EditorArea::class);
         $this->views = $this->service(WorkspaceViews::class);
@@ -374,85 +353,18 @@ final class Ide
         $this->pluginLifecycle->refreshNav();
 
         $this->localHistory = $this->service(LocalHistoryController::class);
-
-        $this->treeOps = new TreeOperations(
-            $this->tree,
-            $this->editor,
-            $this->tui,
-            $this->notifier,
-            $this->buffers,
-            $this->translator,
-            $this->bufferService,
-            $this->clipboard,
-            $this->searchActions,
-            $this->projectSearchController,
-            $this->rootDir,
-        );
         $hit = $this->service(HitTester::class);
-        $contextItems = new ContextMenuBuilder($this->commands, $this->editor, $this->keybindings, $this->bufferService, $this->translator);
-        $this->contextMenuOpener = new ContextMenuOpener(
-            $this->tui,
-            $this->renderer,
-            $this->contextMenu,
-            $this->overlay,
-            $contextItems,
-            $this->treeOps,
-            $this->menuBar,
-            $this->editor,
-            $this->tree,
-            $this->tabBar,
-            $this->imageViewer,
-            $this->helpViewer,
-            $this->buffers,
-            $this->notifier,
-            $this->translator,
-        );
+        $this->contextMenuOpener = $this->service(ContextMenuOpener::class);
         $this->focusCoordinator = $this->service(FocusCoordinator::class);
-        $this->mouseRouter = new MouseRouter(
-            $hit,
-            $this->tui,
-            new EditorLayoutPanes($this->tree, $this->tabBar, $this->editor, $this->breadcrumbs, $this->imageViewer, $this->helpViewer),
-            new OverlayPanels($this->terminalPanel, $this->resultsPanel, $this->goToFile, $this->debugPanel),
-            $this->menuBar,
-            $this->contextMenu,
-            $this->layout,
-            $this->overlay,
-            $this->buffers,
-            $this->bufferService,
-            $this->treeOps,
-            $contextItems,
-            new GitMouseRouter($hit, $this->tui, $this->gitChanges, $this->gitDiff, $this->gitCommitBox, $this->gitHistory, $this->gitTabs, $this->gitSeparator),
-            $this->views,
-            new SettingsMouseRouter($hit, $this->tui, $this->settingsNav, $this->settingsForm, $this->settingsKeys, $this->settingsSeparator),
-            $this->bidiTui,
-            $this->debug,
-        );
 
         // Now that both view controllers exist, settle the layout for the
         // persisted locale's writing direction (RTL mirrors the sidebar right).
         $this->paneLayout->applyDirection();
 
-        new SearchUiWiring(
-            $this->findBar,
-            $this->goToFile,
-            $this->resultsPanel,
-            $this->editor,
-            $this->editorArea,
-            $this->tui,
-            $this->panels,
-            $this->commandPalette,
-            $this->navigation,
-            $this->projectSearchController,
-            $this->localHistory,
-            $this->service(ResultContextProvider::class),
-            $this->bufferService,
-            $this->service(Scheduler::class),
-            $this->rootDir,
-        )->wire();
+        $this->service(SearchUiWiring::class)->wire();
         $this->registerCommands();
         $this->wireMenuBar($keybindings);
-        $inputDispatcher = new InputDispatcher($this->tui, $this->mouseRouter, $this->contextMenu, $this->editor, $this->commands, $keybindings);
-        $this->tui->addListener($inputDispatcher->dispatch(...));
+        $this->tui->addListener($this->service(InputDispatcher::class)->dispatch(...));
 
         // Everything plugin handlers need exists now — hand them the live seams.
         $this->plugins->wireRuntime(new PluginRuntime(
@@ -622,10 +534,6 @@ final class Ide
     /** Construct the settings-view widgets and their horizontal pane container. */
     private function buildSettingsWidgets(): void
     {
-        $this->settingsNav = $this->service(SettingsNavWidget::class);
-        $this->settingsForm = $this->service(SettingsFormWidget::class);
-        $this->settingsKeys = $this->service(KeybindingsListWidget::class);
-        $this->settingsSeparator = $this->workspaceLayout->settingsSeparator();
         $this->paneLayout->arrangeSettingsArea();
     }
 
@@ -677,8 +585,6 @@ final class Ide
         $this->findBar = $this->service(FindBarWidget::class);
         $this->resultsPanel = $this->service(ResultsPanelWidget::class);
         $this->terminalPanel = $this->service(TerminalPanelWidget::class);
-        $this->projectSearchController = $this->service(ProjectSearchController::class);
-        $this->commandPalette = $this->service(CommandPalette::class);
         $this->panels = $this->service(PanelManager::class);
         $this->debugPanel = $this->service(DebugPanelWidget::class);
         $this->debugPanel->onClose(fn () => $this->panels->returnFocusFrom($this->debugPanel));
@@ -686,37 +592,11 @@ final class Ide
 
     private function buildGitView(): void
     {
-        $this->gitChanges = $this->service(ChangesListWidget::class);
-        $this->gitDiff = $this->service(DiffViewWidget::class);
-        $this->gitCommitBox = $this->service(CommitBoxWidget::class);
-        $this->gitHistory = $this->service(HistoryListWidget::class);
-        $this->gitTabs = $this->service(GitTabsWidget::class);
-        $gitLeft = $this->workspaceLayout->gitLeft();
-        $this->gitSeparator = $this->workspaceLayout->gitSeparator();
-        $this->gitAreaContainer = $this->workspaceLayout->gitArea();
         $this->paneLayout->arrangeGitArea();
-        $gitView = new GitViewController(
-            $this->git,
-            $this->rootDir,
-            new GitPanes($this->gitChanges, $this->gitDiff, $this->gitCommitBox, $this->gitHistory, $this->gitTabs),
-            $this->main,
-            $this->gitAreaContainer,
-            $gitLeft,
-            $this->menuBar,
-            $this->tui,
-            $this->notifier,
-            $this->translator,
-            $this->paneLayout,
-            $this->editorArea,
-            $this->dispatcher,
-            $this->service(LayoutController::class),
-            $this->clipboard,
-            $this->views,
-            $this->gitRemoteCommands,
-        );
-        // The controller is hand-built, so its remote-completed refresh is a
-        // runtime listener instead of an #[AsEventListener] method.
-        $this->dispatcher->addListener(GitRemoteCompleted::class, static fn () => $gitView->onRemoteCompleted());
+        // Eager: constructing the git view attaches it to WorkspaceViews (an
+        // unreferenced service would otherwise never exist); its remote-
+        // completed refresh rides the compiled #[AsEventListener] map.
+        $this->service(GitViewController::class);
     }
 
     // --- File handling ----------------------------------------------------------

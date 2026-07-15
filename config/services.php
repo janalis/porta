@@ -30,6 +30,7 @@ use Porta\Git\GitInfo;
 use Porta\Git\GitRefresher;
 use Porta\Git\GitRemote;
 use Porta\Git\GitRemoteCommands;
+use Porta\Git\GitViewController;
 use Porta\Help\HelpViewerActions;
 use Porta\Highlight\SwitchableTerminalTheme;
 use Porta\Highlight\TerminalThemeFactory;
@@ -41,7 +42,11 @@ use Porta\I18n\PaneReorder;
 use Porta\I18n\Translator;
 use Porta\Image\ImageDecoder;
 use Porta\Image\ImageViewerActions;
+use Porta\Input\GitMouseRouter;
 use Porta\Input\HitTester;
+use Porta\Input\InputDispatcher;
+use Porta\Input\MouseRouter;
+use Porta\Input\SettingsMouseRouter;
 use Porta\Layout\EditorAreaPanes;
 use Porta\Layout\GitSidebar;
 use Porta\Layout\LayoutController;
@@ -54,6 +59,8 @@ use Porta\Lsp\FormatOnSave;
 use Porta\Lsp\LspBootstrapper;
 use Porta\Lsp\LspLog;
 use Porta\Lsp\LspSessionPool;
+use Porta\Lsp\NavigationController;
+use Porta\Lsp\RefactorController;
 use Porta\Lsp\WorkspaceEditor;
 use Porta\Overlay\FloatingRegions;
 use Porta\Overlay\MenuOverlayController;
@@ -67,11 +74,13 @@ use Porta\Plugin\PluginLifecycleOps;
 use Porta\Plugin\PluginLoader;
 use Porta\Plugin\PluginManager;
 use Porta\Plugin\PluginSettings;
+use Porta\Run\RunController;
 use Porta\Search\Everywhere\SearchEverywhereController;
 use Porta\Search\Everywhere\SearchEverywhereFactory;
 use Porta\Search\ProjectSearchController;
 use Porta\Search\ResultContextProvider;
 use Porta\Search\SearchActions;
+use Porta\Search\SearchUiWiring;
 use Porta\Search\TestNavigator;
 use Porta\Settings\LiveSettingsApplier;
 use Porta\Settings\SettingsViewController;
@@ -83,6 +92,7 @@ use Porta\Support\Scheduler;
 use Porta\Ui\BidiTui;
 use Porta\Ui\ChromeInvalidator;
 use Porta\Ui\CommandPalette;
+use Porta\Ui\ContextMenuOpener;
 use Porta\Ui\CursorStyle;
 use Porta\Ui\EditorArea;
 use Porta\Ui\FocusCoordinator;
@@ -114,6 +124,7 @@ use Porta\Widget\HelpViewerWidget;
 use Porta\Widget\ImageViewerWidget;
 use Porta\Widget\MenuBarWidget;
 use Porta\Widget\ResultsPanelWidget;
+use Porta\Widget\SeparatorWidget;
 use Porta\Widget\Settings\KeybindingsListWidget;
 use Porta\Widget\Settings\SettingsFormWidget;
 use Porta\Widget\Settings\SettingsNavWidget;
@@ -204,7 +215,9 @@ return static function (ContainerConfigurator $container, ContainerBuilder $buil
         ->bind(ContainerWidget::class.' $editorBody', service('porta.widget.editor_body'))
         ->bind(ContainerWidget::class.' $main', service('porta.widget.main'))
         ->bind(ContainerWidget::class.' $settingsArea', service('porta.widget.settings_area'))
-        ->bind(ContainerWidget::class.' $settingsContent', service('porta.widget.settings_content'));
+        ->bind(ContainerWidget::class.' $settingsContent', service('porta.widget.settings_content'))
+        ->bind(ContainerWidget::class.' $gitArea', service('porta.widget.git_area'))
+        ->bind(ContainerWidget::class.' $gitLeft', service('porta.widget.git_left'));
 
     // Autoregister every Porta\ class. Only the orchestrator and the container
     // factory are excluded; everything else that isn't a real service registers
@@ -364,6 +377,14 @@ return static function (ContainerConfigurator $container, ContainerBuilder $buil
         SettingsViewController::class,
         PluginLifecycle::class,
         MenuRebuilder::class,
+        GitViewController::class,
+        MouseRouter::class,
+        InputDispatcher::class,
+        NavigationController::class,
+        RefactorController::class,
+        RunController::class,
+        SearchUiWiring::class,
+        ContextMenuOpener::class,
     ] as $locatorId) {
         $locatorEntries[$locatorId] = service($locatorId);
     }
@@ -394,6 +415,15 @@ return static function (ContainerConfigurator $container, ContainerBuilder $buil
     $services->set('porta.widget.main', ContainerWidget::class)->factory([service(WorkspaceLayout::class), 'main']);
     $services->set('porta.widget.settings_area', ContainerWidget::class)->factory([service(WorkspaceLayout::class), 'settingsArea']);
     $services->set('porta.widget.settings_content', ContainerWidget::class)->factory([service(WorkspaceLayout::class), 'settingsContent']);
+    $services->set('porta.widget.git_area', ContainerWidget::class)->factory([service(WorkspaceLayout::class), 'gitArea']);
+    $services->set('porta.widget.git_left', ContainerWidget::class)->factory([service(WorkspaceLayout::class), 'gitLeft']);
+    $services->set('porta.widget.git_separator', SeparatorWidget::class)->factory([service(WorkspaceLayout::class), 'gitSeparator']);
+    $services->set('porta.widget.settings_separator', SeparatorWidget::class)->factory([service(WorkspaceLayout::class), 'settingsSeparator']);
+
+    // The two mouse sub-routers share the parameter name $separator with
+    // different instances — binds cannot disambiguate, explicit args can.
+    $services->set(GitMouseRouter::class)->arg('$separator', service('porta.widget.git_separator'));
+    $services->set(SettingsMouseRouter::class)->arg('$separator', service('porta.widget.settings_separator'));
 
     // BufferService is both interface seams' implementation.
     $services->alias(FileOpener::class, BufferService::class);
