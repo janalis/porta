@@ -154,7 +154,8 @@ Priorities are contractual: plugin bridge (`PluginEvents`) and the chrome sweep
 (`Ui/ChromeRefreshListener`) run at **-100**, after core listeners.
 
 **Single event loop.** `revolt/event-loop` drives both the `symfony/tui` render/input loop and
-all async work (LSP over stdio, git subprocesses, the integrated terminal PTY, run
+all async work (LSP over stdio, git subprocesses, the integrated terminal PTYs — one per
+`Terminal/TerminalSession`, tabbed in the single `TerminalPanelWidget`, owned by `Run/RunController` — run
 configurations). Nothing blocks; long operations are timers/callbacks on the shared loop.
 
 **Rendering pipeline (`symfony/tui`).** Widgets (`src/Widget/**`) render to `string[]` lines
@@ -183,10 +184,13 @@ server). Feature controllers (`Lsp/NavigationController`, `Lsp/RefactorControlle
 
 **Debugger (DAP).** `Debug/DapClient` speaks the Debug Adapter Protocol over a child process's
 stdio (framing shared with LSP via `Support/JsonRpcFramer`); `Debug/DapSession` is one launch's
-order-agnostic state machine (0-based lines internally, 1-based on the wire); `Debug/DebugController`
-(hand-built in `Ide`) owns the in-memory `BreakpointStore`, the editor decorations (gutter `●`,
-`Role::DebugLineBg` stopped-line band), the `Widget/DebugPanelWidget` bottom panel (frames +
-lazily-expanded variables) and the debuggee-output terminal buffer. Adapters are config-only:
+order-agnostic state machine (0-based lines internally, 1-based on the wire; conditional/exception
+breakpoints, run-to-cursor via a wire-level one-shot, evaluate); `Debug/DebugController`
+(container-autowired) owns the `BreakpointStore`/`WatchStore`/`ExceptionFilterStore` (persisted to
+`.porta/debug.json` by `Debug/DebugStatePersistence`, restored before the first buffer opens so
+gutter dots paint at boot), the editor decorations (gutter `●`/`◆`, `Role::DebugLineBg` stopped-line
+band), the `Widget/DebugPanelWidget` bottom panel (frames + watches + lazily-expanded variables) and
+a `Terminal/TerminalSession` (`'debug'`) for debuggee output. Adapters are config-only:
 `.porta.json` `languages.<id>.debug = {adapter, launch}` (Settings → language section), registry
 in `Debug/DebugAdapters`. Keys: Shift+F9 debug, Ctrl+F8 breakpoint (also gutter click); F7/F8/F9/
 Shift+F8/Ctrl+F2 are gated by `CommandRegistry`'s `when` closures so they fall through to widget
