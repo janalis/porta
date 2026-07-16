@@ -10,6 +10,7 @@ use Porta\Ui\Role;
 use Porta\Ui\Theme\Styles;
 use Porta\Widget\Render\MenuOverlayHost;
 use Porta\Widget\Render\MenuOverlayHostTrait;
+use Porta\Widget\Render\TabCloseGlyph;
 use Symfony\Component\Tui\Ansi\AnsiUtils;
 use Symfony\Component\Tui\Render\RenderContext;
 use Symfony\Component\Tui\Widget\AbstractWidget;
@@ -133,9 +134,7 @@ final class TabBarWidget extends AbstractWidget implements MenuOverlayHost
                 break;
             }
             $style = $part['active'] ? $this->styles->merge(Role::InlayPopupBg, Role::Bright)->withBold() : $this->styles->of(Role::Subtle);
-            // Dim the close × (bright on the active tab) so it reads as an affordance.
-            $closeStyle = $part['active'] ? $this->styles->of(Role::CurrentLineNumber) : $this->styles->of(Role::Gutter);
-            $text = str_replace('×', $closeStyle->apply('×'), $part['text']);
+            $text = str_replace('×', $part['active'] ? TabCloseGlyph::active($this->styles) : TabCloseGlyph::inactive($this->styles), $part['text']);
             $line .= $style->apply($text).$this->styles->of(Role::Placeholder)->apply('│');
             $this->lastLayout[] = [
                 'index' => $index,
@@ -184,9 +183,8 @@ final class TabBarWidget extends AbstractWidget implements MenuOverlayHost
                 $name = AnsiUtils::truncateToWidth($tab['name'], $nameWidth, '…', pad: true);
                 $marker = $tab['dirty'] ? '●' : ' ';
                 $style = $tab['active'] ? $this->styles->merge(Role::InlayPopupBg, Role::Bright)->withBold() : $this->styles->of(Role::Subtle);
-                // Dim the close × (bright on the active tab) so it reads as an affordance.
-                $closeStyle = $tab['active'] ? $this->styles->of(Role::CurrentLineNumber) : $this->styles->of(Role::Gutter);
-                $lines[] = $style->apply(' '.$name.' '.$marker.$closeStyle->apply('×').' ');
+                $close = $tab['active'] ? TabCloseGlyph::active($this->styles) : TabCloseGlyph::inactive($this->styles);
+                $lines[] = $style->apply(' '.$name.' '.$marker.$close.' ');
                 $this->lastLayout[] = [
                     'index' => $index,
                     'row' => \count($lines) - 1,

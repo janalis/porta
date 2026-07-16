@@ -13,6 +13,7 @@ use Porta\Ui\LtrPane;
 use Porta\Ui\Role;
 use Porta\Ui\Sgr;
 use Porta\Ui\Theme\Styles;
+use Porta\Widget\Render\TabCloseGlyph;
 use Symfony\Component\Tui\Ansi\AnsiUtils;
 use Symfony\Component\Tui\Input\Key;
 use Symfony\Component\Tui\Render\RenderContext;
@@ -327,8 +328,7 @@ final class TerminalPanelWidget extends OverlayWidget implements FocusableInterf
                 break;
             }
             $style = $part['active'] ? $this->styles->merge(Role::Toolbar, Role::Bright)->withBold() : $this->styles->merge(Role::Toolbar, Role::Subtle);
-            $closeStyle = $part['active'] ? $this->styles->of(Role::CurrentLineNumber) : $this->styles->of(Role::Gutter);
-            $text = str_replace('×', $closeStyle->apply('×'), $part['text']);
+            $text = str_replace('×', $part['active'] ? TabCloseGlyph::active($this->styles) : TabCloseGlyph::inactive($this->styles), $part['text']);
             $line .= $style->apply($text).$this->styles->of(Role::Placeholder)->apply('│');
             $this->lastTabLayout[] = ['index' => $index, 'start' => $used, 'width' => $part['width'], 'closeStart' => $used + $part['closeOffset'], 'closeWidth' => 2];
             $used += $part['width'];
