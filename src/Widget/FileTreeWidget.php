@@ -6,6 +6,7 @@ namespace Porta\Widget;
 
 use Porta\Container\AsWidget;
 use Porta\Layout\ResizableSidebar;
+use Porta\Tree\FileTreeNode;
 use Porta\Ui\ColorPalette;
 use Porta\Ui\ListNavigation;
 use Porta\Ui\ListSelection;
@@ -48,7 +49,7 @@ final class FileTreeWidget extends AbstractWidget implements FocusableInterface,
     private readonly ListSelection $list;
     private int $lastRows = 24;
 
-    /** @var list<array{path: string, name: string, isDir: bool, depth: int}> */
+    /** @var list<FileTreeNode> */
     private array $visible = [];
 
     /**
@@ -90,9 +91,9 @@ final class FileTreeWidget extends AbstractWidget implements FocusableInterface,
      * The currently selected node, or null when the tree is empty. The keyboard
      * counterpart of {@see nodeAt} for opening the context menu without a click.
      *
-     * @return array{path: string, name: string, isDir: bool, depth: int}|null
+     * @return FileTreeNode|null
      */
-    public function selectedNode(): ?array
+    public function selectedNode(): ?FileTreeNode
     {
         return $this->visible[$this->list->selected()] ?? null;
     }
@@ -124,9 +125,9 @@ final class FileTreeWidget extends AbstractWidget implements FocusableInterface,
      * The tree node under a click at row $relRow (0 = header), selecting it, or
      * null when the click missed every entry. Used to target a right-click.
      *
-     * @return array{path: string, name: string, isDir: bool, depth: int}|null
+     * @return FileTreeNode|null
      */
-    public function nodeAt(int $relRow): ?array
+    public function nodeAt(int $relRow): ?FileTreeNode
     {
         $index = $this->list->rowIndexAt($relRow, \count($this->visible));
         if (null === $index) {
@@ -164,17 +165,17 @@ final class FileTreeWidget extends AbstractWidget implements FocusableInterface,
         }
         if ($kb->matches($data, 'collapse')) {
             $node = $this->visible[$this->list->selected()];
-            if ($node['isDir'] && ($this->expanded[$node['path']] ?? false)) {
-                $this->expanded[$node['path']] = false;
+            if ($node->isDir && ($this->expanded[$node->path] ?? false)) {
+                $this->expanded[$node->path] = false;
                 $this->rebuild();
                 $this->invalidate();
 
                 return;
             }
-            if ($node['depth'] > 0) {
+            if ($node->depth > 0) {
                 // Jump to parent
                 for ($i = $this->list->selected() - 1; $i >= 0; --$i) {
-                    if ($this->visible[$i]['depth'] >= $node['depth']) {
+                    if ($this->visible[$i]->depth >= $node->depth) {
                         continue;
                     }
 
@@ -188,8 +189,8 @@ final class FileTreeWidget extends AbstractWidget implements FocusableInterface,
         }
         if ($kb->matches($data, 'expand')) {
             $node = $this->visible[$this->list->selected()];
-            if ($node['isDir'] && !($this->expanded[$node['path']] ?? false)) {
-                $this->expanded[$node['path']] = true;
+            if ($node->isDir && !($this->expanded[$node->path] ?? false)) {
+                $this->expanded[$node->path] = true;
                 $this->rebuild();
                 $this->invalidate();
             }
@@ -198,15 +199,15 @@ final class FileTreeWidget extends AbstractWidget implements FocusableInterface,
         }
         if ($kb->matches($data, 'open')) {
             $node = $this->visible[$this->list->selected()];
-            if ($node['isDir']) {
-                $this->expanded[$node['path']] = !($this->expanded[$node['path']] ?? false);
+            if ($node->isDir) {
+                $this->expanded[$node->path] = !($this->expanded[$node->path] ?? false);
                 $this->rebuild();
                 $this->invalidate();
 
                 return;
             }
             if (null !== $this->onOpenFile) {
-                ($this->onOpenFile)($node['path']);
+                ($this->onOpenFile)($node->path);
             }
 
             return;
@@ -228,15 +229,15 @@ final class FileTreeWidget extends AbstractWidget implements FocusableInterface,
         }
         $this->list->select($index);
         $node = $this->visible[$index];
-        if ($node['isDir']) {
-            $this->expanded[$node['path']] = !($this->expanded[$node['path']] ?? false);
+        if ($node->isDir) {
+            $this->expanded[$node->path] = !($this->expanded[$node->path] ?? false);
             $this->rebuild();
             $this->invalidate();
 
             return;
         }
         if (null !== $this->onOpenFile) {
-            ($this->onOpenFile)($node['path']);
+            ($this->onOpenFile)($node->path);
         }
         $this->invalidate();
     }
@@ -274,18 +275,18 @@ final class FileTreeWidget extends AbstractWidget implements FocusableInterface,
             }
 
             $icon = match (true) {
-                !$node['isDir'] => '  ',
-                $this->expanded[$node['path']] ?? false => '▾ ',
+                !$node->isDir => '  ',
+                $this->expanded[$node->path] ?? false => '▾ ',
                 default => '▸ ',
             };
-            $text = str_repeat(' ', max(0, $node['depth'] + 1)).$icon.$node['name'].($node['isDir'] ? '/' : '');
+            $text = str_repeat(' ', max(0, $node->depth + 1)).$icon.$node->name.($node->isDir ? '/' : '');
             $text = AnsiUtils::truncateToWidth($text, $width, '…', pad: true);
 
             // Subtle hover background beneath the pointer keeps the dir/file foreground.
             $lines[] = match (true) {
                 $index === $this->list->selected() => ($this->focused ? $this->palette->of(Role::SelectedRow) : $this->palette->of(Role::SelectedRowUnfocused)).$text.Sgr::RESET,
-                $index === $this->hoveredIndex => $this->palette->of(Role::RowHighlightBg).($node['isDir'] ? $this->palette->of(Role::TabAccent) : '').$text.Sgr::RESET,
-                $node['isDir'] => $this->palette->of(Role::TabAccent).$text.Sgr::RESET,
+                $index === $this->hoveredIndex => $this->palette->of(Role::RowHighlightBg).($node->isDir ? $this->palette->of(Role::TabAccent) : '').$text.Sgr::RESET,
+                $node->isDir => $this->palette->of(Role::TabAccent).$text.Sgr::RESET,
                 default => $text,
             };
         }
@@ -367,13 +368,13 @@ final class FileTreeWidget extends AbstractWidget implements FocusableInterface,
 
         foreach ($dirs as $name) {
             $path = $dir.\DIRECTORY_SEPARATOR.$name;
-            $this->visible[] = ['path' => $path, 'name' => $name, 'isDir' => true, 'depth' => $depth];
+            $this->visible[] = new FileTreeNode($path, $name, true, $depth);
             if ($this->expanded[$path] ?? false) {
                 $this->walk($path, $depth + 1);
             }
         }
         foreach ($files as $name) {
-            $this->visible[] = ['path' => $dir.\DIRECTORY_SEPARATOR.$name, 'name' => $name, 'isDir' => false, 'depth' => $depth];
+            $this->visible[] = new FileTreeNode($dir.\DIRECTORY_SEPARATOR.$name, $name, false, $depth);
         }
     }
 

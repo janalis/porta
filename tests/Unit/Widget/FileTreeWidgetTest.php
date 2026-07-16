@@ -39,11 +39,11 @@ final class FileTreeWidgetTest extends TestCase
         $tree = new FileTreeWidget($project->dir);
         $tree->render(new RenderContext(30, 10));
 
-        $this->assertSame('a.php', $tree->selectedNode()['name'] ?? null, 'boot selects the first entry');
+        $this->assertSame('a.php', $tree->selectedNode()?->name, 'boot selects the first entry');
         $this->assertSame(1, $tree->selectedRow(), 'first entry sits just under the header row');
 
         $tree->nodeAt(2); // select b.php the way a click would
-        $this->assertSame('b.php', $tree->selectedNode()['name'] ?? null);
+        $this->assertSame('b.php', $tree->selectedNode()?->name);
         $this->assertSame(2, $tree->selectedRow());
     }
 
@@ -157,7 +157,7 @@ final class FileTreeWidgetTest extends TestCase
         // Left/collapse on the second child scans upward past its sibling b.php
         // (same depth → skipped) before landing on the sub/ parent.
         $tree->handleInput("\x1b[D");
-        $this->assertSame('sub', $tree->selectedNode()['name'] ?? null);
+        $this->assertSame('sub', $tree->selectedNode()?->name);
     }
 
     public function testRefreshIfChangedDetectsAddedAndRemovedEntries(): void
@@ -325,8 +325,8 @@ final class FileTreeWidgetTest extends TestCase
 
         $sub = $tree->nodeAt(1);
         $this->assertNotNull($sub);
-        $this->assertSame('sub', $sub['name']);
-        $this->assertTrue($sub['isDir']);
+        $this->assertSame('sub', $sub->name);
+        $this->assertTrue($sub->isDir);
 
         // Row 1 is the selected entry; its highlighted line shows the directory.
         $lines = $tree->render($context);

@@ -47,11 +47,11 @@ final class TreeOperations
     /**
      * The right-click context-menu items for a tree node.
      *
-     * @param array{path: string, name: string, isDir: bool, depth: int} $node
+     * @param FileTreeNode $node
      *
      * @return list<MenuItem>
      */
-    public function contextItems(array $node): array
+    public function contextItems(FileTreeNode $node): array
     {
         $items = [
             new MenuItem($this->translator->trans('New File…'), '', fn () => $this->treeNewFile($node)),
@@ -59,20 +59,20 @@ final class TreeOperations
             MenuItem::separator(),
         ];
         // Folder-only: search / search-and-replace scoped to the clicked subtree.
-        if ($node['isDir']) {
-            $items[] = new MenuItem($this->translator->trans('Find in Files…'), '', fn () => $this->searchActions->openFindInFolder($node['path']));
-            $items[] = new MenuItem($this->translator->trans('Replace in Files…'), '', fn () => $this->searchActions->openReplaceInFolder($node['path']));
-            $items[] = new MenuItem($this->translator->trans('Add to Search Scopes'), '', fn () => $this->projectSearch->addSearchScope($node['path']));
+        if ($node->isDir) {
+            $items[] = new MenuItem($this->translator->trans('Find in Files…'), '', fn () => $this->searchActions->openFindInFolder($node->path));
+            $items[] = new MenuItem($this->translator->trans('Replace in Files…'), '', fn () => $this->searchActions->openReplaceInFolder($node->path));
+            $items[] = new MenuItem($this->translator->trans('Add to Search Scopes'), '', fn () => $this->projectSearch->addSearchScope($node->path));
             $items[] = MenuItem::separator();
         }
-        $items[] = new MenuItem($this->translator->trans('Copy Path'), '', fn () => $this->copyAbsolutePath($node['path']));
-        $items[] = new MenuItem($this->translator->trans('Copy Relative Path'), '', fn () => $this->copyRelativePath($node['path']));
+        $items[] = new MenuItem($this->translator->trans('Copy Path'), '', fn () => $this->copyAbsolutePath($node->path));
+        $items[] = new MenuItem($this->translator->trans('Copy Relative Path'), '', fn () => $this->copyRelativePath($node->path));
         $items[] = MenuItem::separator();
         $items[] = new MenuItem($this->translator->trans('Rename…'), '', fn () => $this->treeRename($node));
         $items[] = new MenuItem($this->translator->trans('Delete…'), '', fn () => $this->treeDelete($node));
         $items[] = MenuItem::separator();
-        if (!$node['isDir']) {
-            $items[] = new MenuItem($this->translator->trans('Open'), '', fn () => $this->bufferService->openFile($node['path'], focus: OpenFocus::Editor));
+        if (!$node->isDir) {
+            $items[] = new MenuItem($this->translator->trans('Open'), '', fn () => $this->bufferService->openFile($node->path, focus: OpenFocus::Editor));
         }
         $items[] = new MenuItem($this->translator->trans('Refresh'), '', fn () => $this->tree->refresh());
 
@@ -82,15 +82,15 @@ final class TreeOperations
     /**
      * Directory a new tree entry is created in: the node itself, or its parent.
      *
-     * @param array{path: string, name: string, isDir: bool, depth: int} $node
+     * @param FileTreeNode $node
      */
-    private function treeTargetDir(array $node): string
+    private function treeTargetDir(FileTreeNode $node): string
     {
-        return $node['isDir'] ? $node['path'] : \dirname($node['path']);
+        return $node->isDir ? $node->path : \dirname($node->path);
     }
 
-    /** @param array{path: string, name: string, isDir: bool, depth: int} $node */
-    private function treeNewFile(array $node): void
+    /** @param FileTreeNode $node */
+    private function treeNewFile(FileTreeNode $node): void
     {
         $dir = $this->treeTargetDir($node);
         $this->promptName($this->translator->trans('New File'), '', function (string $name) use ($dir): void {
@@ -107,8 +107,8 @@ final class TreeOperations
         });
     }
 
-    /** @param array{path: string, name: string, isDir: bool, depth: int} $node */
-    private function treeNewFolder(array $node): void
+    /** @param FileTreeNode $node */
+    private function treeNewFolder(FileTreeNode $node): void
     {
         $dir = $this->treeTargetDir($node);
         $this->promptName($this->translator->trans('New Folder'), '', function (string $name) use ($dir): void {
@@ -125,11 +125,11 @@ final class TreeOperations
         });
     }
 
-    /** @param array{path: string, name: string, isDir: bool, depth: int} $node */
-    private function treeRename(array $node): void
+    /** @param FileTreeNode $node */
+    private function treeRename(FileTreeNode $node): void
     {
-        $old = $node['path'];
-        $this->promptName($this->translator->trans('Rename'), $node['name'], function (string $name) use ($old): void {
+        $old = $node->path;
+        $this->promptName($this->translator->trans('Rename'), $node->name, function (string $name) use ($old): void {
             $name = trim($name);
             if ('' === $name || $name === basename($old)) {
                 return;
@@ -152,11 +152,11 @@ final class TreeOperations
         });
     }
 
-    /** @param array{path: string, name: string, isDir: bool, depth: int} $node */
-    private function treeDelete(array $node): void
+    /** @param FileTreeNode $node */
+    private function treeDelete(FileTreeNode $node): void
     {
-        $path = $node['path'];
-        $this->promptName($this->translator->trans('Delete %name%? (y/N)', ['%name%' => $node['name']]), '', function (string $answer) use ($path): void {
+        $path = $node->path;
+        $this->promptName($this->translator->trans('Delete %name%? (y/N)', ['%name%' => $node->name]), '', function (string $answer) use ($path): void {
             if (!\in_array(strtolower(trim($answer)), ['y', 'yes'], strict: true)) {
                 $this->tui->setFocus($this->tree);
 
