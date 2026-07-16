@@ -6,10 +6,8 @@ namespace Porta\Ui;
 
 use Porta\Config\CommandRegistry;
 use Porta\Editor\BufferManager;
-use Porta\Editor\BufferService;
 use Porta\I18n\Translator;
 use Porta\Lsp\LspLog;
-use Porta\Widget\CodeEditorWidget;
 use Porta\Widget\MenuBarWidget;
 use Symfony\Component\Tui\Tui;
 
@@ -24,7 +22,6 @@ final class WorkbenchActions
 
     public function __construct(
         private readonly BufferManager $buffers,
-        private readonly BufferService $bufferService,
         private readonly Notifier $notifier,
         private readonly Translator $translator,
         private readonly Tui $tui,
@@ -34,7 +31,6 @@ final class WorkbenchActions
         private readonly CommandRegistry $commands,
         private readonly NotificationLog $notificationLog,
         private readonly LspLog $lspLog,
-        private readonly CodeEditorWidget $editor,
     ) {}
 
     /** Ctrl+Q: quit, unless dirty buffers need a confirming second press within 3s. */
@@ -67,26 +63,13 @@ final class WorkbenchActions
     }
 
     /**
-     * Show the notification log (newest first) in the editor's list overlay, so
-     * an expired status-bar flash can still be read.
+     * Show the notification log (newest first) as a dock tool, so an expired
+     * status-bar flash can still be read; new flashes append live via
+     * {@see DockLiveRefreshListener}.
      */
     public function showNotificationLog(): void
     {
-        $entries = $this->notificationLog->entries();
-        if ([] === $entries) {
-            $this->notifier->flash($this->translator->trans('No notifications yet'));
-
-            return;
-        }
-        if (!$this->bufferService->ensureTextEditorActive()) {
-            return;
-        }
-        $items = [];
-        foreach (array_reverse($entries) as $entry) {
-            $items[] = ['label' => $entry['text'], 'hint' => $entry['time']->format('H:i:s'), 'value' => $entry['text']];
-        }
-        $this->editor->openListOverlay($this->translator->trans('Notifications'), $items, static function (string $value): void {});
-        $this->tui->requestRender();
+        $this->panels->showList(ResultsPanelMode::Notifications, $this->translator->trans('Notifications'), LogRows::build($this->notificationLog->entries()));
     }
 
     /**

@@ -6,6 +6,7 @@ namespace Porta\Ui;
 
 use Porta\Event\DiagnosticsChanged;
 use Porta\Event\LspLogAppended;
+use Porta\Event\NotificationLogged;
 use Porta\Lsp\LspLog;
 use Porta\Search\ProblemRows;
 use Porta\Widget\ResultsPanelWidget;
@@ -29,6 +30,7 @@ final class DockLiveRefreshListener
         private readonly Tui $tui,
         private readonly ProblemRows $problemRows,
         private readonly LspLog $lspLog,
+        private readonly NotificationLog $notificationLog,
     ) {}
 
     #[AsEventListener]
@@ -41,6 +43,12 @@ final class DockLiveRefreshListener
     public function onLspLogAppended(LspLogAppended $event): void
     {
         $this->refresh(ResultsPanelMode::LspLog, fn (): array => LogRows::build($this->lspLog->entries()));
+    }
+
+    #[AsEventListener]
+    public function onNotificationLogged(NotificationLogged $event): void
+    {
+        $this->refresh(ResultsPanelMode::Notifications, fn (): array => LogRows::build($this->notificationLog->entries()));
     }
 
     /** @param callable(): list<array{path: string, line: int, text: string}> $rows */

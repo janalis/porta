@@ -8,11 +8,13 @@ use PHPUnit\Framework\TestCase;
 use Porta\Editor\BufferManager;
 use Porta\Event\DiagnosticsChanged;
 use Porta\Event\LspLogAppended;
+use Porta\Event\NotificationLogged;
 use Porta\Lsp\LspLog;
 use Porta\Search\ProblemRows;
 use Porta\Tests\Support\TestBottomDock;
 use Porta\Ui\BottomDock;
 use Porta\Ui\DockLiveRefreshListener;
+use Porta\Ui\NotificationLog;
 use Porta\Ui\ResultsPanelMode;
 use Porta\Widget\DebugPanelWidget;
 use Porta\Widget\ResultsPanelWidget;
@@ -34,6 +36,7 @@ final class DockLiveRefreshListenerTest extends TestCase
     private BufferManager $buffers;
     private BottomDock $dock;
     private LspLog $lspLog;
+    private NotificationLog $notificationLog;
 
     private function listener(): DockLiveRefreshListener
     {
@@ -42,8 +45,9 @@ final class DockLiveRefreshListenerTest extends TestCase
         $this->buffers = new BufferManager();
         $this->dock = TestBottomDock::create($this->tui, new TerminalPanelWidget(), $this->results, new DebugPanelWidget());
         $this->lspLog = new LspLog(new MockClock('2026-07-16 10:00:00'), new EventDispatcher());
+        $this->notificationLog = new NotificationLog(new MockClock('2026-07-16 11:00:00'), new EventDispatcher());
 
-        return new DockLiveRefreshListener($this->dock, $this->results, $this->tui, new ProblemRows($this->buffers, '/p'), $this->lspLog);
+        return new DockLiveRefreshListener($this->dock, $this->results, $this->tui, new ProblemRows($this->buffers, '/p'), $this->lspLog, $this->notificationLog);
     }
 
     private function plainPanel(): string
@@ -88,6 +92,17 @@ final class DockLiveRefreshListenerTest extends TestCase
         $listener->onLspLogAppended(new LspLogAppended());
 
         $this->assertStringContainsString('10:00:00  indexing…', $this->plainPanel(), 'the open log tab tailed the new line');
+    }
+
+    public function testRefreshesAnOpenNotificationsTab(): void
+    {
+        $listener = $this->listener();
+        $this->dock->showList(ResultsPanelMode::Notifications, 'Notifications', []);
+
+        $this->notificationLog->append('saved a.php');
+        $listener->onNotificationLogged(new NotificationLogged());
+
+        $this->assertStringContainsString('11:00:00  saved a.php', $this->plainPanel(), 'the open tab picked up the new flash');
     }
 
     public function testNoRefreshWhenThePanelServesAnotherToolOrIsClosed(): void

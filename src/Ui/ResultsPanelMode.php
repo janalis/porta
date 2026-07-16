@@ -25,4 +25,6 @@ enum ResultsPanelMode
     case Todo;
     /** The captured language-server output, newest first (inert rows). */
     case LspLog;
+    /** The status-bar flash history, newest first (inert rows). */
+    case Notifications;
 }

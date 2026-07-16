@@ -132,7 +132,7 @@ final class SearchUiWiring
         });
 
         $this->resultsPanel->onJump(function (string $relativePath, int $line): void {
-            if (ResultsPanelMode::LspLog === $this->panels->mode()) {
+            if (\in_array($this->panels->mode(), [ResultsPanelMode::LspLog, ResultsPanelMode::Notifications], strict: true)) {
                 return; // log rows carry no file location
             }
             if (ResultsPanelMode::Action === $this->panels->mode()) {

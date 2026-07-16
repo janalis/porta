@@ -7,13 +7,14 @@ namespace Porta\Tests\Unit\Ui;
 use PHPUnit\Framework\TestCase;
 use Porta\Ui\NotificationLog;
 use Symfony\Component\Clock\MockClock;
+use Symfony\Component\EventDispatcher\EventDispatcher;
 
 final class NotificationLogTest extends TestCase
 {
     public function testAppendsWithTimestampsOldestFirst(): void
     {
         $clock = new MockClock('2026-07-13 10:00:00');
-        $log = new NotificationLog($clock);
+        $log = new NotificationLog($clock, new EventDispatcher());
 
         $log->append('first');
         $clock->modify('+5 seconds');
@@ -27,7 +28,7 @@ final class NotificationLogTest extends TestCase
 
     public function testCapsAtOneHundredEntriesDroppingTheOldest(): void
     {
-        $log = new NotificationLog(new MockClock());
+        $log = new NotificationLog(new MockClock(), new EventDispatcher());
         for ($i = 1; $i <= 105; ++$i) {
             $log->append("msg {$i}");
         }

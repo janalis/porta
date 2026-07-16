@@ -6947,7 +6947,7 @@ final class IdeEdgeCasesTest extends TestCase
         $this->assertSame('block', IdeConfig::load($project->dir)->settings['cursorShape'], 'the shape persisted');
     }
 
-    public function testNotificationLogShowsExpiredFlashes(): void
+    public function testNotificationLogShowsExpiredFlashesInTheDock(): void
     {
         putenv('PATH=/nonexistent');
         $project = new TempProject(['a.php' => "<?php\n\$a = 1;\n"]);
@@ -6956,48 +6956,43 @@ final class IdeEdgeCasesTest extends TestCase
             $project,
             $project->path('a.php'),
             [
-                200 => function ($tui, $terminal, $ide): void {
-                    // Empty log (boot may have flashed): the command just flashes.
-                    $log = new \ReflectionProperty($ide, 'locator')->getValue($ide)->get(\Porta\Ui\NotificationLog::class);
-                    new \ReflectionProperty($log, 'entries')->setValue($log, []);
-                    new \ReflectionProperty($ide, 'commands')->getValue($ide)->run('ide_notifications');
-                    $tui->tick();
-                    $this->assertStringContainsString('No notifications yet', AnsiUtils::stripAnsiCodes($terminal->getOutput()));
-
+                200 => static function ($tui, $terminal, $ide): void {
+                    // The 0.1 s flash will expire; the log is the only way back to it.
                     new \ReflectionProperty($ide, 'notifier')
                         ->getValue($ide)
                         ->flash('the answer is 42', 0.1);
                 },
                 400 => function ($tui, $terminal, $ide): void {
                     $tui->tick();
-                    // The 0.1 s flash has long expired; the log is the only way back to it.
-                    $terminal->clearOutput();
                     new \ReflectionProperty($ide, 'commands')->getValue($ide)->run('ide_notifications');
                     $tui->tick();
                     $screen = AnsiUtils::stripAnsiCodes($terminal->getOutput());
-                    $this->assertStringContainsString('Notifications', $screen, 'the log overlay opened');
+                    $this->assertStringContainsString('Notifications', $screen, 'the dock tab opened');
                     $this->assertStringContainsString('the answer is 42', $screen, 'the expired flash is reviewable');
-                    $tui->handleInput("\x1b"); // Esc closes the overlay
+
+                    // A flash landing while the tab is open appears live, newest first.
+                    new \ReflectionProperty($ide, 'notifier')
+                        ->getValue($ide)
+                        ->flash('a later event', 0.1);
+                    $tui->tick();
+                    $panelText = AnsiUtils::stripAnsiCodes(implode("\n", $tui->getById('results')->render(new \Symfony\Component\Tui\Render\RenderContext(160, 12))));
+                    $this->assertLessThan(
+                        strpos($panelText, needle: 'the answer is 42'),
+                        strpos($panelText, needle: 'a later event'),
+                        'the new flash appended live, newest first',
+                    );
+                    $tui->setFocus($tui->getById('results'));
+                    $tui->handleInput("\r"); // Enter on a log row is inert
+                    $tui->tick();
+                    $this->assertTrue($tui->getById('results')->isVisible(), 'the tab stays put on Enter');
+                    $tui->handleInput("\x1b"); // Esc hides the dock
+                    $tui->tick();
+                    $this->assertFalse($tui->getById('results')->isVisible());
                 },
             ],
         );
 
-        // With only an image open, the editor-hosted overlay refuses with a flash.
-        $imageProject = new TempProject(['img.png' => $this->twoColorPng(4, 4)]);
-        $this->runIde(
-            $imageProject,
-            $imageProject->path('img.png'),
-            [
-                200 => function ($tui, $terminal, $ide): void {
-                    new \ReflectionProperty($ide, 'notifier')
-                        ->getValue($ide)
-                        ->flash('logged', 0.1);
-                    new \ReflectionProperty($ide, 'commands')->getValue($ide)->run('ide_notifications');
-                    $tui->tick();
-                    $this->assertStringContainsString('Not available while viewing an image', AnsiUtils::stripAnsiCodes($terminal->getOutput()));
-                },
-            ],
-        );
+        $this->addToAssertionCount(1);
     }
 
     public function testFormatOnSaveSavesThroughTheFormatPath(): void

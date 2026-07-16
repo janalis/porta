@@ -176,6 +176,14 @@ a strip × closes the tool (the Terminal only conceals — sessions keep running
 doubles as the panel-resize grab. All three panels share one height
 (`bottomPanelHeightPercent`, driven through `BottomDock::setPanelRows`). A debugger stop
 auto-reveals the Debug tab (re-opening it, watches reseeded, if it was ×'d).
+List tools ride `showList(mode, title, rows)` and stay **live** through `Ui/DockLiveRefreshListener`
+(guarded on `isOpen()` + mode; only `setResults` + repaint, never focus/reveal): Problems refreshes
+on `Event/DiagnosticsChanged` (dispatched by `BufferService::applyDiagnostics`, rows via
+`Search/ProblemRows`), the LSP server log and the notification log tail their rings
+(`Event/LspLogAppended` / `Event/NotificationLogged`, rows via `Ui/LogRows`, newest first, empty
+`path` = inert Enter), and `Search/TodoScanner` (ide_todo, alt+8) runs a case-sensitive
+`TODO|FIXME` regex scan over the shared `ProjectSearch` engine with its own
+`ResultsPanelMode::Todo` so F5 re-scans instead of re-running the last find-in-project query.
 
 **Rendering pipeline (`symfony/tui`).** Widgets (`src/Widget/**`) render to `string[]` lines
 measured in **display columns** (`mb_strwidth`, `AnsiUtils::visibleWidth`) so CJK/wide chars and

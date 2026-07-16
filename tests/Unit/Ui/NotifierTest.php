@@ -9,6 +9,7 @@ use Porta\Ui\NotificationLog;
 use Porta\Ui\Notifier;
 use Porta\Widget\StatusBarWidget;
 use Symfony\Component\Clock\MockClock;
+use Symfony\Component\EventDispatcher\EventDispatcher;
 use Symfony\Component\Tui\Terminal\VirtualTerminal;
 use Symfony\Component\Tui\Tui;
 
@@ -18,7 +19,7 @@ final class NotifierTest extends TestCase
     {
         $status = new StatusBarWidget(clock: $clock = new MockClock());
         $tui = new Tui(terminal: new VirtualTerminal(columns: 80, rows: 24));
-        $log = new NotificationLog($clock);
+        $log = new NotificationLog($clock, new EventDispatcher());
         $notifier = new Notifier($status, $tui, $log);
 
         $notifier->flash('saved a.php');
