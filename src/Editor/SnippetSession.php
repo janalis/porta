@@ -44,7 +44,7 @@ final class SnippetSession
      * Start a session for a snippet just inserted at ($startLine, $startCol).
      * Does nothing (stays inactive) when the snippet has no tab stops.
      *
-     * @param list<array{index: int, start: int, end: int}> $rawStops byte offsets into $text
+     * @param list<SnippetTabStop> $rawStops byte offsets into $text
      */
     public function begin(int $startLine, int $startCol, string $text, array $rawStops): void
     {
@@ -183,7 +183,7 @@ final class SnippetSession
      * Convert snippet tab stops (byte offsets into the inserted text) into
      * absolute document positions given the insertion point.
      *
-     * @param list<array{index: int, start: int, end: int}> $stops
+     * @param list<SnippetTabStop> $stops
      *
      * @return list<array{line: int, start: int, end: int}>
      */
@@ -192,9 +192,9 @@ final class SnippetSession
         $result = [];
         foreach ($stops as $stop) {
             $result[] = [
-                'line' => $startLine + substr_count(substr($text, offset: 0, length: $stop['start']), needle: "\n"),
-                'start' => $this->offsetToColumn($startCol, $text, $stop['start']),
-                'end' => $this->offsetToColumn($startCol, $text, $stop['end']),
+                'line' => $startLine + substr_count(substr($text, offset: 0, length: $stop->start), needle: "\n"),
+                'start' => $this->offsetToColumn($startCol, $text, $stop->start),
+                'end' => $this->offsetToColumn($startCol, $text, $stop->end),
             ];
         }
 

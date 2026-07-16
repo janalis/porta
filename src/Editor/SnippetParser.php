@@ -17,14 +17,14 @@ namespace Porta\Editor;
 final class SnippetParser
 {
     /**
-     * @return array{text: string, stops: list<array{index: int, start: int, end: int}>}
+     * @return array{text: string, stops: list<SnippetTabStop>}
      *               `text` is what to insert; each stop's start/end are byte
      *               offsets into `text`, ordered 1,2,… then 0 (final) last
      */
     public static function parse(string $snippet): array
     {
         $text = '';
-        /** @var array<int, array{index: int, start: int, end: int}> $stops keyed by index (first occurrence wins) */
+        /** @var array<int, SnippetTabStop> $stops keyed by index (first occurrence wins) */
         $stops = [];
         $len = \strlen($snippet);
         $i = 0;
@@ -54,7 +54,7 @@ final class SnippetParser
                             $text .= $sub['text'];
                             self::recordStop($stops, $index, $start, \strlen($text));
                             foreach ($sub['stops'] as $nested) {
-                                self::recordStop($stops, $nested['index'], $start + $nested['start'], $start + $nested['end']);
+                                self::recordStop($stops, $nested->index, $start + $nested->start, $start + $nested->end);
                             }
                             $i = $close + 1;
 
@@ -84,26 +84,26 @@ final class SnippetParser
         return ['text' => $text, 'stops' => self::orderStops($stops)];
     }
 
-    /** @param array<int, array{index: int, start: int, end: int}> $stops */
+    /** @param array<int, SnippetTabStop> $stops */
     private static function recordStop(array &$stops, int $index, int $start, int $end): void
     {
         if (!array_key_exists($index, $stops)) {
-            $stops[$index] = ['index' => $index, 'start' => $start, 'end' => $end];
+            $stops[$index] = new SnippetTabStop($index, $start, $end);
         }
     }
 
     /**
-     * @param array<int, array{index: int, start: int, end: int}> $stops
+     * @param array<int, SnippetTabStop> $stops
      *
-     * @return list<array{index: int, start: int, end: int}> ordered 1,2,… then 0 last
+     * @return list<SnippetTabStop> ordered 1,2,… then 0 last
      */
     private static function orderStops(array $stops): array
     {
         $ordered = array_values($stops);
-        usort($ordered, static function (array $a, array $b): int {
+        usort($ordered, static function (SnippetTabStop $a, SnippetTabStop $b): int {
             // $0 (final caret) always sorts last.
-            $ka = 0 === $a['index'] ? \PHP_INT_MAX : $a['index'];
-            $kb = 0 === $b['index'] ? \PHP_INT_MAX : $b['index'];
+            $ka = 0 === $a->index ? \PHP_INT_MAX : $a->index;
+            $kb = 0 === $b->index ? \PHP_INT_MAX : $b->index;
 
             return $ka <=> $kb;
         });

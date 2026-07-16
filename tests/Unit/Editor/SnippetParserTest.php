@@ -6,6 +6,7 @@ namespace Porta\Tests\Unit\Editor;
 
 use PHPUnit\Framework\TestCase;
 use Porta\Editor\SnippetParser;
+use Porta\Editor\SnippetTabStop;
 
 final class SnippetParserTest extends TestCase
 {
@@ -20,11 +21,11 @@ final class SnippetParserTest extends TestCase
     {
         $result = SnippetParser::parse('foo(${1:bar}, ${2:baz})$0');
         $this->assertSame('foo(bar, baz)', $result['text']);
-        $this->assertSame(
+        $this->assertEquals(
             [
-                ['index' => 1, 'start' => 4, 'end' => 7],
-                ['index' => 2, 'start' => 9, 'end' => 12],
-                ['index' => 0, 'start' => 13, 'end' => 13],
+                new SnippetTabStop(1, 4, 7),
+                new SnippetTabStop(2, 9, 12),
+                new SnippetTabStop(0, 13, 13),
             ],
             $result['stops'],
         );
@@ -34,10 +35,10 @@ final class SnippetParserTest extends TestCase
     {
         $result = SnippetParser::parse('$1 => $2');
         $this->assertSame(' => ', $result['text']);
-        $this->assertSame(
+        $this->assertEquals(
             [
-                ['index' => 1, 'start' => 0, 'end' => 0],
-                ['index' => 2, 'start' => 4, 'end' => 4],
+                new SnippetTabStop(1, 0, 0),
+                new SnippetTabStop(2, 4, 4),
             ],
             $result['stops'],
         );
@@ -54,7 +55,7 @@ final class SnippetParserTest extends TestCase
     {
         $result = SnippetParser::parse('visibility ${1|public,private,protected|}');
         $this->assertSame('visibility public', $result['text']);
-        $this->assertSame([['index' => 1, 'start' => 11, 'end' => 17]], $result['stops']);
+        $this->assertEquals([new SnippetTabStop(1, 11, 17)], $result['stops']);
     }
 
     public function testRepeatedIndexEmitsTextButOnlyOneStop(): void
@@ -62,7 +63,7 @@ final class SnippetParserTest extends TestCase
         // The second $1 is a mirror: its text is emitted, but it is not a stop.
         $result = SnippetParser::parse('${1:x}-$1');
         $this->assertSame('x-', $result['text']);
-        $this->assertSame([['index' => 1, 'start' => 0, 'end' => 1]], $result['stops']);
+        $this->assertEquals([new SnippetTabStop(1, 0, 1)], $result['stops']);
     }
 
     public function testNestedPlaceholderIsFlattened(): void
@@ -70,8 +71,8 @@ final class SnippetParserTest extends TestCase
         $result = SnippetParser::parse('${1:${2:inner}}');
         $this->assertSame('inner', $result['text']);
         // The outer placeholder spans the whole default including the nested text.
-        $this->assertSame(1, $result['stops'][0]['index']);
-        $this->assertSame(0, $result['stops'][0]['start']);
+        $this->assertSame(1, $result['stops'][0]->index);
+        $this->assertSame(0, $result['stops'][0]->start);
     }
 
     public function testFinalStopSortsLast(): void
@@ -101,7 +102,7 @@ final class SnippetParserTest extends TestCase
         // ${1} is a zero-width tab stop just like $1.
         $result = SnippetParser::parse('a${1}b');
         $this->assertSame('ab', $result['text']);
-        $this->assertSame([['index' => 1, 'start' => 1, 'end' => 1]], $result['stops']);
+        $this->assertEquals([new SnippetTabStop(1, 1, 1)], $result['stops']);
     }
 
     public function testEscapedBraceInsidePlaceholder(): void
@@ -109,6 +110,6 @@ final class SnippetParserTest extends TestCase
         // The escaped \} must not end the placeholder early.
         $result = SnippetParser::parse('${1:a\\}b}');
         $this->assertSame('a}b', $result['text']);
-        $this->assertSame([['index' => 1, 'start' => 0, 'end' => 3]], $result['stops']);
+        $this->assertEquals([new SnippetTabStop(1, 0, 3)], $result['stops']);
     }
 }
