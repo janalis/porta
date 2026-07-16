@@ -7,13 +7,12 @@ namespace Porta\Widget\Settings;
 use Porta\Config\KeybindingRow;
 use Porta\Container\AsWidget;
 use Porta\I18n\Translator;
-use Porta\Ui\ColorPalette;
 use Porta\Ui\ListNavigation;
 use Porta\Ui\ListSelection;
-use Porta\Ui\Palette;
 use Porta\Ui\Role;
-use Porta\Ui\Sgr;
 use Porta\Ui\ShortcutFormatter;
+use Porta\Ui\Theme\DarkTheme;
+use Porta\Ui\Theme\Styles;
 use Porta\Widget\FillsPaneTrait;
 use Porta\Widget\HoverTrait;
 use Porta\Widget\InputHook;
@@ -59,13 +58,13 @@ final class KeybindingsListWidget extends AbstractWidget implements FocusableInt
     /** @var (callable(): void)|null `1`: switch to the Settings tab */
     private $onShowSettings = null;
 
-    private readonly Palette $palette;
+    private readonly Styles $styles;
 
     public function __construct(
         private readonly Translator $translator,
-        ?Palette $palette = null,
+        ?Styles $styles = null,
     ) {
-        $this->palette = $palette ?? ColorPalette::dark();
+        $this->styles = $styles ?? new Styles(DarkTheme::definition());
         $this->list = new ListSelection();
     }
 
@@ -195,7 +194,10 @@ final class KeybindingsListWidget extends AbstractWidget implements FocusableInt
         $this->lastRows = $rows;
 
         $title = ' '.$this->translator->trans('Keybindings — %count% actions · Enter to rebind', ['%count%' => \count($this->rows)]);
-        $lines = [$this->palette->of(Role::HeaderBar).Sgr::BOLD.AnsiUtils::truncateToWidth($title, $width, '…', pad: true).Sgr::RESET];
+        $lines = [$this->styles
+            ->of(Role::HeaderBar)
+            ->withBold()
+            ->apply(AnsiUtils::truncateToWidth($title, $width, '…', pad: true))];
 
         $scroll = $this->list->follow($rows - 1);
         for ($row = 1; $row < $rows; ++$row) {
@@ -208,24 +210,25 @@ final class KeybindingsListWidget extends AbstractWidget implements FocusableInt
 
             $selected = $index === $this->list->selected();
             $bg = match (true) {
-                $selected && $this->focused => $this->palette->of(Role::SelectedRow),
-                $selected => $this->palette->of(Role::SelectedRowUnfocused),
-                $index === $this->hoveredIndex => $this->palette->of(Role::RowHighlightBg),
-                default => '',
+                $selected && $this->focused => $this->styles->of(Role::SelectedRow),
+                $selected => $this->styles->of(Role::SelectedRowUnfocused),
+                $index === $this->hoveredIndex => $this->styles->of(Role::RowHighlightBg),
+                default => null,
             };
 
             $shortcut = ShortcutFormatter::format($entry->binding);
-            $right = '' === $shortcut ? $this->palette->of(Role::Dim)."—\x1b[39m" : $shortcut;
+            $right = '' === $shortcut ? $this->styles->of(Role::Dim)->apply('—') : $shortcut;
             $rightWidth = '' === $shortcut ? 1 : mb_strwidth($shortcut);
             if ($index === $this->capturingIndex) {
                 $prompt = $this->translator->trans('Press a key… (Esc to cancel)');
-                $right = $this->palette->of(Role::Modified).$prompt.Sgr::DEFAULT_FG;
+                $right = $this->styles->of(Role::Modified)->apply($prompt);
                 $rightWidth = mb_strwidth($prompt);
             }
 
             $labelWidth = max(0, $width - $rightWidth - 2);
             $label = AnsiUtils::truncateToWidth(' '.$entry->label, $labelWidth, '…', pad: true);
-            $lines[] = $bg.$label.' '.$right.' '.Sgr::RESET;
+            $text = $label.' '.$right.' ';
+            $lines[] = null !== $bg ? $bg->apply($text) : $text;
         }
 
         return $this->withMenuOverlay($lines, $width);

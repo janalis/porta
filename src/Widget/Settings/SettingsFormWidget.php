@@ -10,12 +10,11 @@ use Porta\Container\AsWidget;
 use Porta\I18n\Translator;
 use Porta\Support\IntMath;
 use Porta\Ui\CaretVisibility;
-use Porta\Ui\ColorPalette;
 use Porta\Ui\CursorStyle;
-use Porta\Ui\Palette;
 use Porta\Ui\Role;
-use Porta\Ui\Sgr;
 use Porta\Ui\TextField;
+use Porta\Ui\Theme\DarkTheme;
+use Porta\Ui\Theme\Styles;
 use Porta\Widget\FillsPaneTrait;
 use Porta\Widget\InputHook;
 use Porta\Widget\PaneNavigationCallbacks;
@@ -53,16 +52,16 @@ final class SettingsFormWidget extends AbstractWidget implements FocusableInterf
     use KeybindingsTrait;
     use PaneNavigationCallbacks;
 
-    private readonly Palette $palette;
+    private readonly Styles $styles;
 
     private readonly CursorStyle $cursorStyle;
 
     public function __construct(
         private readonly Translator $translator,
-        ?Palette $palette = null,
+        ?Styles $styles = null,
         ?CursorStyle $cursorStyle = null,
     ) {
-        $this->palette = $palette ?? ColorPalette::dark();
+        $this->styles = $styles ?? new Styles(DarkTheme::definition());
         $this->cursorStyle = $cursorStyle ?? new CursorStyle();
     }
 
@@ -298,9 +297,9 @@ final class SettingsFormWidget extends AbstractWidget implements FocusableInterf
 
             $selected = $i === $this->selected;
             $bg = match (true) {
-                $selected && $this->focused => $this->palette->of(Role::SelectedRow),
-                $selected => $this->palette->of(Role::SelectedRowUnfocused),
-                default => '',
+                $selected && $this->focused => $this->styles->of(Role::SelectedRow),
+                $selected => $this->styles->of(Role::SelectedRowUnfocused),
+                default => null,
             };
             $text = match ($row->kind) {
                 SettingsRowKind::Bool => ' '.((bool) $row->value ? '[x]' : '[ ]').' '.$row->label,
@@ -309,9 +308,10 @@ final class SettingsFormWidget extends AbstractWidget implements FocusableInterf
                 default => ' '.$row->label.'  < '.$this->choiceLabel($row).' >',
             };
             if ($row->restart) {
-                $text .= $this->palette->of(Role::Dim).' · '.$this->translator->trans('applies on restart').Sgr::DEFAULT_FG;
+                $text .= $this->styles->of(Role::Dim)->apply(' · '.$this->translator->trans('applies on restart'));
             }
-            $lines[] = $bg.AnsiUtils::truncateToWidth($text, $width, '…', pad: true).Sgr::RESET;
+            $text = AnsiUtils::truncateToWidth($text, $width, '…', pad: true);
+            $lines[] = null !== $bg ? $bg->apply($text) : $text;
         }
 
         return $this->withMenuOverlay($lines, $width);
@@ -330,7 +330,7 @@ final class SettingsFormWidget extends AbstractWidget implements FocusableInterf
         }
         $value = (string) $row->value;
         if ('' === $value && null !== $row->hint) {
-            return $this->palette->of(Role::Dim).$row->hint.Sgr::DEFAULT_FG;
+            return $this->styles->of(Role::Dim)->apply($row->hint);
         }
 
         return $value;

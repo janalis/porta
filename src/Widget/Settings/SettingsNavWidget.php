@@ -8,11 +8,10 @@ use Porta\Config\LanguageCatalog;
 use Porta\Container\AsWidget;
 use Porta\I18n\Translator;
 use Porta\Layout\ResizableSidebar;
-use Porta\Ui\ColorPalette;
 use Porta\Ui\ListSelection;
-use Porta\Ui\Palette;
 use Porta\Ui\Role;
-use Porta\Ui\Sgr;
+use Porta\Ui\Theme\DarkTheme;
+use Porta\Ui\Theme\Styles;
 use Porta\Widget\FillsPaneTrait;
 use Porta\Widget\HoverTrait;
 use Porta\Widget\InputHook;
@@ -59,15 +58,15 @@ final class SettingsNavWidget extends AbstractWidget implements FocusableInterfa
     /** @var (callable(string): void)|null selection moved to this entry id */
     private $onSelect = null;
 
-    private readonly Palette $palette;
+    private readonly Styles $styles;
 
     public function __construct(
         private readonly Translator $translator,
         int $width = 22,
-        ?Palette $palette = null,
+        ?Styles $styles = null,
     ) {
         $this->width = $width;
-        $this->palette = $palette ?? ColorPalette::dark();
+        $this->styles = $styles ?? new Styles(DarkTheme::definition());
         $this->entries = $this->buildEntries([]);
         $this->list = new ListSelection();
     }
@@ -252,26 +251,25 @@ final class SettingsNavWidget extends AbstractWidget implements FocusableInterfa
             }
 
             if (NavEntryKind::Header === $entry['kind']) {
-                $lines[] =
-                    $this->palette->of(Role::Toolbar)
-                    .$this->palette->of(Role::Dim)
-                    .Sgr::BOLD
-                    .AnsiUtils::truncateToWidth(' '.$this->translator->trans($entry['label']), $width, '…', pad: true)
-                    .Sgr::RESET;
+                $lines[] = $this->styles
+                    ->merge(Role::Toolbar, Role::Dim)
+                    ->withBold()
+                    ->apply(AnsiUtils::truncateToWidth(' '.$this->translator->trans($entry['label']), $width, '…', pad: true));
                 continue;
             }
 
             $selected = $index === $this->list->selected();
             $bg = match (true) {
-                $selected && $this->focused => $this->palette->of(Role::SelectedRow),
-                $selected => $this->palette->of(Role::SelectedRowUnfocused),
-                $index === $this->hoveredIndex => $this->palette->of(Role::RowHighlightBg),
-                default => '',
+                $selected && $this->focused => $this->styles->of(Role::SelectedRow),
+                $selected => $this->styles->of(Role::SelectedRowUnfocused),
+                $index === $this->hoveredIndex => $this->styles->of(Role::RowHighlightBg),
+                default => null,
             };
             // Language and plugin sub-items indent under their section and keep
             // their own (untranslated) names.
             $text = \in_array($entry['kind'], [NavEntryKind::Language, NavEntryKind::Plugin], strict: true) ? '   '.$entry['label'] : ' '.$this->translator->trans($entry['label']);
-            $lines[] = $bg.AnsiUtils::truncateToWidth($text, $width, '…', pad: true).Sgr::RESET;
+            $text = AnsiUtils::truncateToWidth($text, $width, '…', pad: true);
+            $lines[] = null !== $bg ? $bg->apply($text) : $text;
         }
 
         return $this->withMenuOverlay($lines, $width);
