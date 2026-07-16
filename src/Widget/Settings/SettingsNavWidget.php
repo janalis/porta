@@ -36,7 +36,7 @@ use Symfony\Component\Tui\Widget\VerticallyExpandableInterface;
  * ('general' | 'keybindings' | 'lang:<id>'); the header is skipped. Self-sizing
  * so the sidebar can be dragged wider/narrower.
  *
- * @phpstan-type Entry array{id: string|null, label: string, kind: string}
+ * @phpstan-type Entry array{id: string|null, label: string, kind: NavEntryKind}
  */
 #[AsWidget('settings-nav', flex: 0)]
 final class SettingsNavWidget extends AbstractWidget implements FocusableInterface, MenuOverlayHost, VerticallyExpandableInterface, ResizableSidebar
@@ -84,16 +84,16 @@ final class SettingsNavWidget extends AbstractWidget implements FocusableInterfa
     {
         $entries = [];
         foreach (self::SECTIONS as $id => $label) {
-            $entries[] = ['id' => $id, 'label' => $label, 'kind' => 'section'];
+            $entries[] = ['id' => $id, 'label' => $label, 'kind' => NavEntryKind::Section];
             if ('plugins' === $id) {
                 foreach ($pluginNames as $name) {
-                    $entries[] = ['id' => 'plugin:'.$name, 'label' => $name, 'kind' => 'plugin'];
+                    $entries[] = ['id' => 'plugin:'.$name, 'label' => $name, 'kind' => NavEntryKind::Plugin];
                 }
             }
         }
-        $entries[] = ['id' => null, 'label' => 'Languages', 'kind' => 'header'];
+        $entries[] = ['id' => null, 'label' => 'Languages', 'kind' => NavEntryKind::Header];
         foreach (LanguageCatalog::LANGUAGES as $id => $name) {
-            $entries[] = ['id' => 'lang:'.$id, 'label' => $name, 'kind' => 'language'];
+            $entries[] = ['id' => 'lang:'.$id, 'label' => $name, 'kind' => NavEntryKind::Language];
         }
 
         return $entries;
@@ -184,7 +184,7 @@ final class SettingsNavWidget extends AbstractWidget implements FocusableInterfa
     public function handleClick(int $relRow): void
     {
         $index = $this->rowIndexAt($relRow);
-        if (null !== $index && 'header' !== $this->entries[$index]['kind']) {
+        if (null !== $index && NavEntryKind::Header !== $this->entries[$index]['kind']) {
             $this->moveTo($index);
         }
     }
@@ -193,7 +193,7 @@ final class SettingsNavWidget extends AbstractWidget implements FocusableInterfa
     {
         $index = $this->rowIndexAt($relRow);
 
-        return $this->setHovered(null !== $index && 'header' !== $this->entries[$index]['kind'] ? $index : null);
+        return $this->setHovered(null !== $index && NavEntryKind::Header !== $this->entries[$index]['kind'] ? $index : null);
     }
 
     private function moveTo(int $index): void
@@ -211,7 +211,7 @@ final class SettingsNavWidget extends AbstractWidget implements FocusableInterfa
     private function prevSelectable(int $from): int
     {
         for ($i = $from - 1; $i >= 0; --$i) {
-            if ('header' !== $this->entries[$i]['kind']) {
+            if (NavEntryKind::Header !== $this->entries[$i]['kind']) {
                 return $i;
             }
         }
@@ -223,7 +223,7 @@ final class SettingsNavWidget extends AbstractWidget implements FocusableInterfa
     {
         $count = \count($this->entries);
         for ($i = $from + 1; $i < $count; ++$i) {
-            if ('header' !== $this->entries[$i]['kind']) {
+            if (NavEntryKind::Header !== $this->entries[$i]['kind']) {
                 return $i;
             }
         }
@@ -251,7 +251,7 @@ final class SettingsNavWidget extends AbstractWidget implements FocusableInterfa
                 continue;
             }
 
-            if ('header' === $entry['kind']) {
+            if (NavEntryKind::Header === $entry['kind']) {
                 $lines[] =
                     $this->palette->of(Role::Toolbar)
                     .$this->palette->of(Role::Dim)
@@ -270,7 +270,7 @@ final class SettingsNavWidget extends AbstractWidget implements FocusableInterfa
             };
             // Language and plugin sub-items indent under their section and keep
             // their own (untranslated) names.
-            $text = \in_array($entry['kind'], ['language', 'plugin'], strict: true) ? '   '.$entry['label'] : ' '.$this->translator->trans($entry['label']);
+            $text = \in_array($entry['kind'], [NavEntryKind::Language, NavEntryKind::Plugin], strict: true) ? '   '.$entry['label'] : ' '.$this->translator->trans($entry['label']);
             $lines[] = $bg.AnsiUtils::truncateToWidth($text, $width, '…', pad: true).Sgr::RESET;
         }
 
