@@ -9,6 +9,7 @@ use Porta\Config\EditorConfig\EditorConfigResolver;
 use Porta\Event\BufferOpened;
 use Porta\Event\BufferSaved;
 use Porta\Event\BufferSwitched;
+use Porta\Event\DiagnosticsChanged;
 use Porta\History\LocalHistory;
 use Porta\I18n\Translator;
 use Porta\Image\ImageDecoder;
@@ -561,6 +562,8 @@ final class BufferService implements BufferReopener, DiagnosticsSink, FileOpener
         if ($target === $this->buffers->active()) {
             $this->editor->setDiagnostics($byLine);
         }
+        // Announce the change so an open Problems tab refreshes live.
+        $this->dispatcher->dispatch(new DiagnosticsChanged());
         $this->tui->requestRender();
     }
 

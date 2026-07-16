@@ -4,11 +4,9 @@ declare(strict_types=1);
 
 namespace Porta\Search;
 
-use Porta\Editor\BufferManager;
 use Porta\Editor\BufferService;
 use Porta\Editor\OpenFocus;
 use Porta\I18n\Translator;
-use Porta\Support\ProjectPaths;
 use Porta\Ui\BottomDock;
 use Porta\Ui\Notifier;
 use Porta\Ui\ResultsPanelMode;
@@ -25,7 +23,7 @@ final class SearchActions
         private readonly BottomDock $panels,
         private readonly ProjectSearchController $projectSearch,
         private readonly TestNavigator $testNavigator,
-        private readonly BufferManager $buffers,
+        private readonly ProblemRows $problemRows,
         private readonly BufferService $bufferService,
         private readonly Notifier $notifier,
         private readonly Translator $translator,
@@ -61,28 +59,10 @@ final class SearchActions
         $this->projectSearch->replaceInFolder($absDir);
     }
 
-    /** Every open buffer's diagnostics as one sorted, scannable list. */
+    /** Every open buffer's diagnostics as one sorted, scannable list (kept live by {@see \Porta\Ui\DockLiveRefreshListener}). */
     public function showProblems(): void
     {
-        $results = [];
-        foreach ($this->buffers->all() as $buffer) {
-            $rel = ProjectPaths::relative($this->rootDir, $buffer->path);
-            foreach ($buffer->diagnostics as $line => $list) {
-                foreach ($list as $diag) {
-                    $marker = 1 === $diag['severity'] ? '✗' : '▲';
-                    $results[] = [
-                        'path' => $rel,
-                        'line' => $line,
-                        'text' => $marker.' '.$diag['message'],
-                    ];
-                }
-            }
-        }
-
-        // Sort by file then line for a stable, scannable list.
-        usort($results, static fn (array $a, array $b) => [$a['path'], $a['line']] <=> [$b['path'], $b['line']]);
-
-        $this->panels->showList(ResultsPanelMode::Problems, 'Problems', $results);
+        $this->panels->showList(ResultsPanelMode::Problems, 'Problems', $this->problemRows->build());
     }
 
     /** PhpStorm-style Ctrl+Shift+T: jump from a class to its test file, or back. */
