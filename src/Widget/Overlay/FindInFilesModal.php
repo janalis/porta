@@ -19,6 +19,7 @@ use Porta\Widget\Render\OverlayCompositor;
 use Porta\Widget\ResultGrouping;
 use Porta\Widget\ResultLayout;
 use Porta\Widget\ResultsView;
+use Porta\Widget\SearchFieldRenderer;
 use Symfony\Component\Tui\Ansi\AnsiUtils;
 use Symfony\Component\Tui\Input\Key;
 use Symfony\Component\Tui\Input\Keybindings;
@@ -649,12 +650,7 @@ final class FindInFilesModal
     /** A labelled input row (`Find:`/`Replace:`/`Mask:` + field), scrolled to keep the caret visible. */
     private function fieldRow(string $label, TextField $field, CaretVisibility $shown, string $hint, int $width): string
     {
-        $line = ' '.$label.': '.$field->render(cursor: $shown);
-        if ('' !== $hint) {
-            $line .= $this->palette->of(Role::Dim).$hint.Sgr::DEFAULT_FG;
-        }
-
-        return $this->palette->of(Role::Toolbar).AnsiText::scrollLineToCaret($line, $width).Sgr::RESET;
+        return SearchFieldRenderer::row($label, $field, $shown, $hint, $width, Role::Toolbar, $this->palette);
     }
 
     /** How many matches would be replaced (all minus the excluded). */

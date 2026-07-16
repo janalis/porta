@@ -551,10 +551,7 @@ final class ResultsPanelWidget extends OverlayWidget implements FocusableInterfa
     /** A labelled input header row (mask/replace), with a cursor when it is the active field. */
     private function fieldRow(string $label, TextField $field, CaretVisibility $caret, string $hint, int $columns): string
     {
-        $rendered = $field->render(cursor: $caret);
-        $line = ' '.$label.': '.$rendered.$this->palette->of(Role::Dim).$hint.Sgr::DEFAULT_FG;
-
-        return $this->palette->of(Role::RowHighlightBg).AnsiText::scrollLineToCaret($line, $columns).Sgr::RESET;
+        return SearchFieldRenderer::row($label, $field, $caret, $hint, $columns, Role::RowHighlightBg, $this->palette);
     }
 
     /** The indent for grouped match rows — deeper in the nested view (below a dir + file header). */
