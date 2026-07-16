@@ -79,10 +79,8 @@ final class DiffViewWidget extends AbstractWidget implements FocusableInterface,
      * Char-level mouse selection (press seeds, drag extends): display columns
      * into the raw line texts, hScroll-independent. In split mode it binds to
      * the half the press landed in; null side = unified.
-     *
-     * @var array{fromRow: int, fromCol: int, toRow: int, toCol: int, side: ?string}|null
      */
-    private ?array $charSel = null;
+    private ?DiffCharSelection $charSel = null;
     /** Last render width, for mapping click columns to split halves. */
     private int $lastWidth = 80;
 
@@ -430,13 +428,8 @@ final class DiffViewWidget extends AbstractWidget implements FocusableInterface,
             // Seed a (zero-width) char selection at the press point; a drag
             // extends it, a plain click leaves it degenerate (row-copy rules).
             $side = $this->sideAt($relCol);
-            $this->charSel = [
-                'fromRow' => $this->cursor,
-                'fromCol' => $this->pointCol($relCol, $side),
-                'toRow' => $this->cursor,
-                'toCol' => $this->pointCol($relCol, $side),
-                'side' => $side,
-            ];
+            $col = $this->pointCol($relCol, $side);
+            $this->charSel = new DiffCharSelection($this->cursor, $col, $this->cursor, $col, $side);
             $this->invalidate();
         }
     }
@@ -453,13 +446,7 @@ final class DiffViewWidget extends AbstractWidget implements FocusableInterface,
             return;
         }
         $row = IntMath::clamp($this->scroll + $relRow - 1, 0, \count($this->rows) - 1);
-        $this->charSel = [
-            'fromRow' => $sel['fromRow'],
-            'fromCol' => $sel['fromCol'],
-            'toRow' => $row,
-            'toCol' => $this->pointCol($relCol, $sel['side']),
-            'side' => $sel['side'],
-        ];
+        $this->charSel = new DiffCharSelection($sel->fromRow, $sel->fromCol, $row, $this->pointCol($relCol, $sel->side), $sel->side);
         $this->cursor = $row;
         $this->invalidate();
     }
@@ -634,28 +621,10 @@ final class DiffViewWidget extends AbstractWidget implements FocusableInterface,
         }
     }
 
-    /**
-     * The char selection ordered top-left to bottom-right; null when degenerate.
-     *
-     * @return array{fromRow: int, fromCol: int, toRow: int, toCol: int, side: ?string}|null
-     */
-    private function normalizedCharSel(): ?array
+    /** The char selection ordered top-left to bottom-right; null when degenerate. */
+    private function normalizedCharSel(): ?DiffCharSelection
     {
-        $sel = $this->charSel;
-        if (null === $sel || $sel['fromRow'] === $sel['toRow'] && $sel['fromCol'] === $sel['toCol']) {
-            return null;
-        }
-        if ($sel['fromRow'] > $sel['toRow'] || $sel['fromRow'] === $sel['toRow'] && $sel['fromCol'] > $sel['toCol']) {
-            return [
-                'fromRow' => $sel['toRow'],
-                'fromCol' => $sel['toCol'],
-                'toRow' => $sel['fromRow'],
-                'toCol' => $sel['fromCol'],
-                'side' => $sel['side'],
-            ];
-        }
-
-        return $sel;
+        return $this->charSel?->normalized();
     }
 
     /**
@@ -663,20 +632,18 @@ final class DiffViewWidget extends AbstractWidget implements FocusableInterface,
      * (side's) line text sliced by display column — first row from its start
      * column, last row to its end column, middles whole. Hunk headers, `\`
      * markers and blank split sides contribute nothing.
-     *
-     * @param array{fromRow: int, fromCol: int, toRow: int, toCol: int, side: ?string} $sel
      */
-    private function charSelectionText(array $sel): string
+    private function charSelectionText(DiffCharSelection $sel): string
     {
         \assert(null !== $this->document, description: 'document is loaded');
         $texts = [];
-        for ($r = $sel['fromRow']; $r <= min($sel['toRow'], \count($this->rows) - 1); ++$r) {
-            $line = $this->lineAtRow($this->rows[$r], $sel['side']);
+        for ($r = $sel->fromRow; $r <= min($sel->toRow, \count($this->rows) - 1); ++$r) {
+            $line = $this->lineAtRow($this->rows[$r], $sel->side);
             if (null === $line || '\\' === $line->origin) {
                 continue;
             }
-            $from = $r === $sel['fromRow'] ? $sel['fromCol'] : 0;
-            $to = $r === $sel['toRow'] ? $sel['toCol'] : \PHP_INT_MAX;
+            $from = $r === $sel->fromRow ? $sel->fromCol : 0;
+            $to = $r === $sel->toRow ? $sel->toCol : \PHP_INT_MAX;
             $start = self::textOffsetAt($line->text, $from);
             $end = \PHP_INT_MAX === $to ? \strlen($line->text) : self::textOffsetAt($line->text, $to);
             $texts[] = substr($line->text, $start, max(0, $end - $start));
@@ -777,21 +744,21 @@ final class DiffViewWidget extends AbstractWidget implements FocusableInterface,
     private function applyCharSelectionTint(int $rowIndex, array $row, string $line, int $width): string
     {
         $sel = $this->normalizedCharSel();
-        if (null === $sel || $rowIndex < $sel['fromRow'] || $rowIndex > $sel['toRow']) {
+        if (null === $sel || $rowIndex < $sel->fromRow || $rowIndex > $sel->toRow) {
             return $line;
         }
-        $target = $this->lineAtRow($row, $sel['side']);
+        $target = $this->lineAtRow($row, $sel->side);
         if (null === $target) {
             return $line;
         }
-        $textStart = match ($sel['side']) {
+        $textStart = match ($sel->side) {
             null => 12,
             'left' => 6,
             default => intdiv($width - 1, num2: 2) + 7,
         };
-        $segEnd = 'left' === $sel['side'] ? intdiv($width - 1, num2: 2) : $width;
-        $fromCol = $rowIndex === $sel['fromRow'] ? $sel['fromCol'] : 0;
-        $toCol = $rowIndex === $sel['toRow'] ? $sel['toCol'] : mb_strwidth($target->text);
+        $segEnd = 'left' === $sel->side ? intdiv($width - 1, num2: 2) : $width;
+        $fromCol = $rowIndex === $sel->fromRow ? $sel->fromCol : 0;
+        $toCol = $rowIndex === $sel->toRow ? $sel->toCol : mb_strwidth($target->text);
         $start = max($textStart, $textStart + $fromCol - $this->hScroll);
         $end = min($segEnd, $textStart + $toCol - $this->hScroll);
 
