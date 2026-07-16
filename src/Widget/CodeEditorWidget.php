@@ -32,10 +32,8 @@ use Porta\Support\AnsiText;
 use Porta\Support\IntMath;
 use Porta\Support\ProjectPaths;
 use Porta\Ui\CaretVisibility;
-use Porta\Ui\ColorPalette;
 use Porta\Ui\CursorStyle;
 use Porta\Ui\LtrPane;
-use Porta\Ui\Palette;
 use Porta\Ui\Role;
 use Porta\Ui\Sgr;
 use Porta\Ui\Theme\DarkTheme;
@@ -166,9 +164,6 @@ final class CodeEditorWidget extends AbstractWidget implements ActiveFileProvide
     /** Editor-level action dispatch (keymap actions + menu items). */
     private readonly EditorActionRouter $actionRouter;
 
-    /** The overlay children still consume the SGR palette; dies with their migration. */
-    private readonly Palette $palette;
-
     private readonly Styles $styles;
 
     private readonly TerminalTheme $syntaxTheme;
@@ -176,15 +171,14 @@ final class CodeEditorWidget extends AbstractWidget implements ActiveFileProvide
     /** Shared hardware-cursor shape holder (the `cursorShape` setting swaps it live). */
     private readonly CursorStyle $cursorStyle;
 
-    public function __construct(?Palette $palette = null, ?TerminalTheme $syntaxTheme = null, ?CursorStyle $cursorStyle = null, ?Styles $styles = null)
+    public function __construct(?Styles $styles = null, ?TerminalTheme $syntaxTheme = null, ?CursorStyle $cursorStyle = null)
     {
-        $this->palette = $palette ?? ColorPalette::dark();
         $this->styles = $styles ?? new Styles(DarkTheme::definition());
         $this->syntaxTheme = $syntaxTheme ?? new DarkTerminalTheme();
         $this->cursorStyle = $cursorStyle ?? new CursorStyle();
         $this->callbacks = new EditorCallbacks();
         $this->overlayHost = new OverlayHost($this->invalidate(...), $this->styles, $this->cursorStyle);
-        $this->findModal = new FindInFilesModal($this->invalidate(...), $this->palette, $this->cursorStyle, $this->styles);
+        $this->findModal = new FindInFilesModal($this->invalidate(...), $this->styles, $this->cursorStyle);
         $this->document = new Document('');
         $this->highlighter = new CodeHighlighter(syntaxTheme: $this->syntaxTheme);
         $this->foldModel = new FoldModel($this->document);
