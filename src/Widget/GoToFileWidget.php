@@ -169,7 +169,7 @@ final class GoToFileWidget extends OverlayWidget implements FocusableInterface
 
         $lines = [];
         $header = ' '.$this->translator->trans('Go to File:').' '.$this->query->render(cursor: $this->focused ? CaretVisibility::Shown : CaretVisibility::Hidden);
-        $lines[] = HeaderRenderer::render($header, $columns, $this->styles->of(Role::HeaderBar)->withBold()->getAnsiRestore());
+        $lines[] = HeaderRenderer::render($header, $columns, $this->styles->of(Role::HeaderBar)->withBold());
 
         foreach (\array_slice($this->results, offset: 0, length: self::MAX_RESULTS) as $i => $path) {
             $selected = $i === $this->list->selected();

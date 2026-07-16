@@ -242,7 +242,7 @@ final class DebugPanelWidget extends OverlayWidget implements FocusableInterface
         };
         $legend = '  F8 over · F7 into · ⇧F8 out · F9 resume · ^F2 stop';
         $prefix = ' Debug: '.$this->title.$this->styles->of(Role::Dim)->apply('  '.$status.$legend);
-        $lines = [HeaderRenderer::render($prefix, $columns, $this->styles->of(Role::HeaderBar)->withBold()->getAnsiRestore())];
+        $lines = [HeaderRenderer::render($prefix, $columns, $this->styles->of(Role::HeaderBar)->withBold())];
 
         $scroll = $this->list->follow($this->visibleRows);
         foreach (\array_slice($this->rows, $scroll, $this->visibleRows) as $i => $row) {

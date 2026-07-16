@@ -7,15 +7,16 @@ namespace Porta\Tests\Unit\Widget\Render;
 use PHPUnit\Framework\TestCase;
 use Porta\Widget\Render\HeaderRenderer;
 use Symfony\Component\Tui\Ansi\AnsiUtils;
+use Symfony\Component\Tui\Style\Style;
 
 final class HeaderRendererTest extends TestCase
 {
     public function testDefaultBackgroundBoldAndPaddedToWidth(): void
     {
-        $line = HeaderRenderer::render('Title', 10, "\x1b[48;5;237m\x1b[1m");
+        $line = HeaderRenderer::render('Title', 10, new Style(background: 237, bold: true));
 
         $this->assertStringStartsWith("\x1b[48;5;237m\x1b[1m", $line);
-        $this->assertStringEndsWith("\x1b[0m", $line);
+        $this->assertStringEndsWith("\x1b[22m\x1b[49m", $line, 'closes with targeted resets');
         // Padded to the full width.
         $this->assertSame(10, AnsiUtils::visibleWidth($line));
         $this->assertSame('Title     ', AnsiUtils::stripAnsiCodes($line));
@@ -23,21 +24,21 @@ final class HeaderRendererTest extends TestCase
 
     public function testCustomBackground(): void
     {
-        $line = HeaderRenderer::render('X', 5, "\x1b[48;5;235m\x1b[1m");
+        $line = HeaderRenderer::render('X', 5, new Style(background: 235, bold: true));
 
         $this->assertStringStartsWith("\x1b[48;5;235m\x1b[1m", $line);
     }
 
-    public function testForegroundIsEmittedBeforeBold(): void
+    public function testForegroundIsEmittedBeforeBackground(): void
     {
-        $line = HeaderRenderer::render('X', 5, "\x1b[48;5;237m\x1b[38;5;231m\x1b[1m");
+        $line = HeaderRenderer::render('X', 5, new Style(background: 237, color: 231, bold: true));
 
-        $this->assertStringStartsWith("\x1b[48;5;237m\x1b[38;5;231m\x1b[1m", $line);
+        $this->assertStringStartsWith("\x1b[38;5;231m\x1b[48;5;237m\x1b[1m", $line);
     }
 
     public function testTruncatesWithEllipsis(): void
     {
-        $line = HeaderRenderer::render('A very long header', 6, "\x1b[48;5;237m\x1b[1m");
+        $line = HeaderRenderer::render('A very long header', 6, new Style(background: 237, bold: true));
 
         $this->assertSame(6, AnsiUtils::visibleWidth($line));
         $this->assertStringContainsString('…', AnsiUtils::stripAnsiCodes($line));

@@ -505,7 +505,7 @@ final class ResultsPanelWidget extends OverlayWidget implements FocusableInterfa
         $queryField = $this->query->render(cursor: $showCursor && 'query' === $this->activeField ? CaretVisibility::Shown : CaretVisibility::Hidden);
         $prefix = ' '.$this->title.($this->withQuery ? ': '.$queryField : '').$this->styles->of(Role::Dim)->apply($status);
 
-        $lines[] = HeaderRenderer::render($prefix, $columns, $this->styles->of(Role::HeaderBar)->withBold()->getAnsiRestore());
+        $lines[] = HeaderRenderer::render($prefix, $columns, $this->styles->of(Role::HeaderBar)->withBold());
 
         if ($this->withFilter) {
             $lines[] = $this->fieldRow(

@@ -631,7 +631,7 @@ final class FindInFilesModal
         $replaceHint = $this->inPreview() ? \sprintf('  (Del exclude · Alt+A replace %d)', $this->keptCount()) : '  (Tab · Alt+A)';
 
         return [
-            HeaderRenderer::render($title, $width, $this->styles->of(Role::HeaderBar)->withBold()->getAnsiRestore()),
+            HeaderRenderer::render($title, $width, $this->styles->of(Role::HeaderBar)->withBold()),
             $this->fieldRow('Find', $this->query, CaretVisibility::Shown === $focused && 'query' === $this->activeField ? CaretVisibility::Shown : CaretVisibility::Hidden, '', $width),
             $this->fieldRow(
                 'Replace',
