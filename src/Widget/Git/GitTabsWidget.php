@@ -7,7 +7,6 @@ namespace Porta\Widget\Git;
 use Porta\Container\AsWidget;
 use Porta\I18n\Translator;
 use Porta\Ui\Role;
-use Porta\Ui\Theme\DarkTheme;
 use Porta\Ui\Theme\Styles;
 use Porta\Widget\PanelWidth;
 use Porta\Widget\Render\MenuOverlayHost;
@@ -45,7 +44,7 @@ final class GitTabsWidget extends AbstractWidget implements MenuOverlayHost
         ?Styles $styles = null,
     ) {
         $this->width = $width;
-        $this->styles = $styles ?? new Styles(DarkTheme::definition());
+        $this->styles = $styles ?? Styles::dark();
     }
 
     protected function minWidth(): int

@@ -14,7 +14,6 @@ use Porta\Ui\LtrPane;
 use Porta\Ui\Role;
 use Porta\Ui\Sgr;
 use Porta\Ui\TextField;
-use Porta\Ui\Theme\DarkTheme;
 use Porta\Ui\Theme\Styles;
 use Porta\Widget\Render\HeaderRenderer;
 use Symfony\Component\Tui\Ansi\AnsiUtils;
@@ -78,7 +77,7 @@ final class ResultsPanelWidget extends OverlayWidget implements FocusableInterfa
 
     public function __construct(?Styles $styles = null, ?CursorStyle $cursorStyle = null)
     {
-        $this->styles = $styles ?? new Styles(DarkTheme::definition());
+        $this->styles = $styles ?? Styles::dark();
         $this->list = new ListSelection();
         $this->query = new TextField(style: $cursorStyle);
         $this->filter = new TextField(style: $cursorStyle);

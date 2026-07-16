@@ -10,7 +10,6 @@ use Porta\Editor\Document;
 use Porta\Editor\FoldModel;
 use Porta\Ui\CursorStyle;
 use Porta\Ui\Role;
-use Porta\Ui\Theme\DarkTheme;
 use Porta\Ui\Theme\Styles;
 use Symfony\Component\Tui\Ansi\AnsiUtils;
 
@@ -68,7 +67,7 @@ final readonly class EditorRowAssembler
         array $conditionalBreakpointLines = [],
         private array $lineAnnotations = [],
     ) {
-        $this->styles = $styles ?? new Styles(DarkTheme::definition());
+        $this->styles = $styles ?? Styles::dark();
         $this->breakpointSet = array_fill_keys($breakpointLines, value: true);
         $this->conditionalBreakpointSet = array_fill_keys($conditionalBreakpointLines, value: true);
         $this->cursorStyle = $cursorStyle ?? new CursorStyle();

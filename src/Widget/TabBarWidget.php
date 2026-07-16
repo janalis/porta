@@ -7,7 +7,6 @@ namespace Porta\Widget;
 use Porta\Container\AsWidget;
 use Porta\Support\AnsiText;
 use Porta\Ui\Role;
-use Porta\Ui\Theme\DarkTheme;
 use Porta\Ui\Theme\Styles;
 use Porta\Widget\Render\MenuOverlayHost;
 use Porta\Widget\Render\MenuOverlayHostTrait;
@@ -35,7 +34,7 @@ final class TabBarWidget extends AbstractWidget implements MenuOverlayHost
 
     public function __construct(?Styles $styles = null)
     {
-        $this->styles = $styles ?? new Styles(DarkTheme::definition());
+        $this->styles = $styles ?? Styles::dark();
     }
 
     /** @var (callable(): list<array{name: string, dirty: bool, active: bool}>)|null */

@@ -12,7 +12,6 @@ use Porta\Ui\CursorStyle;
 use Porta\Ui\LtrPane;
 use Porta\Ui\Role;
 use Porta\Ui\Sgr;
-use Porta\Ui\Theme\DarkTheme;
 use Porta\Ui\Theme\Styles;
 use Symfony\Component\Tui\Ansi\AnsiUtils;
 use Symfony\Component\Tui\Input\Key;
@@ -63,7 +62,7 @@ final class TerminalPanelWidget extends OverlayWidget implements FocusableInterf
 
     public function __construct(?Styles $styles = null, ?CursorStyle $cursorStyle = null)
     {
-        $this->styles = $styles ?? new Styles(DarkTheme::definition());
+        $this->styles = $styles ?? Styles::dark();
         $this->cursorStyle = $cursorStyle ?? new CursorStyle();
         $this->buffer = new TerminalBuffer();
         $this->visibleRows = 12;

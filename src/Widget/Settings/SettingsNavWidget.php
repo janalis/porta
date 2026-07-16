@@ -10,7 +10,6 @@ use Porta\I18n\Translator;
 use Porta\Layout\ResizableSidebar;
 use Porta\Ui\ListSelection;
 use Porta\Ui\Role;
-use Porta\Ui\Theme\DarkTheme;
 use Porta\Ui\Theme\Styles;
 use Porta\Widget\FillsPaneTrait;
 use Porta\Widget\HoverTrait;
@@ -66,7 +65,7 @@ final class SettingsNavWidget extends AbstractWidget implements FocusableInterfa
         ?Styles $styles = null,
     ) {
         $this->width = $width;
-        $this->styles = $styles ?? new Styles(DarkTheme::definition());
+        $this->styles = $styles ?? Styles::dark();
         $this->entries = $this->buildEntries([]);
         $this->list = new ListSelection();
     }

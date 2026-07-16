@@ -6,7 +6,6 @@ namespace Porta\Widget;
 
 use Porta\Container\AsWidget;
 use Porta\Ui\Role;
-use Porta\Ui\Theme\DarkTheme;
 use Porta\Ui\Theme\Styles;
 use Porta\Widget\Render\MenuOverlayHost;
 use Porta\Widget\Render\MenuOverlayHostTrait;
@@ -29,7 +28,7 @@ final class BreadcrumbsWidget extends AbstractWidget implements MenuOverlayHost
 
     public function __construct(?Styles $styles = null)
     {
-        $this->styles = $styles ?? new Styles(DarkTheme::definition());
+        $this->styles = $styles ?? Styles::dark();
     }
 
     /** The ` › ` scope separator, dimmed (visible width 3). */

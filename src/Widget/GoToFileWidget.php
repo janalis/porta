@@ -13,7 +13,6 @@ use Porta\Ui\ListNavigation;
 use Porta\Ui\ListSelection;
 use Porta\Ui\Role;
 use Porta\Ui\TextField;
-use Porta\Ui\Theme\DarkTheme;
 use Porta\Ui\Theme\Styles;
 use Porta\Widget\Render\HeaderRenderer;
 use Symfony\Component\Tui\Ansi\AnsiUtils;
@@ -55,7 +54,7 @@ final class GoToFileWidget extends OverlayWidget implements FocusableInterface
         ?Styles $styles = null,
         ?CursorStyle $cursorStyle = null,
     ) {
-        $this->styles = $styles ?? new Styles(DarkTheme::definition());
+        $this->styles = $styles ?? Styles::dark();
         $this->files = $files ?? new FileIndex($rootDir);
         $this->query = new TextField(style: $cursorStyle);
         $this->list = new ListSelection();

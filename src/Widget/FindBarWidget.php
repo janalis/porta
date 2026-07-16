@@ -18,7 +18,6 @@ use Porta\Ui\CaretVisibility;
 use Porta\Ui\CursorStyle;
 use Porta\Ui\Role;
 use Porta\Ui\TextField;
-use Porta\Ui\Theme\DarkTheme;
 use Porta\Ui\Theme\Styles;
 use Symfony\Component\Tui\Input\Key;
 use Symfony\Component\Tui\Render\RenderContext;
@@ -73,7 +72,7 @@ final class FindBarWidget extends OverlayWidget implements FocusableInterface
         ?Styles $styles = null,
         ?CursorStyle $cursorStyle = null,
     ) {
-        $this->styles = $styles ?? new Styles(DarkTheme::definition());
+        $this->styles = $styles ?? Styles::dark();
         $this->query = new TextField(style: $cursorStyle);
         $this->replacement = new TextField(style: $cursorStyle);
     }

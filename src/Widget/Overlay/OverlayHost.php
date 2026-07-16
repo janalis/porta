@@ -12,7 +12,6 @@ use Porta\Ui\CursorStyle;
 use Porta\Ui\Role;
 use Porta\Ui\Sgr;
 use Porta\Ui\TextField;
-use Porta\Ui\Theme\DarkTheme;
 use Porta\Ui\Theme\Styles;
 use Porta\Widget\Render\EditorRenderer;
 use Porta\Widget\Render\PaneFocus;
@@ -51,7 +50,7 @@ final class OverlayHost
         ?Styles $styles = null,
         ?CursorStyle $cursorStyle = null,
     ) {
-        $this->styles = $styles ?? new Styles(DarkTheme::definition());
+        $this->styles = $styles ?? Styles::dark();
         $this->cursorStyle = $cursorStyle ?? new CursorStyle();
     }
 

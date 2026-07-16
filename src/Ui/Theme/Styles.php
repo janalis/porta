@@ -21,6 +21,12 @@ final class Styles
         private ThemeDefinition $current,
     ) {}
 
+    /** The default theme, for hand-built widgets outside the container (tests). */
+    public static function dark(): self
+    {
+        return new self(DarkTheme::definition());
+    }
+
     /** Swap the backing theme; every consumer holding this instance recolors on its next render. */
     public function switchTo(ThemeDefinition $definition): void
     {

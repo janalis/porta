@@ -10,7 +10,6 @@ use Porta\I18n\Translator;
 use Porta\Ui\ListNavigation;
 use Porta\Ui\ListSelection;
 use Porta\Ui\Role;
-use Porta\Ui\Theme\DarkTheme;
 use Porta\Ui\Theme\Styles;
 use Porta\Widget\FillsPaneTrait;
 use Porta\Widget\InputHook;
@@ -82,7 +81,7 @@ final class HistoryListWidget extends AbstractWidget implements FocusableInterfa
         ?Styles $styles = null,
     ) {
         $this->width = $width;
-        $this->styles = $styles ?? new Styles(DarkTheme::definition());
+        $this->styles = $styles ?? Styles::dark();
         $this->commitList = new ListSelection();
         $this->fileList = new ListSelection();
     }

@@ -7,7 +7,6 @@ namespace Porta\Widget;
 use Porta\Container\AsWidget;
 use Porta\Ui\MenuItem;
 use Porta\Ui\MenuPanel;
-use Porta\Ui\Theme\DarkTheme;
 use Porta\Ui\Theme\Styles;
 use Symfony\Component\Tui\Input\Key;
 use Symfony\Component\Tui\Render\RenderContext;
@@ -31,7 +30,7 @@ final class ContextMenu extends OverlayWidget
 
     public function __construct(?Styles $styles = null)
     {
-        $this->styles = $styles ?? new Styles(DarkTheme::definition());
+        $this->styles = $styles ?? Styles::dark();
     }
 
     /** @var list<MenuItem> */

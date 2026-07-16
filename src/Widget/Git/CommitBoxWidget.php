@@ -12,7 +12,6 @@ use Porta\Ui\CursorStyle;
 use Porta\Ui\MultilineInput;
 use Porta\Ui\Role;
 use Porta\Ui\TextField;
-use Porta\Ui\Theme\DarkTheme;
 use Porta\Ui\Theme\Styles;
 use Porta\Widget\InputHook;
 use Porta\Widget\PanelWidth;
@@ -66,7 +65,7 @@ final class CommitBoxWidget extends AbstractWidget implements FocusableInterface
         ?CursorStyle $cursorStyle = null,
     ) {
         $this->width = $width;
-        $this->styles = $styles ?? new Styles(DarkTheme::definition());
+        $this->styles = $styles ?? Styles::dark();
         $this->summary = new TextField(style: $cursorStyle);
         $this->description = new MultilineInput($cursorStyle);
     }

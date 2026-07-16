@@ -10,7 +10,6 @@ use Porta\Ui\ListNavigation;
 use Porta\Ui\ListSelection;
 use Porta\Ui\LtrPane;
 use Porta\Ui\Role;
-use Porta\Ui\Theme\DarkTheme;
 use Porta\Ui\Theme\Styles;
 use Porta\Widget\Render\HeaderRenderer;
 use Symfony\Component\Tui\Ansi\AnsiUtils;
@@ -66,7 +65,7 @@ final class DebugPanelWidget extends OverlayWidget implements FocusableInterface
 
     public function __construct(?Styles $styles = null)
     {
-        $this->styles = $styles ?? new Styles(DarkTheme::definition());
+        $this->styles = $styles ?? Styles::dark();
         $this->list = new ListSelection();
         $this->visibleRows = 10;
     }

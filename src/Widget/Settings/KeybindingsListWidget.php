@@ -11,7 +11,6 @@ use Porta\Ui\ListNavigation;
 use Porta\Ui\ListSelection;
 use Porta\Ui\Role;
 use Porta\Ui\ShortcutFormatter;
-use Porta\Ui\Theme\DarkTheme;
 use Porta\Ui\Theme\Styles;
 use Porta\Widget\FillsPaneTrait;
 use Porta\Widget\HoverTrait;
@@ -64,7 +63,7 @@ final class KeybindingsListWidget extends AbstractWidget implements FocusableInt
         private readonly Translator $translator,
         ?Styles $styles = null,
     ) {
-        $this->styles = $styles ?? new Styles(DarkTheme::definition());
+        $this->styles = $styles ?? Styles::dark();
         $this->list = new ListSelection();
     }
 

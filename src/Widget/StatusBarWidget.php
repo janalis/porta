@@ -6,7 +6,6 @@ namespace Porta\Widget;
 
 use Porta\Container\AsWidget;
 use Porta\Ui\Role;
-use Porta\Ui\Theme\DarkTheme;
 use Porta\Ui\Theme\Styles;
 use Psr\Clock\ClockInterface;
 use Symfony\Component\Clock\NativeClock;
@@ -37,7 +36,7 @@ final class StatusBarWidget extends AbstractWidget
     public function __construct(?ClockInterface $clock = null, ?Styles $styles = null)
     {
         $this->clock = $clock ?? new NativeClock();
-        $this->styles = $styles ?? new Styles(DarkTheme::definition());
+        $this->styles = $styles ?? Styles::dark();
     }
 
     /**

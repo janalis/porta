@@ -10,7 +10,6 @@ use Porta\Tree\FileTreeNode;
 use Porta\Ui\ListNavigation;
 use Porta\Ui\ListSelection;
 use Porta\Ui\Role;
-use Porta\Ui\Theme\DarkTheme;
 use Porta\Ui\Theme\Styles;
 use Porta\Widget\Render\MenuOverlayHost;
 use Porta\Widget\Render\MenuOverlayHostTrait;
@@ -81,7 +80,7 @@ final class FileTreeWidget extends AbstractWidget implements FocusableInterface,
     ) {
         $this->width = $width;
         $this->clock = $clock ?? new NativeClock();
-        $this->styles = $styles ?? new Styles(DarkTheme::definition());
+        $this->styles = $styles ?? Styles::dark();
         $this->list = new ListSelection();
         $this->rebuild();
     }

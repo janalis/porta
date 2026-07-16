@@ -9,7 +9,6 @@ use Porta\Support\IntMath;
 use Porta\Ui\Menu;
 use Porta\Ui\MenuPanel;
 use Porta\Ui\Role;
-use Porta\Ui\Theme\DarkTheme;
 use Porta\Ui\Theme\Styles;
 use Symfony\Component\Tui\Input\Key;
 use Symfony\Component\Tui\Render\RenderContext;
@@ -39,7 +38,7 @@ final class MenuBarWidget extends OverlayWidget implements FocusableInterface
 
     public function __construct(?Styles $styles = null)
     {
-        $this->styles = $styles ?? new Styles(DarkTheme::definition());
+        $this->styles = $styles ?? Styles::dark();
     }
 
     /** @var list<Menu> */

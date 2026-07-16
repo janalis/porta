@@ -15,7 +15,6 @@ use Porta\Support\IntMath;
 use Porta\Ui\LtrPane;
 use Porta\Ui\Role;
 use Porta\Ui\Sgr;
-use Porta\Ui\Theme\DarkTheme;
 use Porta\Ui\Theme\Styles;
 use Porta\Widget\FillsPaneTrait;
 use Porta\Widget\InputHook;
@@ -104,7 +103,7 @@ final class DiffViewWidget extends AbstractWidget implements FocusableInterface,
         ?Styles $styles = null,
         ?TerminalTheme $syntaxTheme = null,
     ) {
-        $this->styles = $styles ?? new Styles(DarkTheme::definition());
+        $this->styles = $styles ?? Styles::dark();
         $this->highlighter = new CodeHighlighter(syntaxTheme: $syntaxTheme ?? new DarkTerminalTheme());
     }
 
