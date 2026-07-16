@@ -12,6 +12,7 @@ use Porta\Ui\ListSelection;
 use Porta\Ui\Role;
 use Porta\Ui\Theme\Styles;
 use Porta\Widget\FillsPaneTrait;
+use Porta\Widget\HoverableList;
 use Porta\Widget\InputHook;
 use Porta\Widget\PanelWidth;
 use Porta\Widget\PaneNavigationCallbacks;
@@ -33,7 +34,7 @@ use Symfony\Component\Tui\Widget\VerticallyExpandableInterface;
  * / onSelectFile so the controller can load `git show` data.
  */
 #[AsWidget('git-history')]
-final class HistoryListWidget extends AbstractWidget implements FocusableInterface, MenuOverlayHost, VerticallyExpandableInterface
+final class HistoryListWidget extends AbstractWidget implements FocusableInterface, HoverableList, MenuOverlayHost, VerticallyExpandableInterface
 {
     use FillsPaneTrait;
     use FocusableTrait;

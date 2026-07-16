@@ -12,6 +12,7 @@ use Porta\Ui\ListSelection;
 use Porta\Ui\Role;
 use Porta\Ui\Theme\Styles;
 use Porta\Widget\FillsPaneTrait;
+use Porta\Widget\HoverableList;
 use Porta\Widget\HoverTrait;
 use Porta\Widget\InputHook;
 use Porta\Widget\PanelWidth;
@@ -37,7 +38,7 @@ use Symfony\Component\Tui\Widget\VerticallyExpandableInterface;
  * @phpstan-type Entry array{id: string|null, label: string, kind: NavEntryKind}
  */
 #[AsWidget('settings-nav', flex: 0)]
-final class SettingsNavWidget extends AbstractWidget implements FocusableInterface, MenuOverlayHost, VerticallyExpandableInterface, ResizableSidebar
+final class SettingsNavWidget extends AbstractWidget implements FocusableInterface, HoverableList, MenuOverlayHost, VerticallyExpandableInterface, ResizableSidebar
 {
     use FillsPaneTrait;
     use FocusableTrait;

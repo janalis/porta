@@ -90,16 +90,7 @@ final class SettingsMouseRouter
      */
     public function hover(MouseEvent $mouse): void
     {
-        $changed = null !== ($rel = $this->hit->hit($this->nav, $mouse->row, $mouse->col))
-            ? $this->nav->hoverRow($rel['row'])
-            : $this->nav->clearHover();
-        $changed =
-            (
-                null !== ($rel = $this->hit->hit($this->keys, $mouse->row, $mouse->col))
-                    ? $this->keys->hoverRow($rel['row'])
-                    : $this->keys->clearHover()
-            ) || $changed;
-        if ($changed) {
+        if ($this->hit->hover($mouse->row, $mouse->col, $this->nav, $this->keys)) {
             $this->tui->requestRender();
         }
     }

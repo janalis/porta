@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Porta\Input;
 
+use Porta\Widget\HoverableList;
 use Symfony\Component\Tui\Render\Renderer;
 use Symfony\Component\Tui\Render\WidgetRect;
 use Symfony\Component\Tui\Widget\AbstractWidget;
@@ -50,6 +51,22 @@ final class HitTester
         }
 
         return $rect->toRelative($row, $col);
+    }
+
+    /**
+     * Tint the row under the pointer in each list — a miss clears that
+     * list's tint (pointer over another pane) — and report whether any
+     * of them changed, so the caller repaints once.
+     */
+    public function hover(int $row, int $col, AbstractWidget&HoverableList ...$lists): bool
+    {
+        $changed = false;
+        foreach ($lists as $list) {
+            $rel = $this->hit($list, $row, $col);
+            $changed = (null !== $rel ? $list->hoverRow($rel['row']) : $list->clearHover()) || $changed;
+        }
+
+        return $changed;
     }
 
     /**

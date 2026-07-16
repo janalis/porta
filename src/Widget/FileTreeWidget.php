@@ -28,7 +28,7 @@ use Symfony\Component\Tui\Widget\VerticallyExpandableInterface;
  * Project file tree with lazy directory expansion.
  */
 #[AsWidget('tree', flex: 0)]
-final class FileTreeWidget extends AbstractWidget implements FocusableInterface, MenuOverlayHost, VerticallyExpandableInterface, ResizableSidebar
+final class FileTreeWidget extends AbstractWidget implements FocusableInterface, HoverableList, MenuOverlayHost, VerticallyExpandableInterface, ResizableSidebar
 {
     use FillsPaneTrait;
     use FocusableTrait;

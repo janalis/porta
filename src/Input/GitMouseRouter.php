@@ -168,16 +168,7 @@ final class GitMouseRouter
      */
     public function hover(MouseEvent $mouse): void
     {
-        $changed = null !== ($rel = $this->hit->hit($this->changes, $mouse->row, $mouse->col))
-            ? $this->changes->hoverRow($rel['row'])
-            : $this->changes->clearHover();
-        $changed =
-            (
-                null !== ($rel = $this->hit->hit($this->history, $mouse->row, $mouse->col))
-                    ? $this->history->hoverRow($rel['row'])
-                    : $this->history->clearHover()
-            ) || $changed;
-        if ($changed) {
+        if ($this->hit->hover($mouse->row, $mouse->col, $this->changes, $this->history)) {
             $this->tui->requestRender();
         }
     }

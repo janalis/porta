@@ -684,11 +684,7 @@ final class MouseRouter
      */
     private function updateTreeHover(MouseEvent $mouse): void
     {
-        $rel = $this->hit->hit($this->panes->tree(), $mouse->row, $mouse->col);
-        $changed = null !== $rel
-            ? $this->panes->tree()->hoverRow($rel['row'])
-            : $this->panes->tree()->clearHover();
-        if ($changed) {
+        if ($this->hit->hover($mouse->row, $mouse->col, $this->panes->tree())) {
             $this->tui->requestRender();
         }
     }

@@ -13,6 +13,7 @@ use Porta\Ui\Role;
 use Porta\Ui\ShortcutFormatter;
 use Porta\Ui\Theme\Styles;
 use Porta\Widget\FillsPaneTrait;
+use Porta\Widget\HoverableList;
 use Porta\Widget\HoverTrait;
 use Porta\Widget\InputHook;
 use Porta\Widget\PaneNavigationCallbacks;
@@ -35,7 +36,7 @@ use Symfony\Component\Tui\Widget\VerticallyExpandableInterface;
  *
  */
 #[AsWidget('settings-keys', flex: 1)]
-final class KeybindingsListWidget extends AbstractWidget implements FocusableInterface, MenuOverlayHost, VerticallyExpandableInterface
+final class KeybindingsListWidget extends AbstractWidget implements FocusableInterface, HoverableList, MenuOverlayHost, VerticallyExpandableInterface
 {
     use FillsPaneTrait;
     use FocusableTrait;
