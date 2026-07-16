@@ -9,6 +9,8 @@ use Porta\Event\DebugStatusChanged;
 use Porta\I18n\Translator;
 use Porta\Support\ProjectPaths;
 use Porta\Terminal\TerminalSessions;
+use Porta\Ui\BottomDock;
+use Porta\Ui\DockTab;
 use Porta\Ui\Notifier;
 use Porta\Widget\CodeEditorWidget;
 use Porta\Widget\DebugPanelWidget;
@@ -30,6 +32,9 @@ final class DebugController implements DebugSessionObserver
     /** The frame the panel last selected — watches and evaluate run against it. */
     private ?int $currentFrameId = null;
 
+    /** The launched file's name — restored onto the Debug tab if a stop re-opens it. */
+    private string $panelTitle = '';
+
     public function __construct(
         private readonly BreakpointStore $breakpoints,
         private readonly DebugAdapters $adapters,
@@ -48,6 +53,7 @@ final class DebugController implements DebugSessionObserver
         private readonly WatchStore $watches,
         private readonly ExceptionFilterStore $exceptionFilters,
         private readonly TerminalSessions $sessions,
+        private readonly BottomDock $dock,
     ) {
         $this->panel->onFrameSelected($this->jumpToFrame(...));
         $this->panel->onRemoveWatch(function (int $index): void {
@@ -196,7 +202,8 @@ final class DebugController implements DebugSessionObserver
         // shown — the dock shows the debug panel; the output sits one
         // terminal-toggle away (ctrl+`).
         $this->sessions->makeActive($session);
-        $this->panel->open(basename($path));
+        $this->panelTitle = basename($path);
+        $this->panel->open($this->panelTitle);
         $this->panel->setWatches($this->watches->all());
 
         $this->session = new DapSession(
@@ -302,6 +309,7 @@ final class DebugController implements DebugSessionObserver
         if (null === $session) {
             return;
         }
+        $this->revealPanel();
         $session->stackTrace(function (array $frames) use ($session): void {
             $this->frames = array_column($frames, null, 'id');
             $display = array_map(fn (array $frame): array => [...$frame, 'path' => ProjectPaths::relative($this->rootDir, $frame['path'])], $frames);
@@ -321,6 +329,21 @@ final class DebugController implements DebugSessionObserver
             $this->dispatcher->dispatch(new DebugStatusChanged());
             $this->tui->requestRender();
         });
+    }
+
+    /**
+     * A stop always surfaces the Debug tab: re-opened (watches reseeded) if
+     * the user closed it, revealed if another tab owns the dock slot.
+     */
+    private function revealPanel(): void
+    {
+        if (!$this->panel->isOpen()) {
+            $this->panel->open($this->panelTitle);
+            $this->panel->setWatches($this->watches->all());
+
+            return;
+        }
+        $this->dock->reveal(DockTab::Debug); // a no-op when already visible
     }
 
     private function loadScopes(DapSession $session, int $frameId): void

@@ -22,9 +22,11 @@ use Porta\I18n\Translator;
 use Porta\Terminal\TerminalSessions;
 use Porta\Tests\Support\FakeDapClient;
 use Porta\Tests\Support\Presence;
+use Porta\Tests\Support\TestBottomDock;
 use Porta\Ui\Notifier;
 use Porta\Widget\CodeEditorWidget;
 use Porta\Widget\DebugPanelWidget;
+use Porta\Widget\ResultsPanelWidget;
 use Porta\Widget\StatusBarWidget;
 use Porta\Widget\TerminalPanelWidget;
 use Symfony\Component\EventDispatcher\EventDispatcher;
@@ -56,6 +58,9 @@ final class DebugControllerTest extends TestCase
         $this->client = new FakeDapClient();
         $this->opened = [];
         $tui = new Tui(terminal: new VirtualTerminal(columns: 100, rows: 20));
+        $terminalPanel = new TerminalPanelWidget();
+        $this->sessions = new TerminalSessions();
+        $dock = TestBottomDock::create($tui, $terminalPanel, new ResultsPanelWidget(), $this->panel, sessions: $this->sessions);
 
         $breakpoints = new BreakpointStore();
         $state = new DebugSessionState();
@@ -71,7 +76,7 @@ final class DebugControllerTest extends TestCase
             new DebugAdapters(Presence::With === $withAdapter ? ['php' => ['debug' => ['adapter' => 'mock-adapter']]] : []),
             $this->editor,
             $this->panel,
-            new TerminalPanelWidget(),
+            $terminalPanel,
             new Notifier($this->statusBar, $tui),
             $tui,
             new Translator(),
@@ -102,7 +107,8 @@ final class DebugControllerTest extends TestCase
             new EditorDecorations($breakpoints, $state, $this->editor),
             new WatchStore(),
             $this->filters = new ExceptionFilterStore(),
-            $this->sessions = new TerminalSessions(),
+            $this->sessions,
+            $dock,
         );
     }
 
@@ -368,6 +374,30 @@ final class DebugControllerTest extends TestCase
         $this->panel->handleInput("\x1b[3~");
         $panelScreen = implode("\n", array_map(AnsiUtils::stripAnsiCodes(...), $this->panel->render(new RenderContext(100, 14))));
         $this->assertStringNotContainsString('Watches', $panelScreen, 'the last watch removed drops the section');
+    }
+
+    public function testAStopSurfacesTheDebugTabAgain(): void
+    {
+        $controller = $this->controller();
+        $this->pauseAtBreakpoint($controller);
+        $controller->addWatch();
+        $this->editor->handleInput('$');
+        $this->editor->handleInput('x');
+        $this->editor->handleInput("\r");
+
+        // Concealed behind another dock tab: the next stop reveals it.
+        $this->panel->conceal();
+        $this->client->emit('stopped', ['reason' => 'step', 'threadId' => 1]);
+        $this->assertTrue($this->panel->isVisible(), 'a stop reveals the concealed Debug tab');
+
+        // Closed outright (the strip ×): the next stop re-opens it, watches reseeded.
+        $this->panel->close();
+        $this->client->emit('stopped', ['reason' => 'step', 'threadId' => 1]);
+        $this->assertTrue($this->panel->isVisible(), 'a stop re-opens a closed Debug tab');
+        $screen = implode("\n", array_map(AnsiUtils::stripAnsiCodes(...), $this->panel->render(new RenderContext(100, 14))));
+        $this->assertStringContainsString('Watches', $screen, 'the stored watches reseed the re-opened panel');
+        $this->assertStringContainsString('$x', $screen);
+        $this->assertSame('prog.php', $this->panel->getTitle(), 'the re-opened tab keeps the launched file title');
     }
 
     public function testAddingAWatchWhileNotPausedDefersEvaluation(): void

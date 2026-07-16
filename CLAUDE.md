@@ -158,6 +158,25 @@ all async work (LSP over stdio, git subprocesses, the integrated terminal PTYs �
 `Terminal/TerminalSession`, tabbed in the single `TerminalPanelWidget`, owned by `Run/RunController` — run
 configurations). Nothing blocks; long operations are timers/callbacks on the shared loop.
 
+**Bottom dock.** The terminal, results and debug panels are tabs of one dock above the status
+bar, coordinated by `Ui/BottomDock` (also the owner of `Ui/ResultsPanelMode` and the shared
+focus-return/flash choreography — it absorbed the old PanelManager and OverlayPanels).
+`Widget/OverlayWidget` carries the two axes: `isOpen()` (tab alive) vs `isVisible()`
+(open AND revealed — the render-guard truth); a panel's own `open(...)` calls `markOpen()`,
+whose `onOpen` hook lets the dock conceal the siblings, so opener call sites never change.
+At most one panel renders; closing one restores the most recently visible alive tab; `Esc`
+is `dismiss()` → dock hide (every tab stays alive) except the transient pickers (palette,
+go-to-symbol), which bypass the dock strip and close for real. `Widget/DockTabsWidget` is the
+one-row strip above the visible panel: tab labels are the tool titles (`getTitle()`), the
+active tool's `statusText()` rides its right side (result counts, debug state + step legend) —
+the results (list modes) and debug panels have **no header row of their own**. ctrl+` toggles
+the Terminal tab (revealing through `RunController::showActiveSession`, wired via
+`onTerminalReveal`); alt+page_down/up cycle the alive tabs (`dock_next_panel`/`dock_prev_panel`);
+a strip × closes the tool (the Terminal only conceals — sessions keep running); the strip row
+doubles as the panel-resize grab. All three panels share one height
+(`bottomPanelHeightPercent`, driven through `BottomDock::setPanelRows`). A debugger stop
+auto-reveals the Debug tab (re-opening it, watches reseeded, if it was ×'d).
+
 **Rendering pipeline (`symfony/tui`).** Widgets (`src/Widget/**`) render to `string[]` lines
 measured in **display columns** (`mb_strwidth`, `AnsiUtils::visibleWidth`) so CJK/wide chars and
 ANSI-styled text align correctly. Widgets cache their rendered output; `invalidate()` only
@@ -189,8 +208,9 @@ breakpoints, run-to-cursor via a wire-level one-shot, evaluate); `Debug/DebugCon
 (container-autowired) owns the `BreakpointStore`/`WatchStore`/`ExceptionFilterStore` (persisted to
 `.porta/debug.json` by `Debug/DebugStatePersistence`, restored before the first buffer opens so
 gutter dots paint at boot), the editor decorations (gutter `●`/`◆`, `Role::DebugLineBg` stopped-line
-band), the `Widget/DebugPanelWidget` bottom panel (frames + watches + lazily-expanded variables) and
-a `Terminal/TerminalSession` (`'debug'`) for debuggee output. Adapters are config-only:
+band), the `Widget/DebugPanelWidget` dock panel (frames + watches + lazily-expanded variables) and
+a `Terminal/TerminalSession` (`'debug'`) for debuggee output — created and made active but not
+shown: it sits one dock tab away (ctrl+` / alt+page_down) while the Debug tab holds the slot. Adapters are config-only:
 `.porta.json` `languages.<id>.debug = {adapter, launch}` (Settings → language section), registry
 in `Debug/DebugAdapters`. Keys: Shift+F9 debug, Ctrl+F8 breakpoint (also gutter click); F7/F8/F9/
 Shift+F8/Ctrl+F2 are gated by `CommandRegistry`'s `when` closures so they fall through to widget

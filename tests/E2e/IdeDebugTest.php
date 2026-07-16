@@ -130,6 +130,17 @@ final class IdeDebugTest extends TestCase
                 1000 => function ($tui, $terminal): void {
                     $tui->tick();
                     $this->assertStringContainsString('paused at prog.php:6', AnsiUtils::stripAnsiCodes($terminal->getOutput()), 'the step advanced one line');
+                    // Park the dock on the Terminal tab: the next stop must
+                    // auto-reveal the Debug tab.
+                    $tui->handleInput("\x1b[6;3~"); // alt+page_down → Terminal
+                    $tui->tick();
+                    $this->assertFalse($tui->getById('debug')->isVisible());
+                    $tui->handleInput("\x1b[19~"); // f8 step over → line 7 → stop
+                },
+                1150 => function ($tui, $terminal): void {
+                    $tui->tick();
+                    $this->assertTrue($tui->getById('debug')->isVisible(), 'the stop auto-revealed the Debug tab');
+                    $this->assertStringContainsString('paused at prog.php:7', AnsiUtils::stripAnsiCodes($terminal->getOutput()));
                     $tui->handleInput("\x1b[20~"); // f9 resume → no more breakpoints → terminated
                 },
                 1300 => function ($tui, $terminal): void {
