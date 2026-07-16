@@ -8,14 +8,13 @@ use Porta\Container\AsWidget;
 use Porta\I18n\Translator;
 use Porta\Search\FileIndex;
 use Porta\Ui\CaretVisibility;
-use Porta\Ui\ColorPalette;
 use Porta\Ui\CursorStyle;
 use Porta\Ui\ListNavigation;
 use Porta\Ui\ListSelection;
-use Porta\Ui\Palette;
 use Porta\Ui\Role;
-use Porta\Ui\Sgr;
 use Porta\Ui\TextField;
+use Porta\Ui\Theme\DarkTheme;
+use Porta\Ui\Theme\Styles;
 use Porta\Widget\Render\HeaderRenderer;
 use Symfony\Component\Tui\Ansi\AnsiUtils;
 use Symfony\Component\Tui\Input\Key;
@@ -47,16 +46,16 @@ final class GoToFileWidget extends OverlayWidget implements FocusableInterface
     /** @var (callable(string): void)|null absolute path picked */
     private $onPick = null;
 
-    private readonly Palette $palette;
+    private readonly Styles $styles;
 
     public function __construct(
         private readonly Translator $translator,
         private readonly string $rootDir,
         ?FileIndex $files = null,
-        ?Palette $palette = null,
+        ?Styles $styles = null,
         ?CursorStyle $cursorStyle = null,
     ) {
-        $this->palette = $palette ?? ColorPalette::dark();
+        $this->styles = $styles ?? new Styles(DarkTheme::definition());
         $this->files = $files ?? new FileIndex($rootDir);
         $this->query = new TextField(style: $cursorStyle);
         $this->list = new ListSelection();
@@ -171,23 +170,19 @@ final class GoToFileWidget extends OverlayWidget implements FocusableInterface
 
         $lines = [];
         $header = ' '.$this->translator->trans('Go to File:').' '.$this->query->render(cursor: $this->focused ? CaretVisibility::Shown : CaretVisibility::Hidden);
-        $lines[] = HeaderRenderer::render($header, $columns, $this->palette->of(Role::HeaderBar).Sgr::BOLD);
+        $lines[] = HeaderRenderer::render($header, $columns, $this->styles->of(Role::HeaderBar)->withBold()->getAnsiRestore());
 
         foreach (\array_slice($this->results, offset: 0, length: self::MAX_RESULTS) as $i => $path) {
             $selected = $i === $this->list->selected();
-            $bg = $selected ? $this->palette->of(Role::SelectedRow) : $this->palette->of(Role::PopupRow);
+            $style = $this->styles->of($selected ? Role::SelectedRow : Role::PopupRow);
             $name = basename($path);
             $dir = ltrim(substr($path, offset: 0, length: -\strlen($name)), characters: '/');
-            $text = ' '.$name.'  '.$this->palette->of(Role::CompletionHint).$dir;
-            $lines[] = $bg.AnsiUtils::truncateToWidth($text, $columns, '…', pad: true).Sgr::RESET;
+            $text = ' '.$name.'  '.$this->styles->of(Role::CompletionHint)->getAnsiRestore().$dir;
+            $lines[] = $style->apply(AnsiUtils::truncateToWidth($text, $columns, '…', pad: true));
         }
 
         if ([] === $this->results && '' !== $this->query->value()) {
-            $lines[] =
-                $this->palette->of(Role::RowHighlightBg)
-                .$this->palette->of(Role::CompletionHint)
-                .AnsiUtils::truncateToWidth(' '.$this->translator->trans('no matches'), $columns, '', pad: true)
-                .Sgr::RESET;
+            $lines[] = $this->styles->merge(Role::RowHighlightBg, Role::CompletionHint)->apply(AnsiUtils::truncateToWidth(' '.$this->translator->trans('no matches'), $columns, '', pad: true));
         }
 
         return $lines;

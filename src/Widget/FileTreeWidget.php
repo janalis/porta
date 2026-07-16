@@ -7,12 +7,11 @@ namespace Porta\Widget;
 use Porta\Container\AsWidget;
 use Porta\Layout\ResizableSidebar;
 use Porta\Tree\FileTreeNode;
-use Porta\Ui\ColorPalette;
 use Porta\Ui\ListNavigation;
 use Porta\Ui\ListSelection;
-use Porta\Ui\Palette;
 use Porta\Ui\Role;
-use Porta\Ui\Sgr;
+use Porta\Ui\Theme\DarkTheme;
+use Porta\Ui\Theme\Styles;
 use Porta\Widget\Render\MenuOverlayHost;
 use Porta\Widget\Render\MenuOverlayHostTrait;
 use Psr\Clock\ClockInterface;
@@ -72,17 +71,17 @@ final class FileTreeWidget extends AbstractWidget implements FocusableInterface,
     private $onOpenFile = null;
 
     private readonly ClockInterface $clock;
-    private readonly Palette $palette;
+    private readonly Styles $styles;
 
     public function __construct(
         private readonly string $rootDir,
         ?ClockInterface $clock = null,
         int $width = 30,
-        ?Palette $palette = null,
+        ?Styles $styles = null,
     ) {
         $this->width = $width;
         $this->clock = $clock ?? new NativeClock();
-        $this->palette = $palette ?? ColorPalette::dark();
+        $this->styles = $styles ?? new Styles(DarkTheme::definition());
         $this->list = new ListSelection();
         $this->rebuild();
     }
@@ -263,7 +262,7 @@ final class FileTreeWidget extends AbstractWidget implements FocusableInterface,
 
         $lines = [];
         $header = AnsiUtils::truncateToWidth(' '.basename($this->rootDir).'/', $width, '…', pad: true);
-        $lines[] = Sgr::BOLD.$this->palette->of(Role::TabAccent).$header.Sgr::RESET;
+        $lines[] = $this->styles->of(Role::TabAccent)->withBold()->apply($header);
 
         for ($row = 1; $row < $rows; ++$row) {
             $index = $scroll + $row - 1;
@@ -284,9 +283,9 @@ final class FileTreeWidget extends AbstractWidget implements FocusableInterface,
 
             // Subtle hover background beneath the pointer keeps the dir/file foreground.
             $lines[] = match (true) {
-                $index === $this->list->selected() => ($this->focused ? $this->palette->of(Role::SelectedRow) : $this->palette->of(Role::SelectedRowUnfocused)).$text.Sgr::RESET,
-                $index === $this->hoveredIndex => $this->palette->of(Role::RowHighlightBg).($node->isDir ? $this->palette->of(Role::TabAccent) : '').$text.Sgr::RESET,
-                $node->isDir => $this->palette->of(Role::TabAccent).$text.Sgr::RESET,
+                $index === $this->list->selected() => $this->styles->of($this->focused ? Role::SelectedRow : Role::SelectedRowUnfocused)->apply($text),
+                $index === $this->hoveredIndex => ($node->isDir ? $this->styles->merge(Role::RowHighlightBg, Role::TabAccent) : $this->styles->of(Role::RowHighlightBg))->apply($text),
+                $node->isDir => $this->styles->of(Role::TabAccent)->apply($text),
                 default => $text,
             };
         }

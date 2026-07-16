@@ -15,12 +15,11 @@ use Porta\Search\SearchPattern;
 use Porta\Search\WordMode;
 use Porta\Support\AnsiText;
 use Porta\Ui\CaretVisibility;
-use Porta\Ui\ColorPalette;
 use Porta\Ui\CursorStyle;
-use Porta\Ui\Palette;
 use Porta\Ui\Role;
-use Porta\Ui\Sgr;
 use Porta\Ui\TextField;
+use Porta\Ui\Theme\DarkTheme;
+use Porta\Ui\Theme\Styles;
 use Symfony\Component\Tui\Input\Key;
 use Symfony\Component\Tui\Render\RenderContext;
 use Symfony\Component\Tui\Widget\FocusableInterface;
@@ -67,14 +66,14 @@ final class FindBarWidget extends OverlayWidget implements FocusableInterface
     /** @var (callable(): void)|null called when matches/current change */
     private $onUpdate = null;
 
-    private readonly Palette $palette;
+    private readonly Styles $styles;
 
     public function __construct(
         private readonly Translator $translator,
-        ?Palette $palette = null,
+        ?Styles $styles = null,
         ?CursorStyle $cursorStyle = null,
     ) {
-        $this->palette = $palette ?? ColorPalette::dark();
+        $this->styles = $styles ?? new Styles(DarkTheme::definition());
         $this->query = new TextField(style: $cursorStyle);
         $this->replacement = new TextField(style: $cursorStyle);
     }
@@ -246,13 +245,13 @@ final class FindBarWidget extends OverlayWidget implements FocusableInterface
             : $this->translator->trans('⏎/F3 next  ⇧F3 prev  ⌥X .*  ⌥W \b  esc');
 
         $tags = $this->optionTag('.*', $this->regex ? ToggleState::On : ToggleState::Off).$this->optionTag('\b', $this->wholeWord ? ToggleState::On : ToggleState::Off);
-        $left = $findField.$replaceField.$this->palette->of(Role::Dim)."[{$position}]\x1b[39m".$tags;
-        $line = $left.'  '.$this->palette->of(Role::Faint).$hints.Sgr::DEFAULT_FG;
+        $left = $findField.$replaceField.$this->styles->of(Role::Dim)->apply("[{$position}]").$tags;
+        $line = $left.'  '.$this->styles->of(Role::Faint)->apply($hints);
         // Scroll the whole bar to the focused field's caret so a long query or
         // replacement never clips its cursor off the right edge.
         $line = AnsiText::scrollLineToCaret($line, $columns);
 
-        return [$this->palette->of(Role::Toolbar).$line.Sgr::RESET];
+        return [$this->styles->of(Role::Toolbar)->apply($line)];
     }
 
     // --- Search internals ---------------------------------------------------
@@ -451,7 +450,7 @@ final class FindBarWidget extends OverlayWidget implements FocusableInterface
     {
         $role = ToggleState::On === $on ? Role::SelectedRow : Role::Faint;
 
-        return ' '.$this->palette->of($role).'['.$label.']'.Sgr::RESET;
+        return ' '.$this->styles->of($role)->apply('['.$label.']');
     }
 
     /** @return array<string, string[]> */
