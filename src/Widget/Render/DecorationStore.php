@@ -1,0 +1,189 @@
+<?php
+
+declare(strict_types=1);
+
+namespace Porta\Widget\Render;
+
+/**
+ * The editor's per-buffer decoration state — git gutter marks, diagnostics,
+ * search matches, inlay hints, blame annotations, breakpoints and the
+ * debugger's stopped line — pushed in by the controllers through the widget's
+ * delegating setters and read each frame by the {@see EditorRowAssembler}.
+ * Extracted from CodeEditorWidget (the codebase's kitchen-sink widget) like
+ * the other per-concern sub-objects its constructor builds; every mutation
+ * requests a repaint.
+ */
+final class DecorationStore
+{
+    /** @var array<int, list<array{start: int, end: int, current: bool}>> search matches by line (byte cols) */
+    private array $searchMatches = [];
+
+    /** @var array<int, string> 0-based line => 'added'|'modified'|'deleted' */
+    private array $gitMarks = [];
+
+    /** @var array<int, string> 0-based line => trailing annotation (blame) */
+    private array $lineAnnotations = [];
+
+    /** @var list<int> 0-based lines with a breakpoint (● in the gutter) */
+    private array $breakpointLines = [];
+
+    /** @var list<int> the subset of breakpoint lines carrying a condition (◆ in the gutter) */
+    private array $conditionalBreakpointLines = [];
+
+    /** The debugger's stopped line (full-width band), or null when not paused here. */
+    private ?int $debugLine = null;
+
+    /** @var array<int, list<array{severity: int, message: string, col: int, endCol?: int}>> keyed by 0-based line */
+    private array $diagnostics = [];
+
+    /** @var array<int, list<array{col: int, text: string}>> inlay hints per line: byte col => dim label */
+    private array $inlayHints = [];
+
+    /** @param \Closure(): void $invalidate request a redraw */
+    public function __construct(
+        private readonly \Closure $invalidate,
+    ) {}
+
+    /**
+     * A new buffer takes over: it brings its own diagnostics, and the
+     * per-buffer overlays clear (the blame and debug controllers re-apply
+     * theirs per buffer). Git marks and search matches are replaced by their
+     * own follow-up pushes.
+     *
+     * @param array<int, list<array{severity: int, message: string, col: int, endCol?: int}>> $diagnostics
+     */
+    public function resetForBuffer(array $diagnostics): void
+    {
+        $this->diagnostics = $diagnostics;
+        $this->inlayHints = [];
+        $this->lineAnnotations = [];
+        $this->breakpointLines = [];
+        $this->conditionalBreakpointLines = [];
+        $this->debugLine = null;
+    }
+
+    /** @param array<int, list<array{start: int, end: int, current: bool}>> $byLine byte columns */
+    public function setSearchMatches(array $byLine): void
+    {
+        $this->searchMatches = $byLine;
+        ($this->invalidate)();
+    }
+
+    /** @return array<int, list<array{start: int, end: int, current: bool}>> */
+    public function searchMatches(): array
+    {
+        return $this->searchMatches;
+    }
+
+    /** @param array<int, string> $byLine 0-based line => 'added'|'modified'|'deleted' */
+    public function setGitMarks(array $byLine): void
+    {
+        $this->gitMarks = $byLine;
+        ($this->invalidate)();
+    }
+
+    /** @return array<int, string> */
+    public function gitMarks(): array
+    {
+        return $this->gitMarks;
+    }
+
+    /** @param array<int, string> $byLine 0-based line => trailing annotation (blame); [] clears */
+    public function setLineAnnotations(array $byLine): void
+    {
+        $this->lineAnnotations = $byLine;
+        ($this->invalidate)();
+    }
+
+    /** @return array<int, string> */
+    public function lineAnnotations(): array
+    {
+        return $this->lineAnnotations;
+    }
+
+    /**
+     * @param list<int> $lines            0-based lines carrying a breakpoint in this file
+     * @param list<int> $conditionalLines the subset carrying a condition (◆ instead of ●)
+     */
+    public function setBreakpointLines(array $lines, array $conditionalLines = []): void
+    {
+        $this->breakpointLines = $lines;
+        $this->conditionalBreakpointLines = $conditionalLines;
+        ($this->invalidate)();
+    }
+
+    /** @return list<int> */
+    public function breakpointLines(): array
+    {
+        return $this->breakpointLines;
+    }
+
+    /** @return list<int> */
+    public function conditionalBreakpointLines(): array
+    {
+        return $this->conditionalBreakpointLines;
+    }
+
+    /** Highlight (or clear) the debugger's stopped line. */
+    public function setDebugLine(?int $line): void
+    {
+        $this->debugLine = $line;
+        ($this->invalidate)();
+    }
+
+    public function debugLine(): ?int
+    {
+        return $this->debugLine;
+    }
+
+    /** @param array<int, list<array{severity: int, message: string, col: int, endCol?: int}>> $byLine */
+    public function setDiagnostics(array $byLine): void
+    {
+        $this->diagnostics = $byLine;
+        ($this->invalidate)();
+    }
+
+    /** @return array<int, list<array{severity: int, message: string, col: int, endCol?: int}>> */
+    public function diagnostics(): array
+    {
+        return $this->diagnostics;
+    }
+
+    /** @return array{errors: int, warnings: int} */
+    public function diagnosticCounts(): array
+    {
+        $warnings = 0;
+        $errors = $warnings;
+        foreach ($this->diagnostics as $list) {
+            foreach ($list as $d) {
+                1 === $d['severity'] ? ++$errors : ++$warnings;
+            }
+        }
+
+        return ['errors' => $errors, 'warnings' => $warnings];
+    }
+
+    /** The first diagnostic message on $line (the status bar's caret readout), or null. */
+    public function diagnosticMessageAt(int $line): ?string
+    {
+        $list = $this->diagnostics[$line] ?? null;
+        if (!$list) {
+            return null;
+        }
+
+        return $list[0]['message'];
+    }
+
+    /** @param array<int, list<array{col: int, text: string}>> $hints line => byte-col hints */
+    public function setInlayHints(array $hints): void
+    {
+        $this->inlayHints = $hints;
+        ($this->invalidate)();
+    }
+
+    /** @return list<array{col: int, text: string}> the inlay hints on one line */
+    public function inlayHintsAt(int $line): array
+    {
+        return $this->inlayHints[$line] ?? [];
+    }
+}

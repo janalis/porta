@@ -77,7 +77,9 @@ final class GitRefresherTest extends TestCase
         $refresher->refreshActiveMarks();
         $this->await(static fn (): bool => [] !== $buffer->gitMarks, 'the async diff resolved');
 
-        $editorMarks = new \ReflectionProperty($this->editor, 'gitMarks')->getValue($this->editor);
+        $editorMarks = new \ReflectionProperty($this->editor, 'decorations')
+            ->getValue($this->editor)
+            ->gitMarks();
         $this->assertSame($buffer->gitMarks, $editorMarks, 'the active buffer pushed its marks into the editor gutter');
     }
 

@@ -40,6 +40,7 @@ use Porta\Ui\Sgr;
 use Porta\Ui\Theme\Styles;
 use Porta\Widget\Overlay\FindInFilesModal;
 use Porta\Widget\Overlay\OverlayHost;
+use Porta\Widget\Render\DecorationStore;
 use Porta\Widget\Render\EditorDecorations;
 use Porta\Widget\Render\EditorGeometry;
 use Porta\Widget\Render\EditorPopupGeometry;
@@ -110,9 +111,6 @@ final class CodeEditorWidget extends AbstractWidget implements ActiveFileProvide
     /** Structural selection (expand/shrink/surround) + merge-conflict nav, rebuilt per document. */
     private EditorStructural $structural;
 
-    /** @var array<int, list<array{severity: int, message: string, col: int, endCol?: int}>> keyed by 0-based line */
-    private array $diagnostics = [];
-
     private bool $inlineDiagnostics = true;
     private bool $relativeLineNumbers = false;
     private bool $autoPairs = true;
@@ -122,29 +120,12 @@ final class CodeEditorWidget extends AbstractWidget implements ActiveFileProvide
     /** LSP completion + snippet machinery, rebuilt per document. */
     private EditorCompletion $completion;
     private FoldModel $foldModel;
-    /** @var array<int, list<array{col: int, text: string}>> inlay hints per line: byte col => dim label */
-    private array $inlayHints = [];
 
     /** Outbound hooks into the coordinator, replaced wholesale by wiring/tests. */
     private EditorCallbacks $callbacks;
 
-    /** @var array<int, list<array{start: int, end: int, current: bool}>> search matches by line (byte cols) */
-    private array $searchMatches = [];
-
-    /** @var array<int, string> 0-based line => 'added'|'modified'|'deleted' */
-    private array $gitMarks = [];
-
-    /** @var list<int> 0-based lines with a breakpoint (● in the gutter) */
-    private array $breakpointLines = [];
-
-    /** @var list<int> the subset of breakpoint lines carrying a condition (◆ in the gutter) */
-    private array $conditionalBreakpointLines = [];
-
-    /** @var array<int, string> 0-based line => trailing annotation (blame) */
-    private array $lineAnnotations = [];
-
-    /** The debugger's stopped line (full-width band), or null when not paused here. */
-    private ?int $debugLine = null;
+    /** The buffer's decoration overlays (git marks, diagnostics, breakpoints, …). */
+    private readonly DecorationStore $decorations;
 
     /** @var array{int, int}|null caret (line, col) at the last render, to gate hScroll following */
     private ?array $lastFollowedCursor = null;
@@ -177,6 +158,7 @@ final class CodeEditorWidget extends AbstractWidget implements ActiveFileProvide
         $this->syntaxTheme = $syntaxTheme ?? new DarkTerminalTheme();
         $this->cursorStyle = $cursorStyle ?? new CursorStyle();
         $this->callbacks = new EditorCallbacks();
+        $this->decorations = new DecorationStore($this->invalidate(...));
         $this->overlayHost = new OverlayHost($this->invalidate(...), $this->styles, $this->cursorStyle);
         $this->findModal = new FindInFilesModal($this->invalidate(...), $this->styles, $this->cursorStyle);
         $this->document = new Document('');
@@ -271,7 +253,7 @@ final class CodeEditorWidget extends AbstractWidget implements ActiveFileProvide
         if (null === $highlighter) {
             $this->highlighter->setFile($path);
         }
-        $this->diagnostics = $diagnostics;
+        $this->decorations->resetForBuffer($diagnostics);
         $this->multiCaret = $this->newMultiCaret($document);
         // Let undo/redo snapshots capture and restore this document's secondary
         // carets (bound to this specific MultiCaret, not whichever is active later).
@@ -285,11 +267,6 @@ final class CodeEditorWidget extends AbstractWidget implements ActiveFileProvide
         $this->mouse = $this->newEditorMouse($document);
         $this->structural = $this->newEditorStructural($document);
         $this->actions = $this->newEditorActions($document, $this->actions->clipboardValue());
-        $this->inlayHints = [];
-        $this->lineAnnotations = []; // the blame controller re-applies per buffer
-        $this->breakpointLines = []; // the debug controller re-applies per buffer
-        $this->conditionalBreakpointLines = [];
-        $this->debugLine = null;
         $this->closeCompletion();
         $this->overlayHost->closeList();
         $this->invalidate();
@@ -500,8 +477,7 @@ final class CodeEditorWidget extends AbstractWidget implements ActiveFileProvide
      */
     public function setSearchMatches(array $byLine): void
     {
-        $this->searchMatches = $byLine;
-        $this->invalidate();
+        $this->decorations->setSearchMatches($byLine);
     }
 
     /**
@@ -509,8 +485,7 @@ final class CodeEditorWidget extends AbstractWidget implements ActiveFileProvide
      */
     public function setGitMarks(array $byLine): void
     {
-        $this->gitMarks = $byLine;
-        $this->invalidate();
+        $this->decorations->setGitMarks($byLine);
     }
 
     /**
@@ -518,8 +493,7 @@ final class CodeEditorWidget extends AbstractWidget implements ActiveFileProvide
      */
     public function setLineAnnotations(array $byLine): void
     {
-        $this->lineAnnotations = $byLine;
-        $this->invalidate();
+        $this->decorations->setLineAnnotations($byLine);
     }
 
     /**
@@ -528,16 +502,13 @@ final class CodeEditorWidget extends AbstractWidget implements ActiveFileProvide
      */
     public function setBreakpointLines(array $lines, array $conditionalLines = []): void
     {
-        $this->breakpointLines = $lines;
-        $this->conditionalBreakpointLines = $conditionalLines;
-        $this->invalidate();
+        $this->decorations->setBreakpointLines($lines, $conditionalLines);
     }
 
     /** Highlight (or clear) the debugger's stopped line. */
     public function setDebugLine(?int $line): void
     {
-        $this->debugLine = $line;
-        $this->invalidate();
+        $this->decorations->setDebugLine($line);
     }
 
     /** Install the coordinator's outbound hooks (see {@see EditorCallbacks}). */
@@ -732,22 +703,13 @@ final class CodeEditorWidget extends AbstractWidget implements ActiveFileProvide
     /** @param array<int, list<array{severity: int, message: string, col: int, endCol?: int}>> $byLine */
     public function setDiagnostics(array $byLine): void
     {
-        $this->diagnostics = $byLine;
-        $this->invalidate();
+        $this->decorations->setDiagnostics($byLine);
     }
 
     /** @return array{errors: int, warnings: int} */
     public function getDiagnosticCounts(): array
     {
-        $warnings = 0;
-        $errors = $warnings;
-        foreach ($this->diagnostics as $list) {
-            foreach ($list as $d) {
-                1 === $d['severity'] ? ++$errors : ++$warnings;
-            }
-        }
-
-        return ['errors' => $errors, 'warnings' => $warnings];
+        return $this->decorations->diagnosticCounts();
     }
 
     /**
@@ -755,12 +717,7 @@ final class CodeEditorWidget extends AbstractWidget implements ActiveFileProvide
      */
     public function getCursorDiagnostic(): ?string
     {
-        $list = $this->diagnostics[$this->document->getCursorLine()] ?? null;
-        if (!$list) {
-            return null;
-        }
-
-        return $list[0]['message'];
+        return $this->decorations->diagnosticMessageAt($this->document->getCursorLine());
     }
 
     /**
@@ -1071,20 +1028,13 @@ final class CodeEditorWidget extends AbstractWidget implements ActiveFileProvide
         $assembler = new EditorRowAssembler(
             $doc,
             $this->foldModel,
-            $this->gitMarks,
-            $this->diagnostics,
-            $this->searchMatches,
-            $this->inlayHints,
+            $this->decorations,
             $this->relativeLineNumbers,
             $this->inlineDiagnostics,
             $this->focused,
             $this->focused && !$this->findModal->isOpen(), // the modal owns the caret while it is open
             $this->styles,
-            $this->breakpointLines,
-            $this->debugLine,
             $this->cursorStyle,
-            $this->conditionalBreakpointLines,
-            $this->lineAnnotations,
         );
         $result = $assembler->assemble($geo, $decorations, $sticky, $highlighted, $stripe, $contentRows, $vScroll, $cursorLine, $cursorDisplayCol, $hScroll);
 
@@ -1131,7 +1081,7 @@ final class CodeEditorWidget extends AbstractWidget implements ActiveFileProvide
     private function followCaret(Document $doc, int $cursorLine, int $contentWidth): int
     {
         $cursorDisplayCol = $doc->getCursorDisplayCol();
-        $cursorDisplayCol += EditorRenderer::inlayShiftAt($doc, $cursorLine, $this->inlayHints[$cursorLine] ?? [], $cursorDisplayCol);
+        $cursorDisplayCol += EditorRenderer::inlayShiftAt($doc, $cursorLine, $this->decorations->inlayHintsAt($cursorLine), $cursorDisplayCol);
         $cursorMoved = [$cursorLine, $doc->getCursorCol()] !== $this->lastFollowedCursor;
         $this->lastFollowedCursor = [$cursorLine, $doc->getCursorCol()];
         $this->scroll->followCursor($cursorDisplayCol, $contentWidth, $cursorMoved ? CaretMotion::Moved : CaretMotion::Parked);
@@ -1204,7 +1154,7 @@ final class CodeEditorWidget extends AbstractWidget implements ActiveFileProvide
     {
         // Worst severity landing on each stripe row (0 = none).
         $sev = array_fill(0, max(0, $rows), value: 0);
-        foreach ($this->diagnostics as $line => $list) {
+        foreach ($this->decorations->diagnostics() as $line => $list) {
             if ([] === $list) {
                 continue;
             }
@@ -1244,8 +1194,7 @@ final class CodeEditorWidget extends AbstractWidget implements ActiveFileProvide
      */
     public function setInlayHints(array $hints): void
     {
-        $this->inlayHints = $hints;
-        $this->invalidate();
+        $this->decorations->setInlayHints($hints);
     }
 
     /** @return array<string, string[]> */
