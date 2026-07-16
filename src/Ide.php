@@ -65,9 +65,7 @@ use Symfony\Component\DependencyInjection\ContainerInterface;
 use Symfony\Component\DependencyInjection\ServiceLocator;
 use Symfony\Component\Tui\Input\Keybindings;
 use Symfony\Component\Tui\Render\Renderer;
-use Symfony\Component\Tui\Style\Direction;
-use Symfony\Component\Tui\Style\Style;
-use Symfony\Component\Tui\Style\StyleSheet;
+use Symfony\Component\Tui\Style\TailwindStylesheet;
 use Symfony\Component\Tui\Terminal\Terminal;
 use Symfony\Component\Tui\Terminal\TerminalInterface;
 use Symfony\Component\Tui\Tui;
@@ -172,8 +170,10 @@ final class Ide
         // plugin default keys must merge into the immutable map.
         $keybindings = $this->service(Keybindings::class);
 
-        // Own the Renderer so mouse hit-testing can query widget rects.
-        $this->renderer = $renderer ?? new Renderer($this->buildStyleSheet());
+        // Own the Renderer so mouse hit-testing can query widget rects. The
+        // sheet is a TailwindStylesheet so rules and utility classes both
+        // resolve (the Renderer clones it, preserving the subclass).
+        $this->renderer = $renderer ?? new Renderer(new TailwindStylesheet());
         $this->bidiTui = new BidiTui(
             // The real terminal is decorated so frame writes can never block
             // the event loop when the outer terminal stops draining (the
@@ -411,14 +411,6 @@ final class Ide
         // the constructor, once every provider dependency exists.
         $this->commands = $this->service(CommandRegistry::class);
         $this->menuRebuilder = $this->service(MenuRebuilder::class);
-    }
-
-    private function buildStyleSheet(): StyleSheet
-    {
-        $sheet = new StyleSheet();
-        $sheet->addRule('#main', new Style(direction: Direction::Horizontal, gap: 0));
-
-        return $sheet;
     }
 
     /** Construct the settings-view widgets and their horizontal pane container. */
