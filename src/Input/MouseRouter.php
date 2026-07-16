@@ -172,6 +172,12 @@ final class MouseRouter
         $this->handlePaneClick($mouse, $treeRect, $tabsRect, $editorRect);
     }
 
+    /** Whether $rect exists and the pointer is inside it — the wheel-scroll hit guard. */
+    private function containsPointer(?WidgetRect $rect, MouseEvent $mouse): bool
+    {
+        return null !== $rect && $rect->contains($mouse->row, $mouse->col);
+    }
+
     /** Wheel: scroll whichever pane is under the pointer. */
     private function handleWheel(MouseEvent $mouse, ?WidgetRect $treeRect, ?WidgetRect $editorRect): void
     {
@@ -184,13 +190,13 @@ final class MouseRouter
 
                 return;
             }
-            if (null !== $editorRect && $editorRect->contains($mouse->row, $mouse->col)) {
+            if ($this->containsPointer($editorRect, $mouse)) {
                 $this->panes->editor()->scrollHBy(6 * $mouse->wheelHDelta);
                 $this->tui->requestRender();
 
                 return;
             }
-            if (null !== $imageRect && $imageRect->contains($mouse->row, $mouse->col)) {
+            if ($this->containsPointer($imageRect, $mouse)) {
                 $this->panes->imageViewer()->scrollBy(6 * $mouse->wheelHDelta, 0);
                 $this->tui->requestRender();
             }
@@ -200,7 +206,7 @@ final class MouseRouter
 
         // The Find modal composites inside the editor pane and owns input while
         // open — scroll its preview instead of the editor behind it.
-        if (null !== $editorRect && $editorRect->contains($mouse->row, $mouse->col) && $this->panes->editor()->isFindModalOpen()) {
+        if ($this->containsPointer($editorRect, $mouse) && $this->panes->editor()->isFindModalOpen()) {
             $this->panes->editor()->scrollFindModal(3 * $mouse->wheelDelta);
             $this->tui->requestRender();
 
@@ -209,7 +215,7 @@ final class MouseRouter
 
         // The results tool window (its own bottom rect).
         $resultsRect = $this->hit->rect($this->overlayPanels->resultsPanel());
-        if ($this->overlayPanels->resultsPanel()->isOpen() && null !== $resultsRect && $resultsRect->contains($mouse->row, $mouse->col)) {
+        if ($this->overlayPanels->resultsPanel()->isOpen() && $this->containsPointer($resultsRect, $mouse)) {
             $this->overlayPanels->resultsPanel()->scrollBy(3 * $mouse->wheelDelta);
             $this->tui->requestRender();
 
@@ -218,7 +224,7 @@ final class MouseRouter
 
         // The debug panel scrolls its frames/variables list the same way.
         $debugRect = $this->hit->rect($this->overlayPanels->debugPanel());
-        if ($this->overlayPanels->debugPanel()->isOpen() && null !== $debugRect && $debugRect->contains($mouse->row, $mouse->col)) {
+        if ($this->overlayPanels->debugPanel()->isOpen() && $this->containsPointer($debugRect, $mouse)) {
             $this->overlayPanels->debugPanel()->scrollBy(3 * $mouse->wheelDelta);
             $this->tui->requestRender();
 
@@ -227,13 +233,13 @@ final class MouseRouter
 
         $step = 3 * $mouse->wheelDelta;
         $terminalRect = $this->hit->rect($this->overlayPanels->terminalPanel());
-        if ($this->overlayPanels->terminalPanel()->isOpen() && null !== $terminalRect && $terminalRect->contains($mouse->row, $mouse->col)) {
+        if ($this->overlayPanels->terminalPanel()->isOpen() && $this->containsPointer($terminalRect, $mouse)) {
             $this->overlayPanels->terminalPanel()->scroll($mouse->wheelDelta < 0 ? 3 : -3); // wheel up → into history
             $this->tui->requestRender();
 
             return;
         }
-        if (null !== $editorRect && $editorRect->contains($mouse->row, $mouse->col)) {
+        if ($this->containsPointer($editorRect, $mouse)) {
             $this->panes->editor()->scrollBy($step);
             $this->tui->requestRender();
 
@@ -255,7 +261,7 @@ final class MouseRouter
 
             return;
         }
-        if (null !== $treeRect && $treeRect->contains($mouse->row, $mouse->col)) {
+        if ($this->containsPointer($treeRect, $mouse)) {
             $key = $mouse->wheelDelta < 0 ? "\x1b[A" : "\x1b[B";
             for ($i = 0; $i < 3; ++$i) {
                 $this->panes->tree()->handleInput($key);
