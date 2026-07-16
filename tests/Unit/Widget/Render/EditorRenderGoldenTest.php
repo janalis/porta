@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Porta\Tests\Unit\Widget\Render;
 
 use PHPUnit\Framework\TestCase;
+use Porta\Editor\CompletionItem;
 use Porta\Editor\SelectionMode;
 use Porta\Widget\CodeEditorWidget;
 use Symfony\Component\Tui\Render\RenderContext;
@@ -201,8 +202,8 @@ final class EditorRenderGoldenTest extends TestCase
                     $e->setFocused(true);
                     $e->getDocument()->setCursor(4, 11);
                     $e->showCompletions([
-                        ['label' => 'greeting', 'insertText' => 'greeting', 'kind' => 'var', 'detail' => 'string'],
-                        ['label' => 'greetLoudly', 'insertText' => 'greetLoudly', 'kind' => 'fn', 'detail' => ''],
+                        new CompletionItem(label: 'greeting', insertText: 'greeting', kind: 'var', detail: 'string'),
+                        new CompletionItem(label: 'greetLoudly', insertText: 'greetLoudly', kind: 'fn', detail: ''),
                     ]);
                 },
                 80,

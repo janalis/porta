@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace Porta\Widget\Render;
 
+use Porta\Editor\CompletionBox;
+use Porta\Editor\CompletionItem;
 use Porta\Editor\DiagnosticStyle;
 use Porta\Editor\Document;
 use Porta\Support\AnsiText;
@@ -451,19 +453,13 @@ final class EditorRenderer
     }
 
     /**
-     * Draw the autocomplete popup anchored at the caret.
+     * Draw the autocomplete popup anchored at the caret. Returns the on-screen
+     * box geometry so callers can hit-test mouse clicks.
      *
-     * Returns the on-screen box geometry so callers can hit-test mouse clicks:
-     * visible item `i` (0-based) sits at row `startRow + i` and maps to filtered
-     * index `windowOffset + i`; the box spans columns `[col, col + width)`;
-     * `count` is the number of item rows drawn.
-     *
-     * @param string[]                                                          $lines
-     * @param list<array{label: string, insertText: string, kind: string, detail: string, additionalTextEdits?: list<array>, snippet?: string|null, raw?: array<string, mixed>}> $items filtered
-     *
-     * @return array{col: int, width: int, startRow: int, windowOffset: int, count: int}
+     * @param string[]             $lines
+     * @param list<CompletionItem> $items filtered
      */
-    public static function completionPopup(array &$lines, int $columns, int $rows, int $cursorScreenRow, int $anchorCol, array $items, int $selected, Styles $styles): array
+    public static function completionPopup(array &$lines, int $columns, int $rows, int $cursorScreenRow, int $anchorCol, array $items, int $selected, Styles $styles): CompletionBox
     {
         $windowOffset = max(0, $selected - self::POPUP_MAX_ITEMS + 1);
         $visible = \array_slice($items, $windowOffset, self::POPUP_MAX_ITEMS);
@@ -471,7 +467,7 @@ final class EditorRenderer
 
         $width = 12;
         foreach ($visible as $item) {
-            $width = max($width, mb_strwidth($item['label']) + mb_strwidth($item['kind']) + 5);
+            $width = max($width, mb_strwidth($item->label) + mb_strwidth($item->kind) + 5);
         }
         $width = min($width, self::POPUP_MAX_WIDTH, $columns - 2);
 
@@ -489,15 +485,15 @@ final class EditorRenderer
 
             $isSelected = $i === $selectedInWindow;
             $style = $styles->of($isSelected ? Role::SelectedRow : Role::PopupRow);
-            $kindTag = $styles->of(Role::CompletionKind)->apply($item['kind']);
-            $labelWidth = $width - mb_strwidth($item['kind']) - 3;
-            $label = AnsiUtils::truncateToWidth($item['label'], $labelWidth, '…', pad: true);
+            $kindTag = $styles->of(Role::CompletionKind)->apply($item->kind);
+            $labelWidth = $width - mb_strwidth($item->kind) - 3;
+            $label = AnsiUtils::truncateToWidth($item->label, $labelWidth, '…', pad: true);
             $popupLine = $style->apply(' '.$label.' '.$kindTag.' ');
 
             $lines[$row] = OverlayCompositor::into($lines[$row], $col, $width, $columns, $popupLine);
         }
 
-        return ['col' => $col, 'width' => $width, 'startRow' => $startRow, 'windowOffset' => $windowOffset, 'count' => $popupHeight];
+        return new CompletionBox($col, $width, $startRow, $popupHeight, $windowOffset);
     }
 
     /**

@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Porta\Lsp;
 
+use Porta\Editor\CompletionItem;
 use Porta\Editor\Document;
 
 /**
@@ -72,12 +73,12 @@ final class LspMapper
     ];
 
     /**
-     * Map raw LSP CompletionItem[] to the editor's popup item shape, sorted by
+     * Map raw LSP CompletionItem[] to the editor's popup items, sorted by
      * sortText/label and capped at 80 entries.
      *
      * @param list<array<string, mixed>> $items
      *
-     * @return list<array{label: string, insertText: string, kind: string, detail: string, additionalTextEdits: list<array<array-key, mixed>>, snippet: ?string, raw: array<string, mixed>}>
+     * @return list<CompletionItem>
      */
     public static function mapCompletionItems(array $items): array
     {
@@ -107,15 +108,15 @@ final class LspMapper
             /** @var list<array<array-key, mixed>> $additional */
             $additional = \is_array($item['additionalTextEdits'] ?? null) ? $item['additionalTextEdits'] : [];
 
-            $mapped[] = [
-                'label' => $label,
-                'insertText' => $insert,
-                'kind' => self::COMPLETION_KINDS[$item['kind'] ?? 0] ?? '',
-                'detail' => (string) ($item['detail'] ?? ''),
-                'additionalTextEdits' => $additional,
-                'snippet' => $isSnippet ? $raw : null,
-                'raw' => $item,
-            ];
+            $mapped[] = new CompletionItem(
+                label: $label,
+                insertText: $insert,
+                kind: self::COMPLETION_KINDS[$item['kind'] ?? 0] ?? '',
+                detail: (string) ($item['detail'] ?? ''),
+                additionalTextEdits: $additional,
+                snippet: $isSnippet ? $raw : null,
+                raw: $item,
+            );
         }
 
         return $mapped;

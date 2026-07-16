@@ -12,6 +12,7 @@ use Porta\Editor\AutoPairService;
 use Porta\Editor\BreadcrumbScanner;
 use Porta\Editor\Caret;
 use Porta\Editor\CaretMotion;
+use Porta\Editor\CompletionItem;
 use Porta\Editor\DiagnosticStyle;
 use Porta\Editor\Document;
 use Porta\Editor\EditorActions;
@@ -763,7 +764,7 @@ final class CodeEditorWidget extends AbstractWidget implements ActiveFileProvide
     }
 
     /**
-     * @param list<array{label: string, insertText: string, kind: string, detail: string, additionalTextEdits?: list<array>, snippet?: string|null, raw?: array<string, mixed>}> $items
+     * @param list<CompletionItem> $items
      */
     public function showCompletions(array $items): void
     {

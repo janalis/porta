@@ -14,19 +14,15 @@ use Symfony\Component\Tui\Input\Keybindings;
  * text or, when the server marks it a snippet, as a tab-stop session (with inline
  * and deferred auto-imports). Built per document (like {@see MultiCaret}); effects
  * and the request/resolve LSP round-trips flow through injected closures.
- *
- * @phpstan-type Item array{label: string, insertText: string, kind: string, detail: string, additionalTextEdits?: list<array>, snippet?: string|null, raw?: array<string, mixed>}
- * @phpstan-type Box array{col: int, width: int, startRow: int, count: int, windowOffset: int}
  */
 final class EditorCompletion
 {
-    /** @var list<Item> */
+    /** @var list<CompletionItem> */
     private array $items = [];
     private bool $open = false;
     private int $selected = 0;
     private string $prefix = '';
-    /** @var Box|null */
-    private ?array $box = null;
+    private ?CompletionBox $box = null;
     private readonly SnippetSession $snippet;
 
     /**
@@ -47,7 +43,7 @@ final class EditorCompletion
         $this->snippet = new SnippetSession($document, $invalidate, $notifyChange);
     }
 
-    /** @param list<Item> $items */
+    /** @param list<CompletionItem> $items */
     public function show(array $items): void
     {
         $this->prefix = $this->document->getWordBeforeCursor();
@@ -185,7 +181,7 @@ final class EditorCompletion
      * filtered list), or null when the popup should not be drawn. The widget draws
      * it and hands the box geometry back via {@see setBox}.
      *
-     * @return array{items: list<Item>, selected: int}|null
+     * @return array{items: list<CompletionItem>, selected: int}|null
      */
     public function popupState(): ?array
     {
@@ -201,12 +197,8 @@ final class EditorCompletion
         return ['items' => $items, 'selected' => $this->selected];
     }
 
-    /**
-     * Remember the last-rendered popup box geometry for mouse hit-testing.
-     *
-     * @param Box|null $box
-     */
-    public function setBox(?array $box): void
+    /** Remember the last-rendered popup box geometry for mouse hit-testing. */
+    public function setBox(?CompletionBox $box): void
     {
         $this->box = $box;
     }
@@ -214,16 +206,7 @@ final class EditorCompletion
     /** Filtered-completion index at the given relative cell, or null if outside its rows. */
     private function completionItemAt(int $relRow, int $relCol): ?int
     {
-        $box = $this->box;
-        if (null === $box || $relCol < $box['col'] || $relCol >= ($box['col'] + $box['width'])) {
-            return null;
-        }
-        $i = $relRow - $box['startRow'];
-        if ($i < 0 || $i >= $box['count']) {
-            return null;
-        }
-
-        return $box['windowOffset'] + $i;
+        return $this->box?->itemAt($relRow, $relCol);
     }
 
     /**
@@ -231,15 +214,12 @@ final class EditorCompletion
      * when the server marked it as one, else insert its plain text. In both cases
      * inline auto-imports are applied, and deferred imports are requested via
      * completionItem/resolve.
-     *
-     * @param Item $item
      */
-    private function acceptItem(array $item): void
+    private function acceptItem(CompletionItem $item): void
     {
         $doc = $this->document;
         /** @var list<array{newText: string, range: array{start: array{line: int, character: int}, end: array{line: int, character: int}}}> $additional */
-        $additional = $item['additionalTextEdits'] ?? [];
-        $snippet = $item['snippet'] ?? null;
+        $additional = $item->additionalTextEdits;
 
         $doc->beginCompound();
         // Apply inline auto-imports first so the caret (and any snippet stops
@@ -250,24 +230,22 @@ final class EditorCompletion
 
         $prefix = $doc->getWordBeforeCursor();
 
-        $this->expandOrInsert($doc, $item, $snippet, $prefix);
+        $this->expandOrInsert($doc, $item, $item->snippet, $prefix);
 
         ($this->notifyChange)();
 
         // No inline edits but the server may defer auto-imports to
         // completionItem/resolve — ask the IDE to fetch and apply them.
-        if ([] === $additional && array_key_exists('raw', $item)) {
-            ($this->resolveCompletion)($item['raw']);
+        if ([] === $additional && [] !== $item->raw) {
+            ($this->resolveCompletion)($item->raw);
         }
     }
 
     /**
      * Expand an accepted item as a snippet tab-stop session when the server
      * marked it one, else replace the prefix with its plain insert text.
-     *
-     * @param Item $item
      */
-    private function expandOrInsert(Document $doc, array $item, ?string $snippet, string $prefix): void
+    private function expandOrInsert(Document $doc, CompletionItem $item, ?string $snippet, string $prefix): void
     {
         if (null !== $snippet && '' !== $snippet) {
             $doc->replaceBeforeCursor(\strlen($prefix), '');
@@ -282,12 +260,12 @@ final class EditorCompletion
 
             return;
         }
-        $doc->replaceBeforeCursor(\strlen($prefix), $item['insertText']);
+        $doc->replaceBeforeCursor(\strlen($prefix), $item->insertText);
         $doc->endCompound();
         $this->close();
     }
 
-    /** @return list<Item> */
+    /** @return list<CompletionItem> */
     private function filtered(): array
     {
         $word = $this->document->getWordBeforeCursor();
@@ -301,7 +279,7 @@ final class EditorCompletion
         // ordering (sortText) breaks ties.
         $scored = [];
         foreach ($this->items as $index => $item) {
-            $score = FuzzyMatcher::score(ltrim($item['label'], characters: '$'), $needle);
+            $score = FuzzyMatcher::score(ltrim($item->label, characters: '$'), $needle);
             if (null !== $score) {
                 $scored[] = ['score' => $score, 'index' => $index, 'item' => $item];
             }

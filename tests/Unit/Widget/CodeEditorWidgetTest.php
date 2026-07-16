@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Porta\Tests\Unit\Widget;
 
 use PHPUnit\Framework\TestCase;
+use Porta\Editor\CompletionItem;
 use Porta\Editor\FindMode;
 use Porta\Editor\SelectionMode;
 use Porta\Search\Everywhere\SearchCategory;
@@ -207,8 +208,8 @@ final class CodeEditorWidgetTest extends TestCase
         $editor = $this->editor();
         $editor->getDocument()->setCursor(2, 5);
         $editor->showCompletions([
-            ['label' => 'echoFirst', 'insertText' => 'echoFirst', 'kind' => 'fn', 'detail' => ''],
-            ['label' => 'echoSecond', 'insertText' => 'echoSecond', 'kind' => 'fn', 'detail' => ''],
+            new CompletionItem(label: 'echoFirst', insertText: 'echoFirst', kind: 'fn', detail: ''),
+            new CompletionItem(label: 'echoSecond', insertText: 'echoSecond', kind: 'fn', detail: ''),
         ]);
 
         $this->assertTrue($editor->isCompletionOpen());
@@ -231,16 +232,16 @@ final class CodeEditorWidgetTest extends TestCase
         $doc = $editor->getDocument();
         $doc->setCursor(2, 4); // after "echo"
 
-        $editor->showCompletions([[
-            'label' => 'str_replace',
-            'insertText' => 'str_replace',
-            'kind' => 'fn',
-            'detail' => '',
-            'additionalTextEdits' => [[
+        $editor->showCompletions([new CompletionItem(
+            label: 'str_replace',
+            insertText: 'str_replace',
+            kind: 'fn',
+            detail: '',
+            additionalTextEdits: [[
                 'range' => ['start' => ['line' => 1, 'character' => 0], 'end' => ['line' => 1, 'character' => 0]],
                 'newText' => "use function str_replace;\n",
             ]],
-        ]]);
+        )]);
         $editor->handleInput("\r"); // accept
 
         $this->assertSame('use function str_replace;', $doc->getLine(1), 'auto-import inserted above');
@@ -266,14 +267,13 @@ final class CodeEditorWidgetTest extends TestCase
             ),
         ));
 
-        $editor->showCompletions([[
-            'label' => 'strlen',
-            'insertText' => 'strlen',
-            'kind' => 'fn',
-            'detail' => '',
-            'additionalTextEdits' => [],
-            'raw' => ['label' => 'strlen', 'data' => 'strlen'],
-        ]]);
+        $editor->showCompletions([new CompletionItem(
+            label: 'strlen',
+            insertText: 'strlen',
+            kind: 'fn',
+            detail: '',
+            raw: ['label' => 'strlen', 'data' => 'strlen'],
+        )]);
         $editor->handleInput("\r"); // accept
 
         $this->assertNotNull($resolved, 'resolve callback fired for deferred imports');
@@ -283,7 +283,7 @@ final class CodeEditorWidgetTest extends TestCase
     public function testCompletionEscapeCloses(): void
     {
         $editor = $this->editor();
-        $editor->showCompletions([['label' => 'foo', 'insertText' => 'foo', 'kind' => 'fn', 'detail' => '']]);
+        $editor->showCompletions([new CompletionItem(label: 'foo', insertText: 'foo', kind: 'fn', detail: '')]);
         $this->assertTrue($editor->isCompletionOpen());
 
         $editor->handleInput("\x1b");
@@ -757,8 +757,8 @@ final class CodeEditorWidgetTest extends TestCase
         $editor = $this->editor();
         $editor->getDocument()->setCursor(2, 5); // after "echo " → empty word-before-cursor
         $editor->showCompletions([
-            ['label' => 'echoFirst', 'insertText' => 'echoFirst', 'kind' => 'fn', 'detail' => ''],
-            ['label' => 'echoSecond', 'insertText' => 'echoSecond', 'kind' => 'fn', 'detail' => ''],
+            new CompletionItem(label: 'echoFirst', insertText: 'echoFirst', kind: 'fn', detail: ''),
+            new CompletionItem(label: 'echoSecond', insertText: 'echoSecond', kind: 'fn', detail: ''),
         ]);
 
         return $editor;

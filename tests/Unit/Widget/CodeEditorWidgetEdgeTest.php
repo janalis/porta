@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Porta\Tests\Unit\Widget;
 
 use PHPUnit\Framework\TestCase;
+use Porta\Editor\CompletionItem;
 use Porta\Tests\Support\FakeEditorNavigation;
 use Porta\Widget\CodeEditorWidget;
 use Porta\Widget\EditorCallbacks;
@@ -158,8 +159,8 @@ final class CodeEditorWidgetEdgeTest extends TestCase
         $editor = $this->editor("<?php\nstr\n");
         $editor->getDocument()->setCursor(1, 3);
         $items = [
-            ['label' => 'strlen', 'insertText' => 'strlen', 'kind' => 'fn', 'detail' => ''],
-            ['label' => 'strrev', 'insertText' => 'strrev', 'kind' => 'fn', 'detail' => ''],
+            new CompletionItem(label: 'strlen', insertText: 'strlen', kind: 'fn', detail: ''),
+            new CompletionItem(label: 'strrev', insertText: 'strrev', kind: 'fn', detail: ''),
         ];
         $editor->showCompletions($items);
 
@@ -185,8 +186,8 @@ final class CodeEditorWidgetEdgeTest extends TestCase
         $editor = $this->editor("<?php\ng\n");
         $editor->getDocument()->setCursor(1, 1);
         $editor->showCompletions([
-            ['label' => 'genericmoment', 'insertText' => 'genericmoment', 'kind' => 'fn', 'detail' => ''],
-            ['label' => 'getMessage', 'insertText' => 'getMessage', 'kind' => 'fn', 'detail' => ''],
+            new CompletionItem(label: 'genericmoment', insertText: 'genericmoment', kind: 'fn', detail: ''),
+            new CompletionItem(label: 'getMessage', insertText: 'getMessage', kind: 'fn', detail: ''),
         ]);
 
         // Type "m" so the query becomes "gm" — a subsequence of both, but the
@@ -208,13 +209,13 @@ final class CodeEditorWidgetEdgeTest extends TestCase
     {
         $editor = $this->editor("<?php\n\n");
         $editor->getDocument()->setCursor(1, 0);
-        $editor->showCompletions([[
-            'label' => 'foo',
-            'insertText' => 'foo',
-            'kind' => 'fn',
-            'detail' => '',
-            'snippet' => 'foo(${1:a}, ${2:b})$0',
-        ]]);
+        $editor->showCompletions([new CompletionItem(
+            label: 'foo',
+            insertText: 'foo',
+            kind: 'fn',
+            detail: '',
+            snippet: 'foo(${1:a}, ${2:b})$0',
+        )]);
         $editor->handleInput("\r"); // accept -> expand snippet
 
         $doc = $editor->getDocument();
@@ -246,13 +247,13 @@ final class CodeEditorWidgetEdgeTest extends TestCase
     {
         $editor = $this->editor("<?php\n\n");
         $editor->getDocument()->setCursor(1, 0);
-        $editor->showCompletions([[
-            'label' => 'pair',
-            'insertText' => 'pair',
-            'kind' => 'fn',
-            'detail' => '',
-            'snippet' => '${1:x}-${2:y}',
-        ]]);
+        $editor->showCompletions([new CompletionItem(
+            label: 'pair',
+            insertText: 'pair',
+            kind: 'fn',
+            detail: '',
+            snippet: '${1:x}-${2:y}',
+        )]);
         $editor->handleInput("\r");
         $doc = $editor->getDocument();
         $this->assertSame('x-y', $doc->getLine(1));
@@ -275,13 +276,13 @@ final class CodeEditorWidgetEdgeTest extends TestCase
     {
         $editor = $this->editor("<?php\n\n");
         $editor->getDocument()->setCursor(1, 0);
-        $editor->showCompletions([[
-            'label' => 'p',
-            'insertText' => 'p',
-            'kind' => 'fn',
-            'detail' => '',
-            'snippet' => '${1:aa}-${2:b}',
-        ]]);
+        $editor->showCompletions([new CompletionItem(
+            label: 'p',
+            insertText: 'p',
+            kind: 'fn',
+            detail: '',
+            snippet: '${1:aa}-${2:b}',
+        )]);
         $editor->handleInput("\r");
         $doc = $editor->getDocument();
         $this->assertSame('aa-b', $doc->getLine(1));
@@ -424,7 +425,7 @@ final class CodeEditorWidgetEdgeTest extends TestCase
     {
         $editor = $this->editor("<?php\ns\n");
         $editor->getDocument()->setCursor(1, 1);
-        $editor->showCompletions([['label' => 'strlen', 'insertText' => 'strlen', 'kind' => 'fn', 'detail' => '']]);
+        $editor->showCompletions([new CompletionItem(label: 'strlen', insertText: 'strlen', kind: 'fn', detail: '')]);
 
         $editor->handleInput("\x7f"); // deletes the "s"; popup stays open one more key
         $editor->handleInput("\x7f"); // word already empty -> closes
@@ -435,7 +436,7 @@ final class CodeEditorWidgetEdgeTest extends TestCase
     {
         $editor = $this->editor("<?php\nstr\n");
         $editor->getDocument()->setCursor(1, 3);
-        $editor->showCompletions([['label' => 'strlen', 'insertText' => 'strlen', 'kind' => 'fn', 'detail' => '']]);
+        $editor->showCompletions([new CompletionItem(label: 'strlen', insertText: 'strlen', kind: 'fn', detail: '')]);
 
         $editor->handleInput(';');
         $this->assertFalse($editor->isCompletionOpen());
@@ -447,8 +448,8 @@ final class CodeEditorWidgetEdgeTest extends TestCase
         $editor = $this->editor("<?php\nstr\n");
         $editor->getDocument()->setCursor(1, 3);
         $editor->showCompletions([
-            ['label' => 'strlen', 'insertText' => 'strlen', 'kind' => 'fn', 'detail' => ''],
-            ['label' => 'strrev', 'insertText' => 'strrev', 'kind' => 'fn', 'detail' => ''],
+            new CompletionItem(label: 'strlen', insertText: 'strlen', kind: 'fn', detail: ''),
+            new CompletionItem(label: 'strrev', insertText: 'strrev', kind: 'fn', detail: ''),
         ]);
 
         $editor->handleInput("\x1b[A"); // up from 0 wraps to last
@@ -462,7 +463,7 @@ final class CodeEditorWidgetEdgeTest extends TestCase
         $editor->getDocument()->setCursor(1, 2);
         $items = [];
         for ($i = 0; $i < 12; ++$i) {
-            $items[] = ['label' => \sprintf('item%02d', $i), 'insertText' => 'x', 'kind' => 'fn', 'detail' => ''];
+            $items[] = new CompletionItem(label: \sprintf('item%02d', $i), insertText: 'x', kind: 'fn', detail: '');
         }
         $editor->showCompletions($items);
 
@@ -621,7 +622,7 @@ final class CodeEditorWidgetEdgeTest extends TestCase
         $editor->getDocument()->setCursor(1, 2);
         $items = [];
         for ($i = 0; $i < 6; ++$i) {
-            $items[] = ['label' => "opt{$i}", 'insertText' => 'x', 'kind' => 'fn', 'detail' => ''];
+            $items[] = new CompletionItem(label: "opt{$i}", insertText: 'x', kind: 'fn', detail: '');
         }
         $editor->showCompletions($items);
 
@@ -656,7 +657,7 @@ final class CodeEditorWidgetEdgeTest extends TestCase
     {
         $editor = $this->editor("<?php\nst\n");
         $editor->getDocument()->setCursor(1, 2);
-        $editor->showCompletions([['label' => 'strlen', 'insertText' => 'strlen', 'kind' => 'fn', 'detail' => '']]);
+        $editor->showCompletions([new CompletionItem(label: 'strlen', insertText: 'strlen', kind: 'fn', detail: '')]);
 
         // Mutate the document directly (bypassing handleInput) so the popup
         // is still open but the filter word no longer matches anything.
