@@ -9,10 +9,10 @@ namespace Porta\Config;
  * renders and actuates. Replaces the string-keyed array the settings controllers
  * previously handed the widget, making the producer→widget contract explicit.
  *
- * `kind` drives how the value renders and cycles: 'bool' (checkbox), 'choice'
- * (cycle through `options`), 'text' (inline editor, with an optional `hint` when
- * empty), 'action' (a button — `value` is its caption, actuating fires onChange
- * with it), or a stepped integer (bounded by `min`/`max`).
+ * {@see SettingsRowKind} drives how the value renders and cycles: a checkbox, a
+ * `options` cycle, an inline text editor (with an optional `hint` when empty), a
+ * button (`value` is its caption, actuating fires onChange with it), or a stepped
+ * integer (bounded by `min`/`max`).
  *
  * A 'choice' row cycles and persists the `options` values, but renders each via
  * `optionLabels` when present — e.g. the language picker stores `en` but shows
@@ -27,7 +27,7 @@ final readonly class SettingsRow
     public function __construct(
         public string $key,
         public string $label,
-        public string $kind,
+        public SettingsRowKind $kind,
         public bool|int|string $value,
         public bool $restart,
         public ?array $options = null,

@@ -32,7 +32,7 @@ final class SettingsDebugController
             new SettingsRow(
                 key: 'debugAdapter',
                 label: $this->translator->trans('Debug adapter'),
-                kind: 'text',
+                kind: SettingsRowKind::Text,
                 value: $this->adapters->adapterCommand($language),
                 restart: false,
                 hint: $this->translator->trans('not configured'),
@@ -40,7 +40,7 @@ final class SettingsDebugController
             new SettingsRow(
                 key: 'debugLaunch',
                 label: $this->translator->trans('Launch config (JSON)'),
-                kind: 'text',
+                kind: SettingsRowKind::Text,
                 value: [] === $launch ? '' : (string) json_encode($launch, \JSON_UNESCAPED_SLASHES),
                 restart: false,
                 hint: $this->translator->trans('JSON merged into the DAP launch request'),

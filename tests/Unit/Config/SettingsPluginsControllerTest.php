@@ -6,6 +6,7 @@ namespace Porta\Tests\Unit\Config;
 
 use PHPUnit\Framework\TestCase;
 use Porta\Config\SettingsPluginsController;
+use Porta\Config\SettingsRowKind;
 use Porta\I18n\Translator;
 use Porta\Plugin\PluginInstaller;
 use Porta\Plugin\PluginSettings;
@@ -76,7 +77,7 @@ final class SettingsPluginsControllerTest extends TestCase
 
         $rows = $controller->rows();
         $this->assertSame(['pluginScope', 'pluginInstall', 'pluginRemove:project:local', 'pluginRemove:global:shared'], array_column($rows, 'key'));
-        $this->assertSame(['choice', 'text', 'action', 'action'], array_column($rows, 'kind'));
+        $this->assertSame([SettingsRowKind::Choice, SettingsRowKind::Text, SettingsRowKind::Action, SettingsRowKind::Action], array_column($rows, 'kind'));
         $this->assertSame('project', $rows[0]->value);
         $this->assertSame(['project', 'global'], $rows[0]->options);
         $this->assertSame('This project', $rows[0]->optionLabels['project'] ?? null);

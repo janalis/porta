@@ -44,7 +44,7 @@ final class SettingsPluginsController
             new SettingsRow(
                 key: 'pluginScope',
                 label: $this->translator->trans('Install into'),
-                kind: 'choice',
+                kind: SettingsRowKind::Choice,
                 value: $this->scope,
                 restart: false,
                 options: ['project', 'global'],
@@ -56,7 +56,7 @@ final class SettingsPluginsController
             new SettingsRow(
                 key: 'pluginInstall',
                 label: $this->translator->trans('Install plugin'),
-                kind: 'text',
+                kind: SettingsRowKind::Text,
                 value: '',
                 restart: false,
                 hint: $this->translator->trans('git URL or local path'),
@@ -67,14 +67,14 @@ final class SettingsPluginsController
                 ? new SettingsRow(
                     key: 'pluginInfo:'.$plugin['name'],
                     label: $plugin['name'].' ('.$this->translator->trans('built-in').')',
-                    kind: 'action',
+                    kind: SettingsRowKind::Action,
                     value: $this->translator->trans('Built-in'),
                     restart: false,
                 )
                 : new SettingsRow(
                     key: 'pluginRemove:'.$plugin['scope'].':'.$plugin['name'],
                     label: $plugin['name'].' ('.$this->translator->trans($plugin['scope']).')',
-                    kind: 'action',
+                    kind: SettingsRowKind::Action,
                     value: $this->translator->trans('Remove'),
                     restart: false,
                 );
@@ -104,7 +104,7 @@ final class SettingsPluginsController
             new SettingsRow(
                 key: 'pluginEnabled',
                 label: $this->translator->trans('Enabled'),
-                kind: 'bool',
+                kind: SettingsRowKind::Bool,
                 value: $enabled,
                 restart: false,
             ),

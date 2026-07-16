@@ -7,6 +7,7 @@ namespace Porta\Tests\Unit\Config;
 use PHPUnit\Framework\TestCase;
 use Porta\Config\IdeConfig;
 use Porta\Config\SettingsLspController;
+use Porta\Config\SettingsRowKind;
 use Porta\I18n\Translator;
 use Porta\Lsp\BufferReopener;
 use Porta\Lsp\LspSessionPool;
@@ -78,7 +79,7 @@ final class SettingsLspControllerTest extends TestCase
 
         $php = $controller->rows('php');
         $this->assertSame('lspServer', $php[0]->key);
-        $this->assertSame('text', $php[0]->kind);
+        $this->assertSame(SettingsRowKind::Text, $php[0]->kind);
         $this->assertSame('phpactor language-server', $php[0]->value);
 
         $this->assertSame('auto-detect', $controller->rows('typescript')[0]->hint, 'no server on PATH → generic hint');

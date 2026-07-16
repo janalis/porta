@@ -7,6 +7,7 @@ namespace Porta\Tests\Unit\Config;
 use PHPUnit\Framework\TestCase;
 use Porta\Config\IdeConfig;
 use Porta\Config\SettingsController;
+use Porta\Config\SettingsRowKind;
 use Porta\Editor\BufferManager;
 use Porta\Event\CursorShapeChanged;
 use Porta\Event\LocaleChanged;
@@ -178,7 +179,7 @@ final class SettingsControllerTest extends TestCase
         $this->assertSame(['en', 'fr', 'de', 'es', 'it', 'ja', 'he'], $byKey['language']->options);
         $this->assertSame(Translator::LOCALE_NAMES, $byKey['language']->optionLabels, 'the picker shows language names');
         $this->assertFalse($byKey['autoPairs']->value);
-        $this->assertSame('bool', $byKey['autoPairs']->kind);
+        $this->assertSame(SettingsRowKind::Bool, $byKey['autoPairs']->kind);
         $this->assertFalse($byKey['inlineDiagnostics']->restart, 'live toggles need no restart');
         $this->assertSame('light', $byKey['theme']->value);
         $this->assertSame(['dark', 'light', 'high-contrast'], $byKey['theme']->options);

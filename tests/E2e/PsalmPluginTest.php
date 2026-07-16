@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Porta\Tests\E2e;
 
 use PHPUnit\Framework\TestCase;
+use Porta\Config\SettingsRowKind;
 use Porta\Tests\Support\RunsIde;
 use Porta\Tests\Support\TempProject;
 use Symfony\Component\Tui\Ansi\AnsiUtils;
@@ -138,7 +139,7 @@ final class PsalmPluginTest extends TestCase
                     $byKey = array_column($rows, null, 'key');
                     $this->assertArrayHasKey('pluginSetting:autoLint', $byKey, 'the on-save option is a settings row');
                     $this->assertSame('Analyse on save', $byKey['pluginSetting:autoLint']->label);
-                    $this->assertSame('bool', $byKey['pluginSetting:autoLint']->kind);
+                    $this->assertSame(SettingsRowKind::Bool, $byKey['pluginSetting:autoLint']->kind);
 
                     $tui->handleInput("\x13"); // ctrl+s → save → analyse
                 },

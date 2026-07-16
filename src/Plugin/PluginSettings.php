@@ -6,6 +6,7 @@ namespace Porta\Plugin;
 
 use Porta\Config\IdeConfig;
 use Porta\Config\SettingsRow;
+use Porta\Config\SettingsRowKind;
 
 /**
  * Committed plugin setting descriptors and their live values. Values persist
@@ -67,7 +68,7 @@ final class PluginSettings
             $rows[] = new SettingsRow(
                 key: 'pluginSetting:'.$descriptor['key'],
                 label: $descriptor['label'],
-                kind: $descriptor['kind'],
+                kind: SettingsRowKind::from($descriptor['kind']),
                 value: $this->value($plugin, $descriptor['key']),
                 restart: false,
                 options: $descriptor['options'],

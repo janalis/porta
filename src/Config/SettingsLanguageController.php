@@ -55,8 +55,22 @@ final class SettingsLanguageController
         $entry = $this->config[$language] ?? new LanguageIndent();
 
         return [
-            new SettingsRow(key: 'indentStyle', label: $this->translator->trans('Indent style'), kind: 'choice', value: $entry->indentStyle, restart: false, options: self::STYLE_OPTIONS),
-            new SettingsRow(key: 'indentSize', label: $this->translator->trans('Indent size'), kind: 'choice', value: (string) $entry->indentSize, restart: false, options: self::SIZE_OPTIONS),
+            new SettingsRow(
+                key: 'indentStyle',
+                label: $this->translator->trans('Indent style'),
+                kind: SettingsRowKind::Choice,
+                value: $entry->indentStyle,
+                restart: false,
+                options: self::STYLE_OPTIONS,
+            ),
+            new SettingsRow(
+                key: 'indentSize',
+                label: $this->translator->trans('Indent size'),
+                kind: SettingsRowKind::Choice,
+                value: (string) $entry->indentSize,
+                restart: false,
+                options: self::SIZE_OPTIONS,
+            ),
         ];
     }
 

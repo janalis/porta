@@ -45,7 +45,7 @@ final class SettingsLspController
         return [new SettingsRow(
             key: 'lspServer',
             label: $this->translator->trans('LSP server'),
-            kind: 'text',
+            kind: SettingsRowKind::Text,
             value: $this->overrides[$language] ?? '',
             restart: false,
             hint: null !== $auto ? $this->translator->trans('auto: %server%', ['%server%' => $auto]) : $this->translator->trans('auto-detect'),

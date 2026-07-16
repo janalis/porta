@@ -21,7 +21,7 @@ use Porta\Widget\CodeEditorWidget;
  * form's "applies on restart" note) is retained for any future setting that
  * genuinely needs a relaunch, but none do today.
  *
- * @phpstan-type Descriptor array{label: string, kind: string, restart: bool, apply: (\Closure(int|bool|string): void)|null, options?: list<string>, optionLabels?: array<string, string>, min?: int, max?: int}
+ * @phpstan-type Descriptor array{label: string, kind: SettingsRowKind, restart: bool, apply: (\Closure(int|bool|string): void)|null, options?: list<string>, optionLabels?: array<string, string>, min?: int, max?: int}
  */
 final class SettingsController
 {
@@ -42,7 +42,7 @@ final class SettingsController
         $this->descriptors = [
             'language' => [
                 'label' => 'Language',
-                'kind' => 'choice',
+                'kind' => SettingsRowKind::Choice,
                 'restart' => false,
                 'apply' => static fn (int|bool|string $v) => $applier->applyLocale((string) $v),
                 'options' => Translator::LOCALES,
@@ -50,45 +50,45 @@ final class SettingsController
             ],
             'inlineDiagnostics' => [
                 'label' => 'Inline diagnostics',
-                'kind' => 'bool',
+                'kind' => SettingsRowKind::Bool,
                 'restart' => false,
                 'apply' => static fn (int|bool|string $v) => (bool) $v ? $editor->enableInlineDiagnostics() : $editor->disableInlineDiagnostics(),
             ],
             'relativeLineNumbers' => [
                 'label' => 'Relative line numbers',
-                'kind' => 'bool',
+                'kind' => SettingsRowKind::Bool,
                 'restart' => false,
                 'apply' => static fn (int|bool|string $v) => (bool) $v ? $editor->enableRelativeLineNumbers() : $editor->disableRelativeLineNumbers(),
             ],
             'autoPairs' => [
                 'label' => 'Auto-pairs',
-                'kind' => 'bool',
+                'kind' => SettingsRowKind::Bool,
                 'restart' => false,
                 'apply' => static fn (int|bool|string $v) => (bool) $v ? $editor->enableAutoPairs() : $editor->disableAutoPairs(),
             ],
             'formatOnSave' => [
                 'label' => 'Format on save (LSP)',
-                'kind' => 'bool',
+                'kind' => SettingsRowKind::Bool,
                 'restart' => false,
                 'apply' => static fn (int|bool|string $v) => (bool) $v ? $applier->enableFormatOnSave() : $applier->disableFormatOnSave(),
             ],
             'theme' => [
                 'label' => 'Theme',
-                'kind' => 'choice',
+                'kind' => SettingsRowKind::Choice,
                 'restart' => false,
                 'apply' => static fn (int|bool|string $v) => $applier->applyTheme((string) $v),
                 'options' => ['dark', 'light', 'high-contrast'],
             ],
             'cursorShape' => [
                 'label' => 'Cursor shape',
-                'kind' => 'choice',
+                'kind' => SettingsRowKind::Choice,
                 'restart' => false,
                 'apply' => static fn (int|bool|string $v) => $applier->applyCursorShape((string) $v),
                 'options' => ['bar', 'block', 'underline'],
             ],
             'tabBarPosition' => [
                 'label' => 'Tab bar position',
-                'kind' => 'choice',
+                'kind' => SettingsRowKind::Choice,
                 'restart' => false,
                 'apply' => static fn (int|bool|string $v) => $applier->applyTabBarPosition((string) $v),
                 'options' => ['top', 'bottom', 'left', 'right'],
@@ -118,7 +118,7 @@ final class SettingsController
         $rows = [];
         foreach ($this->descriptors as $key => $descriptor) {
             $raw = $this->settings[$key] ?? '';
-            $value = 'bool' === $descriptor['kind'] ? (bool) $raw : (string) $raw;
+            $value = SettingsRowKind::Bool === $descriptor['kind'] ? (bool) $raw : (string) $raw;
             $rows[] = new SettingsRow(
                 key: $key,
                 label: $this->translator->trans($descriptor['label']),

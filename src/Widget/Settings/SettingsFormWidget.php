@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Porta\Widget\Settings;
 
 use Porta\Config\SettingsRow;
+use Porta\Config\SettingsRowKind;
 use Porta\Container\AsWidget;
 use Porta\I18n\Translator;
 use Porta\Support\IntMath;
@@ -189,7 +190,7 @@ final class SettingsFormWidget extends AbstractWidget implements FocusableInterf
         if (null === $row) {
             return;
         }
-        if ('text' === $row->kind) {
+        if (SettingsRowKind::Text === $row->kind) {
             $this->editField = new TextField((string) $row->value, $this->cursorStyle);
             $this->editing = $this->selected;
             $this->invalidate();
@@ -199,7 +200,7 @@ final class SettingsFormWidget extends AbstractWidget implements FocusableInterf
         if (null === $this->onChange) {
             return;
         }
-        if ('action' === $row->kind) {
+        if (SettingsRowKind::Action === $row->kind) {
             if ($delta > 0) {
                 ($this->onChange)($row->key, (string) $row->value);
             }
@@ -208,8 +209,8 @@ final class SettingsFormWidget extends AbstractWidget implements FocusableInterf
         }
 
         $new = match ($row->kind) {
-            'bool' => !(bool) $row->value,
-            'choice' => $this->cycleChoice($row, $delta),
+            SettingsRowKind::Bool => !(bool) $row->value,
+            SettingsRowKind::Choice => $this->cycleChoice($row, $delta),
             default => $this->stepInt($row, $delta),
         };
         ($this->onChange)($row->key, $new);
@@ -302,9 +303,9 @@ final class SettingsFormWidget extends AbstractWidget implements FocusableInterf
                 default => '',
             };
             $text = match ($row->kind) {
-                'bool' => ' '.((bool) $row->value ? '[x]' : '[ ]').' '.$row->label,
-                'text' => ' '.$row->label.'  '.$this->textValue($row, $i),
-                'action' => ' '.$row->label.'  ['.(string) $row->value.']',
+                SettingsRowKind::Bool => ' '.((bool) $row->value ? '[x]' : '[ ]').' '.$row->label,
+                SettingsRowKind::Text => ' '.$row->label.'  '.$this->textValue($row, $i),
+                SettingsRowKind::Action => ' '.$row->label.'  ['.(string) $row->value.']',
                 default => ' '.$row->label.'  < '.$this->choiceLabel($row).' >',
             };
             if ($row->restart) {
