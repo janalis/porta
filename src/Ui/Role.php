@@ -88,4 +88,13 @@ enum Role
     case StatusDebug;
     case StatusError;
     case StatusWarning;
+
+    /**
+     * The stylesheet class selector for this role (`.role-added` for `Added`),
+     * so theme rule maps and widget style classes share one derived name.
+     */
+    public function selector(): string
+    {
+        return '.role-'.strtolower((string) preg_replace('/(?<!^)[A-Z]/', replacement: '-$0', subject: $this->name));
+    }
 }
