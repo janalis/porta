@@ -34,7 +34,6 @@ use Porta\Tests\Support\TempProject;
 use Porta\Ui\CursorStyle;
 use Porta\Ui\EditorArea;
 use Porta\Ui\Notifier;
-use Porta\Ui\PaletteFactory;
 use Porta\Ui\Theme\StyleSheetThemer;
 use Porta\Ui\Theme\Themes;
 use Porta\Ui\WorkspaceViews;
@@ -108,7 +107,6 @@ final class SettingsViewControllerTest extends TestCase
         $status = new StatusBarWidget();
         $notifier = new Notifier($status, $this->tui);
         $applier = new LiveSettingsApplier(
-            PaletteFactory::createSwitchable(ColorMode::Ansi, 'dark'),
             Themes::createSwitchable(ColorMode::Ansi, 'dark'),
             new StyleSheetThemer($renderer),
             TerminalThemeFactory::createSwitchable(ColorMode::Ansi, 'dark'),

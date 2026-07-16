@@ -18,7 +18,8 @@ final class HeaderRenderer
 {
     /**
      * @param string $prefix the SGR that opens the bar — background/foreground
-     *                        plus bold — built by the caller from its Palette
+     *                        plus bold — built by the caller from its theme
+     *                        Styles (getAnsiRestore())
      */
     public static function render(string $text, int $width, string $prefix): string
     {

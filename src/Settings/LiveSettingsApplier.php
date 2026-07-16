@@ -16,8 +16,6 @@ use Porta\I18n\Translator;
 use Porta\Layout\WorkspaceLayout;
 use Porta\Lsp\FormatOnSave;
 use Porta\Ui\CursorStyle;
-use Porta\Ui\PaletteFactory;
-use Porta\Ui\SwitchablePalette;
 use Porta\Ui\Theme\Styles;
 use Porta\Ui\Theme\StyleSheetThemer;
 use Porta\Ui\Theme\Themes;
@@ -36,7 +34,6 @@ use Psr\EventDispatcher\EventDispatcherInterface;
 final class LiveSettingsApplier
 {
     public function __construct(
-        private readonly SwitchablePalette $palette,
         private readonly Styles $styles,
         private readonly StyleSheetThemer $sheetThemer,
         private readonly SwitchableTerminalTheme $syntaxTheme,
@@ -53,15 +50,14 @@ final class LiveSettingsApplier
     ) {}
 
     /**
-     * Live theme switch: swap the shared palette + syntax-theme holders every
-     * widget and buffer holds. Chrome re-renders from the listener sweep;
-     * buffers and the git diff cache colored output by content, so those are
-     * busted explicitly here.
+     * Live theme switch: swap the shared styles + syntax-theme holders every
+     * widget and buffer holds, and re-apply the renderer's stylesheet rules.
+     * Chrome re-renders from the listener sweep; buffers and the git diff
+     * cache colored output by content, so those are busted explicitly here.
      */
     public function applyTheme(string $theme): void
     {
         $mode = $this->ansi ? ColorMode::Ansi : ColorMode::Plain;
-        $this->palette->switchTo(PaletteFactory::create($mode, $theme));
         $definition = Themes::definition($mode, $theme);
         $this->styles->switchTo($definition); // fragment styling (widgets hold the holder)
         $this->sheetThemer->apply($definition); // widget-level rules on the renderer's sheet

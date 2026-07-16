@@ -8,7 +8,7 @@ namespace Porta\Ui;
  * Named SGR (Select Graphic Rendition) escape sequences — the handful of raw
  * `\x1b[…m` codes that recur across the renderer. Naming them here keeps the
  * intent legible at the call site and gives the "reset the pen" decision one
- * home, the same rationale {@see ColorPalette} states for its color codes.
+ * home, the same rationale the theme classes state for their color rules.
  *
  * Color roles do NOT belong here — those are theme-dependent and live in the
  * palette; this is only the theme-agnostic attribute vocabulary.

@@ -11,7 +11,7 @@ use Tempest\Highlight\TerminalTheme;
  * from the boot flags: a colorless {@see PlainTerminalTheme} for `--no-ansi`,
  * otherwise the {@see LightTerminalTheme}, {@see HighContrastTerminalTheme} or
  * (by default) {@see DarkTerminalTheme} per the `theme` setting. The syntax-layer
- * mirror of {@see \Porta\Ui\PaletteFactory}; bound to the `porta.ansi` and
+ * mirror of {@see \Porta\Ui\Theme\Themes}; bound to the `porta.ansi` and
  * `porta.theme` container parameters.
  */
 final class TerminalThemeFactory

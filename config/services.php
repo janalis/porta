@@ -106,12 +106,9 @@ use Porta\Ui\FocusCoordinator;
 use Porta\Ui\MenuRebuilder;
 use Porta\Ui\NotificationLog;
 use Porta\Ui\Notifier;
-use Porta\Ui\Palette;
-use Porta\Ui\PaletteFactory;
 use Porta\Ui\PanelManager;
 use Porta\Ui\PaneSegmenter;
 use Porta\Ui\StatusBarProvider;
-use Porta\Ui\SwitchablePalette;
 use Porta\Ui\TabListProvider;
 use Porta\Ui\TerminalStateRefresher;
 use Porta\Ui\Theme\Styles;
@@ -279,19 +276,10 @@ return static function (ContainerConfigurator $container, ContainerBuilder $buil
     $services->alias(EventDispatcherInterface::class, 'event_dispatcher');
     $services->alias(PsrEventDispatcherInterface::class, 'event_dispatcher');
 
-    // The IDE color scheme. The service is a SwitchablePalette (built from the
-    // porta.ansi/porta.theme parameters) so Ide can swap the theme live; widgets
-    // autowire Palette via the alias and hold that one holder instance. Both the
-    // holder id and the alias are public so Ide can resolve them.
-    $services
-        ->set(SwitchablePalette::class)
-        ->factory([PaletteFactory::class, 'createSwitchable'])
-        ->args([env('enum:'.ColorMode::class.':PORTA_ANSI'), env('PORTA_THEME')]);
-    $services->alias(Palette::class, SwitchablePalette::class);
-
-    // The same scheme as tui Styles per Role — the successor of the palette
-    // (which it will replace once every widget consumes Styles): one swappable
-    // holder built from the same parameters, swapped by the same theme apply.
+    // The IDE color scheme: the active theme's tui Styles per Role, one
+    // swappable holder (built from the porta.ansi/porta.theme parameters) so
+    // the theme can swap live; widgets autowire Styles and hold that one
+    // holder instance.
     $services
         ->set(Styles::class)
         ->factory([Themes::class, 'createSwitchable'])

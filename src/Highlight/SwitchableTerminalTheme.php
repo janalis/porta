@@ -9,7 +9,7 @@ use Tempest\Highlight\Tokens\TokenType;
 
 /**
  * A {@see TerminalTheme} whose backing scheme can be swapped at runtime — the
- * syntax-highlighting counterpart to {@see \Porta\Ui\SwitchablePalette}. Every
+ * syntax-highlighting counterpart to {@see \Porta\Ui\Theme\Styles}. Every
  * {@see CodeHighlighter} holds this instance and its tempest Highlighter calls
  * {@see before()}/{@see after()} at parse time, so {@see switchTo()} re-colors
  * all syntax on the next (re-)highlight without rebuilding the highlighters.

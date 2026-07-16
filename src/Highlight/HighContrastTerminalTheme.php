@@ -12,7 +12,7 @@ use Tempest\Highlight\Tokens\TokenTypeEnum;
 
 /**
  * 256-color high-contrast theme for terminal syntax highlighting: the syntax
- * mirror of {@see \Porta\Ui\ColorPalette::highContrast()}, selected when the
+ * mirror of {@see \Porta\Ui\Theme\HighContrastTheme}, selected when the
  * `theme` setting is `high-contrast`. Every token color sits at WCAG-AAA
  * contrast against the terminal's black background.
  */

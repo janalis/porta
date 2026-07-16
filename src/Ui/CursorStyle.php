@@ -8,7 +8,7 @@ use Symfony\Component\Tui\Ansi\AnsiUtils;
 use Symfony\Component\Tui\Style\CursorShape;
 
 /**
- * The shared hardware-cursor shape holder, following the {@see SwitchablePalette}
+ * The shared hardware-cursor shape holder, following the {@see \Porta\Ui\Theme\Styles}
  * pattern: every caret-emitting widget holds this and asks {@see marker()} for
  * the zero-width APC marker, so the `cursorShape` setting swaps the shape live
  * in one place. Screen readers follow the hardware cursor; the shape (bar,
