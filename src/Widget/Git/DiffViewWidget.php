@@ -7,6 +7,7 @@ namespace Porta\Widget\Git;
 use Porta\Container\AsWidget;
 use Porta\Git\DiffDocument;
 use Porta\Git\DiffLine;
+use Porta\Git\DiffRowKind;
 use Porta\Highlight\CodeHighlighter;
 use Porta\Highlight\DarkTerminalTheme;
 use Porta\I18n\Translator;
@@ -54,7 +55,7 @@ final class DiffViewWidget extends AbstractWidget implements FocusableInterface,
     private ?DiffDocument $document = null;
     private ?string $path = null;
     private string $placeholder = 'No changes selected';
-    /** @var list<array{kind: string, hunk: int, line?: int, left?: int, right?: int}> unified or split render rows */
+    /** @var list<array{kind: DiffRowKind, hunk: int, line?: int, left?: int, right?: int}> unified or split render rows */
     private array $rows = [];
     /** @var array<string, string> highlighted text per "hunk:line" key (context/add lines only) */
     private array $highlighted = [];
@@ -583,7 +584,7 @@ final class DiffViewWidget extends AbstractWidget implements FocusableInterface,
 
             return $selected;
         }
-        if ('hunk' === $row['kind']) {
+        if (DiffRowKind::Hunk === $row['kind']) {
             \assert(null !== $this->document, description: 'document is loaded');
             foreach ($this->document->hunks[$row['hunk']]->lines as $i => $line) {
                 $selected[$row['hunk']][$i] = true;
@@ -600,17 +601,17 @@ final class DiffViewWidget extends AbstractWidget implements FocusableInterface,
      * Collect a render row's line indices: a unified row holds one, a split
      * row up to two (its old/new pair — Space stages both sides together).
      *
-     * @param array{kind: string, hunk: int, line?: int, left?: int, right?: int} $row
+     * @param array{kind: DiffRowKind, hunk: int, line?: int, left?: int, right?: int} $row
      * @param array<int, array<int, true>>                                        $selected
      */
     private function selectRowLines(array $row, array &$selected): void
     {
-        if ('line' === $row['kind']) {
+        if (DiffRowKind::Line === $row['kind']) {
             $selected[$row['hunk']][$row['line'] ?? -1] = true;
 
             return;
         }
-        if ('pair' === $row['kind']) {
+        if (DiffRowKind::Pair === $row['kind']) {
             foreach ([$row['left'] ?? -1, $row['right'] ?? -1] as $index) {
                 if ($index < 0) {
                     continue;
@@ -655,16 +656,16 @@ final class DiffViewWidget extends AbstractWidget implements FocusableInterface,
     /**
      * The DiffLine a render row shows (on $side in split mode), or null.
      *
-     * @param array{kind: string, hunk: int, line?: int, left?: int, right?: int} $row
+     * @param array{kind: DiffRowKind, hunk: int, line?: int, left?: int, right?: int} $row
      */
     private function lineAtRow(array $row, ?string $side): ?DiffLine
     {
         \assert(null !== $this->document, description: 'document is loaded');
-        if ('hunk' === $row['kind']) {
+        if (DiffRowKind::Hunk === $row['kind']) {
             return null;
         }
         $index = $row['line'] ?? -1;
-        if ('line' !== $row['kind']) {
+        if (DiffRowKind::Line !== $row['kind']) {
             $index = 'left' === ($side ?? 'left') ? $row['left'] ?? -1 : $row['right'] ?? -1;
         }
 
@@ -739,7 +740,7 @@ final class DiffViewWidget extends AbstractWidget implements FocusableInterface,
      * Tint the visible span of the char selection on a rendered row (the
      * selection's side only, in split mode), like the editor's selection bg.
      *
-     * @param array{kind: string, hunk: int, line?: int, left?: int, right?: int} $row
+     * @param array{kind: DiffRowKind, hunk: int, line?: int, left?: int, right?: int} $row
      */
     private function applyCharSelectionTint(int $rowIndex, array $row, string $line, int $width): string
     {
@@ -829,16 +830,16 @@ final class DiffViewWidget extends AbstractWidget implements FocusableInterface,
         return $this->palette->of(Role::HeaderBar).Sgr::BOLD.$left.$rendered.Sgr::RESET;
     }
 
-    /** @param array{kind: string, hunk: int, line?: int, left?: int, right?: int} $row */
+    /** @param array{kind: DiffRowKind, hunk: int, line?: int, left?: int, right?: int} $row */
     private function renderRow(int $rowIndex, array $row, int $width): string
     {
         \assert(null !== $this->document, description: 'document is loaded');
         $hunk = $this->document->hunks[$row['hunk']];
 
-        if ('hunk' === $row['kind']) {
+        if (DiffRowKind::Hunk === $row['kind']) {
             return $this->palette->of(Role::Hunk).AnsiUtils::truncateToWidth(' '.$hunk->header(), $width, '…', pad: true).Sgr::RESET;
         }
-        if ('pair' === $row['kind']) {
+        if (DiffRowKind::Pair === $row['kind']) {
             $leftW = intdiv($width - 1, num2: 2);
             $rightW = $width - 1 - $leftW;
 

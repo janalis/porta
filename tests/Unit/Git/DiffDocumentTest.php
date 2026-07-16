@@ -6,6 +6,7 @@ namespace Porta\Tests\Unit\Git;
 
 use PHPUnit\Framework\TestCase;
 use Porta\Git\DiffDocument;
+use Porta\Git\DiffRowKind;
 
 final class DiffDocumentTest extends TestCase
 {
@@ -55,10 +56,10 @@ final class DiffDocumentTest extends TestCase
     {
         $rows = DiffDocument::parse(self::MODIFIED)->rows();
 
-        $this->assertSame(['kind' => 'hunk', 'hunk' => 0, 'line' => -1], $rows[0]);
-        $this->assertSame('line', $rows[1]['kind']);
+        $this->assertSame(['kind' => DiffRowKind::Hunk, 'hunk' => 0, 'line' => -1], $rows[0]);
+        $this->assertSame(DiffRowKind::Line, $rows[1]['kind']);
         $this->assertSame(5 + 3 + 2, \count($rows), 'two hunk headers plus eight body lines');
-        $this->assertSame(['kind' => 'hunk', 'hunk' => 1, 'line' => -1], $rows[6]);
+        $this->assertSame(['kind' => DiffRowKind::Hunk, 'hunk' => 1, 'line' => -1], $rows[6]);
     }
 
     public function testSingleLineCountsAreImplicitOnes(): void
@@ -126,10 +127,10 @@ final class DiffDocumentTest extends TestCase
 
         $this->assertSame(
             [
-                ['kind' => 'hunk', 'hunk' => 0, 'left' => -1, 'right' => -1],
-                ['kind' => 'pair', 'hunk' => 0, 'left' => 0, 'right' => 0],
-                ['kind' => 'pair', 'hunk' => 0, 'left' => 1, 'right' => 2],
-                ['kind' => 'pair', 'hunk' => 0, 'left' => -1, 'right' => 3],
+                ['kind' => DiffRowKind::Hunk, 'hunk' => 0, 'left' => -1, 'right' => -1],
+                ['kind' => DiffRowKind::Pair, 'hunk' => 0, 'left' => 0, 'right' => 0],
+                ['kind' => DiffRowKind::Pair, 'hunk' => 0, 'left' => 1, 'right' => 2],
+                ['kind' => DiffRowKind::Pair, 'hunk' => 0, 'left' => -1, 'right' => 3],
             ],
             $doc->splitRows(),
         );
@@ -141,9 +142,9 @@ final class DiffDocumentTest extends TestCase
         $doc = DiffDocument::parse("@@ -1,2 +1,1 @@\n-a\n-b\n+c\n@@ -9,1 +8,2 @@\n ctx\n+d\n");
         $rows = $doc->splitRows();
 
-        $this->assertSame(['kind' => 'pair', 'hunk' => 0, 'left' => 0, 'right' => 2], $rows[1]);
-        $this->assertSame(['kind' => 'pair', 'hunk' => 0, 'left' => 1, 'right' => -1], $rows[2]);
-        $this->assertSame(['kind' => 'pair', 'hunk' => 1, 'left' => -1, 'right' => 1], $rows[5], 'a run of additions with no deletions sits right-only');
+        $this->assertSame(['kind' => DiffRowKind::Pair, 'hunk' => 0, 'left' => 0, 'right' => 2], $rows[1]);
+        $this->assertSame(['kind' => DiffRowKind::Pair, 'hunk' => 0, 'left' => 1, 'right' => -1], $rows[2]);
+        $this->assertSame(['kind' => DiffRowKind::Pair, 'hunk' => 1, 'left' => -1, 'right' => 1], $rows[5], 'a run of additions with no deletions sits right-only');
     }
 
     public function testSplitRowsNoNewlineMarkerRidesItsSide(): void
@@ -152,11 +153,11 @@ final class DiffDocumentTest extends TestCase
         // deletion (old side ends the file) it rides left.
         $doc = DiffDocument::parse("@@ -1,1 +1,1 @@\n-old\n+new\n\\ No newline at end of file\n");
         $rows = $doc->splitRows();
-        $this->assertSame(['kind' => 'pair', 'hunk' => 0, 'left' => -1, 'right' => 2], $rows[2]);
+        $this->assertSame(['kind' => DiffRowKind::Pair, 'hunk' => 0, 'left' => -1, 'right' => 2], $rows[2]);
 
         $doc = DiffDocument::parse("@@ -1,1 +1,1 @@\n-old\n\\ No newline at end of file\n+new\n");
         $rows = $doc->splitRows();
-        $this->assertSame(['kind' => 'pair', 'hunk' => 0, 'left' => 1, 'right' => -1], $rows[2], 'after a deletion the marker rides the old side');
+        $this->assertSame(['kind' => DiffRowKind::Pair, 'hunk' => 0, 'left' => 1, 'right' => -1], $rows[2], 'after a deletion the marker rides the old side');
     }
 
     public function testSplitRowsOfAnEmptyDocument(): void
