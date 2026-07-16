@@ -211,7 +211,7 @@ final class Ide
         $this->workspaceLayout->mount($this->tui);
         // The chrome roots swept by the live-setting appliers (theme/locale/
         // cursor/tab position); everything exists once the Z-order is mounted.
-        $this->chrome->register([$this->menuBar, $this->main, $this->statusBar, $this->goToFile, $this->findBar, $this->resultsPanel, $this->terminalPanel, $this->contextMenu]);
+        $this->chrome->register([$this->menuBar, $this->main, $this->statusBar, $this->goToFile, $this->findBar, $this->resultsPanel, $this->debugPanel, $this->terminalPanel, $this->contextMenu]);
 
         $this->wireWidgets($keybindings);
         $this->bufferService = $this->service(BufferService::class);
@@ -460,7 +460,6 @@ final class Ide
         $this->terminalPanel = $this->service(TerminalPanelWidget::class);
         $this->panels = $this->service(PanelManager::class);
         $this->debugPanel = $this->service(DebugPanelWidget::class);
-        $this->debugPanel->onClose(fn () => $this->panels->returnFocusFrom($this->debugPanel));
     }
 
     private function buildGitView(): void

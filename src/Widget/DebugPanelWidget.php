@@ -34,6 +34,7 @@ final class DebugPanelWidget extends OverlayWidget implements FocusableInterface
 {
     use FocusableTrait;
     use KeybindingsTrait;
+    use ListPanelInteraction;
     use PanelRows;
 
     private string $title = '';
@@ -163,42 +164,6 @@ final class DebugPanelWidget extends OverlayWidget implements FocusableInterface
         }
         $this->watches[$index] = [...$this->watches[$index], 'value' => $value, 'ref' => $ref, 'error' => $error];
         $this->rebuild();
-    }
-
-    /** Scroll the list with the mouse wheel. */
-    public function scrollBy(int $delta): void
-    {
-        if ($delta < 0) {
-            $this->list->moveUp(-$delta);
-            $this->invalidate();
-
-            return;
-        }
-        $this->list->moveDown(\count($this->rows), $delta);
-        $this->invalidate();
-    }
-
-    /** Highlight the row under the pointer; returns whether it changed. */
-    public function hoverRow(int $relRow): bool
-    {
-        if ($this->list->selectIfChanged($this->rowIndexAt($relRow))) {
-            $this->invalidate();
-
-            return true;
-        }
-
-        return false;
-    }
-
-    /** A click selects and activates (frame jump / expand toggle). */
-    public function handleClick(int $relRow): void
-    {
-        $index = $this->rowIndexAt($relRow);
-        if (null === $index) {
-            return;
-        }
-        $this->list->select($index);
-        $this->activateRow($index);
     }
 
     public function handleInput(string $data): void
@@ -360,7 +325,8 @@ final class DebugPanelWidget extends OverlayWidget implements FocusableInterface
         }
     }
 
-    private function activateRow(int $index): void
+    /** Enter or a click: a frame jumps to its source, a reference-bearing row expands/collapses. */
+    protected function activateRow(int $index): void
     {
         $row = $this->rows[$index] ?? null;
         if (null === $row) {
@@ -391,9 +357,19 @@ final class DebugPanelWidget extends OverlayWidget implements FocusableInterface
         $this->rebuild();
     }
 
-    /** Display-row index at the widget-relative row (row 0 is the header), or null. */
-    private function rowIndexAt(int $relRow): ?int
+    protected function selection(): ListSelection
     {
-        return $this->list->rowIndexAt($relRow, \count($this->rows));
+        return $this->list;
+    }
+
+    protected function rowCount(): int
+    {
+        return \count($this->rows);
+    }
+
+    /** Row 0 is the title/status header. */
+    protected function headerRowCount(): int
+    {
+        return 1;
     }
 }

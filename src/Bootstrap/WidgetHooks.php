@@ -9,6 +9,7 @@ use Porta\Editor\FileOpener;
 use Porta\Editor\OpenFocus;
 use Porta\Help\HelpViewerActions;
 use Porta\Image\ImageViewerActions;
+use Porta\Input\OverlayPanels;
 use Porta\Overlay\MenuOverlayController;
 use Porta\Run\RunController;
 use Porta\Ui\EditorArea;
@@ -26,7 +27,6 @@ use Porta\Widget\ImageViewerWidget;
 use Porta\Widget\MenuBarWidget;
 use Porta\Widget\StatusBarWidget;
 use Porta\Widget\TabBarWidget;
-use Porta\Widget\TerminalPanelWidget;
 use Symfony\Component\Tui\Tui;
 
 /**
@@ -55,7 +55,7 @@ final class WidgetHooks
         private readonly BreadcrumbTrailProvider $trail,
         private readonly StatusBarWidget $statusBar,
         private readonly StatusBarProvider $statusSegments,
-        private readonly TerminalPanelWidget $terminalPanel,
+        private readonly OverlayPanels $overlayPanels,
         private readonly RunController $run,
         private readonly \Porta\Terminal\TerminalSessions $sessions,
         private readonly PanelManager $panels,
@@ -80,9 +80,12 @@ final class WidgetHooks
         $this->breadcrumbs->setProvider($this->trail->trail(...));
         $this->statusBar->setProvider($this->statusSegments->segments(...));
 
-        $this->terminalPanel->onInputForward(fn (string $data) => $this->run->forwardInput($data));
-        $this->terminalPanel->onClose(fn () => $this->panels->returnFocusFrom($this->terminalPanel));
-        $this->terminalPanel->setSessionTabsProvider(function (): array {
+        $terminalPanel = $this->overlayPanels->terminalPanel();
+        $debugPanel = $this->overlayPanels->debugPanel();
+        $terminalPanel->onInputForward(fn (string $data) => $this->run->forwardInput($data));
+        $terminalPanel->onClose(fn () => $this->panels->returnFocusFrom($terminalPanel));
+        $debugPanel->onClose(fn () => $this->panels->returnFocusFrom($debugPanel));
+        $terminalPanel->setSessionTabsProvider(function (): array {
             $active = $this->sessions->active();
 
             return array_map(
@@ -94,9 +97,9 @@ final class WidgetHooks
                 $this->sessions->all(),
             );
         });
-        $this->terminalPanel->onSessionSelected(fn (int $index) => $this->run->activateSession($index));
-        $this->terminalPanel->onSessionClosed(fn (int $index) => $this->run->closeSession($index));
-        $this->terminalPanel->onSessionCycled(fn (int $delta) => $this->run->cycleSession($delta));
+        $terminalPanel->onSessionSelected(fn (int $index) => $this->run->activateSession($index));
+        $terminalPanel->onSessionClosed(fn (int $index) => $this->run->closeSession($index));
+        $terminalPanel->onSessionCycled(fn (int $delta) => $this->run->cycleSession($delta));
 
         $this->menuBar->onNavigate(function (): void {
             $this->overlay->refreshMenu();

@@ -33,6 +33,7 @@ final class ResultsPanelWidget extends OverlayWidget implements FocusableInterfa
     use FocusableTrait;
     use InputHook;
     use KeybindingsTrait;
+    use ListPanelInteraction;
     use PanelRows;
 
     private bool $withQuery = false;
@@ -384,22 +385,8 @@ final class ResultsPanelWidget extends OverlayWidget implements FocusableInterfa
         }
     }
 
-    /**
-     * Route a left-click at the given widget-relative row: a file header
-     * collapses/expands; a match row jumps.
-     */
-    public function handleClick(int $relRow): void
-    {
-        $index = $this->rowIndexAt($relRow);
-        if (null === $index) {
-            return;
-        }
-        $this->list->select($index);
-        $this->activateRow($index);
-    }
-
     /** Activate a display row: a file header collapses/expands, a match row jumps. */
-    private function activateRow(int $index): void
+    protected function activateRow(int $index): void
     {
         $row = $this->displayRows[$index] ?? null;
         if (null === $row) {
@@ -444,38 +431,20 @@ final class ResultsPanelWidget extends OverlayWidget implements FocusableInterfa
         $this->invalidate();
     }
 
-    /** Scroll the results by $delta rows (mouse wheel); moves the selection, the window follows. */
-    public function scrollBy(int $delta): void
+    protected function selection(): ListSelection
     {
-        if ($delta < 0) {
-            $this->list->moveUp(-$delta);
-            $this->invalidate();
-
-            return;
-        }
-        $this->list->moveDown(\count($this->displayRows), $delta);
-        $this->invalidate();
+        return $this->list;
     }
 
-    /** Highlight the display row under the pointer (widget-relative row); returns whether it changed. */
-    public function hoverRow(int $relRow): bool
+    protected function rowCount(): int
     {
-        if ($this->list->selectIfChanged($this->rowIndexAt($relRow))) {
-            $this->invalidate();
-
-            return true;
-        }
-
-        return false;
+        return \count($this->displayRows);
     }
 
-    /** Display-row index at the given widget-relative row, or null if it is not a result/header row. */
-    private function rowIndexAt(int $relRow): ?int
+    /** Row 0 is the title/query row; the filter row (when shown) follows. */
+    protected function headerRowCount(): int
     {
-        // Row 0 is the title/query row; the filter row (when shown) follows.
-        $headerRows = 1 + ($this->withFilter ? 1 : 0);
-
-        return $this->list->rowIndexAt($relRow, \count($this->displayRows), $headerRows);
+        return 1 + ($this->withFilter ? 1 : 0);
     }
 
     public function render(RenderContext $context): array
