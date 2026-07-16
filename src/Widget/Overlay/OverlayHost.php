@@ -188,7 +188,7 @@ final class OverlayHost
         if (null === $search) {
             return false;
         }
-        $index = $this->searchItemAt($relRow, $relCol);
+        $index = $this->boxItemAt($this->searchBox, 2, $relRow, $relCol);
         $hit = null === $index ? null : $search->rows[$index]->hit ?? null;
         if (null !== $hit) {
             ($search->onPick)($hit);
@@ -207,7 +207,7 @@ final class OverlayHost
         if (null === $search) {
             return false;
         }
-        $index = $this->searchItemAt($relRow, $relCol);
+        $index = $this->boxItemAt($this->searchBox, 2, $relRow, $relCol);
         if (null !== $index && !$search->rows[$index]->isHeader() && $index !== $search->selected) {
             $search->selected = $index;
             ($this->invalidate)();
@@ -324,7 +324,7 @@ final class OverlayHost
         }
 
         $overlay = $this->overlay;
-        $index = $this->itemAt($relRow, $relCol);
+        $index = $this->boxItemAt($this->overlayBox, 1, $relRow, $relCol);
         if (null !== $index) {
             $item = $overlay['items'][$index];
             $onPick = $overlay['onPick'];
@@ -352,7 +352,7 @@ final class OverlayHost
         }
 
         $overlay = $this->overlay;
-        $index = $this->itemAt($relRow, $relCol);
+        $index = $this->boxItemAt($this->overlayBox, 1, $relRow, $relCol);
         if (null !== $index && $index !== $overlay['selected']) {
             $overlay['selected'] = $index;
             $this->overlay = $overlay;
@@ -364,14 +364,19 @@ final class OverlayHost
         return false;
     }
 
-    /** Absolute overlay item index at the given relative cell, or null if outside its rows. */
-    private function itemAt(int $relRow, int $relCol): ?int
+    /**
+     * Absolute item index at the given relative cell for a rendered box, or null
+     * when outside its item rows. $headerRows is the chrome above the list: 1 for
+     * the list overlay (title), 2 for the search modal (title + query).
+     *
+     * @param array{col: int, width: int, startRow: int, windowStart: int, count: int}|null $box
+     */
+    private function boxItemAt(?array $box, int $headerRows, int $relRow, int $relCol): ?int
     {
-        $box = $this->overlayBox;
         if (null === $box || $relCol < $box['col'] || $relCol >= ($box['col'] + $box['width'])) {
             return null;
         }
-        $i = $relRow - ($box['startRow'] + 1); // row `startRow` is the title
+        $i = $relRow - ($box['startRow'] + $headerRows);
         if ($i < 0 || $i >= $box['count']) {
             return null;
         }
@@ -410,21 +415,6 @@ final class OverlayHost
         }
 
         return $search->selected;
-    }
-
-    /** Absolute search-row index at the given relative cell, or null if outside its rows. */
-    private function searchItemAt(int $relRow, int $relCol): ?int
-    {
-        $box = $this->searchBox;
-        if (null === $box || $relCol < $box['col'] || $relCol >= ($box['col'] + $box['width'])) {
-            return null;
-        }
-        $i = $relRow - ($box['startRow'] + 2); // rows `startRow`, `startRow+1` are the title and query
-        if ($i < 0 || $i >= $box['count']) {
-            return null;
-        }
-
-        return $box['windowStart'] + $i;
     }
 
     /**
