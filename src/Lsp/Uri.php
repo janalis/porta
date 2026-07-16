@@ -21,6 +21,17 @@ final class Uri
         return 'file://'.implode(separator: '/', array: array_map('rawurlencode', explode(separator: '/', string: str_replace(\DIRECTORY_SEPARATOR, replace: '/', subject: $real))));
     }
 
+    /**
+     * The `textDocument` identifier for a path — `['uri' => file://…]` — the
+     * shape every LSP request wraps its target document in.
+     *
+     * @return array{uri: string}
+     */
+    public static function textDocument(string $path): array
+    {
+        return ['uri' => self::fromPath($path)];
+    }
+
     public static function toPath(string $uri): ?string
     {
         if (!str_starts_with($uri, 'file://')) {

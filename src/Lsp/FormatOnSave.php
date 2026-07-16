@@ -89,7 +89,7 @@ final class FormatOnSave
 
         $this->lsp->request(
             'textDocument/formatting',
-            ['textDocument' => ['uri' => Uri::fromPath($path)], 'options' => $options],
+            ['textDocument' => Uri::textDocument($path), 'options' => $options],
             function (mixed $result, ?array $error) use ($token, $timer, $buffer, $version, $save): void {
                 // @mago-expect lint:no-insecure-comparison -- $token is a round-generation counter, not sensitive data
                 if ($token !== $this->round) {

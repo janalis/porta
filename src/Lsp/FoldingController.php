@@ -55,7 +55,7 @@ final class FoldingController
 
         $this->lsp->request(
             'textDocument/foldingRange',
-            ['textDocument' => ['uri' => Uri::fromPath($path)]],
+            ['textDocument' => Uri::textDocument($path)],
             function (mixed $result, ?array $error) use ($token, $timer, $doc, $version): void {
                 // @mago-expect lint:no-insecure-comparison -- $token is a round-generation counter, not sensitive data
                 if ($token !== $this->round) {

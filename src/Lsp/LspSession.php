@@ -132,17 +132,17 @@ final class LspSession
     public function notifyDidClose(string $path): void
     {
         unset($this->syncedText[$path]);
-        $uri = Uri::fromPath($path);
+        $doc = Uri::textDocument($path);
         $this->whenReady(fn () => $this->client?->notify('textDocument/didClose', [
-            'textDocument' => ['uri' => $uri],
+            'textDocument' => $doc,
         ]));
     }
 
     public function notifyDidSave(string $path): void
     {
-        $uri = Uri::fromPath($path);
+        $doc = Uri::textDocument($path);
         $this->whenReady(fn () => $this->client?->notify('textDocument/didSave', [
-            'textDocument' => ['uri' => $uri],
+            'textDocument' => $doc,
         ]));
     }
 

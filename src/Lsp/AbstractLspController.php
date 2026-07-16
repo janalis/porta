@@ -59,7 +59,7 @@ abstract class AbstractLspController
     protected function positionParams(string $path, int $line, int $character, array $extra = []): array
     {
         return [
-            'textDocument' => ['uri' => $this->uri($path)],
+            'textDocument' => Uri::textDocument($path),
             'position' => ['line' => $line, 'character' => $character],
         ] + $extra;
     }
