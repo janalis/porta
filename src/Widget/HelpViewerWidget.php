@@ -10,11 +10,11 @@ use Porta\Help\MarkdownRenderer;
 use Porta\Help\RenderedDoc;
 use Porta\Support\AnsiText;
 use Porta\Support\IntMath;
-use Porta\Ui\ColorPalette;
 use Porta\Ui\LtrPane;
-use Porta\Ui\Palette;
 use Porta\Ui\Role;
 use Porta\Ui\Sgr;
+use Porta\Ui\Theme\DarkTheme;
+use Porta\Ui\Theme\Styles;
 use Porta\Widget\Render\MenuOverlayHost;
 use Porta\Widget\Render\MenuOverlayHostTrait;
 use Symfony\Component\Tui\Ansi\AnsiUtils;
@@ -62,14 +62,14 @@ final class HelpViewerWidget extends AbstractWidget implements FocusableInterfac
     private int $lastRows = 24;
     /** The documentation root directory: the breadcrumb mirrors paths under it. */
     private ?string $docsRoot = null;
-    private readonly Palette $palette;
+    private readonly Styles $styles;
     private readonly MarkdownRenderer $renderer;
     private ?HelpViewerHandler $handler = null;
 
-    public function __construct(?Palette $palette = null)
+    public function __construct(?Styles $styles = null)
     {
-        $this->palette = $palette ?? ColorPalette::dark();
-        $this->renderer = new MarkdownRenderer($this->palette);
+        $this->styles = $styles ?? new Styles(DarkTheme::definition());
+        $this->renderer = new MarkdownRenderer($this->styles);
     }
 
     public function setHandler(HelpViewerHandler $handler): void
@@ -213,7 +213,7 @@ final class HelpViewerWidget extends AbstractWidget implements FocusableInterfac
             array_shift($crumbs); // keep the tail: the current page must stay visible
         }
 
-        $hasColor = $this->palette->hasColor();
+        $hasColor = $this->styles->hasColor();
         $bold = $hasColor ? Sgr::BOLD : '';
         $unbold = $hasColor ? Sgr::NORMAL_INTENSITY : '';
         $text = ' ';
@@ -224,14 +224,14 @@ final class HelpViewerWidget extends AbstractWidget implements FocusableInterfac
                 // a cell to each side (earlier zones win where they touch).
                 $this->headerZones[] = ['action' => $action, 'start' => $col - 1, 'end' => $col + 2];
             }
-            $text .= $this->palette->of($active ? Role::TabAccent : Role::Dim).$glyph.$this->palette->fgReset().' ';
+            $text .= $this->styles->of($active ? Role::TabAccent : Role::Dim)->apply($glyph).' ';
             $col += 2;
         }
         $text .= ' ';
         ++$col;
         $dropped = \count($crumbs) < $total;
         if ($dropped) {
-            $text .= $this->palette->of(Role::Dim).'… › '.$this->palette->fgReset();
+            $text .= $this->styles->of(Role::Dim)->apply('… › ');
             $col += 4;
         }
         foreach ($crumbs as $i => $crumb) {
@@ -239,7 +239,7 @@ final class HelpViewerWidget extends AbstractWidget implements FocusableInterfac
             $isLast = $i === (\count($crumbs) - 1);
             if ('' !== $crumb['action']) {
                 $this->headerZones[] = ['action' => $crumb['action'], 'start' => $col - 1, 'end' => $col + $width + 1];
-                $text .= $this->palette->of(Role::TabAccent).$crumb['label'].$this->palette->fgReset();
+                $text .= $this->styles->of(Role::TabAccent)->apply($crumb['label']);
             }
             if ('' === $crumb['action'] && $isLast) {
                 // The current page: clicking it scrolls back to the top rather
@@ -249,18 +249,18 @@ final class HelpViewerWidget extends AbstractWidget implements FocusableInterfac
             }
             if ('' === $crumb['action'] && !$isLast) {
                 // A folder with no README.md index: part of the path, not a page.
-                $text .= $this->palette->of(Role::Dim).$crumb['label'].$this->palette->fgReset();
+                $text .= $this->styles->of(Role::Dim)->apply($crumb['label']);
             }
             $col += $width;
             if ($i < (\count($crumbs) - 1)) {
-                $text .= $this->palette->of(Role::Dim).' › '.$this->palette->fgReset();
+                $text .= $this->styles->of(Role::Dim)->apply(' › ');
                 $col += 3;
             }
         }
 
-        $line = $this->palette->of(Role::HeaderBar).AnsiText::padRight(AnsiUtils::truncateToWidth($text, $cols, '…'), $cols);
+        $line = $this->styles->of(Role::HeaderBar)->getAnsiRestore().AnsiText::padRight(AnsiUtils::truncateToWidth($text, $cols, '…'), $cols);
 
-        return $hasColor ? $line.$this->palette->reset() : AnsiUtils::stripAnsiCodes($line);
+        return $hasColor ? $line.Sgr::RESET : AnsiUtils::stripAnsiCodes($line);
     }
 
     /** A page's crumb label: the host's naming (e.g. the docs root as "Documentation"), else the file name. */
@@ -443,7 +443,7 @@ final class HelpViewerWidget extends AbstractWidget implements FocusableInterfac
     /** Splice the focused link group's highlight over a rendered line. */
     private function highlight(string $line, int $lineNo): string
     {
-        if (-1 === $this->currentLink || null === $this->doc || !$this->palette->hasColor()) {
+        if (-1 === $this->currentLink || null === $this->doc || !$this->styles->hasColor()) {
             return $line;
         }
         // Spans are non-overlapping; paint right-to-left so columns stay valid.
@@ -459,7 +459,7 @@ final class HelpViewerWidget extends AbstractWidget implements FocusableInterfac
             $start = $this->byteAtColumn($line, $span->col);
             $end = $this->byteAtColumn($line, $span->endCol);
             $mid = AnsiUtils::stripAnsiCodes(substr($line, $start, $end - $start));
-            $line = substr($line, offset: 0, length: $start).$this->palette->reset().$this->palette->of(Role::SelectedRow).$mid.$this->palette->reset().substr($line, $end);
+            $line = substr($line, offset: 0, length: $start).Sgr::RESET.$this->styles->of(Role::SelectedRow)->getAnsiRestore().$mid.Sgr::RESET.substr($line, $end);
         }
 
         return $line;

@@ -5,9 +5,9 @@ declare(strict_types=1);
 namespace Porta\Help;
 
 use Porta\Support\AnsiText;
-use Porta\Ui\Palette;
 use Porta\Ui\Role;
 use Porta\Ui\Sgr;
+use Porta\Ui\Theme\Styles;
 use Symfony\Component\Tui\Ansi\AnsiUtils;
 
 /**
@@ -18,8 +18,10 @@ use Symfony\Component\Tui\Ansi\AnsiUtils;
  * width (tables and code fences truncate instead). Every inline style is a
  * self-contained SGR region — opened at its start column and closed at its
  * end — so the viewer can splice a highlight over any span with plain column
- * slicing. All color flows through the injected {@see Palette}: with colors
- * off, the output is pure text.
+ * slicing. All color flows through the injected {@see Styles}: with colors
+ * off, the output is pure text. Styled regions open and close as streaming
+ * pens across the word-wrap, so opens come from getAnsiRestore() rather
+ * than balanced apply() wraps.
  *
  * @phpstan-type Segment array{text: string, style: string, target: string|null, group: int}
  * @phpstan-type Word array{text: string, width: int, style: string, target: string|null, group: int}
@@ -38,7 +40,7 @@ final class MarkdownRenderer
     private bool $swallowBlanks = false;
 
     public function __construct(
-        private readonly Palette $palette,
+        private readonly Styles $styles,
     ) {}
 
     public function render(string $markdown, int $width): RenderedDoc
@@ -85,19 +87,19 @@ final class MarkdownRenderer
             }
             if (1 === preg_match('/^\s*(-{3,}|\*{3,}|_{3,})\s*$/', $line)) {
                 $this->flushParagraph($paragraph, $width);
-                $this->lines[] = $this->palette->of(Role::Muted).str_repeat('─', $width).$this->resetAll();
+                $this->lines[] = $this->styles->of(Role::Muted)->getAnsiRestore().str_repeat('─', $width).$this->resetAll();
                 continue;
             }
             if (str_starts_with($line, '> ')) {
                 $this->flushParagraph($paragraph, $width);
-                $prefix = $this->palette->of(Role::Muted).'│ '.$this->palette->fgReset();
+                $prefix = $this->styles->of(Role::Muted)->getAnsiRestore().'│ '.$this->fgReset();
                 $this->wrapSegments($this->inline(substr($line, offset: 2)), $width, $prefix, 2, $prefix);
                 continue;
             }
             if (1 === preg_match('/^(\s*)- (.+)$/', $line, $m)) {
                 $this->flushParagraph($paragraph, $width);
                 $indent = \strlen($m[1]);
-                $prefix = $m[1].$this->palette->of(Role::Muted).'• '.$this->palette->fgReset();
+                $prefix = $m[1].$this->styles->of(Role::Muted)->getAnsiRestore().'• '.$this->fgReset();
                 $this->wrapSegments($this->inline($m[2]), $width, $prefix, $indent + 2, str_repeat(' ', $indent + 2));
                 continue;
             }
@@ -141,7 +143,7 @@ final class MarkdownRenderer
      */
     private function fence(array $source, int $from, int $width): int
     {
-        $bg = $this->palette->of(Role::Toolbar);
+        $bg = $this->styles->of(Role::Toolbar)->getAnsiRestore();
         $count = \count($source);
         $i = $from;
         for (; $i < $count && !str_starts_with(trim($source[$i]), '```'); ++$i) {
@@ -170,8 +172,8 @@ final class MarkdownRenderer
             $this->lines[] = '';
         }
         $open = match (true) {
-            1 === $level => $this->bold().$this->palette->of(Role::Emphasis),
-            2 === $level => $this->bold().$this->palette->of(Role::Bright),
+            1 === $level => $this->bold().$this->styles->of(Role::Emphasis)->getAnsiRestore(),
+            2 === $level => $this->bold().$this->styles->of(Role::Bright)->getAnsiRestore(),
             default => $this->bold(),
         };
         $assembled = $this->assemble($this->inline($text), 0);
@@ -181,8 +183,8 @@ final class MarkdownRenderer
         if ($level <= 2) {
             $ruleWidth = min($width, max(1, $assembled['width']));
             $rule = 1 === $level
-                ? $this->palette->of(Role::Bright).str_repeat('═', max(0, $ruleWidth))
-                : $this->palette->of(Role::Muted).str_repeat('─', max(0, $ruleWidth));
+                ? $this->styles->of(Role::Bright)->getAnsiRestore().str_repeat('═', max(0, $ruleWidth))
+                : $this->styles->of(Role::Muted)->getAnsiRestore().str_repeat('─', max(0, $ruleWidth));
             $this->lines[] = $rule.$this->resetAll();
         }
         $this->lines[] = '';
@@ -217,7 +219,7 @@ final class MarkdownRenderer
                 foreach ($widths as $columnWidth) {
                     $rule .= str_repeat('─', $columnWidth).'  ';
                 }
-                $this->lines[] = $this->palette->of(Role::Muted).AnsiUtils::truncateToWidth(rtrim($rule), $width, '…').$this->resetAll();
+                $this->lines[] = $this->styles->of(Role::Muted)->getAnsiRestore().AnsiUtils::truncateToWidth(rtrim($rule), $width, '…').$this->resetAll();
                 continue;
             }
 
@@ -417,9 +419,9 @@ final class MarkdownRenderer
     {
         return match ($style) {
             'bold' => $this->bold(),
-            'italic' => $this->palette->hasColor() ? "\x1b[3m" : '',
-            'code' => $this->palette->of(Role::Emphasis),
-            'link' => ($this->palette->hasColor() ? Sgr::UNDERLINE : '').$this->palette->of(Role::TabAccent),
+            'italic' => $this->styles->hasColor() ? "\x1b[3m" : '',
+            'code' => $this->styles->of(Role::Emphasis)->getAnsiRestore(),
+            'link' => ($this->styles->hasColor() ? Sgr::UNDERLINE : '').$this->styles->of(Role::TabAccent)->getAnsiRestore(),
             default => '',
         };
     }
@@ -427,21 +429,27 @@ final class MarkdownRenderer
     private function close(string $style): string
     {
         return match ($style) {
-            'bold' => $this->palette->hasColor() ? Sgr::NORMAL_INTENSITY : '',
-            'italic' => $this->palette->hasColor() ? "\x1b[23m" : '',
-            'code' => $this->palette->fgReset(),
-            'link' => $this->palette->fgReset().($this->palette->hasColor() ? "\x1b[24m" : ''),
+            'bold' => $this->styles->hasColor() ? Sgr::NORMAL_INTENSITY : '',
+            'italic' => $this->styles->hasColor() ? "\x1b[23m" : '',
+            'code' => $this->fgReset(),
+            'link' => $this->fgReset().($this->styles->hasColor() ? "\x1b[24m" : ''),
             default => '',
         };
     }
 
     private function bold(): string
     {
-        return $this->palette->hasColor() ? Sgr::BOLD : '';
+        return $this->styles->hasColor() ? Sgr::BOLD : '';
+    }
+
+    /** Close an open foreground pen (nothing was opened in monochrome). */
+    private function fgReset(): string
+    {
+        return $this->styles->hasColor() ? Sgr::DEFAULT_FG : '';
     }
 
     private function resetAll(): string
     {
-        return $this->palette->hasColor() ? $this->palette->reset() : '';
+        return $this->styles->hasColor() ? Sgr::RESET : '';
     }
 }

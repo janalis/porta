@@ -7,15 +7,16 @@ namespace Porta\Tests\Unit\Help;
 use PHPUnit\Framework\TestCase;
 use Porta\Help\MarkdownRenderer;
 use Porta\Help\RenderedDoc;
-use Porta\Ui\ColorPalette;
-use Porta\Ui\MonochromePalette;
+use Porta\Ui\Theme\DarkTheme;
+use Porta\Ui\Theme\MonochromeTheme;
+use Porta\Ui\Theme\Styles;
 use Symfony\Component\Tui\Ansi\AnsiUtils;
 
 final class MarkdownRendererTest extends TestCase
 {
     private function render(string $markdown, int $width = 80): RenderedDoc
     {
-        return new MarkdownRenderer(ColorPalette::dark())->render($markdown, $width);
+        return new MarkdownRenderer(new Styles(DarkTheme::definition()))->render($markdown, $width);
     }
 
     /** @return list<string> */
@@ -148,7 +149,7 @@ final class MarkdownRendererTest extends TestCase
     public function testMonochromeOutputHasNoEscapes(): void
     {
         $markdown = "# T\n\n**b** *i* `c` [l](x.md)\n\n| A |\n| --- |\n| v |\n\n```\ncode\n```";
-        $doc = new MarkdownRenderer(new MonochromePalette())->render($markdown, 40);
+        $doc = new MarkdownRenderer(new Styles(MonochromeTheme::definition()))->render($markdown, 40);
 
         $this->assertStringNotContainsString("\x1b", implode("\n", $doc->lines), 'no ANSI without color support');
         $this->assertSame(1, $doc->groupCount(), 'links still tracked for Tab-cycling');
