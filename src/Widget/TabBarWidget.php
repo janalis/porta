@@ -6,10 +6,9 @@ namespace Porta\Widget;
 
 use Porta\Container\AsWidget;
 use Porta\Support\AnsiText;
-use Porta\Ui\ColorPalette;
-use Porta\Ui\Palette;
 use Porta\Ui\Role;
-use Porta\Ui\Sgr;
+use Porta\Ui\Theme\DarkTheme;
+use Porta\Ui\Theme\Styles;
 use Porta\Widget\Render\MenuOverlayHost;
 use Porta\Widget\Render\MenuOverlayHostTrait;
 use Symfony\Component\Tui\Ansi\AnsiUtils;
@@ -30,13 +29,13 @@ final class TabBarWidget extends AbstractWidget implements MenuOverlayHost
     /** Display columns of the vertical (left/right) tab list. */
     public const VERTICAL_WIDTH = 24;
 
-    private readonly Palette $palette;
+    private readonly Styles $styles;
 
     private TabBarPosition $position = TabBarPosition::Top;
 
-    public function __construct(?Palette $palette = null)
+    public function __construct(?Styles $styles = null)
     {
-        $this->palette = $palette ?? ColorPalette::dark();
+        $this->styles = $styles ?? new Styles(DarkTheme::definition());
     }
 
     /** @var (callable(): list<array{name: string, dirty: bool, active: bool}>)|null */
@@ -134,11 +133,11 @@ final class TabBarWidget extends AbstractWidget implements MenuOverlayHost
             if (($used + $part['width']) > $columns) {
                 break;
             }
-            $style = $part['active'] ? $this->palette->of(Role::InlayPopupBg).$this->palette->of(Role::Bright).Sgr::BOLD : $this->palette->of(Role::Subtle);
+            $style = $part['active'] ? $this->styles->merge(Role::InlayPopupBg, Role::Bright)->withBold() : $this->styles->of(Role::Subtle);
             // Dim the close × (bright on the active tab) so it reads as an affordance.
-            $closeStyle = $part['active'] ? $this->palette->of(Role::CurrentLineNumber) : $this->palette->of(Role::Gutter);
-            $text = str_replace('×', $closeStyle.'×'.Sgr::DEFAULT_FG, $part['text']);
-            $line .= $style.$text.Sgr::RESET.$this->palette->of(Role::Placeholder)."│\x1b[0m";
+            $closeStyle = $part['active'] ? $this->styles->of(Role::CurrentLineNumber) : $this->styles->of(Role::Gutter);
+            $text = str_replace('×', $closeStyle->apply('×'), $part['text']);
+            $line .= $style->apply($text).$this->styles->of(Role::Placeholder)->apply('│');
             $this->lastLayout[] = [
                 'index' => $index,
                 'row' => 0,
@@ -185,10 +184,10 @@ final class TabBarWidget extends AbstractWidget implements MenuOverlayHost
             foreach (\array_slice($tabs, $start, $rows, preserve_keys: true) as $index => $tab) {
                 $name = AnsiUtils::truncateToWidth($tab['name'], $nameWidth, '…', pad: true);
                 $marker = $tab['dirty'] ? '●' : ' ';
-                $style = $tab['active'] ? $this->palette->of(Role::InlayPopupBg).$this->palette->of(Role::Bright).Sgr::BOLD : $this->palette->of(Role::Subtle);
+                $style = $tab['active'] ? $this->styles->merge(Role::InlayPopupBg, Role::Bright)->withBold() : $this->styles->of(Role::Subtle);
                 // Dim the close × (bright on the active tab) so it reads as an affordance.
-                $closeStyle = $tab['active'] ? $this->palette->of(Role::CurrentLineNumber) : $this->palette->of(Role::Gutter);
-                $lines[] = $style.' '.$name.' '.$marker.$closeStyle.'×'.Sgr::DEFAULT_FG.' '.Sgr::RESET;
+                $closeStyle = $tab['active'] ? $this->styles->of(Role::CurrentLineNumber) : $this->styles->of(Role::Gutter);
+                $lines[] = $style->apply(' '.$name.' '.$marker.$closeStyle->apply('×').' ');
                 $this->lastLayout[] = [
                     'index' => $index,
                     'row' => \count($lines) - 1,

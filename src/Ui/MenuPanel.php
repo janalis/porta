@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Porta\Ui;
 
+use Porta\Ui\Theme\Styles;
 use Symfony\Component\Tui\Ansi\AnsiUtils;
 
 /**
@@ -41,19 +42,19 @@ final class MenuPanel
      *
      * @return list<array{segment: string, separator: bool}>
      */
-    public static function segments(array $items, int $selected, int $panelWidth, Palette $palette): array
+    public static function segments(array $items, int $selected, int $panelWidth, Styles $styles): array
     {
         $out = [];
         foreach ($items as $index => $item) {
             $out[] = [
                 'segment' => $item->separator
-                    ? $palette->of(Role::RowHighlightBg).$palette->of(Role::Placeholder).str_repeat('─', max(0, $panelWidth)).Sgr::RESET
+                    ? $styles->merge(Role::RowHighlightBg, Role::Placeholder)->apply(str_repeat('─', max(0, $panelWidth)))
                     : self::itemSegment(
                         $item,
                         $panelWidth,
                         $index === $selected ? MenuSelection::Selected : MenuSelection::Unselected,
                         $item->enabled() ? MenuAvailability::Enabled : MenuAvailability::Disabled,
-                        $palette,
+                        $styles,
                     ),
                 'separator' => $item->separator,
             ];
@@ -104,7 +105,7 @@ final class MenuPanel
         return !$item->separator && $item->enabled();
     }
 
-    private static function itemSegment(MenuItem $item, int $panelWidth, MenuSelection $selection, MenuAvailability $availability, Palette $palette): string
+    private static function itemSegment(MenuItem $item, int $panelWidth, MenuSelection $selection, MenuAvailability $availability, Styles $styles): string
     {
         $inner = max(0, $panelWidth - 2);
         $shortcut = $item->shortcut;
@@ -114,13 +115,13 @@ final class MenuPanel
 
         // Disabled always reads dim and never shows the selected highlight; the
         // SGR dim attribute keeps the state visible without color (monochrome).
-        $bg = match (true) {
-            MenuAvailability::Disabled === $availability => "\x1b[2m".$palette->of(Role::RowHighlightBg).$palette->of(Role::Gutter),
-            MenuSelection::Selected === $selection => $palette->of(Role::SelectedRow),
-            default => $palette->of(Role::PopupRow),
+        $style = match (true) {
+            MenuAvailability::Disabled === $availability => $styles->merge(Role::RowHighlightBg, Role::Gutter)->withDim(),
+            MenuSelection::Selected === $selection => $styles->of(Role::SelectedRow),
+            default => $styles->of(Role::PopupRow),
         };
-        $tail = '' !== $shortcut ? $palette->of(Role::CompletionHint).$shortcut.Sgr::DEFAULT_FG : str_repeat(' ', max(0, mb_strwidth($shortcut)));
+        $tail = '' !== $shortcut ? $styles->of(Role::CompletionHint)->apply($shortcut) : str_repeat(' ', max(0, mb_strwidth($shortcut)));
 
-        return $bg.' '.$label.str_repeat(' ', $gap).$tail.' '.Sgr::RESET;
+        return $style->apply(' '.$label.str_repeat(' ', $gap).$tail.' ');
     }
 }

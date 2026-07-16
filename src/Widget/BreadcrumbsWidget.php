@@ -5,10 +5,9 @@ declare(strict_types=1);
 namespace Porta\Widget;
 
 use Porta\Container\AsWidget;
-use Porta\Ui\ColorPalette;
-use Porta\Ui\Palette;
 use Porta\Ui\Role;
-use Porta\Ui\Sgr;
+use Porta\Ui\Theme\DarkTheme;
+use Porta\Ui\Theme\Styles;
 use Porta\Widget\Render\MenuOverlayHost;
 use Porta\Widget\Render\MenuOverlayHostTrait;
 use Symfony\Component\Tui\Ansi\AnsiUtils;
@@ -26,17 +25,17 @@ final class BreadcrumbsWidget extends AbstractWidget implements MenuOverlayHost
 {
     use MenuOverlayHostTrait;
 
-    private readonly Palette $palette;
+    private readonly Styles $styles;
 
-    public function __construct(?Palette $palette = null)
+    public function __construct(?Styles $styles = null)
     {
-        $this->palette = $palette ?? ColorPalette::dark();
+        $this->styles = $styles ?? new Styles(DarkTheme::definition());
     }
 
     /** The ` › ` scope separator, dimmed (visible width 3). */
     private function separator(): string
     {
-        return $this->palette->of(Role::Gutter).' › '.Sgr::DEFAULT_FG;
+        return $this->styles->of(Role::Gutter)->apply(' › ');
     }
 
     /** @var (callable(): list<array{label: string, line: int}>)|null */
@@ -76,7 +75,7 @@ final class BreadcrumbsWidget extends AbstractWidget implements MenuOverlayHost
         }
 
         $columns = $context->getColumns();
-        $content = $this->palette->of(Role::Toolbar).' '; // bar background + a leading space
+        $content = ' '; // a leading space; the bar background wraps the padded row
         $col = 1;
         $last = \count($crumbs) - 1;
         foreach ($crumbs as $i => $crumb) {
@@ -88,12 +87,14 @@ final class BreadcrumbsWidget extends AbstractWidget implements MenuOverlayHost
             $width = mb_strwidth($label);
             $this->lastLayout[] = ['start' => $col, 'width' => $width, 'line' => $crumb['line']];
             $content .= $i === $last
-                ? $this->palette->of(Role::Emphasis).Sgr::BOLD.$label."\x1b[22m\x1b[39m" // current scope: bright + bold
-                : $this->palette->of(Role::Muted).$label.Sgr::DEFAULT_FG;
+                ? $this->styles->of(Role::Emphasis)->withBold()->apply($label) // current scope: bright + bold
+                : $this->styles->of(Role::Muted)->apply($label);
             $col += $width;
         }
 
-        return $this->withMenuOverlay([AnsiUtils::truncateToWidth($content, $columns, '…', pad: true).Sgr::RESET], $columns);
+        $bar = $this->styles->of(Role::Toolbar)->apply(AnsiUtils::truncateToWidth($content, $columns, '…', pad: true));
+
+        return $this->withMenuOverlay([$bar], $columns);
     }
 
     /** The jump line of the crumb at column $col of the last render, or null. */

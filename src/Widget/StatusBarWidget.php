@@ -5,10 +5,9 @@ declare(strict_types=1);
 namespace Porta\Widget;
 
 use Porta\Container\AsWidget;
-use Porta\Ui\ColorPalette;
-use Porta\Ui\Palette;
 use Porta\Ui\Role;
-use Porta\Ui\Sgr;
+use Porta\Ui\Theme\DarkTheme;
+use Porta\Ui\Theme\Styles;
 use Psr\Clock\ClockInterface;
 use Symfony\Component\Clock\NativeClock;
 use Symfony\Component\Tui\Ansi\AnsiUtils;
@@ -32,13 +31,13 @@ final class StatusBarWidget extends AbstractWidget
     private ?array $flash = null;
 
     private readonly ClockInterface $clock;
-    private readonly Palette $palette;
+    private readonly Styles $styles;
 
     /** The clock is injected by the container; a MockClock makes flash expiry testable. */
-    public function __construct(?ClockInterface $clock = null, ?Palette $palette = null)
+    public function __construct(?ClockInterface $clock = null, ?Styles $styles = null)
     {
         $this->clock = $clock ?? new NativeClock();
-        $this->palette = $palette ?? ColorPalette::dark();
+        $this->styles = $styles ?? new Styles(DarkTheme::definition());
     }
 
     /**
@@ -104,6 +103,6 @@ final class StatusBarWidget extends AbstractWidget
         $line = ' '.$left.str_repeat(' ', $gap).$right.' ';
         $line = AnsiUtils::truncateToWidth($line, $columns, '', pad: true);
 
-        return [$this->palette->of(Role::HeaderBar).$this->palette->of(Role::CurrentLineNumber).$line.Sgr::RESET];
+        return [$this->styles->merge(Role::HeaderBar, Role::CurrentLineNumber)->apply($line)];
     }
 }

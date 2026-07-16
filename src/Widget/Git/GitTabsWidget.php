@@ -6,10 +6,9 @@ namespace Porta\Widget\Git;
 
 use Porta\Container\AsWidget;
 use Porta\I18n\Translator;
-use Porta\Ui\ColorPalette;
-use Porta\Ui\Palette;
 use Porta\Ui\Role;
-use Porta\Ui\Sgr;
+use Porta\Ui\Theme\DarkTheme;
+use Porta\Ui\Theme\Styles;
 use Porta\Widget\PanelWidth;
 use Porta\Widget\Render\MenuOverlayHost;
 use Porta\Widget\Render\MenuOverlayHostTrait;
@@ -38,15 +37,15 @@ final class GitTabsWidget extends AbstractWidget implements MenuOverlayHost
     /** @var (callable(string): void)|null a click chose the other tab ('changes'|'history') */
     private $onSelect = null;
 
-    private readonly Palette $palette;
+    private readonly Styles $styles;
 
     public function __construct(
         private readonly Translator $translator,
         int $width = 44,
-        ?Palette $palette = null,
+        ?Styles $styles = null,
     ) {
         $this->width = $width;
-        $this->palette = $palette ?? ColorPalette::dark();
+        $this->styles = $styles ?? new Styles(DarkTheme::definition());
     }
 
     protected function minWidth(): int
@@ -107,15 +106,12 @@ final class GitTabsWidget extends AbstractWidget implements MenuOverlayHost
             $label = $this->translator->trans($rawLabel);
             $tabWidth = mb_strwidth($label);
             $this->layout[] = ['mode' => $mode, 'start' => $col, 'width' => $tabWidth];
-            $line .=
-                ($mode === $this->active ? $this->palette->of(Role::SelectedRow).Sgr::BOLD : $this->palette->of(Role::HeaderBar).$this->palette->of(Role::Muted))
-                .$label
-                .Sgr::RESET
-                .$this->palette->of(Role::Toolbar);
+            $line .= ($mode === $this->active ? $this->styles->of(Role::SelectedRow) : $this->styles->merge(Role::HeaderBar, Role::Muted))
+                ->apply($label);
             $col += $tabWidth + 1;
             $line .= ' ';
         }
 
-        return $this->withMenuOverlay([$this->palette->of(Role::Toolbar).AnsiUtils::truncateToWidth($line, $width, '…', pad: true).Sgr::RESET], $width);
+        return $this->withMenuOverlay([$this->styles->of(Role::Toolbar)->apply(AnsiUtils::truncateToWidth($line, $width, '…', pad: true))], $width);
     }
 }

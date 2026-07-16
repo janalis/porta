@@ -6,12 +6,11 @@ namespace Porta\Widget;
 
 use Porta\Container\AsWidget;
 use Porta\Support\IntMath;
-use Porta\Ui\ColorPalette;
 use Porta\Ui\Menu;
 use Porta\Ui\MenuPanel;
-use Porta\Ui\Palette;
 use Porta\Ui\Role;
-use Porta\Ui\Sgr;
+use Porta\Ui\Theme\DarkTheme;
+use Porta\Ui\Theme\Styles;
 use Symfony\Component\Tui\Input\Key;
 use Symfony\Component\Tui\Render\RenderContext;
 use Symfony\Component\Tui\Widget\FocusableInterface;
@@ -36,11 +35,11 @@ final class MenuBarWidget extends OverlayWidget implements FocusableInterface
     use FocusableTrait;
     use KeybindingsTrait;
 
-    private readonly Palette $palette;
+    private readonly Styles $styles;
 
-    public function __construct(?Palette $palette = null)
+    public function __construct(?Styles $styles = null)
     {
-        $this->palette = $palette ?? ColorPalette::dark();
+        $this->styles = $styles ?? new Styles(DarkTheme::definition());
     }
 
     /** @var list<Menu> */
@@ -153,15 +152,15 @@ final class MenuBarWidget extends OverlayWidget implements FocusableInterface
             $active = $this->open && $i === $this->openIndex;
             $hovered = !$this->open && $i === $this->hoveredIndex;
             $line .= match (true) {
-                $active => $this->palette->of(Role::SelectedRow).Sgr::BOLD.$label.Sgr::NORMAL_INTENSITY,
-                $hovered => $this->palette->of(Role::MenuActiveBg).$this->palette->of(Role::Bright).$label,
-                default => $this->palette->of(Role::HeaderBar).$this->palette->of(Role::Muted).$label,
+                $active => $this->styles->of(Role::SelectedRow)->apply($label),
+                $hovered => $this->styles->merge(Role::MenuActiveBg, Role::Bright)->apply($label),
+                default => $this->styles->merge(Role::HeaderBar, Role::Muted)->apply($label),
             };
             $this->titleLayout[] = ['index' => $i, 'start' => $used, 'width' => $width];
             $used += $width;
         }
 
-        return $line.$this->palette->of(Role::HeaderBar).str_repeat(' ', max(0, $columns - $used)).Sgr::RESET;
+        return $line.$this->styles->of(Role::HeaderBar)->apply(str_repeat(' ', max(0, $columns - $used)));
     }
 
     /** Natural width of the open menu's dropdown panel (unclamped; caller clamps to fit). */
@@ -198,7 +197,7 @@ final class MenuBarWidget extends OverlayWidget implements FocusableInterface
             return [];
         }
 
-        return MenuPanel::segments($this->menus[$this->openIndex]->items, $this->selected, $panelWidth, $this->palette);
+        return MenuPanel::segments($this->menus[$this->openIndex]->items, $this->selected, $panelWidth, $this->styles);
     }
 
     public function handleInput(string $data): void

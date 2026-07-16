@@ -10,6 +10,7 @@ use Porta\Git\GitRefresher;
 use Porta\I18n\Translator;
 use Porta\Lsp\LspSessionPool;
 use Porta\Support\ProjectPaths;
+use Porta\Ui\Theme\Styles;
 use Porta\Widget\CodeEditorWidget;
 use Porta\Widget\ImageViewerWidget;
 
@@ -27,7 +28,7 @@ final class StatusBarProvider
         private readonly GitRefresher $gitRefresher,
         private readonly DebugController $debug,
         private readonly LspSessionPool $lsp,
-        private readonly Palette $palette,
+        private readonly Styles $styles,
         private readonly Translator $translator,
         private readonly string $rootDir,
     ) {}
@@ -48,11 +49,11 @@ final class StatusBarProvider
         };
 
         if (null !== ($branch = $this->gitRefresher->branch())) {
-            $left = $this->palette->of(Role::StatusBranch)."\u{e0a0} {$branch}".$this->palette->fgReset().'  '.$left;
+            $left = $this->styles->of(Role::StatusBranch)->apply("\u{e0a0} {$branch}").'  '.$left;
         }
 
         if (null !== ($debugSegment = $this->debug->statusSegment())) {
-            $left = $this->palette->of(Role::StatusDebug).$debugSegment.$this->palette->fgReset().'  '.$left;
+            $left = $this->styles->of(Role::StatusDebug)->apply($debugSegment).'  '.$left;
         }
 
         if (null !== $image) {
@@ -63,16 +64,16 @@ final class StatusBarProvider
         }
 
         if (null !== ($diagnostic = $this->editor->getCursorDiagnostic())) {
-            $left .= '  '.$this->palette->of(Role::StatusError).$diagnostic.$this->palette->fgReset();
+            $left .= '  '.$this->styles->of(Role::StatusError)->apply($diagnostic);
         }
 
         $counts = $this->editor->getDiagnosticCounts();
         $problems = '';
         if ($counts['errors'] > 0) {
-            $problems .= $this->palette->of(Role::StatusError)."✗ {$counts['errors']}".$this->palette->fgReset().' ';
+            $problems .= $this->styles->of(Role::StatusError)->apply("✗ {$counts['errors']}").' ';
         }
         if ($counts['warnings'] > 0) {
-            $problems .= $this->palette->of(Role::StatusWarning)."▲ {$counts['warnings']}".$this->palette->fgReset().' ';
+            $problems .= $this->styles->of(Role::StatusWarning)->apply("▲ {$counts['warnings']}").' ';
         }
 
         $location = \sprintf('%d:%d', $doc->getCursorLine() + 1, $doc->getCursorDisplayCol() + 1);
