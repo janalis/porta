@@ -46,12 +46,29 @@ final class TabBarWidget extends AbstractWidget implements MenuOverlayHost
     /** @var list<array{index: int, row: int, start: int, width: int, closeStart: int, closeWidth: int}> layout from the last render */
     private array $lastLayout = [];
 
+    /** Index of the first visible tab — the manual scroll offset, clamped at render. */
+    private int $scroll = 0;
+
+    /** The active index the window last followed, so a manual scroll survives parked frames. */
+    private ?int $lastActive = null;
+
     /** @param callable(): list<array{name: string, dirty: bool, active: bool}> $provider */
     public function setProvider(callable $provider): self
     {
         $this->provider = $provider;
 
         return $this;
+    }
+
+    /**
+     * Scroll the strip by $tabs (mouse wheel / overflow indicators); negative
+     * scrolls toward the first tab. Clamping against the tab widths happens at
+     * render time, where the geometry is known.
+     */
+    public function scrollBy(int $tabs): void
+    {
+        $this->scroll = max(0, $this->scroll + $tabs);
+        $this->invalidate();
     }
 
     public function setPosition(TabBarPosition $position): void
@@ -61,6 +78,8 @@ final class TabBarWidget extends AbstractWidget implements MenuOverlayHost
         }
         $this->position = $position;
         $this->lastLayout = [];
+        $this->scroll = 0;
+        $this->lastActive = null;
         $this->invalidate();
     }
 
@@ -121,10 +140,18 @@ final class TabBarWidget extends AbstractWidget implements MenuOverlayHost
             $activeIndex = $i;
             break;
         }
-        $start = 0;
-        while ($start < $activeIndex && array_sum(array_column(\array_slice($parts, $start, $activeIndex - $start + 1), 'width')) > $columns) {
-            ++$start;
+        // The window starts at the manual scroll offset, clamped so the strip
+        // never shows a blank tail, then follows the active tab — but only
+        // when it changed, so a user's scroll survives parked frames.
+        $this->scroll = min($this->scroll, self::maxStart($parts, $columns));
+        if ($activeIndex !== $this->lastActive) {
+            $this->lastActive = $activeIndex;
+            $this->scroll = min($this->scroll, $activeIndex);
+            while ($this->scroll < $activeIndex && array_sum(array_column(\array_slice($parts, $this->scroll, $activeIndex - $this->scroll + 1), 'width')) > $columns) {
+                ++$this->scroll;
+            }
         }
+        $start = $this->scroll;
 
         $line = '';
         $used = 0;
@@ -151,6 +178,28 @@ final class TabBarWidget extends AbstractWidget implements MenuOverlayHost
     }
 
     /**
+     * The largest sensible window start: the smallest index whose trailing
+     * tabs still fill the strip, so scrolling never leaves a blank tail.
+     * When even the last tab alone overflows, it is the last index.
+     *
+     * @param list<array{text: string, active: bool, width: int, closeOffset: int}> $parts
+     */
+    private static function maxStart(array $parts, int $columns): int
+    {
+        $start = \count($parts) - 1;
+        $tail = 0;
+        for ($i = \count($parts) - 1; $i >= 0; --$i) {
+            $tail += $parts[$i]['width'];
+            if ($tail > $columns) {
+                break;
+            }
+            $start = $i;
+        }
+
+        return max(0, $start);
+    }
+
+    /**
      * The vertical (left/right) tab list: one tab per row, every line exactly
      * {@see VERTICAL_WIDTH} columns so the layout engine measures a stable
      * intrinsic width, blank rows filling the pane below the last tab.
@@ -174,9 +223,16 @@ final class TabBarWidget extends AbstractWidget implements MenuOverlayHost
                 $activeIndex = $i;
                 break;
             }
-            // Rows are uniform height, so keeping the active tab visible is a
-            // plain window: drop just enough leading tabs for it to fit.
-            $start = max(0, $activeIndex - $rows + 1);
+            // Rows are uniform height, so the window is the manual scroll
+            // offset (clamped against a blank tail) that follows the active
+            // tab only when it changed — a user's scroll survives otherwise.
+            $this->scroll = min($this->scroll, max(0, \count($tabs) - $rows));
+            if ($activeIndex !== $this->lastActive) {
+                $this->lastActive = $activeIndex;
+                $this->scroll = min($this->scroll, $activeIndex);
+                $this->scroll = max($this->scroll, $activeIndex - $rows + 1);
+            }
+            $start = $this->scroll;
             // ' name…    ●× ': the dirty ● and the close × are right-aligned.
             $nameWidth = self::VERTICAL_WIDTH - 5;
             foreach (\array_slice($tabs, $start, $rows, preserve_keys: true) as $index => $tab) {

@@ -67,6 +67,12 @@ final class BidiTui extends Tui
         }
     }
 
+    /** Whether the per-pane RTL reorder is active — frames render mirrored. */
+    public function isMirrored(): bool
+    {
+        return null !== $this->reorder;
+    }
+
     /**
      * Map a screen (visual) column on $row back to the logical column that the
      * widgets rendered, inverting the RTL reorder within the pane the column

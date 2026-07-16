@@ -1,0 +1,137 @@
+<?php
+
+declare(strict_types=1);
+
+namespace Porta\Tests\E2e;
+
+use PHPUnit\Framework\TestCase;
+use Porta\Editor\BufferService;
+use Porta\Editor\OpenFocus;
+use Porta\Ide;
+use Porta\Tests\Support\RunsIde;
+use Porta\Tests\Support\TempProject;
+use Porta\Widget\TabBarWidget;
+use Symfony\Component\Tui\Render\WidgetRect;
+use Symfony\Component\Tui\Tui;
+
+/**
+ * Drives the scrollable tab strip through a real Ide: with more open tabs than
+ * fit, a mouse wheel over the strip pages the window (horizontally on the top
+ * strip, vertically on a left strip), and under an RTL locale the horizontal
+ * wheel direction follows the mirrored on-screen order.
+ */
+final class IdeTabScrollTest extends TestCase
+{
+    use RunsIde;
+
+    private const int FILES = 10;
+
+    /** More tabs than the 24-row terminal has vertical list rows. */
+    private const int TALL_FILES = 30;
+
+    /** @return array<string, string> */
+    private static function files(int $count): array
+    {
+        $files = [];
+        for ($i = 0; $i < $count; ++$i) {
+            $files[\sprintf('chapter-file-%02d.php', $i)] = "<?php\n";
+        }
+
+        return $files;
+    }
+
+    private static function openAll(mixed $ide, TempProject $project, int $count): void
+    {
+        /** @var BufferService $buffers */
+        $buffers = new \ReflectionProperty(Ide::class, 'locator')->getValue($ide)->get(BufferService::class);
+        for ($i = 0; $i < $count; ++$i) {
+            $buffers->openFile($project->path(\sprintf('chapter-file-%02d.php', $i)), OpenFocus::Keep);
+        }
+    }
+
+    private static function tabsRect(mixed $ide, Tui $tui): WidgetRect
+    {
+        $rect = new \ReflectionProperty(Ide::class, 'renderer')
+            ->getValue($ide)
+            ->getWidgetRect($tui->getById('tabs'));
+        \assert($rect instanceof WidgetRect, description: 'the strip rendered, so its rect exists');
+
+        return $rect;
+    }
+
+    /** An SGR wheel event over the middle of the strip (1-based coords on the wire). */
+    private static function wheel(Tui $tui, WidgetRect $rect, int $code, int $times = 1): void
+    {
+        for ($i = 0; $i < $times; ++$i) {
+            $tui->handleInput(\sprintf("\x1b[<%d;%d;%dM", $code, $rect->col + 3, $rect->row + 1));
+        }
+    }
+
+    public function testWheelScrollsTheHorizontalStripAndRtlFlipsTheDirection(): void
+    {
+        $project = new TempProject(
+            self::files(self::FILES)
+            + [
+                '.porta.json' => (string) json_encode(['settings' => ['language' => 'he']]),
+            ],
+        );
+
+        $this->runIde($project, null, [
+            100 => static function (Tui $tui, $terminal, $ide) use ($project): void {
+                self::openAll($ide, $project, self::FILES);
+            },
+            300 => function (Tui $tui, $terminal, $ide): void {
+                $tui->tick();
+                /** @var TabBarWidget $tabs */
+                $tabs = $tui->getById('tabs');
+                $this->assertNotNull($tabs->tabAnchor(self::FILES - 1), 'the strip followed the last-opened (active) tab');
+                $this->assertNull($tabs->tabAnchor(0), 'the first tab is scrolled out at 160 cols with 10 wide tabs');
+
+                // Vertical wheel up pages back one tab per notch.
+                self::wheel($tui, self::tabsRect($ide, $tui), 64, times: self::FILES);
+                $tui->tick();
+                $this->assertNotNull($tabs->tabAnchor(0), 'wheel-up walked back to the first tab');
+
+                self::wheel($tui, self::tabsRect($ide, $tui), 65, times: 3);
+                $tui->tick();
+                $this->assertNull($tabs->tabAnchor(0), 'wheel-down pages forward again');
+
+                // Hebrew locale: the strip renders mirrored, so the horizontal
+                // wheel's visual direction flips — wheel-right (67) pages back
+                // toward the first tab instead of forward.
+                self::wheel($tui, self::tabsRect($ide, $tui), 67, times: 3);
+                $tui->tick();
+                $this->assertNotNull($tabs->tabAnchor(0), 'RTL: wheel-right follows the mirrored order');
+            },
+        ]);
+    }
+
+    public function testWheelScrollsTheVerticalList(): void
+    {
+        $project = new TempProject(
+            self::files(self::TALL_FILES)
+            + [
+                '.porta.json' => (string) json_encode(['settings' => ['tabBarPosition' => 'left']]),
+            ],
+        );
+
+        $this->runIde($project, null, [
+            100 => static function (Tui $tui, $terminal, $ide) use ($project): void {
+                self::openAll($ide, $project, self::TALL_FILES);
+            },
+            300 => function (Tui $tui, $terminal, $ide): void {
+                $tui->tick();
+                /** @var TabBarWidget $tabs */
+                $tabs = $tui->getById('tabs');
+                $this->assertNotNull($tabs->tabAnchor(self::TALL_FILES - 1), 'the list followed the active tab');
+                $this->assertNull($tabs->tabAnchor(0), 'the first tab is scrolled out above');
+
+                // One notch scrolls three rows on the vertical list.
+                self::wheel($tui, self::tabsRect($ide, $tui), 64, times: 4);
+                $tui->tick();
+                $this->assertNotNull($tabs->tabAnchor(0), 'wheel-up reached the first tab');
+                $this->assertNull($tabs->tabAnchor(self::TALL_FILES - 1), 'the last tab scrolled out below');
+            },
+        ]);
+    }
+}

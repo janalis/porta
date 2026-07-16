@@ -94,7 +94,7 @@ final class MouseRouter
         $settingsLeftRect = $settingsViewOpen ? $this->settings->leftRect() : null;
 
         if ($mouse->wheel) {
-            $this->handleWheel($mouse, $treeRect, $editorRect);
+            $this->handleWheel($mouse, $treeRect, $tabsRect, $editorRect);
 
             return;
         }
@@ -180,13 +180,21 @@ final class MouseRouter
     }
 
     /** Wheel: scroll whichever pane is under the pointer. */
-    private function handleWheel(MouseEvent $mouse, ?WidgetRect $treeRect, ?WidgetRect $editorRect): void
+    private function handleWheel(MouseEvent $mouse, ?WidgetRect $treeRect, ?WidgetRect $tabsRect, ?WidgetRect $editorRect): void
     {
         // Horizontal wheel (trackpad swipe or shift+wheel): only the panes
         // with long lines scroll sideways; everything else ignores it.
         $imageRect = $this->hit->rect($this->panes->imageViewer());
         if (0 !== $mouse->wheelHDelta) {
             if ($this->git->scrollHorizontal($mouse)) {
+                $this->tui->requestRender();
+
+                return;
+            }
+            if ($this->containsPointer($tabsRect, $mouse) && !$this->panes->tabBar()->position()->isSide()) {
+                // The strip renders mirrored under RTL, so the visual swipe
+                // direction flips to match the on-screen tab order.
+                $this->panes->tabBar()->scrollBy($this->bidi->isMirrored() ? -$mouse->wheelHDelta : $mouse->wheelHDelta);
                 $this->tui->requestRender();
 
                 return;
@@ -201,6 +209,17 @@ final class MouseRouter
                 $this->panes->imageViewer()->scrollBy(6 * $mouse->wheelHDelta, 0);
                 $this->tui->requestRender();
             }
+
+            return;
+        }
+
+        // The tab strip: a wheel over it pages through overflowing tabs — one
+        // wide tab per notch on the horizontal strip, the panel-list three
+        // rows per notch on the vertical one.
+        if ($this->containsPointer($tabsRect, $mouse)) {
+            $tabBar = $this->panes->tabBar();
+            $tabBar->scrollBy(($tabBar->position()->isSide() ? 3 : 1) * $mouse->wheelDelta);
+            $this->tui->requestRender();
 
             return;
         }

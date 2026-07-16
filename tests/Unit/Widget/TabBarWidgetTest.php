@@ -333,4 +333,134 @@ final class TabBarWidgetTest extends TestCase
         $this->assertSame(TabBarWidget::VERTICAL_WIDTH, AnsiUtils::visibleWidth($lines[1]), 'overlay keeps the row exactly the list width');
         $this->assertStringContainsString('Close', AnsiUtils::stripAnsiCodes($lines[1]), 'dropdown segment composited over the filler row');
     }
+
+    // --- scrolling --------------------------------------------------------------
+
+    /** @return list<array{name: string, dirty: bool, active: bool}> */
+    private static function manyTabs(int $count, int $active = 0): array
+    {
+        $tabs = [];
+        for ($i = 0; $i < $count; ++$i) {
+            $tabs[] = ['name' => \sprintf('very-long-filename-%02d.php', $i), 'dirty' => false, 'active' => $active === $i];
+        }
+
+        return $tabs;
+    }
+
+    /** Short names so the vertical list's 19-column truncation keeps them distinguishable. @return list<array{name: string, dirty: bool, active: bool}> */
+    private static function manyShortTabs(int $count, int $active = 0): array
+    {
+        $tabs = [];
+        for ($i = 0; $i < $count; ++$i) {
+            $tabs[] = ['name' => \sprintf('t-%02d.php', $i), 'dirty' => false, 'active' => $active === $i];
+        }
+
+        return $tabs;
+    }
+
+    private function plainRender(TabBarWidget $bar, int $columns = 60, int $rows = 1): string
+    {
+        return AnsiUtils::stripAnsiCodes(implode("\n", $bar->render(new RenderContext($columns, $rows))));
+    }
+
+    public function testScrollByRevealsClippedTrailingTabsAndSurvivesParkedFrames(): void
+    {
+        $bar = new TabBarWidget();
+        $bar->setProvider(static fn () => self::manyTabs(12));
+        $bar->beforeRender();
+        $bar->render(new RenderContext(60, 1)); // active (first) tab followed → window at 0
+
+        $bar->scrollBy(2);
+        $plain = $this->plainRender($bar);
+        $this->assertStringNotContainsString('filename-00', $plain, 'scrolled past the first tabs');
+        $this->assertStringContainsString('filename-02', $plain);
+
+        // A parked frame (active tab unchanged) keeps the manual scroll.
+        $plain = $this->plainRender($bar);
+        $this->assertStringNotContainsString('filename-00', $plain, 'the manual scroll survives re-renders');
+
+        $bar->scrollBy(-2);
+        $this->assertStringContainsString('filename-00', $this->plainRender($bar), 'scrolled back to the first tab');
+    }
+
+    public function testScrollClampsAtBothEnds(): void
+    {
+        $bar = new TabBarWidget();
+        $bar->setProvider(static fn () => self::manyTabs(12));
+        $bar->beforeRender();
+        $bar->render(new RenderContext(60, 1));
+
+        $bar->scrollBy(-5);
+        $this->assertStringContainsString('filename-00', $this->plainRender($bar), 'never scrolls before the first tab');
+
+        $bar->scrollBy(99);
+        $plain = $this->plainRender($bar);
+        $this->assertStringContainsString('filename-11', $plain, 'the last tab stays reachable');
+        $this->assertSame(60, AnsiUtils::visibleWidth($bar->render(new RenderContext(60, 1))[0]), 'no blank tail past the last tab');
+        $this->assertStringContainsString('filename-10', $plain, 'the window is clamped so the tail still fills the strip');
+    }
+
+    public function testActiveTabChangeSnapsTheWindowBack(): void
+    {
+        $active = 0;
+        $bar = new TabBarWidget();
+        $bar->setProvider(static function () use (&$active) {
+            return self::manyTabs(12, $active);
+        });
+        $bar->beforeRender();
+        $bar->render(new RenderContext(60, 1));
+
+        $bar->scrollBy(6); // active tab 0 scrolls out of view
+        $this->assertStringNotContainsString('filename-00', $this->plainRender($bar));
+
+        $active = 1; // switching tabs snaps the window to the new active tab
+        $bar->beforeRender();
+        $this->assertStringContainsString('filename-01', $this->plainRender($bar), 'the window followed the new active tab');
+    }
+
+    public function testHitMapReflectsTheScrolledWindow(): void
+    {
+        $bar = new TabBarWidget();
+        $bar->setProvider(static fn () => self::manyTabs(12));
+        $bar->beforeRender();
+        $bar->render(new RenderContext(60, 1));
+
+        $bar->scrollBy(3);
+        $bar->render(new RenderContext(60, 1));
+
+        $this->assertSame(3, $bar->tabIndexAt(0, 1), 'the first rendered tab maps to full-list index 3');
+        $this->assertNull($bar->tabAnchor(0), 'a scrolled-out tab has no anchor');
+    }
+
+    public function testVerticalScrollByAndClamps(): void
+    {
+        $bar = $this->verticalBar(self::manyShortTabs(12));
+        $bar->render(new RenderContext(80, 5)); // active (first) → rows 0-4
+
+        $bar->scrollBy(3);
+        $plain = $this->plainRender($bar, 80, 5);
+        $this->assertStringNotContainsString('t-00', $plain);
+        $this->assertStringContainsString('t-03', $plain);
+        $this->assertSame(3, $bar->tabIndexAt(0, 1), 'row 0 maps to full-list index 3');
+
+        $bar->scrollBy(99);
+        $plain = $this->plainRender($bar, 80, 5);
+        $this->assertStringContainsString('t-07', $plain, 'clamped: the last window starts at count - rows');
+        $this->assertStringContainsString('t-11', $plain);
+
+        $bar->scrollBy(-99);
+        $this->assertStringContainsString('t-00', $this->plainRender($bar, 80, 5));
+    }
+
+    public function testSetPositionResetsTheScroll(): void
+    {
+        $bar = new TabBarWidget();
+        $bar->setProvider(static fn () => self::manyShortTabs(12));
+        $bar->beforeRender();
+        $bar->render(new RenderContext(60, 1));
+        $bar->scrollBy(5);
+
+        $bar->setPosition(TabBarPosition::Left);
+        $this->assertStringContainsString('t-00', $this->plainRender($bar, 80, 5), 'a position change starts the window at the active tab again');
+    }
 }
