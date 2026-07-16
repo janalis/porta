@@ -38,10 +38,9 @@ final class MouseRouter
     /** True while a left-drag started on a tab is reordering it; $tabDragPath is the dragged buffer. */
     private bool $tabDragging = false;
     private ?string $tabDragPath = null;
-    private float $lastClickTime = 0.0;
-    private int $lastClickRow = -1;
-    private int $lastClickCol = -1;
-    private int $clickCount = 0;
+
+    /** Double/triple-click detection, kept out of the routing logic. */
+    private readonly ClickCounter $clicks;
 
     public function __construct(
         private readonly HitTester $hit,
@@ -61,7 +60,9 @@ final class MouseRouter
         private readonly SettingsMouseRouter $settings,
         private readonly BidiTui $bidi,
         private readonly DebugController $debug,
-    ) {}
+    ) {
+        $this->clicks = new ClickCounter();
+    }
 
     public function route(MouseEvent $mouse): void
     {
@@ -661,7 +662,7 @@ final class MouseRouter
             return;
         }
         $this->panes->editor()->clearExtraCarets();
-        $count = $this->clickCountAt($mouse->row, $mouse->col);
+        $count = $this->clicks->countAt($mouse->row, $mouse->col);
         if ($mouse->shift) {
             $this->panes->editor()->extendSelectionTo($rel['row'], $rel['col']);
         }
@@ -870,20 +871,4 @@ final class MouseRouter
      * Consecutive-click count at a screen cell: 1, 2 (double) or 3 (triple),
      * within a 0.4 s window on the same cell; resets otherwise.
      */
-    private function clickCountAt(int $row, int $col): int
-    {
-        $now = microtime(true);
-        $sameCell = ($now - $this->lastClickTime) < 0.4 && $row === $this->lastClickRow && $col === $this->lastClickCol;
-        if ($sameCell) {
-            $this->clickCount = min($this->clickCount + 1, 3);
-        }
-        if (!$sameCell) {
-            $this->clickCount = 1;
-        }
-        $this->lastClickTime = $now;
-        $this->lastClickRow = $row;
-        $this->lastClickCol = $col;
-
-        return $this->clickCount;
-    }
 }
