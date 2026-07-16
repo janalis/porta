@@ -179,4 +179,27 @@ final class BidiTuiTest extends TestCase
 
         self::assertSame(7, $tui->logicalColumn(99, 7)); // row not in the last frame
     }
+
+    public function testOnColumnsChangedFiresOnWidthChangesOnly(): void
+    {
+        $terminal = new VirtualTerminal(columns: 80, rows: 24);
+        $tui = $this->tuiWith($terminal);
+        $widths = [];
+        $tui->onColumnsChanged(static function (int $columns) use (&$widths): void {
+            $widths[] = $columns;
+        });
+
+        $tui->requestRender();
+        $tui->processRender();
+        self::assertSame([80], $widths, 'the first frame reports the initial width');
+
+        $tui->requestRender();
+        $tui->processRender();
+        self::assertSame([80], $widths, 'an unchanged width stays quiet');
+
+        $terminal->simulateResize(120, 30);
+        $tui->requestRender();
+        $tui->processRender();
+        self::assertSame([80, 120], $widths, 'a resize fires with the new width');
+    }
 }

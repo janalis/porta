@@ -58,6 +58,7 @@ use Porta\Layout\GitSidebar;
 use Porta\Layout\LayoutController;
 use Porta\Layout\PaneLayout;
 use Porta\Layout\PaneResizer;
+use Porta\Layout\ResponsiveLayout;
 use Porta\Layout\WorkspaceLayout;
 use Porta\Lsp\BufferReopener;
 use Porta\Lsp\CompletionController;
@@ -366,6 +367,7 @@ return static function (ContainerConfigurator $container, ContainerBuilder $buil
         PluginLifecycle::class,
         MenuRebuilder::class,
         GitViewController::class,
+        ResponsiveLayout::class,
         InputDispatcher::class,
         NavigationController::class,
         RefactorController::class,

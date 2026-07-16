@@ -34,6 +34,25 @@ final class BidiTui extends Tui
     /** @var array<int, list<array{start: int, width: int, ltr: bool}>> the last frame's pane runs, per row */
     private array $lastRuns = [];
 
+    /** The width the last frame rendered at, to fire the resize hook exactly on change. */
+    private ?int $lastColumns = null;
+
+    /** @var (callable(int): void)|null fired with the new width before the frame renders */
+    private $onColumnsChanged = null;
+
+    /**
+     * Install a hook fired whenever the terminal width changes (including the
+     * first frame), before the frame renders — so a re-arrangement it makes
+     * paints in the same frame. The render loop already re-reads the width
+     * every frame, which coalesces SIGWINCH bursts for free.
+     *
+     * @param callable(int): void $hook
+     */
+    public function onColumnsChanged(callable $hook): void
+    {
+        $this->onColumnsChanged = $hook;
+    }
+
     /**
      * Install (or clear, with nulls) the per-pane reorder applied to every frame.
      * Both are set together: null on the left-to-right stock path.
@@ -73,6 +92,14 @@ final class BidiTui extends Tui
         $paced = $this->getTerminal();
         if ($paced instanceof NonBlockingTerminal && $paced->pendingBytes() > 0) {
             return;
+        }
+
+        $columns = $this->getTerminal()->getColumns();
+        if ($columns !== $this->lastColumns) {
+            $this->lastColumns = $columns;
+            if (null !== $this->onColumnsChanged) {
+                ($this->onColumnsChanged)($columns);
+            }
         }
 
         $segmenter = $this->segmenter;

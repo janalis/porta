@@ -31,6 +31,9 @@ final class PaneLayout implements EditorAreaPanes
     /** @var list<AbstractWidget> */
     private readonly array $settingsPanes;
 
+    /** Auto-collapse state for narrow terminals — ephemeral, never persisted. */
+    private bool $sidebarCollapsed = false;
+
     public function __construct(
         private readonly WorkspaceLayout $layout,
         private readonly Translator $translator,
@@ -54,12 +57,49 @@ final class PaneLayout implements EditorAreaPanes
      */
     public function orderedEditorPanes(): array
     {
-        return $this->order($this->editorPanes);
+        return $this->order($this->currentEditorPanes());
     }
 
     public function arrangeEditorArea(): void
     {
-        $this->setPanes($this->layout->main(), $this->editorPanes);
+        $this->setPanes($this->layout->main(), $this->currentEditorPanes());
+    }
+
+    /**
+     * Drop the file-tree sidebar from the editor area (narrow terminal). The
+     * swapped-in views pick the collapsed list up through
+     * {@see orderedEditorPanes()} when they restore the editor area.
+     */
+    public function collapseSidebar(): void
+    {
+        $this->sidebarCollapsed = true;
+        $this->rearrangeEditorAreaIfOwning();
+    }
+
+    /** Restore the file-tree sidebar (the terminal is wide enough again). */
+    public function expandSidebar(): void
+    {
+        $this->sidebarCollapsed = false;
+        $this->rearrangeEditorAreaIfOwning();
+    }
+
+    /** Re-arrange the main container only while the editor area owns it (not a swapped-in view). */
+    private function rearrangeEditorAreaIfOwning(): void
+    {
+        if (!$this->views->isGitOpen() && !$this->views->isSettingsOpen()) {
+            $this->arrangeEditorArea();
+        }
+    }
+
+    /**
+     * The editor area's canonical panes, minus the tree and its separator
+     * while the sidebar is auto-collapsed.
+     *
+     * @return list<AbstractWidget>
+     */
+    private function currentEditorPanes(): array
+    {
+        return $this->sidebarCollapsed ? \array_slice($this->editorPanes, offset: 2) : $this->editorPanes;
     }
 
     public function arrangeGitArea(): void

@@ -27,6 +27,7 @@ use Porta\Input\HitTester;
 use Porta\Input\InputDispatcher;
 use Porta\Layout\LayoutController;
 use Porta\Layout\PaneLayout;
+use Porta\Layout\ResponsiveLayout;
 use Porta\Layout\WorkspaceLayout;
 use Porta\Lsp\LspBootstrapper;
 use Porta\Lsp\LspSessionPool;
@@ -469,6 +470,9 @@ final class Ide
         // unreferenced service would otherwise never exist); its remote-
         // completed refresh rides the compiled #[AsEventListener] map.
         $this->service(GitViewController::class);
+        // Eager for the same reason: registers itself on the render loop's
+        // width hook so the sidebar auto-collapses in narrow terminals.
+        $this->service(ResponsiveLayout::class);
     }
 
     // --- File handling ----------------------------------------------------------
