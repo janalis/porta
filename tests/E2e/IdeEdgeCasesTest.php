@@ -869,8 +869,8 @@ final class IdeEdgeCasesTest extends TestCase
                     // Hover up from the bottom row until the highlight lands on a
                     // selectable item other than the initially-selected first one.
                     $moved = false;
-                    for ($row = $region['count'] - 1; $row >= 0 && !$moved; --$row) {
-                        $tui->handleInput(\sprintf("\x1b[<35;%d;%dM", $region['col'] + 3, $region['top'] + $row + 1));
+                    for ($row = $region->count - 1; $row >= 0 && !$moved; --$row) {
+                        $tui->handleInput(\sprintf("\x1b[<35;%d;%dM", $region->col + 3, $region->top + $row + 1));
                         $moved = $selected->getValue($menu) !== $before;
                     }
                     $this->assertTrue($moved, 'hovering a menu item moves the highlight to it');

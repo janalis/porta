@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Porta\Ui;
 
+use Porta\Overlay\DropdownRegion;
 use Porta\Overlay\FloatingRegions;
 use Symfony\Component\Tui\Render\Renderer;
 use Symfony\Component\Tui\Render\WidgetRect;
@@ -21,7 +22,6 @@ use Symfony\Component\Tui\Widget\ContainerWidget;
  *
  * @phpstan-type Run array{start: int, width: int, ltr: bool}
  * @phpstan-type Leaf array{rect: WidgetRect, ltr: bool}
- * @phpstan-type Region array{top: int, col: int, width: int, count: int}
  */
 final class PaneSegmenter
 {
@@ -79,8 +79,8 @@ final class PaneSegmenter
      * (later leaf, then any dropdown region on top), then contiguous same-owner
      * columns are coalesced into runs. Uncovered gaps become verbatim runs.
      *
-     * @param list<array{rect: WidgetRect, ltr: bool}>          $leaves  paint order
-     * @param list<array{top: int, col: int, width: int, count: int}> $regions topmost, always RTL
+     * @param list<array{rect: WidgetRect, ltr: bool}> $leaves  paint order
+     * @param list<DropdownRegion>                     $regions topmost, always RTL
      *
      * @return list<array{start: int, width: int, ltr: bool}>
      */
@@ -102,10 +102,10 @@ final class PaneSegmenter
             }
         }
         foreach ($regions as $index => $region) {
-            if ($row < $region['top'] || $row >= ($region['top'] + $region['count'])) {
+            if (!$region->coversRow($row)) {
                 continue;
             }
-            for ($col = max(0, $region['col']), $end = min($columns, $region['col'] + $region['width']); $col < $end; ++$col) {
+            for ($col = max(0, $region->col), $end = min($columns, $region->col + $region->width); $col < $end; ++$col) {
                 $owner[$col] = 'd'.$index;
                 $ltr[$col] = false;
             }

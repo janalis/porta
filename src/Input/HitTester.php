@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Porta\Input;
 
+use Porta\Overlay\DropdownRegion;
 use Porta\Widget\HoverableList;
 use Symfony\Component\Tui\Render\Renderer;
 use Symfony\Component\Tui\Render\WidgetRect;
@@ -72,15 +73,13 @@ final class HitTester
     /**
      * Row offset of a screen cell inside a floating dropdown region
      * (as tracked by the overlay controller), or null when outside.
-     *
-     * @param array{top: int, col: int, width: int, count: int}|null $region
      */
-    public function hitRegion(?array $region, int $row, int $col): ?int
+    public function hitRegion(?DropdownRegion $region, int $row, int $col): ?int
     {
-        if (null === $region || $row < $region['top'] || $row >= ($region['top'] + $region['count']) || $col < $region['col'] || $col >= ($region['col'] + $region['width'])) {
+        if (null === $region || !$region->contains($row, $col)) {
             return null;
         }
 
-        return $row - $region['top'];
+        return $region->rowAt($row);
     }
 }

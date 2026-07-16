@@ -12,6 +12,6 @@ namespace Porta\Overlay;
  */
 interface FloatingRegions
 {
-    /** @return list<array{top: int, col: int, width: int, count: int}> */
+    /** @return list<DropdownRegion> */
     public function regions(): array;
 }

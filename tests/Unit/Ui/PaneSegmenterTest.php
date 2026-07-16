@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Porta\Tests\Unit\Ui;
 
 use PHPUnit\Framework\TestCase;
+use Porta\Overlay\DropdownRegion;
 use Porta\Ui\PaneSegmenter;
 use Symfony\Component\Tui\Render\Renderer;
 use Symfony\Component\Tui\Render\WidgetRect;
@@ -73,7 +74,7 @@ final class PaneSegmenterTest extends TestCase
         $leaves = [
             ['rect' => new WidgetRect(row: 0, col: 0, columns: 20, rows: 3), 'ltr' => true], // LTR editor
         ];
-        $regions = [['top' => 0, 'col' => 5, 'width' => 5, 'count' => 2]];
+        $regions = [new DropdownRegion(0, 5, 5, 2)];
 
         $runs = PaneSegmenter::runsForRow($leaves, $regions, 0, 20);
 
@@ -103,7 +104,7 @@ final class PaneSegmenterTest extends TestCase
         $leaves = [
             ['rect' => new WidgetRect(row: 0, col: 0, columns: 10, rows: 3), 'ltr' => false],
         ];
-        $regions = [['top' => 5, 'col' => 2, 'width' => 3, 'count' => 2]]; // rows 5-6 only
+        $regions = [new DropdownRegion(5, 2, 3, 2)]; // rows 5-6 only
 
         // Row 0 is above the dropdown → the region owns nothing here.
         $this->assertRuns(

@@ -22,15 +22,11 @@ use Symfony\Component\Tui\Widget\AbstractWidget;
  * pane, flipping up on bottom overflow), slices it into per-widget spans via
  * {@see localSpans}, and pushes them onto each pane through `setMenuOverlay`.
  * The tracked dropdown rectangles are exposed for the mouse router's hit-testing.
- *
- * @phpstan-type Dropdown array{top: int, col: int, width: int, count: int}
  */
 final class MenuOverlayController implements FloatingRegions
 {
-    /** @var Dropdown|null */
-    private ?array $menuDropdown = null;
-    /** @var Dropdown|null */
-    private ?array $contextMenuDropdown = null;
+    private ?DropdownRegion $menuDropdown = null;
+    private ?DropdownRegion $contextMenuDropdown = null;
     private int $contextAnchorRow = 0;
     private int $contextAnchorCol = 0;
 
@@ -42,22 +38,14 @@ final class MenuOverlayController implements FloatingRegions
         private readonly MenuOverlayPanes $panes,
     ) {}
 
-    /**
-     * The app-menu dropdown box, for click/hover hit-testing; null when closed.
-     *
-     * @return array{top: int, col: int, width: int, count: int}|null
-     */
-    public function menuDropdown(): ?array
+    /** The app-menu dropdown box, for click/hover hit-testing; null when closed. */
+    public function menuDropdown(): ?DropdownRegion
     {
         return $this->menuDropdown;
     }
 
-    /**
-     * The context-menu dropdown box, for click hit-testing; null when closed.
-     *
-     * @return array{top: int, col: int, width: int, count: int}|null
-     */
-    public function contextMenuDropdown(): ?array
+    /** The context-menu dropdown box, for click hit-testing; null when closed. */
+    public function contextMenuDropdown(): ?DropdownRegion
     {
         return $this->contextMenuDropdown;
     }
@@ -106,7 +94,7 @@ final class MenuOverlayController implements FloatingRegions
         $top = $menuRect->row + $menuRect->rows;
         $segments = $this->menuBar->dropdownSegments($panelWidth);
 
-        $this->menuDropdown = ['top' => $top, 'col' => $anchor, 'width' => $panelWidth, 'count' => \count($segments)];
+        $this->menuDropdown = new DropdownRegion($top, $anchor, $panelWidth, \count($segments));
         $this->pushOverlays($segments, $top, $anchor, $panelWidth, $this->panes->current());
     }
 
@@ -141,7 +129,7 @@ final class MenuOverlayController implements FloatingRegions
             : $this->contextAnchorRow;
 
         $segments = $this->contextMenu->segments($panelWidth);
-        $this->contextMenuDropdown = ['top' => $top, 'col' => $col, 'width' => $panelWidth, 'count' => \count($segments)];
+        $this->contextMenuDropdown = new DropdownRegion($top, $col, $panelWidth, \count($segments));
         // The editor-layout panes: the sidebar↔editor separator column and the
         // (conditionally hidden) breadcrumb also sit under a menu that spills
         // across the sidebar boundary.
