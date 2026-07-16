@@ -184,7 +184,7 @@ final class CodeEditorWidget extends AbstractWidget implements ActiveFileProvide
         $this->cursorStyle = $cursorStyle ?? new CursorStyle();
         $this->callbacks = new EditorCallbacks();
         $this->overlayHost = new OverlayHost($this->invalidate(...), $this->styles, $this->cursorStyle);
-        $this->findModal = new FindInFilesModal($this->invalidate(...), $this->palette, $this->cursorStyle);
+        $this->findModal = new FindInFilesModal($this->invalidate(...), $this->palette, $this->cursorStyle, $this->styles);
         $this->document = new Document('');
         $this->highlighter = new CodeHighlighter(syntaxTheme: $this->syntaxTheme);
         $this->foldModel = new FoldModel($this->document);

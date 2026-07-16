@@ -8,12 +8,12 @@ use Porta\Container\AsWidget;
 use Porta\Support\AnsiText;
 use Porta\Support\IntMath;
 use Porta\Terminal\TerminalBuffer;
-use Porta\Ui\ColorPalette;
 use Porta\Ui\CursorStyle;
 use Porta\Ui\LtrPane;
-use Porta\Ui\Palette;
 use Porta\Ui\Role;
 use Porta\Ui\Sgr;
+use Porta\Ui\Theme\DarkTheme;
+use Porta\Ui\Theme\Styles;
 use Symfony\Component\Tui\Ansi\AnsiUtils;
 use Symfony\Component\Tui\Input\Key;
 use Symfony\Component\Tui\Render\RenderContext;
@@ -58,12 +58,12 @@ final class TerminalPanelWidget extends OverlayWidget implements FocusableInterf
     /** @var (callable(int): void)|null +1 next / -1 prev */
     private $onSessionCycled = null;
 
-    private readonly Palette $palette;
+    private readonly Styles $styles;
     private readonly CursorStyle $cursorStyle;
 
-    public function __construct(?Palette $palette = null, ?CursorStyle $cursorStyle = null)
+    public function __construct(?Styles $styles = null, ?CursorStyle $cursorStyle = null)
     {
-        $this->palette = $palette ?? ColorPalette::dark();
+        $this->styles = $styles ?? new Styles(DarkTheme::definition());
         $this->cursorStyle = $cursorStyle ?? new CursorStyle();
         $this->buffer = new TerminalBuffer();
         $this->visibleRows = 12;
@@ -327,19 +327,19 @@ final class TerminalPanelWidget extends OverlayWidget implements FocusableInterf
             if (($used + $part['width']) > $columns) {
                 break;
             }
-            $style = $part['active'] ? $this->palette->of(Role::Toolbar).$this->palette->of(Role::Bright).Sgr::BOLD : $this->palette->of(Role::Toolbar).$this->palette->of(Role::Subtle);
-            $closeStyle = $part['active'] ? $this->palette->of(Role::CurrentLineNumber) : $this->palette->of(Role::Gutter);
-            $text = str_replace('×', $closeStyle.'×'.Sgr::DEFAULT_FG, $part['text']);
-            $line .= $style.$text.Sgr::RESET.$this->palette->of(Role::Placeholder)."│\x1b[0m";
+            $style = $part['active'] ? $this->styles->merge(Role::Toolbar, Role::Bright)->withBold() : $this->styles->merge(Role::Toolbar, Role::Subtle);
+            $closeStyle = $part['active'] ? $this->styles->of(Role::CurrentLineNumber) : $this->styles->of(Role::Gutter);
+            $text = str_replace('×', $closeStyle->apply('×'), $part['text']);
+            $line .= $style->apply($text).$this->styles->of(Role::Placeholder)->apply('│');
             $this->lastTabLayout[] = ['index' => $index, 'start' => $used, 'width' => $part['width'], 'closeStart' => $used + $part['closeOffset'], 'closeWidth' => 2];
             $used += $part['width'];
         }
         if ($this->scrollBack > 0) {
-            $line .= \sprintf("%s%s  [scrolled +%d]\x1b[0m", $this->palette->of(Role::Toolbar), $this->palette->of(Role::Dim), $this->scrollBack);
+            $line .= $this->styles->merge(Role::Toolbar, Role::Dim)->apply(\sprintf('  [scrolled +%d]', $this->scrollBack));
         }
 
         // A Toolbar-background base under the whole row, then the styled tabs.
-        return $this->palette->of(Role::Toolbar).AnsiText::padRight($line, $columns).Sgr::RESET;
+        return $this->styles->of(Role::Toolbar)->apply(AnsiText::padRight($line, $columns));
     }
 
     /** @return array<string, string[]> */

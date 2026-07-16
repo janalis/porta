@@ -6,10 +6,9 @@ namespace Porta\Widget;
 
 use Porta\Support\AnsiText;
 use Porta\Ui\CaretVisibility;
-use Porta\Ui\Palette;
 use Porta\Ui\Role;
-use Porta\Ui\Sgr;
 use Porta\Ui\TextField;
+use Porta\Ui\Theme\Styles;
 
 /**
  * Renders a labelled single-line input row for the search surfaces — the
@@ -20,13 +19,13 @@ use Porta\Ui\TextField;
  */
 final class SearchFieldRenderer
 {
-    public static function row(string $label, TextField $field, CaretVisibility $caret, string $hint, int $width, Role $bg, Palette $palette): string
+    public static function row(string $label, TextField $field, CaretVisibility $caret, string $hint, int $width, Role $bg, Styles $styles): string
     {
         $line = ' '.$label.': '.$field->render(cursor: $caret);
         if ('' !== $hint) {
-            $line .= $palette->of(Role::Dim).$hint.Sgr::DEFAULT_FG;
+            $line .= $styles->of(Role::Dim)->apply($hint);
         }
 
-        return $palette->of($bg).AnsiText::scrollLineToCaret($line, $width).Sgr::RESET;
+        return $styles->of($bg)->apply(AnsiText::scrollLineToCaret($line, $width));
     }
 }

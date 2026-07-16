@@ -13,6 +13,8 @@ use Porta\Ui\Palette;
 use Porta\Ui\Role;
 use Porta\Ui\Sgr;
 use Porta\Ui\TextField;
+use Porta\Ui\Theme\DarkTheme;
+use Porta\Ui\Theme\Styles;
 use Porta\Widget\MatchRowDecorator;
 use Porta\Widget\Render\HeaderRenderer;
 use Porta\Widget\Render\OverlayCompositor;
@@ -117,12 +119,17 @@ final class FindInFilesModal
 
     private readonly Palette $palette;
 
+    /** Transitional alongside the palette until this modal fully migrates. */
+    private readonly Styles $styles;
+
     public function __construct(
         private readonly \Closure $invalidate,
         ?Palette $palette = null,
         ?CursorStyle $cursorStyle = null,
+        ?Styles $styles = null,
     ) {
         $this->palette = $palette ?? ColorPalette::dark();
+        $this->styles = $styles ?? new Styles(DarkTheme::definition());
         $this->query = new TextField(style: $cursorStyle);
         $this->replace = new TextField(style: $cursorStyle);
         $this->mask = new TextField(style: $cursorStyle);
@@ -650,7 +657,7 @@ final class FindInFilesModal
     /** A labelled input row (`Find:`/`Replace:`/`Mask:` + field), scrolled to keep the caret visible. */
     private function fieldRow(string $label, TextField $field, CaretVisibility $shown, string $hint, int $width): string
     {
-        return SearchFieldRenderer::row($label, $field, $shown, $hint, $width, Role::Toolbar, $this->palette);
+        return SearchFieldRenderer::row($label, $field, $shown, $hint, $width, Role::Toolbar, $this->styles);
     }
 
     /** How many matches would be replaced (all minus the excluded). */

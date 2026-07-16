@@ -6,13 +6,12 @@ namespace Porta\Widget;
 
 use Porta\Container\AsWidget;
 use Porta\Debug\DebugState;
-use Porta\Ui\ColorPalette;
 use Porta\Ui\ListNavigation;
 use Porta\Ui\ListSelection;
 use Porta\Ui\LtrPane;
-use Porta\Ui\Palette;
 use Porta\Ui\Role;
-use Porta\Ui\Sgr;
+use Porta\Ui\Theme\DarkTheme;
+use Porta\Ui\Theme\Styles;
 use Porta\Widget\Render\HeaderRenderer;
 use Symfony\Component\Tui\Ansi\AnsiUtils;
 use Symfony\Component\Tui\Input\Key;
@@ -63,11 +62,11 @@ final class DebugPanelWidget extends OverlayWidget implements FocusableInterface
     /** @var (callable(int): void)|null a watch row's Delete key, by watch index */
     private $onRemoveWatch = null;
 
-    private readonly Palette $palette;
+    private readonly Styles $styles;
 
-    public function __construct(?Palette $palette = null)
+    public function __construct(?Styles $styles = null)
     {
-        $this->palette = $palette ?? ColorPalette::dark();
+        $this->styles = $styles ?? new Styles(DarkTheme::definition());
         $this->list = new ListSelection();
         $this->visibleRows = 10;
     }
@@ -243,18 +242,18 @@ final class DebugPanelWidget extends OverlayWidget implements FocusableInterface
             DebugState::Terminated => 'terminated',
         };
         $legend = '  F8 over · F7 into · ⇧F8 out · F9 resume · ^F2 stop';
-        $prefix = ' Debug: '.$this->title.$this->palette->of(Role::Dim).'  '.$status.$legend.Sgr::DEFAULT_FG;
-        $lines = [HeaderRenderer::render($prefix, $columns, $this->palette->of(Role::HeaderBar).Sgr::BOLD)];
+        $prefix = ' Debug: '.$this->title.$this->styles->of(Role::Dim)->apply('  '.$status.$legend);
+        $lines = [HeaderRenderer::render($prefix, $columns, $this->styles->of(Role::HeaderBar)->withBold()->getAnsiRestore())];
 
         $scroll = $this->list->follow($this->visibleRows);
         foreach (\array_slice($this->rows, $scroll, $this->visibleRows) as $i => $row) {
             $isSelected = $this->list->isSelected($scroll + $i);
-            $bg = match (true) {
-                !$isSelected => $this->palette->of(Role::Toolbar),
-                $this->focused => $this->palette->of(Role::SelectedRow),
-                default => $this->palette->of(Role::SelectedRowUnfocused),
-            };
-            $lines[] = $bg.AnsiUtils::truncateToWidth($this->rowText($row), $columns, '…', pad: true).Sgr::RESET;
+            $bg = $this->styles->of(match (true) {
+                !$isSelected => Role::Toolbar,
+                $this->focused => Role::SelectedRow,
+                default => Role::SelectedRowUnfocused,
+            });
+            $lines[] = $bg->apply(AnsiUtils::truncateToWidth($this->rowText($row), $columns, '…', pad: true));
         }
 
         return $lines;
@@ -289,9 +288,9 @@ final class DebugPanelWidget extends OverlayWidget implements FocusableInterface
 
         return match ($row->kind) {
             DebugRowKind::Watch => $this->watchText($row),
-            DebugRowKind::Section => ' '.$this->palette->of(Role::Dim).$row->label.Sgr::DEFAULT_FG,
-            DebugRowKind::Frame => ' '.$indent.$row->label.'  '.$this->palette->of(Role::TabAccent).$row->path.':'.($row->line + 1).Sgr::DEFAULT_FG,
-            DebugRowKind::Scope => ' '.$indent.(array_key_exists($row->ref, $this->expanded) ? '▾ ' : '▸ ').$this->palette->of(Role::Bright).$row->label.Sgr::DEFAULT_FG,
+            DebugRowKind::Section => ' '.$this->styles->of(Role::Dim)->apply($row->label),
+            DebugRowKind::Frame => ' '.$indent.$row->label.'  '.$this->styles->of(Role::TabAccent)->apply($row->path.':'.($row->line + 1)),
+            DebugRowKind::Scope => ' '.$indent.(array_key_exists($row->ref, $this->expanded) ? '▾ ' : '▸ ').$this->styles->of(Role::Bright)->apply($row->label),
             DebugRowKind::Variable => ' '.$indent.$this->expandArrow($row->ref).$row->label,
         };
     }
@@ -313,8 +312,8 @@ final class DebugPanelWidget extends OverlayWidget implements FocusableInterface
         $arrow = $this->expandArrow($row->ref);
         $value = match (true) {
             null === $watch => '',
-            null !== $watch['error'] => $this->palette->of(Role::Dim).$watch['error'].Sgr::DEFAULT_FG,
-            null === $watch['value'] => $this->palette->of(Role::Dim).'…'.Sgr::DEFAULT_FG,
+            null !== $watch['error'] => $this->styles->of(Role::Dim)->apply($watch['error']),
+            null === $watch['value'] => $this->styles->of(Role::Dim)->apply('…'),
             default => $watch['value'],
         };
 
