@@ -26,4 +26,13 @@ final class Themes
             default => DarkTheme::definition(),
         };
     }
+
+    /**
+     * The definition wrapped in a {@see Styles} holder so the theme can be
+     * swapped live. This is what the container binds; widgets hold the holder.
+     */
+    public static function createSwitchable(ColorMode $color, string $theme): Styles
+    {
+        return new Styles(self::definition($color, $theme));
+    }
 }

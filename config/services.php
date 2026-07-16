@@ -114,6 +114,8 @@ use Porta\Ui\StatusBarProvider;
 use Porta\Ui\SwitchablePalette;
 use Porta\Ui\TabListProvider;
 use Porta\Ui\TerminalStateRefresher;
+use Porta\Ui\Theme\Styles;
+use Porta\Ui\Theme\Themes;
 use Porta\Ui\WorkbenchActions;
 use Porta\Ui\WorkspaceViews;
 use Porta\Widget\BreadcrumbsWidget;
@@ -286,6 +288,14 @@ return static function (ContainerConfigurator $container, ContainerBuilder $buil
         ->factory([PaletteFactory::class, 'createSwitchable'])
         ->args([env('enum:'.ColorMode::class.':PORTA_ANSI'), env('PORTA_THEME')]);
     $services->alias(Palette::class, SwitchablePalette::class);
+
+    // The same scheme as tui Styles per Role — the successor of the palette
+    // (which it will replace once every widget consumes Styles): one swappable
+    // holder built from the same parameters, swapped by the same theme apply.
+    $services
+        ->set(Styles::class)
+        ->factory([Themes::class, 'createSwitchable'])
+        ->args([env('enum:'.ColorMode::class.':PORTA_ANSI'), env('PORTA_THEME')]);
 
     // The syntax-highlighting theme, likewise a live-swappable holder. Buffers and
     // the editor/diff widgets autowire TerminalTheme via the alias; Ide resolves
