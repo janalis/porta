@@ -608,6 +608,10 @@ final class ResultsPanelWidget extends OverlayWidget implements FocusableInterfa
 
             return $this->highlightMatch($text, $prefixWidth, $result, $bg, $columns);
         }
+        if ('' === $result['path']) {
+            // Location-less rows (the log tools): plain text, no path accent.
+            return $this->highlightMatch(' '.$result['text'], 1, $result, $bg, $columns);
+        }
         $location = $result['path'].':'.($result['line'] + 1);
         $prefixWidth = 1 + mb_strwidth($location) + 2; // ` ` + `path:line` + `  `
         $text = ' '.$this->styles->of(Role::TabAccent)->apply($location).'  '.$result['text'];

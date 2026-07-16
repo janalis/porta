@@ -90,27 +90,13 @@ final class WorkbenchActions
     }
 
     /**
-     * Show the captured language-server output (newest first) in the editor's
-     * list overlay — the only way to see why a server misbehaves without
-     * leaving the IDE.
+     * Show the captured language-server output (newest first) as a dock tool
+     * — the only way to see why a server misbehaves without leaving the IDE.
+     * Opens fine empty and then live-tails via {@see DockLiveRefreshListener}.
      */
     public function showLspLog(): void
     {
-        $entries = $this->lspLog->entries();
-        if ([] === $entries) {
-            $this->notifier->flash($this->translator->trans('No LSP server output yet'));
-
-            return;
-        }
-        if (!$this->bufferService->ensureTextEditorActive()) {
-            return;
-        }
-        $items = [];
-        foreach (array_reverse($entries) as $entry) {
-            $items[] = ['label' => $entry['text'], 'hint' => $entry['time']->format('H:i:s'), 'value' => $entry['text']];
-        }
-        $this->editor->openListOverlay($this->translator->trans('LSP Server Log'), $items, static function (string $value): void {});
-        $this->tui->requestRender();
+        $this->panels->showList(ResultsPanelMode::LspLog, $this->translator->trans('LSP Server Log'), LogRows::build($this->lspLog->entries()));
     }
 
     /** Move the active tab $offset positions in the strip (keyboard reordering). */

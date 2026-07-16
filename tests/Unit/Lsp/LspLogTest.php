@@ -5,14 +5,16 @@ declare(strict_types=1);
 namespace Porta\Tests\Unit\Lsp;
 
 use PHPUnit\Framework\TestCase;
+use Porta\Event\LspLogAppended;
 use Porta\Lsp\LspLog;
 use Symfony\Component\Clock\MockClock;
+use Symfony\Component\EventDispatcher\EventDispatcher;
 
 final class LspLogTest extends TestCase
 {
     public function testSplitsChunksIntoTrimmedNonEmptyLines(): void
     {
-        $log = new LspLog(new MockClock('2026-07-14 10:00:00'));
+        $log = new LspLog(new MockClock('2026-07-14 10:00:00'), new EventDispatcher());
         $log->append("first line\n  second line  \n\n");
         $log->append('partial');
 
@@ -22,7 +24,7 @@ final class LspLogTest extends TestCase
 
     public function testCapsTheHistoryAtTheNewestEntries(): void
     {
-        $log = new LspLog(new MockClock());
+        $log = new LspLog(new MockClock(), new EventDispatcher());
         for ($i = 1; $i <= 205; ++$i) {
             $log->append("line {$i}");
         }
@@ -35,9 +37,25 @@ final class LspLogTest extends TestCase
 
     public function testTruncatesOverlongLines(): void
     {
-        $log = new LspLog(new MockClock());
+        $log = new LspLog(new MockClock(), new EventDispatcher());
         $log->append(str_repeat('x', times: 600));
 
         $this->assertSame(500, mb_strlen($log->entries()[0]['text']));
+    }
+
+    public function testAnnouncesGrowthButNotBlankChunks(): void
+    {
+        $appended = 0;
+        $dispatcher = new EventDispatcher();
+        $dispatcher->addListener(LspLogAppended::class, static function () use (&$appended): void {
+            ++$appended;
+        });
+        $log = new LspLog(new MockClock(), $dispatcher);
+
+        $log->append("one\ntwo\n");
+        $this->assertSame(1, $appended, 'one event per chunk, however many lines it adds');
+
+        $log->append("  \n\n");
+        $this->assertSame(1, $appended, 'an all-blank chunk changes nothing and stays silent');
     }
 }

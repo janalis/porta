@@ -7,6 +7,8 @@ namespace Porta\Tests\Unit\Ui;
 use PHPUnit\Framework\TestCase;
 use Porta\Editor\BufferManager;
 use Porta\Event\DiagnosticsChanged;
+use Porta\Event\LspLogAppended;
+use Porta\Lsp\LspLog;
 use Porta\Search\ProblemRows;
 use Porta\Tests\Support\TestBottomDock;
 use Porta\Ui\BottomDock;
@@ -15,6 +17,8 @@ use Porta\Ui\ResultsPanelMode;
 use Porta\Widget\DebugPanelWidget;
 use Porta\Widget\ResultsPanelWidget;
 use Porta\Widget\TerminalPanelWidget;
+use Symfony\Component\Clock\MockClock;
+use Symfony\Component\EventDispatcher\EventDispatcher;
 use Symfony\Component\Tui\Ansi\AnsiUtils;
 use Symfony\Component\Tui\Input\Keybindings;
 use Symfony\Component\Tui\Render\RenderContext;
@@ -29,6 +33,7 @@ final class DockLiveRefreshListenerTest extends TestCase
     private ResultsPanelWidget $results;
     private BufferManager $buffers;
     private BottomDock $dock;
+    private LspLog $lspLog;
 
     private function listener(): DockLiveRefreshListener
     {
@@ -36,8 +41,9 @@ final class DockLiveRefreshListenerTest extends TestCase
         $this->results = new ResultsPanelWidget();
         $this->buffers = new BufferManager();
         $this->dock = TestBottomDock::create($this->tui, new TerminalPanelWidget(), $this->results, new DebugPanelWidget());
+        $this->lspLog = new LspLog(new MockClock('2026-07-16 10:00:00'), new EventDispatcher());
 
-        return new DockLiveRefreshListener($this->dock, $this->results, $this->tui, new ProblemRows($this->buffers, '/p'));
+        return new DockLiveRefreshListener($this->dock, $this->results, $this->tui, new ProblemRows($this->buffers, '/p'), $this->lspLog);
     }
 
     private function plainPanel(): string
@@ -71,6 +77,17 @@ final class DockLiveRefreshListenerTest extends TestCase
 
         $this->assertFalse($this->results->isVisible());
         $this->assertStringContainsString('1 results', $this->results->statusText(), 'the hidden tab keeps its count fresh for the strip');
+    }
+
+    public function testRefreshesAnOpenLspLogTab(): void
+    {
+        $listener = $this->listener();
+        $this->dock->showList(ResultsPanelMode::LspLog, 'LSP Server Log', []);
+
+        $this->lspLog->append('indexing…');
+        $listener->onLspLogAppended(new LspLogAppended());
+
+        $this->assertStringContainsString('10:00:00  indexing…', $this->plainPanel(), 'the open log tab tailed the new line');
     }
 
     public function testNoRefreshWhenThePanelServesAnotherToolOrIsClosed(): void

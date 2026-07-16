@@ -132,6 +132,9 @@ final class SearchUiWiring
         });
 
         $this->resultsPanel->onJump(function (string $relativePath, int $line): void {
+            if (ResultsPanelMode::LspLog === $this->panels->mode()) {
+                return; // log rows carry no file location
+            }
             if (ResultsPanelMode::Action === $this->panels->mode()) {
                 $this->commandPalette->runAt($line);
 

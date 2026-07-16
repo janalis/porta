@@ -7025,7 +7025,7 @@ final class IdeEdgeCasesTest extends TestCase
         );
     }
 
-    public function testLspLogCommandShowsCapturedServerOutput(): void
+    public function testLspLogCommandShowsCapturedServerOutputInTheDock(): void
     {
         putenv('PATH=/nonexistent');
         $project = new TempProject(['a.php' => "<?php\n\$a = 1;\n"]);
@@ -7035,41 +7035,39 @@ final class IdeEdgeCasesTest extends TestCase
             $project->path('a.php'),
             [
                 200 => function ($tui, $terminal, $ide): void {
-                    // No server ran (PATH is empty): the command just flashes.
-                    new \ReflectionProperty($ide, 'commands')->getValue($ide)->run('ide_lsp_log');
-                    $tui->tick();
-                    $this->assertStringContainsString('No LSP server output yet', AnsiUtils::stripAnsiCodes($terminal->getOutput()));
-
-                    $locator = new \ReflectionProperty($ide, 'locator')->getValue($ide);
-                    $locator->get(\Porta\Lsp\LspLog::class)->append("[php-ls] fatal: cannot index\n");
-                },
-                400 => function ($tui, $terminal, $ide): void {
-                    $terminal->clearOutput();
+                    // No server ran (PATH is empty): the tool opens empty and
+                    // will live-tail — the exact "why is my server silent" flow.
                     new \ReflectionProperty($ide, 'commands')->getValue($ide)->run('ide_lsp_log');
                     $tui->tick();
                     $screen = AnsiUtils::stripAnsiCodes($terminal->getOutput());
-                    $this->assertStringContainsString('LSP Server Log', $screen, 'the log overlay opened');
-                    $this->assertStringContainsString('[php-ls] fatal: cannot index', $screen, 'the captured server line is reviewable');
-                    $tui->handleInput("\x1b"); // Esc closes the overlay
+                    $this->assertStringContainsString('LSP Server Log', $screen, 'the dock tab opened');
+                    $this->assertStringContainsString('0 results', $screen, 'empty so far');
+
+                    // Output arrives while the tab is open: it appears without re-running the command.
+                    $locator = new \ReflectionProperty($ide, 'locator')->getValue($ide);
+                    $locator->get(\Porta\Lsp\LspLog::class)->append("[php-ls] fatal: cannot index\n");
+                    $locator->get(\Porta\Lsp\LspLog::class)->append("[php-ls] retrying\n");
+                    $tui->tick();
+                    $panelText = AnsiUtils::stripAnsiCodes(implode("\n", $tui->getById('results')->render(new \Symfony\Component\Tui\Render\RenderContext(160, 12))));
+                    $this->assertStringContainsString('[php-ls] fatal: cannot index', $panelText, 'the captured server line appeared live');
+                    $this->assertLessThan(
+                        strpos($panelText, needle: 'fatal: cannot index'),
+                        strpos($panelText, needle: 'retrying'),
+                        'newest first',
+                    );
+                    // Enter on a log row is inert — nothing to jump to.
+                    $tui->setFocus($tui->getById('results'));
+                    $tui->handleInput("\r");
+                    $tui->tick();
+                    $this->assertTrue($tui->getById('results')->isVisible(), 'the log tab stays put on Enter');
+                    $tui->handleInput("\x1b"); // Esc hides the dock
+                    $tui->tick();
+                    $this->assertFalse($tui->getById('results')->isVisible());
                 },
             ],
         );
 
-        // With only an image open, the editor-hosted overlay refuses with a flash.
-        $imageProject = new TempProject(['img.png' => $this->twoColorPng(4, 4)]);
-        $this->runIde(
-            $imageProject,
-            $imageProject->path('img.png'),
-            [
-                200 => function ($tui, $terminal, $ide): void {
-                    $locator = new \ReflectionProperty($ide, 'locator')->getValue($ide);
-                    $locator->get(\Porta\Lsp\LspLog::class)->append('logged');
-                    new \ReflectionProperty($ide, 'commands')->getValue($ide)->run('ide_lsp_log');
-                    $tui->tick();
-                    $this->assertStringContainsString('Not available while viewing an image', AnsiUtils::stripAnsiCodes($terminal->getOutput()));
-                },
-            ],
-        );
+        $this->addToAssertionCount(1);
     }
 
     public function testF6CyclesFocusAcrossPanesAndDelegatesToViews(): void

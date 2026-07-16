@@ -5,6 +5,8 @@ declare(strict_types=1);
 namespace Porta\Ui;
 
 use Porta\Event\DiagnosticsChanged;
+use Porta\Event\LspLogAppended;
+use Porta\Lsp\LspLog;
 use Porta\Search\ProblemRows;
 use Porta\Widget\ResultsPanelWidget;
 use Symfony\Component\EventDispatcher\Attribute\AsEventListener;
@@ -26,12 +28,19 @@ final class DockLiveRefreshListener
         private readonly ResultsPanelWidget $resultsPanel,
         private readonly Tui $tui,
         private readonly ProblemRows $problemRows,
+        private readonly LspLog $lspLog,
     ) {}
 
     #[AsEventListener]
     public function onDiagnosticsChanged(DiagnosticsChanged $event): void
     {
         $this->refresh(ResultsPanelMode::Problems, $this->problemRows->build(...));
+    }
+
+    #[AsEventListener]
+    public function onLspLogAppended(LspLogAppended $event): void
+    {
+        $this->refresh(ResultsPanelMode::LspLog, fn (): array => LogRows::build($this->lspLog->entries()));
     }
 
     /** @param callable(): list<array{path: string, line: int, text: string}> $rows */

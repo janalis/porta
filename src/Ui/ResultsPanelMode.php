@@ -23,4 +23,6 @@ enum ResultsPanelMode
     case Problems;
     /** Project-wide TODO/FIXME scan. */
     case Todo;
+    /** The captured language-server output, newest first (inert rows). */
+    case LspLog;
 }
