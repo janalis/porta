@@ -7,12 +7,11 @@ namespace Porta\Widget\Git;
 use Porta\Container\AsWidget;
 use Porta\Git\ChangeEntry;
 use Porta\I18n\Translator;
-use Porta\Ui\ColorPalette;
 use Porta\Ui\ListNavigation;
 use Porta\Ui\ListSelection;
-use Porta\Ui\Palette;
 use Porta\Ui\Role;
-use Porta\Ui\Sgr;
+use Porta\Ui\Theme\DarkTheme;
+use Porta\Ui\Theme\Styles;
 use Porta\Widget\FillsPaneTrait;
 use Porta\Widget\HoverTrait;
 use Porta\Widget\InputHook;
@@ -59,7 +58,7 @@ final class ChangesListWidget extends AbstractWidget implements FocusableInterfa
         'C' => Role::Hunk,
     ];
 
-    private readonly Palette $palette;
+    private readonly Styles $styles;
 
     /** @var list<ChangeEntry> */
     private array $entries = [];
@@ -80,10 +79,10 @@ final class ChangesListWidget extends AbstractWidget implements FocusableInterfa
     public function __construct(
         private readonly Translator $translator,
         int $width = 44,
-        ?Palette $palette = null,
+        ?Styles $styles = null,
     ) {
         $this->width = $width;
-        $this->palette = $palette ?? ColorPalette::dark();
+        $this->styles = $styles ?? new Styles(DarkTheme::definition());
         $this->list = new ListSelection();
     }
 
@@ -283,7 +282,10 @@ final class ChangesListWidget extends AbstractWidget implements FocusableInterfa
         $title = 1 === $count
             ? $this->translator->trans(' %count% changed file', ['%count%' => $count])
             : $this->translator->trans(' %count% changed files', ['%count%' => $count]);
-        $lines = [$this->palette->of(Role::HeaderBar).Sgr::BOLD.AnsiUtils::truncateToWidth($title, $width, '…', pad: true).Sgr::RESET];
+        $lines = [$this->styles
+            ->of(Role::HeaderBar)
+            ->withBold()
+            ->apply(AnsiUtils::truncateToWidth($title, $width, '…', pad: true))];
 
         $scroll = $this->list->follow($rows - 1);
         for ($row = 1; $row < $rows; ++$row) {
@@ -295,7 +297,7 @@ final class ChangesListWidget extends AbstractWidget implements FocusableInterfa
             }
             if ($index === $this->confirmDiscard) {
                 $confirm = $this->translator->trans(' Discard changes? y = yes · any key = no');
-                $lines[] = $this->palette->of(Role::DangerBg).$this->palette->of(Role::Bright).AnsiUtils::truncateToWidth($confirm, $width, '…', pad: true).Sgr::RESET;
+                $lines[] = $this->styles->merge(Role::DangerBg, Role::Bright)->apply(AnsiUtils::truncateToWidth($confirm, $width, '…', pad: true));
                 continue;
             }
 
@@ -305,19 +307,19 @@ final class ChangesListWidget extends AbstractWidget implements FocusableInterfa
                 default => '[ ]',
             };
             $status = $entry->displayStatus();
-            $statusFg = \array_key_exists($status, self::STATUS_ROLE) ? $this->palette->of(self::STATUS_ROLE[$status]) : '';
+            $statusText = \array_key_exists($status, self::STATUS_ROLE) ? $this->styles->of(self::STATUS_ROLE[$status])->apply($status) : $status;
             $label = $entry->path.(null !== $entry->renamedFrom ? ' ← '.$entry->renamedFrom : '');
 
             $selected = $this->list->isSelected($index);
-            $bg = '';
+            $bg = null;
             if ($selected) {
-                $bg = $this->focused ? $this->palette->of(Role::SelectedRow) : $this->palette->of(Role::SelectedRowUnfocused);
+                $bg = $this->styles->of($this->focused ? Role::SelectedRow : Role::SelectedRowUnfocused);
             }
             if (!$selected && $index === $this->hoveredIndex) {
-                $bg = $this->palette->of(Role::RowHighlightBg);
+                $bg = $this->styles->of(Role::RowHighlightBg);
             }
-            $text = ' '.$checkbox.' '.$statusFg.$status.Sgr::DEFAULT_FG.' '.$label;
-            $lines[] = $bg.AnsiUtils::truncateToWidth($text, $width, '…', pad: true).Sgr::RESET;
+            $text = AnsiUtils::truncateToWidth(' '.$checkbox.' '.$statusText.' '.$label, $width, '…', pad: true);
+            $lines[] = null !== $bg ? $bg->apply($text) : $text;
         }
 
         return $this->withMenuOverlay($lines, $width);

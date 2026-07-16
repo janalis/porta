@@ -12,11 +12,11 @@ use Porta\Highlight\CodeHighlighter;
 use Porta\Highlight\DarkTerminalTheme;
 use Porta\I18n\Translator;
 use Porta\Support\IntMath;
-use Porta\Ui\ColorPalette;
 use Porta\Ui\LtrPane;
-use Porta\Ui\Palette;
 use Porta\Ui\Role;
 use Porta\Ui\Sgr;
+use Porta\Ui\Theme\DarkTheme;
+use Porta\Ui\Theme\Styles;
 use Porta\Widget\FillsPaneTrait;
 use Porta\Widget\InputHook;
 use Porta\Widget\PaneNavigationCallbacks;
@@ -50,7 +50,7 @@ final class DiffViewWidget extends AbstractWidget implements FocusableInterface,
     use KeybindingsTrait;
     use PaneNavigationCallbacks;
 
-    private readonly Palette $palette;
+    private readonly Styles $styles;
 
     private ?DiffDocument $document = null;
     private ?string $path = null;
@@ -101,10 +101,10 @@ final class DiffViewWidget extends AbstractWidget implements FocusableInterface,
 
     public function __construct(
         private readonly Translator $translator,
-        ?Palette $palette = null,
+        ?Styles $styles = null,
         ?TerminalTheme $syntaxTheme = null,
     ) {
-        $this->palette = $palette ?? ColorPalette::dark();
+        $this->styles = $styles ?? new Styles(DarkTheme::definition());
         $this->highlighter = new CodeHighlighter(syntaxTheme: $syntaxTheme ?? new DarkTerminalTheme());
     }
 
@@ -702,7 +702,7 @@ final class DiffViewWidget extends AbstractWidget implements FocusableInterface,
         $lines = [$this->renderToolbar($title, $width)];
 
         if (null === $this->document || [] === $this->rows) {
-            $message = $this->palette->of(Role::Dim).' '.$this->translator->trans($this->placeholder).Sgr::RESET;
+            $message = $this->styles->of(Role::Dim)->apply(' '.$this->translator->trans($this->placeholder));
             $lines[] = AnsiUtils::truncateToWidth($message, $width, '…', pad: true);
             while (\count($lines) < $rows) {
                 $lines[] = str_repeat(' ', max(0, $width));
@@ -727,10 +727,10 @@ final class DiffViewWidget extends AbstractWidget implements FocusableInterface,
     private function decorateRowLine(int $rowIndex, string $line): string
     {
         if ($this->focused && $rowIndex === $this->cursor) {
-            return $this->palette->of(Role::HeaderBar).$line;
+            return $this->styles->of(Role::HeaderBar)->apply($line);
         }
         if ($this->inRange($rowIndex)) {
-            return $this->palette->of(Role::RowHighlightBg).$line;
+            return $this->styles->of(Role::RowHighlightBg)->apply($line);
         }
 
         return $line;
@@ -766,7 +766,9 @@ final class DiffViewWidget extends AbstractWidget implements FocusableInterface,
         // Re-apply the bg after any reset inside the span (syntax SGR resets,
         // truncateToWidth's pad boundary) — without it the highlight dies
         // mid-selection on highlighted lines.
-        return $end <= $start ? $line : LineDecorator::apply($line, $start, $end, $this->palette->of(Role::SelectionBg), Sgr::DEFAULT_BG, $this->palette->of(Role::SelectionBg));
+        $selectionBg = $this->styles->of(Role::SelectionBg)->getAnsiRestore();
+
+        return $end <= $start ? $line : LineDecorator::apply($line, $start, $end, $selectionBg, Sgr::DEFAULT_BG, $selectionBg);
     }
 
     /**
@@ -822,12 +824,15 @@ final class DiffViewWidget extends AbstractWidget implements FocusableInterface,
         foreach ($tags as $tag) {
             $tagWidth = mb_strwidth($tag['label']);
             $this->buttonZones[] = ['name' => $tag['name'], 'start' => $col, 'end' => $col + $tagWidth];
-            $style = $tag['on'] ? $this->palette->of(Role::SelectedRow) : $this->palette->of(Role::TagOffBg).$this->palette->of(Role::Muted);
-            $rendered .= $style.$tag['label'].Sgr::RESET.$this->palette->of(Role::HeaderBar).Sgr::BOLD.' ';
+            $style = $tag['on'] ? $this->styles->of(Role::SelectedRow) : $this->styles->merge(Role::TagOffBg, Role::Muted);
+            $rendered .= $style->apply($tag['label']).' ';
             $col += $tagWidth + 1;
         }
 
-        return $this->palette->of(Role::HeaderBar).Sgr::BOLD.$left.$rendered.Sgr::RESET;
+        return $this->styles
+            ->of(Role::HeaderBar)
+            ->withBold()
+            ->apply($left.$rendered);
     }
 
     /** @param array{kind: DiffRowKind, hunk: int, line?: int, left?: int, right?: int} $row */
@@ -837,7 +842,7 @@ final class DiffViewWidget extends AbstractWidget implements FocusableInterface,
         $hunk = $this->document->hunks[$row['hunk']];
 
         if (DiffRowKind::Hunk === $row['kind']) {
-            return $this->palette->of(Role::Hunk).AnsiUtils::truncateToWidth(' '.$hunk->header(), $width, '…', pad: true).Sgr::RESET;
+            return $this->styles->of(Role::Hunk)->apply(AnsiUtils::truncateToWidth(' '.$hunk->header(), $width, '…', pad: true));
         }
         if (DiffRowKind::Pair === $row['kind']) {
             $leftW = intdiv($width - 1, num2: 2);
@@ -845,22 +850,19 @@ final class DiffViewWidget extends AbstractWidget implements FocusableInterface,
 
             return (
                 $this->renderHalf($row['hunk'], $row['left'] ?? -1, $leftW, DiffSide::Old)
-                .$this->palette->of(Role::Gutter)
-                .'│'
-                .Sgr::DEFAULT_FG
+                .$this->styles->of(Role::Gutter)->apply('│')
                 .$this->renderHalf($row['hunk'], $row['right'] ?? -1, $rightW, DiffSide::New)
                 .Sgr::RESET
             );
         }
 
         $line = $hunk->lines[$row['line'] ?? -1];
-        $gutter =
-            $this->palette->of(Role::Gutter)
-            .str_pad(null === $line->oldNo ? '' : (string) $line->oldNo, length: 4, pad_string: ' ', pad_type: \STR_PAD_LEFT)
+        $gutter = $this->styles->of(Role::Gutter)->apply(
+            str_pad(null === $line->oldNo ? '' : (string) $line->oldNo, length: 4, pad_string: ' ', pad_type: \STR_PAD_LEFT)
             .' '
             .str_pad(null === $line->newNo ? '' : (string) $line->newNo, length: 4, pad_string: ' ', pad_type: \STR_PAD_LEFT)
-            .' │'
-            .Sgr::DEFAULT_FG;
+            .' │',
+        );
 
         [$marker, $text] = $this->lineBody($line, $row['hunk'].':'.($row['line'] ?? -1));
 
@@ -878,10 +880,12 @@ final class DiffViewWidget extends AbstractWidget implements FocusableInterface,
      */
     private function lineBody(DiffLine $line, string $key): array
     {
+        // The '-' and '\' markers deliberately leave their foreground open so
+        // the whole row inherits it (deletions render whole-row red).
         return match ($line->origin) {
-            '+' => [$this->palette->of(Role::Added).'+'.Sgr::DEFAULT_FG, $this->withEmphasis($this->highlighted[$key] ?? $line->text, $line, $this->palette->of(Role::AddEmphasisBg))],
-            '-' => [$this->palette->of(Role::Deleted).'-', $this->withEmphasis($line->text, $line, $this->palette->of(Role::DelEmphasisBg))],
-            '\\' => [$this->palette->of(Role::Dim).' ', $line->text],
+            '+' => [$this->styles->of(Role::Added)->apply('+'), $this->withEmphasis($this->highlighted[$key] ?? $line->text, $line, $this->styles->of(Role::AddEmphasisBg)->getAnsiRestore())],
+            '-' => [$this->styles->of(Role::Deleted)->getAnsiRestore().'-', $this->withEmphasis($line->text, $line, $this->styles->of(Role::DelEmphasisBg)->getAnsiRestore())],
+            '\\' => [$this->styles->of(Role::Dim)->getAnsiRestore().' ', $line->text],
             default => [' ', $this->highlighted[$key] ?? $line->text],
         };
     }
@@ -915,7 +919,7 @@ final class DiffViewWidget extends AbstractWidget implements FocusableInterface,
         }
         $line = $this->document->hunks[$hunkIndex]->lines[$lineIndex];
         $no = $side->lineNo($line);
-        $gutter = $this->palette->of(Role::Gutter).str_pad(null === $no ? '' : (string) $no, length: 4, pad_string: ' ', pad_type: \STR_PAD_LEFT).' '.Sgr::DEFAULT_FG;
+        $gutter = $this->styles->of(Role::Gutter)->apply(str_pad(null === $no ? '' : (string) $no, length: 4, pad_string: ' ', pad_type: \STR_PAD_LEFT).' ');
 
         [$marker, $text] = $this->lineBody($line, $hunkIndex.':'.$lineIndex);
 

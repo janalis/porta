@@ -8,13 +8,12 @@ use Porta\Container\AsWidget;
 use Porta\Git\CommitMode;
 use Porta\I18n\Translator;
 use Porta\Ui\CaretVisibility;
-use Porta\Ui\ColorPalette;
 use Porta\Ui\CursorStyle;
 use Porta\Ui\MultilineInput;
-use Porta\Ui\Palette;
 use Porta\Ui\Role;
-use Porta\Ui\Sgr;
 use Porta\Ui\TextField;
+use Porta\Ui\Theme\DarkTheme;
+use Porta\Ui\Theme\Styles;
 use Porta\Widget\InputHook;
 use Porta\Widget\PanelWidth;
 use Porta\Widget\PaneNavigationCallbacks;
@@ -58,16 +57,16 @@ final class CommitBoxWidget extends AbstractWidget implements FocusableInterface
     /** @var (callable(CommitMode): void)|null amend toggled: the controller prefills/clears the message */
     private $onAmendToggle = null;
 
-    private readonly Palette $palette;
+    private readonly Styles $styles;
 
     public function __construct(
         private readonly Translator $translator,
         int $width = 44,
-        ?Palette $palette = null,
+        ?Styles $styles = null,
         ?CursorStyle $cursorStyle = null,
     ) {
         $this->width = $width;
-        $this->palette = $palette ?? ColorPalette::dark();
+        $this->styles = $styles ?? new Styles(DarkTheme::definition());
         $this->summary = new TextField(style: $cursorStyle);
         $this->description = new MultilineInput($cursorStyle);
     }
@@ -249,27 +248,29 @@ final class CommitBoxWidget extends AbstractWidget implements FocusableInterface
 
         $lines = [];
         $header = CommitMode::Amend === $this->amend ? $this->translator->trans(' Commit  [amend · alt+m]') : $this->translator->trans(' Commit  ·  alt+m: amend');
-        $lines[] = $this->palette->of(Role::HeaderBar).Sgr::BOLD.AnsiUtils::truncateToWidth($header, $width, '…', pad: true).Sgr::RESET;
+        $lines[] = $this->styles
+            ->of(Role::HeaderBar)
+            ->withBold()
+            ->apply(AnsiUtils::truncateToWidth($header, $width, '…', pad: true));
 
         $summary = ' '.$this->summary->render(cursor: $focused && 0 === $this->activeField ? CaretVisibility::Shown : CaretVisibility::Hidden, width: $width - 1);
         $summaryHint = '' === $this->summary->value() && !($focused && 0 === $this->activeField)
-            ? $this->palette->of(Role::Dim).' '.$this->translator->trans('Summary (required)').Sgr::RESET
+            ? $this->styles->of(Role::Dim)->apply(' '.$this->translator->trans('Summary (required)'))
             : $summary;
-        $lines[] = $this->palette->of(Role::RowHighlightBg).AnsiUtils::truncateToWidth($summaryHint, $width, '…', pad: true).Sgr::RESET;
+        $lines[] = $this->styles->of(Role::RowHighlightBg)->apply(AnsiUtils::truncateToWidth($summaryHint, $width, '…', pad: true));
 
         $descriptionLines = $this->description->render($width - 1, self::DESCRIPTION_ROWS, cursor: $focused && 1 === $this->activeField ? CaretVisibility::Shown : CaretVisibility::Hidden);
         if ($this->description->isEmpty() && !($focused && 1 === $this->activeField)) {
-            $descriptionLines = [$this->palette->of(Role::Dim).$this->translator->trans('Description').Sgr::RESET];
+            $descriptionLines = [$this->styles->of(Role::Dim)->apply($this->translator->trans('Description'))];
         }
         for ($i = 0; $i < self::DESCRIPTION_ROWS; ++$i) {
-            $lines[] = $this->palette->of(Role::Toolbar).AnsiUtils::truncateToWidth(' '.($descriptionLines[$i] ?? ''), $width, '…', pad: true).Sgr::RESET;
+            $lines[] = $this->styles->of(Role::Toolbar)->apply(AnsiUtils::truncateToWidth(' '.($descriptionLines[$i] ?? ''), $width, '…', pad: true));
         }
 
         $lines[] = str_repeat(' ', max(0, $width));
         $label = CommitMode::Amend === $this->amend ? $this->translator->trans('  Amend last commit  ') : $this->translator->trans('  Commit to branch  ');
-        $button = $this->commitEnabled()
-            ? $this->palette->of(Role::SelectedRow).AnsiUtils::truncateToWidth($label, $width, '…', pad: true).Sgr::RESET
-            : $this->palette->of(Role::RowHighlightBg).$this->palette->of(Role::Dim).AnsiUtils::truncateToWidth($label, $width, '…', pad: true).Sgr::RESET;
+        $button = ($this->commitEnabled() ? $this->styles->of(Role::SelectedRow) : $this->styles->merge(Role::RowHighlightBg, Role::Dim))
+            ->apply(AnsiUtils::truncateToWidth($label, $width, '…', pad: true));
         $lines[] = $button;
 
         return $this->withMenuOverlay($lines, $width);
