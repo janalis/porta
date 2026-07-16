@@ -298,7 +298,7 @@ final class TabBarWidgetTest extends TestCase
 
         $this->assertStringContainsString('file-11.php', $plain, 'active (last) tab visible after dropping leading rows');
         $this->assertStringNotContainsString('file-06.php', $plain);
-        $this->assertSame(11, $bar->tabIndexAt(4, 1), 'the visible window maps rows back to full-list indexes');
+        $this->assertSame(11, $bar->tabIndexAt(3, 1), 'the visible window maps rows back to full-list indexes');
     }
 
     public function testVerticalHitTestingMatchesRowsAndTheCloseZone(): void
@@ -397,7 +397,7 @@ final class TabBarWidgetTest extends TestCase
         $plain = $this->plainRender($bar);
         $this->assertStringContainsString('filename-11', $plain, 'the last tab stays reachable');
         $this->assertSame(60, AnsiUtils::visibleWidth($bar->render(new RenderContext(60, 1))[0]), 'no blank tail past the last tab');
-        $this->assertStringContainsString('filename-10', $plain, 'the window is clamped so the tail still fills the strip');
+        $this->assertStringNotContainsString('filename-10', $plain, 'only one 30-column tab fits beside the reserved indicator cells');
     }
 
     public function testActiveTabChangeSnapsTheWindowBack(): void
@@ -435,21 +435,91 @@ final class TabBarWidgetTest extends TestCase
     public function testVerticalScrollByAndClamps(): void
     {
         $bar = $this->verticalBar(self::manyShortTabs(12));
-        $bar->render(new RenderContext(80, 5)); // active (first) → rows 0-4
+        $bar->render(new RenderContext(80, 5)); // active (first) → tab rows 1-3 between the indicator rows
 
         $bar->scrollBy(3);
         $plain = $this->plainRender($bar, 80, 5);
         $this->assertStringNotContainsString('t-00', $plain);
         $this->assertStringContainsString('t-03', $plain);
-        $this->assertSame(3, $bar->tabIndexAt(0, 1), 'row 0 maps to full-list index 3');
+        $this->assertSame(3, $bar->tabIndexAt(1, 1), 'the first tab row maps to full-list index 3');
 
         $bar->scrollBy(99);
         $plain = $this->plainRender($bar, 80, 5);
-        $this->assertStringContainsString('t-07', $plain, 'clamped: the last window starts at count - rows');
+        $this->assertStringContainsString('t-09', $plain, 'clamped: the last window starts at count minus the three tab rows');
         $this->assertStringContainsString('t-11', $plain);
 
         $bar->scrollBy(-99);
         $this->assertStringContainsString('t-00', $this->plainRender($bar, 80, 5));
+    }
+
+    public function testHorizontalIndicatorsMarkOnlyTheClippedSides(): void
+    {
+        $bar = new TabBarWidget();
+        $bar->setProvider(static fn () => self::manyTabs(12));
+        $bar->beforeRender();
+
+        // Window at the first tab: only the trailing side is clipped.
+        $plain = $this->plainRender($bar);
+        $this->assertStringStartsWith(' ', $plain, 'the leading indicator cell is reserved but blank');
+        $this->assertStringEndsWith('›', $plain);
+        $this->assertNull($bar->scrollIndicatorAt(0, 0), 'a blank indicator cell is not clickable');
+        $this->assertSame(1, $bar->scrollIndicatorAt(0, 59), 'the › cell scrolls forward one tab');
+        $this->assertNull($bar->tabIndexAt(0, 0), 'the indicator cell is not a tab body');
+
+        // Window at the last tab: only the leading side is clipped.
+        $bar->scrollBy(99);
+        $plain = $this->plainRender($bar);
+        $this->assertStringStartsWith('‹', $plain);
+        $this->assertStringEndsWith(' ', $plain);
+        $this->assertSame(-1, $bar->scrollIndicatorAt(0, 0), 'the ‹ cell scrolls back one tab');
+        $this->assertNull($bar->scrollIndicatorAt(0, 59), 'a blank indicator cell is not clickable');
+    }
+
+    public function testHorizontalFittingTabsRenderNoIndicators(): void
+    {
+        $bar = new TabBarWidget();
+        $bar->setProvider(static fn () => self::manyShortTabs(2));
+        $bar->beforeRender();
+
+        $plain = $this->plainRender($bar);
+        $this->assertStringNotContainsString('‹', $plain);
+        $this->assertStringNotContainsString('›', $plain);
+        $this->assertNull($bar->scrollIndicatorAt(0, 0));
+        $this->assertSame(0, $bar->tabIndexAt(0, 0), 'without overflow the first tab starts at the strip edge');
+    }
+
+    public function testVerticalIndicatorRowsMarkOnlyTheClippedSides(): void
+    {
+        $bar = $this->verticalBar(self::manyShortTabs(12));
+
+        // Window at the first tab: only the bottom is clipped.
+        $plain = $this->plainRender($bar, 80, 5);
+        $lines = explode("\n", $plain);
+        $this->assertStringNotContainsString('▲', $lines[0], 'the top indicator row is reserved but blank');
+        $this->assertStringContainsString('▼', $lines[4]);
+        $this->assertNull($bar->scrollIndicatorAt(0, 1), 'a blank indicator row is not clickable');
+        $this->assertSame(3, $bar->scrollIndicatorAt(4, 1), 'the ▼ row scrolls forward three rows');
+        $this->assertSame(3, $bar->scrollIndicatorAt(4, TabBarWidget::VERTICAL_WIDTH - 1), 'the whole row is the click zone');
+
+        // Window at the last tab: only the top is clipped.
+        $bar->scrollBy(99);
+        $plain = $this->plainRender($bar, 80, 5);
+        $lines = explode("\n", $plain);
+        $this->assertStringContainsString('▲', $lines[0]);
+        $this->assertStringNotContainsString('▼', $lines[4]);
+        $this->assertSame(-3, $bar->scrollIndicatorAt(0, 1), 'the ▲ row scrolls back three rows');
+        $this->assertNull($bar->scrollIndicatorAt(4, 1), 'a blank indicator row is not clickable');
+    }
+
+    public function testVerticalFittingTabsRenderNoIndicatorRows(): void
+    {
+        $bar = $this->verticalBar(self::manyShortTabs(3));
+
+        $plain = $this->plainRender($bar, 80, 5);
+        $this->assertStringNotContainsString('▲', $plain);
+        $this->assertStringNotContainsString('▼', $plain);
+        $this->assertSame(0, $bar->tabIndexAt(0, 1), 'without overflow the first tab sits on row 0');
+        $this->assertNull($bar->scrollIndicatorAt(4, 1));
     }
 
     public function testSetPositionResetsTheScroll(): void

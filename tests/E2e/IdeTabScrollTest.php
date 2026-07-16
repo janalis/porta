@@ -67,6 +67,13 @@ final class IdeTabScrollTest extends TestCase
         }
     }
 
+    /** A left click (press + release) at a widget-relative cell of the strip. */
+    private static function click(Tui $tui, WidgetRect $rect, int $row, int $col): void
+    {
+        $tui->handleInput(\sprintf("\x1b[<0;%d;%dM", $rect->col + $col + 1, $rect->row + $row + 1));
+        $tui->handleInput(\sprintf("\x1b[<0;%d;%dm", $rect->col + $col + 1, $rect->row + $row + 1));
+    }
+
     public function testWheelScrollsTheHorizontalStripAndRtlFlipsTheDirection(): void
     {
         $project = new TempProject(
@@ -131,6 +138,13 @@ final class IdeTabScrollTest extends TestCase
                 $tui->tick();
                 $this->assertNotNull($tabs->tabAnchor(0), 'wheel-up reached the first tab');
                 $this->assertNull($tabs->tabAnchor(self::TALL_FILES - 1), 'the last tab scrolled out below');
+
+                // The bottom ▼ indicator row is clickable and pages forward.
+                $rect = self::tabsRect($ide, $tui);
+                self::click($tui, $rect, $rect->rows - 1, 2);
+                $tui->tick();
+                $this->assertNull($tabs->tabAnchor(0), 'clicking ▼ scrolled the first tab out');
+                $this->assertNotNull($tabs->tabAnchor(3), 'clicking ▼ paged three rows forward');
             },
         ]);
     }

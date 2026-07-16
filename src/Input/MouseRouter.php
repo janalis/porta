@@ -584,6 +584,12 @@ final class MouseRouter
         if (null !== $tabsRect && $tabsRect->contains($mouse->row, $mouse->col)) {
             $rel = $tabsRect->toRelative($mouse->row, $mouse->col);
             $buffers = $this->buffers->all();
+            if (null !== ($step = $this->panes->tabBar()->scrollIndicatorAt($rel['row'], $rel['col']))) {
+                $this->panes->tabBar()->scrollBy($step);
+                $this->tui->requestRender();
+
+                return true;
+            }
             if (null !== ($closeIndex = $this->panes->tabBar()->closeIndexAt($rel['row'], $rel['col']))) {
                 if (array_key_exists($closeIndex, $buffers)) {
                     $this->bufferService->closeTab($buffers[$closeIndex]->path);

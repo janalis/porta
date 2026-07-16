@@ -52,6 +52,9 @@ final class TabBarWidget extends AbstractWidget implements MenuOverlayHost
     /** The active index the window last followed, so a manual scroll survives parked frames. */
     private ?int $lastActive = null;
 
+    /** @var list<array{row: int, col: int, width: int, step: int}> clickable overflow-indicator zones from the last render */
+    private array $indicatorZones = [];
+
     /** @param callable(): list<array{name: string, dirty: bool, active: bool}> $provider */
     public function setProvider(callable $provider): self
     {
@@ -78,9 +81,26 @@ final class TabBarWidget extends AbstractWidget implements MenuOverlayHost
         }
         $this->position = $position;
         $this->lastLayout = [];
+        $this->indicatorZones = [];
         $this->scroll = 0;
         $this->lastActive = null;
         $this->invalidate();
+    }
+
+    /**
+     * The scroll step of the overflow indicator at the given widget-relative
+     * cell (negative pages toward the first tab), or null when the cell is
+     * not a clickable indicator. Checked before the close/tab hit zones.
+     */
+    public function scrollIndicatorAt(int $row, int $col): ?int
+    {
+        foreach ($this->indicatorZones as $zone) {
+            if ($zone['row'] === $row && $col >= $zone['col'] && $col < ($zone['col'] + $zone['width'])) {
+                return $zone['step'];
+            }
+        }
+
+        return null;
     }
 
     public function position(): TabBarPosition
@@ -102,6 +122,7 @@ final class TabBarWidget extends AbstractWidget implements MenuOverlayHost
 
     public function render(RenderContext $context): array
     {
+        $this->indicatorZones = [];
         if ($this->position->isSide()) {
             return $this->renderVertical($context);
         }
@@ -140,14 +161,20 @@ final class TabBarWidget extends AbstractWidget implements MenuOverlayHost
             $activeIndex = $i;
             break;
         }
+        // An overflowing strip reserves one column per side for the ‹/›
+        // scroll indicators, so the tab geometry never depends on which
+        // sides happen to be clipped.
+        $overflow = $columns > 2 && array_sum(array_column($parts, 'width')) > $columns;
+        $budget = $overflow ? $columns - 2 : $columns;
+
         // The window starts at the manual scroll offset, clamped so the strip
         // never shows a blank tail, then follows the active tab — but only
         // when it changed, so a user's scroll survives parked frames.
-        $this->scroll = min($this->scroll, self::maxStart($parts, $columns));
+        $this->scroll = min($this->scroll, self::maxStart($parts, $budget));
         if ($activeIndex !== $this->lastActive) {
             $this->lastActive = $activeIndex;
             $this->scroll = min($this->scroll, $activeIndex);
-            while ($this->scroll < $activeIndex && array_sum(array_column(\array_slice($parts, $this->scroll, $activeIndex - $this->scroll + 1), 'width')) > $columns) {
+            while ($this->scroll < $activeIndex && array_sum(array_column(\array_slice($parts, $this->scroll, $activeIndex - $this->scroll + 1), 'width')) > $budget) {
                 ++$this->scroll;
             }
         }
@@ -155,9 +182,14 @@ final class TabBarWidget extends AbstractWidget implements MenuOverlayHost
 
         $line = '';
         $used = 0;
+        $last = $start;
         $this->lastLayout = [];
+        if ($overflow) {
+            $line .= $start > 0 ? $this->indicatorCell('‹', step: -1, col: 0) : ' ';
+            $used = 1;
+        }
         foreach (\array_slice($parts, $start, length: null, preserve_keys: true) as $index => $part) {
-            if (($used + $part['width']) > $columns) {
+            if (($used + $part['width']) > ($overflow ? $columns - 1 : $columns)) {
                 break;
             }
             $style = $part['active'] ? $this->styles->merge(Role::InlayPopupBg, Role::Bright)->withBold() : $this->styles->of(Role::Subtle);
@@ -172,9 +204,22 @@ final class TabBarWidget extends AbstractWidget implements MenuOverlayHost
                 'closeWidth' => 2, // the × cell plus its trailing space
             ];
             $used += $part['width'];
+            $last = $index;
+        }
+        if ($overflow) {
+            $line = AnsiText::padRight($line, $columns - 1);
+            $line .= $last < (\count($parts) - 1) ? $this->indicatorCell('›', step: 1, col: $columns - 1) : ' ';
         }
 
         return $this->withMenuOverlay([AnsiText::padRight($line, $columns)], $columns);
+    }
+
+    /** One clickable 1-column ‹/› scroll cell of the horizontal strip. */
+    private function indicatorCell(string $glyph, int $step, int $col): string
+    {
+        $this->indicatorZones[] = ['row' => 0, 'col' => $col, 'width' => 1, 'step' => $step];
+
+        return $this->styles->of(Role::Faint)->apply($glyph);
     }
 
     /**
@@ -223,19 +268,26 @@ final class TabBarWidget extends AbstractWidget implements MenuOverlayHost
                 $activeIndex = $i;
                 break;
             }
+            // An overflowing list reserves its first and last rows for the
+            // ▲/▼ scroll indicators (blank when that side is not clipped).
+            $overflow = $rows > 2 && \count($tabs) > $rows;
+            $budget = $overflow ? $rows - 2 : $rows;
             // Rows are uniform height, so the window is the manual scroll
             // offset (clamped against a blank tail) that follows the active
             // tab only when it changed — a user's scroll survives otherwise.
-            $this->scroll = min($this->scroll, max(0, \count($tabs) - $rows));
+            $this->scroll = min($this->scroll, max(0, \count($tabs) - $budget));
             if ($activeIndex !== $this->lastActive) {
                 $this->lastActive = $activeIndex;
                 $this->scroll = min($this->scroll, $activeIndex);
-                $this->scroll = max($this->scroll, $activeIndex - $rows + 1);
+                $this->scroll = max($this->scroll, $activeIndex - $budget + 1);
             }
             $start = $this->scroll;
+            if ($overflow) {
+                $lines[] = $start > 0 ? $this->indicatorRow('▲', step: -3, row: 0) : str_repeat(' ', self::VERTICAL_WIDTH);
+            }
             // ' name…    ●× ': the dirty ● and the close × are right-aligned.
             $nameWidth = self::VERTICAL_WIDTH - 5;
-            foreach (\array_slice($tabs, $start, $rows, preserve_keys: true) as $index => $tab) {
+            foreach (\array_slice($tabs, $start, $budget, preserve_keys: true) as $index => $tab) {
                 $name = AnsiUtils::truncateToWidth($tab['name'], $nameWidth, '…', pad: true);
                 $marker = $tab['dirty'] ? '●' : ' ';
                 $style = $tab['active'] ? $this->styles->merge(Role::InlayPopupBg, Role::Bright)->withBold() : $this->styles->of(Role::Subtle);
@@ -250,12 +302,24 @@ final class TabBarWidget extends AbstractWidget implements MenuOverlayHost
                     'closeWidth' => 2, // the × cell plus its trailing space
                 ];
             }
+            if ($overflow) {
+                $lines[] = ($start + $budget) < \count($tabs) ? $this->indicatorRow('▼', step: 3, row: $rows - 1) : str_repeat(' ', self::VERTICAL_WIDTH);
+            }
         }
         while (\count($lines) < $rows) {
             $lines[] = str_repeat(' ', self::VERTICAL_WIDTH);
         }
 
         return $this->withMenuOverlay($lines, self::VERTICAL_WIDTH);
+    }
+
+    /** One clickable full-width ▲/▼ scroll row of the vertical list. */
+    private function indicatorRow(string $glyph, int $step, int $row): string
+    {
+        $this->indicatorZones[] = ['row' => $row, 'col' => 0, 'width' => self::VERTICAL_WIDTH, 'step' => $step];
+        $left = str_repeat(' ', times: max(0, intdiv(self::VERTICAL_WIDTH, num2: 2) - 1));
+
+        return $this->styles->of(Role::Faint)->apply(AnsiText::padRight($left.$glyph, self::VERTICAL_WIDTH));
     }
 
     /**
