@@ -38,6 +38,8 @@ use Porta\Ui\LtrPane;
 use Porta\Ui\Palette;
 use Porta\Ui\Role;
 use Porta\Ui\Sgr;
+use Porta\Ui\Theme\DarkTheme;
+use Porta\Ui\Theme\Styles;
 use Porta\Widget\Overlay\FindInFilesModal;
 use Porta\Widget\Overlay\OverlayHost;
 use Porta\Widget\Render\EditorDecorations;
@@ -164,20 +166,24 @@ final class CodeEditorWidget extends AbstractWidget implements ActiveFileProvide
     /** Editor-level action dispatch (keymap actions + menu items). */
     private readonly EditorActionRouter $actionRouter;
 
+    /** The overlay children still consume the SGR palette; dies with their migration. */
     private readonly Palette $palette;
+
+    private readonly Styles $styles;
 
     private readonly TerminalTheme $syntaxTheme;
 
     /** Shared hardware-cursor shape holder (the `cursorShape` setting swaps it live). */
     private readonly CursorStyle $cursorStyle;
 
-    public function __construct(?Palette $palette = null, ?TerminalTheme $syntaxTheme = null, ?CursorStyle $cursorStyle = null)
+    public function __construct(?Palette $palette = null, ?TerminalTheme $syntaxTheme = null, ?CursorStyle $cursorStyle = null, ?Styles $styles = null)
     {
         $this->palette = $palette ?? ColorPalette::dark();
+        $this->styles = $styles ?? new Styles(DarkTheme::definition());
         $this->syntaxTheme = $syntaxTheme ?? new DarkTerminalTheme();
         $this->cursorStyle = $cursorStyle ?? new CursorStyle();
         $this->callbacks = new EditorCallbacks();
-        $this->overlayHost = new OverlayHost($this->invalidate(...), $this->palette, $this->cursorStyle);
+        $this->overlayHost = new OverlayHost($this->invalidate(...), $this->styles, $this->cursorStyle);
         $this->findModal = new FindInFilesModal($this->invalidate(...), $this->palette, $this->cursorStyle);
         $this->document = new Document('');
         $this->highlighter = new CodeHighlighter(syntaxTheme: $this->syntaxTheme);
@@ -1001,13 +1007,13 @@ final class CodeEditorWidget extends AbstractWidget implements ActiveFileProvide
         // Both overlays anchor to the caret's on-screen row (past the sticky headers).
         $cursorScreenRow = max(0, $this->foldModel->screenRowFor($geo->vScroll, $geo->cursorLine)) + $geo->stickyCount;
         if (null !== $this->signatureHint) {
-            EditorRenderer::signatureHint($result, $geo->columns, $geo->gutterWidth, $cursorScreenRow, $this->signatureHint, $this->palette);
+            EditorRenderer::signatureHint($result, $geo->columns, $geo->gutterWidth, $cursorScreenRow, $this->signatureHint, $this->styles);
         }
 
         $this->completion->setBox(null);
         if (null !== ($popup = $this->completion->popupState())) {
             $anchorCol = $geo->gutterWidth + ($geo->cursorDisplayCol - $geo->hScroll) - mb_strwidth($this->document->getWordBeforeCursor());
-            $this->completion->setBox(EditorRenderer::completionPopup($result, $geo->columns, $geo->rows, $cursorScreenRow, $anchorCol, $popup['items'], $popup['selected'], $this->palette));
+            $this->completion->setBox(EditorRenderer::completionPopup($result, $geo->columns, $geo->rows, $cursorScreenRow, $anchorCol, $popup['items'], $popup['selected'], $this->styles));
         }
 
         /** @var list<string> $result signatureHint() rewrites rows in place, keeping the shape */
@@ -1079,7 +1085,7 @@ final class CodeEditorWidget extends AbstractWidget implements ActiveFileProvide
             $this->inlineDiagnostics,
             $this->focused,
             $this->focused && !$this->findModal->isOpen(), // the modal owns the caret while it is open
-            $this->palette,
+            $this->styles,
             $this->breakpointLines,
             $this->debugLine,
             $this->cursorStyle,
@@ -1181,7 +1187,7 @@ final class CodeEditorWidget extends AbstractWidget implements ActiveFileProvide
         $text = AnsiUtils::truncateToWidth($hint, $columns, '…');
         $textWidth = AnsiUtils::visibleWidth($text);
         $left = max(0, intdiv($columns - $textWidth, num2: 2));
-        $hintRow = AnsiText::padRight(str_repeat(' ', $left).$this->palette->of(Role::CompletionHint).$text.Sgr::DEFAULT_FG, $columns);
+        $hintRow = AnsiText::padRight(str_repeat(' ', $left).$this->styles->of(Role::CompletionHint)->apply($text), $columns);
 
         $middle = intdiv($rows, num2: 2);
         $lines = [];
@@ -1221,10 +1227,15 @@ final class CodeEditorWidget extends AbstractWidget implements ActiveFileProvide
 
         $cells = [];
         for ($r = 0; $r < $rows; ++$r) {
-            $bg = $showThumb && $r >= $thumbTop && $r <= $thumbBottom ? $this->palette->of(Role::RowHighlightBg) : '';
-            $cells[] = 0 !== $sev[$r]
-                ? Sgr::RESET.$bg.$this->palette->of(DiagnosticStyle::role($sev[$r])).DiagnosticStyle::mark($sev[$r]).Sgr::RESET
-                : Sgr::RESET.$bg.' '.Sgr::RESET;
+            // The leading reset shields the cell from whatever state the row
+            // content left open; the styles then close themselves.
+            $thumb = $showThumb && $r >= $thumbTop && $r <= $thumbBottom;
+            $cells[] = match (true) {
+                0 !== $sev[$r] && $thumb => Sgr::RESET.$this->styles->merge(Role::RowHighlightBg, DiagnosticStyle::role($sev[$r]))->apply(DiagnosticStyle::mark($sev[$r])),
+                0 !== $sev[$r] => Sgr::RESET.$this->styles->of(DiagnosticStyle::role($sev[$r]))->apply(DiagnosticStyle::mark($sev[$r])),
+                $thumb => Sgr::RESET.$this->styles->of(Role::RowHighlightBg)->apply(' '),
+                default => Sgr::RESET.' ',
+            };
         }
 
         return $cells;

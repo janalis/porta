@@ -6,6 +6,7 @@ namespace Porta\Widget\Render;
 
 use Porta\Ui\Sgr;
 use Symfony\Component\Tui\Ansi\AnsiUtils;
+use Symfony\Component\Tui\Style\Style;
 
 /**
  * Applies visual spans (selection, search matches, current line, bracket
@@ -50,17 +51,17 @@ final class LineDecorator
 
     /**
      * Replace the single cell at display column $col with $glyph rendered in
-     * $sgr (foreground only, so any background is preserved). Used to draw
+     * $style (foreground only, so any background is preserved). Used to draw
      * indent guides over leading-whitespace cells; the visible width is
      * unchanged. $col must be within the line (0 <= $col < visible width).
      */
-    public static function overlayGlyph(string $line, int $col, string $glyph, string $sgr): string
+    public static function overlayGlyph(string $line, int $col, string $glyph, Style $style): string
     {
         $lineWidth = AnsiUtils::visibleWidth($line);
         $before = 0 === $col ? '' : AnsiUtils::sliceByColumn($line, 0, $col);
         $after = AnsiUtils::sliceByColumn($line, $col + 1, $lineWidth - $col - 1);
 
-        return $before.$sgr.$glyph.Sgr::DEFAULT_FG.$after;
+        return $before.$style->apply($glyph).$after;
     }
 
     /**
@@ -83,15 +84,17 @@ final class LineDecorator
 
     /**
      * Apply a background over the whole line, padding it to $width first so
-     * the background covers trailing space (current-line highlight).
+     * the background covers trailing space (current-line highlight). The
+     * style's own apply() re-establishes the background after any reset
+     * inside the line and closes it with the targeted background reset.
      */
-    public static function applyFullWidth(string $line, int $width, string $bgSgr): string
+    public static function applyFullWidth(string $line, int $width, Style $bg): string
     {
         $lineWidth = AnsiUtils::visibleWidth($line);
         if ($lineWidth < $width) {
             $line .= str_repeat(' ', max(0, $width - $lineWidth));
         }
 
-        return $bgSgr.AnsiUtils::reapplyBackgroundAfterResets($line, $bgSgr).Sgr::DEFAULT_BG;
+        return $bg->apply($line);
     }
 }

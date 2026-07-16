@@ -8,6 +8,7 @@ use PHPUnit\Framework\TestCase;
 use Porta\Highlight\CodeHighlighter;
 use Porta\Widget\Render\LineDecorator;
 use Symfony\Component\Tui\Ansi\AnsiUtils;
+use Symfony\Component\Tui\Style\Style;
 
 final class LineDecoratorTest extends TestCase
 {
@@ -57,7 +58,7 @@ final class LineDecoratorTest extends TestCase
 
     public function testApplyFullWidthPadsAndReappliesBackground(): void
     {
-        $decorated = LineDecorator::applyFullWidth('ab'."\x1b[0m".'cd', 8, "\x1b[48;5;236m");
+        $decorated = LineDecorator::applyFullWidth('ab'."\x1b[0m".'cd', 8, new Style(background: 236));
 
         $this->assertSame(8, AnsiUtils::visibleWidth($decorated));
         $this->assertStringStartsWith("\x1b[48;5;236m", $decorated);

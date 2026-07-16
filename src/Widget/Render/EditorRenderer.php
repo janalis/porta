@@ -8,9 +8,9 @@ use Porta\Editor\DiagnosticStyle;
 use Porta\Editor\Document;
 use Porta\Support\AnsiText;
 use Porta\Support\IntMath;
-use Porta\Ui\Palette;
 use Porta\Ui\Role;
 use Porta\Ui\Sgr;
+use Porta\Ui\Theme\Styles;
 use Symfony\Component\Tui\Ansi\AnsiUtils;
 
 /**
@@ -154,12 +154,12 @@ final class EditorRenderer
     }
 
     /** One-cell git change indicator for the gutter's leftmost column — shape-distinct glyphs so the states read without color. */
-    public static function gitCell(?string $mark, Palette $palette): string
+    public static function gitCell(?string $mark, Styles $styles): string
     {
         return match ($mark) {
-            'added' => $palette->of(Role::GitAdded)."▎\x1b[0m", // green solid bar
-            'modified' => $palette->of(Role::GitModified)."┆\x1b[0m", // blue dashed bar
-            'deleted' => $palette->of(Role::GitDeleted)."▁\x1b[0m", // red underline
+            'added' => $styles->of(Role::GitAdded)->apply('▎'), // green solid bar
+            'modified' => $styles->of(Role::GitModified)->apply('┆'), // blue dashed bar
+            'deleted' => $styles->of(Role::GitDeleted)->apply('▁'), // red underline
             default => ' ',
         };
     }
@@ -193,7 +193,7 @@ final class EditorRenderer
      *
      * @param list<array{col: int, text: string}> $lineHints
      */
-    public static function applyInlayHints(Document $doc, int $line, array $lineHints, string $hlLine, Palette $palette): string
+    public static function applyInlayHints(Document $doc, int $line, array $lineHints, string $hlLine, Styles $styles): string
     {
         if ([] === $lineHints) {
             return $hlLine;
@@ -203,7 +203,7 @@ final class EditorRenderer
         usort($lineHints, static fn (array $a, array $b) => $b['col'] <=> $a['col']);
         foreach ($lineHints as $hint) {
             $col = $doc->displayColAt($line, $hint['col']);
-            $hlLine = LineDecorator::insertAt($hlLine, $col, $palette->of(Role::Inlay).$hint['text'].Sgr::DEFAULT_FG);
+            $hlLine = LineDecorator::insertAt($hlLine, $col, $styles->of(Role::Inlay)->apply($hint['text']));
         }
 
         return $hlLine;
@@ -213,7 +213,7 @@ final class EditorRenderer
      * Overlay dim vertical guides at each indent level within a line's leading
      * whitespace, so nested blocks are easy to scan. Cell width is preserved.
      */
-    public static function applyIndentGuides(Document $doc, string $hlLine, int $lineIndex, Palette $palette): string
+    public static function applyIndentGuides(Document $doc, string $hlLine, int $lineIndex, Styles $styles): string
     {
         $raw = $doc->getLine($lineIndex);
         $wsBytes = strspn($raw, characters: " \t");
@@ -222,7 +222,7 @@ final class EditorRenderer
         }
         $leadingWidth = $doc->displayColAt($lineIndex, $wsBytes);
         for ($col = 0; $col < $leadingWidth; $col += $doc->indentDisplayWidth()) {
-            $hlLine = LineDecorator::overlayGlyph($hlLine, $col, '│', $palette->of(Role::IndentGuide));
+            $hlLine = LineDecorator::overlayGlyph($hlLine, $col, '│', $styles->of(Role::IndentGuide));
         }
 
         return $hlLine;
@@ -268,7 +268,7 @@ final class EditorRenderer
      *                                                                                                 on tab-indented lines)
      * @param list<array{message?: string, severity?: int, col?: int, endCol?: int}> $diags
      */
-    public static function appendInlineDiagnostic(int $hScroll, int $lineDisplayWidth, array $diags, string $content, int $contentWidth, Palette $palette): string
+    public static function appendInlineDiagnostic(int $hScroll, int $lineDisplayWidth, array $diags, string $content, int $contentWidth, Styles $styles): string
     {
         // Show the worst-severity diagnostic's message (the first one at that
         // severity); an empty list falls through to the empty-message guard below.
@@ -294,13 +294,12 @@ final class EditorRenderer
             return $content; // not enough room to be useful
         }
 
-        $color = $palette->of(DiagnosticStyle::dimRole($worst));
         $extra = \count($diags) > 1 ? ' +'.(\count($diags) - 1) : '';
         // Severity glyph prefix, so error vs warning reads without color.
         $label = AnsiUtils::truncateToWidth('‹ '.DiagnosticStyle::glyph($worst).' '.(string) preg_replace('/\s+/', replacement: ' ', subject: $message).$extra.' ›', $available, '…');
         $head = AnsiText::padRight(AnsiUtils::sliceByColumn($content, 0, $start), $start);
 
-        return AnsiText::padRight($head.$color.$label.Sgr::RESET, $contentWidth);
+        return AnsiText::padRight($head.$styles->of(DiagnosticStyle::dimRole($worst))->apply($label), $contentWidth);
     }
 
     /**
@@ -308,7 +307,7 @@ final class EditorRenderer
      * after the code — the same placement as {@see appendInlineDiagnostic},
      * which wins the slot when both apply.
      */
-    public static function appendAnnotation(int $hScroll, int $lineDisplayWidth, string $text, string $content, int $contentWidth, Palette $palette): string
+    public static function appendAnnotation(int $hScroll, int $lineDisplayWidth, string $text, string $content, int $contentWidth, Styles $styles): string
     {
         $textEnd = max(0, $lineDisplayWidth - $hScroll);
         $start = min($contentWidth, $textEnd) + 2; // two-space gap
@@ -320,7 +319,7 @@ final class EditorRenderer
         $label = AnsiUtils::truncateToWidth((string) preg_replace('/\s+/', replacement: ' ', subject: $text), $available, '…');
         $head = AnsiText::padRight(AnsiUtils::sliceByColumn($content, 0, $start), $start);
 
-        return AnsiText::padRight($head.$palette->of(Role::Inlay).$label.Sgr::RESET, $contentWidth);
+        return AnsiText::padRight($head.$styles->of(Role::Inlay)->apply($label), $contentWidth);
     }
 
     // --- Overlays ----------------------------------------------------------
@@ -333,7 +332,7 @@ final class EditorRenderer
      *
      * @param string[] $lines
      */
-    public static function signatureHint(array &$lines, int $columns, int $gutterWidth, int $cursorScreenRow, string $hint, Palette $palette): void
+    public static function signatureHint(array &$lines, int $columns, int $gutterWidth, int $cursorScreenRow, string $hint, Styles $styles): void
     {
         $row = $cursorScreenRow > 0 ? $cursorScreenRow - 1 : $cursorScreenRow + 1;
         if ($row < 0 || $row >= \count($lines)) {
@@ -346,7 +345,7 @@ final class EditorRenderer
             return;
         }
         $col = $gutterWidth;
-        $popup = $palette->of(Role::InlayPopupBg).$palette->of(Role::InlayPopupFg).AnsiUtils::truncateToWidth($text, $width, '…', pad: true).Sgr::RESET;
+        $popup = $styles->merge(Role::InlayPopupBg, Role::InlayPopupFg)->apply(AnsiUtils::truncateToWidth($text, $width, '…', pad: true));
 
         $lines[$row] = OverlayCompositor::into($lines[$row], $col, $width, $columns, $popup);
     }
@@ -364,7 +363,7 @@ final class EditorRenderer
      *
      * @return array{col: int, width: int, startRow: int, windowStart: int, count: int}
      */
-    public static function listOverlay(array &$lines, int $columns, int $rows, array $overlay, Palette $palette): array
+    public static function listOverlay(array &$lines, int $columns, int $rows, array $overlay, Styles $styles): array
     {
         $items = $overlay['items'];
         $selected = $overlay['selected'];
@@ -380,13 +379,13 @@ final class EditorRenderer
         $col = max(0, intdiv($columns - $width, num2: 2));
 
         $popup = [];
-        $popup[] = HeaderRenderer::render(' '.$overlay['title'], $width, $palette->of(Role::HeaderBar).$palette->of(Role::Bright).Sgr::BOLD);
+        $popup[] = HeaderRenderer::render(' '.$overlay['title'], $width, $styles->merge(Role::HeaderBar, Role::Bright)->withBold()->getAnsiRestore());
         foreach ($visible as $i => $item) {
             $isSelected = ($windowStart + $i) === $selected;
-            $bg = $isSelected ? $palette->of(Role::SelectedRow) : $palette->of(Role::PopupRow);
+            $style = $styles->of($isSelected ? Role::SelectedRow : Role::PopupRow);
             $hintWidth = mb_strwidth($item['hint']);
             $label = AnsiUtils::truncateToWidth($item['label'], $width - $hintWidth - 3, '…', pad: true);
-            $popup[] = $bg.' '.$label.' '.$palette->of(Role::CompletionHint).$item['hint'].' '.Sgr::RESET;
+            $popup[] = $style->apply(' '.$label.' '.$styles->of(Role::CompletionHint)->apply($item['hint']).' ');
         }
 
         return self::placeCenteredPopup($lines, $popup, $col, $width, $columns, $rows, $windowStart, \count($visible));
@@ -413,7 +412,7 @@ final class EditorRenderer
         PaneFocus $focused,
         array $rowModels,
         int $selected,
-        Palette $palette,
+        Styles $styles,
         string $cursorMarker,
     ): array {
         $maxRows = max(1, min(\count($rowModels), $rows - 4, 12));
@@ -428,16 +427,16 @@ final class EditorRenderer
         $col = max(0, intdiv($columns - $width, num2: 2));
 
         $popup = [
-            HeaderRenderer::render(' '.$title, $width, $palette->of(Role::HeaderBar).$palette->of(Role::Bright).Sgr::BOLD),
-            $palette->of(Role::Toolbar).AnsiText::scrollLineToCaret(' > '.$query.(PaneFocus::Focused === $focused ? $cursorMarker : ''), $width).Sgr::RESET,
+            HeaderRenderer::render(' '.$title, $width, $styles->merge(Role::HeaderBar, Role::Bright)->withBold()->getAnsiRestore()),
+            $styles->of(Role::Toolbar)->apply(AnsiText::scrollLineToCaret(' > '.$query.(PaneFocus::Focused === $focused ? $cursorMarker : ''), $width)),
         ];
         foreach ($visible as $i => $row) {
             if (null !== $row['header']) {
-                $popup[] = $palette->of(Role::PopupRow).$palette->of(Role::Dim).AnsiUtils::truncateToWidth(' '.$row['header'], $width, '…', pad: true).Sgr::RESET;
+                $popup[] = $styles->merge(Role::PopupRow, Role::Dim)->apply(AnsiUtils::truncateToWidth(' '.$row['header'], $width, '…', pad: true));
 
                 continue;
             }
-            $bg = ($windowStart + $i) === $selected ? $palette->of(Role::SelectedRow) : $palette->of(Role::PopupRow);
+            $style = $styles->of(($windowStart + $i) === $selected ? Role::SelectedRow : Role::PopupRow);
             // ` label · detail ` — three chrome columns (leading, gap, trailing).
             // Bound the detail first (leaving ≥1 column for the label) so a long
             // path can never push the row past $width and overflow the pane.
@@ -445,7 +444,7 @@ final class EditorRenderer
             $detail = AnsiUtils::truncateToWidth($row['detail'], max(0, $avail - 1), '…', pad: false);
             $detailWidth = AnsiUtils::visibleWidth($detail);
             $label = AnsiUtils::truncateToWidth($row['label'], max(1, $avail - $detailWidth), '…', pad: true);
-            $popup[] = $bg.' '.$label.' '.$palette->of(Role::CompletionHint).$detail.' '.Sgr::RESET;
+            $popup[] = $style->apply(' '.$label.' '.$styles->of(Role::CompletionHint)->apply($detail).' ');
         }
 
         return self::placeCenteredPopup($lines, $popup, $col, $width, $columns, $rows, $windowStart, \count($visible));
@@ -464,7 +463,7 @@ final class EditorRenderer
      *
      * @return array{col: int, width: int, startRow: int, windowOffset: int, count: int}
      */
-    public static function completionPopup(array &$lines, int $columns, int $rows, int $cursorScreenRow, int $anchorCol, array $items, int $selected, Palette $palette): array
+    public static function completionPopup(array &$lines, int $columns, int $rows, int $cursorScreenRow, int $anchorCol, array $items, int $selected, Styles $styles): array
     {
         $windowOffset = max(0, $selected - self::POPUP_MAX_ITEMS + 1);
         $visible = \array_slice($items, $windowOffset, self::POPUP_MAX_ITEMS);
@@ -489,11 +488,11 @@ final class EditorRenderer
             }
 
             $isSelected = $i === $selectedInWindow;
-            $bg = $isSelected ? $palette->of(Role::SelectedRow) : $palette->of(Role::PopupRow);
-            $kindTag = $palette->of(Role::CompletionKind).$item['kind'].Sgr::DEFAULT_FG;
+            $style = $styles->of($isSelected ? Role::SelectedRow : Role::PopupRow);
+            $kindTag = $styles->of(Role::CompletionKind)->apply($item['kind']);
             $labelWidth = $width - mb_strwidth($item['kind']) - 3;
             $label = AnsiUtils::truncateToWidth($item['label'], $labelWidth, '…', pad: true);
-            $popupLine = $bg.' '.$label.' '.$kindTag.' '.Sgr::RESET;
+            $popupLine = $style->apply(' '.$label.' '.$kindTag.' ');
 
             $lines[$row] = OverlayCompositor::into($lines[$row], $col, $width, $columns, $popupLine);
         }

@@ -8,11 +8,10 @@ use Porta\Editor\Caret;
 use Porta\Editor\DiagnosticStyle;
 use Porta\Editor\Document;
 use Porta\Editor\FoldModel;
-use Porta\Ui\ColorPalette;
 use Porta\Ui\CursorStyle;
-use Porta\Ui\Palette;
 use Porta\Ui\Role;
-use Porta\Ui\Sgr;
+use Porta\Ui\Theme\DarkTheme;
+use Porta\Ui\Theme\Styles;
 use Symfony\Component\Tui\Ansi\AnsiUtils;
 
 /**
@@ -26,7 +25,7 @@ use Symfony\Component\Tui\Ansi\AnsiUtils;
  */
 final readonly class EditorRowAssembler
 {
-    private Palette $palette;
+    private Styles $styles;
 
     /**
      * @param array<int, string>                                                          $gitMarks      0-based line => 'added'|'modified'|'deleted'
@@ -62,14 +61,14 @@ final readonly class EditorRowAssembler
         private bool $inlineDiagnostics,
         private bool $focused,
         private bool $showCaret,
-        ?Palette $palette = null,
+        ?Styles $styles = null,
         array $breakpointLines = [],
         private ?int $debugLine = null,
         ?CursorStyle $cursorStyle = null,
         array $conditionalBreakpointLines = [],
         private array $lineAnnotations = [],
     ) {
-        $this->palette = $palette ?? ColorPalette::dark();
+        $this->styles = $styles ?? new Styles(DarkTheme::definition());
         $this->breakpointSet = array_fill_keys($breakpointLines, value: true);
         $this->conditionalBreakpointSet = array_fill_keys($conditionalBreakpointLines, value: true);
         $this->cursorStyle = $cursorStyle ?? new CursorStyle();
@@ -106,7 +105,7 @@ final readonly class EditorRowAssembler
             $lineIndex = $this->foldModel->docLineAtRow($vScroll, $row);
 
             if (null === $lineIndex) {
-                $result[] = $this->palette->of(Role::Placeholder).str_pad('~', max(0, $geo->gutterWidth)).Sgr::RESET.str_repeat(' ', max(0, $geo->contentWidth)).$stripe[$stickyCount + $row];
+                $result[] = $this->styles->of(Role::Placeholder)->apply(str_pad('~', max(0, $geo->gutterWidth))).str_repeat(' ', max(0, $geo->contentWidth)).$stripe[$stickyCount + $row];
                 continue;
             }
 
@@ -137,11 +136,11 @@ final readonly class EditorRowAssembler
 
             // The debugger's stopped line outranks the current-line background.
             if ($lineIndex === $this->debugLine) {
-                $content = LineDecorator::applyFullWidth($content, $geo->contentWidth, $this->palette->of(Role::DebugLineBg));
+                $content = LineDecorator::applyFullWidth($content, $geo->contentWidth, $this->styles->of(Role::DebugLineBg));
             }
             // Current-line background (skip when a selection is being shown)
             if ($lineIndex !== $this->debugLine && $isCursorLine && $this->focused && null === $decorations->selection) {
-                $content = LineDecorator::applyFullWidth($content, $geo->contentWidth, $this->palette->of(Role::RowHighlightBg));
+                $content = LineDecorator::applyFullWidth($content, $geo->contentWidth, $this->styles->of(Role::RowHighlightBg));
             }
 
             // Inline diagnostic message in the trailing space (PhpStorm-style):
@@ -149,10 +148,10 @@ final readonly class EditorRowAssembler
             // "+N" count when the line carries more than one diagnostic.
             $hasInlineDiagnostic = $this->inlineDiagnostics && [] !== $lineDiags;
             if ($hasInlineDiagnostic) {
-                $content = EditorRenderer::appendInlineDiagnostic($hScroll, $this->document->lineDisplayWidth($lineIndex), $lineDiags, $content, $geo->contentWidth, $this->palette);
+                $content = EditorRenderer::appendInlineDiagnostic($hScroll, $this->document->lineDisplayWidth($lineIndex), $lineDiags, $content, $geo->contentWidth, $this->styles);
             }
             if (!$hasInlineDiagnostic && '' !== ($this->lineAnnotations[$lineIndex] ?? '')) {
-                $content = EditorRenderer::appendAnnotation($hScroll, $this->document->lineDisplayWidth($lineIndex), $this->lineAnnotations[$lineIndex], $content, $geo->contentWidth, $this->palette);
+                $content = EditorRenderer::appendAnnotation($hScroll, $this->document->lineDisplayWidth($lineIndex), $this->lineAnnotations[$lineIndex], $content, $geo->contentWidth, $this->styles);
             }
 
             $result[] = $gutter.$content.$stripe[$stickyCount + $row];
@@ -170,15 +169,13 @@ final readonly class EditorRowAssembler
     private function renderStickyRow(int $docLine, EditorGeometry $geo, array $highlighted, int $hScroll): string
     {
         $gutter =
-            EditorRenderer::gitCell($this->gitMarks[$docLine] ?? null, $this->palette)
-            .$this->palette->of(Role::Gutter)
-            .str_pad((string) ($docLine + 1), $geo->numberWidth, pad_string: ' ', pad_type: \STR_PAD_LEFT)
-            .' '
-            ."\x1b[0m ";
-        $hl = EditorRenderer::applyIndentGuides($this->document, $highlighted[$docLine] ?? '', $docLine, $this->palette);
+            EditorRenderer::gitCell($this->gitMarks[$docLine] ?? null, $this->styles)
+            .$this->styles->of(Role::Gutter)->apply(str_pad((string) ($docLine + 1), $geo->numberWidth, pad_string: ' ', pad_type: \STR_PAD_LEFT).' ')
+            .' ';
+        $hl = EditorRenderer::applyIndentGuides($this->document, $highlighted[$docLine] ?? '', $docLine, $this->styles);
         $content = EditorRenderer::renderContentLine($hScroll, $hl, $geo->contentWidth, CursorVisibility::Hidden, 0, $this->cursorStyle->marker());
 
-        return LineDecorator::applyFullWidth($gutter.$content, $geo->gutterWidth + $geo->contentWidth, $this->palette->of(Role::HeaderBar));
+        return LineDecorator::applyFullWidth($gutter.$content, $geo->gutterWidth + $geo->contentWidth, $this->styles->of(Role::HeaderBar));
     }
 
     /**
@@ -189,19 +186,19 @@ final readonly class EditorRowAssembler
      */
     private function gutterCell(int $lineIndex, CaretLine $isCursorLine, array $lineDiags, int $numberWidth): string
     {
-        $numColor = match (true) {
-            [] !== $lineDiags => $this->palette->of(DiagnosticStyle::role(DiagnosticStyle::worst($lineDiags))),
-            CaretLine::Current === $isCursorLine => $this->palette->of(Role::CurrentLineNumber),
-            default => $this->palette->of(Role::Gutter),
+        $numStyle = match (true) {
+            [] !== $lineDiags => $this->styles->of(DiagnosticStyle::role(DiagnosticStyle::worst($lineDiags))),
+            CaretLine::Current === $isCursorLine => $this->styles->of(Role::CurrentLineNumber),
+            default => $this->styles->of(Role::Gutter),
         };
         // The marker column, one glyph by priority: the debugger's stopped line,
         // then the breakpoint dot, then the worst diagnostic's severity glyph —
         // so each state also reads without color.
         $marker = match (true) {
-            $lineIndex === $this->debugLine => $this->palette->of(Role::Breakpoint).'▶'.Sgr::DEFAULT_FG,
-            ($this->conditionalBreakpointSet[$lineIndex] ?? null) !== null => $this->palette->of(Role::Breakpoint).'◆'.Sgr::DEFAULT_FG,
-            ($this->breakpointSet[$lineIndex] ?? null) !== null => $this->palette->of(Role::Breakpoint).'●'.Sgr::DEFAULT_FG,
-            [] !== $lineDiags => $numColor.DiagnosticStyle::glyph(DiagnosticStyle::worst($lineDiags)).Sgr::DEFAULT_FG,
+            $lineIndex === $this->debugLine => $this->styles->of(Role::Breakpoint)->apply('▶'),
+            ($this->conditionalBreakpointSet[$lineIndex] ?? null) !== null => $this->styles->of(Role::Breakpoint)->apply('◆'),
+            ($this->breakpointSet[$lineIndex] ?? null) !== null => $this->styles->of(Role::Breakpoint)->apply('●'),
+            [] !== $lineDiags => $numStyle->apply(DiagnosticStyle::glyph(DiagnosticStyle::worst($lineDiags))),
             default => ' ',
         };
         // Relative line numbers: distance from the cursor line, absolute on
@@ -211,7 +208,7 @@ final readonly class EditorRowAssembler
             $numberLabel = (string) abs($lineIndex - $this->document->getCursorLine());
         }
 
-        return EditorRenderer::gitCell($this->gitMarks[$lineIndex] ?? null, $this->palette).$numColor.str_pad($numberLabel, $numberWidth, pad_string: ' ', pad_type: \STR_PAD_LEFT).$marker."\x1b[0m ";
+        return EditorRenderer::gitCell($this->gitMarks[$lineIndex] ?? null, $this->styles).$numStyle->apply(str_pad($numberLabel, $numberWidth, pad_string: ' ', pad_type: \STR_PAD_LEFT)).$marker.' ';
     }
 
     /**
@@ -237,7 +234,7 @@ final readonly class EditorRowAssembler
         int $contentWidth,
     ): string {
         $doc = $this->document;
-        $hlLine = EditorRenderer::applyIndentGuides($doc, $highlighted, $lineIndex, $this->palette);
+        $hlLine = EditorRenderer::applyIndentGuides($doc, $highlighted, $lineIndex, $this->styles);
 
         // Gather decoration spans in layering order, then apply them all at
         // once. Each span is [startCol, endCol, openSgr, closeSgr, bgReapply].
@@ -250,7 +247,7 @@ final readonly class EditorRowAssembler
             $occurrences,
             $brackets,
             $lineDiags,
-            $this->palette,
+            $this->styles,
         );
         if ($padTo > 0) {
             // Pad so an end-of-line caret has a cell to invert (the window
@@ -267,12 +264,12 @@ final readonly class EditorRowAssembler
 
         // Inlay hints: dim virtual text inserted after all decorations so
         // their SGR spans stay attached to the real characters.
-        $hlLine = EditorRenderer::applyInlayHints($doc, $lineIndex, $this->inlayHints[$lineIndex] ?? [], $hlLine, $this->palette);
+        $hlLine = EditorRenderer::applyInlayHints($doc, $lineIndex, $this->inlayHints[$lineIndex] ?? [], $hlLine, $this->styles);
 
         // Collapsed-region marker on the fold-start line.
         if (null !== ($foldEnd = $this->foldModel->foldEndAt($lineIndex))) {
             $hidden = $foldEnd - $lineIndex;
-            $hlLine .= $this->palette->of(Role::Placeholder).' ⋯ '.$hidden." lines\x1b[0m";
+            $hlLine .= $this->styles->of(Role::Placeholder)->apply(' ⋯ '.$hidden.' lines');
         }
 
         return $hlLine;

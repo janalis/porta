@@ -536,7 +536,7 @@ final class CodeEditorWidgetTest extends TestCase
 
         // The stripe (last column) marks both problems even though line 55 is off-screen.
         $all = implode('', $rendered);
-        $this->assertStringContainsString("\x1b[38;5;203m█", $all, 'error block in the stripe');
+        $this->assertStringContainsString("\x1b[38;5;203m\x1b[48;5;236m█", $all, 'error block in the stripe, over the viewport thumb');
         $this->assertStringContainsString("\x1b[38;5;179m▓", $all, 'off-screen warning shown as a dashed amber block');
         $this->assertSame(1, substr_count($all, needle: '█'), 'the empty list draws no stripe mark');
         $this->assertSame(1, substr_count($all, needle: '▓'), 'one warning mark');

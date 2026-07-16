@@ -8,12 +8,12 @@ use Porta\Search\Everywhere\SearchHit;
 use Porta\Search\Everywhere\SearchRow;
 use Porta\Support\AnsiText;
 use Porta\Ui\CaretVisibility;
-use Porta\Ui\ColorPalette;
 use Porta\Ui\CursorStyle;
-use Porta\Ui\Palette;
 use Porta\Ui\Role;
 use Porta\Ui\Sgr;
 use Porta\Ui\TextField;
+use Porta\Ui\Theme\DarkTheme;
+use Porta\Ui\Theme\Styles;
 use Porta\Widget\Render\EditorRenderer;
 use Porta\Widget\Render\PaneFocus;
 use Symfony\Component\Tui\Ansi\AnsiUtils;
@@ -39,7 +39,7 @@ final class OverlayHost
     /** @var array{col: int, width: int, startRow: int, windowStart: int, count: int}|null last-rendered search box, for mouse hit-testing */
     private ?array $searchBox = null;
 
-    private readonly Palette $palette;
+    private readonly Styles $styles;
 
     /**
      * @param \Closure(): void $invalidate repaint request back into the widget
@@ -48,10 +48,10 @@ final class OverlayHost
 
     public function __construct(
         private readonly \Closure $invalidate,
-        ?Palette $palette = null,
+        ?Styles $styles = null,
         ?CursorStyle $cursorStyle = null,
     ) {
-        $this->palette = $palette ?? ColorPalette::dark();
+        $this->styles = $styles ?? new Styles(DarkTheme::definition());
         $this->cursorStyle = $cursorStyle ?? new CursorStyle();
     }
 
@@ -429,7 +429,7 @@ final class OverlayHost
     {
         $this->overlayBox = null;
         if (null !== $this->overlay) {
-            $this->overlayBox = EditorRenderer::listOverlay($lines, $columns, $rows, $this->overlay, $this->palette);
+            $this->overlayBox = EditorRenderer::listOverlay($lines, $columns, $rows, $this->overlay, $this->styles);
         }
 
         $this->searchBox = null;
@@ -449,7 +449,7 @@ final class OverlayHost
                 CaretVisibility::Shown === $focused ? PaneFocus::Focused : PaneFocus::Blurred,
                 $rowModels,
                 $search->selected,
-                $this->palette,
+                $this->styles,
                 $this->cursorStyle->marker(),
             );
         }
@@ -458,7 +458,7 @@ final class OverlayHost
             $text = ' '.$this->prompt['label'].': '.$this->prompt['value']->value();
             $width = min($columns, max(30, mb_strwidth($text) + 4));
             $rendered = ' '.$this->prompt['label'].': '.$this->prompt['value']->render(cursor: $focused);
-            $box = $this->palette->of(Role::HeaderBar).$this->palette->of(Role::Bright).AnsiUtils::truncateToWidth($rendered.' ', $width, '…', pad: true).Sgr::RESET;
+            $box = $this->styles->merge(Role::HeaderBar, Role::Bright)->apply(AnsiUtils::truncateToWidth($rendered.' ', $width, '…', pad: true));
             $tail = AnsiUtils::sliceByColumn($lines[0] ?? '', $width, $columns - $width);
             $lines[0] = AnsiText::padRight($box.$tail.Sgr::RESET, $columns);
         }

@@ -4,15 +4,15 @@ declare(strict_types=1);
 
 namespace Porta\Editor;
 
-use Porta\Ui\Palette;
 use Porta\Ui\Role;
+use Porta\Ui\Theme\Styles;
 
 /**
  * Severity → styling for diagnostics, shared by the gutter, the in-editor
  * squiggle underlines, the inline end-of-line message and the right-margin error
  * stripe so they all read consistently. LSP severities: 1=error, 2=warning,
  * 3=info, 4=hint; anything else is treated as a hint. The concrete colors live
- * in the {@see Palette}; this maps severity to the semantic {@see Role}.
+ * in the theme ({@see Styles}); this maps severity to the semantic {@see Role}.
  */
 final class DiagnosticStyle
 {
@@ -95,7 +95,7 @@ final class DiagnosticStyle
      * falls back to a plain underline and the `58;5` underline color is simply
      * ignored (the text's own color is used).
      */
-    public static function underlineOpen(int $severity, Palette $palette): string
+    public static function underlineOpen(int $severity, Styles $styles): string
     {
         [$style, $role] = match (self::normalize($severity)) {
             1 => ['4:3', Role::DiagErrorUnderline],
@@ -104,7 +104,7 @@ final class DiagnosticStyle
             default => ['4:1', Role::DiagHintUnderline],
         };
 
-        return "\x1b[{$style}m".$palette->of($role);
+        return "\x1b[{$style}m".$styles->underline($role);
     }
 
     /** Close an underline opened by {@see underlineOpen}: reset its color and style. */

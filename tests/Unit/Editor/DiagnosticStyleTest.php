@@ -6,8 +6,9 @@ namespace Porta\Tests\Unit\Editor;
 
 use PHPUnit\Framework\TestCase;
 use Porta\Editor\DiagnosticStyle;
-use Porta\Ui\ColorPalette;
 use Porta\Ui\Role;
+use Porta\Ui\Theme\DarkTheme;
+use Porta\Ui\Theme\Styles;
 
 final class DiagnosticStyleTest extends TestCase
 {
@@ -68,11 +69,11 @@ final class DiagnosticStyleTest extends TestCase
 
     public function testUnderlineOpenEncodesSeverityInStyleAndColor(): void
     {
-        $palette = ColorPalette::dark();
-        $this->assertSame("\x1b[4:3m\x1b[58;5;203m", DiagnosticStyle::underlineOpen(1, $palette), 'error: curly');
-        $this->assertSame("\x1b[4:5m\x1b[58;5;179m", DiagnosticStyle::underlineOpen(2, $palette), 'warning: dashed');
-        $this->assertSame("\x1b[4:4m\x1b[58;5;75m", DiagnosticStyle::underlineOpen(3, $palette), 'info: dotted');
-        $this->assertSame("\x1b[4:1m\x1b[58;5;244m", DiagnosticStyle::underlineOpen(4, $palette), 'hint: straight');
+        $styles = new Styles(DarkTheme::definition());
+        $this->assertSame("\x1b[4:3m\x1b[58;5;203m", DiagnosticStyle::underlineOpen(1, $styles), 'error: curly');
+        $this->assertSame("\x1b[4:5m\x1b[58;5;179m", DiagnosticStyle::underlineOpen(2, $styles), 'warning: dashed');
+        $this->assertSame("\x1b[4:4m\x1b[58;5;75m", DiagnosticStyle::underlineOpen(3, $styles), 'info: dotted');
+        $this->assertSame("\x1b[4:1m\x1b[58;5;244m", DiagnosticStyle::underlineOpen(4, $styles), 'hint: straight');
         $this->assertSame("\x1b[59m\x1b[24m", DiagnosticStyle::underlineClose());
     }
 }

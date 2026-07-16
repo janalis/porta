@@ -7,9 +7,9 @@ namespace Porta\Widget\Render;
 use Porta\Editor\Caret;
 use Porta\Editor\DiagnosticStyle;
 use Porta\Editor\Document;
-use Porta\Ui\Palette;
 use Porta\Ui\Role;
 use Porta\Ui\Sgr;
+use Porta\Ui\Theme\Styles;
 
 /**
  * Pure builder for one content line's decoration spans, gathered in layering
@@ -41,18 +41,18 @@ final class LineSpans
         array $occurrences,
         ?array $brackets,
         array $diags,
-        Palette $palette,
+        Styles $styles,
     ): array {
         $spans = [];
         $padTo = 0;
 
         if (null !== $selection && $lineIndex >= $selection['startLine'] && $lineIndex <= $selection['endLine']) {
-            $spans[] = self::selectionSpan($doc, $lineIndex, $selection['startLine'], $selection['startCol'], $selection['endLine'], $selection['endCol'], $palette);
+            $spans[] = self::selectionSpan($doc, $lineIndex, $selection['startLine'], $selection['startCol'], $selection['endLine'], $selection['endCol'], $styles);
         }
         foreach ($matches as $match) {
             // The current match is additionally bold, so it stands out from the
             // other matches without relying on the background color.
-            $open = $match['current'] ? $palette->of(Role::SearchCurrentBg).Sgr::BOLD : $palette->of(Role::SearchBg);
+            $open = $match['current'] ? $styles->of(Role::SearchCurrentBg)->withBold()->getAnsiRestore() : $styles->of(Role::SearchBg)->getAnsiRestore();
             $close = $match['current'] ? "\x1b[49m\x1b[22m" : Sgr::DEFAULT_BG;
             $spans[] = [$doc->displayColAt($lineIndex, $match['start']), $doc->displayColAt($lineIndex, $match['end']), $open, $close, $open];
         }
@@ -61,7 +61,8 @@ final class LineSpans
                 continue;
             }
 
-            $spans[] = [$oStart, $oEnd, $palette->of(Role::OccurrenceBg), Sgr::DEFAULT_BG, $palette->of(Role::OccurrenceBg)];
+            $occurrenceBg = $styles->of(Role::OccurrenceBg)->getAnsiRestore();
+            $spans[] = [$oStart, $oEnd, $occurrenceBg, Sgr::DEFAULT_BG, $occurrenceBg];
         }
         if (null !== $brackets) {
             foreach ($brackets as [$bLine, $bDispCol]) {
@@ -77,7 +78,7 @@ final class LineSpans
             $endUtf16 = $diag['endCol'] ?? ($diag['col'] + 1);
             $endDisp = \PHP_INT_MAX === $endUtf16 ? \PHP_INT_MAX : max($startDisp + 1, EditorRenderer::utf16ToDisplayCol($doc, $lineIndex, $endUtf16));
             // Curly, severity-colored underline (degrades to a plain underline).
-            $spans[] = [$startDisp, $endDisp, DiagnosticStyle::underlineOpen($diag['severity'], $palette), DiagnosticStyle::underlineClose(), null];
+            $spans[] = [$startDisp, $endDisp, DiagnosticStyle::underlineOpen($diag['severity'], $styles), DiagnosticStyle::underlineClose(), null];
         }
         foreach ($carets as $caret) {
             // Each caret's selection (possibly spanning lines), drawn before
@@ -86,7 +87,7 @@ final class LineSpans
             $el = max($caret->line, $caret->anchorLine);
             if (($caret->line !== $caret->anchorLine || $caret->col !== $caret->anchorCol) && $lineIndex >= $sl && $lineIndex <= $el) {
                 [, $startCol, , $endCol] = self::caretRange($caret);
-                $spans[] = self::selectionSpan($doc, $lineIndex, $sl, $startCol, $el, $endCol, $palette);
+                $spans[] = self::selectionSpan($doc, $lineIndex, $sl, $startCol, $el, $endCol, $styles);
             }
             // The caret cell (reverse video), for the primary and extras alike.
             if ($caret->line === $lineIndex) {
@@ -107,12 +108,13 @@ final class LineSpans
      *
      * @return array{0: int, 1: int, 2: string, 3: string, 4: ?string}
      */
-    private static function selectionSpan(Document $doc, int $lineIndex, int $startLine, int $startCol, int $endLine, int $endCol, Palette $palette): array
+    private static function selectionSpan(Document $doc, int $lineIndex, int $startLine, int $startCol, int $endLine, int $endCol, Styles $styles): array
     {
         $startDisp = $lineIndex === $startLine ? $doc->displayColAt($lineIndex, $startCol) : 0;
         $endDisp = $lineIndex === $endLine ? $doc->displayColAt($lineIndex, $endCol) : $doc->lineDisplayWidth($lineIndex);
+        $selectionBg = $styles->of(Role::SelectionBg)->getAnsiRestore();
 
-        return [$startDisp, $endDisp, $palette->of(Role::SelectionBg), Sgr::DEFAULT_BG, $palette->of(Role::SelectionBg)];
+        return [$startDisp, $endDisp, $selectionBg, Sgr::DEFAULT_BG, $selectionBg];
     }
 
     /**
