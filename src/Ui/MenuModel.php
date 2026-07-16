@@ -7,6 +7,7 @@ namespace Porta\Ui;
 use Porta\Config\ActionCatalog;
 use Porta\Config\CommandRegistry;
 use Porta\I18n\Translator;
+use Porta\Plugin\PluginMenuSpec;
 use Porta\Widget\CodeEditorWidget;
 use Symfony\Component\Tui\Input\Keybindings;
 
@@ -135,9 +136,9 @@ final class MenuModel
     ];
 
     /**
-     * @param (\Closure(): bool)|null                                            $gitViewOpen      while true, only GIT_VIEW_SAFE items stay enabled
-     * @param (\Closure(): bool)|null                                            $settingsViewOpen while true, only SETTINGS_VIEW_SAFE items stay enabled
-     * @param list<array{plugin: string, spec: string, when: (\Closure(): bool)|null}> $pluginSpecs runtime plugin entries — a Plugins menu between Code and Run when non-empty
+     * @param (\Closure(): bool)|null $gitViewOpen      while true, only GIT_VIEW_SAFE items stay enabled
+     * @param (\Closure(): bool)|null $settingsViewOpen while true, only SETTINGS_VIEW_SAFE items stay enabled
+     * @param list<PluginMenuSpec>    $pluginSpecs      runtime plugin entries — a Plugins menu between Code and Run when non-empty
      *
      * @return list<Menu>
      */
@@ -166,20 +167,20 @@ final class MenuModel
      * consecutive specs, so each plugin's entries read as one group. No leading
      * or trailing separators by construction; a single plugin gets none.
      *
-     * @param list<array{plugin: string, spec: string, when: (\Closure(): bool)|null}> $pluginSpecs
+     * @param list<PluginMenuSpec> $pluginSpecs
      *
-     * @return list<string|array{plugin: string, spec: string, when: (\Closure(): bool)|null}>
+     * @return list<string|PluginMenuSpec>
      */
     private static function groupByPlugin(array $pluginSpecs): array
     {
         $grouped = [];
         $previous = null;
         foreach ($pluginSpecs as $entry) {
-            if (null !== $previous && $previous !== $entry['plugin']) {
+            if (null !== $previous && $previous !== $entry->plugin) {
                 $grouped[] = self::SEP;
             }
             $grouped[] = $entry;
-            $previous = $entry['plugin'];
+            $previous = $entry->plugin;
         }
 
         return $grouped;
@@ -189,11 +190,12 @@ final class MenuModel
      * Build a list of menu items from `scope:id` specs (or {@see SEP}). Shared by
      * the menu bar and the right-click context menus so labels, shortcuts and
      * run handlers stay a single source of truth. Plugin entries arrive as
-     * arrays carrying an optional enabled-closure; core specs stay plain strings.
+     * {@see PluginMenuSpec}s carrying an optional enabled-closure; core specs
+     * stay plain strings.
      *
-     * @param list<string|array{plugin?: string, spec: string, when: (\Closure(): bool)|null}> $specs
-     * @param (\Closure(): bool)|null                                         $gitViewOpen
-     * @param (\Closure(): bool)|null                                         $settingsViewOpen
+     * @param list<string|PluginMenuSpec> $specs
+     * @param (\Closure(): bool)|null     $gitViewOpen
+     * @param (\Closure(): bool)|null     $settingsViewOpen
      *
      * @return list<MenuItem>
      */
@@ -208,8 +210,8 @@ final class MenuModel
     ): array {
         $items = [];
         foreach ($specs as $entry) {
-            $spec = \is_array($entry) ? $entry['spec'] : $entry;
-            $when = \is_array($entry) ? $entry['when'] : null;
+            $spec = $entry instanceof PluginMenuSpec ? $entry->spec : $entry;
+            $when = $entry instanceof PluginMenuSpec ? $entry->when : null;
             $items[] = self::SEP === $spec
                 ? MenuItem::separator()
                 : self::item($spec, $commands, $editor, $ideKeys, $translator, $gitViewOpen, $settingsViewOpen, $when);

@@ -16,6 +16,7 @@ use Porta\I18n\Translator;
 use Porta\Plugin\PluginApi;
 use Porta\Plugin\PluginEvents;
 use Porta\Plugin\PluginManager;
+use Porta\Plugin\PluginMenuSpec;
 use Porta\Plugin\PluginRuntime;
 use Porta\Plugin\PluginSettings;
 use Porta\Tests\Support\RecordingDiagnosticsSink;
@@ -60,7 +61,7 @@ final class PluginManagerTest extends TestCase
         $this->assertTrue($manager->hasPlugin('demo'));
         $this->assertSame(['demo'], $manager->names());
         $this->assertSame(['demo:hello' => ['ctrl+alt+y']], $manager->defaultKeys(), 'keyless commands contribute no defaults');
-        $this->assertSame([['plugin' => 'demo', 'spec' => 'i:demo:hello', 'when' => null]], $manager->menuSpecs());
+        $this->assertEquals([new PluginMenuSpec('demo', 'i:demo:hello')], $manager->menuSpecs());
 
         $registry = new CommandRegistry();
         $manager->registerCommands($registry);
@@ -149,7 +150,7 @@ final class PluginManagerTest extends TestCase
         });
         $manager->commit($api);
 
-        $when = $manager->menuSpecs()[0]['when'];
+        $when = $manager->menuSpecs()[0]->when;
         $this->assertNotNull($when);
         $this->assertFalse($when(), 'a throw reads as disabled');
         $this->assertFalse($when(), 'still disabled on re-render');

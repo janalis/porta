@@ -22,7 +22,7 @@ final class PluginManager
     private array $commands = [];
     /** @var array<string, list<string>> namespaced command id => default key specs */
     private array $keys = [];
-    /** @var list<array{plugin: string, spec: string, when: (\Closure(): bool)|null}> Plugins-menu entries */
+    /** @var list<PluginMenuSpec> Plugins-menu entries */
     private array $menuSpecs = [];
     /** @var list<string> */
     private array $warnings = [];
@@ -63,11 +63,11 @@ final class PluginManager
             }
         }
         foreach ($api->bufferedMenuItems() as $item) {
-            $this->menuSpecs[] = [
-                'plugin' => $name,
-                'spec' => 'i:'.$item['id'],
-                'when' => null === $item['when'] ? null : $this->wrapWhen($name, $item['when']),
-            ];
+            $this->menuSpecs[] = new PluginMenuSpec(
+                plugin: $name,
+                spec: 'i:'.$item['id'],
+                when: null === $item['when'] ? null : $this->wrapWhen($name, $item['when']),
+            );
         }
         foreach ($api->bufferedHooks() as [$event, $listener]) {
             $this->events->subscribe($name, $event, $this->wrap($name, $listener));
@@ -101,7 +101,7 @@ final class PluginManager
 
             return false;
         }));
-        $this->menuSpecs = array_values(array_filter($this->menuSpecs, static fn (array $spec): bool => $name !== $spec['plugin']));
+        $this->menuSpecs = array_values(array_filter($this->menuSpecs, static fn (PluginMenuSpec $spec): bool => $name !== $spec->plugin));
         $this->registered = \count($this->commands);
 
         unset($this->reportedWhens[$name]);
@@ -127,7 +127,7 @@ final class PluginManager
         return $this->keys;
     }
 
-    /** @return list<array{plugin: string, spec: string, when: (\Closure(): bool)|null}> entries for MenuModel's Plugins menu */
+    /** @return list<PluginMenuSpec> entries for MenuModel's Plugins menu */
     public function menuSpecs(): array
     {
         return $this->menuSpecs;

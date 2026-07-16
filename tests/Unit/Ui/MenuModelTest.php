@@ -9,6 +9,7 @@ use Porta\Config\CommandRegistry;
 use Porta\Config\KeyDispatch;
 use Porta\Config\PaletteVisibility;
 use Porta\I18n\Translator;
+use Porta\Plugin\PluginMenuSpec;
 use Porta\Ui\Menu;
 use Porta\Ui\MenuItem;
 use Porta\Ui\MenuModel;
@@ -66,7 +67,7 @@ final class MenuModelTest extends TestCase
         );
         $ideKeys = new Keybindings(['demo:hello' => ['ctrl+alt+y']]);
 
-        $menus = MenuModel::build($commands, new CodeEditorWidget(), $ideKeys, new Translator('en'), pluginSpecs: [['plugin' => 'demo', 'spec' => 'i:demo:hello', 'when' => null]]);
+        $menus = MenuModel::build($commands, new CodeEditorWidget(), $ideKeys, new Translator('en'), pluginSpecs: [new PluginMenuSpec('demo', 'i:demo:hello')]);
         $titles = array_map(static fn (Menu $m) => $m->title, $menus);
         $this->assertSame(['File', 'Edit', 'Navigate', 'Code', 'Plugins', 'Run', 'Git', 'View', 'Help'], $titles, 'the Plugins menu sits between Code and Run');
         $plugins = $menus[4];
@@ -89,9 +90,9 @@ final class MenuModelTest extends TestCase
         $commands->add('beta:one', static function (): void {}, keyBound: KeyDispatch::Bound, label: 'Beta One');
 
         $menus = MenuModel::build($commands, new CodeEditorWidget(), new Keybindings([]), new Translator('en'), pluginSpecs: [
-            ['plugin' => 'alpha', 'spec' => 'i:alpha:one', 'when' => null],
-            ['plugin' => 'alpha', 'spec' => 'i:alpha:two', 'when' => null],
-            ['plugin' => 'beta', 'spec' => 'i:beta:one', 'when' => null],
+            new PluginMenuSpec('alpha', 'i:alpha:one'),
+            new PluginMenuSpec('alpha', 'i:alpha:two'),
+            new PluginMenuSpec('beta', 'i:beta:one'),
         ]);
 
         $items = $menus[4]->items;
@@ -107,8 +108,8 @@ final class MenuModelTest extends TestCase
         $commands->add('demo:b', static function (): void {}, keyBound: KeyDispatch::Bound, label: 'B');
 
         $menus = MenuModel::build($commands, new CodeEditorWidget(), new Keybindings([]), new Translator('en'), pluginSpecs: [
-            ['plugin' => 'demo', 'spec' => 'i:demo:a', 'when' => null],
-            ['plugin' => 'demo', 'spec' => 'i:demo:b', 'when' => null],
+            new PluginMenuSpec('demo', 'i:demo:a'),
+            new PluginMenuSpec('demo', 'i:demo:b'),
         ]);
 
         $this->assertSame([false, false], array_map(static fn (MenuItem $i) => $i->separator, $menus[4]->items), 'a single plugin keeps a flat, separator-free list');
@@ -129,13 +130,9 @@ final class MenuModelTest extends TestCase
             settingsViewOpen: static function () use (&$settingsOpen): bool {
                 return $settingsOpen;
             },
-            pluginSpecs: [[
-                'plugin' => 'demo',
-                'spec' => 'i:demo:hello',
-                'when' => static function () use (&$usable): bool {
-                    return $usable;
-                },
-            ]],
+            pluginSpecs: [new PluginMenuSpec('demo', 'i:demo:hello', static function () use (&$usable): bool {
+                return $usable;
+            })],
         );
         $item = $menus[4]->items[0];
 
