@@ -18,6 +18,9 @@ use Porta\Lsp\FormatOnSave;
 use Porta\Ui\CursorStyle;
 use Porta\Ui\PaletteFactory;
 use Porta\Ui\SwitchablePalette;
+use Porta\Ui\Theme\Styles;
+use Porta\Ui\Theme\StyleSheetThemer;
+use Porta\Ui\Theme\Themes;
 use Porta\Widget\Git\DiffViewWidget;
 use Porta\Widget\HelpViewerWidget;
 use Porta\Widget\TabBarPosition;
@@ -34,6 +37,8 @@ final class LiveSettingsApplier
 {
     public function __construct(
         private readonly SwitchablePalette $palette,
+        private readonly Styles $styles,
+        private readonly StyleSheetThemer $sheetThemer,
         private readonly SwitchableTerminalTheme $syntaxTheme,
         private readonly CursorStyle $cursorStyle,
         private readonly Translator $translator,
@@ -55,8 +60,12 @@ final class LiveSettingsApplier
      */
     public function applyTheme(string $theme): void
     {
-        $this->palette->switchTo(PaletteFactory::create($this->ansi ? ColorMode::Ansi : ColorMode::Plain, $theme));
-        $this->syntaxTheme->switchTo(TerminalThemeFactory::create($this->ansi ? ColorMode::Ansi : ColorMode::Plain, $theme));
+        $mode = $this->ansi ? ColorMode::Ansi : ColorMode::Plain;
+        $this->palette->switchTo(PaletteFactory::create($mode, $theme));
+        $definition = Themes::definition($mode, $theme);
+        $this->styles->switchTo($definition); // fragment styling (widgets hold the holder)
+        $this->sheetThemer->apply($definition); // widget-level rules on the renderer's sheet
+        $this->syntaxTheme->switchTo(TerminalThemeFactory::create($mode, $theme));
         // Existing highlighters baked the old theme at construction, so rebuild
         // them (the diff view re-highlights its shown hunks in the same step);
         // buffers opened later pick up the new theme from the swapped holder.

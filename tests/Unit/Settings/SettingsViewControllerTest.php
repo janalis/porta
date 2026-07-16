@@ -27,6 +27,8 @@ use Porta\Plugin\PluginInstaller;
 use Porta\Plugin\PluginSettings;
 use Porta\Settings\LiveSettingsApplier;
 use Porta\Settings\SettingsViewController;
+use Porta\Ui\Theme\StyleSheetThemer;
+use Porta\Ui\Theme\Themes;
 use Porta\Tests\Support\FakePluginLifecycle;
 use Porta\Tests\Support\FakeScheduler;
 use Porta\Tests\Support\FixedActiveFile;
@@ -100,12 +102,15 @@ final class SettingsViewControllerTest extends TestCase
         $menuBar = new MenuBarWidget();
         $menuBar->setId('menu');
 
-        $this->tui = new Tui(terminal: new VirtualTerminal(columns: 100, rows: 24), keybindings: new Keybindings([]), renderer: new Renderer(new StyleSheet()));
+        $renderer = new Renderer(new StyleSheet());
+        $this->tui = new Tui(terminal: new VirtualTerminal(columns: 100, rows: 24), keybindings: new Keybindings([]), renderer: $renderer);
         $editor = new CodeEditorWidget();
         $status = new StatusBarWidget();
         $notifier = new Notifier($status, $this->tui);
         $applier = new LiveSettingsApplier(
             PaletteFactory::createSwitchable(ColorMode::Ansi, 'dark'),
+            Themes::createSwitchable(ColorMode::Ansi, 'dark'),
+            new StyleSheetThemer($renderer),
             TerminalThemeFactory::createSwitchable(ColorMode::Ansi, 'dark'),
             new CursorStyle(),
             new Translator('en'),

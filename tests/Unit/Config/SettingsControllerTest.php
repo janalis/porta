@@ -28,6 +28,8 @@ use Porta\Tests\Support\TempProject;
 use Porta\Ui\CursorStyle;
 use Porta\Ui\Notifier;
 use Porta\Ui\PaletteFactory;
+use Porta\Ui\Theme\StyleSheetThemer;
+use Porta\Ui\Theme\Themes;
 use Porta\Widget\BreadcrumbsWidget;
 use Porta\Widget\CodeEditorWidget;
 use Porta\Widget\ContextMenu;
@@ -112,6 +114,8 @@ final class SettingsControllerTest extends TestCase
         $t = new Translator('en');
         $applier = new LiveSettingsApplier(
             PaletteFactory::createSwitchable(ColorMode::Ansi, 'dark'),
+            Themes::createSwitchable(ColorMode::Ansi, 'dark'),
+            new StyleSheetThemer(new Renderer(new StyleSheet())),
             TerminalThemeFactory::createSwitchable(ColorMode::Ansi, 'dark'),
             new CursorStyle(),
             $translator,
