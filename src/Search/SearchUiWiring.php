@@ -42,6 +42,7 @@ final class SearchUiWiring
         private readonly NavigationController $navigation,
         private readonly ProjectSearchController $projectSearch,
         private readonly LocalHistoryController $localHistory,
+        private readonly TodoScanner $todoScanner,
         private readonly ResultContextProvider $resultContext,
         private readonly BufferService $bufferService,
         private readonly Scheduler $scheduler,
@@ -103,10 +104,14 @@ final class SearchUiWiring
             });
         });
 
-        // F5 re-runs the current find-in-project query (picks up on-disk changes).
+        // F5 re-runs the current find-in-project query (picks up on-disk
+        // changes) or, on the TODO tab, re-scans the project.
         $this->resultsPanel->onRerun(function (): void {
             if (ResultsPanelMode::Search === $this->panels->mode()) {
                 $this->projectSearch->rerun();
+            }
+            if (ResultsPanelMode::Todo === $this->panels->mode()) {
+                $this->todoScanner->scan();
             }
         });
 

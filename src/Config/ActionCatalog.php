@@ -110,6 +110,7 @@ final class ActionCatalog
         'ide_goto_symbol' => ['label' => 'Go to Symbol in Project', 'keys' => ['ctrl+alt+shift+n', 'ctrl+alt+o']],
         'ide_goto_test' => ['label' => 'Go to Test', 'keys' => ['ctrl+shift+t']],
         'ide_problems' => ['label' => 'Show Problems', 'keys' => ['alt+6']],
+        'ide_todo' => ['label' => 'Show TODOs', 'keys' => ['alt+8']],
         'ide_command_palette' => ['label' => 'Find Action', 'keys' => ['ctrl+shift+a']],
         'ide_search_everywhere' => ['label' => 'Search Everywhere', 'keys' => ['ctrl+shift+e']],
         'ide_local_history' => ['label' => 'Show Local History', 'keys' => ['ctrl+alt+h']],

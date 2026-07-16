@@ -1778,6 +1778,10 @@
         <source>Close Terminal Session</source>
         <target>Cerrar sesión de terminal</target>
       </trans-unit>
+      <trans-unit id="448">
+        <source>Show TODOs</source>
+        <target>Mostrar TODOs</target>
+      </trans-unit>
     </body>
   </file>
 </xliff>

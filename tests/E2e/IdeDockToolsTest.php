@@ -21,6 +21,18 @@ final class IdeDockToolsTest extends TestCase
 {
     use RunsIde;
 
+    private string $originalPath;
+
+    protected function setUp(): void
+    {
+        $this->originalPath = (string) getenv('PATH');
+    }
+
+    protected function tearDown(): void
+    {
+        putenv('PATH='.$this->originalPath);
+    }
+
     private static function bufferService(mixed $ide): BufferService
     {
         /** @var BufferService */
@@ -77,6 +89,63 @@ final class IdeDockToolsTest extends TestCase
                     $screen = AnsiUtils::stripAnsiCodes($terminal->getOutput());
                     $this->assertStringContainsString('▲ warn one', $screen, 'the concealed tab picked up the second diagnostic');
                     $this->assertStringContainsString('2 results', $screen);
+                },
+            ],
+        );
+
+        $this->addToAssertionCount(1);
+    }
+
+    public function testTodoScanListsJumpsAndRerunsWithF5(): void
+    {
+        putenv('PATH='.$this->originalPath); // real grep for the async scan
+        $project = new TempProject([
+            'src/A.php' => "<?php\n// TODO extract this\n",
+            'src/B.py' => "# FIXME races\n",
+        ]);
+
+        $this->runIde(
+            $project,
+            $project->path('src/A.php'),
+            [
+                200 => function ($tui, $terminal): void {
+                    $tui->handleInput("\x1b8"); // alt+8 → Show TODOs
+                    $this->await(static fn (): bool => str_contains(AnsiUtils::stripAnsiCodes($terminal->getOutput()), 'FIXME races'));
+                    $tui->tick();
+                    $screen = AnsiUtils::stripAnsiCodes($terminal->getOutput());
+                    $this->assertStringContainsString('TODO extract this', $screen, 'the scan found both markers');
+                    $this->assertStringContainsString('2 results', $screen);
+                    // The list is path-sorted: src/A.php first, selected. Enter jumps.
+                    $tui->handleInput("\r");
+                },
+                400 => function ($tui, $terminal, $ide) use ($project): void {
+                    $tui->tick();
+                    // grep's row order is directory-walk order, so the first
+                    // (auto-selected) row may be either file.
+                    $this->assertMatchesRegularExpression('~src/(A\.php|B\.py)$~', (string) $tui->getById('editor')->getFilePath(), 'Enter jumped to a TODO match');
+                    // F5 re-scans and picks up a marker added on disk meanwhile.
+                    $project->write('src/C.php', "<?php\n// TODO added later\n");
+                    $tui->setFocus($tui->getById('results'));
+                    $tui->handleInput("\x1b[15~"); // F5
+                    $this->await(static fn (): bool => str_contains(AnsiUtils::stripAnsiCodes($terminal->getOutput()), '3 results'));
+                    $this->assertStringContainsString('TODO added later', AnsiUtils::stripAnsiCodes($terminal->getOutput()), 'the rerun saw the new file');
+                },
+                700 => function ($tui, $terminal): void {
+                    // Stale completion: kick a scan and immediately repurpose
+                    // the panel — the late grep result must not clobber it.
+                    $tui->handleInput("\x1b8"); // alt+8 → scan starts
+                    $tui->handleInput("\x1b6"); // alt+6 → Problems takes the panel before grep lands
+                    $this->await(static fn (): bool => str_contains(AnsiUtils::stripAnsiCodes($terminal->getOutput()), 'Problems'));
+                },
+                1000 => function ($tui): void {
+                    // Assert on the widget, not the accumulated terminal
+                    // output (which still carries every earlier frame).
+                    $tui->tick();
+                    $results = $tui->getById('results');
+                    $this->assertSame('Problems', $results->getTitle(), 'the Problems tab kept the panel');
+                    $this->assertStringContainsString('0 results', $results->statusText(), 'the stale TODO completion did not overwrite the rows');
+                    $panel = AnsiUtils::stripAnsiCodes(implode("\n", $results->render(new \Symfony\Component\Tui\Render\RenderContext(160, 12))));
+                    $this->assertStringNotContainsString('FIXME races', $panel, 'the stale TODO completion was dropped');
                 },
             ],
         );

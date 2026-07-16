@@ -21,4 +21,6 @@ enum ResultsPanelMode
     case History;
     /** Aggregated diagnostics across open buffers. */
     case Problems;
+    /** Project-wide TODO/FIXME scan. */
+    case Todo;
 }
