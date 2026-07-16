@@ -23,8 +23,6 @@ use Symfony\Component\Tui\Ansi\AnsiUtils;
  * pens across the word-wrap, so opens come from getAnsiRestore() rather
  * than balanced apply() wraps.
  *
- * @phpstan-type Segment array{text: string, style: string, target: string|null, group: int}
- * @phpstan-type Word array{text: string, width: int, style: string, target: string|null, group: int}
  */
 final class MarkdownRenderer
 {
@@ -247,7 +245,7 @@ final class MarkdownRenderer
      * first (they own their whole `[text](target)` source run); bold, italic
      * and inline code split the remaining plain stretches.
      *
-     * @return list<Segment>
+     * @return list<MarkdownSegment>
      */
     private function inline(string $text): array
     {
@@ -261,19 +259,19 @@ final class MarkdownRenderer
                 ++$i;
                 if (null === $target) {
                     // A pure in-page anchor: styled, but not a followable link.
-                    $segments[] = ['text' => $label, 'style' => 'italic', 'target' => null, 'group' => -1];
+                    $segments[] = new MarkdownSegment($label, MarkdownSpanKind::Italic);
                     continue;
                 }
-                $segments[] = ['text' => $label, 'style' => 'link', 'target' => $target, 'group' => $this->nextGroup++];
+                $segments[] = new MarkdownSegment($label, MarkdownSpanKind::Link, $target, $this->nextGroup++);
                 continue;
             }
             $chunks = preg_split('/(`[^`]+`|\*\*[^*]+\*\*|\*[^*]+\*)/', $parts[$i], -1, \PREG_SPLIT_DELIM_CAPTURE | \PREG_SPLIT_NO_EMPTY);
             foreach (\is_array($chunks) ? $chunks : [] as $chunk) {
                 $segments[] = match (true) {
-                    str_starts_with($chunk, '`') => ['text' => trim($chunk, characters: '`'), 'style' => 'code', 'target' => null, 'group' => -1],
-                    str_starts_with($chunk, '**') => ['text' => trim($chunk, characters: '*'), 'style' => 'bold', 'target' => null, 'group' => -1],
-                    str_starts_with($chunk, '*') => ['text' => trim($chunk, characters: '*'), 'style' => 'italic', 'target' => null, 'group' => -1],
-                    default => ['text' => $chunk, 'style' => 'plain', 'target' => null, 'group' => -1],
+                    str_starts_with($chunk, '`') => new MarkdownSegment(trim($chunk, characters: '`'), MarkdownSpanKind::Code),
+                    str_starts_with($chunk, '**') => new MarkdownSegment(trim($chunk, characters: '*'), MarkdownSpanKind::Bold),
+                    str_starts_with($chunk, '*') => new MarkdownSegment(trim($chunk, characters: '*'), MarkdownSpanKind::Italic),
+                    default => new MarkdownSegment($chunk),
                 };
             }
         }
@@ -295,25 +293,25 @@ final class MarkdownRenderer
      * Greedy word-wrap of styled segments into rendered lines, tracking link
      * spans through the wrapping (a split link emits one span per line).
      *
-     * @param list<Segment> $segments
+     * @param list<MarkdownSegment> $segments
      */
     private function wrapSegments(array $segments, int $width, string $firstPrefix, int $hang, string $contPrefix): void
     {
         $words = [];
         foreach ($segments as $segment) {
-            $splitWords = preg_split('/ +/', $segment['text'], -1, \PREG_SPLIT_NO_EMPTY);
+            $splitWords = preg_split('/ +/', $segment->text, -1, \PREG_SPLIT_NO_EMPTY);
             foreach (\is_array($splitWords) ? $splitWords : [] as $word) {
                 $wordWidth = AnsiUtils::visibleWidth($word);
                 $room = $width - max($hang, 2);
                 while ($wordWidth > $room) {
                     // A single over-wide word (long URL/path) hard-breaks.
                     $head = AnsiUtils::sliceByColumn($word, 0, $room);
-                    $words[] = ['text' => $head, 'width' => AnsiUtils::visibleWidth($head), 'style' => $segment['style'], 'target' => $segment['target'], 'group' => $segment['group']];
+                    $words[] = new MarkdownWord($head, AnsiUtils::visibleWidth($head), $segment->kind, $segment->target, $segment->group);
                     $word = AnsiUtils::sliceByColumn($word, $room, \PHP_INT_MAX);
                     $wordWidth = AnsiUtils::visibleWidth($word);
                 }
                 if ('' !== $word) {
-                    $words[] = ['text' => $word, 'width' => $wordWidth, 'style' => $segment['style'], 'target' => $segment['target'], 'group' => $segment['group']];
+                    $words[] = new MarkdownWord($word, $wordWidth, $segment->kind, $segment->target, $segment->group);
                 }
             }
         }
@@ -323,14 +321,14 @@ final class MarkdownRenderer
         $lineWords = [];
         $col = $prefixWidth;
         foreach ($words as $word) {
-            $needed = ([] === $lineWords ? 0 : 1) + $word['width'];
+            $needed = ([] === $lineWords ? 0 : 1) + $word->width;
             if ([] !== $lineWords && ($col + $needed) > $width) {
                 $this->emitLine($prefix, $prefixWidth, $lineWords, $width);
                 $prefix = $contPrefix;
                 $prefixWidth = $hang;
                 $lineWords = [];
                 $col = $prefixWidth;
-                $needed = $word['width'];
+                $needed = $word->width;
             }
             $lineWords[] = $word;
             $col += $needed;
@@ -340,7 +338,7 @@ final class MarkdownRenderer
         }
     }
 
-    /** @param list<Word> $lineWords */
+    /** @param list<MarkdownWord> $lineWords */
     private function emitLine(string $prefix, int $prefixWidth, array $lineWords, int $width): void
     {
         $assembled = $this->assemble($this->wordsToSegments($lineWords), $prefixWidth);
@@ -352,25 +350,25 @@ final class MarkdownRenderer
      * Re-join placed words into per-line segments (spaces between words of
      * the same run stay inside the run's styled region).
      *
-     * @param list<Word> $lineWords
+     * @param list<MarkdownWord> $lineWords
      *
-     * @return list<Segment>
+     * @return list<MarkdownSegment>
      */
     private function wordsToSegments(array $lineWords): array
     {
-        /** @var list<Segment> $segments */
+        /** @var list<MarkdownSegment> $segments */
         $segments = [];
         foreach ($lineWords as $word) {
             $last = [] !== $segments ? \count($segments) - 1 : null;
-            if (null !== $last && $segments[$last]['style'] === $word['style'] && $segments[$last]['group'] === $word['group']) {
-                $segments[$last] = ['text' => $segments[$last]['text'].' '.$word['text'], 'style' => $word['style'], 'target' => $word['target'], 'group' => $word['group']];
+            if (null !== $last && $segments[$last]->kind === $word->kind && $segments[$last]->group === $word->group) {
+                $segments[$last] = new MarkdownSegment($segments[$last]->text.' '.$word->text, $word->kind, $word->target, $word->group);
                 continue;
             }
             if (null !== $last) {
                 // The separating space stays outside both styled regions.
-                $segments[] = ['text' => ' ', 'style' => 'plain', 'target' => null, 'group' => -1];
+                $segments[] = new MarkdownSegment(' ');
             }
-            $segments[] = ['text' => $word['text'], 'style' => $word['style'], 'target' => $word['target'], 'group' => $word['group']];
+            $segments[] = new MarkdownSegment($word->text, $word->kind, $word->target, $word->group);
         }
 
         return $segments;
@@ -380,7 +378,7 @@ final class MarkdownRenderer
      * Compose styled segments into one line fragment, producing prefix-relative
      * link spans. Each styled region opens and closes its own SGR codes.
      *
-     * @param list<Segment> $segments
+     * @param list<MarkdownSegment> $segments
      *
      * @return array{text: string, width: int, spans: list<array{col: int, endCol: int, target: string, group: int}>}
      */
@@ -390,12 +388,12 @@ final class MarkdownRenderer
         $col = $startCol;
         $spans = [];
         foreach ($segments as $segment) {
-            $segmentWidth = AnsiUtils::visibleWidth($segment['text']);
-            if ('link' === $segment['style'] && null !== $segment['target']) {
+            $segmentWidth = AnsiUtils::visibleWidth($segment->text);
+            if (MarkdownSpanKind::Link === $segment->kind && null !== $segment->target) {
                 // Trailing joining spaces stay outside the recorded span.
-                $spans[] = ['col' => $col, 'endCol' => $col + AnsiUtils::visibleWidth(rtrim($segment['text'])), 'target' => $segment['target'], 'group' => $segment['group']];
+                $spans[] = ['col' => $col, 'endCol' => $col + AnsiUtils::visibleWidth(rtrim($segment->text)), 'target' => $segment->target, 'group' => $segment->group];
             }
-            $text .= $this->open($segment['style']).$segment['text'].$this->close($segment['style']);
+            $text .= $this->open($segment->kind).$segment->text.$this->close($segment->kind);
             $col += $segmentWidth;
         }
 
@@ -415,25 +413,25 @@ final class MarkdownRenderer
         }
     }
 
-    private function open(string $style): string
+    private function open(MarkdownSpanKind $kind): string
     {
-        return match ($style) {
-            'bold' => $this->bold(),
-            'italic' => $this->styles->hasColor() ? "\x1b[3m" : '',
-            'code' => $this->styles->of(Role::Emphasis)->getAnsiRestore(),
-            'link' => ($this->styles->hasColor() ? Sgr::UNDERLINE : '').$this->styles->of(Role::TabAccent)->getAnsiRestore(),
-            default => '',
+        return match ($kind) {
+            MarkdownSpanKind::Bold => $this->bold(),
+            MarkdownSpanKind::Italic => $this->styles->hasColor() ? "\x1b[3m" : '',
+            MarkdownSpanKind::Code => $this->styles->of(Role::Emphasis)->getAnsiRestore(),
+            MarkdownSpanKind::Link => ($this->styles->hasColor() ? Sgr::UNDERLINE : '').$this->styles->of(Role::TabAccent)->getAnsiRestore(),
+            MarkdownSpanKind::Plain => '',
         };
     }
 
-    private function close(string $style): string
+    private function close(MarkdownSpanKind $kind): string
     {
-        return match ($style) {
-            'bold' => $this->styles->hasColor() ? Sgr::NORMAL_INTENSITY : '',
-            'italic' => $this->styles->hasColor() ? "\x1b[23m" : '',
-            'code' => $this->fgReset(),
-            'link' => $this->fgReset().($this->styles->hasColor() ? "\x1b[24m" : ''),
-            default => '',
+        return match ($kind) {
+            MarkdownSpanKind::Bold => $this->styles->hasColor() ? Sgr::NORMAL_INTENSITY : '',
+            MarkdownSpanKind::Italic => $this->styles->hasColor() ? "\x1b[23m" : '',
+            MarkdownSpanKind::Code => $this->fgReset(),
+            MarkdownSpanKind::Link => $this->fgReset().($this->styles->hasColor() ? "\x1b[24m" : ''),
+            MarkdownSpanKind::Plain => '',
         };
     }
 
