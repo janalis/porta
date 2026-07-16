@@ -328,10 +328,10 @@ final class IdeEdgeCasesTest extends TestCase
                     $renderer = new \ReflectionProperty($ide, 'renderer')->getValue($ide);
                     $rect = $renderer->getWidgetRect($results);
                     $expected = $rect->rows + 4;
-                    $top = $rect->row + 1; // 1-based screen row of the pane's top edge
-                    $tui->handleInput(\sprintf("\x1b[<0;5;%dM", $top)); // arm on the top edge
-                    $tui->handleInput(\sprintf("\x1b[<32;5;%dM", $top - 4)); // drag the edge up 4 rows
-                    $tui->handleInput(\sprintf("\x1b[<0;5;%dm", $top - 4)); // release
+                    $top = $rect->row; // 1-based screen row of the dock strip — the resize grab
+                    $tui->handleInput(\sprintf("\x1b[<0;60;%dM", $top)); // arm on the strip's empty tail
+                    $tui->handleInput(\sprintf("\x1b[<32;60;%dM", $top - 4)); // drag the edge up 4 rows
+                    $tui->handleInput(\sprintf("\x1b[<0;60;%dm", $top - 4)); // release
                 },
                 320 => function ($tui) use ($project, &$expected): void {
                     $this->assertSame($expected, $tui->getById('results')->visibleRows(), 'the results pane grew by the drag');
@@ -4363,15 +4363,16 @@ final class IdeEdgeCasesTest extends TestCase
                 700 => function ($tui, $terminal): void {
                     $tui->tick();
                     $this->assertStringContainsString('hello-term', AnsiUtils::stripAnsiCodes($terminal->getOutput()));
-                    // Hide the panel; the editor regains focus.
+                    // Hide the dock; the session stays alive and the editor regains focus.
                     $tui->handleInput("\x1b[96;5u");
-                    $this->assertFalse($tui->getById('terminal')->isOpen());
+                    $this->assertFalse($tui->getById('terminal')->isVisible());
+                    $this->assertTrue($tui->getById('terminal')->isOpen(), 'the terminal tab survives the hide');
                     $this->assertSame('editor', $tui->getFocus()?->getId());
                 },
                 750 => function ($tui): void {
                     // Re-open: the still-running shell's panel comes back (no respawn).
                     $tui->handleInput("\x1b[96;5u");
-                    $this->assertTrue($tui->getById('terminal')->isOpen());
+                    $this->assertTrue($tui->getById('terminal')->isVisible());
                     // Now exit the shell so onExit updates the title.
                     foreach (str_split("exit\n") as $ch) {
                         $tui->handleInput($ch);
@@ -4411,8 +4412,9 @@ final class IdeEdgeCasesTest extends TestCase
                     $screen = AnsiUtils::stripAnsiCodes($terminal->getOutput());
                     $this->assertStringContainsString('scrolled', $screen);
                     $tui->handleInput("\x1b[6~"); // page down
-                    $tui->handleInput("\x1b"); // escape hides the panel
-                    $this->assertFalse($tui->getById('terminal')->isOpen());
+                    $tui->handleInput("\x1b"); // escape hides the dock; the session stays alive
+                    $this->assertFalse($tui->getById('terminal')->isVisible());
+                    $this->assertTrue($tui->getById('terminal')->isOpen(), 'the terminal tab survives the hide');
                 },
             ],
         );

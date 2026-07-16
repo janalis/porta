@@ -37,6 +37,9 @@ final class LayoutController
     private int $gitSidebarResizeStartWidth = 0;
     private int $settingsSidebarResizeStartWidth = 0;
     private int $panelResizeStartHeight = 0;
+
+    /** The armed grab row relative to the panel top (-1 when the dock strip is the grab). */
+    private int $panelResizeGrabOffset = 0;
     private ?int $sidebarWidthPercent = null; // persisted pane proportions (null = widget default)
     private ?int $bottomPanelHeightPercent = null;
     private ?int $gitSidebarWidthPercent = null;
@@ -120,7 +123,7 @@ final class LayoutController
         // Bottom-panel resize: dragging a panel's top edge sets the bottom-panel height.
         if ($this->panelResizing && ($mouse->isLeftDrag() || $mouse->isLeftRelease())) {
             $rows = $this->tui->getTerminal()->getRows();
-            $height = $this->clampPanel($this->panelResizeBottom - $mouse->row, $rows);
+            $height = $this->clampPanel($this->panelResizeBottom - $mouse->row + $this->panelResizeGrabOffset, $rows);
             $this->resizeBottomPanels($height);
             $this->tui->requestRender();
             if ($mouse->isLeftRelease()) {
@@ -213,17 +216,18 @@ final class LayoutController
      * Arm a bottom-panel (terminal or results) resize when a left-press lands on
      * the panel's top edge. Focuses the panel too, preserving click-to-focus.
      */
-    public function armPanelResize(TerminalPanelWidget|ResultsPanelWidget|DebugPanelWidget $panel, MouseEvent $mouse): bool
+    public function armPanelResize(TerminalPanelWidget|ResultsPanelWidget|DebugPanelWidget $panel, MouseEvent $mouse, int $grabRowOffset = 0): bool
     {
         if (!$panel->isVisible()) {
             return false;
         }
         $rect = $this->renderer->getWidgetRect($panel);
-        if (null === $rect || $mouse->row !== $rect->row || $mouse->col < $rect->col || $mouse->col >= ($rect->col + $rect->columns)) {
+        if (null === $rect || $mouse->row !== ($rect->row + $grabRowOffset) || $mouse->col < $rect->col || $mouse->col >= ($rect->col + $rect->columns)) {
             return false;
         }
         $this->panelResizeBottom = $rect->row + $rect->rows;
         $this->panelResizeStartHeight = $rect->rows;
+        $this->panelResizeGrabOffset = $grabRowOffset;
         $this->panelResizing = true;
         $this->tui->setFocus($panel);
         $this->tui->requestRender();

@@ -5,11 +5,14 @@ declare(strict_types=1);
 namespace Porta\Tests\Support;
 
 use Porta\Editor\BufferManager;
+use Porta\I18n\Translator;
+use Porta\Terminal\TerminalSessions;
 use Porta\Ui\BottomDock;
 use Porta\Ui\EditorArea;
 use Porta\Ui\Notifier;
 use Porta\Widget\CodeEditorWidget;
 use Porta\Widget\DebugPanelWidget;
+use Porta\Widget\DockTabsWidget;
 use Porta\Widget\HelpViewerWidget;
 use Porta\Widget\ImageViewerWidget;
 use Porta\Widget\ResultsPanelWidget;
@@ -26,12 +29,17 @@ final class TestBottomDock
         ResultsPanelWidget $results,
         DebugPanelWidget $debug,
         ?EditorArea $editorArea = null,
+        ?DockTabsWidget $dockTabs = null,
+        ?TerminalSessions $sessions = null,
     ): BottomDock {
         $dock = new BottomDock(
             $tui,
             $terminal,
             $results,
             $debug,
+            $dockTabs ?? new DockTabsWidget(),
+            $sessions ?? new TerminalSessions(),
+            new Translator('en'),
             new Notifier(new StatusBarWidget(), $tui),
             $editorArea ?? new EditorArea(new BufferManager(), new CodeEditorWidget(), new ImageViewerWidget(), new HelpViewerWidget(), $tui),
         );

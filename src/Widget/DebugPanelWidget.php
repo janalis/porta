@@ -170,7 +170,7 @@ final class DebugPanelWidget extends OverlayWidget implements FocusableInterface
     {
         $kb = $this->getKeybindings();
         if ($kb->matches($data, 'close')) {
-            $this->close();
+            $this->dismiss();
 
             return;
         }

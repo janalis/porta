@@ -83,6 +83,7 @@ final class WidgetHooks
         // The dock hooks (single-visible invariant, MRU restore, focus return)
         // register on all three bottom panels here.
         $this->panels->wire();
+        $this->panels->onTerminalReveal(fn () => $this->run->showActiveSession());
         $terminalPanel = $this->terminalPanel;
         $terminalPanel->onInputForward(fn (string $data) => $this->run->forwardInput($data));
         $terminalPanel->setSessionTabsProvider(function (): array {

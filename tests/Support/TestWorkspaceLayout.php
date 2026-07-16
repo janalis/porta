@@ -10,6 +10,7 @@ use Porta\Widget\BreadcrumbsWidget;
 use Porta\Widget\CodeEditorWidget;
 use Porta\Widget\ContextMenu;
 use Porta\Widget\DebugPanelWidget;
+use Porta\Widget\DockTabsWidget;
 use Porta\Widget\FileTreeWidget;
 use Porta\Widget\FindBarWidget;
 use Porta\Widget\Git\ChangesListWidget;
@@ -56,6 +57,7 @@ final class TestWorkspaceLayout
         ?ContextMenu $contextMenu = null,
         ?GoToFileWidget $goToFile = null,
         ?FindBarWidget $findBar = null,
+        ?DockTabsWidget $dockTabs = null,
         ?ResultsPanelWidget $resultsPanel = null,
         ?DebugPanelWidget $debugPanel = null,
         ?TerminalPanelWidget $terminalPanel = null,
@@ -86,6 +88,7 @@ final class TestWorkspaceLayout
             $contextMenu ?? $id(new ContextMenu(), id: 'context-menu'),
             $goToFile ?? $id(new GoToFileWidget($t, $rootDir), id: 'goto-file'),
             $findBar ?? $id(new FindBarWidget($t), id: 'find-bar'),
+            $dockTabs ?? $id(new DockTabsWidget(), id: 'dock-tabs'),
             $resultsPanel ?? $id(new ResultsPanelWidget(), id: 'results'),
             $debugPanel ?? $id(new DebugPanelWidget(), id: 'debug'),
             $terminalPanel ?? $id(new TerminalPanelWidget(), id: 'terminal'),

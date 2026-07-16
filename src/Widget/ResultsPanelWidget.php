@@ -139,6 +139,12 @@ final class ResultsPanelWidget extends OverlayWidget implements FocusableInterfa
         return $this;
     }
 
+    /** The tool title shown on the dock strip's Results tab. */
+    public function getTitle(): string
+    {
+        return $this->title;
+    }
+
     public function open(string $title, ResultsPanelFields $fields): void
     {
         $this->markOpen();
@@ -261,7 +267,7 @@ final class ResultsPanelWidget extends OverlayWidget implements FocusableInterfa
         $kb = $this->getKeybindings();
 
         if ($kb->matches($data, 'close')) {
-            $this->close();
+            $this->dismiss();
 
             return;
         }

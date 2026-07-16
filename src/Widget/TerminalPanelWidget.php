@@ -203,7 +203,7 @@ final class TerminalPanelWidget extends OverlayWidget implements FocusableInterf
         $kb = $this->getKeybindings();
 
         if ($kb->matches($data, 'hide_terminal')) {
-            $this->close();
+            $this->dismiss();
 
             return;
         }

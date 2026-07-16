@@ -115,6 +115,8 @@ final class ActionCatalog
         'ide_local_history' => ['label' => 'Show Local History', 'keys' => ['ctrl+alt+h']],
         'ide_terminal' => ['label' => 'Open Terminal', 'keys' => ['ctrl+`', 'alt+f12']],
         'ide_terminal_new' => ['label' => 'New Terminal Session', 'keys' => ['ctrl+shift+`', 'alt+f11']],
+        'dock_next_panel' => ['label' => 'Next Dock Panel', 'keys' => ['alt+page_down']],
+        'dock_prev_panel' => ['label' => 'Previous Dock Panel', 'keys' => ['alt+page_up']],
         'terminal_next_session' => ['label' => 'Next Terminal'],
         'terminal_prev_session' => ['label' => 'Previous Terminal'],
         'terminal_close_session' => ['label' => 'Close Terminal Session'],

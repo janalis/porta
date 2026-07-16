@@ -17,6 +17,7 @@ use Porta\Ui\ContextMenuBuilder;
 use Porta\Ui\WorkspaceViews;
 use Porta\Widget\ContextMenu;
 use Porta\Widget\DebugPanelWidget;
+use Porta\Widget\DockTabsWidget;
 use Porta\Widget\GoToFileWidget;
 use Porta\Widget\MenuBarWidget;
 use Porta\Widget\ResultsPanelWidget;
@@ -52,6 +53,7 @@ final class MouseRouter
         private readonly Tui $tui,
         private readonly EditorLayoutPanes $panes,
         private readonly BottomDock $dock,
+        private readonly DockTabsWidget $dockTabs,
         private readonly GoToFileWidget $goToFile,
         private readonly MenuBarWidget $menuBar,
         private readonly ContextMenu $contextMenu,
@@ -161,13 +163,17 @@ final class MouseRouter
         if ($this->layout->armSettingsSidebarResize($settingsSepRect, $mouse)) {
             return;
         }
-        // The terminal's top row is both the tab strip and the resize grab: a
-        // click on a tab wins, a click on its empty tail falls through to resize.
+        // The dock strip is both the tool tabs and the resize grab: a click
+        // on a tab wins, a click on its empty tail falls through to resize
+        // (which sits on the strip row — one row above the visible panel).
+        if ($this->tryDockTabClick($mouse)) {
+            return;
+        }
         if ($this->tryTerminalTabClick($mouse)) {
             return;
         }
         $panel = $this->dock->visiblePanel();
-        if (null !== $panel && $this->layout->armPanelResize($panel, $mouse)) {
+        if (null !== $panel && $this->layout->armPanelResize($panel, $mouse, $this->dock->stripVisible() ? -1 : 0)) {
             return;
         }
 
@@ -506,6 +512,17 @@ final class MouseRouter
     }
 
     /** The floating bottom/overlay panels: terminal, results and go-to-file. */
+    /** A press on the dock strip: select/close a tool tab, or false to fall through to resize. */
+    private function tryDockTabClick(MouseEvent $mouse): bool
+    {
+        $rect = $this->hit->rect($this->dockTabs);
+        if (!$this->dock->stripVisible() || null === $rect || $mouse->row !== $rect->row || $mouse->col < $rect->col || $mouse->col >= ($rect->col + $rect->columns)) {
+            return false;
+        }
+
+        return $this->dockTabs->handleTabClick($mouse->col - $rect->col);
+    }
+
     /** A press on the terminal tab strip (row 0): select/close a tab, or false to fall through to resize. */
     private function tryTerminalTabClick(MouseEvent $mouse): bool
     {

@@ -11,6 +11,7 @@ use Porta\Editor\BufferManager;
 use Porta\Editor\BufferService;
 use Porta\Lsp\FoldingController;
 use Porta\Run\RunController;
+use Porta\Ui\BottomDock;
 use Porta\Ui\WorkbenchActions;
 use Porta\Ui\WorkspaceViews;
 use Porta\Widget\GoToFileWidget;
@@ -28,6 +29,7 @@ final class ViewCommands implements CommandProvider
         private readonly Tui $tui,
         private readonly SettingsController $settings,
         private readonly RunController $run,
+        private readonly BottomDock $dock,
         private readonly WorkspaceViews $views,
         private readonly BufferService $bufferService,
         private readonly FoldingController $folding,
@@ -62,6 +64,8 @@ final class ViewCommands implements CommandProvider
             ->add('fold_all', fn () => $this->folding->foldAll(), label: 'Fold All')
             ->add('unfold_all', fn () => $this->folding->unfoldAll(), label: 'Unfold All')
             ->add('ide_terminal', fn () => $this->run->toggleTerminal(), keyBound: KeyDispatch::Bound)
+            ->add('dock_next_panel', fn () => $this->dock->cycle(1), keyBound: KeyDispatch::Bound, when: fn (): bool => null !== $this->dock->visiblePanel())
+            ->add('dock_prev_panel', fn () => $this->dock->cycle(-1), keyBound: KeyDispatch::Bound, when: fn (): bool => null !== $this->dock->visiblePanel())
             ->add('ide_terminal_new', fn () => $this->run->newTerminalSession(), keyBound: KeyDispatch::Bound)
             ->add('ide_run', fn () => $this->run->openRunMenu(), keyBound: KeyDispatch::Bound)
             ->add('ide_git', fn () => $this->views->toggleGit(), keyBound: KeyDispatch::Bound)

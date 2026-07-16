@@ -118,11 +118,11 @@ final class IdeDebugTest extends TestCase
                     $this->assertStringContainsString('⏸ prog.php:5', $screen, 'status-bar segment');
                     $this->assertStringContainsString("\x1b[48;5;52m", $terminal->getOutput(), 'stopped-line band painted');
                     $this->assertStringNotContainsString('hello from debuggee', $screen, 'the debuggee output sits behind the Terminal tab, not stacked');
-                    // The output is one terminal-toggle away; toggling back restores the debug panel.
-                    $tui->handleInput("\x1b[96;5u"); // ctrl+` → reveal the debug session's terminal
+                    // The output is one dock tab away: alt+page_down cycles Debug → Terminal → Debug.
+                    $tui->handleInput("\x1b[6;3~"); // alt+page_down → the Terminal tab
                     $tui->tick();
                     $this->assertStringContainsString('hello from debuggee', AnsiUtils::stripAnsiCodes($terminal->getOutput()), 'debuggee output reached the debug terminal session');
-                    $tui->handleInput("\x1b[96;5u"); // ctrl+` → hide it; the dock restores the debug panel
+                    $tui->handleInput("\x1b[6;3~"); // alt+page_down wraps back to the Debug tab
                     $tui->tick();
                     $this->assertStringContainsString('#0 {main}  prog.php:5', AnsiUtils::stripAnsiCodes($terminal->getOutput()), 'the debug panel is back');
                     $tui->handleInput("\x1b[19~"); // f8 step over → line 6
@@ -190,10 +190,10 @@ final class IdeDebugTest extends TestCase
                     $renderer = new \ReflectionProperty($ide, 'renderer')->getValue($ide);
                     $rect = $renderer->getWidgetRect($tui->getById('debug'));
                     $this->assertNotNull($rect);
-                    $top = $rect->row + 1;
-                    $tui->handleInput(\sprintf("\x1b[<0;5;%dM", $top));
-                    $tui->handleInput(\sprintf("\x1b[<32;5;%dM", $top - 2));
-                    $tui->handleInput(\sprintf("\x1b[<0;5;%dm", $top - 2));
+                    $top = $rect->row; // 1-based screen row of the dock strip — the resize grab
+                    $tui->handleInput(\sprintf("\x1b[<0;60;%dM", $top)); // col 60: the strip's empty tail
+                    $tui->handleInput(\sprintf("\x1b[<32;60;%dM", $top - 2));
+                    $tui->handleInput(\sprintf("\x1b[<0;60;%dm", $top - 2));
                     $tui->tick();
                     $expected = $tui->getById('debug')->visibleRows();
                     $this->assertSame($expected, $tui->getById('terminal')->visibleRows(), 'bottom panels stay in sync');
@@ -212,10 +212,23 @@ final class IdeDebugTest extends TestCase
                     $rect = $renderer->getWidgetRect($tui->getById('debug'));
                     $tui->handleInput(\sprintf("\x1b[<35;8;%dM", $rect->row + 3)); // hover a row
                     $tui->handleInput(\sprintf("\x1b[<64;8;%dM", $rect->row + 3)); // wheel scrolls the list
-                    $tui->handleInput("\x1b"); // Escape → close, focus back to the editor area
+                    // Strip clicks switch tools through the real mouse path:
+                    // ' Terminal × │ Debug × ' — refetch the strip rect per click,
+                    // since the strip row shifts with each panel's height.
+                    $stripRow = static fn (): int => $renderer->getWidgetRect($tui->getById('dock-tabs'))->row + 1;
+                    $tui->handleInput(\sprintf("\x1b[<0;4;%dM", $stripRow())); // the Terminal tab
+                    $tui->handleInput(\sprintf("\x1b[<0;4;%dm", $stripRow()));
                     $tui->tick();
-                    $this->assertFalse($tui->getById('debug')->isOpen());
-                    $this->assertSame('editor', $tui->getFocus()?->getId(), 'panel close restored editor focus');
+                    $this->assertTrue($tui->getById('terminal')->isVisible(), 'clicking the Terminal tab revealed the debug session output');
+                    $tui->handleInput(\sprintf("\x1b[<0;15;%dM", $stripRow())); // the Debug tab
+                    $tui->handleInput(\sprintf("\x1b[<0;15;%dm", $stripRow()));
+                    $tui->tick();
+                    $this->assertTrue($tui->getById('debug')->isVisible(), 'clicking the Debug tab brought the frames back');
+                    $tui->handleInput("\x1b"); // Escape → the dock hides, focus back to the editor area
+                    $tui->tick();
+                    $this->assertFalse($tui->getById('debug')->isVisible());
+                    $this->assertTrue($tui->getById('debug')->isOpen(), 'the debug tab stays alive behind the hidden dock');
+                    $this->assertSame('editor', $tui->getFocus()?->getId(), 'hiding the dock restored editor focus');
                     $tui->handleInput("\x1b[12;5~"); // ctrl+f2 stop mid-pause
                 },
                 1300 => function ($tui, $terminal, $ide): void {
@@ -254,10 +267,10 @@ final class IdeDebugTest extends TestCase
                 700 => function ($tui, $terminal): void {
                     $tui->tick();
                     $this->assertStringContainsString('paused at prog.php:5', AnsiUtils::stripAnsiCodes($terminal->getOutput()), 'stopped at the conditional breakpoint');
-                    $tui->handleInput("\x1b[96;5u"); // ctrl+` → the adapter echo lives in the debug terminal session
+                    $tui->handleInput("\x1b[6;3~"); // alt+page_down → the adapter echo lives in the debug terminal session
                     $tui->tick();
                     $this->assertStringContainsString('cond@5: $x > 1', AnsiUtils::stripAnsiCodes($terminal->getOutput()), 'the condition reached the adapter and echoed back');
-                    $tui->handleInput("\x1b[96;5u"); // ctrl+` → back to the debug panel
+                    $tui->handleInput("\x1b[6;3~"); // alt+page_down wraps back to the Debug tab
                     $tui->tick();
                     $tui->handleInput("\x1b[20;6~"); // ctrl+shift+f9: add watch
                     foreach (str_split('$x') as $ch) {

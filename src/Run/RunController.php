@@ -79,7 +79,9 @@ final class RunController
     public function toggleTerminal(): void
     {
         if ($this->terminalPanel->isVisible()) {
-            $this->terminalPanel->close();
+            // Wired: the dock hides and the sessions keep running; a lone
+            // widget (unit tests) falls back to a real close.
+            $this->terminalPanel->dismiss();
 
             return;
         }
@@ -90,6 +92,15 @@ final class RunController
         }
         if (null === $active) {
             $this->newTerminalSession();
+        }
+    }
+
+    /** Reveal the active session in the terminal panel — the dock's Terminal tab. */
+    public function showActiveSession(): void
+    {
+        $active = $this->sessions->active();
+        if (null !== $active) {
+            $this->showActive($active);
         }
     }
 

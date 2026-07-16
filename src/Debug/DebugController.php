@@ -117,6 +117,9 @@ final class DebugController implements DebugSessionObserver
         }
         $line = $this->editor->getDocument()->getCursorLine();
         $existing = $this->breakpoints->conditionAt($path, $line);
+        // The prompt lives on the editor: focus it so it is drivable even
+        // when a dock panel currently owns the focus.
+        $this->tui->setFocus($this->editor);
         $this->editor->openPrompt($this->translator->trans('Breakpoint condition (empty: always break)'), $existing['condition'] ?? '', function (string $condition) use (
             $path,
             $line,
@@ -284,6 +287,7 @@ final class DebugController implements DebugSessionObserver
             'hint' => $filter['filter'],
             'value' => $filter['filter'],
         ], $filters);
+        $this->tui->setFocus($this->editor); // drivable from a focused dock panel too
         $this->editor->openListOverlay($this->translator->trans('Exception Breakpoints'), $items, function (string $id) use ($filters): void {
             $this->exceptionFilters->toggle($id, $filters);
             $this->session?->syncExceptionBreakpoints();
@@ -360,6 +364,7 @@ final class DebugController implements DebugSessionObserver
     /** Ctrl+Shift+F9: add a watch expression (evaluated immediately when paused). */
     public function addWatch(): void
     {
+        $this->tui->setFocus($this->editor); // drivable from a focused dock panel too
         $this->editor->openPrompt($this->translator->trans('Watch expression'), '', function (string $expression): void {
             $expression = trim($expression);
             if ('' === $expression) {
@@ -375,6 +380,7 @@ final class DebugController implements DebugSessionObserver
     /** The palette's one-shot evaluate (paused only): result lands in a flash. */
     public function evaluatePrompt(): void
     {
+        $this->tui->setFocus($this->editor); // drivable from a focused dock panel too
         $this->editor->openPrompt($this->translator->trans('Evaluate expression'), '', function (string $expression): void {
             $expression = trim($expression);
             if ('' === $expression || null === $this->session) {

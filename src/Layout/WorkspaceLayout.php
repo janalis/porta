@@ -8,6 +8,7 @@ use Porta\Widget\BreadcrumbsWidget;
 use Porta\Widget\CodeEditorWidget;
 use Porta\Widget\ContextMenu;
 use Porta\Widget\DebugPanelWidget;
+use Porta\Widget\DockTabsWidget;
 use Porta\Widget\FileTreeWidget;
 use Porta\Widget\FindBarWidget;
 use Porta\Widget\Git\ChangesListWidget;
@@ -78,6 +79,7 @@ final class WorkspaceLayout
         private readonly ContextMenu $contextMenu,
         private readonly GoToFileWidget $goToFile,
         private readonly FindBarWidget $findBar,
+        private readonly DockTabsWidget $dockTabs,
         private readonly ResultsPanelWidget $resultsPanel,
         private readonly DebugPanelWidget $debugPanel,
         private readonly TerminalPanelWidget $terminalPanel,
@@ -113,6 +115,7 @@ final class WorkspaceLayout
             ->add($this->goToFile)
             ->add($this->main)
             ->add($this->findBar)
+            ->add($this->dockTabs)
             ->add($this->resultsPanel)
             ->add($this->debugPanel)
             ->add($this->terminalPanel)

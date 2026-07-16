@@ -1,0 +1,150 @@
+<?php
+
+declare(strict_types=1);
+
+namespace Porta\Widget;
+
+use Porta\Container\AsWidget;
+use Porta\Support\AnsiText;
+use Porta\Ui\DockTab;
+use Porta\Ui\LtrPane;
+use Porta\Ui\Role;
+use Porta\Ui\Theme\Styles;
+use Porta\Widget\Render\TabCloseGlyph;
+use Symfony\Component\Tui\Render\RenderContext;
+use Symfony\Component\Tui\Widget\AbstractWidget;
+
+/**
+ * The bottom dock's tab strip: one Toolbar-styled row naming the alive dock
+ * tools (Terminal / the results panel's current tool / Debug), rendered just
+ * above whichever panel owns the dock slot. Content comes from a provider on
+ * {@see \Porta\Ui\BottomDock} so it always reflects the panels' state; an
+ * empty provider result (dock hidden, or a transient picker bypassing the
+ * dock) renders zero rows. Clicking a tab reveals its panel, the × closes
+ * the tool; a press on the empty tail falls through to the panel-resize grab.
+ */
+#[AsWidget('dock-tabs', flex: 0)]
+final class DockTabsWidget extends AbstractWidget implements LtrPane
+{
+    /** @var (callable(): list<array{tab: DockTab, label: string, active: bool}>)|null */
+    private $provider = null;
+
+    private string $lastFingerprint = '';
+
+    /** @var list<array{tab: DockTab, start: int, width: int, closeStart: int, closeWidth: int}> the last strip's hit map */
+    private array $lastTabLayout = [];
+
+    /** @var (callable(DockTab): void)|null */
+    private $onTabSelected = null;
+
+    /** @var (callable(DockTab): void)|null */
+    private $onTabClosed = null;
+
+    private readonly Styles $styles;
+
+    public function __construct(?Styles $styles = null)
+    {
+        $this->styles = $styles ?? Styles::dark();
+    }
+
+    /** @param callable(): list<array{tab: DockTab, label: string, active: bool}> $provider */
+    public function setProvider(callable $provider): self
+    {
+        $this->provider = $provider;
+
+        return $this;
+    }
+
+    public function onTabSelected(callable $callback): self
+    {
+        $this->onTabSelected = $callback;
+
+        return $this;
+    }
+
+    public function onTabClosed(callable $callback): self
+    {
+        $this->onTabClosed = $callback;
+
+        return $this;
+    }
+
+    /** Repaint whenever the alive tabs / labels / active tool change. */
+    public function beforeRender(): void
+    {
+        if (null === $this->provider) {
+            return;
+        }
+        $tabs = array_map(static fn (array $tab): array => [$tab['tab']->name, $tab['label'], $tab['active']], ($this->provider)());
+        $fingerprint = (string) json_encode($tabs);
+        if ($fingerprint !== $this->lastFingerprint) {
+            $this->lastFingerprint = $fingerprint;
+            $this->invalidate();
+        }
+    }
+
+    /**
+     * A click on the strip (widget-relative column): the close × zone closes
+     * that tool, elsewhere on a tab reveals it. Returns whether the column
+     * landed on a tab — the caller lets a miss (the empty tail) fall through
+     * to the panel-resize grab.
+     */
+    public function handleTabClick(int $col): bool
+    {
+        foreach ($this->lastTabLayout as $entry) {
+            if (!($col >= $entry['closeStart'] && $col < ($entry['closeStart'] + $entry['closeWidth']))) {
+                continue;
+            }
+
+            if (null !== $this->onTabClosed) {
+                ($this->onTabClosed)($entry['tab']);
+            }
+
+            return true;
+        }
+        foreach ($this->lastTabLayout as $entry) {
+            if (!($col >= $entry['start'] && $col < ($entry['start'] + $entry['width']))) {
+                continue;
+            }
+
+            if (null !== $this->onTabSelected) {
+                ($this->onTabSelected)($entry['tab']);
+            }
+
+            return true;
+        }
+
+        return false;
+    }
+
+    /** @return list<string> */
+    public function render(RenderContext $context): array
+    {
+        $tabs = null !== $this->provider ? ($this->provider)() : [];
+        $this->lastTabLayout = [];
+        if ([] === $tabs) {
+            return [];
+        }
+
+        $columns = $context->getColumns();
+        $line = '';
+        $used = 0;
+        foreach ($tabs as $tab) {
+            $prefix = ' '.$tab['label'].' ';
+            $closeOffset = mb_strwidth($prefix);
+            $text = $prefix.'× ';
+            $width = mb_strwidth($text) + 1;
+            if (($used + $width) > $columns) {
+                break;
+            }
+            $style = $tab['active'] ? $this->styles->merge(Role::Toolbar, Role::Bright)->withBold() : $this->styles->merge(Role::Toolbar, Role::Subtle);
+            $close = $tab['active'] ? TabCloseGlyph::active($this->styles) : TabCloseGlyph::inactive($this->styles);
+            $line .= $style->apply(str_replace('×', $close, $text)).$this->styles->of(Role::Placeholder)->apply('│');
+            $this->lastTabLayout[] = ['tab' => $tab['tab'], 'start' => $used, 'width' => $width, 'closeStart' => $used + $closeOffset, 'closeWidth' => 2];
+            $used += $width;
+        }
+
+        // A Toolbar-background base under the whole row, then the styled tabs.
+        return [$this->styles->of(Role::Toolbar)->apply(AnsiText::padRight($line, $columns))];
+    }
+}

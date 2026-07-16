@@ -121,6 +121,7 @@ use Porta\Widget\BufferNavigationHandler;
 use Porta\Widget\CodeEditorWidget;
 use Porta\Widget\ContextMenu;
 use Porta\Widget\DebugPanelWidget;
+use Porta\Widget\DockTabsWidget;
 use Porta\Widget\EditorCallbacks;
 use Porta\Widget\EditorCompletionHandler;
 use Porta\Widget\EditorFileActionHandler;
@@ -324,6 +325,7 @@ return static function (ContainerConfigurator $container, ContainerBuilder $buil
         StatusBarWidget::class,
         ResultsPanelWidget::class,
         DebugPanelWidget::class,
+        DockTabsWidget::class,
         TerminalPanelWidget::class,
         FileTreeWidget::class,
         GoToFileWidget::class,

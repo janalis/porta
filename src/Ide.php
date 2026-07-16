@@ -54,6 +54,7 @@ use Porta\Ui\TerminalStateRefresher;
 use Porta\Widget\CodeEditorWidget;
 use Porta\Widget\ContextMenu;
 use Porta\Widget\DebugPanelWidget;
+use Porta\Widget\DockTabsWidget;
 use Porta\Widget\FileTreeWidget;
 use Porta\Widget\FindBarWidget;
 use Porta\Widget\GoToFileWidget;
@@ -211,7 +212,18 @@ final class Ide
         $this->workspaceLayout->mount($this->tui);
         // The chrome roots swept by the live-setting appliers (theme/locale/
         // cursor/tab position); everything exists once the Z-order is mounted.
-        $this->chrome->register([$this->menuBar, $this->main, $this->statusBar, $this->goToFile, $this->findBar, $this->resultsPanel, $this->debugPanel, $this->terminalPanel, $this->contextMenu]);
+        $this->chrome->register([
+            $this->menuBar,
+            $this->main,
+            $this->statusBar,
+            $this->goToFile,
+            $this->findBar,
+            $this->service(DockTabsWidget::class),
+            $this->resultsPanel,
+            $this->debugPanel,
+            $this->terminalPanel,
+            $this->contextMenu,
+        ]);
 
         $this->wireWidgets($keybindings);
         $this->bufferService = $this->service(BufferService::class);
