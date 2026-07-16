@@ -6,6 +6,7 @@ namespace Porta\Tests\Unit\Widget\Settings;
 
 use PHPUnit\Framework\TestCase;
 use Porta\I18n\Translator;
+use Porta\Tests\Support\AttachedStyles;
 use Porta\Widget\Settings\SettingsNavWidget;
 use Symfony\Component\Tui\Ansi\AnsiUtils;
 use Symfony\Component\Tui\Render\RenderContext;
@@ -16,6 +17,7 @@ final class SettingsNavWidgetTest extends TestCase
     {
         $selected = [];
         $widget = new SettingsNavWidget(new Translator('en'));
+        AttachedStyles::attach($widget); // the selection shade resolves through the themed sheet
         $widget->setFocused(true);
         $widget->onSelect(static function (string $id) use (&$selected): void {
             $selected[] = $id;

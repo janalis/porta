@@ -71,6 +71,10 @@ final class DarkTheme
                 Role::StatusDebug->selector() => new Style(color: 203),
                 Role::StatusError->selector() => new Style(color: 203),
                 Role::StatusWarning->selector() => new Style(color: 179),
+                // List selection as a `.list` pseudo-element: the base rule is
+                // the unfocused shade, the :focus variant merges over it.
+                '.list::selected' => new Style(background: 237),
+                '.list::selected:focus' => new Style(background: 31, color: 231, bold: true),
             ],
             underlines: [
                 Role::DiagErrorUnderline->name => Sgr::underlineColor(203),

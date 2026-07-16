@@ -70,6 +70,10 @@ final class LightTheme
                 Role::StatusDebug->selector() => new Style(color: 160),
                 Role::StatusError->selector() => new Style(color: 160),
                 Role::StatusWarning->selector() => new Style(color: 130),
+                // List selection as a `.list` pseudo-element: the base rule is
+                // the unfocused shade, the :focus variant merges over it.
+                '.list::selected' => new Style(background: 253),
+                '.list::selected:focus' => new Style(background: 111, color: 16, bold: true),
             ],
             underlines: [
                 Role::DiagErrorUnderline->name => Sgr::underlineColor(160),

@@ -62,6 +62,7 @@ final class SettingsFormWidget extends AbstractWidget implements FocusableInterf
     ) {
         $this->styles = $styles ?? Styles::dark();
         $this->cursorStyle = $cursorStyle ?? new CursorStyle();
+        $this->addStyleClass('list'); // the theme's .list::selected(:focus) rules style the selection
     }
 
     /** @var list<SettingsRow> */
@@ -294,12 +295,6 @@ final class SettingsFormWidget extends AbstractWidget implements FocusableInterf
                 continue;
             }
 
-            $selected = $i === $this->selected;
-            $bg = match (true) {
-                $selected && $this->focused => $this->styles->of(Role::SelectedRow),
-                $selected => $this->styles->of(Role::SelectedRowUnfocused),
-                default => null,
-            };
             $text = match ($row->kind) {
                 SettingsRowKind::Bool => ' '.((bool) $row->value ? '[x]' : '[ ]').' '.$row->label,
                 SettingsRowKind::Text => ' '.$row->label.'  '.$this->textValue($row, $i),
@@ -310,7 +305,7 @@ final class SettingsFormWidget extends AbstractWidget implements FocusableInterf
                 $text .= $this->styles->of(Role::Dim)->apply(' · '.$this->translator->trans('applies on restart'));
             }
             $text = AnsiUtils::truncateToWidth($text, $width, '…', pad: true);
-            $lines[] = null !== $bg ? $bg->apply($text) : $text;
+            $lines[] = $i === $this->selected ? $this->applyElement('selected', $text) : $text;
         }
 
         return $this->withMenuOverlay($lines, $width);

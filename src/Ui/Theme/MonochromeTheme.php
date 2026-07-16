@@ -22,6 +22,10 @@ final class MonochromeTheme
             rules: [
                 Role::SelectedRow->selector() => new Style(reverse: true),
                 Role::SelectedRowUnfocused->selector() => new Style(dim: true, reverse: true),
+                // The :focus variant merges over the base rule, so it must
+                // cancel the unfocused dim explicitly.
+                '.list::selected' => new Style(dim: true, reverse: true),
+                '.list::selected:focus' => new Style(dim: false, reverse: true),
             ],
             underlines: [],
             hasColor: false,

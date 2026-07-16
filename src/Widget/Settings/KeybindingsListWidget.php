@@ -66,6 +66,7 @@ final class KeybindingsListWidget extends AbstractWidget implements FocusableInt
     ) {
         $this->styles = $styles ?? Styles::dark();
         $this->list = new ListSelection();
+        $this->addStyleClass('list'); // the theme's .list::selected(:focus) rules style the selection
     }
 
     /** @param callable(string, string): void $callback */
@@ -208,14 +209,6 @@ final class KeybindingsListWidget extends AbstractWidget implements FocusableInt
                 continue;
             }
 
-            $selected = $index === $this->list->selected();
-            $bg = match (true) {
-                $selected && $this->focused => $this->styles->of(Role::SelectedRow),
-                $selected => $this->styles->of(Role::SelectedRowUnfocused),
-                $index === $this->hoveredIndex => $this->styles->of(Role::RowHighlightBg),
-                default => null,
-            };
-
             $shortcut = ShortcutFormatter::format($entry->binding);
             $right = '' === $shortcut ? $this->styles->of(Role::Dim)->apply('—') : $shortcut;
             $rightWidth = '' === $shortcut ? 1 : mb_strwidth($shortcut);
@@ -228,7 +221,11 @@ final class KeybindingsListWidget extends AbstractWidget implements FocusableInt
             $labelWidth = max(0, $width - $rightWidth - 2);
             $label = AnsiUtils::truncateToWidth(' '.$entry->label, $labelWidth, '…', pad: true);
             $text = $label.' '.$right.' ';
-            $lines[] = null !== $bg ? $bg->apply($text) : $text;
+            $lines[] = match (true) {
+                $index === $this->list->selected() => $this->applyElement('selected', $text),
+                $index === $this->hoveredIndex => $this->styles->of(Role::RowHighlightBg)->apply($text),
+                default => $text,
+            };
         }
 
         return $this->withMenuOverlay($lines, $width);

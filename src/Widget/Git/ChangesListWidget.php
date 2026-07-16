@@ -84,6 +84,7 @@ final class ChangesListWidget extends AbstractWidget implements FocusableInterfa
         $this->width = $width;
         $this->styles = $styles ?? Styles::dark();
         $this->list = new ListSelection();
+        $this->addStyleClass('list'); // the theme's .list::selected(:focus) rules style the selection
     }
 
     protected function minWidth(): int
@@ -310,16 +311,12 @@ final class ChangesListWidget extends AbstractWidget implements FocusableInterfa
             $statusText = \array_key_exists($status, self::STATUS_ROLE) ? $this->styles->of(self::STATUS_ROLE[$status])->apply($status) : $status;
             $label = $entry->path.(null !== $entry->renamedFrom ? ' ← '.$entry->renamedFrom : '');
 
-            $selected = $this->list->isSelected($index);
-            $bg = null;
-            if ($selected) {
-                $bg = $this->styles->of($this->focused ? Role::SelectedRow : Role::SelectedRowUnfocused);
-            }
-            if (!$selected && $index === $this->hoveredIndex) {
-                $bg = $this->styles->of(Role::RowHighlightBg);
-            }
             $text = AnsiUtils::truncateToWidth(' '.$checkbox.' '.$statusText.' '.$label, $width, '…', pad: true);
-            $lines[] = null !== $bg ? $bg->apply($text) : $text;
+            $lines[] = match (true) {
+                $this->list->isSelected($index) => $this->applyElement('selected', $text),
+                $index === $this->hoveredIndex => $this->styles->of(Role::RowHighlightBg)->apply($text),
+                default => $text,
+            };
         }
 
         return $this->withMenuOverlay($lines, $width);

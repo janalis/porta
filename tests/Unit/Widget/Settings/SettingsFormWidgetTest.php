@@ -8,6 +8,7 @@ use PHPUnit\Framework\TestCase;
 use Porta\Config\SettingsRow;
 use Porta\Config\SettingsRowKind;
 use Porta\I18n\Translator;
+use Porta\Tests\Support\AttachedStyles;
 use Porta\Widget\Settings\SettingsFormWidget;
 use Symfony\Component\Tui\Ansi\AnsiUtils;
 use Symfony\Component\Tui\Render\RenderContext;
@@ -30,6 +31,7 @@ final class SettingsFormWidgetTest extends TestCase
     {
         $changes = [];
         $widget = new SettingsFormWidget(new Translator('en'));
+        AttachedStyles::attach($widget); // the selection shade resolves through the themed sheet
         $widget->setFocused(true);
         $widget->setRows($this->rows());
         $widget->onChange(static function (string $key, bool|int|string $value) use (&$changes): void {
@@ -59,6 +61,7 @@ final class SettingsFormWidgetTest extends TestCase
     {
         $changes = [];
         $widget = new SettingsFormWidget(new Translator('en'));
+        AttachedStyles::attach($widget); // the selection shade resolves through the themed sheet
         $widget->setFocused(true);
         $widget->setRows([
             new SettingsRow(key: 'pluginRemove:project:demo', label: 'demo (project)', kind: SettingsRowKind::Action, value: 'Remove', restart: false),
@@ -88,6 +91,7 @@ final class SettingsFormWidgetTest extends TestCase
     public function testChoiceRowRendersOptionLabelInsteadOfValue(): void
     {
         $widget = new SettingsFormWidget(new Translator('en'));
+        AttachedStyles::attach($widget); // the selection shade resolves through the themed sheet
         $widget->setFocused(true);
         $widget->setRows([
             new SettingsRow(key: 'language', label: 'Language', kind: SettingsRowKind::Choice, value: 'fr', restart: false, options: Translator::LOCALES, optionLabels: Translator::LOCALE_NAMES),
@@ -103,6 +107,7 @@ final class SettingsFormWidgetTest extends TestCase
     {
         $changes = [];
         $widget = new SettingsFormWidget(new Translator('en'));
+        AttachedStyles::attach($widget); // the selection shade resolves through the themed sheet
         $widget->setFocused(true);
         $widget->setRows([
             new SettingsRow(key: 'language', label: 'Language', kind: SettingsRowKind::Choice, value: 'en', restart: false, options: Translator::LOCALES, optionLabels: Translator::LOCALE_NAMES),
@@ -299,6 +304,7 @@ final class SettingsFormWidgetTest extends TestCase
     {
         $changes = [];
         $widget = new SettingsFormWidget(new Translator('en'));
+        AttachedStyles::attach($widget); // the selection shade resolves through the themed sheet
         $widget->setFocused(true);
         $widget->setRows([
             new SettingsRow(key: 'lspServer', label: 'LSP server', kind: SettingsRowKind::Text, value: 'phpactor', restart: false),

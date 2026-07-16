@@ -82,6 +82,7 @@ final class FileTreeWidget extends AbstractWidget implements FocusableInterface,
         $this->clock = $clock ?? new NativeClock();
         $this->styles = $styles ?? Styles::dark();
         $this->list = new ListSelection();
+        $this->addStyleClass('list'); // the theme's .list::selected(:focus) rules style the selection
         $this->rebuild();
     }
 
@@ -282,7 +283,7 @@ final class FileTreeWidget extends AbstractWidget implements FocusableInterface,
 
             // Subtle hover background beneath the pointer keeps the dir/file foreground.
             $lines[] = match (true) {
-                $index === $this->list->selected() => $this->styles->of($this->focused ? Role::SelectedRow : Role::SelectedRowUnfocused)->apply($text),
+                $index === $this->list->selected() => $this->applyElement('selected', $text),
                 $index === $this->hoveredIndex => ($node->isDir ? $this->styles->merge(Role::RowHighlightBg, Role::TabAccent) : $this->styles->of(Role::RowHighlightBg))->apply($text),
                 $node->isDir => $this->styles->of(Role::TabAccent)->apply($text),
                 default => $text,

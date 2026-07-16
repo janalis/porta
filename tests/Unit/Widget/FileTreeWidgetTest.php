@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Porta\Tests\Unit\Widget;
 
 use PHPUnit\Framework\TestCase;
+use Porta\Tests\Support\AttachedStyles;
 use Porta\Tests\Support\TempProject;
 use Porta\Widget\FileTreeWidget;
 use Symfony\Component\Tui\Ansi\AnsiUtils;
@@ -77,6 +78,7 @@ final class FileTreeWidgetTest extends TestCase
     {
         $project = new TempProject(['a.php' => "<?php\n"]);
         $tree = new FileTreeWidget($project->dir);
+        AttachedStyles::attach($tree); // the selection shade resolves through the themed sheet
         $tree->setFocused(true);
         $context = new RenderContext(30, 10);
         $tree->render($context); // selected = 0 (a.php at row 1)

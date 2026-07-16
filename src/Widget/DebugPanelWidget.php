@@ -67,6 +67,7 @@ final class DebugPanelWidget extends OverlayWidget implements FocusableInterface
     {
         $this->styles = $styles ?? Styles::dark();
         $this->list = new ListSelection();
+        $this->addStyleClass('list'); // the theme's .list::selected(:focus) rules style the selection
         $this->visibleRows = 10;
     }
 
@@ -246,12 +247,8 @@ final class DebugPanelWidget extends OverlayWidget implements FocusableInterface
 
         $scroll = $this->list->follow($this->visibleRows);
         foreach (\array_slice($this->rows, $scroll, $this->visibleRows) as $i => $row) {
-            $isSelected = $this->list->isSelected($scroll + $i);
-            $bg = $this->styles->of(match (true) {
-                !$isSelected => Role::Toolbar,
-                $this->focused => Role::SelectedRow,
-                default => Role::SelectedRowUnfocused,
-            });
+            // The selection shade comes from the theme's .list::selected(:focus) rules.
+            $bg = $this->list->isSelected($scroll + $i) ? $this->resolveElement('selected') : $this->styles->of(Role::Toolbar);
             $lines[] = $bg->apply(AnsiUtils::truncateToWidth($this->rowText($row), $columns, '…', pad: true));
         }
 

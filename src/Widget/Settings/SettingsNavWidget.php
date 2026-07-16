@@ -69,6 +69,7 @@ final class SettingsNavWidget extends AbstractWidget implements FocusableInterfa
         $this->styles = $styles ?? Styles::dark();
         $this->entries = $this->buildEntries([]);
         $this->list = new ListSelection();
+        $this->addStyleClass('list'); // the theme's .list::selected(:focus) rules style the selection
     }
 
     /**
@@ -258,18 +259,15 @@ final class SettingsNavWidget extends AbstractWidget implements FocusableInterfa
                 continue;
             }
 
-            $selected = $index === $this->list->selected();
-            $bg = match (true) {
-                $selected && $this->focused => $this->styles->of(Role::SelectedRow),
-                $selected => $this->styles->of(Role::SelectedRowUnfocused),
-                $index === $this->hoveredIndex => $this->styles->of(Role::RowHighlightBg),
-                default => null,
-            };
             // Language and plugin sub-items indent under their section and keep
             // their own (untranslated) names.
             $text = \in_array($entry['kind'], [NavEntryKind::Language, NavEntryKind::Plugin], strict: true) ? '   '.$entry['label'] : ' '.$this->translator->trans($entry['label']);
             $text = AnsiUtils::truncateToWidth($text, $width, '…', pad: true);
-            $lines[] = null !== $bg ? $bg->apply($text) : $text;
+            $lines[] = match (true) {
+                $index === $this->list->selected() => $this->applyElement('selected', $text),
+                $index === $this->hoveredIndex => $this->styles->of(Role::RowHighlightBg)->apply($text),
+                default => $text,
+            };
         }
 
         return $this->withMenuOverlay($lines, $width);

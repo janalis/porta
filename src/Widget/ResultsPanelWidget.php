@@ -79,6 +79,7 @@ final class ResultsPanelWidget extends OverlayWidget implements FocusableInterfa
     {
         $this->styles = $styles ?? Styles::dark();
         $this->list = new ListSelection();
+        $this->addStyleClass('list'); // the theme's .list::selected(:focus) rules style the selection
         $this->query = new TextField(style: $cursorStyle);
         $this->filter = new TextField(style: $cursorStyle);
         $this->visibleRows = 10;
@@ -522,12 +523,9 @@ final class ResultsPanelWidget extends OverlayWidget implements FocusableInterfa
         foreach (\array_slice($this->displayRows, $scroll, $this->visibleRows) as $i => $row) {
             $isSelected = $this->list->isSelected($scroll + $i);
             // A raw SGR prefix, not a Style: the match highlighter closes each
-            // span with the row bg so the tail keeps its colour.
-            $bg = $this->styles->of(match (true) {
-                !$isSelected => Role::Toolbar,
-                $this->focused => Role::SelectedRow,
-                default => Role::SelectedRowUnfocused,
-            })->getAnsiRestore();
+            // span with the row bg so the tail keeps its colour. The selection
+            // shade comes from the theme's .list::selected(:focus) rules.
+            $bg = ($isSelected ? $this->resolveElement('selected') : $this->styles->of(Role::Toolbar))->getAnsiRestore();
             $lines[] = match (true) {
                 null !== $row->filePath => $this->headerLine($row, $bg, $columns),
                 null !== $row->contextText => $this->contextRowLine($row->contextLine, $row->contextText, $bg, $columns),
