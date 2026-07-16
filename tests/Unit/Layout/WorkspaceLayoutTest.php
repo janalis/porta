@@ -5,29 +5,10 @@ declare(strict_types=1);
 namespace Porta\Tests\Unit\Layout;
 
 use PHPUnit\Framework\TestCase;
-use Porta\I18n\Translator;
 use Porta\Layout\WorkspaceLayout;
-use Porta\Widget\BreadcrumbsWidget;
-use Porta\Widget\CodeEditorWidget;
-use Porta\Widget\ContextMenu;
-use Porta\Widget\DebugPanelWidget;
-use Porta\Widget\FileTreeWidget;
-use Porta\Widget\FindBarWidget;
-use Porta\Widget\Git\ChangesListWidget;
-use Porta\Widget\Git\CommitBoxWidget;
-use Porta\Widget\Git\DiffViewWidget;
-use Porta\Widget\Git\GitTabsWidget;
-use Porta\Widget\Git\HistoryListWidget;
-use Porta\Widget\GoToFileWidget;
-use Porta\Widget\MenuBarWidget;
-use Porta\Widget\ResultsPanelWidget;
-use Porta\Widget\Settings\KeybindingsListWidget;
-use Porta\Widget\Settings\SettingsFormWidget;
-use Porta\Widget\Settings\SettingsNavWidget;
-use Porta\Widget\StatusBarWidget;
+use Porta\Tests\Support\TestWorkspaceLayout;
 use Porta\Widget\TabBarPosition;
 use Porta\Widget\TabBarWidget;
-use Porta\Widget\TerminalPanelWidget;
 use Symfony\Component\Tui\Terminal\VirtualTerminal;
 use Symfony\Component\Tui\Tui;
 use Symfony\Component\Tui\Widget\AbstractWidget;
@@ -39,40 +20,12 @@ final class WorkspaceLayoutTest extends TestCase
 
     private function layout(): WorkspaceLayout
     {
-        $t = new Translator('en');
-        // In production the container applies each #[AsWidget] id; bare
-        // constructions here set the ones the assertions read.
+        // The factory applies each #[AsWidget] id, as the container does in
+        // production; the tab bar is held so the position tests can drive it.
         $this->tabBar = new TabBarWidget();
         $this->tabBar->setId('tabs');
-        $id = static function (AbstractWidget $widget, string $id): AbstractWidget {
-            $widget->setId($id);
 
-            return $widget;
-        };
-
-        /** @var WorkspaceLayout */
-        return new WorkspaceLayout(
-            $id(new FileTreeWidget('/tmp'), id: 'tree'),
-            $this->tabBar,
-            $id(new BreadcrumbsWidget(), id: 'breadcrumbs'),
-            $id(new CodeEditorWidget(), id: 'editor'),
-            $id(new GitTabsWidget($t), id: 'git-tabs'),
-            $id(new ChangesListWidget($t), id: 'git-changes'),
-            $id(new CommitBoxWidget($t), id: 'git-commit'),
-            $id(new DiffViewWidget($t), id: 'git-diff'),
-            $id(new HistoryListWidget($t), id: 'git-history'),
-            $id(new SettingsNavWidget($t), id: 'settings-nav'),
-            $id(new SettingsFormWidget($t), id: 'settings-form'),
-            $id(new KeybindingsListWidget($t), id: 'settings-keys'),
-            $id(new MenuBarWidget(), id: 'menu'),
-            $id(new ContextMenu(), id: 'context-menu'),
-            $id(new GoToFileWidget($t, '/tmp'), id: 'goto-file'),
-            $id(new FindBarWidget($t), id: 'find-bar'),
-            $id(new ResultsPanelWidget(), id: 'results'),
-            $id(new DebugPanelWidget(), id: 'debug'),
-            $id(new TerminalPanelWidget(), id: 'terminal'),
-            $id(new StatusBarWidget(), id: 'status'),
-        );
+        return TestWorkspaceLayout::create(tabBar: $this->tabBar);
     }
 
     /** @return list<string> */

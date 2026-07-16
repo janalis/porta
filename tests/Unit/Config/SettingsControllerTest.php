@@ -17,7 +17,6 @@ use Porta\Highlight\ColorMode;
 use Porta\Highlight\TerminalThemeFactory;
 use Porta\I18n\Translator;
 use Porta\Ide;
-use Porta\Layout\WorkspaceLayout;
 use Porta\Lsp\FormatOnSave;
 use Porta\Lsp\LspSessionPool;
 use Porta\Lsp\WorkspaceEditor;
@@ -25,31 +24,16 @@ use Porta\Settings\LiveSettingsApplier;
 use Porta\Tests\Support\FakeScheduler;
 use Porta\Tests\Support\FixedActiveFile;
 use Porta\Tests\Support\TempProject;
+use Porta\Tests\Support\TestWorkspaceLayout;
 use Porta\Ui\CursorStyle;
 use Porta\Ui\Notifier;
 use Porta\Ui\Theme\StyleSheetThemer;
 use Porta\Ui\Theme\Themes;
-use Porta\Widget\BreadcrumbsWidget;
 use Porta\Widget\CodeEditorWidget;
-use Porta\Widget\ContextMenu;
-use Porta\Widget\DebugPanelWidget;
-use Porta\Widget\FileTreeWidget;
-use Porta\Widget\FindBarWidget;
-use Porta\Widget\Git\ChangesListWidget;
-use Porta\Widget\Git\CommitBoxWidget;
 use Porta\Widget\Git\DiffViewWidget;
-use Porta\Widget\Git\GitTabsWidget;
-use Porta\Widget\Git\HistoryListWidget;
-use Porta\Widget\GoToFileWidget;
 use Porta\Widget\HelpViewerWidget;
-use Porta\Widget\MenuBarWidget;
-use Porta\Widget\ResultsPanelWidget;
-use Porta\Widget\Settings\KeybindingsListWidget;
-use Porta\Widget\Settings\SettingsFormWidget;
-use Porta\Widget\Settings\SettingsNavWidget;
 use Porta\Widget\StatusBarWidget;
 use Porta\Widget\TabBarWidget;
-use Porta\Widget\TerminalPanelWidget;
 use Symfony\Component\EventDispatcher\EventDispatcher;
 use Symfony\Component\Tui\Input\Keybindings;
 use Symfony\Component\Tui\Render\Renderer;
@@ -121,28 +105,7 @@ final class SettingsControllerTest extends TestCase
             new DiffViewWidget($t),
             new HelpViewerWidget(),
             new TabBarWidget(),
-            new WorkspaceLayout(
-                new FileTreeWidget($rootDir),
-                new TabBarWidget(),
-                new BreadcrumbsWidget(),
-                new CodeEditorWidget(),
-                new GitTabsWidget($t),
-                new ChangesListWidget($t),
-                new CommitBoxWidget($t),
-                new DiffViewWidget($t),
-                new HistoryListWidget($t),
-                new SettingsNavWidget($t),
-                new SettingsFormWidget($t),
-                new KeybindingsListWidget($t),
-                new MenuBarWidget(),
-                new ContextMenu(),
-                new GoToFileWidget($t, $rootDir),
-                new FindBarWidget($t),
-                new ResultsPanelWidget(),
-                new DebugPanelWidget(),
-                new TerminalPanelWidget(),
-                new StatusBarWidget(),
-            ),
+            TestWorkspaceLayout::create(rootDir: $rootDir),
             $dispatcher,
             self::formatOnSave(),
             true,

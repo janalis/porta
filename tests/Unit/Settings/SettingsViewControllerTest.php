@@ -18,7 +18,6 @@ use Porta\Highlight\ColorMode;
 use Porta\Highlight\TerminalThemeFactory;
 use Porta\I18n\Translator;
 use Porta\Layout\EditorAreaPanes;
-use Porta\Layout\WorkspaceLayout;
 use Porta\Lsp\BufferReopener;
 use Porta\Lsp\FormatOnSave;
 use Porta\Lsp\LspSessionPool;
@@ -31,34 +30,23 @@ use Porta\Tests\Support\FakePluginLifecycle;
 use Porta\Tests\Support\FakeScheduler;
 use Porta\Tests\Support\FixedActiveFile;
 use Porta\Tests\Support\TempProject;
+use Porta\Tests\Support\TestWorkspaceLayout;
 use Porta\Ui\CursorStyle;
 use Porta\Ui\EditorArea;
 use Porta\Ui\Notifier;
 use Porta\Ui\Theme\StyleSheetThemer;
 use Porta\Ui\Theme\Themes;
 use Porta\Ui\WorkspaceViews;
-use Porta\Widget\BreadcrumbsWidget;
 use Porta\Widget\CodeEditorWidget;
-use Porta\Widget\ContextMenu;
-use Porta\Widget\DebugPanelWidget;
-use Porta\Widget\FileTreeWidget;
-use Porta\Widget\FindBarWidget;
-use Porta\Widget\Git\ChangesListWidget;
-use Porta\Widget\Git\CommitBoxWidget;
 use Porta\Widget\Git\DiffViewWidget;
-use Porta\Widget\Git\GitTabsWidget;
-use Porta\Widget\Git\HistoryListWidget;
-use Porta\Widget\GoToFileWidget;
 use Porta\Widget\HelpViewerWidget;
 use Porta\Widget\ImageViewerWidget;
 use Porta\Widget\MenuBarWidget;
-use Porta\Widget\ResultsPanelWidget;
 use Porta\Widget\Settings\KeybindingsListWidget;
 use Porta\Widget\Settings\SettingsFormWidget;
 use Porta\Widget\Settings\SettingsNavWidget;
 use Porta\Widget\StatusBarWidget;
 use Porta\Widget\TabBarWidget;
-use Porta\Widget\TerminalPanelWidget;
 use Symfony\Component\EventDispatcher\EventDispatcher;
 use Symfony\Component\Tui\Input\Keybindings;
 use Symfony\Component\Tui\Render\Renderer;
@@ -116,27 +104,14 @@ final class SettingsViewControllerTest extends TestCase
             new DiffViewWidget(new Translator('en')),
             new HelpViewerWidget(),
             new TabBarWidget(),
-            new WorkspaceLayout(
-                new FileTreeWidget($this->project->dir),
-                new TabBarWidget(),
-                new BreadcrumbsWidget(),
-                $editor,
-                new GitTabsWidget(new Translator('en')),
-                new ChangesListWidget(new Translator('en')),
-                new CommitBoxWidget(new Translator('en')),
-                new DiffViewWidget(new Translator('en')),
-                new HistoryListWidget(new Translator('en')),
-                $this->nav,
-                $this->form,
-                $this->keymapList,
-                $menuBar,
-                new ContextMenu(),
-                new GoToFileWidget(new Translator('en'), $this->project->dir),
-                new FindBarWidget(new Translator('en')),
-                new ResultsPanelWidget(),
-                new DebugPanelWidget(),
-                new TerminalPanelWidget(),
-                $status,
+            TestWorkspaceLayout::create(
+                rootDir: $this->project->dir,
+                editor: $editor,
+                settingsNav: $this->nav,
+                settingsForm: $this->form,
+                settingsKeys: $this->keymapList,
+                menuBar: $menuBar,
+                statusBar: $status,
             ),
             new EventDispatcher(),
             self::formatOnSave(),
