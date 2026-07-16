@@ -8,6 +8,7 @@ use PHPUnit\Framework\TestCase;
 use Porta\Editor\BufferManager;
 use Porta\Terminal\TerminalBuffer;
 use Porta\Tests\Support\TempProject;
+use Porta\Tests\Support\TestBottomDock;
 use Porta\Ui\EditorArea;
 use Porta\Ui\FocusRing;
 use Porta\Widget\CodeEditorWidget;
@@ -48,8 +49,9 @@ final class FocusRingTest extends TestCase
         // With no buffers open, EditorArea resolves to the editor — the same
         // widget the old closure returned.
         $editorArea = new EditorArea(new BufferManager(), $this->editor, new ImageViewerWidget(), new HelpViewerWidget(), $this->tui);
+        $dock = TestBottomDock::create($this->tui, $this->terminal, $this->results, $this->debug, $editorArea);
 
-        return new FocusRing($this->tui, $this->tree, $this->terminal, $this->results, $this->debug, $editorArea);
+        return new FocusRing($this->tui, $this->tree, $dock, $editorArea);
     }
 
     public function testCyclesTreeAndEditorWhenNoPanelIsOpen(): void
@@ -67,21 +69,18 @@ final class FocusRingTest extends TestCase
         $this->assertSame($this->editor, $this->tui->getFocus(), 'reverse wraps to the last member');
     }
 
-    public function testOpenPanelsJoinTheRingInOrder(): void
+    public function testOnlyTheVisibleDockPanelJoinsTheRing(): void
     {
         $ring = $this->ring();
         $this->terminal->open('Terminal', new TerminalBuffer());
-        $this->results->open('Usages', ResultsPanelFields::resultsOnly());
+        $this->results->open('Usages', ResultsPanelFields::resultsOnly()); // conceals the terminal
         $this->tui->setFocus($this->editor);
 
         $ring->cycle(1);
-        $this->assertSame($this->terminal, $this->tui->getFocus(), 'terminal follows the editor');
+        $this->assertSame($this->results, $this->tui->getFocus(), 'the visible panel follows the editor; the concealed terminal is skipped');
 
         $ring->cycle(1);
-        $this->assertSame($this->results, $this->tui->getFocus(), 'results panel follows the terminal');
-
-        $ring->cycle(1);
-        $this->assertSame($this->tree, $this->tui->getFocus(), 'wraps around past the last open panel');
+        $this->assertSame($this->tree, $this->tui->getFocus(), 'wraps around past the visible panel');
     }
 
     public function testClosedPanelsAreSkipped(): void
@@ -91,7 +90,7 @@ final class FocusRingTest extends TestCase
         $this->tui->setFocus($this->editor);
 
         $ring->cycle(1);
-        $this->assertSame($this->debug, $this->tui->getFocus(), 'closed terminal/results are skipped');
+        $this->assertSame($this->debug, $this->tui->getFocus(), 'closed terminal/results leave only the visible debug panel');
     }
 
     public function testFocusOutsideTheRingEntersAtTheEdge(): void

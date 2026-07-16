@@ -9,6 +9,7 @@ use Porta\Config\LayoutStore;
 use Porta\Git\WhitespaceMode;
 use Porta\Input\MouseEvent;
 use Porta\Support\IntMath;
+use Porta\Ui\BottomDock;
 use Porta\Widget\DebugPanelWidget;
 use Porta\Widget\FileTreeWidget;
 use Porta\Widget\ResultsPanelWidget;
@@ -48,9 +49,7 @@ final class LayoutController
         private readonly Tui $tui,
         private readonly Renderer $renderer,
         private readonly FileTreeWidget $tree,
-        private readonly TerminalPanelWidget $terminalPanel,
-        private readonly ResultsPanelWidget $resultsPanel,
-        private readonly DebugPanelWidget $debugPanel,
+        private readonly BottomDock $dock,
         private readonly GitSidebar $gitSidebar,
         private readonly SettingsNavWidget $settingsSidebar,
     ) {}
@@ -216,7 +215,7 @@ final class LayoutController
      */
     public function armPanelResize(TerminalPanelWidget|ResultsPanelWidget|DebugPanelWidget $panel, MouseEvent $mouse): bool
     {
-        if (!$panel->isOpen()) {
+        if (!$panel->isVisible()) {
             return false;
         }
         $rect = $this->renderer->getWidgetRect($panel);
@@ -257,15 +256,8 @@ final class LayoutController
      */
     public function nudgeBottomPanel(int $delta): void
     {
-        $rect = null;
-        foreach ([$this->terminalPanel, $this->resultsPanel, $this->debugPanel] as $panel) {
-            if (!$panel->isOpen()) {
-                continue;
-            }
-
-            $rect = $this->renderer->getWidgetRect($panel);
-            break;
-        }
+        $panel = $this->dock->visiblePanel();
+        $rect = null !== $panel ? $this->renderer->getWidgetRect($panel) : null;
         if (null === $rect) {
             return;
         }
@@ -297,9 +289,7 @@ final class LayoutController
 
     private function resizeBottomPanels(int $height): void
     {
-        $this->terminalPanel->setVisibleRows($height);
-        $this->resultsPanel->setVisibleRows($height);
-        $this->debugPanel->setVisibleRows($height);
+        $this->dock->setPanelRows($height);
     }
 
     /**

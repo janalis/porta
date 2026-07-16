@@ -29,7 +29,7 @@ final class WorkbenchActions
         private readonly Translator $translator,
         private readonly Tui $tui,
         private readonly MenuBarWidget $menuBar,
-        private readonly PanelManager $panels,
+        private readonly BottomDock $panels,
         private readonly CommandPalette $commandPalette,
         private readonly CommandRegistry $commands,
         private readonly NotificationLog $notificationLog,

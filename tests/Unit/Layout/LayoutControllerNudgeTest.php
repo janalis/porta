@@ -7,9 +7,11 @@ namespace Porta\Tests\Unit\Layout;
 use PHPUnit\Framework\TestCase;
 use Porta\Config\LayoutStore;
 use Porta\I18n\Translator;
+use Porta\Input\MouseEvent;
 use Porta\Layout\GitSidebar;
 use Porta\Layout\LayoutController;
 use Porta\Tests\Support\TempProject;
+use Porta\Tests\Support\TestBottomDock;
 use Porta\Widget\DebugPanelWidget;
 use Porta\Widget\FileTreeWidget;
 use Porta\Widget\Git\ChangesListWidget;
@@ -50,9 +52,7 @@ final class LayoutControllerNudgeTest extends TestCase
             $tui,
             $renderer,
             $this->tree,
-            new TerminalPanelWidget(),
-            new ResultsPanelWidget(),
-            new DebugPanelWidget(),
+            TestBottomDock::create($tui, new TerminalPanelWidget(), new ResultsPanelWidget(), new DebugPanelWidget()),
             $this->gitSidebar,
             $this->settingsSidebar,
         );
@@ -117,5 +117,14 @@ final class LayoutControllerNudgeTest extends TestCase
 
         $layout->nudgeBottomPanel(1);
         $this->assertSame([], $this->layoutFile(), 'nothing to resize, nothing persisted');
+    }
+
+    public function testArmPanelResizeIgnoresAHiddenPanel(): void
+    {
+        $layout = $this->controller();
+        $press = MouseEvent::parse("\x1b[<0;10;20M");
+        $this->assertNotNull($press);
+
+        $this->assertFalse($layout->armPanelResize(new TerminalPanelWidget(), $press), 'a closed panel has no resize grab');
     }
 }

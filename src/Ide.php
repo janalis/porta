@@ -44,12 +44,12 @@ use Porta\Search\SearchUiWiring;
 use Porta\Settings\SettingsViewController;
 use Porta\Support\FreezeWatchdog;
 use Porta\Ui\BidiTui;
+use Porta\Ui\BottomDock;
 use Porta\Ui\ChromeInvalidator;
 use Porta\Ui\EditorArea;
 use Porta\Ui\MenuRebuilder;
 use Porta\Ui\NonBlockingTerminal;
 use Porta\Ui\Notifier;
-use Porta\Ui\PanelManager;
 use Porta\Ui\TerminalStateRefresher;
 use Porta\Widget\CodeEditorWidget;
 use Porta\Widget\ContextMenu;
@@ -114,7 +114,7 @@ final class Ide
     private LocalHistoryController $localHistory;
     private LayoutController $layout;
     private BufferManager $buffers;
-    private PanelManager $panels;
+    private BottomDock $panels;
     private CommandRegistry $commands;
 
     private LspSessionPool $lsp;
@@ -458,7 +458,7 @@ final class Ide
         $this->findBar = $this->service(FindBarWidget::class);
         $this->resultsPanel = $this->service(ResultsPanelWidget::class);
         $this->terminalPanel = $this->service(TerminalPanelWidget::class);
-        $this->panels = $this->service(PanelManager::class);
+        $this->panels = $this->service(BottomDock::class);
         $this->debugPanel = $this->service(DebugPanelWidget::class);
     }
 

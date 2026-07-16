@@ -11,8 +11,8 @@ use Porta\I18n\Translator;
 use Porta\Support\DocsUrlOpener;
 use Porta\Support\NativeDocs;
 use Porta\Support\ProjectPaths;
+use Porta\Ui\BottomDock;
 use Porta\Ui\Notifier;
-use Porta\Ui\PanelManager;
 use Porta\Ui\ResultsPanelMode;
 use Porta\Widget\CodeEditorWidget;
 use Porta\Widget\EditorNavigationHandler;
@@ -23,7 +23,7 @@ use Symfony\Component\Tui\Tui;
  * Read-only navigation features: go-to definition/implementation/type, hover,
  * find-usages, peek, file structure and workspace-symbol search — plus the
  * jump-back stack that go-to pushes onto. Presents multi-result lists through
- * the {@see PanelManager} and opens targets via the injected openFile callback.
+ * the {@see BottomDock} and opens targets via the injected openFile callback.
  */
 final class NavigationController extends AbstractLspController implements EditorNavigationHandler
 {
@@ -40,7 +40,7 @@ final class NavigationController extends AbstractLspController implements Editor
         Translator $translator,
         private readonly BufferManager $buffers,
         private readonly ResultsPanelWidget $resultsPanel,
-        private readonly PanelManager $panels,
+        private readonly BottomDock $panels,
         private readonly string $rootDir,
         private readonly FileOpener $files,
         private readonly DocsUrlOpener $docsUrls,

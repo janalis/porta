@@ -9,9 +9,9 @@ use Porta\Editor\OpenFocus;
 use Porta\History\LocalHistoryController;
 use Porta\Lsp\NavigationController;
 use Porta\Support\Scheduler;
+use Porta\Ui\BottomDock;
 use Porta\Ui\CommandPalette;
 use Porta\Ui\EditorArea;
-use Porta\Ui\PanelManager;
 use Porta\Ui\ResultsPanelMode;
 use Porta\Widget\CodeEditorWidget;
 use Porta\Widget\FindBarWidget;
@@ -37,7 +37,7 @@ final class SearchUiWiring
         private readonly CodeEditorWidget $editor,
         private readonly EditorArea $editorArea,
         private readonly Tui $tui,
-        private readonly PanelManager $panels,
+        private readonly BottomDock $panels,
         private readonly CommandPalette $commandPalette,
         private readonly NavigationController $navigation,
         private readonly ProjectSearchController $projectSearch,
@@ -86,7 +86,7 @@ final class SearchUiWiring
     {
         // The results panel's query row serves the command palette and workspace
         // symbol search (find-in-project's query lives in the modal). The
-        // PanelManager's mode selects the handler.
+        // BottomDock's mode selects the handler.
         $this->resultsPanel->onQueryChanged(function (string $query): void {
             $this->cancelDebounce();
             if (ResultsPanelMode::Action === $this->panels->mode()) {

@@ -22,6 +22,7 @@ use Porta\Layout\LayoutController;
 use Porta\Support\Clipboard;
 use Porta\Tests\Support\Presence;
 use Porta\Tests\Support\TempProject;
+use Porta\Tests\Support\TestBottomDock;
 use Porta\Ui\EditorArea;
 use Porta\Ui\Notifier;
 use Porta\Ui\WorkspaceViews;
@@ -126,9 +127,7 @@ final class GitViewControllerTest extends TestCase
             $this->tui,
             new Renderer(new StyleSheet()),
             new FileTreeWidget($this->project->dir),
-            new TerminalPanelWidget(),
-            new ResultsPanelWidget(),
-            new DebugPanelWidget(),
+            TestBottomDock::create($this->tui, new TerminalPanelWidget(), new ResultsPanelWidget(), new DebugPanelWidget()),
             new GitSidebar($this->tabs, $this->changes, $this->commitBox, $this->history),
             new SettingsNavWidget($t),
         );

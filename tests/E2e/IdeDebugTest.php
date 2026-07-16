@@ -117,7 +117,14 @@ final class IdeDebugTest extends TestCase
                     $this->assertStringContainsString('$x = 42', $screen, 'locals render');
                     $this->assertStringContainsString('⏸ prog.php:5', $screen, 'status-bar segment');
                     $this->assertStringContainsString("\x1b[48;5;52m", $terminal->getOutput(), 'stopped-line band painted');
-                    $this->assertStringContainsString('hello from debuggee', $screen, 'debuggee output reached the terminal panel');
+                    $this->assertStringNotContainsString('hello from debuggee', $screen, 'the debuggee output sits behind the Terminal tab, not stacked');
+                    // The output is one terminal-toggle away; toggling back restores the debug panel.
+                    $tui->handleInput("\x1b[96;5u"); // ctrl+` → reveal the debug session's terminal
+                    $tui->tick();
+                    $this->assertStringContainsString('hello from debuggee', AnsiUtils::stripAnsiCodes($terminal->getOutput()), 'debuggee output reached the debug terminal session');
+                    $tui->handleInput("\x1b[96;5u"); // ctrl+` → hide it; the dock restores the debug panel
+                    $tui->tick();
+                    $this->assertStringContainsString('#0 {main}  prog.php:5', AnsiUtils::stripAnsiCodes($terminal->getOutput()), 'the debug panel is back');
                     $tui->handleInput("\x1b[19~"); // f8 step over → line 6
                 },
                 1000 => function ($tui, $terminal): void {
@@ -246,9 +253,12 @@ final class IdeDebugTest extends TestCase
                 },
                 700 => function ($tui, $terminal): void {
                     $tui->tick();
-                    $screen = AnsiUtils::stripAnsiCodes($terminal->getOutput());
-                    $this->assertStringContainsString('paused at prog.php:5', $screen, 'stopped at the conditional breakpoint');
-                    $this->assertStringContainsString('cond@5: $x > 1', $screen, 'the condition reached the adapter and echoed back');
+                    $this->assertStringContainsString('paused at prog.php:5', AnsiUtils::stripAnsiCodes($terminal->getOutput()), 'stopped at the conditional breakpoint');
+                    $tui->handleInput("\x1b[96;5u"); // ctrl+` → the adapter echo lives in the debug terminal session
+                    $tui->tick();
+                    $this->assertStringContainsString('cond@5: $x > 1', AnsiUtils::stripAnsiCodes($terminal->getOutput()), 'the condition reached the adapter and echoed back');
+                    $tui->handleInput("\x1b[96;5u"); // ctrl+` → back to the debug panel
+                    $tui->tick();
                     $tui->handleInput("\x1b[20;6~"); // ctrl+shift+f9: add watch
                     foreach (str_split('$x') as $ch) {
                         $tui->handleInput($ch);
@@ -330,6 +340,7 @@ final class IdeDebugTest extends TestCase
                     $tui->handleInput("\x1b[20;2~"); // shift+f9 debug
                 },
                 600 => function ($tui, $terminal) use ($palette): void {
+                    $tui->handleInput("\x1b[96;5u"); // ctrl+` → the adapter echo lives in the debug terminal session
                     $tui->tick();
                     // The defaults went out during configuration.
                     $this->assertStringContainsString('xfilters: exception', AnsiUtils::stripAnsiCodes($terminal->getOutput()));
@@ -392,8 +403,10 @@ final class IdeDebugTest extends TestCase
                     $tui->tick();
                     $screen = AnsiUtils::stripAnsiCodes($terminal->getOutput());
                     $this->assertStringContainsString('paused at prog.php:5', $screen, 'the restored breakpoint stopped the program');
-                    $this->assertStringContainsString('cond@5: $x > 1', $screen, 'its condition reached the adapter');
                     $this->assertStringContainsString('$x = 42#1', $screen, 'the restored watch evaluated');
+                    $tui->handleInput("\x1b[96;5u"); // ctrl+` → the adapter echo lives in the debug terminal session
+                    $tui->tick();
+                    $this->assertStringContainsString('cond@5: $x > 1', AnsiUtils::stripAnsiCodes($terminal->getOutput()), 'its condition reached the adapter');
                 },
             ],
         );

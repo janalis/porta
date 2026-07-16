@@ -9,8 +9,8 @@ use Porta\Editor\BufferService;
 use Porta\Editor\OpenFocus;
 use Porta\I18n\Translator;
 use Porta\Support\ProjectPaths;
+use Porta\Ui\BottomDock;
 use Porta\Ui\Notifier;
-use Porta\Ui\PanelManager;
 use Porta\Ui\ResultsPanelMode;
 use Porta\Widget\CodeEditorWidget;
 
@@ -22,7 +22,7 @@ use Porta\Widget\CodeEditorWidget;
 final class SearchActions
 {
     public function __construct(
-        private readonly PanelManager $panels,
+        private readonly BottomDock $panels,
         private readonly ProjectSearchController $projectSearch,
         private readonly TestNavigator $testNavigator,
         private readonly BufferManager $buffers,

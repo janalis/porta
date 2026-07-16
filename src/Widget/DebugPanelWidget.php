@@ -95,7 +95,7 @@ final class DebugPanelWidget extends OverlayWidget implements FocusableInterface
 
     public function open(string $title): void
     {
-        $this->open = true;
+        $this->markOpen();
         $this->title = $title;
         $this->state = DebugState::Starting;
         $this->location = null;
@@ -195,7 +195,7 @@ final class DebugPanelWidget extends OverlayWidget implements FocusableInterface
     /** @return list<string> */
     public function render(RenderContext $context): array
     {
-        if (!$this->open) {
+        if (!$this->isVisible()) {
             return [];
         }
         $columns = $context->getColumns();

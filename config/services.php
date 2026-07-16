@@ -107,7 +107,7 @@ use Porta\Ui\FocusCoordinator;
 use Porta\Ui\MenuRebuilder;
 use Porta\Ui\NotificationLog;
 use Porta\Ui\Notifier;
-use Porta\Ui\PanelManager;
+use Porta\Ui\BottomDock;
 use Porta\Ui\PaneSegmenter;
 use Porta\Ui\StatusBarProvider;
 use Porta\Ui\TabListProvider;
@@ -312,7 +312,7 @@ return static function (ContainerConfigurator $container, ContainerBuilder $buil
         BufferManager::class,
         WorkspaceEditor::class,
         CompletionController::class,
-        PanelManager::class,
+        BottomDock::class,
         HitTester::class,
         LayoutController::class,
         NotificationLog::class,

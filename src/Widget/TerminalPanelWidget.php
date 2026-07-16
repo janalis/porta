@@ -71,11 +71,10 @@ final class TerminalPanelWidget extends OverlayWidget implements FocusableInterf
 
     public function open(string $title, TerminalBuffer $buffer): void
     {
-        $this->open = true;
         $this->title = $title;
         $this->buffer = $buffer;
         $this->scrollBack = 0;
-        $this->invalidate();
+        $this->markOpen();
     }
 
     public function setTitle(string $title): void
@@ -244,7 +243,7 @@ final class TerminalPanelWidget extends OverlayWidget implements FocusableInterf
 
     public function render(RenderContext $context): array
     {
-        if (!$this->open) {
+        if (!$this->isVisible()) {
             return [];
         }
 

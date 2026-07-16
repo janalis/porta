@@ -12,10 +12,15 @@ use Porta\Overlay\MenuOverlayController;
 use Porta\Support\IntMath;
 use Porta\Tree\TreeOperations;
 use Porta\Ui\BidiTui;
+use Porta\Ui\BottomDock;
 use Porta\Ui\ContextMenuBuilder;
 use Porta\Ui\WorkspaceViews;
 use Porta\Widget\ContextMenu;
+use Porta\Widget\DebugPanelWidget;
+use Porta\Widget\GoToFileWidget;
 use Porta\Widget\MenuBarWidget;
+use Porta\Widget\ResultsPanelWidget;
+use Porta\Widget\TerminalPanelWidget;
 use Symfony\Component\Tui\Render\WidgetRect;
 use Symfony\Component\Tui\Tui;
 
@@ -46,7 +51,8 @@ final class MouseRouter
         private readonly HitTester $hit,
         private readonly Tui $tui,
         private readonly EditorLayoutPanes $panes,
-        private readonly OverlayPanels $overlayPanels,
+        private readonly BottomDock $dock,
+        private readonly GoToFileWidget $goToFile,
         private readonly MenuBarWidget $menuBar,
         private readonly ContextMenu $contextMenu,
         private readonly LayoutController $layout,
@@ -160,13 +166,8 @@ final class MouseRouter
         if ($this->tryTerminalTabClick($mouse)) {
             return;
         }
-        if ($this->layout->armPanelResize($this->overlayPanels->terminalPanel(), $mouse)) {
-            return;
-        }
-        if ($this->layout->armPanelResize($this->overlayPanels->resultsPanel(), $mouse)) {
-            return;
-        }
-        if ($this->layout->armPanelResize($this->overlayPanels->debugPanel(), $mouse)) {
+        $panel = $this->dock->visiblePanel();
+        if (null !== $panel && $this->layout->armPanelResize($panel, $mouse)) {
             return;
         }
 
@@ -233,32 +234,20 @@ final class MouseRouter
             return;
         }
 
-        // The results tool window (its own bottom rect).
-        $resultsRect = $this->hit->rect($this->overlayPanels->resultsPanel());
-        if ($this->overlayPanels->resultsPanel()->isOpen() && $this->containsPointer($resultsRect, $mouse)) {
-            $this->overlayPanels->resultsPanel()->scrollBy(3 * $mouse->wheelDelta);
-            $this->tui->requestRender();
-
-            return;
-        }
-
-        // The debug panel scrolls its frames/variables list the same way.
-        $debugRect = $this->hit->rect($this->overlayPanels->debugPanel());
-        if ($this->overlayPanels->debugPanel()->isOpen() && $this->containsPointer($debugRect, $mouse)) {
-            $this->overlayPanels->debugPanel()->scrollBy(3 * $mouse->wheelDelta);
+        // The visible dock panel (results / debug / terminal) scrolls its
+        // list — the terminal scrolls its scrollback (wheel up → into history).
+        $panel = $this->dock->visiblePanel();
+        if (null !== $panel && $this->containsPointer($this->hit->rect($panel), $mouse)) {
+            match (true) {
+                $panel instanceof TerminalPanelWidget => $panel->scroll($mouse->wheelDelta < 0 ? 3 : -3),
+                default => $panel->scrollBy(3 * $mouse->wheelDelta),
+            };
             $this->tui->requestRender();
 
             return;
         }
 
         $step = 3 * $mouse->wheelDelta;
-        $terminalRect = $this->hit->rect($this->overlayPanels->terminalPanel());
-        if ($this->overlayPanels->terminalPanel()->isOpen() && $this->containsPointer($terminalRect, $mouse)) {
-            $this->overlayPanels->terminalPanel()->scroll($mouse->wheelDelta < 0 ? 3 : -3); // wheel up → into history
-            $this->tui->requestRender();
-
-            return;
-        }
         if ($this->containsPointer($editorRect, $mouse)) {
             $this->panes->editor()->scrollBy($step);
             $this->tui->requestRender();
@@ -520,9 +509,9 @@ final class MouseRouter
     /** A press on the terminal tab strip (row 0): select/close a tab, or false to fall through to resize. */
     private function tryTerminalTabClick(MouseEvent $mouse): bool
     {
-        $panel = $this->overlayPanels->terminalPanel();
+        $panel = $this->dock->terminalPanel();
         $rect = $this->hit->rect($panel);
-        if (!$panel->isOpen() || null === $rect || $mouse->row !== $rect->row || $mouse->col < $rect->col || $mouse->col >= ($rect->col + $rect->columns)) {
+        if (!$panel->isVisible() || null === $rect || $mouse->row !== $rect->row || $mouse->col < $rect->col || $mouse->col >= ($rect->col + $rect->columns)) {
             return false;
         }
         if (!$panel->handleTabClick($mouse->col - $rect->col)) {
@@ -536,38 +525,26 @@ final class MouseRouter
 
     private function tryOverlayPanelClick(MouseEvent $mouse): bool
     {
-        // A click in the open terminal pane focuses it, so typing reaches the
-        // shell. (The tab strip on row 0 is handled before resize, in the press
-        // path, so a body click here just refocuses.)
-        if ($this->overlayPanels->terminalPanel()->isOpen() && null !== $this->hit->hit($this->overlayPanels->terminalPanel(), $mouse->row, $mouse->col)) {
-            $this->tui->setFocus($this->overlayPanels->terminalPanel());
-            $this->tui->requestRender();
-
-            return true;
-        }
-
-        // Results panel: click a result row (file header collapse/expand or jump).
-        // Focusing first gives Escape a route to close the pane; a jump refocuses the editor after.
-        if ($this->overlayPanels->resultsPanel()->isOpen() && null !== ($rel = $this->hit->hit($this->overlayPanels->resultsPanel(), $mouse->row, $mouse->col))) {
-            $this->tui->setFocus($this->overlayPanels->resultsPanel());
-            $this->overlayPanels->resultsPanel()->handleClick($rel['row']);
-            $this->tui->requestRender();
-
-            return true;
-        }
-
-        // Debug panel: click a frame (jump) or a variable (expand/collapse).
-        if ($this->overlayPanels->debugPanel()->isOpen() && null !== ($rel = $this->hit->hit($this->overlayPanels->debugPanel(), $mouse->row, $mouse->col))) {
-            $this->tui->setFocus($this->overlayPanels->debugPanel());
-            $this->overlayPanels->debugPanel()->handleClick($rel['row']);
+        // A click in the visible dock panel focuses it first, so Escape has a
+        // route and terminal typing reaches the shell; results/debug rows also
+        // activate (header collapse / jump / frame jump / expand toggle). The
+        // terminal tab strip on row 0 is handled before resize, in the press
+        // path, so a terminal body click here just refocuses.
+        $panel = $this->dock->visiblePanel();
+        if (null !== $panel && null !== ($rel = $this->hit->hit($panel, $mouse->row, $mouse->col))) {
+            $this->tui->setFocus($panel);
+            match (true) {
+                $panel instanceof TerminalPanelWidget => null,
+                default => $panel->handleClick($rel['row']),
+            };
             $this->tui->requestRender();
 
             return true;
         }
 
         // Go-to-file strip: click a result row to open that file.
-        if ($this->overlayPanels->goToFile()->isOpen() && null !== ($rel = $this->hit->hit($this->overlayPanels->goToFile(), $mouse->row, $mouse->col))) {
-            $this->overlayPanels->goToFile()->handleClick($rel['row']);
+        if ($this->goToFile->isOpen() && null !== ($rel = $this->hit->hit($this->goToFile, $mouse->row, $mouse->col))) {
+            $this->goToFile->handleClick($rel['row']);
             $this->tui->requestRender();
 
             return true;
@@ -813,24 +790,17 @@ final class MouseRouter
             return;
         }
 
-        if ($this->overlayPanels->resultsPanel()->isOpen() && null !== ($rel = $this->hit->hit($this->overlayPanels->resultsPanel(), $mouse->row, $mouse->col))) {
-            if ($this->overlayPanels->resultsPanel()->hoverRow($rel['row'])) {
+        $panel = $this->dock->visiblePanel();
+        if (($panel instanceof ResultsPanelWidget || $panel instanceof DebugPanelWidget) && null !== ($rel = $this->hit->hit($panel, $mouse->row, $mouse->col))) {
+            if ($panel->hoverRow($rel['row'])) {
                 $this->tui->requestRender();
             }
 
             return;
         }
 
-        if ($this->overlayPanels->debugPanel()->isOpen() && null !== ($rel = $this->hit->hit($this->overlayPanels->debugPanel(), $mouse->row, $mouse->col))) {
-            if ($this->overlayPanels->debugPanel()->hoverRow($rel['row'])) {
-                $this->tui->requestRender();
-            }
-
-            return;
-        }
-
-        if ($this->overlayPanels->goToFile()->isOpen() && null !== ($rel = $this->hit->hit($this->overlayPanels->goToFile(), $mouse->row, $mouse->col))) {
-            if ($this->overlayPanels->goToFile()->hoverRow($rel['row'])) {
+        if ($this->goToFile->isOpen() && null !== ($rel = $this->hit->hit($this->goToFile, $mouse->row, $mouse->col))) {
+            if ($this->goToFile->hoverRow($rel['row'])) {
                 $this->tui->requestRender();
             }
         }

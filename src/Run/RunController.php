@@ -78,7 +78,7 @@ final class RunController
 
     public function toggleTerminal(): void
     {
-        if ($this->terminalPanel->isOpen()) {
+        if ($this->terminalPanel->isVisible()) {
             $this->terminalPanel->close();
 
             return;

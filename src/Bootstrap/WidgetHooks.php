@@ -9,11 +9,10 @@ use Porta\Editor\FileOpener;
 use Porta\Editor\OpenFocus;
 use Porta\Help\HelpViewerActions;
 use Porta\Image\ImageViewerActions;
-use Porta\Input\OverlayPanels;
 use Porta\Overlay\MenuOverlayController;
 use Porta\Run\RunController;
+use Porta\Ui\BottomDock;
 use Porta\Ui\EditorArea;
-use Porta\Ui\PanelManager;
 use Porta\Ui\StatusBarProvider;
 use Porta\Ui\TabListProvider;
 use Porta\Ui\WorkspaceViews;
@@ -27,6 +26,7 @@ use Porta\Widget\ImageViewerWidget;
 use Porta\Widget\MenuBarWidget;
 use Porta\Widget\StatusBarWidget;
 use Porta\Widget\TabBarWidget;
+use Porta\Widget\TerminalPanelWidget;
 use Symfony\Component\Tui\Tui;
 
 /**
@@ -55,10 +55,10 @@ final class WidgetHooks
         private readonly BreadcrumbTrailProvider $trail,
         private readonly StatusBarWidget $statusBar,
         private readonly StatusBarProvider $statusSegments,
-        private readonly OverlayPanels $overlayPanels,
+        private readonly TerminalPanelWidget $terminalPanel,
         private readonly RunController $run,
         private readonly \Porta\Terminal\TerminalSessions $sessions,
-        private readonly PanelManager $panels,
+        private readonly BottomDock $panels,
         private readonly MenuBarWidget $menuBar,
         private readonly ContextMenu $contextMenu,
         private readonly MenuOverlayController $overlay,
@@ -80,11 +80,11 @@ final class WidgetHooks
         $this->breadcrumbs->setProvider($this->trail->trail(...));
         $this->statusBar->setProvider($this->statusSegments->segments(...));
 
-        $terminalPanel = $this->overlayPanels->terminalPanel();
-        $debugPanel = $this->overlayPanels->debugPanel();
+        // The dock hooks (single-visible invariant, MRU restore, focus return)
+        // register on all three bottom panels here.
+        $this->panels->wire();
+        $terminalPanel = $this->terminalPanel;
         $terminalPanel->onInputForward(fn (string $data) => $this->run->forwardInput($data));
-        $terminalPanel->onClose(fn () => $this->panels->returnFocusFrom($terminalPanel));
-        $debugPanel->onClose(fn () => $this->panels->returnFocusFrom($debugPanel));
         $terminalPanel->setSessionTabsProvider(function (): array {
             $active = $this->sessions->active();
 

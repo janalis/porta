@@ -189,8 +189,10 @@ final class DebugController implements DebugSessionObserver
         $session = $this->sessions->find('debug') ?? $this->sessions->create('debug', '');
         $session->buffer->clear();
         $session->setTitle($this->translator->trans('Debug: %label%', ['%label%' => basename($path)]));
+        // The debuggee's output session is created and made active but NOT
+        // shown — the dock shows the debug panel; the output sits one
+        // terminal-toggle away (ctrl+`).
         $this->sessions->makeActive($session);
-        $this->terminalPanel->open($session->title(), $session->buffer);
         $this->panel->open(basename($path));
         $this->panel->setWatches($this->watches->all());
 

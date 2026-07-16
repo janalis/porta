@@ -141,7 +141,7 @@ final class ResultsPanelWidget extends OverlayWidget implements FocusableInterfa
 
     public function open(string $title, ResultsPanelFields $fields): void
     {
-        $this->open = true;
+        $this->markOpen();
         $this->withQuery = $fields->query;
         $this->withFilter = $fields->filter;
         $this->pinLabel = null;
@@ -449,7 +449,7 @@ final class ResultsPanelWidget extends OverlayWidget implements FocusableInterfa
 
     public function render(RenderContext $context): array
     {
-        if (!$this->open) {
+        if (!$this->isVisible()) {
             return [];
         }
 

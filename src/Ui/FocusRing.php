@@ -4,15 +4,12 @@ declare(strict_types=1);
 
 namespace Porta\Ui;
 
-use Porta\Widget\DebugPanelWidget;
 use Porta\Widget\FileTreeWidget;
-use Porta\Widget\ResultsPanelWidget;
-use Porta\Widget\TerminalPanelWidget;
 use Symfony\Component\Tui\Tui;
 
 /**
  * The keyboard focus ring for the edit view (F6 / Ctrl+F6): file tree, the
- * editor area's focusable content, and whichever bottom panels are open. The
+ * editor area's focusable content, and the bottom dock's visible panel. The
  * editor area resolves the ring member per cycle so the ring always lands on
  * the active tab's attached viewer (editor / image / help) and never on a
  * detached widget. The git and settings views own their pane cycling; the
@@ -23,9 +20,7 @@ final class FocusRing
     public function __construct(
         private readonly Tui $tui,
         private readonly FileTreeWidget $tree,
-        private readonly TerminalPanelWidget $terminalPanel,
-        private readonly ResultsPanelWidget $resultsPanel,
-        private readonly DebugPanelWidget $debugPanel,
+        private readonly BottomDock $dock,
         private readonly EditorArea $editorArea,
     ) {}
 
@@ -33,11 +28,8 @@ final class FocusRing
     public function cycle(int $direction): void
     {
         $members = [$this->tree, $this->editorArea->widget()];
-        foreach ([$this->terminalPanel, $this->resultsPanel, $this->debugPanel] as $panel) {
-            if (!$panel->isOpen()) {
-                continue;
-            }
-
+        $panel = $this->dock->visiblePanel();
+        if (null !== $panel) {
             $members[] = $panel;
         }
 

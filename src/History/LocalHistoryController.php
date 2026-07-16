@@ -7,8 +7,8 @@ namespace Porta\History;
 use Porta\Editor\BufferManager;
 use Porta\I18n\Translator;
 use Porta\Lsp\CompletionController;
+use Porta\Ui\BottomDock;
 use Porta\Ui\Notifier;
-use Porta\Ui\PanelManager;
 use Porta\Ui\ResultsPanelMode;
 use Porta\Widget\CodeEditorWidget;
 use Symfony\Component\Tui\Tui;
@@ -25,7 +25,7 @@ final class LocalHistoryController
 
     public function __construct(
         private readonly LocalHistory $history,
-        private readonly PanelManager $panels,
+        private readonly BottomDock $panels,
         private readonly CodeEditorWidget $editor,
         private readonly BufferManager $buffers,
         private readonly Notifier $notifier,
