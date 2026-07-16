@@ -151,12 +151,8 @@ final class GoToFileWidget extends OverlayWidget implements FocusableInterface
     /** Result index at the given widget-relative row, or null if it is not a result row. */
     private function rowIndexAt(int $relRow): ?int
     {
-        $i = $relRow - 1; // row 0 is the query header
-        if ($i < 0 || $i >= self::MAX_RESULTS) {
-            return null;
-        }
-
-        return $i < \count($this->results) ? $i : null;
+        // Row 0 is the query header; results are windowed to MAX_RESULTS.
+        return $this->list->rowIndexAt($relRow, min(\count($this->results), self::MAX_RESULTS));
     }
 
     public function render(RenderContext $context): array
