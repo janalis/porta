@@ -927,7 +927,7 @@ final class IdeEdgeCasesTest extends TestCase
                     // Assert on the results panel itself (the tree sidebar also lists
                     // Outside.php, so the whole screen is the wrong surface).
                     $panel = AnsiUtils::stripAnsiCodes(implode("\n", $tui->getById('results')->render(new \Symfony\Component\Tui\Render\RenderContext(160, 14))));
-                    $this->assertStringContainsString('1 results', $panel, 'only the in-folder match counts (root is out of scope)');
+                    $this->assertStringContainsString('1 results', $tui->getById('results')->statusText(), 'only the in-folder match counts (root is out of scope)');
                     $this->assertStringContainsString('sub/Inside.php', $panel, 'the in-folder match is listed');
                     $this->assertStringNotContainsString('Outside.php', $panel, 'the root match is excluded');
                     $tui->handleInput("\r"); // jump to the match
@@ -1474,7 +1474,7 @@ final class IdeEdgeCasesTest extends TestCase
                     $this->promote($tui); // modal → results tool window (pin lives on the pane)
                     $this->assertStringContainsString('src/A.php', $panelText($tui), 'the foo search finds A.php');
                     $tui->handleInput("\x1bk"); // alt+k → pin
-                    $this->assertStringContainsString('pinned: foo', $panelText($tui), 'the pin indicator appears');
+                    $this->assertStringContainsString('pinned: foo', $tui->getById('results')->statusText(), 'the pin indicator appears in the dock-strip status');
                     $tui->handleInput("\x1b"); // esc → close the tool window
                 },
                 700 => static function ($tui): void {
@@ -1489,15 +1489,15 @@ final class IdeEdgeCasesTest extends TestCase
                     $panel = $panelText($tui);
                     $this->assertStringContainsString('src/B.php', $panel, 'the live search moved on to bar');
                     $this->assertStringNotContainsString('src/A.php', $panel);
-                    $this->assertStringContainsString('pinned: foo', $panel, 'the pin survives close/reopen');
+                    $this->assertStringContainsString('pinned: foo', $tui->getById('results')->statusText(), 'the pin survives close/reopen');
                     $tui->handleInput("\x1bk"); // alt+k → restore the pinned foo results
                 },
                 1500 => function ($tui) use ($panelText): void {
                     $tui->tick();
                     $panel = $panelText($tui);
-                    $this->assertStringContainsString('Find in Project: foo', $panel, 'the pinned query is restored');
+                    $this->assertSame('Find in Project: foo', $tui->getById('results')->getTitle(), 'the pinned query is restored into the dock-tab title');
                     $this->assertStringContainsString('src/A.php', $panel, 'the pinned results are restored');
-                    $this->assertStringNotContainsString('pinned:', $panel, 'the pin is cleared after restoring');
+                    $this->assertStringNotContainsString('pinned:', $tui->getById('results')->statusText(), 'the pin is cleared after restoring');
                 },
             ],
         );
@@ -1605,14 +1605,14 @@ final class IdeEdgeCasesTest extends TestCase
                 600 => function ($tui) use ($panelText, $project): void {
                     $tui->tick();
                     $this->promote($tui); // modal → results pane (F5 rerun lives on the pane)
-                    $this->assertStringContainsString('1 results', $panelText($tui));
+                    $this->assertStringContainsString('1 results', $tui->getById('results')->statusText());
                     $project->write('src/B.php', "// tok added later\n"); // a new match on disk
                     $tui->handleInput("\x1b[15~"); // F5 → rerun
                 },
                 900 => function ($tui) use ($panelText): void {
                     $tui->tick();
                     $panel = $panelText($tui);
-                    $this->assertStringContainsString('2 results', $panel, 'rerun sees the new file');
+                    $this->assertStringContainsString('2 results', $tui->getById('results')->statusText(), 'rerun sees the new file');
                     $this->assertStringContainsString('src/B.php', $panel);
                 },
             ],
@@ -1863,7 +1863,7 @@ final class IdeEdgeCasesTest extends TestCase
                 800 => function ($tui) use ($panelText): void {
                     $tui->tick();
                     $panel = $panelText($tui);
-                    $this->assertStringContainsString('· 1 shown', $panel, 'filtered count');
+                    $this->assertStringContainsString('· 1 shown', $tui->getById('results')->statusText(), 'filtered count');
                     $this->assertStringContainsString('src/A.php', $panel);
                     $this->assertStringNotContainsString('other/B.php', $panel, 'the non-matching file is filtered out');
                 },
@@ -4379,6 +4379,9 @@ final class IdeEdgeCasesTest extends TestCase
                     }
                 },
                 1000 => function ($tui, $terminal): void {
+                    // The shell's exit ripples through PTY EOF + reap; await it
+                    // instead of racing a fixed delay under machine load.
+                    $this->await(static fn (): bool => str_contains(AnsiUtils::stripAnsiCodes($terminal->getOutput()), 'exited'));
                     $tui->tick();
                     $this->assertStringContainsString('exited', AnsiUtils::stripAnsiCodes($terminal->getOutput()));
                 },

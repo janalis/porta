@@ -200,8 +200,8 @@ final class IdeDebugTest extends TestCase
                     $this->assertSame($expected, $tui->getById('results')->visibleRows());
                     // Click the second frame row: Frames header +2 = frame #1 at line 1.
                     $rect = $renderer->getWidgetRect($tui->getById('debug'));
-                    $tui->handleInput(\sprintf("\x1b[<0;5;%dM", $rect->row + 4)); // header,Frames,#0,#1 → rel 3
-                    $tui->handleInput(\sprintf("\x1b[<0;5;%dm", $rect->row + 4));
+                    $tui->handleInput(\sprintf("\x1b[<0;5;%dM", $rect->row + 3)); // Frames,#0,#1 → rel 2 (no header row)
+                    $tui->handleInput(\sprintf("\x1b[<0;5;%dm", $rect->row + 3));
                 },
                 1000 => function ($tui, $terminal, $ide): void {
                     $tui->tick();

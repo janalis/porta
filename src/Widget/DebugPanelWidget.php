@@ -11,7 +11,6 @@ use Porta\Ui\ListSelection;
 use Porta\Ui\LtrPane;
 use Porta\Ui\Role;
 use Porta\Ui\Theme\Styles;
-use Porta\Widget\Render\HeaderRenderer;
 use Symfony\Component\Tui\Ansi\AnsiUtils;
 use Symfony\Component\Tui\Input\Key;
 use Symfony\Component\Tui\Render\RenderContext;
@@ -91,6 +90,25 @@ final class DebugPanelWidget extends OverlayWidget implements FocusableInterface
         $this->onRemoveWatch = $callback;
 
         return $this;
+    }
+
+    /** The launched file's name, shown on the dock strip's Debug tab. */
+    public function getTitle(): string
+    {
+        return $this->title;
+    }
+
+    /** The dock strip's right-aligned status: the session state plus the step-key legend. */
+    public function statusText(): string
+    {
+        $status = match ($this->state) {
+            DebugState::Idle, DebugState::Starting => 'starting…',
+            DebugState::Running => 'running…',
+            DebugState::Paused => 'paused'.(null !== $this->location ? ' at '.$this->location : ''),
+            DebugState::Terminated => 'terminated',
+        };
+
+        return $status.'  F8 over · F7 into · ⇧F8 out · F9 resume · ^F2 stop';
     }
 
     public function open(string $title): void
@@ -199,16 +217,7 @@ final class DebugPanelWidget extends OverlayWidget implements FocusableInterface
             return [];
         }
         $columns = $context->getColumns();
-
-        $status = match ($this->state) {
-            DebugState::Idle, DebugState::Starting => 'starting…',
-            DebugState::Running => 'running…',
-            DebugState::Paused => 'paused'.(null !== $this->location ? ' at '.$this->location : ''),
-            DebugState::Terminated => 'terminated',
-        };
-        $legend = '  F8 over · F7 into · ⇧F8 out · F9 resume · ^F2 stop';
-        $prefix = ' Debug: '.$this->title.$this->styles->of(Role::Dim)->apply('  '.$status.$legend);
-        $lines = [HeaderRenderer::render($prefix, $columns, $this->styles->of(Role::HeaderBar)->withBold())];
+        $lines = [];
 
         $scroll = $this->list->follow($this->visibleRows);
         foreach (\array_slice($this->rows, $scroll, $this->visibleRows) as $i => $row) {
@@ -367,9 +376,9 @@ final class DebugPanelWidget extends OverlayWidget implements FocusableInterface
         return \count($this->rows);
     }
 
-    /** Row 0 is the title/status header. */
+    /** No header rows of its own — the dock strip carries title and status. */
     protected function headerRowCount(): int
     {
-        return 1;
+        return 0;
     }
 }

@@ -76,10 +76,12 @@ final class BottomDock
     }
 
     /**
-     * The strip rows: one entry per alive tool. Empty (the strip disappears)
-     * while the dock is hidden or a transient picker owns the results panel.
+     * The strip rows: one entry per alive tool, each carrying its status for
+     * the strip's right side (only the active one shows). Empty (the strip
+     * disappears) while the dock is hidden or a transient picker owns the
+     * results panel.
      *
-     * @return list<array{tab: DockTab, label: string, active: bool}>
+     * @return list<array{tab: DockTab, label: string, active: bool, status: string}>
      */
     public function aliveTabs(): array
     {
@@ -90,13 +92,19 @@ final class BottomDock
 
         $tabs = [];
         if (!$this->sessions->isEmpty()) {
-            $tabs[] = ['tab' => DockTab::Terminal, 'label' => $this->translator->trans('Terminal'), 'active' => $visible === $this->terminalPanel];
+            $tabs[] = ['tab' => DockTab::Terminal, 'label' => $this->translator->trans('Terminal'), 'active' => $visible === $this->terminalPanel, 'status' => ''];
         }
         if ($this->resultsPanel->isOpen()) {
-            $tabs[] = ['tab' => DockTab::Results, 'label' => $this->resultsPanel->getTitle(), 'active' => $visible === $this->resultsPanel];
+            $tabs[] = ['tab' => DockTab::Results, 'label' => $this->resultsPanel->getTitle(), 'active' => $visible === $this->resultsPanel, 'status' => $this->resultsPanel->statusText()];
         }
         if ($this->debugPanel->isOpen()) {
-            $tabs[] = ['tab' => DockTab::Debug, 'label' => $this->translator->trans('Debug'), 'active' => $visible === $this->debugPanel];
+            $title = $this->debugPanel->getTitle();
+            $tabs[] = [
+                'tab' => DockTab::Debug,
+                'label' => $this->translator->trans('Debug').('' === $title ? '' : ': '.$title),
+                'active' => $visible === $this->debugPanel,
+                'status' => $this->debugPanel->statusText(),
+            ];
         }
 
         return $tabs;

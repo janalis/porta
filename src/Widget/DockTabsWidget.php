@@ -11,6 +11,7 @@ use Porta\Ui\LtrPane;
 use Porta\Ui\Role;
 use Porta\Ui\Theme\Styles;
 use Porta\Widget\Render\TabCloseGlyph;
+use Symfony\Component\Tui\Ansi\AnsiUtils;
 use Symfony\Component\Tui\Render\RenderContext;
 use Symfony\Component\Tui\Widget\AbstractWidget;
 
@@ -26,7 +27,7 @@ use Symfony\Component\Tui\Widget\AbstractWidget;
 #[AsWidget('dock-tabs', flex: 0)]
 final class DockTabsWidget extends AbstractWidget implements LtrPane
 {
-    /** @var (callable(): list<array{tab: DockTab, label: string, active: bool}>)|null */
+    /** @var (callable(): list<array{tab: DockTab, label: string, active: bool, status: string}>)|null */
     private $provider = null;
 
     private string $lastFingerprint = '';
@@ -47,7 +48,7 @@ final class DockTabsWidget extends AbstractWidget implements LtrPane
         $this->styles = $styles ?? Styles::dark();
     }
 
-    /** @param callable(): list<array{tab: DockTab, label: string, active: bool}> $provider */
+    /** @param callable(): list<array{tab: DockTab, label: string, active: bool, status: string}> $provider */
     public function setProvider(callable $provider): self
     {
         $this->provider = $provider;
@@ -75,7 +76,7 @@ final class DockTabsWidget extends AbstractWidget implements LtrPane
         if (null === $this->provider) {
             return;
         }
-        $tabs = array_map(static fn (array $tab): array => [$tab['tab']->name, $tab['label'], $tab['active']], ($this->provider)());
+        $tabs = array_map(static fn (array $tab): array => [$tab['tab']->name, $tab['label'], $tab['active'], $tab['status']], ($this->provider)());
         $fingerprint = (string) json_encode($tabs);
         if ($fingerprint !== $this->lastFingerprint) {
             $this->lastFingerprint = $fingerprint;
@@ -129,7 +130,11 @@ final class DockTabsWidget extends AbstractWidget implements LtrPane
         $columns = $context->getColumns();
         $line = '';
         $used = 0;
+        $status = '';
         foreach ($tabs as $tab) {
+            if ($tab['active']) {
+                $status = $tab['status'];
+            }
             $prefix = ' '.$tab['label'].' ';
             $closeOffset = mb_strwidth($prefix);
             $text = $prefix.'× ';
@@ -142,6 +147,14 @@ final class DockTabsWidget extends AbstractWidget implements LtrPane
             $line .= $style->apply(str_replace('×', $close, $text)).$this->styles->of(Role::Placeholder)->apply('│');
             $this->lastTabLayout[] = ['tab' => $tab['tab'], 'start' => $used, 'width' => $width, 'closeStart' => $used + $closeOffset, 'closeWidth' => 2];
             $used += $width;
+        }
+
+        // The active tool's status sits right-aligned in whatever room the tabs leave.
+        if ('' !== $status) {
+            $room = $columns - $used - 2;
+            $text = AnsiUtils::truncateToWidth($status, max(0, $room), '…', pad: false);
+            $pad = max(0, $columns - $used - mb_strwidth($text) - 1);
+            $line .= str_repeat(' ', $pad).$this->styles->merge(Role::Toolbar, Role::Dim)->apply($text);
         }
 
         // A Toolbar-background base under the whole row, then the styled tabs.

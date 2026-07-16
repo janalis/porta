@@ -447,10 +447,10 @@ final class ResultsPanelWidget extends OverlayWidget implements FocusableInterfa
         return \count($this->displayRows);
     }
 
-    /** Row 0 is the title/query row; the filter row (when shown) follows. */
+    /** The title/query row (query modes only), then the filter row (when shown). */
     protected function headerRowCount(): int
     {
-        return 1 + ($this->withFilter ? 1 : 0);
+        return ($this->withQuery ? 1 : 0) + ($this->withFilter ? 1 : 0);
     }
 
     public function render(RenderContext $context): array
@@ -462,26 +462,15 @@ final class ResultsPanelWidget extends OverlayWidget implements FocusableInterfa
         $columns = $context->getColumns();
         $lines = [];
 
-        $status = $this->searching ? ' searching…' : \sprintf(' %d results', \count($this->results));
-        if (!$this->searching && '' !== $this->filter->value()) {
-            $shown = 0;
-            foreach ($this->displayRows as $row) {
-                if (null !== $row->filePath) {
-                    continue;
-                }
-
-                ++$shown;
-            }
-            $status .= \sprintf(' · %d shown', $shown);
-        }
-        if (null !== $this->pinLabel) {
-            $status .= \sprintf(' · pinned: %s', $this->pinLabel);
-        }
+        // List modes have no header row of their own — the dock strip carries
+        // the tool title (tab label) and the status (right side); only the
+        // query modes keep their title row, which hosts the query field.
         $showCursor = $this->focused && $this->withQuery;
-        $queryField = $this->query->render(cursor: $showCursor && 'query' === $this->activeField ? CaretVisibility::Shown : CaretVisibility::Hidden);
-        $prefix = ' '.$this->title.($this->withQuery ? ': '.$queryField : '').$this->styles->of(Role::Dim)->apply($status);
-
-        $lines[] = HeaderRenderer::render($prefix, $columns, $this->styles->of(Role::HeaderBar)->withBold());
+        if ($this->withQuery) {
+            $queryField = $this->query->render(cursor: $showCursor && 'query' === $this->activeField ? CaretVisibility::Shown : CaretVisibility::Hidden);
+            $prefix = ' '.$this->title.': '.$queryField.$this->styles->of(Role::Dim)->apply(' '.$this->buildStatus());
+            $lines[] = HeaderRenderer::render($prefix, $columns, $this->styles->of(Role::HeaderBar)->withBold());
+        }
 
         if ($this->withFilter) {
             $lines[] = $this->fieldRow(
@@ -513,6 +502,34 @@ final class ResultsPanelWidget extends OverlayWidget implements FocusableInterfa
         }
 
         return $lines;
+    }
+
+    /** The dock strip's right-aligned status — empty in query modes, whose own header shows it. */
+    public function statusText(): string
+    {
+        return $this->withQuery ? '' : $this->buildStatus();
+    }
+
+    /** 'N results · M shown · pinned: …', or 'searching…' while a search runs. */
+    private function buildStatus(): string
+    {
+        $status = $this->searching ? 'searching…' : \sprintf('%d results', \count($this->results));
+        if (!$this->searching && '' !== $this->filter->value()) {
+            $shown = 0;
+            foreach ($this->displayRows as $row) {
+                if (null !== $row->filePath) {
+                    continue;
+                }
+
+                ++$shown;
+            }
+            $status .= \sprintf(' · %d shown', $shown);
+        }
+        if (null !== $this->pinLabel) {
+            $status .= \sprintf(' · pinned: %s', $this->pinLabel);
+        }
+
+        return $status;
     }
 
     private function notifyQuery(): void

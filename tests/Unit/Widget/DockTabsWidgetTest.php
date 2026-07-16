@@ -12,7 +12,7 @@ use Symfony\Component\Tui\Render\RenderContext;
 
 final class DockTabsWidgetTest extends TestCase
 {
-    /** @param list<array{tab: DockTab, label: string, active: bool}> $tabs */
+    /** @param list<array{tab: DockTab, label: string, active: bool, status: string}> $tabs */
     private static function strip(array $tabs): DockTabsWidget
     {
         $bar = new DockTabsWidget();
@@ -35,8 +35,8 @@ final class DockTabsWidgetTest extends TestCase
     public function testRendersTabsWithActiveStylingAndCloseGlyphs(): void
     {
         $bar = self::strip([
-            ['tab' => DockTab::Terminal, 'label' => 'Terminal', 'active' => false],
-            ['tab' => DockTab::Results, 'label' => 'Problems', 'active' => true],
+            ['tab' => DockTab::Terminal, 'label' => 'Terminal', 'active' => false, 'status' => ''],
+            ['tab' => DockTab::Results, 'label' => 'Problems', 'active' => true, 'status' => ''],
         ]);
 
         $lines = $bar->render(new RenderContext(80, 1));
@@ -54,8 +54,8 @@ final class DockTabsWidgetTest extends TestCase
         $selected = [];
         $closed = [];
         $bar = self::strip([
-            ['tab' => DockTab::Terminal, 'label' => 'Terminal', 'active' => true],
-            ['tab' => DockTab::Debug, 'label' => 'Debug', 'active' => false],
+            ['tab' => DockTab::Terminal, 'label' => 'Terminal', 'active' => true, 'status' => ''],
+            ['tab' => DockTab::Debug, 'label' => 'Debug', 'active' => false, 'status' => ''],
         ]);
         $bar->onTabSelected(static function (DockTab $tab) use (&$selected): void {
             $selected[] = $tab;
@@ -77,7 +77,7 @@ final class DockTabsWidgetTest extends TestCase
 
     public function testBeforeRenderRepaintsOnlyWhenTheTabsChange(): void
     {
-        $tabs = [['tab' => DockTab::Results, 'label' => 'Problems', 'active' => true]];
+        $tabs = [['tab' => DockTab::Results, 'label' => 'Problems', 'active' => true, 'status' => '']];
         $bar = new DockTabsWidget();
         $bar->setProvider(static function () use (&$tabs): array {
             return $tabs;
@@ -93,11 +93,26 @@ final class DockTabsWidgetTest extends TestCase
         $this->assertGreaterThan($revision, $bar->getRenderRevision(), 'a relabel repaints the strip');
     }
 
+    public function testTheActiveTabsStatusRendersRightAligned(): void
+    {
+        $bar = self::strip([
+            ['tab' => DockTab::Results, 'label' => 'Problems', 'active' => true, 'status' => '3 results'],
+            ['tab' => DockTab::Debug, 'label' => 'Debug', 'active' => false, 'status' => 'never shown (inactive)'],
+        ]);
+
+        $line = $bar->render(new RenderContext(60, 1))[0];
+        $plain = AnsiUtils::stripAnsiCodes($line);
+        $this->assertSame(60, AnsiUtils::visibleWidth($line));
+        $this->assertStringContainsString('3 results', $plain, "the active tool's status shows");
+        $this->assertStringNotContainsString('never shown', $plain, 'inactive statuses stay hidden');
+        $this->assertSame('3 results', trim(substr($plain, offset: 40)), 'right-aligned near the strip edge');
+    }
+
     public function testTabsPastTheWidthAreDropped(): void
     {
         $bar = self::strip([
-            ['tab' => DockTab::Terminal, 'label' => 'a-very-long-terminal-label', 'active' => true],
-            ['tab' => DockTab::Debug, 'label' => 'debug-tool', 'active' => false],
+            ['tab' => DockTab::Terminal, 'label' => 'a-very-long-terminal-label', 'active' => true, 'status' => ''],
+            ['tab' => DockTab::Debug, 'label' => 'debug-tool', 'active' => false, 'status' => ''],
         ]);
 
         $plain = AnsiUtils::stripAnsiCodes($bar->render(new RenderContext(34, 1))[0]);

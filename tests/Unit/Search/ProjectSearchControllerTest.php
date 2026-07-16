@@ -98,9 +98,7 @@ final class ProjectSearchControllerTest extends TestCase
         $controller->open();
         $controller->promoteToPane(); // Alt+Enter before typing anything
 
-        $pane = AnsiUtils::stripAnsiCodes(implode("\n", $this->panel->render(new RenderContext(100, 20))));
-        $this->assertStringContainsString('Find in Project', $pane);
-        $this->assertStringNotContainsString('Find in Project:', $pane, 'an empty query drops the colon suffix');
+        $this->assertSame('Find in Project', $this->panel->getTitle(), 'an empty query titles the dock tab generically');
     }
 
     public function testExportWithNoResultsReturnsEmpty(): void

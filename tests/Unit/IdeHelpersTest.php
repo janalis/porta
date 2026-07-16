@@ -513,7 +513,7 @@ final class IdeHelpersTest extends TestCase
         $rendered = \Symfony\Component\Tui\Ansi\AnsiUtils::stripAnsiCodes(
             implode("\n", $panel->render(new \Symfony\Component\Tui\Render\RenderContext(120, 14))),
         );
-        $this->assertStringContainsString('Problems', $rendered);
+        $this->assertSame('Problems', $panel->getTitle(), 'the dock tab carries the tool title');
         $this->assertStringContainsString('✗ top error', $rendered);
         $this->assertStringContainsString('▲ warn here', $rendered);
         // A.php sorts before B.php; within A.php line 0 before line 2

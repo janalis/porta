@@ -36,21 +36,25 @@ final class DebugPanelWidgetTest extends TestCase
         return array_map(AnsiUtils::stripAnsiCodes(...), $panel->render(new RenderContext(80, 14)));
     }
 
-    public function testClosedRendersNothingAndStatesLabelTheHeader(): void
+    public function testClosedRendersNothingAndStatesLabelTheStatusText(): void
     {
         $panel = new DebugPanelWidget();
         $this->assertSame([], $panel->render(new RenderContext(80, 14)));
 
+        // The panel has no header row of its own — the session state and the
+        // step legend ride the dock strip through statusText().
         $panel->open('a.php');
         $panel->handleInput("\r"); // Enter with no rows yet is inert
-        $this->assertStringContainsString('starting…', $this->screen($panel)[0]);
+        $this->assertSame('a.php', $panel->getTitle(), 'the launched file names the dock tab');
+        $this->assertSame([], $this->screen($panel), 'no frames yet: only the dock strip shows');
+        $this->assertStringContainsString('starting…', $panel->statusText());
         $panel->setSessionState(DebugState::Running, null);
-        $this->assertStringContainsString('running…', $this->screen($panel)[0]);
+        $this->assertStringContainsString('running…', $panel->statusText());
         $panel->setSessionState(DebugState::Paused, 'src/a.php:5');
-        $this->assertStringContainsString('paused at src/a.php:5', $this->screen($panel)[0]);
+        $this->assertStringContainsString('paused at src/a.php:5', $panel->statusText());
         $panel->setSessionState(DebugState::Terminated, null);
-        $this->assertStringContainsString('terminated', $this->screen($panel)[0]);
-        $this->assertStringContainsString('F8 over', $this->screen($panel)[0], 'the step legend rides in the header');
+        $this->assertStringContainsString('terminated', $panel->statusText());
+        $this->assertStringContainsString('F8 over', $panel->statusText(), 'the step legend rides in the status');
     }
 
     public function testScopeWithoutAVariablesReferenceIsNotAutoExpanded(): void
@@ -128,11 +132,11 @@ final class DebugPanelWidgetTest extends TestCase
         });
 
         $panel->render(new RenderContext(80, 14));
-        $this->assertTrue($panel->hoverRow(3), 'hover selects the row under the pointer (rel 3 → row 2)');
-        $this->assertFalse($panel->hoverRow(3), 'unchanged hover reports false');
-        $this->assertFalse($panel->hoverRow(0), 'the header row is inert');
+        $this->assertTrue($panel->hoverRow(2), 'hover selects the row under the pointer (rel 2 → row 2, no header row)');
+        $this->assertFalse($panel->hoverRow(2), 'unchanged hover reports false');
+        $this->assertFalse($panel->hoverRow(-1), 'above the panel is inert');
 
-        $panel->handleClick(2); // rel 2 → row index 1 → frame #0
+        $panel->handleClick(1); // rel 1 → row index 1 → frame #0
         $this->assertSame(1, $jumped);
         $panel->handleClick(99); // out of range → no-op
         $this->assertSame(1, $jumped);

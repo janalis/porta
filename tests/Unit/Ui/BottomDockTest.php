@@ -195,6 +195,7 @@ final class BottomDockTest extends TestCase
         $this->assertSame([DockTab::Terminal, DockTab::Results], array_column($tabs, 'tab'));
         $this->assertSame(['Terminal', 'Problems'], array_column($tabs, 'label'));
         $this->assertSame([false, true], array_column($tabs, 'active'), 'the results tab owns the slot');
+        $this->assertSame(['', '0 results'], array_column($tabs, 'status'), "each tool carries its status for the strip's right side");
 
         $dock->hide();
         $this->assertSame([], $dock->aliveTabs(), 'hiding the dock hides the strip too');

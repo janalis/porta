@@ -199,14 +199,14 @@ final class DebugControllerTest extends TestCase
         $this->assertStringContainsString("0 = 'a'", implode("\n", array_map(AnsiUtils::stripAnsiCodes(...), $this->panel->render(new RenderContext(100, 14)))));
 
         // Clicking the second frame jumps to its (absolute) source.
-        $this->panel->handleClick(3); // header + Frames + #0 → rel 3 is #1
+        $this->panel->handleClick(2); // Frames + #0 → rel 2 is #1 (no header row)
         $this->assertSame('/p/other.php', end($this->opened));
         $this->assertSame(0, $this->editor->getDocument()->getCursorLine());
 
         // A stale frame row the controller no longer knows is inert.
         $openedBefore = \count($this->opened);
         $this->panel->setFrames([['id' => 99, 'name' => 'stale', 'path' => 'x.php', 'line' => 0]]);
-        $this->panel->handleClick(2); // header + Frames → rel 2 is the stale frame
+        $this->panel->handleClick(1); // Frames → rel 1 is the stale frame (no header row)
         $this->assertCount($openedBefore, $this->opened, 'unknown frame ids do not jump');
 
         // Steps forward to the session; stop() disconnects.
@@ -236,8 +236,7 @@ final class DebugControllerTest extends TestCase
         $this->client->emit('stopped', ['reason' => 'exception', 'threadId' => 1]);
 
         $this->assertTrue($controller->isPaused());
-        $header = AnsiUtils::stripAnsiCodes($this->panel->render(new RenderContext(100, 5))[0]);
-        $this->assertStringContainsString('paused', $header);
+        $this->assertStringContainsString('paused', $this->panel->statusText(), 'the dock-strip status reports the pause');
         $this->assertSame([], $this->opened, 'nothing to open without a frame');
 
         // The remaining status transitions announce themselves on the bus too.
@@ -356,7 +355,7 @@ final class DebugControllerTest extends TestCase
 
         // A frame jump re-evaluates against the new frame.
         $evaluatesBefore = \count(array_filter($this->client->commands(), static fn (string $c): bool => 'evaluate' === $c));
-        $this->panel->handleClick(3); // the #1 frame row
+        $this->panel->handleClick(2); // the #1 frame row (no header row)
         $this->assertSame($evaluatesBefore + 1, \count(array_filter($this->client->commands(), static fn (string $c): bool => 'evaluate' === $c)));
         $this->assertSame(['expression' => '$x', 'context' => 'watch', 'frameId' => 2], $this->client->argumentsOf('evaluate'));
 

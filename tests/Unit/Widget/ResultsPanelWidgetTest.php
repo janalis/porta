@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Porta\Tests\Unit\Widget;
 
 use PHPUnit\Framework\TestCase;
+use Porta\Tests\Support\AttachedStyles;
 use Porta\Widget\ResultsPanelFields;
 use Porta\Widget\ResultsPanelWidget;
 use Symfony\Component\Tui\Ansi\AnsiUtils;
@@ -161,6 +162,7 @@ final class ResultsPanelWidgetTest extends TestCase
     public function testUnfocusedSelectionStyleAndExactWidths(): void
     {
         $panel = new ResultsPanelWidget();
+        AttachedStyles::attach($panel);
         $panel->setFocused(false);
         $panel->open('Usages', ResultsPanelFields::resultsOnly());
         $panel->setResults($this->results(2));
@@ -227,7 +229,7 @@ final class ResultsPanelWidgetTest extends TestCase
         $panel->setResults($this->results(3));
         $panel->render(new RenderContext(60, 12)); // establish geometry (scroll = 0)
 
-        $panel->handleClick(2); // header row 0 → result rows 1,2 → index 1
+        $panel->handleClick(1); // no header rows: result rows start at 0 → index 1
         $this->assertSame(['src/File1.php', 1], $jumped);
         $this->assertTrue($panel->isOpen(), 'the pane stays open after a jump');
     }
@@ -243,7 +245,7 @@ final class ResultsPanelWidgetTest extends TestCase
         $panel->setResults($this->results(2));
         $panel->render(new RenderContext(60, 12));
 
-        $panel->handleClick(0); // header row → nothing
+        $panel->handleClick(-1); // above the panel → nothing
         $panel->handleClick(9); // past the last result → nothing
         $this->assertFalse($jumped);
         $this->assertTrue($panel->isOpen());
@@ -256,9 +258,9 @@ final class ResultsPanelWidgetTest extends TestCase
         $panel->setResults($this->results(5));
         $panel->render(new RenderContext(60, 12));
 
-        $this->assertTrue($panel->hoverRow(3), 'row 3 → result index 2 selected');
-        $this->assertFalse($panel->hoverRow(3), 'same row → no change');
-        $this->assertFalse($panel->hoverRow(0), 'header row is not a result');
+        $this->assertTrue($panel->hoverRow(2), 'row 2 → result index 2 selected (no header rows)');
+        $this->assertFalse($panel->hoverRow(2), 'same row → no change');
+        $this->assertFalse($panel->hoverRow(-1), 'above the panel is not a result');
     }
 
     public function testSetVisibleRowsLimitsRenderedResultRows(): void
@@ -347,10 +349,9 @@ final class ResultsPanelWidgetTest extends TestCase
         $this->assertSame(1, $exported);
         $this->assertSame(1, $pinned);
 
-        // The controller reflects the pinned label back into the header.
+        // The controller reflects the pinned label into the dock-strip status.
         $panel->setPinIndicator('needle');
-        $header = AnsiUtils::stripAnsiCodes($panel->render(new RenderContext(80, 12))[0]);
-        $this->assertStringContainsString('pinned: needle', $header);
+        $this->assertStringContainsString('pinned: needle', $panel->statusText());
     }
 
     public function testFilterFieldNarrowsResultsWithoutRegrepAndShowsShownCount(): void
@@ -370,7 +371,7 @@ final class ResultsPanelWidgetTest extends TestCase
 
         $plain = AnsiUtils::stripAnsiCodes(implode("\n", $panel->render(new RenderContext(90, 16))));
         $this->assertStringContainsString('Filter: Api', $plain);
-        $this->assertStringContainsString('· 1 shown', $plain, 'the filtered count is shown');
+        $this->assertStringContainsString('· 1 shown', $panel->statusText(), 'the filtered count rides the dock-strip status');
         $this->assertStringContainsString('src/Api.php', $plain);
         $this->assertStringNotContainsString('src/Web.php', $plain, 'the non-matching file is hidden');
     }
@@ -449,8 +450,9 @@ final class ResultsPanelWidgetTest extends TestCase
         $panel->setResults($this->groupedResults());
         $panel->render(new RenderContext(80, 12));
 
-        // Row 0 title, row 1 filter → grouped rows begin at row 2 (the src/A.php header).
-        $panel->handleClick(2);
+        // Row 0 is the filter (the tool title lives on the dock strip) →
+        // grouped rows begin at row 1 (the src/A.php header).
+        $panel->handleClick(1);
         $collapsed = AnsiUtils::stripAnsiCodes(implode("\n", $panel->render(new RenderContext(80, 12))));
         $this->assertStringContainsString('▸ src/A.php  (2)', $collapsed, 'collapsed arrow');
         $this->assertStringNotContainsString('match zero', $collapsed, "A's matches are hidden");
@@ -458,7 +460,7 @@ final class ResultsPanelWidgetTest extends TestCase
         $this->assertStringContainsString('match two', $collapsed, 'B stays expanded');
 
         // Click again → expand.
-        $panel->handleClick(2);
+        $panel->handleClick(1);
         $expanded = AnsiUtils::stripAnsiCodes(implode("\n", $panel->render(new RenderContext(80, 12))));
         $this->assertStringContainsString('▾ src/A.php', $expanded);
         $this->assertStringContainsString('match zero', $expanded);
