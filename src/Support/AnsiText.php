@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Porta\Support;
 
+use Porta\Ui\Glyphs;
 use Symfony\Component\Tui\Ansi\AnsiUtils;
 
 /**
@@ -13,6 +14,25 @@ use Symfony\Component\Tui\Ansi\AnsiUtils;
  */
 final class AnsiText
 {
+    /**
+     * Clip $text to $width display columns, marking the cut with the glyph
+     * vocabulary's {@see Glyphs::ELLIPSIS}. SGR codes are not counted.
+     *
+     * This exists because the mark cannot be defaulted at the vendor seam:
+     * AnsiUtils::truncateToWidth defaults $ellipsis to '...' (three ASCII
+     * dots), so every one of the IDE's ~50 truncation sites had to pass '…'
+     * by hand — and the vocabulary's rule (Glyphs::ELLIPSIS) held by
+     * convention only. Here it holds by construction.
+     *
+     * Sites that deliberately truncate WITHOUT a mark (PTY output rows,
+     * fixed-width chrome fillers) pass $ellipsis: '' — a named argument that
+     * reads as its own justification — and say why.
+     */
+    public static function truncate(string $text, int $width, bool $pad = false, string $ellipsis = Glyphs::ELLIPSIS): string
+    {
+        return AnsiUtils::truncateToWidth($text, $width, $ellipsis, $pad);
+    }
+
     /**
      * Right-pad $text with spaces so its visible width reaches $width (a no-op
      * when it is already at least that wide). SGR codes are not counted.
@@ -53,7 +73,7 @@ final class AnsiText
         $pos = strpos($line, AnsiUtils::CURSOR_MARKER_PREFIX);
         $end = false === $pos ? false : strpos($line, needle: "\x07", offset: $pos);
         if (false === $pos || false === $end) {
-            return self::padRight(AnsiUtils::truncateToWidth($line, $width, '…'), $width);
+            return self::padRight(self::truncate($line, $width), $width);
         }
         $marker = substr($line, $pos, $end - $pos + 1);
         $caretCol = AnsiUtils::visibleWidth(substr($line, offset: 0, length: $pos));

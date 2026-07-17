@@ -8,6 +8,7 @@ use Porta\Config\LanguageCatalog;
 use Porta\Container\AsWidget;
 use Porta\I18n\Translator;
 use Porta\Layout\ResizableSidebar;
+use Porta\Support\AnsiText;
 use Porta\Ui\ListSelection;
 use Porta\Ui\Role;
 use Porta\Ui\Theme\Styles;
@@ -19,7 +20,6 @@ use Porta\Widget\PanelWidth;
 use Porta\Widget\PaneNavigationCallbacks;
 use Porta\Widget\Render\MenuOverlayHost;
 use Porta\Widget\Render\MenuOverlayHostTrait;
-use Symfony\Component\Tui\Ansi\AnsiUtils;
 use Symfony\Component\Tui\Input\Key;
 use Symfony\Component\Tui\Render\RenderContext;
 use Symfony\Component\Tui\Widget\AbstractWidget;
@@ -255,14 +255,14 @@ final class SettingsNavWidget extends AbstractWidget implements FocusableInterfa
                 $lines[] = $this->styles
                     ->merge(Role::Toolbar, Role::Dim)
                     ->withBold()
-                    ->apply(AnsiUtils::truncateToWidth(' '.$this->translator->trans($entry['label']), $width, '…', pad: true));
+                    ->apply(AnsiText::truncate(' '.$this->translator->trans($entry['label']), $width, pad: true));
                 continue;
             }
 
             // Language and plugin sub-items indent under their section and keep
             // their own (untranslated) names.
             $text = \in_array($entry['kind'], [NavEntryKind::Language, NavEntryKind::Plugin], strict: true) ? '   '.$entry['label'] : ' '.$this->translator->trans($entry['label']);
-            $text = AnsiUtils::truncateToWidth($text, $width, '…', pad: true);
+            $text = AnsiText::truncate($text, $width, pad: true);
             $lines[] = match (true) {
                 $index === $this->list->selected() => $this->applyElement('selected', $text),
                 $index === $this->hoveredIndex => $this->styles->of(Role::RowHighlightBg)->apply($text),

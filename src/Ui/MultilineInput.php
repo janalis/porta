@@ -158,7 +158,7 @@ final class MultilineInput
 
                 continue;
             }
-            $out[] = AnsiUtils::truncateToWidth($line, $width, '…', pad: false);
+            $out[] = AnsiText::truncate($line, $width, pad: false);
         }
 
         return $out;

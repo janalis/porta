@@ -13,7 +13,6 @@ use Porta\Ui\Theme\Styles;
 use Porta\Widget\Render\MenuOverlayHost;
 use Porta\Widget\Render\MenuOverlayHostTrait;
 use Porta\Widget\Render\TabStripRenderer;
-use Symfony\Component\Tui\Ansi\AnsiUtils;
 use Symfony\Component\Tui\Render\RenderContext;
 use Symfony\Component\Tui\Widget\AbstractWidget;
 
@@ -273,7 +272,7 @@ final class DockTabsWidget extends AbstractWidget implements LtrPane, MenuOverla
         // The active tool's status sits right-aligned in whatever room the tabs leave.
         if ('' !== $status) {
             $room = $columns - $used - 2;
-            $text = AnsiUtils::truncateToWidth($status, max(0, $room), '…', pad: false);
+            $text = AnsiText::truncate($status, max(0, $room), pad: false);
             $pad = max(0, $columns - $used - mb_strwidth($text) - 1);
             $line .= str_repeat(' ', $pad).$this->styles->merge(Role::Toolbar, Role::Dim)->apply($text);
         }

@@ -257,7 +257,7 @@ final class HelpViewerWidget extends AbstractWidget implements FocusableInterfac
             }
         }
 
-        $line = $this->styles->of(Role::HeaderBar)->getAnsiRestore().AnsiText::padRight(AnsiUtils::truncateToWidth($text, $cols, '…'), $cols);
+        $line = $this->styles->of(Role::HeaderBar)->getAnsiRestore().AnsiText::padRight(AnsiText::truncate($text, $cols), $cols);
 
         return $hasColor ? $line.Sgr::RESET : AnsiUtils::stripAnsiCodes($line);
     }

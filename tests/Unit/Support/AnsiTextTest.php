@@ -11,6 +11,48 @@ use Symfony\Component\Tui\Style\CursorShape;
 
 final class AnsiTextTest extends TestCase
 {
+    public function testTruncateMarksTheCutWithTheVocabularysEllipsis(): void
+    {
+        // The point of the wrapper: the vendor's own default is '...', so a
+        // site that forgets the mark would silently render three ASCII dots.
+        $this->assertSame('abc…', AnsiText::truncate('abcdefgh', 4));
+        $this->assertSame('abcd', AnsiText::truncate('abcd', 4), 'a line that fits is untouched');
+    }
+
+    public function testTruncatePadsOnlyWhenAsked(): void
+    {
+        $this->assertSame('ab   ', AnsiText::truncate('ab', 5, pad: true));
+        $this->assertSame('ab', AnsiText::truncate('ab', 5), 'unpadded by default');
+    }
+
+    public function testTruncateTakesAnEmptyMarkForTheDeliberateNoMarkSites(): void
+    {
+        $this->assertSame('abcd', AnsiText::truncate('abcdefgh', 4, ellipsis: ''));
+        $this->assertSame('abcd', AnsiText::truncate('abcdefgh', 4, pad: true, ellipsis: ''));
+    }
+
+    public function testTruncateMeasuresDisplayColumnsNotBytes(): void
+    {
+        $this->assertSame(6, AnsiUtils::visibleWidth(AnsiText::truncate('日本語', 6)), 'three wide glyphs fit exactly');
+        // A wide glyph cannot straddle the cut, so the result can land one
+        // column SHORT of the width — never over it, which is what would
+        // garble the row. Pad when the caller needs the column filled.
+        $this->assertSame(3, AnsiUtils::visibleWidth(AnsiText::truncate('日本語', 4)), '日 + the mark; 本 will not fit in the remaining column');
+        $this->assertSame(4, AnsiUtils::visibleWidth(AnsiText::truncate('日本語', 4, pad: true)), 'padding fills the short column');
+    }
+
+    public function testTruncateNeverExceedsTheRequestedWidth(): void
+    {
+        // Over-wide is the failure that garbles a row; assert it for the
+        // awkward widths (around the mark, around a wide glyph's straddle).
+        foreach (['abcdefgh', '日本語', 'a日b語c', ''] as $text) {
+            for ($width = 0; $width <= 8; ++$width) {
+                $this->assertLessThanOrEqual($width, AnsiUtils::visibleWidth(AnsiText::truncate($text, $width)), "{$text} @ {$width}");
+                $this->assertLessThanOrEqual($width, AnsiUtils::visibleWidth(AnsiText::truncate($text, $width, pad: true)), "{$text} @ {$width} padded");
+            }
+        }
+    }
+
     public function testCaretWindowKeepsShortTextIntactWithTheMarkerAtTheCaret(): void
     {
         $m = AnsiUtils::cursorMarker(CursorShape::Bar);

@@ -299,7 +299,7 @@ final class EditorRenderer
 
         $extra = \count($diags) > 1 ? ' +'.(\count($diags) - 1) : '';
         // Severity glyph prefix, so error vs warning reads without color.
-        $label = AnsiUtils::truncateToWidth('‹ '.DiagnosticStyle::glyph($worst).' '.(string) preg_replace('/\s+/', replacement: ' ', subject: $message).$extra.' ›', $available, '…');
+        $label = AnsiText::truncate('‹ '.DiagnosticStyle::glyph($worst).' '.(string) preg_replace('/\s+/', replacement: ' ', subject: $message).$extra.' ›', $available);
         $head = AnsiText::padRight(AnsiUtils::sliceByColumn($content, 0, $start), $start);
 
         return AnsiText::padRight($head.$styles->of(DiagnosticStyle::dimRole($worst))->apply($label), $contentWidth);
@@ -319,7 +319,7 @@ final class EditorRenderer
             return $content; // not enough room to be useful
         }
 
-        $label = AnsiUtils::truncateToWidth((string) preg_replace('/\s+/', replacement: ' ', subject: $text), $available, '…');
+        $label = AnsiText::truncate((string) preg_replace('/\s+/', replacement: ' ', subject: $text), $available);
         $head = AnsiText::padRight(AnsiUtils::sliceByColumn($content, 0, $start), $start);
 
         return AnsiText::padRight($head.$styles->of(Role::Inlay)->apply($label), $contentWidth);
@@ -348,7 +348,7 @@ final class EditorRenderer
             return;
         }
         $col = $gutterWidth;
-        $popup = $styles->merge(Role::InlayPopupBg, Role::InlayPopupFg)->apply(AnsiUtils::truncateToWidth($text, $width, '…', pad: true));
+        $popup = $styles->merge(Role::InlayPopupBg, Role::InlayPopupFg)->apply(AnsiText::truncate($text, $width, pad: true));
 
         $lines[$row] = OverlayCompositor::into($lines[$row], $col, $width, $columns, $popup);
     }
@@ -387,7 +387,7 @@ final class EditorRenderer
             $isSelected = ($windowStart + $i) === $selected;
             $style = $styles->of($isSelected ? Role::SelectedRow : Role::PopupRow);
             $hintWidth = mb_strwidth($item['hint']);
-            $label = AnsiUtils::truncateToWidth($item['label'], $width - $hintWidth - 3, '…', pad: true);
+            $label = AnsiText::truncate($item['label'], $width - $hintWidth - 3, pad: true);
             $popup[] = $style->apply(' '.$label.' '.$styles->of(Role::CompletionHint)->apply($item['hint']).' ');
         }
 
@@ -435,7 +435,7 @@ final class EditorRenderer
         ];
         foreach ($visible as $i => $row) {
             if (null !== $row['header']) {
-                $popup[] = $styles->merge(Role::PopupRow, Role::Dim)->apply(AnsiUtils::truncateToWidth(' '.$row['header'], $width, '…', pad: true));
+                $popup[] = $styles->merge(Role::PopupRow, Role::Dim)->apply(AnsiText::truncate(' '.$row['header'], $width, pad: true));
 
                 continue;
             }
@@ -444,9 +444,9 @@ final class EditorRenderer
             // Bound the detail first (leaving ≥1 column for the label) so a long
             // path can never push the row past $width and overflow the pane.
             $avail = max(1, $width - 3);
-            $detail = AnsiUtils::truncateToWidth($row['detail'], max(0, $avail - 1), '…', pad: false);
+            $detail = AnsiText::truncate($row['detail'], max(0, $avail - 1), pad: false);
             $detailWidth = AnsiUtils::visibleWidth($detail);
-            $label = AnsiUtils::truncateToWidth($row['label'], max(1, $avail - $detailWidth), '…', pad: true);
+            $label = AnsiText::truncate($row['label'], max(1, $avail - $detailWidth), pad: true);
             $popup[] = $style->apply(' '.$label.' '.$styles->of(Role::CompletionHint)->apply($detail).' ');
         }
 
@@ -488,7 +488,7 @@ final class EditorRenderer
             $style = $styles->of($isSelected ? Role::SelectedRow : Role::PopupRow);
             $kindTag = $styles->of(Role::CompletionKind)->apply($item->kind);
             $labelWidth = $width - mb_strwidth($item->kind) - 3;
-            $label = AnsiUtils::truncateToWidth($item->label, $labelWidth, '…', pad: true);
+            $label = AnsiText::truncate($item->label, $labelWidth, pad: true);
             $popupLine = $style->apply(' '.$label.' '.$kindTag.' ');
 
             $lines[$row] = OverlayCompositor::into($lines[$row], $col, $width, $columns, $popupLine);

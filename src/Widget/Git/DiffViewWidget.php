@@ -11,7 +11,9 @@ use Porta\Git\DiffRowKind;
 use Porta\Highlight\CodeHighlighter;
 use Porta\Highlight\DarkTerminalTheme;
 use Porta\I18n\Translator;
+use Porta\Support\AnsiText;
 use Porta\Support\IntMath;
+use Porta\Ui\Glyphs;
 use Porta\Ui\LtrPane;
 use Porta\Ui\Role;
 use Porta\Ui\Sgr;
@@ -702,7 +704,7 @@ final class DiffViewWidget extends AbstractWidget implements FocusableInterface,
 
         if (null === $this->document || [] === $this->rows) {
             $message = $this->styles->of(Role::Dim)->apply(' '.$this->translator->trans($this->placeholder));
-            $lines[] = AnsiUtils::truncateToWidth($message, $width, '…', pad: true);
+            $lines[] = AnsiText::truncate($message, $width, pad: true);
             while (\count($lines) < $rows) {
                 $lines[] = str_repeat(' ', max(0, $width));
             }
@@ -819,7 +821,7 @@ final class DiffViewWidget extends AbstractWidget implements FocusableInterface,
             $tagsWidth += mb_strwidth($tag['label']) + 1;
         }
         $col = max(0, $width - $tagsWidth);
-        $left = AnsiUtils::truncateToWidth($title, $col, '…', pad: true);
+        $left = AnsiText::truncate($title, $col, pad: true);
         foreach ($tags as $tag) {
             $tagWidth = mb_strwidth($tag['label']);
             $this->buttonZones[] = ['name' => $tag['name'], 'start' => $col, 'end' => $col + $tagWidth];
@@ -841,7 +843,7 @@ final class DiffViewWidget extends AbstractWidget implements FocusableInterface,
         $hunk = $this->document->hunks[$row['hunk']];
 
         if (DiffRowKind::Hunk === $row['kind']) {
-            return $this->styles->of(Role::Hunk)->apply(AnsiUtils::truncateToWidth(' '.$hunk->header(), $width, '…', pad: true));
+            return $this->styles->of(Role::Hunk)->apply(AnsiText::truncate(' '.$hunk->header(), $width, pad: true));
         }
         if (DiffRowKind::Pair === $row['kind']) {
             $leftW = intdiv($width - 1, num2: 2);
@@ -897,12 +899,13 @@ final class DiffViewWidget extends AbstractWidget implements FocusableInterface,
     private function scrolledText(string $text, int $inner): string
     {
         if ($this->hScroll <= 0) {
-            return AnsiUtils::truncateToWidth($text, $inner, '…', pad: true);
+            return AnsiText::truncate($text, $inner, pad: true);
         }
 
         $slice = AnsiUtils::sliceByColumn($text, $this->hScroll, $inner);
 
-        return '…'.AnsiUtils::truncateToWidth($slice, max(1, $inner - 1), '…', pad: true);
+        // A LEADING mark: the cut is at the head, so the row reads as scrolled.
+        return Glyphs::ELLIPSIS.AnsiText::truncate($slice, max(1, $inner - 1), pad: true);
     }
 
     /**

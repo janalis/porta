@@ -5,11 +5,11 @@ declare(strict_types=1);
 namespace Porta\Widget;
 
 use Porta\Container\AsWidget;
+use Porta\Support\AnsiText;
 use Porta\Ui\Role;
 use Porta\Ui\Theme\Styles;
 use Porta\Widget\Render\MenuOverlayHost;
 use Porta\Widget\Render\MenuOverlayHostTrait;
-use Symfony\Component\Tui\Ansi\AnsiUtils;
 use Symfony\Component\Tui\Render\RenderContext;
 use Symfony\Component\Tui\Widget\AbstractWidget;
 
@@ -91,7 +91,7 @@ final class BreadcrumbsWidget extends AbstractWidget implements MenuOverlayHost
             $col += $width;
         }
 
-        $bar = $this->styles->of(Role::Toolbar)->apply(AnsiUtils::truncateToWidth($content, $columns, '…', pad: true));
+        $bar = $this->styles->of(Role::Toolbar)->apply(AnsiText::truncate($content, $columns, pad: true));
 
         return $this->withMenuOverlay([$bar], $columns);
     }

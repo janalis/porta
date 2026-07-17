@@ -6,6 +6,7 @@ namespace Porta\Widget;
 
 use Porta\Container\AsWidget;
 use Porta\I18n\Translator;
+use Porta\Support\AnsiText;
 use Porta\Support\IntMath;
 use Porta\Terminal\TerminalBuffer;
 use Porta\Ui\CursorStyle;
@@ -193,7 +194,7 @@ final class TerminalPanelWidget extends OverlayWidget implements FocusableInterf
 
         foreach ($window as $line) {
             // '' ellipsis: PTY output is raw content, not chrome — a mark would corrupt it.
-            $lines[] = AnsiUtils::truncateToWidth($line, $columns, '', pad: true).Sgr::RESET;
+            $lines[] = AnsiText::truncate($line, $columns, pad: true, ellipsis: '').Sgr::RESET;
         }
         // Pad to a stable height.
         for ($i = \count($window); $i < $rows; ++$i) {

@@ -7,6 +7,7 @@ namespace Porta\Widget\Git;
 use Porta\Container\AsWidget;
 use Porta\Git\CommitMode;
 use Porta\I18n\Translator;
+use Porta\Support\AnsiText;
 use Porta\Ui\CaretVisibility;
 use Porta\Ui\CursorStyle;
 use Porta\Ui\MultilineInput;
@@ -20,7 +21,6 @@ use Porta\Widget\PanelWidth;
 use Porta\Widget\PaneNavigationCallbacks;
 use Porta\Widget\Render\MenuOverlayHost;
 use Porta\Widget\Render\MenuOverlayHostTrait;
-use Symfony\Component\Tui\Ansi\AnsiUtils;
 use Symfony\Component\Tui\Input\Key;
 use Symfony\Component\Tui\Render\RenderContext;
 use Symfony\Component\Tui\Widget\AbstractWidget;
@@ -259,20 +259,20 @@ final class CommitBoxWidget extends AbstractWidget implements FocusableInterface
         $lines[] = $this->styles
             ->of(Role::HeaderBar)
             ->withBold()
-            ->apply(AnsiUtils::truncateToWidth($header, $width, '…', pad: true));
+            ->apply(AnsiText::truncate($header, $width, pad: true));
 
         $summary = ' '.$this->summary->render(cursor: $focused && 0 === $this->activeField ? CaretVisibility::Shown : CaretVisibility::Hidden, width: $width - 1);
         $summaryHint = '' === $this->summary->value() && !($focused && 0 === $this->activeField)
             ? $this->styles->of(Role::Dim)->apply(' '.$this->translator->trans('Summary (required)'))
             : $summary;
-        $lines[] = $this->styles->of(Role::RowHighlightBg)->apply(AnsiUtils::truncateToWidth($summaryHint, $width, '…', pad: true));
+        $lines[] = $this->styles->of(Role::RowHighlightBg)->apply(AnsiText::truncate($summaryHint, $width, pad: true));
 
         $descriptionLines = $this->description->render($width - 1, self::DESCRIPTION_ROWS, cursor: $focused && 1 === $this->activeField ? CaretVisibility::Shown : CaretVisibility::Hidden);
         if ($this->description->isEmpty() && !($focused && 1 === $this->activeField)) {
             $descriptionLines = [$this->styles->of(Role::Dim)->apply($this->translator->trans('Description'))];
         }
         for ($i = 0; $i < self::DESCRIPTION_ROWS; ++$i) {
-            $lines[] = $this->styles->of(Role::Toolbar)->apply(AnsiUtils::truncateToWidth(' '.($descriptionLines[$i] ?? ''), $width, '…', pad: true));
+            $lines[] = $this->styles->of(Role::Toolbar)->apply(AnsiText::truncate(' '.($descriptionLines[$i] ?? ''), $width, pad: true));
         }
 
         $lines[] = str_repeat(' ', max(0, $width));
@@ -283,7 +283,7 @@ final class CommitBoxWidget extends AbstractWidget implements FocusableInterface
             !$this->commitEnabled() => $this->styles->merge(Role::RowHighlightBg, Role::Dim),
             $this->hoveredIndex === $this->buttonRow() => $this->styles->of(Role::SelectedRow)->withUnderline(),
             default => $this->styles->of(Role::SelectedRow),
-        })->apply(AnsiUtils::truncateToWidth($label, $width, '…', pad: true));
+        })->apply(AnsiText::truncate($label, $width, pad: true));
         $lines[] = $button;
 
         return $this->withMenuOverlay($lines, $width);

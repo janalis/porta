@@ -7,6 +7,7 @@ namespace Porta\Widget\Git;
 use Porta\Container\AsWidget;
 use Porta\Git\LogEntry;
 use Porta\I18n\Translator;
+use Porta\Support\AnsiText;
 use Porta\Ui\ListNavigation;
 use Porta\Ui\ListSelection;
 use Porta\Ui\Role;
@@ -18,7 +19,6 @@ use Porta\Widget\PanelWidth;
 use Porta\Widget\PaneNavigationCallbacks;
 use Porta\Widget\Render\MenuOverlayHost;
 use Porta\Widget\Render\MenuOverlayHostTrait;
-use Symfony\Component\Tui\Ansi\AnsiUtils;
 use Symfony\Component\Tui\Input\Key;
 use Symfony\Component\Tui\Render\RenderContext;
 use Symfony\Component\Tui\Widget\AbstractWidget;
@@ -362,7 +362,7 @@ final class HistoryListWidget extends AbstractWidget implements FocusableInterfa
             $this->styles
                 ->of(Role::HeaderBar)
                 ->withBold()
-                ->apply(AnsiUtils::truncateToWidth($header, $width, '…', pad: true)),
+                ->apply(AnsiText::truncate($header, $width, pad: true)),
         ];
 
         $commitRows = $this->commitRowCount();
@@ -384,7 +384,7 @@ final class HistoryListWidget extends AbstractWidget implements FocusableInterfa
                 $bg = $this->styles->of(Role::RowHighlightBg);
             }
             $text = ' '.$this->styles->of(Role::Modified)->apply($commit->shortSha).' '.$commit->subject.$this->styles->of(Role::Dim)->apply('  '.$commit->author);
-            $text = AnsiUtils::truncateToWidth($text, $width, '…', pad: true);
+            $text = AnsiText::truncate($text, $width, pad: true);
             $lines[] = null !== $bg ? $bg->apply($text) : $text;
         }
 
@@ -392,7 +392,7 @@ final class HistoryListWidget extends AbstractWidget implements FocusableInterfa
             ->merge(Role::Toolbar, Role::Dim)
             ->withBold()
             ->apply(
-                AnsiUtils::truncateToWidth($this->translator->trans(' Files (%count%)', ['%count%' => \count($this->files)]), $width, '…', pad: true),
+                AnsiText::truncate($this->translator->trans(' Files (%count%)', ['%count%' => \count($this->files)]), $width, pad: true),
             );
         $fileScroll = $this->fileList->follow(self::FILE_ROWS);
         for ($row = 0; $row < self::FILE_ROWS && \count($lines) < $rows; ++$row) {
@@ -409,7 +409,7 @@ final class HistoryListWidget extends AbstractWidget implements FocusableInterfa
             if (!$selected && ($fileScroll + $row) === $this->hoveredFile) {
                 $bg = $this->styles->of(Role::RowHighlightBg);
             }
-            $text = AnsiUtils::truncateToWidth(' '.$file['status'].' '.$file['path'], $width, '…', pad: true);
+            $text = AnsiText::truncate(' '.$file['status'].' '.$file['path'], $width, pad: true);
             $lines[] = null !== $bg ? $bg->apply($text) : $text;
         }
 

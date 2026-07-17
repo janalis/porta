@@ -483,7 +483,7 @@ final class OverlayHost
             $text = ' '.$this->prompt['label'].': '.$this->prompt['value']->value();
             $width = min($columns, max(30, mb_strwidth($text) + 4));
             $rendered = ' '.$this->prompt['label'].': '.$this->prompt['value']->render(cursor: $focused);
-            $box = $this->styles->merge(Role::HeaderBar, Role::Bright)->apply(AnsiUtils::truncateToWidth($rendered.' ', $width, '…', pad: true));
+            $box = $this->styles->merge(Role::HeaderBar, Role::Bright)->apply(AnsiText::truncate($rendered.' ', $width, pad: true));
             $tail = AnsiUtils::sliceByColumn($lines[0] ?? '', $width, $columns - $width);
             $lines[0] = AnsiText::padRight($box.$tail.Sgr::RESET, $columns);
         }

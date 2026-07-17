@@ -15,7 +15,6 @@ use Porta\Widget\Render\TabCell;
 use Porta\Widget\Render\TabCloseGlyph;
 use Porta\Widget\Render\TabState;
 use Porta\Widget\Render\TabStyle;
-use Symfony\Component\Tui\Ansi\AnsiUtils;
 use Symfony\Component\Tui\Render\RenderContext;
 use Symfony\Component\Tui\Widget\AbstractWidget;
 
@@ -294,7 +293,7 @@ final class TabBarWidget extends AbstractWidget implements MenuOverlayHost
             // ' name…    ●× ': the dirty ● and the close × are right-aligned.
             $nameWidth = self::VERTICAL_WIDTH - 5;
             foreach (\array_slice($tabs, $start, $budget, preserve_keys: true) as $index => $tab) {
-                $name = AnsiUtils::truncateToWidth($tab['name'], $nameWidth, '…', pad: true);
+                $name = AnsiText::truncate($tab['name'], $nameWidth, pad: true);
                 $marker = $tab['dirty'] ? Glyphs::DIRTY : ' ';
                 $close = $tab['active'] ? TabCloseGlyph::active($this->styles) : TabCloseGlyph::inactive($this->styles);
                 $lines[] = TabStyle::of($this->styles, TabState::of($tab['active'], $index === $this->hoveredIndex))->apply(' '.$name.' '.$marker.$close.' ');

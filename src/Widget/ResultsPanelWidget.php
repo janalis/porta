@@ -20,7 +20,6 @@ use Porta\Ui\Theme\Styles;
 use Porta\Widget\Render\HeaderRenderer;
 use Porta\Widget\Render\MenuOverlayHost;
 use Porta\Widget\Render\MenuOverlayHostTrait;
-use Symfony\Component\Tui\Ansi\AnsiUtils;
 use Symfony\Component\Tui\Input\Key;
 use Symfony\Component\Tui\Render\RenderContext;
 use Symfony\Component\Tui\Widget\FocusableInterface;
@@ -488,7 +487,7 @@ final class ResultsPanelWidget extends OverlayWidget implements FocusableInterfa
 
         if ([] === $this->results && !$this->searching && '' !== $this->query->value()) {
             // '' ellipsis: a fixed short filler row — never worth a truncation mark.
-            $lines[] = $this->styles->merge(Role::Toolbar, Role::CompletionHint)->apply(AnsiUtils::truncateToWidth(' '.$this->translator->trans('no results'), $columns, '', pad: true));
+            $lines[] = $this->styles->merge(Role::Toolbar, Role::CompletionHint)->apply(AnsiText::truncate(' '.$this->translator->trans('no results'), $columns, pad: true, ellipsis: ''));
         }
 
         return $this->withMenuOverlay($lines, $columns);
@@ -543,7 +542,7 @@ final class ResultsPanelWidget extends OverlayWidget implements FocusableInterfa
     {
         $content = $this->matchIndent().'  '.$this->styles->of(Role::Dim)->apply(($line + 1).'  '.$text);
 
-        return $bg.AnsiUtils::truncateToWidth($content, $columns, '…', pad: true).Sgr::RESET;
+        return $bg.AnsiText::truncate($content, $columns, pad: true).Sgr::RESET;
     }
 
     /**
@@ -562,7 +561,7 @@ final class ResultsPanelWidget extends OverlayWidget implements FocusableInterfa
         $arrow = $row->collapsed ? Glyphs::COLLAPSED : Glyphs::EXPANDED;
         $text = $indent.' '.$arrow.' '.$this->styles->of(Role::TabAccent)->apply($display).$this->styles->of(Role::Dim)->apply('  ('.$row->count.')');
 
-        return $bg.AnsiUtils::truncateToWidth($text, $columns, '…', pad: true).Sgr::RESET;
+        return $bg.AnsiText::truncate($text, $columns, pad: true).Sgr::RESET;
     }
 
     /**

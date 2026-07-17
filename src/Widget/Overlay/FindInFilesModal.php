@@ -19,7 +19,6 @@ use Porta\Widget\ResultGrouping;
 use Porta\Widget\ResultLayout;
 use Porta\Widget\ResultsView;
 use Porta\Widget\SearchFieldRenderer;
-use Symfony\Component\Tui\Ansi\AnsiUtils;
 use Symfony\Component\Tui\Input\Key;
 use Symfony\Component\Tui\Input\Keybindings;
 
@@ -724,7 +723,7 @@ final class FindInFilesModal
         // The scope zone starts past the two-space gap; clamp so a truncated box can't hit past the edge.
         $this->optionZones[] = ['name' => 'scope', 'start' => $col + 2, 'end' => min($col + 2 + mb_strwidth($this->translator->trans('Scope:').' '.$label.' (Alt+S)'), $width)];
 
-        return $this->styles->of(Role::Toolbar)->apply(AnsiUtils::truncateToWidth(' '.$tags.$scope, $width, '…', pad: true));
+        return $this->styles->of(Role::Toolbar)->apply(AnsiText::truncate(' '.$tags.$scope, $width, pad: true));
     }
 
     private function optionTag(string $glyph, OptionTagState $state): string
@@ -744,7 +743,7 @@ final class FindInFilesModal
     {
         $text = ' '.$this->styles->of(Role::TabAccent)->apply($path).$this->styles->of(Role::Dim)->apply('  ('.$count.')');
 
-        return $this->styles->of(Role::PopupRow)->apply(AnsiUtils::truncateToWidth($text, $width, '…', pad: true));
+        return $this->styles->of(Role::PopupRow)->apply(AnsiText::truncate($text, $width, pad: true));
     }
 
     /**
@@ -798,7 +797,7 @@ final class FindInFilesModal
         $text = ' '.('' === $this->query->value() ? $this->translator->trans('type to search…') : $this->translator->trans('no results'));
 
         // '' ellipsis: a fixed short filler row — never worth a truncation mark.
-        return $this->styles->merge(Role::PopupRow, Role::CompletionHint)->apply(AnsiUtils::truncateToWidth($text, $width, '', pad: true));
+        return $this->styles->merge(Role::PopupRow, Role::CompletionHint)->apply(AnsiText::truncate($text, $width, pad: true, ellipsis: ''));
     }
 
     /** The footer hint row; the action words are clickable/hoverable zones. */
@@ -823,7 +822,7 @@ final class FindInFilesModal
             }
         }
 
-        return $this->styles->merge(Role::HeaderBar, Role::Dim)->apply(AnsiUtils::truncateToWidth($line, $width, '…', pad: true));
+        return $this->styles->merge(Role::HeaderBar, Role::Dim)->apply(AnsiText::truncate($line, $width, pad: true));
     }
 
     /**

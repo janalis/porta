@@ -1155,7 +1155,7 @@ final class CodeEditorWidget extends AbstractWidget implements ActiveFileProvide
     private function renderEmptyState(int $columns, int $rows): array
     {
         $hint = 'No file open · press Ctrl+P to open a file';
-        $text = AnsiUtils::truncateToWidth($hint, $columns, '…');
+        $text = AnsiText::truncate($hint, $columns);
         $textWidth = AnsiUtils::visibleWidth($text);
         $left = max(0, intdiv($columns - $textWidth, num2: 2));
         $hintRow = AnsiText::padRight(str_repeat(' ', $left).$this->styles->of(Role::CompletionHint)->apply($text), $columns);

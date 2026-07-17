@@ -145,7 +145,7 @@ final class MarkdownRenderer
         $count = \count($source);
         $i = $from;
         for (; $i < $count && !str_starts_with(trim($source[$i]), '```'); ++$i) {
-            $text = AnsiUtils::truncateToWidth('  '.rtrim($source[$i]), $width, '…');
+            $text = AnsiText::truncate('  '.rtrim($source[$i]), $width);
             $this->lines[] = $bg.AnsiText::padRight($text, $width).$this->resetAll();
         }
 
@@ -176,7 +176,7 @@ final class MarkdownRenderer
         };
         $assembled = $this->assemble($this->inline($text), 0);
         $line = $open.$assembled['text'].$this->resetAll();
-        $this->lines[] = AnsiUtils::truncateToWidth($line, $width, '…');
+        $this->lines[] = AnsiText::truncate($line, $width);
         $this->recordSpans($assembled['spans'], \count($this->lines) - 1, $width);
         if ($level <= 2) {
             $ruleWidth = min($width, max(1, $assembled['width']));
@@ -217,7 +217,7 @@ final class MarkdownRenderer
                 foreach ($widths as $columnWidth) {
                     $rule .= str_repeat('─', $columnWidth).'  ';
                 }
-                $this->lines[] = $this->styles->of(Role::Muted)->getAnsiRestore().AnsiUtils::truncateToWidth(rtrim($rule), $width, '…').$this->resetAll();
+                $this->lines[] = $this->styles->of(Role::Muted)->getAnsiRestore().AnsiText::truncate(rtrim($rule), $width).$this->resetAll();
                 continue;
             }
 
@@ -234,7 +234,7 @@ final class MarkdownRenderer
                 $col += ($widths[$column] ?? 0) + 2;
             }
             $line = $isHeader ? $this->bold().rtrim($text).$this->resetAll() : rtrim($text);
-            $this->lines[] = AnsiUtils::truncateToWidth($line, $width, '…');
+            $this->lines[] = AnsiText::truncate($line, $width);
             $this->recordSpans($spans, \count($this->lines) - 1, $width);
         }
         $this->lines[] = '';
@@ -342,7 +342,7 @@ final class MarkdownRenderer
     private function emitLine(string $prefix, int $prefixWidth, array $lineWords, int $width): void
     {
         $assembled = $this->assemble($this->wordsToSegments($lineWords), $prefixWidth);
-        $this->lines[] = AnsiUtils::truncateToWidth($prefix.$assembled['text'], $width, '…');
+        $this->lines[] = AnsiText::truncate($prefix.$assembled['text'], $width);
         $this->recordSpans($assembled['spans'], \count($this->lines) - 1, $width);
     }
 

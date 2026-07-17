@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Porta\Widget;
 
 use Porta\Container\AsWidget;
+use Porta\Support\AnsiText;
 use Porta\Ui\Role;
 use Porta\Ui\Theme\Styles;
 use Psr\Clock\ClockInterface;
@@ -98,18 +99,18 @@ final class StatusBarWidget extends AbstractWidget
         // yields to it. The steady-state left (the file path) yields as before.
         if (null !== $this->flash) {
             $rightMax = max(0, $columns - min(AnsiUtils::visibleWidth($left), $columns - 3) - 3);
-            $right = AnsiUtils::truncateToWidth($right, $rightMax, '…');
+            $right = AnsiText::truncate($right, $rightMax);
         }
 
         $rightWidth = AnsiUtils::visibleWidth($right);
         $leftMax = max(0, $columns - $rightWidth - 3);
-        $left = AnsiUtils::truncateToWidth($left, $leftMax, '…');
+        $left = AnsiText::truncate($left, $leftMax);
         $leftWidth = AnsiUtils::visibleWidth($left);
 
         $gap = max(1, $columns - $leftWidth - $rightWidth - 2);
         $line = ' '.$left.str_repeat(' ', $gap).$right.' ';
         // '' ellipsis: chrome already gap-padded to the width — never mark it.
-        $line = AnsiUtils::truncateToWidth($line, $columns, '', pad: true);
+        $line = AnsiText::truncate($line, $columns, pad: true, ellipsis: '');
 
         return [$this->styles->merge(Role::HeaderBar, Role::CurrentLineNumber)->apply($line)];
     }

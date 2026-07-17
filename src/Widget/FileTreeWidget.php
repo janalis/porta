@@ -6,6 +6,7 @@ namespace Porta\Widget;
 
 use Porta\Container\AsWidget;
 use Porta\Layout\ResizableSidebar;
+use Porta\Support\AnsiText;
 use Porta\Tree\FileTreeNode;
 use Porta\Ui\Glyphs;
 use Porta\Ui\ListNavigation;
@@ -16,7 +17,6 @@ use Porta\Widget\Render\MenuOverlayHost;
 use Porta\Widget\Render\MenuOverlayHostTrait;
 use Psr\Clock\ClockInterface;
 use Symfony\Component\Clock\NativeClock;
-use Symfony\Component\Tui\Ansi\AnsiUtils;
 use Symfony\Component\Tui\Input\Key;
 use Symfony\Component\Tui\Render\RenderContext;
 use Symfony\Component\Tui\Widget\AbstractWidget;
@@ -262,7 +262,7 @@ final class FileTreeWidget extends AbstractWidget implements FocusableInterface,
         $scroll = $this->list->follow($rows - 1);
 
         $lines = [];
-        $header = AnsiUtils::truncateToWidth(' '.basename($this->rootDir).'/', $width, '…', pad: true);
+        $header = AnsiText::truncate(' '.basename($this->rootDir).'/', $width, pad: true);
         $lines[] = $this->styles->of(Role::HeaderBar)->withBold()->apply($header);
 
         for ($row = 1; $row < $rows; ++$row) {
@@ -280,7 +280,7 @@ final class FileTreeWidget extends AbstractWidget implements FocusableInterface,
                 default => Glyphs::COLLAPSED.' ',
             };
             $text = str_repeat(' ', max(0, $node->depth + 1)).$icon.$node->name.($node->isDir ? '/' : '');
-            $text = AnsiUtils::truncateToWidth($text, $width, '…', pad: true);
+            $text = AnsiText::truncate($text, $width, pad: true);
 
             // Subtle hover background beneath the pointer keeps the dir/file foreground.
             $lines[] = match (true) {

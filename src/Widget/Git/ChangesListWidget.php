@@ -7,6 +7,7 @@ namespace Porta\Widget\Git;
 use Porta\Container\AsWidget;
 use Porta\Git\ChangeEntry;
 use Porta\I18n\Translator;
+use Porta\Support\AnsiText;
 use Porta\Ui\Glyphs;
 use Porta\Ui\ListNavigation;
 use Porta\Ui\ListSelection;
@@ -20,7 +21,6 @@ use Porta\Widget\PanelWidth;
 use Porta\Widget\PaneNavigationCallbacks;
 use Porta\Widget\Render\MenuOverlayHost;
 use Porta\Widget\Render\MenuOverlayHostTrait;
-use Symfony\Component\Tui\Ansi\AnsiUtils;
 use Symfony\Component\Tui\Input\Key;
 use Symfony\Component\Tui\Render\RenderContext;
 use Symfony\Component\Tui\Widget\AbstractWidget;
@@ -333,7 +333,7 @@ final class ChangesListWidget extends AbstractWidget implements FocusableInterfa
         $lines = [$this->styles
             ->of(Role::HeaderBar)
             ->withBold()
-            ->apply(AnsiUtils::truncateToWidth($title, $width, '…', pad: true))];
+            ->apply(AnsiText::truncate($title, $width, pad: true))];
 
         $scroll = $this->list->follow($rows - 1);
         for ($row = 1; $row < $rows; ++$row) {
@@ -345,7 +345,7 @@ final class ChangesListWidget extends AbstractWidget implements FocusableInterfa
             }
             if ($index === $this->confirmDiscard) {
                 $confirm = $this->translator->trans(' Discard changes? y = yes · any key = no');
-                $lines[] = $this->styles->merge(Role::DangerBg, Role::Bright)->apply(AnsiUtils::truncateToWidth($confirm, $width, '…', pad: true));
+                $lines[] = $this->styles->merge(Role::DangerBg, Role::Bright)->apply(AnsiText::truncate($confirm, $width, pad: true));
                 continue;
             }
 
@@ -358,7 +358,7 @@ final class ChangesListWidget extends AbstractWidget implements FocusableInterfa
             $statusText = \array_key_exists($status, self::STATUS_ROLE) ? $this->styles->of(self::STATUS_ROLE[$status])->apply($status) : $status;
             $label = $entry->path.(null !== $entry->renamedFrom ? ' ← '.$entry->renamedFrom : '');
 
-            $text = AnsiUtils::truncateToWidth(' '.$checkbox.' '.$statusText.' '.$label, $width, '…', pad: true);
+            $text = AnsiText::truncate(' '.$checkbox.' '.$statusText.' '.$label, $width, pad: true);
             $lines[] = match (true) {
                 $this->list->isSelected($index) => $this->applyElement('selected', $text),
                 $index === $this->hoveredIndex => $this->styles->of(Role::RowHighlightBg)->apply($text),

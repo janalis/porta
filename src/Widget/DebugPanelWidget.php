@@ -7,6 +7,7 @@ namespace Porta\Widget;
 use Porta\Container\AsWidget;
 use Porta\Debug\DebugState;
 use Porta\I18n\Translator;
+use Porta\Support\AnsiText;
 use Porta\Ui\Glyphs;
 use Porta\Ui\ListNavigation;
 use Porta\Ui\ListSelection;
@@ -15,7 +16,6 @@ use Porta\Ui\Role;
 use Porta\Ui\Theme\Styles;
 use Porta\Widget\Render\MenuOverlayHost;
 use Porta\Widget\Render\MenuOverlayHostTrait;
-use Symfony\Component\Tui\Ansi\AnsiUtils;
 use Symfony\Component\Tui\Input\Key;
 use Symfony\Component\Tui\Render\RenderContext;
 use Symfony\Component\Tui\Widget\FocusableInterface;
@@ -234,7 +234,7 @@ final class DebugPanelWidget extends OverlayWidget implements FocusableInterface
                 ($scroll + $i) === $this->hoveredIndex => $this->styles->of(Role::RowHighlightBg),
                 default => $this->styles->of(Role::Toolbar),
             };
-            $lines[] = $bg->apply(AnsiUtils::truncateToWidth($this->rowText($row), $columns, '…', pad: true));
+            $lines[] = $bg->apply(AnsiText::truncate($this->rowText($row), $columns, pad: true));
         }
 
         return $this->withMenuOverlay($lines, $columns);
@@ -295,7 +295,9 @@ final class DebugPanelWidget extends OverlayWidget implements FocusableInterface
         $value = match (true) {
             null === $watch => '',
             null !== $watch['error'] => $this->styles->of(Role::Dim)->apply($watch['error']),
-            null === $watch['value'] => $this->styles->of(Role::Dim)->apply('…'),
+            // ELLIPSIS overloaded as "not fetched yet" — disjoint from its
+            // truncation-mark sense: this is a whole cell, not a line's tail.
+            null === $watch['value'] => $this->styles->of(Role::Dim)->apply(Glyphs::ELLIPSIS),
             default => $watch['value'],
         };
 

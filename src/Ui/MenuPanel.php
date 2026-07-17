@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Porta\Ui;
 
+use Porta\Support\AnsiText;
 use Porta\Ui\Theme\Styles;
 use Symfony\Component\Tui\Ansi\AnsiUtils;
 
@@ -110,7 +111,7 @@ final class MenuPanel
         $inner = max(0, $panelWidth - 2);
         $shortcut = $item->shortcut;
         $labelMax = max(0, $inner - ('' !== $shortcut ? mb_strwidth($shortcut) + 2 : 0));
-        $label = AnsiUtils::truncateToWidth($item->label, $labelMax, '…');
+        $label = AnsiText::truncate($item->label, $labelMax);
         $gap = max(1, $inner - AnsiUtils::visibleWidth($label) - mb_strwidth($shortcut));
 
         // Disabled always reads dim and never shows the selected highlight; the

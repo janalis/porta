@@ -7,6 +7,7 @@ namespace Porta\Widget;
 use Porta\Container\AsWidget;
 use Porta\I18n\Translator;
 use Porta\Search\FileIndex;
+use Porta\Support\AnsiText;
 use Porta\Ui\CaretVisibility;
 use Porta\Ui\CursorStyle;
 use Porta\Ui\ListNavigation;
@@ -15,7 +16,6 @@ use Porta\Ui\Role;
 use Porta\Ui\TextField;
 use Porta\Ui\Theme\Styles;
 use Porta\Widget\Render\HeaderRenderer;
-use Symfony\Component\Tui\Ansi\AnsiUtils;
 use Symfony\Component\Tui\Input\Key;
 use Symfony\Component\Tui\Render\RenderContext;
 use Symfony\Component\Tui\Widget\FocusableInterface;
@@ -182,12 +182,12 @@ final class GoToFileWidget extends OverlayWidget implements FocusableInterface, 
             $name = basename($path);
             $dir = ltrim(substr($path, offset: 0, length: -\strlen($name)), characters: '/');
             $text = ' '.$name.'  '.$this->styles->of(Role::CompletionHint)->getAnsiRestore().$dir;
-            $lines[] = $style->apply(AnsiUtils::truncateToWidth($text, $columns, '…', pad: true));
+            $lines[] = $style->apply(AnsiText::truncate($text, $columns, pad: true));
         }
 
         if ([] === $this->results && '' !== $this->query->value()) {
             // '' ellipsis: a fixed short filler row — never worth a truncation mark.
-            $lines[] = $this->styles->merge(Role::RowHighlightBg, Role::CompletionHint)->apply(AnsiUtils::truncateToWidth(' '.$this->translator->trans('no matches'), $columns, '', pad: true));
+            $lines[] = $this->styles->merge(Role::RowHighlightBg, Role::CompletionHint)->apply(AnsiText::truncate(' '.$this->translator->trans('no matches'), $columns, pad: true, ellipsis: ''));
         }
 
         return $lines;

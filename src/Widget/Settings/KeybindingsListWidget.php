@@ -7,6 +7,7 @@ namespace Porta\Widget\Settings;
 use Porta\Config\KeybindingRow;
 use Porta\Container\AsWidget;
 use Porta\I18n\Translator;
+use Porta\Support\AnsiText;
 use Porta\Ui\ListNavigation;
 use Porta\Ui\ListSelection;
 use Porta\Ui\Role;
@@ -19,7 +20,6 @@ use Porta\Widget\InputHook;
 use Porta\Widget\PaneNavigationCallbacks;
 use Porta\Widget\Render\MenuOverlayHost;
 use Porta\Widget\Render\MenuOverlayHostTrait;
-use Symfony\Component\Tui\Ansi\AnsiUtils;
 use Symfony\Component\Tui\Input\Key;
 use Symfony\Component\Tui\Render\RenderContext;
 use Symfony\Component\Tui\Widget\AbstractWidget;
@@ -198,7 +198,7 @@ final class KeybindingsListWidget extends AbstractWidget implements FocusableInt
         $lines = [$this->styles
             ->of(Role::HeaderBar)
             ->withBold()
-            ->apply(AnsiUtils::truncateToWidth($title, $width, '…', pad: true))];
+            ->apply(AnsiText::truncate($title, $width, pad: true))];
 
         $scroll = $this->list->follow($rows - 1);
         for ($row = 1; $row < $rows; ++$row) {
@@ -219,7 +219,7 @@ final class KeybindingsListWidget extends AbstractWidget implements FocusableInt
             }
 
             $labelWidth = max(0, $width - $rightWidth - 2);
-            $label = AnsiUtils::truncateToWidth(' '.$entry->label, $labelWidth, '…', pad: true);
+            $label = AnsiText::truncate(' '.$entry->label, $labelWidth, pad: true);
             $text = $label.' '.$right.' ';
             $lines[] = match (true) {
                 $index === $this->list->selected() => $this->applyElement('selected', $text),

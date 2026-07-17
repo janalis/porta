@@ -8,6 +8,7 @@ use Porta\Config\SettingsRow;
 use Porta\Config\SettingsRowKind;
 use Porta\Container\AsWidget;
 use Porta\I18n\Translator;
+use Porta\Support\AnsiText;
 use Porta\Support\IntMath;
 use Porta\Ui\CaretVisibility;
 use Porta\Ui\CursorStyle;
@@ -21,7 +22,6 @@ use Porta\Widget\InputHook;
 use Porta\Widget\PaneNavigationCallbacks;
 use Porta\Widget\Render\MenuOverlayHost;
 use Porta\Widget\Render\MenuOverlayHostTrait;
-use Symfony\Component\Tui\Ansi\AnsiUtils;
 use Symfony\Component\Tui\Input\Key;
 use Symfony\Component\Tui\Input\Keybindings;
 use Symfony\Component\Tui\Render\RenderContext;
@@ -313,7 +313,7 @@ final class SettingsFormWidget extends AbstractWidget implements FocusableInterf
             if ($row->restart) {
                 $text .= $this->styles->of(Role::Dim)->apply(' · '.$this->translator->trans('applies on restart'));
             }
-            $text = AnsiUtils::truncateToWidth($text, $width, '…', pad: true);
+            $text = AnsiText::truncate($text, $width, pad: true);
             $lines[] = match (true) {
                 $i === $this->selected => $this->applyElement('selected', $text),
                 $i === $this->hoveredIndex => $this->styles->of(Role::RowHighlightBg)->apply($text),
