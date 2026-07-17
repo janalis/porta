@@ -18,13 +18,9 @@
         <source> %count% changed files</source>
         <target> %count% 件の変更ファイル</target>
       </trans-unit>
-      <trans-unit id="5">
-        <source> Commit  [amend · alt+m]</source>
-        <target> コミット  [修正 · alt+m]</target>
-      </trans-unit>
       <trans-unit id="6">
-        <source> Commit  ·  alt+m: amend</source>
-        <target> コミット  ·  alt+m: 修正</target>
+        <source> Commit  ·  Alt+M amend </source>
+        <target> コミット  ·  Alt+M 修正 </target>
       </trans-unit>
       <trans-unit id="7">
         <source> Discard changes? y = yes · any key = no</source>
@@ -39,12 +35,12 @@
         <target> 履歴 (%count%)</target>
       </trans-unit>
       <trans-unit id="10">
-        <source> s:split </source>
-        <target> s:split </target>
+        <source> S split </source>
+        <target> S split </target>
       </trans-unit>
       <trans-unit id="11">
-        <source> w:hide-ws </source>
-        <target> w:hide-ws </target>
+        <source> W hide-ws </source>
+        <target> W hide-ws </target>
       </trans-unit>
       <trans-unit id="12">
         <source>&quot;%title%&quot; failed: %message%</source>
@@ -267,8 +263,8 @@
         <target>インデントスタイル</target>
       </trans-unit>
       <trans-unit id="67">
-        <source>Keybindings — %count% actions · Enter to rebind</source>
-        <target>キーバインド — %count% 個のアクション · Enter で再割り当て</target>
+        <source>Keybindings — %count% actions · ⏎ to rebind</source>
+        <target>キーバインド — %count% 個のアクション · ⏎ で再割り当て</target>
       </trans-unit>
       <trans-unit id="68">
         <source>LSP is set via --lsp; the settings change was not applied</source>
@@ -1187,8 +1183,8 @@
         <target>画像の表示中は利用できません</target>
       </trans-unit>
       <trans-unit id="298">
-        <source>+/- zoom  0 fit  arrows pan  ^Q quit</source>
-        <target>+/- ズーム  0 フィット  矢印 移動  ^Q 終了</target>
+        <source>+/- zoom  0 fit  Arrows pan  Ctrl+Q quit</source>
+        <target>+/- ズーム  0 フィット  矢印 移動  Ctrl+Q 終了</target>
       </trans-unit>
       <trans-unit id="299">
         <source>Image: Zoom In</source>
@@ -1827,8 +1823,8 @@
         <target>範囲:</target>
       </trans-unit>
       <trans-unit id="460">
-        <source>Enter open</source>
-        <target>Enter で開く</target>
+        <source>⏎ open</source>
+        <target>⏎ で開く</target>
       </trans-unit>
       <trans-unit id="461">
         <source>Find window</source>

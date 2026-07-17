@@ -14,7 +14,27 @@ namespace Porta\Ui;
  * with `+` (`Ctrl+`, `Alt+`, `Shift+` — never `^`/`⌥`/`⇧`) and the special
  * keys spelled as in KEYS (`⏎`, `Esc`, `Tab`, …). Hand-authored hint strips
  * (find bar, debug legend, status bar) are written in this dialect too, so a
- * shortcut reads the same wherever it appears.
+ * shortcut reads the same wherever it appears. A bare key is written as its
+ * own name (`S split`, `Y yes`) — never invented shorthand like `s:split`.
+ *
+ * The rest of the dialect, which only hand-authored strips can get wrong:
+ *
+ * - `⏎` names the Enter key in a terse hint strip, beside its action, exactly
+ *   as the formatter emits it into a menu. In a prose sentence write the word
+ *   ("Press Enter again to remove …"): the glyph reads badly mid-sentence and
+ *   is already overloaded there as the newline mark (see {@see TextField}).
+ * - `/` joins the alternative keys of ONE action (`⏎/F3 next`, `+/- zoom`).
+ *   It is part of a single hint, so it never competes with the separators.
+ * - `·` separates items generally — hints, and the clauses of a status or
+ *   flash message (`Rebound X to Y · applies on restart`). It is the default.
+ * - A double space separates hints in the two full-width chrome bars (the
+ *   find bar and the status bar) and ONLY there. Not drift: those strips are
+ *   already length-bound — the find bar's replace-mode legend overruns an
+ *   80- and even a 120-column terminal today — and `·` costs a column per
+ *   separator that they have nowhere to take from.
+ *
+ * {@see \Porta\Tests\Unit\Ui\HintDialectTest} ratchets the modifier spelling
+ * over the translation catalog, which is where every user-visible hint lands.
  */
 final class ShortcutFormatter
 {

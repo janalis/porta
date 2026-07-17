@@ -60,7 +60,7 @@ final class WorkbenchActions
     {
         // Through openQuery so the dock captures which tool tab to restore
         // when the picker closes.
-        $this->panels->openQuery(ResultsPanelMode::Action, 'Find Action');
+        $this->panels->openQuery(ResultsPanelMode::Action, $this->translator->trans('Find Action'));
         $this->commandPalette->open($this->commands->paletteCommands());
     }
 

@@ -7,6 +7,7 @@ namespace Porta\Tests\Unit\Widget\Git;
 use PHPUnit\Framework\TestCase;
 use Porta\Git\CommitMode;
 use Porta\I18n\Translator;
+use Porta\Ui\Glyphs;
 use Porta\Widget\Git\CommitBoxWidget;
 use Symfony\Component\Tui\Ansi\AnsiUtils;
 use Symfony\Component\Tui\Render\RenderContext;
@@ -164,7 +165,7 @@ final class CommitBoxWidgetTest extends TestCase
         $this->assertTrue($widget->commitEnabled(), 'amending only the message needs nothing staged');
 
         $screen = $this->plain($widget);
-        $this->assertStringContainsString('[amend · alt+m]', $screen);
+        $this->assertStringContainsString('Alt+M amend '.Glyphs::CHECKBOX_ON, $screen, 'the amend state reads as a checkbox, without colour');
         $this->assertStringContainsString('Amend last commit', $screen);
 
         $widget->handleInput("\x1b[13;5u");

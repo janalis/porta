@@ -454,7 +454,10 @@ final class ResultsPanelWidget extends OverlayWidget implements FocusableInterfa
         if ($this->withQuery) {
             $queryField = $this->query->render(cursor: $showCursor && 'query' === $this->activeField ? CaretVisibility::Shown : CaretVisibility::Hidden);
             $prefix = ' '.$this->title.': '.$queryField.$this->styles->of(Role::Dim)->apply(' '.$this->buildStatus());
-            $lines[] = HeaderRenderer::render($prefix, $columns, $this->styles->of(Role::HeaderBar)->withBold());
+            // The query modes are the transient pickers (palette, go-to-symbol):
+            // they are kept off the dock strip, so this hint is their only way
+            // out — every other transient surface carries the same one.
+            $lines[] = HeaderRenderer::render($prefix, $columns, $this->styles->of(Role::HeaderBar)->withBold(), suffix: 'Esc');
         }
 
         if ($this->withFilter) {

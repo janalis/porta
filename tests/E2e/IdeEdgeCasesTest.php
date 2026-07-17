@@ -5148,7 +5148,7 @@ final class IdeEdgeCasesTest extends TestCase
                     $this->assertStringContainsString('Copied 1 line', AnsiUtils::stripAnsiCodes($raw));
                     $this->assertSame('git-commit', $tui->getFocus()?->getId(), 'click focused the commit box');
                     // The diff toolbar tags sit at the right edge of the diff
-                    // title row (screen row 2): ' s:split ' then ' w:hide-ws '.
+                    // title row (screen row 2): ' S split ' then ' W hide-ws '.
                     // Clicking them flips the modes and persists the prefs.
                     $tui->handleInput("\x1b[<0;141;2M");
                     $tui->handleInput("\x1b[<0;141;2m");

@@ -809,7 +809,7 @@ final class FindInFilesModal
         // re-opened explicitly (the row wrap only re-applies the background).
         $dim = $this->styles->of(Role::Dim)->getAnsiRestore();
         $sep = ' · ';
-        $line = ' '.$this->translator->trans('Enter open').$sep;
+        $line = ' '.$this->translator->trans('⏎ open').$sep;
         $col = mb_strwidth($line);
         foreach ([$this->translator->trans('Find window') => 'find_window', $this->translator->trans('Scope') => 'footer_scope'] as $label => $name) {
             $this->footerZones[] = ['name' => $name, 'start' => $col, 'end' => $col + mb_strwidth($label)];

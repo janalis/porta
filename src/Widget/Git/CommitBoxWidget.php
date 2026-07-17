@@ -10,6 +10,7 @@ use Porta\I18n\Translator;
 use Porta\Support\AnsiText;
 use Porta\Ui\CaretVisibility;
 use Porta\Ui\CursorStyle;
+use Porta\Ui\Glyphs;
 use Porta\Ui\MultilineInput;
 use Porta\Ui\Role;
 use Porta\Ui\TextField;
@@ -256,7 +257,11 @@ final class CommitBoxWidget extends AbstractWidget implements FocusableInterface
         $focused = $this->focused;
 
         $lines = [];
-        $header = CommitMode::Amend === $this->amend ? $this->translator->trans(' Commit  [amend · alt+m]') : $this->translator->trans(' Commit  ·  alt+m: amend');
+        // One id in the dialect, with the state carried by the toggle
+        // vocabulary's checkbox — which reads without colour, so the amend
+        // state survives a monochrome terminal. Both glyphs are three columns,
+        // so the header does not jump as it flips.
+        $header = $this->translator->trans(' Commit  ·  Alt+M amend ').(CommitMode::Amend === $this->amend ? Glyphs::CHECKBOX_ON : Glyphs::CHECKBOX_OFF);
         $lines[] = HeaderRenderer::render($header, $width, $this->styles->of(Role::HeaderBar)->withBold());
 
         $summary = ' '.$this->summary->render(cursor: $focused && 0 === $this->activeField ? CaretVisibility::Shown : CaretVisibility::Hidden, width: $width - 1);

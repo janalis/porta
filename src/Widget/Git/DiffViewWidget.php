@@ -810,9 +810,11 @@ final class DiffViewWidget extends AbstractWidget implements FocusableInterface,
     private function renderToolbar(string $title, int $width): string
     {
         $this->buttonZones = [];
+        // The key-hint dialect: a bare key is written as its own name, like
+        // the Esc/Tab hints elsewhere — never invented shorthand.
         $tags = [
-            ['name' => 'split', 'label' => $this->translator->trans(' s:split '), 'on' => $this->split],
-            ['name' => 'whitespace', 'label' => $this->translator->trans(' w:hide-ws '), 'on' => $this->whitespaceHidden],
+            ['name' => 'split', 'label' => $this->translator->trans(' S split '), 'on' => $this->split],
+            ['name' => 'whitespace', 'label' => $this->translator->trans(' W hide-ws '), 'on' => $this->whitespaceHidden],
         ];
 
         $rendered = '';
