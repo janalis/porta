@@ -318,8 +318,9 @@ final class IdeEdgeCasesTest extends TestCase
             [
                 200 => static function ($tui, $terminal, $ide) use (&$expected): void {
                     $results = $tui->getById('results');
-                    new \ReflectionProperty($ide, 'panels')
+                    new \ReflectionProperty($ide, 'locator')
                         ->getValue($ide)
+                        ->get(\Porta\Ui\BottomDock::class)
                         ->showList(\Porta\Ui\ResultsPanelMode::Search, 'Find in Project', [
                             ['path' => 'b.php', 'line' => 0, 'text' => 'one'],
                             ['path' => 'c.php', 'line' => 0, 'text' => 'two'],

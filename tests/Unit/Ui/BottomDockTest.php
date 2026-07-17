@@ -198,13 +198,32 @@ final class BottomDockTest extends TestCase
         $tabs = $dock->aliveTabs();
         $this->assertTrue($dock->stripVisible());
         $this->assertSame([DockTab::Terminal, DockTab::Results, DockTab::Results], array_column($tabs, 'tab'));
-        $this->assertSame(['Terminal', 'Problems', 'TODO'], array_column($tabs, 'label'), 'every tool instance keeps its own strip tab');
+        $this->assertSame(['sh 1', 'Problems', 'TODO'], array_column($tabs, 'label'), 'sessions and tool instances each keep their own strip tab');
         $this->assertSame([false, false, true], array_column($tabs, 'active'), 'the newest tool owns the slot');
-        $this->assertSame(['', '1', '2'], array_column($tabs, 'key'), 'tool tabs carry their instance key');
+        $this->assertSame(['shell:1', '1', '2'], array_column($tabs, 'key'), 'session tabs carry their session id, tool tabs their instance key');
         $this->assertSame(['', '', '1 results'], array_column($tabs, 'status'), 'only the displayed tool carries a status');
 
         $dock->hide();
         $this->assertSame([], $dock->aliveTabs(), 'hiding the dock hides the strip too');
+    }
+
+    public function testAStripDragReordersWithinItsOwnFamilyModel(): void
+    {
+        $dock = $this->dock();
+        $this->sessions->create('shell:1', 'sh 1');
+        $this->sessions->create('shell:2', 'sh 2');
+        $dock->showList(ResultsPanelMode::Problems, 'Problems', []);
+        $dock->showList(ResultsPanelMode::Todo, 'TODO', []);
+
+        $this->strip->moveTab(DockTab::Results, 0, 1); // the wired widget callback lands in DockToolTabs::move
+        $this->assertSame(['TODO', 'Problems'], array_map(static fn ($tab) => $tab->title, $this->tools->all()));
+        $this->assertSame('TODO', $this->tools->active()?->title, 'the active pointer follows its tab');
+
+        $this->strip->moveTab(DockTab::Terminal, 0, 1); // and the Terminal family lands in TerminalSessions::move
+        $this->assertSame(['shell:2', 'shell:1'], array_map(static fn ($session) => $session->id, $this->sessions->all()));
+
+        $this->strip->moveTab(DockTab::Debug, 0, 1); // a single fixed tab: nothing to reorder
+        $this->assertSame(['TODO', 'Problems'], array_map(static fn ($tab) => $tab->title, $this->tools->all()));
     }
 
     public function testReinvokingAToolReusesItsTabAndRefreshes(): void
@@ -262,7 +281,12 @@ final class BottomDockTest extends TestCase
             $revealed = true;
         });
         $dock->reveal(DockTab::Terminal);
-        $this->assertTrue($revealed, 'the Terminal tab reveals through its controller hook');
+        $this->assertTrue($revealed, 'a Terminal tab reveals through its controller hook');
+
+        $this->sessions->create('shell:1', 'sh 1');
+        $this->sessions->create('shell:2', 'sh 2'); // create activates the newest
+        $dock->reveal(DockTab::Terminal, 'shell:1');
+        $this->assertSame('shell:1', $this->sessions->active()?->id, 'a keyed session reveal activates that session first');
 
         $this->debug->close();
         $dock->reveal(DockTab::Debug); // dead tab: a no-op
@@ -291,11 +315,12 @@ final class BottomDockTest extends TestCase
         $this->assertSame($todo, $dock->activeTool(), 'and back');
     }
 
-    public function testCloseTabClosesToolsButOnlyConcealsTheTerminal(): void
+    public function testCloseTabClosesToolsAndRoutesSessionTabsToTheirController(): void
     {
         $dock = $this->dock();
         $this->sessions->create('shell:1', 'sh 1');
-        $this->terminal->open('sh 1', new TerminalBuffer());
+        $this->sessions->create('shell:2', 'sh 2');
+        $this->terminal->open('sh 2', new TerminalBuffer());
         $problems = $dock->showList(ResultsPanelMode::Problems, 'Problems', []);
         $todo = $dock->showList(ResultsPanelMode::Todo, 'TODO', []);
 
@@ -308,10 +333,14 @@ final class BottomDockTest extends TestCase
         $this->assertSame($this->terminal, $dock->visiblePanel(), 'the previous dock tab comes back');
         $dock->closeTab(DockTab::Results, '42'); // unknown key: a no-op
 
-        $dock->closeTab(DockTab::Terminal);
-        $this->assertTrue($this->terminal->isOpen(), 'terminal sessions keep running');
-        $this->assertNull($dock->visiblePanel());
-        $this->assertSame([], $dock->aliveTabs());
+        $dock->closeTab(DockTab::Terminal, 'shell:1'); // no close hook wired: a no-op
+        $closed = [];
+        $dock->onTerminalSessionClose(static function (int $index) use (&$closed): void {
+            $closed[] = $index;
+        });
+        $dock->closeTab(DockTab::Terminal, 'shell:1');
+        $dock->closeTab(DockTab::Terminal, 'nope'); // unknown session: a no-op
+        $this->assertSame([0], $closed, "a session tab's × routes its index to the controller");
 
         $this->debug->open('a.php');
         $dock->closeTab(DockTab::Debug);

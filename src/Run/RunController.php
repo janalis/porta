@@ -165,14 +165,6 @@ final class RunController
         }
     }
 
-    /** Activate a session by tab index (mouse/keys), reopening or closing the panel. */
-    public function activateSession(int $index): void
-    {
-        if (null !== ($session = $this->sessions->activate($index))) {
-            $this->showActive($session);
-        }
-    }
-
     /** Cycle to the next (+1) or previous (-1) session tab. */
     public function cycleSession(int $delta): void
     {

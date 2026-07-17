@@ -22,12 +22,14 @@ pseudo-terminal. Colors and progress bars render; keystrokes are forwarded
 with proper terminal encoding. The shell keeps running while the panel is
 hidden.
 
-The panel is multiplexed with a tab strip: `` Ctrl+Shift+` `` (or `Alt+F11`)
-opens another shell, `Ctrl+Page Up` / `Ctrl+Page Down` cycle between tabs,
-`Ctrl+Shift+W` (or a click on a tab's `×`) closes one — closing the last
-closes the panel. Click a tab to switch to it; each session keeps its own
-scrollback and process. Debugger output appears as its own `Debug: <file>`
-tab, so a debug session and your shells coexist.
+Every session is a first-class tab on the bottom pane's single tab strip,
+next to the tool tabs (Problems, search results, …): `` Ctrl+Shift+` `` (or
+`Alt+F11`) opens another shell, `Ctrl+Page Up` / `Ctrl+Page Down` cycle
+between sessions, `Ctrl+Shift+W` (or a click on a tab's `×`) closes one —
+closing the last closes the panel. Click a tab to switch to it, drag it to
+reorder your sessions; each session keeps its own scrollback and process.
+Debugger output appears as its own `Debug: <file>` tab, so a debug session
+and your shells coexist.
 
 It is a line-oriented scrollback panel, not a full-screen VT host — running
 `vim` or `htop` inside it is out of scope.

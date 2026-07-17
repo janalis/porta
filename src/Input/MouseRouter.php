@@ -14,6 +14,7 @@ use Porta\Tree\TreeOperations;
 use Porta\Ui\BidiTui;
 use Porta\Ui\BottomDock;
 use Porta\Ui\ContextMenuBuilder;
+use Porta\Ui\DockTab;
 use Porta\Ui\WorkspaceViews;
 use Porta\Widget\ContextMenu;
 use Porta\Widget\DebugPanelWidget;
@@ -43,6 +44,9 @@ final class MouseRouter
     private bool $columnSelecting = false;
     /** True while a left-drag started on a tab is reordering it; $tabDragPath is the dragged buffer. */
     private bool $tabDragging = false;
+
+    /** @var array{tab: DockTab, index: int}|null the dock-strip tab being drag-reordered */
+    private ?array $dockTabDrag = null;
     private ?string $tabDragPath = null;
 
     /** Double/triple-click detection, kept out of the routing logic. */
@@ -125,6 +129,7 @@ final class MouseRouter
             $this->continueTextDrag($mouse, $editorRect)
             || $this->continueColumnDrag($mouse, $editorRect)
             || $this->continueTabDrag($mouse, $tabsRect)
+            || $this->continueDockTabDrag($mouse)
             || $this->git->continueDiffDrag($mouse)
             || $this->layout->continueResizeDrag($mouse, $treeRect, $gitLeftRect, $settingsLeftRect)
         ) {
@@ -145,6 +150,7 @@ final class MouseRouter
         $this->mouseSelecting = false;
         $this->columnSelecting = false;
         $this->tabDragging = false;
+        $this->dockTabDrag = null;
         $this->git->cancelDrag();
         $this->layout->cancelDrags();
 
@@ -167,9 +173,6 @@ final class MouseRouter
         // on a tab wins, a click on its empty tail falls through to resize
         // (which sits on the strip row — one row above the visible panel).
         if ($this->tryDockTabClick($mouse)) {
-            return;
-        }
-        if ($this->tryTerminalTabClick($mouse)) {
             return;
         }
         $panel = $this->dock->visiblePanel();
@@ -557,23 +560,44 @@ final class MouseRouter
         if (!$this->dock->stripVisible() || null === $rect || $mouse->row !== $rect->row || $mouse->col < $rect->col || $mouse->col >= ($rect->col + $rect->columns)) {
             return false;
         }
+        // Resolve the drag source BEFORE the click runs — a close click mutates
+        // the strip. dragSourceAt is null on a close ×, so only a select arms.
+        $col = $mouse->col - $rect->col;
+        $source = $this->dockTabs->dragSourceAt($col);
+        if (!$this->dockTabs->handleTabClick($col)) {
+            return false;
+        }
+        $this->dockTabDrag = $source;
 
-        return $this->dockTabs->handleTabClick($mouse->col - $rect->col);
+        return true;
     }
 
-    /** A press on the terminal tab strip (row 0): select/close a tab, or false to fall through to resize. */
-    private function tryTerminalTabClick(MouseEvent $mouse): bool
+    /**
+     * Dock-strip tab reordering: a left-drag started on a tab body moves it
+     * under the pointer, within its own family (session tabs among
+     * themselves, tool tabs among themselves).
+     */
+    private function continueDockTabDrag(MouseEvent $mouse): bool
     {
-        $panel = $this->dock->terminalPanel();
-        $rect = $this->hit->rect($panel);
-        if (!$panel->isVisible() || null === $rect || $mouse->row !== $rect->row || $mouse->col < $rect->col || $mouse->col >= ($rect->col + $rect->columns)) {
+        if (null === $this->dockTabDrag || !$mouse->isLeftDrag() && !$mouse->isLeftRelease()) {
             return false;
         }
-        if (!$panel->handleTabClick($mouse->col - $rect->col)) {
-            return false;
+        $rect = $this->dock->stripVisible() ? $this->hit->rect($this->dockTabs) : null;
+        if (null !== $rect) {
+            // Clamp into the strip so a drag that wanders off it still resolves.
+            $col = IntMath::clamp($mouse->col, $rect->col, $rect->col + $rect->columns - 1) - $rect->col;
+            $target = $this->dockTabs->familyIndexAt($col);
+            if (null !== $target && $target['tab'] === $this->dockTabDrag['tab'] && $target['index'] !== $this->dockTabDrag['index']) {
+                $this->dockTabs->moveTab($target['tab'], $this->dockTabDrag['index'], $target['index']);
+                $this->dockTabDrag = $target;
+                // A pure reorder mutates no widget (see continueTabDrag).
+                $this->dockTabs->invalidate();
+                $this->tui->requestRender();
+            }
         }
-        $this->tui->setFocus($panel);
-        $this->tui->requestRender();
+        if ($mouse->isLeftRelease()) {
+            $this->dockTabDrag = null;
+        }
 
         return true;
     }
@@ -583,7 +607,7 @@ final class MouseRouter
         // A click in the visible dock panel focuses it first, so Escape has a
         // route and terminal typing reaches the shell; results/debug rows also
         // activate (header collapse / jump / frame jump / expand toggle). The
-        // terminal tab strip on row 0 is handled before resize, in the press
+        // dock strip above the panel is handled before resize, in the press
         // path, so a terminal body click here just refocuses.
         $panel = $this->dock->visiblePanel();
         if (null !== $panel && null !== ($rel = $this->hit->hit($panel, $mouse->row, $mouse->col))) {
@@ -749,20 +773,13 @@ final class MouseRouter
     /** Tab-strip hover: the tab under the pointer tints; leaving a strip clears it. */
     private function updateStripHover(MouseEvent $mouse): void
     {
-        $changed = false;
-
         $tabsRect = $this->hit->rect($this->panes->tabBar());
         $rel = null !== $tabsRect && $tabsRect->contains($mouse->row, $mouse->col) ? $tabsRect->toRelative($mouse->row, $mouse->col) : null;
-        $changed = (null !== $rel ? $this->panes->tabBar()->hoverTab($rel['row'], $rel['col']) : $this->panes->tabBar()->clearHover()) || $changed;
+        $changed = null !== $rel ? $this->panes->tabBar()->hoverTab($rel['row'], $rel['col']) : $this->panes->tabBar()->clearHover();
 
         $stripRect = $this->hit->rect($this->dockTabs);
         $onStrip = $this->dock->stripVisible() && null !== $stripRect && $mouse->row === $stripRect->row && $mouse->col >= $stripRect->col && $mouse->col < ($stripRect->col + $stripRect->columns);
         $changed = ($onStrip ? $this->dockTabs->hoverTabAt($mouse->col - $stripRect->col) : $this->dockTabs->clearTabHover()) || $changed;
-
-        $terminal = $this->dock->terminalPanel();
-        $terminalRect = $terminal->isVisible() ? $this->hit->rect($terminal) : null;
-        $onSessionStrip = null !== $terminalRect && $mouse->row === $terminalRect->row && $mouse->col >= $terminalRect->col && $mouse->col < ($terminalRect->col + $terminalRect->columns);
-        $changed = ($onSessionStrip ? $terminal->hoverTabAt($mouse->col - $terminalRect->col) : $terminal->clearTabHover()) || $changed;
 
         if ($changed) {
             $this->tui->requestRender();

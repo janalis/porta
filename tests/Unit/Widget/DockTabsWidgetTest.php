@@ -152,6 +152,37 @@ final class DockTabsWidgetTest extends TestCase
         $this->assertNotContains('1', $selected, 'the dropped leading tab is not clickable');
     }
 
+    public function testFamilyIndexAtIsFamilyRelativeAndDragZonesExcludeTheClose(): void
+    {
+        $bar = self::strip([
+            ['tab' => DockTab::Terminal, 'label' => 'sh 1', 'active' => false, 'key' => 'shell:1', 'status' => ''],
+            ['tab' => DockTab::Terminal, 'label' => 'sh 2', 'active' => false, 'key' => 'shell:2', 'status' => ''],
+            ['tab' => DockTab::Results, 'label' => 'Problems', 'active' => true, 'key' => '1', 'status' => ''],
+            ['tab' => DockTab::Results, 'label' => 'TODO', 'active' => false, 'key' => '2', 'status' => ''],
+            ['tab' => DockTab::Debug, 'label' => 'Debug', 'active' => false, 'key' => '', 'status' => ''],
+        ]);
+        $plain = AnsiUtils::stripAnsiCodes($bar->render(new RenderContext(100, 1))[0]);
+        $problems = (int) mb_strpos($plain, needle: 'Problems');
+
+        $this->assertSame(['tab' => DockTab::Terminal, 'index' => 0], $bar->familyIndexAt((int) mb_strpos($plain, needle: 'sh 1')));
+        $this->assertSame(['tab' => DockTab::Terminal, 'index' => 1], $bar->familyIndexAt((int) mb_strpos($plain, needle: 'sh 2')), 'session indexes count only Terminal entries');
+        $this->assertSame(['tab' => DockTab::Results, 'index' => 0], $bar->familyIndexAt($problems), 'tool indexes count only Results entries');
+        $this->assertSame(['tab' => DockTab::Results, 'index' => 1], $bar->familyIndexAt((int) mb_strpos($plain, needle: 'TODO')));
+        $this->assertSame(['tab' => DockTab::Debug, 'index' => 0], $bar->familyIndexAt((int) mb_strpos($plain, needle: 'Debug')));
+        $this->assertNull($bar->familyIndexAt(99), 'the empty tail is no tab');
+
+        $this->assertSame(['tab' => DockTab::Results, 'index' => 0], $bar->dragSourceAt($problems), 'a body press arms a drag');
+        $this->assertNull($bar->dragSourceAt((int) mb_strpos($plain, needle: '×', offset: $problems)), 'a close press must not arm one');
+
+        $bar->moveTab(DockTab::Results, 0, 1); // unwired: a no-op
+        $moves = [];
+        $bar->onTabMoved(static function (DockTab $family, int $from, int $to) use (&$moves): void {
+            $moves[] = [$family, $from, $to];
+        });
+        $bar->moveTab(DockTab::Results, 0, 1);
+        $this->assertSame([[DockTab::Results, 0, 1]], $moves, 'the reorder request reaches the wired dock');
+    }
+
     public function testHoverTintsTheInactiveTabAndClears(): void
     {
         $bar = self::strip([

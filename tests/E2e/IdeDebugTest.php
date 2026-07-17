@@ -224,15 +224,24 @@ final class IdeDebugTest extends TestCase
                     $tui->handleInput(\sprintf("\x1b[<35;8;%dM", $rect->row + 3)); // hover a row
                     $tui->handleInput(\sprintf("\x1b[<64;8;%dM", $rect->row + 3)); // wheel scrolls the list
                     // Strip clicks switch tools through the real mouse path:
-                    // ' Terminal × │ Debug × ' — refetch the strip rect per click,
-                    // since the strip row shifts with each panel's height.
+                    // ' Debug: prog.php × │ Debug: prog.php × ' (the debuggee's
+                    // output session, then the debug panel) — refetch the strip
+                    // rect per click, since its row shifts with panel height.
                     $stripRow = static fn (): int => $renderer->getWidgetRect($tui->getById('dock-tabs'))->row + 1;
-                    $tui->handleInput(\sprintf("\x1b[<0;4;%dM", $stripRow())); // the Terminal tab
+                    $tui->handleInput(\sprintf("\x1b[<0;4;%dM", $stripRow())); // the debug session's tab
                     $tui->handleInput(\sprintf("\x1b[<0;4;%dm", $stripRow()));
                     $tui->tick();
-                    $this->assertTrue($tui->getById('terminal')->isVisible(), 'clicking the Terminal tab revealed the debug session output');
-                    $tui->handleInput(\sprintf("\x1b[<0;15;%dM", $stripRow())); // the Debug tab
-                    $tui->handleInput(\sprintf("\x1b[<0;15;%dm", $stripRow()));
+                    $this->assertTrue($tui->getById('terminal')->isVisible(), 'clicking the session tab revealed the debug session output');
+                    $debugCol = static function () use ($tui, $renderer): int {
+                        $rect = $renderer->getWidgetRect($tui->getById('dock-tabs'));
+                        $strip = AnsiUtils::stripAnsiCodes($tui->getById('dock-tabs')->render(new \Symfony\Component\Tui\Render\RenderContext($rect->columns, 1))[0]);
+                        // The 2nd 'Debug' occurrence is the debug panel's tab.
+                        $second = (int) mb_strpos($strip, needle: 'Debug', offset: (int) mb_strpos($strip, needle: 'Debug') + 1);
+
+                        return $rect->col + $second + 1;
+                    };
+                    $tui->handleInput(\sprintf("\x1b[<0;%d;%dM", $debugCol(), $stripRow())); // the Debug tab
+                    $tui->handleInput(\sprintf("\x1b[<0;%d;%dm", $debugCol(), $stripRow()));
                     $tui->tick();
                     $this->assertTrue($tui->getById('debug')->isVisible(), 'clicking the Debug tab brought the frames back');
                     $tui->handleInput("\x1b"); // Escape → the dock hides, focus back to the editor area

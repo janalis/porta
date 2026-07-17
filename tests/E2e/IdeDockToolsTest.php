@@ -134,7 +134,7 @@ final class IdeDockToolsTest extends TestCase
                     // Stale completion: kick a scan, bind another tool, then ×
                     // the TODO tab before grep lands — the panel stays open (no
                     // engine cancel) and the late result must be dropped.
-                    $dock = new \ReflectionProperty($ide, 'panels')->getValue($ide);
+                    $dock = new \ReflectionProperty($ide, 'locator')->getValue($ide)->get(\Porta\Ui\BottomDock::class);
                     $tui->handleInput("\x1b8"); // alt+8 → scan starts
                     $tui->handleInput("\x1b6"); // alt+6 → Problems binds; the TODO tab stays alive behind it
                     foreach ($dock->aliveTabs() as $entry) {
@@ -176,7 +176,7 @@ final class IdeDockToolsTest extends TestCase
                 $tui->handleInput($ch);
             }
         };
-        $dock = static fn ($ide): object => new \ReflectionProperty(Ide::class, 'panels')->getValue($ide);
+        $dock = static fn ($ide): object => new \ReflectionProperty(Ide::class, 'locator')->getValue($ide)->get(\Porta\Ui\BottomDock::class);
 
         $this->runIde(
             $project,
@@ -241,7 +241,7 @@ final class IdeDockToolsTest extends TestCase
     {
         putenv('PATH='.$this->originalPath); // real grep for the TODO scan
         $project = new TempProject(['src/Main.php' => "<?php\n// TODO polish\n"]);
-        $dock = static fn ($ide): object => new \ReflectionProperty(Ide::class, 'panels')->getValue($ide);
+        $dock = static fn ($ide): object => new \ReflectionProperty(Ide::class, 'locator')->getValue($ide)->get(\Porta\Ui\BottomDock::class);
 
         $this->runIde(
             $project,
@@ -288,6 +288,48 @@ final class IdeDockToolsTest extends TestCase
                     }
                     $tui->tick();
                     $this->assertFalse($tui->getById('results')->isOpen(), 'all tools closed, the panel too');
+                },
+            ],
+        );
+
+        $this->addToAssertionCount(1);
+    }
+
+    public function testDockToolTabDragReordersAndFixedEndpointsAreNoOps(): void
+    {
+        putenv('PATH='.$this->originalPath); // real grep for the TODO scan
+        $project = new TempProject(['src/Main.php' => "<?php\n// TODO polish\n"]);
+        $dock = static fn ($ide): object => new \ReflectionProperty(Ide::class, 'locator')->getValue($ide)->get(\Porta\Ui\BottomDock::class);
+
+        $this->runIde(
+            $project,
+            $project->path('src/Main.php'),
+            [
+                200 => function ($tui, $terminal, $ide) use ($dock): void {
+                    $tui->handleInput("\x1b6"); // alt+6 → Problems
+                    $tui->handleInput("\x1b8"); // alt+8 → TODO joins
+                    $this->await(static fn (): bool => str_contains(AnsiUtils::stripAnsiCodes($terminal->getOutput()), 'TODO polish'));
+                    $tui->tick();
+                    $labels = static fn (): array => array_column($dock($ide)->aliveTabs(), 'label');
+                    $this->assertSame(['Problems', 'TODO'], $labels());
+
+                    $renderer = new \ReflectionProperty($ide, 'renderer')->getValue($ide);
+                    $rect = $renderer->getWidgetRect($tui->getById('dock-tabs'));
+                    $strip = AnsiUtils::stripAnsiCodes($tui->getById('dock-tabs')->render(new \Symfony\Component\Tui\Render\RenderContext($rect->columns, 1))[0]);
+                    $problems = (int) mb_strpos($strip, needle: 'Problems');
+                    $todo = (int) mb_strpos($strip, needle: 'TODO');
+
+                    // Press the Problems tab body and drag it over TODO's slot.
+                    $tui->handleInput(\sprintf("\x1b[<0;%d;%dM", $rect->col + $problems + 1, $rect->row + 1));
+                    $tui->handleInput(\sprintf("\x1b[<32;%d;%dM", $rect->col + $todo + 1, $rect->row + 1));
+                    $this->assertSame(['TODO', 'Problems'], $labels(), 'the drag reordered the tool tabs');
+
+                    // Wandering onto the strip's empty tail (a non-tool endpoint)
+                    // moves nothing; the release there just ends the drag.
+                    $tui->handleInput(\sprintf("\x1b[<32;%d;%dM", $rect->col + $rect->columns - 2, $rect->row + 1));
+                    $tui->handleInput(\sprintf("\x1b[<0;%d;%dm", $rect->col + $rect->columns - 2, $rect->row + 1));
+                    $this->assertSame(['TODO', 'Problems'], $labels(), 'a fixed/tail endpoint is a no-op');
+                    $this->assertSame('Problems', $tui->getById('results')->getTitle(), 'the pressed tool stayed revealed through its move');
                 },
             ],
         );

@@ -16,13 +16,15 @@ use Symfony\Component\Tui\Render\RenderContext;
 use Symfony\Component\Tui\Widget\AbstractWidget;
 
 /**
- * The bottom dock's tab strip: one Toolbar-styled row naming the alive dock
- * tools (Terminal / the results panel's current tool / Debug), rendered just
- * above whichever panel owns the dock slot. Content comes from a provider on
- * {@see \Porta\Ui\BottomDock} so it always reflects the panels' state; an
- * empty provider result (dock hidden, or a transient picker bypassing the
- * dock) renders zero rows. Clicking a tab reveals its panel, the × closes
- * the tool; a press on the empty tail falls through to the panel-resize grab.
+ * The bottom dock's tab strip — the single level of bottom-pane tabs: one
+ * Toolbar-styled row naming every alive dock tab (one per terminal session,
+ * one per list tool, Debug), rendered just above whichever panel owns the
+ * dock slot. Content comes from a provider on {@see \Porta\Ui\BottomDock} so
+ * it always reflects the models' state; an empty provider result (dock
+ * hidden, or a transient picker bypassing the dock) renders zero rows.
+ * Clicking a tab reveals its panel, the × closes it (a session tab stops its
+ * process); dragging reorders within a family; a press on the empty tail
+ * falls through to the panel-resize grab.
  */
 #[AsWidget('dock-tabs', flex: 0)]
 final class DockTabsWidget extends AbstractWidget implements LtrPane
@@ -40,6 +42,9 @@ final class DockTabsWidget extends AbstractWidget implements LtrPane
 
     /** @var (callable(DockTab, string): void)|null */
     private $onTabClosed = null;
+
+    /** @var (callable(DockTab, int, int): void)|null drag-reorder within a family: family, from, to */
+    private $onTabMoved = null;
 
     /** The strip-entry index under the mouse pointer (visual only), or null. */
     private ?int $hoveredTab = null;
@@ -73,6 +78,21 @@ final class DockTabsWidget extends AbstractWidget implements LtrPane
         return $this;
     }
 
+    public function onTabMoved(callable $callback): self
+    {
+        $this->onTabMoved = $callback;
+
+        return $this;
+    }
+
+    /** A drag over the strip crossed same-family tabs: ask the dock to reorder that model. */
+    public function moveTab(DockTab $family, int $from, int $to): void
+    {
+        if (null !== $this->onTabMoved) {
+            ($this->onTabMoved)($family, $from, $to);
+        }
+    }
+
     /** Repaint whenever the alive tabs / labels / active tool change. */
     public function beforeRender(): void
     {
@@ -85,6 +105,43 @@ final class DockTabsWidget extends AbstractWidget implements LtrPane
             $this->lastFingerprint = $fingerprint;
             $this->invalidate();
         }
+    }
+
+    /**
+     * The family + family-relative index (counting only same-DockTab entries)
+     * whose tab body covers $col, or null on the empty tail. Drags reorder
+     * within one family — a cross-family or tail endpoint is ignored.
+     *
+     * @return array{tab: DockTab, index: int}|null
+     */
+    public function familyIndexAt(int $col): ?array
+    {
+        $counts = [];
+        foreach ($this->lastTabLayout as $entry) {
+            $index = $counts[$entry['tab']->name] ?? 0;
+            if ($col >= $entry['start'] && $col < ($entry['start'] + $entry['width'])) {
+                return ['tab' => $entry['tab'], 'index' => $index];
+            }
+            $counts[$entry['tab']->name] = $index + 1;
+        }
+
+        return null;
+    }
+
+    /**
+     * A drag SOURCE: the family position at $col excluding its close ×, or null.
+     *
+     * @return array{tab: DockTab, index: int}|null
+     */
+    public function dragSourceAt(int $col): ?array
+    {
+        foreach ($this->lastTabLayout as $entry) {
+            if ($col >= $entry['closeStart'] && $col < ($entry['closeStart'] + $entry['closeWidth'])) {
+                return null; // a close click must not arm a reorder
+            }
+        }
+
+        return $this->familyIndexAt($col);
     }
 
     /** Tint the tool tab under the pointer; returns whether it changed. */

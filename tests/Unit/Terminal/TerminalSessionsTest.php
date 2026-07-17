@@ -83,6 +83,38 @@ final class TerminalSessionsTest extends TestCase
         $this->assertNotSame($c, $sessions->active());
     }
 
+    public function testMoveReordersKeepingTheActivePointerOnItsSession(): void
+    {
+        $sessions = new TerminalSessions();
+        $sessions->create('a', 'a');
+        $b = $sessions->create('b', 'b');
+        $sessions->create('c', 'c');
+        $d = $sessions->create('d', 'd'); // active
+        $order = static fn (): array => array_map(static fn ($s) => $s->id, $sessions->all());
+
+        $sessions->move(9, 0);
+        $this->assertSame(['a', 'b', 'c', 'd'], $order(), 'an out-of-range source is a no-op');
+        $sessions->move(1, 1);
+        $this->assertSame(['a', 'b', 'c', 'd'], $order(), 'a same-slot move is a no-op');
+
+        $sessions->move(3, 0); // the active session itself moves
+        $this->assertSame(['d', 'a', 'b', 'c'], $order());
+        $this->assertSame($d, $sessions->active(), 'the pointer follows the moved session');
+
+        $sessions->move(1, 99); // 'a' to the end (clamped); the active stays in front
+        $this->assertSame(['d', 'b', 'c', 'a'], $order());
+        $this->assertSame($d, $sessions->active());
+
+        $sessions->makeActive($b);
+        $sessions->move(0, 2); // a session from before the active one passes it
+        $this->assertSame(['b', 'c', 'd', 'a'], $order());
+        $this->assertSame($b, $sessions->active());
+
+        $sessions->move(3, 0); // a session from behind lands in front
+        $this->assertSame(['a', 'b', 'c', 'd'], $order());
+        $this->assertSame($b, $sessions->active());
+    }
+
     public function testCloseAndStopAllStopTheRunningProcess(): void
     {
         if (null === new \Symfony\Component\Process\ExecutableFinder()->find('sh')) {

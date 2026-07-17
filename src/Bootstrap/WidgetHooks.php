@@ -57,7 +57,6 @@ final class WidgetHooks
         private readonly StatusBarProvider $statusSegments,
         private readonly TerminalPanelWidget $terminalPanel,
         private readonly RunController $run,
-        private readonly \Porta\Terminal\TerminalSessions $sessions,
         private readonly BottomDock $panels,
         private readonly MenuBarWidget $menuBar,
         private readonly ContextMenu $contextMenu,
@@ -84,21 +83,9 @@ final class WidgetHooks
         // register on all three bottom panels here.
         $this->panels->wire();
         $this->panels->onTerminalReveal(fn () => $this->run->showActiveSession());
+        $this->panels->onTerminalSessionClose(fn (int $index) => $this->run->closeSession($index));
         $terminalPanel = $this->terminalPanel;
         $terminalPanel->onInputForward(fn (string $data) => $this->run->forwardInput($data));
-        $terminalPanel->setSessionTabsProvider(function (): array {
-            $active = $this->sessions->active();
-
-            return array_map(
-                static fn (\Porta\Terminal\TerminalSession $session): array => [
-                    'title' => $session->title(),
-                    'running' => $session->isRunning() || null === $session->process(),
-                    'active' => $session === $active,
-                ],
-                $this->sessions->all(),
-            );
-        });
-        $terminalPanel->onSessionSelected(fn (int $index) => $this->run->activateSession($index));
         $terminalPanel->onSessionClosed(fn (int $index) => $this->run->closeSession($index));
         $terminalPanel->onSessionCycled(fn (int $delta) => $this->run->cycleSession($delta));
 

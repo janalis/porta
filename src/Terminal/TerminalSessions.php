@@ -48,6 +48,31 @@ final class TerminalSessions
         }
     }
 
+    /**
+     * Move the session at $from to position $to (drag-reorder), keeping the
+     * active pointer on the same session.
+     */
+    public function move(int $from, int $to): void
+    {
+        $count = \count($this->sessions);
+        if ($from < 0 || $from >= $count) {
+            return;
+        }
+        $to = IntMath::clamp($to, 0, $count - 1);
+        if ($from === $to) {
+            return;
+        }
+        $moved = $this->sessions[$from];
+        array_splice($this->sessions, $from, length: 1);
+        array_splice($this->sessions, $to, length: 0, replacement: [$moved]);
+        $this->active = match (true) {
+            $this->active === $from => $to,
+            $from < $this->active && $this->active <= $to => $this->active - 1,
+            $to <= $this->active && $this->active < $from => $this->active + 1,
+            default => $this->active,
+        };
+    }
+
     /** @return list<TerminalSession> */
     public function all(): array
     {

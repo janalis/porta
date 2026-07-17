@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Porta\Ui;
 
+use Porta\Support\IntMath;
 use Porta\Widget\ResultsPanelFields;
 
 /**
@@ -71,6 +72,31 @@ final class DockToolTabs
         }
 
         return null;
+    }
+
+    /**
+     * Move the tab at $from to position $to (strip drag-reorder), keeping the
+     * active pointer on the same tab.
+     */
+    public function move(int $from, int $to): void
+    {
+        $count = \count($this->tabs);
+        if ($from < 0 || $from >= $count) {
+            return;
+        }
+        $to = IntMath::clamp($to, 0, $count - 1);
+        if ($from === $to) {
+            return;
+        }
+        $moved = $this->tabs[$from];
+        array_splice($this->tabs, $from, length: 1);
+        array_splice($this->tabs, $to, length: 0, replacement: [$moved]);
+        $this->active = match (true) {
+            $this->active === $from => $to,
+            $from < $this->active && $this->active <= $to => $this->active - 1,
+            $to <= $this->active && $this->active < $from => $this->active + 1,
+            default => $this->active,
+        };
     }
 
     /** @return list<DockToolTab> */

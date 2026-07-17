@@ -83,9 +83,11 @@ final class IdeTerminalTest extends TestCase
                     $this->await(fn (): bool => str_contains($this->bufferText($this->sessions($ide)[1]), 'BBB-marker'));
                     $this->assertStringNotContainsString('BBB-marker', $this->bufferText($sessions[0]), 'input reached only the active shell');
 
-                    // The tab strip shows both sessions.
-                    $strip = AnsiUtils::stripAnsiCodes($tui->getById('terminal')->render(new \Symfony\Component\Tui\Render\RenderContext(100, 14))[0]);
-                    $this->assertSame(2, substr_count($strip, needle: 'sh'), 'both shell tabs render');
+                    // The dock strip shows both sessions as first-class tabs.
+                    $renderer = new \ReflectionProperty($ide, 'renderer')->getValue($ide);
+                    $stripRect = $renderer->getWidgetRect($tui->getById('dock-tabs'));
+                    $strip = AnsiUtils::stripAnsiCodes($tui->getById('dock-tabs')->render(new \Symfony\Component\Tui\Render\RenderContext($stripRect->columns, 1))[0]);
+                    $this->assertSame(2, substr_count($strip, needle: 'sh'), 'both shell tabs render on the dock strip');
                 },
                 1000 => function ($tui, $terminal, $ide): void {
                     $tui->tick();
@@ -95,10 +97,10 @@ final class IdeTerminalTest extends TestCase
                     $sessionsOf = static fn () => new \ReflectionProperty($run, 'sessions')->getValue($run);
                     $this->assertSame('shell:1', $sessionsOf()->active()?->id, 'cycled to the first shell');
 
-                    // Click shell 2's tab label to activate it (mouse select path).
+                    // Click shell 2's dock-strip tab label to activate it (mouse select path).
                     $renderer = new \ReflectionProperty($ide, 'renderer')->getValue($ide);
-                    $rect = $renderer->getWidgetRect($tui->getById('terminal'));
-                    $strip = AnsiUtils::stripAnsiCodes($tui->getById('terminal')->render(new \Symfony\Component\Tui\Render\RenderContext($rect->columns, 14))[0]);
+                    $rect = $renderer->getWidgetRect($tui->getById('dock-tabs'));
+                    $strip = AnsiUtils::stripAnsiCodes($tui->getById('dock-tabs')->render(new \Symfony\Component\Tui\Render\RenderContext($rect->columns, 1))[0]);
                     // The second "sh" occurrence is shell 2's tab.
                     $secondTab = (int) mb_strpos($strip, needle: 'sh', offset: (int) mb_strpos($strip, needle: 'sh') + 1);
                     $tui->handleInput(\sprintf("\x1b[<0;%d;%dM", $rect->col + $secondTab + 1, $rect->row + 1));
@@ -129,10 +131,10 @@ final class IdeTerminalTest extends TestCase
                     $this->assertCount(2, $this->sessions($ide));
                     $sessionTwoProcess = $this->sessions($ide)[1]->process();
 
-                    // Click the × of the first (inactive) tab.
+                    // Click the × of the first (inactive) session tab on the dock strip.
                     $renderer = new \ReflectionProperty($ide, 'renderer')->getValue($ide);
-                    $rect = $renderer->getWidgetRect($tui->getById('terminal'));
-                    $strip = AnsiUtils::stripAnsiCodes($tui->getById('terminal')->render(new \Symfony\Component\Tui\Render\RenderContext($rect->columns, 14))[0]);
+                    $rect = $renderer->getWidgetRect($tui->getById('dock-tabs'));
+                    $strip = AnsiUtils::stripAnsiCodes($tui->getById('dock-tabs')->render(new \Symfony\Component\Tui\Render\RenderContext($rect->columns, 1))[0]);
                     $closeCol = (int) mb_strpos($strip, needle: '×');
                     $tui->handleInput(\sprintf("\x1b[<0;%d;%dM", $rect->col + $closeCol + 1, $rect->row + 1));
 
@@ -147,6 +149,47 @@ final class IdeTerminalTest extends TestCase
                     $tui->handleInput("\x1b[119;6u");
                     $this->assertCount(0, $this->sessions($ide));
                     $this->assertFalse($tui->getById('terminal')->isOpen(), 'closing the last session closed the panel');
+                },
+            ],
+        );
+
+        $this->addToAssertionCount(1);
+    }
+
+    public function testSessionTabDragReorders(): void
+    {
+        putenv('PATH='.$this->originalPath);
+        putenv('SHELL=/bin/sh');
+        $project = new TempProject(['A.php' => "<?php\n"]);
+
+        $this->runIde(
+            $project,
+            $project->path('A.php'),
+            [
+                300 => static function ($tui): void {
+                    $tui->handleInput("\x1b[96;5u"); // shell 1
+                    $tui->handleInput("\x1b[96;6u"); // shell 2
+                },
+                600 => function ($tui, $terminal, $ide): void {
+                    $tui->tick();
+                    $ids = fn (): array => array_map(static fn ($s) => $s->id, $this->sessions($ide));
+                    $this->assertSame(['shell:1', 'shell:2'], $ids());
+
+                    $renderer = new \ReflectionProperty($ide, 'renderer')->getValue($ide);
+                    $rect = $renderer->getWidgetRect($tui->getById('dock-tabs'));
+                    $strip = AnsiUtils::stripAnsiCodes($tui->getById('dock-tabs')->render(new \Symfony\Component\Tui\Render\RenderContext($rect->columns, 1))[0]);
+                    $firstTab = (int) mb_strpos($strip, needle: 'sh');
+                    $secondTab = (int) mb_strpos($strip, needle: 'sh', offset: $firstTab + 1);
+
+                    // Press shell 1's dock tab body, drag it over shell 2's slot, release.
+                    $tui->handleInput(\sprintf("\x1b[<0;%d;%dM", $rect->col + $firstTab + 1, $rect->row + 1));
+                    $tui->handleInput(\sprintf("\x1b[<32;%d;%dM", $rect->col + $secondTab + 1, $rect->row + 1));
+                    $tui->handleInput(\sprintf("\x1b[<0;%d;%dm", $rect->col + $secondTab + 1, $rect->row + 1));
+                    $this->assertSame(['shell:2', 'shell:1'], $ids(), 'the drag reordered the session tabs on the dock strip');
+
+                    $run = new \ReflectionProperty($ide, 'run')->getValue($ide);
+                    $sessions = new \ReflectionProperty($run, 'sessions')->getValue($run);
+                    $this->assertSame('shell:1', $sessions->active()?->id, 'the pressed session stays active through its move');
                 },
             ],
         );

@@ -73,6 +73,38 @@ final class DockToolTabsTest extends TestCase
         $this->assertSame(0, $tabs->count());
     }
 
+    public function testMoveReordersKeepingTheActivePointerOnItsTab(): void
+    {
+        $tabs = new DockToolTabs();
+        $tabs->openOrReuse(ResultsPanelMode::Search, 'a', ResultsPanelFields::searchResults());
+        $b = $tabs->openOrReuse(ResultsPanelMode::Search, 'b', ResultsPanelFields::searchResults());
+        $tabs->openOrReuse(ResultsPanelMode::Search, 'c', ResultsPanelFields::searchResults());
+        $d = $tabs->openOrReuse(ResultsPanelMode::Search, 'd', ResultsPanelFields::searchResults()); // active
+        $order = static fn (): array => array_map(static fn (DockToolTab $tab): string => $tab->title, $tabs->all());
+
+        $tabs->move(9, 0);
+        $this->assertSame(['a', 'b', 'c', 'd'], $order(), 'an out-of-range source is a no-op');
+        $tabs->move(1, 1);
+        $this->assertSame(['a', 'b', 'c', 'd'], $order(), 'a same-slot move is a no-op');
+
+        $tabs->move(3, 0); // the active tab itself moves
+        $this->assertSame(['d', 'a', 'b', 'c'], $order());
+        $this->assertSame($d, $tabs->active(), 'the pointer follows the moved tab');
+
+        $tabs->move(1, 99); // 'a' to the end (clamped); the active stays in front
+        $this->assertSame(['d', 'b', 'c', 'a'], $order());
+        $this->assertSame($d, $tabs->active());
+
+        $tabs->makeActive($b);
+        $tabs->move(0, 2); // a tab from before the active one passes it
+        $this->assertSame(['b', 'c', 'd', 'a'], $order());
+        $this->assertSame($b, $tabs->active());
+
+        $tabs->move(3, 0); // a tab from behind lands in front
+        $this->assertSame(['a', 'b', 'c', 'd'], $order());
+        $this->assertSame($b, $tabs->active());
+    }
+
     public function testASearchTabCarriesItsQueryDefinition(): void
     {
         $tabs = new DockToolTabs();

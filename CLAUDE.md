@@ -178,14 +178,20 @@ tab stays fresh in the model and a late grep can never clobber the tool on displ
 (open AND revealed); at most one panel renders; `Esc` is `dismiss()` → dock hide (everything
 stays alive) except the transient pickers (palette, go-to-symbol), which stay strip-less,
 close for real, and on close **restore the tool tab they displaced** (`openQuery` captures it;
-the palette routes through `openQuery`). `Widget/DockTabsWidget` is the one-row strip:
-keyed entries (`aliveTabs()` — Terminal, one per tool instance, Debug), the displayed tool's
-`statusText()` right-aligned, overflow drops LEADING tabs so the active one stays visible;
-the strip row doubles as the panel-resize grab. ctrl+` toggles the Terminal tab
-(`RunController::showActiveSession` via `onTerminalReveal`); alt+page_down/up cycle every strip
-tab (`dock_next_panel`/`dock_prev_panel`); the Terminal's × only conceals (sessions keep
-running); ×ing a Search tab records its query/mask into history (`closeSearch`); the last tool
-× closes the panel (MRU reveal). All three panels share one height (`bottomPanelHeightPercent`
+the palette routes through `openQuery`). `Widget/DockTabsWidget` is the one-row strip —
+**the single level of bottom-pane tabs**: keyed entries (`aliveTabs()` — one per terminal
+session (key = session id, label = session title + `○` when exited), one per tool instance,
+Debug; the terminal panel renders no strip of its own), the displayed tab's `statusText()`
+right-aligned (the terminal's carries `[scrolled +N]`), overflow drops LEADING tabs so the
+active one stays visible; the strip row doubles as the panel-resize grab, and dragging a tab
+reorders it **within its family** (session tabs → `TerminalSessions::move`, tool tabs →
+`DockToolTabs::move`; cross-family endpoints no-op — `DockTabsWidget::familyIndexAt` /
+`MouseRouter::continueDockTabDrag`). ctrl+` toggles the active session's tab
+(`RunController::showActiveSession` via `onTerminalReveal`; a session-tab click routes
+`makeActive` first); alt+page_down/up cycle every strip tab (`dock_next_panel`/
+`dock_prev_panel`); a session tab's × closes that session for real (`onTerminalSessionClose` →
+`RunController::closeSession`); ×ing a Search tab records its query/mask into history
+(`closeSearch`); the last tool × closes the panel (MRU reveal). All three panels share one height (`bottomPanelHeightPercent`
 → `BottomDock::setPanelRows`). A debugger stop auto-reveals the Debug tab (re-opened, watches
 reseeded, if ×'d). `Search/TodoScanner` (ide_todo, alt+8) greps `TODO|FIXME` case-sensitively
 over the shared `ProjectSearch` engine (single slot — a scan and a find cancel each other,

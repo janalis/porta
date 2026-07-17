@@ -35,8 +35,11 @@ final class BottomDock
     /** @var list<TerminalPanelWidget|ResultsPanelWidget|DebugPanelWidget> visibility order, most recently visible last */
     private array $mru = [];
 
-    /** @var (callable(): void)|null reveals the Terminal tab by re-opening the active session (RunController) */
+    /** @var (callable(): void)|null reveals a Terminal tab by re-opening the active session (RunController) */
     private $onTerminalReveal = null;
+
+    /** @var (callable(int): void)|null closes the session at an index for real (RunController) */
+    private $onTerminalSessionClose = null;
 
     /** The tool tab to restore when a transient picker closes, if it is still alive. */
     private ?DockToolTab $pickerRestore = null;
@@ -82,20 +85,33 @@ final class BottomDock
         $this->dockTabs->setProvider($this->aliveTabs(...));
         $this->dockTabs->onTabSelected($this->reveal(...));
         $this->dockTabs->onTabClosed($this->closeTab(...));
+        // A strip drag reorders within its own family: session tabs among
+        // themselves, tool tabs among themselves (Debug is a single tab).
+        $this->dockTabs->onTabMoved(fn (DockTab $family, int $from, int $to) => match ($family) {
+            DockTab::Terminal => $this->sessions->move($from, $to),
+            DockTab::Results => $this->tools->move($from, $to),
+            DockTab::Debug => null,
+        });
     }
 
-    /** How the Terminal tab reveals itself: re-open the active session (wired to RunController). */
+    /** How a Terminal tab reveals itself: re-open the active session (wired to RunController). */
     public function onTerminalReveal(callable $callback): void
     {
         $this->onTerminalReveal = $callback;
     }
 
+    /** How a session tab's × closes its session for real (wired to RunController). */
+    public function onTerminalSessionClose(callable $callback): void
+    {
+        $this->onTerminalSessionClose = $callback;
+    }
+
     /**
-     * The strip rows: Terminal, one entry per alive tool tab (off the model,
-     * so tabs stay listed even while the panel widget is closed), then Debug.
-     * Only the entry on display carries a status. Empty (the strip
-     * disappears) while the dock is hidden or a transient picker owns the
-     * results panel.
+     * The strip rows — the single level of bottom-pane tabs: one entry per
+     * terminal session, one per alive tool tab (off the models, so tabs stay
+     * listed even while their panel widget is closed), then Debug. Only the
+     * entry on display carries a status. Empty (the strip disappears) while
+     * the dock is hidden or a transient picker owns the results panel.
      *
      * @return list<array{tab: DockTab, key: string, label: string, active: bool, status: string}>
      */
@@ -107,8 +123,17 @@ final class BottomDock
         }
 
         $tabs = [];
-        if (!$this->sessions->isEmpty()) {
-            $tabs[] = ['tab' => DockTab::Terminal, 'key' => '', 'label' => $this->translator->trans('Terminal'), 'active' => $visible === $this->terminalPanel, 'status' => ''];
+        $terminalShown = $visible === $this->terminalPanel;
+        $activeSession = $this->sessions->active();
+        foreach ($this->sessions->all() as $session) {
+            $active = $terminalShown && $session === $activeSession;
+            $tabs[] = [
+                'tab' => DockTab::Terminal,
+                'key' => $session->id,
+                'label' => $session->title().($session->isRunning() || null === $session->process() ? '' : ' ○'),
+                'active' => $active,
+                'status' => $active ? $this->terminalPanel->statusText() : '',
+            ];
         }
         $resultsShown = $visible === $this->resultsPanel;
         foreach ($this->tools->all() as $tool) {
@@ -141,12 +166,16 @@ final class BottomDock
         return [] !== $this->aliveTabs();
     }
 
-    /** Bring a tab into the dock slot and focus it ($key: a tool tab's id, '' = the active tool / a fixed panel). */
+    /** Bring a tab into the dock slot and focus it ($key: a tool tab's id / a session id, '' = the active one). */
     public function reveal(DockTab $tab, string $key = ''): void
     {
         if (DockTab::Terminal === $tab) {
-            // The terminal re-opens through its controller so the active
-            // session's buffer binds into the panel.
+            // Activate the clicked session, then re-open through the
+            // controller so its buffer binds into the panel.
+            $session = $this->sessions->find($key);
+            if (null !== $session) {
+                $this->sessions->makeActive($session);
+            }
             if (null !== $this->onTerminalReveal) {
                 ($this->onTerminalReveal)();
             }
@@ -204,12 +233,20 @@ final class BottomDock
         $this->reveal($next['tab'], $next['key']);
     }
 
-    /** The strip's ×: close the tool for real — except the Terminal, whose sessions keep running. */
+    /** The strip's ×: close the tab for real — a session tab stops its process too. */
     public function closeTab(DockTab $tab, string $key = ''): void
     {
         if (DockTab::Terminal === $tab) {
-            $this->terminalPanel->conceal();
-            $this->restoreAfter($this->terminalPanel);
+            foreach ($this->sessions->all() as $index => $session) {
+                if ($session->id !== $key) {
+                    continue;
+                }
+
+                if (null !== $this->onTerminalSessionClose) {
+                    ($this->onTerminalSessionClose)($index);
+                }
+                break;
+            }
 
             return;
         }
