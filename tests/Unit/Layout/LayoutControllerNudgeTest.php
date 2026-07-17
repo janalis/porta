@@ -55,6 +55,7 @@ final class LayoutControllerNudgeTest extends TestCase
             TestBottomDock::create($tui, new TerminalPanelWidget(), new ResultsPanelWidget(), new DebugPanelWidget()),
             $this->gitSidebar,
             $this->settingsSidebar,
+            new Translator('en'),
         );
     }
 

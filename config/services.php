@@ -413,11 +413,13 @@ return static function (ContainerConfigurator $container, ContainerBuilder $buil
     $services->set('porta.widget.settings_content', ContainerWidget::class)->factory([service(WorkspaceLayout::class), 'settingsContent']);
     $services->set('porta.widget.git_area', ContainerWidget::class)->factory([service(WorkspaceLayout::class), 'gitArea']);
     $services->set('porta.widget.git_left', ContainerWidget::class)->factory([service(WorkspaceLayout::class), 'gitLeft']);
+    $services->set('porta.widget.separator', SeparatorWidget::class)->factory([service(WorkspaceLayout::class), 'separator']);
     $services->set('porta.widget.git_separator', SeparatorWidget::class)->factory([service(WorkspaceLayout::class), 'gitSeparator']);
     $services->set('porta.widget.settings_separator', SeparatorWidget::class)->factory([service(WorkspaceLayout::class), 'settingsSeparator']);
 
-    // The two mouse sub-routers share the parameter name $separator with
+    // The three mouse routers share the parameter name $separator with
     // different instances — binds cannot disambiguate, explicit args can.
+    $services->set(MouseRouter::class)->arg('$separator', service('porta.widget.separator'));
     $services->set(GitMouseRouter::class)->arg('$separator', service('porta.widget.git_separator'));
     $services->set(SettingsMouseRouter::class)->arg('$separator', service('porta.widget.settings_separator'));
 

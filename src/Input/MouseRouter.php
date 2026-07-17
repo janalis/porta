@@ -22,6 +22,7 @@ use Porta\Widget\DockTabsWidget;
 use Porta\Widget\GoToFileWidget;
 use Porta\Widget\MenuBarWidget;
 use Porta\Widget\ResultsPanelWidget;
+use Porta\Widget\SeparatorWidget;
 use Porta\Widget\TerminalPanelWidget;
 use Symfony\Component\Tui\Render\WidgetRect;
 use Symfony\Component\Tui\Tui;
@@ -72,6 +73,7 @@ final class MouseRouter
         private readonly SettingsMouseRouter $settings,
         private readonly BidiTui $bidi,
         private readonly DebugController $debug,
+        private readonly SeparatorWidget $separator,
     ) {
         $this->clicks = new ClickCounter();
     }
@@ -86,6 +88,7 @@ final class MouseRouter
         $treeRect = $this->hit->rect($this->panes->tree());
         $tabsRect = $this->hit->rect($this->panes->tabBar());
         $editorRect = $this->hit->rect($this->panes->editor());
+        $sepRect = $this->hit->rect($this->separator);
 
         // While a full view (git or settings) owns the main area, the
         // tree/tabs/editor (and the menu bar inside the editor pane) are
@@ -97,6 +100,7 @@ final class MouseRouter
             $treeRect = null;
             $tabsRect = null;
             $editorRect = null;
+            $sepRect = null;
         }
         // The git/settings sidebars' drag columns and left edges (each router
         // owns its widgets; the rects exist only while its view is swapped in).
@@ -158,9 +162,9 @@ final class MouseRouter
             return;
         }
 
-        // Separator drags: a press on the tree↔editor gap column, or on the top edge
+        // Separator drags: a press on the tree↔editor separator column, or on the top edge
         // of the terminal/results panel, arms a resize (must beat the pane hit-tests below).
-        if ($this->layout->armSidebarResize($treeRect, $mouse)) {
+        if ($this->layout->armSidebarResize($sepRect, $mouse)) {
             return;
         }
         if ($this->layout->armGitSidebarResize($gitSepRect, $mouse)) {

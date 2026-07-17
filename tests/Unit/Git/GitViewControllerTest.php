@@ -130,6 +130,7 @@ final class GitViewControllerTest extends TestCase
             TestBottomDock::create($this->tui, new TerminalPanelWidget(), new ResultsPanelWidget(), new DebugPanelWidget()),
             new GitSidebar($this->tabs, $this->changes, $this->commitBox, $this->history),
             new SettingsNavWidget($t),
+            $t,
         );
 
         return new GitViewController(

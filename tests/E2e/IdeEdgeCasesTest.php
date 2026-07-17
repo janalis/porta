@@ -2092,6 +2092,34 @@ final class IdeEdgeCasesTest extends TestCase
         );
     }
 
+    public function testRtlSidebarResizesFromItsMirroredSeparator(): void
+    {
+        putenv('PATH=/nonexistent');
+        $project = new TempProject([
+            '.porta.json' => json_encode(['settings' => ['language' => 'he']]),
+            'a.php' => "<?php\n",
+        ]);
+
+        $this->runIde(
+            $project,
+            $project->path('a.php'),
+            [
+                200 => function ($tui): void {
+                    $this->assertSame(30, $tui->getById('tree')->width());
+                    // Mirrored, the 30-wide tree ends the 160-column row, so it owns
+                    // columns 130..159 and its separator is column 129 (SGR 130).
+                    // Dragging that separator LEFT must widen the tree, not shrink it.
+                    $tui->handleInput("\x1b[<0;130;5M"); // arm on the mirrored separator
+                    $tui->handleInput("\x1b[<32;121;5M"); // drag out to column 120
+                    $tui->handleInput("\x1b[<0;121;5m"); // release
+                },
+                320 => function ($tui): void {
+                    $this->assertSame(40, $tui->getById('tree')->width(), 'dragging the mirrored separator leftward widens the tree');
+                },
+            ],
+        );
+    }
+
     public function testLtrLocaleKeepsTheSidebarOnTheLeft(): void
     {
         putenv('PATH=/nonexistent');

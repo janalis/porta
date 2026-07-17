@@ -7,6 +7,7 @@ namespace Porta\Layout;
 use Porta\Config\LayoutPrefs;
 use Porta\Config\LayoutStore;
 use Porta\Git\WhitespaceMode;
+use Porta\I18n\Translator;
 use Porta\Input\MouseEvent;
 use Porta\Support\IntMath;
 use Porta\Ui\BottomDock;
@@ -55,6 +56,7 @@ final class LayoutController
         private readonly BottomDock $dock,
         private readonly GitSidebar $gitSidebar,
         private readonly SettingsNavWidget $settingsSidebar,
+        private readonly Translator $translator,
     ) {}
 
     public function applyLayout(): void
@@ -151,7 +153,7 @@ final class LayoutController
         }
         if (null !== $rect) {
             $cols = $this->tui->getTerminal()->getColumns();
-            $spec->sidebar->setWidth($this->clampSidebarWidth($mouse->col - $rect->col, $cols, $spec->min, $spec->ratio));
+            $spec->sidebar->setWidth($this->clampSidebarWidth($this->widthToPointer($mouse, $rect), $cols, $spec->min, $spec->ratio));
             $this->tui->requestRender();
             if ($mouse->isLeftRelease() && $spec->sidebar->width() !== $spec->startWidth) {
                 $this->commitPercent($spec->sidebar->width(), $cols, $percent);
@@ -165,12 +167,26 @@ final class LayoutController
     }
 
     /**
-     * Arm a sidebar resize when a left-press lands on the tree↔editor separator
-     * column. Returns true when armed.
+     * The sidebar width a drag to $mouse implies: the distance from the pane's
+     * anchored edge to the pointer. The pane is anchored where the layout pins
+     * it — left edge under LTR, right edge under RTL, where
+     * {@see \Porta\Layout\PaneLayout::order()} mirrors the pane order and the
+     * sidebar's own col moves as it grows.
      */
-    public function armSidebarResize(?WidgetRect $treeRect, MouseEvent $mouse): bool
+    private function widthToPointer(MouseEvent $mouse, WidgetRect $rect): int
     {
-        if (null !== $treeRect && $mouse->col === ($treeRect->col + $treeRect->columns) && $mouse->row >= $treeRect->row && $mouse->row < ($treeRect->row + $treeRect->rows)) {
+        return $this->translator->isRtl()
+            ? $rect->col + $rect->columns - $mouse->col
+            : $mouse->col - $rect->col;
+    }
+
+    /**
+     * Arm a sidebar resize when a left-press lands anywhere on the tree↔editor
+     * separator's one-column rect. Returns true when armed.
+     */
+    public function armSidebarResize(?WidgetRect $separatorRect, MouseEvent $mouse): bool
+    {
+        if (null !== $separatorRect && $separatorRect->contains($mouse->row, $mouse->col)) {
             $this->sidebarResizeStartWidth = $this->tree->width();
             $this->sidebarResizing = ResizeState::Active;
 
