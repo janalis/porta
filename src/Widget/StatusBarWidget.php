@@ -100,6 +100,7 @@ final class StatusBarWidget extends AbstractWidget
 
         $gap = max(1, $columns - $leftWidth - $rightWidth - 2);
         $line = ' '.$left.str_repeat(' ', $gap).$right.' ';
+        // '' ellipsis: chrome already gap-padded to the width — never mark it.
         $line = AnsiUtils::truncateToWidth($line, $columns, '', pad: true);
 
         return [$this->styles->merge(Role::HeaderBar, Role::CurrentLineNumber)->apply($line)];

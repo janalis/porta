@@ -189,6 +189,7 @@ final class GoToFileWidget extends OverlayWidget implements FocusableInterface
         }
 
         if ([] === $this->results && '' !== $this->query->value()) {
+            // '' ellipsis: a fixed short filler row — never worth a truncation mark.
             $lines[] = $this->styles->merge(Role::RowHighlightBg, Role::CompletionHint)->apply(AnsiUtils::truncateToWidth(' '.$this->translator->trans('no matches'), $columns, '', pad: true));
         }
 

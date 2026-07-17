@@ -50,7 +50,7 @@ final class DiagnosticStyleTest extends TestCase
     {
         $this->assertSame('✗', DiagnosticStyle::glyph(1));
         $this->assertSame('▲', DiagnosticStyle::glyph(2));
-        $this->assertSame('◆', DiagnosticStyle::glyph(3));
+        $this->assertSame('◦', DiagnosticStyle::glyph(3));
         $this->assertSame('·', DiagnosticStyle::glyph(4));
         $this->assertSame('·', DiagnosticStyle::glyph(9), 'unknown → hint glyph');
         foreach ([1, 2, 3, 4] as $severity) {

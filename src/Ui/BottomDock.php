@@ -130,7 +130,7 @@ final class BottomDock
             $tabs[] = [
                 'tab' => DockTab::Terminal,
                 'key' => $session->id,
-                'label' => $session->title().($session->isRunning() || null === $session->process() ? '' : ' ○'),
+                'label' => $session->title().($session->isRunning() || null === $session->process() ? '' : ' '.Glyphs::SESSION_STOPPED),
                 'active' => $active,
                 'status' => $active ? $this->terminalPanel->statusText() : '',
             ];

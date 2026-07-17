@@ -8,6 +8,7 @@ use Porta\Container\AsWidget;
 use Porta\Support\AnsiText;
 use Porta\Ui\CaretVisibility;
 use Porta\Ui\CursorStyle;
+use Porta\Ui\Glyphs;
 use Porta\Ui\ListNavigation;
 use Porta\Ui\ListSelection;
 use Porta\Ui\LtrPane;
@@ -472,6 +473,7 @@ final class ResultsPanelWidget extends OverlayWidget implements FocusableInterfa
         }
 
         if ([] === $this->results && !$this->searching && '' !== $this->query->value()) {
+            // '' ellipsis: a fixed short filler row — never worth a truncation mark.
             $lines[] = $this->styles->merge(Role::Toolbar, Role::CompletionHint)->apply(AnsiUtils::truncateToWidth(' no results', $columns, '', pad: true));
         }
 
@@ -543,7 +545,7 @@ final class ResultsPanelWidget extends OverlayWidget implements FocusableInterfa
             ResultGrouping::Nested === $this->grouping => [basename($path), '  '],
             default => [$path, ''],
         };
-        $arrow = $row->collapsed ? '▸' : '▾';
+        $arrow = $row->collapsed ? Glyphs::COLLAPSED : Glyphs::EXPANDED;
         $text = $indent.' '.$arrow.' '.$this->styles->of(Role::TabAccent)->apply($display).$this->styles->of(Role::Dim)->apply('  ('.$row->count.')');
 
         return $bg.AnsiUtils::truncateToWidth($text, $columns, '…', pad: true).Sgr::RESET;

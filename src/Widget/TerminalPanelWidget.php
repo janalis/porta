@@ -186,6 +186,7 @@ final class TerminalPanelWidget extends OverlayWidget implements FocusableInterf
         $window = \array_slice($all, $start, $rows);
 
         foreach ($window as $line) {
+            // '' ellipsis: PTY output is raw content, not chrome — a mark would corrupt it.
             $lines[] = AnsiUtils::truncateToWidth($line, $columns, '', pad: true).Sgr::RESET;
         }
         // Pad to a stable height.

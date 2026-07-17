@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Porta\Editor;
 
+use Porta\Ui\Glyphs;
 use Porta\Ui\Role;
 use Porta\Ui\Theme\Styles;
 
@@ -24,10 +25,10 @@ final class DiagnosticStyle
     public static function glyph(int $severity): string
     {
         return match (self::normalize($severity)) {
-            1 => '✗',
-            2 => '▲',
-            3 => '◆',
-            default => '·',
+            1 => Glyphs::SEVERITY_ERROR,
+            2 => Glyphs::SEVERITY_WARNING,
+            3 => Glyphs::SEVERITY_INFO,
+            default => Glyphs::SEVERITY_HINT,
         };
     }
 

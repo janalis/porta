@@ -6,6 +6,7 @@ namespace Porta\Widget;
 
 use Porta\Container\AsWidget;
 use Porta\Support\AnsiText;
+use Porta\Ui\Glyphs;
 use Porta\Ui\Role;
 use Porta\Ui\Theme\Styles;
 use Porta\Widget\Render\MenuOverlayHost;
@@ -168,7 +169,7 @@ final class TabBarWidget extends AbstractWidget implements MenuOverlayHost
         $parts = [];
         foreach ($tabs as $tab) {
             $prefix = ' '.$tab['name'].' ';
-            $marker = $tab['dirty'] ? '●' : '';
+            $marker = $tab['dirty'] ? Glyphs::DIRTY : '';
             $closeOffset = mb_strwidth($prefix) + mb_strwidth($marker);
             $label = $prefix.$marker.'×'.' ';
             $parts[] = [
@@ -212,7 +213,7 @@ final class TabBarWidget extends AbstractWidget implements MenuOverlayHost
         $last = $start;
         $this->lastLayout = [];
         if ($overflow) {
-            $line .= $start > 0 ? $this->indicatorCell('‹', step: -1, col: 0) : ' ';
+            $line .= $start > 0 ? $this->indicatorCell(Glyphs::SCROLL_PREV, step: -1, col: 0) : ' ';
             $used = 1;
         }
         foreach (\array_slice($parts, $start, length: null, preserve_keys: true) as $index => $part) {
@@ -239,7 +240,7 @@ final class TabBarWidget extends AbstractWidget implements MenuOverlayHost
         }
         if ($overflow) {
             $line = AnsiText::padRight($line, $columns - 1);
-            $line .= $last < (\count($parts) - 1) ? $this->indicatorCell('›', step: 1, col: $columns - 1) : ' ';
+            $line .= $last < (\count($parts) - 1) ? $this->indicatorCell(Glyphs::SCROLL_NEXT, step: 1, col: $columns - 1) : ' ';
         }
 
         // A Toolbar-background base under the whole strip, matching the other tab strips.
@@ -315,13 +316,13 @@ final class TabBarWidget extends AbstractWidget implements MenuOverlayHost
             }
             $start = $this->scroll;
             if ($overflow) {
-                $lines[] = $start > 0 ? $this->indicatorRow('▲', step: -3, row: 0) : str_repeat(' ', self::VERTICAL_WIDTH);
+                $lines[] = $start > 0 ? $this->indicatorRow(Glyphs::SCROLL_UP, step: -3, row: 0) : str_repeat(' ', self::VERTICAL_WIDTH);
             }
             // ' name…    ●× ': the dirty ● and the close × are right-aligned.
             $nameWidth = self::VERTICAL_WIDTH - 5;
             foreach (\array_slice($tabs, $start, $budget, preserve_keys: true) as $index => $tab) {
                 $name = AnsiUtils::truncateToWidth($tab['name'], $nameWidth, '…', pad: true);
-                $marker = $tab['dirty'] ? '●' : ' ';
+                $marker = $tab['dirty'] ? Glyphs::DIRTY : ' ';
                 $style = match (true) {
                     $tab['active'] => $this->styles->merge(Role::TabActiveBg, Role::Bright)->withBold(),
                     $index === $this->hoveredIndex => $this->styles->merge(Role::BarHoverBg, Role::Subtle),
@@ -339,7 +340,7 @@ final class TabBarWidget extends AbstractWidget implements MenuOverlayHost
                 ];
             }
             if ($overflow) {
-                $lines[] = ($start + $budget) < \count($tabs) ? $this->indicatorRow('▼', step: 3, row: $rows - 1) : str_repeat(' ', self::VERTICAL_WIDTH);
+                $lines[] = ($start + $budget) < \count($tabs) ? $this->indicatorRow(Glyphs::SCROLL_DOWN, step: 3, row: $rows - 1) : str_repeat(' ', self::VERTICAL_WIDTH);
             }
         }
         while (\count($lines) < $rows) {

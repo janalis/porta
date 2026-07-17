@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Porta\Widget\Render;
 
+use Porta\Ui\Glyphs;
 use Porta\Ui\Role;
 use Porta\Ui\Theme\Styles;
 
@@ -57,7 +58,7 @@ final class TabStripRenderer
                 default => $styles->merge(Role::Toolbar, Role::Subtle),
             };
             $close = $tab['active'] ? TabCloseGlyph::active($styles) : TabCloseGlyph::inactive($styles);
-            $line .= $style->apply(str_replace('×', $close, $part['text'])).$styles->of(Role::Placeholder)->apply('│');
+            $line .= $style->apply(str_replace('×', $close, $part['text'])).$styles->of(Role::Placeholder)->apply(Glyphs::SEPARATOR);
             $hitMap[] = ['index' => $index, 'start' => $used, 'width' => $part['width'], 'closeStart' => $used + $part['closeOffset'], 'closeWidth' => 2];
             $used += $part['width'];
         }

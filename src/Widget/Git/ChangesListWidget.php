@@ -7,6 +7,7 @@ namespace Porta\Widget\Git;
 use Porta\Container\AsWidget;
 use Porta\Git\ChangeEntry;
 use Porta\I18n\Translator;
+use Porta\Ui\Glyphs;
 use Porta\Ui\ListNavigation;
 use Porta\Ui\ListSelection;
 use Porta\Ui\Role;
@@ -303,9 +304,9 @@ final class ChangesListWidget extends AbstractWidget implements FocusableInterfa
             }
 
             $checkbox = match ($entry->stagedState()) {
-                'full' => '[x]',
-                'partial' => '[~]',
-                default => '[ ]',
+                'full' => Glyphs::CHECKBOX_ON,
+                'partial' => Glyphs::CHECKBOX_PARTIAL,
+                default => Glyphs::CHECKBOX_OFF,
             };
             $status = $entry->displayStatus();
             $statusText = \array_key_exists($status, self::STATUS_ROLE) ? $this->styles->of(self::STATUS_ROLE[$status])->apply($status) : $status;

@@ -512,7 +512,7 @@ final class CodeEditorWidgetTest extends TestCase
 
         // The gutter marker column repeats the severity as a glyph.
         $this->assertStringContainsString('✗', AnsiUtils::stripAnsiCodes($rendered[1]), 'error glyph in the gutter');
-        $this->assertStringContainsString('◆', AnsiUtils::stripAnsiCodes($rendered[2]), 'info glyph in the gutter');
+        $this->assertStringContainsString('◦', AnsiUtils::stripAnsiCodes($rendered[2]), 'info glyph in the gutter');
         $this->assertStringContainsString('·', AnsiUtils::stripAnsiCodes($rendered[3]), 'hint glyph in the gutter');
 
         // Inline message on line 1 shows the worst (error) message + a "+1" count.

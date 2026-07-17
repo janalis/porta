@@ -11,6 +11,7 @@ use Porta\Support\ProjectPaths;
 use Porta\Terminal\TerminalSessions;
 use Porta\Ui\BottomDock;
 use Porta\Ui\DockTab;
+use Porta\Ui\Glyphs;
 use Porta\Ui\Notifier;
 use Porta\Widget\CodeEditorWidget;
 use Porta\Widget\DebugPanelWidget;
@@ -87,10 +88,10 @@ final class DebugController implements DebugSessionObserver
         $path = $this->state->stoppedPath();
         $line = $this->state->stoppedLine();
         if ($this->isPaused() && null !== $path && null !== $line) {
-            return '⏸ '.ProjectPaths::relative($this->rootDir, $path).':'.($line + 1);
+            return Glyphs::DEBUG_PAUSED.' '.ProjectPaths::relative($this->rootDir, $path).':'.($line + 1);
         }
 
-        return '▶ debug';
+        return Glyphs::DEBUG_RUNNING.' debug';
     }
 
     /** Ctrl+F8 / a gutter click: toggle a breakpoint on the caret's (or given) line. */

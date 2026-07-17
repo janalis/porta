@@ -70,10 +70,10 @@ final class StatusBarProvider
         $counts = $this->editor->getDiagnosticCounts();
         $problems = '';
         if ($counts['errors'] > 0) {
-            $problems .= $this->styles->of(Role::StatusError)->apply("✗ {$counts['errors']}").' ';
+            $problems .= $this->styles->of(Role::StatusError)->apply(Glyphs::SEVERITY_ERROR." {$counts['errors']}").' ';
         }
         if ($counts['warnings'] > 0) {
-            $problems .= $this->styles->of(Role::StatusWarning)->apply("▲ {$counts['warnings']}").' ';
+            $problems .= $this->styles->of(Role::StatusWarning)->apply(Glyphs::SEVERITY_WARNING." {$counts['warnings']}").' ';
         }
 
         $location = \sprintf('%d:%d', $doc->getCursorLine() + 1, $doc->getCursorDisplayCol() + 1);

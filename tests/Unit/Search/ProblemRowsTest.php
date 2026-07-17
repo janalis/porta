@@ -15,7 +15,13 @@ final class ProblemRowsTest extends TestCase
         $buffers = new BufferManager();
         $b = $buffers->open('/p/src/B.php', "<?php\n");
         $a = $buffers->open('/p/src/A.php', "<?php\n");
-        $b->diagnostics = [0 => [['severity' => 2, 'message' => 'warn here', 'col' => 0, 'endCol' => 1]]];
+        $b->diagnostics = [
+            0 => [
+                ['severity' => 2, 'message' => 'warn here', 'col' => 0, 'endCol' => 1],
+                ['severity' => 3, 'message' => 'info here', 'col' => 0, 'endCol' => 1],
+                ['severity' => 4, 'message' => 'hint here', 'col' => 0, 'endCol' => 1],
+            ],
+        ];
         $a->diagnostics = [
             2 => [['severity' => 1, 'message' => 'later error', 'col' => 0, 'endCol' => 1]],
             0 => [['severity' => 1, 'message' => 'top error', 'col' => 0, 'endCol' => 1]],
@@ -28,9 +34,11 @@ final class ProblemRowsTest extends TestCase
                 ['path' => 'src/A.php', 'line' => 0, 'text' => '✗ top error'],
                 ['path' => 'src/A.php', 'line' => 2, 'text' => '✗ later error'],
                 ['path' => 'src/B.php', 'line' => 0, 'text' => '▲ warn here'],
+                ['path' => 'src/B.php', 'line' => 0, 'text' => '◦ info here'],
+                ['path' => 'src/B.php', 'line' => 0, 'text' => '· hint here'],
             ],
             $rows,
-            'sorted by path then line, ✗ for errors, ▲ for the rest',
+            'sorted by path then line, every severity keeps its own glyph',
         );
     }
 

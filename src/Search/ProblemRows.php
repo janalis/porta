@@ -5,13 +5,15 @@ declare(strict_types=1);
 namespace Porta\Search;
 
 use Porta\Editor\BufferManager;
+use Porta\Editor\DiagnosticStyle;
 use Porta\Support\ProjectPaths;
 
 /**
  * Builds the Problems tool's rows: every open buffer's diagnostics flattened
- * into one path/line-sorted list with a severity marker (✗ errors, ▲ the
- * rest) prepended to the message. Pure over the buffer state, so the initial
- * Show Problems open and the live refresh render identical rows.
+ * into one path/line-sorted list with its severity's glyph
+ * ({@see DiagnosticStyle::glyph}) prepended to the message. Pure over the
+ * buffer state, so the initial Show Problems open and the live refresh render
+ * identical rows.
  */
 final readonly class ProblemRows
 {
@@ -28,7 +30,7 @@ final readonly class ProblemRows
             $rel = ProjectPaths::relative($this->rootDir, $buffer->path);
             foreach ($buffer->diagnostics as $line => $list) {
                 foreach ($list as $diag) {
-                    $marker = 1 === $diag['severity'] ? '✗' : '▲';
+                    $marker = DiagnosticStyle::glyph($diag['severity']);
                     $results[] = [
                         'path' => $rel,
                         'line' => $line,

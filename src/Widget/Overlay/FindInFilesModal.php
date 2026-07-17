@@ -705,8 +705,10 @@ final class FindInFilesModal
     {
         // Each tag self-closes; the row's Toolbar background re-applies itself
         // after the close, so no explicit re-open is needed between tags.
+        // An enabled tag is bracketed (like every toggle) so it reads without
+        // color; all three states stay glyph-width + 2 for the click zones.
         return match ($state) {
-            OptionTagState::On => $this->styles->of(Role::SelectedRow)->apply(' '.$glyph.' '),
+            OptionTagState::On => $this->styles->of(Role::SelectedRow)->apply('['.$glyph.']'),
             OptionTagState::Hovered => $this->styles->of(Role::RowHighlightBg)->apply(' '.$glyph.' '),
             OptionTagState::Off => $this->styles->of(Role::Faint)->apply(' '.$glyph.' '),
         };
@@ -761,6 +763,7 @@ final class FindInFilesModal
     {
         $text = '' === $this->query->value() ? ' type to search…' : ' no results';
 
+        // '' ellipsis: a fixed short filler row — never worth a truncation mark.
         return $this->styles->merge(Role::PopupRow, Role::CompletionHint)->apply(AnsiUtils::truncateToWidth($text, $width, '', pad: true));
     }
 

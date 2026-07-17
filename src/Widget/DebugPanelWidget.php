@@ -6,6 +6,7 @@ namespace Porta\Widget;
 
 use Porta\Container\AsWidget;
 use Porta\Debug\DebugState;
+use Porta\Ui\Glyphs;
 use Porta\Ui\ListNavigation;
 use Porta\Ui\ListSelection;
 use Porta\Ui\LtrPane;
@@ -260,7 +261,7 @@ final class DebugPanelWidget extends OverlayWidget implements FocusableInterface
             DebugRowKind::Watch => $this->watchText($row),
             DebugRowKind::Section => ' '.$this->styles->of(Role::Dim)->apply($row->label),
             DebugRowKind::Frame => ' '.$indent.$row->label.'  '.$this->styles->of(Role::TabAccent)->apply($row->path.':'.($row->line + 1)),
-            DebugRowKind::Scope => ' '.$indent.(array_key_exists($row->ref, $this->expanded) ? '▾ ' : '▸ ').$this->styles->of(Role::Bright)->apply($row->label),
+            DebugRowKind::Scope => ' '.$indent.(array_key_exists($row->ref, $this->expanded) ? Glyphs::EXPANDED.' ' : Glyphs::COLLAPSED.' ').$this->styles->of(Role::Bright)->apply($row->label),
             DebugRowKind::Variable => ' '.$indent.$this->expandArrow($row->ref).$row->label,
         };
     }
@@ -272,7 +273,7 @@ final class DebugPanelWidget extends OverlayWidget implements FocusableInterface
             return '  ';
         }
 
-        return array_key_exists($ref, $this->expanded) ? '▾ ' : '▸ ';
+        return array_key_exists($ref, $this->expanded) ? Glyphs::EXPANDED.' ' : Glyphs::COLLAPSED.' ';
     }
 
     private function watchText(DebugRow $row): string

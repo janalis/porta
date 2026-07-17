@@ -7,6 +7,7 @@ namespace Porta\Widget;
 use Porta\Container\AsWidget;
 use Porta\Layout\ResizableSidebar;
 use Porta\Tree\FileTreeNode;
+use Porta\Ui\Glyphs;
 use Porta\Ui\ListNavigation;
 use Porta\Ui\ListSelection;
 use Porta\Ui\Role;
@@ -275,8 +276,8 @@ final class FileTreeWidget extends AbstractWidget implements FocusableInterface,
 
             $icon = match (true) {
                 !$node->isDir => '  ',
-                $this->expanded[$node->path] ?? false => '▾ ',
-                default => '▸ ',
+                $this->expanded[$node->path] ?? false => Glyphs::EXPANDED.' ',
+                default => Glyphs::COLLAPSED.' ',
             };
             $text = str_repeat(' ', max(0, $node->depth + 1)).$icon.$node->name.($node->isDir ? '/' : '');
             $text = AnsiUtils::truncateToWidth($text, $width, '…', pad: true);

@@ -10,6 +10,7 @@ use Porta\Editor\DiagnosticStyle;
 use Porta\Editor\Document;
 use Porta\Support\AnsiText;
 use Porta\Support\IntMath;
+use Porta\Ui\Glyphs;
 use Porta\Ui\Role;
 use Porta\Ui\Sgr;
 use Porta\Ui\Theme\Styles;
@@ -159,9 +160,9 @@ final class EditorRenderer
     public static function gitCell(?string $mark, Styles $styles): string
     {
         return match ($mark) {
-            'added' => $styles->of(Role::GitAdded)->apply('▎'), // green solid bar
-            'modified' => $styles->of(Role::GitModified)->apply('┆'), // blue dashed bar
-            'deleted' => $styles->of(Role::GitDeleted)->apply('▁'), // red underline
+            'added' => $styles->of(Role::GitAdded)->apply(Glyphs::GIT_ADDED), // green solid bar
+            'modified' => $styles->of(Role::GitModified)->apply(Glyphs::GIT_MODIFIED), // blue dashed bar
+            'deleted' => $styles->of(Role::GitDeleted)->apply(Glyphs::GIT_DELETED), // red underline
             default => ' ',
         };
     }

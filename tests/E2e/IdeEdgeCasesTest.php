@@ -4360,10 +4360,17 @@ final class IdeEdgeCasesTest extends TestCase
                 700 => function ($tui, $terminal): void {
                     // Await the shell's echo loop; a fixed delay races under load.
                     $this->await(static fn (): bool => str_contains(AnsiUtils::stripAnsiCodes($terminal->getOutput()), 'row-9'));
-                    $tui->handleInput("\x1b[5~"); // page up: scroll back
-                    $tui->tick();
-                    $screen = AnsiUtils::stripAnsiCodes($terminal->getOutput());
-                    $this->assertStringContainsString('scrolled', $screen);
+                    // Page up inside the await: late shell output (the trailing
+                    // prompt) resets the scrollback to the live tail, so a
+                    // single press can lose the race under load — keep pressing
+                    // until the shell is quiet and the scrolled state sticks.
+                    $this->await(static function () use ($tui, $terminal): bool {
+                        $tui->handleInput("\x1b[5~"); // page up: scroll back
+                        $tui->tick();
+
+                        return str_contains(AnsiUtils::stripAnsiCodes($terminal->getOutput()), 'scrolled');
+                    });
+                    $this->assertStringContainsString('scrolled', AnsiUtils::stripAnsiCodes($terminal->getOutput()));
                     $tui->handleInput("\x1b[6~"); // page down
                     $tui->handleInput("\x1b"); // escape hides the dock; the session stays alive
                     $this->assertFalse($tui->getById('terminal')->isVisible());

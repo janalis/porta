@@ -12,6 +12,7 @@ use Porta\Support\DocsUrlOpener;
 use Porta\Support\NativeDocs;
 use Porta\Support\ProjectPaths;
 use Porta\Ui\BottomDock;
+use Porta\Ui\Glyphs;
 use Porta\Ui\Notifier;
 use Porta\Ui\ResultsPanelMode;
 use Porta\Widget\CodeEditorWidget;
@@ -370,7 +371,7 @@ final class NavigationController extends AbstractLspController implements Editor
                         continue;
                     }
                     $items[] = [
-                        'label' => ($i === $targetLine ? '▶ ' : '  ').$text,
+                        'label' => ($i === $targetLine ? Glyphs::NAV_CURRENT.' ' : '  ').$text,
                         'hint' => (string) ($i + 1),
                         'value' => $target.':'.$i,
                     ];

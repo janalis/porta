@@ -7,6 +7,7 @@ namespace Porta\Git;
 use Porta\I18n\Translator;
 use Porta\Support\Outcome;
 use Porta\Support\ProjectPaths;
+use Porta\Ui\Glyphs;
 use Porta\Ui\Notifier;
 use Porta\Ui\WorkspaceViews;
 use Porta\Widget\CodeEditorWidget;
@@ -267,7 +268,7 @@ final class GitCommands
                     default => '',
                 };
                 $items[] = [
-                    'label' => ($branch['current'] ? '✓ ' : '  ').$branch['name'],
+                    'label' => ($branch['current'] ? Glyphs::BRANCH_CURRENT.' ' : '  ').$branch['name'],
                     'hint' => $hint,
                     'value' => $branch['remote'] ? self::REMOTE_PREFIX.$branch['name'] : $branch['name'],
                 ];

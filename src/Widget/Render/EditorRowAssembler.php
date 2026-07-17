@@ -9,6 +9,7 @@ use Porta\Editor\DiagnosticStyle;
 use Porta\Editor\Document;
 use Porta\Editor\FoldModel;
 use Porta\Ui\CursorStyle;
+use Porta\Ui\Glyphs;
 use Porta\Ui\Role;
 use Porta\Ui\Theme\Styles;
 use Symfony\Component\Tui\Ansi\AnsiUtils;
@@ -179,9 +180,9 @@ final readonly class EditorRowAssembler
         // then the breakpoint dot, then the worst diagnostic's severity glyph —
         // so each state also reads without color.
         $marker = match (true) {
-            $lineIndex === $this->store->debugLine() => $this->styles->of(Role::Breakpoint)->apply('▶'),
-            ($this->conditionalBreakpointSet[$lineIndex] ?? null) !== null => $this->styles->of(Role::Breakpoint)->apply('◆'),
-            ($this->breakpointSet[$lineIndex] ?? null) !== null => $this->styles->of(Role::Breakpoint)->apply('●'),
+            $lineIndex === $this->store->debugLine() => $this->styles->of(Role::Breakpoint)->apply(Glyphs::STOPPED_LINE),
+            ($this->conditionalBreakpointSet[$lineIndex] ?? null) !== null => $this->styles->of(Role::Breakpoint)->apply(Glyphs::BREAKPOINT_CONDITIONAL),
+            ($this->breakpointSet[$lineIndex] ?? null) !== null => $this->styles->of(Role::Breakpoint)->apply(Glyphs::BREAKPOINT),
             [] !== $lineDiags => $numStyle->apply(DiagnosticStyle::glyph(DiagnosticStyle::worst($lineDiags))),
             default => ' ',
         };
