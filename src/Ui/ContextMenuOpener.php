@@ -26,12 +26,23 @@ use Symfony\Component\Tui\Tui;
 /**
  * Opens the context menu from the keyboard (Ctrl+F10) for whatever holds the
  * focus: the editor's menu anchored at the caret, the tree's at its selected
- * node, and the image/help viewers' tab menu under the active tab. The mouse
- * router's right-click path builds the same item lists; this class only adds
- * the anchor-from-focus geometry, then finishes exactly like a right-click
- * (anchor → open → repaint), so the modal keyboard routing and the overlay
- * compositing need no changes. Unlike a right-click, the caret and selection
- * are never moved.
+ * node, and the image/help viewers' tab menu under the active tab. It shares
+ * the item lists with the mouse router's right-click path ({@see
+ * ContextMenuBuilder}); what it adds is the anchor-from-focus geometry. Both
+ * chains finish here — {@see openAt()} and {@see flashNoMenu()} — so the two
+ * cannot disagree about what opening a menu, or failing to, looks like.
+ *
+ * THE RULE, for both chains: a context menu is built from its target and never
+ * invents one. A pane that CARRIES its target as its selection moves the
+ * selection to it, because that is the only channel it has (the tree, the git
+ * changes list); a pane that can PASS its target does not (the tab strip, the
+ * dock strip — they hand over a path or a key). The editor is the same rule
+ * for text: an existing selection IS the target, so a right-click keeps it and
+ * only an empty selection moves the caret.
+ *
+ * This class moving nothing is not an exception to that rule — it is the rule
+ * with a zero-length move, because the focused pane's target is already its
+ * selection.
  */
 final class ContextMenuOpener
 {
@@ -116,15 +127,26 @@ final class ContextMenuOpener
             return;
         }
 
+        $this->flashNoMenu();
+    }
+
+    /**
+     * Say so when a pane has no menu. Both chains use it: a right-click on a
+     * menu-less pane used to do nothing at all while Ctrl+F10 explained
+     * itself, which left the mouse looking broken rather than answered.
+     */
+    public function flashNoMenu(): void
+    {
         $this->notifier->flash($this->translator->trans('No context menu here'));
     }
 
     /**
-     * Finish exactly like the mouse path: close the app menu, anchor, open, repaint.
+     * Open a built menu at a screen cell: close the app menu, anchor, open,
+     * repaint. The single finish for both the keyboard and the mouse.
      *
      * @param list<MenuItem> $items
      */
-    private function openAt(array $items, int $row, int $col): void
+    public function openAt(array $items, int $row, int $col): void
     {
         $this->menuBar->close();
         $this->overlay->setContextAnchor($row, $col);

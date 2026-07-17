@@ -14,6 +14,7 @@ use Porta\Tree\TreeOperations;
 use Porta\Ui\BidiTui;
 use Porta\Ui\BottomDock;
 use Porta\Ui\ContextMenuBuilder;
+use Porta\Ui\ContextMenuOpener;
 use Porta\Ui\DockTab;
 use Porta\Ui\WorkspaceViews;
 use Porta\Widget\ContextMenu;
@@ -83,6 +84,7 @@ final class MouseRouter
         private readonly BidiTui $bidi,
         private readonly DebugController $debug,
         private readonly SeparatorWidget $separator,
+        private readonly ContextMenuOpener $opener,
     ) {
         $this->clicks = new ClickCounter();
     }
@@ -975,6 +977,11 @@ final class MouseRouter
      * (file operations), a dock-strip tab (close / session actions) or a git
      * changes row (stage/discard/history). A right-click supersedes any open
      * application menu.
+     *
+     * Anywhere else — a pane with no menu, or a strip's empty tail — says so,
+     * the same way Ctrl+F10 does. The two chains share their finish
+     * ({@see ContextMenuOpener}), which is also where the rule that governs
+     * both of them is written down.
      */
     private function handleRightPress(MouseEvent $mouse, ?WidgetRect $treeRect, ?WidgetRect $tabsRect, ?WidgetRect $editorRect): void
     {
@@ -1000,6 +1007,8 @@ final class MouseRouter
             $index = $this->panes->tabBar()->tabIndexAt($rel['row'], $rel['col']);
             $buffers = $this->buffers->all();
             if (null === $index || !array_key_exists($index, $buffers)) {
+                $this->opener->flashNoMenu(); // the strip's empty tail
+
                 return;
             }
             $items = $this->contextItems->tabItems($buffers[$index]->path);
@@ -1010,6 +1019,8 @@ final class MouseRouter
             $this->tui->setFocus($this->panes->tree());
             $node = $this->panes->tree()->nodeAt($rel['row']);
             if (null === $node) {
+                $this->opener->flashNoMenu(); // below the last node
+
                 return;
             }
             $items = $this->treeOps->contextItems($node);
@@ -1026,7 +1037,9 @@ final class MouseRouter
             $handled = true;
             $hit = $this->dockTabs->tabAt($mouse->col - $stripRect->col);
             if (null === $hit) {
-                return; // the strip's empty tail stays menu-less
+                $this->opener->flashNoMenu(); // the strip's empty tail
+
+                return;
             }
             $items = $this->contextItems->dockTabItems($hit['tab'], $hit['key']);
         }
@@ -1034,12 +1047,12 @@ final class MouseRouter
             $items = $this->contextItems->gitChangeItems($entry);
         }
         if (null === $items) {
+            $this->opener->flashNoMenu();
+
             return;
         }
 
-        $this->overlay->setContextAnchor($mouse->row, $mouse->col);
-        $this->contextMenu->open($items);
-        $this->tui->requestRender();
+        $this->opener->openAt($items, $mouse->row, $mouse->col);
     }
 
     /**
