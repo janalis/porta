@@ -183,6 +183,23 @@ final class DockTabsWidgetTest extends TestCase
         $this->assertSame([[DockTab::Results, 0, 1]], $moves, 'the reorder request reaches the wired dock');
     }
 
+    public function testTabAtAndAnchorForResolveStripIdentity(): void
+    {
+        $bar = self::strip([
+            ['tab' => DockTab::Terminal, 'label' => 'sh 1', 'active' => true, 'key' => 'shell:1', 'status' => ''],
+            ['tab' => DockTab::Results, 'label' => 'Problems', 'active' => false, 'key' => '1', 'status' => ''],
+        ]);
+        $plain = AnsiUtils::stripAnsiCodes($bar->render(new RenderContext(80, 1))[0]);
+        $problems = (int) mb_strpos($plain, needle: 'Problems');
+
+        $this->assertSame(['tab' => DockTab::Terminal, 'key' => 'shell:1'], $bar->tabAt((int) mb_strpos($plain, needle: 'sh 1')));
+        $this->assertSame(['tab' => DockTab::Results, 'key' => '1'], $bar->tabAt($problems));
+        $this->assertNull($bar->tabAt(79), 'the empty tail has no identity');
+
+        $this->assertSame($problems - 1, $bar->anchorFor(DockTab::Results, '1'), "a tab's anchor is its body start (one cell before the label)");
+        $this->assertNull($bar->anchorFor(DockTab::Results, '99'), 'an unknown tab has no anchor');
+    }
+
     public function testHoverTintsTheInactiveTabAndClears(): void
     {
         $bar = self::strip([

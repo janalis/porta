@@ -233,6 +233,52 @@ final class ChangesListWidget extends AbstractWidget implements FocusableInterfa
         }
     }
 
+    /** A right-click landed on a row: select it (like a left click) and return its entry. */
+    public function selectRowAt(int $relRow): ?ChangeEntry
+    {
+        $index = $this->rowIndexAt($relRow);
+        if (null === $index) {
+            return null;
+        }
+        $this->list->select($index);
+        $this->fireSelect();
+        $this->invalidate();
+
+        return $this->entries[$index];
+    }
+
+    /** Context-menu trigger: toggle the selected entry's staging (same path as Space). */
+    public function toggleStageSelected(): void
+    {
+        if (null !== ($entry = $this->selectedEntry()) && null !== $this->onToggleStage) {
+            ($this->onToggleStage)($entry);
+            $this->invalidate();
+        }
+    }
+
+    /** Context-menu trigger: arm the selected entry's two-press discard confirmation. */
+    public function armDiscardSelected(): void
+    {
+        if (null !== $this->selectedEntry()) {
+            $this->confirmDiscard = $this->list->selected();
+            $this->invalidate();
+        }
+    }
+
+    /** Context-menu trigger: switch to the History tab (same path as the `2` key). */
+    public function showHistory(): void
+    {
+        if (null !== $this->onShowHistory) {
+            ($this->onShowHistory)();
+        }
+    }
+
+    /** The selected entry's widget-relative row (row 0 is the header). */
+    public function selectedRow(): int
+    {
+        return $this->list->selected() - $this->list->scroll() + 1;
+    }
+
     /** Left-click: the checkbox column toggles staging, anywhere else selects. */
     public function handleClick(int $relRow, int $relCol): void
     {

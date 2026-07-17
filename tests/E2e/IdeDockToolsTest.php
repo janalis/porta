@@ -337,6 +337,51 @@ final class IdeDockToolsTest extends TestCase
         $this->addToAssertionCount(1);
     }
 
+    public function testRightClickOnADockToolTabOffersClose(): void
+    {
+        putenv('PATH=/nonexistent');
+        $project = new TempProject(['a.php' => "<?php\n"]);
+        $dock = static fn ($ide): object => new \ReflectionProperty(Ide::class, 'locator')->getValue($ide)->get(\Porta\Ui\BottomDock::class);
+
+        $this->runIde(
+            $project,
+            $project->path('a.php'),
+            [
+                200 => function ($tui, $terminal, $ide) use ($dock): void {
+                    $tui->handleInput("\x1b6"); // alt+6 → Problems
+                    $tui->tick();
+                    $renderer = new \ReflectionProperty($ide, 'renderer')->getValue($ide);
+                    $rect = $renderer->getWidgetRect($tui->getById('dock-tabs'));
+                    $strip = AnsiUtils::stripAnsiCodes($tui->getById('dock-tabs')->render(new \Symfony\Component\Tui\Render\RenderContext($rect->columns, 1))[0]);
+                    $problems = (int) mb_strpos($strip, needle: 'Problems');
+
+                    $terminal->clearOutput();
+                    $tui->handleInput(\sprintf("\x1b[<2;%d;%dM", $rect->col + $problems + 1, $rect->row + 1));
+                    $this->assertTrue($tui->getById('context-menu')->isOpen(), 'right-clicking a tool tab opened its menu');
+                    $this->await(static fn (): bool => str_contains(AnsiUtils::stripAnsiCodes($terminal->getOutput()), 'Close'));
+                    $this->assertStringContainsString('Close', AnsiUtils::stripAnsiCodes($terminal->getOutput()));
+
+                    $tui->handleInput("\r"); // run Close — the same action as the strip ×
+                    $tui->tick();
+                    $this->assertSame([], $dock($ide)->aliveTabs(), 'the menu Close really closed the tool');
+                    $this->assertFalse($tui->getById('results')->isOpen());
+                },
+                500 => function ($tui, $terminal, $ide): void {
+                    // The strip's empty tail stays menu-less.
+                    $tui->handleInput("\x1b6");
+                    $tui->tick();
+                    $renderer = new \ReflectionProperty($ide, 'renderer')->getValue($ide);
+                    $rect = $renderer->getWidgetRect($tui->getById('dock-tabs'));
+                    $tui->handleInput(\sprintf("\x1b[<2;%d;%dM", $rect->col + $rect->columns - 2, $rect->row + 1));
+                    $tui->tick();
+                    $this->assertFalse($tui->getById('context-menu')->isOpen(), 'the empty tail offers no menu');
+                },
+            ],
+        );
+
+        $this->addToAssertionCount(1);
+    }
+
     public function testPointerMotionTintsStripTabs(): void
     {
         putenv('PATH=/nonexistent');

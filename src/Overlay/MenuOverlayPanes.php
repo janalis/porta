@@ -11,9 +11,9 @@ use Symfony\Component\Tui\Widget\AbstractWidget;
  * The panes a floating menu can composite over, grouped by which view owns the
  * main area: the editor layout's panes, the git view's, and the settings view's.
  * Bundles what were fifteen positional widget arguments to
- * {@see MenuOverlayController} into one value that answers the three questions
- * the controller asks — the current mode's panes, the editor-layout panes (the
- * context menu only opens there), and every pane for a blanket overlay clear.
+ * {@see MenuOverlayController} into one value that answers the two questions
+ * the controller asks — the current mode's panes (both dropdowns composite
+ * over them), and every pane for a blanket overlay clear.
  */
 final readonly class MenuOverlayPanes
 {
@@ -45,16 +45,6 @@ final readonly class MenuOverlayPanes
             ($this->gitViewOpen)() => $this->git,
             default => $this->editor,
         };
-    }
-
-    /**
-     * The editor-layout panes — the context menu only ever opens there.
-     *
-     * @return list<AbstractWidget&MenuOverlayHost>
-     */
-    public function editor(): array
-    {
-        return $this->editor;
     }
 
     /**

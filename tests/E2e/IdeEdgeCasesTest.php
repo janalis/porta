@@ -4918,6 +4918,67 @@ final class IdeEdgeCasesTest extends TestCase
         $this->assertStringContainsString('Working tree clean', $screen, 'after commit+discard nothing is left');
     }
 
+    public function testGitChangesRowContextMenuStagesAndArmsDiscard(): void
+    {
+        if (!$this->gitAvailable()) {
+            $this->markTestSkipped('git not available');
+        }
+        putenv('PATH='.\dirname((string) $this->whichGit()));
+        $project = new TempProject(['src/A.php' => "<?php\n\$a = 1;\n"]);
+        $dir = escapeshellarg($project->dir);
+        exec("git -C {$dir} init -q && git -C {$dir} config user.email t@t && git -C {$dir} config user.name t && git -C {$dir} add -A && git -C {$dir} commit -qm init");
+        $project->write('src/A.php', "<?php\n\$a = 2;\n"); // unstaged edit
+
+        $this->runIde(
+            $project,
+            $project->path('src/A.php'),
+            [
+                300 => static function ($tui): void {
+                    $tui->handleInput("\x1b\x04"); // ctrl+alt+d opens the git view
+                },
+                550 => function ($tui, $terminal, $ide) use ($project): void {
+                    $this->await(static fn (): bool => str_contains(AnsiUtils::stripAnsiCodes($terminal->getOutput()), '[ ] M src/A.php'));
+                    $renderer = new \ReflectionProperty($ide, 'renderer')->getValue($ide);
+                    $rect = $renderer->getWidgetRect($tui->getById('git-changes'));
+
+                    $terminal->clearOutput();
+                    $tui->handleInput(\sprintf("\x1b[<2;%d;%dM", $rect->col + 8, $rect->row + 2)); // right-click the first row
+                    $this->assertTrue($tui->getById('context-menu')->isOpen(), 'right-clicking a changes row opened its menu');
+                    $this->await(static fn (): bool => str_contains(AnsiUtils::stripAnsiCodes($terminal->getOutput()), 'File History'));
+                    $screen = AnsiUtils::stripAnsiCodes($terminal->getOutput());
+                    $this->assertStringContainsString('Stage', $screen, 'an unstaged row offers Stage');
+                    $this->assertStringContainsString('File History', $screen);
+
+                    $tui->handleInput("\r"); // Stage leads the list
+                    $this->await(static function () use ($project): bool {
+                        exec('git -C '.escapeshellarg($project->dir).' status --porcelain 2>/dev/null', $lines);
+
+                        return \in_array('M  src/A.php', $lines, strict: true);
+                    });
+                },
+                1000 => function ($tui, $terminal, $ide): void {
+                    $tui->tick();
+                    // Keyboard parity: Ctrl+F10 on the (focused) changes list —
+                    // a staged row offers Unstage; Discard… arms the confirm bar.
+                    $this->assertSame('git-changes', $tui->getFocus()?->getId());
+                    $terminal->clearOutput();
+                    $tui->handleInput("\x1b[21;5~");
+                    $this->assertTrue($tui->getById('context-menu')->isOpen(), 'Ctrl+F10 opened the row menu');
+                    $this->await(static fn (): bool => str_contains(AnsiUtils::stripAnsiCodes($terminal->getOutput()), 'Unstage'));
+                    $this->assertStringContainsString('Unstage', AnsiUtils::stripAnsiCodes($terminal->getOutput()), 'a staged row offers Unstage');
+
+                    $tui->handleInput("\x1b[B"); // → Discard…
+                    $tui->handleInput("\r");
+                    $tui->tick();
+                    $this->assertStringContainsString('Discard changes?', AnsiUtils::stripAnsiCodes($terminal->getOutput()), 'Discard… armed the two-press confirmation');
+                    $tui->handleInput('n'); // decline
+                },
+            ],
+        );
+
+        $this->addToAssertionCount(1);
+    }
+
     public function testGitViewStagesASingleLineFromTheDiffPane(): void
     {
         if (!$this->gitAvailable()) {

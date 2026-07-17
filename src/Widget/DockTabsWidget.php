@@ -10,6 +10,8 @@ use Porta\Ui\DockTab;
 use Porta\Ui\LtrPane;
 use Porta\Ui\Role;
 use Porta\Ui\Theme\Styles;
+use Porta\Widget\Render\MenuOverlayHost;
+use Porta\Widget\Render\MenuOverlayHostTrait;
 use Porta\Widget\Render\TabStripRenderer;
 use Symfony\Component\Tui\Ansi\AnsiUtils;
 use Symfony\Component\Tui\Render\RenderContext;
@@ -27,8 +29,10 @@ use Symfony\Component\Tui\Widget\AbstractWidget;
  * falls through to the panel-resize grab.
  */
 #[AsWidget('dock-tabs', flex: 0)]
-final class DockTabsWidget extends AbstractWidget implements LtrPane
+final class DockTabsWidget extends AbstractWidget implements LtrPane, MenuOverlayHost
 {
+    use MenuOverlayHostTrait;
+
     /** @var (callable(): list<array{tab: DockTab, key: string, label: string, active: bool, status: string}>)|null */
     private $provider = null;
 
@@ -142,6 +146,35 @@ final class DockTabsWidget extends AbstractWidget implements LtrPane
         }
 
         return $this->familyIndexAt($col);
+    }
+
+    /**
+     * The dock identity of the tab whose body covers $col, or null on the
+     * empty tail — the right-click context-menu lookup.
+     *
+     * @return array{tab: DockTab, key: string}|null
+     */
+    public function tabAt(int $col): ?array
+    {
+        foreach ($this->lastTabLayout as $entry) {
+            if ($col >= $entry['start'] && $col < ($entry['start'] + $entry['width'])) {
+                return ['tab' => $entry['tab'], 'key' => $entry['key']];
+            }
+        }
+
+        return null;
+    }
+
+    /** The strip column where the given tab's body starts, or null when it is not on the strip. */
+    public function anchorFor(DockTab $tab, string $key): ?int
+    {
+        foreach ($this->lastTabLayout as $entry) {
+            if ($entry['tab'] === $tab && $entry['key'] === $key) {
+                return $entry['start'];
+            }
+        }
+
+        return null;
     }
 
     /** Tint the tool tab under the pointer; returns whether it changed. */
@@ -261,6 +294,6 @@ final class DockTabsWidget extends AbstractWidget implements LtrPane
         }
 
         // A Toolbar-background base under the whole row, then the styled tabs.
-        return [$this->styles->of(Role::Toolbar)->apply(AnsiText::padRight($line, $columns))];
+        return $this->withMenuOverlay([$this->styles->of(Role::Toolbar)->apply(AnsiText::padRight($line, $columns))], $columns);
     }
 }

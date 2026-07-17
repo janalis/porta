@@ -35,6 +35,7 @@ Each row is `[x] M path` — the checkbox mirrors the staged state.
 | `Space` | Stage / unstage the selected file |
 | `d` / `Delete` | Discard the file's changes (inline confirm) |
 | Click the checkbox | Toggle staging with the mouse |
+| Right-click a row (or `Ctrl+F10`) | Stage/Unstage · Discard… · File History menu |
 
 ### Diff pane
 

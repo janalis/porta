@@ -1906,6 +1906,30 @@
         <source>Problems</source>
         <target>Problèmes</target>
       </trans-unit>
+      <trans-unit id="480">
+        <source>New Session</source>
+        <target>Nouvelle session</target>
+      </trans-unit>
+      <trans-unit id="481">
+        <source>Close Session</source>
+        <target>Fermer la session</target>
+      </trans-unit>
+      <trans-unit id="482">
+        <source>Stage</source>
+        <target>Indexer</target>
+      </trans-unit>
+      <trans-unit id="483">
+        <source>Unstage</source>
+        <target>Désindexer</target>
+      </trans-unit>
+      <trans-unit id="484">
+        <source>Discard…</source>
+        <target>Abandonner…</target>
+      </trans-unit>
+      <trans-unit id="485">
+        <source>File History</source>
+        <target>Historique du fichier</target>
+      </trans-unit>
     </body>
   </file>
 </xliff>

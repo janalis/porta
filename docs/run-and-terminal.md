@@ -27,7 +27,9 @@ next to the tool tabs (Problems, search results, …): `` Ctrl+Shift+` `` (or
 `Alt+F11`) opens another shell, `Ctrl+Page Up` / `Ctrl+Page Down` cycle
 between sessions, `Ctrl+Shift+W` (or a click on a tab's `×`) closes one —
 closing the last closes the panel. Click a tab to switch to it, drag it to
-reorder your sessions; each session keeps its own scrollback and process.
+reorder your sessions, or right-click it (or press `Ctrl+F10` in the panel)
+for a New Session / Close Session menu; each session keeps its own
+scrollback and process.
 Debugger output appears as its own `Debug: <file>` tab, so a debug session
 and your shells coexist.
 

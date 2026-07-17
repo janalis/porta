@@ -197,6 +197,54 @@ final class IdeTerminalTest extends TestCase
         $this->addToAssertionCount(1);
     }
 
+    public function testSessionTabContextMenuOffersNewAndCloseSession(): void
+    {
+        putenv('PATH='.$this->originalPath);
+        putenv('SHELL=/bin/sh');
+        $project = new TempProject(['A.php' => "<?php\n"]);
+
+        $this->runIde(
+            $project,
+            $project->path('A.php'),
+            [
+                300 => static function ($tui): void {
+                    $tui->handleInput("\x1b[96;5u"); // shell 1
+                },
+                600 => function ($tui, $terminal, $ide): void {
+                    $tui->tick();
+                    $renderer = new \ReflectionProperty($ide, 'renderer')->getValue($ide);
+                    $rect = $renderer->getWidgetRect($tui->getById('dock-tabs'));
+                    $strip = AnsiUtils::stripAnsiCodes($tui->getById('dock-tabs')->render(new \Symfony\Component\Tui\Render\RenderContext($rect->columns, 1))[0]);
+
+                    $terminal->clearOutput();
+                    $tui->handleInput(\sprintf("\x1b[<2;%d;%dM", $rect->col + (int) mb_strpos($strip, needle: 'sh') + 1, $rect->row + 1));
+                    $this->assertTrue($tui->getById('context-menu')->isOpen(), 'right-clicking a session tab opened its menu');
+                    $this->await(static fn (): bool => str_contains(AnsiUtils::stripAnsiCodes($terminal->getOutput()), 'New Session'));
+                    $screen = AnsiUtils::stripAnsiCodes($terminal->getOutput());
+                    $this->assertStringContainsString('New Session', $screen);
+                    $this->assertStringContainsString('Close Session', $screen);
+
+                    $tui->handleInput("\r"); // New Session leads the list
+                },
+                1000 => function ($tui, $terminal, $ide): void {
+                    $tui->tick();
+                    $this->assertCount(2, $this->sessions($ide), 'the menu spawned a sibling session');
+
+                    // Keyboard parity: Ctrl+F10 while the terminal panel holds
+                    // the focus anchors the same menu at the active session's tab.
+                    $this->assertSame('terminal', $tui->getFocus()?->getId());
+                    $terminal->clearOutput();
+                    $tui->handleInput("\x1b[21;5~");
+                    $this->assertTrue($tui->getById('context-menu')->isOpen(), 'Ctrl+F10 opened the session menu');
+                    $this->await(static fn (): bool => str_contains(AnsiUtils::stripAnsiCodes($terminal->getOutput()), 'Close Session'));
+                    $tui->handleInput("\x1b");
+                },
+            ],
+        );
+
+        $this->addToAssertionCount(1);
+    }
+
     public function testRunConfigurationGetsItsOwnTabBesideTheShellAndReRunsInPlace(): void
     {
         putenv('PATH='.$this->originalPath);

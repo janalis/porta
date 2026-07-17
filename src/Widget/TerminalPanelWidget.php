@@ -11,6 +11,8 @@ use Porta\Terminal\TerminalBuffer;
 use Porta\Ui\CursorStyle;
 use Porta\Ui\LtrPane;
 use Porta\Ui\Sgr;
+use Porta\Widget\Render\MenuOverlayHost;
+use Porta\Widget\Render\MenuOverlayHostTrait;
 use Symfony\Component\Tui\Ansi\AnsiUtils;
 use Symfony\Component\Tui\Input\Key;
 use Symfony\Component\Tui\Render\RenderContext;
@@ -27,9 +29,10 @@ use Symfony\Component\Tui\Widget\KeybindingsTrait;
  * close/cycle callbacks for the session keys.
  */
 #[AsWidget('terminal')]
-final class TerminalPanelWidget extends OverlayWidget implements FocusableInterface, LtrPane
+final class TerminalPanelWidget extends OverlayWidget implements FocusableInterface, LtrPane, MenuOverlayHost
 {
     use FocusableTrait;
+    use MenuOverlayHostTrait;
     use InputHook;
     use KeybindingsTrait;
     use PanelRows;
@@ -207,7 +210,7 @@ final class TerminalPanelWidget extends OverlayWidget implements FocusableInterf
             $lines[$row] = substr($lines[$row], offset: 0, length: $byte).$this->cursorStyle->marker().substr($lines[$row], $byte);
         }
 
-        return $lines;
+        return $this->withMenuOverlay($lines, $columns);
     }
 
     private function cycle(int $delta): void

@@ -1906,6 +1906,30 @@
         <source>Problems</source>
         <target>בעיות</target>
       </trans-unit>
+      <trans-unit id="480">
+        <source>New Session</source>
+        <target>סשן חדש</target>
+      </trans-unit>
+      <trans-unit id="481">
+        <source>Close Session</source>
+        <target>סגור סשן</target>
+      </trans-unit>
+      <trans-unit id="482">
+        <source>Stage</source>
+        <target>הוסף ל-Stage</target>
+      </trans-unit>
+      <trans-unit id="483">
+        <source>Unstage</source>
+        <target>הסר מ-Stage</target>
+      </trans-unit>
+      <trans-unit id="484">
+        <source>Discard…</source>
+        <target>בטל שינויים…</target>
+      </trans-unit>
+      <trans-unit id="485">
+        <source>File History</source>
+        <target>היסטוריית קובץ</target>
+      </trans-unit>
     </body>
   </file>
 </xliff>

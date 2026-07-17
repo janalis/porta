@@ -904,8 +904,10 @@ final class MouseRouter
 
     /**
      * Open the context menu for whichever pane is under a right-click: the editor
-     * (edit/navigate/refactor actions), a tab (close actions) or a tree node
-     * (file operations). A right-click supersedes any open application menu.
+     * (edit/navigate/refactor actions), a tab (close actions), a tree node
+     * (file operations), a dock-strip tab (close / session actions) or a git
+     * changes row (stage/discard/history). A right-click supersedes any open
+     * application menu.
      */
     private function handleRightPress(MouseEvent $mouse, ?WidgetRect $treeRect, ?WidgetRect $tabsRect, ?WidgetRect $editorRect): void
     {
@@ -944,6 +946,25 @@ final class MouseRouter
                 return;
             }
             $items = $this->treeOps->contextItems($node);
+        }
+        $stripRect = $this->hit->rect($this->dockTabs);
+        if (
+            !$handled
+            && $this->dock->stripVisible()
+            && null !== $stripRect
+            && $mouse->row === $stripRect->row
+            && $mouse->col >= $stripRect->col
+            && $mouse->col < ($stripRect->col + $stripRect->columns)
+        ) {
+            $handled = true;
+            $hit = $this->dockTabs->tabAt($mouse->col - $stripRect->col);
+            if (null === $hit) {
+                return; // the strip's empty tail stays menu-less
+            }
+            $items = $this->contextItems->dockTabItems($hit['tab'], $hit['key']);
+        }
+        if (!$handled && null !== ($entry = $this->git->changesRowAt($mouse))) {
+            $items = $this->contextItems->gitChangeItems($entry);
         }
         if (null === $items) {
             return;

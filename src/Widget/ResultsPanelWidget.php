@@ -18,6 +18,8 @@ use Porta\Ui\Sgr;
 use Porta\Ui\TextField;
 use Porta\Ui\Theme\Styles;
 use Porta\Widget\Render\HeaderRenderer;
+use Porta\Widget\Render\MenuOverlayHost;
+use Porta\Widget\Render\MenuOverlayHostTrait;
 use Symfony\Component\Tui\Ansi\AnsiUtils;
 use Symfony\Component\Tui\Input\Key;
 use Symfony\Component\Tui\Render\RenderContext;
@@ -30,9 +32,10 @@ use Symfony\Component\Tui\Widget\KeybindingsTrait;
  * find-usages results. Hidden (zero rows) when closed.
  */
 #[AsWidget('results')]
-final class ResultsPanelWidget extends OverlayWidget implements FocusableInterface, LtrPane
+final class ResultsPanelWidget extends OverlayWidget implements FocusableInterface, LtrPane, MenuOverlayHost
 {
     use FocusableTrait;
+    use MenuOverlayHostTrait;
     use InputHook;
     use KeybindingsTrait;
     use ListPanelInteraction;
@@ -480,7 +483,7 @@ final class ResultsPanelWidget extends OverlayWidget implements FocusableInterfa
             $lines[] = $this->styles->merge(Role::Toolbar, Role::CompletionHint)->apply(AnsiUtils::truncateToWidth(' '.$this->translator->trans('no results'), $columns, '', pad: true));
         }
 
-        return $lines;
+        return $this->withMenuOverlay($lines, $columns);
     }
 
     /** The dock strip's right-aligned status — empty in query modes, whose own header shows it. */

@@ -105,6 +105,40 @@ final class ChangesListWidgetTest extends TestCase
         $this->assertSame('src/a.php', $discarded);
     }
 
+    public function testContextMenuTriggersReuseTheExistingCallbacks(): void
+    {
+        $widget = new ChangesListWidget(new Translator('en'));
+        $widget->setEntries($this->entries());
+        $selected = [];
+        $toggled = [];
+        $history = 0;
+        $widget->onSelect(static function (ChangeEntry $entry) use (&$selected): void {
+            $selected[] = $entry->path;
+        });
+        $widget->onToggleStage(static function (ChangeEntry $entry) use (&$toggled): void {
+            $toggled[] = $entry->path;
+        });
+        $widget->onShowHistory(static function () use (&$history): void {
+            ++$history;
+        });
+        $widget->render(new RenderContext(60, 8));
+
+        $this->assertNull($widget->selectRowAt(0), 'the header row is no entry');
+        $entry = $widget->selectRowAt(2); // row 2 = the second entry
+        $this->assertSame('src/b.php', $entry?->path, 'a right-click selects the row under it');
+        $this->assertSame(['src/b.php'], $selected);
+        $this->assertSame(2, $widget->selectedRow(), 'the selected row maps back to its widget row');
+
+        $widget->toggleStageSelected();
+        $this->assertSame(['src/b.php'], $toggled, 'the Stage/Unstage item rides onToggleStage');
+
+        $widget->showHistory();
+        $this->assertSame(1, $history, 'the File History item rides onShowHistory');
+
+        $widget->armDiscardSelected();
+        $this->assertStringContainsString('Discard changes?', $this->plain($widget->render(new RenderContext(60, 8))), 'the Discard… item arms the two-press confirmation');
+    }
+
     public function testSetEntriesKeepsSelectionByPath(): void
     {
         $widget = new ChangesListWidget(new Translator('en'));

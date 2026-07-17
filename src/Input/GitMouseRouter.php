@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Porta\Input;
 
+use Porta\Git\ChangeEntry;
 use Porta\Widget\Git\ChangesListWidget;
 use Porta\Widget\Git\CommitBoxWidget;
 use Porta\Widget\Git\DiffViewWidget;
@@ -36,6 +37,25 @@ final class GitMouseRouter
         private readonly GitTabsWidget $tabs,
         private readonly SeparatorWidget $separator,
     ) {}
+
+    /**
+     * A right-press landed on a changes row: select it and return its entry
+     * for the context menu; null anywhere else (or while the git view is closed
+     * — a hidden widget has no rect).
+     */
+    public function changesRowAt(MouseEvent $mouse): ?ChangeEntry
+    {
+        $rel = $this->hit->hit($this->changes, $mouse->row, $mouse->col);
+        if (null === $rel) {
+            return null;
+        }
+        $entry = $this->changes->selectRowAt($rel['row']);
+        if (null !== $entry) {
+            $this->tui->setFocus($this->changes);
+        }
+
+        return $entry;
+    }
 
     /** The sidebar's drag column (identity for the layout's resize arming). */
     public function separatorRect(): ?WidgetRect

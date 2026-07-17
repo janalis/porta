@@ -1906,6 +1906,30 @@
         <source>Problems</source>
         <target>問題</target>
       </trans-unit>
+      <trans-unit id="480">
+        <source>New Session</source>
+        <target>新しいセッション</target>
+      </trans-unit>
+      <trans-unit id="481">
+        <source>Close Session</source>
+        <target>セッションを閉じる</target>
+      </trans-unit>
+      <trans-unit id="482">
+        <source>Stage</source>
+        <target>ステージ</target>
+      </trans-unit>
+      <trans-unit id="483">
+        <source>Unstage</source>
+        <target>ステージ解除</target>
+      </trans-unit>
+      <trans-unit id="484">
+        <source>Discard…</source>
+        <target>破棄…</target>
+      </trans-unit>
+      <trans-unit id="485">
+        <source>File History</source>
+        <target>ファイル履歴</target>
+      </trans-unit>
     </body>
   </file>
 </xliff>

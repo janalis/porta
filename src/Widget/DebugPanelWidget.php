@@ -13,6 +13,8 @@ use Porta\Ui\ListSelection;
 use Porta\Ui\LtrPane;
 use Porta\Ui\Role;
 use Porta\Ui\Theme\Styles;
+use Porta\Widget\Render\MenuOverlayHost;
+use Porta\Widget\Render\MenuOverlayHostTrait;
 use Symfony\Component\Tui\Ansi\AnsiUtils;
 use Symfony\Component\Tui\Input\Key;
 use Symfony\Component\Tui\Render\RenderContext;
@@ -31,9 +33,10 @@ use Symfony\Component\Tui\Widget\KeybindingsTrait;
  * resizable bottom panel.
  */
 #[AsWidget('debug')]
-final class DebugPanelWidget extends OverlayWidget implements FocusableInterface, LtrPane
+final class DebugPanelWidget extends OverlayWidget implements FocusableInterface, LtrPane, MenuOverlayHost
 {
     use FocusableTrait;
+    use MenuOverlayHostTrait;
     use KeybindingsTrait;
     use ListPanelInteraction;
     use PanelRows;
@@ -230,7 +233,7 @@ final class DebugPanelWidget extends OverlayWidget implements FocusableInterface
             $lines[] = $bg->apply(AnsiUtils::truncateToWidth($this->rowText($row), $columns, '…', pad: true));
         }
 
-        return $lines;
+        return $this->withMenuOverlay($lines, $columns);
     }
 
     /** @return array<string, string[]> */

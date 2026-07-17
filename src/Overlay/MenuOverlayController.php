@@ -5,7 +5,6 @@ declare(strict_types=1);
 namespace Porta\Overlay;
 
 use Porta\Support\IntMath;
-use Porta\Widget\CodeEditorWidget;
 use Porta\Widget\ContextMenu;
 use Porta\Widget\MenuBarWidget;
 use Porta\Widget\Render\MenuOverlayHost;
@@ -34,7 +33,6 @@ final class MenuOverlayController implements FloatingRegions
         private readonly Renderer $renderer,
         private readonly MenuBarWidget $menuBar,
         private readonly ContextMenu $contextMenu,
-        private readonly CodeEditorWidget $editor,
         private readonly MenuOverlayPanes $panes,
     ) {}
 
@@ -100,27 +98,35 @@ final class MenuOverlayController implements FloatingRegions
 
     /**
      * Position the open context menu as a floating overlay at the right-click
-     * point, composited over the tree, tab bar and editor so it can appear over
-     * any pane. Clamped to the editor pane's right/bottom edges (the screen's),
-     * flipping up when it would overflow the bottom. Clears the overlay when the
-     * menu is closed.
+     * point, composited over the current view's panes so it can appear over
+     * any of them (the editor layout's, the git view's, the settings view's).
+     * Clamped to the screen's right/bottom edges, flipping up when it would
+     * overflow the bottom. Clears the overlay when the menu is closed.
      */
     public function refreshContextMenu(): void
     {
         if (!$this->contextMenu->isOpen()) {
             $this->contextMenuDropdown = null;
-            $this->clearOverlays($this->panes->editor());
+            // Clear every mode's pane set: a menu may close across a view swap.
+            $this->clearOverlays($this->panes->all());
 
             return;
         }
 
-        // The context menu only ever opens from a right-click, i.e. after at
-        // least one frame, so the editor rect is always populated here.
-        /** @var WidgetRect $editorRect */
-        $editorRect = $this->renderer->getWidgetRect($this->editor);
-
-        $screenRight = $editorRect->col + $editorRect->columns;
-        $screenBottom = $editorRect->row + $editorRect->rows;
+        // Clamp/flip against the union of the current view's pane rects: a
+        // slice outside every overlay host would simply not render. The menu
+        // only ever opens from a right-click / Ctrl+F10, i.e. after at least
+        // one frame, so the current panes always have rects.
+        $screenRight = 0;
+        $screenBottom = 0;
+        foreach ($this->panes->current() as $pane) {
+            $rect = $this->renderer->getWidgetRect($pane);
+            if (null === $rect) {
+                continue;
+            }
+            $screenRight = max($screenRight, $rect->col + $rect->columns);
+            $screenBottom = max($screenBottom, $rect->row + $rect->rows);
+        }
         $panelWidth = min($this->contextMenu->panelWidth(), $screenRight);
         $col = IntMath::clamp($this->contextAnchorCol, 0, $screenRight - $panelWidth);
         $count = $this->contextMenu->itemCount();
@@ -130,10 +136,10 @@ final class MenuOverlayController implements FloatingRegions
 
         $segments = $this->contextMenu->segments($panelWidth);
         $this->contextMenuDropdown = new DropdownRegion($top, $col, $panelWidth, \count($segments));
-        // The editor-layout panes: the sidebar↔editor separator column and the
-        // (conditionally hidden) breadcrumb also sit under a menu that spills
-        // across the sidebar boundary.
-        $this->pushOverlays($segments, $top, $col, $panelWidth, $this->panes->editor());
+        // A pane set includes its separator columns and conditionally hidden
+        // rows (e.g. the breadcrumb), so a menu spilling across a pane
+        // boundary still composites gaplessly.
+        $this->pushOverlays($segments, $top, $col, $panelWidth, $this->panes->current());
     }
 
     /** @param list<AbstractWidget&MenuOverlayHost> $panes */

@@ -7,15 +7,19 @@ namespace Porta\Ui;
 use Porta\Editor\BufferManager;
 use Porta\I18n\Translator;
 use Porta\Overlay\MenuOverlayController;
+use Porta\Terminal\TerminalSessions;
 use Porta\Tree\TreeOperations;
 use Porta\Widget\CodeEditorWidget;
 use Porta\Widget\ContextMenu;
+use Porta\Widget\DockTabsWidget;
 use Porta\Widget\FileTreeWidget;
+use Porta\Widget\Git\ChangesListWidget;
 use Porta\Widget\HelpViewerWidget;
 use Porta\Widget\ImageViewerWidget;
 use Porta\Widget\MenuBarWidget;
 use Porta\Widget\TabBarPosition;
 use Porta\Widget\TabBarWidget;
+use Porta\Widget\TerminalPanelWidget;
 use Symfony\Component\Tui\Render\Renderer;
 use Symfony\Component\Tui\Tui;
 
@@ -47,6 +51,10 @@ final class ContextMenuOpener
         private readonly BufferManager $buffers,
         private readonly Notifier $notifier,
         private readonly Translator $translator,
+        private readonly TerminalPanelWidget $terminalPanel,
+        private readonly DockTabsWidget $dockTabs,
+        private readonly TerminalSessions $sessions,
+        private readonly ChangesListWidget $changes,
     ) {}
 
     /** Open the focused pane's context menu, or flash when the pane has none. */
@@ -84,6 +92,26 @@ final class ContextMenuOpener
             // overlay's overflow flip opens the menu above it instead.
             $row = TabBarPosition::Bottom === $this->tabBar->position() ? $anchor['row'] : $anchor['row'] + 1;
             $this->openAt($this->items->tabItems($active->path), (null === $rect ? 0 : $rect->row) + $row, (null === $rect ? 0 : $rect->col) + $anchor['col']);
+
+            return;
+        }
+
+        if ($focus === $this->terminalPanel && null !== ($session = $this->sessions->active())) {
+            $rect = $this->renderer->getWidgetRect($this->dockTabs);
+            // Anchor on the strip row itself: the overlay's overflow flip
+            // opens the menu above the bottom strip.
+            $col = $this->dockTabs->anchorFor(DockTab::Terminal, $session->id) ?? 0;
+            $this->openAt($this->items->dockTabItems(DockTab::Terminal, $session->id), null === $rect ? 0 : $rect->row, (null === $rect ? 0 : $rect->col) + $col);
+
+            return;
+        }
+
+        if ($focus === $this->changes) {
+            $entry = $this->changes->selectedEntry();
+            $rect = $this->renderer->getWidgetRect($this->changes);
+            if (null !== $entry && null !== $rect) {
+                $this->openAt($this->items->gitChangeItems($entry), $rect->row + $this->changes->selectedRow() + 1, $rect->col + 2);
+            }
 
             return;
         }

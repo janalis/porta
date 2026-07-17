@@ -16,7 +16,6 @@ use Porta\Ui\ContextMenuOpener;
 use Porta\Ui\EditorArea;
 use Porta\Ui\FocusCoordinator;
 use Porta\Ui\WorkbenchActions;
-use Porta\Ui\WorkspaceViews;
 use Porta\Widget\CodeEditorWidget;
 use Porta\Widget\FileTreeWidget;
 use Porta\Widget\FindBarWidget;
@@ -39,7 +38,6 @@ final class WorkbenchCommands implements CommandProvider
         private readonly SearchEverywhereController $searchEverywhere,
         private readonly LocalHistoryController $localHistory,
         private readonly RunController $run,
-        private readonly WorkspaceViews $views,
         private readonly EditorArea $editorArea,
         private readonly Tui $tui,
         private readonly CodeEditorWidget $editor,
@@ -84,7 +82,9 @@ final class WorkbenchCommands implements CommandProvider
                 fn () => $this->contextMenuOpener->openForFocus(),
                 keyBound: KeyDispatch::Bound,
                 inPalette: PaletteVisibility::Hidden,
-                when: fn (): bool => !$this->views->isGitOpen() && !$this->views->isSettingsOpen() && !$this->menuBar->isOpen(),
+                // Works in every view — the overlay composites over the current
+                // view's panes; focus without a menu just flashes the no-op.
+                when: fn (): bool => !$this->menuBar->isOpen(),
             )
             ->add('resize_pane_grow', fn () => $this->paneResizer->resize(1), keyBound: KeyDispatch::Bound, inPalette: PaletteVisibility::Hidden, when: fn (): bool => $this->paneResizer->canResize())
             ->add(
