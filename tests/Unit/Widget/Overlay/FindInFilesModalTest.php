@@ -65,7 +65,9 @@ final class FindInFilesModalTest extends TestCase
         $this->assertStringContainsString('src/A.php', $screen, 'grouped file header');
         $this->assertStringContainsString('other/B.php', $screen);
         $this->assertStringContainsString('foo one', $screen, 'match rows render');
-        $this->assertStringContainsString('Find window · Scope · Close', $screen, 'footer actions');
+        $this->assertStringContainsString('Find window · Scope', $screen, 'footer actions');
+        $this->assertStringNotContainsString('Close', $screen, 'the Close word is retired — Esc/outside-click dismiss');
+        $this->assertStringContainsString('Esc', $screen, 'the title carries the dismiss hint');
     }
 
     public function testEmptyAndSearchingStates(): void
@@ -605,9 +607,9 @@ final class FindInFilesModalTest extends TestCase
         $modal->clickAt($footerRow, $scopeCol);
         $this->assertSame([1], $scopeIdx, 'the footer Scope action cycles the scope');
 
-        $closeCol = mb_strpos($footerLine, needle: 'Close');
-        $this->assertIsInt($closeCol);
-        $modal->clickAt($footerRow, $closeCol);
-        $this->assertTrue($closed);
+        // No footer Close word anymore: Esc dismisses instead.
+        $this->assertFalse(mb_strpos($footerLine, needle: 'Close'), 'the footer carries no Close action');
+        $modal->handleInput("\x1b", new Keybindings([]));
+        $this->assertTrue($closed, 'Esc fires the close hook');
     }
 }

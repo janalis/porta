@@ -153,7 +153,7 @@ final class FindBarWidgetTest extends TestCase
         $this->assertStringContainsString('Find: needle', $plain);
         $this->assertStringContainsString('[1/1]', $plain);
         $this->assertStringContainsString('Replace:', $plain);
-        $this->assertStringContainsString('⌥R replace', $plain);
+        $this->assertStringContainsString('Alt+R replace', $plain);
     }
 
     public function testCloseNotifiesAndClearsMatches(): void

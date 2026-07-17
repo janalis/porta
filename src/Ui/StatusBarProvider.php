@@ -77,7 +77,7 @@ final class StatusBarProvider
         }
 
         $location = \sprintf('%d:%d', $doc->getCursorLine() + 1, $doc->getCursorDisplayCol() + 1);
-        $legend = $this->translator->trans('LSP:%status%  ^S save ^T panel ^Space complete ^Q quit', [
+        $legend = $this->translator->trans('LSP:%status%  Ctrl+S save  Ctrl+T panel  Ctrl+Space complete  Ctrl+Q quit', [
             '%status%' => $this->lsp->statusFor($this->editor->getFilePath()),
         ]);
         $right = $problems.$location.'  '.$legend;

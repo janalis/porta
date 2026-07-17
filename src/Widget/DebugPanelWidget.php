@@ -109,7 +109,7 @@ final class DebugPanelWidget extends OverlayWidget implements FocusableInterface
             DebugState::Terminated => 'terminated',
         };
 
-        return $status.'  F8 over · F7 into · ⇧F8 out · F9 resume · ^F2 stop';
+        return $status.'  F8 over · F7 into · Shift+F8 out · F9 resume · Ctrl+F2 stop';
     }
 
     public function open(string $title): void

@@ -26,6 +26,9 @@ final class Sgr
 
     public const string BOLD = "\x1b[1m";
 
+    /** Faint/dim intensity — the muted pen for inline hints like the Esc affordance. */
+    public const string FAINT = "\x1b[2m";
+
     /** Cancel bold/faint intensity (back to normal weight). */
     public const string NORMAL_INTENSITY = "\x1b[22m";
 

@@ -93,6 +93,14 @@ final class StatusBarWidget extends AbstractWidget
         $left = null !== $this->flash ? $this->flash['text'] : $this->lastLeft;
         $right = $this->lastRight;
 
+        // A flash is transient information the user must read, so it wins the
+        // width fight: the right side (whose tail is the static key legend)
+        // yields to it. The steady-state left (the file path) yields as before.
+        if (null !== $this->flash) {
+            $rightMax = max(0, $columns - min(AnsiUtils::visibleWidth($left), $columns - 3) - 3);
+            $right = AnsiUtils::truncateToWidth($right, $rightMax, '…');
+        }
+
         $rightWidth = AnsiUtils::visibleWidth($right);
         $leftMax = max(0, $columns - $rightWidth - 3);
         $left = AnsiUtils::truncateToWidth($left, $leftMax, '…');

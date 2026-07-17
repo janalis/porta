@@ -279,8 +279,8 @@
         <target>שרת LSP</target>
       </trans-unit>
       <trans-unit id="70">
-        <source>LSP:%status%  ^S save ^T panel ^Space complete ^Q quit</source>
-        <target>LSP:%status%  ^S שמור ^T פאנל ^Space השלמה ^Q יציאה</target>
+        <source>LSP:%status%  Ctrl+S save  Ctrl+T panel  Ctrl+Space complete  Ctrl+Q quit</source>
+        <target>LSP:%status%  Ctrl+S שמור  Ctrl+T פאנל  Ctrl+Space השלמה  Ctrl+Q יציאה</target>
       </trans-unit>
       <trans-unit id="71">
         <source>Last commit undone (changes kept staged)</source>
@@ -595,12 +595,12 @@
         <target>מתחיל…</target>
       </trans-unit>
       <trans-unit id="149">
-        <source>⏎/F3 next  ⇧F3 prev  esc</source>
-        <target>⏎/F3 הבא  ⇧F3 הקודם  esc</target>
+        <source>⏎/F3 next  Shift+F3 prev  Esc</source>
+        <target>⏎/F3 הבא  Shift+F3 הקודם  Esc</target>
       </trans-unit>
       <trans-unit id="150">
-        <source>⏎/F3 next  ⇧F3 prev  ⇥ field  ⌥R replace  ⌥A all  esc</source>
-        <target>⏎/F3 הבא  ⇧F3 הקודם  ⇥ שדה  ⌥R החלף  ⌥A הכול  esc</target>
+        <source>⏎/F3 next  Shift+F3 prev  Tab field  Alt+R replace  Alt+A all  Esc</source>
+        <target>⏎/F3 הבא  Shift+F3 הקודם  Tab שדה  Alt+R החלף  Alt+A הכול  Esc</target>
       </trans-unit>
       <trans-unit id="151">
         <source>Accept Completion</source>
@@ -1443,12 +1443,12 @@
         <target>ביטוי רגולרי שגוי</target>
       </trans-unit>
       <trans-unit id="364">
-        <source>⏎/F3 next  ⇧F3 prev  ⇥ field  ⌥R replace  ⌥A all  ⌥X .*  ⌥W \b  esc</source>
-        <target>⏎/F3 הבא  ⇧F3 הקודם  ⇥ שדה  ⌥R החלפה  ⌥A הכול  ⌥X .*  ⌥W \b  esc</target>
+        <source>⏎/F3 next  Shift+F3 prev  Tab field  Alt+R replace  Alt+A all  Alt+X .*  Alt+W \b  Esc</source>
+        <target>⏎/F3 הבא  Shift+F3 הקודם  Tab שדה  Alt+R החלפה  Alt+A הכול  Alt+X .*  Alt+W \b  Esc</target>
       </trans-unit>
       <trans-unit id="365">
-        <source>⏎/F3 next  ⇧F3 prev  ⌥X .*  ⌥W \b  esc</source>
-        <target>⏎/F3 הבא  ⇧F3 הקודם  ⌥X .*  ⌥W \b  esc</target>
+        <source>⏎/F3 next  Shift+F3 prev  Alt+X .*  Alt+W \b  Esc</source>
+        <target>⏎/F3 הבא  Shift+F3 הקודם  Alt+X .*  Alt+W \b  Esc</target>
       </trans-unit>
       <trans-unit id="366">
         <source>Fetching…</source>

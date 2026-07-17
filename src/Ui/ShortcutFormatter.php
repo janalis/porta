@@ -8,7 +8,13 @@ namespace Porta\Ui;
  * Formats a raw keybinding token string (as stored in the framework's
  * Keybindings — e.g. `ctrl+shift+n`, `f12`, `alt+shift+up`, `shift+f6`,
  * `` ctrl+` ``) into a human display label (`Ctrl+Shift+N`, `F12`,
- * `Alt+Shift+↑`) for the menu bar and, later, the command palette.
+ * `Alt+Shift+↑`) for the menu bar and the command palette.
+ *
+ * This output IS the IDE's canonical key-hint dialect: named modifiers joined
+ * with `+` (`Ctrl+`, `Alt+`, `Shift+` — never `^`/`⌥`/`⇧`) and the special
+ * keys spelled as in KEYS (`⏎`, `Esc`, `Tab`, …). Hand-authored hint strips
+ * (find bar, debug legend, status bar) are written in this dialect too, so a
+ * shortcut reads the same wherever it appears.
  */
 final class ShortcutFormatter
 {

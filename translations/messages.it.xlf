@@ -279,8 +279,8 @@
         <target>Server LSP</target>
       </trans-unit>
       <trans-unit id="70">
-        <source>LSP:%status%  ^S save ^T panel ^Space complete ^Q quit</source>
-        <target>LSP:%status%  ^S salva ^T pannello ^Space completa ^Q esci</target>
+        <source>LSP:%status%  Ctrl+S save  Ctrl+T panel  Ctrl+Space complete  Ctrl+Q quit</source>
+        <target>LSP:%status%  Ctrl+S salva  Ctrl+T pannello  Ctrl+Space completa  Ctrl+Q esci</target>
       </trans-unit>
       <trans-unit id="71">
         <source>Last commit undone (changes kept staged)</source>
@@ -595,12 +595,12 @@
         <target>avvio…</target>
       </trans-unit>
       <trans-unit id="149">
-        <source>⏎/F3 next  ⇧F3 prev  esc</source>
-        <target>⏎/F3 successivo  ⇧F3 precedente  esc</target>
+        <source>⏎/F3 next  Shift+F3 prev  Esc</source>
+        <target>⏎/F3 successivo  Shift+F3 precedente  Esc</target>
       </trans-unit>
       <trans-unit id="150">
-        <source>⏎/F3 next  ⇧F3 prev  ⇥ field  ⌥R replace  ⌥A all  esc</source>
-        <target>⏎/F3 successivo  ⇧F3 precedente  ⇥ campo  ⌥R sostituisci  ⌥A tutto  esc</target>
+        <source>⏎/F3 next  Shift+F3 prev  Tab field  Alt+R replace  Alt+A all  Esc</source>
+        <target>⏎/F3 successivo  Shift+F3 precedente  Tab campo  Alt+R sostituisci  Alt+A tutto  Esc</target>
       </trans-unit>
       <trans-unit id="151">
         <source>Accept Completion</source>
@@ -1443,12 +1443,12 @@
         <target>regex non valida</target>
       </trans-unit>
       <trans-unit id="364">
-        <source>⏎/F3 next  ⇧F3 prev  ⇥ field  ⌥R replace  ⌥A all  ⌥X .*  ⌥W \b  esc</source>
-        <target>⏎/F3 succ.  ⇧F3 prec.  ⇥ campo  ⌥R sostituisci  ⌥A tutto  ⌥X .*  ⌥W \b  esc</target>
+        <source>⏎/F3 next  Shift+F3 prev  Tab field  Alt+R replace  Alt+A all  Alt+X .*  Alt+W \b  Esc</source>
+        <target>⏎/F3 succ.  Shift+F3 prec.  Tab campo  Alt+R sostituisci  Alt+A tutto  Alt+X .*  Alt+W \b  Esc</target>
       </trans-unit>
       <trans-unit id="365">
-        <source>⏎/F3 next  ⇧F3 prev  ⌥X .*  ⌥W \b  esc</source>
-        <target>⏎/F3 succ.  ⇧F3 prec.  ⌥X .*  ⌥W \b  esc</target>
+        <source>⏎/F3 next  Shift+F3 prev  Alt+X .*  Alt+W \b  Esc</source>
+        <target>⏎/F3 succ.  Shift+F3 prec.  Alt+X .*  Alt+W \b  Esc</target>
       </trans-unit>
       <trans-unit id="366">
         <source>Fetching…</source>

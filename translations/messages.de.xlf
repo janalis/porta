@@ -279,8 +279,8 @@
         <target>LSP-Server</target>
       </trans-unit>
       <trans-unit id="70">
-        <source>LSP:%status%  ^S save ^T panel ^Space complete ^Q quit</source>
-        <target>LSP:%status%  ^S speichern ^T Panel ^Space vervollständigen ^Q beenden</target>
+        <source>LSP:%status%  Ctrl+S save  Ctrl+T panel  Ctrl+Space complete  Ctrl+Q quit</source>
+        <target>LSP:%status%  Ctrl+S speichern  Ctrl+T Panel  Ctrl+Space vervollständigen  Ctrl+Q beenden</target>
       </trans-unit>
       <trans-unit id="71">
         <source>Last commit undone (changes kept staged)</source>
@@ -595,12 +595,12 @@
         <target>wird gestartet…</target>
       </trans-unit>
       <trans-unit id="149">
-        <source>⏎/F3 next  ⇧F3 prev  esc</source>
-        <target>⏎/F3 weiter  ⇧F3 zurück  esc</target>
+        <source>⏎/F3 next  Shift+F3 prev  Esc</source>
+        <target>⏎/F3 weiter  Shift+F3 zurück  Esc</target>
       </trans-unit>
       <trans-unit id="150">
-        <source>⏎/F3 next  ⇧F3 prev  ⇥ field  ⌥R replace  ⌥A all  esc</source>
-        <target>⏎/F3 weiter  ⇧F3 zurück  ⇥ Feld  ⌥R ersetzen  ⌥A alle  esc</target>
+        <source>⏎/F3 next  Shift+F3 prev  Tab field  Alt+R replace  Alt+A all  Esc</source>
+        <target>⏎/F3 weiter  Shift+F3 zurück  Tab Feld  Alt+R ersetzen  Alt+A alle  Esc</target>
       </trans-unit>
       <trans-unit id="151">
         <source>Accept Completion</source>
@@ -1443,12 +1443,12 @@
         <target>ungültiger Regex</target>
       </trans-unit>
       <trans-unit id="364">
-        <source>⏎/F3 next  ⇧F3 prev  ⇥ field  ⌥R replace  ⌥A all  ⌥X .*  ⌥W \b  esc</source>
-        <target>⏎/F3 weiter  ⇧F3 zurück  ⇥ Feld  ⌥R ersetzen  ⌥A alle  ⌥X .*  ⌥W \b  esc</target>
+        <source>⏎/F3 next  Shift+F3 prev  Tab field  Alt+R replace  Alt+A all  Alt+X .*  Alt+W \b  Esc</source>
+        <target>⏎/F3 weiter  Shift+F3 zurück  Tab Feld  Alt+R ersetzen  Alt+A alle  Alt+X .*  Alt+W \b  Esc</target>
       </trans-unit>
       <trans-unit id="365">
-        <source>⏎/F3 next  ⇧F3 prev  ⌥X .*  ⌥W \b  esc</source>
-        <target>⏎/F3 weiter  ⇧F3 zurück  ⌥X .*  ⌥W \b  esc</target>
+        <source>⏎/F3 next  Shift+F3 prev  Alt+X .*  Alt+W \b  Esc</source>
+        <target>⏎/F3 weiter  Shift+F3 zurück  Alt+X .*  Alt+W \b  Esc</target>
       </trans-unit>
       <trans-unit id="366">
         <source>Fetching…</source>

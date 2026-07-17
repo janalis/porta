@@ -279,8 +279,8 @@
         <target>LSP サーバー</target>
       </trans-unit>
       <trans-unit id="70">
-        <source>LSP:%status%  ^S save ^T panel ^Space complete ^Q quit</source>
-        <target>LSP:%status%  ^S 保存 ^T パネル ^Space 補完 ^Q 終了</target>
+        <source>LSP:%status%  Ctrl+S save  Ctrl+T panel  Ctrl+Space complete  Ctrl+Q quit</source>
+        <target>LSP:%status%  Ctrl+S 保存  Ctrl+T パネル  Ctrl+Space 補完  Ctrl+Q 終了</target>
       </trans-unit>
       <trans-unit id="71">
         <source>Last commit undone (changes kept staged)</source>
@@ -595,12 +595,12 @@
         <target>起動中…</target>
       </trans-unit>
       <trans-unit id="149">
-        <source>⏎/F3 next  ⇧F3 prev  esc</source>
-        <target>⏎/F3 次へ  ⇧F3 前へ  esc</target>
+        <source>⏎/F3 next  Shift+F3 prev  Esc</source>
+        <target>⏎/F3 次へ  Shift+F3 前へ  Esc</target>
       </trans-unit>
       <trans-unit id="150">
-        <source>⏎/F3 next  ⇧F3 prev  ⇥ field  ⌥R replace  ⌥A all  esc</source>
-        <target>⏎/F3 次へ  ⇧F3 前へ  ⇥ フィールド  ⌥R 置換  ⌥A すべて  esc</target>
+        <source>⏎/F3 next  Shift+F3 prev  Tab field  Alt+R replace  Alt+A all  Esc</source>
+        <target>⏎/F3 次へ  Shift+F3 前へ  Tab フィールド  Alt+R 置換  Alt+A すべて  Esc</target>
       </trans-unit>
       <trans-unit id="151">
         <source>Accept Completion</source>
@@ -1443,12 +1443,12 @@
         <target>不正な正規表現</target>
       </trans-unit>
       <trans-unit id="364">
-        <source>⏎/F3 next  ⇧F3 prev  ⇥ field  ⌥R replace  ⌥A all  ⌥X .*  ⌥W \b  esc</source>
-        <target>⏎/F3 次へ  ⇧F3 前へ  ⇥ フィールド  ⌥R 置換  ⌥A すべて  ⌥X .*  ⌥W \b  esc</target>
+        <source>⏎/F3 next  Shift+F3 prev  Tab field  Alt+R replace  Alt+A all  Alt+X .*  Alt+W \b  Esc</source>
+        <target>⏎/F3 次へ  Shift+F3 前へ  Tab フィールド  Alt+R 置換  Alt+A すべて  Alt+X .*  Alt+W \b  Esc</target>
       </trans-unit>
       <trans-unit id="365">
-        <source>⏎/F3 next  ⇧F3 prev  ⌥X .*  ⌥W \b  esc</source>
-        <target>⏎/F3 次へ  ⇧F3 前へ  ⌥X .*  ⌥W \b  esc</target>
+        <source>⏎/F3 next  Shift+F3 prev  Alt+X .*  Alt+W \b  Esc</source>
+        <target>⏎/F3 次へ  Shift+F3 前へ  Alt+X .*  Alt+W \b  Esc</target>
       </trans-unit>
       <trans-unit id="366">
         <source>Fetching…</source>

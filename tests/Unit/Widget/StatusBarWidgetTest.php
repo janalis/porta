@@ -43,6 +43,19 @@ final class StatusBarWidgetTest extends TestCase
         $this->assertStringContainsString('normal', $line);
     }
 
+    public function testAFlashOutranksTheRightSideLegend(): void
+    {
+        $status = new StatusBarWidget(new MockClock('2020-01-01T00:00:00+00:00'));
+        $status->setProvider(static fn () => ['left' => 'file.php', 'right' => '1:1  LSP:none  Ctrl+S save  Ctrl+T panel  Ctrl+Q quit']);
+        $status->beforeRender();
+
+        $status->flash('Saved a/really/long/path/src/Demo.php', 1.0);
+        $line = $status->render(new RenderContext(50, 1))[0];
+        $this->assertSame(50, AnsiUtils::visibleWidth($line));
+        $this->assertStringContainsString('Saved a/really/long/path/src/Demo.php', $line, 'the flash renders whole — the legend yields');
+        $this->assertStringContainsString('…', AnsiUtils::stripAnsiCodes($line), 'the right side truncates with a mark');
+    }
+
     public function testLongLeftContentTruncates(): void
     {
         $status = new StatusBarWidget();

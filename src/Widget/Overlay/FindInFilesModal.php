@@ -91,7 +91,7 @@ final class FindInFilesModal
     private array $footerZones = [];
     private int $optionsRow = -1;
     private int $footerRowIndex = -1;
-    /** hovered header/footer zone name ('regex'|'case'|'word'|'preserve'|'tokens'|'scope'|'find_window'|'footer_scope'|'close') or null */
+    /** hovered header/footer zone name ('regex'|'case'|'word'|'preserve'|'tokens'|'scope'|'find_window'|'footer_scope') or null */
     private ?string $hovered = null;
 
     /** @var (callable(string): void)|null */
@@ -631,7 +631,7 @@ final class FindInFilesModal
         $replaceHint = $this->inPreview() ? \sprintf('  (Del exclude · Alt+A replace %d)', $this->keptCount()) : '  (Tab · Alt+A)';
 
         return [
-            HeaderRenderer::render($title, $width, $this->styles->of(Role::HeaderBar)->withBold()),
+            HeaderRenderer::render($title, $width, $this->styles->of(Role::HeaderBar)->withBold(), suffix: 'Esc'),
             $this->fieldRow('Find', $this->query, CaretVisibility::Shown === $focused && 'query' === $this->activeField ? CaretVisibility::Shown : CaretVisibility::Hidden, '', $width),
             $this->fieldRow(
                 'Replace',
@@ -777,13 +777,13 @@ final class FindInFilesModal
         $sep = ' · ';
         $line = ' Enter open'.$sep;
         $col = mb_strwidth($line);
-        foreach (['Find window' => 'find_window', 'Scope' => 'footer_scope', 'Close' => 'close'] as $label => $name) {
+        foreach (['Find window' => 'find_window', 'Scope' => 'footer_scope'] as $label => $name) {
             $this->footerZones[] = ['name' => $name, 'start' => $col, 'end' => $col + mb_strwidth($label)];
             $line .= $name === $this->hovered
                 ? $this->styles->merge(Role::RowHighlightBg, Role::Bright)->apply($label).$dim
                 : $label;
             $col += mb_strwidth($label);
-            if ('close' !== $name) {
+            if ('footer_scope' !== $name) {
                 $line .= $sep;
                 $col += mb_strwidth($sep);
             }
@@ -875,7 +875,7 @@ final class FindInFilesModal
         return true;
     }
 
-    /** Fire the footer action under a click ('find_window' | 'footer_scope' | 'close'). */
+    /** Fire the footer action under a click ('find_window' | 'footer_scope'). */
     private function clickFooter(?string $name): void
     {
         if ('find_window' === $name) {
@@ -887,13 +887,6 @@ final class FindInFilesModal
         }
         if ('footer_scope' === $name) {
             $this->cycleScope();
-
-            return;
-        }
-        if ('close' === $name) {
-            if (null !== $this->onClose) {
-                ($this->onClose)();
-            }
         }
     }
 

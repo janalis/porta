@@ -374,7 +374,7 @@ final class EditorRenderer
         $windowStart = IntMath::clamp($selected - $maxItems + 1, 0, \count($items) - $maxItems);
         $visible = \array_slice($items, $windowStart, $maxItems);
 
-        $width = mb_strwidth($overlay['title']) + 4;
+        $width = mb_strwidth($overlay['title']) + 4 + mb_strwidth(' Esc'); // the title row's dismiss hint needs its own room
         foreach ($visible as $item) {
             $width = max($width, mb_strwidth($item['label']) + mb_strwidth($item['hint']) + 6);
         }
@@ -382,7 +382,7 @@ final class EditorRenderer
         $col = max(0, intdiv($columns - $width, num2: 2));
 
         $popup = [];
-        $popup[] = HeaderRenderer::render(' '.$overlay['title'], $width, $styles->of(Role::HeaderBar)->withBold());
+        $popup[] = HeaderRenderer::render(' '.$overlay['title'], $width, $styles->of(Role::HeaderBar)->withBold(), suffix: 'Esc');
         foreach ($visible as $i => $item) {
             $isSelected = ($windowStart + $i) === $selected;
             $style = $styles->of($isSelected ? Role::SelectedRow : Role::PopupRow);
@@ -430,7 +430,7 @@ final class EditorRenderer
         $col = max(0, intdiv($columns - $width, num2: 2));
 
         $popup = [
-            HeaderRenderer::render(' '.$title, $width, $styles->of(Role::HeaderBar)->withBold()),
+            HeaderRenderer::render(' '.$title, $width, $styles->of(Role::HeaderBar)->withBold(), suffix: 'Esc'),
             $styles->of(Role::Toolbar)->apply(AnsiText::scrollLineToCaret(' > '.$query.(PaneFocus::Focused === $focused ? $cursorMarker : ''), $width)),
         ];
         foreach ($visible as $i => $row) {

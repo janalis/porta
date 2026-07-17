@@ -4786,6 +4786,11 @@ final class IdeEdgeCasesTest extends TestCase
                     $tui->handleInput("\x1b[<16;41;4M");
                     $tui->handleInput("\x1b[<16;41;4m");
                 },
+                900 => function () use ($captureFile): void {
+                    // The shim opener is an async subprocess: under load its
+                    // second write can land after the loop would stop.
+                    $this->await(static fn (): bool => is_file($captureFile) && 2 === substr_count((string) file_get_contents($captureFile), needle: "\n"));
+                },
             ],
         );
 

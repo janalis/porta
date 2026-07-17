@@ -36,6 +36,23 @@ final class HeaderRendererTest extends TestCase
         $this->assertStringStartsWith("\x1b[38;5;231m\x1b[48;5;237m\x1b[1m", $line);
     }
 
+    public function testSuffixRendersFaintAndRightAligned(): void
+    {
+        $line = HeaderRenderer::render('Title', 20, new Style(background: 237, bold: true), suffix: 'Esc');
+
+        $this->assertSame(20, AnsiUtils::visibleWidth($line), 'the suffix stays inside the bar width');
+        $this->assertSame('Title           Esc ', AnsiUtils::stripAnsiCodes($line), 'right-aligned with a one-cell margin');
+        $this->assertStringContainsString("\x1b[22m\x1b[2mEsc", $line, 'the hint drops bold and renders faint');
+    }
+
+    public function testSuffixClipsTheTitleNotTheHint(): void
+    {
+        $line = HeaderRenderer::render('A very long header', 12, new Style(background: 237, bold: true), suffix: 'Esc');
+
+        $this->assertSame(12, AnsiUtils::visibleWidth($line));
+        $this->assertStringEndsWith('Esc ', AnsiUtils::stripAnsiCodes($line), 'the hint survives; the title clips');
+    }
+
     public function testTruncatesWithEllipsis(): void
     {
         $line = HeaderRenderer::render('A very long header', 6, new Style(background: 237, bold: true));

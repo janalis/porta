@@ -240,8 +240,8 @@ final class FindBarWidget extends OverlayWidget implements FocusableInterface
             : '';
 
         $hints = $this->withReplace
-            ? $this->translator->trans('⏎/F3 next  ⇧F3 prev  ⇥ field  ⌥R replace  ⌥A all  ⌥X .*  ⌥W \b  esc')
-            : $this->translator->trans('⏎/F3 next  ⇧F3 prev  ⌥X .*  ⌥W \b  esc');
+            ? $this->translator->trans('⏎/F3 next  Shift+F3 prev  Tab field  Alt+R replace  Alt+A all  Alt+X .*  Alt+W \b  Esc')
+            : $this->translator->trans('⏎/F3 next  Shift+F3 prev  Alt+X .*  Alt+W \b  Esc');
 
         $tags = $this->optionTag('.*', $this->regex ? ToggleState::On : ToggleState::Off).$this->optionTag('\b', $this->wholeWord ? ToggleState::On : ToggleState::Off);
         $left = $findField.$replaceField.$this->styles->of(Role::Dim)->apply("[{$position}]").$tags;
