@@ -708,6 +708,29 @@ final class MouseRouter
         }
     }
 
+    /** Tab-strip hover: the tab under the pointer tints; leaving a strip clears it. */
+    private function updateStripHover(MouseEvent $mouse): void
+    {
+        $changed = false;
+
+        $tabsRect = $this->hit->rect($this->panes->tabBar());
+        $rel = null !== $tabsRect && $tabsRect->contains($mouse->row, $mouse->col) ? $tabsRect->toRelative($mouse->row, $mouse->col) : null;
+        $changed = (null !== $rel ? $this->panes->tabBar()->hoverTab($rel['row'], $rel['col']) : $this->panes->tabBar()->clearHover()) || $changed;
+
+        $stripRect = $this->hit->rect($this->dockTabs);
+        $onStrip = $this->dock->stripVisible() && null !== $stripRect && $mouse->row === $stripRect->row && $mouse->col >= $stripRect->col && $mouse->col < ($stripRect->col + $stripRect->columns);
+        $changed = ($onStrip ? $this->dockTabs->hoverTabAt($mouse->col - $stripRect->col) : $this->dockTabs->clearTabHover()) || $changed;
+
+        $terminal = $this->dock->terminalPanel();
+        $terminalRect = $terminal->isVisible() ? $this->hit->rect($terminal) : null;
+        $onSessionStrip = null !== $terminalRect && $mouse->row === $terminalRect->row && $mouse->col >= $terminalRect->col && $mouse->col < ($terminalRect->col + $terminalRect->columns);
+        $changed = ($onSessionStrip ? $terminal->hoverTabAt($mouse->col - $terminalRect->col) : $terminal->clearTabHover()) || $changed;
+
+        if ($changed) {
+            $this->tui->requestRender();
+        }
+    }
+
     /**
      * Application-menu hover: an open menu highlights the dropdown item under the
      * pointer and switches to a sibling title the pointer moves onto; a closed bar
@@ -789,6 +812,7 @@ final class MouseRouter
     private function handleMainHover(MouseEvent $mouse, ?WidgetRect $editorRect): void
     {
         $this->updateTreeHover($mouse);
+        $this->updateStripHover($mouse);
 
         if ($this->handleMenuHover($mouse)) {
             return;

@@ -168,7 +168,13 @@ final class GitMouseRouter
      */
     public function hover(MouseEvent $mouse): void
     {
-        if ($this->hit->hover($mouse->row, $mouse->col, $this->changes, $this->history)) {
+        $changed = $this->hit->hover($mouse->row, $mouse->col, $this->changes, $this->history, $this->commitBox);
+
+        $tabsRect = $this->hit->rect($this->tabs);
+        $onTabs = null !== $tabsRect && $tabsRect->contains($mouse->row, $mouse->col);
+        $changed = $this->tabs->hoverMode($onTabs ? $this->tabs->modeAtColumn($mouse->col - $tabsRect->col) : null) || $changed;
+
+        if ($changed) {
             $this->tui->requestRender();
         }
     }

@@ -280,4 +280,19 @@ final class CommitBoxWidgetTest extends TestCase
             $this->assertSame(44, $width, 'the summary row must not overflow after a multibyte backspace');
         }
     }
+
+    public function testTheEnabledCommitButtonHoversAndTheDisabledOneDoesNot(): void
+    {
+        $widget = $this->widget();
+        $this->assertFalse($widget->hoverRow($widget->buttonRow()), 'a disabled button is not actionable, so it never hovers');
+
+        $this->type($widget, 'feat: something');
+        $this->assertTrue($widget->hoverRow($widget->buttonRow()), 'the enabled button reacts under the pointer');
+        $this->assertFalse($widget->hoverRow($widget->buttonRow()));
+        $lines = $widget->render(new RenderContext(44, 12));
+        $this->assertStringContainsString("\x1b[4m", $lines[$widget->buttonRow()], 'the hovered button underlines');
+
+        $this->assertTrue($widget->hoverRow(0), 'the summary field is not the button — the tint clears');
+        $this->assertStringNotContainsString("\x1b[4m", $widget->render(new RenderContext(44, 12))[$widget->buttonRow()]);
+    }
 }

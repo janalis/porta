@@ -7076,6 +7076,25 @@ final class IdeEdgeCasesTest extends TestCase
                     $this->assertSame('git-diff', $tui->getFocus()?->getId());
                     $tui->handleInput("\x1b[17;5~"); // Ctrl+F6 walks back
                     $this->assertSame('git-changes', $tui->getFocus()?->getId());
+
+                    // Pointer motion over the git mode tabs tints the inactive one.
+                    $tui->tick();
+                    $renderer = new \ReflectionProperty($ide, 'renderer')->getValue($ide);
+                    $tabsRect = $renderer->getWidgetRect($tui->getById('git-tabs'));
+                    $tui->handleInput(\sprintf("\x1b[<35;%d;%dM", $tabsRect->col + 12, $tabsRect->row + 1)); // over 'History'
+                    $tui->tick();
+                    $this->assertStringContainsString(
+                        "\x1b[48;5;240m",
+                        implode('', $tui->getById('git-tabs')->render(new \Symfony\Component\Tui\Render\RenderContext(44, 1))),
+                        'the hovered git tab tints',
+                    );
+                    $tui->handleInput(\sprintf("\x1b[<35;%d;%dM", $tabsRect->col + 2, $tabsRect->row + 3)); // off the strip
+                    $tui->tick();
+                    $this->assertStringNotContainsString(
+                        "\x1b[48;5;240m",
+                        implode('', $tui->getById('git-tabs')->render(new \Symfony\Component\Tui\Render\RenderContext(44, 1))),
+                        'leaving the strip clears the tint',
+                    );
                 },
             ],
         );

@@ -533,4 +533,44 @@ final class TabBarWidgetTest extends TestCase
         $bar->setPosition(TabBarPosition::Left);
         $this->assertStringContainsString('t-00', $this->plainRender($bar, 80, 5), 'a position change starts the window at the active tab again');
     }
+
+    public function testHoverTintsTheInactiveTabAndClears(): void
+    {
+        $bar = new TabBarWidget();
+        $bar->setProvider(static fn () => [
+            ['name' => 'a.php', 'dirty' => false, 'active' => true],
+            ['name' => 'b.php', 'dirty' => false, 'active' => false],
+        ]);
+        $bar->beforeRender();
+        $bar->render(new RenderContext(60, 1));
+
+        $this->assertTrue($bar->hoverTab(0, 12), 'hovering the inactive tab changes the tint');
+        $this->assertFalse($bar->hoverTab(0, 12), 'same tab: no change');
+        $line = $bar->render(new RenderContext(60, 1))[0];
+        $this->assertStringContainsString("\x1b[48;5;240m", $line, 'the hovered tab sits on the bar-chrome hover shade');
+
+        $this->assertTrue($bar->clearHover(), 'leaving the strip clears the tint');
+        $this->assertFalse($bar->clearHover(), 'already clear: no change');
+        $this->assertStringNotContainsString("\x1b[48;5;240m", $bar->render(new RenderContext(60, 1))[0]);
+        $this->assertFalse($bar->hoverTab(0, 500), 'a column past every tab hovers nothing');
+    }
+
+    public function testAProviderChangeDropsTheHoverTint(): void
+    {
+        $tabs = [
+            ['name' => 'a.php', 'dirty' => false, 'active' => true],
+            ['name' => 'b.php', 'dirty' => false, 'active' => false],
+        ];
+        $bar = new TabBarWidget();
+        $bar->setProvider(static function () use (&$tabs) {
+            return $tabs;
+        });
+        $bar->beforeRender();
+        $bar->render(new RenderContext(60, 1));
+        $bar->hoverTab(0, 12);
+
+        $tabs[1]['name'] = 'c.php'; // the strip changed under the pointer
+        $bar->beforeRender();
+        $this->assertStringNotContainsString("\x1b[48;5;240m", $bar->render(new RenderContext(60, 1))[0], 'a stale hover index never tints the new strip');
+    }
 }

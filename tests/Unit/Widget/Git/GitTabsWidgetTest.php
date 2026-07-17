@@ -72,4 +72,19 @@ final class GitTabsWidgetTest extends TestCase
         $line = $widget->render(new RenderContext(44, 1))[0];
         $this->assertStringContainsString('DROPDOWN', $line, 'a dropdown span composites over the strip');
     }
+
+    public function testHoverTintsTheInactiveTabOnly(): void
+    {
+        $widget = new GitTabsWidget(new Translator('en'));
+
+        $this->assertTrue($widget->hoverMode('history'), 'hovering the inactive tab changes the tint');
+        $this->assertFalse($widget->hoverMode('history'), 'same tab: no change');
+        $line = $widget->render(new RenderContext(44, 1))[0];
+        $this->assertStringContainsString("\x1b[48;5;240m", $line, 'the hovered tab sits on the bar-chrome hover shade');
+
+        $this->assertTrue($widget->hoverMode('changes'), 'hovering the ACTIVE tab records it');
+        $this->assertStringNotContainsString("\x1b[48;5;240m", $widget->render(new RenderContext(44, 1))[0], 'but the active style wins');
+
+        $this->assertTrue($widget->hoverMode(null), 'leaving the strip clears');
+    }
 }

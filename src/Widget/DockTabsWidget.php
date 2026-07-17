@@ -32,7 +32,7 @@ final class DockTabsWidget extends AbstractWidget implements LtrPane
 
     private string $lastFingerprint = '';
 
-    /** @var list<array{tab: DockTab, key: string, start: int, width: int, closeStart: int, closeWidth: int}> the last strip's hit map */
+    /** @var list<array{tab: DockTab, key: string, index: int, start: int, width: int, closeStart: int, closeWidth: int}> the last strip's hit map */
     private array $lastTabLayout = [];
 
     /** @var (callable(DockTab, string): void)|null */
@@ -40,6 +40,9 @@ final class DockTabsWidget extends AbstractWidget implements LtrPane
 
     /** @var (callable(DockTab, string): void)|null */
     private $onTabClosed = null;
+
+    /** The strip-entry index under the mouse pointer (visual only), or null. */
+    private ?int $hoveredTab = null;
 
     private readonly Styles $styles;
 
@@ -82,6 +85,39 @@ final class DockTabsWidget extends AbstractWidget implements LtrPane
             $this->lastFingerprint = $fingerprint;
             $this->invalidate();
         }
+    }
+
+    /** Tint the tool tab under the pointer; returns whether it changed. */
+    public function hoverTabAt(int $col): bool
+    {
+        $hovered = null;
+        foreach ($this->lastTabLayout as $entry) {
+            if ($col < $entry['start'] || $col >= ($entry['start'] + $entry['width'])) {
+                continue;
+            }
+
+            $hovered = $entry['index'];
+            break;
+        }
+
+        return $this->setTabHover($hovered);
+    }
+
+    /** The pointer left the strip: drop the hover tint. Returns whether it changed. */
+    public function clearTabHover(): bool
+    {
+        return $this->setTabHover(null);
+    }
+
+    private function setTabHover(?int $index): bool
+    {
+        if ($index === $this->hoveredTab) {
+            return false;
+        }
+        $this->hoveredTab = $index;
+        $this->invalidate();
+
+        return true;
     }
 
     /**
@@ -131,12 +167,15 @@ final class DockTabsWidget extends AbstractWidget implements LtrPane
 
         $status = '';
         foreach ($tabs as $tab) {
-            if ($tab['active']) {
-                $status = $tab['status'];
+            if (!$tab['active']) {
+                continue;
             }
+
+            $status = $tab['status'];
         }
+        $hovered = $this->hoveredTab;
         $strip = TabStripRenderer::render(
-            array_map(static fn (array $tab): array => ['label' => $tab['label'], 'active' => $tab['active'], 'hovered' => false], $tabs),
+            array_map(static fn (array $tab, int $i): array => ['label' => $tab['label'], 'active' => $tab['active'], 'hovered' => $i === $hovered && !$tab['active']], $tabs, array_keys($tabs)),
             $columns,
             $this->styles,
         );
@@ -146,6 +185,7 @@ final class DockTabsWidget extends AbstractWidget implements LtrPane
             $this->lastTabLayout[] = [
                 'tab' => $tab['tab'],
                 'key' => $tab['key'],
+                'index' => $zone['index'],
                 'start' => $zone['start'],
                 'width' => $zone['width'],
                 'closeStart' => $zone['closeStart'],

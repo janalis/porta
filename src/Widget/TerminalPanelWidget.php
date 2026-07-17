@@ -51,6 +51,9 @@ final class TerminalPanelWidget extends OverlayWidget implements FocusableInterf
     /** @var list<array{index: int, start: int, width: int, closeStart: int, closeWidth: int}> the last tab strip's hit map */
     private array $lastTabLayout = [];
 
+    /** The session-tab index under the mouse pointer (visual only), or null. */
+    private ?int $hoveredTab = null;
+
     /** @var (callable(int): void)|null */
     private $onSessionSelected = null;
     /** @var (callable(int): void)|null */
@@ -163,6 +166,39 @@ final class TerminalPanelWidget extends OverlayWidget implements FocusableInterf
      * column landed on a tab — the caller lets a miss (the empty tail) fall
      * through to the panel-resize grab.
      */
+    /** Tint the session tab under the pointer (strip row 0); returns whether it changed. */
+    public function hoverTabAt(int $col): bool
+    {
+        $hovered = null;
+        foreach ($this->lastTabLayout as $entry) {
+            if ($col < $entry['start'] || $col >= ($entry['start'] + $entry['width'])) {
+                continue;
+            }
+
+            $hovered = $entry['index'];
+            break;
+        }
+
+        return $this->setTabHover($hovered);
+    }
+
+    /** The pointer left the strip: drop the hover tint. Returns whether it changed. */
+    public function clearTabHover(): bool
+    {
+        return $this->setTabHover(null);
+    }
+
+    private function setTabHover(?int $index): bool
+    {
+        if ($index === $this->hoveredTab) {
+            return false;
+        }
+        $this->hoveredTab = $index;
+        $this->invalidate();
+
+        return true;
+    }
+
     public function handleTabClick(int $col): bool
     {
         foreach ($this->lastTabLayout as $entry) {
@@ -295,12 +331,17 @@ final class TerminalPanelWidget extends OverlayWidget implements FocusableInterf
             $tabs = [['title' => $this->title, 'running' => true, 'active' => true]];
         }
 
+        $hovered = $this->hoveredTab;
         $strip = TabStripRenderer::render(
-            array_map(static fn (array $tab): array => [
-                'label' => $tab['title'].($tab['running'] ? '' : ' ○'),
-                'active' => $tab['active'],
-                'hovered' => false,
-            ], $tabs),
+            array_map(
+                static fn (array $tab, int $i): array => [
+                    'label' => $tab['title'].($tab['running'] ? '' : ' ○'),
+                    'active' => $tab['active'],
+                    'hovered' => $i === $hovered && !$tab['active'],
+                ],
+                $tabs,
+                array_keys($tabs),
+            ),
             $columns,
             $this->styles,
         );

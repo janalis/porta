@@ -151,4 +151,22 @@ final class DockTabsWidgetTest extends TestCase
         $this->assertTrue($bar->handleTabClick(2));
         $this->assertNotContains('1', $selected, 'the dropped leading tab is not clickable');
     }
+
+    public function testHoverTintsTheInactiveTabAndClears(): void
+    {
+        $bar = self::strip([
+            ['tab' => DockTab::Terminal, 'label' => 'Terminal', 'active' => true, 'key' => '', 'status' => ''],
+            ['tab' => DockTab::Results, 'label' => 'Problems', 'active' => false, 'key' => '1', 'status' => ''],
+        ]);
+        $bar->render(new RenderContext(80, 1));
+
+        $this->assertTrue($bar->hoverTabAt(14), 'hovering the inactive tab changes the tint');
+        $this->assertFalse($bar->hoverTabAt(15), 'same tab: no change');
+        $this->assertStringContainsString("\x1b[48;5;240m", $bar->render(new RenderContext(80, 1))[0]);
+
+        $this->assertTrue($bar->clearTabHover());
+        $this->assertFalse($bar->clearTabHover());
+        $this->assertFalse($bar->hoverTabAt(70), 'the empty tail hovers nothing');
+        $this->assertStringNotContainsString("\x1b[48;5;240m", $bar->render(new RenderContext(80, 1))[0]);
+    }
 }

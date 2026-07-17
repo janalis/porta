@@ -13,6 +13,8 @@ use Porta\Ui\MultilineInput;
 use Porta\Ui\Role;
 use Porta\Ui\TextField;
 use Porta\Ui\Theme\Styles;
+use Porta\Widget\HoverableList;
+use Porta\Widget\HoverTrait;
 use Porta\Widget\InputHook;
 use Porta\Widget\PanelWidth;
 use Porta\Widget\PaneNavigationCallbacks;
@@ -33,9 +35,10 @@ use Symfony\Component\Tui\Widget\KeybindingsTrait;
  * (via the injected predicate); Ctrl+Enter or a button click commits.
  */
 #[AsWidget('git-commit')]
-final class CommitBoxWidget extends AbstractWidget implements FocusableInterface, MenuOverlayHost
+final class CommitBoxWidget extends AbstractWidget implements FocusableInterface, MenuOverlayHost, HoverableList
 {
     use FocusableTrait;
+    use HoverTrait;
     use InputHook;
     use MenuOverlayHostTrait;
     use KeybindingsTrait;
@@ -162,6 +165,12 @@ final class CommitBoxWidget extends AbstractWidget implements FocusableInterface
     }
 
     /** The widget-relative row of the [Commit] button, for mouse hit-testing. */
+    /** Only the enabled commit button hovers — a disabled button is not actionable. */
+    public function hoverRow(int $relRow): bool
+    {
+        return $this->setHovered($relRow === $this->buttonRow() && $this->commitEnabled() ? $relRow : null);
+    }
+
     public function buttonRow(): int
     {
         return 2 + self::DESCRIPTION_ROWS + 1;
@@ -268,8 +277,13 @@ final class CommitBoxWidget extends AbstractWidget implements FocusableInterface
 
         $lines[] = str_repeat(' ', max(0, $width));
         $label = CommitMode::Amend === $this->amend ? $this->translator->trans('  Amend last commit  ') : $this->translator->trans('  Commit to branch  ');
-        $button = ($this->commitEnabled() ? $this->styles->of(Role::SelectedRow) : $this->styles->merge(Role::RowHighlightBg, Role::Dim))
-            ->apply(AnsiUtils::truncateToWidth($label, $width, '…', pad: true));
+        // SelectedRow already carries the bright fg, so the hover cue is an
+        // underline — the one attribute that reads on any theme.
+        $button = (match (true) {
+            !$this->commitEnabled() => $this->styles->merge(Role::RowHighlightBg, Role::Dim),
+            $this->hoveredIndex === $this->buttonRow() => $this->styles->of(Role::SelectedRow)->withUnderline(),
+            default => $this->styles->of(Role::SelectedRow),
+        })->apply(AnsiUtils::truncateToWidth($label, $width, '…', pad: true));
         $lines[] = $button;
 
         return $this->withMenuOverlay($lines, $width);

@@ -331,4 +331,23 @@ final class TerminalPanelWidgetTest extends TestCase
         $panel->handleTabClick((int) mb_strpos($strip, needle: 'lonely'));
         $this->assertSame(0, $selected);
     }
+
+    public function testSessionTabHoverTintsAndClears(): void
+    {
+        $panel = new TerminalPanelWidget();
+        $panel->setSessionTabsProvider(static fn (): array => [
+            ['title' => 'sh 1', 'running' => true, 'active' => true],
+            ['title' => 'sh 2', 'running' => true, 'active' => false],
+        ]);
+        $panel->open('sh 1', new TerminalBuffer());
+        $panel->render(new RenderContext(60, 8));
+
+        $this->assertTrue($panel->hoverTabAt(10), 'hovering the inactive session tab tints it');
+        $this->assertFalse($panel->hoverTabAt(10));
+        $this->assertStringContainsString("\x1b[48;5;240m", $panel->render(new RenderContext(60, 8))[0]);
+
+        $this->assertTrue($panel->clearTabHover());
+        $this->assertFalse($panel->clearTabHover());
+        $this->assertStringNotContainsString("\x1b[48;5;240m", $panel->render(new RenderContext(60, 8))[0]);
+    }
 }

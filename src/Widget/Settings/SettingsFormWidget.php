@@ -15,6 +15,8 @@ use Porta\Ui\Role;
 use Porta\Ui\TextField;
 use Porta\Ui\Theme\Styles;
 use Porta\Widget\FillsPaneTrait;
+use Porta\Widget\HoverableList;
+use Porta\Widget\HoverTrait;
 use Porta\Widget\InputHook;
 use Porta\Widget\PaneNavigationCallbacks;
 use Porta\Widget\Render\MenuOverlayHost;
@@ -42,10 +44,11 @@ use Symfony\Component\Tui\Widget\VerticallyExpandableInterface;
  *
  */
 #[AsWidget('settings-form', flex: 1)]
-final class SettingsFormWidget extends AbstractWidget implements FocusableInterface, MenuOverlayHost, VerticallyExpandableInterface
+final class SettingsFormWidget extends AbstractWidget implements FocusableInterface, HoverableList, MenuOverlayHost, VerticallyExpandableInterface
 {
     use FillsPaneTrait;
     use FocusableTrait;
+    use HoverTrait;
     use InputHook;
     use MenuOverlayHostTrait;
     use KeybindingsTrait;
@@ -164,6 +167,12 @@ final class SettingsFormWidget extends AbstractWidget implements FocusableInterf
     }
 
     /** A click selects the row under the pointer and advances it one step. */
+    /** Tint the settings row under the pointer (visual only, like the nav/keys lists). */
+    public function hoverRow(int $relRow): bool
+    {
+        return $this->setHovered(array_key_exists($relRow, $this->rows) ? $relRow : null);
+    }
+
     public function handleClick(int $relRow): void
     {
         if (!array_key_exists($relRow, $this->rows)) {
@@ -305,7 +314,11 @@ final class SettingsFormWidget extends AbstractWidget implements FocusableInterf
                 $text .= $this->styles->of(Role::Dim)->apply(' · '.$this->translator->trans('applies on restart'));
             }
             $text = AnsiUtils::truncateToWidth($text, $width, '…', pad: true);
-            $lines[] = $i === $this->selected ? $this->applyElement('selected', $text) : $text;
+            $lines[] = match (true) {
+                $i === $this->selected => $this->applyElement('selected', $text),
+                $i === $this->hoveredIndex => $this->styles->of(Role::RowHighlightBg)->apply($text),
+                default => $text,
+            };
         }
 
         return $this->withMenuOverlay($lines, $width);

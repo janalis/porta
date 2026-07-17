@@ -294,4 +294,51 @@ final class IdeDockToolsTest extends TestCase
 
         $this->addToAssertionCount(1);
     }
+
+    public function testPointerMotionTintsStripTabs(): void
+    {
+        putenv('PATH=/nonexistent');
+        $project = new TempProject(['a.php' => "<?php\n", 'b.php' => "<?php\n"]);
+
+        $this->runIde(
+            $project,
+            $project->path('a.php'),
+            [
+                200 => function ($tui, $terminal, $ide) use ($project): void {
+                    self::bufferService($ide)->openFile($project->path('b.php'), \Porta\Editor\OpenFocus::Keep);
+                    $tui->handleInput("\x1b6"); // alt+6 → a dock tool tab exists
+                    $tui->tick();
+                    $renderer = new \ReflectionProperty($ide, 'renderer')->getValue($ide);
+
+                    // Editor tab strip: hover the inactive b.php tab.
+                    $tabsRect = $renderer->getWidgetRect($tui->getById('tabs'));
+                    $tui->handleInput(\sprintf("\x1b[<35;%d;%dM", $tabsRect->col + 3, $tabsRect->row + 1));
+                    $tui->tick();
+                    $this->assertStringContainsString(
+                        "\x1b[48;5;240m",
+                        implode('', $tui->getById('tabs')->render(new \Symfony\Component\Tui\Render\RenderContext(160, 1))),
+                        'the hovered editor tab tints',
+                    );
+
+                    // Dock strip: hover the Problems tab.
+                    $stripRect = $renderer->getWidgetRect($tui->getById('dock-tabs'));
+                    $tui->handleInput(\sprintf("\x1b[<35;%d;%dM", $stripRect->col + 3, $stripRect->row + 1));
+                    $tui->tick();
+                    $this->assertStringNotContainsString(
+                        "\x1b[48;5;240m",
+                        implode('', $tui->getById('tabs')->render(new \Symfony\Component\Tui\Render\RenderContext(160, 1))),
+                        'leaving the editor strip clears its tint',
+                    );
+
+                    // The Problems tab is ACTIVE (no tint); moving onto the editor body clears everything.
+                    $editorRect = $renderer->getWidgetRect($tui->getById('editor'));
+                    $tui->handleInput(\sprintf("\x1b[<35;%d;%dM", $editorRect->col + 10, $editorRect->row + 2));
+                    $tui->tick();
+                    $this->addToAssertionCount(1); // the motion path itself is the coverage target
+                },
+            ],
+        );
+
+        $this->addToAssertionCount(1);
+    }
 }

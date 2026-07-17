@@ -55,6 +55,9 @@ final class TabBarWidget extends AbstractWidget implements MenuOverlayHost
     /** @var list<array{row: int, col: int, width: int, step: int}> clickable overflow-indicator zones from the last render */
     private array $indicatorZones = [];
 
+    /** The tab index under the mouse pointer (visual only), or null. */
+    private ?int $hoveredIndex = null;
+
     /** @param callable(): list<array{name: string, dirty: bool, active: bool}> $provider */
     public function setProvider(callable $provider): self
     {
@@ -116,8 +119,32 @@ final class TabBarWidget extends AbstractWidget implements MenuOverlayHost
         $fingerprint = (string) json_encode(($this->provider)());
         if ($fingerprint !== $this->lastFingerprint) {
             $this->lastFingerprint = $fingerprint;
+            $this->hoveredIndex = null; // the strip changed under the pointer
             $this->invalidate();
         }
+    }
+
+    /** Tint the tab under the pointer (visual only); returns whether it changed. */
+    public function hoverTab(int $row, int $col): bool
+    {
+        return $this->setHovered($this->tabIndexAt($row, $col));
+    }
+
+    /** The pointer left the strip: drop the hover tint. Returns whether it changed. */
+    public function clearHover(): bool
+    {
+        return $this->setHovered(null);
+    }
+
+    private function setHovered(?int $index): bool
+    {
+        if ($index === $this->hoveredIndex) {
+            return false;
+        }
+        $this->hoveredIndex = $index;
+        $this->invalidate();
+
+        return true;
     }
 
     public function render(RenderContext $context): array
@@ -192,7 +219,11 @@ final class TabBarWidget extends AbstractWidget implements MenuOverlayHost
             if (($used + $part['width']) > ($overflow ? $columns - 1 : $columns)) {
                 break;
             }
-            $style = $part['active'] ? $this->styles->merge(Role::TabActiveBg, Role::Bright)->withBold() : $this->styles->merge(Role::Toolbar, Role::Subtle);
+            $style = match (true) {
+                $part['active'] => $this->styles->merge(Role::TabActiveBg, Role::Bright)->withBold(),
+                $index === $this->hoveredIndex => $this->styles->merge(Role::BarHoverBg, Role::Subtle),
+                default => $this->styles->merge(Role::Toolbar, Role::Subtle),
+            };
             $text = str_replace('×', $part['active'] ? TabCloseGlyph::active($this->styles) : TabCloseGlyph::inactive($this->styles), $part['text']);
             $line .= $style->apply($text).$this->styles->of(Role::Placeholder)->apply('│');
             $this->lastLayout[] = [
@@ -291,7 +322,11 @@ final class TabBarWidget extends AbstractWidget implements MenuOverlayHost
             foreach (\array_slice($tabs, $start, $budget, preserve_keys: true) as $index => $tab) {
                 $name = AnsiUtils::truncateToWidth($tab['name'], $nameWidth, '…', pad: true);
                 $marker = $tab['dirty'] ? '●' : ' ';
-                $style = $tab['active'] ? $this->styles->merge(Role::TabActiveBg, Role::Bright)->withBold() : $this->styles->merge(Role::Toolbar, Role::Subtle);
+                $style = match (true) {
+                    $tab['active'] => $this->styles->merge(Role::TabActiveBg, Role::Bright)->withBold(),
+                    $index === $this->hoveredIndex => $this->styles->merge(Role::BarHoverBg, Role::Subtle),
+                    default => $this->styles->merge(Role::Toolbar, Role::Subtle),
+                };
                 $close = $tab['active'] ? TabCloseGlyph::active($this->styles) : TabCloseGlyph::inactive($this->styles);
                 $lines[] = $style->apply(' '.$name.' '.$marker.$close.' ');
                 $this->lastLayout[] = [

@@ -30,6 +30,9 @@ final class GitTabsWidget extends AbstractWidget implements MenuOverlayHost
     private const array TABS = ['changes' => ' Changes ', 'history' => ' History '];
 
     private string $active = 'changes';
+
+    /** The tab under the mouse pointer (visual only), or null. */
+    private ?string $hoveredMode = null;
     /** @var list<array{mode: string, start: int, width: int}> tab layout from the last render, for hit-testing */
     private array $layout = [];
 
@@ -74,6 +77,18 @@ final class GitTabsWidget extends AbstractWidget implements MenuOverlayHost
     }
 
     /** The tab under a widget-relative column, from the last render's layout. */
+    /** Tint the (inactive) tab under the pointer; null clears. Returns whether it changed. */
+    public function hoverMode(?string $mode): bool
+    {
+        if ($mode === $this->hoveredMode) {
+            return false;
+        }
+        $this->hoveredMode = $mode;
+        $this->invalidate();
+
+        return true;
+    }
+
     public function modeAtColumn(int $relCol): ?string
     {
         foreach ($this->layout as $tab) {
@@ -105,8 +120,11 @@ final class GitTabsWidget extends AbstractWidget implements MenuOverlayHost
             $label = $this->translator->trans($rawLabel);
             $tabWidth = mb_strwidth($label);
             $this->layout[] = ['mode' => $mode, 'start' => $col, 'width' => $tabWidth];
-            $line .= ($mode === $this->active ? $this->styles->merge(Role::TabActiveBg, Role::Bright)->withBold() : $this->styles->merge(Role::Toolbar, Role::Subtle))
-                ->apply($label);
+            $line .= (match (true) {
+                $mode === $this->active => $this->styles->merge(Role::TabActiveBg, Role::Bright)->withBold(),
+                $mode === $this->hoveredMode => $this->styles->merge(Role::BarHoverBg, Role::Subtle),
+                default => $this->styles->merge(Role::Toolbar, Role::Subtle),
+            })->apply($label);
             $col += $tabWidth + 1;
             $line .= ' ';
         }

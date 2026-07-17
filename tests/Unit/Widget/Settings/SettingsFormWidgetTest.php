@@ -394,4 +394,22 @@ final class SettingsFormWidgetTest extends TestCase
         $this->assertTrue($widget->isEditing());
         $this->assertSame([], $changes);
     }
+
+    public function testHoverTintsARowVisualOnlyAndClears(): void
+    {
+        $widget = $this->widget();
+        $widget->handleClick(0); // selection sits on row 0
+
+        $this->assertTrue($widget->hoverRow(2), 'hovering another row tints it');
+        $this->assertFalse($widget->hoverRow(2), 'same row: no change');
+        $lines = $widget->render(new RenderContext(60, 10));
+        $this->assertStringContainsString("\x1b[48;5;236m", $lines[2], 'the hovered row sits on RowHighlightBg');
+        $this->assertStringNotContainsString("\x1b[48;5;236m", $lines[0], 'the selection keeps its own shade');
+
+        $this->assertTrue($widget->hoverRow(99), 'past the rows the tint clears (a change)');
+        $this->assertFalse($widget->clearHover(), 'already clear');
+        $widget->hoverRow(1);
+        $this->assertTrue($widget->clearHover());
+        $this->assertStringNotContainsString("\x1b[48;5;236m", implode('', $widget->render(new RenderContext(60, 10))));
+    }
 }
