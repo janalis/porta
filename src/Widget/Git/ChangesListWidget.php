@@ -92,12 +92,12 @@ final class ChangesListWidget extends AbstractWidget implements FocusableInterfa
         $this->addStyleClass('list'); // the theme's .list::selected(:focus) rules style the selection
     }
 
-    protected function minWidth(): int
+    public function minWidth(): int
     {
         return 24;
     }
 
-    protected function maxWidth(): int
+    public function maxWidth(): int
     {
         return 200;
     }

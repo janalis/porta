@@ -6,6 +6,7 @@ namespace Porta\Tests\Support;
 
 use Porta\I18n\Translator;
 use Porta\Layout\WorkspaceLayout;
+use Porta\Ui\Theme\Styles;
 use Porta\Widget\BreadcrumbsWidget;
 use Porta\Widget\CodeEditorWidget;
 use Porta\Widget\ContextMenu;
@@ -93,6 +94,7 @@ final class TestWorkspaceLayout
             $debugPanel ?? $id(new DebugPanelWidget(), id: 'debug'),
             $terminalPanel ?? $id(new TerminalPanelWidget(), id: 'terminal'),
             $statusBar ?? $id(new StatusBarWidget(), id: 'status'),
+            Styles::dark(),
         );
     }
 }

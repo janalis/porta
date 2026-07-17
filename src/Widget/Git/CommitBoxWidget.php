@@ -75,12 +75,12 @@ final class CommitBoxWidget extends AbstractWidget implements FocusableInterface
         $this->description = new MultilineInput($cursorStyle);
     }
 
-    protected function minWidth(): int
+    public function minWidth(): int
     {
         return 24;
     }
 
-    protected function maxWidth(): int
+    public function maxWidth(): int
     {
         return 200;
     }

@@ -94,7 +94,10 @@ final class SettingsMouseRouter
      */
     public function hover(MouseEvent $mouse): void
     {
-        if ($this->hit->hover($mouse->row, $mouse->col, $this->nav, $this->form, $this->keys)) {
+        $listsChanged = $this->hit->hover($mouse->row, $mouse->col, $this->nav, $this->form, $this->keys);
+        $sepChanged = $this->hit->hoverDivider($mouse->row, $mouse->col, $this->separator);
+
+        if ($listsChanged || $sepChanged) {
             $this->tui->requestRender();
         }
     }

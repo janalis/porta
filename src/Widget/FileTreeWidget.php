@@ -106,14 +106,19 @@ final class FileTreeWidget extends AbstractWidget implements FocusableInterface,
         return $this->list->selected() - $this->list->scroll() + 1;
     }
 
-    protected function minWidth(): int
+    public function minWidth(): int
     {
         return 12;
     }
 
-    protected function maxWidth(): int
+    public function maxWidth(): int
     {
         return 200;
+    }
+
+    public function maxRatio(): float
+    {
+        return 0.6;
     }
 
     public function onOpenFile(callable $callback): self

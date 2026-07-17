@@ -193,7 +193,9 @@ final class GitMouseRouter
         $diffRel = $this->hit->hit($this->diff, $mouse->row, $mouse->col);
         $diffChanged = null !== $diffRel ? $this->diff->hoverHeader($diffRel['row'], $diffRel['col']) : $this->diff->clearHeaderHover();
 
-        if ($changed || $tabsChanged || $diffChanged) {
+        $sepChanged = $this->hit->hoverDivider($mouse->row, $mouse->col, $this->separator);
+
+        if ($changed || $tabsChanged || $diffChanged || $sepChanged) {
             $this->tui->requestRender();
         }
     }

@@ -35,4 +35,20 @@ final readonly class GitSidebar implements ResizableSidebar
     {
         return $this->changes->width();
     }
+
+    // The four stack to one width, so the tab strip's bounds are the column's.
+    public function minWidth(): int
+    {
+        return $this->tabs->minWidth();
+    }
+
+    public function maxWidth(): int
+    {
+        return $this->tabs->maxWidth();
+    }
+
+    public function maxRatio(): float
+    {
+        return $this->tabs->maxRatio();
+    }
 }

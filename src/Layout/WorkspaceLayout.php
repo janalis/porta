@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Porta\Layout;
 
+use Porta\Ui\Theme\Styles;
 use Porta\Widget\BreadcrumbsWidget;
 use Porta\Widget\CodeEditorWidget;
 use Porta\Widget\ContextMenu;
@@ -84,6 +85,7 @@ final class WorkspaceLayout
         private readonly DebugPanelWidget $debugPanel,
         private readonly TerminalPanelWidget $terminalPanel,
         private readonly StatusBarWidget $statusBar,
+        private readonly Styles $styles,
     ) {
         // The body (breadcrumbs + content slot) is a fixed inner container so
         // BufferService's content swaps (remove + append) land after the
@@ -208,7 +210,7 @@ final class WorkspaceLayout
 
     private function separatorWidget(string $id): SeparatorWidget
     {
-        $separator = new SeparatorWidget();
+        $separator = new SeparatorWidget($this->styles);
         $separator->setId($id)->setStyle(new Style(flex: 0));
 
         return $separator;

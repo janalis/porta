@@ -11,6 +11,7 @@ use Porta\Editor\SelectionMode;
 use Porta\Ide;
 use Porta\Tests\Support\RunsIde;
 use Porta\Tests\Support\TempProject;
+use Porta\Ui\Glyphs;
 use Porta\Widget\ResultsPanelFields;
 use Porta\Widget\TabBarWidget;
 use Revolt\EventLoop;
@@ -2119,6 +2120,40 @@ final class IdeEdgeCasesTest extends TestCase
                     $screen = AnsiUtils::stripAnsiCodes($terminal->getOutput());
                     $this->assertStringContainsString('[1/2]', $screen, 'the click toggled whole-word and re-ran the search: foobar no longer matches');
                     $this->assertStringContainsString('[\\b]', $screen, 'and the tag reads as enabled without relying on colour');
+                },
+            ],
+        );
+
+        $this->addToAssertionCount(1);
+    }
+
+    public function testThePaneDividerThickensUnderThePointer(): void
+    {
+        putenv('PATH=/nonexistent');
+        $project = new TempProject(['a.php' => "<?php\n"]);
+
+        $this->runIde(
+            $project,
+            $project->path('a.php'),
+            [
+                200 => function ($tui): void {
+                    $ctx = new \Symfony\Component\Tui\Render\RenderContext(1, 5);
+                    $this->assertStringContainsString(Glyphs::PANE_DIVIDER, $tui->getById('separator')->render($ctx)[0], 'a thin rule at rest');
+
+                    // The 30-wide tree ends at column 29, so its divider is column 30 (SGR 31).
+                    $tui->handleInput("\x1b[<35;31;5M");
+                },
+                280 => function ($tui): void {
+                    $line = $tui->getById('separator')->render(new \Symfony\Component\Tui\Render\RenderContext(1, 5))[0];
+                    $this->assertStringContainsString(Glyphs::PANE_DIVIDER_ACTIVE, $line, 'heavy under the pointer — the boundary announces it is draggable');
+                    $this->assertSame(1, AnsiUtils::visibleWidth($line), 'still exactly one column');
+
+                    $tui->handleInput("\x1b[<35;60;5M"); // into the editor
+                },
+                360 => function ($tui): void {
+                    $line = $tui->getById('separator')->render(new \Symfony\Component\Tui\Render\RenderContext(1, 5))[0];
+                    $this->assertStringContainsString(Glyphs::PANE_DIVIDER, $line, 'thin again once the pointer leaves');
+                    $this->assertStringNotContainsString(Glyphs::PANE_DIVIDER_ACTIVE, $line);
                 },
             ],
         );

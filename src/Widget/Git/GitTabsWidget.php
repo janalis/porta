@@ -52,14 +52,21 @@ final class GitTabsWidget extends AbstractWidget implements MenuOverlayHost
         $this->styles = $styles ?? Styles::dark();
     }
 
-    protected function minWidth(): int
+    public function minWidth(): int
     {
-        return 24;
+        // 30, not the 24 this used to declare: the layout controller clamped
+        // to 30 before ever calling setWidth, so 24 was never reachable.
+        return 30;
     }
 
-    protected function maxWidth(): int
+    public function maxWidth(): int
     {
         return 200;
+    }
+
+    public function maxRatio(): float
+    {
+        return 0.6;
     }
 
     /** @param callable(string): void $callback */

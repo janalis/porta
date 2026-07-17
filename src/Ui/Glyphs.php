@@ -53,6 +53,13 @@ final class Glyphs
     public const string NAV_BACK = '‹'; // same value as SCROLL_PREV — disjoint surfaces (help header vs strip edge)
     public const string NAV_FORWARD = '›'; // same value as SCROLL_NEXT — disjoint surfaces
 
+    // The draggable column between two panes. Thin at rest, heavy while the
+    // pointer is on it or dragging it: the affordance is the GLYPH, so it
+    // survives a terminal with no colour (where the hover shade resolves to
+    // nothing) — a resize boundary nobody can find is the bug being fixed.
+    public const string PANE_DIVIDER = '│'; // same value as SEPARATOR — disjoint surfaces (pane column vs tab strip)
+    public const string PANE_DIVIDER_ACTIVE = '┃';
+
     // Git.
     public const string BRANCH_CURRENT = '✓';
     public const string GIT_ADDED = '▎';

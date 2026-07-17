@@ -118,14 +118,19 @@ final class SettingsNavWidget extends AbstractWidget implements FocusableInterfa
         $this->invalidate();
     }
 
-    protected function minWidth(): int
+    public function minWidth(): int
     {
         return 14;
     }
 
-    protected function maxWidth(): int
+    public function maxWidth(): int
     {
         return 60;
+    }
+
+    public function maxRatio(): float
+    {
+        return 0.5;
     }
 
     public function onSelect(callable $callback): self

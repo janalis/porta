@@ -818,6 +818,18 @@ final class MouseRouter
     }
 
     /**
+     * The pane divider thickens under the pointer, so a resizable boundary
+     * looks like one before you find it by accident. A collapsed sidebar
+     * detaches its separator, which nulls the rect — no liveness guard needed.
+     */
+    private function updateSeparatorHover(MouseEvent $mouse, SeparatorWidget $separator): void
+    {
+        if ($this->hit->hoverDivider($mouse->row, $mouse->col, $separator)) {
+            $this->tui->requestRender();
+        }
+    }
+
+    /**
      * Application-menu hover: an open menu highlights the dropdown item under the
      * pointer and switches to a sibling title the pointer moves onto; a closed bar
      * hover-highlights the title under the pointer (clearing when off the bar).
@@ -900,6 +912,7 @@ final class MouseRouter
         $this->updateTreeHover($mouse);
         $this->updateStripHover($mouse);
         $this->updateListHover($mouse);
+        $this->updateSeparatorHover($mouse, $this->separator);
 
         if ($this->handleMenuHover($mouse)) {
             return;

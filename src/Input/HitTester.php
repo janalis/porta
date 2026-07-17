@@ -6,6 +6,7 @@ namespace Porta\Input;
 
 use Porta\Overlay\DropdownRegion;
 use Porta\Widget\HoverableList;
+use Porta\Widget\SeparatorWidget;
 use Symfony\Component\Tui\Render\Renderer;
 use Symfony\Component\Tui\Render\WidgetRect;
 use Symfony\Component\Tui\Widget\AbstractWidget;
@@ -72,6 +73,17 @@ final class HitTester
         }
 
         return $changed;
+    }
+
+    /**
+     * Thicken the pane divider under the pointer and thin it on a miss;
+     * reports whether it changed, so the caller repaints once. The sibling of
+     * {@see hover()} for the one-column dividers, which key off the pointer
+     * being anywhere on them rather than off a row.
+     */
+    public function hoverDivider(int $row, int $col, SeparatorWidget $divider): bool
+    {
+        return null !== $this->hit($divider, $row, $col) ? $divider->hover() : $divider->clearHover();
     }
 
     /**

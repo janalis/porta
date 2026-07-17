@@ -77,18 +77,24 @@ final class LayoutController
         $this->gitDiffHideWhitespace = $layout->gitDiffHideWhitespace ?? false;
 
         if (null !== $this->sidebarWidthPercent) {
-            $this->tree->setWidth($this->clampSidebarWidth((int) round(($this->sidebarWidthPercent * $cols) / 100), $cols, 12, 0.6));
+            $this->applyPercent($this->tree, $this->sidebarWidthPercent, $cols);
         }
         if (null !== $this->gitSidebarWidthPercent) {
             // Plain width fields: safe to set while the git widgets are detached.
-            $this->gitSidebar->setWidth($this->clampSidebarWidth((int) round(($this->gitSidebarWidthPercent * $cols) / 100), $cols, 30, 0.6));
+            $this->applyPercent($this->gitSidebar, $this->gitSidebarWidthPercent, $cols);
         }
         if (null !== $this->settingsSidebarWidthPercent) {
-            $this->settingsSidebar->setWidth($this->clampSidebarWidth((int) round(($this->settingsSidebarWidthPercent * $cols) / 100), $cols, 14, 0.5));
+            $this->applyPercent($this->settingsSidebar, $this->settingsSidebarWidthPercent, $cols);
         }
         if (null !== $this->bottomPanelHeightPercent) {
             $this->resizeBottomPanels($this->clampPanel((int) round(($this->bottomPanelHeightPercent * $rows) / 100), $rows));
         }
+    }
+
+    /** Restore a persisted proportion as columns, clamped like a drag would. */
+    private function applyPercent(ResizableSidebar $sidebar, int $percent, int $cols): void
+    {
+        $sidebar->setWidth($this->clampSidebarWidth($sidebar, (int) round(($percent * $cols) / 100), $cols));
     }
 
     /**
@@ -100,13 +106,13 @@ final class LayoutController
         // Sidebar resize: dragging a pane's separator sets that pane's width. Only
         // one sidebar is ever armed at a time (see cancelDrags), so the first
         // match wins and the rest fall through untouched.
-        if ($this->continueSidebarResize($mouse, $treeRect, new SidebarResize($this->tree, 12, 0.6, $this->sidebarResizeStartWidth), $this->sidebarResizing, $this->sidebarWidthPercent)) {
+        if ($this->continueSidebarResize($mouse, $treeRect, new SidebarResize($this->tree, $this->sidebarResizeStartWidth), $this->sidebarResizing, $this->sidebarWidthPercent)) {
             return true;
         }
         if ($this->continueSidebarResize(
             $mouse,
             $gitLeftRect,
-            new SidebarResize($this->gitSidebar, 30, 0.6, $this->gitSidebarResizeStartWidth),
+            new SidebarResize($this->gitSidebar, $this->gitSidebarResizeStartWidth),
             $this->gitSidebarResizing,
             $this->gitSidebarWidthPercent,
         )) {
@@ -115,7 +121,7 @@ final class LayoutController
         if ($this->continueSidebarResize(
             $mouse,
             $settingsLeftRect,
-            new SidebarResize($this->settingsSidebar, 14, 0.5, $this->settingsSidebarResizeStartWidth),
+            new SidebarResize($this->settingsSidebar, $this->settingsSidebarResizeStartWidth),
             $this->settingsSidebarResizing,
             $this->settingsSidebarWidthPercent,
         )) {
@@ -153,7 +159,7 @@ final class LayoutController
         }
         if (null !== $rect) {
             $cols = $this->tui->getTerminal()->getColumns();
-            $spec->sidebar->setWidth($this->clampSidebarWidth($this->widthToPointer($mouse, $rect), $cols, $spec->min, $spec->ratio));
+            $spec->sidebar->setWidth($this->clampSidebarWidth($spec->sidebar, $this->widthToPointer($mouse, $rect), $cols));
             $this->tui->requestRender();
             if ($mouse->isLeftRelease() && $spec->sidebar->width() !== $spec->startWidth) {
                 $this->commitPercent($spec->sidebar->width(), $cols, $percent);
@@ -254,19 +260,19 @@ final class LayoutController
     /** Keyboard resize of the file-tree sidebar (Shift+F11/F12): widen/narrow by $delta columns. */
     public function nudgeSidebar(int $delta): void
     {
-        $this->nudgeSidebarWidth($this->tree, $delta, 12, 0.6, $this->sidebarWidthPercent);
+        $this->nudgeSidebarWidth($this->tree, $delta, $this->sidebarWidthPercent);
     }
 
     /** Keyboard resize of the git sidebar. */
     public function nudgeGitSidebar(int $delta): void
     {
-        $this->nudgeSidebarWidth($this->gitSidebar, $delta, 30, 0.6, $this->gitSidebarWidthPercent);
+        $this->nudgeSidebarWidth($this->gitSidebar, $delta, $this->gitSidebarWidthPercent);
     }
 
     /** Keyboard resize of the settings sidebar. */
     public function nudgeSettingsSidebar(int $delta): void
     {
-        $this->nudgeSidebarWidth($this->settingsSidebar, $delta, 14, 0.5, $this->settingsSidebarWidthPercent);
+        $this->nudgeSidebarWidth($this->settingsSidebar, $delta, $this->settingsSidebarWidthPercent);
     }
 
     /**
@@ -290,10 +296,10 @@ final class LayoutController
     }
 
     /** Shared keyboard-nudge path: clamp like the drags do, persist, repaint. */
-    private function nudgeSidebarWidth(ResizableSidebar $sidebar, int $delta, int $min, float $ratio, ?int &$percent): void
+    private function nudgeSidebarWidth(ResizableSidebar $sidebar, int $delta, ?int &$percent): void
     {
         $cols = $this->tui->getTerminal()->getColumns();
-        $sidebar->setWidth($this->clampSidebarWidth($sidebar->width() + $delta, $cols, $min, $ratio));
+        $sidebar->setWidth($this->clampSidebarWidth($sidebar, $sidebar->width() + $delta, $cols));
         $this->commitPercent($sidebar->width(), $cols, $percent);
         $this->tui->requestRender();
     }
@@ -313,13 +319,14 @@ final class LayoutController
     }
 
     /**
-     * Clamp a sidebar width to keep both the sidebar and the main pane usable:
-     * at least $min columns, at most $ratio of the terminal (and $cols-20 so the
-     * pane beside it never collapses).
+     * Clamp a sidebar width to keep both the sidebar and the main pane usable.
+     * The pane's own bounds come from the pane; the $cols-20 floor is the one
+     * bound this owns, because it is about the NEIGHBOUR — whatever sits
+     * beside the sidebar must stay usable however narrow the terminal gets.
      */
-    private function clampSidebarWidth(int $width, int $cols, int $min, float $ratio): int
+    private function clampSidebarWidth(ResizableSidebar $sidebar, int $width, int $cols): int
     {
-        return max($min, min($width, (int) round($cols * $ratio), $cols - 20));
+        return max($sidebar->minWidth(), min($width, $sidebar->maxWidth(), (int) round($cols * $sidebar->maxRatio()), $cols - 20));
     }
 
     /** Clamp a bottom-panel height so the editor keeps room above it. */
