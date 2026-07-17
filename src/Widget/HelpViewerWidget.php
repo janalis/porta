@@ -10,6 +10,7 @@ use Porta\Help\MarkdownRenderer;
 use Porta\Help\RenderedDoc;
 use Porta\Support\AnsiText;
 use Porta\Support\IntMath;
+use Porta\Ui\Glyphs;
 use Porta\Ui\LtrPane;
 use Porta\Ui\Role;
 use Porta\Ui\Sgr;
@@ -217,7 +218,7 @@ final class HelpViewerWidget extends AbstractWidget implements FocusableInterfac
         $unbold = $hasColor ? Sgr::NORMAL_INTENSITY : '';
         $text = ' ';
         $col = 1;
-        foreach ([['back', '‹', [] !== $this->history], ['forward', '›', [] !== $this->forward]] as [$action, $glyph, $active]) {
+        foreach ([['back', Glyphs::NAV_BACK, [] !== $this->history], ['forward', Glyphs::NAV_FORWARD, [] !== $this->forward]] as [$action, $glyph, $active]) {
             if ($active) {
                 // A one-cell glyph is a frustrating click target: pad the zone
                 // a cell to each side (earlier zones win where they touch).

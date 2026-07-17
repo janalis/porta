@@ -12,6 +12,7 @@ use Porta\Support\AnsiText;
 use Porta\Support\IntMath;
 use Porta\Ui\CaretVisibility;
 use Porta\Ui\CursorStyle;
+use Porta\Ui\Glyphs;
 use Porta\Ui\Role;
 use Porta\Ui\TextField;
 use Porta\Ui\Theme\Styles;
@@ -33,7 +34,7 @@ use Symfony\Component\Tui\Widget\VerticallyExpandableInterface;
 
 /**
  * The editor-settings form: one row per setting, fed as dumb data by the
- * controller. A boolean renders as a `[x]`/`[ ]` checkbox, a choice/int as a
+ * controller. A boolean renders as a {@see Glyphs} checkbox, a choice/int as a
  * `< value >` stepper. Space/Enter/→ advances the selected row, ←/[ steps it
  * back, and each change fires onChange with the new value; the controller
  * persists it and pushes fresh rows back. Rows that only take effect next
@@ -305,7 +306,7 @@ final class SettingsFormWidget extends AbstractWidget implements FocusableInterf
             }
 
             $text = match ($row->kind) {
-                SettingsRowKind::Bool => ' '.((bool) $row->value ? '[x]' : '[ ]').' '.$row->label,
+                SettingsRowKind::Bool => ' '.((bool) $row->value ? Glyphs::CHECKBOX_ON : Glyphs::CHECKBOX_OFF).' '.$row->label,
                 SettingsRowKind::Text => ' '.$row->label.'  '.$this->textValue($row, $i),
                 SettingsRowKind::Action => ' '.$row->label.'  ['.(string) $row->value.']',
                 default => ' '.$row->label.'  < '.$this->choiceLabel($row).' >',

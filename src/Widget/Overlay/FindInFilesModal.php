@@ -9,6 +9,7 @@ use Porta\Search\TokenScope;
 use Porta\Support\AnsiText;
 use Porta\Ui\CaretVisibility;
 use Porta\Ui\CursorStyle;
+use Porta\Ui\Glyphs;
 use Porta\Ui\Role;
 use Porta\Ui\TextField;
 use Porta\Ui\Theme\Styles;
@@ -764,7 +765,7 @@ final class FindInFilesModal
     }
 
     /**
-     * A match row in replace-preview mode: a `[x]/[ ]` checkbox, the line number,
+     * A match row in replace-preview mode: a {@see Glyphs} checkbox, the line number,
      * and either the original line (highlighted, when excluded) or `old → new`.
      *
      * @param array{path: string, line: int, text: string, ranges?: list<array{start: int, length: int}>} $result
@@ -779,7 +780,7 @@ final class FindInFilesModal
         $excluded = $this->excluded[$matchIndex] ?? false;
         $label = (string) ($result['line'] + 1);
         $old = $result['text'];
-        $checkbox = '  '.($excluded ? '[ ]' : '[x]').' ';
+        $checkbox = '  '.($excluded ? Glyphs::CHECKBOX_OFF : Glyphs::CHECKBOX_ON).' ';
         $prefixWidth = mb_strwidth($checkbox) + mb_strwidth($label) + 2;
         $head = $checkbox.$this->styles->of(Role::TabAccent)->apply($label).'  ';
 
