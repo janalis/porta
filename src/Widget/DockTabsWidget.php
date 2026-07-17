@@ -10,7 +10,7 @@ use Porta\Ui\DockTab;
 use Porta\Ui\LtrPane;
 use Porta\Ui\Role;
 use Porta\Ui\Theme\Styles;
-use Porta\Widget\Render\TabCloseGlyph;
+use Porta\Widget\Render\TabStripRenderer;
 use Symfony\Component\Tui\Ansi\AnsiUtils;
 use Symfony\Component\Tui\Render\RenderContext;
 use Symfony\Component\Tui\Widget\AbstractWidget;
@@ -129,40 +129,31 @@ final class DockTabsWidget extends AbstractWidget implements LtrPane
 
         $columns = $context->getColumns();
 
-        /** @var list<array{tab: array{tab: DockTab, key: string, label: string, active: bool, status: string}, text: string, width: int, closeOffset: int}> $parts */
-        $parts = [];
         $status = '';
-        $activeIndex = 0;
-        foreach ($tabs as $i => $tab) {
+        foreach ($tabs as $tab) {
             if ($tab['active']) {
                 $status = $tab['status'];
-                $activeIndex = $i;
             }
-            $prefix = ' '.$tab['label'].' ';
-            $text = $prefix.'× ';
-            $parts[] = ['tab' => $tab, 'text' => $text, 'width' => mb_strwidth($text) + 1, 'closeOffset' => mb_strwidth($prefix)];
         }
-        // Drop leading tabs until the active one fits (the terminal session
-        // strip's overflow rule) — an unbounded tab pile must never hide the
-        // tab you are looking at.
-        $start = 0;
-        while ($start < $activeIndex && array_sum(array_column(\array_slice($parts, $start, $activeIndex - $start + 1), 'width')) > $columns) {
-            ++$start;
+        $strip = TabStripRenderer::render(
+            array_map(static fn (array $tab): array => ['label' => $tab['label'], 'active' => $tab['active'], 'hovered' => false], $tabs),
+            $columns,
+            $this->styles,
+        );
+        // The renderer's hit map is index-based; re-key it with each entry's dock identity.
+        foreach ($strip['hitMap'] as $zone) {
+            $tab = $tabs[$zone['index']];
+            $this->lastTabLayout[] = [
+                'tab' => $tab['tab'],
+                'key' => $tab['key'],
+                'start' => $zone['start'],
+                'width' => $zone['width'],
+                'closeStart' => $zone['closeStart'],
+                'closeWidth' => $zone['closeWidth'],
+            ];
         }
-
-        $line = '';
-        $used = 0;
-        foreach (\array_slice($parts, $start) as $part) {
-            if (($used + $part['width']) > $columns) {
-                break;
-            }
-            $tab = $part['tab'];
-            $style = $tab['active'] ? $this->styles->merge(Role::Toolbar, Role::Bright)->withBold() : $this->styles->merge(Role::Toolbar, Role::Subtle);
-            $close = $tab['active'] ? TabCloseGlyph::active($this->styles) : TabCloseGlyph::inactive($this->styles);
-            $line .= $style->apply(str_replace('×', $close, $part['text'])).$this->styles->of(Role::Placeholder)->apply('│');
-            $this->lastTabLayout[] = ['tab' => $tab['tab'], 'key' => $tab['key'], 'start' => $used, 'width' => $part['width'], 'closeStart' => $used + $part['closeOffset'], 'closeWidth' => 2];
-            $used += $part['width'];
-        }
+        $line = $strip['line'];
+        $used = $strip['used'];
 
         // The active tool's status sits right-aligned in whatever room the tabs leave.
         if ('' !== $status) {

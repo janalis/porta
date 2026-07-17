@@ -63,6 +63,7 @@ final class HighContrastTheme
                 Role::Breakpoint->selector() => new Style(color: 203),
                 Role::DebugLineBg->selector() => new Style(background: 17),
                 Role::TabAccent->selector() => new Style(color: 51),
+                Role::TabActiveBg->selector() => new Style(background: 238),
                 Role::BarHoverBg->selector() => new Style(background: 238),
                 Role::Faint->selector() => new Style(color: 249),
                 Role::Subtle->selector() => new Style(color: 251),

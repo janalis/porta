@@ -105,7 +105,7 @@ final class GitTabsWidget extends AbstractWidget implements MenuOverlayHost
             $label = $this->translator->trans($rawLabel);
             $tabWidth = mb_strwidth($label);
             $this->layout[] = ['mode' => $mode, 'start' => $col, 'width' => $tabWidth];
-            $line .= ($mode === $this->active ? $this->styles->of(Role::SelectedRow) : $this->styles->merge(Role::HeaderBar, Role::Muted))
+            $line .= ($mode === $this->active ? $this->styles->merge(Role::TabActiveBg, Role::Bright)->withBold() : $this->styles->merge(Role::Toolbar, Role::Subtle))
                 ->apply($label);
             $col += $tabWidth + 1;
             $line .= ' ';

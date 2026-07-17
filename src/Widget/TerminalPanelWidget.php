@@ -13,7 +13,7 @@ use Porta\Ui\LtrPane;
 use Porta\Ui\Role;
 use Porta\Ui\Sgr;
 use Porta\Ui\Theme\Styles;
-use Porta\Widget\Render\TabCloseGlyph;
+use Porta\Widget\Render\TabStripRenderer;
 use Symfony\Component\Tui\Ansi\AnsiUtils;
 use Symfony\Component\Tui\Input\Key;
 use Symfony\Component\Tui\Render\RenderContext;
@@ -295,43 +295,17 @@ final class TerminalPanelWidget extends OverlayWidget implements FocusableInterf
             $tabs = [['title' => $this->title, 'running' => true, 'active' => true]];
         }
 
-        /** @var list<array{text: string, active: bool, width: int, closeOffset: int}> $parts */
-        $parts = [];
-        foreach ($tabs as $tab) {
-            $prefix = ' '.$tab['title'].($tab['running'] ? '' : ' ○').' ';
-            $closeOffset = mb_strwidth($prefix);
-            $label = $prefix.'×'.' ';
-            $parts[] = ['text' => $label, 'active' => $tab['active'], 'width' => mb_strwidth($label) + 1, 'closeOffset' => $closeOffset];
-        }
-
-        $activeIndex = 0;
-        foreach ($parts as $i => $candidate) {
-            if (!$candidate['active']) {
-                continue;
-            }
-
-            $activeIndex = $i;
-            break;
-        }
-        // Drop leading tabs until the active one fits.
-        $start = 0;
-        while ($start < $activeIndex && array_sum(array_column(\array_slice($parts, $start, $activeIndex - $start + 1), 'width')) > $columns) {
-            ++$start;
-        }
-
-        $line = '';
-        $used = 0;
-        $this->lastTabLayout = [];
-        foreach (\array_slice($parts, $start, length: null, preserve_keys: true) as $index => $part) {
-            if (($used + $part['width']) > $columns) {
-                break;
-            }
-            $style = $part['active'] ? $this->styles->merge(Role::Toolbar, Role::Bright)->withBold() : $this->styles->merge(Role::Toolbar, Role::Subtle);
-            $text = str_replace('×', $part['active'] ? TabCloseGlyph::active($this->styles) : TabCloseGlyph::inactive($this->styles), $part['text']);
-            $line .= $style->apply($text).$this->styles->of(Role::Placeholder)->apply('│');
-            $this->lastTabLayout[] = ['index' => $index, 'start' => $used, 'width' => $part['width'], 'closeStart' => $used + $part['closeOffset'], 'closeWidth' => 2];
-            $used += $part['width'];
-        }
+        $strip = TabStripRenderer::render(
+            array_map(static fn (array $tab): array => [
+                'label' => $tab['title'].($tab['running'] ? '' : ' ○'),
+                'active' => $tab['active'],
+                'hovered' => false,
+            ], $tabs),
+            $columns,
+            $this->styles,
+        );
+        $this->lastTabLayout = $strip['hitMap'];
+        $line = $strip['line'];
         if ($this->scrollBack > 0) {
             $line .= $this->styles->merge(Role::Toolbar, Role::Dim)->apply(\sprintf('  [scrolled +%d]', $this->scrollBack));
         }

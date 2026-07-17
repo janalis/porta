@@ -68,6 +68,7 @@ final class ThemeLockTest extends TestCase
         yield 'breakpoint' => [Role::Breakpoint, new Style(color: 203)];
         yield 'debug-line-bg' => [Role::DebugLineBg, new Style(background: 52)];
         yield 'tab-accent' => [Role::TabAccent, new Style(color: 110)];
+        yield 'tab-active-bg' => [Role::TabActiveBg, new Style(background: 238)];
         yield 'bar-hover-bg' => [Role::BarHoverBg, new Style(background: 240)];
         yield 'faint' => [Role::Faint, new Style(color: 242)];
         yield 'subtle' => [Role::Subtle, new Style(color: 246)];
@@ -131,6 +132,7 @@ final class ThemeLockTest extends TestCase
         yield 'breakpoint' => [Role::Breakpoint, new Style(color: 160)];
         yield 'debug-line-bg' => [Role::DebugLineBg, new Style(background: 224)];
         yield 'tab-accent' => [Role::TabAccent, new Style(color: 25)];
+        yield 'tab-active-bg' => [Role::TabActiveBg, new Style(background: 252)];
         yield 'bar-hover-bg' => [Role::BarHoverBg, new Style(background: 252)];
         yield 'faint' => [Role::Faint, new Style(color: 245)];
         yield 'subtle' => [Role::Subtle, new Style(color: 246)];
@@ -200,11 +202,12 @@ final class ThemeLockTest extends TestCase
 
     public function testMonochromeStylesNoRoleExceptTheSelection(): void
     {
-        // The selection roles are the deliberate exception: without color, the
-        // selected row would otherwise be invisible, so they map to reverse video.
+        // The selection roles and the active-tab shade are the deliberate
+        // exceptions: without color they would otherwise be invisible, so
+        // they map to reverse video.
         $mono = MonochromeTheme::definition();
         foreach (Role::cases() as $role) {
-            if (Role::SelectedRow === $role || Role::SelectedRowUnfocused === $role) {
+            if (\in_array($role, [Role::SelectedRow, Role::SelectedRowUnfocused, Role::TabActiveBg], strict: true)) {
                 continue;
             }
             $this->assertTrue($mono->of($role)->isPlain(), $role->name.' must stay plain');
@@ -217,6 +220,7 @@ final class ThemeLockTest extends TestCase
         $mono = MonochromeTheme::definition();
         $this->assertEquals(new Style(reverse: true), $mono->of(Role::SelectedRow));
         $this->assertEquals(new Style(dim: true, reverse: true), $mono->of(Role::SelectedRowUnfocused));
+        $this->assertEquals(new Style(reverse: true), $mono->of(Role::TabActiveBg), 'the active tab stays visible without color');
     }
 
     public function testListElementRulesMirrorTheSelectionRolesInEveryTheme(): void

@@ -89,6 +89,7 @@ enum Role
 
     // Chrome shades: tab/breadcrumb accent, bar-chrome hover, extra greys.
     case TabAccent;
+    case TabActiveBg;
     case BarHoverBg;
     case Faint;
     case Subtle;

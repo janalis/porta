@@ -192,7 +192,7 @@ final class TabBarWidget extends AbstractWidget implements MenuOverlayHost
             if (($used + $part['width']) > ($overflow ? $columns - 1 : $columns)) {
                 break;
             }
-            $style = $part['active'] ? $this->styles->merge(Role::InlayPopupBg, Role::Bright)->withBold() : $this->styles->of(Role::Subtle);
+            $style = $part['active'] ? $this->styles->merge(Role::TabActiveBg, Role::Bright)->withBold() : $this->styles->merge(Role::Toolbar, Role::Subtle);
             $text = str_replace('×', $part['active'] ? TabCloseGlyph::active($this->styles) : TabCloseGlyph::inactive($this->styles), $part['text']);
             $line .= $style->apply($text).$this->styles->of(Role::Placeholder)->apply('│');
             $this->lastLayout[] = [
@@ -211,7 +211,8 @@ final class TabBarWidget extends AbstractWidget implements MenuOverlayHost
             $line .= $last < (\count($parts) - 1) ? $this->indicatorCell('›', step: 1, col: $columns - 1) : ' ';
         }
 
-        return $this->withMenuOverlay([AnsiText::padRight($line, $columns)], $columns);
+        // A Toolbar-background base under the whole strip, matching the other tab strips.
+        return $this->withMenuOverlay([$this->styles->of(Role::Toolbar)->apply(AnsiText::padRight($line, $columns))], $columns);
     }
 
     /** One clickable 1-column ‹/› scroll cell of the horizontal strip. */
@@ -290,7 +291,7 @@ final class TabBarWidget extends AbstractWidget implements MenuOverlayHost
             foreach (\array_slice($tabs, $start, $budget, preserve_keys: true) as $index => $tab) {
                 $name = AnsiUtils::truncateToWidth($tab['name'], $nameWidth, '…', pad: true);
                 $marker = $tab['dirty'] ? '●' : ' ';
-                $style = $tab['active'] ? $this->styles->merge(Role::InlayPopupBg, Role::Bright)->withBold() : $this->styles->of(Role::Subtle);
+                $style = $tab['active'] ? $this->styles->merge(Role::TabActiveBg, Role::Bright)->withBold() : $this->styles->merge(Role::Toolbar, Role::Subtle);
                 $close = $tab['active'] ? TabCloseGlyph::active($this->styles) : TabCloseGlyph::inactive($this->styles);
                 $lines[] = $style->apply(' '.$name.' '.$marker.$close.' ');
                 $this->lastLayout[] = [
