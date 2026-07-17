@@ -158,32 +158,38 @@ all async work (LSP over stdio, git subprocesses, the integrated terminal PTYs �
 `Terminal/TerminalSession`, tabbed in the single `TerminalPanelWidget`, owned by `Run/RunController` — run
 configurations). Nothing blocks; long operations are timers/callbacks on the shared loop.
 
-**Bottom dock.** The terminal, results and debug panels are tabs of one dock above the status
-bar, coordinated by `Ui/BottomDock` (also the owner of `Ui/ResultsPanelMode` and the shared
-focus-return/flash choreography — it absorbed the old PanelManager and OverlayPanels).
-`Widget/OverlayWidget` carries the two axes: `isOpen()` (tab alive) vs `isVisible()`
-(open AND revealed — the render-guard truth); a panel's own `open(...)` calls `markOpen()`,
-whose `onOpen` hook lets the dock conceal the siblings, so opener call sites never change.
-At most one panel renders; closing one restores the most recently visible alive tab; `Esc`
-is `dismiss()` → dock hide (every tab stays alive) except the transient pickers (palette,
-go-to-symbol), which bypass the dock strip and close for real. `Widget/DockTabsWidget` is the
-one-row strip above the visible panel: tab labels are the tool titles (`getTitle()`), the
-active tool's `statusText()` rides its right side (result counts, debug state + step legend) —
-the results (list modes) and debug panels have **no header row of their own**. ctrl+` toggles
-the Terminal tab (revealing through `RunController::showActiveSession`, wired via
-`onTerminalReveal`); alt+page_down/up cycle the alive tabs (`dock_next_panel`/`dock_prev_panel`);
-a strip × closes the tool (the Terminal only conceals — sessions keep running); the strip row
-doubles as the panel-resize grab. All three panels share one height
-(`bottomPanelHeightPercent`, driven through `BottomDock::setPanelRows`). A debugger stop
-auto-reveals the Debug tab (re-opening it, watches reseeded, if it was ×'d).
-List tools ride `showList(mode, title, rows)` and stay **live** through `Ui/DockLiveRefreshListener`
-(guarded on `isOpen()` + mode; only `setResults` + repaint, never focus/reveal): Problems refreshes
-on `Event/DiagnosticsChanged` (dispatched by `BufferService::applyDiagnostics`, rows via
-`Search/ProblemRows`), the LSP server log and the notification log tail their rings
-(`Event/LspLogAppended` / `Event/NotificationLogged`, rows via `Ui/LogRows`, newest first, empty
-`path` = inert Enter), and `Search/TodoScanner` (ide_todo, alt+8) runs a case-sensitive
-`TODO|FIXME` regex scan over the shared `ProjectSearch` engine with its own
-`ResultsPanelMode::Todo` so F5 re-scans instead of re-running the last find-in-project query.
+**Bottom dock.** The terminal panel, the debug panel and the list tools share one dock above
+the status bar, coordinated by `Ui/BottomDock` (also the owner of `Ui/ResultsPanelMode` routing
+and the shared focus-return/flash choreography). **Every list tool lives as a `Ui/DockToolTab`
+in the `Ui/DockToolTabs` model** — the model, not the widget, is the source of truth: the single
+`ResultsPanelWidget` displays exactly one tab, and tool tabs **coexist** (each Find-in-Project
+query, Problems, TODO, each Usages/Choose-target list, the LSP/notification logs, Local History
+— one strip tab apiece, closed only by its ×, no cap). Instance identity is **(mode, title)**:
+re-invoking a tool reuses and refreshes its tab; a different title appends. Switching tabs
+(`BottomDock::bind`) preserves rows/title/searching (+ a Search tab's frozen
+`Search/SearchTabState` — query/options/scope/mask, re-adopted by `ProjectSearchController` on
+bind so F5/replace/export act on the displayed tab's own query); filter text, collapse, context
+and selection reset — the accepted v1 trade-off of rebinding through the widget's `open()`.
+Async completions (search runs, TODO scans, the live Problems/log refreshes via
+`Ui/DockLiveRefreshListener` on `Event/DiagnosticsChanged`/`LspLogAppended`/`NotificationLogged`)
+write into their captured tab and reach the widget only through `refreshIfBound` — an inactive
+tab stays fresh in the model and a late grep can never clobber the tool on display.
+`Widget/OverlayWidget` carries the panels' two axes: `isOpen()` (alive) vs `isVisible()`
+(open AND revealed); at most one panel renders; `Esc` is `dismiss()` → dock hide (everything
+stays alive) except the transient pickers (palette, go-to-symbol), which stay strip-less,
+close for real, and on close **restore the tool tab they displaced** (`openQuery` captures it;
+the palette routes through `openQuery`). `Widget/DockTabsWidget` is the one-row strip:
+keyed entries (`aliveTabs()` — Terminal, one per tool instance, Debug), the displayed tool's
+`statusText()` right-aligned, overflow drops LEADING tabs so the active one stays visible;
+the strip row doubles as the panel-resize grab. ctrl+` toggles the Terminal tab
+(`RunController::showActiveSession` via `onTerminalReveal`); alt+page_down/up cycle every strip
+tab (`dock_next_panel`/`dock_prev_panel`); the Terminal's × only conceals (sessions keep
+running); ×ing a Search tab records its query/mask into history (`closeSearch`); the last tool
+× closes the panel (MRU reveal). All three panels share one height (`bottomPanelHeightPercent`
+→ `BottomDock::setPanelRows`). A debugger stop auto-reveals the Debug tab (re-opened, watches
+reseeded, if ×'d). `Search/TodoScanner` (ide_todo, alt+8) greps `TODO|FIXME` case-sensitively
+over the shared `ProjectSearch` engine (single slot — a scan and a find cancel each other,
+latest wins).
 
 **Rendering pipeline (`symfony/tui`).** Widgets (`src/Widget/**`) render to `string[]` lines
 measured in **display columns** (`mb_strwidth`, `AnsiUtils::visibleWidth`) so CJK/wide chars and

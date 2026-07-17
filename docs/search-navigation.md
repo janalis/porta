@@ -46,9 +46,10 @@ preserve-case on replace (`Alt+V`), token scope (`Alt+T`), and search scope
 folder's context menu scopes to that folder).
 
 - `Enter` opens the selected match.
-- `Alt+Enter` promotes the whole result set to the persistent results
-  panel, which stays open as you jump between matches and is resizable
-  like other panes; `F5` re-runs the query.
+- `Alt+Enter` promotes the whole result set to its own tab on the
+  bottom dock — every search keeps its tab (same query re-uses it,
+  a new query opens another) until you close it with the tab's `×`;
+  `F5` re-runs the shown tab's query.
 - **Replace**: with Replace filled, each match previews as `old → new`
   with an exclude checkbox (`Delete` toggles). `Alt+A` applies to every
   kept match — open buffers as one undoable edit, other files on disk.

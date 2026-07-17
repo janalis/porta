@@ -236,4 +236,62 @@ final class IdeDockToolsTest extends TestCase
 
         $this->addToAssertionCount(1);
     }
+
+    public function testToolTabsCoexistCycleAndSurviveAPicker(): void
+    {
+        putenv('PATH='.$this->originalPath); // real grep for the TODO scan
+        $project = new TempProject(['src/Main.php' => "<?php\n// TODO polish\n"]);
+        $dock = static fn ($ide): object => new \ReflectionProperty(Ide::class, 'panels')->getValue($ide);
+
+        $this->runIde(
+            $project,
+            $project->path('src/Main.php'),
+            [
+                200 => function ($tui, $terminal, $ide) use ($dock, $project): void {
+                    $tui->handleInput("\x1b6"); // alt+6 → Problems
+                    $tui->handleInput("\x1b8"); // alt+8 → TODO joins, Problems keeps its tab
+                    $this->await(static fn (): bool => str_contains(AnsiUtils::stripAnsiCodes($terminal->getOutput()), 'TODO polish'));
+                    new \ReflectionProperty($ide, 'commands')->getValue($ide)->run('ide_lsp_log'); // LSP Log joins
+                    $tui->tick();
+                    $labels = array_column($dock($ide)->aliveTabs(), 'label');
+                    $this->assertSame(['Problems', 'TODO', 'LSP Server Log'], $labels, 'three tools coexist, none replaced');
+
+                    // A diagnostic lands while the Problems tab is INACTIVE: its
+                    // model refreshes, so activating it shows the fresh row.
+                    self::bufferService($ide)
+                        ->applyDiagnostics(
+                            \Porta\Lsp\Uri::fromPath($project->path('src/Main.php')),
+                            [0 => [['severity' => 1, 'message' => 'background boom', 'col' => 0, 'endCol' => 3]]],
+                        );
+                    $tui->tick();
+                    $this->assertSame('LSP Server Log', $tui->getById('results')->getTitle(), 'the displayed tool is untouched');
+
+                    $tui->handleInput("\x1b[6;3~"); // alt+page_down cycles: LSP Log → wraps to Problems
+                    $tui->tick();
+                    $this->assertSame('Problems', $tui->getById('results')->getTitle(), 'cycling walks the tool instances');
+                    $this->assertStringContainsString('1 results', $tui->getById('results')->statusText(), 'the inactive-tab refresh is visible on arrival');
+                },
+                600 => function ($tui, $terminal, $ide) use ($dock): void {
+                    // A picker over a tool tab: Esc restores the displaced tab.
+                    $tui->handleInput("\x1b[97;6u"); // ctrl+shift+a → command palette
+                    $tui->tick();
+                    $this->assertSame([], $dock($ide)->aliveTabs(), 'a picker blanks the strip');
+                    $tui->handleInput("\x1b"); // esc → picker closes
+                    $tui->tick();
+                    $this->assertSame('Problems', $tui->getById('results')->getTitle(), 'the displaced tool tab came back');
+
+                    // × tabs one by one: the last close gives the slot back via the MRU.
+                    $strip = $dock($ide);
+                    while ([] !== ($tabs = $strip->aliveTabs())) {
+                        $entry = $tabs[0];
+                        $strip->closeTab($entry['tab'], $entry['key']);
+                    }
+                    $tui->tick();
+                    $this->assertFalse($tui->getById('results')->isOpen(), 'all tools closed, the panel too');
+                },
+            ],
+        );
+
+        $this->addToAssertionCount(1);
+    }
 }

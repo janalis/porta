@@ -128,25 +128,40 @@ final class DockTabsWidget extends AbstractWidget implements LtrPane
         }
 
         $columns = $context->getColumns();
-        $line = '';
-        $used = 0;
+
+        /** @var list<array{tab: array{tab: DockTab, key: string, label: string, active: bool, status: string}, text: string, width: int, closeOffset: int}> $parts */
+        $parts = [];
         $status = '';
-        foreach ($tabs as $tab) {
+        $activeIndex = 0;
+        foreach ($tabs as $i => $tab) {
             if ($tab['active']) {
                 $status = $tab['status'];
+                $activeIndex = $i;
             }
             $prefix = ' '.$tab['label'].' ';
-            $closeOffset = mb_strwidth($prefix);
             $text = $prefix.'× ';
-            $width = mb_strwidth($text) + 1;
-            if (($used + $width) > $columns) {
+            $parts[] = ['tab' => $tab, 'text' => $text, 'width' => mb_strwidth($text) + 1, 'closeOffset' => mb_strwidth($prefix)];
+        }
+        // Drop leading tabs until the active one fits (the terminal session
+        // strip's overflow rule) — an unbounded tab pile must never hide the
+        // tab you are looking at.
+        $start = 0;
+        while ($start < $activeIndex && array_sum(array_column(\array_slice($parts, $start, $activeIndex - $start + 1), 'width')) > $columns) {
+            ++$start;
+        }
+
+        $line = '';
+        $used = 0;
+        foreach (\array_slice($parts, $start) as $part) {
+            if (($used + $part['width']) > $columns) {
                 break;
             }
+            $tab = $part['tab'];
             $style = $tab['active'] ? $this->styles->merge(Role::Toolbar, Role::Bright)->withBold() : $this->styles->merge(Role::Toolbar, Role::Subtle);
             $close = $tab['active'] ? TabCloseGlyph::active($this->styles) : TabCloseGlyph::inactive($this->styles);
-            $line .= $style->apply(str_replace('×', $close, $text)).$this->styles->of(Role::Placeholder)->apply('│');
-            $this->lastTabLayout[] = ['tab' => $tab['tab'], 'key' => $tab['key'], 'start' => $used, 'width' => $width, 'closeStart' => $used + $closeOffset, 'closeWidth' => 2];
-            $used += $width;
+            $line .= $style->apply(str_replace('×', $close, $part['text'])).$this->styles->of(Role::Placeholder)->apply('│');
+            $this->lastTabLayout[] = ['tab' => $tab['tab'], 'key' => $tab['key'], 'start' => $used, 'width' => $part['width'], 'closeStart' => $used + $part['closeOffset'], 'closeWidth' => 2];
+            $used += $part['width'];
         }
 
         // The active tool's status sits right-aligned in whatever room the tabs leave.

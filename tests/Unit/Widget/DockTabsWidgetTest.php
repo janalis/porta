@@ -130,4 +130,25 @@ final class DockTabsWidgetTest extends TestCase
         $this->assertStringContainsString('a-very-long-terminal-label', $plain);
         $this->assertStringNotContainsString('debug-tool', $plain, 'a tab that no longer fits is dropped');
     }
+
+    public function testOverflowDropsLeadingTabsToKeepTheActiveOneVisible(): void
+    {
+        $tabs = [];
+        for ($i = 0; $i < 8; ++$i) {
+            $tabs[] = ['tab' => DockTab::Results, 'key' => (string) ($i + 1), 'label' => \sprintf('search-%02d', $i), 'active' => 6 === $i, 'status' => ''];
+        }
+        $bar = self::strip($tabs);
+
+        $bar->render(new RenderContext(40, 1));
+        $plain = AnsiUtils::stripAnsiCodes($bar->render(new RenderContext(40, 1))[0]);
+        $this->assertStringContainsString('search-06', $plain, 'the active tab is always on the strip');
+        $this->assertStringNotContainsString('search-00', $plain, 'leading tabs drop first');
+        // The hit map follows the window: clicking column 2 hits the first VISIBLE tab.
+        $selected = [];
+        $bar->onTabSelected(static function (DockTab $tab, string $key) use (&$selected): void {
+            $selected[] = $key;
+        });
+        $this->assertTrue($bar->handleTabClick(2));
+        $this->assertNotContains('1', $selected, 'the dropped leading tab is not clickable');
+    }
 }
