@@ -48,7 +48,7 @@ folder's context menu scopes to that folder).
 - `Enter` opens the selected match.
 - `Alt+Enter` promotes the whole result set to the persistent results
   panel, which stays open as you jump between matches and is resizable
-  like other panes; `F5` re-runs the query, `Alt+K` pins a result set.
+  like other panes; `F5` re-runs the query.
 - **Replace**: with Replace filled, each match previews as `old → new`
   with an exclude checkbox (`Delete` toggles). `Alt+A` applies to every
   kept match — open buffers as one undoable edit, other files on disk.

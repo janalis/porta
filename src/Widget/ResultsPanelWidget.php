@@ -67,10 +67,6 @@ final class ResultsPanelWidget extends OverlayWidget implements FocusableInterfa
     private $onJump = null;
     /** @var (callable(): void)|null export the current results to a file (Alt+X) */
     private $onExport = null;
-    /** @var (callable(): void)|null pin/restore the result set (Alt+K) */
-    private $onPin = null;
-    /** the pinned search's label shown in the header, or null when nothing is pinned */
-    private ?string $pinLabel = null;
     /** @var (\Closure(string, int): list<array{line: int, text: string}>)|null neighbouring source lines around a match (path, line) => lines */
     private $contextProvider = null;
 
@@ -107,20 +103,6 @@ final class ResultsPanelWidget extends OverlayWidget implements FocusableInterfa
         return $this;
     }
 
-    public function onPin(callable $callback): self
-    {
-        $this->onPin = $callback;
-
-        return $this;
-    }
-
-    /** Show (or clear) the "pinned: <label>" indicator in the header. */
-    public function setPinIndicator(?string $label): void
-    {
-        $this->pinLabel = $label;
-        $this->invalidate();
-    }
-
     /**
      * Set the provider of the neighbouring source lines shown around an expanded
      * match (Alt+.).
@@ -150,7 +132,6 @@ final class ResultsPanelWidget extends OverlayWidget implements FocusableInterfa
         $this->markOpen();
         $this->withQuery = $fields->query;
         $this->withFilter = $fields->filter;
-        $this->pinLabel = null;
         $this->grouped = $fields->grouped;
         $this->grouping = ResultGrouping::File;
         // Focus the first shown field (the results-window mode has only the filter).
@@ -297,13 +278,6 @@ final class ResultsPanelWidget extends OverlayWidget implements FocusableInterfa
         if ($this->grouped && $kb->matches($data, 'export')) {
             if (null !== $this->onExport) {
                 ($this->onExport)();
-            }
-
-            return;
-        }
-        if ($this->grouped && $kb->matches($data, 'pin')) {
-            if (null !== $this->onPin) {
-                ($this->onPin)();
             }
 
             return;
@@ -510,7 +484,7 @@ final class ResultsPanelWidget extends OverlayWidget implements FocusableInterfa
         return $this->withQuery ? '' : $this->buildStatus();
     }
 
-    /** 'N results · M shown · pinned: …', or 'searching…' while a search runs. */
+    /** 'N results · M shown', or 'searching…' while a search runs. */
     private function buildStatus(): string
     {
         $status = $this->searching ? 'searching…' : \sprintf('%d results', \count($this->results));
@@ -524,9 +498,6 @@ final class ResultsPanelWidget extends OverlayWidget implements FocusableInterfa
                 ++$shown;
             }
             $status .= \sprintf(' · %d shown', $shown);
-        }
-        if (null !== $this->pinLabel) {
-            $status .= \sprintf(' · pinned: %s', $this->pinLabel);
         }
 
         return $status;
@@ -642,7 +613,6 @@ final class ResultsPanelWidget extends OverlayWidget implements FocusableInterfa
             'toggle_all' => ['alt+e'],
             'toggle_group' => ['alt+g'],
             'toggle_context' => ['alt+m'],
-            'pin' => ['alt+k'],
             'export' => ['alt+x'],
             'rerun' => [Key::F5],
             'switch_field' => [Key::TAB],

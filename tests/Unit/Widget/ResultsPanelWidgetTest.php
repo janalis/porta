@@ -329,29 +329,19 @@ final class ResultsPanelWidgetTest extends TestCase
         $this->assertSame(1, $reran);
     }
 
-    public function testExportPinAndPinIndicator(): void
+    public function testExportKeyFiresTheCallback(): void
     {
         $panel = new ResultsPanelWidget();
         $panel->setFocused(true);
         $exported = 0;
-        $pinned = 0;
         $panel->onExport(static function () use (&$exported): void {
             ++$exported;
-        });
-        $panel->onPin(static function () use (&$pinned): void {
-            ++$pinned;
         });
         $panel->open('Find in Project', ResultsPanelFields::searchResults());
         $panel->setResults($this->groupedResults());
 
         $panel->handleInput("\x1bx"); // alt+x → export
-        $panel->handleInput("\x1bk"); // alt+k → pin
         $this->assertSame(1, $exported);
-        $this->assertSame(1, $pinned);
-
-        // The controller reflects the pinned label into the dock-strip status.
-        $panel->setPinIndicator('needle');
-        $this->assertStringContainsString('pinned: needle', $panel->statusText());
     }
 
     public function testFilterFieldNarrowsResultsWithoutRegrepAndShowsShownCount(): void

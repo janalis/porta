@@ -42,8 +42,6 @@ final class ProjectSearchController
     private string $mask = '';
     /** @var list<array{path: string, line: int, text: string, ranges: list<array{start: int, length: int}>}> */
     private array $lastSearchResults = [];
-    /** @var array{query: string, results: list<array{path: string, line: int, text: string, ranges: list<array{start: int, length: int}>}>}|null a pinned result set (session-lived) */
-    private ?array $pinned = null;
 
     public function __construct(
         private readonly ProjectSearch $projectSearch,
@@ -108,7 +106,6 @@ final class ProjectSearchController
             ? $this->translator->trans('Find in Project')
             : $this->translator->trans('Find in Project: %query%', ['%query%' => $this->lastSearchQuery]);
         $this->resultsPanel->open($title, ResultsPanelFields::searchResults());
-        $this->resultsPanel->setPinIndicator(null === $this->pinned ? null : $this->pinned['query']);
         $this->resultsPanel->setResults($this->lastSearchResults);
         $this->tui->setFocus($this->resultsPanel);
         $this->tui->requestRender();
@@ -182,30 +179,6 @@ final class ProjectSearchController
         $index = array_search($label, $labels, strict: true);
 
         return false === $index ? 0 : $index;
-    }
-
-    /**
-     * Alt+K: pin the current result set when nothing is pinned, otherwise
-     * restore the pinned set into the live panel (and clear the pin). One slot —
-     * a "bookmark one search, wander, jump back". The pin survives panel close.
-     */
-    public function togglePin(): void
-    {
-        if (null === $this->pinned) {
-            $this->pinned = ['query' => $this->lastSearchQuery, 'results' => $this->lastSearchResults];
-            $this->resultsPanel->setPinIndicator($this->lastSearchQuery);
-            $this->statusBar->flash($this->translator->trans('Pinned the current results'));
-            $this->tui->requestRender();
-
-            return;
-        }
-        $pin = $this->pinned;
-        $this->pinned = null;
-        $this->lastSearchQuery = $pin['query'];
-        $this->lastSearchResults = $pin['results'];
-        $this->showResultsPane(); // re-title the tool window to the restored query
-        $this->statusBar->flash($this->translator->trans('Restored the pinned results'));
-        $this->tui->requestRender();
     }
 
     /**

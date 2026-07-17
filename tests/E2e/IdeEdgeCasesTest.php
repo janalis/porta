@@ -1451,60 +1451,6 @@ final class IdeEdgeCasesTest extends TestCase
         );
     }
 
-    public function testFindInProjectPinAndRestoreResults(): void
-    {
-        $project = new TempProject([
-            'src/A.php' => "<?php\n// foo here\n",
-            'src/B.php' => "<?php\n// bar here\n",
-        ]);
-        $panelText = static fn ($tui): string => AnsiUtils::stripAnsiCodes(implode("\n", $tui->getById('results')->render(new \Symfony\Component\Tui\Render\RenderContext(160, 16))));
-
-        $this->runIde(
-            $project,
-            $project->path('src/A.php'),
-            [
-                200 => static function ($tui): void {
-                    $tui->handleInput("\x1b[102;6u"); // ctrl+shift+f
-                    foreach (str_split('foo') as $ch) {
-                        $tui->handleInput($ch);
-                    }
-                },
-                500 => function ($tui) use ($panelText): void {
-                    $tui->tick();
-                    $this->promote($tui); // modal → results tool window (pin lives on the pane)
-                    $this->assertStringContainsString('src/A.php', $panelText($tui), 'the foo search finds A.php');
-                    $tui->handleInput("\x1bk"); // alt+k → pin
-                    $this->assertStringContainsString('pinned: foo', $tui->getById('results')->statusText(), 'the pin indicator appears in the dock-strip status');
-                    $tui->handleInput("\x1b"); // esc → close the tool window
-                },
-                700 => static function ($tui): void {
-                    $tui->handleInput("\x1b[102;6u"); // reopen the modal
-                    foreach (str_split('bar') as $ch) {
-                        $tui->handleInput($ch); // run a fresh search in the modal
-                    }
-                },
-                1100 => function ($tui) use ($panelText): void {
-                    $tui->tick();
-                    $this->promote($tui); // bar results → tool window (still carries the pin)
-                    $panel = $panelText($tui);
-                    $this->assertStringContainsString('src/B.php', $panel, 'the live search moved on to bar');
-                    $this->assertStringNotContainsString('src/A.php', $panel);
-                    $this->assertStringContainsString('pinned: foo', $tui->getById('results')->statusText(), 'the pin survives close/reopen');
-                    $tui->handleInput("\x1bk"); // alt+k → restore the pinned foo results
-                },
-                1500 => function ($tui) use ($panelText): void {
-                    $tui->tick();
-                    $panel = $panelText($tui);
-                    $this->assertSame('Find in Project: foo', $tui->getById('results')->getTitle(), 'the pinned query is restored into the dock-tab title');
-                    $this->assertStringContainsString('src/A.php', $panel, 'the pinned results are restored');
-                    $this->assertStringNotContainsString('pinned:', $tui->getById('results')->statusText(), 'the pin is cleared after restoring');
-                },
-            ],
-        );
-
-        $this->addToAssertionCount(1);
-    }
-
     public function testFindInProjectExportWritesAndOpensResults(): void
     {
         $project = new TempProject([

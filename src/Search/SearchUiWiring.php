@@ -127,10 +127,6 @@ final class SearchUiWiring
             }
         });
 
-        $this->resultsPanel->onPin(function (): void {
-            $this->projectSearch->togglePin();
-        });
-
         $this->resultsPanel->onJump(function (string $relativePath, int $line): void {
             if (\in_array($this->panels->mode(), [ResultsPanelMode::LspLog, ResultsPanelMode::Notifications], strict: true)) {
                 return; // log rows carry no file location
