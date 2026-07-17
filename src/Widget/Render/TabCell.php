@@ -55,14 +55,17 @@ final class TabCell
      * display columns. The splice is safe because {@see TabCloseGlyph} emits a
      * foreground-only span (closed with `\e[39m`, never a full reset), so the
      * tab's background runs underneath it uninterrupted.
+     *
+     * $divider closes the cell; every one is a single column, so which one a
+     * strip picks cannot move its hit map.
      */
-    public static function render(string $text, Styles $styles, TabState $state): string
+    public static function render(string $text, Styles $styles, TabState $state, string $divider = Glyphs::SEPARATOR): string
     {
         $close = match ($state) {
             TabState::Active => TabCloseGlyph::active($styles),
             TabState::Hovered, TabState::Plain => TabCloseGlyph::inactive($styles),
         };
 
-        return TabStyle::of($styles, $state)->apply(str_replace(Glyphs::CLOSE, $close, $text)).$styles->of(Role::Placeholder)->apply(Glyphs::SEPARATOR);
+        return TabStyle::of($styles, $state)->apply(str_replace(Glyphs::CLOSE, $close, $text)).$styles->of(Role::Placeholder)->apply($divider);
     }
 }

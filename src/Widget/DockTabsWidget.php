@@ -249,7 +249,19 @@ final class DockTabsWidget extends AbstractWidget implements LtrPane, MenuOverla
         }
         $hovered = $this->hoveredIndex;
         $strip = TabStripRenderer::render(
-            array_map(static fn (array $tab, int $i): array => ['label' => $tab['label'], 'active' => $tab['active'], 'hovered' => $i === $hovered && !$tab['active']], $tabs, array_keys($tabs)),
+            array_map(
+                // A session tab and a tool tab are different families: a drag
+                // reorders within one and ignores a cross-family endpoint, so
+                // the strip draws that boundary heavier.
+                static fn (array $tab, int $i): array => [
+                    'label' => $tab['label'],
+                    'active' => $tab['active'],
+                    'hovered' => $i === $hovered && !$tab['active'],
+                    'family' => $tab['tab']->name,
+                ],
+                $tabs,
+                array_keys($tabs),
+            ),
             $columns,
             $this->styles,
         );

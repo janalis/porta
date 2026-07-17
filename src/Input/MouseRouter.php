@@ -417,6 +417,11 @@ final class MouseRouter
                     $current = $i;
                     break;
                 }
+                // This IS the drag threshold, and it is in the right unit: a
+                // reorder needs the pointer over a DIFFERENT tab, so a wobble
+                // inside the one you pressed resolves to the same index and
+                // does nothing. A cell-based threshold on top would break the
+                // vertical list, where one row is one whole tab.
                 if (null !== $current && $current !== $target) {
                     $this->buffers->reorder($current, $target);
                     // A pure reorder mutates no widget, so the render pass would be

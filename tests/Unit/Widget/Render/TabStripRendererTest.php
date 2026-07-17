@@ -5,13 +5,14 @@ declare(strict_types=1);
 namespace Porta\Tests\Unit\Widget\Render;
 
 use PHPUnit\Framework\TestCase;
+use Porta\Ui\Glyphs;
 use Porta\Ui\Theme\Styles;
 use Porta\Widget\Render\TabStripRenderer;
 use Symfony\Component\Tui\Ansi\AnsiUtils;
 
 final class TabStripRendererTest extends TestCase
 {
-    /** @param list<array{label: string, active: bool, hovered: bool}> $tabs */
+    /** @param list<array{label: string, active: bool, hovered: bool, family?: string}> $tabs */
     private static function strip(array $tabs, int $columns = 60): array
     {
         return TabStripRenderer::render($tabs, $columns, Styles::dark());
@@ -52,5 +53,30 @@ final class TabStripRendererTest extends TestCase
         $this->assertStringContainsString('tab-06', $plain, 'the active tab is always on the strip');
         $this->assertStringNotContainsString('tab-00', $plain, 'leading tabs drop first');
         $this->assertSame(6, $strip['hitMap'][0]['index'] + \count($strip['hitMap']) - 1, 'the hit map covers through the active tab');
+    }
+
+    public function testAFamilyBoundaryIsDrawnHeavierThanASiblingDivider(): void
+    {
+        // A drag reorders within a family and refuses to cross, so the strip
+        // must not claim every gap is the same kind of gap.
+        $strip = self::strip([
+            ['label' => 'sh', 'active' => false, 'hovered' => false, 'family' => 'Terminal'],
+            ['label' => 'node', 'active' => true, 'hovered' => false, 'family' => 'Terminal'],
+            ['label' => 'Problems', 'active' => false, 'hovered' => false, 'family' => 'Results'],
+        ]);
+
+        $plain = AnsiUtils::stripAnsiCodes($strip['line']);
+        $this->assertSame(' sh × │ node × ┃ Problems × │', $plain, 'heavy only where the family changes');
+        $this->assertSame($strip['used'], AnsiUtils::visibleWidth($strip['line']), 'the heavier glyph is still one column');
+    }
+
+    public function testAStripWithNoFamiliesIsAllSiblingDividers(): void
+    {
+        $strip = self::strip([
+            ['label' => 'one', 'active' => true, 'hovered' => false],
+            ['label' => 'two', 'active' => false, 'hovered' => false],
+        ]);
+
+        $this->assertStringNotContainsString(Glyphs::FAMILY_SEPARATOR, AnsiUtils::stripAnsiCodes($strip['line']));
     }
 }

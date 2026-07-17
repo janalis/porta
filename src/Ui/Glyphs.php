@@ -42,7 +42,8 @@ final class Glyphs
     // Tab strips.
     public const string DIRTY = '●';
     public const string SESSION_STOPPED = '○';
-    public const string SEPARATOR = '│';
+    public const string SEPARATOR = '│'; // between two tabs of one family
+    public const string FAMILY_SEPARATOR = '┃'; // between two families — heavier, because a drag cannot cross it
     public const string CLOSE = '×'; // the tab's close affordance; {@see \Porta\Widget\Render\TabCloseGlyph} owns its shade
     public const string SCROLL_PREV = '‹';
     public const string SCROLL_NEXT = '›';

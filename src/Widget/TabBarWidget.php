@@ -120,7 +120,18 @@ final class TabBarWidget extends AbstractWidget implements MenuOverlayHost
         $fingerprint = (string) json_encode(($this->provider)());
         if ($fingerprint !== $this->lastFingerprint) {
             $this->lastFingerprint = $fingerprint;
-            $this->clearHover(); // the strip changed under the pointer
+            // The strip changed under the pointer, so the hovered INDEX may now
+            // name a different tab — dropping it is the safe read.
+            //
+            // It also drops a tint that is still correct (save a file while
+            // hovering an inactive tab and it goes cold until you jiggle the
+            // mouse), because only a fresh motion event can restore it and a
+            // resting pointer sends none. Fixing that means hovering by CELL
+            // and resolving the index per render, so it cannot go stale —
+            // worth doing, but it is not the drag's bug: a dragged tab is the
+            // active one, and active outranks hovered, so no drag ever shows
+            // this.
+            $this->clearHover();
             $this->invalidate();
         }
     }

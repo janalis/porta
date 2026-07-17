@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Porta\Widget\Render;
 
+use Porta\Ui\Glyphs;
 use Porta\Ui\Theme\Styles;
 
 /**
@@ -12,19 +13,24 @@ use Porta\Ui\Theme\Styles;
  * strip. Returns the styled run, the columns it used, and the hit map the
  * caller feeds its click/close/hover zones from.
  *
+ * A tab's optional `family` groups it: a drag reorders within one family and
+ * refuses to cross, so the boundary between two families is drawn heavier
+ * than the divider between siblings. Without it the strip claimed every gap
+ * was the same and then silently ignored half the drags.
+ *
  * The cell and its shading are the strip family's ({@see TabCell},
  * {@see TabStyle}); what is this renderer's own is the windowing.
  */
 final class TabStripRenderer
 {
     /**
-     * @param list<array{label: string, active: bool, hovered: bool}> $tabs
+     * @param list<array{label: string, active: bool, hovered: bool, family?: string}> $tabs
      *
      * @return array{line: string, used: int, hitMap: list<array{index: int, start: int, width: int, closeStart: int, closeWidth: int}>}
      */
     public static function render(array $tabs, int $columns, Styles $styles): array
     {
-        /** @var list<array{tab: array{label: string, active: bool, hovered: bool}, text: string, width: int, closeOffset: int}> $parts */
+        /** @var list<array{tab: array{label: string, active: bool, hovered: bool, family?: string}, text: string, width: int, closeOffset: int}> $parts */
         $parts = [];
         $activeIndex = 0;
         foreach ($tabs as $i => $tab) {
@@ -48,7 +54,9 @@ final class TabStripRenderer
                 break;
             }
             $tab = $part['tab'];
-            $line .= TabCell::render($part['text'], $styles, TabState::of($tab['active'], $tab['hovered']));
+            $next = $parts[$index + 1]['tab'] ?? null;
+            $crosses = null !== $next && ($tab['family'] ?? null) !== ($next['family'] ?? null);
+            $line .= TabCell::render($part['text'], $styles, TabState::of($tab['active'], $tab['hovered']), $crosses ? Glyphs::FAMILY_SEPARATOR : Glyphs::SEPARATOR);
             $hitMap[] = ['index' => $index, 'start' => $used, 'width' => $part['width'], 'closeStart' => $used + $part['closeOffset'], 'closeWidth' => TabCell::CLOSE_WIDTH];
             $used += $part['width'];
         }
