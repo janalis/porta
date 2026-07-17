@@ -42,8 +42,11 @@ final class ProjectSearchController
     private array $scope = ['.'];
     /** file mask (e.g. `*.php`, `*.{php,js}`); empty searches all files. */
     private string $mask = '';
-    /** @var list<array{path: string, line: int, text: string, ranges: list<array{start: int, length: int}>}> */
+    /** @var list<array{path: string, line: int, text: string, ranges?: list<array{start: int, length: int}>}> */
     private array $lastSearchResults = [];
+
+    /** True while showResultsPane binds its own tab — suppresses the adopt-on-bind hook. */
+    private bool $promoting = false;
 
     public function __construct(
         private readonly ProjectSearch $projectSearch,
@@ -107,7 +110,40 @@ final class ProjectSearchController
         $title = '' === trim($this->lastSearchQuery)
             ? $this->translator->trans('Find in Project')
             : $this->translator->trans('Find in Project: %query%', ['%query%' => $this->lastSearchQuery]);
-        $this->dock->showList(ResultsPanelMode::Search, $title, $this->lastSearchResults, ResultsPanelFields::searchResults());
+        // The bind hook re-adopts a tab's frozen state — suppressed while WE
+        // are promoting, or a same-title re-promote with a changed mask or
+        // options would rehydrate the stale definition over the new one.
+        $this->promoting = true;
+        $tab = $this->dock->showList(ResultsPanelMode::Search, $title, $this->lastSearchResults, ResultsPanelFields::searchResults());
+        $this->promoting = false;
+        $tab->searchState = new SearchTabState($this->lastSearchQuery, $this->searchOptions, $this->scope, $this->mask, $this->scopeKind);
+    }
+
+    /**
+     * A Search tab took the display: rehydrate its frozen definition so
+     * F5/replace/export act on the tab's own query. Fresh tabs (no state
+     * yet) and foreign tools are ignored.
+     */
+    public function adopt(DockToolTab $tab): void
+    {
+        $state = $tab->searchState;
+        if ($this->promoting || null === $state) {
+            return;
+        }
+        $this->lastSearchQuery = $state->query;
+        $this->searchOptions = $state->options;
+        $this->scope = $state->scope;
+        $this->mask = $state->mask;
+        $this->scopeKind = $state->scopeKind;
+        $this->lastSearchResults = $tab->rows;
+    }
+
+    /** A Search tab was ×'d: record its query/mask like a panel close used to, and drop any in-flight run. */
+    public function closeSearch(SearchTabState $state): void
+    {
+        $this->history->add($state->query);
+        $this->prefs->addRecentMask($state->mask);
+        $this->projectSearch->cancel();
     }
 
     /** Rebuild the Alt+S choices: the built-in kinds followed by the saved scopes. */
@@ -464,11 +500,16 @@ final class ProjectSearchController
         );
     }
 
-    /** The Search tool tab currently on display (the pane a completion should land in), or null. */
+    /** The find-in-project tab currently on display (the pane a completion should land in), or null. */
     private function paneTab(): ?DockToolTab
     {
         $tool = $this->dock->activeTool();
+        if (null === $tool || ResultsPanelMode::Search !== $tool->mode) {
+            return null;
+        }
 
-        return null !== $tool && ResultsPanelMode::Search === $tool->mode ? $tool : null;
+        // A fresh promote assigns the state right after showList; during that
+        // window the active Search tab without state is still ours.
+        return $this->promoting || null !== $tool->searchState ? $tool : null;
     }
 }

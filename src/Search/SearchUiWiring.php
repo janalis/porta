@@ -11,6 +11,8 @@ use Porta\Lsp\NavigationController;
 use Porta\Support\Scheduler;
 use Porta\Ui\BottomDock;
 use Porta\Ui\CommandPalette;
+use Porta\Ui\DockTab;
+use Porta\Ui\DockToolTab;
 use Porta\Ui\EditorArea;
 use Porta\Ui\ResultsPanelMode;
 use Porta\Widget\CodeEditorWidget;
@@ -109,11 +111,13 @@ final class SearchUiWiring
         // BOUND tab's mode — the dock's mode field may lag behind tool
         // switches driven outside the dock.
         $this->resultsPanel->onRerun(function (): void {
-            $mode = $this->panels->activeTool()->mode ?? $this->panels->mode();
-            if (ResultsPanelMode::Search === $mode) {
-                $this->projectSearch->rerun();
+            $tool = $this->panels->activeTool();
+            if (null !== $tool?->searchState) {
+                $this->projectSearch->rerun(); // only real find-in-project tabs re-grep
+
+                return;
             }
-            if (ResultsPanelMode::Todo === $mode) {
+            if (ResultsPanelMode::Todo === $tool?->mode) {
                 $this->todoScanner->scan();
             }
         });
@@ -124,9 +128,22 @@ final class SearchUiWiring
         $this->resultsPanel->onExport(function (): void {
             $path = $this->projectSearch->exportResults();
             if ('' !== $path) {
-                $this->resultsPanel->close();
+                $this->panels->closeTab(DockTab::Results); // only the exported search's tab closes
                 $this->bufferService->openFile($path, focus: OpenFocus::Editor);
                 $this->tui->requestRender();
+            }
+        });
+
+        // A Search tab taking the display rehydrates its frozen query
+        // definition; ×ing one records its query/mask and cancels its run.
+        $this->panels->onToolBound(function (DockToolTab $tab): void {
+            if (ResultsPanelMode::Search === $tab->mode) {
+                $this->projectSearch->adopt($tab);
+            }
+        });
+        $this->panels->onToolClosed(function (DockToolTab $tab): void {
+            if (null !== $tab->searchState) {
+                $this->projectSearch->closeSearch($tab->searchState);
             }
         });
 
@@ -150,8 +167,9 @@ final class SearchUiWiring
             $this->tui->requestRender();
         });
 
+        // Per-tab close recording happens in onToolClosed; the widget-level
+        // close (last tab gone, picker close) only returns the focus.
         $this->resultsPanel->onClose(function (): void {
-            $this->projectSearch->cancel();
             $this->panels->focusEditor();
         });
     }
@@ -191,8 +209,7 @@ final class SearchUiWiring
             $this->tui->requestRender();
         });
         $modal->onOpenInFindWindow(function (): void {
-            $this->panels->setMode(ResultsPanelMode::Search);
-            $this->projectSearch->promoteToPane();
+            $this->projectSearch->promoteToPane(); // binding the tab sets the mode
         });
         $modal->onReplaceAll(
             /** @param list<int> $excluded */

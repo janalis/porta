@@ -8,11 +8,17 @@ use PHPUnit\Framework\TestCase;
 use Porta\Editor\BufferManager;
 use Porta\Search\ProjectSearch;
 use Porta\Search\ProjectSearchController;
+use Porta\Search\SearchOptions;
+use Porta\Search\SearchTabState;
 use Porta\Tests\Support\TempProject;
 use Porta\Tests\Support\TestBottomDock;
 use Porta\Ui\BottomDock;
+use Porta\Ui\DockToolTab;
+use Porta\Ui\ResultsPanelMode;
+use Porta\Ui\ScopeKind;
 use Porta\Widget\CodeEditorWidget;
 use Porta\Widget\DebugPanelWidget;
+use Porta\Widget\ResultsPanelFields;
 use Porta\Widget\ResultsPanelWidget;
 use Porta\Widget\StatusBarWidget;
 use Porta\Widget\TerminalPanelWidget;
@@ -157,5 +163,44 @@ final class ProjectSearchControllerTest extends TestCase
         $this->controller($project->dir)->replaceInFolder($project->dir);
 
         $this->assertStringContainsString('Scope: Whole Project', $this->modal());
+    }
+
+    public function testAdoptRehydratesATabsFrozenDefinition(): void
+    {
+        $project = new TempProject(['src/A.php' => "<?php\n"]);
+        $controller = $this->controller($project->dir);
+
+        $tab = new DockToolTab(1, ResultsPanelMode::Search, 'Find in Project: needle', ResultsPanelFields::searchResults());
+        $tab->searchState = new SearchTabState('needle', new SearchOptions(), ['.'], '*.php', ScopeKind::Project);
+        $tab->rows = [['path' => 'src/A.php', 'line' => 0, 'text' => 'needle here', 'ranges' => []]];
+        $controller->adopt($tab);
+
+        $exported = $controller->exportResults();
+        $content = (string) file_get_contents($exported);
+        $this->assertStringContainsString('Search: needle', $content, 'the adopted query drives export');
+        $this->assertStringContainsString('needle here', $content, 'the adopted rows drive export');
+    }
+
+    public function testAdoptIgnoresAFreshTabWithoutState(): void
+    {
+        $project = new TempProject(['src/A.php' => "<?php\n"]);
+        $controller = $this->controller($project->dir);
+
+        $tab = new DockToolTab(1, ResultsPanelMode::Search, 'Usages', ResultsPanelFields::resultsOnly());
+        $tab->rows = [['path' => 'src/A.php', 'line' => 0, 'text' => 'x', 'ranges' => []]];
+        $controller->adopt($tab);
+
+        $this->assertSame('', $controller->exportResults(), 'a state-less list tab never becomes the export source');
+    }
+
+    public function testCloseSearchRecordsQueryAndMask(): void
+    {
+        $project = new TempProject(['src/A.php' => "<?php\n"]);
+        $controller = $this->controller($project->dir);
+
+        $controller->closeSearch(new SearchTabState('kept-query', new SearchOptions(), ['.'], '*.tpl', ScopeKind::Project));
+
+        $this->assertContains('kept-query', new \Porta\History\SearchHistoryStore($project->dir)->all(), '×ing a search tab records its query');
+        $this->assertContains('*.tpl', new \Porta\History\SearchPrefsStore($project->dir)->recentMasks(), 'and its mask');
     }
 }

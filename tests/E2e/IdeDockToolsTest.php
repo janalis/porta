@@ -138,9 +138,11 @@ final class IdeDockToolsTest extends TestCase
                     $tui->handleInput("\x1b8"); // alt+8 → scan starts
                     $tui->handleInput("\x1b6"); // alt+6 → Problems binds; the TODO tab stays alive behind it
                     foreach ($dock->aliveTabs() as $entry) {
-                        if ('TODO' === $entry['label']) {
-                            $dock->closeTab(\Porta\Ui\DockTab::Results, $entry['key']); // × the inactive TODO tab
+                        if ('TODO' !== $entry['label']) {
+                            continue;
                         }
+
+                        $dock->closeTab(\Porta\Ui\DockTab::Results, $entry['key']); // × the inactive TODO tab
                     }
                     $this->await(static fn (): bool => str_contains(AnsiUtils::stripAnsiCodes($terminal->getOutput()), 'Problems'));
                 },
@@ -153,6 +155,81 @@ final class IdeDockToolsTest extends TestCase
                     $this->assertStringContainsString('0 results', $results->statusText(), 'the stale TODO completion did not overwrite the rows');
                     $panel = AnsiUtils::stripAnsiCodes(implode("\n", $results->render(new \Symfony\Component\Tui\Render\RenderContext(160, 12))));
                     $this->assertStringNotContainsString('FIXME races', $panel, 'the stale TODO completion was dropped');
+                },
+            ],
+        );
+
+        $this->addToAssertionCount(1);
+    }
+
+    public function testTwoSearchesCoexistAsTabsAndF5RerunsTheRightOne(): void
+    {
+        putenv('PATH='.$this->originalPath); // real grep
+        $project = new TempProject([
+            'src/Main.php' => "<?php\n// nothing to see\n",
+            'src/A.php' => "<?php\n// alpha here\n",
+            'src/B.php' => "<?php\n// beta here\n",
+        ]);
+        $search = static function ($tui, string $query): void {
+            $tui->handleInput("\x1b[102;6u"); // ctrl+shift+f
+            foreach (str_split($query) as $ch) {
+                $tui->handleInput($ch);
+            }
+        };
+        $dock = static fn ($ide): object => new \ReflectionProperty(Ide::class, 'panels')->getValue($ide);
+
+        $this->runIde(
+            $project,
+            $project->path('src/Main.php'),
+            [
+                200 => function ($tui, $terminal) use ($search): void {
+                    $search($tui, query: 'alpha');
+                    $this->await(static fn (): bool => str_contains(AnsiUtils::stripAnsiCodes($terminal->getOutput()), 'alpha here'));
+                    $tui->handleInput("\x1b\r"); // alt+enter → promote to a dock tab
+                    $tui->tick();
+                },
+                450 => function ($tui, $terminal, $ide) use ($search, $dock): void {
+                    $search($tui, query: 'beta');
+                    $this->await(static fn (): bool => str_contains(AnsiUtils::stripAnsiCodes($terminal->getOutput()), 'beta here'));
+                    $tui->handleInput("\x1b\r"); // alt+enter → a SECOND tab
+                    $tui->tick();
+                    $labels = array_column($dock($ide)->aliveTabs(), 'label');
+                    $this->assertContains('Find in Project: alpha', $labels, 'the first search kept its tab');
+                    $this->assertContains('Find in Project: beta', $labels, 'the second search opened beside it');
+                },
+                700 => function ($tui, $terminal, $ide) use ($project, $dock): void {
+                    // Switch back to the alpha tab and F5: only ITS query re-runs.
+                    foreach ($dock($ide)->aliveTabs() as $entry) {
+                        if ('Find in Project: alpha' !== $entry['label']) {
+                            continue;
+                        }
+
+                        $dock($ide)->reveal($entry['tab'], $entry['key']);
+                    }
+                    $tui->tick();
+                    $project->write('src/C.php', "<?php\n// alpha again\n");
+                    $tui->setFocus($tui->getById('results'));
+                    $tui->handleInput("\x1b[15~"); // F5 → reruns 'alpha', not 'beta'
+                    $this->await(static fn (): bool => str_contains($tui->getById('results')->statusText(), '2 results'));
+                    $panel = AnsiUtils::stripAnsiCodes(implode("\n", $tui->getById('results')->render(new \Symfony\Component\Tui\Render\RenderContext(160, 14))));
+                    $this->assertStringContainsString('alpha again', $panel, "F5 re-ran the alpha tab's own query");
+                    $this->assertStringNotContainsString('beta here', $panel, 'the beta results stayed in their tab');
+                },
+                1000 => function ($tui, $terminal, $ide) use ($project, $dock): void {
+                    $tui->tick();
+                    // × the beta tab: its query lands in the search history.
+                    foreach ($dock($ide)->aliveTabs() as $entry) {
+                        if ('Find in Project: beta' !== $entry['label']) {
+                            continue;
+                        }
+
+                        $dock($ide)->closeTab($entry['tab'], $entry['key']);
+                    }
+                    $tui->tick();
+                    $this->assertContains('beta', new \Porta\History\SearchHistoryStore($project->dir)->all(), '×ing a search tab records its query');
+                    $labels = array_column($dock($ide)->aliveTabs(), 'label');
+                    $this->assertNotContains('Find in Project: beta', $labels);
+                    $this->assertContains('Find in Project: alpha', $labels, 'the alpha tab survives');
                 },
             ],
         );
