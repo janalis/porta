@@ -165,17 +165,13 @@ final class FindBarWidget extends OverlayWidget implements FocusableInterface
         }
 
         if ($kb->matches($data, 'toggle_regex')) {
-            $this->regex = !$this->regex;
-            $this->recompute(jumpToNearest: MatchJump::ToNearest);
-            $this->invalidate();
+            $this->toggleRegex();
 
             return;
         }
 
         if ($kb->matches($data, 'toggle_word')) {
-            $this->wholeWord = !$this->wholeWord;
-            $this->recompute(jumpToNearest: MatchJump::ToNearest);
-            $this->invalidate();
+            $this->toggleWholeWord();
 
             return;
         }
@@ -220,9 +216,68 @@ final class FindBarWidget extends OverlayWidget implements FocusableInterface
         }
     }
 
+    /**
+     * The option tags' click zones (widget-relative columns) from the last
+     * render. Right-aligned into a fixed strip, so unlike the rest of the bar
+     * they do not move as the query grows — see {@see render()}.
+     *
+     * @var list<array{name: string, start: int, end: int}>
+     */
+    private array $optionZones = [];
+    /** The option tag under the pointer ('regex'|'word'), or null. Visual only. */
+    private ?string $hoveredTag = null;
+
+    /**
+     * Tint the option tag under the pointer (widget-relative column); returns
+     * whether it changed.
+     */
+    public function hoverAt(int $col): bool
+    {
+        $hovered = $this->zoneAt($col);
+        if ($hovered === $this->hoveredTag) {
+            return false;
+        }
+        $this->hoveredTag = $hovered;
+        $this->invalidate();
+
+        return true;
+    }
+
+    /** The pointer left the bar: drop the tag tint. Returns whether it changed. */
+    public function clearHover(): bool
+    {
+        return $this->hoverAt(-1);
+    }
+
+    /** A click on an option tag toggles it, exactly as its Alt+X / Alt+W key does. */
+    public function handleClick(int $col): void
+    {
+        match ($this->zoneAt($col)) {
+            'regex' => $this->toggleRegex(),
+            'word' => $this->toggleWholeWord(),
+            default => null,
+        };
+    }
+
+    /** The option-tag zone covering $col in the last render, or null. */
+    private function zoneAt(int $col): ?string
+    {
+        foreach ($this->optionZones as $zone) {
+            if ($col < $zone['start'] || $col >= $zone['end']) {
+                continue;
+            }
+
+            return $zone['name'];
+        }
+
+        return null;
+    }
+
     public function render(RenderContext $context): array
     {
         if (!$this->open) {
+            $this->optionZones = [];
+
             return [];
         }
 
@@ -243,12 +298,25 @@ final class FindBarWidget extends OverlayWidget implements FocusableInterface
             ? $this->translator->trans('⏎/F3 next  Shift+F3 prev  Tab field  Alt+R replace  Alt+A all  Alt+X .*  Alt+W \b  Esc')
             : $this->translator->trans('⏎/F3 next  Shift+F3 prev  Alt+X .*  Alt+W \b  Esc');
 
-        $tags = $this->optionTag('.*', $this->regex ? ToggleState::On : ToggleState::Off).$this->optionTag('\b', $this->wholeWord ? ToggleState::On : ToggleState::Off);
-        $left = $findField.$replaceField.$this->styles->of(Role::Dim)->apply("[{$position}]").$tags;
-        $line = $left.'  '.$this->styles->of(Role::Faint)->apply($hints);
-        // Scroll the whole bar to the focused field's caret so a long query or
+        // The tags are click targets, so they are right-aligned into a fixed
+        // strip and left OUT of the scroll below: the rest of the bar slides to
+        // follow the caret, which would otherwise carry their columns off with
+        // it and leave the zones pointing at whatever the query pushed there.
+        // Same resolution the diff view's toolbar toggles already use.
+        $this->optionZones = [];
+        $tags = '';
+        $col = max(0, $columns - self::tagsWidth());
+        foreach ([['regex', '.*', $this->regex], ['word', '\b', $this->wholeWord]] as [$name, $glyph, $on]) {
+            $tags .= $this->optionTag($glyph, OptionTagState::of($on, $name === $this->hoveredTag));
+            $width = mb_strwidth($glyph) + 2;
+            $this->optionZones[] = ['name' => $name, 'start' => $col, 'end' => $col + $width];
+            $col += $width;
+        }
+
+        $body = $findField.$replaceField.$this->styles->of(Role::Dim)->apply("[{$position}]").'  '.$this->styles->of(Role::Faint)->apply($hints);
+        // Scroll the bar to the focused field's caret so a long query or
         // replacement never clips its cursor off the right edge.
-        $line = AnsiText::scrollLineToCaret($line, $columns);
+        $line = AnsiText::scrollLineToCaret($body, max(0, $columns - self::tagsWidth())).$tags;
 
         return [$this->styles->of(Role::Toolbar)->apply($line)];
     }
@@ -444,12 +512,42 @@ final class FindBarWidget extends OverlayWidget implements FocusableInterface
         }
     }
 
-    /** The [.*] / [\b] mode tags after the counter, lit when the option is on. */
-    private function optionTag(string $label, ToggleState $on): string
+    /** Display columns of the right-aligned option-tag strip (both tags are glyph + 2). */
+    private static function tagsWidth(): int
     {
-        $role = ToggleState::On === $on ? Role::SelectedRow : Role::Faint;
+        return mb_strwidth('.*') + 2 + mb_strwidth('\b') + 2;
+    }
 
-        return ' '.$this->styles->of($role)->apply('['.$label.']');
+    /** Flip regex matching and re-search (Alt+X, or a click on the [.*] tag). */
+    private function toggleRegex(): void
+    {
+        $this->regex = !$this->regex;
+        $this->recompute(jumpToNearest: MatchJump::ToNearest);
+        $this->invalidate();
+    }
+
+    /** Flip whole-word matching and re-search (Alt+W, or a click on the [\b] tag). */
+    private function toggleWholeWord(): void
+    {
+        $this->wholeWord = !$this->wholeWord;
+        $this->recompute(jumpToNearest: MatchJump::ToNearest);
+        $this->invalidate();
+    }
+
+    /**
+     * A right-aligned mode tag. An enabled tag is bracketed — the toggle
+     * convention, so it reads without colour — and all three states stay
+     * glyph + 2 columns so the click zones never shift. Identical to
+     * {@see \Porta\Widget\Overlay\FindInFilesModal}'s tags, which is what
+     * these have always looked like they were.
+     */
+    private function optionTag(string $label, OptionTagState $state): string
+    {
+        return match ($state) {
+            OptionTagState::On => $this->styles->of(Role::SelectedRow)->apply('['.$label.']'),
+            OptionTagState::Hovered => $this->styles->of(Role::RowHighlightBg)->apply(' '.$label.' '),
+            OptionTagState::Off => $this->styles->of(Role::Faint)->apply(' '.$label.' '),
+        };
     }
 
     /** @return array<string, string[]> */

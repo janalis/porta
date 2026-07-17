@@ -253,9 +253,12 @@ final class FindBarWidgetTest extends TestCase
         $bar->handleInput("\x1bw"); // alt+w → whole word
         $this->assertCount(2, array_merge(...array_values($bar->getMatchesByLine())), 'foobar no longer matches');
 
+        // Bracketed = enabled, so the tags read without colour (the toggle
+        // convention the find modal and the checkboxes already follow).
         $screen = AnsiUtils::stripAnsiCodes(implode('', $bar->render(new RenderContext(120, 1))));
-        $this->assertStringContainsString('[\b]', $screen, 'the whole-word tag renders');
-        $this->assertStringContainsString('[.*]', $screen, 'the regex tag renders (off)');
+        $this->assertStringContainsString('[\b]', $screen, 'the enabled whole-word tag is bracketed');
+        $this->assertStringNotContainsString('[.*]', $screen, 'the disabled regex tag is not');
+        $this->assertStringContainsString(' .* ', $screen, 'but it still occupies its zone');
     }
 
     public function testInvalidRegexShowsAnInlineIndicatorAndMatchesNothing(): void
@@ -363,5 +366,83 @@ final class FindBarWidgetTest extends TestCase
 
         $bar->handleInput("\x1br");
         $this->assertSame("\$1\n", $doc->getText(), 'literal mode inserts $1 verbatim');
+    }
+
+    public function testClickingAnOptionTagTogglesItLikeItsKey(): void
+    {
+        $doc = new Document("foo foobar foo\n");
+        $bar = new FindBarWidget(new Translator('en'));
+        $bar->setFocused(true);
+        $bar->open($doc, mode: FindMode::Find);
+        $this->type($bar, 'foo');
+        $bar->render(new RenderContext(80, 1)); // the zones come from the last render
+        $this->assertCount(3, array_merge(...array_values($bar->getMatchesByLine())));
+
+        // The tags are right-aligned: at 80 columns [.*] spans 72-75, [\b] 76-79.
+        $bar->handleClick(77);
+        $this->assertCount(2, array_merge(...array_values($bar->getMatchesByLine())), 'the click re-ran the search, exactly as Alt+W does');
+
+        $bar->handleClick(10); // the query field is not a tag
+        $this->assertCount(2, array_merge(...array_values($bar->getMatchesByLine())), 'a click off the tags is inert');
+
+        $bar->handleClick(77);
+        $this->assertCount(3, array_merge(...array_values($bar->getMatchesByLine())), 'and it toggles back off');
+
+        // The other tag, on its own zone: regex mode makes the query a pattern.
+        $bar->handleClick(73);
+        $this->type($bar, '+');
+        $this->assertCount(3, array_merge(...array_values($bar->getMatchesByLine())), 'foo+ is a regex now, not a literal');
+    }
+
+    public function testHoverTintsTheTagUnderThePointer(): void
+    {
+        $bar = new FindBarWidget(new Translator('en'));
+        $bar->open(new Document("foo\n"), mode: FindMode::Find);
+        $bar->render(new RenderContext(80, 1));
+
+        $this->assertTrue($bar->hoverAt(73), 'the pointer landed on the regex tag');
+        $this->assertFalse($bar->hoverAt(74), 'still the same tag → no change');
+        $this->assertTrue($bar->hoverAt(77), 'moved onto the whole-word tag');
+        $this->assertTrue($bar->hoverAt(10), 'the query field is not a tag: the tint clears');
+        $this->assertFalse($bar->hoverAt(10), 'still no tag → no change');
+        $this->assertTrue($bar->hoverAt(73), 'back onto a tag');
+        $this->assertTrue($bar->clearHover(), 'the pointer left the bar');
+        $this->assertFalse($bar->clearHover(), 'nothing left to clear');
+
+        $bar->hoverAt(73);
+        $line = $bar->render(new RenderContext(80, 1))[0];
+        $this->assertStringContainsString("\x1b[48;5;236m", $line, 'the hovered tag tints');
+        $this->assertSame(80, AnsiUtils::visibleWidth($line), 'the tint does not change the bar width');
+    }
+
+    /**
+     * The reason the tags are right-aligned rather than sitting after the
+     * counter: the rest of the bar scrolls to follow the caret, so a growing
+     * query used to carry the tags' columns with it — and a click zone that
+     * moves as you type points at whatever the query pushed under it.
+     */
+    public function testTheTagZonesDoNotMoveAsTheQueryGrows(): void
+    {
+        $bar = new FindBarWidget(new Translator('en'));
+        $bar->setFocused(true);
+        $bar->open(new Document("foo\n"), mode: FindMode::Find);
+
+        $zones = null;
+        foreach (['', 'foo', str_repeat('long-query-', times: 8)] as $query) {
+            $this->type($bar, $query);
+            $line = $bar->render(new RenderContext(80, 1))[0];
+            $this->assertSame(80, AnsiUtils::visibleWidth($line), 'the bar always fills its row');
+
+            $hit = [];
+            for ($col = 0; $col < 80; ++$col) {
+                if ($bar->hoverAt($col)) {
+                    $hit[] = $col;
+                }
+                $bar->clearHover();
+            }
+            $zones ??= $hit;
+            $this->assertSame($zones, $hit, "the tag zones moved once the query was {$query}");
+        }
+        $this->assertNotSame([], $zones, 'the tags are hit-testable at all');
     }
 }

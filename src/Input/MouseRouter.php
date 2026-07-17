@@ -668,6 +668,14 @@ final class MouseRouter
             return true;
         }
 
+        // Find-bar click: the option tags toggle, exactly as their keys do.
+        if ($this->panes->findBar()->isOpen() && null !== ($rel = $this->hit->hit($this->panes->findBar(), $mouse->row, $mouse->col))) {
+            $this->panes->findBar()->handleClick($rel['col']);
+            $this->tui->requestRender();
+
+            return true;
+        }
+
         // Breadcrumbs click: jump the caret to the clicked scope's declaration.
         // The bar renders zero rows without a trail (help/image tabs,
         // structureless files) but the renderer keeps its last non-empty rect,
@@ -796,7 +804,14 @@ final class MouseRouter
         $crumbRel = null !== $crumbRect && $crumbRect->contains($mouse->row, $mouse->col) ? $crumbRect->toRelative($mouse->row, $mouse->col) : null;
         $crumbsChanged = null !== $crumbRel ? $this->panes->breadcrumbs()->hoverAt($crumbRel['col']) : $this->panes->breadcrumbs()->clearHover();
 
-        if ($tabsChanged || $dockChanged || $crumbsChanged) {
+        // The find bar's option tags. It renders zero rows when closed and the
+        // renderer keeps the last non-empty rect, so its own liveness gates
+        // the hit-test rather than a null rect.
+        $findRect = $this->panes->findBar()->isOpen() ? $this->hit->rect($this->panes->findBar()) : null;
+        $findRel = null !== $findRect && $findRect->contains($mouse->row, $mouse->col) ? $findRect->toRelative($mouse->row, $mouse->col) : null;
+        $findChanged = null !== $findRel ? $this->panes->findBar()->hoverAt($findRel['col']) : $this->panes->findBar()->clearHover();
+
+        if ($tabsChanged || $dockChanged || $crumbsChanged || $findChanged) {
             $this->tui->requestRender();
         }
     }

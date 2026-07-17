@@ -2092,6 +2092,40 @@ final class IdeEdgeCasesTest extends TestCase
         );
     }
 
+    public function testClickingTheFindBarsOptionTagTogglesIt(): void
+    {
+        putenv('PATH=/nonexistent');
+        $project = new TempProject(['a.php' => "<?php\n// foo foobar foo\n"]);
+
+        $this->runIde(
+            $project,
+            $project->path('a.php'),
+            [
+                200 => function ($tui, $terminal, $ide): void {
+                    $tui->handleInput("\x06"); // ctrl+f
+                    foreach (str_split('foo') as $ch) {
+                        $tui->handleInput($ch);
+                    }
+                    $tui->tick();
+                    $this->assertStringContainsString('[1/3]', AnsiUtils::stripAnsiCodes($terminal->getOutput()), 'substring mode hits foobar too');
+
+                    // Click the right-aligned [\b] tag through the real router.
+                    $renderer = new \ReflectionProperty($ide, 'renderer')->getValue($ide);
+                    $rect = $renderer->getWidgetRect($tui->getById('find-bar'));
+                    $tui->handleInput(\sprintf("\x1b[<0;%d;%dM", $rect->col + $rect->columns - 2, $rect->row + 1));
+                },
+                300 => function ($tui, $terminal): void {
+                    $tui->tick();
+                    $screen = AnsiUtils::stripAnsiCodes($terminal->getOutput());
+                    $this->assertStringContainsString('[1/2]', $screen, 'the click toggled whole-word and re-ran the search: foobar no longer matches');
+                    $this->assertStringContainsString('[\\b]', $screen, 'and the tag reads as enabled without relying on colour');
+                },
+            ],
+        );
+
+        $this->addToAssertionCount(1);
+    }
+
     public function testRtlSidebarResizesFromItsMirroredSeparator(): void
     {
         putenv('PATH=/nonexistent');
