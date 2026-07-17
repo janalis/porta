@@ -60,4 +60,20 @@ final class HeaderRendererTest extends TestCase
         $this->assertSame(6, AnsiUtils::visibleWidth($line));
         $this->assertStringContainsString('…', AnsiUtils::stripAnsiCodes($line));
     }
+
+    /**
+     * Every title row in the IDE is this renderer, so it must fill its width
+     * exactly at any width — a short line leaves the pane's background
+     * showing through, an over-wide one garbles the row below.
+     */
+    public function testFillsExactlyTheWidthEvenBelowTheEllipsisWidth(): void
+    {
+        foreach (range(0, 12) as $width) {
+            foreach ([' a title', '日本語のタイトル', '', 'x'] as $title) {
+                $line = HeaderRenderer::render($title, $width, new Style(background: 237));
+
+                $this->assertSame($width, AnsiUtils::visibleWidth($line), "{$title} @ {$width}");
+            }
+        }
+    }
 }

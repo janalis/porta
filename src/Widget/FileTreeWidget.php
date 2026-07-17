@@ -13,6 +13,7 @@ use Porta\Ui\ListNavigation;
 use Porta\Ui\ListSelection;
 use Porta\Ui\Role;
 use Porta\Ui\Theme\Styles;
+use Porta\Widget\Render\HeaderRenderer;
 use Porta\Widget\Render\MenuOverlayHost;
 use Porta\Widget\Render\MenuOverlayHostTrait;
 use Psr\Clock\ClockInterface;
@@ -262,8 +263,7 @@ final class FileTreeWidget extends AbstractWidget implements FocusableInterface,
         $scroll = $this->list->follow($rows - 1);
 
         $lines = [];
-        $header = AnsiText::truncate(' '.basename($this->rootDir).'/', $width, pad: true);
-        $lines[] = $this->styles->of(Role::HeaderBar)->withBold()->apply($header);
+        $lines[] = HeaderRenderer::render(' '.basename($this->rootDir).'/', $width, $this->styles->of(Role::HeaderBar)->withBold());
 
         for ($row = 1; $row < $rows; ++$row) {
             $index = $scroll + $row - 1;

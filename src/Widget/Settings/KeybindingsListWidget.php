@@ -18,6 +18,7 @@ use Porta\Widget\HoverableList;
 use Porta\Widget\HoverTrait;
 use Porta\Widget\InputHook;
 use Porta\Widget\PaneNavigationCallbacks;
+use Porta\Widget\Render\HeaderRenderer;
 use Porta\Widget\Render\MenuOverlayHost;
 use Porta\Widget\Render\MenuOverlayHostTrait;
 use Symfony\Component\Tui\Input\Key;
@@ -195,10 +196,7 @@ final class KeybindingsListWidget extends AbstractWidget implements FocusableInt
         $this->lastRows = $rows;
 
         $title = ' '.$this->translator->trans('Keybindings — %count% actions · Enter to rebind', ['%count%' => \count($this->rows)]);
-        $lines = [$this->styles
-            ->of(Role::HeaderBar)
-            ->withBold()
-            ->apply(AnsiText::truncate($title, $width, pad: true))];
+        $lines = [HeaderRenderer::render($title, $width, $this->styles->of(Role::HeaderBar)->withBold())];
 
         $scroll = $this->list->follow($rows - 1);
         for ($row = 1; $row < $rows; ++$row) {

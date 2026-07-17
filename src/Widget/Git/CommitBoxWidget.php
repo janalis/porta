@@ -19,6 +19,7 @@ use Porta\Widget\HoverTrait;
 use Porta\Widget\InputHook;
 use Porta\Widget\PanelWidth;
 use Porta\Widget\PaneNavigationCallbacks;
+use Porta\Widget\Render\HeaderRenderer;
 use Porta\Widget\Render\MenuOverlayHost;
 use Porta\Widget\Render\MenuOverlayHostTrait;
 use Symfony\Component\Tui\Input\Key;
@@ -256,10 +257,7 @@ final class CommitBoxWidget extends AbstractWidget implements FocusableInterface
 
         $lines = [];
         $header = CommitMode::Amend === $this->amend ? $this->translator->trans(' Commit  [amend · alt+m]') : $this->translator->trans(' Commit  ·  alt+m: amend');
-        $lines[] = $this->styles
-            ->of(Role::HeaderBar)
-            ->withBold()
-            ->apply(AnsiText::truncate($header, $width, pad: true));
+        $lines[] = HeaderRenderer::render($header, $width, $this->styles->of(Role::HeaderBar)->withBold());
 
         $summary = ' '.$this->summary->render(cursor: $focused && 0 === $this->activeField ? CaretVisibility::Shown : CaretVisibility::Hidden, width: $width - 1);
         $summaryHint = '' === $this->summary->value() && !($focused && 0 === $this->activeField)

@@ -17,6 +17,7 @@ use Porta\Widget\HoverableList;
 use Porta\Widget\InputHook;
 use Porta\Widget\PanelWidth;
 use Porta\Widget\PaneNavigationCallbacks;
+use Porta\Widget\Render\HeaderRenderer;
 use Porta\Widget\Render\MenuOverlayHost;
 use Porta\Widget\Render\MenuOverlayHostTrait;
 use Symfony\Component\Tui\Input\Key;
@@ -358,12 +359,7 @@ final class HistoryListWidget extends AbstractWidget implements FocusableInterfa
             // An em dash, not a colon: symfony's legacy plural handling treats
             // "label: message" specially whenever %count% is a parameter.
             : $this->translator->trans(' History — %path% (%count%)', ['%path%' => $this->filterLabel, '%count%' => \count($this->commits)]);
-        $lines = [
-            $this->styles
-                ->of(Role::HeaderBar)
-                ->withBold()
-                ->apply(AnsiText::truncate($header, $width, pad: true)),
-        ];
+        $lines = [HeaderRenderer::render($header, $width, $this->styles->of(Role::HeaderBar)->withBold())];
 
         $commitRows = $this->commitRowCount();
         $scroll = $this->commitList->follow($commitRows);
@@ -388,12 +384,7 @@ final class HistoryListWidget extends AbstractWidget implements FocusableInterfa
             $lines[] = null !== $bg ? $bg->apply($text) : $text;
         }
 
-        $lines[] = $this->styles
-            ->merge(Role::Toolbar, Role::Dim)
-            ->withBold()
-            ->apply(
-                AnsiText::truncate($this->translator->trans(' Files (%count%)', ['%count%' => \count($this->files)]), $width, pad: true),
-            );
+        $lines[] = HeaderRenderer::render($this->translator->trans(' Files (%count%)', ['%count%' => \count($this->files)]), $width, $this->styles->merge(Role::Toolbar, Role::Dim)->withBold());
         $fileScroll = $this->fileList->follow(self::FILE_ROWS);
         for ($row = 0; $row < self::FILE_ROWS && \count($lines) < $rows; ++$row) {
             $file = $this->files[$fileScroll + $row] ?? null;

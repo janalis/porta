@@ -19,6 +19,7 @@ use Porta\Widget\HoverTrait;
 use Porta\Widget\InputHook;
 use Porta\Widget\PanelWidth;
 use Porta\Widget\PaneNavigationCallbacks;
+use Porta\Widget\Render\HeaderRenderer;
 use Porta\Widget\Render\MenuOverlayHost;
 use Porta\Widget\Render\MenuOverlayHostTrait;
 use Symfony\Component\Tui\Input\Key;
@@ -330,10 +331,7 @@ final class ChangesListWidget extends AbstractWidget implements FocusableInterfa
         $title = 1 === $count
             ? $this->translator->trans(' %count% changed file', ['%count%' => $count])
             : $this->translator->trans(' %count% changed files', ['%count%' => $count]);
-        $lines = [$this->styles
-            ->of(Role::HeaderBar)
-            ->withBold()
-            ->apply(AnsiText::truncate($title, $width, pad: true))];
+        $lines = [HeaderRenderer::render($title, $width, $this->styles->of(Role::HeaderBar)->withBold())];
 
         $scroll = $this->list->follow($rows - 1);
         for ($row = 1; $row < $rows; ++$row) {
