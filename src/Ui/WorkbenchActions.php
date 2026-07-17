@@ -58,7 +58,9 @@ final class WorkbenchActions
 
     public function openCommandPalette(): void
     {
-        $this->panels->setMode(ResultsPanelMode::Action);
+        // Through openQuery so the dock captures which tool tab to restore
+        // when the picker closes.
+        $this->panels->openQuery(ResultsPanelMode::Action, 'Find Action');
         $this->commandPalette->open($this->commands->paletteCommands());
     }
 

@@ -8,6 +8,7 @@ use Porta\Editor\BufferManager;
 use Porta\I18n\Translator;
 use Porta\Terminal\TerminalSessions;
 use Porta\Ui\BottomDock;
+use Porta\Ui\DockToolTabs;
 use Porta\Ui\EditorArea;
 use Porta\Ui\Notifier;
 use Porta\Widget\CodeEditorWidget;
@@ -31,6 +32,7 @@ final class TestBottomDock
         ?EditorArea $editorArea = null,
         ?DockTabsWidget $dockTabs = null,
         ?TerminalSessions $sessions = null,
+        ?DockToolTabs $tools = null,
     ): BottomDock {
         $dock = new BottomDock(
             $tui,
@@ -38,6 +40,7 @@ final class TestBottomDock
             $results,
             $debug,
             $dockTabs ?? new DockTabsWidget(),
+            $tools ?? new DockToolTabs(),
             $sessions ?? new TerminalSessions(),
             new Translator('en'),
             new Notifier(new StatusBarWidget(), $tui),

@@ -16,12 +16,17 @@ use Symfony\Component\Tui\Widget\AbstractWidget;
 
 /**
  * The bottom dock: one panel area above the status bar shared by the
- * terminal, results and debug panels, with at most one panel visible at a
- * time. Opening any panel (its own `open(...)` — no call site changes)
- * conceals the others; closing one reveals the most recently visible tab
- * that is still alive. The dock also owns the {@see ResultsPanelMode} the
- * results panel is currently serving and the focus/repaint/flash
- * choreography every panel-opening path repeated.
+ * terminal panel, the debug panel and the list tools, with at most one panel
+ * visible at a time. Every list tool lives as a {@see DockToolTab} in the
+ * {@see DockToolTabs} model — the model, not the widget, is the source of
+ * truth: the single results panel widget displays exactly one tab, async
+ * completions write into their tab and {@see refreshIfBound()} pushes to the
+ * widget only when that tab is the one on display. Tabs coexist (opening a
+ * tool never closes another) and only their strip × closes them. Switching
+ * tabs preserves rows/title/searching (and a Search tab's query definition);
+ * filter text, collapse, context and selection reset — the accepted v1
+ * trade-off of rebinding through the widget's open(). The dock also owns the
+ * {@see ResultsPanelMode} routing and the focus/repaint/flash choreography.
  */
 final class BottomDock
 {
@@ -33,12 +38,22 @@ final class BottomDock
     /** @var (callable(): void)|null reveals the Terminal tab by re-opening the active session (RunController) */
     private $onTerminalReveal = null;
 
+    /** The tool tab to restore when a transient picker closes, if it is still alive. */
+    private ?DockToolTab $pickerRestore = null;
+
+    /** @var list<callable(DockToolTab): void> fired when a tool tab is bound into the panel */
+    private array $onToolBound = [];
+
+    /** @var list<callable(DockToolTab): void> fired when a tool tab is closed */
+    private array $onToolClosed = [];
+
     public function __construct(
         private readonly Tui $tui,
         private readonly TerminalPanelWidget $terminalPanel,
         private readonly ResultsPanelWidget $resultsPanel,
         private readonly DebugPanelWidget $debugPanel,
         private readonly DockTabsWidget $dockTabs,
+        private readonly DockToolTabs $tools,
         private readonly TerminalSessions $sessions,
         private readonly Translator $translator,
         private readonly Notifier $notifier,
@@ -76,12 +91,13 @@ final class BottomDock
     }
 
     /**
-     * The strip rows: one entry per alive tool, each carrying its status for
-     * the strip's right side (only the active one shows). Empty (the strip
+     * The strip rows: Terminal, one entry per alive tool tab (off the model,
+     * so tabs stay listed even while the panel widget is closed), then Debug.
+     * Only the entry on display carries a status. Empty (the strip
      * disappears) while the dock is hidden or a transient picker owns the
      * results panel.
      *
-     * @return list<array{tab: DockTab, label: string, active: bool, status: string}>
+     * @return list<array{tab: DockTab, key: string, label: string, active: bool, status: string}>
      */
     public function aliveTabs(): array
     {
@@ -92,15 +108,24 @@ final class BottomDock
 
         $tabs = [];
         if (!$this->sessions->isEmpty()) {
-            $tabs[] = ['tab' => DockTab::Terminal, 'label' => $this->translator->trans('Terminal'), 'active' => $visible === $this->terminalPanel, 'status' => ''];
+            $tabs[] = ['tab' => DockTab::Terminal, 'key' => '', 'label' => $this->translator->trans('Terminal'), 'active' => $visible === $this->terminalPanel, 'status' => ''];
         }
-        if ($this->resultsPanel->isOpen()) {
-            $tabs[] = ['tab' => DockTab::Results, 'label' => $this->resultsPanel->getTitle(), 'active' => $visible === $this->resultsPanel, 'status' => $this->resultsPanel->statusText()];
+        $resultsShown = $visible === $this->resultsPanel;
+        foreach ($this->tools->all() as $tool) {
+            $active = $resultsShown && $tool === $this->tools->active();
+            $tabs[] = [
+                'tab' => DockTab::Results,
+                'key' => (string) $tool->id,
+                'label' => $tool->title,
+                'active' => $active,
+                'status' => $active ? $this->resultsPanel->statusText() : '',
+            ];
         }
         if ($this->debugPanel->isOpen()) {
             $title = $this->debugPanel->getTitle();
             $tabs[] = [
                 'tab' => DockTab::Debug,
+                'key' => '',
                 'label' => $this->translator->trans('Debug').('' === $title ? '' : ': '.$title),
                 'active' => $visible === $this->debugPanel,
                 'status' => $this->debugPanel->statusText(),
@@ -116,8 +141,8 @@ final class BottomDock
         return [] !== $this->aliveTabs();
     }
 
-    /** Bring a tab's panel into the dock slot and focus it. */
-    public function reveal(DockTab $tab): void
+    /** Bring a tab into the dock slot and focus it ($key: a tool tab's id, '' = the active tool / a fixed panel). */
+    public function reveal(DockTab $tab, string $key = ''): void
     {
         if (DockTab::Terminal === $tab) {
             // The terminal re-opens through its controller so the active
@@ -128,13 +153,21 @@ final class BottomDock
 
             return;
         }
-        $panel = DockTab::Results === $tab ? $this->resultsPanel : $this->debugPanel;
-        if (!$panel->isOpen() || $panel->isVisible()) {
+        if (DockTab::Results === $tab) {
+            $tool = '' === $key ? $this->tools->active() : $this->tools->findById((int) $key);
+            if (null === $tool || $this->activeTool() === $tool && $this->resultsPanel->isVisible()) {
+                return;
+            }
+            $this->show($tool);
+
             return;
         }
-        $this->activate($panel);
-        $panel->reveal();
-        $this->tui->setFocus($panel);
+        if (!$this->debugPanel->isOpen() || $this->debugPanel->isVisible()) {
+            return;
+        }
+        $this->activate($this->debugPanel);
+        $this->debugPanel->reveal();
+        $this->tui->setFocus($this->debugPanel);
         $this->tui->requestRender();
     }
 
@@ -151,23 +184,28 @@ final class BottomDock
         $this->tui->requestRender();
     }
 
-    /** Reveal the next (+1) / previous (-1) alive tab, in strip order. */
+    /** Reveal the next (+1) / previous (-1) strip tab — tool instances included. */
     public function cycle(int $delta): void
     {
-        $order = array_values(array_filter(
-            $this->panels(),
-            fn (TerminalPanelWidget|ResultsPanelWidget|DebugPanelWidget $panel): bool => $panel === $this->terminalPanel ? !$this->sessions->isEmpty() : $panel->isOpen(),
-        ));
-        $current = array_search($this->visiblePanel(), $order, strict: true);
-        if (false === $current || \count($order) < 2) {
+        $order = $this->aliveTabs();
+        $current = null;
+        foreach ($order as $i => $entry) {
+            if (!$entry['active']) {
+                continue;
+            }
+
+            $current = $i;
+            break;
+        }
+        if (null === $current || \count($order) < 2) {
             return;
         }
-        $count = \count($order);
-        $this->reveal($this->tabOf($order[($current + $delta + $count) % $count]));
+        $next = $order[($current + $delta + \count($order)) % \count($order)];
+        $this->reveal($next['tab'], $next['key']);
     }
 
     /** The strip's ×: close the tool for real — except the Terminal, whose sessions keep running. */
-    public function closeTab(DockTab $tab): void
+    public function closeTab(DockTab $tab, string $key = ''): void
     {
         if (DockTab::Terminal === $tab) {
             $this->terminalPanel->conceal();
@@ -175,8 +213,32 @@ final class BottomDock
 
             return;
         }
-        $panel = DockTab::Results === $tab ? $this->resultsPanel : $this->debugPanel;
-        $panel->close();
+        if (DockTab::Debug === $tab) {
+            $this->debugPanel->close();
+
+            return;
+        }
+        $tool = '' === $key ? $this->tools->active() : $this->tools->findById((int) $key);
+        if (null === $tool) {
+            return;
+        }
+        $wasBound = $this->activeTool() === $tool;
+        $neighbour = $this->tools->close($tool);
+        foreach ($this->onToolClosed as $callback) {
+            $callback($tool);
+        }
+        if (!$wasBound) {
+            $this->tui->requestRender(); // the strip shrinks; the display is untouched
+
+            return;
+        }
+        if (null !== $neighbour) {
+            $this->bind($neighbour); // no focus steal on a mouse ×
+            $this->tui->requestRender();
+
+            return;
+        }
+        $this->resultsPanel->close(); // last tool gone: MRU restore + focus return
     }
 
     /** The panel currently owning the dock slot, or null while the dock is hidden. */
@@ -219,9 +281,12 @@ final class BottomDock
         $this->mode = $mode;
     }
 
-    /** Open the results panel in a live-query mode (e.g. symbol search) and focus it. */
+    /** Open the results panel as a transient picker (palette, go-to-symbol) and focus it. */
     public function openQuery(ResultsPanelMode $mode, string $title): void
     {
+        if (!$this->isPickerMode()) { // a nested picker keeps the original restore target
+            $this->pickerRestore = $this->resultsPanel->isVisible() ? $this->tools->active() : null;
+        }
         $this->mode = $mode;
         $this->resultsPanel->open($title, ResultsPanelFields::queryOnly());
         $this->tui->setFocus($this->resultsPanel);
@@ -229,17 +294,89 @@ final class BottomDock
     }
 
     /**
-     * Open the results panel showing a static list of rows and focus it.
+     * Open (or reuse-and-refresh, keyed by mode+title) a list tool's tab,
+     * bind it into the panel and focus it.
      *
-     * @param list<array{path: string, line: int, text: string}> $rows
+     * @param list<array{path: string, line: int, text: string, ranges?: list<array{start: int, length: int}>}> $rows
      */
-    public function showList(ResultsPanelMode $mode, string $title, array $rows): void
+    public function showList(ResultsPanelMode $mode, string $title, array $rows, ?ResultsPanelFields $fields = null): DockToolTab
     {
-        $this->mode = $mode;
-        $this->resultsPanel->open($title, ResultsPanelFields::resultsOnly());
-        $this->resultsPanel->setResults($rows);
+        $tab = $this->tools->openOrReuse($mode, $title, $fields ?? ResultsPanelFields::resultsOnly());
+        $tab->rows = $rows;
+        $tab->searching = false;
+        $this->show($tab);
+
+        return $tab;
+    }
+
+    /** Bind a tool tab into the panel, focus it and repaint. */
+    public function show(DockToolTab $tab): void
+    {
+        $this->bind($tab);
         $this->tui->setFocus($this->resultsPanel);
         $this->tui->requestRender();
+    }
+
+    /** The tool tab the panel currently serves (open, not necessarily visible), or null (closed panel / picker). */
+    public function activeTool(): ?DockToolTab
+    {
+        return $this->resultsPanel->isOpen() && !$this->isPickerMode() ? $this->tools->active() : null;
+    }
+
+    /** Whether $tab is still in the strip — the async-completion staleness guard. */
+    public function isToolAlive(DockToolTab $tab): bool
+    {
+        return $this->tools->contains($tab);
+    }
+
+    /** Flag a tab's async work; the widget shows 'searching…' when the tab is on display. */
+    public function markSearching(DockToolTab $tab): void
+    {
+        $tab->searching = true;
+        if ($this->activeTool() === $tab) {
+            $this->resultsPanel->setSearching();
+        }
+        $this->tui->requestRender();
+    }
+
+    /** Push a tab's (just-updated) rows to the widget — only when that tab is the one on display. */
+    public function refreshIfBound(DockToolTab $tab): void
+    {
+        if ($this->activeTool() !== $tab) {
+            return; // the model stays fresh; binding the tab later shows it
+        }
+        $this->resultsPanel->setResults($tab->rows);
+        if ($tab->searching) {
+            $this->resultsPanel->setSearching();
+        }
+        $this->tui->requestRender();
+    }
+
+    /** Register a hook fired whenever a tool tab is bound into the panel. */
+    public function onToolBound(callable $callback): void
+    {
+        $this->onToolBound[] = $callback;
+    }
+
+    /** Register a hook fired whenever a tool tab is closed (its × / programmatic close). */
+    public function onToolClosed(callable $callback): void
+    {
+        $this->onToolClosed[] = $callback;
+    }
+
+    /** Make $tab the displayed tool: mode + widget open (reset semantics) + its rows. */
+    private function bind(DockToolTab $tab): void
+    {
+        $this->mode = $tab->mode;
+        $this->tools->makeActive($tab);
+        $this->resultsPanel->open($tab->title, $tab->fields);
+        $this->resultsPanel->setResults($tab->rows);
+        if ($tab->searching) {
+            $this->resultsPanel->setSearching();
+        }
+        foreach ($this->onToolBound as $callback) {
+            $callback($tab);
+        }
     }
 
     /** Return focus to the editor area when the results panel currently holds it, then repaint. */
@@ -269,15 +406,6 @@ final class BottomDock
         return [$this->terminalPanel, $this->resultsPanel, $this->debugPanel];
     }
 
-    private function tabOf(TerminalPanelWidget|ResultsPanelWidget|DebugPanelWidget $panel): DockTab
-    {
-        return match ($panel) {
-            $this->terminalPanel => DockTab::Terminal,
-            $this->resultsPanel => DockTab::Results,
-            default => DockTab::Debug,
-        };
-    }
-
     /** The transient pickers served by the results panel — they bypass the dock strip. */
     private function isPickerMode(): bool
     {
@@ -305,6 +433,16 @@ final class BottomDock
     private function restoreAfter(TerminalPanelWidget|ResultsPanelWidget|DebugPanelWidget $panel): void
     {
         $this->mru = array_values(array_filter($this->mru, static fn (AbstractWidget $seen): bool => $seen !== $panel));
+        // A closing picker gives the slot back to the tool tab it displaced.
+        if ($panel === $this->resultsPanel && $this->isPickerMode() && null !== $this->pickerRestore && $this->tools->contains($this->pickerRestore)) {
+            $restore = $this->pickerRestore;
+            $this->pickerRestore = null;
+            $this->bind($restore); // re-opens the panel; focus stays with the editor
+            $this->returnFocusFrom($panel);
+
+            return;
+        }
+        $this->pickerRestore = null;
         $last = $this->mru[\count($this->mru) - 1] ?? null;
         $last?->reveal();
         $this->returnFocusFrom($panel);

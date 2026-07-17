@@ -11,6 +11,7 @@ use Porta\Terminal\TerminalSessions;
 use Porta\Tests\Support\TestBottomDock;
 use Porta\Ui\BottomDock;
 use Porta\Ui\DockTab;
+use Porta\Ui\DockToolTabs;
 use Porta\Ui\EditorArea;
 use Porta\Ui\ResultsPanelMode;
 use Porta\Widget\CodeEditorWidget;
@@ -37,6 +38,7 @@ final class BottomDockTest extends TestCase
     private DebugPanelWidget $debug;
     private DockTabsWidget $strip;
     private TerminalSessions $sessions;
+    private DockToolTabs $tools;
 
     private function dock(): BottomDock
     {
@@ -47,6 +49,7 @@ final class BottomDockTest extends TestCase
         $this->debug = new DebugPanelWidget();
         $this->strip = new DockTabsWidget();
         $this->sessions = new TerminalSessions();
+        $this->tools = new DockToolTabs();
 
         return TestBottomDock::create(
             $this->tui,
@@ -56,6 +59,7 @@ final class BottomDockTest extends TestCase
             new EditorArea(new BufferManager(), $this->editor, new ImageViewerWidget(), new HelpViewerWidget(), $this->tui),
             $this->strip,
             $this->sessions,
+            $this->tools,
         );
     }
 
@@ -65,7 +69,7 @@ final class BottomDockTest extends TestCase
         $this->terminal->open('Terminal', new TerminalBuffer());
         $this->assertSame($this->terminal, $dock->visiblePanel());
 
-        $this->results->open('Problems', ResultsPanelFields::resultsOnly());
+        $dock->showList(ResultsPanelMode::Problems, 'Problems', []);
         $this->assertSame($this->results, $dock->visiblePanel(), 'the newest panel takes the dock slot');
         $this->assertTrue($this->terminal->isOpen(), 'the concealed terminal stays alive');
         $this->assertFalse($this->terminal->isVisible(), 'but it no longer renders');
@@ -79,7 +83,7 @@ final class BottomDockTest extends TestCase
     {
         $dock = $this->dock();
         $this->terminal->open('Terminal', new TerminalBuffer());
-        $this->results->open('Problems', ResultsPanelFields::resultsOnly());
+        $dock->showList(ResultsPanelMode::Problems, 'Problems', []);
         $this->debug->open('a.php');
 
         $this->debug->close();
@@ -96,7 +100,7 @@ final class BottomDockTest extends TestCase
     {
         $dock = $this->dock();
         $this->terminal->open('Terminal', new TerminalBuffer());
-        $this->results->open('Problems', ResultsPanelFields::resultsOnly());
+        $dock->showList(ResultsPanelMode::Problems, 'Problems', []);
         $this->debug->open('a.php');
 
         $this->results->close(); // dies while concealed — the visible debug panel stays
@@ -110,7 +114,7 @@ final class BottomDockTest extends TestCase
     {
         $dock = $this->dock();
         $this->terminal->open('Terminal', new TerminalBuffer());
-        $this->results->open('Problems', ResultsPanelFields::resultsOnly());
+        $dock->showList(ResultsPanelMode::Problems, 'Problems', []);
 
         $this->terminal->open('Terminal', new TerminalBuffer());
         $this->assertSame($this->terminal, $dock->visiblePanel());
@@ -188,17 +192,36 @@ final class BottomDockTest extends TestCase
 
         $this->sessions->create('shell:1', 'sh 1');
         $this->terminal->open('sh 1', new TerminalBuffer());
-        $this->results->open('Problems', ResultsPanelFields::resultsOnly());
+        $dock->showList(ResultsPanelMode::Problems, 'Problems', []);
+        $dock->showList(ResultsPanelMode::Todo, 'TODO', [['path' => 'a', 'line' => 0, 'text' => 't']]);
 
         $tabs = $dock->aliveTabs();
         $this->assertTrue($dock->stripVisible());
-        $this->assertSame([DockTab::Terminal, DockTab::Results], array_column($tabs, 'tab'));
-        $this->assertSame(['Terminal', 'Problems'], array_column($tabs, 'label'));
-        $this->assertSame([false, true], array_column($tabs, 'active'), 'the results tab owns the slot');
-        $this->assertSame(['', '0 results'], array_column($tabs, 'status'), "each tool carries its status for the strip's right side");
+        $this->assertSame([DockTab::Terminal, DockTab::Results, DockTab::Results], array_column($tabs, 'tab'));
+        $this->assertSame(['Terminal', 'Problems', 'TODO'], array_column($tabs, 'label'), 'every tool instance keeps its own strip tab');
+        $this->assertSame([false, false, true], array_column($tabs, 'active'), 'the newest tool owns the slot');
+        $this->assertSame(['', '1', '2'], array_column($tabs, 'key'), 'tool tabs carry their instance key');
+        $this->assertSame(['', '', '1 results'], array_column($tabs, 'status'), 'only the displayed tool carries a status');
 
         $dock->hide();
         $this->assertSame([], $dock->aliveTabs(), 'hiding the dock hides the strip too');
+    }
+
+    public function testReinvokingAToolReusesItsTabAndRefreshes(): void
+    {
+        $dock = $this->dock();
+        $first = $dock->showList(ResultsPanelMode::Problems, 'Problems', []);
+        $dock->showList(ResultsPanelMode::Search, 'Usages', [['path' => 'a.php', 'line' => 0, 'text' => 'x']]);
+
+        $again = $dock->showList(ResultsPanelMode::Problems, 'Problems', [['path' => 'b.php', 'line' => 1, 'text' => 'boom']]);
+        $this->assertSame($first, $again, 'same (mode, title) reuses the tab');
+        $this->assertSame(2, $this->tools->count(), 'no duplicate appended');
+        $this->assertSame($first, $dock->activeTool(), 'the reused tab took the slot back');
+        $this->assertSame([['path' => 'b.php', 'line' => 1, 'text' => 'boom']], $first->rows, 'and its content refreshed');
+
+        $other = $dock->showList(ResultsPanelMode::Search, 'Usages: other', []);
+        $this->assertSame(3, $this->tools->count(), 'a different title appends a new tab');
+        $this->assertSame($other, $dock->activeTool());
     }
 
     public function testAPickerBypassesTheStrip(): void
@@ -214,15 +237,23 @@ final class BottomDockTest extends TestCase
     public function testRevealSwitchesTabsAndFocuses(): void
     {
         $dock = $this->dock();
-        $this->results->open('Problems', ResultsPanelFields::resultsOnly());
+        $problems = $dock->showList(ResultsPanelMode::Problems, 'Problems', []);
+        $usages = $dock->showList(ResultsPanelMode::Search, 'Usages', [['path' => 'a.php', 'line' => 0, 'text' => 'x']]);
         $this->debug->open('a.php');
 
-        $dock->reveal(DockTab::Results);
+        $dock->reveal(DockTab::Results); // '' = the model's active tool (Usages)
         $this->assertSame($this->results, $dock->visiblePanel());
+        $this->assertSame($usages, $dock->activeTool());
         $this->assertSame($this->results, $this->tui->getFocus());
 
-        $dock->reveal(DockTab::Results); // already visible: a no-op
-        $this->assertSame($this->results, $dock->visiblePanel());
+        $dock->reveal(DockTab::Results, (string) $problems->id); // switch instances by key
+        $this->assertSame($problems, $dock->activeTool(), 'a keyed reveal binds that instance');
+        $this->assertSame(ResultsPanelMode::Problems, $dock->mode(), 'the dock mode follows the bound tab');
+
+        $dock->reveal(DockTab::Results, (string) $problems->id); // already displayed: a no-op
+        $this->assertSame($problems, $dock->activeTool());
+        $dock->reveal(DockTab::Results, '99'); // unknown key: a no-op
+        $this->assertSame($problems, $dock->activeTool());
         $dock->reveal(DockTab::Terminal); // no reveal hook wired here: a no-op
         $this->assertSame($this->results, $dock->visiblePanel());
 
@@ -238,20 +269,26 @@ final class BottomDockTest extends TestCase
         $this->assertSame($this->results, $dock->visiblePanel());
     }
 
-    public function testCycleWalksTheAliveTabsInStripOrder(): void
+    public function testCycleWalksTheStripTabsInstancesIncluded(): void
     {
         $dock = $this->dock();
         $dock->cycle(1); // nothing alive: a no-op
 
-        $this->results->open('Problems', ResultsPanelFields::resultsOnly());
+        $problems = $dock->showList(ResultsPanelMode::Problems, 'Problems', []);
         $dock->cycle(1); // a single tab: a no-op
         $this->assertSame($this->results, $dock->visiblePanel());
 
+        $todo = $dock->showList(ResultsPanelMode::Todo, 'TODO', []);
         $this->debug->open('a.php');
+
+        $dock->cycle(1); // debug → wraps to the first instance
+        $this->assertSame($problems, $dock->activeTool(), 'cycle walks into the tool instances');
         $dock->cycle(1);
-        $this->assertSame($this->results, $dock->visiblePanel(), 'debug → results, wrapping forward');
+        $this->assertSame($todo, $dock->activeTool());
+        $dock->cycle(1);
+        $this->assertSame($this->debug, $dock->visiblePanel(), 'and on to the Debug tab');
         $dock->cycle(-1);
-        $this->assertSame($this->debug, $dock->visiblePanel(), 'and back');
+        $this->assertSame($todo, $dock->activeTool(), 'and back');
     }
 
     public function testCloseTabClosesToolsButOnlyConcealsTheTerminal(): void
@@ -259,16 +296,94 @@ final class BottomDockTest extends TestCase
         $dock = $this->dock();
         $this->sessions->create('shell:1', 'sh 1');
         $this->terminal->open('sh 1', new TerminalBuffer());
-        $this->results->open('Problems', ResultsPanelFields::resultsOnly());
+        $problems = $dock->showList(ResultsPanelMode::Problems, 'Problems', []);
+        $todo = $dock->showList(ResultsPanelMode::Todo, 'TODO', []);
 
-        $dock->closeTab(DockTab::Results);
-        $this->assertFalse($this->results->isOpen(), 'the strip × really closes a tool');
-        $this->assertSame($this->terminal, $dock->visiblePanel(), 'the previous tab comes back');
+        $dock->closeTab(DockTab::Results, (string) $problems->id); // × an INACTIVE instance
+        $this->assertFalse($dock->isToolAlive($problems), 'the strip × really closes a tool');
+        $this->assertSame($todo, $dock->activeTool(), 'the displayed tool is untouched');
+
+        $dock->closeTab(DockTab::Results); // × the last (active) instance
+        $this->assertFalse($this->results->isOpen(), 'the last tool close closes the panel');
+        $this->assertSame($this->terminal, $dock->visiblePanel(), 'the previous dock tab comes back');
+        $dock->closeTab(DockTab::Results, '42'); // unknown key: a no-op
 
         $dock->closeTab(DockTab::Terminal);
         $this->assertTrue($this->terminal->isOpen(), 'terminal sessions keep running');
         $this->assertNull($dock->visiblePanel());
         $this->assertSame([], $dock->aliveTabs());
+
+        $this->debug->open('a.php');
+        $dock->closeTab(DockTab::Debug);
+        $this->assertFalse($this->debug->isOpen(), 'the Debug × closes the panel for real');
+    }
+
+    public function testClosingTheDisplayedInstanceBindsItsNeighbour(): void
+    {
+        $dock = $this->dock();
+        $problems = $dock->showList(ResultsPanelMode::Problems, 'Problems', [['path' => 'a.php', 'line' => 0, 'text' => 'boom']]);
+        $todo = $dock->showList(ResultsPanelMode::Todo, 'TODO', []);
+        $closed = [];
+        $dock->onToolClosed(static function ($tab) use (&$closed): void {
+            $closed[] = $tab;
+        });
+
+        $dock->closeTab(DockTab::Results, (string) $todo->id);
+        $this->assertSame([$todo], $closed, 'the close hook fired for the ×ed tab');
+        $this->assertSame($problems, $dock->activeTool(), 'the neighbour instance took the slot');
+        $this->assertSame(ResultsPanelMode::Problems, $dock->mode());
+        $this->assertTrue($this->results->isOpen(), 'the panel stays open while instances remain');
+    }
+
+    public function testPickerCloseRestoresTheDisplacedInstance(): void
+    {
+        $dock = $this->dock();
+        $bound = [];
+        $dock->onToolBound(static function ($tab) use (&$bound): void {
+            $bound[] = $tab->title;
+        });
+        $problems = $dock->showList(ResultsPanelMode::Problems, 'Problems', [['path' => 'a.php', 'line' => 0, 'text' => 'boom']]);
+
+        $dock->openQuery(ResultsPanelMode::Action, 'Find Action');
+        $this->results->dismiss(); // Esc on the palette → real close
+        $this->assertSame($problems, $dock->activeTool(), 'the displaced tool tab came back');
+        $this->assertTrue($this->results->isVisible());
+        $this->assertSame(ResultsPanelMode::Problems, $dock->mode());
+        $this->assertSame(['Problems', 'Problems'], $bound, 'initial show + picker restore both bound the tab');
+        $this->assertSame($this->editor, $this->tui->getFocus(), 'focus lands on the editor, as any Esc');
+    }
+
+    public function testMarkSearchingAndRefreshIfBound(): void
+    {
+        $dock = $this->dock();
+        $todo = $dock->showList(ResultsPanelMode::Todo, 'TODO', []);
+        $dock->markSearching($todo);
+        $this->assertStringContainsString('searching…', $this->results->statusText());
+
+        $problems = $dock->showList(ResultsPanelMode::Problems, 'Problems', []);
+        $todo->rows = [['path' => 'a.php', 'line' => 0, 'text' => 'TODO x']];
+        $todo->searching = false;
+        $dock->refreshIfBound($todo); // not on display: the model keeps it, the widget shows Problems
+        $this->assertSame('Problems', $this->results->getTitle());
+        $this->assertStringContainsString('0 results', $this->results->statusText());
+
+        $dock->reveal(DockTab::Results, (string) $todo->id);
+        $this->assertStringContainsString('1 results', $this->results->statusText(), 'binding shows the refreshed rows');
+
+        $todo->rows = [];
+        $dock->refreshIfBound($todo); // on display: pushed straight to the widget
+        $this->assertStringContainsString('0 results', $this->results->statusText());
+
+        $dock->markSearching($problems); // not on display: flag only
+        $this->assertTrue($problems->searching);
+        $this->assertStringNotContainsString('searching…', $this->results->statusText());
+
+        // Binding a still-searching tab restores its 'searching…' status…
+        $dock->reveal(DockTab::Results, (string) $problems->id);
+        $this->assertStringContainsString('searching…', $this->results->statusText());
+        // …and a bound refresh of a still-searching tab keeps it.
+        $dock->refreshIfBound($problems);
+        $this->assertStringContainsString('searching…', $this->results->statusText());
     }
 
     public function testStripClicksRevealAndCloseThroughTheWiring(): void

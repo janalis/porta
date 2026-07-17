@@ -105,12 +105,15 @@ final class SearchUiWiring
         });
 
         // F5 re-runs the current find-in-project query (picks up on-disk
-        // changes) or, on the TODO tab, re-scans the project.
+        // changes) or, on the TODO tab, re-scans the project. Routed by the
+        // BOUND tab's mode — the dock's mode field may lag behind tool
+        // switches driven outside the dock.
         $this->resultsPanel->onRerun(function (): void {
-            if (ResultsPanelMode::Search === $this->panels->mode()) {
+            $mode = $this->panels->activeTool()->mode ?? $this->panels->mode();
+            if (ResultsPanelMode::Search === $mode) {
                 $this->projectSearch->rerun();
             }
-            if (ResultsPanelMode::Todo === $this->panels->mode()) {
+            if (ResultsPanelMode::Todo === $mode) {
                 $this->todoScanner->scan();
             }
         });
@@ -128,15 +131,16 @@ final class SearchUiWiring
         });
 
         $this->resultsPanel->onJump(function (string $relativePath, int $line): void {
-            if (\in_array($this->panels->mode(), [ResultsPanelMode::LspLog, ResultsPanelMode::Notifications], strict: true)) {
+            $mode = $this->panels->activeTool()->mode ?? $this->panels->mode();
+            if (\in_array($mode, [ResultsPanelMode::LspLog, ResultsPanelMode::Notifications], strict: true)) {
                 return; // log rows carry no file location
             }
-            if (ResultsPanelMode::Action === $this->panels->mode()) {
+            if (ResultsPanelMode::Action === $mode) {
                 $this->commandPalette->runAt($line);
 
                 return;
             }
-            if (ResultsPanelMode::History === $this->panels->mode()) {
+            if (ResultsPanelMode::History === $mode) {
                 $this->localHistory->restore($line);
 
                 return;

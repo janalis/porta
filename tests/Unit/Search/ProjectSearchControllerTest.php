@@ -9,9 +9,13 @@ use Porta\Editor\BufferManager;
 use Porta\Search\ProjectSearch;
 use Porta\Search\ProjectSearchController;
 use Porta\Tests\Support\TempProject;
+use Porta\Tests\Support\TestBottomDock;
+use Porta\Ui\BottomDock;
 use Porta\Widget\CodeEditorWidget;
+use Porta\Widget\DebugPanelWidget;
 use Porta\Widget\ResultsPanelWidget;
 use Porta\Widget\StatusBarWidget;
+use Porta\Widget\TerminalPanelWidget;
 use Symfony\Component\Tui\Ansi\AnsiUtils;
 use Symfony\Component\Tui\Render\RenderContext;
 use Symfony\Component\Tui\Terminal\VirtualTerminal;
@@ -21,6 +25,7 @@ final class ProjectSearchControllerTest extends TestCase
 {
     private ResultsPanelWidget $panel;
     private CodeEditorWidget $editor;
+    private BottomDock $dock;
 
     private function controller(string $rootDir): ProjectSearchController
     {
@@ -28,13 +33,15 @@ final class ProjectSearchControllerTest extends TestCase
         $this->editor = new CodeEditorWidget();
         $projectSearch = new ProjectSearch($rootDir);
         $buffers = new BufferManager();
+        $tui = new Tui(terminal: new VirtualTerminal(columns: 100, rows: 20));
+        $this->dock = TestBottomDock::create($tui, new TerminalPanelWidget(), $this->panel, new DebugPanelWidget());
 
         return new ProjectSearchController(
             $projectSearch,
-            $this->panel,
+            $this->dock,
             $this->editor,
             new StatusBarWidget(),
-            new Tui(terminal: new VirtualTerminal(columns: 100, rows: 20)),
+            $tui,
             new \Porta\I18n\Translator('en'),
             $buffers,
             $rootDir,

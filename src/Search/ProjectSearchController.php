@@ -11,10 +11,12 @@ use Porta\History\SearchScopeStore;
 use Porta\I18n\Translator;
 use Porta\Lsp\LspSessionPool;
 use Porta\Support\ProjectPaths;
+use Porta\Ui\BottomDock;
+use Porta\Ui\DockToolTab;
+use Porta\Ui\ResultsPanelMode;
 use Porta\Ui\ScopeKind;
 use Porta\Widget\CodeEditorWidget;
 use Porta\Widget\ResultsPanelFields;
-use Porta\Widget\ResultsPanelWidget;
 use Porta\Widget\StatusBarWidget;
 use Symfony\Component\Filesystem\Filesystem;
 use Symfony\Component\Tui\Tui;
@@ -45,7 +47,7 @@ final class ProjectSearchController
 
     public function __construct(
         private readonly ProjectSearch $projectSearch,
-        private readonly ResultsPanelWidget $resultsPanel,
+        private readonly BottomDock $dock,
         private readonly CodeEditorWidget $editor,
         private readonly StatusBarWidget $statusBar,
         private readonly Tui $tui,
@@ -99,16 +101,13 @@ final class ProjectSearchController
         $this->showResultsPane();
     }
 
-    /** Open (or refresh) the results tool window with the current query + results. */
+    /** Open (or reuse, keyed by the query title) this search's dock tab with the current results. */
     private function showResultsPane(): void
     {
         $title = '' === trim($this->lastSearchQuery)
             ? $this->translator->trans('Find in Project')
             : $this->translator->trans('Find in Project: %query%', ['%query%' => $this->lastSearchQuery]);
-        $this->resultsPanel->open($title, ResultsPanelFields::searchResults());
-        $this->resultsPanel->setResults($this->lastSearchResults);
-        $this->tui->setFocus($this->resultsPanel);
-        $this->tui->requestRender();
+        $this->dock->showList(ResultsPanelMode::Search, $title, $this->lastSearchResults, ResultsPanelFields::searchResults());
     }
 
     /** Rebuild the Alt+S choices: the built-in kinds followed by the saved scopes. */
@@ -437,9 +436,12 @@ final class ProjectSearchController
 
     private function run(string $query): void
     {
+        // A completion landing after the user switched tabs updates the
+        // captured tab's model only — never whichever tool is now on display.
+        $tab = $this->paneTab();
         $this->projectSearch->search(
             $query,
-            function (array $results) use ($query): void {
+            function (array $results) use ($query, $tab): void {
                 // A language-aware token scope narrows the grep hits to (or away
                 // from) comments/strings before they reach whichever surface is live.
                 $results = $this->languageFilter->apply($results, $query, $this->searchOptions);
@@ -451,14 +453,22 @@ final class ProjectSearchController
 
                     return;
                 }
-                if ($this->resultsPanel->isOpen()) {
-                    $this->resultsPanel->setResults($results);
-                    $this->tui->requestRender();
+                if (null !== $tab && $this->dock->isToolAlive($tab)) {
+                    $tab->rows = $results;
+                    $this->dock->refreshIfBound($tab);
                 }
             },
             $this->searchOptions,
             $this->scope,
             $this->mask,
         );
+    }
+
+    /** The Search tool tab currently on display (the pane a completion should land in), or null. */
+    private function paneTab(): ?DockToolTab
+    {
+        $tool = $this->dock->activeTool();
+
+        return null !== $tool && ResultsPanelMode::Search === $tool->mode ? $tool : null;
     }
 }

@@ -27,18 +27,18 @@ use Symfony\Component\Tui\Widget\AbstractWidget;
 #[AsWidget('dock-tabs', flex: 0)]
 final class DockTabsWidget extends AbstractWidget implements LtrPane
 {
-    /** @var (callable(): list<array{tab: DockTab, label: string, active: bool, status: string}>)|null */
+    /** @var (callable(): list<array{tab: DockTab, key: string, label: string, active: bool, status: string}>)|null */
     private $provider = null;
 
     private string $lastFingerprint = '';
 
-    /** @var list<array{tab: DockTab, start: int, width: int, closeStart: int, closeWidth: int}> the last strip's hit map */
+    /** @var list<array{tab: DockTab, key: string, start: int, width: int, closeStart: int, closeWidth: int}> the last strip's hit map */
     private array $lastTabLayout = [];
 
-    /** @var (callable(DockTab): void)|null */
+    /** @var (callable(DockTab, string): void)|null */
     private $onTabSelected = null;
 
-    /** @var (callable(DockTab): void)|null */
+    /** @var (callable(DockTab, string): void)|null */
     private $onTabClosed = null;
 
     private readonly Styles $styles;
@@ -48,7 +48,7 @@ final class DockTabsWidget extends AbstractWidget implements LtrPane
         $this->styles = $styles ?? Styles::dark();
     }
 
-    /** @param callable(): list<array{tab: DockTab, label: string, active: bool, status: string}> $provider */
+    /** @param callable(): list<array{tab: DockTab, key: string, label: string, active: bool, status: string}> $provider */
     public function setProvider(callable $provider): self
     {
         $this->provider = $provider;
@@ -76,7 +76,7 @@ final class DockTabsWidget extends AbstractWidget implements LtrPane
         if (null === $this->provider) {
             return;
         }
-        $tabs = array_map(static fn (array $tab): array => [$tab['tab']->name, $tab['label'], $tab['active'], $tab['status']], ($this->provider)());
+        $tabs = array_map(static fn (array $tab): array => [$tab['tab']->name, $tab['key'], $tab['label'], $tab['active'], $tab['status']], ($this->provider)());
         $fingerprint = (string) json_encode($tabs);
         if ($fingerprint !== $this->lastFingerprint) {
             $this->lastFingerprint = $fingerprint;
@@ -98,7 +98,7 @@ final class DockTabsWidget extends AbstractWidget implements LtrPane
             }
 
             if (null !== $this->onTabClosed) {
-                ($this->onTabClosed)($entry['tab']);
+                ($this->onTabClosed)($entry['tab'], $entry['key']);
             }
 
             return true;
@@ -109,7 +109,7 @@ final class DockTabsWidget extends AbstractWidget implements LtrPane
             }
 
             if (null !== $this->onTabSelected) {
-                ($this->onTabSelected)($entry['tab']);
+                ($this->onTabSelected)($entry['tab'], $entry['key']);
             }
 
             return true;
@@ -145,7 +145,7 @@ final class DockTabsWidget extends AbstractWidget implements LtrPane
             $style = $tab['active'] ? $this->styles->merge(Role::Toolbar, Role::Bright)->withBold() : $this->styles->merge(Role::Toolbar, Role::Subtle);
             $close = $tab['active'] ? TabCloseGlyph::active($this->styles) : TabCloseGlyph::inactive($this->styles);
             $line .= $style->apply(str_replace('×', $close, $text)).$this->styles->of(Role::Placeholder)->apply('│');
-            $this->lastTabLayout[] = ['tab' => $tab['tab'], 'start' => $used, 'width' => $width, 'closeStart' => $used + $closeOffset, 'closeWidth' => 2];
+            $this->lastTabLayout[] = ['tab' => $tab['tab'], 'key' => $tab['key'], 'start' => $used, 'width' => $width, 'closeStart' => $used + $closeOffset, 'closeWidth' => 2];
             $used += $width;
         }
 

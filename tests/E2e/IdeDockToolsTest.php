@@ -130,11 +130,18 @@ final class IdeDockToolsTest extends TestCase
                     $this->await(static fn (): bool => str_contains(AnsiUtils::stripAnsiCodes($terminal->getOutput()), '3 results'));
                     $this->assertStringContainsString('TODO added later', AnsiUtils::stripAnsiCodes($terminal->getOutput()), 'the rerun saw the new file');
                 },
-                700 => function ($tui, $terminal): void {
-                    // Stale completion: kick a scan and immediately repurpose
-                    // the panel — the late grep result must not clobber it.
+                700 => function ($tui, $terminal, $ide): void {
+                    // Stale completion: kick a scan, bind another tool, then ×
+                    // the TODO tab before grep lands — the panel stays open (no
+                    // engine cancel) and the late result must be dropped.
+                    $dock = new \ReflectionProperty($ide, 'panels')->getValue($ide);
                     $tui->handleInput("\x1b8"); // alt+8 → scan starts
-                    $tui->handleInput("\x1b6"); // alt+6 → Problems takes the panel before grep lands
+                    $tui->handleInput("\x1b6"); // alt+6 → Problems binds; the TODO tab stays alive behind it
+                    foreach ($dock->aliveTabs() as $entry) {
+                        if ('TODO' === $entry['label']) {
+                            $dock->closeTab(\Porta\Ui\DockTab::Results, $entry['key']); // × the inactive TODO tab
+                        }
+                    }
                     $this->await(static fn (): bool => str_contains(AnsiUtils::stripAnsiCodes($terminal->getOutput()), 'Problems'));
                 },
                 1000 => function ($tui): void {

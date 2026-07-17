@@ -35,8 +35,8 @@ final class DockTabsWidgetTest extends TestCase
     public function testRendersTabsWithActiveStylingAndCloseGlyphs(): void
     {
         $bar = self::strip([
-            ['tab' => DockTab::Terminal, 'label' => 'Terminal', 'active' => false, 'status' => ''],
-            ['tab' => DockTab::Results, 'label' => 'Problems', 'active' => true, 'status' => ''],
+            ['tab' => DockTab::Terminal, 'label' => 'Terminal', 'active' => false, 'key' => '', 'status' => ''],
+            ['tab' => DockTab::Results, 'label' => 'Problems', 'active' => true, 'key' => '', 'status' => ''],
         ]);
 
         $lines = $bar->render(new RenderContext(80, 1));
@@ -54,30 +54,36 @@ final class DockTabsWidgetTest extends TestCase
         $selected = [];
         $closed = [];
         $bar = self::strip([
-            ['tab' => DockTab::Terminal, 'label' => 'Terminal', 'active' => true, 'status' => ''],
-            ['tab' => DockTab::Debug, 'label' => 'Debug', 'active' => false, 'status' => ''],
+            ['tab' => DockTab::Terminal, 'label' => 'Terminal', 'active' => true, 'key' => '', 'status' => ''],
+            ['tab' => DockTab::Debug, 'label' => 'Debug', 'active' => false, 'key' => '', 'status' => ''],
         ]);
-        $bar->onTabSelected(static function (DockTab $tab) use (&$selected): void {
-            $selected[] = $tab;
+        $bar->onTabSelected(static function (DockTab $tab, string $key) use (&$selected): void {
+            $selected[] = [$tab, $key];
         });
-        $bar->onTabClosed(static function (DockTab $tab) use (&$closed): void {
-            $closed[] = $tab;
+        $bar->onTabClosed(static function (DockTab $tab, string $key) use (&$closed): void {
+            $closed[] = [$tab, $key];
         });
         $bar->render(new RenderContext(80, 1));
 
         // ' Terminal × │ Debug × ': tab 1 body starts at col 0, its × at col 10.
         $this->assertTrue($bar->handleTabClick(2), 'a label click hits');
-        $this->assertSame([DockTab::Terminal], $selected);
+        $this->assertSame([[DockTab::Terminal, '']], $selected);
         $this->assertTrue($bar->handleTabClick(10), 'the × zone closes');
-        $this->assertSame([DockTab::Terminal], $closed);
+        $this->assertSame([[DockTab::Terminal, '']], $closed);
         $this->assertTrue($bar->handleTabClick(14), 'the second tab body selects it');
-        $this->assertSame([DockTab::Terminal, DockTab::Debug], $selected);
+        $this->assertSame(
+            [
+                [DockTab::Terminal, ''],
+                [DockTab::Debug,    ''],
+            ],
+            $selected,
+        );
         $this->assertFalse($bar->handleTabClick(70), 'the empty tail misses (resize grab)');
     }
 
     public function testBeforeRenderRepaintsOnlyWhenTheTabsChange(): void
     {
-        $tabs = [['tab' => DockTab::Results, 'label' => 'Problems', 'active' => true, 'status' => '']];
+        $tabs = [['tab' => DockTab::Results, 'label' => 'Problems', 'active' => true, 'key' => '', 'status' => '']];
         $bar = new DockTabsWidget();
         $bar->setProvider(static function () use (&$tabs): array {
             return $tabs;
@@ -90,14 +96,19 @@ final class DockTabsWidgetTest extends TestCase
 
         $tabs[0]['label'] = 'Usages';
         $bar->beforeRender();
-        $this->assertGreaterThan($revision, $bar->getRenderRevision(), 'a relabel repaints the strip');
+        $revision2 = $bar->getRenderRevision();
+        $this->assertGreaterThan($revision, $revision2, 'a relabel repaints the strip');
+
+        $tabs[0]['key'] = '9';
+        $bar->beforeRender();
+        $this->assertGreaterThan($revision2, $bar->getRenderRevision(), 'a membership change repaints even under the same label');
     }
 
     public function testTheActiveTabsStatusRendersRightAligned(): void
     {
         $bar = self::strip([
-            ['tab' => DockTab::Results, 'label' => 'Problems', 'active' => true, 'status' => '3 results'],
-            ['tab' => DockTab::Debug, 'label' => 'Debug', 'active' => false, 'status' => 'never shown (inactive)'],
+            ['tab' => DockTab::Results, 'label' => 'Problems', 'active' => true, 'key' => '7', 'status' => '3 results'],
+            ['tab' => DockTab::Debug, 'label' => 'Debug', 'active' => false, 'key' => '8', 'status' => 'never shown (inactive)'],
         ]);
 
         $line = $bar->render(new RenderContext(60, 1))[0];
@@ -111,8 +122,8 @@ final class DockTabsWidgetTest extends TestCase
     public function testTabsPastTheWidthAreDropped(): void
     {
         $bar = self::strip([
-            ['tab' => DockTab::Terminal, 'label' => 'a-very-long-terminal-label', 'active' => true, 'status' => ''],
-            ['tab' => DockTab::Debug, 'label' => 'debug-tool', 'active' => false, 'status' => ''],
+            ['tab' => DockTab::Terminal, 'label' => 'a-very-long-terminal-label', 'active' => true, 'key' => '', 'status' => ''],
+            ['tab' => DockTab::Debug, 'label' => 'debug-tool', 'active' => false, 'key' => '', 'status' => ''],
         ]);
 
         $plain = AnsiUtils::stripAnsiCodes($bar->render(new RenderContext(34, 1))[0]);

@@ -318,11 +318,12 @@ final class IdeEdgeCasesTest extends TestCase
             [
                 200 => static function ($tui, $terminal, $ide) use (&$expected): void {
                     $results = $tui->getById('results');
-                    $results->open('Find in Project', ResultsPanelFields::queryOnly());
-                    $results->setResults([
-                        ['path' => 'b.php', 'line' => 0, 'text' => 'one'],
-                        ['path' => 'c.php', 'line' => 0, 'text' => 'two'],
-                    ]);
+                    new \ReflectionProperty($ide, 'panels')
+                        ->getValue($ide)
+                        ->showList(\Porta\Ui\ResultsPanelMode::Search, 'Find in Project', [
+                            ['path' => 'b.php', 'line' => 0, 'text' => 'one'],
+                            ['path' => 'c.php', 'line' => 0, 'text' => 'two'],
+                        ]);
                     $tui->requestRender();
                     $tui->tick(); // force a frame so the pane gets a positioned rect
                     $renderer = new \ReflectionProperty($ide, 'renderer')->getValue($ide);
@@ -4356,6 +4357,8 @@ final class IdeEdgeCasesTest extends TestCase
                     }
                 },
                 700 => function ($tui, $terminal): void {
+                    // Await the shell's echo loop; a fixed delay races under load.
+                    $this->await(static fn (): bool => str_contains(AnsiUtils::stripAnsiCodes($terminal->getOutput()), 'row-9'));
                     $tui->handleInput("\x1b[5~"); // page up: scroll back
                     $tui->tick();
                     $screen = AnsiUtils::stripAnsiCodes($terminal->getOutput());

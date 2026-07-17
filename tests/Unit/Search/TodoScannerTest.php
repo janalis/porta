@@ -48,7 +48,7 @@ final class TodoScannerTest extends TestCase
         $results = new ResultsPanelWidget();
         $dock = TestBottomDock::create($tui, new TerminalPanelWidget(), $results, new DebugPanelWidget());
 
-        new TodoScanner($dock, $results, new ProjectSearch($project->dir), $tui)->scan();
+        new TodoScanner($dock, new ProjectSearch($project->dir))->scan();
 
         $this->assertSame(ResultsPanelMode::Todo, $dock->mode());
         $this->assertSame('TODO', $results->getTitle());

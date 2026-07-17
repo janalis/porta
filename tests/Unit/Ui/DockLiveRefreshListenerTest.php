@@ -14,6 +14,7 @@ use Porta\Search\ProblemRows;
 use Porta\Tests\Support\TestBottomDock;
 use Porta\Ui\BottomDock;
 use Porta\Ui\DockLiveRefreshListener;
+use Porta\Ui\DockToolTabs;
 use Porta\Ui\NotificationLog;
 use Porta\Ui\ResultsPanelMode;
 use Porta\Widget\DebugPanelWidget;
@@ -37,17 +38,19 @@ final class DockLiveRefreshListenerTest extends TestCase
     private BottomDock $dock;
     private LspLog $lspLog;
     private NotificationLog $notificationLog;
+    private DockToolTabs $tools;
 
     private function listener(): DockLiveRefreshListener
     {
         $this->tui = new Tui(terminal: new VirtualTerminal(columns: 100, rows: 24), keybindings: new Keybindings([]), renderer: new Renderer(new StyleSheet()));
         $this->results = new ResultsPanelWidget();
         $this->buffers = new BufferManager();
-        $this->dock = TestBottomDock::create($this->tui, new TerminalPanelWidget(), $this->results, new DebugPanelWidget());
+        $this->tools = new DockToolTabs();
+        $this->dock = TestBottomDock::create($this->tui, new TerminalPanelWidget(), $this->results, new DebugPanelWidget(), tools: $this->tools);
         $this->lspLog = new LspLog(new MockClock('2026-07-16 10:00:00'), new EventDispatcher());
         $this->notificationLog = new NotificationLog(new MockClock('2026-07-16 11:00:00'), new EventDispatcher());
 
-        return new DockLiveRefreshListener($this->dock, $this->results, $this->tui, new ProblemRows($this->buffers, '/p'), $this->lspLog, $this->notificationLog);
+        return new DockLiveRefreshListener($this->dock, $this->tools, new ProblemRows($this->buffers, '/p'), $this->lspLog, $this->notificationLog);
     }
 
     private function plainPanel(): string
