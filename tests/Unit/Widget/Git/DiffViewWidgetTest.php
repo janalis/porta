@@ -697,4 +697,41 @@ final class DiffViewWidgetTest extends TestCase
         // \x1b[49m) the selection bg must come straight back.
         $this->assertNotFalse(strpos($row, needle: "\x1b[49m\x1b[48;5;24m"), 'a re-applied bg follows a reset inside the span');
     }
+
+    public function testTheToolbarToggleUnderThePointerTints(): void
+    {
+        $widget = $this->widget();
+        $widget->render(new RenderContext(80, 12));
+
+        // ' S split ' spans cols 58-65, ' W hide-ws ' 67-78 at 80 cols.
+        $this->assertTrue($widget->hoverHeader(0, 60), 'the pointer landed on the split toggle');
+        $this->assertFalse($widget->hoverHeader(0, 61), 'still the same toggle → no change');
+        $this->assertTrue($widget->hoverHeader(0, 70), 'moved onto the whitespace toggle');
+        $this->assertTrue($widget->hoverHeader(0, 5), 'the title is not a toggle: the tint clears');
+        $this->assertFalse($widget->hoverHeader(0, 5), 'still no toggle → no change');
+        $this->assertTrue($widget->hoverHeader(0, 60), 'back onto a toggle');
+        $this->assertTrue($widget->hoverHeader(4, 60), 'the toolbar is row 0 only: a body row clears the tint');
+        $this->assertFalse($widget->hoverHeader(4, 60), 'still off the toolbar → no change');
+        $this->assertTrue($widget->hoverHeader(0, 60), 'back onto a toggle');
+        $this->assertTrue($widget->clearHeaderHover(), 'the pointer left the pane');
+        $this->assertFalse($widget->clearHeaderHover(), 'nothing left to clear');
+    }
+
+    public function testAnOffToggleTintsUnderThePointerAndAnOnOneKeepsItsSelection(): void
+    {
+        $widget = $this->widget();
+        $widget->render(new RenderContext(80, 12));
+
+        $widget->hoverHeader(0, 70); // the whitespace toggle, currently off
+        $off = $widget->render(new RenderContext(80, 12))[0];
+        $this->assertStringContainsString("\x1b[48;5;236m", $off, 'an off toggle takes the hover tint');
+        $this->assertSame(80, AnsiUtils::visibleWidth($off), 'the tint does not change the toolbar width');
+
+        // An ON tag already carries the bright selection background, so the
+        // hover must not repaint it away.
+        $widget->hideWhitespace();
+        $on = $widget->render(new RenderContext(80, 12))[0];
+        $this->assertStringContainsString("\x1b[48;5;31m", $on, 'the on toggle keeps its selection background under the pointer');
+        $this->assertSame(80, AnsiUtils::visibleWidth($on));
+    }
 }

@@ -97,4 +97,76 @@ final class BreadcrumbsWidgetTest extends TestCase
         $bar->beforeRender(); // no provider set → no-op
         $this->assertSame([], $bar->render(new RenderContext(40, 1)));
     }
+
+    /** @return list<array{label: string, line: int}> */
+    private static function trail(): array
+    {
+        return [['label' => 'App', 'line' => 0], ['label' => 'Widget', 'line' => 4], ['label' => 'render', 'line' => 9]];
+    }
+
+    public function testHoverTintsTheCrumbUnderThePointer(): void
+    {
+        $bar = new BreadcrumbsWidget();
+        $bar->setProvider(self::trail(...));
+        $bar->beforeRender();
+        $bar->render(new RenderContext(80, 1));
+
+        // ' App › Widget › render' — 'App' spans cols 1-3, 'Widget' 7-12.
+        $this->assertTrue($bar->hoverAt(7), 'the pointer landed on a crumb');
+        $this->assertFalse($bar->hoverAt(8), 'still the same crumb → no change');
+        $this->assertTrue($bar->hoverAt(5), 'the separator is not a crumb: the tint clears');
+        $this->assertFalse($bar->hoverAt(5), 'still no crumb → no change');
+        $this->assertTrue($bar->hoverAt(1), 'back onto a crumb');
+        $this->assertTrue($bar->clearHover(), 'the pointer left the bar');
+        $this->assertFalse($bar->clearHover(), 'nothing left to clear');
+    }
+
+    public function testTheHoveredCrumbCarriesTheBarHoverShade(): void
+    {
+        $bar = new BreadcrumbsWidget();
+        $bar->setProvider(self::trail(...));
+        $bar->beforeRender();
+        $bar->render(new RenderContext(80, 1)); // the hover maps against the last render's layout
+
+        $bar->hoverAt(7); // 'Widget'
+        $line = $bar->render(new RenderContext(80, 1))[0];
+
+        // Bar chrome hovers on BarHoverBg (240) — not a list row's tint (236).
+        $this->assertStringContainsString("\x1b[48;5;240m", $line, 'the hovered crumb takes the bar-chrome hover shade');
+        $this->assertStringNotContainsString("\x1b[48;5;236m", $line, 'not the list-row tint');
+        $this->assertSame(80, AnsiUtils::visibleWidth($line), 'the tint does not change the bar width');
+    }
+
+    public function testHoveringTheCurrentScopeKeepsItBold(): void
+    {
+        $bar = new BreadcrumbsWidget();
+        $bar->setProvider(self::trail(...));
+        $bar->beforeRender();
+        $bar->render(new RenderContext(80, 1));
+
+        $bar->hoverAt(16); // 'render' — the current scope
+        $line = $bar->render(new RenderContext(80, 1))[0];
+
+        $this->assertStringContainsString("\x1b[48;5;240m", $line, 'hover shade');
+        $this->assertStringContainsString("\x1b[1m", $line, 'the current scope stays bold under the pointer');
+    }
+
+    public function testAChangedTrailDropsAStaleTint(): void
+    {
+        $bar = new BreadcrumbsWidget();
+        $crumbs = self::trail();
+        $bar->setProvider(static function () use (&$crumbs): array {
+            return $crumbs;
+        });
+        $bar->beforeRender();
+        $bar->render(new RenderContext(80, 1));
+        $bar->hoverAt(7);
+
+        // The caret moved: the crumbs change under a pointer that has not.
+        $crumbs = [['label' => 'Other', 'line' => 2]];
+        $bar->beforeRender();
+        $line = $bar->render(new RenderContext(80, 1))[0];
+
+        $this->assertStringNotContainsString("\x1b[48;5;240m", $line, 'no crumb stays tinted after the trail changes');
+    }
 }

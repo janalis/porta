@@ -192,9 +192,13 @@ final class GitMouseRouter
 
         $tabsRect = $this->hit->rect($this->tabs);
         $onTabs = null !== $tabsRect && $tabsRect->contains($mouse->row, $mouse->col);
-        $changed = $this->tabs->hoverMode($onTabs ? $this->tabs->modeAtColumn($mouse->col - $tabsRect->col) : null) || $changed;
+        $tabsChanged = $this->tabs->hoverMode($onTabs ? $this->tabs->modeAtColumn($mouse->col - $tabsRect->col) : null);
 
-        if ($changed) {
+        // The diff pane's toolbar toggles are clickable, so they tint too.
+        $diffRel = $this->hit->hit($this->diff, $mouse->row, $mouse->col);
+        $diffChanged = null !== $diffRel ? $this->diff->hoverHeader($diffRel['row'], $diffRel['col']) : $this->diff->clearHeaderHover();
+
+        if ($changed || $tabsChanged || $diffChanged) {
             $this->tui->requestRender();
         }
     }

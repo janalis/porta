@@ -14,6 +14,7 @@ use Porta\Ui\Role;
 use Porta\Ui\TextField;
 use Porta\Ui\Theme\Styles;
 use Porta\Widget\MatchRowDecorator;
+use Porta\Widget\OptionTagState;
 use Porta\Widget\Render\HeaderRenderer;
 use Porta\Widget\Render\OverlayCompositor;
 use Porta\Widget\ResultGrouping;
@@ -709,11 +710,7 @@ final class FindInFilesModal
             $this->optionZones[] = ['name' => $name, 'start' => $col, 'end' => $col + $w];
             $col += $w;
             $on = 'tokens' === $name ? 'any' !== $this->options['tokens'] : $this->options[$name];
-            $tags .= $this->optionTag($glyph, match (true) {
-                $on => OptionTagState::On,
-                $name === $this->hovered => OptionTagState::Hovered,
-                default => OptionTagState::Off,
-            });
+            $tags .= $this->optionTag($glyph, OptionTagState::of($on, $name === $this->hovered));
         }
 
         $label = $this->scopeLabels[$this->scopeIndex] ?? $this->translator->trans('Whole Project');

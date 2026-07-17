@@ -20,6 +20,7 @@ use Porta\Ui\Sgr;
 use Porta\Ui\Theme\Styles;
 use Porta\Widget\FillsPaneTrait;
 use Porta\Widget\InputHook;
+use Porta\Widget\OptionTagState;
 use Porta\Widget\PaneNavigationCallbacks;
 use Porta\Widget\Render\LineDecorator;
 use Porta\Widget\Render\MenuOverlayHost;
@@ -27,6 +28,7 @@ use Porta\Widget\Render\MenuOverlayHostTrait;
 use Symfony\Component\Tui\Ansi\AnsiUtils;
 use Symfony\Component\Tui\Input\Key;
 use Symfony\Component\Tui\Render\RenderContext;
+use Symfony\Component\Tui\Style\Style;
 use Symfony\Component\Tui\Widget\AbstractWidget;
 use Symfony\Component\Tui\Widget\FocusableInterface;
 use Symfony\Component\Tui\Widget\FocusableTrait;
@@ -66,6 +68,8 @@ final class DiffViewWidget extends AbstractWidget implements FocusableInterface,
     private bool $whitespaceHidden = false;
     /** @var list<array{name: string, start: int, end: int}> clickable toolbar tag spans from the last render */
     private array $buttonZones = [];
+    /** Toolbar tag under the pointer ('split'|'whitespace'), or null. Visual only. */
+    private ?string $hoveredButton = null;
     private int $scroll = 0;
     /** Horizontal scroll offset (display columns into the line texts). */
     private int $hScroll = 0;
@@ -827,8 +831,7 @@ final class DiffViewWidget extends AbstractWidget implements FocusableInterface,
         foreach ($tags as $tag) {
             $tagWidth = mb_strwidth($tag['label']);
             $this->buttonZones[] = ['name' => $tag['name'], 'start' => $col, 'end' => $col + $tagWidth];
-            $style = $tag['on'] ? $this->styles->of(Role::SelectedRow) : $this->styles->merge(Role::TagOffBg, Role::Muted);
-            $rendered .= $style->apply($tag['label']).' ';
+            $rendered .= $this->tagStyle(OptionTagState::of($tag['on'], $tag['name'] === $this->hoveredButton))->apply($tag['label']).' ';
             $col += $tagWidth + 1;
         }
 
@@ -836,6 +839,51 @@ final class DiffViewWidget extends AbstractWidget implements FocusableInterface,
             ->of(Role::HeaderBar)
             ->withBold()
             ->apply($left.$rendered);
+    }
+
+    /**
+     * A toolbar toggle's shading. An ON tag already carries the bright
+     * selection background and has no room for a second one, so the pointer
+     * underlines it instead — the same resolution CommitBoxWidget's button
+     * uses. An OFF tag takes the row-highlight tint.
+     */
+    private function tagStyle(OptionTagState $state): Style
+    {
+        return match ($state) {
+            OptionTagState::On => $this->styles->of(Role::SelectedRow),
+            OptionTagState::Hovered => $this->styles->merge(Role::RowHighlightBg, Role::Muted),
+            OptionTagState::Off => $this->styles->merge(Role::TagOffBg, Role::Muted),
+        };
+    }
+
+    /**
+     * Tint the toolbar toggle under the pointer (widget-relative cell);
+     * returns whether it changed. Only row 0 carries toggles.
+     */
+    public function hoverHeader(int $relRow, int $relCol): bool
+    {
+        $hovered = null;
+        foreach (0 === $relRow ? $this->buttonZones : [] as $zone) {
+            if ($relCol < $zone['start'] || $relCol >= $zone['end']) {
+                continue;
+            }
+
+            $hovered = $zone['name'];
+            break;
+        }
+        if ($hovered === $this->hoveredButton) {
+            return false;
+        }
+        $this->hoveredButton = $hovered;
+        $this->invalidate();
+
+        return true;
+    }
+
+    /** The pointer left the diff pane: drop the toolbar tint. Returns whether it changed. */
+    public function clearHeaderHover(): bool
+    {
+        return $this->hoverHeader(-1, -1);
     }
 
     /** @param array{kind: DiffRowKind, hunk: int, line?: int, left?: int, right?: int} $row */

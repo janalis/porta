@@ -11,6 +11,7 @@ use Porta\Ui\Theme\Styles;
 use Porta\Widget\Render\MenuOverlayHost;
 use Porta\Widget\Render\MenuOverlayHostTrait;
 use Symfony\Component\Tui\Render\RenderContext;
+use Symfony\Component\Tui\Style\Style;
 use Symfony\Component\Tui\Widget\AbstractWidget;
 
 /**
@@ -22,6 +23,7 @@ use Symfony\Component\Tui\Widget\AbstractWidget;
 #[AsWidget('breadcrumbs')]
 final class BreadcrumbsWidget extends AbstractWidget implements MenuOverlayHost
 {
+    use HoverTrait;
     use MenuOverlayHostTrait;
 
     private readonly Styles $styles;
@@ -61,6 +63,7 @@ final class BreadcrumbsWidget extends AbstractWidget implements MenuOverlayHost
         $fingerprint = (string) json_encode(($this->provider)());
         if ($fingerprint !== $this->lastFingerprint) {
             $this->lastFingerprint = $fingerprint;
+            $this->clearHover(); // the crumbs changed under the pointer
             $this->invalidate();
         }
     }
@@ -85,9 +88,10 @@ final class BreadcrumbsWidget extends AbstractWidget implements MenuOverlayHost
             $label = $crumb['label'];
             $width = mb_strwidth($label);
             $this->lastLayout[] = ['start' => $col, 'width' => $width, 'line' => $crumb['line']];
-            $content .= $i === $last
-                ? $this->styles->of(Role::Emphasis)->withBold()->apply($label) // current scope: bright + bold
-                : $this->styles->of(Role::Muted)->apply($label);
+            // Bar chrome, so the pointer tints with BarHoverBg (not a list
+            // row's RowHighlightBg) under whichever foreground the crumb has.
+            $hovered = $i === $this->hoveredIndex;
+            $content .= $this->crumbStyle($i === $last, $hovered)->apply($label);
             $col += $width;
         }
 
@@ -96,12 +100,41 @@ final class BreadcrumbsWidget extends AbstractWidget implements MenuOverlayHost
         return $this->withMenuOverlay([$bar], $columns);
     }
 
+    /**
+     * A crumb's shading: the current scope is bright and bold, the ancestors
+     * muted, and the one under the pointer takes the bar-chrome hover shade
+     * under whichever of those foregrounds it already had.
+     */
+    private function crumbStyle(bool $current, bool $hovered): Style
+    {
+        return match (true) {
+            $current && $hovered => $this->styles->merge(Role::BarHoverBg, Role::Emphasis)->withBold(),
+            $current => $this->styles->of(Role::Emphasis)->withBold(),
+            $hovered => $this->styles->merge(Role::BarHoverBg, Role::Muted),
+            default => $this->styles->of(Role::Muted),
+        };
+    }
+
+    /** Tint the crumb under the pointer (widget-relative column); returns whether it changed. */
+    public function hoverAt(int $col): bool
+    {
+        return $this->setHovered($this->crumbIndexAt($col));
+    }
+
     /** The jump line of the crumb at column $col of the last render, or null. */
     public function lineAtColumn(int $col): ?int
     {
-        foreach ($this->lastLayout as $entry) {
+        $index = $this->crumbIndexAt($col);
+
+        return null !== $index ? $this->lastLayout[$index]['line'] : null;
+    }
+
+    /** Index into the last render's segment layout at column $col, or null between/past the crumbs. */
+    private function crumbIndexAt(int $col): ?int
+    {
+        foreach ($this->lastLayout as $index => $entry) {
             if ($col >= $entry['start'] && $col < ($entry['start'] + $entry['width'])) {
-                return $entry['line'];
+                return $index;
             }
         }
 

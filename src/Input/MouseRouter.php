@@ -773,18 +773,30 @@ final class MouseRouter
         }
     }
 
-    /** Tab-strip hover: the tab under the pointer tints; leaving a strip clears it. */
+    /**
+     * Strip hover: the tab/crumb under the pointer tints, and leaving a strip
+     * clears it. Every strip is asked on every move — the pointer left one to
+     * arrive at another — so the three results are collected and then combined,
+     * never short-circuited.
+     */
     private function updateStripHover(MouseEvent $mouse): void
     {
         $tabsRect = $this->hit->rect($this->panes->tabBar());
-        $rel = null !== $tabsRect && $tabsRect->contains($mouse->row, $mouse->col) ? $tabsRect->toRelative($mouse->row, $mouse->col) : null;
-        $changed = null !== $rel ? $this->panes->tabBar()->hoverTab($rel['row'], $rel['col']) : $this->panes->tabBar()->clearHover();
+        $tabsRel = null !== $tabsRect && $tabsRect->contains($mouse->row, $mouse->col) ? $tabsRect->toRelative($mouse->row, $mouse->col) : null;
+        $tabsChanged = null !== $tabsRel ? $this->panes->tabBar()->hoverTab($tabsRel['row'], $tabsRel['col']) : $this->panes->tabBar()->clearHover();
 
         $stripRect = $this->hit->rect($this->dockTabs);
         $onStrip = $this->dock->stripVisible() && null !== $stripRect && $mouse->row === $stripRect->row && $mouse->col >= $stripRect->col && $mouse->col < ($stripRect->col + $stripRect->columns);
-        $changed = ($onStrip ? $this->dockTabs->hoverTabAt($mouse->col - $stripRect->col) : $this->dockTabs->clearHover()) || $changed;
+        $dockChanged = $onStrip ? $this->dockTabs->hoverTabAt($mouse->col - $stripRect->col) : $this->dockTabs->clearHover();
 
-        if ($changed) {
+        // The breadcrumbs are a strip too: each crumb is a click target, so
+        // each crumb tints. The bar renders no rows without a scope, so a
+        // stale rect is possible — the crumb hit-test itself is the guard.
+        $crumbRect = $this->hit->rect($this->panes->breadcrumbs());
+        $crumbRel = null !== $crumbRect && $crumbRect->contains($mouse->row, $mouse->col) ? $crumbRect->toRelative($mouse->row, $mouse->col) : null;
+        $crumbsChanged = null !== $crumbRel ? $this->panes->breadcrumbs()->hoverAt($crumbRel['col']) : $this->panes->breadcrumbs()->clearHover();
+
+        if ($tabsChanged || $dockChanged || $crumbsChanged) {
             $this->tui->requestRender();
         }
     }
