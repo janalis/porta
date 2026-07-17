@@ -31,6 +31,7 @@ use Symfony\Component\Tui\Widget\AbstractWidget;
 #[AsWidget('dock-tabs', flex: 0)]
 final class DockTabsWidget extends AbstractWidget implements LtrPane, MenuOverlayHost
 {
+    use HoverTrait;
     use MenuOverlayHostTrait;
 
     /** @var (callable(): list<array{tab: DockTab, key: string, label: string, active: bool, status: string}>)|null */
@@ -49,9 +50,6 @@ final class DockTabsWidget extends AbstractWidget implements LtrPane, MenuOverla
 
     /** @var (callable(DockTab, int, int): void)|null drag-reorder within a family: family, from, to */
     private $onTabMoved = null;
-
-    /** The strip-entry index under the mouse pointer (visual only), or null. */
-    private ?int $hoveredTab = null;
 
     private readonly Styles $styles;
 
@@ -177,7 +175,11 @@ final class DockTabsWidget extends AbstractWidget implements LtrPane, MenuOverla
         return null;
     }
 
-    /** Tint the tool tab under the pointer; returns whether it changed. */
+    /**
+     * Tint the tool tab under the pointer; returns whether it changed. The
+     * strip's hover key is a column, not a row, so it maps the pointer itself
+     * and only the state comes from {@see HoverTrait}.
+     */
     public function hoverTabAt(int $col): bool
     {
         $hovered = null;
@@ -190,24 +192,7 @@ final class DockTabsWidget extends AbstractWidget implements LtrPane, MenuOverla
             break;
         }
 
-        return $this->setTabHover($hovered);
-    }
-
-    /** The pointer left the strip: drop the hover tint. Returns whether it changed. */
-    public function clearTabHover(): bool
-    {
-        return $this->setTabHover(null);
-    }
-
-    private function setTabHover(?int $index): bool
-    {
-        if ($index === $this->hoveredTab) {
-            return false;
-        }
-        $this->hoveredTab = $index;
-        $this->invalidate();
-
-        return true;
+        return $this->setHovered($hovered);
     }
 
     /**
@@ -263,7 +248,7 @@ final class DockTabsWidget extends AbstractWidget implements LtrPane, MenuOverla
 
             $status = $tab['status'];
         }
-        $hovered = $this->hoveredTab;
+        $hovered = $this->hoveredIndex;
         $strip = TabStripRenderer::render(
             array_map(static fn (array $tab, int $i): array => ['label' => $tab['label'], 'active' => $tab['active'], 'hovered' => $i === $hovered && !$tab['active']], $tabs, array_keys($tabs)),
             $columns,

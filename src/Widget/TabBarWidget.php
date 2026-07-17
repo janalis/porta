@@ -25,6 +25,7 @@ use Symfony\Component\Tui\Widget\AbstractWidget;
 #[AsWidget('tabs', flex: 0)]
 final class TabBarWidget extends AbstractWidget implements MenuOverlayHost
 {
+    use HoverTrait;
     use MenuOverlayHostTrait;
 
     /** Display columns of the vertical (left/right) tab list. */
@@ -55,9 +56,6 @@ final class TabBarWidget extends AbstractWidget implements MenuOverlayHost
 
     /** @var list<array{row: int, col: int, width: int, step: int}> clickable overflow-indicator zones from the last render */
     private array $indicatorZones = [];
-
-    /** The tab index under the mouse pointer (visual only), or null. */
-    private ?int $hoveredIndex = null;
 
     /** @param callable(): list<array{name: string, dirty: bool, active: bool}> $provider */
     public function setProvider(callable $provider): self
@@ -120,32 +118,19 @@ final class TabBarWidget extends AbstractWidget implements MenuOverlayHost
         $fingerprint = (string) json_encode(($this->provider)());
         if ($fingerprint !== $this->lastFingerprint) {
             $this->lastFingerprint = $fingerprint;
-            $this->hoveredIndex = null; // the strip changed under the pointer
+            $this->clearHover(); // the strip changed under the pointer
             $this->invalidate();
         }
     }
 
-    /** Tint the tab under the pointer (visual only); returns whether it changed. */
+    /**
+     * Tint the tab under the pointer (visual only); returns whether it
+     * changed. The strip's hover key is a cell, not a row, so it maps the
+     * pointer itself and only the state comes from {@see HoverTrait}.
+     */
     public function hoverTab(int $row, int $col): bool
     {
         return $this->setHovered($this->tabIndexAt($row, $col));
-    }
-
-    /** The pointer left the strip: drop the hover tint. Returns whether it changed. */
-    public function clearHover(): bool
-    {
-        return $this->setHovered(null);
-    }
-
-    private function setHovered(?int $index): bool
-    {
-        if ($index === $this->hoveredIndex) {
-            return false;
-        }
-        $this->hoveredIndex = $index;
-        $this->invalidate();
-
-        return true;
     }
 
     public function render(RenderContext $context): array

@@ -782,7 +782,7 @@ final class MouseRouter
 
         $stripRect = $this->hit->rect($this->dockTabs);
         $onStrip = $this->dock->stripVisible() && null !== $stripRect && $mouse->row === $stripRect->row && $mouse->col >= $stripRect->col && $mouse->col < ($stripRect->col + $stripRect->columns);
-        $changed = ($onStrip ? $this->dockTabs->hoverTabAt($mouse->col - $stripRect->col) : $this->dockTabs->clearTabHover()) || $changed;
+        $changed = ($onStrip ? $this->dockTabs->hoverTabAt($mouse->col - $stripRect->col) : $this->dockTabs->clearHover()) || $changed;
 
         if ($changed) {
             $this->tui->requestRender();

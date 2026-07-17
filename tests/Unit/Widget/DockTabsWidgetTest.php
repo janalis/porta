@@ -212,8 +212,8 @@ final class DockTabsWidgetTest extends TestCase
         $this->assertFalse($bar->hoverTabAt(15), 'same tab: no change');
         $this->assertStringContainsString("\x1b[48;5;240m", $bar->render(new RenderContext(80, 1))[0]);
 
-        $this->assertTrue($bar->clearTabHover());
-        $this->assertFalse($bar->clearTabHover());
+        $this->assertTrue($bar->clearHover());
+        $this->assertFalse($bar->clearHover());
         $this->assertFalse($bar->hoverTabAt(70), 'the empty tail hovers nothing');
         $this->assertStringNotContainsString("\x1b[48;5;240m", $bar->render(new RenderContext(80, 1))[0]);
     }
