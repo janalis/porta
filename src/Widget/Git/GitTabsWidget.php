@@ -11,6 +11,8 @@ use Porta\Ui\Theme\Styles;
 use Porta\Widget\PanelWidth;
 use Porta\Widget\Render\MenuOverlayHost;
 use Porta\Widget\Render\MenuOverlayHostTrait;
+use Porta\Widget\Render\TabState;
+use Porta\Widget\Render\TabStyle;
 use Symfony\Component\Tui\Ansi\AnsiUtils;
 use Symfony\Component\Tui\Render\RenderContext;
 use Symfony\Component\Tui\Widget\AbstractWidget;
@@ -120,11 +122,7 @@ final class GitTabsWidget extends AbstractWidget implements MenuOverlayHost
             $label = $this->translator->trans($rawLabel);
             $tabWidth = mb_strwidth($label);
             $this->layout[] = ['mode' => $mode, 'start' => $col, 'width' => $tabWidth];
-            $line .= (match (true) {
-                $mode === $this->active => $this->styles->merge(Role::TabActiveBg, Role::Bright)->withBold(),
-                $mode === $this->hoveredMode => $this->styles->merge(Role::BarHoverBg, Role::Subtle),
-                default => $this->styles->merge(Role::Toolbar, Role::Subtle),
-            })->apply($label);
+            $line .= TabStyle::of($this->styles, TabState::of($mode === $this->active, $mode === $this->hoveredMode))->apply($label);
             $col += $tabWidth + 1;
             $line .= ' ';
         }

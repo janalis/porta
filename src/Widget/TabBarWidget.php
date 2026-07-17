@@ -11,7 +11,10 @@ use Porta\Ui\Role;
 use Porta\Ui\Theme\Styles;
 use Porta\Widget\Render\MenuOverlayHost;
 use Porta\Widget\Render\MenuOverlayHostTrait;
+use Porta\Widget\Render\TabCell;
 use Porta\Widget\Render\TabCloseGlyph;
+use Porta\Widget\Render\TabState;
+use Porta\Widget\Render\TabStyle;
 use Symfony\Component\Tui\Ansi\AnsiUtils;
 use Symfony\Component\Tui\Render\RenderContext;
 use Symfony\Component\Tui\Widget\AbstractWidget;
@@ -153,16 +156,7 @@ final class TabBarWidget extends AbstractWidget implements MenuOverlayHost
         /** @var list<array{text: string, active: bool, width: int, closeOffset: int}> $parts */
         $parts = [];
         foreach ($tabs as $tab) {
-            $prefix = ' '.$tab['name'].' ';
-            $marker = $tab['dirty'] ? Glyphs::DIRTY : '';
-            $closeOffset = mb_strwidth($prefix) + mb_strwidth($marker);
-            $label = $prefix.$marker.'×'.' ';
-            $parts[] = [
-                'text' => $label,
-                'active' => $tab['active'],
-                'width' => mb_strwidth($label) + 1,
-                'closeOffset' => $closeOffset,
-            ];
+            $parts[] = ['active' => $tab['active']] + TabCell::measure($tab['name'], $tab['dirty'] ? Glyphs::DIRTY : '');
         }
 
         $activeIndex = 0;
@@ -205,20 +199,14 @@ final class TabBarWidget extends AbstractWidget implements MenuOverlayHost
             if (($used + $part['width']) > ($overflow ? $columns - 1 : $columns)) {
                 break;
             }
-            $style = match (true) {
-                $part['active'] => $this->styles->merge(Role::TabActiveBg, Role::Bright)->withBold(),
-                $index === $this->hoveredIndex => $this->styles->merge(Role::BarHoverBg, Role::Subtle),
-                default => $this->styles->merge(Role::Toolbar, Role::Subtle),
-            };
-            $text = str_replace('×', $part['active'] ? TabCloseGlyph::active($this->styles) : TabCloseGlyph::inactive($this->styles), $part['text']);
-            $line .= $style->apply($text).$this->styles->of(Role::Placeholder)->apply('│');
+            $line .= TabCell::render($part['text'], $this->styles, TabState::of($part['active'], $index === $this->hoveredIndex));
             $this->lastLayout[] = [
                 'index' => $index,
                 'row' => 0,
                 'start' => $used,
                 'width' => $part['width'],
                 'closeStart' => $used + $part['closeOffset'],
-                'closeWidth' => 2, // the × cell plus its trailing space
+                'closeWidth' => TabCell::CLOSE_WIDTH,
             ];
             $used += $part['width'];
             $last = $index;
@@ -308,20 +296,15 @@ final class TabBarWidget extends AbstractWidget implements MenuOverlayHost
             foreach (\array_slice($tabs, $start, $budget, preserve_keys: true) as $index => $tab) {
                 $name = AnsiUtils::truncateToWidth($tab['name'], $nameWidth, '…', pad: true);
                 $marker = $tab['dirty'] ? Glyphs::DIRTY : ' ';
-                $style = match (true) {
-                    $tab['active'] => $this->styles->merge(Role::TabActiveBg, Role::Bright)->withBold(),
-                    $index === $this->hoveredIndex => $this->styles->merge(Role::BarHoverBg, Role::Subtle),
-                    default => $this->styles->merge(Role::Toolbar, Role::Subtle),
-                };
                 $close = $tab['active'] ? TabCloseGlyph::active($this->styles) : TabCloseGlyph::inactive($this->styles);
-                $lines[] = $style->apply(' '.$name.' '.$marker.$close.' ');
+                $lines[] = TabStyle::of($this->styles, TabState::of($tab['active'], $index === $this->hoveredIndex))->apply(' '.$name.' '.$marker.$close.' ');
                 $this->lastLayout[] = [
                     'index' => $index,
                     'row' => \count($lines) - 1,
                     'start' => 0,
                     'width' => self::VERTICAL_WIDTH,
-                    'closeStart' => self::VERTICAL_WIDTH - 2,
-                    'closeWidth' => 2, // the × cell plus its trailing space
+                    'closeStart' => self::VERTICAL_WIDTH - TabCell::CLOSE_WIDTH,
+                    'closeWidth' => TabCell::CLOSE_WIDTH,
                 ];
             }
             if ($overflow) {

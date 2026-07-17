@@ -12,6 +12,23 @@ use Symfony\Component\Tui\Render\RenderContext;
 
 final class TabBarWidgetTest extends TestCase
 {
+    /**
+     * The glyph occupying display column $col — which is not mb_substr($col),
+     * because a wide glyph advances the column by two and the char index by one.
+     */
+    private static function glyphAtColumn(string $plain, int $col): string
+    {
+        $at = 0;
+        foreach (mb_str_split($plain) as $glyph) {
+            if ($at === $col) {
+                return $glyph;
+            }
+            $at += mb_strwidth($glyph);
+        }
+
+        return '';
+    }
+
     public function testEmptyStateRendersBlankLine(): void
     {
         $bar = new TabBarWidget();
@@ -127,6 +144,34 @@ final class TabBarWidgetTest extends TestCase
         $this->assertSame(2, substr_count($plain, needle: '×'), 'a close × per tab');
         $this->assertStringContainsString('a.php ×', $plain, 'clean tab: name then ×');
         $this->assertStringContainsString('b.php ●×', $plain, 'dirty tab: name, dirty dot, then ×');
+    }
+
+    /**
+     * The strip's click zones are columns into the line it painted, so the two
+     * must be measured the same way. A wide (CJK) name is where a byte count
+     * would diverge from a display-column count: the × would then sit somewhere
+     * other than where closeIndexAt() says it does, and every zone after it
+     * would be off by the difference.
+     */
+    public function testCloseZonesLandOnTheRenderedCloseGlyphForWideNames(): void
+    {
+        $bar = new TabBarWidget();
+        $bar->setProvider(static fn () => [
+            ['name' => '日本語.php', 'dirty' => false, 'active' => true],
+            ['name' => 'b.php', 'dirty' => true, 'active' => false],
+        ]);
+        $bar->beforeRender();
+        $plain = AnsiUtils::stripAnsiCodes($bar->render(new RenderContext(60, 1))[0]);
+
+        $this->assertSame(60, mb_strwidth($plain), 'the strip fills its row exactly');
+        foreach ([0, 1] as $index) {
+            $col = 0;
+            while ($col < 60 && $bar->closeIndexAt(0, $col) !== $index) {
+                ++$col;
+            }
+            $this->assertLessThan(60, $col, "tab {$index} has a close zone");
+            $this->assertSame('×', self::glyphAtColumn($plain, $col), "tab {$index}'s close zone lands on its ×");
+        }
     }
 
     public function testCloseIndexAtColumn(): void

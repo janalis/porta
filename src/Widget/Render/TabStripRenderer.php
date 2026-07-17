@@ -4,18 +4,16 @@ declare(strict_types=1);
 
 namespace Porta\Widget\Render;
 
-use Porta\Ui\Glyphs;
-use Porta\Ui\Role;
 use Porta\Ui\Theme\Styles;
 
 /**
- * The shared one-row tab strip: ` label × │ label × │ …` in the unified
- * strip family — active tab on {@see Role::TabActiveBg} (bright, bold),
- * inactive on Toolbar (subtle), a hovered inactive tab on the bar-chrome
- * hover shade, a {@see TabCloseGlyph} per tab and a Placeholder divider.
- * Overflow drops LEADING tabs so the active tab always stays on the strip.
- * Returns the styled run, the columns it used, and the hit map the caller
- * feeds its click/close/hover zones from.
+ * The bottom dock's one-row tab strip: {@see TabCell}s laid left to right,
+ * dropping LEADING tabs on overflow so the active tab always stays on the
+ * strip. Returns the styled run, the columns it used, and the hit map the
+ * caller feeds its click/close/hover zones from.
+ *
+ * The cell and its shading are the strip family's ({@see TabCell},
+ * {@see TabStyle}); what is this renderer's own is the windowing.
  */
 final class TabStripRenderer
 {
@@ -33,9 +31,7 @@ final class TabStripRenderer
             if ($tab['active']) {
                 $activeIndex = $i;
             }
-            $prefix = ' '.$tab['label'].' ';
-            $text = $prefix.'× ';
-            $parts[] = ['tab' => $tab, 'text' => $text, 'width' => mb_strwidth($text) + 1, 'closeOffset' => mb_strwidth($prefix)];
+            $parts[] = ['tab' => $tab] + TabCell::measure($tab['label']);
         }
         // Drop leading tabs until the active one fits — an unbounded pile
         // must never hide the tab the user is looking at.
@@ -52,14 +48,8 @@ final class TabStripRenderer
                 break;
             }
             $tab = $part['tab'];
-            $style = match (true) {
-                $tab['active'] => $styles->merge(Role::TabActiveBg, Role::Bright)->withBold(),
-                $tab['hovered'] => $styles->merge(Role::BarHoverBg, Role::Subtle),
-                default => $styles->merge(Role::Toolbar, Role::Subtle),
-            };
-            $close = $tab['active'] ? TabCloseGlyph::active($styles) : TabCloseGlyph::inactive($styles);
-            $line .= $style->apply(str_replace('×', $close, $part['text'])).$styles->of(Role::Placeholder)->apply(Glyphs::SEPARATOR);
-            $hitMap[] = ['index' => $index, 'start' => $used, 'width' => $part['width'], 'closeStart' => $used + $part['closeOffset'], 'closeWidth' => 2];
+            $line .= TabCell::render($part['text'], $styles, TabState::of($tab['active'], $tab['hovered']));
+            $hitMap[] = ['index' => $index, 'start' => $used, 'width' => $part['width'], 'closeStart' => $used + $part['closeOffset'], 'closeWidth' => TabCell::CLOSE_WIDTH];
             $used += $part['width'];
         }
 

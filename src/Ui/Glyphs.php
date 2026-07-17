@@ -43,10 +43,15 @@ final class Glyphs
     public const string DIRTY = '●';
     public const string SESSION_STOPPED = '○';
     public const string SEPARATOR = '│';
+    public const string CLOSE = '×'; // the tab's close affordance; {@see \Porta\Widget\Render\TabCloseGlyph} owns its shade
     public const string SCROLL_PREV = '‹';
     public const string SCROLL_NEXT = '›';
     public const string SCROLL_UP = '▲';
     public const string SCROLL_DOWN = '▼';
+
+    // The help viewer's back/forward header arrows.
+    public const string NAV_BACK = '‹'; // same value as SCROLL_PREV — disjoint surfaces (help header vs strip edge)
+    public const string NAV_FORWARD = '›'; // same value as SCROLL_NEXT — disjoint surfaces
 
     // Git.
     public const string BRANCH_CURRENT = '✓';
