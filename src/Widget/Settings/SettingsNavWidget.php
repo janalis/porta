@@ -12,6 +12,7 @@ use Porta\Support\AnsiText;
 use Porta\Ui\ListSelection;
 use Porta\Ui\Role;
 use Porta\Ui\Theme\Styles;
+use Porta\Widget\ArrowScrollTrait;
 use Porta\Widget\FillsPaneTrait;
 use Porta\Widget\HoverableList;
 use Porta\Widget\HoverTrait;
@@ -20,6 +21,7 @@ use Porta\Widget\PanelWidth;
 use Porta\Widget\PaneNavigationCallbacks;
 use Porta\Widget\Render\MenuOverlayHost;
 use Porta\Widget\Render\MenuOverlayHostTrait;
+use Porta\Widget\WheelScrollable;
 use Symfony\Component\Tui\Input\Key;
 use Symfony\Component\Tui\Render\RenderContext;
 use Symfony\Component\Tui\Widget\AbstractWidget;
@@ -38,16 +40,17 @@ use Symfony\Component\Tui\Widget\VerticallyExpandableInterface;
  * @phpstan-type Entry array{id: string|null, label: string, kind: NavEntryKind}
  */
 #[AsWidget('settings-nav', flex: 0)]
-final class SettingsNavWidget extends AbstractWidget implements FocusableInterface, HoverableList, MenuOverlayHost, VerticallyExpandableInterface, ResizableSidebar
+final class SettingsNavWidget extends AbstractWidget implements FocusableInterface, HoverableList, MenuOverlayHost, ResizableSidebar, VerticallyExpandableInterface, WheelScrollable
 {
+    use ArrowScrollTrait;
     use FillsPaneTrait;
     use FocusableTrait;
     use HoverTrait;
     use InputHook;
-    use MenuOverlayHostTrait;
     use KeybindingsTrait;
-    use PaneNavigationCallbacks;
+    use MenuOverlayHostTrait;
     use PanelWidth;
+    use PaneNavigationCallbacks;
 
     private const array SECTIONS = ['general' => 'General', 'keybindings' => 'Keybindings', 'plugins' => 'Plugins'];
 

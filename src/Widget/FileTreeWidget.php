@@ -30,14 +30,15 @@ use Symfony\Component\Tui\Widget\VerticallyExpandableInterface;
  * Project file tree with lazy directory expansion.
  */
 #[AsWidget('tree', flex: 0)]
-final class FileTreeWidget extends AbstractWidget implements FocusableInterface, HoverableList, MenuOverlayHost, VerticallyExpandableInterface, ResizableSidebar
+final class FileTreeWidget extends AbstractWidget implements FocusableInterface, HoverableList, MenuOverlayHost, ResizableSidebar, VerticallyExpandableInterface, WheelScrollable
 {
+    use ArrowScrollTrait;
     use FillsPaneTrait;
     use FocusableTrait;
-    use MenuOverlayHostTrait;
+    use HoverTrait;
     use InputHook;
     use KeybindingsTrait;
-    use HoverTrait;
+    use MenuOverlayHostTrait;
     use PanelWidth;
 
     // '.porta' is the IDE's own session/history metadata dir; '.porta.json' (the

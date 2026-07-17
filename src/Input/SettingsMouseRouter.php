@@ -44,18 +44,15 @@ final class SettingsMouseRouter
     /** Vertical wheel over the keybindings list; returns whether it scrolled. */
     public function scrollVertical(MouseEvent $mouse): bool
     {
-        // Every settings list scrolls under the wheel — like its arrow keys,
-        // three rows per notch (the nav changes the shown section, as it does
-        // from the keyboard).
+        // Every settings list scrolls under the wheel as it does under its
+        // arrow keys — the nav changes the shown section, exactly as from the
+        // keyboard (see ArrowScrollTrait).
         foreach ([$this->nav, $this->form, $this->keys] as $pane) {
             if (null === $this->hit->hit($pane, $mouse->row, $mouse->col)) {
                 continue;
             }
 
-            $key = $mouse->wheelDelta < 0 ? "\x1b[A" : "\x1b[B";
-            for ($i = 0; $i < 3; ++$i) {
-                $pane->handleInput($key);
-            }
+            $pane->scrollBy(WheelStep::rows($mouse));
 
             return true;
         }

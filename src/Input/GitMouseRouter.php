@@ -95,19 +95,14 @@ final class GitMouseRouter
 
             return true;
         }
-        // The lists scroll by feeding arrow keys so the scroll follows selection.
-        $key = $mouse->wheelDelta < 0 ? "\x1b[A" : "\x1b[B";
-        if (null !== $this->hit->hit($this->changes, $mouse->row, $mouse->col)) {
-            for ($i = 0; $i < 3; ++$i) {
-                $this->changes->handleInput($key);
+        // The lists scroll their selection, so the changes list reloads its
+        // diff on the way — the wheel is their arrow keys (ArrowScrollTrait).
+        foreach ([$this->changes, $this->history] as $list) {
+            if (null === $this->hit->hit($list, $mouse->row, $mouse->col)) {
+                continue;
             }
 
-            return true;
-        }
-        if (null !== $this->hit->hit($this->history, $mouse->row, $mouse->col)) {
-            for ($i = 0; $i < 3; ++$i) {
-                $this->history->handleInput($key);
-            }
+            $list->scrollBy($step);
 
             return true;
         }

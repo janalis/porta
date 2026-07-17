@@ -16,6 +16,7 @@ use Porta\Ui\Glyphs;
 use Porta\Ui\Role;
 use Porta\Ui\TextField;
 use Porta\Ui\Theme\Styles;
+use Porta\Widget\ArrowScrollTrait;
 use Porta\Widget\FillsPaneTrait;
 use Porta\Widget\HoverableList;
 use Porta\Widget\HoverTrait;
@@ -23,6 +24,7 @@ use Porta\Widget\InputHook;
 use Porta\Widget\PaneNavigationCallbacks;
 use Porta\Widget\Render\MenuOverlayHost;
 use Porta\Widget\Render\MenuOverlayHostTrait;
+use Porta\Widget\WheelScrollable;
 use Symfony\Component\Tui\Input\Key;
 use Symfony\Component\Tui\Input\Keybindings;
 use Symfony\Component\Tui\Render\RenderContext;
@@ -45,14 +47,15 @@ use Symfony\Component\Tui\Widget\VerticallyExpandableInterface;
  *
  */
 #[AsWidget('settings-form', flex: 1)]
-final class SettingsFormWidget extends AbstractWidget implements FocusableInterface, HoverableList, MenuOverlayHost, VerticallyExpandableInterface
+final class SettingsFormWidget extends AbstractWidget implements FocusableInterface, HoverableList, MenuOverlayHost, VerticallyExpandableInterface, WheelScrollable
 {
+    use ArrowScrollTrait;
     use FillsPaneTrait;
     use FocusableTrait;
     use HoverTrait;
     use InputHook;
-    use MenuOverlayHostTrait;
     use KeybindingsTrait;
+    use MenuOverlayHostTrait;
     use PaneNavigationCallbacks;
 
     private readonly Styles $styles;

@@ -245,8 +245,10 @@ final class MouseRouter
         // wide tab per notch on the horizontal strip, the panel-list three
         // rows per notch on the vertical one.
         if ($this->containsPointer($tabsRect, $mouse)) {
+            // The side strip is a list of rows; the horizontal one moves one
+            // whole TAB per notch — a different unit, not the same constant.
             $tabBar = $this->panes->tabBar();
-            $tabBar->scrollBy(($tabBar->position()->isSide() ? 3 : 1) * $mouse->wheelDelta);
+            $tabBar->scrollBy($tabBar->position()->isSide() ? WheelStep::rows($mouse) : $mouse->wheelDelta);
             $this->tui->requestRender();
 
             return;
@@ -254,7 +256,7 @@ final class MouseRouter
 
         // The go-to-file popup: wheel moves its selection like the arrows.
         if ($this->goToFile->isOpen() && null !== $this->hit->hit($this->goToFile, $mouse->row, $mouse->col)) {
-            $this->goToFile->moveSelection(3 * $mouse->wheelDelta);
+            $this->goToFile->moveSelection(WheelStep::rows($mouse));
             $this->tui->requestRender();
 
             return;
@@ -263,7 +265,7 @@ final class MouseRouter
         // The Find modal composites inside the editor pane and owns input while
         // open — scroll its preview instead of the editor behind it.
         if ($this->containsPointer($editorRect, $mouse) && $this->panes->editor()->isFindModalOpen()) {
-            $this->panes->editor()->scrollFindModal(3 * $mouse->wheelDelta);
+            $this->panes->editor()->scrollFindModal(WheelStep::rows($mouse));
             $this->tui->requestRender();
 
             return;
@@ -284,15 +286,16 @@ final class MouseRouter
         $panel = $this->dock->visiblePanel();
         if (null !== $panel && $this->containsPointer($this->hit->rect($panel), $mouse)) {
             match (true) {
-                $panel instanceof TerminalPanelWidget => $panel->scroll(-3 * $mouse->wheelDelta),
-                default => $panel->scrollBy(3 * $mouse->wheelDelta),
+                // Scrollback runs the other way: wheel up goes INTO history.
+                $panel instanceof TerminalPanelWidget => $panel->scroll(WheelStep::rows($mouse, factor: -1)),
+                default => $panel->scrollBy(WheelStep::rows($mouse)),
             };
             $this->tui->requestRender();
 
             return;
         }
 
-        $step = 3 * $mouse->wheelDelta;
+        $step = WheelStep::rows($mouse);
         if ($this->containsPointer($editorRect, $mouse)) {
             // An open editor popup (completion, list overlay, search modal)
             // owns the wheel — its selection moves instead of the buffer
@@ -309,7 +312,8 @@ final class MouseRouter
             $rel = $imageRect->toRelative($mouse->row, $mouse->col);
             $mouse->ctrl
                 ? $this->panes->imageViewer()->zoomAt($mouse->wheelDelta < 0 ? 1 : -1, $rel['col'], $rel['row'])
-                : $this->panes->imageViewer()->scrollBy(0, 2 * $step);
+                // Pixel rows are half-height, so a notch covers the same distance.
+                : $this->panes->imageViewer()->scrollBy(0, WheelStep::rows($mouse, factor: 2));
             $this->tui->requestRender();
 
             return;
@@ -321,10 +325,7 @@ final class MouseRouter
             return;
         }
         if ($this->containsPointer($treeRect, $mouse)) {
-            $key = $mouse->wheelDelta < 0 ? "\x1b[A" : "\x1b[B";
-            for ($i = 0; $i < 3; ++$i) {
-                $this->panes->tree()->handleInput($key);
-            }
+            $this->panes->tree()->scrollBy($step);
             $this->tui->requestRender();
 
             return;

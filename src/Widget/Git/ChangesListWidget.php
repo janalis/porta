@@ -13,6 +13,7 @@ use Porta\Ui\ListNavigation;
 use Porta\Ui\ListSelection;
 use Porta\Ui\Role;
 use Porta\Ui\Theme\Styles;
+use Porta\Widget\ArrowScrollTrait;
 use Porta\Widget\FillsPaneTrait;
 use Porta\Widget\HoverableList;
 use Porta\Widget\HoverTrait;
@@ -22,6 +23,7 @@ use Porta\Widget\PaneNavigationCallbacks;
 use Porta\Widget\Render\HeaderRenderer;
 use Porta\Widget\Render\MenuOverlayHost;
 use Porta\Widget\Render\MenuOverlayHostTrait;
+use Porta\Widget\WheelScrollable;
 use Symfony\Component\Tui\Input\Key;
 use Symfony\Component\Tui\Render\RenderContext;
 use Symfony\Component\Tui\Widget\AbstractWidget;
@@ -37,14 +39,15 @@ use Symfony\Component\Tui\Widget\VerticallyExpandableInterface;
  * confirmation, Enter/selection drives the diff pane via onSelect.
  */
 #[AsWidget('git-changes', flex: 0)]
-final class ChangesListWidget extends AbstractWidget implements FocusableInterface, HoverableList, MenuOverlayHost, VerticallyExpandableInterface
+final class ChangesListWidget extends AbstractWidget implements FocusableInterface, HoverableList, MenuOverlayHost, VerticallyExpandableInterface, WheelScrollable
 {
+    use ArrowScrollTrait;
     use FillsPaneTrait;
     use FocusableTrait;
     use HoverTrait;
     use InputHook;
-    use MenuOverlayHostTrait;
     use KeybindingsTrait;
+    use MenuOverlayHostTrait;
     use PanelWidth;
     use PaneNavigationCallbacks;
 
