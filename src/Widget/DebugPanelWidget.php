@@ -6,6 +6,7 @@ namespace Porta\Widget;
 
 use Porta\Container\AsWidget;
 use Porta\Debug\DebugState;
+use Porta\I18n\Translator;
 use Porta\Ui\Glyphs;
 use Porta\Ui\ListNavigation;
 use Porta\Ui\ListSelection;
@@ -63,10 +64,12 @@ final class DebugPanelWidget extends OverlayWidget implements FocusableInterface
     private $onRemoveWatch = null;
 
     private readonly Styles $styles;
+    private readonly Translator $translator;
 
-    public function __construct(?Styles $styles = null)
+    public function __construct(?Styles $styles = null, ?Translator $translator = null)
     {
         $this->styles = $styles ?? Styles::dark();
+        $this->translator = $translator ?? new Translator('en');
         $this->list = new ListSelection();
         $this->addStyleClass('list'); // the theme's .list::selected(:focus) rules style the selection
         $this->visibleRows = 10;
@@ -103,13 +106,13 @@ final class DebugPanelWidget extends OverlayWidget implements FocusableInterface
     public function statusText(): string
     {
         $status = match ($this->state) {
-            DebugState::Idle, DebugState::Starting => 'starting…',
-            DebugState::Running => 'running…',
-            DebugState::Paused => 'paused'.(null !== $this->location ? ' at '.$this->location : ''),
-            DebugState::Terminated => 'terminated',
+            DebugState::Idle, DebugState::Starting => $this->translator->trans('starting…'),
+            DebugState::Running => $this->translator->trans('running…'),
+            DebugState::Paused => null !== $this->location ? $this->translator->trans('paused at %location%', ['%location%' => $this->location]) : $this->translator->trans('paused'),
+            DebugState::Terminated => $this->translator->trans('terminated'),
         };
 
-        return $status.'  F8 over · F7 into · Shift+F8 out · F9 resume · Ctrl+F2 stop';
+        return $status.'  '.$this->translator->trans('F8 over · F7 into · Shift+F8 out · F9 resume · Ctrl+F2 stop');
     }
 
     public function open(string $title): void
@@ -296,13 +299,13 @@ final class DebugPanelWidget extends OverlayWidget implements FocusableInterface
     {
         $rows = [];
         if ([] !== $this->frames) {
-            $rows[] = new DebugRow(DebugRowKind::Section, 'Frames');
+            $rows[] = new DebugRow(DebugRowKind::Section, $this->translator->trans('Frames'));
             foreach ($this->frames as $i => $frame) {
                 $rows[] = new DebugRow(DebugRowKind::Frame, "#{$i} {$frame['name']}", frameId: $frame['id'], path: $frame['path'], line: $frame['line'], depth: 1);
             }
         }
         if ([] !== $this->watches) {
-            $rows[] = new DebugRow(DebugRowKind::Section, 'Watches');
+            $rows[] = new DebugRow(DebugRowKind::Section, $this->translator->trans('Watches'));
             foreach ($this->watches as $i => $watch) {
                 $rows[] = new DebugRow(DebugRowKind::Watch, $watch['expr'], ref: $watch['ref'], depth: 1, watchIndex: $i);
                 if ($watch['ref'] > 0 && array_key_exists($watch['ref'], $this->expanded)) {
@@ -311,7 +314,7 @@ final class DebugPanelWidget extends OverlayWidget implements FocusableInterface
             }
         }
         if ([] !== $this->scopes) {
-            $rows[] = new DebugRow(DebugRowKind::Section, 'Variables');
+            $rows[] = new DebugRow(DebugRowKind::Section, $this->translator->trans('Variables'));
             foreach ($this->scopes as $scope) {
                 $rows[] = new DebugRow(DebugRowKind::Scope, $scope['name'], ref: $scope['variablesReference'], depth: 1);
                 if (array_key_exists($scope['variablesReference'], $this->expanded)) {

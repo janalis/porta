@@ -168,7 +168,7 @@ final class ProjectSearchController
     /** @return list<string> the choice labels shown in the panel's Alt+S selector */
     private function scopeLabels(): array
     {
-        return array_map(static fn (ScopeChoice $choice): string => $choice->label, $this->scopeChoices);
+        return array_map(fn (ScopeChoice $choice): string => null !== $choice->kind ? $this->translator->trans($choice->label) : $choice->label, $this->scopeChoices);
     }
 
     /**

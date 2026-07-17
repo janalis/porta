@@ -56,7 +56,7 @@ final class LocalHistoryController
             $results[] = ['path' => basename($path), 'line' => $index, 'text' => $when.(0 === $index ? '  (latest)' : '')];
         }
 
-        $this->panels->showList(ResultsPanelMode::History, 'Local History', $results);
+        $this->panels->showList(ResultsPanelMode::History, $this->translator->trans('Local History'), $results);
     }
 
     public function restore(int $index): void

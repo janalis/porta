@@ -1782,6 +1782,130 @@
         <source>Show TODOs</source>
         <target>הצג TODO</target>
       </trans-unit>
+      <trans-unit id="449">
+        <source>searching…</source>
+        <target>מחפש…</target>
+      </trans-unit>
+      <trans-unit id="450">
+        <source>%count% results</source>
+        <target>%count% תוצאות</target>
+      </trans-unit>
+      <trans-unit id="451">
+        <source>%count% shown</source>
+        <target>%count% מוצגות</target>
+      </trans-unit>
+      <trans-unit id="452">
+        <source>no results</source>
+        <target>אין תוצאות</target>
+      </trans-unit>
+      <trans-unit id="453">
+        <source>type to search…</source>
+        <target>הקלד כדי לחפש…</target>
+      </trans-unit>
+      <trans-unit id="454">
+        <source>Filter</source>
+        <target>סינון</target>
+      </trans-unit>
+      <trans-unit id="455">
+        <source>(narrows the results below)</source>
+        <target>(מצמצם את התוצאות למטה)</target>
+      </trans-unit>
+      <trans-unit id="456">
+        <source>Find</source>
+        <target>חיפוש</target>
+      </trans-unit>
+      <trans-unit id="457">
+        <source>Replace</source>
+        <target>החלפה</target>
+      </trans-unit>
+      <trans-unit id="458">
+        <source>Mask</source>
+        <target>מסכה</target>
+      </trans-unit>
+      <trans-unit id="459">
+        <source>Scope:</source>
+        <target>טווח:</target>
+      </trans-unit>
+      <trans-unit id="460">
+        <source>Enter open</source>
+        <target>Enter פתיחה</target>
+      </trans-unit>
+      <trans-unit id="461">
+        <source>Find window</source>
+        <target>חלון חיפוש</target>
+      </trans-unit>
+      <trans-unit id="462">
+        <source>Scope</source>
+        <target>טווח</target>
+      </trans-unit>
+      <trans-unit id="463">
+        <source>Whole Project</source>
+        <target>כל הפרויקט</target>
+      </trans-unit>
+      <trans-unit id="464">
+        <source>Directory</source>
+        <target>תיקייה</target>
+      </trans-unit>
+      <trans-unit id="465">
+        <source>Current File</source>
+        <target>הקובץ הנוכחי</target>
+      </trans-unit>
+      <trans-unit id="466">
+        <source>Open Files</source>
+        <target>קבצים פתוחים</target>
+      </trans-unit>
+      <trans-unit id="467">
+        <source>Module</source>
+        <target>מודול</target>
+      </trans-unit>
+      <trans-unit id="468">
+        <source>running…</source>
+        <target>פועל…</target>
+      </trans-unit>
+      <trans-unit id="469">
+        <source>paused</source>
+        <target>מושהה</target>
+      </trans-unit>
+      <trans-unit id="470">
+        <source>paused at %location%</source>
+        <target>מושהה ב-%location%</target>
+      </trans-unit>
+      <trans-unit id="471">
+        <source>terminated</source>
+        <target>הסתיים</target>
+      </trans-unit>
+      <trans-unit id="472">
+        <source>F8 over · F7 into · Shift+F8 out · F9 resume · Ctrl+F2 stop</source>
+        <target>F8 דלג · F7 היכנס · Shift+F8 צא · F9 המשך · Ctrl+F2 עצור</target>
+      </trans-unit>
+      <trans-unit id="473">
+        <source>Frames</source>
+        <target>מסגרות</target>
+      </trans-unit>
+      <trans-unit id="474">
+        <source>Watches</source>
+        <target>מעקבים</target>
+      </trans-unit>
+      <trans-unit id="475">
+        <source>Variables</source>
+        <target>משתנים</target>
+      </trans-unit>
+      <trans-unit id="476">
+        <source>Usages</source>
+        <target>שימושים</target>
+      </trans-unit>
+      <trans-unit id="477">
+        <source>TODO</source>
+        <target>TODO</target>
+      </trans-unit>
+      <trans-unit id="478">
+        <source>Local History</source>
+        <target>היסטוריה מקומית</target>
+      </trans-unit>
+      <trans-unit id="479">
+        <source>Problems</source>
+        <target>בעיות</target>
+      </trans-unit>
     </body>
   </file>
 </xliff>

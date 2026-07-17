@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Porta\Widget\Overlay;
 
+use Porta\I18n\Translator;
 use Porta\Search\TokenScope;
 use Porta\Support\AnsiText;
 use Porta\Ui\CaretVisibility;
@@ -64,7 +65,7 @@ final class FindInFilesModal
     /** @var array<int, bool> matchIndex => excluded from replace (preview mode only) */
     private array $excluded = [];
     /** @var list<string> the Alt+S scope choices */
-    private array $scopeLabels = ['Whole Project'];
+    private array $scopeLabels;
     private int $scopeIndex = 0;
     /** @var array{regex: bool, case: bool, word: bool, preserve: bool, tokens: string} */
     private array $options = ['regex' => false, 'case' => false, 'word' => false, 'preserve' => false, 'tokens' => 'any'];
@@ -114,13 +115,17 @@ final class FindInFilesModal
     private $onClose = null;
 
     private readonly Styles $styles;
+    private readonly Translator $translator;
 
     public function __construct(
         private readonly \Closure $invalidate,
         ?Styles $styles = null,
         ?CursorStyle $cursorStyle = null,
+        ?Translator $translator = null,
     ) {
         $this->styles = $styles ?? Styles::dark();
+        $this->translator = $translator ?? new Translator('en');
+        $this->scopeLabels = [$this->translator->trans('Whole Project')];
         $this->query = new TextField(style: $cursorStyle);
         $this->replace = new TextField(style: $cursorStyle);
         $this->mask = new TextField(style: $cursorStyle);
@@ -231,7 +236,7 @@ final class FindInFilesModal
     /** @param list<string> $labels */
     public function setScopes(array $labels, int $index): void
     {
-        $this->scopeLabels = [] === $labels ? ['Whole Project'] : $labels;
+        $this->scopeLabels = [] === $labels ? [$this->translator->trans('Whole Project')] : $labels;
         $this->scopeIndex = $index;
         ($this->invalidate)();
     }
@@ -632,16 +637,28 @@ final class FindInFilesModal
 
         return [
             HeaderRenderer::render($title, $width, $this->styles->of(Role::HeaderBar)->withBold(), suffix: 'Esc'),
-            $this->fieldRow('Find', $this->query, CaretVisibility::Shown === $focused && 'query' === $this->activeField ? CaretVisibility::Shown : CaretVisibility::Hidden, '', $width),
             $this->fieldRow(
-                'Replace',
+                $this->translator->trans('Find'),
+                $this->query,
+                CaretVisibility::Shown === $focused && 'query' === $this->activeField ? CaretVisibility::Shown : CaretVisibility::Hidden,
+                '',
+                $width,
+            ),
+            $this->fieldRow(
+                $this->translator->trans('Replace'),
                 $this->replace,
                 CaretVisibility::Shown === $focused && 'replace' === $this->activeField ? CaretVisibility::Shown : CaretVisibility::Hidden,
                 $replaceHint,
                 $width,
             ),
             $this->optionsRowLine($width),
-            $this->fieldRow('Mask', $this->mask, CaretVisibility::Shown === $focused && 'mask' === $this->activeField ? CaretVisibility::Shown : CaretVisibility::Hidden, '  (Tab)', $width),
+            $this->fieldRow(
+                $this->translator->trans('Mask'),
+                $this->mask,
+                CaretVisibility::Shown === $focused && 'mask' === $this->activeField ? CaretVisibility::Shown : CaretVisibility::Hidden,
+                '  (Tab)',
+                $width,
+            ),
         ];
     }
 
@@ -668,7 +685,7 @@ final class FindInFilesModal
 
     private function statusText(): string
     {
-        return $this->searching ? 'searching…' : \sprintf('%d results', \count($this->results));
+        return $this->searching ? $this->translator->trans('searching…') : $this->translator->trans('%count% results', ['%count%' => \count($this->results)]);
     }
 
     /** The option tags + scope label row; records the tag + scope click zones. */
@@ -690,13 +707,13 @@ final class FindInFilesModal
             });
         }
 
-        $label = $this->scopeLabels[$this->scopeIndex] ?? 'Whole Project';
+        $label = $this->scopeLabels[$this->scopeIndex] ?? $this->translator->trans('Whole Project');
         $labelPart = 'scope' === $this->hovered
             ? $this->styles->merge(Role::RowHighlightBg, Role::Bright)->apply($label)
             : $this->styles->of(Role::TabAccent)->apply($label);
-        $scope = '  '.$this->styles->of(Role::Dim)->apply('Scope: ').$labelPart.$this->styles->of(Role::Dim)->apply(' (Alt+S)');
+        $scope = '  '.$this->styles->of(Role::Dim)->apply($this->translator->trans('Scope:').' ').$labelPart.$this->styles->of(Role::Dim)->apply(' (Alt+S)');
         // The scope zone starts past the two-space gap; clamp so a truncated box can't hit past the edge.
-        $this->optionZones[] = ['name' => 'scope', 'start' => $col + 2, 'end' => min($col + 2 + mb_strwidth('Scope: '.$label.' (Alt+S)'), $width)];
+        $this->optionZones[] = ['name' => 'scope', 'start' => $col + 2, 'end' => min($col + 2 + mb_strwidth($this->translator->trans('Scope:').' '.$label.' (Alt+S)'), $width)];
 
         return $this->styles->of(Role::Toolbar)->apply(AnsiUtils::truncateToWidth(' '.$tags.$scope, $width, '…', pad: true));
     }
@@ -761,7 +778,7 @@ final class FindInFilesModal
 
     private function emptyRow(int $width): string
     {
-        $text = '' === $this->query->value() ? ' type to search…' : ' no results';
+        $text = ' '.('' === $this->query->value() ? $this->translator->trans('type to search…') : $this->translator->trans('no results'));
 
         // '' ellipsis: a fixed short filler row — never worth a truncation mark.
         return $this->styles->merge(Role::PopupRow, Role::CompletionHint)->apply(AnsiUtils::truncateToWidth($text, $width, '', pad: true));
@@ -775,9 +792,9 @@ final class FindInFilesModal
         // re-opened explicitly (the row wrap only re-applies the background).
         $dim = $this->styles->of(Role::Dim)->getAnsiRestore();
         $sep = ' · ';
-        $line = ' Enter open'.$sep;
+        $line = ' '.$this->translator->trans('Enter open').$sep;
         $col = mb_strwidth($line);
-        foreach (['Find window' => 'find_window', 'Scope' => 'footer_scope'] as $label => $name) {
+        foreach ([$this->translator->trans('Find window') => 'find_window', $this->translator->trans('Scope') => 'footer_scope'] as $label => $name) {
             $this->footerZones[] = ['name' => $name, 'start' => $col, 'end' => $col + mb_strwidth($label)];
             $line .= $name === $this->hovered
                 ? $this->styles->merge(Role::RowHighlightBg, Role::Bright)->apply($label).$dim

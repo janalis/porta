@@ -287,7 +287,7 @@ final class NavigationController extends AbstractLspController implements Editor
                 }
 
                 /** @var list<array{uri?: string, range?: array<array-key, mixed>}> $result */
-                $this->panels->showList(ResultsPanelMode::Search, 'Usages', $this->locationRows($result));
+                $this->panels->showList(ResultsPanelMode::Search, $this->trans('Usages'), $this->locationRows($result));
             },
         );
     }

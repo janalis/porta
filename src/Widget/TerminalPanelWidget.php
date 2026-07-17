@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Porta\Widget;
 
 use Porta\Container\AsWidget;
+use Porta\I18n\Translator;
 use Porta\Support\IntMath;
 use Porta\Terminal\TerminalBuffer;
 use Porta\Ui\CursorStyle;
@@ -46,10 +47,12 @@ final class TerminalPanelWidget extends OverlayWidget implements FocusableInterf
     private $onSessionCycled = null;
 
     private readonly CursorStyle $cursorStyle;
+    private readonly Translator $translator;
 
-    public function __construct(?CursorStyle $cursorStyle = null)
+    public function __construct(?CursorStyle $cursorStyle = null, ?Translator $translator = null)
     {
         $this->cursorStyle = $cursorStyle ?? new CursorStyle();
+        $this->translator = $translator ?? new Translator('en');
         $this->buffer = new TerminalBuffer();
         $this->visibleRows = 12;
     }
@@ -78,7 +81,7 @@ final class TerminalPanelWidget extends OverlayWidget implements FocusableInterf
     /** The dock strip's right-aligned status for the active session tab. */
     public function statusText(): string
     {
-        return $this->scrollBack > 0 ? \sprintf('[scrolled +%d]', $this->scrollBack) : '';
+        return $this->scrollBack > 0 ? $this->translator->trans('[scrolled +%count%]', ['%count%' => $this->scrollBack]) : '';
     }
 
     /** Call when new output has been folded into the buffer. */

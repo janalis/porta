@@ -1782,6 +1782,130 @@
         <source>Show TODOs</source>
         <target>TODOを表示</target>
       </trans-unit>
+      <trans-unit id="449">
+        <source>searching…</source>
+        <target>検索中…</target>
+      </trans-unit>
+      <trans-unit id="450">
+        <source>%count% results</source>
+        <target>%count% 件</target>
+      </trans-unit>
+      <trans-unit id="451">
+        <source>%count% shown</source>
+        <target>%count% 表示</target>
+      </trans-unit>
+      <trans-unit id="452">
+        <source>no results</source>
+        <target>結果なし</target>
+      </trans-unit>
+      <trans-unit id="453">
+        <source>type to search…</source>
+        <target>入力して検索…</target>
+      </trans-unit>
+      <trans-unit id="454">
+        <source>Filter</source>
+        <target>フィルター</target>
+      </trans-unit>
+      <trans-unit id="455">
+        <source>(narrows the results below)</source>
+        <target>(下の結果を絞り込む)</target>
+      </trans-unit>
+      <trans-unit id="456">
+        <source>Find</source>
+        <target>検索</target>
+      </trans-unit>
+      <trans-unit id="457">
+        <source>Replace</source>
+        <target>置換</target>
+      </trans-unit>
+      <trans-unit id="458">
+        <source>Mask</source>
+        <target>マスク</target>
+      </trans-unit>
+      <trans-unit id="459">
+        <source>Scope:</source>
+        <target>範囲:</target>
+      </trans-unit>
+      <trans-unit id="460">
+        <source>Enter open</source>
+        <target>Enter で開く</target>
+      </trans-unit>
+      <trans-unit id="461">
+        <source>Find window</source>
+        <target>検索ウィンドウ</target>
+      </trans-unit>
+      <trans-unit id="462">
+        <source>Scope</source>
+        <target>範囲</target>
+      </trans-unit>
+      <trans-unit id="463">
+        <source>Whole Project</source>
+        <target>プロジェクト全体</target>
+      </trans-unit>
+      <trans-unit id="464">
+        <source>Directory</source>
+        <target>ディレクトリ</target>
+      </trans-unit>
+      <trans-unit id="465">
+        <source>Current File</source>
+        <target>現在のファイル</target>
+      </trans-unit>
+      <trans-unit id="466">
+        <source>Open Files</source>
+        <target>開いているファイル</target>
+      </trans-unit>
+      <trans-unit id="467">
+        <source>Module</source>
+        <target>モジュール</target>
+      </trans-unit>
+      <trans-unit id="468">
+        <source>running…</source>
+        <target>実行中…</target>
+      </trans-unit>
+      <trans-unit id="469">
+        <source>paused</source>
+        <target>一時停止</target>
+      </trans-unit>
+      <trans-unit id="470">
+        <source>paused at %location%</source>
+        <target>%location% で一時停止</target>
+      </trans-unit>
+      <trans-unit id="471">
+        <source>terminated</source>
+        <target>終了</target>
+      </trans-unit>
+      <trans-unit id="472">
+        <source>F8 over · F7 into · Shift+F8 out · F9 resume · Ctrl+F2 stop</source>
+        <target>F8 ステップオーバー · F7 ステップイン · Shift+F8 ステップアウト · F9 再開 · Ctrl+F2 停止</target>
+      </trans-unit>
+      <trans-unit id="473">
+        <source>Frames</source>
+        <target>フレーム</target>
+      </trans-unit>
+      <trans-unit id="474">
+        <source>Watches</source>
+        <target>ウォッチ</target>
+      </trans-unit>
+      <trans-unit id="475">
+        <source>Variables</source>
+        <target>変数</target>
+      </trans-unit>
+      <trans-unit id="476">
+        <source>Usages</source>
+        <target>使用箇所</target>
+      </trans-unit>
+      <trans-unit id="477">
+        <source>TODO</source>
+        <target>TODO</target>
+      </trans-unit>
+      <trans-unit id="478">
+        <source>Local History</source>
+        <target>ローカル履歴</target>
+      </trans-unit>
+      <trans-unit id="479">
+        <source>Problems</source>
+        <target>問題</target>
+      </trans-unit>
     </body>
   </file>
 </xliff>

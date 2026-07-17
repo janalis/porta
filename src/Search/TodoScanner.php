@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Porta\Search;
 
+use Porta\I18n\Translator;
 use Porta\Ui\BottomDock;
 use Porta\Ui\ResultsPanelMode;
 
@@ -20,12 +21,13 @@ final class TodoScanner
     public function __construct(
         private readonly BottomDock $dock,
         private readonly ProjectSearch $engine,
+        private readonly Translator $translator,
     ) {}
 
     /** Open (or F5-refresh) the TODO tab and kick off the scan. */
     public function scan(): void
     {
-        $tab = $this->dock->showList(ResultsPanelMode::Todo, 'TODO', []);
+        $tab = $this->dock->showList(ResultsPanelMode::Todo, $this->translator->trans('TODO'), []);
         $this->dock->markSearching($tab);
         $this->engine->search(
             'TODO|FIXME',

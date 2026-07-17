@@ -62,7 +62,7 @@ final class SearchActions
     /** Every open buffer's diagnostics as one sorted, scannable list (kept live by {@see \Porta\Ui\DockLiveRefreshListener}). */
     public function showProblems(): void
     {
-        $this->panels->showList(ResultsPanelMode::Problems, 'Problems', $this->problemRows->build());
+        $this->panels->showList(ResultsPanelMode::Problems, $this->translator->trans('Problems'), $this->problemRows->build());
     }
 
     /** PhpStorm-style Ctrl+Shift+T: jump from a class to its test file, or back. */

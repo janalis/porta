@@ -1782,6 +1782,130 @@
         <source>Show TODOs</source>
         <target>TODOs anzeigen</target>
       </trans-unit>
+      <trans-unit id="449">
+        <source>searching…</source>
+        <target>suche…</target>
+      </trans-unit>
+      <trans-unit id="450">
+        <source>%count% results</source>
+        <target>%count% Treffer</target>
+      </trans-unit>
+      <trans-unit id="451">
+        <source>%count% shown</source>
+        <target>%count% angezeigt</target>
+      </trans-unit>
+      <trans-unit id="452">
+        <source>no results</source>
+        <target>keine Treffer</target>
+      </trans-unit>
+      <trans-unit id="453">
+        <source>type to search…</source>
+        <target>Tippen zum Suchen…</target>
+      </trans-unit>
+      <trans-unit id="454">
+        <source>Filter</source>
+        <target>Filter</target>
+      </trans-unit>
+      <trans-unit id="455">
+        <source>(narrows the results below)</source>
+        <target>(grenzt die Treffer unten ein)</target>
+      </trans-unit>
+      <trans-unit id="456">
+        <source>Find</source>
+        <target>Suchen</target>
+      </trans-unit>
+      <trans-unit id="457">
+        <source>Replace</source>
+        <target>Ersetzen</target>
+      </trans-unit>
+      <trans-unit id="458">
+        <source>Mask</source>
+        <target>Maske</target>
+      </trans-unit>
+      <trans-unit id="459">
+        <source>Scope:</source>
+        <target>Bereich:</target>
+      </trans-unit>
+      <trans-unit id="460">
+        <source>Enter open</source>
+        <target>Enter öffnen</target>
+      </trans-unit>
+      <trans-unit id="461">
+        <source>Find window</source>
+        <target>Suchfenster</target>
+      </trans-unit>
+      <trans-unit id="462">
+        <source>Scope</source>
+        <target>Bereich</target>
+      </trans-unit>
+      <trans-unit id="463">
+        <source>Whole Project</source>
+        <target>Gesamtes Projekt</target>
+      </trans-unit>
+      <trans-unit id="464">
+        <source>Directory</source>
+        <target>Verzeichnis</target>
+      </trans-unit>
+      <trans-unit id="465">
+        <source>Current File</source>
+        <target>Aktuelle Datei</target>
+      </trans-unit>
+      <trans-unit id="466">
+        <source>Open Files</source>
+        <target>Geöffnete Dateien</target>
+      </trans-unit>
+      <trans-unit id="467">
+        <source>Module</source>
+        <target>Modul</target>
+      </trans-unit>
+      <trans-unit id="468">
+        <source>running…</source>
+        <target>läuft…</target>
+      </trans-unit>
+      <trans-unit id="469">
+        <source>paused</source>
+        <target>pausiert</target>
+      </trans-unit>
+      <trans-unit id="470">
+        <source>paused at %location%</source>
+        <target>pausiert bei %location%</target>
+      </trans-unit>
+      <trans-unit id="471">
+        <source>terminated</source>
+        <target>beendet</target>
+      </trans-unit>
+      <trans-unit id="472">
+        <source>F8 over · F7 into · Shift+F8 out · F9 resume · Ctrl+F2 stop</source>
+        <target>F8 Überspringen · F7 Hinein · Shift+F8 Heraus · F9 Fortsetzen · Ctrl+F2 Stopp</target>
+      </trans-unit>
+      <trans-unit id="473">
+        <source>Frames</source>
+        <target>Frames</target>
+      </trans-unit>
+      <trans-unit id="474">
+        <source>Watches</source>
+        <target>Überwachungen</target>
+      </trans-unit>
+      <trans-unit id="475">
+        <source>Variables</source>
+        <target>Variablen</target>
+      </trans-unit>
+      <trans-unit id="476">
+        <source>Usages</source>
+        <target>Verwendungen</target>
+      </trans-unit>
+      <trans-unit id="477">
+        <source>TODO</source>
+        <target>TODO</target>
+      </trans-unit>
+      <trans-unit id="478">
+        <source>Local History</source>
+        <target>Lokaler Verlauf</target>
+      </trans-unit>
+      <trans-unit id="479">
+        <source>Problems</source>
+        <target>Probleme</target>
+      </trans-unit>
     </body>
   </file>
 </xliff>

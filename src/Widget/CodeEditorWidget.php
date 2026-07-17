@@ -27,6 +27,7 @@ use Porta\Editor\IndentKind;
 use Porta\Editor\MultiCaret;
 use Porta\Highlight\CodeHighlighter;
 use Porta\Highlight\DarkTerminalTheme;
+use Porta\I18n\Translator;
 use Porta\Search\Everywhere\SearchOverlay;
 use Porta\Search\Everywhere\SearchRow;
 use Porta\Support\AnsiText;
@@ -152,7 +153,7 @@ final class CodeEditorWidget extends AbstractWidget implements ActiveFileProvide
     /** Shared hardware-cursor shape holder (the `cursorShape` setting swaps it live). */
     private readonly CursorStyle $cursorStyle;
 
-    public function __construct(?Styles $styles = null, ?TerminalTheme $syntaxTheme = null, ?CursorStyle $cursorStyle = null)
+    public function __construct(?Styles $styles = null, ?TerminalTheme $syntaxTheme = null, ?CursorStyle $cursorStyle = null, ?Translator $translator = null)
     {
         $this->styles = $styles ?? Styles::dark();
         $this->syntaxTheme = $syntaxTheme ?? new DarkTerminalTheme();
@@ -160,7 +161,7 @@ final class CodeEditorWidget extends AbstractWidget implements ActiveFileProvide
         $this->callbacks = new EditorCallbacks();
         $this->decorations = new DecorationStore($this->invalidate(...));
         $this->overlayHost = new OverlayHost($this->invalidate(...), $this->styles, $this->cursorStyle);
-        $this->findModal = new FindInFilesModal($this->invalidate(...), $this->styles, $this->cursorStyle);
+        $this->findModal = new FindInFilesModal($this->invalidate(...), $this->styles, $this->cursorStyle, $translator);
         $this->document = new Document('');
         $this->highlighter = new CodeHighlighter(syntaxTheme: $this->syntaxTheme);
         $this->foldModel = new FoldModel($this->document);

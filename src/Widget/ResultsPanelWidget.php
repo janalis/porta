@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Porta\Widget;
 
 use Porta\Container\AsWidget;
+use Porta\I18n\Translator;
 use Porta\Support\AnsiText;
 use Porta\Ui\CaretVisibility;
 use Porta\Ui\CursorStyle;
@@ -72,10 +73,12 @@ final class ResultsPanelWidget extends OverlayWidget implements FocusableInterfa
     private $contextProvider = null;
 
     private readonly Styles $styles;
+    private readonly Translator $translator;
 
-    public function __construct(?Styles $styles = null, ?CursorStyle $cursorStyle = null)
+    public function __construct(?Styles $styles = null, ?CursorStyle $cursorStyle = null, ?Translator $translator = null)
     {
         $this->styles = $styles ?? Styles::dark();
+        $this->translator = $translator ?? new Translator('en');
         $this->list = new ListSelection();
         $this->addStyleClass('list'); // the theme's .list::selected(:focus) rules style the selection
         $this->query = new TextField(style: $cursorStyle);
@@ -449,10 +452,10 @@ final class ResultsPanelWidget extends OverlayWidget implements FocusableInterfa
 
         if ($this->withFilter) {
             $lines[] = $this->fieldRow(
-                'Filter',
+                $this->translator->trans('Filter'),
                 $this->filter,
                 $showCursor && 'filter' === $this->activeField ? CaretVisibility::Shown : CaretVisibility::Hidden,
-                '  (narrows the results below)',
+                '  '.$this->translator->trans('(narrows the results below)'),
                 $columns,
             );
         }
@@ -474,7 +477,7 @@ final class ResultsPanelWidget extends OverlayWidget implements FocusableInterfa
 
         if ([] === $this->results && !$this->searching && '' !== $this->query->value()) {
             // '' ellipsis: a fixed short filler row — never worth a truncation mark.
-            $lines[] = $this->styles->merge(Role::Toolbar, Role::CompletionHint)->apply(AnsiUtils::truncateToWidth(' no results', $columns, '', pad: true));
+            $lines[] = $this->styles->merge(Role::Toolbar, Role::CompletionHint)->apply(AnsiUtils::truncateToWidth(' '.$this->translator->trans('no results'), $columns, '', pad: true));
         }
 
         return $lines;
@@ -489,7 +492,7 @@ final class ResultsPanelWidget extends OverlayWidget implements FocusableInterfa
     /** 'N results · M shown', or 'searching…' while a search runs. */
     private function buildStatus(): string
     {
-        $status = $this->searching ? 'searching…' : \sprintf('%d results', \count($this->results));
+        $status = $this->searching ? $this->translator->trans('searching…') : $this->translator->trans('%count% results', ['%count%' => \count($this->results)]);
         if (!$this->searching && '' !== $this->filter->value()) {
             $shown = 0;
             foreach ($this->displayRows as $row) {
@@ -499,7 +502,7 @@ final class ResultsPanelWidget extends OverlayWidget implements FocusableInterfa
 
                 ++$shown;
             }
-            $status .= \sprintf(' · %d shown', $shown);
+            $status .= ' · '.$this->translator->trans('%count% shown', ['%count%' => $shown]);
         }
 
         return $status;
