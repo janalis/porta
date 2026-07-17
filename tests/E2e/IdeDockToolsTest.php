@@ -39,6 +39,54 @@ final class IdeDockToolsTest extends TestCase
         return new \ReflectionProperty(Ide::class, 'locator')->getValue($ide)->get(BufferService::class);
     }
 
+    public function testHoveringThePanelTintsARowAndLeavingItClearsTheTint(): void
+    {
+        putenv('PATH=/nonexistent');
+        $project = new TempProject(['a.php' => "<?php\n// two\n// three\n"]);
+
+        $this->runIde(
+            $project,
+            $project->path('a.php'),
+            [
+                200 => function ($tui, $terminal, $ide) use ($project): void {
+                    $tui->handleInput("\x1b6"); // alt+6 → Show Problems
+                    self::bufferService($ide)
+                        ->applyDiagnostics(
+                            Uri::fromPath($project->path('a.php')),
+                            [
+                                0 => [['severity' => 1, 'message' => 'first', 'col' => 0, 'endCol' => 3]],
+                                1 => [['severity' => 1, 'message' => 'second', 'col' => 0, 'endCol' => 3]],
+                            ],
+                        );
+                    $this->await(static fn (): bool => str_contains(AnsiUtils::stripAnsiCodes($terminal->getOutput()), '✗ second'));
+                    $tui->tick();
+
+                    // Hover the second result row; the first stays selected.
+                    $renderer = new \ReflectionProperty($ide, 'renderer')->getValue($ide);
+                    $rect = $renderer->getWidgetRect($tui->getById('results'));
+                    $tui->handleInput(\sprintf("\x1b[<35;%d;%dM", $rect->col + 5, $rect->row + 2));
+                },
+                300 => function ($tui, $terminal, $ide): void {
+                    $results = $tui->getById('results');
+                    $joined = implode('', $results->render(new \Symfony\Component\Tui\Render\RenderContext(160, 12)));
+                    $this->assertStringContainsString("\x1b[48;5;236m", $joined, 'the row under the pointer is tinted');
+
+                    // Move into the editor: the panel's tint must not survive it.
+                    $renderer = new \ReflectionProperty($ide, 'renderer')->getValue($ide);
+                    $editorRect = $renderer->getWidgetRect($tui->getById('editor'));
+                    $tui->handleInput(\sprintf("\x1b[<35;%d;%dM", $editorRect->col + 5, $editorRect->row + 1));
+                },
+                400 => function ($tui): void {
+                    $results = $tui->getById('results');
+                    $joined = implode('', $results->render(new \Symfony\Component\Tui\Render\RenderContext(160, 12)));
+                    $this->assertStringNotContainsString("\x1b[48;5;236m", $joined, 'the tint cleared when the pointer left the panel');
+                },
+            ],
+        );
+
+        $this->addToAssertionCount(1);
+    }
+
     public function testProblemsTabRefreshesLiveAsDiagnosticsLand(): void
     {
         putenv('PATH=/nonexistent');

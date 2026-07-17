@@ -258,9 +258,45 @@ final class ResultsPanelWidgetTest extends TestCase
         $panel->setResults($this->results(5));
         $panel->render(new RenderContext(60, 12));
 
-        $this->assertTrue($panel->hoverRow(2), 'row 2 → result index 2 selected (no header rows)');
+        $this->assertTrue($panel->hoverRow(2), 'row 2 → result index 2 tinted (no header rows)');
         $this->assertFalse($panel->hoverRow(2), 'same row → no change');
-        $this->assertFalse($panel->hoverRow(-1), 'above the panel is not a result');
+        $this->assertTrue($panel->hoverRow(-1), 'above the panel is no row: the tint clears, so the caller repaints');
+        $this->assertFalse($panel->hoverRow(-1), 'still no row → no change');
+        $this->assertTrue($panel->hoverRow(2), 'back onto a row');
+        $this->assertTrue($panel->clearHover(), 'the pointer left the panel');
+        $this->assertFalse($panel->clearHover(), 'nothing left to clear');
+    }
+
+    public function testHoverTintsTheRowWithoutMovingTheSelection(): void
+    {
+        $panel = new ResultsPanelWidget();
+        AttachedStyles::attach($panel);
+        $panel->setFocused(true);
+        $panel->open('Usages', ResultsPanelFields::resultsOnly());
+        $panel->setResults($this->results(5));
+        $panel->render(new RenderContext(60, 12));
+
+        $panel->hoverRow(2); // the pointer rests on the third result
+        $lines = $panel->render(new RenderContext(60, 12));
+
+        // Enter still jumps to the first result: hover lit row 2, it did not select it.
+        $this->assertStringContainsString("\x1b[48;5;31m", $lines[0], 'the selection stays on the first result');
+        $this->assertStringContainsString("\x1b[48;5;236m", $lines[2], 'the hovered row carries the hover tint, not the selection');
+    }
+
+    public function testRebuildingTheRowsDropsAStaleHoverTint(): void
+    {
+        $panel = new ResultsPanelWidget();
+        $panel->open('Usages', ResultsPanelFields::resultsOnly());
+        $panel->setResults($this->results(5));
+        $panel->render(new RenderContext(60, 12));
+        $panel->hoverRow(2);
+
+        // A fresh result set moves the rows under a pointer that has not moved.
+        $panel->setResults($this->results(5));
+        $lines = $panel->render(new RenderContext(60, 12));
+
+        $this->assertStringNotContainsString("\x1b[48;5;236m", implode("\n", $lines), 'no row stays tinted after the list is rebuilt');
     }
 
     public function testSetVisibleRowsLimitsRenderedResultRows(): void

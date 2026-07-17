@@ -17,11 +17,10 @@ use Porta\Ui\ContextMenuBuilder;
 use Porta\Ui\DockTab;
 use Porta\Ui\WorkspaceViews;
 use Porta\Widget\ContextMenu;
-use Porta\Widget\DebugPanelWidget;
 use Porta\Widget\DockTabsWidget;
 use Porta\Widget\GoToFileWidget;
+use Porta\Widget\HoverableList;
 use Porta\Widget\MenuBarWidget;
-use Porta\Widget\ResultsPanelWidget;
 use Porta\Widget\SeparatorWidget;
 use Porta\Widget\TerminalPanelWidget;
 use Symfony\Component\Tui\Render\WidgetRect;
@@ -872,6 +871,7 @@ final class MouseRouter
     {
         $this->updateTreeHover($mouse);
         $this->updateStripHover($mouse);
+        $this->updateListHover($mouse);
 
         if ($this->handleMenuHover($mouse)) {
             return;
@@ -889,20 +889,27 @@ final class MouseRouter
 
             return;
         }
+    }
 
+    /**
+     * Tint the row under the pointer in the visible dock panel and the
+     * go-to-file popup, clearing it when the pointer leaves. Runs before the
+     * menu/popup branches return, so moving from a panel row onto a dropdown
+     * still drops the row's tint. Both are hidden-when-closed widgets whose
+     * last-frame rect outlives them, so their own liveness gates the hit-test.
+     */
+    private function updateListHover(MouseEvent $mouse): void
+    {
+        $lists = [];
         $panel = $this->dock->visiblePanel();
-        if (($panel instanceof ResultsPanelWidget || $panel instanceof DebugPanelWidget) && null !== ($rel = $this->hit->hit($panel, $mouse->row, $mouse->col))) {
-            if ($panel->hoverRow($rel['row'])) {
-                $this->tui->requestRender();
-            }
-
-            return;
+        if ($panel instanceof HoverableList) {
+            $lists[] = $panel;
         }
-
-        if ($this->goToFile->isOpen() && null !== ($rel = $this->hit->hit($this->goToFile, $mouse->row, $mouse->col))) {
-            if ($this->goToFile->hoverRow($rel['row'])) {
-                $this->tui->requestRender();
-            }
+        if ($this->goToFile->isOpen()) {
+            $lists[] = $this->goToFile;
+        }
+        if ([] !== $lists && $this->hit->hover($mouse->row, $mouse->col, ...$lists)) {
+            $this->tui->requestRender();
         }
     }
 

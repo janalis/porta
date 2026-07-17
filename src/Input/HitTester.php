@@ -23,11 +23,15 @@ final class HitTester
     ) {}
 
     /**
-     * The widget's rect in the last render, or null when it produced no rows
-     * — or when the widget is detached: the renderer keeps last-frame rects
-     * for widgets that were since swapped out of the tree (git view tabs, the
-     * main-area swap), and a stale rect must never route events to an
-     * invisible widget.
+     * The widget's rect in the last render, or null when the widget is
+     * detached: the renderer keeps last-frame rects for widgets that were
+     * since swapped out of the tree (git view tabs, the main-area swap), and a
+     * stale rect must never route events to an invisible widget.
+     *
+     * Rendering zero rows is NOT enough to null the rect — the renderer keeps
+     * the last non-empty one — so a widget that hides itself while staying
+     * attached (the find bar, go-to-file, the dock panels) must gate its own
+     * hit-testing on its liveness rather than on a null rect here.
      */
     public function rect(AbstractWidget $widget): ?WidgetRect
     {

@@ -94,6 +94,8 @@ final class FindInFilesModal
     private int $footerRowIndex = -1;
     /** hovered header/footer zone name ('regex'|'case'|'word'|'preserve'|'tokens'|'scope'|'find_window'|'footer_scope') or null */
     private ?string $hovered = null;
+    /** display-row index tinted under the pointer; visual only, never the selection — you type into the query field while it rests. */
+    private ?int $hoveredRow = null;
 
     /** @var (callable(string): void)|null */
     private $onQuery = null;
@@ -208,6 +210,7 @@ final class FindInFilesModal
         $this->windowStart = 0;
         $this->searching = false;
         $this->hovered = null;
+        $this->hoveredRow = null;
         ($this->invalidate)();
     }
 
@@ -267,6 +270,8 @@ final class FindInFilesModal
         $this->displayRows = ResultsView::build($results, [], ResultLayout::Grouped, '', ResultGrouping::File);
         $this->excluded = [];
         $this->searching = false;
+        $this->hoveredRow = null; // the rows move under a pointer that has not
+
         // Land on the first match row so Enter opens it.
         $this->selected = 0;
         $this->windowStart = 0;
@@ -556,7 +561,11 @@ final class FindInFilesModal
         $this->optionsRow = 3; // title(0), query(1), replace(2), options(3) — index into $popup
         $previewIndex = \count($popup);
         foreach ($visible as $i => $row) {
-            $selected = ($windowStart + $i) === $this->selected ? RowSelection::Selected : RowSelection::Unselected;
+            $selected = match ($windowStart + $i) {
+                $this->selected => RowSelection::Selected,
+                $this->hoveredRow => RowSelection::Hovered,
+                default => RowSelection::Unselected,
+            };
             $popup[] = match (true) {
                 null !== $row->filePath => $this->fileHeaderRow($row->filePath, $row->count, $width),
                 $this->inPreview() => $this->previewMatchRow($this->results[$row->matchIndex], $row->matchIndex, $selected, $width),
@@ -743,7 +752,11 @@ final class FindInFilesModal
      */
     private function matchRow(array $result, RowSelection $selected, int $width): string
     {
-        $bg = $this->styles->of(RowSelection::Selected === $selected ? Role::SelectedRow : Role::PopupRow)->getAnsiRestore();
+        $bg = $this->styles->of(match ($selected) {
+            RowSelection::Selected => Role::SelectedRow,
+            RowSelection::Hovered => Role::RowHighlightBg,
+            RowSelection::Unselected => Role::PopupRow,
+        })->getAnsiRestore();
         $label = (string) ($result['line'] + 1);
         $prefixWidth = 4 + mb_strwidth($label) + 2;
         $text = '    '.$this->styles->of(Role::TabAccent)->apply($label).'  '.$result['text'];
@@ -759,7 +772,11 @@ final class FindInFilesModal
      */
     private function previewMatchRow(array $result, int $matchIndex, RowSelection $selected, int $width): string
     {
-        $bg = $this->styles->of(RowSelection::Selected === $selected ? Role::SelectedRow : Role::PopupRow)->getAnsiRestore();
+        $bg = $this->styles->of(match ($selected) {
+            RowSelection::Selected => Role::SelectedRow,
+            RowSelection::Hovered => Role::RowHighlightBg,
+            RowSelection::Unselected => Role::PopupRow,
+        })->getAnsiRestore();
         $excluded = $this->excluded[$matchIndex] ?? false;
         $label = (string) ($result['line'] + 1);
         $old = $result['text'];
@@ -926,8 +943,10 @@ final class FindInFilesModal
         }
         $cleared = $this->hoverZone(null); // moving off the header/footer drops any tag hover
         $index = $this->previewIndexAt($relRow);
-        if (null !== $index && null === $this->displayRows[$index]->filePath && $index !== $this->selected) {
-            $this->selected = $index;
+        // File headers aren't pickable, so they don't light up.
+        $row = null !== $index && null === $this->displayRows[$index]->filePath ? $index : null;
+        if ($row !== $this->hoveredRow) {
+            $this->hoveredRow = $row;
             ($this->invalidate)();
 
             return true;

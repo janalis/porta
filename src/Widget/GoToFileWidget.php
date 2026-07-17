@@ -27,9 +27,10 @@ use Symfony\Component\Tui\Widget\KeybindingsTrait;
  * a query line plus up to N scored results. Hidden (zero rows) when closed.
  */
 #[AsWidget('goto-file')]
-final class GoToFileWidget extends OverlayWidget implements FocusableInterface
+final class GoToFileWidget extends OverlayWidget implements FocusableInterface, HoverableList
 {
     use FocusableTrait;
+    use HoverTrait;
     use InputHook;
     use KeybindingsTrait;
 
@@ -121,7 +122,6 @@ final class GoToFileWidget extends OverlayWidget implements FocusableInterface
         }
     }
 
-    /** Route a left-click at the given widget-relative row: a result row picks that file. */
     /** Wheel over the popup: move the selection like the arrow keys. */
     public function moveSelection(int $delta): void
     {
@@ -148,16 +148,10 @@ final class GoToFileWidget extends OverlayWidget implements FocusableInterface
         }
     }
 
-    /** Highlight the result row under the pointer (widget-relative row); returns whether it changed. */
+    /** Tint the result row under the pointer (widget-relative row); returns whether it changed. */
     public function hoverRow(int $relRow): bool
     {
-        if ($this->list->selectIfChanged($this->rowIndexAt($relRow))) {
-            $this->invalidate();
-
-            return true;
-        }
-
-        return false;
+        return $this->setHovered($this->rowIndexAt($relRow));
     }
 
     /** Result index at the given widget-relative row, or null if it is not a result row. */
@@ -180,8 +174,11 @@ final class GoToFileWidget extends OverlayWidget implements FocusableInterface
         $lines[] = HeaderRenderer::render($header, $columns, $this->styles->of(Role::HeaderBar)->withBold(), suffix: 'Esc');
 
         foreach (\array_slice($this->results, offset: 0, length: self::MAX_RESULTS) as $i => $path) {
-            $selected = $i === $this->list->selected();
-            $style = $this->styles->of($selected ? Role::SelectedRow : Role::PopupRow);
+            $style = $this->styles->of(match (true) {
+                $i === $this->list->selected() => Role::SelectedRow,
+                $i === $this->hoveredIndex => Role::RowHighlightBg,
+                default => Role::PopupRow,
+            });
             $name = basename($path);
             $dir = ltrim(substr($path, offset: 0, length: -\strlen($name)), characters: '/');
             $text = ' '.$name.'  '.$this->styles->of(Role::CompletionHint)->getAnsiRestore().$dir;
@@ -198,8 +195,10 @@ final class GoToFileWidget extends OverlayWidget implements FocusableInterface
 
     // --- Matching -------------------------------------------------------------
 
+    /** Re-run the query. Drops the hover tint — the rows move, the pointer has not. */
     private function refilter(): void
     {
+        $this->clearHover();
         $this->list->reset();
         $this->results = $this->files->search($this->query->value(), self::MAX_RESULTS);
     }

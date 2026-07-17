@@ -192,9 +192,27 @@ final class GoToFileWidgetTest extends TestCase
         $widget = $this->widget($project);
         $widget->render(new RenderContext(60, 12));
 
-        $this->assertTrue($widget->hoverRow(2), 'row 2 → result index 1 selected');
+        $this->assertTrue($widget->hoverRow(2), 'row 2 → result index 1 tinted');
         $this->assertFalse($widget->hoverRow(2), 'same row → no change');
-        $this->assertFalse($widget->hoverRow(0), 'header row is not a result');
+        $this->assertTrue($widget->hoverRow(0), 'the header is no row: the tint clears, so the caller repaints');
+        $this->assertFalse($widget->hoverRow(0), 'still no row → no change');
+        $this->assertTrue($widget->hoverRow(2), 'back onto a row');
+        $this->assertTrue($widget->clearHover(), 'the pointer left the popup');
+        $this->assertFalse($widget->clearHover(), 'nothing left to clear');
+    }
+
+    public function testHoverTintsTheRowWithoutMovingTheSelection(): void
+    {
+        $project = new TempProject(['aa.php' => '', 'ab.php' => '', 'ac.php' => '']);
+        $widget = $this->widget($project);
+        $widget->render(new RenderContext(60, 12));
+
+        $widget->hoverRow(2); // the pointer rests on the second result
+        $lines = $widget->render(new RenderContext(60, 12));
+
+        // Enter still opens the first result: hover lit row 2, it did not pick it.
+        $this->assertStringContainsString("\x1b[48;5;31m", $lines[1], 'the selection stays on the first result');
+        $this->assertStringContainsString("\x1b[48;5;236m", $lines[2], 'the hovered row carries the hover tint, not the selection');
     }
 
     public function testIgnoredDirectoriesExcludedFromWalk(): void

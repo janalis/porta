@@ -8,14 +8,20 @@ use Porta\Ui\ListSelection;
 
 /**
  * The shared pointer/selection glue of the list-shaped bottom panels
- * (results, debug): wheel scrolling that moves the selection, hover
- * highlighting and click activation, all addressed through the
- * widget-relative row of the last render. The consuming widget supplies its
- * selection, row count, header height and row activation through the
- * abstract hooks.
+ * (results, debug): wheel scrolling that moves the selection, hover tinting
+ * and click activation, all addressed through the widget-relative row of the
+ * last render. The consuming widget supplies its selection, row count, header
+ * height and row activation through the abstract hooks.
+ *
+ * The wheel moves the selection but the hover does not, and the split is the
+ * rule rather than an accident: the wheel is deliberate input, exactly like
+ * pressing ↓, while hover is incidental pointer motion that must never own
+ * state the keyboard is also driving. See {@see HoverableList}.
  */
 trait ListPanelInteraction
 {
+    use HoverTrait;
+
     abstract public function invalidate(): void;
 
     abstract protected function selection(): ListSelection;
@@ -41,16 +47,10 @@ trait ListPanelInteraction
         $this->invalidate();
     }
 
-    /** Highlight the row under the pointer (widget-relative row); returns whether it changed. */
+    /** Tint the row under the pointer (widget-relative row); returns whether it changed. */
     public function hoverRow(int $relRow): bool
     {
-        if ($this->selection()->selectIfChanged($this->rowIndexAt($relRow))) {
-            $this->invalidate();
-
-            return true;
-        }
-
-        return false;
+        return $this->setHovered($this->rowIndexAt($relRow));
     }
 
     /** A click selects and activates the row under the pointer. */

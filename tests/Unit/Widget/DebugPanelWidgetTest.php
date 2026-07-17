@@ -123,6 +123,38 @@ final class DebugPanelWidgetTest extends TestCase
         $this->assertStringContainsString("0 = 'a'", implode("\n", $this->screen($panel)));
     }
 
+    public function testHoverTintsTheRowWithoutMovingTheSelection(): void
+    {
+        $panel = $this->panel();
+        $jumped = null;
+        $panel->onFrameSelected(static function (int $frameId) use (&$jumped): void {
+            $jumped = $frameId;
+        });
+        $panel->render(new RenderContext(80, 14));
+        $panel->handleInput("\x1b[B"); // ↓ off the 'Frames' section onto the first frame
+
+        // The pointer rests on the second frame; Enter must still act on the first.
+        $panel->hoverRow(2);
+        $lines = $panel->render(new RenderContext(80, 14));
+        $this->assertStringContainsString("\x1b[48;5;236m", $lines[2], 'the hovered row carries the hover tint');
+
+        $panel->handleInput("\r");
+        $this->assertSame(1, $jumped, 'Enter jumped to the selected frame, not the hovered one');
+    }
+
+    public function testRebuildingTheRowsDropsAStaleHoverTint(): void
+    {
+        $panel = $this->panel();
+        $panel->render(new RenderContext(80, 14));
+        $panel->hoverRow(2);
+
+        // A fresh stop moves the rows under a pointer that has not moved.
+        $panel->setFrames([['id' => 9, 'name' => 'other', 'path' => 'src/c.php', 'line' => 1]]);
+        $lines = $panel->render(new RenderContext(80, 14));
+
+        $this->assertStringNotContainsString("\x1b[48;5;236m", implode("\n", $lines), 'no row stays tinted after the rows are rebuilt');
+    }
+
     public function testMouseClickHoverScrollAndEscape(): void
     {
         $panel = $this->panel();
@@ -132,9 +164,13 @@ final class DebugPanelWidgetTest extends TestCase
         });
 
         $panel->render(new RenderContext(80, 14));
-        $this->assertTrue($panel->hoverRow(2), 'hover selects the row under the pointer (rel 2 → row 2, no header row)');
+        $this->assertTrue($panel->hoverRow(2), 'hover tints the row under the pointer (rel 2 → row 2, no header row)');
         $this->assertFalse($panel->hoverRow(2), 'unchanged hover reports false');
-        $this->assertFalse($panel->hoverRow(-1), 'above the panel is inert');
+        $this->assertTrue($panel->hoverRow(-1), 'above the panel is no row: the tint clears, so the caller repaints');
+        $this->assertFalse($panel->hoverRow(-1), 'still no row → no change');
+        $this->assertTrue($panel->hoverRow(2), 'back onto a row');
+        $this->assertTrue($panel->clearHover(), 'the pointer left the panel');
+        $this->assertFalse($panel->clearHover(), 'nothing left to clear');
 
         $panel->handleClick(1); // rel 1 → row index 1 → frame #0
         $this->assertSame(1, $jumped);

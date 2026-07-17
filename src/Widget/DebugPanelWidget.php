@@ -33,7 +33,7 @@ use Symfony\Component\Tui\Widget\KeybindingsTrait;
  * resizable bottom panel.
  */
 #[AsWidget('debug')]
-final class DebugPanelWidget extends OverlayWidget implements FocusableInterface, LtrPane, MenuOverlayHost
+final class DebugPanelWidget extends OverlayWidget implements FocusableInterface, HoverableList, LtrPane, MenuOverlayHost
 {
     use FocusableTrait;
     use MenuOverlayHostTrait;
@@ -229,7 +229,11 @@ final class DebugPanelWidget extends OverlayWidget implements FocusableInterface
         $scroll = $this->list->follow($this->visibleRows);
         foreach (\array_slice($this->rows, $scroll, $this->visibleRows) as $i => $row) {
             // The selection shade comes from the theme's .list::selected(:focus) rules.
-            $bg = $this->list->isSelected($scroll + $i) ? $this->resolveElement('selected') : $this->styles->of(Role::Toolbar);
+            $bg = match (true) {
+                $this->list->isSelected($scroll + $i) => $this->resolveElement('selected'),
+                ($scroll + $i) === $this->hoveredIndex => $this->styles->of(Role::RowHighlightBg),
+                default => $this->styles->of(Role::Toolbar),
+            };
             $lines[] = $bg->apply(AnsiUtils::truncateToWidth($this->rowText($row), $columns, '…', pad: true));
         }
 
@@ -257,6 +261,7 @@ final class DebugPanelWidget extends OverlayWidget implements FocusableInterface
         $this->children = [];
         $this->expanded = [];
         $this->rows = [];
+        $this->clearHover();
     }
 
     private function rowText(DebugRow $row): string
@@ -297,9 +302,13 @@ final class DebugPanelWidget extends OverlayWidget implements FocusableInterface
         return ' '.$indent.$arrow.$row->label.' = '.$value;
     }
 
-    /** Rebuild the flattened rows from frames + scopes + expanded children. */
+    /**
+     * Rebuild the flattened rows from frames + scopes + expanded children.
+     * Drops the hover tint: the rows move under a pointer that has not.
+     */
     private function rebuild(): void
     {
+        $this->clearHover();
         $rows = [];
         if ([] !== $this->frames) {
             $rows[] = new DebugRow(DebugRowKind::Section, $this->translator->trans('Frames'));

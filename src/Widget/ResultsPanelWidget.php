@@ -32,7 +32,7 @@ use Symfony\Component\Tui\Widget\KeybindingsTrait;
  * find-usages results. Hidden (zero rows) when closed.
  */
 #[AsWidget('results')]
-final class ResultsPanelWidget extends OverlayWidget implements FocusableInterface, LtrPane, MenuOverlayHost
+final class ResultsPanelWidget extends OverlayWidget implements FocusableInterface, HoverableList, LtrPane, MenuOverlayHost
 {
     use FocusableTrait;
     use MenuOverlayHostTrait;
@@ -179,9 +179,14 @@ final class ResultsPanelWidget extends OverlayWidget implements FocusableInterfa
         $this->invalidate();
     }
 
-    /** Recompute the flattened display rows from the current results + collapse state. */
+    /**
+     * Recompute the flattened display rows from the current results + collapse
+     * state. Drops the hover tint: the rows move under a pointer that has not,
+     * so whatever it was tinting is no longer there.
+     */
     private function rebuildView(): void
     {
+        $this->clearHover();
         $this->displayRows = ResultsView::build(
             $this->results,
             $this->collapsed,
@@ -466,11 +471,14 @@ final class ResultsPanelWidget extends OverlayWidget implements FocusableInterfa
         $scroll = $this->list->follow($this->visibleRows);
 
         foreach (\array_slice($this->displayRows, $scroll, $this->visibleRows) as $i => $row) {
-            $isSelected = $this->list->isSelected($scroll + $i);
             // A raw SGR prefix, not a Style: the match highlighter closes each
             // span with the row bg so the tail keeps its colour. The selection
             // shade comes from the theme's .list::selected(:focus) rules.
-            $bg = ($isSelected ? $this->resolveElement('selected') : $this->styles->of(Role::Toolbar))->getAnsiRestore();
+            $bg = (match (true) {
+                $this->list->isSelected($scroll + $i) => $this->resolveElement('selected'),
+                ($scroll + $i) === $this->hoveredIndex => $this->styles->of(Role::RowHighlightBg),
+                default => $this->styles->of(Role::Toolbar),
+            })->getAnsiRestore();
             $lines[] = match (true) {
                 null !== $row->filePath => $this->headerLine($row, $bg, $columns),
                 null !== $row->contextText => $this->contextRowLine($row->contextLine, $row->contextText, $bg, $columns),
