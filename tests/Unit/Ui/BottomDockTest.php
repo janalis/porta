@@ -269,8 +269,13 @@ final class BottomDockTest extends TestCase
         $this->assertSame($problems, $dock->activeTool(), 'a keyed reveal binds that instance');
         $this->assertSame(ResultsPanelMode::Problems, $dock->mode(), 'the dock mode follows the bound tab');
 
-        $dock->reveal(DockTab::Results, (string) $problems->id); // already displayed: a no-op
-        $this->assertSame($problems, $dock->activeTool());
+        // Already displayed: the bind is a no-op, but the focus is the other
+        // half of what revealing a tab means — clicking the tab you are
+        // looking at must still take you to it.
+        $this->tui->setFocus($this->terminal);
+        $dock->reveal(DockTab::Results, (string) $problems->id);
+        $this->assertSame($problems, $dock->activeTool(), 'still bound to the same instance');
+        $this->assertSame($this->results, $this->tui->getFocus(), 'and the focus landed anyway');
         $dock->reveal(DockTab::Results, '99'); // unknown key: a no-op
         $this->assertSame($problems, $dock->activeTool());
         $dock->reveal(DockTab::Terminal); // no reveal hook wired here: a no-op
@@ -443,5 +448,28 @@ final class BottomDockTest extends TestCase
         $this->assertSame(17, $this->results->visibleRows());
         $this->assertSame(17, $this->debug->visibleRows());
         $this->assertSame($this->terminal, $dock->terminalPanel());
+    }
+
+    public function testRevealingTheAlreadyVisibleDebugTabStillFocusesIt(): void
+    {
+        $dock = $this->dock();
+        $this->debug->open('a.php');
+        $dock->reveal(DockTab::Debug);
+        $this->assertSame($this->debug, $dock->visiblePanel());
+
+        $this->tui->setFocus($this->terminal);
+        $dock->reveal(DockTab::Debug); // already displayed
+
+        $this->assertSame($this->debug, $this->tui->getFocus(), 'clicking the displayed Debug tab brings you to it');
+    }
+
+    public function testRevealingADebugTabThatIsNotOpenStaysANoOp(): void
+    {
+        $dock = $this->dock();
+        $this->tui->setFocus($this->terminal);
+
+        $dock->reveal(DockTab::Debug); // no session ever started
+
+        $this->assertSame($this->terminal, $this->tui->getFocus(), 'nothing to reveal, nothing to focus');
     }
 }

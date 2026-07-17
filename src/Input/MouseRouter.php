@@ -35,6 +35,16 @@ use Symfony\Component\Tui\Tui;
  *
  * Guard order is behavior: active drags run first, then resize drags, then
  * right-press, then the modal popups, then the panes front-to-back.
+ *
+ * Two rules hold across every pane here:
+ *
+ * - A left-click that targets a pane FOCUSES that pane — including a click on
+ *   a strip tab, which focuses the pane it reveals even when that pane was
+ *   already the one displayed. A click that targets a FILE focuses whichever
+ *   pane the file lands in (see {@see BufferService::focusEditorArea()}, which
+ *   is why a tab click reaches the image or help viewer rather than the editor).
+ * - A click activates on the FIRST press; multiplicity belongs to the editor
+ *   alone (see {@see ClickCounter}).
  */
 final class MouseRouter
 {

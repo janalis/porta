@@ -53,7 +53,12 @@ trait ListPanelInteraction
         return $this->setHovered($this->rowIndexAt($relRow));
     }
 
-    /** A click selects and activates the row under the pointer. */
+    /**
+     * A click selects AND activates the row under the pointer — the first
+     * click, deliberately: these lists are tools whose rows exist to be jumped
+     * to. See {@see \Porta\Input\ClickCounter} for why multiplicity is the
+     * editor's alone.
+     */
     public function handleClick(int $relRow): void
     {
         $index = $this->rowIndexAt($relRow);

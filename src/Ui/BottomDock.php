@@ -8,6 +8,7 @@ use Porta\I18n\Translator;
 use Porta\Terminal\TerminalSessions;
 use Porta\Widget\DebugPanelWidget;
 use Porta\Widget\DockTabsWidget;
+use Porta\Widget\OverlayWidget;
 use Porta\Widget\ResultsPanelFields;
 use Porta\Widget\ResultsPanelWidget;
 use Porta\Widget\TerminalPanelWidget;
@@ -184,20 +185,29 @@ final class BottomDock
         }
         if (DockTab::Results === $tab) {
             $tool = '' === $key ? $this->tools->active() : $this->tools->findById((int) $key);
-            if (null === $tool || $this->activeTool() === $tool && $this->resultsPanel->isVisible()) {
+            if (null === $tool) {
                 return;
             }
-            $this->show($tool);
+            // Already the displayed tab: rebinding it would be a no-op, but the
+            // focus is the other half of what a strip click is for — clicking
+            // the tab you are looking at must still bring you to it.
+            $this->activeTool() === $tool && $this->resultsPanel->isVisible()
+                ? $this->focusPanel($this->resultsPanel)
+                : $this->show($tool);
 
             return;
         }
-        if (!$this->debugPanel->isOpen() || $this->debugPanel->isVisible()) {
+        if (!$this->debugPanel->isOpen()) {
+            return;
+        }
+        if ($this->debugPanel->isVisible()) {
+            $this->focusPanel($this->debugPanel);
+
             return;
         }
         $this->activate($this->debugPanel);
         $this->debugPanel->reveal();
-        $this->tui->setFocus($this->debugPanel);
-        $this->tui->requestRender();
+        $this->focusPanel($this->debugPanel);
     }
 
     /** Hide the whole dock (Esc / toggling the visible tool off); every tab stays alive. */
@@ -351,6 +361,13 @@ final class BottomDock
     {
         $this->bind($tab);
         $this->tui->setFocus($this->resultsPanel);
+        $this->tui->requestRender();
+    }
+
+    /** Take the focus to an already-revealed panel and repaint. */
+    private function focusPanel(OverlayWidget $panel): void
+    {
+        $this->tui->setFocus($panel);
         $this->tui->requestRender();
     }
 

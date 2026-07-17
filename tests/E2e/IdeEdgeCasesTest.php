@@ -7268,6 +7268,18 @@ final class IdeEdgeCasesTest extends TestCase
                         implode('', $tui->getById('git-tabs')->render(new \Symfony\Component\Tui\Render\RenderContext(44, 1))),
                         'leaving the strip clears the tint',
                     );
+
+                    // A strip click focuses the pane it reveals — the git tabs
+                    // used to leave the focus wherever it happened to be.
+                    $tui->setFocus($tui->getById('git-diff'));
+                    $tui->handleInput(\sprintf("\x1b[<0;%d;%dM", $tabsRect->col + 12, $tabsRect->row + 1)); // click 'History'
+                    $tui->tick();
+                    $this->assertSame('git-history', $tui->getFocus()?->getId(), 'clicking the History tab brings you to the history list');
+
+                    $tui->setFocus($tui->getById('git-diff'));
+                    $tui->handleInput(\sprintf("\x1b[<0;%d;%dM", $tabsRect->col + 2, $tabsRect->row + 1)); // click 'Changes'
+                    $tui->tick();
+                    $this->assertSame('git-changes', $tui->getFocus()?->getId(), 'and back to the changes list');
                 },
             ],
         );

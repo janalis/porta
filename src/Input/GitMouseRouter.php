@@ -136,7 +136,13 @@ final class GitMouseRouter
     public function tryPaneClick(MouseEvent $mouse): bool
     {
         if (null !== ($rel = $this->hit->hit($this->tabs, $mouse->row, $mouse->col))) {
+            $mode = $this->tabs->modeAtColumn($rel['col']);
             $this->tabs->handleClick($rel['col']);
+            // A strip click focuses the pane it reveals — this was the only
+            // git pane click that left the focus wherever it happened to be.
+            if (null !== $mode) {
+                $this->tui->setFocus('history' === $mode ? $this->history : $this->changes);
+            }
             $this->tui->requestRender();
 
             return true;
