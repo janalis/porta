@@ -23,6 +23,17 @@ enum Role
     // Shared row highlights (menus, popups, lists, the current editor line).
     // SelectedRow marks the selection in the focused pane; SelectedRowUnfocused
     // is the dimmer variant every pane uses while unfocused.
+    //
+    // Selection convention: focus-tracking panes join the theme's
+    // `.list::selected(:focus)` element rules (addStyleClass('list') +
+    // resolveElement('selected')); always-focused modal surfaces (menus,
+    // editor overlays, go-to-file, the find modal) apply SelectedRow
+    // directly. Themes MUST keep `.list::selected:focus` ≡ SelectedRow and
+    // `.list::selected` ≡ SelectedRowUnfocused so the two families render
+    // identically. Pane/popup titles are HeaderBar+bold; in-list section
+    // headers are Toolbar+Dim+bold; hover over default rows is
+    // RowHighlightBg, hover over bar chrome (menu titles, tab strips) is
+    // BarHoverBg.
     case SelectedRow;
     case SelectedRowUnfocused;
     case RowHighlightBg;
@@ -76,9 +87,9 @@ enum Role
     case Breakpoint;
     case DebugLineBg;
 
-    // Chrome shades: tab/breadcrumb accent, menu highlight, extra greys.
+    // Chrome shades: tab/breadcrumb accent, bar-chrome hover, extra greys.
     case TabAccent;
-    case MenuActiveBg;
+    case BarHoverBg;
     case Faint;
     case Subtle;
     case Emphasis;

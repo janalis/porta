@@ -63,7 +63,7 @@ final class DarkTheme
                 Role::Breakpoint->selector() => new Style(color: 203),
                 Role::DebugLineBg->selector() => new Style(background: 52),
                 Role::TabAccent->selector() => new Style(color: 110),
-                Role::MenuActiveBg->selector() => new Style(background: 240),
+                Role::BarHoverBg->selector() => new Style(background: 240),
                 Role::Faint->selector() => new Style(color: 242),
                 Role::Subtle->selector() => new Style(color: 246),
                 Role::Emphasis->selector() => new Style(color: 255),

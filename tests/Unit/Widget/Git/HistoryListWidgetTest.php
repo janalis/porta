@@ -7,6 +7,7 @@ namespace Porta\Tests\Unit\Widget\Git;
 use PHPUnit\Framework\TestCase;
 use Porta\Git\LogEntry;
 use Porta\I18n\Translator;
+use Porta\Tests\Support\AttachedStyles;
 use Porta\Widget\Git\HistoryListWidget;
 use Symfony\Component\Tui\Ansi\AnsiUtils;
 use Symfony\Component\Tui\Render\RenderContext;
@@ -210,5 +211,42 @@ final class HistoryListWidgetTest extends TestCase
         $widget->handleInput('p');
         $widget->handleInput('P');
         $this->assertSame(['pull', 'push'], $operations);
+    }
+
+    public function testSelectionShadesFollowTheListElementRules(): void
+    {
+        // The focused sub-list resolves .list::selected:focus (bg 31); the
+        // parked one shows the shared unfocused shade (bg 237) — visible in
+        // every theme, including Monochrome's reverse video.
+        $widget = $this->widget();
+        AttachedStyles::attach($widget);
+
+        $lines = $widget->render(new RenderContext(44, 16));
+        $joined = implode("\n", $lines);
+        $this->assertStringContainsString("\x1b[48;5;31m", $joined, 'the focused commit selection uses the focus rule');
+        $this->assertStringContainsString("\x1b[48;5;237m", $joined, 'the parked files selection shows the unfocused shade');
+
+        $widget->handleInput("\r"); // Enter → focus moves to the files sub-list
+        $lines = $widget->render(new RenderContext(44, 16));
+        $commitRow = AnsiUtils::stripAnsiCodes($lines[1]);
+        $this->assertStringContainsString('aaa111', $commitRow, 'row 1 is the selected commit');
+        $this->assertStringContainsString("\x1b[48;5;237m", $lines[1], 'the commit selection dims when the files own the focus');
+    }
+
+    public function testTheFilesSubHeaderUsesTheSectionHeaderConvention(): void
+    {
+        $widget = $this->widget();
+        $lines = $widget->render(new RenderContext(44, 16));
+        foreach ($lines as $line) {
+            if (!str_contains(AnsiUtils::stripAnsiCodes($line), 'Files (2)')) {
+                continue;
+            }
+
+            $this->assertStringContainsString("\x1b[48;5;235m", $line, 'in-list section headers sit on Toolbar');
+            $this->assertStringContainsString("\x1b[1m", $line, 'and are bold');
+
+            return;
+        }
+        $this->fail('the Files sub-header row was not rendered');
     }
 }

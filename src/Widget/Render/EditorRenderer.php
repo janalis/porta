@@ -381,7 +381,7 @@ final class EditorRenderer
         $col = max(0, intdiv($columns - $width, num2: 2));
 
         $popup = [];
-        $popup[] = HeaderRenderer::render(' '.$overlay['title'], $width, $styles->merge(Role::HeaderBar, Role::Bright)->withBold());
+        $popup[] = HeaderRenderer::render(' '.$overlay['title'], $width, $styles->of(Role::HeaderBar)->withBold());
         foreach ($visible as $i => $item) {
             $isSelected = ($windowStart + $i) === $selected;
             $style = $styles->of($isSelected ? Role::SelectedRow : Role::PopupRow);
@@ -429,7 +429,7 @@ final class EditorRenderer
         $col = max(0, intdiv($columns - $width, num2: 2));
 
         $popup = [
-            HeaderRenderer::render(' '.$title, $width, $styles->merge(Role::HeaderBar, Role::Bright)->withBold()),
+            HeaderRenderer::render(' '.$title, $width, $styles->of(Role::HeaderBar)->withBold()),
             $styles->of(Role::Toolbar)->apply(AnsiText::scrollLineToCaret(' > '.$query.(PaneFocus::Focused === $focused ? $cursorMarker : ''), $width)),
         ];
         foreach ($visible as $i => $row) {

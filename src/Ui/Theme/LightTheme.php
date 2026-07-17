@@ -62,7 +62,7 @@ final class LightTheme
                 Role::Breakpoint->selector() => new Style(color: 160),
                 Role::DebugLineBg->selector() => new Style(background: 224),
                 Role::TabAccent->selector() => new Style(color: 25),
-                Role::MenuActiveBg->selector() => new Style(background: 252),
+                Role::BarHoverBg->selector() => new Style(background: 252),
                 Role::Faint->selector() => new Style(color: 245),
                 Role::Subtle->selector() => new Style(color: 246),
                 Role::Emphasis->selector() => new Style(color: 16),

@@ -68,7 +68,7 @@ final class ThemeLockTest extends TestCase
         yield 'breakpoint' => [Role::Breakpoint, new Style(color: 203)];
         yield 'debug-line-bg' => [Role::DebugLineBg, new Style(background: 52)];
         yield 'tab-accent' => [Role::TabAccent, new Style(color: 110)];
-        yield 'menu-active-bg' => [Role::MenuActiveBg, new Style(background: 240)];
+        yield 'bar-hover-bg' => [Role::BarHoverBg, new Style(background: 240)];
         yield 'faint' => [Role::Faint, new Style(color: 242)];
         yield 'subtle' => [Role::Subtle, new Style(color: 246)];
         yield 'emphasis' => [Role::Emphasis, new Style(color: 255)];
@@ -131,7 +131,7 @@ final class ThemeLockTest extends TestCase
         yield 'breakpoint' => [Role::Breakpoint, new Style(color: 160)];
         yield 'debug-line-bg' => [Role::DebugLineBg, new Style(background: 224)];
         yield 'tab-accent' => [Role::TabAccent, new Style(color: 25)];
-        yield 'menu-active-bg' => [Role::MenuActiveBg, new Style(background: 252)];
+        yield 'bar-hover-bg' => [Role::BarHoverBg, new Style(background: 252)];
         yield 'faint' => [Role::Faint, new Style(color: 245)];
         yield 'subtle' => [Role::Subtle, new Style(color: 246)];
         yield 'emphasis' => [Role::Emphasis, new Style(color: 16)];
@@ -217,6 +217,19 @@ final class ThemeLockTest extends TestCase
         $mono = MonochromeTheme::definition();
         $this->assertEquals(new Style(reverse: true), $mono->of(Role::SelectedRow));
         $this->assertEquals(new Style(dim: true, reverse: true), $mono->of(Role::SelectedRowUnfocused));
+    }
+
+    public function testListElementRulesMirrorTheSelectionRolesInEveryTheme(): void
+    {
+        // The selection convention (Role.php): always-focused modal surfaces
+        // apply SelectedRow directly while focus-tracking panes resolve the
+        // .list rules — the two families must render identically per theme.
+        $themes = ['dark' => DarkTheme::definition(), 'light' => LightTheme::definition(), 'high-contrast' => HighContrastTheme::definition(), 'monochrome' => MonochromeTheme::definition()];
+        foreach ($themes as $name => $def) {
+            $rules = $def->rules();
+            $this->assertEquals($def->of(Role::SelectedRowUnfocused), $rules['.list::selected'], "{$name}: .list::selected must equal SelectedRowUnfocused");
+            $this->assertEquals($def->of(Role::SelectedRow), $rules['.list::selected:focus'], "{$name}: .list::selected:focus must equal SelectedRow");
+        }
     }
 
     public function testHasColor(): void

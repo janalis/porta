@@ -262,7 +262,7 @@ final class FileTreeWidget extends AbstractWidget implements FocusableInterface,
 
         $lines = [];
         $header = AnsiUtils::truncateToWidth(' '.basename($this->rootDir).'/', $width, '…', pad: true);
-        $lines[] = $this->styles->of(Role::TabAccent)->withBold()->apply($header);
+        $lines[] = $this->styles->of(Role::HeaderBar)->withBold()->apply($header);
 
         for ($row = 1; $row < $rows; ++$row) {
             $index = $scroll + $row - 1;

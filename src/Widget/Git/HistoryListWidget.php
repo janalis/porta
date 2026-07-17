@@ -81,6 +81,7 @@ final class HistoryListWidget extends AbstractWidget implements FocusableInterfa
         int $width = 44,
         ?Styles $styles = null,
     ) {
+        $this->addStyleClass('list'); // the theme's .list::selected(:focus) rules style the focused sub-list
         $this->width = $width;
         $this->styles = $styles ?? Styles::dark();
         $this->commitList = new ListSelection();
@@ -375,7 +376,9 @@ final class HistoryListWidget extends AbstractWidget implements FocusableInterfa
             $selected = $this->commitList->isSelected($scroll + $row);
             $bg = null;
             if ($selected) {
-                $bg = $this->styles->of($this->focused && !$this->filesFocused ? Role::SelectedRow : Role::HeaderBar);
+                // The focused sub-list resolves the theme's .list::selected:focus
+                // rule; the parked one shows the shared unfocused shade.
+                $bg = $this->focused && !$this->filesFocused ? $this->resolveElement('selected') : $this->styles->of(Role::SelectedRowUnfocused);
             }
             if (!$selected && ($scroll + $row) === $this->hoveredCommit) {
                 $bg = $this->styles->of(Role::RowHighlightBg);
@@ -386,7 +389,7 @@ final class HistoryListWidget extends AbstractWidget implements FocusableInterfa
         }
 
         $lines[] = $this->styles
-            ->of(Role::RowHighlightBg)
+            ->merge(Role::Toolbar, Role::Dim)
             ->withBold()
             ->apply(
                 AnsiUtils::truncateToWidth($this->translator->trans(' Files (%count%)', ['%count%' => \count($this->files)]), $width, '…', pad: true),
@@ -401,7 +404,7 @@ final class HistoryListWidget extends AbstractWidget implements FocusableInterfa
             $selected = $this->fileList->isSelected($fileScroll + $row);
             $bg = null;
             if ($selected) {
-                $bg = $this->styles->of($this->focused && $this->filesFocused ? Role::SelectedRow : Role::HeaderBar);
+                $bg = $this->focused && $this->filesFocused ? $this->resolveElement('selected') : $this->styles->of(Role::SelectedRowUnfocused);
             }
             if (!$selected && ($fileScroll + $row) === $this->hoveredFile) {
                 $bg = $this->styles->of(Role::RowHighlightBg);

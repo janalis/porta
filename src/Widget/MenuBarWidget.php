@@ -152,7 +152,7 @@ final class MenuBarWidget extends OverlayWidget implements FocusableInterface
             $hovered = !$this->open && $i === $this->hoveredIndex;
             $line .= match (true) {
                 $active => $this->styles->of(Role::SelectedRow)->apply($label),
-                $hovered => $this->styles->merge(Role::MenuActiveBg, Role::Bright)->apply($label),
+                $hovered => $this->styles->merge(Role::BarHoverBg, Role::Bright)->apply($label),
                 default => $this->styles->merge(Role::HeaderBar, Role::Muted)->apply($label),
             };
             $this->titleLayout[] = ['index' => $i, 'start' => $used, 'width' => $width];
