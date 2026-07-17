@@ -1184,4 +1184,58 @@ final class CodeEditorWidgetTest extends TestCase
         $screen = implode("\n", array_map(AnsiUtils::stripAnsiCodes(...), $editor->render(new RenderContext(80, 6))));
         $this->assertStringNotContainsString('abc12345', $screen);
     }
+
+    public function testMovePopupSelectionDispatchesToTheOpenPopup(): void
+    {
+        $editor = $this->editor();
+        $this->assertFalse($editor->movePopupSelection(3), 'no popup: falls through to the buffer scroll');
+
+        // Completion popup: the wheel wraps its selection like the arrows.
+        $editor->getDocument()->setCursor(2, 5);
+        $editor->showCompletions([
+            new CompletionItem(label: 'echoFirst', insertText: 'echoFirst', kind: 'fn', detail: ''),
+            new CompletionItem(label: 'echoSecond', insertText: 'echoSecond', kind: 'fn', detail: ''),
+        ]);
+        $this->assertTrue($editor->movePopupSelection(3), 'the completion consumed the wheel');
+        $editor->handleInput("\r");
+        $this->assertStringContainsString('echoSecond', $editor->getDocument()->getLine(2), '3 % 2 steps land on the second candidate');
+
+        // List overlay: same dispatch, wrapping selection.
+        $picked = null;
+        $editor->openListOverlay(
+            'Recent Files',
+            [
+                ['label' => 'a.php', 'hint' => '', 'value' => 'A'],
+                ['label' => 'b.php', 'hint' => '', 'value' => 'B'],
+                ['label' => 'c.php', 'hint' => '', 'value' => 'C'],
+            ],
+            static function (string $value) use (&$picked): void {
+                $picked = $value;
+            },
+        );
+        $this->assertTrue($editor->movePopupSelection(-1), 'the list overlay consumed the wheel');
+        $editor->handleInput("\r");
+        $this->assertSame('C', $picked, 'a wheel-up from the first row wraps to the last');
+
+        // Search Everywhere modal: the wheel reaches its selection too.
+        $editor->openSearch('Search', static fn () => null, static fn () => null, static fn () => null);
+        $this->assertTrue($editor->movePopupSelection(1), 'the search modal consumed the wheel');
+        $editor->handleSearchOverlayInput("\x1b");
+    }
+
+    public function testMoveSelectionWithoutCandidatesIsInert(): void
+    {
+        // Directly on the collaborator: an empty candidate list must not
+        // divide by zero when a stray wheel reaches it.
+        $completion = new \Porta\Editor\EditorCompletion(
+            new \Porta\Editor\Document(''),
+            static function (): void {},
+            static function (): void {},
+            static fn (): bool => true,
+            static function (): void {},
+            static function (): void {},
+        );
+        $completion->moveSelection(1);
+        $this->addToAssertionCount(1); // no crash, no invalidation needed
+    }
 }

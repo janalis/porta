@@ -122,6 +122,18 @@ final class GoToFileWidget extends OverlayWidget implements FocusableInterface
     }
 
     /** Route a left-click at the given widget-relative row: a result row picks that file. */
+    /** Wheel over the popup: move the selection like the arrow keys. */
+    public function moveSelection(int $delta): void
+    {
+        if ($delta < 0) {
+            $this->list->moveUp(-$delta);
+        }
+        if ($delta > 0) {
+            $this->list->moveDown(\count($this->results), $delta);
+        }
+        $this->invalidate();
+    }
+
     public function handleClick(int $relRow): void
     {
         $index = $this->rowIndexAt($relRow);

@@ -221,11 +221,34 @@ final class MouseRouter
         }
 
         // The tab strip: a wheel over it pages through overflowing tabs — one
+        // An open menu owns the wheel inside its dropdown region — one item
+        // per notch (short, separator-skipping lists).
+        if ($this->contextMenu->isOpen() && null !== $this->hit->hitRegion($this->overlay->contextMenuDropdown(), $mouse->row, $mouse->col)) {
+            $this->contextMenu->moveSelection($mouse->wheelDelta);
+            $this->tui->requestRender();
+
+            return;
+        }
+        if ($this->menuBar->isOpen() && null !== $this->hit->hitRegion($this->overlay->menuDropdown(), $mouse->row, $mouse->col)) {
+            $this->menuBar->moveSelection($mouse->wheelDelta);
+            $this->tui->requestRender();
+
+            return;
+        }
+
         // wide tab per notch on the horizontal strip, the panel-list three
         // rows per notch on the vertical one.
         if ($this->containsPointer($tabsRect, $mouse)) {
             $tabBar = $this->panes->tabBar();
             $tabBar->scrollBy(($tabBar->position()->isSide() ? 3 : 1) * $mouse->wheelDelta);
+            $this->tui->requestRender();
+
+            return;
+        }
+
+        // The go-to-file popup: wheel moves its selection like the arrows.
+        if ($this->goToFile->isOpen() && null !== $this->hit->hit($this->goToFile, $mouse->row, $mouse->col)) {
+            $this->goToFile->moveSelection(3 * $mouse->wheelDelta);
             $this->tui->requestRender();
 
             return;
@@ -240,12 +263,22 @@ final class MouseRouter
             return;
         }
 
+        // Wheel over the dock strip cycles the tool tabs — an explicit panel
+        // switch, so the focus follows like a strip click would.
+        $stripRect = $this->hit->rect($this->dockTabs);
+        if ($this->dock->stripVisible() && null !== $stripRect && $mouse->row === $stripRect->row && $mouse->col >= $stripRect->col && $mouse->col < ($stripRect->col + $stripRect->columns)) {
+            $this->dock->cycle($mouse->wheelDelta);
+            $this->tui->requestRender();
+
+            return;
+        }
+
         // The visible dock panel (results / debug / terminal) scrolls its
         // list — the terminal scrolls its scrollback (wheel up → into history).
         $panel = $this->dock->visiblePanel();
         if (null !== $panel && $this->containsPointer($this->hit->rect($panel), $mouse)) {
             match (true) {
-                $panel instanceof TerminalPanelWidget => $panel->scroll($mouse->wheelDelta < 0 ? 3 : -3),
+                $panel instanceof TerminalPanelWidget => $panel->scroll(-3 * $mouse->wheelDelta),
                 default => $panel->scrollBy(3 * $mouse->wheelDelta),
             };
             $this->tui->requestRender();
@@ -255,7 +288,12 @@ final class MouseRouter
 
         $step = 3 * $mouse->wheelDelta;
         if ($this->containsPointer($editorRect, $mouse)) {
-            $this->panes->editor()->scrollBy($step);
+            // An open editor popup (completion, list overlay, search modal)
+            // owns the wheel — its selection moves instead of the buffer
+            // scrolling away underneath it.
+            if (!$this->panes->editor()->movePopupSelection($step)) {
+                $this->panes->editor()->scrollBy($step);
+            }
             $this->tui->requestRender();
 
             return;

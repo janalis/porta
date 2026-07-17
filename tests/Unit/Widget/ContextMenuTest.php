@@ -226,4 +226,15 @@ final class ContextMenuTest extends TestCase
         $menu->handleInput("\r"); // nothing to run
         $this->assertFalse($menu->isOpen(), 'select on a separator still closes');
     }
+
+    public function testWheelMovesTheSelectionOneItemPerNotch(): void
+    {
+        $closed = new ContextMenu();
+        $closed->moveSelection(1); // closed: a no-op
+
+        $menu = $this->menu();
+        $menu->moveSelection(1); // steps past the separator to the next item
+        $menu->handleInput("\r");
+        $this->assertNotSame([], $this->ran, 'the wheel-selected item ran on Enter');
+    }
 }

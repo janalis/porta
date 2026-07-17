@@ -341,4 +341,79 @@ final class IdeDockToolsTest extends TestCase
 
         $this->addToAssertionCount(1);
     }
+
+    public function testWheelParityAcrossPopupsMenusSettingsAndTheDockStrip(): void
+    {
+        putenv('PATH=/nonexistent');
+        $project = new TempProject(['a.php' => "<?php\n", 'b.php' => "<?php\n"]);
+        $wheel = static function ($tui, int $col, int $row, int $code = 65): void {
+            $tui->handleInput(\sprintf("\x1b[<%d;%d;%dM", $code, $col, $row));
+        };
+
+        $this->runIde(
+            $project,
+            $project->path('a.php'),
+            [
+                200 => function ($tui, $terminal, $ide) use ($wheel): void {
+                    $renderer = new \ReflectionProperty($ide, 'renderer')->getValue($ide);
+
+                    // Go-to-file: the wheel moves its selection.
+                    $tui->handleInput("\x1b[112;5u"); // ctrl+p
+                    foreach (str_split('php') as $ch) {
+                        $tui->handleInput($ch);
+                    }
+                    $tui->tick();
+                    $gotoRect = $renderer->getWidgetRect($tui->getById('goto-file'));
+                    $wheel($tui, $gotoRect->col + 3, $gotoRect->row + 2);
+                    $tui->tick();
+                    $tui->handleInput("\r"); // picks the wheel-selected row
+                    $tui->tick();
+                    $this->assertStringEndsWith('b.php', (string) $tui->getById('editor')->getFilePath(), 'wheel-down + Enter opened the later match');
+
+                    // Menu dropdown: one item per notch inside the region.
+                    $tui->handleInput("\x1b[21~"); // F10 opens the app menu
+                    $tui->tick();
+                    $wheel($tui, col: 3, row: 3);
+                    $tui->tick();
+                    $tui->handleInput("\x1b"); // close the menu
+                    $tui->tick();
+
+                    // Context menu: right-click the editor, wheel inside the dropdown.
+                    $editorRect = $renderer->getWidgetRect($tui->getById('editor'));
+                    $tui->handleInput(\sprintf("\x1b[<2;%d;%dM", $editorRect->col + 10, $editorRect->row + 2));
+                    $tui->tick();
+                    $wheel($tui, col: $editorRect->col + 12, row: $editorRect->row + 4);
+                    $tui->tick();
+                    $tui->handleInput("\x1b"); // close the context menu
+                    $tui->tick();
+
+                    // Settings: nav and form both scroll under the wheel.
+                    new \ReflectionProperty($ide, 'commands')->getValue($ide)->run('ide_settings');
+                    $tui->tick();
+                    $navRect = $renderer->getWidgetRect($tui->getById('settings-nav'));
+                    $wheel($tui, $navRect->col + 2, $navRect->row + 2);
+                    $tui->tick();
+                    $formRect = $renderer->getWidgetRect($tui->getById('settings-form'));
+                    $wheel($tui, $formRect->col + 4, $formRect->row + 2);
+                    $tui->tick();
+                    new \ReflectionProperty($ide, 'commands')->getValue($ide)->run('ide_settings'); // back out
+                    $tui->tick();
+                },
+                600 => function ($tui, $terminal, $ide) use ($wheel): void {
+                    // Dock strip: the wheel cycles the tool tabs.
+                    $tui->handleInput("\x1b6"); // Problems
+                    $tui->handleInput("\x1b8"); // the scanner tab joins (grep-less PATH → instant empty scan)
+                    $tui->tick();
+                    $renderer = new \ReflectionProperty($ide, 'renderer')->getValue($ide);
+                    $stripRect = $renderer->getWidgetRect($tui->getById('dock-tabs'));
+                    $this->assertSame('TODO', $tui->getById('results')->getTitle());
+                    $wheel($tui, $stripRect->col + 3, $stripRect->row + 1, code: 64); // wheel-up cycles back
+                    $tui->tick();
+                    $this->assertSame('Problems', $tui->getById('results')->getTitle(), 'a strip wheel switches the tool tab');
+                },
+            ],
+        );
+
+        $this->addToAssertionCount(1);
+    }
 }

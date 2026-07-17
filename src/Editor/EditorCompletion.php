@@ -161,6 +161,18 @@ final class EditorCompletion
     }
 
     /** Highlight the popup row under the pointer; true when the highlight changed. */
+    /** Wheel over the completion popup: move the selection, wrapping like the arrow keys. */
+    public function moveSelection(int $delta): void
+    {
+        $filtered = $this->filtered();
+        if ([] === $filtered) {
+            return;
+        }
+        $count = \count($filtered);
+        $this->selected = ((($this->selected + $delta) % $count) + $count) % $count;
+        ($this->invalidate)();
+    }
+
     public function handleHover(int $relRow, int $relCol): bool
     {
         if ($this->open) {

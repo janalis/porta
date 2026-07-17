@@ -135,6 +135,16 @@ final class ContextMenu extends OverlayWidget
      * Highlight the item at $index (from a hover). Skips separators/disabled and
      * no-ops when already selected; returns whether the highlight changed.
      */
+    /** Wheel over the menu: move the highlight one item per notch. */
+    public function moveSelection(int $delta): void
+    {
+        if (!$this->isOpen()) {
+            return;
+        }
+        $this->selected = MenuPanel::step($this->items, $this->selected, $delta > 0 ? 1 : -1);
+        $this->afterNavigate();
+    }
+
     public function hoverItem(int $index): bool
     {
         $item = $this->items[$index] ?? null;

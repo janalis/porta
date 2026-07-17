@@ -348,4 +348,15 @@ final class MenuBarWidgetTest extends TestCase
         $this->assertFalse($bar->isOpen());
         $this->assertExactWidth($bar->render(new RenderContext(30, 5)), 30);
     }
+
+    public function testWheelMovesTheDropdownSelectionOneItemPerNotch(): void
+    {
+        $bar = $this->bar();
+        $bar->moveSelection(1); // closed: a no-op
+
+        $bar->open(0);
+        $bar->moveSelection(1); // Save → (separator skipped) → Quit
+        $bar->handleInput("\r");
+        $this->assertSame(['quit'], $this->ran, 'the wheel stepped past the separator to Quit');
+    }
 }

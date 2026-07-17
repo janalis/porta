@@ -835,6 +835,32 @@ final class CodeEditorWidget extends AbstractWidget implements ActiveFileProvide
      * Returns whether the highlighted row actually changed (so the caller can
      * skip a redundant re-render on a same-row hover).
      */
+    /**
+     * Wheel over an open editor popup: move ITS selection instead of
+     * scrolling the buffer underneath. Returns whether a popup consumed it
+     * (the find modal keeps its own dedicated scroll path).
+     */
+    public function movePopupSelection(int $delta): bool
+    {
+        if ($this->overlayHost->isSearchOpen()) {
+            $this->overlayHost->moveSearchSelection($delta);
+
+            return true;
+        }
+        if ($this->overlayHost->isListOpen()) {
+            $this->overlayHost->moveListSelection($delta);
+
+            return true;
+        }
+        if ($this->completion->isOpen()) {
+            $this->completion->moveSelection($delta);
+
+            return true;
+        }
+
+        return false;
+    }
+
     public function handlePopupHover(int $relRow, int $relCol): bool
     {
         if ($this->findModal->isOpen()) {

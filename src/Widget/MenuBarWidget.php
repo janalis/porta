@@ -279,6 +279,16 @@ final class MenuBarWidget extends OverlayWidget implements FocusableInterface
     }
 
     /** Move the selection by $dir, skipping separators and wrapping. */
+    /** Wheel over the open dropdown: move the highlight one item per notch. */
+    public function moveSelection(int $delta): void
+    {
+        if (!$this->isOpen()) {
+            return;
+        }
+        $this->selected = $this->step($delta > 0 ? 1 : -1);
+        $this->afterNavigate();
+    }
+
     private function step(int $dir): int
     {
         return MenuPanel::step($this->menus[$this->openIndex]->items, $this->selected, $dir);

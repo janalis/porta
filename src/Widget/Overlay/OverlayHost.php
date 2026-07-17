@@ -403,6 +403,32 @@ final class OverlayHost
     }
 
     /** Move the selection $dir hit rows, wrapping and skipping headers. */
+    /** Wheel over the list overlay: move the selection, wrapping like the arrow keys. */
+    public function moveListSelection(int $delta): void
+    {
+        $overlay = $this->overlay;
+        if (null === $overlay || [] === $overlay['items']) {
+            return;
+        }
+        $count = \count($overlay['items']);
+        $overlay['selected'] = ((($overlay['selected'] + $delta) % $count) + $count) % $count;
+        $this->overlay = $overlay;
+        ($this->invalidate)();
+    }
+
+    /** Wheel over the search modal: move the selection, skipping header rows. */
+    public function moveSearchSelection(int $delta): void
+    {
+        $search = $this->search;
+        if (null === $search || [] === $search->rows) {
+            return;
+        }
+        for ($i = 0; $i < abs($delta); ++$i) {
+            $search->selected = $this->stepHit($search, $delta > 0 ? 1 : -1);
+        }
+        ($this->invalidate)();
+    }
+
     private function stepHit(SearchModalState $search, int $dir): int
     {
         $count = \count($search->rows);

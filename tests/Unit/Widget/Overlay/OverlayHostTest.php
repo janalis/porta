@@ -373,4 +373,41 @@ final class OverlayHostTest extends TestCase
         $host->searchClickAt($topHitRow - 1, 40); // click the category header → dismiss
         $this->assertSame(1, $closed);
     }
+
+    public function testWheelMovesTheSearchSelectionSkippingHeaders(): void
+    {
+        $host = $this->host();
+        $host->moveSearchSelection(1); // closed: a no-op
+        $activated = 0;
+        $host->openSearch('Search', static fn () => null, static fn () => null, static fn () => null);
+        $host->moveSearchSelection(1); // no rows yet: a no-op
+        $host->setSearchRows($this->searchRows(static function () use (&$activated): void {
+            ++$activated;
+        }));
+
+        $before = $this->invalidations;
+        $host->moveSearchSelection(1);
+        $this->assertGreaterThan($before, $this->invalidations, 'the wheel moved the search selection');
+    }
+
+    public function testWheelWrapsTheListOverlaySelection(): void
+    {
+        $host = $this->host();
+        $host->moveListSelection(1); // closed: a no-op
+        $picked = null;
+        $host->openList(
+            'Recent',
+            [
+                ['label' => 'a', 'hint' => '', 'value' => 'A'],
+                ['label' => 'b', 'hint' => '', 'value' => 'B'],
+            ],
+            static function (string $value) use (&$picked): void {
+                $picked = $value;
+            },
+        );
+
+        $host->moveListSelection(-1); // wraps from the first row to the last
+        $host->handleInput("\r", $this->keybindings());
+        $this->assertSame('B', $picked);
+    }
 }

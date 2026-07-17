@@ -213,4 +213,23 @@ final class GoToFileWidgetTest extends TestCase
         $this->assertStringNotContainsString('node_modules', $plain);
         $this->assertStringNotContainsString('index.js', $plain);
     }
+
+    public function testWheelMovesTheSelectionThreeRowsPerNotch(): void
+    {
+        $project = new TempProject(['a.php' => '', 'b.php' => '', 'c.php' => '', 'd.php' => '', 'e.php' => '']);
+        $widget = $this->widget($project);
+        $this->type($widget, 'php'); // all five match
+
+        $picked = null;
+        $widget->onPick(static function (string $path) use (&$picked): void {
+            $picked = $path;
+        });
+
+        $widget->moveSelection(3);
+        $widget->moveSelection(-99); // clamps at the top
+        $widget->moveSelection(3);
+        $widget->handleInput("\r");
+        $this->assertNotNull($picked, 'the wheel-selected row picks on Enter');
+        $this->assertStringEndsWith('d.php', $picked, 'three rows down from the first');
+    }
 }
