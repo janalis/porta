@@ -200,14 +200,15 @@ final class ThemeLockTest extends TestCase
         $this->assertEquals($hc->of(Role::DiagInfo), $hc->of(Role::DiagInfoDim), 'no dim tier in high contrast');
     }
 
-    public function testMonochromeStylesNoRoleExceptTheSelection(): void
+    public function testMonochromeStylesNoRoleExceptSelectionAndHover(): void
     {
-        // The selection roles and the active-tab shade are the deliberate
-        // exceptions: without color they would otherwise be invisible, so
-        // they map to reverse video.
+        // The selection roles + active-tab shade (reverse) and the hover roles
+        // (underline) are the deliberate exceptions: without color they would
+        // otherwise be invisible.
         $mono = MonochromeTheme::definition();
+        $mapped = [Role::SelectedRow, Role::SelectedRowUnfocused, Role::TabActiveBg, Role::RowHighlightBg, Role::BarHoverBg];
         foreach (Role::cases() as $role) {
-            if (\in_array($role, [Role::SelectedRow, Role::SelectedRowUnfocused, Role::TabActiveBg], strict: true)) {
+            if (\in_array($role, $mapped, strict: true)) {
                 continue;
             }
             $this->assertTrue($mono->of($role)->isPlain(), $role->name.' must stay plain');
@@ -221,6 +222,16 @@ final class ThemeLockTest extends TestCase
         $this->assertEquals(new Style(reverse: true), $mono->of(Role::SelectedRow));
         $this->assertEquals(new Style(dim: true, reverse: true), $mono->of(Role::SelectedRowUnfocused));
         $this->assertEquals(new Style(reverse: true), $mono->of(Role::TabActiveBg), 'the active tab stays visible without color');
+    }
+
+    public function testMonochromeHoverUsesUnderlineDistinctFromTheSelection(): void
+    {
+        // The tint-only hover must still read without color, and as a mark
+        // distinct from the selection's reverse video (so a selected+hovered
+        // row is not ambiguous — render precedence keeps the reverse).
+        $mono = MonochromeTheme::definition();
+        $this->assertEquals(new Style(underline: true), $mono->of(Role::RowHighlightBg));
+        $this->assertEquals(new Style(underline: true), $mono->of(Role::BarHoverBg));
     }
 
     public function testListElementRulesMirrorTheSelectionRolesInEveryTheme(): void

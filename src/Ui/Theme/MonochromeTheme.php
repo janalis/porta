@@ -24,6 +24,13 @@ final class MonochromeTheme
                 Role::SelectedRow->selector() => new Style(reverse: true),
                 Role::SelectedRowUnfocused->selector() => new Style(dim: true, reverse: true),
                 Role::TabActiveBg->selector() => new Style(reverse: true),
+                // Selection is reverse; hover is underline — a distinct mark, so
+                // the tint-only hover the widgets build still reads with no
+                // colour (where these roles would otherwise resolve to plain).
+                // Selection wins where a row is both: render precedence puts the
+                // reverse-video selection ahead of the underline.
+                Role::RowHighlightBg->selector() => new Style(underline: true),
+                Role::BarHoverBg->selector() => new Style(underline: true),
                 // The :focus variant merges over the base rule, so it must
                 // cancel the unfocused dim explicitly.
                 '.list::selected' => new Style(dim: true, reverse: true),
