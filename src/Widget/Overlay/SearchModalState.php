@@ -19,6 +19,8 @@ final class SearchModalState
     /** @var list<SearchRow> */
     public array $rows = [];
     public int $selected = 0;
+    /** Hit row tinted under the pointer; visual only, never the selection. */
+    public ?int $hovered = null;
 
     /**
      * @param \Closure(string): void    $onQuery fired on each query edit

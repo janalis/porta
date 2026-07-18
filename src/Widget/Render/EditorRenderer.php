@@ -172,6 +172,16 @@ final class EditorRenderer
         return $doc->displayColAt($line, $doc->utf16ColToByteCol($line, $utf16Col));
     }
 
+    /** The shading for a modal list row: the selection wins, then the hover tint, then plain. */
+    private static function rowRole(int $index, int $selected, ?int $hovered): Role
+    {
+        return match (true) {
+            $index === $selected => Role::SelectedRow,
+            $index === $hovered => Role::RowHighlightBg,
+            default => Role::PopupRow,
+        };
+    }
+
     /**
      * Total display width of a line's inlay hints at or before display column $displayCol.
      *
@@ -362,7 +372,7 @@ final class EditorRenderer
      * box spans columns `[col, col + width)`; `count` is the number of item rows.
      *
      * @param string[]                                                                      $lines
-     * @param array{title: string, items: list<array{label: string, hint: string, value: string}>, selected: int, onPick: callable} $overlay
+     * @param array{title: string, items: list<array{label: string, hint: string, value: string}>, selected: int, hovered: int|null, onPick: callable} $overlay
      *
      * @return array{col: int, width: int, startRow: int, windowStart: int, count: int}
      */
@@ -370,6 +380,7 @@ final class EditorRenderer
     {
         $items = $overlay['items'];
         $selected = $overlay['selected'];
+        $hovered = $overlay['hovered'] ?? null;
         $maxItems = max(1, min(\count($items), $rows - 3, 12));
         $windowStart = IntMath::clamp($selected - $maxItems + 1, 0, \count($items) - $maxItems);
         $visible = \array_slice($items, $windowStart, $maxItems);
@@ -384,8 +395,7 @@ final class EditorRenderer
         $popup = [];
         $popup[] = HeaderRenderer::render(' '.$overlay['title'], $width, $styles->of(Role::HeaderBar)->withBold(), suffix: 'Esc');
         foreach ($visible as $i => $item) {
-            $isSelected = ($windowStart + $i) === $selected;
-            $style = $styles->of($isSelected ? Role::SelectedRow : Role::PopupRow);
+            $style = $styles->of(self::rowRole($windowStart + $i, $selected, $hovered));
             $hintWidth = mb_strwidth($item['hint']);
             $label = AnsiText::truncate($item['label'], $width - $hintWidth - 3, pad: true);
             $popup[] = $style->apply(' '.$label.' '.$styles->of(Role::CompletionHint)->apply($item['hint']).' ');
@@ -415,6 +425,7 @@ final class EditorRenderer
         PaneFocus $focused,
         array $rowModels,
         int $selected,
+        ?int $hovered,
         Styles $styles,
         string $cursorMarker,
     ): array {
@@ -439,7 +450,7 @@ final class EditorRenderer
 
                 continue;
             }
-            $style = $styles->of(($windowStart + $i) === $selected ? Role::SelectedRow : Role::PopupRow);
+            $style = $styles->of(self::rowRole($windowStart + $i, $selected, $hovered));
             // ` label · detail ` — three chrome columns (leading, gap, trailing).
             // Bound the detail first (leaving ≥1 column for the label) so a long
             // path can never push the row past $width and overflow the pane.
@@ -460,7 +471,7 @@ final class EditorRenderer
      * @param string[]             $lines
      * @param list<CompletionItem> $items filtered
      */
-    public static function completionPopup(array &$lines, int $columns, int $rows, int $cursorScreenRow, int $anchorCol, array $items, int $selected, Styles $styles): CompletionBox
+    public static function completionPopup(array &$lines, int $columns, int $rows, int $cursorScreenRow, int $anchorCol, array $items, int $selected, ?int $hovered, Styles $styles): CompletionBox
     {
         $windowOffset = max(0, $selected - self::POPUP_MAX_ITEMS + 1);
         $visible = \array_slice($items, $windowOffset, self::POPUP_MAX_ITEMS);
@@ -484,8 +495,7 @@ final class EditorRenderer
                 continue;
             }
 
-            $isSelected = $i === $selectedInWindow;
-            $style = $styles->of($isSelected ? Role::SelectedRow : Role::PopupRow);
+            $style = $styles->of(self::rowRole($i, $selectedInWindow, null === $hovered ? null : $hovered - $windowOffset));
             $kindTag = $styles->of(Role::CompletionKind)->apply($item->kind);
             $labelWidth = $width - mb_strwidth($item->kind) - 3;
             $label = AnsiText::truncate($item->label, $labelWidth, pad: true);

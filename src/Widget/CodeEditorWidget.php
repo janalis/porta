@@ -991,7 +991,17 @@ final class CodeEditorWidget extends AbstractWidget implements ActiveFileProvide
         $this->completion->setBox(null);
         if (null !== ($popup = $this->completion->popupState())) {
             $anchorCol = $geo->gutterWidth + ($geo->cursorDisplayCol - $geo->hScroll) - mb_strwidth($this->document->getWordBeforeCursor());
-            $this->completion->setBox(EditorRenderer::completionPopup($result, $geo->columns, $geo->rows, $cursorScreenRow, $anchorCol, $popup['items'], $popup['selected'], $this->styles));
+            $this->completion->setBox(EditorRenderer::completionPopup(
+                $result,
+                $geo->columns,
+                $geo->rows,
+                $cursorScreenRow,
+                $anchorCol,
+                $popup['items'],
+                $popup['selected'],
+                $popup['hovered'],
+                $this->styles,
+            ));
         }
 
         /** @var list<string> $result signatureHint() rewrites rows in place, keeping the shape */

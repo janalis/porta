@@ -741,15 +741,22 @@ final class CodeEditorWidgetTest extends TestCase
         $this->assertFalse($editor->isOverlayOpen());
     }
 
-    public function testListOverlayHoverTracksPointer(): void
+    public function testListOverlayHoverTintsWithoutMovingTheSelection(): void
     {
         $editor = $this->overlayEditor(new \ArrayObject(['picked' => null]));
         $editor->render(new RenderContext(80, 20));
 
-        $this->assertTrue($editor->handlePopupHover(7, 35), 'hover item 1 → selection changed');
+        $this->assertTrue($editor->handlePopupHover(7, 35), 'hover item 1 tints it');
         $this->assertFalse($editor->handlePopupHover(7, 35), 'same row → no change');
-        $this->assertFalse($editor->handlePopupHover(5, 35), 'title row is not an item');
-        $this->assertFalse($editor->handlePopupHover(15, 35), 'a row past the items is not an item');
+        $this->assertTrue($editor->handlePopupHover(5, 35), 'the title row is no item: the tint clears');
+        $this->assertFalse($editor->handlePopupHover(5, 35), 'still no item → no change');
+
+        // Hover item 1; item 0 stays selected.
+        $editor->handlePopupHover(7, 35);
+        $rows = $editor->render(new RenderContext(80, 20));
+        $body = implode("\n", $rows);
+        $this->assertStringContainsString("\x1b[48;5;31m", $body, 'the selected item keeps its background');
+        $this->assertStringContainsString("\x1b[48;5;236m", $body, 'the hovered item takes the hover tint');
     }
 
     private function completionEditor(): CodeEditorWidget
@@ -793,16 +800,23 @@ final class CodeEditorWidgetTest extends TestCase
         $this->assertTrue($editor->isCompletionOpen());
     }
 
-    public function testCompletionHoverTracksPointer(): void
+    public function testCompletionHoverTintsWithoutMovingTheSelection(): void
     {
         $editor = $this->completionEditor();
         $editor->render(new RenderContext(80, 20));
 
-        $this->assertTrue($editor->handlePopupHover(4, 12), 'hover the second suggestion → changed');
+        $this->assertTrue($editor->handlePopupHover(4, 12), 'hover the second suggestion tints it');
         $this->assertFalse($editor->handlePopupHover(4, 12), 'same row → no change');
-        $this->assertFalse($editor->handlePopupHover(2, 12), 'a row above the popup is not an item');
-        $this->assertFalse($editor->handlePopupHover(10, 12), 'a row below the popup is not an item');
-        // The hovered (second) item is what a subsequent click accepts.
+        $this->assertTrue($editor->handlePopupHover(2, 12), 'a row above the popup clears the tint');
+        $this->assertFalse($editor->handlePopupHover(2, 12), 'still off the popup → no change');
+
+        // Hover the second item; the first stays selected.
+        $editor->handlePopupHover(4, 12);
+        $rows = $editor->render(new RenderContext(80, 20));
+        $this->assertStringContainsString("\x1b[48;5;31m", $rows[3], 'the first suggestion keeps the selection background');
+        $this->assertStringContainsString("\x1b[48;5;236m", $rows[4], 'the hovered second suggestion takes the hover tint, not the selection');
+
+        // A click still accepts the row it lands on, regardless of hover.
         $editor->handlePopupClick(4, 12);
         $this->assertStringContainsString('echoSecond', $editor->getDocument()->getLine(2));
     }

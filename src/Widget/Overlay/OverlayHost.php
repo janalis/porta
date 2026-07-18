@@ -29,7 +29,7 @@ use Symfony\Component\Tui\Input\Keybindings;
  */
 final class OverlayHost
 {
-    /** @var array{title: string, items: list<array{label: string, hint: string, value: string}>, selected: int, onPick: callable(string): void}|null */
+    /** @var array{title: string, items: list<array{label: string, hint: string, value: string}>, selected: int, hovered: int|null, onPick: callable(string): void}|null */
     private ?array $overlay = null;
     /** @var array{col: int, width: int, startRow: int, windowStart: int, count: int}|null last-rendered overlay box, for mouse hit-testing */
     private ?array $overlayBox = null;
@@ -66,7 +66,7 @@ final class OverlayHost
         if ([] === $items) {
             return;
         }
-        $this->overlay = ['title' => $title, 'items' => $items, 'selected' => 0, 'onPick' => $onPick];
+        $this->overlay = ['title' => $title, 'items' => $items, 'selected' => 0, 'hovered' => null, 'onPick' => $onPick];
         ($this->invalidate)();
     }
 
@@ -121,6 +121,7 @@ final class OverlayHost
         }
         $search->rows = $rows;
         $search->selected = $this->firstHitAtOrAfter($rows, $search->selected);
+        $search->hovered = null; // the rows moved under a still pointer
         ($this->invalidate)();
     }
 
@@ -200,7 +201,7 @@ final class OverlayHost
         return true;
     }
 
-    /** Highlight the search hit row under the pointer; returns whether it changed. */
+    /** Tint the search hit row under the pointer; returns whether it changed. Never moves the selection. */
     public function searchHoverAt(int $relRow, int $relCol): bool
     {
         $search = $this->search;
@@ -208,14 +209,14 @@ final class OverlayHost
             return false;
         }
         $index = $this->boxItemAt($this->searchBox, 2, $relRow, $relCol);
-        if (null !== $index && !$search->rows[$index]->isHeader() && $index !== $search->selected) {
-            $search->selected = $index;
-            ($this->invalidate)();
-
-            return true;
+        $hovered = null !== $index && !$search->rows[$index]->isHeader() ? $index : null;
+        if ($hovered === $search->hovered) {
+            return false;
         }
+        $search->hovered = $hovered;
+        ($this->invalidate)();
 
-        return false;
+        return true;
     }
 
     /**
@@ -270,7 +271,7 @@ final class OverlayHost
         }
     }
 
-    /** @param array{title: string, items: list<array{label: string, hint: string, value: string}>, selected: int, onPick: callable(string): void} $overlay the open list overlay (non-null) */
+    /** @param array{title: string, items: list<array{label: string, hint: string, value: string}>, selected: int, hovered: int|null, onPick: callable(string): void} $overlay the open list overlay (non-null) */
     private function handleOverlayInput(string $keys, Keybindings $kb, array $overlay): void
     {
         $count = \count($overlay['items']);
@@ -353,15 +354,14 @@ final class OverlayHost
 
         $overlay = $this->overlay;
         $index = $this->boxItemAt($this->overlayBox, 1, $relRow, $relCol);
-        if (null !== $index && $index !== $overlay['selected']) {
-            $overlay['selected'] = $index;
-            $this->overlay = $overlay;
-            ($this->invalidate)();
-
-            return true;
+        if ($index === ($overlay['hovered'] ?? null)) {
+            return false;
         }
+        $overlay['hovered'] = $index;
+        $this->overlay = $overlay;
+        ($this->invalidate)();
 
-        return false;
+        return true;
     }
 
     /**
@@ -475,6 +475,7 @@ final class OverlayHost
                 CaretVisibility::Shown === $focused ? PaneFocus::Focused : PaneFocus::Blurred,
                 $rowModels,
                 $search->selected,
+                $search->hovered,
                 $this->styles,
                 $this->cursorStyle->marker(),
             );

@@ -21,6 +21,8 @@ final class EditorCompletion
     private array $items = [];
     private bool $open = false;
     private int $selected = 0;
+    /** Row tinted under the pointer; visual only, never the selection. */
+    private ?int $hovered = null;
     private string $prefix = '';
     private ?CompletionBox $box = null;
     private readonly SnippetSession $snippet;
@@ -49,6 +51,7 @@ final class EditorCompletion
         $this->prefix = $this->document->getWordBeforeCursor();
         $this->items = $items;
         $this->selected = 0;
+        $this->hovered = null; // the list rebuilt under a still pointer
         $this->open = [] !== $this->filtered();
         ($this->invalidate)();
     }
@@ -63,6 +66,7 @@ final class EditorCompletion
         $this->open = false;
         $this->items = [];
         $this->selected = 0;
+        $this->hovered = null;
         $this->prefix = '';
     }
 
@@ -160,7 +164,6 @@ final class EditorCompletion
         return false;
     }
 
-    /** Highlight the popup row under the pointer; true when the highlight changed. */
     /** Wheel over the completion popup: move the selection, wrapping like the arrow keys. */
     public function moveSelection(int $delta): void
     {
@@ -173,19 +176,17 @@ final class EditorCompletion
         ($this->invalidate)();
     }
 
+    /** Tint the popup row under the pointer; true when the tint changed. Never moves the selection. */
     public function handleHover(int $relRow, int $relCol): bool
     {
-        if ($this->open) {
-            $index = $this->completionItemAt($relRow, $relCol);
-            if (null !== $index && $index !== $this->selected) {
-                $this->selected = $index;
-                ($this->invalidate)();
-
-                return true;
-            }
+        $index = $this->open ? $this->completionItemAt($relRow, $relCol) : null;
+        if ($index === $this->hovered) {
+            return false;
         }
+        $this->hovered = $index;
+        ($this->invalidate)();
 
-        return false;
+        return true;
     }
 
     /**
@@ -193,7 +194,7 @@ final class EditorCompletion
      * filtered list), or null when the popup should not be drawn. The widget draws
      * it and hands the box geometry back via {@see setBox}.
      *
-     * @return array{items: list<CompletionItem>, selected: int}|null
+     * @return array{items: list<CompletionItem>, selected: int, hovered: int|null}|null
      */
     public function popupState(): ?array
     {
@@ -205,8 +206,11 @@ final class EditorCompletion
             return null;
         }
         $this->selected = min($this->selected, \count($items) - 1);
+        // The list refilters as you type, so a resting pointer's row can move
+        // out from under it — drop a tint that no longer names a row.
+        $hovered = null !== $this->hovered && $this->hovered < \count($items) ? $this->hovered : null;
 
-        return ['items' => $items, 'selected' => $this->selected];
+        return ['items' => $items, 'selected' => $this->selected, 'hovered' => $hovered];
     }
 
     /** Remember the last-rendered popup box geometry for mouse hit-testing. */

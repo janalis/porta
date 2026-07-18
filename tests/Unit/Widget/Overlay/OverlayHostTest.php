@@ -437,4 +437,27 @@ final class OverlayHostTest extends TestCase
         $this->assertStringContainsString('Go to line: 42', AnsiUtils::stripAnsiCodes($line));
         $this->assertStringContainsString('Esc', AnsiUtils::stripAnsiCodes($line));
     }
+
+    public function testSearchHoverTintsAHitWithoutMovingTheSelection(): void
+    {
+        $host = $this->host();
+        $host->openSearch('Search', static fn () => null, static fn () => null, static fn () => null);
+        $host->setSearchRows($this->searchRows(static fn () => null));
+        $host->composite(array_fill(0, count: 20, value: str_repeat(' ', times: 80)), 80, 20, CaretVisibility::Shown);
+
+        // Hover the second hit (rows: header, hit a [selected], hit b, header, hit c).
+        $hitRow = -1;
+        for ($row = 0; $row < 20; ++$row) {
+            if (!$host->searchHoverAt($row, 40)) {
+                continue;
+            }
+
+            $hitRow = $row;
+            break;
+        }
+        $this->assertGreaterThanOrEqual(0, $hitRow, 'a hit row tinted');
+        $body = implode("\n", $host->composite(array_fill(0, count: 20, value: str_repeat(' ', times: 80)), 80, 20, CaretVisibility::Shown));
+        $this->assertStringContainsString("\x1b[48;5;31m", $body, 'the selected hit keeps its background');
+        $this->assertStringContainsString("\x1b[48;5;236m", $body, 'the hovered hit takes the tint, not the selection');
+    }
 }
