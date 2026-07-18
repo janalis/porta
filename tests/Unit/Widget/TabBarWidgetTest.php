@@ -600,7 +600,7 @@ final class TabBarWidgetTest extends TestCase
         $this->assertFalse($bar->hoverTab(0, 500), 'a column past every tab hovers nothing');
     }
 
-    public function testAProviderChangeDropsTheHoverTint(): void
+    public function testAProviderChangeKeepsAStillCorrectHoverTint(): void
     {
         $tabs = [
             ['name' => 'a.php', 'dirty' => false, 'active' => true],
@@ -612,10 +612,33 @@ final class TabBarWidgetTest extends TestCase
         });
         $bar->beforeRender();
         $bar->render(new RenderContext(60, 1));
-        $bar->hoverTab(0, 12);
+        $bar->hoverTab(0, 12); // over the second tab
 
-        $tabs[1]['name'] = 'c.php'; // the strip changed under the pointer
+        // Saving flips a dirty dot (a fingerprint change) but the second tab is
+        // still there — the tint must stay put without a fresh motion event.
+        $tabs[1]['dirty'] = true;
         $bar->beforeRender();
-        $this->assertStringNotContainsString("\x1b[48;5;240m", $bar->render(new RenderContext(60, 1))[0], 'a stale hover index never tints the new strip');
+        $this->assertStringContainsString("\x1b[48;5;240m", $bar->render(new RenderContext(60, 1))[0], 'the hover survives a save under a still pointer');
+    }
+
+    public function testARemovedHoveredTabDropsTheTint(): void
+    {
+        $tabs = [
+            ['name' => 'a.php', 'dirty' => false, 'active' => true],
+            ['name' => 'b.php', 'dirty' => false, 'active' => false],
+        ];
+        $bar = new TabBarWidget();
+        $bar->setProvider(static function () use (&$tabs) {
+            return $tabs;
+        });
+        $bar->beforeRender();
+        $bar->render(new RenderContext(60, 1));
+        $bar->hoverTab(0, 12); // over the second tab
+
+        // Closing the second tab leaves the pointer's column past the only tab
+        // left — the cell resolves to nothing, so no stale tint lingers.
+        array_pop($tabs);
+        $bar->beforeRender();
+        $this->assertStringNotContainsString("\x1b[48;5;240m", $bar->render(new RenderContext(60, 1))[0], 'nothing is tinted where the removed tab was');
     }
 }

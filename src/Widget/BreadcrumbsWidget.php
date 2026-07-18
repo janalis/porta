@@ -23,7 +23,6 @@ use Symfony\Component\Tui\Widget\AbstractWidget;
 #[AsWidget('breadcrumbs')]
 final class BreadcrumbsWidget extends AbstractWidget implements MenuOverlayHost
 {
-    use HoverTrait;
     use MenuOverlayHostTrait;
 
     private readonly Styles $styles;
@@ -47,6 +46,15 @@ final class BreadcrumbsWidget extends AbstractWidget implements MenuOverlayHost
     /** @var list<array{start: int, width: int, line: int}> segment layout from the last render, for hit-testing */
     private array $lastLayout = [];
 
+    /**
+     * The pointer's column over the bar (visual hover), or null. Stored as a
+     * COLUMN and re-resolved against each frame's layout in render, so a crumb
+     * relabel under a still pointer keeps a correct tint without a motion event.
+     */
+    private ?int $hoverCol = null;
+    /** The crumb the column last resolved to — repaint change-detection. */
+    private ?int $hoverResolved = null;
+
     /** @param callable(): list<array{label: string, line: int}> $provider */
     public function setProvider(callable $provider): self
     {
@@ -62,8 +70,9 @@ final class BreadcrumbsWidget extends AbstractWidget implements MenuOverlayHost
         }
         $fingerprint = (string) json_encode(($this->provider)());
         if ($fingerprint !== $this->lastFingerprint) {
+            // The hover column re-resolves per frame, so a relabel needs no
+            // clearHover() — a still-correct tint stays, a stale one falls off.
             $this->lastFingerprint = $fingerprint;
-            $this->clearHover(); // the crumbs changed under the pointer
             $this->invalidate();
         }
     }
@@ -90,7 +99,7 @@ final class BreadcrumbsWidget extends AbstractWidget implements MenuOverlayHost
             $this->lastLayout[] = ['start' => $col, 'width' => $width, 'line' => $crumb['line']];
             // Bar chrome, so the pointer tints with BarHoverBg (not a list
             // row's RowHighlightBg) under whichever foreground the crumb has.
-            $hovered = $i === $this->hoveredIndex;
+            $hovered = null !== $this->hoverCol && $this->hoverCol >= $col && $this->hoverCol < ($col + $width);
             $content .= $this->crumbStyle($i === $last, $hovered)->apply($label);
             $col += $width;
         }
@@ -116,9 +125,31 @@ final class BreadcrumbsWidget extends AbstractWidget implements MenuOverlayHost
     }
 
     /** Tint the crumb under the pointer (widget-relative column); returns whether it changed. */
+    /** Tint the crumb under the pointer (visual only). Stores the column; change at crumb granularity. */
     public function hoverAt(int $col): bool
     {
-        return $this->setHovered($this->crumbIndexAt($col));
+        $this->hoverCol = $col;
+        $resolved = $this->crumbIndexAt($col);
+        if ($resolved === $this->hoverResolved) {
+            return false;
+        }
+        $this->hoverResolved = $resolved;
+        $this->invalidate();
+
+        return true;
+    }
+
+    /** The pointer left the bar: drop the hover tint. Returns whether it changed. */
+    public function clearHover(): bool
+    {
+        if (null === $this->hoverCol) {
+            return false;
+        }
+        $this->hoverCol = null;
+        $this->hoverResolved = null;
+        $this->invalidate();
+
+        return true;
     }
 
     /** The jump line of the crumb at column $col of the last render, or null. */

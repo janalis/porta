@@ -167,6 +167,26 @@ final class BreadcrumbsWidgetTest extends TestCase
         $bar->beforeRender();
         $line = $bar->render(new RenderContext(80, 1))[0];
 
-        $this->assertStringNotContainsString("\x1b[48;5;240m", $line, 'no crumb stays tinted after the trail changes');
+        $this->assertStringNotContainsString("\x1b[48;5;240m", $line, 'the hovered column maps to no crumb in the shorter trail, so nothing is tinted');
+    }
+
+    public function testARelabelUnderAStillPointerKeepsTheTint(): void
+    {
+        $bar = new BreadcrumbsWidget();
+        $crumbs = self::trail();
+        $bar->setProvider(static function () use (&$crumbs): array {
+            return $crumbs;
+        });
+        $bar->beforeRender();
+        $bar->render(new RenderContext(80, 1));
+        $bar->hoverAt(2); // over the first crumb 'App' (cols 1-3)
+
+        // A relabel that keeps the same shape: the pointer still sits on the
+        // first crumb, so its tint must stay without a fresh motion event.
+        $crumbs[2]['label'] = 'renamed';
+        $bar->beforeRender();
+        $line = $bar->render(new RenderContext(80, 1))[0];
+
+        $this->assertStringContainsString("\x1b[48;5;240m", $line, 'the first crumb stays tinted through a downstream relabel');
     }
 }

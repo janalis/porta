@@ -27,7 +27,6 @@ use Symfony\Component\Tui\Widget\AbstractWidget;
 #[AsWidget('tabs', flex: 0)]
 final class TabBarWidget extends AbstractWidget implements MenuOverlayHost
 {
-    use HoverTrait;
     use MenuOverlayHostTrait;
 
     /** Display columns of the vertical (left/right) tab list. */
@@ -55,6 +54,19 @@ final class TabBarWidget extends AbstractWidget implements MenuOverlayHost
 
     /** The active index the window last followed, so a manual scroll survives parked frames. */
     private ?int $lastActive = null;
+
+    /**
+     * The pointer's cell over the strip (visual hover), or null. Stored as a
+     * CELL, not a resolved tab index, and re-resolved against each frame's
+     * geometry in render — so a strip change (a dirty dot flipping on save,
+     * the tab set shrinking) can't leave a stale tint on the wrong tab, and a
+     * still-correct tint survives without waiting for a fresh motion event.
+     *
+     * @var array{row: int, col: int}|null
+     */
+    private ?array $hoverCell = null;
+    /** The tab the cell last resolved to — repaint change-detection at tab granularity. */
+    private ?int $hoverResolved = null;
 
     /** @var list<array{row: int, col: int, width: int, step: int}> clickable overflow-indicator zones from the last render */
     private array $indicatorZones = [];
@@ -119,31 +131,51 @@ final class TabBarWidget extends AbstractWidget implements MenuOverlayHost
         }
         $fingerprint = (string) json_encode(($this->provider)());
         if ($fingerprint !== $this->lastFingerprint) {
+            // The hover cell re-resolves against the new geometry in render, so
+            // a strip change needs no clearHover() here — a still-correct tint
+            // stays put, a stale one falls off whatever tab moved out from
+            // under the pointer.
             $this->lastFingerprint = $fingerprint;
-            // The strip changed under the pointer, so the hovered INDEX may now
-            // name a different tab — dropping it is the safe read.
-            //
-            // It also drops a tint that is still correct (save a file while
-            // hovering an inactive tab and it goes cold until you jiggle the
-            // mouse), because only a fresh motion event can restore it and a
-            // resting pointer sends none. Fixing that means hovering by CELL
-            // and resolving the index per render, so it cannot go stale —
-            // worth doing, but it is not the drag's bug: a dragged tab is the
-            // active one, and active outranks hovered, so no drag ever shows
-            // this.
-            $this->clearHover();
             $this->invalidate();
         }
     }
 
     /**
-     * Tint the tab under the pointer (visual only); returns whether it
-     * changed. The strip's hover key is a cell, not a row, so it maps the
-     * pointer itself and only the state comes from {@see HoverTrait}.
+     * Tint the tab under the pointer (visual only). Stores the cell for
+     * per-frame re-resolution, but reports change at TAB granularity (resolved
+     * against the last frame) so a move within one tab does not repaint —
+     * matching {@see DockTabsWidget}.
      */
     public function hoverTab(int $row, int $col): bool
     {
-        return $this->setHovered($this->tabIndexAt($row, $col));
+        $this->hoverCell = ['row' => $row, 'col' => $col];
+        $resolved = $this->tabIndexAt($row, $col);
+        if ($resolved === $this->hoverResolved) {
+            return false;
+        }
+        $this->hoverResolved = $resolved;
+        $this->invalidate();
+
+        return true;
+    }
+
+    /** The pointer left the strip: drop the hover tint. Returns whether it changed. */
+    public function clearHover(): bool
+    {
+        if (null === $this->hoverCell) {
+            return false;
+        }
+        $this->hoverCell = null;
+        $this->hoverResolved = null;
+        $this->invalidate();
+
+        return true;
+    }
+
+    /** Whether the stored hover cell falls inside a tab occupying [start, start+width) on $row. */
+    private function isHoverCell(int $row, int $startCol, int $width): bool
+    {
+        return null !== $this->hoverCell && $this->hoverCell['row'] === $row && $this->hoverCell['col'] >= $startCol && $this->hoverCell['col'] < ($startCol + $width);
     }
 
     public function render(RenderContext $context): array
@@ -209,7 +241,7 @@ final class TabBarWidget extends AbstractWidget implements MenuOverlayHost
             if (($used + $part['width']) > ($overflow ? $columns - 1 : $columns)) {
                 break;
             }
-            $line .= TabCell::render($part['text'], $part['closeOffset'], $this->styles, TabState::of($part['active'], $index === $this->hoveredIndex));
+            $line .= TabCell::render($part['text'], $part['closeOffset'], $this->styles, TabState::of($part['active'], $this->isHoverCell(0, $used, $part['width'])));
             $this->lastLayout[] = [
                 'index' => $index,
                 'row' => 0,
@@ -307,7 +339,8 @@ final class TabBarWidget extends AbstractWidget implements MenuOverlayHost
                 $name = AnsiText::truncate($tab['name'], $nameWidth, pad: true);
                 $marker = $tab['dirty'] ? Glyphs::DIRTY : ' ';
                 $close = $tab['active'] ? TabCloseGlyph::active($this->styles) : TabCloseGlyph::inactive($this->styles);
-                $lines[] = TabStyle::of($this->styles, TabState::of($tab['active'], $index === $this->hoveredIndex))->apply(' '.$name.' '.$marker.$close.' ');
+                $rowIndex = \count($lines);
+                $lines[] = TabStyle::of($this->styles, TabState::of($tab['active'], $this->isHoverCell($rowIndex, 0, self::VERTICAL_WIDTH)))->apply(' '.$name.' '.$marker.$close.' ');
                 $this->lastLayout[] = [
                     'index' => $index,
                     'row' => \count($lines) - 1,
