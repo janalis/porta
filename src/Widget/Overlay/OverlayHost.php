@@ -14,6 +14,7 @@ use Porta\Ui\Sgr;
 use Porta\Ui\TextField;
 use Porta\Ui\Theme\Styles;
 use Porta\Widget\Render\EditorRenderer;
+use Porta\Widget\Render\HeaderRenderer;
 use Porta\Widget\Render\PaneFocus;
 use Symfony\Component\Tui\Ansi\AnsiUtils;
 use Symfony\Component\Tui\Input\Keybindings;
@@ -483,7 +484,12 @@ final class OverlayHost
             $text = ' '.$this->prompt['label'].': '.$this->prompt['value']->value();
             $width = min($columns, max(30, mb_strwidth($text) + 4));
             $rendered = ' '.$this->prompt['label'].': '.$this->prompt['value']->render(cursor: $focused);
-            $box = $this->styles->merge(Role::HeaderBar, Role::Bright)->apply(AnsiText::truncate($rendered.' ', $width, pad: true));
+            // The prompt box is a titled transient surface like the others, so
+            // it goes through HeaderRenderer: the shared HeaderBar idiom, the
+            // faint Esc dismiss hint, and — the reason a hand-rolled truncate
+            // was wrong here — scrollLineToCaret, which keeps the value's caret
+            // marker on screen instead of clipping the hardware cursor off it.
+            $box = HeaderRenderer::render($rendered, $width, $this->styles->merge(Role::HeaderBar, Role::Bright), suffix: 'Esc');
             $tail = AnsiUtils::sliceByColumn($lines[0] ?? '', $width, $columns - $width);
             $lines[0] = AnsiText::padRight($box.$tail.Sgr::RESET, $columns);
         }
