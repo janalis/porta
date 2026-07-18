@@ -51,7 +51,7 @@ final class TabCellTest extends TestCase
         foreach (['one', '日本', 'a-very-long-buffer-name.php'] as $label) {
             foreach (TabState::cases() as $state) {
                 $cell = TabCell::measure($label, Glyphs::DIRTY);
-                $rendered = TabCell::render($cell['text'], Styles::dark(), $state);
+                $rendered = TabCell::render($cell['text'], $cell['closeOffset'], Styles::dark(), $state);
 
                 $this->assertSame($cell['width'], AnsiUtils::visibleWidth($rendered), $label);
             }
@@ -62,11 +62,11 @@ final class TabCellTest extends TestCase
     {
         $cell = TabCell::measure('one');
 
-        $active = TabCell::render($cell['text'], Styles::dark(), TabState::Active);
+        $active = TabCell::render($cell['text'], $cell['closeOffset'], Styles::dark(), TabState::Active);
         $this->assertStringEndsWith(Glyphs::SEPARATOR, AnsiUtils::stripAnsiCodes($active), 'the divider closes the cell');
         $this->assertStringContainsString("\x1b[38;5;252m", $active, 'the active tab takes the bright × shade');
 
-        $inactive = TabCell::render($cell['text'], Styles::dark(), TabState::Plain);
+        $inactive = TabCell::render($cell['text'], $cell['closeOffset'], Styles::dark(), TabState::Plain);
         $this->assertStringContainsString("\x1b[38;5;240m", $inactive, 'an inactive tab takes the dim × shade');
     }
 
@@ -75,10 +75,24 @@ final class TabCellTest extends TestCase
         // The × is a foreground-only span: it must not emit a full reset, which
         // would drop the tab's background for the rest of the cell.
         $cell = TabCell::measure('one');
-        $rendered = TabCell::render($cell['text'], Styles::dark(), TabState::Active);
+        $rendered = TabCell::render($cell['text'], $cell['closeOffset'], Styles::dark(), TabState::Active);
 
         $body = substr($rendered, offset: 0, length: (int) strrpos($rendered, Glyphs::SEPARATOR));
         $this->assertStringNotContainsString("\x1b[0m", $body, 'no full reset inside the tab run');
         $this->assertSame(1, substr_count($body, needle: "\x1b[48;5;238m"), 'the background opens once and is never re-opened, so it never lapsed');
+    }
+
+    public function testACloseGlyphInTheLabelIsNotRestyledAsACloseButton(): void
+    {
+        // A file named a×b.php: the label's own × must stay plain, and only the
+        // real close × at closeOffset gets the affordance shade.
+        $cell = TabCell::measure('a×b.php');
+        $rendered = TabCell::render($cell['text'], $cell['closeOffset'], Styles::dark(), TabState::Active);
+
+        $plain = AnsiUtils::stripAnsiCodes($rendered);
+        $this->assertSame(' a×b.php × '.Glyphs::SEPARATOR, $plain, 'both × survive as plain text');
+        // Exactly one × carries the bright close shade; the label × does not.
+        $this->assertSame(1, substr_count($rendered, needle: "\x1b[38;5;252m×"), 'only the real close glyph is shaded');
+        $this->assertSame($cell['width'], AnsiUtils::visibleWidth($rendered), 'the label × did not shift the width');
     }
 }

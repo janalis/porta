@@ -56,7 +56,7 @@ final class TabStripRenderer
             $tab = $part['tab'];
             $next = $parts[$index + 1]['tab'] ?? null;
             $crosses = null !== $next && ($tab['family'] ?? null) !== ($next['family'] ?? null);
-            $line .= TabCell::render($part['text'], $styles, TabState::of($tab['active'], $tab['hovered']), $crosses ? Glyphs::FAMILY_SEPARATOR : Glyphs::SEPARATOR);
+            $line .= TabCell::render($part['text'], $part['closeOffset'], $styles, TabState::of($tab['active'], $tab['hovered']), $crosses ? Glyphs::FAMILY_SEPARATOR : Glyphs::SEPARATOR);
             $hitMap[] = ['index' => $index, 'start' => $used, 'width' => $part['width'], 'closeStart' => $used + $part['closeOffset'], 'closeWidth' => TabCell::CLOSE_WIDTH];
             $used += $part['width'];
         }

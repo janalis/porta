@@ -209,7 +209,7 @@ final class TabBarWidget extends AbstractWidget implements MenuOverlayHost
             if (($used + $part['width']) > ($overflow ? $columns - 1 : $columns)) {
                 break;
             }
-            $line .= TabCell::render($part['text'], $this->styles, TabState::of($part['active'], $index === $this->hoveredIndex));
+            $line .= TabCell::render($part['text'], $part['closeOffset'], $this->styles, TabState::of($part['active'], $index === $this->hoveredIndex));
             $this->lastLayout[] = [
                 'index' => $index,
                 'row' => 0,

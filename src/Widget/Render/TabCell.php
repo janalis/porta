@@ -7,6 +7,7 @@ namespace Porta\Widget\Render;
 use Porta\Ui\Glyphs;
 use Porta\Ui\Role;
 use Porta\Ui\Theme\Styles;
+use Symfony\Component\Tui\Ansi\AnsiUtils;
 
 /**
  * One horizontal tab of the strip family: ` label ●× ` plus its trailing
@@ -48,24 +49,31 @@ final class TabCell
     }
 
     /**
-     * The styled cell + its divider, from a $text that {@see measure()} built.
+     * The styled cell + its divider, from the $text and $closeOffset that
+     * {@see measure()} built.
      *
-     * The × is measured as a bare glyph and only styled here, then spliced in:
-     * styling it earlier would leave measure() counting escape bytes as
-     * display columns. The splice is safe because {@see TabCloseGlyph} emits a
-     * foreground-only span (closed with `\e[39m`, never a full reset), so the
-     * tab's background runs underneath it uninterrupted.
+     * The × is measured as a bare glyph and only styled here, then spliced in
+     * BY COLUMN: styling it earlier would leave measure() counting escape bytes
+     * as display columns, and matching it by string would restyle a × that
+     * happens to sit in the label itself (a file `a×b.php`). $closeOffset is the
+     * real close glyph's column, so the splice lands on it alone. It is safe
+     * because {@see TabCloseGlyph} emits a foreground-only span (closed with
+     * `\e[39m`, never a full reset), so the tab's background runs underneath it
+     * uninterrupted.
      *
      * $divider closes the cell; every one is a single column, so which one a
      * strip picks cannot move its hit map.
      */
-    public static function render(string $text, Styles $styles, TabState $state, string $divider = Glyphs::SEPARATOR): string
+    public static function render(string $text, int $closeOffset, Styles $styles, TabState $state, string $divider = Glyphs::SEPARATOR): string
     {
         $close = match ($state) {
             TabState::Active => TabCloseGlyph::active($styles),
             TabState::Hovered, TabState::Plain => TabCloseGlyph::inactive($styles),
         };
 
-        return TabStyle::of($styles, $state)->apply(str_replace(Glyphs::CLOSE, $close, $text)).$styles->of(Role::Placeholder)->apply($divider);
+        $before = AnsiUtils::sliceByColumn($text, 0, $closeOffset);
+        $after = AnsiUtils::sliceByColumn($text, $closeOffset + 1, mb_strwidth($text) - $closeOffset - 1);
+
+        return TabStyle::of($styles, $state)->apply($before.$close.$after).$styles->of(Role::Placeholder)->apply($divider);
     }
 }
