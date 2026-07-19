@@ -7,7 +7,9 @@ namespace Porta\Tests\Unit\Widget;
 use PHPUnit\Framework\TestCase;
 use Porta\Image\ImageData;
 use Porta\Tests\Support\RecordingImageViewerHandler;
+use Porta\Ui\Glyphs;
 use Porta\Widget\ImageViewerWidget;
+use Symfony\Component\Tui\Ansi\AnsiUtils;
 use Symfony\Component\Tui\Render\RenderContext;
 
 final class ImageViewerWidgetTest extends TestCase
@@ -23,6 +25,25 @@ final class ImageViewerWidgetTest extends TestCase
         }
 
         return new ImageData($gd, 64, 8, 123);
+    }
+
+    public function testAFocusedPaneShowsAFocusFrameThatSurvivesNoAnsi(): void
+    {
+        $widget = new ImageViewerWidget();
+        $plain = static fn (array $lines): string => implode("\n", array_map(AnsiUtils::stripAnsiCodes(...), $lines));
+
+        $unfocused = $plain($widget->render(new RenderContext(12, 4)));
+        $this->assertStringNotContainsString(Glyphs::FRAME_TOP_LEFT, $unfocused, 'no frame when the pane is blurred');
+
+        $widget->setFocused(true);
+        $focused = $plain($widget->render(new RenderContext(12, 4)));
+        // The glyph carries the cue, so stripping ANSI still shows the whole box.
+        $this->assertStringContainsString(Glyphs::FRAME_TOP_LEFT, $focused);
+        $this->assertStringContainsString(Glyphs::FRAME_BOTTOM_RIGHT, $focused);
+        $this->assertStringContainsString(Glyphs::FRAME_VERTICAL, $focused, 'the side rails');
+        foreach ($widget->render(new RenderContext(12, 4)) as $line) {
+            $this->assertSame(12, AnsiUtils::visibleWidth($line), 'the frame keeps every line pane-wide');
+        }
     }
 
     public function testRendersBlankWithoutAnImageAndNothingOnAZeroSizePane(): void

@@ -6,6 +6,7 @@ namespace Porta\Tests\Unit\Widget;
 
 use PHPUnit\Framework\TestCase;
 use Porta\Ui\DockTab;
+use Porta\Ui\Glyphs;
 use Porta\Widget\DockTabsWidget;
 use Symfony\Component\Tui\Ansi\AnsiUtils;
 use Symfony\Component\Tui\Render\RenderContext;
@@ -216,5 +217,60 @@ final class DockTabsWidgetTest extends TestCase
         $this->assertFalse($bar->clearHover());
         $this->assertFalse($bar->hoverTabAt(70), 'the empty tail hovers nothing');
         $this->assertStringNotContainsString("\x1b[48;5;240m", $bar->render(new RenderContext(80, 1))[0]);
+    }
+
+    public function testOverflowScrollsWithClickableIndicators(): void
+    {
+        $tabs = [];
+        for ($i = 0; $i < 8; ++$i) {
+            $tabs[] = ['tab' => DockTab::Results, 'label' => "Tool {$i}", 'active' => 0 === $i, 'key' => (string) $i, 'status' => ''];
+        }
+        $bar = self::strip($tabs);
+
+        // Active is the head tab → the strip shows the start: a › (more right), no ‹.
+        $plain = AnsiUtils::stripAnsiCodes($bar->render(new RenderContext(30, 1))[0]);
+        $this->assertStringContainsString(Glyphs::SCROLL_NEXT, $plain, 'overflow shows the page-right ›');
+        $this->assertSame(1, $bar->scrollIndicatorAt(0, 29), 'the › cell (last column) pages right');
+        $this->assertNull($bar->scrollIndicatorAt(0, 3), 'a tab-body cell is not an indicator');
+
+        // Scroll right: leading tabs hide, so a ‹ appears at column 0.
+        $bar->scrollBy(2);
+        $plain2 = AnsiUtils::stripAnsiCodes($bar->render(new RenderContext(30, 1))[0]);
+        $this->assertStringContainsString(Glyphs::SCROLL_PREV, $plain2, 'after scrolling a ‹ marks hidden leading tabs');
+        $this->assertSame(-1, $bar->scrollIndicatorAt(0, 0), 'the ‹ cell pages left');
+    }
+
+    public function testTheEmptyTailHeavyRulesUnderTheGrabHover(): void
+    {
+        $bar = self::strip([
+            ['tab' => DockTab::Terminal, 'label' => 'Terminal', 'active' => true, 'key' => '', 'status' => ''],
+        ]);
+        $bar->render(new RenderContext(80, 1));
+
+        $this->assertTrue($bar->isOnTab(3), 'a column on the tab body is a tab');
+        $this->assertFalse($bar->isOnTab(70), 'a column past the last tab is the resize tail');
+        $this->assertStringNotContainsString(Glyphs::PANEL_RESIZE_GRAB, AnsiUtils::stripAnsiCodes($bar->render(new RenderContext(80, 1))[0]), 'at rest the tail is plain');
+
+        $this->assertTrue($bar->hoverGrab(), 'grabbing the tail changes it');
+        $this->assertFalse($bar->hoverGrab(), 'same state: no change');
+        $ruled = AnsiUtils::stripAnsiCodes($bar->render(new RenderContext(80, 1))[0]);
+        $this->assertStringContainsString(Glyphs::PANEL_RESIZE_GRAB, $ruled, 'the empty tail heavy-rules under the grab');
+
+        $this->assertTrue($bar->clearGrab());
+        $this->assertFalse($bar->clearGrab(), 'already clear: no change');
+        $this->assertStringNotContainsString(Glyphs::PANEL_RESIZE_GRAB, AnsiUtils::stripAnsiCodes($bar->render(new RenderContext(80, 1))[0]));
+    }
+
+    public function testTheGrabRuleFillsTheGapBesideARightAlignedStatus(): void
+    {
+        $bar = self::strip([
+            ['tab' => DockTab::Terminal, 'label' => 'sh', 'active' => true, 'key' => '', 'status' => '[+3]'],
+        ]);
+        $bar->render(new RenderContext(40, 1));
+        $bar->hoverGrab();
+
+        $plain = AnsiUtils::stripAnsiCodes($bar->render(new RenderContext(40, 1))[0]);
+        $this->assertStringContainsString(Glyphs::PANEL_RESIZE_GRAB, $plain, 'the gap before the status heavy-rules');
+        $this->assertStringContainsString('[+3]', $plain, 'the status still shows');
     }
 }

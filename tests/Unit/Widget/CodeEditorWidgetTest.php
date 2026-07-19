@@ -741,6 +741,19 @@ final class CodeEditorWidgetTest extends TestCase
         $this->assertFalse($editor->isOverlayOpen());
     }
 
+    public function testPromptClickOnItsBoxIsSwallowedAndElsewhereDismisses(): void
+    {
+        $editor = $this->editor();
+        $editor->openPrompt('Go to line', '', static fn () => null);
+        $editor->render(new RenderContext(80, 20)); // composites the row-0 prompt box
+
+        $this->assertTrue($editor->isPromptOpen());
+        $this->assertTrue($editor->handlePopupClick(0, 3), 'a click on the prompt box is consumed');
+        $this->assertTrue($editor->isPromptOpen(), 'and does not dismiss it — the caret stays');
+        $this->assertTrue($editor->handlePopupClick(5, 3), 'a click off the prompt is consumed');
+        $this->assertFalse($editor->isPromptOpen(), 'and dismisses it, like every sibling overlay');
+    }
+
     public function testListOverlayHoverTintsWithoutMovingTheSelection(): void
     {
         $editor = $this->overlayEditor(new \ArrayObject(['picked' => null]));

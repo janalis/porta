@@ -510,20 +510,20 @@ final class BufferService implements BufferReopener, DiagnosticsSink, FileOpener
     }
 
     /**
-     * The Search Everywhere / Find-in-Files modals live inside the editor
-     * widget, which is detached while an image tab is active. Hop to the most
-     * recent text tab first; with none open, flash and refuse.
+     * The Search Everywhere / go-to-file / Find-in-Files pickers live inside the
+     * editor widget, which is detached while an image or help tab is active. Hop
+     * to the most recent text tab first; with none open, flash and refuse.
      */
     public function ensureTextEditorActive(): bool
     {
         $active = $this->buffers->active();
-        if (null === $active || !$active->isImage()) {
+        if (null === $active || (!$active->isImage() && !$active->isHelp())) {
             return true;
         }
         if (null !== $this->activateAdjacentTextBuffer()) {
             return true;
         }
-        $this->notifier->flash($this->translator->trans('Not available while viewing an image'));
+        $this->notifier->flash($this->translator->trans('Not available in this view'));
         $this->tui->requestRender();
 
         return false;

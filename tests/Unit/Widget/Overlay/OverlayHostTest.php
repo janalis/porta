@@ -105,6 +105,36 @@ final class OverlayHostTest extends TestCase
         $this->assertFalse($host->handleInput('x', $kb), 'prompt closed, input falls through');
     }
 
+    public function testPromptClickIsInertWhenClosed(): void
+    {
+        $host = $this->host();
+        $this->assertFalse($host->promptClickAt(0, 0), 'no prompt open → not consumed');
+        $this->assertSame(0, $this->invalidations);
+    }
+
+    public function testPromptClickOnTheBoxIsSwallowedAndClickElsewhereDismisses(): void
+    {
+        $host = $this->host();
+        $host->openPrompt('Go to line', '', static fn () => null);
+        $host->composite(['', ''], 40, 2, CaretVisibility::Shown); // records the row-0 box width (30)
+
+        $this->assertTrue($host->promptClickAt(0, 5), 'a click on the prompt box is consumed');
+        $this->assertTrue($host->isPromptOpen(), 'and does not dismiss it — the caret stays');
+
+        $this->assertTrue($host->promptClickAt(1, 5), 'a click off the prompt row is consumed');
+        $this->assertFalse($host->isPromptOpen(), 'and dismisses it, like every sibling overlay');
+    }
+
+    public function testPromptClickBeyondTheBoxWidthDismisses(): void
+    {
+        $host = $this->host();
+        $host->openPrompt('Go to line', '', static fn () => null);
+        $host->composite(['', ''], 40, 2, CaretVisibility::Shown);
+
+        $this->assertTrue($host->promptClickAt(0, 35), 'row 0 but past the box width is outside');
+        $this->assertFalse($host->isPromptOpen());
+    }
+
     public function testCompositeRecordsTheBoxForHitTesting(): void
     {
         $host = $this->host();
@@ -183,6 +213,17 @@ final class OverlayHostTest extends TestCase
         $host->handleSearchInput('i', $kb);
         $host->handleSearchInput("\x7f", $kb);
         $this->assertSame(['u', 'ui', 'u'], $queries);
+    }
+
+    public function testSearchModalShowsTheEmptyMessageForANoHitQuery(): void
+    {
+        $host = $this->host();
+        $host->openSearch('Search', static fn () => null, static fn () => null, static fn () => null, 'no results');
+        $host->setSearchRows([]); // a query that found nothing
+
+        $lines = $host->composite(array_fill(0, count: 20, value: str_repeat(' ', times: 80)), 80, 20, CaretVisibility::Shown);
+        $joined = implode("\n", array_map(AnsiUtils::stripAnsiCodes(...), $lines));
+        $this->assertStringContainsString('no results', $joined, 'the no-hit filler row shows the empty message, like the sibling pickers');
     }
 
     public function testSetSearchRowsSelectsTheFirstHitSkippingTheHeader(): void

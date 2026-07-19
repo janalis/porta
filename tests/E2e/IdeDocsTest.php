@@ -89,12 +89,6 @@ final class IdeDocsTest extends TestCase
                     $tui->handleInput("\x1b[1;5D");
                     $tui->tick();
                     $this->assertStringContainsString('Guides', AnsiUtils::stripAnsiCodes($terminal->getOutput()), 'and the help tab returns rendered');
-
-                    // Go-to-file stays reachable from the help tab.
-                    $tui->handleInput("\x10"); // ctrl+p
-                    $tui->tick();
-                    $this->assertSame('goto-file', $tui->getFocus()?->getId(), 'the go-to-file palette opened over the help tab');
-                    $tui->handleInput("\x1b");
                 },
                 900 => function ($tui, $terminal, $ide): void {
                     $tui->tick();

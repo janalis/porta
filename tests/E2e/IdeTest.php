@@ -189,10 +189,11 @@ final class IdeTest extends TestCase
             $tui->handleInput("\x1b"); // esc
         });
 
-        // --- Go to file palette -------------------------------------------------------
-        $this->step(3.05, function () use ($tui): void {
+        // --- Go to file palette (a files-only Search Everywhere, centered) -----------
+        $this->step(3.05, function () use ($tui, $editor, $screen): void {
             $tui->handleInput("\x10"); // ctrl+p
-            $this->assertSame('goto-file', $tui->getFocus()?->getId());
+            $this->assertTrue($editor()->isSearchOverlayOpen(), 'Ctrl+P opens the centered go-to-file picker');
+            $this->assertStringContainsString('Go to File', $screen(), 'the picker title');
             foreach (str_split('target') as $ch) {
                 $tui->handleInput($ch);
             }

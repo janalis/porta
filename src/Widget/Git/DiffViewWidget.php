@@ -703,7 +703,7 @@ final class DiffViewWidget extends AbstractWidget implements FocusableInterface,
             ' '
             .($this->path ?? $this->translator->trans('Diff'))
             .($this->scroll > 0 ? '  '.$this->translator->trans('[scrolled +%count%]', ['%count%' => $this->scroll]) : '')
-            .($this->hScroll > 0 ? \sprintf('  [→%d]', $this->hScroll) : '');
+            .($this->hScroll > 0 ? '  '.$this->translator->trans('[→%count%]', ['%count%' => $this->hScroll]) : '');
         $lines = [$this->renderToolbar($title, $width)];
 
         if (null === $this->document || [] === $this->rows) {
@@ -771,9 +771,10 @@ final class DiffViewWidget extends AbstractWidget implements FocusableInterface,
         // Re-apply the bg after any reset inside the span (syntax SGR resets,
         // truncateToWidth's pad boundary) — without it the highlight dies
         // mid-selection on highlighted lines.
-        $selectionBg = $this->styles->of(Role::SelectionBg)->getAnsiRestore();
+        $selectionStyle = $this->styles->of(Role::SelectionBg);
+        $selectionBg = $selectionStyle->getAnsiRestore();
 
-        return $end <= $start ? $line : LineDecorator::apply($line, $start, $end, $selectionBg, Sgr::DEFAULT_BG, $selectionBg);
+        return $end <= $start ? $line : LineDecorator::apply($line, $start, $end, $selectionBg, Sgr::resetFor($selectionStyle), $selectionBg);
     }
 
     /**
@@ -851,7 +852,7 @@ final class DiffViewWidget extends AbstractWidget implements FocusableInterface,
     {
         return match ($state) {
             OptionTagState::On => $this->styles->of(Role::SelectedRow),
-            OptionTagState::Hovered => $this->styles->merge(Role::RowHighlightBg, Role::Muted),
+            OptionTagState::Hovered => $this->styles->of(Role::RowHighlightBg),
             OptionTagState::Off => $this->styles->merge(Role::TagOffBg, Role::Muted),
         };
     }
@@ -901,7 +902,7 @@ final class DiffViewWidget extends AbstractWidget implements FocusableInterface,
 
             return (
                 $this->renderHalf($row['hunk'], $row['left'] ?? -1, $leftW, DiffSide::Old)
-                .$this->styles->of(Role::Gutter)->apply('│')
+                .$this->styles->of(Role::Gutter)->apply(Glyphs::DIFF_COLUMN)
                 .$this->renderHalf($row['hunk'], $row['right'] ?? -1, $rightW, DiffSide::New)
                 .Sgr::RESET
             );
@@ -912,7 +913,8 @@ final class DiffViewWidget extends AbstractWidget implements FocusableInterface,
             str_pad(null === $line->oldNo ? '' : (string) $line->oldNo, length: 4, pad_string: ' ', pad_type: \STR_PAD_LEFT)
             .' '
             .str_pad(null === $line->newNo ? '' : (string) $line->newNo, length: 4, pad_string: ' ', pad_type: \STR_PAD_LEFT)
-            .' │',
+            .' '
+            .Glyphs::DIFF_COLUMN,
         );
 
         [$marker, $text] = $this->lineBody($line, $row['hunk'].':'.($row['line'] ?? -1));

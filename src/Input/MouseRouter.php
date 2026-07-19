@@ -19,7 +19,6 @@ use Porta\Ui\DockTab;
 use Porta\Ui\WorkspaceViews;
 use Porta\Widget\ContextMenu;
 use Porta\Widget\DockTabsWidget;
-use Porta\Widget\GoToFileWidget;
 use Porta\Widget\HoverableList;
 use Porta\Widget\MenuBarWidget;
 use Porta\Widget\SeparatorWidget;
@@ -69,7 +68,6 @@ final class MouseRouter
         private readonly EditorLayoutPanes $panes,
         private readonly BottomDock $dock,
         private readonly DockTabsWidget $dockTabs,
-        private readonly GoToFileWidget $goToFile,
         private readonly MenuBarWidget $menuBar,
         private readonly ContextMenu $contextMenu,
         private readonly LayoutController $layout,
@@ -225,13 +223,13 @@ final class MouseRouter
                 return;
             }
             if ($this->containsPointer($editorRect, $mouse)) {
-                $this->panes->editor()->scrollHBy(6 * $mouse->wheelHDelta);
+                $this->panes->editor()->scrollHBy(WheelStep::cols($mouse));
                 $this->tui->requestRender();
 
                 return;
             }
             if ($this->containsPointer($imageRect, $mouse)) {
-                $this->panes->imageViewer()->scrollBy(6 * $mouse->wheelHDelta, 0);
+                $this->panes->imageViewer()->scrollBy(WheelStep::cols($mouse), 0);
                 $this->tui->requestRender();
             }
 
@@ -239,16 +237,17 @@ final class MouseRouter
         }
 
         // The tab strip: a wheel over it pages through overflowing tabs — one
-        // An open menu owns the wheel inside its dropdown region — one item
-        // per notch (short, separator-skipping lists).
+        // An open menu owns the wheel inside its dropdown region, at the shared
+        // WheelStep rate like every other list — separator-skipping, so a notch
+        // lands only on selectable items.
         if ($this->contextMenu->isOpen() && null !== $this->hit->hitRegion($this->overlay->contextMenuDropdown(), $mouse->row, $mouse->col)) {
-            $this->contextMenu->moveSelection($mouse->wheelDelta);
+            $this->contextMenu->moveSelection(WheelStep::rows($mouse));
             $this->tui->requestRender();
 
             return;
         }
         if ($this->menuBar->isOpen() && null !== $this->hit->hitRegion($this->overlay->menuDropdown(), $mouse->row, $mouse->col)) {
-            $this->menuBar->moveSelection($mouse->wheelDelta);
+            $this->menuBar->moveSelection(WheelStep::rows($mouse));
             $this->tui->requestRender();
 
             return;
@@ -266,14 +265,6 @@ final class MouseRouter
             return;
         }
 
-        // The go-to-file popup: wheel moves its selection like the arrows.
-        if ($this->goToFile->isOpen() && null !== $this->hit->hit($this->goToFile, $mouse->row, $mouse->col)) {
-            $this->goToFile->moveSelection(WheelStep::rows($mouse));
-            $this->tui->requestRender();
-
-            return;
-        }
-
         // The Find modal composites inside the editor pane and owns input while
         // open — scroll its preview instead of the editor behind it.
         if ($this->containsPointer($editorRect, $mouse) && $this->panes->editor()->isFindModalOpen()) {
@@ -285,8 +276,7 @@ final class MouseRouter
 
         // Wheel over the dock strip cycles the tool tabs — an explicit panel
         // switch, so the focus follows like a strip click would.
-        $stripRect = $this->hit->rect($this->dockTabs);
-        if ($this->dock->stripVisible() && null !== $stripRect && $mouse->row === $stripRect->row && $mouse->col >= $stripRect->col && $mouse->col < ($stripRect->col + $stripRect->columns)) {
+        if (null !== $this->dockStripRelCol($mouse)) {
             $this->dock->cycle($mouse->wheelDelta);
             $this->tui->requestRender();
 
@@ -467,7 +457,13 @@ final class MouseRouter
         if (
             FullView::Closed === $fullViewOpen
             && null !== $this->panes->editor()->getContext() // detached under an image tab → no invisible modal may eat clicks
-            && ($this->panes->editor()->isOverlayOpen() || $this->panes->editor()->isCompletionOpen() || $this->panes->editor()->isSearchOverlayOpen() || $this->panes->editor()->isFindModalOpen())
+            && (
+                $this->panes->editor()->isPromptOpen()
+                || $this->panes->editor()->isOverlayOpen()
+                || $this->panes->editor()->isCompletionOpen()
+                || $this->panes->editor()->isSearchOverlayOpen()
+                || $this->panes->editor()->isFindModalOpen()
+            )
         ) {
             if (null !== $editorRect && $editorRect->contains($mouse->row, $mouse->col)) {
                 $rel = $editorRect->toRelative($mouse->row, $mouse->col);
@@ -479,7 +475,7 @@ final class MouseRouter
             }
             if (
                 (null === $editorRect || !$editorRect->contains($mouse->row, $mouse->col))
-                && ($this->panes->editor()->isOverlayOpen() || $this->panes->editor()->isSearchOverlayOpen() || $this->panes->editor()->isFindModalOpen())
+                && ($this->panes->editor()->isPromptOpen() || $this->panes->editor()->isOverlayOpen() || $this->panes->editor()->isSearchOverlayOpen() || $this->panes->editor()->isFindModalOpen())
             ) {
                 $this->panes->editor()->handlePopupClick(-1, -1); // outside the modal overlay → dismiss
                 $this->tui->requestRender();
@@ -581,9 +577,17 @@ final class MouseRouter
         if (!$this->dock->stripVisible() || null === $rect || $mouse->row !== $rect->row || $mouse->col < $rect->col || $mouse->col >= ($rect->col + $rect->columns)) {
             return false;
         }
+        $col = $mouse->col - $rect->col;
+        // A click on an overflow ‹/› pages the strip, before any tab hit —
+        // mirroring the editor tab bar.
+        if (null !== ($step = $this->dockTabs->scrollIndicatorAt($mouse->row - $rect->row, $col))) {
+            $this->dockTabs->scrollBy($step);
+            $this->tui->requestRender();
+
+            return true;
+        }
         // Resolve the drag source BEFORE the click runs — a close click mutates
         // the strip. dragSourceAt is null on a close ×, so only a select arms.
-        $col = $mouse->col - $rect->col;
         $source = $this->dockTabs->dragSourceAt($col);
         if (!$this->dockTabs->handleTabClick($col)) {
             return false;
@@ -637,14 +641,6 @@ final class MouseRouter
                 $panel instanceof TerminalPanelWidget => null,
                 default => $panel->handleClick($rel['row']),
             };
-            $this->tui->requestRender();
-
-            return true;
-        }
-
-        // Go-to-file strip: click a result row to open that file.
-        if ($this->goToFile->isOpen() && null !== ($rel = $this->hit->hit($this->goToFile, $mouse->row, $mouse->col))) {
-            $this->goToFile->handleClick($rel['row']);
             $this->tui->requestRender();
 
             return true;
@@ -805,15 +801,42 @@ final class MouseRouter
      * arrive at another — so the three results are collected and then combined,
      * never short-circuited.
      */
+    /**
+     * The pointer's column relative to the dock strip when it is over the visible
+     * strip row, else null. The strip row carries the tool tabs and doubles as the
+     * panel resize grab, so three routes test it — wheel-cycle, hover, right-menu.
+     */
+    private function dockStripRelCol(MouseEvent $mouse): ?int
+    {
+        $stripRect = $this->hit->rect($this->dockTabs);
+        if (
+            !$this->dock->stripVisible()
+            || null === $stripRect
+            || $mouse->row !== $stripRect->row
+            || $mouse->col < $stripRect->col
+            || $mouse->col >= ($stripRect->col + $stripRect->columns)
+        ) {
+            return null;
+        }
+
+        return $mouse->col - $stripRect->col;
+    }
+
     private function updateStripHover(MouseEvent $mouse): void
     {
         $tabsRect = $this->hit->rect($this->panes->tabBar());
         $tabsRel = null !== $tabsRect && $tabsRect->contains($mouse->row, $mouse->col) ? $tabsRect->toRelative($mouse->row, $mouse->col) : null;
         $tabsChanged = null !== $tabsRel ? $this->panes->tabBar()->hoverTab($tabsRel['row'], $tabsRel['col']) : $this->panes->tabBar()->clearHover();
 
-        $stripRect = $this->hit->rect($this->dockTabs);
-        $onStrip = $this->dock->stripVisible() && null !== $stripRect && $mouse->row === $stripRect->row && $mouse->col >= $stripRect->col && $mouse->col < ($stripRect->col + $stripRect->columns);
-        $dockChanged = $onStrip ? $this->dockTabs->hoverTabAt($mouse->col - $stripRect->col) : $this->dockTabs->clearHover();
+        $stripCol = $this->dockStripRelCol($mouse);
+        $onStrip = null !== $stripCol;
+        // On a tab → tint it; on the empty tail → that row is the resize grab, so
+        // heavy-rule it instead (the sidebar's thin/heavy face, here horizontal).
+        $relCol = $stripCol ?? -1;
+        $onTab = $onStrip && $this->dockTabs->isOnTab($relCol);
+        $tintChanged = $onTab ? $this->dockTabs->hoverTabAt($relCol) : $this->dockTabs->clearHover();
+        $grabChanged = $onStrip && !$onTab ? $this->dockTabs->hoverGrab() : $this->dockTabs->clearGrab();
+        $dockChanged = $tintChanged || $grabChanged;
 
         // The breadcrumbs are a strip too: each crumb is a click target, so
         // each crumb tints. The bar renders no rows without a scope, so a
@@ -963,9 +986,6 @@ final class MouseRouter
         if ($panel instanceof HoverableList) {
             $lists[] = $panel;
         }
-        if ($this->goToFile->isOpen()) {
-            $lists[] = $this->goToFile;
-        }
         if ([] !== $lists && $this->hit->hover($mouse->row, $mouse->col, ...$lists)) {
             $this->tui->requestRender();
         }
@@ -986,6 +1006,14 @@ final class MouseRouter
     private function handleRightPress(MouseEvent $mouse, ?WidgetRect $treeRect, ?WidgetRect $tabsRect, ?WidgetRect $editorRect): void
     {
         $this->menuBar->close();
+
+        // A modal picker (go-to-file / Search Everywhere) composites over the
+        // editor rows and owns input, so a right-click inside it opens no menu.
+        if ($this->panes->editor()->isSearchOverlayOpen()) {
+            $this->opener->flashNoMenu();
+
+            return;
+        }
 
         $items = null;
         $handled = false;
@@ -1025,17 +1053,10 @@ final class MouseRouter
             }
             $items = $this->treeOps->contextItems($node);
         }
-        $stripRect = $this->hit->rect($this->dockTabs);
-        if (
-            !$handled
-            && $this->dock->stripVisible()
-            && null !== $stripRect
-            && $mouse->row === $stripRect->row
-            && $mouse->col >= $stripRect->col
-            && $mouse->col < ($stripRect->col + $stripRect->columns)
-        ) {
+        $stripCol = $this->dockStripRelCol($mouse);
+        if (!$handled && null !== $stripCol) {
             $handled = true;
-            $hit = $this->dockTabs->tabAt($mouse->col - $stripRect->col);
+            $hit = $this->dockTabs->tabAt($stripCol);
             if (null === $hit) {
                 $this->opener->flashNoMenu(); // the strip's empty tail
 

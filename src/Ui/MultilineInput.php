@@ -137,8 +137,8 @@ final class MultilineInput
 
     /**
      * The visible window of at most $rows lines clipped to $width, scrolled so
-     * the caret line is always shown, with a bar cursor marker at the caret when
-     * $cursor is {@see CaretVisibility::Shown}. Fewer than $rows lines when the content is shorter; always
+     * the caret line is always shown, with the shape-configurable cursor marker at
+     * the caret when $cursor is {@see CaretVisibility::Shown}. Fewer than $rows lines when the content is shorter; always
      * at least one line. Scrolling keeps the caret (and its marker) inside the
      * window, so a caller that renders a fixed row count never drops the cursor.
      *

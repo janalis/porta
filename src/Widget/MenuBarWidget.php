@@ -10,6 +10,8 @@ use Porta\Ui\Menu;
 use Porta\Ui\MenuPanel;
 use Porta\Ui\Role;
 use Porta\Ui\Theme\Styles;
+use Porta\Widget\Render\BarChromeStyle;
+use Porta\Widget\Render\TabState;
 use Symfony\Component\Tui\Input\Key;
 use Symfony\Component\Tui\Render\RenderContext;
 use Symfony\Component\Tui\Widget\FocusableInterface;
@@ -150,11 +152,11 @@ final class MenuBarWidget extends OverlayWidget implements FocusableInterface
             }
             $active = $this->open && $i === $this->openIndex;
             $hovered = !$this->open && $i === $this->hoveredIndex;
-            $line .= match (true) {
-                $active => $this->styles->of(Role::SelectedRow)->apply($label),
-                $hovered => $this->styles->merge(Role::BarHoverBg, Role::Bright)->apply($label),
-                default => $this->styles->merge(Role::HeaderBar, Role::Muted)->apply($label),
-            };
+            // Menu titles are chrome-bar items: open = active, else hovered, else
+            // rest — shaded by the shared {@see BarChromeStyle} so a title reads
+            // like a tab. Only the rest background differs: titles sit on the
+            // HeaderBar strip, not the tabs' Toolbar.
+            $line .= BarChromeStyle::of($this->styles, TabState::of($active, $hovered), Role::HeaderBar)->apply($label);
             $this->titleLayout[] = ['index' => $i, 'start' => $used, 'width' => $width];
             $used += $width;
         }
@@ -279,13 +281,20 @@ final class MenuBarWidget extends OverlayWidget implements FocusableInterface
     }
 
     /** Move the selection by $dir, skipping separators and wrapping. */
-    /** Wheel over the open dropdown: move the highlight one item per notch. */
+    /**
+     * Wheel over the open dropdown: move the highlight by $delta selectable
+     * items (the shared WheelStep distance), each step skipping separators and
+     * wrapping. $dir * $delta is |$delta| — the notch count — without abs().
+     */
     public function moveSelection(int $delta): void
     {
         if (!$this->isOpen()) {
             return;
         }
-        $this->selected = $this->step($delta > 0 ? 1 : -1);
+        $dir = $delta <=> 0;
+        for ($n = 0, $count = $dir * $delta; $n < $count; ++$n) {
+            $this->selected = $this->step($dir);
+        }
         $this->afterNavigate();
     }
 

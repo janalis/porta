@@ -538,6 +538,14 @@
         <source>[scrolled +%count%]</source>
         <target>[scorrimento +%count%]</target>
       </trans-unit>
+      <trans-unit id="135arrow">
+        <source>[→%count%]</source>
+        <target>[→%count%]</target>
+      </trans-unit>
+      <trans-unit id="135se">
+        <source>Search Everywhere</source>
+        <target>Cerca ovunque</target>
+      </trans-unit>
       <trans-unit id="136">
         <source>applies on restart</source>
         <target>applicato al riavvio</target>
@@ -1179,8 +1187,8 @@
         <target>Impossibile visualizzare l’immagine %file%</target>
       </trans-unit>
       <trans-unit id="297">
-        <source>Not available while viewing an image</source>
-        <target>Non disponibile durante la visualizzazione di un’immagine</target>
+        <source>Not available in this view</source>
+        <target>Non disponibile in questa vista</target>
       </trans-unit>
       <trans-unit id="298">
         <source>+/- zoom  0 fit  Arrows pan  Ctrl+Q quit</source>
@@ -1925,6 +1933,18 @@
       <trans-unit id="485">
         <source>File History</source>
         <target>Cronologia del file</target>
+      </trans-unit>
+      <trans-unit id="486">
+        <source>No file open · press Ctrl+P to open a file</source>
+        <target>Nessun file aperto · premi Ctrl+P per aprire un file</target>
+      </trans-unit>
+      <trans-unit id="487">
+        <source>(Del exclude · Alt+A replace %count%)</source>
+        <target>(Del escludi · Alt+A sostituisci %count%)</target>
+      </trans-unit>
+      <trans-unit id="488">
+        <source>(Tab · Alt+A)</source>
+        <target>(Tab · Alt+A)</target>
       </trans-unit>
     </body>
   </file>

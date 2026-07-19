@@ -7,6 +7,7 @@ namespace Porta\Widget;
 use Porta\Container\AsWidget;
 use Porta\Support\AnsiText;
 use Porta\Ui\DockTab;
+use Porta\Ui\Glyphs;
 use Porta\Ui\LtrPane;
 use Porta\Ui\Role;
 use Porta\Ui\Theme\Styles;
@@ -30,8 +31,28 @@ use Symfony\Component\Tui\Widget\AbstractWidget;
 #[AsWidget('dock-tabs', flex: 0)]
 final class DockTabsWidget extends AbstractWidget implements LtrPane, MenuOverlayHost
 {
-    use HoverTrait;
     use MenuOverlayHostTrait;
+
+    /**
+     * The pointer's widget-relative column, re-resolved to a tab each frame by
+     * {@see TabStripRenderer} rather than stored as an index — a strip that
+     * relabels or loses a tab under a resting pointer must not leave the tint on
+     * the tab that used to be there (the bug {@see TabBarWidget} fixed the same
+     * way). {@see $hoverResolved} caches the last resolved index only to answer
+     * "did the hovered tab change?" for the router's repaint decision.
+     */
+    private ?int $hoverCol = null;
+
+    private ?int $hoverResolved = null;
+
+    /**
+     * The pointer is on the strip's resize tail (the row doubles as the dock's
+     * height grab). Heavy-rules the empty tail so the drag-to-resize reads —
+     * the {@see SeparatorWidget} affordance for the sidebar boundary, here for
+     * the horizontal one. Hover-only: the strip is already a visible boundary,
+     * so at rest the tail stays plain.
+     */
+    private bool $grabHovered = false;
 
     /** @var (callable(): list<array{tab: DockTab, key: string, label: string, active: bool, status: string}>)|null */
     private $provider = null;
@@ -40,6 +61,18 @@ final class DockTabsWidget extends AbstractWidget implements LtrPane, MenuOverla
 
     /** @var list<array{tab: DockTab, key: string, index: int, start: int, width: int, closeStart: int, closeWidth: int}> the last strip's hit map */
     private array $lastTabLayout = [];
+
+    /**
+     * Manual scroll offset + last active index — the strip scrolls on overflow
+     * with clickable ‹/› indicators, sharing {@see \Porta\Widget\Render\StripWindow}
+     * with the editor tab bar so the two behave identically.
+     */
+    private int $scroll = 0;
+
+    private ?int $lastActive = null;
+
+    /** @var list<array{row: int, col: int, width: int, step: int}> the last strip's ‹/› indicator zones */
+    private array $indicatorZones = [];
 
     /** @var (callable(DockTab, string): void)|null */
     private $onTabSelected = null;
@@ -175,23 +208,110 @@ final class DockTabsWidget extends AbstractWidget implements LtrPane, MenuOverla
     }
 
     /**
-     * Tint the tool tab under the pointer; returns whether it changed. The
-     * strip's hover key is a column, not a row, so it maps the pointer itself
-     * and only the state comes from {@see HoverTrait}.
+     * Tint the tool tab under the pointer; returns whether the hovered tab
+     * changed (the router's repaint gate). The stored key is the column itself,
+     * re-resolved at render time; the resolve here, against the last frame's
+     * layout, only detects the change so a move within one tab does not repaint.
      */
     public function hoverTabAt(int $col): bool
     {
-        $hovered = null;
-        foreach ($this->lastTabLayout as $entry) {
-            if ($col < $entry['start'] || $col >= ($entry['start'] + $entry['width'])) {
-                continue;
-            }
+        $this->hoverCol = $col;
+        $resolved = $this->indexAt($col);
+        if ($resolved === $this->hoverResolved) {
+            return false;
+        }
+        $this->hoverResolved = $resolved;
+        $this->invalidate();
 
-            $hovered = $entry['index'];
-            break;
+        return true;
+    }
+
+    /** The pointer left the strip: drop the hover tint. Returns whether it changed. */
+    public function clearHover(): bool
+    {
+        if (null === $this->hoverCol) {
+            return false;
+        }
+        $this->hoverCol = null;
+        $this->hoverResolved = null;
+        $this->invalidate();
+
+        return true;
+    }
+
+    /** The absolute tab index whose body covers $col in the last rendered strip, or null. */
+    private function indexAt(int $col): ?int
+    {
+        foreach ($this->lastTabLayout as $entry) {
+            if ($col >= $entry['start'] && $col < ($entry['start'] + $entry['width'])) {
+                return $entry['index'];
+            }
         }
 
-        return $this->setHovered($hovered);
+        return null;
+    }
+
+    /**
+     * Scroll the strip by $tabs (from the ‹/› overflow indicators); negative
+     * pages toward the first tab. Clamping happens at render, where the widths
+     * are known — the same seam as {@see TabBarWidget::scrollBy()}.
+     */
+    public function scrollBy(int $tabs): void
+    {
+        $this->scroll = max(0, $this->scroll + $tabs);
+        $this->invalidate();
+    }
+
+    /**
+     * The scroll step of the ‹/› indicator at the widget-relative cell, or null
+     * when the cell is not an indicator. Checked before the close/tab hit zones,
+     * mirroring {@see TabBarWidget::scrollIndicatorAt()}.
+     */
+    public function scrollIndicatorAt(int $row, int $col): ?int
+    {
+        foreach ($this->indicatorZones as $zone) {
+            if ($zone['row'] === $row && $col >= $zone['col'] && $col < ($zone['col'] + $zone['width'])) {
+                return $zone['step'];
+            }
+        }
+
+        return null;
+    }
+
+    /** Whether $col lands on a tab body (vs the empty resize tail past the last tab). */
+    public function isOnTab(int $col): bool
+    {
+        return null !== $this->indexAt($col);
+    }
+
+    /**
+     * The pointer is on the strip's resize tail: heavy-rule it. Returns whether
+     * it changed — the router's repaint gate, folded in with the tab tint. The
+     * affordance is the glyph, not a shade, so it survives
+     * {@see \Porta\Ui\Theme\MonochromeTheme} like the pane dividers. Paired with
+     * {@see clearGrab()}, the same shape as {@see SeparatorWidget::hover()}.
+     */
+    public function hoverGrab(): bool
+    {
+        if ($this->grabHovered) {
+            return false;
+        }
+        $this->grabHovered = true;
+        $this->invalidate();
+
+        return true;
+    }
+
+    /** The pointer left the resize tail; returns whether it changed. */
+    public function clearGrab(): bool
+    {
+        if (!$this->grabHovered) {
+            return false;
+        }
+        $this->grabHovered = false;
+        $this->invalidate();
+
+        return true;
     }
 
     /**
@@ -233,6 +353,7 @@ final class DockTabsWidget extends AbstractWidget implements LtrPane, MenuOverla
     {
         $tabs = null !== $this->provider ? ($this->provider)() : [];
         $this->lastTabLayout = [];
+        $this->indicatorZones = [];
         if ([] === $tabs) {
             return [];
         }
@@ -247,24 +368,27 @@ final class DockTabsWidget extends AbstractWidget implements LtrPane, MenuOverla
 
             $status = $tab['status'];
         }
-        $hovered = $this->hoveredIndex;
         $strip = TabStripRenderer::render(
             array_map(
                 // A session tab and a tool tab are different families: a drag
                 // reorders within one and ignores a cross-family endpoint, so
                 // the strip draws that boundary heavier.
-                static fn (array $tab, int $i): array => [
+                static fn (array $tab): array => [
                     'label' => $tab['label'],
                     'active' => $tab['active'],
-                    'hovered' => $i === $hovered && !$tab['active'],
                     'family' => $tab['tab']->name,
                 ],
                 $tabs,
-                array_keys($tabs),
             ),
             $columns,
             $this->styles,
+            $this->hoverCol,
+            $this->scroll,
+            $this->lastActive,
         );
+        $this->scroll = $strip['scroll'];
+        $this->lastActive = $strip['lastActive'];
+        $this->indicatorZones = $strip['indicatorZones'];
         // The renderer's hit map is index-based; re-key it with each entry's dock identity.
         foreach ($strip['hitMap'] as $zone) {
             $tab = $tabs[$zone['index']];
@@ -281,13 +405,21 @@ final class DockTabsWidget extends AbstractWidget implements LtrPane, MenuOverla
         $line = $strip['line'];
         $used = $strip['used'];
 
-        // The active tool's status sits right-aligned in whatever room the tabs leave.
+        // The row doubles as the dock's height grab: under the pointer its empty
+        // tail heavy-rules so the drag-to-resize reads, at rest it stays plain.
+        // Both fills are one column, so no width moves.
+        $fill = $this->grabHovered ? Glyphs::PANEL_RESIZE_GRAB : ' ';
+
+        // The tail fills the room the tabs leave; the active tool's status, when
+        // there is one, sits right-aligned on top of it.
+        $tail = str_repeat($fill, max(0, $columns - $used));
         if ('' !== $status) {
             $room = $columns - $used - 2;
             $text = AnsiText::truncate($status, max(0, $room), pad: false);
             $pad = max(0, $columns - $used - mb_strwidth($text) - 1);
-            $line .= str_repeat(' ', $pad).$this->styles->merge(Role::Toolbar, Role::Dim)->apply($text);
+            $tail = str_repeat($fill, $pad).$this->styles->merge(Role::Toolbar, Role::Dim)->apply($text);
         }
+        $line .= $tail;
 
         // A Toolbar-background base under the whole row, then the styled tabs.
         return $this->withMenuOverlay([$this->styles->of(Role::Toolbar)->apply(AnsiText::padRight($line, $columns))], $columns);

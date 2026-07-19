@@ -357,7 +357,7 @@ final class ChangesListWidget extends AbstractWidget implements FocusableInterfa
             };
             $status = $entry->displayStatus();
             $statusText = \array_key_exists($status, self::STATUS_ROLE) ? $this->styles->of(self::STATUS_ROLE[$status])->apply($status) : $status;
-            $label = $entry->path.(null !== $entry->renamedFrom ? ' ← '.$entry->renamedFrom : '');
+            $label = $entry->path.(null !== $entry->renamedFrom ? ' '.Glyphs::RENAME_FROM.' '.$entry->renamedFrom : '');
 
             $text = AnsiText::truncate(' '.$checkbox.' '.$statusText.' '.$label, $width, pad: true);
             $lines[] = match (true) {

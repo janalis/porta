@@ -11,11 +11,13 @@ use Porta\Ui\CaretVisibility;
 use Porta\Ui\CursorStyle;
 use Porta\Ui\Glyphs;
 use Porta\Ui\Role;
+use Porta\Ui\Sgr;
 use Porta\Ui\TextField;
 use Porta\Ui\Theme\Styles;
 use Porta\Widget\MatchRowDecorator;
 use Porta\Widget\OptionTagState;
 use Porta\Widget\Render\HeaderRenderer;
+use Porta\Widget\Render\ModalRowStyle;
 use Porta\Widget\Render\OverlayCompositor;
 use Porta\Widget\ResultGrouping;
 use Porta\Widget\ResultLayout;
@@ -643,7 +645,9 @@ final class FindInFilesModal
     {
         $title = ' '.$this->title.$this->styles->of(Role::Dim)->apply('  '.$this->statusText());
 
-        $replaceHint = $this->inPreview() ? \sprintf('  (Del exclude · Alt+A replace %d)', $this->keptCount()) : '  (Tab · Alt+A)';
+        $replaceHint = $this->inPreview()
+            ? '  '.$this->translator->trans('(Del exclude · Alt+A replace %count%)', ['%count%' => $this->keptCount()])
+            : '  '.$this->translator->trans('(Tab · Alt+A)');
 
         return [
             HeaderRenderer::render($title, $width, $this->styles->of(Role::HeaderBar)->withBold(), suffix: 'Esc'),
@@ -749,16 +753,14 @@ final class FindInFilesModal
      */
     private function matchRow(array $result, RowSelection $selected, int $width): string
     {
-        $bg = $this->styles->of(match ($selected) {
-            RowSelection::Selected => Role::SelectedRow,
-            RowSelection::Hovered => Role::RowHighlightBg,
-            RowSelection::Unselected => Role::PopupRow,
-        })->getAnsiRestore();
+        $bg = $this->styles->of(ModalRowStyle::role($selected))->getAnsiRestore();
         $label = (string) ($result['line'] + 1);
         $prefixWidth = 4 + mb_strwidth($label) + 2;
         $text = '    '.$this->styles->of(Role::TabAccent)->apply($label).'  '.$result['text'];
 
-        return MatchRowDecorator::highlight($text, $width, $bg, $prefixWidth, $this->styles->of(Role::SearchBg)->getAnsiRestore(), $result['ranges'] ?? []);
+        $searchStyle = $this->styles->of(Role::SearchBg);
+
+        return MatchRowDecorator::highlight($text, $width, $bg, $prefixWidth, $searchStyle->getAnsiRestore(), Sgr::resetFor($searchStyle), $result['ranges'] ?? []);
     }
 
     /**
@@ -769,11 +771,7 @@ final class FindInFilesModal
      */
     private function previewMatchRow(array $result, int $matchIndex, RowSelection $selected, int $width): string
     {
-        $bg = $this->styles->of(match ($selected) {
-            RowSelection::Selected => Role::SelectedRow,
-            RowSelection::Hovered => Role::RowHighlightBg,
-            RowSelection::Unselected => Role::PopupRow,
-        })->getAnsiRestore();
+        $bg = $this->styles->of(ModalRowStyle::role($selected))->getAnsiRestore();
         $excluded = $this->excluded[$matchIndex] ?? false;
         $label = (string) ($result['line'] + 1);
         $old = $result['text'];
@@ -784,10 +782,12 @@ final class FindInFilesModal
         $text = $head.$old.$this->styles->of(Role::Dim)->apply('   (excluded)');
         if (!$excluded) {
             $new = null !== $this->previewReplacement ? ($this->previewReplacement)($old, $this->replace->value()) : $old;
-            $text = $head.$old.'  →  '.$this->styles->of(Role::Added)->apply($new);
+            $text = $head.$old.'  '.Glyphs::REPLACE_ARROW.'  '.$this->styles->of(Role::Added)->apply($new);
         }
 
-        return MatchRowDecorator::highlight($text, $width, $bg, $prefixWidth, $this->styles->of(Role::SearchBg)->getAnsiRestore(), $result['ranges'] ?? []);
+        $searchStyle = $this->styles->of(Role::SearchBg);
+
+        return MatchRowDecorator::highlight($text, $width, $bg, $prefixWidth, $searchStyle->getAnsiRestore(), Sgr::resetFor($searchStyle), $result['ranges'] ?? []);
     }
 
     private function emptyRow(int $width): string

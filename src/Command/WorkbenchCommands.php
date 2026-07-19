@@ -19,7 +19,6 @@ use Porta\Ui\WorkbenchActions;
 use Porta\Widget\CodeEditorWidget;
 use Porta\Widget\FileTreeWidget;
 use Porta\Widget\FindBarWidget;
-use Porta\Widget\GoToFileWidget;
 use Porta\Widget\ImageViewerWidget;
 use Porta\Widget\MenuBarWidget;
 use Symfony\Component\DependencyInjection\Attribute\AsTaggedItem;
@@ -44,7 +43,6 @@ final class WorkbenchCommands implements CommandProvider
         private readonly ImageViewerWidget $imageViewer,
         private readonly FileTreeWidget $tree,
         private readonly MenuBarWidget $menuBar,
-        private readonly GoToFileWidget $goToFile,
         private readonly FindBarWidget $findBar,
     ) {}
 
@@ -68,14 +66,14 @@ final class WorkbenchCommands implements CommandProvider
                 fn () => $this->focusCoordinator->cycle(1),
                 keyBound: KeyDispatch::Bound,
                 inPalette: PaletteVisibility::Hidden,
-                when: fn (): bool => !$this->menuBar->isOpen() && !$this->goToFile->isOpen() && !$this->findBar->isOpen(),
+                when: fn (): bool => !$this->menuBar->isOpen() && !$this->findBar->isOpen(),
             )
             ->add(
                 'focus_previous',
                 fn () => $this->focusCoordinator->cycle(-1),
                 keyBound: KeyDispatch::Bound,
                 inPalette: PaletteVisibility::Hidden,
-                when: fn (): bool => !$this->menuBar->isOpen() && !$this->goToFile->isOpen() && !$this->findBar->isOpen(),
+                when: fn (): bool => !$this->menuBar->isOpen() && !$this->findBar->isOpen(),
             )
             ->add(
                 'show_context_menu',

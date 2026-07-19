@@ -27,6 +27,7 @@ final class HighContrastTheme
                 Role::SelectedRow->selector() => new Style(background: 19, color: 231, bold: true),
                 Role::SelectedRowUnfocused->selector() => new Style(background: 236),
                 Role::RowHighlightBg->selector() => new Style(background: 234),
+                Role::FieldFocusBg->selector() => new Style(background: 234),
                 Role::PopupRow->selector() => new Style(background: 236, color: 231),
                 Role::HeaderBar->selector() => new Style(background: 236),
                 Role::Toolbar->selector() => new Style(background: 233),

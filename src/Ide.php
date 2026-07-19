@@ -56,7 +56,6 @@ use Porta\Widget\DebugPanelWidget;
 use Porta\Widget\DockTabsWidget;
 use Porta\Widget\FileTreeWidget;
 use Porta\Widget\FindBarWidget;
-use Porta\Widget\GoToFileWidget;
 use Porta\Widget\MenuBarWidget;
 use Porta\Widget\ResultsPanelWidget;
 use Porta\Widget\StatusBarWidget;
@@ -92,7 +91,6 @@ final class Ide
     private TerminalStateRefresher $terminalRefresher;
     private MenuBarWidget $menuBar;
     private FindBarWidget $findBar;
-    private GoToFileWidget $goToFile;
     private ResultsPanelWidget $resultsPanel;
     private TerminalPanelWidget $terminalPanel;
     private RunController $run;
@@ -214,7 +212,6 @@ final class Ide
             $this->menuBar,
             $this->main,
             $this->statusBar,
-            $this->goToFile,
             $this->findBar,
             $this->service(DockTabsWidget::class),
             $this->resultsPanel,
@@ -464,7 +461,6 @@ final class Ide
     /** The floating panels, project search, command palette and the LSP/run controllers. */
     private function buildSidePanels(): void
     {
-        $this->goToFile = $this->service(GoToFileWidget::class);
         $this->findBar = $this->service(FindBarWidget::class);
         $this->resultsPanel = $this->service(ResultsPanelWidget::class);
         $this->terminalPanel = $this->service(TerminalPanelWidget::class);

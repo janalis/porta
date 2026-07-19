@@ -27,17 +27,23 @@ enum Role
     // Selection convention: focus-tracking panes join the theme's
     // `.list::selected(:focus)` element rules (addStyleClass('list') +
     // resolveElement('selected')); always-focused modal surfaces (menus,
-    // editor overlays, go-to-file, the find modal) apply SelectedRow
-    // directly. Themes MUST keep `.list::selected:focus` ≡ SelectedRow and
-    // `.list::selected` ≡ SelectedRowUnfocused so the two families render
-    // identically. Pane/popup titles are HeaderBar+bold; in-list section
-    // headers are Toolbar+Dim+bold; hover over default rows is
-    // RowHighlightBg, hover over bar chrome (menu titles, tab strips) is
-    // BarHoverBg.
+    // editor overlays, go-to-file, the find modal) resolve the row shade
+    // through {@see \Porta\Widget\Render\ModalRowStyle} (Selected → SelectedRow,
+    // Hovered → RowHighlightBg, else PopupRow). Themes MUST keep
+    // `.list::selected:focus` ≡ SelectedRow and `.list::selected` ≡
+    // SelectedRowUnfocused so the two families render identically. Pane/popup
+    // titles are HeaderBar+bold; in-list section headers are Toolbar+Dim+bold;
+    // hover over default rows is RowHighlightBg; hover over bar chrome (menu
+    // titles, tab strips) is BarHoverBg, resolved through
+    // {@see \Porta\Widget\Render\BarChromeStyle}.
     case SelectedRow;
     case SelectedRowUnfocused;
     case RowHighlightBg;
     case PopupRow;
+    // The background of a labelled single-line input row (the results panel's
+    // filter). A token distinct from RowHighlightBg so a field's background and
+    // the row-hover tint can diverge — today they resolve to the same shade.
+    case FieldFocusBg;
 
     // Git chrome: header/toolbar bars, file-status markers, tag buttons.
     case HeaderBar;

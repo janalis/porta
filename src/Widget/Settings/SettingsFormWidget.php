@@ -317,7 +317,13 @@ final class SettingsFormWidget extends AbstractWidget implements FocusableInterf
             if ($row->restart) {
                 $text .= $this->styles->of(Role::Dim)->apply(' · '.$this->translator->trans('applies on restart'));
             }
-            $text = AnsiText::truncate($text, $width, pad: true);
+            // An overflowing value being edited must keep its caret on screen:
+            // scroll the assembled row to the marker instead of a hard clip that
+            // would drop it off the right edge (every other field does this).
+            $text =
+                $i === $this->editing && null !== $this->editField
+                    ? AnsiText::scrollLineToCaret($text, $width)
+                    : AnsiText::truncate($text, $width, pad: true);
             $lines[] = match (true) {
                 $i === $this->selected => $this->applyElement('selected', $text),
                 $i === $this->hoveredIndex => $this->styles->of(Role::RowHighlightBg)->apply($text),

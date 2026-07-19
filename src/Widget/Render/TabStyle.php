@@ -9,24 +9,20 @@ use Porta\Ui\Theme\Styles;
 use Symfony\Component\Tui\Style\Style;
 
 /**
- * The unified strip family's tab shading: the active tab bright and bold on
- * {@see Role::TabActiveBg}, a hovered one on the bar-chrome hover shade, the
- * rest subtle on the toolbar.
+ * The unified strip family's tab shading — the active tab bright and bold, a
+ * hovered one on the bar-chrome hover shade, the rest subtle on the toolbar.
  *
  * This is the one thing all four strips share — the editor tab bar in both
  * orientations, the bottom dock's strip and the git view's mode tabs. Their
  * cells differ (only two carry a close ×, only one is a column of rows), but
  * a tab that shades differently from strip to strip is the drift worth
- * preventing.
+ * preventing. The shades themselves are the bar-chrome family's, so this pins
+ * {@see BarChromeStyle} to the tab strips' {@see Role::Toolbar} rest background.
  */
 final class TabStyle
 {
     public static function of(Styles $styles, TabState $state): Style
     {
-        return match ($state) {
-            TabState::Active => $styles->merge(Role::TabActiveBg, Role::Bright)->withBold(),
-            TabState::Hovered => $styles->merge(Role::BarHoverBg, Role::Subtle),
-            TabState::Plain => $styles->merge(Role::Toolbar, Role::Subtle),
-        };
+        return BarChromeStyle::of($styles, $state, Role::Toolbar);
     }
 }

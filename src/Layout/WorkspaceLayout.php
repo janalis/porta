@@ -17,7 +17,6 @@ use Porta\Widget\Git\CommitBoxWidget;
 use Porta\Widget\Git\DiffViewWidget;
 use Porta\Widget\Git\GitTabsWidget;
 use Porta\Widget\Git\HistoryListWidget;
-use Porta\Widget\GoToFileWidget;
 use Porta\Widget\MenuBarWidget;
 use Porta\Widget\ResultsPanelWidget;
 use Porta\Widget\SeparatorWidget;
@@ -78,7 +77,6 @@ final class WorkspaceLayout
         KeybindingsListWidget $settingsKeys,
         private readonly MenuBarWidget $menuBar,
         private readonly ContextMenu $contextMenu,
-        private readonly GoToFileWidget $goToFile,
         private readonly FindBarWidget $findBar,
         private readonly DockTabsWidget $dockTabs,
         private readonly ResultsPanelWidget $resultsPanel,
@@ -114,7 +112,6 @@ final class WorkspaceLayout
     {
         $tui
             ->add($this->menuBar)
-            ->add($this->goToFile)
             ->add($this->main)
             ->add($this->findBar)
             ->add($this->dockTabs)

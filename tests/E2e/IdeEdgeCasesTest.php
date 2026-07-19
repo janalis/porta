@@ -497,10 +497,13 @@ final class IdeEdgeCasesTest extends TestCase
                     $tui->handleInput("\x1b[<81;80;10M"); // ctrl+wheel down → back out
                     $this->assertSame('100%', $tui->getById('image-viewer')->zoomLabel());
                     $this->assertSame('image-viewer', $tui->getFocus()?->getId(), 'click over the image keeps the viewer focused');
-                    // Ctrl+P still opens the go-to-file palette from the viewer.
-                    $tui->handleInput("\x10");
-                    $this->assertSame('goto-file', $tui->getFocus()?->getId(), 'go-to-file opens over an image tab');
-                    $tui->handleInput("\x1b"); // dismiss it
+                    // Go-to-file is now the editor-hosted picker (a files-only
+                    // Search Everywhere), so with only an image tab it refuses
+                    // with the same flash the other editor modals give.
+                    $tui->handleInput("\x10"); // ctrl+p
+                    $tui->tick();
+                    $this->assertSame('image-viewer', $tui->getFocus()?->getId(), 'go-to-file refuses with only an image tab');
+                    $this->assertStringContainsString('Not available in this view', AnsiUtils::stripAnsiCodes($terminal->getOutput()));
                     // The menu composites over the image pane (no hole), and closing
                     // it restores focus to the viewer (editor-area-aware default).
                     $tui->handleInput("\x1b[21~"); // F10 → menu
@@ -589,7 +592,7 @@ final class IdeEdgeCasesTest extends TestCase
                     $tui->handleInput("\x1b[101;6u"); // ctrl+shift+e → search everywhere
                     $tui->handleInput("\x1b[102;6u"); // ctrl+shift+f → find in files (same guard)
                     $tui->tick();
-                    $this->assertStringContainsString('Not available while viewing an image', AnsiUtils::stripAnsiCodes($terminal->getOutput()));
+                    $this->assertStringContainsString('Not available in this view', AnsiUtils::stripAnsiCodes($terminal->getOutput()));
                 },
             ],
         );
@@ -4426,9 +4429,12 @@ final class IdeEdgeCasesTest extends TestCase
                 1000 => function ($tui, $terminal): void {
                     // The shell's exit ripples through PTY EOF + reap; await it
                     // instead of racing a fixed delay under machine load.
-                    $this->await(static fn (): bool => str_contains(AnsiUtils::stripAnsiCodes($terminal->getOutput()), 'exited'));
+                    $this->await(static fn (): bool => str_contains(AnsiUtils::stripAnsiCodes($terminal->getOutput()), Glyphs::SESSION_STOPPED));
                     $tui->tick();
-                    $this->assertStringContainsString('exited', AnsiUtils::stripAnsiCodes($terminal->getOutput()));
+                    $out = AnsiUtils::stripAnsiCodes($terminal->getOutput());
+                    $this->assertStringContainsString(Glyphs::SESSION_STOPPED, $out, 'the exited session shows the ○ stopped marker');
+                    $this->assertStringContainsString('(0)', $out, 'and its exit code — without the redundant "exited" prose');
+                    $this->assertStringNotContainsString('exited', $out, 'the "exited" word is gone; the glyph carries the state');
                 },
             ],
         );
@@ -6974,23 +6980,6 @@ final class IdeEdgeCasesTest extends TestCase
                     $this->assertStringEndsWith('c.php', (string) $tui->getById('editor')->getFilePath(), 'clicked the second result');
                     $this->assertTrue($tui->getById('results')->isOpen(), 'the pane stays open after the jump');
                 },
-                480 => static function ($tui, $terminal, $ide): void {
-                    $goto = $tui->getById('goto-file');
-                    $goto->open();
-                    $tui->requestRender();
-                    $tui->tick();
-                    $renderer = new \ReflectionProperty($ide, 'renderer')->getValue($ide);
-                    $rect = $renderer->getWidgetRect($goto);
-                    // Header is relative row 0; hover/click the second file (relative row 2)
-                    // so the hover moves the selection off the default first row.
-                    $x = $rect->col + 3;
-                    $y = $rect->row + 3; // 1-based screen row of relative row 2
-                    $tui->handleInput(\sprintf("\x1b[<35;%d;%dM", $x, $y)); // hover the second file
-                    $tui->handleInput(\sprintf("\x1b[<0;%d;%dM", $x, $y)); // click it
-                },
-                620 => function ($tui): void {
-                    $this->assertFalse($tui->getById('goto-file')->isOpen(), 'clicking a file opened it and closed the palette');
-                },
             ],
         );
 
@@ -7322,16 +7311,19 @@ final class IdeEdgeCasesTest extends TestCase
                     $this->assertStringContainsString('Close Others', AnsiUtils::stripAnsiCodes($terminal->getOutput()), 'viewer tabs get the tab context menu');
                     $tui->handleInput("\x1b");
                 },
-                650 => function ($tui, $terminal, $ide): void {
-                    new \ReflectionProperty($ide, 'commands')->getValue($ide)->run('goto_file');
-                    $tui->handleInput("\x1b[21;5~"); // no context menu for the go-to-file popup
+                650 => function ($tui): void {
+                    // Go-to-file is the editor-hosted picker now; opening it hops
+                    // off the help tab to a text buffer, and the modal picker owns
+                    // input, so Ctrl+F10 opens no context menu over it.
+                    $tui->handleInput("\x10"); // ctrl+p
+                    $tui->handleInput("\x1b[21;5~"); // ctrl+f10
                     $tui->tick();
-                    $this->assertFalse(
-                        new \ReflectionProperty($ide, 'contextMenu')
-                            ->getValue($ide)
-                            ->isOpen(),
-                    );
-                    $this->assertStringContainsString('No context menu here', AnsiUtils::stripAnsiCodes($terminal->getOutput()), 'the flash explains the no-op');
+                    $this->assertTrue($tui->getById('editor')->isSearchOverlayOpen(), 'go-to-file opened the centered picker');
+                    $this->assertFalse($tui->getById('context-menu')->isOpen(), 'no context menu over the picker');
+                    // A right-click inside the modal picker also opens no menu.
+                    $tui->handleInput("\x1b[<2;10;10M"); // right-press
+                    $tui->tick();
+                    $this->assertFalse($tui->getById('context-menu')->isOpen(), 'right-click over the picker opens no menu');
                 },
             ],
         );

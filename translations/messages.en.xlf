@@ -538,6 +538,14 @@
         <source>[scrolled +%count%]</source>
         <target>[scrolled +%count%]</target>
       </trans-unit>
+      <trans-unit id="135arrow">
+        <source>[→%count%]</source>
+        <target>[→%count%]</target>
+      </trans-unit>
+      <trans-unit id="135se">
+        <source>Search Everywhere</source>
+        <target>Search Everywhere</target>
+      </trans-unit>
       <trans-unit id="136">
         <source>applies on restart</source>
         <target>applies on restart</target>
@@ -1179,8 +1187,8 @@
         <target>Cannot display image %file%</target>
       </trans-unit>
       <trans-unit id="297">
-        <source>Not available while viewing an image</source>
-        <target>Not available while viewing an image</target>
+        <source>Not available in this view</source>
+        <target>Not available in this view</target>
       </trans-unit>
       <trans-unit id="298">
         <source>+/- zoom  0 fit  Arrows pan  Ctrl+Q quit</source>
@@ -1925,6 +1933,18 @@
       <trans-unit id="485">
         <source>File History</source>
         <target>File History</target>
+      </trans-unit>
+      <trans-unit id="486">
+        <source>No file open · press Ctrl+P to open a file</source>
+        <target>No file open · press Ctrl+P to open a file</target>
+      </trans-unit>
+      <trans-unit id="487">
+        <source>(Del exclude · Alt+A replace %count%)</source>
+        <target>(Del exclude · Alt+A replace %count%)</target>
+      </trans-unit>
+      <trans-unit id="488">
+        <source>(Tab · Alt+A)</source>
+        <target>(Tab · Alt+A)</target>
       </trans-unit>
     </body>
   </file>

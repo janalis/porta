@@ -90,6 +90,18 @@ final class HelpViewerWidgetTest extends TestCase
         $this->assertStringContainsString('Home', $screen, 'cycling scrolled the focused link into view');
     }
 
+    public function testABlurredPaneDimsTheFocusedLink(): void
+    {
+        $viewer = $this->viewer();
+        $this->screen($viewer); // establish width
+        $viewer->handleInput("\t"); // focus the first link
+
+        $viewer->setFocused(false);
+        $line = $viewer->render(new RenderContext(60, 10))[4] ?? '';
+        $this->assertStringContainsString("\x1b[48;5;237m", $line, 'a blurred pane dims the focused link (SelectedRowUnfocused)');
+        $this->assertStringNotContainsString("\x1b[48;5;31m", $line, 'not the bright focused shade');
+    }
+
     public function testCyclingScrollsDownToABottomLinkAndBackUp(): void
     {
         $viewer = $this->viewer();

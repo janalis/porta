@@ -153,15 +153,19 @@ final class CodeEditorWidget extends AbstractWidget implements ActiveFileProvide
     /** Shared hardware-cursor shape holder (the `cursorShape` setting swaps it live). */
     private readonly CursorStyle $cursorStyle;
 
+    /** For the empty-state hint; the English fallback keeps direct (test) construction working. */
+    private readonly Translator $translator;
+
     public function __construct(?Styles $styles = null, ?TerminalTheme $syntaxTheme = null, ?CursorStyle $cursorStyle = null, ?Translator $translator = null)
     {
         $this->styles = $styles ?? Styles::dark();
         $this->syntaxTheme = $syntaxTheme ?? new DarkTerminalTheme();
         $this->cursorStyle = $cursorStyle ?? new CursorStyle();
+        $this->translator = $translator ?? new Translator('en');
         $this->callbacks = new EditorCallbacks();
         $this->decorations = new DecorationStore($this->invalidate(...));
         $this->overlayHost = new OverlayHost($this->invalidate(...), $this->styles, $this->cursorStyle);
-        $this->findModal = new FindInFilesModal($this->invalidate(...), $this->styles, $this->cursorStyle, $translator);
+        $this->findModal = new FindInFilesModal($this->invalidate(...), $this->styles, $this->cursorStyle, $this->translator);
         $this->document = new Document('');
         $this->highlighter = new CodeHighlighter(syntaxTheme: $this->syntaxTheme);
         $this->foldModel = new FoldModel($this->document);
@@ -289,9 +293,14 @@ final class CodeEditorWidget extends AbstractWidget implements ActiveFileProvide
         return $this->overlayHost->isListOpen();
     }
 
-    public function openSearch(string $title, \Closure $onQuery, \Closure $onPick, \Closure $onClose): void
+    public function isPromptOpen(): bool
     {
-        $this->overlayHost->openSearch($title, $onQuery, $onPick, $onClose);
+        return $this->overlayHost->isPromptOpen();
+    }
+
+    public function openSearch(string $title, \Closure $onQuery, \Closure $onPick, \Closure $onClose, string $emptyMessage = ''): void
+    {
+        $this->overlayHost->openSearch($title, $onQuery, $onPick, $onClose, $emptyMessage);
     }
 
     /** @param list<SearchRow> $rows */
@@ -818,6 +827,11 @@ final class CodeEditorWidget extends AbstractWidget implements ActiveFileProvide
      */
     public function handlePopupClick(int $relRow, int $relCol): bool
     {
+        // The prompt wins when it and a list overlay are both open — the same
+        // precedence its keyboard handling has ({@see OverlayHost::handleInput}).
+        if ($this->overlayHost->isPromptOpen()) {
+            return $this->overlayHost->promptClickAt($relRow, $relCol);
+        }
         if ($this->findModal->isOpen()) {
             return $this->findModal->clickAt($relRow, $relCol);
         }
@@ -1164,7 +1178,7 @@ final class CodeEditorWidget extends AbstractWidget implements ActiveFileProvide
      */
     private function renderEmptyState(int $columns, int $rows): array
     {
-        $hint = 'No file open · press Ctrl+P to open a file';
+        $hint = $this->translator->trans('No file open · press Ctrl+P to open a file');
         $text = AnsiText::truncate($hint, $columns);
         $textWidth = AnsiUtils::visibleWidth($text);
         $left = max(0, intdiv($columns - $textWidth, num2: 2));

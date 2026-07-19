@@ -51,18 +51,21 @@ final class LineSpans
         }
         foreach ($matches as $match) {
             // The current match is additionally bold, so it stands out from the
-            // other matches without relying on the background color.
-            $open = $match['current'] ? $styles->of(Role::SearchCurrentBg)->withBold()->getAnsiRestore() : $styles->of(Role::SearchBg)->getAnsiRestore();
-            $close = $match['current'] ? "\x1b[49m\x1b[22m" : Sgr::DEFAULT_BG;
-            $spans[] = [$doc->displayColAt($lineIndex, $match['start']), $doc->displayColAt($lineIndex, $match['end']), $open, $close, $open];
+            // other matches without relying on the background color. The close is
+            // derived from the style so it cancels reverse/underline (Monochrome)
+            // as it cancels the background (colored themes).
+            $matchStyle = $match['current'] ? $styles->of(Role::SearchCurrentBg)->withBold() : $styles->of(Role::SearchBg);
+            $open = $matchStyle->getAnsiRestore();
+            $spans[] = [$doc->displayColAt($lineIndex, $match['start']), $doc->displayColAt($lineIndex, $match['end']), $open, Sgr::resetFor($matchStyle), $open];
         }
         foreach ($occurrences as [$oLine, $oStart, $oEnd]) {
             if ($oLine !== $lineIndex) {
                 continue;
             }
 
-            $occurrenceBg = $styles->of(Role::OccurrenceBg)->getAnsiRestore();
-            $spans[] = [$oStart, $oEnd, $occurrenceBg, Sgr::DEFAULT_BG, $occurrenceBg];
+            $occurrenceStyle = $styles->of(Role::OccurrenceBg);
+            $occurrenceBg = $occurrenceStyle->getAnsiRestore();
+            $spans[] = [$oStart, $oEnd, $occurrenceBg, Sgr::resetFor($occurrenceStyle), $occurrenceBg];
         }
         if (null !== $brackets) {
             foreach ($brackets as [$bLine, $bDispCol]) {
@@ -92,7 +95,7 @@ final class LineSpans
             // The caret cell (reverse video), for the primary and extras alike.
             if ($caret->line === $lineIndex) {
                 $col = $doc->displayColAt($lineIndex, $caret->col);
-                $spans[] = [$col, $col + 1, Sgr::REVERSE, "\x1b[27m", null];
+                $spans[] = [$col, $col + 1, Sgr::REVERSE, Sgr::NO_REVERSE, null];
                 // An end-of-line caret needs a padded cell to invert.
                 $padTo = max($padTo, $col + 1);
             }
@@ -112,9 +115,10 @@ final class LineSpans
     {
         $startDisp = $lineIndex === $startLine ? $doc->displayColAt($lineIndex, $startCol) : 0;
         $endDisp = $lineIndex === $endLine ? $doc->displayColAt($lineIndex, $endCol) : $doc->lineDisplayWidth($lineIndex);
-        $selectionBg = $styles->of(Role::SelectionBg)->getAnsiRestore();
+        $selectionStyle = $styles->of(Role::SelectionBg);
+        $selectionBg = $selectionStyle->getAnsiRestore();
 
-        return [$startDisp, $endDisp, $selectionBg, Sgr::DEFAULT_BG, $selectionBg];
+        return [$startDisp, $endDisp, $selectionBg, Sgr::resetFor($selectionStyle), $selectionBg];
     }
 
     /**

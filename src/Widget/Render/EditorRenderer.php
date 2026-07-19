@@ -14,6 +14,7 @@ use Porta\Ui\Glyphs;
 use Porta\Ui\Role;
 use Porta\Ui\Sgr;
 use Porta\Ui\Theme\Styles;
+use Porta\Widget\Overlay\RowSelection;
 use Symfony\Component\Tui\Ansi\AnsiUtils;
 
 /**
@@ -175,11 +176,7 @@ final class EditorRenderer
     /** The shading for a modal list row: the selection wins, then the hover tint, then plain. */
     private static function rowRole(int $index, int $selected, ?int $hovered): Role
     {
-        return match (true) {
-            $index === $selected => Role::SelectedRow,
-            $index === $hovered => Role::RowHighlightBg,
-            default => Role::PopupRow,
-        };
+        return ModalRowStyle::role(RowSelection::of($index === $selected, $index === $hovered));
     }
 
     /**
@@ -235,7 +232,7 @@ final class EditorRenderer
         }
         $leadingWidth = $doc->displayColAt($lineIndex, $wsBytes);
         for ($col = 0; $col < $leadingWidth; $col += $doc->indentDisplayWidth()) {
-            $hlLine = LineDecorator::overlayGlyph($hlLine, $col, '│', $styles->of(Role::IndentGuide));
+            $hlLine = LineDecorator::overlayGlyph($hlLine, $col, Glyphs::INDENT_GUIDE, $styles->of(Role::IndentGuide));
         }
 
         return $hlLine;
@@ -421,19 +418,20 @@ final class EditorRenderer
         int $columns,
         int $rows,
         string $title,
-        string $query,
-        PaneFocus $focused,
+        string $queryField,
         array $rowModels,
         int $selected,
         ?int $hovered,
         Styles $styles,
-        string $cursorMarker,
+        string $emptyMessage,
     ): array {
         $maxRows = max(1, min(\count($rowModels), $rows - 4, 12));
         $windowStart = IntMath::clamp($selected - $maxRows + 1, 0, max(0, \count($rowModels) - $maxRows));
         $visible = \array_slice($rowModels, $windowStart, $maxRows);
 
-        $width = max(mb_strwidth($title) + 4, mb_strwidth($query) + 6, 24);
+        // visibleWidth strips the field's zero-width caret marker, so the width
+        // measures the query text alone.
+        $width = max(mb_strwidth($title) + 4, AnsiUtils::visibleWidth($queryField) + 6, 24);
         foreach ($visible as $row) {
             $width = max($width, mb_strwidth($row['label']) + mb_strwidth($row['detail']) + 6);
         }
@@ -442,7 +440,7 @@ final class EditorRenderer
 
         $popup = [
             HeaderRenderer::render(' '.$title, $width, $styles->of(Role::HeaderBar)->withBold(), suffix: 'Esc'),
-            $styles->of(Role::Toolbar)->apply(AnsiText::scrollLineToCaret(' > '.$query.(PaneFocus::Focused === $focused ? $cursorMarker : ''), $width)),
+            $styles->of(Role::Toolbar)->apply(AnsiText::scrollLineToCaret(' > '.$queryField, $width)),
         ];
         foreach ($visible as $i => $row) {
             if (null !== $row['header']) {
@@ -459,6 +457,12 @@ final class EditorRenderer
             $detailWidth = AnsiUtils::visibleWidth($detail);
             $label = AnsiText::truncate($row['label'], max(1, $avail - $detailWidth), pad: true);
             $popup[] = $style->apply(' '.$label.' '.$styles->of(Role::CompletionHint)->apply($detail).' ');
+        }
+        // A no-hit query gets the same empty-state filler the find-in-files
+        // modal ({@see \Porta\Widget\Overlay\FindInFilesModal}) shows: the
+        // popup's own base row (PopupRow), never blank.
+        if ([] === $rowModels && '' !== $emptyMessage) {
+            $popup[] = $styles->merge(Role::PopupRow, Role::CompletionHint)->apply(AnsiText::truncate(' '.$emptyMessage, $width, pad: true, ellipsis: ''));
         }
 
         return self::placeCenteredPopup($lines, $popup, $col, $width, $columns, $rows, $windowStart, \count($visible));

@@ -19,7 +19,6 @@ use Porta\Widget\Git\CommitBoxWidget;
 use Porta\Widget\Git\DiffViewWidget;
 use Porta\Widget\Git\GitTabsWidget;
 use Porta\Widget\Git\HistoryListWidget;
-use Porta\Widget\GoToFileWidget;
 use Porta\Widget\MenuBarWidget;
 use Porta\Widget\ResultsPanelWidget;
 use Porta\Widget\Settings\KeybindingsListWidget;
@@ -56,7 +55,6 @@ final class TestWorkspaceLayout
         ?KeybindingsListWidget $settingsKeys = null,
         ?MenuBarWidget $menuBar = null,
         ?ContextMenu $contextMenu = null,
-        ?GoToFileWidget $goToFile = null,
         ?FindBarWidget $findBar = null,
         ?DockTabsWidget $dockTabs = null,
         ?ResultsPanelWidget $resultsPanel = null,
@@ -87,7 +85,6 @@ final class TestWorkspaceLayout
             $settingsKeys ?? $id(new KeybindingsListWidget($t), id: 'settings-keys'),
             $menuBar ?? $id(new MenuBarWidget(), id: 'menu'),
             $contextMenu ?? $id(new ContextMenu(), id: 'context-menu'),
-            $goToFile ?? $id(new GoToFileWidget($t, $rootDir), id: 'goto-file'),
             $findBar ?? $id(new FindBarWidget($t), id: 'find-bar'),
             $dockTabs ?? $id(new DockTabsWidget(), id: 'dock-tabs'),
             $resultsPanel ?? $id(new ResultsPanelWidget(), id: 'results'),

@@ -267,7 +267,9 @@ final class MenuBarWidgetTest extends TestCase
         $bar->hoverTitle(1);
         $bar->open(0); // the active style wins; the hover style is hidden while open
         $row = $bar->render(new RenderContext(60, 24))[0];
-        $this->assertStringContainsString("\x1b[48;5;31m", $row, 'open title uses the active background');
+        $this->assertStringContainsString("\x1b[48;5;238m", $row, 'open title uses the tab-active background, like an active tab');
+        $this->assertStringContainsString("\x1b[1m", $row, 'and is bold, matching TabStyle::Active');
+        $this->assertStringNotContainsString("\x1b[48;5;31m", $row, 'no longer the strong SelectedRow blue');
         $this->assertStringNotContainsString("\x1b[48;5;240m", $row, 'hover style suppressed while a menu is open');
     }
 
@@ -349,7 +351,7 @@ final class MenuBarWidgetTest extends TestCase
         $this->assertExactWidth($bar->render(new RenderContext(30, 5)), 30);
     }
 
-    public function testWheelMovesTheDropdownSelectionOneItemPerNotch(): void
+    public function testWheelMovesTheDropdownSelectionSkippingSeparators(): void
     {
         $bar = $this->bar();
         $bar->moveSelection(1); // closed: a no-op
@@ -358,5 +360,17 @@ final class MenuBarWidgetTest extends TestCase
         $bar->moveSelection(1); // Save → (separator skipped) → Quit
         $bar->handleInput("\r");
         $this->assertSame(['quit'], $this->ran, 'the wheel stepped past the separator to Quit');
+    }
+
+    public function testWheelStepHonoursTheDeltaMagnitudeNotJustItsSign(): void
+    {
+        $bar = $this->bar();
+        $bar->open(0); // File: Save selected
+        // Two selectable steps in the {Save, Quit} cycle (separator skipped,
+        // wrapping): Save → Quit → Save. A sign-only move would stop at Quit
+        // after one step; the magnitude must carry both, landing back on Save.
+        $bar->moveSelection(2);
+        $bar->handleInput("\r");
+        $this->assertSame(['save'], $this->ran, 'two steps wrap back to Save — the magnitude moved, not just the sign');
     }
 }

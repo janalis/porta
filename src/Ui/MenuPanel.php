@@ -49,7 +49,7 @@ final class MenuPanel
         foreach ($items as $index => $item) {
             $out[] = [
                 'segment' => $item->separator
-                    ? $styles->merge(Role::RowHighlightBg, Role::Placeholder)->apply(str_repeat('─', max(0, $panelWidth)))
+                    ? $styles->merge(Role::RowHighlightBg, Role::Placeholder)->apply(str_repeat(Glyphs::MENU_SEPARATOR, max(0, $panelWidth)))
                     : self::itemSegment(
                         $item,
                         $panelWidth,

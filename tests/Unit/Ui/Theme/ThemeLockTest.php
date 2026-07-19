@@ -33,6 +33,7 @@ final class ThemeLockTest extends TestCase
         yield 'selected-row' => [Role::SelectedRow, new Style(background: 31, color: 231, bold: true)];
         yield 'selected-row-unfocused' => [Role::SelectedRowUnfocused, new Style(background: 237)];
         yield 'row-highlight-bg' => [Role::RowHighlightBg, new Style(background: 236)];
+        yield 'field-focus-bg' => [Role::FieldFocusBg, new Style(background: 236)];
         yield 'popup-row' => [Role::PopupRow, new Style(background: 236, color: 250)];
         yield 'header-bar' => [Role::HeaderBar, new Style(background: 237)];
         yield 'toolbar' => [Role::Toolbar, new Style(background: 235)];
@@ -97,6 +98,7 @@ final class ThemeLockTest extends TestCase
         yield 'selected-row' => [Role::SelectedRow, new Style(background: 111, color: 16, bold: true)];
         yield 'selected-row-unfocused' => [Role::SelectedRowUnfocused, new Style(background: 253)];
         yield 'row-highlight-bg' => [Role::RowHighlightBg, new Style(background: 253)];
+        yield 'field-focus-bg' => [Role::FieldFocusBg, new Style(background: 253)];
         yield 'popup-row' => [Role::PopupRow, new Style(background: 253, color: 240)];
         yield 'header-bar' => [Role::HeaderBar, new Style(background: 253)];
         yield 'toolbar' => [Role::Toolbar, new Style(background: 254)];
@@ -188,6 +190,31 @@ final class ThemeLockTest extends TestCase
         }
     }
 
+    public function testDarkStylesEveryStylableRole(): void
+    {
+        // Iterating Role::cases() (not a hardcoded list) so a NEW role that is
+        // left unmapped resolves to plain and fails here — the guard the
+        // Monochrome selection/search gaps slipped past when they were added.
+        $dark = DarkTheme::definition();
+        foreach (Role::cases() as $role) {
+            if ('' !== $dark->underline($role)) {
+                continue;
+            }
+            $this->assertFalse($dark->of($role)->isPlain(), $role->name.' must have a dark style');
+        }
+    }
+
+    public function testLightStylesEveryStylableRole(): void
+    {
+        $light = LightTheme::definition();
+        foreach (Role::cases() as $role) {
+            if ('' !== $light->underline($role)) {
+                continue;
+            }
+            $this->assertFalse($light->of($role)->isPlain(), $role->name.' must have a light style');
+        }
+    }
+
     public function testHighContrastKeyPairings(): void
     {
         // Spot-locks for the accessibility-critical picks; the full table is free
@@ -204,9 +231,21 @@ final class ThemeLockTest extends TestCase
     {
         // The selection roles + active-tab shade (reverse) and the hover roles
         // (underline) are the deliberate exceptions: without color they would
-        // otherwise be invisible.
+        // otherwise be invisible. Character selection and search/occurrence
+        // highlights join them (reverse / underline) for the same reason.
         $mono = MonochromeTheme::definition();
-        $mapped = [Role::SelectedRow, Role::SelectedRowUnfocused, Role::TabActiveBg, Role::RowHighlightBg, Role::BarHoverBg];
+        $mapped = [
+            Role::SelectedRow,
+            Role::SelectedRowUnfocused,
+            Role::TabActiveBg,
+            Role::RowHighlightBg,
+            Role::FieldFocusBg,
+            Role::BarHoverBg,
+            Role::SelectionBg,
+            Role::SearchBg,
+            Role::SearchCurrentBg,
+            Role::OccurrenceBg,
+        ];
         foreach (Role::cases() as $role) {
             if (\in_array($role, $mapped, strict: true)) {
                 continue;
@@ -222,6 +261,17 @@ final class ThemeLockTest extends TestCase
         $this->assertEquals(new Style(reverse: true), $mono->of(Role::SelectedRow));
         $this->assertEquals(new Style(dim: true, reverse: true), $mono->of(Role::SelectedRowUnfocused));
         $this->assertEquals(new Style(reverse: true), $mono->of(Role::TabActiveBg), 'the active tab stays visible without color');
+        $this->assertEquals(new Style(reverse: true), $mono->of(Role::SelectionBg), 'character selection survives --no-ansi');
+    }
+
+    public function testMonochromeSearchHighlightsUseUnderline(): void
+    {
+        // Search matches / occurrences would be invisible without a mark; underline
+        // reads under --no-ansi (the current match adds bold at its call site).
+        $mono = MonochromeTheme::definition();
+        $this->assertEquals(new Style(underline: true), $mono->of(Role::SearchBg), 'search matches are visible');
+        $this->assertEquals(new Style(underline: true), $mono->of(Role::SearchCurrentBg));
+        $this->assertEquals(new Style(underline: true), $mono->of(Role::OccurrenceBg));
     }
 
     public function testMonochromeHoverUsesUnderlineDistinctFromTheSelection(): void
@@ -231,6 +281,7 @@ final class ThemeLockTest extends TestCase
         // row is not ambiguous — render precedence keeps the reverse).
         $mono = MonochromeTheme::definition();
         $this->assertEquals(new Style(underline: true), $mono->of(Role::RowHighlightBg));
+        $this->assertEquals(new Style(underline: true), $mono->of(Role::FieldFocusBg), 'the field background reads like its hover-tint twin without colour');
         $this->assertEquals(new Style(underline: true), $mono->of(Role::BarHoverBg));
     }
 

@@ -124,7 +124,7 @@ final class RunController
         $found = $this->sessions->find('run:'.$title);
         if (null !== $found) {
             $found->buffer->clear();
-            $found->setTitle($title); // drop any stale "— exited" suffix
+            $found->setTitle($title); // drop any stale exit-code "(N)" suffix
             $this->sessions->makeActive($found);
         }
         $session = $found ?? $this->sessions->create('run:'.$title, $title);
@@ -150,7 +150,7 @@ final class RunController
                 $this->tui->requestRender();
             })
             ->onExit(function (int $code) use ($session): void {
-                $session->setTitle(\sprintf('%s — exited (%d)', $session->title(), $code));
+                $session->setTitle(\sprintf('%s (%d)', $session->title(), $code));
                 $this->tui->requestRender();
             });
         $session->attach($process);

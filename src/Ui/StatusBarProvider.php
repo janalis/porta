@@ -45,7 +45,7 @@ final class StatusBarProvider
         $left = match (true) {
             null !== $active && (null !== $image || $active->isHelp()) => ProjectPaths::relative($this->rootDir, $active->path),
             null === $path => $this->translator->trans('porta — open a file from the tree (Enter)'),
-            default => ProjectPaths::relative($this->rootDir, $path).($doc->isDirty() ? ' ●' : ''),
+            default => ProjectPaths::relative($this->rootDir, $path).($doc->isDirty() ? ' '.Glyphs::DIRTY : ''),
         };
 
         if (null !== ($branch = $this->gitRefresher->branch())) {

@@ -13,11 +13,12 @@ namespace Porta\Search\Everywhere;
 interface SearchOverlay
 {
     /**
-     * @param \Closure(string): void    $onQuery fired on each query edit
-     * @param \Closure(SearchHit): void $onPick  fired when a hit is chosen
-     * @param \Closure(): void          $onClose fired on Esc / dismiss
+     * @param \Closure(string): void    $onQuery      fired on each query edit
+     * @param \Closure(SearchHit): void $onPick       fired when a hit is chosen
+     * @param \Closure(): void          $onClose      fired on Esc / dismiss
+     * @param string                    $emptyMessage the filler row shown for a no-hit query (pre-translated)
      */
-    public function openSearch(string $title, \Closure $onQuery, \Closure $onPick, \Closure $onClose): void;
+    public function openSearch(string $title, \Closure $onQuery, \Closure $onPick, \Closure $onClose, string $emptyMessage = ''): void;
 
     /** @param list<SearchRow> $rows */
     public function setSearchRows(array $rows): void;

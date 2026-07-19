@@ -459,7 +459,10 @@ final class HelpViewerWidget extends AbstractWidget implements FocusableInterfac
             $start = $this->byteAtColumn($line, $span->col);
             $end = $this->byteAtColumn($line, $span->endCol);
             $mid = AnsiUtils::stripAnsiCodes(substr($line, $start, $end - $start));
-            $line = substr($line, offset: 0, length: $start).Sgr::RESET.$this->styles->of(Role::SelectedRow)->getAnsiRestore().$mid.Sgr::RESET.substr($line, $end);
+            // Dim the focused link when the pane is blurred, like the list panes'
+            // .list::selected(:focus) — the bright shade means "this pane has focus".
+            $linkRole = $this->isFocused() ? Role::SelectedRow : Role::SelectedRowUnfocused;
+            $line = substr($line, offset: 0, length: $start).Sgr::RESET.$this->styles->of($linkRole)->getAnsiRestore().$mid.Sgr::RESET.substr($line, $end);
         }
 
         return $line;

@@ -79,7 +79,7 @@ final class GitMouseRouter
     public function scrollHorizontal(MouseEvent $mouse): bool
     {
         if (null !== $this->hit->hit($this->diff, $mouse->row, $mouse->col)) {
-            $this->diff->scrollHBy(6 * $mouse->wheelHDelta);
+            $this->diff->scrollHBy(WheelStep::cols($mouse));
 
             return true;
         }

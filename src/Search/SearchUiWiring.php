@@ -17,7 +17,6 @@ use Porta\Ui\EditorArea;
 use Porta\Ui\ResultsPanelMode;
 use Porta\Widget\CodeEditorWidget;
 use Porta\Widget\FindBarWidget;
-use Porta\Widget\GoToFileWidget;
 use Porta\Widget\ResultsPanelWidget;
 use Symfony\Component\Tui\Tui;
 
@@ -34,7 +33,6 @@ final class SearchUiWiring
 
     public function __construct(
         private readonly FindBarWidget $findBar,
-        private readonly GoToFileWidget $goToFile,
         private readonly ResultsPanelWidget $resultsPanel,
         private readonly CodeEditorWidget $editor,
         private readonly EditorArea $editorArea,
@@ -58,7 +56,8 @@ final class SearchUiWiring
         $this->wireFindModal();
     }
 
-    /** Find bar and go-to-file palette: search-match mirroring and focus flow. */
+    /** Find bar: search-match mirroring and focus flow. (Go-to-file is the
+     * files-only Search Everywhere overlay, wired by its own controller.) */
     private function wireFindAndGoto(): void
     {
         $this->findBar->onUpdate(function (): void {
@@ -69,17 +68,6 @@ final class SearchUiWiring
         $this->findBar->onClose(function (): void {
             $this->editor->setSearchMatches([]);
             $this->tui->setFocus($this->editorArea->widget());
-            $this->tui->requestRender();
-        });
-
-        $this->goToFile->onPick(function (string $path): void {
-            $this->bufferService->openFile($path, focus: OpenFocus::Editor);
-        });
-
-        $this->goToFile->onClose(function (): void {
-            if ($this->tui->getFocus() === $this->goToFile) {
-                $this->tui->setFocus($this->editorArea->widget());
-            }
             $this->tui->requestRender();
         });
     }

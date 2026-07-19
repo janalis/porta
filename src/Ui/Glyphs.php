@@ -31,6 +31,14 @@ final class Glyphs
     public const string SEVERITY_INFO = '◦'; // NOT ◆ — the conditional breakpoint owns ◆ in the same gutter column
     public const string SEVERITY_HINT = '·';
 
+    // The diagnostic right-stripe's density ramp: a heavier block is a higher
+    // severity, so the stripe reads without colour. Disjoint surface from the
+    // gutter severity glyphs above (the stripe column, not the marker column).
+    public const string STRIPE_ERROR = '█';
+    public const string STRIPE_WARNING = '▓';
+    public const string STRIPE_INFO = '▒';
+    public const string STRIPE_HINT = '░';
+
     // Debug status-bar segment (the two states are temporally exclusive).
     public const string DEBUG_RUNNING = '▶';
     public const string DEBUG_PAUSED = '⏸';
@@ -38,6 +46,24 @@ final class Glyphs
     // The "you are here" row marker in navigation target lists (peek/choose
     // target). NOT ▶ — the editor gutter owns ▶ for the debugger's stopped line.
     public const string NAV_CURRENT = '→';
+
+    // Directional markers for "one thing becomes another": the find-in-files
+    // replace preview (`old → new`) and a git rename entry (`new ← old`). Same
+    // → value as NAV_CURRENT on a disjoint surface.
+    public const string REPLACE_ARROW = '→';
+    public const string RENAME_FROM = '←';
+
+    // The menu dropdown's separator rule (a full-width row between item groups).
+    // Same ─ value as FRAME_HORIZONTAL on a disjoint surface.
+    public const string MENU_SEPARATOR = '─';
+
+    // The editor's indent guide, one per indent level on a blank leading column.
+    // Same │ value as SEPARATOR on a disjoint surface (a guide, not a border).
+    public const string INDENT_GUIDE = '│';
+
+    // The split (side-by-side) diff's centre column and gutter border.
+    // Same │ value as SEPARATOR on a disjoint surface.
+    public const string DIFF_COLUMN = '│';
 
     // Tab strips.
     public const string DIRTY = '●';
@@ -54,12 +80,38 @@ final class Glyphs
     public const string NAV_BACK = '‹'; // same value as SCROLL_PREV — disjoint surfaces (help header vs strip edge)
     public const string NAV_FORWARD = '›'; // same value as SCROLL_NEXT — disjoint surfaces
 
+    // The help viewer's markdown presentation glyphs: a thematic-break/table rule,
+    // the heavier h1 underline, the bullet, and the blockquote bar. Disjoint from
+    // the chrome dividers above (this surface is rendered document text).
+    public const string MD_RULE = '─'; // same value as FRAME_HORIZONTAL — disjoint surface
+    public const string MD_HEADING_RULE = '═';
+    public const string MD_BULLET = '•';
+    public const string MD_QUOTE_BAR = '│'; // same value as SEPARATOR — disjoint surface
+
     // The draggable column between two panes. Thin at rest, heavy while the
     // pointer is on it or dragging it: the affordance is the GLYPH, so it
     // survives a terminal with no colour (where the hover shade resolves to
     // nothing) — a resize boundary nobody can find is the bug being fixed.
     public const string PANE_DIVIDER = '│'; // same value as SEPARATOR — disjoint surfaces (pane column vs tab strip)
     public const string PANE_DIVIDER_ACTIVE = '┃';
+
+    // The bottom dock's height grab is the strip's own row: at rest it stays the
+    // plain Toolbar strip (already a visible boundary), but the pointer over its
+    // empty tail heavy-rules it, so the drag-to-resize reads before you find it
+    // by accident. Horizontal counterpart of PANE_DIVIDER_ACTIVE; hover-only, so
+    // there is no thin rest glyph. The GLYPH carries it, surviving --no-ansi.
+    public const string PANEL_RESIZE_GRAB = '━';
+
+    // The image pane's focus frame: box-drawing edges drawn only while the pane
+    // is focused, so a caret-less, row-less image still shows it holds focus.
+    // The GLYPHS carry the cue (accent-tinted in colour themes, a bare box under
+    // --no-ansi), the same "affordance is the glyph" rationale as the dividers.
+    public const string FRAME_TOP_LEFT = '┌';
+    public const string FRAME_TOP_RIGHT = '┐';
+    public const string FRAME_BOTTOM_LEFT = '└';
+    public const string FRAME_BOTTOM_RIGHT = '┘';
+    public const string FRAME_HORIZONTAL = '─';
+    public const string FRAME_VERTICAL = '│'; // same value as PANE_DIVIDER — disjoint surfaces (image frame vs pane column)
 
     // Git.
     public const string BRANCH_CURRENT = '✓';

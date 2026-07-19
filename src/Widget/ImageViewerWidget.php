@@ -8,9 +8,13 @@ use Porta\Container\AsWidget;
 use Porta\Image\HalfBlockRasterizer;
 use Porta\Image\ImageData;
 use Porta\Image\ZoomPanModel;
+use Porta\Ui\Glyphs;
 use Porta\Ui\LtrPane;
+use Porta\Ui\Role;
+use Porta\Ui\Theme\Styles;
 use Porta\Widget\Render\MenuOverlayHost;
 use Porta\Widget\Render\MenuOverlayHostTrait;
+use Symfony\Component\Tui\Ansi\AnsiUtils;
 use Symfony\Component\Tui\Input\Key;
 use Symfony\Component\Tui\Render\RenderContext;
 use Symfony\Component\Tui\Widget\AbstractWidget;
@@ -41,7 +45,12 @@ final class ImageViewerWidget extends AbstractWidget implements FocusableInterfa
     private int $lastRows = 24;
     private ?ImageViewerHandler $handler = null;
 
-    public function __construct() {}
+    private readonly Styles $styles;
+
+    public function __construct(?Styles $styles = null)
+    {
+        $this->styles = $styles ?? Styles::dark();
+    }
 
     public function setHandler(ImageViewerHandler $handler): void
     {
@@ -105,7 +114,37 @@ final class ImageViewerWidget extends AbstractWidget implements FocusableInterfa
                 ? array_fill(0, $rows, str_repeat(' ', $cols))
                 : HalfBlockRasterizer::render($this->image, $this->view, $cols, $rows);
 
+        // A caret-less, row-less pane still needs a focus cue like its siblings:
+        // a box-drawing frame drawn over the image's edge ring while focused. The
+        // glyph carries it (accent-tinted with colour, a bare box under --no-ansi).
+        if ($this->isFocused() && $cols >= 3 && $rows >= 3) {
+            $lines = $this->focusFrame($lines, $cols, $rows);
+        }
+
         return $this->withMenuOverlay($lines, $cols);
+    }
+
+    /**
+     * Overlay the focus frame on the outer ring, keeping every line $cols wide
+     * (the box glyphs are one column). The middle rows keep the image between
+     * their side rails via a column slice, so the pan/zoom geometry is untouched.
+     *
+     * @param list<string> $lines
+     *
+     * @return list<string>
+     */
+    private function focusFrame(array $lines, int $cols, int $rows): array
+    {
+        $accent = $this->styles->of(Role::TabAccent);
+        $span = max(0, $cols - 2);
+        $lines[0] = $accent->apply(Glyphs::FRAME_TOP_LEFT.str_repeat(Glyphs::FRAME_HORIZONTAL, $span).Glyphs::FRAME_TOP_RIGHT);
+        $lines[$rows - 1] = $accent->apply(Glyphs::FRAME_BOTTOM_LEFT.str_repeat(Glyphs::FRAME_HORIZONTAL, $span).Glyphs::FRAME_BOTTOM_RIGHT);
+        $rail = $accent->apply(Glyphs::FRAME_VERTICAL);
+        for ($r = 1; $r < ($rows - 1); ++$r) {
+            $lines[$r] = $rail.AnsiUtils::sliceByColumn($lines[$r], 1, $cols - 2).$rail;
+        }
+
+        return $lines;
     }
 
     public function handleInput(string $data): void

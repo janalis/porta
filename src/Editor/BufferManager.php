@@ -6,7 +6,7 @@ namespace Porta\Editor;
 
 use Porta\Highlight\DarkTerminalTheme;
 use Porta\Image\ImageData;
-use Porta\Support\IntMath;
+use Porta\Support\IndexMove;
 use Tempest\Highlight\TerminalTheme;
 
 /**
@@ -139,17 +139,11 @@ final class BufferManager
     public function reorder(int $from, int $to): void
     {
         $paths = array_keys($this->buffers);
-        $count = \count($paths);
-        if ($from < 0 || $from >= $count) {
+        $to = IndexMove::target($from, $to, \count($paths));
+        if (null === $to) {
             return;
         }
-        $to = IntMath::clamp($to, 0, $count - 1);
-        if ($from === $to) {
-            return;
-        }
-        $moved = $paths[$from];
-        array_splice($paths, $from, length: 1);
-        array_splice($paths, $to, length: 0, replacement: $moved);
+        $paths = IndexMove::apply($paths, $from, $to);
 
         $reordered = [];
         foreach ($paths as $path) {

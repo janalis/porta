@@ -92,8 +92,12 @@ final class ContextMenuParityTest extends TestCase
             $project->path('a.php'),
             [
                 200 => function ($tui, $terminal, $ide): void {
-                    new \ReflectionProperty($ide, 'commands')->getValue($ide)->run('goto_file');
+                    // The find bar is a focused pane with no context menu (the
+                    // go-to-file popup used to be the example; it is a modal
+                    // picker now, which owns input outright).
+                    $tui->handleInput("\x06"); // ctrl+f → open the find bar
                     $tui->tick();
+                    $this->assertSame('find-bar', $tui->getFocus()?->getId());
 
                     $tui->handleInput(self::CTRL_F10);
                     $tui->tick();
@@ -103,11 +107,10 @@ final class ContextMenuParityTest extends TestCase
                     $tui->getById('status')->flash('', seconds: 0.0);
                     $this->assertStringNotContainsString('No context menu here', $this->statusLine($tui));
 
-                    // The go-to-file popup renders over the editor's rows, so a
-                    // right-click inside it reaches no menu-bearing pane.
+                    // A right-click over the find bar reaches no menu-bearing pane.
                     $rect = new \ReflectionProperty($ide, 'renderer')
                         ->getValue($ide)
-                        ->getWidgetRect($tui->getById('goto-file'));
+                        ->getWidgetRect($tui->getById('find-bar'));
                     $tui->handleInput(\sprintf("\x1b[<2;%d;%dM", $rect->col + 2, $rect->row + 2));
                     $tui->tick();
                     $this->assertStringContainsString('No context menu here', $this->statusLine($tui), 'and now the mouse does too');

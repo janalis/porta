@@ -7,6 +7,7 @@ namespace Porta\Search\Everywhere;
 use Porta\Editor\BufferManager;
 use Porta\Editor\FileOpener;
 use Porta\Editor\OpenFocus;
+use Porta\I18n\Translator;
 use Porta\Support\ProjectPaths;
 use Porta\Support\Scheduler;
 use Symfony\Component\Tui\Tui;
@@ -42,6 +43,8 @@ final class SearchEverywhereController
         private readonly string $rootDir,
         private readonly FileOpener $files,
         private readonly Scheduler $scheduler,
+        private readonly Translator $translator,
+        private readonly string $title = 'Search Everywhere',
     ) {}
 
     public function open(): void
@@ -50,10 +53,11 @@ final class SearchEverywhereController
         $this->hitsByCategory = [];
         $this->seedRecentFiles();
         $this->overlay->openSearch(
-            'Search Everywhere',
+            $this->translator->trans($this->title),
             $this->onQuery(...),
             $this->onPick(...),
             $this->onClose(...),
+            $this->translator->trans('no results'),
         );
         $this->render();
     }

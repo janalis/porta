@@ -11,12 +11,11 @@ use Porta\Editor\BufferManager;
 use Porta\Editor\BufferService;
 use Porta\Lsp\FoldingController;
 use Porta\Run\RunController;
+use Porta\Search\Everywhere\SearchEverywhereController;
 use Porta\Ui\BottomDock;
 use Porta\Ui\WorkbenchActions;
 use Porta\Ui\WorkspaceViews;
-use Porta\Widget\GoToFileWidget;
 use Symfony\Component\DependencyInjection\Attribute\AsTaggedItem;
-use Symfony\Component\Tui\Tui;
 
 /** View/window palette commands: tabs, overlays, panels and the full views. */
 #[AsTaggedItem(priority: 200)]
@@ -25,8 +24,7 @@ final class ViewCommands implements CommandProvider
     public function __construct(
         private readonly WorkbenchActions $workbench,
         private readonly BufferManager $buffers,
-        private readonly GoToFileWidget $goToFile,
-        private readonly Tui $tui,
+        private readonly SearchEverywhereController $goToFile,
         private readonly SettingsController $settings,
         private readonly RunController $run,
         private readonly BottomDock $dock,
@@ -42,8 +40,11 @@ final class ViewCommands implements CommandProvider
             ->add('move_tab_left', fn () => $this->workbench->moveTab(-1), keyBound: KeyDispatch::Bound)
             ->add('move_tab_right', fn () => $this->workbench->moveTab(1), keyBound: KeyDispatch::Bound)
             ->add('goto_file', function (): void {
-                $this->goToFile->open();
-                $this->tui->setFocus($this->goToFile);
+                // The picker composites over the editor pane (like Search
+                // Everywhere), so an image view is swapped for a text buffer first.
+                if ($this->bufferService->ensureTextEditorActive()) {
+                    $this->goToFile->open();
+                }
             })
             ->add(
                 'close_other_tabs',

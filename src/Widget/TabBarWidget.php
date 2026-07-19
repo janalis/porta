@@ -11,6 +11,7 @@ use Porta\Ui\Role;
 use Porta\Ui\Theme\Styles;
 use Porta\Widget\Render\MenuOverlayHost;
 use Porta\Widget\Render\MenuOverlayHostTrait;
+use Porta\Widget\Render\StripWindow;
 use Porta\Widget\Render\TabCell;
 use Porta\Widget\Render\TabCloseGlyph;
 use Porta\Widget\Render\TabState;
@@ -210,24 +211,13 @@ final class TabBarWidget extends AbstractWidget implements MenuOverlayHost
             $activeIndex = $i;
             break;
         }
-        // An overflowing strip reserves one column per side for the ‹/›
-        // scroll indicators, so the tab geometry never depends on which
-        // sides happen to be clipped.
-        $overflow = $columns > 2 && array_sum(array_column($parts, 'width')) > $columns;
-        $budget = $overflow ? $columns - 2 : $columns;
-
-        // The window starts at the manual scroll offset, clamped so the strip
-        // never shows a blank tail, then follows the active tab — but only
-        // when it changed, so a user's scroll survives parked frames.
-        $this->scroll = min($this->scroll, self::maxStart($parts, $budget));
-        if ($activeIndex !== $this->lastActive) {
-            $this->lastActive = $activeIndex;
-            $this->scroll = min($this->scroll, $activeIndex);
-            while ($this->scroll < $activeIndex && array_sum(array_column(\array_slice($parts, $this->scroll, $activeIndex - $this->scroll + 1), 'width')) > $budget) {
-                ++$this->scroll;
-            }
-        }
-        $start = $this->scroll;
+        // The overflow window (reserve ‹/› cells, clamp, follow-active-on-change)
+        // is shared with the dock strip so the two cannot drift apart.
+        $window = StripWindow::of(array_column($parts, 'width'), $columns, $this->scroll, $activeIndex, $this->lastActive);
+        $this->scroll = $window['scroll'];
+        $this->lastActive = $window['lastActive'];
+        $overflow = $window['overflow'];
+        $start = $window['start'];
 
         $line = '';
         $used = 0;
@@ -277,20 +267,6 @@ final class TabBarWidget extends AbstractWidget implements MenuOverlayHost
      *
      * @param list<array{text: string, active: bool, width: int, closeOffset: int}> $parts
      */
-    private static function maxStart(array $parts, int $columns): int
-    {
-        $start = \count($parts) - 1;
-        $tail = 0;
-        for ($i = \count($parts) - 1; $i >= 0; --$i) {
-            $tail += $parts[$i]['width'];
-            if ($tail > $columns) {
-                break;
-            }
-            $start = $i;
-        }
-
-        return max(0, $start);
-    }
 
     /**
      * The vertical (left/right) tab list: one tab per row, every line exactly

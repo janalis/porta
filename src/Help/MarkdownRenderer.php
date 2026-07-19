@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Porta\Help;
 
 use Porta\Support\AnsiText;
+use Porta\Ui\Glyphs;
 use Porta\Ui\Role;
 use Porta\Ui\Sgr;
 use Porta\Ui\Theme\Styles;
@@ -85,19 +86,19 @@ final class MarkdownRenderer
             }
             if (1 === preg_match('/^\s*(-{3,}|\*{3,}|_{3,})\s*$/', $line)) {
                 $this->flushParagraph($paragraph, $width);
-                $this->lines[] = $this->styles->of(Role::Muted)->getAnsiRestore().str_repeat('─', $width).$this->resetAll();
+                $this->lines[] = $this->styles->of(Role::Muted)->getAnsiRestore().str_repeat(Glyphs::MD_RULE, $width).$this->resetAll();
                 continue;
             }
             if (str_starts_with($line, '> ')) {
                 $this->flushParagraph($paragraph, $width);
-                $prefix = $this->styles->of(Role::Muted)->getAnsiRestore().'│ '.$this->fgReset();
+                $prefix = $this->styles->of(Role::Muted)->getAnsiRestore().Glyphs::MD_QUOTE_BAR.' '.$this->fgReset();
                 $this->wrapSegments($this->inline(substr($line, offset: 2)), $width, $prefix, 2, $prefix);
                 continue;
             }
             if (1 === preg_match('/^(\s*)- (.+)$/', $line, $m)) {
                 $this->flushParagraph($paragraph, $width);
                 $indent = \strlen($m[1]);
-                $prefix = $m[1].$this->styles->of(Role::Muted)->getAnsiRestore().'• '.$this->fgReset();
+                $prefix = $m[1].$this->styles->of(Role::Muted)->getAnsiRestore().Glyphs::MD_BULLET.' '.$this->fgReset();
                 $this->wrapSegments($this->inline($m[2]), $width, $prefix, $indent + 2, str_repeat(' ', $indent + 2));
                 continue;
             }
@@ -181,8 +182,8 @@ final class MarkdownRenderer
         if ($level <= 2) {
             $ruleWidth = min($width, max(1, $assembled['width']));
             $rule = 1 === $level
-                ? $this->styles->of(Role::Bright)->getAnsiRestore().str_repeat('═', max(0, $ruleWidth))
-                : $this->styles->of(Role::Muted)->getAnsiRestore().str_repeat('─', max(0, $ruleWidth));
+                ? $this->styles->of(Role::Bright)->getAnsiRestore().str_repeat(Glyphs::MD_HEADING_RULE, max(0, $ruleWidth))
+                : $this->styles->of(Role::Muted)->getAnsiRestore().str_repeat(Glyphs::MD_RULE, max(0, $ruleWidth));
             $this->lines[] = $rule.$this->resetAll();
         }
         $this->lines[] = '';
@@ -215,7 +216,7 @@ final class MarkdownRenderer
             if (array_key_exists($index, $separator)) {
                 $rule = ' ';
                 foreach ($widths as $columnWidth) {
-                    $rule .= str_repeat('─', $columnWidth).'  ';
+                    $rule .= str_repeat(Glyphs::MD_RULE, $columnWidth).'  ';
                 }
                 $this->lines[] = $this->styles->of(Role::Muted)->getAnsiRestore().AnsiText::truncate(rtrim($rule), $width).$this->resetAll();
                 continue;

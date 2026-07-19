@@ -24,9 +24,9 @@ trait RunsIde
     /**
      * @param array<int, callable> $steps ms => step($tui, $terminal, $ide)
      */
-    private function runIde(TempProject $project, ?string $file, array $steps, ?float $duration = null, ?string $docsDir = null): VirtualTerminal
+    private function runIde(TempProject $project, ?string $file, array $steps, ?float $duration = null, ?string $docsDir = null, int $columns = 160): VirtualTerminal
     {
-        $terminal = new VirtualTerminal(columns: 160, rows: 24);
+        $terminal = new VirtualTerminal(columns: $columns, rows: 24);
         $ide = new Ide($project->dir, $file, $terminal, docsDir: $docsDir);
         $tui = $ide->getTui();
 

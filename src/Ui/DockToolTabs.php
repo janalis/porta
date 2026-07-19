@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace Porta\Ui;
 
-use Porta\Support\IntMath;
+use Porta\Support\IndexMove;
 use Porta\Widget\ResultsPanelFields;
 
 /**
@@ -80,23 +80,12 @@ final class DockToolTabs
      */
     public function move(int $from, int $to): void
     {
-        $count = \count($this->tabs);
-        if ($from < 0 || $from >= $count) {
+        $to = IndexMove::target($from, $to, \count($this->tabs));
+        if (null === $to) {
             return;
         }
-        $to = IntMath::clamp($to, 0, $count - 1);
-        if ($from === $to) {
-            return;
-        }
-        $moved = $this->tabs[$from];
-        array_splice($this->tabs, $from, length: 1);
-        array_splice($this->tabs, $to, length: 0, replacement: [$moved]);
-        $this->active = match (true) {
-            $this->active === $from => $to,
-            $from < $this->active && $this->active <= $to => $this->active - 1,
-            $to <= $this->active && $this->active < $from => $this->active + 1,
-            default => $this->active,
-        };
+        $this->active = IndexMove::reindexActive($this->active, $from, $to);
+        $this->tabs = IndexMove::apply($this->tabs, $from, $to);
     }
 
     /** @return list<DockToolTab> */

@@ -98,6 +98,7 @@ use Porta\Support\FreezeWatchdog;
 use Porta\Support\RevoltScheduler;
 use Porta\Support\Scheduler;
 use Porta\Ui\BidiTui;
+use Porta\Ui\BottomDock;
 use Porta\Ui\ChromeInvalidator;
 use Porta\Ui\CommandPalette;
 use Porta\Ui\ContextMenuOpener;
@@ -107,7 +108,6 @@ use Porta\Ui\FocusCoordinator;
 use Porta\Ui\MenuRebuilder;
 use Porta\Ui\NotificationLog;
 use Porta\Ui\Notifier;
-use Porta\Ui\BottomDock;
 use Porta\Ui\PaneSegmenter;
 use Porta\Ui\StatusBarProvider;
 use Porta\Ui\TabListProvider;
@@ -134,7 +134,6 @@ use Porta\Widget\Git\CommitBoxWidget;
 use Porta\Widget\Git\DiffViewWidget;
 use Porta\Widget\Git\GitTabsWidget;
 use Porta\Widget\Git\HistoryListWidget;
-use Porta\Widget\GoToFileWidget;
 use Porta\Widget\HelpViewerWidget;
 use Porta\Widget\ImageViewerWidget;
 use Porta\Widget\MenuBarWidget;
@@ -238,7 +237,9 @@ return static function (ContainerConfigurator $container, ContainerBuilder $buil
         ->bind(ContainerWidget::class.' $settingsArea', service('porta.widget.settings_area'))
         ->bind(ContainerWidget::class.' $settingsContent', service('porta.widget.settings_content'))
         ->bind(ContainerWidget::class.' $gitArea', service('porta.widget.git_area'))
-        ->bind(ContainerWidget::class.' $gitLeft', service('porta.widget.git_left'));
+        ->bind(ContainerWidget::class.' $gitLeft', service('porta.widget.git_left'))
+        // The files-only Search Everywhere instance behind Ctrl+P (go-to-file).
+        ->bind(SearchEverywhereController::class.' $goToFile', service('porta.go_to_file'));
 
     // Autoregister every Porta\ class. Only the orchestrator and the container
     // factory are excluded; everything else that isn't a real service registers
@@ -328,7 +329,6 @@ return static function (ContainerConfigurator $container, ContainerBuilder $buil
         DockTabsWidget::class,
         TerminalPanelWidget::class,
         FileTreeWidget::class,
-        GoToFileWidget::class,
         FindBarWidget::class,
         TabBarWidget::class,
         BreadcrumbsWidget::class,
@@ -452,6 +452,8 @@ return static function (ContainerConfigurator $container, ContainerBuilder $buil
     // The Search Everywhere modal aggregates per-source hooks; its factory
     // owns them (see SearchEverywhereFactory).
     $services->set(SearchEverywhereController::class)->factory([service(SearchEverywhereFactory::class), 'create']);
+    // A second, files-only instance behind Ctrl+P; the bind above feeds it to the go-to-file consumers.
+    $services->set('porta.go_to_file', SearchEverywhereController::class)->factory([service(SearchEverywhereFactory::class), 'createGoToFile']);
 
     // Synthetic infrastructure: external (Renderer/Tui), closure-wired objects
     // the container can't build, or values that exist before the container does

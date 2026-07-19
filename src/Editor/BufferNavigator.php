@@ -4,10 +4,11 @@ declare(strict_types=1);
 
 namespace Porta\Editor;
 
+use Porta\Search\Everywhere\SearchEverywhereController;
 use Porta\Support\ProjectPaths;
+use Porta\Ui\Glyphs;
 use Porta\Widget\BufferNavigationHandler;
 use Porta\Widget\CodeEditorWidget;
-use Porta\Widget\GoToFileWidget;
 use Symfony\Component\Tui\Tui;
 
 /**
@@ -20,7 +21,7 @@ final class BufferNavigator implements BufferNavigationHandler
     public function __construct(
         private readonly BufferManager $buffers,
         private readonly BufferService $bufferService,
-        private readonly GoToFileWidget $goToFile,
+        private readonly SearchEverywhereController $goToFile,
         private readonly CodeEditorWidget $editor,
         private readonly Tui $tui,
         private readonly string $rootDir,
@@ -42,8 +43,11 @@ final class BufferNavigator implements BufferNavigationHandler
 
     public function openGoToFile(): void
     {
-        $this->goToFile->open();
-        $this->tui->setFocus($this->goToFile);
+        // The picker composites over the editor pane, so ensure it is the active
+        // view first (an image is swapped for an adjacent text buffer).
+        if ($this->bufferService->ensureTextEditorActive()) {
+            $this->goToFile->open();
+        }
         $this->tui->requestRender();
     }
 
@@ -70,7 +74,7 @@ final class BufferNavigator implements BufferNavigationHandler
             return;
         }
         $items = array_map(fn (Buffer $b) => [
-            'label' => basename($b->path).($b->document->isDirty() ? ' ●' : ''),
+            'label' => basename($b->path).($b->document->isDirty() ? ' '.Glyphs::DIRTY : ''),
             'hint' => ProjectPaths::relative($this->rootDir, $b->path),
             'value' => $b->path,
         ], $recent);

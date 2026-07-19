@@ -357,7 +357,8 @@ final class IdeHelpersTest extends TestCase
         $this->assertSame('results', $tui->getFocus()?->getId());
 
         $byLabel['Go to File']();
-        $this->assertSame('goto-file', $tui->getFocus()?->getId());
+        $this->assertTrue($tui->getById('editor')->isSearchOverlayOpen(), 'go-to-file opens the centered picker over the editor');
+        $tui->getById('editor')->closeSearch();
 
         // Toggle both settings (covers both branches of toggleSetting).
         $editor = $tui->getById('editor');

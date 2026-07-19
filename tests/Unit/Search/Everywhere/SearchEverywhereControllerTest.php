@@ -8,6 +8,7 @@ use PHPUnit\Framework\TestCase;
 use Porta\Editor\BufferManager;
 use Porta\Editor\FileOpener;
 use Porta\Editor\OpenFocus;
+use Porta\I18n\Translator;
 use Porta\Search\Everywhere\SearchCategory;
 use Porta\Search\Everywhere\SearchEverywhereController;
 use Porta\Search\Everywhere\SearchHit;
@@ -33,15 +34,19 @@ final class SearchEverywhereControllerTest extends TestCase
             public ?\Closure $onQuery = null;
             public ?\Closure $onPick = null;
             public ?\Closure $onClose = null;
+            public ?string $title = null;
+            public ?string $emptyMessage = null;
             /** @var list<SearchRow> */
             public array $rows = [];
             public int $closes = 0;
 
-            public function openSearch(string $title, \Closure $onQuery, \Closure $onPick, \Closure $onClose): void
+            public function openSearch(string $title, \Closure $onQuery, \Closure $onPick, \Closure $onClose, string $emptyMessage = ''): void
             {
+                $this->title = $title;
                 $this->onQuery = $onQuery;
                 $this->onPick = $onPick;
                 $this->onClose = $onClose;
+                $this->emptyMessage = $emptyMessage;
             }
 
             public function setSearchRows(array $rows): void
@@ -134,6 +139,7 @@ final class SearchEverywhereControllerTest extends TestCase
                     $this->cancelled[] = $timerId;
                 }
             },
+            new Translator('en'),
         );
     }
 
@@ -158,6 +164,8 @@ final class SearchEverywhereControllerTest extends TestCase
         $this->controller($overlay, [], [], $buffers)->open();
 
         $this->assertNotNull($overlay->onQuery, 'the overlay was opened with callbacks');
+        $this->assertSame('Search Everywhere', $overlay->title, 'the title is translated (English identity here)');
+        $this->assertSame('no results', $overlay->emptyMessage, 'the no-hit empty message is threaded through');
         $this->assertTrue($overlay->rows[0]->isHeader());
         $this->assertSame(SearchCategory::Files, $overlay->rows[0]->header);
         $this->assertSame(['B.php', 'A.php'], $this->labels($overlay->rows), 'most-recent first');

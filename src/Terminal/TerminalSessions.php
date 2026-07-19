@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Porta\Terminal;
 
+use Porta\Support\IndexMove;
 use Porta\Support\IntMath;
 
 /**
@@ -54,23 +55,12 @@ final class TerminalSessions
      */
     public function move(int $from, int $to): void
     {
-        $count = \count($this->sessions);
-        if ($from < 0 || $from >= $count) {
+        $to = IndexMove::target($from, $to, \count($this->sessions));
+        if (null === $to) {
             return;
         }
-        $to = IntMath::clamp($to, 0, $count - 1);
-        if ($from === $to) {
-            return;
-        }
-        $moved = $this->sessions[$from];
-        array_splice($this->sessions, $from, length: 1);
-        array_splice($this->sessions, $to, length: 0, replacement: [$moved]);
-        $this->active = match (true) {
-            $this->active === $from => $to,
-            $from < $this->active && $this->active <= $to => $this->active - 1,
-            $to <= $this->active && $this->active < $from => $this->active + 1,
-            default => $this->active,
-        };
+        $this->active = IndexMove::reindexActive($this->active, $from, $to);
+        $this->sessions = IndexMove::apply($this->sessions, $from, $to);
     }
 
     /** @return list<TerminalSession> */

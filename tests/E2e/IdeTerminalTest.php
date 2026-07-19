@@ -283,7 +283,7 @@ final class IdeTerminalTest extends TestCase
                     self::assertNotNull($run);
                     $this->await(fn (): bool => str_contains($this->bufferText($run), 'RAN-'));
                     $firstOutput = $this->bufferText($run);
-                    $this->await(fn (): bool => str_contains($this->bufferText($run), '— exited (0)') || null === $run->process() || !$run->isRunning());
+                    $this->await(fn (): bool => str_contains($this->bufferText($run), '(0)') || null === $run->process() || !$run->isRunning());
 
                     // Re-run: only this session's process is replaced (its buffer clears).
                     $countBefore = \count($this->sessions($ide));

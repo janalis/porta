@@ -227,7 +227,7 @@ final class ContextMenuTest extends TestCase
         $this->assertFalse($menu->isOpen(), 'select on a separator still closes');
     }
 
-    public function testWheelMovesTheSelectionOneItemPerNotch(): void
+    public function testWheelMovesTheSelectionSkippingSeparators(): void
     {
         $closed = new ContextMenu();
         $closed->moveSelection(1); // closed: a no-op
@@ -236,5 +236,15 @@ final class ContextMenuTest extends TestCase
         $menu->moveSelection(1); // steps past the separator to the next item
         $menu->handleInput("\r");
         $this->assertNotSame([], $this->ran, 'the wheel-selected item ran on Enter');
+    }
+
+    public function testWheelStepHonoursTheDeltaMagnitudeNotJustItsSign(): void
+    {
+        $menu = $this->menu(); // Cut selected
+        // {Cut, Copy} with the separator skipped, wrapping: Cut → Copy → Cut. A
+        // sign-only move stops at Copy after one step; the magnitude carries both.
+        $menu->moveSelection(2);
+        $menu->handleInput("\r");
+        $this->assertSame(['cut'], $this->ran, 'two steps wrap back to Cut — the magnitude moved, not just the sign');
     }
 }

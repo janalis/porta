@@ -8,6 +8,7 @@ use Porta\Config\CommandRegistry;
 use Porta\Editor\BufferManager;
 use Porta\Editor\BufferService;
 use Porta\Editor\OpenFocus;
+use Porta\I18n\Translator;
 use Porta\Lsp\LspSessionPool;
 use Porta\Lsp\WorkspaceSymbolClient;
 use Porta\Search\FileIndex;
@@ -34,7 +35,31 @@ final class SearchEverywhereFactory
         private readonly Tui $tui,
         private readonly Scheduler $scheduler,
         private readonly string $rootDir,
+        private readonly Translator $translator,
     ) {}
+
+    /**
+     * The files-only picker behind Ctrl+P: the same centered overlay as Search
+     * Everywhere, scoped to the file source alone (no actions/symbols/text, so no
+     * async tier). Recent files seed the empty query, exactly as they do there.
+     */
+    public function createGoToFile(): SearchEverywhereController
+    {
+        $openFile = fn (string $path, OpenFocus $focus) => $this->bufferService->openFile($path, $focus);
+
+        return new SearchEverywhereController(
+            $this->editor,
+            [new FilesSource(new FileIndex($this->rootDir), $this->rootDir, $openFile)],
+            [],
+            $this->buffers,
+            $this->tui,
+            $this->rootDir,
+            $this->bufferService,
+            $this->scheduler,
+            $this->translator,
+            'Go to File',
+        );
+    }
 
     public function create(): SearchEverywhereController
     {
@@ -58,6 +83,7 @@ final class SearchEverywhereFactory
             $this->rootDir,
             $this->bufferService,
             $this->scheduler,
+            $this->translator,
         );
     }
 }

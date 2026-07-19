@@ -39,10 +39,10 @@ final class DiagnosticStyle
     public static function mark(int $severity): string
     {
         return match (self::normalize($severity)) {
-            1 => '█',
-            2 => '▓',
-            3 => '▒',
-            default => '░',
+            1 => Glyphs::STRIPE_ERROR,
+            2 => Glyphs::STRIPE_WARNING,
+            3 => Glyphs::STRIPE_INFO,
+            default => Glyphs::STRIPE_HINT,
         };
     }
 

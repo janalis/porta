@@ -33,5 +33,6 @@ final class SearchModalState
         public readonly \Closure $onQuery,
         public readonly \Closure $onPick,
         public readonly \Closure $onClose,
+        public readonly string $emptyMessage = '',
     ) {}
 }

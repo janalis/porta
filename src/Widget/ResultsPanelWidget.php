@@ -531,7 +531,7 @@ final class ResultsPanelWidget extends OverlayWidget implements FocusableInterfa
     /** A labelled input header row (mask/replace), with a cursor when it is the active field. */
     private function fieldRow(string $label, TextField $field, CaretVisibility $caret, string $hint, int $columns): string
     {
-        return SearchFieldRenderer::row($label, $field, $caret, $hint, $columns, Role::RowHighlightBg, $this->styles);
+        return SearchFieldRenderer::row($label, $field, $caret, $hint, $columns, Role::FieldFocusBg, $this->styles);
     }
 
     /** The indent for grouped match rows — deeper in the nested view (below a dir + file header). */
@@ -616,7 +616,9 @@ final class ResultsPanelWidget extends OverlayWidget implements FocusableInterfa
      */
     private function highlightMatch(string $text, int $prefixWidth, array $result, string $bg, int $columns): string
     {
-        return MatchRowDecorator::highlight($text, $columns, $bg, $prefixWidth, $this->styles->of(Role::SearchBg)->getAnsiRestore(), $result['ranges'] ?? []);
+        $searchStyle = $this->styles->of(Role::SearchBg);
+
+        return MatchRowDecorator::highlight($text, $columns, $bg, $prefixWidth, $searchStyle->getAnsiRestore(), Sgr::resetFor($searchStyle), $result['ranges'] ?? []);
     }
 
     /** @return array<string, string[]> */

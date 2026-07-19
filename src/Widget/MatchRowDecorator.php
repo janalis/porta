@@ -17,15 +17,18 @@ use Porta\Widget\Render\LineDecorator;
 final class MatchRowDecorator
 {
     /**
-     * @param list<array{start: int, length: int}> $ranges match spans relative to the text start
+     * @param string                                $searchBg    the match tint's open SGR ({@see \Symfony\Component\Tui\Style\Style::getAnsiRestore()})
+     * @param string                                $searchClose its attribute-matched reset ({@see Sgr::resetFor()}) — cancels reverse/underline (Monochrome) before the row bg restores the tail
+     * @param list<array{start: int, length: int}>  $ranges      match spans relative to the text start
      */
-    public static function highlight(string $text, int $width, string $bg, int $prefixWidth, string $searchBg, array $ranges): string
+    public static function highlight(string $text, int $width, string $bg, int $prefixWidth, string $searchBg, string $searchClose, array $ranges): string
     {
-        // Close each highlight with the row bg so the tail keeps its colour.
+        // Close each highlight by cancelling its own attribute, then re-setting
+        // the row bg so the tail keeps its colour.
         $line = $bg.AnsiText::truncate($text, $width, pad: true).Sgr::RESET;
         foreach ($ranges as $range) {
             $start = $prefixWidth + $range['start'];
-            $line = LineDecorator::apply($line, $start, $start + $range['length'], $searchBg, $bg, $searchBg);
+            $line = LineDecorator::apply($line, $start, $start + $range['length'], $searchBg, $searchClose.$bg, $searchBg);
         }
 
         return $line;

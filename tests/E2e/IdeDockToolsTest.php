@@ -10,6 +10,7 @@ use Porta\Ide;
 use Porta\Lsp\Uri;
 use Porta\Tests\Support\RunsIde;
 use Porta\Tests\Support\TempProject;
+use Porta\Widget\DockTabsWidget;
 use Symfony\Component\Tui\Ansi\AnsiUtils;
 
 /**
@@ -285,6 +286,68 @@ final class IdeDockToolsTest extends TestCase
         $this->addToAssertionCount(1);
     }
 
+    public function testOverflowingDockStripScrollsWhenTheIndicatorIsClicked(): void
+    {
+        putenv('PATH='.$this->originalPath); // real grep
+        $project = new TempProject([
+            'src/A.php' => "<?php\n// alpha here\n",
+            'src/B.php' => "<?php\n// beta here\n",
+        ]);
+        $search = static function ($tui, string $query): void {
+            $tui->handleInput("\x1b[102;6u"); // ctrl+shift+f
+            foreach (str_split($query) as $ch) {
+                $tui->handleInput($ch);
+            }
+        };
+        $dock = static fn ($ide): object => new \ReflectionProperty(Ide::class, 'locator')->getValue($ide)->get(\Porta\Ui\BottomDock::class);
+
+        $this->runIde(
+            $project,
+            $project->path('src/A.php'),
+            [
+                200 => function ($tui, $terminal) use ($search): void {
+                    $search($tui, query: 'alpha');
+                    $this->await(static fn (): bool => str_contains(AnsiUtils::stripAnsiCodes($terminal->getOutput()), 'alpha here'));
+                    $tui->handleInput("\x1b\r"); // alt+enter → a wide "Find in Project: alpha" tab
+                    $tui->tick();
+                },
+                450 => function ($tui, $terminal, $ide) use ($search, $dock): void {
+                    $search($tui, query: 'beta');
+                    $this->await(static fn (): bool => str_contains(AnsiUtils::stripAnsiCodes($terminal->getOutput()), 'beta here'));
+                    $tui->handleInput("\x1b\r"); // a SECOND wide tab → the two overflow 30 cols
+                    $this->await(static fn (): bool => \count($dock($ide)->aliveTabs()) >= 2);
+                    $tui->requestRender();
+                    $tui->tick();
+
+                    $renderer = new \ReflectionProperty($ide, 'renderer')->getValue($ide);
+                    /** @var DockTabsWidget $dockTabs */
+                    $dockTabs = $tui->getById('dock-tabs');
+                    $rect = $renderer->getWidgetRect($dockTabs);
+                    $this->assertNotNull($rect, 'the dock strip is laid out');
+                    $lastCol = $rect->columns - 1;
+
+                    // The strip overflows: exactly one end shows an indicator (the
+                    // window parked against the active tab). Click it and assert the
+                    // OPPOSITE end's indicator appears — the click scrolled the strip.
+                    $leftStep = $dockTabs->scrollIndicatorAt(0, 0);
+                    $rightStep = $dockTabs->scrollIndicatorAt(0, $lastCol);
+                    $this->assertTrue(null !== $leftStep || null !== $rightStep, 'the overflowing strip shows a ‹ or ›');
+
+                    $clickCol = null !== $leftStep ? 0 : $lastCol;
+                    $tui->handleInput(\sprintf("\x1b[<0;%d;%dM", $rect->col + $clickCol + 1, $rect->row + 1));
+                    $tui->handleInput(\sprintf("\x1b[<0;%d;%dm", $rect->col + $clickCol + 1, $rect->row + 1));
+                    $tui->tick();
+
+                    $opposite = null !== $leftStep ? $dockTabs->scrollIndicatorAt(0, $lastCol) : $dockTabs->scrollIndicatorAt(0, 0);
+                    $this->assertNotNull($opposite, 'clicking the indicator scrolled the strip, revealing the other end');
+                },
+            ],
+            columns: 30,
+        );
+
+        $this->addToAssertionCount(1);
+    }
+
     public function testToolTabsCoexistCycleAndSurviveAPicker(): void
     {
         putenv('PATH='.$this->originalPath); // real grep for the TODO scan
@@ -492,20 +555,21 @@ final class IdeDockToolsTest extends TestCase
                 200 => function ($tui, $terminal, $ide) use ($wheel): void {
                     $renderer = new \ReflectionProperty($ide, 'renderer')->getValue($ide);
 
-                    // Go-to-file: the wheel moves its selection.
+                    // Go-to-file (the editor's centered search overlay now): the wheel moves its selection.
                     $tui->handleInput("\x1b[112;5u"); // ctrl+p
                     foreach (str_split('php') as $ch) {
                         $tui->handleInput($ch);
                     }
                     $tui->tick();
-                    $gotoRect = $renderer->getWidgetRect($tui->getById('goto-file'));
-                    $wheel($tui, $gotoRect->col + 3, $gotoRect->row + 2);
+                    $this->assertTrue($tui->getById('editor')->isSearchOverlayOpen());
+                    $gotoRect = $renderer->getWidgetRect($tui->getById('editor'));
+                    $wheel($tui, $gotoRect->col + 3, $gotoRect->row + 3);
                     $tui->tick();
                     $tui->handleInput("\r"); // picks the wheel-selected row
                     $tui->tick();
                     $this->assertStringEndsWith('b.php', (string) $tui->getById('editor')->getFilePath(), 'wheel-down + Enter opened the later match');
 
-                    // Menu dropdown: one item per notch inside the region.
+                    // Menu dropdown: the wheel moves the selection inside the region.
                     $tui->handleInput("\x1b[21~"); // F10 opens the app menu
                     $tui->tick();
                     $wheel($tui, col: 3, row: 3);

@@ -15,7 +15,6 @@ use Porta\Ui\TextField;
 use Porta\Ui\Theme\Styles;
 use Porta\Widget\Render\EditorRenderer;
 use Porta\Widget\Render\HeaderRenderer;
-use Porta\Widget\Render\PaneFocus;
 use Symfony\Component\Tui\Ansi\AnsiUtils;
 use Symfony\Component\Tui\Input\Keybindings;
 
@@ -35,6 +34,8 @@ final class OverlayHost
     private ?array $overlayBox = null;
     /** @var array{label: string, value: TextField, onSubmit: callable(string): void}|null single-line mini prompt */
     private ?array $prompt = null;
+    /** Display width of the last-rendered prompt box (row 0, columns [0, width)), for mouse hit-testing. */
+    private ?int $promptBoxWidth = null;
     private ?SearchModalState $search = null;
     /** @var array{col: int, width: int, startRow: int, windowStart: int, count: int}|null last-rendered search box, for mouse hit-testing */
     private ?array $searchBox = null;
@@ -88,6 +89,33 @@ final class OverlayHost
         ($this->invalidate)();
     }
 
+    public function isPromptOpen(): bool
+    {
+        return null !== $this->prompt;
+    }
+
+    /**
+     * A left-click while the mini-prompt is open: a click on the prompt box
+     * (its row-0 span) is swallowed so the caret stays put, a click anywhere
+     * else dismisses it — the outside-click-dismiss every sibling overlay in
+     * this host already has, and its keyboard modality already implies. Always
+     * consumed so the click never reaches the panes underneath; returns false
+     * only when no prompt is open.
+     */
+    public function promptClickAt(int $relRow, int $relCol): bool
+    {
+        if (null === $this->prompt) {
+            return false;
+        }
+        $onBox = 0 === $relRow && null !== $this->promptBoxWidth && $relCol >= 0 && $relCol < $this->promptBoxWidth;
+        if (!$onBox) {
+            $this->prompt = null;
+            ($this->invalidate)();
+        }
+
+        return true;
+    }
+
     /**
      * Open the Search Everywhere modal with the query/pick/close callbacks. The
      * controller pushes rows via {@see setSearchRows}; keys are fed through the
@@ -96,10 +124,11 @@ final class OverlayHost
      * @param \Closure(string): void    $onQuery
      * @param \Closure(SearchHit): void $onPick
      * @param \Closure(): void          $onClose
+     * @param string                    $emptyMessage filler row for a no-hit query (pre-translated)
      */
-    public function openSearch(string $title, \Closure $onQuery, \Closure $onPick, \Closure $onClose): void
+    public function openSearch(string $title, \Closure $onQuery, \Closure $onPick, \Closure $onClose, string $emptyMessage = ''): void
     {
-        $this->search = new SearchModalState($title, new TextField(style: $this->cursorStyle), $onQuery, $onPick, $onClose);
+        $this->search = new SearchModalState($title, new TextField(style: $this->cursorStyle), $onQuery, $onPick, $onClose, $emptyMessage);
         ($this->invalidate)();
     }
 
@@ -454,6 +483,7 @@ final class OverlayHost
     public function composite(array $lines, int $columns, int $rows, CaretVisibility $focused): array
     {
         $this->overlayBox = null;
+        $this->promptBoxWidth = null;
         if (null !== $this->overlay) {
             $this->overlayBox = EditorRenderer::listOverlay($lines, $columns, $rows, $this->overlay, $this->styles);
         }
@@ -471,19 +501,22 @@ final class OverlayHost
                 $columns,
                 $rows,
                 $search->title,
-                $search->query->value(),
-                CaretVisibility::Shown === $focused ? PaneFocus::Focused : PaneFocus::Blurred,
+                // Render the query through the shared field primitive so the
+                // caret flows the same path as every other input; the renderer
+                // stays decoupled, receiving a plain string.
+                $search->query->render($focused),
                 $rowModels,
                 $search->selected,
                 $search->hovered,
                 $this->styles,
-                $this->cursorStyle->marker(),
+                $search->emptyMessage,
             );
         }
 
         if (null !== $this->prompt) {
             $text = ' '.$this->prompt['label'].': '.$this->prompt['value']->value();
             $width = min($columns, max(30, mb_strwidth($text) + 4));
+            $this->promptBoxWidth = $width;
             $rendered = ' '.$this->prompt['label'].': '.$this->prompt['value']->render(cursor: $focused);
             // The prompt box is a titled transient surface like the others, so
             // it goes through HeaderRenderer: the shared HeaderBar idiom, the
