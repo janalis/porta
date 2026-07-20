@@ -36,8 +36,12 @@ final class GitRefresherTest extends TestCase
         }
         $this->project = new TempProject(['a.txt' => "one\ntwo\n"]);
         if (Presence::With === $realRepo) {
-            $d = escapeshellarg($this->project->dir);
-            exec("git -C {$d} init -q -b trunk && git -C {$d} config user.email t@t && git -C {$d} config user.name t && git -C {$d} add -A && git -C {$d} commit -qm init");
+            $this->project->git('init', '-q', '-b', 'trunk'); // 'trunk' is asserted as the branch
+            $this->project->git('config', 'user.email', 't@t');
+            $this->project->git('config', 'user.name', 't');
+            $this->project->git('config', 'commit.gpgsign', 'false');
+            $this->project->git('add', '-A');
+            $this->project->git('commit', '-q', '-m', 'init');
         }
         $this->buffers = new BufferManager();
         $this->editor = new CodeEditorWidget();

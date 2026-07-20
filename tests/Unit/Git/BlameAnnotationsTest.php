@@ -51,8 +51,12 @@ final class BlameAnnotationsTest extends TestCase
         }
         $this->project = new TempProject(['a.php' => "<?php\n\$x = 1;\n"]);
         if (Presence::With === $withRepo) {
-            $d = escapeshellarg($this->project->dir);
-            exec("git -C {$d} init -q && git -C {$d} config user.email t@t && git -C {$d} config user.name tester && git -C {$d} add -A && git -C {$d} commit -qm init");
+            $this->project->git('init', '-q');
+            $this->project->git('config', 'user.email', 't@t');
+            $this->project->git('config', 'user.name', 'tester'); // asserted as the blame author
+            $this->project->git('config', 'commit.gpgsign', 'false');
+            $this->project->git('add', '-A');
+            $this->project->git('commit', '-q', '-m', 'init');
         }
         $this->editor = new CodeEditorWidget();
         $this->status = new StatusBarWidget();

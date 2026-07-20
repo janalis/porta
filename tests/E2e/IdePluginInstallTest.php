@@ -24,7 +24,7 @@ final class IdePluginInstallTest extends TestCase
 
     protected function setUp(): void
     {
-        $this->originalPath = (string) getenv('PATH');
+        $this->originalPath = PORTA_TEST_PRISTINE_PATH;
         $portaHome = getenv('PORTA_HOME');
         $this->portaHome = $portaHome ? $portaHome : null;
         putenv('PORTA_LSP');

@@ -43,8 +43,8 @@ final class IdeSettingsViewTest extends TestCase
             $this->markTestSkipped('git not available');
         }
         $project = new TempProject(['a.php' => "<?php\n"]);
-        $d = escapeshellarg($project->dir);
-        exec("git -C {$d} init -q && git -C {$d} config user.email t@t && git -C {$d} config user.name t && git -C {$d} add -A && git -C {$d} commit -qm init");
+        $project->initGit();
+        $project->commitAll('init');
 
         $this->ide = new Ide($project->dir, $project->path('a.php'), new VirtualTerminal(columns: 100, rows: 24));
         $this->commands = new \ReflectionProperty($this->ide, 'commands')->getValue($this->ide);

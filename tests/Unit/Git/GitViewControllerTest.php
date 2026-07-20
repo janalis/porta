@@ -84,8 +84,8 @@ final class GitViewControllerTest extends TestCase
         // dirty the porcelain assertions.
         $this->project = new TempProject(['a.txt' => "one\ntwo\n", '.gitignore' => ".porta/\n"]);
         if (Presence::With === $realRepo) {
-            $d = escapeshellarg($this->project->dir);
-            exec("git -C {$d} init -q && git -C {$d} config user.email t@t && git -C {$d} config user.name t && git -C {$d} add -A && git -C {$d} commit -qm init");
+            $this->project->initGit();
+            $this->project->commitAll('init');
         }
         $this->git = new GitInfo($this->project->dir);
 
@@ -264,7 +264,7 @@ final class GitViewControllerTest extends TestCase
     {
         $controller = $this->controller();
         $this->project->write('a.txt', "one staged\ntwo\n");
-        exec('git -C '.escapeshellarg($this->project->dir).' add a.txt');
+        $this->project->git('add', 'a.txt');
         $controller->open();
         $this->await(fn (): bool => 'full' === $this->changes->selectedEntry()?->stagedState());
         $this->await(fn (): bool => str_contains($this->diffText(), '+one staged'), 'the cached diff loads');
@@ -312,7 +312,7 @@ final class GitViewControllerTest extends TestCase
     {
         $controller = $this->controller();
         $this->project->write('a.txt', "committed change\ntwo\n");
-        exec('git -C '.escapeshellarg($this->project->dir).' add a.txt');
+        $this->project->git('add', 'a.txt');
         $controller->open();
         $this->await(fn (): bool => null !== $this->changes->selectedEntry());
 
@@ -355,7 +355,7 @@ final class GitViewControllerTest extends TestCase
         }
         $this->commitBox->handleInput("\x1b[13;5u");
         $this->await(fn (): bool => 1 === $this->committed);
-        exec('git -C '.escapeshellarg($this->project->dir).' log --format=%s 2>/dev/null', $subjects);
+        $subjects = explode("\n", $this->project->git('log', '--format=%s'));
         $this->assertSame(['init reworded'], $subjects);
         $this->assertFalse($this->commitBox->isAmend(), 'the box clears (and disarms) after committing');
 
@@ -437,7 +437,7 @@ final class GitViewControllerTest extends TestCase
         // Now the file is partially staged; selecting it again shows the
         // worktree remainder. Unstage via the cached side: make the worktree
         // clean for the staged part by... simpler: fully stage, then unstage a line.
-        exec('git -C '.escapeshellarg($this->project->dir).' add a.txt');
+        $this->project->git('add', 'a.txt');
         $controller->refresh();
         $this->await(fn (): bool => 'full' === $this->changes->selectedEntry()?->stagedState());
         $this->await(fn (): bool => str_contains($this->diffText(), '+two CHANGED'), 'cached diff loads');
@@ -497,7 +497,7 @@ final class GitViewControllerTest extends TestCase
 
         // Corrupt the worktree state between diff load and apply: replace the
         // file so the crafted patch no longer matches the index.
-        exec('git -C '.escapeshellarg($this->project->dir).' add a.txt'); // index = edited
+        $this->project->git('add', 'a.txt'); // index = edited
         $this->diffView->setFocused(true);
         $this->diffView->handleInput(' '); // whole first hunk, built against the OLD worktree diff
         $this->await(fn (): bool => str_contains($this->statusFlash(), 'git apply refused'));
@@ -575,8 +575,8 @@ final class GitViewControllerTest extends TestCase
     {
         $controller = $this->controller();
         $this->project->write('a.txt', "  one\ntwo CHANGED\n");
-        $d = escapeshellarg($this->project->dir);
-        exec("git -C {$d} add -A && git -C {$d} commit -qm reindent");
+        $this->project->git('add', '-A');
+        $this->project->git('commit', '-q', '-m', 'reindent');
         $controller->open();
         $this->await($controller->isOpen(...));
 
@@ -593,10 +593,10 @@ final class GitViewControllerTest extends TestCase
     public function testContextCycleReloadsTheDiffWithMoreContextAndWrapsAround(): void
     {
         $controller = $this->controller();
-        $d = escapeshellarg($this->project->dir);
         $body = implode("\n", array_map(static fn (int $i): string => 'line '.$i, range(1, end: 30)))."\n";
         $this->project->write('big.txt', $body);
-        exec("git -C {$d} add -A && git -C {$d} commit -qm big");
+        $this->project->git('add', '-A');
+        $this->project->git('commit', '-q', '-m', 'big');
         $this->project->write('big.txt', str_replace('line 15', replace: 'line 15 EDITED', subject: $body));
         $controller->open();
         $this->await(fn (): bool => str_contains($this->diffText(), '+line 15 EDITED'));
@@ -640,7 +640,8 @@ final class GitViewControllerTest extends TestCase
         $controller = $this->controller();
         // A second commit so the log has two entries.
         $this->project->write('a.txt', "one\ntwo\nthree\n");
-        exec('git -C '.escapeshellarg($this->project->dir).' add -A && git -C '.escapeshellarg($this->project->dir).' commit -qm second');
+        $this->project->git('add', '-A');
+        $this->project->git('commit', '-q', '-m', 'second');
         $controller->open();
         $this->await($controller->isOpen(...));
 
@@ -678,7 +679,7 @@ final class GitViewControllerTest extends TestCase
     public function testEmptyCommitShowsAPlaceholderInsteadOfAutoLoading(): void
     {
         $controller = $this->controller();
-        exec('git -C '.escapeshellarg($this->project->dir).' commit -q --allow-empty -m hollow');
+        $this->project->git('commit', '-q', '--allow-empty', '-m', 'hollow');
         $controller->open();
         $this->await($controller->isOpen(...));
 
@@ -791,8 +792,11 @@ final class GitViewControllerTest extends TestCase
         return implode("\n", array_map(AnsiUtils::stripAnsiCodes(...), $this->diffView->render(new RenderContext(80, 20))));
     }
 
-    private function await(callable $done, string $why = '', float $timeout = 3.0): void
+    private function await(callable $done, string $why = '', float $timeout = 10.0): void
     {
+        // A generous default: these poll real async git subprocesses, and under
+        // the pcov coverage run (2-3x slower) plus parallel load a 3s budget was
+        // too tight — the op simply hadn't landed yet, flaking the assert below.
         $elapsed = 0.0;
         while (!$done() && $elapsed < $timeout) {
             $suspension = EventLoop::getSuspension();
@@ -826,9 +830,8 @@ final class GitViewControllerTest extends TestCase
     public function testHistoryPagesInOlderCommitsAtTheListBottom(): void
     {
         $controller = $this->controller(historyPageSize: 2);
-        $d = escapeshellarg($this->project->dir);
         foreach (['second', 'third', 'fourth', 'fifth'] as $n) {
-            exec("git -C {$d} commit -q --allow-empty -m {$n}");
+            $this->project->git('commit', '-q', '--allow-empty', '-m', $n);
         }
         $controller->open();
         $this->await($controller->isOpen(...));
@@ -857,8 +860,7 @@ final class GitViewControllerTest extends TestCase
     public function testRemoteCompletedReloadsHistoryPageZero(): void
     {
         $controller = $this->controller(historyPageSize: 2);
-        $d = escapeshellarg($this->project->dir);
-        exec("git -C {$d} commit -q --allow-empty -m second");
+        $this->project->git('commit', '-q', '--allow-empty', '-m', 'second');
         $controller->open();
         $this->await($controller->isOpen(...));
 
@@ -868,7 +870,7 @@ final class GitViewControllerTest extends TestCase
         $this->await(fn (): bool => 2 === $this->history->commitCount());
 
         // A commit lands "remotely" (same repo here); the completed event reloads page 0.
-        exec("git -C {$d} commit -q --allow-empty -m fromremote");
+        $this->project->git('commit', '-q', '--allow-empty', '-m', 'fromremote');
         $controller->onRemoteCompleted(new GitRemoteCompleted('pull', true));
         $this->await(fn (): bool => 'fromremote' === ($this->history->selectedCommit()->subject ?? ''), 'the newest commit appears at the top');
     }
@@ -876,8 +878,7 @@ final class GitViewControllerTest extends TestCase
     public function testHistoryCallbacksLandingAfterCloseAreIgnored(): void
     {
         $controller = $this->controller(historyPageSize: 1);
-        $d = escapeshellarg($this->project->dir);
-        exec("git -C {$d} commit -q --allow-empty -m second");
+        $this->project->git('commit', '-q', '--allow-empty', '-m', 'second');
         $controller->open();
         $this->await($controller->isOpen(...));
         $this->changes->setFocused(true);
@@ -897,11 +898,12 @@ final class GitViewControllerTest extends TestCase
     public function testFileHistoryFiltersAndClearsOnTabSwitch(): void
     {
         $controller = $this->controller(historyPageSize: 1);
-        $d = escapeshellarg($this->project->dir);
         $this->project->write('a.txt', "one\ntwo\nthree\n");
-        exec('git -C '.$d.' add -A && git -C '.$d.' commit -qm touch-a');
+        $this->project->git('add', '-A');
+        $this->project->git('commit', '-q', '-m', 'touch-a');
         $this->project->write('b.txt', "new\n");
-        exec('git -C '.$d.' add -A && git -C '.$d.' commit -qm touch-b');
+        $this->project->git('add', '-A');
+        $this->project->git('commit', '-q', '-m', 'touch-b');
 
         $controller->openFileHistory($this->project->path('a.txt'));
         $this->await(fn (): bool => 'touch-a' === $this->history->selectedCommit()?->subject);
@@ -926,9 +928,9 @@ final class GitViewControllerTest extends TestCase
     public function testFileHistoryWhileAlreadyOnHistoryReloadsInPlace(): void
     {
         $controller = $this->controller();
-        $d = escapeshellarg($this->project->dir);
         $this->project->write('a.txt', "one\ntwo\nthree\n");
-        exec('git -C '.$d.' add -A && git -C '.$d.' commit -qm touch-a');
+        $this->project->git('add', '-A');
+        $this->project->git('commit', '-q', '-m', 'touch-a');
 
         $controller->open();
         $this->await($controller->isOpen(...));

@@ -25,7 +25,7 @@ final class SettingsLspControllerTest extends TestCase
 
     protected function setUp(): void
     {
-        $this->originalPath = (string) getenv('PATH');
+        $this->originalPath = PORTA_TEST_PRISTINE_PATH;
         putenv('PATH=/nonexistent'); // deterministic auto-detect
     }
 

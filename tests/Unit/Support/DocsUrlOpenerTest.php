@@ -19,7 +19,7 @@ final class DocsUrlOpenerTest extends TestCase
 
     protected function setUp(): void
     {
-        $this->originalPath = (string) getenv('PATH');
+        $this->originalPath = PORTA_TEST_PRISTINE_PATH;
     }
 
     protected function tearDown(): void

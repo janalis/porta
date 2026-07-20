@@ -23,7 +23,7 @@ final class PsalmPluginTest extends TestCase
 
     protected function setUp(): void
     {
-        $this->originalPath = (string) getenv('PATH');
+        $this->originalPath = PORTA_TEST_PRISTINE_PATH;
         putenv('PORTA_LSP');
         putenv('PATH=/nonexistent');
     }

@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Porta\Tests\E2e;
 
 use PHPUnit\Framework\TestCase;
+use Porta\Tests\Support\PreservesPath;
 use Porta\Tests\Support\RunsIde;
 use Porta\Tests\Support\TempProject;
 use Symfony\Component\Tui\Ansi\AnsiUtils;
@@ -22,6 +23,7 @@ use Symfony\Component\Tui\Ansi\AnsiUtils;
  */
 final class ContextMenuParityTest extends TestCase
 {
+    use PreservesPath;
     use RunsIde;
 
     private const string CTRL_F10 = "\x1b[21;5~";

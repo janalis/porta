@@ -33,11 +33,9 @@ final class GitRemoteTest extends TestCase
         $this->assertTrue($done(), 'condition met before timeout');
     }
 
-    private function git(string $dir, string $command): string
+    private function git(TempProject $project, string $command): string
     {
-        exec('git -C '.escapeshellarg($dir).' '.$command.' 2>&1', $out);
-
-        return implode("\n", $out);
+        return $project->git(...explode(' ', $command));
     }
 
     /** A bare origin with one commit, cloned twice. */
@@ -49,21 +47,22 @@ final class GitRemoteTest extends TestCase
         $this->bare = new TempProject();
         $this->clone1 = new TempProject();
         $this->clone2 = new TempProject();
-        $this->git($this->bare->dir, 'init -q --bare .');
+        $this->git($this->bare, 'init -q --bare .');
         foreach ([$this->clone1, $this->clone2] as $clone) {
-            $this->git($clone->dir, 'clone -q '.escapeshellarg($this->bare->dir).' .');
-            $this->git($clone->dir, 'config user.email t@t');
-            $this->git($clone->dir, 'config user.name t');
+            $this->git($clone, 'clone -q '.$this->bare->dir.' .');
+            $this->git($clone, 'config user.email t@t');
+            $this->git($clone, 'config user.name t');
+            $this->git($clone, 'config commit.gpgsign false');
             // Hermetic push semantics regardless of the developer's global config.
-            $this->git($clone->dir, 'config push.autoSetupRemote false');
-            $this->git($clone->dir, 'config push.default simple');
+            $this->git($clone, 'config push.autoSetupRemote false');
+            $this->git($clone, 'config push.default simple');
         }
         file_put_contents($this->clone1->path('a.txt'), data: "one\n");
-        $this->git($this->clone1->dir, 'add -A');
-        $this->git($this->clone1->dir, 'commit -qm init');
-        $this->git($this->clone1->dir, 'push -qu origin HEAD');
-        $this->git($this->clone2->dir, 'pull -q origin');
-        $this->git($this->clone2->dir, 'branch -q --set-upstream-to origin/'.trim($this->git($this->clone2->dir, 'rev-parse --abbrev-ref HEAD')));
+        $this->git($this->clone1, 'add -A');
+        $this->git($this->clone1, 'commit -qm init');
+        $this->git($this->clone1, 'push -qu origin HEAD');
+        $this->git($this->clone2, 'pull -q origin');
+        $this->git($this->clone2, 'branch -q --set-upstream-to origin/'.trim($this->git($this->clone2, 'rev-parse --abbrev-ref HEAD')));
 
         return new GitRemote($this->clone2->dir);
     }
@@ -72,8 +71,8 @@ final class GitRemoteTest extends TestCase
     private function advanceOrigin(): void
     {
         file_put_contents($this->clone1->path('a.txt'), data: "one\ntwo\n");
-        $this->git($this->clone1->dir, 'commit -aqm second');
-        $this->git($this->clone1->dir, 'push -q origin HEAD');
+        $this->git($this->clone1, 'commit -aqm second');
+        $this->git($this->clone1, 'push -q origin HEAD');
     }
 
     public function testFetchAndFastForwardPull(): void
@@ -106,7 +105,7 @@ final class GitRemoteTest extends TestCase
         $this->advanceOrigin();
         // A local commit in clone2 diverges from origin.
         file_put_contents($this->clone2->path('a.txt'), data: "one\nlocal\n");
-        $this->git($this->clone2->dir, 'commit -aqm local');
+        $this->git($this->clone2, 'commit -aqm local');
 
         $result = null;
         $remote->pull(static function (Outcome $ok, string $out) use (&$result): void {
@@ -123,8 +122,8 @@ final class GitRemoteTest extends TestCase
     {
         $remote = $this->remotes();
         file_put_contents($this->clone2->path('b.txt'), data: "new\n");
-        $this->git($this->clone2->dir, 'add -A');
-        $this->git($this->clone2->dir, 'commit -qm frompush');
+        $this->git($this->clone2, 'add -A');
+        $this->git($this->clone2, 'commit -qm frompush');
 
         $result = null;
         $remote->push(static function (Outcome $ok, string $out) use (&$result): void {
@@ -134,16 +133,16 @@ final class GitRemoteTest extends TestCase
             return null !== $result;
         });
         $this->assertTrue($result);
-        $this->assertStringContainsString('frompush', $this->git($this->bare->dir, 'log --format=%s'), 'the commit reached origin');
+        $this->assertStringContainsString('frompush', $this->git($this->bare, 'log --format=%s'), 'the commit reached origin');
     }
 
     public function testPushWithoutUpstreamSurfacesTheHintAndSetUpstreamFixesIt(): void
     {
         $remote = $this->remotes();
-        $this->git($this->clone2->dir, 'checkout -qb feature');
+        $this->git($this->clone2, 'checkout -qb feature');
         file_put_contents($this->clone2->path('c.txt'), data: "x\n");
-        $this->git($this->clone2->dir, 'add -A');
-        $this->git($this->clone2->dir, 'commit -qm feature');
+        $this->git($this->clone2, 'add -A');
+        $this->git($this->clone2, 'commit -qm feature');
 
         $result = null;
         $remote->push(static function (Outcome $ok, string $out) use (&$result): void {
@@ -163,13 +162,13 @@ final class GitRemoteTest extends TestCase
             return null !== $upstream;
         });
         $this->assertTrue($upstream);
-        $this->assertStringContainsString('feature', $this->git($this->bare->dir, 'branch'), 'the branch reached origin');
+        $this->assertStringContainsString('feature', $this->git($this->bare, 'branch'), 'the branch reached origin');
     }
 
     public function testUnreachableRemoteFailsWithStderr(): void
     {
         $remote = $this->remotes();
-        $this->git($this->clone2->dir, 'remote set-url origin /nonexistent-origin');
+        $this->git($this->clone2, 'remote set-url origin /nonexistent-origin');
 
         $result = null;
         $remote->fetch(static function (Outcome $ok, string $out) use (&$result): void {
@@ -213,8 +212,8 @@ final class GitRemoteTest extends TestCase
         $remote = $this->remotes();
         $this->advanceOrigin();
         file_put_contents($this->clone2->path('b.txt'), data: "local\n");
-        $this->git($this->clone2->dir, 'add -A');
-        $this->git($this->clone2->dir, 'commit -qm local');
+        $this->git($this->clone2, 'add -A');
+        $this->git($this->clone2, 'commit -qm local');
 
         $result = null;
         $remote->pullRebase(static function (Outcome $ok, string $out) use (&$result): void {
@@ -233,8 +232,8 @@ final class GitRemoteTest extends TestCase
         $remote = $this->remotes();
         $this->advanceOrigin();
         file_put_contents($this->clone2->path('b.txt'), data: "local\n");
-        $this->git($this->clone2->dir, 'add -A');
-        $this->git($this->clone2->dir, 'commit -qm local');
+        $this->git($this->clone2, 'add -A');
+        $this->git($this->clone2, 'commit -qm local');
 
         $result = null;
         $remote->pullMerge(static function (Outcome $ok, string $out) use (&$result): void {
@@ -244,7 +243,7 @@ final class GitRemoteTest extends TestCase
             return null !== $result;
         });
         $this->assertTrue($result['ok'], $result['out']);
-        $this->assertStringContainsString('Merge', $this->git($this->clone2->dir, 'log -1 --format=%s'), 'a merge commit integrated the branches');
+        $this->assertStringContainsString('Merge', $this->git($this->clone2, 'log -1 --format=%s'), 'a merge commit integrated the branches');
     }
 
     private static function findGit(): ?string

@@ -23,7 +23,7 @@ final class GitInfoStatusTest extends TestCase
         $git = $this->repo($project, committed: ['a.txt' => "one\n"]);
         $project->write('a.txt', "one changed\n"); // unstaged edit
         $project->write('new.txt', "fresh\n"); // untracked
-        exec('git -C '.escapeshellarg($project->dir).' add new.txt 2>/dev/null'); // staged add
+        $project->git('add', 'new.txt'); // staged add
 
         $entries = null;
         $raw = '';
@@ -47,7 +47,7 @@ final class GitInfoStatusTest extends TestCase
     {
         $git = $this->repo($project, committed: ['a.txt' => "one\ntwo\n"]);
         $project->write('a.txt', "one staged\ntwo\n");
-        exec('git -C '.escapeshellarg($project->dir).' add a.txt 2>/dev/null');
+        $project->git('add', 'a.txt');
         $project->write('a.txt', "one staged\ntwo worktree\n"); // further unstaged edit
 
         $cached = null;
@@ -91,7 +91,7 @@ final class GitInfoStatusTest extends TestCase
         $this->assertStringContainsString(" line 5\n", $ten, '-U10 reaches ten lines out');
         $this->assertStringNotContainsString(" line 1\n", $ten);
 
-        exec('git -C '.escapeshellarg($project->dir).' add a.txt 2>/dev/null');
+        $project->git('add', 'a.txt');
         $full = null;
         $git->cachedFileDiff(
             $project->path('a.txt'),
@@ -129,14 +129,14 @@ final class GitInfoStatusTest extends TestCase
         $this->assertStringNotContainsString('bravo', $ignoring, '-w drops the whitespace-only hunk');
         $this->assertStringContainsString('+hotel CHANGED', $ignoring, 'real changes survive -w');
 
-        exec('git -C '.escapeshellarg($project->dir).' add a.txt 2>/dev/null');
-        exec('git -C '.escapeshellarg($project->dir).' commit -qm ws 2>/dev/null');
-        exec('git -C '.escapeshellarg($project->dir).' log -1 --format=%H 2>/dev/null', $sha);
+        $project->git('add', 'a.txt');
+        $project->git('commit', '-q', '-m', 'ws');
+        $sha = $project->git('log', '-1', '--format=%H');
 
         $cached = null;
         $show = null;
         $project->write('a.txt', "alpha\n    bravo\ncharlie\ndelta\necho\nfoxtrot\ngolf\nhotel CHANGED\n");
-        exec('git -C '.escapeshellarg($project->dir).' add a.txt 2>/dev/null');
+        $project->git('add', 'a.txt');
         $git->cachedFileDiff(
             $project->path('a.txt'),
             static function (string $out) use (&$cached): void {
@@ -145,7 +145,7 @@ final class GitInfoStatusTest extends TestCase
             whitespace: WhitespaceMode::Hidden,
         );
         $git->commitFileDiff(
-            $sha[0],
+            $sha,
             'a.txt',
             static function (string $out) use (&$show): void {
                 $show = $out;
@@ -178,7 +178,7 @@ final class GitInfoStatusTest extends TestCase
     {
         $git = $this->repo($project, committed: ['a.txt' => "one\n"]);
         $project->write('a.txt', "one changed\n");
-        exec('git -C '.escapeshellarg($project->dir).' add a.txt 2>/dev/null');
+        $project->git('add', 'a.txt');
 
         $unstaged = null;
         $git->unstageFile($project->path('a.txt'), static function (Outcome $ok) use (&$unstaged): void {
@@ -186,6 +186,8 @@ final class GitInfoStatusTest extends TestCase
         });
         $this->await(static fn (): bool => null !== $unstaged);
         $this->assertTrue($unstaged);
+        // Not $project->git(): its trim() would strip the leading porcelain
+        // status column (' M' — worktree-modified), which is load-bearing here.
         exec('git -C '.escapeshellarg($project->dir).' status --porcelain 2>/dev/null', $lines);
         $this->assertSame(' M a.txt', $lines[0], 'the edit moved back to the worktree side');
 
@@ -202,7 +204,7 @@ final class GitInfoStatusTest extends TestCase
     {
         $git = $this->repo($project, committed: ['a.txt' => "one\n"]);
         $project->write('a.txt', "one more\n");
-        exec('git -C '.escapeshellarg($project->dir).' add a.txt 2>/dev/null');
+        $project->git('add', 'a.txt');
 
         $committed = null;
         $git->commit("second\n\nwith body", static function (Outcome $ok) use (&$committed): void {
@@ -228,7 +230,7 @@ final class GitInfoStatusTest extends TestCase
         );
         $this->await(static fn (): bool => null !== $amended);
         $this->assertTrue($amended);
-        exec('git -C '.escapeshellarg($project->dir).' log --format=%s 2>/dev/null', $subjects);
+        $subjects = explode("\n", $project->git('log', '--format=%s'));
         $this->assertSame(['second, reworded', 'init'], $subjects, 'amend rewrote the tip without adding a commit');
     }
 
@@ -236,8 +238,8 @@ final class GitInfoStatusTest extends TestCase
     {
         $git = $this->repo($project, committed: ['a.txt' => "one\n"]);
         $project->write('a.txt', "two\n");
-        exec('git -C '.escapeshellarg($project->dir).' add a.txt 2>/dev/null');
-        exec('git -C '.escapeshellarg($project->dir).' commit -qm second 2>/dev/null');
+        $project->git('add', 'a.txt');
+        $project->git('commit', '-q', '-m', 'second');
 
         $undone = null;
         $git->undoLastCommit(static function (Outcome $ok) use (&$undone): void {
@@ -245,8 +247,7 @@ final class GitInfoStatusTest extends TestCase
         });
         $this->await(static fn (): bool => null !== $undone);
         $this->assertTrue($undone);
-        exec('git -C '.escapeshellarg($project->dir).' status --porcelain 2>/dev/null', $lines);
-        $this->assertSame(['M  a.txt'], $lines, 'the undone commit\'s change is back and still staged');
+        $this->assertSame(['M  a.txt'], explode("\n", $project->git('status', '--porcelain')), 'the undone commit\'s change is back and still staged');
 
         $refused = null;
         $git->undoLastCommit(static function (Outcome $ok) use (&$refused): void {
@@ -339,11 +340,12 @@ final class GitInfoStatusTest extends TestCase
             $this->markTestSkipped('git not available');
         }
         $project = new TempProject($committed);
-        exec('git -C '.escapeshellarg($project->dir).' init -q 2>/dev/null');
-        exec('git -C '.escapeshellarg($project->dir).' config user.email t@t 2>/dev/null');
-        exec('git -C '.escapeshellarg($project->dir).' config user.name tester 2>/dev/null');
-        exec('git -C '.escapeshellarg($project->dir).' add -A 2>/dev/null');
-        exec('git -C '.escapeshellarg($project->dir).' commit -qm init 2>/dev/null');
+        $project->git('init', '-q');
+        $project->git('config', 'user.email', 't@t');
+        $project->git('config', 'user.name', 'tester');
+        $project->git('config', 'commit.gpgsign', 'false');
+        $project->git('add', '-A');
+        $project->git('commit', '-q', '-m', 'init');
 
         return new GitInfo($project->dir);
     }
@@ -362,8 +364,7 @@ final class GitInfoStatusTest extends TestCase
     public function testBranchListSwitchAndCreate(): void
     {
         $git = $this->repo($project, ['a.txt' => "x\n"]);
-        $d = escapeshellarg($project->dir);
-        exec("git -C {$d} branch feature 2>/dev/null");
+        $project->git('branch', 'feature');
 
         $results = [];
         $git->branches(static function (array $branches) use (&$results): void {
@@ -384,8 +385,7 @@ final class GitInfoStatusTest extends TestCase
             return array_key_exists('checkout', $results);
         });
         $this->assertTrue($results['checkout']);
-        exec("git -C {$d} rev-parse --abbrev-ref HEAD", $head);
-        $this->assertSame('feature', $head[0] ?? '');
+        $this->assertSame('feature', $project->git('rev-parse', '--abbrev-ref', 'HEAD'));
 
         $git->createBranch('fresh', static function (Outcome $ok, string $error) use (&$results): void {
             $results['create'] = $ok->isOk();
@@ -409,11 +409,13 @@ final class GitInfoStatusTest extends TestCase
     public function testDirtyWorkingTreeCheckoutFailsWithGitsMessage(): void
     {
         $git = $this->repo($project, ['a.txt' => "x\n"]);
-        $d = escapeshellarg($project->dir);
-        exec("git -C {$d} branch other 2>/dev/null");
+        $project->git('branch', 'other');
         // Diverge the branches on the same file, then dirty the worktree so
         // the checkout must refuse.
-        exec("git -C {$d} checkout -q other && printf 'theirs\\n' > ".escapeshellarg($project->path('a.txt'))." && git -C {$d} commit -aqm theirs && git -C {$d} checkout -q -");
+        $project->git('checkout', '-q', 'other');
+        file_put_contents($project->path('a.txt'), data: "theirs\n");
+        $project->git('commit', '-a', '-q', '-m', 'theirs');
+        $project->git('checkout', '-q', '-');
         file_put_contents($project->path('a.txt'), data: "dirty\n");
 
         $result = null;
@@ -430,9 +432,11 @@ final class GitInfoStatusTest extends TestCase
     public function testDeleteBranchMergedAndUnmerged(): void
     {
         $git = $this->repo($project, ['a.txt' => "x\n"]);
-        $d = escapeshellarg($project->dir);
-        exec("git -C {$d} branch merged 2>/dev/null");
-        exec("git -C {$d} checkout -qb unmerged && printf 'diverge\\n' >> ".escapeshellarg($project->path('a.txt'))." && git -C {$d} commit -aqm diverge && git -C {$d} checkout -q - 2>/dev/null");
+        $project->git('branch', 'merged');
+        $project->git('checkout', '-q', '-b', 'unmerged');
+        file_put_contents($project->path('a.txt'), data: "diverge\n", flags: \FILE_APPEND);
+        $project->git('commit', '-a', '-q', '-m', 'diverge');
+        $project->git('checkout', '-q', '-');
 
         $results = [];
         $git->deleteBranch('merged', static function (Outcome $ok, string $error) use (&$results): void {
@@ -456,15 +460,14 @@ final class GitInfoStatusTest extends TestCase
     public function testCheckoutTrackingCreatesALocalTrackingBranch(): void
     {
         $git = $this->repo($project, ['a.txt' => "x\n"]);
-        $d = escapeshellarg($project->dir);
         // A local bare remote with a branch the local repo does not have.
-        exec(
-            "git -C {$d} checkout -qb feature && git -C {$d} checkout -q - && git init -q --bare "
-            .escapeshellarg($project->path('origin.git'))
-            ." && git -C {$d} remote add origin "
-            .escapeshellarg($project->path('origin.git'))
-            ." && git -C {$d} push -q origin feature && git -C {$d} branch -q -D feature && git -C {$d} fetch -q origin",
-        );
+        $project->git('checkout', '-q', '-b', 'feature');
+        $project->git('checkout', '-q', '-');
+        $project->git('init', '-q', '--bare', 'origin.git');
+        $project->git('remote', 'add', 'origin', $project->path('origin.git'));
+        $project->git('push', '-q', 'origin', 'feature');
+        $project->git('branch', '-q', '-D', 'feature');
+        $project->git('fetch', '-q', 'origin');
 
         $result = null;
         $git->checkoutTracking('origin/feature', static function (Outcome $ok, string $error) use (&$result): void {
@@ -474,8 +477,7 @@ final class GitInfoStatusTest extends TestCase
             return null !== $result;
         });
         $this->assertTrue($result['ok'], $result['error']);
-        exec("git -C {$d} rev-parse --abbrev-ref feature@{upstream} 2>/dev/null", $upstream);
-        $this->assertSame('origin/feature', $upstream[0] ?? '', 'the new local branch tracks the remote');
+        $this->assertSame('origin/feature', $project->git('rev-parse', '--abbrev-ref', 'feature@{upstream}'), 'the new local branch tracks the remote');
     }
 
     private static function findGit(): ?string
@@ -492,9 +494,8 @@ final class GitInfoStatusTest extends TestCase
     public function testLogSkipReturnsTheOlderPage(): void
     {
         $git = $this->repo($project, ['a.txt' => "x\n"]);
-        $d = escapeshellarg($project->dir);
-        exec("git -C {$d} commit -q --allow-empty -m second 2>/dev/null");
-        exec("git -C {$d} commit -q --allow-empty -m third 2>/dev/null");
+        $project->git('commit', '-q', '--allow-empty', '-m', 'second');
+        $project->git('commit', '-q', '--allow-empty', '-m', 'third');
 
         $pages = [];
         $git->log(2, static function (array $commits) use (&$pages): void {
@@ -516,7 +517,6 @@ final class GitInfoStatusTest extends TestCase
     public function testStashPushPopApplyDropAndList(): void
     {
         $git = $this->repo($project, ['a.txt' => "one\n"]);
-        $d = escapeshellarg($project->dir);
 
         // A clean tree: push succeeds with git's "no local changes" line.
         $result = null;
@@ -565,7 +565,7 @@ final class GitInfoStatusTest extends TestCase
         $this->assertTrue($result[0]);
         $this->assertSame("two\n", file_get_contents($project->path('a.txt')), 'apply restored the change');
 
-        exec('git -C '.$d.' checkout -q -- a.txt'); // clean again so drop/pop paths are unambiguous
+        $project->git('checkout', '-q', '--', 'a.txt'); // clean again so drop/pop paths are unambiguous
         $result = null;
         $git->stashDrop('stash@{0}', static function (Outcome $ok, string $error) use (&$result): void {
             $result = [$ok->isOk(), $error];
@@ -589,12 +589,12 @@ final class GitInfoStatusTest extends TestCase
     public function testStashPopConflictSurfacesGitsError(): void
     {
         $git = $this->repo($project, ['a.txt' => "one\n"]);
-        $d = escapeshellarg($project->dir);
 
         file_put_contents($project->path('a.txt'), data: "stashed\n");
-        exec('git -C '.$d.' stash push -q');
+        $project->git('stash', 'push', '-q');
         file_put_contents($project->path('a.txt'), data: "conflicting\n");
-        exec('git -C '.$d.' add -A && git -C '.$d.' commit -qm conflicting');
+        $project->git('add', '-A');
+        $project->git('commit', '-q', '-m', 'conflicting');
 
         $result = null;
         $git->stashPop(null, static function (Outcome $ok, string $error) use (&$result): void {
@@ -633,13 +633,12 @@ final class GitInfoStatusTest extends TestCase
     public function testLogWithAPathFilterComposesWithSkip(): void
     {
         $git = $this->repo($project, ['a.txt' => "a\n", 'b.txt' => "b\n"]);
-        $d = escapeshellarg($project->dir);
         file_put_contents($project->path('a.txt'), data: "a2\n");
-        exec('git -C '.$d.' commit -aqm touch-a-1');
+        $project->git('commit', '-a', '-q', '-m', 'touch-a-1');
         file_put_contents($project->path('b.txt'), data: "b2\n");
-        exec('git -C '.$d.' commit -aqm touch-b');
+        $project->git('commit', '-a', '-q', '-m', 'touch-b');
         file_put_contents($project->path('a.txt'), data: "a3\n");
-        exec('git -C '.$d.' commit -aqm touch-a-2');
+        $project->git('commit', '-a', '-q', '-m', 'touch-a-2');
 
         $commits = null;
         $git->log(

@@ -4,6 +4,13 @@ declare(strict_types=1);
 
 require __DIR__.'/../vendor/autoload.php';
 
+// The pristine process PATH, snapshotted once before any test runs. Tests that
+// set PATH=/nonexistent (to keep an Ide boot from spawning git/LSP) restore to
+// THIS via the PreservesPath trait — never to getenv('PATH') at setUp time,
+// which would inherit a prior test's corruption and leak "/nonexistent" into a
+// later paratest worker method (→ a git test flashing "Git not available").
+define('PORTA_TEST_PRISTINE_PATH', (string) getenv('PATH'));
+
 // Every Ide boot in the suite shares one container dump here instead of each
 // recompiling (~124 ms) or touching the developer's real ~/.cache/porta.
 // putenv() deliberately, so exec()'d subprocess tests inherit the pin.

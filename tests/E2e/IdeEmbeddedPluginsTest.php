@@ -24,7 +24,7 @@ final class IdeEmbeddedPluginsTest extends TestCase
 
     protected function setUp(): void
     {
-        $this->originalPath = (string) getenv('PATH');
+        $this->originalPath = PORTA_TEST_PRISTINE_PATH;
         $this->originalEmbedded = (string) getenv('PORTA_EMBEDDED_PLUGINS');
         putenv('PORTA_LSP');
         putenv('PATH=/nonexistent');

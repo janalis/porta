@@ -213,8 +213,8 @@ final class PatchBuilderTest extends TestCase
             $this->markTestSkipped('git not available');
         }
         $project = new TempProject($files);
-        $d = escapeshellarg($project->dir);
-        exec("git -C {$d} init -q && git -C {$d} config user.email t@t && git -C {$d} config user.name t && git -C {$d} add -A && git -C {$d} commit -qm init");
+        $project->initGit();
+        $project->commitAll('init');
 
         return [new GitInfo($project->dir), $project];
     }
@@ -243,9 +243,7 @@ final class PatchBuilderTest extends TestCase
 
     private function gitOut(TempProject $project, string $args): string
     {
-        exec('git -C '.escapeshellarg($project->dir).' '.$args.' 2>/dev/null', $lines);
-
-        return implode("\n", $lines);
+        return $project->git(...explode(' ', $args));
     }
 
     private function await(callable $done, float $timeout = 3.0): void

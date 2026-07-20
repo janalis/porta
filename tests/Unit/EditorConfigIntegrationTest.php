@@ -24,7 +24,7 @@ final class EditorConfigIntegrationTest extends TestCase
 
     protected function setUp(): void
     {
-        $this->originalPath = (string) getenv('PATH');
+        $this->originalPath = PORTA_TEST_PRISTINE_PATH;
         putenv('PATH=/nonexistent'); // keep git/LSP out of these unit runs
     }
 

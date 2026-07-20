@@ -25,7 +25,7 @@ final class SourcesTest extends TestCase
     {
         // No grep on PATH → ProjectSearch takes its synchronous PHP fallback, so
         // the TextSource emit is deterministic in-test.
-        $this->originalPath = (string) getenv('PATH');
+        $this->originalPath = PORTA_TEST_PRISTINE_PATH;
         putenv('PATH=/nonexistent');
     }
 

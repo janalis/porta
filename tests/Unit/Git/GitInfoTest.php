@@ -112,9 +112,9 @@ final class GitInfoTest extends TestCase
         }
 
         $project = new TempProject([]);
-        $this->gitInit($project->dir);
+        $this->gitInit($project);
         $project->write('a.txt', "first\n");
-        $this->gitCommit($project->dir, 'a.txt');
+        $this->gitCommit($project, 'a.txt');
 
         $git = new GitInfo($project->dir);
 
@@ -148,6 +148,33 @@ final class GitInfoTest extends TestCase
         $git->cancelAll();
     }
 
+    public function testIsBusyTracksInFlightOperations(): void
+    {
+        if (null === self::findGit()) {
+            self::markTestSkipped('git binary not available');
+        }
+
+        $project = new TempProject([]);
+        $this->gitInit($project);
+        $project->write('a.txt', "first\n");
+        $this->gitCommit($project, 'a.txt');
+
+        $git = new GitInfo($project->dir);
+        $this->assertFalse($git->isBusy(), 'idle before any op is dispatched');
+
+        $project->write('a.txt', "first\nsecond\n");
+        $done = false;
+        $git->stage($project->path('a.txt'), static function () use (&$done): void {
+            $done = true;
+        });
+        $this->assertTrue($git->isBusy(), 'busy the instant an op is in flight, before its process exits');
+
+        $this->await(static fn (): bool => $done);
+        $this->assertFalse($git->isBusy(), 'idle again once the process has exited');
+
+        $git->cancelAll();
+    }
+
     public function testAgainstARealRepository(): void
     {
         if (null === self::findGit()) {
@@ -155,9 +182,9 @@ final class GitInfoTest extends TestCase
         }
 
         $project = new TempProject([]);
-        $this->gitInit($project->dir);
+        $this->gitInit($project);
         $project->write('a.txt', "line1\nline2\nline3\n");
-        $this->gitCommit($project->dir, 'a.txt');
+        $this->gitCommit($project, 'a.txt');
 
         // Modify line 2 and append a line
         $project->write('a.txt', "line1\nCHANGED\nline3\nADDED\n");
@@ -191,9 +218,9 @@ final class GitInfoTest extends TestCase
         }
 
         $project = new TempProject([]);
-        $this->gitInit($project->dir);
+        $this->gitInit($project);
         $project->write('a.txt', "x\n");
-        $this->gitCommit($project->dir, 'a.txt');
+        $this->gitCommit($project, 'a.txt');
 
         $git = new GitInfo($project->dir);
 
@@ -227,17 +254,18 @@ final class GitInfoTest extends TestCase
         }
     }
 
-    private function gitInit(string $dir): void
+    private function gitInit(TempProject $project): void
     {
-        exec('git -C '.escapeshellarg($dir).' init -q 2>/dev/null');
-        exec('git -C '.escapeshellarg($dir).' config user.email t@t 2>/dev/null');
-        exec('git -C '.escapeshellarg($dir).' config user.name tester 2>/dev/null');
+        $project->git('init', '-q');
+        $project->git('config', 'user.email', 't@t');
+        $project->git('config', 'user.name', 'tester'); // asserted as blame author
+        $project->git('config', 'commit.gpgsign', 'false');
     }
 
-    private function gitCommit(string $dir, string $file): void
+    private function gitCommit(TempProject $project, string $file): void
     {
-        exec('git -C '.escapeshellarg($dir).' add '.escapeshellarg($file).' 2>/dev/null');
-        exec('git -C '.escapeshellarg($dir).' commit -qm init 2>/dev/null');
+        $project->git('add', $file);
+        $project->git('commit', '-q', '-m', 'init');
     }
 
     private static function findGit(): ?string

@@ -180,12 +180,15 @@ final class GitCommandsTest extends TestCase
         $commands = $this->commands(['a.txt' => "one\n"]);
         $this->write('a.txt', "one\ndirty\n"); // a change to stash
 
+        // Pump on the on-disk effect, not the rendered flash: git reverts the
+        // tree before the process exits, so polling the file content itself is
+        // immune to a flash that renders a beat late under load.
         $commands->stash();
-        $this->pump();
+        $this->pump(fn (): bool => !str_contains($this->readFile('a.txt'), 'dirty'));
         $this->assertStringNotContainsString('dirty', $this->readFile('a.txt'), 'the worktree change was stashed away');
 
         $commands->stashPop();
-        $this->pump();
+        $this->pump(fn (): bool => str_contains($this->readFile('a.txt'), 'dirty'));
         $this->assertStringContainsString('dirty', $this->readFile('a.txt'), 'the stash came back');
     }
 

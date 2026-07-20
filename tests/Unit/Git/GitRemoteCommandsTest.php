@@ -69,8 +69,9 @@ final class GitRemoteCommandsTest extends TestCase
             $this->markTestSkipped('git not available');
         }
         $project = new TempProject(['a.txt' => "x\n"]);
-        $d = escapeshellarg($project->dir);
-        exec("git -C {$d} init -q && git -C {$d} config user.email t@t && git -C {$d} config user.name t && git -C {$d} add -A && git -C {$d} commit -qm init && git -C {$d} remote add origin {$d}");
+        $project->initGit();
+        $project->commitAll('init');
+        $project->git('remote', 'add', 'origin', $project->dir);
         $this->project = $project; // keep the TempProject alive through the async run
 
         return new GitRemote($project->dir);
@@ -94,8 +95,7 @@ final class GitRemoteCommandsTest extends TestCase
     public function testFailureFlashesGitsFirstErrorLine(): void
     {
         $remote = $this->selfRemoteRepo();
-        $d = escapeshellarg($this->project->dir);
-        exec("git -C {$d} remote set-url origin /nonexistent-origin");
+        $this->project->git('remote', 'set-url', 'origin', '/nonexistent-origin');
         $commands = $this->commands($remote);
 
         $commands->pull();
@@ -154,35 +154,29 @@ final class GitRemoteCommandsTest extends TestCase
         $other = new TempProject();
         $mine = new TempProject();
         $this->fixtures = [$bare, $other, $mine];
-        exec('git -C '.escapeshellarg($bare->dir).' init -q --bare .');
+        $bare->git('init', '-q', '--bare', '.');
         foreach ([$other, $mine] as $clone) {
-            exec(
-                'git -C '
-                .escapeshellarg($clone->dir)
-                .' clone -q '
-                .escapeshellarg($bare->dir)
-                .' . && git -C '
-                .escapeshellarg($clone->dir)
-                .' config user.email t@t && git -C '
-                .escapeshellarg($clone->dir)
-                .' config user.name t && git -C '
-                .escapeshellarg($clone->dir)
-                .' config push.autoSetupRemote false && git -C '
-                .escapeshellarg($clone->dir)
-                .' config push.default simple',
-            );
+            $clone->git('clone', '-q', $bare->dir, '.');
+            $clone->git('config', 'user.email', 't@t');
+            $clone->git('config', 'user.name', 't');
+            $clone->git('config', 'commit.gpgsign', 'false');
+            $clone->git('config', 'push.autoSetupRemote', 'false');
+            $clone->git('config', 'push.default', 'simple');
         }
         file_put_contents($other->path('a.txt'), data: "one\n");
-        exec('git -C '.escapeshellarg($other->dir).' add -A && git -C '.escapeshellarg($other->dir).' commit -qm init && git -C '.escapeshellarg($other->dir).' push -qu origin HEAD');
-        exec(
-            'git -C '.escapeshellarg($mine->dir).' pull -q origin && git -C '.escapeshellarg($mine->dir).' branch -q --set-upstream-to origin/'
-                .trim((string) shell_exec('git -C '.escapeshellarg($mine->dir).' rev-parse --abbrev-ref HEAD')),
-        );
+        $other->git('add', '-A');
+        $other->git('commit', '-q', '-m', 'init');
+        $other->git('push', '-q', '-u', 'origin', 'HEAD');
+        $mine->git('pull', '-q', 'origin');
+        $mine->git('branch', '-q', '--set-upstream-to', 'origin/'.$mine->git('rev-parse', '--abbrev-ref', 'HEAD'));
         // Diverge both sides on different files so a rebase/merge is clean.
         file_put_contents($other->path('remote.txt'), data: "remote\n");
-        exec('git -C '.escapeshellarg($other->dir).' add -A && git -C '.escapeshellarg($other->dir).' commit -qm remote && git -C '.escapeshellarg($other->dir).' push -q origin HEAD');
+        $other->git('add', '-A');
+        $other->git('commit', '-q', '-m', 'remote');
+        $other->git('push', '-q', 'origin', 'HEAD');
         file_put_contents($mine->path('local.txt'), data: "local\n");
-        exec('git -C '.escapeshellarg($mine->dir).' add -A && git -C '.escapeshellarg($mine->dir).' commit -qm local');
+        $mine->git('add', '-A');
+        $mine->git('commit', '-q', '-m', 'local');
         $this->mine = $mine;
 
         return new GitRemote($mine->dir);
@@ -229,7 +223,7 @@ final class GitRemoteCommandsTest extends TestCase
         $this->editor->handleInput("\r");
         $this->await(fn (): bool => \count($this->events) >= 3);
         $this->assertTrue($this->events[2]->ok, 'the merge pull succeeded');
-        $subject = (string) shell_exec('git -C '.escapeshellarg($this->mine->dir).' log -1 --format=%s');
+        $subject = $this->mine->git('log', '-1', '--format=%s');
         $this->assertStringContainsString('Merge', $subject);
     }
 
@@ -249,7 +243,7 @@ final class GitRemoteCommandsTest extends TestCase
     public function testPushWithoutUpstreamOffersSetUpstream(): void
     {
         $remote = $this->divergedRepo();
-        exec('git -C '.escapeshellarg($this->mine->dir).' checkout -qb feature');
+        $this->mine->git('checkout', '-q', '-b', 'feature');
         $commands = $this->commands($remote);
 
         $commands->push();

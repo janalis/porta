@@ -31,7 +31,7 @@ final class IdeEdgeCasesTest extends TestCase
 
     protected function setUp(): void
     {
-        $this->originalPath = (string) getenv('PATH');
+        $this->originalPath = PORTA_TEST_PRISTINE_PATH;
         putenv('PORTA_LSP');
     }
 
@@ -256,6 +256,8 @@ final class IdeEdgeCasesTest extends TestCase
             [
                 200 => function ($tui): void {
                     $this->assertSame(30, $tui->getById('tree')->width());
+                    // Force a frame so the separator has a live rect for the arm.
+                    $this->frame($tui);
                     // Drag the tree↔editor gap (SGR col 31 = the gap column) out to col 44.
                     $tui->handleInput("\x1b[<0;31;5M"); // arm on the gap
                     $tui->handleInput("\x1b[<32;45;5M"); // drag to col 44
@@ -663,8 +665,8 @@ final class IdeEdgeCasesTest extends TestCase
         }
         putenv('PATH='.\dirname((string) $this->whichGit()));
         $project = new TempProject(['a.txt' => "one\n"]);
-        $dir = escapeshellarg($project->dir);
-        exec("git -C {$dir} init -q && git -C {$dir} config user.email t@t && git -C {$dir} config user.name t && git -C {$dir} add -A && git -C {$dir} commit -qm init");
+        $project->initGit();
+        $project->commitAll('init');
         // A seeded percent must be applied at startup (25% of 160 cols = 40).
         if (!is_dir($project->path('.porta'))) {
             mkdir($project->path('.porta'), permissions: 0o777, recursive: true);
@@ -679,7 +681,7 @@ final class IdeEdgeCasesTest extends TestCase
                     $tui->handleInput("\x1b\x04"); // open the git view
                 },
                 600 => function ($tui): void {
-                    $tui->tick();
+                    $this->frame($tui);
                     $this->assertSame(40, $tui->getById('git-changes')->width(), 'the seeded percent applied at startup');
                     // Drag the git separator (SGR col 41 with a 40-wide sidebar)
                     // out to col 61: the whole left column follows.
@@ -2143,6 +2145,10 @@ final class IdeEdgeCasesTest extends TestCase
                     $ctx = new \Symfony\Component\Tui\Render\RenderContext(1, 5);
                     $this->assertStringContainsString(Glyphs::PANE_DIVIDER, $tui->getById('separator')->render($ctx)[0], 'a thin rule at rest');
 
+                    // Force a full frame so the separator has a live WidgetRect for
+                    // the hover to hit — without it the hover routes against a null
+                    // rect (the miss branch) and the divider never thickens.
+                    $this->frame($tui);
                     // The 30-wide tree ends at column 29, so its divider is column 30 (SGR 31).
                     $tui->handleInput("\x1b[<35;31;5M");
                 },
@@ -2178,6 +2184,10 @@ final class IdeEdgeCasesTest extends TestCase
             [
                 200 => function ($tui): void {
                     $this->assertSame(30, $tui->getById('tree')->width());
+                    // Force a full frame so the mirrored separator has a live rect
+                    // for the arm to hit — without it the drag routes against a null
+                    // rect and no-ops, leaving the tree its original width.
+                    $this->frame($tui);
                     // Mirrored, the 30-wide tree ends the 160-column row, so it owns
                     // columns 130..159 and its separator is column 129 (SGR 130).
                     // Dragging that separator LEFT must widen the tree, not shrink it.
@@ -2794,12 +2804,13 @@ final class IdeEdgeCasesTest extends TestCase
         putenv('PATH='.$this->originalPath);
 
         $project = new TempProject([]);
-        exec('git -C '.escapeshellarg($project->dir).' init -q');
-        exec('git -C '.escapeshellarg($project->dir).' config user.email t@t');
-        exec('git -C '.escapeshellarg($project->dir).' config user.name tester');
+        $project->git('init', '-q');
+        $project->git('config', 'user.email', 't@t');
+        $project->git('config', 'user.name', 'tester'); // asserted as the blame author
+        $project->git('config', 'commit.gpgsign', 'false');
         $project->write('src/A.php', "<?php\n\$a = 1;\n");
-        exec('git -C '.escapeshellarg($project->dir).' add -A');
-        exec('git -C '.escapeshellarg($project->dir).' commit -qm init');
+        $project->git('add', '-A');
+        $project->git('commit', '-qm', 'init');
         $project->write('src/A.php', "<?php\n\$a = 2;\n"); // unstaged change
 
         $palette = static function ($tui, string $label): void {
@@ -2846,7 +2857,7 @@ final class IdeEdgeCasesTest extends TestCase
                 2100 => function ($tui, $terminal) use ($project): void {
                     $tui->tick();
                     $this->assertStringContainsString('Last commit undone', AnsiUtils::stripAnsiCodes($terminal->getOutput()));
-                    exec('git -C '.escapeshellarg($project->dir).' log --format=%s 2>/dev/null', $subjects);
+                    $subjects = explode("\n", $project->git('log', '--format=%s'));
                     $this->assertSame(['init'], $subjects, 'the soft reset removed "my commit"');
                 },
             ],
@@ -2861,12 +2872,13 @@ final class IdeEdgeCasesTest extends TestCase
         putenv('PATH='.$this->originalPath);
 
         $project = new TempProject([]);
-        exec('git -C '.escapeshellarg($project->dir).' init -q');
-        exec('git -C '.escapeshellarg($project->dir).' config user.email t@t');
-        exec('git -C '.escapeshellarg($project->dir).' config user.name tester');
+        $project->git('init', '-q');
+        $project->git('config', 'user.email', 't@t');
+        $project->git('config', 'user.name', 'tester');
+        $project->git('config', 'commit.gpgsign', 'false');
         $project->write('src/A.php', "<?php\n"); // one line on disk
-        exec('git -C '.escapeshellarg($project->dir).' add -A');
-        exec('git -C '.escapeshellarg($project->dir).' commit -qm init');
+        $project->git('add', '-A');
+        $project->git('commit', '-qm', 'init');
 
         $terminal = $this->runIde(
             $project,
@@ -2933,13 +2945,16 @@ final class IdeEdgeCasesTest extends TestCase
     {
         putenv('PATH='.$this->originalPath);
         $project = new TempProject(['src/A.php' => "<?php\n"]);
-        $d = escapeshellarg($project->dir);
-        exec("git -C {$d} init -q && git -C {$d} config user.email t@t && git -C {$d} config user.name t && git -C {$d} add -A && git -C {$d} commit -qm init && git -C {$d} branch feature");
+        $project->initGit();
+        $project->commitAll('init');
+        $project->git('branch', 'feature');
         // A local bare remote with a branch no local shadows: the picker must
         // list it with a "remote" hint and check it out as a tracking branch.
         $bare = new TempProject();
-        $b = escapeshellarg($bare->dir);
-        exec("git -C {$b} init -q --bare && git -C {$d} remote add origin {$bare->dir} && git -C {$d} push -q origin HEAD:remote-only && git -C {$d} fetch -q origin");
+        $bare->git('init', '-q', '--bare');
+        $project->git('remote', 'add', 'origin', $bare->dir);
+        $project->git('push', '-q', 'origin', 'HEAD:remote-only');
+        $project->git('fetch', '-q', 'origin');
 
         $palette = static function ($tui, string $label): void {
             $tui->handleInput("\x1b[97;6u");
@@ -2970,21 +2985,20 @@ final class IdeEdgeCasesTest extends TestCase
                     $tui->handleInput("\x1b[B");
                     $tui->handleInput("\r");
                 },
-                1200 => function ($tui, $terminal, $ide) use ($d, $palette): void {
+                1200 => function ($tui, $terminal, $ide) use ($project, $palette): void {
                     $tui->tick();
                     $this->assertStringContainsString('Switched to feature', AnsiUtils::stripAnsiCodes($terminal->getOutput()));
-                    exec("git -C {$d} rev-parse --abbrev-ref HEAD", $head);
-                    $this->assertSame('feature', $head[0] ?? '', 'the checkout really happened');
+                    $this->assertSame('feature', $project->git('rev-parse', '--abbrev-ref', 'HEAD'), 'the checkout really happened');
 
                     // Round 2: create a branch through the sentinel row.
                     $terminal->clearOutput();
                     $palette($tui, label: 'Git: Branches');
                 },
-                1600 => function ($tui) use ($d, $palette): void {
+                1600 => function ($tui) use ($project, $palette): void {
                     $tui->tick();
                     $tui->handleInput("\r"); // the "+ Create new branch…" row leads the list
                     $tui->handleInput("\r"); // an empty name is a no-op
-                    exec("git -C {$d} branch --list", $branches);
+                    $branches = array_filter(explode("\n", $project->git('branch', '--list')));
                     $this->assertCount(2, $branches, 'no branch was created from the empty prompt');
                     $palette($tui, label: 'Git: Branches');
                 },
@@ -2996,11 +3010,10 @@ final class IdeEdgeCasesTest extends TestCase
                     }
                     $tui->handleInput("\r");
                 },
-                2500 => function ($tui, $terminal) use ($d, $palette): void {
+                2500 => function ($tui, $terminal) use ($project, $palette): void {
                     $tui->tick();
                     $this->assertStringContainsString('Created and switched to fresh', AnsiUtils::stripAnsiCodes($terminal->getOutput()));
-                    exec("git -C {$d} rev-parse --abbrev-ref HEAD", $head);
-                    $this->assertSame('fresh', $head[0] ?? '');
+                    $this->assertSame('fresh', $project->git('rev-parse', '--abbrev-ref', 'HEAD'));
 
                     // Round 3: check out the remote branch as a tracking branch.
                     $terminal->clearOutput();
@@ -3015,11 +3028,10 @@ final class IdeEdgeCasesTest extends TestCase
                     }
                     $tui->handleInput("\r");
                 },
-                3300 => function ($tui, $terminal) use ($d, $palette): void {
+                3300 => function ($tui, $terminal) use ($project, $palette): void {
                     $tui->tick();
                     $this->assertStringContainsString('Switched to remote-only (tracking origin/remote-only)', AnsiUtils::stripAnsiCodes($terminal->getOutput()));
-                    exec("git -C {$d} rev-parse --abbrev-ref remote-only@{upstream}", $upstream);
-                    $this->assertSame('origin/remote-only', $upstream[0] ?? '', 'the checkout created a tracking branch');
+                    $this->assertSame('origin/remote-only', $project->git('rev-parse', '--abbrev-ref', 'remote-only@{upstream}'), 'the checkout created a tracking branch');
 
                     // Round 4: delete "feature" through the delete sentinel.
                     $terminal->clearOutput();
@@ -3030,14 +3042,14 @@ final class IdeEdgeCasesTest extends TestCase
                     $tui->handleInput("\x1b[B"); // the "− Delete branch…" row
                     $tui->handleInput("\r");
                 },
-                4100 => function ($tui, $terminal) use ($d, $palette): void {
+                4100 => function ($tui, $terminal) use ($project, $palette): void {
                     $tui->tick();
                     $this->assertStringContainsString('Delete branch', AnsiUtils::stripAnsiCodes($terminal->getOutput()), 'the delete picker opened');
                     $tui->handleInput("\r"); // "feature" leads (refname tie-break)
                     $tui->tick();
                     $tui->handleInput("\x1b[B"); // down to "Cancel"
                     $tui->handleInput("\r");
-                    exec("git -C {$d} branch --list feature", $kept);
+                    $kept = array_filter(explode("\n", $project->git('branch', '--list', 'feature')));
                     $this->assertCount(1, $kept, 'cancelling the confirm deletes nothing');
 
                     // Round 5: same flow, but confirm the delete this time.
@@ -3054,10 +3066,10 @@ final class IdeEdgeCasesTest extends TestCase
                     $tui->tick();
                     $tui->handleInput("\r"); // the "Delete" confirm row leads
                 },
-                5300 => function ($tui, $terminal) use ($d): void {
+                5300 => function ($tui, $terminal) use ($project): void {
                     $tui->tick();
                     $this->assertStringContainsString('Deleted branch feature', AnsiUtils::stripAnsiCodes($terminal->getOutput()));
-                    exec("git -C {$d} branch --list feature", $gone);
+                    $gone = array_filter(explode("\n", $project->git('branch', '--list', 'feature')));
                     $this->assertSame([], $gone, 'the branch really was deleted');
                 },
             ],
@@ -3069,8 +3081,8 @@ final class IdeEdgeCasesTest extends TestCase
     {
         putenv('PATH='.$this->originalPath);
         $project = new TempProject(['src/A.php' => "<?php\n"]);
-        $d = escapeshellarg($project->dir);
-        exec("git -C {$d} init -q && git -C {$d} config user.email t@t && git -C {$d} config user.name t && git -C {$d} add -A && git -C {$d} commit -qm init");
+        $project->initGit();
+        $project->commitAll('init');
 
         $this->runIde(
             $project,
@@ -3353,12 +3365,13 @@ final class IdeEdgeCasesTest extends TestCase
         putenv('PATH='.$this->originalPath); // git must be reachable
 
         $project = new TempProject([]);
-        exec('git -C '.escapeshellarg($project->dir).' init -q');
-        exec('git -C '.escapeshellarg($project->dir).' config user.email t@t');
-        exec('git -C '.escapeshellarg($project->dir).' config user.name tester');
+        $project->git('init', '-q');
+        $project->git('config', 'user.email', 't@t');
+        $project->git('config', 'user.name', 'tester');
+        $project->git('config', 'commit.gpgsign', 'false');
         $project->write('src/A.php', "<?php\n\$a = 1;\n\$b = 2;\n");
-        exec('git -C '.escapeshellarg($project->dir).' add -A');
-        exec('git -C '.escapeshellarg($project->dir).' commit -qm init');
+        $project->git('add', '-A');
+        $project->git('commit', '-qm', 'init');
         // Modify line 2 and append a line after committing
         $project->write('src/A.php', "<?php\n\$a = 999;\n\$b = 2;\n\$c = 3;\n");
 
@@ -4340,9 +4353,17 @@ final class IdeEdgeCasesTest extends TestCase
                     }
                 },
                 900 => function ($tui, $terminal, $ide): void {
-                    $tui->tick();
+                    // Wait for the PTY to actually deliver seq 30's output. Until
+                    // more lines exist than the pane shows, scroll() clamps
+                    // scrollBack to 0 and there is nothing to scroll into.
+                    $panel = $tui->getById('terminal');
+                    $buffer = new \ReflectionProperty($panel, 'buffer')->getValue($panel);
+                    $this->await(static fn (): bool => $buffer->lineCount() >= 30, what: 'seq 30 output to fill the scrollback');
+
+                    // Force a full frame so the terminal pane has a live WidgetRect.
+                    $this->frame($tui);
                     $renderer = new \ReflectionProperty($ide, 'renderer')->getValue($ide);
-                    $rect = $renderer->getWidgetRect($tui->getById('terminal'));
+                    $rect = $renderer->getWidgetRect($panel);
                     $row = $rect->row + intdiv($rect->rows, num2: 2);
                     $col = $rect->col + intdiv($rect->columns, num2: 2);
                     // Wheel up (SGR code 64) over the terminal pane → scroll into history.
@@ -4965,8 +4986,8 @@ final class IdeEdgeCasesTest extends TestCase
         }
         putenv('PATH='.\dirname((string) $this->whichGit()));
         $project = new TempProject(['src/A.php' => "<?php\n\$a = 1;\n"]);
-        $dir = escapeshellarg($project->dir);
-        exec("git -C {$dir} init -q && git -C {$dir} config user.email t@t && git -C {$dir} config user.name t && git -C {$dir} add -A && git -C {$dir} commit -qm init");
+        $project->initGit();
+        $project->commitAll('init');
         $project->write('src/A.php', "<?php\n\$a = 2;\n"); // unstaged edit
         $project->write('notes.md', "hi\n"); // untracked
 
@@ -4985,7 +5006,7 @@ final class IdeEdgeCasesTest extends TestCase
                     $tui->handleInput(' '); // stage src/A.php
                 },
                 850 => function ($tui, $terminal) use ($project): void {
-                    exec('git -C '.escapeshellarg($project->dir).' status --porcelain 2>/dev/null', $lines);
+                    $lines = explode("\n", $project->git('status', '--porcelain'));
                     $this->assertContains('M  src/A.php', $lines, 'space staged the file');
                     // Tab twice: changes -> diff -> commit box; type + ctrl+enter.
                     $tui->handleInput("\t");
@@ -4996,7 +5017,7 @@ final class IdeEdgeCasesTest extends TestCase
                     $tui->handleInput("\x1b[13;5u");
                 },
                 1250 => function ($tui, $terminal) use ($project): void {
-                    exec('git -C '.escapeshellarg($project->dir).' log --format=%s 2>/dev/null', $subjects);
+                    $subjects = explode("\n", $project->git('log', '--format=%s'));
                     $this->assertSame(['Update A', 'init'], $subjects, 'ctrl+enter committed the staged change');
                     // Discard the untracked notes.md: Tab walks summary -> description
                     // -> next pane (the changes list), then arm + confirm.
@@ -5028,8 +5049,8 @@ final class IdeEdgeCasesTest extends TestCase
         }
         putenv('PATH='.\dirname((string) $this->whichGit()));
         $project = new TempProject(['src/A.php' => "<?php\n\$a = 1;\n"]);
-        $dir = escapeshellarg($project->dir);
-        exec("git -C {$dir} init -q && git -C {$dir} config user.email t@t && git -C {$dir} config user.name t && git -C {$dir} add -A && git -C {$dir} commit -qm init");
+        $project->initGit();
+        $project->commitAll('init');
         $project->write('src/A.php', "<?php\n\$a = 2;\n"); // unstaged edit
 
         $this->runIde(
@@ -5054,7 +5075,7 @@ final class IdeEdgeCasesTest extends TestCase
 
                     $tui->handleInput("\r"); // Stage leads the list
                     $this->await(static function () use ($project): bool {
-                        exec('git -C '.escapeshellarg($project->dir).' status --porcelain 2>/dev/null', $lines);
+                        $lines = explode("\n", $project->git('status', '--porcelain'));
 
                         return \in_array('M  src/A.php', $lines, strict: true);
                     });
@@ -5089,8 +5110,8 @@ final class IdeEdgeCasesTest extends TestCase
         }
         putenv('PATH='.\dirname((string) $this->whichGit()));
         $project = new TempProject(['f.txt' => "alpha\nbeta\ngamma\n"]);
-        $dir = escapeshellarg($project->dir);
-        exec("git -C {$dir} init -q && git -C {$dir} config user.email t@t && git -C {$dir} config user.name t && git -C {$dir} add -A && git -C {$dir} commit -qm init");
+        $project->initGit();
+        $project->commitAll('init');
         $project->write('f.txt', "alpha CHANGED\nbeta\ngamma CHANGED\n");
 
         $terminal = $this->runIde(
@@ -5110,12 +5131,10 @@ final class IdeEdgeCasesTest extends TestCase
                     $tui->handleInput(' ');
                 },
                 1000 => function ($tui, $terminal) use ($project): void {
-                    exec('git -C '.escapeshellarg($project->dir).' diff --cached 2>/dev/null', $cached);
-                    exec('git -C '.escapeshellarg($project->dir).' diff 2>/dev/null', $work);
-                    $joinedCached = implode("\n", $cached);
+                    $joinedCached = $project->git('diff', '--cached');
                     $this->assertStringContainsString('alpha', $joinedCached, 'the alpha change reached the index');
                     $this->assertStringNotContainsString('gamma CHANGED', $joinedCached, 'gamma stayed out of the index');
-                    $this->assertStringContainsString('gamma CHANGED', implode("\n", $work), 'gamma remains a worktree change');
+                    $this->assertStringContainsString('gamma CHANGED', $project->git('diff'), 'gamma remains a worktree change');
                     $tui->handleInput("\x1b");
                 },
             ],
@@ -5131,8 +5150,8 @@ final class IdeEdgeCasesTest extends TestCase
         }
         putenv('PATH='.\dirname((string) $this->whichGit()));
         $project = new TempProject(['a.txt' => "one\ntwo\nthree\n"]);
-        $dir = escapeshellarg($project->dir);
-        exec("git -C {$dir} init -q && git -C {$dir} config user.email t@t && git -C {$dir} config user.name t && git -C {$dir} add -A && git -C {$dir} commit -qm init");
+        $project->initGit();
+        $project->commitAll('init');
         $project->write('a.txt', "one!\ntwo\nthree changed\n");
         $project->write('b.txt', 'new '.str_repeat('long-tail ', times: 8)."\n"); // long enough to h-scroll
 
@@ -5175,7 +5194,7 @@ final class IdeEdgeCasesTest extends TestCase
                     $tui->handleInput("\x1b[<0;3;4m");
                 },
                 1500 => function ($tui, $terminal) use ($project): void {
-                    exec('git -C '.escapeshellarg($project->dir).' status --porcelain 2>/dev/null', $lines);
+                    $lines = explode("\n", $project->git('status', '--porcelain'));
                     $this->assertContains('M  a.txt', $lines, 'checkbox click staged the file');
                     // Hover row 5 (b.txt): a tint only — the diff must NOT load.
                     $tui->handleInput("\x1b[<35;10;5M");
@@ -5584,7 +5603,7 @@ final class IdeEdgeCasesTest extends TestCase
                     new \ReflectionProperty($ide, 'commands')->getValue($ide)->run('ide_settings');
                 },
                 600 => function ($tui): void {
-                    $tui->tick();
+                    $this->frame($tui);
                     $this->assertSame(40, $tui->getById('settings-nav')->width(), 'the seeded percent applied at startup');
                     // Drag the settings separator (SGR col 41 with a 40-wide nav) in to col 31.
                     $tui->handleInput("\x1b[<0;41;6M"); // arm on the separator
@@ -5607,10 +5626,10 @@ final class IdeEdgeCasesTest extends TestCase
         }
         putenv('PATH='.\dirname((string) $this->whichGit()));
         $project = new TempProject(['a.txt' => "one\n"]);
-        $dir = escapeshellarg($project->dir);
-        exec("git -C {$dir} init -q && git -C {$dir} config user.email t@t && git -C {$dir} config user.name t && git -C {$dir} add -A && git -C {$dir} commit -qm 'first commit'");
+        $project->initGit();
+        $project->commitAll('first commit');
         $project->write('a.txt', "one\nmore\n");
-        exec("git -C {$dir} add -A && git -C {$dir} commit -qm 'second commit'");
+        $project->commitAll('second commit');
 
         $terminal = $this->runIde(
             $project,
@@ -5696,7 +5715,10 @@ final class IdeEdgeCasesTest extends TestCase
                     $tui->handleInput("\x1b[24~"); // php server resolves Target.php
                 },
                 700 => function ($tui, $terminal, $ide) use ($project): void {
-                    $this->assertStringEndsWith('Target.php', (string) $tui->getById('editor')->getFilePath(), 'php-routed definition jumped');
+                    // Await the actual jump rather than asserting at a fixed delay:
+                    // the mock LSP server is a separate process and lags under a
+                    // loaded/pcov run, so the definition may not have landed yet.
+                    $this->await(static fn (): bool => str_ends_with((string) $tui->getById('editor')->getFilePath(), 'Target.php'), timeout: 8.0, what: 'the php-routed definition jump');
                     new \ReflectionMethod($ide, 'openFile')->invoke($ide, $project->path('src/app.js'), OpenFocus::Editor);
                 },
                 1100 => static function ($tui): void {
@@ -5704,7 +5726,7 @@ final class IdeEdgeCasesTest extends TestCase
                     $tui->handleInput("\x1b[24~"); // js server resolves Target.php too
                 },
                 1400 => function ($tui, $terminal, $ide) use ($project): void {
-                    $this->assertStringEndsWith('Target.php', (string) $tui->getById('editor')->getFilePath(), 'js-routed definition jumped');
+                    $this->await(static fn (): bool => str_ends_with((string) $tui->getById('editor')->getFilePath(), 'Target.php'), timeout: 8.0, what: 'the js-routed definition jump');
                     new \ReflectionMethod($ide, 'openFile')->invoke($ide, $project->path('notes.md'), OpenFocus::Editor);
                     $tui->tick();
                 },
@@ -7222,9 +7244,9 @@ final class IdeEdgeCasesTest extends TestCase
         putenv('PATH='.$this->originalPath); // git must be reachable
 
         $project = new TempProject([]);
-        exec('git -C '.escapeshellarg($project->dir).' init -q');
-        exec('git -C '.escapeshellarg($project->dir).' config user.email t@t');
-        exec('git -C '.escapeshellarg($project->dir).' config user.name tester');
+        $project->git('init', '-q');
+        $project->git('config', 'user.email', 't@t');
+        $project->git('config', 'user.name', 'tester');
         $project->write('a.php', "<?php\n\$a = 1;\n");
 
         $this->runIde(
@@ -7439,10 +7461,17 @@ final class IdeEdgeCasesTest extends TestCase
     {
         putenv('PATH='.$this->originalPath);
         $project = new TempProject(['src/A.php' => "<?php\n\$x = 1;\n"]);
-        $d = escapeshellarg($project->dir);
-        exec("git -C {$d} init -q && git -C {$d} config user.email t@t && git -C {$d} config user.name tester && git -C {$d} add -A && git -C {$d} commit -qm init");
+        // A deterministic 'tester' identity — blame below asserts on the name.
+        $project->git('init', '-q');
+        $project->git('config', 'user.email', 't@t');
+        $project->git('config', 'user.name', 'tester');
+        $project->git('config', 'commit.gpgsign', 'false');
+        $project->git('add', '-A');
+        $project->git('commit', '-qm', 'init');
         // A second commit not touching A.php: file history must hide it.
-        exec("touch {$d}/other.txt && git -C {$d} add -A && git -C {$d} commit -qm other");
+        $project->write('other.txt', '');
+        $project->git('add', '-A');
+        $project->git('commit', '-qm', 'other');
 
         $palette = static function ($tui, string $label): void {
             $tui->handleInput("\x1b[97;6u");
@@ -7457,26 +7486,41 @@ final class IdeEdgeCasesTest extends TestCase
             $project,
             $project->path('src/A.php'),
             [
-                300 => function ($tui, $terminal) use ($palette, $project): void {
+                300 => function ($tui, $terminal, $ide) use ($palette, $project): void {
+                    // Guard the read: git replaces the file by atomic rename during a
+                    // stash/checkout, and a poll that lands in that instant would
+                    // otherwise warn on a momentarily-absent path.
+                    $reads = static fn (): string => is_file($project->path('src/A.php')) ? (string) file_get_contents($project->path('src/A.php')) : '';
+
                     // A clean tree: git's own "nothing to stash" line is the flash.
                     $palette($tui, label: 'Git: Stash');
-                    $this->await(static fn (): bool => str_contains(AnsiUtils::stripAnsiCodes($terminal->getOutput()), 'No local changes'));
+                    $this->await(static fn (): bool => str_contains(AnsiUtils::stripAnsiCodes($terminal->getOutput()), 'No local changes'), timeout: 8.0, what: 'the clean-tree flash');
+                    $this->awaitGit($ide);
 
+                    // Poll the on-disk effect itself, not the rendered flash: git
+                    // reverts the tree before its process exits, so the file content
+                    // is the earliest and most robust signal — immune to a flash that
+                    // renders late (or expires) under load.
                     file_put_contents($project->path('src/A.php'), data: "<?php\n\$x = 2;\n");
                     $terminal->clearOutput();
                     $palette($tui, label: 'Git: Stash');
-                    $this->await(static fn (): bool => str_contains(AnsiUtils::stripAnsiCodes($terminal->getOutput()), 'Saved working directory'));
-                    $this->assertStringContainsString('$x = 1;', (string) file_get_contents($project->path('src/A.php')), 'the tree reverted');
+                    $this->await(static fn (): bool => str_contains($reads(), '$x = 1;'), timeout: 8.0, what: 'the stash to revert the tree');
+                    $this->assertStringContainsString('$x = 1;', $reads(), 'the tree reverted');
+                    $this->awaitGit($ide);
 
                     $terminal->clearOutput();
                     $palette($tui, label: 'Git: Stash Pop');
-                    $this->await(static fn (): bool => str_contains(AnsiUtils::stripAnsiCodes($terminal->getOutput()), 'Stash popped'));
-                    $this->assertStringContainsString('$x = 2;', (string) file_get_contents($project->path('src/A.php')));
+                    $this->await(static fn (): bool => str_contains($reads(), '$x = 2;'), timeout: 8.0, what: 'the stash to pop back');
+                    $this->assertStringContainsString('$x = 2;', $reads());
+                    $this->awaitGit($ide);
                 },
-                700 => function ($tui, $terminal) use ($palette, $project): void {
+                700 => function ($tui, $terminal, $ide) use ($palette, $project): void {
+                    $reads = static fn (): string => is_file($project->path('src/A.php')) ? (string) file_get_contents($project->path('src/A.php')) : '';
+                    // The tree still holds $x = 2 from round 1's pop; stash it away.
                     $terminal->clearOutput();
                     $palette($tui, label: 'Git: Stash');
-                    $this->await(static fn (): bool => str_contains(AnsiUtils::stripAnsiCodes($terminal->getOutput()), 'Saved working directory'));
+                    $this->await(static fn (): bool => !str_contains($reads(), '$x = 2;'), timeout: 8.0, what: 'the stash to revert the tree');
+                    $this->awaitGit($ide);
 
                     // Round 1: Cancel leaves everything untouched.
                     $palette($tui, label: 'Git: Stashes…');
@@ -7496,23 +7540,26 @@ final class IdeEdgeCasesTest extends TestCase
                     $this->await(static fn (): bool => $tui->getById('editor')->isOverlayOpen());
                     $tui->handleInput("\r");
                     $tui->handleInput("\r"); // Apply leads the chooser
-                    $this->await(static fn (): bool => str_contains(AnsiUtils::stripAnsiCodes($terminal->getOutput()), 'Applied stash@{0}'));
-                    $this->assertStringContainsString('$x = 2;', (string) file_get_contents($project->path('src/A.php')));
-                    exec('git -C '.escapeshellarg($project->dir).' checkout -q -- .'); // clean for the pop round
+                    $this->await(static fn (): bool => str_contains($reads(), '$x = 2;'), timeout: 8.0, what: 'apply to restore the change');
+                    $this->assertStringContainsString('$x = 2;', $reads());
+                    $this->awaitGit($ide);
+                    $project->git('checkout', '-q', '--', '.'); // clean for the pop round
 
                     // Round 3: Pop restores AND consumes a fresh stash.
                     file_put_contents($project->path('src/A.php'), data: "<?php\n\$x = 3;\n");
                     $terminal->clearOutput();
                     $palette($tui, label: 'Git: Stash');
-                    $this->await(static fn (): bool => str_contains(AnsiUtils::stripAnsiCodes($terminal->getOutput()), 'Saved working directory'));
+                    $this->await(static fn (): bool => !str_contains($reads(), '$x = 3;'), timeout: 8.0, what: 'the stash to revert the tree');
+                    $this->awaitGit($ide);
                     $palette($tui, label: 'Git: Stashes…');
                     $this->await(static fn (): bool => $tui->getById('editor')->isOverlayOpen());
                     $tui->handleInput("\r");
                     $tui->handleInput("\x1b[B"); // down to Pop
                     $tui->handleInput("\r");
-                    $this->await(static fn (): bool => str_contains(AnsiUtils::stripAnsiCodes($terminal->getOutput()), 'Popped stash@{0}'));
-                    $this->assertStringContainsString('$x = 3;', (string) file_get_contents($project->path('src/A.php')));
-                    exec('git -C '.escapeshellarg($project->dir).' checkout -q -- .');
+                    $this->await(static fn (): bool => str_contains($reads(), '$x = 3;'), timeout: 8.0, what: 'the stash to pop back');
+                    $this->assertStringContainsString('$x = 3;', $reads());
+                    $this->awaitGit($ide);
+                    $project->git('checkout', '-q', '--', '.');
 
                     // Round 4: Drop the remaining stash.
                     $terminal->clearOutput();
@@ -7523,21 +7570,24 @@ final class IdeEdgeCasesTest extends TestCase
                     $tui->handleInput("\x1b[B");
                     $tui->handleInput("\x1b[B"); // down to Drop
                     $tui->handleInput("\r");
-                    $this->await(static fn (): bool => str_contains(AnsiUtils::stripAnsiCodes($terminal->getOutput()), 'Dropped stash@{0}'));
+                    // Drop's flash is transient and touches no file, so poll the app
+                    // barrier and then the stash list itself — the real effect —
+                    // rather than racing the rendered "Dropped stash@{0}" line.
+                    $this->awaitGit($ide);
+                    $this->await(static fn (): bool => '' === $project->git('stash', 'list'), timeout: 8.0, what: 'the stash to drop');
                 },
-                1100 => function ($tui, $terminal) use ($palette, $d): void {
-                    exec("git -C {$d} stash list", $left);
-                    $this->assertSame([], $left, 'the stash really dropped');
+                1100 => function ($tui, $terminal) use ($palette, $project): void {
+                    $this->assertSame('', $project->git('stash', 'list'), 'the stash really dropped');
 
                     // An empty stash list flashes instead of opening the picker.
                     $terminal->clearOutput();
                     $palette($tui, label: 'Git: Stashes…');
-                    $this->await(static fn (): bool => str_contains(AnsiUtils::stripAnsiCodes($terminal->getOutput()), 'No stashes'));
+                    $this->await(static fn (): bool => str_contains(AnsiUtils::stripAnsiCodes($terminal->getOutput()), 'No stashes'), timeout: 8.0, what: 'the empty-stash flash');
 
                     // Blame annotations on, then off.
                     $editorScreen = static fn (): string => AnsiUtils::stripAnsiCodes(implode("\n", $tui->getById('editor')->render(new \Symfony\Component\Tui\Render\RenderContext(120, 20))));
                     $palette($tui, label: 'Git: Toggle Blame Annotations');
-                    $this->await(static fn (): bool => str_contains($editorScreen(), 'tester'));
+                    $this->await(static fn (): bool => str_contains($editorScreen(), 'tester'), timeout: 8.0, what: 'blame annotations to load');
                     $palette($tui, label: 'Git: Toggle Blame Annotations');
                     $this->assertStringNotContainsString('tester', $editorScreen(), 'annotations cleared');
                 },
@@ -7545,7 +7595,7 @@ final class IdeEdgeCasesTest extends TestCase
                     // File history: the git view opens filtered to the open file.
                     $terminal->clearOutput();
                     $palette($tui, label: 'Git: File History');
-                    $this->await(static fn (): bool => str_contains(AnsiUtils::stripAnsiCodes($terminal->getOutput()), 'History — src/A.php (1)'));
+                    $this->await(static fn (): bool => str_contains(AnsiUtils::stripAnsiCodes($terminal->getOutput()), 'History — src/A.php (1)'), timeout: 8.0, what: 'the file-history view');
                     $screenText = AnsiUtils::stripAnsiCodes($terminal->getOutput());
                     $this->assertStringContainsString('init', $screenText);
                     $this->assertStringNotContainsString(' other ', $screenText, "the commit that didn't touch the file is hidden");

@@ -29,7 +29,7 @@ final class TodoScannerTest extends TestCase
     {
         // No grep on PATH → the engine's synchronous PHP fallback, so the
         // scan completes inside scan() without pumping the event loop.
-        $this->originalPath = (string) getenv('PATH');
+        $this->originalPath = PORTA_TEST_PRISTINE_PATH;
         putenv('PATH=/nonexistent');
     }
 

@@ -35,18 +35,7 @@ jobs:
         run: composer analyze
 
       - name: Tests
-        id: tests
         run: composer test
-        continue-on-error: true
-
-      # Two tests are known-flaky under load (real git subprocesses / real
-      # timers) and pass on isolated re-run — the documented local policy.
-      - name: Re-run known-flaky tests in isolation
-        if: steps.tests.outcome == 'failure'
-        run: |
-          vendor/bin/phpunit --filter testLineStagingAndUnstagingThroughTheDiffPane
-          vendor/bin/phpunit tests/E2e/IdeDocsTest.php
-          composer test
 
       - name: Coverage gate (100% lines)
         run: composer coverage:check
