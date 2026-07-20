@@ -101,8 +101,18 @@ final class CodeHighlighter
     public function __construct(?\Closure $parser = null, ?TerminalTheme $syntaxTheme = null)
     {
         $this->syntaxTheme = $syntaxTheme ?? new DarkTerminalTheme();
-        $this->highlighter = new Highlighter($this->syntaxTheme);
+        $this->highlighter = self::newHighlighter($this->syntaxTheme);
         $this->parser = $parser ?? fn (string $content, string $language): string => $this->highlighter->parse($content, $language);
+    }
+
+    /**
+     * A highlighter with docblocks left as plain comments — see
+     * {@see PlainDocPhpLanguage} for why the sub-tokenized default renders
+     * white mid-comment in a terminal theme.
+     */
+    private static function newHighlighter(TerminalTheme $theme): Highlighter
+    {
+        return new Highlighter($theme)->addLanguage(new PlainDocPhpLanguage());
     }
 
     public function setFile(string $path): void
@@ -153,7 +163,7 @@ final class CodeHighlighter
      */
     public function refreshTheme(): void
     {
-        $this->highlighter = new Highlighter($this->syntaxTheme);
+        $this->highlighter = self::newHighlighter($this->syntaxTheme);
         $this->invalidate();
     }
 

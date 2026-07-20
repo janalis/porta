@@ -54,6 +54,24 @@ final class CodeHighlighterTest extends TestCase
         );
     }
 
+    public function testPhpDocBlocksRenderAsUniformComments(): void
+    {
+        $highlighter = new CodeHighlighter();
+        $highlighter->setFile('test.php');
+        $lines = $highlighter->highlight(explode("\n", string: "<?php\n/**\n * @param string \$name the user name\n */\nfunction f(\$name) {}"), 1);
+
+        $commentGray = "\x1b[38;5;243m";
+        $typeYellow = "\x1b[38;5;222m"; // the sub-tokenizer's TYPE color
+        $varSalmon = "\x1b[38;5;210m"; // the sub-tokenizer's VARIABLE color
+
+        // The @param line stays a single gray comment: no per-token recoloring
+        // that would drop the prose ("the user name") back to default white.
+        $this->assertStringContainsString($commentGray, $lines[2], 'the docblock line is comment gray');
+        $this->assertStringNotContainsString($typeYellow, $lines[2], 'the docblock type is not recolored');
+        $this->assertStringNotContainsString($varSalmon, $lines[2], 'the docblock variable is not recolored');
+        $this->assertStringNotContainsString("\x1b[39m the user name", $lines[2], 'the prose never reverts to default fg mid-comment');
+    }
+
     public function testMemoizesOnVersion(): void
     {
         $highlighter = new CodeHighlighter();
