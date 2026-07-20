@@ -394,7 +394,7 @@ final class ResultsPanelWidget extends OverlayWidget implements FocusableInterfa
             $lines[] = $this->fieldRow(
                 $this->translator->trans('Filter'),
                 $this->filter,
-                CaretVisibility::Hidden,
+                $this->isFocused() ? CaretVisibility::Shown : CaretVisibility::Hidden,
                 '  '.$this->translator->trans('(narrows the results below)'),
                 $columns,
             );
@@ -416,6 +416,14 @@ final class ResultsPanelWidget extends OverlayWidget implements FocusableInterfa
                 null !== $row->contextText => $this->contextRowLine($row->contextLine, $row->contextText, $bg, $columns),
                 default => $this->matchLine($this->results[$row->matchIndex], $bg, $columns),
             };
+        }
+
+        // Reserve the full configured height even with few/no rows, so the panel
+        // always renders a rect the bottom-dock resize grab can land on (an empty
+        // results tool stays draggable). A hidden panel returned [] above.
+        $blank = $this->styles->of(Role::Toolbar)->getAnsiRestore();
+        while (\count($lines) < $this->headerRowCount() + $this->visibleRows) {
+            $lines[] = AnsiText::padRight($blank, $columns);
         }
 
         return $this->withMenuOverlay($lines, $columns);

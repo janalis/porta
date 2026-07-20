@@ -10,6 +10,7 @@ use Porta\Widget\ResultsPanelFields;
 use Porta\Widget\ResultsPanelWidget;
 use Symfony\Component\Tui\Ansi\AnsiUtils;
 use Symfony\Component\Tui\Render\RenderContext;
+use Symfony\Component\Tui\Style\CursorShape;
 
 final class ResultsPanelWidgetTest extends TestCase
 {
@@ -185,6 +186,34 @@ final class ResultsPanelWidgetTest extends TestCase
         $plain = implode('', array_map(AnsiUtils::stripAnsiCodes(...), $panel->render(new RenderContext(60, 12))));
         $this->assertStringContainsString('Filter: a', $plain, 'the filter took the un-hooked key');
         $this->assertStringNotContainsString('Z', $plain, 'the hooked key never reached the filter');
+    }
+
+    public function testVisibleEmptyPanelReservesItsFullHeight(): void
+    {
+        $panel = new ResultsPanelWidget();
+        $panel->open('Usages', ResultsPanelFields::resultsOnly()); // no filter, no results
+        $panel->setVisibleRows(6);
+
+        $lines = $panel->render(new RenderContext(60, 20));
+        $this->assertCount(6, $lines, 'an empty results tool reserves its configured height so the dock stays resizable');
+        foreach ($lines as $line) {
+            $this->assertSame(60, AnsiUtils::visibleWidth($line), 'each reserved row spans the full width');
+        }
+    }
+
+    public function testFilterFieldShowsACaretOnlyWhenFocused(): void
+    {
+        $panel = new ResultsPanelWidget();
+        $panel->open('X', ResultsPanelFields::searchResults()); // a filter row
+        $marker = AnsiUtils::cursorMarker(CursorShape::Bar);
+
+        $panel->setFocused(true);
+        $focused = implode('', $panel->render(new RenderContext(60, 12)));
+        $this->assertStringContainsString($marker, $focused, 'the focused filter field shows its caret');
+
+        $panel->setFocused(false);
+        $blurred = implode('', $panel->render(new RenderContext(60, 12)));
+        $this->assertStringNotContainsString($marker, $blurred, 'a blurred filter field hides the caret');
     }
 
     public function testClickResultRowSelectsAndJumps(): void
