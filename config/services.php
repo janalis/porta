@@ -53,6 +53,7 @@ use Porta\Image\ImageViewerActions;
 use Porta\Input\GitMouseRouter;
 use Porta\Input\HitTester;
 use Porta\Input\InputDispatcher;
+use Porta\Input\HoverRouter;
 use Porta\Input\MouseRouter;
 use Porta\Input\SettingsMouseRouter;
 use Porta\Layout\EditorAreaPanes;
@@ -421,9 +422,12 @@ return static function (ContainerConfigurator $container, ContainerBuilder $buil
     $services->set('porta.widget.git_separator', SeparatorWidget::class)->factory([service(WorkspaceLayout::class), 'gitSeparator']);
     $services->set('porta.widget.settings_separator', SeparatorWidget::class)->factory([service(WorkspaceLayout::class), 'settingsSeparator']);
 
-    // The three mouse routers share the parameter name $separator with
-    // different instances — binds cannot disambiguate, explicit args can.
+    // The mouse routers (and the hover router split out of the main one) share
+    // the parameter name $separator with different instances — binds cannot
+    // disambiguate, explicit args can. HoverRouter drives the main sidebar
+    // divider, the same instance MouseRouter used before the split.
     $services->set(MouseRouter::class)->arg('$separator', service('porta.widget.separator'));
+    $services->set(HoverRouter::class)->arg('$separator', service('porta.widget.separator'));
     $services->set(GitMouseRouter::class)->arg('$separator', service('porta.widget.git_separator'));
     $services->set(SettingsMouseRouter::class)->arg('$separator', service('porta.widget.settings_separator'));
 
