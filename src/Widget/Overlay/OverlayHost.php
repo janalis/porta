@@ -6,16 +6,14 @@ namespace Porta\Widget\Overlay;
 
 use Porta\Search\Everywhere\SearchHit;
 use Porta\Search\Everywhere\SearchRow;
-use Porta\Support\AnsiText;
 use Porta\Ui\CaretVisibility;
 use Porta\Ui\CursorStyle;
 use Porta\Ui\Role;
-use Porta\Ui\Sgr;
 use Porta\Ui\TextField;
 use Porta\Ui\Theme\Styles;
 use Porta\Widget\Render\EditorRenderer;
 use Porta\Widget\Render\HeaderRenderer;
-use Symfony\Component\Tui\Ansi\AnsiUtils;
+use Porta\Widget\Render\OverlayCompositor;
 use Symfony\Component\Tui\Input\Keybindings;
 
 /**
@@ -34,8 +32,8 @@ final class OverlayHost
     private ?array $overlayBox = null;
     /** @var array{label: string, value: TextField, onSubmit: callable(string): void}|null single-line mini prompt */
     private ?array $prompt = null;
-    /** Display width of the last-rendered prompt box (row 0, columns [0, width)), for mouse hit-testing. */
-    private ?int $promptBoxWidth = null;
+    /** @var array{col: int, width: int, startRow: int}|null last-rendered (centered) prompt box, for mouse hit-testing */
+    private ?array $promptBox = null;
     private ?SearchModalState $search = null;
     /** @var array{col: int, width: int, startRow: int, windowStart: int, count: int}|null last-rendered search box, for mouse hit-testing */
     private ?array $searchBox = null;
@@ -107,7 +105,8 @@ final class OverlayHost
         if (null === $this->prompt) {
             return false;
         }
-        $onBox = 0 === $relRow && null !== $this->promptBoxWidth && $relCol >= 0 && $relCol < $this->promptBoxWidth;
+        $box = $this->promptBox;
+        $onBox = null !== $box && $relRow === $box['startRow'] && $relCol >= $box['col'] && $relCol < ($box['col'] + $box['width']);
         if (!$onBox) {
             $this->prompt = null;
             ($this->invalidate)();
@@ -483,7 +482,7 @@ final class OverlayHost
     public function composite(array $lines, int $columns, int $rows, CaretVisibility $focused): array
     {
         $this->overlayBox = null;
-        $this->promptBoxWidth = null;
+        $this->promptBox = null;
         if (null !== $this->overlay) {
             $this->overlayBox = EditorRenderer::listOverlay($lines, $columns, $rows, $this->overlay, $this->styles);
         }
@@ -516,16 +515,17 @@ final class OverlayHost
         if (null !== $this->prompt) {
             $text = ' '.$this->prompt['label'].': '.$this->prompt['value']->value();
             $width = min($columns, max(30, mb_strwidth($text) + 4));
-            $this->promptBoxWidth = $width;
             $rendered = ' '.$this->prompt['label'].': '.$this->prompt['value']->render(cursor: $focused);
             // The prompt box is a titled transient surface like the others, so
             // it goes through HeaderRenderer: the shared HeaderBar idiom, the
             // faint Esc dismiss hint, and — the reason a hand-rolled truncate
             // was wrong here — scrollLineToCaret, which keeps the value's caret
             // marker on screen instead of clipping the hardware cursor off it.
+            // Centered like the list/search overlays it shares this host with.
             $box = HeaderRenderer::render($rendered, $width, $this->styles->merge(Role::HeaderBar, Role::Bright), suffix: 'Esc');
-            $tail = AnsiUtils::sliceByColumn($lines[0] ?? '', $width, $columns - $width);
-            $lines[0] = AnsiText::padRight($box.$tail.Sgr::RESET, $columns);
+            $col = max(0, intdiv($columns - $width, num2: 2));
+            [$lines, $startRow] = OverlayCompositor::placeCentered($lines, [$box], $col, $width, $columns, $rows);
+            $this->promptBox = ['col' => $col, 'width' => $width, 'startRow' => $startRow];
         }
 
         return $lines;

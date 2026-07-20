@@ -745,12 +745,12 @@ final class CodeEditorWidgetTest extends TestCase
     {
         $editor = $this->editor();
         $editor->openPrompt('Go to line', '', static fn () => null);
-        $editor->render(new RenderContext(80, 20)); // composites the row-0 prompt box
+        $editor->render(new RenderContext(80, 20)); // composites the centered prompt box (row 6, cols 25..55)
 
         $this->assertTrue($editor->isPromptOpen());
-        $this->assertTrue($editor->handlePopupClick(0, 3), 'a click on the prompt box is consumed');
+        $this->assertTrue($editor->handlePopupClick(6, 40), 'a click on the centered prompt box is consumed');
         $this->assertTrue($editor->isPromptOpen(), 'and does not dismiss it — the caret stays');
-        $this->assertTrue($editor->handlePopupClick(5, 3), 'a click off the prompt is consumed');
+        $this->assertTrue($editor->handlePopupClick(0, 3), 'a click off the prompt is consumed');
         $this->assertFalse($editor->isPromptOpen(), 'and dismisses it, like every sibling overlay');
     }
 
@@ -850,7 +850,7 @@ final class CodeEditorWidgetTest extends TestCase
             $submitted = $v;
         });
         $rendered = $editor->render(new RenderContext(80, 20));
-        $this->assertStringContainsString('Go to line:', AnsiUtils::stripAnsiCodes($rendered[0]));
+        $this->assertStringContainsString('Go to line:', AnsiUtils::stripAnsiCodes(implode("\n", $rendered)), 'the centered prompt renders');
         $this->assertExactWidth($rendered, 80);
 
         $editor->handleInput('4');

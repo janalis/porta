@@ -116,9 +116,9 @@ final class OverlayHostTest extends TestCase
     {
         $host = $this->host();
         $host->openPrompt('Go to line', '', static fn () => null);
-        $host->composite(['', ''], 40, 2, CaretVisibility::Shown); // records the row-0 box width (30)
+        $host->composite(['', ''], 40, 2, CaretVisibility::Shown); // centered box: 2 rows → top row, width 30 at col 5
 
-        $this->assertTrue($host->promptClickAt(0, 5), 'a click on the prompt box is consumed');
+        $this->assertTrue($host->promptClickAt(0, 5), 'a click on the centered prompt box is consumed');
         $this->assertTrue($host->isPromptOpen(), 'and does not dismiss it — the caret stays');
 
         $this->assertTrue($host->promptClickAt(1, 5), 'a click off the prompt row is consumed');
@@ -459,11 +459,15 @@ final class OverlayHostTest extends TestCase
         // caret marker off the right edge and lose the hardware cursor.
         $host->openPrompt('Rename to', str_repeat('x', times: 80), static fn () => null);
 
-        $line = $host->composite([str_repeat(' ', times: 60)], 60, 24, CaretVisibility::Shown)[0];
+        $lines = $host->composite(array_fill(0, count: 24, value: str_repeat(' ', times: 60)), 60, 24, CaretVisibility::Shown);
+        $joined = implode("\n", $lines);
 
-        $this->assertStringContainsString(AnsiUtils::CURSOR_MARKER_PREFIX, $line, 'the caret marker survived the truncation');
-        $this->assertStringContainsString('Esc', AnsiUtils::stripAnsiCodes($line), 'the dismiss hint shows');
-        $this->assertSame(60, AnsiUtils::visibleWidth($line), 'the row fills its width');
+        $this->assertStringContainsString(AnsiUtils::CURSOR_MARKER_PREFIX, $joined, 'the caret marker survived the truncation');
+        $this->assertStringContainsString('Esc', AnsiUtils::stripAnsiCodes($joined), 'the dismiss hint shows');
+        $this->assertSame(str_repeat(' ', times: 60), $lines[0], 'the prompt is centered, not on the top row');
+        foreach ($lines as $line) {
+            $this->assertSame(60, AnsiUtils::visibleWidth($line), 'every row fills its width');
+        }
     }
 
     public function testTheHiddenPromptStillRendersWithoutACaret(): void
@@ -472,11 +476,12 @@ final class OverlayHostTest extends TestCase
         $host->openPrompt('Go to line', '42', static fn () => null);
 
         // Blurred: no marker embedded, but the box still renders with its hint.
-        $line = $host->composite([str_repeat(' ', times: 60)], 60, 24, CaretVisibility::Hidden)[0];
+        $lines = $host->composite(array_fill(0, count: 24, value: str_repeat(' ', times: 60)), 60, 24, CaretVisibility::Hidden);
+        $joined = AnsiUtils::stripAnsiCodes(implode("\n", $lines));
 
-        $this->assertStringNotContainsString(AnsiUtils::CURSOR_MARKER_PREFIX, $line);
-        $this->assertStringContainsString('Go to line: 42', AnsiUtils::stripAnsiCodes($line));
-        $this->assertStringContainsString('Esc', AnsiUtils::stripAnsiCodes($line));
+        $this->assertStringNotContainsString(AnsiUtils::CURSOR_MARKER_PREFIX, implode('', $lines));
+        $this->assertStringContainsString('Go to line: 42', $joined);
+        $this->assertStringContainsString('Esc', $joined);
     }
 
     public function testSearchHoverTintsAHitWithoutMovingTheSelection(): void
