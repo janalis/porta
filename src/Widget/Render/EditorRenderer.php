@@ -368,7 +368,7 @@ final class EditorRenderer
      * `startRow + 1 + i` and maps to absolute item index `windowStart + i`; the
      * box spans columns `[col, col + width)`; `count` is the number of item rows.
      *
-     * @param string[]                                                                      $lines
+     * @param list<string>                                                                  $lines
      * @param array{title: string, items: list<array{label: string, hint: string, value: string}>, selected: int, hovered: int|null, onPick: callable} $overlay
      *
      * @return array{col: int, width: int, startRow: int, windowStart: int, count: int}
@@ -408,7 +408,7 @@ final class EditorRenderer
      * `startRow + 2` (after the title and query rows), so a click on screen row R
      * maps to `windowStart + (R - startRow - 2)` in $rowModels.
      *
-     * @param string[]                                                       $lines
+     * @param list<string>                                                    $lines
      * @param list<array{header: string|null, label: string, detail: string}> $rowModels a header row when `header` is set
      *
      * @return array{col: int, width: int, startRow: int, windowStart: int, count: int}
@@ -519,21 +519,14 @@ final class EditorRenderer
      * anchors to the caret and places itself instead. $count is the number of
      * selectable item rows (the popup array also holds the header rows).
      *
-     * @param string[]     $lines
+     * @param list<string> $lines
      * @param list<string> $popup
      *
      * @return array{col: int, width: int, startRow: int, windowStart: int, count: int}
      */
     private static function placeCenteredPopup(array &$lines, array $popup, int $col, int $width, int $columns, int $rows, int $windowStart, int $count): array
     {
-        $startRow = max(0, intdiv($rows - \count($popup), num2: 3));
-        foreach ($popup as $i => $popupLine) {
-            $row = $startRow + $i;
-            if ($row >= \count($lines)) {
-                break;
-            }
-            $lines[$row] = OverlayCompositor::into($lines[$row], $col, $width, $columns, $popupLine);
-        }
+        [$lines, $startRow] = OverlayCompositor::placeCentered($lines, $popup, $col, $width, $columns, $rows);
 
         return ['col' => $col, 'width' => $width, 'startRow' => $startRow, 'windowStart' => $windowStart, 'count' => $count];
     }

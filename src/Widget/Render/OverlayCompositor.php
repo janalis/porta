@@ -35,4 +35,30 @@ final class OverlayCompositor
         // full-width over a blank pane.
         return AnsiText::padRight($head.Sgr::RESET.$popup.Sgr::RESET.$tail.Sgr::RESET, $columns);
     }
+
+    /**
+     * Centre a fully-built box a third of the way down the pane and blit each of
+     * its rows into the editor lines at columns [$col, $col + $width); returns the
+     * composited lines and the box's top screen row. The centered overlays — the
+     * editor's list/search popups and the find-in-files modal — share this
+     * placement and each layer their own geometry on the returned start row.
+     *
+     * @param list<string> $lines
+     * @param list<string> $box
+     *
+     * @return array{list<string>, int} the composited lines, and the box's top row
+     */
+    public static function placeCentered(array $lines, array $box, int $col, int $width, int $columns, int $rows): array
+    {
+        $startRow = max(0, intdiv($rows - \count($box), num2: 3));
+        foreach ($box as $i => $boxLine) {
+            $row = $startRow + $i;
+            if ($row >= \count($lines)) {
+                break;
+            }
+            $lines[$row] = self::into($lines[$row], $col, $width, $columns, $boxLine);
+        }
+
+        return [$lines, $startRow];
+    }
 }

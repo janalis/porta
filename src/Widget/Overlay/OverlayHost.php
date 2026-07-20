@@ -528,7 +528,6 @@ final class OverlayHost
             $lines[0] = AnsiText::padRight($box.$tail.Sgr::RESET, $columns);
         }
 
-        /** @var list<string> $lines writing index 0 keeps the shape */
         return $lines;
     }
 }

@@ -581,14 +581,7 @@ final class FindInFilesModal
         $popup[] = $this->footerRow($width);
         $footerIndex = \count($popup) - 1;
 
-        $startRow = max(0, intdiv($rows - \count($popup), num2: 3));
-        foreach ($popup as $i => $popupLine) {
-            $screen = $startRow + $i;
-            if ($screen >= \count($lines)) {
-                break;
-            }
-            $lines[$screen] = OverlayCompositor::into($lines[$screen], $col, $width, $columns, $popupLine);
-        }
+        [$lines, $startRow] = OverlayCompositor::placeCentered($lines, $popup, $col, $width, $columns, $rows);
 
         $this->optionsRow += $startRow;
         $this->footerRowIndex = $startRow + $footerIndex;
