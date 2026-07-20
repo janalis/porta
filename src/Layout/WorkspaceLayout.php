@@ -46,8 +46,6 @@ final class WorkspaceLayout
 
     private readonly ContainerWidget $editorPane;
 
-    private readonly ContainerWidget $editorMain;
-
     private readonly ContainerWidget $editorBody;
 
     private readonly ContainerWidget $gitLeft;
@@ -87,21 +85,16 @@ final class WorkspaceLayout
         private readonly StatusBarWidget $statusBar,
         private readonly Styles $styles,
     ) {
-        // The body (breadcrumbs + content slot) is a fixed inner container so
-        // BufferService's content swaps (remove + append) land after the
-        // breadcrumbs regardless of where the tab strip sits around it.
+        // The body is a fixed inner container: breadcrumbs, then the Ctrl+F find
+        // bar (below the breadcrumbs, above the content), then the content slot.
+        // BufferService's content swaps only remove + re-append the viewer, so
+        // the breadcrumbs and the find bar stay put across the editor↔help↔image
+        // swaps regardless of where the tab strip sits around the body.
         $this->editorBody = $this->container('editor-body', new Style(flex: 1));
-        $this->editorBody->add($breadcrumbs)->add($editor);
-
-        // The find bar sits at the top of the editing area (below the tab strip,
-        // above the body). It lives in this inner column rather than at the Tui
-        // root so it spans only the editor pane and stays put across the editor↔
-        // help↔image content swaps BufferService makes inside the body.
-        $this->editorMain = $this->container('editor-main', new Style(flex: 1));
-        $this->editorMain->add($this->findBar)->add($this->editorBody);
+        $this->editorBody->add($breadcrumbs)->add($this->findBar)->add($editor);
 
         $this->editorPane = $this->container('editor-pane', new Style(flex: 1));
-        $this->editorPane->add($tabBar)->add($this->editorMain);
+        $this->editorPane->add($tabBar)->add($this->editorBody);
 
         $this->separator = $this->separatorWidget('separator');
         $this->main = $this->container('main', new Style(direction: Direction::Horizontal, gap: 0));
@@ -138,7 +131,7 @@ final class WorkspaceLayout
     {
         $this->editorPane->setStyle($position->isSide() ? new Style(flex: 1, direction: Direction::Horizontal) : new Style(flex: 1));
         $this->editorPane->clear();
-        foreach ($position->tabsFirst() ? [$this->tabBar, $this->editorMain] : [$this->editorMain, $this->tabBar] as $pane) {
+        foreach ($position->tabsFirst() ? [$this->tabBar, $this->editorBody] : [$this->editorBody, $this->tabBar] as $pane) {
             $this->editorPane->add($pane);
         }
     }
@@ -161,11 +154,6 @@ final class WorkspaceLayout
     public function editorPane(): ContainerWidget
     {
         return $this->editorPane;
-    }
-
-    public function editorMain(): ContainerWidget
-    {
-        return $this->editorMain;
     }
 
     public function editorBody(): ContainerWidget
