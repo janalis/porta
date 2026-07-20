@@ -58,6 +58,7 @@ function event($out, string $name, array $body = []): void
 
 $buffer = '';
 $breakpoints = []; // path => list of 1-based lines
+$varOverrides = []; // variablesReference => [name => value] from setVariable
 $program = '';
 $currentLine = 0;
 
@@ -101,6 +102,8 @@ while (!feof($in)) {
                     'supportsConfigurationDoneRequest' => true,
                     'supportsConditionalBreakpoints' => true,
                     'supportsHitConditionalBreakpoints' => false,
+                    'supportsLogPoints' => true,
+                    'supportsSetVariable' => true,
                     'exceptionBreakpointFilters' => [
                         ['filter' => 'warning', 'label' => 'Warnings', 'default' => false],
                         ['filter' => 'exception', 'label' => 'Uncaught Exceptions', 'default' => true],
@@ -164,17 +167,29 @@ while (!feof($in)) {
 
             case 'variables':
                 $ref = (int) ($args['variablesReference'] ?? 0);
-                respond($out, $message, [
-                    'variables' => 1000 === $ref
-                        ? [
-                            ['name' => '$x', 'value' => '42', 'type' => 'int', 'variablesReference' => 0],
-                            ['name' => '$arr', 'value' => 'array(2)', 'type' => 'array', 'variablesReference' => 1001],
-                        ]
-                        : [
-                            ['name' => '0', 'value' => "'a'", 'variablesReference' => 0],
-                            ['name' => '1', 'value' => "'b'", 'variablesReference' => 0],
-                        ],
-                ]);
+                $vars = 1000 === $ref
+                    ? [
+                        ['name' => '$x', 'value' => '42', 'type' => 'int', 'variablesReference' => 0],
+                        ['name' => '$arr', 'value' => 'array(2)', 'type' => 'array', 'variablesReference' => 1001],
+                    ]
+                    : [
+                        ['name' => '0', 'value' => "'a'", 'variablesReference' => 0],
+                        ['name' => '1', 'value' => "'b'", 'variablesReference' => 0],
+                    ];
+                // Reflect any live edits (setVariable) back on the next fetch.
+                foreach ($vars as &$var) {
+                    if (isset($varOverrides[$ref][$var['name']])) {
+                        $var['value'] = $varOverrides[$ref][$var['name']];
+                    }
+                }
+                unset($var);
+                respond($out, $message, ['variables' => $vars]);
+                break;
+
+            case 'setVariable':
+                $ref = (int) ($args['variablesReference'] ?? 0);
+                $varOverrides[$ref][(string) ($args['name'] ?? '')] = (string) ($args['value'] ?? '');
+                respond($out, $message, ['value' => (string) ($args['value'] ?? '')]);
                 break;
 
             case 'next':

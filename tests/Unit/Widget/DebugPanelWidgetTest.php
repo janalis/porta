@@ -87,6 +87,28 @@ final class DebugPanelWidgetTest extends TestCase
         $this->assertStringContainsString('▸ $arr = array(2)', $screen, 'expandable child shows a collapsed arrow');
     }
 
+    public function testEditKeyOnAVariableFiresWithItsContainerNameAndValue(): void
+    {
+        $panel = $this->panel();
+        $edited = null;
+        $panel->onEditVariable(static function (int $ref, string $name, string $value) use (&$edited): void {
+            $edited = [$ref, $name, $value];
+        });
+
+        // Rows: 0 Frames, 1 #0, 2 #1, 3 Variables, 4 Locals, 5 $x — step to $x.
+        for ($i = 0; $i < 5; ++$i) {
+            $panel->handleInput("\x1b[B");
+        }
+        $panel->handleInput('e');
+        $this->assertSame([1000, '$x', '42'], $edited, 'the edit key hands back parent reference, name and current value');
+
+        // The edit key is inert on a non-variable row (a scope header).
+        $edited = null;
+        $panel->handleInput("\x1b[A"); // back up → Locals
+        $panel->handleInput('e');
+        $this->assertNull($edited, 'a scope row cannot be edited');
+    }
+
     public function testEnterOnAFrameJumpsAndOnAVariableExpandsLazily(): void
     {
         $panel = $this->panel();

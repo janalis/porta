@@ -260,6 +260,53 @@ final class DapSessionTest extends TestCase
         );
     }
 
+    public function testSetVariableSendsTheRequestAndDeliversTheNewValue(): void
+    {
+        $client = new FakeDapClient();
+        $session = $this->session($client);
+        $session->start([]);
+        $client->respond('initialize', ['supportsSetVariable' => true]);
+        $client->respond('launch');
+        $this->assertTrue($session->supportsSetVariable());
+
+        $client->responses['setVariable'] = [['value' => '99'], null];
+        $delivered = null;
+        $session->setVariable(1000, '$x', '99', static function (string $value, ?string $error) use (&$delivered): void {
+            $delivered = [$value, $error];
+        });
+        $this->assertSame(['variablesReference' => 1000, 'name' => '$x', 'value' => '99'], $client->argumentsOf('setVariable'));
+        $this->assertSame(['99', null], $delivered, 'the adapter-formatted value comes back');
+    }
+
+    public function testSetVariableIsInertWhenTheSessionIsNotActive(): void
+    {
+        $client = new FakeDapClient();
+        $session = $this->session($client); // never started → not active
+        $called = false;
+        $session->setVariable(1000, '$x', '1', static function () use (&$called): void {
+            $called = true;
+        });
+        $this->assertSame([], $client->argumentsOf('setVariable'), 'no request while inactive');
+        $this->assertFalse($called, 'and no delivery');
+    }
+
+    public function testSetVariableIsRefusedWhenUnsupported(): void
+    {
+        $client = new FakeDapClient();
+        $session = $this->session($client);
+        $session->start([]);
+        $client->respond('initialize', []); // no setVariable support
+        $client->respond('launch');
+        $this->assertFalse($session->supportsSetVariable());
+
+        $delivered = null;
+        $session->setVariable(1000, '$x', '99', static function (string $value, ?string $error) use (&$delivered): void {
+            $delivered = [$value, $error];
+        });
+        $this->assertSame([], $client->argumentsOf('setVariable'), 'no request is sent');
+        $this->assertNotNull($delivered[1] ?? null, 'an error is delivered instead');
+    }
+
     public function testLogMessageIsStrippedWithAWarningWhenUnsupported(): void
     {
         $client = new FakeDapClient();

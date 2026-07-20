@@ -19,6 +19,7 @@ final class DapSession
     private bool $supportsConditionalBreakpoints = false;
     private bool $supportsHitConditionalBreakpoints = false;
     private bool $supportsLogPoints = false;
+    private bool $supportsSetVariable = false;
     private bool $terminationReported = false;
 
     /** @var list<array{filter: string, label: string, default: bool}> the adapter's advertised exception filters */
@@ -105,6 +106,7 @@ final class DapSession
                 $this->supportsConditionalBreakpoints = true === ($body['supportsConditionalBreakpoints'] ?? false);
                 $this->supportsHitConditionalBreakpoints = true === ($body['supportsHitConditionalBreakpoints'] ?? false);
                 $this->supportsLogPoints = true === ($body['supportsLogPoints'] ?? false);
+                $this->supportsSetVariable = true === ($body['supportsSetVariable'] ?? false);
                 $this->exceptionFilters = self::normalizeExceptionFilters($body['exceptionBreakpointFilters'] ?? null);
                 $this->client->request('launch', $launchArguments, function (array $ignored, ?string $launchError): void {
                     if (null !== $launchError) {
@@ -308,6 +310,38 @@ final class DapSession
                 }
             }
             $deliver($variables);
+        });
+    }
+
+    /** Whether the adapter advertised support for editing variables while paused. */
+    public function supportsSetVariable(): bool
+    {
+        return $this->supportsSetVariable;
+    }
+
+    /**
+     * Set a variable's value in its container while paused. Delivers the
+     * adapter's new (formatted) value on success, or an error string; a no-op
+     * (delivering an error) when the adapter lacks the capability.
+     *
+     * @param \Closure(string $value, ?string $error): void $deliver
+     */
+    public function setVariable(int $reference, string $name, string $value, \Closure $deliver): void
+    {
+        if (!$this->isActive()) {
+            return;
+        }
+        if (!$this->supportsSetVariable) {
+            $deliver('', 'the debug adapter does not support editing variables');
+
+            return;
+        }
+        $this->client->request('setVariable', [
+            'variablesReference' => $reference,
+            'name' => $name,
+            'value' => $value,
+        ], static function (array $body, ?string $error) use ($deliver, $value): void {
+            $deliver(\is_string($body['value'] ?? null) ? $body['value'] : $value, $error);
         });
     }
 

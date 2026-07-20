@@ -67,6 +67,32 @@ final class DebugController implements DebugSessionObserver
             $this->session?->variables($reference, static fn (array $variables) => $deliver($variables));
             $this->tui->requestRender();
         });
+        $this->panel->onEditVariable($this->editVariable(...));
+    }
+
+    /** The panel's edit key on a variable: prompt for a new value and set it live. */
+    private function editVariable(int $reference, string $name, string $currentValue): void
+    {
+        if (null === $this->session || !$this->session->supportsSetVariable()) {
+            $this->notifier->flash($this->translator->trans('This debug adapter cannot edit variables'));
+
+            return;
+        }
+        // The prompt lives on the editor: focus it so it is drivable while the panel holds focus.
+        $this->tui->setFocus($this->editor);
+        $this->editor->openPrompt($this->translator->trans('Set %name% to', ['%name%' => $name]), $currentValue, function (string $value) use ($reference, $name): void {
+            $this->session?->setVariable($reference, $name, $value, function (string $newValue, ?string $error) use ($reference): void {
+                if (null !== $error) {
+                    $this->notifier->flash($error);
+
+                    return;
+                }
+                // Re-fetch the container so the panel reflects the adapter's stored value.
+                $this->session?->variables($reference, fn (array $variables) => $this->panel->setVariables($reference, $variables));
+                $this->tui->requestRender();
+            });
+        });
+        $this->tui->requestRender();
     }
 
     public function isActive(): bool

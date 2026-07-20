@@ -117,7 +117,8 @@ final class DebugControllerTest extends TestCase
         return AnsiUtils::stripAnsiCodes(implode('', $this->statusBar->render(new RenderContext(100, 1))));
     }
 
-    private function pauseAtBreakpoint(DebugController $controller, int $line = 2): void
+    /** @param array<string, mixed> $capabilities extra initialize capabilities to advertise */
+    private function pauseAtBreakpoint(DebugController $controller, int $line = 2, array $capabilities = []): void
     {
         $this->client->responses['stackTrace'] = [
             [
@@ -138,6 +139,7 @@ final class DebugControllerTest extends TestCase
                 ['filter' => 'warning', 'label' => 'Warnings', 'default' => false],
                 ['filter' => 'exception', 'label' => 'Uncaught Exceptions', 'default' => true],
             ],
+            ...$capabilities,
         ]);
         $this->client->respond('launch');
         $this->client->emit('stopped', ['reason' => 'breakpoint', 'threadId' => 1]);
@@ -359,6 +361,63 @@ final class DebugControllerTest extends TestCase
         $screen = implode("\n", $this->editor->render(new RenderContext(80, 8)));
         $this->assertStringContainsString('◇', $screen, 'a logpoint renders a hollow diamond');
         $this->assertStringNotContainsString('◆', $screen, 'and not the conditional diamond');
+    }
+
+    public function testEditingAVariableFromThePanelSendsSetVariable(): void
+    {
+        $controller = $this->controller();
+        $this->pauseAtBreakpoint($controller, capabilities: ['supportsSetVariable' => true]);
+        $this->client->responses['setVariable'] = [['value' => '99'], null];
+
+        // Panel rows: 0 Frames, 1 #0, 2 #1, 3 Variables, 4 Locals, 5 $x — step to $x.
+        for ($i = 0; $i < 5; ++$i) {
+            $this->panel->handleInput("\x1b[B");
+        }
+        $this->panel->handleInput('e'); // edit → a value prompt opens, prefilled with '42'
+        $this->editor->handleInput("\x7f"); // clear the prefill
+        $this->editor->handleInput("\x7f");
+        foreach (str_split('99') as $ch) {
+            $this->editor->handleInput($ch);
+        }
+        $this->editor->handleInput("\r");
+
+        $this->assertSame(
+            ['variablesReference' => 1000, 'name' => '$x', 'value' => '99'],
+            $this->client->argumentsOf('setVariable'),
+            'the edit reaches the adapter with the container reference, name and new value',
+        );
+    }
+
+    public function testEditingAVariableFlashesTheAdapterError(): void
+    {
+        $controller = $this->controller();
+        $this->pauseAtBreakpoint($controller, capabilities: ['supportsSetVariable' => true]);
+        $this->client->responses['setVariable'] = [[], 'invalid value'];
+
+        for ($i = 0; $i < 5; ++$i) {
+            $this->panel->handleInput("\x1b[B");
+        }
+        $this->panel->handleInput('e');
+        foreach (str_split('bad') as $ch) {
+            $this->editor->handleInput($ch);
+        }
+        $this->editor->handleInput("\r");
+
+        $this->assertStringContainsString('invalid value', $this->flashed(), 'the adapter error reaches the status bar');
+    }
+
+    public function testEditingAVariableFlashesWhenTheAdapterCannot(): void
+    {
+        $controller = $this->controller();
+        $this->pauseAtBreakpoint($controller); // no supportsSetVariable
+
+        for ($i = 0; $i < 5; ++$i) {
+            $this->panel->handleInput("\x1b[B");
+        }
+        $this->panel->handleInput('e');
+
+        $this->assertStringContainsString('cannot edit variables', $this->flashed());
+        $this->assertSame([], $this->client->argumentsOf('setVariable'), 'nothing is sent');
     }
 
     public function testWatchesEvaluatePerStopAndRemoveThroughThePanel(): void

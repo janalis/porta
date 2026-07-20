@@ -65,6 +65,8 @@ final class DebugPanelWidget extends OverlayWidget implements FocusableInterface
     private $onExpandVariable = null;
     /** @var (callable(int): void)|null a watch row's Delete key, by watch index */
     private $onRemoveWatch = null;
+    /** @var (callable(int, string, string): void)|null a variable's edit key: parent reference, name, current value */
+    private $onEditVariable = null;
 
     private readonly Styles $styles;
     private readonly Translator $translator;
@@ -88,6 +90,13 @@ final class DebugPanelWidget extends OverlayWidget implements FocusableInterface
     public function onExpandVariable(callable $callback): self
     {
         $this->onExpandVariable = $callback;
+
+        return $this;
+    }
+
+    public function onEditVariable(callable $callback): self
+    {
+        $this->onEditVariable = $callback;
 
         return $this;
     }
@@ -209,6 +218,16 @@ final class DebugPanelWidget extends OverlayWidget implements FocusableInterface
 
             return;
         }
+        if ($kb->matches($data, 'edit_variable')) {
+            $row = $this->rows[$this->list->selected()] ?? null;
+            if (null !== $row && DebugRowKind::Variable === $row->kind && $row->parentRef > 0 && null !== $this->onEditVariable) {
+                // The label is "name = value"; hand the current value back for prefill.
+                $value = explode(' = ', $row->label, limit: 2)[1] ?? '';
+                ($this->onEditVariable)($row->parentRef, $row->name, $value);
+            }
+
+            return;
+        }
         if ($kb->matches($data, 'remove_watch')) {
             $row = $this->rows[$this->list->selected()] ?? null;
             if (null !== $row && DebugRowKind::Watch === $row->kind && null !== $this->onRemoveWatch) {
@@ -248,6 +267,7 @@ final class DebugPanelWidget extends OverlayWidget implements FocusableInterface
             'move_up' => [Key::UP],
             'move_down' => [Key::DOWN],
             'jump' => [Key::ENTER],
+            'edit_variable' => ['e'], // panel-local (F2 is the global focus toggle)
             'remove_watch' => [Key::DELETE],
         ];
     }
@@ -345,7 +365,7 @@ final class DebugPanelWidget extends OverlayWidget implements FocusableInterface
     private function appendChildren(array &$rows, int $reference, int $depth): void
     {
         foreach ($this->children[$reference] ?? [] as $variable) {
-            $rows[] = new DebugRow(DebugRowKind::Variable, "{$variable['name']} = {$variable['value']}", ref: $variable['variablesReference'], depth: $depth);
+            $rows[] = new DebugRow(DebugRowKind::Variable, "{$variable['name']} = {$variable['value']}", ref: $variable['variablesReference'], depth: $depth, parentRef: $reference, name: $variable['name']);
             if ($variable['variablesReference'] > 0 && array_key_exists($variable['variablesReference'], $this->expanded)) {
                 $this->appendChildren($rows, $variable['variablesReference'], $depth + 1);
             }
