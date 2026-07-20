@@ -46,6 +46,8 @@ final class WorkspaceLayout
 
     private readonly ContainerWidget $editorPane;
 
+    private readonly ContainerWidget $editorMain;
+
     private readonly ContainerWidget $editorBody;
 
     private readonly ContainerWidget $gitLeft;
@@ -91,8 +93,15 @@ final class WorkspaceLayout
         $this->editorBody = $this->container('editor-body', new Style(flex: 1));
         $this->editorBody->add($breadcrumbs)->add($editor);
 
+        // The find bar sits at the top of the editing area (below the tab strip,
+        // above the body). It lives in this inner column rather than at the Tui
+        // root so it spans only the editor pane and stays put across the editor↔
+        // help↔image content swaps BufferService makes inside the body.
+        $this->editorMain = $this->container('editor-main', new Style(flex: 1));
+        $this->editorMain->add($this->findBar)->add($this->editorBody);
+
         $this->editorPane = $this->container('editor-pane', new Style(flex: 1));
-        $this->editorPane->add($tabBar)->add($this->editorBody);
+        $this->editorPane->add($tabBar)->add($this->editorMain);
 
         $this->separator = $this->separatorWidget('separator');
         $this->main = $this->container('main', new Style(direction: Direction::Horizontal, gap: 0));
@@ -113,7 +122,6 @@ final class WorkspaceLayout
         $tui
             ->add($this->menuBar)
             ->add($this->main)
-            ->add($this->findBar)
             ->add($this->dockTabs)
             ->add($this->resultsPanel)
             ->add($this->debugPanel)
@@ -130,7 +138,7 @@ final class WorkspaceLayout
     {
         $this->editorPane->setStyle($position->isSide() ? new Style(flex: 1, direction: Direction::Horizontal) : new Style(flex: 1));
         $this->editorPane->clear();
-        foreach ($position->tabsFirst() ? [$this->tabBar, $this->editorBody] : [$this->editorBody, $this->tabBar] as $pane) {
+        foreach ($position->tabsFirst() ? [$this->tabBar, $this->editorMain] : [$this->editorMain, $this->tabBar] as $pane) {
             $this->editorPane->add($pane);
         }
     }
@@ -153,6 +161,11 @@ final class WorkspaceLayout
     public function editorPane(): ContainerWidget
     {
         return $this->editorPane;
+    }
+
+    public function editorMain(): ContainerWidget
+    {
+        return $this->editorMain;
     }
 
     public function editorBody(): ContainerWidget

@@ -110,10 +110,13 @@ final class ContextMenuParityTest extends TestCase
                     $this->assertStringNotContainsString('No context menu here', $this->statusLine($tui));
 
                     // A right-click over the find bar reaches no menu-bearing pane.
+                    // The bar is a single row at the top of the editor pane, so the
+                    // click must land on that row (row + 1 in 1-based screen coords),
+                    // not below it where the editor now sits.
                     $rect = new \ReflectionProperty($ide, 'renderer')
                         ->getValue($ide)
                         ->getWidgetRect($tui->getById('find-bar'));
-                    $tui->handleInput(\sprintf("\x1b[<2;%d;%dM", $rect->col + 2, $rect->row + 2));
+                    $tui->handleInput(\sprintf("\x1b[<2;%d;%dM", $rect->col + 2, $rect->row + 1));
                     $tui->tick();
                     $this->assertStringContainsString('No context menu here', $this->statusLine($tui), 'and now the mouse does too');
                     $this->assertFalse(
