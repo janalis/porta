@@ -332,6 +332,11 @@ final class IdeConfig
         $config = JsonFile::read($file) ?? [];
         $settings = \is_array($config['settings'] ?? null) ? $config['settings'] : [];
         $settings[$key] = $value;
+        // Drop any migrated-away legacy key so a stale value doesn't linger next to
+        // the key that superseded it (e.g. relativeLineNumbers after lineNumbers).
+        foreach (self::LEGACY_SETTINGS as $legacy) {
+            unset($settings[$legacy]);
+        }
         $config['settings'] = $settings;
 
         return self::write($file, $config);

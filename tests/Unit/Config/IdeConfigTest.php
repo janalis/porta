@@ -181,6 +181,21 @@ final class IdeConfigTest extends TestCase
         $this->assertFalse(IdeConfig::load($project->dir)->settings['inlineDiagnostics']);
     }
 
+    public function testPersistSettingDropsMigratedLegacyKeys(): void
+    {
+        $project = new TempProject(['.porta.json' => json_encode([
+            'settings' => ['relativeLineNumbers' => true, 'editorConfig' => true, 'tabWidth' => 4],
+        ])]);
+
+        $this->assertTrue(IdeConfig::persistSetting($project->dir, 'lineNumbers', 'relative'));
+
+        $written = json_decode((string) file_get_contents($project->path('.porta.json')), associative: true);
+        $this->assertSame('relative', $written['settings']['lineNumbers'], 'the new key was written');
+        $this->assertSame(4, $written['settings']['tabWidth'], 'a live setting is preserved');
+        $this->assertArrayNotHasKey('relativeLineNumbers', $written['settings'], 'the migrated legacy key is gone');
+        $this->assertArrayNotHasKey('editorConfig', $written['settings'], 'every legacy key is stripped');
+    }
+
     public function testPersistSettingCreatesFileWhenAbsent(): void
     {
         $project = new TempProject();
