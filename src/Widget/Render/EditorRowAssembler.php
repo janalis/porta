@@ -40,6 +40,7 @@ final readonly class EditorRowAssembler
         private FoldModel $foldModel,
         private DecorationStore $store,
         private bool $relativeLineNumbers,
+        private bool $gitGutter,
         private bool $inlineDiagnostics,
         private bool $focused,
         private bool $showCaret,
@@ -154,7 +155,7 @@ final readonly class EditorRowAssembler
     private function renderStickyRow(int $docLine, EditorGeometry $geo, array $highlighted, int $hScroll): string
     {
         $gutter =
-            EditorRenderer::gitCell($this->store->gitMarks()[$docLine] ?? null, $this->styles)
+            $this->gitCell($docLine)
             .$this->styles->of(Role::Gutter)->apply(str_pad((string) ($docLine + 1), $geo->numberWidth, pad_string: ' ', pad_type: \STR_PAD_LEFT).' ')
             .' ';
         $hl = EditorRenderer::applyIndentGuides($this->document, $highlighted[$docLine] ?? '', $docLine, $this->styles);
@@ -194,11 +195,17 @@ final readonly class EditorRowAssembler
         }
 
         return (
-            EditorRenderer::gitCell($this->store->gitMarks()[$lineIndex] ?? null, $this->styles)
+            $this->gitCell($lineIndex)
             .$numStyle->apply(str_pad($numberLabel, $numberWidth, pad_string: ' ', pad_type: \STR_PAD_LEFT))
             .$marker
             .' '
         );
+    }
+
+    /** The one-column git change strip, or '' when the gutter marks are disabled. */
+    private function gitCell(int $line): string
+    {
+        return $this->gitGutter ? EditorRenderer::gitCell($this->store->gitMarks()[$line] ?? null, $this->styles) : '';
     }
 
     /**

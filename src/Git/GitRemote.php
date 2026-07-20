@@ -33,8 +33,10 @@ final class GitRemote
 
     public function __construct(
         private readonly string $rootDir,
+        ?string $gitPath = null,
     ) {
-        $this->git = new ExecutableFinder()->find('git');
+        // An explicit path (the "Git executable path" setting) wins over discovery.
+        $this->git = null !== $gitPath && '' !== $gitPath ? $gitPath : new ExecutableFinder()->find('git');
         $this->available = null !== $this->git && is_dir($rootDir.'/.git');
     }
 

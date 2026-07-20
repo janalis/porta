@@ -45,6 +45,14 @@ final class SettingsNavWidgetTest extends TestCase
         $this->assertSame('general', $this->widget()->selectedId(), 'opens on General');
     }
 
+    public function testRendersTheVersionControlCategoryWithAnIndentedGitSubItem(): void
+    {
+        $screen = $this->plain($this->widget()->render(new RenderContext(28, 24)));
+
+        $this->assertStringContainsString('Version control', $screen);
+        $this->assertMatchesRegularExpression('/Version control\s*\n\s{3}Git/', $screen, 'Git indents under Version control');
+    }
+
     public function testArrowNavigationSkipsTheHeaderAndFires(): void
     {
         $widget = $this->widget($selected);
@@ -53,12 +61,14 @@ final class SettingsNavWidgetTest extends TestCase
         $this->assertSame('keybindings', $widget->selectedId());
 
         $widget->handleInput("\x1b[B"); // → Plugins
+        $widget->handleInput("\x1b[B"); // skips the Version control header → Git
+        $this->assertSame('vcs:git', $widget->selectedId());
         $widget->handleInput("\x1b[B"); // skips the Languages header → PHP
         $this->assertSame('lang:php', $widget->selectedId());
-        $this->assertSame(['keybindings', 'plugins', 'lang:php'], $selected);
+        $this->assertSame(['keybindings', 'plugins', 'vcs:git', 'lang:php'], $selected);
 
-        $widget->handleInput("\x1b[A"); // back up, skipping the header → Plugins
-        $this->assertSame('plugins', $widget->selectedId());
+        $widget->handleInput("\x1b[A"); // back up, skipping the Languages header → Git
+        $this->assertSame('vcs:git', $widget->selectedId());
     }
 
     public function testNavigationClampsAtBothEnds(): void
@@ -81,14 +91,14 @@ final class SettingsNavWidgetTest extends TestCase
         $widget->handleClick(1); // Keybindings (row 1)
         $this->assertSame('keybindings', $widget->selectedId());
 
-        $widget->handleClick(3); // the Languages header → no-op
+        $widget->handleClick(3); // the Version control header → no-op
         $this->assertSame('keybindings', $widget->selectedId());
         $this->assertSame(['keybindings'], $selected, 'the header fires nothing');
 
-        $widget->handleClick(4); // PHP
-        $this->assertSame('lang:php', $widget->selectedId());
+        $widget->handleClick(4); // Git
+        $this->assertSame('vcs:git', $widget->selectedId());
         $widget->handleClick(99); // dead space
-        $this->assertSame('lang:php', $widget->selectedId());
+        $this->assertSame('vcs:git', $widget->selectedId());
     }
 
     public function testSetPluginEntriesInsertsIndentedSubItemsUnderPlugins(): void

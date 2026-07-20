@@ -54,6 +54,9 @@ final class IdeConfigTest extends TestCase
                 'relativeLineNumbers' => true,
                 'theme' => 'light',
                 'tabBarPosition' => 'left',
+                'gitShowBranch' => false,
+                'gitRefreshInterval' => '5', // string coerced to int
+                'gitPath' => '/usr/bin/git',
                 'bogusSetting' => 'x',
             ],
         ])]);
@@ -64,6 +67,10 @@ final class IdeConfigTest extends TestCase
         $this->assertTrue($config->settings['relativeLineNumbers']);
         $this->assertSame('light', $config->settings['theme']);
         $this->assertSame('left', $config->settings['tabBarPosition']);
+        $this->assertFalse($config->settings['gitShowBranch']);
+        $this->assertSame(5, $config->settings['gitRefreshInterval'], 'string coerced to int');
+        $this->assertSame('/usr/bin/git', $config->settings['gitPath']);
+        $this->assertTrue($config->settings['gitGutterMarks'], 'git default preserved when unset');
         $this->assertTrue($config->settings['autoPairs'], 'default preserved when unset');
         $this->assertContains('Unknown setting "bogusSetting" in .porta.json', $config->warnings);
     }

@@ -94,6 +94,8 @@ final class SettingsNavWidget extends AbstractWidget implements FocusableInterfa
                 }
             }
         }
+        $entries[] = ['id' => null, 'label' => 'Version control', 'kind' => NavEntryKind::Header];
+        $entries[] = ['id' => 'vcs:git', 'label' => 'Git', 'kind' => NavEntryKind::Vcs];
         $entries[] = ['id' => null, 'label' => 'Languages', 'kind' => NavEntryKind::Header];
         foreach (LanguageCatalog::LANGUAGES as $id => $name) {
             $entries[] = ['id' => 'lang:'.$id, 'label' => $name, 'kind' => NavEntryKind::Language];
@@ -267,9 +269,9 @@ final class SettingsNavWidget extends AbstractWidget implements FocusableInterfa
                 continue;
             }
 
-            // Language and plugin sub-items indent under their section and keep
-            // their own (untranslated) names.
-            $text = \in_array($entry['kind'], [NavEntryKind::Language, NavEntryKind::Plugin], strict: true) ? '   '.$entry['label'] : ' '.$this->translator->trans($entry['label']);
+            // Language, plugin and the Git sub-item indent under their category
+            // and keep their own (untranslated) names.
+            $text = \in_array($entry['kind'], [NavEntryKind::Language, NavEntryKind::Plugin, NavEntryKind::Vcs], strict: true) ? '   '.$entry['label'] : ' '.$this->translator->trans($entry['label']);
             $text = AnsiText::truncate($text, $width, pad: true);
             $lines[] = match (true) {
                 $index === $this->list->selected() => $this->applyElement('selected', $text),

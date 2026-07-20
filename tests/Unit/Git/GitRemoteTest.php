@@ -191,6 +191,13 @@ final class GitRemoteTest extends TestCase
         $this->assertFalse($remote->isBusy());
     }
 
+    public function testExplicitGitPathWinsOverDiscovery(): void
+    {
+        $plain = new TempProject();
+        $remote = new GitRemote($plain->dir, '/custom/bin/git');
+        $this->assertSame('/custom/bin/git', new \ReflectionProperty($remote, 'git')->getValue($remote));
+    }
+
     public function testUnavailableOutsideARepository(): void
     {
         if (null === self::findGit()) {

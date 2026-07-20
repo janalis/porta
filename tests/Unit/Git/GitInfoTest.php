@@ -6,6 +6,7 @@ namespace Porta\Tests\Unit\Git;
 
 use PHPUnit\Framework\TestCase;
 use Porta\Git\GitInfo;
+use Porta\Git\GitSettings;
 use Porta\Support\Outcome;
 use Porta\Tests\Support\TempProject;
 use Revolt\EventLoop;
@@ -252,6 +253,77 @@ final class GitInfoTest extends TestCase
             $suspension->suspend();
             $elapsed += 0.02;
         }
+    }
+
+    public function testExplicitGitPathWinsOverDiscovery(): void
+    {
+        $project = new TempProject([]);
+        $git = new GitInfo($project->dir, gitPath: '/custom/bin/git');
+        $this->assertSame('/custom/bin/git', new \ReflectionProperty($git, 'git')->getValue($git));
+    }
+
+    public function testFallsBackToDiscoveryWithoutAnExplicitPath(): void
+    {
+        if (null === self::findGit()) {
+            self::markTestSkipped('git binary not available');
+        }
+        $project = new TempProject([]);
+        $git = new GitInfo($project->dir, gitPath: ''); // empty → auto-discover
+        $this->assertNotNull(new \ReflectionProperty($git, 'git')->getValue($git));
+    }
+
+    public function testCommitAppliesSignoffAndNoGpgSignFromSettings(): void
+    {
+        if (null === self::findGit()) {
+            self::markTestSkipped('git binary not available');
+        }
+        $project = new TempProject([]);
+        $this->gitInit($project);
+        $project->git('config', 'commit.gpgsign', 'true'); // blocks an unsigned commit unless overridden
+        $project->write('a.txt', "x\n");
+
+        // signCommits off => --no-gpg-sign; signoff on => a trailer.
+        $git = new GitInfo($project->dir, new GitSettings(['gitSignoff' => true, 'gitSignCommits' => false]));
+        $staged = null;
+        $git->stage($project->path('a.txt'), static function (Outcome $ok) use (&$staged): void {
+            $staged = $ok->isOk();
+        });
+        $this->await(static fn (): bool => null !== $staged);
+        $committed = null;
+        $git->commit('do the thing', static function (Outcome $ok) use (&$committed): void {
+            $committed = $ok->isOk();
+        });
+        $this->await(static fn (): bool => null !== $committed);
+
+        $this->assertTrue($committed, '--no-gpg-sign let the commit through despite commit.gpgsign=true');
+        $this->assertStringContainsString('Signed-off-by: tester <t@t>', $project->git('log', '-1', '--format=%B'));
+        $git->cancelAll();
+    }
+
+    public function testCommitSplicesSignAndNoVerifyFlags(): void
+    {
+        if (null === self::findGit()) {
+            self::markTestSkipped('git binary not available');
+        }
+        $project = new TempProject([]);
+        $this->gitInit($project);
+        $project->write('a.txt', "x\n");
+
+        // -S needs no gpg key to *attempt*: the flags are spliced either way, so
+        // this exercises the -S / --no-verify arms regardless of signing success.
+        $git = new GitInfo($project->dir, new GitSettings(['gitSignCommits' => true, 'gitNoVerify' => true]));
+        $staged = null;
+        $git->stage($project->path('a.txt'), static function (Outcome $ok) use (&$staged): void {
+            $staged = $ok->isOk();
+        });
+        $this->await(static fn (): bool => null !== $staged);
+        $done = false;
+        $git->commit('m', static function () use (&$done): void {
+            $done = true;
+        });
+        $this->await(static fn (): bool => $done);
+        $this->assertTrue($done, 'the commit ran with the sign/no-verify flags spliced');
+        $git->cancelAll();
     }
 
     private function gitInit(TempProject $project): void

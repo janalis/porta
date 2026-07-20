@@ -22,7 +22,7 @@ use Symfony\Component\Tui\Tui;
  */
 final class BlameAnnotations
 {
-    private bool $enabled = false;
+    private bool $enabled;
 
     public function __construct(
         private readonly GitInfo $git,
@@ -30,7 +30,12 @@ final class BlameAnnotations
         private readonly Notifier $notifier,
         private readonly Translator $translator,
         private readonly Tui $tui,
-    ) {}
+        ?GitSettings $gitSettings = null,
+    ) {
+        // The "Show blame annotations by default" setting seeds the initial
+        // state; the first buffer switch then fetches them (see onBufferSwitched).
+        $this->enabled = $gitSettings?->blameDefault() ?? false;
+    }
 
     public function toggle(): void
     {

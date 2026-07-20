@@ -26,8 +26,10 @@ final class GitInfo
 
     public function __construct(
         private readonly string $rootDir,
+        private readonly ?GitSettings $gitSettings = null,
+        ?string $gitPath = null,
     ) {
-        $this->git = self::findGit();
+        $this->git = self::findGit($gitPath);
         $this->available = null !== $this->git && is_dir($rootDir.'/.git');
     }
 
@@ -228,7 +230,8 @@ final class GitInfo
 
             return;
         }
-        $args = CommitMode::Amend === $mode ? ['commit', '--amend', '-m', $message] : ['commit', '-m', $message];
+        $head = CommitMode::Amend === $mode ? ['commit', '--amend'] : ['commit'];
+        $args = [...$head, ...$this->commitFlags(), '-m', $message];
         $this->runStatus($args, static fn (int $code, string $out) => $onDone(Outcome::of(0 === $code), trim($out)));
     }
 
@@ -626,8 +629,36 @@ final class GitInfo
         $this->running[$key] = $process;
     }
 
-    private static function findGit(): ?string
+    private static function findGit(?string $gitPath): ?string
     {
+        // An explicit path (the "Git executable path" setting) wins over discovery.
+        if (null !== $gitPath && '' !== $gitPath) {
+            return $gitPath;
+        }
+
         return new ExecutableFinder()->find('git');
+    }
+
+    /**
+     * The signing/verification flags spliced into a commit, from the git
+     * settings (none when unconfigured, e.g. a directly-constructed GitInfo).
+     *
+     * @return list<string>
+     */
+    private function commitFlags(): array
+    {
+        if (null === $this->gitSettings) {
+            return [];
+        }
+        // Explicit --no-gpg-sign so "off" overrides a repo's commit.gpgsign=true.
+        $flags = [$this->gitSettings->signCommits() ? '-S' : '--no-gpg-sign'];
+        if ($this->gitSettings->noVerify()) {
+            $flags[] = '--no-verify';
+        }
+        if ($this->gitSettings->signoff()) {
+            $flags[] = '--signoff';
+        }
+
+        return $flags;
     }
 }

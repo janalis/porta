@@ -11,7 +11,11 @@ use Porta\Config\SettingsDebugController;
 use Porta\Config\SettingsKeymapController;
 use Porta\Config\SettingsLanguageController;
 use Porta\Config\SettingsLspController;
+use Porta\Config\SettingsGitController;
 use Porta\Config\SettingsPluginsController;
+use Porta\Git\GitInfo;
+use Porta\Git\GitRefresher;
+use Porta\Git\GitSettings;
 use Porta\Debug\DebugAdapters;
 use Porta\Editor\BufferManager;
 use Porta\Highlight\ColorMode;
@@ -141,6 +145,19 @@ final class SettingsViewControllerTest extends TestCase
             new Translator('en'),
             $this->lifecycle,
         );
+        $gitSettings = new GitSettings([]);
+        $status = new StatusBarWidget();
+        $git = new SettingsGitController(
+            IdeConfig::DEFAULT_SETTINGS,
+            $gitSettings,
+            $editor,
+            new GitRefresher(new GitInfo($this->project->dir), new BufferManager(), $editor, $status, $this->tui, $gitSettings),
+            $status,
+            $this->tui,
+            $notifier,
+            new Translator('en'),
+            $this->project->dir,
+        );
 
         return new SettingsViewController(
             $this->nav,
@@ -167,6 +184,7 @@ final class SettingsViewControllerTest extends TestCase
             $lsp,
             $debug,
             $plugins,
+            $git,
             editorArea: new EditorArea(new BufferManager(), $this->editorWidget = new CodeEditorWidget(), new ImageViewerWidget(), new HelpViewerWidget(), $this->tui),
             views: $views ?? new WorkspaceViews(),
         );
@@ -220,7 +238,8 @@ final class SettingsViewControllerTest extends TestCase
 
         $this->nav->handleInput("\x1b[B"); // Keybindings
         $this->nav->handleInput("\x1b[B"); // Plugins
-        $this->nav->handleInput("\x1b[B"); // skips the header → PHP
+        $this->nav->handleInput("\x1b[B"); // skips the Version control header → Git
+        $this->nav->handleInput("\x1b[B"); // skips the Languages header → PHP
         $this->assertSame('lang:php', $this->nav->selectedId());
         $this->assertSame(['settings-form'], $this->ids($this->content));
 
@@ -234,12 +253,33 @@ final class SettingsViewControllerTest extends TestCase
         $this->assertSame('spaces', IdeConfig::load($this->project->dir)->languages['php']['indentStyle']);
     }
 
+    public function testNavSelectingGitShowsGitRowsAndPersists(): void
+    {
+        $controller = $this->controller();
+        $controller->open();
+
+        $this->nav->handleInput("\x1b[B"); // Keybindings
+        $this->nav->handleInput("\x1b[B"); // Plugins
+        $this->nav->handleInput("\x1b[B"); // skips the Version control header → Git
+        $this->assertSame('vcs:git', $this->nav->selectedId());
+        $this->assertSame(['settings-form'], $this->ids($this->content));
+
+        $screen = implode("\n", $this->form->render(new \Symfony\Component\Tui\Render\RenderContext(80, 12)));
+        $this->assertStringContainsString('Show branch in status bar', $screen);
+        $this->assertStringContainsString('Git executable path', $screen);
+
+        // Toggle the first row (Show branch) → routes to the git controller and persists.
+        $this->form->handleClick(0);
+        $this->assertFalse(IdeConfig::load($this->project->dir)->settings['gitShowBranch']);
+    }
+
     public function testEditingTheLspRowRoutesToTheLspControllerAndPersists(): void
     {
         $controller = $this->controller();
         $controller->open();
         $this->nav->handleInput("\x1b[B"); // Keybindings
         $this->nav->handleInput("\x1b[B"); // Plugins
+        $this->nav->handleInput("\x1b[B"); // Git
         $this->nav->handleInput("\x1b[B"); // PHP
 
         // The LSP row is the third row of a language section; edit it inline.
@@ -260,6 +300,7 @@ final class SettingsViewControllerTest extends TestCase
         $controller->open();
         $this->nav->handleInput("\x1b[B"); // Keybindings
         $this->nav->handleInput("\x1b[B"); // Plugins
+        $this->nav->handleInput("\x1b[B"); // Git
         $this->nav->handleInput("\x1b[B"); // PHP
 
         // The debug-adapter row is the fourth row of a language section.

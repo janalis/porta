@@ -6,6 +6,7 @@ namespace Porta\Settings;
 
 use Porta\Config\SettingsController;
 use Porta\Config\SettingsDebugController;
+use Porta\Config\SettingsGitController;
 use Porta\Config\SettingsKeymapController;
 use Porta\Config\SettingsLanguageController;
 use Porta\Config\SettingsLspController;
@@ -52,6 +53,7 @@ final class SettingsViewController
         private readonly SettingsLspController $lsp,
         private readonly SettingsDebugController $debug,
         private readonly SettingsPluginsController $plugins,
+        private readonly SettingsGitController $git,
         private readonly EditorArea $editorArea,
         WorkspaceViews $views,
     ) {
@@ -153,6 +155,9 @@ final class SettingsViewController
         if (str_starts_with($this->section, 'plugin:')) {
             return $this->plugins->pluginRows(substr($this->section, offset: 7));
         }
+        if ('vcs:git' === $this->section) {
+            return $this->git->rows();
+        }
         if (!str_starts_with($this->section, 'lang:')) {
             return $this->settings->formRows();
         }
@@ -193,6 +198,11 @@ final class SettingsViewController
         if (str_starts_with($this->section, 'plugin:')) {
             // The scalar passes through untouched — bool/int rows need their types.
             $this->plugins->changePlugin(substr($this->section, offset: 7), $key, $value);
+
+            return;
+        }
+        if ('vcs:git' === $this->section) {
+            $this->git->change($key, $value);
 
             return;
         }

@@ -5440,9 +5440,11 @@ final class IdeEdgeCasesTest extends TestCase
                 },
                 1100 => static function ($tui): void {
                     $tui->tick();
-                    // Select PHP in the nav (screen row 6, after Plugins) → the content shows its indent rows.
-                    $tui->handleInput("\x1b[<0;5;6M");
-                    $tui->handleInput("\x1b[<0;5;6m");
+                    // Select PHP in the nav (screen row 8, after Plugins + the
+                    // Version control category and the Languages header) → the
+                    // content shows its indent rows.
+                    $tui->handleInput("\x1b[<0;5;8M");
+                    $tui->handleInput("\x1b[<0;5;8m");
                 },
                 1300 => function ($tui, $terminal): void {
                     $tui->tick();

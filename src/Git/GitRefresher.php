@@ -30,6 +30,7 @@ final class GitRefresher
         private readonly CodeEditorWidget $editor,
         private readonly StatusBarWidget $statusBar,
         private readonly Tui $tui,
+        private readonly ?GitSettings $gitSettings = null,
     ) {}
 
     /** The branch indicator for the status bar (refreshed asynchronously). */
@@ -53,7 +54,7 @@ final class GitRefresher
     /** Recompute git change marks for a buffer (on open and after save). */
     public function refreshMarks(Buffer $buffer): void
     {
-        if (!$this->git->isAvailable() || $buffer->isImage()) {
+        if (!$this->git->isAvailable() || $buffer->isImage() || false === $this->gitSettings?->gutterMarks()) {
             return;
         }
         $this->git->diff($buffer->path, function (array $marks) use ($buffer): void {

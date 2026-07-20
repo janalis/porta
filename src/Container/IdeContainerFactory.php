@@ -48,6 +48,7 @@ final class IdeContainerFactory
         $_ENV['PORTA_LSP_COMMAND'] = $lspCommand ?? ''; // '' resolves to null via env(default::…)
         $_ENV['PORTA_LSP_DISABLED'] = LspMode::Disabled === $lsp ? '1' : '0';
         $_ENV['PORTA_DOCS_DIR'] = $docsDir;
+        $_ENV['PORTA_GIT_PATH'] = (string) ($config->settings['gitPath'] ?? ''); // '' → auto-discover
         $_ENV['PORTA_SETTINGS'] = json_encode($config->settings, \JSON_THROW_ON_ERROR);
         $_ENV['PORTA_LANGUAGES'] = json_encode($config->languages, \JSON_THROW_ON_ERROR);
         $_ENV['PORTA_LSP_SERVERS'] = json_encode($config->lspServers, \JSON_THROW_ON_ERROR);

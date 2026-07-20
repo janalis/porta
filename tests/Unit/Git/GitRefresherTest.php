@@ -10,6 +10,7 @@ use Porta\Event\BufferOpened;
 use Porta\Event\BufferSaved;
 use Porta\Event\GitRemoteCompleted;
 use Porta\Git\GitInfo;
+use Porta\Git\GitSettings;
 use Porta\Git\GitRefresher;
 use Porta\Image\ImageData;
 use Porta\Tests\Support\Presence;
@@ -29,7 +30,7 @@ final class GitRefresherTest extends TestCase
 
     private CodeEditorWidget $editor;
 
-    private function refresher(Presence $realRepo = Presence::With): GitRefresher
+    private function refresher(Presence $realRepo = Presence::With, ?GitSettings $gitSettings = null): GitRefresher
     {
         if (Presence::With === $realRepo && null === self::findGit()) {
             $this->markTestSkipped('git not available');
@@ -46,7 +47,7 @@ final class GitRefresherTest extends TestCase
         $this->buffers = new BufferManager();
         $this->editor = new CodeEditorWidget();
 
-        return new GitRefresher(new GitInfo($this->project->dir), $this->buffers, $this->editor, new StatusBarWidget(), new Tui(terminal: new VirtualTerminal(columns: 80, rows: 10)));
+        return new GitRefresher(new GitInfo($this->project->dir), $this->buffers, $this->editor, new StatusBarWidget(), new Tui(terminal: new VirtualTerminal(columns: 80, rows: 10)), $gitSettings);
     }
 
     private function await(callable $done, string $why, float $timeout = 3.0): void
@@ -85,6 +86,16 @@ final class GitRefresherTest extends TestCase
             ->getValue($this->editor)
             ->gitMarks();
         $this->assertSame($buffer->gitMarks, $editorMarks, 'the active buffer pushed its marks into the editor gutter');
+    }
+
+    public function testGutterMarksDisabledSkipsTheDiff(): void
+    {
+        $refresher = $this->refresher(gitSettings: new GitSettings(['gitGutterMarks' => false]));
+        file_put_contents($this->project->path('a.txt'), data: "one\nchanged\n");
+        $buffer = $this->buffers->open($this->project->path('a.txt'), "one\nchanged\n");
+
+        $refresher->refreshActiveMarks(); // gated off → no async diff is scheduled
+        $this->assertSame([], $buffer->gitMarks, 'no marks computed when the gutter is disabled');
     }
 
     public function testImageBuffersAndMissingGitShortCircuit(): void

@@ -114,6 +114,7 @@ final class CodeEditorWidget extends AbstractWidget implements ActiveFileProvide
 
     private bool $inlineDiagnostics = true;
     private bool $relativeLineNumbers = false;
+    private bool $gitGutter = true;
     private bool $autoPairs = true;
 
     private readonly AutoPairService $autoPair;
@@ -383,6 +384,28 @@ final class CodeEditorWidget extends AbstractWidget implements ActiveFileProvide
     public function hasRelativeLineNumbers(): bool
     {
         return $this->relativeLineNumbers;
+    }
+
+    public function enableGitGutter(): void
+    {
+        if (!$this->gitGutter) {
+            $this->gitGutter = true;
+            $this->invalidate();
+        }
+    }
+
+    public function disableGitGutter(): void
+    {
+        if ($this->gitGutter) {
+            $this->gitGutter = false;
+            $this->setGitMarks([]); // drop stale marks so nothing lingers when the strip hides
+            $this->invalidate();
+        }
+    }
+
+    public function hasGitGutter(): bool
+    {
+        return $this->gitGutter;
     }
 
     /**
@@ -1081,6 +1104,7 @@ final class CodeEditorWidget extends AbstractWidget implements ActiveFileProvide
             $this->foldModel,
             $this->decorations,
             $this->relativeLineNumbers,
+            $this->gitGutter,
             $this->inlineDiagnostics,
             $this->focused,
             $this->focused && !$this->findModal->isOpen(), // the modal owns the caret while it is open
@@ -1117,7 +1141,7 @@ final class CodeEditorWidget extends AbstractWidget implements ActiveFileProvide
     private function computeGeometry(int $columns, int $lineCount): EditorGeometry
     {
         $numberWidth = max(3, \strlen((string) $lineCount));
-        $gutterWidth = 1 + $numberWidth + 2;
+        $gutterWidth = ($this->gitGutter ? 1 : 0) + $numberWidth + 2;
         $contentWidth = max(1, $columns - $gutterWidth - 1);
 
         return new EditorGeometry($numberWidth, $gutterWidth, $contentWidth, $gutterWidth + $contentWidth);

@@ -77,6 +77,7 @@ final class GitViewController
         WorkspaceViews $views,
         private readonly ?GitRemoteCommands $remoteCommands = null,
         private readonly int $historyPageSize = 200,
+        private readonly ?GitSettings $gitSettings = null,
     ) {
         $views->attachGit($this);
         $this->panes->history->onLoadMore($this->loadMoreHistory(...));
@@ -166,7 +167,8 @@ final class GitViewController
         $this->hideWhitespace = WhitespaceMode::Hidden === $prefs['whitespace'];
         $this->hideWhitespace ? $this->panes->diffView->hideWhitespace() : $this->panes->diffView->showWhitespace();
         $this->refresh();
-        $this->poll = EventLoop::repeat(2.0, fn () => $this->refresh(RefreshMode::Quiet));
+        $interval = (float) ($this->gitSettings?->refreshInterval() ?? 2);
+        $this->poll = EventLoop::repeat($interval, fn () => $this->refresh(RefreshMode::Quiet));
         $this->tui->requestRender();
     }
 

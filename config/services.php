@@ -11,6 +11,7 @@ use Porta\Config\IdeConfig;
 use Porta\Config\KeybindingsFactory;
 use Porta\Config\LayoutStore;
 use Porta\Config\SettingsController;
+use Porta\Config\SettingsGitController;
 use Porta\Config\SettingsLanguageController;
 use Porta\Config\SettingsLspController;
 use Porta\Container\AsWidget;
@@ -34,6 +35,7 @@ use Porta\Git\GitCommands;
 use Porta\Git\GitInfo;
 use Porta\Git\GitRefresher;
 use Porta\Git\GitRemote;
+use Porta\Git\GitSettings;
 use Porta\Git\GitRemoteCommands;
 use Porta\Git\GitViewController;
 use Porta\Help\HelpViewerActions;
@@ -231,6 +233,7 @@ return static function (ContainerConfigurator $container, ContainerBuilder $buil
         ->bind('$lspCommand', env('default::PORTA_LSP_COMMAND'))
         ->bind('$lspDisabled', env('PORTA_LSP_DISABLED')->bool())
         ->bind('$docsDir', env('PORTA_DOCS_DIR'))
+        ->bind('$gitPath', env('default::PORTA_GIT_PATH')) // '' resolves to null (auto-discover)
         ->bind(ContainerWidget::class.' $editorBody', service('porta.widget.editor_body'))
         ->bind(ContainerWidget::class.' $main', service('porta.widget.main'))
         ->bind(ContainerWidget::class.' $settingsArea', service('porta.widget.settings_area'))
@@ -443,6 +446,8 @@ return static function (ContainerConfigurator $container, ContainerBuilder $buil
     // binds: $overrides means languages in one controller, lspServers in the other.
     $services->set(DebugAdapters::class)->arg('$languages', env('PORTA_LANGUAGES')->json());
     $services->set(SettingsController::class)->arg('$settings', env('PORTA_SETTINGS')->json());
+    $services->set(GitSettings::class)->arg('$settings', env('PORTA_SETTINGS')->json());
+    $services->set(SettingsGitController::class)->arg('$settings', env('PORTA_SETTINGS')->json());
     $services->set(SettingsLanguageController::class)->arg('$overrides', env('PORTA_LANGUAGES')->json());
     $services
         ->set(SettingsLspController::class)

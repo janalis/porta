@@ -39,6 +39,14 @@ final class IdeConfig
         'formatOnSave' => false,
         'cursorShape' => 'bar',
         'tabBarPosition' => 'top',
+        'gitShowBranch' => true,
+        'gitGutterMarks' => true,
+        'gitBlameDefault' => false,
+        'gitSignCommits' => false,
+        'gitNoVerify' => false,
+        'gitSignoff' => false,
+        'gitRefreshInterval' => 2,
+        'gitPath' => '',
     ];
 
     /**
@@ -113,8 +121,13 @@ final class IdeConfig
                 $warnings[] = \sprintf('Unknown setting "%s" in .porta.json', $key);
                 continue;
             }
-            // Coerce to the default's type (bool or string; no int settings today).
-            $settings[$key] = \is_bool(self::DEFAULT_SETTINGS[$key]) ? (bool) $value : (string) $value;
+            // Coerce to the default's type (bool, int, or string).
+            $default = self::DEFAULT_SETTINGS[$key];
+            $settings[$key] = match (true) {
+                \is_bool($default) => (bool) $value,
+                \is_int($default) => (int) $value,
+                default => (string) $value,
+            };
         }
 
         /** @var array<string, mixed> $languagesConfig */

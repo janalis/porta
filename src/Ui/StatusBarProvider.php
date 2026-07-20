@@ -7,6 +7,7 @@ namespace Porta\Ui;
 use Porta\Debug\DebugController;
 use Porta\Editor\BufferManager;
 use Porta\Git\GitRefresher;
+use Porta\Git\GitSettings;
 use Porta\I18n\Translator;
 use Porta\Lsp\LspSessionPool;
 use Porta\Support\ProjectPaths;
@@ -31,6 +32,7 @@ final class StatusBarProvider
         private readonly LspSessionPool $lsp,
         private readonly Styles $styles,
         private readonly Translator $translator,
+        private readonly GitSettings $gitSettings,
         private readonly string $rootDir,
     ) {}
 
@@ -66,7 +68,7 @@ final class StatusBarProvider
             $prefix .= $this->styles->of(Role::StatusDebug)->apply($debugSegment).'  ';
             $prefixWidth += AnsiUtils::visibleWidth($debugSegment) + 2;
         }
-        if (null !== ($branch = $this->gitRefresher->branch())) {
+        if ($this->gitSettings->showBranch() && null !== ($branch = $this->gitRefresher->branch())) {
             $branchText = "\u{e0a0} {$branch}";
             $branchStart = $prefixWidth;
             $branchEnd = $prefixWidth + AnsiUtils::visibleWidth($branchText);
