@@ -316,12 +316,13 @@ final class DebugControllerTest extends TestCase
         }
         $this->editor->handleInput("\r"); // condition submitted → hit-count prompt chains
         $this->editor->handleInput('3');
-        $this->editor->handleInput("\r");
+        $this->editor->handleInput("\r"); // hit-count submitted → log-message prompt chains
+        $this->editor->handleInput("\r"); // empty log message → a plain conditional breakpoint
 
         $this->assertSame('/p/prog.php', $this->client->argumentsOf('setBreakpoints')['source']['path']);
         $this->assertStringContainsString('◆', implode("\n", $this->editor->render(new RenderContext(80, 8))), 'the conditional breakpoint renders a diamond');
 
-        // Re-editing prefills; submitting both prompts empty clears the conditions.
+        // Re-editing prefills; submitting the prompts empty clears the details.
         $controller->editBreakpointAtCaret();
         foreach (range(1, end: 12) as $_) {
             $this->editor->handleInput("\x7f");
@@ -331,6 +332,7 @@ final class DebugControllerTest extends TestCase
             $this->editor->handleInput("\x7f");
         }
         $this->editor->handleInput("\r");
+        $this->editor->handleInput("\r"); // the (empty) log-message prompt
         $screen = implode("\n", $this->editor->render(new RenderContext(80, 8)));
         $this->assertStringNotContainsString('◆', $screen, 'cleared conditions drop the diamond');
         $this->assertStringContainsString('●', $screen, 'the breakpoint itself survives');
@@ -338,6 +340,25 @@ final class DebugControllerTest extends TestCase
         $controllerWithoutFile = $this->controller(withFile: Presence::Without);
         $controllerWithoutFile->editBreakpointAtCaret();
         $this->assertStringContainsString('Nothing to debug', $this->flashed());
+    }
+
+    public function testLogpointRendersAHollowDiamondAndShipsTheLogMessage(): void
+    {
+        $controller = $this->controller();
+        $this->pauseAtBreakpoint($controller);
+        $this->editor->jumpTo(1, 0); // off the stopped line
+
+        $controller->editBreakpointAtCaret();
+        $this->editor->handleInput("\r"); // no condition
+        $this->editor->handleInput("\r"); // no hit-count
+        foreach (str_split('x={$x}') as $ch) {
+            $this->editor->handleInput($ch);
+        }
+        $this->editor->handleInput("\r"); // a log message → this is a logpoint
+
+        $screen = implode("\n", $this->editor->render(new RenderContext(80, 8)));
+        $this->assertStringContainsString('◇', $screen, 'a logpoint renders a hollow diamond');
+        $this->assertStringNotContainsString('◆', $screen, 'and not the conditional diamond');
     }
 
     public function testWatchesEvaluatePerStopAndRemoveThroughThePanel(): void

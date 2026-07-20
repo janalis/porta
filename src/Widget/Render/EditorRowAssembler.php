@@ -34,6 +34,9 @@ final readonly class EditorRowAssembler
     /** @var array<int, true> */
     private array $conditionalBreakpointSet;
 
+    /** @var array<int, true> */
+    private array $logpointSet;
+
     private CursorStyle $cursorStyle;
 
     public function __construct(
@@ -52,6 +55,7 @@ final readonly class EditorRowAssembler
         $this->styles = $styles ?? Styles::dark();
         $this->breakpointSet = array_fill_keys($store->breakpointLines(), value: true);
         $this->conditionalBreakpointSet = array_fill_keys($store->conditionalBreakpointLines(), value: true);
+        $this->logpointSet = array_fill_keys($store->logpointLines(), value: true);
         $this->cursorStyle = $cursorStyle ?? new CursorStyle();
     }
 
@@ -186,6 +190,7 @@ final readonly class EditorRowAssembler
         // so each state also reads without color.
         $marker = match (true) {
             $lineIndex === $this->store->debugLine() => $this->styles->of(Role::Breakpoint)->apply(Glyphs::STOPPED_LINE),
+            ($this->logpointSet[$lineIndex] ?? null) !== null => $this->styles->of(Role::Breakpoint)->apply(Glyphs::LOGPOINT),
             ($this->conditionalBreakpointSet[$lineIndex] ?? null) !== null => $this->styles->of(Role::Breakpoint)->apply(Glyphs::BREAKPOINT_CONDITIONAL),
             ($this->breakpointSet[$lineIndex] ?? null) !== null => $this->styles->of(Role::Breakpoint)->apply(Glyphs::BREAKPOINT),
             [] !== $lineDiags => $numStyle->apply(DiagnosticStyle::glyph(DiagnosticStyle::worst($lineDiags))),

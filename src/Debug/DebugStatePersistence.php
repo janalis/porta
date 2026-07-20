@@ -30,7 +30,7 @@ final readonly class DebugStatePersistence
                 continue; // the file vanished since the last session
             }
             foreach ($entries as $entry) {
-                $this->breakpoints->setCondition($path, $entry['line'], $entry['condition'], $entry['hitCondition']);
+                $this->breakpoints->setDetails($path, $entry['line'], $entry['condition'], $entry['hitCondition'], $entry['logMessage'] ?? null);
             }
         }
         foreach ($state['watches'] as $expression) {

@@ -6,17 +6,19 @@ namespace Porta\Debug;
 
 /**
  * Line breakpoints, keyed by absolute file path with 0-based lines. Each
- * breakpoint optionally carries a condition and/or a hit-count condition
- * (both DAP pass-through strings). Owned by the debug controller (not the
- * buffers), so breakpoints survive closing and reopening a file. Persisted
- * across restarts via {@see DebugStatePersistence} (`.porta/debug.json`).
+ * breakpoint optionally carries a condition, a hit-count condition and/or a log
+ * message (all DAP pass-through strings; a breakpoint with a log message is a
+ * logpoint — it logs to the debug console instead of pausing). Owned by the
+ * debug controller (not the buffers), so breakpoints survive closing and
+ * reopening a file. Persisted across restarts via {@see DebugStatePersistence}
+ * (`.porta/debug.json`).
  */
 final class BreakpointStore
 {
-    /** @var array<string, array<int, array{condition: ?string, hitCondition: ?string}>> path => line => breakpoint */
+    /** @var array<string, array<int, array{condition: ?string, hitCondition: ?string, logMessage: ?string}>> path => line => breakpoint */
     private array $breakpoints = [];
 
-    /** Toggle a breakpoint; returns whether one is now set on the line. A re-toggle clears conditions too. */
+    /** Toggle a breakpoint; returns whether one is now set on the line. A re-toggle clears its details too. */
     public function toggle(string $path, int $line): bool
     {
         if (($this->breakpoints[$path][$line] ?? null) !== null) {
@@ -27,18 +29,18 @@ final class BreakpointStore
 
             return false;
         }
-        $this->breakpoints[$path][$line] = ['condition' => null, 'hitCondition' => null];
+        $this->breakpoints[$path][$line] = ['condition' => null, 'hitCondition' => null, 'logMessage' => null];
 
         return true;
     }
 
-    /** Set (or clear, with nulls) a line's conditions — creating the breakpoint when the line has none. */
-    public function setCondition(string $path, int $line, ?string $condition, ?string $hitCondition): void
+    /** Set (or clear, with nulls) a line's condition/hit-count/log-message — creating the breakpoint when the line has none. */
+    public function setDetails(string $path, int $line, ?string $condition, ?string $hitCondition, ?string $logMessage): void
     {
-        $this->breakpoints[$path][$line] = ['condition' => $condition, 'hitCondition' => $hitCondition];
+        $this->breakpoints[$path][$line] = ['condition' => $condition, 'hitCondition' => $hitCondition, 'logMessage' => $logMessage];
     }
 
-    /** @return array{condition: ?string, hitCondition: ?string}|null null when the line has no breakpoint */
+    /** @return array{condition: ?string, hitCondition: ?string, logMessage: ?string}|null null when the line has no breakpoint */
     public function conditionAt(string $path, int $line): ?array
     {
         return $this->breakpoints[$path][$line] ?? null;
@@ -53,7 +55,7 @@ final class BreakpointStore
         return $lines;
     }
 
-    /** @return list<int> the file's lines whose breakpoint carries any condition, ascending */
+    /** @return list<int> the file's lines whose breakpoint carries a condition/hit-count (◆), ascending */
     public function conditionalLinesFor(string $path): array
     {
         $lines = array_keys(array_filter(
@@ -65,7 +67,19 @@ final class BreakpointStore
         return $lines;
     }
 
-    /** @return list<array{line: int, condition: ?string, hitCondition: ?string}> the file's breakpoints, ascending — the DAP payload shape */
+    /** @return list<int> the file's logpoint lines (a breakpoint carrying a log message, ◇), ascending */
+    public function logpointLinesFor(string $path): array
+    {
+        $lines = array_keys(array_filter(
+            $this->breakpoints[$path] ?? [],
+            static fn (array $breakpoint): bool => null !== $breakpoint['logMessage'],
+        ));
+        sort($lines);
+
+        return $lines;
+    }
+
+    /** @return list<array{line: int, condition: ?string, hitCondition: ?string, logMessage: ?string}> the file's breakpoints, ascending — the DAP payload shape */
     public function breakpointsFor(string $path): array
     {
         $breakpoints = [];
@@ -76,7 +90,7 @@ final class BreakpointStore
         return $breakpoints;
     }
 
-    /** @return array<string, list<array{line: int, condition: ?string, hitCondition: ?string}>> every file's breakpoints */
+    /** @return array<string, list<array{line: int, condition: ?string, hitCondition: ?string, logMessage: ?string}>> every file's breakpoints */
     public function all(): array
     {
         $all = [];

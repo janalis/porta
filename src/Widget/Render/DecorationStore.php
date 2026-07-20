@@ -30,6 +30,9 @@ final class DecorationStore
     /** @var list<int> the subset of breakpoint lines carrying a condition (◆ in the gutter) */
     private array $conditionalBreakpointLines = [];
 
+    /** @var list<int> the subset of breakpoint lines carrying a log message (◇ in the gutter) */
+    private array $logpointLines = [];
+
     /** The debugger's stopped line (full-width band), or null when not paused here. */
     private ?int $debugLine = null;
 
@@ -59,6 +62,7 @@ final class DecorationStore
         $this->lineAnnotations = [];
         $this->breakpointLines = [];
         $this->conditionalBreakpointLines = [];
+        $this->logpointLines = [];
         $this->debugLine = null;
     }
 
@@ -104,11 +108,13 @@ final class DecorationStore
     /**
      * @param list<int> $lines            0-based lines carrying a breakpoint in this file
      * @param list<int> $conditionalLines the subset carrying a condition (◆ instead of ●)
+     * @param list<int> $logpointLines    the subset carrying a log message (◇ instead of ●)
      */
-    public function setBreakpointLines(array $lines, array $conditionalLines = []): void
+    public function setBreakpointLines(array $lines, array $conditionalLines = [], array $logpointLines = []): void
     {
         $this->breakpointLines = $lines;
         $this->conditionalBreakpointLines = $conditionalLines;
+        $this->logpointLines = $logpointLines;
         ($this->invalidate)();
     }
 
@@ -122,6 +128,12 @@ final class DecorationStore
     public function conditionalBreakpointLines(): array
     {
         return $this->conditionalBreakpointLines;
+    }
+
+    /** @return list<int> */
+    public function logpointLines(): array
+    {
+        return $this->logpointLines;
     }
 
     /** Highlight (or clear) the debugger's stopped line. */

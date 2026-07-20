@@ -23,6 +23,7 @@ final class Glyphs
     // glyphs share this column, so the two sets must stay disjoint.
     public const string BREAKPOINT = '●'; // same value as DIRTY — disjoint surfaces (gutter vs tab label)
     public const string BREAKPOINT_CONDITIONAL = '◆';
+    public const string LOGPOINT = '◇'; // a logpoint logs to the console instead of pausing
     public const string STOPPED_LINE = '▶';
 
     // Diagnostic severity (gutter, inline message prefix, status-bar counts).

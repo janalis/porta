@@ -18,7 +18,7 @@ final class DapSessionTest extends TestCase
     /** @var (\Closure(list<array{filter: string, label: string, default: bool}>): list<string>)|null per-test override */
     private ?\Closure $exceptionFiltersProvider = null;
 
-    /** @param array<string, list<array{line: int, condition: ?string, hitCondition: ?string}>> $breakpoints */
+    /** @param array<string, list<array{line: int, condition: ?string, hitCondition: ?string, logMessage: ?string}>> $breakpoints */
     private function session(FakeDapClient $client, array $breakpoints = []): DapSession
     {
         $this->events = [];
@@ -244,6 +244,36 @@ final class DapSessionTest extends TestCase
         $this->assertStringContainsString('/p/a.php:3', $warnings[0]);
     }
 
+    public function testLogMessageRidesAlongWhenTheAdapterSupportsLogpoints(): void
+    {
+        $client = new FakeDapClient();
+        $session = $this->session($client);
+        $session->start([]);
+        $client->respond('initialize', ['supportsLogPoints' => true]);
+        $client->respond('launch');
+
+        $session->setBreakpoints('/p/a.php', [self::bp(2, logMessage: 'x={$x}')]);
+        $this->assertSame(
+            [['line' => 3, 'logMessage' => 'x={$x}']],
+            $client->argumentsOf('setBreakpoints')['breakpoints'],
+            'the log message rides along as a logpoint',
+        );
+    }
+
+    public function testLogMessageIsStrippedWithAWarningWhenUnsupported(): void
+    {
+        $client = new FakeDapClient();
+        $session = $this->session($client);
+        $session->start([]);
+        $client->respond('initialize', []); // no logpoint support
+        $client->respond('launch');
+
+        $session->setBreakpoints('/p/a.php', [self::bp(4, logMessage: 'hit')]);
+        $this->assertSame([['line' => 5]], $client->argumentsOf('setBreakpoints')['breakpoints'], 'the unsupported log message is stripped');
+        $warnings = array_values(array_filter($this->events, static fn (string $e): bool => str_contains($e, "does not support 'logMessage'")));
+        $this->assertCount(1, $warnings);
+    }
+
     public function testEvaluateNormalizesResultsErrorsAndFrameContext(): void
     {
         $client = new FakeDapClient();
@@ -380,9 +410,9 @@ final class DapSessionTest extends TestCase
     }
 
     /** @return array{line: int, condition: ?string, hitCondition: ?string} */
-    private static function bp(int $line, ?string $condition = null, ?string $hitCondition = null): array
+    private static function bp(int $line, ?string $condition = null, ?string $hitCondition = null, ?string $logMessage = null): array
     {
-        return ['line' => $line, 'condition' => $condition, 'hitCondition' => $hitCondition];
+        return ['line' => $line, 'condition' => $condition, 'hitCondition' => $hitCondition, 'logMessage' => $logMessage];
     }
 
     public function testDisconnectIsPoliteAndIdempotent(): void

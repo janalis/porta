@@ -279,6 +279,7 @@ final class IdeDebugTest extends TestCase
                     }
                     $tui->handleInput("\r"); // condition submitted
                     $tui->handleInput("\r"); // hit count left empty
+                    $tui->handleInput("\r"); // log message left empty
                     $tui->tick();
                     $editorScreen = implode("\n", $tui->getById('editor')->render(new \Symfony\Component\Tui\Render\RenderContext(120, 20)));
                     $this->assertStringContainsString('◆', $editorScreen, 'the conditional breakpoint renders a diamond');
@@ -407,6 +408,7 @@ final class IdeDebugTest extends TestCase
                     }
                     $tui->handleInput("\r");
                     $tui->handleInput("\r"); // no hit count
+                    $tui->handleInput("\r"); // no log message
                     $tui->handleInput("\x1b[20;6~"); // ctrl+shift+f9: add a watch
                     foreach (str_split('$x') as $ch) {
                         $tui->handleInput($ch);

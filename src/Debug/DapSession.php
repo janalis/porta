@@ -18,6 +18,7 @@ final class DapSession
     private bool $supportsConfigurationDone = false;
     private bool $supportsConditionalBreakpoints = false;
     private bool $supportsHitConditionalBreakpoints = false;
+    private bool $supportsLogPoints = false;
     private bool $terminationReported = false;
 
     /** @var list<array{filter: string, label: string, default: bool}> the adapter's advertised exception filters */
@@ -27,7 +28,7 @@ final class DapSession
     private ?array $tempBreakpoint = null;
 
     /**
-     * @param \Closure(): array<string, list<array{line: int, condition: ?string, hitCondition: ?string}>> $breakpointsProvider      0-based lines per absolute path
+     * @param \Closure(): array<string, list<array{line: int, condition: ?string, hitCondition: ?string, logMessage: ?string}>> $breakpointsProvider      0-based lines per absolute path
      * @param \Closure(list<array{filter: string, label: string, default: bool}>): list<string>            $exceptionFiltersProvider enabled ids for the advertised filters
      */
     public function __construct(
@@ -103,6 +104,7 @@ final class DapSession
                 $this->supportsConfigurationDone = true === ($body['supportsConfigurationDoneRequest'] ?? false);
                 $this->supportsConditionalBreakpoints = true === ($body['supportsConditionalBreakpoints'] ?? false);
                 $this->supportsHitConditionalBreakpoints = true === ($body['supportsHitConditionalBreakpoints'] ?? false);
+                $this->supportsLogPoints = true === ($body['supportsLogPoints'] ?? false);
                 $this->exceptionFilters = self::normalizeExceptionFilters($body['exceptionBreakpointFilters'] ?? null);
                 $this->client->request('launch', $launchArguments, function (array $ignored, ?string $launchError): void {
                     if (null !== $launchError) {
@@ -126,7 +128,7 @@ final class DapSession
      * otherwise they are stripped with a console warning, so a silently
      * unconditional breakpoint never masquerades as a conditional one.
      *
-     * @param list<array{line: int, condition: ?string, hitCondition: ?string}> $breakpoints
+     * @param list<array{line: int, condition: ?string, hitCondition: ?string, logMessage: ?string}> $breakpoints
      */
     public function setBreakpoints(string $path, array $breakpoints): void
     {
@@ -136,7 +138,7 @@ final class DapSession
         $wire = [];
         foreach ($breakpoints as $breakpoint) {
             $entry = ['line' => $breakpoint['line'] + 1];
-            foreach (['condition' => $this->supportsConditionalBreakpoints, 'hitCondition' => $this->supportsHitConditionalBreakpoints] as $field => $supported) {
+            foreach (['condition' => $this->supportsConditionalBreakpoints, 'hitCondition' => $this->supportsHitConditionalBreakpoints, 'logMessage' => $this->supportsLogPoints] as $field => $supported) {
                 if (null === $breakpoint[$field]) {
                     continue;
                 }

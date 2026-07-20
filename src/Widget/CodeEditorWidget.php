@@ -568,11 +568,12 @@ final class CodeEditorWidget extends AbstractWidget implements ActiveFileProvide
 
     /**
      * @param list<int> $lines            0-based lines carrying a breakpoint in this file
-     * @param list<int> $conditionalLines the subset carrying a condition (◆ instead of ●)
+     * @param list<int> $conditionalLines the subset carrying a condition/hit-count (◆ instead of ●)
+     * @param list<int> $logpointLines    the subset carrying a log message (◇ — logs instead of pausing)
      */
-    public function setBreakpointLines(array $lines, array $conditionalLines = []): void
+    public function setBreakpointLines(array $lines, array $conditionalLines = [], array $logpointLines = []): void
     {
-        $this->decorations->setBreakpointLines($lines, $conditionalLines);
+        $this->decorations->setBreakpointLines($lines, $conditionalLines, $logpointLines);
     }
 
     /** Highlight (or clear) the debugger's stopped line. */

@@ -28,7 +28,7 @@ final readonly class DebugStateStore
     }
 
     /**
-     * @param array<string, list<array{line: int, condition: ?string, hitCondition: ?string}>> $breakpoints
+     * @param array<string, list<array{line: int, condition: ?string, hitCondition: ?string, logMessage: ?string}>> $breakpoints
      * @param list<string>                                                                     $watches
      * @param list<string>|null                                                                $exceptionFilters null = never chosen
      */
@@ -55,7 +55,7 @@ final readonly class DebugStateStore
     }
 
     /**
-     * @return array{breakpoints: array<string, list<array{line: int, condition: ?string, hitCondition: ?string}>>, watches: list<string>, exceptionFilters: ?list<string>}|null
+     * @return array{breakpoints: array<string, list<array{line: int, condition: ?string, hitCondition: ?string, logMessage: ?string}>>, watches: list<string>, exceptionFilters: ?list<string>}|null
      */
     public function load(): ?array
     {
@@ -81,6 +81,7 @@ final readonly class DebugStateStore
                     'line' => $entry['line'],
                     'condition' => \is_string($entry['condition'] ?? null) ? $entry['condition'] : null,
                     'hitCondition' => \is_string($entry['hitCondition'] ?? null) ? $entry['hitCondition'] : null,
+                    'logMessage' => \is_string($entry['logMessage'] ?? null) ? $entry['logMessage'] : null,
                 ];
             }
         }

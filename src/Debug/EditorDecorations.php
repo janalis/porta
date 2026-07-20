@@ -23,7 +23,7 @@ final class EditorDecorations
 
     public function apply(string $path): void
     {
-        $this->editor->setBreakpointLines($this->breakpoints->linesFor($path), $this->breakpoints->conditionalLinesFor($path));
+        $this->editor->setBreakpointLines($this->breakpoints->linesFor($path), $this->breakpoints->conditionalLinesFor($path), $this->breakpoints->logpointLinesFor($path));
         $this->editor->setDebugLine($this->state->stoppedLineFor($path));
     }
 

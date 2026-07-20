@@ -21,8 +21,9 @@ final class DebugStateStoreTest extends TestCase
 
         $breakpoints = [
             '/p/a.php' => [
-                ['line' => 4, 'condition' => '$x > 1', 'hitCondition' => null],
-                ['line' => 9, 'condition' => null, 'hitCondition' => '3'],
+                ['line' => 4, 'condition' => '$x > 1', 'hitCondition' => null, 'logMessage' => null],
+                ['line' => 9, 'condition' => null, 'hitCondition' => '3', 'logMessage' => null],
+                ['line' => 11, 'condition' => null, 'hitCondition' => null, 'logMessage' => 'here x={$x}'],
             ],
         ];
         $this->assertTrue($store->save($breakpoints, ['$x'], ['exception']));
@@ -74,7 +75,7 @@ final class DebugStateStoreTest extends TestCase
             'exceptionFilters' => ['ok', 42],
         ]));
         $state = $store->load();
-        $this->assertSame([['line' => 2, 'condition' => null, 'hitCondition' => null]], $state['breakpoints']['/p/ok.php']);
+        $this->assertSame([['line' => 2, 'condition' => null, 'hitCondition' => null, 'logMessage' => null]], $state['breakpoints']['/p/ok.php']);
         $this->assertArrayNotHasKey('/p/none.php', $state['breakpoints']);
         $this->assertSame(['$x'], $state['watches'], 'non-strings and empties dropped');
         $this->assertSame(['ok'], $state['exceptionFilters']);
@@ -109,7 +110,7 @@ final class DebugStateStoreTest extends TestCase
         $persistence->restore();
 
         $this->assertSame([0], $breakpoints->linesFor($real));
-        $this->assertSame(['condition' => '$x', 'hitCondition' => null], $breakpoints->conditionAt($real, 0));
+        $this->assertSame(['condition' => '$x', 'hitCondition' => null, 'logMessage' => null], $breakpoints->conditionAt($real, 0));
         $this->assertSame([], $breakpoints->linesFor($project->path('gone.php')), 'vanished files are skipped');
         $this->assertSame(['$watched'], $watches->all());
         $this->assertSame(['exception'], $filters->selection());

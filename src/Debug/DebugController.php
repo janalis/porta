@@ -135,10 +135,24 @@ final class DebugController implements DebugSessionObserver
             $this->editor->openPrompt($this->translator->trans('Hit count condition (empty: every hit)'), $existing['hitCondition'] ?? '', function (string $hitCondition) use (
                 $path,
                 $line,
+                $existing,
                 $condition,
             ): void {
-                $this->breakpoints->setCondition($path, $line, '' === trim($condition) ? null : trim($condition), '' === trim($hitCondition) ? null : trim($hitCondition));
-                $this->syncBreakpoints($path);
+                $this->editor->openPrompt($this->translator->trans('Log message (empty: pause instead of logging)'), $existing['logMessage'] ?? '', function (string $logMessage) use (
+                    $path,
+                    $line,
+                    $condition,
+                    $hitCondition,
+                ): void {
+                    $this->breakpoints->setDetails(
+                        $path,
+                        $line,
+                        '' === trim($condition) ? null : trim($condition),
+                        '' === trim($hitCondition) ? null : trim($hitCondition),
+                        '' === trim($logMessage) ? null : trim($logMessage),
+                    );
+                    $this->syncBreakpoints($path);
+                });
             });
         });
         $this->tui->requestRender();
@@ -148,7 +162,7 @@ final class DebugController implements DebugSessionObserver
     private function syncBreakpoints(string $path): void
     {
         if ($path === $this->editor->getFilePath()) {
-            $this->editor->setBreakpointLines($this->breakpoints->linesFor($path), $this->breakpoints->conditionalLinesFor($path));
+            $this->editor->setBreakpointLines($this->breakpoints->linesFor($path), $this->breakpoints->conditionalLinesFor($path), $this->breakpoints->logpointLinesFor($path));
         }
         $this->session?->setBreakpoints($path, $this->breakpoints->breakpointsFor($path));
         $this->tui->requestRender();
