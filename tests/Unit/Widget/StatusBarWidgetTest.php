@@ -75,4 +75,47 @@ final class StatusBarWidgetTest extends TestCase
         $line = $status->render(new RenderContext(20, 1))[0];
         $this->assertSame(20, AnsiUtils::visibleWidth($line));
     }
+
+    public function testBranchColumnSpanTracksTheBranchCellWithTheLeadingSpace(): void
+    {
+        $status = new StatusBarWidget();
+        // The branch occupies cols [0,6) in `left`; the row's one leading space shifts it to [1,7).
+        $status->setProvider(static fn () => ['left' => "\u{e0a0} main  file.php", 'right' => 'R', 'branchStart' => 0, 'branchEnd' => 6]);
+        $status->beforeRender();
+        $status->render(new RenderContext(60, 1));
+
+        $this->assertSame([1, 7], $status->branchColumnSpan(), 'the on-screen span accounts for the leading space');
+    }
+
+    public function testBranchColumnSpanIsNullWithoutABranch(): void
+    {
+        $status = new StatusBarWidget();
+        $status->setProvider(static fn () => ['left' => 'file.php', 'right' => 'R']); // no branch keys
+        $status->beforeRender();
+        $status->render(new RenderContext(60, 1));
+
+        $this->assertNull($status->branchColumnSpan());
+    }
+
+    public function testBranchColumnSpanIsNullWhileFlashing(): void
+    {
+        $status = new StatusBarWidget(new MockClock('2020-01-01T00:00:00+00:00'));
+        $status->setProvider(static fn () => ['left' => "\u{e0a0} main  file.php", 'right' => 'R', 'branchStart' => 0, 'branchEnd' => 6]);
+        $status->beforeRender();
+        $status->flash('Saved', 1.0);
+        $status->render(new RenderContext(60, 1));
+
+        $this->assertNull($status->branchColumnSpan(), 'a flash replaces the branch, so there is no hit region');
+    }
+
+    public function testBranchColumnSpanIsNullWhenTruncatedOff(): void
+    {
+        $status = new StatusBarWidget();
+        // A wide right side + narrow terminal truncates the branch off the left.
+        $status->setProvider(static fn () => ['left' => "\u{e0a0} main  file.php", 'right' => str_repeat('R', times: 40), 'branchStart' => 0, 'branchEnd' => 6]);
+        $status->beforeRender();
+        $status->render(new RenderContext(20, 1));
+
+        $this->assertNull($status->branchColumnSpan(), 'a clipped branch offers no hit region');
+    }
 }

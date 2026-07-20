@@ -324,6 +324,42 @@ final class GitCommandsTest extends TestCase
         $this->assertSame('feature', trim($this->git('rev-parse', '--abbrev-ref', 'HEAD')));
     }
 
+    public function testNewBranchOpensTheCreatePromptDirectly(): void
+    {
+        $commands = $this->commands(['a.txt' => "one\n"]);
+
+        $commands->newBranch(); // the status-bar branch menu's "New Branch…"
+        $this->type('feature');
+        $this->key("\r");
+        $this->pump();
+
+        $this->assertStringContainsString('Created and switched to feature', $this->flash());
+        $this->assertSame('feature', trim($this->git('rev-parse', '--abbrev-ref', 'HEAD')));
+    }
+
+    public function testDeleteBranchOpensThePickerDirectly(): void
+    {
+        $commands = $this->commands(['a.txt' => "one\n"]);
+        $this->git('branch', 'stale');
+
+        $commands->deleteBranch(); // the status-bar branch menu's "Delete Branch…"
+        $this->overlayOpens(); // the deletable list
+        $this->key("\r"); // pick "stale" (the only deletable)
+        $this->key("\r"); // confirm "Delete"
+        $this->pump();
+
+        $this->assertStringContainsString('Deleted branch stale', $this->flash());
+    }
+
+    public function testBranchActionsReportUnavailableOutsideARepo(): void
+    {
+        $this->commandsOutsideRepo(['a.txt' => "one\n"])->newBranch();
+        $this->assertStringContainsString('Git not available', $this->flash());
+
+        $this->commandsOutsideRepo(['a.txt' => "one\n"])->deleteBranch();
+        $this->assertStringContainsString('Git not available', $this->flash());
+    }
+
     public function testBranchesSwitchesToAnExistingBranch(): void
     {
         $commands = $this->commands(['a.txt' => "one\n"]);
@@ -510,7 +546,12 @@ final class GitCommandsTest extends TestCase
 
     private function readFile(string $rel): string
     {
-        return (string) file_get_contents($this->project->dir.'/'.$rel);
+        // Guard the read: git replaces the file by atomic rename during a stash,
+        // and a poll landing in that instant would otherwise warn on the
+        // momentarily-absent path.
+        $path = $this->project->dir.'/'.$rel;
+
+        return is_file($path) ? (string) file_get_contents($path) : '';
     }
 
     private function openInEditor(string $rel, string $contents): void

@@ -79,8 +79,13 @@ trait RunsIde
      * classic flake — the assertion then runs against pre-op state. Await the
      * real condition; if you genuinely want to pump the loop for a fixed span
      * with no condition, use {@see pump()}.
+     *
+     * The default is generous on purpose: these poll real async effects (grep,
+     * git, LSP, render passes), and under the pcov coverage run (2-3x slower)
+     * plus heavy parallelism a tight budget times out before the effect lands —
+     * a genuinely stuck condition still throws, just a few seconds later.
      */
-    private function await(callable $done, float $timeout = 3.0, string $what = 'condition'): void
+    private function await(callable $done, float $timeout = 10.0, string $what = 'condition'): void
     {
         $elapsed = 0.0;
         while (!$done()) {

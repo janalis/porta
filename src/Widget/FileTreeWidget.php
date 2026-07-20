@@ -153,6 +153,39 @@ final class FileTreeWidget extends AbstractWidget implements FocusableInterface,
         $this->invalidate();
     }
 
+    /**
+     * Expand to and select a file by absolute path (a double-clicked editor
+     * tab), so it shows highlighted in the tree. A no-op for a path outside the
+     * root or one the rebuild does not surface (e.g. an ignored directory).
+     */
+    public function revealPath(string $path): void
+    {
+        // Buffer paths are realpath'd (symlinks resolved) while the tree's nodes
+        // are built from the raw root, so compare in realpath space, then map the
+        // target back to the raw-root path the node/expansion keys use.
+        $root = realpath($this->rootDir);
+        $target = realpath($path);
+        if (false === $root || false === $target || !str_starts_with($target, $root.\DIRECTORY_SEPARATOR)) {
+            return;
+        }
+        $path = $this->rootDir.\DIRECTORY_SEPARATOR.substr($target, \strlen($root) + 1);
+        // Expand every ancestor directory between the root and the file.
+        $dir = \dirname($path);
+        while (\strlen($dir) > \strlen($this->rootDir)) {
+            $this->expanded[$dir] = true;
+            $dir = \dirname($dir);
+        }
+        $this->rebuild();
+        foreach ($this->visible as $i => $node) {
+            if ($node->path === $path) {
+                $this->list->select($i);
+                $this->invalidate();
+
+                return;
+            }
+        }
+    }
+
     public function handleInput(string $data): void
     {
         if ($this->inputHookHandled($data)) {

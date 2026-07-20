@@ -350,6 +350,134 @@ final class IdeEdgeCasesTest extends TestCase
         $this->addToAssertionCount(1);
     }
 
+    public function testRightClickingTheStatusBarBranchOpensTheBranchMenu(): void
+    {
+        putenv('PATH='.$this->originalPath); // a real branch needs git
+        $project = new TempProject(['a.php' => "<?php\n"]);
+        $project->git('init', '-q');
+        $project->git('config', 'user.email', 't@t');
+        $project->git('config', 'user.name', 'tester');
+        $project->git('config', 'commit.gpgsign', 'false');
+        $project->git('add', '-A');
+        $project->git('commit', '-qm', 'init');
+
+        $this->runIde(
+            $project,
+            $project->path('a.php'),
+            [
+                300 => function ($tui, $terminal, $ide): void {
+                    $status = $tui->getById('status');
+                    // The branch resolves asynchronously; wait for it to render.
+                    $this->await(static fn (): bool => null !== $status->branchColumnSpan(), what: 'the branch to render in the status bar');
+
+                    $renderer = new \ReflectionProperty($ide, 'renderer')->getValue($ide);
+                    $rect = $renderer->getWidgetRect($status);
+                    $span = $status->branchColumnSpan();
+                    $col = $rect->col + intdiv($span[0] + $span[1], num2: 2); // middle of the branch cell
+                    $tui->handleInput(\sprintf("\x1b[<2;%d;%dM", $col + 1, $rect->row + 1)); // right-click (1-based)
+                    $tui->tick();
+
+                    $menu = new \ReflectionProperty($ide, 'contextMenu')->getValue($ide);
+                    $this->assertTrue($menu->isOpen(), 'the branch menu opened');
+                    $labels = array_map(
+                        static fn (array $row): string => trim(AnsiUtils::stripAnsiCodes($row['segment'])),
+                        $menu->segments($menu->panelWidth()),
+                    );
+                    $this->assertContains('Switch Branch…', $labels, 'with the branch actions');
+                    $this->assertContains('New Branch…', $labels);
+
+                    // A right-click elsewhere on the status bar (the legend area,
+                    // outside the branch cell) offers no branch menu.
+                    $tui->handleInput("\x1b"); // dismiss the menu
+                    $tui->tick();
+                    $tui->handleInput(\sprintf("\x1b[<2;%d;%dM", $rect->col + $rect->columns - 3, $rect->row + 1));
+                    $tui->tick();
+                    $this->assertFalse($menu->isOpen(), 'a right-click off the branch opens no menu');
+                },
+            ],
+        );
+
+        $this->addToAssertionCount(1);
+    }
+
+    public function testDoubleClickingATabRevealsTheFileInTheTree(): void
+    {
+        putenv('PATH=/nonexistent');
+        $project = new TempProject(['a.php' => "<?php\n", 'src/deep/Target.php' => "<?php\n"]);
+
+        $this->runIde(
+            $project,
+            $project->path('a.php'),
+            [
+                300 => function ($tui, $terminal, $ide) use ($project): void {
+                    // Open the deep file as a background tab (does not reveal it).
+                    new \ReflectionProperty($ide, 'locator')->getValue($ide)
+                        ->get(\Porta\Editor\BufferService::class)
+                        ->openFile($project->path('src/deep/Target.php'), \Porta\Editor\OpenFocus::Keep);
+                    $tui->requestRender();
+                    $tui->tick();
+
+                    $tree = $tui->getById('tree');
+                    $this->assertNotSame('Target.php', $tree->selectedNode()?->name, 'opening a file does not reveal it in the tree');
+
+                    $tabs = $tui->getById('tabs');
+                    $rect = new \ReflectionProperty($ide, 'renderer')->getValue($ide)->getWidgetRect($tabs);
+                    $anchor = $tabs->tabAnchor(1); // the Target.php tab
+                    $this->assertNotNull($anchor);
+                    $col = $rect->col + $anchor['col'] + 2;
+                    $row = $rect->row + $anchor['row'] + 1;
+                    // A double-click: two press/release pairs at the same cell.
+                    $tui->handleInput(\sprintf("\x1b[<0;%d;%dM", $col, $row));
+                    $tui->handleInput(\sprintf("\x1b[<0;%d;%dm", $col, $row));
+                    $tui->handleInput(\sprintf("\x1b[<0;%d;%dM", $col, $row));
+                    $tui->handleInput(\sprintf("\x1b[<0;%d;%dm", $col, $row));
+                    $tui->tick();
+
+                    $this->assertSame('Target.php', $tree->selectedNode()?->name, 'the double-click revealed and selected the deep file');
+                    $this->assertSame('editor', $tui->getFocus()?->getId(), 'focus stayed in the editor');
+                },
+            ],
+        );
+
+        $this->addToAssertionCount(1);
+    }
+
+    public function testMouseDragResizesAnEmptyResultsPane(): void
+    {
+        putenv('PATH=/nonexistent');
+        $project = new TempProject(['a.php' => "<?php\n"]);
+        $expected = 0;
+
+        $this->runIde(
+            $project,
+            $project->path('a.php'),
+            [
+                200 => static function ($tui, $terminal, $ide) use (&$expected): void {
+                    // An empty tool (no results): it used to render no rows, so the
+                    // dock had no rect to grab. It now reserves its full height.
+                    new \ReflectionProperty($ide, 'locator')
+                        ->getValue($ide)
+                        ->get(\Porta\Ui\BottomDock::class)
+                        ->showList(\Porta\Ui\ResultsPanelMode::Search, 'Find in Project', []);
+                    $tui->requestRender();
+                    $tui->tick();
+                    $renderer = new \ReflectionProperty($ide, 'renderer')->getValue($ide);
+                    $rect = $renderer->getWidgetRect($tui->getById('results'));
+                    $expected = $rect->rows + 4;
+                    $top = $rect->row; // the dock strip row doubles as the resize grab
+                    $tui->handleInput(\sprintf("\x1b[<0;60;%dM", $top)); // arm on the strip's empty tail
+                    $tui->handleInput(\sprintf("\x1b[<32;60;%dM", $top - 4)); // drag up 4 rows
+                    $tui->handleInput(\sprintf("\x1b[<0;60;%dm", $top - 4)); // release
+                },
+                320 => function ($tui) use (&$expected): void {
+                    $this->assertSame($expected, $tui->getById('results')->visibleRows(), 'the empty results pane is resizable');
+                },
+            ],
+        );
+
+        $this->addToAssertionCount(1);
+    }
+
     public function testGoToTestRoundTripsBetweenClassAndTest(): void
     {
         putenv('PATH=/nonexistent');
@@ -900,6 +1028,8 @@ final class IdeEdgeCasesTest extends TestCase
         ]);
 
         $rightClickFolder = static function ($tui, $terminal, $ide): void {
+            $tui->requestRender(force: true); // force a frame so the tree rect is live under load
+            $tui->processRender();
             $renderer = new \ReflectionProperty($ide, 'renderer')->getValue($ide);
             $rect = $renderer->getWidgetRect($tui->getById('tree'));
             // Header is relative row 0; the first entry (the `sub` folder) is row 1.
@@ -961,6 +1091,8 @@ final class IdeEdgeCasesTest extends TestCase
         ]);
 
         $rightClickFolder = static function ($tui, $terminal, $ide): void {
+            $tui->requestRender(force: true); // force a frame so the tree rect is live under load
+            $tui->processRender();
             $renderer = new \ReflectionProperty($ide, 'renderer')->getValue($ide);
             $rect = $renderer->getWidgetRect($tui->getById('tree'));
             $tui->handleInput(\sprintf("\x1b[<2;%d;%dM", $rect->col + 3, $rect->row + 2));
@@ -1084,6 +1216,8 @@ final class IdeEdgeCasesTest extends TestCase
         ]);
 
         $rightClickFolder = static function ($tui, $terminal, $ide): void {
+            $tui->requestRender(force: true); // force a frame so the tree rect is live under load
+            $tui->processRender();
             $renderer = new \ReflectionProperty($ide, 'renderer')->getValue($ide);
             $rect = $renderer->getWidgetRect($tui->getById('tree'));
             // `lib` sorts first among the directories → the first tree entry (row 1).
@@ -5074,11 +5208,11 @@ final class IdeEdgeCasesTest extends TestCase
                     $this->assertStringContainsString('File History', $screen);
 
                     $tui->handleInput("\r"); // Stage leads the list
-                    $this->await(static function () use ($project): bool {
-                        $lines = explode("\n", $project->git('status', '--porcelain'));
-
-                        return \in_array('M  src/A.php', $lines, strict: true);
-                    });
+                    // Await the app's git barrier (which pumps the loop) rather than
+                    // polling a blocking `git status` — under load the blocking poll
+                    // starves the async `git add` it is waiting on.
+                    $this->awaitGit($ide);
+                    $this->assertContains('M  src/A.php', explode("\n", $project->git('status', '--porcelain')), 'the row staged');
                 },
                 1000 => function ($tui, $terminal, $ide): void {
                     $tui->tick();

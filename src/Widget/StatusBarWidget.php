@@ -21,11 +21,16 @@ use Symfony\Component\Tui\Widget\AbstractWidget;
 #[AsWidget('status')]
 final class StatusBarWidget extends AbstractWidget
 {
-    /** @var (callable(): array{left: string, right: string})|null */
+    /** @var (callable(): array{left: string, right: string, branchStart?: int|null, branchEnd?: int|null})|null */
     private $provider = null;
 
     private string $lastLeft = '';
     private string $lastRight = '';
+    /** The branch cell's column range within `left` (from the provider), or null. */
+    private ?int $branchStart = null;
+    private ?int $branchEnd = null;
+    /** @var array{int, int}|null the branch's on-screen column span from the last render, for hit-testing */
+    private ?array $branchSpan = null;
 
     /** @var array{text: string, until: float}|null */
     private ?array $flash = null;
@@ -41,13 +46,25 @@ final class StatusBarWidget extends AbstractWidget
     }
 
     /**
-     * @param callable(): array{left: string, right: string} $provider
+     * @param callable(): array{left: string, right: string, branchStart?: int|null, branchEnd?: int|null} $provider
      */
     public function setProvider(callable $provider): self
     {
         $this->provider = $provider;
 
         return $this;
+    }
+
+    /**
+     * The git-branch cell's on-screen column span [start, end) from the last
+     * render, or null when there is no branch (or it was clipped / a flash hid
+     * it). The router uses this to route a right-click on the branch.
+     *
+     * @return array{int, int}|null
+     */
+    public function branchColumnSpan(): ?array
+    {
+        return $this->branchSpan;
     }
 
     /** The clock's current instant as float seconds (with sub-second precision). */
@@ -80,7 +97,11 @@ final class StatusBarWidget extends AbstractWidget
             return;
         }
 
-        ['left' => $left, 'right' => $right] = ($this->provider)();
+        $segments = ($this->provider)();
+        $left = $segments['left'];
+        $right = $segments['right'];
+        $this->branchStart = $segments['branchStart'] ?? null;
+        $this->branchEnd = $segments['branchEnd'] ?? null;
         if ($left !== $this->lastLeft || $right !== $this->lastRight) {
             $this->lastLeft = $left;
             $this->lastRight = $right;
@@ -106,6 +127,13 @@ final class StatusBarWidget extends AbstractWidget
         $leftMax = max(0, $columns - $rightWidth - 3);
         $left = AnsiText::truncate($left, $leftMax);
         $leftWidth = AnsiUtils::visibleWidth($left);
+
+        // The branch (leftmost in `left`) is offset by the one leading space in
+        // the row. Only offer its hit region when the whole label is on screen —
+        // not while a flash replaced `left`, nor when truncation clipped it.
+        $this->branchSpan = null !== $this->flash || null === $this->branchStart || null === $this->branchEnd || $this->branchEnd > $leftWidth
+            ? null
+            : [1 + $this->branchStart, 1 + $this->branchEnd];
 
         $gap = max(1, $columns - $leftWidth - $rightWidth - 2);
         $line = ' '.$left.str_repeat(' ', $gap).$right.' ';

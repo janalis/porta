@@ -7,6 +7,7 @@ namespace Porta\Ui;
 use Porta\Config\CommandRegistry;
 use Porta\Editor\BufferService;
 use Porta\Git\ChangeEntry;
+use Porta\Git\GitCommands;
 use Porta\I18n\Translator;
 use Porta\Run\RunController;
 use Porta\Widget\CodeEditorWidget;
@@ -29,7 +30,23 @@ final class ContextMenuBuilder
         private readonly BottomDock $dock,
         private readonly RunController $run,
         private readonly ChangesListWidget $changes,
+        private readonly GitCommands $git,
     ) {}
+
+    /**
+     * The status-bar branch menu — thin triggers over the existing branch
+     * flows, so switching/creating/deleting stays single-sourced in GitCommands.
+     *
+     * @return list<MenuItem>
+     */
+    public function branchItems(): array
+    {
+        return [
+            new MenuItem($this->translator->trans('Switch Branch…'), '', fn () => $this->git->branches()),
+            new MenuItem($this->translator->trans('New Branch…'), '', fn () => $this->git->newBranch()),
+            new MenuItem($this->translator->trans('Delete Branch…'), '', fn () => $this->git->deleteBranch()),
+        ];
+    }
 
     /** @return list<MenuItem> */
     public function editorItems(): array

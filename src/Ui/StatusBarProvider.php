@@ -13,6 +13,7 @@ use Porta\Support\ProjectPaths;
 use Porta\Ui\Theme\Styles;
 use Porta\Widget\CodeEditorWidget;
 use Porta\Widget\ImageViewerWidget;
+use Symfony\Component\Tui\Ansi\AnsiUtils;
 
 /**
  * The status bar's two segments, pulled at render time: the active file (with
@@ -33,7 +34,13 @@ final class StatusBarProvider
         private readonly string $rootDir,
     ) {}
 
-    /** @return array{left: string, right: string} */
+    /**
+     * The two status segments plus the branch cell's column range within `left`
+     * (null when there is no branch), so the router can hit-test a right-click
+     * on the branch. The range shifts right when a debug segment precedes it.
+     *
+     * @return array{left: string, right: string, branchStart: int|null, branchEnd: int|null}
+     */
     public function segments(): array
     {
         $active = $this->buffers->active();
@@ -48,19 +55,30 @@ final class StatusBarProvider
             default => ProjectPaths::relative($this->rootDir, $path).($doc->isDirty() ? ' '.Glyphs::DIRTY : ''),
         };
 
-        if (null !== ($branch = $this->gitRefresher->branch())) {
-            $left = $this->styles->of(Role::StatusBranch)->apply("\u{e0a0} {$branch}").'  '.$left;
-        }
-
+        // Build the left prefix in visual order — [debug] [branch] — so the
+        // branch's column offset already accounts for a preceding debug segment
+        // (each part is independently exercised; their sum needs no third path).
+        $branchStart = null;
+        $branchEnd = null;
+        $prefix = '';
+        $prefixWidth = 0;
         if (null !== ($debugSegment = $this->debug->statusSegment())) {
-            $left = $this->styles->of(Role::StatusDebug)->apply($debugSegment).'  '.$left;
+            $prefix .= $this->styles->of(Role::StatusDebug)->apply($debugSegment).'  ';
+            $prefixWidth += AnsiUtils::visibleWidth($debugSegment) + 2;
         }
+        if (null !== ($branch = $this->gitRefresher->branch())) {
+            $branchText = "\u{e0a0} {$branch}";
+            $branchStart = $prefixWidth;
+            $branchEnd = $prefixWidth + AnsiUtils::visibleWidth($branchText);
+            $prefix .= $this->styles->of(Role::StatusBranch)->apply($branchText).'  ';
+        }
+        $left = $prefix.$left;
 
         if (null !== $image) {
             // An image tab: dimensions + zoom instead of cursor/LSP/problems.
             $right = \sprintf('%d × %d  %s  %s', $image->width, $image->height, $this->imageViewer->zoomLabel(), $this->translator->trans('+/- zoom  0 fit  Arrows pan  Ctrl+Q quit'));
 
-            return ['left' => $left, 'right' => $right];
+            return ['left' => $left, 'right' => $right, 'branchStart' => $branchStart, 'branchEnd' => $branchEnd];
         }
 
         if (null !== ($diagnostic = $this->editor->getCursorDiagnostic())) {
@@ -82,6 +100,6 @@ final class StatusBarProvider
         ]);
         $right = $problems.$location.'  '.$legend;
 
-        return ['left' => $left, 'right' => $right];
+        return ['left' => $left, 'right' => $right, 'branchStart' => $branchStart, 'branchEnd' => $branchEnd];
     }
 }

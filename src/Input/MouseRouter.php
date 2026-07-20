@@ -22,6 +22,7 @@ use Porta\Widget\DockTabsWidget;
 use Porta\Widget\HoverableList;
 use Porta\Widget\MenuBarWidget;
 use Porta\Widget\SeparatorWidget;
+use Porta\Widget\StatusBarWidget;
 use Porta\Widget\TerminalPanelWidget;
 use Symfony\Component\Tui\Render\WidgetRect;
 use Symfony\Component\Tui\Tui;
@@ -83,6 +84,7 @@ final class MouseRouter
         private readonly DebugController $debug,
         private readonly SeparatorWidget $separator,
         private readonly ContextMenuOpener $opener,
+        private readonly StatusBarWidget $statusBar,
     ) {
         $this->clicks = new ClickCounter();
     }
@@ -677,6 +679,12 @@ final class MouseRouter
                 $this->bufferService->focusEditorArea(); // an image tab focuses the viewer
                 $this->tabDragging = true;
                 $this->tabDragPath = $buffers[$index]->path;
+                // A double-click reveals the file in the sidebar tree, selected
+                // and highlighted, while focus stays in the editor.
+                if (2 === $this->clicks->countAt($mouse->row, $mouse->col)) {
+                    $this->panes->tree()->revealPath($buffers[$index]->path);
+                    $this->tui->requestRender();
+                }
             }
 
             return true;
@@ -1066,6 +1074,17 @@ final class MouseRouter
         }
         if (!$handled && null !== ($entry = $this->git->changesRowAt($mouse))) {
             $items = $this->contextItems->gitChangeItems($entry);
+        }
+        // A right-click on the status-bar branch name offers the branch actions.
+        if (!$handled && null === $items) {
+            $statusRect = $this->hit->rect($this->statusBar);
+            $span = $this->statusBar->branchColumnSpan();
+            if (null !== $statusRect && null !== $span && $statusRect->contains($mouse->row, $mouse->col)) {
+                $relCol = $statusRect->toRelative($mouse->row, $mouse->col)['col'];
+                if ($relCol >= $span[0] && $relCol < $span[1]) {
+                    $items = $this->contextItems->branchItems();
+                }
+            }
         }
         if (null === $items) {
             $this->opener->flashNoMenu();

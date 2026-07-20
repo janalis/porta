@@ -285,6 +285,32 @@ final class GitCommands
         });
     }
 
+    /** Direct new-branch prompt (the status-bar branch menu's "New Branch…"). */
+    public function newBranch(): void
+    {
+        if (!$this->git->isAvailable()) {
+            $this->unavailable();
+
+            return;
+        }
+        $this->views->closeAll();
+        $this->tui->setFocus($this->editor);
+        $this->promptNewBranch();
+    }
+
+    /** Direct delete-branch picker (the status-bar branch menu's "Delete Branch…"). */
+    public function deleteBranch(): void
+    {
+        if (!$this->git->isAvailable()) {
+            $this->unavailable();
+
+            return;
+        }
+        $this->views->closeAll();
+        $this->tui->setFocus($this->editor);
+        $this->pickBranchToDelete();
+    }
+
     /** Second picker: local branches minus the current one, then a confirm. */
     private function pickBranchToDelete(): void
     {

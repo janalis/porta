@@ -48,6 +48,36 @@ final class FileTreeWidgetTest extends TestCase
         $this->assertSame(2, $tree->selectedRow());
     }
 
+    public function testRevealPathExpandsAncestorsAndSelectsTheFile(): void
+    {
+        $project = new TempProject([
+            'a.php' => "<?php\n",
+            'src/deep/Target.php' => "<?php\n",
+        ]);
+        $tree = new FileTreeWidget($project->dir);
+        $tree->render(new RenderContext(40, 20)); // boot: only the top level shows
+
+        $this->assertStringNotContainsString('Target.php', $this->plain($tree->render(new RenderContext(40, 20))), 'the deep file is hidden while src is collapsed');
+
+        $tree->revealPath($project->dir.'/src/deep/Target.php');
+
+        $this->assertSame('Target.php', $tree->selectedNode()?->name, 'the revealed file is selected');
+        $this->assertStringContainsString('Target.php', $this->plain($tree->render(new RenderContext(40, 20))), 'its ancestors expanded so it shows');
+    }
+
+    public function testRevealPathIsANoOpForAnUnresolvablePath(): void
+    {
+        $project = new TempProject(['a.php' => "<?php\n"]);
+        $tree = new FileTreeWidget($project->dir);
+        $tree->render(new RenderContext(40, 20));
+        $before = $tree->selectedNode()?->name;
+
+        $tree->revealPath('/somewhere/else/x.php'); // outside the root: early return
+        $tree->revealPath($project->dir.'/nope.php'); // in-root but not surfaced
+
+        $this->assertSame($before, $tree->selectedNode()?->name, 'selection is unchanged for a path the tree cannot show');
+    }
+
     public function testHoverHighlightsRowUnderPointer(): void
     {
         $project = new TempProject(['a.php' => "<?php\n", 'b.php' => "<?php\n", 'sub/c.php' => "<?php\n"]);
