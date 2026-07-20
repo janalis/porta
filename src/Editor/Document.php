@@ -542,6 +542,86 @@ final class Document
     }
 
     /**
+     * Sort the selected line block ascending (byte order). A no-op — returning
+     * false — when fewer than two lines are covered or they are already sorted.
+     */
+    public function sortLines(): bool
+    {
+        [$first, $last] = $this->selectedLineSpan();
+        if ($last <= $first) {
+            return false;
+        }
+        $block = \array_slice($this->lines, $first, $last - $first + 1);
+        $sorted = $block;
+        sort($sorted, \SORT_STRING);
+        if ($sorted === $block) {
+            return false;
+        }
+
+        return $this->replaceLineBlock($first, \count($block), $sorted);
+    }
+
+    /**
+     * Join the selected line block into one line (single space between the
+     * trimmed pieces); with no multi-line selection, join the current line with
+     * the one below. False when there is no line below to join.
+     */
+    public function joinLines(): bool
+    {
+        [$first, $last] = $this->selectedLineSpan();
+        if ($first === $last) {
+            if ($first + 1 >= \count($this->lines)) {
+                return false;
+            }
+            $last = $first + 1;
+        }
+        $joined = rtrim($this->lines[$first]);
+        for ($i = $first + 1; $i <= $last; ++$i) {
+            $joined = rtrim($joined.' '.ltrim($this->lines[$i]));
+        }
+
+        return $this->replaceLineBlock($first, $last - $first + 1, [$joined]);
+    }
+
+    /**
+     * Toggle the case of the selected line block: all-uppercase content becomes
+     * lowercase, otherwise uppercase. False when there is no cased letter to
+     * flip.
+     */
+    public function toggleCaseLines(): bool
+    {
+        [$first, $last] = $this->selectedLineSpan();
+        $block = \array_slice($this->lines, $first, $last - $first + 1);
+        $joined = implode("\n", $block);
+        $upper = mb_strtoupper($joined);
+        $transformed = $joined === $upper ? mb_strtolower($joined) : $upper;
+        if ($transformed === $joined) {
+            return false;
+        }
+
+        return $this->replaceLineBlock($first, \count($block), explode("\n", $transformed));
+    }
+
+    /**
+     * Replace $length lines starting at $first with $replacement in one undo
+     * step, clearing the selection and clamping the caret into the result.
+     * Shared by {@see sortLines()}, {@see joinLines()} and {@see toggleCaseLines()}.
+     *
+     * @param list<string> $replacement
+     */
+    private function replaceLineBlock(int $first, int $length, array $replacement): bool
+    {
+        $this->pushUndo();
+        array_splice($this->lines, $first, $length, $replacement);
+        $this->selection->clear();
+        $this->cursorLine = min($this->cursorLine, \count($this->lines) - 1);
+        $this->cursorCol = min($this->cursorCol, \strlen($this->lines[$this->cursorLine]));
+        $this->touch();
+
+        return true;
+    }
+
+    /**
      * The destination line for {@see moveStatement()} in direction $delta,
      * hopping a run of blank lines in one step, or null when the block is
      * already at the edge and cannot move.

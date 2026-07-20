@@ -342,6 +342,65 @@ final class DocumentTest extends TestCase
         $this->assertFalse($doc->deleteLines());
     }
 
+    public function testSortLinesSortsTheSelectedBlockOnly(): void
+    {
+        $doc = new Document("banana\napple\ncherry\nzzz");
+        $doc->setCursor(0, 0);
+        $doc->beginSelect();
+        $doc->setCursor(2, 6, selection: SelectionMode::Keep); // lines 0-2
+
+        $this->assertTrue($doc->sortLines());
+        $this->assertSame(['apple', 'banana', 'cherry', 'zzz'], $doc->getLines(), 'the trailing line is untouched');
+    }
+
+    public function testSortLinesNoOps(): void
+    {
+        $single = new Document('solo');
+        $this->assertFalse($single->sortLines(), 'a single line cannot be sorted');
+
+        $ordered = new Document("a\nb\nc");
+        $ordered->setCursor(0, 0);
+        $ordered->beginSelect();
+        $ordered->setCursor(2, 1, selection: SelectionMode::Keep);
+        $this->assertFalse($ordered->sortLines(), 'an already-sorted block is a no-op');
+    }
+
+    public function testJoinLines(): void
+    {
+        $doc = new Document("foo\n    bar\nbaz");
+        $doc->setCursor(0, 0); // no selection → join with the line below, trimming
+        $this->assertTrue($doc->joinLines());
+        $this->assertSame(['foo bar', 'baz'], $doc->getLines());
+
+        $doc->setCursor(1, 0);
+        $this->assertFalse($doc->joinLines(), 'the last line has nothing below to join');
+
+        $block = new Document("a\nb\nc\nd");
+        $block->setCursor(0, 0);
+        $block->beginSelect();
+        $block->setCursor(2, 1, selection: SelectionMode::Keep); // lines 0-2
+        $this->assertTrue($block->joinLines());
+        $this->assertSame(['a b c', 'd'], $block->getLines());
+    }
+
+    public function testToggleCaseLines(): void
+    {
+        $doc = new Document("Hello\nWorld");
+        $doc->setCursor(0, 0);
+        $doc->beginSelect();
+        $doc->setCursor(1, 5, selection: SelectionMode::Keep); // lines 0-1
+
+        $this->assertTrue($doc->toggleCaseLines(), 'mixed case → upper');
+        $this->assertSame(['HELLO', 'WORLD'], $doc->getLines());
+
+        // The selection cleared; the caret line alone flips back down.
+        $this->assertTrue($doc->toggleCaseLines(), 'all upper → lower');
+        $this->assertSame('world', $doc->getLine(1));
+
+        $nums = new Document('12345');
+        $this->assertFalse($nums->toggleCaseLines(), 'no cased letters → no-op');
+    }
+
     public function testToggleComment(): void
     {
         $doc = new Document("    return 1;\n    echo 2;");

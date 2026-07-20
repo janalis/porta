@@ -14,6 +14,7 @@ use Porta\Editor\EditorCompletion;
 use Porta\Editor\EditorStructural;
 use Porta\Editor\FoldModel;
 use Porta\Editor\MultiCaret;
+use Porta\Editor\SelectionMode;
 use Porta\Input\TextInput;
 use Porta\Tests\Support\FakeEditorHost;
 use Symfony\Component\Tui\Input\Keybindings;
@@ -160,6 +161,30 @@ final class EditorActionsTest extends TestCase
         $notifications = $this->count_('notifyChange');
         $actions->run('move_line_up');
         $this->assertSame($notifications, $this->count_('notifyChange'));
+    }
+
+    public function testRunSortJoinAndToggleCaseLines(): void
+    {
+        $actions = $this->actions("banana\napple\ncherry\n");
+        $this->doc->setCursor(0, 0);
+        $this->doc->beginSelect();
+        $this->doc->setCursor(2, 6, selection: SelectionMode::Keep);
+        $actions->run('sort_lines');
+        $this->assertSame("apple\nbanana\ncherry\n", $this->doc->getText());
+
+        $join = $this->actions("foo\nbar\n");
+        $join->run('join_lines');
+        $this->assertSame("foo bar\n", $this->doc->getText());
+
+        $case = $this->actions("Hi\n");
+        $case->run('toggle_case');
+        $this->assertSame("HI\n", $this->doc->getText());
+
+        // A no-op verb fires no change notification.
+        $none = $this->actions('solo');
+        $before = $this->count_('notifyChange');
+        $none->run('sort_lines');
+        $this->assertSame($before, $this->count_('notifyChange'), 'a single-line sort changes nothing');
     }
 
     public function testRunToggleComment(): void
