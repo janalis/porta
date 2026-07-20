@@ -7,10 +7,8 @@ namespace Porta\Search;
 use Porta\Editor\BufferService;
 use Porta\Editor\OpenFocus;
 use Porta\History\LocalHistoryController;
-use Porta\Lsp\NavigationController;
 use Porta\Support\Scheduler;
 use Porta\Ui\BottomDock;
-use Porta\Ui\CommandPalette;
 use Porta\Ui\DockTab;
 use Porta\Ui\DockToolTab;
 use Porta\Ui\EditorArea;
@@ -38,8 +36,6 @@ final class SearchUiWiring
         private readonly EditorArea $editorArea,
         private readonly Tui $tui,
         private readonly BottomDock $panels,
-        private readonly CommandPalette $commandPalette,
-        private readonly NavigationController $navigation,
         private readonly ProjectSearchController $projectSearch,
         private readonly LocalHistoryController $localHistory,
         private readonly TodoScanner $todoScanner,
@@ -72,28 +68,9 @@ final class SearchUiWiring
         });
     }
 
-    /** The shared bottom results panel: live queries, toggles, jumps, close. */
+    /** The shared bottom results panel: list tools, toggles, jumps, close. */
     private function wireResultsPanel(): void
     {
-        // The results panel's query row serves the command palette and workspace
-        // symbol search (find-in-project's query lives in the modal). The
-        // BottomDock's mode selects the handler.
-        $this->resultsPanel->onQueryChanged(function (string $query): void {
-            $this->cancelDebounce();
-            if (ResultsPanelMode::Action === $this->panels->mode()) {
-                // The command palette filters synchronously (no I/O).
-                $this->commandPalette->filter($query);
-
-                return;
-            }
-            // Workspace symbol search is the only other query mode; debounce it.
-            $this->resultsPanel->setSearching();
-            $this->searchDebounce = $this->scheduler->delay(0.25, function () use ($query): void {
-                $this->searchDebounce = null;
-                $this->navigation->requestWorkspaceSymbols($query);
-            });
-        });
-
         // F5 re-runs the current find-in-project query (picks up on-disk
         // changes) or, on the TODO tab, re-scans the project. Routed by the
         // BOUND tab's mode — the dock's mode field may lag behind tool
@@ -139,11 +116,6 @@ final class SearchUiWiring
             $mode = $this->panels->activeTool()->mode ?? $this->panels->mode();
             if (\in_array($mode, [ResultsPanelMode::LspLog, ResultsPanelMode::Notifications], strict: true)) {
                 return; // log rows carry no file location
-            }
-            if (ResultsPanelMode::Action === $mode) {
-                $this->commandPalette->runAt($line);
-
-                return;
             }
             if (ResultsPanelMode::History === $mode) {
                 $this->localHistory->restore($line);

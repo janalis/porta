@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 namespace Porta\Ui;
 
-use Porta\Config\CommandRegistry;
 use Porta\Editor\BufferManager;
 use Porta\I18n\Translator;
 use Porta\Lsp\LspLog;
@@ -27,8 +26,6 @@ final class WorkbenchActions
         private readonly Tui $tui,
         private readonly MenuBarWidget $menuBar,
         private readonly BottomDock $panels,
-        private readonly CommandPalette $commandPalette,
-        private readonly CommandRegistry $commands,
         private readonly NotificationLog $notificationLog,
         private readonly LspLog $lspLog,
     ) {}
@@ -54,14 +51,6 @@ final class WorkbenchActions
         $this->menuBar->open(0);
         $this->tui->setFocus($this->menuBar);
         $this->tui->requestRender();
-    }
-
-    public function openCommandPalette(): void
-    {
-        // Through openQuery so the dock captures which tool tab to restore
-        // when the picker closes.
-        $this->panels->openQuery(ResultsPanelMode::Action, $this->translator->trans('Find Action'));
-        $this->commandPalette->open($this->commands->paletteCommands());
     }
 
     /**

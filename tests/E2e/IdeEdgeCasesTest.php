@@ -3258,7 +3258,7 @@ final class IdeEdgeCasesTest extends TestCase
                     }
                 },
                 750 => function ($tui, $terminal): void {
-                    $this->assertSame('results', $tui->getFocus()?->getId());
+                    $this->assertTrue($tui->getById('editor')->isSearchOverlayOpen(), 'go-to-symbol opens the centered picker');
                     $tui->tick();
                     $screen = AnsiUtils::stripAnsiCodes($terminal->getOutput());
                     $this->assertStringContainsString('Go to Symbol', $screen);
@@ -4093,7 +4093,7 @@ final class IdeEdgeCasesTest extends TestCase
             [
                 300 => function ($tui): void {
                     $tui->handleInput("\x1b[97;6u"); // ctrl+shift+a
-                    $this->assertSame('results', $tui->getFocus()?->getId());
+                    $this->assertTrue($tui->getById('editor')->isSearchOverlayOpen(), 'the command palette opens the centered picker');
                     foreach (str_split('save all') as $ch) {
                         $tui->handleInput($ch);
                     }
@@ -6961,7 +6961,7 @@ final class IdeEdgeCasesTest extends TestCase
             [
                 200 => static function ($tui, $terminal, $ide): void {
                     $results = $tui->getById('results');
-                    $results->open('Find in Project', ResultsPanelFields::queryOnly());
+                    $results->open('Usages', ResultsPanelFields::resultsOnly());
                     $results->setResults([
                         ['path' => 'b.php', 'line' => 0, 'text' => 'one'],
                         ['path' => 'c.php', 'line' => 0, 'text' => 'two'],
@@ -6970,9 +6970,9 @@ final class IdeEdgeCasesTest extends TestCase
                     $tui->tick(); // force a frame so the panel gets a positioned rect
                     $renderer = new \ReflectionProperty($ide, 'renderer')->getValue($ide);
                     $rect = $renderer->getWidgetRect($results);
-                    // Header is relative row 0; the second result is at relative row 2.
+                    // A list tool has no header row; the second result is at relative row 1.
                     $x = $rect->col + 6;
-                    $y = $rect->row + 3; // 1-based screen row of relative row 2
+                    $y = $rect->row + 2; // 1-based screen row of relative row 1
                     $tui->handleInput(\sprintf("\x1b[<35;%d;%dM", $x, $y)); // hover the second result
                     $tui->handleInput(\sprintf("\x1b[<0;%d;%dM", $x, $y)); // click it
                 },

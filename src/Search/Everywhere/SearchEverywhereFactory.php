@@ -61,6 +61,53 @@ final class SearchEverywhereFactory
         );
     }
 
+    /**
+     * The command palette behind Ctrl+Shift+A: the centered overlay scoped to the
+     * actions source alone. An empty query lists every command (no recent-files
+     * tray), and activating a hit runs it.
+     */
+    public function createCommandPalette(): SearchEverywhereController
+    {
+        return new SearchEverywhereController(
+            $this->editor,
+            [new ActionsSource($this->commands)],
+            [],
+            $this->buffers,
+            $this->tui,
+            $this->rootDir,
+            $this->bufferService,
+            $this->scheduler,
+            $this->translator,
+            'Find Action',
+            seedRecentFiles: false,
+        );
+    }
+
+    /**
+     * Go to Symbol in Project: the centered overlay scoped to the LSP
+     * workspace-symbol source (async), with no recent-files tray.
+     */
+    public function createGoToSymbol(): SearchEverywhereController
+    {
+        $openFile = fn (string $path, OpenFocus $focus) => $this->bufferService->openFile($path, $focus);
+        $jumpTo = fn (int $line, int $col) => $this->editor->jumpTo($line, $col);
+        $searchSymbols = new WorkspaceSymbolClient($this->lsp, $this->rootDir)->search(...);
+
+        return new SearchEverywhereController(
+            $this->editor,
+            [],
+            [new WorkspaceSymbolSource($searchSymbols, SearchCategory::Symbols, [], $this->rootDir, $openFile, $jumpTo)],
+            $this->buffers,
+            $this->tui,
+            $this->rootDir,
+            $this->bufferService,
+            $this->scheduler,
+            $this->translator,
+            'Go to Symbol in Project',
+            seedRecentFiles: false,
+        );
+    }
+
     public function create(): SearchEverywhereController
     {
         $openFile = fn (string $path, OpenFocus $focus) => $this->bufferService->openFile($path, $focus);

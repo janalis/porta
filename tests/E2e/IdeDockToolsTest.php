@@ -348,7 +348,7 @@ final class IdeDockToolsTest extends TestCase
         $this->addToAssertionCount(1);
     }
 
-    public function testToolTabsCoexistCycleAndSurviveAPicker(): void
+    public function testToolTabsCoexistCycleAndClose(): void
     {
         putenv('PATH='.$this->originalPath); // real grep for the TODO scan
         $project = new TempProject(['src/Main.php' => "<?php\n// TODO polish\n"]);
@@ -383,14 +383,6 @@ final class IdeDockToolsTest extends TestCase
                     $this->assertStringContainsString('1 results', $tui->getById('results')->statusText(), 'the inactive-tab refresh is visible on arrival');
                 },
                 600 => function ($tui, $terminal, $ide) use ($dock): void {
-                    // A picker over a tool tab: Esc restores the displaced tab.
-                    $tui->handleInput("\x1b[97;6u"); // ctrl+shift+a → command palette
-                    $tui->tick();
-                    $this->assertSame([], $dock($ide)->aliveTabs(), 'a picker blanks the strip');
-                    $tui->handleInput("\x1b"); // esc → picker closes
-                    $tui->tick();
-                    $this->assertSame('Problems', $tui->getById('results')->getTitle(), 'the displaced tool tab came back');
-
                     // × tabs one by one: the last close gives the slot back via the MRU.
                     $strip = $dock($ide);
                     while ([] !== ($tabs = $strip->aliveTabs())) {

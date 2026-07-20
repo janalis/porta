@@ -45,13 +45,13 @@ final class SearchEverywhereController
         private readonly Scheduler $scheduler,
         private readonly Translator $translator,
         private readonly string $title = 'Search Everywhere',
+        private readonly bool $seedRecentFiles = true,
     ) {}
 
     public function open(): void
     {
         ++$this->generation;
         $this->hitsByCategory = [];
-        $this->seedRecentFiles();
         $this->overlay->openSearch(
             $this->translator->trans($this->title),
             $this->onQuery(...),
@@ -59,6 +59,7 @@ final class SearchEverywhereController
             $this->onClose(...),
             $this->translator->trans('no results'),
         );
+        $this->seedEmpty();
         $this->render();
     }
 
@@ -68,7 +69,7 @@ final class SearchEverywhereController
         $this->hitsByCategory = [];
 
         if ('' === $text) {
-            $this->seedRecentFiles();
+            $this->seedEmpty();
             $this->render();
 
             return;
@@ -133,6 +134,24 @@ final class SearchEverywhereController
         if (null !== $this->debounceWatcher) {
             $this->scheduler->cancel($this->debounceWatcher);
             $this->debounceWatcher = null;
+        }
+    }
+
+    /**
+     * The empty-query state. File-bearing pickers (Search Everywhere, go-to-file)
+     * show the recent-files tray; the scoped pickers have none, so their sync
+     * sources answer the empty query themselves — the actions source lists every
+     * command, a source-less symbol picker just shows its empty message.
+     */
+    private function seedEmpty(): void
+    {
+        if ($this->seedRecentFiles) {
+            $this->seedRecentFiles();
+
+            return;
+        }
+        foreach ($this->syncSources as $source) {
+            $source->query('', $this->guard($this->generation, $source->category()));
         }
     }
 

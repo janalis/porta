@@ -42,9 +42,6 @@ final class BottomDock
     /** @var (callable(int): void)|null closes the session at an index for real (RunController) */
     private $onTerminalSessionClose = null;
 
-    /** The tool tab to restore when a transient picker closes, if it is still alive. */
-    private ?DockToolTab $pickerRestore = null;
-
     /** @var list<callable(DockToolTab): void> fired when a tool tab is bound into the panel */
     private array $onToolBound = [];
 
@@ -71,18 +68,10 @@ final class BottomDock
             $panel->onOpen(fn () => $this->activate($panel));
             $panel->onClose(fn () => $this->restoreAfter($panel));
         }
-        // Esc is a soft hide — the tool stays alive one tab away. The
-        // transient pickers (palette, go-to-symbol) close for real instead.
+        // Esc is a soft hide — the tool stays alive one tab away.
         $this->terminalPanel->onDismiss($this->hide(...));
         $this->debugPanel->onDismiss($this->hide(...));
-        $this->resultsPanel->onDismiss(function (): void {
-            if ($this->isPickerMode()) {
-                $this->resultsPanel->close();
-
-                return;
-            }
-            $this->hide();
-        });
+        $this->resultsPanel->onDismiss($this->hide(...));
         $this->dockTabs->setProvider($this->aliveTabs(...));
         $this->dockTabs->onTabSelected($this->reveal(...));
         $this->dockTabs->onTabClosed($this->closeTab(...));
@@ -112,14 +101,14 @@ final class BottomDock
      * terminal session, one per alive tool tab (off the models, so tabs stay
      * listed even while their panel widget is closed), then Debug. Only the
      * entry on display carries a status. Empty (the strip disappears) while
-     * the dock is hidden or a transient picker owns the results panel.
+     * the dock is hidden.
      *
      * @return list<array{tab: DockTab, key: string, label: string, active: bool, status: string}>
      */
     public function aliveTabs(): array
     {
         $visible = $this->visiblePanel();
-        if (null === $visible || $visible === $this->resultsPanel && $this->isPickerMode()) {
+        if (null === $visible) {
             return [];
         }
 
@@ -328,18 +317,6 @@ final class BottomDock
         $this->mode = $mode;
     }
 
-    /** Open the results panel as a transient picker (palette, go-to-symbol) and focus it. */
-    public function openQuery(ResultsPanelMode $mode, string $title): void
-    {
-        if (!$this->isPickerMode()) { // a nested picker keeps the original restore target
-            $this->pickerRestore = $this->resultsPanel->isVisible() ? $this->tools->active() : null;
-        }
-        $this->mode = $mode;
-        $this->resultsPanel->open($title, ResultsPanelFields::queryOnly());
-        $this->tui->setFocus($this->resultsPanel);
-        $this->tui->requestRender();
-    }
-
     /**
      * Open (or reuse-and-refresh, keyed by mode+title) a list tool's tab,
      * bind it into the panel and focus it.
@@ -371,10 +348,10 @@ final class BottomDock
         $this->tui->requestRender();
     }
 
-    /** The tool tab the panel currently serves (open, not necessarily visible), or null (closed panel / picker). */
+    /** The tool tab the panel currently serves (open, not necessarily visible), or null (closed panel). */
     public function activeTool(): ?DockToolTab
     {
-        return $this->resultsPanel->isOpen() && !$this->isPickerMode() ? $this->tools->active() : null;
+        return $this->resultsPanel->isOpen() ? $this->tools->active() : null;
     }
 
     /** Whether $tab is still in the strip — the async-completion staleness guard. */
@@ -460,12 +437,6 @@ final class BottomDock
         return [$this->terminalPanel, $this->resultsPanel, $this->debugPanel];
     }
 
-    /** The transient pickers served by the results panel — they bypass the dock strip. */
-    private function isPickerMode(): bool
-    {
-        return \in_array($this->mode, [ResultsPanelMode::Action, ResultsPanelMode::Symbol], strict: true);
-    }
-
     /** A panel opened (or re-opened): it takes the dock slot; the others park behind it. */
     private function activate(TerminalPanelWidget|ResultsPanelWidget|DebugPanelWidget $panel): void
     {
@@ -487,16 +458,6 @@ final class BottomDock
     private function restoreAfter(TerminalPanelWidget|ResultsPanelWidget|DebugPanelWidget $panel): void
     {
         $this->mru = array_values(array_filter($this->mru, static fn (AbstractWidget $seen): bool => $seen !== $panel));
-        // A closing picker gives the slot back to the tool tab it displaced.
-        if ($panel === $this->resultsPanel && $this->isPickerMode() && null !== $this->pickerRestore && $this->tools->contains($this->pickerRestore)) {
-            $restore = $this->pickerRestore;
-            $this->pickerRestore = null;
-            $this->bind($restore); // re-opens the panel; focus stays with the editor
-            $this->returnFocusFrom($panel);
-
-            return;
-        }
-        $this->pickerRestore = null;
         $last = $this->mru[\count($this->mru) - 1] ?? null;
         $last?->reveal();
         $this->returnFocusFrom($panel);

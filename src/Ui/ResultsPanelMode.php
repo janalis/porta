@@ -13,10 +13,6 @@ enum ResultsPanelMode
 {
     /** Project-wide text search (grep), with replace. */
     case Search;
-    /** Workspace symbol search (workspace/symbol). */
-    case Symbol;
-    /** Command palette (Find Action) — synchronous filtering. */
-    case Action;
     /** Local-history snapshots for the active file. */
     case History;
     /** Aggregated diagnostics across open buffers. */

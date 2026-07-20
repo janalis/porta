@@ -100,7 +100,6 @@ use Porta\Support\Scheduler;
 use Porta\Ui\BidiTui;
 use Porta\Ui\BottomDock;
 use Porta\Ui\ChromeInvalidator;
-use Porta\Ui\CommandPalette;
 use Porta\Ui\ContextMenuOpener;
 use Porta\Ui\CursorStyle;
 use Porta\Ui\EditorArea;
@@ -238,8 +237,10 @@ return static function (ContainerConfigurator $container, ContainerBuilder $buil
         ->bind(ContainerWidget::class.' $settingsContent', service('porta.widget.settings_content'))
         ->bind(ContainerWidget::class.' $gitArea', service('porta.widget.git_area'))
         ->bind(ContainerWidget::class.' $gitLeft', service('porta.widget.git_left'))
-        // The files-only Search Everywhere instance behind Ctrl+P (go-to-file).
-        ->bind(SearchEverywhereController::class.' $goToFile', service('porta.go_to_file'));
+        // The scoped Search Everywhere instances behind Ctrl+P / palette / go-to-symbol.
+        ->bind(SearchEverywhereController::class.' $goToFile', service('porta.go_to_file'))
+        ->bind(SearchEverywhereController::class.' $commandPalette', service('porta.command_palette'))
+        ->bind(SearchEverywhereController::class.' $goToSymbol', service('porta.go_to_symbol'));
 
     // Autoregister every Porta\ class. Only the orchestrator and the container
     // factory are excluded; everything else that isn't a real service registers
@@ -452,8 +453,10 @@ return static function (ContainerConfigurator $container, ContainerBuilder $buil
     // The Search Everywhere modal aggregates per-source hooks; its factory
     // owns them (see SearchEverywhereFactory).
     $services->set(SearchEverywhereController::class)->factory([service(SearchEverywhereFactory::class), 'create']);
-    // A second, files-only instance behind Ctrl+P; the bind above feeds it to the go-to-file consumers.
+    // Scoped instances behind Ctrl+P / palette / go-to-symbol; the binds feed them to their consumers.
     $services->set('porta.go_to_file', SearchEverywhereController::class)->factory([service(SearchEverywhereFactory::class), 'createGoToFile']);
+    $services->set('porta.command_palette', SearchEverywhereController::class)->factory([service(SearchEverywhereFactory::class), 'createCommandPalette']);
+    $services->set('porta.go_to_symbol', SearchEverywhereController::class)->factory([service(SearchEverywhereFactory::class), 'createGoToSymbol']);
 
     // Synthetic infrastructure: external (Renderer/Tui), closure-wired objects
     // the container can't build, or values that exist before the container does

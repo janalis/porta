@@ -35,6 +35,7 @@ final class WorkbenchCommands implements CommandProvider
         private readonly PaneResizer $paneResizer,
         private readonly BufferService $bufferService,
         private readonly SearchEverywhereController $searchEverywhere,
+        private readonly SearchEverywhereController $commandPalette,
         private readonly LocalHistoryController $localHistory,
         private readonly RunController $run,
         private readonly EditorArea $editorArea,
@@ -92,7 +93,16 @@ final class WorkbenchCommands implements CommandProvider
                 inPalette: PaletteVisibility::Hidden,
                 when: fn (): bool => $this->paneResizer->canResize(),
             )
-            ->add('ide_command_palette', fn () => $this->workbench->openCommandPalette(), keyBound: KeyDispatch::Bound, inPalette: PaletteVisibility::Hidden)
+            ->add(
+                'ide_command_palette',
+                function (): void {
+                    if ($this->bufferService->ensureTextEditorActive()) {
+                        $this->commandPalette->open();
+                    }
+                },
+                keyBound: KeyDispatch::Bound,
+                inPalette: PaletteVisibility::Hidden,
+            )
             ->add(
                 'ide_search_everywhere',
                 function (): void {

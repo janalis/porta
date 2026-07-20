@@ -40,13 +40,9 @@ final class ResultsPanelWidget extends OverlayWidget implements FocusableInterfa
     use ListPanelInteraction;
     use PanelRows;
 
-    private bool $withQuery = false;
     private bool $withFilter = false;
     private string $title = '';
-    private readonly TextField $query;
     private readonly TextField $filter;
-    /** 'query' | 'filter' — which field typing edits; cycled by Tab */
-    private string $activeField = 'query';
     private readonly ListSelection $list;
     private bool $searching = false;
 
@@ -63,8 +59,6 @@ final class ResultsPanelWidget extends OverlayWidget implements FocusableInterfa
     /** @var list<DisplayRow> the flattened rows actually rendered/navigated */
     private array $displayRows = [];
 
-    /** @var (callable(string): void)|null */
-    private $onQueryChanged = null;
     /** @var (callable(): void)|null re-run the current search (F5) */
     private $onRerun = null;
     /** @var (callable(string, int): void)|null */
@@ -83,16 +77,8 @@ final class ResultsPanelWidget extends OverlayWidget implements FocusableInterfa
         $this->translator = $translator ?? new Translator('en');
         $this->list = new ListSelection();
         $this->addStyleClass('list'); // the theme's .list::selected(:focus) rules style the selection
-        $this->query = new TextField(style: $cursorStyle);
         $this->filter = new TextField(style: $cursorStyle);
         $this->visibleRows = 10;
-    }
-
-    public function onQueryChanged(callable $callback): self
-    {
-        $this->onQueryChanged = $callback;
-
-        return $this;
     }
 
     public function onRerun(callable $callback): self
@@ -136,14 +122,10 @@ final class ResultsPanelWidget extends OverlayWidget implements FocusableInterfa
     public function open(string $title, ResultsPanelFields $fields): void
     {
         $this->markOpen();
-        $this->withQuery = $fields->query;
         $this->withFilter = $fields->filter;
         $this->grouped = $fields->grouped;
         $this->grouping = ResultGrouping::File;
-        // Focus the first shown field (the results-window mode has only the filter).
-        $this->activeField = $this->focusableFields()[0] ?? 'query';
         $this->title = $title;
-        $this->query->clear();
         $this->filter->clear();
         $this->results = [];
         $this->collapsed = [];
@@ -305,24 +287,6 @@ final class ResultsPanelWidget extends OverlayWidget implements FocusableInterfa
 
             return;
         }
-        if ($kb->matches($data, 'switch_field') && \count($this->focusableFields()) > 1) {
-            $fields = $this->focusableFields();
-            $pos = (int) array_search($this->activeField, $fields, strict: true);
-            $this->activeField = $fields[($pos + 1) % \count($fields)];
-            $this->invalidate();
-
-            return;
-        }
-        if ($kb->matches($data, 'insert_newline') && 'query' === $this->activeField) {
-            $field = $this->activeTextField();
-            if (null !== $field) {
-                $field->insertNewline();
-                $this->afterFieldEdit();
-                $this->invalidate();
-            }
-
-            return;
-        }
         if ($kb->matches($data, 'delete_char_backward')) {
             $field = $this->activeTextField();
             if (null !== $field && $field->backspace()) {
@@ -340,40 +304,16 @@ final class ResultsPanelWidget extends OverlayWidget implements FocusableInterfa
         }
     }
 
-    /** @return list<string> the shown text fields, in Tab-cycle order */
-    private function focusableFields(): array
-    {
-        $fields = [];
-        if ($this->withQuery) {
-            $fields[] = 'query';
-        }
-        if ($this->withFilter) {
-            $fields[] = 'filter';
-        }
-
-        return $fields;
-    }
-
-    /** The TextField typing currently edits, or null when no field is shown. */
+    /** The filter TextField typing edits, or null when the panel shows no filter. */
     private function activeTextField(): ?TextField
     {
-        return match ($this->activeField) {
-            'filter' => $this->withFilter ? $this->filter : null,
-            default => $this->withQuery ? $this->query : null,
-        };
+        return $this->withFilter ? $this->filter : null;
     }
 
-    /** After an edit: the query re-runs the search, the filter re-narrows the loaded view. */
+    /** After a filter edit: re-narrow the loaded view (client-side; no re-grep). */
     private function afterFieldEdit(): void
     {
-        if ('query' === $this->activeField) {
-            $this->notifyQuery();
-
-            return;
-        }
-        if ('filter' === $this->activeField) {
-            $this->rebuildView(); // client-side; no re-grep
-        }
+        $this->rebuildView();
     }
 
     /** Activate a display row: a file header collapses/expands, a match row jumps. */
@@ -432,10 +372,10 @@ final class ResultsPanelWidget extends OverlayWidget implements FocusableInterfa
         return \count($this->displayRows);
     }
 
-    /** The title/query row (query modes only), then the filter row (when shown). */
+    /** The filter row (when shown); list tools otherwise carry no header row. */
     protected function headerRowCount(): int
     {
-        return ($this->withQuery ? 1 : 0) + ($this->withFilter ? 1 : 0);
+        return $this->withFilter ? 1 : 0;
     }
 
     public function render(RenderContext $context): array
@@ -447,24 +387,14 @@ final class ResultsPanelWidget extends OverlayWidget implements FocusableInterfa
         $columns = $context->getColumns();
         $lines = [];
 
-        // List modes have no header row of their own — the dock strip carries
-        // the tool title (tab label) and the status (right side); only the
-        // query modes keep their title row, which hosts the query field.
-        $showCursor = $this->focused && $this->withQuery;
-        if ($this->withQuery) {
-            $queryField = $this->query->render(cursor: $showCursor && 'query' === $this->activeField ? CaretVisibility::Shown : CaretVisibility::Hidden);
-            $prefix = ' '.$this->title.': '.$queryField.$this->styles->of(Role::Dim)->apply(' '.$this->buildStatus());
-            // The query modes are the transient pickers (palette, go-to-symbol):
-            // they are kept off the dock strip, so this hint is their only way
-            // out — every other transient surface carries the same one.
-            $lines[] = HeaderRenderer::render($prefix, $columns, $this->styles->of(Role::HeaderBar)->withBold(), suffix: 'Esc');
-        }
-
+        // List tools have no header row of their own — the dock strip carries
+        // the tool title (tab label) and the status (right side). The filter row
+        // is the one exception (the Find tool window narrows its loaded results).
         if ($this->withFilter) {
             $lines[] = $this->fieldRow(
                 $this->translator->trans('Filter'),
                 $this->filter,
-                $showCursor && 'filter' === $this->activeField ? CaretVisibility::Shown : CaretVisibility::Hidden,
+                CaretVisibility::Hidden,
                 '  '.$this->translator->trans('(narrows the results below)'),
                 $columns,
             );
@@ -488,18 +418,13 @@ final class ResultsPanelWidget extends OverlayWidget implements FocusableInterfa
             };
         }
 
-        if ([] === $this->results && !$this->searching && '' !== $this->query->value()) {
-            // '' ellipsis: a fixed short filler row — never worth a truncation mark.
-            $lines[] = $this->styles->merge(Role::Toolbar, Role::CompletionHint)->apply(AnsiText::truncate(' '.$this->translator->trans('no results'), $columns, pad: true, ellipsis: ''));
-        }
-
         return $this->withMenuOverlay($lines, $columns);
     }
 
-    /** The dock strip's right-aligned status — empty in query modes, whose own header shows it. */
+    /** The dock strip's right-aligned status (result/shown counts). */
     public function statusText(): string
     {
-        return $this->withQuery ? '' : $this->buildStatus();
+        return $this->buildStatus();
     }
 
     /** 'N results · M shown', or 'searching…' while a search runs. */
@@ -519,13 +444,6 @@ final class ResultsPanelWidget extends OverlayWidget implements FocusableInterfa
         }
 
         return $status;
-    }
-
-    private function notifyQuery(): void
-    {
-        if (null !== $this->onQueryChanged) {
-            ($this->onQueryChanged)($this->query->value());
-        }
     }
 
     /** A labelled input header row (mask/replace), with a cursor when it is the active field. */

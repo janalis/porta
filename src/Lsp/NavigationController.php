@@ -17,7 +17,6 @@ use Porta\Ui\Notifier;
 use Porta\Ui\ResultsPanelMode;
 use Porta\Widget\CodeEditorWidget;
 use Porta\Widget\EditorNavigationHandler;
-use Porta\Widget\ResultsPanelWidget;
 use Symfony\Component\Tui\Tui;
 
 /**
@@ -31,8 +30,6 @@ final class NavigationController extends AbstractLspController implements Editor
     /** @var list<array{path: string, line: int, col: int}> positions to return to after jumps */
     private array $jumpStack = [];
 
-    private readonly WorkspaceSymbolClient $symbolClient;
-
     public function __construct(
         LspSessionPool $lsp,
         CodeEditorWidget $editor,
@@ -40,15 +37,12 @@ final class NavigationController extends AbstractLspController implements Editor
         Notifier $notifier,
         Translator $translator,
         private readonly BufferManager $buffers,
-        private readonly ResultsPanelWidget $resultsPanel,
         private readonly BottomDock $panels,
         private readonly string $rootDir,
         private readonly FileOpener $files,
         private readonly DocsUrlOpener $docsUrls,
-        ?WorkspaceSymbolClient $symbolClient = null,
     ) {
         parent::__construct($lsp, $editor, $tui, $notifier, $translator);
-        $this->symbolClient = $symbolClient ?? new WorkspaceSymbolClient($lsp, $rootDir);
     }
 
     public function requestDefinition(int $line, int $utf16Col): void
@@ -418,21 +412,6 @@ final class NavigationController extends AbstractLspController implements Editor
                 $this->tui->requestRender();
             },
         );
-    }
-
-    public function requestWorkspaceSymbols(string $query): void
-    {
-        $this->symbolClient->search($query, function (array $symbols): void {
-            if (!$this->resultsPanel->isOpen() || ResultsPanelMode::Symbol !== $this->panels->mode()) {
-                return;
-            }
-            $results = array_map(
-                static fn (array $symbol): array => ['path' => $symbol['path'], 'line' => $symbol['line'], 'text' => $symbol['label']],
-                $symbols,
-            );
-            $this->resultsPanel->setResults($results);
-            $this->tui->requestRender();
-        });
     }
 
     private function lineAt(string $path, int $line): string

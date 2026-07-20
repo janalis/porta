@@ -5,24 +5,17 @@ declare(strict_types=1);
 namespace Porta\Widget;
 
 /**
- * Which input fields the shared results panel shows when opened — a live query
- * box, a grouped tree, and a client-side filter — as one value instead of
- * positional flags on {@see ResultsPanelWidget::open()}. The named factories
- * spell out the panel's real modes at the call sites.
+ * Which input fields the shared results panel shows when opened — a grouped tree
+ * and a client-side filter — as one value instead of positional flags on
+ * {@see ResultsPanelWidget::open()}. The named factories spell out the panel's
+ * real modes at the call sites.
  */
 final readonly class ResultsPanelFields
 {
     public function __construct(
-        public bool $query = false,
         public bool $grouped = false,
         public bool $filter = false,
     ) {}
-
-    /** Live query only (command palette, symbol search). */
-    public static function queryOnly(): self
-    {
-        return new self(query: true);
-    }
 
     /** A static list with no inputs (problems, local history, go-to results). */
     public static function resultsOnly(): self

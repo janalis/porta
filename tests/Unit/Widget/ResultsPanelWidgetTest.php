@@ -10,7 +10,6 @@ use Porta\Widget\ResultsPanelFields;
 use Porta\Widget\ResultsPanelWidget;
 use Symfony\Component\Tui\Ansi\AnsiUtils;
 use Symfony\Component\Tui\Render\RenderContext;
-use Symfony\Component\Tui\Style\CursorShape;
 
 final class ResultsPanelWidgetTest extends TestCase
 {
@@ -42,41 +41,23 @@ final class ResultsPanelWidgetTest extends TestCase
         $this->assertFalse($panel->isOpen());
     }
 
-    public function testQueryModeTypingNotifiesAndRenders(): void
+    public function testSearchingStatusIsCarriedByTheStripStatus(): void
     {
+        // List tools show their status on the dock strip, not a header row.
         $panel = new ResultsPanelWidget();
-        $panel->setFocused(true);
-        $queries = [];
-        $panel->onQueryChanged(static function (string $q) use (&$queries): void {
-            $queries[] = $q;
-        });
-        $panel->open('Find in Project', ResultsPanelFields::queryOnly());
-
-        $panel->handleInput('a');
-        $panel->handleInput('b');
-        $panel->handleInput("\x7f"); // backspace
-        $panel->handleInput("\x7f");
-        $panel->handleInput("\x7f"); // backspace on empty: no notification
-
-        $this->assertSame(['a', 'ab', 'a', ''], $queries);
-
+        $panel->open('Find in Project', ResultsPanelFields::searchResults());
         $panel->setSearching();
-        $line = $panel->render(new RenderContext(60, 12))[0];
-        $this->assertStringContainsString('searching…', AnsiUtils::stripAnsiCodes($line));
+        $this->assertStringContainsString('searching…', $panel->statusText());
     }
 
     public function testResultsOnlyModeIgnoresTyping(): void
     {
         $panel = new ResultsPanelWidget();
-        $queries = [];
-        $panel->onQueryChanged(static function (string $q) use (&$queries): void {
-            $queries[] = $q;
-        });
         $panel->open('Usages', ResultsPanelFields::resultsOnly());
         $panel->setResults($this->results(2));
 
-        $panel->handleInput('x');
-        $this->assertSame([], $queries);
+        $panel->handleInput('x'); // no input field to edit — a no-op
+        $this->assertTrue($panel->isOpen());
     }
 
     public function testJumpOnSelectedResultNotifiesAndStaysOpen(): void
@@ -114,7 +95,7 @@ final class ResultsPanelWidgetTest extends TestCase
     {
         $panel = new ResultsPanelWidget();
         $panel->setFocused(true);
-        $panel->open('Find in Project', ResultsPanelFields::queryOnly());
+        $panel->open('Find in Project', ResultsPanelFields::resultsOnly());
         $panel->setResults($this->results(25));
 
         for ($i = 0; $i < 15; ++$i) {
@@ -145,18 +126,6 @@ final class ResultsPanelWidgetTest extends TestCase
         $panel->scrollBy(-100); // wheel up past the top → clamps at the first row
         $plain = implode("\n", array_map(AnsiUtils::stripAnsiCodes(...), $panel->render(new RenderContext(60, 12))));
         $this->assertStringContainsString('File0.php', $plain, 'scrolled back to the top');
-    }
-
-    public function testNoResultsRowShownForNonEmptyQuery(): void
-    {
-        $panel = new ResultsPanelWidget();
-        $panel->open('Find in Project', ResultsPanelFields::queryOnly());
-        $panel->handleInput('q');
-        $panel->setResults([]);
-
-        $plain = implode("\n", array_map(AnsiUtils::stripAnsiCodes(...), $panel->render(new RenderContext(60, 12))));
-        $this->assertStringContainsString('no results', $plain);
-        $this->assertStringContainsString('0 results', $plain);
     }
 
     public function testUnfocusedSelectionStyleAndExactWidths(): void
@@ -207,15 +176,15 @@ final class ResultsPanelWidgetTest extends TestCase
     public function testOnInputHookConsumes(): void
     {
         $panel = new ResultsPanelWidget();
-        $queries = [];
-        $panel->onQueryChanged(static function (string $q) use (&$queries): void {
-            $queries[] = $q;
-        });
-        $panel->open('X', ResultsPanelFields::queryOnly());
+        $panel->setFocused(true);
+        $panel->open('X', ResultsPanelFields::searchResults());
         $panel->onInput(static fn (string $data): bool => 'Z' === $data);
 
-        $panel->handleInput('Z');
-        $this->assertSame([], $queries);
+        $panel->handleInput('Z'); // consumed by the hook, never reaches the filter
+        $panel->handleInput('a'); // the filter takes this
+        $plain = implode('', array_map(AnsiUtils::stripAnsiCodes(...), $panel->render(new RenderContext(60, 12))));
+        $this->assertStringContainsString('Filter: a', $plain, 'the filter took the un-hooked key');
+        $this->assertStringNotContainsString('Z', $plain, 'the hooked key never reached the filter');
     }
 
     public function testClickResultRowSelectsAndJumps(): void
@@ -318,38 +287,10 @@ final class ResultsPanelWidgetTest extends TestCase
         $panel->onClose(static function () use (&$closed): void {
             $closed = true;
         });
-        $panel->open('X', ResultsPanelFields::queryOnly());
+        $panel->open('X', ResultsPanelFields::resultsOnly());
 
         $panel->handleInput("\x1b");
         $this->assertTrue($closed);
-    }
-
-    public function testShiftEnterInsertsANewlineInTheQuery(): void
-    {
-        $panel = new ResultsPanelWidget();
-        $panel->setFocused(true);
-        $panel->open('Find in Project', ResultsPanelFields::queryOnly());
-        $panel->handleInput('a');
-        $panel->handleInput("\x1b[13;2u"); // shift+enter → newline
-        $panel->handleInput('b');
-
-        $plain = AnsiUtils::stripAnsiCodes(implode("\n", $panel->render(new RenderContext(80, 12))));
-        $this->assertStringContainsString('a⏎b', $plain, 'the multiline query renders the newline as ⏎');
-    }
-
-    public function testLongQueryKeepsTheCaretVisible(): void
-    {
-        $panel = new ResultsPanelWidget();
-        $panel->setFocused(true);
-        $panel->open('Find in Project', ResultsPanelFields::queryOnly());
-        $marker = AnsiUtils::cursorMarker(CursorShape::Bar);
-
-        foreach (str_split(str_repeat('q', times: 100)) as $ch) {
-            $panel->handleInput($ch); // overflow the query in the header
-        }
-        $header = $panel->render(new RenderContext(80, 12))[0];
-        $this->assertSame(1, substr_count($header, $marker), 'query caret stays visible');
-        $this->assertSame(80, AnsiUtils::visibleWidth($header));
     }
 
     public function testRerunKeyFiresTheCallback(): void
@@ -400,42 +341,14 @@ final class ResultsPanelWidgetTest extends TestCase
         $this->assertStringContainsString('· 1 shown', $panel->statusText(), 'the filtered count rides the dock-strip status');
         $this->assertStringContainsString('src/Api.php', $plain);
         $this->assertStringNotContainsString('src/Web.php', $plain, 'the non-matching file is hidden');
-    }
 
-    public function testSwitchFieldCyclesBetweenQueryAndFilter(): void
-    {
-        // A mode with both a query and a filter: Tab cycles between the two.
-        $panel = new ResultsPanelWidget();
-        $panel->setFocused(true);
-        $queries = [];
-        $panel->onQueryChanged(static function (string $q) use (&$queries): void {
-            $queries[] = $q;
-        });
-        $panel->open('Find in Project', new ResultsPanelFields(query: true, filter: true));
-        $panel->setResults([
-            ['path' => 'src/Api.php', 'line' => 0, 'text' => 'match here', 'ranges' => []],
-            ['path' => 'src/Web.php', 'line' => 1, 'text' => 'other', 'ranges' => []],
-        ]);
-
-        // Typing starts in the query.
-        $panel->handleInput('a');
-        $this->assertSame(['a'], $queries);
-
-        // Tab → filter; typing there narrows client-side, not a re-query.
-        $panel->handleInput("\t");
-        foreach (str_split('Api') as $ch) {
-            $panel->handleInput($ch);
+        // Backspacing the filter widens the view again; a backspace on the now
+        // empty field is a no-op.
+        foreach (['', '', '', ''] as $_) {
+            $panel->handleInput("\x7f");
         }
-        $this->assertSame(['a'], $queries, 'filter typing is not a query');
-        $plain = AnsiUtils::stripAnsiCodes(implode("\n", $panel->render(new RenderContext(90, 16))));
-        $this->assertStringContainsString('Filter: Api', $plain);
-        $this->assertStringContainsString('src/Api.php', $plain);
-        $this->assertStringNotContainsString('src/Web.php', $plain);
-
-        // Tab wraps back to the query; backspace still edits it.
-        $panel->handleInput("\t");
-        $panel->handleInput("\x7f");
-        $this->assertSame(['a', ''], $queries);
+        $widened = AnsiUtils::stripAnsiCodes(implode("\n", $panel->render(new RenderContext(90, 16))));
+        $this->assertStringContainsString('src/Web.php', $widened, 'clearing the filter restores the hidden file');
     }
 
     public function testGroupedRenderShowsFileHeadersWithCountsAndIndentedMatches(): void

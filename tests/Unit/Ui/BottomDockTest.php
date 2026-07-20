@@ -133,16 +133,12 @@ final class BottomDockTest extends TestCase
         $this->assertNull($dock->visiblePanel());
     }
 
-    public function testOpenQueryAndShowListDriveTheResultsPanelAndMode(): void
+    public function testShowListDrivesTheResultsPanelAndMode(): void
     {
         $dock = $this->dock();
-        $dock->openQuery(ResultsPanelMode::Symbol, 'Go to Symbol');
-        $this->assertSame(ResultsPanelMode::Symbol, $dock->mode());
-        $this->assertSame($this->results, $dock->visiblePanel());
-        $this->assertSame($this->results, $this->tui->getFocus());
-
         $dock->showList(ResultsPanelMode::Problems, 'Problems', [['path' => 'a.php', 'line' => 1, 'text' => 'boom']]);
         $this->assertSame(ResultsPanelMode::Problems, $dock->mode());
+        $this->assertSame($this->results, $dock->visiblePanel());
 
         $dock->setMode(ResultsPanelMode::Search);
         $this->assertSame(ResultsPanelMode::Search, $dock->mode());
@@ -171,17 +167,6 @@ final class BottomDockTest extends TestCase
         $lone->open('b.php');
         $lone->dismiss(); // no hook wired (isolated widget): falls back to close()
         $this->assertFalse($lone->isOpen());
-    }
-
-    public function testEscOnAPickerClosesItForReal(): void
-    {
-        $dock = $this->dock();
-        $this->terminal->open('Terminal', new TerminalBuffer());
-        $dock->openQuery(ResultsPanelMode::Action, 'Find Action');
-
-        $this->results->dismiss(); // Esc on the command palette
-        $this->assertFalse($this->results->isOpen(), 'a picker closes instead of hiding');
-        $this->assertSame($this->terminal, $dock->visiblePanel(), 'the previously visible tab comes back');
     }
 
     public function testAliveTabsListTheOpenToolsAndMarkTheVisibleOne(): void
@@ -241,16 +226,6 @@ final class BottomDockTest extends TestCase
         $other = $dock->showList(ResultsPanelMode::Search, 'Usages: other', []);
         $this->assertSame(3, $this->tools->count(), 'a different title appends a new tab');
         $this->assertSame($other, $dock->activeTool());
-    }
-
-    public function testAPickerBypassesTheStrip(): void
-    {
-        $dock = $this->dock();
-        $this->sessions->create('shell:1', 'sh 1');
-        $this->terminal->open('sh 1', new TerminalBuffer());
-        $dock->openQuery(ResultsPanelMode::Symbol, 'Go to Symbol');
-
-        $this->assertSame([], $dock->aliveTabs(), 'a transient picker never appears as a dock tab');
     }
 
     public function testRevealSwitchesTabsAndFocuses(): void
@@ -367,24 +342,6 @@ final class BottomDockTest extends TestCase
         $this->assertSame($problems, $dock->activeTool(), 'the neighbour instance took the slot');
         $this->assertSame(ResultsPanelMode::Problems, $dock->mode());
         $this->assertTrue($this->results->isOpen(), 'the panel stays open while instances remain');
-    }
-
-    public function testPickerCloseRestoresTheDisplacedInstance(): void
-    {
-        $dock = $this->dock();
-        $bound = [];
-        $dock->onToolBound(static function ($tab) use (&$bound): void {
-            $bound[] = $tab->title;
-        });
-        $problems = $dock->showList(ResultsPanelMode::Problems, 'Problems', [['path' => 'a.php', 'line' => 0, 'text' => 'boom']]);
-
-        $dock->openQuery(ResultsPanelMode::Action, 'Find Action');
-        $this->results->dismiss(); // Esc on the palette → real close
-        $this->assertSame($problems, $dock->activeTool(), 'the displaced tool tab came back');
-        $this->assertTrue($this->results->isVisible());
-        $this->assertSame(ResultsPanelMode::Problems, $dock->mode());
-        $this->assertSame(['Problems', 'Problems'], $bound, 'initial show + picker restore both bound the tab');
-        $this->assertSame($this->editor, $this->tui->getFocus(), 'focus lands on the editor, as any Esc');
     }
 
     public function testMarkSearchingAndRefreshIfBound(): void

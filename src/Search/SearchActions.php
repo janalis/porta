@@ -40,11 +40,6 @@ final class SearchActions
         $this->projectSearch->open();
     }
 
-    public function openSymbolSearch(): void
-    {
-        $this->panels->openQuery(ResultsPanelMode::Symbol, $this->translator->trans('Go to Symbol in Project'));
-    }
-
     /** Open the results panel as a text search scoped to a folder (tree "Find in Files…"). */
     public function openFindInFolder(string $absDir): void
     {

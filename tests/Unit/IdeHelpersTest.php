@@ -354,7 +354,8 @@ final class IdeHelpersTest extends TestCase
         $tui->getById('editor')->findModal()->close();
 
         $byLabel['Go to Symbol in Project']();
-        $this->assertSame('results', $tui->getFocus()?->getId());
+        $this->assertTrue($tui->getById('editor')->isSearchOverlayOpen(), 'go-to-symbol opens the centered picker over the editor');
+        $tui->getById('editor')->closeSearch();
 
         $byLabel['Go to File']();
         $this->assertTrue($tui->getById('editor')->isSearchOverlayOpen(), 'go-to-file opens the centered picker over the editor');
@@ -395,13 +396,6 @@ final class IdeHelpersTest extends TestCase
         $this->assertCount(0, $buffers->all());
     }
 
-    public function testRequestWorkspaceSymbolsWithoutLspClearsResults(): void
-    {
-        // Panel not open; the guard clears results and returns.
-        $this->navigation()->requestWorkspaceSymbols('x');
-        $this->addToAssertionCount(1);
-    }
-
     public function testFlattenSymbolsWithMinimalShapes(): void
     {
         $items = [];
@@ -419,28 +413,6 @@ final class IdeHelpersTest extends TestCase
         $this->assertCount(2, $items);
         $this->assertSame('0:0', $items[0]['value']);
         $this->assertSame('7:2', $items[1]['value']);
-    }
-
-    public function testWorkspaceSymbolResponseIgnoredWhenPanelClosed(): void
-    {
-        $client = new \Porta\Lsp\LspClient(
-            [\PHP_BINARY, \dirname(__DIR__).'/Support/mock-lsp-server.php'],
-            $this->project->dir,
-        );
-        $ready = false;
-        $client->start(static function () use (&$ready): void {
-            $ready = true;
-        });
-        $this->await(static fn () => $ready);
-        $this->injectLspClient($client);
-
-        // The results panel is never opened, so the response callback's
-        // guard drops the result without touching the panel.
-        $this->navigation()->requestWorkspaceSymbols('greet');
-        $this->await(static fn () => false, 0.4); // pump the loop briefly
-
-        $this->assertFalse($this->ide->getTui()->getById('results')->isOpen());
-        $client->stop();
     }
 
     public function testApplyCodeActionBareCommandAndCommandError(): void
