@@ -1936,7 +1936,7 @@
       </trans-unit>
       <trans-unit id="486">
         <source>No file open · press Ctrl+P to open a file</source>
-        <target>Keine Datei geöffnet · Ctrl+P zum Öffnen einer Datei</target>
+        <target>Keine Datei geöffnet · Ctrl+P zum Öffnen einer Datei drücken</target>
       </trans-unit>
       <trans-unit id="487">
         <source>(Del exclude · Alt+A replace %count%)</source>
