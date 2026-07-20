@@ -85,13 +85,7 @@ final readonly class HoverRouter
     public function dockStripRelCol(MouseEvent $mouse): ?int
     {
         $stripRect = $this->hit->rect($this->dockTabs);
-        if (
-            !$this->dock->stripVisible()
-            || null === $stripRect
-            || $mouse->row !== $stripRect->row
-            || $mouse->col < $stripRect->col
-            || $mouse->col >= ($stripRect->col + $stripRect->columns)
-        ) {
+        if (!$this->dock->stripVisible() || null === $stripRect || $mouse->row !== $stripRect->row || $mouse->col < $stripRect->col || $mouse->col >= ($stripRect->col + $stripRect->columns)) {
             return null;
         }
 

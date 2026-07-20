@@ -142,7 +142,11 @@ final class DapSession
         $wire = [];
         foreach ($breakpoints as $breakpoint) {
             $entry = ['line' => $breakpoint['line'] + 1];
-            foreach (['condition' => $this->supportsConditionalBreakpoints, 'hitCondition' => $this->supportsHitConditionalBreakpoints, 'logMessage' => $this->supportsLogPoints] as $field => $supported) {
+            foreach ([
+                'condition' => $this->supportsConditionalBreakpoints,
+                'hitCondition' => $this->supportsHitConditionalBreakpoints,
+                'logMessage' => $this->supportsLogPoints,
+            ] as $field => $supported) {
                 if (null === $breakpoint[$field]) {
                     continue;
                 }
@@ -338,13 +342,17 @@ final class DapSession
 
             return;
         }
-        $this->client->request('setVariable', [
-            'variablesReference' => $reference,
-            'name' => $name,
-            'value' => $value,
-        ], static function (array $body, ?string $error) use ($deliver, $value): void {
-            $deliver(\is_string($body['value'] ?? null) ? $body['value'] : $value, $error);
-        });
+        $this->client->request(
+            'setVariable',
+            [
+                'variablesReference' => $reference,
+                'name' => $name,
+                'value' => $value,
+            ],
+            static function (array $body, ?string $error) use ($deliver, $value): void {
+                $deliver(\is_string($body['value'] ?? null) ? $body['value'] : $value, $error);
+            },
+        );
     }
 
     /** Whether the adapter advertised native restart support. */

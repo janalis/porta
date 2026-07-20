@@ -161,10 +161,7 @@ final readonly class EditorRowAssembler
     private function renderStickyRow(int $docLine, EditorGeometry $geo, array $highlighted, int $hScroll): string
     {
         $stickyLabel = LineNumberMode::Off === $this->lineNumbers ? '' : (string) ($docLine + 1);
-        $gutter =
-            $this->gitCell($docLine)
-            .$this->styles->of(Role::Gutter)->apply(str_pad($stickyLabel, $geo->numberWidth, pad_string: ' ', pad_type: \STR_PAD_LEFT).' ')
-            .' ';
+        $gutter = $this->gitCell($docLine).$this->styles->of(Role::Gutter)->apply(str_pad($stickyLabel, $geo->numberWidth, pad_string: ' ', pad_type: \STR_PAD_LEFT).' ').' ';
         $raw = $highlighted[$docLine] ?? '';
         $hl = $this->indentGuides ? EditorRenderer::applyIndentGuides($this->document, $raw, $docLine, $this->styles) : $raw;
         $content = EditorRenderer::renderContentLine($hScroll, $hl, $geo->contentWidth, CursorVisibility::Hidden, 0, $this->cursorStyle->marker());
@@ -204,12 +201,7 @@ final readonly class EditorRowAssembler
             $numberLabel = (string) abs($lineIndex - $this->document->getCursorLine());
         }
 
-        return (
-            $this->gitCell($lineIndex)
-            .$numStyle->apply(str_pad($numberLabel, $numberWidth, pad_string: ' ', pad_type: \STR_PAD_LEFT))
-            .$marker
-            .' '
-        );
+        return $this->gitCell($lineIndex).$numStyle->apply(str_pad($numberLabel, $numberWidth, pad_string: ' ', pad_type: \STR_PAD_LEFT)).$marker.' ';
     }
 
     /** The one-column git change strip, or '' when the gutter marks are disabled. */

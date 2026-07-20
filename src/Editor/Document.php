@@ -570,7 +570,7 @@ final class Document
     {
         [$first, $last] = $this->selectedLineSpan();
         if ($first === $last) {
-            if ($first + 1 >= \count($this->lines)) {
+            if (($first + 1) >= \count($this->lines)) {
                 return false;
             }
             $last = $first + 1;

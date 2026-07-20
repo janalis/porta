@@ -517,7 +517,7 @@ final class BufferService implements BufferReopener, DiagnosticsSink, FileOpener
     public function ensureTextEditorActive(): bool
     {
         $active = $this->buffers->active();
-        if (null === $active || (!$active->isImage() && !$active->isHelp())) {
+        if (null === $active || !$active->isImage() && !$active->isHelp()) {
             return true;
         }
         if (null !== $this->activateAdjacentTextBuffer()) {

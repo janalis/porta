@@ -239,7 +239,9 @@ final class GitCommands
             if ('' === $name) {
                 return;
             }
-            $this->git->branchFromCommit($name, $commit->sha, fn (Outcome $ok, string $error) => $this->finishHistoryOp($ok, $error, $this->translator->trans('Created and switched to %branch%', ['%branch%' => $name])));
+            $this->git->branchFromCommit($name, $commit->sha, fn (Outcome $ok, string $error) => $this->finishHistoryOp($ok, $error, $this->translator->trans('Created and switched to %branch%', [
+                '%branch%' => $name,
+            ])));
         });
         $this->tui->requestRender();
     }
@@ -281,7 +283,10 @@ final class GitCommands
                 if ('soft' !== $mode && 'mixed' !== $mode) {
                     return;
                 }
-                $this->git->resetTo($commit->sha, $mode, fn (Outcome $ok, string $error) => $this->finishHistoryOp($ok, $error, $this->translator->trans('Reset to %sha% (%mode%)', ['%sha%' => $commit->shortSha, '%mode%' => $mode])));
+                $this->git->resetTo($commit->sha, $mode, fn (Outcome $ok, string $error) => $this->finishHistoryOp($ok, $error, $this->translator->trans('Reset to %sha% (%mode%)', [
+                    '%sha%' => $commit->shortSha,
+                    '%mode%' => $mode,
+                ])));
             },
         );
         $this->tui->requestRender();

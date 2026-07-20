@@ -74,10 +74,19 @@ final class SettingsGitControllerTest extends TestCase
         $rows = $this->controller($project->dir)->rows();
 
         $keys = array_map(static fn ($r): string => $r->key, $rows);
-        $this->assertSame([
-            'gitShowBranch', 'gitGutterMarks', 'gitBlameDefault', 'gitSignCommits',
-            'gitNoVerify', 'gitSignoff', 'gitRefreshInterval', 'gitPath',
-        ], $keys);
+        $this->assertSame(
+            [
+                'gitShowBranch',
+                'gitGutterMarks',
+                'gitBlameDefault',
+                'gitSignCommits',
+                'gitNoVerify',
+                'gitSignoff',
+                'gitRefreshInterval',
+                'gitPath',
+            ],
+            $keys,
+        );
 
         $byKey = [];
         foreach ($rows as $row) {

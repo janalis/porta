@@ -469,7 +469,7 @@ final class EditorActions
             // Accept "line" or "line:column" (both 1-based); jump 0-based, column 0 by default.
             $parts = explode(':', trim($value));
             $count = \count($parts);
-            if ($count > 2 || !ctype_digit($parts[0]) || (2 === $count && !ctype_digit($parts[1]))) {
+            if ($count > 2 || !ctype_digit($parts[0]) || 2 === $count && !ctype_digit($parts[1])) {
                 return;
             }
             $column = 2 === $count ? max(0, (int) $parts[1] - 1) : 0;

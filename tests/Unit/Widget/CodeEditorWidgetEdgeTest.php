@@ -705,7 +705,10 @@ final class CodeEditorWidgetEdgeTest extends TestCase
         $this->assertSame(LineNumberMode::Off, $editor->lineNumberMode());
 
         // Sticky scroll and indent guides default on: disable (set), disable again (skip), enable (set), enable again (skip).
-        foreach ([[$editor->disableStickyScroll(...), $editor->enableStickyScroll(...), $editor->hasStickyScroll(...)], [$editor->disableIndentGuides(...), $editor->enableIndentGuides(...), $editor->hasIndentGuides(...)]] as [$off, $on, $has]) {
+        foreach ([
+            [$editor->disableStickyScroll(...), $editor->enableStickyScroll(...), $editor->hasStickyScroll(...)],
+            [$editor->disableIndentGuides(...), $editor->enableIndentGuides(...), $editor->hasIndentGuides(...)],
+        ] as [$off, $on, $has]) {
             $off();
             $this->assertFalse($has());
             $off(); // skip

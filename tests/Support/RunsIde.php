@@ -6,8 +6,8 @@ namespace Porta\Tests\Support;
 
 use Porta\Ide;
 use Revolt\EventLoop;
-use Symfony\Component\Tui\Tui;
 use Symfony\Component\Tui\Terminal\VirtualTerminal;
+use Symfony\Component\Tui\Tui;
 
 /**
  * The shared E2e harness: boot a real Ide against a VirtualTerminal, schedule

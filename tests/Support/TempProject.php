@@ -79,8 +79,7 @@ final class TempProject
 
     private static function gitBinary(): string
     {
-        return self::$git ??= new ExecutableFinder()->find('git', null, explode(\PATH_SEPARATOR, PORTA_TEST_PRISTINE_PATH))
-            ?? throw new \RuntimeException('git not found on the pristine PATH');
+        return self::$git ??= new ExecutableFinder()->find('git', null, explode(\PATH_SEPARATOR, PORTA_TEST_PRISTINE_PATH)) ?? throw new \RuntimeException('git not found on the pristine PATH');
     }
 
     public function __destruct()

@@ -365,7 +365,14 @@ final class DebugPanelWidget extends OverlayWidget implements FocusableInterface
     private function appendChildren(array &$rows, int $reference, int $depth): void
     {
         foreach ($this->children[$reference] ?? [] as $variable) {
-            $rows[] = new DebugRow(DebugRowKind::Variable, "{$variable['name']} = {$variable['value']}", ref: $variable['variablesReference'], depth: $depth, parentRef: $reference, name: $variable['name']);
+            $rows[] = new DebugRow(
+                DebugRowKind::Variable,
+                "{$variable['name']} = {$variable['value']}",
+                ref: $variable['variablesReference'],
+                depth: $depth,
+                parentRef: $reference,
+                name: $variable['name'],
+            );
             if ($variable['variablesReference'] > 0 && array_key_exists($variable['variablesReference'], $this->expanded)) {
                 $this->appendChildren($rows, $variable['variablesReference'], $depth + 1);
             }

@@ -131,9 +131,10 @@ final class StatusBarWidget extends AbstractWidget
         // The branch (leftmost in `left`) is offset by the one leading space in
         // the row. Only offer its hit region when the whole label is on screen —
         // not while a flash replaced `left`, nor when truncation clipped it.
-        $this->branchSpan = null !== $this->flash || null === $this->branchStart || null === $this->branchEnd || $this->branchEnd > $leftWidth
-            ? null
-            : [1 + $this->branchStart, 1 + $this->branchEnd];
+        $this->branchSpan =
+            null !== $this->flash || null === $this->branchStart || null === $this->branchEnd || $this->branchEnd > $leftWidth
+                ? null
+                : [1 + $this->branchStart, 1 + $this->branchEnd];
 
         $gap = max(1, $columns - $leftWidth - $rightWidth - 2);
         $line = ' '.$left.str_repeat(' ', $gap).$right.' ';

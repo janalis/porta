@@ -74,8 +74,14 @@ final class SettingsControllerTest extends TestCase
     /**
      * @param array<string, int|bool|string> $settings
      */
-    private function controller(string $rootDir, CodeEditorWidget $editor, StatusBarWidget $status, array $settings = [], ?BreadcrumbsWidget $breadcrumbs = null, ?TodoTags $todoTags = null): SettingsController
-    {
+    private function controller(
+        string $rootDir,
+        CodeEditorWidget $editor,
+        StatusBarWidget $status,
+        array $settings = [],
+        ?BreadcrumbsWidget $breadcrumbs = null,
+        ?TodoTags $todoTags = null,
+    ): SettingsController {
         $breadcrumbs ??= new BreadcrumbsWidget();
         $todoTags ??= new TodoTags();
         $tui = new Tui(terminal: new VirtualTerminal(columns: 80, rows: 24));

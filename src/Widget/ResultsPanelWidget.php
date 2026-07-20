@@ -422,7 +422,7 @@ final class ResultsPanelWidget extends OverlayWidget implements FocusableInterfa
         // always renders a rect the bottom-dock resize grab can land on (an empty
         // results tool stays draggable). A hidden panel returned [] above.
         $blank = $this->styles->of(Role::Toolbar)->getAnsiRestore();
-        while (\count($lines) < $this->headerRowCount() + $this->visibleRows) {
+        while (\count($lines) < ($this->headerRowCount() + $this->visibleRows)) {
             $lines[] = AnsiText::padRight($blank, $columns);
         }
 
