@@ -8,6 +8,7 @@ use Porta\Config\CommandRegistry;
 use Porta\Editor\BufferService;
 use Porta\Git\ChangeEntry;
 use Porta\Git\GitCommands;
+use Porta\Git\LogEntry;
 use Porta\I18n\Translator;
 use Porta\Run\RunController;
 use Porta\Widget\CodeEditorWidget;
@@ -104,6 +105,24 @@ final class ContextMenuBuilder
             new MenuItem($this->translator->trans($stageLabel), '', fn () => $this->changes->toggleStageSelected()),
             new MenuItem($this->translator->trans('Discard…'), '', fn () => $this->changes->armDiscardSelected()),
             new MenuItem($this->translator->trans('File History'), '', fn () => $this->changes->showHistory()),
+        ];
+    }
+
+    /**
+     * A commit row's menu in the history browser — thin triggers over
+     * GitCommands, so the copy/branch/cherry-pick/revert/reset flows stay
+     * single-sourced.
+     *
+     * @return list<MenuItem>
+     */
+    public function gitCommitItems(LogEntry $commit): array
+    {
+        return [
+            new MenuItem($this->translator->trans('Copy Hash'), '', fn () => $this->git->copyCommitHash($commit)),
+            new MenuItem($this->translator->trans('Create Branch from Commit…'), '', fn () => $this->git->branchFromCommit($commit)),
+            new MenuItem($this->translator->trans('Cherry-pick'), '', fn () => $this->git->cherryPick($commit)),
+            new MenuItem($this->translator->trans('Revert Commit'), '', fn () => $this->git->revertCommit($commit)),
+            new MenuItem($this->translator->trans('Reset to Commit…'), '', fn () => $this->git->resetToCommit($commit)),
         ];
     }
 

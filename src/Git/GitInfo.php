@@ -419,6 +419,52 @@ final class GitInfo
     }
 
     /**
+     * Create branch $name pointing at $sha and switch to it.
+     *
+     * @param callable(Outcome, string): void $onDone (ok, first stderr line on failure)
+     */
+    public function branchFromCommit(string $name, string $sha, callable $onDone): void
+    {
+        $this->runWithErrors(['checkout', '-b', $name, $sha], $onDone);
+    }
+
+    /**
+     * Apply $sha as a fresh commit on the current branch. A conflict fails with
+     * git's own message; the half-applied state lands in the working tree for
+     * the user to resolve.
+     *
+     * @param callable(Outcome, string): void $onDone (ok, first stderr line on failure)
+     */
+    public function cherryPick(string $sha, callable $onDone): void
+    {
+        $this->runWithErrors(['cherry-pick', $sha], $onDone);
+    }
+
+    /**
+     * Create a commit that undoes $sha (git's default message, no editor). A
+     * conflict fails with git's message and lands in the working tree.
+     *
+     * @param callable(Outcome, string): void $onDone (ok, first stderr line on failure)
+     */
+    public function revertCommit(string $sha, callable $onDone): void
+    {
+        $this->runWithErrors(['revert', '--no-edit', $sha], $onDone);
+    }
+
+    /**
+     * Move HEAD to $sha with a --soft (keep index + working tree) or --mixed
+     * (keep working tree, reset index) reset. No --hard: never discard the
+     * working tree from here.
+     *
+     * @param 'soft'|'mixed'                   $mode
+     * @param callable(Outcome, string): void $onDone (ok, first stderr line on failure)
+     */
+    public function resetTo(string $sha, string $mode, callable $onDone): void
+    {
+        $this->runWithErrors(['reset', '--'.$mode, $sha], $onDone);
+    }
+
+    /**
      * The files a commit touched, with their status letters.
      *
      * @param callable(list<array{status: string, path: string}>): void $onDone

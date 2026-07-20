@@ -14,6 +14,7 @@ use Porta\Widget\ContextMenu;
 use Porta\Widget\DockTabsWidget;
 use Porta\Widget\FileTreeWidget;
 use Porta\Widget\Git\ChangesListWidget;
+use Porta\Widget\Git\HistoryListWidget;
 use Porta\Widget\HelpViewerWidget;
 use Porta\Widget\ImageViewerWidget;
 use Porta\Widget\MenuBarWidget;
@@ -66,6 +67,7 @@ final class ContextMenuOpener
         private readonly DockTabsWidget $dockTabs,
         private readonly TerminalSessions $sessions,
         private readonly ChangesListWidget $changes,
+        private readonly HistoryListWidget $history,
     ) {}
 
     /** Open the focused pane's context menu, or flash when the pane has none. */
@@ -122,6 +124,16 @@ final class ContextMenuOpener
             $rect = $this->renderer->getWidgetRect($this->changes);
             if (null !== $entry && null !== $rect) {
                 $this->openAt($this->items->gitChangeItems($entry), $rect->row + $this->changes->selectedRow() + 1, $rect->col + 2);
+            }
+
+            return;
+        }
+
+        if ($focus === $this->history) {
+            $commit = $this->history->selectedCommit();
+            $rect = $this->renderer->getWidgetRect($this->history);
+            if (null !== $commit && null !== $rect) {
+                $this->openAt($this->items->gitCommitItems($commit), $rect->row + $this->history->selectedCommitRow() + 1, $rect->col + 2);
             }
 
             return;

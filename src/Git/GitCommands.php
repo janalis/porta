@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Porta\Git;
 
 use Porta\I18n\Translator;
+use Porta\Support\Clipboard;
 use Porta\Support\Outcome;
 use Porta\Support\ProjectPaths;
 use Porta\Ui\Glyphs;
@@ -32,6 +33,7 @@ final class GitCommands
         private readonly GitRefresher $refresher,
         private readonly string $rootDir,
         private readonly WorkspaceViews $views,
+        private readonly Clipboard $clipboard,
     ) {}
 
     public function stageCurrent(): void
@@ -216,6 +218,97 @@ final class GitCommands
             $this->refresher->refreshActiveMarks();
             $this->tui->requestRender();
         });
+    }
+
+    /** Copy a commit's full hash to the clipboard (the history context menu). */
+    public function copyCommitHash(LogEntry $commit): void
+    {
+        $this->clipboard->copy($commit->sha);
+        $this->notifier->flash($this->translator->trans('Copied %sha%', ['%sha%' => $commit->shortSha]));
+        $this->tui->requestRender();
+    }
+
+    /** Prompt for a name, then branch off $commit and switch to it. */
+    public function branchFromCommit(LogEntry $commit): void
+    {
+        if (!$this->guardAvailable()) {
+            return;
+        }
+        $this->editor->openPrompt($this->translator->trans('New branch name'), '', function (string $name) use ($commit): void {
+            $name = trim($name);
+            if ('' === $name) {
+                return;
+            }
+            $this->git->branchFromCommit($name, $commit->sha, fn (Outcome $ok, string $error) => $this->finishHistoryOp($ok, $error, $this->translator->trans('Created and switched to %branch%', ['%branch%' => $name])));
+        });
+        $this->tui->requestRender();
+    }
+
+    /** Cherry-pick $commit onto the current branch (a conflict flashes git's message). */
+    public function cherryPick(LogEntry $commit): void
+    {
+        if (!$this->guardAvailable()) {
+            return;
+        }
+        $this->git->cherryPick($commit->sha, fn (Outcome $ok, string $error) => $this->finishHistoryOp($ok, $error, $this->translator->trans('Cherry-picked %sha%', ['%sha%' => $commit->shortSha])));
+    }
+
+    /** Revert $commit as a new commit (a conflict flashes git's message). */
+    public function revertCommit(LogEntry $commit): void
+    {
+        if (!$this->guardAvailable()) {
+            return;
+        }
+        $this->git->revertCommit($commit->sha, fn (Outcome $ok, string $error) => $this->finishHistoryOp($ok, $error, $this->translator->trans('Reverted %sha%', ['%sha%' => $commit->shortSha])));
+    }
+
+    /** Reset HEAD to $commit, confirming the soft/mixed mode first (never --hard). */
+    public function resetToCommit(LogEntry $commit): void
+    {
+        if (!$this->guardAvailable()) {
+            return;
+        }
+        $this->views->closeAll();
+        $this->tui->setFocus($this->editor);
+        $this->editor->openListOverlay(
+            $this->translator->trans('Reset to %sha%?', ['%sha%' => $commit->shortSha]),
+            [
+                ['label' => $this->translator->trans('Soft (keep staged changes)'), 'hint' => '', 'value' => 'soft'],
+                ['label' => $this->translator->trans('Mixed (unstage changes)'), 'hint' => '', 'value' => 'mixed'],
+                ['label' => $this->translator->trans('Cancel'), 'hint' => '', 'value' => 'cancel'],
+            ],
+            function (string $mode) use ($commit): void {
+                if ('soft' !== $mode && 'mixed' !== $mode) {
+                    return;
+                }
+                $this->git->resetTo($commit->sha, $mode, fn (Outcome $ok, string $error) => $this->finishHistoryOp($ok, $error, $this->translator->trans('Reset to %sha% (%mode%)', ['%sha%' => $commit->shortSha, '%mode%' => $mode])));
+            },
+        );
+        $this->tui->requestRender();
+    }
+
+    private function guardAvailable(): bool
+    {
+        if ($this->git->isAvailable()) {
+            return true;
+        }
+        $this->unavailable();
+
+        return false;
+    }
+
+    /**
+     * Finish a history operation: flash the outcome and refresh the branch label
+     * and gutter marks. Unlike a plain branch switch this refreshes on failure
+     * too — a cherry-pick/revert conflict changes the working tree even as it
+     * "fails".
+     */
+    private function finishHistoryOp(Outcome $ok, string $error, string $success): void
+    {
+        $this->notifier->flash($ok->isOk() ? $success : $error, $ok->isOk() ? 3.0 : 6.0);
+        $this->refresher->refreshBranch();
+        $this->refresher->refreshActiveMarks();
+        $this->tui->requestRender();
     }
 
     /** A conflicting pop/apply reports on stdout, not stderr — provide the message git doesn't. */

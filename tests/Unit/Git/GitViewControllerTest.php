@@ -676,6 +676,34 @@ final class GitViewControllerTest extends TestCase
         $this->assertFalse($this->diffView->isReadOnly());
     }
 
+    public function testRightClickSelectsAHistoryCommitForItsContextMenu(): void
+    {
+        $controller = $this->controller();
+        $this->project->write('a.txt', "one\ntwo\nthree\n");
+        $this->project->git('add', '-A');
+        $this->project->git('commit', '-q', '-m', 'second');
+        $controller->open();
+        $this->await($controller->isOpen(...));
+
+        $this->changes->setFocused(true);
+        $this->changes->handleInput('2'); // History
+        $this->await(fn (): bool => null !== $this->history->selectedCommit());
+        $this->history->render(new RenderContext(44, 20)); // set the row geometry
+
+        $commit = $this->history->selectCommitAt(1); // the newest commit row
+        $this->assertSame('second', $commit?->subject, 'a right-click selects the commit under it');
+        $this->assertSame(1, $this->history->selectedCommitRow(), 'the newest commit sits on the first row');
+
+        // Selecting a different row moves the selection (and fires the callback).
+        $older = $this->history->selectCommitAt(2);
+        $this->assertNotSame('second', $older?->subject, 'the second row is an older commit');
+        $this->assertSame(2, $this->history->selectedCommitRow());
+
+        $this->assertNull($this->history->selectCommitAt(0), 'the header row is no commit');
+        $this->assertNull($this->history->selectCommitAt(3), 'an empty commit slot is no commit');
+        $this->assertNull($this->history->selectCommitAt(99), 'past the list is no commit');
+    }
+
     public function testEmptyCommitShowsAPlaceholderInsteadOfAutoLoading(): void
     {
         $controller = $this->controller();

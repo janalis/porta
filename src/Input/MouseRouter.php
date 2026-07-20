@@ -1075,6 +1075,9 @@ final class MouseRouter
         if (!$handled && null !== ($entry = $this->git->changesRowAt($mouse))) {
             $items = $this->contextItems->gitChangeItems($entry);
         }
+        if (!$handled && null === $items && null !== ($commit = $this->git->historyCommitAt($mouse))) {
+            $items = $this->contextItems->gitCommitItems($commit);
+        }
         // A right-click on the status-bar branch name offers the branch actions.
         if (!$handled && null === $items) {
             $statusRect = $this->hit->rect($this->statusBar);

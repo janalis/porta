@@ -194,6 +194,12 @@ final class HistoryListWidget extends AbstractWidget implements FocusableInterfa
         return $this->commits[$this->commitList->selected()] ?? null;
     }
 
+    /** The screen-relative row of the selected commit (1-based; the header is row 0). */
+    public function selectedCommitRow(): int
+    {
+        return $this->commitList->selected() - $this->commitList->scroll() + 1;
+    }
+
     public function handleInput(string $data): void
     {
         if ($this->inputHookHandled($data)) {
@@ -282,6 +288,29 @@ final class HistoryListWidget extends AbstractWidget implements FocusableInterfa
             $this->fireSelectFile();
             $this->invalidate();
         }
+    }
+
+    /**
+     * A right-click landed on a commit row: select it (like a left click) and
+     * return its entry for the context menu; null off the commit rows.
+     */
+    public function selectCommitAt(int $relRow): ?LogEntry
+    {
+        $commitRows = $this->commitRowCount();
+        if ($relRow < 1 || $relRow >= (1 + $commitRows)) {
+            return null;
+        }
+        $index = $this->commitList->scroll() + $relRow - 1;
+        if (!\array_key_exists($index, $this->commits)) {
+            return null;
+        }
+        $this->filesFocused = false;
+        if ($this->commitList->selectIfChanged($index)) {
+            $this->fireSelectCommit();
+        }
+        $this->invalidate();
+
+        return $this->commits[$index];
     }
 
     /**

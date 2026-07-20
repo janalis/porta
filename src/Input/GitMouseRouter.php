@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Porta\Input;
 
 use Porta\Git\ChangeEntry;
+use Porta\Git\LogEntry;
 use Porta\Widget\Git\ChangesListWidget;
 use Porta\Widget\Git\CommitBoxWidget;
 use Porta\Widget\Git\DiffViewWidget;
@@ -55,6 +56,25 @@ final class GitMouseRouter
         }
 
         return $entry;
+    }
+
+    /**
+     * A right-press landed on a commit row in the history browser: select it and
+     * return its entry for the context menu; null anywhere else (or while the
+     * git view is closed — a hidden widget has no rect).
+     */
+    public function historyCommitAt(MouseEvent $mouse): ?LogEntry
+    {
+        $rel = $this->hit->hit($this->history, $mouse->row, $mouse->col);
+        if (null === $rel) {
+            return null;
+        }
+        $commit = $this->history->selectCommitAt($rel['row']);
+        if (null !== $commit) {
+            $this->tui->setFocus($this->history);
+        }
+
+        return $commit;
     }
 
     /** The sidebar's drag column (identity for the layout's resize arming). */

@@ -9,7 +9,9 @@ use Porta\Editor\Document;
 use Porta\Git\GitCommands;
 use Porta\Git\GitInfo;
 use Porta\Git\GitRefresher;
+use Porta\Git\LogEntry;
 use Porta\I18n\Translator;
+use Porta\Support\Clipboard;
 use Porta\Tests\Support\TempProject;
 use Porta\Ui\Notifier;
 use Porta\Ui\WorkspaceViews;
@@ -161,6 +163,15 @@ final class GitCommandsTest extends TestCase
         yield 'stashPop' => [static fn (GitCommands $c) => $c->stashPop()];
         yield 'stashes' => [static fn (GitCommands $c) => $c->stashes()];
         yield 'undo' => [static fn (GitCommands $c) => $c->undoLastCommit()];
+        yield 'branchFromCommit' => [static fn (GitCommands $c) => $c->branchFromCommit(self::commitEntry('0000000000000000000000000000000000000000'))];
+        yield 'cherryPick' => [static fn (GitCommands $c) => $c->cherryPick(self::commitEntry('0000000000000000000000000000000000000000'))];
+        yield 'revertCommit' => [static fn (GitCommands $c) => $c->revertCommit(self::commitEntry('0000000000000000000000000000000000000000'))];
+        yield 'resetToCommit' => [static fn (GitCommands $c) => $c->resetToCommit(self::commitEntry('0000000000000000000000000000000000000000'))];
+    }
+
+    private static function commitEntry(string $sha): LogEntry
+    {
+        return new LogEntry($sha, substr($sha, 0, 7), 'Tester', 0, 'subject');
     }
 
     /** @param callable(GitCommands): void $action */
@@ -282,6 +293,110 @@ final class GitCommandsTest extends TestCase
 
         $this->assertStringContainsString('Last commit undone', $this->flash());
         $this->assertNotSame($tip, trim($this->git('rev-parse', 'HEAD')), 'HEAD moved back one commit');
+    }
+
+    // --- Commit-history context actions ---------------------------------------
+
+    public function testCopyCommitHashCopiesToTheClipboardAndFlashes(): void
+    {
+        $commands = $this->commands(['a.txt' => "one\n"]);
+        $sha = trim($this->git('rev-parse', 'HEAD'));
+
+        $commands->copyCommitHash(self::commitEntry($sha));
+
+        $this->assertStringContainsString('Copied '.substr($sha, 0, 7), $this->flash());
+        $this->assertStringContainsString("\x1b]52;c;".base64_encode($sha), $this->tui->getTerminal()->getOutput(), 'the full hash reached the OSC 52 clipboard');
+    }
+
+    public function testBranchFromCommitCreatesABranchAtThatCommit(): void
+    {
+        $commands = $this->commands(['a.txt' => "one\n"]);
+        $first = trim($this->git('rev-parse', 'HEAD'));
+        $this->write('a.txt', "one\ntwo\n");
+        $this->git('commit', '-am', 'second');
+
+        $commands->branchFromCommit(self::commitEntry($first));
+        $this->type('from-first');
+        $this->key("\r");
+        $this->pump();
+
+        $this->assertStringContainsString('Created and switched to from-first', $this->flash());
+        $this->assertSame($first, trim($this->git('rev-parse', 'from-first')), 'the new branch points at the chosen commit');
+    }
+
+    public function testBranchFromCommitWithAnEmptyNameDoesNothing(): void
+    {
+        $commands = $this->commands(['a.txt' => "one\n"]);
+        $before = trim($this->git('rev-parse', '--abbrev-ref', 'HEAD'));
+
+        $commands->branchFromCommit(self::commitEntry(trim($this->git('rev-parse', 'HEAD'))));
+        $this->key("\r"); // submit an empty name — the prompt returns early
+
+        $this->assertSame($before, trim($this->git('rev-parse', '--abbrev-ref', 'HEAD')), 'no branch created or switched');
+    }
+
+    public function testCherryPickAppliesACommitOntoTheCurrentBranch(): void
+    {
+        $commands = $this->commands(['a.txt' => "one\n"]);
+        $this->git('checkout', '-b', 'side');
+        $this->write('b.txt', "new\n");
+        $this->git('add', 'b.txt');
+        $this->git('commit', '-m', 'add b');
+        $pick = trim($this->git('rev-parse', 'HEAD'));
+        $this->git('checkout', '-'); // back to the starting branch — b.txt is gone
+
+        $commands->cherryPick(self::commitEntry($pick));
+        $this->pump(fn (): bool => is_file($this->project->dir.'/b.txt'));
+
+        $this->assertStringContainsString('Cherry-picked', $this->flash());
+        $this->assertFileExists($this->project->dir.'/b.txt');
+    }
+
+    public function testRevertCommitUndoesItWithANewCommit(): void
+    {
+        $commands = $this->commands(['a.txt' => "one\n"]);
+        $this->write('a.txt', "one\nadded\n");
+        $this->git('commit', '-am', 'add line');
+        $bad = trim($this->git('rev-parse', 'HEAD'));
+
+        $commands->revertCommit(self::commitEntry($bad));
+        $this->pump(fn (): bool => !str_contains($this->readFile('a.txt'), 'added'));
+
+        $this->assertStringContainsString('Reverted', $this->flash());
+        $this->assertStringNotContainsString('added', $this->readFile('a.txt'), 'the reverting commit removed the line');
+    }
+
+    public function testResetToCommitSoftMovesHeadAndKeepsTheWorkingTree(): void
+    {
+        $commands = $this->commands(['a.txt' => "one\n"]);
+        $base = trim($this->git('rev-parse', 'HEAD'));
+        $this->write('a.txt', "one\nmore\n");
+        $this->git('commit', '-am', 'more');
+
+        $commands->resetToCommit(self::commitEntry($base));
+        $this->overlayOpens();
+        $this->key("\r"); // "Soft" leads the confirm list
+        $this->pump();
+
+        $this->assertStringContainsString('Reset to '.substr($base, 0, 7).' (soft)', $this->flash());
+        $this->assertSame($base, trim($this->git('rev-parse', 'HEAD')), 'HEAD moved to the chosen commit');
+        $this->assertStringContainsString('more', $this->readFile('a.txt'), 'a soft reset leaves the working tree untouched');
+    }
+
+    public function testResetToCommitCancelLeavesHeadAlone(): void
+    {
+        $commands = $this->commands(['a.txt' => "one\n"]);
+        $this->write('a.txt', "one\nmore\n");
+        $this->git('commit', '-am', 'more');
+        $tip = trim($this->git('rev-parse', 'HEAD'));
+
+        $commands->resetToCommit(self::commitEntry($tip));
+        $this->overlayOpens();
+        $this->key("\x1b[B"); // → Mixed
+        $this->key("\x1b[B"); // → Cancel
+        $this->key("\r"); // pick Cancel: onPick returns without touching git
+
+        $this->assertSame($tip, trim($this->git('rev-parse', 'HEAD')), 'cancelling changes nothing');
     }
 
     public function testFileHistoryWithNoOpenFileReportsUnavailable(): void
@@ -516,6 +631,7 @@ final class GitCommandsTest extends TestCase
             $refresher,
             $this->project->dir,
             new WorkspaceViews(),
+            new Clipboard($this->tui),
         );
     }
 
