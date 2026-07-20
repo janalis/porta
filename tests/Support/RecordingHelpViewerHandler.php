@@ -38,6 +38,11 @@ final class RecordingHelpViewerHandler implements HelpViewerHandler
         $this->events[] = 'missing:'.$target;
     }
 
+    public function openFind(): void
+    {
+        $this->events[] = 'find';
+    }
+
     public function labelFor(string $path): string
     {
         return basename($path, suffix: '.md');

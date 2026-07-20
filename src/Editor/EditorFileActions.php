@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Porta\Editor;
 
+use Porta\Search\EditorFindTarget;
 use Porta\Support\Clipboard;
 use Porta\Widget\CodeEditorWidget;
 use Porta\Widget\EditorFileActionHandler;
@@ -52,7 +53,7 @@ final class EditorFileActions implements EditorFileActionHandler
     {
         $initial = $this->editor->getDocument()->getSelectedText();
         $this->findBar->open(
-            $this->editor->getDocument(),
+            new EditorFindTarget($this->editor->getDocument(), $this->editor),
             $mode,
             str_contains($initial, "\n") ? '' : $initial,
         );

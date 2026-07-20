@@ -315,4 +315,83 @@ final class HelpViewerWidgetTest extends TestCase
         $viewer->refreshTheme();
         $this->assertSame($before, $viewer->render(new RenderContext(60, 10)), 'same theme → same output, freshly rendered');
     }
+
+    public function testCtrlFOpensTheFindBarThroughTheHandler(): void
+    {
+        $viewer = $this->viewer();
+        $viewer->handleInput("\x06"); // ctrl+f
+        $this->assertContains('find', $this->handler->events, 'Ctrl+F asks the IDE to open the find bar');
+    }
+
+    public function testActsAsAFindTargetOverTheRenderedPage(): void
+    {
+        $viewer = $this->viewer();
+        $this->screen($viewer, cols: 60, rows: 40); // render so the doc (and its lines) exist
+
+        // The searchable surface is the rendered page, stripped of styling.
+        $lines = $viewer->findLines();
+        $this->assertContains('Paragraph 1.', $lines, 'findLines exposes the plain rendered text');
+        $this->assertNull($viewer->replaceDocument(), 'documentation is read-only');
+        $this->assertSame(0, $viewer->findCaretCol());
+        $this->assertSame(0, $viewer->findCaretLine(), 'the match anchor starts at the top');
+
+        // The version moves when the page changes (a re-search trigger).
+        $before = $viewer->findVersion();
+        $viewer->show($this->docs->path('editor.md'), (string) file_get_contents($this->docs->path('editor.md')));
+        $this->assertGreaterThan($before, $viewer->findVersion());
+    }
+
+    public function testRevealMatchScrollsAnOffScreenMatchIntoView(): void
+    {
+        $viewer = $this->viewer();
+        $this->screen($viewer, cols: 60, rows: 10);
+
+        $target = array_search('Paragraph 30.', $viewer->findLines(), strict: true);
+        $this->assertIsInt($target);
+
+        $viewer->revealMatch($target, startByte: 0, endByte: 3);
+        $this->assertGreaterThan(0, $viewer->findCaretLine(), 'scrolled down to bring the match on screen');
+        $this->assertStringContainsString('Paragraph 30.', implode("\n", $this->screen($viewer)), 'the match line is now visible');
+
+        // Revealing an earlier match scrolls back up.
+        $viewer->revealMatch(0, startByte: 0, endByte: 1);
+        $this->assertSame(0, $viewer->findCaretLine(), 'scrolled up to the earlier match');
+
+        // A match already on screen does not move the viewport.
+        $viewer->revealMatch(0, startByte: 0, endByte: 1);
+        $this->assertSame(0, $viewer->findCaretLine());
+    }
+
+    public function testShowSearchMatchesHighlightsTheMatchWithoutChangingText(): void
+    {
+        $viewer = $this->viewer();
+        $viewer->render(new RenderContext(60, 40)); // build the doc
+
+        $lineNo = null;
+        $col = 0;
+        foreach ($viewer->findLines() as $i => $line) {
+            $at = strpos($line, 'Paragraph 1.');
+            if (false !== $at) {
+                $lineNo = $i;
+                $col = $at;
+
+                break;
+            }
+        }
+        $this->assertNotNull($lineNo);
+
+        $plain = $viewer->render(new RenderContext(60, 40));
+        $viewer->showSearchMatches([$lineNo => [['start' => $col, 'end' => $col + 4, 'current' => true]]]);
+        $lit = $viewer->render(new RenderContext(60, 40));
+
+        $row = self::HELP_HEADER_ROWS + $lineNo; // scrollTop is 0
+        $this->assertNotSame($plain[$row], $lit[$row], 'the match line gains search styling');
+        $this->assertSame(
+            AnsiUtils::stripAnsiCodes($plain[$row]),
+            AnsiUtils::stripAnsiCodes($lit[$row]),
+            'but the visible text is unchanged',
+        );
+    }
+
+    private const int HELP_HEADER_ROWS = 1;
 }

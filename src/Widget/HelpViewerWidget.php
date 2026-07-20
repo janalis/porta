@@ -5,9 +5,11 @@ declare(strict_types=1);
 namespace Porta\Widget;
 
 use Porta\Container\AsWidget;
+use Porta\Editor\Document;
 use Porta\Help\LinkSpan;
 use Porta\Help\MarkdownRenderer;
 use Porta\Help\RenderedDoc;
+use Porta\Search\FindTarget;
 use Porta\Support\AnsiText;
 use Porta\Support\IntMath;
 use Porta\Ui\Glyphs;
@@ -35,7 +37,7 @@ use Symfony\Component\Tui\Widget\VerticallyExpandableInterface;
  * here and routed back to the IDE through {@see HelpViewerHandler}.
  */
 #[AsWidget('help-viewer')]
-final class HelpViewerWidget extends AbstractWidget implements FocusableInterface, LtrPane, MenuOverlayHost, VerticallyExpandableInterface
+final class HelpViewerWidget extends AbstractWidget implements FindTarget, FocusableInterface, LtrPane, MenuOverlayHost, VerticallyExpandableInterface
 {
     use FillsPaneTrait;
     use FocusableTrait;
@@ -51,6 +53,10 @@ final class HelpViewerWidget extends AbstractWidget implements FocusableInterfac
     private ?RenderedDoc $doc = null;
     private int $renderedWidth = 0;
     private int $scrollTop = 0;
+    /** Bumped whenever the searchable lines change (new page / re-wrap). */
+    private int $findVersion = 0;
+    /** @var array<int, list<array{start: int, end: int, current: bool}>> find-bar matches by line (byte cols into the stripped line) */
+    private array $searchMatches = [];
     /** The Tab-focused link group, -1 = none. */
     private int $currentLink = -1;
     /** @var list<array{path: string, scrollTop: int, currentLink: int}> */
@@ -92,6 +98,7 @@ final class HelpViewerWidget extends AbstractWidget implements FocusableInterfac
         $this->doc = null;
         $this->scrollTop = 0;
         $this->currentLink = -1;
+        ++$this->findVersion;
         $this->invalidate();
     }
 
@@ -105,6 +112,7 @@ final class HelpViewerWidget extends AbstractWidget implements FocusableInterfac
         $this->currentLink = -1;
         $this->history = [];
         $this->forward = [];
+        ++$this->findVersion;
         $this->invalidate();
     }
 
@@ -184,12 +192,14 @@ final class HelpViewerWidget extends AbstractWidget implements FocusableInterfac
             $this->renderedWidth = $cols;
             $this->scrollTop = $this->clampScroll($this->scrollTop);
             $this->currentLink = min($this->currentLink, $doc->groupCount() - 1);
+            ++$this->findVersion; // re-wrapped: match offsets are stale
         }
 
         $lines = [$this->headerLine($cols)];
         for ($row = 0; $row < ($rows - self::HEADER_ROWS); ++$row) {
-            $line = $this->doc->lines[$this->scrollTop + $row] ?? '';
-            $lines[] = AnsiText::padRight($this->highlight($line, $this->scrollTop + $row), $cols);
+            $lineNo = $this->scrollTop + $row;
+            $line = $this->searchHighlight($this->highlight($this->doc->lines[$lineNo] ?? '', $lineNo), $lineNo);
+            $lines[] = AnsiText::padRight($line, $cols);
         }
 
         return $this->withMenuOverlay($lines, $cols);
@@ -318,6 +328,7 @@ final class HelpViewerWidget extends AbstractWidget implements FocusableInterfac
             $kb->matches($data, 'help_page_down') => $this->scrollBy($this->bodyRows()),
             $kb->matches($data, 'help_home') => $this->scrollBy(-\PHP_INT_MAX),
             $kb->matches($data, 'help_end') => $this->scrollBy(\PHP_INT_MAX),
+            $kb->matches($data, 'help_find') => $this->handler?->openFind(),
             $kb->matches($data, 'next_buffer') => $this->handler?->cycleBuffer(1),
             $kb->matches($data, 'prev_buffer') => $this->handler?->cycleBuffer(-1),
             $kb->matches($data, 'close_buffer') => $this->handler?->closeBuffer(),
@@ -341,6 +352,7 @@ final class HelpViewerWidget extends AbstractWidget implements FocusableInterfac
             'help_page_down' => [Key::PAGE_DOWN],
             'help_home' => [Key::HOME],
             'help_end' => [Key::END],
+            'help_find' => ['ctrl+f'],
             // Re-bound to the editor's defaults so tab management keeps working
             // while the code editor is detached (see EditorKeymap).
             'next_buffer' => ['ctrl+right'],
@@ -463,6 +475,76 @@ final class HelpViewerWidget extends AbstractWidget implements FocusableInterfac
             // .list::selected(:focus) — the bright shade means "this pane has focus".
             $linkRole = $this->isFocused() ? Role::SelectedRow : Role::SelectedRowUnfocused;
             $line = substr($line, offset: 0, length: $start).Sgr::RESET.$this->styles->of($linkRole)->getAnsiRestore().$mid.Sgr::RESET.substr($line, $end);
+        }
+
+        return $line;
+    }
+
+    // --- FindTarget: the in-file find bar searches the rendered page ---------
+
+    public function findLines(): array
+    {
+        return array_map(AnsiUtils::stripAnsiCodes(...), $this->doc?->lines ?? []);
+    }
+
+    public function findVersion(): int
+    {
+        return $this->findVersion;
+    }
+
+    public function findCaretLine(): int
+    {
+        return $this->scrollTop; // "nearest match" anchors to the top of the viewport
+    }
+
+    public function findCaretCol(): int
+    {
+        return 0;
+    }
+
+    public function revealMatch(int $line, int $startByte, int $endByte): void
+    {
+        // Scroll the match's line into view (the match itself is highlighted via
+        // showSearchMatches); mirror cycleLink's scroll-into-view arithmetic.
+        $this->scrollTop = match (true) {
+            $line < $this->scrollTop => $this->clampScroll($line),
+            $line > ($this->scrollTop + $this->bodyRows() - 1) => $this->clampScroll($line - $this->bodyRows() + 1),
+            default => $this->scrollTop,
+        };
+        $this->invalidate();
+    }
+
+    public function showSearchMatches(array $byLine): void
+    {
+        $this->searchMatches = $byLine;
+        $this->invalidate();
+    }
+
+    public function replaceDocument(): ?Document
+    {
+        return null; // documentation is read-only
+    }
+
+    /**
+     * Splice the find-bar's match highlights over a rendered line. Match offsets
+     * are byte columns into the STRIPPED line, so map each through the display
+     * column to a byte offset in the ANSI line (as {@see highlight()} does for
+     * links). The current match is bold, matching the editor's search styling.
+     */
+    private function searchHighlight(string $line, int $lineNo): string
+    {
+        $matches = $this->searchMatches[$lineNo] ?? [];
+        if ([] === $matches || !$this->styles->hasColor()) {
+            return $line;
+        }
+        $stripped = AnsiUtils::stripAnsiCodes($line);
+        // Paint right-to-left so earlier byte offsets stay valid.
+        foreach (array_reverse($matches) as $match) {
+            $start = $this->byteAtColumn($line, AnsiUtils::visibleWidth(substr($stripped, offset: 0, length: $match['start'])));
+            $end = $this->byteAtColumn($line, AnsiUtils::visibleWidth(substr($stripped, offset: 0, length: $match['end'])));
+            $mid = AnsiUtils::stripAnsiCodes(substr($line, $start, $end - $start));
+            $style = $match['current'] ? $this->styles->of(Role::SearchCurrentBg)->withBold() : $this->styles->of(Role::SearchBg);
+            $line = substr($line, offset: 0, length: $start).Sgr::RESET.$style->getAnsiRestore().$mid.Sgr::RESET.substr($line, $end);
         }
 
         return $line;

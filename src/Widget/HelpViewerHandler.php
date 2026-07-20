@@ -24,6 +24,9 @@ interface HelpViewerHandler
     /** A link target that does not resolve to a file. */
     public function missingTarget(string $target): void;
 
+    /** Open the in-file find bar over the docs page (Ctrl+F). */
+    public function openFind(): void;
+
     /** A breadcrumb label for a page path. */
     public function labelFor(string $path): string;
 

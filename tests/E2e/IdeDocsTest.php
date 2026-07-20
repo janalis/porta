@@ -293,4 +293,41 @@ final class IdeDocsTest extends TestCase
 
         $this->addToAssertionCount(1);
     }
+
+    public function testCtrlFFindsWithinTheDocsPage(): void
+    {
+        $docs = $this->docs();
+        $project = new TempProject(['a.php' => "<?php\n"]);
+
+        $this->runIde(
+            $project,
+            $project->path('a.php'),
+            [
+                300 => function ($tui, $terminal): void {
+                    $tui->handleInput("\x1bOP"); // F1 → the docs page
+                    $tui->tick();
+                    $this->assertSame('help-viewer', $tui->getFocus()?->getId(), 'the docs page is focused');
+
+                    $tui->handleInput("\x06"); // ctrl+f
+                    $tui->tick();
+                    $this->assertSame('find-bar', $tui->getFocus()?->getId(), 'Ctrl+F opens the find bar over the docs');
+
+                    foreach (str_split('manual') as $ch) {
+                        $tui->handleInput($ch);
+                    }
+                    $tui->tick();
+                    $screen = AnsiUtils::stripAnsiCodes($terminal->getOutput());
+                    $this->assertStringContainsString('Find: manual', $screen);
+                    $this->assertStringContainsString('[1/1]', $screen, 'the query matched the rendered docs text');
+
+                    $tui->handleInput("\x1b"); // esc closes the bar
+                    $tui->tick();
+                    $this->assertSame('help-viewer', $tui->getFocus()?->getId(), 'closing returns focus to the docs page');
+                },
+            ],
+            docsDir: $docs->dir,
+        );
+
+        $this->addToAssertionCount(1);
+    }
 }

@@ -56,13 +56,14 @@ final class SearchUiWiring
      * files-only Search Everywhere overlay, wired by its own controller.) */
     private function wireFindAndGoto(): void
     {
+        // The match mirror lives on the bar's FindTarget now (editor highlight
+        // or docs highlight), so this only repaints. On close the bar clears its
+        // target's highlight; here we just return focus to the active pane.
         $this->findBar->onUpdate(function (): void {
-            $this->editor->setSearchMatches($this->findBar->getMatchesByLine());
             $this->tui->requestRender();
         });
 
         $this->findBar->onClose(function (): void {
-            $this->editor->setSearchMatches([]);
             $this->tui->setFocus($this->editorArea->widget());
             $this->tui->requestRender();
         });
