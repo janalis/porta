@@ -106,6 +106,7 @@ final class ActionCatalog
         'file_structure' => ['label' => 'File Structure'],
         'peek_definition' => ['label' => 'Peek Definition'],
         'reformat' => ['label' => 'Reformat File'],
+        'cycle_line_numbers' => ['label' => 'Cycle Line Numbers', 'keys' => ['ctrl+shift+l']],
         'ide_find_in_project' => ['label' => 'Find in Project', 'keys' => ['ctrl+shift+f']],
         'ide_goto_symbol' => ['label' => 'Go to Symbol in Project', 'keys' => ['ctrl+alt+shift+n', 'ctrl+alt+o']],
         'ide_goto_test' => ['label' => 'Go to Test', 'keys' => ['ctrl+shift+t']],

@@ -59,7 +59,7 @@ final class ViewCommands implements CommandProvider
             ->add('ide_notifications', fn () => $this->workbench->showNotificationLog(), label: 'Notification Log')
             ->add('ide_lsp_log', fn () => $this->workbench->showLspLog(), label: 'LSP: Show Server Log')
             ->add('toggle_inline_diagnostics', fn () => $this->settings->toggle('inlineDiagnostics'), label: 'Toggle Inline Diagnostics')
-            ->add('cycle_line_numbers', fn () => $this->settings->cycleLineNumbers(), label: 'Cycle Line Numbers')
+            ->add('cycle_line_numbers', fn () => $this->settings->cycleLineNumbers(), keyBound: KeyDispatch::Bound)
             ->add('toggle_auto_pairs', fn () => $this->settings->toggle('autoPairs'), label: 'Toggle Auto-Pairs')
             ->add('toggle_format_on_save', fn () => $this->settings->toggle('formatOnSave'), label: 'Toggle Format on Save')
             ->add('fold_all', fn () => $this->folding->foldAll(), label: 'Fold All')
