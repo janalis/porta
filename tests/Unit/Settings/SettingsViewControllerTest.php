@@ -28,6 +28,7 @@ use Porta\Lsp\LspSessionPool;
 use Porta\Lsp\WorkspaceEditor;
 use Porta\Plugin\PluginInstaller;
 use Porta\Plugin\PluginSettings;
+use Porta\Search\TodoTags;
 use Porta\Settings\LiveSettingsApplier;
 use Porta\Settings\SettingsViewController;
 use Porta\Tests\Support\FakePluginLifecycle;
@@ -130,6 +131,7 @@ final class SettingsViewControllerTest extends TestCase
             new Translator('en'),
             $applier,
             new BreadcrumbsWidget(),
+            new TodoTags(),
         );
         $keymap = new SettingsKeymapController($editor, new Keybindings([]), $notifier, $this->project->dir, new Translator('en'));
         $languages = new SettingsLanguageController($editor, $notifier, $this->project->dir, new Translator('en'), []);

@@ -40,6 +40,7 @@ final class IdeConfig
         'breadcrumbs' => true,
         'autoPairs' => true,
         'formatOnSave' => false,
+        'todoTags' => 'TODO,FIXME,HACK,XXX,BUG',
         'cursorShape' => 'bar',
         'tabBarPosition' => 'top',
         'gitShowBranch' => true,

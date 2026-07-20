@@ -6,6 +6,7 @@ namespace Porta\Config;
 
 use Porta\Editor\LineNumberMode;
 use Porta\I18n\Translator;
+use Porta\Search\TodoTags;
 use Porta\Settings\LiveSettingsApplier;
 use Porta\Ui\Notifier;
 use Porta\Widget\BreadcrumbsWidget;
@@ -41,6 +42,7 @@ final class SettingsController
         private readonly Translator $translator,
         LiveSettingsApplier $applier,
         BreadcrumbsWidget $breadcrumbs,
+        TodoTags $todoTags,
     ) {
         $this->descriptors = [
             // --- Interface (the "Interface" settings page) ---
@@ -127,6 +129,13 @@ final class SettingsController
                 'group' => 'general',
                 'restart' => false,
                 'apply' => static fn (int|bool|string $v) => (bool) $v ? $applier->enableFormatOnSave() : $applier->disableFormatOnSave(),
+            ],
+            'todoTags' => [
+                'label' => 'TODO tags (comma-separated)',
+                'kind' => SettingsRowKind::Text,
+                'group' => 'general',
+                'restart' => false,
+                'apply' => static fn (int|bool|string $v) => $todoTags->set((string) $v),
             ],
         ];
     }
