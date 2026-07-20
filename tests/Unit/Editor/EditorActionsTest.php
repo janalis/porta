@@ -245,8 +245,13 @@ final class EditorActionsTest extends TestCase
         $onSubmit('3');
         $this->assertSame([[2, 0]], $this->calls['jumpTo'], '1-based input, 0-based jump');
 
+        $onSubmit('12:5');
+        $this->assertSame([2, 0], $this->calls['jumpTo'][0]);
+        $this->assertSame([11, 4], $this->calls['jumpTo'][1], 'line:column is 1-based, jumps 0-based');
+
         $onSubmit('nope');
-        $this->assertCount(1, $this->calls['jumpTo'], 'non-digits are ignored');
+        $onSubmit('7:'); // a trailing colon with no column is not a valid pair
+        $this->assertCount(2, $this->calls['jumpTo'], 'only well-formed line / line:col inputs jump');
     }
 
     public function testRunRenameSymbolPassesTheBareWord(): void
