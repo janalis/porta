@@ -6,26 +6,22 @@ namespace Porta\Widget\Git;
 
 use Porta\Container\AsWidget;
 use Porta\Git\DiffDocument;
-use Porta\Git\DiffLine;
 use Porta\Git\DiffRowKind;
 use Porta\Highlight\CodeHighlighter;
 use Porta\Highlight\DarkTerminalTheme;
 use Porta\I18n\Translator;
 use Porta\Support\AnsiText;
 use Porta\Support\IntMath;
-use Porta\Ui\Glyphs;
 use Porta\Ui\LtrPane;
 use Porta\Ui\Role;
-use Porta\Ui\Sgr;
 use Porta\Ui\Theme\Styles;
 use Porta\Widget\FillsPaneTrait;
 use Porta\Widget\InputHook;
 use Porta\Widget\OptionTagState;
 use Porta\Widget\PaneNavigationCallbacks;
-use Porta\Widget\Render\LineDecorator;
+use Porta\Widget\Render\DiffViewRenderer;
 use Porta\Widget\Render\MenuOverlayHost;
 use Porta\Widget\Render\MenuOverlayHostTrait;
-use Symfony\Component\Tui\Ansi\AnsiUtils;
 use Symfony\Component\Tui\Input\Key;
 use Symfony\Component\Tui\Render\RenderContext;
 use Symfony\Component\Tui\Style\Style;
@@ -644,7 +640,7 @@ final class DiffViewWidget extends AbstractWidget implements FocusableInterface,
         \assert(null !== $this->document, description: 'document is loaded');
         $texts = [];
         for ($r = $sel->fromRow; $r <= min($sel->toRow, \count($this->rows) - 1); ++$r) {
-            $line = $this->lineAtRow($this->rows[$r], $sel->side);
+            $line = DiffViewRenderer::lineAtRow($this->document, $this->rows[$r], $sel->side);
             if (null === $line || '\\' === $line->origin) {
                 continue;
             }
@@ -656,25 +652,6 @@ final class DiffViewWidget extends AbstractWidget implements FocusableInterface,
         }
 
         return implode("\n", $texts);
-    }
-
-    /**
-     * The DiffLine a render row shows (on $side in split mode), or null.
-     *
-     * @param array{kind: DiffRowKind, hunk: int, line?: int, left?: int, right?: int} $row
-     */
-    private function lineAtRow(array $row, ?string $side): ?DiffLine
-    {
-        \assert(null !== $this->document, description: 'document is loaded');
-        if (DiffRowKind::Hunk === $row['kind']) {
-            return null;
-        }
-        $index = $row['line'] ?? -1;
-        if (DiffRowKind::Line !== $row['kind']) {
-            $index = 'left' === ($side ?? 'left') ? $row['left'] ?? -1 : $row['right'] ?? -1;
-        }
-
-        return $index >= 0 ? $this->document->hunks[$row['hunk']]->lines[$index] : null;
     }
 
     /** The byte offset where a display column starts within a raw line text. */
@@ -716,96 +693,15 @@ final class DiffViewWidget extends AbstractWidget implements FocusableInterface,
             return $this->withMenuOverlay($lines, $width);
         }
 
+        $renderer = new DiffViewRenderer($this->document, $this->highlighted, $this->hScroll, $this->cursor, $this->anchor, $this->focused, $this->normalizedCharSel(), $this->styles);
         foreach (\array_slice($this->rows, $this->scroll, $rows - 1) as $i => $row) {
-            $rowIndex = $this->scroll + $i;
-            $line = $this->applyCharSelectionTint($rowIndex, $row, $this->renderRow($rowIndex, $row, $width), $width);
-            $lines[] = $this->decorateRowLine($rowIndex, $line);
+            $lines[] = $renderer->row($this->scroll + $i, $row, $width);
         }
         while (\count($lines) < $rows) {
             $lines[] = str_repeat(' ', max(0, $width));
         }
 
         return $this->withMenuOverlay($lines, $width);
-    }
-
-    /** The cursor/range background applied to a rendered diff row. */
-    private function decorateRowLine(int $rowIndex, string $line): string
-    {
-        if ($this->focused && $rowIndex === $this->cursor) {
-            return $this->styles->of(Role::HeaderBar)->apply($line);
-        }
-        if ($this->inRange($rowIndex)) {
-            return $this->styles->of(Role::RowHighlightBg)->apply($line);
-        }
-
-        return $line;
-    }
-
-    /**
-     * Tint the visible span of the char selection on a rendered row (the
-     * selection's side only, in split mode), like the editor's selection bg.
-     *
-     * @param array{kind: DiffRowKind, hunk: int, line?: int, left?: int, right?: int} $row
-     */
-    private function applyCharSelectionTint(int $rowIndex, array $row, string $line, int $width): string
-    {
-        $sel = $this->normalizedCharSel();
-        if (null === $sel || $rowIndex < $sel->fromRow || $rowIndex > $sel->toRow) {
-            return $line;
-        }
-        $target = $this->lineAtRow($row, $sel->side);
-        if (null === $target) {
-            return $line;
-        }
-        $textStart = match ($sel->side) {
-            null => 12,
-            'left' => 6,
-            default => intdiv($width - 1, num2: 2) + 7,
-        };
-        $segEnd = 'left' === $sel->side ? intdiv($width - 1, num2: 2) : $width;
-        $fromCol = $rowIndex === $sel->fromRow ? $sel->fromCol : 0;
-        $toCol = $rowIndex === $sel->toRow ? $sel->toCol : mb_strwidth($target->text);
-        $start = max($textStart, $textStart + $fromCol - $this->hScroll);
-        $end = min($segEnd, $textStart + $toCol - $this->hScroll);
-
-        // Re-apply the bg after any reset inside the span (syntax SGR resets,
-        // truncateToWidth's pad boundary) — without it the highlight dies
-        // mid-selection on highlighted lines.
-        $selectionStyle = $this->styles->of(Role::SelectionBg);
-        $selectionBg = $selectionStyle->getAnsiRestore();
-
-        return $end <= $start ? $line : LineDecorator::apply($line, $start, $end, $selectionBg, Sgr::resetFor($selectionStyle), $selectionBg);
-    }
-
-    /**
-     * Overlay the intraline changed range (byte offsets on the raw text,
-     * converted to display columns) with a stronger background; the
-     * ANSI-aware LineDecorator keeps any syntax SGR spans intact.
-     */
-    private function withEmphasis(string $rendered, DiffLine $line, string $bg): string
-    {
-        if (null === $line->changedRange) {
-            return $rendered;
-        }
-        [$from, $to] = $line->changedRange;
-        if ($from >= $to) {
-            return $rendered;
-        }
-        $startCol = mb_strwidth(substr($line->text, offset: 0, length: $from));
-        $endCol = $startCol + mb_strwidth(substr($line->text, $from, $to - $from));
-
-        return LineDecorator::apply($rendered, $startCol, $endCol, $bg, Sgr::DEFAULT_BG, $bg);
-    }
-
-    /** Whether $rowIndex sits inside the armed `v` range. */
-    private function inRange(int $rowIndex): bool
-    {
-        if (null === $this->anchor) {
-            return false;
-        }
-        [$from, $to] = $this->anchor <= $this->cursor ? [$this->anchor, $this->cursor] : [$this->cursor, $this->anchor];
-
-        return $rowIndex >= $from && $rowIndex <= $to;
     }
 
     /**
@@ -885,99 +781,6 @@ final class DiffViewWidget extends AbstractWidget implements FocusableInterface,
     public function clearHeaderHover(): bool
     {
         return $this->hoverHeader(-1, -1);
-    }
-
-    /** @param array{kind: DiffRowKind, hunk: int, line?: int, left?: int, right?: int} $row */
-    private function renderRow(int $rowIndex, array $row, int $width): string
-    {
-        \assert(null !== $this->document, description: 'document is loaded');
-        $hunk = $this->document->hunks[$row['hunk']];
-
-        if (DiffRowKind::Hunk === $row['kind']) {
-            return $this->styles->of(Role::Hunk)->apply(AnsiText::truncate(' '.$hunk->header(), $width, pad: true));
-        }
-        if (DiffRowKind::Pair === $row['kind']) {
-            $leftW = intdiv($width - 1, num2: 2);
-            $rightW = $width - 1 - $leftW;
-
-            return (
-                $this->renderHalf($row['hunk'], $row['left'] ?? -1, $leftW, DiffSide::Old)
-                .$this->styles->of(Role::Gutter)->apply(Glyphs::DIFF_COLUMN)
-                .$this->renderHalf($row['hunk'], $row['right'] ?? -1, $rightW, DiffSide::New)
-                .Sgr::RESET
-            );
-        }
-
-        $line = $hunk->lines[$row['line'] ?? -1];
-        $gutter = $this->styles->of(Role::Gutter)->apply(
-            str_pad(null === $line->oldNo ? '' : (string) $line->oldNo, length: 4, pad_string: ' ', pad_type: \STR_PAD_LEFT)
-            .' '
-            .str_pad(null === $line->newNo ? '' : (string) $line->newNo, length: 4, pad_string: ' ', pad_type: \STR_PAD_LEFT)
-            .' '
-            .Glyphs::DIFF_COLUMN,
-        );
-
-        [$marker, $text] = $this->lineBody($line, $row['hunk'].':'.($row['line'] ?? -1));
-
-        return $gutter.$marker.$this->scrolledText($text, max(1, $width - 12)).Sgr::RESET;
-    }
-
-    /**
-     * A body line split into its pinned one-column ± marker and the scrollable
-     * styled text. The origin char and gutter mark the row kind; added/context
-     * text keeps its syntax colors, deletions render whole-row red (the
-     * pre-image no longer matches the file's highlight state). Paired ± lines
-     * carry an intraline changed range, emphasized with a stronger background.
-     *
-     * @return array{0: string, 1: string}
-     */
-    private function lineBody(DiffLine $line, string $key): array
-    {
-        // The '-' and '\' markers deliberately leave their foreground open so
-        // the whole row inherits it (deletions render whole-row red).
-        return match ($line->origin) {
-            '+' => [$this->styles->of(Role::Added)->apply('+'), $this->withEmphasis($this->highlighted[$key] ?? $line->text, $line, $this->styles->of(Role::AddEmphasisBg)->getAnsiRestore())],
-            '-' => [$this->styles->of(Role::Deleted)->getAnsiRestore().'-', $this->withEmphasis($line->text, $line, $this->styles->of(Role::DelEmphasisBg)->getAnsiRestore())],
-            '\\' => [$this->styles->of(Role::Dim)->getAnsiRestore().' ', $line->text],
-            default => [' ', $this->highlighted[$key] ?? $line->text],
-        };
-    }
-
-    /**
-     * The visible window of a styled line text: sliced by the horizontal
-     * scroll (ANSI-aware, so syntax/emphasis SGR survives) with a leading …
-     * marking cut-off text, right-truncated and padded to $inner columns.
-     */
-    private function scrolledText(string $text, int $inner): string
-    {
-        if ($this->hScroll <= 0) {
-            return AnsiText::truncate($text, $inner, pad: true);
-        }
-
-        $slice = AnsiUtils::sliceByColumn($text, $this->hScroll, $inner);
-
-        // A LEADING mark: the cut is at the head, so the row reads as scrolled.
-        return Glyphs::ELLIPSIS.AnsiText::truncate($slice, max(1, $inner - 1), pad: true);
-    }
-
-    /**
-     * One side of a side-by-side row: 4-digit gutter + marker + content in
-     * $width columns; -1 (no line on this side) renders blank. Colors reset
-     * to the default foreground at the end so nothing bleeds past the divider.
-     */
-    private function renderHalf(int $hunkIndex, int $lineIndex, int $width, DiffSide $side): string
-    {
-        \assert(null !== $this->document, description: 'document is loaded');
-        if ($lineIndex < 0) {
-            return str_repeat(' ', max(0, $width));
-        }
-        $line = $this->document->hunks[$hunkIndex]->lines[$lineIndex];
-        $no = $side->lineNo($line);
-        $gutter = $this->styles->of(Role::Gutter)->apply(str_pad(null === $no ? '' : (string) $no, length: 4, pad_string: ' ', pad_type: \STR_PAD_LEFT).' ');
-
-        [$marker, $text] = $this->lineBody($line, $hunkIndex.':'.$lineIndex);
-
-        return $gutter.$marker.$this->scrolledText($text, max(1, $width - 6)).Sgr::DEFAULT_FG;
     }
 
     /** @return array<string, string[]> */
