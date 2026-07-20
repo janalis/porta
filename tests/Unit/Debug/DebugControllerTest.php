@@ -388,6 +388,33 @@ final class DebugControllerTest extends TestCase
         );
     }
 
+    public function testRestartUsesTheAdapterNativeRestartWhenSupported(): void
+    {
+        $controller = $this->controller();
+        $this->pauseAtBreakpoint($controller, capabilities: ['supportsRestartRequest' => true]);
+
+        $controller->restart();
+        $this->assertContains('restart', $this->client->commands(), 'the adapter restarts in place');
+    }
+
+    public function testRestartFallsBackToStopAndRelaunchWithoutNativeSupport(): void
+    {
+        $controller = $this->controller();
+        $this->pauseAtBreakpoint($controller); // no supportsRestartRequest
+
+        $controller->restart();
+        // The old session disconnected and a fresh launch began.
+        $this->assertContains('disconnect', $this->client->commands(), 'the old session was ended');
+        $this->assertSame(2, \count(array_filter($this->client->commands(), static fn (string $c): bool => 'initialize' === $c)), 'a new session was launched');
+    }
+
+    public function testRestartWithoutASessionFlashes(): void
+    {
+        $controller = $this->controller();
+        $controller->restart();
+        $this->assertStringContainsString('No debug session to restart', $this->flashed());
+    }
+
     public function testEditingAVariableFlashesTheAdapterError(): void
     {
         $controller = $this->controller();

@@ -278,6 +278,27 @@ final class DapSessionTest extends TestCase
         $this->assertSame(['99', null], $delivered, 'the adapter-formatted value comes back');
     }
 
+    public function testRestartSendsTheRequestWhenSupported(): void
+    {
+        $client = new FakeDapClient();
+        $session = $this->session($client);
+        $session->start([]);
+        $client->respond('initialize', ['supportsRestartRequest' => true]);
+        $client->respond('launch');
+        $this->assertTrue($session->supportsRestart());
+
+        $session->restart();
+        $this->assertContains('restart', $client->commands(), 'the native restart request is sent');
+    }
+
+    public function testRestartIsInertWhenNotActive(): void
+    {
+        $client = new FakeDapClient();
+        $session = $this->session($client); // never started
+        $session->restart();
+        $this->assertNotContains('restart', $client->commands());
+    }
+
     public function testSetVariableIsInertWhenTheSessionIsNotActive(): void
     {
         $client = new FakeDapClient();

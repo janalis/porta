@@ -104,6 +104,7 @@ while (!feof($in)) {
                     'supportsHitConditionalBreakpoints' => false,
                     'supportsLogPoints' => true,
                     'supportsSetVariable' => true,
+                    'supportsRestartRequest' => true,
                     'exceptionBreakpointFilters' => [
                         ['filter' => 'warning', 'label' => 'Warnings', 'default' => false],
                         ['filter' => 'exception', 'label' => 'Uncaught Exceptions', 'default' => true],
@@ -233,6 +234,12 @@ while (!feof($in)) {
                 } else {
                     respond($out, $message, [], 'cannot evaluate');
                 }
+                break;
+
+            case 'restart':
+                respond($out, $message);
+                event($out, 'output', ['category' => 'stdout', 'output' => "restarted\n"]);
+                event($out, 'stopped', ['reason' => 'breakpoint', 'threadId' => 1]);
                 break;
 
             case 'disconnect':

@@ -137,6 +137,7 @@ final class ActionCatalog
         'debug_continue' => ['label' => 'Resume Program', 'keys' => ['f9']],
         'debug_run_to_cursor' => ['label' => 'Run to Cursor', 'keys' => ['alt+f9']],
         'debug_stop' => ['label' => 'Stop Debugger', 'keys' => ['ctrl+f2']],
+        'debug_restart' => ['label' => 'Restart Debugger', 'keys' => ['ctrl+shift+f5']],
         'ide_git' => ['label' => 'Git: Changes', 'keys' => ['ctrl+alt+d']],
         'git_push' => ['label' => 'Git: Push', 'keys' => ['ctrl+shift+k']],
         'ide_settings' => ['label' => 'Settings…', 'keys' => ['ctrl+,']],

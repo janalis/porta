@@ -289,6 +289,30 @@ final class DebugController implements DebugSessionObserver
         $this->session?->disconnect();
     }
 
+    /**
+     * Restart the running session: the adapter's native restart when it
+     * advertises one, otherwise stop and relaunch for the current file.
+     */
+    public function restart(): void
+    {
+        if (null === $this->session || !$this->session->isActive()) {
+            $this->notifier->flash($this->translator->trans('No debug session to restart'));
+            $this->tui->requestRender();
+
+            return;
+        }
+        if ($this->session->supportsRestart()) {
+            $this->session->restart();
+            $this->tui->requestRender();
+
+            return;
+        }
+        // Fallback: disconnect the old session and relaunch for the current file.
+        $this->stop();
+        $this->session = null;
+        $this->startForCurrentFile();
+    }
+
     /** Alt+F9: continue to the caret line via a one-shot breakpoint. */
     public function runToCursor(): void
     {

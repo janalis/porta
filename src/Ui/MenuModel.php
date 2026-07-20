@@ -106,6 +106,7 @@ final class MenuModel
             'i:debug_continue',
             'i:debug_run_to_cursor',
             'i:debug_stop',
+            'i:debug_restart',
             self::SEP,
             'i:ide_terminal',
             'i:ide_terminal_new',

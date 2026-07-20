@@ -20,6 +20,7 @@ final class DapSession
     private bool $supportsHitConditionalBreakpoints = false;
     private bool $supportsLogPoints = false;
     private bool $supportsSetVariable = false;
+    private bool $supportsRestart = false;
     private bool $terminationReported = false;
 
     /** @var list<array{filter: string, label: string, default: bool}> the adapter's advertised exception filters */
@@ -107,6 +108,7 @@ final class DapSession
                 $this->supportsHitConditionalBreakpoints = true === ($body['supportsHitConditionalBreakpoints'] ?? false);
                 $this->supportsLogPoints = true === ($body['supportsLogPoints'] ?? false);
                 $this->supportsSetVariable = true === ($body['supportsSetVariable'] ?? false);
+                $this->supportsRestart = true === ($body['supportsRestartRequest'] ?? false);
                 $this->exceptionFilters = self::normalizeExceptionFilters($body['exceptionBreakpointFilters'] ?? null);
                 $this->client->request('launch', $launchArguments, function (array $ignored, ?string $launchError): void {
                     if (null !== $launchError) {
@@ -343,6 +345,20 @@ final class DapSession
         ], static function (array $body, ?string $error) use ($deliver, $value): void {
             $deliver(\is_string($body['value'] ?? null) ? $body['value'] : $value, $error);
         });
+    }
+
+    /** Whether the adapter advertised native restart support. */
+    public function supportsRestart(): bool
+    {
+        return $this->supportsRestart;
+    }
+
+    /** Restart the debuggee in place via the adapter's native restart request. */
+    public function restart(): void
+    {
+        if ($this->isActive()) {
+            $this->client->request('restart');
+        }
     }
 
     /** Politely end the session, then tear the transport down. Idempotent. */
