@@ -158,6 +158,9 @@ final class SettingsViewController
         if ('vcs:git' === $this->section) {
             return $this->git->rows();
         }
+        if ('interface' === $this->section) {
+            return $this->settings->interfaceRows();
+        }
         if (!str_starts_with($this->section, 'lang:')) {
             return $this->settings->formRows();
         }

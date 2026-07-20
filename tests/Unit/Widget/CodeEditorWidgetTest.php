@@ -7,6 +7,7 @@ namespace Porta\Tests\Unit\Widget;
 use PHPUnit\Framework\TestCase;
 use Porta\Editor\CompletionItem;
 use Porta\Editor\FindMode;
+use Porta\Editor\LineNumberMode;
 use Porta\Editor\SelectionMode;
 use Porta\Search\Everywhere\SearchCategory;
 use Porta\Search\Everywhere\SearchHit;
@@ -125,6 +126,48 @@ final class CodeEditorWidgetTest extends TestCase
 
         $editor->clickAt(2, 10); // first content row, below the pinned band
         $this->assertGreaterThan(6, $editor->getDocument()->getCursorLine(), 'a content-row click resolves a scrolled line, not a header');
+    }
+
+    public function testDisablingStickyScrollRemovesThePinnedBand(): void
+    {
+        $editor = $this->stickyEditor();
+        $editor->disableStickyScroll();
+        $editor->getDocument()->setCursor(24, 8); // deep inside handle()
+        $rendered = $editor->render(new RenderContext(60, 12));
+
+        $top = AnsiUtils::stripAnsiCodes($rendered[0]);
+        $this->assertStringNotContainsString('class Service', $top, 'the Interface setting off → no pinned header');
+        $this->assertStringNotContainsString("\x1b[48;5;237m", $rendered[0], 'no pinned band background');
+    }
+
+    public function testLineNumbersOffHidesTheGutterNumbersButKeepsTheMarkerColumn(): void
+    {
+        $editor = $this->stickyEditor();
+        $editor->getDocument()->setCursor(24, 8);
+
+        $absolute = $editor->render(new RenderContext(60, 12));
+        $this->assertMatchesRegularExpression('/^\s*\d+/', AnsiUtils::stripAnsiCodes($absolute[2]), 'a line number by default');
+
+        $editor->setLineNumberMode(LineNumberMode::Off);
+        $rendered = $editor->render(new RenderContext(60, 12));
+
+        $this->assertExactWidth($rendered, 60);
+        $body = AnsiUtils::stripAnsiCodes($rendered[2]);
+        $this->assertDoesNotMatchRegularExpression('/^\s*\d/', $body, 'no digit in the body gutter');
+        $sticky = AnsiUtils::stripAnsiCodes($rendered[1]);
+        $this->assertStringContainsString('function handle', $sticky, 'the sticky header still pins with the number gone');
+        $this->assertDoesNotMatchRegularExpression('/^\s*\d/', $sticky, 'and shows no number');
+        $this->assertStringContainsString("\x1b_pi:c;", implode('', $rendered), 'the caret marker column survives');
+    }
+
+    public function testDisablingIndentGuidesRemovesTheGuides(): void
+    {
+        $editor = $this->editor("<?php\nif (true) {\n        deep();\n");
+        $editor->disableIndentGuides();
+        $line2 = AnsiUtils::stripAnsiCodes($editor->render(new RenderContext(80, 10))[2]);
+
+        $this->assertStringNotContainsString('│', $line2, 'the Interface setting off → no indent guides');
+        $this->assertStringContainsString('deep();', $line2);
     }
 
     public function testNoStickyRowsForStructurelessFile(): void

@@ -4,9 +4,11 @@ declare(strict_types=1);
 
 namespace Porta\Config;
 
+use Porta\Editor\LineNumberMode;
 use Porta\I18n\Translator;
 use Porta\Settings\LiveSettingsApplier;
 use Porta\Ui\Notifier;
+use Porta\Widget\BreadcrumbsWidget;
 use Porta\Widget\CodeEditorWidget;
 
 /**
@@ -21,7 +23,7 @@ use Porta\Widget\CodeEditorWidget;
  * form's "applies on restart" note) is retained for any future setting that
  * genuinely needs a relaunch, but none do today.
  *
- * @phpstan-type Descriptor array{label: string, kind: SettingsRowKind, restart: bool, apply: (\Closure(int|bool|string): void)|null, options?: list<string>, optionLabels?: array<string, string>, min?: int, max?: int}
+ * @phpstan-type Descriptor array{label: string, kind: SettingsRowKind, group: 'general'|'interface', restart: bool, apply: (\Closure(int|bool|string): void)|null, options?: list<string>, optionLabels?: array<string, string>, min?: int, max?: int}
  */
 final class SettingsController
 {
@@ -38,43 +40,23 @@ final class SettingsController
         private readonly string $rootDir,
         private readonly Translator $translator,
         LiveSettingsApplier $applier,
+        BreadcrumbsWidget $breadcrumbs,
     ) {
         $this->descriptors = [
+            // --- Interface (the "Interface" settings page) ---
             'language' => [
                 'label' => 'Language',
                 'kind' => SettingsRowKind::Choice,
+                'group' => 'interface',
                 'restart' => false,
                 'apply' => static fn (int|bool|string $v) => $applier->applyLocale((string) $v),
                 'options' => Translator::LOCALES,
                 'optionLabels' => Translator::LOCALE_NAMES,
             ],
-            'inlineDiagnostics' => [
-                'label' => 'Inline diagnostics',
-                'kind' => SettingsRowKind::Bool,
-                'restart' => false,
-                'apply' => static fn (int|bool|string $v) => (bool) $v ? $editor->enableInlineDiagnostics() : $editor->disableInlineDiagnostics(),
-            ],
-            'relativeLineNumbers' => [
-                'label' => 'Relative line numbers',
-                'kind' => SettingsRowKind::Bool,
-                'restart' => false,
-                'apply' => static fn (int|bool|string $v) => (bool) $v ? $editor->enableRelativeLineNumbers() : $editor->disableRelativeLineNumbers(),
-            ],
-            'autoPairs' => [
-                'label' => 'Auto-pairs',
-                'kind' => SettingsRowKind::Bool,
-                'restart' => false,
-                'apply' => static fn (int|bool|string $v) => (bool) $v ? $editor->enableAutoPairs() : $editor->disableAutoPairs(),
-            ],
-            'formatOnSave' => [
-                'label' => 'Format on save (LSP)',
-                'kind' => SettingsRowKind::Bool,
-                'restart' => false,
-                'apply' => static fn (int|bool|string $v) => (bool) $v ? $applier->enableFormatOnSave() : $applier->disableFormatOnSave(),
-            ],
             'theme' => [
                 'label' => 'Theme',
                 'kind' => SettingsRowKind::Choice,
+                'group' => 'interface',
                 'restart' => false,
                 'apply' => static fn (int|bool|string $v) => $applier->applyTheme((string) $v),
                 'options' => ['dark', 'light', 'high-contrast'],
@@ -82,6 +64,7 @@ final class SettingsController
             'cursorShape' => [
                 'label' => 'Cursor shape',
                 'kind' => SettingsRowKind::Choice,
+                'group' => 'interface',
                 'restart' => false,
                 'apply' => static fn (int|bool|string $v) => $applier->applyCursorShape((string) $v),
                 'options' => ['bar', 'block', 'underline'],
@@ -89,9 +72,61 @@ final class SettingsController
             'tabBarPosition' => [
                 'label' => 'Tab bar position',
                 'kind' => SettingsRowKind::Choice,
+                'group' => 'interface',
                 'restart' => false,
                 'apply' => static fn (int|bool|string $v) => $applier->applyTabBarPosition((string) $v),
                 'options' => ['top', 'bottom', 'left', 'right'],
+            ],
+            'lineNumbers' => [
+                'label' => 'Line numbers',
+                'kind' => SettingsRowKind::Choice,
+                'group' => 'interface',
+                'restart' => false,
+                'apply' => static fn (int|bool|string $v) => $editor->setLineNumberMode(LineNumberMode::tryFrom((string) $v) ?? LineNumberMode::Absolute),
+                'options' => ['off', 'absolute', 'relative'],
+            ],
+            'stickyScroll' => [
+                'label' => 'Sticky scroll',
+                'kind' => SettingsRowKind::Bool,
+                'group' => 'interface',
+                'restart' => false,
+                'apply' => static fn (int|bool|string $v) => (bool) $v ? $editor->enableStickyScroll() : $editor->disableStickyScroll(),
+            ],
+            'indentGuides' => [
+                'label' => 'Indent guides',
+                'kind' => SettingsRowKind::Bool,
+                'group' => 'interface',
+                'restart' => false,
+                'apply' => static fn (int|bool|string $v) => (bool) $v ? $editor->enableIndentGuides() : $editor->disableIndentGuides(),
+            ],
+            'breadcrumbs' => [
+                'label' => 'Breadcrumbs bar',
+                'kind' => SettingsRowKind::Bool,
+                'group' => 'interface',
+                'restart' => false,
+                'apply' => static fn (int|bool|string $v) => (bool) $v ? $breadcrumbs->show() : $breadcrumbs->hide(),
+            ],
+            // --- General (editor behavior) ---
+            'inlineDiagnostics' => [
+                'label' => 'Inline diagnostics',
+                'kind' => SettingsRowKind::Bool,
+                'group' => 'general',
+                'restart' => false,
+                'apply' => static fn (int|bool|string $v) => (bool) $v ? $editor->enableInlineDiagnostics() : $editor->disableInlineDiagnostics(),
+            ],
+            'autoPairs' => [
+                'label' => 'Auto-pairs',
+                'kind' => SettingsRowKind::Bool,
+                'group' => 'general',
+                'restart' => false,
+                'apply' => static fn (int|bool|string $v) => (bool) $v ? $editor->enableAutoPairs() : $editor->disableAutoPairs(),
+            ],
+            'formatOnSave' => [
+                'label' => 'Format on save (LSP)',
+                'kind' => SettingsRowKind::Bool,
+                'group' => 'general',
+                'restart' => false,
+                'apply' => static fn (int|bool|string $v) => (bool) $v ? $applier->enableFormatOnSave() : $applier->disableFormatOnSave(),
             ],
         ];
     }
@@ -109,14 +144,37 @@ final class SettingsController
     }
 
     /**
-     * The rows the settings form renders, current values pulled from state.
+     * The General page's rows (editor behavior), current values pulled from state.
      *
      * @return list<SettingsRow>
      */
     public function formRows(): array
     {
+        return $this->rowsForGroup('general');
+    }
+
+    /**
+     * The Interface page's rows (appearance), current values pulled from state.
+     *
+     * @return list<SettingsRow>
+     */
+    public function interfaceRows(): array
+    {
+        return $this->rowsForGroup('interface');
+    }
+
+    /**
+     * @param 'general'|'interface' $group
+     *
+     * @return list<SettingsRow>
+     */
+    private function rowsForGroup(string $group): array
+    {
         $rows = [];
         foreach ($this->descriptors as $key => $descriptor) {
+            if ($group !== $descriptor['group']) {
+                continue;
+            }
             $raw = $this->settings[$key] ?? '';
             $value = SettingsRowKind::Bool === $descriptor['kind'] ? (bool) $raw : (string) $raw;
             $rows[] = new SettingsRow(
@@ -131,6 +189,17 @@ final class SettingsController
         }
 
         return $rows;
+    }
+
+    /** Cycle the line-numbers mode off → absolute → relative → off (the View menu command). */
+    public function cycleLineNumbers(): void
+    {
+        $next = match ((string) ($this->settings['lineNumbers'] ?? 'absolute')) {
+            'off' => 'absolute',
+            'absolute' => 'relative',
+            default => 'off',
+        };
+        $this->changeSetting('lineNumbers', $next);
     }
 
     /**

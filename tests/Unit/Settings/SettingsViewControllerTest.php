@@ -41,6 +41,7 @@ use Porta\Ui\Notifier;
 use Porta\Ui\Theme\StyleSheetThemer;
 use Porta\Ui\Theme\Themes;
 use Porta\Ui\WorkspaceViews;
+use Porta\Widget\BreadcrumbsWidget;
 use Porta\Widget\CodeEditorWidget;
 use Porta\Widget\Git\DiffViewWidget;
 use Porta\Widget\HelpViewerWidget;
@@ -128,6 +129,7 @@ final class SettingsViewControllerTest extends TestCase
             $this->project->dir,
             new Translator('en'),
             $applier,
+            new BreadcrumbsWidget(),
         );
         $keymap = new SettingsKeymapController($editor, new Keybindings([]), $notifier, $this->project->dir, new Translator('en'));
         $languages = new SettingsLanguageController($editor, $notifier, $this->project->dir, new Translator('en'), []);
@@ -223,6 +225,7 @@ final class SettingsViewControllerTest extends TestCase
         $controller = $this->controller();
         $controller->open();
 
+        $this->nav->handleInput("\x1b[B"); // → Interface
         $this->nav->handleInput("\x1b[B"); // → Keybindings
         $this->assertSame(['settings-keys'], $this->ids($this->content));
         $this->assertSame($this->keymapList, $controller->focusTarget());
@@ -231,11 +234,38 @@ final class SettingsViewControllerTest extends TestCase
         $this->assertStringContainsString('actions', $screen, 'the keybindings list is populated');
     }
 
+    public function testNavSelectingInterfaceShowsTheAppearanceRowsAndPersists(): void
+    {
+        $controller = $this->controller();
+        $controller->open();
+
+        $this->nav->handleInput("\x1b[B"); // → Interface
+        $this->assertSame('interface', $this->nav->selectedId());
+        $this->assertSame(['settings-form'], $this->ids($this->content));
+
+        $screen = implode("\n", $this->form->render(new \Symfony\Component\Tui\Render\RenderContext(80, 12)));
+        $this->assertStringContainsString('Theme', $screen);
+        $this->assertStringContainsString('Line numbers', $screen);
+        $this->assertStringContainsString('Sticky scroll', $screen);
+        $this->assertStringContainsString('Breadcrumbs', $screen);
+        $this->assertStringNotContainsString('Inline diagnostics', $screen, 'editor behavior stays in General');
+
+        // Toggle Sticky scroll (a Bool) → routes through changeSetting and persists.
+        $this->form->handleInput("\x1b[B"); // Theme
+        $this->form->handleInput("\x1b[B"); // Cursor shape
+        $this->form->handleInput("\x1b[B"); // Tab bar position
+        $this->form->handleInput("\x1b[B"); // Line numbers
+        $this->form->handleInput("\x1b[B"); // Sticky scroll
+        $this->form->handleInput(' ');
+        $this->assertFalse(IdeConfig::load($this->project->dir)->settings['stickyScroll']);
+    }
+
     public function testNavSelectingALanguageShowsIndentRowsAndPersists(): void
     {
         $controller = $this->controller();
         $controller->open();
 
+        $this->nav->handleInput("\x1b[B"); // → Interface
         $this->nav->handleInput("\x1b[B"); // Keybindings
         $this->nav->handleInput("\x1b[B"); // Plugins
         $this->nav->handleInput("\x1b[B"); // skips the Version control header → Git
@@ -258,6 +288,7 @@ final class SettingsViewControllerTest extends TestCase
         $controller = $this->controller();
         $controller->open();
 
+        $this->nav->handleInput("\x1b[B"); // → Interface
         $this->nav->handleInput("\x1b[B"); // Keybindings
         $this->nav->handleInput("\x1b[B"); // Plugins
         $this->nav->handleInput("\x1b[B"); // skips the Version control header → Git
@@ -277,6 +308,7 @@ final class SettingsViewControllerTest extends TestCase
     {
         $controller = $this->controller();
         $controller->open();
+        $this->nav->handleInput("\x1b[B"); // → Interface
         $this->nav->handleInput("\x1b[B"); // Keybindings
         $this->nav->handleInput("\x1b[B"); // Plugins
         $this->nav->handleInput("\x1b[B"); // Git
@@ -298,6 +330,7 @@ final class SettingsViewControllerTest extends TestCase
     {
         $controller = $this->controller();
         $controller->open();
+        $this->nav->handleInput("\x1b[B"); // → Interface
         $this->nav->handleInput("\x1b[B"); // Keybindings
         $this->nav->handleInput("\x1b[B"); // Plugins
         $this->nav->handleInput("\x1b[B"); // Git
@@ -321,7 +354,7 @@ final class SettingsViewControllerTest extends TestCase
         $controller = $this->controller();
         $controller->open();
 
-        $this->form->handleClick(1); // toggle Inline diagnostics (row 0 is Language now; default true → false)
+        $this->form->handleClick(0); // Inline diagnostics is General's first row now (default true → false)
         $this->assertFalse(IdeConfig::load($this->project->dir)->settings['inlineDiagnostics']);
     }
 
@@ -329,6 +362,7 @@ final class SettingsViewControllerTest extends TestCase
     {
         $controller = $this->controller();
         $controller->open();
+        $this->nav->handleInput("\x1b[B"); // → Interface
         $this->nav->handleInput("\x1b[B"); // Keybindings
 
         $this->keymapList->handleInput("\r"); // arm capture on the first action
@@ -382,6 +416,7 @@ final class SettingsViewControllerTest extends TestCase
         file_put_contents($this->project->dir.'/.porta/plugins/demo/plugin.php', data: "<?php\n");
         $controller->open();
 
+        $this->nav->handleInput("\x1b[B"); // → Interface
         $this->nav->handleInput("\x1b[B"); // Keybindings
         $this->nav->handleInput("\x1b[B"); // Plugins
         $this->assertSame('plugins', $this->nav->selectedId());
@@ -413,6 +448,7 @@ final class SettingsViewControllerTest extends TestCase
         $controller->refresh();
         $this->assertSame(['settings-form'], $this->ids($this->content));
 
+        $this->nav->handleInput("\x1b[B"); // → Interface
         $this->nav->handleInput("\x1b[B"); // Keybindings
         $this->nav->handleInput("\x1b[B"); // Plugins
         mkdir($this->project->dir.'/.porta/plugins/late', permissions: 0o777, recursive: true);
@@ -433,6 +469,7 @@ final class SettingsViewControllerTest extends TestCase
 
         // The plugin sub-item appears in the nav and selecting it shows its page.
         $this->nav->setPluginEntries(['demo']);
+        $this->nav->handleInput("\x1b[B"); // → Interface
         $this->nav->handleInput("\x1b[B"); // Keybindings
         $this->nav->handleInput("\x1b[B"); // Plugins
         $this->nav->handleInput("\x1b[B"); // demo

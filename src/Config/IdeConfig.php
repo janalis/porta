@@ -34,7 +34,10 @@ final class IdeConfig
         'language' => 'en',
         'theme' => 'dark',
         'inlineDiagnostics' => true,
-        'relativeLineNumbers' => false,
+        'lineNumbers' => 'absolute',
+        'stickyScroll' => true,
+        'indentGuides' => true,
+        'breadcrumbs' => true,
         'autoPairs' => true,
         'formatOnSave' => false,
         'cursorShape' => 'bar',
@@ -55,7 +58,7 @@ final class IdeConfig
      * "Respect .editorconfig" toggle — .editorconfig is always honored now,
      * superseded per language by the indent settings.
      */
-    private const LEGACY_SETTINGS = ['editorConfig'];
+    private const LEGACY_SETTINGS = ['editorConfig', 'relativeLineNumbers'];
 
     /** The per-language indent override keys and their allowed values. */
     private const INDENT_STYLES = ['auto', 'spaces', 'tabs'];
@@ -128,6 +131,12 @@ final class IdeConfig
                 \is_int($default) => (int) $value,
                 default => (string) $value,
             };
+        }
+
+        // Migrate the legacy `relativeLineNumbers` bool into the `lineNumbers`
+        // mode (an explicit `lineNumbers` in the file wins).
+        if (\array_key_exists('relativeLineNumbers', $settingsConfig) && !\array_key_exists('lineNumbers', $settingsConfig)) {
+            $settings['lineNumbers'] = (bool) $settingsConfig['relativeLineNumbers'] ? 'relative' : 'absolute';
         }
 
         /** @var array<string, mixed> $languagesConfig */

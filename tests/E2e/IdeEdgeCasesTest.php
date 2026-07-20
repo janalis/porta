@@ -6,6 +6,7 @@ namespace Porta\Tests\E2e;
 
 use PHPUnit\Framework\TestCase;
 use Porta\Config\IdeConfig;
+use Porta\Editor\LineNumberMode;
 use Porta\Editor\OpenFocus;
 use Porta\Editor\SelectionMode;
 use Porta\Ide;
@@ -4278,22 +4279,22 @@ final class IdeEdgeCasesTest extends TestCase
             [
                 300 => static function ($tui): void {
                     $tui->handleInput("\x1b[97;6u"); // ctrl+shift+a
-                    foreach (str_split('relative') as $ch) {
+                    foreach (str_split('cycle line') as $ch) {
                         $tui->handleInput($ch);
                     }
                 },
                 450 => function ($tui, $terminal): void {
                     $tui->tick();
-                    $this->assertStringContainsString('Toggle Relative Line Numbers', AnsiUtils::stripAnsiCodes($terminal->getOutput()));
-                    $tui->handleInput("\r"); // run the toggle
+                    $this->assertStringContainsString('Cycle Line Numbers', AnsiUtils::stripAnsiCodes($terminal->getOutput()));
+                    $tui->handleInput("\r"); // run the cycle: absolute → relative
                 },
                 600 => function ($tui, $terminal) use ($project): void {
                     $tui->tick();
-                    $this->assertTrue($tui->getById('editor')->hasRelativeLineNumbers());
-                    $this->assertStringContainsString('Relative line numbers on', AnsiUtils::stripAnsiCodes($terminal->getOutput()));
+                    $this->assertSame(LineNumberMode::Relative, $tui->getById('editor')->lineNumberMode());
+                    $this->assertStringContainsString('Line numbers relative', AnsiUtils::stripAnsiCodes($terminal->getOutput()));
                     // Persisted into .porta.json.
                     $config = json_decode((string) file_get_contents($project->path('.porta.json')), associative: true);
-                    $this->assertTrue($config['settings']['relativeLineNumbers']);
+                    $this->assertSame('relative', $config['settings']['lineNumbers']);
                 },
             ],
         );
@@ -4305,7 +4306,7 @@ final class IdeEdgeCasesTest extends TestCase
     {
         putenv('PATH=/nonexistent');
         $project = new TempProject([
-            '.porta.json' => json_encode(['settings' => ['inlineDiagnostics' => false, 'relativeLineNumbers' => true]]),
+            '.porta.json' => json_encode(['settings' => ['inlineDiagnostics' => false, 'lineNumbers' => 'relative']]),
             'A.php' => "<?php\n\$x = 1;\n",
         ]);
 
@@ -4315,7 +4316,7 @@ final class IdeEdgeCasesTest extends TestCase
             [
                 300 => function ($tui): void {
                     $editor = $tui->getById('editor');
-                    $this->assertTrue($editor->hasRelativeLineNumbers(), 'setting applied from file');
+                    $this->assertSame(LineNumberMode::Relative, $editor->lineNumberMode(), 'setting applied from file');
                     // Inline diagnostics disabled: even with a diagnostic, no inline text.
                     $editor->setDiagnostics([1 => [['severity' => 1, 'message' => 'boom', 'col' => 0]]]);
                     $rendered = $editor->render(new \Symfony\Component\Tui\Render\RenderContext(80, 5));
@@ -5416,17 +5417,17 @@ final class IdeEdgeCasesTest extends TestCase
                     $this->assertStringContainsString('General', $screen, 'the nav sidebar lists sections');
                     $this->assertStringContainsString('Languages', $screen);
                     $this->assertStringContainsString('Inline diagnostics', $screen, 'General content shown');
-                    // Toggle Inline diagnostics (General row 1; row 0 is Language) in the content pane.
-                    $tui->handleInput("\x1b[<0;40;3M");
-                    $tui->handleInput("\x1b[<0;40;3m");
+                    // Toggle Inline diagnostics (General row 0, now that the appearance rows moved to Interface) in the content pane.
+                    $tui->handleInput("\x1b[<0;40;2M");
+                    $tui->handleInput("\x1b[<0;40;2m");
                     // Hover the nav sidebar (a tint).
                     $tui->handleInput("\x1b[<35;5;3M");
                 },
                 700 => static function ($tui): void {
                     $tui->tick();
-                    // Click the 'Keybindings' entry in the nav (screen row 3).
-                    $tui->handleInput("\x1b[<0;5;3M");
-                    $tui->handleInput("\x1b[<0;5;3m");
+                    // Click the 'Keybindings' entry in the nav (screen row 4, after General + Interface).
+                    $tui->handleInput("\x1b[<0;5;4M");
+                    $tui->handleInput("\x1b[<0;5;4m");
                 },
                 900 => function ($tui, $terminal): void {
                     $tui->tick();
@@ -5440,11 +5441,11 @@ final class IdeEdgeCasesTest extends TestCase
                 },
                 1100 => static function ($tui): void {
                     $tui->tick();
-                    // Select PHP in the nav (screen row 8, after Plugins + the
-                    // Version control category and the Languages header) → the
-                    // content shows its indent rows.
-                    $tui->handleInput("\x1b[<0;5;8M");
-                    $tui->handleInput("\x1b[<0;5;8m");
+                    // Select PHP in the nav (screen row 9, after Interface +
+                    // Plugins + the Version control category and the Languages
+                    // header) → the content shows its indent rows.
+                    $tui->handleInput("\x1b[<0;5;9M");
+                    $tui->handleInput("\x1b[<0;5;9m");
                 },
                 1300 => function ($tui, $terminal): void {
                     $tui->tick();

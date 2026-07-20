@@ -21,6 +21,22 @@ final class BreadcrumbsWidgetTest extends TestCase
         $this->assertNull($bar->lineAtColumn(5), 'nothing to hit-test');
     }
 
+    public function testHidingTheBarRendersNoRowEvenWithATrail(): void
+    {
+        $bar = new BreadcrumbsWidget();
+        $bar->setProvider(static fn (): array => [['label' => 'App', 'line' => 1]]);
+
+        $this->assertTrue($bar->isVisible(), 'the bar shows by default');
+        $bar->hide();
+        $this->assertFalse($bar->isVisible());
+        $this->assertSame([], $bar->render(new RenderContext(80, 1)), 'the Interface setting hides the bar');
+        $this->assertNull($bar->lineAtColumn(2), 'a hidden bar hit-tests nothing');
+
+        $bar->show();
+        $this->assertTrue($bar->isVisible());
+        $this->assertNotSame([], $bar->render(new RenderContext(80, 1)), 'showing brings the trail back');
+    }
+
     public function testRendersSegmentsJoinedAndExactWidth(): void
     {
         $bar = new BreadcrumbsWidget();

@@ -27,9 +27,33 @@ final class BreadcrumbsWidget extends AbstractWidget implements MenuOverlayHost
 
     private readonly Styles $styles;
 
+    /** The "Interface > Breadcrumbs" toggle; when off the bar renders no rows. */
+    private bool $visible = true;
+
     public function __construct(?Styles $styles = null)
     {
         $this->styles = $styles ?? Styles::dark();
+    }
+
+    public function show(): void
+    {
+        if (!$this->visible) {
+            $this->visible = true;
+            $this->invalidate();
+        }
+    }
+
+    public function hide(): void
+    {
+        if ($this->visible) {
+            $this->visible = false;
+            $this->invalidate();
+        }
+    }
+
+    public function isVisible(): bool
+    {
+        return $this->visible;
     }
 
     /** The ` › ` scope separator, dimmed (visible width 3). */
@@ -79,8 +103,11 @@ final class BreadcrumbsWidget extends AbstractWidget implements MenuOverlayHost
 
     public function render(RenderContext $context): array
     {
-        $crumbs = null !== $this->provider ? ($this->provider)() : [];
         $this->lastLayout = [];
+        if (!$this->visible) {
+            return []; // the Interface setting hides the bar entirely
+        }
+        $crumbs = null !== $this->provider ? ($this->provider)() : [];
         if ([] === $crumbs) {
             return []; // no scope → no bar (the editor keeps the row)
         }

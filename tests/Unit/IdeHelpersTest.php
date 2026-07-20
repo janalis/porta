@@ -361,11 +361,11 @@ final class IdeHelpersTest extends TestCase
         $this->assertTrue($tui->getById('editor')->isSearchOverlayOpen(), 'go-to-file opens the centered picker over the editor');
         $tui->getById('editor')->closeSearch();
 
-        // Toggle both settings (covers both branches of toggleSetting).
+        // Cycle line numbers (absolute → relative) and toggle a bool setting.
         $editor = $tui->getById('editor');
-        $before = $editor->hasRelativeLineNumbers();
-        $byLabel['Toggle Relative Line Numbers']();
-        $this->assertNotSame($before, $editor->hasRelativeLineNumbers());
+        $before = $editor->lineNumberMode();
+        $byLabel['Cycle Line Numbers']();
+        $this->assertNotSame($before, $editor->lineNumberMode());
 
         $byLabel['Toggle Inline Diagnostics']();
         // Toggling back and forth is a no-op-free round trip.

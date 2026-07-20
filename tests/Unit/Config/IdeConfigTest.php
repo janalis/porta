@@ -51,7 +51,7 @@ final class IdeConfigTest extends TestCase
         $project = new TempProject(['.porta.json' => json_encode([
             'settings' => [
                 'inlineDiagnostics' => 0,
-                'relativeLineNumbers' => true,
+                'lineNumbers' => 'relative',
                 'theme' => 'light',
                 'tabBarPosition' => 'left',
                 'gitShowBranch' => false,
@@ -64,7 +64,7 @@ final class IdeConfigTest extends TestCase
         $config = IdeConfig::load($project->dir);
 
         $this->assertFalse($config->settings['inlineDiagnostics'], '0 coerced to bool');
-        $this->assertTrue($config->settings['relativeLineNumbers']);
+        $this->assertSame('relative', $config->settings['lineNumbers']);
         $this->assertSame('light', $config->settings['theme']);
         $this->assertSame('left', $config->settings['tabBarPosition']);
         $this->assertFalse($config->settings['gitShowBranch']);
@@ -145,6 +145,21 @@ final class IdeConfigTest extends TestCase
         $this->assertFalse(IdeConfig::persistLanguageSetting($project->dir, 'php', 'indentStyle', 'tabs'));
     }
 
+    public function testRelativeLineNumbersMigratesToTheLineNumbersMode(): void
+    {
+        $relative = new TempProject(['.porta.json' => json_encode(['settings' => ['relativeLineNumbers' => true]])]);
+        $config = IdeConfig::load($relative->dir);
+        $this->assertSame('relative', $config->settings['lineNumbers'], 'legacy true → relative');
+        $this->assertSame([], $config->warnings, 'the legacy key is skipped, not warned');
+
+        $absolute = new TempProject(['.porta.json' => json_encode(['settings' => ['relativeLineNumbers' => false]])]);
+        $this->assertSame('absolute', IdeConfig::load($absolute->dir)->settings['lineNumbers'], 'legacy false → absolute');
+
+        // An explicit lineNumbers wins over the legacy key.
+        $both = new TempProject(['.porta.json' => json_encode(['settings' => ['relativeLineNumbers' => true, 'lineNumbers' => 'off']])]);
+        $this->assertSame('off', IdeConfig::load($both->dir)->settings['lineNumbers'], 'explicit lineNumbers wins');
+    }
+
     public function testPersistSettingMergesAndPreservesUnknownKeys(): void
     {
         $project = new TempProject(['.porta.json' => json_encode([
@@ -154,16 +169,16 @@ final class IdeConfigTest extends TestCase
             'customUnknownKey' => ['keep' => 'me'],
         ])]);
 
-        $this->assertTrue(IdeConfig::persistSetting($project->dir, 'relativeLineNumbers', true));
+        $this->assertTrue(IdeConfig::persistSetting($project->dir, 'inlineDiagnostics', false));
 
         $written = json_decode((string) file_get_contents($project->path('.porta.json')), associative: true);
-        $this->assertTrue($written['settings']['relativeLineNumbers'], 'new setting written');
+        $this->assertFalse($written['settings']['inlineDiagnostics'], 'new setting written');
         $this->assertSame(8, $written['settings']['tabWidth'], 'existing setting preserved');
         $this->assertSame('phpactor', $written['lsp'], 'lsp preserved');
         $this->assertSame(['keep' => 'me'], $written['customUnknownKey'], 'unknown key preserved');
 
         // And a fresh load reflects the change.
-        $this->assertTrue(IdeConfig::load($project->dir)->settings['relativeLineNumbers']);
+        $this->assertFalse(IdeConfig::load($project->dir)->settings['inlineDiagnostics']);
     }
 
     public function testPersistSettingCreatesFileWhenAbsent(): void

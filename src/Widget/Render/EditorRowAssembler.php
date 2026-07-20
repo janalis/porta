@@ -8,6 +8,7 @@ use Porta\Editor\Caret;
 use Porta\Editor\DiagnosticStyle;
 use Porta\Editor\Document;
 use Porta\Editor\FoldModel;
+use Porta\Editor\LineNumberMode;
 use Porta\Ui\CursorStyle;
 use Porta\Ui\Glyphs;
 use Porta\Ui\Role;
@@ -39,7 +40,8 @@ final readonly class EditorRowAssembler
         private Document $document,
         private FoldModel $foldModel,
         private DecorationStore $store,
-        private bool $relativeLineNumbers,
+        private LineNumberMode $lineNumbers,
+        private bool $indentGuides,
         private bool $gitGutter,
         private bool $inlineDiagnostics,
         private bool $focused,
@@ -154,11 +156,13 @@ final readonly class EditorRowAssembler
      */
     private function renderStickyRow(int $docLine, EditorGeometry $geo, array $highlighted, int $hScroll): string
     {
+        $stickyLabel = LineNumberMode::Off === $this->lineNumbers ? '' : (string) ($docLine + 1);
         $gutter =
             $this->gitCell($docLine)
-            .$this->styles->of(Role::Gutter)->apply(str_pad((string) ($docLine + 1), $geo->numberWidth, pad_string: ' ', pad_type: \STR_PAD_LEFT).' ')
+            .$this->styles->of(Role::Gutter)->apply(str_pad($stickyLabel, $geo->numberWidth, pad_string: ' ', pad_type: \STR_PAD_LEFT).' ')
             .' ';
-        $hl = EditorRenderer::applyIndentGuides($this->document, $highlighted[$docLine] ?? '', $docLine, $this->styles);
+        $raw = $highlighted[$docLine] ?? '';
+        $hl = $this->indentGuides ? EditorRenderer::applyIndentGuides($this->document, $raw, $docLine, $this->styles) : $raw;
         $content = EditorRenderer::renderContentLine($hScroll, $hl, $geo->contentWidth, CursorVisibility::Hidden, 0, $this->cursorStyle->marker());
 
         return LineDecorator::applyFullWidth($gutter.$content, $geo->gutterWidth + $geo->contentWidth, $this->styles->of(Role::HeaderBar));
@@ -187,10 +191,11 @@ final readonly class EditorRowAssembler
             [] !== $lineDiags => $numStyle->apply(DiagnosticStyle::glyph(DiagnosticStyle::worst($lineDiags))),
             default => ' ',
         };
-        // Relative line numbers: distance from the cursor line, absolute on
-        // the cursor line itself (PhpStorm/Vim "relativenumber" style).
-        $numberLabel = (string) ($lineIndex + 1);
-        if ($this->relativeLineNumbers && CaretLine::Other === $isCursorLine) {
+        // The number label: empty when hidden (so str_pad to the 0-width column
+        // yields nothing, and the marker column survives); relative distance from
+        // the caret on non-caret lines in Relative mode (Vim "relativenumber").
+        $numberLabel = LineNumberMode::Off === $this->lineNumbers ? '' : (string) ($lineIndex + 1);
+        if (LineNumberMode::Relative === $this->lineNumbers && CaretLine::Other === $isCursorLine) {
             $numberLabel = (string) abs($lineIndex - $this->document->getCursorLine());
         }
 
@@ -231,7 +236,7 @@ final readonly class EditorRowAssembler
         int $contentWidth,
     ): string {
         $doc = $this->document;
-        $hlLine = EditorRenderer::applyIndentGuides($doc, $highlighted, $lineIndex, $this->styles);
+        $hlLine = $this->indentGuides ? EditorRenderer::applyIndentGuides($doc, $highlighted, $lineIndex, $this->styles) : $highlighted;
 
         // Gather decoration spans in layering order, then apply them all at
         // once. Each span is [startCol, endCol, openSgr, closeSgr, bgReapply].

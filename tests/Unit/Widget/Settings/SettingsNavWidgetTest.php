@@ -57,6 +57,9 @@ final class SettingsNavWidgetTest extends TestCase
     {
         $widget = $this->widget($selected);
 
+        $widget->handleInput("\x1b[B"); // → Interface
+        $this->assertSame('interface', $widget->selectedId());
+
         $widget->handleInput("\x1b[B"); // → Keybindings
         $this->assertSame('keybindings', $widget->selectedId());
 
@@ -65,7 +68,7 @@ final class SettingsNavWidgetTest extends TestCase
         $this->assertSame('vcs:git', $widget->selectedId());
         $widget->handleInput("\x1b[B"); // skips the Languages header → PHP
         $this->assertSame('lang:php', $widget->selectedId());
-        $this->assertSame(['keybindings', 'plugins', 'vcs:git', 'lang:php'], $selected);
+        $this->assertSame(['interface', 'keybindings', 'plugins', 'vcs:git', 'lang:php'], $selected);
 
         $widget->handleInput("\x1b[A"); // back up, skipping the Languages header → Git
         $this->assertSame('vcs:git', $widget->selectedId());
@@ -88,14 +91,14 @@ final class SettingsNavWidgetTest extends TestCase
         $widget = $this->widget($selected);
         $widget->render(new RenderContext(24, 20)); // establish scroll
 
-        $widget->handleClick(1); // Keybindings (row 1)
+        $widget->handleClick(2); // Keybindings (row 2)
         $this->assertSame('keybindings', $widget->selectedId());
 
-        $widget->handleClick(3); // the Version control header → no-op
+        $widget->handleClick(4); // the Version control header → no-op
         $this->assertSame('keybindings', $widget->selectedId());
         $this->assertSame(['keybindings'], $selected, 'the header fires nothing');
 
-        $widget->handleClick(4); // Git
+        $widget->handleClick(5); // Git
         $this->assertSame('vcs:git', $widget->selectedId());
         $widget->handleClick(99); // dead space
         $this->assertSame('vcs:git', $widget->selectedId());
@@ -139,10 +142,10 @@ final class SettingsNavWidgetTest extends TestCase
         $this->assertStringContainsString("\x1b[48;5;31m", $rendered[0], 'General selected + focused');
 
         $widget->setFocused(false);
-        $this->assertTrue($widget->hoverRow(4)); // hover PHP
+        $this->assertTrue($widget->hoverRow(7)); // hover PHP
         $rendered = $widget->render(new RenderContext(24, 20));
-        $this->assertStringContainsString("\x1b[48;5;236m", $rendered[4], 'hovered language tinted');
-        $this->assertTrue($widget->hoverRow(3), 'hovering the header clears the language tint');
+        $this->assertStringContainsString("\x1b[48;5;236m", $rendered[7], 'hovered language tinted');
+        $this->assertTrue($widget->hoverRow(6), 'hovering the header clears the language tint');
         $this->assertFalse($widget->clearHover(), 'already cleared');
     }
 

@@ -125,7 +125,7 @@ final class MenuModel
             'i:ide_toggle_focus',
             self::SEP,
             'i:toggle_inline_diagnostics',
-            'i:toggle_relative_line_numbers',
+            'i:cycle_line_numbers',
             'i:toggle_auto_pairs',
         ],
         'Help' => [

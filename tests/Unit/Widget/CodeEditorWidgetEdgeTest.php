@@ -6,6 +6,7 @@ namespace Porta\Tests\Unit\Widget;
 
 use PHPUnit\Framework\TestCase;
 use Porta\Editor\CompletionItem;
+use Porta\Editor\LineNumberMode;
 use Porta\Tests\Support\FakeEditorNavigation;
 use Porta\Widget\CodeEditorWidget;
 use Porta\Widget\EditorCallbacks;
@@ -695,15 +696,25 @@ final class CodeEditorWidgetEdgeTest extends TestCase
         $editor->enableInlineDiagnostics();
         $this->assertStringContainsString('undefined variable', AnsiUtils::stripAnsiCodes(implode("\n", $editor->render(new RenderContext(80, 5)))));
 
-        // relativeLineNumbers defaults off: enable (set), enable again (skip), disable (set), disable again (skip).
-        $editor->enableRelativeLineNumbers();
-        $this->assertTrue($editor->hasRelativeLineNumbers());
-        $editor->enableRelativeLineNumbers();
-        $this->assertTrue($editor->hasRelativeLineNumbers());
-        $editor->disableRelativeLineNumbers();
-        $this->assertFalse($editor->hasRelativeLineNumbers());
-        $editor->disableRelativeLineNumbers();
-        $this->assertFalse($editor->hasRelativeLineNumbers());
+        // lineNumbers defaults to absolute: change to relative, set relative again (no-op), then absolute, then off.
+        $editor->setLineNumberMode(LineNumberMode::Relative);
+        $this->assertSame(LineNumberMode::Relative, $editor->lineNumberMode());
+        $editor->setLineNumberMode(LineNumberMode::Relative); // same → guard skips
+        $this->assertSame(LineNumberMode::Relative, $editor->lineNumberMode());
+        $editor->setLineNumberMode(LineNumberMode::Off);
+        $this->assertSame(LineNumberMode::Off, $editor->lineNumberMode());
+
+        // Sticky scroll and indent guides default on: disable (set), disable again (skip), enable (set), enable again (skip).
+        foreach ([[$editor->disableStickyScroll(...), $editor->enableStickyScroll(...), $editor->hasStickyScroll(...)], [$editor->disableIndentGuides(...), $editor->enableIndentGuides(...), $editor->hasIndentGuides(...)]] as [$off, $on, $has]) {
+            $off();
+            $this->assertFalse($has());
+            $off(); // skip
+            $this->assertFalse($has());
+            $on();
+            $this->assertTrue($has());
+            $on(); // skip
+            $this->assertTrue($has());
+        }
     }
 
     public function testInlineDiagnosticPlacedByTabExpandedWidth(): void

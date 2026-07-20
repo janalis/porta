@@ -10,6 +10,7 @@ use Porta\Container\AsWidget;
 use Porta\Editor\ActiveFileProvider;
 use Porta\Editor\AutoPairService;
 use Porta\Editor\BreadcrumbScanner;
+use Porta\Editor\LineNumberMode;
 use Porta\Editor\Caret;
 use Porta\Editor\CaretMotion;
 use Porta\Editor\CompletionItem;
@@ -113,8 +114,10 @@ final class CodeEditorWidget extends AbstractWidget implements ActiveFileProvide
     private EditorStructural $structural;
 
     private bool $inlineDiagnostics = true;
-    private bool $relativeLineNumbers = false;
+    private LineNumberMode $lineNumbers = LineNumberMode::Absolute;
     private bool $gitGutter = true;
+    private bool $stickyScroll = true;
+    private bool $indentGuides = true;
     private bool $autoPairs = true;
 
     private readonly AutoPairService $autoPair;
@@ -365,25 +368,59 @@ final class CodeEditorWidget extends AbstractWidget implements ActiveFileProvide
         }
     }
 
-    public function enableRelativeLineNumbers(): void
+    public function setLineNumberMode(LineNumberMode $mode): void
     {
-        if (!$this->relativeLineNumbers) {
-            $this->relativeLineNumbers = true;
+        if ($mode !== $this->lineNumbers) {
+            $this->lineNumbers = $mode;
             $this->invalidate();
         }
     }
 
-    public function disableRelativeLineNumbers(): void
+    public function lineNumberMode(): LineNumberMode
     {
-        if ($this->relativeLineNumbers) {
-            $this->relativeLineNumbers = false;
+        return $this->lineNumbers;
+    }
+
+    public function enableStickyScroll(): void
+    {
+        if (!$this->stickyScroll) {
+            $this->stickyScroll = true;
             $this->invalidate();
         }
     }
 
-    public function hasRelativeLineNumbers(): bool
+    public function disableStickyScroll(): void
     {
-        return $this->relativeLineNumbers;
+        if ($this->stickyScroll) {
+            $this->stickyScroll = false;
+            $this->invalidate();
+        }
+    }
+
+    public function hasStickyScroll(): bool
+    {
+        return $this->stickyScroll;
+    }
+
+    public function enableIndentGuides(): void
+    {
+        if (!$this->indentGuides) {
+            $this->indentGuides = true;
+            $this->invalidate();
+        }
+    }
+
+    public function disableIndentGuides(): void
+    {
+        if ($this->indentGuides) {
+            $this->indentGuides = false;
+            $this->invalidate();
+        }
+    }
+
+    public function hasIndentGuides(): bool
+    {
+        return $this->indentGuides;
     }
 
     public function enableGitGutter(): void
@@ -984,6 +1021,9 @@ final class CodeEditorWidget extends AbstractWidget implements ActiveFileProvide
      */
     private function stickyHeadersAt(int $vScroll, int $rows): array
     {
+        if (!$this->stickyScroll) {
+            return [];
+        }
         $top = $this->foldModel->docLineAtRow($vScroll, 0) ?? 0;
 
         return BreadcrumbScanner::stickyHeaders($this->scopes(), $top, IntMath::clamp($rows - 4, 0, EditorScroll::MAX_STICKY_ROWS));
@@ -1103,7 +1143,8 @@ final class CodeEditorWidget extends AbstractWidget implements ActiveFileProvide
             $doc,
             $this->foldModel,
             $this->decorations,
-            $this->relativeLineNumbers,
+            $this->lineNumbers,
+            $this->indentGuides,
             $this->gitGutter,
             $this->inlineDiagnostics,
             $this->focused,
@@ -1140,7 +1181,7 @@ final class CodeEditorWidget extends AbstractWidget implements ActiveFileProvide
      */
     private function computeGeometry(int $columns, int $lineCount): EditorGeometry
     {
-        $numberWidth = max(3, \strlen((string) $lineCount));
+        $numberWidth = LineNumberMode::Off === $this->lineNumbers ? 0 : max(3, \strlen((string) $lineCount));
         $gutterWidth = ($this->gitGutter ? 1 : 0) + $numberWidth + 2;
         $contentWidth = max(1, $columns - $gutterWidth - 1);
 

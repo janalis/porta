@@ -6,6 +6,7 @@ namespace Porta\Tests\Unit\Widget\Render;
 
 use PHPUnit\Framework\TestCase;
 use Porta\Editor\CompletionItem;
+use Porta\Editor\LineNumberMode;
 use Porta\Editor\SelectionMode;
 use Porta\Widget\CodeEditorWidget;
 use Symfony\Component\Tui\Render\RenderContext;
@@ -179,7 +180,7 @@ final class EditorRenderGoldenTest extends TestCase
                 static function (CodeEditorWidget $e) use ($php): void {
                     $e->openFile('demo.php', $php);
                     $e->setFocused(true);
-                    $e->enableRelativeLineNumbers();
+                    $e->setLineNumberMode(LineNumberMode::Relative);
                     $e->getDocument()->setCursor(3, 0);
                 },
                 80,

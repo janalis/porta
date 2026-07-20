@@ -63,6 +63,7 @@ final class IdePluginInstallTest extends TestCase
     {
         new \ReflectionProperty($ide, 'commands')->getValue($ide)->run('ide_settings');
         $tui->handleInput("\t"); // form → nav
+        $tui->handleInput("\x1b[B"); // Interface
         $tui->handleInput("\x1b[B"); // Keybindings
         $tui->handleInput("\x1b[B"); // Plugins
         $tui->handleInput("\t"); // nav → form (scope row selected)

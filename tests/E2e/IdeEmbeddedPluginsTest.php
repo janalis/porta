@@ -87,6 +87,7 @@ final class IdeEmbeddedPluginsTest extends TestCase
                     // The manage screen lists it as built-in; actuating is inert.
                     new \ReflectionProperty($ide, 'commands')->getValue($ide)->run('ide_settings');
                     $tui->handleInput("\t"); // form → nav
+                    $tui->handleInput("\x1b[B"); // Interface
                     $tui->handleInput("\x1b[B"); // Keybindings
                     $tui->handleInput("\x1b[B"); // Plugins
                     $tui->handleInput("\t"); // nav → form
@@ -131,6 +132,7 @@ final class IdeEmbeddedPluginsTest extends TestCase
                     // die and the choice persists.
                     new \ReflectionProperty($ide, 'commands')->getValue($ide)->run('ide_settings');
                     $tui->handleInput("\t"); // form → nav
+                    $tui->handleInput("\x1b[B"); // Interface
                     $tui->handleInput("\x1b[B"); // Keybindings
                     $tui->handleInput("\x1b[B"); // Plugins
                     $tui->handleInput("\x1b[B"); // bundled sub-item
@@ -207,6 +209,7 @@ final class IdeEmbeddedPluginsTest extends TestCase
                     // Remove the project override: the embedded copy reactivates live.
                     new \ReflectionProperty($ide, 'commands')->getValue($ide)->run('ide_settings');
                     $tui->handleInput("\t");
+                    $tui->handleInput("\x1b[B"); // Interface
                     $tui->handleInput("\x1b[B"); // Keybindings
                     $tui->handleInput("\x1b[B"); // Plugins
                     $tui->handleInput("\t"); // → form
@@ -267,6 +270,7 @@ final class IdeEmbeddedPluginsTest extends TestCase
                     // Its settings page is still reachable, showing the unchecked toggle.
                     $commands->run('ide_settings');
                     $tui->handleInput("\t");
+                    $tui->handleInput("\x1b[B"); // Interface
                     $tui->handleInput("\x1b[B"); // Keybindings
                     $tui->handleInput("\x1b[B"); // Plugins
                     $tui->handleInput("\x1b[B"); // bundled sub-item

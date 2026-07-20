@@ -9,6 +9,7 @@ use Porta\Config\IdeConfig;
 use Porta\Config\SettingsController;
 use Porta\Config\SettingsRowKind;
 use Porta\Editor\BufferManager;
+use Porta\Editor\LineNumberMode;
 use Porta\Event\CursorShapeChanged;
 use Porta\Event\LocaleChanged;
 use Porta\Event\TabBarPositionChanged;
@@ -29,6 +30,7 @@ use Porta\Ui\CursorStyle;
 use Porta\Ui\Notifier;
 use Porta\Ui\Theme\StyleSheetThemer;
 use Porta\Ui\Theme\Themes;
+use Porta\Widget\BreadcrumbsWidget;
 use Porta\Widget\CodeEditorWidget;
 use Porta\Widget\Git\DiffViewWidget;
 use Porta\Widget\HelpViewerWidget;
@@ -71,8 +73,9 @@ final class SettingsControllerTest extends TestCase
     /**
      * @param array<string, int|bool|string> $settings
      */
-    private function controller(string $rootDir, CodeEditorWidget $editor, StatusBarWidget $status, array $settings = []): SettingsController
+    private function controller(string $rootDir, CodeEditorWidget $editor, StatusBarWidget $status, array $settings = [], ?BreadcrumbsWidget $breadcrumbs = null): SettingsController
     {
+        $breadcrumbs ??= new BreadcrumbsWidget();
         $tui = new Tui(terminal: new VirtualTerminal(columns: 80, rows: 24));
         $this->languageChanges = [];
         $this->themeChanges = [];
@@ -118,6 +121,7 @@ final class SettingsControllerTest extends TestCase
             $rootDir,
             $translator,
             $applier,
+            $breadcrumbs,
         );
     }
 
@@ -128,30 +132,46 @@ final class SettingsControllerTest extends TestCase
         return (string) ($flash['text'] ?? '');
     }
 
-    public function testFormRowsExposeEveryDescriptorWithCurrentValues(): void
+    public function testFormRowsExposeOnlyTheGeneralGroup(): void
     {
         $project = new TempProject();
-        $controller = $this->controller($project->dir, new CodeEditorWidget(), new StatusBarWidget(), ['theme' => 'light', 'autoPairs' => false]);
+        $controller = $this->controller($project->dir, new CodeEditorWidget(), new StatusBarWidget(), ['autoPairs' => false]);
 
         $rows = $controller->formRows();
         $byKey = array_column($rows, null, 'key');
 
         $this->assertSame(
-            ['language', 'inlineDiagnostics', 'relativeLineNumbers', 'autoPairs', 'formatOnSave', 'theme', 'cursorShape', 'tabBarPosition'],
+            ['inlineDiagnostics', 'autoPairs', 'formatOnSave'],
             array_column($rows, 'key'),
-            'language first; indent settings moved to the Languages section',
+            'General holds editor behavior; appearance moved to Interface',
         );
-        $this->assertSame(['en', 'fr', 'de', 'es', 'it', 'ja', 'he'], $byKey['language']->options);
-        $this->assertSame(Translator::LOCALE_NAMES, $byKey['language']->optionLabels, 'the picker shows language names');
         $this->assertFalse($byKey['autoPairs']->value);
         $this->assertSame(SettingsRowKind::Bool, $byKey['autoPairs']->kind);
         $this->assertFalse($byKey['inlineDiagnostics']->restart, 'live toggles need no restart');
+    }
+
+    public function testInterfaceRowsExposeTheAppearanceSettings(): void
+    {
+        $project = new TempProject();
+        $controller = $this->controller($project->dir, new CodeEditorWidget(), new StatusBarWidget(), ['theme' => 'light']);
+
+        $rows = $controller->interfaceRows();
+        $byKey = array_column($rows, null, 'key');
+
+        $this->assertSame(
+            ['language', 'theme', 'cursorShape', 'tabBarPosition', 'lineNumbers', 'stickyScroll', 'indentGuides', 'breadcrumbs'],
+            array_column($rows, 'key'),
+        );
+        $this->assertSame(['en', 'fr', 'de', 'es', 'it', 'ja', 'he'], $byKey['language']->options);
+        $this->assertSame(Translator::LOCALE_NAMES, $byKey['language']->optionLabels, 'the picker shows language names');
         $this->assertSame('light', $byKey['theme']->value);
         $this->assertSame(['dark', 'light', 'high-contrast'], $byKey['theme']->options);
-        $this->assertSame('bar', $byKey['cursorShape']->value);
         $this->assertSame(['bar', 'block', 'underline'], $byKey['cursorShape']->options);
-        $this->assertSame('top', $byKey['tabBarPosition']->value);
         $this->assertSame(['top', 'bottom', 'left', 'right'], $byKey['tabBarPosition']->options);
+        $this->assertSame('absolute', $byKey['lineNumbers']->value);
+        $this->assertSame(['off', 'absolute', 'relative'], $byKey['lineNumbers']->options);
+        $this->assertTrue($byKey['stickyScroll']->value);
+        $this->assertSame(SettingsRowKind::Bool, $byKey['breadcrumbs']->kind);
     }
 
     public function testChangingTheTabBarPositionFiresItsApplyClosureAndPersists(): void
@@ -182,14 +202,60 @@ final class SettingsControllerTest extends TestCase
         $project = new TempProject();
         $editor = new CodeEditorWidget();
         $status = new StatusBarWidget();
-        $controller = $this->controller($project->dir, $editor, $status, ['relativeLineNumbers' => false]);
+        $controller = $this->controller($project->dir, $editor, $status);
 
-        $controller->changeSetting('relativeLineNumbers', true);
+        $controller->changeSetting('lineNumbers', 'relative');
 
-        $this->assertTrue($editor->hasRelativeLineNumbers(), 'applied to the editor');
-        $this->assertTrue(IdeConfig::load($project->dir)->settings['relativeLineNumbers'], 'persisted');
-        $this->assertStringContainsString('Relative line numbers on', $this->flashText($status));
+        $this->assertSame(LineNumberMode::Relative, $editor->lineNumberMode(), 'applied to the editor');
+        $this->assertSame('relative', IdeConfig::load($project->dir)->settings['lineNumbers'], 'persisted');
+        $this->assertStringContainsString('Line numbers relative', $this->flashText($status));
         $this->assertStringNotContainsString('restart', $this->flashText($status), 'live change is immediate');
+    }
+
+    public function testChangingLineNumbersToOffHidesTheGutterNumbers(): void
+    {
+        $project = new TempProject();
+        $editor = new CodeEditorWidget();
+        $controller = $this->controller($project->dir, $editor, new StatusBarWidget());
+
+        $controller->changeSetting('lineNumbers', 'off');
+        $this->assertSame(LineNumberMode::Off, $editor->lineNumberMode());
+        $this->assertSame('off', IdeConfig::load($project->dir)->settings['lineNumbers']);
+    }
+
+    public function testCycleLineNumbersWalksOffAbsoluteRelative(): void
+    {
+        $project = new TempProject();
+        $editor = new CodeEditorWidget();
+        $controller = $this->controller($project->dir, $editor, new StatusBarWidget());
+
+        // Default absolute → relative → off → absolute.
+        $controller->cycleLineNumbers();
+        $this->assertSame(LineNumberMode::Relative, $editor->lineNumberMode());
+        $controller->cycleLineNumbers();
+        $this->assertSame(LineNumberMode::Off, $editor->lineNumberMode());
+        $controller->cycleLineNumbers();
+        $this->assertSame(LineNumberMode::Absolute, $editor->lineNumberMode());
+    }
+
+    public function testChangingTheNewInterfaceBoolsAppliesToTheEditorAndBreadcrumbs(): void
+    {
+        $project = new TempProject();
+        $editor = new CodeEditorWidget();
+        $breadcrumbs = new BreadcrumbsWidget();
+        $controller = $this->controller($project->dir, $editor, new StatusBarWidget(), breadcrumbs: $breadcrumbs);
+
+        $controller->changeSetting('stickyScroll', false);
+        $this->assertFalse($editor->hasStickyScroll());
+        $controller->changeSetting('indentGuides', false);
+        $this->assertFalse($editor->hasIndentGuides());
+        $controller->changeSetting('breadcrumbs', false);
+        $this->assertFalse($breadcrumbs->isVisible());
+
+        $controller->changeSetting('stickyScroll', true);
+        $this->assertTrue($editor->hasStickyScroll());
+        $controller->changeSetting('breadcrumbs', true);
+        $this->assertTrue($breadcrumbs->isVisible());
     }
 
     public function testChangingLanguageFiresTheLocaleHookAndPersists(): void
@@ -242,10 +308,10 @@ final class SettingsControllerTest extends TestCase
     {
         $project = new TempProject();
         $editor = new CodeEditorWidget();
-        $controller = $this->controller($project->dir, $editor, new StatusBarWidget(), ['relativeLineNumbers' => true, 'theme' => 'light']);
+        $controller = $this->controller($project->dir, $editor, new StatusBarWidget(), ['lineNumbers' => 'relative', 'theme' => 'light']);
 
         $controller->applyAll(); // every descriptor applies live now
-        $this->assertTrue($editor->hasRelativeLineNumbers());
+        $this->assertSame(LineNumberMode::Relative, $editor->lineNumberMode());
         $this->assertSame(['light'], $this->themeChanges, 'the theme hook applies at boot too');
         $this->assertSame(['bar'], $this->cursorShapeChanges, 'the cursor-shape hook applies at boot too');
         $this->assertSame(['top'], $this->tabBarPositionChanges, 'the tab-bar-position hook applies at boot too');
