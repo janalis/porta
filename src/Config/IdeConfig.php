@@ -70,7 +70,8 @@ final class IdeConfig
      * @param array<string, array{indentStyle?: string, indentSize?: int|string, debug?: array{adapter?: string, launch?: array<string, mixed>}}> $languages  per-language overrides
      * @param array<string, string>                                                                                                          $lspServers per-language LSP command overrides (map form)
      * @param array<string, array<string, bool|int|string>>                                                                                  $plugins    raw per-plugin setting values (coerced at read by PluginSettings)
-     * @param list<string>                                                                                                                   $disabledPlugins plugin names skipped at boot (bundled plugins are disableable, not removable)
+     * @param list<string>                                                                                                                   $disabledPlugins plugin names skipped at boot (project/global plugins are on unless listed here)
+     * @param list<string>                                                                                                                   $enabledPlugins  bundled (embedded) plugin names to load — bundled plugins are off unless opted in here
      * @param list<string>                                                                                                                   $warnings
      */
     private function __construct(
@@ -80,6 +81,7 @@ final class IdeConfig
         public readonly array $lspServers,
         public readonly array $plugins,
         public readonly array $disabledPlugins,
+        public readonly array $enabledPlugins,
         public readonly array $warnings,
     ) {}
 
@@ -87,12 +89,12 @@ final class IdeConfig
     {
         $file = $rootDir.'/.porta.json';
         if (!is_file($file)) {
-            return new self([], self::DEFAULT_SETTINGS, [], [], [], [], []);
+            return new self([], self::DEFAULT_SETTINGS, [], [], [], [], [], []);
         }
 
         $config = JsonFile::read($file);
         if (null === $config) {
-            return new self([], self::DEFAULT_SETTINGS, [], [], [], [], ['.porta.json is not valid JSON']);
+            return new self([], self::DEFAULT_SETTINGS, [], [], [], [], [], ['.porta.json is not valid JSON']);
         }
 
         $keymap = [];
@@ -145,12 +147,10 @@ final class IdeConfig
         $languages = self::parseLanguages($languagesConfig, $warnings);
         $lspServers = self::parseLspServers($config['lsp'] ?? null);
         $plugins = self::parsePluginSettings(\is_array($config['plugins'] ?? null) ? $config['plugins'] : [], $warnings);
-        $disabledPlugins = [];
-        if (\is_array($config['disabledPlugins'] ?? null)) {
-            $disabledPlugins = array_values(array_map(strval(...), array_filter($config['disabledPlugins'], is_scalar(...))));
-        }
+        $disabledPlugins = self::stringList($config['disabledPlugins'] ?? null);
+        $enabledPlugins = self::stringList($config['enabledPlugins'] ?? null);
 
-        return new self($keymap, $settings, $languages, $lspServers, $plugins, $disabledPlugins, $warnings);
+        return new self($keymap, $settings, $languages, $lspServers, $plugins, $disabledPlugins, $enabledPlugins, $warnings);
     }
 
     /**
@@ -367,54 +367,55 @@ final class IdeConfig
      * block, merging with and preserving existing content. Returns true on
      * success.
      */
-    /** Persist a plugin as enabled by dropping it from the top-level `disabledPlugins` list. */
+    /** Persist a project/global plugin as enabled by dropping it from the `disabledPlugins` list. */
     public static function persistPluginEnabled(string $rootDir, string $plugin): bool
     {
-        $file = $rootDir.'/.porta.json';
-        $config = JsonFile::read($file) ?? [];
-
-        return self::writeDisabledPlugins($file, $config, self::disabledWithout($config, $plugin));
+        return self::persistPluginMembership($rootDir, 'disabledPlugins', $plugin, member: false);
     }
 
-    /** Persist a plugin as disabled by adding it to the top-level `disabledPlugins` list. */
+    /** Persist a project/global plugin as disabled by adding it to the `disabledPlugins` list. */
     public static function persistPluginDisabled(string $rootDir, string $plugin): bool
     {
+        return self::persistPluginMembership($rootDir, 'disabledPlugins', $plugin, member: true);
+    }
+
+    /** Persist a bundled plugin as enabled by adding it to the opt-in `enabledPlugins` list. */
+    public static function persistBundledEnabled(string $rootDir, string $plugin): bool
+    {
+        return self::persistPluginMembership($rootDir, 'enabledPlugins', $plugin, member: true);
+    }
+
+    /** Persist a bundled plugin as disabled by dropping it from the `enabledPlugins` list. */
+    public static function persistBundledDisabled(string $rootDir, string $plugin): bool
+    {
+        return self::persistPluginMembership($rootDir, 'enabledPlugins', $plugin, member: false);
+    }
+
+    /** Add ($member) or drop $plugin from a top-level string-list key, dropping the key when empty. */
+    private static function persistPluginMembership(string $rootDir, string $key, string $plugin, bool $member): bool
+    {
         $file = $rootDir.'/.porta.json';
         $config = JsonFile::read($file) ?? [];
-
-        return self::writeDisabledPlugins($file, $config, [...self::disabledWithout($config, $plugin), $plugin]);
-    }
-
-    /**
-     * The current `disabledPlugins` list, normalized to strings, minus $plugin.
-     *
-     * @param array<array-key, mixed> $config
-     *
-     * @return list<string>
-     */
-    private static function disabledWithout(array $config, string $plugin): array
-    {
-        $disabled = \is_array($config['disabledPlugins'] ?? null) ? array_values(array_map(strval(...), array_filter($config['disabledPlugins'], is_scalar(...)))) : [];
-
-        return array_values(array_diff($disabled, [$plugin]));
-    }
-
-    /**
-     * Write the `disabledPlugins` list back (dropping the key when empty).
-     *
-     * @param array<array-key, mixed> $config
-     * @param list<string>            $disabled
-     */
-    private static function writeDisabledPlugins(string $file, array $config, array $disabled): bool
-    {
-        if ([] === $disabled) {
-            unset($config['disabledPlugins']);
+        $without = array_values(array_diff(self::stringList($config[$key] ?? null), [$plugin]));
+        $list = $member ? [...$without, $plugin] : $without;
+        if ([] === $list) {
+            unset($config[$key]);
         }
-        if ([] !== $disabled) {
-            $config['disabledPlugins'] = $disabled;
+        if ([] !== $list) {
+            $config[$key] = $list;
         }
 
         return self::write($file, $config);
+    }
+
+    /**
+     * A `.porta.json` value normalized to a list of strings (non-scalars dropped).
+     *
+     * @return list<string>
+     */
+    private static function stringList(mixed $value): array
+    {
+        return \is_array($value) ? array_values(array_map(strval(...), array_filter($value, is_scalar(...)))) : [];
     }
 
     /** Persist one plugin-defined setting value under the top-level `plugins.<name>.<key>`. */

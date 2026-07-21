@@ -24,10 +24,16 @@ use Symfony\Component\Tui\Tui;
  */
 final class PluginLifecycle implements PluginLifecycleOps
 {
-    /** @var array<string, true> live disabled-plugin set (persisted as .porta.json `disabledPlugins`) */
+    /** @var array<string, true> live disabled set for project/global plugins (persisted as .porta.json `disabledPlugins`) */
     private array $disabled;
 
-    /** @param list<string> $disabledPlugins */
+    /** @var array<string, true> live opt-in set for bundled plugins (persisted as .porta.json `enabledPlugins`) */
+    private array $enabled;
+
+    /**
+     * @param list<string> $disabledPlugins project/global plugins turned off
+     * @param list<string> $enabledPlugins  bundled plugins opted in (bundled are off by default)
+     */
     public function __construct(
         private readonly PluginLoader $loader,
         private readonly PluginManager $plugins,
@@ -42,8 +48,29 @@ final class PluginLifecycle implements PluginLifecycleOps
         private readonly LspReconfigurer $lspReconfigurer,
         private readonly string $rootDir,
         array $disabledPlugins,
+        array $enabledPlugins,
     ) {
         $this->disabled = array_fill_keys($disabledPlugins, value: true);
+        $this->enabled = array_fill_keys($enabledPlugins, value: true);
+    }
+
+    /**
+     * Whether $name is a bundled (embedded-source) plugin — those are off by
+     * default and opt into `enabledPlugins`; project/global plugins are on by
+     * default and opt out via `disabledPlugins`. The effective (highest-precedence)
+     * copy decides: a project copy shadowing a bundled one counts as project.
+     */
+    private function isBundled(string $name): bool
+    {
+        $scope = null;
+        foreach ($this->installer->installed() as $plugin) {
+            if ($plugin['name'] === $name) {
+                $scope = $plugin['scope'];
+                break;
+            }
+        }
+
+        return 'embedded' === $scope;
     }
 
     /**
@@ -99,8 +126,13 @@ final class PluginLifecycle implements PluginLifecycleOps
      */
     public function disable(string $name): void
     {
-        $this->disabled[$name] = true;
-        IdeConfig::persistPluginDisabled($this->rootDir, $name);
+        if ($this->isBundled($name)) {
+            unset($this->enabled[$name]);
+            IdeConfig::persistBundledDisabled($this->rootDir, $name);
+        } else {
+            $this->disabled[$name] = true;
+            IdeConfig::persistPluginDisabled($this->rootDir, $name);
+        }
         $wasProvider = $this->plugins->providesLanguageServer($name);
         $this->plugins->deactivate($name, $this->commands); // no shadow fallback: the NAME is off
         $this->reconfigureLspIf($wasProvider);
@@ -115,8 +147,13 @@ final class PluginLifecycle implements PluginLifecycleOps
      */
     public function enable(string $name): void
     {
-        unset($this->disabled[$name]);
-        IdeConfig::persistPluginEnabled($this->rootDir, $name);
+        if ($this->isBundled($name)) {
+            $this->enabled[$name] = true;
+            IdeConfig::persistBundledEnabled($this->rootDir, $name);
+        } else {
+            unset($this->disabled[$name]);
+            IdeConfig::persistPluginEnabled($this->rootDir, $name);
+        }
         foreach ($this->installer->installed() as $candidate) {
             if ($candidate['name'] !== $name) {
                 continue;
@@ -159,7 +196,9 @@ final class PluginLifecycle implements PluginLifecycleOps
 
     public function isDisabled(string $name): bool
     {
-        return array_key_exists($name, $this->disabled);
+        return $this->isBundled($name)
+            ? !array_key_exists($name, $this->enabled)
+            : array_key_exists($name, $this->disabled);
     }
 
     /**

@@ -121,6 +121,29 @@ final class IdePluginInstallTest extends TestCase
                     $tui->tick();
                     $this->assertStringContainsString('Plugin "broken" failed to load: plugin.php must return a PortaPlugin instance', AnsiUtils::stripAnsiCodes($terminal->getOutput()));
                 },
+                200 => function ($tui, $terminal, $ide) use ($project): void {
+                    // A project-scope plugin toggles Enabled via the opt-out `disabledPlugins`
+                    // list (bundled plugins use the opt-in `enabledPlugins` instead).
+                    $tui->handleInput("\t"); // form → nav
+                    for ($i = 0; $i < 10; ++$i) {
+                        $tui->handleInput("\x1b[A"); // clamp to the top (General)
+                    }
+                    $tui->handleInput("\x1b[B"); // Interface
+                    $tui->handleInput("\x1b[B"); // Keybindings
+                    $tui->handleInput("\x1b[B"); // Plugins
+                    $tui->handleInput("\x1b[B"); // installee sub-item
+                    $tui->handleInput("\t"); // nav → form (Enabled row)
+                    $tui->handleInput("\r"); // toggle off
+                    $tui->tick();
+                    $this->assertStringContainsString('Plugin "installee" disabled', AnsiUtils::stripAnsiCodes($terminal->getOutput()));
+                    $config = json_decode((string) file_get_contents($project->path('.porta.json')), associative: true);
+                    $this->assertSame(['installee'], $config['disabledPlugins'] ?? null, 'a project plugin disables via disabledPlugins');
+
+                    $tui->handleInput("\r"); // toggle back on
+                    $tui->tick();
+                    $config = json_decode((string) file_get_contents($project->path('.porta.json')), associative: true);
+                    $this->assertArrayNotHasKey('disabledPlugins', $config, 're-enabling clears the list');
+                },
             ],
         );
 

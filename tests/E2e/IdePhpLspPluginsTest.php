@@ -50,7 +50,7 @@ final class IdePhpLspPluginsTest extends TestCase
         // The plugin's binary is set, so its resolver yields a php server.
         $project = new TempProject([
             'a.php' => "<?php\n",
-            '.porta.json' => json_encode(['plugins' => ['phpantom' => ['binary' => '/opt/phpantom_lsp']]]),
+            '.porta.json' => json_encode(['enabledPlugins' => ['phpantom'], 'plugins' => ['phpantom' => ['binary' => '/opt/phpantom_lsp']]]),
         ]);
 
         $this->runIde(
@@ -107,8 +107,8 @@ final class IdePhpLspPluginsTest extends TestCase
     {
         $embedded = $this->embeddedPhpantom();
         putenv('PORTA_EMBEDDED_PLUGINS='.$embedded->dir);
-        // No binary configured and none on PATH → phpantom serves nothing.
-        $project = new TempProject(['a.php' => "<?php\n"]);
+        // phpantom enabled but no binary configured and none on PATH → serves nothing.
+        $project = new TempProject(['a.php' => "<?php\n", '.porta.json' => json_encode(['enabledPlugins' => ['phpantom']])]);
 
         $this->runIde(
             $project,

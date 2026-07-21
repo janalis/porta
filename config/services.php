@@ -456,7 +456,10 @@ return static function (ContainerConfigurator $container, ContainerBuilder $buil
     $services->set(SettingsGitController::class)->arg('$settings', env('PORTA_SETTINGS')->json());
     $services->set(SettingsLanguageController::class)->arg('$overrides', env('PORTA_LANGUAGES')->json());
     $services->set(SettingsLspController::class)->arg('$overrides', env('PORTA_LSP_SERVERS')->json());
-    $services->set(PluginLifecycle::class)->arg('$disabledPlugins', env('PORTA_DISABLED_PLUGINS')->json());
+    $services
+        ->set(PluginLifecycle::class)
+        ->arg('$disabledPlugins', env('PORTA_DISABLED_PLUGINS')->json())
+        ->arg('$enabledPlugins', env('PORTA_ENABLED_PLUGINS')->json());
 
     // The Search Everywhere modal aggregates per-source hooks; its factory
     // owns them (see SearchEverywhereFactory).

@@ -68,7 +68,8 @@ final class IdeEmbeddedPluginsTest extends TestCase
     {
         $embedded = $this->embeddedFixture();
         putenv('PORTA_EMBEDDED_PLUGINS='.$embedded->dir);
-        $project = new TempProject(['a.php' => "<?php\n"]);
+        // Bundled plugins are off by default; opt the fixture in.
+        $project = new TempProject(['a.php' => "<?php\n", '.porta.json' => json_encode(['enabledPlugins' => ['bundled']])]);
 
         $this->runIde(
             $project,
@@ -146,7 +147,7 @@ final class IdeEmbeddedPluginsTest extends TestCase
                     $commands = new \ReflectionProperty($ide, 'commands')->getValue($ide);
                     $this->assertNotContains('Bundled Run', array_column($commands->paletteCommands(), 'label'));
                     $config = json_decode((string) file_get_contents($project->path('.porta.json')), associative: true);
-                    $this->assertSame(['bundled'], $config['disabledPlugins'] ?? null);
+                    $this->assertArrayNotHasKey('enabledPlugins', $config, 'a bundled plugin disables by leaving the opt-in list');
 
                     // And re-enable it live from the same page.
                     $tui->handleInput("\r");
@@ -155,7 +156,7 @@ final class IdeEmbeddedPluginsTest extends TestCase
                     $this->assertContains('Plugins', array_column($this->menus($tui), 'title'));
                     $this->assertContains('Bundled Run', array_column($commands->paletteCommands(), 'label'));
                     $config = json_decode((string) file_get_contents($project->path('.porta.json')), associative: true);
-                    $this->assertArrayNotHasKey('disabledPlugins', $config, 're-enabling cleared the list');
+                    $this->assertSame(['bundled'], $config['enabledPlugins'] ?? null, 're-enabling opts it back in');
                 },
             ],
         );

@@ -18,13 +18,17 @@ final class PluginLoader
 {
     public const string NAME_PATTERN = '/^[a-z0-9][a-z0-9_-]*$/i';
 
-    /** @param list<string> $disabled plugin names skipped at boot (.porta.json `disabledPlugins`) */
+    /**
+     * @param list<string> $disabled plugin names skipped at boot (.porta.json `disabledPlugins`)
+     * @param list<string> $enabled  bundled (embedded) plugin names opted in (.porta.json `enabledPlugins`); embedded plugins are off unless listed
+     */
     public function __construct(
         private readonly string $rootDir,
         private readonly ?string $globalBase,
         private readonly PluginSettings $settings,
         private readonly ?string $embeddedDir = null,
         private readonly array $disabled = [],
+        private readonly array $enabled = [],
     ) {}
 
     /** The home directory used for the global plugin dir (PORTA_HOME overrides HOME). */
@@ -73,18 +77,12 @@ final class PluginLoader
     {
         // Disabled names are pre-seeded as "seen" so every copy is skipped.
         $seen = array_fill_keys($this->disabled, value: true);
+        $enabled = array_fill_keys($this->enabled, value: true);
         $files = [];
-        $projectFiles = glob($this->rootDir.'/.porta/plugins/*/plugin.php');
-        foreach (\is_array($projectFiles) ? $projectFiles : [] as $file) {
-            $name = basename(\dirname($file));
-            if (!array_key_exists($name, $seen)) {
-                $seen[$name] = true;
-                $files[] = $file;
-            }
-        }
 
-        $sources = [null !== $this->globalBase ? $this->globalBase.'/.porta/plugins' : null, $this->embeddedDir];
-        foreach ($sources as $dir) {
+        // Project then global: user-installed plugins, loaded by default (opt-out).
+        $optOut = [$this->rootDir.'/.porta/plugins', null !== $this->globalBase ? $this->globalBase.'/.porta/plugins' : null];
+        foreach ($optOut as $dir) {
             if (null === $dir) {
                 continue;
             }
@@ -95,6 +93,19 @@ final class PluginLoader
                     $seen[$name] = true;
                     $files[] = $file;
                 }
+            }
+        }
+
+        // Bundled (embedded) plugins are off unless opted into `enabledPlugins`.
+        $embeddedFiles = null === $this->embeddedDir ? [] : glob($this->embeddedDir.'/*/plugin.php');
+        foreach (\is_array($embeddedFiles) ? $embeddedFiles : [] as $file) {
+            $name = basename(\dirname($file));
+            if (array_key_exists($name, $seen)) {
+                continue; // shadowed by a project/global copy, or explicitly disabled
+            }
+            $seen[$name] = true;
+            if (array_key_exists($name, $enabled)) {
+                $files[] = $file;
             }
         }
 

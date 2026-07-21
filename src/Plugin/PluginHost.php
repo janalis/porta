@@ -29,7 +29,7 @@ final class PluginHost
     {
         $this->settings = new PluginSettings($rootDir, $config->plugins);
         $this->manager = new PluginManager($events, $this->settings);
-        $this->loader = new PluginLoader($rootDir, PluginLoader::globalBase(), $this->settings, PluginLoader::embeddedDir(), $config->disabledPlugins);
+        $this->loader = new PluginLoader($rootDir, PluginLoader::globalBase(), $this->settings, PluginLoader::embeddedDir(), $config->disabledPlugins, $config->enabledPlugins);
     }
 
     /** Load and activate every plugin file exactly once per boot. */

@@ -154,7 +154,7 @@ final class PluginLoaderTest extends TestCase
         }
     }
 
-    public function testEmbeddedPluginsLoadLastAndAreShadowedByNameFromBothScopes(): void
+    public function testEmbeddedPluginsAreShadowedByNameAndLoadOnlyWhenOptedIn(): void
     {
         $embedded = new TempProject([
             'demo/plugin.php' => $this->pluginSource('embeddeddemo'),
@@ -165,13 +165,31 @@ final class PluginLoaderTest extends TestCase
         $project = new TempProject(['.porta/plugins/demo/plugin.php' => $this->pluginSource('demo')]);
 
         $manager = new PluginManager(new PluginEvents(), new PluginSettings('/p', []));
-        new PluginLoader($project->dir, $global->dir, new PluginSettings($project->dir, []), $embedded->dir)->loadInto($manager);
+        // Bundled plugins are off by default; only 'own' is opted into enabledPlugins.
+        new PluginLoader($project->dir, $global->dir, new PluginSettings($project->dir, []), $embedded->dir, [], ['own'])->loadInto($manager);
 
-        $this->assertTrue($manager->hasPlugin('demo'), 'the project copy shadowed the embedded one');
+        $this->assertTrue($manager->hasPlugin('demo'), 'the project copy loads (and shadowed the embedded one)');
         $this->assertFalse($manager->hasPlugin('embeddeddemo'));
-        $this->assertTrue($manager->hasPlugin('globalextra'), 'the global copy shadowed the embedded one');
+        $this->assertTrue($manager->hasPlugin('globalextra'), 'the global copy loads (and shadowed the embedded one)');
         $this->assertFalse($manager->hasPlugin('embeddedextra'));
-        $this->assertTrue($manager->hasPlugin('own'), 'a non-shadowed embedded plugin loads');
+        $this->assertTrue($manager->hasPlugin('own'), 'the opted-in embedded plugin loads');
+    }
+
+    public function testEmbeddedPluginsAreOffByDefaultUnlessEnabled(): void
+    {
+        $embedded = new TempProject(['bundled/plugin.php' => $this->pluginSource('bundled')]);
+        $project = new TempProject(['.porta/plugins/local/plugin.php' => $this->pluginSource('local')]);
+
+        // No enabledPlugins → the bundled plugin stays off; the project plugin loads by default.
+        $off = new PluginManager(new PluginEvents(), new PluginSettings('/p', []));
+        new PluginLoader($project->dir, null, new PluginSettings($project->dir, []), $embedded->dir)->loadInto($off);
+        $this->assertFalse($off->hasPlugin('bundled'), 'a bundled plugin is off by default');
+        $this->assertTrue($off->hasPlugin('local'), 'a project plugin loads by default');
+
+        // Opting the bundled plugin in loads it.
+        $on = new PluginManager(new PluginEvents(), new PluginSettings('/p', []));
+        new PluginLoader($project->dir, null, new PluginSettings($project->dir, []), $embedded->dir, [], ['bundled'])->loadInto($on);
+        $this->assertTrue($on->hasPlugin('bundled'), 'enabledPlugins opts it in');
     }
 
     private function badNameSource(): string
