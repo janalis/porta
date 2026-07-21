@@ -139,7 +139,7 @@ final class IdeEdgeCasesTest extends TestCase
         );
 
         $screen = AnsiUtils::stripAnsiCodes($terminal->getOutput());
-        $this->assertStringContainsString('LSP:none (install phpantom)', $screen);
+        $this->assertStringContainsString('LSP:none (enable a PHP server in Settings)', $screen);
     }
 
     public function testRenameWithoutServerFlashes(): void

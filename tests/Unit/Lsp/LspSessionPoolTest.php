@@ -173,10 +173,10 @@ final class LspSessionPoolTest extends TestCase
         $this->assertSame('php-ls', $pool->statusFor('/tmp/proj/a.php'), 'FakeLspClient initializes synchronously');
     }
 
-    public function testStatusForPhpWithoutAServerKeepsTheInstallHint(): void
+    public function testStatusForPhpWithoutAServerPointsAtSettings(): void
     {
         $pool = $this->pool([]);
-        $this->assertSame('none (install phpantom)', $pool->statusFor('/tmp/proj/a.php'));
+        $this->assertSame('none (enable a PHP server in Settings)', $pool->statusFor('/tmp/proj/a.php'));
         $this->assertSame('no server', $pool->statusFor('/tmp/proj/b.ts'));
         $this->assertSame('no server', $pool->statusFor(null));
     }

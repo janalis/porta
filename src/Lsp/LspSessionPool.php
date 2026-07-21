@@ -111,8 +111,9 @@ final class LspSessionPool
         }
         $key = null === $path ? $this->fallbackKey() : $this->serverKeyFor($path);
         if (null === $key) {
-            // PHP is the first-class language here: suggest the default PHP server plugin.
-            return null !== $path && 'php' === ProjectPaths::languageId($path) ? $this->translator->trans('none (install phpantom)') : $this->translator->trans('no server');
+            // PHP is the first-class language here, but bundled servers start
+            // disabled — point at Settings rather than naming one plugin.
+            return null !== $path && 'php' === ProjectPaths::languageId($path) ? $this->translator->trans('none (enable a PHP server in Settings)') : $this->translator->trans('no server');
         }
         $server = $this->servers[$key];
 

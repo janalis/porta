@@ -5,11 +5,12 @@ declare(strict_types=1);
 namespace Porta\Config;
 
 use Porta\I18n\Translator;
-use Porta\Plugin\ComposerInstaller;
+use Porta\Plugin\InstallOutcome;
 use Porta\Plugin\PluginInstaller;
 use Porta\Plugin\PluginLifecycleOps;
 use Porta\Plugin\PluginManager;
 use Porta\Plugin\PluginSettings;
+use Porta\Plugin\ToolInstaller;
 use Porta\Ui\Notifier;
 
 /**
@@ -38,7 +39,7 @@ final class SettingsPluginsController
         private readonly Translator $translator,
         private readonly PluginLifecycleOps $lifecycle,
         private readonly PluginManager $plugins,
-        private readonly ComposerInstaller $composer,
+        private readonly ToolInstaller $installerTool,
     ) {}
 
     /** @return list<SettingsRow> */
@@ -114,13 +115,13 @@ final class SettingsPluginsController
             ...$this->pluginSettings->rows($name),
         ];
 
-        // When an enabled plugin's declared composer package isn't installed,
-        // offer a one-click `composer require --dev`.
-        $dependency = $this->plugins->composerDependency($name);
-        if (null !== $dependency && !$dependency['available']) {
+        // When an enabled plugin's declared tool binary isn't installed, offer
+        // a one-click install through its package manager(s).
+        $offer = $this->plugins->installOffer($name);
+        if (null !== $offer && !$offer['available']) {
             $rows[] = new SettingsRow(
                 key: 'pluginInstallBinary',
-                label: $this->translator->trans('Install %package%', ['%package%' => $dependency['package']]),
+                label: $this->translator->trans('Install %tool%', ['%tool%' => $offer['tool']]),
                 kind: SettingsRowKind::Action,
                 value: false,
                 restart: false,
@@ -151,20 +152,19 @@ final class SettingsPluginsController
         }
     }
 
-    /** Install the (enabled) plugin's declared composer package as a dev dependency. */
+    /** Install the (enabled) plugin's declared tool binary through its package manager(s). */
     private function installBinary(string $name): void
     {
-        $dependency = $this->plugins->composerDependency($name);
-        if (null === $dependency) {
+        $offer = $this->plugins->installOffer($name);
+        if (null === $offer) {
             return;
         }
-        $package = $dependency['package'];
-        $this->notifier->flash($this->translator->trans('Installing %package%…', ['%package%' => $package]));
-        $running = $this->composer->require($package, function (bool $ok) use ($name, $package): void {
+        $tool = $offer['tool'];
+        $outcome = $this->installerTool->install($offer['via'], function (bool $ok) use ($name, $tool): void {
             $this->notifier->flash(
                 $ok
-                    ? $this->translator->trans('Installed %package%', ['%package%' => $package])
-                    : $this->translator->trans('Could not install %package% (is composer available?)', ['%package%' => $package]),
+                    ? $this->translator->trans('Installed %tool%', ['%tool%' => $tool])
+                    : $this->translator->trans('Could not install %tool%', ['%tool%' => $tool]),
                 5.0,
             );
             if ($ok) {
@@ -172,9 +172,13 @@ final class SettingsPluginsController
             }
             $this->lifecycle->refreshView(); // the install row drops once the binary is available
         });
-        if (!$running) {
-            $this->notifier->flash($this->translator->trans('An install is already running'));
-        }
+        match ($outcome) {
+            InstallOutcome::Started => $this->notifier->flash($this->translator->trans('Installing %tool%…', ['%tool%' => $tool])),
+            InstallOutcome::Busy => $this->notifier->flash($this->translator->trans('An install is already running')),
+            InstallOutcome::NoManager => $this->notifier->flash($this->translator->trans('No installer found for %tool% — install it via Homebrew or cargo, or put its binary on your PATH', [
+                '%tool%' => $tool,
+            ]), 5.0),
+        };
     }
 
     /** Route a settings edit/actuation for one of this section's keys. */

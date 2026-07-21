@@ -14,7 +14,9 @@ use Symfony\Component\Tui\Ansi\AnsiUtils;
  * provides the PHP server via PluginApi::registerLanguageServer, its binary is
  * configurable on its settings page, and toggling it live re-resolves the LSP
  * servers — so the status bar flips between the server and the
- * "install phpantom" hint without a restart.
+ * "enable a PHP server in Settings" hint without a restart. When the binary is
+ * missing, the plugin's Settings page offers a one-click install, and its CLI
+ * powers the Fix / Generate Config commands.
  */
 final class IdePhpLspPluginsTest extends TestCase
 {
@@ -61,7 +63,7 @@ final class IdePhpLspPluginsTest extends TestCase
                     $tui->tick();
                     $screen = AnsiUtils::stripAnsiCodes($terminal->getOutput());
                     $this->assertStringContainsString('LSP:', $screen);
-                    $this->assertStringNotContainsString('install phpantom', $screen, 'phpantom serves PHP, so no install hint');
+                    $this->assertStringNotContainsString('enable a PHP server', $screen, 'phpantom serves PHP, so no install hint');
                 },
                 450 => function ($tui, $terminal, $ide): void {
                     // Open the phpantom settings page: it lists the binary row.
@@ -85,7 +87,7 @@ final class IdePhpLspPluginsTest extends TestCase
                 },
                 600 => function ($tui, $terminal): void {
                     $tui->tick();
-                    $this->assertStringContainsString('install phpantom', AnsiUtils::stripAnsiCodes($terminal->getOutput()), 'disabling the provider unserves PHP → the install hint returns');
+                    $this->assertStringContainsString('enable a PHP server in Settings', AnsiUtils::stripAnsiCodes($terminal->getOutput()), 'disabling the provider unserves PHP → the hint returns');
 
                     // Re-enable → PHP is served again.
                     $terminal->clearOutput();
@@ -95,7 +97,7 @@ final class IdePhpLspPluginsTest extends TestCase
                 },
                 750 => function ($tui, $terminal): void {
                     $tui->tick();
-                    $this->assertStringNotContainsString('install phpantom', AnsiUtils::stripAnsiCodes($terminal->getOutput()), 'phpantom serves PHP again');
+                    $this->assertStringNotContainsString('enable a PHP server', AnsiUtils::stripAnsiCodes($terminal->getOutput()), 'phpantom serves PHP again');
                 },
             ],
         );
@@ -116,7 +118,91 @@ final class IdePhpLspPluginsTest extends TestCase
             [
                 300 => function ($tui, $terminal): void {
                     $tui->tick();
-                    $this->assertStringContainsString('LSP:none (install phpantom)', AnsiUtils::stripAnsiCodes($terminal->getOutput()));
+                    $this->assertStringContainsString('LSP:none (enable a PHP server in Settings)', AnsiUtils::stripAnsiCodes($terminal->getOutput()));
+                },
+            ],
+        );
+
+        $this->addToAssertionCount(1);
+    }
+
+    public function testThePhpantomSettingsPageOffersToInstallTheBinary(): void
+    {
+        $embedded = $this->embeddedPhpantom();
+        putenv('PORTA_EMBEDDED_PLUGINS='.$embedded->dir);
+        $project = new TempProject(['a.php' => "<?php\n", '.porta.json' => json_encode(['enabledPlugins' => ['phpantom']])]);
+
+        $this->runIde(
+            $project,
+            $project->path('a.php'),
+            [
+                300 => function ($tui, $terminal, $ide): void {
+                    new \ReflectionProperty($ide, 'commands')->getValue($ide)->run('ide_settings');
+                    $tui->handleInput("\t"); // form → nav
+                    $tui->handleInput("\x1b[B"); // Interface
+                    $tui->handleInput("\x1b[B"); // Keybindings
+                    $tui->handleInput("\x1b[B"); // Plugins
+                    $tui->handleInput("\x1b[B"); // phpantom sub-item
+                    $tui->tick();
+                    $this->assertStringContainsString('Install phpantom', AnsiUtils::stripAnsiCodes($terminal->getOutput()), 'the missing binary offers an install');
+                },
+            ],
+        );
+
+        $this->addToAssertionCount(1);
+    }
+
+    /** A project whose phpantom binary is a stub that fixes files and writes a config. */
+    private function phpantomCliProject(): TempProject
+    {
+        $stub =
+            '#!'
+            .\PHP_BINARY
+            .' -n'
+            ."\n<?php\n"
+            ."\$cmd = \$argv[1] ?? '';\n"
+            ."if ('fix' === \$cmd && isset(\$argv[2])) { file_put_contents(\$argv[2], file_get_contents(\$argv[2]).\"// fixed\\n\"); }\n"
+            ."if ('init' === \$cmd) { file_put_contents(getcwd().'/phpantom.json', \"{}\\n\"); }\n"
+            ."exit(0);\n";
+        $project = new TempProject(['a.php' => "<?php\n\$x=1;\n"]);
+        $binPath = $project->path('phpantom_stub');
+        file_put_contents($binPath, $stub);
+        chmod($binPath, permissions: 0o755);
+        file_put_contents($project->path('.porta.json'), json_encode(['enabledPlugins' => ['phpantom'], 'plugins' => ['phpantom' => ['binary' => $binPath]]]));
+
+        return $project;
+    }
+
+    public function testFixAndInitCommandsDriveTheCli(): void
+    {
+        $embedded = $this->embeddedPhpantom();
+        putenv('PORTA_EMBEDDED_PLUGINS='.$embedded->dir);
+        $project = $this->phpantomCliProject();
+
+        $this->runIde(
+            $project,
+            $project->path('a.php'),
+            [
+                100 => static function ($tui, $terminal, $ide): void {
+                    new \ReflectionProperty($ide, 'commands')->getValue($ide)->run('phpantom:fix');
+                },
+                300 => function ($tui, $terminal, $ide) use ($project): void {
+                    $this->await(static fn (): bool => str_contains(AnsiUtils::stripAnsiCodes($terminal->getOutput()), 'phpantom: fixed a.php'));
+                    $tui->tick();
+                    $this->assertStringContainsString('phpantom: fixed a.php', AnsiUtils::stripAnsiCodes($terminal->getOutput()));
+                    $this->await(static fn (): bool => str_contains((string) (is_file($project->path('a.php')) ? file_get_contents($project->path('a.php')) : false), '// fixed'));
+                    new \ReflectionProperty($ide, 'bufferService')
+                        ->getValue($ide)
+                        ->pollFilesystem();
+                    $this->assertStringContainsString('// fixed', $tui->getById('editor')->getDocument()->getText(), 'buffer reloaded with the fixed content');
+
+                    new \ReflectionProperty($ide, 'commands')->getValue($ide)->run('phpantom:init');
+                },
+                500 => function ($tui, $terminal) use ($project): void {
+                    $this->await(static fn (): bool => is_file($project->path('phpantom.json')));
+                    $tui->tick();
+                    $this->assertStringContainsString('phpantom: generated config', AnsiUtils::stripAnsiCodes($terminal->getOutput()));
+                    $this->assertFileExists($project->path('phpantom.json'));
                 },
             ],
         );

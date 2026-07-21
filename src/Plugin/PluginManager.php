@@ -27,8 +27,8 @@ final class PluginManager implements LanguageServerProvider
     private array $menuSpecs = [];
     /** @var list<array{plugin: string, languageId: string, name: string, resolve: \Closure(): (list<string>|null)}> committed LSP providers, in load order */
     private array $languageServers = [];
-    /** @var list<array{plugin: string, package: string, available: \Closure(): bool}> committed composer dependencies */
-    private array $composerDependencies = [];
+    /** @var list<array{plugin: string, tool: string, available: \Closure(): bool, via: list<array{0: string, 1: string}>}> committed install offers */
+    private array $installers = [];
     /** @var list<string> */
     private array $warnings = [];
     /** @var array<string, true> loaded plugin names */
@@ -92,24 +92,25 @@ final class PluginManager implements LanguageServerProvider
         foreach ($api->bufferedLanguageServers() as $server) {
             $this->languageServers[] = $server;
         }
-        foreach ($api->bufferedComposerDependencies() as $dependency) {
-            $this->composerDependencies[] = $dependency;
+        foreach ($api->bufferedInstallers() as $installer) {
+            $this->installers[] = $installer;
         }
         $this->settings->registerFor($name, $api->bufferedSettings());
     }
 
     /**
-     * The composer package $plugin declared for its binary and whether that
-     * binary is available now, or null when the plugin declared none. The
-     * Settings page offers to install the package while it's unavailable.
+     * The install offer $plugin declared for its tool binary — the tool name,
+     * whether that binary is available now, and the ordered [manager, package]
+     * candidates — or null when the plugin declared none. The Settings page
+     * offers to install while the binary is unavailable.
      *
-     * @return array{package: string, available: bool}|null
+     * @return array{tool: string, available: bool, via: list<array{0: string, 1: string}>}|null
      */
-    public function composerDependency(string $plugin): ?array
+    public function installOffer(string $plugin): ?array
     {
-        foreach ($this->composerDependencies as $dependency) {
-            if ($plugin === $dependency['plugin']) {
-                return ['package' => $dependency['package'], 'available' => $dependency['available']()];
+        foreach ($this->installers as $installer) {
+            if ($plugin === $installer['plugin']) {
+                return ['tool' => $installer['tool'], 'available' => $installer['available'](), 'via' => $installer['via']];
             }
         }
 
@@ -177,7 +178,7 @@ final class PluginManager implements LanguageServerProvider
         }));
         $this->menuSpecs = array_values(array_filter($this->menuSpecs, static fn (PluginMenuSpec $spec): bool => $name !== $spec->plugin));
         $this->languageServers = array_values(array_filter($this->languageServers, static fn (array $server): bool => $name !== $server['plugin']));
-        $this->composerDependencies = array_values(array_filter($this->composerDependencies, static fn (array $dependency): bool => $name !== $dependency['plugin']));
+        $this->installers = array_values(array_filter($this->installers, static fn (array $installer): bool => $name !== $installer['plugin']));
         $this->registered = \count($this->commands);
 
         unset($this->reportedWhens[$name]);

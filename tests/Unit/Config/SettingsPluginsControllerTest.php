@@ -8,12 +8,12 @@ use PHPUnit\Framework\TestCase;
 use Porta\Config\SettingsPluginsController;
 use Porta\Config\SettingsRowKind;
 use Porta\I18n\Translator;
-use Porta\Plugin\ComposerInstaller;
 use Porta\Plugin\PluginApi;
 use Porta\Plugin\PluginEvents;
 use Porta\Plugin\PluginInstaller;
 use Porta\Plugin\PluginManager;
 use Porta\Plugin\PluginSettings;
+use Porta\Plugin\ToolInstaller;
 use Porta\Tests\Support\FakePluginLifecycle;
 use Porta\Tests\Support\TempProject;
 use Porta\Ui\Notifier;
@@ -32,10 +32,11 @@ final class SettingsPluginsControllerTest extends TestCase
     private StatusBarWidget $status;
     private FakePluginLifecycle $lifecycle;
     private ?string $embeddedDir = null;
-    private ?string $composerBinary = null;
+    /** @var array<string, string|null> manager name => fake binary path */
+    private array $managerBinaries = [];
     private PluginSettings $pluginSettings;
     private PluginManager $plugins;
-    private ComposerInstaller $composer;
+    private ToolInstaller $installerTool;
 
     private function controller(): SettingsPluginsController
     {
@@ -47,7 +48,7 @@ final class SettingsPluginsControllerTest extends TestCase
 
         $this->pluginSettings = new PluginSettings($this->project->dir, []);
         $this->plugins = new PluginManager(new PluginEvents(), $this->pluginSettings);
-        $this->composer = new ComposerInstaller($this->project->dir, $this->composerBinary);
+        $this->installerTool = new ToolInstaller($this->project->dir, $this->managerBinaries);
 
         return new SettingsPluginsController(
             new PluginInstaller($this->project->dir, $this->global->dir, new Translator('en'), null, $this->embeddedDir),
@@ -56,15 +57,19 @@ final class SettingsPluginsControllerTest extends TestCase
             new Translator('en'),
             $this->lifecycle,
             $this->plugins,
-            $this->composer,
+            $this->installerTool,
         );
     }
 
-    /** Commit a plugin declaring a composer dependency with the given availability. */
-    private function declareComposer(string $name, string $package, bool $available): void
+    /**
+     * Commit a plugin declaring an install offer with the given availability.
+     *
+     * @param list<array{0: string, 1: string}> $via
+     */
+    private function declareInstaller(string $name, string $tool, bool $available, array $via = [['composer', 'phpstan/phpstan']]): void
     {
         $api = new PluginApi($name, $this->plugins, $this->project->dir, $this->pluginSettings);
-        $api->registerComposerDependency($package, static fn (): bool => $available);
+        $api->registerInstaller($tool, static fn (): bool => $available, $via);
         $this->plugins->commit($api);
     }
 
@@ -237,12 +242,12 @@ final class SettingsPluginsControllerTest extends TestCase
         $controller = $this->controller();
         $this->lifecycle->names = ['demo'];
 
-        $this->declareComposer('demo', 'phpstan/phpstan', available: false);
+        $this->declareInstaller('demo', 'phpstan', available: false);
         $rows = $controller->pluginRows('demo');
         $install = $rows[array_key_last($rows)];
         $this->assertSame('pluginInstallBinary', $install->key);
         $this->assertSame(SettingsRowKind::Action, $install->kind);
-        $this->assertSame('Install phpstan/phpstan', $install->label);
+        $this->assertSame('Install phpstan', $install->label);
     }
 
     public function testNoInstallRowWhenTheBinaryIsAvailable(): void
@@ -250,53 +255,68 @@ final class SettingsPluginsControllerTest extends TestCase
         $controller = $this->controller();
         $this->lifecycle->names = ['demo'];
 
-        $this->declareComposer('demo', 'phpstan/phpstan', available: true);
+        $this->declareInstaller('demo', 'phpstan', available: true);
         $this->assertSame(['pluginEnabled'], array_column($controller->pluginRows('demo'), 'key'), 'an available binary offers no install');
     }
 
-    public function testInstallingTheBinaryRunsComposerAndReconfiguresOnSuccess(): void
+    public function testInstallingTheBinaryRunsTheManagerAndReconfiguresOnSuccess(): void
     {
-        $this->composerBinary = $this->fakeComposer(exitCode: 0);
+        $this->managerBinaries = ['composer' => $this->fakeManager(exitCode: 0)];
         $controller = $this->controller();
         $this->lifecycle->names = ['demo'];
-        $this->declareComposer('demo', 'phpstan/phpstan', available: false);
+        $this->declareInstaller('demo', 'phpstan', available: false);
 
         $controller->changePlugin('demo', 'pluginInstallBinary', false);
-        $this->assertStringContainsString('Installing phpstan/phpstan', $this->flash());
+        $this->assertStringContainsString('Installing phpstan', $this->flash());
 
         $this->await(fn (): bool => 0 < $this->lifecycle->refreshed);
-        $this->assertStringContainsString('Installed phpstan/phpstan', $this->flash());
+        $this->assertStringContainsString('Installed phpstan', $this->flash());
         $this->assertSame(['demo'], $this->lifecycle->providerSettingChanged, 'a successful install relaunches the provider');
         $this->assertSame(1, $this->lifecycle->refreshed);
     }
 
-    public function testInstallingTheBinaryFlashesFailureWhenComposerExitsNonZero(): void
+    public function testInstallingTheBinaryFlashesFailureWhenTheManagerExitsNonZero(): void
     {
-        $this->composerBinary = $this->fakeComposer(exitCode: 1);
+        $this->managerBinaries = ['composer' => $this->fakeManager(exitCode: 1)];
         $controller = $this->controller();
         $this->lifecycle->names = ['demo'];
-        $this->declareComposer('demo', 'phpstan/phpstan', available: false);
+        $this->declareInstaller('demo', 'phpstan', available: false);
 
         $controller->changePlugin('demo', 'pluginInstallBinary', false);
         $this->await(fn (): bool => 0 < $this->lifecycle->refreshed);
-        $this->assertStringContainsString('Could not install phpstan/phpstan', $this->flash());
+        $this->assertStringContainsString('Could not install phpstan', $this->flash());
         $this->assertSame([], $this->lifecycle->providerSettingChanged, 'a failed install reconfigures nothing');
         $this->assertSame(1, $this->lifecycle->refreshed, 'the page still refreshes so the row state is current');
     }
 
-    public function testASecondInstallWhileOneRunsIsRejected(): void
+    public function testInstallFlashesGuidanceWhenNoManagerIsAvailable(): void
     {
-        $this->composerBinary = $this->fakeComposer(exitCode: 0, sleepSeconds: 1);
+        $this->managerBinaries = ['brew' => null, 'cargo' => null];
         $controller = $this->controller();
         $this->lifecycle->names = ['demo'];
-        $this->declareComposer('demo', 'phpstan/phpstan', available: false);
+        $this->declareInstaller('demo', 'phpantom', available: false, via: [
+            ['brew',  'phpantom-lsp'],
+            ['cargo', 'phpantom_lsp'],
+        ]);
+
+        $controller->changePlugin('demo', 'pluginInstallBinary', false);
+        $this->assertStringContainsString('No installer found for phpantom', $this->flash());
+        $this->assertSame(0, $this->lifecycle->refreshed, 'nothing ran, so no reconfigure');
+    }
+
+    public function testASecondInstallWhileOneRunsIsRejected(): void
+    {
+        $this->managerBinaries = ['composer' => $this->fakeManager(exitCode: 0, sleepSeconds: 1)];
+        $controller = $this->controller();
+        $this->lifecycle->names = ['demo'];
+        $this->declareInstaller('demo', 'phpstan', available: false);
 
         $controller->changePlugin('demo', 'pluginInstallBinary', false); // starts, stays running
         $controller->changePlugin('demo', 'pluginInstallBinary', false); // rejected
         $this->assertStringContainsString('An install is already running', $this->flash());
     }
 
-    public function testInstallingWithoutADeclaredDependencyIsANoOp(): void
+    public function testInstallingWithoutADeclaredOfferIsANoOp(): void
     {
         $controller = $this->controller();
         $this->lifecycle->names = ['demo'];
@@ -317,10 +337,10 @@ final class SettingsPluginsControllerTest extends TestCase
         }
     }
 
-    /** An executable stand-in for `composer` that exits with $exitCode after an optional sleep. */
-    private function fakeComposer(int $exitCode, int $sleepSeconds = 0): string
+    /** An executable stand-in for a package manager that exits with $exitCode after an optional sleep. */
+    private function fakeManager(int $exitCode, int $sleepSeconds = 0): string
     {
-        $path = (string) tempnam(sys_get_temp_dir(), prefix: 'porta-composer');
+        $path = (string) tempnam(sys_get_temp_dir(), prefix: 'porta-mgr');
         file_put_contents($path, "#!/bin/sh\nsleep {$sleepSeconds}\nexit {$exitCode}\n");
         chmod($path, permissions: 0o755);
 

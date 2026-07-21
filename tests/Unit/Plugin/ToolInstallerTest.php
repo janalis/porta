@@ -1,0 +1,141 @@
+<?php
+
+declare(strict_types=1);
+
+namespace Porta\Tests\Unit\Plugin;
+
+use PHPUnit\Framework\TestCase;
+use Porta\Plugin\InstallOutcome;
+use Porta\Plugin\ToolInstaller;
+use Porta\Tests\Support\TempProject;
+use Revolt\EventLoop;
+
+final class ToolInstallerTest extends TestCase
+{
+    private TempProject $project;
+
+    private function await(callable $done, float $timeout = 3.0): void
+    {
+        $elapsed = 0.0;
+        while (!$done() && $elapsed < $timeout) {
+            $suspension = EventLoop::getSuspension();
+            EventLoop::delay(0.02, $suspension->resume(...));
+            $suspension->suspend();
+            $elapsed += 0.02;
+        }
+    }
+
+    /** An executable stand-in that records its argv to $logPath, then exits with $exitCode after an optional sleep. */
+    private function fakeManager(int $exitCode, string $logPath, int $sleepSeconds = 0): string
+    {
+        $path = (string) tempnam(sys_get_temp_dir(), prefix: 'porta-mgr');
+        file_put_contents($path, "#!/bin/sh\nprintf '%s\\n' \"$@\" > '{$logPath}'\nsleep {$sleepSeconds}\nexit {$exitCode}\n");
+        chmod($path, permissions: 0o755);
+
+        return $path;
+    }
+
+    public function testRunsTheFirstAvailableManagerAndReportsSuccess(): void
+    {
+        $this->project = new TempProject();
+        $log = $this->project->dir.'/argv.log';
+        $installer = new ToolInstaller($this->project->dir, [
+            'brew' => $this->fakeManager(0, $log),
+            'cargo' => null,
+        ]);
+
+        $result = null;
+        $outcome = $installer->install([
+            ['brew',  'phpantom-lsp'],
+            ['cargo', 'phpantom_lsp'],
+        ], static function (bool $ok) use (&$result): void {
+            $result = $ok;
+        });
+        $this->assertSame(InstallOutcome::Started, $outcome);
+
+        $this->await(static fn (): bool => null !== $result);
+        $this->assertTrue($result, 'a zero exit is a successful install');
+        $this->assertSame("install\nphpantom-lsp\n", file_get_contents($log), 'brew install <pkg>, brew winning over cargo');
+    }
+
+    public function testSkipsAbsentManagersAndAppendsCargosLockedFlag(): void
+    {
+        $this->project = new TempProject();
+        $log = $this->project->dir.'/argv.log';
+        $installer = new ToolInstaller($this->project->dir, [
+            'brew' => null, // not on PATH — skipped
+            'cargo' => $this->fakeManager(0, $log),
+        ]);
+
+        $result = null;
+        $outcome = $installer->install([
+            ['brew',  'phpantom-lsp'],
+            ['cargo', 'phpantom_lsp'],
+        ], static function (bool $ok) use (&$result): void {
+            $result = $ok;
+        });
+        $this->assertSame(InstallOutcome::Started, $outcome);
+
+        $this->await(static fn (): bool => null !== $result);
+        $this->assertSame("install\nphpantom_lsp\n--locked\n", file_get_contents($log), 'cargo install <pkg> --locked');
+    }
+
+    public function testComposerCandidateGetsTheDevFlag(): void
+    {
+        $this->project = new TempProject();
+        $log = $this->project->dir.'/argv.log';
+        $installer = new ToolInstaller($this->project->dir, ['composer' => $this->fakeManager(0, $log)]);
+
+        $result = null;
+        $installer->install([['composer', 'phpstan/phpstan']], static function (bool $ok) use (&$result): void {
+            $result = $ok;
+        });
+
+        $this->await(static fn (): bool => null !== $result);
+        $this->assertSame("require\n--dev\nphpstan/phpstan\n", file_get_contents($log), 'composer require --dev <pkg>');
+    }
+
+    public function testReportsFailureWhenTheManagerExitsNonZero(): void
+    {
+        $this->project = new TempProject();
+        $log = $this->project->dir.'/argv.log';
+        $installer = new ToolInstaller($this->project->dir, ['cargo' => $this->fakeManager(1, $log)]);
+
+        $result = null;
+        $installer->install([['cargo', 'phpantom_lsp']], static function (bool $ok) use (&$result): void {
+            $result = $ok;
+        });
+
+        $this->await(static fn (): bool => null !== $result);
+        $this->assertFalse($result, 'a non-zero exit is a failed install');
+    }
+
+    public function testNoManagerAvailableWhenNoneOfTheCandidatesIsOnPath(): void
+    {
+        $this->project = new TempProject();
+        $installer = new ToolInstaller($this->project->dir, ['brew' => null, 'cargo' => null]);
+
+        $called = false;
+        $outcome = $installer->install([
+            ['brew',  'phpantom-lsp'],
+            ['cargo', 'phpantom_lsp'],
+        ], static function () use (&$called): void {
+            $called = true;
+        });
+
+        $this->assertSame(InstallOutcome::NoManager, $outcome);
+        $this->assertFalse($called, 'nothing runs, so the callback never fires');
+    }
+
+    public function testASecondInstallWhileOneRunsIsBusy(): void
+    {
+        $this->project = new TempProject();
+        $log = $this->project->dir.'/argv.log';
+        $installer = new ToolInstaller($this->project->dir, ['cargo' => $this->fakeManager(0, $log, sleepSeconds: 1)]);
+
+        $first = $installer->install([['cargo', 'phpantom_lsp']], static function (): void {});
+        $second = $installer->install([['cargo', 'phpantom_lsp']], static function (): void {});
+        $this->assertSame(InstallOutcome::Started, $first);
+        $this->assertSame(InstallOutcome::Busy, $second, 'a second install is rejected while one runs');
+    }
+}

@@ -29,7 +29,7 @@ return new class implements PortaPlugin {
     {
         $api->registerSetting('binary', 'phpstan binary', 'text', '', hint: 'empty = vendor/bin, then PATH');
         $api->registerSetting('autoLint', 'Analyse on save', 'bool', false);
-        $api->registerComposerDependency('phpstan/phpstan', fn (): bool => null !== $this->binary($api));
+        $api->registerInstaller('phpstan', fn (): bool => null !== $this->binary($api), [['composer', 'phpstan/phpstan']]);
 
         $api->registerCommand(
             'analyse',

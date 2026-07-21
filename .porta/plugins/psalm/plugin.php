@@ -29,7 +29,7 @@ return new class implements PortaPlugin {
     {
         $api->registerSetting('binary', 'psalm binary', 'text', '', hint: 'empty = vendor/bin, then PATH');
         $api->registerSetting('autoLint', 'Analyse on save', 'bool', false);
-        $api->registerComposerDependency('vimeo/psalm', fn (): bool => null !== $this->binary($api));
+        $api->registerInstaller('psalm', fn (): bool => null !== $this->binary($api), [['composer', 'vimeo/psalm']]);
 
         $api->registerCommand(
             'analyse',

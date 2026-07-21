@@ -196,7 +196,7 @@ final class PluginManagerTest extends TestCase
         $this->assertArrayNotHasKey('php', $manager->languageServers());
     }
 
-    public function testComposerDependencyReportsPackageAndLiveAvailabilityAndDropsOnDeactivate(): void
+    public function testInstallOfferReportsToolAndLiveAvailabilityAndDropsOnDeactivate(): void
     {
         $settings = new PluginSettings('/p', []);
         $manager = new PluginManager(new PluginEvents(), $settings);
@@ -204,23 +204,28 @@ final class PluginManagerTest extends TestCase
 
         $available = false;
         $plugin = new PluginApi('linter', $manager, '/p', $settings);
-        $plugin->registerComposerDependency('phpstan/phpstan', static function () use (&$available): bool {
-            return $available;
-        });
+        $plugin->registerInstaller(
+            'phpstan',
+            static function () use (&$available): bool {
+                return $available;
+            },
+            [['composer', 'phpstan/phpstan']],
+        );
         $manager->commit($plugin);
 
-        $this->assertNull($manager->composerDependency('other'), 'a plugin that declared none has no dependency');
+        $this->assertNull($manager->installOffer('other'), 'a plugin that declared none has no offer');
 
-        $dependency = $manager->composerDependency('linter');
-        $this->assertNotNull($dependency);
-        $this->assertSame('phpstan/phpstan', $dependency['package']);
-        $this->assertFalse($dependency['available'], 'the predicate is evaluated live');
+        $offer = $manager->installOffer('linter');
+        $this->assertNotNull($offer);
+        $this->assertSame('phpstan', $offer['tool']);
+        $this->assertSame([['composer', 'phpstan/phpstan']], $offer['via']);
+        $this->assertFalse($offer['available'], 'the predicate is evaluated live');
 
         $available = true;
-        $this->assertTrue($manager->composerDependency('linter')['available'], 'flipping the predicate is reflected');
+        $this->assertTrue($manager->installOffer('linter')['available'], 'flipping the predicate is reflected');
 
         $manager->deactivate('linter', $registry);
-        $this->assertNull($manager->composerDependency('linter'), 'a deactivated plugin drops its dependency');
+        $this->assertNull($manager->installOffer('linter'), 'a deactivated plugin drops its offer');
     }
 
     public function testAThrowingMenuWhenClosureReadsDisabledAndReportsOnce(): void

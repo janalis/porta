@@ -31,8 +31,8 @@ final class PluginApi
     private array $settingDescriptors = [];
     /** @var list<array{plugin: string, languageId: string, name: string, resolve: \Closure(): (list<string>|null)}> */
     private array $languageServers = [];
-    /** @var list<array{plugin: string, package: string, available: \Closure(): bool}> */
-    private array $composerDependencies = [];
+    /** @var list<array{plugin: string, tool: string, available: \Closure(): bool, via: list<array{0: string, 1: string}>}> */
+    private array $installers = [];
 
     public function __construct(
         private readonly string $pluginName,
@@ -154,23 +154,39 @@ final class PluginApi
     }
 
     /**
-     * Declare the composer package that provides this plugin's binary, plus a
-     * predicate for whether that binary is currently available. When it isn't,
-     * the plugin's Settings page offers a one-click `composer require --dev
-     * <package>`. For tools with no composer package (e.g. a native binary),
-     * don't call this — no install is offered.
+     * Declare how to install this plugin's tool binary, plus a predicate for
+     * whether it is currently available. When it isn't, the plugin's Settings
+     * page offers a one-click install that tries each `[manager, package]`
+     * candidate in order, running the first whose manager is on the PATH — e.g.
+     * a composer tool passes `[['composer', 'vendor/name']]`; a native tool like
+     * phpantom passes `[['brew', 'phpantom-lsp'], ['cargo', 'phpantom_lsp']]`.
+     * Supported managers: composer, brew, cargo. For a tool with no installable
+     * source, don't call this — no install is offered.
      *
-     * @param \Closure(): bool $isAvailable
+     * @param \Closure(): bool                   $isAvailable
+     * @param list<array{0: string, 1: string}> $via ordered [manager, package] candidates
      */
-    public function registerComposerDependency(string $package, \Closure $isAvailable): void
+    public function registerInstaller(string $tool, \Closure $isAvailable, array $via): void
     {
-        if ('' === trim($package)) {
-            throw new PluginException('A composer dependency needs a non-empty package name (vendor/name)');
+        if ('' === trim($tool)) {
+            throw new PluginException('An installer needs a non-empty tool name');
         }
-        $this->composerDependencies[] = [
+        if ([] === $via) {
+            throw new PluginException('An installer needs at least one [manager, package] candidate');
+        }
+        foreach ($via as [$manager, $package]) {
+            if (!\in_array($manager, ['composer', 'brew', 'cargo'], strict: true)) {
+                throw new PluginException(\sprintf('Unknown install manager "%s" (expected composer, brew or cargo)', $manager));
+            }
+            if ('' === trim($package)) {
+                throw new PluginException('An installer candidate needs a non-empty package name');
+            }
+        }
+        $this->installers[] = [
             'plugin' => $this->pluginName,
-            'package' => $package,
+            'tool' => $tool,
             'available' => $isAvailable,
+            'via' => $via,
         ];
     }
 
@@ -360,9 +376,9 @@ final class PluginApi
         return $this->languageServers;
     }
 
-    /** @return list<array{plugin: string, package: string, available: \Closure(): bool}> */
-    public function bufferedComposerDependencies(): array
+    /** @return list<array{plugin: string, tool: string, available: \Closure(): bool, via: list<array{0: string, 1: string}>}> */
+    public function bufferedInstallers(): array
     {
-        return $this->composerDependencies;
+        return $this->installers;
     }
 }

@@ -77,7 +77,6 @@ use Porta\Overlay\FloatingRegions;
 use Porta\Overlay\MenuOverlayController;
 use Porta\Overlay\MenuOverlayPanes;
 use Porta\Overlay\MenuOverlayPanesFactory;
-use Porta\Plugin\ComposerInstaller;
 use Porta\Plugin\PluginEvents;
 use Porta\Plugin\PluginHost;
 use Porta\Plugin\PluginInstaller;
@@ -87,6 +86,7 @@ use Porta\Plugin\PluginLoader;
 use Porta\Plugin\PluginManager;
 use Porta\Plugin\PluginRuntime;
 use Porta\Plugin\PluginSettings;
+use Porta\Plugin\ToolInstaller;
 use Porta\Run\RunController;
 use Porta\Search\Everywhere\SearchEverywhereController;
 use Porta\Search\Everywhere\SearchEverywhereFactory;
@@ -411,7 +411,7 @@ return static function (ContainerConfigurator $container, ContainerBuilder $buil
     // The installer resolves its plugin dirs and git binary from the
     // environment at construction — a static named constructor owns that.
     $services->set(PluginInstaller::class)->factory([PluginInstaller::class, 'create']);
-    $services->set(ComposerInstaller::class)->factory([ComposerInstaller::class, 'create']);
+    $services->set(ToolInstaller::class)->factory([ToolInstaller::class, 'create']);
 
     // Duplicate-typed widgets from the composite tree: exposed per getter so
     // typed-named binds (below, in _defaults) can feed them to consumers.

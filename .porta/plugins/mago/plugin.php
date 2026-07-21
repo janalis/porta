@@ -30,7 +30,7 @@ return new class implements PortaPlugin {
         $api->registerSetting('binary', 'mago binary', 'text', '', hint: 'empty = vendor/bin, then PATH');
         $api->registerSetting('autoFormat', 'Format on save', 'bool', false);
         $api->registerSetting('autoLint', 'Lint on save', 'bool', false);
-        $api->registerComposerDependency('carthage-software/mago', fn (): bool => null !== $this->binary($api));
+        $api->registerInstaller('mago', fn (): bool => null !== $this->binary($api), [['composer', 'carthage-software/mago']]);
 
         $api->registerCommand(
             'format',

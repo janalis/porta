@@ -110,22 +110,39 @@ final class PluginApiTest extends TestCase
         }
     }
 
-    public function testRegisterComposerDependencyBuffersAndRejectsAnEmptyPackage(): void
+    public function testRegisterInstallerBuffersAndValidatesToolPackageAndManager(): void
     {
         $api = $this->api(wired: Presence::Without);
-        $api->registerComposerDependency('phpstan/phpstan', static fn (): bool => true);
+        $api->registerInstaller('phpantom', static fn (): bool => true, [
+            ['brew',  'phpantom-lsp'],
+            ['cargo', 'phpantom_lsp'],
+        ]);
 
-        $buffered = $api->bufferedComposerDependencies();
+        $buffered = $api->bufferedInstallers();
         $this->assertCount(1, $buffered);
         $this->assertSame('demo', $buffered[0]['plugin']);
-        $this->assertSame('phpstan/phpstan', $buffered[0]['package']);
+        $this->assertSame('phpantom', $buffered[0]['tool']);
+        $this->assertSame(
+            [
+                ['brew',  'phpantom-lsp'],
+                ['cargo', 'phpantom_lsp'],
+            ],
+            $buffered[0]['via'],
+        );
         $this->assertTrue($buffered[0]['available']());
 
-        try {
-            $api->registerComposerDependency('   ', static fn (): bool => true);
-            $this->fail('an empty package name must throw');
-        } catch (PluginException $e) {
-            $this->assertStringContainsString('non-empty package name', $e->getMessage());
+        foreach ([
+            ['   ', [['composer', 'x/y']], 'non-empty tool name'],
+            ['t', [], 'at least one'],
+            ['t', [['pip', 'x']], 'Unknown install manager'],
+            ['t', [['composer', '  ']], 'non-empty package name'],
+        ] as [$tool, $via, $needle]) {
+            try {
+                $api->registerInstaller($tool, static fn (): bool => true, $via);
+                $this->fail('invalid installer must throw: '.$needle);
+            } catch (PluginException $e) {
+                $this->assertStringContainsString($needle, $e->getMessage());
+            }
         }
     }
 
