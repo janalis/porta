@@ -584,8 +584,11 @@ final class IdeDockToolsTest extends TestCase
                     $navRect = $renderer->getWidgetRect($tui->getById('settings-nav'));
                     $wheel($tui, $navRect->col + 2, $navRect->row + 2);
                     $tui->tick();
-                    $formRect = $renderer->getWidgetRect($tui->getById('settings-form'));
-                    $wheel($tui, $formRect->col + 4, $formRect->row + 2);
+                    // Whichever pane the nav's wheel landed on: the section list
+                    // swaps the form for the keybindings list, and the point here
+                    // is that the *content* pane scrolls, not which one it is.
+                    $contentRect = $renderer->getWidgetRect($tui->getById('settings-content'));
+                    $wheel($tui, $contentRect->col + 4, $contentRect->row + 2);
                     $tui->tick();
                     new \ReflectionProperty($ide, 'commands')->getValue($ide)->run('ide_settings'); // back out
                     $tui->tick();

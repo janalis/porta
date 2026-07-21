@@ -4845,9 +4845,10 @@ final class IdeEdgeCasesTest extends TestCase
                 },
                 700 => static function ($tui): void {
                     $tui->tick();
-                    // Click the 'Keybindings' entry in the nav (screen row 4, after General + Interface).
-                    $tui->handleInput("\x1b[<0;5;4M");
-                    $tui->handleInput("\x1b[<0;5;4m");
+                    // Click the 'Keybindings' entry in the nav (screen row 5, after
+                    // General + Interface + Highlighting).
+                    $tui->handleInput("\x1b[<0;5;5M");
+                    $tui->handleInput("\x1b[<0;5;5m");
                 },
                 900 => function ($tui, $terminal): void {
                     $tui->tick();
@@ -4861,11 +4862,11 @@ final class IdeEdgeCasesTest extends TestCase
                 },
                 1100 => static function ($tui): void {
                     $tui->tick();
-                    // Select PHP in the nav (screen row 9, after Interface +
-                    // Plugins + the Version control category and the Languages
-                    // header) → the content shows its indent rows.
-                    $tui->handleInput("\x1b[<0;5;9M");
-                    $tui->handleInput("\x1b[<0;5;9m");
+                    // Select PHP in the nav (screen row 10, after Interface +
+                    // Highlighting + Plugins + the Version control category and
+                    // the Languages header) → the content shows its indent rows.
+                    $tui->handleInput("\x1b[<0;5;10M");
+                    $tui->handleInput("\x1b[<0;5;10m");
                 },
                 1300 => function ($tui, $terminal): void {
                     $tui->tick();

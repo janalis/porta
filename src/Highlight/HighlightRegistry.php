@@ -66,7 +66,11 @@ final class HighlightRegistry
         return $this->plain;
     }
 
-    /** Every backend that claims $language, for the Settings page. */
+    /**
+     * Every backend that claims $language, for the Settings page.
+     *
+     * @return list<SyntaxHighlightProvider>
+     */
     public function available(string $language): array
     {
         $claiming = [];

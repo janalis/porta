@@ -52,7 +52,7 @@ final class SettingsNavWidget extends AbstractWidget implements FocusableInterfa
     use PanelWidth;
     use PaneNavigationCallbacks;
 
-    private const array SECTIONS = ['general' => 'General', 'interface' => 'Interface', 'keybindings' => 'Keybindings', 'plugins' => 'Plugins'];
+    private const array SECTIONS = ['general' => 'General', 'interface' => 'Interface', 'highlighting' => 'Highlighting', 'keybindings' => 'Keybindings', 'plugins' => 'Plugins'];
 
     /** @var list<Entry> */
     private array $entries;

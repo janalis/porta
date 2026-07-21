@@ -7,6 +7,7 @@ namespace Porta\Settings;
 use Porta\Config\SettingsController;
 use Porta\Config\SettingsDebugController;
 use Porta\Config\SettingsGitController;
+use Porta\Config\SettingsHighlightController;
 use Porta\Config\SettingsKeymapController;
 use Porta\Config\SettingsLanguageController;
 use Porta\Config\SettingsLspController;
@@ -54,6 +55,7 @@ final class SettingsViewController
         private readonly SettingsDebugController $debug,
         private readonly SettingsPluginsController $plugins,
         private readonly SettingsGitController $git,
+        private readonly SettingsHighlightController $highlighting,
         private readonly EditorArea $editorArea,
         WorkspaceViews $views,
     ) {
@@ -161,6 +163,9 @@ final class SettingsViewController
         if ('interface' === $this->section) {
             return $this->settings->interfaceRows();
         }
+        if ('highlighting' === $this->section) {
+            return $this->highlighting->rows();
+        }
         if (!str_starts_with($this->section, 'lang:')) {
             return $this->settings->formRows();
         }
@@ -190,6 +195,11 @@ final class SettingsViewController
                 return;
             }
             $this->languages->changeLanguageSetting($language, $key, $value);
+
+            return;
+        }
+        if ('highlighting' === $this->section) {
+            $this->highlighting->change($key, (string) $value);
 
             return;
         }

@@ -61,6 +61,9 @@ final class IdeConfig
      */
     private const LEGACY_SETTINGS = ['editorConfig', 'relativeLineNumbers'];
 
+    /** An empty `highlight` block: no global default, no per-language overrides. */
+    private const array NO_HIGHLIGHT = ['default' => '', 'languages' => []];
+
     /** The per-language indent override keys and their allowed values. */
     private const INDENT_STYLES = ['auto', 'spaces', 'tabs'];
 
@@ -72,6 +75,7 @@ final class IdeConfig
      * @param array<string, array<string, bool|int|string>>                                                                                  $plugins    raw per-plugin setting values (coerced at read by PluginSettings)
      * @param list<string>                                                                                                                   $disabledPlugins plugin names skipped at boot (project/global plugins are on unless listed here)
      * @param list<string>                                                                                                                   $enabledPlugins  bundled (embedded) plugin names to load — bundled plugins are off unless opted in here
+     * @param array{default: string, languages: array<string, string>}                                                                      $highlight  the top-level `highlight` block: grammar name => backend id
      * @param list<string>                                                                                                                   $warnings
      */
     private function __construct(
@@ -90,12 +94,12 @@ final class IdeConfig
     {
         $file = $rootDir.'/.porta.json';
         if (!is_file($file)) {
-            return new self([], self::DEFAULT_SETTINGS, [], [], [], [], [], [], []);
+            return new self([], self::DEFAULT_SETTINGS, [], [], [], [], [], self::NO_HIGHLIGHT, []);
         }
 
         $config = JsonFile::read($file);
         if (null === $config) {
-            return new self([], self::DEFAULT_SETTINGS, [], [], [], [], [], [], ['.porta.json is not valid JSON']);
+            return new self([], self::DEFAULT_SETTINGS, [], [], [], [], [], self::NO_HIGHLIGHT, ['.porta.json is not valid JSON']);
         }
 
         $keymap = [];
@@ -176,14 +180,13 @@ final class IdeConfig
      */
     private static function parseHighlight(mixed $highlight, array &$warnings): array
     {
-        $empty = ['default' => '', 'languages' => []];
         if (null === $highlight) {
-            return $empty;
+            return self::NO_HIGHLIGHT;
         }
         if (!\is_array($highlight)) {
             $warnings[] = '"highlight" in .porta.json must be an object';
 
-            return $empty;
+            return self::NO_HIGHLIGHT;
         }
 
         return [
@@ -504,6 +507,44 @@ final class IdeConfig
         $entry[$key] = $value;
         $plugins[$plugin] = $entry;
         $config['plugins'] = $plugins;
+
+        return self::write($file, $config);
+    }
+
+    /**
+     * Write the top-level `highlight` block. An empty $id clears the entry —
+     * "no preference" and "prefer nothing" are the same thing, and leaving an
+     * empty string behind would look like a configured backend named "".
+     */
+    public static function persistHighlighter(string $rootDir, ?string $language, string $id): bool
+    {
+        $file = $rootDir.'/.porta.json';
+        $config = JsonFile::read($file) ?? [];
+        $highlight = \is_array($config['highlight'] ?? null) ? $config['highlight'] : [];
+
+        if (null === $language) {
+            $highlight['default'] = $id;
+            if ('' === $id) {
+                unset($highlight['default']);
+            }
+        }
+
+        if (null !== $language) {
+            $languages = \is_array($highlight['languages'] ?? null) ? $highlight['languages'] : [];
+            $languages[$language] = $id;
+            if ('' === $id) {
+                unset($languages[$language]);
+            }
+            $highlight['languages'] = $languages;
+            if ([] === $languages) {
+                unset($highlight['languages']);
+            }
+        }
+
+        $config['highlight'] = $highlight;
+        if ([] === $highlight) {
+            unset($config['highlight']);
+        }
 
         return self::write($file, $config);
     }

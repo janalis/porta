@@ -163,6 +163,30 @@ final class LanguageMap
         return array_keys($ids);
     }
 
+    /**
+     * Every distinct highlighting grammar name the map can produce, sorted.
+     *
+     * The settings page probes backends against this list to work out which
+     * languages actually offer a choice — `supports()` is the only thing a
+     * provider has to implement, so there is no "what do you claim?" to ask.
+     *
+     * @return list<string>
+     */
+    public static function grammars(): array
+    {
+        $grammars = [];
+        foreach (self::EXTENSIONS as [$grammar]) {
+            $grammars[$grammar] = true;
+        }
+        foreach (self::FILENAMES as $grammar) {
+            $grammars[$grammar] = true;
+        }
+        $names = array_keys($grammars);
+        sort($names);
+
+        return $names;
+    }
+
     private static function extension(string $path): string
     {
         return strtolower(pathinfo($path, \PATHINFO_EXTENSION));
