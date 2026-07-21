@@ -4863,9 +4863,9 @@ final class IdeEdgeCasesTest extends TestCase
                     // Actuate the indent-style row (auto → spaces) in the content pane.
                     $tui->handleInput("\x1b[<0;40;2M");
                     $tui->handleInput("\x1b[<0;40;2m");
-                    // Edit the LSP server row (form row 2 = screen row 4): a click starts inline editing.
-                    $tui->handleInput("\x1b[<0;40;4M");
-                    $tui->handleInput("\x1b[<0;40;4m");
+                    // Edit the LSP server row (form row 3 = screen row 5, after the run-command row): a click starts inline editing.
+                    $tui->handleInput("\x1b[<0;40;5M");
+                    $tui->handleInput("\x1b[<0;40;5m");
                     foreach (str_split('my-ls --stdio') as $char) {
                         $tui->handleInput($char);
                     }

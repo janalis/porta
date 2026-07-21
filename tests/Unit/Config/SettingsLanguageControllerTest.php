@@ -18,7 +18,7 @@ use Symfony\Component\Tui\Tui;
 final class SettingsLanguageControllerTest extends TestCase
 {
     /**
-     * @param array<string, array{indentStyle?: string, indentSize?: int|string}> $overrides
+     * @param array<string, array{indentStyle?: string, indentSize?: int|string, runCommand?: string}> $overrides
      */
     private function controller(string $rootDir, CodeEditorWidget $editor, StatusBarWidget $status, array $overrides = []): SettingsLanguageController
     {
@@ -36,13 +36,19 @@ final class SettingsLanguageControllerTest extends TestCase
 
     public function testRowsReflectStoredOverridesAndDefaults(): void
     {
-        $controller = $this->controller(new TempProject()->dir, new CodeEditorWidget(), new StatusBarWidget(), ['php' => ['indentStyle' => 'tabs', 'indentSize' => 4]]);
+        $controller = $this->controller(new TempProject()->dir, new CodeEditorWidget(), new StatusBarWidget(), ['php' => [
+            'indentStyle' => 'tabs',
+            'indentSize' => 4,
+            'runCommand' => 'frankenphp php-cli',
+        ]]);
 
         $php = $controller->rows('php');
-        $this->assertSame(['indentStyle', 'indentSize'], array_column($php, 'key'));
+        $this->assertSame(['indentStyle', 'indentSize', 'runCommand'], array_column($php, 'key'));
         $this->assertSame('tabs', $php[0]->value);
         $this->assertSame(['auto', 'spaces', 'tabs'], $php[0]->options);
         $this->assertSame('4', $php[1]->value, 'size rendered as a string for the choice');
+        $this->assertSame('frankenphp php-cli', $php[2]->value, 'the configured run command shows');
+        $this->assertTrue($php[2]->restart, 'the run command applies on restart');
 
         $css = $controller->rows('css'); // unconfigured → auto/auto
         $this->assertSame('auto', $css[0]->value);
@@ -85,6 +91,23 @@ final class SettingsLanguageControllerTest extends TestCase
 
         $controller->changeLanguageSetting('php', 'indentSize', 'auto');
         $this->assertSame('auto', IdeConfig::load($project->dir)->languages['php']['indentSize']);
+    }
+
+    public function testChangingTheRunCommandPersistsAndFlashesTheRestartNote(): void
+    {
+        $project = new TempProject();
+        $controller = $this->controller($project->dir, new CodeEditorWidget(), $status = new StatusBarWidget());
+
+        $controller->changeLanguageSetting('php', 'runCommand', 'frankenphp php-cli');
+        $this->assertSame('frankenphp php-cli', IdeConfig::load($project->dir)->languages['php']['runCommand'] ?? null);
+        $flash = $this->flashText($status);
+        $this->assertStringContainsString('PHP run command: frankenphp php-cli', $flash);
+        $this->assertStringContainsString('applies on restart', $flash);
+
+        // Clearing it shows the bundled-php default and the row reflects empty.
+        $controller->changeLanguageSetting('php', 'runCommand', '  ');
+        $this->assertStringContainsString('PHP run command: bundled php', $this->flashText($status));
+        $this->assertSame('', $controller->rows('php')[2]->value);
     }
 
     public function testUnknownLanguageOrKeyFlashes(): void

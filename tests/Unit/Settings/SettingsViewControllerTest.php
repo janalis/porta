@@ -335,7 +335,8 @@ final class SettingsViewControllerTest extends TestCase
         $this->nav->handleInput("\x1b[B"); // Git
         $this->nav->handleInput("\x1b[B"); // PHP
 
-        // The LSP row is the third row of a language section; edit it inline.
+        // The LSP row is the fourth row of a language section (after indent + run command); edit it inline.
+        $this->form->handleInput("\x1b[B");
         $this->form->handleInput("\x1b[B");
         $this->form->handleInput("\x1b[B");
         $this->form->handleInput("\r"); // start editing
@@ -357,8 +358,8 @@ final class SettingsViewControllerTest extends TestCase
         $this->nav->handleInput("\x1b[B"); // Git
         $this->nav->handleInput("\x1b[B"); // PHP
 
-        // The debug-adapter row is the fourth row of a language section.
-        for ($i = 0; $i < 3; ++$i) {
+        // The debug-adapter row is the fifth row of a language section (after indent + run command + LSP).
+        for ($i = 0; $i < 4; ++$i) {
             $this->form->handleInput("\x1b[B");
         }
         $this->form->handleInput("\r"); // start editing

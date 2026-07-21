@@ -1970,6 +1970,18 @@
         <source>No installer found for %tool% — install it via Homebrew or cargo, or put its binary on your PATH</source>
         <target>Aucun installateur trouvé pour %tool% — installez-le via Homebrew ou cargo, ou placez son binaire dans votre PATH</target>
       </trans-unit>
+      <trans-unit id="495">
+        <source>Run/debug command</source>
+        <target>Commande d’exécution/débogage</target>
+      </trans-unit>
+      <trans-unit id="496">
+        <source>e.g. frankenphp php-cli — empty = bundled php</source>
+        <target>p. ex. frankenphp php-cli — vide = php fourni</target>
+      </trans-unit>
+      <trans-unit id="497">
+        <source>bundled php</source>
+        <target>php fourni</target>
+      </trans-unit>
     </body>
   </file>
 </xliff>

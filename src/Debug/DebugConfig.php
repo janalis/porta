@@ -8,11 +8,13 @@ namespace Porta\Debug;
 final readonly class DebugConfig
 {
     /**
-     * @param list<string>         $adapterArgv the DAP adapter command
-     * @param array<string, mixed> $launch      user overrides merged into the launch request
+     * @param list<string>         $adapterArgv    the DAP adapter command
+     * @param array<string, mixed> $launch         user overrides merged into the launch request
+     * @param list<string>         $runCommandArgv the language's `runCommand` (e.g. `frankenphp php-cli`), fed to the launch as runtimeExecutable/runtimeArgs
      */
     public function __construct(
         public array $adapterArgv,
         public array $launch = [],
+        public array $runCommandArgv = [],
     ) {}
 }

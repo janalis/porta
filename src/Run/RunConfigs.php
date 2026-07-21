@@ -13,8 +13,12 @@ use Porta\Support\JsonFile;
  */
 final readonly class RunConfigs
 {
+    /**
+     * @param array<string, array{runCommand?: string}> $languages per-language overrides from {@see \Porta\Config\IdeConfig::$languages}
+     */
     public function __construct(
         private string $rootDir,
+        private array $languages = [],
     ) {}
 
     /**
@@ -29,7 +33,7 @@ final readonly class RunConfigs
         if (null !== $currentFile && 'php' === strtolower(pathinfo($currentFile, \PATHINFO_EXTENSION))) {
             $tasks[] = [
                 'label' => 'Run current file: '.basename($currentFile),
-                'command' => [\PHP_BINARY, $currentFile],
+                'command' => [...$this->phpArgv(), $currentFile],
             ];
         }
 
@@ -48,6 +52,24 @@ final readonly class RunConfigs
         }
 
         return $tasks;
+    }
+
+    /**
+     * The PHP interpreter argv for "Run current file": the configured
+     * `languages.php.runCommand` (e.g. `frankenphp php-cli`) split into argv, or
+     * the interpreter Porta itself runs under when unset.
+     *
+     * @return list<string>
+     */
+    private function phpArgv(): array
+    {
+        $command = trim($this->languages['php']['runCommand'] ?? '');
+        if ('' === $command) {
+            return [\PHP_BINARY];
+        }
+        $parts = preg_split('/\s+/', $command);
+
+        return false === $parts ? [\PHP_BINARY] : $parts;
     }
 
     /**

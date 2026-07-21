@@ -87,6 +87,7 @@ use Porta\Plugin\PluginManager;
 use Porta\Plugin\PluginRuntime;
 use Porta\Plugin\PluginSettings;
 use Porta\Plugin\ToolInstaller;
+use Porta\Run\RunConfigs;
 use Porta\Run\RunController;
 use Porta\Search\Everywhere\SearchEverywhereController;
 use Porta\Search\Everywhere\SearchEverywhereFactory;
@@ -453,6 +454,7 @@ return static function (ContainerConfigurator $container, ContainerBuilder $buil
     // (seeded by IdeContainerFactory), so these defs stay dump-safe. Args, not
     // binds: $overrides means languages in one controller, lspServers in the other.
     $services->set(DebugAdapters::class)->arg('$languages', env('PORTA_LANGUAGES')->json());
+    $services->set(RunConfigs::class)->arg('$languages', env('PORTA_LANGUAGES')->json());
     $services->set(SettingsController::class)->arg('$settings', env('PORTA_SETTINGS')->json());
     $services->set(GitSettings::class)->arg('$settings', env('PORTA_SETTINGS')->json());
     $services->set(SettingsGitController::class)->arg('$settings', env('PORTA_SETTINGS')->json());

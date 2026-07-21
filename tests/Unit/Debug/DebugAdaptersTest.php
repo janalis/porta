@@ -47,4 +47,22 @@ final class DebugAdaptersTest extends TestCase
         $adapters->set('php', '   ', []);
         $this->assertNull($adapters->adapterFor('php'), 'blank command clears the entry');
     }
+
+    public function testRunCommandBecomesTheDebugConfigRunCommandArgv(): void
+    {
+        $adapters = new DebugAdapters([
+            'php' => ['debug' => ['adapter' => 'node dbg.js'], 'runCommand' => 'frankenphp php-cli'],
+            'python' => ['debug' => ['adapter' => 'debugpy']], // no runCommand
+        ]);
+
+        $this->assertSame(['frankenphp', 'php-cli'], $adapters->adapterFor('php')?->runCommandArgv);
+        $this->assertSame([], $adapters->adapterFor('python')?->runCommandArgv, 'no runCommand → empty');
+    }
+
+    public function testSetPreservesTheRunCommandFromBoot(): void
+    {
+        $adapters = new DebugAdapters(['php' => ['debug' => ['adapter' => 'node a.js'], 'runCommand' => 'frankenphp php-cli']]);
+        $adapters->set('php', 'node b.js', ['stopOnEntry' => true]);
+        $this->assertSame(['frankenphp', 'php-cli'], $adapters->adapterFor('php')?->runCommandArgv, 'a live adapter edit keeps the run command');
+    }
 }

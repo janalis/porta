@@ -67,7 +67,7 @@ final class IdeConfig
     /**
      * @param array<string, list<string>>                                                                                                    $keymap
      * @param array<string, int|bool|string>                                                                                                 $settings   resolved settings (defaults merged)
-     * @param array<string, array{indentStyle?: string, indentSize?: int|string, debug?: array{adapter?: string, launch?: array<string, mixed>}}> $languages  per-language overrides
+     * @param array<string, array{indentStyle?: string, indentSize?: int|string, debug?: array{adapter?: string, launch?: array<string, mixed>}, runCommand?: string}> $languages  per-language overrides
      * @param array<string, string>                                                                                                          $lspServers per-language LSP command overrides (map form)
      * @param array<string, array<string, bool|int|string>>                                                                                  $plugins    raw per-plugin setting values (coerced at read by PluginSettings)
      * @param list<string>                                                                                                                   $disabledPlugins plugin names skipped at boot (project/global plugins are on unless listed here)
@@ -225,7 +225,7 @@ final class IdeConfig
      * @param array<array-key, mixed> $config
      * @param list<string>            $warnings
      *
-     * @return array<string, array{indentStyle?: string, indentSize?: int|string, debug?: array{adapter?: string, launch?: array<string, mixed>}}>
+     * @return array<string, array{indentStyle?: string, indentSize?: int|string, debug?: array{adapter?: string, launch?: array<string, mixed>}, runCommand?: string}>
      */
     private static function parseLanguages(array $config, array &$warnings): array
     {
@@ -254,7 +254,7 @@ final class IdeConfig
      * it is not an object. Invalid sub-values are dropped like invalid indent
      * values are.
      *
-     * @return array{indentStyle?: string, indentSize?: int|string, debug?: array{adapter?: string, launch?: array<string, mixed>}}|null
+     * @return array{indentStyle?: string, indentSize?: int|string, debug?: array{adapter?: string, launch?: array<string, mixed>}, runCommand?: string}|null
      */
     private static function languageEntry(mixed $props): ?array
     {
@@ -274,6 +274,10 @@ final class IdeConfig
         $debug = self::debugValue($props['debug'] ?? null);
         if ([] !== $debug) {
             $entry['debug'] = $debug;
+        }
+        $runCommand = self::commandString($props['runCommand'] ?? null);
+        if ('' !== $runCommand) {
+            $entry['runCommand'] = $runCommand;
         }
 
         return $entry;

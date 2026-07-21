@@ -1970,6 +1970,18 @@
         <source>No installer found for %tool% — install it via Homebrew or cargo, or put its binary on your PATH</source>
         <target>לא נמצא מתקין עבור %tool% — התקינו אותו באמצעות Homebrew או cargo, או הניחו את הקובץ הבינארי שלו ב-PATH</target>
       </trans-unit>
+      <trans-unit id="495">
+        <source>Run/debug command</source>
+        <target>פקודת הרצה/ניפוי</target>
+      </trans-unit>
+      <trans-unit id="496">
+        <source>e.g. frankenphp php-cli — empty = bundled php</source>
+        <target>לדוגמה frankenphp php-cli — ריק = php המצורף</target>
+      </trans-unit>
+      <trans-unit id="497">
+        <source>bundled php</source>
+        <target>php המצורף</target>
+      </trans-unit>
     </body>
   </file>
 </xliff>

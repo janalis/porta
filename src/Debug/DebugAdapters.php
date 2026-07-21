@@ -15,14 +15,16 @@ final class DebugAdapters
     private array $configs = [];
 
     /**
-     * @param array<string, array{indentStyle?: string, indentSize?: int|string, debug?: array{adapter?: string, launch?: array<string, mixed>}}> $languages IdeConfig's per-language overrides
+     * @param array<string, array{indentStyle?: string, indentSize?: int|string, debug?: array{adapter?: string, launch?: array<string, mixed>}, runCommand?: string}> $languages IdeConfig's per-language overrides
      */
     public function __construct(array $languages)
     {
         foreach ($languages as $languageId => $entry) {
             $debug = $entry['debug'] ?? [];
             if (($debug['adapter'] ?? null) !== null) {
-                $this->configs[$languageId] = new DebugConfig(self::split($debug['adapter']), $debug['launch'] ?? []);
+                $runCommand = $entry['runCommand'] ?? '';
+                $runCommandArgv = '' !== $runCommand ? self::split($runCommand) : [];
+                $this->configs[$languageId] = new DebugConfig(self::split($debug['adapter']), $debug['launch'] ?? [], $runCommandArgv);
             }
         }
     }
@@ -62,7 +64,9 @@ final class DebugAdapters
 
             return;
         }
-        $this->configs[$languageId] = new DebugConfig(self::split($adapterCommand), $launch);
+        // Preserve the language's runCommand (edited in the language section, not here).
+        $runCommandArgv = ($this->configs[$languageId] ?? null)->runCommandArgv ?? [];
+        $this->configs[$languageId] = new DebugConfig(self::split($adapterCommand), $launch, $runCommandArgv);
     }
 
     /** @return list<string> */

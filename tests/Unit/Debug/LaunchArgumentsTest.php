@@ -38,4 +38,26 @@ final class LaunchArgumentsTest extends TestCase
             'strings substituted at every depth; non-strings untouched',
         );
     }
+
+    public function testRunCommandSeedsRuntimeExecutableAndArgs(): void
+    {
+        $this->assertSame(
+            ['program' => '/p/a.php', 'cwd' => '/p', 'stopOnEntry' => false, 'runtimeExecutable' => 'frankenphp', 'runtimeArgs' => ['php-cli']],
+            LaunchArguments::build('/p/a.php', '/p', [], ['frankenphp', 'php-cli']),
+            'a multi-token run command splits into runtimeExecutable + runtimeArgs',
+        );
+
+        $this->assertSame(
+            ['program' => '/p/a.php', 'cwd' => '/p', 'stopOnEntry' => false, 'runtimeExecutable' => '/usr/bin/php'],
+            LaunchArguments::build('/p/a.php', '/p', [], ['/usr/bin/php']),
+            'a single-token run command sets only runtimeExecutable',
+        );
+    }
+
+    public function testUserLaunchOverridesWinOverTheRunCommand(): void
+    {
+        $arguments = LaunchArguments::build('/p/a.php', '/p', ['runtimeExecutable' => 'php8.4'], ['frankenphp', 'php-cli']);
+        $this->assertSame('php8.4', $arguments['runtimeExecutable'], 'an explicit launch override beats the run command');
+        $this->assertSame(['php-cli'], $arguments['runtimeArgs'], 'but the run command still contributes runtimeArgs');
+    }
 }

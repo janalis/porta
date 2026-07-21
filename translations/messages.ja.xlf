@@ -1970,6 +1970,18 @@
         <source>No installer found for %tool% — install it via Homebrew or cargo, or put its binary on your PATH</source>
         <target>%tool% のインストーラーが見つかりません — Homebrew または cargo でインストールするか、バイナリを PATH に配置してください</target>
       </trans-unit>
+      <trans-unit id="495">
+        <source>Run/debug command</source>
+        <target>実行/デバッグコマンド</target>
+      </trans-unit>
+      <trans-unit id="496">
+        <source>e.g. frankenphp php-cli — empty = bundled php</source>
+        <target>例: frankenphp php-cli — 空 = 同梱の php</target>
+      </trans-unit>
+      <trans-unit id="497">
+        <source>bundled php</source>
+        <target>同梱の php</target>
+      </trans-unit>
     </body>
   </file>
 </xliff>

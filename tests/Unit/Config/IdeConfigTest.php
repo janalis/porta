@@ -93,9 +93,9 @@ final class IdeConfigTest extends TestCase
     {
         $project = new TempProject(['.porta.json' => json_encode([
             'languages' => [
-                'php' => ['indentStyle' => 'tabs', 'indentSize' => 4],
+                'php' => ['indentStyle' => 'tabs', 'indentSize' => 4, 'runCommand' => 'frankenphp php-cli'],
                 'javascript' => ['indentSize' => '2', 'indentStyle' => 'bogus'],
-                'css' => ['indentStyle' => 'spaces'],
+                'css' => ['indentStyle' => 'spaces', 'runCommand' => ['php', '-dmemory_limit=1G']],
                 'klingon' => ['indentStyle' => 'tabs'],
                 'python' => 'not-an-object',
                 'yaml' => ['indentSize' => 0],
@@ -104,9 +104,9 @@ final class IdeConfigTest extends TestCase
 
         $config = IdeConfig::load($project->dir);
 
-        $this->assertSame(['indentStyle' => 'tabs', 'indentSize' => 4], $config->languages['php']);
+        $this->assertSame(['indentStyle' => 'tabs', 'indentSize' => 4, 'runCommand' => 'frankenphp php-cli'], $config->languages['php']);
         $this->assertSame(['indentSize' => 2], $config->languages['javascript'], 'string size coerced, bogus style dropped');
-        $this->assertSame(['indentStyle' => 'spaces'], $config->languages['css']);
+        $this->assertSame(['indentStyle' => 'spaces', 'runCommand' => 'php -dmemory_limit=1G'], $config->languages['css'], 'argv-form run command normalised to a string');
         $this->assertArrayNotHasKey('klingon', $config->languages, 'unknown language dropped');
         $this->assertArrayNotHasKey('python', $config->languages, 'non-object dropped');
         $this->assertArrayNotHasKey('yaml', $config->languages, 'invalid size (< 1) dropped');

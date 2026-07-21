@@ -90,4 +90,17 @@ final class RunConfigsTest extends TestCase
         $this->assertSame([], new RunConfigs($project->dir)->discover($project->path('notes.txt')));
         $this->assertSame([], new RunConfigs($project->dir)->discover(null));
     }
+
+    public function testRunCurrentFileUsesTheConfiguredPhpRunCommand(): void
+    {
+        $project = new TempProject();
+        $current = $project->write('src/Foo.php', "<?php\n");
+
+        $tasks = new RunConfigs($project->dir, ['php' => ['runCommand' => 'frankenphp php-cli']])->discover($current);
+        $this->assertSame(['frankenphp', 'php-cli', $current], $tasks[0]['command'], 'the run command becomes the interpreter argv prefix');
+
+        // Whitespace-only / absent falls back to the bundled interpreter.
+        $blank = new RunConfigs($project->dir, ['php' => ['runCommand' => '   ']])->discover($current);
+        $this->assertSame([\PHP_BINARY, $current], $blank[0]['command']);
+    }
 }
