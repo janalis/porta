@@ -23,7 +23,6 @@ use Porta\Git\GitRefresher;
 use Porta\Git\GitViewController;
 use Porta\History\LocalHistoryController;
 use Porta\History\SessionRestorer;
-use Porta\Input\HitTester;
 use Porta\Input\InputDispatcher;
 use Porta\Layout\LayoutController;
 use Porta\Layout\PaneLayout;
@@ -248,7 +247,6 @@ final class Ide
         $this->pluginLifecycle->refreshNav();
 
         $this->localHistory = $this->service(LocalHistoryController::class);
-        $hit = $this->service(HitTester::class);
 
         // Now that both view controllers exist, settle the layout for the
         // persisted locale's writing direction (RTL mirrors the sidebar right).

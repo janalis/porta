@@ -587,7 +587,7 @@ final class DiffViewWidget extends AbstractWidget implements FocusableInterface,
         }
         if (DiffRowKind::Hunk === $row['kind']) {
             \assert(null !== $this->document, description: 'document is loaded');
-            foreach ($this->document->hunks[$row['hunk']]->lines as $i => $line) {
+            foreach (array_keys($this->document->hunks[$row['hunk']]->lines) as $i) {
                 $selected[$row['hunk']][$i] = true;
             }
 

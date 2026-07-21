@@ -826,7 +826,6 @@ final class CodeEditorWidget extends AbstractWidget implements ActiveFileProvide
         }
 
         $kb = $this->getKeybindings();
-        $doc = $this->document;
 
         if ($this->overlayHost->handleInput($data, $kb)) {
             return;

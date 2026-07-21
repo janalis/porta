@@ -142,7 +142,7 @@ final readonly class DiffDocument
         $rows = [];
         foreach ($this->hunks as $h => $hunk) {
             $rows[] = ['kind' => DiffRowKind::Hunk, 'hunk' => $h, 'line' => -1];
-            foreach ($hunk->lines as $l => $line) {
+            foreach (array_keys($hunk->lines) as $l) {
                 $rows[] = ['kind' => DiffRowKind::Line, 'hunk' => $h, 'line' => $l];
             }
         }

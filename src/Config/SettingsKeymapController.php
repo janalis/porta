@@ -39,7 +39,7 @@ final class SettingsKeymapController
     public function rows(): array
     {
         $rows = [];
-        foreach (ActionCatalog::ACTIONS as $action => $spec) {
+        foreach (array_keys(ActionCatalog::ACTIONS) as $action) {
             $binding = $this->editor->getKeybindings()->getBindings($action)[0] ?? $this->ideKeys->getBindings($action)[0] ?? '';
             $rows[] = new KeybindingRow($action, $this->translator->trans(ActionCatalog::label($action)), $binding);
         }
