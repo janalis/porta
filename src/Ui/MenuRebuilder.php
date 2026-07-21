@@ -37,6 +37,7 @@ final class MenuRebuilder
             $this->translator,
             fn (): bool => $this->views->isGitOpen(),
             fn (): bool => $this->views->isSettingsOpen(),
+            fn (): bool => $this->views->isWelcomeOpen(),
             $this->plugins->menuSpecs(),
         ));
     }

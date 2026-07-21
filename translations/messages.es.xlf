@@ -1982,6 +1982,62 @@
         <source>bundled php</source>
         <target>php incluido</target>
       </trans-unit>
+      <trans-unit id="498">
+        <source>Colours your code; off until enabled</source>
+        <target>Colorea tu código; desactivado hasta habilitarlo</target>
+      </trans-unit>
+      <trans-unit id="499">
+        <source>Completion, go-to-definition and diagnostics</source>
+        <target>Autocompletado, ir a definición y diagnósticos</target>
+      </trans-unit>
+      <trans-unit id="500">
+        <source>Enable %name%</source>
+        <target>Habilitar %name%</target>
+      </trans-unit>
+      <trans-unit id="501">
+        <source>PHP language server</source>
+        <target>Servidor de lenguaje PHP</target>
+      </trans-unit>
+      <trans-unit id="502">
+        <source>Syntax highlighting</source>
+        <target>Resaltado de sintaxis</target>
+      </trans-unit>
+      <trans-unit id="503">
+        <source>Welcome to Porta</source>
+        <target>Te damos la bienvenida a Porta</target>
+      </trans-unit>
+      <trans-unit id="504">
+        <source>done</source>
+        <target>hecho</target>
+      </trans-unit>
+      <trans-unit id="505">
+        <source>Welcome</source>
+        <target>Bienvenida</target>
+      </trans-unit>
+      <trans-unit id="506">
+        <source>Default highlighter</source>
+        <target>Resaltador predeterminado</target>
+      </trans-unit>
+      <trans-unit id="507">
+        <source>auto (first available)</source>
+        <target>automático (el primero disponible)</target>
+      </trans-unit>
+      <trans-unit id="508">
+        <source>Used for any language without its own choice below</source>
+        <target>Se usa para cualquier lenguaje sin elección propia abajo</target>
+      </trans-unit>
+      <trans-unit id="509">
+        <source>No highlighting engine is enabled</source>
+        <target>No hay ningún motor de resaltado habilitado</target>
+      </trans-unit>
+      <trans-unit id="510">
+        <source>Bundled plugins are opt-in; applies to files opened afterwards</source>
+        <target>Los complementos incluidos son opcionales; se aplica a los archivos abiertos después</target>
+      </trans-unit>
+      <trans-unit id="511">
+        <source>Highlighting</source>
+        <target>Resaltado</target>
+      </trans-unit>
     </body>
   </file>
 </xliff>

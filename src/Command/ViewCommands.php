@@ -71,6 +71,15 @@ final class ViewCommands implements CommandProvider
             ->add('ide_run', fn () => $this->run->openRunMenu(), keyBound: KeyDispatch::Bound)
             ->add('ide_git', fn () => $this->views->toggleGit(), keyBound: KeyDispatch::Bound)
             ->add('ide_settings', fn () => $this->views->toggleSettings(), keyBound: KeyDispatch::Bound)
+            // No ActionCatalog entry and no default key: a keyless catalog entry
+            // must be bound by some widget, which is wrong for an IDE command,
+            // and this is a menu/palette action rather than a keystroke. Hence
+            // the explicit label.
+            ->add(
+                'ide_welcome',
+                fn () => $this->views->toggleWelcome(),
+                label: 'Welcome',
+            )
             ->add(
                 'ide_help',
                 function (): void {

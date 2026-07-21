@@ -1982,6 +1982,62 @@
         <source>bundled php</source>
         <target>php המצורף</target>
       </trans-unit>
+      <trans-unit id="498">
+        <source>Colours your code; off until enabled</source>
+        <target>צובע את הקוד; כבוי עד להפעלה</target>
+      </trans-unit>
+      <trans-unit id="499">
+        <source>Completion, go-to-definition and diagnostics</source>
+        <target>השלמה, מעבר להגדרה ואבחונים</target>
+      </trans-unit>
+      <trans-unit id="500">
+        <source>Enable %name%</source>
+        <target>הפעל %name%</target>
+      </trans-unit>
+      <trans-unit id="501">
+        <source>PHP language server</source>
+        <target>שרת שפה PHP</target>
+      </trans-unit>
+      <trans-unit id="502">
+        <source>Syntax highlighting</source>
+        <target>הדגשת תחביר</target>
+      </trans-unit>
+      <trans-unit id="503">
+        <source>Welcome to Porta</source>
+        <target>ברוכים הבאים ל-Porta</target>
+      </trans-unit>
+      <trans-unit id="504">
+        <source>done</source>
+        <target>בוצע</target>
+      </trans-unit>
+      <trans-unit id="505">
+        <source>Welcome</source>
+        <target>ברוכים הבאים</target>
+      </trans-unit>
+      <trans-unit id="506">
+        <source>Default highlighter</source>
+        <target>מדגיש ברירת מחדל</target>
+      </trans-unit>
+      <trans-unit id="507">
+        <source>auto (first available)</source>
+        <target>אוטומטי (הזמין הראשון)</target>
+      </trans-unit>
+      <trans-unit id="508">
+        <source>Used for any language without its own choice below</source>
+        <target>משמש לכל שפה ללא בחירה משלה למטה</target>
+      </trans-unit>
+      <trans-unit id="509">
+        <source>No highlighting engine is enabled</source>
+        <target>לא מופעל מנוע הדגשה</target>
+      </trans-unit>
+      <trans-unit id="510">
+        <source>Bundled plugins are opt-in; applies to files opened afterwards</source>
+        <target>תוספים מצורפים הם בבחירה; חל על קבצים שייפתחו לאחר מכן</target>
+      </trans-unit>
+      <trans-unit id="511">
+        <source>Highlighting</source>
+        <target>הדגשה</target>
+      </trans-unit>
     </body>
   </file>
 </xliff>

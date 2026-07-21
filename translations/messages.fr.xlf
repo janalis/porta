@@ -1982,6 +1982,62 @@
         <source>bundled php</source>
         <target>php fourni</target>
       </trans-unit>
+      <trans-unit id="498">
+        <source>Colours your code; off until enabled</source>
+        <target>Colore votre code ; désactivé par défaut</target>
+      </trans-unit>
+      <trans-unit id="499">
+        <source>Completion, go-to-definition and diagnostics</source>
+        <target>Complétion, aller à la définition et diagnostics</target>
+      </trans-unit>
+      <trans-unit id="500">
+        <source>Enable %name%</source>
+        <target>Activer %name%</target>
+      </trans-unit>
+      <trans-unit id="501">
+        <source>PHP language server</source>
+        <target>Serveur de langage PHP</target>
+      </trans-unit>
+      <trans-unit id="502">
+        <source>Syntax highlighting</source>
+        <target>Coloration syntaxique</target>
+      </trans-unit>
+      <trans-unit id="503">
+        <source>Welcome to Porta</source>
+        <target>Bienvenue dans Porta</target>
+      </trans-unit>
+      <trans-unit id="504">
+        <source>done</source>
+        <target>fait</target>
+      </trans-unit>
+      <trans-unit id="505">
+        <source>Welcome</source>
+        <target>Bienvenue</target>
+      </trans-unit>
+      <trans-unit id="506">
+        <source>Default highlighter</source>
+        <target>Coloration par défaut</target>
+      </trans-unit>
+      <trans-unit id="507">
+        <source>auto (first available)</source>
+        <target>auto (le premier disponible)</target>
+      </trans-unit>
+      <trans-unit id="508">
+        <source>Used for any language without its own choice below</source>
+        <target>Utilisé pour tout langage sans choix propre ci-dessous</target>
+      </trans-unit>
+      <trans-unit id="509">
+        <source>No highlighting engine is enabled</source>
+        <target>Aucun moteur de coloration n'est activé</target>
+      </trans-unit>
+      <trans-unit id="510">
+        <source>Bundled plugins are opt-in; applies to files opened afterwards</source>
+        <target>Les extensions fournies sont facultatives ; s'applique aux fichiers ouverts ensuite</target>
+      </trans-unit>
+      <trans-unit id="511">
+        <source>Highlighting</source>
+        <target>Coloration</target>
+      </trans-unit>
     </body>
   </file>
 </xliff>

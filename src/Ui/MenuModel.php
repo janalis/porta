@@ -134,6 +134,7 @@ final class MenuModel
             'i:toggle_auto_pairs',
         ],
         'Help' => [
+            'i:ide_welcome',
             'i:ide_help',
             self::SEP,
             'i:ide_command_palette',
@@ -144,6 +145,7 @@ final class MenuModel
     /**
      * @param (\Closure(): bool)|null $gitViewOpen      while true, only GIT_VIEW_SAFE items stay enabled
      * @param (\Closure(): bool)|null $settingsViewOpen while true, only SETTINGS_VIEW_SAFE items stay enabled
+     * @param (\Closure(): bool)|null $welcomeViewOpen  while true, only WELCOME_VIEW_SAFE items stay enabled
      * @param list<PluginMenuSpec>    $pluginSpecs      runtime plugin entries — a Plugins menu between Code and Run when non-empty
      *
      * @return list<Menu>
@@ -155,13 +157,17 @@ final class MenuModel
         Translator $translator,
         ?\Closure $gitViewOpen = null,
         ?\Closure $settingsViewOpen = null,
+        ?\Closure $welcomeViewOpen = null,
         array $pluginSpecs = [],
     ): array {
         $menus = [];
         foreach (self::DEFS as $title => $specs) {
-            $menus[] = new Menu($translator->trans($title), self::items($specs, $commands, $editor, $ideKeys, $translator, $gitViewOpen, $settingsViewOpen));
+            $menus[] = new Menu($translator->trans($title), self::items($specs, $commands, $editor, $ideKeys, $translator, $gitViewOpen, $settingsViewOpen, $welcomeViewOpen));
             if ('Code' === $title && [] !== $pluginSpecs) {
-                $menus[] = new Menu($translator->trans('Plugins'), self::items(self::groupByPlugin($pluginSpecs), $commands, $editor, $ideKeys, $translator, $gitViewOpen, $settingsViewOpen));
+                $menus[] = new Menu(
+                    $translator->trans('Plugins'),
+                    self::items(self::groupByPlugin($pluginSpecs), $commands, $editor, $ideKeys, $translator, $gitViewOpen, $settingsViewOpen, $welcomeViewOpen),
+                );
             }
         }
 
@@ -202,6 +208,7 @@ final class MenuModel
      * @param list<string|PluginMenuSpec> $specs
      * @param (\Closure(): bool)|null     $gitViewOpen
      * @param (\Closure(): bool)|null     $settingsViewOpen
+     * @param (\Closure(): bool)|null     $welcomeViewOpen
      *
      * @return list<MenuItem>
      */
@@ -213,6 +220,7 @@ final class MenuModel
         Translator $translator,
         ?\Closure $gitViewOpen = null,
         ?\Closure $settingsViewOpen = null,
+        ?\Closure $welcomeViewOpen = null,
     ): array {
         $items = [];
         foreach ($specs as $entry) {
@@ -220,7 +228,7 @@ final class MenuModel
             $when = $entry instanceof PluginMenuSpec ? $entry->when : null;
             $items[] = self::SEP === $spec
                 ? MenuItem::separator()
-                : self::item($spec, $commands, $editor, $ideKeys, $translator, $gitViewOpen, $settingsViewOpen, $when);
+                : self::item($spec, $commands, $editor, $ideKeys, $translator, $gitViewOpen, $settingsViewOpen, $welcomeViewOpen, $when);
         }
 
         return $items;
@@ -236,18 +244,26 @@ final class MenuModel
      * The only commands that stay enabled while the git view owns the main area:
      * everything else targets the detached editor/tree and would act invisibly.
      */
-    private const array GIT_VIEW_SAFE = ['ide_quit', 'ide_git', 'git_commit', 'git_undo_commit', 'git_fetch', 'git_pull', 'git_push', 'git_branches', 'ide_command_palette', 'ide_help'];
+    private const array GIT_VIEW_SAFE = ['ide_quit', 'ide_git', 'git_commit', 'git_undo_commit', 'git_fetch', 'git_pull', 'git_push', 'git_branches', 'ide_command_palette', 'ide_help', 'ide_welcome'];
 
     /**
      * The only commands that stay enabled while the settings view owns the main
      * area: leaving it, closing the app, or the palette. Everything else targets
      * the detached editor/tree and would act invisibly.
      */
-    private const array SETTINGS_VIEW_SAFE = ['ide_quit', 'ide_settings', 'ide_command_palette', 'ide_help'];
+    private const array SETTINGS_VIEW_SAFE = ['ide_quit', 'ide_settings', 'ide_command_palette', 'ide_help', 'ide_welcome'];
+
+    /**
+     * The only commands that stay enabled while the Welcome view owns the main
+     * area. `ide_welcome` is in all three lists, not just this one: a user who
+     * followed a Welcome step into Settings must still be able to get back.
+     */
+    private const array WELCOME_VIEW_SAFE = ['ide_quit', 'ide_welcome', 'ide_command_palette', 'ide_help'];
 
     /**
      * @param (\Closure(): bool)|null $gitViewOpen
      * @param (\Closure(): bool)|null $settingsViewOpen
+     * @param (\Closure(): bool)|null $welcomeViewOpen
      * @param (\Closure(): bool)|null $pluginWhen       a plugin item's own enabled gate, ANDed with the view gating
      */
     private static function item(
@@ -258,6 +274,7 @@ final class MenuModel
         Translator $translator,
         ?\Closure $gitViewOpen,
         ?\Closure $settingsViewOpen,
+        ?\Closure $welcomeViewOpen,
         ?\Closure $pluginWhen = null,
     ): MenuItem {
         [$scope, $id] = explode(':', $spec, limit: 2);
@@ -274,11 +291,13 @@ final class MenuModel
         $requiresFile = self::requiresOpenFile($scope, $id);
         $gitSafe = 'i' === $scope && \in_array($id, self::GIT_VIEW_SAFE, strict: true);
         $settingsSafe = 'i' === $scope && \in_array($id, self::SETTINGS_VIEW_SAFE, strict: true);
-        $isEnabled = null === $gitViewOpen && null === $settingsViewOpen && !$requiresFile
+        $welcomeSafe = 'i' === $scope && \in_array($id, self::WELCOME_VIEW_SAFE, strict: true);
+        $isEnabled = null === $gitViewOpen && null === $settingsViewOpen && null === $welcomeViewOpen && !$requiresFile
             ? null
             : static fn (): bool => match (true) {
                 null !== $settingsViewOpen && $settingsViewOpen() => $settingsSafe,
                 null !== $gitViewOpen && $gitViewOpen() => $gitSafe,
+                null !== $welcomeViewOpen && $welcomeViewOpen() => $welcomeSafe,
                 default => !$requiresFile || null !== $editor->getFilePath(),
             };
         if (null !== $pluginWhen) {
