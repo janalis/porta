@@ -9,6 +9,7 @@ use Porta\Git\DiffDocument;
 use Porta\Git\DiffRowKind;
 use Porta\Highlight\CodeHighlighter;
 use Porta\Highlight\DarkTerminalTheme;
+use Porta\Highlight\TempestHighlightProvider;
 use Porta\I18n\Translator;
 use Porta\Support\AnsiText;
 use Porta\Support\IntMath;
@@ -106,7 +107,10 @@ final class DiffViewWidget extends AbstractWidget implements FocusableInterface,
         ?TerminalTheme $syntaxTheme = null,
     ) {
         $this->styles = $styles ?? Styles::dark();
-        $this->highlighter = new CodeHighlighter(syntaxTheme: $syntaxTheme ?? new DarkTerminalTheme());
+        $theme = $syntaxTheme ?? new DarkTerminalTheme();
+        // Diff hunks are non-contiguous lines from different files: always the
+        // built-in engine, never a plugin's.
+        $this->highlighter = new CodeHighlighter(new TempestHighlightProvider($theme), $theme);
     }
 
     /** @param callable(array<int, array<int, true>>): void $callback */

@@ -82,6 +82,7 @@ final class IdeConfig
         public readonly array $plugins,
         public readonly array $disabledPlugins,
         public readonly array $enabledPlugins,
+        public readonly array $highlight,
         public readonly array $warnings,
     ) {}
 
@@ -89,12 +90,12 @@ final class IdeConfig
     {
         $file = $rootDir.'/.porta.json';
         if (!is_file($file)) {
-            return new self([], self::DEFAULT_SETTINGS, [], [], [], [], [], []);
+            return new self([], self::DEFAULT_SETTINGS, [], [], [], [], [], [], []);
         }
 
         $config = JsonFile::read($file);
         if (null === $config) {
-            return new self([], self::DEFAULT_SETTINGS, [], [], [], [], [], ['.porta.json is not valid JSON']);
+            return new self([], self::DEFAULT_SETTINGS, [], [], [], [], [], [], ['.porta.json is not valid JSON']);
         }
 
         $keymap = [];
@@ -150,7 +151,77 @@ final class IdeConfig
         $disabledPlugins = self::stringList($config['disabledPlugins'] ?? null);
         $enabledPlugins = self::stringList($config['enabledPlugins'] ?? null);
 
-        return new self($keymap, $settings, $languages, $lspServers, $plugins, $disabledPlugins, $enabledPlugins, $warnings);
+        $highlight = self::parseHighlight($config['highlight'] ?? null, $warnings);
+
+        return new self($keymap, $settings, $languages, $lspServers, $plugins, $disabledPlugins, $enabledPlugins, $highlight, $warnings);
+    }
+
+    /**
+     * The top-level `highlight` block: which highlighting backend to use, both
+     * globally and per language.
+     *
+     * ```json
+     * "highlight": { "default": "tempest", "languages": { "rust": "chroma" } }
+     * ```
+     *
+     * Keys are grammar names (what {@see \Porta\Support\LanguageMap} resolves a
+     * path to), not LSP language ids — the two vocabularies differ, and several
+     * highlightable grammars have no language server at all. Ids are validated
+     * against loaded plugins later, by the registry, since plugins have not
+     * loaded when the config is parsed.
+     *
+     * @param list<string> $warnings
+     *
+     * @return array{default: string, languages: array<string, string>}
+     */
+    private static function parseHighlight(mixed $highlight, array &$warnings): array
+    {
+        $empty = ['default' => '', 'languages' => []];
+        if (null === $highlight) {
+            return $empty;
+        }
+        if (!\is_array($highlight)) {
+            $warnings[] = '"highlight" in .porta.json must be an object';
+
+            return $empty;
+        }
+
+        return [
+            'default' => self::highlighterId($highlight['default'] ?? null) ?? '',
+            'languages' => self::highlighterLanguages($highlight['languages'] ?? null, $warnings),
+        ];
+    }
+
+    /** A highlighter id from a raw config value, or null when it is not a usable one. */
+    private static function highlighterId(mixed $value): ?string
+    {
+        return \is_string($value) && '' !== $value ? $value : null;
+    }
+
+    /**
+     * The per-grammar highlighter overrides from the block's `languages` map.
+     *
+     * @param list<string> $warnings
+     *
+     * @return array<string, string>
+     */
+    private static function highlighterLanguages(mixed $raw, array &$warnings): array
+    {
+        if (!\is_array($raw)) {
+            return [];
+        }
+
+        $languages = [];
+        foreach (array_keys($raw) as $language) {
+            $id = self::highlighterId($raw[$language]);
+            if (null === $id) {
+                $warnings[] = \sprintf('Highlighter for "%s" in .porta.json must be a non-empty string', (string) $language);
+                continue;
+            }
+            $languages[(string) $language] = $id;
+        }
+
+        return $languages;
     }
 
     /**

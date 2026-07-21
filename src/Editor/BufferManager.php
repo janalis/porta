@@ -4,10 +4,9 @@ declare(strict_types=1);
 
 namespace Porta\Editor;
 
-use Porta\Highlight\DarkTerminalTheme;
+use Porta\Highlight\CodeHighlighterFactory;
 use Porta\Image\ImageData;
 use Porta\Support\IndexMove;
-use Tempest\Highlight\TerminalTheme;
 
 /**
  * Holds all open editor buffers. Each buffer keeps its own Document (and
@@ -20,16 +19,16 @@ final class BufferManager
     private array $buffers = [];
     private ?string $activePath = null;
     private int $focusCounter = 0;
-    private readonly TerminalTheme $syntaxTheme;
+    private readonly CodeHighlighterFactory $highlighters;
 
-    public function __construct(?TerminalTheme $syntaxTheme = null)
+    public function __construct(?CodeHighlighterFactory $highlighters = null)
     {
-        $this->syntaxTheme = $syntaxTheme ?? new DarkTerminalTheme();
+        $this->highlighters = $highlighters ?? new CodeHighlighterFactory();
     }
 
     public function open(string $path, string $content): Buffer
     {
-        $this->buffers[$path] ??= new Buffer($path, new Document($content), $this->syntaxTheme);
+        $this->buffers[$path] ??= new Buffer($path, new Document($content), $this->highlighters->forFile($path));
         $buffer = $this->buffers[$path];
         $this->activePath = $path;
         $buffer->lastFocused = ++$this->focusCounter;
@@ -40,7 +39,7 @@ final class BufferManager
     /** Open an image tab: an empty document plus the decoded pixels. */
     public function openImage(string $path, ImageData $image): Buffer
     {
-        $this->buffers[$path] ??= new Buffer($path, new Document(''), $this->syntaxTheme, $image);
+        $this->buffers[$path] ??= new Buffer($path, new Document(''), $this->highlighters->forFile($path), $image);
         $buffer = $this->buffers[$path];
         $this->activePath = $path;
         $buffer->lastFocused = ++$this->focusCounter;
@@ -51,7 +50,7 @@ final class BufferManager
     /** Open (or re-activate) a rendered help tab carrying the page's markdown. */
     public function openHelp(string $path, string $markdown): Buffer
     {
-        $this->buffers[$path] ??= new Buffer($path, new Document(''), $this->syntaxTheme, helpMarkdown: $markdown);
+        $this->buffers[$path] ??= new Buffer($path, new Document(''), $this->highlighters->forFile($path), helpMarkdown: $markdown);
         $buffer = $this->buffers[$path];
         $buffer->helpMarkdown = $markdown; // refresh when the page changed on disk
         $this->activePath = $path;

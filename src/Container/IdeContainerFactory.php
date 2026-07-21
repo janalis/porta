@@ -54,6 +54,7 @@ final class IdeContainerFactory
         $_ENV['PORTA_LSP_SERVERS'] = json_encode($config->lspServers, \JSON_THROW_ON_ERROR);
         $_ENV['PORTA_DISABLED_PLUGINS'] = json_encode($config->disabledPlugins, \JSON_THROW_ON_ERROR);
         $_ENV['PORTA_ENABLED_PLUGINS'] = json_encode($config->enabledPlugins, \JSON_THROW_ON_ERROR);
+        $_ENV['PORTA_HIGHLIGHT'] = json_encode($config->highlight, \JSON_THROW_ON_ERROR);
 
         $cacheDir = $this->cacheDir();
         if (null === $cacheDir || 'off' === getenv('PORTA_CONTAINER_CACHE')) {

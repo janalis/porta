@@ -28,6 +28,7 @@ use Porta\Editor\LineNumberMode;
 use Porta\Editor\MultiCaret;
 use Porta\Highlight\CodeHighlighter;
 use Porta\Highlight\DarkTerminalTheme;
+use Porta\Highlight\TempestHighlightProvider;
 use Porta\I18n\Translator;
 use Porta\Search\Everywhere\SearchOverlay;
 use Porta\Search\Everywhere\SearchRow;
@@ -160,8 +161,12 @@ final class CodeEditorWidget extends AbstractWidget implements ActiveFileProvide
     /** For the empty-state hint; the English fallback keeps direct (test) construction working. */
     private readonly Translator $translator;
 
-    public function __construct(?Styles $styles = null, ?TerminalTheme $syntaxTheme = null, ?CursorStyle $cursorStyle = null, ?Translator $translator = null)
-    {
+    public function __construct(
+        ?Styles $styles = null,
+        ?TerminalTheme $syntaxTheme = null,
+        ?CursorStyle $cursorStyle = null,
+        ?Translator $translator = null,
+    ) {
         $this->styles = $styles ?? Styles::dark();
         $this->syntaxTheme = $syntaxTheme ?? new DarkTerminalTheme();
         $this->cursorStyle = $cursorStyle ?? new CursorStyle();
@@ -171,7 +176,7 @@ final class CodeEditorWidget extends AbstractWidget implements ActiveFileProvide
         $this->overlayHost = new OverlayHost($this->invalidate(...), $this->styles, $this->cursorStyle);
         $this->findModal = new FindInFilesModal($this->invalidate(...), $this->styles, $this->cursorStyle, $this->translator);
         $this->document = new Document('');
-        $this->highlighter = new CodeHighlighter(syntaxTheme: $this->syntaxTheme);
+        $this->highlighter = $this->placeholderHighlighter();
         $this->foldModel = new FoldModel($this->document);
         $this->scroll = new EditorScroll($this->document, $this->foldModel, $this->invalidate(...));
         $this->multiCaret = $this->newMultiCaret($this->document);
@@ -258,7 +263,7 @@ final class CodeEditorWidget extends AbstractWidget implements ActiveFileProvide
         $this->document = $document;
         $this->currentEditorConfig = $editorConfig;
         $this->applyEffectiveIndent();
-        $this->highlighter = $highlighter ?? new CodeHighlighter(syntaxTheme: $this->syntaxTheme);
+        $this->highlighter = $highlighter ?? $this->placeholderHighlighter();
         if (null === $highlighter) {
             $this->highlighter->setFile($path);
         }
@@ -958,12 +963,22 @@ final class CodeEditorWidget extends AbstractWidget implements ActiveFileProvide
     }
 
     /**
+     * The empty-state placeholder highlighter. Always the built-in engine: it
+     * colours no real buffer (a buffer brings its own), so routing it through
+     * the registry would only add a dependency cycle.
+     */
+    private function placeholderHighlighter(): CodeHighlighter
+    {
+        return new CodeHighlighter(new TempestHighlightProvider($this->syntaxTheme), $this->syntaxTheme);
+    }
+
+    /**
      * Line-comment prefix for the current language, or null when unsupported.
      */
     public function commentPrefix(): ?string
     {
         return match ($this->highlighter->getLanguage()) {
-            'php', 'javascript', 'typescript', 'css', 'scss' => '//',
+            'php', 'javascript', 'typescript', 'css', 'scss', 'jsonc' => '//',
             'bash', 'yaml', 'dotenv', 'ini', 'python', 'dockerfile', 'terraform' => '#',
             'sql' => '--',
             'twig' => null, // block comments only

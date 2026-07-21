@@ -6,6 +6,7 @@ namespace Porta\Tests\Unit\Config;
 
 use PHPUnit\Framework\TestCase;
 use Porta\Config\LanguageCatalog;
+use Porta\Support\LanguageMap;
 use Porta\Support\ProjectPaths;
 
 final class LanguageCatalogTest extends TestCase
@@ -28,6 +29,22 @@ final class LanguageCatalogTest extends TestCase
         }
         $this->assertFalse(LanguageCatalog::isKnown('plaintext'), 'the catch-all is not configurable');
         $this->assertFalse(LanguageCatalog::isKnown('klingon'));
+    }
+
+    /**
+     * The class docblock claims the catalog ids match what {@see LanguageMap}
+     * resolves files to. Assert it exhaustively rather than by sample, so a
+     * language added to one side can't silently miss its settings row.
+     */
+    public function testCatalogCoversExactlyTheResolvableLanguageIds(): void
+    {
+        $catalog = LanguageCatalog::ids();
+        $resolvable = LanguageMap::lspIds();
+
+        sort($catalog);
+        sort($resolvable);
+
+        $this->assertSame($resolvable, $catalog);
     }
 
     public function testUnknownDisplayNameFallsBackToTheId(): void

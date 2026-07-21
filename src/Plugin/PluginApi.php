@@ -5,7 +5,9 @@ declare(strict_types=1);
 namespace Porta\Plugin;
 
 use Porta\Editor\OpenFocus;
+use Porta\Highlight\DarkTerminalTheme;
 use Porta\Lsp\Uri;
+use Tempest\Highlight\TerminalTheme;
 
 /**
  * A plugin's handle into Porta. Registration methods buffer during
@@ -33,13 +35,31 @@ final class PluginApi
     private array $languageServers = [];
     /** @var list<array{plugin: string, tool: string, available: \Closure(): bool, via: list<array{0: string, 1: string}>}> */
     private array $installers = [];
+    /** @var list<array{plugin: string, id: string, label: string, languages: \Closure(): list<string>, highlight: \Closure(string, string, \Closure(string): void): void, available: (\Closure(): bool)|null}> */
+    private array $highlighters = [];
+    /** @var list<array{plugin: string, languages: \Closure(): list<string>, classify: \Closure(string, string): (list<array{start: int, end: int}>|null)}> */
+    private array $tokenSpans = [];
 
     public function __construct(
         private readonly string $pluginName,
         private readonly PluginManager $manager,
         private readonly string $rootDir,
         private readonly PluginSettings $settings,
+        private readonly ?TerminalTheme $syntaxTheme = null,
     ) {}
+
+    /**
+     * The live syntax color scheme, for a backend that renders its own colours.
+     *
+     * A **holder**, not a snapshot: the settings layer swaps its inner theme in
+     * place, so a backend that asks it per token automatically follows a theme
+     * switch with no hook to subscribe to. Safe during activate() — the holder
+     * is built before plugins load.
+     */
+    public function syntaxTheme(): TerminalTheme
+    {
+        return $this->syntaxTheme ?? new DarkTerminalTheme();
+    }
 
     /**
      * The open project's root directory — static config, safe during
@@ -150,6 +170,92 @@ final class PluginApi
             'languageId' => $languageId,
             'name' => $name,
             'resolve' => $resolveCommand,
+        ];
+    }
+
+    /**
+     * Provide a syntax-highlighting backend for one or more languages (Porta's
+     * grammar names — see {@see \Porta\Support\LanguageMap}). `['*']` claims
+     * every language. Pass a closure for $languages when the claim list follows
+     * this plugin's own settings; it is re-resolved on every query, like
+     * {@see registerLanguageServer()}'s command resolver.
+     *
+     * $highlight receives the whole document text, the language, and a $deliver
+     * callback it hands the ANSI-marked result to. A **synchronous** backend
+     * calls $deliver before returning. An **asynchronous** one returns
+     * immediately and calls $deliver later from the event loop — Porta paints
+     * with what it already has and repaints when the result lands. Delivering
+     * for a superseded version is a silent no-op, so a backend never has to
+     * track whether its answer is still wanted.
+     *
+     * Two hard rules: it **must not block** (it runs on the way to a render
+     * frame — once per document version, not once per frame, but that is still
+     * the typing path), and it must **preserve line structure** — same number
+     * of `"\n"`-separated lines in as out, identical to the input once ANSI
+     * codes are stripped. A throw, or a mangled line count, falls back to plain
+     * text rather than rendering a broken buffer; three consecutive faults drop
+     * the backend for that buffer.
+     *
+     * $isAvailable declines the language when e.g. a binary is missing, so it
+     * falls through to the next backend instead of failing repeatedly.
+     *
+     * Precedence: the user's `.porta.json` `highlight` block wins, then the
+     * first available claimer in plugin load order, then the built-in engine.
+     *
+     * @param list<string>|\Closure(): list<string>  $languages
+     * @param \Closure(string, string, \Closure(string): void): void $highlight (content, language, deliver)
+     * @param (\Closure(): bool)|null                $isAvailable
+     * @param string|null                            $id          selection key in config; defaults to the plugin name
+     */
+    public function registerHighlighter(
+        string $label,
+        array|\Closure $languages,
+        \Closure $highlight,
+        ?\Closure $isAvailable = null,
+        ?string $id = null,
+    ): void {
+        $id ??= $this->pluginName;
+        if (1 !== preg_match(self::ID_PATTERN, $id)) {
+            throw new PluginException(\sprintf('Invalid highlighter id "%s" (expected /^[a-z0-9][a-z0-9_-]*$/i)', $id));
+        }
+        if (\is_array($languages) && [] === $languages) {
+            throw new PluginException('A highlighter must claim at least one language (or "*")');
+        }
+        $resolve = $languages instanceof \Closure ? $languages : static fn (): array => array_values($languages);
+        $this->highlighters[] = [
+            'plugin' => $this->pluginName,
+            'id' => $id,
+            'label' => $label,
+            'languages' => $resolve,
+            'highlight' => $highlight,
+            'available' => $isAvailable,
+        ];
+    }
+
+    /**
+     * Provide comment/string classification for project search's token-scope
+     * filter ("only in comments/strings", "except in ...").
+     *
+     * Separate from {@see registerHighlighter()} on purpose: this runs once per
+     * *matched file* during a search, not on the typing path, and it is always
+     * synchronous. $classify returns `[start, end)` byte spans, or null to
+     * decline so Porta's built-in classifier serves the language.
+     *
+     * A backend that shells out should **not** register this — a 500-hit search
+     * would mean 500 subprocesses.
+     *
+     * @param list<string>|\Closure(): list<string>                                       $languages `['*']` claims everything
+     * @param \Closure(string, string): (list<array{start: int, end: int}>|null)          $classify  (content, language)
+     */
+    public function registerTokenSpans(array|\Closure $languages, \Closure $classify): void
+    {
+        if (\is_array($languages) && [] === $languages) {
+            throw new PluginException('A token-span provider must claim at least one language (or "*")');
+        }
+        $this->tokenSpans[] = [
+            'plugin' => $this->pluginName,
+            'languages' => $languages instanceof \Closure ? $languages : static fn (): array => array_values($languages),
+            'classify' => $classify,
         ];
     }
 
@@ -380,5 +486,17 @@ final class PluginApi
     public function bufferedInstallers(): array
     {
         return $this->installers;
+    }
+
+    /** @return list<array{plugin: string, id: string, label: string, languages: \Closure(): list<string>, highlight: \Closure(string, string, \Closure(string): void): void, available: (\Closure(): bool)|null}> */
+    public function bufferedHighlighters(): array
+    {
+        return $this->highlighters;
+    }
+
+    /** @return list<array{plugin: string, languages: \Closure(): list<string>, classify: \Closure(string, string): (list<array{start: int, end: int}>|null)}> */
+    public function bufferedTokenSpans(): array
+    {
+        return $this->tokenSpans;
     }
 }

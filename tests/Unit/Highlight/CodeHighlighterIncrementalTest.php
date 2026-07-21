@@ -6,6 +6,7 @@ namespace Porta\Tests\Unit\Highlight;
 
 use PHPUnit\Framework\TestCase;
 use Porta\Highlight\CodeHighlighter;
+use Porta\Tests\Support\ClosureHighlightProvider;
 use Symfony\Component\Tui\Ansi\AnsiUtils;
 
 final class CodeHighlighterIncrementalTest extends TestCase
@@ -116,13 +117,13 @@ final class CodeHighlighterIncrementalTest extends TestCase
 
     public function testEmptyEditedLineAndParserFailureFallbacks(): void
     {
-        $failing = new CodeHighlighter(static function (string $content): string {
+        $failing = new CodeHighlighter(new ClosureHighlightProvider(static function (string $content): string {
             if (!str_contains($content, "\n")) {
                 throw new \RuntimeException('single-line parse fails');
             }
 
             return $content; // full-document parse: passthrough keeps line count
-        });
+        }));
         $failing->setFile('big.php');
         $doc = $this->bigDocument();
         $failing->highlight($doc, 1);
@@ -138,7 +139,7 @@ final class CodeHighlighterIncrementalTest extends TestCase
 
     public function testSingleLineParserProducingNewlinesFallsBackToRaw(): void
     {
-        $mangler = new CodeHighlighter(static fn (string $content): string => str_contains($content, "\n") ? $content : $content."\nEXTRA");
+        $mangler = new CodeHighlighter(new ClosureHighlightProvider(static fn (string $content): string => str_contains($content, "\n") ? $content : $content."\nEXTRA"));
         $mangler->setFile('big.php');
         $doc = $this->bigDocument();
         $mangler->highlight($doc, 1);

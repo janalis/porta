@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace Porta\Plugin;
 
+use Tempest\Highlight\TerminalTheme;
+
 /**
  * Discovers and activates plugins from `<project>/.porta/plugins/<name>/plugin.php`
  * and `<global>/.porta/plugins/<name>/plugin.php` (project wins when both define
@@ -29,6 +31,7 @@ final class PluginLoader
         private readonly ?string $embeddedDir = null,
         private readonly array $disabled = [],
         private readonly array $enabled = [],
+        private readonly ?TerminalTheme $syntaxTheme = null,
     ) {}
 
     /** The home directory used for the global plugin dir (PORTA_HOME overrides HOME). */
@@ -132,7 +135,7 @@ final class PluginLoader
                 throw new PluginException(\sprintf('duplicate plugin name "%s"', $name));
             }
 
-            $api = new PluginApi($name, $manager, $this->rootDir, $this->settings);
+            $api = new PluginApi($name, $manager, $this->rootDir, $this->settings, $this->syntaxTheme);
             $plugin->activate($api);
             $manager->commit($api); // atomic: a throwing activate() lands nothing
         } catch (\Throwable $error) {

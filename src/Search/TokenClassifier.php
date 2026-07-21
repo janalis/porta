@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Porta\Search;
 
+use Porta\Highlight\TempestBackend;
 use Tempest\Highlight\Highlighter;
 
 /**
@@ -12,6 +13,11 @@ use Tempest\Highlight\Highlighter;
  * parsed in one pass (so multi-line comments/docblocks and heredocs classify
  * correctly), then the sentinel markers are walked off to recover the spans in
  * the original byte coordinates.
+ *
+ * The tokenizer comes from {@see TempestBackend} so search sees the same house
+ * grammars the editor does — before that was shared, this built a bare
+ * Highlighter and a PHP docblock or a `tsconfig.json` classified differently
+ * here than it rendered in the editor.
  */
 final class TokenClassifier
 {
@@ -20,12 +26,15 @@ final class TokenClassifier
     private readonly \Closure $parser;
 
     /**
-     * @param (\Closure(string, string): string)|null $parser (content, language) => marked output;
-     *                                                         injectable so tests can drive the walker directly
+     * @param (\Closure(string, string): string)|null $parser  (content, language) => marked output;
+     *                                                          injectable so tests can drive the walker directly
+     * @param TokenSpanProvider|null                  $plugins plugin-supplied classifiers, asked first
      */
-    public function __construct(?\Closure $parser = null)
-    {
-        $this->highlighter = new Highlighter(new CommentStringTheme());
+    public function __construct(
+        ?\Closure $parser = null,
+        private readonly ?TokenSpanProvider $plugins = null,
+    ) {
+        $this->highlighter = TempestBackend::newHighlighter(new CommentStringTheme());
         $this->parser = $parser ?? fn (string $content, string $language): string => $this->highlighter->parse($content, $language);
     }
 
@@ -37,6 +46,11 @@ final class TokenClassifier
      */
     public function commentStringSpans(string $content, string $language): array
     {
+        $plugin = $this->pluginSpans($content, $language);
+        if (null !== $plugin) {
+            return $plugin;
+        }
+
         try {
             $marked = ($this->parser)($content, $language);
         } catch (\Throwable) {
@@ -73,5 +87,24 @@ final class TokenClassifier
         }
 
         return $spans;
+    }
+
+    /**
+     * A plugin classifier's answer, or null when none claims the language or one
+     * throws — a faulting plugin must never break search, it just declines.
+     *
+     * @return list<array{start: int, end: int}>|null
+     */
+    private function pluginSpans(string $content, string $language): ?array
+    {
+        if (null === $this->plugins) {
+            return null;
+        }
+
+        try {
+            return $this->plugins->commentStringSpans($content, $language);
+        } catch (\Throwable) {
+            return null;
+        }
     }
 }

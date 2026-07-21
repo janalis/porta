@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 namespace Porta\Settings;
 
-use Porta\Editor\BufferManager;
 use Porta\Event\CursorShapeChanged;
 use Porta\Event\LocaleChanged;
 use Porta\Event\TabBarPositionChanged;
@@ -39,7 +38,6 @@ final class LiveSettingsApplier
         private readonly SwitchableTerminalTheme $syntaxTheme,
         private readonly CursorStyle $cursorStyle,
         private readonly Translator $translator,
-        private readonly BufferManager $buffers,
         private readonly DiffViewWidget $gitDiff,
         private readonly HelpViewerWidget $helpViewer,
         private readonly TabBarWidget $tabBar,
@@ -52,8 +50,10 @@ final class LiveSettingsApplier
     /**
      * Live theme switch: swap the shared styles + syntax-theme holders every
      * widget and buffer holds, and re-apply the renderer's stylesheet rules.
-     * Chrome re-renders from the listener sweep; buffers and the git diff
-     * cache colored output by content, so those are busted explicitly here.
+     * Chrome re-renders from the listener sweep. The git diff and help viewer
+     * cache colored output by content, so they are busted explicitly here;
+     * buffer highlighters are busted by {@see \Porta\Highlight\HighlightThemeListener}
+     * once the plugin bridge has had its turn.
      */
     public function applyTheme(string $theme): void
     {
@@ -62,12 +62,9 @@ final class LiveSettingsApplier
         $this->styles->switchTo($definition); // fragment styling (widgets hold the holder)
         $this->sheetThemer->apply($definition); // widget-level rules on the renderer's sheet
         $this->syntaxTheme->switchTo(TerminalThemeFactory::create($mode, $theme));
-        // Existing highlighters baked the old theme at construction, so rebuild
-        // them (the diff view re-highlights its shown hunks in the same step);
-        // buffers opened later pick up the new theme from the swapped holder.
-        foreach ($this->buffers->all() as $buffer) {
-            $buffer->highlighter->refreshTheme();
-        }
+        // Buffer highlighters are busted by HighlightThemeListener at priority
+        // -200 — after the plugin bridge, so a plugin backend that bakes the
+        // theme has rebuilt itself before core drops the caches.
         $this->gitDiff->refreshTheme();
         $this->helpViewer->refreshTheme(); // rendered help lines bake palette codes
         $this->dispatcher->dispatch(new ThemeChanged($theme));

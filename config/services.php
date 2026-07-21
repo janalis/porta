@@ -40,7 +40,9 @@ use Porta\Git\GitSettings;
 use Porta\Git\GitViewController;
 use Porta\Help\HelpViewerActions;
 use Porta\Highlight\ColorMode;
+use Porta\Highlight\HighlightPreferences;
 use Porta\Highlight\SwitchableTerminalTheme;
+use Porta\Highlight\SyntaxHighlightProviderSource;
 use Porta\Highlight\TerminalThemeFactory;
 use Porta\History\LocalHistory;
 use Porta\History\LocalHistoryController;
@@ -91,6 +93,7 @@ use Porta\Run\RunConfigs;
 use Porta\Run\RunController;
 use Porta\Search\Everywhere\SearchEverywhereController;
 use Porta\Search\Everywhere\SearchEverywhereFactory;
+use Porta\Search\TokenSpanProvider;
 use Porta\Search\ProjectSearchController;
 use Porta\Search\ResultContextProvider;
 use Porta\Search\SearchActions;
@@ -304,6 +307,17 @@ return static function (ContainerConfigurator $container, ContainerBuilder $buil
         ->factory([TerminalThemeFactory::class, 'createSwitchable'])
         ->args([env('enum:'.ColorMode::class.':PORTA_ANSI'), env('PORTA_THEME')]);
     $services->alias(TerminalTheme::class, SwitchableTerminalTheme::class);
+
+    // Which highlighting backend serves which language. The preferences come
+    // from the top-level `highlight` block; the plugin-supplied backends come
+    // from PluginManager through the interface Porta\Highlight owns, so the
+    // highlighting subsystem never depends on Porta\Plugin.
+    $services
+        ->set(HighlightPreferences::class)
+        ->factory([HighlightPreferences::class, 'fromConfig'])
+        ->args([env('PORTA_HIGHLIGHT')->json()]);
+    $services->alias(SyntaxHighlightProviderSource::class, PluginManager::class);
+    $services->alias(TokenSpanProvider::class, PluginManager::class);
 
     // The single public boundary: Ide resolves every service through this
     // locator, so the entries stay private (alive because referenced) and the

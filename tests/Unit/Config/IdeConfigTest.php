@@ -466,4 +466,50 @@ final class IdeConfigTest extends TestCase
         $this->assertArrayNotHasKey('demo:bad_value', $config->keymap, 'the value-shape check still applies');
         $this->assertContains('Keymap action "demo:bad_value" must map to a key or list of keys', $config->warnings);
     }
+
+    public function testHighlightBlockParsesDefaultAndPerLanguageOverrides(): void
+    {
+        $project = new TempProject(['.porta.json' => '{"highlight":{"default":"tempest","languages":{"rust":"chroma","jsonc":"chroma"}}}']);
+        $config = IdeConfig::load($project->dir);
+
+        $this->assertSame('tempest', $config->highlight['default']);
+        $this->assertSame(['rust' => 'chroma', 'jsonc' => 'chroma'], $config->highlight['languages']);
+        $this->assertSame([], $config->warnings);
+    }
+
+    public function testHighlightBlockDefaultsToEmptyWhenAbsent(): void
+    {
+        $project = new TempProject(['.porta.json' => '{}']);
+        $config = IdeConfig::load($project->dir);
+
+        $this->assertSame(['default' => '', 'languages' => []], $config->highlight);
+    }
+
+    public function testNonObjectHighlightBlockWarns(): void
+    {
+        $project = new TempProject(['.porta.json' => '{"highlight":"tempest"}']);
+        $config = IdeConfig::load($project->dir);
+
+        $this->assertSame(['default' => '', 'languages' => []], $config->highlight);
+        $this->assertContains('"highlight" in .porta.json must be an object', $config->warnings);
+    }
+
+    /** A non-string or empty id is dropped with a warning, not silently kept. */
+    public function testInvalidHighlighterIdsAreDroppedWithAWarning(): void
+    {
+        $project = new TempProject(['.porta.json' => '{"highlight":{"default":42,"languages":{"rust":7,"go":"","php":"chroma"}}}']);
+        $config = IdeConfig::load($project->dir);
+
+        $this->assertSame('', $config->highlight['default'], 'a non-string default is no preference');
+        $this->assertSame(['php' => 'chroma'], $config->highlight['languages']);
+        $this->assertCount(2, array_filter($config->warnings, static fn (string $w): bool => str_contains($w, 'must be a non-empty string')));
+    }
+
+    public function testNonObjectHighlightLanguagesIsIgnored(): void
+    {
+        $project = new TempProject(['.porta.json' => '{"highlight":{"languages":"nope"}}']);
+        $config = IdeConfig::load($project->dir);
+
+        $this->assertSame([], $config->highlight['languages']);
+    }
 }

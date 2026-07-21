@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace Porta\Search;
 
-use Porta\Highlight\CodeHighlighter;
+use Porta\Support\LanguageMap;
 
 /**
  * Post-filters project-search results by a language-aware {@see TokenScope}:
@@ -36,7 +36,7 @@ final class LanguageFilter
         /** @var array<int, bool> $keep result index => kept */
         $keep = [];
         foreach ($this->byPath($results) as $path => $indices) {
-            $language = CodeHighlighter::languageFor($path);
+            $language = LanguageMap::highlightForPath($path);
             $abs = $this->rootDir.'/'.$path;
             $content = is_file($abs) ? (string) file_get_contents($abs) : '';
             if (null === $language || '' === $content) {

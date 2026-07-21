@@ -6,7 +6,11 @@ namespace Porta\Plugin;
 
 use Porta\Config\CommandRegistry;
 use Porta\Config\KeyDispatch;
+use Porta\Highlight\CallableHighlightProvider;
+use Porta\Highlight\SyntaxHighlightProvider;
+use Porta\Highlight\SyntaxHighlightProviderSource;
 use Porta\Lsp\LanguageServerProvider;
+use Porta\Search\TokenSpanProvider;
 
 /**
  * The committed plugin state: commands, default keys, menu entries, hook
@@ -17,7 +21,7 @@ use Porta\Lsp\LanguageServerProvider;
  * an action method used before that (i.e. during activate()) hits the
  * {@see runtime()} gate.
  */
-final class PluginManager implements LanguageServerProvider
+final class PluginManager implements LanguageServerProvider, SyntaxHighlightProviderSource, TokenSpanProvider
 {
     /** @var list<array{plugin: string, id: string, label: string, handler: \Closure(): void, keys: list<string>}> */
     private array $commands = [];
@@ -29,6 +33,10 @@ final class PluginManager implements LanguageServerProvider
     private array $languageServers = [];
     /** @var list<array{plugin: string, tool: string, available: \Closure(): bool, via: list<array{0: string, 1: string}>}> committed install offers */
     private array $installers = [];
+    /** @var list<array{plugin: string, id: string, label: string, languages: \Closure(): list<string>, highlight: \Closure(string, string, \Closure(string): void): void, available: (\Closure(): bool)|null}> committed highlighting backends, in load order */
+    private array $highlighters = [];
+    /** @var list<array{plugin: string, languages: \Closure(): list<string>, classify: \Closure(string, string): (list<array{start: int, end: int}>|null)}> committed search classifiers, in load order */
+    private array $tokenSpans = [];
     /** @var list<string> */
     private array $warnings = [];
     /** @var array<string, true> loaded plugin names */
@@ -37,6 +45,8 @@ final class PluginManager implements LanguageServerProvider
     private int $registered = 0;
     /** @var array<string, true> plugins whose menu-enabled closure already reported a throw */
     private array $reportedWhens = [];
+    /** @var array<string, true> plugins whose highlighting backend already reported a throw */
+    private array $reportedHighlighters = [];
 
     private ?PluginRuntime $runtime = null;
 
@@ -94,6 +104,12 @@ final class PluginManager implements LanguageServerProvider
         }
         foreach ($api->bufferedInstallers() as $installer) {
             $this->installers[] = $installer;
+        }
+        foreach ($api->bufferedHighlighters() as $highlighter) {
+            $this->highlighters[] = $highlighter;
+        }
+        foreach ($api->bufferedTokenSpans() as $spans) {
+            $this->tokenSpans[] = $spans;
         }
         $this->settings->registerFor($name, $api->bufferedSettings());
     }
@@ -179,9 +195,11 @@ final class PluginManager implements LanguageServerProvider
         $this->menuSpecs = array_values(array_filter($this->menuSpecs, static fn (PluginMenuSpec $spec): bool => $name !== $spec->plugin));
         $this->languageServers = array_values(array_filter($this->languageServers, static fn (array $server): bool => $name !== $server['plugin']));
         $this->installers = array_values(array_filter($this->installers, static fn (array $installer): bool => $name !== $installer['plugin']));
+        $this->highlighters = array_values(array_filter($this->highlighters, static fn (array $highlighter): bool => $name !== $highlighter['plugin']));
+        $this->tokenSpans = array_values(array_filter($this->tokenSpans, static fn (array $spans): bool => $name !== $spans['plugin']));
         $this->registered = \count($this->commands);
 
-        unset($this->reportedWhens[$name]);
+        unset($this->reportedWhens[$name], $this->reportedHighlighters[$name]);
         $registry->remove($removed);
         $this->events->removeFor($name);
         $this->settings->removeFor($name);
@@ -240,6 +258,91 @@ final class PluginManager implements LanguageServerProvider
     public function runtime(): PluginRuntime
     {
         return $this->runtime ?? throw new PluginException('IDE actions are unavailable during activate() — call them from a command handler or event hook');
+    }
+
+    /**
+     * The plugin-supplied highlighting backends, in load order.
+     *
+     * Each arrives with its closures already wrapped in this plugin's fault
+     * barrier, so a consumer cannot forget to guard them: a throwing claim list
+     * declines the language, and a throwing highlight pass reports once and
+     * re-throws for {@see \Porta\Highlight\CodeHighlighter} to turn into plain
+     * text. Reporting is once-per-plugin because this runs on the typing path —
+     * the same reasoning as {@see wrapWhen()}, which guards menu closures.
+     *
+     * @return list<SyntaxHighlightProvider>
+     */
+    public function highlightProviders(): array
+    {
+        $providers = [];
+        foreach ($this->highlighters as $highlighter) {
+            $plugin = $highlighter['plugin'];
+            $languages = $highlighter['languages'];
+            $highlight = $highlighter['highlight'];
+            $providers[] = new CallableHighlightProvider(
+                $highlighter['id'],
+                function () use ($plugin, $languages): array {
+                    try {
+                        return $languages();
+                    } catch (\Throwable $error) {
+                        $this->reportHighlightFailure($plugin, $error);
+
+                        return [];
+                    }
+                },
+                function (string $content, string $language, \Closure $deliver) use ($plugin, $highlight): void {
+                    try {
+                        $highlight($content, $language, $deliver);
+                    } catch (\Throwable $error) {
+                        $this->reportHighlightFailure($plugin, $error);
+
+                        throw $error;
+                    }
+                },
+                $highlighter['available'],
+            );
+        }
+
+        return $providers;
+    }
+
+    /**
+     * The first plugin classifier (in load order) that claims $language and
+     * returns spans. A throwing claim list or classifier declines: search's
+     * scope filter degrades to a no-op rather than dropping results.
+     *
+     * @return list<array{start: int, end: int}>|null
+     */
+    public function commentStringSpans(string $content, string $language): ?array
+    {
+        foreach ($this->tokenSpans as $spans) {
+            try {
+                $claimed = $spans['languages']();
+                if (!\in_array('*', $claimed, strict: true) && !\in_array($language, $claimed, strict: true)) {
+                    continue;
+                }
+                $result = $spans['classify']($content, $language);
+            } catch (\Throwable $error) {
+                $this->reportHighlightFailure($spans['plugin'], $error);
+
+                continue;
+            }
+            if (null !== $result) {
+                return $result;
+            }
+        }
+
+        return null;
+    }
+
+    /** Report a highlighting fault at most once per plugin — this runs while typing. */
+    private function reportHighlightFailure(string $plugin, \Throwable $error): void
+    {
+        if (array_key_exists($plugin, $this->reportedHighlighters)) {
+            return;
+        }
+        $this->reportedHighlighters[$plugin] = true;
+        $this->reportFailure($plugin, $error);
     }
 
     /** Report a plugin fault: flash when the IDE is up, else a boot warning. */

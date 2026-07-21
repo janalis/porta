@@ -6,14 +6,15 @@ namespace Porta\Tests\Unit\Highlight;
 
 use PHPUnit\Framework\TestCase;
 use Porta\Highlight\CodeHighlighter;
+use Porta\Tests\Support\ClosureHighlightProvider;
 
 final class CodeHighlighterFallbackTest extends TestCase
 {
     public function testParserExceptionFallsBackToPlainLines(): void
     {
-        $highlighter = new CodeHighlighter(static function (): string {
+        $highlighter = new CodeHighlighter(new ClosureHighlightProvider(static function (): string {
             throw new \RuntimeException('parser exploded');
-        });
+        }));
         $highlighter->setFile('x.php');
 
         $this->assertSame(['<?php', 'echo 1;'], $highlighter->highlight(['<?php', 'echo 1;'], 1));
@@ -21,7 +22,7 @@ final class CodeHighlighterFallbackTest extends TestCase
 
     public function testLineCountMismatchFallsBackToPlainLines(): void
     {
-        $highlighter = new CodeHighlighter(static fn (): string => 'one line no matter what');
+        $highlighter = new CodeHighlighter(new ClosureHighlightProvider(static fn (): string => 'one line no matter what'));
         $highlighter->setFile('x.php');
 
         $this->assertSame(['a', 'b'], $highlighter->highlight(['a', 'b'], 1));

@@ -21,22 +21,9 @@ final class ProjectPaths
         return str_starts_with($real, $root.'/') ? substr($real, \strlen($root) + 1) : $real;
     }
 
-    /** LSP languageId for a file, by extension. */
+    /** LSP languageId for a file, by extension. See {@see LanguageMap}. */
     public static function languageId(string $path): string
     {
-        return match (strtolower(pathinfo($path, \PATHINFO_EXTENSION))) {
-            'php', 'phtml' => 'php',
-            'js', 'mjs' => 'javascript',
-            'ts' => 'typescript',
-            'py' => 'python',
-            'json' => 'json',
-            'css' => 'css',
-            'scss' => 'scss',
-            'html', 'htm' => 'html',
-            'md' => 'markdown',
-            'yaml', 'yml' => 'yaml',
-            'twig' => 'twig',
-            default => 'plaintext',
-        };
+        return LanguageMap::lspForPath($path);
     }
 }

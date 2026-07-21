@@ -151,4 +151,60 @@ final class AsyncProcessTest extends TestCase
         $this->await(static fn () => false, 0.1);
         $this->assertFalse($exited, 'the exit callback never fires after cancel');
     }
+
+    /**
+     * The regression this exists for: a payload larger than the OS pipe buffer
+     * (64 KB) used to be written with one blocking fwrite, so the loop stalled
+     * until the child drained it — and if the child was itself waiting on us,
+     * forever. The writer now feeds the pipe from an onWritable watcher.
+     */
+    public function testStdinLargerThanThePipeBufferDoesNotStall(): void
+    {
+        $payload = str_repeat('x', 512 * 1024); // 8x a 64KB pipe buffer
+        $process = new AsyncProcess(
+            [\PHP_BINARY, '-r', 'echo strlen(stream_get_contents(STDIN));'],
+            (string) getcwd(),
+            stdin: $payload,
+        );
+
+        $out = null;
+        $this->assertTrue($process->start(static function (int $code, string $stdout) use (&$out): void {
+            $out = $stdout;
+        }));
+
+        $this->await(static fn (): bool => null !== $out, timeout: 10.0);
+
+        $this->assertSame((string) \strlen($payload), $out, 'the child received every byte');
+    }
+
+    /**
+     * The discriminating case: a child that never reads stdin. Once the 64KB
+     * pipe buffer fills there is no reader to drain it, so the old blocking
+     * fwrite parked the caller inside start() until the child exited — 300ms
+     * of dead event loop here, and unbounded for a longer-lived child. The
+     * watcher simply stops being writable and start() returns at once.
+     *
+     * Measured around start() rather than with a tick counter: the blocking
+     * write happened before any loop turn, so ticks could not observe it.
+     */
+    public function testStartReturnsImmediatelyWhenTheChildNeverReadsStdin(): void
+    {
+        $process = new AsyncProcess(
+            [\PHP_BINARY, '-r', 'usleep(400000); echo "done";'], // never touches STDIN
+            (string) getcwd(),
+            stdin: str_repeat('y', 512 * 1024),
+        );
+
+        $out = null;
+        $before = hrtime(as_number: true);
+        $process->start(static function (int $code, string $stdout) use (&$out): void {
+            $out = $stdout;
+        });
+        $spentInStart = (hrtime(as_number: true) - $before) / 1e6;
+
+        $this->await(static fn (): bool => null !== $out, timeout: 10.0);
+
+        $this->assertSame('done', $out);
+        $this->assertLessThan(100.0, $spentInStart, 'start() must not block on the child draining stdin');
+    }
 }

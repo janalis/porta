@@ -111,7 +111,6 @@ final class SettingsViewControllerTest extends TestCase
             TerminalThemeFactory::createSwitchable(ColorMode::Ansi, 'dark'),
             new CursorStyle(),
             new Translator('en'),
-            new BufferManager(),
             new DiffViewWidget(new Translator('en')),
             new HelpViewerWidget(),
             new TabBarWidget(),

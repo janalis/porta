@@ -78,15 +78,8 @@ final class AsyncProcess
 
         $this->process = $process;
         if (null !== $this->stdin) {
-            // Write-and-close before watching stdout. Payloads here are patch-
-            // sized (well under the pipe buffer), so a blocking write cannot
-            // stall the loop the way streaming would.
             /** @var array{0: resource, 1: resource} $pipes */
-            // @mago-expect lint:no-error-control-operator -- fwrite to a child's stdin that has already exited (fd still a live resource) raises an unavoidable EPIPE warning that no is_resource guard prevents.
-            @fwrite($pipes[0], $this->stdin);
-            if (\is_resource($pipes[0])) {
-                fclose($pipes[0]);
-            }
+            $this->feed($pipes[0], $this->stdin);
         }
         /** @var array{1: resource, 2?: resource} $pipes */
         $this->openStreams = $this->captureStderr ? 2 : 1;
@@ -103,6 +96,42 @@ final class AsyncProcess
         }
 
         return true;
+    }
+
+    /**
+     * Write $payload into the child's stdin without blocking, closing the pipe
+     * once it has all been handed over.
+     *
+     * A single `fwrite` only works while the payload fits the OS pipe buffer
+     * (64 KB on macOS and Linux) — beyond that the write blocks until the child
+     * drains it, which on a single event loop means the whole IDE stalls waiting
+     * for a process that may itself be waiting on us. Feeding it from an
+     * `onWritable` watcher keeps arbitrarily large payloads (a whole source file
+     * handed to an out-of-process highlighter) off the critical path.
+     *
+     * @param resource $stream
+     */
+    private function feed($stream, string $payload): void
+    {
+        stream_set_blocking($stream, enable: false);
+        $offset = 0;
+        $this->watchers[] = EventLoop::onWritable($stream, function (string $watcherId) use ($stream, $payload, &$offset): void {
+            // @mago-expect lint:no-error-control-operator -- writing to a child that already exited raises an unavoidable EPIPE warning no is_resource guard prevents.
+            $written = \is_resource($stream) ? @fwrite($stream, substr($payload, $offset)) : false;
+            if (\is_int($written)) {
+                $offset += $written;
+            }
+
+            if (false !== $written && $offset < \strlen($payload)) {
+                return; // the pipe is full; resume when it drains
+            }
+
+            EventLoop::cancel($watcherId);
+            $this->watchers = array_values(array_filter($this->watchers, static fn (string $id): bool => $id !== $watcherId));
+            if (\is_resource($stream)) {
+                fclose($stream);
+            }
+        });
     }
 
     /**

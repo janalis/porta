@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Porta\Plugin;
 
 use Porta\Config\IdeConfig;
+use Tempest\Highlight\TerminalTheme;
 
 /**
  * Owns the plugin subsystem's construction and one-time boot load. The
@@ -25,11 +26,11 @@ final class PluginHost
 
     private readonly PluginLoader $loader;
 
-    public function __construct(IdeConfig $config, PluginEvents $events, string $rootDir)
+    public function __construct(IdeConfig $config, PluginEvents $events, string $rootDir, ?TerminalTheme $syntaxTheme = null)
     {
         $this->settings = new PluginSettings($rootDir, $config->plugins);
         $this->manager = new PluginManager($events, $this->settings);
-        $this->loader = new PluginLoader($rootDir, PluginLoader::globalBase(), $this->settings, PluginLoader::embeddedDir(), $config->disabledPlugins, $config->enabledPlugins);
+        $this->loader = new PluginLoader($rootDir, PluginLoader::globalBase(), $this->settings, PluginLoader::embeddedDir(), $config->disabledPlugins, $config->enabledPlugins, $syntaxTheme);
     }
 
     /** Load and activate every plugin file exactly once per boot. */
