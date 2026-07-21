@@ -9,6 +9,7 @@ use Porta\Editor\Buffer;
 use Porta\Editor\BufferManager;
 use Porta\Editor\BufferService;
 use Porta\Ide;
+use Porta\Onboarding\OnboardingState;
 use Porta\Tests\Support\TempProject;
 use Porta\Widget\StatusBarWidget;
 use Symfony\Component\Tui\Terminal\VirtualTerminal;
@@ -35,6 +36,8 @@ final class EditorConfigIntegrationTest extends TestCase
 
     private function ide(TempProject $project): Ide
     {
+        new OnboardingState($project->dir)->markWelcomeSeen();
+
         return new Ide($project->dir, null, new VirtualTerminal(columns: 80, rows: 24));
     }
 

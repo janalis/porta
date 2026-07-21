@@ -6,6 +6,7 @@ namespace Porta\Tests\E2e;
 
 use PHPUnit\Framework\TestCase;
 use Porta\Ide;
+use Porta\Onboarding\OnboardingState;
 use Porta\Tests\Support\TempProject;
 use Revolt\EventLoop;
 use Symfony\Component\Tui\Ansi\AnsiUtils;
@@ -58,6 +59,7 @@ final class IdeTest extends TestCase
         );
 
         $this->terminal = new VirtualTerminal(columns: 100, rows: 30);
+        new OnboardingState($this->project->dir)->markWelcomeSeen();
         $this->ide = new Ide($this->project->dir, $this->project->path('src/Demo.php'), $this->terminal);
     }
 

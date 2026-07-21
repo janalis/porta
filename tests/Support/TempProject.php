@@ -66,6 +66,13 @@ final class TempProject
         $this->git('config', 'user.email', 'test@porta.dev');
         $this->git('config', 'user.name', 'Porta Test');
         $this->git('config', 'commit.gpgsign', 'false');
+
+        // `.porta/` is machine-local state (session, layout, the onboarding
+        // marker). Ignore it through .git/info/exclude rather than a committed
+        // .gitignore: that file is repo-local, so it adds neither an untracked
+        // entry to the changes list nor a row to the file tree — both of which
+        // fixtures assert on. A real project would gitignore `.porta/` instead.
+        $this->write('.git/info/exclude', ".porta/\n");
     }
 
     /** Stage everything and commit with $message; returns the new commit's short hash. */

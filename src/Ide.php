@@ -33,6 +33,7 @@ use Porta\Lsp\LspSessionPool;
 use Porta\Lsp\NavigationController;
 use Porta\Lsp\RefactorController;
 use Porta\Lsp\WorkspaceEditor;
+use Porta\Onboarding\OnboardingState;
 use Porta\Onboarding\WelcomeViewController;
 use Porta\Plugin\PluginHost;
 use Porta\Plugin\PluginLifecycle;
@@ -50,6 +51,7 @@ use Porta\Ui\MenuRebuilder;
 use Porta\Ui\NonBlockingTerminal;
 use Porta\Ui\Notifier;
 use Porta\Ui\TerminalStateRefresher;
+use Porta\Ui\WorkspaceViews;
 use Porta\Widget\CodeEditorWidget;
 use Porta\Widget\ContextMenu;
 use Porta\Widget\DebugPanelWidget;
@@ -269,6 +271,25 @@ final class Ide
     }
 
     /**
+     * Open the Welcome screen the first time a project is opened, and record
+     * that it happened so it never reappears on its own.
+     *
+     * Marked as seen whether or not the user works through the steps: it is a
+     * signpost, not a checklist, and re-showing it would nag. `ide_welcome`
+     * brings it back on demand.
+     */
+    private function showWelcomeOnFirstRun(): void
+    {
+        $onboarding = $this->service(OnboardingState::class);
+        if ($onboarding->hasSeenWelcome()) {
+            return;
+        }
+
+        $onboarding->markWelcomeSeen();
+        $this->service(WorkspaceViews::class)->openWelcome();
+    }
+
+    /**
      * Resolve a shared service from the container, typed to the requested class.
      *
      * @template T of object
@@ -393,6 +414,11 @@ final class Ide
             if (!$openedInitial && !$this->sessionRestorer->restore()) {
                 $this->tui->setFocus($this->tree);
             }
+
+            // Last: the initial file and the restored session decide what the
+            // editor shows, and both claim focus. Welcome has to come after so
+            // it owns the main area, and so Esc reveals a settled editor.
+            $this->showWelcomeOnFirstRun();
 
             $this->tui->run();
         } finally {

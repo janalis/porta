@@ -21,6 +21,7 @@ use Porta\Ide;
 use Porta\Lsp\FormatOnSave;
 use Porta\Lsp\LspSessionPool;
 use Porta\Lsp\WorkspaceEditor;
+use Porta\Onboarding\OnboardingState;
 use Porta\Search\TodoTags;
 use Porta\Settings\LiveSettingsApplier;
 use Porta\Tests\Support\FakeScheduler;
@@ -369,6 +370,7 @@ final class SettingsControllerTest extends TestCase
     public function testUnknownKeyFlashesInsteadOfTogglingAnything(): void
     {
         $project = new TempProject(['composer.json' => '{}']);
+        new OnboardingState($project->dir)->markWelcomeSeen();
         $ide = new Ide($project->dir, null, new VirtualTerminal(columns: 80, rows: 24));
         $settings = new \ReflectionProperty($ide, 'settings')->getValue($ide);
         \assert($settings instanceof SettingsController, description: 'the settings property is a SettingsController');

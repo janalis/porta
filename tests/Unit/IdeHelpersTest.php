@@ -14,6 +14,7 @@ use Porta\Lsp\NavigationController;
 use Porta\Lsp\RefactorController;
 use Porta\Lsp\Uri;
 use Porta\Lsp\WorkspaceEditor;
+use Porta\Onboarding\OnboardingState;
 use Porta\Support\ProjectPaths;
 use Porta\Tests\Support\TempProject;
 use Symfony\Component\Tui\Terminal\VirtualTerminal;
@@ -30,6 +31,7 @@ final class IdeHelpersTest extends TestCase
     protected function setUp(): void
     {
         $this->project = new TempProject(['composer.json' => '{}']);
+        new OnboardingState($this->project->dir)->markWelcomeSeen();
         $this->ide = new Ide($this->project->dir, null, new VirtualTerminal(columns: 80, rows: 24));
     }
 

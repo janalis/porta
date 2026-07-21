@@ -6,6 +6,7 @@ namespace Porta\Tests\E2e;
 
 use PHPUnit\Framework\TestCase;
 use Porta\Ide;
+use Porta\Onboarding\OnboardingState;
 use Porta\Tests\Support\TempProject;
 use Revolt\EventLoop;
 use Symfony\Component\Tui\Terminal\VirtualTerminal;
@@ -29,6 +30,7 @@ final class IdeResponsiveTest extends TestCase
     {
         $project = new TempProject(['src/Demo.php' => "<?php\n"]);
         $terminal = new VirtualTerminal(columns: 100, rows: 30);
+        new OnboardingState($project->dir)->markWelcomeSeen();
         $ide = new Ide($project->dir, $project->path('src/Demo.php'), $terminal, lspCommand: null);
         $tui = $ide->getTui();
 

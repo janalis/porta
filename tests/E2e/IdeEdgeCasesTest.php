@@ -10,6 +10,7 @@ use Porta\Editor\LineNumberMode;
 use Porta\Editor\OpenFocus;
 use Porta\Editor\SelectionMode;
 use Porta\Ide;
+use Porta\Onboarding\OnboardingState;
 use Porta\Tests\Support\RunsIde;
 use Porta\Tests\Support\TempProject;
 use Porta\Ui\Glyphs;
@@ -3175,6 +3176,7 @@ final class IdeEdgeCasesTest extends TestCase
         putenv('PATH=/nonexistent');
         $project = new TempProject(['a.php' => "<?php\n"]);
         $terminal = new VirtualTerminal(columns: 80, rows: 20);
+        new OnboardingState($project->dir)->markWelcomeSeen();
         $ide = new Ide($project->dir, $project->path('a.php'), $terminal);
         $tui = $ide->getTui();
 
@@ -3749,6 +3751,7 @@ final class IdeEdgeCasesTest extends TestCase
 
         // First run: open A and B, move the cursor, quit.
         $terminal = new VirtualTerminal(columns: 100, rows: 24);
+        new OnboardingState($project->dir)->markWelcomeSeen();
         $ide = new Ide($project->dir, $project->path('A.php'), $terminal);
         $tui = $ide->getTui();
         EventLoop::delay(0.3, static function () use ($tui): void {
@@ -3771,6 +3774,7 @@ final class IdeEdgeCasesTest extends TestCase
 
         // Second run with NO file argument: the session reopens.
         $terminal2 = new VirtualTerminal(columns: 100, rows: 24);
+        new OnboardingState($project->dir)->markWelcomeSeen();
         $ide2 = new Ide($project->dir, null, $terminal2);
         $tui2 = $ide2->getTui();
         EventLoop::delay(0.3, function () use ($tui2): void {
@@ -4183,6 +4187,7 @@ final class IdeEdgeCasesTest extends TestCase
         ]);
 
         $terminal = new VirtualTerminal(columns: 160, rows: 24);
+        new OnboardingState($project->dir)->markWelcomeSeen();
         $ide = new Ide($project->dir, $project->path('src/Demo.php'), $terminal);
         $tui = $ide->getTui();
 
@@ -4301,6 +4306,7 @@ final class IdeEdgeCasesTest extends TestCase
         putenv('PATH=/nonexistent');
         $project = new TempProject(['a.php' => "<?php\n"]);
         $terminal = new VirtualTerminal(columns: 80, rows: 20);
+        new OnboardingState($project->dir)->markWelcomeSeen();
         $ide = new Ide($project->dir, $project->path('a.php'), $terminal);
         $tui = $ide->getTui();
 
@@ -4320,6 +4326,7 @@ final class IdeEdgeCasesTest extends TestCase
         putenv('PATH=/nonexistent');
         $project = new TempProject(['a.php' => "<?php\n"]);
         $terminal = new VirtualTerminal(columns: 80, rows: 20);
+        new OnboardingState($project->dir)->markWelcomeSeen();
         $ide = new Ide($project->dir, $project->path('a.php'), $terminal);
         $tui = $ide->getTui();
 
@@ -6283,6 +6290,7 @@ final class IdeEdgeCasesTest extends TestCase
         putenv('PATH=/nonexistent');
         $project = new TempProject(['A.php' => "l0\nl1\nl2\nl3\nl4\nl5\n"]);
         $terminal = new VirtualTerminal(columns: 80, rows: 24);
+        new OnboardingState($project->dir)->markWelcomeSeen();
         $ide = new Ide($project->dir, $project->path('A.php'), $terminal, null, initialLine: 4);
         $tui = $ide->getTui();
 
@@ -6304,6 +6312,7 @@ final class IdeEdgeCasesTest extends TestCase
     {
         $project = new TempProject(['A.php' => "<?php\n"]);
         $terminal = new VirtualTerminal(columns: 100, rows: 24);
+        new OnboardingState($project->dir)->markWelcomeSeen();
         $ide = new Ide($project->dir, $project->path('A.php'), $terminal, null, lspDisabled: true);
         $tui = $ide->getTui();
 

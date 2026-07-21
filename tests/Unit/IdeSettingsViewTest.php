@@ -8,6 +8,7 @@ use PHPUnit\Framework\TestCase;
 use Porta\Config\CommandRegistry;
 use Porta\Git\GitViewController;
 use Porta\Ide;
+use Porta\Onboarding\OnboardingState;
 use Porta\Settings\SettingsViewController;
 use Porta\Tests\Support\TempProject;
 use Symfony\Component\Tui\Terminal\VirtualTerminal;
@@ -46,6 +47,7 @@ final class IdeSettingsViewTest extends TestCase
         $project->initGit();
         $project->commitAll('init');
 
+        new OnboardingState($project->dir)->markWelcomeSeen();
         $this->ide = new Ide($project->dir, $project->path('a.php'), new VirtualTerminal(columns: 100, rows: 24));
         $this->commands = new \ReflectionProperty($this->ide, 'commands')->getValue($this->ide);
         $views = new \ReflectionProperty($this->ide, 'locator')->getValue($this->ide)->get(\Porta\Ui\WorkspaceViews::class);

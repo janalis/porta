@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Porta\Tests\Support;
 
 use Porta\Ide;
+use Porta\Onboarding\OnboardingState;
 use Revolt\EventLoop;
 use Symfony\Component\Tui\Terminal\VirtualTerminal;
 use Symfony\Component\Tui\Tui;
@@ -22,12 +23,39 @@ use Symfony\Component\Tui\Tui;
  */
 trait RunsIde
 {
+    /** Set by {@see allowFirstRunWelcome()} for the tests that want the real first boot. */
+    private bool $allowFirstRunWelcome = false;
+
+    /**
+     * Let the Welcome screen open on this fixture's first boot.
+     *
+     * Every other fixture is pre-marked as seen: a TempProject is a fresh
+     * project by construction, so without this the Welcome view would swap over
+     * the editor in every E2e test and none of them could see the pane they are
+     * asserting on.
+     */
+    private function allowFirstRunWelcome(): void
+    {
+        $this->allowFirstRunWelcome = true;
+    }
+
+    /** Pre-record the Welcome screen as seen, unless the test asked for first-run. */
+    private function suppressFirstRunWelcome(TempProject $project): void
+    {
+        if ($this->allowFirstRunWelcome) {
+            return;
+        }
+
+        new OnboardingState($project->dir)->markWelcomeSeen();
+    }
+
     /**
      * @param array<int, callable> $steps ms => step($tui, $terminal, $ide)
      */
     private function runIde(TempProject $project, ?string $file, array $steps, ?float $duration = null, ?string $docsDir = null, int $columns = 160): VirtualTerminal
     {
         $terminal = new VirtualTerminal(columns: $columns, rows: 24);
+        $this->suppressFirstRunWelcome($project);
         $ide = new Ide($project->dir, $file, $terminal, docsDir: $docsDir);
         $tui = $ide->getTui();
 
