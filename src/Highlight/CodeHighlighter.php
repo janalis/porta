@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Porta\Highlight;
 
 use Porta\Support\LanguageMap;
+use Porta\Support\Scheduler;
 use Porta\Ui\Sgr;
 use Symfony\Component\Tui\Ansi\AnsiCodeTracker;
 use Tempest\Highlight\TerminalTheme;
@@ -41,6 +42,13 @@ final class CodeHighlighter implements HighlightSink
 
     /** Consecutive backend faults before this buffer falls back to plain text. */
     private const int MAX_STRIKES = 3;
+
+    /**
+     * How long an asynchronous backend has to answer before the request is
+     * abandoned. Generous next to chroma's measured 40-70ms — this is a
+     * liveness backstop for a backend that hangs, not a latency target.
+     */
+    private const float ANSWER_TIMEOUT_SECONDS = 2.0;
 
     private readonly TerminalTheme $syntaxTheme;
 
@@ -84,6 +92,9 @@ final class CodeHighlighter implements HighlightSink
 
     private readonly \Closure $onRepaint;
 
+    /** Timer id for the in-flight request's answer deadline; null when none is armed. */
+    private ?string $timeoutTimer = null;
+
     /**
      * @param SyntaxHighlightProvider|null $provider    the backend; defaults to the built-in
      *                                                  Tempest one. Injectable so tests can drive
@@ -94,8 +105,12 @@ final class CodeHighlighter implements HighlightSink
      * @param \Closure(): void|null        $onRepaint   called when an *asynchronous* delivery lands,
      *                                                  so the frame that shows it gets requested
      */
-    public function __construct(?SyntaxHighlightProvider $provider = null, ?TerminalTheme $syntaxTheme = null, ?\Closure $onRepaint = null)
-    {
+    public function __construct(
+        ?SyntaxHighlightProvider $provider = null,
+        ?TerminalTheme $syntaxTheme = null,
+        ?\Closure $onRepaint = null,
+        private readonly ?Scheduler $scheduler = null,
+    ) {
         $this->syntaxTheme = $syntaxTheme ?? new DarkTerminalTheme();
         $this->provider = $provider ?? new TempestHighlightProvider($this->syntaxTheme);
         $this->onRepaint = $onRepaint ?? static function (): void {};
@@ -206,6 +221,7 @@ final class CodeHighlighter implements HighlightSink
         }
 
         $this->asyncBackend = true;
+        $this->armAnswerDeadline($version);
 
         // Asynchronous: paint provisionally until the answer lands. Carrying the
         // previous colors forward only works when the shape still matches.
@@ -237,6 +253,7 @@ final class CodeHighlighter implements HighlightSink
             return;
         }
 
+        $this->disarmAnswerDeadline();
         $this->cache = $result;
         $this->cacheVersion = $version;
         $this->resolvedVersion = $version;
@@ -259,10 +276,48 @@ final class CodeHighlighter implements HighlightSink
             return;
         }
 
+        $this->disarmAnswerDeadline();
         $this->recordFailure($error);
         $this->inFlightVersion = -1;
         $this->inFlightLines = null;
         $this->lastRawLines = null;
+    }
+
+    /**
+     * Give the in-flight request a deadline.
+     *
+     * The strike counter alone only catches a backend that *fails*; one that
+     * dispatches and never answers would leave the buffer provisionally painted
+     * and re-dispatch on every edit forever. On expiry the request is forgotten,
+     * so an answer arriving later is dropped by the ordinary staleness check.
+     */
+    private function armAnswerDeadline(int $version): void
+    {
+        $scheduler = $this->scheduler;
+        if (null === $scheduler) {
+            return;
+        }
+
+        $this->disarmAnswerDeadline();
+        $this->timeoutTimer = $scheduler->delay(self::ANSWER_TIMEOUT_SECONDS, function () use ($version): void {
+            $this->timeoutTimer = null;
+            if ($version !== $this->inFlightVersion) {
+                return;
+            }
+            $this->recordFailure(new \RuntimeException('highlighter did not answer in time'));
+            $this->inFlightVersion = -1;
+            $this->inFlightLines = null;
+        });
+    }
+
+    private function disarmAnswerDeadline(): void
+    {
+        if (null === $this->timeoutTimer) {
+            return;
+        }
+
+        $this->scheduler?->cancel($this->timeoutTimer);
+        $this->timeoutTimer = null;
     }
 
     /**

@@ -216,6 +216,62 @@ and `Editor/EditorActions` layer multi-cursor and editing operations; `Widget/Co
 + `Widget/Render/EditorRenderer` render the viewport (the caret is spliced in as a zero-width
 APC marker that `ScreenWriter` converts to a hardware cursor position).
 
+**Syntax highlighting is pluggable; the engine is not privileged.** `Highlight/CodeHighlighter`
+is per-buffer and owns the caching, the document-version bookkeeping, the 512 KB cap, the
+line-count guard and the `AnsiCodeTracker` per-line SGR re-open. The engine behind it is a
+`Highlight/SyntaxHighlightProvider` — `id()` / `supports(language)` /
+`highlight(HighlightRequest, HighlightSink)`.
+
+- **The seam sits *below* `highlight()`'s version-cache check** (`CodeHighlighter.php`, the
+  `$version === $this->cacheVersion` early return), so a backend runs once per *document
+  version*, not once per frame. Wire it above and cursor blink invokes third-party code;
+  `HighlightProviderTest` pins this with an N-renders-one-call test. Don't move it.
+- **One delivery path for sync and async.** A synchronous backend calls `$sink->deliver()`
+  before returning; an asynchronous one returns and delivers later. Core tells them apart by
+  whether the cache moved, so there is a single state machine. `deliver()` drops anything whose
+  version isn't the in-flight one — that check covers stale, abandoned and unsolicited answers.
+- **Async is paint-then-refine**: paint the previous cache (or plain, when the line count
+  changed), then repaint on delivery. Delivery both **invalidates the editor widget and**
+  requests a frame — widgets memoise rendered lines, so `requestRender()` alone repaints from a
+  stale cache. Async requests carry a `Support/Scheduler` deadline; three faults (throw, mangled
+  line count, or timeout) drop the backend to plain for that buffer.
+- **The incremental splice is synchronous-only.** It re-highlights one line inside the frame,
+  which an async backend cannot do, and splicing two engines' colors into one cache is incoherent.
+- Resolution (`Highlight/HighlightRegistry`): configured id → first claiming plugin in load
+  order → `PlainTextHighlightProvider`. **There is no built-in engine in that chain** — Tempest
+  is the bundled `tempest` plugin. Plain is constructed, never resolved, so it cannot be removed.
+  Loose fragments (diff hunks, the empty-editor placeholder) bypass the registry entirely
+  (`CodeHighlighterFactory::forFragments()`): they are non-contiguous lines from different files
+  under a reused version counter.
+- Selection lives in a **top-level `.porta.json` `highlight` block** (`{default, languages}`),
+  keyed by **grammar name**. Not under `settings` (it coerces every value to a scalar, so it
+  cannot nest) and not under `languages` (LSP-keyed, which would leave `jsonc`, `terraform`,
+  `blade`, `sql`, `bash`, `diff` and `ini` unconfigurable). Travels via `PORTA_HIGHLIGHT`.
+- `Support/LanguageMap` is the single source of truth for "what language is this file?", with
+  **two columns**: the highlighting grammar name and the LSP `languageId`. They deliberately
+  differ (`tsconfig.json` is `jsonc` but LSP must hear `json`). A file with no entry resolves to
+  `null` and **no backend is ever asked** — that is why languages with no built-in grammar are
+  still named there.
+- `Highlight/TempestBackend` (the house grammars: PHP docblocks, JSON, JSONC) and the four
+  `TerminalTheme` classes stay in `src/` deliberately: `tempest/highlight` is a composer
+  requirement the diff view and project search use directly, and `.porta/plugins` is **outside
+  the 100% coverage gate** — moving grammars there would launder them past it. Bundled plugin
+  files are registration only.
+- Plugins register via `PluginApi::registerHighlighter()` and, separately,
+  `registerTokenSpans()` for project search's comment/string classification. Separate because
+  spans run once per *matched file* (synchronous, off the render path) and degrade to
+  "classify nothing"; a subprocess backend should decline them (500 hits = 500 processes).
+  Both are consumed through interfaces the *consuming* namespace owns
+  (`Highlight/SyntaxHighlightProviderSource`, `Search/TokenSpanProvider`), so neither subsystem
+  depends on `Porta\Plugin` — the `Lsp/LanguageServerProvider` precedent.
+- **Tests install `tempest` as a *global* plugin** via `PORTA_HOME=tests/Support/fixtures/home`
+  (global plugins are opt-out, so no per-project config). Writing config or plugin files into
+  each `TempProject` was tried and rejected — it perturbs the git fixtures (working-tree
+  assertions) and the tree/tab fixtures. The suites that *enumerate* plugins
+  (`IdeEmbeddedPluginsTest`, `IdePhpLspPluginsTest`, one `IdeEdgeCasesTest` case) opt out via
+  `PORTA_HOME` in `setUp` and **restore it in `tearDown`** — paratest reuses the worker, and a
+  leaked value silently uncolors later tests.
+
 **LSP.** `Lsp/LspSessionPool` routes traffic to per-language sessions started lazily on the first
 `didOpen` of a matching file; sessions are keyed by command (shared processes for JS/TS on one
 server). Feature controllers (`Lsp/NavigationController`, `Lsp/RefactorController`,
@@ -242,9 +298,13 @@ and owns cross-event drag/click state. Hit-testing uses the renderer's per-widge
 **Plugins.** User PHP loaded at boot from three sources in precedence order —
 `<project>/.porta/plugins/*/plugin.php`, `~/.porta/plugins/*/plugin.php` (`PORTA_HOME` overrides
 the home dir), and the plugins **bundled in the Porta package** (`PORTA_EMBEDDED_PLUGINS`
-overrides; earlier sources shadow later ones by directory name; phpunit pins BOTH env vars to
-`/nonexistent`, so tests opt in via putenv). Names in `.porta.json`'s `disabledPlugins` are
-skipped at boot. The subsystem is container-owned: `Plugin/PluginHost` builds the
+overrides; earlier sources shadow later ones by directory name). Project and global plugins are
+**opt-out** (loaded by default); **bundled ones are opt-in** — only names in `enabledPlugins`
+load, which is why the shipped `tempest` highlighter is off unless asked for. Names in
+`disabledPlugins` are skipped at boot in every source. phpunit pins `PORTA_EMBEDDED_PLUGINS` to
+`/nonexistent` (bundled plugins opt in via putenv) and points `PORTA_HOME` at
+`tests/Support/fixtures/home`, which installs `tempest` globally so the suite renders coloured.
+The subsystem is container-owned: `Plugin/PluginHost` builds the
 settings/manager/loader triple from the synthetic `IdeConfig`, and `ensureLoaded()` (idempotent,
 triggered by the `Keybindings` factory) runs each file's `activate(PluginApi)` **before** the
 (immutable) `Keybindings` map is built so plugin default keys merge into it (user `.porta.json`
@@ -254,13 +314,17 @@ OUT of `ActionCatalog::ACTIONS`). Registration buffers in the per-plugin `Plugin
 atomically after `activate()`; action methods (flash/editor access/openFile) resolve services
 lazily via `Plugin/PluginRuntime` (wired late in the ctor) and throw during `activate()`. Every
 plugin handler and hook is wrapped in try/catch → status-bar flash, so a faulting plugin never
-kills the loop. Hooks (`fileOpened`/`fileSaved`/`bufferSwitched`) fan out from
+kills the loop. Hooks (`fileOpened`/`fileSaved`/`bufferSwitched`/`themeChanged`) fan out from
 `Plugin/PluginEvents`, which is a `#[AsEventListener(priority: -100)]` bridge on the app event
 bus: `BufferService` dispatches typed `Event/BufferOpened`/`BufferSwitched`/`BufferSaved`
 events (symfony/event-dispatcher, wired kernel-less in `config/services.php` — the
 `event_dispatcher` service id is mandatory for `RegisterListenersPass`), core listeners
 (git marks, debug decorations, LSP save/inlay) react at priority 0, and the plugin bridge
-observes last, deduplicating consecutive switch paths for plugins only. Plugin commands land in
+observes last, deduplicating consecutive switch paths for plugins only. `themeChanged` rides the
+same -100 bridge, and core's highlight-cache drop (`Highlight/HighlightThemeListener`) sits at
+**-200** deliberately, so a backend that bakes the theme's escape codes rebuilds *before* the
+caches it feeds are dropped. That is why the -100 chrome sweep is no longer globally last — it is
+still after every *rebuild* listener, which is what its contract means. Plugin commands land in
 `CommandRegistry` after core (core wins key collisions) and surface in the palette plus a
 trailing translated "Plugins" menu (`MenuModel::build`'s `$pluginSpecs`, grouped per plugin
 with separators). Prefer anonymous
@@ -298,7 +362,8 @@ Removal rows use the settings form's `'action'` row kind (two-press confirm in
 a synthetic service) with keys `keymap`, `settings`, `languages`, `lsp`. Settings
 (`Config/SettingsController` + the `Settings/` view) all apply live through
 `Settings/LiveSettingsApplier` — theme swaps the `SwitchablePalette`/`SwitchableTerminalTheme`
-holders and rebuilds the highlighters, the locale relabels the tree, the cursor shape swaps the
+holders (buffer highlight caches are dropped by the -200 `HighlightThemeListener`, not inline),
+the locale relabels the tree, the cursor shape swaps the
 `CursorStyle` holder, the tab-bar position re-arranges the strip — each apply ends in a typed
 `src/Event/` event (menu rebuild + RTL re-mirroring listen in `Ide`; the -100
 `ChromeRefreshListener` sweeps the chrome caches last).

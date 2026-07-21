@@ -8,6 +8,7 @@ use PHPUnit\Framework\TestCase;
 use Porta\Highlight\CapturingHighlightSink;
 use Porta\Highlight\CodeHighlighter;
 use Porta\Tests\Support\ClosureHighlightProvider;
+use Porta\Tests\Support\FakeScheduler;
 use Symfony\Component\Tui\Ansi\AnsiUtils;
 
 /**
@@ -237,5 +238,100 @@ final class AsyncHighlightTest extends TestCase
         $highlighter->highlight(['a'], 6);
 
         $this->assertGreaterThan($callsBefore, $provider->calls, 'still live: never hit three in a row');
+    }
+
+    /**
+     * The strike counter only catches a backend that *fails*. One that
+     * dispatches and never answers would leave the buffer provisionally painted
+     * and re-dispatch on every edit forever, so the request gets a deadline.
+     */
+    public function testAnAnswerThatNeverArrivesIsAbandonedAndStruck(): void
+    {
+        $scheduler = new FakeScheduler();
+        $provider = $this->asyncProvider();
+        $highlighter = new CodeHighlighter($provider, null, null, $scheduler);
+        $highlighter->setFile('/x/a.php');
+
+        $highlighter->highlight(['a'], 1);
+        $this->assertCount(1, $scheduler->scheduled, 'a deadline was armed');
+
+        $scheduler->fire();
+
+        // The request is forgotten, so a late answer is dropped by the ordinary
+        // staleness check rather than clobbering a newer paint.
+        $provider->deliverPending();
+        $this->assertSame(['a'], $highlighter->highlight(['a'], 1));
+    }
+
+    /** Three timeouts in a row trip the backend, like three failures do. */
+    public function testRepeatedTimeoutsTripTheBackend(): void
+    {
+        $scheduler = new FakeScheduler();
+        $provider = $this->asyncProvider();
+        $highlighter = new CodeHighlighter($provider, null, null, $scheduler);
+        $highlighter->setFile('/x/a.php');
+
+        foreach ([1, 2, 3] as $version) {
+            $highlighter->highlight(['a'], $version);
+            $scheduler->fire();
+        }
+
+        $callsBefore = $provider->calls;
+        $highlighter->highlight(['a'], 4);
+
+        $this->assertSame($callsBefore, $provider->calls, 'tripped: the backend is no longer called');
+    }
+
+    /** A delivered answer disarms its deadline, so it cannot strike afterwards. */
+    public function testDeliveryDisarmsTheDeadline(): void
+    {
+        $scheduler = new FakeScheduler();
+        $provider = $this->asyncProvider();
+        $highlighter = new CodeHighlighter($provider, null, null, $scheduler);
+        $highlighter->setFile('/x/a.php');
+
+        $highlighter->highlight(['a'], 1);
+        $provider->deliverPending();
+
+        $this->assertSame([], $scheduler->scheduled, 'no deadline left pending');
+        $this->assertCount(1, $scheduler->cancelled);
+    }
+
+    /**
+     * A deadline outliving its request must no-op rather than strike.
+     *
+     * {@see CodeHighlighter::invalidate()} (a live theme switch) forgets the
+     * in-flight request without touching the timer, so the timer is the one
+     * place that has to re-check.
+     */
+    public function testADeadlineForAForgottenRequestIsIgnored(): void
+    {
+        $scheduler = new FakeScheduler();
+        $provider = $this->asyncProvider();
+        $highlighter = new CodeHighlighter($provider, null, null, $scheduler);
+        $highlighter->setFile('/x/a.php');
+
+        $highlighter->highlight(['a'], 1);
+        $highlighter->invalidate();
+        $scheduler->fire(); // the request is gone; this must not count a strike
+
+        // Still live: a fresh request is dispatched and delivers normally.
+        $highlighter->highlight(['a'], 2);
+        $provider->deliverPending();
+
+        $this->assertStringContainsString(self::PAINT, implode('', $highlighter->highlight(['a'], 2)));
+    }
+
+    /** A synchronous backend never arms a deadline — it has already answered. */
+    public function testASynchronousBackendArmsNoDeadline(): void
+    {
+        $scheduler = new FakeScheduler();
+        $provider = new ClosureHighlightProvider(static fn (string $content): string => $content);
+        $highlighter = new CodeHighlighter($provider, null, null, $scheduler);
+        $highlighter->setFile('/x/a.php');
+
+        $highlighter->highlight(['a'], 1);
+
+        $this->assertSame([], $scheduler->scheduled);
     }
 }
