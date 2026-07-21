@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Porta\Tests\E2e;
 
 use PHPUnit\Framework\TestCase;
+use Porta\Tests\Support\NavigatesSettings;
 use Porta\Tests\Support\RunsIde;
 use Porta\Tests\Support\TempProject;
 use Symfony\Component\Tui\Ansi\AnsiUtils;
@@ -17,6 +18,8 @@ use Symfony\Component\Tui\Ansi\AnsiUtils;
  */
 final class IdeEmbeddedPluginsTest extends TestCase
 {
+    use NavigatesSettings;
+
     /** The suite-wide PORTA_HOME (the `tempest` highlighting fixture), to restore. */
     private ?string $savedPortaHome = null;
 
@@ -118,10 +121,7 @@ final class IdeEmbeddedPluginsTest extends TestCase
                     // The manage screen lists it as built-in; actuating is inert.
                     new \ReflectionProperty($ide, 'commands')->getValue($ide)->run('ide_settings');
                     $tui->handleInput("\t"); // form → nav
-                    $tui->handleInput("\x1b[B"); // Interface
-                    $tui->handleInput("\x1b[B"); // Highlighting
-                    $tui->handleInput("\x1b[B"); // Keybindings
-                    $tui->handleInput("\x1b[B"); // Plugins
+                    $this->selectSettingsSection($tui->getById('settings-nav'), 'plugins');
                     $tui->handleInput("\t"); // nav → form
                     $tui->tick();
                     $screen = AnsiUtils::stripAnsiCodes($terminal->getOutput());
@@ -164,10 +164,7 @@ final class IdeEmbeddedPluginsTest extends TestCase
                     // die and the choice persists.
                     new \ReflectionProperty($ide, 'commands')->getValue($ide)->run('ide_settings');
                     $tui->handleInput("\t"); // form → nav
-                    $tui->handleInput("\x1b[B"); // Interface
-                    $tui->handleInput("\x1b[B"); // Highlighting
-                    $tui->handleInput("\x1b[B"); // Keybindings
-                    $tui->handleInput("\x1b[B"); // Plugins
+                    $this->selectSettingsSection($tui->getById('settings-nav'), 'plugins');
                     $tui->handleInput("\x1b[B"); // bundled sub-item
                     $tui->handleInput("\t"); // nav → form
                     $tui->handleInput("\x1b[A"); // clamp to the Enabled row
@@ -242,10 +239,7 @@ final class IdeEmbeddedPluginsTest extends TestCase
                     // Remove the project override: the embedded copy reactivates live.
                     new \ReflectionProperty($ide, 'commands')->getValue($ide)->run('ide_settings');
                     $tui->handleInput("\t");
-                    $tui->handleInput("\x1b[B"); // Interface
-                    $tui->handleInput("\x1b[B"); // Highlighting
-                    $tui->handleInput("\x1b[B"); // Keybindings
-                    $tui->handleInput("\x1b[B"); // Plugins
+                    $this->selectSettingsSection($tui->getById('settings-nav'), 'plugins');
                     $tui->handleInput("\t"); // → form
                     $tui->handleInput("\x1b[B"); // install row
                     $tui->handleInput("\x1b[B"); // bundled (project) Remove
@@ -304,10 +298,7 @@ final class IdeEmbeddedPluginsTest extends TestCase
                     // Its settings page is still reachable, showing the unchecked toggle.
                     $commands->run('ide_settings');
                     $tui->handleInput("\t");
-                    $tui->handleInput("\x1b[B"); // Interface
-                    $tui->handleInput("\x1b[B"); // Highlighting
-                    $tui->handleInput("\x1b[B"); // Keybindings
-                    $tui->handleInput("\x1b[B"); // Plugins
+                    $this->selectSettingsSection($tui->getById('settings-nav'), 'plugins');
                     $tui->handleInput("\x1b[B"); // bundled sub-item
                     $tui->tick();
                     $screen = AnsiUtils::stripAnsiCodes($terminal->getOutput());

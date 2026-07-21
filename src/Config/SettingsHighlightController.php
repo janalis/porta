@@ -6,6 +6,7 @@ namespace Porta\Config;
 
 use Porta\Highlight\HighlightRegistry;
 use Porta\I18n\Translator;
+use Porta\Plugin\PluginLifecycleOps;
 use Porta\Support\LanguageMap;
 
 /**
@@ -32,18 +33,45 @@ final class SettingsHighlightController
     /** The "no preference" option — distinct from a backend actually named ''. */
     private const string AUTO = '';
 
+    /** Row key for the "enable the shipped engine" offer. */
+    public const string ENABLE_KEY = 'enableBundledEngine';
+
+    /**
+     * The highlighting engine Porta ships, named here because it is the only
+     * one that can be named: a bundled plugin's capabilities are unknowable
+     * without loading it, so "which bundled plugin highlights?" has no general
+     * answer. Bundled plugins are opt-in, so a fresh project renders uncoloured
+     * until this is enabled — the offer row below is the signpost.
+     */
+    public const string BUNDLED_ENGINE = 'tempest';
+
     public function __construct(
         private readonly HighlightRegistry $registry,
         private readonly Translator $translator,
         private readonly string $rootDir,
         private readonly IdeConfig $config,
+        private readonly ?PluginLifecycleOps $lifecycle = null,
     ) {}
 
     /** @return list<SettingsRow> */
     public function rows(): array
     {
         $configured = $this->configuredLanguages();
+        $rows = [];
+
+        if ($this->canOfferTheBundledEngine()) {
+            $rows[] = new SettingsRow(
+                key: self::ENABLE_KEY,
+                label: $this->translator->trans('No highlighting engine is enabled'),
+                kind: SettingsRowKind::Action,
+                value: $this->translator->trans('Enable %name%', ['%name%' => self::BUNDLED_ENGINE]),
+                restart: false,
+                hint: $this->translator->trans('Bundled plugins are opt-in; applies to files opened afterwards'),
+            );
+        }
+
         $rows = [
+            ...$rows,
             new SettingsRow(
                 key: self::DEFAULT_KEY,
                 label: $this->translator->trans('Default highlighter'),
@@ -79,9 +107,30 @@ final class SettingsHighlightController
      */
     public function change(string $key, string $value): void
     {
+        if (self::ENABLE_KEY === $key) {
+            $this->lifecycle?->enable(self::BUNDLED_ENGINE);
+
+            return;
+        }
+
         $language = self::DEFAULT_KEY === $key ? null : substr($key, offset: 5);
 
         IdeConfig::persistHighlighter($this->rootDir, $language, $value);
+    }
+
+    /**
+     * Whether to show the "enable the shipped engine" offer: nothing but the
+     * plain fallback is available, and the bundled engine is installed but not
+     * loaded. Without this a fresh project shows a Highlighting page whose only
+     * choice is "no colouring", with no hint that an engine ships in the box.
+     */
+    private function canOfferTheBundledEngine(): bool
+    {
+        if (null === $this->lifecycle || [$this->plainId()] !== $this->allBackendIds()) {
+            return false;
+        }
+
+        return \in_array(self::BUNDLED_ENGINE, $this->lifecycle->listedNames(), strict: true);
     }
 
     /**

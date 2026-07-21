@@ -14,6 +14,7 @@ use Porta\Highlight\HighlightRegistry;
 use Porta\Highlight\SyntaxHighlightProvider;
 use Porta\Highlight\SyntaxHighlightProviderSource;
 use Porta\I18n\Translator;
+use Porta\Tests\Support\FakePluginLifecycle;
 use Porta\Tests\Support\TempProject;
 
 /**
@@ -27,7 +28,10 @@ final class SettingsHighlightControllerTest extends TestCase
     protected function setUp(): void
     {
         $this->project = new TempProject();
+        $this->lifecycle = new FakePluginLifecycle();
     }
+
+    private FakePluginLifecycle $lifecycle;
 
     /** @param list<SyntaxHighlightProvider> $providers */
     private function controller(array $providers = [], string $config = ''): SettingsHighlightController
@@ -53,6 +57,7 @@ final class SettingsHighlightControllerTest extends TestCase
             new Translator('en'),
             $this->project->dir,
             IdeConfig::load($this->project->dir),
+            $this->lifecycle,
         );
     }
 
@@ -76,6 +81,47 @@ final class SettingsHighlightControllerTest extends TestCase
         $this->assertCount(1, $rows);
         $this->assertSame(SettingsHighlightController::DEFAULT_KEY, $rows[0]->key);
         $this->assertSame(SettingsRowKind::Choice, $rows[0]->kind);
+    }
+
+    /**
+     * A fresh project has no engine — bundled plugins are opt-in — so the page
+     * would otherwise offer only "no colouring" with no hint that one ships.
+     */
+    public function testOffersToEnableTheBundledEngineWhenNothingHighlights(): void
+    {
+        $this->lifecycle->names = [SettingsHighlightController::BUNDLED_ENGINE];
+
+        $rows = $this->controller()->rows();
+
+        $this->assertSame(SettingsHighlightController::ENABLE_KEY, $rows[0]->key);
+        $this->assertSame(SettingsRowKind::Action, $rows[0]->kind);
+    }
+
+    public function testActuatingTheOfferEnablesThePluginLive(): void
+    {
+        $this->lifecycle->names = [SettingsHighlightController::BUNDLED_ENGINE];
+
+        $this->controller()->change(SettingsHighlightController::ENABLE_KEY, '');
+
+        $this->assertSame([[SettingsHighlightController::BUNDLED_ENGINE, true]], $this->lifecycle->toggled);
+    }
+
+    /** Once an engine is loaded the offer is gone — there is nothing to enable. */
+    public function testTheOfferDisappearsOnceAnEngineIsAvailable(): void
+    {
+        $this->lifecycle->names = [SettingsHighlightController::BUNDLED_ENGINE];
+
+        $rows = $this->controller([$this->provider('tempest', ['*'])])->rows();
+
+        $this->assertNotSame(SettingsHighlightController::ENABLE_KEY, $rows[0]->key);
+    }
+
+    /** Nothing to offer when the bundled engine isn't installed at all. */
+    public function testNoOfferWhenTheBundledEngineIsNotInstalled(): void
+    {
+        $rows = $this->controller()->rows();
+
+        $this->assertNotSame(SettingsHighlightController::ENABLE_KEY, $rows[0]->key);
     }
 
     /**

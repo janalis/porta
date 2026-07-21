@@ -43,6 +43,7 @@ use Porta\Settings\SettingsViewController;
 use Porta\Tests\Support\FakePluginLifecycle;
 use Porta\Tests\Support\FakeScheduler;
 use Porta\Tests\Support\FixedActiveFile;
+use Porta\Tests\Support\NavigatesSettings;
 use Porta\Tests\Support\TempProject;
 use Porta\Tests\Support\TestWorkspaceLayout;
 use Porta\Ui\CursorStyle;
@@ -73,6 +74,8 @@ use Symfony\Component\Tui\Widget\ContainerWidget;
 
 final class SettingsViewControllerTest extends TestCase
 {
+    use NavigatesSettings;
+
     private TempProject $project;
     private Tui $tui;
     private SettingsNavWidget $nav;
@@ -216,6 +219,7 @@ final class SettingsViewControllerTest extends TestCase
                 new Translator('en'),
                 $this->project->dir,
                 IdeConfig::load($this->project->dir),
+                $this->lifecycle,
             ),
             editorArea: new EditorArea(new BufferManager(), $this->editorWidget = new CodeEditorWidget(), new ImageViewerWidget(), new HelpViewerWidget(), $this->tui),
             views: $views ?? new WorkspaceViews(),
@@ -260,8 +264,7 @@ final class SettingsViewControllerTest extends TestCase
         $controller = $this->controller();
         $controller->open();
 
-        $this->nav->handleInput("\x1b[B"); // → Interface
-        $this->nav->handleInput("\x1b[B"); // → Highlighting
+        $this->selectSettingsSection($this->nav, 'highlighting');
         $this->assertSame('highlighting', $this->nav->selectedId());
 
         $screen = implode("\n", $this->form->render(new \Symfony\Component\Tui\Render\RenderContext(80, 12)));
@@ -278,9 +281,7 @@ final class SettingsViewControllerTest extends TestCase
         $controller = $this->controller();
         $controller->open();
 
-        $this->nav->handleInput("\x1b[B"); // → Interface
-        $this->nav->handleInput("\x1b[B"); // → Highlighting
-        $this->nav->handleInput("\x1b[B"); // → Keybindings
+        $this->selectSettingsSection($this->nav, 'keybindings');
         $this->assertSame(['settings-keys'], $this->ids($this->content));
         $this->assertSame($this->keymapList, $controller->focusTarget());
 
@@ -293,7 +294,7 @@ final class SettingsViewControllerTest extends TestCase
         $controller = $this->controller();
         $controller->open();
 
-        $this->nav->handleInput("\x1b[B"); // → Interface
+        $this->selectSettingsSection($this->nav, 'interface');
         $this->assertSame('interface', $this->nav->selectedId());
         $this->assertSame(['settings-form'], $this->ids($this->content));
 
@@ -319,12 +320,7 @@ final class SettingsViewControllerTest extends TestCase
         $controller = $this->controller();
         $controller->open();
 
-        $this->nav->handleInput("\x1b[B"); // → Interface
-        $this->nav->handleInput("\x1b[B"); // → Highlighting
-        $this->nav->handleInput("\x1b[B"); // Keybindings
-        $this->nav->handleInput("\x1b[B"); // Plugins
-        $this->nav->handleInput("\x1b[B"); // skips the Version control header → Git
-        $this->nav->handleInput("\x1b[B"); // skips the Languages header → PHP
+        $this->selectSettingsSection($this->nav, 'lang:php');
         $this->assertSame('lang:php', $this->nav->selectedId());
         $this->assertSame(['settings-form'], $this->ids($this->content));
 
@@ -343,11 +339,7 @@ final class SettingsViewControllerTest extends TestCase
         $controller = $this->controller();
         $controller->open();
 
-        $this->nav->handleInput("\x1b[B"); // → Interface
-        $this->nav->handleInput("\x1b[B"); // → Highlighting
-        $this->nav->handleInput("\x1b[B"); // Keybindings
-        $this->nav->handleInput("\x1b[B"); // Plugins
-        $this->nav->handleInput("\x1b[B"); // skips the Version control header → Git
+        $this->selectSettingsSection($this->nav, 'vcs:git');
         $this->assertSame('vcs:git', $this->nav->selectedId());
         $this->assertSame(['settings-form'], $this->ids($this->content));
 
@@ -364,12 +356,7 @@ final class SettingsViewControllerTest extends TestCase
     {
         $controller = $this->controller();
         $controller->open();
-        $this->nav->handleInput("\x1b[B"); // → Interface
-        $this->nav->handleInput("\x1b[B"); // → Highlighting
-        $this->nav->handleInput("\x1b[B"); // Keybindings
-        $this->nav->handleInput("\x1b[B"); // Plugins
-        $this->nav->handleInput("\x1b[B"); // Git
-        $this->nav->handleInput("\x1b[B"); // PHP
+        $this->selectSettingsSection($this->nav, 'lang:php');
 
         // The LSP row is the fourth row of a language section (after indent + run command); edit it inline.
         $this->form->handleInput("\x1b[B");
@@ -388,12 +375,7 @@ final class SettingsViewControllerTest extends TestCase
     {
         $controller = $this->controller();
         $controller->open();
-        $this->nav->handleInput("\x1b[B"); // → Interface
-        $this->nav->handleInput("\x1b[B"); // → Highlighting
-        $this->nav->handleInput("\x1b[B"); // Keybindings
-        $this->nav->handleInput("\x1b[B"); // Plugins
-        $this->nav->handleInput("\x1b[B"); // Git
-        $this->nav->handleInput("\x1b[B"); // PHP
+        $this->selectSettingsSection($this->nav, 'lang:php');
 
         // The debug-adapter row is the fifth row of a language section (after indent + run command + LSP).
         for ($i = 0; $i < 4; ++$i) {
@@ -421,9 +403,7 @@ final class SettingsViewControllerTest extends TestCase
     {
         $controller = $this->controller();
         $controller->open();
-        $this->nav->handleInput("\x1b[B"); // → Interface
-        $this->nav->handleInput("\x1b[B"); // → Highlighting
-        $this->nav->handleInput("\x1b[B"); // Keybindings
+        $this->selectSettingsSection($this->nav, 'keybindings');
 
         $this->keymapList->handleInput("\r"); // arm capture on the first action
         $this->keymapList->handleInput('a');
@@ -476,10 +456,7 @@ final class SettingsViewControllerTest extends TestCase
         file_put_contents($this->project->dir.'/.porta/plugins/demo/plugin.php', data: "<?php\n");
         $controller->open();
 
-        $this->nav->handleInput("\x1b[B"); // → Interface
-        $this->nav->handleInput("\x1b[B"); // → Highlighting
-        $this->nav->handleInput("\x1b[B"); // Keybindings
-        $this->nav->handleInput("\x1b[B"); // Plugins
+        $this->selectSettingsSection($this->nav, 'plugins');
         $this->assertSame('plugins', $this->nav->selectedId());
         $this->assertSame(['settings-form'], $this->ids($this->content));
 
@@ -509,10 +486,7 @@ final class SettingsViewControllerTest extends TestCase
         $controller->refresh();
         $this->assertSame(['settings-form'], $this->ids($this->content));
 
-        $this->nav->handleInput("\x1b[B"); // → Interface
-        $this->nav->handleInput("\x1b[B"); // → Highlighting
-        $this->nav->handleInput("\x1b[B"); // Keybindings
-        $this->nav->handleInput("\x1b[B"); // Plugins
+        $this->selectSettingsSection($this->nav, 'plugins');
         mkdir($this->project->dir.'/.porta/plugins/late', permissions: 0o777, recursive: true);
         file_put_contents($this->project->dir.'/.porta/plugins/late/plugin.php', data: "<?php\n");
         $controller->refresh(); // re-reads the rows: the late plugin appears
@@ -531,11 +505,7 @@ final class SettingsViewControllerTest extends TestCase
 
         // The plugin sub-item appears in the nav and selecting it shows its page.
         $this->nav->setPluginEntries(['demo']);
-        $this->nav->handleInput("\x1b[B"); // → Interface
-        $this->nav->handleInput("\x1b[B"); // → Highlighting
-        $this->nav->handleInput("\x1b[B"); // Keybindings
-        $this->nav->handleInput("\x1b[B"); // Plugins
-        $this->nav->handleInput("\x1b[B"); // demo
+        $this->selectSettingsSection($this->nav, 'plugin:demo');
         $this->assertSame('plugin:demo', $this->nav->selectedId());
         $screen = implode("\n", $this->form->render(new \Symfony\Component\Tui\Render\RenderContext(80, 8)));
         $this->assertStringContainsString('Enabled', $screen);

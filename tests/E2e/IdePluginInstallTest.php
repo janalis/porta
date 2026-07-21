@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Porta\Tests\E2e;
 
 use PHPUnit\Framework\TestCase;
+use Porta\Tests\Support\NavigatesSettings;
 use Porta\Tests\Support\RunsIde;
 use Porta\Tests\Support\TempProject;
 use Symfony\Component\Process\ExecutableFinder;
@@ -17,6 +18,7 @@ use Symfony\Component\Tui\Ansi\AnsiUtils;
  */
 final class IdePluginInstallTest extends TestCase
 {
+    use NavigatesSettings;
     use RunsIde;
 
     private string $originalPath;
@@ -63,10 +65,7 @@ final class IdePluginInstallTest extends TestCase
     {
         new \ReflectionProperty($ide, 'commands')->getValue($ide)->run('ide_settings');
         $tui->handleInput("\t"); // form → nav
-        $tui->handleInput("\x1b[B"); // Interface
-        $tui->handleInput("\x1b[B"); // Highlighting
-        $tui->handleInput("\x1b[B"); // Keybindings
-        $tui->handleInput("\x1b[B"); // Plugins
+        $this->selectSettingsSection($tui->getById('settings-nav'), 'plugins');
         $tui->handleInput("\t"); // nav → form (scope row selected)
     }
 
@@ -129,10 +128,7 @@ final class IdePluginInstallTest extends TestCase
                     for ($i = 0; $i < 10; ++$i) {
                         $tui->handleInput("\x1b[A"); // clamp to the top (General)
                     }
-                    $tui->handleInput("\x1b[B"); // Interface
-                    $tui->handleInput("\x1b[B"); // Highlighting
-                    $tui->handleInput("\x1b[B"); // Keybindings
-                    $tui->handleInput("\x1b[B"); // Plugins
+                    $this->selectSettingsSection($tui->getById('settings-nav'), 'plugins');
                     $tui->handleInput("\x1b[B"); // installee sub-item
                     $tui->handleInput("\t"); // nav → form (Enabled row)
                     $tui->handleInput("\r"); // toggle off

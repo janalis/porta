@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Porta\Tests\E2e;
 
 use PHPUnit\Framework\TestCase;
+use Porta\Tests\Support\NavigatesSettings;
 use Porta\Tests\Support\RunsIde;
 use Porta\Tests\Support\TempProject;
 use Symfony\Component\Tui\Ansi\AnsiUtils;
@@ -20,6 +21,8 @@ use Symfony\Component\Tui\Ansi\AnsiUtils;
  */
 final class IdePhpLspPluginsTest extends TestCase
 {
+    use NavigatesSettings;
+
     /** The suite-wide PORTA_HOME (the `tempest` highlighting fixture), to restore. */
     private ?string $savedPortaHome = null;
 
@@ -99,10 +102,7 @@ final class IdePhpLspPluginsTest extends TestCase
                     // Open the phpantom settings page: it lists the binary row.
                     new \ReflectionProperty($ide, 'commands')->getValue($ide)->run('ide_settings');
                     $tui->handleInput("\t"); // form → nav
-                    $tui->handleInput("\x1b[B"); // Interface
-                    $tui->handleInput("\x1b[B"); // Highlighting
-                    $tui->handleInput("\x1b[B"); // Keybindings
-                    $tui->handleInput("\x1b[B"); // Plugins
+                    $this->selectSettingsSection($tui->getById('settings-nav'), 'plugins');
                     $tui->handleInput("\x1b[B"); // phpantom sub-item
                     $tui->tick();
                     $this->assertStringContainsString('phpantom_lsp binary', AnsiUtils::stripAnsiCodes($terminal->getOutput()), 'the binary setting shows on the page');
@@ -170,10 +170,7 @@ final class IdePhpLspPluginsTest extends TestCase
                 300 => function ($tui, $terminal, $ide): void {
                     new \ReflectionProperty($ide, 'commands')->getValue($ide)->run('ide_settings');
                     $tui->handleInput("\t"); // form → nav
-                    $tui->handleInput("\x1b[B"); // Interface
-                    $tui->handleInput("\x1b[B"); // Highlighting
-                    $tui->handleInput("\x1b[B"); // Keybindings
-                    $tui->handleInput("\x1b[B"); // Plugins
+                    $this->selectSettingsSection($tui->getById('settings-nav'), 'plugins');
                     $tui->handleInput("\x1b[B"); // phpantom sub-item
                     $tui->tick();
                     $this->assertStringContainsString('Install phpantom', AnsiUtils::stripAnsiCodes($terminal->getOutput()), 'the missing binary offers an install');
