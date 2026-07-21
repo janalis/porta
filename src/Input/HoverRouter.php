@@ -36,6 +36,7 @@ final readonly class HoverRouter
         private MenuOverlayController $overlay,
         private GitMouseRouter $git,
         private SettingsMouseRouter $settings,
+        private WelcomeMouseRouter $welcome,
         private SeparatorWidget $separator,
     ) {}
 
@@ -70,6 +71,13 @@ final readonly class HoverRouter
         if (ActiveView::Git === $view) {
             if (!$this->handleMenuHover($mouse)) {
                 $this->git->hover($mouse);
+            }
+
+            return;
+        }
+        if (ActiveView::Welcome === $view) {
+            if (!$this->handleMenuHover($mouse)) {
+                $this->welcome->hover($mouse);
             }
 
             return;

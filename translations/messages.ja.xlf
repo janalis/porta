@@ -2038,6 +2038,18 @@
         <source>Highlighting</source>
         <target>ハイライト</target>
       </trans-unit>
+      <trans-unit id="512">
+        <source>Welcome — %done% of %total% done · ⏎ run · ↑↓ move</source>
+        <target>ようこそ — %total% 件中 %done% 件完了 · ⏎ 実行 · ↑↓ 移動</target>
+      </trans-unit>
+      <trans-unit id="513">
+        <source>Nothing to set up.</source>
+        <target>設定する項目はありません。</target>
+      </trans-unit>
+      <trans-unit id="514">
+        <source>All set. Reopen this any time from Help.</source>
+        <target>設定は完了です。ヘルプからいつでも再度開けます。</target>
+      </trans-unit>
     </body>
   </file>
 </xliff>

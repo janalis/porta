@@ -2038,6 +2038,18 @@
         <source>Highlighting</source>
         <target>הדגשה</target>
       </trans-unit>
+      <trans-unit id="512">
+        <source>Welcome — %done% of %total% done · ⏎ run · ↑↓ move</source>
+        <target>ברוכים הבאים — %done% מתוך %total% הושלמו · ⏎ הפעלה · ↑↓ ניווט</target>
+      </trans-unit>
+      <trans-unit id="513">
+        <source>Nothing to set up.</source>
+        <target>אין מה להגדיר.</target>
+      </trans-unit>
+      <trans-unit id="514">
+        <source>All set. Reopen this any time from Help.</source>
+        <target>הכול מוכן. אפשר לפתוח מסך זה שוב מתפריט עזרה.</target>
+      </trans-unit>
     </body>
   </file>
 </xliff>

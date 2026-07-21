@@ -2038,6 +2038,18 @@
         <source>Highlighting</source>
         <target>Highlighting</target>
       </trans-unit>
+      <trans-unit id="512">
+        <source>Welcome — %done% of %total% done · ⏎ run · ↑↓ move</source>
+        <target>Welcome — %done% of %total% done · ⏎ run · ↑↓ move</target>
+      </trans-unit>
+      <trans-unit id="513">
+        <source>Nothing to set up.</source>
+        <target>Nothing to set up.</target>
+      </trans-unit>
+      <trans-unit id="514">
+        <source>All set. Reopen this any time from Help.</source>
+        <target>All set. Reopen this any time from Help.</target>
+      </trans-unit>
     </body>
   </file>
 </xliff>

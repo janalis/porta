@@ -2038,6 +2038,18 @@
         <source>Highlighting</source>
         <target>Hervorhebung</target>
       </trans-unit>
+      <trans-unit id="512">
+        <source>Welcome — %done% of %total% done · ⏎ run · ↑↓ move</source>
+        <target>Willkommen — %done% von %total% erledigt · ⏎ ausführen · ↑↓ bewegen</target>
+      </trans-unit>
+      <trans-unit id="513">
+        <source>Nothing to set up.</source>
+        <target>Nichts einzurichten.</target>
+      </trans-unit>
+      <trans-unit id="514">
+        <source>All set. Reopen this any time from Help.</source>
+        <target>Alles bereit. Jederzeit über Hilfe wieder zu öffnen.</target>
+      </trans-unit>
     </body>
   </file>
 </xliff>

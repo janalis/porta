@@ -79,6 +79,7 @@ final class MouseRouter
         private readonly GitMouseRouter $git,
         private readonly WorkspaceViews $views,
         private readonly SettingsMouseRouter $settings,
+        private readonly WelcomeMouseRouter $welcome,
         private readonly BidiTui $bidi,
         private readonly DebugController $debug,
         private readonly SeparatorWidget $separator,
@@ -107,6 +108,7 @@ final class MouseRouter
         // them so no stale-rect branch routes events to an invisible widget.
         $gitViewOpen = $this->views->isGitOpen();
         $settingsViewOpen = $this->views->isSettingsOpen();
+        $welcomeViewOpen = $this->views->isWelcomeOpen();
         if ($this->views->isAnyOpen()) {
             $treeRect = null;
             $tabsRect = null;
@@ -132,6 +134,7 @@ final class MouseRouter
             $this->hover->handle($mouse, $editorRect, match (true) {
                 $settingsViewOpen => ActiveView::Settings,
                 $gitViewOpen => ActiveView::Git,
+                $welcomeViewOpen => ActiveView::Welcome,
                 default => ActiveView::Editor,
             });
 
@@ -169,7 +172,7 @@ final class MouseRouter
         $this->git->cancelDrag();
         $this->layout->cancelDrags();
 
-        if ($this->handleModalPopupClick($mouse, $editorRect, $gitViewOpen || $settingsViewOpen ? FullView::Open : FullView::Closed)) {
+        if ($this->handleModalPopupClick($mouse, $editorRect, $this->views->isAnyOpen() ? FullView::Open : FullView::Closed)) {
             return;
         }
 
@@ -334,8 +337,8 @@ final class MouseRouter
 
             return;
         }
-        if (!$this->git->scrollVertical($mouse, $step) && !$this->settings->scrollVertical($mouse)) {
-            // Neither the git panes nor the settings list are under the pointer.
+        if (!$this->git->scrollVertical($mouse, $step) && !$this->settings->scrollVertical($mouse) && !$this->welcome->scrollVertical($mouse)) {
+            // No full view's pane is under the pointer.
             return;
         }
         $this->tui->requestRender();
@@ -542,6 +545,9 @@ final class MouseRouter
             return;
         }
         if ($this->settings->tryPaneClick($mouse)) {
+            return;
+        }
+        if ($this->welcome->tryPaneClick($mouse)) {
             return;
         }
         if ($this->tryOverlayPanelClick($mouse)) {
