@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Porta\Ui;
 
 use Porta\Git\GitViewController;
+use Porta\Onboarding\WelcomeViewController;
 use Porta\Settings\SettingsViewController;
 use Symfony\Component\Tui\Widget\AbstractWidget;
 
@@ -22,6 +23,8 @@ final class WorkspaceViews
 
     private ?SettingsViewController $settings = null;
 
+    private ?WelcomeViewController $welcome = null;
+
     public function attachGit(GitViewController $git): void
     {
         $this->git = $git;
@@ -30,6 +33,11 @@ final class WorkspaceViews
     public function attachSettings(SettingsViewController $settings): void
     {
         $this->settings = $settings;
+    }
+
+    public function attachWelcome(WelcomeViewController $welcome): void
+    {
+        $this->welcome = $welcome;
     }
 
     /** Whether both view controllers exist yet (the boot-time guard). */
@@ -48,6 +56,23 @@ final class WorkspaceViews
         return $this->settings?->isOpen() ?? false;
     }
 
+    public function isWelcomeOpen(): bool
+    {
+        return $this->welcome?->isOpen() ?? false;
+    }
+
+    /**
+     * Whether any full view owns the main area.
+     *
+     * Callers that only need "is the editor layout detached?" ask this rather
+     * than OR-ing the individual views, so adding a view does not mean hunting
+     * down every guard that would otherwise have to grow a term.
+     */
+    public function isAnyOpen(): bool
+    {
+        return $this->isGitOpen() || $this->isSettingsOpen() || $this->isWelcomeOpen();
+    }
+
     /** Repopulate the settings view's rows (plugin lists, live values). */
     public function refreshSettings(): void
     {
@@ -58,6 +83,7 @@ final class WorkspaceViews
     public function toggleGit(): void
     {
         $this->settings?->close();
+        $this->welcome?->close();
         $this->git?->toggle();
     }
 
@@ -65,6 +91,7 @@ final class WorkspaceViews
     public function openGitFileHistory(string $absPath): void
     {
         $this->settings?->close();
+        $this->welcome?->close();
         $this->git?->openFileHistory($absPath);
     }
 
@@ -72,7 +99,24 @@ final class WorkspaceViews
     public function toggleSettings(): void
     {
         $this->git?->close();
+        $this->welcome?->close();
         $this->settings?->toggle();
+    }
+
+    /** Toggle the Welcome view; the other two yield first. */
+    public function toggleWelcome(): void
+    {
+        $this->git?->close();
+        $this->settings?->close();
+        $this->welcome?->toggle();
+    }
+
+    /** Open the Welcome view (the first-run entry point); the other two yield first. */
+    public function openWelcome(): void
+    {
+        $this->git?->close();
+        $this->settings?->close();
+        $this->welcome?->open();
     }
 
     /** Close whichever full view is open, returning the main area to the editor layout. */
@@ -80,6 +124,7 @@ final class WorkspaceViews
     {
         $this->git?->close();
         $this->settings?->close();
+        $this->welcome?->close();
     }
 
     /** The open full view's focus target, or null when the editor layout owns the main area. */
@@ -90,6 +135,9 @@ final class WorkspaceViews
         }
         if ($this->isGitOpen()) {
             return $this->git?->focusTarget();
+        }
+        if ($this->isWelcomeOpen()) {
+            return $this->welcome?->focusTarget();
         }
 
         return null;
@@ -109,6 +157,8 @@ final class WorkspaceViews
             return true;
         }
 
-        return false;
+        // A single pane: nothing to cycle, but the ring must not fall through
+        // to the detached editor layout.
+        return $this->isWelcomeOpen();
     }
 }

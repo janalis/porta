@@ -86,7 +86,7 @@ final class PaneLayout implements EditorAreaPanes
     /** Re-arrange the main container only while the editor area owns it (not a swapped-in view). */
     private function rearrangeEditorAreaIfOwning(): void
     {
-        if (!$this->views->isGitOpen() && !$this->views->isSettingsOpen()) {
+        if (!$this->views->isAnyOpen()) {
             $this->arrangeEditorArea();
         }
     }
@@ -130,7 +130,7 @@ final class PaneLayout implements EditorAreaPanes
             : $this->bidi->setPaneReorder(null, null);
         $this->arrangeGitArea();
         $this->arrangeSettingsArea();
-        if (!$this->views->isGitOpen() && !$this->views->isSettingsOpen()) {
+        if (!$this->views->isAnyOpen()) {
             $this->arrangeEditorArea();
         }
     }

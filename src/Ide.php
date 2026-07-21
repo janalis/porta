@@ -33,6 +33,7 @@ use Porta\Lsp\LspSessionPool;
 use Porta\Lsp\NavigationController;
 use Porta\Lsp\RefactorController;
 use Porta\Lsp\WorkspaceEditor;
+use Porta\Onboarding\WelcomeViewController;
 use Porta\Plugin\PluginHost;
 use Porta\Plugin\PluginLifecycle;
 use Porta\Plugin\PluginManager;
@@ -241,9 +242,10 @@ final class Ide
         $this->settingsLanguages = $this->service(SettingsLanguageController::class);
         $this->settingsLanguages->applyToEditor();
         $this->pluginLifecycle = $this->service(PluginLifecycle::class);
-        // Eager: constructing the settings view attaches it to WorkspaceViews
+        // Eager: constructing a view controller attaches it to WorkspaceViews
         // (an unreferenced service would otherwise never exist).
         $this->service(SettingsViewController::class);
+        $this->service(WelcomeViewController::class);
         $this->pluginLifecycle->refreshNav();
 
         $this->localHistory = $this->service(LocalHistoryController::class);

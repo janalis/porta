@@ -100,6 +100,7 @@ use Porta\Search\SearchActions;
 use Porta\Search\SearchUiWiring;
 use Porta\Search\TestNavigator;
 use Porta\Settings\LiveSettingsApplier;
+use Porta\Onboarding\WelcomeViewController;
 use Porta\Settings\SettingsViewController;
 use Porta\Support\Clipboard;
 use Porta\Support\DocsUrlOpener;
@@ -388,6 +389,7 @@ return static function (ContainerConfigurator $container, ContainerBuilder $buil
         SettingsController::class,
         SettingsLanguageController::class,
         SettingsViewController::class,
+        WelcomeViewController::class,
         PluginLifecycle::class,
         MenuRebuilder::class,
         GitViewController::class,

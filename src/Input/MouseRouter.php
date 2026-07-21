@@ -107,7 +107,7 @@ final class MouseRouter
         // them so no stale-rect branch routes events to an invisible widget.
         $gitViewOpen = $this->views->isGitOpen();
         $settingsViewOpen = $this->views->isSettingsOpen();
-        if ($gitViewOpen || $settingsViewOpen) {
+        if ($this->views->isAnyOpen()) {
             $treeRect = null;
             $tabsRect = null;
             $editorRect = null;
