@@ -28,7 +28,10 @@ use Porta\Lsp\LanguageServerProvider;
 use Porta\Lsp\LspReconfigurer;
 use Porta\Lsp\LspSessionPool;
 use Porta\Lsp\WorkspaceEditor;
+use Porta\Plugin\ComposerInstaller;
+use Porta\Plugin\PluginEvents;
 use Porta\Plugin\PluginInstaller;
+use Porta\Plugin\PluginManager;
 use Porta\Plugin\PluginSettings;
 use Porta\Search\TodoTags;
 use Porta\Settings\LiveSettingsApplier;
@@ -162,6 +165,8 @@ final class SettingsViewControllerTest extends TestCase
             $notifier,
             new Translator('en'),
             $this->lifecycle,
+            new PluginManager(new PluginEvents(), $this->pluginSettings),
+            new ComposerInstaller($this->project->dir, null),
         );
         $gitSettings = new GitSettings([]);
         $status = new StatusBarWidget();

@@ -196,6 +196,33 @@ final class PluginManagerTest extends TestCase
         $this->assertArrayNotHasKey('php', $manager->languageServers());
     }
 
+    public function testComposerDependencyReportsPackageAndLiveAvailabilityAndDropsOnDeactivate(): void
+    {
+        $settings = new PluginSettings('/p', []);
+        $manager = new PluginManager(new PluginEvents(), $settings);
+        $registry = new CommandRegistry();
+
+        $available = false;
+        $plugin = new PluginApi('linter', $manager, '/p', $settings);
+        $plugin->registerComposerDependency('phpstan/phpstan', static function () use (&$available): bool {
+            return $available;
+        });
+        $manager->commit($plugin);
+
+        $this->assertNull($manager->composerDependency('other'), 'a plugin that declared none has no dependency');
+
+        $dependency = $manager->composerDependency('linter');
+        $this->assertNotNull($dependency);
+        $this->assertSame('phpstan/phpstan', $dependency['package']);
+        $this->assertFalse($dependency['available'], 'the predicate is evaluated live');
+
+        $available = true;
+        $this->assertTrue($manager->composerDependency('linter')['available'], 'flipping the predicate is reflected');
+
+        $manager->deactivate('linter', $registry);
+        $this->assertNull($manager->composerDependency('linter'), 'a deactivated plugin drops its dependency');
+    }
+
     public function testAThrowingMenuWhenClosureReadsDisabledAndReportsOnce(): void
     {
         $manager = $this->wiredManager(new PluginEvents());

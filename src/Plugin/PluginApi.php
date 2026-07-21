@@ -31,6 +31,8 @@ final class PluginApi
     private array $settingDescriptors = [];
     /** @var list<array{plugin: string, languageId: string, name: string, resolve: \Closure(): (list<string>|null)}> */
     private array $languageServers = [];
+    /** @var list<array{plugin: string, package: string, available: \Closure(): bool}> */
+    private array $composerDependencies = [];
 
     public function __construct(
         private readonly string $pluginName,
@@ -148,6 +150,27 @@ final class PluginApi
             'languageId' => $languageId,
             'name' => $name,
             'resolve' => $resolveCommand,
+        ];
+    }
+
+    /**
+     * Declare the composer package that provides this plugin's binary, plus a
+     * predicate for whether that binary is currently available. When it isn't,
+     * the plugin's Settings page offers a one-click `composer require --dev
+     * <package>`. For tools with no composer package (e.g. a native binary),
+     * don't call this — no install is offered.
+     *
+     * @param \Closure(): bool $isAvailable
+     */
+    public function registerComposerDependency(string $package, \Closure $isAvailable): void
+    {
+        if ('' === trim($package)) {
+            throw new PluginException('A composer dependency needs a non-empty package name (vendor/name)');
+        }
+        $this->composerDependencies[] = [
+            'plugin' => $this->pluginName,
+            'package' => $package,
+            'available' => $isAvailable,
         ];
     }
 
@@ -335,5 +358,11 @@ final class PluginApi
     public function bufferedLanguageServers(): array
     {
         return $this->languageServers;
+    }
+
+    /** @return list<array{plugin: string, package: string, available: \Closure(): bool}> */
+    public function bufferedComposerDependencies(): array
+    {
+        return $this->composerDependencies;
     }
 }

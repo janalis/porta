@@ -27,6 +27,8 @@ final class PluginManager implements LanguageServerProvider
     private array $menuSpecs = [];
     /** @var list<array{plugin: string, languageId: string, name: string, resolve: \Closure(): (list<string>|null)}> committed LSP providers, in load order */
     private array $languageServers = [];
+    /** @var list<array{plugin: string, package: string, available: \Closure(): bool}> committed composer dependencies */
+    private array $composerDependencies = [];
     /** @var list<string> */
     private array $warnings = [];
     /** @var array<string, true> loaded plugin names */
@@ -90,7 +92,28 @@ final class PluginManager implements LanguageServerProvider
         foreach ($api->bufferedLanguageServers() as $server) {
             $this->languageServers[] = $server;
         }
+        foreach ($api->bufferedComposerDependencies() as $dependency) {
+            $this->composerDependencies[] = $dependency;
+        }
         $this->settings->registerFor($name, $api->bufferedSettings());
+    }
+
+    /**
+     * The composer package $plugin declared for its binary and whether that
+     * binary is available now, or null when the plugin declared none. The
+     * Settings page offers to install the package while it's unavailable.
+     *
+     * @return array{package: string, available: bool}|null
+     */
+    public function composerDependency(string $plugin): ?array
+    {
+        foreach ($this->composerDependencies as $dependency) {
+            if ($plugin === $dependency['plugin']) {
+                return ['package' => $dependency['package'], 'available' => $dependency['available']()];
+            }
+        }
+
+        return null;
     }
 
     /**
@@ -154,6 +177,7 @@ final class PluginManager implements LanguageServerProvider
         }));
         $this->menuSpecs = array_values(array_filter($this->menuSpecs, static fn (PluginMenuSpec $spec): bool => $name !== $spec->plugin));
         $this->languageServers = array_values(array_filter($this->languageServers, static fn (array $server): bool => $name !== $server['plugin']));
+        $this->composerDependencies = array_values(array_filter($this->composerDependencies, static fn (array $dependency): bool => $name !== $dependency['plugin']));
         $this->registered = \count($this->commands);
 
         unset($this->reportedWhens[$name]);

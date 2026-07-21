@@ -110,6 +110,25 @@ final class PluginApiTest extends TestCase
         }
     }
 
+    public function testRegisterComposerDependencyBuffersAndRejectsAnEmptyPackage(): void
+    {
+        $api = $this->api(wired: Presence::Without);
+        $api->registerComposerDependency('phpstan/phpstan', static fn (): bool => true);
+
+        $buffered = $api->bufferedComposerDependencies();
+        $this->assertCount(1, $buffered);
+        $this->assertSame('demo', $buffered[0]['plugin']);
+        $this->assertSame('phpstan/phpstan', $buffered[0]['package']);
+        $this->assertTrue($buffered[0]['available']());
+
+        try {
+            $api->registerComposerDependency('   ', static fn (): bool => true);
+            $this->fail('an empty package name must throw');
+        } catch (PluginException $e) {
+            $this->assertStringContainsString('non-empty package name', $e->getMessage());
+        }
+    }
+
     public function testRegisterSettingValidatesAndSettingReadsSeededConfig(): void
     {
         $manager = new PluginManager(new PluginEvents(), new PluginSettings('/p', []));

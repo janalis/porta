@@ -23,6 +23,7 @@ return new class implements PortaPlugin {
     public function activate(PluginApi $api): void
     {
         $api->registerSetting('binary', 'phpactor binary', 'text', '', hint: 'empty = vendor/bin, then PATH');
+        $api->registerComposerDependency('phpactor/phpactor', fn (): bool => null !== $this->binary($api));
         $api->registerLanguageServer('php', 'phpactor', function () use ($api): ?array {
             $binary = $this->binary($api);
 

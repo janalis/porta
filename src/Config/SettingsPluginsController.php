@@ -5,8 +5,10 @@ declare(strict_types=1);
 namespace Porta\Config;
 
 use Porta\I18n\Translator;
+use Porta\Plugin\ComposerInstaller;
 use Porta\Plugin\PluginInstaller;
 use Porta\Plugin\PluginLifecycleOps;
+use Porta\Plugin\PluginManager;
 use Porta\Plugin\PluginSettings;
 use Porta\Ui\Notifier;
 
@@ -35,6 +37,8 @@ final class SettingsPluginsController
         private readonly Notifier $notifier,
         private readonly Translator $translator,
         private readonly PluginLifecycleOps $lifecycle,
+        private readonly PluginManager $plugins,
+        private readonly ComposerInstaller $composer,
     ) {}
 
     /** @return list<SettingsRow> */
@@ -99,8 +103,7 @@ final class SettingsPluginsController
     public function pluginRows(string $name): array
     {
         $enabled = !$this->lifecycle->isDisabled($name);
-
-        return [
+        $rows = [
             new SettingsRow(
                 key: 'pluginEnabled',
                 label: $this->translator->trans('Enabled'),
@@ -110,6 +113,21 @@ final class SettingsPluginsController
             ),
             ...$this->pluginSettings->rows($name),
         ];
+
+        // When an enabled plugin's declared composer package isn't installed,
+        // offer a one-click `composer require --dev`.
+        $dependency = $this->plugins->composerDependency($name);
+        if (null !== $dependency && !$dependency['available']) {
+            $rows[] = new SettingsRow(
+                key: 'pluginInstallBinary',
+                label: $this->translator->trans('Install %package%', ['%package%' => $dependency['package']]),
+                kind: SettingsRowKind::Action,
+                value: false,
+                restart: false,
+            );
+        }
+
+        return $rows;
     }
 
     /** Route a plugin settings-page edit: the Enabled toggle or a plugin setting. */
@@ -121,9 +139,41 @@ final class SettingsPluginsController
 
             return;
         }
+        if ('pluginInstallBinary' === $key) {
+            $this->armed = null;
+            $this->installBinary($name);
+
+            return;
+        }
         if (str_starts_with($key, 'pluginSetting:')) {
             $this->pluginSettings->change($name, substr($key, offset: 14), $value);
             $this->lifecycle->onProviderSettingChanged($name);
+        }
+    }
+
+    /** Install the (enabled) plugin's declared composer package as a dev dependency. */
+    private function installBinary(string $name): void
+    {
+        $dependency = $this->plugins->composerDependency($name);
+        if (null === $dependency) {
+            return;
+        }
+        $package = $dependency['package'];
+        $this->notifier->flash($this->translator->trans('Installing %package%…', ['%package%' => $package]));
+        $running = $this->composer->require($package, function (bool $ok) use ($name, $package): void {
+            $this->notifier->flash(
+                $ok
+                    ? $this->translator->trans('Installed %package%', ['%package%' => $package])
+                    : $this->translator->trans('Could not install %package% (is composer available?)', ['%package%' => $package]),
+                5.0,
+            );
+            if ($ok) {
+                $this->lifecycle->onProviderSettingChanged($name); // relaunch an LSP provider now its binary exists
+            }
+            $this->lifecycle->refreshView(); // the install row drops once the binary is available
+        });
+        if (!$running) {
+            $this->notifier->flash($this->translator->trans('An install is already running'));
         }
     }
 

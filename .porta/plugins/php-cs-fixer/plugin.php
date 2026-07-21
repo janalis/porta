@@ -30,6 +30,7 @@ return new class implements PortaPlugin {
         $api->registerSetting('binary', 'php-cs-fixer binary', 'text', '', hint: 'empty = vendor/bin, then PATH');
         $api->registerSetting('args', 'Extra fix arguments', 'text', '', hint: 'appended to the fix command');
         $api->registerSetting('autoFormat', 'Format on save', 'bool', false);
+        $api->registerComposerDependency('friendsofphp/php-cs-fixer', fn (): bool => null !== $this->binary($api));
 
         $api->registerCommand(
             'fix',
