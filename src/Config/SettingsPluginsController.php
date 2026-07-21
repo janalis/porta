@@ -160,6 +160,7 @@ final class SettingsPluginsController
             return;
         }
         $tool = $offer['tool'];
+        // @mago-expect lint:no-boolean-flag-parameter -- $ok is the install-result callback (succeeded/failed), not a mode switch
         $outcome = $this->installerTool->install($offer['via'], function (bool $ok) use ($name, $tool): void {
             $this->notifier->flash(
                 $ok

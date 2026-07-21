@@ -177,12 +177,14 @@ final class FileTreeWidget extends AbstractWidget implements FocusableInterface,
         }
         $this->rebuild();
         foreach ($this->visible as $i => $node) {
-            if ($node->path === $path) {
-                $this->list->select($i);
-                $this->invalidate();
-
-                return;
+            if ($node->path !== $path) {
+                continue;
             }
+
+            $this->list->select($i);
+            $this->invalidate();
+
+            return;
         }
     }
 

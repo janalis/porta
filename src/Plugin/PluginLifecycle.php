@@ -64,10 +64,12 @@ final class PluginLifecycle implements PluginLifecycleOps
     {
         $scope = null;
         foreach ($this->installer->installed() as $plugin) {
-            if ($plugin['name'] === $name) {
-                $scope = $plugin['scope'];
-                break;
+            if ($plugin['name'] !== $name) {
+                continue;
             }
+
+            $scope = $plugin['scope'];
+            break;
         }
 
         return 'embedded' === $scope;
@@ -126,13 +128,7 @@ final class PluginLifecycle implements PluginLifecycleOps
      */
     public function disable(string $name): void
     {
-        if ($this->isBundled($name)) {
-            unset($this->enabled[$name]);
-            IdeConfig::persistBundledDisabled($this->rootDir, $name);
-        } else {
-            $this->disabled[$name] = true;
-            IdeConfig::persistPluginDisabled($this->rootDir, $name);
-        }
+        $this->persistDisabledChoice($name);
         $wasProvider = $this->plugins->providesLanguageServer($name);
         $this->plugins->deactivate($name, $this->commands); // no shadow fallback: the NAME is off
         $this->reconfigureLspIf($wasProvider);
@@ -147,13 +143,7 @@ final class PluginLifecycle implements PluginLifecycleOps
      */
     public function enable(string $name): void
     {
-        if ($this->isBundled($name)) {
-            $this->enabled[$name] = true;
-            IdeConfig::persistBundledEnabled($this->rootDir, $name);
-        } else {
-            unset($this->disabled[$name]);
-            IdeConfig::persistPluginEnabled($this->rootDir, $name);
-        }
+        $this->persistEnabledChoice($name);
         foreach ($this->installer->installed() as $candidate) {
             if ($candidate['name'] !== $name) {
                 continue;
@@ -178,7 +168,40 @@ final class PluginLifecycle implements PluginLifecycleOps
         $this->reconfigureLspIf($this->plugins->providesLanguageServer($name));
     }
 
+    /**
+     * Persist a disable: bundled plugins leave `enabledPlugins`, installed ones
+     * join `disabledPlugins`.
+     */
+    private function persistDisabledChoice(string $name): void
+    {
+        if ($this->isBundled($name)) {
+            unset($this->enabled[$name]);
+            IdeConfig::persistBundledDisabled($this->rootDir, $name);
+
+            return;
+        }
+        $this->disabled[$name] = true;
+        IdeConfig::persistPluginDisabled($this->rootDir, $name);
+    }
+
+    /**
+     * Persist an enable: bundled plugins join `enabledPlugins`, installed ones
+     * leave `disabledPlugins`.
+     */
+    private function persistEnabledChoice(string $name): void
+    {
+        if ($this->isBundled($name)) {
+            $this->enabled[$name] = true;
+            IdeConfig::persistBundledEnabled($this->rootDir, $name);
+
+            return;
+        }
+        unset($this->disabled[$name]);
+        IdeConfig::persistPluginEnabled($this->rootDir, $name);
+    }
+
     /** Re-resolve the LSP servers when a toggled plugin provides one (and no --lsp override wins). */
+    // @mago-expect lint:no-boolean-flag-parameter -- $provider is a computed guard shared by the three toggle paths, not a mode switch
     private function reconfigureLspIf(bool $provider): void
     {
         if ($provider && !$this->lspReconfigurer->isOverridden()) {

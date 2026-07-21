@@ -392,6 +392,7 @@ final class IdeConfig
     }
 
     /** Add ($member) or drop $plugin from a top-level string-list key, dropping the key when empty. */
+    // @mago-expect lint:no-boolean-flag-parameter -- shared add/drop membership helper; the four public persist* methods are its split faces
     private static function persistPluginMembership(string $rootDir, string $key, string $plugin, bool $member): bool
     {
         $file = $rootDir.'/.porta.json';

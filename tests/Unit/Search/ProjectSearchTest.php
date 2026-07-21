@@ -450,6 +450,7 @@ final class ProjectSearchTest extends TestCase
 }
 
 /** Which search backend a helper exercises: the grep path or the PHP Finder fallback. */
+// @mago-expect lint:single-class-per-file -- test-local helper enum, kept beside the test that uses it
 enum SearchBackend
 {
     case Grep;

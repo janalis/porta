@@ -171,7 +171,7 @@ final class GitCommandsTest extends TestCase
 
     private static function commitEntry(string $sha): LogEntry
     {
-        return new LogEntry($sha, substr($sha, 0, 7), 'Tester', 0, 'subject');
+        return new LogEntry($sha, substr($sha, offset: 0, length: 7), 'Tester', 0, 'subject');
     }
 
     /** @param callable(GitCommands): void $action */
@@ -304,7 +304,7 @@ final class GitCommandsTest extends TestCase
 
         $commands->copyCommitHash(self::commitEntry($sha));
 
-        $this->assertStringContainsString('Copied '.substr($sha, 0, 7), $this->flash());
+        $this->assertStringContainsString('Copied '.substr($sha, offset: 0, length: 7), $this->flash());
         $this->assertStringContainsString("\x1b]52;c;".base64_encode($sha), $this->tui->getTerminal()->getOutput(), 'the full hash reached the OSC 52 clipboard');
     }
 
@@ -378,7 +378,7 @@ final class GitCommandsTest extends TestCase
         $this->key("\r"); // "Soft" leads the confirm list
         $this->pump();
 
-        $this->assertStringContainsString('Reset to '.substr($base, 0, 7).' (soft)', $this->flash());
+        $this->assertStringContainsString('Reset to '.substr($base, offset: 0, length: 7).' (soft)', $this->flash());
         $this->assertSame($base, trim($this->git('rev-parse', 'HEAD')), 'HEAD moved to the chosen commit');
         $this->assertStringContainsString('more', $this->readFile('a.txt'), 'a soft reset leaves the working tree untouched');
     }

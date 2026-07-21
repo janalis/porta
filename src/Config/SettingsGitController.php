@@ -117,9 +117,11 @@ final class SettingsGitController
      * Live "git change-marks in gutter": mutate the holder, grow/shrink the
      * gutter, and repopulate marks when turning back on (disable clears them).
      */
+    // @mago-expect lint:no-boolean-flag-parameter -- a live on/off setting applier
     private function applyGutter(bool $on): void
     {
         $this->gitSettings->setGutterMarks($on);
+        // @mago-expect lint:no-else-clause -- symmetric on/off branches converging on the shared requestRender() below
         if ($on) {
             $this->editor->enableGitGutter();
             $this->gitRefresher->refreshActiveMarks();

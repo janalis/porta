@@ -370,7 +370,7 @@ final class HelpViewerWidgetTest extends TestCase
         $lineNo = null;
         $col = 0;
         foreach ($viewer->findLines() as $i => $line) {
-            $at = strpos($line, 'Paragraph 1.');
+            $at = strpos($line, needle: 'Paragraph 1.');
             if (false !== $at) {
                 $lineNo = $i;
                 $col = $at;

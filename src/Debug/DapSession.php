@@ -338,6 +338,7 @@ final class DapSession
             return;
         }
         if (!$this->supportsSetVariable) {
+            // @mago-expect lint:literal-named-argument -- positional call of a caller-supplied closure; naming would couple to its param names
             $deliver('', 'the debug adapter does not support editing variables');
 
             return;

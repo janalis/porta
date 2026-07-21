@@ -484,7 +484,7 @@ final class HelpViewerWidget extends AbstractWidget implements FindTarget, Focus
 
     public function findLines(): array
     {
-        return array_map(AnsiUtils::stripAnsiCodes(...), $this->doc?->lines ?? []);
+        return array_map(AnsiUtils::stripAnsiCodes(...), $this->doc->lines ?? []);
     }
 
     public function findVersion(): int

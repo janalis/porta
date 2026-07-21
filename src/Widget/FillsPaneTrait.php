@@ -17,7 +17,6 @@ trait FillsPaneTrait
         return true;
     }
 
-    // @mago-expect lint:no-boolean-flag-parameter -- implements Symfony\Component\Tui\Widget\VerticallyExpandableInterface::expandVertically(bool)
     public function expandVertically(bool $expand): static
     {
         return $this; // always fills its pane height

@@ -44,7 +44,7 @@ final class PhpCsFixerPluginTest extends TestCase
 
         if (null !== $stubExitCode) {
             // PATH is /nonexistent, so the shebang must point at the php binary directly.
-            $stub = '#!'.\PHP_BINARY.' -n'."\n<?php\n"."file_put_contents(\$argv[2], file_get_contents(\$argv[2]).\"// fixed\\n\");\n"."exit({$stubExitCode});\n";
+            $stub = '#!'.\PHP_BINARY.' -n'."\n<?php\nfile_put_contents(\$argv[2], file_get_contents(\$argv[2]).\"// fixed\\n\");\n"."exit({$stubExitCode});\n";
             mkdir($project->path('vendor/bin'), permissions: 0o777, recursive: true);
             file_put_contents($project->path('vendor/bin/php-cs-fixer'), $stub);
             chmod($project->path('vendor/bin/php-cs-fixer'), permissions: 0o755);

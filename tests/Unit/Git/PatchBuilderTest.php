@@ -270,6 +270,7 @@ final class PatchBuilderTest extends TestCase
 }
 
 /** Which side of the index a diff is taken against. */
+// @mago-expect lint:single-class-per-file -- test-local helper enum, kept beside the test that uses it
 enum DiffSide
 {
     case Worktree;
