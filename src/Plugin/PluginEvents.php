@@ -7,6 +7,7 @@ namespace Porta\Plugin;
 use Porta\Event\BufferOpened;
 use Porta\Event\BufferSaved;
 use Porta\Event\BufferSwitched;
+use Porta\Event\ThemeChanged;
 use Symfony\Component\EventDispatcher\Attribute\AsEventListener;
 
 /**
@@ -21,7 +22,7 @@ use Symfony\Component\EventDispatcher\Attribute\AsEventListener;
  */
 final class PluginEvents
 {
-    public const array EVENTS = ['fileOpened', 'fileSaved', 'bufferSwitched'];
+    public const array EVENTS = ['fileOpened', 'fileSaved', 'bufferSwitched', 'themeChanged'];
 
     /** @var array<string, array<string, list<\Closure(string): void>>> event => plugin => listeners */
     private array $listeners = [];
@@ -65,6 +66,18 @@ final class PluginEvents
         }
         $this->lastShownPath = $event->buffer->path;
         $this->emit('bufferSwitched', $event->buffer->path);
+    }
+
+    /**
+     * Theme switches reach plugins so a backend that bakes the theme's escape
+     * codes can rebuild. Still -100, i.e. after core's rebuild listeners — and
+     * core's highlight-cache drop deliberately runs *after this*, at -200, so a
+     * plugin has rebuilt before the caches it feeds are dropped.
+     */
+    #[AsEventListener(priority: -100)]
+    public function onThemeChanged(ThemeChanged $event): void
+    {
+        $this->emit('themeChanged', $event->theme);
     }
 
     private function emit(string $event, string $path): void

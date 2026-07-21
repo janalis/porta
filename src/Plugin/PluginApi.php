@@ -336,6 +336,21 @@ final class PluginApi
         $this->hooks[] = ['bufferSwitched', $listener];
     }
 
+    /**
+     * The theme changed; the listener receives the new theme name.
+     *
+     * For a highlighting backend that bakes colours at construction rather than
+     * reading {@see syntaxTheme()} per token — drop the cached engine here and
+     * rebuild it lazily. Runs before core drops the highlight caches, so the
+     * next paint uses the rebuilt engine.
+     *
+     * @param \Closure(string): void $listener
+     */
+    public function onThemeChanged(\Closure $listener): void
+    {
+        $this->hooks[] = ['themeChanged', $listener];
+    }
+
     // --- Actions (live IDE; PluginException during activate()) ---------------
 
     /** Show a transient status-bar message. */

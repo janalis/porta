@@ -20,6 +20,34 @@ use Symfony\Component\Tui\Ansi\AnsiUtils;
  */
 final class IdePhpLspPluginsTest extends TestCase
 {
+    /** The suite-wide PORTA_HOME (the `tempest` highlighting fixture), to restore. */
+    private ?string $savedPortaHome = null;
+
+    /**
+     * Opt out of the suite-wide `tempest` highlighting fixture installed via
+     * PORTA_HOME. This class exercises plugin *machinery* — discovery, listings,
+     * the Settings nav — and a permanently present plugin appears in every
+     * listing and shifts the index-based navigation.
+     *
+     * Restored in tearDown: paratest reuses the process, so a leaked PORTA_HOME
+     * would silently uncolour later tests in the same worker.
+     */
+    private function withoutTheHighlightingFixture(): void
+    {
+        $home = getenv('PORTA_HOME');
+        $this->savedPortaHome = false === $home ? null : $home;
+        putenv('PORTA_HOME=/nonexistent');
+    }
+
+    private function restoreTheHighlightingFixture(): void
+    {
+        if (null === $this->savedPortaHome) {
+            return;
+        }
+        putenv('PORTA_HOME='.$this->savedPortaHome);
+        $this->savedPortaHome = null;
+    }
+
     use RunsIde;
 
     private string $originalPath;
@@ -27,6 +55,7 @@ final class IdePhpLspPluginsTest extends TestCase
 
     protected function setUp(): void
     {
+        $this->withoutTheHighlightingFixture();
         $this->originalPath = PORTA_TEST_PRISTINE_PATH;
         $this->originalEmbedded = (string) getenv('PORTA_EMBEDDED_PLUGINS');
         putenv('PORTA_LSP');
@@ -35,6 +64,7 @@ final class IdePhpLspPluginsTest extends TestCase
 
     protected function tearDown(): void
     {
+        $this->restoreTheHighlightingFixture();
         putenv('PATH='.$this->originalPath);
         putenv('PORTA_EMBEDDED_PLUGINS='.$this->originalEmbedded);
     }

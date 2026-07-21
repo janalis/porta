@@ -16,9 +16,14 @@ namespace Porta\Highlight;
  * 2. the first plugin provider in load order that claims it — mirroring
  *    `PluginManager::languageServers()`'s "first available in load order wins",
  *    so installing a highlighter plugin does something without editing config;
- * 3. the built-in Tempest backend;
- * 4. {@see PlainTextHighlightProvider}, which claims everything and is
+ * 3. {@see PlainTextHighlightProvider}, which claims everything and is
  *    constructed here rather than resolved, so it can never be removed.
+ *
+ * There is no built-in engine in this chain any more: Tempest is the bundled
+ * `tempest` plugin, competing on the same footing as any other backend. With
+ * no highlighting plugin enabled the editor renders uncoloured rather than
+ * broken. (Loose fragments — diff hunks, the empty-editor placeholder — do not
+ * come through here; see {@see CodeHighlighterFactory::forFragments()}.)
  *
  * Every call into a provider — `id()`, `supports()` — is fault-barriered here,
  * in the caller. A provider that throws while being *interrogated* is treated
@@ -34,7 +39,6 @@ final class HighlightRegistry
 
     public function __construct(
         private readonly SyntaxHighlightProviderSource $plugins,
-        private readonly TempestHighlightProvider $tempest,
         private readonly HighlightPreferences $preferences,
     ) {
         $this->plain = new PlainTextHighlightProvider();
@@ -42,7 +46,7 @@ final class HighlightRegistry
 
     public function providerFor(string $language): SyntaxHighlightProvider
     {
-        $candidates = [...$this->plugins->highlightProviders(), $this->tempest];
+        $candidates = $this->plugins->highlightProviders();
 
         $preferred = $this->preferences->preferredFor($language);
         if (null !== $preferred) {
@@ -66,7 +70,7 @@ final class HighlightRegistry
     public function available(string $language): array
     {
         $claiming = [];
-        foreach ([...$this->plugins->highlightProviders(), $this->tempest, $this->plain] as $candidate) {
+        foreach ([...$this->plugins->highlightProviders(), $this->plain] as $candidate) {
             if (!$this->claims($candidate, $language)) {
                 continue;
             }

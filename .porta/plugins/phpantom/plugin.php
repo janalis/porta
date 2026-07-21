@@ -31,7 +31,10 @@ return new class implements PortaPlugin {
     {
         $api->registerSetting('binary', 'phpantom_lsp binary', 'text', '', hint: 'empty = phpantom_lsp on PATH');
         $api->registerSetting('autoFix', 'Fix on save', 'bool', false);
-        $api->registerInstaller('phpantom', fn (): bool => null !== $this->binary($api), [['brew', 'phpantom-lsp'], ['cargo', 'phpantom_lsp']]);
+        $api->registerInstaller('phpantom', fn (): bool => null !== $this->binary($api), [
+            ['brew',  'phpantom-lsp'],
+            ['cargo', 'phpantom_lsp'],
+        ]);
 
         $api->registerLanguageServer('php', 'phpantom', function () use ($api): ?array {
             $binary = $this->binary($api);

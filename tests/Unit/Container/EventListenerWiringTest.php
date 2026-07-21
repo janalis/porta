@@ -13,6 +13,7 @@ use Porta\Event\BufferSaved;
 use Porta\Event\BufferSwitched;
 use Porta\Event\LocaleChanged;
 use Porta\Event\ThemeChanged;
+use Porta\Highlight\HighlightThemeListener;
 use Porta\Plugin\PluginEvents;
 use Porta\Ui\ChromeRefreshListener;
 use Porta\Ui\MenuLayoutRefreshListener;
@@ -127,7 +128,30 @@ final class EventListenerWiringTest extends TestCase
             $last = end($listeners);
             \assert(\is_array($first) && \is_array($last), description: 'listener entries are [service, method] pairs');
             $this->assertInstanceOf(MenuLayoutRefreshListener::class, $first[0], $event.': the menu/layout refresh runs first');
-            $this->assertInstanceOf(ChromeRefreshListener::class, $last[0], $event.': the -100 chrome sweep runs last');
+
+            // The chrome sweep is last among the *rebuild* listeners, which is
+            // what its -100 contract is about. ThemeChanged additionally carries
+            // the -200 highlight-cache drop, which must postdate the -100 plugin
+            // bridge so a theme-baking backend rebuilds before its caches go.
+            $expectedLast = ThemeChanged::class === $event ? HighlightThemeListener::class : ChromeRefreshListener::class;
+            $this->assertInstanceOf($expectedLast, $last[0], $event.': the sweep order ends as documented');
+            $this->assertLessThanOrEqual(
+                $this->indexOf($listeners, $expectedLast),
+                $this->indexOf($listeners, ChromeRefreshListener::class),
+                $event.': the chrome sweep still runs after every rebuild listener',
+            );
         }
+    }
+
+    /** @param array<int, array{0: object, 1: string}> $listeners */
+    private function indexOf(array $listeners, string $class): int
+    {
+        foreach (array_values($listeners) as $index => $entry) {
+            if ($entry[0] instanceof $class) {
+                return $index;
+            }
+        }
+
+        return \PHP_INT_MAX;
     }
 }

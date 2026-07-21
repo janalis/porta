@@ -15,7 +15,6 @@ use Porta\Highlight\HighlightSink;
 use Porta\Highlight\NoHighlightPlugins;
 use Porta\Highlight\SyntaxHighlightProvider;
 use Porta\Highlight\SyntaxHighlightProviderSource;
-use Porta\Highlight\TempestHighlightProvider;
 
 /**
  * Backend selection: configured id, then load order, then the built-in, then plain.
@@ -33,11 +32,16 @@ final class HighlightRegistryTest extends TestCase
         $this->assertNull($empty->preferredFor('php'), 'no preference is not a preference for ""');
     }
 
-    public function testFallsBackToTempestWhenNoPluginClaimsTheLanguage(): void
+    /**
+     * There is no built-in engine in the chain: Tempest is a plugin now, so with
+     * nothing enabled a file renders uncoloured rather than falling through to
+     * something privileged.
+     */
+    public function testFallsBackToPlainWhenNoPluginClaimsTheLanguage(): void
     {
         $registry = $this->registry([]);
 
-        $this->assertSame('tempest', $registry->providerFor('php')->id());
+        $this->assertSame('plain', $registry->providerFor('php')->id());
     }
 
     /** Nothing claims the empty language, so the plain fallback is the terminal case. */
@@ -88,7 +92,7 @@ final class HighlightRegistryTest extends TestCase
             new HighlightPreferences(default: 'rustonly'),
         );
 
-        $this->assertSame('tempest', $registry->providerFor('php')->id());
+        $this->assertSame('plain', $registry->providerFor('php')->id());
     }
 
     public function testUnavailableProviderDeclines(): void
@@ -103,7 +107,7 @@ final class HighlightRegistryTest extends TestCase
         );
         $registry = $this->registry([$unavailable]);
 
-        $this->assertSame('tempest', $registry->providerFor('php')->id());
+        $this->assertSame('plain', $registry->providerFor('php')->id());
     }
 
     /** Interrogating a provider must never propagate — a throw means "doesn't claim it". */
@@ -111,14 +115,14 @@ final class HighlightRegistryTest extends TestCase
     {
         $registry = $this->registry([$this->throwingProvider('boom')]);
 
-        $this->assertSame('tempest', $registry->providerFor('php')->id());
+        $this->assertSame('plain', $registry->providerFor('php')->id());
     }
 
     public function testThrowingIdIsSurvivedDuringPreferenceMatching(): void
     {
-        $registry = $this->registry([$this->throwingIdProvider()], new HighlightPreferences(default: 'tempest'));
+        $registry = $this->registry([$this->throwingIdProvider()], new HighlightPreferences(default: 'anything'));
 
-        $this->assertSame('tempest', $registry->providerFor('php')->id());
+        $this->assertSame('plain', $registry->providerFor('php')->id());
     }
 
     public function testAvailableListsEveryClaimingBackend(): void
@@ -127,7 +131,7 @@ final class HighlightRegistryTest extends TestCase
 
         $ids = array_map(static fn (SyntaxHighlightProvider $p): string => $p->id(), $registry->available('php'));
 
-        $this->assertSame(['alpha', 'tempest', 'plain'], $ids);
+        $this->assertSame(['alpha', 'plain'], $ids);
     }
 
     /**
@@ -158,12 +162,13 @@ final class HighlightRegistryTest extends TestCase
         $this->assertNotNull($factory->forFragments());
     }
 
-    public function testFactoryWorksStandaloneWithNoRegistry(): void
+    /** Standalone (no container, no plugins) means no backend: plain text. */
+    public function testFactoryWorksStandaloneAndRendersPlain(): void
     {
         $highlighter = new CodeHighlighterFactory()->forFile('/x/a.php');
         $highlighter->setFile('/x/a.php');
 
-        $this->assertStringContainsString("\x1b[", implode('', $highlighter->highlight(['<?php', "echo 'x';"], 1)));
+        $this->assertSame(['<?php', "echo 'x';"], $highlighter->highlight(['<?php', "echo 'x';"], 1));
     }
 
     public function testNoHighlightPluginsIsEmpty(): void
@@ -186,11 +191,7 @@ final class HighlightRegistryTest extends TestCase
             }
         };
 
-        return new HighlightRegistry(
-            $source,
-            new TempestHighlightProvider(new DarkTerminalTheme()),
-            $preferences ?? new HighlightPreferences(),
-        );
+        return new HighlightRegistry($source, $preferences ?? new HighlightPreferences());
     }
 
     /** @param list<string> $languages */

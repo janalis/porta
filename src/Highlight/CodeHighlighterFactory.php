@@ -35,11 +35,7 @@ final class CodeHighlighterFactory
         private readonly ?CodeEditorWidget $editor = null,
     ) {
         $this->syntaxTheme = $syntaxTheme ?? new DarkTerminalTheme();
-        $this->registry = $registry ?? new HighlightRegistry(
-            new NoHighlightPlugins(),
-            new TempestHighlightProvider($this->syntaxTheme),
-            new HighlightPreferences(),
-        );
+        $this->registry = $registry ?? new HighlightRegistry(new NoHighlightPlugins(), new HighlightPreferences());
     }
 
     /** A highlighter for $path, using whichever backend claims its language. */

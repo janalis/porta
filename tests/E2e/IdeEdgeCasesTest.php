@@ -30,6 +30,8 @@ final class IdeEdgeCasesTest extends TestCase
 
     private string $originalPath;
 
+    private ?string $portaHomeToRestore = null;
+
     protected function setUp(): void
     {
         $this->originalPath = PORTA_TEST_PRISTINE_PATH;
@@ -38,6 +40,10 @@ final class IdeEdgeCasesTest extends TestCase
 
     protected function tearDown(): void
     {
+        if (null !== $this->portaHomeToRestore) {
+            putenv('PORTA_HOME='.$this->portaHomeToRestore);
+            $this->portaHomeToRestore = null;
+        }
         putenv('PATH='.$this->originalPath);
         putenv('PORTA_LSP');
     }
@@ -4806,6 +4812,12 @@ final class IdeEdgeCasesTest extends TestCase
 
     public function testSettingsViewSidebarNavFormAndLanguages(): void
     {
+        // Plugin-list navigation is index-based, so keep the suite-wide
+        // `tempest` highlighting fixture (installed via PORTA_HOME) out of it.
+        // tearDown puts it back — paratest reuses the process.
+        $portaHome = getenv('PORTA_HOME');
+        $this->portaHomeToRestore = false === $portaHome ? null : $portaHome;
+        putenv('PORTA_HOME=/nonexistent');
         putenv('PATH=/nonexistent'); // no git/LSP subprocesses needed
         $project = new TempProject(['a.php' => "<?php\n"]);
 

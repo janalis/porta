@@ -10,8 +10,12 @@
          displayDetailsOnTestsThatTriggerNotices="true"
 >
     <php>
-        <!-- Keep tests away from the developer's real ~/.porta/plugins. -->
-        <env name="PORTA_HOME" value="/nonexistent" force="true"/>
+        <!-- Keep tests away from the developer's real ~/.porta/plugins, while
+             installing the bundled `tempest` highlighter as a *global* plugin so
+             every booted Ide is coloured. Global plugins are opt-out, so this
+             needs no per-project config file (which would perturb the git and
+             file-tree fixtures). -->
+        <env name="PORTA_HOME" value="./tests/Support/fixtures/home" force="true"/>
         <!-- The bundled plugins load only in scenarios that opt in via putenv. -->
         <env name="PORTA_EMBEDDED_PLUGINS" value="/nonexistent" force="true"/>
     </php>
