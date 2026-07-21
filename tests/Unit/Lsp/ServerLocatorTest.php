@@ -24,190 +24,51 @@ final class ServerLocatorTest extends TestCase
         putenv('PORTA_LSP');
     }
 
-    public function testConfigStringCommand(): void
+    /** @var array<string, array{command: list<string>, name: string}> a phpantom plugin server, for the defaults layer */
+    private const array PHPANTOM = ['php' => ['command' => ['/opt/phpantom_lsp'], 'name' => 'phpantom']];
+
+    public function testConfigStringCommandIsTheCatchAll(): void
     {
         $project = new TempProject(['.porta.json' => json_encode(['lsp' => 'php phpactor.phar language-server'])]);
-
-        $server = ServerLocator::locate($project->dir);
-
-        $this->assertSame(['php', 'phpactor.phar', 'language-server'], $server['command']);
-        $this->assertSame('phpactor', $server['name'], 'interpreter token skipped, .phar stripped');
-    }
-
-    public function testExplicitOverrideWinsOverConfig(): void
-    {
-        // Even with a .porta.json lsp set, an explicit override takes precedence.
-        $project = new TempProject(['.porta.json' => json_encode(['lsp' => 'phpactor language-server'])]);
-
-        $server = ServerLocator::locate($project->dir, 'my-ls --stdio');
-
-        $this->assertSame(['my-ls', '--stdio'], $server['command']);
-        $this->assertSame('my-ls', $server['name']);
-    }
-
-    public function testEmptyOverrideFallsThrough(): void
-    {
-        $project = new TempProject(['.porta.json' => json_encode(['lsp' => 'phpactor language-server'])]);
-
-        $server = ServerLocator::locate($project->dir, '');
-
-        $this->assertSame(['phpactor', 'language-server'], $server['command'], 'empty override is ignored');
-    }
-
-    public function testConfigArrayCommand(): void
-    {
-        $project = new TempProject(['.porta.json' => json_encode(['lsp' => ['node', '/x/intelephense.js', '--stdio']])]);
-
-        $server = ServerLocator::locate($project->dir);
-
-        $this->assertSame(['node', '/x/intelephense.js', '--stdio'], $server['command']);
-        $this->assertSame('intelephense', $server['name']);
-    }
-
-    public function testConfigWithoutLspFallsThrough(): void
-    {
-        $project = new TempProject(['.porta.json' => json_encode(['keymap' => []])]);
-        putenv('PATH=/nonexistent');
-
-        $this->assertNull(ServerLocator::locate($project->dir));
-    }
-
-    public function testMalformedConfigDoesNotCrash(): void
-    {
-        // A broken .porta.json must degrade gracefully, not throw.
-        $project = new TempProject(['.porta.json' => '{not json']);
-        putenv('PATH=/nonexistent');
-
-        $this->assertNull(ServerLocator::locate($project->dir));
-    }
-
-    public function testEnvVariable(): void
-    {
-        $project = new TempProject();
-        putenv('PORTA_LSP=custom-ls --stdio');
-
-        $server = ServerLocator::locate($project->dir);
-
-        $this->assertSame(['custom-ls', '--stdio'], $server['command']);
-        $this->assertSame('custom-ls', $server['name']);
-    }
-
-    public function testVendorBinPhpactor(): void
-    {
-        $project = new TempProject();
-        $bin = $project->write('vendor/bin/phpactor', "#!/bin/sh\necho hi\n");
-        chmod($bin, permissions: 0o755);
-        putenv('PATH=/nonexistent');
-
-        $server = ServerLocator::locate($project->dir);
-
-        $this->assertSame([$bin, 'language-server'], $server['command']);
-        $this->assertSame('phpactor', $server['name']);
-    }
-
-    public function testPathLookupPhpactorThenIntelephense(): void
-    {
-        $project = new TempProject();
-        $tools = new TempProject([], 'porta-bin-');
-
-        $phpactor = $tools->write('phpactor', "#!/bin/sh\n");
-        chmod($phpactor, permissions: 0o755);
-        putenv('PATH='.$tools->dir);
-        $this->assertSame('phpactor', ServerLocator::locate($project->dir)['name']);
-
-        unlink($phpactor);
-        $intelephense = $tools->write('intelephense', "#!/bin/sh\n");
-        chmod($intelephense, permissions: 0o755);
-        $server = ServerLocator::locate($project->dir);
-        $this->assertSame([$intelephense, '--stdio'], $server['command']);
-        $this->assertSame('intelephense', $server['name']);
-    }
-
-    public function testDisplayNameFallsBackWhenAllTokensAreInterpreters(): void
-    {
-        $project = new TempProject(['.porta.json' => json_encode(['lsp' => 'php'])]);
-
-        $this->assertSame('php', ServerLocator::locate($project->dir)['name']);
-    }
-
-    public function testNothingFound(): void
-    {
-        $project = new TempProject();
-        putenv('PATH=/nonexistent');
-
-        $this->assertNull(ServerLocator::locate($project->dir));
-    }
-
-    // --- locateAll ------------------------------------------------------------
-
-    public function testLocateAllStringConfigIsTheCatchAll(): void
-    {
-        $project = new TempProject(['.porta.json' => json_encode(['lsp' => 'phpactor language-server'])]);
 
         $servers = ServerLocator::locateAll($project->dir);
 
         $this->assertSame(['*'], array_keys($servers), 'a single command string serves every language');
-        $this->assertSame(['phpactor', 'language-server'], $servers['*']['command']);
+        $this->assertSame(['php', 'phpactor.phar', 'language-server'], $servers['*']['command']);
+        $this->assertSame('phpactor', $servers['*']['name'], 'interpreter token skipped, .phar stripped');
     }
 
-    public function testLocateAllOverrideIsTheCatchAll(): void
+    public function testConfigArgvListIsTheCatchAll(): void
+    {
+        $project = new TempProject(['.porta.json' => json_encode(['lsp' => ['node', '/x/intelephense.js', '--stdio']])]);
+
+        $servers = ServerLocator::locateAll($project->dir);
+
+        $this->assertSame(['*'], array_keys($servers));
+        $this->assertSame(['node', '/x/intelephense.js', '--stdio'], $servers['*']['command']);
+        $this->assertSame('intelephense', $servers['*']['name']);
+    }
+
+    public function testOverrideWinsOverEverything(): void
     {
         $project = new TempProject(['.porta.json' => json_encode(['lsp' => ['php' => 'phpactor language-server']])]);
 
-        $servers = ServerLocator::locateAll($project->dir, 'my-ls --stdio');
+        $servers = ServerLocator::locateAll($project->dir, 'my-ls --stdio', self::PHPANTOM);
 
-        $this->assertSame(['*'], array_keys($servers), 'the --lsp override beats even a map config');
+        $this->assertSame(['*'], array_keys($servers), 'the --lsp override beats a map config and plugin servers');
         $this->assertSame(['my-ls', '--stdio'], $servers['*']['command']);
     }
 
-    public function testLocateAllMapConfigRoutesPerLanguage(): void
+    public function testEmptyOverrideIsIgnored(): void
     {
-        putenv('PATH=/nonexistent'); // no auto-detected servers to merge in
-        $project = new TempProject(['.porta.json' => json_encode([
-            'lsp' => [
-                'php' => 'phpactor language-server',
-                'typescript' => ['node', '/x/tsserver.js', '--stdio'],
-                'python' => '', // empty command: dropped → auto-detect (none here)
-                'yaml' => ['ls', '--stdio'], // argv-list value form
-            ],
-        ])]);
+        $project = new TempProject(['.porta.json' => json_encode(['lsp' => 'phpactor language-server'])]);
 
-        $servers = ServerLocator::locateAll($project->dir);
+        $servers = ServerLocator::locateAll($project->dir, '');
 
-        $this->assertSame(['php', 'typescript', 'yaml'], array_keys($servers));
-        $this->assertSame(['phpactor', 'language-server'], $servers['php']['command']);
-        $this->assertSame(['node', '/x/tsserver.js', '--stdio'], $servers['typescript']['command']);
-        $this->assertSame('tsserver', $servers['typescript']['name']);
-        $this->assertSame(['ls', '--stdio'], $servers['yaml']['command']);
+        $this->assertSame(['phpactor', 'language-server'], $servers['*']['command'], 'empty override falls through to config');
     }
 
-    public function testLocateAllMapMergesWithAutoDetect(): void
-    {
-        // A map that only overrides typescript leaves php on its auto-detected default.
-        $project = new TempProject(['.porta.json' => json_encode(['lsp' => ['typescript' => 'my-tsls --stdio']])]);
-        $bin = $project->write('vendor/bin/phpactor', "#!/bin/sh\n");
-        chmod($bin, permissions: 0o755);
-        putenv('PATH=/nonexistent');
-
-        $servers = ServerLocator::locateAll($project->dir);
-
-        $this->assertSame([$bin, 'language-server'], $servers['php']['command'], 'php keeps its auto-detected server');
-        $this->assertSame(['my-tsls', '--stdio'], $servers['typescript']['command'], 'the override applies');
-    }
-
-    public function testAutoDetectedAndDescribeHelpers(): void
-    {
-        $project = new TempProject();
-        $bin = $project->write('vendor/bin/phpactor', "#!/bin/sh\n");
-        chmod($bin, permissions: 0o755);
-        putenv('PATH=/nonexistent');
-
-        $this->assertSame('phpactor', ServerLocator::autoDetected($project->dir)['php']['name']);
-        $this->assertSame(['node', '/x/ls.js', '--stdio'], ServerLocator::describe('node /x/ls.js --stdio')['command']);
-        $this->assertSame('ls', ServerLocator::describe('node /x/ls.js --stdio')['name']);
-    }
-
-    public function testLocateAllEnvVariableIsTheCatchAll(): void
+    public function testEnvVariableIsTheCatchAll(): void
     {
         $project = new TempProject();
         putenv('PORTA_LSP=custom-ls --stdio');
@@ -218,24 +79,91 @@ final class ServerLocatorTest extends TestCase
         $this->assertSame('custom-ls', $servers['*']['name']);
     }
 
-    public function testLocateAllDefaultsDetectPerLanguageServers(): void
+    public function testDisplayNameFallsBackWhenAllTokensAreInterpreters(): void
+    {
+        $project = new TempProject(['.porta.json' => json_encode(['lsp' => 'php'])]);
+
+        $this->assertSame('php', ServerLocator::locateAll($project->dir)['*']['name']);
+    }
+
+    public function testMissingOrMalformedConfigDoesNotCrash(): void
+    {
+        putenv('PATH=/nonexistent');
+        $this->assertSame([], ServerLocator::locateAll(new TempProject(['.porta.json' => json_encode(['keymap' => []])])->dir));
+        $this->assertSame([], ServerLocator::locateAll(new TempProject(['.porta.json' => '{not json'])->dir), 'a broken file degrades gracefully');
+    }
+
+    // --- The plugin-server (default) layer ------------------------------------
+
+    public function testPluginServersAreTheDefaultLayer(): void
+    {
+        putenv('PATH=/nonexistent'); // no core auto-detect
+        $project = new TempProject();
+
+        $servers = ServerLocator::locateAll($project->dir, null, self::PHPANTOM);
+
+        $this->assertSame(['php'], array_keys($servers), 'PHP now comes from a plugin, not a hardcoded default');
+        $this->assertSame('phpantom', $servers['php']['name']);
+        $this->assertSame(['/opt/phpantom_lsp'], $servers['php']['command']);
+    }
+
+    public function testConfigMapOverridesAPluginServer(): void
+    {
+        putenv('PATH=/nonexistent');
+        $project = new TempProject(['.porta.json' => json_encode(['lsp' => ['php' => 'phpactor language-server']])]);
+
+        $servers = ServerLocator::locateAll($project->dir, null, self::PHPANTOM);
+
+        $this->assertSame(['phpactor', 'language-server'], $servers['php']['command'], 'the user config beats the plugin server');
+        $this->assertSame('phpactor', $servers['php']['name']);
+    }
+
+    public function testMapOverrideLeavesOtherLanguagesOnTheirDefaults(): void
+    {
+        // A map that only sets typescript leaves php on its plugin server.
+        putenv('PATH=/nonexistent');
+        $project = new TempProject(['.porta.json' => json_encode(['lsp' => ['typescript' => 'my-tsls --stdio', 'python' => '', 'yaml' => ['ls', '--stdio']]])]);
+
+        $servers = ServerLocator::locateAll($project->dir, null, self::PHPANTOM);
+
+        $this->assertSame(['php', 'typescript', 'yaml'], array_keys($servers));
+        $this->assertSame('phpantom', $servers['php']['name'], 'php keeps its plugin server');
+        $this->assertSame(['my-tsls', '--stdio'], $servers['typescript']['command'], 'the override applies');
+        $this->assertSame(['ls', '--stdio'], $servers['yaml']['command'], 'argv-list value form');
+    }
+
+    // --- Core auto-detect (JS/TS, Python — PHP is plugin-only now) ------------
+
+    public function testPhpIsNoLongerAutoDetected(): void
+    {
+        $project = new TempProject();
+        chmod($project->write('vendor/bin/phpactor', "#!/bin/sh\n"), permissions: 0o755);
+        $tools = new TempProject([], 'porta-bin-');
+        chmod($tools->write('phpactor', "#!/bin/sh\n"), permissions: 0o755);
+        putenv('PATH='.$tools->dir);
+
+        $this->assertSame([], ServerLocator::locateAll($project->dir), 'no plugin server, no config → PHP is unserved');
+        $this->assertArrayNotHasKey('php', ServerLocator::autoDetected($project->dir));
+    }
+
+    public function testAutoDetectPerLanguageServers(): void
     {
         $project = new TempProject();
         $tools = new TempProject([], 'porta-bin-');
-        foreach (['phpactor', 'typescript-language-server', 'pyright-langserver'] as $bin) {
+        foreach (['typescript-language-server', 'pyright-langserver'] as $bin) {
             chmod($tools->write($bin, "#!/bin/sh\n"), permissions: 0o755);
         }
         putenv('PATH='.$tools->dir);
 
         $servers = ServerLocator::locateAll($project->dir);
 
-        $this->assertSame('phpactor', $servers['php']['name']);
         $this->assertSame('typescript-language-server', $servers['javascript']['name']);
         $this->assertSame($servers['javascript'], $servers['typescript'], 'JS and TS share one server');
         $this->assertSame('pyright', $servers['python']['name']);
+        $this->assertArrayNotHasKey('php', $servers);
     }
 
-    public function testLocateAllDefaultsFallBackToPylsp(): void
+    public function testPythonFallsBackToPylsp(): void
     {
         $project = new TempProject();
         $tools = new TempProject([], 'porta-bin-');
@@ -248,11 +176,17 @@ final class ServerLocatorTest extends TestCase
         $this->assertSame('pylsp', $servers['python']['name']);
     }
 
-    public function testLocateAllWithNothingInstalledIsEmpty(): void
+    public function testNothingInstalledAndNoPluginIsEmpty(): void
     {
         $project = new TempProject();
         putenv('PATH=/nonexistent');
 
         $this->assertSame([], ServerLocator::locateAll($project->dir));
+    }
+
+    public function testDescribeParsesACommand(): void
+    {
+        $this->assertSame(['node', '/x/ls.js', '--stdio'], ServerLocator::describe('node /x/ls.js --stdio')['command']);
+        $this->assertSame('ls', ServerLocator::describe('node /x/ls.js --stdio')['name']);
     }
 }

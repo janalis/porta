@@ -35,8 +35,8 @@ use Porta\Git\GitCommands;
 use Porta\Git\GitInfo;
 use Porta\Git\GitRefresher;
 use Porta\Git\GitRemote;
-use Porta\Git\GitSettings;
 use Porta\Git\GitRemoteCommands;
+use Porta\Git\GitSettings;
 use Porta\Git\GitViewController;
 use Porta\Help\HelpViewerActions;
 use Porta\Highlight\ColorMode;
@@ -52,8 +52,8 @@ use Porta\Image\ImageDecoder;
 use Porta\Image\ImageViewerActions;
 use Porta\Input\GitMouseRouter;
 use Porta\Input\HitTester;
-use Porta\Input\InputDispatcher;
 use Porta\Input\HoverRouter;
+use Porta\Input\InputDispatcher;
 use Porta\Input\MouseRouter;
 use Porta\Input\SettingsMouseRouter;
 use Porta\Layout\EditorAreaPanes;
@@ -66,6 +66,7 @@ use Porta\Layout\WorkspaceLayout;
 use Porta\Lsp\BufferReopener;
 use Porta\Lsp\CompletionController;
 use Porta\Lsp\FormatOnSave;
+use Porta\Lsp\LanguageServerProvider;
 use Porta\Lsp\LspBootstrapper;
 use Porta\Lsp\LspLog;
 use Porta\Lsp\LspSessionPool;
@@ -437,6 +438,7 @@ return static function (ContainerConfigurator $container, ContainerBuilder $buil
     $services->alias(DiagnosticsSink::class, BufferService::class);
     $services->alias(EditorAreaPanes::class, PaneLayout::class);
     $services->alias(PluginLifecycleOps::class, PluginLifecycle::class);
+    $services->alias(LanguageServerProvider::class, PluginManager::class);
 
     // The editor's outbound handler groups — each interface has one impl.
     $services->alias(EditorFileActionHandler::class, EditorFileActions::class);
@@ -453,10 +455,7 @@ return static function (ContainerConfigurator $container, ContainerBuilder $buil
     $services->set(GitSettings::class)->arg('$settings', env('PORTA_SETTINGS')->json());
     $services->set(SettingsGitController::class)->arg('$settings', env('PORTA_SETTINGS')->json());
     $services->set(SettingsLanguageController::class)->arg('$overrides', env('PORTA_LANGUAGES')->json());
-    $services
-        ->set(SettingsLspController::class)
-        ->arg('$overrides', env('PORTA_LSP_SERVERS')->json())
-        ->arg('$lspOverride', env('default::PORTA_LSP_COMMAND'));
+    $services->set(SettingsLspController::class)->arg('$overrides', env('PORTA_LSP_SERVERS')->json());
     $services->set(PluginLifecycle::class)->arg('$disabledPlugins', env('PORTA_DISABLED_PLUGINS')->json());
 
     // The Search Everywhere modal aggregates per-source hooks; its factory

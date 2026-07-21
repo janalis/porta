@@ -583,8 +583,8 @@
         <target>aucun serveur</target>
       </trans-unit>
       <trans-unit id="145">
-        <source>none (install phpactor)</source>
-        <target>aucun (installez phpactor)</target>
+        <source>none (install phpantom)</source>
+        <target>aucun (installez phpantom)</target>
       </trans-unit>
       <trans-unit id="146">
         <source>not saved</source>

@@ -29,6 +29,8 @@ final class PluginApi
     private array $hooks = [];
     /** @var array<string, array{key: string, label: string, kind: string, default: bool|int|string, options: list<string>|null, hint: string|null}> by key */
     private array $settingDescriptors = [];
+    /** @var list<array{plugin: string, languageId: string, name: string, resolve: \Closure(): (list<string>|null)}> */
+    private array $languageServers = [];
 
     public function __construct(
         private readonly string $pluginName,
@@ -120,6 +122,32 @@ final class PluginApi
             'default' => $default,
             'options' => $options,
             'hint' => $hint,
+        ];
+    }
+
+    /**
+     * Provide a language server for $languageId (e.g. 'php'). $resolveCommand
+     * returns the launch argv, or null when the server binary is not available
+     * — so a missing binary leaves the language unserved (and the "install"
+     * hint shows) rather than launching a broken process. The resolver runs
+     * lazily whenever the LSP layer (re)configures, so it can read the current
+     * `binary` setting; keep it side-effect-free (settings + discovery only).
+     * Plugin servers sit below the user's `.porta.json`/`$PORTA_LSP`/`--lsp`
+     * config in precedence; when several enabled plugins serve one language the
+     * first available (in load order) wins.
+     *
+     * @param \Closure(): (list<string>|null) $resolveCommand
+     */
+    public function registerLanguageServer(string $languageId, string $name, \Closure $resolveCommand): void
+    {
+        if (1 !== preg_match(self::ID_PATTERN, $languageId)) {
+            throw new PluginException(\sprintf('Invalid language id "%s" (expected /^[a-z0-9][a-z0-9_-]*$/i)', $languageId));
+        }
+        $this->languageServers[] = [
+            'plugin' => $this->pluginName,
+            'languageId' => $languageId,
+            'name' => $name,
+            'resolve' => $resolveCommand,
         ];
     }
 
@@ -301,5 +329,11 @@ final class PluginApi
     public function bufferedSettings(): array
     {
         return array_values($this->settingDescriptors);
+    }
+
+    /** @return list<array{plugin: string, languageId: string, name: string, resolve: \Closure(): (list<string>|null)}> */
+    public function bufferedLanguageServers(): array
+    {
+        return $this->languageServers;
     }
 }

@@ -24,6 +24,8 @@ use Porta\I18n\Translator;
 use Porta\Layout\EditorAreaPanes;
 use Porta\Lsp\BufferReopener;
 use Porta\Lsp\FormatOnSave;
+use Porta\Lsp\LanguageServerProvider;
+use Porta\Lsp\LspReconfigurer;
 use Porta\Lsp\LspSessionPool;
 use Porta\Lsp\WorkspaceEditor;
 use Porta\Plugin\PluginInstaller;
@@ -136,9 +138,21 @@ final class SettingsViewControllerTest extends TestCase
         $keymap = new SettingsKeymapController($editor, new Keybindings([]), $notifier, $this->project->dir, new Translator('en'));
         $languages = new SettingsLanguageController($editor, $notifier, $this->project->dir, new Translator('en'), []);
         $pool = new LspSessionPool($this->project->dir, new FixedActiveFile(), new Translator('en'));
-        $lsp = new SettingsLspController($this->project->dir, $pool, [], null, new class implements BufferReopener {
-            public function reopenAllInLsp(): void {}
-        }, $notifier, new Translator('en'));
+        $reconfigurer = new LspReconfigurer(
+            $pool,
+            new class implements BufferReopener {
+                public function reopenAllInLsp(): void {}
+            },
+            new class implements LanguageServerProvider {
+                public function languageServers(): array
+                {
+                    return [];
+                }
+            },
+            $this->project->dir,
+            null,
+        );
+        $lsp = new SettingsLspController($this->project->dir, [], $reconfigurer, $notifier, new Translator('en'));
         $debug = new SettingsDebugController($this->project->dir, new DebugAdapters([]), $notifier, new Translator('en'));
         $this->pluginSettings = new PluginSettings($this->project->dir, []);
         $this->lifecycle = new FakePluginLifecycle();

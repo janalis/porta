@@ -24,6 +24,9 @@ interface PluginLifecycleOps
     /** Disable a plugin live, persisting the choice. */
     public function disable(string $name): void;
 
+    /** A plugin setting changed: re-resolve the LSP servers if that plugin provides one. */
+    public function onProviderSettingChanged(string $name): void;
+
     public function isDisabled(string $name): bool;
 
     /** @return list<string> every installed plugin name (disabled ones included) */

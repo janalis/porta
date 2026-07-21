@@ -140,6 +140,62 @@ final class PluginManagerTest extends TestCase
         $this->assertNotContains('Say Hi', $labels, 'no stale duplicate came back');
     }
 
+    public function testLanguageServersResolveWithFirstAvailableWinningTheLanguage(): void
+    {
+        $manager = new PluginManager(new PluginEvents(), new PluginSettings('/p', []));
+
+        // one registers a php server whose binary is missing (resolver null).
+        $one = new PluginApi('one', $manager, '/p', new PluginSettings('/p', []));
+        $one->registerLanguageServer('php', 'one-ls', static fn (): ?array => null);
+        $manager->commit($one);
+
+        // two provides an available php server and a typescript server.
+        $two = new PluginApi('two', $manager, '/p', new PluginSettings('/p', []));
+        $two->registerLanguageServer('php', 'two-ls', static fn (): array => ['/bin/two']);
+        $two->registerLanguageServer('typescript', 'ts', static fn (): array => ['/bin/ts', '--stdio']);
+        $manager->commit($two);
+
+        // three's php server loses — two already serves php.
+        $three = new PluginApi('three', $manager, '/p', new PluginSettings('/p', []));
+        $three->registerLanguageServer('php', 'three-ls', static fn (): array => ['/bin/three']);
+        $manager->commit($three);
+
+        $this->assertSame(
+            [
+                'php' => ['command' => ['/bin/two'], 'name' => 'two-ls'],
+                'typescript' => ['command' => ['/bin/ts', '--stdio'], 'name' => 'ts'],
+            ],
+            $manager->languageServers(),
+            'first available wins; a null resolver yields to the next provider',
+        );
+        $this->assertTrue($manager->providesLanguageServer('one'), 'a provider even with a missing binary');
+        $this->assertTrue($manager->providesLanguageServer('two'));
+        $this->assertFalse($manager->providesLanguageServer('nobody'));
+    }
+
+    public function testLanguageServersReportAThrowingResolverAndDeactivateDropsProviders(): void
+    {
+        $events = new PluginEvents();
+        $settings = new PluginSettings('/p', []);
+        $manager = new PluginManager($events, $settings);
+        $registry = new CommandRegistry();
+
+        $boom = new PluginApi('boom', $manager, '/p', $settings);
+        $boom->registerLanguageServer('php', 'boom-ls', static fn (): array => throw new \RuntimeException('bad binary'));
+        $manager->commit($boom);
+        $this->assertSame([], $manager->languageServers(), 'a throwing resolver leaves the language unserved');
+        $this->assertNotEmpty($manager->warnings(), 'and reports a boot warning');
+
+        $ok = new PluginApi('ok', $manager, '/p', $settings);
+        $ok->registerLanguageServer('php', 'ok-ls', static fn (): array => ['/bin/ok']);
+        $manager->commit($ok);
+        $this->assertArrayHasKey('php', $manager->languageServers());
+
+        $manager->deactivate('ok', $registry);
+        $this->assertFalse($manager->providesLanguageServer('ok'), 'a deactivated provider drops its server');
+        $this->assertArrayNotHasKey('php', $manager->languageServers());
+    }
+
     public function testAThrowingMenuWhenClosureReadsDisabledAndReportsOnce(): void
     {
         $manager = $this->wiredManager(new PluginEvents());

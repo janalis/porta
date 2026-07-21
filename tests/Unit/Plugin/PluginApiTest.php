@@ -89,6 +89,27 @@ final class PluginApiTest extends TestCase
         }
     }
 
+    public function testRegisterLanguageServerBuffersAndValidatesTheLanguageId(): void
+    {
+        $api = $this->api(wired: Presence::Without);
+        $resolve = static fn (): array => ['/bin/ls'];
+        $api->registerLanguageServer('php', 'my-ls', $resolve);
+
+        $buffered = $api->bufferedLanguageServers();
+        $this->assertCount(1, $buffered);
+        $this->assertSame('demo', $buffered[0]['plugin']);
+        $this->assertSame('php', $buffered[0]['languageId']);
+        $this->assertSame('my-ls', $buffered[0]['name']);
+        $this->assertSame(['/bin/ls'], $buffered[0]['resolve']());
+
+        try {
+            $api->registerLanguageServer('bad:id', 'X', static fn (): ?array => null);
+            $this->fail('invalid language id must throw');
+        } catch (PluginException $e) {
+            $this->assertStringContainsString('Invalid language id', $e->getMessage());
+        }
+    }
+
     public function testRegisterSettingValidatesAndSettingReadsSeededConfig(): void
     {
         $manager = new PluginManager(new PluginEvents(), new PluginSettings('/p', []));

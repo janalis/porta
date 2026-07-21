@@ -583,8 +583,8 @@
         <target>nessun server</target>
       </trans-unit>
       <trans-unit id="145">
-        <source>none (install phpactor)</source>
-        <target>nessuno (installa phpactor)</target>
+        <source>none (install phpantom)</source>
+        <target>nessuno (installa phpantom)</target>
       </trans-unit>
       <trans-unit id="146">
         <source>not saved</source>

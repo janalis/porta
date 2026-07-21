@@ -5,8 +5,7 @@ declare(strict_types=1);
 namespace Porta\Config;
 
 use Porta\I18n\Translator;
-use Porta\Lsp\BufferReopener;
-use Porta\Lsp\LspSessionPool;
+use Porta\Lsp\LspReconfigurer;
 use Porta\Lsp\ServerLocator;
 use Porta\Ui\Notifier;
 
@@ -24,10 +23,8 @@ final class SettingsLspController
      */
     public function __construct(
         private readonly string $rootDir,
-        private readonly LspSessionPool $lsp,
         private array $overrides,
-        private readonly ?string $lspOverride,
-        private readonly BufferReopener $reopener,
+        private readonly LspReconfigurer $reconfigurer,
         private readonly Notifier $notifier,
         private readonly Translator $translator,
     ) {}
@@ -60,7 +57,7 @@ final class SettingsLspController
      */
     public function changeLspServer(string $language, string $command): void
     {
-        if (null !== $this->lspOverride && '' !== $this->lspOverride) {
+        if ($this->reconfigurer->isOverridden()) {
             $this->flash($this->translator->trans('LSP is set via --lsp; the settings change was not applied'));
 
             return;
@@ -75,8 +72,7 @@ final class SettingsLspController
             $this->overrides[$language] = $command;
         }
 
-        $this->lsp->reconfigure(ServerLocator::locateAll($this->rootDir, $this->lspOverride));
-        $this->reopener->reopenAllInLsp();
+        $this->reconfigurer->reconfigure();
 
         $shown = '' === $command ? $this->translator->trans('auto-detect') : $command;
         $saved = $persisted ? '' : ' ('.$this->translator->trans('not saved').')';

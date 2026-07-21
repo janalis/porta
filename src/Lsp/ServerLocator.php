@@ -17,19 +17,24 @@ use Symfony\Component\Process\ExecutableFinder;
  *     per-language servers, e.g.
  *     {"lsp": {"php": "phpactor language-server", "typescript": "typescript-language-server --stdio"}}
  *  2. PORTA_LSP environment variable — serves every language
- *  3. auto-detected defaults, each scoped to its language: phpactor
- *     (vendor/bin, then PATH) or intelephense for PHP;
+ *  3. plugin-provided servers, each scoped to its language (PHP comes from the
+ *     phpantom/phpactor bundled plugins)
+ *  4. auto-detected defaults for the remaining languages:
  *     typescript-language-server for JS/TS; pyright/pylsp for Python
  */
 final class ServerLocator
 {
     /**
      * Every configured server, keyed by LSP languageId ('*' = serves any
-     * language, the single-server catch-all).
+     * language, the single-server catch-all). $pluginServers are the servers
+     * registered by LSP-provider plugins (php now comes from here, not a
+     * hardcoded default); they sit below the user's config in precedence.
+     *
+     * @param array<string, array{command: list<string>, name: string}> $pluginServers
      *
      * @return array<string, array{command: list<string>, name: string}>
      */
-    public static function locateAll(string $rootDir, ?string $override = null): array
+    public static function locateAll(string $rootDir, ?string $override = null, array $pluginServers = []): array
     {
         if (null !== $override && '' !== $override) {
             return ['*' => self::server(self::split($override))];
@@ -40,9 +45,9 @@ final class ServerLocator
         $lsp = $config['lsp'] ?? null;
         if (\is_array($lsp) && [] !== $lsp && !array_is_list($lsp)) {
             // {languageId: command} map: each entry (a string or argv list) overrides
-            // that language, but the rest keep their auto-detected default — so
-            // configuring one language never silently unserves the others.
-            $servers = self::defaults($rootDir);
+            // that language, but the rest keep their default (plugin or auto-detected)
+            // — so configuring one language never silently unserves the others.
+            $servers = self::effectiveDefaults($rootDir, $pluginServers);
             /** @var mixed $command */
             foreach ($lsp as $language => $command) {
                 if (\is_string($command) && '' !== $command) {
@@ -63,7 +68,21 @@ final class ServerLocator
             return ['*' => $single];
         }
 
-        return self::defaults($rootDir);
+        return self::effectiveDefaults($rootDir, $pluginServers);
+    }
+
+    /**
+     * The default per-language servers: core auto-detect (JS/TS, Python)
+     * overlaid with the plugin-provided servers (which win, and are the only
+     * source of the PHP server now).
+     *
+     * @param array<string, array{command: list<string>, name: string}> $pluginServers
+     *
+     * @return array<string, array{command: list<string>, name: string}>
+     */
+    private static function effectiveDefaults(string $rootDir, array $pluginServers): array
+    {
+        return [...self::defaults($rootDir), ...$pluginServers];
     }
 
     /**
@@ -122,20 +141,9 @@ final class ServerLocator
      */
     private static function defaults(string $rootDir): array
     {
+        // PHP is served by an LSP-provider plugin (phpantom/phpactor), not a
+        // hardcoded default — see the phpantom/phpactor bundled plugins.
         $servers = [];
-
-        $local = $rootDir.'/vendor/bin/phpactor';
-        $phpactor = self::which('phpactor');
-        $intelephense = self::which('intelephense');
-        $php = match (true) {
-            is_file($local) && is_executable($local) => ['command' => [$local, 'language-server'], 'name' => 'phpactor'],
-            null !== $phpactor => ['command' => [$phpactor, 'language-server'], 'name' => 'phpactor'],
-            null !== $intelephense => ['command' => [$intelephense, '--stdio'], 'name' => 'intelephense'],
-            default => null,
-        };
-        if (null !== $php) {
-            $servers['php'] = $php;
-        }
 
         $tls = self::which('typescript-language-server');
         if (null !== $tls) {
@@ -166,27 +174,6 @@ final class ServerLocator
     private static function server(array $command): array
     {
         return ['command' => $command, 'name' => self::displayName($command)];
-    }
-
-    /**
-     * The single catch-all server from the historical sources (override,
-     * config string/argv, env var, PHP defaults chain).
-     *
-     * @param string|null $override an explicit command (e.g. from `--lsp`) taking precedence over every other source
-     *
-     * @return array{command: list<string>, name: string}|null
-     */
-    public static function locate(string $rootDir, ?string $override = null): ?array
-    {
-        if (null !== $override && '' !== $override) {
-            return self::server(self::split($override));
-        }
-
-        if (null !== ($single = self::explicitSingle($rootDir))) {
-            return $single;
-        }
-
-        return self::defaults($rootDir)['php'] ?? null;
     }
 
     /**

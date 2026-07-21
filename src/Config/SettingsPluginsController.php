@@ -123,6 +123,7 @@ final class SettingsPluginsController
         }
         if (str_starts_with($key, 'pluginSetting:')) {
             $this->pluginSettings->change($name, substr($key, offset: 14), $value);
+            $this->lifecycle->onProviderSettingChanged($name);
         }
     }
 

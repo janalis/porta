@@ -24,6 +24,7 @@ final class LspBootstrapper
         private readonly BufferService $bufferService,
         private readonly Notifier $notifier,
         private readonly Translator $translator,
+        private readonly LanguageServerProvider $pluginServers,
         private readonly string $rootDir,
         private readonly ?string $lspCommand,
         private readonly bool $lspDisabled,
@@ -37,7 +38,7 @@ final class LspBootstrapper
             return;
         }
         $this->lsp->configure(
-            ServerLocator::locateAll($this->rootDir, $this->lspCommand),
+            ServerLocator::locateAll($this->rootDir, $this->lspCommand, $this->pluginServers->languageServers()),
             fn (string $line) => $this->log->append($line),
             function (array $params): void {
                 /** @var array{uri?: string, diagnostics?: list<array{severity?: int, message?: string, range: array{start: array{line?: int, character?: int}, end: array{line?: int, character?: int}}}>} $params */

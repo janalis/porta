@@ -59,7 +59,8 @@ final class PortaCommand extends Command
                 F12/Ctrl+G go to definition (Alt+Left back) · Ctrl+Z/Ctrl+R undo/redo · Ctrl+Q quit.
 
                 Language server resolution: --lsp, then .porta.json {"lsp": …}, then $PORTA_LSP,
-                then vendor/bin/phpactor, then phpactor / intelephense on PATH.
+                then the enabled language-server plugins (phpantom for PHP; enable the phpactor
+                plugin to use phpactor instead), then typescript-language-server / pyright on PATH.
                 HELP);
     }
 

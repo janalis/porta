@@ -7,6 +7,7 @@ namespace Porta\Plugin;
 use Porta\Config\CommandRegistry;
 use Porta\Config\IdeConfig;
 use Porta\I18n\Translator;
+use Porta\Lsp\LspReconfigurer;
 use Porta\Ui\MenuRebuilder;
 use Porta\Ui\Notifier;
 use Porta\Ui\WorkspaceViews;
@@ -38,6 +39,7 @@ final class PluginLifecycle implements PluginLifecycleOps
         private readonly SettingsNavWidget $settingsNav,
         private readonly WorkspaceViews $views,
         private readonly Tui $tui,
+        private readonly LspReconfigurer $lspReconfigurer,
         private readonly string $rootDir,
         array $disabledPlugins,
     ) {
@@ -99,7 +101,9 @@ final class PluginLifecycle implements PluginLifecycleOps
     {
         $this->disabled[$name] = true;
         IdeConfig::persistPluginDisabled($this->rootDir, $name);
+        $wasProvider = $this->plugins->providesLanguageServer($name);
         $this->plugins->deactivate($name, $this->commands); // no shadow fallback: the NAME is off
+        $this->reconfigureLspIf($wasProvider);
         $this->notifier->flash($this->translator->trans('Plugin "%name%" disabled', ['%name%' => $name]));
         $this->afterToggle();
     }
@@ -124,11 +128,25 @@ final class PluginLifecycle implements PluginLifecycleOps
             }
             if (null === $error) {
                 $this->plugins->registerCommands($this->commands);
+                $this->reconfigureLspIf($this->plugins->providesLanguageServer($name));
                 $this->notifier->flash($this->translator->trans('Plugin "%name%" enabled — default keybindings apply on restart', ['%name%' => $name]));
             }
             break;
         }
         $this->afterToggle();
+    }
+
+    public function onProviderSettingChanged(string $name): void
+    {
+        $this->reconfigureLspIf($this->plugins->providesLanguageServer($name));
+    }
+
+    /** Re-resolve the LSP servers when a toggled plugin provides one (and no --lsp override wins). */
+    private function reconfigureLspIf(bool $provider): void
+    {
+        if ($provider && !$this->lspReconfigurer->isOverridden()) {
+            $this->lspReconfigurer->reconfigure();
+        }
     }
 
     /** Common tail after an enable/disable: refresh menu, sidebar and screen. */

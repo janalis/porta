@@ -123,7 +123,7 @@ rendered: `Tab` cycles the links, `Enter` or a click follows them, and
                                │  8      }        ┌ makeGreeting  method ┐
                                │  9  }            │ subject        prop  │
                                │                  └──────────────────────┘
- src/Greeter.php ●    1:24  LSP:phpactor  ^S save ^T panel ^Space complete ^Q quit
+ src/Greeter.php ●    1:24  LSP:phpantom  ^S save ^T panel ^Space complete ^Q quit
 ```
 
 ## Installation
@@ -147,18 +147,18 @@ in this order:
    {"lsp": "php phpactor.phar language-server"}
    ```
 2. The `PORTA_LSP` environment variable (same format)
-3. `vendor/bin/phpactor` in the project
-4. `phpactor` on your `PATH`
-5. `intelephense` on your `PATH` (`npm i -g intelephense`)
+3. An enabled **language-server plugin**. **phpantom** (`phpantom_lsp`) serves
+   PHP out of the box; enable the bundled **phpactor** plugin under
+   Settings → Plugins to use `phpactor language-server` instead. Each resolves
+   its binary from the plugin's `binary` setting, then your `PATH`.
+4. `typescript-language-server` / `pyright` on your `PATH` for JS/TS and Python.
 
-The quickest setup is:
-
-```bash
-composer require --dev phpactor/phpactor
-```
+The quickest PHP setup is to install phpantom
+([PHPantom-dev/phpantom_lsp](https://github.com/PHPantom-dev/phpantom_lsp)) so
+`phpantom_lsp` is on your `PATH`.
 
 Without a server the IDE still works — you keep highlighting and editing,
-the status bar shows `LSP:none`.
+the status bar shows `LSP:none (install phpantom)`.
 
 ## Usage
 

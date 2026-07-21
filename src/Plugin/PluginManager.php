@@ -6,6 +6,7 @@ namespace Porta\Plugin;
 
 use Porta\Config\CommandRegistry;
 use Porta\Config\KeyDispatch;
+use Porta\Lsp\LanguageServerProvider;
 
 /**
  * The committed plugin state: commands, default keys, menu entries, hook
@@ -16,7 +17,7 @@ use Porta\Config\KeyDispatch;
  * an action method used before that (i.e. during activate()) hits the
  * {@see runtime()} gate.
  */
-final class PluginManager
+final class PluginManager implements LanguageServerProvider
 {
     /** @var list<array{plugin: string, id: string, label: string, handler: \Closure(): void, keys: list<string>}> */
     private array $commands = [];
@@ -24,6 +25,8 @@ final class PluginManager
     private array $keys = [];
     /** @var list<PluginMenuSpec> Plugins-menu entries */
     private array $menuSpecs = [];
+    /** @var list<array{plugin: string, languageId: string, name: string, resolve: \Closure(): (list<string>|null)}> committed LSP providers, in load order */
+    private array $languageServers = [];
     /** @var list<string> */
     private array $warnings = [];
     /** @var array<string, true> loaded plugin names */
@@ -43,6 +46,18 @@ final class PluginManager
     public function hasPlugin(string $name): bool
     {
         return array_key_exists($name, $this->names);
+    }
+
+    /** Whether $plugin has registered a language server (so an enable/disable/setting change reconfigures LSP). */
+    public function providesLanguageServer(string $plugin): bool
+    {
+        foreach ($this->languageServers as $server) {
+            if ($plugin === $server['plugin']) {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     /** @return list<string> the active plugin names, in load order */
@@ -72,7 +87,43 @@ final class PluginManager
         foreach ($api->bufferedHooks() as [$event, $listener]) {
             $this->events->subscribe($name, $event, $this->wrap($name, $listener));
         }
+        foreach ($api->bufferedLanguageServers() as $server) {
+            $this->languageServers[] = $server;
+        }
         $this->settings->registerFor($name, $api->bufferedSettings());
+    }
+
+    /**
+     * The language servers provided by the loaded (enabled) plugins, resolved
+     * to launch commands: `languageId => {command, name}`. Each resolver runs
+     * now (reading the plugin's current `binary` setting), so this is the live
+     * server map. A resolver returning null (binary missing) leaves the
+     * language to the next available provider; the first available in load
+     * order wins. A throwing resolver is reported and treated as unavailable.
+     *
+     * @return array<string, array{command: list<string>, name: string}>
+     */
+    public function languageServers(): array
+    {
+        $servers = [];
+        foreach ($this->languageServers as $server) {
+            if (array_key_exists($server['languageId'], $servers)) {
+                continue; // an earlier provider already serves this language
+            }
+            try {
+                $command = $server['resolve']();
+            } catch (\Throwable $error) {
+                $this->reportFailure($server['plugin'], $error);
+
+                continue;
+            }
+            if (null === $command || [] === $command) {
+                continue; // the server's binary is not available
+            }
+            $servers[$server['languageId']] = ['command' => array_values($command), 'name' => $server['name']];
+        }
+
+        return $servers;
     }
 
     /**
@@ -102,6 +153,7 @@ final class PluginManager
             return false;
         }));
         $this->menuSpecs = array_values(array_filter($this->menuSpecs, static fn (PluginMenuSpec $spec): bool => $name !== $spec->plugin));
+        $this->languageServers = array_values(array_filter($this->languageServers, static fn (array $server): bool => $name !== $server['plugin']));
         $this->registered = \count($this->commands);
 
         unset($this->reportedWhens[$name]);

@@ -39,9 +39,6 @@
         "carthage-software/mago": "1.43.*",
         "phpunit/phpunit": "^13.2"
     },
-    "suggest": {
-        "phpactor/phpactor": "PHP language server used for autocompletion and diagnostics"
-    },
     "scripts": {
         "dev": "@php bin/porta",
         "format": "mago format",

@@ -583,8 +583,8 @@
         <target>サーバーなし</target>
       </trans-unit>
       <trans-unit id="145">
-        <source>none (install phpactor)</source>
-        <target>なし (phpactor をインストール)</target>
+        <source>none (install phpantom)</source>
+        <target>なし (phpantom をインストール)</target>
       </trans-unit>
       <trans-unit id="146">
         <source>not saved</source>

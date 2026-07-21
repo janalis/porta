@@ -10,6 +10,8 @@ use Porta\Config\SettingsLspController;
 use Porta\Config\SettingsRowKind;
 use Porta\I18n\Translator;
 use Porta\Lsp\BufferReopener;
+use Porta\Lsp\LanguageServerProvider;
+use Porta\Lsp\LspReconfigurer;
 use Porta\Lsp\LspSessionPool;
 use Porta\Tests\Support\FixedActiveFile;
 use Porta\Tests\Support\TempProject;
@@ -44,22 +46,28 @@ final class SettingsLspControllerTest extends TestCase
         $pool = new LspSessionPool($rootDir, new FixedActiveFile(), new Translator('en'));
 
         $reopened = &$this->reopened;
+        $reopener = new class($reopened) implements BufferReopener {
+            public function __construct(
+                private int &$reopened,
+            ) {}
+
+            public function reopenAllInLsp(): void
+            {
+                ++$this->reopened;
+            }
+        };
+        $provider = new class implements LanguageServerProvider {
+            public function languageServers(): array
+            {
+                return [];
+            }
+        };
+        $reconfigurer = new LspReconfigurer($pool, $reopener, $provider, $rootDir, $lspOverride);
 
         return new SettingsLspController(
             $rootDir,
-            $pool,
             $overrides,
-            $lspOverride,
-            new class($reopened) implements BufferReopener {
-                public function __construct(
-                    private int &$reopened,
-                ) {}
-
-                public function reopenAllInLsp(): void
-                {
-                    ++$this->reopened;
-                }
-            },
+            $reconfigurer,
             new Notifier($status, $tui),
             new Translator('en'),
         );
@@ -83,11 +91,13 @@ final class SettingsLspControllerTest extends TestCase
         $this->assertSame('phpactor language-server', $php[0]->value);
 
         $this->assertSame('auto-detect', $controller->rows('typescript')[0]->hint, 'no server on PATH → generic hint');
+        $this->assertSame('auto-detect', $controller->rows('php')[0]->hint, 'PHP is not auto-detected — it comes from a plugin');
 
-        // With a detectable server, the hint names it.
-        $bin = $project->write('vendor/bin/phpactor', "#!/bin/sh\n");
-        chmod($bin, permissions: 0o755);
-        $this->assertSame('auto: phpactor', $controller->rows('php')[0]->hint);
+        // With a detectable server on PATH, the hint names it.
+        $tools = new TempProject([], 'porta-bin-');
+        chmod($tools->write('typescript-language-server', "#!/bin/sh\n"), permissions: 0o755);
+        putenv('PATH='.$tools->dir);
+        $this->assertSame('auto: typescript-language-server', $controller->rows('typescript')[0]->hint);
     }
 
     public function testChangingAServerPersistsReopensAndFlashes(): void

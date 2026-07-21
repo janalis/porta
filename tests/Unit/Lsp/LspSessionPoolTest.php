@@ -176,7 +176,7 @@ final class LspSessionPoolTest extends TestCase
     public function testStatusForPhpWithoutAServerKeepsTheInstallHint(): void
     {
         $pool = $this->pool([]);
-        $this->assertSame('none (install phpactor)', $pool->statusFor('/tmp/proj/a.php'));
+        $this->assertSame('none (install phpantom)', $pool->statusFor('/tmp/proj/a.php'));
         $this->assertSame('no server', $pool->statusFor('/tmp/proj/b.ts'));
         $this->assertSame('no server', $pool->statusFor(null));
     }
