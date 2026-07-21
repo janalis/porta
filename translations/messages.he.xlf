@@ -583,8 +583,8 @@
         <target>אין שרת</target>
       </trans-unit>
       <trans-unit id="145">
-        <source>none (install phpantom)</source>
-        <target>אין (התקן phpantom)</target>
+        <source>none (enable a PHP server in Settings)</source>
+        <target>אין (הפעילו שרת PHP בהגדרות)</target>
       </trans-unit>
       <trans-unit id="146">
         <source>not saved</source>
@@ -1945,6 +1945,30 @@
       <trans-unit id="488">
         <source>(Tab · Alt+A)</source>
         <target>(Tab · Alt+A)</target>
+      </trans-unit>
+      <trans-unit id="489">
+        <source>Install %tool%</source>
+        <target>התקן %tool%</target>
+      </trans-unit>
+      <trans-unit id="490">
+        <source>Installing %tool%…</source>
+        <target>מתקין %tool%…</target>
+      </trans-unit>
+      <trans-unit id="491">
+        <source>Installed %tool%</source>
+        <target>%tool% הותקן</target>
+      </trans-unit>
+      <trans-unit id="492">
+        <source>Could not install %tool%</source>
+        <target>לא ניתן להתקין את %tool%</target>
+      </trans-unit>
+      <trans-unit id="493">
+        <source>An install is already running</source>
+        <target>התקנה כבר פועלת</target>
+      </trans-unit>
+      <trans-unit id="494">
+        <source>No installer found for %tool% — install it via Homebrew or cargo, or put its binary on your PATH</source>
+        <target>לא נמצא מתקין עבור %tool% — התקינו אותו באמצעות Homebrew או cargo, או הניחו את הקובץ הבינארי שלו ב-PATH</target>
       </trans-unit>
     </body>
   </file>

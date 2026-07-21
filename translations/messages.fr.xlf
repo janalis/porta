@@ -583,8 +583,8 @@
         <target>aucun serveur</target>
       </trans-unit>
       <trans-unit id="145">
-        <source>none (install phpantom)</source>
-        <target>aucun (installez phpantom)</target>
+        <source>none (enable a PHP server in Settings)</source>
+        <target>aucun (activez un serveur PHP dans les Réglages)</target>
       </trans-unit>
       <trans-unit id="146">
         <source>not saved</source>
@@ -1945,6 +1945,30 @@
       <trans-unit id="488">
         <source>(Tab · Alt+A)</source>
         <target>(Tab · Alt+A)</target>
+      </trans-unit>
+      <trans-unit id="489">
+        <source>Install %tool%</source>
+        <target>Installer %tool%</target>
+      </trans-unit>
+      <trans-unit id="490">
+        <source>Installing %tool%…</source>
+        <target>Installation de %tool%…</target>
+      </trans-unit>
+      <trans-unit id="491">
+        <source>Installed %tool%</source>
+        <target>%tool% installé</target>
+      </trans-unit>
+      <trans-unit id="492">
+        <source>Could not install %tool%</source>
+        <target>Impossible d’installer %tool%</target>
+      </trans-unit>
+      <trans-unit id="493">
+        <source>An install is already running</source>
+        <target>Une installation est déjà en cours</target>
+      </trans-unit>
+      <trans-unit id="494">
+        <source>No installer found for %tool% — install it via Homebrew or cargo, or put its binary on your PATH</source>
+        <target>Aucun installateur trouvé pour %tool% — installez-le via Homebrew ou cargo, ou placez son binaire dans votre PATH</target>
       </trans-unit>
     </body>
   </file>

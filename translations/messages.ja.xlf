@@ -583,8 +583,8 @@
         <target>サーバーなし</target>
       </trans-unit>
       <trans-unit id="145">
-        <source>none (install phpantom)</source>
-        <target>なし (phpantom をインストール)</target>
+        <source>none (enable a PHP server in Settings)</source>
+        <target>なし (設定で PHP サーバーを有効化)</target>
       </trans-unit>
       <trans-unit id="146">
         <source>not saved</source>
@@ -1945,6 +1945,30 @@
       <trans-unit id="488">
         <source>(Tab · Alt+A)</source>
         <target>(Tab · Alt+A)</target>
+      </trans-unit>
+      <trans-unit id="489">
+        <source>Install %tool%</source>
+        <target>%tool% をインストール</target>
+      </trans-unit>
+      <trans-unit id="490">
+        <source>Installing %tool%…</source>
+        <target>%tool% をインストール中…</target>
+      </trans-unit>
+      <trans-unit id="491">
+        <source>Installed %tool%</source>
+        <target>%tool% をインストールしました</target>
+      </trans-unit>
+      <trans-unit id="492">
+        <source>Could not install %tool%</source>
+        <target>%tool% をインストールできませんでした</target>
+      </trans-unit>
+      <trans-unit id="493">
+        <source>An install is already running</source>
+        <target>インストールが既に実行中です</target>
+      </trans-unit>
+      <trans-unit id="494">
+        <source>No installer found for %tool% — install it via Homebrew or cargo, or put its binary on your PATH</source>
+        <target>%tool% のインストーラーが見つかりません — Homebrew または cargo でインストールするか、バイナリを PATH に配置してください</target>
       </trans-unit>
     </body>
   </file>
