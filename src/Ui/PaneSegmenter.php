@@ -107,7 +107,7 @@ final class PaneSegmenter
             }
             for ($col = max(0, $region->col), $end = min($columns, $region->col + $region->width); $col < $end; ++$col) {
                 $owner[$col] = 'd'.$index;
-                $ltr[$col] = false;
+                $ltr[$col] = $region->ltr;
             }
         }
 

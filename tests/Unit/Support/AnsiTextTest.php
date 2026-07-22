@@ -178,4 +178,42 @@ final class AnsiTextTest extends TestCase
     {
         $this->assertSame(['a', 'b'], AnsiText::wrap('a b', 0));
     }
+
+    public function testDimWrapsAPlainLine(): void
+    {
+        $this->assertSame("\x1b[2mplain\x1b[22m", AnsiText::dim('plain'));
+    }
+
+    public function testDimReArmsAfterResets(): void
+    {
+        $this->assertSame(
+            "\x1b[2mA\x1b[0m\x1b[2mB\x1b[22m\x1b[2mC\x1b[m\x1b[2mD\x1b[22m",
+            AnsiText::dim("A\x1b[0mB\x1b[22mC\x1b[mD"),
+            'faint re-arms after 0, 22 and the bare-reset sequence',
+        );
+        $this->assertSame(
+            "\x1b[2mA\x1b[0;22m\x1b[2mB\x1b[22m",
+            AnsiText::dim("A\x1b[0;22mB"),
+            'params are matched as whole list entries',
+        );
+    }
+
+    public function testDimLeavesNonResettingSequencesAlone(): void
+    {
+        $this->assertSame(
+            "\x1b[2mA\x1b[1;2mB\x1b[38;5;220mC\x1b[22m",
+            AnsiText::dim("A\x1b[1;2mB\x1b[38;5;220mC"),
+            "a '2' inside 1;2 or a color's 5;2… must never count as a reset",
+        );
+    }
+
+    /** The APC caret marker is a different escape family — byte-identical passthrough. */
+    public function testDimPassesTheCaretMarkerThrough(): void
+    {
+        $marker = AnsiUtils::cursorMarker();
+        $dimmed = AnsiText::dim('ab'.$marker.'cd');
+
+        $this->assertStringContainsString($marker, $dimmed);
+        $this->assertSame(4, AnsiUtils::visibleWidth($dimmed), 'zero-width codes only');
+    }
 }

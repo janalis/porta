@@ -47,12 +47,18 @@ final class IdeFindInProjectTest extends TestCase
     /** The Find-in-Files modal's text (it composites over the editor pane). */
     private function modalText(Tui $tui): string
     {
+        // The modal is span-delivered per frame by its presenter — force a
+        // frame so a mutation made this step is on the pane before reading.
+        $this->frame($tui);
+
         return AnsiUtils::stripAnsiCodes(implode("\n", $tui->getById('editor')->render(new \Symfony\Component\Tui\Render\RenderContext(160, 40))));
     }
 
-    /** The editor pane's raw (styled) rendered rows. */
+    /** The editor pane's raw (styled) rendered rows (after a frame — see modalText). */
     private function editorRows(Tui $tui): array
     {
+        $this->frame($tui);
+
         return $tui->getById('editor')->render(new \Symfony\Component\Tui\Render\RenderContext(160, 40));
     }
 
@@ -714,6 +720,88 @@ final class IdeFindInProjectTest extends TestCase
                 },
             ],
         );
+
+        $this->addToAssertionCount(1);
+    }
+
+    /**
+     * The modal's corner resize and title-bar move, through the real mouse
+     * routing: press, drag, release — the box follows the pointer both ways
+     * and a fresh press disarms cleanly (MouseRouter's continue chain +
+     * cancel sweep).
+     */
+    public function testTheModalResizesByItsCornerAndMovesByItsTitleBar(): void
+    {
+        $project = new TempProject(['src/A.php' => "<?php\n// tok here\n"]);
+
+        $this->runIde($project, $project->path('src/A.php'), [
+            200 => static function ($tui): void {
+                $tui->handleInput("\x1b[102;6u"); // ctrl+shift+f
+            },
+            500 => function ($tui, $terminal, $ide): void {
+                $this->frame($tui);
+                $editor = $tui->getById('editor');
+                $box = $editor->findModal()->lastBox();
+                $this->assertNotNull($box);
+
+                // The box is SCREEN-space (the modal floats over the whole
+                // workspace); SGR coordinates are 1-based.
+                $row = $box->startRow + $box->rows - 1 + 1;
+                $col = $box->col + $box->width - 1 + 1;
+                $tui->handleInput(\sprintf("\x1b[<0;%d;%dM", $col, $row)); // press the corner
+                $tui->handleInput(\sprintf("\x1b[<32;%d;%dM", $col + 6, $row + 1)); // drag out
+                $tui->handleInput(\sprintf("\x1b[<0;%d;%dm", $col + 6, $row + 1)); // release
+                $this->frame($tui);
+
+                $grown = $editor->findModal()->lastBox();
+                $this->assertNotNull($grown);
+                $this->assertSame($box->width + 6, $grown->width, 'the drag widened the box through the router');
+                $this->assertTrue($editor->isFindModalOpen(), 'resizing never dismissed it');
+
+                // Now drag it by the title bar: press left of the ×, move
+                // down two rows, release — the box follows, still open.
+                $barRow = $grown->startRow + 1;
+                $barCol = $grown->col + 2 + 1;
+                $tui->handleInput(\sprintf("\x1b[<0;%d;%dM", $barCol, $barRow));
+                $tui->handleInput(\sprintf("\x1b[<32;%d;%dM", $barCol, $barRow + 2));
+                $tui->handleInput(\sprintf("\x1b[<0;%d;%dm", $barCol, $barRow + 2));
+                $this->frame($tui);
+
+                $movedBox = $editor->findModal()->lastBox();
+                $this->assertNotNull($movedBox);
+                $this->assertSame($grown->startRow + 2, $movedBox->startRow, 'the title-bar drag moved the box through the router');
+                $this->assertSame($grown->col, $movedBox->col, 'a vertical drag leaves the column');
+                $this->assertTrue($editor->isFindModalOpen(), 'moving never dismissed it');
+
+                // Drag it all the way left: the modal floats over the whole
+                // workspace, so its box now paints over the NAVIGATION TREE
+                // (which is dimmed beneath it) — the reason it is span-
+                // delivered instead of composited inside the editor pane.
+                $barRow2 = $movedBox->startRow + 1;
+                $tui->handleInput(\sprintf("\x1b[<0;%d;%dM", $movedBox->col + 2 + 1, $barRow2));
+                $tui->handleInput(\sprintf("\x1b[<32;%d;%dM", 3, $barRow2));
+                $tui->handleInput(\sprintf("\x1b[<0;%d;%dm", 3, $barRow2));
+                $this->frame($tui);
+
+                $left = $editor->findModal()->lastBox();
+                $this->assertNotNull($left);
+                $this->assertSame(0, $left->col, 'clamped to the screen edge — over the tree');
+                $renderer = new \ReflectionProperty($ide, 'renderer')->getValue($ide);
+                $treeRect = $renderer->getWidgetRect($tui->getById('tree'));
+                $this->assertNotNull($treeRect);
+                $treeRows = $tui->getById('tree')->render(new \Symfony\Component\Tui\Render\RenderContext($treeRect->columns, $treeRect->rows));
+                $treeText = AnsiUtils::stripAnsiCodes(implode("\n", $treeRows));
+                $this->assertStringContainsString('Find in Files', $treeText, "the modal's title bar paints over the tree pane");
+                $this->assertStringContainsString("\x1b[2m", implode('', $treeRows), 'the tree renders dimmed beneath the modal');
+
+                // A bare hover-move (mouse mode 1003) over the × routes to the
+                // floating modal in screen coordinates and brightens it.
+                $tui->handleInput(\sprintf("\x1b[<35;%d;%dM", $left->col + $left->width - 2 + 1, $left->startRow + 1));
+                $tui->handleInput(\sprintf("\x1b[<35;%d;%dM", $left->col + 3 + 1, $left->startRow + 3 + 1)); // and off it again
+                $tui->tick();
+                $this->assertTrue($editor->isFindModalOpen(), 'hovering never dismissed it');
+            },
+        ]);
 
         $this->addToAssertionCount(1);
     }

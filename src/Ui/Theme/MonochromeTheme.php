@@ -55,6 +55,10 @@ final class MonochromeTheme
                 // live switch from a colour theme overwrites its tint.
                 '.card::selected' => new Style(),
                 '.card::selected:focus' => new Style(),
+                // Modal drop shadow: plain — the shadow cells still overwrite
+                // (hide) the content beneath, which is the depth cue that
+                // survives without colour.
+                '.modal::shadow' => new Style(),
             ],
             underlines: [],
             hasColor: false,

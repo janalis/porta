@@ -371,12 +371,12 @@ final class EditorRenderer
      * @param list<string>                                                                  $lines
      * @param array{title: string, items: list<array{label: string, hint: string, value: string}>, selected: int, hovered: int|null, onPick: callable} $overlay
      */
-    public static function listOverlay(array &$lines, int $columns, int $rows, array $overlay, Styles $styles): ModalBox
+    public static function listOverlay(array &$lines, int $columns, int $rows, array $overlay, Styles $styles, bool $closeHovered = false): ModalBox
     {
         $items = $overlay['items'];
         $selected = $overlay['selected'];
         $hovered = $overlay['hovered'] ?? null;
-        $maxItems = max(1, min(\count($items), $rows - 3, 12));
+        $maxItems = max(1, min(\count($items), $rows - 5, 12));
         $windowStart = IntMath::clamp($selected - $maxItems + 1, 0, \count($items) - $maxItems);
         $visible = \array_slice($items, $windowStart, $maxItems);
 
@@ -384,8 +384,8 @@ final class EditorRenderer
         foreach ($visible as $item) {
             $width = max($width, mb_strwidth($item['label']) + mb_strwidth($item['hint']) + 6);
         }
-        $width = min($width, $columns - 6, 70); // inner width; the frame adds a rail each side
-        $col = max(0, intdiv($columns - $width - 2, num2: 2));
+        $width = min($width, $columns - 8, 70); // inner width; the frame adds a rail and a padding column each side
+        $col = max(0, intdiv($columns - $width - ModalFrame::CHROME_COLS, num2: 2));
 
         $content = [];
         foreach ($visible as $i => $item) {
@@ -394,11 +394,12 @@ final class EditorRenderer
             $label = AnsiText::truncate($item['label'], $width - $hintWidth - 3, pad: true);
             $content[] = $style->apply(' '.$label.' '.$styles->of(Role::CompletionHint)->apply($item['hint']).' ');
         }
-        $popup = [ModalFrame::titleBar($overlay['title'], $width + 2, $styles), ...ModalFrame::wrap($content, $width, $styles)];
+        $popup = [ModalFrame::titleBar($overlay['title'], $width + ModalFrame::CHROME_COLS, $styles, $closeHovered), ...ModalFrame::wrap($content, $width, $styles)];
 
-        [$lines, $startRow] = OverlayCompositor::placeCentered($lines, $popup, $col, $width + 2, $columns, $rows);
+        [$lines, $startRow] = OverlayCompositor::placeCentered($lines, $popup, $col, $width + ModalFrame::CHROME_COLS, $columns, $rows);
+        $lines = ModalShadow::blit($lines, $startRow, $col, $width + ModalFrame::CHROME_COLS, \count($popup), $columns, $styles);
 
-        return new ModalBox($startRow, $col, $width + 2, \count($popup), headerRows: 1, windowStart: $windowStart, count: \count($visible));
+        return new ModalBox($startRow, $col, $width + ModalFrame::CHROME_COLS, \count($popup), headerRows: ModalFrame::CHROME_ROWS_TOP, windowStart: $windowStart, count: \count($visible));
     }
 
     /**
@@ -422,8 +423,9 @@ final class EditorRenderer
         ?int $hovered,
         Styles $styles,
         string $emptyMessage,
+        bool $closeHovered = false,
     ): ModalBox {
-        $maxRows = max(1, min(\count($rowModels), $rows - 4, 12));
+        $maxRows = max(1, min(\count($rowModels), $rows - 6, 12));
         $windowStart = IntMath::clamp($selected - $maxRows + 1, 0, max(0, \count($rowModels) - $maxRows));
         $visible = \array_slice($rowModels, $windowStart, $maxRows);
 
@@ -433,8 +435,8 @@ final class EditorRenderer
         foreach ($visible as $row) {
             $width = max($width, mb_strwidth($row['label']) + mb_strwidth($row['detail']) + 6);
         }
-        $width = min($width, $columns - 6, 70); // inner width; the frame adds a rail each side
-        $col = max(0, intdiv($columns - $width - 2, num2: 2));
+        $width = min($width, $columns - 8, 70); // inner width; the frame adds a rail and a padding column each side
+        $col = max(0, intdiv($columns - $width - ModalFrame::CHROME_COLS, num2: 2));
 
         $popup = [
             $styles->of(Role::Toolbar)->apply(AnsiText::scrollLineToCaret(' > '.$queryField, $width)),
@@ -461,11 +463,12 @@ final class EditorRenderer
         if ([] === $rowModels && '' !== $emptyMessage) {
             $popup[] = $styles->merge(Role::PopupRow, Role::CompletionHint)->apply(AnsiText::truncate(' '.$emptyMessage, $width, pad: true, ellipsis: ''));
         }
-        $framed = [ModalFrame::titleBar($title, $width + 2, $styles), ...ModalFrame::wrap($popup, $width, $styles)];
+        $framed = [ModalFrame::titleBar($title, $width + ModalFrame::CHROME_COLS, $styles, $closeHovered), ...ModalFrame::wrap($popup, $width, $styles)];
 
-        [$lines, $startRow] = OverlayCompositor::placeCentered($lines, $framed, $col, $width + 2, $columns, $rows);
+        [$lines, $startRow] = OverlayCompositor::placeCentered($lines, $framed, $col, $width + ModalFrame::CHROME_COLS, $columns, $rows);
+        $lines = ModalShadow::blit($lines, $startRow, $col, $width + ModalFrame::CHROME_COLS, \count($framed), $columns, $styles);
 
-        return new ModalBox($startRow, $col, $width + 2, \count($framed), headerRows: 2, windowStart: $windowStart, count: \count($visible));
+        return new ModalBox($startRow, $col, $width + ModalFrame::CHROME_COLS, \count($framed), headerRows: 1 + ModalFrame::CHROME_ROWS_TOP, windowStart: $windowStart, count: \count($visible));
     }
 
     /**

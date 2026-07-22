@@ -80,7 +80,7 @@ final class WelcomeModalControllerTest extends TestCase
 
             public function render(RenderContext $context): array
             {
-                return array_fill(0, $context->getRows(), str_repeat('.', $context->getColumns()));
+                return $this->withMenuOverlay(array_fill(0, $context->getRows(), str_repeat('.', $context->getColumns())), $context->getColumns());
             }
 
             public function handleInput(string $data): void {}
@@ -301,7 +301,9 @@ final class WelcomeModalControllerTest extends TestCase
         $region = $controller->region();
         $this->assertNotNull($region);
 
-        $consumed = $controller->clickAt($region->top, $region->col + $region->width - 2);
+        // The region is one column wider than the box (the shadow band), so
+        // the × sits at region width − 3.
+        $consumed = $controller->clickAt($region->top, $region->col + $region->width - 3);
 
         $this->assertTrue($consumed);
         $this->assertFalse($controller->isOpen(), 'the × closed the modal');
@@ -316,12 +318,12 @@ final class WelcomeModalControllerTest extends TestCase
         $this->assertNotNull($region);
 
         // Press on the title bar (off the ×), drag down-and-left one column
-        // (the 76-wide box on an 80-wide pane leaves little rightward room).
+        // (the 76-wide, 22-row box on an 80×24 pane leaves little room).
         $this->assertTrue($controller->clickAt($region->top, $region->col + 2));
-        $this->assertTrue($controller->continueDragTo($region->top + 3, $region->col + 1, release: false));
+        $this->assertTrue($controller->continueDragTo($region->top + 2, $region->col + 1, release: false));
         $moved = $controller->region();
         $this->assertNotNull($moved);
-        $this->assertSame($region->top + 3, $moved->top, 'the box followed the pointer');
+        $this->assertSame($region->top + 2, $moved->top, 'the box followed the pointer');
         $this->assertSame($region->col - 1, $moved->col);
 
         // Dragging far past the bottom-right pins to the pane union's edge.
@@ -331,6 +333,57 @@ final class WelcomeModalControllerTest extends TestCase
         $this->assertSame(24 - $pinned->count, $pinned->top, 'clamped to the pane bottom');
         $this->assertSame(80 - $pinned->width, $pinned->col, 'clamped to the pane right edge');
         $this->assertFalse($controller->continueDragTo(0, 0, release: false), 'the release disarmed the drag');
+    }
+
+    /** A corner drag resizes the box, floored at 20×5 and reset on reopen. */
+    public function testACornerDragResizesTheBoxAndReopenResets(): void
+    {
+        $controller = $this->controller();
+        $this->frame();
+        $controller->open();
+        $region = $controller->region();
+        $this->assertNotNull($region);
+        $box = ['top' => $region->top, 'col' => $region->col, 'width' => $region->width - 1, 'rows' => $region->count - 1];
+
+        // Press the bottom-right corner, drag up-left to shrink, release.
+        $corner = [$box['top'] + $box['rows'] - 1, $box['col'] + $box['width'] - 1];
+        $this->assertTrue($controller->clickAt($corner[0], $corner[1]));
+        $this->assertTrue($controller->continueDragTo($corner[0] - 4, $corner[1] - 10, release: false));
+        $shrunk = $controller->region();
+        $this->assertNotNull($shrunk);
+        $this->assertSame($box['width'] - 10, $shrunk->width - 1, 'the width followed the pointer');
+        $this->assertSame($box['rows'] - 4, $shrunk->count - 1, 'the height followed the pointer');
+
+        // Dragging into the box's top-left corner pins at the 20×5 floors.
+        $this->assertTrue($controller->continueDragTo($box['top'], $box['col'], release: true));
+        $floor = $controller->region();
+        $this->assertNotNull($floor);
+        $this->assertSame(20 + 4 + 1, $floor->width, 'inner width floored at 20 (+ chrome + shadow)');
+        $this->assertSame(5 + 4 + 1, $floor->count, 'inner height floored at 5 (+ chrome + shadow)');
+        $this->assertFalse($controller->continueDragTo(0, 0, release: false), 'the release disarmed the resize');
+
+        // Reopening re-derives the size — overrides are session-only.
+        $controller->close();
+        $controller->open();
+        $reopened = $controller->region();
+        $this->assertNotNull($reopened);
+        $this->assertSame($region->width, $reopened->width, 'the reopen dropped the user size');
+    }
+
+    public function testHoveringTheResizeCornerHeaviesIt(): void
+    {
+        $controller = $this->controller();
+        $this->frame();
+        $controller->open();
+        $region = $controller->region();
+        $this->assertNotNull($region);
+
+        $this->assertTrue($controller->hoverAt($region->top + $region->count - 2, $region->col + $region->width - 2), 'onto the corner (inside the shadow-widened region)');
+        $spans = $this->pane->modalSpans;
+        $joined = implode('', array_column($spans, 'segment'));
+        $this->assertStringContainsString(\Porta\Ui\Glyphs::MODAL_RESIZE_GRAB, $joined, 'the corner heavied');
+        $this->assertTrue($controller->hoverAt(0, 0), 'off it again');
+        $this->assertStringNotContainsString(\Porta\Ui\Glyphs::MODAL_RESIZE_GRAB, implode('', array_column($this->pane->modalSpans, 'segment')));
     }
 
     public function testAFreshPressCancelsAnArmedDrag(): void
@@ -356,9 +409,9 @@ final class WelcomeModalControllerTest extends TestCase
         $region = $controller->region();
         $this->assertNotNull($region);
 
-        // Box rows: 0 title bar, then content (hero 1-3, first card 4-5,
-        // spacer 6, second card 7-8 — the content window is ≥ HERO_MIN_ROWS).
-        $this->assertTrue($controller->clickAt($region->top + 7, $region->col + 4));
+        // Box rows: title bar 0, pad 1, then content (hero 2-4, first card
+        // 5-6, spacer 7, second card 8-9 — the window is ≥ HERO_MIN_ROWS).
+        $this->assertTrue($controller->clickAt($region->top + 8, $region->col + 4));
         $controller->handleKey("\r");
         $this->assertSame([[WelcomeSteps::PHP_LANGUAGE_SERVER, true]], $lifecycle->toggled, 'the click selected the second card');
 
@@ -384,7 +437,7 @@ final class WelcomeModalControllerTest extends TestCase
         $region = $controller->region();
         $this->assertNotNull($region);
 
-        $this->assertTrue($controller->hoverAt($region->top, $region->col + $region->width - 2), 'onto the ×');
+        $this->assertTrue($controller->hoverAt($region->top, $region->col + $region->width - 3), 'onto the ×'); // region width − 3: the shadow band
         $this->assertTrue($controller->hoverAt($region->top + 10, $region->col - 1), 'off the box again');
         $this->assertFalse($controller->hoverAt($region->top + 10, $region->col - 1), 'no change → no repaint');
     }
@@ -431,6 +484,19 @@ final class WelcomeModalControllerTest extends TestCase
         $after = $controller->region();
         $this->assertNotNull($after);
         $this->assertLessThan($before->width, $after->width, 'the box re-laid out for the narrower pane');
+    }
+
+    /** The workspace dims beneath the modal and brightens again on close. */
+    public function testOpenSetsTheBackdropAndCloseClearsIt(): void
+    {
+        $controller = $this->controller();
+        $this->frame();
+
+        $controller->open();
+        $this->assertStringContainsString("\x1b[2m", $this->pane->render(new RenderContext(80, 24))[10], 'the pane renders faint behind the box');
+
+        $controller->close();
+        $this->assertStringNotContainsString("\x1b[2m", $this->pane->render(new RenderContext(80, 24))[10], 'closing restores the pane');
     }
 
     /** A theme/locale change re-composes the open modal (its spans are not tree caches). */

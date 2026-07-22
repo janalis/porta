@@ -897,9 +897,7 @@ final class CodeEditorWidget extends AbstractWidget implements ActiveFileProvide
         if ($this->overlayHost->isPromptOpen()) {
             return $this->overlayHost->promptClickAt($relRow, $relCol);
         }
-        if ($this->findModal->isOpen()) {
-            return $this->findModal->clickAt($relRow, $relCol);
-        }
+
         if ($this->overlayHost->isSearchOpen()) {
             return $this->overlayHost->searchClickAt($relRow, $relCol);
         }
@@ -943,8 +941,8 @@ final class CodeEditorWidget extends AbstractWidget implements ActiveFileProvide
 
     public function handlePopupHover(int $relRow, int $relCol): bool
     {
-        if ($this->findModal->isOpen()) {
-            return $this->findModal->hoverAt($relRow, $relCol);
+        if ($this->overlayHost->isPromptOpen()) {
+            return $this->overlayHost->promptHoverAt($relRow, $relCol);
         }
         if ($this->overlayHost->isSearchOpen()) {
             return $this->overlayHost->searchHoverAt($relRow, $relCol);
@@ -954,6 +952,18 @@ final class CodeEditorWidget extends AbstractWidget implements ActiveFileProvide
         }
 
         return $this->completion->handleHover($relRow, $relCol);
+    }
+
+    /** Continue an armed Find-in-Files drag — corner resize or title-bar move (editor-relative coords). */
+    public function continueFindModalDrag(int $relRow, int $relCol, bool $release): bool
+    {
+        return $this->findModal->continueDragTo($relRow, $relCol, $release);
+    }
+
+    /** Disarm a stale Find-in-Files drag (the router's fresh-press sweep). */
+    public function cancelFindModalDrag(): void
+    {
+        $this->findModal->cancelDrag();
     }
 
     /** Cancel any active snippet session (e.g. before an external edit). */
@@ -1105,20 +1115,14 @@ final class CodeEditorWidget extends AbstractWidget implements ActiveFileProvide
         $columns = $context->getColumns();
         $rows = max(1, $context->getRows() > 0 ? $context->getRows() : min(30, $this->document->getLineCount()));
 
-        // No file open: show a centered hint instead of a blank editable buffer,
-        // still compositing the Find-in-Files modal + the app-menu dropdown so
-        // both stay reachable over the empty pane.
+        // No file open: show a centered hint instead of a blank editable
+        // buffer, still compositing the floating overlays' spans so the
+        // app-menu dropdown (and a modal's slice) stay visible over it.
         if (null === $this->filePath) {
             $this->lastGutterWidth = 0;
             $this->lastStripeCol = \PHP_INT_MAX; // no stripe over the empty-state pane
-            $empty = $this->findModal->composite(
-                $this->renderEmptyState($columns, $rows),
-                $columns,
-                $rows,
-                $this->focused || $this->findModal->isOpen() ? CaretVisibility::Shown : CaretVisibility::Hidden,
-            );
 
-            return $this->withMenuOverlay($empty, $columns);
+            return $this->withMenuOverlay($this->renderEmptyState($columns, $rows), $columns);
         }
 
         $doc = $this->document;
@@ -1183,7 +1187,6 @@ final class CodeEditorWidget extends AbstractWidget implements ActiveFileProvide
         // The overlay/prompt chrome composites over the content; the
         // application-menu dropdown floats above everything else.
         $composited = $this->overlayHost->composite($result, $columns, $rows, $this->focused ? CaretVisibility::Shown : CaretVisibility::Hidden);
-        $composited = $this->findModal->composite($composited, $columns, $rows, $this->focused || $this->findModal->isOpen() ? CaretVisibility::Shown : CaretVisibility::Hidden);
 
         return $this->withMenuOverlay($composited, $columns);
     }

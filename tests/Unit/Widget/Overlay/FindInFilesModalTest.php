@@ -6,7 +6,9 @@ namespace Porta\Tests\Unit\Widget\Overlay;
 
 use PHPUnit\Framework\TestCase;
 use Porta\Ui\CaretVisibility;
+use Porta\Ui\Glyphs;
 use Porta\Widget\Overlay\FindInFilesModal;
+use Porta\Widget\Render\OverlayCompositor;
 use Symfony\Component\Tui\Ansi\AnsiUtils;
 use Symfony\Component\Tui\Input\Keybindings;
 
@@ -36,18 +38,36 @@ final class FindInFilesModalTest extends TestCase
         ];
     }
 
+    /**
+     * Lay the modal out on a blank $rows×$columns screen and composite its
+     * panel where it placed itself — the test-side stand-in for the
+     * presenter's span push, keeping every geometry assertion in the same
+     * screen coordinates the mouse paths use.
+     *
+     * @return list<string>
+     */
+    private function compose(FindInFilesModal $modal, int $columns = 100, int $rows = 24): array
+    {
+        $lines = array_fill(0, count: $rows, value: str_repeat(' ', times: $columns));
+        $placed = $modal->layout([0, 0, $rows, $columns], CaretVisibility::Shown);
+        if (null === $placed) {
+            return $lines;
+        }
+        $box = $modal->lastBox();
+        \assert(null !== $box);
+
+        return OverlayCompositor::placeAt($lines, $placed['rows'], $placed['top'], $placed['col'], $box->width, $columns);
+    }
+
     private function screen(FindInFilesModal $modal): string
     {
-        $lines = array_fill(0, count: 24, value: str_repeat(' ', times: 100));
-
-        return AnsiUtils::stripAnsiCodes(implode("\n", $modal->composite($lines, 100, 24, CaretVisibility::Shown)));
+        return AnsiUtils::stripAnsiCodes(implode("\n", $this->compose($modal)));
     }
 
     public function testRendersTitleQueryScopeOptionsAndGroupedPreview(): void
     {
         $modal = $this->modal();
-        $blank = array_fill(0, count: 24, value: '');
-        $this->assertSame($blank, $modal->composite($blank, 100, 24, CaretVisibility::Shown), 'closed → lines unchanged');
+        $this->assertNull($modal->layout([0, 0, 24, 100], CaretVisibility::Shown), 'closed → no layout');
 
         $modal->open('Find in Files');
         $modal->setScopes(['Whole Project', 'Directory'], 0);
@@ -294,9 +314,8 @@ final class FindInFilesModalTest extends TestCase
             $modal->handleInput("\x1b[B", $this->kb); // page down through the matches
         }
         $box = null;
-        $screen = (static function () use ($modal, &$box): string {
-            $lines = array_fill(0, count: 24, value: str_repeat(' ', times: 100));
-            $out = $modal->composite($lines, 100, 24, CaretVisibility::Shown);
+        $screen = (function () use ($modal, &$box): string {
+            $out = $this->compose($modal);
             $box = $modal->lastBox();
 
             return AnsiUtils::stripAnsiCodes(implode("\n", $out));
@@ -306,7 +325,7 @@ final class FindInFilesModalTest extends TestCase
         $this->assertStringContainsString('hit 11', $screen);
 
         // Clicking the options row off any tag, and hovering headers / outside, are inert.
-        $modal->clickAt($box->windowTop() - 2, $box->col + $box->width - 1); // options row, past the tags
+        $modal->clickAt($box->windowTop() - 3, $box->col + $box->width - 1); // options row, past the tags
         $this->assertFalse($modal->hoverAt($box->windowTop() - 5, $box->col + 2), 'above the preview');
         $this->assertFalse($modal->hoverAt($box->windowTop() + 99, $box->col + 2), 'below the preview');
     }
@@ -321,8 +340,8 @@ final class FindInFilesModalTest extends TestCase
         }
         $modal->setPreview($many);
 
-        $box = static function () use ($modal): \Porta\Overlay\ModalBox {
-            $modal->composite(array_fill(0, count: 24, value: str_repeat(' ', times: 100)), 100, 24, CaretVisibility::Shown);
+        $box = function () use ($modal): \Porta\Overlay\ModalBox {
+            $this->compose($modal);
 
             $box = $modal->lastBox();
             \assert($box instanceof \Porta\Overlay\ModalBox);
@@ -349,8 +368,8 @@ final class FindInFilesModalTest extends TestCase
         }
         $modal->setPreview($many); // 15 display rows (1 header + 14 matches), 10 visible
 
-        $box = static function () use ($modal): \Porta\Overlay\ModalBox {
-            $modal->composite(array_fill(0, count: 24, value: str_repeat(' ', times: 100)), 100, 24, CaretVisibility::Shown);
+        $box = function () use ($modal): \Porta\Overlay\ModalBox {
+            $this->compose($modal);
 
             $box = $modal->lastBox();
             \assert($box instanceof \Porta\Overlay\ModalBox);
@@ -382,8 +401,8 @@ final class FindInFilesModalTest extends TestCase
         }
         $modal->setPreview($many); // selection on the first match (display index 1)
 
-        $box = static function () use ($modal): \Porta\Overlay\ModalBox {
-            $modal->composite(array_fill(0, count: 24, value: str_repeat(' ', times: 100)), 100, 24, CaretVisibility::Shown);
+        $box = function () use ($modal): \Porta\Overlay\ModalBox {
+            $this->compose($modal);
 
             $box = $modal->lastBox();
             \assert($box instanceof \Porta\Overlay\ModalBox);
@@ -414,8 +433,9 @@ final class FindInFilesModalTest extends TestCase
         $modal = $this->modal();
         $modal->open('Find in Files');
         $modal->setPreview($this->results());
-        // A 4-row terminal can't fit the box; compositing must clip, not error.
-        $out = $modal->composite(array_fill(0, count: 4, value: str_repeat(' ', times: 40)), 40, 4, CaretVisibility::Shown);
+        // A 4-row terminal can't fit the box; the layout must clamp its
+        // position (and the test-side composite clip), not error.
+        $out = $this->compose($modal, columns: 40, rows: 4);
         $this->assertCount(4, $out);
     }
 
@@ -441,8 +461,8 @@ final class FindInFilesModalTest extends TestCase
         $box = $modal->lastBox();
         $this->assertNotNull($box);
 
-        // Click the first option tag (options row is windowTop() - 2; inner col 1 sits past the rail).
-        $modal->clickAt($box->windowTop() - 2, $box->col + 2);
+        // Click the first option tag (options row is windowTop() - 3; inner col 1 sits past the rail and padding).
+        $modal->clickAt($box->windowTop() - 3, $box->col + 3);
         $this->assertSame(['regex'], $toggled);
 
         // Hover the second match row (previewRow + 2; the first match is already selected).
@@ -454,6 +474,140 @@ final class FindInFilesModalTest extends TestCase
         // A click outside the box dismisses.
         $modal->clickAt($box->windowTop(), $box->col + $box->width + 5);
         $this->assertTrue($closed);
+    }
+
+    /** A corner drag resizes the box: wider/taller, floored at 48 wide × 3 preview rows, reset on open. */
+    public function testACornerDragResizesTheBoxAndOpenResets(): void
+    {
+        $modal = $this->modal();
+        $modal->open('Find in Files');
+        $many = [];
+        for ($i = 0; $i < 14; ++$i) {
+            $many[] = ['path' => 'src/A.php', 'line' => $i, 'text' => "hit {$i}", 'ranges' => []];
+        }
+        $modal->setPreview($many);
+        $this->screen($modal);
+        $box = $modal->lastBox();
+        $this->assertNotNull($box);
+
+        $this->assertFalse($modal->continueDragTo(0, 0, release: false), 'nothing armed yet');
+
+        // Press the bottom-right corner, drag right and down, release.
+        $this->assertTrue($modal->clickAt($box->startRow + $box->rows - 1, $box->col + $box->width - 1));
+        $this->assertTrue($modal->continueDragTo($box->startRow + $box->rows + 1, $box->col + $box->width + 9, release: false));
+        $this->screen($modal);
+        $grown = $modal->lastBox();
+        $this->assertNotNull($grown);
+        $this->assertSame($box->width + 10, $grown->width, 'the width followed the pointer');
+        $this->assertSame(11, $grown->count, 'one more preview row — the 24-row screen budget caps the second');
+
+        // Dragging into the header pins at the floors (48 inner, 3 preview rows).
+        $this->assertTrue($modal->continueDragTo($box->startRow, $box->col, release: true));
+        $this->screen($modal);
+        $floor = $modal->lastBox();
+        $this->assertNotNull($floor);
+        $this->assertSame(48 + 4, $floor->width, 'inner width floored at 48 (+ chrome)');
+        $this->assertSame(3, $floor->count, 'the preview floor');
+        $this->assertFalse($modal->continueDragTo(0, 0, release: false), 'the release disarmed the resize');
+
+        // A fresh open re-derives the size — overrides are session-only.
+        $modal->open('Find in Files');
+        $modal->setPreview($many);
+        $this->screen($modal);
+        $reopened = $modal->lastBox();
+        $this->assertNotNull($reopened);
+        $this->assertSame(10, $reopened->count, 'the reopen dropped the user preview rows');
+    }
+
+    /** A title-bar drag moves the box; the position clamps, survives typing, and resets on open. */
+    public function testATitleBarDragMovesTheBoxAndOpenRecenters(): void
+    {
+        $modal = $this->modal();
+        $modal->open('Find in Files');
+        $this->screen($modal);
+        $box = $modal->lastBox();
+        $this->assertNotNull($box);
+
+        // Press the title bar (off the ×), drag down-left, release.
+        $this->assertTrue($modal->clickAt($box->startRow, $box->col + 2), 'a title-bar press is consumed');
+        $this->assertTrue($modal->isOpen(), 'and does not dismiss');
+        $this->assertTrue($modal->continueDragTo($box->startRow + 3, $box->col - 2, release: false));
+        $this->screen($modal);
+        $moved = $modal->lastBox();
+        $this->assertNotNull($moved);
+        $this->assertSame($box->startRow + 3, $moved->startRow, 'the box followed the pointer');
+        $this->assertSame($box->col - 4, $moved->col, 'grabbed at col+2, pointer at col−2 → the box moved 4 left');
+
+        // Dragging far past the top-left pins at the pane origin.
+        $this->assertTrue($modal->continueDragTo(-50, -50, release: true));
+        $this->screen($modal);
+        $pinned = $modal->lastBox();
+        $this->assertNotNull($pinned);
+        $this->assertSame(0, $pinned->startRow, 'clamped to the pane top');
+        $this->assertSame(0, $pinned->col, 'clamped to the pane left edge');
+        $this->assertFalse($modal->continueDragTo(5, 5, release: false), 'the release disarmed the move');
+
+        // A fresh open recenters — the position is session-only.
+        $modal->open('Find in Files');
+        $this->screen($modal);
+        $reopened = $modal->lastBox();
+        $this->assertNotNull($reopened);
+        $this->assertSame($box->startRow, $reopened->startRow, 'the reopen recentered');
+        $this->assertSame($box->col, $reopened->col);
+    }
+
+    public function testCancelDragDisarms(): void
+    {
+        $modal = $this->modal();
+        $modal->open('Find in Files');
+        $this->screen($modal);
+        $box = $modal->lastBox();
+        $this->assertNotNull($box);
+
+        $modal->clickAt($box->startRow + $box->rows - 1, $box->col + $box->width - 1); // arm the resize
+        $modal->cancelDrag();
+        $this->assertFalse($modal->continueDragTo(10, 10, release: false), 'the resize was disarmed');
+
+        $modal->clickAt($box->startRow, $box->col + 2); // arm a move
+        $modal->cancelDrag();
+        $this->assertFalse($modal->continueDragTo(10, 10, release: false), 'the move was disarmed');
+    }
+
+    public function testHoveringTheResizeCornerHeaviesIt(): void
+    {
+        $modal = $this->modal();
+        $modal->open('Find in Files');
+        $this->screen($modal);
+        $box = $modal->lastBox();
+        $this->assertNotNull($box);
+
+        $this->assertTrue($modal->hoverAt($box->startRow + $box->rows - 1, $box->col + $box->width - 1), 'onto the corner');
+        $this->assertStringContainsString(Glyphs::MODAL_RESIZE_GRAB, $this->screen($modal), 'the corner heavied');
+        $this->assertTrue($modal->hoverAt($box->startRow + 2, $box->col + 3), 'off it');
+        $this->assertStringNotContainsString(Glyphs::MODAL_RESIZE_GRAB, $this->screen($modal));
+    }
+
+    public function testHoveringTheCloseBrightensIt(): void
+    {
+        $modal = $this->modal();
+        $modal->open('Find in Files');
+        $normalBar = null;
+        $screen = (function () use ($modal, &$normalBar): string {
+            $lines = $this->compose($modal);
+            $box = $modal->lastBox();
+            \assert(null !== $box);
+            $normalBar = $lines[$box->startRow];
+
+            return '';
+        })();
+        $box = $modal->lastBox();
+        $this->assertNotNull($box);
+
+        $this->assertTrue($modal->hoverAt($box->startRow, $box->col + $box->width - 2), 'onto the ×');
+        $hoveredBar = $this->compose($modal)[$box->startRow];
+        $this->assertNotSame($normalBar, $hoveredBar, 'the × restyled under the pointer');
+
+        $this->assertTrue($modal->hoverAt($box->startRow + 2, $box->col + 3), 'off the ×');
     }
 
     public function testTheCloseButtonCloses(): void
@@ -488,20 +642,20 @@ final class FindInFilesModalTest extends TestCase
         $this->screen($modal);
         $box = $modal->lastBox();
         $this->assertNotNull($box);
-        $optionsRow = $box->windowTop() - 2;
+        $optionsRow = $box->windowTop() - 3;
 
         // Click the Replace row (optionsRow - 1) → focus it; typing has no callback, observe via render.
-        $modal->clickAt($optionsRow - 1, $box->col + 2);
+        $modal->clickAt($optionsRow - 1, $box->col + 3);
         $modal->handleInput('X', $this->kb);
         $this->assertStringContainsString('Replace: X', $this->screen($modal), 'the replace field took the keystroke');
 
         // Click the Mask row (optionsRow + 1) → focus it; typing fires onMaskChanged.
-        $modal->clickAt($optionsRow + 1, $box->col + 2);
+        $modal->clickAt($optionsRow + 1, $box->col + 3);
         $modal->handleInput('y', $this->kb);
         $this->assertSame(['y'], $masks);
 
         // Click the Find row (optionsRow - 2) → focus the query; typing fires onQuery.
-        $modal->clickAt($optionsRow - 2, $box->col + 2);
+        $modal->clickAt($optionsRow - 2, $box->col + 3);
         $modal->handleInput('z', $this->kb);
         $this->assertSame(['z'], $queries);
     }
@@ -516,10 +670,10 @@ final class FindInFilesModalTest extends TestCase
         $modal->setScopes(['Whole Project', 'Directory', 'Current File'], 0);
         $modal->open('Find in Files');
         $modal->setPreview($this->results());
-        $lines = $modal->composite(array_fill(0, count: 24, value: str_repeat(' ', times: 100)), 100, 24, CaretVisibility::Shown);
+        $lines = $this->compose($modal);
         $box = $modal->lastBox();
         $this->assertNotNull($box);
-        $optionsRow = $box->windowTop() - 2;
+        $optionsRow = $box->windowTop() - 3;
         $optionsLine = AnsiUtils::stripAnsiCodes($lines[$optionsRow]);
 
         // The two-space gap between the last tag and the scope label hits no zone.
@@ -540,19 +694,19 @@ final class FindInFilesModalTest extends TestCase
         $modal->setScopes(['Whole Project', 'Directory'], 0);
         $modal->open('Find in Files');
         $modal->setPreview($this->results());
-        $lines = $modal->composite(array_fill(0, count: 24, value: str_repeat(' ', times: 100)), 100, 24, CaretVisibility::Shown);
+        $lines = $this->compose($modal);
         $box = $modal->lastBox();
         $this->assertNotNull($box);
-        $optionsRow = $box->windowTop() - 2;
+        $optionsRow = $box->windowTop() - 3;
 
-        // Hover the first option tag (inner col 1, past the frame rail) →
+        // Hover the first option tag (inner col 1, past the rail and padding) →
         // highlight changes; the same spot → no change.
-        $this->assertTrue($modal->hoverAt($optionsRow, $box->col + 2));
-        $this->assertFalse($modal->hoverAt($optionsRow, $box->col + 2));
+        $this->assertTrue($modal->hoverAt($optionsRow, $box->col + 3));
+        $this->assertFalse($modal->hoverAt($optionsRow, $box->col + 3));
         $this->assertStringContainsString('.*', $this->screen($modal), 'the hovered tag still renders');
 
         // A different tag → changes.
-        $this->assertTrue($modal->hoverAt($optionsRow, $box->col + 6));
+        $this->assertTrue($modal->hoverAt($optionsRow, $box->col + 7));
 
         // Hover the scope label → changes and still renders.
         $optionsLine = AnsiUtils::stripAnsiCodes($lines[$optionsRow]);
@@ -562,7 +716,7 @@ final class FindInFilesModalTest extends TestCase
         $this->assertStringContainsString('Scope: Whole Project', $this->screen($modal));
 
         // Moving off the options row (onto the Find field row) clears the hover.
-        $this->assertTrue($modal->hoverAt($optionsRow - 2, $box->col + 2));
+        $this->assertTrue($modal->hoverAt($optionsRow - 2, $box->col + 3));
     }
 
     public function testMouseClickTogglesExcludeCheckbox(): void
@@ -583,12 +737,13 @@ final class FindInFilesModalTest extends TestCase
         $box = $modal->lastBox();
         $this->assertNotNull($box);
 
-        // Click the [x] checkbox on the first match row (inner cols 2-4) → exclude it.
-        $modal->clickAt($box->windowTop() + 1, $box->col + 3);
+        // Click the [x] checkbox on the first match row (inner cols 2-4,
+        // past the rail and padding) → exclude it.
+        $modal->clickAt($box->windowTop() + 1, $box->col + 4);
         $this->assertStringContainsString('(excluded)', $this->screen($modal));
 
         // Click it again → re-include.
-        $modal->clickAt($box->windowTop() + 1, $box->col + 3);
+        $modal->clickAt($box->windowTop() + 1, $box->col + 4);
         $this->assertStringNotContainsString('(excluded)', $this->screen($modal));
 
         // Click past the checkbox on the same row → jump to the match.
@@ -614,7 +769,7 @@ final class FindInFilesModalTest extends TestCase
         $modal->setScopes(['Whole Project', 'Directory'], 0);
         $modal->open('Find in Files');
         $modal->setPreview($this->results());
-        $lines = $modal->composite(array_fill(0, count: 24, value: str_repeat(' ', times: 100)), 100, 24, CaretVisibility::Shown);
+        $lines = $this->compose($modal);
         $footerRow = $modal->lastFooterRow();
         $footerLine = AnsiUtils::stripAnsiCodes($lines[$footerRow]);
 

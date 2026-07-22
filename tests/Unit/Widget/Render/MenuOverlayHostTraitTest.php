@@ -45,6 +45,22 @@ final class MenuOverlayHostTraitTest extends TestCase
         $this->assertSame('..........', $lines[1]);
     }
 
+    /** The backdrop dims the pane's own rows; the composited spans stay bright. */
+    public function testTheBackdropDimsBaseLinesBeneathTheSpans(): void
+    {
+        $host = $this->host();
+        $host->setModalBackdrop(true);
+        $host->setModalOverlay([['row' => 0, 'col' => 2, 'width' => 3, 'segment' => 'MMM']]);
+
+        $lines = $host->render(new RenderContext(10, 2));
+
+        $this->assertStringStartsWith("\x1b[2m", $lines[1], 'a base row renders faint');
+        $this->assertMatchesRegularExpression('/\x1b\[0mMMM\x1b\[0m/', $lines[0], 'the modal span composites bright, reset-guarded');
+
+        $host->setModalBackdrop(false);
+        $this->assertStringNotContainsString("\x1b[2m", $host->render(new RenderContext(10, 2))[1], 'clearing the flag restores the pane');
+    }
+
     public function testClearingOneLayerLeavesTheOther(): void
     {
         $host = $this->host();

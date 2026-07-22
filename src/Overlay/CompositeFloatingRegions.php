@@ -14,12 +14,15 @@ final class CompositeFloatingRegions implements FloatingRegions
 {
     public function __construct(
         private readonly WelcomeModalController $welcomeModal,
+        private readonly FindModalPresenter $findModal,
         private readonly MenuOverlayController $menus,
     ) {}
 
     public function regions(): array
     {
-        $modal = $this->welcomeModal->region();
+        // The two floating modals are never open together (the WorkspaceViews
+        // interlock), so at most one modal region joins the menus'.
+        $modal = $this->welcomeModal->region() ?? $this->findModal->region();
 
         return [...(null !== $modal ? [$modal] : []), ...$this->menus->regions()];
     }

@@ -81,6 +81,8 @@ final class HighContrastTheme
                 // rules exist in every theme and stay off the SelectedRow roles.
                 '.card::selected' => new Style(background: 236),
                 '.card::selected:focus' => new Style(background: 238),
+                // Modal drop shadow — see DarkTheme for the totality note.
+                '.modal::shadow' => new Style(background: 232),
             ],
             underlines: [
                 Role::DiagErrorUnderline->name => Sgr::underlineColor(203),

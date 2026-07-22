@@ -76,6 +76,7 @@ use Porta\Lsp\NavigationController;
 use Porta\Lsp\RefactorController;
 use Porta\Lsp\WorkspaceEditor;
 use Porta\Overlay\CompositeFloatingRegions;
+use Porta\Overlay\FindModalPresenter;
 use Porta\Overlay\FloatingRegions;
 use Porta\Overlay\MenuOverlayController;
 use Porta\Overlay\MenuOverlayPanes;
@@ -395,6 +396,7 @@ return static function (ContainerConfigurator $container, ContainerBuilder $buil
         SettingsViewController::class,
         OnboardingState::class,
         WelcomeModalController::class,
+        FindModalPresenter::class,
         PluginLifecycle::class,
         MenuRebuilder::class,
         GitViewController::class,

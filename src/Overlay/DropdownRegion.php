@@ -11,11 +11,17 @@ namespace Porta\Overlay;
  */
 final class DropdownRegion
 {
+    /**
+     * @param bool $ltr whether the box's content is left-to-right verbatim
+     *                  (code-carrying modals like Find in Files) rather than
+     *                  mirrored prose — the RTL segmenter honors it per run
+     */
     public function __construct(
         public readonly int $top,
         public readonly int $col,
         public readonly int $width,
         public readonly int $count,
+        public readonly bool $ltr = false,
     ) {}
 
     /** Whether the screen cell sits inside the box. */

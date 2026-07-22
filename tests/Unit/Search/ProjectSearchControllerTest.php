@@ -60,10 +60,12 @@ final class ProjectSearchControllerTest extends TestCase
         );
     }
 
-    /** The Find-in-Files modal composites over the editor pane. */
+    /** The modal's own panel text — it floats over the workspace now, not inside the editor's lines. */
     private function modal(): string
     {
-        return AnsiUtils::stripAnsiCodes(implode("\n", $this->editor->render(new RenderContext(100, 40))));
+        $placed = $this->editor->findModal()->layout([0, 0, 40, 100], \Porta\Ui\CaretVisibility::Shown);
+
+        return null === $placed ? '' : AnsiUtils::stripAnsiCodes(implode("\n", $placed['rows']));
     }
 
     public function testOpenShowsTheFindModal(): void

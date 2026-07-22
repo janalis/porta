@@ -12,7 +12,7 @@ use Symfony\Component\Tui\Ansi\AnsiUtils;
 
 /**
  * The one place a floating modal's frame is drawn: a box-glyph title bar —
- * `┌ Title ─── Esc ×┐` — and the side rails + bottom row that wrap the
+ * `╭ Title ─── Esc ×╮` — and the side rails + bottom row that wrap the
  * content. Shared by the Welcome modal and the centered pickers so every
  * floating surface speaks the same visual language: accent-coloured border
  * ({@see Role::TabAccent}, the image pane's focus-frame precedent), bold
@@ -48,7 +48,7 @@ final class ModalFrame
         $fill = str_repeat(Glyphs::FRAME_HORIZONTAL, max(0, $room - AnsiUtils::visibleWidth($label)));
 
         $bar =
-            $accent->apply(Glyphs::FRAME_TOP_LEFT)
+            $accent->apply(Glyphs::MODAL_TOP_LEFT)
             .' '
             .$styles->of(Role::Bright)->withBold()->apply($label)
             .' '
@@ -56,7 +56,7 @@ final class ModalFrame
             .($hintWidth > 0 ? ' '.$styles->of(Role::Faint)->apply($hint) : '')
             .' '
             .$close
-            .$accent->apply(Glyphs::FRAME_TOP_RIGHT);
+            .$accent->apply(Glyphs::MODAL_TOP_RIGHT);
 
         // By construction the bar is exactly $width columns; the truncate is
         // the degenerate-width backstop (a box too narrow for its chrome) that
@@ -65,24 +65,64 @@ final class ModalFrame
     }
 
     /**
-     * The side rails and bottom border around already-rendered content rows.
-     * Each content row is padded/clipped to $innerWidth once, here — the
-     * single place the invariant is enforced. Total row width: $innerWidth+2.
+     * The chrome a frame adds around content of W columns × H rows: one rail
+     * and one padding column each side (width = W + CHROME_COLS), and — below
+     * the title bar — a padding row, the content, a padding row and the bottom
+     * border (rows = H + CHROME_ROWS, of which CHROME_ROWS_TOP sit above the
+     * content). Every consumer derives its geometry from these three numbers.
+     */
+    public const int CHROME_COLS = 4;
+    public const int CHROME_ROWS = 4;
+    public const int CHROME_ROWS_TOP = 2;
+
+    /**
+     * The rails, padding and bottom border around already-rendered content
+     * rows — {@see wrapSections()} with a single section.
      *
      * @param list<string> $content
      *
      * @return list<string>
      */
-    public static function wrap(array $content, int $innerWidth, Styles $styles): array
+    public static function wrap(array $content, int $innerWidth, Styles $styles, bool $resizeCornerHot = false): array
+    {
+        return self::wrapSections([$content], $innerWidth, $styles, $resizeCornerHot);
+    }
+
+    /**
+     * The frame body below the title bar: a padding row, each section's rows
+     * (`│ ` + row + ` │`) with a `├──┤` tee row between sections, a padding
+     * row, then the bottom border. Each content row is padded/clipped to
+     * $innerWidth once, here — the single place the invariant is enforced.
+     * Total row width: $innerWidth + CHROME_COLS.
+     *
+     * @param list<list<string>> $sections
+     *
+     * @return list<string>
+     */
+    public static function wrapSections(array $sections, int $innerWidth, Styles $styles, bool $resizeCornerHot = false): array
     {
         $accent = $styles->of(Role::TabAccent);
         $rail = $accent->apply(Glyphs::FRAME_VERTICAL);
+        $pad = $rail.str_repeat(' ', max(0, $innerWidth + 2)).$rail;
 
-        $rows = [];
-        foreach ($content as $line) {
-            $rows[] = $rail.AnsiText::truncate($line, max(0, $innerWidth), pad: true).$rail;
+        $rows = [$pad];
+        foreach ($sections as $i => $section) {
+            if ($i > 0) {
+                $rows[] = $accent->apply(Glyphs::MODAL_TEE_LEFT.str_repeat(Glyphs::FRAME_HORIZONTAL, max(0, $innerWidth + 2)).Glyphs::MODAL_TEE_RIGHT);
+            }
+            foreach ($section as $line) {
+                $rows[] = $rail.' '.AnsiText::truncate($line, max(0, $innerWidth), pad: true).' '.$rail;
+            }
         }
-        $rows[] = $accent->apply(Glyphs::FRAME_BOTTOM_LEFT.str_repeat(Glyphs::FRAME_HORIZONTAL, max(0, $innerWidth)).Glyphs::FRAME_BOTTOM_RIGHT);
+        $rows[] = $pad;
+        // The bottom-right corner is the resizable modals' grab: thin rounded
+        // at rest (identical to a non-resizable box — the hover reveals it,
+        // the SeparatorWidget convention), heavy and bright while the pointer
+        // is on it or a resize drag is running.
+        $corner = $resizeCornerHot
+            ? $styles->of(Role::Bright)->withBold()->apply(Glyphs::MODAL_RESIZE_GRAB)
+            : $accent->apply(Glyphs::MODAL_BOTTOM_RIGHT);
+        $rows[] = $accent->apply(Glyphs::MODAL_BOTTOM_LEFT.str_repeat(Glyphs::FRAME_HORIZONTAL, max(0, $innerWidth + 2))).$corner;
 
         return $rows;
     }

@@ -43,10 +43,10 @@ final class ModalBoxTest extends TestCase
         $this->assertNull($box->itemAt(6, 30), 'outside on the right');
     }
 
-    public function testInnerColShiftsPastTheLeftRail(): void
+    public function testInnerColShiftsPastTheRailAndPaddingColumn(): void
     {
-        $this->assertSame(0, $this->box()->innerCol(11), 'first content column');
-        $this->assertSame(5, $this->box()->innerCol(16));
+        $this->assertSame(0, $this->box()->innerCol(12), 'first content column');
+        $this->assertSame(4, $this->box()->innerCol(16));
     }
 
     /** The `×` and the space before it, on the title row only; the corner stays out. */

@@ -42,13 +42,22 @@ final class SpanSlicer
         foreach ($segments as $i => $segment) {
             $localRow = $top + $i - $rect->row;
             if ($localRow >= 0 && $localRow < $rect->rows) {
+                $slice = $clipped ? AnsiUtils::sliceByColumn($segment, $clipOffset, $clipWidth) : $segment;
+                // sliceByColumn re-emits an APC caret marker sitting BEFORE the
+                // clip offset (it is "active state" at the slice start) — but
+                // that marker's cell belongs to an EARLIER pane's slice of this
+                // same panel row. Left in, the composed frame row would carry
+                // one hardware-cursor marker per pane the panel crosses, and
+                // the ScreenWriter's marker conversion mangles the row at the
+                // duplicates (visible as the row truncating at a pane seam).
+                if ($clipOffset > 0 && false !== ($markerAt = strpos($segment, AnsiUtils::CURSOR_MARKER_PREFIX)) && AnsiUtils::visibleWidth(substr($segment, 0, $markerAt)) < $clipOffset) {
+                    $slice = (string) preg_replace('/\x1b_pi:c;[^\x07]*\x07/', '', $slice);
+                }
                 $spans[] = [
                     'row' => $localRow,
                     'col' => $localCol,
                     'width' => $clipWidth,
-                    'segment' => $clipped
-                        ? AnsiUtils::sliceByColumn($segment, $clipOffset, $clipWidth)
-                        : $segment,
+                    'segment' => $slice,
                 ];
             }
         }

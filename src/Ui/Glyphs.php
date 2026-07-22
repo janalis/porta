@@ -125,6 +125,26 @@ final class Glyphs
     public const string CHECKBOX_PARTIAL = '[~]';
     public const string CHECKBOX_OFF = '[ ]';
 
+    // The floating modals' frame: the rounded family, deliberately distinct
+    // from the image pane's square FRAME_* focus frame — a modal is a separate
+    // surface with its own visual language, and the two never meet on screen.
+    // All 1 column wide (EAW Narrow), like every frame glyph.
+    public const string MODAL_TOP_LEFT = '╭';
+    public const string MODAL_TOP_RIGHT = '╮';
+    public const string MODAL_BOTTOM_LEFT = '╰';
+    public const string MODAL_BOTTOM_RIGHT = '╯';
+
+    // Section separators inside a modal frame (Find in Files' field block /
+    // results / footer): tees joining the side rails, so the zones read as
+    // zones of one box rather than stacked boxes.
+    public const string MODAL_TEE_LEFT = '├';
+    public const string MODAL_TEE_RIGHT = '┤';
+
+    // The resizable modals' corner grab: the bottom-right corner heavies under
+    // the pointer (and while dragging), the PANE_DIVIDER → PANE_DIVIDER_ACTIVE
+    // thin/heavy convention — the affordance is the GLYPH, surviving --no-ansi.
+    public const string MODAL_RESIZE_GRAB = '┛';
+
     // The Welcome screen's link-step marker: bracketed like the checkboxes so
     // it reads as the same control family, but visibly not a checkbox — a link
     // step has no done state to tick. Same → value as NAV_CURRENT on a

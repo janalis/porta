@@ -58,6 +58,17 @@ final readonly class HoverRouter
             return;
         }
 
+        // The floating Find-in-Files modal owns hover while open (screen
+        // coordinates); the workspace beneath is dimmed, so its pane tints
+        // would be invisible anyway. The menu bar keeps first refusal.
+        if ($this->panes->editor()->isFindModalOpen()) {
+            if (!$this->handleMenuHover($mouse) && $this->panes->editor()->findModal()->hoverAt($mouse->row, $mouse->col)) {
+                $this->tui->requestRender();
+            }
+
+            return;
+        }
+
         // The Welcome modal floats over whatever is beneath it and is modal, so
         // it owns hover next: the menu bar keeps first refusal, then the box.
         if ($this->welcome->isModalOpen()) {
@@ -215,7 +226,7 @@ final readonly class HoverRouter
         }
 
         if (
-            ($this->panes->editor()->isOverlayOpen() || $this->panes->editor()->isCompletionOpen() || $this->panes->editor()->isSearchOverlayOpen() || $this->panes->editor()->isFindModalOpen())
+            ($this->panes->editor()->isOverlayOpen() || $this->panes->editor()->isCompletionOpen() || $this->panes->editor()->isSearchOverlayOpen())
             && null !== $editorRect
             && $editorRect->contains($mouse->row, $mouse->col)
         ) {

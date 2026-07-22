@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Porta\Support;
 
 use Porta\Ui\Glyphs;
+use Porta\Ui\Sgr;
 use Symfony\Component\Tui\Ansi\AnsiUtils;
 
 /**
@@ -37,6 +38,38 @@ final class AnsiText
      * Right-pad $text with spaces so its visible width reaches $width (a no-op
      * when it is already at least that wide). SGR codes are not counted.
      */
+    /**
+     * Render a whole line faint: SGR 2 up front, re-armed after every reset
+     * that would cancel it (`0`, or intensity's own `22` — checked as whole
+     * params, so `1;2`-style lists pass untouched), closed at the end. The
+     * regex matches only CSI-SGR sequences, so APC cursor markers and every
+     * other escape family pass through byte-identical — the same construction
+     * {@see \Symfony\Component\Tui\Ansi\AnsiUtils::reapplyBackgroundAfterResets}
+     * uses for backgrounds (Style re-arms only backgrounds, never intensity,
+     * which is why this transform exists). Styles emit SGR 2 even in the
+     * monochrome theme, so a dimmed backdrop reads under --no-ansi too.
+     */
+    public static function dim(string $line): string
+    {
+        if (!str_contains($line, "\x1b")) {
+            return Sgr::FAINT.$line.Sgr::NORMAL_INTENSITY;
+        }
+
+        $reArmed = (string) preg_replace_callback(
+            '/\x1b\[([\d;]*)m/',
+            static function (array $match): string {
+                $params = explode(';', $match[1]);
+
+                return '' === $match[1] || \in_array('0', $params, strict: true) || \in_array('22', $params, strict: true)
+                    ? $match[0].Sgr::FAINT
+                    : $match[0];
+            },
+            $line,
+        );
+
+        return Sgr::FAINT.$reArmed.Sgr::NORMAL_INTENSITY;
+    }
+
     public static function padRight(string $text, int $width): string
     {
         return $text.str_repeat(' ', max(0, $width - AnsiUtils::visibleWidth($text)));

@@ -25,4 +25,7 @@ interface MenuOverlayHost
      * @param list<array{row: int, col: int, width: int, segment: string}> $spans
      */
     public function setModalOverlay(array $spans): void;
+
+    /** Whether this pane renders faint beneath the modal spans (the backdrop dim). */
+    public function setModalBackdrop(bool $on): void;
 }

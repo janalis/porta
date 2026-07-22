@@ -40,8 +40,8 @@ final class BidiTui extends Tui
     /** @var (callable(int): void)|null fired with the new width before the frame renders */
     private $onColumnsChanged = null;
 
-    /** @var (callable(): void)|null fired before every frame renders (both render paths) */
-    private $onBeforeFrame = null;
+    /** @var list<callable(): void> fired before every frame renders (both render paths) */
+    private array $onBeforeFrame = [];
 
     /**
      * Install a hook fired whenever the terminal width changes (including the
@@ -58,16 +58,17 @@ final class BidiTui extends Tui
 
     /**
      * Install a hook fired before every frame renders, on both render paths.
-     * The Welcome modal uses it to lay itself out from the previous frame's
-     * pane rects — geometry that does not exist at its open() time (first-run
-     * opens before any frame) and that a terminal resize invalidates. The hook
-     * must be cheap and idempotent: it runs on every render tick.
+     * The floating modals (Welcome, Find in Files) use it to lay themselves
+     * out from the previous frame's pane rects — geometry that does not exist
+     * at open() time (first-run opens before any frame) and that a terminal
+     * resize invalidates. Hooks accumulate; each must be cheap and
+     * idempotent: they run on every render tick.
      *
      * @param callable(): void $hook
      */
     public function onBeforeFrame(callable $hook): void
     {
-        $this->onBeforeFrame = $hook;
+        $this->onBeforeFrame[] = $hook;
     }
 
     /**
@@ -124,8 +125,8 @@ final class BidiTui extends Tui
                 ($this->onColumnsChanged)($columns);
             }
         }
-        if (null !== $this->onBeforeFrame) {
-            ($this->onBeforeFrame)();
+        foreach ($this->onBeforeFrame as $hook) {
+            $hook();
         }
 
         $segmenter = $this->segmenter;

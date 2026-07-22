@@ -34,6 +34,7 @@ use Porta\Lsp\NavigationController;
 use Porta\Lsp\RefactorController;
 use Porta\Lsp\WorkspaceEditor;
 use Porta\Onboarding\OnboardingState;
+use Porta\Overlay\FindModalPresenter;
 use Porta\Overlay\WelcomeModalController;
 use Porta\Plugin\PluginHost;
 use Porta\Plugin\PluginLifecycle;
@@ -248,6 +249,9 @@ final class Ide
         // (an unreferenced service would otherwise never exist).
         $this->service(SettingsViewController::class);
         $this->service(WelcomeModalController::class);
+        // Eager for the same reason: the presenter registers its per-frame
+        // sync in its constructor and nothing else references it.
+        $this->service(FindModalPresenter::class);
         $this->pluginLifecycle->refreshNav();
 
         $this->localHistory = $this->service(LocalHistoryController::class);

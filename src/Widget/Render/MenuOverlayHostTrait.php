@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace Porta\Widget\Render;
 
+use Porta\Support\AnsiText;
+
 /**
  * Canonical {@see MenuOverlayHost} implementation: store the spans, repaint,
  * and composite them as the render's final step via {@see withMenuOverlay}.
@@ -17,6 +19,9 @@ trait MenuOverlayHostTrait
 
     /** @var list<array{row: int, col: int, width: int, segment: string}> floating modal spans, under the dropdowns */
     private array $modalOverlay = [];
+
+    /** Whether this pane renders faint beneath the modal spans (the Welcome modal's backdrop). */
+    private bool $modalBackdrop = false;
 
     /** Satisfied by AbstractWidget: repaint after the spans change. */
     abstract public function invalidate(): void;
@@ -39,9 +44,19 @@ trait MenuOverlayHostTrait
         $this->invalidate();
     }
 
+    public function setModalBackdrop(bool $on): void
+    {
+        if ($on === $this->modalBackdrop) {
+            return;
+        }
+        $this->modalBackdrop = $on;
+        $this->invalidate();
+    }
+
     /**
-     * Composite the floating layers: the modal first, then the menu dropdowns
-     * over it, so an open menu always renders above the modal it may overlap.
+     * Composite the floating layers: the backdrop dim first (the pane's own
+     * rows go faint), then the modal spans bright over it, then the menu
+     * dropdowns brightest — an open menu always renders above the modal.
      *
      * @param list<string> $lines
      *
@@ -49,6 +64,10 @@ trait MenuOverlayHostTrait
      */
     protected function withMenuOverlay(array $lines, int $width): array
     {
+        if ($this->modalBackdrop) {
+            $lines = array_map(AnsiText::dim(...), $lines);
+        }
+
         return MenuOverlay::apply(MenuOverlay::apply($lines, $this->modalOverlay, $width), $this->menuOverlay, $width);
     }
 }

@@ -85,6 +85,10 @@ final class DarkTheme
                 // stale rule live after a switch.
                 '.card::selected' => new Style(background: 237),
                 '.card::selected:focus' => new Style(background: 238),
+                // The floating modals' drop shadow: solid cells that hide the
+                // content beneath. Present in every theme (StyleSheetThemer
+                // can only overwrite) like the .card rules above.
+                '.modal::shadow' => new Style(background: 233),
             ],
             underlines: [
                 Role::DiagErrorUnderline->name => Sgr::underlineColor(203),

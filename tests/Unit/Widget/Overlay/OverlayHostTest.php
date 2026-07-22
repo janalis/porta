@@ -84,9 +84,9 @@ final class OverlayHostTest extends TestCase
         $this->assertFalse($host->isListOpen());
         // The prompt still swallows and edits input.
         $this->assertTrue($host->handleInput('4', $this->keybindings()));
-        $lines = $host->composite(['', ''], 40, 2, CaretVisibility::Shown);
+        $lines = $host->composite(array_fill(0, count: 5, value: ''), 40, 5, CaretVisibility::Shown);
         $this->assertStringContainsString('Go to line', AnsiUtils::stripAnsiCodes($lines[0]), 'the label is the frame title');
-        $this->assertStringContainsString('4', AnsiUtils::stripAnsiCodes($lines[1]), 'the value on the field row');
+        $this->assertStringContainsString('4', AnsiUtils::stripAnsiCodes($lines[2]), 'the value on the field row, below the padding');
     }
 
     public function testPromptBackspaceAndCancel(): void
@@ -117,14 +117,14 @@ final class OverlayHostTest extends TestCase
     {
         $host = $this->host();
         $host->openPrompt('Go to line', '', static fn () => null);
-        $host->composite(['', ''], 40, 2, CaretVisibility::Shown); // framed box: rows 0-2, inner width 30 at col 4
+        $host->composite(['', ''], 40, 2, CaretVisibility::Shown); // framed box: rows 0-4, inner width 30 at col 3
 
         $this->assertTrue($host->promptClickAt(0, 5), 'a click on the frame title bar is consumed');
         $this->assertTrue($host->isPromptOpen(), 'and does not dismiss it — the caret stays');
-        $this->assertTrue($host->promptClickAt(1, 5), 'a click on the field row is consumed');
+        $this->assertTrue($host->promptClickAt(2, 5), 'a click on the field row is consumed');
         $this->assertTrue($host->isPromptOpen());
 
-        $this->assertTrue($host->promptClickAt(3, 5), 'a click below the box is consumed');
+        $this->assertTrue($host->promptClickAt(5, 5), 'a click below the box is consumed');
         $this->assertFalse($host->isPromptOpen(), 'and dismisses it, like every sibling overlay');
     }
 
@@ -146,6 +146,41 @@ final class OverlayHostTest extends TestCase
 
         $this->assertTrue($host->promptClickAt(0, 34), 'the title bar ×');
         $this->assertFalse($host->isPromptOpen());
+    }
+
+    /** Hovering a picker's × brightens it, exactly like the tab strips' close glyph. */
+    public function testHoveringTheCloseBrightensItPerSurface(): void
+    {
+        $host = $this->host();
+        $host->openList('Title', [['label' => 'a', 'hint' => '', 'value' => 'A']], static fn () => null);
+        $lines = $host->composite(array_fill(0, count: 20, value: str_repeat(' ', times: 80)), 80, 20, CaretVisibility::Shown);
+        $box = new \ReflectionProperty($host, 'overlayBox')->getValue($host);
+        \assert($box instanceof \Porta\Overlay\ModalBox);
+        $normalBar = $lines[$box->startRow];
+
+        $this->assertTrue($host->hoverAt($box->startRow, $box->col + $box->width - 2), 'onto the ×');
+        $hoveredBar = $host->composite(array_fill(0, count: 20, value: str_repeat(' ', times: 80)), 80, 20, CaretVisibility::Shown)[$box->startRow];
+        $this->assertNotSame($normalBar, $hoveredBar, 'the × restyled under the pointer');
+        $this->assertSame(AnsiUtils::stripAnsiCodes($normalBar), AnsiUtils::stripAnsiCodes($hoveredBar), 'same text, different shade');
+
+        $this->assertTrue($host->hoverAt($box->startRow + 3, $box->col + 3), 'off the × again');
+        $this->assertFalse($host->hoverAt($box->startRow + 3, $box->col + 3), 'no change → no repaint');
+    }
+
+    /** The prompt's only hover affordance is its ×. */
+    public function testPromptHoverTracksTheClose(): void
+    {
+        $host = $this->host();
+        $this->assertFalse($host->promptHoverAt(0, 0), 'no prompt open');
+
+        $host->openPrompt('Go to line', '', static fn () => null);
+        $host->composite(array_fill(0, count: 8, value: str_repeat(' ', times: 40)), 40, 8, CaretVisibility::Shown);
+        $box = new \ReflectionProperty($host, 'promptBox')->getValue($host);
+        \assert($box instanceof \Porta\Overlay\ModalBox);
+
+        $this->assertTrue($host->promptHoverAt($box->startRow, $box->col + $box->width - 2), 'onto the ×');
+        $this->assertTrue($host->promptHoverAt($box->startRow + 2, $box->col + 2), 'off it');
+        $this->assertFalse($host->promptHoverAt($box->startRow + 2, $box->col + 2), 'unchanged');
     }
 
     public function testTheListOverlayCloseButtonDismisses(): void

@@ -155,6 +155,7 @@ final class MouseRouter
             || $this->continueDockTabDrag($mouse)
             || $this->git->continueDiffDrag($mouse)
             || $this->welcome->continueDrag($mouse)
+            || $this->continueFindModalDrag($mouse)
             || $this->layout->continueResizeDrag($mouse, $treeRect, $gitLeftRect, $settingsLeftRect)
         ) {
             return;
@@ -180,6 +181,7 @@ final class MouseRouter
         $this->dockTabDrag = null;
         $this->git->cancelDrag();
         $this->welcome->cancelDrag();
+        $this->panes->editor()->cancelFindModalDrag();
         $this->layout->cancelDrags();
 
         if ($this->handleModalPopupClick($mouse, $editorRect, $this->views->isAnyOpen() ? FullView::Open : FullView::Closed)) {
@@ -209,6 +211,25 @@ final class MouseRouter
         }
 
         $this->handlePaneClick($mouse, $treeRect, $tabsRect, $editorRect);
+    }
+
+    /**
+     * Continue an armed Find-in-Files drag (corner resize or title-bar move)
+     * in screen coordinates — the modal floats over the whole workspace, so
+     * no pane clamps the pointer; the modal's own layout clamps the box.
+     * False when nothing is armed.
+     */
+    private function continueFindModalDrag(MouseEvent $mouse): bool
+    {
+        if (!$mouse->isLeftDrag() && !$mouse->isLeftRelease()) {
+            return false;
+        }
+        if (!$this->panes->editor()->continueFindModalDrag($mouse->row, $mouse->col, $mouse->isLeftRelease())) {
+            return false;
+        }
+        $this->tui->requestRender();
+
+        return true;
     }
 
     /** Whether $rect exists and the pointer is inside it — the wheel-scroll hit guard. */
@@ -282,7 +303,8 @@ final class MouseRouter
 
         // The Find modal composites inside the editor pane and owns input while
         // open — scroll its preview instead of the editor behind it.
-        if ($this->containsPointer($editorRect, $mouse) && $this->panes->editor()->isFindModalOpen()) {
+        $findBox = $this->panes->editor()->isFindModalOpen() ? $this->panes->editor()->findModal()->lastBox() : null;
+        if (null !== $findBox && $findBox->contains($mouse->row, $mouse->col)) {
             $this->panes->editor()->scrollFindModal(WheelStep::rows($mouse));
             $this->tui->requestRender();
 
@@ -472,13 +494,7 @@ final class MouseRouter
         if (
             FullView::Closed === $fullViewOpen
             && null !== $this->panes->editor()->getContext() // detached under an image tab → no invisible modal may eat clicks
-            && (
-                $this->panes->editor()->isPromptOpen()
-                || $this->panes->editor()->isOverlayOpen()
-                || $this->panes->editor()->isCompletionOpen()
-                || $this->panes->editor()->isSearchOverlayOpen()
-                || $this->panes->editor()->isFindModalOpen()
-            )
+            && ($this->panes->editor()->isPromptOpen() || $this->panes->editor()->isOverlayOpen() || $this->panes->editor()->isCompletionOpen() || $this->panes->editor()->isSearchOverlayOpen())
         ) {
             if (null !== $editorRect && $editorRect->contains($mouse->row, $mouse->col)) {
                 $rel = $editorRect->toRelative($mouse->row, $mouse->col);
@@ -490,7 +506,7 @@ final class MouseRouter
             }
             if (
                 (null === $editorRect || !$editorRect->contains($mouse->row, $mouse->col))
-                && ($this->panes->editor()->isPromptOpen() || $this->panes->editor()->isOverlayOpen() || $this->panes->editor()->isSearchOverlayOpen() || $this->panes->editor()->isFindModalOpen())
+                && ($this->panes->editor()->isPromptOpen() || $this->panes->editor()->isOverlayOpen() || $this->panes->editor()->isSearchOverlayOpen())
             ) {
                 $this->panes->editor()->handlePopupClick(-1, -1); // outside the modal overlay → dismiss
                 $this->tui->requestRender();
@@ -540,6 +556,16 @@ final class MouseRouter
             if (null === $item) {
                 $this->menuBar->close(); // a click anywhere else dismisses an open menu
             }
+            $this->tui->requestRender();
+
+            return true;
+        }
+
+        // The floating Find-in-Files modal, after the menus: ×, drags and
+        // zone clicks land in screen coordinates; an outside click closes it
+        // (its own semantics — unlike the Welcome modal it is dismissable).
+        if ($this->panes->editor()->isFindModalOpen()) {
+            $this->panes->editor()->findModal()->clickAt($mouse->row, $mouse->col);
             $this->tui->requestRender();
 
             return true;

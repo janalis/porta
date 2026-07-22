@@ -35,7 +35,7 @@ final class ModalFrameTest extends TestCase
     {
         $bar = $this->plainBar('Welcome', 24);
 
-        $this->assertSame('┌ Welcome ─────── Esc ×┐', $bar, 'the full bar layout');
+        $this->assertSame('╭ Welcome ─────── Esc ×╮', $bar, 'the full bar layout');
         $this->assertSame(24, mb_strwidth($bar));
     }
 
@@ -50,7 +50,7 @@ final class ModalFrameTest extends TestCase
             $bar = $this->plainBar($title, $width);
 
             $this->assertSame(Glyphs::CLOSE, mb_substr($bar, $width - 2, 1), "width {$width}");
-            $this->assertSame(Glyphs::FRAME_TOP_RIGHT, mb_substr($bar, $width - 1, 1));
+            $this->assertSame(Glyphs::MODAL_TOP_RIGHT, mb_substr($bar, $width - 1, 1));
         }
     }
 
@@ -87,19 +87,42 @@ final class ModalFrameTest extends TestCase
         $this->assertSame(AnsiUtils::stripAnsiCodes($normal), AnsiUtils::stripAnsiCodes($hovered), 'same text, different shade');
     }
 
-    public function testWrapRailsTheContentAndClosesTheBox(): void
+    public function testWrapPadsRailsTheContentAndClosesTheBox(): void
     {
         $rows = array_map(AnsiUtils::stripAnsiCodes(...), ModalFrame::wrap(['hello', 'a line that is far too wide for ten'], 10, Styles::dark()));
 
-        $this->assertSame('│hello     │', $rows[0], 'short content pads to the inner width');
-        $this->assertSame(12, mb_strwidth($rows[1]), 'wide content clips to the inner width');
-        $this->assertSame('└──────────┘', $rows[2], 'the bottom border closes the box');
+        $this->assertSame('│            │', $rows[0], 'a padding row under the title bar');
+        $this->assertSame('│ hello      │', $rows[1], 'content padded to the inner width, one column off each rail');
+        $this->assertSame(14, mb_strwidth($rows[2]), 'wide content clips to the inner width');
+        $this->assertSame('│            │', $rows[3], 'a padding row above the border');
+        $this->assertSame('╰────────────╯', $rows[4], 'the bottom border closes the box');
     }
 
     public function testEveryWrappedRowIsExactlyTheBoxWidth(): void
     {
         foreach (ModalFrame::wrap(['a', str_repeat('x', 50)], 20, Styles::dark()) as $i => $row) {
-            $this->assertSame(22, AnsiUtils::visibleWidth($row), "row {$i}");
+            $this->assertSame(20 + ModalFrame::CHROME_COLS, AnsiUtils::visibleWidth($row), "row {$i}");
         }
+    }
+
+    /** Sections joined by tee rows — the zones read as zones of one box. */
+    public function testWrapSectionsJoinsSectionsWithTeeRows(): void
+    {
+        $rows = array_map(AnsiUtils::stripAnsiCodes(...), ModalFrame::wrapSections([['top'], ['mid'], ['end']], 6, Styles::dark()));
+
+        $this->assertSame(
+            ['│        │', '│ top    │', '├────────┤', '│ mid    │', '├────────┤', '│ end    │', '│        │', '╰────────╯'],
+            $rows,
+        );
+    }
+
+    /** The chrome constants match what wrap() actually emits — consumers derive from them. */
+    public function testChromeConstantsMatchTheEmittedFrame(): void
+    {
+        $body = ModalFrame::wrap(['x'], 8, Styles::dark());
+
+        $this->assertSame(1 + ModalFrame::CHROME_ROWS, 1 + \count($body), 'title bar + body = content + chrome rows');
+        $this->assertSame(8 + ModalFrame::CHROME_COLS, AnsiUtils::visibleWidth($body[0]));
+        $this->assertSame('x', trim(AnsiUtils::stripAnsiCodes($body[ModalFrame::CHROME_ROWS_TOP - 1]), ' │'), 'content starts CHROME_ROWS_TOP below the box top');
     }
 }

@@ -319,6 +319,30 @@ final class ThemeLockTest extends TestCase
         }
     }
 
+    public function testModalShadowRuleExistsInEveryTheme(): void
+    {
+        // The modals' drop shadow, resolved via Styles::rule() rather than a
+        // Role — totality across themes for the same reason as the .card
+        // rules: StyleSheetThemer (and the rule() accessor) can only read
+        // what a theme defines, and a switch must never leave a stale shade.
+        $expected = [
+            'dark' => [DarkTheme::definition(), new Style(background: 233)],
+            'light' => [LightTheme::definition(), new Style(background: 250)],
+            'high-contrast' => [HighContrastTheme::definition(), new Style(background: 232)],
+            'monochrome' => [MonochromeTheme::definition(), new Style()],
+        ];
+        foreach ($expected as $name => [$def, $style]) {
+            $this->assertEquals($style, $def->rule('.modal::shadow'), "{$name}: .modal::shadow");
+        }
+    }
+
+    /** An unknown selector resolves to a plain style, never an error. */
+    public function testAnUnknownRuleResolvesPlain(): void
+    {
+        $this->assertEquals(new Style(), DarkTheme::definition()->rule('.no-such::rule'));
+        $this->assertEquals(new Style(background: 233), \Porta\Ui\Theme\Styles::dark()->rule('.modal::shadow'), 'Styles delegates to the active definition');
+    }
+
     public function testHasColor(): void
     {
         $this->assertTrue(DarkTheme::definition()->hasColor());

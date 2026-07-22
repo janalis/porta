@@ -80,6 +80,8 @@ final class LightTheme
                 // rules exist in every theme and stay off the SelectedRow roles.
                 '.card::selected' => new Style(background: 254),
                 '.card::selected:focus' => new Style(background: 252),
+                // Modal drop shadow — see DarkTheme for the totality note.
+                '.modal::shadow' => new Style(background: 250),
             ],
             underlines: [
                 Role::DiagErrorUnderline->name => Sgr::underlineColor(160),

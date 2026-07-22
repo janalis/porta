@@ -15,6 +15,7 @@ use Porta\Ui\TextField;
 use Porta\Ui\Theme\Styles;
 use Porta\Widget\Render\EditorRenderer;
 use Porta\Widget\Render\ModalFrame;
+use Porta\Widget\Render\ModalShadow;
 use Porta\Widget\Render\OverlayCompositor;
 use Symfony\Component\Tui\Input\Keybindings;
 
@@ -37,6 +38,9 @@ final class OverlayHost
     /** last-rendered (centered) prompt box, for mouse hit-testing */
     private ?ModalBox $promptBox = null;
     private ?SearchModalState $search = null;
+
+    /** Which open surface's title-bar × is under the pointer ('list'|'search'|'prompt'), or null. */
+    private ?string $closeHovered = null;
     /** last-rendered search box, for mouse hit-testing */
     private ?ModalBox $searchBox = null;
 
@@ -242,10 +246,11 @@ final class OverlayHost
         if (null === $search) {
             return false;
         }
+        $closeChanged = $this->hoverClose('search', $this->searchBox, $relRow, $relCol);
         $index = $this->searchBox?->itemAt($relRow, $relCol);
         $hovered = null !== $index && !$search->rows[$index]->isHeader() ? $index : null;
         if ($hovered === $search->hovered) {
-            return false;
+            return $closeChanged;
         }
         $search->hovered = $hovered;
         ($this->invalidate)();
@@ -392,13 +397,44 @@ final class OverlayHost
             return false;
         }
 
+        // Copy while the null-guard's narrowing still holds — hoverClose()
+        // runs the invalidate closure, after which the analyser must assume
+        // the property may have changed.
         $overlay = $this->overlay;
+        $closeChanged = $this->hoverClose('list', $this->overlayBox, $relRow, $relCol);
         $index = $this->overlayBox?->itemAt($relRow, $relCol);
         if ($index === ($overlay['hovered'] ?? null)) {
-            return false;
+            return $closeChanged;
         }
         $overlay['hovered'] = $index;
         $this->overlay = $overlay;
+        ($this->invalidate)();
+
+        return true;
+    }
+
+    /** Hover for the mini prompt: only its × restyles; returns whether it changed. */
+    public function promptHoverAt(int $relRow, int $relCol): bool
+    {
+        if (null === $this->prompt) {
+            return false;
+        }
+
+        return $this->hoverClose('prompt', $this->promptBox, $relRow, $relCol);
+    }
+
+    /**
+     * Track whether $surface's title-bar × is under the pointer, brightening
+     * it like the tab strips' close glyph; returns whether that changed. One
+     * shared slot suffices — the surfaces are modal, never open together.
+     */
+    private function hoverClose(string $surface, ?ModalBox $box, int $relRow, int $relCol): bool
+    {
+        $hovered = null !== $box && $box->closeHit($relRow, $relCol) ? $surface : null;
+        if ($hovered === $this->closeHovered) {
+            return false;
+        }
+        $this->closeHovered = $hovered;
         ($this->invalidate)();
 
         return true;
@@ -476,7 +512,7 @@ final class OverlayHost
         $this->overlayBox = null;
         $this->promptBox = null;
         if (null !== $this->overlay) {
-            $this->overlayBox = EditorRenderer::listOverlay($lines, $columns, $rows, $this->overlay, $this->styles);
+            $this->overlayBox = EditorRenderer::listOverlay($lines, $columns, $rows, $this->overlay, $this->styles, closeHovered: 'list' === $this->closeHovered);
         }
 
         $this->searchBox = null;
@@ -501,12 +537,13 @@ final class OverlayHost
                 $search->hovered,
                 $this->styles,
                 $search->emptyMessage,
+                closeHovered: 'search' === $this->closeHovered,
             );
         }
 
         if (null !== $this->prompt) {
             $text = ' '.$this->prompt['label'].': '.$this->prompt['value']->value();
-            $innerWidth = min($columns - 6, max(30, mb_strwidth($text) + 4));
+            $innerWidth = min($columns - 8, max(30, mb_strwidth($text) + 4));
             $rendered = ' '.$this->prompt['value']->render(cursor: $focused);
             // The prompt is a framed 3-row modal like its siblings: the frame's
             // title bar carries the label, the Esc hint and the ×; the content
@@ -514,10 +551,14 @@ final class OverlayHost
             // value's caret marker on screen instead of clipping the hardware
             // cursor off it. Centered like the list/search overlays.
             $field = $this->styles->merge(Role::HeaderBar, Role::Bright)->apply(AnsiText::padRight(AnsiText::scrollLineToCaret($rendered, $innerWidth), $innerWidth));
-            $framed = [ModalFrame::titleBar($this->prompt['label'], $innerWidth + 2, $this->styles), ...ModalFrame::wrap([$field], $innerWidth, $this->styles)];
-            $col = max(0, intdiv($columns - $innerWidth - 2, num2: 2));
-            [$lines, $startRow] = OverlayCompositor::placeCentered($lines, $framed, $col, $innerWidth + 2, $columns, $rows);
-            $this->promptBox = new ModalBox($startRow, $col, $innerWidth + 2, 3, headerRows: 1, windowStart: 0, count: 1);
+            $framed = [
+                ModalFrame::titleBar($this->prompt['label'], $innerWidth + ModalFrame::CHROME_COLS, $this->styles, closeHovered: 'prompt' === $this->closeHovered),
+                ...ModalFrame::wrap([$field], $innerWidth, $this->styles),
+            ];
+            $col = max(0, intdiv($columns - $innerWidth - ModalFrame::CHROME_COLS, num2: 2));
+            [$lines, $startRow] = OverlayCompositor::placeCentered($lines, $framed, $col, $innerWidth + ModalFrame::CHROME_COLS, $columns, $rows);
+            $lines = ModalShadow::blit($lines, $startRow, $col, $innerWidth + ModalFrame::CHROME_COLS, 1 + ModalFrame::CHROME_ROWS, $columns, $this->styles);
+            $this->promptBox = new ModalBox($startRow, $col, $innerWidth + ModalFrame::CHROME_COLS, 1 + ModalFrame::CHROME_ROWS, headerRows: ModalFrame::CHROME_ROWS_TOP, windowStart: 0, count: 1);
         }
 
         return $lines;

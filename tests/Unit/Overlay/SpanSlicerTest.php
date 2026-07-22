@@ -6,6 +6,7 @@ namespace Porta\Tests\Unit\Overlay;
 
 use PHPUnit\Framework\TestCase;
 use Porta\Overlay\SpanSlicer;
+use Symfony\Component\Tui\Ansi\AnsiUtils;
 use Symfony\Component\Tui\Render\WidgetRect;
 
 /**
@@ -58,6 +59,40 @@ final class SpanSlicerTest extends TestCase
         $spans = SpanSlicer::localSpans(['ABCDEFGH'], $rect, top: 0, anchor: 6, panelWidth: 8);
 
         $this->assertSame([['row' => 0, 'col' => 0, 'width' => 4, 'segment' => 'EFGH']], $spans);
+    }
+
+    /**
+     * A caret marker before the clip offset belongs to an EARLIER pane's
+     * slice of the same panel row: sliceByColumn re-emits it as active state,
+     * and left in, the composed frame carries one hardware cursor per pane
+     * the panel crosses — the ScreenWriter mangles the row at the duplicates
+     * (a modal row visibly truncating at a pane seam while dragged).
+     */
+    public function testAMarkerBeforeTheClipOffsetIsStrippedFromTheSlice(): void
+    {
+        $marker = AnsiUtils::cursorMarker();
+        $row = 'ab'.$marker.'cdefgh'; // the marker's cell is column 2
+
+        // A pane whose slice starts past the marker (clip offset 4).
+        $rect = new WidgetRect(row: 0, col: 10, rows: 2, columns: 20);
+        $spans = SpanSlicer::localSpans([$row], $rect, top: 0, anchor: 6, panelWidth: 8);
+
+        $this->assertCount(1, $spans);
+        $this->assertStringNotContainsString(AnsiUtils::CURSOR_MARKER_PREFIX, $spans[0]['segment'], 'the re-emitted marker was stripped');
+        $this->assertSame('efgh', AnsiUtils::stripAnsiCodes($spans[0]['segment']), 'the visible slice is untouched');
+    }
+
+    /** A marker genuinely inside the slice's own columns survives — it is that pane's cursor. */
+    public function testAMarkerInsideTheSliceIsKept(): void
+    {
+        $marker = AnsiUtils::cursorMarker();
+        $row = 'abcdef'.$marker.'gh'; // the marker's cell is column 6
+
+        $rect = new WidgetRect(row: 0, col: 10, rows: 2, columns: 20);
+        $spans = SpanSlicer::localSpans([$row], $rect, top: 0, anchor: 6, panelWidth: 8);
+
+        $this->assertCount(1, $spans);
+        $this->assertStringContainsString(AnsiUtils::CURSOR_MARKER_PREFIX, $spans[0]['segment'], 'the true marker stays in its own slice');
     }
 
     public function testANonOverlappingPanelYieldsNoSpans(): void

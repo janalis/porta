@@ -47,6 +47,16 @@ final class ThemeDefinition
         return $this->rules;
     }
 
+    /**
+     * One selector's rule, plain when the theme defines none — the element
+     * rules widgets resolve through the stylesheet, reachable directly for
+     * chrome drawn outside any widget (the modal shadow).
+     */
+    public function rule(string $selector): Style
+    {
+        return $this->rules[$selector] ?? new Style();
+    }
+
     public function of(Role $role): Style
     {
         return $this->byRole[$role->name];

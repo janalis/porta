@@ -38,6 +38,12 @@ final class Styles
         return $this->current->of($role);
     }
 
+    /** A selector rule from the active theme (plain when undefined) — see {@see ThemeDefinition::rule()}. */
+    public function rule(string $selector): Style
+    {
+        return $this->current->rule($selector);
+    }
+
     /** Several roles merged into one Style — later roles win per property. */
     public function merge(Role ...$roles): Style
     {

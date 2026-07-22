@@ -159,13 +159,13 @@ final class WelcomeScreenTest extends TestCase
                 $this->frame($tui); // the modal lays out from the first frame's rects
                 $region = $this->modalRegion($ide);
 
-                // Box rows: 0 frame title bar, 1-3 hero (the content window is
-                // ≥ HERO_MIN_ROWS tall), 4-5 first card, 6 spacer, 7-8 second
-                // card. SGR coordinates are 1-based, hence the +1; the +4
-                // column clears the left rail and the content margin.
-                $row = $region->top + 7 + 1;
-                $tui->handleInput(\sprintf("\x1b[<0;%d;%dM", $region->col + 4, $row));
-                $tui->handleInput(\sprintf("\x1b[<0;%d;%dm", $region->col + 4, $row));
+                // Box rows: 0 frame title bar, 1 pad, 2-4 hero (the content
+                // window is ≥ HERO_MIN_ROWS tall), 5-6 first card, 7 spacer,
+                // 8-9 second card. SGR coordinates are 1-based, hence the +1;
+                // the +5 column clears the rail, padding and content margin.
+                $row = $region->top + 8 + 1;
+                $tui->handleInput(\sprintf("\x1b[<0;%d;%dM", $region->col + 5, $row));
+                $tui->handleInput(\sprintf("\x1b[<0;%d;%dm", $region->col + 5, $row));
                 $tui->tick();
 
                 $this->assertFileDoesNotExist($project->path('.porta.json'), 'a click must not run a step');
@@ -329,13 +329,17 @@ final class WelcomeScreenTest extends TestCase
                 $tui->tick();
                 $this->assertNotNull($this->modalRegion($ide), 'an outside click does not dismiss');
 
-                // Drag by the title bar: press, move down two rows, release.
+                // Drag by the title bar: press, move left two columns and
+                // down two rows, release. On a 24-row terminal the box fills
+                // the pane union's height, so the vertical component clamps —
+                // the horizontal move is the proof the drag ran.
                 $tui->handleInput(\sprintf("\x1b[<0;%d;%dM", $region->col + 3, $region->top + 1));
-                $tui->handleInput(\sprintf("\x1b[<32;%d;%dM", $region->col + 3, $region->top + 2 + 1));
-                $tui->handleInput(\sprintf("\x1b[<0;%d;%dm", $region->col + 3, $region->top + 2 + 1));
+                $tui->handleInput(\sprintf("\x1b[<32;%d;%dM", $region->col + 1, $region->top + 2 + 1));
+                $tui->handleInput(\sprintf("\x1b[<0;%d;%dm", $region->col + 1, $region->top + 2 + 1));
                 $tui->tick();
                 $moved = $this->modalRegion($ide);
-                $this->assertSame($region->top + 2, $moved->top, 'the box followed the drag');
+                $this->assertSame($region->col - 2, $moved->col, 'the box followed the drag');
+                $this->assertSame($region->top, $moved->top, 'the vertical move clamped at the pane union');
 
                 // The app menu opens over the modal and its dropdown renders above it.
                 $tui->handleInput("\x1b[<0;2;1M"); // the File title on the menu bar
@@ -345,9 +349,11 @@ final class WelcomeScreenTest extends TestCase
                 $tui->handleInput("\x1b"); // close the menu again
                 $tui->tick();
 
-                // The title bar's × closes the modal for real.
+                // The title bar's × closes the modal for real. The region is
+                // one column wider than the box (its shadow band), so the ×
+                // sits at region width − 3.
                 $after = $this->modalRegion($ide);
-                $tui->handleInput(\sprintf("\x1b[<0;%d;%dM", $after->col + $after->width - 2 + 1, $after->top + 1));
+                $tui->handleInput(\sprintf("\x1b[<0;%d;%dM", $after->col + $after->width - 3 + 1, $after->top + 1));
                 $tui->tick();
             },
             240 => function ($tui, $terminal, $ide): void {
@@ -369,9 +375,9 @@ final class WelcomeScreenTest extends TestCase
                 $this->frame($tui); // the modal lays out from the first frame's rects
                 $region = $this->modalRegion($ide);
 
-                $step = $region->top + 4 + 1; // the first card's title row (after the hero); SGR is 1-based
-                $tui->handleInput(\sprintf("\x1b[<35;%d;%dM", $region->col + 4, $step)); // hover
-                $tui->handleInput(\sprintf("\x1b[<65;%d;%dM", $region->col + 4, $step)); // wheel down
+                $step = $region->top + 5 + 1; // the first card's title row (after the pad row and hero); SGR is 1-based
+                $tui->handleInput(\sprintf("\x1b[<35;%d;%dM", $region->col + 5, $step)); // hover
+                $tui->handleInput(\sprintf("\x1b[<65;%d;%dM", $region->col + 5, $step)); // wheel down
                 $tui->tick();
 
                 $this->addToAssertionCount(1); // reaching here without an exception is the assertion

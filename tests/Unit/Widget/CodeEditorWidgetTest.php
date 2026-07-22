@@ -707,7 +707,12 @@ final class CodeEditorWidgetTest extends TestCase
         $this->assertNotNull($picked);
     }
 
-    public function testFindModalMouseClickAndHoverDelegate(): void
+    /**
+     * The modal floats in screen space now: the editor's popup click/hover
+     * paths no longer see it (the router hits it directly), while the drag
+     * delegates still relay through the widget.
+     */
+    public function testFindModalRoutesInScreenSpaceNotThroughThePopupPaths(): void
     {
         $editor = $this->editor();
         $jumped = null;
@@ -723,14 +728,21 @@ final class CodeEditorWidgetTest extends TestCase
                 ['path' => 'src/A.php', 'line' => 4, 'text' => 'foo one', 'ranges' => []],
                 ['path' => 'src/A.php', 'line' => 9, 'text' => 'foo two', 'ranges' => []],
             ]);
-        $editor->render(new RenderContext(100, 40)); // composites the modal → records its box
+        $editor->findModal()->layout([0, 0, 40, 100], \Porta\Ui\CaretVisibility::Shown); // records the screen-space box
 
         $box = $editor->findModal()->lastBox();
         $this->assertNotNull($box);
-        // Hover the second match row (the first is already selected), then click the first → jump.
-        $this->assertTrue($editor->handlePopupHover($box->windowTop() + 2, $box->col + 3));
-        $this->assertTrue($editor->handlePopupClick($box->windowTop() + 1, $box->col + 3));
+        $this->assertFalse($editor->handlePopupHover($box->windowTop() + 2, $box->col + 3), 'the popup hover path no longer owns the modal');
+
+        // The modal's own screen-space hit-tests carry the behavior.
+        $this->assertTrue($editor->findModal()->hoverAt($box->windowTop() + 2, $box->col + 3));
+        $this->assertTrue($editor->findModal()->clickAt($box->windowTop() + 1, $box->col + 3));
         $this->assertSame(['src/A.php', 4], $jumped);
+
+        // The drag delegates still relay (armed by a corner press).
+        $this->assertTrue($editor->findModal()->clickAt($box->startRow + $box->rows - 1, $box->col + $box->width - 1));
+        $this->assertTrue($editor->continueFindModalDrag($box->startRow + $box->rows, $box->col + $box->width + 2, true));
+        $editor->cancelFindModalDrag();
     }
 
     private function overlayEditor(\ArrayObject $sink): CodeEditorWidget
@@ -882,6 +894,21 @@ final class CodeEditorWidgetTest extends TestCase
         $editor = $this->editor();
         $this->assertFalse($editor->handlePopupClick(3, 3));
         $this->assertFalse($editor->handlePopupHover(3, 3));
+    }
+
+    /** Hover routes to the open prompt (its × brightens under the pointer). */
+    public function testPromptHoverRoutesToTheOverlayHost(): void
+    {
+        $editor = $this->editor();
+        $editor->openPrompt('Go to line', '', static fn () => null);
+        $editor->render(new RenderContext(80, 20)); // records the prompt box
+
+        $host = new \ReflectionProperty($editor, 'overlayHost')->getValue($editor);
+        $box = new \ReflectionProperty($host, 'promptBox')->getValue($host);
+        \assert($box instanceof \Porta\Overlay\ModalBox);
+
+        $this->assertTrue($editor->handlePopupHover($box->startRow, $box->col + $box->width - 2), 'onto the ×');
+        $this->assertFalse($editor->handlePopupHover($box->startRow, $box->col + $box->width - 2), 'unchanged on the same cell');
     }
 
     public function testPromptSubmitAndCancel(): void

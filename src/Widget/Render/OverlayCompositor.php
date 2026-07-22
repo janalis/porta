@@ -28,6 +28,16 @@ final class OverlayCompositor
         $head = AnsiText::padRight(AnsiUtils::sliceByColumn($line, 0, $col), $col);
         $tail = AnsiUtils::sliceByColumn($line, $col + $width, $columns - $col - $width);
 
+        // sliceByColumn re-emits an APC caret marker at a tail slice's start
+        // when the marker sat before the boundary — for a compose that is
+        // always a duplicate of the marker the head (or the popup itself)
+        // already carries, and two hardware-cursor markers on one row are
+        // ambiguous. A marker genuinely inside the tail region is never
+        // re-emitted, so stripping the tail's copies is exact.
+        if (str_contains($head.$popup, AnsiUtils::CURSOR_MARKER_PREFIX) && str_contains($tail, AnsiUtils::CURSOR_MARKER_PREFIX)) {
+            $tail = (string) preg_replace('/\x1b_pi:c;[^\x07]*\x07/', '', $tail);
+        }
+
         // Reset after the popup as well as after the head: when the popup is a
         // clipped overlay slice (a menu spilling across a widget boundary), its
         // trailing reset may have been sliced off, and without this its
@@ -51,6 +61,22 @@ final class OverlayCompositor
     public static function placeCentered(array $lines, array $box, int $col, int $width, int $columns, int $rows): array
     {
         $startRow = max(0, intdiv($rows - \count($box), num2: 3));
+
+        return [self::placeAt($lines, $box, $startRow, $col, $width, $columns), $startRow];
+    }
+
+    /**
+     * Blit a fully-built box at an explicit position — the draggable modals'
+     * variant of {@see placeCentered}, which delegates here. Rows beyond the
+     * pane are skipped, same bounds guard.
+     *
+     * @param list<string> $lines
+     * @param list<string> $box
+     *
+     * @return list<string>
+     */
+    public static function placeAt(array $lines, array $box, int $startRow, int $col, int $width, int $columns): array
+    {
         foreach ($box as $i => $boxLine) {
             $row = $startRow + $i;
             if ($row >= \count($lines)) {
@@ -59,6 +85,6 @@ final class OverlayCompositor
             $lines[$row] = self::into($lines[$row], $col, $width, $columns, $boxLine);
         }
 
-        return [$lines, $startRow];
+        return $lines;
     }
 }

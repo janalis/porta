@@ -68,12 +68,18 @@ final class IdeEdgeCasesTest extends TestCase
     /** The Find-in-Files modal's text (it composites over the editor pane). */
     private function modalText(Tui $tui): string
     {
+        // The modal is span-delivered per frame by its presenter — force a
+        // frame so a mutation made this step is on the pane before reading.
+        $this->frame($tui);
+
         return AnsiUtils::stripAnsiCodes(implode("\n", $tui->getById('editor')->render(new \Symfony\Component\Tui\Render\RenderContext(160, 40))));
     }
 
-    /** The editor pane's raw (styled) rendered rows. */
+    /** The editor pane's raw (styled) rendered rows (after a frame — see modalText). */
     private function editorRows(Tui $tui): array
     {
+        $this->frame($tui);
+
         return $tui->getById('editor')->render(new \Symfony\Component\Tui\Render\RenderContext(160, 40));
     }
 
@@ -6529,9 +6535,11 @@ final class IdeEdgeCasesTest extends TestCase
                     $rect = $renderer->getWidgetRect($editor);
                     $host = new \ReflectionProperty($editor, 'overlayHost')->getValue($editor);
                     $box = new \ReflectionProperty($host, 'overlayBox')->getValue($host);
-                    // Hover then click item index 1 ("Discard & Close"); the frame's title bar is row startRow.
-                    $row = $rect->row + $box->startRow + 2;
-                    $col = $rect->col + $box->col + 2; // past the frame rail
+                    // Hover then click item index 1 ("Discard & Close"): the
+                    // frame's title bar is row startRow, a padding row follows,
+                    // items start at startRow + 2.
+                    $row = $rect->row + $box->startRow + 3;
+                    $col = $rect->col + $box->col + 3; // past the rail and padding column
                     $tui->handleInput(\sprintf("\x1b[<35;%d;%dM", $col + 1, $row + 1)); // hover
                     $tui->handleInput(\sprintf("\x1b[<0;%d;%dM", $col + 1, $row + 1)); // click
                 },

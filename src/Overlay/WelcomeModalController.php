@@ -13,6 +13,7 @@ use Porta\Ui\WorkspaceViews;
 use Porta\Widget\MenuBarWidget;
 use Porta\Widget\Onboarding\WelcomeWidget;
 use Porta\Widget\Render\ModalFrame;
+use Porta\Widget\Render\ModalShadow;
 use Symfony\Component\Tui\Render\RenderContext;
 use Symfony\Component\Tui\Render\Renderer;
 use Symfony\Component\Tui\Tui;
@@ -61,9 +62,21 @@ final class WelcomeModalController
     /** @var array{rowOffset: int, colOffset: int}|null a title-bar drag in progress */
     private ?array $drag = null;
 
+    /** True while a corner drag is resizing the box. */
+    private bool $resizing = false;
+
+    /** User inner-size overrides from a corner drag; null = auto (session-only, reset on reopen). */
+    private ?int $userInnerWidth = null;
+    private ?int $userInnerHeight = null;
+
     private bool $closeHovered = false;
 
+    private bool $cornerHovered = false;
+
     private ?ModalBox $box = null;
+
+    /** The box plus its painted shadow bands, for the RTL segmenter. */
+    private ?DropdownRegion $shadowRegion = null;
 
     /** @var array{int, int, int, int}|null the pane-union bounds of the last compose, for the per-frame re-sync */
     private ?array $lastBounds = null;
@@ -101,10 +114,15 @@ final class WelcomeModalController
         return $this->welcome;
     }
 
-    /** The box as a floating region for RTL segmentation and hit-tests; null while closed or unplaced. */
+    /**
+     * The box (shadow bands included) as a floating region for RTL
+     * segmentation and hit-tests; null while closed or unplaced. Hit-tests on
+     * the modal itself keep using the un-shadowed {@see ModalBox}, so a click
+     * on a shadow cell is an outside click — swallowed like the rest.
+     */
     public function region(): ?DropdownRegion
     {
-        return $this->open ? $this->box?->region() : null;
+        return $this->open ? $this->shadowRegion : null;
     }
 
     public function toggle(): void
@@ -126,8 +144,13 @@ final class WelcomeModalController
         $this->top = null;
         $this->col = null;
         $this->drag = null;
+        $this->resizing = false;
+        $this->userInnerWidth = null;
+        $this->userInnerHeight = null;
         $this->closeHovered = false;
+        $this->cornerHovered = false;
         $this->box = null;
+        $this->shadowRegion = null;
 
         // Refresh first so the reset sees the freshly built steps when it
         // looks for the first pending one.
@@ -147,11 +170,14 @@ final class WelcomeModalController
         }
         $this->open = false;
         $this->box = null;
+        $this->shadowRegion = null;
         $this->drag = null;
+        $this->resizing = false;
         $this->menuBar->close();
         // Clear every mode's pane set: the modal may close across a view swap.
         foreach ($this->panes->all() as $pane) {
             $pane->setModalOverlay([]);
+            $pane->setModalBackdrop(false);
         }
         $this->tui->setFocus($this->editorArea->widget());
         $this->tui->requestRender();
@@ -188,6 +214,15 @@ final class WelcomeModalController
 
             return true;
         }
+        if ($box->resizeHit($row, $col)) {
+            // Freeze the position (a resize keeps the top-left anchored),
+            // then track the pointer as the new bottom-right corner.
+            $this->top = $box->startRow;
+            $this->col = $box->col;
+            $this->resizing = true;
+
+            return true;
+        }
         if ($row === $box->startRow && $box->contains($row, $col)) {
             // Freeze the auto-centered position into an absolute one, then
             // capture the grab offset so the box moves with the pointer.
@@ -199,7 +234,7 @@ final class WelcomeModalController
         }
         if ($box->contains($row, $col)) {
             $this->tui->setFocus($this->welcome);
-            $this->welcome->handleClick($row - $box->startRow - 1);
+            $this->welcome->handleClick($row - $box->windowTop());
             $this->compose();
         }
 
@@ -214,11 +249,16 @@ final class WelcomeModalController
             return false;
         }
         $closeHovered = $box->closeHit($row, $col);
-        $changed = $closeHovered !== $this->closeHovered;
+        $closeChanged = $closeHovered !== $this->closeHovered;
         $this->closeHovered = $closeHovered;
+        $cornerHovered = $box->resizeHit($row, $col);
+        $cornerChanged = $cornerHovered !== $this->cornerHovered;
+        $this->cornerHovered = $cornerHovered;
 
-        $inContent = $box->contains($row, $col) && $row > $box->startRow;
-        $changed = $this->welcome->hoverRow($inContent ? $row - $box->startRow - 1 : -1) || $changed;
+        $contentRow = $row - $box->windowTop();
+        $inContent = $box->contains($row, $col) && $contentRow >= 0 && $contentRow < $box->count;
+        $rowChanged = $this->welcome->hoverRow($inContent ? $contentRow : -1);
+        $changed = $closeChanged || $cornerChanged || $rowChanged;
 
         if ($changed) {
             $this->compose();
@@ -243,9 +283,26 @@ final class WelcomeModalController
         return true;
     }
 
-    /** Continue (or finish, on release) a title-bar drag; clamping happens in compose. */
+    /**
+     * Continue (or finish, on release) whichever drag is armed: a corner
+     * resize tracks the pointer as the box's new bottom-right corner, a
+     * title-bar move tracks it with the grab offset. Clamping (position to
+     * the pane union, size to the 20×5 floors and the union's extent)
+     * happens in compose, the single geometry authority.
+     */
     public function continueDragTo(int $row, int $col, bool $release): bool
     {
+        if ($this->resizing) {
+            $this->userInnerWidth = $col - ($this->col ?? 0) + 1 - ModalFrame::CHROME_COLS;
+            $this->userInnerHeight = $row - ($this->top ?? 0) + 1 - ModalFrame::CHROME_ROWS;
+            if ($release) {
+                $this->resizing = false;
+            }
+            $this->compose();
+            $this->tui->requestRender();
+
+            return true;
+        }
         $drag = $this->drag;
         if (null === $drag) {
             return false;
@@ -265,6 +322,7 @@ final class WelcomeModalController
     public function cancelDrag(): void
     {
         $this->drag = null;
+        $this->resizing = false;
     }
 
     /**
@@ -307,13 +365,16 @@ final class WelcomeModalController
         [$boundTop, $boundLeft, $boundBottom, $boundRight] = $bounds;
         $this->lastBounds = $bounds;
 
-        $innerWidth = max(20, min(self::MAX_INNER_WIDTH, $boundRight - $boundLeft - 6));
-        $innerHeight = max(5, min(self::MAX_INNER_HEIGHT, $boundBottom - $boundTop - 4));
-        $width = $innerWidth + 2;
+        // Height budgets the frame chrome only (no breathing rows): on a
+        // 24-row terminal the content window keeps the 18 rows that fit all
+        // five onboarding cards — the padding must not scroll the last one off.
+        $innerWidth = max(20, min($this->userInnerWidth ?? self::MAX_INNER_WIDTH, $boundRight - $boundLeft - 8));
+        $innerHeight = max(5, min($this->userInnerHeight ?? self::MAX_INNER_HEIGHT, $boundBottom - $boundTop - ModalFrame::CHROME_ROWS));
+        $width = $innerWidth + ModalFrame::CHROME_COLS;
         $content = array_values($this->welcome->render(new RenderContext($innerWidth, $innerHeight)));
         $panel = [
             ModalFrame::titleBar($this->welcome->title(), $width, $this->styles, $this->closeHovered),
-            ...ModalFrame::wrap($content, $innerWidth, $this->styles),
+            ...ModalFrame::wrap($content, $innerWidth, $this->styles, resizeCornerHot: $this->cornerHovered || $this->resizing),
         ];
         $rows = \count($panel);
 
@@ -330,9 +391,25 @@ final class WelcomeModalController
 
         foreach ($this->panes->current() as $pane) {
             $rect = $this->renderer->getWidgetRect($pane);
-            $pane->setModalOverlay(null !== $rect ? SpanSlicer::localSpans($panel, $rect, $top, $col, $width) : []);
+            $pane->setModalOverlay(
+                null !== $rect
+                    ? [
+                        ...SpanSlicer::localSpans($panel, $rect, $top, $col, $width),
+                        ...ModalShadow::spans($rect, $top, $col, $width, $rows, $this->styles),
+                    ] : [],
+            );
+            $pane->setModalBackdrop(true);
         }
-        $this->box = new ModalBox($top, $col, $width, $rows, headerRows: 1, windowStart: 0, count: $innerHeight);
+        $this->box = new ModalBox($top, $col, $width, $rows, headerRows: ModalFrame::CHROME_ROWS_TOP, windowStart: 0, count: $innerHeight);
+        // The RTL region covers the shadow bands too — but only where they
+        // actually paint (a box flush against the union's edge casts none
+        // there), so the segmenter never claims cells outside the modal.
+        $this->shadowRegion = new DropdownRegion(
+            $top,
+            $col,
+            min($width + 1, $boundRight - $col),
+            min($rows + 1, $boundBottom - $top),
+        );
     }
 
     /**

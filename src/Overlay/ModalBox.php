@@ -54,10 +54,10 @@ final readonly class ModalBox
         return $this->windowStart + $i;
     }
 
-    /** The column inside a framed box's content, past the left border rail. */
+    /** The column inside a framed box's content, past the left rail and padding column. */
     public function innerCol(int $col): int
     {
-        return $col - $this->col - 1;
+        return $col - $this->col - 2;
     }
 
     /** The first item-window row — the row below the box's chrome. */
@@ -70,6 +70,12 @@ final readonly class ModalBox
     public function closeHit(int $row, int $col): bool
     {
         return $row === $this->startRow && $col >= ($this->col + $this->width - self::CLOSE_OFFSET - 1) && $col < ($this->col + $this->width - 1);
+    }
+
+    /** Whether the cell is the bottom-right corner — the resizable modals' grab. */
+    public function resizeHit(int $row, int $col): bool
+    {
+        return $row === ($this->startRow + $this->rows - 1) && $col === ($this->col + $this->width - 1);
     }
 
     /** The box as a floating region, for the RTL segmenter and region hit-tests. */
