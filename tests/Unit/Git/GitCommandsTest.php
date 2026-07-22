@@ -346,7 +346,10 @@ final class GitCommandsTest extends TestCase
         $this->git('checkout', '-'); // back to the starting branch — b.txt is gone
 
         $commands->cherryPick(self::commitEntry($pick));
-        $this->pump(fn (): bool => is_file($this->project->dir.'/b.txt'));
+        // Await the completion flash, not the on-disk effect: git writes b.txt
+        // *before* its process exits, so under load a file-based pump can win
+        // the race against the exit callback that sets the flash.
+        $this->pump(fn (): bool => str_contains($this->flash(), 'Cherry-picked'));
 
         $this->assertStringContainsString('Cherry-picked', $this->flash());
         $this->assertFileExists($this->project->dir.'/b.txt');
@@ -360,7 +363,9 @@ final class GitCommandsTest extends TestCase
         $bad = trim($this->git('rev-parse', 'HEAD'));
 
         $commands->revertCommit(self::commitEntry($bad));
-        $this->pump(fn (): bool => !str_contains($this->readFile('a.txt'), 'added'));
+        // Await the completion flash — the working-tree rewrite precedes the
+        // exit callback that sets it (see the cherry-pick test above).
+        $this->pump(fn (): bool => str_contains($this->flash(), 'Reverted'));
 
         $this->assertStringContainsString('Reverted', $this->flash());
         $this->assertStringNotContainsString('added', $this->readFile('a.txt'), 'the reverting commit removed the line');
