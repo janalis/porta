@@ -19,10 +19,8 @@ use Porta\Widget\HoverableList;
 use Porta\Widget\HoverTrait;
 use Porta\Widget\InputHook;
 use Porta\Widget\PaneNavigationCallbacks;
-use Porta\Widget\Render\HeaderRenderer;
-use Porta\Widget\Render\MenuOverlayHost;
-use Porta\Widget\Render\MenuOverlayHostTrait;
 use Porta\Widget\WheelScrollable;
+use Symfony\Component\Tui\Ansi\AnsiUtils;
 use Symfony\Component\Tui\Input\Key;
 use Symfony\Component\Tui\Render\RenderContext;
 use Symfony\Component\Tui\Widget\AbstractWidget;
@@ -32,24 +30,35 @@ use Symfony\Component\Tui\Widget\KeybindingsTrait;
 use Symfony\Component\Tui\Widget\VerticallyExpandableInterface;
 
 /**
- * The Welcome screen: a title bar, then a card per setup step.
+ * The Welcome screen's content: a hero greeting, then a card per setup step in
+ * a centred, width-capped content column. Never mounted in the widget tree —
+ * {@see \Porta\Overlay\WelcomeModalController} renders it off-tree and wraps
+ * it in the shared modal frame, whose title bar carries {@see title()}.
  *
- * A step is two lines — `[x] title  [ action ]`, then its detail indented
- * beneath — so the detail, which is the part explaining why the step matters,
- * is not the first thing a narrow pane truncates. The selection highlight
- * covers both lines so a step reads as one block.
+ * A step is a marker-and-title line — `[x] title  [ action ]` — with its detail
+ * word-wrapped beneath at the marker's indent, so cards vary in height and no
+ * text is silently lost to a narrow pane. The action label is protected: the
+ * *title* truncates first, because `[ action ]` is the affordance and a card
+ * whose button vanished reads as done. The selection is an accent bar
+ * ({@see Glyphs::CARD_ACCENT}) down the selected card's left edge with the
+ * title emphasised and a subtle `.card::selected(:focus)` tint behind — the
+ * bar and the space after it replace the last two margin columns, so
+ * selecting a card never changes any line's width or the card's height. The
+ * hero row is decoration and is dropped below {@see self::HERO_MIN_ROWS}
+ * pane rows, where steps need the space.
  *
- * Done and pending are marked with the checkbox glyphs rather than colour.
- * That is the house accessibility rule: under `--no-ansi` and the
- * high-contrast theme no meaning may rest on colour alone, and `[x]`/`[ ]` are
- * bracketed precisely so the state survives.
+ * Done, pending and link steps are marked with bracketed glyphs
+ * (`[x]`/`[ ]`/`[→]`) rather than colour. That is the house accessibility
+ * rule: under `--no-ansi` and the high-contrast theme no meaning may rest on
+ * colour alone, and the brackets are precisely what survives.
  *
  * Completion is asked of each {@see WelcomeStep} at render time rather than
  * tracked here, so a step satisfied elsewhere (Settings, a plugin page) reads
- * as done the moment the user comes back.
+ * as done the moment the user comes back. Link steps (no completion state)
+ * never count toward the title-bar progress.
  */
 #[AsWidget('welcome', flex: 1)]
-final class WelcomeWidget extends AbstractWidget implements FocusableInterface, HoverableList, MenuOverlayHost, VerticallyExpandableInterface, WheelScrollable
+final class WelcomeWidget extends AbstractWidget implements FocusableInterface, HoverableList, VerticallyExpandableInterface, WheelScrollable
 {
     use ArrowScrollTrait;
     use FillsPaneTrait;
@@ -57,14 +66,16 @@ final class WelcomeWidget extends AbstractWidget implements FocusableInterface, 
     use HoverTrait;
     use InputHook;
     use KeybindingsTrait;
-    use MenuOverlayHostTrait;
     use PaneNavigationCallbacks;
 
-    /** Title, detail, spacer — the vertical footprint of one step. */
-    private const int ROWS_PER_STEP = 3;
+    /** The content column never grows past this many columns — long lines are hard to scan. */
+    private const int CONTENT_MAX = 72;
 
-    /** Where a step's text starts, leaving room for the `[x] ` marker. */
-    private const string DETAIL_INDENT = '       ';
+    /** Minimum margin on either side of the content column. */
+    private const int H_MARGIN = 2;
+
+    /** Below this many pane rows the hero greeting is dropped: steps need every row. */
+    private const int HERO_MIN_ROWS = 10;
 
     private readonly Styles $styles;
     private readonly ListSelection $list;
@@ -96,7 +107,7 @@ final class WelcomeWidget extends AbstractWidget implements FocusableInterface, 
     ) {
         $this->styles = $styles ?? Styles::dark();
         $this->list = new ListSelection();
-        $this->addStyleClass('list'); // the theme's .list::selected(:focus) rules style the selection
+        $this->addStyleClass('card'); // the theme's .card::selected(:focus) rules tint the selection behind the accent bar
     }
 
     /** @param list<WelcomeStep> $steps */
@@ -104,6 +115,30 @@ final class WelcomeWidget extends AbstractWidget implements FocusableInterface, 
     {
         $this->steps = $steps;
         $this->list->clamp(\count($steps));
+        $this->invalidate();
+    }
+
+    /**
+     * Fresh-open state: window at the top, hover cleared, selection on the
+     * first step still needing the user (all done → the first step).
+     *
+     * Only {@see \Porta\Overlay\WelcomeModalController::open()} calls this —
+     * the widget outlives the modal (it is a shared service), so without it a
+     * reopen would resume wherever the last visit left off. {@see setSteps()}
+     * deliberately stays clamp-only so the refresh after running a step never
+     * jumps the selection mid-session.
+     */
+    public function resetView(): void
+    {
+        $this->list->reset();
+        foreach ($this->steps as $index => $step) {
+            if (!$step->isCheckable() || $step->isDone()) {
+                continue;
+            }
+            $this->list->select($index);
+            break;
+        }
+        $this->clearHover();
         $this->invalidate();
     }
 
@@ -121,8 +156,8 @@ final class WelcomeWidget extends AbstractWidget implements FocusableInterface, 
         $rows = max(1, $context->getRows() > 0 ? $context->getRows() : 12);
         $this->lastRows = $rows;
 
-        $lines = [HeaderRenderer::render($this->title(), $width, $this->styles->of(Role::HeaderBar)->withBold(), suffix: 'Esc')];
-        $this->rowOwner = [null];
+        $lines = [];
+        $this->rowOwner = [];
 
         foreach ($this->body($width, $rows) as [$line, $owner]) {
             $lines[] = $line;
@@ -134,94 +169,154 @@ final class WelcomeWidget extends AbstractWidget implements FocusableInterface, 
             $this->rowOwner[] = null;
         }
 
-        return $this->withMenuOverlay(\array_slice($lines, offset: 0, length: $rows), $width);
+        return \array_slice($lines, offset: 0, length: $rows);
     }
 
-    private function title(): string
+    /** The modal frame's title-bar text: the progress count and the key hints. */
+    public function title(): string
     {
-        $total = \count($this->steps);
+        $checkable = array_filter($this->steps, static fn (WelcomeStep $step): bool => $step->isCheckable());
+        $total = \count($checkable);
         if (0 === $total) {
-            return ' '.$this->translator->trans('Welcome');
+            return $this->translator->trans('Welcome');
         }
 
-        return ' '
-        .$this->translator->trans('Welcome — %done% of %total% done · ⏎ run · ↑↓ move', [
-            '%done%' => \count(array_filter($this->steps, static fn (WelcomeStep $step): bool => $step->isDone())),
+        return $this->translator->trans('Welcome — %done% of %total% done · ⏎ run · ↑↓ move', [
+            '%done%' => \count(array_filter($checkable, static fn (WelcomeStep $step): bool => $step->isDone())),
             '%total%' => $total,
         ]);
     }
 
     /**
-     * The step cards, or the message that stands in for them.
+     * The hero, the step cards, and the messages that frame them.
      *
-     * Each entry pairs a line with the step it belongs to (null for spacers and
-     * messages), so {@see render()} records the row map without a second pass.
-     * A list of pairs rather than a line-keyed map: spacer lines are identical
-     * strings, and array keys would silently collapse them into one.
+     * Each entry pairs a line with the step it belongs to (null for the hero,
+     * spacers and messages), so {@see render()} records the row map without a
+     * second pass. A list of pairs rather than a line-keyed map: spacer lines
+     * are identical strings, and array keys would silently collapse them into
+     * one.
      *
      * @return list<array{0: string, 1: int|null}>
      */
     private function body(int $width, int $rows): array
     {
+        $content = max(1, min($width - (2 * self::H_MARGIN), self::CONTENT_MAX));
+        $margin = str_repeat(' ', max(self::H_MARGIN, intdiv($width - $content, num2: 2)));
+
+        $body = $rows >= self::HERO_MIN_ROWS ? $this->hero($width) : [];
+        $chrome = \count($body); // the hero block (the title bar belongs to the modal frame)
+
         if ([] === $this->steps) {
-            return $this->message($this->translator->trans('Nothing to set up.'), $width);
+            $body[] = $this->message($this->translator->trans('Nothing to set up.'), $width, $margin);
+
+            return $body;
         }
-        if ([] === array_filter($this->steps, static fn (WelcomeStep $step): bool => !$step->isDone())) {
-            return $this->message($this->translator->trans('All set. Reopen this any time from Help.'), $width);
-        }
-
-        // One row goes to the title bar; each step needs a card's worth.
-        $visible = max(1, intdiv($rows - 1, self::ROWS_PER_STEP));
-        $scroll = $this->list->follow($visible);
-
-        $body = [];
-        for ($slot = 0; $slot < $visible; ++$slot) {
-            $index = $scroll + $slot;
-            $step = $this->steps[$index] ?? null;
-            if (null === $step) {
-                break;
-            }
-
-            $body[] = [$this->titleLine($step, $index, $width), $index];
-            $body[] = [$this->detailLine($step, $index, $width), $index];
+        $checkable = array_filter($this->steps, static fn (WelcomeStep $step): bool => $step->isCheckable());
+        if ([] !== $checkable && [] === array_filter($checkable, static fn (WelcomeStep $step): bool => !$step->isDone())) {
+            // A banner, not a replacement: the cards — their [x]s, and any link
+            // step — stay visible and navigable beneath it.
+            $body[] = $this->message($this->translator->trans('All set. Reopen this any time from Help.'), $width, $margin);
             $body[] = [str_repeat(' ', max(0, $width)), null];
+            $chrome += 2;
+        }
+
+        $cards = [];
+        foreach ($this->steps as $index => $step) {
+            $cards[] = $this->card($step, $index, $width, $content, $margin);
+        }
+        $heights = array_map(static fn (array $card): int => \count($card), $cards);
+        $scroll = $this->list->followHeights($heights, max(1, $rows - $chrome));
+
+        foreach (\array_slice($cards, $scroll) as $card) {
+            foreach ($card as $pair) {
+                $body[] = $pair;
+            }
         }
 
         return $body;
     }
 
-    /** @return list<array{0: string, 1: int|null}> */
-    private function message(string $text, int $width): array
+    /**
+     * The greeting block above the cards: blank, centred title, blank.
+     *
+     * @return list<array{0: string, 1: null}>
+     */
+    private function hero(int $width): array
     {
-        return [[AnsiText::truncate(' '.$this->styles->of(Role::Dim)->apply($text), $width, pad: true), null]];
+        $title = $this->translator->trans('Welcome to Porta');
+        $pad = str_repeat(' ', max(0, intdiv($width - AnsiUtils::visibleWidth($title), num2: 2)));
+
+        return [
+            [str_repeat(' ', max(0, $width)), null],
+            [AnsiText::truncate($pad.$this->styles->of(Role::Bright)->withBold()->apply($title), $width, pad: true), null],
+            [str_repeat(' ', max(0, $width)), null],
+        ];
     }
 
-    private function titleLine(WelcomeStep $step, int $index, int $width): string
+    /** @return array{0: string, 1: null} */
+    private function message(string $text, int $width, string $margin): array
     {
-        $marker = $step->isDone() ? Glyphs::CHECKBOX_ON : Glyphs::CHECKBOX_OFF;
-        $text = '  '.$marker.'  '.$step->title;
-        if (!$step->isDone()) {
-            $text .= '  ['.$step->actionLabel.']';
-        }
-
-        return $this->paint(AnsiText::truncate($text, $width, pad: true), $index);
+        return [AnsiText::truncate($margin.$this->styles->of(Role::Dim)->apply($text), $width, pad: true), null];
     }
 
-    private function detailLine(WelcomeStep $step, int $index, int $width): string
+    /**
+     * One step's rows: the marker-and-title line, the wrapped detail lines,
+     * then a spacer. Every text row carries the step's index so a click lands
+     * anywhere on the card.
+     *
+     * @return non-empty-list<array{0: string, 1: int|null}>
+     */
+    private function card(WelcomeStep $step, int $index, int $width, int $content, string $margin): array
     {
-        $text = self::DETAIL_INDENT.$this->styles->of(Role::Dim)->apply($step->detail);
-
-        return $this->paint(AnsiText::truncate($text, $width, pad: true), $index);
-    }
-
-    /** Both of a step's lines carry the selection, so the card reads as one block. */
-    private function paint(string $text, int $index): string
-    {
-        return match (true) {
-            $this->list->isSelected($index) => $this->applyElement('selected', $text),
-            $index === $this->hoveredIndex => $this->styles->of(Role::RowHighlightBg)->apply($text),
-            default => $text,
+        $marker = match (true) {
+            !$step->isCheckable() => Glyphs::LINK_MARKER,
+            $step->isDone() => Glyphs::CHECKBOX_ON,
+            default => Glyphs::CHECKBOX_OFF,
         };
+        $prefix = $marker.'  ';
+        $suffix = $step->isDone() ? '' : '  ['.$step->actionLabel.']';
+
+        // The action label is protected: give it its room first and truncate
+        // the title into what remains, falling back to whole-line truncation
+        // only when the pane cannot even hold the marker and the action.
+        $room = $content - AnsiUtils::visibleWidth($prefix) - AnsiUtils::visibleWidth($suffix);
+        $title = $room > 0
+            ? $prefix.AnsiText::truncate($step->title, $room).$suffix
+            : AnsiText::truncate($prefix.$step->title.$suffix, $content);
+
+        $rows = [[$this->paint($margin, $title, $index, $width, isTitle: true), $index]];
+
+        $indent = str_repeat(' ', max(0, AnsiUtils::visibleWidth($prefix)));
+        $dim = $this->styles->of(Role::Dim);
+        foreach (AnsiText::wrap($step->detail, max(1, $content - AnsiUtils::visibleWidth($prefix))) as $chunk) {
+            $rows[] = [$this->paint($margin, $indent.$dim->apply($chunk), $index, $width), $index];
+        }
+        $rows[] = [str_repeat(' ', max(0, $width)), null];
+
+        return $rows;
+    }
+
+    /**
+     * Assemble and style one card row. Every row of the selected card gets the
+     * accent bar — the bar and its trailing space replace the last two margin
+     * columns ({@see self::H_MARGIN} guarantees the room), so the visible
+     * width, the wrap widths and the card heights never depend on which card
+     * is selected. Selection outranks hover, as everywhere.
+     */
+    private function paint(string $margin, string $body, int $index, int $width, bool $isTitle = false): string
+    {
+        if (!$this->list->isSelected($index)) {
+            $text = AnsiText::truncate($margin.$body, $width, pad: true);
+
+            return $index === $this->hoveredIndex ? $this->styles->of(Role::RowHighlightBg)->apply($text) : $text;
+        }
+        if ($isTitle) {
+            $body = $this->styles->of(Role::Bright)->withBold()->apply($body);
+        }
+        $bar = $this->styles->of(Role::TabAccent)->withBold()->apply(Glyphs::CARD_ACCENT);
+        $text = AnsiText::truncate(substr($margin, offset: 0, length: -2).$bar.' '.$body, $width, pad: true);
+
+        return $this->applyElement('selected', $text);
     }
 
     public function handleInput(string $data): void

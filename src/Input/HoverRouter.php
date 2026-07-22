@@ -58,6 +58,16 @@ final readonly class HoverRouter
             return;
         }
 
+        // The Welcome modal floats over whatever is beneath it and is modal, so
+        // it owns hover next: the menu bar keeps first refusal, then the box.
+        if ($this->welcome->isModalOpen()) {
+            if (!$this->handleMenuHover($mouse)) {
+                $this->welcome->hover($mouse);
+            }
+
+            return;
+        }
+
         // Each full-view state owns its hover targets exclusively; the tree/editor
         // targets are detached while a view is swapped in. The menu bar rides
         // along into either view, so it gets first refusal before the region.
@@ -71,13 +81,6 @@ final readonly class HoverRouter
         if (ActiveView::Git === $view) {
             if (!$this->handleMenuHover($mouse)) {
                 $this->git->hover($mouse);
-            }
-
-            return;
-        }
-        if (ActiveView::Welcome === $view) {
-            if (!$this->handleMenuHover($mouse)) {
-                $this->welcome->hover($mouse);
             }
 
             return;

@@ -69,6 +69,24 @@ final class PaneReorderTest extends TestCase
         $this->assertSame(99, $reorder->logicalColumn($line, 99, $runs));
     }
 
+    /**
+     * Documents the Welcome screen's RTL decision: the pane is deliberately not
+     * LtrPane, so a step line — margin, `[ ]` marker, translated title,
+     * `[action]` — mirrors as a whole. The marker ends at the right edge, the
+     * brackets pair up mirrored, and the width invariant holds.
+     */
+    public function testAWelcomeStepLineMirrorsAsAWhole(): void
+    {
+        $line = AnsiUtils::truncateToWidth('  [ ]  '.self::SHALOM.'  ['.self::SHALOM.']', 24, pad: true);
+        $runs = [['start' => 0, 'width' => 24, 'ltr' => false]];
+
+        $out = new PaneReorder()->reorderRow($line, $runs);
+        $plain = AnsiUtils::stripAnsiCodes($out);
+
+        $this->assertSame('     [םולש]  םולש  [ ]  ', $plain, 'padding leads, the marker sits at the right edge');
+        $this->assertSame(24, AnsiUtils::visibleWidth($out), 'width preserved');
+    }
+
     public function testLogicalColumnMatchesBidiWithinTheRtlSlice(): void
     {
         $line = 'xx'.self::SHALOM; // LTR [0,2), RTL [2,6)

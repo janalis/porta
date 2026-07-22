@@ -125,6 +125,18 @@ final class Glyphs
     public const string CHECKBOX_PARTIAL = '[~]';
     public const string CHECKBOX_OFF = '[ ]';
 
+    // The Welcome screen's link-step marker: bracketed like the checkboxes so
+    // it reads as the same control family, but visibly not a checkbox — a link
+    // step has no done state to tick. Same → value as NAV_CURRENT on a
+    // disjoint surface (a step marker never appears beside a target list).
+    public const string LINK_MARKER = '[→]';
+
+    // The 1-column left-half-block marking every row of the selected Welcome
+    // card. The glyph, not the tint behind it, is the selection — it is what
+    // survives --no-ansi and the monochrome theme. Distinct from GIT_ADDED
+    // (`▎`, editor gutter) and on a disjoint surface anyway.
+    public const string CARD_ACCENT = '▌';
+
     // The truncation mark. Sites that deliberately truncate WITHOUT a mark
     // (PTY output rows, fixed-width chrome fillers) pass '' and say why.
     public const string ELLIPSIS = '…';

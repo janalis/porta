@@ -75,10 +75,12 @@ use Porta\Lsp\LspSessionPool;
 use Porta\Lsp\NavigationController;
 use Porta\Lsp\RefactorController;
 use Porta\Lsp\WorkspaceEditor;
+use Porta\Overlay\CompositeFloatingRegions;
 use Porta\Overlay\FloatingRegions;
 use Porta\Overlay\MenuOverlayController;
 use Porta\Overlay\MenuOverlayPanes;
 use Porta\Overlay\MenuOverlayPanesFactory;
+use Porta\Overlay\WelcomeModalController;
 use Porta\Plugin\PluginEvents;
 use Porta\Plugin\PluginHost;
 use Porta\Plugin\PluginInstaller;
@@ -101,7 +103,6 @@ use Porta\Search\SearchUiWiring;
 use Porta\Search\TestNavigator;
 use Porta\Settings\LiveSettingsApplier;
 use Porta\Onboarding\OnboardingState;
-use Porta\Onboarding\WelcomeViewController;
 use Porta\Settings\SettingsViewController;
 use Porta\Support\Clipboard;
 use Porta\Support\DocsUrlOpener;
@@ -282,7 +283,9 @@ return static function (ContainerConfigurator $container, ContainerBuilder $buil
     // definition. The RTL segmenter reads the floating dropdowns through the
     // FloatingRegions seam (fakes in tests).
     $services->set(MenuOverlayPanes::class)->factory([service(MenuOverlayPanesFactory::class), 'create']);
-    $services->alias(FloatingRegions::class, MenuOverlayController::class);
+    // Modal region first, menus after — later regions win the segmenter's
+    // per-cell owner pass, matching the paint order (menus above the modal).
+    $services->alias(FloatingRegions::class, CompositeFloatingRegions::class);
 
     // The app event bus. The id must be exactly 'event_dispatcher' — the
     // RegisterListenersPass hard-codes it. Emitters autowire the PSR interface
@@ -391,7 +394,7 @@ return static function (ContainerConfigurator $container, ContainerBuilder $buil
         SettingsLanguageController::class,
         SettingsViewController::class,
         OnboardingState::class,
-        WelcomeViewController::class,
+        WelcomeModalController::class,
         PluginLifecycle::class,
         MenuRebuilder::class,
         GitViewController::class,

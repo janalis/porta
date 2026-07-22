@@ -2050,6 +2050,34 @@
         <source>All set. Reopen this any time from Help.</source>
         <target>Tout est prêt. Rouvrez cet écran à tout moment depuis Aide.</target>
       </trans-unit>
+      <trans-unit id="515">
+        <source>Code style fixer</source>
+        <target>Correcteur de style de code</target>
+      </trans-unit>
+      <trans-unit id="516">
+        <source>%name% fixes formatting on demand; format-on-save lives in its settings</source>
+        <target>%name% corrige le formatage à la demande ; le formatage à l'enregistrement se règle dans ses réglages</target>
+      </trans-unit>
+      <trans-unit id="517">
+        <source>Static analysis</source>
+        <target>Analyse statique</target>
+      </trans-unit>
+      <trans-unit id="518">
+        <source>%name% finds bugs without running the code; analyse-on-save in its settings</source>
+        <target>%name% trouve des bogues sans exécuter le code ; l'analyse à l'enregistrement se règle dans ses réglages</target>
+      </trans-unit>
+      <trans-unit id="519">
+        <source>Read the guide</source>
+        <target>Lire le guide</target>
+      </trans-unit>
+      <trans-unit id="520">
+        <source>Keys, panels and workflows, in the built-in help viewer</source>
+        <target>Touches, panneaux et flux de travail, dans l'afficheur d'aide intégré</target>
+      </trans-unit>
+      <trans-unit id="521">
+        <source>Open the guide</source>
+        <target>Ouvrir le guide</target>
+      </trans-unit>
     </body>
   </file>
 </xliff>

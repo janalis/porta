@@ -2050,6 +2050,34 @@
         <source>All set. Reopen this any time from Help.</source>
         <target>All set. Reopen this any time from Help.</target>
       </trans-unit>
+      <trans-unit id="515">
+        <source>Code style fixer</source>
+        <target>Code style fixer</target>
+      </trans-unit>
+      <trans-unit id="516">
+        <source>%name% fixes formatting on demand; format-on-save lives in its settings</source>
+        <target>%name% fixes formatting on demand; format-on-save lives in its settings</target>
+      </trans-unit>
+      <trans-unit id="517">
+        <source>Static analysis</source>
+        <target>Static analysis</target>
+      </trans-unit>
+      <trans-unit id="518">
+        <source>%name% finds bugs without running the code; analyse-on-save in its settings</source>
+        <target>%name% finds bugs without running the code; analyse-on-save in its settings</target>
+      </trans-unit>
+      <trans-unit id="519">
+        <source>Read the guide</source>
+        <target>Read the guide</target>
+      </trans-unit>
+      <trans-unit id="520">
+        <source>Keys, panels and workflows, in the built-in help viewer</source>
+        <target>Keys, panels and workflows, in the built-in help viewer</target>
+      </trans-unit>
+      <trans-unit id="521">
+        <source>Open the guide</source>
+        <target>Open the guide</target>
+      </trans-unit>
     </body>
   </file>
 </xliff>

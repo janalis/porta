@@ -302,13 +302,13 @@ final class FindInFilesModalTest extends TestCase
             return AnsiUtils::stripAnsiCodes(implode("\n", $out));
         })();
         $this->assertNotNull($box);
-        $this->assertGreaterThan(0, $box['windowStart'], 'the window scrolled to keep the selection visible');
+        $this->assertGreaterThan(0, $box->windowStart, 'the window scrolled to keep the selection visible');
         $this->assertStringContainsString('hit 11', $screen);
 
         // Clicking the options row off any tag, and hovering headers / outside, are inert.
-        $modal->clickAt($box['previewRow'] - 2, $box['col'] + $box['width'] - 1); // options row, past the tags
-        $this->assertFalse($modal->hoverAt($box['previewRow'] - 5, $box['col'] + 2), 'above the preview');
-        $this->assertFalse($modal->hoverAt($box['previewRow'] + 99, $box['col'] + 2), 'below the preview');
+        $modal->clickAt($box->windowTop() - 2, $box->col + $box->width - 1); // options row, past the tags
+        $this->assertFalse($modal->hoverAt($box->windowTop() - 5, $box->col + 2), 'above the preview');
+        $this->assertFalse($modal->hoverAt($box->windowTop() + 99, $box->col + 2), 'below the preview');
     }
 
     public function testScrollPreviewWithTheWheelMovesTheWindow(): void
@@ -321,19 +321,22 @@ final class FindInFilesModalTest extends TestCase
         }
         $modal->setPreview($many);
 
-        $box = static function () use ($modal): array {
+        $box = static function () use ($modal): \Porta\Overlay\ModalBox {
             $modal->composite(array_fill(0, count: 24, value: str_repeat(' ', times: 100)), 100, 24, CaretVisibility::Shown);
 
-            return $modal->lastBox() ?? [];
+            $box = $modal->lastBox();
+            \assert($box instanceof \Porta\Overlay\ModalBox);
+
+            return $box;
         };
 
-        $this->assertSame(0, $box()['windowStart'], 'starts at the top');
+        $this->assertSame(0, $box()->windowStart, 'starts at the top');
 
         $modal->scrollPreview(12); // wheel down past the bottom edge
-        $this->assertGreaterThan(0, $box()['windowStart'], 'the preview scrolled down');
+        $this->assertGreaterThan(0, $box()->windowStart, 'the preview scrolled down');
 
         $modal->scrollPreview(-20); // wheel up past the top → clamps
-        $this->assertSame(0, $box()['windowStart'], 'scrolled back to the top');
+        $this->assertSame(0, $box()->windowStart, 'scrolled back to the top');
     }
 
     public function testHoverSelectsWithoutScrollingTheWindow(): void
@@ -346,24 +349,27 @@ final class FindInFilesModalTest extends TestCase
         }
         $modal->setPreview($many); // 15 display rows (1 header + 14 matches), 10 visible
 
-        $box = static function () use ($modal): array {
+        $box = static function () use ($modal): \Porta\Overlay\ModalBox {
             $modal->composite(array_fill(0, count: 24, value: str_repeat(' ', times: 100)), 100, 24, CaretVisibility::Shown);
 
-            return $modal->lastBox() ?? [];
+            $box = $modal->lastBox();
+            \assert($box instanceof \Porta\Overlay\ModalBox);
+
+            return $box;
         };
 
         // Hovering the bottom-most visible row moves the selection but never the window.
         $b = $box();
-        $this->assertSame(0, $b['windowStart']);
-        $this->assertTrue($modal->hoverAt($b['previewRow'] + $b['count'] - 1, $b['col'] + 3));
-        $this->assertSame(0, $box()['windowStart'], 'hover at the bottom edge did not scroll');
+        $this->assertSame(0, $b->windowStart);
+        $this->assertTrue($modal->hoverAt($b->windowTop() + $b->count - 1, $b->col + 3));
+        $this->assertSame(0, $box()->windowStart, 'hover at the bottom edge did not scroll');
 
         // Scroll to the end, then hover the top-most visible row: still no scroll.
         $modal->scrollPreview(20);
-        $this->assertSame(5, $box()['windowStart'], 'wheel to the last match');
+        $this->assertSame(5, $box()->windowStart, 'wheel to the last match');
         $b = $box();
-        $this->assertTrue($modal->hoverAt($b['previewRow'], $b['col'] + 3));
-        $this->assertSame(5, $box()['windowStart'], 'hover at the top edge did not scroll');
+        $this->assertTrue($modal->hoverAt($b->windowTop(), $b->col + 3));
+        $this->assertSame(5, $box()->windowStart, 'hover at the top edge did not scroll');
     }
 
     public function testKeyboardScrollsMinimallyIntoView(): void
@@ -376,28 +382,31 @@ final class FindInFilesModalTest extends TestCase
         }
         $modal->setPreview($many); // selection on the first match (display index 1)
 
-        $box = static function () use ($modal): array {
+        $box = static function () use ($modal): \Porta\Overlay\ModalBox {
             $modal->composite(array_fill(0, count: 24, value: str_repeat(' ', times: 100)), 100, 24, CaretVisibility::Shown);
 
-            return $modal->lastBox() ?? [];
+            $box = $modal->lastBox();
+            \assert($box instanceof \Porta\Overlay\ModalBox);
+
+            return $box;
         };
 
-        $this->assertSame(0, $box()['windowStart']);
+        $this->assertSame(0, $box()->windowStart);
         for ($i = 0; $i < 9; ++$i) {
             $modal->handleInput("\x1b[B", $this->kb); // down to display index 10, one past the bottom edge
         }
-        $this->assertSame(1, $box()['windowStart'], 'scrolled by exactly the overflow, no recentering');
+        $this->assertSame(1, $box()->windowStart, 'scrolled by exactly the overflow, no recentering');
 
         for ($i = 0; $i < 9; ++$i) {
             $modal->handleInput("\x1b[A", $this->kb); // back up to the first match
         }
-        $this->assertSame(0, $box()['windowStart'], 'the first match reveals its file-header row above');
+        $this->assertSame(0, $box()->windowStart, 'the first match reveals its file-header row above');
 
         // A new search resets the window to the top.
         $modal->scrollPreview(20);
-        $this->assertSame(5, $box()['windowStart']);
+        $this->assertSame(5, $box()->windowStart);
         $modal->setPreview($many);
-        $this->assertSame(0, $box()['windowStart'], 'new results start at the top');
+        $this->assertSame(0, $box()->windowStart, 'new results start at the top');
     }
 
     public function testTinyTerminalDoesNotOverflow(): void
@@ -432,18 +441,34 @@ final class FindInFilesModalTest extends TestCase
         $box = $modal->lastBox();
         $this->assertNotNull($box);
 
-        // Click the first option tag (options row is previewRow - 2, inner col 1).
-        $modal->clickAt($box['previewRow'] - 2, $box['col'] + 1);
+        // Click the first option tag (options row is windowTop() - 2; inner col 1 sits past the rail).
+        $modal->clickAt($box->windowTop() - 2, $box->col + 2);
         $this->assertSame(['regex'], $toggled);
 
         // Hover the second match row (previewRow + 2; the first match is already selected).
-        $this->assertTrue($modal->hoverAt($box['previewRow'] + 2, $box['col'] + 3));
+        $this->assertTrue($modal->hoverAt($box->windowTop() + 2, $box->col + 3));
         // Click the first match row (previewRow + 1 skips the file header) → jump.
-        $modal->clickAt($box['previewRow'] + 1, $box['col'] + 3);
+        $modal->clickAt($box->windowTop() + 1, $box->col + 3);
         $this->assertSame(['src/A.php', 4], $jumped);
 
         // A click outside the box dismisses.
-        $modal->clickAt($box['previewRow'], $box['col'] + $box['width'] + 5);
+        $modal->clickAt($box->windowTop(), $box->col + $box->width + 5);
+        $this->assertTrue($closed);
+    }
+
+    public function testTheCloseButtonCloses(): void
+    {
+        $closed = false;
+        $modal = $this->modal();
+        $modal->onClose(static function () use (&$closed): void {
+            $closed = true;
+        });
+        $modal->open('Find in Files');
+        $this->screen($modal); // composite → sets the box geometry
+        $box = $modal->lastBox();
+        $this->assertNotNull($box);
+
+        $this->assertTrue($modal->clickAt($box->startRow, $box->col + $box->width - 2), 'the title bar ×');
         $this->assertTrue($closed);
     }
 
@@ -463,20 +488,20 @@ final class FindInFilesModalTest extends TestCase
         $this->screen($modal);
         $box = $modal->lastBox();
         $this->assertNotNull($box);
-        $optionsRow = $box['previewRow'] - 2;
+        $optionsRow = $box->windowTop() - 2;
 
         // Click the Replace row (optionsRow - 1) → focus it; typing has no callback, observe via render.
-        $modal->clickAt($optionsRow - 1, $box['col'] + 2);
+        $modal->clickAt($optionsRow - 1, $box->col + 2);
         $modal->handleInput('X', $this->kb);
         $this->assertStringContainsString('Replace: X', $this->screen($modal), 'the replace field took the keystroke');
 
         // Click the Mask row (optionsRow + 1) → focus it; typing fires onMaskChanged.
-        $modal->clickAt($optionsRow + 1, $box['col'] + 2);
+        $modal->clickAt($optionsRow + 1, $box->col + 2);
         $modal->handleInput('y', $this->kb);
         $this->assertSame(['y'], $masks);
 
         // Click the Find row (optionsRow - 2) → focus the query; typing fires onQuery.
-        $modal->clickAt($optionsRow - 2, $box['col'] + 2);
+        $modal->clickAt($optionsRow - 2, $box->col + 2);
         $modal->handleInput('z', $this->kb);
         $this->assertSame(['z'], $queries);
     }
@@ -494,7 +519,7 @@ final class FindInFilesModalTest extends TestCase
         $lines = $modal->composite(array_fill(0, count: 24, value: str_repeat(' ', times: 100)), 100, 24, CaretVisibility::Shown);
         $box = $modal->lastBox();
         $this->assertNotNull($box);
-        $optionsRow = $box['previewRow'] - 2;
+        $optionsRow = $box->windowTop() - 2;
         $optionsLine = AnsiUtils::stripAnsiCodes($lines[$optionsRow]);
 
         // The two-space gap between the last tag and the scope label hits no zone.
@@ -518,15 +543,16 @@ final class FindInFilesModalTest extends TestCase
         $lines = $modal->composite(array_fill(0, count: 24, value: str_repeat(' ', times: 100)), 100, 24, CaretVisibility::Shown);
         $box = $modal->lastBox();
         $this->assertNotNull($box);
-        $optionsRow = $box['previewRow'] - 2;
+        $optionsRow = $box->windowTop() - 2;
 
-        // Hover the first option tag → highlight changes; the same spot → no change.
-        $this->assertTrue($modal->hoverAt($optionsRow, $box['col'] + 1));
-        $this->assertFalse($modal->hoverAt($optionsRow, $box['col'] + 1));
+        // Hover the first option tag (inner col 1, past the frame rail) →
+        // highlight changes; the same spot → no change.
+        $this->assertTrue($modal->hoverAt($optionsRow, $box->col + 2));
+        $this->assertFalse($modal->hoverAt($optionsRow, $box->col + 2));
         $this->assertStringContainsString('.*', $this->screen($modal), 'the hovered tag still renders');
 
         // A different tag → changes.
-        $this->assertTrue($modal->hoverAt($optionsRow, $box['col'] + 5));
+        $this->assertTrue($modal->hoverAt($optionsRow, $box->col + 6));
 
         // Hover the scope label → changes and still renders.
         $optionsLine = AnsiUtils::stripAnsiCodes($lines[$optionsRow]);
@@ -536,7 +562,7 @@ final class FindInFilesModalTest extends TestCase
         $this->assertStringContainsString('Scope: Whole Project', $this->screen($modal));
 
         // Moving off the options row (onto the Find field row) clears the hover.
-        $this->assertTrue($modal->hoverAt($optionsRow - 2, $box['col'] + 2));
+        $this->assertTrue($modal->hoverAt($optionsRow - 2, $box->col + 2));
     }
 
     public function testMouseClickTogglesExcludeCheckbox(): void
@@ -558,15 +584,15 @@ final class FindInFilesModalTest extends TestCase
         $this->assertNotNull($box);
 
         // Click the [x] checkbox on the first match row (inner cols 2-4) → exclude it.
-        $modal->clickAt($box['previewRow'] + 1, $box['col'] + 3);
+        $modal->clickAt($box->windowTop() + 1, $box->col + 3);
         $this->assertStringContainsString('(excluded)', $this->screen($modal));
 
         // Click it again → re-include.
-        $modal->clickAt($box['previewRow'] + 1, $box['col'] + 3);
+        $modal->clickAt($box->windowTop() + 1, $box->col + 3);
         $this->assertStringNotContainsString('(excluded)', $this->screen($modal));
 
         // Click past the checkbox on the same row → jump to the match.
-        $modal->clickAt($box['previewRow'] + 1, $box['col'] + 12);
+        $modal->clickAt($box->windowTop() + 1, $box->col + 12);
         $this->assertSame(['src/A.php', 4], $jumped);
     }
 

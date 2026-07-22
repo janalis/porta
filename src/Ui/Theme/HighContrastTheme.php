@@ -77,6 +77,10 @@ final class HighContrastTheme
                 // the unfocused shade, the :focus variant merges over it.
                 '.list::selected' => new Style(background: 236),
                 '.list::selected:focus' => new Style(background: 19, color: 231, bold: true),
+                // Card selection: subtle tint only — see DarkTheme for why the
+                // rules exist in every theme and stay off the SelectedRow roles.
+                '.card::selected' => new Style(background: 236),
+                '.card::selected:focus' => new Style(background: 238),
             ],
             underlines: [
                 Role::DiagErrorUnderline->name => Sgr::underlineColor(203),

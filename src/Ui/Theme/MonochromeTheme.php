@@ -49,6 +49,12 @@ final class MonochromeTheme
                 // cancel the unfocused dim explicitly.
                 '.list::selected' => new Style(dim: true, reverse: true),
                 '.list::selected:focus' => new Style(dim: false, reverse: true),
+                // Card selection carries no attributes here: the accent bar
+                // glyph (plus its bold) is the selection, per the rule that no
+                // meaning may rest on colour alone. The rules still exist so a
+                // live switch from a colour theme overwrites its tint.
+                '.card::selected' => new Style(),
+                '.card::selected:focus' => new Style(),
             ],
             underlines: [],
             hasColor: false,

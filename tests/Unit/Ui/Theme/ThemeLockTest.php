@@ -298,6 +298,27 @@ final class ThemeLockTest extends TestCase
         }
     }
 
+    public function testCardElementRulesExistAndStaySubtleInEveryTheme(): void
+    {
+        // The third selection family (Role.php): the Welcome cards' tint. The
+        // rules must exist in every theme — StyleSheetThemer can only
+        // overwrite, so a missing selector would leave a stale tint after a
+        // live switch — and must stay background-only shades: the selection
+        // itself is the accent bar glyph, which is what monochrome (plain
+        // here) and --no-ansi keep.
+        $expected = [
+            'dark' => [DarkTheme::definition(), new Style(background: 237), new Style(background: 238)],
+            'light' => [LightTheme::definition(), new Style(background: 254), new Style(background: 252)],
+            'high-contrast' => [HighContrastTheme::definition(), new Style(background: 236), new Style(background: 238)],
+            'monochrome' => [MonochromeTheme::definition(), new Style(), new Style()],
+        ];
+        foreach ($expected as $name => [$def, $base, $focus]) {
+            $rules = $def->rules();
+            $this->assertEquals($base, $rules['.card::selected'], "{$name}: .card::selected");
+            $this->assertEquals($focus, $rules['.card::selected:focus'], "{$name}: .card::selected:focus");
+        }
+    }
+
     public function testHasColor(): void
     {
         $this->assertTrue(DarkTheme::definition()->hasColor());

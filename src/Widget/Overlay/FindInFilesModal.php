@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Porta\Widget\Overlay;
 
 use Porta\I18n\Translator;
+use Porta\Overlay\ModalBox;
 use Porta\Search\TokenScope;
 use Porta\Support\AnsiText;
 use Porta\Ui\CaretVisibility;
@@ -16,7 +17,7 @@ use Porta\Ui\TextField;
 use Porta\Ui\Theme\Styles;
 use Porta\Widget\MatchRowDecorator;
 use Porta\Widget\OptionTagState;
-use Porta\Widget\Render\HeaderRenderer;
+use Porta\Widget\Render\ModalFrame;
 use Porta\Widget\Render\ModalRowStyle;
 use Porta\Widget\Render\OverlayCompositor;
 use Porta\Widget\ResultGrouping;
@@ -87,8 +88,8 @@ final class FindInFilesModal
     /** cursor into $history while browsing it, or -1 when not */
     private int $historyCursor = -1;
 
-    /** @var array{col: int, width: int, previewRow: int, windowStart: int, count: int}|null last-rendered geometry, for hit-testing */
-    private ?array $box = null;
+    /** last-rendered geometry, for hit-testing (`windowTop()` is the first preview row) */
+    private ?ModalBox $box = null;
     /** @var list<array{name: string, start: int, end: int}> option-tag + scope click zones (columns) on the options row */
     private array $optionZones = [];
     /** @var list<array{name: string, start: int, end: int}> clickable action zones (columns) on the footer row */
@@ -558,40 +559,35 @@ final class FindInFilesModal
         $visible = \array_slice($this->displayRows, $windowStart, $maxPreview);
 
         $width = $this->boxWidth($columns, $visible);
-        $col = max(0, intdiv($columns - $width, num2: 2));
+        $col = max(0, intdiv($columns - $width - 2, num2: 2));
 
-        $popup = $this->headerRows($width, $focused);
-        $this->optionsRow = 3; // title(0), query(1), replace(2), options(3) — index into $popup
-        $previewIndex = \count($popup);
+        $content = $this->headerRows($width, $focused);
+        $this->optionsRow = 3; // bar(0), query(1), replace(2), options(3) — the frame's title bar replaces the old title row
+        $previewIndex = 1 + \count($content);
         foreach ($visible as $i => $row) {
             $selected = match ($windowStart + $i) {
                 $this->selected => RowSelection::Selected,
                 $this->hoveredRow => RowSelection::Hovered,
                 default => RowSelection::Unselected,
             };
-            $popup[] = match (true) {
+            $content[] = match (true) {
                 null !== $row->filePath => $this->fileHeaderRow($row->filePath, $row->count, $width),
                 $this->inPreview() => $this->previewMatchRow($this->results[$row->matchIndex], $row->matchIndex, $selected, $width),
                 default => $this->matchRow($this->results[$row->matchIndex], $selected, $width),
             };
         }
         if ([] === $visible) {
-            $popup[] = $this->emptyRow($width);
+            $content[] = $this->emptyRow($width);
         }
-        $popup[] = $this->footerRow($width);
-        $footerIndex = \count($popup) - 1;
+        $content[] = $this->footerRow($width);
+        $footerIndex = \count($content); // + the title bar the frame prepends
 
-        [$lines, $startRow] = OverlayCompositor::placeCentered($lines, $popup, $col, $width, $columns, $rows);
+        $popup = [ModalFrame::titleBar($this->title.'  '.$this->statusText(), $width + 2, $this->styles), ...ModalFrame::wrap($content, $width, $this->styles)];
+        [$lines, $startRow] = OverlayCompositor::placeCentered($lines, $popup, $col, $width + 2, $columns, $rows);
 
         $this->optionsRow += $startRow;
         $this->footerRowIndex = $startRow + $footerIndex;
-        $this->box = [
-            'col' => $col,
-            'width' => $width,
-            'previewRow' => $startRow + $previewIndex,
-            'windowStart' => $windowStart,
-            'count' => \count($visible),
-        ];
+        $this->box = new ModalBox($startRow, $col, $width + 2, \count($popup), headerRows: $previewIndex, windowStart: $windowStart, count: \count($visible));
 
         return $lines;
     }
@@ -620,30 +616,28 @@ final class FindInFilesModal
     private function boxWidth(int $columns, array $visible): int
     {
         $status = $this->statusText();
-        $width = max(mb_strwidth($this->title) + mb_strwidth($status) + 5, mb_strwidth($this->query->value()) + 9, 48);
+        $width = max(mb_strwidth($this->title) + mb_strwidth($status) + 10, mb_strwidth($this->query->value()) + 9, 48); // + 10: the frame's title-bar chrome
         foreach ($visible as $row) {
             $text = null !== $row->filePath ? $row->filePath : $this->results[$row->matchIndex]['text'] ?? '';
             $width = max($width, mb_strwidth($text) + 8);
         }
 
-        return min($width, $columns - 4, 80);
+        return min($width, $columns - 6, 80); // inner width; the frame adds a rail each side
     }
 
     /**
-     * The fixed header rows: title, query, replace, options+scope, mask.
+     * The fixed header rows below the frame's title bar: query, replace,
+     * options+scope, mask.
      *
      * @return list<string>
      */
     private function headerRows(int $width, CaretVisibility $focused): array
     {
-        $title = ' '.$this->title.$this->styles->of(Role::Dim)->apply('  '.$this->statusText());
-
         $replaceHint = $this->inPreview()
             ? '  '.$this->translator->trans('(Del exclude · Alt+A replace %count%)', ['%count%' => $this->keptCount()])
             : '  '.$this->translator->trans('(Tab · Alt+A)');
 
         return [
-            HeaderRenderer::render($title, $width, $this->styles->of(Role::HeaderBar)->withBold(), suffix: 'Esc'),
             $this->fieldRow(
                 $this->translator->trans('Find'),
                 $this->query,
@@ -818,11 +812,9 @@ final class FindInFilesModal
 
     /**
      * The last composited box geometry (for mouse hit-testing and tests); the
-     * options row sits at `previewRow - 2`.
-     *
-     * @return array{col: int, width: int, previewRow: int, windowStart: int, count: int}|null
+     * options row sits at `windowTop() - 2`.
      */
-    public function lastBox(): ?array
+    public function lastBox(): ?ModalBox
     {
         return $this->box;
     }
@@ -844,14 +836,21 @@ final class FindInFilesModal
             return false;
         }
         $box = $this->box;
-        if (null === $box || $relCol < $box['col'] || $relCol >= ($box['col'] + $box['width'])) {
+        if (null !== $box && $box->closeHit($relRow, $relCol)) {
             if (null !== $this->onClose) {
                 ($this->onClose)();
             }
 
             return true;
         }
-        $innerCol = $relCol - $box['col'];
+        if (null === $box || $relCol < $box->col || $relCol >= ($box->col + $box->width)) {
+            if (null !== $this->onClose) {
+                ($this->onClose)();
+            }
+
+            return true;
+        }
+        $innerCol = $box->innerCol($relCol);
         if ($relRow === ($this->optionsRow - 2)) {
             $this->setActiveField('query');
 
@@ -926,10 +925,10 @@ final class FindInFilesModal
         }
         $box = $this->box;
         if (null !== $box && $relRow === $this->optionsRow) {
-            return $this->hoverZone($this->zoneNameAt($relCol - $box['col'], $this->optionZones));
+            return $this->hoverZone($this->zoneNameAt($box->innerCol($relCol), $this->optionZones));
         }
         if (null !== $box && $relRow === $this->footerRowIndex) {
-            return $this->hoverZone($this->zoneNameAt($relCol - $box['col'], $this->footerZones));
+            return $this->hoverZone($this->zoneNameAt($box->innerCol($relCol), $this->footerZones));
         }
         $cleared = $this->hoverZone(null); // moving off the header/footer drops any tag hover
         $index = $this->previewIndexAt($relRow);
@@ -980,11 +979,11 @@ final class FindInFilesModal
         if (null === $box) {
             return null;
         }
-        $i = $relRow - $box['previewRow'];
-        if ($i < 0 || $i >= $box['count']) {
+        $i = $relRow - $box->windowTop();
+        if ($i < 0 || $i >= $box->count) {
             return null;
         }
 
-        return $box['windowStart'] + $i;
+        return $box->windowStart + $i;
     }
 }

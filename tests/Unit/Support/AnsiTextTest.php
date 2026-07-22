@@ -139,4 +139,43 @@ final class AnsiTextTest extends TestCase
         // "ab" styled is two visible columns, so it pads to five.
         $this->assertSame("\x1b[31mab\x1b[0m   ", AnsiText::padRight("\x1b[31mab\x1b[0m", 5));
     }
+
+    public function testWrapBreaksGreedilyOnSpaces(): void
+    {
+        $this->assertSame(['aa bb', 'cc'], AnsiText::wrap('aa bb cc', 5));
+    }
+
+    public function testWrapKeepsAnExactFitOnOneLine(): void
+    {
+        $this->assertSame(['aa bb'], AnsiText::wrap('aa bb', 5));
+    }
+
+    /** A single word wider than a whole line hard-breaks rather than overflows. */
+    public function testWrapHardBreaksAnOverWideWord(): void
+    {
+        $this->assertSame(['abcde', 'fg'], AnsiText::wrap('abcdefg', 5));
+        $this->assertSame(['aa', 'bbbb', 'bb', 'cc'], AnsiText::wrap('aa bbbbbb cc', 4));
+    }
+
+    public function testWrapMeasuresDisplayColumnsNotBytes(): void
+    {
+        // Two CJK characters are four columns, so only one fits per three-column line.
+        $this->assertSame(['编', '辑'], AnsiText::wrap('编辑', 3));
+    }
+
+    /** A glyph wider than the whole line cannot break — it passes through for the caller's clip. */
+    public function testWrapPassesThroughAGlyphWiderThanTheLine(): void
+    {
+        $this->assertSame(['编'], AnsiText::wrap('编', 1));
+    }
+
+    public function testWrapOfAnEmptyStringIsOneEmptyLine(): void
+    {
+        $this->assertSame([''], AnsiText::wrap('', 10));
+    }
+
+    public function testWrapClampsANonPositiveWidth(): void
+    {
+        $this->assertSame(['a', 'b'], AnsiText::wrap('a b', 0));
+    }
 }

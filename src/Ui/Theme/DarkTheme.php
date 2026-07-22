@@ -77,6 +77,14 @@ final class DarkTheme
                 // the unfocused shade, the :focus variant merges over it.
                 '.list::selected' => new Style(background: 237),
                 '.list::selected:focus' => new Style(background: 31, color: 231, bold: true),
+                // Card selection (`.card`, the Welcome screen) is a subtle tint
+                // only — the selection itself is the accent bar the widget
+                // draws. Deliberately NOT bound to the SelectedRow roles, and
+                // present in every theme: StyleSheetThemer can only overwrite
+                // rules, so a selector missing from one theme would leave a
+                // stale rule live after a switch.
+                '.card::selected' => new Style(background: 237),
+                '.card::selected:focus' => new Style(background: 238),
             ],
             underlines: [
                 Role::DiagErrorUnderline->name => Sgr::underlineColor(203),

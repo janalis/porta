@@ -18,7 +18,6 @@ use Porta\Widget\Git\GitTabsWidget;
 use Porta\Widget\Git\HistoryListWidget;
 use Porta\Widget\HelpViewerWidget;
 use Porta\Widget\ImageViewerWidget;
-use Porta\Widget\Onboarding\WelcomeWidget;
 use Porta\Widget\ResultsPanelWidget;
 use Porta\Widget\Settings\KeybindingsListWidget;
 use Porta\Widget\Settings\SettingsFormWidget;
@@ -53,7 +52,6 @@ final class MenuOverlayPanesFactory
         private readonly SettingsNavWidget $settingsNav,
         private readonly SettingsFormWidget $settingsForm,
         private readonly KeybindingsListWidget $settingsKeys,
-        private readonly WelcomeWidget $welcome,
         private readonly WorkspaceViews $views,
     ) {}
 
@@ -77,10 +75,8 @@ final class MenuOverlayPanesFactory
             ],
             [$this->gitTabs, $this->gitChanges, $this->gitCommitBox, $this->gitHistory, $this->layout->gitSeparator(), $this->gitDiff],
             [$this->settingsNav, $this->layout->settingsSeparator(), $this->settingsForm, $this->settingsKeys],
-            [$this->welcome],
             fn (): bool => $this->views->isGitOpen(),
             fn (): bool => $this->views->isSettingsOpen(),
-            fn (): bool => $this->views->isWelcomeOpen(),
         );
     }
 }

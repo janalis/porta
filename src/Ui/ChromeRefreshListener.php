@@ -8,6 +8,7 @@ use Porta\Event\CursorShapeChanged;
 use Porta\Event\LocaleChanged;
 use Porta\Event\TabBarPositionChanged;
 use Porta\Event\ThemeChanged;
+use Porta\Overlay\WelcomeModalController;
 use Symfony\Component\EventDispatcher\Attribute\AsEventListener;
 use Symfony\Component\Tui\Tui;
 
@@ -20,6 +21,7 @@ final class ChromeRefreshListener
 {
     public function __construct(
         private readonly ChromeInvalidator $chrome,
+        private readonly WelcomeModalController $welcomeModal,
         private readonly Tui $tui,
     ) {}
 
@@ -27,6 +29,12 @@ final class ChromeRefreshListener
     public function onSettingApplied(ThemeChanged|LocaleChanged|CursorShapeChanged|TabBarPositionChanged $event): void
     {
         $this->chrome->invalidateAll();
+        // The Welcome modal's frame and content are composited spans, not tree
+        // widgets — the cache sweep cannot reach them, so re-compose directly
+        // (a steps rebuild also re-translates its labels on a locale switch).
+        if ($this->welcomeModal->isOpen()) {
+            $this->welcomeModal->refresh();
+        }
         $this->tui->requestRender();
     }
 }

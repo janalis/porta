@@ -34,7 +34,7 @@ use Porta\Lsp\NavigationController;
 use Porta\Lsp\RefactorController;
 use Porta\Lsp\WorkspaceEditor;
 use Porta\Onboarding\OnboardingState;
-use Porta\Onboarding\WelcomeViewController;
+use Porta\Overlay\WelcomeModalController;
 use Porta\Plugin\PluginHost;
 use Porta\Plugin\PluginLifecycle;
 use Porta\Plugin\PluginManager;
@@ -247,7 +247,7 @@ final class Ide
         // Eager: constructing a view controller attaches it to WorkspaceViews
         // (an unreferenced service would otherwise never exist).
         $this->service(SettingsViewController::class);
-        $this->service(WelcomeViewController::class);
+        $this->service(WelcomeModalController::class);
         $this->pluginLifecycle->refreshNav();
 
         $this->localHistory = $this->service(LocalHistoryController::class);

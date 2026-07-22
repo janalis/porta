@@ -8,7 +8,6 @@ use Porta\Support\IntMath;
 use Porta\Widget\ContextMenu;
 use Porta\Widget\MenuBarWidget;
 use Porta\Widget\Render\MenuOverlayHost;
-use Symfony\Component\Tui\Ansi\AnsiUtils;
 use Symfony\Component\Tui\Render\Renderer;
 use Symfony\Component\Tui\Render\WidgetRect;
 use Symfony\Component\Tui\Widget\AbstractWidget;
@@ -166,13 +165,8 @@ final class MenuOverlayController implements FloatingRegions
     }
 
     /**
-     * Translate absolute dropdown segments to $rect-local overlay spans, keeping
-     * only the rows that fall inside the widget and clipping each segment to the
-     * widget's columns. Clipping matters for context menus, whose panel can be
-     * anchored over one pane (e.g. the narrow tree) while spilling toward another;
-     * without it a segment wider than the host widget would blow out its line
-     * width and wreck the layout. Panels that do not overlap the widget at all
-     * (e.g. the editor menu vs. the tree) yield no spans.
+     * Translate absolute dropdown segments to $rect-local overlay spans — the
+     * shared {@see SpanSlicer} math, fed the segments' text rows.
      *
      * @param list<array{segment: string, separator: bool}> $segments
      *
@@ -180,32 +174,12 @@ final class MenuOverlayController implements FloatingRegions
      */
     private function localSpans(array $segments, WidgetRect $rect, int $top, int $anchor, int $panelWidth): array
     {
-        // Horizontal overlap of the panel [anchor, anchor+panelWidth) with the rect.
-        $start = max($anchor, $rect->col);
-        $end = min($anchor + $panelWidth, $rect->col + $rect->columns);
-        if ($start >= $end) {
-            return []; // the panel does not touch this widget
-        }
-        $clipOffset = $start - $anchor;
-        $clipWidth = $end - $start;
-        $localCol = $start - $rect->col;
-        $clipped = $clipOffset > 0 || $clipWidth < $panelWidth;
-
-        $spans = [];
-        foreach ($segments as $i => $segment) {
-            $localRow = $top + $i - $rect->row;
-            if ($localRow >= 0 && $localRow < $rect->rows) {
-                $spans[] = [
-                    'row' => $localRow,
-                    'col' => $localCol,
-                    'width' => $clipWidth,
-                    'segment' => $clipped
-                        ? AnsiUtils::sliceByColumn($segment['segment'], $clipOffset, $clipWidth)
-                        : $segment['segment'],
-                ];
-            }
-        }
-
-        return $spans;
+        return SpanSlicer::localSpans(
+            array_map(static fn (array $segment): string => $segment['segment'], $segments),
+            $rect,
+            $top,
+            $anchor,
+            $panelWidth,
+        );
     }
 }

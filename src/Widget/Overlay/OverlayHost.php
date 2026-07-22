@@ -4,15 +4,17 @@ declare(strict_types=1);
 
 namespace Porta\Widget\Overlay;
 
+use Porta\Overlay\ModalBox;
 use Porta\Search\Everywhere\SearchHit;
 use Porta\Search\Everywhere\SearchRow;
+use Porta\Support\AnsiText;
 use Porta\Ui\CaretVisibility;
 use Porta\Ui\CursorStyle;
 use Porta\Ui\Role;
 use Porta\Ui\TextField;
 use Porta\Ui\Theme\Styles;
 use Porta\Widget\Render\EditorRenderer;
-use Porta\Widget\Render\HeaderRenderer;
+use Porta\Widget\Render\ModalFrame;
 use Porta\Widget\Render\OverlayCompositor;
 use Symfony\Component\Tui\Input\Keybindings;
 
@@ -28,15 +30,15 @@ final class OverlayHost
 {
     /** @var array{title: string, items: list<array{label: string, hint: string, value: string}>, selected: int, hovered: int|null, onPick: callable(string): void}|null */
     private ?array $overlay = null;
-    /** @var array{col: int, width: int, startRow: int, windowStart: int, count: int}|null last-rendered overlay box, for mouse hit-testing */
-    private ?array $overlayBox = null;
+    /** last-rendered overlay box, for mouse hit-testing */
+    private ?ModalBox $overlayBox = null;
     /** @var array{label: string, value: TextField, onSubmit: callable(string): void}|null single-line mini prompt */
     private ?array $prompt = null;
-    /** @var array{col: int, width: int, startRow: int}|null last-rendered (centered) prompt box, for mouse hit-testing */
-    private ?array $promptBox = null;
+    /** last-rendered (centered) prompt box, for mouse hit-testing */
+    private ?ModalBox $promptBox = null;
     private ?SearchModalState $search = null;
-    /** @var array{col: int, width: int, startRow: int, windowStart: int, count: int}|null last-rendered search box, for mouse hit-testing */
-    private ?array $searchBox = null;
+    /** last-rendered search box, for mouse hit-testing */
+    private ?ModalBox $searchBox = null;
 
     private readonly Styles $styles;
 
@@ -106,8 +108,7 @@ final class OverlayHost
             return false;
         }
         $box = $this->promptBox;
-        $onBox = null !== $box && $relRow === $box['startRow'] && $relCol >= $box['col'] && $relCol < ($box['col'] + $box['width']);
-        if (!$onBox) {
+        if (null === $box || $box->closeHit($relRow, $relCol) || !$box->contains($relRow, $relCol)) {
             $this->prompt = null;
             ($this->invalidate)();
         }
@@ -217,7 +218,12 @@ final class OverlayHost
         if (null === $search) {
             return false;
         }
-        $index = $this->boxItemAt($this->searchBox, 2, $relRow, $relCol);
+        if (null !== $this->searchBox && $this->searchBox->closeHit($relRow, $relCol)) {
+            ($search->onClose)();
+
+            return true;
+        }
+        $index = $this->searchBox?->itemAt($relRow, $relCol);
         $hit = null === $index ? null : $search->rows[$index]->hit ?? null;
         if (null !== $hit) {
             ($search->onPick)($hit);
@@ -236,7 +242,7 @@ final class OverlayHost
         if (null === $search) {
             return false;
         }
-        $index = $this->boxItemAt($this->searchBox, 2, $relRow, $relCol);
+        $index = $this->searchBox?->itemAt($relRow, $relCol);
         $hovered = null !== $index && !$search->rows[$index]->isHeader() ? $index : null;
         if ($hovered === $search->hovered) {
             return false;
@@ -353,7 +359,13 @@ final class OverlayHost
         }
 
         $overlay = $this->overlay;
-        $index = $this->boxItemAt($this->overlayBox, 1, $relRow, $relCol);
+        if (null !== $this->overlayBox && $this->overlayBox->closeHit($relRow, $relCol)) {
+            $this->overlay = null;
+            ($this->invalidate)();
+
+            return true;
+        }
+        $index = $this->overlayBox?->itemAt($relRow, $relCol);
         if (null !== $index) {
             $item = $overlay['items'][$index];
             $onPick = $overlay['onPick'];
@@ -381,7 +393,7 @@ final class OverlayHost
         }
 
         $overlay = $this->overlay;
-        $index = $this->boxItemAt($this->overlayBox, 1, $relRow, $relCol);
+        $index = $this->overlayBox?->itemAt($relRow, $relCol);
         if ($index === ($overlay['hovered'] ?? null)) {
             return false;
         }
@@ -390,26 +402,6 @@ final class OverlayHost
         ($this->invalidate)();
 
         return true;
-    }
-
-    /**
-     * Absolute item index at the given relative cell for a rendered box, or null
-     * when outside its item rows. $headerRows is the chrome above the list: 1 for
-     * the list overlay (title), 2 for the search modal (title + query).
-     *
-     * @param array{col: int, width: int, startRow: int, windowStart: int, count: int}|null $box
-     */
-    private function boxItemAt(?array $box, int $headerRows, int $relRow, int $relCol): ?int
-    {
-        if (null === $box || $relCol < $box['col'] || $relCol >= ($box['col'] + $box['width'])) {
-            return null;
-        }
-        $i = $relRow - ($box['startRow'] + $headerRows);
-        if ($i < 0 || $i >= $box['count']) {
-            return null;
-        }
-
-        return $box['windowStart'] + $i;
     }
 
     /**
@@ -514,18 +506,18 @@ final class OverlayHost
 
         if (null !== $this->prompt) {
             $text = ' '.$this->prompt['label'].': '.$this->prompt['value']->value();
-            $width = min($columns, max(30, mb_strwidth($text) + 4));
-            $rendered = ' '.$this->prompt['label'].': '.$this->prompt['value']->render(cursor: $focused);
-            // The prompt box is a titled transient surface like the others, so
-            // it goes through HeaderRenderer: the shared HeaderBar idiom, the
-            // faint Esc dismiss hint, and — the reason a hand-rolled truncate
-            // was wrong here — scrollLineToCaret, which keeps the value's caret
-            // marker on screen instead of clipping the hardware cursor off it.
-            // Centered like the list/search overlays it shares this host with.
-            $box = HeaderRenderer::render($rendered, $width, $this->styles->merge(Role::HeaderBar, Role::Bright), suffix: 'Esc');
-            $col = max(0, intdiv($columns - $width, num2: 2));
-            [$lines, $startRow] = OverlayCompositor::placeCentered($lines, [$box], $col, $width, $columns, $rows);
-            $this->promptBox = ['col' => $col, 'width' => $width, 'startRow' => $startRow];
+            $innerWidth = min($columns - 6, max(30, mb_strwidth($text) + 4));
+            $rendered = ' '.$this->prompt['value']->render(cursor: $focused);
+            // The prompt is a framed 3-row modal like its siblings: the frame's
+            // title bar carries the label, the Esc hint and the ×; the content
+            // row holds the field through scrollLineToCaret, which keeps the
+            // value's caret marker on screen instead of clipping the hardware
+            // cursor off it. Centered like the list/search overlays.
+            $field = $this->styles->merge(Role::HeaderBar, Role::Bright)->apply(AnsiText::padRight(AnsiText::scrollLineToCaret($rendered, $innerWidth), $innerWidth));
+            $framed = [ModalFrame::titleBar($this->prompt['label'], $innerWidth + 2, $this->styles), ...ModalFrame::wrap([$field], $innerWidth, $this->styles)];
+            $col = max(0, intdiv($columns - $innerWidth - 2, num2: 2));
+            [$lines, $startRow] = OverlayCompositor::placeCentered($lines, $framed, $col, $innerWidth + 2, $columns, $rows);
+            $this->promptBox = new ModalBox($startRow, $col, $innerWidth + 2, 3, headerRows: 1, windowStart: 0, count: 1);
         }
 
         return $lines;

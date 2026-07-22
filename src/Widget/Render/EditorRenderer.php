@@ -8,6 +8,7 @@ use Porta\Editor\CompletionBox;
 use Porta\Editor\CompletionItem;
 use Porta\Editor\DiagnosticStyle;
 use Porta\Editor\Document;
+use Porta\Overlay\ModalBox;
 use Porta\Support\AnsiText;
 use Porta\Support\IntMath;
 use Porta\Ui\Glyphs;
@@ -364,16 +365,13 @@ final class EditorRenderer
      * Draw the centred list overlay (recent files, quick fixes, surround, …).
      *
      * Returns the on-screen box geometry so callers can hit-test mouse clicks:
-     * the title sits at row `startRow`; visible item `i` (0-based) at row
-     * `startRow + 1 + i` and maps to absolute item index `windowStart + i`; the
-     * box spans columns `[col, col + width)`; `count` is the number of item rows.
+     * the frame's title bar sits at row `startRow`; visible item `i` (0-based)
+     * at row `startRow + 1 + i`, mapped by {@see ModalBox::itemAt}.
      *
      * @param list<string>                                                                  $lines
      * @param array{title: string, items: list<array{label: string, hint: string, value: string}>, selected: int, hovered: int|null, onPick: callable} $overlay
-     *
-     * @return array{col: int, width: int, startRow: int, windowStart: int, count: int}
      */
-    public static function listOverlay(array &$lines, int $columns, int $rows, array $overlay, Styles $styles): array
+    public static function listOverlay(array &$lines, int $columns, int $rows, array $overlay, Styles $styles): ModalBox
     {
         $items = $overlay['items'];
         $selected = $overlay['selected'];
@@ -382,36 +380,36 @@ final class EditorRenderer
         $windowStart = IntMath::clamp($selected - $maxItems + 1, 0, \count($items) - $maxItems);
         $visible = \array_slice($items, $windowStart, $maxItems);
 
-        $width = mb_strwidth($overlay['title']) + 4 + mb_strwidth(' Esc'); // the title row's dismiss hint needs its own room
+        $width = mb_strwidth($overlay['title']) + 8; // the frame's title-bar chrome (corners, hint, ×) needs its room
         foreach ($visible as $item) {
             $width = max($width, mb_strwidth($item['label']) + mb_strwidth($item['hint']) + 6);
         }
-        $width = min($width, $columns - 4, 70);
-        $col = max(0, intdiv($columns - $width, num2: 2));
+        $width = min($width, $columns - 6, 70); // inner width; the frame adds a rail each side
+        $col = max(0, intdiv($columns - $width - 2, num2: 2));
 
-        $popup = [];
-        $popup[] = HeaderRenderer::render(' '.$overlay['title'], $width, $styles->of(Role::HeaderBar)->withBold(), suffix: 'Esc');
+        $content = [];
         foreach ($visible as $i => $item) {
             $style = $styles->of(self::rowRole($windowStart + $i, $selected, $hovered));
             $hintWidth = mb_strwidth($item['hint']);
             $label = AnsiText::truncate($item['label'], $width - $hintWidth - 3, pad: true);
-            $popup[] = $style->apply(' '.$label.' '.$styles->of(Role::CompletionHint)->apply($item['hint']).' ');
+            $content[] = $style->apply(' '.$label.' '.$styles->of(Role::CompletionHint)->apply($item['hint']).' ');
         }
+        $popup = [ModalFrame::titleBar($overlay['title'], $width + 2, $styles), ...ModalFrame::wrap($content, $width, $styles)];
 
-        return self::placeCenteredPopup($lines, $popup, $col, $width, $columns, $rows, $windowStart, \count($visible));
+        [$lines, $startRow] = OverlayCompositor::placeCentered($lines, $popup, $col, $width + 2, $columns, $rows);
+
+        return new ModalBox($startRow, $col, $width + 2, \count($popup), headerRows: 1, windowStart: $windowStart, count: \count($visible));
     }
 
     /**
-     * Draw the centered Search Everywhere modal: a title bar, a query row, then
-     * the grouped result rows (category headers + hits), windowed around
-     * $selected (a hit-row index into $rowModels). The first list row sits at
-     * `startRow + 2` (after the title and query rows), so a click on screen row R
-     * maps to `windowStart + (R - startRow - 2)` in $rowModels.
+     * Draw the centered Search Everywhere modal: the frame's title bar, a query
+     * row, then the grouped result rows (category headers + hits), windowed
+     * around $selected (a hit-row index into $rowModels). The first list row
+     * sits at `startRow + 2` (after the title bar and query row), mapped by
+     * {@see ModalBox::itemAt}.
      *
      * @param list<string>                                                    $lines
      * @param list<array{header: string|null, label: string, detail: string}> $rowModels a header row when `header` is set
-     *
-     * @return array{col: int, width: int, startRow: int, windowStart: int, count: int}
      */
     public static function searchOverlay(
         array &$lines,
@@ -424,22 +422,21 @@ final class EditorRenderer
         ?int $hovered,
         Styles $styles,
         string $emptyMessage,
-    ): array {
+    ): ModalBox {
         $maxRows = max(1, min(\count($rowModels), $rows - 4, 12));
         $windowStart = IntMath::clamp($selected - $maxRows + 1, 0, max(0, \count($rowModels) - $maxRows));
         $visible = \array_slice($rowModels, $windowStart, $maxRows);
 
         // visibleWidth strips the field's zero-width caret marker, so the width
         // measures the query text alone.
-        $width = max(mb_strwidth($title) + 4, AnsiUtils::visibleWidth($queryField) + 6, 24);
+        $width = max(mb_strwidth($title) + 8, AnsiUtils::visibleWidth($queryField) + 6, 24); // + 8: the frame's title-bar chrome
         foreach ($visible as $row) {
             $width = max($width, mb_strwidth($row['label']) + mb_strwidth($row['detail']) + 6);
         }
-        $width = min($width, $columns - 4, 70);
-        $col = max(0, intdiv($columns - $width, num2: 2));
+        $width = min($width, $columns - 6, 70); // inner width; the frame adds a rail each side
+        $col = max(0, intdiv($columns - $width - 2, num2: 2));
 
         $popup = [
-            HeaderRenderer::render(' '.$title, $width, $styles->of(Role::HeaderBar)->withBold(), suffix: 'Esc'),
             $styles->of(Role::Toolbar)->apply(AnsiText::scrollLineToCaret(' > '.$queryField, $width)),
         ];
         foreach ($visible as $i => $row) {
@@ -464,8 +461,11 @@ final class EditorRenderer
         if ([] === $rowModels && '' !== $emptyMessage) {
             $popup[] = $styles->merge(Role::PopupRow, Role::CompletionHint)->apply(AnsiText::truncate(' '.$emptyMessage, $width, pad: true, ellipsis: ''));
         }
+        $framed = [ModalFrame::titleBar($title, $width + 2, $styles), ...ModalFrame::wrap($popup, $width, $styles)];
 
-        return self::placeCenteredPopup($lines, $popup, $col, $width, $columns, $rows, $windowStart, \count($visible));
+        [$lines, $startRow] = OverlayCompositor::placeCentered($lines, $framed, $col, $width + 2, $columns, $rows);
+
+        return new ModalBox($startRow, $col, $width + 2, \count($framed), headerRows: 2, windowStart: $windowStart, count: \count($visible));
     }
 
     /**
@@ -524,10 +524,4 @@ final class EditorRenderer
      *
      * @return array{col: int, width: int, startRow: int, windowStart: int, count: int}
      */
-    private static function placeCenteredPopup(array &$lines, array $popup, int $col, int $width, int $columns, int $rows, int $windowStart, int $count): array
-    {
-        [$lines, $startRow] = OverlayCompositor::placeCentered($lines, $popup, $col, $width, $columns, $rows);
-
-        return ['col' => $col, 'width' => $width, 'startRow' => $startRow, 'windowStart' => $windowStart, 'count' => $count];
-    }
 }

@@ -5,17 +5,19 @@ declare(strict_types=1);
 namespace Porta\Ui;
 
 use Porta\Git\GitViewController;
-use Porta\Onboarding\WelcomeViewController;
+use Porta\Overlay\WelcomeModalController;
 use Porta\Settings\SettingsViewController;
 use Symfony\Component\Tui\Widget\AbstractWidget;
 
 /**
- * The view-interlock registry: the git and settings view controllers register
- * themselves when constructed, and everything that needs "is a full view
- * open?" asks here instead of holding the controller. Queries answer false
- * until a controller attaches, reproducing the boot-time isset() guards this
- * registry replaces — and breaking the construction cycles between the input
- * stack and the view controllers.
+ * The view-interlock registry: the git and settings view controllers (and the
+ * Welcome modal controller) register themselves when constructed, and
+ * everything that needs "is a full view open?" asks here instead of holding
+ * the controller. Queries answer false until a controller attaches,
+ * reproducing the boot-time isset() guards this registry replaces — and
+ * breaking the construction cycles between the input stack and the view
+ * controllers. The Welcome surface is a floating modal, not a main-area view,
+ * but it keeps the same interlock: opening any surface closes the others.
  */
 final class WorkspaceViews
 {
@@ -23,7 +25,7 @@ final class WorkspaceViews
 
     private ?SettingsViewController $settings = null;
 
-    private ?WelcomeViewController $welcome = null;
+    private ?WelcomeModalController $welcome = null;
 
     public function attachGit(GitViewController $git): void
     {
@@ -35,7 +37,7 @@ final class WorkspaceViews
         $this->settings = $settings;
     }
 
-    public function attachWelcome(WelcomeViewController $welcome): void
+    public function attachWelcome(WelcomeModalController $welcome): void
     {
         $this->welcome = $welcome;
     }
@@ -66,11 +68,13 @@ final class WorkspaceViews
      *
      * Callers that only need "is the editor layout detached?" ask this rather
      * than OR-ing the individual views, so adding a view does not mean hunting
-     * down every guard that would otherwise have to grow a term.
+     * down every guard that would otherwise have to grow a term. The Welcome
+     * modal is deliberately NOT a term: it floats over the editor layout, which
+     * stays mounted (rects live, panes composited) behind it.
      */
     public function isAnyOpen(): bool
     {
-        return $this->isGitOpen() || $this->isSettingsOpen() || $this->isWelcomeOpen();
+        return $this->isGitOpen() || $this->isSettingsOpen();
     }
 
     /** Repopulate the settings view's rows (plugin lists, live values). */
@@ -157,8 +161,8 @@ final class WorkspaceViews
             return true;
         }
 
-        // A single pane: nothing to cycle, but the ring must not fall through
-        // to the detached editor layout.
-        return $this->isWelcomeOpen();
+        // The Welcome modal needs no branch: while it is open the dispatcher's
+        // modal branch swallows every key before the focus ring can move.
+        return false;
     }
 }

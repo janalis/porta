@@ -43,6 +43,45 @@ final class AnsiText
     }
 
     /**
+     * Word-wrap $text into lines of at most $width display columns: greedy on
+     * spaces, hard-breaking any single word wider than a whole line. Meant for
+     * plain text — wrap first, style each returned line after — so an SGR code
+     * can never straddle a break. Empty input yields one empty line, keeping
+     * "at least one row" a guarantee rather than a caller special case.
+     *
+     * @return non-empty-list<string>
+     */
+    public static function wrap(string $text, int $width): array
+    {
+        $width = max(1, $width);
+        $lines = [];
+        $line = '';
+        foreach (explode(' ', $text) as $word) {
+            $candidate = '' === $line ? $word : $line.' '.$word;
+            if (AnsiUtils::visibleWidth($candidate) <= $width) {
+                $line = $candidate;
+                continue;
+            }
+            if ('' !== $line) {
+                $lines[] = $line;
+            }
+            while (AnsiUtils::visibleWidth($word) > $width) {
+                $head = AnsiUtils::sliceByColumn($word, startCol: 0, length: $width);
+                if ('' === $head) {
+                    break; // a single glyph wider than the whole line; the caller's clip handles it
+                }
+                $lines[] = $head;
+                // Plain text, so the byte length of the head is exactly what was consumed.
+                $word = substr($word, \strlen($head));
+            }
+            $line = $word;
+        }
+        $lines[] = $line;
+
+        return $lines;
+    }
+
+    /**
      * The $width-column window of $text that keeps display column $caretCol
      * visible, with $marker inserted exactly at the caret. Used to horizontally
      * scroll a single-line input so its (zero-width) cursor marker never falls

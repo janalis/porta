@@ -108,4 +108,38 @@ final class ListSelectionTest extends TestCase
         $this->assertTrue($list->selectIfChanged(3));
         $this->assertSame(3, $list->selected());
     }
+
+    public function testFollowHeightsKeepsAsManyItemsAboveTheSelectionAsFit(): void
+    {
+        $list = new ListSelection();
+        $heights = [3, 3, 3, 3];
+
+        // Everything fits: scroll untouched.
+        $list->select(1);
+        $this->assertSame(0, $list->followHeights($heights, 12));
+
+        // Selecting the last with room for two cards: scroll to the third.
+        $list->select(3);
+        $this->assertSame(2, $list->followHeights($heights, 7));
+    }
+
+    public function testFollowHeightsScrollsBackUpWhenTheSelectionMovesAboveTheWindow(): void
+    {
+        $list = new ListSelection();
+        $heights = [3, 3, 3, 3];
+        $list->select(3);
+        $list->followHeights($heights, 7); // window starts at 2
+
+        $list->select(0);
+        $this->assertSame(0, $list->followHeights($heights, 7));
+    }
+
+    /** A selection taller than the viewport pins the window to itself. */
+    public function testFollowHeightsPinsAnOversizedSelection(): void
+    {
+        $list = new ListSelection();
+        $list->select(2);
+
+        $this->assertSame(2, $list->followHeights([2, 2, 9], 5));
+    }
 }

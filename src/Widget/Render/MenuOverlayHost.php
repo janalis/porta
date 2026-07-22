@@ -17,4 +17,12 @@ interface MenuOverlayHost
      * @param list<array{row: int, col: int, width: int, segment: string}> $spans
      */
     public function setMenuOverlay(array $spans): void;
+
+    /**
+     * Floating modal spans (the Welcome modal), composited *under* the menu
+     * spans so an open dropdown still renders above the modal.
+     *
+     * @param list<array{row: int, col: int, width: int, segment: string}> $spans
+     */
+    public function setModalOverlay(array $spans): void;
 }

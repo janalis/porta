@@ -5,8 +5,10 @@ declare(strict_types=1);
 namespace Porta\Input;
 
 use Porta\Config\CommandRegistry;
+use Porta\Overlay\WelcomeModalController;
 use Porta\Widget\CodeEditorWidget;
 use Porta\Widget\ContextMenu;
+use Porta\Widget\MenuBarWidget;
 use Symfony\Component\Tui\Event\InputEvent;
 use Symfony\Component\Tui\Input\Keybindings;
 use Symfony\Component\Tui\Tui;
@@ -23,6 +25,8 @@ final class InputDispatcher
         private readonly Tui $tui,
         private readonly MouseRouter $mouseRouter,
         private readonly ContextMenu $contextMenu,
+        private readonly MenuBarWidget $menuBar,
+        private readonly WelcomeModalController $welcomeModal,
         private readonly CodeEditorWidget $editor,
         private readonly CommandRegistry $commands,
         private readonly Keybindings $keybindings,
@@ -45,6 +49,19 @@ final class InputDispatcher
         if ($this->contextMenu->isOpen()) {
             $event->stopPropagation();
             $this->contextMenu->handleInput($data);
+            $this->tui->requestRender();
+
+            return;
+        }
+
+        // The Welcome modal captures the keyboard whole while open: its widget
+        // is never mounted, so no key may fall through to the focused pane
+        // beneath the box. An open app menu wins, though — it is reachable by
+        // mouse over the modal, and its keys (arrows, Esc) flow through the
+        // focused-widget path below, so swallowing here would trap it open.
+        if ($this->welcomeModal->isOpen() && !$this->menuBar->isOpen()) {
+            $event->stopPropagation();
+            $this->welcomeModal->handleKey($data);
             $this->tui->requestRender();
 
             return;

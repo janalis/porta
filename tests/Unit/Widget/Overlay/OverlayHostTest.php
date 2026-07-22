@@ -85,7 +85,8 @@ final class OverlayHostTest extends TestCase
         // The prompt still swallows and edits input.
         $this->assertTrue($host->handleInput('4', $this->keybindings()));
         $lines = $host->composite(['', ''], 40, 2, CaretVisibility::Shown);
-        $this->assertStringContainsString('Go to line: 4', $lines[0]);
+        $this->assertStringContainsString('Go to line', AnsiUtils::stripAnsiCodes($lines[0]), 'the label is the frame title');
+        $this->assertStringContainsString('4', AnsiUtils::stripAnsiCodes($lines[1]), 'the value on the field row');
     }
 
     public function testPromptBackspaceAndCancel(): void
@@ -116,12 +117,14 @@ final class OverlayHostTest extends TestCase
     {
         $host = $this->host();
         $host->openPrompt('Go to line', '', static fn () => null);
-        $host->composite(['', ''], 40, 2, CaretVisibility::Shown); // centered box: 2 rows → top row, width 30 at col 5
+        $host->composite(['', ''], 40, 2, CaretVisibility::Shown); // framed box: rows 0-2, inner width 30 at col 4
 
-        $this->assertTrue($host->promptClickAt(0, 5), 'a click on the centered prompt box is consumed');
+        $this->assertTrue($host->promptClickAt(0, 5), 'a click on the frame title bar is consumed');
         $this->assertTrue($host->isPromptOpen(), 'and does not dismiss it — the caret stays');
+        $this->assertTrue($host->promptClickAt(1, 5), 'a click on the field row is consumed');
+        $this->assertTrue($host->isPromptOpen());
 
-        $this->assertTrue($host->promptClickAt(1, 5), 'a click off the prompt row is consumed');
+        $this->assertTrue($host->promptClickAt(3, 5), 'a click below the box is consumed');
         $this->assertFalse($host->isPromptOpen(), 'and dismisses it, like every sibling overlay');
     }
 
@@ -131,8 +134,45 @@ final class OverlayHostTest extends TestCase
         $host->openPrompt('Go to line', '', static fn () => null);
         $host->composite(['', ''], 40, 2, CaretVisibility::Shown);
 
-        $this->assertTrue($host->promptClickAt(0, 35), 'row 0 but past the box width is outside');
+        $this->assertTrue($host->promptClickAt(0, 37), 'row 0 but past the box width is outside');
         $this->assertFalse($host->isPromptOpen());
+    }
+
+    public function testThePromptCloseButtonDismisses(): void
+    {
+        $host = $this->host();
+        $host->openPrompt('Go to line', '', static fn () => null);
+        $host->composite(['', ''], 40, 2, CaretVisibility::Shown); // box [4, 36): × at col 34
+
+        $this->assertTrue($host->promptClickAt(0, 34), 'the title bar ×');
+        $this->assertFalse($host->isPromptOpen());
+    }
+
+    public function testTheListOverlayCloseButtonDismisses(): void
+    {
+        $host = $this->host();
+        $host->openList('Title', [['label' => 'a', 'hint' => '', 'value' => 'A']], static fn () => null);
+        $host->composite(array_fill(0, count: 20, value: str_repeat(' ', times: 80)), 80, 20, CaretVisibility::Shown);
+        $box = new \ReflectionProperty($host, 'overlayBox')->getValue($host);
+        \assert($box instanceof \Porta\Overlay\ModalBox);
+
+        $this->assertTrue($host->clickAt($box->startRow, $box->col + $box->width - 2), 'the title bar ×');
+        $this->assertFalse($host->isListOpen());
+    }
+
+    public function testTheSearchModalCloseButtonCloses(): void
+    {
+        $host = $this->host();
+        $closed = false;
+        $host->openSearch('Search', static fn () => null, static fn () => null, static function () use (&$closed): void {
+            $closed = true;
+        });
+        $host->composite(array_fill(0, count: 20, value: str_repeat(' ', times: 80)), 80, 20, CaretVisibility::Shown);
+        $box = new \ReflectionProperty($host, 'searchBox')->getValue($host);
+        \assert($box instanceof \Porta\Overlay\ModalBox);
+
+        $this->assertTrue($host->searchClickAt($box->startRow, $box->col + $box->width - 2), 'the title bar ×');
+        $this->assertTrue($closed);
     }
 
     public function testCompositeRecordsTheBoxForHitTesting(): void
@@ -480,7 +520,8 @@ final class OverlayHostTest extends TestCase
         $joined = AnsiUtils::stripAnsiCodes(implode("\n", $lines));
 
         $this->assertStringNotContainsString(AnsiUtils::CURSOR_MARKER_PREFIX, implode('', $lines));
-        $this->assertStringContainsString('Go to line: 42', $joined);
+        $this->assertStringContainsString('Go to line', $joined, 'the label titles the frame');
+        $this->assertStringContainsString('42', $joined, 'the value on the field row');
         $this->assertStringContainsString('Esc', $joined);
     }
 

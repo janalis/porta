@@ -3983,8 +3983,10 @@ final class IdeEdgeCasesTest extends TestCase
                     }
                 },
                 700 => function ($tui, $terminal): void {
-                    $tui->tick();
-                    $this->assertStringContainsString('hello-term', AnsiUtils::stripAnsiCodes($terminal->getOutput()));
+                    // Await the shell's echo: spawning /bin/sh and round-tripping
+                    // the command is real subprocess latency, and a fixed delay
+                    // races it under pcov + machine load.
+                    $this->await(static fn (): bool => str_contains(AnsiUtils::stripAnsiCodes($terminal->getOutput()), 'hello-term'), what: 'the shell echo');
                     // Hide the dock; the session stays alive and the editor regains focus.
                     $tui->handleInput("\x1b[96;5u");
                     $this->assertFalse($tui->getById('terminal')->isVisible());
@@ -4002,8 +4004,12 @@ final class IdeEdgeCasesTest extends TestCase
                 },
                 1000 => function ($tui, $terminal): void {
                     // The shell's exit ripples through PTY EOF + reap; await it
-                    // instead of racing a fixed delay under machine load.
-                    $this->await(static fn (): bool => str_contains(AnsiUtils::stripAnsiCodes($terminal->getOutput()), Glyphs::SESSION_STOPPED));
+                    // instead of racing a fixed delay under machine load. The
+                    // budget is doubled: this is the suite's longest subprocess
+                    // chain (spawn → echo → exit → EOF → reap → strip repaint)
+                    // and the default 10s has timed out under pcov + full-core
+                    // paratest load. A genuinely stuck exit still throws.
+                    $this->await(static fn (): bool => str_contains(AnsiUtils::stripAnsiCodes($terminal->getOutput()), Glyphs::SESSION_STOPPED), timeout: 20.0, what: 'the exited-session marker');
                     $tui->tick();
                     $out = AnsiUtils::stripAnsiCodes($terminal->getOutput());
                     $this->assertStringContainsString(Glyphs::SESSION_STOPPED, $out, 'the exited session shows the ○ stopped marker');
@@ -6523,9 +6529,9 @@ final class IdeEdgeCasesTest extends TestCase
                     $rect = $renderer->getWidgetRect($editor);
                     $host = new \ReflectionProperty($editor, 'overlayHost')->getValue($editor);
                     $box = new \ReflectionProperty($host, 'overlayBox')->getValue($host);
-                    // Hover then click item index 1 ("Discard & Close"); title is row startRow.
-                    $row = $rect->row + $box['startRow'] + 2;
-                    $col = $rect->col + $box['col'] + 1;
+                    // Hover then click item index 1 ("Discard & Close"); the frame's title bar is row startRow.
+                    $row = $rect->row + $box->startRow + 2;
+                    $col = $rect->col + $box->col + 2; // past the frame rail
                     $tui->handleInput(\sprintf("\x1b[<35;%d;%dM", $col + 1, $row + 1)); // hover
                     $tui->handleInput(\sprintf("\x1b[<0;%d;%dM", $col + 1, $row + 1)); // click
                 },

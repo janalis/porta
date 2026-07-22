@@ -76,6 +76,10 @@ final class LightTheme
                 // the unfocused shade, the :focus variant merges over it.
                 '.list::selected' => new Style(background: 253),
                 '.list::selected:focus' => new Style(background: 111, color: 16, bold: true),
+                // Card selection: subtle tint only — see DarkTheme for why the
+                // rules exist in every theme and stay off the SelectedRow roles.
+                '.card::selected' => new Style(background: 254),
+                '.card::selected:focus' => new Style(background: 252),
             ],
             underlines: [
                 Role::DiagErrorUnderline->name => Sgr::underlineColor(160),

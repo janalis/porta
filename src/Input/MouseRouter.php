@@ -108,7 +108,6 @@ final class MouseRouter
         // them so no stale-rect branch routes events to an invisible widget.
         $gitViewOpen = $this->views->isGitOpen();
         $settingsViewOpen = $this->views->isSettingsOpen();
-        $welcomeViewOpen = $this->views->isWelcomeOpen();
         if ($this->views->isAnyOpen()) {
             $treeRect = null;
             $tabsRect = null;
@@ -123,6 +122,13 @@ final class MouseRouter
         $settingsLeftRect = $settingsViewOpen ? $this->settings->leftRect() : null;
 
         if ($mouse->wheel) {
+            // The Welcome modal is app-modal: every wheel is its while open.
+            if ($this->welcome->isModalOpen()) {
+                $this->welcome->handleWheel($mouse);
+                $this->tui->requestRender();
+
+                return;
+            }
             $this->handleWheel($mouse, $treeRect, $tabsRect, $editorRect);
 
             return;
@@ -134,7 +140,6 @@ final class MouseRouter
             $this->hover->handle($mouse, $editorRect, match (true) {
                 $settingsViewOpen => ActiveView::Settings,
                 $gitViewOpen => ActiveView::Git,
-                $welcomeViewOpen => ActiveView::Welcome,
                 default => ActiveView::Editor,
             });
 
@@ -149,14 +154,18 @@ final class MouseRouter
             || $this->continueTabDrag($mouse, $tabsRect)
             || $this->continueDockTabDrag($mouse)
             || $this->git->continueDiffDrag($mouse)
+            || $this->welcome->continueDrag($mouse)
             || $this->layout->continueResizeDrag($mouse, $treeRect, $gitLeftRect, $settingsLeftRect)
         ) {
             return;
         }
 
-        // Right-click opens a context menu for whichever pane is under the pointer.
+        // Right-click opens a context menu for whichever pane is under the pointer
+        // — swallowed while the Welcome modal is open (no context menus over it).
         if ($mouse->isRightPress()) {
-            $this->handleRightPress($mouse, $treeRect, $tabsRect, $editorRect);
+            if (!$this->welcome->isModalOpen()) {
+                $this->handleRightPress($mouse, $treeRect, $tabsRect, $editorRect);
+            }
 
             return;
         }
@@ -170,6 +179,7 @@ final class MouseRouter
         $this->tabDragging = false;
         $this->dockTabDrag = null;
         $this->git->cancelDrag();
+        $this->welcome->cancelDrag();
         $this->layout->cancelDrags();
 
         if ($this->handleModalPopupClick($mouse, $editorRect, $this->views->isAnyOpen() ? FullView::Open : FullView::Closed)) {
@@ -337,7 +347,7 @@ final class MouseRouter
 
             return;
         }
-        if (!$this->git->scrollVertical($mouse, $step) && !$this->settings->scrollVertical($mouse) && !$this->welcome->scrollVertical($mouse)) {
+        if (!$this->git->scrollVertical($mouse, $step) && !$this->settings->scrollVertical($mouse)) {
             // No full view's pane is under the pointer.
             return;
         }
@@ -535,6 +545,12 @@ final class MouseRouter
             return true;
         }
 
+        // The Welcome modal, after the menus (the menu bar stays reachable over
+        // it): ×/drag/select inside the box, swallowed everywhere else.
+        if ($this->welcome->tryModalClick($mouse)) {
+            return true;
+        }
+
         return false;
     }
 
@@ -545,9 +561,6 @@ final class MouseRouter
             return;
         }
         if ($this->settings->tryPaneClick($mouse)) {
-            return;
-        }
-        if ($this->welcome->tryPaneClick($mouse)) {
             return;
         }
         if ($this->tryOverlayPanelClick($mouse)) {

@@ -728,8 +728,8 @@ final class CodeEditorWidgetTest extends TestCase
         $box = $editor->findModal()->lastBox();
         $this->assertNotNull($box);
         // Hover the second match row (the first is already selected), then click the first → jump.
-        $this->assertTrue($editor->handlePopupHover($box['previewRow'] + 2, $box['col'] + 3));
-        $this->assertTrue($editor->handlePopupClick($box['previewRow'] + 1, $box['col'] + 3));
+        $this->assertTrue($editor->handlePopupHover($box->windowTop() + 2, $box->col + 3));
+        $this->assertTrue($editor->handlePopupClick($box->windowTop() + 1, $box->col + 3));
         $this->assertSame(['src/A.php', 4], $jumped);
     }
 
@@ -893,7 +893,7 @@ final class CodeEditorWidgetTest extends TestCase
             $submitted = $v;
         });
         $rendered = $editor->render(new RenderContext(80, 20));
-        $this->assertStringContainsString('Go to line:', AnsiUtils::stripAnsiCodes(implode("\n", $rendered)), 'the centered prompt renders');
+        $this->assertStringContainsString('Go to line', AnsiUtils::stripAnsiCodes(implode("\n", $rendered)), 'the centered prompt renders');
         $this->assertExactWidth($rendered, 80);
 
         $editor->handleInput('4');

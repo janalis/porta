@@ -6,6 +6,8 @@ namespace Porta\Tests\E2e;
 
 use PHPUnit\Framework\TestCase;
 use Porta\Onboarding\OnboardingState;
+use Porta\Overlay\DropdownRegion;
+use Porta\Overlay\WelcomeModalController;
 use Porta\Tests\Support\RunsIde;
 use Porta\Tests\Support\TempProject;
 use Symfony\Component\Tui\Ansi\AnsiUtils;
@@ -45,6 +47,21 @@ final class WelcomeScreenTest extends TestCase
         putenv('PORTA_EMBEDDED_PLUGINS='.($this->savedEmbedded ?? ''));
     }
 
+    /**
+     * The open modal's screen box. The widget is never mounted, so there is no
+     * rect to hit-test — the controller's region is the mouse-space anchor,
+     * reached through the Ide's service-locator boundary like the other
+     * reflection seams.
+     */
+    private function modalRegion(object $ide): DropdownRegion
+    {
+        $locator = new \ReflectionProperty($ide, 'locator')->getValue($ide);
+        $region = $locator->get(WelcomeModalController::class)->region();
+        $this->assertNotNull($region, 'the Welcome modal is open and placed');
+
+        return $region;
+    }
+
     public function testAFreshProjectOpensTheWelcomeScreen(): void
     {
         $project = new TempProject(['a.php' => "<?php\nreturn 1;\n"]);
@@ -56,10 +73,13 @@ final class WelcomeScreenTest extends TestCase
         ]);
 
         $screen = AnsiUtils::stripAnsiCodes($terminal->getOutput());
-        $this->assertStringContainsString('Welcome', $screen);
-        $this->assertStringContainsString('0 of 2 done', $screen, 'the title counts progress');
+        $this->assertStringContainsString('Welcome to Porta', $screen, 'the hero greeting');
+        $this->assertStringContainsString('0 of 4 done', $screen, 'the title counts the checkable steps');
         $this->assertStringContainsString('Syntax highlighting', $screen);
         $this->assertStringContainsString('PHP language server', $screen);
+        $this->assertStringContainsString('Code style fixer', $screen);
+        $this->assertStringContainsString('Static analysis', $screen);
+        $this->assertStringContainsString('Read the guide', $screen);
     }
 
     /** Running the first step enables the engine and persists the choice. */
@@ -120,7 +140,7 @@ final class WelcomeScreenTest extends TestCase
             },
         ]);
 
-        $this->assertStringNotContainsString('of 2 done', AnsiUtils::stripAnsiCodes($second->getOutput()));
+        $this->assertStringNotContainsString('of 4 done', AnsiUtils::stripAnsiCodes($second->getOutput()));
     }
 
     /**
@@ -136,15 +156,16 @@ final class WelcomeScreenTest extends TestCase
 
         $this->runIde($project, $project->path('a.php'), [
             120 => function ($tui, $terminal, $ide) use ($project): void {
-                $renderer = new \ReflectionProperty($ide, 'renderer')->getValue($ide);
-                $rect = $renderer->getWidgetRect($tui->getById('welcome'));
-                $this->assertNotNull($rect, 'the Welcome pane has a rect to click');
+                $this->frame($tui); // the modal lays out from the first frame's rects
+                $region = $this->modalRegion($ide);
 
-                // Pane rows: 0 title bar, 1-2 first card, 3 spacer, 4-5 second
-                // card. SGR coordinates are 1-based, hence the +1.
-                $row = $rect->row + 4 + 1;
-                $tui->handleInput(\sprintf("\x1b[<0;%d;%dM", $rect->col + 3, $row));
-                $tui->handleInput(\sprintf("\x1b[<0;%d;%dm", $rect->col + 3, $row));
+                // Box rows: 0 frame title bar, 1-3 hero (the content window is
+                // ≥ HERO_MIN_ROWS tall), 4-5 first card, 6 spacer, 7-8 second
+                // card. SGR coordinates are 1-based, hence the +1; the +4
+                // column clears the left rail and the content margin.
+                $row = $region->top + 7 + 1;
+                $tui->handleInput(\sprintf("\x1b[<0;%d;%dM", $region->col + 4, $row));
+                $tui->handleInput(\sprintf("\x1b[<0;%d;%dm", $region->col + 4, $row));
                 $tui->tick();
 
                 $this->assertFileDoesNotExist($project->path('.porta.json'), 'a click must not run a step');
@@ -164,18 +185,193 @@ final class WelcomeScreenTest extends TestCase
         ]);
     }
 
+    /**
+     * Reopening from the menu resets the transient view state: the widget
+     * outlives the view, so without the reset a reopen would resume on
+     * whatever step the last visit left selected.
+     */
+    public function testReopeningFromTheMenuResetsToTheFirstPendingStep(): void
+    {
+        $project = new TempProject(['a.php' => "<?php\nreturn 1;\n"]);
+
+        $this->runIde($project, $project->path('a.php'), [
+            120 => function ($tui, $terminal, $ide) use ($project): void {
+                $tui->handleInput("\r"); // enable highlighting (step 1)
+                $tui->tick();
+                $tui->handleInput("\x1b"); // back to the editor
+                $tui->tick();
+
+                $ide->getCommands()->run('ide_welcome'); // Help → Welcome
+                $tui->tick();
+                $tui->handleInput("\r");
+                $tui->tick();
+
+                $config = json_decode((string) file_get_contents($project->path('.porta.json')), associative: true);
+                $this->assertSame(
+                    ['tempest', 'phpantom'],
+                    \is_array($config) ? $config['enabledPlugins'] ?? null : null,
+                    'the reopen landed on the first still-pending step, the language server',
+                );
+            },
+        ]);
+    }
+
+    /**
+     * The third card is the code style fixer, and Enter enables it for real.
+     * The TempProject has no vendor/bin, so this doubles as the deterministic
+     * mago-absent branch: the step targets php-cs-fixer on every machine
+     * regardless of any globally installed mago ({@see MagoDetector}).
+     */
+    public function testTheCodeStyleStepEnablesItsPlugin(): void
+    {
+        $project = new TempProject(['a.php' => "<?php\nreturn 1;\n"]);
+
+        $this->runIde($project, $project->path('a.php'), [
+            120 => function ($tui, $terminal) use ($project): void {
+                $tui->handleInput("\x1b[B");
+                $tui->handleInput("\x1b[B"); // down to the third card
+                $tui->handleInput("\r");
+                $tui->tick();
+
+                $config = json_decode((string) file_get_contents($project->path('.porta.json')), associative: true);
+                $this->assertSame(
+                    ['php-cs-fixer'],
+                    \is_array($config) ? $config['enabledPlugins'] ?? null : null,
+                    'the choice persisted',
+                );
+                $this->assertStringContainsString(
+                    'Plugin "php-cs-fixer" enabled',
+                    AnsiUtils::stripAnsiCodes($terminal->getOutput()),
+                );
+            },
+        ]);
+    }
+
+    /**
+     * A project shipping mago gets it as both tool steps' target: one Enter on
+     * the fixer card enables the one plugin and completes both steps — the
+     * observable proof they share it.
+     */
+    public function testTheToolStepsTargetMagoWhenTheProjectShipsIt(): void
+    {
+        $project = new TempProject(['a.php' => "<?php\nreturn 1;\n"]);
+        chmod($project->write('vendor/bin/mago', "#!/bin/sh\nexit 0\n"), 0o755);
+
+        $this->runIde($project, $project->path('a.php'), [
+            120 => function ($tui, $terminal) use ($project): void {
+                $tui->handleInput("\x1b[B");
+                $tui->handleInput("\x1b[B"); // down to the third card
+                $tui->handleInput("\r");
+                $tui->tick();
+
+                $config = json_decode((string) file_get_contents($project->path('.porta.json')), associative: true);
+                $this->assertSame(
+                    ['mago'],
+                    \is_array($config) ? $config['enabledPlugins'] ?? null : null,
+                    'one enable, one plugin',
+                );
+                $screen = AnsiUtils::stripAnsiCodes($terminal->getOutput());
+                $this->assertStringContainsString('Plugin "mago" enabled', $screen);
+                $this->assertStringContainsString('2 of 4 done', $screen, 'the analysis step completed with the fixer step');
+            },
+        ]);
+    }
+
+    /** The guide step is a link: it closes the view and opens the built-in docs. */
+    public function testTheGuideStepOpensTheHelpViewer(): void
+    {
+        $docs = new TempProject(['README.md' => "# Guides\n\nwelcome prose here\n"]);
+        $project = new TempProject(['a.php' => "<?php\nreturn 1;\n"]);
+
+        $terminal = $this->runIde(
+            $project,
+            $project->path('a.php'),
+            [
+                120 => static function ($tui): void {
+                    for ($i = 0; $i < 4; ++$i) {
+                        $tui->handleInput("\x1b[B"); // down to the last card
+                    }
+                    $tui->handleInput("\r");
+                    $tui->tick();
+                },
+            ],
+            docsDir: $docs->dir,
+        );
+
+        $screen = AnsiUtils::stripAnsiCodes($terminal->getOutput());
+        $this->assertStringContainsString('Guides', $screen, 'the help viewer took the main area');
+        $this->assertStringContainsString('welcome prose here', $screen, 'with the README rendered');
+    }
+
+    /**
+     * The modal behaviors, end to end through the real mouse routing: a
+     * title-bar drag moves the box, an outside click and a right-press are
+     * swallowed without dismissing, the app menu still opens (and renders
+     * above the box), and the title bar's × closes for real.
+     */
+    public function testTheModalDragsSwallowsOutsideClicksAndClosesOnTheCross(): void
+    {
+        $project = new TempProject(['a.php' => "<?php\nreturn 1;\n"]);
+
+        $terminal = $this->runIde($project, $project->path('a.php'), [
+            120 => function ($tui, $terminal, $ide): void {
+                $this->frame($tui);
+                $region = $this->modalRegion($ide);
+
+                // A right-press over the box is swallowed: no context menu opens.
+                $tui->handleInput(\sprintf("\x1b[<2;%d;%dM", $region->col + 4, $region->top + 5 + 1));
+                $tui->tick();
+                $this->assertTrue($this->modalRegion($ide) instanceof \Porta\Overlay\DropdownRegion, 'still open');
+
+                // A click outside the box (the tree pane, top-left) is swallowed too.
+                $tui->handleInput("\x1b[<0;2;3M");
+                $tui->handleInput("\x1b[<0;2;3m");
+                $tui->tick();
+                $this->assertNotNull($this->modalRegion($ide), 'an outside click does not dismiss');
+
+                // Drag by the title bar: press, move down two rows, release.
+                $tui->handleInput(\sprintf("\x1b[<0;%d;%dM", $region->col + 3, $region->top + 1));
+                $tui->handleInput(\sprintf("\x1b[<32;%d;%dM", $region->col + 3, $region->top + 2 + 1));
+                $tui->handleInput(\sprintf("\x1b[<0;%d;%dm", $region->col + 3, $region->top + 2 + 1));
+                $tui->tick();
+                $moved = $this->modalRegion($ide);
+                $this->assertSame($region->top + 2, $moved->top, 'the box followed the drag');
+
+                // The app menu opens over the modal and its dropdown renders above it.
+                $tui->handleInput("\x1b[<0;2;1M"); // the File title on the menu bar
+                $tui->tick();
+                $this->frame($tui);
+                $this->assertStringContainsString('Save File', AnsiUtils::stripAnsiCodes($terminal->getOutput()), 'the dropdown rendered above the modal');
+                $tui->handleInput("\x1b"); // close the menu again
+                $tui->tick();
+
+                // The title bar's × closes the modal for real.
+                $after = $this->modalRegion($ide);
+                $tui->handleInput(\sprintf("\x1b[<0;%d;%dM", $after->col + $after->width - 2 + 1, $after->top + 1));
+                $tui->tick();
+            },
+            240 => function ($tui, $terminal, $ide): void {
+                $locator = new \ReflectionProperty($ide, 'locator')->getValue($ide);
+                $this->assertFalse($locator->get(WelcomeModalController::class)->isOpen(), 'the × closed the modal');
+                $this->assertSame('editor', $tui->getFocus()?->getId(), 'focus returned to the editor');
+            },
+        ]);
+
+        $this->assertStringContainsString('Welcome to Porta', AnsiUtils::stripAnsiCodes($terminal->getOutput()));
+    }
+
     public function testHoveringAndWheelingReachThePane(): void
     {
         $project = new TempProject(['a.php' => "<?php\nreturn 1;\n"]);
 
         $terminal = $this->runIde($project, $project->path('a.php'), [
             120 => function ($tui, $t, $ide): void {
-                $renderer = new \ReflectionProperty($ide, 'renderer')->getValue($ide);
-                $rect = $renderer->getWidgetRect($tui->getById('welcome'));
+                $this->frame($tui); // the modal lays out from the first frame's rects
+                $region = $this->modalRegion($ide);
 
-                $step = $rect->row + 1 + 1; // a step row; SGR is 1-based
-                $tui->handleInput(\sprintf("\x1b[<35;%d;%dM", $rect->col + 3, $step)); // hover
-                $tui->handleInput(\sprintf("\x1b[<65;%d;%dM", $rect->col + 3, $step)); // wheel down
+                $step = $region->top + 4 + 1; // the first card's title row (after the hero); SGR is 1-based
+                $tui->handleInput(\sprintf("\x1b[<35;%d;%dM", $region->col + 4, $step)); // hover
+                $tui->handleInput(\sprintf("\x1b[<65;%d;%dM", $region->col + 4, $step)); // wheel down
                 $tui->tick();
 
                 $this->addToAssertionCount(1); // reaching here without an exception is the assertion

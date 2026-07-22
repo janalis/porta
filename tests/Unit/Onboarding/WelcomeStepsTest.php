@@ -5,13 +5,16 @@ declare(strict_types=1);
 namespace Porta\Tests\Unit\Onboarding;
 
 use PHPUnit\Framework\TestCase;
+use Porta\Config\CommandRegistry;
 use Porta\Config\SettingsHighlightController;
 use Porta\Highlight\NoHighlightPlugins;
 use Porta\Highlight\SyntaxHighlightProvider;
 use Porta\Highlight\SyntaxHighlightProviderSource;
 use Porta\I18n\Translator;
+use Porta\Onboarding\MagoDetector;
 use Porta\Onboarding\WelcomeSteps;
 use Porta\Tests\Support\FakePluginLifecycle;
+use Porta\Tests\Support\TempProject;
 
 /**
  * The setup steps: what they report as done, and that running one delegates to
@@ -20,10 +23,26 @@ use Porta\Tests\Support\FakePluginLifecycle;
 final class WelcomeStepsTest extends TestCase
 {
     private FakePluginLifecycle $lifecycle;
+    private CommandRegistry $commands;
+
+    /** The project the detector probes — mago-less by default, so every pre-mago expectation holds unchanged. */
+    private TempProject $project;
+
+    /** @var list<string> command ids run through the registry */
+    private array $commandsRun = [];
 
     protected function setUp(): void
     {
         $this->lifecycle = new FakePluginLifecycle();
+        $this->project = new TempProject();
+        $this->commands = new CommandRegistry();
+        $this->commands->add(
+            'ide_help',
+            function (): void {
+                $this->commandsRun[] = 'ide_help';
+            },
+            label: 'Help',
+        );
     }
 
     private function stepsWithEngine(): WelcomeSteps
@@ -38,7 +57,13 @@ final class WelcomeStepsTest extends TestCase
 
     private function build(SyntaxHighlightProviderSource $source): WelcomeSteps
     {
-        return new WelcomeSteps(new Translator('en'), $source, $this->lifecycle);
+        return new WelcomeSteps(new Translator('en'), $source, $this->lifecycle, $this->commands, new MagoDetector($this->project->path()));
+    }
+
+    /** Ship an executable mago in the project, flipping both tool steps' target. */
+    private function withMago(): void
+    {
+        chmod($this->project->write('vendor/bin/mago', "#!/bin/sh\nexit 0\n"), 0o755);
     }
 
     /** A source with one real backend, i.e. highlighting is configured. */
@@ -69,11 +94,11 @@ final class WelcomeStepsTest extends TestCase
         };
     }
 
-    public function testOffersHighlightingAndALanguageServer(): void
+    public function testOffersTheSetupStepsInOrder(): void
     {
         $titles = array_map(static fn ($step): string => $step->title, $this->steps()->all());
 
-        $this->assertSame(['Syntax highlighting', 'PHP language server'], $titles);
+        $this->assertSame(['Syntax highlighting', 'PHP language server', 'Code style fixer', 'Static analysis', 'Read the guide'], $titles);
     }
 
     /** With no backend loaded the highlighting step is the thing to do. */
@@ -94,21 +119,31 @@ final class WelcomeStepsTest extends TestCase
         $this->assertSame([[SettingsHighlightController::BUNDLED_ENGINE, true]], $this->lifecycle->toggled);
     }
 
-    /** Installed but not opted into is still pending — bundled plugins are opt-in. */
-    public function testTheLanguageServerIsPendingWhenTheBundledPluginIsNotListed(): void
+    /**
+     * Installed but not opted into is still pending — bundled plugins are opt-in.
+     * The three plugin steps share the predicate, so all three are asserted.
+     */
+    public function testThePluginStepsArePendingWhenTheirPluginsAreNotListed(): void
     {
-        $this->assertFalse($this->steps()->all()[1]->isDone());
+        $steps = $this->steps()->all();
+
+        $this->assertFalse($steps[1]->isDone());
+        $this->assertFalse($steps[2]->isDone());
+        $this->assertFalse($steps[3]->isDone());
     }
 
-    public function testTheLanguageServerIsDoneWhenItsPluginIsListedAndNotDisabled(): void
+    public function testThePluginStepsAreDoneWhenTheirPluginsAreListedAndNotDisabled(): void
     {
-        $this->lifecycle->names = [WelcomeSteps::PHP_LANGUAGE_SERVER];
+        $this->lifecycle->names = [WelcomeSteps::PHP_LANGUAGE_SERVER, WelcomeSteps::CODE_STYLE_FIXER, WelcomeSteps::STATIC_ANALYSIS];
+        $steps = $this->steps()->all();
 
-        $this->assertTrue($this->steps()->all()[1]->isDone());
+        $this->assertTrue($steps[1]->isDone());
+        $this->assertTrue($steps[2]->isDone());
+        $this->assertTrue($steps[3]->isDone());
     }
 
     /** A listed-but-disabled plugin is not serving anything, so the step stands. */
-    public function testTheLanguageServerIsPendingWhenItsPluginIsDisabled(): void
+    public function testAPluginStepIsPendingWhenItsPluginIsDisabled(): void
     {
         $this->lifecycle->names = [WelcomeSteps::PHP_LANGUAGE_SERVER];
         $this->lifecycle->disabledNames = [WelcomeSteps::PHP_LANGUAGE_SERVER];
@@ -121,5 +156,108 @@ final class WelcomeStepsTest extends TestCase
         $this->steps()->all()[1]->run();
 
         $this->assertSame([[WelcomeSteps::PHP_LANGUAGE_SERVER, true]], $this->lifecycle->toggled);
+    }
+
+    public function testRunningTheCodeStyleStepEnablesItsPlugin(): void
+    {
+        $this->steps()->all()[2]->run();
+
+        $this->assertSame([[WelcomeSteps::CODE_STYLE_FIXER, true]], $this->lifecycle->toggled);
+    }
+
+    public function testRunningTheStaticAnalysisStepEnablesItsPlugin(): void
+    {
+        $this->steps()->all()[3]->run();
+
+        $this->assertSame([[WelcomeSteps::STATIC_ANALYSIS, true]], $this->lifecycle->toggled);
+    }
+
+    /** The details name the tool a step will enable, so the offer is explicit. */
+    public function testTheToolStepsNameTheirDefaultToolsWithoutMago(): void
+    {
+        $steps = $this->steps()->all();
+
+        $this->assertStringContainsString(WelcomeSteps::CODE_STYLE_FIXER, $steps[2]->detail);
+        $this->assertStringContainsString(WelcomeSteps::STATIC_ANALYSIS, $steps[3]->detail);
+    }
+
+    /** A project shipping mago gets it as both the fixer and the analyzer. */
+    public function testBothToolStepsTargetMagoWhenTheProjectShipsIt(): void
+    {
+        $this->withMago();
+        $steps = $this->steps()->all();
+
+        $this->assertSame('Enable mago', $steps[2]->actionLabel);
+        $this->assertSame('Enable mago', $steps[3]->actionLabel);
+        $this->assertStringContainsString(WelcomeSteps::MAGO, $steps[2]->detail);
+        $this->assertStringContainsString(WelcomeSteps::MAGO, $steps[3]->detail);
+    }
+
+    public function testRunningEitherToolStepWithMagoEnablesTheMagoPlugin(): void
+    {
+        $this->withMago();
+
+        $this->steps()->all()[2]->run();
+        $this->steps()->all()[3]->run();
+
+        $this->assertSame(
+            [
+                [WelcomeSteps::MAGO, true],
+                [WelcomeSteps::MAGO, true],
+            ],
+            $this->lifecycle->toggled,
+        );
+    }
+
+    /** One mago enable satisfies both tool steps — they share the target. */
+    public function testEnablingMagoCompletesBothToolSteps(): void
+    {
+        $this->withMago();
+        $this->lifecycle->names = [WelcomeSteps::MAGO];
+        $steps = $this->steps()->all();
+
+        $this->assertTrue($steps[2]->isDone());
+        $this->assertTrue($steps[3]->isDone());
+    }
+
+    /**
+     * The steps *target* mago: an already-enabled php-cs-fixer or phpstan does
+     * not satisfy them, because the offer is "enable the recommended tool".
+     */
+    public function testOtherToolsDoNotSatisfyMagoTargetedSteps(): void
+    {
+        $this->withMago();
+        $this->lifecycle->names = [WelcomeSteps::CODE_STYLE_FIXER, WelcomeSteps::STATIC_ANALYSIS];
+        $steps = $this->steps()->all();
+
+        $this->assertFalse($steps[2]->isDone());
+        $this->assertFalse($steps[3]->isDone());
+    }
+
+    /** The step list itself is stable — mago changes the target, not the screen. */
+    public function testTheStepTitlesAreTheSameWithMago(): void
+    {
+        $this->withMago();
+        $titles = array_map(static fn ($step): string => $step->title, $this->steps()->all());
+
+        $this->assertSame(['Syntax highlighting', 'PHP language server', 'Code style fixer', 'Static analysis', 'Read the guide'], $titles);
+    }
+
+    /** The guide is a link step: no done state, never counted, always runnable. */
+    public function testTheGuideStepIsALinkAndNeverReadsAsDone(): void
+    {
+        $guide = $this->steps()->all()[4];
+
+        $this->assertFalse($guide->isCheckable());
+        $this->assertFalse($guide->isDone());
+    }
+
+    /** Opening the guide is the ide_help command, not a second implementation. */
+    public function testRunningTheGuideStepRunsTheHelpCommand(): void
+    {
+        $this->steps()->all()[4]->run();
+
+        $this->assertSame(['ide_help'], $this->commandsRun);
+        $this->assertSame([], $this->lifecycle->toggled, 'nothing was enabled');
     }
 }

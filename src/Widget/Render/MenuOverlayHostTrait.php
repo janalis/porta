@@ -15,6 +15,9 @@ trait MenuOverlayHostTrait
     /** @var list<array{row: int, col: int, width: int, segment: string}> floating dropdown spans to overlay */
     private array $menuOverlay = [];
 
+    /** @var list<array{row: int, col: int, width: int, segment: string}> floating modal spans, under the dropdowns */
+    private array $modalOverlay = [];
+
     /** Satisfied by AbstractWidget: repaint after the spans change. */
     abstract public function invalidate(): void;
 
@@ -28,12 +31,24 @@ trait MenuOverlayHostTrait
     }
 
     /**
+     * @param list<array{row: int, col: int, width: int, segment: string}> $spans
+     */
+    public function setModalOverlay(array $spans): void
+    {
+        $this->modalOverlay = $spans;
+        $this->invalidate();
+    }
+
+    /**
+     * Composite the floating layers: the modal first, then the menu dropdowns
+     * over it, so an open menu always renders above the modal it may overlap.
+     *
      * @param list<string> $lines
      *
      * @return list<string>
      */
     protected function withMenuOverlay(array $lines, int $width): array
     {
-        return MenuOverlay::apply($lines, $this->menuOverlay, $width);
+        return MenuOverlay::apply(MenuOverlay::apply($lines, $this->modalOverlay, $width), $this->menuOverlay, $width);
     }
 }

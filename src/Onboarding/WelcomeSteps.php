@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Porta\Onboarding;
 
+use Porta\Config\CommandRegistry;
 use Porta\Config\SettingsHighlightController;
 use Porta\Highlight\SyntaxHighlightProviderSource;
 use Porta\I18n\Translator;
@@ -31,15 +32,37 @@ final class WelcomeSteps
      */
     public const string PHP_LANGUAGE_SERVER = 'phpantom';
 
+    /** The bundled formatter plugin — same naming rationale as {@see self::PHP_LANGUAGE_SERVER}. */
+    public const string CODE_STYLE_FIXER = 'php-cs-fixer';
+
+    /** The bundled linter plugin — one lint step keeps this screen a signpost; the others stay in Settings → Plugins. */
+    public const string STATIC_ANALYSIS = 'phpstan';
+
+    /**
+     * The bundled plugin serving both tool steps when the project ships mago
+     * ({@see MagoDetector}). The steps then *target* mago: an already-enabled
+     * php-cs-fixer or phpstan does not satisfy them, because the step's offer
+     * is "enable the recommended tool", not "have any tool".
+     */
+    public const string MAGO = 'mago';
+
     public function __construct(
         private readonly Translator $translator,
         private readonly SyntaxHighlightProviderSource $highlighters,
         private readonly PluginLifecycleOps $lifecycle,
+        private readonly CommandRegistry $commands,
+        private readonly MagoDetector $mago,
     ) {}
 
     /** @return list<WelcomeStep> */
     public function all(): array
     {
+        // Re-detected on every open (steps are rebuilt each time), so a
+        // `composer require` mid-session is picked up by the next open.
+        $installed = $this->mago->installed();
+        $fixer = $installed ? self::MAGO : self::CODE_STYLE_FIXER;
+        $analyzer = $installed ? self::MAGO : self::STATIC_ANALYSIS;
+
         return [
             new WelcomeStep(
                 $this->translator->trans('Syntax highlighting'),
@@ -60,6 +83,39 @@ final class WelcomeSteps
                 fn (): bool => $this->isEnabled(self::PHP_LANGUAGE_SERVER),
                 function (): void {
                     $this->lifecycle->enable(self::PHP_LANGUAGE_SERVER);
+                },
+            ),
+            // Enable-only: the plugin's format-on-save toggle stays where it
+            // lives (its settings page) — flipping save behaviour from an
+            // onboarding shortcut would be a change the user never asked for.
+            new WelcomeStep(
+                $this->translator->trans('Code style fixer'),
+                $this->translator->trans('%name% fixes formatting on demand; format-on-save lives in its settings', ['%name%' => $fixer]),
+                $this->translator->trans('Enable %name%', ['%name%' => $fixer]),
+                fn (): bool => $this->isEnabled($fixer),
+                function () use ($fixer): void {
+                    $this->lifecycle->enable($fixer);
+                },
+            ),
+            new WelcomeStep(
+                $this->translator->trans('Static analysis'),
+                $this->translator->trans('%name% finds bugs without running the code; analyse-on-save in its settings', ['%name%' => $analyzer]),
+                $this->translator->trans('Enable %name%', ['%name%' => $analyzer]),
+                fn (): bool => $this->isEnabled($analyzer),
+                function () use ($analyzer): void {
+                    $this->lifecycle->enable($analyzer);
+                },
+            ),
+            // A link step (null predicate): `ide_help` already closes every
+            // view before opening the guide, which is exactly the ordering
+            // running it from inside this view needs.
+            new WelcomeStep(
+                $this->translator->trans('Read the guide'),
+                $this->translator->trans('Keys, panels and workflows, in the built-in help viewer'),
+                $this->translator->trans('Open the guide'),
+                null,
+                function (): void {
+                    $this->commands->run('ide_help');
                 },
             ),
         ];

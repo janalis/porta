@@ -94,6 +94,35 @@ final class ListSelection
     }
 
     /**
+     * Variable-height sibling of {@see follow()}: shift the scroll window so
+     * the selected item fits within $availableRows, where $heights[$i] is item
+     * $i's rendered row count. Walks back from the selection accumulating
+     * heights, so as many items above it as fit stay visible; a selection
+     * taller than the viewport pins the window to itself. Returns the new
+     * scroll offset. Called at render time.
+     *
+     * @param list<int> $heights
+     */
+    public function followHeights(array $heights, int $availableRows): int
+    {
+        if ($this->selected < $this->scroll) {
+            $this->scroll = $this->selected;
+
+            return $this->scroll;
+        }
+        $sum = 0;
+        for ($i = $this->selected; $i >= $this->scroll; --$i) {
+            $sum += $heights[$i] ?? 0;
+            if ($sum > $availableRows) {
+                $this->scroll = min($i + 1, $this->selected);
+                break;
+            }
+        }
+
+        return $this->scroll;
+    }
+
+    /**
      * Map a widget-relative pointer row to the item index under it, or null
      * when the row is a header or falls past the list. $headerRows is how many
      * non-item rows precede the list (1 for a single title row — the common

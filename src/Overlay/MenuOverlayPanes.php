@@ -21,19 +21,15 @@ final readonly class MenuOverlayPanes
      * @param list<AbstractWidget&MenuOverlayHost> $editor   tree, separator, tab bar, editor, breadcrumbs
      * @param list<AbstractWidget&MenuOverlayHost> $git      the git view's panes
      * @param list<AbstractWidget&MenuOverlayHost> $settings the settings view's panes
-     * @param list<AbstractWidget&MenuOverlayHost> $welcome  the Welcome view's single pane
      * @param \Closure(): bool                     $gitViewOpen
      * @param \Closure(): bool                     $settingsViewOpen
-     * @param \Closure(): bool                     $welcomeViewOpen
      */
     public function __construct(
         private array $editor,
         private array $git,
         private array $settings,
-        private array $welcome,
         private \Closure $gitViewOpen,
         private \Closure $settingsViewOpen,
-        private \Closure $welcomeViewOpen,
     ) {}
 
     /**
@@ -47,7 +43,6 @@ final readonly class MenuOverlayPanes
         return match (true) {
             ($this->settingsViewOpen)() => $this->settings,
             ($this->gitViewOpen)() => $this->git,
-            ($this->welcomeViewOpen)() => $this->welcome,
             default => $this->editor,
         };
     }
@@ -60,6 +55,6 @@ final readonly class MenuOverlayPanes
      */
     public function all(): array
     {
-        return [...$this->editor, ...$this->git, ...$this->settings, ...$this->welcome];
+        return [...$this->editor, ...$this->git, ...$this->settings];
     }
 }

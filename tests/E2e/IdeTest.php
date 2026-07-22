@@ -241,7 +241,7 @@ final class IdeTest extends TestCase
         // --- Go to line -------------------------------------------------------------------------
         $this->step(4.15, static fn () => $tui->handleInput("\x07")); // ctrl+g
         $this->step(4.22, function () use ($screen, $tui): void {
-            $this->assertStringContainsString('Go to line:', $screen());
+            $this->assertStringContainsString('Go to line', $screen());
             $tui->handleInput('1');
             $tui->handleInput("\r");
         });
