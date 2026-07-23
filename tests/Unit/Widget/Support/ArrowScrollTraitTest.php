@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace Porta\Tests\Unit\Widget;
+namespace Porta\Tests\Widget\Support;
 
 use PHPUnit\Framework\TestCase;
 use Porta\Git\ChangeEntry;

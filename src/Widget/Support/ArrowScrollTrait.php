@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace Porta\Widget;
+namespace Porta\Widget\Support;
 
 /**
  * The wheel IS the arrow keys, for the panes whose selection drives something

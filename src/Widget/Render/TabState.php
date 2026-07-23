@@ -6,7 +6,7 @@ namespace Porta\Widget\Render;
 
 /**
  * How a tab of the strip family is lit: the active tab, the one under the
- * pointer, or the rest. Mirrors {@see \Porta\Widget\OptionTagState}'s
+ * pointer, or the rest. Mirrors {@see \Porta\Widget\Support\OptionTagState}'s
  * On/Hovered/Off split.
  *
  * The three states are what the strips actually have — a tab is not

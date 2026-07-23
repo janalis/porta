@@ -11,7 +11,7 @@ use Porta\Ui\Dock\DockToolTab;
 use Porta\Ui\Dock\DockToolTabs;
 use Porta\Ui\Dock\ResultsPanelMode;
 use Porta\Ui\ScopeKind;
-use Porta\Widget\ResultsPanelFields;
+use Porta\Widget\Support\ResultsPanelFields;
 
 final class DockToolTabsTest extends TestCase
 {

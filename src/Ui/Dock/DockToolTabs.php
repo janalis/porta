@@ -5,7 +5,7 @@ declare(strict_types=1);
 namespace Porta\Ui\Dock;
 
 use Porta\Support\IndexMove;
-use Porta\Widget\ResultsPanelFields;
+use Porta\Widget\Support\ResultsPanelFields;
 
 /**
  * The alive list-tool tabs, in creation (= strip) order — the model of truth

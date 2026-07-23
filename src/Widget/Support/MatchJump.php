@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace Porta\Widget;
+namespace Porta\Widget\Support;
 
 /**
  * Whether recomputing the find-bar matches also moves the caret to the nearest

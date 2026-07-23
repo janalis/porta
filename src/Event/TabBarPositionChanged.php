@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace Porta\Event;
 
-use Porta\Widget\TabBarPosition;
+use Porta\Widget\Support\TabBarPosition;
 
 /** The tab strip was re-seated around the editor body (tree already re-arranged). */
 final readonly class TabBarPositionChanged

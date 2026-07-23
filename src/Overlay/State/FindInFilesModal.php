@@ -17,14 +17,14 @@ use Porta\Ui\Sgr;
 use Porta\Ui\TextField;
 use Porta\Ui\Theme\Styles;
 use Porta\Widget\MatchRowDecorator;
-use Porta\Widget\OptionTagState;
 use Porta\Widget\Render\ModalFrame;
 use Porta\Widget\Render\ModalRowStyle;
 use Porta\Widget\Render\PopupMetrics;
-use Porta\Widget\ResultGrouping;
-use Porta\Widget\ResultLayout;
 use Porta\Widget\ResultsView;
 use Porta\Widget\SearchFieldRenderer;
+use Porta\Widget\Support\OptionTagState;
+use Porta\Widget\Support\ResultGrouping;
+use Porta\Widget\Support\ResultLayout;
 use Symfony\Component\Tui\Input\Key;
 use Symfony\Component\Tui\Input\Keybindings;
 
@@ -76,7 +76,7 @@ final class FindInFilesModal
     private array $options = ['regex' => false, 'case' => false, 'word' => false, 'preserve' => false, 'tokens' => 'any'];
     /** @var list<array{path: string, line: int, text: string, ranges?: list<array{start: int, length: int}>}> */
     private array $results = [];
-    /** @var list<\Porta\Widget\DisplayRow> */
+    /** @var list<\Porta\Widget\Support\DisplayRow> */
     private array $displayRows = [];
     private int $selected = 0;
     /** first visible display-row index; sticky so hover-selection never scrolls the list */
@@ -673,7 +673,7 @@ final class FindInFilesModal
     }
 
     /**
-     * @param list<\Porta\Widget\DisplayRow> $visible
+     * @param list<\Porta\Widget\Support\DisplayRow> $visible
      */
     private function boxWidth(int $columns, array $visible): int
     {

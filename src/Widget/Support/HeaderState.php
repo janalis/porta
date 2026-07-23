@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace Porta\Widget;
+namespace Porta\Widget\Support;
 
 /**
  * Whether a results-panel group header ({@see DisplayRow}) is expanded (its

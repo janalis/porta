@@ -53,6 +53,8 @@ use Porta\Widget\Render\EditorRowAssembler;
 use Porta\Widget\Render\MenuOverlayHost;
 use Porta\Widget\Render\MenuOverlayHostTrait;
 use Porta\Widget\Render\PaneFocus;
+use Porta\Widget\Support\FillsPaneTrait;
+use Porta\Widget\Support\InputHook;
 use Symfony\Component\Tui\Ansi\AnsiUtils;
 use Symfony\Component\Tui\Render\RenderContext;
 use Symfony\Component\Tui\Widget\AbstractWidget;

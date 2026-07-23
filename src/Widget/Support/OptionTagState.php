@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace Porta\Widget;
+namespace Porta\Widget\Support;
 
 /**
  * Visual state of an option toggle drawn as a tag: lit when the option is on,

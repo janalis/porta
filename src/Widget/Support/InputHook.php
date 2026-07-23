@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace Porta\Widget;
+namespace Porta\Widget\Support;
 
 /**
  * Shared guard for the app-level input hook installed via

@@ -5,9 +5,9 @@ declare(strict_types=1);
 namespace Porta\Tests\Unit\Widget;
 
 use PHPUnit\Framework\TestCase;
-use Porta\Widget\ResultGrouping;
-use Porta\Widget\ResultLayout;
 use Porta\Widget\ResultsView;
+use Porta\Widget\Support\ResultGrouping;
+use Porta\Widget\Support\ResultLayout;
 
 final class ResultsViewTest extends TestCase
 {

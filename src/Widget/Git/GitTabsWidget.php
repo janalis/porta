@@ -9,11 +9,11 @@ use Porta\I18n\Translator;
 use Porta\Support\AnsiText;
 use Porta\Ui\Role;
 use Porta\Ui\Theme\Styles;
-use Porta\Widget\PanelWidth;
 use Porta\Widget\Render\MenuOverlayHost;
 use Porta\Widget\Render\MenuOverlayHostTrait;
 use Porta\Widget\Render\TabState;
 use Porta\Widget\Render\TabStyle;
+use Porta\Widget\Support\PanelWidth;
 use Symfony\Component\Tui\Render\RenderContext;
 use Symfony\Component\Tui\Widget\AbstractWidget;
 

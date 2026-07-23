@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace Porta\Widget;
+namespace Porta\Widget\Support;
 
 /**
  * Default {@see \Symfony\Component\Tui\Widget\VerticallyExpandableInterface}

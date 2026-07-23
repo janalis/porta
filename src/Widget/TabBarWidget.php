@@ -16,6 +16,7 @@ use Porta\Widget\Render\TabCell;
 use Porta\Widget\Render\TabCloseGlyph;
 use Porta\Widget\Render\TabState;
 use Porta\Widget\Render\TabStyle;
+use Porta\Widget\Support\TabBarPosition;
 use Symfony\Component\Tui\Render\RenderContext;
 use Symfony\Component\Tui\Widget\AbstractWidget;
 

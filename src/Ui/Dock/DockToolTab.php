@@ -5,7 +5,7 @@ declare(strict_types=1);
 namespace Porta\Ui\Dock;
 
 use Porta\Search\SearchTabState;
-use Porta\Widget\ResultsPanelFields;
+use Porta\Widget\Support\ResultsPanelFields;
 
 /**
  * One list-tool instance living as a tab on the dock strip: a Problems run,

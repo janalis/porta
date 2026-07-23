@@ -6,8 +6,8 @@ namespace Porta\Tests\Unit\Widget;
 
 use PHPUnit\Framework\TestCase;
 use Porta\Tests\Support\AttachedStyles;
-use Porta\Widget\ResultsPanelFields;
 use Porta\Widget\ResultsPanelWidget;
+use Porta\Widget\Support\ResultsPanelFields;
 use Symfony\Component\Tui\Ansi\AnsiUtils;
 use Symfony\Component\Tui\Render\RenderContext;
 use Symfony\Component\Tui\Style\CursorShape;

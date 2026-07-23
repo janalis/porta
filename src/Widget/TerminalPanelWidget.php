@@ -14,6 +14,8 @@ use Porta\Ui\LtrPane;
 use Porta\Ui\Sgr;
 use Porta\Widget\Render\MenuOverlayHost;
 use Porta\Widget\Render\MenuOverlayHostTrait;
+use Porta\Widget\Support\InputHook;
+use Porta\Widget\Support\PanelRows;
 use Symfony\Component\Tui\Ansi\AnsiUtils;
 use Symfony\Component\Tui\Input\Key;
 use Symfony\Component\Tui\Render\RenderContext;

@@ -20,7 +20,7 @@ use Porta\Widget\Git\HistoryListWidget;
 use Porta\Widget\HelpViewerWidget;
 use Porta\Widget\ImageViewerWidget;
 use Porta\Widget\MenuBarWidget;
-use Porta\Widget\TabBarPosition;
+use Porta\Widget\Support\TabBarPosition;
 use Porta\Widget\TabBarWidget;
 use Porta\Widget\TerminalPanelWidget;
 use Symfony\Component\Tui\Render\Renderer;

@@ -20,7 +20,7 @@ use Porta\Ui\Theme\StyleSheetThemer;
 use Porta\Ui\Theme\Themes;
 use Porta\Widget\Git\DiffViewWidget;
 use Porta\Widget\HelpViewerWidget;
-use Porta\Widget\TabBarPosition;
+use Porta\Widget\Support\TabBarPosition;
 use Porta\Widget\TabBarWidget;
 use Psr\EventDispatcher\EventDispatcherInterface;
 

@@ -7,7 +7,7 @@ namespace Porta\Tests\Unit\Layout;
 use PHPUnit\Framework\TestCase;
 use Porta\Layout\WorkspaceLayout;
 use Porta\Tests\Support\TestWorkspaceLayout;
-use Porta\Widget\TabBarPosition;
+use Porta\Widget\Support\TabBarPosition;
 use Porta\Widget\TabBarWidget;
 use Symfony\Component\Tui\Terminal\VirtualTerminal;
 use Symfony\Component\Tui\Tui;

@@ -4,6 +4,11 @@ declare(strict_types=1);
 
 namespace Porta\Widget;
 
+use Porta\Widget\Support\DisplayRow;
+use Porta\Widget\Support\HeaderState;
+use Porta\Widget\Support\ResultGrouping;
+use Porta\Widget\Support\ResultLayout;
+
 /**
  * Flattens the results panel's `{path,line,text}` list into the display rows the
  * {@see ResultsPanelWidget} renders and navigates. In flat mode every result is

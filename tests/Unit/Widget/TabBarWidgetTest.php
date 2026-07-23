@@ -5,7 +5,7 @@ declare(strict_types=1);
 namespace Porta\Tests\Unit\Widget;
 
 use PHPUnit\Framework\TestCase;
-use Porta\Widget\TabBarPosition;
+use Porta\Widget\Support\TabBarPosition;
 use Porta\Widget\TabBarWidget;
 use Symfony\Component\Tui\Ansi\AnsiUtils;
 use Symfony\Component\Tui\Render\RenderContext;

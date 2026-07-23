@@ -14,7 +14,7 @@ use Porta\Onboarding\OnboardingState;
 use Porta\Tests\Support\RunsIde;
 use Porta\Tests\Support\TempProject;
 use Porta\Ui\Glyphs;
-use Porta\Widget\ResultsPanelFields;
+use Porta\Widget\Support\ResultsPanelFields;
 use Porta\Widget\TabBarWidget;
 use Revolt\EventLoop;
 use Symfony\Component\Tui\Ansi\AnsiUtils;

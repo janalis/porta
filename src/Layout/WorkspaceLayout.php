@@ -24,7 +24,7 @@ use Porta\Widget\Settings\KeybindingsListWidget;
 use Porta\Widget\Settings\SettingsFormWidget;
 use Porta\Widget\Settings\SettingsNavWidget;
 use Porta\Widget\StatusBarWidget;
-use Porta\Widget\TabBarPosition;
+use Porta\Widget\Support\TabBarPosition;
 use Porta\Widget\TabBarWidget;
 use Porta\Widget\TerminalPanelWidget;
 use Symfony\Component\Tui\Style\Direction;
