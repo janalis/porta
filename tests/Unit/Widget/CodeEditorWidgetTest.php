@@ -842,11 +842,11 @@ final class CodeEditorWidgetTest extends TestCase
     public function testCompletionClickAcceptsSuggestion(): void
     {
         $editor = $this->completionEditor();
-        // anchorCol = gutter 4 + cursorCol 5 = 9; cursorScreenRow 2 → startRow 3;
-        // items at rows 3 and 4, box cols [9, 26).
+        // anchorCol = gutter 4 + cursorCol 5 = 9; cursorScreenRow 2 → the
+        // frame's top border at row 3; items at rows 4 and 5, inner box cols [9, 26).
         $editor->render(new RenderContext(80, 20));
 
-        $this->assertTrue($editor->handlePopupClick(4, 12), 'a click on a suggestion is consumed');
+        $this->assertTrue($editor->handlePopupClick(5, 12), 'a click on a suggestion is consumed');
         $this->assertStringContainsString('echoSecond', $editor->getDocument()->getLine(2));
         $this->assertFalse($editor->isCompletionOpen());
     }
@@ -873,19 +873,19 @@ final class CodeEditorWidgetTest extends TestCase
         $editor = $this->completionEditor();
         $editor->render(new RenderContext(80, 20));
 
-        $this->assertTrue($editor->handlePopupHover(4, 12), 'hover the second suggestion tints it');
-        $this->assertFalse($editor->handlePopupHover(4, 12), 'same row → no change');
+        $this->assertTrue($editor->handlePopupHover(5, 12), 'hover the second suggestion tints it');
+        $this->assertFalse($editor->handlePopupHover(5, 12), 'same row → no change');
         $this->assertTrue($editor->handlePopupHover(2, 12), 'a row above the popup clears the tint');
         $this->assertFalse($editor->handlePopupHover(2, 12), 'still off the popup → no change');
 
         // Hover the second item; the first stays selected.
-        $editor->handlePopupHover(4, 12);
+        $editor->handlePopupHover(5, 12);
         $rows = $editor->render(new RenderContext(80, 20));
-        $this->assertStringContainsString("\x1b[48;5;31m", $rows[3], 'the first suggestion keeps the selection background');
-        $this->assertStringContainsString("\x1b[48;5;236m", $rows[4], 'the hovered second suggestion takes the hover tint, not the selection');
+        $this->assertStringContainsString("\x1b[48;5;31m", $rows[4], 'the first suggestion keeps the selection background');
+        $this->assertStringContainsString("\x1b[48;5;236m", $rows[5], 'the hovered second suggestion takes the hover tint, not the selection');
 
         // A click still accepts the row it lands on, regardless of hover.
-        $editor->handlePopupClick(4, 12);
+        $editor->handlePopupClick(5, 12);
         $this->assertStringContainsString('echoSecond', $editor->getDocument()->getLine(2));
     }
 

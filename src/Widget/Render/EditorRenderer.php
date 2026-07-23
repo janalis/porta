@@ -340,7 +340,7 @@ final class EditorRenderer
     /**
      * Draw the signature hint just above (or below) the caret's screen row.
      *
-     * @param string[] $lines
+     * @param list<string> $lines
      */
     public static function signatureHint(array &$lines, int $columns, int $gutterWidth, int $cursorScreenRow, string $hint, Styles $styles): void
     {
@@ -471,10 +471,13 @@ final class EditorRenderer
     }
 
     /**
-     * Draw the autocomplete popup anchored at the caret. Returns the on-screen
-     * box geometry so callers can hit-test mouse clicks.
+     * Draw the autocomplete popup anchored at the caret, wearing the
+     * {@see PopupFrame} (rounded border + drop shadow). Returns the on-screen
+     * geometry of the INNER item box so callers can hit-test mouse clicks —
+     * the frame is chrome, not items; a border click falls through to caret
+     * placement, which closes the popup like any beside-the-popup click.
      *
-     * @param string[]             $lines
+     * @param list<string>         $lines
      * @param list<CompletionItem> $items filtered
      */
     public static function completionPopup(array &$lines, int $columns, int $rows, int $cursorScreenRow, int $anchorCol, array $items, int $selected, ?int $hovered, Styles $styles): CompletionBox
@@ -487,30 +490,37 @@ final class EditorRenderer
         foreach ($visible as $item) {
             $width = max($width, mb_strwidth($item->label) + mb_strwidth($item->kind) + 5);
         }
-        $width = min($width, PopupMetrics::COMPLETION_MAX_INNER, $columns - 2);
+        $width = min($width, PopupMetrics::COMPLETION_MAX_INNER, $columns - 2 - PopupFrame::CHROME_COLS);
 
-        $popupHeight = \count($visible);
-        $below = ($cursorScreenRow + 1 + $popupHeight) <= $rows;
-        $startRow = $below ? $cursorScreenRow + 1 : max(0, $cursorScreenRow - $popupHeight);
+        $framedHeight = \count($visible) + PopupFrame::CHROME_ROWS;
+        $below = ($cursorScreenRow + 1 + $framedHeight) <= $rows;
+        $borderTop = $below ? $cursorScreenRow + 1 : max(0, $cursorScreenRow - $framedHeight);
 
-        $col = IntMath::clamp($anchorCol, 0, $columns - $width);
+        // The content column stays anchored at the typed prefix (the border
+        // sits one cell left of it), clamped so the framed box fits the pane.
+        $framedWidth = $width + PopupFrame::CHROME_COLS;
+        $borderCol = IntMath::clamp($anchorCol - 1, 0, $columns - $framedWidth);
 
+        $framed = [PopupFrame::top($width, $styles)];
         foreach ($visible as $i => $item) {
-            $row = $startRow + $i;
-            if ($row < 0 || $row >= \count($lines)) {
-                continue;
-            }
-
             $style = $styles->of(self::rowRole($i, $selectedInWindow, null === $hovered ? null : $hovered - $windowOffset));
             $kindTag = $styles->of(Role::CompletionKind)->apply($item->kind);
             $labelWidth = $width - mb_strwidth($item->kind) - 3;
             $label = AnsiText::truncate($item->label, $labelWidth, pad: true);
-            $popupLine = $style->apply(' '.$label.' '.$kindTag.' ');
-
-            $lines[$row] = OverlayCompositor::into($lines[$row], $col, $width, $columns, $popupLine);
+            $framed[] = PopupFrame::rail($style->apply(' '.$label.' '.$kindTag.' '), $width, $styles);
         }
+        $framed[] = PopupFrame::bottom($width, $styles);
 
-        return new CompletionBox($col, $width, $startRow, $popupHeight, $windowOffset);
+        foreach ($framed as $i => $framedRow) {
+            $row = $borderTop + $i;
+            if ($row < 0 || $row >= \count($lines)) {
+                continue;
+            }
+            $lines[$row] = OverlayCompositor::into($lines[$row], $borderCol, $framedWidth, $columns, $framedRow);
+        }
+        $lines = ModalShadow::blit($lines, $borderTop, $borderCol, $framedWidth, $framedHeight, $columns, $styles);
+
+        return new CompletionBox($borderCol + 1, $width, $borderTop + 1, \count($visible), $windowOffset);
     }
 
     /**
