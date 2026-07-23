@@ -336,7 +336,6 @@ final class EditorRenderer
     // --- Overlays ----------------------------------------------------------
 
     private const POPUP_MAX_ITEMS = 8;
-    private const POPUP_MAX_WIDTH = 46;
 
     /**
      * Draw the signature hint just above (or below) the caret's screen row.
@@ -384,7 +383,7 @@ final class EditorRenderer
         foreach ($visible as $item) {
             $width = max($width, mb_strwidth($item['label']) + mb_strwidth($item['hint']) + 6);
         }
-        $width = min($width, $columns - 8, 70); // inner width; the frame adds a rail and a padding column each side
+        $width = min($width, $columns - PopupMetrics::CENTERED_MARGIN, PopupMetrics::CENTERED_MAX_INNER); // inner width; the frame adds a rail and a padding column each side
         $col = max(0, intdiv($columns - $width - ModalFrame::CHROME_COLS, num2: 2));
 
         $content = [];
@@ -435,7 +434,7 @@ final class EditorRenderer
         foreach ($visible as $row) {
             $width = max($width, mb_strwidth($row['label']) + mb_strwidth($row['detail']) + 6);
         }
-        $width = min($width, $columns - 8, 70); // inner width; the frame adds a rail and a padding column each side
+        $width = min($width, $columns - PopupMetrics::CENTERED_MARGIN, PopupMetrics::CENTERED_MAX_INNER); // inner width; the frame adds a rail and a padding column each side
         $col = max(0, intdiv($columns - $width - ModalFrame::CHROME_COLS, num2: 2));
 
         $popup = [
@@ -488,7 +487,7 @@ final class EditorRenderer
         foreach ($visible as $item) {
             $width = max($width, mb_strwidth($item->label) + mb_strwidth($item->kind) + 5);
         }
-        $width = min($width, self::POPUP_MAX_WIDTH, $columns - 2);
+        $width = min($width, PopupMetrics::COMPLETION_MAX_INNER, $columns - 2);
 
         $popupHeight = \count($visible);
         $below = ($cursorScreenRow + 1 + $popupHeight) <= $rows;

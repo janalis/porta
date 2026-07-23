@@ -16,20 +16,32 @@ use Symfony\Component\Tui\Ansi\AnsiUtils;
  */
 final class MenuPanel
 {
+    /** Never narrower than this, so short menus still read as a box. */
+    private const MIN_WIDTH = 8;
+
+    /** Columns an item row spends beside its text: the edge spaces plus the label↔shortcut breathing room. */
+    private const ITEM_CHROME = 4;
+
+    /** One edge space each side of the row (`⎵label…shortcut⎵`). */
+    private const EDGE_COLS = 2;
+
+    /** Minimum gap between a label and its right-aligned shortcut. */
+    private const SHORTCUT_GAP = 2;
+
     /**
      * Natural width of the panel (unclamped; the caller clamps it to fit the
-     * screen). Never narrower than 8 columns so short menus still read as a box.
+     * screen).
      *
      * @param list<MenuItem> $items
      */
     public static function width(array $items): int
     {
-        $width = 8;
+        $width = self::MIN_WIDTH;
         foreach ($items as $item) {
             if ($item->separator) {
                 continue;
             }
-            $width = max($width, mb_strwidth($item->label) + ('' !== $item->shortcut ? mb_strwidth($item->shortcut) + 2 : 0) + 4);
+            $width = max($width, mb_strwidth($item->label) + ('' !== $item->shortcut ? mb_strwidth($item->shortcut) + self::SHORTCUT_GAP : 0) + self::ITEM_CHROME);
         }
 
         return $width;
@@ -108,9 +120,9 @@ final class MenuPanel
 
     private static function itemSegment(MenuItem $item, int $panelWidth, MenuSelection $selection, MenuAvailability $availability, Styles $styles): string
     {
-        $inner = max(0, $panelWidth - 2);
+        $inner = max(0, $panelWidth - self::EDGE_COLS);
         $shortcut = $item->shortcut;
-        $labelMax = max(0, $inner - ('' !== $shortcut ? mb_strwidth($shortcut) + 2 : 0));
+        $labelMax = max(0, $inner - ('' !== $shortcut ? mb_strwidth($shortcut) + self::SHORTCUT_GAP : 0));
         $label = AnsiText::truncate($item->label, $labelMax);
         $gap = max(1, $inner - AnsiUtils::visibleWidth($label) - mb_strwidth($shortcut));
 

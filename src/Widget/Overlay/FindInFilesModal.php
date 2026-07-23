@@ -20,6 +20,7 @@ use Porta\Widget\MatchRowDecorator;
 use Porta\Widget\OptionTagState;
 use Porta\Widget\Render\ModalFrame;
 use Porta\Widget\Render\ModalRowStyle;
+use Porta\Widget\Render\PopupMetrics;
 use Porta\Widget\ResultGrouping;
 use Porta\Widget\ResultLayout;
 use Porta\Widget\ResultsView;
@@ -677,7 +678,7 @@ final class FindInFilesModal
     private function boxWidth(int $columns, array $visible): int
     {
         $status = $this->statusText();
-        $width = max(mb_strwidth($this->title) + mb_strwidth($status) + 10, mb_strwidth($this->query->value()) + 9, 48); // + 10: the frame's title-bar chrome
+        $width = max(mb_strwidth($this->title) + mb_strwidth($status) + 10, mb_strwidth($this->query->value()) + 9, PopupMetrics::FIND_MIN_WIDTH); // + 10: the frame's title-bar chrome
         foreach ($visible as $row) {
             $text = null !== $row->filePath ? $row->filePath : $this->results[$row->matchIndex]['text'] ?? '';
             $width = max($width, mb_strwidth($text) + 8);
@@ -687,10 +688,10 @@ final class FindInFilesModal
         // A corner-drag override replaces the content-driven width (and its
         // 80-column comfort cap — user intent wins), still floored/clamped.
         if (null !== $this->userWidth) {
-            return max(48, min($this->userWidth, $columns - 8));
+            return max(PopupMetrics::FIND_MIN_WIDTH, min($this->userWidth, $columns - PopupMetrics::CENTERED_MARGIN));
         }
 
-        return min($width, $columns - 8, 80);
+        return min($width, $columns - PopupMetrics::CENTERED_MARGIN, 80);
     }
 
     /**
