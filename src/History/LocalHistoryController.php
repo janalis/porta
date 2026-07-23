@@ -68,7 +68,7 @@ final class LocalHistoryController
         }
         $content = $this->history->read($file);
         if (null === $content) {
-            $this->notifier->flash($this->translator->trans('Could not read that snapshot'));
+            $this->notifier->error($this->translator->trans('Could not read that snapshot'));
             $this->tui->requestRender();
 
             return;

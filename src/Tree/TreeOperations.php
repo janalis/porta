@@ -102,7 +102,7 @@ final class TreeOperations
                 new Filesystem()->dumpFile($path, '');
                 $this->tree->refresh();
                 $this->bufferService->openFile($path, focus: OpenFocus::Editor);
-                $this->notifier->flash($this->translator->trans('Created %file%', ['%file%' => $this->relativePath($path)]));
+                $this->notifier->success($this->translator->trans('Created %file%', ['%file%' => $this->relativePath($path)]));
             });
         });
     }
@@ -120,7 +120,7 @@ final class TreeOperations
                 new Filesystem()->mkdir($path);
                 $this->tree->refresh();
                 $this->tui->setFocus($this->tree);
-                $this->notifier->flash($this->translator->trans('Created %file%', ['%file%' => $this->relativePath($path)]));
+                $this->notifier->success($this->translator->trans('Created %file%', ['%file%' => $this->relativePath($path)]));
             });
         });
     }
@@ -147,7 +147,7 @@ final class TreeOperations
                 }
                 $this->tree->refresh();
                 $this->tui->setFocus($this->tree);
-                $this->notifier->flash($this->translator->trans('Renamed to %name%', ['%name%' => $name]));
+                $this->notifier->success($this->translator->trans('Renamed to %name%', ['%name%' => $name]));
             });
         });
     }
@@ -208,7 +208,7 @@ final class TreeOperations
         try {
             $op();
         } catch (IOExceptionInterface) {
-            $this->notifier->flash($failMessage);
+            $this->notifier->error($failMessage);
         }
     }
 

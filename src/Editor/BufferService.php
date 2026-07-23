@@ -424,7 +424,7 @@ final class BufferService implements BufferReopener, DiagnosticsSink, FileOpener
         if ($this->formatOnSave->isEnabled() && !$active->isImage() && !$active->isHelp()) {
             $this->formatOnSave->formatThenSave($active, function () use ($active): void {
                 if ($this->saveBuffer($active)) {
-                    $this->notifier->flash($this->translator->trans('Saved %file%', ['%file%' => $this->relativePath($active->path)]));
+                    $this->notifier->success($this->translator->trans('Saved %file%', ['%file%' => $this->relativePath($active->path)]));
                 }
                 $this->tui->requestRender();
             });
@@ -432,7 +432,7 @@ final class BufferService implements BufferReopener, DiagnosticsSink, FileOpener
             return;
         }
         if ($this->saveBuffer($active)) {
-            $this->notifier->flash($this->translator->trans('Saved %file%', ['%file%' => $this->relativePath($active->path)]));
+            $this->notifier->success($this->translator->trans('Saved %file%', ['%file%' => $this->relativePath($active->path)]));
         }
         $this->tui->requestRender();
     }
@@ -466,7 +466,7 @@ final class BufferService implements BufferReopener, DiagnosticsSink, FileOpener
         try {
             new Filesystem()->dumpFile($buffer->path, $bytes);
         } catch (IOExceptionInterface) {
-            $this->notifier->flash($this->translator->trans('Save failed: %file%', ['%file%' => $this->relativePath($buffer->path)]));
+            $this->notifier->error($this->translator->trans('Save failed: %file%', ['%file%' => $this->relativePath($buffer->path)]));
             $this->tui->requestRender();
 
             return false;

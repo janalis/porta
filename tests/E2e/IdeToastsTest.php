@@ -37,7 +37,7 @@ final class IdeToastsTest extends TestCase
                     $this->assertStringContainsString('Saved a.php', Toasts::last($ide));
                     $screen = AnsiUtils::stripAnsiCodes($terminal->getOutput());
                     $this->assertStringContainsString('Saved a.php', $screen, 'the card text reaches the terminal');
-                    $this->assertStringContainsString('◦ ', $screen, 'the info glyph on the card border');
+                    $this->assertStringContainsString('✓ ', $screen, 'the success glyph on the card border — a save is a success');
                 },
                 400 => function ($tui, $terminal, $ide): void {
                     // The presenter's regions place the card; its × sits at the

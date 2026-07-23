@@ -132,13 +132,13 @@ final class GitStagingService
                 $summary = false === $firstLine ? '' : $firstLine;
                 if ($ok->isOk()) {
                     $this->commitBox->clear();
-                    $this->notifier->flash($this->translator->trans('Committed: %summary%', ['%summary%' => $summary]));
+                    $this->notifier->success($this->translator->trans('Committed: %summary%', ['%summary%' => $summary]));
                     $onCommitted();
                     $onChanged();
 
                     return;
                 }
-                $this->notifier->flash($this->translator->trans('Commit failed: %summary%', ['%summary%' => $summary]));
+                $this->notifier->error($this->translator->trans('Commit failed: %summary%', ['%summary%' => $summary]));
                 $onChanged();
             },
             $mode,

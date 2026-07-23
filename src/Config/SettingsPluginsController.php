@@ -230,7 +230,7 @@ final class SettingsPluginsController
         $error = $this->installer->remove($name, $scope);
         // Flash before deactivating: a failing shadow-fallback reload flashes
         // its own error, which must win over the removal confirmation.
-        $this->notifier->flash($error ?? $this->translator->trans('Plugin "%name%" removed', ['%name%' => $name]), 5.0);
+        null !== $error ? $this->notifier->error($error) : $this->notifier->success($this->translator->trans('Plugin "%name%" removed', ['%name%' => $name]), 5.0);
         if (null === $error) {
             $this->lifecycle->deactivate($name);
         }

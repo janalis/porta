@@ -257,7 +257,7 @@ final class DebugController implements DebugSessionObserver
         if (!$this->session->start(LaunchArguments::build($path, $this->rootDir, $config->launch, $config->runCommandArgv))) {
             $this->session = null;
             $this->panel->setSessionState(DebugState::Terminated, null);
-            $this->notifier->flash($this->translator->trans('Could not start the debug adapter'));
+            $this->notifier->error($this->translator->trans('Could not start the debug adapter'));
         }
         $this->dispatcher->dispatch(new DebugStatusChanged());
         $this->tui->requestRender();

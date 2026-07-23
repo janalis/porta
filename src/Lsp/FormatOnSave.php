@@ -83,7 +83,7 @@ final class FormatOnSave
                 return;
             }
             ++$this->round;
-            $this->notifier->flash($this->translator->trans('Formatting timed out — saved unformatted'));
+            $this->notifier->warn($this->translator->trans('Formatting timed out — saved unformatted'));
             $save();
         });
 

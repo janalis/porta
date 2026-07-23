@@ -109,7 +109,7 @@ final class PluginLifecycle implements PluginLifecycleOps
 
             $error = $this->loader->loadFile($candidate['dir'].'/plugin.php', $this->plugins);
             if (null !== $error) {
-                $this->notifier->flash($error, 5.0);
+                $this->notifier->error($error);
             }
             if (null === $error) {
                 $this->plugins->registerCommands($this->commands);
@@ -151,7 +151,7 @@ final class PluginLifecycle implements PluginLifecycleOps
 
             $error = $this->loader->loadFile($candidate['dir'].'/plugin.php', $this->plugins);
             if (null !== $error) {
-                $this->notifier->flash($error, 5.0);
+                $this->notifier->error($error);
             }
             if (null === $error) {
                 $this->plugins->registerCommands($this->commands);

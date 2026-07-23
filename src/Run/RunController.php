@@ -159,7 +159,7 @@ final class RunController
         if (!$process->start()) {
             // Spawn failure needs a PTY-less system; unreachable here.
             // @codeCoverageIgnoreStart
-            $this->notifier->flash($this->translator->trans('Could not start the terminal process'));
+            $this->notifier->error($this->translator->trans('Could not start the terminal process'));
 
             // @codeCoverageIgnoreEnd
         }
