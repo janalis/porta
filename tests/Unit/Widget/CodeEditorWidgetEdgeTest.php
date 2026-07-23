@@ -802,7 +802,22 @@ final class CodeEditorWidgetEdgeTest extends TestCase
         $editor->setSignatureHint('f(int $x): void');
 
         $rendered = $editor->render(new RenderContext(60, 4));
-        $this->assertStringContainsString('f(int $x): void', AnsiUtils::stripAnsiCodes($rendered[1]), 'hint below cursor when on row 0');
+        // The framed hint flips below the caret: its top border on row 1, the
+        // hint text railed on row 2.
+        $this->assertStringContainsString('f(int $x): void', AnsiUtils::stripAnsiCodes($rendered[2]), 'hint below cursor when on row 0');
+    }
+
+    public function testSignatureHintOnATinyPaneDegradesToTheBareRow(): void
+    {
+        // Two rows: neither three-row framed slot fits (above is negative,
+        // below overflows), so the hint degrades to the unframed single row.
+        $editor = $this->editor("f(x\nmore\n");
+        $editor->getDocument()->setCursor(0, 3);
+        $editor->setSignatureHint('f(int $x): void');
+
+        $rendered = $editor->render(new RenderContext(60, 2));
+        $this->assertStringContainsString('f(int $x): void', AnsiUtils::stripAnsiCodes($rendered[1]), 'the bare hint row below the caret');
+        $this->assertStringNotContainsString('╭', AnsiUtils::stripAnsiCodes(implode('', $rendered)), 'no frame on a pane too small for one');
     }
 
     public function testSignatureHintWithSingleRowViewportIsDropped(): void

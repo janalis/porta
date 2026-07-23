@@ -338,23 +338,39 @@ final class EditorRenderer
     private const POPUP_MAX_ITEMS = 8;
 
     /**
-     * Draw the signature hint just above (or below) the caret's screen row.
+     * Draw the signature hint as a {@see PopupFrame}d one-liner above the
+     * caret's screen row, flipping below when there's no headroom and
+     * degrading to the bare unframed row when neither three-row slot fits
+     * (tiny panes) — so the hint stays total on a two-row pane. Border only,
+     * no shadow: a one-liner casting a four-row footprint reads too heavy —
+     * the one deliberate divergence from the other framed popups.
      *
      * @param list<string> $lines
      */
     public static function signatureHint(array &$lines, int $columns, int $gutterWidth, int $cursorScreenRow, string $hint, Styles $styles): void
     {
-        $row = $cursorScreenRow > 0 ? $cursorScreenRow - 1 : $cursorScreenRow + 1;
-        if ($row < 0 || $row >= \count($lines)) {
-            return;
+        $text = ' '.$hint.' ';
+        $col = $gutterWidth;
+        $frameMax = $columns - $gutterWidth - 1 - PopupFrame::CHROME_COLS;
+        $width = min(mb_strwidth($text), $frameMax);
+        if ($width >= 4) {
+            $top = $cursorScreenRow >= 3 ? $cursorScreenRow - 3 : $cursorScreenRow + 1;
+            if ($top >= 0 && ($top + 3) <= \count($lines)) {
+                $content = $styles->merge(Role::InlayPopupBg, Role::InlayPopupFg)->apply(AnsiText::truncate($text, $width, pad: true));
+                $framed = [PopupFrame::top($width, $styles), PopupFrame::rail($content, $width, $styles), PopupFrame::bottom($width, $styles)];
+                foreach ($framed as $i => $framedRow) {
+                    $lines[$top + $i] = OverlayCompositor::into($lines[$top + $i], $col, $width + PopupFrame::CHROME_COLS, $columns, $framedRow);
+                }
+
+                return;
+            }
         }
 
-        $text = ' '.$hint.' ';
+        $row = $cursorScreenRow > 0 ? $cursorScreenRow - 1 : $cursorScreenRow + 1;
         $width = min(mb_strwidth($text), $columns - $gutterWidth - 1);
-        if ($width < 4) {
+        if ($row < 0 || $row >= \count($lines) || $width < 4) {
             return;
         }
-        $col = $gutterWidth;
         $popup = $styles->merge(Role::InlayPopupBg, Role::InlayPopupFg)->apply(AnsiText::truncate($text, $width, pad: true));
 
         $lines[$row] = OverlayCompositor::into($lines[$row], $col, $width, $columns, $popup);
