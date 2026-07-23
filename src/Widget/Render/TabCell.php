@@ -41,10 +41,12 @@ final class TabCell
         $prefix = ' '.$label.' ';
         $text = $prefix.$marker.Glyphs::CLOSE.' ';
 
+        // visibleWidth, not mb_strwidth: the dirty marker arrives pre-styled
+        // (Role::Modified), and its SGR codes must not count as columns.
         return [
             'text' => $text,
-            'width' => mb_strwidth($text) + 1, // + the divider column
-            'closeOffset' => mb_strwidth($prefix) + mb_strwidth($marker),
+            'width' => AnsiUtils::visibleWidth($text) + 1, // + the divider column
+            'closeOffset' => AnsiUtils::visibleWidth($prefix.$marker),
         ];
     }
 
@@ -72,7 +74,7 @@ final class TabCell
         };
 
         $before = AnsiUtils::sliceByColumn($text, 0, $closeOffset);
-        $after = AnsiUtils::sliceByColumn($text, $closeOffset + 1, mb_strwidth($text) - $closeOffset - 1);
+        $after = AnsiUtils::sliceByColumn($text, $closeOffset + 1, AnsiUtils::visibleWidth($text) - $closeOffset - 1);
 
         return TabStyle::of($styles, $state)->apply($before.$close.$after).$styles->of(Role::Placeholder)->apply($divider);
     }

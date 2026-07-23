@@ -88,6 +88,25 @@ final class SettingsFormWidgetTest extends TestCase
         );
     }
 
+    /** The armed half of a two-press destructive confirm wears the danger shade. */
+    public function testAnArmedDangerRowWearsTheDangerShade(): void
+    {
+        $widget = new SettingsFormWidget(new Translator('en'));
+        AttachedStyles::attach($widget);
+        $widget->setFocused(true);
+        $row = static fn (bool $danger) => [
+            new SettingsRow(key: 'pluginRemove:project:demo', label: 'demo (project)', kind: SettingsRowKind::Action, value: 'Remove', restart: false, danger: $danger),
+        ];
+
+        $widget->setRows($row(false));
+        $calm = $widget->render(new RenderContext(60, 2))[0];
+        $widget->setRows($row(true));
+        $armed = $widget->render(new RenderContext(60, 2))[0];
+
+        $this->assertNotSame($calm, $armed, 'arming restyles the row');
+        $this->assertSame($this->plain([$calm]), $this->plain([$armed]), 'same text, different shade');
+    }
+
     public function testChoiceRowRendersOptionLabelInsteadOfValue(): void
     {
         $widget = new SettingsFormWidget(new Translator('en'));

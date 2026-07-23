@@ -325,6 +325,9 @@ final class SettingsFormWidget extends AbstractWidget implements FocusableInterf
                     ? AnsiText::scrollLineToCaret($text, $width)
                     : AnsiText::truncate($text, $width, pad: true);
             $lines[] = match (true) {
+                // An armed destructive action (the two-press remove confirm)
+                // wears the danger shade over every other row state.
+                $row->danger => $this->styles->merge(Role::DangerBg, Role::Bright)->apply($text),
                 $i === $this->selected => $this->applyElement('selected', $text),
                 $i === $this->hoveredIndex => $this->styles->of(Role::RowHighlightBg)->apply($text),
                 default => $text,

@@ -523,10 +523,10 @@ final class CodeEditorWidget extends AbstractWidget implements ActiveFileProvide
     /**
      * Open a single-line input prompt (go to line, rename symbol).
      */
-    public function openPrompt(string $label, string $initial, callable $onSubmit): void
+    public function openPrompt(string $label, string $initial, callable $onSubmit, bool $danger = false): void
     {
         $this->closeSiblingFloaters();
-        $this->overlayHost->openPrompt($label, $initial, $onSubmit);
+        $this->overlayHost->openPrompt($label, $initial, $onSubmit, $danger);
     }
 
     public function setSignatureHint(?string $hint): void

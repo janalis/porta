@@ -190,7 +190,9 @@ final class TabBarWidget extends AbstractWidget implements MenuOverlayHost
         $tabs = null !== $this->provider ? ($this->provider)() : [];
 
         if ([] === $tabs) {
-            return $this->withMenuOverlay([str_repeat(' ', max(0, $columns))], $columns);
+            // The empty strip keeps its Toolbar base: closing the last tab must
+            // not drop the bar to the terminal default for one frame-height row.
+            return $this->withMenuOverlay([$this->styles->of(Role::Toolbar)->apply(str_repeat(' ', max(0, $columns)))], $columns);
         }
 
         // Make sure the active tab is visible: drop leading tabs if needed. Each
@@ -199,7 +201,7 @@ final class TabBarWidget extends AbstractWidget implements MenuOverlayHost
         /** @var list<array{text: string, active: bool, width: int, closeOffset: int}> $parts */
         $parts = [];
         foreach ($tabs as $tab) {
-            $parts[] = ['active' => $tab['active']] + TabCell::measure($tab['name'], $tab['dirty'] ? Glyphs::DIRTY : '');
+            $parts[] = ['active' => $tab['active']] + TabCell::measure($tab['name'], $tab['dirty'] ? $this->styles->of(Role::Modified)->apply(Glyphs::DIRTY) : '');
         }
 
         $activeIndex = 0;
@@ -313,7 +315,7 @@ final class TabBarWidget extends AbstractWidget implements MenuOverlayHost
             $nameWidth = self::VERTICAL_WIDTH - 5;
             foreach (\array_slice($tabs, $start, $budget, preserve_keys: true) as $index => $tab) {
                 $name = AnsiText::truncate($tab['name'], $nameWidth, pad: true);
-                $marker = $tab['dirty'] ? Glyphs::DIRTY : ' ';
+                $marker = $tab['dirty'] ? $this->styles->of(Role::Modified)->apply(Glyphs::DIRTY) : ' ';
                 $close = $tab['active'] ? TabCloseGlyph::active($this->styles) : TabCloseGlyph::inactive($this->styles);
                 $rowIndex = \count($lines);
                 $lines[] = TabStyle::of($this->styles, TabState::of($tab['active'], $this->isHoverCell($rowIndex, 0, self::VERTICAL_WIDTH)))->apply(' '.$name.' '.$marker.$close.' ');

@@ -32,7 +32,7 @@ final class FakeEditorHost implements EditorHost
         ($this->recorder)('notifyChange', []);
     }
 
-    public function openPrompt(string $label, string $initial, callable $onSubmit): void
+    public function openPrompt(string $label, string $initial, callable $onSubmit, bool $danger = false): void
     {
         ($this->recorder)('openPrompt', [$label, $initial, $onSubmit]);
     }

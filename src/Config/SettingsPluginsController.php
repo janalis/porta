@@ -82,6 +82,8 @@ final class SettingsPluginsController
                     kind: SettingsRowKind::Action,
                     value: $this->translator->trans('Remove'),
                     restart: false,
+                    // The armed half of the two-press confirm reads as danger.
+                    danger: $this->armed === 'pluginRemove:'.$plugin['scope'].':'.$plugin['name'],
                 );
         }
 

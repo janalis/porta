@@ -145,6 +145,17 @@ final class Glyphs
     // thin/heavy convention — the affordance is the GLYPH, surviving --no-ansi.
     public const string MODAL_RESIZE_GRAB = '┛';
 
+    // The breadcrumb bar's scope separator (` › `-spaced when rendered):
+    // guillemet-family like NAV_NEXT, deliberately lighter than the tree's
+    // disclosure triangles — a crumb is a path, not a fold.
+    public const string BREADCRUMB_SEPARATOR = '›';
+
+    // The status bar's git-branch marker: the Powerline private-use branch
+    // glyph (U+E0A0), the terminal ecosystem's lingua franca for "branch" —
+    // patched fonts render it; unpatched ones show a box, which is why it
+    // stays confined to the status bar's optional branch segment.
+    public const string STATUS_BRANCH = "\u{e0a0}";
+
     // Toast severity markers, one surface (the corner cards): shape-distinct
     // so the rank reads without color (monochrome, --no-ansi). All 1 column
     // wide; ✗/✓ deliberately echo the diff/check vocabulary — same rank, same

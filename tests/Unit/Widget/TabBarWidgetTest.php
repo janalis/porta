@@ -29,20 +29,24 @@ final class TabBarWidgetTest extends TestCase
         return '';
     }
 
-    public function testEmptyStateRendersBlankLine(): void
+    public function testEmptyStateRendersAToolbarStyledBlankLine(): void
     {
         $bar = new TabBarWidget();
         $bar->beforeRender();
 
+        // The strip keeps its Toolbar base even with no tabs, so closing the
+        // last one never drops the bar to the terminal default.
         $line = $bar->render(new RenderContext(40, 1))[0];
-        $this->assertSame(str_repeat(' ', times: 40), $line);
+        $this->assertSame(str_repeat(' ', times: 40), AnsiUtils::stripAnsiCodes($line));
+        $this->assertNotSame(str_repeat(' ', times: 40), $line, 'the empty strip is styled, not bare');
     }
 
-    public function testWithoutProviderRendersBlankLine(): void
+    public function testWithoutProviderRendersAToolbarStyledBlankLine(): void
     {
         $bar = new TabBarWidget();
 
-        $this->assertSame(str_repeat(' ', times: 20), $bar->render(new RenderContext(20, 1))[0]);
+        $line = $bar->render(new RenderContext(20, 1))[0];
+        $this->assertSame(str_repeat(' ', times: 20), AnsiUtils::stripAnsiCodes($line));
     }
 
     public function testRendersTabsWithDirtyDotAndActiveStyle(): void

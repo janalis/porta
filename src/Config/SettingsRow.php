@@ -35,5 +35,6 @@ final readonly class SettingsRow
         public ?int $max = null,
         public ?string $hint = null,
         public ?array $optionLabels = null,
+        public bool $danger = false,
     ) {}
 }

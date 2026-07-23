@@ -34,7 +34,7 @@ final class OverlayHost
     private ?array $overlay = null;
     /** last-rendered overlay box, for mouse hit-testing */
     private ?ModalBox $overlayBox = null;
-    /** @var array{label: string, value: TextField, onSubmit: callable(string): void}|null single-line mini prompt */
+    /** @var array{label: string, value: TextField, onSubmit: callable(string): void, danger: bool}|null single-line mini prompt */
     private ?array $prompt = null;
     /** last-rendered (centered) prompt box, for mouse hit-testing */
     private ?ModalBox $promptBox = null;
@@ -87,10 +87,14 @@ final class OverlayHost
         $this->overlay = null;
     }
 
-    /** Open the single-line input prompt (go to line, rename symbol). */
-    public function openPrompt(string $label, string $initial, callable $onSubmit): void
+    /**
+     * Open the single-line input prompt (go to line, rename symbol). A danger
+     * prompt (delete confirmation) wears {@see Role::DangerBg} on its field
+     * row, so a destructive question never reads like a rename.
+     */
+    public function openPrompt(string $label, string $initial, callable $onSubmit, bool $danger = false): void
     {
-        $this->prompt = ['label' => $label, 'value' => new TextField($initial, $this->cursorStyle), 'onSubmit' => $onSubmit];
+        $this->prompt = ['label' => $label, 'value' => new TextField($initial, $this->cursorStyle), 'onSubmit' => $onSubmit, 'danger' => $danger];
         ($this->invalidate)();
     }
 
@@ -280,7 +284,7 @@ final class OverlayHost
         return false;
     }
 
-    /** @param array{label: string, value: TextField, onSubmit: callable(string): void} $prompt the open prompt (non-null, narrowed by the caller) */
+    /** @param array{label: string, value: TextField, onSubmit: callable(string): void, danger: bool} $prompt the open prompt (non-null, narrowed by the caller) */
     private function handlePromptInput(string $keys, Keybindings $kb, array $prompt): void
     {
         if ($kb->matches($keys, 'select_cancel')) {
@@ -643,8 +647,8 @@ final class OverlayHost
     }
 
     /**
-     * @param array{int, int, int, int}                                                $bounds
-     * @param array{label: string, value: TextField, onSubmit: callable(string): void} $prompt
+     * @param array{int, int, int, int}                                                              $bounds
+     * @param array{label: string, value: TextField, onSubmit: callable(string): void, danger: bool} $prompt
      *
      * @return array{rows: list<string>, top: int, col: int, width: int}
      */
@@ -661,7 +665,7 @@ final class OverlayHost
         // row holds the field through scrollLineToCaret, which keeps the
         // value's caret marker on screen instead of clipping the hardware
         // cursor off it. Centered like the list/search overlays.
-        $field = $this->styles->merge(Role::HeaderBar, Role::Bright)->apply(AnsiText::padRight(AnsiText::scrollLineToCaret($rendered, $innerWidth), $innerWidth));
+        $field = $this->styles->merge($prompt['danger'] ? Role::DangerBg : Role::HeaderBar, Role::Bright)->apply(AnsiText::padRight(AnsiText::scrollLineToCaret($rendered, $innerWidth), $innerWidth));
         $framed = [
             ModalFrame::titleBar($prompt['label'], $innerWidth + ModalFrame::CHROME_COLS, $this->styles, closeHovered: 'prompt' === $this->closeHovered),
             ...ModalFrame::wrap([$field], $innerWidth, $this->styles),

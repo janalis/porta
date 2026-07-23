@@ -11,6 +11,7 @@ use Porta\Git\GitSettings;
 use Porta\I18n\Translator;
 use Porta\Lsp\LspSessionPool;
 use Porta\Support\ProjectPaths;
+use Porta\Ui\Glyphs;
 use Porta\Ui\Theme\Styles;
 use Porta\Widget\CodeEditorWidget;
 use Porta\Widget\ImageViewerWidget;
@@ -69,7 +70,7 @@ final class StatusBarProvider
             $prefixWidth += AnsiUtils::visibleWidth($debugSegment) + 2;
         }
         if ($this->gitSettings->showBranch() && null !== ($branch = $this->gitRefresher->branch())) {
-            $branchText = "\u{e0a0} {$branch}";
+            $branchText = Glyphs::STATUS_BRANCH." {$branch}";
             $branchStart = $prefixWidth;
             $branchEnd = $prefixWidth + AnsiUtils::visibleWidth($branchText);
             $prefix .= $this->styles->of(Role::StatusBranch)->apply($branchText).'  ';

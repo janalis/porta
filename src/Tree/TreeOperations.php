@@ -156,7 +156,7 @@ final class TreeOperations
     private function treeDelete(FileTreeNode $node): void
     {
         $path = $node->path;
-        $this->promptName($this->translator->trans('Delete %name%? (y/N)', ['%name%' => $node->name]), '', function (string $answer) use ($path): void {
+        $this->promptName($this->translator->trans('Delete %name%? (y/N)', ['%name%' => $node->name]), '', danger: true, onSubmit: function (string $answer) use ($path): void {
             if (!\in_array(strtolower(trim($answer)), ['y', 'yes'], strict: true)) {
                 $this->tui->setFocus($this->tree);
 
@@ -195,10 +195,10 @@ final class TreeOperations
     }
 
     /** Focus the editor and open its single-line prompt (tree file-op names/confirmations). */
-    private function promptName(string $label, string $initial, callable $onSubmit): void
+    private function promptName(string $label, string $initial, callable $onSubmit, bool $danger = false): void
     {
         $this->tui->setFocus($this->editor);
-        $this->editor->openPrompt($label, $initial, $onSubmit);
+        $this->editor->openPrompt($label, $initial, $onSubmit, $danger);
         $this->tui->requestRender();
     }
 

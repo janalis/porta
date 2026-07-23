@@ -71,8 +71,10 @@ final class SeparatorWidget extends AbstractWidget implements MenuOverlayHost, V
         $rows = max(1, $context->getRows() > 0 ? $context->getRows() : 1);
         // A drag renders as a hover deliberately: the panes are already moving,
         // so a third state would say nothing the resize itself does not.
+        // The hover face carries the accent — the modal resize-corner's
+        // hot-affordance convention, so every grabbable edge speaks it.
         $glyph = $this->hovered
-            ? $this->styles->of(Role::BarHoverBg)->apply(Glyphs::PANE_DIVIDER_ACTIVE)
+            ? $this->styles->merge(Role::BarHoverBg, Role::TabAccent)->apply(Glyphs::PANE_DIVIDER_ACTIVE)
             : $this->styles->of(Role::Placeholder)->apply(Glyphs::PANE_DIVIDER);
         $lines = array_fill(0, $rows, value: $glyph);
 

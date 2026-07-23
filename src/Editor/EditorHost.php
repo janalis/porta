@@ -17,7 +17,7 @@ interface EditorHost
     /** Fire the app-level change hooks (dirty marker, LSP didChange, …). */
     public function notifyChange(): void;
 
-    public function openPrompt(string $label, string $initial, callable $onSubmit): void;
+    public function openPrompt(string $label, string $initial, callable $onSubmit, bool $danger = false): void;
 
     public function jumpTo(int $line, int $utf16Col): void;
 

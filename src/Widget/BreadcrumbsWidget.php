@@ -6,6 +6,7 @@ namespace Porta\Widget;
 
 use Porta\Container\AsWidget;
 use Porta\Support\AnsiText;
+use Porta\Ui\Glyphs;
 use Porta\Ui\Role;
 use Porta\Ui\Theme\Styles;
 use Porta\Widget\Render\MenuOverlayHost;
@@ -59,7 +60,7 @@ final class BreadcrumbsWidget extends AbstractWidget implements MenuOverlayHost
     /** The ` › ` scope separator, dimmed (visible width 3). */
     private function separator(): string
     {
-        return $this->styles->of(Role::Gutter)->apply(' › ');
+        return $this->styles->of(Role::Gutter)->apply(' '.Glyphs::BREADCRUMB_SEPARATOR.' ');
     }
 
     /** @var (callable(): list<array{label: string, line: int}>)|null */
