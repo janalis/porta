@@ -56,6 +56,31 @@ Run gate commands capturing output rather than piping to a pager, e.g.
   and `ScreenWriter` are `final`** and cannot be subclassed — see `Porta\Ui\BidiTui` for the
   pattern used when a vendored seam doesn't exist (subclass `Tui`, override `processRender`).
 
+## File organization
+
+FQCN is 100% determined by path (`Porta\ => src/`, `Porta\Tests\ => tests/`; no aliases), so a
+move is a pure rename — edit the `namespace`, every `use`, the mirrored test's path + namespace,
+and (only for a public service in the `porta.ide` locator list, or an `Ide`-resolved one) its
+`use` in `config/services.php` / `src/Ide.php` (the `X::class` entries name the short symbol, so
+they don't change). `composer analyze` + the container compile (`composer test`) catch any
+dangling reference; grep the old namespace to prove zero. Membership rules:
+
+- **`Overlay/`** — floating surfaces, three tiers: `State/` (mutable per-surface models),
+  `Presenter/` (per-frame span producers), `Region/` (geometry/hit-test VOs). Stateless render
+  helpers stay in `Widget/Render/` (see Floating surfaces below).
+- **`Ui/`** — cross-cutting UI primitives only (theme: `Role`/`Sgr`/`Glyphs`/`CursorStyle` +
+  `Ui/Theme/`; `BidiTui`, `PaneSegmenter`, `TextField`, focus/list helpers…). Subsystems get
+  subdirs: `Ui/Menu/` (menu **model**), `Ui/Dock/` (dock tab **model**). Their **widgets**
+  (`MenuBarWidget`, `ContextMenu`, `DockTabsWidget`, `ResultsPanelWidget`) live in `Widget/`.
+- **`Settings/`** — all settings controllers + the row model (`SettingsRow`/`SettingsRowKind`).
+  `Config/` keeps only `.porta.json` parsing (`IdeConfig`) and the Action/Command catalogs.
+  Settings **widgets** stay in `Widget/Settings/`.
+- **`Widget/`** — classes that render (`#[AsWidget]` or produce `string[]`). Non-rendering
+  widget-internal helpers (row DTOs, enums, traits) go in `Widget/Support/`. `Widget/Render/` is
+  the stateless render-algorithm tier.
+- Suffix homes: mouse/keymap routers in `Input/`, typed events in `Event/`, LSP controllers in
+  `Lsp/`, `*Store` state beside its domain.
+
 ## Architecture
 
 **`Ide` (`src/Ide.php`, ~520 lines) is a thin composition root over a Symfony DI container.**
@@ -98,7 +123,7 @@ singleton widget** (`#[Container/AsWidget]` declares tree id/flex, autoconfigure
 `setId`/`setStyle` calls) and all controllers. The non-obvious mechanics:
 - **Typed factories**: `Keybindings` via `Config/KeybindingsFactory` (resolving it triggers
   `Plugin/PluginHost::ensureLoaded()`, the idempotent one-time plugin load, so plugin default keys
-  merge into the immutable map); `Overlay/MenuOverlayPanes`; `PluginManager`/`PluginLoader`/
+  merge into the immutable map); `Overlay/State/MenuOverlayPanes`; `PluginManager`/`PluginLoader`/
   `PluginSettings` exposed off `PluginHost`; `PluginInstaller::create` (environment-derived
   scalars); `SearchEverywhereController` via `Search/Everywhere/SearchEverywhereFactory`.
 - **Duplicate-typed widgets** from the composite tree are per-getter services
@@ -204,13 +229,27 @@ bubbles *up*, so a change that must relabel the whole tree (e.g. a live locale s
 clear render caches recursively. Layout is horizontal/vertical `ContainerWidget`s; sizes come
 from rendered content, with proportions persisted per project.
 
-**Floating surfaces.** Every modal floats over the whole workspace on one per-pane span path
-(spans pushed through `setModalOverlay` + backdrop dim, presented by `BidiTui::onBeforeFrame`
-hooks): the Welcome modal, Find in Files, and the **pickers** — the centered list overlay
-(recent files, quick fixes, peek, unsaved-changes…), Search Everywhere (all scopes incl. the
-palette) and the mini prompt. `Widget/Overlay/OverlayHost` owns picker state/layout/hit-testing
-(SCREEN-space boxes; `layout()` per frame); `Overlay/PickerModalPresenter` (eager-resolved, like
-`FindModalPresenter`) delivers spans + `ModalShadow` + dim, gated on an attached editor. The
+**Floating surfaces — the `Overlay/` subsystem, three tiers.** Every modal floats over the whole
+workspace on one per-pane span path (spans pushed through `setModalOverlay` + backdrop dim,
+presented by `BidiTui::onBeforeFrame` hooks): the Welcome modal, Find in Files, and the
+**pickers** — the centered list overlay (recent files, quick fixes, peek, unsaved-changes…),
+Search Everywhere (all scopes incl. the palette) and the mini prompt. The subsystem is organized
+by a **strict three-tier rule** — each tier is a directory under `Overlay/`, and a new
+floating feature lands one class in each:
+- **`Overlay/State/`** — the mutable per-surface model (open/selection/query), never returns
+  `string[]`: `OverlayHost` (pickers), `FindInFilesModal`, `SearchModalState`,
+  `MenuOverlayController`/`MenuOverlayPanes`, `Toast`/`ToastCenter`/`ToastSeverity`.
+- **`Overlay/Presenter/`** — the eagerly-resolved per-frame span producer: `PickerModalPresenter`,
+  `FindModalPresenter`, `ToastPresenter`, `WelcomeModalController` (a presenter despite the name).
+- **`Overlay/Region/`** — pure geometry / hit-test value objects: `ModalBox`, `PaneBounds`,
+  `DropdownRegion`, `SpanSlicer`, `FloatingRegions`/`CompositeFloatingRegions`.
+- **The stateless render tier stays in `Widget/Render/`** (`ModalFrame`, `PopupFrame`,
+  `ModalShadow`, `OverlayCompositor`, `MenuOverlay*`, `ToastCard`) — it returns `string[]` bearing
+  the `$innerWidth + CHROME_COLS` invariant and is cross-cutting (the editor renders here too), so
+  it is **not** overlay-owned. Do not collapse it into `Overlay/`.
+
+`OverlayHost` owns picker state/layout/hit-testing (SCREEN-space boxes; `layout()` per frame);
+`PickerModalPresenter` delivers spans + `ModalShadow` + dim, gated on an attached editor. The
 span slot has one writer per frame: opening any floating surface closes the others
 (`CodeEditorWidget::closeSiblingFloaters` → `WorkspaceViews::closeWelcome` + find close; the
 full views close all three). Pickers are fixed-centered (third down over the pane union) — not
@@ -222,7 +261,7 @@ same way.
 
 **Commands & keybindings are single-sourced.** `Config/ActionCatalog` is the descriptor table
 for every rebindable action (label + default keys). `Config/CommandRegistry` holds IDE-level
-commands (id → handler, key-bound?, in-palette?). `Ui/MenuModel` builds the menu bar / context
+commands (id → handler, key-bound?, in-palette?). `Ui/Menu/MenuModel` builds the menu bar / context
 menus from these. Don't hand-maintain parallel keybinding/palette/menu lists — extend the
 catalog/registry.
 
@@ -372,11 +411,11 @@ through. Every plugin's settings page (a `plugin:<name>` nav sub-item) has an En
 `PluginApi::setting()` — works during activate() because the config seeds first). Menu items
 take an `enabledWhen` closure (dimmed when false; the Plugins menu sits between Code and Run).
 Removal rows use the settings form's `'action'` row kind (two-press confirm in
-`Config/SettingsPluginsController`).
+`Settings/SettingsPluginsController`).
 
 **Per-project config: `.porta.json`** (parsed by `Config/IdeConfig`, handed to the container as
 a synthetic service) with keys `keymap`, `settings`, `languages`, `lsp`. Settings
-(`Config/SettingsController` + the `Settings/` view) all apply live through
+(`Settings/SettingsController` + the `Settings/` view) all apply live through
 `Settings/LiveSettingsApplier` — theme swaps the `SwitchablePalette`/`SwitchableTerminalTheme`
 holders (buffer highlight caches are dropped by the -200 `HighlightThemeListener`, not inline),
 the locale relabels the tree, the cursor shape swaps the
