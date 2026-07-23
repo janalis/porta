@@ -39,6 +39,19 @@ final class Bidi
         '»' => '«',
         '‹' => '›',
         '›' => '‹',
+        // Frame corners and tees: a border row caught inside an RTL run must
+        // keep its box shape when the run reverses (rounded modal family and
+        // the square focus-frame family alike).
+        '╭' => '╮',
+        '╮' => '╭',
+        '╰' => '╯',
+        '╯' => '╰',
+        '├' => '┤',
+        '┤' => '├',
+        '┌' => '┐',
+        '┐' => '┌',
+        '└' => '┘',
+        '┘' => '└',
     ];
 
     /**
@@ -156,8 +169,18 @@ final class Bidi
         if ($cp >= 0x0030 && $cp <= 0x0039) {
             return 'EN';
         }
-        // ASCII space/punctuation/symbols and the common Unicode spaces are neutral.
-        if (0x20 === $cp || 0xA0 === $cp || $cp >= 0x21 && $cp <= 0x2F || $cp >= 0x3A && $cp <= 0x40 || $cp >= 0x5B && $cp <= 0x60 || $cp >= 0x7B && $cp <= 0x7E || $cp >= 0x2000 && $cp <= 0x206F) {
+        // ASCII space/punctuation/symbols, the common Unicode spaces and the
+        // box-drawing block (frame borders — Unicode class ON) are neutral.
+        if (
+            0x20 === $cp
+            || 0xA0 === $cp
+            || $cp >= 0x21 && $cp <= 0x2F
+            || $cp >= 0x3A && $cp <= 0x40
+            || $cp >= 0x5B && $cp <= 0x60
+            || $cp >= 0x7B && $cp <= 0x7E
+            || $cp >= 0x2000 && $cp <= 0x206F
+            || $cp >= 0x2500 && $cp <= 0x257F
+        ) {
             return 'N';
         }
 

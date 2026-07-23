@@ -99,6 +99,35 @@ final class BidiTest extends TestCase
         self::assertStringNotContainsString('(', $out);
     }
 
+    public function testFrameCornersMirrorInsideARightToLeftRun(): void
+    {
+        // A corner adjacent to Hebrew resolves rtl and mirrors under L4, the
+        // same way the parenthesis above does — a border row caught in an RTL
+        // run keeps reading as a box instead of ending in two left corners.
+        $out = self::strip(Bidi::reorder('╭'.self::SHALOM, BaseDirection::Rtl));
+        self::assertStringContainsString('╮', $out, 'the top-left corner mirrors to a top-right one');
+        self::assertStringNotContainsString('╭', $out);
+
+        $bottom = self::strip(Bidi::reorder('╰'.self::SHALOM.'╯', BaseDirection::Rtl));
+        self::assertStringContainsString('╰', $bottom);
+        self::assertStringContainsString('╯', $bottom, 'both bottom corners survive as a mirrored pair');
+    }
+
+    public function testTeesAndSquareCornersMirrorInsideARightToLeftRun(): void
+    {
+        $tee = self::strip(Bidi::reorder('├'.self::SHALOM, BaseDirection::Rtl));
+        self::assertStringContainsString('┤', $tee, 'the left tee mirrors to a right tee');
+        self::assertStringNotContainsString('├', $tee);
+
+        $square = self::strip(Bidi::reorder('┌'.self::SHALOM, BaseDirection::Rtl));
+        self::assertStringContainsString('┐', $square);
+        self::assertStringNotContainsString('┌', $square);
+
+        $bottom = self::strip(Bidi::reorder('└'.self::SHALOM, BaseDirection::Rtl));
+        self::assertStringContainsString('┘', $bottom);
+        self::assertStringNotContainsString('└', $bottom);
+    }
+
     public function testNeutralsBetweenMatchingRunsJoinThatSide(): void
     {
         // Two Latin words split by a space stay in reading order (space joins L).
