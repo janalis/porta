@@ -5,10 +5,10 @@ declare(strict_types=1);
 namespace Porta\Onboarding;
 
 use Porta\Config\CommandRegistry;
-use Porta\Config\SettingsHighlightController;
 use Porta\Highlight\SyntaxHighlightProviderSource;
 use Porta\I18n\Translator;
 use Porta\Plugin\PluginLifecycleOps;
+use Porta\Settings\SettingsHighlightController;
 
 /**
  * The setup steps the Welcome screen offers.

@@ -2,18 +2,18 @@
 
 declare(strict_types=1);
 
-namespace Porta\Tests\Unit\Config;
+namespace Porta\Tests\Settings;
 
 use PHPUnit\Framework\TestCase;
 use Porta\Config\IdeConfig;
-use Porta\Config\SettingsHighlightController;
-use Porta\Config\SettingsRowKind;
 use Porta\Highlight\CallableHighlightProvider;
 use Porta\Highlight\HighlightPreferences;
 use Porta\Highlight\HighlightRegistry;
 use Porta\Highlight\SyntaxHighlightProvider;
 use Porta\Highlight\SyntaxHighlightProviderSource;
 use Porta\I18n\Translator;
+use Porta\Settings\SettingsHighlightController;
+use Porta\Settings\SettingsRowKind;
 use Porta\Tests\Support\FakePluginLifecycle;
 use Porta\Tests\Support\TempProject;
 

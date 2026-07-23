@@ -6,7 +6,6 @@ namespace Porta\Tests\Overlay\Presenter;
 
 use PHPUnit\Framework\TestCase;
 use Porta\Config\CommandRegistry;
-use Porta\Config\SettingsHighlightController;
 use Porta\Editor\BufferManager;
 use Porta\Event\ThemeChanged;
 use Porta\Highlight\HighlightRequest;
@@ -19,6 +18,7 @@ use Porta\Onboarding\MagoDetector;
 use Porta\Onboarding\WelcomeSteps;
 use Porta\Overlay\Presenter\WelcomeModalController;
 use Porta\Overlay\State\MenuOverlayPanes;
+use Porta\Settings\SettingsHighlightController;
 use Porta\Tests\Support\FakePluginLifecycle;
 use Porta\Ui\BidiTui;
 use Porta\Ui\ChromeInvalidator;

@@ -6,13 +6,13 @@ namespace Porta\Tests\Unit\Onboarding;
 
 use PHPUnit\Framework\TestCase;
 use Porta\Config\CommandRegistry;
-use Porta\Config\SettingsHighlightController;
 use Porta\Highlight\NoHighlightPlugins;
 use Porta\Highlight\SyntaxHighlightProvider;
 use Porta\Highlight\SyntaxHighlightProviderSource;
 use Porta\I18n\Translator;
 use Porta\Onboarding\MagoDetector;
 use Porta\Onboarding\WelcomeSteps;
+use Porta\Settings\SettingsHighlightController;
 use Porta\Tests\Support\FakePluginLifecycle;
 use Porta\Tests\Support\TempProject;
 

@@ -2,11 +2,9 @@
 
 declare(strict_types=1);
 
-namespace Porta\Tests\Unit\Config;
+namespace Porta\Tests\Settings;
 
 use PHPUnit\Framework\TestCase;
-use Porta\Config\SettingsPluginsController;
-use Porta\Config\SettingsRowKind;
 use Porta\I18n\Translator;
 use Porta\Plugin\PluginApi;
 use Porta\Plugin\PluginEvents;
@@ -14,6 +12,8 @@ use Porta\Plugin\PluginInstaller;
 use Porta\Plugin\PluginManager;
 use Porta\Plugin\PluginSettings;
 use Porta\Plugin\ToolInstaller;
+use Porta\Settings\SettingsPluginsController;
+use Porta\Settings\SettingsRowKind;
 use Porta\Tests\Support\FakePluginLifecycle;
 use Porta\Tests\Support\TempProject;
 use Porta\Ui\Notifier;

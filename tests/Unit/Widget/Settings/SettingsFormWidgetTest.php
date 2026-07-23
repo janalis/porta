@@ -5,9 +5,9 @@ declare(strict_types=1);
 namespace Porta\Tests\Unit\Widget\Settings;
 
 use PHPUnit\Framework\TestCase;
-use Porta\Config\SettingsRow;
-use Porta\Config\SettingsRowKind;
 use Porta\I18n\Translator;
+use Porta\Settings\SettingsRow;
+use Porta\Settings\SettingsRowKind;
 use Porta\Tests\Support\AttachedStyles;
 use Porta\Widget\Settings\SettingsFormWidget;
 use Symfony\Component\Tui\Ansi\AnsiUtils;

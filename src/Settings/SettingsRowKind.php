@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace Porta\Config;
+namespace Porta\Settings;
 
 /**
  * How a {@see SettingsRow} renders and cycles: a checkbox (bool), a value cycled

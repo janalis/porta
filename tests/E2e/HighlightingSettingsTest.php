@@ -5,7 +5,7 @@ declare(strict_types=1);
 namespace Porta\Tests\E2e;
 
 use PHPUnit\Framework\TestCase;
-use Porta\Config\SettingsHighlightController;
+use Porta\Settings\SettingsHighlightController;
 use Porta\Tests\Support\NavigatesSettings;
 use Porta\Tests\Support\RunsIde;
 use Porta\Tests\Support\TempProject;

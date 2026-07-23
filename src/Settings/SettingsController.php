@@ -2,8 +2,9 @@
 
 declare(strict_types=1);
 
-namespace Porta\Config;
+namespace Porta\Settings;
 
+use Porta\Config\IdeConfig;
 use Porta\Editor\LineNumberMode;
 use Porta\I18n\Translator;
 use Porta\Search\TodoTags;

@@ -2,17 +2,17 @@
 
 declare(strict_types=1);
 
-namespace Porta\Tests\Unit\Config;
+namespace Porta\Tests\Settings;
 
 use PHPUnit\Framework\TestCase;
 use Porta\Config\IdeConfig;
-use Porta\Config\SettingsGitController;
-use Porta\Config\SettingsRowKind;
 use Porta\Editor\BufferManager;
 use Porta\Git\GitInfo;
 use Porta\Git\GitRefresher;
 use Porta\Git\GitSettings;
 use Porta\I18n\Translator;
+use Porta\Settings\SettingsGitController;
+use Porta\Settings\SettingsRowKind;
 use Porta\Tests\Support\TempProject;
 use Porta\Ui\Notifier;
 use Porta\Widget\CodeEditorWidget;

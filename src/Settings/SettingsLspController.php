@@ -2,8 +2,10 @@
 
 declare(strict_types=1);
 
-namespace Porta\Config;
+namespace Porta\Settings;
 
+use Porta\Config\IdeConfig;
+use Porta\Config\LanguageCatalog;
 use Porta\I18n\Translator;
 use Porta\Lsp\LspReconfigurer;
 use Porta\Lsp\ServerLocator;

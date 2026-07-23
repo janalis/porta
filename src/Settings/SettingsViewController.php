@@ -4,16 +4,16 @@ declare(strict_types=1);
 
 namespace Porta\Settings;
 
-use Porta\Config\SettingsController;
-use Porta\Config\SettingsDebugController;
-use Porta\Config\SettingsGitController;
-use Porta\Config\SettingsHighlightController;
-use Porta\Config\SettingsKeymapController;
-use Porta\Config\SettingsLanguageController;
-use Porta\Config\SettingsLspController;
-use Porta\Config\SettingsPluginsController;
-use Porta\Config\SettingsRow;
 use Porta\Layout\EditorAreaPanes;
+use Porta\Settings\SettingsController;
+use Porta\Settings\SettingsDebugController;
+use Porta\Settings\SettingsGitController;
+use Porta\Settings\SettingsHighlightController;
+use Porta\Settings\SettingsKeymapController;
+use Porta\Settings\SettingsLanguageController;
+use Porta\Settings\SettingsLspController;
+use Porta\Settings\SettingsPluginsController;
+use Porta\Settings\SettingsRow;
 use Porta\Ui\EditorArea;
 use Porta\Ui\WorkspaceViews;
 use Porta\Widget\MenuBarWidget;

@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace Porta\Config;
+namespace Porta\Settings;
 
 use Porta\I18n\Translator;
 use Porta\Plugin\InstallOutcome;

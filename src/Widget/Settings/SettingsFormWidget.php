@@ -4,10 +4,10 @@ declare(strict_types=1);
 
 namespace Porta\Widget\Settings;
 
-use Porta\Config\SettingsRow;
-use Porta\Config\SettingsRowKind;
 use Porta\Container\AsWidget;
 use Porta\I18n\Translator;
+use Porta\Settings\SettingsRow;
+use Porta\Settings\SettingsRowKind;
 use Porta\Support\AnsiText;
 use Porta\Support\IntMath;
 use Porta\Ui\CaretVisibility;

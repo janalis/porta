@@ -7,7 +7,7 @@ namespace Porta\Onboarding;
 /**
  * One setup step on the Welcome screen.
  *
- * Deliberately narrower than {@see \Porta\Config\SettingsRow}, which carries five
+ * Deliberately narrower than {@see \Porta\Settings\SettingsRow}, which carries five
  * kinds and their editing modes: a step has exactly one interaction — run it —
  * so the widget stays small. Anything needing a real control (picking a theme,
  * say) delegates by opening the Settings page that owns it rather than growing

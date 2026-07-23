@@ -2,17 +2,17 @@
 
 declare(strict_types=1);
 
-namespace Porta\Tests\Unit\Config;
+namespace Porta\Tests\Settings;
 
 use PHPUnit\Framework\TestCase;
 use Porta\Config\IdeConfig;
-use Porta\Config\SettingsLspController;
-use Porta\Config\SettingsRowKind;
 use Porta\I18n\Translator;
 use Porta\Lsp\BufferReopener;
 use Porta\Lsp\LanguageServerProvider;
 use Porta\Lsp\LspReconfigurer;
 use Porta\Lsp\LspSessionPool;
+use Porta\Settings\SettingsLspController;
+use Porta\Settings\SettingsRowKind;
 use Porta\Tests\Support\FixedActiveFile;
 use Porta\Tests\Support\TempProject;
 use Porta\Ui\Notifier;

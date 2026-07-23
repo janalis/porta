@@ -5,8 +5,8 @@ declare(strict_types=1);
 namespace Porta\Plugin;
 
 use Porta\Config\IdeConfig;
-use Porta\Config\SettingsRow;
-use Porta\Config\SettingsRowKind;
+use Porta\Settings\SettingsRow;
+use Porta\Settings\SettingsRowKind;
 
 /**
  * Committed plugin setting descriptors and their live values. Values persist

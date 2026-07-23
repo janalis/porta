@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace Porta\Config;
+namespace Porta\Settings;
 
 /**
  * One row of the settings form: a labelled setting the {@see \Porta\Widget\Settings\SettingsFormWidget}

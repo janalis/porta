@@ -2,12 +2,12 @@
 
 declare(strict_types=1);
 
-namespace Porta\Tests\Unit\Config;
+namespace Porta\Tests\Settings;
 
 use PHPUnit\Framework\TestCase;
-use Porta\Config\SettingsDebugController;
 use Porta\Debug\DebugAdapters;
 use Porta\I18n\Translator;
+use Porta\Settings\SettingsDebugController;
 use Porta\Tests\Support\TempProject;
 use Porta\Ui\Notifier;
 use Porta\Widget\StatusBarWidget;

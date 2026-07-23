@@ -2,8 +2,11 @@
 
 declare(strict_types=1);
 
-namespace Porta\Config;
+namespace Porta\Settings;
 
+use Porta\Config\ActionCatalog;
+use Porta\Config\IdeConfig;
+use Porta\Config\KeybindingRow;
 use Porta\I18n\Translator;
 use Porta\Ui\Notifier;
 use Porta\Ui\ShortcutFormatter;

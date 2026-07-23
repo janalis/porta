@@ -2,12 +2,10 @@
 
 declare(strict_types=1);
 
-namespace Porta\Tests\Unit\Config;
+namespace Porta\Tests\Settings;
 
 use PHPUnit\Framework\TestCase;
 use Porta\Config\IdeConfig;
-use Porta\Config\SettingsController;
-use Porta\Config\SettingsRowKind;
 use Porta\Editor\BufferManager;
 use Porta\Editor\LineNumberMode;
 use Porta\Event\CursorShapeChanged;
@@ -24,6 +22,8 @@ use Porta\Lsp\WorkspaceEditor;
 use Porta\Onboarding\OnboardingState;
 use Porta\Search\TodoTags;
 use Porta\Settings\LiveSettingsApplier;
+use Porta\Settings\SettingsController;
+use Porta\Settings\SettingsRowKind;
 use Porta\Tests\Support\FakeScheduler;
 use Porta\Tests\Support\FixedActiveFile;
 use Porta\Tests\Support\TempProject;

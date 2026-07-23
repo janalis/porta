@@ -6,12 +6,12 @@ namespace Porta\Command;
 
 use Porta\Config\CommandRegistry;
 use Porta\Config\KeyDispatch;
-use Porta\Config\SettingsController;
 use Porta\Editor\BufferManager;
 use Porta\Editor\BufferService;
 use Porta\Lsp\FoldingController;
 use Porta\Run\RunController;
 use Porta\Search\Everywhere\SearchEverywhereController;
+use Porta\Settings\SettingsController;
 use Porta\Ui\BottomDock;
 use Porta\Ui\WorkbenchActions;
 use Porta\Ui\WorkspaceViews;
