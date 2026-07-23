@@ -147,9 +147,13 @@ singleton widget** (`#[Container/AsWidget]` declares tree id/flex, autoconfigure
   with **zero consumers fails the compile**, and same-type-same-name params
   (`SeparatorWidget $separator` in both mouse sub-routers) can't bind — those get explicit
   per-service `->arg('$separator', …)`.
-- **Interface aliases** (one impl each): `FileOpener`/`BufferReopener`→`BufferService`,
-  `EditorAreaPanes`→`PaneLayout`, `PluginLifecycleOps`→`PluginLifecycle`,
-  `ActiveFileProvider`→`CodeEditorWidget`, `DapClientFactory`, `Scheduler`, `FloatingRegions`.
+- **Interface aliases are auto-derived**: `Container/SingleImplAliasPass` (a compiler pass at
+  `TYPE_BEFORE_OPTIMIZATION` priority 100, before autowiring) aliases every `Porta\` interface with
+  exactly **one** implementing service to it (`FileOpener`→`BufferService`,
+  `EditorAreaPanes`→`PaneLayout`, `ActiveFileProvider`→`CodeEditorWidget`, …). A **multi-impl**
+  interface (`FloatingRegions`, `SyntaxHighlightProviderSource` — two service impls each) is left
+  alone and stays an explicit `alias()`; cross-vendor interfaces (`ClockInterface`, `TerminalTheme`,
+  `EventDispatcherInterface`) are out of scope and stay explicit too.
 - **Tagged command providers**: `Command/CommandProvider` autoconfigures into the
   `porta.command_provider` tag; each provider carries `#[AsTaggedItem(priority: N)]`
   (Workbench 700 → Debug 600 → PluginCommandProvider 500 → File 400 → Search 300 → View 200 →
@@ -177,12 +181,16 @@ non-service classes register private and are pruned at compile because nothing p
 them (*fragile*: if a **public** service ever gains a dependency on a non-service class,
 compile fails with a Symfony autowiring error — explicit at boot, caught by the first E2e test).
 `_defaults` stays **private**; the single public boundary is the `porta.ide` `ServiceLocator`
-(plus the synthetics) — `Ide` resolves everything through its typed `service()` helper. A new class
-`Ide` needs by type must be added to the locator's entry list (the readable manifest of the public
-boundary); **`tests/Unit/Container/IdeLocatorMembershipTest`** enforces this — it tokenizes
-`Ide.php` for `service(X::class)` targets and fails if any isn't a member, so a forgotten entry is a
-loud test failure, not a boot crash. Every def is **shared**; **never `lazy: true`** — it
-proxy-subclasses, which breaks `final` classes.
+(plus the synthetics) — `Ide` resolves everything through its typed `service()` helper. **Locator
+membership is declared on the class with `#[Container/AsIdeService]`** (autoconfigured into the
+`porta.ide_service` tag; the locator is a `tagged_iterator` keyed by service id = FQCN, so
+`service(X::class)`/`$locator->get(X::class)` resolve unchanged) — a new member marks itself, no
+central list to update. Two members can't carry the attribute and are tagged at their def:
+`Keybindings` (factory-built) and `event_dispatcher` (with an explicit `key => EventDispatcherInterface`
+since the interface is an alias). **`tests/Unit/Container/IdeLocatorMembershipTest`** still guards the
+`Ide` side — it tokenizes `Ide.php` for `service(X::class)` targets and fails if any isn't a member,
+so a forgotten `#[AsIdeService]` is a loud test failure, not a boot crash. Every def is **shared**;
+**never `lazy: true`** — it proxy-subclasses, which breaks `final` classes.
 
 **Events.** `symfony/event-dispatcher`, kernel-less: `config/services.php` registers the
 `#[AsEventListener]` attribute autoconfiguration and the `RegisterListenersPass` (the service id
