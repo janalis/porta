@@ -538,7 +538,7 @@ final class FindBarWidget extends OverlayWidget implements FocusableInterface
      * A right-aligned mode tag. An enabled tag is bracketed — the toggle
      * convention, so it reads without colour — and all three states stay
      * glyph + 2 columns so the click zones never shift. Identical to
-     * {@see \Porta\Widget\Overlay\FindInFilesModal}'s tags, which is what
+     * {@see \Porta\Overlay\State\FindInFilesModal}'s tags, which is what
      * these have always looked like they were.
      */
     private function optionTag(string $label, OptionTagState $state): string

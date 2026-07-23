@@ -20,7 +20,7 @@ use Symfony\Component\Tui\Tui;
  * mini prompt — over the whole workspace: the same per-pane span path the
  * Welcome and Find-in-Files modals ride, so a picker centers on the screen
  * (not off-center inside the editor pane) and dims the workspace beneath it.
- * {@see \Porta\Widget\Overlay\OverlayHost} keeps all state, layout and
+ * {@see \Porta\Overlay\State\OverlayHost} keeps all state, layout and
  * hit-testing; this presenter only delivers: boxes → spans + shadow, plus the
  * pane-level backdrop dim.
  *

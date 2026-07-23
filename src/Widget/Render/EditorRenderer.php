@@ -8,13 +8,13 @@ use Porta\Editor\CompletionBox;
 use Porta\Editor\CompletionItem;
 use Porta\Editor\DiagnosticStyle;
 use Porta\Editor\Document;
+use Porta\Overlay\State\RowSelection;
 use Porta\Support\AnsiText;
 use Porta\Support\IntMath;
 use Porta\Ui\Glyphs;
 use Porta\Ui\Role;
 use Porta\Ui\Sgr;
 use Porta\Ui\Theme\Styles;
-use Porta\Widget\Overlay\RowSelection;
 use Symfony\Component\Tui\Ansi\AnsiUtils;
 
 /**

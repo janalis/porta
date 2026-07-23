@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace Porta\Widget\Overlay;
+namespace Porta\Overlay\State;
 
 use Porta\I18n\Translator;
 use Porta\Overlay\Region\ModalBox;

@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace Porta\Widget\Overlay;
+namespace Porta\Overlay\State;
 
 /**
  * How a row in an always-focused modal list is lit: the selected row carries

@@ -7,7 +7,7 @@ namespace Porta\Overlay\Region;
 /**
  * A rendered modal's box geometry, recorded at composite time for mouse
  * hit-testing — the one shape behind what were four ad-hoc per-picker arrays
- * ({@see \Porta\Widget\Overlay\OverlayHost}, the find-in-files modal) plus the
+ * ({@see \Porta\Overlay\State\OverlayHost}, the find-in-files modal) plus the
  * Welcome modal. Rows/columns are in whatever space the owner rendered in
  * (editor-relative for the pickers, absolute for the Welcome modal); the owner
  * hit-tests in that same space.

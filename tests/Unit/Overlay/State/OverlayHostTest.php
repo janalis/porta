@@ -2,13 +2,13 @@
 
 declare(strict_types=1);
 
-namespace Porta\Tests\Unit\Widget\Overlay;
+namespace Porta\Tests\Overlay\State;
 
 use PHPUnit\Framework\TestCase;
+use Porta\Overlay\State\OverlayHost;
 use Porta\Search\Everywhere\SearchCategory;
 use Porta\Search\Everywhere\SearchHit;
 use Porta\Search\Everywhere\SearchRow;
-use Porta\Widget\Overlay\OverlayHost;
 use Porta\Widget\Render\OverlayCompositor;
 use Symfony\Component\Tui\Ansi\AnsiUtils;
 use Symfony\Component\Tui\Input\Key;

@@ -4,8 +4,8 @@ declare(strict_types=1);
 
 namespace Porta\Widget\Render;
 
+use Porta\Overlay\State\RowSelection;
 use Porta\Ui\Role;
-use Porta\Widget\Overlay\RowSelection;
 
 /**
  * The shading of a row in an always-focused modal list — the go-to-file picker,

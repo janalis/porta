@@ -2,12 +2,12 @@
 
 declare(strict_types=1);
 
-namespace Porta\Tests\Unit\Widget\Overlay;
+namespace Porta\Tests\Overlay\State;
 
 use PHPUnit\Framework\TestCase;
+use Porta\Overlay\State\FindInFilesModal;
 use Porta\Ui\CaretVisibility;
 use Porta\Ui\Glyphs;
-use Porta\Widget\Overlay\FindInFilesModal;
 use Porta\Widget\Render\OverlayCompositor;
 use Symfony\Component\Tui\Ansi\AnsiUtils;
 use Symfony\Component\Tui\Input\Keybindings;

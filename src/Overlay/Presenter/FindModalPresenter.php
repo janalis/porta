@@ -21,7 +21,7 @@ use Symfony\Component\Tui\Tui;
  * per-pane span path the Welcome modal uses, so the box floats (and drags)
  * over the tree, the tab bar and the dock instead of being clipped to the
  * editor pane it used to be composited into. The modal itself
- * ({@see \Porta\Widget\Overlay\FindInFilesModal}) keeps all state, layout
+ * ({@see \Porta\Overlay\State\FindInFilesModal}) keeps all state, layout
  * and hit-testing; this presenter only delivers: panel → spans + shadow,
  * plus the pane-level backdrop dim.
  *
