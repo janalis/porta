@@ -517,18 +517,9 @@ final class IdeHelpersTest extends TestCase
             ->showBuffer($buffer);
 
         $this->refactor()->requestReformat();
-        $this->await(fn () => str_contains(
-            \Symfony\Component\Tui\Ansi\AnsiUtils::stripAnsiCodes(
-                implode(
-                    '',
-                    $this->ide
-                        ->getTui()
-                        ->getById('status')
-                        ->render(new \Symfony\Component\Tui\Render\RenderContext(120, 1)),
-                ),
-            ),
-            'Formatting not supported',
-        ), 2.0);
+        // The message is a toast now, so await the toast stack itself — polling
+        // the status bar (where it no longer lands) made this timing-fragile.
+        $this->await(fn () => str_contains(implode("\n", \Porta\Tests\Support\Toasts::all($this->ide)), 'Formatting not supported'), 2.0);
 
         $this->assertStringContainsString('Formatting not supported by mock-lsp-server', \Porta\Tests\Support\Toasts::last($this->ide));
         $client->stop();
