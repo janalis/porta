@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Porta\Settings;
 
+use Porta\Container\AsEager;
 use Porta\Layout\EditorAreaPanes;
 use Porta\Settings\SettingsController;
 use Porta\Settings\SettingsDebugController;
@@ -32,6 +33,7 @@ use Symfony\Component\Tui\Widget\FocusableInterface;
  * matching form/list. Structured like {@see \Porta\Git\GitViewController} but simpler (no
  * poll loop, no availability gate).
  */
+#[AsEager(priority: 500)]
 final class SettingsViewController
 {
     private bool $open = false;

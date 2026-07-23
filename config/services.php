@@ -2,6 +2,7 @@
 
 declare(strict_types=1);
 
+use Porta\Bootstrap\EagerServices;
 use Porta\Bootstrap\WidgetHooks;
 use Porta\Command\CommandProvider;
 use Porta\Command\CommandRegistryPopulator;
@@ -14,6 +15,7 @@ use Porta\Settings\SettingsController;
 use Porta\Settings\SettingsGitController;
 use Porta\Settings\SettingsLanguageController;
 use Porta\Settings\SettingsLspController;
+use Porta\Container\AsEager;
 use Porta\Container\AsWidget;
 use Porta\Debug\BreakpointStore;
 use Porta\Debug\DapClientFactory;
@@ -227,6 +229,17 @@ return static function (ContainerConfigurator $container, ContainerBuilder $buil
     // collisions.
     $builder->registerForAutoconfiguration(CommandProvider::class)->addTag('porta.command_provider');
 
+    // #[AsEager] services are constructed once at the Ide ctor tail (via
+    // Bootstrap/EagerServices iterating this tag) purely for their
+    // self-registering constructor side effect; the priority fixes the
+    // contractual find→picker→toast order.
+    $builder->registerAttributeForAutoconfiguration(
+        AsEager::class,
+        static function (ChildDefinition $definition, AsEager $attribute): void {
+            $definition->addTag('porta.eager', ['priority' => $attribute->priority]);
+        },
+    );
+
     $services = $container->services();
 
     // Private by default: autoregistration below relies on the removal pass
@@ -415,6 +428,7 @@ return static function (ContainerConfigurator $container, ContainerBuilder $buil
         EditorCallbacks::class,
         PluginRuntime::class,
         WidgetHooks::class,
+        EagerServices::class,
         TerminalStateRefresher::class,
     ] as $locatorId) {
         $locatorEntries[$locatorId] = service($locatorId);

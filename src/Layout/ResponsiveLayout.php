@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Porta\Layout;
 
+use Porta\Container\AsEager;
 use Porta\Ui\BidiTui;
 use Porta\Ui\EditorArea;
 use Porta\Widget\FileTreeWidget;
@@ -21,6 +22,7 @@ use Symfony\Component\Tui\Widget\FocusableInterface;
  * collapsing focused tree hands over the same way the view controllers do on
  * close).
  */
+#[AsEager(priority: 600)]
 final class ResponsiveLayout
 {
     /** Below this many columns the sidebar collapses (tree minimum + a usable editor). */

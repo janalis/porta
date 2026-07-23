@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Porta\Overlay\Presenter;
 
+use Porta\Container\AsEager;
 use Porta\Overlay\Region\DropdownRegion;
 use Porta\Overlay\Region\PaneBounds;
 use Porta\Overlay\Region\SpanSlicer;
@@ -36,6 +37,7 @@ use Symfony\Component\Tui\Tui;
  * Resolved eagerly by {@see \Porta\Ide} — nothing else references it, and
  * without the eager resolve the pickers would never paint.
  */
+#[AsEager(priority: 200)]
 final class PickerModalPresenter
 {
     /** Whether this presenter's spans are currently painted (its clear-once guard). */

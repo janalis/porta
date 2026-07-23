@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Porta\Overlay\Presenter;
 
+use Porta\Container\AsEager;
 use Porta\Overlay\Region\DropdownRegion;
 use Porta\Overlay\Region\ModalBox;
 use Porta\Overlay\Region\PaneBounds;
@@ -31,6 +32,7 @@ use Symfony\Component\Tui\Tui;
  * Resolved eagerly by {@see \Porta\Ide} — nothing else references it, and
  * without the eager resolve toasts would never paint.
  */
+#[AsEager(priority: 100)]
 final class ToastPresenter
 {
     /** Whether this presenter's spans are currently painted (its clear-once guard). */

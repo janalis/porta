@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Porta;
 
+use Porta\Bootstrap\EagerServices;
 use Porta\Bootstrap\WidgetHooks;
 use Porta\Command\CommandRegistryPopulator;
 use Porta\Config\CommandRegistry;
@@ -18,13 +19,11 @@ use Porta\Editor\BufferService;
 use Porta\Editor\OpenFocus;
 use Porta\Git\GitInfo;
 use Porta\Git\GitRefresher;
-use Porta\Git\GitViewController;
 use Porta\History\LocalHistoryController;
 use Porta\History\SessionRestorer;
 use Porta\Input\InputDispatcher;
 use Porta\Layout\LayoutController;
 use Porta\Layout\PaneLayout;
-use Porta\Layout\ResponsiveLayout;
 use Porta\Layout\WorkspaceLayout;
 use Porta\Lsp\LspBootstrapper;
 use Porta\Lsp\LspSessionPool;
@@ -32,10 +31,6 @@ use Porta\Lsp\NavigationController;
 use Porta\Lsp\RefactorController;
 use Porta\Lsp\WorkspaceEditor;
 use Porta\Onboarding\OnboardingState;
-use Porta\Overlay\Presenter\FindModalPresenter;
-use Porta\Overlay\Presenter\PickerModalPresenter;
-use Porta\Overlay\Presenter\ToastPresenter;
-use Porta\Overlay\Presenter\WelcomeModalController;
 use Porta\Plugin\PluginHost;
 use Porta\Plugin\PluginLifecycle;
 use Porta\Plugin\PluginManager;
@@ -45,7 +40,6 @@ use Porta\Search\SearchActions;
 use Porta\Search\SearchUiWiring;
 use Porta\Settings\SettingsController;
 use Porta\Settings\SettingsLanguageController;
-use Porta\Settings\SettingsViewController;
 use Porta\Support\FreezeWatchdog;
 use Porta\Ui\BidiTui;
 use Porta\Ui\ChromeInvalidator;
@@ -247,18 +241,12 @@ final class Ide
         $this->settingsLanguages = $this->service(SettingsLanguageController::class);
         $this->settingsLanguages->applyToEditor();
         $this->pluginLifecycle = $this->service(PluginLifecycle::class);
-        // Eager: constructing a view controller attaches it to WorkspaceViews
-        // (an unreferenced service would otherwise never exist).
-        $this->service(SettingsViewController::class);
-        $this->service(WelcomeModalController::class);
-        // Eager for the same reason: each presenter registers its per-frame
-        // sync in its constructor and nothing else references it. Order
-        // matters: the picker presenter must sync AFTER the find modal's so
-        // that, on an interlock hand-over, the closing presenter's clear runs
-        // before the opening one paints the shared span slot.
-        $this->service(FindModalPresenter::class);
-        $this->service(PickerModalPresenter::class);
-        $this->service(ToastPresenter::class);
+        // Construct every #[AsEager] service for its self-registering ctor
+        // side effect (view controllers attach to WorkspaceViews; the
+        // presenters hook onBeforeFrame), in the tag's priority order — which
+        // keeps the contractual find→picker→toast so a shared-span-slot
+        // hand-over clears before it repaints.
+        $this->service(EagerServices::class)->boot();
         $this->pluginLifecycle->refreshNav();
 
         $this->localHistory = $this->service(LocalHistoryController::class);
@@ -508,13 +496,10 @@ final class Ide
     private function buildGitView(): void
     {
         $this->paneLayout->arrangeGitArea();
-        // Eager: constructing the git view attaches it to WorkspaceViews (an
-        // unreferenced service would otherwise never exist); its remote-
-        // completed refresh rides the compiled #[AsEventListener] map.
-        $this->service(GitViewController::class);
-        // Eager for the same reason: registers itself on the render loop's
-        // width hook so the sidebar auto-collapses in narrow terminals.
-        $this->service(ResponsiveLayout::class);
+
+        // GitViewController + ResponsiveLayout are #[AsEager] — constructed by
+        // EagerServices::boot() at the ctor tail (they self-attach to
+        // WorkspaceViews / the width hook), so no eager resolve here.
     }
 
     // --- File handling ----------------------------------------------------------

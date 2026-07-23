@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Porta\Git;
 
+use Porta\Container\AsEager;
 use Porta\Event\GitCommitted;
 use Porta\Event\GitRemoteCompleted;
 use Porta\I18n\Translator;
@@ -30,6 +31,7 @@ use Symfony\Component\Tui\Widget\FocusableInterface;
  * fresh (on every mutation plus a 2s poll while open), and runs the
  * stage/unstage/discard/commit pipelines against {@see GitInfo}.
  */
+#[AsEager(priority: 700)]
 final class GitViewController
 {
     private bool $open = false;
