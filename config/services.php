@@ -26,21 +26,16 @@ use Porta\Debug\DebugStatePersistence;
 use Porta\Debug\EditorDecorations;
 use Porta\Debug\ProcessDapClientFactory;
 use Porta\Editor\ActiveFileProvider;
-use Porta\Editor\BreadcrumbTrailProvider;
 use Porta\Editor\BufferManager;
 use Porta\Editor\BufferNavigator;
 use Porta\Editor\BufferService;
 use Porta\Editor\DiagnosticsSink;
 use Porta\Editor\EditorFileActions;
 use Porta\Editor\FileOpener;
-use Porta\Git\GitCommands;
 use Porta\Git\GitInfo;
 use Porta\Git\GitRefresher;
 use Porta\Git\GitRemote;
-use Porta\Git\GitRemoteCommands;
 use Porta\Git\GitSettings;
-use Porta\Git\GitViewController;
-use Porta\Help\HelpViewerActions;
 use Porta\Highlight\ColorMode;
 use Porta\Highlight\HighlightPreferences;
 use Porta\Highlight\SwitchableTerminalTheme;
@@ -53,9 +48,7 @@ use Porta\History\SessionStore;
 use Porta\I18n\PaneReorder;
 use Porta\I18n\Translator;
 use Porta\Image\ImageDecoder;
-use Porta\Image\ImageViewerActions;
 use Porta\Input\GitMouseRouter;
-use Porta\Input\HitTester;
 use Porta\Input\HoverRouter;
 use Porta\Input\InputDispatcher;
 use Porta\Input\MouseRouter;
@@ -65,7 +58,6 @@ use Porta\Layout\GitSidebar;
 use Porta\Layout\LayoutController;
 use Porta\Layout\PaneLayout;
 use Porta\Layout\PaneResizer;
-use Porta\Layout\ResponsiveLayout;
 use Porta\Layout\WorkspaceLayout;
 use Porta\Lsp\BufferReopener;
 use Porta\Lsp\CompletionController;
@@ -78,9 +70,6 @@ use Porta\Lsp\NavigationController;
 use Porta\Lsp\RefactorController;
 use Porta\Lsp\WorkspaceEditor;
 use Porta\Overlay\Region\CompositeFloatingRegions;
-use Porta\Overlay\Presenter\FindModalPresenter;
-use Porta\Overlay\Presenter\PickerModalPresenter;
-use Porta\Overlay\Presenter\ToastPresenter;
 use Porta\Overlay\Region\FloatingRegions;
 use Porta\Overlay\State\MenuOverlayController;
 use Porta\Overlay\State\MenuOverlayPanes;
@@ -108,37 +97,27 @@ use Porta\Search\SearchUiWiring;
 use Porta\Search\TestNavigator;
 use Porta\Settings\LiveSettingsApplier;
 use Porta\Onboarding\OnboardingState;
-use Porta\Settings\SettingsViewController;
 use Porta\Support\Clipboard;
-use Porta\Support\DocsUrlOpener;
 use Porta\Support\FreezeWatchdog;
 use Porta\Support\RevoltScheduler;
 use Porta\Support\Scheduler;
 use Porta\Ui\BidiTui;
 use Porta\Ui\Dock\BottomDock;
 use Porta\Ui\ChromeInvalidator;
-use Porta\Ui\Menu\ContextMenuOpener;
 use Porta\Ui\CursorStyle;
 use Porta\Ui\EditorArea;
-use Porta\Ui\FocusCoordinator;
 use Porta\Ui\Menu\MenuRebuilder;
-use Porta\Ui\NotificationLog;
 use Porta\Ui\Notifier;
 use Porta\Ui\PaneSegmenter;
-use Porta\Ui\StatusBarProvider;
-use Porta\Ui\Dock\TabListProvider;
 use Porta\Ui\TerminalStateRefresher;
 use Porta\Ui\Theme\Styles;
 use Porta\Ui\Theme\Themes;
-use Porta\Ui\WorkbenchActions;
 use Porta\Ui\WorkspaceViews;
-use Porta\Widget\BreadcrumbsWidget;
 use Porta\Widget\BufferNavigationHandler;
 use Porta\Widget\CodeEditorWidget;
 use Porta\Widget\ContextMenu;
 use Porta\Widget\DebugPanelWidget;
 use Porta\Widget\DockTabsWidget;
-use Porta\Widget\EditorCallbacks;
 use Porta\Widget\EditorCompletionHandler;
 use Porta\Widget\EditorFileActionHandler;
 use Porta\Widget\EditorNavigationHandler;
@@ -159,7 +138,6 @@ use Porta\Widget\Settings\KeybindingsListWidget;
 use Porta\Widget\Settings\SettingsFormWidget;
 use Porta\Widget\Settings\SettingsNavWidget;
 use Porta\Widget\StatusBarWidget;
-use Porta\Widget\TabBarWidget;
 use Porta\Widget\TerminalPanelWidget;
 use Psr\Clock\ClockInterface;
 use Psr\EventDispatcher\EventDispatcherInterface as PsrEventDispatcherInterface;
@@ -346,7 +324,6 @@ return static function (ContainerConfigurator $container, ContainerBuilder $buil
     // Widget ids and flex styles live on the widget classes as #[AsWidget].
     $locatorEntries = [];
     foreach ([
-        DocsUrlOpener::class,
         EditorArea::class,
         WorkspaceViews::class,
         ChromeInvalidator::class,
@@ -356,11 +333,8 @@ return static function (ContainerConfigurator $container, ContainerBuilder $buil
         SessionStore::class,
         BufferManager::class,
         WorkspaceEditor::class,
-        CompletionController::class,
         BottomDock::class,
-        HitTester::class,
         LayoutController::class,
-        NotificationLog::class,
         FreezeWatchdog::class,
         Notifier::class,
         CodeEditorWidget::class,
@@ -373,8 +347,6 @@ return static function (ContainerConfigurator $container, ContainerBuilder $buil
         TerminalPanelWidget::class,
         FileTreeWidget::class,
         FindBarWidget::class,
-        TabBarWidget::class,
-        BreadcrumbsWidget::class,
         MenuBarWidget::class,
         ContextMenu::class,
         WorkspaceLayout::class,
@@ -382,50 +354,30 @@ return static function (ContainerConfigurator $container, ContainerBuilder $buil
         PaneSegmenter::class,
         PaneReorder::class,
         PaneLayout::class,
-        TabListProvider::class,
-        BreadcrumbTrailProvider::class,
-        FocusCoordinator::class,
         PluginHost::class,
         Keybindings::class,
         LspSessionPool::class,
         LspLog::class,
         CommandRegistry::class,
         BufferService::class,
-        BufferNavigator::class,
-        EditorFileActions::class,
         SessionRestorer::class,
         SearchActions::class,
-        WorkbenchActions::class,
         LspBootstrapper::class,
-        HelpViewerActions::class,
-        ImageViewerActions::class,
         LocalHistoryController::class,
-        GitCommands::class,
-        GitRemoteCommands::class,
-        SearchEverywhereController::class,
         DebugController::class,
         DebugStatePersistence::class,
-        StatusBarProvider::class,
         SettingsController::class,
         SettingsLanguageController::class,
-        SettingsViewController::class,
         OnboardingState::class,
         WelcomeModalController::class,
-        FindModalPresenter::class,
-        PickerModalPresenter::class,
-        ToastPresenter::class,
         PluginLifecycle::class,
         MenuRebuilder::class,
-        GitViewController::class,
-        ResponsiveLayout::class,
         InputDispatcher::class,
         NavigationController::class,
         RefactorController::class,
         RunController::class,
         SearchUiWiring::class,
-        ContextMenuOpener::class,
         CommandRegistryPopulator::class,
-        EditorCallbacks::class,
         PluginRuntime::class,
         WidgetHooks::class,
         EagerServices::class,
