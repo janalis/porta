@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Porta\Ui\Menu;
 
 use Porta\Config\CommandRegistry;
+use Porta\Container\AsIdeService;
 use Porta\I18n\Translator;
 use Porta\Plugin\PluginManager;
 use Porta\Ui\WorkspaceViews;
@@ -17,6 +18,7 @@ use Symfony\Component\Tui\Input\Keybindings;
  * labels and key hints at setMenus() time, so every live change that affects
  * them (locale, theme, plugin set) re-runs this.
  */
+#[AsIdeService]
 final class MenuRebuilder
 {
     public function __construct(

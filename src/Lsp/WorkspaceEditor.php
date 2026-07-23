@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Porta\Lsp;
 
+use Porta\Container\AsIdeService;
 use Porta\Editor\BufferManager;
 use Porta\Editor\Document;
 use Porta\Editor\SelectionMode;
@@ -15,6 +16,7 @@ use Symfony\Component\Filesystem\Filesystem;
  * on disk when not open). Shared by the rename/code-action feature controller
  * and by the server-initiated {@see workspace/applyEdit} handler.
  */
+#[AsIdeService]
 final readonly class WorkspaceEditor
 {
     public function __construct(

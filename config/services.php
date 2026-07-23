@@ -3,142 +3,71 @@
 declare(strict_types=1);
 
 use Porta\Bootstrap\EagerServices;
-use Porta\Bootstrap\WidgetHooks;
 use Porta\Command\CommandProvider;
-use Porta\Command\CommandRegistryPopulator;
-use Porta\Config\CommandRegistry;
-use Porta\Config\EditorConfig\EditorConfigResolver;
 use Porta\Config\IdeConfig;
 use Porta\Config\KeybindingsFactory;
-use Porta\Config\LayoutStore;
 use Porta\Settings\SettingsController;
 use Porta\Settings\SettingsGitController;
 use Porta\Settings\SettingsLanguageController;
 use Porta\Settings\SettingsLspController;
 use Porta\Container\AsEager;
+use Porta\Container\AsIdeService;
 use Porta\Container\AsWidget;
-use Porta\Debug\BreakpointStore;
 use Porta\Debug\DapClientFactory;
 use Porta\Debug\DebugAdapters;
-use Porta\Debug\DebugController;
-use Porta\Debug\DebugSessionState;
-use Porta\Debug\DebugStatePersistence;
-use Porta\Debug\EditorDecorations;
 use Porta\Debug\ProcessDapClientFactory;
 use Porta\Editor\ActiveFileProvider;
-use Porta\Editor\BufferManager;
 use Porta\Editor\BufferNavigator;
 use Porta\Editor\BufferService;
 use Porta\Editor\DiagnosticsSink;
 use Porta\Editor\EditorFileActions;
 use Porta\Editor\FileOpener;
-use Porta\Git\GitInfo;
-use Porta\Git\GitRefresher;
-use Porta\Git\GitRemote;
 use Porta\Git\GitSettings;
 use Porta\Highlight\ColorMode;
 use Porta\Highlight\HighlightPreferences;
 use Porta\Highlight\SwitchableTerminalTheme;
 use Porta\Highlight\SyntaxHighlightProviderSource;
 use Porta\Highlight\TerminalThemeFactory;
-use Porta\History\LocalHistory;
-use Porta\History\LocalHistoryController;
-use Porta\History\SessionRestorer;
-use Porta\History\SessionStore;
-use Porta\I18n\PaneReorder;
-use Porta\I18n\Translator;
-use Porta\Image\ImageDecoder;
 use Porta\Input\GitMouseRouter;
 use Porta\Input\HoverRouter;
-use Porta\Input\InputDispatcher;
 use Porta\Input\MouseRouter;
 use Porta\Input\SettingsMouseRouter;
 use Porta\Layout\EditorAreaPanes;
-use Porta\Layout\GitSidebar;
-use Porta\Layout\LayoutController;
 use Porta\Layout\PaneLayout;
-use Porta\Layout\PaneResizer;
 use Porta\Layout\WorkspaceLayout;
 use Porta\Lsp\BufferReopener;
 use Porta\Lsp\CompletionController;
-use Porta\Lsp\FormatOnSave;
 use Porta\Lsp\LanguageServerProvider;
-use Porta\Lsp\LspBootstrapper;
-use Porta\Lsp\LspLog;
-use Porta\Lsp\LspSessionPool;
 use Porta\Lsp\NavigationController;
 use Porta\Lsp\RefactorController;
-use Porta\Lsp\WorkspaceEditor;
 use Porta\Overlay\Region\CompositeFloatingRegions;
 use Porta\Overlay\Region\FloatingRegions;
-use Porta\Overlay\State\MenuOverlayController;
 use Porta\Overlay\State\MenuOverlayPanes;
 use Porta\Overlay\State\MenuOverlayPanesFactory;
-use Porta\Overlay\Presenter\WelcomeModalController;
-use Porta\Plugin\PluginEvents;
 use Porta\Plugin\PluginHost;
 use Porta\Plugin\PluginInstaller;
 use Porta\Plugin\PluginLifecycle;
 use Porta\Plugin\PluginLifecycleOps;
 use Porta\Plugin\PluginLoader;
 use Porta\Plugin\PluginManager;
-use Porta\Plugin\PluginRuntime;
 use Porta\Plugin\PluginSettings;
 use Porta\Plugin\ToolInstaller;
 use Porta\Run\RunConfigs;
-use Porta\Run\RunController;
 use Porta\Search\Everywhere\SearchEverywhereController;
 use Porta\Search\Everywhere\SearchEverywhereFactory;
 use Porta\Search\TokenSpanProvider;
-use Porta\Search\ProjectSearchController;
-use Porta\Search\ResultContextProvider;
-use Porta\Search\SearchActions;
-use Porta\Search\SearchUiWiring;
-use Porta\Search\TestNavigator;
-use Porta\Settings\LiveSettingsApplier;
-use Porta\Onboarding\OnboardingState;
-use Porta\Support\Clipboard;
-use Porta\Support\FreezeWatchdog;
 use Porta\Support\RevoltScheduler;
 use Porta\Support\Scheduler;
 use Porta\Ui\BidiTui;
-use Porta\Ui\Dock\BottomDock;
-use Porta\Ui\ChromeInvalidator;
-use Porta\Ui\CursorStyle;
-use Porta\Ui\EditorArea;
-use Porta\Ui\Menu\MenuRebuilder;
-use Porta\Ui\Notifier;
-use Porta\Ui\PaneSegmenter;
-use Porta\Ui\TerminalStateRefresher;
 use Porta\Ui\Theme\Styles;
 use Porta\Ui\Theme\Themes;
-use Porta\Ui\WorkspaceViews;
 use Porta\Widget\BufferNavigationHandler;
 use Porta\Widget\CodeEditorWidget;
-use Porta\Widget\ContextMenu;
-use Porta\Widget\DebugPanelWidget;
-use Porta\Widget\DockTabsWidget;
 use Porta\Widget\EditorCompletionHandler;
 use Porta\Widget\EditorFileActionHandler;
 use Porta\Widget\EditorNavigationHandler;
 use Porta\Widget\EditorRefactorHandler;
-use Porta\Widget\FileTreeWidget;
-use Porta\Widget\FindBarWidget;
-use Porta\Widget\Git\ChangesListWidget;
-use Porta\Widget\Git\CommitBoxWidget;
-use Porta\Widget\Git\DiffViewWidget;
-use Porta\Widget\Git\GitTabsWidget;
-use Porta\Widget\Git\HistoryListWidget;
-use Porta\Widget\HelpViewerWidget;
-use Porta\Widget\ImageViewerWidget;
-use Porta\Widget\MenuBarWidget;
-use Porta\Widget\ResultsPanelWidget;
 use Porta\Widget\SeparatorWidget;
-use Porta\Widget\Settings\KeybindingsListWidget;
-use Porta\Widget\Settings\SettingsFormWidget;
-use Porta\Widget\Settings\SettingsNavWidget;
-use Porta\Widget\StatusBarWidget;
-use Porta\Widget\TerminalPanelWidget;
 use Psr\Clock\ClockInterface;
 use Psr\EventDispatcher\EventDispatcherInterface as PsrEventDispatcherInterface;
 use Symfony\Component\Clock\NativeClock;
@@ -161,6 +90,7 @@ use Tempest\Highlight\TerminalTheme;
 
 use function Symfony\Component\DependencyInjection\Loader\Configurator\env;
 use function Symfony\Component\DependencyInjection\Loader\Configurator\service;
+use function Symfony\Component\DependencyInjection\Loader\Configurator\tagged_iterator;
 
 /**
  * Porta's service definitions. Lives outside src/ so this wiring stays off the
@@ -215,6 +145,17 @@ return static function (ContainerConfigurator $container, ContainerBuilder $buil
         AsEager::class,
         static function (ChildDefinition $definition, AsEager $attribute): void {
             $definition->addTag('porta.eager', ['priority' => $attribute->priority]);
+        },
+    );
+
+    // #[AsIdeService] classes become members of the porta.ide ServiceLocator
+    // (the single public boundary). The tagged_iterator below keys each by its
+    // service id = FQCN, so Ide::service(X::class) resolves it. Membership
+    // travels with the class instead of a hand-maintained list.
+    $builder->registerAttributeForAutoconfiguration(
+        AsIdeService::class,
+        static function (ChildDefinition $definition): void {
+            $definition->addTag('porta.ide_service');
         },
     );
 
@@ -285,7 +226,8 @@ return static function (ContainerConfigurator $container, ContainerBuilder $buil
     // RegisterListenersPass hard-codes it. Emitters autowire the PSR interface
     // (dispatch() only); Ide autowires the component interface for its runtime
     // addListener() registrations on hand-built widgets.
-    $services->set('event_dispatcher', EventDispatcher::class);
+    $services->set('event_dispatcher', EventDispatcher::class)
+        ->tag('porta.ide_service', ['key' => EventDispatcherInterface::class]);
     $services->alias(EventDispatcherInterface::class, 'event_dispatcher');
     $services->alias(PsrEventDispatcherInterface::class, 'event_dispatcher');
 
@@ -322,79 +264,22 @@ return static function (ContainerConfigurator $container, ContainerBuilder $buil
     // locator, so the entries stay private (alive because referenced) and the
     // container's public surface is exactly this id plus the synthetics.
     // Widget ids and flex styles live on the widget classes as #[AsWidget].
-    $locatorEntries = [];
-    foreach ([
-        EditorArea::class,
-        WorkspaceViews::class,
-        ChromeInvalidator::class,
-        GitRefresher::class,
-        Translator::class,
-        GitInfo::class,
-        SessionStore::class,
-        BufferManager::class,
-        WorkspaceEditor::class,
-        BottomDock::class,
-        LayoutController::class,
-        FreezeWatchdog::class,
-        Notifier::class,
-        CodeEditorWidget::class,
-        ImageViewerWidget::class,
-        HelpViewerWidget::class,
-        StatusBarWidget::class,
-        ResultsPanelWidget::class,
-        DebugPanelWidget::class,
-        DockTabsWidget::class,
-        TerminalPanelWidget::class,
-        FileTreeWidget::class,
-        FindBarWidget::class,
-        MenuBarWidget::class,
-        ContextMenu::class,
-        WorkspaceLayout::class,
-        MenuOverlayController::class,
-        PaneSegmenter::class,
-        PaneReorder::class,
-        PaneLayout::class,
-        PluginHost::class,
-        Keybindings::class,
-        LspSessionPool::class,
-        LspLog::class,
-        CommandRegistry::class,
-        BufferService::class,
-        SessionRestorer::class,
-        SearchActions::class,
-        LspBootstrapper::class,
-        LocalHistoryController::class,
-        DebugController::class,
-        DebugStatePersistence::class,
-        SettingsController::class,
-        SettingsLanguageController::class,
-        OnboardingState::class,
-        WelcomeModalController::class,
-        PluginLifecycle::class,
-        MenuRebuilder::class,
-        InputDispatcher::class,
-        NavigationController::class,
-        RefactorController::class,
-        RunController::class,
-        SearchUiWiring::class,
-        CommandRegistryPopulator::class,
-        PluginRuntime::class,
-        WidgetHooks::class,
-        EagerServices::class,
-        TerminalStateRefresher::class,
-    ] as $locatorId) {
-        $locatorEntries[$locatorId] = service($locatorId);
-    }
-    $locatorEntries[EventDispatcherInterface::class] = service('event_dispatcher');
+    // Membership is declared on each class with #[AsIdeService] (tag
+    // porta.ide_service); the locator is built from that tag, keyed by service
+    // id = FQCN so Ide::service(X::class) resolves it. Two members can't carry
+    // a class attribute: Keybindings (factory-built, tagged at its def below)
+    // and EventDispatcherInterface (an alias — event_dispatcher is tagged with
+    // an explicit key at its def). IdeLocatorMembershipTest guards that every
+    // Ide::service() target is a member.
     $services
         ->set('porta.ide', ServiceLocator::class)
-        ->args([$locatorEntries])
+        ->args([tagged_iterator('porta.ide_service', indexAttribute: 'key')])
         ->tag('container.service_locator')
         ->public();
 
     // The immutable Keybindings map. Built by a factory because plugin default
     // keys must merge in — resolving it forces the one-time plugin load.
-    $services->set(Keybindings::class)->factory([service(KeybindingsFactory::class), 'create']);
+    $services->set(Keybindings::class)->factory([service(KeybindingsFactory::class), 'create'])->tag('porta.ide_service');
 
     // The plugin subsystem triple is built by PluginHost (its scalar inputs
     // come from IdeConfig + the environment); expose the members as services.

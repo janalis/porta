@@ -6,6 +6,7 @@ namespace Porta\Plugin;
 
 use Porta\Config\CommandRegistry;
 use Porta\Config\IdeConfig;
+use Porta\Container\AsIdeService;
 use Porta\I18n\Translator;
 use Porta\Lsp\LspReconfigurer;
 use Porta\Ui\Menu\MenuRebuilder;
@@ -22,6 +23,7 @@ use Symfony\Component\Tui\Tui;
  * keybindings still need a restart: the immutable Keybindings map was built
  * at boot.
  */
+#[AsIdeService]
 final class PluginLifecycle implements PluginLifecycleOps
 {
     /** @var array<string, true> live disabled set for project/global plugins (persisted as .porta.json `disabledPlugins`) */

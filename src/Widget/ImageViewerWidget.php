@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Porta\Widget;
 
+use Porta\Container\AsIdeService;
 use Porta\Container\AsWidget;
 use Porta\Image\HalfBlockRasterizer;
 use Porta\Image\ImageData;
@@ -31,6 +32,7 @@ use Symfony\Component\Tui\Widget\VerticallyExpandableInterface;
  * so the tab-cycling / close / go-to-file keys are re-bound here and routed
  * back to the IDE through {@see ImageViewerHandler}.
  */
+#[AsIdeService]
 #[AsWidget('image-viewer')]
 final class ImageViewerWidget extends AbstractWidget implements FocusableInterface, LtrPane, MenuOverlayHost, VerticallyExpandableInterface
 {

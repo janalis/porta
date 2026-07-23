@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Porta\Debug;
 
+use Porta\Container\AsIdeService;
 use Porta\Editor\FileOpener;
 use Porta\Event\DebugStatusChanged;
 use Porta\I18n\Translator;
@@ -24,6 +25,7 @@ use Symfony\Component\Tui\Tui;
  * session, translates session events into editor decorations, the debug panel
  * and the status bar, and carries the step/stop commands.
  */
+#[AsIdeService]
 final class DebugController implements DebugSessionObserver
 {
     private ?DapSession $session = null;

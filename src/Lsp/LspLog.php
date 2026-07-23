@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Porta\Lsp;
 
+use Porta\Container\AsIdeService;
 use Porta\Event\LspLogAppended;
 use Psr\Clock\ClockInterface;
 use Psr\EventDispatcher\EventDispatcherInterface;
@@ -16,6 +17,7 @@ use Psr\EventDispatcher\EventDispatcherInterface;
  * Chunks are split into lines here; stderr reads are not line-aligned, so a
  * long line may span two entries.
  */
+#[AsIdeService]
 final class LspLog
 {
     private const int MAX_ENTRIES = 200;

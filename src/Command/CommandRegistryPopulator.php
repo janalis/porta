@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Porta\Command;
 
 use Porta\Config\CommandRegistry;
+use Porta\Container\AsIdeService;
 use Symfony\Component\DependencyInjection\Attribute\AutowireIterator;
 
 /**
@@ -14,6 +15,7 @@ use Symfony\Component\DependencyInjection\Attribute\AutowireIterator;
  * before plugins so core wins key collisions — see each provider's
  * #[AsTaggedItem] priority.
  */
+#[AsIdeService]
 final class CommandRegistryPopulator
 {
     /** @param iterable<CommandProvider> $providers */

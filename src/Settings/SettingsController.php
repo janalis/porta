@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Porta\Settings;
 
 use Porta\Config\IdeConfig;
+use Porta\Container\AsIdeService;
 use Porta\Editor\LineNumberMode;
 use Porta\I18n\Translator;
 use Porta\Search\TodoTags;
@@ -27,6 +28,7 @@ use Porta\Widget\CodeEditorWidget;
  *
  * @phpstan-type Descriptor array{label: string, kind: SettingsRowKind, group: 'general'|'interface', restart: bool, apply: (\Closure(int|bool|string): void)|null, options?: list<string>, optionLabels?: array<string, string>, min?: int, max?: int}
  */
+#[AsIdeService]
 final class SettingsController
 {
     /** @var array<string, Descriptor> */

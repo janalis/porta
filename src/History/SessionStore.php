@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Porta\History;
 
+use Porta\Container\AsIdeService;
 use Porta\Support\JsonFile;
 use Symfony\Component\Filesystem\Exception\IOExceptionInterface;
 use Symfony\Component\Filesystem\Filesystem;
@@ -12,6 +13,7 @@ use Symfony\Component\Filesystem\Filesystem;
  * Persists the open-buffer set and cursor positions to
  * `<root>/.porta/session.json`, so a project reopens where it was left.
  */
+#[AsIdeService]
 final readonly class SessionStore
 {
     private string $file;

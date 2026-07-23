@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Porta\Support;
 
+use Porta\Container\AsIdeService;
 use Psr\Clock\ClockInterface;
 use Revolt\EventLoop;
 
@@ -22,6 +23,7 @@ use Revolt\EventLoop;
  *
  * Logging is best-effort by design: the watchdog must never break the app.
  */
+#[AsIdeService]
 final class FreezeWatchdog
 {
     private ?string $timer = null;

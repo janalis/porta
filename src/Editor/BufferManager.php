@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Porta\Editor;
 
+use Porta\Container\AsIdeService;
 use Porta\Highlight\CodeHighlighterFactory;
 use Porta\Image\ImageData;
 use Porta\Support\IndexMove;
@@ -13,6 +14,7 @@ use Porta\Support\IndexMove;
  * therefore cursor + undo history) and its own diagnostics, so switching
  * files never loses state.
  */
+#[AsIdeService]
 final class BufferManager
 {
     /** @var array<string, Buffer> keyed by absolute path, in open order */

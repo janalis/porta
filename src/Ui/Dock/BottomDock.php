@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Porta\Ui\Dock;
 
+use Porta\Container\AsIdeService;
 use Porta\I18n\Translator;
 use Porta\Terminal\TerminalSessions;
 use Porta\Ui\EditorArea;
@@ -32,6 +33,7 @@ use Symfony\Component\Tui\Widget\AbstractWidget;
  * trade-off of rebinding through the widget's open(). The dock also owns the
  * {@see ResultsPanelMode} routing and the focus/repaint/flash choreography.
  */
+#[AsIdeService]
 final class BottomDock
 {
     private ResultsPanelMode $mode = ResultsPanelMode::Search;

@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Porta\Lsp;
 
+use Porta\Container\AsIdeService;
 use Porta\Editor\BufferManager;
 use Porta\Editor\FileOpener;
 use Porta\Editor\OpenFocus;
@@ -25,6 +26,7 @@ use Symfony\Component\Tui\Tui;
  * jump-back stack that go-to pushes onto. Presents multi-result lists through
  * the {@see BottomDock} and opens targets via the injected openFile callback.
  */
+#[AsIdeService]
 final class NavigationController extends AbstractLspController implements EditorNavigationHandler
 {
     /** @var list<array{path: string, line: int, col: int}> positions to return to after jumps */

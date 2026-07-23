@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Porta\I18n;
 
+use Porta\Container\AsIdeService;
 use Symfony\Component\Translation\Loader\ArrayLoader;
 use Symfony\Component\Translation\Translator as SymfonyTranslator;
 
@@ -17,6 +18,7 @@ use Symfony\Component\Translation\Translator as SymfonyTranslator;
  * XLIFF is parsed here with ext-simplexml (avoiding a symfony/config dependency)
  * into `source => target` maps fed to the array loader.
  */
+#[AsIdeService]
 final class Translator
 {
     /** The supported UI locales, in menu order (English first). */

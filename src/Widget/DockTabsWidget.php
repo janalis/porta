@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Porta\Widget;
 
+use Porta\Container\AsIdeService;
 use Porta\Container\AsWidget;
 use Porta\Support\AnsiText;
 use Porta\Ui\Dock\DockTab;
@@ -28,6 +29,7 @@ use Symfony\Component\Tui\Widget\AbstractWidget;
  * process); dragging reorders within a family; a press on the empty tail
  * falls through to the panel-resize grab.
  */
+#[AsIdeService]
 #[AsWidget('dock-tabs', flex: 0)]
 final class DockTabsWidget extends AbstractWidget implements LtrPane, MenuOverlayHost
 {

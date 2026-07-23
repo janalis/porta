@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Porta\Onboarding;
 
+use Porta\Container\AsIdeService;
 use Porta\Support\JsonFile;
 use Symfony\Component\Filesystem\Exception\IOExceptionInterface;
 use Symfony\Component\Filesystem\Filesystem;
@@ -31,6 +32,7 @@ use Symfony\Component\Filesystem\Filesystem;
  * is showing the screen once more, which must not block a boot on a read-only
  * checkout.
  */
+#[AsIdeService]
 final readonly class OnboardingState
 {
     private string $file;

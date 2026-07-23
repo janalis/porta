@@ -6,6 +6,7 @@ namespace Porta\Widget;
 
 use Porta\Config\EditorConfig\ResolvedEditorConfig;
 use Porta\Config\LanguageIndent;
+use Porta\Container\AsIdeService;
 use Porta\Container\AsWidget;
 use Porta\Editor\ActiveFileProvider;
 use Porta\Editor\AutoPairService;
@@ -69,6 +70,7 @@ use Tempest\Highlight\TerminalTheme;
  * IDE-style code editor: line-number gutter, syntax highlighting,
  * vertical + horizontal scrolling, LSP diagnostics and a completion popup.
  */
+#[AsIdeService]
 #[AsWidget('editor')]
 final class CodeEditorWidget extends AbstractWidget implements ActiveFileProvider, EditorHost, FocusableInterface, LtrPane, MenuOverlayHost, SearchOverlay, VerticallyExpandableInterface
 {

@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Porta\Ui;
 
+use Porta\Container\AsIdeService;
 use Symfony\Component\Tui\Tui;
 
 /**
@@ -15,6 +16,7 @@ use Symfony\Component\Tui\Tui;
  * when the state is healthy, self-healing when it is not. The alternate
  * screen (1049) is deliberately NOT re-entered: that would be disruptive.
  */
+#[AsIdeService]
 final class TerminalStateRefresher
 {
     public const string REASSERT = "\x1b[?2026l\x1b[?1000h\x1b[?1003h\x1b[?1006h";

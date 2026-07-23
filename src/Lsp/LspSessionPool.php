@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Porta\Lsp;
 
+use Porta\Container\AsIdeService;
 use Porta\Editor\ActiveFileProvider;
 use Porta\Editor\Document;
 use Porta\Event\LspStatusChanged;
@@ -22,6 +23,7 @@ use Psr\EventDispatcher\EventDispatcherInterface;
  * by that path, the rest route by the active editor file — feature controllers
  * keep their single-session call shape.
  */
+#[AsIdeService]
 final class LspSessionPool
 {
     /** @var array<string, array{command: list<string>, name: string}> languageId ('*' = any) => server */

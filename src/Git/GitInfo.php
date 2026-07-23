@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Porta\Git;
 
+use Porta\Container\AsIdeService;
 use Porta\Support\AsyncProcess;
 use Porta\Support\Outcome;
 use Symfony\Component\Process\ExecutableFinder;
@@ -15,6 +16,7 @@ use Symfony\Component\Process\ExecutableFinder;
  * Everything is best-effort and silently disabled when the project is not a
  * git working tree or the `git` binary is unavailable.
  */
+#[AsIdeService]
 final class GitInfo
 {
     private readonly bool $available;

@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Porta\Ui;
 
+use Porta\Container\AsIdeService;
 use Porta\Git\GitViewController;
 use Porta\Overlay\Presenter\WelcomeModalController;
 use Porta\Settings\SettingsViewController;
@@ -19,6 +20,7 @@ use Symfony\Component\Tui\Widget\AbstractWidget;
  * controllers. The Welcome surface is a floating modal, not a main-area view,
  * but it keeps the same interlock: opening any surface closes the others.
  */
+#[AsIdeService]
 final class WorkspaceViews
 {
     private ?GitViewController $git = null;

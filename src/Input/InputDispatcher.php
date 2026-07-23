@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Porta\Input;
 
 use Porta\Config\CommandRegistry;
+use Porta\Container\AsIdeService;
 use Porta\Overlay\Presenter\WelcomeModalController;
 use Porta\Widget\CodeEditorWidget;
 use Porta\Widget\ContextMenu;
@@ -19,6 +20,7 @@ use Symfony\Component\Tui\Tui;
  * keyboard, and whatever remains is matched against the key-bound commands
  * before falling through to the focused widget's own bindings.
  */
+#[AsIdeService]
 final class InputDispatcher
 {
     public function __construct(

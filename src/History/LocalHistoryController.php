@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Porta\History;
 
+use Porta\Container\AsIdeService;
 use Porta\Editor\BufferManager;
 use Porta\I18n\Translator;
 use Porta\Lsp\CompletionController;
@@ -18,6 +19,7 @@ use Symfony\Component\Tui\Tui;
  * panel and restores a picked one into the active buffer as a single undoable
  * edit. Owns the snapshot-path list backing the currently shown panel rows.
  */
+#[AsIdeService]
 final class LocalHistoryController
 {
     /** @var list<string> snapshot file paths for the currently listed history */

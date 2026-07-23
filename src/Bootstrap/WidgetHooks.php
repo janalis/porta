@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Porta\Bootstrap;
 
+use Porta\Container\AsIdeService;
 use Porta\Editor\BreadcrumbTrailProvider;
 use Porta\Editor\FileOpener;
 use Porta\Editor\OpenFocus;
@@ -37,6 +38,7 @@ use Symfony\Component\Tui\Tui;
  * restoration, and the menu/context overlay refresh + close-focus flow.
  * One wire() call from Ide, once every target service exists.
  */
+#[AsIdeService]
 final class WidgetHooks
 {
     public function __construct(

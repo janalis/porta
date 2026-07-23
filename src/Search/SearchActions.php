@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Porta\Search;
 
+use Porta\Container\AsIdeService;
 use Porta\Editor\BufferService;
 use Porta\Editor\OpenFocus;
 use Porta\I18n\Translator;
@@ -17,6 +18,7 @@ use Porta\Widget\CodeEditorWidget;
  * project text search, symbol search, folder-scoped find/replace, the
  * Problems list and the class↔test jump.
  */
+#[AsIdeService]
 final class SearchActions
 {
     public function __construct(

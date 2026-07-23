@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Porta\Overlay\Presenter;
 
 use Porta\Container\AsEager;
+use Porta\Container\AsIdeService;
 use Porta\Onboarding\WelcomeSteps;
 use Porta\Overlay\Region\DropdownRegion;
 use Porta\Overlay\Region\ModalBox;
@@ -51,6 +52,7 @@ use Symfony\Component\Tui\Widget\FocusableInterface;
  * {@see WorkspaceViews} in its constructor and has no inbound service
  * references, so {@see \Porta\Ide} resolves it eagerly for that side effect.
  */
+#[AsIdeService]
 #[AsEager(priority: 400)]
 final class WelcomeModalController
 {

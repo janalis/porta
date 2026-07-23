@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Porta\Lsp;
 
+use Porta\Container\AsIdeService;
 use Porta\Editor\BufferService;
 use Porta\I18n\Translator;
 use Porta\Ui\Notifier;
@@ -15,6 +16,7 @@ use Porta\Ui\Notifier;
  * through WorkspaceEditor with a status-bar flash. Sessions still start
  * lazily — each on its language's first didOpen.
  */
+#[AsIdeService]
 final class LspBootstrapper
 {
     public function __construct(

@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Porta\Widget;
 
+use Porta\Container\AsIdeService;
 use Porta\Container\AsWidget;
 use Porta\Layout\ResizableSidebar;
 use Porta\Support\AnsiText;
@@ -35,6 +36,7 @@ use Symfony\Component\Tui\Widget\VerticallyExpandableInterface;
 /**
  * Project file tree with lazy directory expansion.
  */
+#[AsIdeService]
 #[AsWidget('tree', flex: 0)]
 final class FileTreeWidget extends AbstractWidget implements FocusableInterface, HoverableList, MenuOverlayHost, ResizableSidebar, VerticallyExpandableInterface, WheelScrollable
 {

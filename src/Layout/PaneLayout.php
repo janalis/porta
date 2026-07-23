@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Porta\Layout;
 
+use Porta\Container\AsIdeService;
 use Porta\I18n\PaneReorder;
 use Porta\I18n\Translator;
 use Porta\Ui\BidiTui;
@@ -20,6 +21,7 @@ use Symfony\Component\Tui\Widget\ContainerWidget;
  * children in the active writing direction, and re-mirrors everything on a
  * live locale switch (including the per-pane bidi reorder seam on BidiTui).
  */
+#[AsIdeService]
 final class PaneLayout implements EditorAreaPanes
 {
     /** @var list<AbstractWidget> */

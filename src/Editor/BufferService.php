@@ -6,6 +6,7 @@ namespace Porta\Editor;
 
 use Porta\Config\EditorConfig\DocumentWriter;
 use Porta\Config\EditorConfig\EditorConfigResolver;
+use Porta\Container\AsIdeService;
 use Porta\Event\BufferOpened;
 use Porta\Event\BufferSaved;
 use Porta\Event\BufferSwitched;
@@ -42,6 +43,7 @@ use Symfony\Component\Tui\Widget\ContainerWidget;
  * plugin hooks) ride the dispatched BufferOpened/BufferSwitched/BufferSaved
  * events; only intra-flow calls (didOpen ordering, external reloads) stay inline.
  */
+#[AsIdeService]
 final class BufferService implements BufferReopener, DiagnosticsSink, FileOpener
 {
     public function __construct(

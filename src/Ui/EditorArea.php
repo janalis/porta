@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Porta\Ui;
 
+use Porta\Container\AsIdeService;
 use Porta\Editor\BufferManager;
 use Porta\Widget\CodeEditorWidget;
 use Porta\Widget\HelpViewerWidget;
@@ -15,6 +16,7 @@ use Symfony\Component\Tui\Widget\AbstractWidget;
  * The editor area's focusable content, resolved at call time from the active
  * buffer — an image/help tab focuses its viewer, everything else the editor.
  */
+#[AsIdeService]
 final class EditorArea
 {
     public function __construct(

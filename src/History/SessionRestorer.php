@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Porta\History;
 
+use Porta\Container\AsIdeService;
 use Porta\Editor\Buffer;
 use Porta\Editor\BufferManager;
 use Porta\Editor\BufferService;
@@ -15,6 +16,7 @@ use Symfony\Component\Tui\Tui;
  * open, each cursor position, and which tab was active. Help buffers are
  * skipped on save — a restored help path would reopen as editable source.
  */
+#[AsIdeService]
 final class SessionRestorer
 {
     public function __construct(

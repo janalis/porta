@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Porta\Search;
 
+use Porta\Container\AsIdeService;
 use Porta\Editor\BufferService;
 use Porta\Editor\OpenFocus;
 use Porta\History\LocalHistoryController;
@@ -25,6 +26,7 @@ use Symfony\Component\Tui\Tui;
  * the one shared query debounce — the panel's query row and the modal's
  * query/mask fields cancel each other's pending searches.
  */
+#[AsIdeService]
 final class SearchUiWiring
 {
     private ?string $searchDebounce = null;

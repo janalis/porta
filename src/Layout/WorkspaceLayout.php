@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Porta\Layout;
 
+use Porta\Container\AsIdeService;
 use Porta\Ui\Theme\Styles;
 use Porta\Widget\BreadcrumbsWidget;
 use Porta\Widget\CodeEditorWidget;
@@ -40,6 +41,7 @@ use Symfony\Component\Tui\Widget\ContainerWidget;
  * horizontal areas' children (main/git/settings pane order) are set by the
  * RTL-aware pane ordering, not here.
  */
+#[AsIdeService]
 final class WorkspaceLayout
 {
     private readonly ContainerWidget $main;

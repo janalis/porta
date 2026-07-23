@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Porta\I18n;
 
+use Porta\Container\AsIdeService;
 use Porta\Ui\Sgr;
 use Symfony\Component\Tui\Ansi\AnsiUtils;
 
@@ -17,6 +18,7 @@ use Symfony\Component\Tui\Ansi\AnsiUtils;
  * A run is `array{start: int, width: int, ltr: bool}`; the runs tile the row's
  * columns left to right.
  */
+#[AsIdeService]
 final class PaneReorder
 {
     /** @param list<array{start: int, width: int, ltr: bool}> $runs */

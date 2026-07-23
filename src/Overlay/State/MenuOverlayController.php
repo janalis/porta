@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Porta\Overlay\State;
 
+use Porta\Container\AsIdeService;
 use Porta\Overlay\Region\DropdownRegion;
 use Porta\Overlay\Region\FloatingRegions;
 use Porta\Overlay\Region\PaneBounds;
@@ -31,6 +32,7 @@ use Symfony\Component\Tui\Widget\AbstractWidget;
  * router's hit-testing; the RTL segmenter sees shadow-widened copies so the
  * painted bands reorder with the box.
  */
+#[AsIdeService]
 final class MenuOverlayController implements FloatingRegions
 {
     private ?DropdownRegion $menuDropdown = null;

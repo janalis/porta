@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace Porta\Config;
 
+use Porta\Container\AsIdeService;
+
 /**
  * The single registry of IDE-level commands. Each command has a stable id, a
  * handler, and flags for whether it is bound to a key (dispatched from the input
@@ -12,6 +14,7 @@ namespace Porta\Config;
  * previously duplicated the same handlers. Labels come from {@see ActionCatalog}
  * unless a command supplies its own.
  */
+#[AsIdeService]
 final class CommandRegistry
 {
     /** @var list<array{id: string, label: string, handler: \Closure(): void, keyBound: bool, inPalette: bool, when: (\Closure(): bool)|null}> */

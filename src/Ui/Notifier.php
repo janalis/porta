@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Porta\Ui;
 
+use Porta\Container\AsIdeService;
 use Porta\Overlay\State\ToastCenter;
 use Porta\Overlay\State\ToastSeverity;
 use Porta\Widget\StatusBarWidget;
@@ -20,6 +21,7 @@ use Symfony\Component\Tui\Tui;
  * Without a {@see ToastCenter} (direct test construction) every notify falls
  * back to the status-bar flash, preserving the pre-toast behavior seam.
  */
+#[AsIdeService]
 final readonly class Notifier
 {
     public function __construct(

@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Porta\Widget;
 
+use Porta\Container\AsIdeService;
 use Porta\Container\AsWidget;
 use Porta\Editor\Document;
 use Porta\Help\LinkSpan;
@@ -37,6 +38,7 @@ use Symfony\Component\Tui\Widget\VerticallyExpandableInterface;
  * content while a help buffer is active, so tab-management keys are re-bound
  * here and routed back to the IDE through {@see HelpViewerHandler}.
  */
+#[AsIdeService]
 #[AsWidget('help-viewer')]
 final class HelpViewerWidget extends AbstractWidget implements FindTarget, FocusableInterface, LtrPane, MenuOverlayHost, VerticallyExpandableInterface
 {

@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Porta\Ui;
 
+use Porta\Container\AsIdeService;
 use Symfony\Component\Tui\Widget\AbstractWidget;
 use Symfony\Component\Tui\Widget\ContainerWidget;
 
@@ -15,6 +16,7 @@ use Symfony\Component\Tui\Widget\ContainerWidget;
  * are registered once at boot (they include hand-assembled layout containers
  * the container does not own yet).
  */
+#[AsIdeService]
 final class ChromeInvalidator
 {
     /** @var list<AbstractWidget> */

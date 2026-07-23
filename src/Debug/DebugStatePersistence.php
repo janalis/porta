@@ -4,12 +4,15 @@ declare(strict_types=1);
 
 namespace Porta\Debug;
 
+use Porta\Container\AsIdeService;
+
 /**
  * Hydrates and saves the debugger's persistent state at the session
  * boundaries: {@see \Porta\Ide::run()} restores before the first buffer
  * opens (so the boot-time BufferSwitched pass paints the gutter dots) and
  * saves in its teardown, mirroring the SessionRestorer flow.
  */
+#[AsIdeService]
 final readonly class DebugStatePersistence
 {
     public function __construct(

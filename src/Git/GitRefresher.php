@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Porta\Git;
 
+use Porta\Container\AsIdeService;
 use Porta\Editor\Buffer;
 use Porta\Editor\BufferManager;
 use Porta\Event\BufferOpened;
@@ -20,6 +21,7 @@ use Symfony\Component\Tui\Tui;
  * the status bar and the per-buffer change marks shown in the editor gutter.
  * Everything is a callback on the shared event loop via {@see GitInfo}.
  */
+#[AsIdeService]
 final class GitRefresher
 {
     private ?string $branch = null;

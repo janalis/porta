@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Porta\Plugin;
 
 use Porta\Config\IdeConfig;
+use Porta\Container\AsIdeService;
 use Tempest\Highlight\TerminalTheme;
 
 /**
@@ -16,6 +17,7 @@ use Tempest\Highlight\TerminalTheme;
  * normally the Keybindings factory, because plugin default keys must merge
  * into the immutable map — triggers the actual plugin activation.
  */
+#[AsIdeService]
 final class PluginHost
 {
     private bool $loaded = false;

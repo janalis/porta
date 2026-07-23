@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Porta\Ui;
 
+use Porta\Container\AsIdeService;
 use Porta\Overlay\Region\DropdownRegion;
 use Porta\Overlay\Region\FloatingRegions;
 use Symfony\Component\Tui\Render\Renderer;
@@ -23,6 +24,7 @@ use Symfony\Component\Tui\Widget\ContainerWidget;
  * @phpstan-type Run array{start: int, width: int, ltr: bool}
  * @phpstan-type Leaf array{rect: WidgetRect, ltr: bool}
  */
+#[AsIdeService]
 final class PaneSegmenter
 {
     public function __construct(

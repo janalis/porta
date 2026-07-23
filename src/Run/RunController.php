@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Porta\Run;
 
+use Porta\Container\AsIdeService;
 use Porta\I18n\Translator;
 use Porta\Terminal\PtyProcess;
 use Porta\Terminal\TerminalKeyEncoder;
@@ -21,6 +22,7 @@ use Symfony\Component\Tui\Tui;
  * lifecycle: shells (`shell:N`), run configurations (`run:<label>`, re-run
  * replaces only that session's process) and the last-run state.
  */
+#[AsIdeService]
 final class RunController
 {
     /** @var array{label: string, command: list<string>}|null */

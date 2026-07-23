@@ -6,6 +6,7 @@ namespace Porta\Layout;
 
 use Porta\Config\LayoutPrefs;
 use Porta\Config\LayoutStore;
+use Porta\Container\AsIdeService;
 use Porta\Git\WhitespaceMode;
 use Porta\I18n\Translator;
 use Porta\Input\MouseEvent;
@@ -27,6 +28,7 @@ use Symfony\Component\Tui\Tui;
  * drag lifecycle (arm on press, apply on drag/release) is driven by the mouse
  * router calling armSidebarResize/armPanelResize + continueResizeDrag + cancelDrags.
  */
+#[AsIdeService]
 final class LayoutController
 {
     private ResizeState $sidebarResizing = ResizeState::Idle;

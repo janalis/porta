@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Porta\Bootstrap;
 
+use Porta\Container\AsIdeService;
 use Symfony\Component\DependencyInjection\Attribute\AutowireIterator;
 
 /**
@@ -14,6 +15,7 @@ use Symfony\Component\DependencyInjection\Attribute\AutowireIterator;
  * (find→picker→toast) holds. This replaces the scattered eager
  * `$this->service(X::class)` resolves that {@see \Porta\Ide} used to carry.
  */
+#[AsIdeService]
 final readonly class EagerServices
 {
     /**

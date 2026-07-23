@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Porta\Lsp;
 
+use Porta\Container\AsIdeService;
 use Porta\Editor\BufferManager;
 use Porta\I18n\Translator;
 use Porta\Support\ProjectPaths;
@@ -17,6 +18,7 @@ use Symfony\Component\Tui\Tui;
  * / code actions, and reformatting. All apply their results through the shared
  * {@see WorkspaceEditor}.
  */
+#[AsIdeService]
 final class RefactorController extends AbstractLspController implements EditorRefactorHandler
 {
     public function __construct(
