@@ -5,7 +5,7 @@ declare(strict_types=1);
 namespace Porta\Tests\Unit\Ui;
 
 use PHPUnit\Framework\TestCase;
-use Porta\Ui\MenuItem;
+use Porta\Ui\Menu\MenuItem;
 use Porta\Ui\MenuPanel;
 use Porta\Ui\Theme\DarkTheme;
 use Porta\Ui\Theme\Styles;

@@ -50,7 +50,7 @@ use Porta\Support\FreezeWatchdog;
 use Porta\Ui\BidiTui;
 use Porta\Ui\ChromeInvalidator;
 use Porta\Ui\EditorArea;
-use Porta\Ui\MenuRebuilder;
+use Porta\Ui\Menu\MenuRebuilder;
 use Porta\Ui\NonBlockingTerminal;
 use Porta\Ui\Notifier;
 use Porta\Ui\TerminalStateRefresher;

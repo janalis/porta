@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace Porta\Ui;
+namespace Porta\Ui\Menu;
 
 use Porta\Event\LocaleChanged;
 use Porta\Event\ThemeChanged;

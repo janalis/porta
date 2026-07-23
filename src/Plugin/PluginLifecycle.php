@@ -8,7 +8,7 @@ use Porta\Config\CommandRegistry;
 use Porta\Config\IdeConfig;
 use Porta\I18n\Translator;
 use Porta\Lsp\LspReconfigurer;
-use Porta\Ui\MenuRebuilder;
+use Porta\Ui\Menu\MenuRebuilder;
 use Porta\Ui\Notifier;
 use Porta\Ui\WorkspaceViews;
 use Porta\Widget\Settings\SettingsNavWidget;

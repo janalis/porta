@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace Porta\Ui;
+namespace Porta\Ui\Menu;
 
 /**
  * A top-level application menu: a title shown in the menu bar and the list of

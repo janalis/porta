@@ -2,13 +2,15 @@
 
 declare(strict_types=1);
 
-namespace Porta\Ui;
+namespace Porta\Ui\Menu;
 
 use Porta\Editor\BufferManager;
 use Porta\I18n\Translator;
 use Porta\Overlay\State\MenuOverlayController;
 use Porta\Terminal\TerminalSessions;
 use Porta\Tree\TreeOperations;
+use Porta\Ui\DockTab;
+use Porta\Ui\Notifier;
 use Porta\Widget\CodeEditorWidget;
 use Porta\Widget\ContextMenu;
 use Porta\Widget\DockTabsWidget;

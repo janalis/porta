@@ -5,8 +5,8 @@ declare(strict_types=1);
 namespace Porta\Tests\Unit\Widget;
 
 use PHPUnit\Framework\TestCase;
-use Porta\Ui\Menu;
-use Porta\Ui\MenuItem;
+use Porta\Ui\Menu\Menu;
+use Porta\Ui\Menu\MenuItem;
 use Porta\Widget\MenuBarWidget;
 use Symfony\Component\Tui\Ansi\AnsiUtils;
 use Symfony\Component\Tui\Render\RenderContext;

@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace Porta\Tests\Unit\Ui;
+namespace Porta\Tests\Ui\Menu;
 
 use PHPUnit\Framework\TestCase;
 use Porta\Config\CommandRegistry;
@@ -10,9 +10,9 @@ use Porta\Config\KeyDispatch;
 use Porta\Config\PaletteVisibility;
 use Porta\I18n\Translator;
 use Porta\Plugin\PluginMenuSpec;
-use Porta\Ui\Menu;
-use Porta\Ui\MenuItem;
-use Porta\Ui\MenuModel;
+use Porta\Ui\Menu\Menu;
+use Porta\Ui\Menu\MenuItem;
+use Porta\Ui\Menu\MenuModel;
 use Porta\Widget\CodeEditorWidget;
 use Symfony\Component\Tui\Input\Keybindings;
 

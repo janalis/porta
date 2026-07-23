@@ -91,7 +91,7 @@ final class IdeEmbeddedPluginsTest extends TestCase
                 PHP]);
     }
 
-    /** @return list<\Porta\Ui\Menu> */
+    /** @return list<\Porta\Ui\Menu\Menu> */
     private function menus($tui): array
     {
         return new \ReflectionProperty($tui->getById('menu'), 'menus')->getValue($tui->getById('menu'));

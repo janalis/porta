@@ -2,11 +2,12 @@
 
 declare(strict_types=1);
 
-namespace Porta\Ui;
+namespace Porta\Ui\Menu;
 
 use Porta\Config\CommandRegistry;
 use Porta\I18n\Translator;
 use Porta\Plugin\PluginManager;
+use Porta\Ui\WorkspaceViews;
 use Porta\Widget\CodeEditorWidget;
 use Porta\Widget\MenuBarWidget;
 use Symfony\Component\Tui\Input\Keybindings;

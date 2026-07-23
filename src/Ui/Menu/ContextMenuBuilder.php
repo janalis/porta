@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace Porta\Ui;
+namespace Porta\Ui\Menu;
 
 use Porta\Config\CommandRegistry;
 use Porta\Editor\BufferService;
@@ -11,6 +11,8 @@ use Porta\Git\GitCommands;
 use Porta\Git\LogEntry;
 use Porta\I18n\Translator;
 use Porta\Run\RunController;
+use Porta\Ui\BottomDock;
+use Porta\Ui\DockTab;
 use Porta\Widget\CodeEditorWidget;
 use Porta\Widget\Git\ChangesListWidget;
 use Symfony\Component\Tui\Input\Keybindings;

@@ -13,7 +13,7 @@ use Porta\Search\ProjectSearchController;
 use Porta\Search\SearchActions;
 use Porta\Support\Clipboard;
 use Porta\Support\ProjectPaths;
-use Porta\Ui\MenuItem;
+use Porta\Ui\Menu\MenuItem;
 use Porta\Ui\Notifier;
 use Porta\Widget\CodeEditorWidget;
 use Porta\Widget\FileTreeWidget;

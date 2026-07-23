@@ -13,7 +13,7 @@ use Symfony\Component\Tui\Ansi\AnsiUtils;
 /**
  * The context menu has two hand-maintained dispatch chains — a right-click
  * keyed by position ({@see \Porta\Input\MouseRouter::handleRightPress()}) and
- * Ctrl+F10 keyed by focus ({@see \Porta\Ui\ContextMenuOpener::openForFocus()}).
+ * Ctrl+F10 keyed by focus ({@see \Porta\Ui\Menu\ContextMenuOpener::openForFocus()}).
  * They share their item lists and their finish, but not their dispatch, and
  * dispatch is where they drifted: each grew branches the other never got.
  *

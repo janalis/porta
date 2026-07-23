@@ -6,7 +6,7 @@ namespace Porta\Widget;
 
 use Porta\Container\AsWidget;
 use Porta\Support\IntMath;
-use Porta\Ui\Menu;
+use Porta\Ui\Menu\Menu;
 use Porta\Ui\MenuPanel;
 use Porta\Ui\Role;
 use Porta\Ui\Theme\Styles;
@@ -20,7 +20,7 @@ use Symfony\Component\Tui\Widget\KeybindingsTrait;
 
 /**
  * The application menu bar: a title strip (`File  Edit  Navigate  …`) at the top
- * of the editor pane that opens a dropdown of {@see \Porta\Ui\MenuItem}s. Sitting
+ * of the editor pane that opens a dropdown of {@see \Porta\Ui\Menu\MenuItem}s. Sitting
  * inside the pane means every title shares the editor's columns, so each dropdown
  * anchors directly under its title. This widget **only ever renders its single
  * title row** so opening a menu never reflows the layout; the base

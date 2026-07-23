@@ -5,7 +5,7 @@ declare(strict_types=1);
 namespace Porta\Widget;
 
 use Porta\Container\AsWidget;
-use Porta\Ui\MenuItem;
+use Porta\Ui\Menu\MenuItem;
 use Porta\Ui\MenuPanel;
 use Porta\Ui\Theme\Styles;
 use Symfony\Component\Tui\Input\Key;

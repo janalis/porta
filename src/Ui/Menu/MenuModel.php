@@ -2,12 +2,13 @@
 
 declare(strict_types=1);
 
-namespace Porta\Ui;
+namespace Porta\Ui\Menu;
 
 use Porta\Config\ActionCatalog;
 use Porta\Config\CommandRegistry;
 use Porta\I18n\Translator;
 use Porta\Plugin\PluginMenuSpec;
+use Porta\Ui\ShortcutFormatter;
 use Porta\Widget\CodeEditorWidget;
 use Symfony\Component\Tui\Input\Keybindings;
 
