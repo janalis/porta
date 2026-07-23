@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace Porta\Overlay;
+namespace Porta\Overlay\State;
 
 use Porta\Layout\WorkspaceLayout;
 use Porta\Ui\WorkspaceViews;

@@ -5,8 +5,8 @@ declare(strict_types=1);
 namespace Porta\Tests\Overlay\Presenter;
 
 use PHPUnit\Framework\TestCase;
-use Porta\Overlay\MenuOverlayPanes;
 use Porta\Overlay\Presenter\ToastPresenter;
+use Porta\Overlay\State\MenuOverlayPanes;
 use Porta\Overlay\State\ToastCenter;
 use Porta\Overlay\State\ToastSeverity;
 use Porta\Tests\Support\FakeScheduler;

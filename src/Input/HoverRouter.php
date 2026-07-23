@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace Porta\Input;
 
-use Porta\Overlay\MenuOverlayController;
+use Porta\Overlay\State\MenuOverlayController;
 use Porta\Overlay\State\ToastCenter;
 use Porta\Ui\BottomDock;
 use Porta\Widget\ContextMenu;

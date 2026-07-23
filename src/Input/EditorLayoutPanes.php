@@ -16,7 +16,7 @@ use Porta\Widget\TabBarWidget;
  * The persistent widgets of the main editor layout that {@see MouseRouter}
  * hit-tests: the file tree, the tab bar, the editor (or the image/help viewer
  * that replaces it on image/help tabs), the breadcrumb bar and the find bar.
- * Bundled (like {@see \Porta\Overlay\MenuOverlayPanes}) so the router takes
+ * Bundled (like {@see \Porta\Overlay\State\MenuOverlayPanes}) so the router takes
  * one argument instead of seven, without changing which pane a guard consults.
  */
 final readonly class EditorLayoutPanes

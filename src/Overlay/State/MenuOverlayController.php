@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace Porta\Overlay;
+namespace Porta\Overlay\State;
 
 use Porta\Overlay\Region\DropdownRegion;
 use Porta\Overlay\Region\FloatingRegions;

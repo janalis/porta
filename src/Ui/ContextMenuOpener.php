@@ -6,7 +6,7 @@ namespace Porta\Ui;
 
 use Porta\Editor\BufferManager;
 use Porta\I18n\Translator;
-use Porta\Overlay\MenuOverlayController;
+use Porta\Overlay\State\MenuOverlayController;
 use Porta\Terminal\TerminalSessions;
 use Porta\Tree\TreeOperations;
 use Porta\Widget\CodeEditorWidget;

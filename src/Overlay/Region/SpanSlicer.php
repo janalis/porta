@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace Porta\Overlay\Region;
 
-use Porta\Overlay\MenuOverlayController;
+use Porta\Overlay\State\MenuOverlayController;
 use Symfony\Component\Tui\Ansi\AnsiUtils;
 use Symfony\Component\Tui\Render\WidgetRect;
 
