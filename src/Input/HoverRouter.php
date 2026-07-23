@@ -183,7 +183,8 @@ final readonly class HoverRouter
     private function handleMenuHover(MouseEvent $mouse): bool
     {
         if ($this->menuBar->isOpen()) {
-            if (null !== ($item = $this->hit->hitRegion($this->overlay->menuDropdown(), $mouse->row, $mouse->col))) {
+            $region = $this->overlay->menuDropdown();
+            if (null !== ($item = $this->hit->hitRegion($region, $mouse->row, $mouse->col))) {
                 if ($this->menuBar->hoverItem($item)) {
                     $this->tui->requestRender();
                 }
@@ -200,7 +201,9 @@ final readonly class HoverRouter
                 return true;
             }
 
-            return false;
+            // The frame's border cells: consumed (no tint), so a hover on the
+            // box edge never leaks to the pane beneath.
+            return true === $region?->contains($mouse->row, $mouse->col);
         }
 
         // Closed: highlight the title under the pointer, clearing when off the bar.

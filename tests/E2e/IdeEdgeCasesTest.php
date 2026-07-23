@@ -918,15 +918,17 @@ final class IdeEdgeCasesTest extends TestCase
                 },
                 360 => function ($tui): void {
                     $this->assertTrue($tui->getById('menu')->isOpen());
-                    $row = $tui->getById('breadcrumbs')->render(new \Symfony\Component\Tui\Render\RenderContext(120, 1))[0];
-                    $this->assertStringContainsString("\x1b[48;5;236m", $row, 'the dropdown composites over the breadcrumb row (breadcrumb no longer in front)');
+                    $row = AnsiUtils::stripAnsiCodes($tui->getById('breadcrumbs')->render(new \Symfony\Component\Tui\Render\RenderContext(120, 1))[0]);
+                    $this->assertStringContainsString('Show Problems', $row, 'the dropdown composites over the breadcrumb row (breadcrumb no longer in front)');
                     // Switch to File (left edge): with the full-width menu row its
                     // dropdown now floats over the TREE columns instead.
                     $tui->handleInput("\x1b[<0;3;1M");
                 },
                 440 => function ($tui): void {
                     $this->assertTrue($tui->getById('menu')->isOpen());
-                    $treeTop = AnsiUtils::stripAnsiCodes($tui->getById('tree')->render(new \Symfony\Component\Tui\Render\RenderContext(30, 20))[0]);
+                    // Tree row 0 carries the frame's top border; the first item
+                    // row sits one below it.
+                    $treeTop = AnsiUtils::stripAnsiCodes($tui->getById('tree')->render(new \Symfony\Component\Tui\Render\RenderContext(30, 20))[1]);
                     $this->assertStringContainsString('Save File', $treeTop, "File's dropdown composites over the tree");
                 },
             ],
@@ -3031,9 +3033,9 @@ final class IdeEdgeCasesTest extends TestCase
                 300 => function ($tui): void {
                     $this->assertTrue($tui->getById('menu')->isOpen(), 'title click opened the menu');
                     $this->assertSame('menu', $tui->getFocus()?->getId());
-                    // The dropdown anchors under Edit (col 7); Undo is item 0 at
-                    // screen row 1 (below the menu bar) → SGR row 2.
-                    $tui->handleInput("\x1b[<0;9;2M"); // click Undo -> runs it + closes
+                    // The dropdown anchors under Edit (col 7); its frame's top
+                    // border sits at screen row 1, Undo (item 0) below it → SGR row 3.
+                    $tui->handleInput("\x1b[<0;9;3M"); // click Undo -> runs it + closes
                 },
                 400 => function ($tui): void {
                     $this->assertFalse($tui->getById('menu')->isOpen(), 'item click ran and closed');
@@ -3057,6 +3059,10 @@ final class IdeEdgeCasesTest extends TestCase
                     $menu = $tui->getById('menu');
                     $this->assertTrue($menu->isOpen(), 'clicking another title kept a menu open');
                     $this->assertSame(1, $menu->openIndex(), 'switched to Edit (index 1)');
+                    // A click on the frame's border ring (the top border row) is
+                    // swallowed: a 1-cell mis-click neither runs nor dismisses.
+                    $tui->handleInput("\x1b[<0;9;2M");
+                    $this->assertTrue($menu->isOpen(), 'a border click did not dismiss the menu');
                     $tui->handleInput("\x1b[<0;100;18M"); // click far below the dropdown -> dismiss
                 },
                 800 => function ($tui): void {
@@ -3099,8 +3105,9 @@ final class IdeEdgeCasesTest extends TestCase
                     $menu = $tui->getById('menu');
                     $this->assertTrue($menu->isOpen());
                     $this->assertSame(1, $menu->openIndex(), 'Edit is open');
-                    // Hover Redo (item 1) in the dropdown: bar row 0 → items at SGR rows 2,3.
-                    $tui->handleInput("\x1b[<35;9;3M");
+                    // Hover Redo (item 1) in the dropdown: bar row 0, the frame's
+                    // top border at SGR row 2 → items at SGR rows 3,4.
+                    $tui->handleInput("\x1b[<35;9;4M");
                 },
                 520 => function ($tui): void {
                     $menu = $tui->getById('menu');
@@ -4741,12 +4748,13 @@ final class IdeEdgeCasesTest extends TestCase
                     $this->assertSame('menu', $tui->getFocus()?->getId(), 'F10 focused the menu bar');
                     $this->assertStringContainsString('Save File', $screen, 'the File dropdown composites over the git panes');
                     $this->assertStringContainsString('Quit', $screen);
-                    // Hover a dropdown row (the dropdown starts under the menu
-                    // row, i.e. screen row 2), then click the greyed 'Save File'
-                    // item: disabled in the git view, so it only closes the menu.
-                    $tui->handleInput("\x1b[<35;5;4M");
-                    $tui->handleInput("\x1b[<0;5;2M");
-                    $tui->handleInput("\x1b[<0;5;2m");
+                    // Hover a dropdown row (the frame's top border starts under
+                    // the menu row, items from SGR row 3), then click the greyed
+                    // 'Save File' item: disabled in the git view, so it only
+                    // closes the menu.
+                    $tui->handleInput("\x1b[<35;5;5M");
+                    $tui->handleInput("\x1b[<0;5;3M");
+                    $tui->handleInput("\x1b[<0;5;3m");
                 },
                 1150 => function ($tui): void {
                     $tui->tick();
@@ -6095,9 +6103,10 @@ final class IdeEdgeCasesTest extends TestCase
                     $tui->handleInput("\x1b[<2;3;3M"); // right-click A.php (row 1)
                 },
                 300 => static function ($tui): void {
-                    // The menu anchors at the click (SGR row 2), so item i sits at
-                    // SGR row 2+i. "Open" is item 9 for a file node → SGR row 11.
-                    $tui->handleInput("\x1b[<0;4;12M"); // left-click "Open"
+                    // The menu anchors at the click (SGR row 2 = the frame's top
+                    // border), so item i sits at SGR row 3+i. "Open" is item 9
+                    // for a file node → SGR row 12.
+                    $tui->handleInput("\x1b[<0;4;13M"); // left-click "Open"
                 },
                 400 => function ($tui) use ($project): void {
                     $this->assertStringEndsWith('A.php', (string) $tui->getById('editor')->getFilePath(), 'Open reopened the file');
@@ -6106,8 +6115,8 @@ final class IdeEdgeCasesTest extends TestCase
                     $tui->handleInput("\x1b[<2;3;3M"); // right-click A.php again
                 },
                 500 => static function ($tui): void {
-                    // "Refresh" is the last item (10) → SGR row 12.
-                    $tui->handleInput("\x1b[<0;4;13M");
+                    // "Refresh" is the last item (10) → SGR row 13.
+                    $tui->handleInput("\x1b[<0;4;14M");
                     $tui->tick();
                 },
                 600 => function ($tui, $terminal): void {

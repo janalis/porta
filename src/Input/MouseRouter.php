@@ -276,13 +276,13 @@ final class MouseRouter
         // An open menu owns the wheel inside its dropdown region, at the shared
         // WheelStep rate like every other list — separator-skipping, so a notch
         // lands only on selectable items.
-        if ($this->contextMenu->isOpen() && null !== $this->hit->hitRegion($this->overlay->contextMenuDropdown(), $mouse->row, $mouse->col)) {
+        if ($this->contextMenu->isOpen() && true === $this->overlay->contextMenuDropdown()?->contains($mouse->row, $mouse->col)) {
             $this->contextMenu->moveSelection(WheelStep::rows($mouse));
             $this->tui->requestRender();
 
             return;
         }
-        if ($this->menuBar->isOpen() && null !== $this->hit->hitRegion($this->overlay->menuDropdown(), $mouse->row, $mouse->col)) {
+        if ($this->menuBar->isOpen() && true === $this->overlay->menuDropdown()?->contains($mouse->row, $mouse->col)) {
             $this->menuBar->moveSelection(WheelStep::rows($mouse));
             $this->tui->requestRender();
 
@@ -515,14 +515,17 @@ final class MouseRouter
             }
         }
 
-        // An open context menu: a click on an item runs it; a click anywhere else
-        // dismisses it (the panel floats over the panes, so hit-test its region).
+        // An open context menu: a click on an item runs it; a click on the
+        // frame's border cells is swallowed (a 1-cell mis-click must not
+        // dismiss); a click anywhere else dismisses it (the panel floats over
+        // the panes, so hit-test its region).
         if ($this->contextMenu->isOpen()) {
-            $item = $this->hit->hitRegion($this->overlay->contextMenuDropdown(), $mouse->row, $mouse->col);
+            $region = $this->overlay->contextMenuDropdown();
+            $item = $this->hit->hitRegion($region, $mouse->row, $mouse->col);
             if (null !== $item) {
                 $this->contextMenu->runItem($item);
             }
-            if (null === $item) {
+            if (null === $item && true !== $region?->contains($mouse->row, $mouse->col)) {
                 $this->contextMenu->close();
             }
             $this->tui->requestRender();
@@ -547,13 +550,15 @@ final class MouseRouter
             return true;
         }
         // Dropdown item: the panel floats over the editor pane, outside the menu
-        // bar's rect, so hit-test the tracked overlay region directly.
+        // bar's rect, so hit-test the tracked overlay region directly. A click
+        // on the frame's border cells is swallowed, not a dismissal.
         if ($this->menuBar->isOpen()) {
-            $item = $this->hit->hitRegion($this->overlay->menuDropdown(), $mouse->row, $mouse->col);
+            $region = $this->overlay->menuDropdown();
+            $item = $this->hit->hitRegion($region, $mouse->row, $mouse->col);
             if (null !== $item) {
                 $this->menuBar->runItem($item);
             }
-            if (null === $item) {
+            if (null === $item && true !== $region?->contains($mouse->row, $mouse->col)) {
                 $this->menuBar->close(); // a click anywhere else dismisses an open menu
             }
             $this->tui->requestRender();

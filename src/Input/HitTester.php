@@ -87,15 +87,12 @@ final class HitTester
     }
 
     /**
-     * Row offset of a screen cell inside a floating dropdown region
-     * (as tracked by the overlay controller), or null when outside.
+     * Item index of a screen cell inside a floating dropdown region (as
+     * tracked by the overlay controller), or null when outside the region —
+     * or on a framed region's border cells ({@see DropdownRegion::itemAt}).
      */
     public function hitRegion(?DropdownRegion $region, int $row, int $col): ?int
     {
-        if (null === $region || !$region->contains($row, $col)) {
-            return null;
-        }
-
-        return $region->rowAt($row);
+        return $region?->itemAt($row, $col);
     }
 }

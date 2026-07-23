@@ -335,7 +335,7 @@ final class WelcomeModalController
         if (!$this->open) {
             return;
         }
-        $bounds = $this->paneBounds();
+        $bounds = PaneBounds::union($this->panes->current(), $this->renderer);
         if (null === $bounds) {
             // No rects yet: keep asking for frames until the first one lands.
             $this->tui->requestRender();
@@ -358,7 +358,7 @@ final class WelcomeModalController
         if (!$this->open) {
             return;
         }
-        $bounds = $this->paneBounds();
+        $bounds = PaneBounds::union($this->panes->current(), $this->renderer);
         if (null === $bounds) {
             return; // pre-first-frame: the before-frame hook will retry
         }
@@ -410,30 +410,5 @@ final class WelcomeModalController
             min($width + 1, $boundRight - $col),
             min($rows + 1, $boundBottom - $top),
         );
-    }
-
-    /**
-     * The union of the current pane set's rects — the paintable screen area.
-     *
-     * @return array{int, int, int, int}|null [top, left, bottom, right), or null before the first frame
-     */
-    private function paneBounds(): ?array
-    {
-        $top = PHP_INT_MAX;
-        $left = PHP_INT_MAX;
-        $bottom = 0;
-        $right = 0;
-        foreach ($this->panes->current() as $pane) {
-            $rect = $this->renderer->getWidgetRect($pane);
-            if (null === $rect) {
-                continue;
-            }
-            $top = min($top, $rect->row);
-            $left = min($left, $rect->col);
-            $bottom = max($bottom, $rect->row + $rect->rows);
-            $right = max($right, $rect->col + $rect->columns);
-        }
-
-        return $bottom > $top && $right > $left ? [$top, $left, $bottom, $right] : null;
     }
 }
