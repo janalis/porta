@@ -13,15 +13,9 @@ use Porta\Settings\SettingsLspController;
 use Porta\Container\AsEager;
 use Porta\Container\AsIdeService;
 use Porta\Container\AsWidget;
-use Porta\Debug\DapClientFactory;
+use Porta\Container\SingleImplAliasPass;
 use Porta\Debug\DebugAdapters;
-use Porta\Debug\ProcessDapClientFactory;
-use Porta\Editor\ActiveFileProvider;
-use Porta\Editor\BufferNavigator;
 use Porta\Editor\BufferService;
-use Porta\Editor\DiagnosticsSink;
-use Porta\Editor\EditorFileActions;
-use Porta\Editor\FileOpener;
 use Porta\Git\GitSettings;
 use Porta\Highlight\ColorMode;
 use Porta\Highlight\HighlightPreferences;
@@ -32,14 +26,7 @@ use Porta\Input\GitMouseRouter;
 use Porta\Input\HoverRouter;
 use Porta\Input\MouseRouter;
 use Porta\Input\SettingsMouseRouter;
-use Porta\Layout\EditorAreaPanes;
-use Porta\Layout\PaneLayout;
 use Porta\Layout\WorkspaceLayout;
-use Porta\Lsp\BufferReopener;
-use Porta\Lsp\CompletionController;
-use Porta\Lsp\LanguageServerProvider;
-use Porta\Lsp\NavigationController;
-use Porta\Lsp\RefactorController;
 use Porta\Overlay\Region\CompositeFloatingRegions;
 use Porta\Overlay\Region\FloatingRegions;
 use Porta\Overlay\State\MenuOverlayPanes;
@@ -47,7 +34,6 @@ use Porta\Overlay\State\MenuOverlayPanesFactory;
 use Porta\Plugin\PluginHost;
 use Porta\Plugin\PluginInstaller;
 use Porta\Plugin\PluginLifecycle;
-use Porta\Plugin\PluginLifecycleOps;
 use Porta\Plugin\PluginLoader;
 use Porta\Plugin\PluginManager;
 use Porta\Plugin\PluginSettings;
@@ -55,18 +41,9 @@ use Porta\Plugin\ToolInstaller;
 use Porta\Run\RunConfigs;
 use Porta\Search\Everywhere\SearchEverywhereController;
 use Porta\Search\Everywhere\SearchEverywhereFactory;
-use Porta\Search\TokenSpanProvider;
-use Porta\Support\RevoltScheduler;
-use Porta\Support\Scheduler;
 use Porta\Ui\BidiTui;
 use Porta\Ui\Theme\Styles;
 use Porta\Ui\Theme\Themes;
-use Porta\Widget\BufferNavigationHandler;
-use Porta\Widget\CodeEditorWidget;
-use Porta\Widget\EditorCompletionHandler;
-use Porta\Widget\EditorFileActionHandler;
-use Porta\Widget\EditorNavigationHandler;
-use Porta\Widget\EditorRefactorHandler;
 use Porta\Widget\SeparatorWidget;
 use Psr\Clock\ClockInterface;
 use Psr\EventDispatcher\EventDispatcherInterface as PsrEventDispatcherInterface;
@@ -130,6 +107,9 @@ return static function (ContainerConfigurator $container, ContainerBuilder $buil
         },
     );
     $builder->addCompilerPass(new RegisterListenersPass(), PassConfig::TYPE_BEFORE_REMOVING);
+    // Auto-derive single-impl Porta\ interface aliases (before autowiring
+    // resolves interface-typed args); multi-impl interfaces stay explicit below.
+    $builder->addCompilerPass(new SingleImplAliasPass(), PassConfig::TYPE_BEFORE_OPTIMIZATION, priority: 100);
 
     // Command providers register in #[AsTaggedItem] priority order (higher
     // first) — the order is contractual: registration order IS the palette
@@ -205,13 +185,10 @@ return static function (ContainerConfigurator $container, ContainerBuilder $buil
     $services->set(ClockInterface::class, NativeClock::class);
 
     // The DAP transport factory: a child process in production, fakes in tests.
-    $services->alias(DapClientFactory::class, ProcessDapClientFactory::class);
 
     // The delay-timer seam: the shared Revolt loop in production, fakes in tests.
-    $services->alias(Scheduler::class, RevoltScheduler::class);
 
     // "The active file" is the editor widget's current path.
-    $services->alias(ActiveFileProvider::class, CodeEditorWidget::class);
 
     // The overlay compositor's pane bundle: built by a factory because its
     // widget lists and view-open closures aren't expressible in a dumped
@@ -258,7 +235,6 @@ return static function (ContainerConfigurator $container, ContainerBuilder $buil
         ->factory([HighlightPreferences::class, 'fromConfig'])
         ->args([env('PORTA_HIGHLIGHT')->json()]);
     $services->alias(SyntaxHighlightProviderSource::class, PluginManager::class);
-    $services->alias(TokenSpanProvider::class, PluginManager::class);
 
     // The single public boundary: Ide resolves every service through this
     // locator, so the entries stay private (alive because referenced) and the
@@ -314,19 +290,8 @@ return static function (ContainerConfigurator $container, ContainerBuilder $buil
     $services->set(SettingsMouseRouter::class)->arg('$separator', service('porta.widget.settings_separator'));
 
     // BufferService is both interface seams' implementation.
-    $services->alias(FileOpener::class, BufferService::class);
-    $services->alias(BufferReopener::class, BufferService::class);
-    $services->alias(DiagnosticsSink::class, BufferService::class);
-    $services->alias(EditorAreaPanes::class, PaneLayout::class);
-    $services->alias(PluginLifecycleOps::class, PluginLifecycle::class);
-    $services->alias(LanguageServerProvider::class, PluginManager::class);
 
     // The editor's outbound handler groups — each interface has one impl.
-    $services->alias(EditorFileActionHandler::class, EditorFileActions::class);
-    $services->alias(EditorNavigationHandler::class, NavigationController::class);
-    $services->alias(EditorCompletionHandler::class, CompletionController::class);
-    $services->alias(EditorRefactorHandler::class, RefactorController::class);
-    $services->alias(BufferNavigationHandler::class, BufferNavigator::class);
 
     // Per-project config arrays travel JSON-encoded through the env channel
     // (seeded by IdeContainerFactory), so these defs stay dump-safe. Args, not
