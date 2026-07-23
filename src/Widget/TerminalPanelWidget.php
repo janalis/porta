@@ -25,7 +25,7 @@ use Symfony\Component\Tui\Widget\KeybindingsTrait;
  * Bottom terminal panel: a {@see TerminalBuffer}'s scrollback, forwarding
  * keystrokes to the active session's process. Hidden (zero rows) when closed.
  * Sessions are model objects owned by the {@see \Porta\Run\RunController} and
- * surface as first-class tabs on the dock strip ({@see \Porta\Ui\BottomDock}),
+ * surface as first-class tabs on the dock strip ({@see \Porta\Ui\Dock\BottomDock}),
  * so the panel body is pure terminal output; the widget stays dumb, firing
  * close/cycle callbacks for the session keys.
  */

@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace Porta\Ui;
+namespace Porta\Ui\Dock;
 
 /** The bottom dock's tool tabs, in their fixed strip order. */
 enum DockTab

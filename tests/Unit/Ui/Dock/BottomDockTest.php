@@ -2,18 +2,18 @@
 
 declare(strict_types=1);
 
-namespace Porta\Tests\Unit\Ui;
+namespace Porta\Tests\Ui\Dock;
 
 use PHPUnit\Framework\TestCase;
 use Porta\Editor\BufferManager;
 use Porta\Terminal\TerminalBuffer;
 use Porta\Terminal\TerminalSessions;
 use Porta\Tests\Support\TestBottomDock;
-use Porta\Ui\BottomDock;
-use Porta\Ui\DockTab;
-use Porta\Ui\DockToolTabs;
+use Porta\Ui\Dock\BottomDock;
+use Porta\Ui\Dock\DockTab;
+use Porta\Ui\Dock\DockToolTabs;
+use Porta\Ui\Dock\ResultsPanelMode;
 use Porta\Ui\EditorArea;
-use Porta\Ui\ResultsPanelMode;
 use Porta\Widget\CodeEditorWidget;
 use Porta\Widget\DebugPanelWidget;
 use Porta\Widget\DockTabsWidget;

@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace Porta\Layout;
 
-use Porta\Ui\BottomDock;
+use Porta\Ui\Dock\BottomDock;
 use Porta\Widget\FileTreeWidget;
 use Porta\Widget\Git\ChangesListWidget;
 use Porta\Widget\Git\CommitBoxWidget;

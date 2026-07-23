@@ -10,7 +10,7 @@ use Porta\Search\TodoScanner;
 use Porta\Search\TodoTags;
 use Porta\Tests\Support\TempProject;
 use Porta\Tests\Support\TestBottomDock;
-use Porta\Ui\ResultsPanelMode;
+use Porta\Ui\Dock\ResultsPanelMode;
 use Porta\Widget\DebugPanelWidget;
 use Porta\Widget\ResultsPanelWidget;
 use Porta\Widget\TerminalPanelWidget;

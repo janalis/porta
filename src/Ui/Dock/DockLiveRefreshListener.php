@@ -2,13 +2,15 @@
 
 declare(strict_types=1);
 
-namespace Porta\Ui;
+namespace Porta\Ui\Dock;
 
 use Porta\Event\DiagnosticsChanged;
 use Porta\Event\LspLogAppended;
 use Porta\Event\NotificationLogged;
 use Porta\Lsp\LspLog;
 use Porta\Search\ProblemRows;
+use Porta\Ui\LogRows;
+use Porta\Ui\NotificationLog;
 use Symfony\Component\EventDispatcher\Attribute\AsEventListener;
 
 /**

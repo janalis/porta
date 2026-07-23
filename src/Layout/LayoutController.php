@@ -10,7 +10,7 @@ use Porta\Git\WhitespaceMode;
 use Porta\I18n\Translator;
 use Porta\Input\MouseEvent;
 use Porta\Support\IntMath;
-use Porta\Ui\BottomDock;
+use Porta\Ui\Dock\BottomDock;
 use Porta\Widget\DebugPanelWidget;
 use Porta\Widget\FileTreeWidget;
 use Porta\Widget\ResultsPanelWidget;

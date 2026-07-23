@@ -12,7 +12,7 @@ use Porta\Lsp\FoldingController;
 use Porta\Run\RunController;
 use Porta\Search\Everywhere\SearchEverywhereController;
 use Porta\Settings\SettingsController;
-use Porta\Ui\BottomDock;
+use Porta\Ui\Dock\BottomDock;
 use Porta\Ui\WorkbenchActions;
 use Porta\Ui\WorkspaceViews;
 use Symfony\Component\DependencyInjection\Attribute\AsTaggedItem;

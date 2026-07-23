@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace Porta\Ui;
+namespace Porta\Ui\Dock;
 
 use Porta\Editor\Buffer;
 use Porta\Editor\BufferManager;

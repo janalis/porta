@@ -337,8 +337,8 @@ final class IdeEdgeCasesTest extends TestCase
                     $results = $tui->getById('results');
                     new \ReflectionProperty($ide, 'locator')
                         ->getValue($ide)
-                        ->get(\Porta\Ui\BottomDock::class)
-                        ->showList(\Porta\Ui\ResultsPanelMode::Search, 'Find in Project', [
+                        ->get(\Porta\Ui\Dock\BottomDock::class)
+                        ->showList(\Porta\Ui\Dock\ResultsPanelMode::Search, 'Find in Project', [
                             ['path' => 'b.php', 'line' => 0, 'text' => 'one'],
                             ['path' => 'c.php', 'line' => 0, 'text' => 'two'],
                         ]);
@@ -474,8 +474,8 @@ final class IdeEdgeCasesTest extends TestCase
                     // dock had no rect to grab. It now reserves its full height.
                     new \ReflectionProperty($ide, 'locator')
                         ->getValue($ide)
-                        ->get(\Porta\Ui\BottomDock::class)
-                        ->showList(\Porta\Ui\ResultsPanelMode::Search, 'Find in Project', []);
+                        ->get(\Porta\Ui\Dock\BottomDock::class)
+                        ->showList(\Porta\Ui\Dock\ResultsPanelMode::Search, 'Find in Project', []);
                     $tui->requestRender();
                     $tui->tick();
                     $renderer = new \ReflectionProperty($ide, 'renderer')->getValue($ide);

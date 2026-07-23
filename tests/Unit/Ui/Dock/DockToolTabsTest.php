@@ -2,14 +2,14 @@
 
 declare(strict_types=1);
 
-namespace Porta\Tests\Unit\Ui;
+namespace Porta\Tests\Ui\Dock;
 
 use PHPUnit\Framework\TestCase;
 use Porta\Search\SearchOptions;
 use Porta\Search\SearchTabState;
-use Porta\Ui\DockToolTab;
-use Porta\Ui\DockToolTabs;
-use Porta\Ui\ResultsPanelMode;
+use Porta\Ui\Dock\DockToolTab;
+use Porta\Ui\Dock\DockToolTabs;
+use Porta\Ui\Dock\ResultsPanelMode;
 use Porta\Ui\ScopeKind;
 use Porta\Widget\ResultsPanelFields;
 

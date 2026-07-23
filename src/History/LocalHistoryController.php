@@ -7,9 +7,9 @@ namespace Porta\History;
 use Porta\Editor\BufferManager;
 use Porta\I18n\Translator;
 use Porta\Lsp\CompletionController;
-use Porta\Ui\BottomDock;
+use Porta\Ui\Dock\BottomDock;
+use Porta\Ui\Dock\ResultsPanelMode;
 use Porta\Ui\Notifier;
-use Porta\Ui\ResultsPanelMode;
 use Porta\Widget\CodeEditorWidget;
 use Symfony\Component\Tui\Tui;
 

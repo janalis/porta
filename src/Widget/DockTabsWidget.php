@@ -6,7 +6,7 @@ namespace Porta\Widget;
 
 use Porta\Container\AsWidget;
 use Porta\Support\AnsiText;
-use Porta\Ui\DockTab;
+use Porta\Ui\Dock\DockTab;
 use Porta\Ui\Glyphs;
 use Porta\Ui\LtrPane;
 use Porta\Ui\Role;
@@ -21,7 +21,7 @@ use Symfony\Component\Tui\Widget\AbstractWidget;
  * The bottom dock's tab strip — the single level of bottom-pane tabs: one
  * Toolbar-styled row naming every alive dock tab (one per terminal session,
  * one per list tool, Debug), rendered just above whichever panel owns the
- * dock slot. Content comes from a provider on {@see \Porta\Ui\BottomDock} so
+ * dock slot. Content comes from a provider on {@see \Porta\Ui\Dock\BottomDock} so
  * it always reflects the models' state; an empty provider result (dock
  * hidden, or a transient picker bypassing the dock) renders zero rows.
  * Clicking a tab reveals its panel, the × closes it (a session tab stops its

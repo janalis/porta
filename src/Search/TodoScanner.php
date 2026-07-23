@@ -5,8 +5,8 @@ declare(strict_types=1);
 namespace Porta\Search;
 
 use Porta\I18n\Translator;
-use Porta\Ui\BottomDock;
-use Porta\Ui\ResultsPanelMode;
+use Porta\Ui\Dock\BottomDock;
+use Porta\Ui\Dock\ResultsPanelMode;
 
 /**
  * The TODO dock tool: one project-wide scan for the configured comment tags

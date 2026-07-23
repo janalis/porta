@@ -2,10 +2,13 @@
 
 declare(strict_types=1);
 
-namespace Porta\Ui;
+namespace Porta\Ui\Dock;
 
 use Porta\I18n\Translator;
 use Porta\Terminal\TerminalSessions;
+use Porta\Ui\EditorArea;
+use Porta\Ui\Glyphs;
+use Porta\Ui\Notifier;
 use Porta\Widget\DebugPanelWidget;
 use Porta\Widget\DockTabsWidget;
 use Porta\Widget\OverlayWidget;

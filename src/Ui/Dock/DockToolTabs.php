@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace Porta\Ui;
+namespace Porta\Ui\Dock;
 
 use Porta\Support\IndexMove;
 use Porta\Widget\ResultsPanelFields;

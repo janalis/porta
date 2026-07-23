@@ -7,9 +7,9 @@ namespace Porta\Search;
 use Porta\Editor\BufferService;
 use Porta\Editor\OpenFocus;
 use Porta\I18n\Translator;
-use Porta\Ui\BottomDock;
+use Porta\Ui\Dock\BottomDock;
+use Porta\Ui\Dock\ResultsPanelMode;
 use Porta\Ui\Notifier;
-use Porta\Ui\ResultsPanelMode;
 use Porta\Widget\CodeEditorWidget;
 
 /**
@@ -54,7 +54,7 @@ final class SearchActions
         $this->projectSearch->replaceInFolder($absDir);
     }
 
-    /** Every open buffer's diagnostics as one sorted, scannable list (kept live by {@see \Porta\Ui\DockLiveRefreshListener}). */
+    /** Every open buffer's diagnostics as one sorted, scannable list (kept live by {@see \Porta\Ui\Dock\DockLiveRefreshListener}). */
     public function showProblems(): void
     {
         $this->panels->showList(ResultsPanelMode::Problems, $this->translator->trans('Problems'), $this->problemRows->build());

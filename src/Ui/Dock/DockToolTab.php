@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace Porta\Ui;
+namespace Porta\Ui\Dock;
 
 use Porta\Search\SearchTabState;
 use Porta\Widget\ResultsPanelFields;

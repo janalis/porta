@@ -183,7 +183,7 @@ final class IdeDockToolsTest extends TestCase
                     // Stale completion: kick a scan, bind another tool, then ×
                     // the TODO tab before grep lands — the panel stays open (no
                     // engine cancel) and the late result must be dropped.
-                    $dock = new \ReflectionProperty($ide, 'locator')->getValue($ide)->get(\Porta\Ui\BottomDock::class);
+                    $dock = new \ReflectionProperty($ide, 'locator')->getValue($ide)->get(\Porta\Ui\Dock\BottomDock::class);
                     $tui->handleInput("\x1b8"); // alt+8 → scan starts
                     $tui->handleInput("\x1b6"); // alt+6 → Problems binds; the TODO tab stays alive behind it
                     foreach ($dock->aliveTabs() as $entry) {
@@ -191,7 +191,7 @@ final class IdeDockToolsTest extends TestCase
                             continue;
                         }
 
-                        $dock->closeTab(\Porta\Ui\DockTab::Results, $entry['key']); // × the inactive TODO tab
+                        $dock->closeTab(\Porta\Ui\Dock\DockTab::Results, $entry['key']); // × the inactive TODO tab
                     }
                     $this->await(static fn (): bool => str_contains(AnsiUtils::stripAnsiCodes($terminal->getOutput()), 'Problems'));
                 },
@@ -225,7 +225,7 @@ final class IdeDockToolsTest extends TestCase
                 $tui->handleInput($ch);
             }
         };
-        $dock = static fn ($ide): object => new \ReflectionProperty(Ide::class, 'locator')->getValue($ide)->get(\Porta\Ui\BottomDock::class);
+        $dock = static fn ($ide): object => new \ReflectionProperty(Ide::class, 'locator')->getValue($ide)->get(\Porta\Ui\Dock\BottomDock::class);
 
         $this->runIde(
             $project,
@@ -299,7 +299,7 @@ final class IdeDockToolsTest extends TestCase
                 $tui->handleInput($ch);
             }
         };
-        $dock = static fn ($ide): object => new \ReflectionProperty(Ide::class, 'locator')->getValue($ide)->get(\Porta\Ui\BottomDock::class);
+        $dock = static fn ($ide): object => new \ReflectionProperty(Ide::class, 'locator')->getValue($ide)->get(\Porta\Ui\Dock\BottomDock::class);
 
         $this->runIde(
             $project,
@@ -352,7 +352,7 @@ final class IdeDockToolsTest extends TestCase
     {
         putenv('PATH='.$this->originalPath); // real grep for the TODO scan
         $project = new TempProject(['src/Main.php' => "<?php\n// TODO polish\n"]);
-        $dock = static fn ($ide): object => new \ReflectionProperty(Ide::class, 'locator')->getValue($ide)->get(\Porta\Ui\BottomDock::class);
+        $dock = static fn ($ide): object => new \ReflectionProperty(Ide::class, 'locator')->getValue($ide)->get(\Porta\Ui\Dock\BottomDock::class);
 
         $this->runIde(
             $project,
@@ -402,7 +402,7 @@ final class IdeDockToolsTest extends TestCase
     {
         putenv('PATH='.$this->originalPath); // real grep for the TODO scan
         $project = new TempProject(['src/Main.php' => "<?php\n// TODO polish\n"]);
-        $dock = static fn ($ide): object => new \ReflectionProperty(Ide::class, 'locator')->getValue($ide)->get(\Porta\Ui\BottomDock::class);
+        $dock = static fn ($ide): object => new \ReflectionProperty(Ide::class, 'locator')->getValue($ide)->get(\Porta\Ui\Dock\BottomDock::class);
 
         $this->runIde(
             $project,
@@ -444,7 +444,7 @@ final class IdeDockToolsTest extends TestCase
     {
         putenv('PATH=/nonexistent');
         $project = new TempProject(['a.php' => "<?php\n"]);
-        $dock = static fn ($ide): object => new \ReflectionProperty(Ide::class, 'locator')->getValue($ide)->get(\Porta\Ui\BottomDock::class);
+        $dock = static fn ($ide): object => new \ReflectionProperty(Ide::class, 'locator')->getValue($ide)->get(\Porta\Ui\Dock\BottomDock::class);
 
         $this->runIde(
             $project,
