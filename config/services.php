@@ -295,13 +295,16 @@ return static function (ContainerConfigurator $container, ContainerBuilder $buil
 
     // Per-project config arrays travel JSON-encoded through the env channel
     // (seeded by IdeContainerFactory), so these defs stay dump-safe. Args, not
-    // binds: $overrides means languages in one controller, lspServers in the other.
-    $services->set(DebugAdapters::class)->arg('$languages', env('PORTA_LANGUAGES')->json());
-    $services->set(RunConfigs::class)->arg('$languages', env('PORTA_LANGUAGES')->json());
-    $services->set(SettingsController::class)->arg('$settings', env('PORTA_SETTINGS')->json());
-    $services->set(GitSettings::class)->arg('$settings', env('PORTA_SETTINGS')->json());
-    $services->set(SettingsGitController::class)->arg('$settings', env('PORTA_SETTINGS')->json());
-    $services->set(SettingsLanguageController::class)->arg('$overrides', env('PORTA_LANGUAGES')->json());
+    // binds: $overrides means languages in one controller, lspServers in the
+    // other. Each env channel is named once here and reused across its consumers.
+    $languages = env('PORTA_LANGUAGES')->json();
+    $settings = env('PORTA_SETTINGS')->json();
+    $services->set(DebugAdapters::class)->arg('$languages', $languages);
+    $services->set(RunConfigs::class)->arg('$languages', $languages);
+    $services->set(SettingsController::class)->arg('$settings', $settings);
+    $services->set(GitSettings::class)->arg('$settings', $settings);
+    $services->set(SettingsGitController::class)->arg('$settings', $settings);
+    $services->set(SettingsLanguageController::class)->arg('$overrides', $languages);
     $services->set(SettingsLspController::class)->arg('$overrides', env('PORTA_LSP_SERVERS')->json());
     $services
         ->set(PluginLifecycle::class)
