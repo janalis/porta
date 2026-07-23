@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace Porta\Input;
 
-use Porta\Overlay\WelcomeModalController;
+use Porta\Overlay\Presenter\WelcomeModalController;
 use Symfony\Component\Tui\Tui;
 
 /**

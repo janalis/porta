@@ -5,7 +5,7 @@ declare(strict_types=1);
 namespace Porta\Ui;
 
 use Porta\Git\GitViewController;
-use Porta\Overlay\WelcomeModalController;
+use Porta\Overlay\Presenter\WelcomeModalController;
 use Porta\Settings\SettingsViewController;
 use Symfony\Component\Tui\Widget\AbstractWidget;
 

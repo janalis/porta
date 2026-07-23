@@ -5,7 +5,7 @@ declare(strict_types=1);
 namespace Porta\Input;
 
 use Porta\Config\CommandRegistry;
-use Porta\Overlay\WelcomeModalController;
+use Porta\Overlay\Presenter\WelcomeModalController;
 use Porta\Widget\CodeEditorWidget;
 use Porta\Widget\ContextMenu;
 use Porta\Widget\MenuBarWidget;

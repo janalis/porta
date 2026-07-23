@@ -4,11 +4,11 @@ declare(strict_types=1);
 
 namespace Porta\Overlay\Region;
 
-use Porta\Overlay\FindModalPresenter;
 use Porta\Overlay\MenuOverlayController;
-use Porta\Overlay\PickerModalPresenter;
-use Porta\Overlay\ToastPresenter;
-use Porta\Overlay\WelcomeModalController;
+use Porta\Overlay\Presenter\FindModalPresenter;
+use Porta\Overlay\Presenter\PickerModalPresenter;
+use Porta\Overlay\Presenter\ToastPresenter;
+use Porta\Overlay\Presenter\WelcomeModalController;
 
 /**
  * Every floating region of the current frame: the modal boxes first (Welcome

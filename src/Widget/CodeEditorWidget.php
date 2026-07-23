@@ -985,7 +985,7 @@ final class CodeEditorWidget extends AbstractWidget implements ActiveFileProvide
 
     /**
      * Lay the open pickers out against the pane-union bounds (screen coords) —
-     * {@see \Porta\Overlay\PickerModalPresenter}'s per-frame call.
+     * {@see \Porta\Overlay\Presenter\PickerModalPresenter}'s per-frame call.
      *
      * @param array{int, int, int, int} $bounds
      *

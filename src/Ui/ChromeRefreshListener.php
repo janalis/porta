@@ -8,7 +8,7 @@ use Porta\Event\CursorShapeChanged;
 use Porta\Event\LocaleChanged;
 use Porta\Event\TabBarPositionChanged;
 use Porta\Event\ThemeChanged;
-use Porta\Overlay\WelcomeModalController;
+use Porta\Overlay\Presenter\WelcomeModalController;
 use Symfony\Component\EventDispatcher\Attribute\AsEventListener;
 use Symfony\Component\Tui\Tui;
 

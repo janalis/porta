@@ -515,7 +515,7 @@ final class OverlayHost
      * order (list, then search, then the prompt on top), recording each
      * SCREEN-space box for mouse hit-testing. Compositing — the span push,
      * shadow and backdrop — belongs to the presenter
-     * ({@see \Porta\Overlay\PickerModalPresenter}): the pickers float over
+     * ({@see \Porta\Overlay\Presenter\PickerModalPresenter}): the pickers float over
      * the whole workspace, not inside the editor pane's lines.
      *
      * @param array{int, int, int, int} $bounds [top, left, bottom, right)

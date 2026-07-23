@@ -13,7 +13,7 @@ use Symfony\Component\Tui\Tui;
  * toast, cancelled on any dismissal), the × / body hit-tests against the
  * screen-space boxes the presenter records each frame, and the ×-hover tint.
  * Rendering belongs to {@see \Porta\Widget\Render\ToastCard}; delivery to
- * {@see \Porta\Overlay\ToastPresenter}.
+ * {@see \Porta\Overlay\Presenter\ToastPresenter}.
  */
 final class ToastCenter
 {

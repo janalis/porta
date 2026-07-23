@@ -32,7 +32,7 @@ use Symfony\Component\Tui\Widget\VerticallyExpandableInterface;
 /**
  * The Welcome screen's content: a hero greeting, then a card per setup step in
  * a centred, width-capped content column. Never mounted in the widget tree —
- * {@see \Porta\Overlay\WelcomeModalController} renders it off-tree and wraps
+ * {@see \Porta\Overlay\Presenter\WelcomeModalController} renders it off-tree and wraps
  * it in the shared modal frame, whose title bar carries {@see title()}.
  *
  * A step is a marker-and-title line — `[x] title  [ action ]` — with its detail
@@ -122,7 +122,7 @@ final class WelcomeWidget extends AbstractWidget implements FocusableInterface, 
      * Fresh-open state: window at the top, hover cleared, selection on the
      * first step still needing the user (all done → the first step).
      *
-     * Only {@see \Porta\Overlay\WelcomeModalController::open()} calls this —
+     * Only {@see \Porta\Overlay\Presenter\WelcomeModalController::open()} calls this —
      * the widget outlives the modal (it is a shared service), so without it a
      * reopen would resume wherever the last visit left off. {@see setSteps()}
      * deliberately stays clamp-only so the refresh after running a step never
