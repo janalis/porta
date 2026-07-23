@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Porta\Widget\Render;
 
 use Porta\Editor\Caret;
+use Porta\Editor\DecorationStore;
 use Porta\Editor\DiagnosticStyle;
 use Porta\Editor\Document;
 use Porta\Editor\FoldModel;

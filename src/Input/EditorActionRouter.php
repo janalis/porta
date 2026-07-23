@@ -2,8 +2,9 @@
 
 declare(strict_types=1);
 
-namespace Porta\Widget;
+namespace Porta\Input;
 
+use Porta\Widget\EditorCallbacks;
 use Symfony\Component\Tui\Input\Keybindings;
 
 /**

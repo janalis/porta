@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace Porta\Widget\Render;
+namespace Porta\Editor;
 
 /**
  * The editor's per-buffer decoration state — git gutter marks, diagnostics,
