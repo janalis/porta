@@ -81,6 +81,14 @@ dangling reference; grep the old namespace to prove zero. Membership rules:
 - Suffix homes: mouse/keymap routers in `Input/`, typed events in `Event/`, LSP controllers in
   `Lsp/`, `*Store` state beside its domain.
 
+**Autoloading.** `composer.json` sets `config.optimize-autoloader` (precomputed classmap every
+boot; PSR-4 fallback keeps new files working in dev). CI's `composer install` adds
+`--classmap-authoritative` (safe: `src/` is PSR-4-clean, the only dynamic `class_exists`/`new
+$class` pass `autoload: false`, and bundled `.porta/plugins/*/plugin.php` are `require`d directly,
+never Composer-autoloaded). Every test namespace must mirror its path under `tests/` or the
+authoritative classmap rejects it — `composer dump-autoload --classmap-authoritative` surfaces any
+PSR-4 violation.
+
 ## Architecture
 
 **`Ide` (`src/Ide.php`, ~520 lines) is a thin composition root over a Symfony DI container.**
@@ -91,10 +99,16 @@ because ~100 reflection-based test seams read them), the `build*` steps
 (`buildEditorArea`, `buildSidePanels`, `buildGitView`, `buildSettingsWidgets`,
 `buildLayoutAndOverlay`) are now resolution + arrangement only, and the ctor tail runs
 `Command/CommandRegistryPopulator::populate()` (tagged providers), `Bootstrap/WidgetHooks::wire()`,
-the menu bake and registers the `Input/InputDispatcher` listener — commands register and menus bake at the **end** of the
-constructor. Two services are resolved **eagerly for their side effect**: `GitViewController` and
-`SettingsViewController` attach themselves to `Ui/WorkspaceViews` in their constructors and have
-no inbound service references (without the eager resolve they would never exist).
+`Bootstrap/EagerServices::boot()` (tagged eager services — see below), the menu bake and registers
+the `Input/InputDispatcher` listener — commands register and menus bake at the **end** of the
+constructor. Services that must be constructed **eagerly for a self-registering side effect** (they
+attach to `Ui/WorkspaceViews` or hook `BidiTui::onBeforeFrame` and have no inbound reference, so
+without a forced resolve they never exist) carry **`#[Container/AsEager(priority)]`**; the attribute
+tags them `porta.eager`, and `Bootstrap/EagerServices` iterates the tag once at the ctor tail to
+construct them (the `CommandRegistryPopulator` tagged-iterator pattern). The priority fixes
+contractual construction order (the find→picker→toast presenters). Adopters:
+`GitViewController`/`SettingsViewController`/`WelcomeModalController` (attach to WorkspaceViews),
+the three overlay presenters, and `ResponsiveLayout`.
 `run()` sets up the terminal (alternate screen + SGR mouse modes 1000/1003/1006), calls
 `LspBootstrapper::start()`, arms a 1s filesystem-poll timer, and enters `tui->run()`. Teardown
 (mouse disable, `History/SessionRestorer::save`, LSP/git/run shutdown) is in the `finally`.
@@ -163,9 +177,12 @@ non-service classes register private and are pruned at compile because nothing p
 them (*fragile*: if a **public** service ever gains a dependency on a non-service class,
 compile fails with a Symfony autowiring error — explicit at boot, caught by the first E2e test).
 `_defaults` stays **private**; the single public boundary is the `porta.ide` `ServiceLocator`
-(plus the synthetics) — `Ide` resolves everything through its typed `service()` helper, and a new
-class `Ide` needs by type must be added to the locator's entry list. Every def is **shared**;
-**never `lazy: true`** — it proxy-subclasses, which breaks `final` classes.
+(plus the synthetics) — `Ide` resolves everything through its typed `service()` helper. A new class
+`Ide` needs by type must be added to the locator's entry list (the readable manifest of the public
+boundary); **`tests/Unit/Container/IdeLocatorMembershipTest`** enforces this — it tokenizes
+`Ide.php` for `service(X::class)` targets and fails if any isn't a member, so a forgotten entry is a
+loud test failure, not a boot crash. Every def is **shared**; **never `lazy: true`** — it
+proxy-subclasses, which breaks `final` classes.
 
 **Events.** `symfony/event-dispatcher`, kernel-less: `config/services.php` registers the
 `#[AsEventListener]` attribute autoconfiguration and the `RegisterListenersPass` (the service id
