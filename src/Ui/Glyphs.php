@@ -145,6 +145,15 @@ final class Glyphs
     // thin/heavy convention — the affordance is the GLYPH, surviving --no-ansi.
     public const string MODAL_RESIZE_GRAB = '┛';
 
+    // Toast severity markers, one surface (the corner cards): shape-distinct
+    // so the rank reads without color (monochrome, --no-ansi). All 1 column
+    // wide; ✗/✓ deliberately echo the diff/check vocabulary — same rank, same
+    // shape — while ◦ (info) is visibly not the tree bullet's context.
+    public const string TOAST_ERROR = '✗';
+    public const string TOAST_WARN = '▲';
+    public const string TOAST_INFO = '◦';
+    public const string TOAST_SUCCESS = '✓';
+
     // The Welcome screen's link-step marker: bracketed like the checkboxes so
     // it reads as the same control family, but visibly not a checkbox — a link
     // step has no done state to tick. Same → value as NAV_CURRENT on a

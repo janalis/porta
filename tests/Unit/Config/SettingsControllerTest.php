@@ -377,10 +377,7 @@ final class SettingsControllerTest extends TestCase
 
         $settings->toggle('doesNotExist');
 
-        $status = $ide->getTui()->getById('status');
-        \assert($status instanceof StatusBarWidget, description: 'the status widget is a StatusBarWidget');
-        $flash = new \ReflectionProperty($status, 'flash')->getValue($status);
-        $this->assertStringContainsString('Unknown setting "doesNotExist"', (string) ($flash['text'] ?? ''));
+        $this->assertStringContainsString('Unknown setting "doesNotExist"', \Porta\Tests\Support\Toasts::last($ide));
         $this->assertFalse(is_file($project->path('.porta.json')), 'nothing was persisted');
     }
 

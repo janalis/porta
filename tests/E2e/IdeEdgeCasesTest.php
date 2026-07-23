@@ -2586,9 +2586,9 @@ final class IdeEdgeCasesTest extends TestCase
                     }
                     $tui->handleInput("\r");
                 },
-                3300 => function ($tui, $terminal) use ($project, $palette): void {
+                3300 => function ($tui, $terminal, $ide) use ($project, $palette): void {
                     $tui->tick();
-                    $this->assertStringContainsString('Switched to remote-only (tracking origin/remote-only)', AnsiUtils::stripAnsiCodes($terminal->getOutput()));
+                    $this->assertStringContainsString('Switched to remote-only (tracking origin/remote-only)', \Porta\Tests\Support\Toasts::last($ide));
                     $this->assertSame('origin/remote-only', $project->git('rev-parse', '--abbrev-ref', 'remote-only@{upstream}'), 'the checkout created a tracking branch');
 
                     // Round 4: delete "feature" through the delete sentinel.
@@ -4487,16 +4487,15 @@ final class IdeEdgeCasesTest extends TestCase
                     $tui->handleInput("\x1b[<16;41;4M");
                     $tui->handleInput("\x1b[<16;41;4m");
                 },
-                900 => function () use ($captureFile): void {
+                900 => function ($tui, $terminal, $ide) use ($captureFile): void {
                     // The shim opener is an async subprocess: under load its
                     // second write can land after the loop would stop.
                     $this->await(static fn (): bool => is_file($captureFile) && 2 === substr_count((string) file_get_contents($captureFile), needle: "\n"));
+                    $this->assertStringContainsString('Opened https://www.php.net', implode("\n", \Porta\Tests\Support\Toasts::all($ide)));
                 },
             ],
         );
 
-        $screen = AnsiUtils::stripAnsiCodes($terminal->getOutput());
-        $this->assertStringContainsString('Opened https://www.php.net', $screen);
         $urls = (string) file_get_contents($captureFile);
         $this->assertStringContainsString('https://www.php.net/manual/en/function.strlen.php', $urls);
         $this->assertSame(2, substr_count($urls, needle: "\n"), 'both F12 and ctrl+click opened the docs');
@@ -4522,11 +4521,11 @@ final class IdeEdgeCasesTest extends TestCase
                     $tui->handleInput("\x1b[24~");
                     // The opener shim is an independent OS process — await its write.
                     $this->await(static fn (): bool => str_contains((string) (is_file($captureFile) ? file_get_contents($captureFile) : false), 'mozilla.org'));
+                    $this->assertStringContainsString('Opened https://developer.mozilla.org', implode("\n", \Porta\Tests\Support\Toasts::all($ide)));
                 },
             ],
         );
 
-        $this->assertStringContainsString('Opened https://developer.mozilla.org', AnsiUtils::stripAnsiCodes($terminal->getOutput()));
         $urls = (string) file_get_contents($captureFile);
         $this->assertStringContainsString('https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/JSON', $urls);
         $this->assertStringNotContainsString('parse', $urls, 'a non-curated word opens nothing');
@@ -4545,12 +4544,13 @@ final class IdeEdgeCasesTest extends TestCase
                     $tui->getById('editor')->getDocument()->setCursor(1, 2); // inside 'array_map'
                     $tui->handleInput("\x1b[24~");
                 },
+                420 => function ($tui, $terminal, $ide): void {
+                    $this->assertStringContainsString(
+                        'Docs: https://www.php.net/manual/en/function.array-map.php',
+                        \Porta\Tests\Support\Toasts::last($ide),
+                    );
+                },
             ],
-        );
-
-        $this->assertStringContainsString(
-            'Docs: https://www.php.net/manual/en/function.array-map.php',
-            AnsiUtils::stripAnsiCodes($terminal->getOutput()),
         );
     }
 

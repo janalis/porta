@@ -53,10 +53,23 @@ trait MenuOverlayHostTrait
         $this->invalidate();
     }
 
+    /** @var list<array{row: int, col: int, width: int, segment: string}> floating toast spans, above the modal, under the menus */
+    private array $toastOverlay = [];
+
+    /**
+     * @param list<array{row: int, col: int, width: int, segment: string}> $spans
+     */
+    public function setToastOverlay(array $spans): void
+    {
+        $this->toastOverlay = $spans;
+        $this->invalidate();
+    }
+
     /**
      * Composite the floating layers: the backdrop dim first (the pane's own
-     * rows go faint), then the modal spans bright over it, then the menu
-     * dropdowns brightest — an open menu always renders above the modal.
+     * rows go faint), then the modal spans bright over it, then the toasts
+     * (readable over a dimmed modal), then the menu dropdowns brightest — an
+     * open menu always renders above everything.
      *
      * @param list<string> $lines
      *
@@ -67,7 +80,8 @@ trait MenuOverlayHostTrait
         if ($this->modalBackdrop) {
             $lines = array_map(AnsiText::dim(...), $lines);
         }
+        $lines = MenuOverlay::apply(MenuOverlay::apply($lines, $this->modalOverlay, $width), $this->toastOverlay, $width);
 
-        return MenuOverlay::apply(MenuOverlay::apply($lines, $this->modalOverlay, $width), $this->menuOverlay, $width);
+        return MenuOverlay::apply($lines, $this->menuOverlay, $width);
     }
 }

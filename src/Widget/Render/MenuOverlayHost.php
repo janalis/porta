@@ -28,4 +28,13 @@ interface MenuOverlayHost
 
     /** Whether this pane renders faint beneath the modal spans (the backdrop dim). */
     public function setModalBackdrop(bool $on): void;
+
+    /**
+     * Floating toast spans (corner notifications), composited *above* the
+     * modal spans (a toast must stay readable over a dimmed modal frame) but
+     * *under* the menu dropdowns (interactive chrome wins).
+     *
+     * @param list<array{row: int, col: int, width: int, segment: string}> $spans
+     */
+    public function setToastOverlay(array $spans): void;
 }

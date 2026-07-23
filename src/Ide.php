@@ -36,6 +36,7 @@ use Porta\Lsp\WorkspaceEditor;
 use Porta\Onboarding\OnboardingState;
 use Porta\Overlay\FindModalPresenter;
 use Porta\Overlay\PickerModalPresenter;
+use Porta\Overlay\ToastPresenter;
 use Porta\Overlay\WelcomeModalController;
 use Porta\Plugin\PluginHost;
 use Porta\Plugin\PluginLifecycle;
@@ -257,6 +258,7 @@ final class Ide
         // before the opening one paints the shared span slot.
         $this->service(FindModalPresenter::class);
         $this->service(PickerModalPresenter::class);
+        $this->service(ToastPresenter::class);
         $this->pluginLifecycle->refreshNav();
 
         $this->localHistory = $this->service(LocalHistoryController::class);
@@ -438,6 +440,7 @@ final class Ide
             $this->tui->getTerminal()->write("\x1b[?1000l\x1b[?1003l\x1b[?1006l\x1b[?1049l");
             $this->sessionRestorer->save();
             $this->debugState->save();
+            $this->notifier->dismissAll(); // cancel pending toast timers — nothing may outlive the loop
             $this->lsp->stop();
             $this->git->cancelAll();
             $this->run->stop();

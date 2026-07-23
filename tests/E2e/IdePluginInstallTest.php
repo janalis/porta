@@ -103,7 +103,7 @@ final class IdePluginInstallTest extends TestCase
                     $tui->tick();
 
                     $screen = AnsiUtils::stripAnsiCodes($terminal->getOutput());
-                    $this->assertStringContainsString('Plugin installed — default keybindings apply on restart', $screen);
+                    $this->assertStringContainsString('Plugin installed — default keybindings apply on restart', \Porta\Tests\Support\Toasts::last($ide));
                     $this->assertFileExists($project->path('.porta/plugins/installee/plugin.php'));
                     $this->assertStringContainsString('installee (project)  [Remove]', $screen, 'the new plugin lists with a Remove button');
 
@@ -119,7 +119,7 @@ final class IdePluginInstallTest extends TestCase
                     $this->type($tui, $project->path('plugin-src/broken'));
                     $tui->handleInput("\r");
                     $tui->tick();
-                    $this->assertStringContainsString('Plugin "broken" failed to load: plugin.php must return a PortaPlugin instance', AnsiUtils::stripAnsiCodes($terminal->getOutput()));
+                    $this->assertStringContainsString('Plugin "broken" failed to load: plugin.php must return a PortaPlugin instance', \Porta\Tests\Support\Toasts::last($ide));
                 },
                 200 => function ($tui, $terminal, $ide) use ($project): void {
                     // A project-scope plugin toggles Enabled via the opt-out `disabledPlugins`
@@ -169,12 +169,12 @@ final class IdePluginInstallTest extends TestCase
                     $tui->handleInput("\x1b[B"); // demo's Remove row
                     $tui->handleInput("\r"); // arm
                     $tui->tick();
-                    $this->assertStringContainsString('Press Enter again to remove "demo"', AnsiUtils::stripAnsiCodes($terminal->getOutput()));
+                    $this->assertStringContainsString('Press Enter again to remove "demo"', \Porta\Tests\Support\Toasts::last($ide));
                     $this->assertDirectoryExists($project->path('.porta/plugins/demo'));
 
                     $tui->handleInput("\r"); // confirm
                     $tui->tick();
-                    $this->assertStringContainsString('Plugin "demo" removed', AnsiUtils::stripAnsiCodes($terminal->getOutput()));
+                    $this->assertStringContainsString('Plugin "demo" removed', \Porta\Tests\Support\Toasts::last($ide));
                     $this->assertDirectoryDoesNotExist($project->path('.porta/plugins/demo'));
 
                     // The loaded code cannot be unloaded: the command still runs.
@@ -232,10 +232,10 @@ final class IdePluginInstallTest extends TestCase
                     $tui->handleInput("\r"); // commit → async clone
                 },
                 300 => function ($tui, $terminal, $ide) use ($project): void {
-                    $this->await(static fn (): bool => str_contains(AnsiUtils::stripAnsiCodes($terminal->getOutput()), 'Plugin installed — default keybindings apply on restart'));
+                    $this->await(static fn (): bool => str_contains(\Porta\Tests\Support\Toasts::last($ide), 'Plugin installed — default keybindings apply on restart'));
                     $tui->tick();
                     $screen = AnsiUtils::stripAnsiCodes($terminal->getOutput());
-                    $this->assertStringContainsString('Plugin installed — default keybindings apply on restart', $screen);
+                    $this->assertStringContainsString('Plugin installed — default keybindings apply on restart', \Porta\Tests\Support\Toasts::last($ide));
                     $this->assertFileExists($project->path('.porta/plugins/cloned/plugin.php'));
                     $this->assertStringContainsString('cloned (project)  [Remove]', $screen, 'the async refresh re-listed the section');
 

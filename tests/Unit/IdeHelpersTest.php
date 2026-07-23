@@ -296,16 +296,7 @@ final class IdeHelpersTest extends TestCase
         new \ReflectionProperty($this->localHistory(), 'snapshots')->setValue($this->localHistory(), ['/nonexistent/1.snap']);
 
         $this->localHistory()->restore(0);
-        $status = \Symfony\Component\Tui\Ansi\AnsiUtils::stripAnsiCodes(
-            implode(
-                '',
-                $this->ide
-                    ->getTui()
-                    ->getById('status')
-                    ->render(new \Symfony\Component\Tui\Render\RenderContext(120, 1)),
-            ),
-        );
-        $this->assertStringContainsString('Could not read that snapshot', $status);
+        $this->assertStringContainsString('Could not read that snapshot', \Porta\Tests\Support\Toasts::last($this->ide));
     }
 
     public function testRestoreSessionSkipsMissingFiles(): void
@@ -539,16 +530,7 @@ final class IdeHelpersTest extends TestCase
             'Formatting not supported',
         ), 2.0);
 
-        $status = \Symfony\Component\Tui\Ansi\AnsiUtils::stripAnsiCodes(
-            implode(
-                '',
-                $this->ide
-                    ->getTui()
-                    ->getById('status')
-                    ->render(new \Symfony\Component\Tui\Render\RenderContext(120, 1)),
-            ),
-        );
-        $this->assertStringContainsString('Formatting not supported by mock-lsp-server', $status);
+        $this->assertStringContainsString('Formatting not supported by mock-lsp-server', \Porta\Tests\Support\Toasts::last($this->ide));
         $client->stop();
     }
 
@@ -670,8 +652,7 @@ final class IdeHelpersTest extends TestCase
     public function testViewerHandlerHooksDelegateToTheBufferStack(): void
     {
         $tui = $this->ide->getTui();
-        $statusBar = $tui->getById('status');
-        $flash = static fn (): string => (string) (new \ReflectionProperty($statusBar, 'flash')->getValue($statusBar)['text'] ?? '');
+        $flash = fn (): string => \Porta\Tests\Support\Toasts::last($this->ide);
 
         $file = $this->project->write('src/Hooked.php', "<?php\n");
         $helpViewer = new \ReflectionProperty($this->ide, 'locator')->getValue($this->ide)->get(\Porta\Widget\HelpViewerWidget::class);

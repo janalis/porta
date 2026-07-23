@@ -6,6 +6,7 @@ namespace Porta\Input;
 
 use Porta\Overlay\MenuOverlayController;
 use Porta\Ui\BottomDock;
+use Porta\Ui\Toast\ToastCenter;
 use Porta\Widget\ContextMenu;
 use Porta\Widget\DockTabsWidget;
 use Porta\Widget\HoverableList;
@@ -38,6 +39,7 @@ final readonly class HoverRouter
         private SettingsMouseRouter $settings,
         private WelcomeMouseRouter $welcome,
         private SeparatorWidget $separator,
+        private ToastCenter $toasts,
     ) {}
 
     /**
@@ -48,6 +50,12 @@ final readonly class HoverRouter
      */
     public function handle(MouseEvent $mouse, ?WidgetRect $editorRect, ActiveView $view = ActiveView::Editor): void
     {
+        // The toast stack floats above every modal: over a card, only its ×
+        // tint reacts, and the hover never leaks to what is beneath.
+        if ($this->toasts->hoverAt($mouse->row, $mouse->col)) {
+            return;
+        }
+
         // A right-click context menu floats over every view and is modal, so it
         // gets first refusal: highlight the item under the pointer.
         if ($this->contextMenu->isOpen()) {

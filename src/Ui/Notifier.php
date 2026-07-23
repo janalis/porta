@@ -4,15 +4,21 @@ declare(strict_types=1);
 
 namespace Porta\Ui;
 
+use Porta\Ui\Toast\ToastCenter;
+use Porta\Ui\Toast\ToastSeverity;
 use Porta\Widget\StatusBarWidget;
 use Symfony\Component\Tui\Tui;
 
 /**
- * The single status-bar notification path: flash a transient message and request
- * a repaint. Replaces the `statusBar->flash(...)` + `tui->requestRender()` pair
- * that controllers and services across the app hand-rolled (three of them behind
- * byte-identical private `flash()` helpers). Every flash is also appended to the
- * {@see NotificationLog}, so expired messages stay reviewable.
+ * The single notification path: {@see notify()} shows a corner toast in its
+ * severity's dress and appends to the {@see NotificationLog}, so expired
+ * messages stay reviewable; {@see hint()} is the status-bar-only whisper for
+ * transient state a toast would over-announce. {@see flash()} keeps its
+ * historic signature as the Info-severity notify — the app-wide call sites
+ * (and the plugin API riding them) never had to move.
+ *
+ * Without a {@see ToastCenter} (direct test construction) every notify falls
+ * back to the status-bar flash, preserving the pre-toast behavior seam.
  */
 final readonly class Notifier
 {
@@ -20,13 +26,56 @@ final readonly class Notifier
         private StatusBarWidget $statusBar,
         private Tui $tui,
         private ?NotificationLog $log = null,
+        private ?ToastCenter $toasts = null,
     ) {}
 
-    /** Flash $message on the status bar for $seconds and repaint. */
+    /** Notify at Info severity — the historic entry point, signature unchanged. */
     public function flash(string $message, float $seconds = 2.5): void
     {
-        $this->log?->append($message);
+        $this->notify($message, ToastSeverity::Info, $seconds);
+    }
+
+    /** Show a severity-dressed toast (error red, warning amber, success green) and log it. */
+    public function notify(string $message, ToastSeverity $severity, float $seconds = 2.5): void
+    {
+        $this->log?->append($message, $severity);
+        if (null !== $this->toasts) {
+            $this->toasts->push($message, $severity, $seconds);
+        } else {
+            $this->statusBar->flash($message, $seconds);
+        }
+        $this->tui->requestRender();
+    }
+
+    public function success(string $message, float $seconds = 2.5): void
+    {
+        $this->notify($message, ToastSeverity::Success, $seconds);
+    }
+
+    public function warn(string $message, float $seconds = 4.0): void
+    {
+        $this->notify($message, ToastSeverity::Warn, $seconds);
+    }
+
+    /** Errors linger longer — reading time for a message that needs acting on. */
+    public function error(string $message, float $seconds = 5.0): void
+    {
+        $this->notify($message, ToastSeverity::Error, $seconds);
+    }
+
+    /**
+     * A status-bar-only transient hint (mode switches, scroll positions …):
+     * no toast, no log entry — state whispering, not an event worth keeping.
+     */
+    public function hint(string $message, float $seconds = 2.5): void
+    {
         $this->statusBar->flash($message, $seconds);
         $this->tui->requestRender();
+    }
+
+    /** Teardown: cancel every pending toast timer so nothing outlives the loop. */
+    public function dismissAll(): void
+    {
+        $this->toasts?->dismissAll();
     }
 }

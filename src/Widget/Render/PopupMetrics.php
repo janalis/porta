@@ -26,4 +26,7 @@ final class PopupMetrics
 
     /** Find in Files never squeezes below this inner width (content- or drag-sized). */
     public const int FIND_MIN_WIDTH = 48;
+
+    /** Inner-width cap for the corner toast cards. */
+    public const int TOAST_MAX_INNER = 42;
 }

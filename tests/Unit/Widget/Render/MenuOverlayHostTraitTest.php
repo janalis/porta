@@ -61,6 +61,33 @@ final class MenuOverlayHostTraitTest extends TestCase
         $this->assertStringNotContainsString("\x1b[2m", $host->render(new RenderContext(10, 2))[1], 'clearing the flag restores the pane');
     }
 
+    /** Toasts sit between the layers: above the modal, below the menu. */
+    public function testTheToastLayerCompositesBetweenModalAndMenu(): void
+    {
+        $host = $this->host();
+        $host->setModalOverlay([['row' => 0, 'col' => 0, 'width' => 8, 'segment' => 'MMMMMMMM']]);
+        $host->setToastOverlay([['row' => 0, 'col' => 2, 'width' => 6, 'segment' => 'TTTTTT']]);
+        $host->setMenuOverlay([['row' => 0, 'col' => 6, 'width' => 4, 'segment' => 'DDDD']]);
+
+        $lines = array_map(AnsiUtils::stripAnsiCodes(...), $host->render(new RenderContext(10, 2)));
+
+        $this->assertSame('MMTTTTDDDD', $lines[0], 'toast over modal, menu over toast');
+    }
+
+    /** A span sliced against a stale (wider) rect clips to the live width instead of blowing the row. */
+    public function testAnOversizedSpanClipsToTheLiveWidth(): void
+    {
+        $host = $this->host();
+        $host->setToastOverlay([['row' => 0, 'col' => 6, 'width' => 9, 'segment' => 'TTTTTTTTT']]);
+        $host->setMenuOverlay([['row' => 1, 'col' => 12, 'width' => 3, 'segment' => 'DDD']]);
+
+        $lines = $host->render(new RenderContext(10, 2));
+
+        $this->assertSame(10, AnsiUtils::visibleWidth($lines[0]), 'the clipped span keeps the row exactly the widget width');
+        $this->assertSame('......TTTT', AnsiUtils::stripAnsiCodes($lines[0]));
+        $this->assertSame('..........', AnsiUtils::stripAnsiCodes($lines[1]), 'a span wholly past the width is dropped');
+    }
+
     public function testClearingOneLayerLeavesTheOther(): void
     {
         $host = $this->host();

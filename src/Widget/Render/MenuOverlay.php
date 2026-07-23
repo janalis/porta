@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace Porta\Widget\Render;
 
+use Symfony\Component\Tui\Ansi\AnsiUtils;
+
 /**
  * Composites the application-menu dropdown's styled segments onto a widget's
  * already-rendered rows, so the dropdown floats over the tab bar / editor
@@ -25,8 +27,17 @@ final class MenuOverlay
             if (!($span['row'] >= 0 && $span['row'] < \count($lines))) {
                 continue;
             }
+            // Clip to the widget's LIVE width: a span sliced against a
+            // last-frame rect can outlive a relayout (tab bar moving to a
+            // side, a pane resize) for one frame, and compositing it verbatim
+            // would blow the line-width invariant the renderer enforces.
+            $width = min($span['width'], $columns - $span['col']);
+            if ($width <= 0) {
+                continue;
+            }
+            $segment = $width < $span['width'] ? AnsiUtils::sliceByColumn($span['segment'], startCol: 0, length: $width) : $span['segment'];
 
-            $lines[$span['row']] = OverlayCompositor::into($lines[$span['row']], $span['col'], $span['width'], $columns, $span['segment']);
+            $lines[$span['row']] = OverlayCompositor::into($lines[$span['row']], $span['col'], $width, $columns, $segment);
         }
 
         return $lines;

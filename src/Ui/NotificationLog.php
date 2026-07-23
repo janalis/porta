@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Porta\Ui;
 
 use Porta\Event\NotificationLogged;
+use Porta\Ui\Toast\ToastSeverity;
 use Psr\Clock\ClockInterface;
 use Psr\EventDispatcher\EventDispatcherInterface;
 
@@ -27,9 +28,13 @@ final class NotificationLog
         private readonly EventDispatcherInterface $dispatcher,
     ) {}
 
-    public function append(string $message): void
+    public function append(string $message, ToastSeverity $severity = ToastSeverity::Info): void
     {
-        $this->entries[] = ['time' => $this->clock->now(), 'text' => $message];
+        // Non-info entries carry their severity glyph into the text, so the
+        // Notifications dock tool shows the rank with zero changes to the
+        // shared LogRows shape (and E2e greps still find the message).
+        $text = ToastSeverity::Info === $severity ? $message : $severity->glyph().' '.$message;
+        $this->entries[] = ['time' => $this->clock->now(), 'text' => $text];
         if (\count($this->entries) > self::MAX_ENTRIES) {
             array_shift($this->entries);
         }

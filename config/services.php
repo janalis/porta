@@ -78,6 +78,7 @@ use Porta\Lsp\WorkspaceEditor;
 use Porta\Overlay\CompositeFloatingRegions;
 use Porta\Overlay\FindModalPresenter;
 use Porta\Overlay\PickerModalPresenter;
+use Porta\Overlay\ToastPresenter;
 use Porta\Overlay\FloatingRegions;
 use Porta\Overlay\MenuOverlayController;
 use Porta\Overlay\MenuOverlayPanes;
@@ -399,6 +400,7 @@ return static function (ContainerConfigurator $container, ContainerBuilder $buil
         WelcomeModalController::class,
         FindModalPresenter::class,
         PickerModalPresenter::class,
+        ToastPresenter::class,
         PluginLifecycle::class,
         MenuRebuilder::class,
         GitViewController::class,

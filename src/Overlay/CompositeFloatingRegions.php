@@ -17,6 +17,7 @@ final class CompositeFloatingRegions implements FloatingRegions
         private readonly WelcomeModalController $welcomeModal,
         private readonly FindModalPresenter $findModal,
         private readonly PickerModalPresenter $pickers,
+        private readonly ToastPresenter $toasts,
         private readonly MenuOverlayController $menus,
     ) {}
 
@@ -24,9 +25,9 @@ final class CompositeFloatingRegions implements FloatingRegions
     {
         // The floating modals are never open together (the interlock: opening
         // any surface closes the others), so at most one family's regions
-        // join the menus'.
+        // join the toasts' and the menus'.
         $modal = $this->welcomeModal->region() ?? $this->findModal->region();
 
-        return [...(null !== $modal ? [$modal] : []), ...$this->pickers->regions(), ...$this->menus->regions()];
+        return [...(null !== $modal ? [$modal] : []), ...$this->pickers->regions(), ...$this->toasts->regions(), ...$this->menus->regions()];
     }
 }

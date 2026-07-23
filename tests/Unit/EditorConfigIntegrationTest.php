@@ -59,11 +59,10 @@ final class EditorConfigIntegrationTest extends TestCase
 
     private function flashText(Ide $ide): ?string
     {
-        $status = $ide->getTui()->getById('status');
-        \assert($status instanceof StatusBarWidget, description: 'the status widget is a StatusBarWidget');
-        $flash = new \ReflectionProperty($status, 'flash')->getValue($status);
+        // Notifications are corner toasts now; read the newest one unwrapped.
+        $last = \Porta\Tests\Support\Toasts::last($ide);
 
-        return $flash['text'] ?? null;
+        return '' === $last ? null : $last;
     }
 
     public function testIndentationAppliedOnOpen(): void

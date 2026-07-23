@@ -129,10 +129,10 @@ final class PhpCsFixerPluginTest extends TestCase
             $project,
             $project->path('a.php'),
             [
-                100 => function ($tui, $terminal): void {
+                100 => function ($tui, $terminal, $ide): void {
                     $tui->handleInput("\x1b\x06");
                     $tui->tick();
-                    $this->assertStringContainsString('php-cs-fixer not found (vendor/bin or PATH)', AnsiUtils::stripAnsiCodes($terminal->getOutput()));
+                    $this->assertStringContainsString('php-cs-fixer not found (vendor/bin or PATH)', \Porta\Tests\Support\Toasts::last($ide));
                 },
             ],
         );

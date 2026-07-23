@@ -149,7 +149,9 @@ final class ContextMenuOpener
      */
     public function flashNoMenu(): void
     {
-        $this->notifier->flash($this->translator->trans('No context menu here'));
+        // A status-bar hint, not a toast: "nothing here" is transient state
+        // whispering, not an event worth a card or a log entry.
+        $this->notifier->hint($this->translator->trans('No context menu here'));
     }
 
     /**

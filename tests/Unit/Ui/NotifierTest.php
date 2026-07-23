@@ -5,8 +5,11 @@ declare(strict_types=1);
 namespace Porta\Tests\Unit\Ui;
 
 use PHPUnit\Framework\TestCase;
+use Porta\Tests\Support\FakeScheduler;
 use Porta\Ui\NotificationLog;
 use Porta\Ui\Notifier;
+use Porta\Ui\Toast\ToastCenter;
+use Porta\Ui\Toast\ToastSeverity;
 use Porta\Widget\StatusBarWidget;
 use Symfony\Component\Clock\MockClock;
 use Symfony\Component\EventDispatcher\EventDispatcher;
@@ -33,5 +36,45 @@ final class NotifierTest extends TestCase
         $notifier->flash('no log wired');
 
         $this->addToAssertionCount(1); // no crash: the log is optional for tests
+    }
+
+    public function testSeveritiesToastWithTheirRankAndLogWithTheGlyph(): void
+    {
+        $status = new StatusBarWidget(clock: $clock = new MockClock());
+        $tui = new Tui(terminal: new VirtualTerminal(columns: 80, rows: 24));
+        $log = new NotificationLog($clock, new EventDispatcher());
+        $toasts = new ToastCenter(new FakeScheduler(), $tui);
+        $notifier = new Notifier($status, $tui, $log, $toasts);
+
+        $notifier->error('disk full');
+        $notifier->warn('slow disk');
+        $notifier->success('saved');
+        $notifier->flash('opened');
+
+        $this->assertSame(
+            [ToastSeverity::Error, ToastSeverity::Warn, ToastSeverity::Success, ToastSeverity::Info],
+            array_reverse(array_map(static fn ($t) => $t->severity, $toasts->toasts())),
+        );
+        $this->assertSame(['✗ disk full', '▲ slow disk', '✓ saved', 'opened'], array_column($log->entries(), 'text'), 'non-info entries carry their glyph into the log');
+
+        $notifier->dismissAll();
+        $this->assertTrue($toasts->isEmpty(), 'teardown drops the stack');
+    }
+
+    /** A hint whispers on the status bar only: no toast, no log entry. */
+    public function testHintStaysOnTheStatusBar(): void
+    {
+        $status = new StatusBarWidget(clock: $clock = new MockClock());
+        $tui = new Tui(terminal: new VirtualTerminal(columns: 80, rows: 24));
+        $log = new NotificationLog($clock, new EventDispatcher());
+        $toasts = new ToastCenter(new FakeScheduler(), $tui);
+        $notifier = new Notifier($status, $tui, $log, $toasts);
+
+        $notifier->hint('scrolled +3');
+
+        $this->assertTrue($toasts->isEmpty(), 'no toast for a hint');
+        $this->assertSame([], $log->entries(), 'no log entry either');
+        $flash = new \ReflectionProperty($status, 'flash')->getValue($status);
+        $this->assertSame('scrolled +3', $flash['text'] ?? null, 'the status bar carries it');
     }
 }

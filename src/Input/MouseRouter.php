@@ -16,6 +16,7 @@ use Porta\Ui\BottomDock;
 use Porta\Ui\ContextMenuBuilder;
 use Porta\Ui\ContextMenuOpener;
 use Porta\Ui\DockTab;
+use Porta\Ui\Toast\ToastCenter;
 use Porta\Ui\WorkspaceViews;
 use Porta\Widget\ContextMenu;
 use Porta\Widget\DockTabsWidget;
@@ -86,6 +87,7 @@ final class MouseRouter
         private readonly ContextMenuOpener $opener,
         private readonly StatusBarWidget $statusBar,
         private readonly HoverRouter $hover,
+        private readonly ToastCenter $toasts,
     ) {
         $this->clicks = new ClickCounter();
     }
@@ -183,6 +185,14 @@ final class MouseRouter
         $this->welcome->cancelDrag();
         $this->panes->editor()->cancelFindModalDrag();
         $this->layout->cancelDrags();
+
+        // The toast stack floats above every modal: its × dismisses, a card
+        // body swallows the click, anywhere else falls straight through.
+        if ($this->toasts->clickAt($mouse->row, $mouse->col)) {
+            $this->tui->requestRender();
+
+            return;
+        }
 
         if ($this->handleModalPopupClick($mouse, $editorRect, $this->views->isAnyOpen() ? FullView::Open : FullView::Closed)) {
             return;
