@@ -2,10 +2,10 @@
 
 declare(strict_types=1);
 
-namespace Porta\Tests\Unit\Overlay;
+namespace Porta\Tests\Overlay\Region;
 
 use PHPUnit\Framework\TestCase;
-use Porta\Overlay\SpanSlicer;
+use Porta\Overlay\Region\SpanSlicer;
 use Symfony\Component\Tui\Ansi\AnsiUtils;
 use Symfony\Component\Tui\Render\WidgetRect;
 

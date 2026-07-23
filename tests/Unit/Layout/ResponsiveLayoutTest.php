@@ -10,7 +10,7 @@ use Porta\I18n\PaneReorder;
 use Porta\I18n\Translator;
 use Porta\Layout\PaneLayout;
 use Porta\Layout\ResponsiveLayout;
-use Porta\Overlay\FloatingRegions;
+use Porta\Overlay\Region\FloatingRegions;
 use Porta\Tests\Support\TempProject;
 use Porta\Tests\Support\TestWorkspaceLayout;
 use Porta\Ui\BidiTui;

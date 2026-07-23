@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace Porta\Overlay;
+namespace Porta\Overlay\Region;
 
 /**
  * A floating dropdown's screen box (the app menu or the context menu): the

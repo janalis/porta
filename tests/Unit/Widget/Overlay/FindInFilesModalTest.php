@@ -340,11 +340,11 @@ final class FindInFilesModalTest extends TestCase
         }
         $modal->setPreview($many);
 
-        $box = function () use ($modal): \Porta\Overlay\ModalBox {
+        $box = function () use ($modal): \Porta\Overlay\Region\ModalBox {
             $this->compose($modal);
 
             $box = $modal->lastBox();
-            \assert($box instanceof \Porta\Overlay\ModalBox);
+            \assert($box instanceof \Porta\Overlay\Region\ModalBox);
 
             return $box;
         };
@@ -368,11 +368,11 @@ final class FindInFilesModalTest extends TestCase
         }
         $modal->setPreview($many); // 15 display rows (1 header + 14 matches), 10 visible
 
-        $box = function () use ($modal): \Porta\Overlay\ModalBox {
+        $box = function () use ($modal): \Porta\Overlay\Region\ModalBox {
             $this->compose($modal);
 
             $box = $modal->lastBox();
-            \assert($box instanceof \Porta\Overlay\ModalBox);
+            \assert($box instanceof \Porta\Overlay\Region\ModalBox);
 
             return $box;
         };
@@ -401,11 +401,11 @@ final class FindInFilesModalTest extends TestCase
         }
         $modal->setPreview($many); // selection on the first match (display index 1)
 
-        $box = function () use ($modal): \Porta\Overlay\ModalBox {
+        $box = function () use ($modal): \Porta\Overlay\Region\ModalBox {
             $this->compose($modal);
 
             $box = $modal->lastBox();
-            \assert($box instanceof \Porta\Overlay\ModalBox);
+            \assert($box instanceof \Porta\Overlay\Region\ModalBox);
 
             return $box;
         };

@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace Porta\Widget\Overlay;
 
-use Porta\Overlay\ModalBox;
+use Porta\Overlay\Region\ModalBox;
 use Porta\Search\Everywhere\SearchHit;
 use Porta\Search\Everywhere\SearchRow;
 use Porta\Support\AnsiText;

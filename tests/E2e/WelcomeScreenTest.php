@@ -6,7 +6,7 @@ namespace Porta\Tests\E2e;
 
 use PHPUnit\Framework\TestCase;
 use Porta\Onboarding\OnboardingState;
-use Porta\Overlay\DropdownRegion;
+use Porta\Overlay\Region\DropdownRegion;
 use Porta\Overlay\WelcomeModalController;
 use Porta\Tests\Support\RunsIde;
 use Porta\Tests\Support\TempProject;
@@ -321,7 +321,7 @@ final class WelcomeScreenTest extends TestCase
                 // A right-press over the box is swallowed: no context menu opens.
                 $tui->handleInput(\sprintf("\x1b[<2;%d;%dM", $region->col + 4, $region->top + 5 + 1));
                 $tui->tick();
-                $this->assertTrue($this->modalRegion($ide) instanceof \Porta\Overlay\DropdownRegion, 'still open');
+                $this->assertTrue($this->modalRegion($ide) instanceof \Porta\Overlay\Region\DropdownRegion, 'still open');
 
                 // A click outside the box (the tree pane, top-left) is swallowed too.
                 $tui->handleInput("\x1b[<0;2;3M");

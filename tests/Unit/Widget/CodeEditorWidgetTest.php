@@ -923,7 +923,7 @@ final class CodeEditorWidgetTest extends TestCase
 
         $host = new \ReflectionProperty($editor, 'overlayHost')->getValue($editor);
         $box = new \ReflectionProperty($host, 'promptBox')->getValue($host);
-        \assert($box instanceof \Porta\Overlay\ModalBox);
+        \assert($box instanceof \Porta\Overlay\Region\ModalBox);
 
         $this->assertTrue($editor->handlePickerHover($box->startRow, $box->col + $box->width - 2), 'onto the ×');
         $this->assertFalse($editor->handlePickerHover($box->startRow, $box->col + $box->width - 2), 'unchanged on the same cell');

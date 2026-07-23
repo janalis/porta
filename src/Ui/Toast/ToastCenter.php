@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace Porta\Ui\Toast;
 
-use Porta\Overlay\ModalBox;
+use Porta\Overlay\Region\ModalBox;
 use Porta\Support\Scheduler;
 use Symfony\Component\Tui\Tui;
 

@@ -45,7 +45,7 @@ final class BidiTuiTest extends TestCase
     /** Enable the per-pane RTL reorder (no dropdown regions in these single-widget frames). */
     private function enableRtl(BidiTui $tui): void
     {
-        $tui->setPaneReorder(new PaneSegmenter($this->renderer, new class implements \Porta\Overlay\FloatingRegions {
+        $tui->setPaneReorder(new PaneSegmenter($this->renderer, new class implements \Porta\Overlay\Region\FloatingRegions {
             public function regions(): array
             {
                 return [];

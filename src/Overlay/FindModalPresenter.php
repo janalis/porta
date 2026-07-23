@@ -4,6 +4,9 @@ declare(strict_types=1);
 
 namespace Porta\Overlay;
 
+use Porta\Overlay\Region\DropdownRegion;
+use Porta\Overlay\Region\PaneBounds;
+use Porta\Overlay\Region\SpanSlicer;
 use Porta\Ui\BidiTui;
 use Porta\Ui\CaretVisibility;
 use Porta\Ui\Theme\Styles;

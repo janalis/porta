@@ -2,7 +2,9 @@
 
 declare(strict_types=1);
 
-namespace Porta\Overlay;
+namespace Porta\Overlay\Region;
+
+use Porta\Overlay\MenuOverlayController;
 
 /**
  * The topmost floating dropdown regions of the current frame (app menu and

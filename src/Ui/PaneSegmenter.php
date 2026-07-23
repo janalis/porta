@@ -4,8 +4,8 @@ declare(strict_types=1);
 
 namespace Porta\Ui;
 
-use Porta\Overlay\DropdownRegion;
-use Porta\Overlay\FloatingRegions;
+use Porta\Overlay\Region\DropdownRegion;
+use Porta\Overlay\Region\FloatingRegions;
 use Symfony\Component\Tui\Render\Renderer;
 use Symfony\Component\Tui\Render\WidgetRect;
 use Symfony\Component\Tui\Widget\AbstractWidget;

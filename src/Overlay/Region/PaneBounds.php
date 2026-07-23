@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace Porta\Overlay;
+namespace Porta\Overlay\Region;
 
 use Porta\Widget\Render\MenuOverlayHost;
 use Symfony\Component\Tui\Render\Renderer;

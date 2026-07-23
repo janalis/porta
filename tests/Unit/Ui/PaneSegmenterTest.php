@@ -5,7 +5,7 @@ declare(strict_types=1);
 namespace Porta\Tests\Unit\Ui;
 
 use PHPUnit\Framework\TestCase;
-use Porta\Overlay\DropdownRegion;
+use Porta\Overlay\Region\DropdownRegion;
 use Porta\Ui\PaneSegmenter;
 use Symfony\Component\Tui\Render\Renderer;
 use Symfony\Component\Tui\Render\WidgetRect;
@@ -118,7 +118,7 @@ final class PaneSegmenterTest extends TestCase
         // A freshly built (unrendered) root has no render context, so the walk
         // collects no leaves — mirroring HitTester's detached-widget guard.
         $root = new ContainerWidget();
-        $segmenter = new PaneSegmenter(new Renderer(new StyleSheet()), new class implements \Porta\Overlay\FloatingRegions {
+        $segmenter = new PaneSegmenter(new Renderer(new StyleSheet()), new class implements \Porta\Overlay\Region\FloatingRegions {
             public function regions(): array
             {
                 return [];

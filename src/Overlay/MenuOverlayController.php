@@ -4,6 +4,10 @@ declare(strict_types=1);
 
 namespace Porta\Overlay;
 
+use Porta\Overlay\Region\DropdownRegion;
+use Porta\Overlay\Region\FloatingRegions;
+use Porta\Overlay\Region\PaneBounds;
+use Porta\Overlay\Region\SpanSlicer;
 use Porta\Support\IntMath;
 use Porta\Ui\Theme\Styles;
 use Porta\Widget\ContextMenu;

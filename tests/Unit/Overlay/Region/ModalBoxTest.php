@@ -2,10 +2,10 @@
 
 declare(strict_types=1);
 
-namespace Porta\Tests\Unit\Overlay;
+namespace Porta\Tests\Overlay\Region;
 
 use PHPUnit\Framework\TestCase;
-use Porta\Overlay\ModalBox;
+use Porta\Overlay\Region\ModalBox;
 
 /**
  * The pooled modal geometry: item mapping under the header rows, the framed

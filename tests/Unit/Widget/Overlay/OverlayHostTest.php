@@ -178,7 +178,7 @@ final class OverlayHostTest extends TestCase
         $host->openList('Title', [['label' => 'a', 'hint' => '', 'value' => 'A']], static fn () => null);
         $lines = $this->canvas($host, 80, 20);
         $box = new \ReflectionProperty($host, 'overlayBox')->getValue($host);
-        \assert($box instanceof \Porta\Overlay\ModalBox);
+        \assert($box instanceof \Porta\Overlay\Region\ModalBox);
         $normalBar = $lines[$box->startRow];
 
         $this->assertTrue($host->hoverAt($box->startRow, $box->col + $box->width - 2), 'onto the ×');
@@ -199,7 +199,7 @@ final class OverlayHostTest extends TestCase
         $host->openPrompt('Go to line', '', static fn () => null);
         $host->layout([0, 0, 8, 40]);
         $box = new \ReflectionProperty($host, 'promptBox')->getValue($host);
-        \assert($box instanceof \Porta\Overlay\ModalBox);
+        \assert($box instanceof \Porta\Overlay\Region\ModalBox);
 
         $this->assertTrue($host->promptHoverAt($box->startRow, $box->col + $box->width - 2), 'onto the ×');
         $this->assertTrue($host->promptHoverAt($box->startRow + 2, $box->col + 2), 'off it');
@@ -212,7 +212,7 @@ final class OverlayHostTest extends TestCase
         $host->openList('Title', [['label' => 'a', 'hint' => '', 'value' => 'A']], static fn () => null);
         $host->layout([0, 0, 20, 80]);
         $box = new \ReflectionProperty($host, 'overlayBox')->getValue($host);
-        \assert($box instanceof \Porta\Overlay\ModalBox);
+        \assert($box instanceof \Porta\Overlay\Region\ModalBox);
 
         $this->assertTrue($host->clickAt($box->startRow, $box->col + $box->width - 2), 'the title bar ×');
         $this->assertFalse($host->isListOpen());
@@ -227,7 +227,7 @@ final class OverlayHostTest extends TestCase
         });
         $host->layout([0, 0, 20, 80]);
         $box = new \ReflectionProperty($host, 'searchBox')->getValue($host);
-        \assert($box instanceof \Porta\Overlay\ModalBox);
+        \assert($box instanceof \Porta\Overlay\Region\ModalBox);
 
         $this->assertTrue($host->searchClickAt($box->startRow, $box->col + $box->width - 2), 'the title bar ×');
         $this->assertTrue($closed);

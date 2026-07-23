@@ -2,10 +2,10 @@
 
 declare(strict_types=1);
 
-namespace Porta\Tests\Unit\Overlay;
+namespace Porta\Tests\Overlay\Region;
 
 use PHPUnit\Framework\TestCase;
-use Porta\Overlay\DropdownRegion;
+use Porta\Overlay\Region\DropdownRegion;
 
 /**
  * The dropdown hit-test geometry, framed and bare: contains() means the whole

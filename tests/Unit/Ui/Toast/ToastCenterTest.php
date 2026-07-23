@@ -5,7 +5,7 @@ declare(strict_types=1);
 namespace Porta\Tests\Unit\Ui\Toast;
 
 use PHPUnit\Framework\TestCase;
-use Porta\Overlay\ModalBox;
+use Porta\Overlay\Region\ModalBox;
 use Porta\Tests\Support\FakeScheduler;
 use Porta\Ui\Toast\ToastCenter;
 use Porta\Ui\Toast\ToastSeverity;

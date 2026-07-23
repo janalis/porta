@@ -17,7 +17,7 @@ use Symfony\Component\Tui\Ansi\AnsiUtils;
  * floating surface speaks the same visual language: accent-coloured border
  * ({@see Role::TabAccent}, the image pane's focus-frame precedent), bold
  * title, faint dismiss hint, and the tab strips' `×` affordance
- * ({@see TabCloseGlyph}) whose hit zone {@see \Porta\Overlay\ModalBox::closeHit}
+ * ({@see TabCloseGlyph}) whose hit zone {@see \Porta\Overlay\Region\ModalBox::closeHit}
  * mirrors.
  *
  * Every returned row is exactly the requested width in visible columns — the
@@ -28,7 +28,7 @@ final class ModalFrame
     /**
      * The full top row of a $width-column box. The title yields to the fixed
      * chrome (and the hint yields entirely on a narrow box) so the `×` stays
-     * put at {@see \Porta\Overlay\ModalBox::CLOSE_OFFSET} from the right edge.
+     * put at {@see \Porta\Overlay\Region\ModalBox::CLOSE_OFFSET} from the right edge.
      */
     public static function titleBar(string $title, int $width, Styles $styles, bool $closeHovered = false, string $hint = 'Esc'): string
     {

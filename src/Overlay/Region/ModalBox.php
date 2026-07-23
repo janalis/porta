@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace Porta\Overlay;
+namespace Porta\Overlay\Region;
 
 /**
  * A rendered modal's box geometry, recorded at composite time for mouse

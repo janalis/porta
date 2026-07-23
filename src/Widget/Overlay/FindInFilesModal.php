@@ -5,7 +5,7 @@ declare(strict_types=1);
 namespace Porta\Widget\Overlay;
 
 use Porta\I18n\Translator;
-use Porta\Overlay\ModalBox;
+use Porta\Overlay\Region\ModalBox;
 use Porta\Search\TokenScope;
 use Porta\Support\AnsiText;
 use Porta\Support\IntMath;

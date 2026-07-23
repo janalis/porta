@@ -11,7 +11,7 @@ use Symfony\Component\Tui\Tui;
  * Mouse routing for the Welcome modal. Owns the controller handle so
  * {@see MouseRouter} does not, mirroring its view-router peers — but where
  * those hit-test swapped-in pane rects, this one delegates to the modal's own
- * box geometry ({@see \Porta\Overlay\ModalBox}), because the modal is a
+ * box geometry ({@see \Porta\Overlay\Region\ModalBox}), because the modal is a
  * composited overlay with no rect of its own.
  *
  * Modality lives here: while the modal is open every wheel and left press is
