@@ -5,7 +5,7 @@ declare(strict_types=1);
 namespace Porta\Ui;
 
 use Porta\Event\NotificationLogged;
-use Porta\Ui\Toast\ToastSeverity;
+use Porta\Overlay\State\ToastSeverity;
 use Psr\Clock\ClockInterface;
 use Psr\EventDispatcher\EventDispatcherInterface;
 

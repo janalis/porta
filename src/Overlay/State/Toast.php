@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace Porta\Ui\Toast;
+namespace Porta\Overlay\State;
 
 /**
  * One live corner notification: identity for dismissal (the auto-expiry timer

@@ -5,8 +5,8 @@ declare(strict_types=1);
 namespace Porta\Input;
 
 use Porta\Overlay\MenuOverlayController;
+use Porta\Overlay\State\ToastCenter;
 use Porta\Ui\BottomDock;
-use Porta\Ui\Toast\ToastCenter;
 use Porta\Widget\ContextMenu;
 use Porta\Widget\DockTabsWidget;
 use Porta\Widget\HoverableList;

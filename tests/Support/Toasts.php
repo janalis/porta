@@ -5,7 +5,7 @@ declare(strict_types=1);
 namespace Porta\Tests\Support;
 
 use Porta\Ide;
-use Porta\Ui\Toast\ToastCenter;
+use Porta\Overlay\State\ToastCenter;
 
 /**
  * Reads the live toast stack off a booted Ide — the test-side counterpart of

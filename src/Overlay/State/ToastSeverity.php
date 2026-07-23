@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace Porta\Ui\Toast;
+namespace Porta\Overlay\State;
 
 use Porta\Ui\Glyphs;
 use Porta\Ui\Role;

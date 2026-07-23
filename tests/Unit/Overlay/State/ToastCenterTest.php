@@ -2,13 +2,13 @@
 
 declare(strict_types=1);
 
-namespace Porta\Tests\Unit\Ui\Toast;
+namespace Porta\Tests\Overlay\State;
 
 use PHPUnit\Framework\TestCase;
 use Porta\Overlay\Region\ModalBox;
+use Porta\Overlay\State\ToastCenter;
+use Porta\Overlay\State\ToastSeverity;
 use Porta\Tests\Support\FakeScheduler;
-use Porta\Ui\Toast\ToastCenter;
-use Porta\Ui\Toast\ToastSeverity;
 use Symfony\Component\Tui\Terminal\VirtualTerminal;
 use Symfony\Component\Tui\Tui;
 

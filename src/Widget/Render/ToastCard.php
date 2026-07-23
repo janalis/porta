@@ -4,11 +4,11 @@ declare(strict_types=1);
 
 namespace Porta\Widget\Render;
 
+use Porta\Overlay\State\Toast;
 use Porta\Support\AnsiText;
 use Porta\Ui\Glyphs;
 use Porta\Ui\Role;
 use Porta\Ui\Theme\Styles;
-use Porta\Ui\Toast\Toast;
 
 /**
  * One corner notification card in the modal design language: the rounded

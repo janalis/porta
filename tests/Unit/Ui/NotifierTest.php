@@ -5,11 +5,11 @@ declare(strict_types=1);
 namespace Porta\Tests\Unit\Ui;
 
 use PHPUnit\Framework\TestCase;
+use Porta\Overlay\State\ToastCenter;
+use Porta\Overlay\State\ToastSeverity;
 use Porta\Tests\Support\FakeScheduler;
 use Porta\Ui\NotificationLog;
 use Porta\Ui\Notifier;
-use Porta\Ui\Toast\ToastCenter;
-use Porta\Ui\Toast\ToastSeverity;
 use Porta\Widget\StatusBarWidget;
 use Symfony\Component\Clock\MockClock;
 use Symfony\Component\EventDispatcher\EventDispatcher;

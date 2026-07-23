@@ -5,9 +5,9 @@ declare(strict_types=1);
 namespace Porta\Tests\Unit\Widget\Render;
 
 use PHPUnit\Framework\TestCase;
+use Porta\Overlay\State\Toast;
+use Porta\Overlay\State\ToastSeverity;
 use Porta\Ui\Theme\Styles;
-use Porta\Ui\Toast\Toast;
-use Porta\Ui\Toast\ToastSeverity;
 use Porta\Widget\Render\PopupFrame;
 use Porta\Widget\Render\ToastCard;
 use Symfony\Component\Tui\Ansi\AnsiUtils;

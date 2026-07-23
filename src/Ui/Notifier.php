@@ -4,8 +4,8 @@ declare(strict_types=1);
 
 namespace Porta\Ui;
 
-use Porta\Ui\Toast\ToastCenter;
-use Porta\Ui\Toast\ToastSeverity;
+use Porta\Overlay\State\ToastCenter;
+use Porta\Overlay\State\ToastSeverity;
 use Porta\Widget\StatusBarWidget;
 use Symfony\Component\Tui\Tui;
 
