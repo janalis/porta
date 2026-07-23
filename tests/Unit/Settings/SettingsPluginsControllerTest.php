@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace Porta\Tests\Settings;
+namespace Porta\Tests\Unit\Settings;
 
 use PHPUnit\Framework\TestCase;
 use Porta\I18n\Translator;

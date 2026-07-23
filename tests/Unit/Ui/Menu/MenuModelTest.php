@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace Porta\Tests\Ui\Menu;
+namespace Porta\Tests\Unit\Ui\Menu;
 
 use PHPUnit\Framework\TestCase;
 use Porta\Config\CommandRegistry;

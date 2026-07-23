@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace Porta\Tests\Overlay\Region;
+namespace Porta\Tests\Unit\Overlay\Region;
 
 use PHPUnit\Framework\TestCase;
 use Porta\Overlay\Region\SpanSlicer;

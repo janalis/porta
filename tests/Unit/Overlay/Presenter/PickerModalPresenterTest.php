@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace Porta\Tests\Overlay\Presenter;
+namespace Porta\Tests\Unit\Overlay\Presenter;
 
 use PHPUnit\Framework\TestCase;
 use Porta\Overlay\Presenter\PickerModalPresenter;

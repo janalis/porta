@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace Porta\Tests\Ui\Dock;
+namespace Porta\Tests\Unit\Ui\Dock;
 
 use PHPUnit\Framework\TestCase;
 use Porta\Editor\BufferManager;

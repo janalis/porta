@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace Porta\Tests\Overlay\State;
+namespace Porta\Tests\Unit\Overlay\State;
 
 use PHPUnit\Framework\TestCase;
 use Porta\Overlay\Region\ModalBox;
