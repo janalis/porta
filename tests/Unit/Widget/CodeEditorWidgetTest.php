@@ -621,9 +621,9 @@ final class CodeEditorWidgetTest extends TestCase
 
         $this->assertTrue($editor->isOverlayOpen());
 
-        $rendered = $editor->render(new RenderContext(80, 20));
-        $this->assertStringContainsString('Recent Files', implode("\n", $rendered));
-        $this->assertExactWidth($rendered, 80);
+        $placed = $editor->layoutPickers([0, 0, 20, 80]);
+        $this->assertStringContainsString('Recent Files', implode("\n", $placed[0]['rows']), 'the floating box carries the title');
+        $this->assertExactWidth($editor->render(new RenderContext(80, 20)), 80);
 
         $editor->handleInput("\x1b[B"); // down
         $editor->handleInput("\r"); // pick
@@ -665,9 +665,9 @@ final class CodeEditorWidgetTest extends TestCase
         $this->assertTrue($editor->isSearchOverlayOpen());
         $editor->setSearchRows($this->searchRows());
 
-        $rendered = $editor->render(new RenderContext(80, 20));
-        $this->assertStringContainsString('Search Everywhere', implode("\n", $rendered));
-        $this->assertExactWidth($rendered, 80);
+        $placed = $editor->layoutPickers([0, 0, 20, 80]);
+        $this->assertStringContainsString('Search Everywhere', implode("\n", $placed[0]['rows']), 'the floating box carries the title');
+        $this->assertExactWidth($editor->render(new RenderContext(80, 20)), 80);
 
         $editor->handleSearchOverlayInput("\x1b[B"); // down → beta.php
         $editor->handleSearchOverlayInput("\r"); // pick
@@ -690,20 +690,20 @@ final class CodeEditorWidgetTest extends TestCase
             static fn () => null,
         );
         $editor->setSearchRows($this->searchRows());
-        $editor->render(new RenderContext(80, 20));
+        $editor->layoutPickers([0, 0, 20, 80]);
 
-        // Hover finds a hit row (the search branch of handlePopupHover); clicking
-        // it picks that hit (the search branch of handlePopupClick).
+        // Hover finds a hit row (the search branch of handlePickerHover);
+        // clicking it picks that hit (the search branch of handlePickerClick).
         $hitRow = -1;
         for ($row = 0; $row < 20 && $hitRow < 0; ++$row) {
-            if (!$editor->handlePopupHover($row, 40)) {
+            if (!$editor->handlePickerHover($row, 40)) {
                 continue;
             }
 
             $hitRow = $row;
         }
         $this->assertGreaterThanOrEqual(0, $hitRow);
-        $this->assertTrue($editor->handlePopupClick($hitRow, 40));
+        $this->assertTrue($editor->handlePickerClick($hitRow, 40));
         $this->assertNotNull($picked);
     }
 
@@ -745,6 +745,25 @@ final class CodeEditorWidgetTest extends TestCase
         $editor->cancelFindModalDrag();
     }
 
+    /** Opening any picker closes the Find-in-Files modal — one writer per frame on the shared span slot. */
+    public function testOpeningAPickerClosesTheFindModal(): void
+    {
+        $editor = $this->editor();
+        $editor->findModal()->open('Find in Files');
+        $this->assertTrue($editor->isFindModalOpen());
+
+        $editor->openListOverlay('Recent Files', [['label' => 'a', 'hint' => '', 'value' => 'A']], static fn () => null);
+        $this->assertFalse($editor->isFindModalOpen(), 'the list overlay displaced the find modal');
+
+        $editor->findModal()->open('Find in Files');
+        $editor->openSearch('Search', static fn () => null, static fn () => null, static fn () => null);
+        $this->assertFalse($editor->isFindModalOpen(), 'the search modal displaced it too');
+
+        $editor->findModal()->open('Find in Files');
+        $editor->openPrompt('Go to line', '', static fn () => null);
+        $this->assertFalse($editor->isFindModalOpen(), 'and so did the prompt');
+    }
+
     private function overlayEditor(\ArrayObject $sink): CodeEditorWidget
     {
         $editor = $this->editor();
@@ -768,9 +787,9 @@ final class CodeEditorWidgetTest extends TestCase
         $editor = $this->overlayEditor($sink);
         // width 20 (title 12+4 vs item 5+9+6=20) centred → col 30; popup height 3 →
         // startRow intdiv(20-3,3)=5; title row 5, items at rows 6 and 7.
-        $editor->render(new RenderContext(80, 20));
+        $editor->layoutPickers([0, 0, 20, 80]);
 
-        $this->assertTrue($editor->handlePopupClick(7, 35), 'a click on an item is consumed');
+        $this->assertTrue($editor->handlePickerClick(7, 35), 'a click on an item is consumed');
         $this->assertSame('B', $sink['picked']);
         $this->assertFalse($editor->isOverlayOpen());
     }
@@ -779,9 +798,9 @@ final class CodeEditorWidgetTest extends TestCase
     {
         $sink = new \ArrayObject(['picked' => null]);
         $editor = $this->overlayEditor($sink);
-        $editor->render(new RenderContext(80, 20));
+        $editor->layoutPickers([0, 0, 20, 80]);
 
-        $this->assertTrue($editor->handlePopupClick(0, 0), 'the modal overlay consumes any click');
+        $this->assertTrue($editor->handlePickerClick(0, 0), 'the modal overlay consumes any click');
         $this->assertNull($sink['picked']);
         $this->assertFalse($editor->isOverlayOpen());
     }
@@ -790,8 +809,8 @@ final class CodeEditorWidgetTest extends TestCase
     {
         $sink = new \ArrayObject(['picked' => null]);
         $editor = $this->overlayEditor($sink);
-        // No render yet → no captured box → the click cannot hit an item, so it dismisses.
-        $this->assertTrue($editor->handlePopupClick(7, 35));
+        // No layout yet → no captured box → the click cannot hit an item, so it dismisses.
+        $this->assertTrue($editor->handlePickerClick(7, 35));
         $this->assertNull($sink['picked']);
         $this->assertFalse($editor->isOverlayOpen());
     }
@@ -800,29 +819,28 @@ final class CodeEditorWidgetTest extends TestCase
     {
         $editor = $this->editor();
         $editor->openPrompt('Go to line', '', static fn () => null);
-        $editor->render(new RenderContext(80, 20)); // composites the centered prompt box (row 6, cols 25..55)
+        $editor->layoutPickers([0, 0, 20, 80]); // records the centered prompt box (row 6, cols 25..55)
 
         $this->assertTrue($editor->isPromptOpen());
-        $this->assertTrue($editor->handlePopupClick(6, 40), 'a click on the centered prompt box is consumed');
+        $this->assertTrue($editor->handlePickerClick(6, 40), 'a click on the centered prompt box is consumed');
         $this->assertTrue($editor->isPromptOpen(), 'and does not dismiss it — the caret stays');
-        $this->assertTrue($editor->handlePopupClick(0, 3), 'a click off the prompt is consumed');
+        $this->assertTrue($editor->handlePickerClick(0, 3), 'a click off the prompt is consumed');
         $this->assertFalse($editor->isPromptOpen(), 'and dismisses it, like every sibling overlay');
     }
 
     public function testListOverlayHoverTintsWithoutMovingTheSelection(): void
     {
         $editor = $this->overlayEditor(new \ArrayObject(['picked' => null]));
-        $editor->render(new RenderContext(80, 20));
+        $editor->layoutPickers([0, 0, 20, 80]);
 
-        $this->assertTrue($editor->handlePopupHover(7, 35), 'hover item 1 tints it');
-        $this->assertFalse($editor->handlePopupHover(7, 35), 'same row → no change');
-        $this->assertTrue($editor->handlePopupHover(5, 35), 'the title row is no item: the tint clears');
-        $this->assertFalse($editor->handlePopupHover(5, 35), 'still no item → no change');
+        $this->assertTrue($editor->handlePickerHover(7, 35), 'hover item 1 tints it');
+        $this->assertFalse($editor->handlePickerHover(7, 35), 'same row → no change');
+        $this->assertTrue($editor->handlePickerHover(5, 35), 'the title row is no item: the tint clears');
+        $this->assertFalse($editor->handlePickerHover(5, 35), 'still no item → no change');
 
         // Hover item 1; item 0 stays selected.
-        $editor->handlePopupHover(7, 35);
-        $rows = $editor->render(new RenderContext(80, 20));
-        $body = implode("\n", $rows);
+        $editor->handlePickerHover(7, 35);
+        $body = implode("\n", $editor->layoutPickers([0, 0, 20, 80])[0]['rows']);
         $this->assertStringContainsString("\x1b[48;5;31m", $body, 'the selected item keeps its background');
         $this->assertStringContainsString("\x1b[48;5;236m", $body, 'the hovered item takes the hover tint');
     }
@@ -901,14 +919,14 @@ final class CodeEditorWidgetTest extends TestCase
     {
         $editor = $this->editor();
         $editor->openPrompt('Go to line', '', static fn () => null);
-        $editor->render(new RenderContext(80, 20)); // records the prompt box
+        $editor->layoutPickers([0, 0, 20, 80]); // records the prompt box
 
         $host = new \ReflectionProperty($editor, 'overlayHost')->getValue($editor);
         $box = new \ReflectionProperty($host, 'promptBox')->getValue($host);
         \assert($box instanceof \Porta\Overlay\ModalBox);
 
-        $this->assertTrue($editor->handlePopupHover($box->startRow, $box->col + $box->width - 2), 'onto the ×');
-        $this->assertFalse($editor->handlePopupHover($box->startRow, $box->col + $box->width - 2), 'unchanged on the same cell');
+        $this->assertTrue($editor->handlePickerHover($box->startRow, $box->col + $box->width - 2), 'onto the ×');
+        $this->assertFalse($editor->handlePickerHover($box->startRow, $box->col + $box->width - 2), 'unchanged on the same cell');
     }
 
     public function testPromptSubmitAndCancel(): void
@@ -919,9 +937,9 @@ final class CodeEditorWidgetTest extends TestCase
         $editor->openPrompt('Go to line', '', static function (string $v) use (&$submitted): void {
             $submitted = $v;
         });
-        $rendered = $editor->render(new RenderContext(80, 20));
-        $this->assertStringContainsString('Go to line', AnsiUtils::stripAnsiCodes(implode("\n", $rendered)), 'the centered prompt renders');
-        $this->assertExactWidth($rendered, 80);
+        $placed = $editor->layoutPickers([0, 0, 20, 80]);
+        $this->assertStringContainsString('Go to line', AnsiUtils::stripAnsiCodes(implode("\n", $placed[0]['rows'])), 'the floating prompt renders');
+        $this->assertExactWidth($editor->render(new RenderContext(80, 20)), 80);
 
         $editor->handleInput('4');
         $editor->handleInput('2');

@@ -17,6 +17,7 @@ final class WorkspaceViewsTest extends TestCase
         $this->assertFalse($views->isGitOpen());
         $this->assertFalse($views->isSettingsOpen());
         $views->refreshSettings(); // a no-op, not an error
+        $views->closeWelcome(); // likewise before the controller attaches
 
         $this->addToAssertionCount(1);
     }

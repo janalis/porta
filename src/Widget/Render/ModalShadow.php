@@ -28,7 +28,7 @@ final class ModalShadow
     /**
      * Composite the shadow bands for a box at ($startRow, $col, $width, $rows)
      * directly into $lines. Rows beyond the pane are skipped, matching
-     * {@see OverlayCompositor::placeCentered}'s own bounds guard.
+     * {@see OverlayCompositor::placeAt}'s own bounds guard.
      *
      * @param list<string> $lines
      *

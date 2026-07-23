@@ -176,9 +176,9 @@ write into their captured tab and reach the widget only through `refreshIfBound`
 tab stays fresh in the model and a late grep can never clobber the tool on display.
 `Widget/OverlayWidget` carries the panels' two axes: `isOpen()` (alive) vs `isVisible()`
 (open AND revealed); at most one panel renders; `Esc` is `dismiss()` → dock hide (everything
-stays alive) except the transient pickers (palette, go-to-symbol), which stay strip-less,
-close for real, and on close **restore the tool tab they displaced** (`openQuery` captures it;
-the palette routes through `openQuery`). `Widget/DockTabsWidget` is the one-row strip —
+stays alive). The transient pickers (palette, go-to-symbol) are not dock tools at all —
+they are Search Everywhere scopes on the floating picker path (see the pickers note under
+Rendering). `Widget/DockTabsWidget` is the one-row strip —
 **the single level of bottom-pane tabs**: keyed entries (`aliveTabs()` — one per terminal
 session (key = session id, label = session title + `○` when exited), one per tool instance,
 Debug; the terminal panel renders no strip of its own), the displayed tab's `statusText()`
@@ -203,6 +203,22 @@ ANSI-styled text align correctly. Widgets cache their rendered output; `invalida
 bubbles *up*, so a change that must relabel the whole tree (e.g. a live locale switch) has to
 clear render caches recursively. Layout is horizontal/vertical `ContainerWidget`s; sizes come
 from rendered content, with proportions persisted per project.
+
+**Floating surfaces.** Every modal floats over the whole workspace on one per-pane span path
+(spans pushed through `setModalOverlay` + backdrop dim, presented by `BidiTui::onBeforeFrame`
+hooks): the Welcome modal, Find in Files, and the **pickers** — the centered list overlay
+(recent files, quick fixes, peek, unsaved-changes…), Search Everywhere (all scopes incl. the
+palette) and the mini prompt. `Widget/Overlay/OverlayHost` owns picker state/layout/hit-testing
+(SCREEN-space boxes; `layout()` per frame); `Overlay/PickerModalPresenter` (eager-resolved, like
+`FindModalPresenter`) delivers spans + `ModalShadow` + dim, gated on an attached editor. The
+span slot has one writer per frame: opening any floating surface closes the others
+(`CodeEditorWidget::closeSiblingFloaters` → `WorkspaceViews::closeWelcome` + find close; the
+full views close all three). Pickers are fixed-centered (third down over the pane union) — not
+draggable — and the open modal owns the caret (topmost surface only: prompt > search). The menu
+dropdowns and the context menu wear the tighter `Widget/Render/PopupFrame` (border-only modal
+language, `DropdownRegion(framed:)` hit-testing: item runs / border swallows / outside
+dismisses); the completion popup and signature hint stay editor-pane-composited, framed the
+same way.
 
 **Commands & keybindings are single-sourced.** `Config/ActionCatalog` is the descriptor table
 for every rebindable action (label + default keys). `Config/CommandRegistry` holds IDE-level

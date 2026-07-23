@@ -35,6 +35,7 @@ use Porta\Lsp\RefactorController;
 use Porta\Lsp\WorkspaceEditor;
 use Porta\Onboarding\OnboardingState;
 use Porta\Overlay\FindModalPresenter;
+use Porta\Overlay\PickerModalPresenter;
 use Porta\Overlay\WelcomeModalController;
 use Porta\Plugin\PluginHost;
 use Porta\Plugin\PluginLifecycle;
@@ -249,9 +250,13 @@ final class Ide
         // (an unreferenced service would otherwise never exist).
         $this->service(SettingsViewController::class);
         $this->service(WelcomeModalController::class);
-        // Eager for the same reason: the presenter registers its per-frame
-        // sync in its constructor and nothing else references it.
+        // Eager for the same reason: each presenter registers its per-frame
+        // sync in its constructor and nothing else references it. Order
+        // matters: the picker presenter must sync AFTER the find modal's so
+        // that, on an interlock hand-over, the closing presenter's clear runs
+        // before the opening one paints the shared span slot.
         $this->service(FindModalPresenter::class);
+        $this->service(PickerModalPresenter::class);
         $this->pluginLifecycle->refreshNav();
 
         $this->localHistory = $this->service(LocalHistoryController::class);

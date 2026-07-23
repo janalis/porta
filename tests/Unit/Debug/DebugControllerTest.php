@@ -578,13 +578,13 @@ final class DebugControllerTest extends TestCase
 
         $this->pauseAtBreakpoint($controller);
         $controller->exceptionBreakpointsOverlay();
-        $screen = implode("\n", array_map(AnsiUtils::stripAnsiCodes(...), $this->editor->render(new RenderContext(100, 20))));
+        $screen = implode("\n", array_map(AnsiUtils::stripAnsiCodes(...), $this->editor->layoutPickers([0, 0, 20, 100])[0]['rows']));
         $this->assertStringContainsString('[ ] Warnings', $screen);
         $this->assertStringContainsString('[x] Uncaught Exceptions', $screen, 'the default-on filter renders checked');
 
         $this->editor->handleInput("\r"); // toggle Warnings on → re-sync + re-open
         $this->assertSame(['filters' => ['exception', 'warning']], $this->client->argumentsOf('setExceptionBreakpoints'));
-        $screen = implode("\n", array_map(AnsiUtils::stripAnsiCodes(...), $this->editor->render(new RenderContext(100, 20))));
+        $screen = implode("\n", array_map(AnsiUtils::stripAnsiCodes(...), $this->editor->layoutPickers([0, 0, 20, 100])[0]['rows']));
         $this->assertStringContainsString('[x] Warnings', $screen, 'the overlay re-opened with the new state');
 
         $this->editor->handleInput("\x1b[B");

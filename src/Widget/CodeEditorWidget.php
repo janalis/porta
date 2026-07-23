@@ -35,12 +35,12 @@ use Porta\Search\Everywhere\SearchRow;
 use Porta\Support\AnsiText;
 use Porta\Support\IntMath;
 use Porta\Support\ProjectPaths;
-use Porta\Ui\CaretVisibility;
 use Porta\Ui\CursorStyle;
 use Porta\Ui\LtrPane;
 use Porta\Ui\Role;
 use Porta\Ui\Sgr;
 use Porta\Ui\Theme\Styles;
+use Porta\Ui\WorkspaceViews;
 use Porta\Widget\Overlay\FindInFilesModal;
 use Porta\Widget\Overlay\OverlayHost;
 use Porta\Widget\Render\DecorationStore;
@@ -166,6 +166,7 @@ final class CodeEditorWidget extends AbstractWidget implements ActiveFileProvide
         ?TerminalTheme $syntaxTheme = null,
         ?CursorStyle $cursorStyle = null,
         ?Translator $translator = null,
+        private readonly ?WorkspaceViews $views = null,
     ) {
         $this->styles = $styles ?? Styles::dark();
         $this->syntaxTheme = $syntaxTheme ?? new DarkTerminalTheme();
@@ -294,7 +295,20 @@ final class CodeEditorWidget extends AbstractWidget implements ActiveFileProvide
      */
     public function openListOverlay(string $title, array $items, callable $onPick): void
     {
+        $this->closeSiblingFloaters();
         $this->overlayHost->openList($title, $items, $onPick);
+    }
+
+    /**
+     * Opening any floating surface closes the others — the same rule the full
+     * views follow ({@see WorkspaceViews}): the pickers share the pane span
+     * slot with the Welcome and Find-in-Files modals, and two writers painting
+     * the same frame would fight over it.
+     */
+    private function closeSiblingFloaters(): void
+    {
+        $this->views?->closeWelcome();
+        $this->findModal->close();
     }
 
     public function isOverlayOpen(): bool
@@ -309,6 +323,7 @@ final class CodeEditorWidget extends AbstractWidget implements ActiveFileProvide
 
     public function openSearch(string $title, \Closure $onQuery, \Closure $onPick, \Closure $onClose, string $emptyMessage = ''): void
     {
+        $this->closeSiblingFloaters();
         $this->overlayHost->openSearch($title, $onQuery, $onPick, $onClose, $emptyMessage);
     }
 
@@ -510,6 +525,7 @@ final class CodeEditorWidget extends AbstractWidget implements ActiveFileProvide
      */
     public function openPrompt(string $label, string $initial, callable $onSubmit): void
     {
+        $this->closeSiblingFloaters();
         $this->overlayHost->openPrompt($label, $initial, $onSubmit);
     }
 
@@ -883,29 +899,33 @@ final class CodeEditorWidget extends AbstractWidget implements ActiveFileProvide
     }
 
     /**
-     * Route a left-click (in editor-pane-relative coords) at an open popup.
-     *
-     * The modal list overlay always consumes the click: on an item it picks it,
-     * anywhere else it dismisses. The completion popup only consumes a click that
-     * lands on one of its rows (so a click elsewhere falls through to caret
-     * placement, which closes it). Returns whether the click was consumed.
+     * Route a left-click (in editor-pane-relative coords) at the completion
+     * popup: it only consumes a click that lands on one of its rows (so a
+     * click elsewhere falls through to caret placement, which closes it).
+     * The pickers take SCREEN coordinates through {@see handlePickerClick} —
+     * they float over the workspace, not inside this pane.
      */
     public function handlePopupClick(int $relRow, int $relCol): bool
     {
-        // The prompt wins when it and a list overlay are both open — the same
-        // precedence its keyboard handling has ({@see OverlayHost::handleInput}).
-        if ($this->overlayHost->isPromptOpen()) {
-            return $this->overlayHost->promptClickAt($relRow, $relCol);
-        }
-
-        if ($this->overlayHost->isSearchOpen()) {
-            return $this->overlayHost->searchClickAt($relRow, $relCol);
-        }
-        if ($this->overlayHost->isListOpen()) {
-            return $this->overlayHost->clickAt($relRow, $relCol);
-        }
-
         return $this->completion->handleClick($relRow, $relCol);
+    }
+
+    /**
+     * Route a left-click (screen coords) at the open floating picker: on an
+     * item it picks it, on the × it closes, anywhere else it dismisses. The
+     * prompt wins when several are open — the same precedence its keyboard
+     * handling has ({@see OverlayHost::handleInput}).
+     */
+    public function handlePickerClick(int $row, int $col): bool
+    {
+        if ($this->overlayHost->isPromptOpen()) {
+            return $this->overlayHost->promptClickAt($row, $col);
+        }
+        if ($this->overlayHost->isSearchOpen()) {
+            return $this->overlayHost->searchClickAt($row, $col);
+        }
+
+        return $this->overlayHost->clickAt($row, $col);
     }
 
     /**
@@ -941,17 +961,39 @@ final class CodeEditorWidget extends AbstractWidget implements ActiveFileProvide
 
     public function handlePopupHover(int $relRow, int $relCol): bool
     {
+        return $this->completion->handleHover($relRow, $relCol);
+    }
+
+    /** Tint the picker row (screen coords) under the pointer; returns whether it changed. */
+    public function handlePickerHover(int $row, int $col): bool
+    {
         if ($this->overlayHost->isPromptOpen()) {
-            return $this->overlayHost->promptHoverAt($relRow, $relCol);
+            return $this->overlayHost->promptHoverAt($row, $col);
         }
         if ($this->overlayHost->isSearchOpen()) {
-            return $this->overlayHost->searchHoverAt($relRow, $relCol);
-        }
-        if ($this->overlayHost->isListOpen()) {
-            return $this->overlayHost->hoverAt($relRow, $relCol);
+            return $this->overlayHost->searchHoverAt($row, $col);
         }
 
-        return $this->completion->handleHover($relRow, $relCol);
+        return $this->overlayHost->hoverAt($row, $col);
+    }
+
+    /** Whether any floating picker (list overlay, Search Everywhere, prompt) is open. */
+    public function isAnyPickerOpen(): bool
+    {
+        return $this->overlayHost->anyOpen();
+    }
+
+    /**
+     * Lay the open pickers out against the pane-union bounds (screen coords) —
+     * {@see \Porta\Overlay\PickerModalPresenter}'s per-frame call.
+     *
+     * @param array{int, int, int, int} $bounds
+     *
+     * @return list<array{rows: list<string>, top: int, col: int, width: int}>
+     */
+    public function layoutPickers(array $bounds): array
+    {
+        return $this->overlayHost->layout($bounds);
     }
 
     /** Continue an armed Find-in-Files drag — corner resize or title-bar move (editor-relative coords). */
@@ -1167,7 +1209,7 @@ final class CodeEditorWidget extends AbstractWidget implements ActiveFileProvide
             $this->gitGutter,
             $this->inlineDiagnostics,
             $this->focused,
-            $this->focused && !$this->findModal->isOpen(), // the modal owns the caret while it is open
+            $this->focused && !$this->findModal->isOpen() && !$this->overlayHost->anyOpen(), // an open modal owns the caret
             $this->styles,
             $this->cursorStyle,
         );
@@ -1184,11 +1226,11 @@ final class CodeEditorWidget extends AbstractWidget implements ActiveFileProvide
             stickyCount: \count($sticky),
         ));
 
-        // The overlay/prompt chrome composites over the content; the
-        // application-menu dropdown floats above everything else.
-        $composited = $this->overlayHost->composite($result, $columns, $rows, $this->focused ? CaretVisibility::Shown : CaretVisibility::Hidden);
-
-        return $this->withMenuOverlay($composited, $columns);
+        // The pickers (list overlay, Search Everywhere, prompt) float over the
+        // whole workspace via PickerModalPresenter — nothing composites into
+        // the pane's own lines here; the application-menu dropdown floats
+        // above everything else.
+        return $this->withMenuOverlay($result, $columns);
     }
 
     /**

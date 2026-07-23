@@ -6528,8 +6528,11 @@ final class IdeEdgeCasesTest extends TestCase
                     $this->assertTrue($tui->getById('editor')->isOverlayOpen());
                 },
                 320 => static function ($tui): void {
-                    // A click outside the editor pane dismisses the modal overlay (kept, not discarded).
-                    $tui->handleInput("\x1b[<0;1;1M");
+                    // A click outside the floating box dismisses the modal
+                    // overlay (kept, not discarded) — on the tree pane here;
+                    // the menu bar row would open a menu instead (it keeps
+                    // first claim over every floating modal).
+                    $tui->handleInput("\x1b[<0;2;10M");
                 },
                 420 => function ($tui): void {
                     $editor = $tui->getById('editor');
@@ -6540,15 +6543,14 @@ final class IdeEdgeCasesTest extends TestCase
                 540 => function ($tui, $terminal, $ide): void {
                     $editor = $tui->getById('editor');
                     $this->assertTrue($editor->isOverlayOpen());
-                    $renderer = new \ReflectionProperty($ide, 'renderer')->getValue($ide);
-                    $rect = $renderer->getWidgetRect($editor);
                     $host = new \ReflectionProperty($editor, 'overlayHost')->getValue($editor);
                     $box = new \ReflectionProperty($host, 'overlayBox')->getValue($host);
                     // Hover then click item index 1 ("Discard & Close"): the
-                    // frame's title bar is row startRow, a padding row follows,
-                    // items start at startRow + 2.
-                    $row = $rect->row + $box->startRow + 3;
-                    $col = $rect->col + $box->col + 3; // past the rail and padding column
+                    // box is SCREEN-space now (the picker floats over the
+                    // workspace); the frame's title bar is row startRow, a
+                    // padding row follows, items start at startRow + 2.
+                    $row = $box->startRow + 3;
+                    $col = $box->col + 3; // past the rail and padding column
                     $tui->handleInput(\sprintf("\x1b[<35;%d;%dM", $col + 1, $row + 1)); // hover
                     $tui->handleInput(\sprintf("\x1b[<0;%d;%dM", $col + 1, $row + 1)); // click
                 },
@@ -6611,19 +6613,43 @@ final class IdeEdgeCasesTest extends TestCase
                     $editor = $tui->getById('editor');
                     $editor->getDocument()->setCursor(1, 0);
                     $editor->showCompletions([
-                        ['label' => 'alpha', 'insertText' => 'alpha', 'kind' => 'fn', 'detail' => ''],
+                        new \Porta\Editor\CompletionItem(label: 'alpha', insertText: 'alpha', kind: 'fn', detail: ''),
                     ]);
                     $this->assertTrue($editor->isCompletionOpen());
                 },
-                320 => static function ($tui, $terminal, $ide): void {
+                320 => function ($tui, $terminal, $ide): void {
+                    $tui->requestRender();
+                    $tui->tick(); // paint the popup so its box geometry is recorded
+                    $editor = $tui->getById('editor');
                     $renderer = new \ReflectionProperty($ide, 'renderer')->getValue($ide);
-                    $rect = $renderer->getWidgetRect($tui->getById('editor'));
-                    // Click at the bottom of the editor, far from the caret-anchored popup.
-                    $x = $rect->col + 6;
-                    $y = $rect->row + $rect->rows;
-                    $tui->handleInput(\sprintf("\x1b[<0;%d;%dM", $x, $y));
+                    $rect = $renderer->getWidgetRect($editor);
+                    // Hover then click the suggestion itself (through the
+                    // router's editor-relative completion branch): the box is
+                    // the INNER item box, one row below the frame's top border.
+                    $completion = new \ReflectionProperty($editor, 'completion')->getValue($editor);
+                    $box = new \ReflectionProperty($completion, 'box')->getValue($completion);
+                    \assert($box instanceof \Porta\Editor\CompletionBox);
+                    $x = $rect->col + $box->col + 2;
+                    $y = $rect->row + $box->startRow;
+                    $tui->handleInput(\sprintf("\x1b[<35;%d;%dM", $x + 1, $y + 1)); // hover tints it
+                    $tui->handleInput(\sprintf("\x1b[<0;%d;%dM", $x + 1, $y + 1)); // click accepts it
                 },
-                440 => function ($tui): void {
+                440 => function ($tui, $terminal, $ide): void {
+                    $editor = $tui->getById('editor');
+                    $this->assertFalse($editor->isCompletionOpen(), 'the item click accepted the suggestion');
+                    $this->assertStringContainsString('alpha', $editor->getDocument()->getLine(1));
+
+                    // Re-open and click far from the popup: falls through to
+                    // caret placement, which closes it.
+                    $editor->showCompletions([
+                        new \Porta\Editor\CompletionItem(label: 'alpha', insertText: 'alpha', kind: 'fn', detail: ''),
+                    ]);
+                    $this->assertTrue($editor->isCompletionOpen());
+                    $renderer = new \ReflectionProperty($ide, 'renderer')->getValue($ide);
+                    $rect = $renderer->getWidgetRect($editor);
+                    $tui->handleInput(\sprintf("\x1b[<0;%d;%dM", $rect->col + 6, $rect->row + $rect->rows));
+                },
+                560 => function ($tui): void {
                     $this->assertFalse($tui->getById('editor')->isCompletionOpen(), 'a click off the popup closed completion and placed the caret');
                 },
             ],

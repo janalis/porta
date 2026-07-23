@@ -289,6 +289,16 @@ final class MouseRouter
             return;
         }
 
+        // A floating picker owns the wheel wherever the pointer is — the
+        // workspace beneath is dimmed and must not scroll away under it.
+        // Only the menu dropdowns (which paint above it) win first.
+        if (null !== $this->panes->editor()->getContext() && $this->panes->editor()->isAnyPickerOpen()) {
+            $this->panes->editor()->movePopupSelection(WheelStep::rows($mouse));
+            $this->tui->requestRender();
+
+            return;
+        }
+
         // wide tab per notch on the horizontal strip, the panel-list three
         // rows per notch on the vertical one.
         if ($this->containsPointer($tabsRect, $mouse)) {
@@ -301,7 +311,7 @@ final class MouseRouter
             return;
         }
 
-        // The Find modal composites inside the editor pane and owns input while
+        // The Find modal floats over the workspace and owns input while
         // open — scroll its preview instead of the editor behind it.
         $findBox = $this->panes->editor()->isFindModalOpen() ? $this->panes->editor()->findModal()->lastBox() : null;
         if (null !== $findBox && $findBox->contains($mouse->row, $mouse->col)) {
@@ -489,26 +499,19 @@ final class MouseRouter
      */
     private function handleModalPopupClick(MouseEvent $mouse, ?WidgetRect $editorRect, FullView $fullViewOpen = FullView::Closed): bool
     {
-        // Editor popups are unreachable while a full view (git/settings) owns the
-        // main area (the editor is detached); only the menus below can claim it.
+        // The completion popup is unreachable while a full view (git/settings)
+        // owns the main area (the editor is detached); only the menus below
+        // can claim the click. The floating pickers get their screen-coords
+        // branch after the menus — dropdowns paint above them.
         if (
             FullView::Closed === $fullViewOpen
-            && null !== $this->panes->editor()->getContext() // detached under an image tab → no invisible modal may eat clicks
-            && ($this->panes->editor()->isPromptOpen() || $this->panes->editor()->isOverlayOpen() || $this->panes->editor()->isCompletionOpen() || $this->panes->editor()->isSearchOverlayOpen())
+            && null !== $this->panes->editor()->getContext() // detached under an image tab → no invisible popup may eat clicks
+            && $this->panes->editor()->isCompletionOpen()
+            && null !== $editorRect
+            && $editorRect->contains($mouse->row, $mouse->col)
         ) {
-            if (null !== $editorRect && $editorRect->contains($mouse->row, $mouse->col)) {
-                $rel = $editorRect->toRelative($mouse->row, $mouse->col);
-                if ($this->panes->editor()->handlePopupClick($rel['row'], $rel['col'])) {
-                    $this->tui->requestRender();
-
-                    return true;
-                }
-            }
-            if (
-                (null === $editorRect || !$editorRect->contains($mouse->row, $mouse->col))
-                && ($this->panes->editor()->isPromptOpen() || $this->panes->editor()->isOverlayOpen() || $this->panes->editor()->isSearchOverlayOpen())
-            ) {
-                $this->panes->editor()->handlePopupClick(-1, -1); // outside the modal overlay → dismiss
+            $rel = $editorRect->toRelative($mouse->row, $mouse->col);
+            if ($this->panes->editor()->handlePopupClick($rel['row'], $rel['col'])) {
                 $this->tui->requestRender();
 
                 return true;
@@ -561,6 +564,17 @@ final class MouseRouter
             if (null === $item && true !== $region?->contains($mouse->row, $mouse->col)) {
                 $this->menuBar->close(); // a click anywhere else dismisses an open menu
             }
+            $this->tui->requestRender();
+
+            return true;
+        }
+
+        // The floating pickers (list overlay, Search Everywhere, the mini
+        // prompt), after the menus: item/×/outside-dismiss in screen
+        // coordinates. Gated on an attached editor — a detached editor means
+        // an invisible picker, which must not eat clicks.
+        if (null !== $this->panes->editor()->getContext() && $this->panes->editor()->isAnyPickerOpen()) {
+            $this->panes->editor()->handlePickerClick($mouse->row, $mouse->col);
             $this->tui->requestRender();
 
             return true;
@@ -858,9 +872,9 @@ final class MouseRouter
     {
         $this->menuBar->close();
 
-        // A modal picker (go-to-file / Search Everywhere) composites over the
-        // editor rows and owns input, so a right-click inside it opens no menu.
-        if ($this->panes->editor()->isSearchOverlayOpen()) {
+        // A floating picker (list overlay / Search Everywhere / prompt) owns
+        // input while open, so a right-click opens no menu over it.
+        if ($this->panes->editor()->isAnyPickerOpen()) {
             $this->opener->flashNoMenu();
 
             return;

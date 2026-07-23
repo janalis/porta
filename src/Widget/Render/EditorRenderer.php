@@ -8,7 +8,6 @@ use Porta\Editor\CompletionBox;
 use Porta\Editor\CompletionItem;
 use Porta\Editor\DiagnosticStyle;
 use Porta\Editor\Document;
-use Porta\Overlay\ModalBox;
 use Porta\Support\AnsiText;
 use Porta\Support\IntMath;
 use Porta\Ui\Glyphs;
@@ -377,116 +376,6 @@ final class EditorRenderer
     }
 
     /**
-     * Draw the centred list overlay (recent files, quick fixes, surround, …).
-     *
-     * Returns the on-screen box geometry so callers can hit-test mouse clicks:
-     * the frame's title bar sits at row `startRow`; visible item `i` (0-based)
-     * at row `startRow + 1 + i`, mapped by {@see ModalBox::itemAt}.
-     *
-     * @param list<string>                                                                  $lines
-     * @param array{title: string, items: list<array{label: string, hint: string, value: string}>, selected: int, hovered: int|null, onPick: callable} $overlay
-     */
-    public static function listOverlay(array &$lines, int $columns, int $rows, array $overlay, Styles $styles, bool $closeHovered = false): ModalBox
-    {
-        $items = $overlay['items'];
-        $selected = $overlay['selected'];
-        $hovered = $overlay['hovered'] ?? null;
-        $maxItems = max(1, min(\count($items), $rows - 5, 12));
-        $windowStart = IntMath::clamp($selected - $maxItems + 1, 0, \count($items) - $maxItems);
-        $visible = \array_slice($items, $windowStart, $maxItems);
-
-        $width = mb_strwidth($overlay['title']) + 8; // the frame's title-bar chrome (corners, hint, ×) needs its room
-        foreach ($visible as $item) {
-            $width = max($width, mb_strwidth($item['label']) + mb_strwidth($item['hint']) + 6);
-        }
-        $width = min($width, $columns - PopupMetrics::CENTERED_MARGIN, PopupMetrics::CENTERED_MAX_INNER); // inner width; the frame adds a rail and a padding column each side
-        $col = max(0, intdiv($columns - $width - ModalFrame::CHROME_COLS, num2: 2));
-
-        $content = [];
-        foreach ($visible as $i => $item) {
-            $style = $styles->of(self::rowRole($windowStart + $i, $selected, $hovered));
-            $hintWidth = mb_strwidth($item['hint']);
-            $label = AnsiText::truncate($item['label'], $width - $hintWidth - 3, pad: true);
-            $content[] = $style->apply(' '.$label.' '.$styles->of(Role::CompletionHint)->apply($item['hint']).' ');
-        }
-        $popup = [ModalFrame::titleBar($overlay['title'], $width + ModalFrame::CHROME_COLS, $styles, $closeHovered), ...ModalFrame::wrap($content, $width, $styles)];
-
-        [$lines, $startRow] = OverlayCompositor::placeCentered($lines, $popup, $col, $width + ModalFrame::CHROME_COLS, $columns, $rows);
-        $lines = ModalShadow::blit($lines, $startRow, $col, $width + ModalFrame::CHROME_COLS, \count($popup), $columns, $styles);
-
-        return new ModalBox($startRow, $col, $width + ModalFrame::CHROME_COLS, \count($popup), headerRows: ModalFrame::CHROME_ROWS_TOP, windowStart: $windowStart, count: \count($visible));
-    }
-
-    /**
-     * Draw the centered Search Everywhere modal: the frame's title bar, a query
-     * row, then the grouped result rows (category headers + hits), windowed
-     * around $selected (a hit-row index into $rowModels). The first list row
-     * sits at `startRow + 2` (after the title bar and query row), mapped by
-     * {@see ModalBox::itemAt}.
-     *
-     * @param list<string>                                                    $lines
-     * @param list<array{header: string|null, label: string, detail: string}> $rowModels a header row when `header` is set
-     */
-    public static function searchOverlay(
-        array &$lines,
-        int $columns,
-        int $rows,
-        string $title,
-        string $queryField,
-        array $rowModels,
-        int $selected,
-        ?int $hovered,
-        Styles $styles,
-        string $emptyMessage,
-        bool $closeHovered = false,
-    ): ModalBox {
-        $maxRows = max(1, min(\count($rowModels), $rows - 6, 12));
-        $windowStart = IntMath::clamp($selected - $maxRows + 1, 0, max(0, \count($rowModels) - $maxRows));
-        $visible = \array_slice($rowModels, $windowStart, $maxRows);
-
-        // visibleWidth strips the field's zero-width caret marker, so the width
-        // measures the query text alone.
-        $width = max(mb_strwidth($title) + 8, AnsiUtils::visibleWidth($queryField) + 6, 24); // + 8: the frame's title-bar chrome
-        foreach ($visible as $row) {
-            $width = max($width, mb_strwidth($row['label']) + mb_strwidth($row['detail']) + 6);
-        }
-        $width = min($width, $columns - PopupMetrics::CENTERED_MARGIN, PopupMetrics::CENTERED_MAX_INNER); // inner width; the frame adds a rail and a padding column each side
-        $col = max(0, intdiv($columns - $width - ModalFrame::CHROME_COLS, num2: 2));
-
-        $popup = [
-            $styles->of(Role::Toolbar)->apply(AnsiText::scrollLineToCaret(' > '.$queryField, $width)),
-        ];
-        foreach ($visible as $i => $row) {
-            if (null !== $row['header']) {
-                $popup[] = $styles->merge(Role::PopupRow, Role::Dim)->apply(AnsiText::truncate(' '.$row['header'], $width, pad: true));
-
-                continue;
-            }
-            $style = $styles->of(self::rowRole($windowStart + $i, $selected, $hovered));
-            // ` label · detail ` — three chrome columns (leading, gap, trailing).
-            // Bound the detail first (leaving ≥1 column for the label) so a long
-            // path can never push the row past $width and overflow the pane.
-            $avail = max(1, $width - 3);
-            $detail = AnsiText::truncate($row['detail'], max(0, $avail - 1), pad: false);
-            $detailWidth = AnsiUtils::visibleWidth($detail);
-            $label = AnsiText::truncate($row['label'], max(1, $avail - $detailWidth), pad: true);
-            $popup[] = $style->apply(' '.$label.' '.$styles->of(Role::CompletionHint)->apply($detail).' ');
-        }
-        // A no-hit query gets the same empty-state filler the find-in-files
-        // modal ({@see \Porta\Widget\Overlay\FindInFilesModal}) shows: the
-        // popup's own base row (PopupRow), never blank.
-        if ([] === $rowModels && '' !== $emptyMessage) {
-            $popup[] = $styles->merge(Role::PopupRow, Role::CompletionHint)->apply(AnsiText::truncate(' '.$emptyMessage, $width, pad: true, ellipsis: ''));
-        }
-        $framed = [ModalFrame::titleBar($title, $width + ModalFrame::CHROME_COLS, $styles, $closeHovered), ...ModalFrame::wrap($popup, $width, $styles)];
-
-        [$lines, $startRow] = OverlayCompositor::placeCentered($lines, $framed, $col, $width + ModalFrame::CHROME_COLS, $columns, $rows);
-        $lines = ModalShadow::blit($lines, $startRow, $col, $width + ModalFrame::CHROME_COLS, \count($framed), $columns, $styles);
-
-        return new ModalBox($startRow, $col, $width + ModalFrame::CHROME_COLS, \count($framed), headerRows: 1 + ModalFrame::CHROME_ROWS_TOP, windowStart: $windowStart, count: \count($visible));
-    }
-
-    /**
      * Draw the autocomplete popup anchored at the caret, wearing the
      * {@see PopupFrame} (rounded border + drop shadow). Returns the on-screen
      * geometry of the INNER item box so callers can hit-test mouse clicks —
@@ -538,18 +427,4 @@ final class EditorRenderer
 
         return new CompletionBox($borderCol + 1, $width, $borderTop + 1, \count($visible), $windowOffset);
     }
-
-    /**
-     * Centre a fully-built popup a third of the way down the pane and blit it
-     * into $lines at columns [$col, $col + $width); returns the box geometry the
-     * caller hands to its mouse hit-tester. Shared by the centered overlays
-     * ({@see listOverlay()}, {@see searchOverlay()}); the completion popup
-     * anchors to the caret and places itself instead. $count is the number of
-     * selectable item rows (the popup array also holds the header rows).
-     *
-     * @param list<string> $lines
-     * @param list<string> $popup
-     *
-     * @return array{col: int, width: int, startRow: int, windowStart: int, count: int}
-     */
 }

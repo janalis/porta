@@ -6,9 +6,8 @@ namespace Porta\Widget\Render;
 
 /**
  * Whether the editor pane currently owns focus, as threaded into the static
- * render helpers ({@see EditorRenderer::identifierOccurrences()},
- * {@see EditorRenderer::searchOverlay()}). Replaces the former `bool $focused`
- * flag.
+ * render helpers ({@see EditorRenderer::identifierOccurrences()}). Replaces
+ * the former `bool $focused` flag.
  */
 enum PaneFocus
 {

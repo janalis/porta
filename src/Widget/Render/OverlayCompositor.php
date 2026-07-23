@@ -47,28 +47,8 @@ final class OverlayCompositor
     }
 
     /**
-     * Centre a fully-built box a third of the way down the pane and blit each of
-     * its rows into the editor lines at columns [$col, $col + $width); returns the
-     * composited lines and the box's top screen row. The centered overlays — the
-     * editor's list/search popups and the find-in-files modal — share this
-     * placement and each layer their own geometry on the returned start row.
-     *
-     * @param list<string> $lines
-     * @param list<string> $box
-     *
-     * @return array{list<string>, int} the composited lines, and the box's top row
-     */
-    public static function placeCentered(array $lines, array $box, int $col, int $width, int $columns, int $rows): array
-    {
-        $startRow = max(0, intdiv($rows - \count($box), num2: 3));
-
-        return [self::placeAt($lines, $box, $startRow, $col, $width, $columns), $startRow];
-    }
-
-    /**
-     * Blit a fully-built box at an explicit position — the draggable modals'
-     * variant of {@see placeCentered}, which delegates here. Rows beyond the
-     * pane are skipped, same bounds guard.
+     * Blit a fully-built box at an explicit position. Rows beyond the pane
+     * are skipped — the bounds guard every replayed composition relies on.
      *
      * @param list<string> $lines
      * @param list<string> $box

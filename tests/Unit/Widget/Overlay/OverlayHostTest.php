@@ -8,8 +8,8 @@ use PHPUnit\Framework\TestCase;
 use Porta\Search\Everywhere\SearchCategory;
 use Porta\Search\Everywhere\SearchHit;
 use Porta\Search\Everywhere\SearchRow;
-use Porta\Ui\CaretVisibility;
 use Porta\Widget\Overlay\OverlayHost;
+use Porta\Widget\Render\OverlayCompositor;
 use Symfony\Component\Tui\Ansi\AnsiUtils;
 use Symfony\Component\Tui\Input\Key;
 use Symfony\Component\Tui\Input\Keybindings;
@@ -37,6 +37,29 @@ final class OverlayHostTest extends TestCase
             'recent_files' => ['ctrl+e'],
             'delete_char_backward' => [Key::BACKSPACE],
         ]);
+    }
+
+    /**
+     * Lay the host out against a [0, 0, $rows, $columns] union and composite
+     * the returned boxes onto a blank canvas — the presenter's job, replayed
+     * here so the render/geometry assertions keep exercising the real rows.
+     *
+     * @return list<string>
+     */
+    private function canvas(OverlayHost $host, int $columns, int $rows): array
+    {
+        $lines = array_fill(0, $rows, str_repeat(' ', max(0, $columns)));
+        foreach ($host->layout([0, 0, $rows, $columns]) as $box) {
+            foreach ($box['rows'] as $i => $rowText) {
+                $row = $box['top'] + $i;
+                if ($row >= $rows) {
+                    break;
+                }
+                $lines[$row] = OverlayCompositor::into($lines[$row], $box['col'], $box['width'], $columns, $rowText);
+            }
+        }
+
+        return $lines;
     }
 
     public function testOpenListIgnoresAnEmptyList(): void
@@ -84,7 +107,7 @@ final class OverlayHostTest extends TestCase
         $this->assertFalse($host->isListOpen());
         // The prompt still swallows and edits input.
         $this->assertTrue($host->handleInput('4', $this->keybindings()));
-        $lines = $host->composite(array_fill(0, count: 5, value: ''), 40, 5, CaretVisibility::Shown);
+        $lines = $this->canvas($host, 40, 5);
         $this->assertStringContainsString('Go to line', AnsiUtils::stripAnsiCodes($lines[0]), 'the label is the frame title');
         $this->assertStringContainsString('4', AnsiUtils::stripAnsiCodes($lines[2]), 'the value on the field row, below the padding');
     }
@@ -117,7 +140,7 @@ final class OverlayHostTest extends TestCase
     {
         $host = $this->host();
         $host->openPrompt('Go to line', '', static fn () => null);
-        $host->composite(['', ''], 40, 2, CaretVisibility::Shown); // framed box: rows 0-4, inner width 30 at col 3
+        $host->layout([0, 0, 2, 40]); // framed box: rows 0-4, inner width 30 at col 3
 
         $this->assertTrue($host->promptClickAt(0, 5), 'a click on the frame title bar is consumed');
         $this->assertTrue($host->isPromptOpen(), 'and does not dismiss it — the caret stays');
@@ -132,7 +155,7 @@ final class OverlayHostTest extends TestCase
     {
         $host = $this->host();
         $host->openPrompt('Go to line', '', static fn () => null);
-        $host->composite(['', ''], 40, 2, CaretVisibility::Shown);
+        $host->layout([0, 0, 2, 40]);
 
         $this->assertTrue($host->promptClickAt(0, 37), 'row 0 but past the box width is outside');
         $this->assertFalse($host->isPromptOpen());
@@ -142,7 +165,7 @@ final class OverlayHostTest extends TestCase
     {
         $host = $this->host();
         $host->openPrompt('Go to line', '', static fn () => null);
-        $host->composite(['', ''], 40, 2, CaretVisibility::Shown); // box [4, 36): × at col 34
+        $host->layout([0, 0, 2, 40]); // box [4, 36): × at col 34
 
         $this->assertTrue($host->promptClickAt(0, 34), 'the title bar ×');
         $this->assertFalse($host->isPromptOpen());
@@ -153,13 +176,13 @@ final class OverlayHostTest extends TestCase
     {
         $host = $this->host();
         $host->openList('Title', [['label' => 'a', 'hint' => '', 'value' => 'A']], static fn () => null);
-        $lines = $host->composite(array_fill(0, count: 20, value: str_repeat(' ', times: 80)), 80, 20, CaretVisibility::Shown);
+        $lines = $this->canvas($host, 80, 20);
         $box = new \ReflectionProperty($host, 'overlayBox')->getValue($host);
         \assert($box instanceof \Porta\Overlay\ModalBox);
         $normalBar = $lines[$box->startRow];
 
         $this->assertTrue($host->hoverAt($box->startRow, $box->col + $box->width - 2), 'onto the ×');
-        $hoveredBar = $host->composite(array_fill(0, count: 20, value: str_repeat(' ', times: 80)), 80, 20, CaretVisibility::Shown)[$box->startRow];
+        $hoveredBar = $this->canvas($host, 80, 20)[$box->startRow];
         $this->assertNotSame($normalBar, $hoveredBar, 'the × restyled under the pointer');
         $this->assertSame(AnsiUtils::stripAnsiCodes($normalBar), AnsiUtils::stripAnsiCodes($hoveredBar), 'same text, different shade');
 
@@ -174,7 +197,7 @@ final class OverlayHostTest extends TestCase
         $this->assertFalse($host->promptHoverAt(0, 0), 'no prompt open');
 
         $host->openPrompt('Go to line', '', static fn () => null);
-        $host->composite(array_fill(0, count: 8, value: str_repeat(' ', times: 40)), 40, 8, CaretVisibility::Shown);
+        $host->layout([0, 0, 8, 40]);
         $box = new \ReflectionProperty($host, 'promptBox')->getValue($host);
         \assert($box instanceof \Porta\Overlay\ModalBox);
 
@@ -187,7 +210,7 @@ final class OverlayHostTest extends TestCase
     {
         $host = $this->host();
         $host->openList('Title', [['label' => 'a', 'hint' => '', 'value' => 'A']], static fn () => null);
-        $host->composite(array_fill(0, count: 20, value: str_repeat(' ', times: 80)), 80, 20, CaretVisibility::Shown);
+        $host->layout([0, 0, 20, 80]);
         $box = new \ReflectionProperty($host, 'overlayBox')->getValue($host);
         \assert($box instanceof \Porta\Overlay\ModalBox);
 
@@ -202,7 +225,7 @@ final class OverlayHostTest extends TestCase
         $host->openSearch('Search', static fn () => null, static fn () => null, static function () use (&$closed): void {
             $closed = true;
         });
-        $host->composite(array_fill(0, count: 20, value: str_repeat(' ', times: 80)), 80, 20, CaretVisibility::Shown);
+        $host->layout([0, 0, 20, 80]);
         $box = new \ReflectionProperty($host, 'searchBox')->getValue($host);
         \assert($box instanceof \Porta\Overlay\ModalBox);
 
@@ -222,7 +245,7 @@ final class OverlayHostTest extends TestCase
             static fn () => null,
         );
 
-        $host->composite(array_fill(0, count: 20, value: str_repeat(' ', times: 80)), 80, 20, CaretVisibility::Shown);
+        $host->layout([0, 0, 20, 80]);
 
         // Hovering the second item row moves the selection exactly once.
         $moved = false;
@@ -296,7 +319,7 @@ final class OverlayHostTest extends TestCase
         $host->openSearch('Search', static fn () => null, static fn () => null, static fn () => null, 'no results');
         $host->setSearchRows([]); // a query that found nothing
 
-        $lines = $host->composite(array_fill(0, count: 20, value: str_repeat(' ', times: 80)), 80, 20, CaretVisibility::Shown);
+        $lines = $this->canvas($host, 80, 20);
         $joined = implode("\n", array_map(AnsiUtils::stripAnsiCodes(...), $lines));
         $this->assertStringContainsString('no results', $joined, 'the no-hit filler row shows the empty message, like the sibling pickers');
     }
@@ -398,7 +421,7 @@ final class OverlayHostTest extends TestCase
 
         // A 3-line canvas cannot hold the box (title + query + rows) → the
         // compositor stops early rather than writing past the last line.
-        $lines = $host->composite(['', '', ''], 80, 20, CaretVisibility::Hidden);
+        $lines = $this->canvas($host, 80, 3);
         $this->assertCount(3, $lines);
     }
 
@@ -418,7 +441,7 @@ final class OverlayHostTest extends TestCase
             )),
         ]);
 
-        $lines = $host->composite(array_fill(0, count: 20, value: str_repeat(' ', times: 80)), 80, 20, CaretVisibility::Shown);
+        $lines = $this->canvas($host, 80, 20);
         foreach ($lines as $i => $line) {
             $this->assertSame(80, AnsiUtils::visibleWidth($line), "composited row {$i} must stay 80 columns");
         }
@@ -440,7 +463,7 @@ final class OverlayHostTest extends TestCase
             },
         );
         $host->setSearchRows($this->searchRows(static fn () => null));
-        $host->composite(array_fill(0, count: 20, value: str_repeat(' ', times: 80)), 80, 20, CaretVisibility::Shown);
+        $host->layout([0, 0, 20, 80]);
 
         // Hover finds a hit row; clicking it picks that hit.
         $hitRow = -1;
@@ -470,7 +493,7 @@ final class OverlayHostTest extends TestCase
             ++$closed;
         });
         $host->setSearchRows($this->searchRows(static fn () => null));
-        $host->composite(array_fill(0, count: 20, value: str_repeat(' ', times: 80)), 80, 20, CaretVisibility::Shown);
+        $host->layout([0, 0, 20, 80]);
 
         // Move the selection off the top hit so its row becomes hover-selectable,
         // then the topmost hover-selectable row is the first hit — its category
@@ -534,7 +557,7 @@ final class OverlayHostTest extends TestCase
         // caret marker off the right edge and lose the hardware cursor.
         $host->openPrompt('Rename to', str_repeat('x', times: 80), static fn () => null);
 
-        $lines = $host->composite(array_fill(0, count: 24, value: str_repeat(' ', times: 60)), 60, 24, CaretVisibility::Shown);
+        $lines = $this->canvas($host, 60, 24);
         $joined = implode("\n", $lines);
 
         $this->assertStringContainsString(AnsiUtils::CURSOR_MARKER_PREFIX, $joined, 'the caret marker survived the truncation');
@@ -545,19 +568,24 @@ final class OverlayHostTest extends TestCase
         }
     }
 
-    public function testTheHiddenPromptStillRendersWithoutACaret(): void
+    public function testOnlyTheTopmostSurfaceRendersACaretMarker(): void
     {
+        // The modal owns the caret wherever pane focus sits — but when the
+        // prompt opens over the search modal, only the topmost surface (the
+        // prompt) may embed the marker: two APC markers in one frame mangle
+        // ScreenWriter's hardware-cursor conversion.
         $host = $this->host();
+        $host->openSearch('Search', static fn () => null, static fn () => null, static fn () => null);
         $host->openPrompt('Go to line', '42', static fn () => null);
 
-        // Blurred: no marker embedded, but the box still renders with its hint.
-        $lines = $host->composite(array_fill(0, count: 24, value: str_repeat(' ', times: 60)), 60, 24, CaretVisibility::Hidden);
-        $joined = AnsiUtils::stripAnsiCodes(implode("\n", $lines));
+        $lines = $this->canvas($host, 60, 24);
+        $joined = implode("\n", $lines);
 
-        $this->assertStringNotContainsString(AnsiUtils::CURSOR_MARKER_PREFIX, implode('', $lines));
-        $this->assertStringContainsString('Go to line', $joined, 'the label titles the frame');
-        $this->assertStringContainsString('42', $joined, 'the value on the field row');
-        $this->assertStringContainsString('Esc', $joined);
+        $this->assertSame(1, substr_count($joined, AnsiUtils::CURSOR_MARKER_PREFIX), 'exactly one caret marker — the prompt wins');
+        $stripped = AnsiUtils::stripAnsiCodes($joined);
+        $this->assertStringContainsString('Go to line', $stripped, 'the label titles the frame');
+        $this->assertStringContainsString('42', $stripped, 'the value on the field row');
+        $this->assertStringContainsString('Esc', $stripped);
     }
 
     public function testSearchHoverTintsAHitWithoutMovingTheSelection(): void
@@ -565,7 +593,7 @@ final class OverlayHostTest extends TestCase
         $host = $this->host();
         $host->openSearch('Search', static fn () => null, static fn () => null, static fn () => null);
         $host->setSearchRows($this->searchRows(static fn () => null));
-        $host->composite(array_fill(0, count: 20, value: str_repeat(' ', times: 80)), 80, 20, CaretVisibility::Shown);
+        $host->layout([0, 0, 20, 80]);
 
         // Hover the second hit (rows: header, hit a [selected], hit b, header, hit c).
         $hitRow = -1;
@@ -578,7 +606,7 @@ final class OverlayHostTest extends TestCase
             break;
         }
         $this->assertGreaterThanOrEqual(0, $hitRow, 'a hit row tinted');
-        $body = implode("\n", $host->composite(array_fill(0, count: 20, value: str_repeat(' ', times: 80)), 80, 20, CaretVisibility::Shown));
+        $body = implode("\n", $this->canvas($host, 80, 20));
         $this->assertStringContainsString("\x1b[48;5;31m", $body, 'the selected hit keeps its background');
         $this->assertStringContainsString("\x1b[48;5;236m", $body, 'the hovered hit takes the tint, not the selection');
     }

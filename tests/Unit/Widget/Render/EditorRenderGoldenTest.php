@@ -211,33 +211,10 @@ final class EditorRenderGoldenTest extends TestCase
                 10,
             ],
 
-            'list-overlay' => [
-                static function (CodeEditorWidget $e) use ($php): void {
-                    $e->openFile('demo.php', $php);
-                    $e->setFocused(true);
-                    $e->openListOverlay(
-                        'Pick One',
-                        [
-                            ['label' => 'Alpha', 'hint' => 'a', 'value' => '0'],
-                            ['label' => 'Beta', 'hint' => 'b', 'value' => '1'],
-                        ],
-                        static function (): void {},
-                    );
-                },
-                80,
-                10,
-            ],
-
-            'prompt' => [
-                static function (CodeEditorWidget $e) use ($php): void {
-                    $e->openFile('demo.php', $php);
-                    $e->setFocused(true);
-                    $e->openPrompt('Rename to', 'greet', static function (): void {});
-                },
-                80,
-                10,
-            ],
-
+            // The pickers (list overlay, Search Everywhere, prompt) float over
+            // the workspace via PickerModalPresenter and no longer composite
+            // into the editor's own render — their rows are pinned by
+            // OverlayHostTest instead of a widget-render golden.
             'signature-hint' => [
                 static function (CodeEditorWidget $e) use ($php): void {
                     $e->openFile('demo.php', $php);

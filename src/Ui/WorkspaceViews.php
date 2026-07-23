@@ -123,6 +123,12 @@ final class WorkspaceViews
         $this->welcome?->open();
     }
 
+    /** Close the Welcome modal alone — a floating picker opening over it takes the span slot. */
+    public function closeWelcome(): void
+    {
+        $this->welcome?->close();
+    }
+
     /** Close whichever full view is open, returning the main area to the editor layout. */
     public function closeAll(): void
     {

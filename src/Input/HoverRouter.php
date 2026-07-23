@@ -58,6 +58,17 @@ final readonly class HoverRouter
             return;
         }
 
+        // A floating picker owns hover while open (screen coordinates); the
+        // workspace beneath is dimmed, so its pane tints would be invisible
+        // anyway. The menu bar keeps first refusal, like the other modals.
+        if (null !== $this->panes->editor()->getContext() && $this->panes->editor()->isAnyPickerOpen()) {
+            if (!$this->handleMenuHover($mouse) && $this->panes->editor()->handlePickerHover($mouse->row, $mouse->col)) {
+                $this->tui->requestRender();
+            }
+
+            return;
+        }
+
         // The floating Find-in-Files modal owns hover while open (screen
         // coordinates); the workspace beneath is dimmed, so its pane tints
         // would be invisible anyway. The menu bar keeps first refusal.
@@ -228,11 +239,7 @@ final readonly class HoverRouter
             return;
         }
 
-        if (
-            ($this->panes->editor()->isOverlayOpen() || $this->panes->editor()->isCompletionOpen() || $this->panes->editor()->isSearchOverlayOpen())
-            && null !== $editorRect
-            && $editorRect->contains($mouse->row, $mouse->col)
-        ) {
+        if ($this->panes->editor()->isCompletionOpen() && null !== $editorRect && $editorRect->contains($mouse->row, $mouse->col)) {
             $rel = $editorRect->toRelative($mouse->row, $mouse->col);
             if ($this->panes->editor()->handlePopupHover($rel['row'], $rel['col'])) {
                 $this->tui->requestRender();
