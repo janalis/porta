@@ -5,6 +5,8 @@ declare(strict_types=1);
 namespace Porta\Tests\E2e;
 
 use PHPUnit\Framework\TestCase;
+use Porta\Config\CommandRegistry;
+use Porta\Editor\BufferService;
 use Porta\Tests\Support\RunsIde;
 use Porta\Tests\Support\TempProject;
 use Symfony\Component\Tui\Ansi\AnsiUtils;
@@ -95,8 +97,7 @@ final class MagoPluginTest extends TestCase
                     $this->await(static fn (): bool => str_contains((string) (is_file($project->path('a.php')) ? file_get_contents($project->path('a.php')) : false), '// formatted'));
                     $this->assertStringContainsString('// formatted', (string) file_get_contents($project->path('a.php')));
 
-                    new \ReflectionProperty($ide, 'bufferService')
-                        ->getValue($ide)
+                    $ide->resolve(BufferService::class)
                         ->pollFilesystem();
                     $this->assertStringContainsString('// formatted', $tui->getById('editor')->getDocument()->getText(), 'buffer reloaded');
                 },
@@ -154,7 +155,7 @@ final class MagoPluginTest extends TestCase
             $project->path('a.php'),
             [
                 100 => function ($tui, $terminal, $ide) use ($project): void {
-                    $commands = new \ReflectionProperty($ide, 'commands')->getValue($ide);
+                    $commands = $ide->resolve(CommandRegistry::class);
                     $commands->run('mago:toggle-auto-format');
                     $tui->tick(); // render this flash before the next replaces it
                     $commands->run('mago:toggle-auto-lint');
@@ -179,14 +180,13 @@ final class MagoPluginTest extends TestCase
                     $this->assertStringContainsString('mago: 1 issue in a.php', AnsiUtils::stripAnsiCodes($terminal->getOutput()), 'the chained lint ran on the formatted file');
 
                     // Toggle both off: the next save leaves the file alone.
-                    $commands = new \ReflectionProperty($ide, 'commands')->getValue($ide);
+                    $commands = $ide->resolve(CommandRegistry::class);
                     $commands->run('mago:toggle-auto-format');
                     $commands->run('mago:toggle-auto-lint');
                     $tui->tick();
                     $this->assertStringContainsString('mago lint on save: off', AnsiUtils::stripAnsiCodes($terminal->getOutput()));
                     $this->assertFalse((bool) (\Porta\Config\IdeConfig::load($project->dir)->plugins['mago']['autoFormat'] ?? true), 'off state persisted');
-                    new \ReflectionProperty($ide, 'bufferService')
-                        ->getValue($ide)
+                    $ide->resolve(BufferService::class)
                         ->pollFilesystem(); // absorb the change
                     $tui->handleInput("\x13");
                 },
@@ -208,7 +208,7 @@ final class MagoPluginTest extends TestCase
             $project->path('a.php'),
             [
                 100 => function ($tui, $terminal, $ide): void {
-                    new \ReflectionProperty($ide, 'commands')->getValue($ide)->run('mago:toggle-auto-lint');
+                    $ide->resolve(CommandRegistry::class)->run('mago:toggle-auto-lint');
                     $tui->tick();
                     $this->assertStringContainsString('mago lint on save: on', AnsiUtils::stripAnsiCodes($terminal->getOutput()));
                     $tui->handleInput("\x13"); // ctrl+s → save → lint only

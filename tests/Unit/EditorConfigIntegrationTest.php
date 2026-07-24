@@ -44,7 +44,7 @@ final class EditorConfigIntegrationTest extends TestCase
     private function open(Ide $ide, string $path): Buffer
     {
         new \ReflectionMethod($ide, 'openFile')->invoke($ide, $path);
-        $buffers = new \ReflectionProperty($ide, 'buffers')->getValue($ide);
+        $buffers = $ide->resolve(BufferManager::class);
         \assert($buffers instanceof BufferManager, description: 'the buffers property is a BufferManager');
 
         return $buffers->active();
@@ -52,7 +52,7 @@ final class EditorConfigIntegrationTest extends TestCase
 
     private function save(Ide $ide, Buffer $buffer): void
     {
-        $service = new \ReflectionProperty($ide, 'bufferService')->getValue($ide);
+        $service = $ide->resolve(BufferService::class);
         \assert($service instanceof BufferService, description: 'the bufferService property is a BufferService');
         $service->saveBuffer($buffer);
     }

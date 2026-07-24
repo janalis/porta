@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Porta\Tests\E2e;
 
 use PHPUnit\Framework\TestCase;
+use Porta\Config\CommandRegistry;
 use Porta\Settings\SettingsRowKind;
 use Porta\Tests\Support\RunsIde;
 use Porta\Tests\Support\TempProject;
@@ -125,15 +126,14 @@ final class PsalmPluginTest extends TestCase
             $project->path('a.php'),
             [
                 100 => function ($tui, $terminal, $ide) use ($project): void {
-                    new \ReflectionProperty($ide, 'commands')->getValue($ide)->run('psalm:toggle-on-save');
+                    $ide->resolve(CommandRegistry::class)->run('psalm:toggle-on-save');
                     $tui->tick();
                     $this->assertStringContainsString('psalm on save: on', AnsiUtils::stripAnsiCodes($terminal->getOutput()));
                     $this->assertTrue((bool) (\Porta\Config\IdeConfig::load($project->dir)->plugins['psalm']['autoLint'] ?? false), 'the toggle persisted to .porta.json');
 
                     // The persisted setting shows on the plugin's settings page.
-                    $rows = new \ReflectionProperty($ide, 'locator')
-                        ->getValue($ide)
-                        ->get(\Porta\Plugin\PluginHost::class)
+                    $rows = $ide
+                        ->resolve(\Porta\Plugin\PluginHost::class)
                         ->settings()
                         ->rows('psalm');
                     $byKey = array_column($rows, null, 'key');

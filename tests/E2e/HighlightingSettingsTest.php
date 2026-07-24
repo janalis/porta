@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Porta\Tests\E2e;
 
 use PHPUnit\Framework\TestCase;
+use Porta\Config\CommandRegistry;
 use Porta\Settings\SettingsHighlightController;
 use Porta\Tests\Support\NavigatesSettings;
 use Porta\Tests\Support\RunsIde;
@@ -65,7 +66,7 @@ final class HighlightingSettingsTest extends TestCase
 
         $this->runIde($project, $project->path('a.php'), [
             100 => function ($tui, $terminal, $ide): void {
-                new \ReflectionProperty($ide, 'commands')->getValue($ide)->run('ide_settings');
+                $ide->resolve(CommandRegistry::class)->run('ide_settings');
                 $tui->tick();
                 $this->selectSettingsSection($tui->getById('settings-nav'), 'highlighting');
                 $tui->tick();

@@ -5,6 +5,8 @@ declare(strict_types=1);
 namespace Porta\Tests\E2e;
 
 use PHPUnit\Framework\TestCase;
+use Porta\Config\CommandRegistry;
+use Porta\Editor\BufferService;
 use Porta\Tests\Support\RunsIde;
 use Porta\Tests\Support\TempProject;
 use Symfony\Component\Tui\Ansi\AnsiUtils;
@@ -72,8 +74,7 @@ final class PhpCsFixerPluginTest extends TestCase
                     $this->assertStringContainsString('// fixed', (string) file_get_contents($project->path('a.php')), 'the stub rewrote the file');
 
                     // The filesystem poller reloads the clean buffer with the fixed content.
-                    new \ReflectionProperty($ide, 'bufferService')
-                        ->getValue($ide)
+                    $ide->resolve(BufferService::class)
                         ->pollFilesystem();
                     $this->assertStringContainsString('// fixed', $tui->getById('editor')->getDocument()->getText(), 'buffer reloaded');
                 },
@@ -92,7 +93,7 @@ final class PhpCsFixerPluginTest extends TestCase
             $project->path('a.php'),
             [
                 100 => function ($tui, $terminal, $ide) use ($project): void {
-                    new \ReflectionProperty($ide, 'commands')->getValue($ide)->run('php-cs-fixer:toggle-on-save');
+                    $ide->resolve(CommandRegistry::class)->run('php-cs-fixer:toggle-on-save');
                     $tui->tick();
                     $this->assertStringContainsString('php-cs-fixer on save: on', AnsiUtils::stripAnsiCodes($terminal->getOutput()));
                     $this->assertTrue((bool) (\Porta\Config\IdeConfig::load($project->dir)->plugins['php-cs-fixer']['autoFormat'] ?? false), 'the toggle persisted to .porta.json');
@@ -103,12 +104,11 @@ final class PhpCsFixerPluginTest extends TestCase
                     $this->assertSame(1, substr_count((string) file_get_contents($project->path('a.php')), needle: '// fixed'), 'save triggered one fix');
 
                     // Toggling off stops the hook.
-                    new \ReflectionProperty($ide, 'commands')->getValue($ide)->run('php-cs-fixer:toggle-on-save');
+                    $ide->resolve(CommandRegistry::class)->run('php-cs-fixer:toggle-on-save');
                     $tui->tick();
                     $this->assertStringContainsString('php-cs-fixer on save: off', AnsiUtils::stripAnsiCodes($terminal->getOutput()));
                     $this->assertFalse((bool) (\Porta\Config\IdeConfig::load($project->dir)->plugins['php-cs-fixer']['autoFormat'] ?? true), 'the off state persisted');
-                    new \ReflectionProperty($ide, 'bufferService')
-                        ->getValue($ide)
+                    $ide->resolve(BufferService::class)
                         ->pollFilesystem(); // absorb the on-disk change first
                     $tui->handleInput("\x13");
                 },

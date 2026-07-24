@@ -8,6 +8,7 @@ use PHPUnit\Framework\TestCase;
 use Porta\Tests\Support\RunsIde;
 use Porta\Tests\Support\TempProject;
 use Symfony\Component\Tui\Ansi\AnsiUtils;
+use Symfony\Component\Tui\Render\Renderer;
 use Symfony\Component\Tui\Tui;
 
 /**
@@ -161,7 +162,7 @@ final class IdeFindInProjectTest extends TestCase
         $rightClickFolder = static function ($tui, $terminal, $ide): void {
             $tui->requestRender(force: true); // force a frame so the tree rect is live under load
             $tui->processRender();
-            $renderer = new \ReflectionProperty($ide, 'renderer')->getValue($ide);
+            $renderer = $ide->resolve(Renderer::class);
             $rect = $renderer->getWidgetRect($tui->getById('tree'));
             // `lib` sorts first among the directories → the first tree entry (row 1).
             $tui->handleInput(\sprintf("\x1b[<2;%d;%dM", $rect->col + 3, $rect->row + 2));
@@ -786,7 +787,7 @@ final class IdeFindInProjectTest extends TestCase
                 $left = $editor->findModal()->lastBox();
                 $this->assertNotNull($left);
                 $this->assertSame(0, $left->col, 'clamped to the screen edge — over the tree');
-                $renderer = new \ReflectionProperty($ide, 'renderer')->getValue($ide);
+                $renderer = $ide->resolve(Renderer::class);
                 $treeRect = $renderer->getWidgetRect($tui->getById('tree'));
                 $this->assertNotNull($treeRect);
                 $treeRows = $tui->getById('tree')->render(new \Symfony\Component\Tui\Render\RenderContext($treeRect->columns, $treeRect->rows));

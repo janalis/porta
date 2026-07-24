@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Porta\Tests\E2e;
 
 use PHPUnit\Framework\TestCase;
+use Porta\Config\CommandRegistry;
 use Porta\Tests\Support\NavigatesSettings;
 use Porta\Tests\Support\RunsIde;
 use Porta\Tests\Support\TempProject;
@@ -115,11 +116,11 @@ final class IdeEmbeddedPluginsTest extends TestCase
                     $pluginsMenu = $this->menus($tui)[4];
                     $this->assertFalse($pluginsMenu->items[0]->enabled(), 'no binary configured → the entry is disabled');
 
-                    $commands = new \ReflectionProperty($ide, 'commands')->getValue($ide);
+                    $commands = $ide->resolve(CommandRegistry::class);
                     $this->assertContains('Bundled Run', array_column($commands->paletteCommands(), 'label'), 'the embedded plugin activated');
 
                     // The manage screen lists it as built-in; actuating is inert.
-                    new \ReflectionProperty($ide, 'commands')->getValue($ide)->run('ide_settings');
+                    $ide->resolve(CommandRegistry::class)->run('ide_settings');
                     $tui->handleInput("\t"); // form → nav
                     $this->selectSettingsSection($tui->getById('settings-nav'), 'plugins');
                     $tui->handleInput("\t"); // nav → form
@@ -155,14 +156,14 @@ final class IdeEmbeddedPluginsTest extends TestCase
                     $tui->handleInput("\x1b"); // close the settings view
                     $tui->tick();
                     $this->assertTrue($this->menus($tui)[4]->items[0]->enabled(), 'the menu entry enabled once configured');
-                    new \ReflectionProperty($ide, 'commands')->getValue($ide)->run('bundled:run');
+                    $ide->resolve(CommandRegistry::class)->run('bundled:run');
                     $tui->tick();
                     $this->assertStringContainsString('bundled ran /opt/tool', AnsiUtils::stripAnsiCodes($terminal->getOutput()));
                 },
                 200 => function ($tui, $terminal, $ide) use ($project): void {
                     // Back to the plugin's page to disable it live: menu + palette
                     // die and the choice persists.
-                    new \ReflectionProperty($ide, 'commands')->getValue($ide)->run('ide_settings');
+                    $ide->resolve(CommandRegistry::class)->run('ide_settings');
                     $tui->handleInput("\t"); // form → nav
                     $this->selectSettingsSection($tui->getById('settings-nav'), 'plugins');
                     $tui->handleInput("\x1b[B"); // bundled sub-item
@@ -173,7 +174,7 @@ final class IdeEmbeddedPluginsTest extends TestCase
                     $tui->tick();
                     $this->assertStringContainsString('Plugin "bundled" disabled', AnsiUtils::stripAnsiCodes($terminal->getOutput()));
                     $this->assertNotContains('Plugins', array_column($this->menus($tui), 'title'), 'the only plugin gone → no Plugins menu');
-                    $commands = new \ReflectionProperty($ide, 'commands')->getValue($ide);
+                    $commands = $ide->resolve(CommandRegistry::class);
                     $this->assertNotContains('Bundled Run', array_column($commands->paletteCommands(), 'label'));
                     $config = json_decode((string) file_get_contents($project->path('.porta.json')), associative: true);
                     $this->assertArrayNotHasKey('enabledPlugins', $config, 'a bundled plugin disables by leaving the opt-in list');
@@ -231,13 +232,13 @@ final class IdeEmbeddedPluginsTest extends TestCase
             $project->path('a.php'),
             [
                 100 => function ($tui, $terminal, $ide): void {
-                    $commands = new \ReflectionProperty($ide, 'commands')->getValue($ide);
+                    $commands = $ide->resolve(CommandRegistry::class);
                     $labels = array_column($commands->paletteCommands(), 'label');
                     $this->assertContains('Project Run', $labels, 'the project copy shadows the embedded one');
                     $this->assertNotContains('Bundled Run', $labels);
 
                     // Remove the project override: the embedded copy reactivates live.
-                    new \ReflectionProperty($ide, 'commands')->getValue($ide)->run('ide_settings');
+                    $ide->resolve(CommandRegistry::class)->run('ide_settings');
                     $tui->handleInput("\t");
                     $this->selectSettingsSection($tui->getById('settings-nav'), 'plugins');
                     $tui->handleInput("\t"); // → form
@@ -291,7 +292,7 @@ final class IdeEmbeddedPluginsTest extends TestCase
             $project->path('a.php'),
             [
                 100 => function ($tui, $terminal, $ide): void {
-                    $commands = new \ReflectionProperty($ide, 'commands')->getValue($ide);
+                    $commands = $ide->resolve(CommandRegistry::class);
                     $this->assertNotContains('Bundled Run', array_column($commands->paletteCommands(), 'label'), 'skipped at boot');
                     $this->assertNotContains('Plugins', array_column($this->menus($tui), 'title'));
 

@@ -32,7 +32,7 @@ final class IdeResponsiveTest extends TestCase
         $terminal = new VirtualTerminal(columns: 100, rows: 30);
         new OnboardingState($project->dir)->markWelcomeSeen();
         $ide = new Ide($project->dir, $project->path('src/Demo.php'), $terminal, lspCommand: null);
-        $tui = $ide->getTui();
+        $tui = $ide->resolve(Tui::class);
 
         EventLoop::delay(0.3, function () use ($tui, $terminal): void {
             $tui->tick();

@@ -8,6 +8,7 @@ use PHPUnit\Framework\TestCase;
 use Porta\Tests\Support\RunsIde;
 use Porta\Tests\Support\TempProject;
 use Porta\Tests\Support\Toasts;
+use Porta\Ui\Notifier;
 use Symfony\Component\Tui\Ansi\AnsiUtils;
 
 /**
@@ -42,7 +43,7 @@ final class IdeToastsTest extends TestCase
                 400 => function ($tui, $terminal, $ide): void {
                     // The presenter's regions place the card; its × sits at the
                     // top border's width − 2 (ModalBox::closeHit).
-                    $notifier = new \ReflectionProperty(\Porta\Ide::class, 'notifier')->getValue($ide);
+                    $notifier = $ide->resolve(Notifier::class);
                     $center = new \ReflectionProperty($notifier, 'toasts')->getValue($notifier);
                     $boxes = new \ReflectionProperty($center, 'boxes')->getValue($center);
                     $this->assertNotSame([], $boxes, 'the presenter recorded the card box');
@@ -59,7 +60,7 @@ final class IdeToastsTest extends TestCase
                 },
                 500 => function ($tui, $terminal, $ide): void {
                     // A short-lived toast expires on its own timer.
-                    $notifier = new \ReflectionProperty(\Porta\Ide::class, 'notifier')->getValue($ide);
+                    $notifier = $ide->resolve(Notifier::class);
                     $notifier->error('boom', 0.15);
                     $this->assertSame(['boom'], Toasts::all($ide));
                     $tui->tick(); // paint the card before sampling the terminal

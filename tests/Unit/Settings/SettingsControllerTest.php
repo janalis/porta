@@ -372,7 +372,7 @@ final class SettingsControllerTest extends TestCase
         $project = new TempProject(['composer.json' => '{}']);
         new OnboardingState($project->dir)->markWelcomeSeen();
         $ide = new Ide($project->dir, null, new VirtualTerminal(columns: 80, rows: 24));
-        $settings = new \ReflectionProperty($ide, 'settings')->getValue($ide);
+        $settings = $ide->resolve(SettingsController::class);
         \assert($settings instanceof SettingsController, description: 'the settings property is a SettingsController');
 
         $settings->toggle('doesNotExist');

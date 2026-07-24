@@ -5,9 +5,11 @@ declare(strict_types=1);
 namespace Porta\Tests\E2e;
 
 use PHPUnit\Framework\TestCase;
+use Porta\Run\RunController;
 use Porta\Tests\Support\RunsIde;
 use Porta\Tests\Support\TempProject;
 use Symfony\Component\Tui\Ansi\AnsiUtils;
+use Symfony\Component\Tui\Render\Renderer;
 
 /**
  * Terminal multiplexing end-to-end against a real shell: multiple sessions,
@@ -34,7 +36,7 @@ final class IdeTerminalTest extends TestCase
     /** @return list<\Porta\Terminal\TerminalSession> */
     private function sessions(mixed $ide): array
     {
-        $run = new \ReflectionProperty($ide, 'run')->getValue($ide);
+        $run = $ide->resolve(RunController::class);
         $sessions = new \ReflectionProperty($run, 'sessions')->getValue($run);
         \assert($sessions instanceof \Porta\Terminal\TerminalSessions, description: 'run sessions property holds a TerminalSessions instance');
 
@@ -84,7 +86,7 @@ final class IdeTerminalTest extends TestCase
                     $this->assertStringNotContainsString('BBB-marker', $this->bufferText($sessions[0]), 'input reached only the active shell');
 
                     // The dock strip shows both sessions as first-class tabs.
-                    $renderer = new \ReflectionProperty($ide, 'renderer')->getValue($ide);
+                    $renderer = $ide->resolve(Renderer::class);
                     $stripRect = $renderer->getWidgetRect($tui->getById('dock-tabs'));
                     $strip = AnsiUtils::stripAnsiCodes($tui->getById('dock-tabs')->render(new \Symfony\Component\Tui\Render\RenderContext($stripRect->columns, 1))[0]);
                     $this->assertSame(2, substr_count($strip, needle: 'sh'), 'both shell tabs render on the dock strip');
@@ -93,12 +95,12 @@ final class IdeTerminalTest extends TestCase
                     $tui->tick();
                     // Ctrl+Page Up cycles back to shell 1 (widget-scope, terminal focused).
                     $tui->handleInput("\x1b[5^");
-                    $run = new \ReflectionProperty($ide, 'run')->getValue($ide);
+                    $run = $ide->resolve(RunController::class);
                     $sessionsOf = static fn () => new \ReflectionProperty($run, 'sessions')->getValue($run);
                     $this->assertSame('shell:1', $sessionsOf()->active()?->id, 'cycled to the first shell');
 
                     // Click shell 2's dock-strip tab label to activate it (mouse select path).
-                    $renderer = new \ReflectionProperty($ide, 'renderer')->getValue($ide);
+                    $renderer = $ide->resolve(Renderer::class);
                     $rect = $renderer->getWidgetRect($tui->getById('dock-tabs'));
                     $strip = AnsiUtils::stripAnsiCodes($tui->getById('dock-tabs')->render(new \Symfony\Component\Tui\Render\RenderContext($rect->columns, 1))[0]);
                     // The second "sh" occurrence is shell 2's tab.
@@ -132,7 +134,7 @@ final class IdeTerminalTest extends TestCase
                     $sessionTwoProcess = $this->sessions($ide)[1]->process();
 
                     // Click the × of the first (inactive) session tab on the dock strip.
-                    $renderer = new \ReflectionProperty($ide, 'renderer')->getValue($ide);
+                    $renderer = $ide->resolve(Renderer::class);
                     $rect = $renderer->getWidgetRect($tui->getById('dock-tabs'));
                     $strip = AnsiUtils::stripAnsiCodes($tui->getById('dock-tabs')->render(new \Symfony\Component\Tui\Render\RenderContext($rect->columns, 1))[0]);
                     $closeCol = (int) mb_strpos($strip, needle: '×');
@@ -175,7 +177,7 @@ final class IdeTerminalTest extends TestCase
                     $ids = fn (): array => array_map(static fn ($s) => $s->id, $this->sessions($ide));
                     $this->assertSame(['shell:1', 'shell:2'], $ids());
 
-                    $renderer = new \ReflectionProperty($ide, 'renderer')->getValue($ide);
+                    $renderer = $ide->resolve(Renderer::class);
                     $rect = $renderer->getWidgetRect($tui->getById('dock-tabs'));
                     $strip = AnsiUtils::stripAnsiCodes($tui->getById('dock-tabs')->render(new \Symfony\Component\Tui\Render\RenderContext($rect->columns, 1))[0]);
                     $firstTab = (int) mb_strpos($strip, needle: 'sh');
@@ -187,7 +189,7 @@ final class IdeTerminalTest extends TestCase
                     $tui->handleInput(\sprintf("\x1b[<0;%d;%dm", $rect->col + $secondTab + 1, $rect->row + 1));
                     $this->assertSame(['shell:2', 'shell:1'], $ids(), 'the drag reordered the session tabs on the dock strip');
 
-                    $run = new \ReflectionProperty($ide, 'run')->getValue($ide);
+                    $run = $ide->resolve(RunController::class);
                     $sessions = new \ReflectionProperty($run, 'sessions')->getValue($run);
                     $this->assertSame('shell:1', $sessions->active()?->id, 'the pressed session stays active through its move');
                 },
@@ -212,7 +214,7 @@ final class IdeTerminalTest extends TestCase
                 },
                 600 => function ($tui, $terminal, $ide): void {
                     $tui->tick();
-                    $renderer = new \ReflectionProperty($ide, 'renderer')->getValue($ide);
+                    $renderer = $ide->resolve(Renderer::class);
                     $rect = $renderer->getWidgetRect($tui->getById('dock-tabs'));
                     $strip = AnsiUtils::stripAnsiCodes($tui->getById('dock-tabs')->render(new \Symfony\Component\Tui\Render\RenderContext($rect->columns, 1))[0]);
 

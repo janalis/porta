@@ -8,19 +8,16 @@ use Porta\Bootstrap\EagerServices;
 use Porta\Bootstrap\StartupWiring;
 use Porta\Bootstrap\WidgetHooks;
 use Porta\Command\CommandRegistryPopulator;
-use Porta\Config\CommandRegistry;
 use Porta\Config\IdeConfig;
 use Porta\Container\Ansi;
 use Porta\Container\IdeContainerFactory;
 use Porta\Container\LspMode;
 use Porta\Debug\DebugController;
 use Porta\Debug\DebugStatePersistence;
-use Porta\Editor\BufferManager;
 use Porta\Editor\BufferService;
 use Porta\Editor\OpenFocus;
 use Porta\Git\GitInfo;
 use Porta\Git\GitRefresher;
-use Porta\History\LocalHistoryController;
 use Porta\History\SessionRestorer;
 use Porta\Input\InputDispatcher;
 use Porta\Layout\LayoutController;
@@ -28,13 +25,9 @@ use Porta\Layout\PaneLayout;
 use Porta\Layout\WorkspaceLayout;
 use Porta\Lsp\LspBootstrapper;
 use Porta\Lsp\LspSessionPool;
-use Porta\Lsp\NavigationController;
-use Porta\Lsp\RefactorController;
-use Porta\Lsp\WorkspaceEditor;
 use Porta\Onboarding\OnboardingState;
 use Porta\Plugin\PluginLifecycle;
 use Porta\Run\RunController;
-use Porta\Search\SearchActions;
 use Porta\Search\SearchUiWiring;
 use Porta\Settings\SettingsController;
 use Porta\Settings\SettingsLanguageController;
@@ -47,7 +40,6 @@ use Porta\Ui\Notifier;
 use Porta\Ui\TerminalStateRefresher;
 use Porta\Ui\WorkspaceViews;
 use Porta\Widget\CodeEditorWidget;
-use Porta\Widget\ContextMenu;
 use Porta\Widget\FileTreeWidget;
 use Revolt\EventLoop;
 use Symfony\Component\DependencyInjection\ContainerInterface;
@@ -58,7 +50,6 @@ use Symfony\Component\Tui\Style\TailwindStylesheet;
 use Symfony\Component\Tui\Terminal\Terminal;
 use Symfony\Component\Tui\Terminal\TerminalInterface;
 use Symfony\Component\Tui\Tui;
-use Symfony\Component\Tui\Widget\ContainerWidget;
 
 /**
  * The terminal IDE application: file tree + code editor + status bar,
@@ -89,27 +80,16 @@ final class Ide
     private GitRefresher $gitRefresher;
     private WorkspaceLayout $workspaceLayout;
     private PaneLayout $paneLayout;
-    private SearchActions $searchActions;
-    private LocalHistoryController $localHistory;
     private LayoutController $layout;
-    private BufferManager $buffers;
-    private CommandRegistry $commands;
 
     private LspSessionPool $lsp;
     private LspBootstrapper $lspBootstrapper;
     private SessionRestorer $sessionRestorer;
     private DebugStatePersistence $debugState;
-    private WorkspaceEditor $workspaceEditor;
-    private NavigationController $navigation;
-    private RefactorController $refactor;
 
     private Renderer $renderer;
-    // @mago-expect analysis:write-only-property — reflection-only seam: E2e tests read it via ReflectionProperty, never in-class.
-    private ContextMenu $contextMenu;
     private MenuRebuilder $menuRebuilder;
 
-    // @mago-expect analysis:write-only-property — reflection-only seam: IdeSettingsViewTest reads it via ReflectionProperty, never in-class.
-    private ContainerWidget $main;
     private SettingsController $settings;
     private SettingsLanguageController $settingsLanguages;
     private BufferService $bufferService;
@@ -188,8 +168,6 @@ final class Ide
 
         $this->wireWidgets($keybindings);
         $this->bufferService = $this->service(BufferService::class);
-        $this->navigation = $this->service(NavigationController::class);
-        $this->refactor = $this->service(RefactorController::class);
         $this->run = $this->service(RunController::class);
         $this->lspBootstrapper = $this->service(LspBootstrapper::class);
         $this->sessionRestorer = $this->service(SessionRestorer::class);
@@ -198,9 +176,6 @@ final class Ide
         // through; the decoration/state pieces are the same container-shared
         // instances the buffer service applies on every buffer switch.
         $this->debug = $this->service(DebugController::class);
-        // The search entry points; after wireCommands (ActionsSource reads the
-        // populated registry) and after the buffer service both depend on.
-        $this->searchActions = $this->service(SearchActions::class);
 
         // Apply persisted settings.
         $this->settings = $this->service(SettingsController::class);
@@ -215,8 +190,6 @@ final class Ide
         // hand-over clears before it repaints.
         $this->service(EagerServices::class)->boot();
         $this->pluginLifecycle->refreshNav();
-
-        $this->localHistory = $this->service(LocalHistoryController::class);
 
         // Now that both view controllers exist, settle the layout for the
         // persisted locale's writing direction (RTL mirrors the sidebar right).
@@ -291,70 +264,6 @@ final class Ide
         return $service;
     }
 
-    /**
-     * @internal exposed for tests
-     */
-    public function getTui(): Tui
-    {
-        return $this->tui;
-    }
-
-    /**
-     * @internal exposed for tests
-     */
-    public function getCommands(): CommandRegistry
-    {
-        return $this->commands;
-    }
-
-    /**
-     * @internal exposed for tests
-     */
-    public function getBuffers(): BufferManager
-    {
-        return $this->buffers;
-    }
-
-    /**
-     * @internal exposed for tests
-     */
-    public function getSearchActions(): SearchActions
-    {
-        return $this->searchActions;
-    }
-
-    /**
-     * @internal exposed for tests
-     */
-    public function getLocalHistory(): LocalHistoryController
-    {
-        return $this->localHistory;
-    }
-
-    /**
-     * @internal exposed for tests
-     */
-    public function getWorkspaceEditor(): WorkspaceEditor
-    {
-        return $this->workspaceEditor;
-    }
-
-    /**
-     * @internal exposed for tests
-     */
-    public function getNavigation(): NavigationController
-    {
-        return $this->navigation;
-    }
-
-    /**
-     * @internal exposed for tests
-     */
-    public function getRefactor(): RefactorController
-    {
-        return $this->refactor;
-    }
-
     public function run(): void
     {
         $this->lspBootstrapper->start();
@@ -425,10 +334,9 @@ final class Ide
 
     private function wireWidgets(Keybindings $keybindings): void
     {
-        // The registry and menu rebuilder objects exist early (later build
-        // steps hold them); commands register and menus bake at the end of
-        // the constructor, once every provider dependency exists.
-        $this->commands = $this->service(CommandRegistry::class);
+        // The menu rebuilder is held for the ctor-tail bake; commands register
+        // and menus bake at the end of the constructor, once every provider
+        // dependency exists.
         $this->menuRebuilder = $this->service(MenuRebuilder::class);
     }
 
@@ -448,21 +356,17 @@ final class Ide
     /** The editor workspace: tree, editor + LSP backend, chrome widgets and the main horizontal layout. */
     private function buildEditorArea(): void
     {
-        $this->buffers = $this->service(BufferManager::class);
         $this->lsp = $this->service(LspSessionPool::class);
 
         $this->tree = $this->service(FileTreeWidget::class);
         $this->editor = $this->service(CodeEditorWidget::class);
-        $this->workspaceEditor = $this->service(WorkspaceEditor::class);
         $this->notifier = $this->service(Notifier::class);
         $this->watchdog = $this->service(FreezeWatchdog::class);
-        $this->contextMenu = $this->service(ContextMenu::class);
 
         // The composite tree (layout containers, separators, assembly) lives in
-        // WorkspaceLayout; the properties stay as aliases for the reflection
-        // seams tests rely on and the remaining hand-wiring.
+        // WorkspaceLayout; Ide holds the layout and pane controllers for the
+        // build steps and the runtime.
         $this->workspaceLayout = $this->service(WorkspaceLayout::class);
-        $this->main = $this->workspaceLayout->main();
         $this->paneLayout = $this->service(PaneLayout::class);
         $this->paneLayout->arrangeEditorArea();
     }

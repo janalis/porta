@@ -5,9 +5,13 @@ declare(strict_types=1);
 namespace Porta\Tests\E2e;
 
 use PHPUnit\Framework\TestCase;
+use Porta\Config\CommandRegistry;
+use Porta\Editor\BufferManager;
+use Porta\History\SessionRestorer;
 use Porta\Tests\Support\RunsIde;
 use Porta\Tests\Support\TempProject;
 use Symfony\Component\Tui\Ansi\AnsiUtils;
+use Symfony\Component\Tui\Render\Renderer;
 
 /**
  * The F1 help browser: docs render styled in the help viewer (no markdown
@@ -94,14 +98,14 @@ final class IdeDocsTest extends TestCase
                     $tui->tick();
                     // Re-focus the pane with a click on a blank body row, then
                     // follow the link again: still ONE help tab, page swapped in place.
-                    $renderer = new \ReflectionProperty($ide, 'renderer')->getValue($ide);
+                    $renderer = $ide->resolve(Renderer::class);
                     $rect = $renderer->getWidgetRect($tui->getById('help-viewer'));
                     $this->assertNotNull($rect, 'the help viewer pane is laid out');
                     $tui->handleInput(\sprintf("\x1b[<0;%d;%dM", $rect->col + 1, $rect->row + 4));
                     $tui->handleInput(\sprintf("\x1b[<0;%d;%dm", $rect->col + 1, $rect->row + 4));
                     $tui->handleInput("\r"); // the focused link is still [Editor] (restored by the earlier back)
                     $tui->tick();
-                    $paths = array_map(static fn ($b): string => $b->path, new \ReflectionProperty($ide, 'buffers')->getValue($ide)->all());
+                    $paths = array_map(static fn ($b): string => $b->path, $ide->resolve(BufferManager::class)->all());
                     $this->assertCount(2, $paths, 'navigation reuses the single help tab (a.php + Documentation)');
                     $this->assertStringEndsWith('editor.md', (string) $tui->getById('help-viewer')->path(), 'the page swapped in place');
 
@@ -150,7 +154,7 @@ final class IdeDocsTest extends TestCase
             [
                 300 => function ($tui, $terminal, $ide): void {
                     // F1 over the settings view closes it and shows the docs.
-                    new \ReflectionProperty($ide, 'commands')->getValue($ide)->run('ide_settings');
+                    $ide->resolve(CommandRegistry::class)->run('ide_settings');
                     $tui->tick();
                     $tui->handleInput("\x1bOP");
                     $tui->tick();
@@ -161,8 +165,7 @@ final class IdeDocsTest extends TestCase
                     // ' F1   Editor' at doc line 7 (the H1 rule is line 1), one
                     // header row above the body, link text from column 6 —
                     // derive the screen position from the pane's rect.
-                    $rect = new \ReflectionProperty($ide, 'renderer')
-                        ->getValue($ide)
+                    $rect = $ide->resolve(Renderer::class)
                         ->getWidgetRect($tui->getById('help-viewer'));
                     $this->assertNotNull($rect, 'the help viewer pane is laid out');
                     [$linkCol, $linkRow] = [$rect->col + 6 + 1, $rect->row + 1 + 7 + 1]; // 0-based rect → 1-based SGR
@@ -180,8 +183,7 @@ final class IdeDocsTest extends TestCase
                 1400 => function ($tui, $terminal, $ide) use ($captureFile): void {
                     // Click the ‹ arrow in the header (row 0, column 1 of the
                     // pane) to go back to the README, then Enter on the https link.
-                    $rect = new \ReflectionProperty($ide, 'renderer')
-                        ->getValue($ide)
+                    $rect = $ide->resolve(Renderer::class)
                         ->getWidgetRect($tui->getById('help-viewer'));
                     $this->assertNotNull($rect, 'the help viewer pane is laid out');
                     $tui->handleInput(\sprintf("\x1b[<0;%d;%dM", $rect->col + 1 + 1, $rect->row + 1)); // 0-based rect → 1-based SGR
@@ -205,8 +207,7 @@ final class IdeDocsTest extends TestCase
                     $this->assertStringContainsString('https://example.com/x', (string) file_get_contents($captureFile));
 
                     // Quit-time session excludes the help tab (asserted after the run).
-                    new \ReflectionProperty($ide, 'sessionRestorer')
-                        ->getValue($ide)
+                    $ide->resolve(SessionRestorer::class)
                         ->save();
                 },
             ],
@@ -253,8 +254,7 @@ final class IdeDocsTest extends TestCase
                     $this->assertStringEndsWith('editor.md', (string) $viewer->path());
 
                     // The ‹ arrow must navigate despite the stale breadcrumbs rect.
-                    $rect = new \ReflectionProperty($ide, 'renderer')
-                        ->getValue($ide)
+                    $rect = $ide->resolve(Renderer::class)
                         ->getWidgetRect($viewer);
                     $this->assertNotNull($rect);
                     $tui->handleInput(\sprintf("\x1b[<0;%d;%dM", $rect->col + 2, $rect->row + 1));

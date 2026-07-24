@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Porta\Tests\E2e;
 
 use PHPUnit\Framework\TestCase;
+use Porta\Config\CommandRegistry;
 use Porta\Onboarding\OnboardingState;
 use Porta\Overlay\Presenter\WelcomeModalController;
 use Porta\Overlay\Region\DropdownRegion;
@@ -55,8 +56,7 @@ final class WelcomeScreenTest extends TestCase
      */
     private function modalRegion(object $ide): DropdownRegion
     {
-        $locator = new \ReflectionProperty($ide, 'locator')->getValue($ide);
-        $region = $locator->get(WelcomeModalController::class)->region();
+        $region = $ide->resolve(WelcomeModalController::class)->region();
         $this->assertNotNull($region, 'the Welcome modal is open and placed');
 
         return $region;
@@ -201,7 +201,7 @@ final class WelcomeScreenTest extends TestCase
                 $tui->handleInput("\x1b"); // back to the editor
                 $tui->tick();
 
-                $ide->getCommands()->run('ide_welcome'); // Help → Welcome
+                $ide->resolve(CommandRegistry::class)->run('ide_welcome'); // Help → Welcome
                 $tui->tick();
                 $tui->handleInput("\r");
                 $tui->tick();
@@ -357,8 +357,7 @@ final class WelcomeScreenTest extends TestCase
                 $tui->tick();
             },
             240 => function ($tui, $terminal, $ide): void {
-                $locator = new \ReflectionProperty($ide, 'locator')->getValue($ide);
-                $this->assertFalse($locator->get(WelcomeModalController::class)->isOpen(), 'the × closed the modal');
+                $this->assertFalse($ide->resolve(WelcomeModalController::class)->isOpen(), 'the × closed the modal');
                 $this->assertSame('editor', $tui->getFocus()?->getId(), 'focus returned to the editor');
             },
         ]);

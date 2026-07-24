@@ -8,6 +8,7 @@ use PHPUnit\Framework\TestCase;
 use Porta\Config\CommandRegistry;
 use Porta\Git\GitViewController;
 use Porta\Ide;
+use Porta\Layout\WorkspaceLayout;
 use Porta\Onboarding\OnboardingState;
 use Porta\Settings\SettingsViewController;
 use Porta\Tests\Support\TempProject;
@@ -49,11 +50,11 @@ final class IdeSettingsViewTest extends TestCase
 
         new OnboardingState($project->dir)->markWelcomeSeen();
         $this->ide = new Ide($project->dir, $project->path('a.php'), new VirtualTerminal(columns: 100, rows: 24));
-        $this->commands = new \ReflectionProperty($this->ide, 'commands')->getValue($this->ide);
-        $views = new \ReflectionProperty($this->ide, 'locator')->getValue($this->ide)->get(\Porta\Ui\WorkspaceViews::class);
+        $this->commands = $this->ide->resolve(CommandRegistry::class);
+        $views = $this->ide->resolve(\Porta\Ui\WorkspaceViews::class);
         $this->gitView = new \ReflectionProperty($views, 'git')->getValue($views);
         $this->settingsView = new \ReflectionProperty($views, 'settings')->getValue($views);
-        $this->main = new \ReflectionProperty($this->ide, 'main')->getValue($this->ide);
+        $this->main = $this->ide->resolve(WorkspaceLayout::class)->main();
     }
 
     /** @return list<string> */

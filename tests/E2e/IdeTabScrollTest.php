@@ -11,6 +11,7 @@ use Porta\Ide;
 use Porta\Tests\Support\RunsIde;
 use Porta\Tests\Support\TempProject;
 use Porta\Widget\TabBarWidget;
+use Symfony\Component\Tui\Render\Renderer;
 use Symfony\Component\Tui\Render\WidgetRect;
 use Symfony\Component\Tui\Tui;
 
@@ -43,7 +44,7 @@ final class IdeTabScrollTest extends TestCase
     private static function openAll(mixed $ide, TempProject $project, int $count): void
     {
         /** @var BufferService $buffers */
-        $buffers = new \ReflectionProperty(Ide::class, 'locator')->getValue($ide)->get(BufferService::class);
+        $buffers = $ide->resolve(BufferService::class);
         for ($i = 0; $i < $count; ++$i) {
             $buffers->openFile($project->path(\sprintf('chapter-file-%02d.php', $i)), OpenFocus::Keep);
         }
@@ -51,8 +52,7 @@ final class IdeTabScrollTest extends TestCase
 
     private static function tabsRect(mixed $ide, Tui $tui): WidgetRect
     {
-        $rect = new \ReflectionProperty(Ide::class, 'renderer')
-            ->getValue($ide)
+        $rect = $ide->resolve(Renderer::class)
             ->getWidgetRect($tui->getById('tabs'));
         \assert($rect instanceof WidgetRect, description: 'the strip rendered, so its rect exists');
 

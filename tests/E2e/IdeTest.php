@@ -11,6 +11,7 @@ use Porta\Tests\Support\TempProject;
 use Revolt\EventLoop;
 use Symfony\Component\Tui\Ansi\AnsiUtils;
 use Symfony\Component\Tui\Terminal\VirtualTerminal;
+use Symfony\Component\Tui\Tui;
 
 /**
  * Boots the full IDE against a VirtualTerminal inside a scratch project
@@ -67,7 +68,7 @@ final class IdeTest extends TestCase
     {
         // Flush any pending render before reading, so assertions do not
         // depend on the adaptive ticker having fired between steps.
-        $this->ide->getTui()->tick();
+        $this->ide->resolve(Tui::class)->tick();
 
         return AnsiUtils::stripAnsiCodes($this->terminal->getOutput());
     }
@@ -79,7 +80,7 @@ final class IdeTest extends TestCase
 
     public function testFullScenario(): void
     {
-        $tui = $this->ide->getTui();
+        $tui = $this->ide->resolve(Tui::class);
         $screen = $this->screen(...);
         $editor = static fn () => $tui->getById('editor');
 
@@ -315,7 +316,7 @@ final class IdeTest extends TestCase
      */
     public function testSearchEverywhere(): void
     {
-        $tui = $this->ide->getTui();
+        $tui = $this->ide->resolve(Tui::class);
         $screen = $this->screen(...);
         $editor = static fn () => $tui->getById('editor');
 

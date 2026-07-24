@@ -5,19 +5,28 @@ declare(strict_types=1);
 namespace Porta\Tests\E2e;
 
 use PHPUnit\Framework\TestCase;
+use Porta\Config\CommandRegistry;
 use Porta\Config\IdeConfig;
+use Porta\Editor\BufferManager;
+use Porta\Editor\BufferService;
 use Porta\Editor\LineNumberMode;
 use Porta\Editor\OpenFocus;
 use Porta\Editor\SelectionMode;
 use Porta\Ide;
+use Porta\Lsp\NavigationController;
 use Porta\Onboarding\OnboardingState;
+use Porta\Settings\SettingsController;
 use Porta\Tests\Support\RunsIde;
 use Porta\Tests\Support\TempProject;
 use Porta\Ui\Glyphs;
+use Porta\Ui\Notifier;
+use Porta\Widget\CodeEditorWidget;
+use Porta\Widget\ContextMenu;
 use Porta\Widget\Support\ResultsPanelFields;
 use Porta\Widget\TabBarWidget;
 use Revolt\EventLoop;
 use Symfony\Component\Tui\Ansi\AnsiUtils;
+use Symfony\Component\Tui\Render\Renderer;
 use Symfony\Component\Tui\Terminal\VirtualTerminal;
 use Symfony\Component\Tui\Tui;
 
@@ -302,7 +311,7 @@ final class IdeEdgeCasesTest extends TestCase
                     $tp->open('sh', new \Porta\Terminal\TerminalBuffer());
                     $tui->requestRender();
                     $tui->tick();
-                    $renderer = new \ReflectionProperty($ide, 'renderer')->getValue($ide);
+                    $renderer = $ide->resolve(Renderer::class);
                     $rect = $renderer->getWidgetRect($tp);
                     $top = $rect->row + 1; // 1-based screen row of the panel's top edge
                     // Arm past the tab strip's tabs (the tail of the top row is
@@ -335,16 +344,14 @@ final class IdeEdgeCasesTest extends TestCase
             [
                 200 => static function ($tui, $terminal, $ide) use (&$expected): void {
                     $results = $tui->getById('results');
-                    new \ReflectionProperty($ide, 'locator')
-                        ->getValue($ide)
-                        ->get(\Porta\Ui\Dock\BottomDock::class)
+                    $ide->resolve(\Porta\Ui\Dock\BottomDock::class)
                         ->showList(\Porta\Ui\Dock\ResultsPanelMode::Search, 'Find in Project', [
                             ['path' => 'b.php', 'line' => 0, 'text' => 'one'],
                             ['path' => 'c.php', 'line' => 0, 'text' => 'two'],
                         ]);
                     $tui->requestRender();
                     $tui->tick(); // force a frame so the pane gets a positioned rect
-                    $renderer = new \ReflectionProperty($ide, 'renderer')->getValue($ide);
+                    $renderer = $ide->resolve(Renderer::class);
                     $rect = $renderer->getWidgetRect($results);
                     $expected = $rect->rows + 4;
                     $top = $rect->row; // 1-based screen row of the dock strip — the resize grab
@@ -384,14 +391,14 @@ final class IdeEdgeCasesTest extends TestCase
                     // The branch resolves asynchronously; wait for it to render.
                     $this->await(static fn (): bool => null !== $status->branchColumnSpan(), what: 'the branch to render in the status bar');
 
-                    $renderer = new \ReflectionProperty($ide, 'renderer')->getValue($ide);
+                    $renderer = $ide->resolve(Renderer::class);
                     $rect = $renderer->getWidgetRect($status);
                     $span = $status->branchColumnSpan();
                     $col = $rect->col + intdiv($span[0] + $span[1], num2: 2); // middle of the branch cell
                     $tui->handleInput(\sprintf("\x1b[<2;%d;%dM", $col + 1, $rect->row + 1)); // right-click (1-based)
                     $tui->tick();
 
-                    $menu = new \ReflectionProperty($ide, 'contextMenu')->getValue($ide);
+                    $menu = $ide->resolve(ContextMenu::class);
                     $this->assertTrue($menu->isOpen(), 'the branch menu opened');
                     $labels = array_map(
                         static fn (array $row): string => trim(AnsiUtils::stripAnsiCodes($row['segment'])),
@@ -425,9 +432,7 @@ final class IdeEdgeCasesTest extends TestCase
             [
                 300 => function ($tui, $terminal, $ide) use ($project): void {
                     // Open the deep file as a background tab (does not reveal it).
-                    new \ReflectionProperty($ide, 'locator')
-                        ->getValue($ide)
-                        ->get(\Porta\Editor\BufferService::class)
+                    $ide->resolve(\Porta\Editor\BufferService::class)
                         ->openFile($project->path('src/deep/Target.php'), \Porta\Editor\OpenFocus::Keep);
                     $tui->requestRender();
                     $tui->tick();
@@ -436,8 +441,7 @@ final class IdeEdgeCasesTest extends TestCase
                     $this->assertNotSame('Target.php', $tree->selectedNode()?->name, 'opening a file does not reveal it in the tree');
 
                     $tabs = $tui->getById('tabs');
-                    $rect = new \ReflectionProperty($ide, 'renderer')
-                        ->getValue($ide)
+                    $rect = $ide->resolve(Renderer::class)
                         ->getWidgetRect($tabs);
                     $anchor = $tabs->tabAnchor(1); // the Target.php tab
                     $this->assertNotNull($anchor);
@@ -472,13 +476,11 @@ final class IdeEdgeCasesTest extends TestCase
                 200 => static function ($tui, $terminal, $ide) use (&$expected): void {
                     // An empty tool (no results): it used to render no rows, so the
                     // dock had no rect to grab. It now reserves its full height.
-                    new \ReflectionProperty($ide, 'locator')
-                        ->getValue($ide)
-                        ->get(\Porta\Ui\Dock\BottomDock::class)
+                    $ide->resolve(\Porta\Ui\Dock\BottomDock::class)
                         ->showList(\Porta\Ui\Dock\ResultsPanelMode::Search, 'Find in Project', []);
                     $tui->requestRender();
                     $tui->tick();
-                    $renderer = new \ReflectionProperty($ide, 'renderer')->getValue($ide);
+                    $renderer = $ide->resolve(Renderer::class);
                     $rect = $renderer->getWidgetRect($tui->getById('results'));
                     $expected = $rect->rows + 4;
                     $top = $rect->row; // the dock strip row doubles as the resize grab
@@ -678,10 +680,10 @@ final class IdeEdgeCasesTest extends TestCase
             $project->path('a.php'),
             [
                 200 => function ($tui, $terminal, $ide) use ($project): void {
-                    $service = new \ReflectionProperty($ide, 'bufferService')->getValue($ide);
+                    $service = $ide->resolve(BufferService::class);
                     $service->openFile($project->path('img.png'), OpenFocus::Editor);
                     $tui->tick();
-                    $editor = new \ReflectionProperty($ide, 'editor')->getValue($ide);
+                    $editor = $ide->resolve(CodeEditorWidget::class);
                     $this->assertNull($editor->getContext(), 'the editor is detached under an image tab');
                     $this->assertSame('image-viewer', $tui->getFocus()?->getId());
                     // Ctrl+S reaches the viewer (unbound) and saveBuffer guards anyway.
@@ -702,9 +704,9 @@ final class IdeEdgeCasesTest extends TestCase
                     // An external change re-decodes on the next poll; garbage keeps the old pixels.
                     file_put_contents($project->path('img.png'), $this->twoColorPng(16, 2));
                     touch($project->path('img.png'), time() + 2); // force a new disk stamp within the same second
-                    $service = new \ReflectionProperty($ide, 'bufferService')->getValue($ide);
+                    $service = $ide->resolve(BufferService::class);
                     $service->pollFilesystem();
-                    $buffers = new \ReflectionProperty($ide, 'buffers')->getValue($ide);
+                    $buffers = $ide->resolve(BufferManager::class);
                     $this->assertSame(16, $buffers->active()?->image?->width, 'externally changed image reloaded');
                     $tui->tick();
                     $this->assertStringContainsString('Reloaded img.png', AnsiUtils::stripAnsiCodes($terminal->getOutput()));
@@ -750,8 +752,7 @@ final class IdeEdgeCasesTest extends TestCase
             $project->path('a.php'),
             [
                 200 => static function ($tui, $terminal, $ide) use ($project): void {
-                    new \ReflectionProperty($ide, 'bufferService')
-                        ->getValue($ide)
+                    $ide->resolve(BufferService::class)
                         ->openFile($project->path('img.png'), OpenFocus::Editor);
                     $tui->handleInput("\x1b[102;6u"); // ctrl+shift+f → find in files
                 },
@@ -780,7 +781,7 @@ final class IdeEdgeCasesTest extends TestCase
             null,
             [
                 200 => function ($tui, $terminal, $ide) use ($project): void {
-                    $service = new \ReflectionProperty($ide, 'bufferService')->getValue($ide);
+                    $service = $ide->resolve(BufferService::class);
                     $service->openFile($project->path('big.png'));
                     $tui->tick();
                     $this->assertStringContainsString('Image too large (> 20 MB)', AnsiUtils::stripAnsiCodes($terminal->getOutput()));
@@ -957,7 +958,7 @@ final class IdeEdgeCasesTest extends TestCase
                     $tui->handleInput("\x1b[<2;26;3M");
                     $this->assertTrue($tui->getById('context-menu')->isOpen(), 'context menu opened');
 
-                    $renderer = new \ReflectionProperty($ide, 'renderer')->getValue($ide);
+                    $renderer = $ide->resolve(Renderer::class);
                     $editor = $tui->getById('editor');
                     $rect = $renderer->getWidgetRect($editor);
                     $rows = $editor->render(new \Symfony\Component\Tui\Render\RenderContext($rect->columns, $rect->rows));
@@ -995,7 +996,7 @@ final class IdeEdgeCasesTest extends TestCase
                     $tui->handleInput('2'); // switch to the History tab
                     $this->await(static fn (): bool => null !== $tui->getById('git-history')->selectedCommit());
 
-                    $renderer = new \ReflectionProperty($ide, 'renderer')->getValue($ide);
+                    $renderer = $ide->resolve(Renderer::class);
                     $rect = $renderer->getWidgetRect($tui->getById('git-history'));
                     $terminal->clearOutput();
                     $tui->handleInput(\sprintf("\x1b[<2;%d;%dM", $rect->col + 8, $rect->row + 2)); // right-click the first commit row (SGR is 1-based)
@@ -1063,7 +1064,7 @@ final class IdeEdgeCasesTest extends TestCase
                     $menu = $tui->getById('context-menu');
                     $this->assertTrue($menu->isOpen(), 'the context menu is open');
 
-                    $overlay = new \ReflectionProperty($ide, 'locator')->getValue($ide)->get(\Porta\Overlay\State\MenuOverlayController::class);
+                    $overlay = $ide->resolve(\Porta\Overlay\State\MenuOverlayController::class);
                     $region = $overlay->contextMenuDropdown();
                     $this->assertNotNull($region, 'the menu overlay was placed');
 
@@ -1098,7 +1099,7 @@ final class IdeEdgeCasesTest extends TestCase
         $rightClickFolder = static function ($tui, $terminal, $ide): void {
             $tui->requestRender(force: true); // force a frame so the tree rect is live under load
             $tui->processRender();
-            $renderer = new \ReflectionProperty($ide, 'renderer')->getValue($ide);
+            $renderer = $ide->resolve(Renderer::class);
             $rect = $renderer->getWidgetRect($tui->getById('tree'));
             // Header is relative row 0; the first entry (the `sub` folder) is row 1.
             $tui->handleInput(\sprintf("\x1b[<2;%d;%dM", $rect->col + 3, $rect->row + 2));
@@ -1161,7 +1162,7 @@ final class IdeEdgeCasesTest extends TestCase
         $rightClickFolder = static function ($tui, $terminal, $ide): void {
             $tui->requestRender(force: true); // force a frame so the tree rect is live under load
             $tui->processRender();
-            $renderer = new \ReflectionProperty($ide, 'renderer')->getValue($ide);
+            $renderer = $ide->resolve(Renderer::class);
             $rect = $renderer->getWidgetRect($tui->getById('tree'));
             $tui->handleInput(\sprintf("\x1b[<2;%d;%dM", $rect->col + 3, $rect->row + 2));
         };
@@ -1325,7 +1326,7 @@ final class IdeEdgeCasesTest extends TestCase
                     $this->assertStringContainsString('File0.php', $panelText($tui), 'the first files show initially');
                 },
                 900 => function ($tui, $terminal, $ide) use ($panelText): void {
-                    $renderer = new \ReflectionProperty($ide, 'renderer')->getValue($ide);
+                    $renderer = $ide->resolve(Renderer::class);
                     $rect = $renderer->getWidgetRect($tui->getById('results'));
                     $this->assertNotNull($rect, 'the results pane has a rect');
 
@@ -1402,7 +1403,7 @@ final class IdeEdgeCasesTest extends TestCase
                 },
                 280 => function ($tui, $terminal, $ide): void {
                     $editor = $tui->getById('editor');
-                    $renderer = new \ReflectionProperty($ide, 'renderer')->getValue($ide);
+                    $renderer = $ide->resolve(Renderer::class);
                     $rect = $renderer->getWidgetRect($editor);
                     $rendered = $editor->render(new \Symfony\Component\Tui\Render\RenderContext($rect->columns, $rect->rows));
                     $this->assertStringContainsString('class Service', AnsiUtils::stripAnsiCodes($rendered[0]), 'class header pinned at the top');
@@ -1443,7 +1444,7 @@ final class IdeEdgeCasesTest extends TestCase
                 340 => static function ($tui, $terminal, $ide): void {
                     $tui->requestRender();
                     $tui->tick();
-                    $renderer = new \ReflectionProperty($ide, 'renderer')->getValue($ide);
+                    $renderer = $ide->resolve(Renderer::class);
                     $rect = $renderer->getWidgetRect($tui->getById('breadcrumbs'));
                     // ' App'(1..3) › 'Service'(7..13) › 'handle'. Click 'Service' (col 8) →
                     // jump to the class declaration (0-based line 4).
@@ -1468,7 +1469,7 @@ final class IdeEdgeCasesTest extends TestCase
             $project->path('a.php'),
             [
                 200 => function ($tui, $terminal, $ide): void {
-                    $renderer = new \ReflectionProperty($ide, 'renderer')->getValue($ide);
+                    $renderer = $ide->resolve(Renderer::class);
                     $rect = $renderer->getWidgetRect($tui->getById('editor'));
 
                     // Control: a click INSIDE the editor (row for line 2) routes
@@ -1504,7 +1505,7 @@ final class IdeEdgeCasesTest extends TestCase
             $project->path('a.php'),
             [
                 200 => static function ($tui, $terminal, $ide): void {
-                    $renderer = new \ReflectionProperty($ide, 'renderer')->getValue($ide);
+                    $renderer = $ide->resolve(Renderer::class);
                     $rect = $renderer->getWidgetRect($tui->getById('tree'));
                     // Header is relative row 0, a.php (selected) is row 1; hover b.php at row 2.
                     $tui->handleInput(\sprintf("\x1b[<35;%d;%dM", $rect->col + 3, $rect->row + 3));
@@ -1514,7 +1515,7 @@ final class IdeEdgeCasesTest extends TestCase
                     $line = $tree->render(new \Symfony\Component\Tui\Render\RenderContext(30, 24))[2];
                     $this->assertStringContainsString("\x1b[48;5;236m", $line, 'hovered tree row is highlighted');
                     // Move off the tree into the editor → the hover clears.
-                    $renderer = new \ReflectionProperty($ide, 'renderer')->getValue($ide);
+                    $renderer = $ide->resolve(Renderer::class);
                     $editorRect = $renderer->getWidgetRect($tui->getById('editor'));
                     $tui->handleInput(\sprintf("\x1b[<35;%d;%dM", $editorRect->col + 5, $editorRect->row + 3));
                 },
@@ -1674,7 +1675,7 @@ final class IdeEdgeCasesTest extends TestCase
                     $this->assertStringContainsString('[1/3]', AnsiUtils::stripAnsiCodes($terminal->getOutput()), 'substring mode hits foobar too');
 
                     // Click the right-aligned [\b] tag through the real router.
-                    $renderer = new \ReflectionProperty($ide, 'renderer')->getValue($ide);
+                    $renderer = $ide->resolve(Renderer::class);
                     $rect = $renderer->getWidgetRect($tui->getById('find-bar'));
                     $tui->handleInput(\sprintf("\x1b[<0;%d;%dM", $rect->col + $rect->columns - 2, $rect->row + 1));
                 },
@@ -1817,9 +1818,8 @@ final class IdeEdgeCasesTest extends TestCase
             $tui->tick();
             $renderer = new \ReflectionProperty(\Symfony\Component\Tui\Tui::class, 'renderer')->getValue($tui);
             $root = new \ReflectionProperty(\Symfony\Component\Tui\Tui::class, 'root')->getValue($tui);
-            $locator = new \ReflectionProperty($ide, 'locator')->getValue($ide);
-            $segmenter = $locator->get(\Porta\Ui\PaneSegmenter::class);
-            $reorder = $locator->get(\Porta\I18n\PaneReorder::class);
+            $segmenter = $ide->resolve(\Porta\Ui\PaneSegmenter::class);
+            $reorder = $ide->resolve(\Porta\I18n\PaneReorder::class);
             $terminal = $tui->getTerminal();
             $columns = $terminal->getColumns();
             $lines = array_values($renderer->render($root, $columns, $terminal->getRows()));
@@ -1835,7 +1835,7 @@ final class IdeEdgeCasesTest extends TestCase
             [
                 300 => static function ($tui, $terminal, $ide) use ($assertWidths): void {
                     $assertWidths($tui, $ide); // editor view
-                    new \ReflectionProperty($ide, 'commands')->getValue($ide)->run('ide_settings');
+                    $ide->resolve(CommandRegistry::class)->run('ide_settings');
                 },
                 500 => static function ($tui, $terminal, $ide) use ($assertWidths): void {
                     $assertWidths($tui, $ide); // settings view
@@ -3191,7 +3191,7 @@ final class IdeEdgeCasesTest extends TestCase
         $terminal = new VirtualTerminal(columns: 80, rows: 20);
         new OnboardingState($project->dir)->markWelcomeSeen();
         $ide = new Ide($project->dir, $project->path('a.php'), $terminal);
-        $tui = $ide->getTui();
+        $tui = $ide->resolve(Tui::class);
 
         // No frame has rendered yet, so every widget rect is null. Opening the
         // menu must not blow up placing the (impossible-to-place) overlay.
@@ -3766,7 +3766,7 @@ final class IdeEdgeCasesTest extends TestCase
         $terminal = new VirtualTerminal(columns: 100, rows: 24);
         new OnboardingState($project->dir)->markWelcomeSeen();
         $ide = new Ide($project->dir, $project->path('A.php'), $terminal);
-        $tui = $ide->getTui();
+        $tui = $ide->resolve(Tui::class);
         EventLoop::delay(0.3, static function () use ($tui): void {
             $tui->handleInput("\x14"); // tree
             $tui->handleInput("\x1b[B"); // B.php
@@ -3789,7 +3789,7 @@ final class IdeEdgeCasesTest extends TestCase
         $terminal2 = new VirtualTerminal(columns: 100, rows: 24);
         new OnboardingState($project->dir)->markWelcomeSeen();
         $ide2 = new Ide($project->dir, null, $terminal2);
-        $tui2 = $ide2->getTui();
+        $tui2 = $ide2->resolve(Tui::class);
         EventLoop::delay(0.3, function () use ($tui2): void {
             $editor = $tui2->getById('editor');
             $this->assertNotNull($editor->getFilePath(), 'a buffer was restored');
@@ -3888,7 +3888,7 @@ final class IdeEdgeCasesTest extends TestCase
                 360 => function ($tui, $terminal, $ide): void {
                     $tui->tick();
                     // Click the centre of the terminal pane → focus returns to it.
-                    $renderer = new \ReflectionProperty($ide, 'renderer')->getValue($ide);
+                    $renderer = $ide->resolve(Renderer::class);
                     $rect = $renderer->getWidgetRect($tui->getById('terminal'));
                     $this->assertNotNull($rect, 'terminal pane is laid out');
                     $row = $rect->row + intdiv($rect->rows, num2: 2);
@@ -3928,7 +3928,7 @@ final class IdeEdgeCasesTest extends TestCase
 
                     // Force a full frame so the terminal pane has a live WidgetRect.
                     $this->frame($tui);
-                    $renderer = new \ReflectionProperty($ide, 'renderer')->getValue($ide);
+                    $renderer = $ide->resolve(Renderer::class);
                     $rect = $renderer->getWidgetRect($panel);
                     $row = $rect->row + intdiv($rect->rows, num2: 2);
                     $col = $rect->col + intdiv($rect->columns, num2: 2);
@@ -4208,9 +4208,9 @@ final class IdeEdgeCasesTest extends TestCase
         $terminal = new VirtualTerminal(columns: 160, rows: 24);
         new OnboardingState($project->dir)->markWelcomeSeen();
         $ide = new Ide($project->dir, $project->path('src/Demo.php'), $terminal);
-        $tui = $ide->getTui();
+        $tui = $ide->resolve(Tui::class);
 
-        $navigation = $ide->getNavigation();
+        $navigation = $ide->resolve(NavigationController::class);
         $stack = new \ReflectionProperty($navigation, 'jumpStack');
         $stack->setValue($navigation, array_fill(0, count: 50, value: ['path' => $project->path('src/Demo.php'), 'line' => 0, 'col' => 0]));
 
@@ -4327,7 +4327,7 @@ final class IdeEdgeCasesTest extends TestCase
         $terminal = new VirtualTerminal(columns: 80, rows: 20);
         new OnboardingState($project->dir)->markWelcomeSeen();
         $ide = new Ide($project->dir, $project->path('a.php'), $terminal);
-        $tui = $ide->getTui();
+        $tui = $ide->resolve(Tui::class);
 
         EventLoop::delay(0.2, static fn () => $tui->handleInput("\x11"));
         $watchdog = EventLoop::delay(3.0, static function () use ($tui): void {
@@ -4347,7 +4347,7 @@ final class IdeEdgeCasesTest extends TestCase
         $terminal = new VirtualTerminal(columns: 80, rows: 20);
         new OnboardingState($project->dir)->markWelcomeSeen();
         $ide = new Ide($project->dir, $project->path('a.php'), $terminal);
-        $tui = $ide->getTui();
+        $tui = $ide->resolve(Tui::class);
 
         EventLoop::delay(0.2, static fn () => $tui->handleInput("\x11")); // Ctrl+Q
         $watchdog = EventLoop::delay(3.0, static function () use ($tui): void {
@@ -4637,7 +4637,7 @@ final class IdeEdgeCasesTest extends TestCase
                 },
                 550 => function ($tui, $terminal, $ide) use ($project): void {
                     $this->await(static fn (): bool => str_contains(AnsiUtils::stripAnsiCodes($terminal->getOutput()), '[ ] M src/A.php'));
-                    $renderer = new \ReflectionProperty($ide, 'renderer')->getValue($ide);
+                    $renderer = $ide->resolve(Renderer::class);
                     $rect = $renderer->getWidgetRect($tui->getById('git-changes'));
 
                     $terminal->clearOutput();
@@ -4855,7 +4855,7 @@ final class IdeEdgeCasesTest extends TestCase
                 300 => static function ($tui, $terminal, $ide): void {
                     // Open via the command registry (the ide_settings closure),
                     // then the mouse steps below exercise the routing.
-                    new \ReflectionProperty($ide, 'commands')->getValue($ide)->run('ide_settings');
+                    $ide->resolve(CommandRegistry::class)->run('ide_settings');
                 },
                 500 => function ($tui, $terminal): void {
                     $tui->tick();
@@ -4945,8 +4945,7 @@ final class IdeEdgeCasesTest extends TestCase
                 },
                 500 => static function ($tui, $terminal, $ide): void {
                     // Change the theme setting live, as the settings form would.
-                    new \ReflectionProperty($ide, 'settings')
-                        ->getValue($ide)
+                    $ide->resolve(SettingsController::class)
                         ->changeSetting('theme', 'light');
                     $tui->tick();
                 },
@@ -4962,8 +4961,7 @@ final class IdeEdgeCasesTest extends TestCase
 
                     // Second live switch: the accessibility theme.
                     $terminal->clearOutput();
-                    new \ReflectionProperty($ide, 'settings')
-                        ->getValue($ide)
+                    $ide->resolve(SettingsController::class)
                         ->changeSetting('theme', 'high-contrast');
                     $tui->tick();
                 },
@@ -4987,12 +4985,11 @@ final class IdeEdgeCasesTest extends TestCase
         $project = new TempProject(['a.php' => "<?php\n"]);
 
         $changePosition = static function ($ide, string $position): void {
-            new \ReflectionProperty($ide, 'settings')
-                ->getValue($ide)
+            $ide->resolve(SettingsController::class)
                 ->changeSetting('tabBarPosition', $position);
         };
         $rects = static function ($tui, $ide): array {
-            $renderer = new \ReflectionProperty($ide, 'renderer')->getValue($ide);
+            $renderer = $ide->resolve(Renderer::class);
 
             return [$renderer->getWidgetRect($tui->getById('tabs')), $renderer->getWidgetRect($tui->getById('editor'))];
         };
@@ -5054,7 +5051,7 @@ final class IdeEdgeCasesTest extends TestCase
             [
                 200 => function ($tui, $terminal, $ide): void {
                     $tui->tick();
-                    $renderer = new \ReflectionProperty($ide, 'renderer')->getValue($ide);
+                    $renderer = $ide->resolve(Renderer::class);
                     $tabs = $renderer->getWidgetRect($tui->getById('tabs'));
                     $editor = $renderer->getWidgetRect($tui->getById('editor'));
                     $this->assertSame(1, $tabs->rows, 'an unknown persisted value boots the top strip');
@@ -5076,8 +5073,7 @@ final class IdeEdgeCasesTest extends TestCase
             '.porta.json' => json_encode(['settings' => ['tabBarPosition' => 'left']]),
         ]);
 
-        $tabsRect = static fn ($tui, $ide) => new \ReflectionProperty($ide, 'renderer')
-            ->getValue($ide)
+        $tabsRect = static fn ($tui, $ide) => $ide->resolve(Renderer::class)
             ->getWidgetRect($tui->getById('tabs'));
 
         $this->runIde(
@@ -5085,7 +5081,7 @@ final class IdeEdgeCasesTest extends TestCase
             $project->path('A.php'),
             [
                 150 => function ($tui, $terminal, $ide) use ($project): void {
-                    $service = new \ReflectionProperty($ide, 'bufferService')->getValue($ide);
+                    $service = $ide->resolve(BufferService::class);
                     $service->openFile($project->path('B.php'), OpenFocus::Editor);
                     $service->openFile($project->path('C.php'), OpenFocus::Editor);
                     $tui->tick();
@@ -5128,7 +5124,7 @@ final class IdeEdgeCasesTest extends TestCase
                 900 => function ($tui, $terminal, $ide): void {
                     // A content swap (the help viewer) lands inside the editor body,
                     // not beside the vertical list in the horizontal editor pane.
-                    new \ReflectionProperty($ide, 'commands')->getValue($ide)->run('ide_help');
+                    $ide->resolve(CommandRegistry::class)->run('ide_help');
                     $tui->tick();
                     $this->assertContains($tui->getById('help-viewer'), $tui->getById('editor-body')->all(), 'the viewer swapped into the editor body slot');
                     $this->assertCount(2, $tui->getById('editor-pane')->all(), 'the editor pane keeps exactly the list and the body');
@@ -5152,16 +5148,16 @@ final class IdeEdgeCasesTest extends TestCase
             $project->path('a.php'),
             [
                 200 => function ($tui, $terminal, $ide): void {
-                    new \ReflectionProperty($ide, 'commands')->getValue($ide)->run('ide_help');
+                    $ide->resolve(CommandRegistry::class)->run('ide_help');
                     $tui->tick();
                     $tui->handleInput("\x1b[21;5~"); // Ctrl+F10 on the help viewer: the tab menu
                     $tui->tick();
                     $this->assertTrue($tui->getById('context-menu')->isOpen(), 'the keyboard tab menu opened');
                     // A top strip anchors one row below the tab; the bottom strip anchors on
                     // its own row so the overlay's overflow flip opens the panel above it.
-                    $renderer = new \ReflectionProperty($ide, 'renderer')->getValue($ide);
+                    $renderer = $ide->resolve(Renderer::class);
                     $tabsRow = $renderer->getWidgetRect($tui->getById('tabs'))->row;
-                    $overlay = new \ReflectionProperty($ide, 'locator')->getValue($ide)->get(\Porta\Overlay\State\MenuOverlayController::class);
+                    $overlay = $ide->resolve(\Porta\Overlay\State\MenuOverlayController::class);
                     $this->assertSame($tabsRow, new \ReflectionProperty($overlay, 'contextAnchorRow')->getValue($overlay));
                 },
             ],
@@ -5185,7 +5181,7 @@ final class IdeEdgeCasesTest extends TestCase
             $project->path('a.php'),
             [
                 300 => static function ($tui, $terminal, $ide): void {
-                    new \ReflectionProperty($ide, 'commands')->getValue($ide)->run('ide_settings');
+                    $ide->resolve(CommandRegistry::class)->run('ide_settings');
                 },
                 600 => function ($tui): void {
                     $this->frame($tui);
@@ -6313,7 +6309,7 @@ final class IdeEdgeCasesTest extends TestCase
         $terminal = new VirtualTerminal(columns: 80, rows: 24);
         new OnboardingState($project->dir)->markWelcomeSeen();
         $ide = new Ide($project->dir, $project->path('A.php'), $terminal, null, initialLine: 4);
-        $tui = $ide->getTui();
+        $tui = $ide->resolve(Tui::class);
 
         $timer = EventLoop::delay(0.2, function () use ($tui): void {
             $tui->tick();
@@ -6335,7 +6331,7 @@ final class IdeEdgeCasesTest extends TestCase
         $terminal = new VirtualTerminal(columns: 100, rows: 24);
         new OnboardingState($project->dir)->markWelcomeSeen();
         $ide = new Ide($project->dir, $project->path('A.php'), $terminal, null, lspDisabled: true);
-        $tui = $ide->getTui();
+        $tui = $ide->resolve(Tui::class);
 
         $timer = EventLoop::delay(0.2, function () use ($tui): void {
             $tui->tick();
@@ -6582,7 +6578,7 @@ final class IdeEdgeCasesTest extends TestCase
                     ]);
                     $tui->requestRender();
                     $tui->tick(); // force a frame so the panel gets a positioned rect
-                    $renderer = new \ReflectionProperty($ide, 'renderer')->getValue($ide);
+                    $renderer = $ide->resolve(Renderer::class);
                     $rect = $renderer->getWidgetRect($results);
                     // A list tool has no header row; the second result is at relative row 1.
                     $x = $rect->col + 6;
@@ -6621,7 +6617,7 @@ final class IdeEdgeCasesTest extends TestCase
                     $tui->requestRender();
                     $tui->tick(); // paint the popup so its box geometry is recorded
                     $editor = $tui->getById('editor');
-                    $renderer = new \ReflectionProperty($ide, 'renderer')->getValue($ide);
+                    $renderer = $ide->resolve(Renderer::class);
                     $rect = $renderer->getWidgetRect($editor);
                     // Hover then click the suggestion itself (through the
                     // router's editor-relative completion branch): the box is
@@ -6645,7 +6641,7 @@ final class IdeEdgeCasesTest extends TestCase
                         new \Porta\Editor\CompletionItem(label: 'alpha', insertText: 'alpha', kind: 'fn', detail: ''),
                     ]);
                     $this->assertTrue($editor->isCompletionOpen());
-                    $renderer = new \ReflectionProperty($ide, 'renderer')->getValue($ide);
+                    $renderer = $ide->resolve(Renderer::class);
                     $rect = $renderer->getWidgetRect($editor);
                     $tui->handleInput(\sprintf("\x1b[<0;%d;%dM", $rect->col + 6, $rect->row + $rect->rows));
                 },
@@ -6671,8 +6667,7 @@ final class IdeEdgeCasesTest extends TestCase
                     // cursor position plus a DECSCUSR shape: 5 = bar (default).
                     $this->assertStringContainsString("\x1b[5 q", $terminal->getOutput(), 'the default bar shape is emitted');
 
-                    new \ReflectionProperty($ide, 'settings')
-                        ->getValue($ide)
+                    $ide->resolve(SettingsController::class)
                         ->changeSetting('cursorShape', 'block');
                     $terminal->clearOutput();
                     $tui->tick();
@@ -6684,7 +6679,7 @@ final class IdeEdgeCasesTest extends TestCase
                     $this->assertStringNotContainsString("\x1b[5 q", $out, 'no stale bar shape survives the cache flush');
                 },
                 600 => function ($tui, $terminal, $ide): void {
-                    new \ReflectionProperty($ide, 'commands')->getValue($ide)->run('ide_terminal');
+                    $ide->resolve(CommandRegistry::class)->run('ide_terminal');
                     $terminal->clearOutput();
                     $tui->tick();
                     $rows = $tui->getById('terminal')->render(new \Symfony\Component\Tui\Render\RenderContext(160, 12));
@@ -6707,21 +6702,19 @@ final class IdeEdgeCasesTest extends TestCase
             [
                 200 => static function ($tui, $terminal, $ide): void {
                     // The 0.1 s flash will expire; the log is the only way back to it.
-                    new \ReflectionProperty($ide, 'notifier')
-                        ->getValue($ide)
+                    $ide->resolve(Notifier::class)
                         ->flash('the answer is 42', 0.1);
                 },
                 400 => function ($tui, $terminal, $ide): void {
                     $tui->tick();
-                    new \ReflectionProperty($ide, 'commands')->getValue($ide)->run('ide_notifications');
+                    $ide->resolve(CommandRegistry::class)->run('ide_notifications');
                     $tui->tick();
                     $screen = AnsiUtils::stripAnsiCodes($terminal->getOutput());
                     $this->assertStringContainsString('Notifications', $screen, 'the dock tab opened');
                     $this->assertStringContainsString('the answer is 42', $screen, 'the expired flash is reviewable');
 
                     // A flash landing while the tab is open appears live, newest first.
-                    new \ReflectionProperty($ide, 'notifier')
-                        ->getValue($ide)
+                    $ide->resolve(Notifier::class)
                         ->flash('a later event', 0.1);
                     $tui->tick();
                     $panelText = AnsiUtils::stripAnsiCodes(implode("\n", $tui->getById('results')->render(new \Symfony\Component\Tui\Render\RenderContext(160, 12))));
@@ -6781,16 +6774,15 @@ final class IdeEdgeCasesTest extends TestCase
                 200 => function ($tui, $terminal, $ide): void {
                     // No server ran (PATH is empty): the tool opens empty and
                     // will live-tail — the exact "why is my server silent" flow.
-                    new \ReflectionProperty($ide, 'commands')->getValue($ide)->run('ide_lsp_log');
+                    $ide->resolve(CommandRegistry::class)->run('ide_lsp_log');
                     $tui->tick();
                     $screen = AnsiUtils::stripAnsiCodes($terminal->getOutput());
                     $this->assertStringContainsString('LSP Server Log', $screen, 'the dock tab opened');
                     $this->assertStringContainsString('0 results', $screen, 'empty so far');
 
                     // Output arrives while the tab is open: it appears without re-running the command.
-                    $locator = new \ReflectionProperty($ide, 'locator')->getValue($ide);
-                    $locator->get(\Porta\Lsp\LspLog::class)->append("[php-ls] fatal: cannot index\n");
-                    $locator->get(\Porta\Lsp\LspLog::class)->append("[php-ls] retrying\n");
+                    $ide->resolve(\Porta\Lsp\LspLog::class)->append("[php-ls] fatal: cannot index\n");
+                    $ide->resolve(\Porta\Lsp\LspLog::class)->append("[php-ls] retrying\n");
                     $tui->tick();
                     $panelText = AnsiUtils::stripAnsiCodes(implode("\n", $tui->getById('results')->render(new \Symfony\Component\Tui\Render\RenderContext(160, 12))));
                     $this->assertStringContainsString('[php-ls] fatal: cannot index', $panelText, 'the captured server line appeared live');
@@ -6831,22 +6823,22 @@ final class IdeEdgeCasesTest extends TestCase
                     $this->assertSame('editor', $tui->getFocus()?->getId());
                 },
                 350 => function ($tui, $terminal, $ide): void {
-                    new \ReflectionProperty($ide, 'commands')->getValue($ide)->run('ide_terminal');
+                    $ide->resolve(CommandRegistry::class)->run('ide_terminal');
                     $this->assertSame('terminal', $tui->getFocus()?->getId());
                     $tui->handleInput("\x1b[17;5~"); // Ctrl+F6: terminal → editor (backward)
                     $this->assertSame('editor', $tui->getFocus()?->getId());
                     $tui->handleInput("\x1b[17~"); // F6 forward returns to the terminal
                     $this->assertSame('terminal', $tui->getFocus()?->getId());
-                    new \ReflectionProperty($ide, 'commands')->getValue($ide)->run('ide_terminal'); // close it again
+                    $ide->resolve(CommandRegistry::class)->run('ide_terminal'); // close it again
                 },
                 500 => function ($tui, $terminal, $ide): void {
-                    new \ReflectionProperty($ide, 'commands')->getValue($ide)->run('ide_settings');
+                    $ide->resolve(CommandRegistry::class)->run('ide_settings');
                     $this->assertSame('settings-form', $tui->getFocus()?->getId(), 'settings opens on the form');
                     $tui->handleInput("\x1b[17~"); // F6 delegates to the settings view
                     $this->assertSame('settings-nav', $tui->getFocus()?->getId());
                     $tui->handleInput("\x1b[17;5~"); // either direction bounces the two panes
                     $this->assertSame('settings-form', $tui->getFocus()?->getId());
-                    new \ReflectionProperty($ide, 'commands')->getValue($ide)->run('ide_settings');
+                    $ide->resolve(CommandRegistry::class)->run('ide_settings');
                 },
             ],
         );
@@ -6870,7 +6862,7 @@ final class IdeEdgeCasesTest extends TestCase
             $project->path('a.php'),
             [
                 400 => function ($tui, $terminal, $ide): void {
-                    new \ReflectionProperty($ide, 'commands')->getValue($ide)->run('ide_git');
+                    $ide->resolve(CommandRegistry::class)->run('ide_git');
                     $this->assertSame('git-changes', $tui->getFocus()?->getId(), 'git view opens on the changes list');
                     $tui->handleInput("\x1b[17~"); // F6 delegates to the git view's pane order
                     $this->assertSame('git-diff', $tui->getFocus()?->getId());
@@ -6879,7 +6871,7 @@ final class IdeEdgeCasesTest extends TestCase
 
                     // Pointer motion over the git mode tabs tints the inactive one.
                     $tui->tick();
-                    $renderer = new \ReflectionProperty($ide, 'renderer')->getValue($ide);
+                    $renderer = $ide->resolve(Renderer::class);
                     $tabsRect = $renderer->getWidgetRect($tui->getById('git-tabs'));
                     $tui->handleInput(\sprintf("\x1b[<35;%d;%dM", $tabsRect->col + 12, $tabsRect->row + 1)); // over 'History'
                     $tui->tick();
@@ -6925,7 +6917,7 @@ final class IdeEdgeCasesTest extends TestCase
                     $tui->tick();
                     $tui->handleInput("\x1b[21;5~"); // Ctrl+F10 in the editor
                     $tui->tick();
-                    $context = new \ReflectionProperty($ide, 'contextMenu')->getValue($ide);
+                    $context = $ide->resolve(ContextMenu::class);
                     $this->assertTrue($context->isOpen(), 'the editor context menu opened at the caret');
                     $screen = AnsiUtils::stripAnsiCodes($terminal->getOutput());
                     $this->assertStringContainsString('Go to Declaration or Usages', $screen);
@@ -6941,7 +6933,7 @@ final class IdeEdgeCasesTest extends TestCase
                     $tui->handleInput("\x1b");
                 },
                 500 => function ($tui, $terminal, $ide): void {
-                    new \ReflectionProperty($ide, 'commands')->getValue($ide)->run('ide_help');
+                    $ide->resolve(CommandRegistry::class)->run('ide_help');
                     $tui->tick();
                     $terminal->clearOutput();
                     $tui->handleInput("\x1b[21;5~"); // Ctrl+F10 on the help viewer: the tab menu
@@ -6987,7 +6979,7 @@ final class IdeEdgeCasesTest extends TestCase
                     $this->assertSame(30, $tui->getById('tree')->width());
                 },
                 350 => function ($tui, $terminal, $ide): void {
-                    new \ReflectionProperty($ide, 'commands')->getValue($ide)->run('ide_terminal');
+                    $ide->resolve(CommandRegistry::class)->run('ide_terminal');
                     $tui->tick(); // render a frame so the panel has a rect to resize from
                     $rows = $tui->getById('terminal')->visibleRows();
                     $tui->handleInput("\x1b[24;2~"); // grow the focused bottom panel

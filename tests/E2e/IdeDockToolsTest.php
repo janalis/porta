@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Porta\Tests\E2e;
 
 use PHPUnit\Framework\TestCase;
+use Porta\Config\CommandRegistry;
 use Porta\Editor\BufferService;
 use Porta\Ide;
 use Porta\Lsp\Uri;
@@ -12,6 +13,7 @@ use Porta\Tests\Support\RunsIde;
 use Porta\Tests\Support\TempProject;
 use Porta\Widget\DockTabsWidget;
 use Symfony\Component\Tui\Ansi\AnsiUtils;
+use Symfony\Component\Tui\Render\Renderer;
 
 /**
  * Drives the live bottom-dock list tools through a real Ide: the Problems
@@ -37,7 +39,7 @@ final class IdeDockToolsTest extends TestCase
     private static function bufferService(mixed $ide): BufferService
     {
         /** @var BufferService */
-        return new \ReflectionProperty(Ide::class, 'locator')->getValue($ide)->get(BufferService::class);
+        return $ide->resolve(BufferService::class);
     }
 
     public function testHoveringThePanelTintsARowAndLeavingItClearsTheTint(): void
@@ -63,7 +65,7 @@ final class IdeDockToolsTest extends TestCase
                     $tui->tick();
 
                     // Hover the second result row; the first stays selected.
-                    $renderer = new \ReflectionProperty($ide, 'renderer')->getValue($ide);
+                    $renderer = $ide->resolve(Renderer::class);
                     $rect = $renderer->getWidgetRect($tui->getById('results'));
                     $tui->handleInput(\sprintf("\x1b[<35;%d;%dM", $rect->col + 5, $rect->row + 2));
                 },
@@ -73,7 +75,7 @@ final class IdeDockToolsTest extends TestCase
                     $this->assertStringContainsString("\x1b[48;5;236m", $joined, 'the row under the pointer is tinted');
 
                     // Move into the editor: the panel's tint must not survive it.
-                    $renderer = new \ReflectionProperty($ide, 'renderer')->getValue($ide);
+                    $renderer = $ide->resolve(Renderer::class);
                     $editorRect = $renderer->getWidgetRect($tui->getById('editor'));
                     $tui->handleInput(\sprintf("\x1b[<35;%d;%dM", $editorRect->col + 5, $editorRect->row + 1));
                 },
@@ -183,7 +185,7 @@ final class IdeDockToolsTest extends TestCase
                     // Stale completion: kick a scan, bind another tool, then ×
                     // the TODO tab before grep lands — the panel stays open (no
                     // engine cancel) and the late result must be dropped.
-                    $dock = new \ReflectionProperty($ide, 'locator')->getValue($ide)->get(\Porta\Ui\Dock\BottomDock::class);
+                    $dock = $ide->resolve(\Porta\Ui\Dock\BottomDock::class);
                     $tui->handleInput("\x1b8"); // alt+8 → scan starts
                     $tui->handleInput("\x1b6"); // alt+6 → Problems binds; the TODO tab stays alive behind it
                     foreach ($dock->aliveTabs() as $entry) {
@@ -225,7 +227,7 @@ final class IdeDockToolsTest extends TestCase
                 $tui->handleInput($ch);
             }
         };
-        $dock = static fn ($ide): object => new \ReflectionProperty(Ide::class, 'locator')->getValue($ide)->get(\Porta\Ui\Dock\BottomDock::class);
+        $dock = static fn ($ide): object => $ide->resolve(\Porta\Ui\Dock\BottomDock::class);
 
         $this->runIde(
             $project,
@@ -299,7 +301,7 @@ final class IdeDockToolsTest extends TestCase
                 $tui->handleInput($ch);
             }
         };
-        $dock = static fn ($ide): object => new \ReflectionProperty(Ide::class, 'locator')->getValue($ide)->get(\Porta\Ui\Dock\BottomDock::class);
+        $dock = static fn ($ide): object => $ide->resolve(\Porta\Ui\Dock\BottomDock::class);
 
         $this->runIde(
             $project,
@@ -319,7 +321,7 @@ final class IdeDockToolsTest extends TestCase
                     $tui->requestRender();
                     $tui->tick();
 
-                    $renderer = new \ReflectionProperty($ide, 'renderer')->getValue($ide);
+                    $renderer = $ide->resolve(Renderer::class);
                     /** @var DockTabsWidget $dockTabs */
                     $dockTabs = $tui->getById('dock-tabs');
                     $rect = $renderer->getWidgetRect($dockTabs);
@@ -352,7 +354,7 @@ final class IdeDockToolsTest extends TestCase
     {
         putenv('PATH='.$this->originalPath); // real grep for the TODO scan
         $project = new TempProject(['src/Main.php' => "<?php\n// TODO polish\n"]);
-        $dock = static fn ($ide): object => new \ReflectionProperty(Ide::class, 'locator')->getValue($ide)->get(\Porta\Ui\Dock\BottomDock::class);
+        $dock = static fn ($ide): object => $ide->resolve(\Porta\Ui\Dock\BottomDock::class);
 
         $this->runIde(
             $project,
@@ -362,7 +364,7 @@ final class IdeDockToolsTest extends TestCase
                     $tui->handleInput("\x1b6"); // alt+6 → Problems
                     $tui->handleInput("\x1b8"); // alt+8 → TODO joins, Problems keeps its tab
                     $this->await(static fn (): bool => str_contains(AnsiUtils::stripAnsiCodes($terminal->getOutput()), 'TODO polish'));
-                    new \ReflectionProperty($ide, 'commands')->getValue($ide)->run('ide_lsp_log'); // LSP Log joins
+                    $ide->resolve(CommandRegistry::class)->run('ide_lsp_log'); // LSP Log joins
                     $tui->tick();
                     $labels = array_column($dock($ide)->aliveTabs(), 'label');
                     $this->assertSame(['Problems', 'TODO', 'LSP Server Log'], $labels, 'three tools coexist, none replaced');
@@ -402,7 +404,7 @@ final class IdeDockToolsTest extends TestCase
     {
         putenv('PATH='.$this->originalPath); // real grep for the TODO scan
         $project = new TempProject(['src/Main.php' => "<?php\n// TODO polish\n"]);
-        $dock = static fn ($ide): object => new \ReflectionProperty(Ide::class, 'locator')->getValue($ide)->get(\Porta\Ui\Dock\BottomDock::class);
+        $dock = static fn ($ide): object => $ide->resolve(\Porta\Ui\Dock\BottomDock::class);
 
         $this->runIde(
             $project,
@@ -416,7 +418,7 @@ final class IdeDockToolsTest extends TestCase
                     $labels = static fn (): array => array_column($dock($ide)->aliveTabs(), 'label');
                     $this->assertSame(['Problems', 'TODO'], $labels());
 
-                    $renderer = new \ReflectionProperty($ide, 'renderer')->getValue($ide);
+                    $renderer = $ide->resolve(Renderer::class);
                     $rect = $renderer->getWidgetRect($tui->getById('dock-tabs'));
                     $strip = AnsiUtils::stripAnsiCodes($tui->getById('dock-tabs')->render(new \Symfony\Component\Tui\Render\RenderContext($rect->columns, 1))[0]);
                     $problems = (int) mb_strpos($strip, needle: 'Problems');
@@ -444,7 +446,7 @@ final class IdeDockToolsTest extends TestCase
     {
         putenv('PATH=/nonexistent');
         $project = new TempProject(['a.php' => "<?php\n"]);
-        $dock = static fn ($ide): object => new \ReflectionProperty(Ide::class, 'locator')->getValue($ide)->get(\Porta\Ui\Dock\BottomDock::class);
+        $dock = static fn ($ide): object => $ide->resolve(\Porta\Ui\Dock\BottomDock::class);
 
         $this->runIde(
             $project,
@@ -453,7 +455,7 @@ final class IdeDockToolsTest extends TestCase
                 200 => function ($tui, $terminal, $ide) use ($dock): void {
                     $tui->handleInput("\x1b6"); // alt+6 → Problems
                     $tui->tick();
-                    $renderer = new \ReflectionProperty($ide, 'renderer')->getValue($ide);
+                    $renderer = $ide->resolve(Renderer::class);
                     $rect = $renderer->getWidgetRect($tui->getById('dock-tabs'));
                     $strip = AnsiUtils::stripAnsiCodes($tui->getById('dock-tabs')->render(new \Symfony\Component\Tui\Render\RenderContext($rect->columns, 1))[0]);
                     $problems = (int) mb_strpos($strip, needle: 'Problems');
@@ -473,7 +475,7 @@ final class IdeDockToolsTest extends TestCase
                     // The strip's empty tail stays menu-less.
                     $tui->handleInput("\x1b6");
                     $tui->tick();
-                    $renderer = new \ReflectionProperty($ide, 'renderer')->getValue($ide);
+                    $renderer = $ide->resolve(Renderer::class);
                     $rect = $renderer->getWidgetRect($tui->getById('dock-tabs'));
                     $tui->handleInput(\sprintf("\x1b[<2;%d;%dM", $rect->col + $rect->columns - 2, $rect->row + 1));
                     $tui->tick();
@@ -498,7 +500,7 @@ final class IdeDockToolsTest extends TestCase
                     self::bufferService($ide)->openFile($project->path('b.php'), \Porta\Editor\OpenFocus::Keep);
                     $tui->handleInput("\x1b6"); // alt+6 → a dock tool tab exists
                     $tui->tick();
-                    $renderer = new \ReflectionProperty($ide, 'renderer')->getValue($ide);
+                    $renderer = $ide->resolve(Renderer::class);
 
                     // Editor tab strip: hover the inactive b.php tab.
                     $tabsRect = $renderer->getWidgetRect($tui->getById('tabs'));
@@ -545,7 +547,7 @@ final class IdeDockToolsTest extends TestCase
             $project->path('a.php'),
             [
                 200 => function ($tui, $terminal, $ide) use ($wheel): void {
-                    $renderer = new \ReflectionProperty($ide, 'renderer')->getValue($ide);
+                    $renderer = $ide->resolve(Renderer::class);
 
                     // Go-to-file (the editor's centered search overlay now): the wheel moves its selection.
                     $tui->handleInput("\x1b[112;5u"); // ctrl+p
@@ -579,7 +581,7 @@ final class IdeDockToolsTest extends TestCase
                     $tui->tick();
 
                     // Settings: nav and form both scroll under the wheel.
-                    new \ReflectionProperty($ide, 'commands')->getValue($ide)->run('ide_settings');
+                    $ide->resolve(CommandRegistry::class)->run('ide_settings');
                     $tui->tick();
                     $navRect = $renderer->getWidgetRect($tui->getById('settings-nav'));
                     $wheel($tui, $navRect->col + 2, $navRect->row + 2);
@@ -590,7 +592,7 @@ final class IdeDockToolsTest extends TestCase
                     $contentRect = $renderer->getWidgetRect($tui->getById('settings-content'));
                     $wheel($tui, $contentRect->col + 4, $contentRect->row + 2);
                     $tui->tick();
-                    new \ReflectionProperty($ide, 'commands')->getValue($ide)->run('ide_settings'); // back out
+                    $ide->resolve(CommandRegistry::class)->run('ide_settings'); // back out
                     $tui->tick();
                 },
                 600 => function ($tui, $terminal, $ide) use ($wheel): void {
@@ -598,7 +600,7 @@ final class IdeDockToolsTest extends TestCase
                     $tui->handleInput("\x1b6"); // Problems
                     $tui->handleInput("\x1b8"); // the scanner tab joins (grep-less PATH → instant empty scan)
                     $tui->tick();
-                    $renderer = new \ReflectionProperty($ide, 'renderer')->getValue($ide);
+                    $renderer = $ide->resolve(Renderer::class);
                     $stripRect = $renderer->getWidgetRect($tui->getById('dock-tabs'));
                     $this->assertSame('TODO', $tui->getById('results')->getTitle());
                     $wheel($tui, $stripRect->col + 3, $stripRect->row + 1, code: 64); // wheel-up cycles back

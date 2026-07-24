@@ -5,6 +5,8 @@ declare(strict_types=1);
 namespace Porta\Tests\E2e;
 
 use PHPUnit\Framework\TestCase;
+use Porta\Config\CommandRegistry;
+use Porta\Editor\BufferService;
 use Porta\Tests\Support\NavigatesSettings;
 use Porta\Tests\Support\RunsIde;
 use Porta\Tests\Support\TempProject;
@@ -100,7 +102,7 @@ final class IdePhpLspPluginsTest extends TestCase
                 },
                 450 => function ($tui, $terminal, $ide): void {
                     // Open the phpantom settings page: it lists the binary row.
-                    new \ReflectionProperty($ide, 'commands')->getValue($ide)->run('ide_settings');
+                    $ide->resolve(CommandRegistry::class)->run('ide_settings');
                     $tui->handleInput("\t"); // form → nav
                     $this->selectSettingsSection($tui->getById('settings-nav'), 'plugins');
                     $tui->handleInput("\x1b[B"); // phpantom sub-item
@@ -168,7 +170,7 @@ final class IdePhpLspPluginsTest extends TestCase
             $project->path('a.php'),
             [
                 300 => function ($tui, $terminal, $ide): void {
-                    new \ReflectionProperty($ide, 'commands')->getValue($ide)->run('ide_settings');
+                    $ide->resolve(CommandRegistry::class)->run('ide_settings');
                     $tui->handleInput("\t"); // form → nav
                     $this->selectSettingsSection($tui->getById('settings-nav'), 'plugins');
                     $tui->handleInput("\x1b[B"); // phpantom sub-item
@@ -213,19 +215,18 @@ final class IdePhpLspPluginsTest extends TestCase
             $project->path('a.php'),
             [
                 100 => static function ($tui, $terminal, $ide): void {
-                    new \ReflectionProperty($ide, 'commands')->getValue($ide)->run('phpantom:fix');
+                    $ide->resolve(CommandRegistry::class)->run('phpantom:fix');
                 },
                 300 => function ($tui, $terminal, $ide) use ($project): void {
                     $this->await(static fn (): bool => str_contains(AnsiUtils::stripAnsiCodes($terminal->getOutput()), 'phpantom: fixed a.php'));
                     $tui->tick();
                     $this->assertStringContainsString('phpantom: fixed a.php', AnsiUtils::stripAnsiCodes($terminal->getOutput()));
                     $this->await(static fn (): bool => str_contains((string) (is_file($project->path('a.php')) ? file_get_contents($project->path('a.php')) : false), '// fixed'));
-                    new \ReflectionProperty($ide, 'bufferService')
-                        ->getValue($ide)
+                    $ide->resolve(BufferService::class)
                         ->pollFilesystem();
                     $this->assertStringContainsString('// fixed', $tui->getById('editor')->getDocument()->getText(), 'buffer reloaded with the fixed content');
 
-                    new \ReflectionProperty($ide, 'commands')->getValue($ide)->run('phpantom:init');
+                    $ide->resolve(CommandRegistry::class)->run('phpantom:init');
                 },
                 500 => function ($tui, $terminal) use ($project): void {
                     $this->await(static fn (): bool => is_file($project->path('phpantom.json')));
