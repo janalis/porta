@@ -74,7 +74,6 @@ final class NotifierTest extends TestCase
 
         $this->assertTrue($toasts->isEmpty(), 'no toast for a hint');
         $this->assertSame([], $log->entries(), 'no log entry either');
-        $flash = new \ReflectionProperty($status, 'flash')->getValue($status);
-        $this->assertSame('scrolled +3', $flash['text'] ?? null, 'the status bar carries it');
+        $this->assertSame('scrolled +3', $status->activeFlash(), 'the status bar carries it');
     }
 }

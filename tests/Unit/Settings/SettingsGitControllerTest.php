@@ -63,9 +63,7 @@ final class SettingsGitControllerTest extends TestCase
 
     private function flashText(): string
     {
-        $flash = new \ReflectionProperty($this->status, 'flash')->getValue($this->status);
-
-        return (string) ($flash['text'] ?? '');
+        return $this->status->activeFlash() ?? '';
     }
 
     public function testRowsExposeAllEightGitSettings(): void

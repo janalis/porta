@@ -29,10 +29,7 @@ final class DocsUrlOpenerTest extends TestCase
 
     private function flashText(StatusBarWidget $status): string
     {
-        $flash = new \ReflectionProperty($status, 'flash')->getValue($status);
-        \assert(\is_array($flash), description: 'the reflected flash payload is an array');
-
-        return (string) ($flash['text'] ?? '');
+        return $status->activeFlash() ?? '';
     }
 
     public function testWithoutAnOpenerOnPathTheUrlItselfIsFlashed(): void

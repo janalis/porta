@@ -89,6 +89,16 @@ final class StatusBarWidget extends AbstractWidget
         $this->invalidate();
     }
 
+    /**
+     * The current flash message text, or null when none is showing.
+     *
+     * @internal exposed for tests
+     */
+    public function activeFlash(): ?string
+    {
+        return null !== $this->flash ? $this->flash['text'] : null;
+    }
+
     public function beforeRender(): void
     {
         $now = $this->nowSeconds();

@@ -75,9 +75,7 @@ final class SettingsLspControllerTest extends TestCase
 
     private function flashText(StatusBarWidget $status): string
     {
-        $flash = new \ReflectionProperty($status, 'flash')->getValue($status);
-
-        return (string) ($flash['text'] ?? '');
+        return $status->activeFlash() ?? '';
     }
 
     public function testRowShowsTheOverrideAndAnAutoHint(): void
