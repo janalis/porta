@@ -737,6 +737,27 @@ final class CodeEditorWidgetEdgeTest extends TestCase
         $this->assertSame(80, AnsiUtils::visibleWidth($rendered[1]));
     }
 
+    public function testInlineDiagnosticPlacedAfterInlayHints(): void
+    {
+        // Inlay hints widen the visible line past the raw doc line's width, so
+        // the message must start after the hints, not slice into them — the
+        // config-file overprint bug (dense LSP hints + diagnostics drawing the
+        // message on top of the code/hints).
+        $hint = ': SomeType';
+        $message = 'undefined variable';
+        $editor = $this->editor("<?php\n\$x = 1;\n");
+        $editor->setInlayHints([1 => [['col' => 7, 'text' => $hint]]]);
+        $editor->setDiagnostics([1 => [['severity' => 1, 'message' => $message, 'col' => 0]]]);
+
+        $plain = AnsiUtils::stripAnsiCodes($editor->render(new RenderContext(80, 5))[1]);
+        $this->assertStringContainsString('$x = 1;', $plain, 'the code itself is intact');
+        $this->assertStringContainsString($hint, $plain, 'the inlay hint is not overprinted by the message');
+        // The hint precedes the message rather than being sliced by it.
+        $hintPos = (int) strpos($plain, $hint);
+        $messagePos = (int) strpos($plain, $message);
+        $this->assertLessThan($messagePos, $hintPos, 'the inlay hint stays left of the diagnostic message');
+    }
+
     public function testInlineDiagnosticSkippedWhenNoRoom(): void
     {
         // A long line leaves no trailing room for the message.

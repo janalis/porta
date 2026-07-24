@@ -131,20 +131,19 @@ final readonly class EditorRowAssembler
 
             // Inline diagnostic message in the trailing space (PhpStorm-style):
             // the worst-severity message on the line, colored by severity, with a
-            // "+N" count when the line carries more than one diagnostic.
+            // "+N" count when the line carries more than one diagnostic. The
+            // message goes after the *decorated* line's on-screen width — inlay
+            // hints and the collapsed-fold marker widen $hlLine past the raw doc
+            // line's lineDisplayWidth, and placing the message by the raw width
+            // would slice into them (the code/hints get overprinted). Compute the
+            // width only when there is something to place after it.
             $hasInlineDiagnostic = $this->inlineDiagnostics && [] !== $lineDiags;
-            if ($hasInlineDiagnostic) {
-                $content = EditorRenderer::appendInlineDiagnostic($hScroll, $this->document->lineDisplayWidth($lineIndex), $lineDiags, $content, $geo->contentWidth, $this->styles);
-            }
-            if (!$hasInlineDiagnostic && '' !== ($this->store->lineAnnotations()[$lineIndex] ?? '')) {
-                $content = EditorRenderer::appendAnnotation(
-                    $hScroll,
-                    $this->document->lineDisplayWidth($lineIndex),
-                    $this->store->lineAnnotations()[$lineIndex],
-                    $content,
-                    $geo->contentWidth,
-                    $this->styles,
-                );
+            $annotation = $hasInlineDiagnostic ? '' : $this->store->lineAnnotations()[$lineIndex] ?? '';
+            if ($hasInlineDiagnostic || '' !== $annotation) {
+                $textDisplayWidth = AnsiUtils::visibleWidth($hlLine);
+                $content = $hasInlineDiagnostic
+                    ? EditorRenderer::appendInlineDiagnostic($hScroll, $textDisplayWidth, $lineDiags, $content, $geo->contentWidth, $this->styles)
+                    : EditorRenderer::appendAnnotation($hScroll, $textDisplayWidth, $annotation, $content, $geo->contentWidth, $this->styles);
             }
 
             $result[] = $gutter.$content.$stripe[$stickyCount + $row];

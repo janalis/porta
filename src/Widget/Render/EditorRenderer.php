@@ -272,13 +272,15 @@ final class EditorRenderer
      * the code, dimmed and colored by severity, with a "+N" suffix when the line
      * has more diagnostics. $content is exactly $contentWidth wide going in and out.
      *
-     * @param int                                                                    $lineDisplayWidth the line's tab-expanded display width
-     *                                                                                                 (content is rendered tab-expanded, so a
-     *                                                                                                 raw-byte width would misplace the message
-     *                                                                                                 on tab-indented lines)
+     * @param int                                                                    $textDisplayWidth the *decorated* line's on-screen display
+     *                                                                                                 width — the visible width of the fully
+     *                                                                                                 assembled line (tab-expanded code plus any
+     *                                                                                                 inlay hints and the collapsed-fold marker),
+     *                                                                                                 not the raw doc line's width, or the message
+     *                                                                                                 would slice into those decorations
      * @param list<array{message?: string, severity?: int, col?: int, endCol?: int}> $diags
      */
-    public static function appendInlineDiagnostic(int $hScroll, int $lineDisplayWidth, array $diags, string $content, int $contentWidth, Styles $styles): string
+    public static function appendInlineDiagnostic(int $hScroll, int $textDisplayWidth, array $diags, string $content, int $contentWidth, Styles $styles): string
     {
         // Show the worst-severity diagnostic's message (the first one at that
         // severity); an empty list falls through to the empty-message guard below.
@@ -296,8 +298,8 @@ final class EditorRenderer
             return $content;
         }
 
-        // Where the code text ends on screen (accounting for horizontal scroll).
-        $textEnd = max(0, $lineDisplayWidth - $hScroll);
+        // Where the decorated text ends on screen (accounting for horizontal scroll).
+        $textEnd = max(0, $textDisplayWidth - $hScroll);
         $start = min($contentWidth, $textEnd) + 2; // two-space gap
         $available = $contentWidth - $start;
         if ($available < 8) {
@@ -315,11 +317,12 @@ final class EditorRenderer
     /**
      * Append a dim informational annotation (e.g. a blame line) in the padding
      * after the code — the same placement as {@see appendInlineDiagnostic},
-     * which wins the slot when both apply.
+     * which wins the slot when both apply. $textDisplayWidth is the decorated
+     * line's on-screen width (see appendInlineDiagnostic).
      */
-    public static function appendAnnotation(int $hScroll, int $lineDisplayWidth, string $text, string $content, int $contentWidth, Styles $styles): string
+    public static function appendAnnotation(int $hScroll, int $textDisplayWidth, string $text, string $content, int $contentWidth, Styles $styles): string
     {
-        $textEnd = max(0, $lineDisplayWidth - $hScroll);
+        $textEnd = max(0, $textDisplayWidth - $hScroll);
         $start = min($contentWidth, $textEnd) + 2; // two-space gap
         $available = $contentWidth - $start;
         if ($available < 8) {
