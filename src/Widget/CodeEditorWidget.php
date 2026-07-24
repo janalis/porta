@@ -1153,7 +1153,7 @@ final class CodeEditorWidget extends AbstractWidget implements ActiveFileProvide
             ));
         }
 
-        /** @var list<string> $result signatureHint() rewrites rows in place, keeping the shape */
+        // signatureHint() and completionPopup() rewrite rows in place, keeping the shape.
         return $result;
     }
 
