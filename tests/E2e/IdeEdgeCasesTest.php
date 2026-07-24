@@ -3267,7 +3267,7 @@ final class IdeEdgeCasesTest extends TestCase
                     // Horizontal wheel over the editor slides the view without
                     // moving the caret; shift+wheel-up brings it back.
                     $tui->handleInput("\x1b[<67;45;6M");
-                    $scroll = new \ReflectionProperty($editor, 'scroll')->getValue($editor);
+                    $scroll = $editor->scroll();
                     $this->assertSame(6, $scroll->hScroll(), 'wheel-right scrolled the editor sideways');
                     $this->assertSame(2, $editor->getDocument()->getCursorLine(), 'the caret stayed put');
                     $tui->handleInput("\x1b[<68;45;6M");

@@ -5,7 +5,6 @@ declare(strict_types=1);
 namespace Porta\Tests\Unit\Widget;
 
 use PHPUnit\Framework\TestCase;
-use Porta\Editor\EditorScroll;
 use Porta\Widget\CodeEditorWidget;
 use Symfony\Component\Tui\Ansi\AnsiUtils;
 use Symfony\Component\Tui\Render\RenderContext;
@@ -32,10 +31,7 @@ final class CodeEditorHScrollTest extends TestCase
 
     private function hScroll(CodeEditorWidget $editor): int
     {
-        $scroll = new \ReflectionProperty($editor, 'scroll')->getValue($editor);
-        \assert($scroll instanceof EditorScroll, description: 'the scroll property holds an EditorScroll');
-
-        return $scroll->hScroll();
+        return $editor->scroll()->hScroll();
     }
 
     public function testScrollHBySlidesTheViewAndSurvivesRenders(): void

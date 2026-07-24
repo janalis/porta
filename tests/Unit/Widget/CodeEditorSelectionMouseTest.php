@@ -5,7 +5,6 @@ declare(strict_types=1);
 namespace Porta\Tests\Unit\Widget;
 
 use PHPUnit\Framework\TestCase;
-use Porta\Editor\EditorScroll;
 use Porta\Editor\SelectionMode;
 use Porta\Widget\CodeEditorWidget;
 use Symfony\Component\Tui\Render\RenderContext;
@@ -154,9 +153,7 @@ final class CodeEditorSelectionMouseTest extends TestCase
 
         $line = $editor->render(new RenderContext(80, 3))[0];
 
-        $scroll = new \ReflectionProperty($editor, 'scroll')->getValue($editor);
-        \assert($scroll instanceof EditorScroll, description: 'the scroll property holds an EditorScroll');
-        $this->assertGreaterThan(0, $scroll->hScroll(), 'a caret near end-of-line scrolls horizontally');
+        $this->assertGreaterThan(0, $editor->scroll()->hScroll(), 'a caret near end-of-line scrolls horizontally');
         $this->assertSame(1, substr_count($line, needle: "\x1b[48;5;24m"));
     }
 

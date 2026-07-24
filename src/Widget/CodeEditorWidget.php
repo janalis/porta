@@ -619,6 +619,16 @@ final class CodeEditorWidget extends AbstractWidget implements ActiveFileProvide
         return $this->document;
     }
 
+    /**
+     * The viewport scroll state (vertical/horizontal offsets).
+     *
+     * @internal exposed for tests
+     */
+    public function scroll(): EditorScroll
+    {
+        return $this->scroll;
+    }
+
     public function getFilePath(): ?string
     {
         return $this->filePath;
