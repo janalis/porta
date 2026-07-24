@@ -4,10 +4,6 @@ declare(strict_types=1);
 
 namespace Porta\Tests\Unit\Container;
 
-use PHPUnit\Framework\TestCase;
-use Porta\Config\IdeConfig;
-use Porta\Container\Ansi;
-use Porta\Container\IdeContainerFactory;
 use Porta\Widget\ContextMenu;
 use Porta\Widget\DebugPanelWidget;
 use Porta\Widget\DockTabsWidget;
@@ -16,7 +12,6 @@ use Porta\Widget\MenuBarWidget;
 use Porta\Widget\ResultsPanelWidget;
 use Porta\Widget\StatusBarWidget;
 use Porta\Widget\TerminalPanelWidget;
-use Symfony\Component\DependencyInjection\ContainerBuilder;
 
 /**
  * The chrome roots ChromeInvalidator sweeps on a live theme/locale/cursor/
@@ -26,30 +21,11 @@ use Symfony\Component\DependencyInjection\ContainerBuilder;
  * expected roots, so dropping the attribute from a widget — which would
  * silently stop that widget recoloring on a theme switch — fails loudly here.
  */
-final class ChromeRootMembershipTest extends TestCase
+final class ChromeRootMembershipTest extends ContainerTestCase
 {
-    /** @var array<string, string|false> */
-    private array $savedEnv = [];
-
-    protected function setUp(): void
-    {
-        foreach (['PORTA_CACHE_DIR', 'PORTA_CONTAINER_CACHE'] as $key) {
-            $this->savedEnv[$key] = getenv($key);
-        }
-        putenv('PORTA_CONTAINER_CACHE=off'); // force the in-memory ContainerBuilder path (tags introspectable)
-    }
-
-    protected function tearDown(): void
-    {
-        foreach ($this->savedEnv as $key => $value) {
-            putenv(false === $value ? $key : $key.'='.$value);
-        }
-    }
-
     public function testChromeRootTagIsExactlyTheExpectedWidgets(): void
     {
-        $container = new IdeContainerFactory()->build('/tmp/porta-chrome-root', IdeConfig::load('/tmp/porta-chrome-root'), Ansi::Enabled);
-        \assert($container instanceof ContainerBuilder, description: 'PORTA_CONTAINER_CACHE=off yields the introspectable builder');
+        $container = $this->buildContainer();
 
         $actual = array_keys($container->findTaggedServiceIds('porta.chrome_root'));
         sort($actual);

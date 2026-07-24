@@ -49,12 +49,20 @@ final class IdeContainerFactory
         $_ENV['PORTA_LSP_DISABLED'] = LspMode::Disabled === $lsp ? '1' : '0';
         $_ENV['PORTA_DOCS_DIR'] = $docsDir;
         $_ENV['PORTA_GIT_PATH'] = (string) ($config->settings['gitPath'] ?? ''); // '' → auto-discover
-        $_ENV['PORTA_SETTINGS'] = json_encode($config->settings, \JSON_THROW_ON_ERROR);
-        $_ENV['PORTA_LANGUAGES'] = json_encode($config->languages, \JSON_THROW_ON_ERROR);
-        $_ENV['PORTA_LSP_SERVERS'] = json_encode($config->lspServers, \JSON_THROW_ON_ERROR);
-        $_ENV['PORTA_DISABLED_PLUGINS'] = json_encode($config->disabledPlugins, \JSON_THROW_ON_ERROR);
-        $_ENV['PORTA_ENABLED_PLUGINS'] = json_encode($config->enabledPlugins, \JSON_THROW_ON_ERROR);
-        $_ENV['PORTA_HIGHLIGHT'] = json_encode($config->highlight, \JSON_THROW_ON_ERROR);
+        // The per-project config arrays travel JSON-encoded through the env
+        // channel (each consumer reads its own via env(json:PORTA_…)); one map,
+        // one encode shape.
+        $jsonEnv = [
+            'PORTA_SETTINGS' => $config->settings,
+            'PORTA_LANGUAGES' => $config->languages,
+            'PORTA_LSP_SERVERS' => $config->lspServers,
+            'PORTA_DISABLED_PLUGINS' => $config->disabledPlugins,
+            'PORTA_ENABLED_PLUGINS' => $config->enabledPlugins,
+            'PORTA_HIGHLIGHT' => $config->highlight,
+        ];
+        foreach ($jsonEnv as $key => $value) {
+            $_ENV[$key] = json_encode($value, \JSON_THROW_ON_ERROR);
+        }
 
         $cacheDir = $this->cacheDir();
         if (null === $cacheDir || 'off' === getenv('PORTA_CONTAINER_CACHE')) {

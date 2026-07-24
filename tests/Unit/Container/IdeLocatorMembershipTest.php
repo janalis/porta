@@ -4,10 +4,6 @@ declare(strict_types=1);
 
 namespace Porta\Tests\Unit\Container;
 
-use PHPUnit\Framework\TestCase;
-use Porta\Config\IdeConfig;
-use Porta\Container\Ansi;
-use Porta\Container\IdeContainerFactory;
 use Symfony\Component\DependencyInjection\ServiceLocator;
 
 /**
@@ -18,26 +14,8 @@ use Symfony\Component\DependencyInjection\ServiceLocator;
  * here (a loud compile-adjacent failure) instead of at the first real boot. It
  * replaces the manual "remember to add it to the locator's entry list" chore.
  */
-final class IdeLocatorMembershipTest extends TestCase
+final class IdeLocatorMembershipTest extends ContainerTestCase
 {
-    /** @var array<string, string|false> */
-    private array $savedEnv = [];
-
-    protected function setUp(): void
-    {
-        foreach (['PORTA_CACHE_DIR', 'PORTA_CONTAINER_CACHE'] as $key) {
-            $this->savedEnv[$key] = getenv($key);
-        }
-        putenv('PORTA_CONTAINER_CACHE=off'); // build the container deterministically, no dump
-    }
-
-    protected function tearDown(): void
-    {
-        foreach ($this->savedEnv as $key => $value) {
-            putenv(false === $value ? $key : $key.'='.$value);
-        }
-    }
-
     public function testEveryIdeServiceTargetIsALocatorMember(): void
     {
         $ideSource = (string) file_get_contents(\dirname(__DIR__, levels: 3).'/src/Ide.php');
@@ -54,8 +32,7 @@ final class IdeLocatorMembershipTest extends TestCase
         $targets = array_unique($calls[1]);
         self::assertNotEmpty($targets, 'Ide resolves services through the locator');
 
-        $container = new IdeContainerFactory()->build('/tmp/porta-locator-membership', IdeConfig::load('/tmp/porta-locator-membership'), Ansi::Enabled);
-        $locator = $container->get('porta.ide');
+        $locator = $this->buildContainer()->get('porta.ide');
         \assert($locator instanceof ServiceLocator, description: 'the public boundary is a ServiceLocator');
 
         $missing = [];
