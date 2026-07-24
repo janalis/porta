@@ -5300,7 +5300,7 @@ final class IdeEdgeCasesTest extends TestCase
                     // the mock LSP server is a separate process and lags under a
                     // loaded/pcov run, so the definition may not have landed yet.
                     $this->await(static fn (): bool => str_ends_with((string) $tui->getById('editor')->getFilePath(), 'Target.php'), timeout: 8.0, what: 'the php-routed definition jump');
-                    new \ReflectionMethod($ide, 'openFile')->invoke($ide, $project->path('src/app.js'), OpenFocus::Editor);
+                    $ide->resolve(BufferService::class)->openFile($project->path('src/app.js'), OpenFocus::Keep);
                 },
                 1100 => static function ($tui): void {
                     $tui->getById('editor')->getDocument()->setCursor(0, 2); // on doWork
@@ -5308,7 +5308,7 @@ final class IdeEdgeCasesTest extends TestCase
                 },
                 1400 => function ($tui, $terminal, $ide) use ($project): void {
                     $this->await(static fn (): bool => str_ends_with((string) $tui->getById('editor')->getFilePath(), 'Target.php'), timeout: 8.0, what: 'the js-routed definition jump');
-                    new \ReflectionMethod($ide, 'openFile')->invoke($ide, $project->path('notes.md'), OpenFocus::Editor);
+                    $ide->resolve(BufferService::class)->openFile($project->path('notes.md'), OpenFocus::Keep);
                     $tui->tick();
                 },
             ],

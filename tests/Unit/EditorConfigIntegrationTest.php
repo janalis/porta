@@ -8,6 +8,7 @@ use PHPUnit\Framework\TestCase;
 use Porta\Editor\Buffer;
 use Porta\Editor\BufferManager;
 use Porta\Editor\BufferService;
+use Porta\Editor\OpenFocus;
 use Porta\Ide;
 use Porta\Onboarding\OnboardingState;
 use Porta\Tests\Support\TempProject;
@@ -43,7 +44,7 @@ final class EditorConfigIntegrationTest extends TestCase
 
     private function open(Ide $ide, string $path): Buffer
     {
-        new \ReflectionMethod($ide, 'openFile')->invoke($ide, $path);
+        $ide->resolve(BufferService::class)->openFile($path, OpenFocus::Keep);
         $buffers = $ide->resolve(BufferManager::class);
         \assert($buffers instanceof BufferManager, description: 'the buffers property is a BufferManager');
 
