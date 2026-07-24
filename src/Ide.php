@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Porta;
 
 use Porta\Bootstrap\EagerServices;
+use Porta\Bootstrap\StartupWiring;
 use Porta\Bootstrap\WidgetHooks;
 use Porta\Command\CommandRegistryPopulator;
 use Porta\Config\CommandRegistry;
@@ -31,10 +32,7 @@ use Porta\Lsp\NavigationController;
 use Porta\Lsp\RefactorController;
 use Porta\Lsp\WorkspaceEditor;
 use Porta\Onboarding\OnboardingState;
-use Porta\Plugin\PluginHost;
 use Porta\Plugin\PluginLifecycle;
-use Porta\Plugin\PluginManager;
-use Porta\Plugin\PluginRuntime;
 use Porta\Run\RunController;
 use Porta\Search\SearchActions;
 use Porta\Search\SearchUiWiring;
@@ -81,7 +79,6 @@ final class Ide
     private RunController $run;
     private DebugController $debug;
 
-    private readonly PluginManager $plugins;
     private PluginLifecycle $pluginLifecycle;
     private readonly string $docsDir;
     private readonly ContainerInterface $container;
@@ -146,8 +143,6 @@ final class Ide
         // container does (its settings steer the env parameters above), and
         // the plugin/keybindings services consume it by type.
         $this->container->set(IdeConfig::class, $config);
-        $pluginHost = $this->service(PluginHost::class);
-        $this->plugins = $pluginHost->manager();
         // Resolving the Keybindings map triggers the one-time plugin load —
         // plugin default keys must merge into the immutable map.
         $keybindings = $this->service(Keybindings::class);
@@ -232,13 +227,9 @@ final class Ide
         $this->service(WidgetHooks::class)->wire();
         $this->menuRebuilder->rebuild();
         $this->tui->addListener($this->service(InputDispatcher::class)->dispatch(...));
-
-        // Everything plugin handlers need exists now — hand them the live seams.
-        $this->plugins->wireRuntime($this->service(PluginRuntime::class));
-
-        foreach ([...$config->warnings, ...$this->plugins->warnings()] as $warning) {
-            $this->notifier->flash($warning, 5.0);
-        }
+        // Last: hand the plugin handlers their live runtime seam and flash the
+        // config/plugin load warnings, once every service they reach exists.
+        $this->service(StartupWiring::class)->wire();
     }
 
     /**

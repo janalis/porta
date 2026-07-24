@@ -99,9 +99,11 @@ because ~100 reflection-based test seams read them), the `build*` steps
 (`buildEditorArea`, `buildSidePanels`, `buildGitView`, `buildSettingsWidgets`,
 `buildLayoutAndOverlay`) are now resolution + arrangement only, and the ctor tail runs
 `Command/CommandRegistryPopulator::populate()` (tagged providers), `Bootstrap/WidgetHooks::wire()`,
-`Bootstrap/EagerServices::boot()` (tagged eager services — see below), the menu bake and registers
-the `Input/InputDispatcher` listener — commands register and menus bake at the **end** of the
-constructor. Services that must be constructed **eagerly for a self-registering side effect** (they
+`Bootstrap/EagerServices::boot()` (tagged eager services — see below), the menu bake, registers
+the `Input/InputDispatcher` listener, and finally `Bootstrap/StartupWiring::wire()` (hands the
+plugin handlers their live `Plugin/PluginRuntime` seam + flashes the config/plugin load warnings —
+a `WidgetHooks` sibling kept separate so neither constructor grows unwieldy) — commands register
+and menus bake at the **end** of the constructor. Services that must be constructed **eagerly for a self-registering side effect** (they
 attach to `Ui/WorkspaceViews` or hook `BidiTui::onBeforeFrame` and have no inbound reference, so
 without a forced resolve they never exist) carry **`#[Container/AsEager(priority)]`**; the attribute
 tags them `porta.eager`, and `Bootstrap/EagerServices` iterates the tag once at the ctor tail to
