@@ -13,6 +13,7 @@ use Porta\Settings\LiveSettingsApplier;
 use Porta\Ui\Notifier;
 use Porta\Widget\BreadcrumbsWidget;
 use Porta\Widget\CodeEditorWidget;
+use Symfony\Component\DependencyInjection\Attribute\Autowire;
 
 /**
  * The editor settings model: applies the persisted values on boot and
@@ -38,6 +39,7 @@ final class SettingsController
      * @param array<string, int|bool|string> $settings         resolved settings (defaults merged)
      */
     public function __construct(
+        #[Autowire('%env(json:PORTA_SETTINGS)%')]
         private array $settings,
         CodeEditorWidget $editor,
         private readonly Notifier $notifier,

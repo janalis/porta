@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace Porta\Debug;
 
+use Symfony\Component\DependencyInjection\Attribute\Autowire;
+
 /**
  * The per-language debug-adapter registry, seeded from .porta.json's
  * `languages.<id>.debug` blocks and updated live by the settings screen.
@@ -17,7 +19,7 @@ final class DebugAdapters
     /**
      * @param array<string, array{indentStyle?: string, indentSize?: int|string, debug?: array{adapter?: string, launch?: array<string, mixed>}, runCommand?: string}> $languages IdeConfig's per-language overrides
      */
-    public function __construct(array $languages)
+    public function __construct(#[Autowire('%env(json:PORTA_LANGUAGES)%')] array $languages)
     {
         foreach ($languages as $languageId => $entry) {
             $debug = $entry['debug'] ?? [];

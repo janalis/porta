@@ -125,8 +125,10 @@ guards the tagged set.
 `%env()%` placeholders, so the compiled container is project-independent: scalars
 (`rootDir`/`locale`/`ansi`/`theme`/`lspCommand`/`lspDisabled`/`docsDir` — the nullable one uses
 `env('default::PORTA_LSP_COMMAND')`, where `''` means null) plus the per-project **config arrays**
-JSON-encoded by `IdeContainerFactory` and consumed as `env('PORTA_LANGUAGES')->json()`-style
-per-service args (never binds — `$overrides` means different things per consumer).
+JSON-encoded by `IdeContainerFactory` and consumed at the **consumer param** with
+`#[Autowire('%env(json:PORTA_LANGUAGES)%')]` (never central binds — the param names its own channel,
+so the `$overrides` split stays explicit: `SettingsLanguageController` ← `PORTA_LANGUAGES`,
+`SettingsLspController` ← `PORTA_LSP_SERVERS`; dump-safe because the arg is just an env placeholder).
 `IdeContainerFactory` dumps once into the user cache dir (`$PORTA_CACHE_DIR`, else
 XDG/`~/.cache` + `/porta`), guarded by a debug-mode `ConfigCache` whose tracked resources
 (services.php, the src/ glob, per-class reflection incl. method attributes) rebuild it

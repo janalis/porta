@@ -6,18 +6,12 @@ use Porta\Bootstrap\EagerServices;
 use Porta\Command\CommandProvider;
 use Porta\Config\IdeConfig;
 use Porta\Config\KeybindingsFactory;
-use Porta\Settings\SettingsController;
-use Porta\Settings\SettingsGitController;
-use Porta\Settings\SettingsLanguageController;
-use Porta\Settings\SettingsLspController;
 use Porta\Container\AsChromeRoot;
 use Porta\Container\AsEager;
 use Porta\Container\AsIdeService;
 use Porta\Container\AsWidget;
 use Porta\Container\SingleImplAliasPass;
-use Porta\Debug\DebugAdapters;
 use Porta\Editor\BufferService;
-use Porta\Git\GitSettings;
 use Porta\Highlight\ColorMode;
 use Porta\Highlight\HighlightPreferences;
 use Porta\Highlight\SwitchableTerminalTheme;
@@ -30,12 +24,10 @@ use Porta\Overlay\State\MenuOverlayPanes;
 use Porta\Overlay\State\MenuOverlayPanesFactory;
 use Porta\Plugin\PluginHost;
 use Porta\Plugin\PluginInstaller;
-use Porta\Plugin\PluginLifecycle;
 use Porta\Plugin\PluginLoader;
 use Porta\Plugin\PluginManager;
 use Porta\Plugin\PluginSettings;
 use Porta\Plugin\ToolInstaller;
-use Porta\Run\RunConfigs;
 use Porta\Search\Everywhere\SearchEverywhereController;
 use Porta\Search\Everywhere\SearchEverywhereFactory;
 use Porta\Ui\BidiTui;
@@ -296,22 +288,11 @@ return static function (ContainerConfigurator $container, ContainerBuilder $buil
     // The editor's outbound handler groups — each interface has one impl.
 
     // Per-project config arrays travel JSON-encoded through the env channel
-    // (seeded by IdeContainerFactory), so these defs stay dump-safe. Args, not
-    // binds: $overrides means languages in one controller, lspServers in the
-    // other. Each env channel is named once here and reused across its consumers.
-    $languages = env('PORTA_LANGUAGES')->json();
-    $settings = env('PORTA_SETTINGS')->json();
-    $services->set(DebugAdapters::class)->arg('$languages', $languages);
-    $services->set(RunConfigs::class)->arg('$languages', $languages);
-    $services->set(SettingsController::class)->arg('$settings', $settings);
-    $services->set(GitSettings::class)->arg('$settings', $settings);
-    $services->set(SettingsGitController::class)->arg('$settings', $settings);
-    $services->set(SettingsLanguageController::class)->arg('$overrides', $languages);
-    $services->set(SettingsLspController::class)->arg('$overrides', env('PORTA_LSP_SERVERS')->json());
-    $services
-        ->set(PluginLifecycle::class)
-        ->arg('$disabledPlugins', env('PORTA_DISABLED_PLUGINS')->json())
-        ->arg('$enabledPlugins', env('PORTA_ENABLED_PLUGINS')->json());
+    // (seeded by IdeContainerFactory); each consumer names the channel it wants
+    // at the param with #[Autowire('%env(json:PORTA_…)%')] — dump-safe (the arg
+    // is an env placeholder) and it keeps the $overrides split explicit
+    // (SettingsLanguageController ← PORTA_LANGUAGES, SettingsLspController ←
+    // PORTA_LSP_SERVERS), so no central args here.
 
     // The Search Everywhere modal aggregates per-source hooks; its factory
     // owns them (see SearchEverywhereFactory).

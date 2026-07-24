@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace Porta\Git;
 
+use Symfony\Component\DependencyInjection\Attribute\Autowire;
+
 /**
  * The mutable holder for the "Version control > Git" settings, shared by every
  * git-facing service (status bar, gutter, refresher, blame, commit, poll). It
@@ -25,7 +27,7 @@ final class GitSettings
     private int $refreshInterval;
 
     /** @param array<string, int|bool|string> $settings resolved settings (defaults merged) */
-    public function __construct(array $settings)
+    public function __construct(#[Autowire('%env(json:PORTA_SETTINGS)%')] array $settings)
     {
         $this->showBranch = (bool) ($settings['gitShowBranch'] ?? true);
         $this->gutterMarks = (bool) ($settings['gitGutterMarks'] ?? true);

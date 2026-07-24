@@ -11,6 +11,7 @@ use Porta\Container\AsIdeService;
 use Porta\I18n\Translator;
 use Porta\Ui\Notifier;
 use Porta\Widget\CodeEditorWidget;
+use Symfony\Component\DependencyInjection\Attribute\Autowire;
 
 /**
  * The per-language indent model behind the settings view's Languages section:
@@ -38,6 +39,7 @@ final class SettingsLanguageController
         private readonly Notifier $notifier,
         private readonly string $rootDir,
         private readonly Translator $translator,
+        #[Autowire('%env(json:PORTA_LANGUAGES)%')]
         array $overrides,
     ) {
         foreach (LanguageCatalog::ids() as $id) {

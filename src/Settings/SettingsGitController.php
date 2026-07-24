@@ -11,6 +11,7 @@ use Porta\I18n\Translator;
 use Porta\Ui\Notifier;
 use Porta\Widget\CodeEditorWidget;
 use Porta\Widget\StatusBarWidget;
+use Symfony\Component\DependencyInjection\Attribute\Autowire;
 use Symfony\Component\Tui\Tui;
 
 /**
@@ -39,6 +40,7 @@ final class SettingsGitController
      * @param array<string, int|bool|string> $settings resolved settings (defaults merged)
      */
     public function __construct(
+        #[Autowire('%env(json:PORTA_SETTINGS)%')]
         private array $settings,
         private readonly GitSettings $gitSettings,
         private readonly CodeEditorWidget $editor,

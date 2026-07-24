@@ -10,6 +10,7 @@ use Porta\I18n\Translator;
 use Porta\Lsp\LspReconfigurer;
 use Porta\Lsp\ServerLocator;
 use Porta\Ui\Notifier;
+use Symfony\Component\DependencyInjection\Attribute\Autowire;
 
 /**
  * The per-language LSP-server model behind the settings view's Languages
@@ -25,6 +26,7 @@ final class SettingsLspController
      */
     public function __construct(
         private readonly string $rootDir,
+        #[Autowire('%env(json:PORTA_LSP_SERVERS)%')]
         private array $overrides,
         private readonly LspReconfigurer $reconfigurer,
         private readonly Notifier $notifier,

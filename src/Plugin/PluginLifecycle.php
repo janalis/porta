@@ -13,6 +13,7 @@ use Porta\Ui\Menu\MenuRebuilder;
 use Porta\Ui\Notifier;
 use Porta\Ui\WorkspaceViews;
 use Porta\Widget\Settings\SettingsNavWidget;
+use Symfony\Component\DependencyInjection\Attribute\Autowire;
 use Symfony\Component\Tui\Tui;
 
 /**
@@ -49,7 +50,9 @@ final class PluginLifecycle implements PluginLifecycleOps
         private readonly Tui $tui,
         private readonly LspReconfigurer $lspReconfigurer,
         private readonly string $rootDir,
+        #[Autowire('%env(json:PORTA_DISABLED_PLUGINS)%')]
         array $disabledPlugins,
+        #[Autowire('%env(json:PORTA_ENABLED_PLUGINS)%')]
         array $enabledPlugins,
     ) {
         $this->disabled = array_fill_keys($disabledPlugins, value: true);

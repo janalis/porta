@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Porta\Run;
 
 use Porta\Support\JsonFile;
+use Symfony\Component\DependencyInjection\Attribute\Autowire;
 
 /**
  * Discovers runnable tasks for the "Run" menu: the current PHP file, composer
@@ -18,6 +19,7 @@ final readonly class RunConfigs
      */
     public function __construct(
         private string $rootDir,
+        #[Autowire('%env(json:PORTA_LANGUAGES)%')]
         private array $languages = [],
     ) {}
 
