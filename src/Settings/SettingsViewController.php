@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Porta\Settings;
 
 use Porta\Container\AsEager;
+use Porta\Container\LayoutSlot;
 use Porta\Layout\EditorAreaPanes;
 use Porta\Settings\SettingsController;
 use Porta\Settings\SettingsDebugController;
@@ -44,8 +45,11 @@ final class SettingsViewController
         private readonly SettingsNavWidget $nav,
         private readonly SettingsFormWidget $form,
         private readonly KeybindingsListWidget $keymapList,
+        #[LayoutSlot('main')]
         private readonly ContainerWidget $main,
+        #[LayoutSlot('settings_area')]
         private readonly ContainerWidget $settingsArea,
+        #[LayoutSlot('settings_content')]
         private readonly ContainerWidget $settingsContent,
         private readonly MenuBarWidget $menuBar,
         private readonly EditorAreaPanes $editArea,

@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Porta\Input;
 
+use Porta\Container\LayoutSlot;
 use Porta\Overlay\State\MenuOverlayController;
 use Porta\Overlay\State\ToastCenter;
 use Porta\Ui\Dock\BottomDock;
@@ -38,6 +39,7 @@ final readonly class HoverRouter
         private GitMouseRouter $git,
         private SettingsMouseRouter $settings,
         private WelcomeMouseRouter $welcome,
+        #[LayoutSlot('separator')]
         private SeparatorWidget $separator,
         private ToastCenter $toasts,
     ) {}

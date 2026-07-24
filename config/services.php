@@ -23,10 +23,6 @@ use Porta\Highlight\HighlightPreferences;
 use Porta\Highlight\SwitchableTerminalTheme;
 use Porta\Highlight\SyntaxHighlightProviderSource;
 use Porta\Highlight\TerminalThemeFactory;
-use Porta\Input\GitMouseRouter;
-use Porta\Input\HoverRouter;
-use Porta\Input\MouseRouter;
-use Porta\Input\SettingsMouseRouter;
 use Porta\Layout\WorkspaceLayout;
 use Porta\Overlay\Region\CompositeFloatingRegions;
 use Porta\Overlay\Region\FloatingRegions;
@@ -170,17 +166,12 @@ return static function (ContainerConfigurator $container, ContainerBuilder $buil
         ->bind('$lspCommand', env('default::PORTA_LSP_COMMAND'))
         ->bind('$lspDisabled', env('PORTA_LSP_DISABLED')->bool())
         ->bind('$docsDir', env('PORTA_DOCS_DIR'))
-        ->bind('$gitPath', env('default::PORTA_GIT_PATH')) // '' resolves to null (auto-discover)
-        ->bind(ContainerWidget::class.' $editorBody', service('porta.widget.editor_body'))
-        ->bind(ContainerWidget::class.' $main', service('porta.widget.main'))
-        ->bind(ContainerWidget::class.' $settingsArea', service('porta.widget.settings_area'))
-        ->bind(ContainerWidget::class.' $settingsContent', service('porta.widget.settings_content'))
-        ->bind(ContainerWidget::class.' $gitArea', service('porta.widget.git_area'))
-        ->bind(ContainerWidget::class.' $gitLeft', service('porta.widget.git_left'))
-        // The scoped Search Everywhere instances behind Ctrl+P / palette / go-to-symbol.
-        ->bind(SearchEverywhereController::class.' $goToFile', service('porta.go_to_file'))
-        ->bind(SearchEverywhereController::class.' $commandPalette', service('porta.command_palette'))
-        ->bind(SearchEverywhereController::class.' $goToSymbol', service('porta.go_to_symbol'));
+        ->bind('$gitPath', env('default::PORTA_GIT_PATH')); // '' resolves to null (auto-discover)
+    // The composite tree's duplicate-typed sub-widgets (editorBody/main/git+
+    // settings areas/separators) and the scoped Search Everywhere instances
+    // (Ctrl+P / palette / go-to-symbol) are selected at the consumer with
+    // #[Container/LayoutSlot('…')] / #[Autowire(service: 'porta.…')] — the
+    // param that knows which one it wants names it, so no central binds here.
 
     // Autoregister every Porta\ class. Only the orchestrator and the container
     // factory are excluded; everything else that isn't a real service registers
@@ -296,13 +287,9 @@ return static function (ContainerConfigurator $container, ContainerBuilder $buil
     $services->set('porta.widget.settings_separator', SeparatorWidget::class)->factory([service(WorkspaceLayout::class), 'settingsSeparator']);
 
     // The mouse routers (and the hover router split out of the main one) share
-    // the parameter name $separator with different instances — binds cannot
-    // disambiguate, explicit args can. HoverRouter drives the main sidebar
-    // divider, the same instance MouseRouter used before the split.
-    $services->set(MouseRouter::class)->arg('$separator', service('porta.widget.separator'));
-    $services->set(HoverRouter::class)->arg('$separator', service('porta.widget.separator'));
-    $services->set(GitMouseRouter::class)->arg('$separator', service('porta.widget.git_separator'));
-    $services->set(SettingsMouseRouter::class)->arg('$separator', service('porta.widget.settings_separator'));
+    // the parameter name $separator with different instances; each names the one
+    // it wants with #[LayoutSlot('…separator')] at the param (HoverRouter drives
+    // the main sidebar divider, the same instance MouseRouter used).
 
     // BufferService is both interface seams' implementation.
 

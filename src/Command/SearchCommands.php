@@ -11,6 +11,7 @@ use Porta\Search\Everywhere\SearchEverywhereController;
 use Porta\Search\SearchActions;
 use Porta\Search\TodoScanner;
 use Symfony\Component\DependencyInjection\Attribute\AsTaggedItem;
+use Symfony\Component\DependencyInjection\Attribute\Autowire;
 
 /** Project-wide search/navigation palette commands. */
 #[AsTaggedItem(priority: 300)]
@@ -19,6 +20,7 @@ final class SearchCommands implements CommandProvider
     public function __construct(
         private readonly SearchActions $searchActions,
         private readonly TodoScanner $todoScanner,
+        #[Autowire(service: 'porta.go_to_symbol')]
         private readonly SearchEverywhereController $goToSymbol,
         private readonly BufferService $bufferService,
     ) {}

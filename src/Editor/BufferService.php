@@ -7,6 +7,7 @@ namespace Porta\Editor;
 use Porta\Config\EditorConfig\DocumentWriter;
 use Porta\Config\EditorConfig\EditorConfigResolver;
 use Porta\Container\AsIdeService;
+use Porta\Container\LayoutSlot;
 use Porta\Event\BufferOpened;
 use Porta\Event\BufferSaved;
 use Porta\Event\BufferSwitched;
@@ -61,6 +62,7 @@ final class BufferService implements BufferReopener, DiagnosticsSink, FileOpener
         private readonly ImageViewerWidget $imageViewer,
         private readonly HelpViewerWidget $helpViewer,
         private readonly ImageDecoder $imageDecoder,
+        #[LayoutSlot('editor_body')]
         private readonly ContainerWidget $editorBody,
         private readonly EventDispatcherInterface $dispatcher,
         private readonly FormatOnSave $formatOnSave,

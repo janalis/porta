@@ -22,6 +22,7 @@ use Porta\Widget\FindBarWidget;
 use Porta\Widget\ImageViewerWidget;
 use Porta\Widget\MenuBarWidget;
 use Symfony\Component\DependencyInjection\Attribute\AsTaggedItem;
+use Symfony\Component\DependencyInjection\Attribute\Autowire;
 use Symfony\Component\Tui\Tui;
 
 /** The key-bound-only workbench chords: quit, focus movement, global overlays. */
@@ -35,6 +36,7 @@ final class WorkbenchCommands implements CommandProvider
         private readonly PaneResizer $paneResizer,
         private readonly BufferService $bufferService,
         private readonly SearchEverywhereController $searchEverywhere,
+        #[Autowire(service: 'porta.command_palette')]
         private readonly SearchEverywhereController $commandPalette,
         private readonly LocalHistoryController $localHistory,
         private readonly RunController $run,

@@ -16,6 +16,7 @@ use Porta\Ui\Dock\BottomDock;
 use Porta\Ui\WorkbenchActions;
 use Porta\Ui\WorkspaceViews;
 use Symfony\Component\DependencyInjection\Attribute\AsTaggedItem;
+use Symfony\Component\DependencyInjection\Attribute\Autowire;
 
 /** View/window palette commands: tabs, overlays, panels and the full views. */
 #[AsTaggedItem(priority: 200)]
@@ -24,6 +25,7 @@ final class ViewCommands implements CommandProvider
     public function __construct(
         private readonly WorkbenchActions $workbench,
         private readonly BufferManager $buffers,
+        #[Autowire(service: 'porta.go_to_file')]
         private readonly SearchEverywhereController $goToFile,
         private readonly SettingsController $settings,
         private readonly RunController $run,

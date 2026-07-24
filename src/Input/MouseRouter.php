@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Porta\Input;
 
+use Porta\Container\LayoutSlot;
 use Porta\Debug\DebugController;
 use Porta\Editor\BufferManager;
 use Porta\Editor\BufferService;
@@ -83,6 +84,7 @@ final class MouseRouter
         private readonly WelcomeMouseRouter $welcome,
         private readonly BidiTui $bidi,
         private readonly DebugController $debug,
+        #[LayoutSlot('separator')]
         private readonly SeparatorWidget $separator,
         private readonly ContextMenuOpener $opener,
         private readonly StatusBarWidget $statusBar,

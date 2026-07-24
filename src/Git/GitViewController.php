@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Porta\Git;
 
 use Porta\Container\AsEager;
+use Porta\Container\LayoutSlot;
 use Porta\Event\GitCommitted;
 use Porta\Event\GitRemoteCompleted;
 use Porta\I18n\Translator;
@@ -64,8 +65,11 @@ final class GitViewController
         private readonly GitInfo $git,
         private readonly string $rootDir,
         private readonly GitPanes $panes,
+        #[LayoutSlot('main')]
         private readonly ContainerWidget $main,
+        #[LayoutSlot('git_area')]
         private readonly ContainerWidget $gitArea,
+        #[LayoutSlot('git_left')]
         private readonly ContainerWidget $gitLeft,
         private readonly MenuBarWidget $menuBar,
         private readonly Tui $tui,

@@ -149,11 +149,15 @@ singleton widget** (`#[Container/AsWidget]` declares tree id/flex, autoconfigure
   scalars); `SearchEverywhereController` via `Search/Everywhere/SearchEverywhereFactory`.
 - **Duplicate-typed widgets** from the composite tree are per-getter services
   (`porta.widget.editor_body` → `[WorkspaceLayout, 'editorBody']`, same for main/git/settings
-  areas and separators) fed through **typed-named binds**
-  (`bind(ContainerWidget::class.' $editorBody', …)` — no leading backslash). A configured bind
-  with **zero consumers fails the compile**, and same-type-same-name params
-  (`SeparatorWidget $separator` in both mouse sub-routers) can't bind — those get explicit
-  per-service `->arg('$separator', …)`.
+  areas and separators). The consumer selects which one it wants with
+  **`#[Container/LayoutSlot('editor_body')]`** on the param — a thin `#[Autowire]` subclass
+  (`service: 'porta.widget.'.$slot`), so the stock AutowirePass resolves it natively (matched via
+  `IS_INSTANCEOF`, no compiler pass), the way `#[AutowireIterator]` does for tags. That moves the
+  disambiguation to the param that knows the answer, so there are **no central binds** and the two
+  same-type-same-name `SeparatorWidget $separator` routers just carry different slots
+  (`separator` / `git_separator` / `settings_separator`). The scoped Search Everywhere instances
+  (`porta.go_to_file`/`command_palette`/`go_to_symbol`) are selected the same way with a plain
+  `#[Autowire(service: 'porta.go_to_file')]`.
 - **Interface aliases are auto-derived**: `Container/SingleImplAliasPass` (a compiler pass at
   `TYPE_BEFORE_OPTIMIZATION` priority 100, before autowiring) aliases every `Porta\` interface with
   exactly **one** implementing service to it (`FileOpener`→`BufferService`,

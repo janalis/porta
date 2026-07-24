@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Porta\Input;
 
+use Porta\Container\LayoutSlot;
 use Porta\Widget\SeparatorWidget;
 use Porta\Widget\Settings\KeybindingsListWidget;
 use Porta\Widget\Settings\SettingsFormWidget;
@@ -26,6 +27,7 @@ final class SettingsMouseRouter
         private readonly SettingsNavWidget $nav,
         private readonly SettingsFormWidget $form,
         private readonly KeybindingsListWidget $keys,
+        #[LayoutSlot('settings_separator')]
         private readonly SeparatorWidget $separator,
     ) {}
 

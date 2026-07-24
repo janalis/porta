@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Porta\Input;
 
+use Porta\Container\LayoutSlot;
 use Porta\Git\ChangeEntry;
 use Porta\Git\LogEntry;
 use Porta\Widget\Git\ChangesListWidget;
@@ -36,6 +37,7 @@ final class GitMouseRouter
         private readonly CommitBoxWidget $commitBox,
         private readonly HistoryListWidget $history,
         private readonly GitTabsWidget $tabs,
+        #[LayoutSlot('git_separator')]
         private readonly SeparatorWidget $separator,
     ) {}
 
