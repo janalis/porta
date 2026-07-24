@@ -36,9 +36,7 @@ final class IdeTerminalTest extends TestCase
     /** @return list<\Porta\Terminal\TerminalSession> */
     private function sessions(mixed $ide): array
     {
-        $run = $ide->resolve(RunController::class);
-        $sessions = new \ReflectionProperty($run, 'sessions')->getValue($run);
-        \assert($sessions instanceof \Porta\Terminal\TerminalSessions, description: 'run sessions property holds a TerminalSessions instance');
+        $sessions = $ide->resolve(RunController::class)->sessions();
 
         return $sessions->all();
     }
@@ -96,7 +94,7 @@ final class IdeTerminalTest extends TestCase
                     // Ctrl+Page Up cycles back to shell 1 (widget-scope, terminal focused).
                     $tui->handleInput("\x1b[5^");
                     $run = $ide->resolve(RunController::class);
-                    $sessionsOf = static fn () => new \ReflectionProperty($run, 'sessions')->getValue($run);
+                    $sessionsOf = static fn () => $run->sessions();
                     $this->assertSame('shell:1', $sessionsOf()->active()?->id, 'cycled to the first shell');
 
                     // Click shell 2's dock-strip tab label to activate it (mouse select path).
@@ -189,8 +187,7 @@ final class IdeTerminalTest extends TestCase
                     $tui->handleInput(\sprintf("\x1b[<0;%d;%dm", $rect->col + $secondTab + 1, $rect->row + 1));
                     $this->assertSame(['shell:2', 'shell:1'], $ids(), 'the drag reordered the session tabs on the dock strip');
 
-                    $run = $ide->resolve(RunController::class);
-                    $sessions = new \ReflectionProperty($run, 'sessions')->getValue($run);
+                    $sessions = $ide->resolve(RunController::class)->sessions();
                     $this->assertSame('shell:1', $sessions->active()?->id, 'the pressed session stays active through its move');
                 },
             ],

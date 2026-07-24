@@ -42,6 +42,16 @@ final class RunController
         private readonly TerminalSessions $sessions,
     ) {}
 
+    /**
+     * The terminal session collection this controller owns.
+     *
+     * @internal exposed for tests
+     */
+    public function sessions(): TerminalSessions
+    {
+        return $this->sessions;
+    }
+
     public function openRunMenu(): void
     {
         $tasks = $this->runConfigs->discover($this->editor->getFilePath());
