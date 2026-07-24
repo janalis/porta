@@ -87,7 +87,10 @@ boot; PSR-4 fallback keeps new files working in dev). CI's `composer install` ad
 $class` pass `autoload: false`, and bundled `.porta/plugins/*/plugin.php` are `require`d directly,
 never Composer-autoloaded). Every test namespace must mirror its path under `tests/` or the
 authoritative classmap rejects it — `composer dump-autoload --classmap-authoritative` surfaces any
-PSR-4 violation.
+PSR-4 violation. Making `composer.json` itself `classmap-authoritative` was considered and
+**deliberately not done**: it would drop the PSR-4 fallback and break new-file autoload in dev
+until a manual re-dump, so authoritative mode stays a CI-install-only concern (the dumped container
+class is `require_once`d by path, never Composer-autoloaded, so it is unaffected either way).
 
 ## Architecture
 
