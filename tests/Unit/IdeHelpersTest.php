@@ -7,6 +7,7 @@ namespace Porta\Tests\Unit;
 use PHPUnit\Framework\TestCase;
 use Porta\Editor\Document;
 use Porta\Editor\OpenFocus;
+use Porta\Git\GitInfo;
 use Porta\History\LocalHistoryController;
 use Porta\Ide;
 use Porta\Lsp\LspMapper;
@@ -17,6 +18,7 @@ use Porta\Lsp\WorkspaceEditor;
 use Porta\Onboarding\OnboardingState;
 use Porta\Support\ProjectPaths;
 use Porta\Tests\Support\TempProject;
+use Symfony\Component\Tui\Render\Renderer;
 use Symfony\Component\Tui\Terminal\VirtualTerminal;
 
 /**
@@ -40,6 +42,14 @@ final class IdeHelpersTest extends TestCase
         $reflection = new \ReflectionMethod($this->ide, $method);
 
         return $reflection->invoke($this->ide, ...$args);
+    }
+
+    public function testResolveReturnsLocatorMembersAndSynthetics(): void
+    {
+        // A porta.ide locator member resolves through the locator branch...
+        self::assertInstanceOf(GitInfo::class, $this->ide->resolve(GitInfo::class));
+        // ...and a synthetic (Renderer) falls back to the container branch.
+        self::assertInstanceOf(Renderer::class, $this->ide->resolve(Renderer::class));
     }
 
     private function workspaceEditor(): WorkspaceEditor

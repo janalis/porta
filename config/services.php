@@ -298,8 +298,10 @@ return static function (ContainerConfigurator $container, ContainerBuilder $buil
     // the container can't build, or values that exist before the container does
     // (IdeConfig steers the container's own env parameters). Ide constructs
     // these and ->set()s the instances right after each is created; declared
-    // here so services can depend on them by type.
+    // here so services can depend on them by type. Public so they form the
+    // container's public surface alongside porta.ide — Ide::resolve() returns
+    // them for the test seam.
     foreach ([Renderer::class, Tui::class, BidiTui::class, IdeConfig::class] as $syntheticId) {
-        $services->set($syntheticId)->synthetic();
+        $services->set($syntheticId)->synthetic()->public();
     }
 };

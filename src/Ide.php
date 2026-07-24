@@ -270,6 +270,28 @@ final class Ide
     }
 
     /**
+     * Resolve any publicly reachable service by class — a `porta.ide` locator
+     * member, or one of the synthetics (Renderer/Tui/BidiTui/IdeConfig). The one
+     * seam tests use to reach the running IDE, so they never reflect private
+     * fields; every entry is the same shared instance Ide holds.
+     *
+     * @internal exposed for tests
+     *
+     * @template T of object
+     *
+     * @param class-string<T> $class
+     *
+     * @return T
+     */
+    public function resolve(string $class): object
+    {
+        /** @var T $service */
+        $service = $this->locator->has($class) ? $this->locator->get($class) : $this->container->get($class);
+
+        return $service;
+    }
+
+    /**
      * @internal exposed for tests
      */
     public function getTui(): Tui
