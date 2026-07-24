@@ -94,13 +94,15 @@ class is `require_once`d by path, never Composer-autoloaded, so it is unaffected
 
 ## Architecture
 
-**`Ide` (`src/Ide.php`, ~520 lines) is a thin composition root over a Symfony DI container.**
+**`Ide` (`src/Ide.php`, ~400 lines) is a thin composition root over a Symfony DI container.**
 Its constructor builds the container via `Container/IdeContainerFactory`, hand-builds only the
 bootstrap infra (Renderer/`Ui/BidiTui`/NonBlockingTerminal + StyleSheet), and otherwise
-**resolves** the graph: shared services/widgets land in its private properties (kept as aliases
-because ~100 reflection-based test seams read them), the `build*` steps
-(`buildEditorArea`, `buildSidePanels`, `buildGitView`, `buildSettingsWidgets`,
-`buildLayoutAndOverlay`) are now resolution + arrangement only, and the ctor tail runs
+**resolves** the graph into private properties — but only the ones its own runtime logic reads.
+Tests reach every other service through the single `@internal Ide::resolve(X::class)` seam (a
+`porta.ide` locator lookup with a container fallback for the synthetics), never by reflecting
+private fields, so `Ide` holds no test-only alias fields or `get*()` getters. The `build*` steps
+(`buildEditorArea`, `buildGitView`, `buildSettingsWidgets`, `buildLayoutAndOverlay`) are now
+resolution + arrangement only, and the ctor tail runs
 `Command/CommandRegistryPopulator::populate()` (tagged providers), `Bootstrap/WidgetHooks::wire()`,
 `Bootstrap/EagerServices::boot()` (tagged eager services — see below), the menu bake, registers
 the `Input/InputDispatcher` listener, and finally `Bootstrap/StartupWiring::wire()` (hands the
@@ -196,7 +198,8 @@ and `Widget/EditorCallbacks` are plain services (the runtime consumes the narrow
 `Editor/DiagnosticsSink` seam instead of BufferService). Four objects are handed to the container
 as **synthetic** services right after `Ide` creates them: `Renderer`, `Tui`, `BidiTui` (external
 `symfony/tui` infra) and `IdeConfig` (parsed before the container exists — its settings steer the
-env parameters).
+env parameters). They are declared **public** so that, with the `porta.ide` locator, they form the
+container's public surface — `Ide::resolve()`'s container fallback returns them for tests.
 
 **Rules for the container** (`config/services.php`, deliberately **outside `src/`** so the wiring
 stays off the 100%-line-coverage gate): services are **autoregistered** via
