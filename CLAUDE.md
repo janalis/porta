@@ -152,8 +152,14 @@ singleton widget** (`#[Container/AsWidget]` declares tree id/flex, autoconfigure
 - **Typed factories**: `Keybindings` via `Config/KeybindingsFactory` (resolving it triggers
   `Plugin/PluginHost::ensureLoaded()`, the idempotent one-time plugin load, so plugin default keys
   merge into the immutable map); `Overlay/State/MenuOverlayPanes`; `PluginManager`/`PluginLoader`/
-  `PluginSettings` exposed off `PluginHost`; `PluginInstaller::create` (environment-derived
-  scalars); `SearchEverywhereController` via `Search/Everywhere/SearchEverywhereFactory`.
+  `PluginSettings` exposed off `PluginHost`; `SearchEverywhereController` via
+  `Search/Everywhere/SearchEverywhereFactory`. **Static self-factories declare themselves on the
+  class** with `#[Autoconfigure(constructor: '…')]` instead of a central `->factory()` def:
+  `HighlightPreferences::fromConfig` (its `%env(json:PORTA_HIGHLIGHT)%` arg via `#[Autowire]` on the
+  param), `Plugin/PluginInstaller::create` and `Plugin/ToolInstaller::create` (environment-derived
+  scalars; their `$rootDir`/`Translator` args autowire). A collaborator-instance factory
+  (`[PluginHost, 'manager']`) or a cross-class one (`Themes::createSwitchable` → `Styles`) can't use
+  it and stays an explicit def.
 - **Duplicate-typed widgets** from the composite tree are per-getter services
   (`porta.widget.editor_body` → `[WorkspaceLayout, 'editorBody']`, same for main/git/settings
   areas and separators). The consumer selects which one it wants with

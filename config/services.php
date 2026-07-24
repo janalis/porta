@@ -13,7 +13,6 @@ use Porta\Container\AsWidget;
 use Porta\Container\SingleImplAliasPass;
 use Porta\Editor\BufferService;
 use Porta\Highlight\ColorMode;
-use Porta\Highlight\HighlightPreferences;
 use Porta\Highlight\SwitchableTerminalTheme;
 use Porta\Highlight\SyntaxHighlightProviderSource;
 use Porta\Highlight\TerminalThemeFactory;
@@ -23,11 +22,9 @@ use Porta\Overlay\Region\FloatingRegions;
 use Porta\Overlay\State\MenuOverlayPanes;
 use Porta\Overlay\State\MenuOverlayPanesFactory;
 use Porta\Plugin\PluginHost;
-use Porta\Plugin\PluginInstaller;
 use Porta\Plugin\PluginLoader;
 use Porta\Plugin\PluginManager;
 use Porta\Plugin\PluginSettings;
-use Porta\Plugin\ToolInstaller;
 use Porta\Search\Everywhere\SearchEverywhereController;
 use Porta\Search\Everywhere\SearchEverywhereFactory;
 use Porta\Ui\BidiTui;
@@ -221,14 +218,10 @@ return static function (ContainerConfigurator $container, ContainerBuilder $buil
         ->args([env('enum:'.ColorMode::class.':PORTA_ANSI'), env('PORTA_THEME')]);
     $services->alias(TerminalTheme::class, SwitchableTerminalTheme::class);
 
-    // Which highlighting backend serves which language. The preferences come
-    // from the top-level `highlight` block; the plugin-supplied backends come
-    // from PluginManager through the interface Porta\Highlight owns, so the
-    // highlighting subsystem never depends on Porta\Plugin.
-    $services
-        ->set(HighlightPreferences::class)
-        ->factory([HighlightPreferences::class, 'fromConfig'])
-        ->args([env('PORTA_HIGHLIGHT')->json()]);
+    // Which highlighting backend serves which language: HighlightPreferences
+    // self-declares its #[Autoconfigure(constructor: 'fromConfig')] + env arg on
+    // the class. The plugin-supplied backends come from PluginManager through the
+    // interface Porta\Highlight owns, so the subsystem never depends on Porta\Plugin.
     $services->alias(SyntaxHighlightProviderSource::class, PluginManager::class);
 
     // The single public boundary: Ide resolves every service through this
@@ -258,10 +251,9 @@ return static function (ContainerConfigurator $container, ContainerBuilder $buil
     $services->set(PluginLoader::class)->factory([service(PluginHost::class), 'loader']);
     $services->set(PluginSettings::class)->factory([service(PluginHost::class), 'settings']);
 
-    // The installer resolves its plugin dirs and git binary from the
-    // environment at construction — a static named constructor owns that.
-    $services->set(PluginInstaller::class)->factory([PluginInstaller::class, 'create']);
-    $services->set(ToolInstaller::class)->factory([ToolInstaller::class, 'create']);
+    // The installers resolve their plugin dirs and git binary from the
+    // environment in a static named constructor, self-declared on each class
+    // with #[Autoconfigure(constructor: 'create')].
 
     // Duplicate-typed widgets from the composite tree: exposed per getter so
     // typed-named binds (below, in _defaults) can feed them to consumers.

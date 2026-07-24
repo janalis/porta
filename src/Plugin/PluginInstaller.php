@@ -6,6 +6,7 @@ namespace Porta\Plugin;
 
 use Porta\I18n\Translator;
 use Porta\Support\AsyncProcess;
+use Symfony\Component\DependencyInjection\Attribute\Autoconfigure;
 use Symfony\Component\Filesystem\Exception\IOException;
 use Symfony\Component\Filesystem\Exception\IOExceptionInterface;
 use Symfony\Component\Filesystem\Filesystem;
@@ -20,6 +21,7 @@ use Symfony\Component\Process\ExecutableFinder;
  * Activation of the installed plugin is the caller's concern — this class
  * only manages the directories.
  */
+#[Autoconfigure(constructor: 'create')]
 final class PluginInstaller
 {
     /** Single-flight: the clone in progress, if any. */

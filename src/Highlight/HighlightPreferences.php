@@ -4,6 +4,9 @@ declare(strict_types=1);
 
 namespace Porta\Highlight;
 
+use Symfony\Component\DependencyInjection\Attribute\Autoconfigure;
+use Symfony\Component\DependencyInjection\Attribute\Autowire;
+
 /**
  * Which highlighting backend the user wants, globally and per language.
  *
@@ -23,6 +26,7 @@ namespace Porta\Highlight;
  * An empty id means "no preference", which is not the same as a *bad* one: an
  * unknown id is a user error the registry warns about and falls through.
  */
+#[Autoconfigure(constructor: 'fromConfig')]
 final readonly class HighlightPreferences
 {
     /** @param array<string, string> $languages grammar name => provider id */
@@ -37,7 +41,7 @@ final readonly class HighlightPreferences
      *
      * @param array{default?: string, languages?: array<string, string>} $highlight
      */
-    public static function fromConfig(array $highlight): self
+    public static function fromConfig(#[Autowire('%env(json:PORTA_HIGHLIGHT)%')] array $highlight): self
     {
         return new self($highlight['default'] ?? '', $highlight['languages'] ?? []);
     }

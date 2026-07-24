@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Porta\Plugin;
 
 use Porta\Support\AsyncProcess;
+use Symfony\Component\DependencyInjection\Attribute\Autoconfigure;
 use Symfony\Component\Process\ExecutableFinder;
 
 /**
@@ -16,6 +17,7 @@ use Symfony\Component\Process\ExecutableFinder;
  * `cargo install <pkg> --locked`). Single-flight; the caller handles the
  * outcome flash and any follow-up (re-render, LSP reload).
  */
+#[Autoconfigure(constructor: 'create')]
 final class ToolInstaller
 {
     /**
