@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Porta\Widget;
 
+use Porta\Container\AsChromeRoot;
 use Porta\Container\AsIdeService;
 use Porta\Container\AsWidget;
 use Porta\Debug\DebugState;
@@ -37,6 +38,7 @@ use Symfony\Component\Tui\Widget\KeybindingsTrait;
  * onRemoveWatch. Structured like {@see ResultsPanelWidget} — the third
  * resizable bottom panel.
  */
+#[AsChromeRoot]
 #[AsIdeService]
 #[AsWidget('debug')]
 final class DebugPanelWidget extends OverlayWidget implements FocusableInterface, HoverableList, LtrPane, MenuOverlayHost

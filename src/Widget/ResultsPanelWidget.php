@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Porta\Widget;
 
+use Porta\Container\AsChromeRoot;
 use Porta\Container\AsIdeService;
 use Porta\Container\AsWidget;
 use Porta\I18n\Translator;
@@ -37,6 +38,7 @@ use Symfony\Component\Tui\Widget\KeybindingsTrait;
  * Bottom results panel: project-wide search (Ctrl+Shift+F) and, later,
  * find-usages results. Hidden (zero rows) when closed.
  */
+#[AsChromeRoot]
 #[AsIdeService]
 #[AsWidget('results')]
 final class ResultsPanelWidget extends OverlayWidget implements FocusableInterface, HoverableList, LtrPane, MenuOverlayHost

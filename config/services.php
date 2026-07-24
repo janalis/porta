@@ -10,6 +10,7 @@ use Porta\Settings\SettingsController;
 use Porta\Settings\SettingsGitController;
 use Porta\Settings\SettingsLanguageController;
 use Porta\Settings\SettingsLspController;
+use Porta\Container\AsChromeRoot;
 use Porta\Container\AsEager;
 use Porta\Container\AsIdeService;
 use Porta\Container\AsWidget;
@@ -125,6 +126,17 @@ return static function (ContainerConfigurator $container, ContainerBuilder $buil
         AsEager::class,
         static function (ChildDefinition $definition, AsEager $attribute): void {
             $definition->addTag('porta.eager', ['priority' => $attribute->priority]);
+        },
+    );
+
+    // #[AsChromeRoot] widgets become the chrome roots ChromeInvalidator sweeps
+    // on a live theme/locale/cursor/tab-position switch; it injects the tag as a
+    // #[AutowireIterator] (the #[AsEager] pattern), so membership travels with
+    // the class instead of a hand-maintained register() list in Ide.
+    $builder->registerAttributeForAutoconfiguration(
+        AsChromeRoot::class,
+        static function (ChildDefinition $definition): void {
+            $definition->addTag('porta.chrome_root');
         },
     );
 
@@ -271,7 +283,10 @@ return static function (ContainerConfigurator $container, ContainerBuilder $buil
     // Duplicate-typed widgets from the composite tree: exposed per getter so
     // typed-named binds (below, in _defaults) can feed them to consumers.
     $services->set('porta.widget.editor_body', ContainerWidget::class)->factory([service(WorkspaceLayout::class), 'editorBody']);
-    $services->set('porta.widget.main', ContainerWidget::class)->factory([service(WorkspaceLayout::class), 'main']);
+    // The main editor area is a chrome root too, but it is a getter service
+    // (a bare ContainerWidget, not a class that can carry #[AsChromeRoot]), so
+    // it is tagged here — the Keybindings/event_dispatcher exception pattern.
+    $services->set('porta.widget.main', ContainerWidget::class)->factory([service(WorkspaceLayout::class), 'main'])->tag('porta.chrome_root');
     $services->set('porta.widget.settings_area', ContainerWidget::class)->factory([service(WorkspaceLayout::class), 'settingsArea']);
     $services->set('porta.widget.settings_content', ContainerWidget::class)->factory([service(WorkspaceLayout::class), 'settingsContent']);
     $services->set('porta.widget.git_area', ContainerWidget::class)->factory([service(WorkspaceLayout::class), 'gitArea']);

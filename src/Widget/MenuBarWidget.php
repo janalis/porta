@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Porta\Widget;
 
+use Porta\Container\AsChromeRoot;
 use Porta\Container\AsIdeService;
 use Porta\Container\AsWidget;
 use Porta\Support\IntMath;
@@ -31,6 +32,7 @@ use Symfony\Component\Tui\Widget\KeybindingsTrait;
  * instead of pushing it down. Titles that would overflow a narrow pane are
  * dropped from the strip (they stay reachable via F10 + arrow keys).
  */
+#[AsChromeRoot]
 #[AsIdeService]
 #[AsWidget('menu')]
 final class MenuBarWidget extends OverlayWidget implements FocusableInterface

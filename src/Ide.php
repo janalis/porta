@@ -42,7 +42,6 @@ use Porta\Settings\SettingsController;
 use Porta\Settings\SettingsLanguageController;
 use Porta\Support\FreezeWatchdog;
 use Porta\Ui\BidiTui;
-use Porta\Ui\ChromeInvalidator;
 use Porta\Ui\EditorArea;
 use Porta\Ui\Menu\MenuRebuilder;
 use Porta\Ui\NonBlockingTerminal;
@@ -51,14 +50,7 @@ use Porta\Ui\TerminalStateRefresher;
 use Porta\Ui\WorkspaceViews;
 use Porta\Widget\CodeEditorWidget;
 use Porta\Widget\ContextMenu;
-use Porta\Widget\DebugPanelWidget;
-use Porta\Widget\DockTabsWidget;
 use Porta\Widget\FileTreeWidget;
-use Porta\Widget\FindBarWidget;
-use Porta\Widget\MenuBarWidget;
-use Porta\Widget\ResultsPanelWidget;
-use Porta\Widget\StatusBarWidget;
-use Porta\Widget\TerminalPanelWidget;
 use Revolt\EventLoop;
 use Symfony\Component\DependencyInjection\ContainerInterface;
 use Symfony\Component\DependencyInjection\ServiceLocator;
@@ -82,19 +74,12 @@ final class Ide
     private BidiTui $bidiTui;
     private FileTreeWidget $tree;
     private CodeEditorWidget $editor;
-    private StatusBarWidget $statusBar;
     private Notifier $notifier;
     private FreezeWatchdog $watchdog;
     private EditorArea $editorArea;
-    private ChromeInvalidator $chrome;
     private TerminalStateRefresher $terminalRefresher;
-    private MenuBarWidget $menuBar;
-    private FindBarWidget $findBar;
-    private ResultsPanelWidget $resultsPanel;
-    private TerminalPanelWidget $terminalPanel;
     private RunController $run;
     private DebugController $debug;
-    private DebugPanelWidget $debugPanel;
 
     private readonly PluginManager $plugins;
     private PluginLifecycle $pluginLifecycle;
@@ -122,11 +107,11 @@ final class Ide
     private RefactorController $refactor;
 
     private Renderer $renderer;
+    // @mago-expect analysis:write-only-property — reflection-only seam: E2e tests read it via ReflectionProperty, never in-class.
     private ContextMenu $contextMenu;
     private MenuRebuilder $menuRebuilder;
 
-    /** Positions + composites the app-menu and context-menu floating overlays. */
-
+    // @mago-expect analysis:write-only-property — reflection-only seam: IdeSettingsViewTest reads it via ReflectionProperty, never in-class.
     private ContainerWidget $main;
     private SettingsController $settings;
     private SettingsLanguageController $settingsLanguages;
@@ -190,11 +175,8 @@ final class Ide
 
         // The workbench primitives every later build step delegates to.
         $this->editorArea = $this->service(EditorArea::class);
-        $this->chrome = $this->service(ChromeInvalidator::class);
 
         $this->buildEditorArea();
-
-        $this->buildSidePanels();
 
         $this->git = $this->service(GitInfo::class);
         $this->gitRefresher = $this->service(GitRefresher::class);
@@ -206,18 +188,8 @@ final class Ide
 
         $this->workspaceLayout->mount($this->tui);
         // The chrome roots swept by the live-setting appliers (theme/locale/
-        // cursor/tab position); everything exists once the Z-order is mounted.
-        $this->chrome->register([
-            $this->menuBar,
-            $this->main,
-            $this->statusBar,
-            $this->findBar,
-            $this->service(DockTabsWidget::class),
-            $this->resultsPanel,
-            $this->debugPanel,
-            $this->terminalPanel,
-            $this->contextMenu,
-        ]);
+        // cursor/tab position) declare themselves with #[AsChromeRoot];
+        // ChromeInvalidator injects them as a tagged iterator — no register here.
 
         $this->wireWidgets($keybindings);
         $this->bufferService = $this->service(BufferService::class);
@@ -469,10 +441,8 @@ final class Ide
         $this->tree = $this->service(FileTreeWidget::class);
         $this->editor = $this->service(CodeEditorWidget::class);
         $this->workspaceEditor = $this->service(WorkspaceEditor::class);
-        $this->statusBar = $this->service(StatusBarWidget::class);
         $this->notifier = $this->service(Notifier::class);
         $this->watchdog = $this->service(FreezeWatchdog::class);
-        $this->menuBar = $this->service(MenuBarWidget::class);
         $this->contextMenu = $this->service(ContextMenu::class);
 
         // The composite tree (layout containers, separators, assembly) lives in
@@ -482,15 +452,6 @@ final class Ide
         $this->main = $this->workspaceLayout->main();
         $this->paneLayout = $this->service(PaneLayout::class);
         $this->paneLayout->arrangeEditorArea();
-    }
-
-    /** The floating panels, project search, command palette and the LSP/run controllers. */
-    private function buildSidePanels(): void
-    {
-        $this->findBar = $this->service(FindBarWidget::class);
-        $this->resultsPanel = $this->service(ResultsPanelWidget::class);
-        $this->terminalPanel = $this->service(TerminalPanelWidget::class);
-        $this->debugPanel = $this->service(DebugPanelWidget::class);
     }
 
     private function buildGitView(): void

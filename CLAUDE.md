@@ -108,7 +108,14 @@ tags them `porta.eager`, and `Bootstrap/EagerServices` iterates the tag once at 
 construct them (the `CommandRegistryPopulator` tagged-iterator pattern). The priority fixes
 contractual construction order (the find→picker→toast presenters). Adopters:
 `GitViewController`/`SettingsViewController`/`WelcomeModalController` (attach to WorkspaceViews),
-the three overlay presenters, and `ResponsiveLayout`.
+the three overlay presenters, and `ResponsiveLayout`. The **chrome roots** the live-setting
+appliers sweep (theme/locale/cursor/tab-position → recolor/relabel the whole tree) declare
+themselves the same way with **`#[Container/AsChromeRoot]`** (tag `porta.chrome_root`);
+`Ui/ChromeInvalidator` injects them as a `#[AutowireIterator]` (order-independent — it only clears
+render caches), so there is no `register()` list in `Ide`. The eight chrome widgets carry the
+attribute; the ninth root (`$main`, the `porta.widget.main` getter service) is tagged at its def —
+the `Keybindings`/`event_dispatcher` exception. `tests/Unit/Container/ChromeRootMembershipTest`
+guards the tagged set.
 `run()` sets up the terminal (alternate screen + SGR mouse modes 1000/1003/1006), calls
 `LspBootstrapper::start()`, arms a 1s filesystem-poll timer, and enters `tui->run()`. Teardown
 (mouse disable, `History/SessionRestorer::save`, LSP/git/run shutdown) is in the `finally`.

@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Porta\Widget;
 
+use Porta\Container\AsChromeRoot;
 use Porta\Container\AsIdeService;
 use Porta\Container\AsWidget;
 use Porta\Editor\Document;
@@ -41,6 +42,7 @@ use Symfony\Component\Tui\Widget\KeybindingsTrait;
  * replacement is a preg replacement pattern ($1/\1 backreferences work,
  * \$ escapes a literal dollar); in literal mode it is inserted verbatim.
  */
+#[AsChromeRoot]
 #[AsIdeService]
 #[AsWidget('find-bar')]
 final class FindBarWidget extends OverlayWidget implements FocusableInterface

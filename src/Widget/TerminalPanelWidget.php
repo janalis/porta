@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Porta\Widget;
 
+use Porta\Container\AsChromeRoot;
 use Porta\Container\AsIdeService;
 use Porta\Container\AsWidget;
 use Porta\I18n\Translator;
@@ -32,6 +33,7 @@ use Symfony\Component\Tui\Widget\KeybindingsTrait;
  * so the panel body is pure terminal output; the widget stays dumb, firing
  * close/cycle callbacks for the session keys.
  */
+#[AsChromeRoot]
 #[AsIdeService]
 #[AsWidget('terminal')]
 final class TerminalPanelWidget extends OverlayWidget implements FocusableInterface, LtrPane, MenuOverlayHost

@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Porta\Widget;
 
+use Porta\Container\AsChromeRoot;
 use Porta\Container\AsIdeService;
 use Porta\Container\AsWidget;
 use Porta\Support\AnsiText;
@@ -19,6 +20,7 @@ use Symfony\Component\Tui\Widget\AbstractWidget;
  * Single-line status bar. Content is pulled from a provider closure on each
  * frame, so it always reflects the current editor/LSP state.
  */
+#[AsChromeRoot]
 #[AsIdeService]
 #[AsWidget('status')]
 final class StatusBarWidget extends AbstractWidget

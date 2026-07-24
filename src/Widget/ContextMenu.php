@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Porta\Widget;
 
+use Porta\Container\AsChromeRoot;
 use Porta\Container\AsIdeService;
 use Porta\Container\AsWidget;
 use Porta\Ui\Menu\MenuItem;
@@ -22,6 +23,7 @@ use Symfony\Component\Tui\Widget\KeybindingsTrait;
  * to it modally while open. That keeps the menu independent of which widget owns
  * focus, so a right-click never disturbs the editor caret or tree selection.
  */
+#[AsChromeRoot]
 #[AsIdeService]
 #[AsWidget('context-menu')]
 final class ContextMenu extends OverlayWidget

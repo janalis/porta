@@ -19,8 +19,7 @@ final class ChromeInvalidatorTest extends TestCase
         $leaf->setRenderCache(['cached'], 10, 1);
         $container->setRenderCache(['cached'], 10, 1);
 
-        $chrome = new ChromeInvalidator();
-        $chrome->register([$container]);
+        $chrome = new ChromeInvalidator([$container]);
         $chrome->invalidateAll();
 
         $this->assertNull($container->getRenderCache(10, 1), 'the root cache is cleared');
