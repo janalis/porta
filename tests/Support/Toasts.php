@@ -6,6 +6,7 @@ namespace Porta\Tests\Support;
 
 use Porta\Ide;
 use Porta\Overlay\State\ToastCenter;
+use Porta\Ui\Notifier;
 
 /**
  * Reads the live toast stack off a booted Ide — the test-side counterpart of
@@ -26,7 +27,7 @@ final class Toasts
     /** @return list<string> live toast messages, newest first */
     public static function all(Ide $ide): array
     {
-        $notifier = new \ReflectionProperty(Ide::class, 'notifier')->getValue($ide);
+        $notifier = $ide->resolve(Notifier::class);
         $center = new \ReflectionProperty($notifier, 'toasts')->getValue($notifier);
         \assert($center instanceof ToastCenter);
 

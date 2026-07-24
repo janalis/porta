@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Porta\Tests\Support;
 
+use Porta\Git\GitInfo;
 use Porta\Ide;
 use Porta\Onboarding\OnboardingState;
 use Revolt\EventLoop;
@@ -57,7 +58,7 @@ trait RunsIde
         $terminal = new VirtualTerminal(columns: $columns, rows: 24);
         $this->suppressFirstRunWelcome($project);
         $ide = new Ide($project->dir, $file, $terminal, docsDir: $docsDir);
-        $tui = $ide->getTui();
+        $tui = $ide->resolve(Tui::class);
 
         // Steps chain sequentially: each schedules the next with the key
         // DELTA after it completes. A step may await() (suspending on the
@@ -154,8 +155,7 @@ trait RunsIde
      */
     private function awaitGit(Ide $ide, float $timeout = 5.0): void
     {
-        $git = new \ReflectionProperty($ide, 'git')->getValue($ide);
-        \assert($git instanceof \Porta\Git\GitInfo, description: 'Ide::$git is the GitInfo barrier');
+        $git = $ide->resolve(GitInfo::class);
         $this->await(static fn (): bool => !$git->isBusy(), $timeout, 'git to finish');
     }
 
