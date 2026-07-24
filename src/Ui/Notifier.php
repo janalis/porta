@@ -37,6 +37,16 @@ final readonly class Notifier
         $this->notify($message, ToastSeverity::Info, $seconds);
     }
 
+    /**
+     * The toast center this notifier pushes into, or null when toasts are off.
+     *
+     * @internal exposed for tests
+     */
+    public function toasts(): ?ToastCenter
+    {
+        return $this->toasts;
+    }
+
     /** Show a severity-dressed toast (error red, warning amber, success green) and log it. */
     public function notify(string $message, ToastSeverity $severity, float $seconds = 2.5): void
     {

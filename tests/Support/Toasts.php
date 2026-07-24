@@ -28,7 +28,7 @@ final class Toasts
     public static function all(Ide $ide): array
     {
         $notifier = $ide->resolve(Notifier::class);
-        $center = new \ReflectionProperty($notifier, 'toasts')->getValue($notifier);
+        $center = $notifier->toasts();
         \assert($center instanceof ToastCenter);
 
         return array_map(static fn ($t): string => $t->message, $center->toasts());
