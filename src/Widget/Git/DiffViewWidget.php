@@ -90,16 +90,8 @@ final class DiffViewWidget extends AbstractWidget implements FocusableInterface,
     private readonly CodeHighlighter $highlighter;
     private int $highlightVersion = 0;
 
-    /** @var (callable(array<int, array<int, true>>): void)|null stage/unstage the selected lines (hunk index => line set) */
-    private $onStageSelection = null;
-    /** @var (callable(): void)|null `c`: cycle the diff context (default → ±10 → whole file) */
-    private $onCycleContext = null;
-    /** @var (callable(): void)|null the split/unified toggle flipped (for persistence; read state via isSplit) */
-    private $onLayoutToggle = null;
-    /** @var (callable(): void)|null `w`: hide/show whitespace changes (state lives in the controller) */
-    private $onToggleWhitespace = null;
-    /** @var (callable(string): void)|null ctrl+c: selected line texts, plain (no ± markers) */
-    private $onCopy = null;
+    /** Outbound hooks into the git view; replaced wholesale by wiring/tests. */
+    private DiffViewCallbacks $callbacks;
 
     public function __construct(
         private readonly Translator $translator,
@@ -107,6 +99,7 @@ final class DiffViewWidget extends AbstractWidget implements FocusableInterface,
         ?TerminalTheme $syntaxTheme = null,
     ) {
         $this->styles = $styles ?? Styles::dark();
+        $this->callbacks = new DiffViewCallbacks(); // a bare diff view fires nothing
         $theme = $syntaxTheme ?? new DarkTerminalTheme();
         // Diff hunks are non-contiguous lines from different files: always the
         // built-in engine, never a plugin's.
@@ -114,43 +107,10 @@ final class DiffViewWidget extends AbstractWidget implements FocusableInterface,
     }
 
     /** @param callable(array<int, array<int, true>>): void $callback */
-    public function onStageSelection(callable $callback): self
+    /** Install the git view's outbound hooks (see {@see DiffViewCallbacks}). */
+    public function setCallbacks(DiffViewCallbacks $callbacks): void
     {
-        $this->onStageSelection = $callback;
-
-        return $this;
-    }
-
-    /** @param callable(): void $callback */
-    public function onCycleContext(callable $callback): self
-    {
-        $this->onCycleContext = $callback;
-
-        return $this;
-    }
-
-    /** @param callable(): void $callback */
-    public function onLayoutToggle(callable $callback): self
-    {
-        $this->onLayoutToggle = $callback;
-
-        return $this;
-    }
-
-    /** @param callable(): void $callback */
-    public function onToggleWhitespace(callable $callback): self
-    {
-        $this->onToggleWhitespace = $callback;
-
-        return $this;
-    }
-
-    /** @param callable(string): void $callback */
-    public function onCopy(callable $callback): self
-    {
-        $this->onCopy = $callback;
-
-        return $this;
+        $this->callbacks = $callbacks;
     }
 
     /** Reflect the controller's hide-whitespace state on the toolbar tag. */
@@ -198,8 +158,8 @@ final class DiffViewWidget extends AbstractWidget implements FocusableInterface,
     {
         $this->split = !$this->split;
         $this->rebuildRows();
-        if (null !== $this->onLayoutToggle) {
-            ($this->onLayoutToggle)();
+        if (null !== $this->callbacks->onLayoutToggle) {
+            ($this->callbacks->onLayoutToggle)();
         }
     }
 
@@ -380,8 +340,8 @@ final class DiffViewWidget extends AbstractWidget implements FocusableInterface,
             return;
         }
         if ($kb->matches($data, 'cycle_context')) {
-            if (!$this->readOnly && [] !== $this->rows && null !== $this->onCycleContext) {
-                ($this->onCycleContext)();
+            if (!$this->readOnly && [] !== $this->rows && null !== $this->callbacks->onCycleContext) {
+                ($this->callbacks->onCycleContext)();
             }
 
             return;
@@ -392,8 +352,8 @@ final class DiffViewWidget extends AbstractWidget implements FocusableInterface,
             return;
         }
         if ($kb->matches($data, 'toggle_whitespace')) {
-            if (null !== $this->onToggleWhitespace) {
-                ($this->onToggleWhitespace)(); // allowed in read-only mode too
+            if (null !== $this->callbacks->onToggleWhitespace) {
+                ($this->callbacks->onToggleWhitespace)(); // allowed in read-only mode too
             }
 
             return;
@@ -489,8 +449,8 @@ final class DiffViewWidget extends AbstractWidget implements FocusableInterface,
 
             return;
         }
-        if ('whitespace' === $name && null !== $this->onToggleWhitespace) {
-            ($this->onToggleWhitespace)();
+        if ('whitespace' === $name && null !== $this->callbacks->onToggleWhitespace) {
+            ($this->callbacks->onToggleWhitespace)();
         }
     }
 
@@ -518,11 +478,11 @@ final class DiffViewWidget extends AbstractWidget implements FocusableInterface,
      */
     private function fireStageSelection(): void
     {
-        if ($this->readOnly || null === $this->onStageSelection || !\array_key_exists($this->cursor, $this->rows)) {
+        if ($this->readOnly || null === $this->callbacks->onStageSelection || !\array_key_exists($this->cursor, $this->rows)) {
             return;
         }
 
-        ($this->onStageSelection)($this->collectSelection());
+        ($this->callbacks->onStageSelection)($this->collectSelection());
     }
 
     /**
@@ -533,7 +493,7 @@ final class DiffViewWidget extends AbstractWidget implements FocusableInterface,
     private function fireCopy(): void
     {
         $document = $this->document;
-        $onCopy = $this->onCopy;
+        $onCopy = $this->callbacks->onCopy;
         if (null === $onCopy || null === $document || !\array_key_exists($this->cursor, $this->rows)) {
             return;
         }
@@ -659,6 +619,18 @@ final class DiffViewWidget extends AbstractWidget implements FocusableInterface,
     }
 
     /** The byte offset where a display column starts within a raw line text. */
+    /**
+     * Byte offset of display column $col in $text.
+     *
+     * Looks like a slower {@see \Porta\Editor\TextMetrics::byteColForDisplayCol()}
+     * and is deliberately not replaced by it: that one expands a tab to the next
+     * tab stop, which is right for the editor because the editor renders tabs
+     * expanded. The diff view does not — it passes the line through and measures
+     * it with mb_strwidth, where a tab counts as one column ({@see $maxLineWidth},
+     * the horizontal scroll and the truncation all agree on that). Swapping in
+     * the editor's version would make click mapping disagree with this widget's
+     * own coordinate system.
+     */
     private static function textOffsetAt(string $text, int $col): int
     {
         $offset = 0;

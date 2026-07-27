@@ -6,6 +6,7 @@ namespace Porta\Tests\Unit\Overlay\State;
 
 use PHPUnit\Framework\TestCase;
 use Porta\Overlay\State\FindInFilesModal;
+use Porta\Overlay\State\FindModalCallbacks;
 use Porta\Ui\CaretVisibility;
 use Porta\Ui\Glyphs;
 use Porta\Widget\Render\OverlayCompositor;
@@ -109,9 +110,11 @@ final class FindInFilesModalTest extends TestCase
     {
         $modal = $this->modal();
         $queries = [];
-        $modal->onQuery(static function (string $q) use (&$queries): void {
-            $queries[] = $q;
-        });
+        $modal->setCallbacks(new FindModalCallbacks(
+            onQuery: static function (string $q) use (&$queries): void {
+                $queries[] = $q;
+            },
+        ));
         $modal->open('Find in Files');
 
         $modal->handleInput('f', $this->kb);
@@ -127,9 +130,11 @@ final class FindInFilesModalTest extends TestCase
     {
         $modal = $this->modal();
         $recalled = [];
-        $modal->onQuery(static function (string $q) use (&$recalled): void {
-            $recalled[] = $q;
-        });
+        $modal->setCallbacks(new FindModalCallbacks(
+            onQuery: static function (string $q) use (&$recalled): void {
+                $recalled[] = $q;
+            },
+        ));
         $modal->open('Find in Files');
         $modal->setHistory(['recent', 'older']); // most-recent-first
 
@@ -147,9 +152,11 @@ final class FindInFilesModalTest extends TestCase
     {
         $modal = $this->modal();
         $jumped = null;
-        $modal->onJump(static function (string $p, int $l) use (&$jumped): void {
-            $jumped = [$p, $l];
-        });
+        $modal->setCallbacks(new FindModalCallbacks(
+            onJump: static function (string $p, int $l) use (&$jumped): void {
+                $jumped = [$p, $l];
+            },
+        ));
         $modal->open('Find in Files');
         $modal->setPreview($this->results()); // rows: [hdr A, match, match, hdr B, match]; selection on first match
 
@@ -177,21 +184,23 @@ final class FindInFilesModalTest extends TestCase
         $masks = [];
         $opened = false;
         $closed = false;
-        $modal->onScopeCycle(static function (int $i) use (&$scopeIdx): void {
-            $scopeIdx[] = $i;
-        });
-        $modal->onToggleOption(static function (string $n) use (&$toggled): void {
-            $toggled[] = $n;
-        });
-        $modal->onMaskChanged(static function (string $m) use (&$masks): void {
-            $masks[] = $m;
-        });
-        $modal->onOpenInFindWindow(static function () use (&$opened): void {
-            $opened = true;
-        });
-        $modal->onClose(static function () use (&$closed): void {
-            $closed = true;
-        });
+        $modal->setCallbacks(new FindModalCallbacks(
+            onScopeCycle: static function (int $i) use (&$scopeIdx): void {
+                $scopeIdx[] = $i;
+            },
+            onToggleOption: static function (string $n) use (&$toggled): void {
+                $toggled[] = $n;
+            },
+            onMaskChanged: static function (string $m) use (&$masks): void {
+                $masks[] = $m;
+            },
+            onOpenInFindWindow: static function () use (&$opened): void {
+                $opened = true;
+            },
+            onClose: static function () use (&$closed): void {
+                $closed = true;
+            },
+        ));
         $modal->open('Find in Files');
         $modal->setScopes(['Whole Project', 'Directory', 'Current File'], 0);
 
@@ -225,10 +234,12 @@ final class FindInFilesModalTest extends TestCase
     {
         $modal = $this->modal();
         $replaced = null;
-        $modal->onReplaceAll(static function (string $r, array $excluded) use (&$replaced): void {
-            $replaced = [$r, $excluded];
-        });
-        $modal->setPreviewTransformer(static fn (string $old, string $repl): string => str_replace('foo', $repl, $old));
+        $modal->setCallbacks(new FindModalCallbacks(
+            onReplaceAll: static function (string $r, array $excluded) use (&$replaced): void {
+                $replaced = [$r, $excluded];
+            },
+            previewReplacement: static fn (string $old, string $repl): string => str_replace('foo', $repl, $old),
+        ));
         $modal->open('Find in Files');
         $modal->setPreview($this->results()); // rows: [hdr A, match(4), match(9), hdr B, match(2)]
 
@@ -255,10 +266,12 @@ final class FindInFilesModalTest extends TestCase
     {
         $modal = $this->modal();
         $replaced = null;
-        $modal->onReplaceAll(static function (string $r, array $excluded) use (&$replaced): void {
-            $replaced = [$r, $excluded];
-        });
-        $modal->setPreviewTransformer(static fn (string $old, string $repl): string => str_replace('foo', $repl, $old));
+        $modal->setCallbacks(new FindModalCallbacks(
+            onReplaceAll: static function (string $r, array $excluded) use (&$replaced): void {
+                $replaced = [$r, $excluded];
+            },
+            previewReplacement: static fn (string $old, string $repl): string => str_replace('foo', $repl, $old),
+        ));
         $modal->open('Find in Files');
         $modal->setPreview($this->results());
 
@@ -298,9 +311,11 @@ final class FindInFilesModalTest extends TestCase
         $modal->setPreview($this->results()); // selection on the first match (display index 1)
         $modal->handleInput("\x1b[A", $this->kb); // up past the file header → stays put
         $jumped = null;
-        $modal->onJump(static function (string $p, int $l) use (&$jumped): void {
-            $jumped = [$p, $l];
-        });
+        $modal->setCallbacks(new FindModalCallbacks(
+            onJump: static function (string $p, int $l) use (&$jumped): void {
+                $jumped = [$p, $l];
+            },
+        ));
         $modal->handleInput("\r", $this->kb);
         $this->assertSame(['src/A.php', 4], $jumped, 'up at the top kept the first match selected');
 
@@ -445,15 +460,17 @@ final class FindInFilesModalTest extends TestCase
         $jumped = null;
         $toggled = [];
         $closed = false;
-        $modal->onJump(static function (string $p, int $l) use (&$jumped): void {
-            $jumped = [$p, $l];
-        });
-        $modal->onToggleOption(static function (string $n) use (&$toggled): void {
-            $toggled[] = $n;
-        });
-        $modal->onClose(static function () use (&$closed): void {
-            $closed = true;
-        });
+        $modal->setCallbacks(new FindModalCallbacks(
+            onJump: static function (string $p, int $l) use (&$jumped): void {
+                $jumped = [$p, $l];
+            },
+            onToggleOption: static function (string $n) use (&$toggled): void {
+                $toggled[] = $n;
+            },
+            onClose: static function () use (&$closed): void {
+                $closed = true;
+            },
+        ));
         $modal->open('Find in Files');
         $modal->setPreview($this->results());
         $this->screen($modal); // composite → sets the box geometry
@@ -614,9 +631,11 @@ final class FindInFilesModalTest extends TestCase
     {
         $closed = false;
         $modal = $this->modal();
-        $modal->onClose(static function () use (&$closed): void {
-            $closed = true;
-        });
+        $modal->setCallbacks(new FindModalCallbacks(
+            onClose: static function () use (&$closed): void {
+                $closed = true;
+            },
+        ));
         $modal->open('Find in Files');
         $this->screen($modal); // composite → sets the box geometry
         $box = $modal->lastBox();
@@ -631,12 +650,14 @@ final class FindInFilesModalTest extends TestCase
         $modal = $this->modal();
         $queries = [];
         $masks = [];
-        $modal->onQuery(static function (string $q) use (&$queries): void {
-            $queries[] = $q;
-        });
-        $modal->onMaskChanged(static function (string $m) use (&$masks): void {
-            $masks[] = $m;
-        });
+        $modal->setCallbacks(new FindModalCallbacks(
+            onQuery: static function (string $q) use (&$queries): void {
+                $queries[] = $q;
+            },
+            onMaskChanged: static function (string $m) use (&$masks): void {
+                $masks[] = $m;
+            },
+        ));
         $modal->open('Find in Files');
         $modal->setPreview($this->results());
         $this->screen($modal);
@@ -664,9 +685,11 @@ final class FindInFilesModalTest extends TestCase
     {
         $modal = $this->modal();
         $scopeIdx = [];
-        $modal->onScopeCycle(static function (int $i) use (&$scopeIdx): void {
-            $scopeIdx[] = $i;
-        });
+        $modal->setCallbacks(new FindModalCallbacks(
+            onScopeCycle: static function (int $i) use (&$scopeIdx): void {
+                $scopeIdx[] = $i;
+            },
+        ));
         $modal->setScopes(['Whole Project', 'Directory', 'Current File'], 0);
         $modal->open('Find in Files');
         $modal->setPreview($this->results());
@@ -723,10 +746,12 @@ final class FindInFilesModalTest extends TestCase
     {
         $modal = $this->modal();
         $jumped = null;
-        $modal->onJump(static function (string $p, int $l) use (&$jumped): void {
-            $jumped = [$p, $l];
-        });
-        $modal->setPreviewTransformer(static fn (string $old, string $repl): string => str_replace('foo', $repl, $old));
+        $modal->setCallbacks(new FindModalCallbacks(
+            onJump: static function (string $p, int $l) use (&$jumped): void {
+                $jumped = [$p, $l];
+            },
+            previewReplacement: static fn (string $old, string $repl): string => str_replace('foo', $repl, $old),
+        ));
         $modal->open('Find in Files');
         $modal->setPreview($this->results());
         $modal->handleInput("\t", $this->kb); // query → replace
@@ -757,15 +782,17 @@ final class FindInFilesModalTest extends TestCase
         $opened = false;
         $closed = false;
         $scopeIdx = [];
-        $modal->onOpenInFindWindow(static function () use (&$opened): void {
-            $opened = true;
-        });
-        $modal->onScopeCycle(static function (int $i) use (&$scopeIdx): void {
-            $scopeIdx[] = $i;
-        });
-        $modal->onClose(static function () use (&$closed): void {
-            $closed = true;
-        });
+        $modal->setCallbacks(new FindModalCallbacks(
+            onOpenInFindWindow: static function () use (&$opened): void {
+                $opened = true;
+            },
+            onScopeCycle: static function (int $i) use (&$scopeIdx): void {
+                $scopeIdx[] = $i;
+            },
+            onClose: static function () use (&$closed): void {
+                $closed = true;
+            },
+        ));
         $modal->setScopes(['Whole Project', 'Directory'], 0);
         $modal->open('Find in Files');
         $modal->setPreview($this->results());

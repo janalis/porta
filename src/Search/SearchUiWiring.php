@@ -8,6 +8,7 @@ use Porta\Container\AsIdeService;
 use Porta\Editor\FileOpener;
 use Porta\Editor\OpenFocus;
 use Porta\History\LocalHistoryController;
+use Porta\Overlay\State\FindModalCallbacks;
 use Porta\Support\Scheduler;
 use Porta\Ui\Dock\BottomDock;
 use Porta\Ui\Dock\DockTab;
@@ -140,51 +141,51 @@ final class SearchUiWiring
     /** Wire the Find-in-Files modal callbacks to the project-search controller. */
     private function wireFindModal(): void
     {
-        $modal = $this->editor->findModal();
-
-        // The query and mask edits re-run the search, debounced like the pane.
-        $modal->onQuery(function (string $query): void {
-            $this->cancelDebounce();
-            $this->editor->findModal()->setSearching();
-            $this->searchDebounce = $this->scheduler->delay(0.25, function () use ($query): void {
-                $this->searchDebounce = null;
-                $this->projectSearch->search($query);
-            });
-        });
-        $modal->onMaskChanged(function (string $mask): void {
-            $this->cancelDebounce();
-            $this->editor->findModal()->setSearching();
-            $this->searchDebounce = $this->scheduler->delay(0.25, function () use ($mask): void {
-                $this->searchDebounce = null;
-                $this->projectSearch->setMask($mask);
-            });
-        });
-        $modal->onScopeCycle(function (int $index): void {
-            $this->projectSearch->setScopeIndex($index);
-        });
-        $modal->onToggleOption(function (string $name): void {
-            $this->projectSearch->toggleOption($name);
-        });
-        $modal->onJump(function (string $relativePath, int $line): void {
-            $this->editor->findModal()->close();
-            $this->bufferService->openFile($this->rootDir.'/'.$relativePath, focus: OpenFocus::Editor);
-            $this->editor->jumpTo($line, 0);
-            $this->tui->requestRender();
-        });
-        $modal->onOpenInFindWindow(function (): void {
-            $this->projectSearch->promoteToPane(); // binding the tab sets the mode
-        });
-        $modal->onReplaceAll(
-            /** @param list<int> $excluded */
-            function (string $replacement, array $excluded): void {
-                $this->projectSearch->replaceAll($replacement, $excluded);
-            },
-        );
-        $modal->setPreviewTransformer(fn (string $text, string $replacement): string => $this->projectSearch->previewLine($text, $replacement));
-        $modal->onClose(function (): void {
-            $this->editor->findModal()->close();
-            $this->projectSearch->cancel();
-        });
+        $this->editor
+            ->findModal()
+            ->setCallbacks(new FindModalCallbacks(
+                // The query and mask edits re-run the search, debounced like the pane.
+                onQuery: function (string $query): void {
+                    $this->cancelDebounce();
+                    $this->editor->findModal()->setSearching();
+                    $this->searchDebounce = $this->scheduler->delay(0.25, function () use ($query): void {
+                        $this->searchDebounce = null;
+                        $this->projectSearch->search($query);
+                    });
+                },
+                onMaskChanged: function (string $mask): void {
+                    $this->cancelDebounce();
+                    $this->editor->findModal()->setSearching();
+                    $this->searchDebounce = $this->scheduler->delay(0.25, function () use ($mask): void {
+                        $this->searchDebounce = null;
+                        $this->projectSearch->setMask($mask);
+                    });
+                },
+                onScopeCycle: function (int $index): void {
+                    $this->projectSearch->setScopeIndex($index);
+                },
+                onToggleOption: function (string $name): void {
+                    $this->projectSearch->toggleOption($name);
+                },
+                onJump: function (string $relativePath, int $line): void {
+                    $this->editor->findModal()->close();
+                    $this->bufferService->openFile($this->rootDir.'/'.$relativePath, focus: OpenFocus::Editor);
+                    $this->editor->jumpTo($line, 0);
+                    $this->tui->requestRender();
+                },
+                onOpenInFindWindow: function (): void {
+                    $this->projectSearch->promoteToPane(); // binding the tab sets the mode
+                },
+                /** @param list<int> $excluded */
+                onReplaceAll: function (string $replacement, array $excluded): void {
+                    $this->projectSearch->replaceAll($replacement, $excluded);
+                },
+                previewReplacement: fn (string $text, string $replacement): string => $this->projectSearch->previewLine($text, $replacement),
+                onClose: function (): void {
+                    $this->editor->findModal()->close();
+                    $this->projectSearch->cancel();
+                },
+            ));
     }
 
     private function cancelDebounce(): void

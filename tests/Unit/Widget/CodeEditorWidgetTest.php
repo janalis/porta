@@ -9,6 +9,7 @@ use Porta\Editor\CompletionItem;
 use Porta\Editor\FindMode;
 use Porta\Editor\LineNumberMode;
 use Porta\Editor\SelectionMode;
+use Porta\Overlay\State\FindModalCallbacks;
 use Porta\Search\Everywhere\SearchCategory;
 use Porta\Search\Everywhere\SearchHit;
 use Porta\Search\Everywhere\SearchRow;
@@ -718,9 +719,11 @@ final class CodeEditorWidgetTest extends TestCase
         $jumped = null;
         $editor
             ->findModal()
-            ->onJump(static function (string $p, int $l) use (&$jumped): void {
-                $jumped = [$p, $l];
-            });
+            ->setCallbacks(new FindModalCallbacks(
+                onJump: static function (string $p, int $l) use (&$jumped): void {
+                    $jumped = [$p, $l];
+                },
+            ));
         $editor->findModal()->open('Find in Files');
         $editor
             ->findModal()

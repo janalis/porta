@@ -17,6 +17,7 @@ use Porta\Support\ProjectPaths;
 use Porta\Ui\EditorArea;
 use Porta\Ui\Notifier;
 use Porta\Ui\WorkspaceViews;
+use Porta\Widget\Git\DiffViewCallbacks;
 use Porta\Widget\MenuBarWidget;
 use Psr\EventDispatcher\EventDispatcherInterface;
 use Revolt\EventLoop;
@@ -109,15 +110,14 @@ final class GitViewController
             ->onShowChanges(fn () => $this->switchMode('changes'))
             ->onFocusNext($next)
             ->onExit($exit);
-        $this->panes
-            ->diffView
-            ->onStageSelection($this->stageSelection(...))
-            ->onCycleContext($this->cycleContext(...))
-            ->onLayoutToggle($this->persistDiffPrefs(...))
-            ->onToggleWhitespace($this->toggleWhitespace(...))
-            ->onCopy($this->copyDiffText(...))
-            ->onFocusNext($next)
-            ->onExit($exit);
+        $this->panes->diffView->setCallbacks(new DiffViewCallbacks(
+            onStageSelection: $this->stageSelection(...),
+            onCycleContext: $this->cycleContext(...),
+            onLayoutToggle: $this->persistDiffPrefs(...),
+            onToggleWhitespace: $this->toggleWhitespace(...),
+            onCopy: $this->copyDiffText(...),
+        ));
+        $this->panes->diffView->onFocusNext($next)->onExit($exit);
         $this->panes->tabs->onSelect($this->switchMode(...));
         $this->panes
             ->commitBox

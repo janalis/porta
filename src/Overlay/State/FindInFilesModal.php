@@ -123,24 +123,8 @@ final class FindInFilesModal
     /** display-row index tinted under the pointer; visual only, never the selection — you type into the query field while it rests. */
     private ?int $hoveredRow = null;
 
-    /** @var (callable(string): void)|null */
-    private $onQuery = null;
-    /** @var (callable(string): void)|null */
-    private $onMaskChanged = null;
-    /** @var (callable(int): void)|null the scope choice index */
-    private $onScopeCycle = null;
-    /** @var (callable(string): void)|null option short key */
-    private $onToggleOption = null;
-    /** @var (callable(string, int): void)|null path, line */
-    private $onJump = null;
-    /** @var (callable(): void)|null */
-    private $onOpenInFindWindow = null;
-    /** @var (callable(string, list<int>): void)|null replace kept matches (excluding the given indices) */
-    private $onReplaceAll = null;
-    /** @var (\Closure(string, string): string)|null renders a match line's old → new preview */
-    private $previewReplacement = null;
-    /** @var (callable(): void)|null */
-    private $onClose = null;
+    /** Outbound hooks into the search controller; replaced wholesale by wiring/tests. */
+    private FindModalCallbacks $callbacks;
 
     private readonly Styles $styles;
     private readonly Translator $translator;
@@ -153,72 +137,17 @@ final class FindInFilesModal
     ) {
         $this->styles = $styles ?? Styles::dark();
         $this->translator = $translator ?? new Translator('en');
+        $this->callbacks = new FindModalCallbacks(); // a bare modal fires nothing
         $this->scopeLabels = [$this->translator->trans('Whole Project')];
         $this->query = new TextField(style: $cursorStyle);
         $this->replace = new TextField(style: $cursorStyle);
         $this->mask = new TextField(style: $cursorStyle);
     }
 
-    public function onQuery(callable $cb): self
+    /** Install the controller's outbound hooks (see {@see FindModalCallbacks}). */
+    public function setCallbacks(FindModalCallbacks $callbacks): void
     {
-        $this->onQuery = $cb;
-
-        return $this;
-    }
-
-    public function onMaskChanged(callable $cb): self
-    {
-        $this->onMaskChanged = $cb;
-
-        return $this;
-    }
-
-    public function onScopeCycle(callable $cb): self
-    {
-        $this->onScopeCycle = $cb;
-
-        return $this;
-    }
-
-    public function onToggleOption(callable $cb): self
-    {
-        $this->onToggleOption = $cb;
-
-        return $this;
-    }
-
-    public function onJump(callable $cb): self
-    {
-        $this->onJump = $cb;
-
-        return $this;
-    }
-
-    public function onOpenInFindWindow(callable $cb): self
-    {
-        $this->onOpenInFindWindow = $cb;
-
-        return $this;
-    }
-
-    public function onReplaceAll(callable $cb): self
-    {
-        $this->onReplaceAll = $cb;
-
-        return $this;
-    }
-
-    /** @param \Closure(string, string): string $transformer (lineText, replacement) => replacedLine */
-    public function setPreviewTransformer(\Closure $transformer): void
-    {
-        $this->previewReplacement = $transformer;
-    }
-
-    public function onClose(callable $cb): self
-    {
-        $this->onClose = $cb;
-
-        return $this;
+        $this->callbacks = $callbacks;
     }
 
     public function open(string $title): void
@@ -332,15 +261,15 @@ final class FindInFilesModal
         $kb = new Keybindings(self::KEYS, $editorKb->getParser());
 
         if ($kb->matches($data, 'select_cancel')) {
-            if (null !== $this->onClose) {
-                ($this->onClose)();
+            if (null !== $this->callbacks->onClose) {
+                ($this->callbacks->onClose)();
             }
 
             return;
         }
         if ($kb->matches($data, 'open_in_find_window')) {
-            if (null !== $this->onOpenInFindWindow) {
-                ($this->onOpenInFindWindow)();
+            if (null !== $this->callbacks->onOpenInFindWindow) {
+                ($this->callbacks->onOpenInFindWindow)();
             }
 
             return;
@@ -381,8 +310,8 @@ final class FindInFilesModal
             return;
         }
         if ($kb->matches($data, 'replace_all')) {
-            if (null !== $this->onReplaceAll) {
-                ($this->onReplaceAll)($this->replace->value(), $this->excludedIndices());
+            if (null !== $this->callbacks->onReplaceAll) {
+                ($this->callbacks->onReplaceAll)($this->replace->value(), $this->excludedIndices());
             }
 
             return;
@@ -455,8 +384,8 @@ final class FindInFilesModal
     private function cycleScope(): void
     {
         $this->scopeIndex = ($this->scopeIndex + 1) % \count($this->scopeLabels);
-        if (null !== $this->onScopeCycle) {
-            ($this->onScopeCycle)($this->scopeIndex);
+        if (null !== $this->callbacks->onScopeCycle) {
+            ($this->callbacks->onScopeCycle)($this->scopeIndex);
         }
         ($this->invalidate)();
     }
@@ -470,13 +399,13 @@ final class FindInFilesModal
 
     private function notifyField(): void
     {
-        if ('mask' === $this->activeField && null !== $this->onMaskChanged) {
-            ($this->onMaskChanged)($this->mask->value());
+        if ('mask' === $this->activeField && null !== $this->callbacks->onMaskChanged) {
+            ($this->callbacks->onMaskChanged)($this->mask->value());
         }
         if ('query' === $this->activeField) {
             $this->historyCursor = -1; // typing leaves history-browsing
-            if (null !== $this->onQuery) {
-                ($this->onQuery)($this->query->value());
+            if (null !== $this->callbacks->onQuery) {
+                ($this->callbacks->onQuery)($this->query->value());
             }
         }
         // Replace edits only re-render the old → new preview; they don't re-search.
@@ -492,8 +421,8 @@ final class FindInFilesModal
         }
         $this->historyCursor = $next;
         $this->query->setValue(-1 === $next ? '' : $this->history[$next]);
-        if (null !== $this->onQuery) {
-            ($this->onQuery)($this->query->value());
+        if (null !== $this->callbacks->onQuery) {
+            ($this->callbacks->onQuery)($this->query->value());
         }
         ($this->invalidate)();
     }
@@ -530,8 +459,8 @@ final class FindInFilesModal
 
     private function fireToggle(string $name): void
     {
-        if (null !== $this->onToggleOption) {
-            ($this->onToggleOption)($name);
+        if (null !== $this->callbacks->onToggleOption) {
+            ($this->callbacks->onToggleOption)($name);
         }
     }
 
@@ -565,9 +494,9 @@ final class FindInFilesModal
     private function jumpSelected(): void
     {
         $row = $this->displayRows[$this->selected] ?? null;
-        if (null !== $row && null === $row->filePath && null !== $this->onJump) {
+        if (null !== $row && null === $row->filePath && null !== $this->callbacks->onJump) {
             $result = $this->results[$row->matchIndex];
-            ($this->onJump)($result['path'], $result['line']);
+            ($this->callbacks->onJump)($result['path'], $result['line']);
         }
     }
 
@@ -795,7 +724,7 @@ final class FindInFilesModal
 
         $text = $head.$old.$this->styles->of(Role::Dim)->apply('   (excluded)');
         if (!$excluded) {
-            $new = null !== $this->previewReplacement ? ($this->previewReplacement)($old, $this->replace->value()) : $old;
+            $new = null !== $this->callbacks->previewReplacement ? ($this->callbacks->previewReplacement)($old, $this->replace->value()) : $old;
             $text = $head.$old.'  '.Glyphs::REPLACE_ARROW.'  '.$this->styles->of(Role::Added)->apply($new);
         }
 
@@ -861,8 +790,8 @@ final class FindInFilesModal
             return true;
         }
         if (null !== $box && $box->closeHit($relRow, $relCol)) {
-            if (null !== $this->onClose) {
-                ($this->onClose)();
+            if (null !== $this->callbacks->onClose) {
+                ($this->callbacks->onClose)();
             }
 
             return true;
@@ -877,8 +806,8 @@ final class FindInFilesModal
             return true;
         }
         if (null === $box || $relCol < $box->col || $relCol >= ($box->col + $box->width)) {
-            if (null !== $this->onClose) {
-                ($this->onClose)();
+            if (null !== $this->callbacks->onClose) {
+                ($this->callbacks->onClose)();
             }
 
             return true;
@@ -980,8 +909,8 @@ final class FindInFilesModal
     private function clickFooter(?string $name): void
     {
         if ('find_window' === $name) {
-            if (null !== $this->onOpenInFindWindow) {
-                ($this->onOpenInFindWindow)();
+            if (null !== $this->callbacks->onOpenInFindWindow) {
+                ($this->callbacks->onOpenInFindWindow)();
             }
 
             return;
