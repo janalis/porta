@@ -514,7 +514,7 @@ final class Document
     public function moveStatement(int $delta): bool
     {
         [$first, $last] = $this->selectedLineSpan();
-        $target = $this->statementTargetLine($delta, $first, $last);
+        $target = LineOperations::statementTarget($this->lines, $delta, $first, $last);
         if (null === $target) {
             return false;
         }
@@ -552,8 +552,7 @@ final class Document
             return false;
         }
         $block = \array_slice($this->lines, $first, $last - $first + 1);
-        $sorted = $block;
-        sort($sorted, \SORT_STRING);
+        $sorted = LineOperations::sorted($block);
         if ($sorted === $block) {
             return false;
         }
@@ -575,12 +574,8 @@ final class Document
             }
             $last = $first + 1;
         }
-        $joined = rtrim($this->lines[$first]);
-        for ($i = $first + 1; $i <= $last; ++$i) {
-            $joined = rtrim($joined.' '.ltrim($this->lines[$i]));
-        }
 
-        return $this->replaceLineBlock($first, $last - $first + 1, [$joined]);
+        return $this->replaceLineBlock($first, $last - $first + 1, [LineOperations::joined($this->lines, $first, $last)]);
     }
 
     /**
@@ -592,14 +587,12 @@ final class Document
     {
         [$first, $last] = $this->selectedLineSpan();
         $block = \array_slice($this->lines, $first, $last - $first + 1);
-        $joined = implode("\n", $block);
-        $upper = mb_strtoupper($joined);
-        $transformed = $joined === $upper ? mb_strtolower($joined) : $upper;
-        if ($transformed === $joined) {
+        $toggled = LineOperations::caseToggled($block);
+        if ($toggled === $block) {
             return false;
         }
 
-        return $this->replaceLineBlock($first, \count($block), explode("\n", $transformed));
+        return $this->replaceLineBlock($first, \count($block), $toggled);
     }
 
     /**
@@ -622,44 +615,6 @@ final class Document
     }
 
     /**
-     * The destination line for {@see moveStatement()} in direction $delta,
-     * hopping a run of blank lines in one step, or null when the block is
-     * already at the edge and cannot move.
-     */
-    private function statementTargetLine(int $delta, int $first, int $last): ?int
-    {
-        $n = \count($this->lines);
-        if ($delta < 0) {
-            if (0 === $first) {
-                return null;
-            }
-            $step = 1;
-            if ('' === trim($this->lines[$first - 1])) {
-                $g = $first - 1;
-                while ($g > 0 && '' === trim($this->lines[$g - 1])) {
-                    --$g;
-                }
-                $step = $first - $g;
-            }
-
-            return max(0, $first - $step);
-        }
-        if ($last === ($n - 1)) {
-            return null;
-        }
-        $step = 1;
-        if ('' === trim($this->lines[$last + 1])) {
-            $g = $last + 1;
-            while ($g < ($n - 1) && '' === trim($this->lines[$g + 1])) {
-                ++$g;
-            }
-            $step = $g - $last;
-        }
-
-        return min($first + $step, $first + ($n - 1 - $last));
-    }
-
-    /**
      * Toggle a line comment prefix on the current line or selected block.
      */
     public function toggleComment(string $prefix): void
@@ -667,29 +622,9 @@ final class Document
         $this->pushUndo();
         [$first, $last] = $this->selectedLineSpan();
 
-        $allCommented = true;
-        for ($i = $first; $i <= $last; ++$i) {
-            $trimmed = ltrim($this->lines[$i]);
-            if ('' !== $trimmed && !str_starts_with($trimmed, $prefix)) {
-                $allCommented = false;
-                break;
-            }
-        }
-
-        for ($i = $first; $i <= $last; ++$i) {
-            $line = $this->lines[$i];
-            $trimmed = ltrim($line);
-            if ('' === $trimmed) {
-                continue;
-            }
-            $indent = \strlen($line) - \strlen($trimmed);
-            if ($allCommented) {
-                $rest = substr($trimmed, \strlen($prefix));
-                $this->lines[$i] = substr($line, offset: 0, length: $indent).ltrim($rest, characters: ' ');
-
-                continue;
-            }
-            $this->lines[$i] = substr($line, offset: 0, length: $indent).$prefix.' '.$trimmed;
+        $block = LineOperations::commentToggled(\array_slice($this->lines, $first, $last - $first + 1), $prefix);
+        foreach ($block as $offset => $line) {
+            $this->lines[$first + $offset] = $line;
         }
         $this->cursorCol = min($this->cursorCol, \strlen($this->lines[$this->cursorLine]));
         $this->touch();
