@@ -258,6 +258,13 @@ interface for runtime `addListener` on hand-assembled state (menu rebuild, RTL r
 Priorities are contractual: plugin bridge (`PluginEvents`) and the chrome sweep
 (`Ui/ChromeRefreshListener`) run at **-100**, after core listeners.
 
+**Git.** `Git/GitProcessRunner` owns the only mutable state in the layer — the in-flight process
+map — so `Git/GitInfo`'s thirty-odd porcelain verbs are stateless argv-builders over it.
+`GitInfo::isBusy()` stays on GitInfo as a delegator: it is a **load-bearing E2e completion barrier**
+(git mutates the tree before the exit callback fires, so `!isBusy()` means the op landed on disk).
+Output parsing lives in the `Git/*Parser` tier — `BlameParser` (whole-file `parse()` **and**
+single-line `parseLine()`), `BranchParser`, `LogParser`, `StatusParser`, `HunkParser`.
+
 **Single event loop.** `revolt/event-loop` drives both the `symfony/tui` render/input loop and
 all async work (LSP over stdio, git subprocesses, the integrated terminal PTYs — one per
 `Terminal/TerminalSession`, tabbed in the single `TerminalPanelWidget`, owned by `Run/RunController` — run
@@ -333,10 +340,22 @@ floating feature lands one class in each:
   `FindModalPresenter`, `ToastPresenter`, `WelcomeModalController` (a presenter despite the name).
 - **`Overlay/Region/`** — pure geometry / hit-test value objects: `ModalBox`, `PaneBounds`,
   `DropdownRegion`, `SpanSlicer`, `FloatingRegions`/`CompositeFloatingRegions`.
+- **`Ui/FrameHooks`** is the per-frame hook seam the presenters register on (`onBeforeFrame`),
+  implemented by `Ui/BidiTui`; they take it as a nullable dep and no longer downcast. Because
+  `BidiTui` is a post-compile **synthetic**, `SingleImplAliasPass` cannot see it — the alias is
+  spelled out in `config/services.php`, and a nullable dep fails *silently*, so verify wiring after
+  touching it.
 - **The stateless render tier stays in `Widget/Render/`** (`ModalFrame`, `PopupFrame`,
   `ModalShadow`, `OverlayCompositor`, `MenuOverlay*`, `ToastCard`) — it returns `string[]` bearing
   the `$innerWidth + CHROME_COLS` invariant and is cross-cutting (the editor renders here too), so
-  it is **not** overlay-owned. Do not collapse it into `Overlay/`.
+  it is **not** overlay-owned. Do not collapse it into `Overlay/`. `Widget/Render/PickerLayout` (the
+  three centered picker layouts) and `Widget/Render/FindModalRows` (the find modal's leaf rows) live
+  here. **`FindInFilesModal`'s layout methods deliberately do not** — they read ~40 of its fields, so
+  moving them would need a 40-field VO or a back-reference to the modal; `OverlayHost`'s layouts were
+  extractable only because they already took their state as parameters. Measure before assuming.
+- Outbound hooks travel as **one callbacks DTO**, not per-slot fluent setters:
+  `Widget/EditorCallbacks`, `Overlay/State/FindModalCallbacks`, `Widget/Git/DiffViewCallbacks`
+  (`ResultsPanelWidget`'s four-slot bag is left alone on purpose — a four-field DTO is lateral).
 
 `OverlayHost` owns picker state/layout/hit-testing (SCREEN-space boxes; `layout()` per frame);
 `PickerModalPresenter` delivers spans + `ModalShadow` + dim, gated on an attached editor. The
@@ -356,7 +375,10 @@ menus from these. Don't hand-maintain parallel keybinding/palette/menu lists —
 catalog/registry.
 
 **Editor core.** `Editor/Document` is the text buffer (byte-offset cursor kept on UTF-8
-boundaries, undo/redo, change tracking, per-file indent via `.editorconfig`). `Editor/MultiCaret`
+boundaries, undo/redo, change tracking, per-file indent via `.editorconfig`); the whole-line verbs
+keep their mutation, cursor clamping and undo here but delegate the algorithm to the pure statics in
+`Editor/LineOperations` (`indentSelection`/`dedentSelection` are deliberately excluded — they track
+cursor and anchor deltas *inside* the mutation loop). `Editor/MultiCaret`
 and `Editor/EditorActions` layer multi-cursor and editing operations; `Widget/CodeEditorWidget`
 + `Widget/Render/EditorRenderer` render the viewport (the caret is spliced in as a zero-width
 APC marker that `ScreenWriter` converts to a hardware cursor position).
@@ -438,7 +460,11 @@ Shift+F8/Ctrl+F2 are gated by `CommandRegistry`'s `when` closures so they fall t
 bindings when no session runs. Tests script `tests/Support/mock-dap-adapter.php`.
 
 **Input routing.** `Input/MouseRouter` maps every SGR mouse event to the pane under the pointer
-and owns cross-event drag/click state. Hit-testing uses the renderer's per-widget rects.
+and owns cross-event drag/click state; its `route()` guard order **is behaviour** (documented in
+its class docblock). Hit-testing uses the renderer's per-widget rects (`Input/HitTester`, whose
+`contains()` is the shared pointer-in-rect predicate). Satellites carry the parts that need no
+drag state: `Input/WheelRouter` (all wheel routing), `HoverRouter`, `ClickCounter`,
+`GitMouseRouter`, `SettingsMouseRouter`, `WelcomeMouseRouter`.
 
 **Plugins.** User PHP loaded at boot from three sources in precedence order —
 `<project>/.porta/plugins/*/plugin.php`, `~/.porta/plugins/*/plugin.php` (`PORTA_HOME` overrides
@@ -508,10 +534,17 @@ take an `enabledWhen` closure (dimmed when false; the Plugins menu sits between 
 Removal rows use the settings form's `'action'` row kind (two-press confirm in
 `Settings/SettingsPluginsController`).
 
-**Per-project config: `.porta.json`** (parsed by `Config/IdeConfig`, handed to the container as
-a synthetic service) with keys `keymap`, `settings`, `languages`, `lsp`. Settings
+**Per-project config: `.porta.json`** — **reading and writing are separate classes**:
+`Config/IdeConfig` parses (and is the synthetic service), `Config/PortaJsonWriter` persists. They
+share no state, only that file's value vocabulary (`IdeConfig::LEGACY_SETTINGS`, `stringList()`,
+`commandString()`); every writer verb is one read-modify-write through its `edit()` helper, so two
+settings pages editing different blocks cannot clobber each other. Keys: `keymap`, `settings`,
+`languages`, `lsp`. Settings
 (`Settings/SettingsController` + the `Settings/` view) all apply live through
-`Settings/LiveSettingsApplier` — theme swaps the `SwitchablePalette`/`SwitchableTerminalTheme`
+`Settings/LiveSettingsApplier` — the theme id is the `Ui/Theme/Theme` **backed enum**, which carries
+both halves of a scheme (`definition()` for the chrome, `terminalTheme()` for syntax) so the two can
+never disagree; both matches are exhaustive, so adding a case fails at analysis rather than falling
+back to dark. Boundaries (`.porta.json`, `$PORTA_THEME`) convert with `Theme::fromId()`. Theme swaps the `SwitchablePalette`/`SwitchableTerminalTheme`
 holders (buffer highlight caches are dropped by the -200 `HighlightThemeListener`, not inline),
 the locale relabels the tree, the cursor shape swaps the
 `CursorStyle` holder, the tab-bar position re-arranges the strip — each apply ends in a typed
