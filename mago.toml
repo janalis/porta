@@ -61,16 +61,34 @@ sort-uses = true
 excludes = ["tests/Support/slow-reading-lsp-server.php", "tests/Support/demanding-lsp-server.php", "tests/Support/incremental-lsp-server.php", "tests/Support/mock-lsp-server.php", "tests/Support/command-lsp-server.php", "tests/Support/mock-dap-adapter.php"]
 
 # [linter.rules] — every rule runs (no disables). The size/complexity metric
-# rules stay enabled but are calibrated above this TUI codebase's current
-# maxima: the composition root, the UAX#9 bidi tables and the render-heavy
-# widgets legitimately exceed generic thresholds, so the rules guard against
-# *future* regressions past these calibrated bounds rather than the current
-# deliberate structure.
+# rules stay enabled but are calibrated to this TUI codebase's maxima: the
+# composition root, the UAX#9 bidi tables and the render-heavy widgets
+# legitimately exceed generic thresholds, so the rules guard against *future*
+# regressions rather than the current deliberate structure.
+#
+# These numbers were RE-MEASURED after the cohesion refactor and lowered to the
+# new maxima — they are a ratchet, not a ceiling picked once. Each was found by
+# probing with mago itself (it does not report the measured value, so bisecting
+# the threshold is the only way to read it), then set to the lowest value at
+# which `composer lint` still exits 0 with no new findings. What now sets each:
+#
+#   cyclomatic-complexity 220  Input/MouseRouter, Overlay/State/FindInFilesModal
+#   too-many-methods      215  tests/E2e/IdeEdgeCasesTest (the rule covers tests)
+#   too-many-properties    45  src/Widget/CodeEditorWidget
+#   excessive-parameter-list 25 Input/MouseRouter's constructor (24 collaborators)
+#   kan-defect             40  unchanged from the aggressive probe — nothing near it
+#   halstead                   backed off just above BreadcrumbScanner,
+#                              MarkdownRenderer and tests/E2e/IdeTest, which a
+#                              tighter setting flagged as standing noise
+#
+# Re-measure and lower again after the next structural change; a threshold far
+# above the real maximum is not a gate. Verified failing: injecting 60 dummy
+# properties into Ui/Notifier trips too-many-properties and lint exits 1.
 [linter.rules]
-cyclomatic-complexity = { threshold = 300 }
-too-many-methods = { threshold = 250 }
-too-many-properties = { threshold = 60 }
-too-many-enum-cases = { threshold = 80 }
+cyclomatic-complexity = { threshold = 220 }
+too-many-methods = { threshold = 215 }
+too-many-properties = { threshold = 45 }
+too-many-enum-cases = { threshold = 60 }
 excessive-parameter-list = { threshold = 25 }
-kan-defect = { threshold = 60 }
-halstead = { effort-threshold = 25000, difficulty-threshold = 35, volume-threshold = 4000 }
+kan-defect = { threshold = 40 }
+halstead = { effort-threshold = 22000, difficulty-threshold = 33, volume-threshold = 3800 }
