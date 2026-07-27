@@ -17,6 +17,7 @@ use Porta\Ui\Sgr;
 use Porta\Ui\TextField;
 use Porta\Ui\Theme\Styles;
 use Porta\Widget\MatchRowDecorator;
+use Porta\Widget\Render\FindModalRows;
 use Porta\Widget\Render\ModalFrame;
 use Porta\Widget\Render\ModalRowStyle;
 use Porta\Widget\Render\PopupMetrics;
@@ -612,13 +613,13 @@ final class FindInFilesModal
                 default => RowSelection::Unselected,
             };
             $previewRows[] = match (true) {
-                null !== $row->filePath => $this->fileHeaderRow($row->filePath, $row->count, $width),
+                null !== $row->filePath => FindModalRows::fileHeader($row->filePath, $row->count, $width, $this->styles),
                 $this->inPreview() => $this->previewMatchRow($this->results[$row->matchIndex], $row->matchIndex, $selected, $width),
-                default => $this->matchRow($this->results[$row->matchIndex], $selected, $width),
+                default => FindModalRows::match($this->results[$row->matchIndex], $selected, $width, $this->styles),
             };
         }
         if ([] === $visible) {
-            $previewRows[] = $this->emptyRow($width);
+            $previewRows[] = FindModalRows::empty('' === $this->query->value() ? $this->translator->trans('type to search…') : $this->translator->trans('no results'), $width, $this->styles);
         }
         $previewIndex = ModalFrame::CHROME_ROWS_TOP + \count($fields) + 1; // + the tee above the preview
         $footerIndex = $previewIndex + \count($previewRows) + 1; // + the tee above the footer
@@ -762,7 +763,7 @@ final class FindInFilesModal
             $this->optionZones[] = ['name' => $name, 'start' => $col, 'end' => $col + $w];
             $col += $w;
             $on = 'tokens' === $name ? 'any' !== $this->options['tokens'] : $this->options[$name];
-            $tags .= $this->optionTag($glyph, OptionTagState::of($on, $name === $this->hovered));
+            $tags .= FindModalRows::optionTag($glyph, OptionTagState::of($on, $name === $this->hovered), $this->styles);
         }
 
         $label = $this->scopeLabels[$this->scopeIndex] ?? $this->translator->trans('Whole Project');
@@ -774,41 +775,6 @@ final class FindInFilesModal
         $this->optionZones[] = ['name' => 'scope', 'start' => $col + 2, 'end' => min($col + 2 + mb_strwidth($this->translator->trans('Scope:').' '.$label.' (Alt+S)'), $width)];
 
         return $this->styles->of(Role::Toolbar)->apply(AnsiText::truncate(' '.$tags.$scope, $width, pad: true));
-    }
-
-    private function optionTag(string $glyph, OptionTagState $state): string
-    {
-        // Each tag self-closes; the row's Toolbar background re-applies itself
-        // after the close, so no explicit re-open is needed between tags.
-        // An enabled tag is bracketed (like every toggle) so it reads without
-        // color; all three states stay glyph-width + 2 for the click zones.
-        return match ($state) {
-            OptionTagState::On => $this->styles->of(Role::SelectedRow)->apply('['.$glyph.']'),
-            OptionTagState::Hovered => $this->styles->of(Role::RowHighlightBg)->apply(' '.$glyph.' '),
-            OptionTagState::Off => $this->styles->of(Role::Faint)->apply(' '.$glyph.' '),
-        };
-    }
-
-    private function fileHeaderRow(string $path, int $count, int $width): string
-    {
-        $text = ' '.$this->styles->of(Role::TabAccent)->apply($path).$this->styles->of(Role::Dim)->apply('  ('.$count.')');
-
-        return $this->styles->of(Role::PopupRow)->apply(AnsiText::truncate($text, $width, pad: true));
-    }
-
-    /**
-     * @param array{path: string, line: int, text: string, ranges?: list<array{start: int, length: int}>} $result
-     */
-    private function matchRow(array $result, RowSelection $selected, int $width): string
-    {
-        $bg = $this->styles->of(ModalRowStyle::role($selected))->getAnsiRestore();
-        $label = (string) ($result['line'] + 1);
-        $prefixWidth = 4 + mb_strwidth($label) + 2;
-        $text = '    '.$this->styles->of(Role::TabAccent)->apply($label).'  '.$result['text'];
-
-        $searchStyle = $this->styles->of(Role::SearchBg);
-
-        return MatchRowDecorator::highlight($text, $width, $bg, $prefixWidth, $searchStyle->getAnsiRestore(), Sgr::resetFor($searchStyle), $result['ranges'] ?? []);
     }
 
     /**
@@ -836,14 +802,6 @@ final class FindInFilesModal
         $searchStyle = $this->styles->of(Role::SearchBg);
 
         return MatchRowDecorator::highlight($text, $width, $bg, $prefixWidth, $searchStyle->getAnsiRestore(), Sgr::resetFor($searchStyle), $result['ranges'] ?? []);
-    }
-
-    private function emptyRow(int $width): string
-    {
-        $text = ' '.('' === $this->query->value() ? $this->translator->trans('type to search…') : $this->translator->trans('no results'));
-
-        // '' ellipsis: a fixed short filler row — never worth a truncation mark.
-        return $this->styles->merge(Role::PopupRow, Role::CompletionHint)->apply(AnsiText::truncate($text, $width, pad: true, ellipsis: ''));
     }
 
     /** The footer hint row; the action words are clickable/hoverable zones. */
