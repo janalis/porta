@@ -464,7 +464,6 @@ final class OverlayHost
         return $from;
     }
 
-    /** Move the selection $dir hit rows, wrapping and skipping headers. */
     /** Wheel over the list overlay: move the selection, wrapping like the arrow keys. */
     public function moveListSelection(int $delta): void
     {
@@ -491,6 +490,7 @@ final class OverlayHost
         ($this->invalidate)();
     }
 
+    /** Move the selection $dir hit rows, wrapping and skipping headers. */
     private function stepHit(SearchModalState $search, int $dir): int
     {
         $count = \count($search->rows);

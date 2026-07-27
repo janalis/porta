@@ -264,14 +264,6 @@ final class TabBarWidget extends AbstractWidget implements MenuOverlayHost
     }
 
     /**
-     * The largest sensible window start: the smallest index whose trailing
-     * tabs still fill the strip, so scrolling never leaves a blank tail.
-     * When even the last tab alone overflows, it is the last index.
-     *
-     * @param list<array{text: string, active: bool, width: int, closeOffset: int}> $parts
-     */
-
-    /**
      * The vertical (left/right) tab list: one tab per row, every line exactly
      * {@see VERTICAL_WIDTH} columns so the layout engine measures a stable
      * intrinsic width, blank rows filling the pane below the last tab.

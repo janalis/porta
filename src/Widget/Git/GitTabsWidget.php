@@ -85,7 +85,6 @@ final class GitTabsWidget extends AbstractWidget implements MenuOverlayHost
         }
     }
 
-    /** The tab under a widget-relative column, from the last render's layout. */
     /** Tint the (inactive) tab under the pointer; null clears. Returns whether it changed. */
     public function hoverMode(?string $mode): bool
     {
@@ -98,6 +97,7 @@ final class GitTabsWidget extends AbstractWidget implements MenuOverlayHost
         return true;
     }
 
+    /** The tab under a widget-relative column, from the last render's layout. */
     public function modeAtColumn(int $relCol): ?string
     {
         foreach ($this->layout as $tab) {

@@ -273,10 +273,6 @@ final class GitViewController
         $this->tui->requestRender();
     }
 
-    /**
-     * `w` on the diff toolbar: flip whitespace hiding, persist, and reload
-     * whichever diff is shown (the changes-side file or the history patch).
-     */
     /** Persist the diff pane's current split/whitespace display state to the layout. */
     private function persistDiffPrefs(): void
     {
@@ -286,6 +282,10 @@ final class GitViewController
         );
     }
 
+    /**
+     * `w` on the diff toolbar: flip whitespace hiding, persist, and reload
+     * whichever diff is shown (the changes-side file or the history patch).
+     */
     private function toggleWhitespace(): void
     {
         $this->hideWhitespace = !$this->hideWhitespace;

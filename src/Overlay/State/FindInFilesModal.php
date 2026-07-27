@@ -571,14 +571,6 @@ final class FindInFilesModal
     }
 
     /**
-     * Composite the modal over the rendered editor lines, recording its box
-     * geometry for hit-testing. Returns the lines unchanged when closed.
-     *
-     * @param list<string> $lines
-     *
-     * @return list<string>
-     */
-    /**
      * Lay the modal out inside the paintable screen bounds `[top, left,
      * bottom, right)` — the pane-rect union its presenter computed. Builds the
      * framed panel, positions it (centered until a title-bar drag froze an

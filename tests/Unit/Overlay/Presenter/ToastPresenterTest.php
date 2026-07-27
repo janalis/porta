@@ -75,6 +75,7 @@ final class ToastPresenterTest extends TestCase
             new MenuOverlayPanes([$this->pane], [], [], static fn (): bool => false, static fn (): bool => false),
             $this->toasts,
             $this->tui,
+            frameHooks: $this->tui,
         );
     }
 

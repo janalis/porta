@@ -284,7 +284,6 @@ final class MenuBarWidget extends OverlayWidget implements FocusableInterface
         return MenuPanel::firstSelectable($this->menus[$menuIndex]->items);
     }
 
-    /** Move the selection by $dir, skipping separators and wrapping. */
     /**
      * Wheel over the open dropdown: move the highlight by $delta selectable
      * items (the shared WheelStep distance), each step skipping separators and
@@ -302,6 +301,7 @@ final class MenuBarWidget extends OverlayWidget implements FocusableInterface
         $this->afterNavigate();
     }
 
+    /** Move the selection by $dir, skipping separators and wrapping. */
     private function step(int $dir): int
     {
         return MenuPanel::step($this->menus[$this->openIndex]->items, $this->selected, $dir);

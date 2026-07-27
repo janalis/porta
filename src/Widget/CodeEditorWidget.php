@@ -969,11 +969,6 @@ final class CodeEditorWidget extends AbstractWidget implements
     }
 
     /**
-     * Highlight the popup row under the pointer (editor-pane-relative coords).
-     * Returns whether the highlighted row actually changed (so the caller can
-     * skip a redundant re-render on a same-row hover).
-     */
-    /**
      * Wheel over an open editor popup: move ITS selection instead of
      * scrolling the buffer underneath. Returns whether a popup consumed it
      * (the find modal keeps its own dedicated scroll path).
@@ -999,6 +994,11 @@ final class CodeEditorWidget extends AbstractWidget implements
         return false;
     }
 
+    /**
+     * Highlight the popup row under the pointer (editor-pane-relative coords).
+     * Returns whether the highlighted row actually changed (so the caller can
+     * skip a redundant re-render on a same-row hover).
+     */
     public function handlePopupHover(int $relRow, int $relCol): bool
     {
         return $this->completion->handleHover($relRow, $relCol);
@@ -1323,17 +1323,6 @@ final class CodeEditorWidget extends AbstractWidget implements
         );
     }
 
-    /**
-     * Assemble the frame's rows: the pinned sticky-scroll headers on top, then
-     * one content row per visible screen line (a "~" filler past end-of-file),
-     * each fully decorated and closed with its error-stripe cell.
-     *
-     * @param list<array{label: string, line: int}> $sticky
-     * @param array<array-key, string>               $highlighted
-     * @param list<string>                           $stripe
-     *
-     * @return list<string>
-     */
     /**
      * The "no file open" placeholder: a single dimmed, centered hint on an
      * otherwise blank pane (no gutter, no cursor). Returns exactly $rows lines,

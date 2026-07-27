@@ -23,7 +23,7 @@ use Symfony\Component\Tui\Widget\ContainerWidget;
  * {@see PaneReorder} flips each within its own span), reading the parent's
  * private collaborators reflectively (the class is pinned).
  */
-final class BidiTui extends Tui
+final class BidiTui extends Tui implements FrameHooks
 {
     private ?PaneSegmenter $segmenter = null;
     private ?PaneReorder $reorder = null;

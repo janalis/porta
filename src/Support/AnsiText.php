@@ -35,10 +35,6 @@ final class AnsiText
     }
 
     /**
-     * Right-pad $text with spaces so its visible width reaches $width (a no-op
-     * when it is already at least that wide). SGR codes are not counted.
-     */
-    /**
      * Render a whole line faint: SGR 2 up front, re-armed after every reset
      * that would cancel it (`0`, or intensity's own `22` — checked as whole
      * params, so `1;2`-style lists pass untouched), closed at the end. The
@@ -70,6 +66,10 @@ final class AnsiText
         return Sgr::FAINT.$reArmed.Sgr::NORMAL_INTENSITY;
     }
 
+    /**
+     * Right-pad $text with spaces so its visible width reaches $width (a no-op
+     * when it is already at least that wide). SGR codes are not counted.
+     */
     public static function padRight(string $text, int $width): string
     {
         return $text.str_repeat(' ', max(0, $width - AnsiUtils::visibleWidth($text)));

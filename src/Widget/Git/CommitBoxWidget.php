@@ -166,13 +166,13 @@ final class CommitBoxWidget extends AbstractWidget implements FocusableInterface
         }
     }
 
-    /** The widget-relative row of the [Commit] button, for mouse hit-testing. */
     /** Only the enabled commit button hovers — a disabled button is not actionable. */
     public function hoverRow(int $relRow): bool
     {
         return $this->setHovered($relRow === $this->buttonRow() && $this->commitEnabled() ? $relRow : null);
     }
 
+    /** The widget-relative row of the [Commit] button, for mouse hit-testing. */
     public function buttonRow(): int
     {
         return 2 + self::DESCRIPTION_ROWS + 1;

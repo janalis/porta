@@ -440,11 +440,6 @@ final class IdeConfig
         return self::write($file, $config);
     }
 
-    /**
-     * Persist one per-language indent override into .porta.json's `languages`
-     * block, merging with and preserving existing content. Returns true on
-     * success.
-     */
     /** Persist a project/global plugin as enabled by dropping it from the `disabledPlugins` list. */
     public static function persistPluginEnabled(string $rootDir, string $plugin): bool
     {
@@ -549,6 +544,11 @@ final class IdeConfig
         return self::write($file, $config);
     }
 
+    /**
+     * Persist one per-language indent override into .porta.json's `languages`
+     * block, merging with and preserving existing content. Returns true on
+     * success.
+     */
     public static function persistLanguageSetting(string $rootDir, string $language, string $key, int|string $value): bool
     {
         $file = $rootDir.'/.porta.json';

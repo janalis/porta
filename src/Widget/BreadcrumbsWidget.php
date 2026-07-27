@@ -152,7 +152,6 @@ final class BreadcrumbsWidget extends AbstractWidget implements MenuOverlayHost
         };
     }
 
-    /** Tint the crumb under the pointer (widget-relative column); returns whether it changed. */
     /** Tint the crumb under the pointer (visual only). Stores the column; change at crumb granularity. */
     public function hoverAt(int $col): bool
     {

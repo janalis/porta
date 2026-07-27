@@ -29,6 +29,7 @@ use Porta\Search\Everywhere\SearchEverywhereController;
 use Porta\Search\Everywhere\SearchEverywhereFactory;
 use Porta\Settings\SettingsSection;
 use Porta\Ui\BidiTui;
+use Porta\Ui\FrameHooks;
 use Porta\Ui\Theme\Styles;
 use Porta\Ui\Theme\Themes;
 use Porta\Widget\SeparatorWidget;
@@ -197,6 +198,11 @@ return static function (ContainerConfigurator $container, ContainerBuilder $buil
     // Modal region first, menus after — later regions win the segmenter's
     // per-cell owner pass, matching the paint order (menus above the modal).
     $services->alias(FloatingRegions::class, CompositeFloatingRegions::class);
+
+    // BidiTui is a post-compile synthetic, so SingleImplAliasPass cannot see it
+    // — the FrameHooks seam the floating presenters register on needs the alias
+    // spelled out, or they would all silently receive null and never lay out.
+    $services->alias(FrameHooks::class, BidiTui::class);
 
     // The app event bus. The id must be exactly 'event_dispatcher' — the
     // RegisterListenersPass hard-codes it. Emitters autowire the PSR interface

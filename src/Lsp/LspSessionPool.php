@@ -42,8 +42,6 @@ final class LspSessionPool
     /** @var (\Closure(array): bool)|null */
     private ?\Closure $onApplyEdit = null;
 
-    /** @var (\Closure(): void)|null */
-
     /**
      * @param (\Closure(list<string>, string, \Closure(string): void): LspClientInterface)|null $clientFactory
      *        forwarded to every session; inject a fake to test without processes

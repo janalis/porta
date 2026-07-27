@@ -9,7 +9,7 @@ use Porta\Overlay\Region\DropdownRegion;
 use Porta\Overlay\Region\PaneBounds;
 use Porta\Overlay\Region\SpanSlicer;
 use Porta\Overlay\State\MenuOverlayPanes;
-use Porta\Ui\BidiTui;
+use Porta\Ui\FrameHooks;
 use Porta\Ui\Theme\Styles;
 use Porta\Widget\CodeEditorWidget;
 use Porta\Widget\Render\ModalShadow;
@@ -25,7 +25,7 @@ use Symfony\Component\Tui\Tui;
  * hit-testing; this presenter only delivers: boxes → spans + shadow, plus the
  * pane-level backdrop dim.
  *
- * Re-composed on every frame while open ({@see BidiTui::onBeforeFrame}) — the
+ * Re-composed on every frame while open ({@see FrameHooks::onBeforeFrame}) — the
  * query caret blinks and search rows stream in asynchronously, matching the
  * cost the pickers had as editor-composited overlays. The span slot is shared
  * with the two full modals: opening a picker closes them (the
@@ -54,11 +54,10 @@ final class PickerModalPresenter
         private readonly CodeEditorWidget $editor,
         private readonly Tui $tui,
         ?Styles $styles = null,
+        ?FrameHooks $frameHooks = null,
     ) {
         $this->styles = $styles ?? Styles::dark();
-        if ($this->tui instanceof BidiTui) {
-            $this->tui->onBeforeFrame($this->sync(...));
-        }
+        $frameHooks?->onBeforeFrame($this->sync(...));
     }
 
     /**

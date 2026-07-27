@@ -642,7 +642,6 @@ final class MouseRouter
         $this->handleEditorClick($mouse, $editorRect);
     }
 
-    /** The floating bottom/overlay panels: terminal, results and go-to-file. */
     /** A press on the dock strip: select/close a tool tab, or false to fall through to resize. */
     private function tryDockTabClick(MouseEvent $mouse): bool
     {
@@ -700,6 +699,7 @@ final class MouseRouter
         return true;
     }
 
+    /** The floating bottom/overlay panels: terminal, results and go-to-file. */
     private function tryOverlayPanelClick(MouseEvent $mouse): bool
     {
         // A click in the visible dock panel focuses it first, so Escape has a
@@ -958,9 +958,4 @@ final class MouseRouter
 
         $this->opener->openAt($items, $mouse->row, $mouse->col);
     }
-
-    /**
-     * Consecutive-click count at a screen cell: 1, 2 (double) or 3 (triple),
-     * within a 0.4 s window on the same cell; resets otherwise.
-     */
 }

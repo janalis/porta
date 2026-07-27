@@ -170,13 +170,13 @@ final class SettingsFormWidget extends AbstractWidget implements FocusableInterf
         }
     }
 
-    /** A click selects the row under the pointer and advances it one step. */
     /** Tint the settings row under the pointer (visual only, like the nav/keys lists). */
     public function hoverRow(int $relRow): bool
     {
         return $this->setHovered(array_key_exists($relRow, $this->rows) ? $relRow : null);
     }
 
+    /** A click selects the row under the pointer and advances it one step. */
     public function handleClick(int $relRow): void
     {
         if (!array_key_exists($relRow, $this->rows)) {

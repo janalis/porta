@@ -346,7 +346,6 @@ final class Ide
         $this->paneLayout->arrangeSettingsArea();
     }
 
-    /** Construct the git-view widgets, their horizontal pane container and the controller. */
     /** The resize/layout controller, the menu/context overlay compositor and the tree operations. */
     private function buildLayoutAndOverlay(): void
     {
@@ -371,6 +370,7 @@ final class Ide
         $this->paneLayout->arrangeEditorArea();
     }
 
+    /** Construct the git-view widgets, their horizontal pane container and the controller. */
     private function buildGitView(): void
     {
         $this->paneLayout->arrangeGitArea();

@@ -101,6 +101,7 @@ final class WelcomeModalControllerTest extends TestCase
             $editArea,
             $this->tui,
             $this->views,
+            frameHooks: $this->tui,
         );
     }
 

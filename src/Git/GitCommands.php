@@ -327,12 +327,6 @@ final class GitCommands
         $this->notifier->flash($this->translator->trans('Git not available'));
     }
 
-    /**
-     * The branch picker: list local branches (newest activity first) in the
-     * editor's list overlay, switch on pick, or create a new branch via the
-     * leading "+ Create new branch…" row. Checkout failures flash git's own
-     * message (the dirty-working-tree refusal in particular) — no auto-stash.
-     */
     /** Sentinel row values — a "\n" can never appear in a refname. */
     private const string CREATE = "create\nbranch";
     private const string DELETE = "delete\nbranch";

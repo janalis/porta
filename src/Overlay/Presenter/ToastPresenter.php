@@ -11,7 +11,7 @@ use Porta\Overlay\Region\PaneBounds;
 use Porta\Overlay\Region\SpanSlicer;
 use Porta\Overlay\State\MenuOverlayPanes;
 use Porta\Overlay\State\ToastCenter;
-use Porta\Ui\BidiTui;
+use Porta\Ui\FrameHooks;
 use Porta\Ui\Theme\Styles;
 use Porta\Widget\Render\ModalShadow;
 use Porta\Widget\Render\PopupFrame;
@@ -49,11 +49,10 @@ final class ToastPresenter
         private readonly ToastCenter $toasts,
         private readonly Tui $tui,
         ?Styles $styles = null,
+        ?FrameHooks $frameHooks = null,
     ) {
         $this->styles = $styles ?? Styles::dark();
-        if ($this->tui instanceof BidiTui) {
-            $this->tui->onBeforeFrame($this->sync(...));
-        }
+        $frameHooks?->onBeforeFrame($this->sync(...));
     }
 
     /**

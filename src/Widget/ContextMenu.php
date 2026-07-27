@@ -136,10 +136,6 @@ final class ContextMenu extends OverlayWidget
     }
 
     /**
-     * Highlight the item at $index (from a hover). Skips separators/disabled and
-     * no-ops when already selected; returns whether the highlight changed.
-     */
-    /**
      * Wheel over the menu: move the highlight by $delta selectable items (the
      * shared WheelStep distance), each step skipping separators and wrapping.
      * $dir * $delta is |$delta| — the notch count — without abs().
@@ -156,6 +152,10 @@ final class ContextMenu extends OverlayWidget
         $this->afterNavigate();
     }
 
+    /**
+     * Highlight the item at $index (from a hover). Skips separators/disabled and
+     * no-ops when already selected; returns whether the highlight changed.
+     */
     public function hoverItem(int $index): bool
     {
         $item = $this->items[$index] ?? null;

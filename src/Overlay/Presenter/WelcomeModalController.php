@@ -13,8 +13,8 @@ use Porta\Overlay\Region\PaneBounds;
 use Porta\Overlay\Region\SpanSlicer;
 use Porta\Overlay\State\MenuOverlayPanes;
 use Porta\Support\IntMath;
-use Porta\Ui\BidiTui;
 use Porta\Ui\EditorArea;
+use Porta\Ui\FrameHooks;
 use Porta\Ui\Theme\Styles;
 use Porta\Ui\WorkspaceViews;
 use Porta\Widget\MenuBarWidget;
@@ -44,7 +44,7 @@ use Symfony\Component\Tui\Widget\FocusableInterface;
  * outside it (the menu bar, the status bar) are not overlay hosts and would
  * simply not paint, so clamping to it is correctness, not polish. The rects
  * do not exist at first-run open time (no frame has rendered), so a
- * {@see BidiTui::onBeforeFrame} hook lays the box out as soon as they do and
+ * {@see FrameHooks::onBeforeFrame} hook lays the box out as soon as they do and
  * re-clamps it when a resize moves them; drag positions are session-only —
  * reopening re-centers.
  *
@@ -102,15 +102,14 @@ final class WelcomeModalController
         private readonly Tui $tui,
         WorkspaceViews $views,
         ?Styles $styles = null,
+        ?FrameHooks $frameHooks = null,
     ) {
         $this->styles = $styles ?? Styles::dark();
         $views->attachWelcome($this);
         $this->welcome
             ->onExit($this->close(...))
             ->onRan($this->refresh(...));
-        if ($this->tui instanceof BidiTui) {
-            $this->tui->onBeforeFrame($this->syncBeforeFrame(...));
-        }
+        $frameHooks?->onBeforeFrame($this->syncBeforeFrame(...));
     }
 
     public function isOpen(): bool
@@ -335,7 +334,7 @@ final class WelcomeModalController
     }
 
     /**
-     * The per-frame re-sync ({@see BidiTui::onBeforeFrame}): lay the box out
+     * The per-frame re-sync ({@see FrameHooks::onBeforeFrame}): lay the box out
      * once rects exist (first-run opens before any frame) and re-clamp it when
      * the pane union moved (terminal resize). No-ops on a settled frame.
      */
