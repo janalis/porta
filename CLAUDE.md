@@ -208,13 +208,40 @@ depend on the narrow role they use, not the widget: `Editor/ActiveFileProvider` 
 decoration setters), `EditorViewOptions` (the display toggles; the six flags themselves live in
 `Editor/EditorDisplayOptions`, which takes the invalidate closure and repaints only on a real
 change — re-selecting a setting you already have must not flash the pane), `EditorIndentTarget`, `EditorKeymapProvider`, and `Ui/Menu/EditorCommandTarget`
-(the menu chain). `SingleImplAliasPass` aliases each with **zero** container config. Four consumers
-stay concrete **on purpose**, each noted at the site: `Lsp/AbstractLspController` (its three
-subclasses reach the inherited `$editor` for eleven methods), `Git/GitRemoteCommands` and
-`Editor/EditorFileActions` (they also hand the widget to `setFocus()` / `EditorFindTarget`),
-`Input/EditorLayoutPanes` (the mouse routers use a wide slice by design — narrowing it is the
-rejected `Clickable` idea). `WorkspaceLayout`/`EditorArea`/`WorkbenchCommands` want *a widget*;
-typing them `AbstractWidget` would make the param ambiguous to autowiring, so they stay too.
+(the menu chain). `SingleImplAliasPass` aliases each with **zero** container config. A consumer
+whose methods span TWO roles takes **two params of the same widget** (each resolves through its
+own alias natively; tests hand in two narrow fakes): `History/LocalHistoryController`
+(`ActiveFileProvider` + `EditorInvalidator`), `Git/BlameAnnotations` (`ActiveFileProvider` +
+`EditorDecorationSink`), `Search/Everywhere/SearchEverywhereFactory` (`SearchOverlay` +
+`EditorTextAccess`). Consumers stay concrete **on purpose**, each noted at the site:
+`Lsp/AbstractLspController` (its three subclasses reach the inherited `$editor` for eleven
+methods), `Git/GitRemoteCommands`, `Editor/EditorFileActions` and `Run/RunController` (they also
+hand the widget to `setFocus()` / `EditorFindTarget`), `Input/EditorLayoutPanes` (the mouse
+routers use a wide slice by design — narrowing it is the rejected `Clickable` idea), and the
+one-method callers whose method lives in no role — `Tree/TreeOperations` (`showDocument`),
+`Editor/BreadcrumbTrailProvider` (`scopes`), `Ui/Menu/ContextMenuOpener` (`caretScreenCell`):
+**one-consumer interfaces are forbidden**, as is widening an existing role for one caller.
+`WorkspaceLayout`/`EditorArea`/`WorkbenchCommands` want *a widget*; typing them `AbstractWidget`
+would make the param ambiguous to autowiring, so they stay too. `BufferService` (25 public
+methods, 13 concrete consumers) was re-measured: no consumer uses only the `FileOpener` slice,
+so it keeps its concrete hints beyond the extracted `DiagnosticsSink`.
+
+**Full-screen views are a registry, not three fields.** `Ui/WorkspaceViews` keys
+`Ui/FullScreenView` controllers (isOpen/open/close/toggle/focusTarget/`cycleFocus(int): bool`)
+by the `Ui/WorkspaceView` pure enum, whose exhaustive `ownsMainArea()` match makes Welcome's
+floating nature declarative: Welcome is *active* without *detaching* the main area, so
+`isAnyOpen()`/`isAttached()` range over `ownsMainArea()` cases only — a 4th view fails
+`composer analyze` until it decides. Every verb (toggle-with-interlock, closeAll, focusTarget,
+cycleFocus) ranges over the registry; a new view is one enum case + one `attach()` call. Only
+the two view-specific capabilities keep concrete controllers, via the typed `attachGit`/
+`attachSettings` wrappers (`openGitFileHistory`, `refreshSettings`) — callers can't hold the
+controllers themselves (the construction cycles the registry breaks). Welcome's
+`cycleFocus` returns **false** so `FocusCoordinator` falls through to the editor ring while the
+dispatcher's modal branch swallows keys. `FullScreenView` has three impls, so the alias pass
+skips it — instances travel through `attach()`, never autowiring. The mouse/hover routers'
+per-view rects and `Input/ActiveView` stay as they are on purpose: the routers own wide
+per-view slices by design, and `ActiveView` is a different vocabulary (has `Editor`, lacks
+`Welcome`), not a duplicate of `WorkspaceView`.
 
 What stays hand-built in `Ide` (deliberate, ~520 lines total): the bootstrap infra above, the
 widget-tree mount + pane arrangement calls, per-buffer runtime objects
@@ -265,6 +292,15 @@ map — so `Git/GitInfo`'s thirty-odd porcelain verbs are stateless argv-builder
 (git mutates the tree before the exit callback fires, so `!isBusy()` means the op landed on disk).
 Output parsing lives in the `Git/*Parser` tier — `BlameParser` (whole-file `parse()` **and**
 single-line `parseLine()`), `BranchParser`, `LogParser`, `StatusParser`, `HunkParser`.
+The view's axes are all enums, all **pure** (nothing crosses a persistence boundary — backed is
+for `.porta.json`-crossing values like `Theme`): `GitViewMode` (Changes|History left-pane tab;
+`GitTabsWidget` renders `cases()` with an exhaustive label match) and `DiffSide`
+(Worktree|Cached|Untracked — what a staging selection *means* in `GitStagingService`), beside
+`CommitMode`/`RefreshMode`/`HistoryReload`/`WhitespaceMode`. The two git list widgets share
+`Widget/Git/GitPaneKeys` (fetch/pull/push + exit/focus-next), a trait that **composes**
+`use PaneNavigationCallbacks;` internally — that is what satisfies mago's isolated trait
+analysis without byte-identical redeclarations; `PaneNavigationCallbacks` itself stays narrow
+for its settings-pane users.
 
 **Single event loop.** `revolt/event-loop` drives both the `symfony/tui` render/input loop and
 all async work (LSP over stdio, git subprocesses, the integrated terminal PTYs — one per
@@ -339,6 +375,14 @@ floating feature lands one class in each:
   `MenuOverlayController`/`MenuOverlayPanes`, `Toast`/`ToastCenter`/`ToastSeverity`.
 - **`Overlay/Presenter/`** — the eagerly-resolved per-frame span producer: `PickerModalPresenter`,
   `FindModalPresenter`, `ToastPresenter`, `WelcomeModalController` (a presenter despite the name).
+  All four share **`OverlayDelivery`** (pane-union `bounds()` with the pre-first-frame
+  requestRender retry, the per-pane `SpanSlicer`+`ModalShadow` slice loop for both span slots, the
+  all-panes clear sweep — delivery targets `current()` panes, clearing targets `all()`, because a
+  surface may close across a view swap). It lives in the Presenter tier because it *mutates panes
+  per frame* — `Widget/Render/` stays stateless. Each presenter keeps its gate, its state source
+  and its own `$shown` clear-once guard: that guard is the invariant that lets four writers share
+  the span slots without clobbering each other — do not centralize it. The shadow-clamped RTL
+  region math is `DropdownRegion::shadowClamped`.
 - **`Overlay/Region/`** — pure geometry / hit-test value objects: `ModalBox`, `PaneBounds`,
   `DropdownRegion`, `SpanSlicer`, `FloatingRegions`/`CompositeFloatingRegions`.
 - **`Ui/FrameHooks`** is the per-frame hook seam the presenters register on (`onBeforeFrame`),
@@ -361,9 +405,15 @@ floating feature lands one class in each:
 `OverlayHost` owns picker state/layout/hit-testing (SCREEN-space boxes; `layout()` per frame);
 `PickerModalPresenter` delivers spans + `ModalShadow` + dim, gated on an attached editor. The
 span slot has one writer per frame: opening any floating surface closes the others
-(`CodeEditorWidget::closeSiblingFloaters` → `WorkspaceViews::closeWelcome` + find close; the
-full views close all three). Pickers are fixed-centered (third down over the pane union) — not
-draggable — and the open modal owns the caret (topmost surface only: prompt > search). The menu
+(`CodeEditorWidget::closeSiblingFloaters` → `WorkspaceViews::close(WorkspaceView::Welcome)` +
+find close; the full views close all three). Pickers are fixed-centered (third down over the pane
+union) — not draggable — and the open modal owns the caret (topmost surface only: prompt >
+search). That precedence has ONE spelling: `OverlayHost::topmostSurface()` (prompt > search >
+list, tagged by the `Overlay/State/PickerSurface` enum) and its `pickerClickAt`/`pickerHoverAt`/
+`moveSelection` dispatchers — the widget only delegates. `moveSelection` skips the prompt (no
+selection): a wheel with a prompt and a list open moves the list, pinned by test. A full
+`PickerSurface` *interface* was measured and rejected — the three surfaces' open signatures, two
+input paths and three click semantics share no seam; the enum is a tag, not a role. The menu
 dropdowns and the context menu wear the tighter `Widget/Render/PopupFrame` (border-only modal
 language, `DropdownRegion(framed:)` hit-testing: item runs / border swallows / outside
 dismisses); the completion popup and signature hint stay editor-pane-composited, framed the
@@ -373,7 +423,14 @@ same way.
 for every rebindable action (label + default keys). `Config/CommandRegistry` holds IDE-level
 commands (id → handler, key-bound?, in-palette?). `Ui/Menu/MenuModel` builds the menu bar / context
 menus from these. Don't hand-maintain parallel keybinding/palette/menu lists — extend the
-catalog/registry.
+catalog/registry. View gating rides ONE `?\Closure(): ?WorkspaceView $activeView` param and one
+per-view `VIEW_SAFE` map keyed by case name (a new view = one map entry); moving those
+allowlists into `CommandRegistry` descriptors was measured and rejected — it would touch all
+seven tagged providers plus a default policy for plugin commands, which are implicitly
+view-unsafe today and must stay so. `Input/EditorActionRouter`'s two action tables are
+single-sourced the same way: the handler maps' **keys** drive both membership and dispatch
+(`simpleHandlers()`/`positionalHandlers()`; the handlers take `EditorCallbacks` + the caret as
+parameters so both resolve only at fire time) — never reintroduce a parallel id const.
 
 **Editor core.** `Editor/Document` is the text buffer (byte-offset cursor kept on UTF-8
 boundaries, undo/redo, change tracking, per-file indent via `.editorconfig`); the whole-line verbs
@@ -443,7 +500,15 @@ line-count guard and the `AnsiCodeTracker` per-line SGR re-open. The engine behi
 **LSP.** `Lsp/LspSessionPool` routes traffic to per-language sessions started lazily on the first
 `didOpen` of a matching file; sessions are keyed by command (shared processes for JS/TS on one
 server). Feature controllers (`Lsp/NavigationController`, `Lsp/RefactorController`,
-`Lsp/CompletionController`) extend `Lsp/AbstractLspController`.
+`Lsp/CompletionController`) extend `Lsp/AbstractLspController`. `NavigationController`'s
+position-bound verbs (hover/references/call hierarchy/peek/file structure) ride one private
+scaffold — `requestAt` (ready-guard + position params; `requestForDocument` for uri-only) with
+transport-error and nothing-to-show funnelled into a `$notFound` **closure**, not a message: the
+verbs flash through two different sinks (status bar vs results panel). `send()` is the chaining
+seam — call hierarchy's inner `incomingCalls` hop enters there and deliberately never re-runs
+`ready()`. `requestGoTo` stays separate: already factored, and it holds the one
+`FlushMode::Keep`. A collaborator was rejected — the scaffold consumes inherited
+`AbstractLspController` members, so extraction would just re-thread the parent.
 
 **Debugger (DAP).** `Debug/DapClient` speaks the Debug Adapter Protocol over a child process's
 stdio (framing shared with LSP via `Support/JsonRpcFramer`); `Debug/DapSession` is one launch's
@@ -470,7 +535,23 @@ routing — it resolves which item list the pointer is over, then hands off to `
 The extraction test that produced these: a method whose dependencies it **exclusively** owns
 (counted inside the method vs across the file) and which touches none of the six cross-event drag
 fields. Applying the same test to `BufferService`'s pane-swap cluster **rejected** it — only one
-dependency was exclusive.
+dependency was exclusive. It also rejected **`CodeEditorWidget`'s ~270-line render cluster**, a
+stronger failure: 3 of ~23 touched dependencies exclusive, and the cluster *writes* four fields
+the mouse paths *read* (`lastGutterWidth`/`lastRenderRows`/`lastStripeCol`/`stickyLines` feed
+`viewport()`, `caretScreenCell()`, `documentLineAt()`, `gutterWidth()`) —
+render-event-writes/mouse-event-reads is exactly the shared cross-event state clause. Only the
+slice that already took its state as parameters left: `Widget/Render/ErrorStripe` (the
+right-margin stripe, pure static). Named zone rows share `Ui/ClickZones`
+(`clear`/`add(name, start, end)`/`at(col)`, half-open, first match wins — the help header's
+overlapping padded zones rely on that); adopted by the help header, the find bar's option tags,
+the diff toolbar and the find modal's options+footer rows. The five *other* zone lists
+(`GitTabsWidget`, `BreadcrumbsWidget`, `MenuBarWidget`, `TabBarWidget`, `DockTabsWidget`) are
+deliberately not converted: non-string payloads (enum modes, line ints) and positional lookups
+(dropdown anchoring, drag-reorder) would launder worse than the loops they keep.
+`Layout/LayoutController` holds one `Layout/SidebarResizeState` per sidebar (tree/git/settings:
+armed drag, start width, persisted percent), so arm/drag/nudge/restore are each written once;
+the public `arm*`/`nudge*` names stay as delegators (`MouseRouter`/`PaneResizer` call them), and
+the old readonly `SidebarResize` ferry-spec is subsumed and gone.
 
 **Plugins.** User PHP loaded at boot from three sources in precedence order —
 `<project>/.porta/plugins/*/plugin.php`, `~/.porta/plugins/*/plugin.php` (`PORTA_HOME` overrides
