@@ -186,6 +186,34 @@ singleton widget** (`#[Container/AsWidget]` declares tree id/flex, autoconfigure
   Git 100) and `CommandRegistryPopulator` iterates them via `#[AutowireIterator]` — **priority
   order is contractual**: registration order IS the palette display order and core registers
   before plugins so core wins key collisions.
+- **Tagged settings sections**: `Settings/SettingsSection` (`handles`/`rows`/`change`)
+  autoconfigures into `porta.settings_section`; the six adapters in `Settings/Section/` delegate to
+  the eight settings controllers (which keep their differing `rows()` arities and setter spellings
+  — that is what the adapters are for). `SettingsViewController` iterates them via
+  `#[AutowireIterator]` and takes the **first** section whose `handles()` claims the nav id.
+  **Priority is contractual for a sharper reason than the palette's**: `Section/GeneralSection`
+  claims *every* id as the fallback, so promoting it above another section makes that section's
+  page unreachable **silently** (the general form still renders). `Interface 600 → Highlighting
+  500 → Plugins 400 (owns both `plugins` and `plugin:<name>`) → Git 300 → Language 200 (merges the
+  languages/lsp/debug controllers) → General 100`, pinned by
+  `tests/Unit/Container/SettingsSectionOrderTest`. `keybindings` is deliberately **not** a section:
+  it is the one nav id that swaps the content *widget*, so it stays in `selectSection()`. Adding a
+  page still touches `Widget/Settings/SettingsNavWidget` (nav order/headers/language list).
+
+**Role interfaces over the editor widget.** `CodeEditorWidget` has 91 public methods, so consumers
+depend on the narrow role they use, not the widget: `Editor/ActiveFileProvider` (`getFilePath`),
+`ActiveDocumentProvider` (+`getDocument`), `EditorTextAccess` (+`insertText`/`jumpTo` — the seam
+`Plugin/PluginRuntime` exposes to plugins, so the whole widget is *not* public plugin API),
+`EditorInvalidator`, `ModalHost` (`openListOverlay`/`openPrompt`), `EditorDecorationSink` (the eight
+decoration setters), `EditorViewOptions` (the display toggles — write-only; nothing reads the
+`has*()` accessors back), `EditorIndentTarget`, `EditorKeymapProvider`, and `Ui/Menu/EditorCommandTarget`
+(the menu chain). `SingleImplAliasPass` aliases each with **zero** container config. Four consumers
+stay concrete **on purpose**, each noted at the site: `Lsp/AbstractLspController` (its three
+subclasses reach the inherited `$editor` for eleven methods), `Git/GitRemoteCommands` and
+`Editor/EditorFileActions` (they also hand the widget to `setFocus()` / `EditorFindTarget`),
+`Input/EditorLayoutPanes` (the mouse routers use a wide slice by design — narrowing it is the
+rejected `Clickable` idea). `WorkspaceLayout`/`EditorArea`/`WorkbenchCommands` want *a widget*;
+typing them `AbstractWidget` would make the param ambiguous to autowiring, so they stay too.
 
 What stays hand-built in `Ide` (deliberate, ~520 lines total): the bootstrap infra above, the
 widget-tree mount + pane arrangement calls, per-buffer runtime objects
@@ -237,7 +265,17 @@ configurations). Nothing blocks; long operations are timers/callbacks on the sha
 
 **Bottom dock.** The terminal panel, the debug panel and the list tools share one dock above
 the status bar, coordinated by `Ui/BottomDock` (also the owner of `Ui/ResultsPanelMode` routing
-and the shared focus-return/flash choreography). **Every list tool lives as a `Ui/DockToolTab`
+and the shared focus-return/flash choreography). All three extend
+**`Widget/DockPanelWidget`** (itself an `OverlayWidget`), which is why `BottomDock::visiblePanel()`
+returns one type instead of a three-way union: it declares `statusText()`, `setVisibleRows()` and
+the two verbs that genuinely differ — `wheelBy(int $rows)` (the terminal scrolls its **scrollback**,
+so wheel-up goes into history and the sign flips; the two lists `scrollBy`) and `clickRow(int $row)`
+(a no-op on the terminal, whose body clicks only refocus). Those two retired the `instanceof`
+downcasts in `Input/MouseRouter`. It is a **class, not an interface**, deliberately: `Ui/FocusRing`
+and `Layout/PaneResizer` compare the panel against the focused widget and the router hands it to
+`setFocus()`/the hit-tester, all of which need an `AbstractWidget`. Note `wheelBy` is **not** named
+`scrollBy` (the `Widget/Support/WheelScrollable` verb) precisely because the terminal inverts
+direction — sharing the name would make two opposite meanings look interchangeable. **Every list tool lives as a `Ui/DockToolTab`
 in the `Ui/DockToolTabs` model** — the model, not the widget, is the source of truth: the single
 `ResultsPanelWidget` displays exactly one tab, and tool tabs **coexist** (each Find-in-Project
 query, Problems, TODO, each Usages/Choose-target list, the LSP/notification logs, Local History
@@ -448,7 +486,12 @@ exit 2 = issues found). The on-save toggle commands flip the persisted settings 
 Their E2e tests load the real files from those paths.
 Settings → Plugins installs/removes plugin dirs (`Plugin/PluginInstaller`: git clone for URLs,
 recursive copy for local dirs; per-install project/global scope; bundled plugins list as
-built-in and refuse removal). The live lifecycle lives in `Plugin/PluginLifecycle`
+built-in and refuse removal). The live lifecycle lives in `Plugin/PluginLifecycle`, behind two
+seams: **`Plugin/PluginEnablement`** (`enable`/`isDisabled`/`listedNames`) is what the *offer*
+paths take (`Settings/SettingsHighlightController` offering the bundled `tempest` engine,
+`Onboarding/WelcomeSteps` offering the same plus the server/fixer/analyzer), while
+**`Plugin/PluginLifecycleOps extends PluginEnablement`** adds install/deactivate/disable/refresh
+and is driven only by the plugins settings page
 (activate/deactivate/setEnabled + the settings-nav sync): **live activation** —
 `PluginLoader::loadFile` + `PluginManager::registerCommands` (incremental via a watermark) +
 `Ui/MenuRebuilder::rebuild` — and **live
