@@ -22,6 +22,7 @@ use Porta\Ui\CursorStyle;
 use Porta\Ui\Role;
 use Porta\Ui\TextField;
 use Porta\Ui\Theme\Styles;
+use Porta\Widget\Render\FindModalRows;
 use Porta\Widget\Support\InputHook;
 use Porta\Widget\Support\MatchJump;
 use Porta\Widget\Support\OptionTagState;
@@ -315,7 +316,7 @@ final class FindBarWidget extends OverlayWidget implements FocusableInterface
         $tags = '';
         $col = max(0, $columns - self::tagsWidth());
         foreach ([['regex', '.*', $this->regex], ['word', '\b', $this->wholeWord]] as [$name, $glyph, $on]) {
-            $tags .= $this->optionTag($glyph, OptionTagState::of($on, $name === $this->hoveredTag));
+            $tags .= FindModalRows::optionTag($glyph, OptionTagState::of($on, $name === $this->hoveredTag), $this->styles);
             $width = mb_strwidth($glyph) + 2;
             $this->optionZones[] = ['name' => $name, 'start' => $col, 'end' => $col + $width];
             $col += $width;
@@ -539,22 +540,6 @@ final class FindBarWidget extends OverlayWidget implements FocusableInterface
         $this->wholeWord = !$this->wholeWord;
         $this->recompute(jumpToNearest: MatchJump::ToNearest);
         $this->invalidate();
-    }
-
-    /**
-     * A right-aligned mode tag. An enabled tag is bracketed — the toggle
-     * convention, so it reads without colour — and all three states stay
-     * glyph + 2 columns so the click zones never shift. Identical to
-     * {@see \Porta\Overlay\State\FindInFilesModal}'s tags, which is what
-     * these have always looked like they were.
-     */
-    private function optionTag(string $label, OptionTagState $state): string
-    {
-        return match ($state) {
-            OptionTagState::On => $this->styles->of(Role::SelectedRow)->apply('['.$label.']'),
-            OptionTagState::Hovered => $this->styles->of(Role::RowHighlightBg)->apply(' '.$label.' '),
-            OptionTagState::Off => $this->styles->of(Role::Faint)->apply(' '.$label.' '),
-        };
     }
 
     /** @return array<string, string[]> */
