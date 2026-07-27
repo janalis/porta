@@ -14,7 +14,6 @@ use Porta\Ui\ListSelection;
 use Porta\Ui\Role;
 use Porta\Ui\Theme\Styles;
 use Porta\Widget\HoverableList;
-use Porta\Widget\PaneNavigationCallbacks;
 use Porta\Widget\Render\HeaderRenderer;
 use Porta\Widget\Render\MenuOverlayHost;
 use Porta\Widget\Render\MenuOverlayHostTrait;
@@ -44,15 +43,12 @@ final class ChangesListWidget extends AbstractWidget implements FocusableInterfa
     use ArrowScrollTrait;
     use FillsPaneTrait;
     use FocusableTrait;
+    use GitPaneKeys;
     use HoverTrait;
     use InputHook;
     use KeybindingsTrait;
     use MenuOverlayHostTrait;
     use PanelWidth;
-    use PaneNavigationCallbacks;
-
-    /** @var (callable(string): void)|null a remote-operation key: 'fetch' | 'pull' | 'push' */
-    private $onRemote = null;
 
     /** @var array<string, Role> file-status char → color role */
     private const array STATUS_ROLE = [
@@ -188,25 +184,7 @@ final class ChangesListWidget extends AbstractWidget implements FocusableInterfa
             return;
         }
 
-        foreach (['fetch', 'pull', 'push'] as $remoteOp) {
-            if (!$kb->matches($data, $remoteOp)) {
-                continue;
-            }
-
-            if (null !== $this->onRemote) {
-                ($this->onRemote)($remoteOp);
-            }
-
-            return;
-        }
-        if ($kb->matches($data, 'exit_view')) {
-            $this->fire($this->onExit);
-
-            return;
-        }
-        if ($kb->matches($data, 'focus_next_pane')) {
-            $this->fire($this->onFocusNext);
-
+        if ($this->handleGitPaneKey($data, $kb)) {
             return;
         }
         if (ListNavigation::handleKey($data, $kb, $this->list, \count($this->entries), page: $this->lastRows)) {
@@ -368,13 +346,6 @@ final class ChangesListWidget extends AbstractWidget implements FocusableInterfa
         }
 
         return $this->withMenuOverlay($lines, $width);
-    }
-
-    public function onRemote(callable $callback): self
-    {
-        $this->onRemote = $callback;
-
-        return $this;
     }
 
     /** @return array<string, string[]> */
