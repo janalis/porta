@@ -38,6 +38,7 @@ use Porta\Ui\Menu\MenuRebuilder;
 use Porta\Ui\NonBlockingTerminal;
 use Porta\Ui\Notifier;
 use Porta\Ui\TerminalStateRefresher;
+use Porta\Ui\WorkspaceView;
 use Porta\Ui\WorkspaceViews;
 use Porta\Widget\CodeEditorWidget;
 use Porta\Widget\FileTreeWidget;
@@ -221,7 +222,7 @@ final class Ide
         }
 
         $onboarding->markWelcomeSeen();
-        $this->service(WorkspaceViews::class)->openWelcome();
+        $this->service(WorkspaceViews::class)->open(WorkspaceView::Welcome);
     }
 
     /**

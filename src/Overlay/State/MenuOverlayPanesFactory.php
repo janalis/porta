@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Porta\Overlay\State;
 
 use Porta\Layout\WorkspaceLayout;
+use Porta\Ui\WorkspaceView;
 use Porta\Ui\WorkspaceViews;
 use Porta\Widget\BreadcrumbsWidget;
 use Porta\Widget\CodeEditorWidget;
@@ -75,8 +76,8 @@ final class MenuOverlayPanesFactory
             ],
             [$this->gitTabs, $this->gitChanges, $this->gitCommitBox, $this->gitHistory, $this->layout->gitSeparator(), $this->gitDiff],
             [$this->settingsNav, $this->layout->settingsSeparator(), $this->settingsForm, $this->settingsKeys],
-            fn (): bool => $this->views->isGitOpen(),
-            fn (): bool => $this->views->isSettingsOpen(),
+            fn (): bool => $this->views->isOpen(WorkspaceView::Git),
+            fn (): bool => $this->views->isOpen(WorkspaceView::Settings),
         );
     }
 }

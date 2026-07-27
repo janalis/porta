@@ -439,10 +439,10 @@ final class SettingsViewControllerTest extends TestCase
         $controller = $this->controller();
         $controller->open(); // focus starts on the form (content)
 
-        $controller->cycleFocus();
+        $controller->cycleFocus(1);
         $this->assertSame($this->nav, $this->tui->getFocus(), 'content → nav');
 
-        $controller->cycleFocus();
+        $controller->cycleFocus(1);
         $this->assertSame($this->form, $this->tui->getFocus(), 'nav → content');
     }
 

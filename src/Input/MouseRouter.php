@@ -15,6 +15,7 @@ use Porta\Support\IntMath;
 use Porta\Ui\BidiTui;
 use Porta\Ui\Dock\BottomDock;
 use Porta\Ui\Dock\DockTab;
+use Porta\Ui\WorkspaceView;
 use Porta\Ui\WorkspaceViews;
 use Porta\Widget\ContextMenu;
 use Porta\Widget\DockTabsWidget;
@@ -103,8 +104,8 @@ final class MouseRouter
         // tree/tabs/editor (and the menu bar inside the editor pane) are
         // detached — but the renderer still holds their last-frame rects. Null
         // them so no stale-rect branch routes events to an invisible widget.
-        $gitViewOpen = $this->views->isGitOpen();
-        $settingsViewOpen = $this->views->isSettingsOpen();
+        $gitViewOpen = $this->views->isOpen(WorkspaceView::Git);
+        $settingsViewOpen = $this->views->isOpen(WorkspaceView::Settings);
         if ($this->views->isAnyOpen()) {
             $treeRect = null;
             $tabsRect = null;

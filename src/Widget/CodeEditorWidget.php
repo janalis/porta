@@ -55,6 +55,7 @@ use Porta\Ui\Menu\EditorCommandTarget;
 use Porta\Ui\Role;
 use Porta\Ui\Sgr;
 use Porta\Ui\Theme\Styles;
+use Porta\Ui\WorkspaceView;
 use Porta\Ui\WorkspaceViews;
 use Porta\Widget\Render\EditorDecorations;
 use Porta\Widget\Render\EditorGeometry;
@@ -336,7 +337,7 @@ final class CodeEditorWidget extends AbstractWidget implements
      */
     private function closeSiblingFloaters(): void
     {
-        $this->views?->closeWelcome();
+        $this->views?->close(WorkspaceView::Welcome);
         $this->findModal->close();
     }
 

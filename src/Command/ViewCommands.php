@@ -14,6 +14,7 @@ use Porta\Search\Everywhere\SearchEverywhereController;
 use Porta\Settings\SettingsController;
 use Porta\Ui\Dock\BottomDock;
 use Porta\Ui\WorkbenchActions;
+use Porta\Ui\WorkspaceView;
 use Porta\Ui\WorkspaceViews;
 use Symfony\Component\DependencyInjection\Attribute\AsTaggedItem;
 use Symfony\Component\DependencyInjection\Attribute\Autowire;
@@ -71,15 +72,15 @@ final class ViewCommands implements CommandProvider
             ->add('dock_prev_panel', fn () => $this->dock->cycle(-1), keyBound: KeyDispatch::Bound, when: fn (): bool => null !== $this->dock->visiblePanel())
             ->add('ide_terminal_new', fn () => $this->run->newTerminalSession(), keyBound: KeyDispatch::Bound)
             ->add('ide_run', fn () => $this->run->openRunMenu(), keyBound: KeyDispatch::Bound)
-            ->add('ide_git', fn () => $this->views->toggleGit(), keyBound: KeyDispatch::Bound)
-            ->add('ide_settings', fn () => $this->views->toggleSettings(), keyBound: KeyDispatch::Bound)
+            ->add('ide_git', fn () => $this->views->toggle(WorkspaceView::Git), keyBound: KeyDispatch::Bound)
+            ->add('ide_settings', fn () => $this->views->toggle(WorkspaceView::Settings), keyBound: KeyDispatch::Bound)
             // No ActionCatalog entry and no default key: a keyless catalog entry
             // must be bound by some widget, which is wrong for an IDE command,
             // and this is a menu/palette action rather than a keystroke. Hence
             // the explicit label.
             ->add(
                 'ide_welcome',
-                fn () => $this->views->toggleWelcome(),
+                fn () => $this->views->toggle(WorkspaceView::Welcome),
                 label: 'Welcome',
             )
             ->add(

@@ -12,7 +12,9 @@ use Porta\Overlay\Region\ModalBox;
 use Porta\Support\IntMath;
 use Porta\Ui\EditorArea;
 use Porta\Ui\FrameHooks;
+use Porta\Ui\FullScreenView;
 use Porta\Ui\Theme\Styles;
+use Porta\Ui\WorkspaceView;
 use Porta\Ui\WorkspaceViews;
 use Porta\Widget\MenuBarWidget;
 use Porta\Widget\Onboarding\WelcomeWidget;
@@ -49,7 +51,7 @@ use Symfony\Component\Tui\Widget\FocusableInterface;
  */
 #[AsIdeService]
 #[AsEager(priority: 400)]
-final class WelcomeModalController
+final class WelcomeModalController implements FullScreenView
 {
     /** The frame's widest content column; matches the widget's own comfortable cap. */
     private const int MAX_INNER_WIDTH = 76;
@@ -99,7 +101,7 @@ final class WelcomeModalController
         ?FrameHooks $frameHooks = null,
     ) {
         $this->styles = $styles ?? Styles::dark();
-        $views->attachWelcome($this);
+        $views->attach(WorkspaceView::Welcome, $this);
         $this->welcome
             ->onExit($this->close(...))
             ->onRan($this->refresh(...));
@@ -114,6 +116,15 @@ final class WelcomeModalController
     public function focusTarget(): AbstractWidget&FocusableInterface
     {
         return $this->welcome;
+    }
+
+    /**
+     * No focus ring of its own: while the modal is open the dispatcher's
+     * modal branch swallows every key, so the coordinator falls through.
+     */
+    public function cycleFocus(int $direction): bool
+    {
+        return false;
     }
 
     /**

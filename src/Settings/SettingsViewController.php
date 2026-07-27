@@ -8,6 +8,7 @@ use Porta\Container\AsEager;
 use Porta\Container\LayoutSlot;
 use Porta\Layout\EditorAreaPanes;
 use Porta\Ui\EditorArea;
+use Porta\Ui\FullScreenView;
 use Porta\Ui\WorkspaceViews;
 use Porta\Widget\MenuBarWidget;
 use Porta\Widget\Settings\KeybindingsListWidget;
@@ -27,7 +28,7 @@ use Symfony\Component\Tui\Widget\FocusableInterface;
  * poll loop, no availability gate).
  */
 #[AsEager(priority: 500)]
-final class SettingsViewController
+final class SettingsViewController implements FullScreenView
 {
     private bool $open = false;
     /** 'general' | 'keybindings' | 'lang:<id>' — the active section. */
@@ -199,15 +200,20 @@ final class SettingsViewController
         return 'keybindings' === $this->section ? $this->keymapList : $this->form;
     }
 
-    /** F6/Ctrl+F6 while the settings view is open: bounce between nav and content. */
-    public function cycleFocus(): void
+    /**
+     * F6/Ctrl+F6 while the settings view is open: bounce between nav and
+     * content — two stops, so the direction cannot matter and is ignored.
+     */
+    public function cycleFocus(int $direction): bool
     {
         if ($this->tui->getFocus() === $this->nav) {
             $this->focusContent();
 
-            return;
+            return true;
         }
         $this->focusNav();
+
+        return true;
     }
 
     private function focusNav(): void

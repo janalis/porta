@@ -15,6 +15,7 @@ use Porta\Layout\LayoutController;
 use Porta\Support\Clipboard;
 use Porta\Support\ProjectPaths;
 use Porta\Ui\EditorArea;
+use Porta\Ui\FullScreenView;
 use Porta\Ui\Notifier;
 use Porta\Ui\WorkspaceViews;
 use Porta\Widget\Git\DiffViewCallbacks;
@@ -34,7 +35,7 @@ use Symfony\Component\Tui\Widget\FocusableInterface;
  * stage/unstage/discard/commit pipelines against {@see GitInfo}.
  */
 #[AsEager(priority: 700)]
-final class GitViewController
+final class GitViewController implements FullScreenView
 {
     private bool $open = false;
     /** @var list<ChangeEntry> */
@@ -543,7 +544,7 @@ final class GitViewController
         $this->cycleFocus(-1);
     }
 
-    private function cycleFocus(int $direction): void
+    public function cycleFocus(int $direction): bool
     {
         /** @var list<FocusableInterface&AbstractWidget> $order */
         $order = GitViewMode::History === $this->mode
@@ -557,5 +558,7 @@ final class GitViewController
         }
         $this->tui->setFocus($target);
         $this->tui->requestRender();
+
+        return true;
     }
 }

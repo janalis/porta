@@ -8,6 +8,7 @@ use Porta\Config\CommandRegistry;
 use Porta\Container\AsIdeService;
 use Porta\I18n\Translator;
 use Porta\Plugin\PluginManager;
+use Porta\Ui\WorkspaceView;
 use Porta\Ui\WorkspaceViews;
 use Porta\Widget\MenuBarWidget;
 use Symfony\Component\Tui\Input\Keybindings;
@@ -37,9 +38,9 @@ final class MenuRebuilder
             $this->editor,
             $this->keybindings,
             $this->translator,
-            fn (): bool => $this->views->isGitOpen(),
-            fn (): bool => $this->views->isSettingsOpen(),
-            fn (): bool => $this->views->isWelcomeOpen(),
+            fn (): bool => $this->views->isOpen(WorkspaceView::Git),
+            fn (): bool => $this->views->isOpen(WorkspaceView::Settings),
+            fn (): bool => $this->views->isOpen(WorkspaceView::Welcome),
             $this->plugins->menuSpecs(),
         ));
     }
