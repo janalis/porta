@@ -57,6 +57,8 @@ final class ContextMenuOpener
         private readonly ContextMenuBuilder $items,
         private readonly TreeOperations $treeOps,
         private readonly MenuBarWidget $menuBar,
+        // Deliberately concrete: caretScreenCell (the keyboard-invoked menu's
+        // anchor) lives in no role interface — a one-consumer role is not worth one.
         private readonly CodeEditorWidget $editor,
         private readonly FileTreeWidget $tree,
         private readonly TabBarWidget $tabBar,

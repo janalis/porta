@@ -5,13 +5,14 @@ declare(strict_types=1);
 namespace Porta\History;
 
 use Porta\Container\AsIdeService;
+use Porta\Editor\ActiveFileProvider;
 use Porta\Editor\BufferManager;
+use Porta\Editor\EditorInvalidator;
 use Porta\I18n\Translator;
 use Porta\Lsp\CompletionController;
 use Porta\Ui\Dock\BottomDock;
 use Porta\Ui\Dock\ResultsPanelMode;
 use Porta\Ui\Notifier;
-use Porta\Widget\CodeEditorWidget;
 use Symfony\Component\Tui\Tui;
 
 /**
@@ -28,7 +29,10 @@ final class LocalHistoryController
     public function __construct(
         private readonly LocalHistory $history,
         private readonly BottomDock $panels,
-        private readonly CodeEditorWidget $editor,
+        // Two roles of the same widget: the active file names the history,
+        // the invalidator repaints after a restore lands in the buffer.
+        private readonly ActiveFileProvider $activeFile,
+        private readonly EditorInvalidator $editorInvalidator,
         private readonly BufferManager $buffers,
         private readonly Notifier $notifier,
         private readonly Tui $tui,
@@ -38,7 +42,7 @@ final class LocalHistoryController
 
     public function show(): void
     {
-        $path = $this->editor->getFilePath();
+        $path = $this->activeFile->getFilePath();
         if (null === $path) {
             return;
         }
@@ -80,7 +84,7 @@ final class LocalHistoryController
         $doc = $active->document;
         $doc->selectAll();
         $doc->insert($content);
-        $this->editor->invalidate();
+        $this->editorInvalidator->invalidate();
         $this->completion->scheduleDidChange($doc);
         $this->notifier->flash($this->translator->trans('Restored from local history'));
         $this->tui->requestRender();

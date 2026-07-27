@@ -14,6 +14,8 @@ use Porta\Widget\CodeEditorWidget;
 final class BreadcrumbTrailProvider
 {
     public function __construct(
+        // Deliberately concrete: scopes() lives in no role interface, and
+        // widening ActiveDocumentProvider for one consumer is not worth it.
         private readonly CodeEditorWidget $editor,
     ) {}
 

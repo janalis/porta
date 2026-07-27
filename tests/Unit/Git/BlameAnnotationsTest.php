@@ -62,7 +62,7 @@ final class BlameAnnotationsTest extends TestCase
         $this->status = new StatusBarWidget();
         $tui = new Tui(terminal: new VirtualTerminal(columns: 120, rows: 24), keybindings: new Keybindings([]), renderer: new Renderer(new StyleSheet()));
 
-        return new BlameAnnotations(new GitInfo($this->project->dir), $this->editor, new Notifier($this->status, $tui), new Translator('en'), $tui);
+        return new BlameAnnotations(new GitInfo($this->project->dir), $this->editor, $this->editor, new Notifier($this->status, $tui), new Translator('en'), $tui);
     }
 
     private function editorScreen(): string

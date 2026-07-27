@@ -32,6 +32,8 @@ final class TreeOperations
 {
     public function __construct(
         private readonly FileTreeWidget $tree,
+        // Deliberately concrete: showDocument (the rename/delete re-point)
+        // lives in no role interface, and a one-consumer role is not worth one.
         private readonly CodeEditorWidget $editor,
         private readonly Tui $tui,
         private readonly Notifier $notifier,

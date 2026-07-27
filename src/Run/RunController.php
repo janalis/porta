@@ -34,6 +34,8 @@ final class RunController
         private readonly RunConfigs $runConfigs,
         private readonly TerminalPanelWidget $terminalPanel,
         private readonly TerminalKeyEncoder $terminalKeys,
+        // Deliberately concrete: besides the file/overlay roles, the run
+        // picker hands the widget to setFocus() so the list is drivable.
         private readonly CodeEditorWidget $editor,
         private readonly Notifier $notifier,
         private readonly Tui $tui,

@@ -4,11 +4,12 @@ declare(strict_types=1);
 
 namespace Porta\Git;
 
+use Porta\Editor\ActiveFileProvider;
+use Porta\Editor\EditorDecorationSink;
 use Porta\Event\BufferSaved;
 use Porta\Event\BufferSwitched;
 use Porta\I18n\Translator;
 use Porta\Ui\Notifier;
-use Porta\Widget\CodeEditorWidget;
 use Symfony\Component\EventDispatcher\Attribute\AsEventListener;
 use Symfony\Component\Tui\Tui;
 
@@ -26,7 +27,10 @@ final class BlameAnnotations
 
     public function __construct(
         private readonly GitInfo $git,
-        private readonly CodeEditorWidget $editor,
+        // Two roles of the same widget: the active file scopes the blame run,
+        // the decoration sink receives the per-line annotations.
+        private readonly ActiveFileProvider $activeFile,
+        private readonly EditorDecorationSink $decorations,
         private readonly Notifier $notifier,
         private readonly Translator $translator,
         private readonly Tui $tui,
@@ -41,13 +45,13 @@ final class BlameAnnotations
     {
         if ($this->enabled) {
             $this->enabled = false;
-            $this->editor->setLineAnnotations([]);
+            $this->decorations->setLineAnnotations([]);
             $this->notifier->flash($this->translator->trans('Blame annotations hidden'));
             $this->tui->requestRender();
 
             return;
         }
-        if (!$this->git->isAvailable() || null === $this->editor->getFilePath()) {
+        if (!$this->git->isAvailable() || null === $this->activeFile->getFilePath()) {
             $this->notifier->flash($this->translator->trans('Git not available'));
             $this->tui->requestRender();
 
@@ -76,20 +80,20 @@ final class BlameAnnotations
 
     private function refresh(): void
     {
-        $path = $this->editor->getFilePath();
+        $path = $this->activeFile->getFilePath();
         if (null === $path) {
             return;
         }
         $this->git->blameFile($path, function (array $lines) use ($path): void {
             // Stale or superseded: toggled off, or the buffer changed mid-flight.
-            if (!$this->enabled || $path !== $this->editor->getFilePath()) {
+            if (!$this->enabled || $path !== $this->activeFile->getFilePath()) {
                 return;
             }
             $annotations = [];
             foreach ($lines as $no => $entry) {
                 $annotations[$no] = trim(\sprintf('%s %s %s', $entry['sha'], $entry['author'], $entry['date']));
             }
-            $this->editor->setLineAnnotations($annotations);
+            $this->decorations->setLineAnnotations($annotations);
             $this->tui->requestRender();
         });
     }
