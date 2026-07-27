@@ -9,6 +9,7 @@ use Porta\Config\CommandRegistry;
 use Porta\I18n\Translator;
 use Porta\Plugin\PluginMenuSpec;
 use Porta\Ui\ShortcutFormatter;
+use Porta\Ui\WorkspaceView;
 use Symfony\Component\Tui\Input\Keybindings;
 
 /**
@@ -143,10 +144,8 @@ final class MenuModel
     ];
 
     /**
-     * @param (\Closure(): bool)|null $gitViewOpen      while true, only GIT_VIEW_SAFE items stay enabled
-     * @param (\Closure(): bool)|null $settingsViewOpen while true, only SETTINGS_VIEW_SAFE items stay enabled
-     * @param (\Closure(): bool)|null $welcomeViewOpen  while true, only WELCOME_VIEW_SAFE items stay enabled
-     * @param list<PluginMenuSpec>    $pluginSpecs      runtime plugin entries — a Plugins menu between Code and Run when non-empty
+     * @param (\Closure(): ?WorkspaceView)|null $activeView  while a view is active, only its {@see VIEW_SAFE} items stay enabled
+     * @param list<PluginMenuSpec>              $pluginSpecs runtime plugin entries — a Plugins menu between Code and Run when non-empty
      *
      * @return list<Menu>
      */
@@ -155,18 +154,16 @@ final class MenuModel
         EditorCommandTarget $editor,
         Keybindings $ideKeys,
         Translator $translator,
-        ?\Closure $gitViewOpen = null,
-        ?\Closure $settingsViewOpen = null,
-        ?\Closure $welcomeViewOpen = null,
+        ?\Closure $activeView = null,
         array $pluginSpecs = [],
     ): array {
         $menus = [];
         foreach (self::DEFS as $title => $specs) {
-            $menus[] = new Menu($translator->trans($title), self::items($specs, $commands, $editor, $ideKeys, $translator, $gitViewOpen, $settingsViewOpen, $welcomeViewOpen));
+            $menus[] = new Menu($translator->trans($title), self::items($specs, $commands, $editor, $ideKeys, $translator, $activeView));
             if ('Code' === $title && [] !== $pluginSpecs) {
                 $menus[] = new Menu(
                     $translator->trans('Plugins'),
-                    self::items(self::groupByPlugin($pluginSpecs), $commands, $editor, $ideKeys, $translator, $gitViewOpen, $settingsViewOpen, $welcomeViewOpen),
+                    self::items(self::groupByPlugin($pluginSpecs), $commands, $editor, $ideKeys, $translator, $activeView),
                 );
             }
         }
@@ -205,10 +202,8 @@ final class MenuModel
      * {@see PluginMenuSpec}s carrying an optional enabled-closure; core specs
      * stay plain strings.
      *
-     * @param list<string|PluginMenuSpec> $specs
-     * @param (\Closure(): bool)|null     $gitViewOpen
-     * @param (\Closure(): bool)|null     $settingsViewOpen
-     * @param (\Closure(): bool)|null     $welcomeViewOpen
+     * @param list<string|PluginMenuSpec>       $specs
+     * @param (\Closure(): ?WorkspaceView)|null $activeView
      *
      * @return list<MenuItem>
      */
@@ -218,9 +213,7 @@ final class MenuModel
         EditorCommandTarget $editor,
         Keybindings $ideKeys,
         Translator $translator,
-        ?\Closure $gitViewOpen = null,
-        ?\Closure $settingsViewOpen = null,
-        ?\Closure $welcomeViewOpen = null,
+        ?\Closure $activeView = null,
     ): array {
         $items = [];
         foreach ($specs as $entry) {
@@ -228,7 +221,7 @@ final class MenuModel
             $when = $entry instanceof PluginMenuSpec ? $entry->when : null;
             $items[] = self::SEP === $spec
                 ? MenuItem::separator()
-                : self::item($spec, $commands, $editor, $ideKeys, $translator, $gitViewOpen, $settingsViewOpen, $welcomeViewOpen, $when);
+                : self::item($spec, $commands, $editor, $ideKeys, $translator, $activeView, $when);
         }
 
         return $items;
@@ -241,30 +234,22 @@ final class MenuModel
     private const array FILE_SCOPED_IDE = ['reformat', 'ide_local_history', 'git_stage', 'git_blame'];
 
     /**
-     * The only commands that stay enabled while the git view owns the main area:
-     * everything else targets the detached editor/tree and would act invisibly.
+     * The only commands that stay enabled while a full view is active — one
+     * list per {@see WorkspaceView} case, keyed by its name. Everything else
+     * targets the detached editor/tree and would act invisibly. Git keeps its
+     * own verbs live; Settings only the ways out; `ide_welcome` is in every
+     * list, not just Welcome's: a user who followed a Welcome step into
+     * Settings must still be able to get back.
      */
-    private const array GIT_VIEW_SAFE = ['ide_quit', 'ide_git', 'git_commit', 'git_undo_commit', 'git_fetch', 'git_pull', 'git_push', 'git_branches', 'ide_command_palette', 'ide_help', 'ide_welcome'];
+    private const array VIEW_SAFE = [
+        'Git' => ['ide_quit', 'ide_git', 'git_commit', 'git_undo_commit', 'git_fetch', 'git_pull', 'git_push', 'git_branches', 'ide_command_palette', 'ide_help', 'ide_welcome'],
+        'Settings' => ['ide_quit', 'ide_settings', 'ide_command_palette', 'ide_help', 'ide_welcome'],
+        'Welcome' => ['ide_quit', 'ide_welcome', 'ide_command_palette', 'ide_help'],
+    ];
 
     /**
-     * The only commands that stay enabled while the settings view owns the main
-     * area: leaving it, closing the app, or the palette. Everything else targets
-     * the detached editor/tree and would act invisibly.
-     */
-    private const array SETTINGS_VIEW_SAFE = ['ide_quit', 'ide_settings', 'ide_command_palette', 'ide_help', 'ide_welcome'];
-
-    /**
-     * The only commands that stay enabled while the Welcome view owns the main
-     * area. `ide_welcome` is in all three lists, not just this one: a user who
-     * followed a Welcome step into Settings must still be able to get back.
-     */
-    private const array WELCOME_VIEW_SAFE = ['ide_quit', 'ide_welcome', 'ide_command_palette', 'ide_help'];
-
-    /**
-     * @param (\Closure(): bool)|null $gitViewOpen
-     * @param (\Closure(): bool)|null $settingsViewOpen
-     * @param (\Closure(): bool)|null $welcomeViewOpen
-     * @param (\Closure(): bool)|null $pluginWhen       a plugin item's own enabled gate, ANDed with the view gating
+     * @param (\Closure(): ?WorkspaceView)|null $activeView
+     * @param (\Closure(): bool)|null           $pluginWhen a plugin item's own enabled gate, ANDed with the view gating
      */
     private static function item(
         string $spec,
@@ -272,9 +257,7 @@ final class MenuModel
         EditorCommandTarget $editor,
         Keybindings $ideKeys,
         Translator $translator,
-        ?\Closure $gitViewOpen,
-        ?\Closure $settingsViewOpen,
-        ?\Closure $welcomeViewOpen,
+        ?\Closure $activeView,
         ?\Closure $pluginWhen = null,
     ): MenuItem {
         [$scope, $id] = explode(':', $spec, limit: 2);
@@ -289,15 +272,10 @@ final class MenuModel
             : static fn () => $editor->runAction($id);
 
         $requiresFile = self::requiresOpenFile($scope, $id);
-        $gitSafe = 'i' === $scope && \in_array($id, self::GIT_VIEW_SAFE, strict: true);
-        $settingsSafe = 'i' === $scope && \in_array($id, self::SETTINGS_VIEW_SAFE, strict: true);
-        $welcomeSafe = 'i' === $scope && \in_array($id, self::WELCOME_VIEW_SAFE, strict: true);
-        $isEnabled = null === $gitViewOpen && null === $settingsViewOpen && null === $welcomeViewOpen && !$requiresFile
+        $isEnabled = null === $activeView && !$requiresFile
             ? null
             : static fn (): bool => match (true) {
-                null !== $settingsViewOpen && $settingsViewOpen() => $settingsSafe,
-                null !== $gitViewOpen && $gitViewOpen() => $gitSafe,
-                null !== $welcomeViewOpen && $welcomeViewOpen() => $welcomeSafe,
+                null !== $activeView && null !== ($active = $activeView()) => 'i' === $scope && \in_array($id, self::VIEW_SAFE[$active->name] ?? [], strict: true),
                 default => !$requiresFile || null !== $editor->getFilePath(),
             };
         if (null !== $pluginWhen) {

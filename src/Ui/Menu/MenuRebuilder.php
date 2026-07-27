@@ -38,9 +38,7 @@ final class MenuRebuilder
             $this->editor,
             $this->keybindings,
             $this->translator,
-            fn (): bool => $this->views->isOpen(WorkspaceView::Git),
-            fn (): bool => $this->views->isOpen(WorkspaceView::Settings),
-            fn (): bool => $this->views->isOpen(WorkspaceView::Welcome),
+            fn (): ?WorkspaceView => $this->views->activeView(),
             $this->plugins->menuSpecs(),
         ));
     }

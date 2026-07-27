@@ -13,6 +13,7 @@ use Porta\Plugin\PluginMenuSpec;
 use Porta\Ui\Menu\Menu;
 use Porta\Ui\Menu\MenuItem;
 use Porta\Ui\Menu\MenuModel;
+use Porta\Ui\WorkspaceView;
 use Porta\Widget\CodeEditorWidget;
 use Symfony\Component\Tui\Input\Keybindings;
 
@@ -127,8 +128,8 @@ final class MenuModelTest extends TestCase
             new CodeEditorWidget(),
             new Keybindings([]),
             new Translator('en'),
-            settingsViewOpen: static function () use (&$settingsOpen): bool {
-                return $settingsOpen;
+            activeView: static function () use (&$settingsOpen): ?WorkspaceView {
+                return $settingsOpen ? WorkspaceView::Settings : null;
             },
             pluginSpecs: [new PluginMenuSpec('demo', 'i:demo:hello', static function () use (&$usable): bool {
                 return $usable;
@@ -214,8 +215,8 @@ final class MenuModelTest extends TestCase
             ->gitCommands()
             ->add('git_undo_commit', static function (): void {}, label: 'Git: Undo Last Commit')
             ->add('ide_git', static function (): void {}, label: 'Git: Changes');
-        $menus = MenuModel::build($commands, $editor, $ideKeys, new Translator('en'), static function () use (&$gitViewOpen): bool {
-            return $gitViewOpen;
+        $menus = MenuModel::build($commands, $editor, $ideKeys, new Translator('en'), static function () use (&$gitViewOpen): ?WorkspaceView {
+            return $gitViewOpen ? WorkspaceView::Git : null;
         });
 
         // Open view: only the git-safe commands stay live, file open or not.
@@ -249,8 +250,8 @@ final class MenuModelTest extends TestCase
         $settingsOpen = true;
         $ideKeys = new Keybindings([]);
         $commands = $this->gitCommands()->add('ide_settings', static function (): void {}, label: 'Settings…');
-        $menus = MenuModel::build($commands, $editor, $ideKeys, new Translator('en'), null, static function () use (&$settingsOpen): bool {
-            return $settingsOpen;
+        $menus = MenuModel::build($commands, $editor, $ideKeys, new Translator('en'), static function () use (&$settingsOpen): ?WorkspaceView {
+            return $settingsOpen ? WorkspaceView::Settings : null;
         });
 
         // Open view: only the settings-safe commands stay live.
