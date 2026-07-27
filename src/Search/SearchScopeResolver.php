@@ -4,10 +4,10 @@ declare(strict_types=1);
 
 namespace Porta\Search;
 
+use Porta\Editor\ActiveFileProvider;
 use Porta\Editor\BufferManager;
 use Porta\Support\ProjectPaths;
 use Porta\Ui\ScopeKind;
-use Porta\Widget\CodeEditorWidget;
 
 /**
  * Resolves a search scope kind to the grep path(s) it means right now,
@@ -17,7 +17,7 @@ final class SearchScopeResolver
 {
     public function __construct(
         private readonly BufferManager $buffers,
-        private readonly CodeEditorWidget $editor,
+        private readonly ActiveFileProvider $editor,
         private readonly string $rootDir,
     ) {}
 

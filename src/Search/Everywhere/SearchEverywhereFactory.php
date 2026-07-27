@@ -6,7 +6,7 @@ namespace Porta\Search\Everywhere;
 
 use Porta\Config\CommandRegistry;
 use Porta\Editor\BufferManager;
-use Porta\Editor\BufferService;
+use Porta\Editor\FileOpener;
 use Porta\Editor\OpenFocus;
 use Porta\I18n\Translator;
 use Porta\Lsp\LspSessionPool;
@@ -30,7 +30,7 @@ final class SearchEverywhereFactory
         private readonly CodeEditorWidget $editor,
         private readonly CommandRegistry $commands,
         private readonly BufferManager $buffers,
-        private readonly BufferService $bufferService,
+        private readonly FileOpener $bufferService,
         private readonly LspSessionPool $lsp,
         private readonly Tui $tui,
         private readonly Scheduler $scheduler,

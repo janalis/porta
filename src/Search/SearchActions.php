@@ -5,13 +5,13 @@ declare(strict_types=1);
 namespace Porta\Search;
 
 use Porta\Container\AsIdeService;
+use Porta\Editor\ActiveFileProvider;
 use Porta\Editor\BufferService;
 use Porta\Editor\OpenFocus;
 use Porta\I18n\Translator;
 use Porta\Ui\Dock\BottomDock;
 use Porta\Ui\Dock\ResultsPanelMode;
 use Porta\Ui\Notifier;
-use Porta\Widget\CodeEditorWidget;
 
 /**
  * The search entry points behind the commands and tree context menus:
@@ -29,7 +29,7 @@ final class SearchActions
         private readonly BufferService $bufferService,
         private readonly Notifier $notifier,
         private readonly Translator $translator,
-        private readonly CodeEditorWidget $editor,
+        private readonly ActiveFileProvider $editor,
         private readonly string $rootDir,
     ) {}
 

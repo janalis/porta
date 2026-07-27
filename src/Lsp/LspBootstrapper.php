@@ -5,14 +5,14 @@ declare(strict_types=1);
 namespace Porta\Lsp;
 
 use Porta\Container\AsIdeService;
-use Porta\Editor\BufferService;
+use Porta\Editor\DiagnosticsSink;
 use Porta\I18n\Translator;
 use Porta\Ui\Notifier;
 
 /**
  * Declares the configured/detected language servers on the session pool at
  * boot and owns the shared inbound hooks: published diagnostics ride
- * BufferService::applyDiagnostics, and server-initiated workspace edits go
+ * DiagnosticsSink::applyDiagnostics, and server-initiated workspace edits go
  * through WorkspaceEditor with a status-bar flash. Sessions still start
  * lazily — each on its language's first didOpen.
  */
@@ -23,7 +23,7 @@ final class LspBootstrapper
         private readonly LspSessionPool $lsp,
         private readonly LspLog $log,
         private readonly WorkspaceEditor $workspaceEditor,
-        private readonly BufferService $bufferService,
+        private readonly DiagnosticsSink $bufferService,
         private readonly Notifier $notifier,
         private readonly Translator $translator,
         private readonly LanguageServerProvider $pluginServers,

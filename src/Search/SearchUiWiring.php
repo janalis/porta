@@ -5,7 +5,7 @@ declare(strict_types=1);
 namespace Porta\Search;
 
 use Porta\Container\AsIdeService;
-use Porta\Editor\BufferService;
+use Porta\Editor\FileOpener;
 use Porta\Editor\OpenFocus;
 use Porta\History\LocalHistoryController;
 use Porta\Support\Scheduler;
@@ -42,7 +42,7 @@ final class SearchUiWiring
         private readonly LocalHistoryController $localHistory,
         private readonly TodoScanner $todoScanner,
         private readonly ResultContextProvider $resultContext,
-        private readonly BufferService $bufferService,
+        private readonly FileOpener $bufferService,
         private readonly Scheduler $scheduler,
         private readonly string $rootDir,
     ) {}
