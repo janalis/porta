@@ -17,30 +17,6 @@ use Symfony\Component\Tui\Input\Keybindings;
  */
 final class EditorActionRouter
 {
-    /** Actions that fire a no-argument handler method. */
-    private const array SIMPLE_ACTIONS = [
-        'recent_files',
-        'close_buffer',
-        'goto_file',
-        'reformat',
-        'file_structure',
-        'save_all',
-        'save',
-        'navigate_back',
-    ];
-
-    /** Actions that fire a handler method with the caret (line, utf16 col). */
-    private const array POSITIONAL_ACTIONS = [
-        'peek_definition',
-        'code_action',
-        'quick_doc',
-        'find_usages',
-        'call_hierarchy',
-        'goto_definition',
-        'goto_implementation',
-        'goto_type_definition',
-    ];
-
     /**
      * @param \Closure(): EditorCallbacks $callbacks the current (swappable) hook set
      * @param \Closure(): array{int, int} $caret     the caret as [line, utf16 col]
@@ -53,22 +29,23 @@ final class EditorActionRouter
     /** Dispatch a keypress to an editor-level action. Returns true when it consumed the key. */
     public function dispatchKey(string $keys, Keybindings $kb): bool
     {
-        foreach (self::SIMPLE_ACTIONS as $action) {
+        foreach ($this->simpleHandlers() as $action => $handler) {
             if (!$kb->matches($keys, $action)) {
                 continue;
             }
 
-            $this->fireSimple($action);
+            $handler(($this->callbacks)());
 
             return true;
         }
 
-        foreach (self::POSITIONAL_ACTIONS as $action) {
+        foreach ($this->positionalHandlers() as $action => $handler) {
             if (!$kb->matches($keys, $action)) {
                 continue;
             }
 
-            $this->firePositional($action);
+            [$line, $col] = ($this->caret)();
+            $handler(($this->callbacks)(), $line, $col);
 
             return true;
         }
@@ -96,13 +73,17 @@ final class EditorActionRouter
      */
     public function run(string $action): bool
     {
-        if (\in_array($action, self::SIMPLE_ACTIONS, strict: true)) {
-            $this->fireSimple($action);
+        $simple = $this->simpleHandlers();
+        if (isset($simple[$action])) {
+            $simple[$action](($this->callbacks)());
 
             return true;
         }
-        if (\in_array($action, self::POSITIONAL_ACTIONS, strict: true)) {
-            $this->firePositional($action);
+
+        $positional = $this->positionalHandlers();
+        if (isset($positional[$action])) {
+            [$line, $col] = ($this->caret)();
+            $positional[$action](($this->callbacks)(), $line, $col);
 
             return true;
         }
@@ -110,38 +91,45 @@ final class EditorActionRouter
         return false;
     }
 
-    private function fireSimple(string $action): void
+    /**
+     * The no-argument action table. The ids are the keys, written once: the
+     * same map drives the membership test and the dispatch at both entry
+     * points, so an id can never be routable-but-unhandled or vice versa.
+     *
+     * @return array<string, \Closure(EditorCallbacks): mixed>
+     */
+    private function simpleHandlers(): array
     {
-        $callbacks = ($this->callbacks)();
-        // Guarded by SIMPLE_ACTIONS at both entry points, so the lookup always hits.
-        $handlers = [
-            'recent_files' => static fn () => $callbacks->buffer?->openRecentFiles(),
-            'close_buffer' => static fn () => $callbacks->buffer?->closeBuffer(),
-            'goto_file' => static fn () => $callbacks->file?->openGotoFile(),
-            'reformat' => static fn () => $callbacks->refactor?->requestReformat(),
-            'file_structure' => static fn () => $callbacks->navigation?->requestFileStructure(),
-            'save_all' => static fn () => $callbacks->file?->saveAll(),
-            'save' => static fn () => $callbacks->file?->save(),
-            'navigate_back' => static fn () => $callbacks->navigation?->navigateBack(),
+        return [
+            'recent_files' => static fn (EditorCallbacks $c) => $c->buffer?->openRecentFiles(),
+            'close_buffer' => static fn (EditorCallbacks $c) => $c->buffer?->closeBuffer(),
+            'goto_file' => static fn (EditorCallbacks $c) => $c->file?->openGotoFile(),
+            'reformat' => static fn (EditorCallbacks $c) => $c->refactor?->requestReformat(),
+            'file_structure' => static fn (EditorCallbacks $c) => $c->navigation?->requestFileStructure(),
+            'save_all' => static fn (EditorCallbacks $c) => $c->file?->saveAll(),
+            'save' => static fn (EditorCallbacks $c) => $c->file?->save(),
+            'navigate_back' => static fn (EditorCallbacks $c) => $c->navigation?->navigateBack(),
         ];
-        ($handlers[$action] ?? static fn (): null => null)();
     }
 
-    private function firePositional(string $action): void
+    /**
+     * The caret-position action table; same single-source contract as
+     * {@see simpleHandlers}. The caret is passed in by the caller so it is
+     * only read when an action actually fires.
+     *
+     * @return array<string, \Closure(EditorCallbacks, int, int): mixed>
+     */
+    private function positionalHandlers(): array
     {
-        $callbacks = ($this->callbacks)();
-        [$line, $col] = ($this->caret)();
-        // Guarded by POSITIONAL_ACTIONS at both entry points, so the lookup always hits.
-        $handlers = [
-            'peek_definition' => static fn () => $callbacks->navigation?->requestPeek($line, $col),
-            'code_action' => static fn () => $callbacks->refactor?->requestCodeActions($line, $col),
-            'quick_doc' => static fn () => $callbacks->navigation?->requestHover($line, $col),
-            'find_usages' => static fn () => $callbacks->navigation?->requestReferences($line, $col),
-            'call_hierarchy' => static fn () => $callbacks->navigation?->requestCallHierarchy($line, $col),
-            'goto_definition' => static fn () => $callbacks->navigation?->requestDefinition($line, $col),
-            'goto_implementation' => static fn () => $callbacks->navigation?->requestImplementation($line, $col),
-            'goto_type_definition' => static fn () => $callbacks->navigation?->requestTypeDefinition($line, $col),
+        return [
+            'peek_definition' => static fn (EditorCallbacks $c, int $line, int $col) => $c->navigation?->requestPeek($line, $col),
+            'code_action' => static fn (EditorCallbacks $c, int $line, int $col) => $c->refactor?->requestCodeActions($line, $col),
+            'quick_doc' => static fn (EditorCallbacks $c, int $line, int $col) => $c->navigation?->requestHover($line, $col),
+            'find_usages' => static fn (EditorCallbacks $c, int $line, int $col) => $c->navigation?->requestReferences($line, $col),
+            'call_hierarchy' => static fn (EditorCallbacks $c, int $line, int $col) => $c->navigation?->requestCallHierarchy($line, $col),
+            'goto_definition' => static fn (EditorCallbacks $c, int $line, int $col) => $c->navigation?->requestDefinition($line, $col),
+            'goto_implementation' => static fn (EditorCallbacks $c, int $line, int $col) => $c->navigation?->requestImplementation($line, $col),
+            'goto_type_definition' => static fn (EditorCallbacks $c, int $line, int $col) => $c->navigation?->requestTypeDefinition($line, $col),
         ];
-        ($handlers[$action] ?? static fn (): null => null)();
     }
 }
