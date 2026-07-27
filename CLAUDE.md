@@ -205,8 +205,9 @@ depend on the narrow role they use, not the widget: `Editor/ActiveFileProvider` 
 `ActiveDocumentProvider` (+`getDocument`), `EditorTextAccess` (+`insertText`/`jumpTo` — the seam
 `Plugin/PluginRuntime` exposes to plugins, so the whole widget is *not* public plugin API),
 `EditorInvalidator`, `ModalHost` (`openListOverlay`/`openPrompt`), `EditorDecorationSink` (the eight
-decoration setters), `EditorViewOptions` (the display toggles — write-only; nothing reads the
-`has*()` accessors back), `EditorIndentTarget`, `EditorKeymapProvider`, and `Ui/Menu/EditorCommandTarget`
+decoration setters), `EditorViewOptions` (the display toggles; the six flags themselves live in
+`Editor/EditorDisplayOptions`, which takes the invalidate closure and repaints only on a real
+change — re-selecting a setting you already have must not flash the pane), `EditorIndentTarget`, `EditorKeymapProvider`, and `Ui/Menu/EditorCommandTarget`
 (the menu chain). `SingleImplAliasPass` aliases each with **zero** container config. Four consumers
 stay concrete **on purpose**, each noted at the site: `Lsp/AbstractLspController` (its three
 subclasses reach the inherited `$editor` for eleven methods), `Git/GitRemoteCommands` and
@@ -463,8 +464,13 @@ bindings when no session runs. Tests script `tests/Support/mock-dap-adapter.php`
 and owns cross-event drag/click state; its `route()` guard order **is behaviour** (documented in
 its class docblock). Hit-testing uses the renderer's per-widget rects (`Input/HitTester`, whose
 `contains()` is the shared pointer-in-rect predicate). Satellites carry the parts that need no
-drag state: `Input/WheelRouter` (all wheel routing), `HoverRouter`, `ClickCounter`,
-`GitMouseRouter`, `SettingsMouseRouter`, `WelcomeMouseRouter`.
+drag state: `Input/WheelRouter` (all wheel routing), `Input/ContextMenuRouter` (all right-click
+routing — it resolves which item list the pointer is over, then hands off to `ContextMenuOpener`),
+`HoverRouter`, `ClickCounter`, `GitMouseRouter`, `SettingsMouseRouter`, `WelcomeMouseRouter`.
+The extraction test that produced these: a method whose dependencies it **exclusively** owns
+(counted inside the method vs across the file) and which touches none of the six cross-event drag
+fields. Applying the same test to `BufferService`'s pane-swap cluster **rejected** it — only one
+dependency was exclusive.
 
 **Plugins.** User PHP loaded at boot from three sources in precedence order —
 `<project>/.porta/plugins/*/plugin.php`, `~/.porta/plugins/*/plugin.php` (`PORTA_HOME` overrides
