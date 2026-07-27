@@ -1,0 +1,71 @@
+<?php
+
+declare(strict_types=1);
+
+namespace Porta\Tests\Unit\Widget\Render;
+
+use PHPUnit\Framework\TestCase;
+use Porta\Ui\Glyphs;
+use Porta\Ui\Sgr;
+use Porta\Ui\Theme\Styles;
+use Porta\Widget\Render\ErrorStripe;
+use Symfony\Component\Tui\Ansi\AnsiUtils;
+
+final class ErrorStripeTest extends TestCase
+{
+    /**
+     * @param array<int, list<array{severity: int, message: string, col: int}>> $diagnostics
+     *
+     * @return list<string>
+     */
+    private function cells(array $diagnostics, int $rows, int $lineCount, int $vScroll = 0, ?int $lastVisible = null): array
+    {
+        return ErrorStripe::cells($diagnostics, $rows, $lineCount, $vScroll, $lastVisible ?? (min($rows, $lineCount) - 1), Styles::dark());
+    }
+
+    public function testMarksLandOnTheirProportionalRowWithTheWorstSeverityWinning(): void
+    {
+        $diagnostics = [
+            0 => [['severity' => 2, 'message' => 'warn', 'col' => 0]],
+            // The same stripe row as line 0 on this scale: the error must win.
+            1 => [['severity' => 1, 'message' => 'err', 'col' => 0]],
+            80 => [], // an empty list contributes nothing
+        ];
+
+        $cells = $this->cells($diagnostics, rows: 10, lineCount: 100);
+        $this->assertCount(10, $cells);
+        $this->assertSame(Glyphs::STRIPE_ERROR, AnsiUtils::stripAnsiCodes($cells[0]), 'severity 1 beat the warning on the shared row');
+        $this->assertSame(' ', AnsiUtils::stripAnsiCodes($cells[8]), 'line 80 painted nothing');
+    }
+
+    public function testShortFileCollapsesToRowZeroAndShowsNoThumb(): void
+    {
+        $cells = $this->cells([0 => [['severity' => 2, 'message' => 'w', 'col' => 0]]], rows: 8, lineCount: 1);
+
+        $this->assertSame(Glyphs::STRIPE_WARNING, AnsiUtils::stripAnsiCodes($cells[0]));
+        foreach (\array_slice($cells, offset: 1) as $cell) {
+            $this->assertSame(Sgr::RESET.' ', $cell, 'a one-line file paints nothing else — and no thumb');
+        }
+    }
+
+    public function testThumbCoversTheVisibleRangeAndMergesWithMarks(): void
+    {
+        // 100 lines in 10 rows, viewing lines 50-79: thumb rows 5-7.
+        $diagnostics = [55 => [['severity' => 1, 'message' => 'e', 'col' => 0]]];
+        $cells = $this->cells($diagnostics, rows: 10, lineCount: 100, vScroll: 50, lastVisible: 79);
+
+        $this->assertSame(' ', AnsiUtils::stripAnsiCodes($cells[6]), 'a plain thumb row: no mark');
+        $this->assertNotSame(Sgr::RESET.' ', $cells[6], 'but not blank — it wears the thumb background');
+        $this->assertSame(Sgr::RESET.' ', $cells[0], 'above the thumb stays blank');
+        $this->assertSame(Sgr::RESET.' ', $cells[9], 'below the thumb stays blank');
+        $marked = $cells[5];
+        $this->assertSame(Glyphs::STRIPE_ERROR, AnsiUtils::stripAnsiCodes($marked), 'the diagnostic mark rides the thumb row');
+        $plainMark = $this->cells($diagnostics, rows: 10, lineCount: 100)[5];
+        $this->assertNotSame($plainMark, $marked, 'the thumb background merges under the mark');
+    }
+
+    public function testZeroRowsPaintsNothing(): void
+    {
+        $this->assertSame([], $this->cells([], rows: 0, lineCount: 5));
+    }
+}

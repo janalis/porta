@@ -61,6 +61,7 @@ use Porta\Widget\Render\EditorGeometry;
 use Porta\Widget\Render\EditorPopupGeometry;
 use Porta\Widget\Render\EditorRenderer;
 use Porta\Widget\Render\EditorRowAssembler;
+use Porta\Widget\Render\ErrorStripe;
 use Porta\Widget\Render\MenuOverlayHost;
 use Porta\Widget\Render\MenuOverlayHostTrait;
 use Porta\Widget\Render\PaneFocus;
@@ -1187,7 +1188,7 @@ final class CodeEditorWidget extends AbstractWidget implements
         // Right-margin error stripe: one styled cell per screen row, a whole-file
         // overview of diagnostics plus a faint viewport thumb. Appended to every
         // produced row so each reaches the full terminal width.
-        $stripe = $this->buildStripe($rows, $lineCount, $vScroll, $lastVisibleDocLine);
+        $stripe = ErrorStripe::cells($this->decorations->diagnostics(), $rows, $lineCount, $vScroll, $lastVisibleDocLine, $this->styles);
 
         $assembler = new EditorRowAssembler(
             $doc,
@@ -1294,49 +1295,6 @@ final class CodeEditorWidget extends AbstractWidget implements
         }
 
         return $lines;
-    }
-
-    /**
-     * Build the right-margin error stripe: one self-contained 1-column cell per
-     * screen row. Each cell shows the worst-severity diagnostic mark landing on
-     * that proportional slice of the file, over a faint viewport thumb (only when
-     * the file is taller than the viewport).
-     *
-     * @return list<string>
-     */
-    private function buildStripe(int $rows, int $lineCount, int $vScroll, int $lastVisible): array
-    {
-        // Worst severity landing on each stripe row (0 = none).
-        $sev = array_fill(0, max(0, $rows), value: 0);
-        foreach ($this->decorations->diagnostics() as $line => $list) {
-            if ([] === $list) {
-                continue;
-            }
-            $r = $lineCount <= 1 ? 0 : IntMath::clamp(intdiv($line * $rows, $lineCount), 0, $rows - 1);
-            $worst = DiagnosticStyle::worst($list);
-            $sev[$r] = 0 === $sev[$r] ? $worst : min($sev[$r], $worst);
-        }
-
-        // Viewport thumb: the stripe rows covering the visible doc-line range,
-        // shown only when the file actually scrolls.
-        $showThumb = $lineCount > $rows;
-        $thumbTop = $lineCount <= 1 ? 0 : IntMath::clamp(intdiv($vScroll * $rows, $lineCount), 0, $rows - 1);
-        $thumbBottom = $lineCount <= 1 ? 0 : IntMath::clamp(intdiv($lastVisible * $rows, $lineCount), 0, $rows - 1);
-
-        $cells = [];
-        for ($r = 0; $r < $rows; ++$r) {
-            // The leading reset shields the cell from whatever state the row
-            // content left open; the styles then close themselves.
-            $thumb = $showThumb && $r >= $thumbTop && $r <= $thumbBottom;
-            $cells[] = match (true) {
-                0 !== $sev[$r] && $thumb => Sgr::RESET.$this->styles->merge(Role::RowHighlightBg, DiagnosticStyle::role($sev[$r]))->apply(DiagnosticStyle::mark($sev[$r])),
-                0 !== $sev[$r] => Sgr::RESET.$this->styles->of(DiagnosticStyle::role($sev[$r]))->apply(DiagnosticStyle::mark($sev[$r])),
-                $thumb => Sgr::RESET.$this->styles->of(Role::RowHighlightBg)->apply(' '),
-                default => Sgr::RESET.' ',
-            };
-        }
-
-        return $cells;
     }
 
     // --- Inlay hints -------------------------------------------------------
