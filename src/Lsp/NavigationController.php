@@ -242,49 +242,98 @@ final class NavigationController extends AbstractLspController implements Editor
         $this->tui->requestRender();
     }
 
-    public function requestHover(int $line, int $col): void
+    /**
+     * The scaffold every navigation verb shares: the {@see ready} guard,
+     * caret position params, the request, and one funnel for the two
+     * indistinguishable-to-the-user failures — a transport $error and a
+     * result $handle rejects (returns false on) both land in $notFound.
+     * $notFound is a closure, not a message: the verbs flash through two
+     * different sinks (the status bar vs the results panel).
+     *
+     * @param \Closure(mixed): bool $handle   presents the result; false = nothing to show
+     * @param \Closure(): void      $notFound
+     * @param array<string, mixed>  $extra
+     */
+    private function requestAt(string $method, int $line, int $col, \Closure $handle, \Closure $notFound, array $extra = []): void
     {
         if (null === ($path = $this->ready())) {
             return;
         }
+        $this->send($method, $this->positionParams($path, $line, $col, $extra), $handle, $notFound);
+    }
 
-        $this->lsp->request(
+    /**
+     * The {@see requestAt} variant for document-scoped requests (no caret position).
+     *
+     * @param \Closure(mixed): bool $handle
+     * @param \Closure(): void      $notFound
+     */
+    private function requestForDocument(string $method, \Closure $handle, \Closure $notFound): void
+    {
+        if (null === ($path = $this->ready())) {
+            return;
+        }
+        $this->send($method, ['textDocument' => ['uri' => $this->uri($path)]], $handle, $notFound);
+    }
+
+    /**
+     * Fire a request whose error-or-rejected outcome is $notFound. Also the
+     * chaining seam: a second hop (callHierarchy/incomingCalls) enters here
+     * directly, deliberately NOT re-running the {@see ready} guard.
+     *
+     * @param array<string, mixed>  $params
+     * @param \Closure(mixed): bool $handle
+     * @param \Closure(): void      $notFound
+     */
+    private function send(string $method, array $params, \Closure $handle, \Closure $notFound): void
+    {
+        $this->lsp->request($method, $params, static function (mixed $result, ?array $error) use ($handle, $notFound): void {
+            if (null !== $error || !$handle($result)) {
+                $notFound();
+            }
+        });
+    }
+
+    public function requestHover(int $line, int $col): void
+    {
+        $this->requestAt(
             'textDocument/hover',
-            $this->positionParams($path, $line, $col),
-            function (mixed $result, ?array $error): void {
+            $line,
+            $col,
+            function (mixed $result): bool {
                 $text = LspMapper::hoverToText($result);
-                if (null !== $error || null === $text) {
-                    $this->flash($this->trans('No documentation found'));
-
-                    return;
+                if (null === $text) {
+                    return false;
                 }
                 $lines = \array_slice(explode("\n", $text), offset: 0, length: 12);
                 $items = array_map(static fn (string $l) => ['label' => $l, 'hint' => '', 'value' => ''], $lines);
                 $this->editor->openListOverlay($this->trans('Documentation'), $items, static function (): void {});
                 $this->tui->requestRender();
+
+                return true;
             },
+            fn () => $this->flash($this->trans('No documentation found')),
         );
     }
 
     public function requestReferences(int $line, int $col): void
     {
-        if (null === ($path = $this->ready())) {
-            return;
-        }
-
-        $this->lsp->request(
+        $this->requestAt(
             'textDocument/references',
-            $this->positionParams($path, $line, $col, ['context' => ['includeDeclaration' => true]]),
-            function (mixed $result, ?array $error): void {
-                if (null !== $error || !\is_array($result) || [] === $result) {
-                    $this->panels->flash($this->trans('No usages found'));
-
-                    return;
+            $line,
+            $col,
+            function (mixed $result): bool {
+                if (!\is_array($result) || [] === $result) {
+                    return false;
                 }
 
                 /** @var list<array{uri?: string, range?: array<array-key, mixed>}> $result */
                 $this->panels->showList(ResultsPanelMode::Search, $this->trans('Usages'), $this->locationRows($result));
+
+                return true;
             },
+            fn () => $this->panels->flash($this->trans('No usages found')),
+            ['context' => ['includeDeclaration' => true]],
         );
     }
 
@@ -294,68 +343,67 @@ final class NavigationController extends AbstractLspController implements Editor
      */
     public function requestCallHierarchy(int $line, int $col): void
     {
-        if (null === ($path = $this->ready())) {
-            return;
-        }
-
-        $this->lsp->request(
+        $this->requestAt(
             'textDocument/prepareCallHierarchy',
-            $this->positionParams($path, $line, $col),
-            function (mixed $result, ?array $error): void {
-                if (null !== $error || !\is_array($result) || !\is_array($result[0] ?? null)) {
-                    $this->flash($this->trans('No callers found'));
-
-                    return;
+            $line,
+            $col,
+            function (mixed $result): bool {
+                if (!\is_array($result) || !\is_array($result[0] ?? null)) {
+                    return false;
                 }
                 /** @var array{name?: string, uri?: string} $item */
                 $item = $result[0];
-                $this->lsp->request('callHierarchy/incomingCalls', ['item' => $item], function (mixed $calls, ?array $callsError) use ($item): void {
-                    $locations = [];
-                    /** @var list<array<string, mixed>|scalar|null> $callList */
-                    $callList = \is_array($calls) ? $calls : [];
-                    foreach ($callList as $call) {
-                        if (!(\is_array($call) && \is_array($call['from'] ?? null))) {
-                            continue;
+                $this->send(
+                    'callHierarchy/incomingCalls',
+                    ['item' => $item],
+                    function (mixed $calls) use ($item): bool {
+                        $locations = [];
+                        /** @var list<array<string, mixed>|scalar|null> $callList */
+                        $callList = \is_array($calls) ? $calls : [];
+                        foreach ($callList as $call) {
+                            if (!(\is_array($call) && \is_array($call['from'] ?? null))) {
+                                continue;
+                            }
+
+                            /** @var array{uri?: string, selectionRange?: array<array-key, mixed>} $from */
+                            $from = $call['from'];
+                            $locations[] = ['uri' => $from['uri'] ?? '', 'range' => $from['selectionRange'] ?? []];
                         }
+                        if ([] === $locations) {
+                            return false;
+                        }
+                        $name = \is_string($item['name'] ?? null) ? $item['name'] : '?';
+                        $this->panels->showList(ResultsPanelMode::Search, $this->trans('Callers of %symbol%', ['%symbol%' => $name]), $this->locationRows($locations));
 
-                        /** @var array{uri?: string, selectionRange?: array<array-key, mixed>} $from */
-                        $from = $call['from'];
-                        $locations[] = ['uri' => $from['uri'] ?? '', 'range' => $from['selectionRange'] ?? []];
-                    }
-                    if (null !== $callsError || [] === $locations) {
-                        $this->panels->flash($this->trans('No callers found'));
+                        return true;
+                    },
+                    fn () => $this->panels->flash($this->trans('No callers found')),
+                );
 
-                        return;
-                    }
-                    $name = \is_string($item['name'] ?? null) ? $item['name'] : '?';
-                    $this->panels->showList(ResultsPanelMode::Search, $this->trans('Callers of %symbol%', ['%symbol%' => $name]), $this->locationRows($locations));
-                });
+                return true;
             },
+            fn () => $this->flash($this->trans('No callers found')),
         );
     }
 
     public function requestPeek(int $line, int $col): void
     {
-        if (null === ($path = $this->ready())) {
-            return;
-        }
-
-        $this->lsp->request(
+        $this->requestAt(
             'textDocument/definition',
-            $this->positionParams($path, $line, $col),
-            function (mixed $result, ?array $error): void {
+            $line,
+            $col,
+            function (mixed $result): bool {
                 $location = LspMapper::firstLocation($result);
-                if (null !== $error || null === $location) {
-                    $this->flash($this->trans('Nothing to peek'));
-
-                    return;
+                if (null === $location) {
+                    return false;
                 }
 
                 $target = Uri::toPath($location['uri']);
                 if (null === $target) {
+                    // A distinct failure with its own message — handled, not "not found".
                     $this->flash($this->trans('Peek target outside the filesystem'));
 
-                    return;
+                    return true;
                 }
 
                 $targetLine = (int) ($location['range']['start']['line'] ?? 0);
@@ -382,26 +430,20 @@ final class NavigationController extends AbstractLspController implements Editor
                     $this->tui->requestRender();
                 });
                 $this->tui->requestRender();
+
+                return true;
             },
+            fn () => $this->flash($this->trans('Nothing to peek')),
         );
     }
 
     public function requestFileStructure(): void
     {
-        if (null === ($path = $this->ready())) {
-            return;
-        }
-
-        $this->lsp->request(
+        $this->requestForDocument(
             'textDocument/documentSymbol',
-            [
-                'textDocument' => ['uri' => $this->uri($path)],
-            ],
-            function (mixed $result, ?array $error): void {
-                if (null !== $error || !\is_array($result) || [] === $result) {
-                    $this->flash($this->trans('No symbols in this file'));
-
-                    return;
+            function (mixed $result): bool {
+                if (!\is_array($result) || [] === $result) {
+                    return false;
                 }
 
                 $items = [];
@@ -412,7 +454,10 @@ final class NavigationController extends AbstractLspController implements Editor
                     $this->editor->jumpTo($line, $character);
                 });
                 $this->tui->requestRender();
+
+                return true;
             },
+            fn () => $this->flash($this->trans('No symbols in this file')),
         );
     }
 
