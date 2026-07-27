@@ -5,9 +5,7 @@ declare(strict_types=1);
 namespace Porta\Git;
 
 use Porta\Container\AsIdeService;
-use Porta\Support\AsyncProcess;
 use Porta\Support\Outcome;
-use Symfony\Component\Process\ExecutableFinder;
 
 /**
  * Asynchronous git integration: current branch name and per-line change
@@ -19,38 +17,38 @@ use Symfony\Component\Process\ExecutableFinder;
 #[AsIdeService]
 final class GitInfo
 {
-    private readonly bool $available;
-    private readonly ?string $git;
-
-    /** @var array<int, AsyncProcess> in-flight processes */
-    private array $running = [];
-    private int $nextKey = 0;
+    private readonly GitProcessRunner $runner;
 
     public function __construct(
-        private readonly string $rootDir,
+        string $rootDir,
         private readonly ?GitSettings $gitSettings = null,
         ?string $gitPath = null,
     ) {
-        $this->git = self::findGit($gitPath);
-        $this->available = null !== $this->git && is_dir($rootDir.'/.git');
+        $this->runner = new GitProcessRunner($rootDir, $gitPath);
+    }
+
+    /** The resolved `git` binary ({@see GitProcessRunner::binary()}), or null when none was found. */
+    public function binary(): ?string
+    {
+        return $this->runner->binary();
     }
 
     public function isAvailable(): bool
     {
-        return $this->available;
+        return $this->runner->isAvailable();
     }
 
     /**
-     * Whether any git subprocess is still in flight. Every async verb registers
-     * its process in {@see $running} before it starts and clears it in the exit
-     * callback, and git mutates the working tree before that exit fires — so a
+     * Whether any git subprocess is still in flight ({@see GitProcessRunner::isBusy()}).
+     * Git mutates the working tree before a process's exit callback fires, so a
      * false here means every dispatched op has fully landed on disk. Tests await
      * this as a real completion barrier instead of inferring done-ness from a
-     * rendered flash.
+     * rendered flash — which is why it stays on GitInfo rather than making them
+     * reach through to the runner.
      */
     public function isBusy(): bool
     {
-        return [] !== $this->running;
+        return $this->runner->isBusy();
     }
 
     /**
@@ -58,13 +56,13 @@ final class GitInfo
      */
     public function branch(callable $onDone): void
     {
-        if (!$this->available) {
+        if (!$this->runner->isAvailable()) {
             $onDone(null);
 
             return;
         }
 
-        $this->run(['rev-parse', '--abbrev-ref', 'HEAD'], static function (string $out) use ($onDone): void {
+        $this->runner->run(['rev-parse', '--abbrev-ref', 'HEAD'], static function (string $out) use ($onDone): void {
             $branch = trim($out);
             $onDone('' === $branch || 'HEAD' === $branch ? null : $branch);
         });
@@ -77,14 +75,14 @@ final class GitInfo
      */
     public function diff(string $absPath, callable $onDone): void
     {
-        if (!$this->available) {
+        if (!$this->runner->isAvailable()) {
             $onDone([]);
 
             return;
         }
 
-        $this->run(['diff', '--no-color', '--unified=0', 'HEAD', '--', $absPath], static function (string $out) use ($onDone): void {
-            $onDone(self::parseHunks($out));
+        $this->runner->run(['diff', '--no-color', '--unified=0', 'HEAD', '--', $absPath], static function (string $out) use ($onDone): void {
+            $onDone(HunkParser::parse($out));
         });
     }
 
@@ -97,13 +95,13 @@ final class GitInfo
      */
     public function status(callable $onDone): void
     {
-        if (!$this->available) {
+        if (!$this->runner->isAvailable()) {
             $empty = '';
             $onDone([], $empty);
 
             return;
         }
-        $this->run(['status', '--porcelain=v1', '-z', '--untracked-files=all'], static fn (string $out) => $onDone(StatusParser::parse($out), $out));
+        $this->runner->run(['status', '--porcelain=v1', '-z', '--untracked-files=all'], static fn (string $out) => $onDone(StatusParser::parse($out), $out));
     }
 
     /**
@@ -115,12 +113,12 @@ final class GitInfo
      */
     public function cachedFileDiff(string $absPath, callable $onDone, ?int $context = null, WhitespaceMode $whitespace = WhitespaceMode::Shown): void
     {
-        if (!$this->available) {
+        if (!$this->runner->isAvailable()) {
             $onDone('');
 
             return;
         }
-        $this->run(['diff', '--no-color', '--cached', ...(null === $context ? [] : ['-U'.$context]), ...(WhitespaceMode::Hidden === $whitespace ? ['-w'] : []), '--', $absPath], $onDone);
+        $this->runner->run(['diff', '--no-color', '--cached', ...(null === $context ? [] : ['-U'.$context]), ...(WhitespaceMode::Hidden === $whitespace ? ['-w'] : []), '--', $absPath], $onDone);
     }
 
     /**
@@ -132,12 +130,12 @@ final class GitInfo
      */
     public function worktreeFileDiff(string $absPath, callable $onDone, ?int $context = null, WhitespaceMode $whitespace = WhitespaceMode::Shown): void
     {
-        if (!$this->available) {
+        if (!$this->runner->isAvailable()) {
             $onDone('');
 
             return;
         }
-        $this->run(['diff', '--no-color', ...(null === $context ? [] : ['-U'.$context]), ...(WhitespaceMode::Hidden === $whitespace ? ['-w'] : []), '--', $absPath], $onDone);
+        $this->runner->run(['diff', '--no-color', ...(null === $context ? [] : ['-U'.$context]), ...(WhitespaceMode::Hidden === $whitespace ? ['-w'] : []), '--', $absPath], $onDone);
     }
 
     /**
@@ -148,12 +146,12 @@ final class GitInfo
      */
     public function untrackedFileDiff(string $absPath, callable $onDone): void
     {
-        if (!$this->available) {
+        if (!$this->runner->isAvailable()) {
             $onDone('');
 
             return;
         }
-        $this->runStatus(['diff', '--no-color', '--no-index', '--', '/dev/null', $absPath], static fn (int $code, string $out) => $onDone($out));
+        $this->runner->runStatus(['diff', '--no-color', '--no-index', '--', '/dev/null', $absPath], static fn (int $code, string $out) => $onDone($out));
     }
 
     /**
@@ -163,12 +161,12 @@ final class GitInfo
      */
     public function unstageFile(string $absPath, callable $onDone): void
     {
-        if (!$this->available) {
+        if (!$this->runner->isAvailable()) {
             $onDone(Outcome::Failed);
 
             return;
         }
-        $this->runStatus(['restore', '--staged', '--', $absPath], static fn (int $code) => $onDone(Outcome::of(0 === $code)));
+        $this->runner->runStatus(['restore', '--staged', '--', $absPath], static fn (int $code) => $onDone(Outcome::of(0 === $code)));
     }
 
     /**
@@ -179,12 +177,12 @@ final class GitInfo
      */
     public function discardFile(string $absPath, callable $onDone): void
     {
-        if (!$this->available) {
+        if (!$this->runner->isAvailable()) {
             $onDone(Outcome::Failed);
 
             return;
         }
-        $this->runStatus(['restore', '--', $absPath], static fn (int $code) => $onDone(Outcome::of(0 === $code)));
+        $this->runner->runStatus(['restore', '--', $absPath], static fn (int $code) => $onDone(Outcome::of(0 === $code)));
     }
 
     /**
@@ -195,12 +193,12 @@ final class GitInfo
      */
     public function applyCached(string $patch, callable $onDone): void
     {
-        if (!$this->available) {
+        if (!$this->runner->isAvailable()) {
             $onDone(Outcome::Failed);
 
             return;
         }
-        $this->runStatus(['apply', '--cached', '--whitespace=nowarn', '-'], static fn (int $code) => $onDone(Outcome::of(0 === $code)), stdin: $patch);
+        $this->runner->runStatus(['apply', '--cached', '--whitespace=nowarn', '-'], static fn (int $code) => $onDone(Outcome::of(0 === $code)), stdin: $patch);
     }
 
     /**
@@ -210,12 +208,12 @@ final class GitInfo
      */
     public function stage(string $absPath, callable $onDone): void
     {
-        if (!$this->available) {
+        if (!$this->runner->isAvailable()) {
             $onDone(Outcome::Failed);
 
             return;
         }
-        $this->runStatus(['add', '--', $absPath], static fn (int $code) => $onDone(Outcome::of(0 === $code)));
+        $this->runner->runStatus(['add', '--', $absPath], static fn (int $code) => $onDone(Outcome::of(0 === $code)));
     }
 
     /**
@@ -226,7 +224,7 @@ final class GitInfo
      */
     public function commit(string $message, callable $onDone, CommitMode $mode = CommitMode::Fresh): void
     {
-        if (!$this->available) {
+        if (!$this->runner->isAvailable()) {
             $empty = '';
             $onDone(Outcome::Failed, $empty);
 
@@ -234,7 +232,7 @@ final class GitInfo
         }
         $head = CommitMode::Amend === $mode ? ['commit', '--amend'] : ['commit'];
         $args = [...$head, ...$this->commitFlags(), '-m', $message];
-        $this->runStatus($args, static fn (int $code, string $out) => $onDone(Outcome::of(0 === $code), trim($out)));
+        $this->runner->runStatus($args, static fn (int $code, string $out) => $onDone(Outcome::of(0 === $code), trim($out)));
     }
 
     /**
@@ -244,12 +242,12 @@ final class GitInfo
      */
     public function lastCommitMessage(callable $onDone): void
     {
-        if (!$this->available) {
+        if (!$this->runner->isAvailable()) {
             $onDone('');
 
             return;
         }
-        $this->run(['log', '-1', '--format=%B'], static fn (string $out) => $onDone(trim($out)));
+        $this->runner->run(['log', '-1', '--format=%B'], static fn (string $out) => $onDone(trim($out)));
     }
 
     /**
@@ -260,18 +258,18 @@ final class GitInfo
      */
     public function undoLastCommit(callable $onDone): void
     {
-        if (!$this->available) {
+        if (!$this->runner->isAvailable()) {
             $onDone(Outcome::Failed);
 
             return;
         }
-        $this->runStatus(['rev-parse', '--verify', 'HEAD~1'], function (int $code) use ($onDone): void {
+        $this->runner->runStatus(['rev-parse', '--verify', 'HEAD~1'], function (int $code) use ($onDone): void {
             if (0 !== $code) {
                 $onDone(Outcome::Failed); // the root commit cannot be undone onto a parent
 
                 return;
             }
-            $this->runStatus(['reset', '--soft', 'HEAD~1'], static fn (int $c) => $onDone(Outcome::of(0 === $c)));
+            $this->runner->runStatus(['reset', '--soft', 'HEAD~1'], static fn (int $c) => $onDone(Outcome::of(0 === $c)));
         });
     }
 
@@ -285,7 +283,7 @@ final class GitInfo
      */
     public function log(int $limit, callable $onDone, int $skip = 0, ?string $path = null): void
     {
-        if (!$this->available) {
+        if (!$this->runner->isAvailable()) {
             $onDone([]);
 
             return;
@@ -299,7 +297,7 @@ final class GitInfo
             $args[] = '--';
             $args[] = $path;
         }
-        $this->run($args, static fn (string $out) => $onDone(LogParser::parseLog($out)));
+        $this->runner->run($args, static fn (string $out) => $onDone(LogParser::parseLog($out)));
     }
 
     /**
@@ -311,13 +309,13 @@ final class GitInfo
      */
     public function stashPush(callable $onDone): void
     {
-        if (!$this->available) {
+        if (!$this->runner->isAvailable()) {
             $empty = '';
             $onDone(Outcome::Failed, $empty);
 
             return;
         }
-        $this->runStatus(['stash', 'push'], static function (int $code, string $out) use ($onDone): void {
+        $this->runner->runStatus(['stash', 'push'], static function (int $code, string $out) use ($onDone): void {
             // @mago-expect lint:no-literal-password -- strtok's token: is a newline delimiter, not a credential
             $firstLine = strtok(trim($out), token: "\n");
             $onDone(Outcome::of(0 === $code), \is_string($firstLine) ? $firstLine : '');
@@ -332,19 +330,19 @@ final class GitInfo
      */
     public function stashPop(?string $ref, callable $onDone): void
     {
-        $this->runWithErrors(['stash', 'pop', ...(null === $ref ? [] : [$ref])], $onDone);
+        $this->runner->runWithErrors(['stash', 'pop', ...(null === $ref ? [] : [$ref])], $onDone);
     }
 
     /** Apply a stash without dropping it. @param callable(Outcome, string): void $onDone */
     public function stashApply(string $ref, callable $onDone): void
     {
-        $this->runWithErrors(['stash', 'apply', $ref], $onDone);
+        $this->runner->runWithErrors(['stash', 'apply', $ref], $onDone);
     }
 
     /** Drop a stash without touching the worktree. @param callable(Outcome, string): void $onDone */
     public function stashDrop(string $ref, callable $onDone): void
     {
-        $this->runWithErrors(['stash', 'drop', $ref], $onDone);
+        $this->runner->runWithErrors(['stash', 'drop', $ref], $onDone);
     }
 
     /**
@@ -354,12 +352,12 @@ final class GitInfo
      */
     public function stashList(callable $onDone): void
     {
-        if (!$this->available) {
+        if (!$this->runner->isAvailable()) {
             $onDone([]);
 
             return;
         }
-        $this->run(['stash', 'list', '-z', '--format=%gd%x1f%at%x1f%gs'], static fn (string $out) => $onDone(LogParser::parseStashList($out)));
+        $this->runner->run(['stash', 'list', '-z', '--format=%gd%x1f%at%x1f%gs'], static fn (string $out) => $onDone(LogParser::parseStashList($out)));
     }
 
     /**
@@ -369,12 +367,12 @@ final class GitInfo
      */
     public function branches(callable $onDone): void
     {
-        if (!$this->available) {
+        if (!$this->runner->isAvailable()) {
             $onDone([]);
 
             return;
         }
-        $this->run(['branch', '--all', '--sort=-committerdate', '--format=%(refname)%09%(HEAD)'], static fn (string $out) => $onDone(BranchParser::parse($out)));
+        $this->runner->run(['branch', '--all', '--sort=-committerdate', '--format=%(refname)%09%(HEAD)'], static fn (string $out) => $onDone(BranchParser::parse($out)));
     }
 
     /**
@@ -385,7 +383,7 @@ final class GitInfo
      */
     public function deleteBranch(string $name, callable $onDone): void
     {
-        $this->runWithErrors(['branch', '-d', $name], $onDone);
+        $this->runner->runWithErrors(['branch', '-d', $name], $onDone);
     }
 
     /**
@@ -400,7 +398,7 @@ final class GitInfo
     {
         $slash = strpos($remoteBranch, needle: '/');
         $local = false === $slash ? $remoteBranch : substr($remoteBranch, $slash + 1);
-        $this->runWithErrors(['checkout', '-b', $local, '--track', $remoteBranch], $onDone);
+        $this->runner->runWithErrors(['checkout', '-b', $local, '--track', $remoteBranch], $onDone);
     }
 
     /**
@@ -411,13 +409,13 @@ final class GitInfo
      */
     public function checkout(string $branch, callable $onDone): void
     {
-        $this->runWithErrors(['checkout', $branch], $onDone);
+        $this->runner->runWithErrors(['checkout', $branch], $onDone);
     }
 
     /** @param callable(Outcome, string): void $onDone (ok, first stderr line on failure — "already exists", invalid name) */
     public function createBranch(string $name, callable $onDone): void
     {
-        $this->runWithErrors(['checkout', '-b', $name], $onDone);
+        $this->runner->runWithErrors(['checkout', '-b', $name], $onDone);
     }
 
     /**
@@ -427,7 +425,7 @@ final class GitInfo
      */
     public function branchFromCommit(string $name, string $sha, callable $onDone): void
     {
-        $this->runWithErrors(['checkout', '-b', $name, $sha], $onDone);
+        $this->runner->runWithErrors(['checkout', '-b', $name, $sha], $onDone);
     }
 
     /**
@@ -439,7 +437,7 @@ final class GitInfo
      */
     public function cherryPick(string $sha, callable $onDone): void
     {
-        $this->runWithErrors(['cherry-pick', $sha], $onDone);
+        $this->runner->runWithErrors(['cherry-pick', $sha], $onDone);
     }
 
     /**
@@ -450,7 +448,7 @@ final class GitInfo
      */
     public function revertCommit(string $sha, callable $onDone): void
     {
-        $this->runWithErrors(['revert', '--no-edit', $sha], $onDone);
+        $this->runner->runWithErrors(['revert', '--no-edit', $sha], $onDone);
     }
 
     /**
@@ -463,7 +461,7 @@ final class GitInfo
      */
     public function resetTo(string $sha, string $mode, callable $onDone): void
     {
-        $this->runWithErrors(['reset', '--'.$mode, $sha], $onDone);
+        $this->runner->runWithErrors(['reset', '--'.$mode, $sha], $onDone);
     }
 
     /**
@@ -473,12 +471,12 @@ final class GitInfo
      */
     public function commitFiles(string $sha, callable $onDone): void
     {
-        if (!$this->available) {
+        if (!$this->runner->isAvailable()) {
             $onDone([]);
 
             return;
         }
-        $this->run(['show', '-z', '--name-status', '--format=', $sha], static fn (string $out) => $onDone(LogParser::parseNameStatus($out)));
+        $this->runner->run(['show', '-z', '--name-status', '--format=', $sha], static fn (string $out) => $onDone(LogParser::parseNameStatus($out)));
     }
 
     /**
@@ -489,12 +487,12 @@ final class GitInfo
      */
     public function commitFileDiff(string $sha, string $relPath, callable $onDone, WhitespaceMode $whitespace = WhitespaceMode::Shown): void
     {
-        if (!$this->available) {
+        if (!$this->runner->isAvailable()) {
             $onDone('');
 
             return;
         }
-        $this->run(['show', '--no-color', '--format=', ...(WhitespaceMode::Hidden === $whitespace ? ['-w'] : []), $sha, '--', $relPath], $onDone);
+        $this->runner->run(['show', '--no-color', '--format=', ...(WhitespaceMode::Hidden === $whitespace ? ['-w'] : []), $sha, '--', $relPath], $onDone);
     }
 
     /**
@@ -504,41 +502,13 @@ final class GitInfo
      */
     public function blameLine(string $absPath, int $line, callable $onDone): void
     {
-        if (!$this->available) {
+        if (!$this->runner->isAvailable()) {
             $onDone(null);
 
             return;
         }
         $n = $line + 1;
-        $this->run(['blame', '-L', $n.','.$n, '--line-porcelain', '--', $absPath], static fn (string $out) => $onDone(self::parseBlameLine($out)));
-    }
-
-    /**
-     * @return array{sha: string, author: string, summary: string}|null
-     */
-    public static function parseBlameLine(string $out): ?array
-    {
-        $sha = '';
-        $author = '';
-        $summary = '';
-        foreach (explode("\n", $out) as $line) {
-            $m = [];
-            if (1 === preg_match('/^([0-9a-f]{40}) /', $line, $m)) {
-                $sha = substr($m[1], offset: 0, length: 8);
-
-                continue;
-            }
-            if (str_starts_with($line, 'author ')) {
-                $author = substr($line, offset: 7);
-
-                continue;
-            }
-            if (str_starts_with($line, 'summary ')) {
-                $summary = substr($line, offset: 8);
-            }
-        }
-
-        return '' === $sha ? null : ['sha' => $sha, 'author' => $author, 'summary' => $summary];
+        $this->runner->run(['blame', '-L', $n.','.$n, '--line-porcelain', '--', $absPath], static fn (string $out) => $onDone(BlameParser::parseLine($out)));
     }
 
     /**
@@ -548,143 +518,17 @@ final class GitInfo
      */
     public function blameFile(string $absPath, callable $onDone): void
     {
-        if (!$this->available) {
+        if (!$this->runner->isAvailable()) {
             $onDone([]);
 
             return;
         }
-        $this->runStatus(['blame', '--line-porcelain', '--', $absPath], static fn (int $code, string $out) => $onDone(0 !== $code ? [] : BlameParser::parse($out)));
+        $this->runner->runStatus(['blame', '--line-porcelain', '--', $absPath], static fn (int $code, string $out) => $onDone(0 !== $code ? [] : BlameParser::parse($out)));
     }
 
     public function cancelAll(): void
     {
-        foreach ($this->running as $process) {
-            $process->cancel();
-        }
-        $this->running = [];
-    }
-
-    /**
-     * Parse `git diff --unified=0` output into per-line change marks.
-     *
-     * @return array<int, string> 0-based line => 'added'|'modified'|'deleted'
-     */
-    public static function parseHunks(string $diff): array
-    {
-        $marks = [];
-        foreach (explode("\n", $diff) as $line) {
-            $m = [];
-            if (!preg_match('/^@@ -(\d+)(?:,(\d+))? \+(\d+)(?:,(\d+))? @@/', $line, $m)) {
-                continue;
-            }
-            $oldCount = '' === ($m[2] ?? '') ? 1 : (int) $m[2];
-            $newStart = (int) $m[3];
-            $newCount = '' === ($m[4] ?? '') ? 1 : (int) $m[4];
-
-            if (0 === $newCount) {
-                // Pure deletion: flag the surviving line the removal sits on.
-                $marks[max(0, $newStart - 1)] = 'deleted';
-                continue;
-            }
-
-            for ($i = 0; $i < $newCount; ++$i) {
-                $index = $newStart - 1 + $i;
-                // Lines beyond the overlap with the old hunk are new additions;
-                // the overlapping ones are modifications.
-                $marks[$index] = $i < $oldCount ? 'modified' : 'added';
-            }
-            if (0 === $oldCount) {
-                for ($i = 0; $i < $newCount; ++$i) {
-                    $marks[$newStart - 1 + $i] = 'added';
-                }
-            }
-        }
-
-        return $marks;
-    }
-
-    /**
-     * @param list<string>            $args
-     * @param callable(string): void  $onDone receives stdout
-     */
-    private function run(array $args, callable $onDone): void
-    {
-        $this->runStatus($args, static fn (int $code, string $out) => $onDone($out));
-    }
-
-    /**
-     * @param list<string>                 $args
-     * @param callable(int, string): void  $onDone receives (exit code, stdout)
-     * @param string|null                  $stdin  payload piped to the command
-     */
-    private function runStatus(array $args, callable $onDone, ?string $stdin = null): void
-    {
-        /** @var list<string> $command */
-        $command = [$this->git, '-C', $this->rootDir, ...$args];
-        $key = $this->nextKey++;
-        $process = new AsyncProcess($command, $this->rootDir, $stdin);
-        $started = $process->start(function (int $code, string $out) use ($key, $onDone): void {
-            unset($this->running[$key]);
-            $onDone($code, $out);
-        });
-        if (!$started) {
-            // @codeCoverageIgnoreStart
-            $empty = '';
-            $onDone(1, $empty);
-
-            return;
-
-            // @codeCoverageIgnoreEnd
-        }
-
-        $this->running[$key] = $process;
-    }
-
-    /**
-     * Like runStatus, but with stderr captured — for verbs whose failure
-     * message the user must see verbatim (checkout, branch creation).
-     *
-     * @param list<string>                 $args
-     * @param callable(Outcome, string): void $onDone (ok, trimmed first stderr line)
-     */
-    private function runWithErrors(array $args, callable $onDone): void
-    {
-        if (!$this->available) {
-            $reason = 'git is not available';
-            $onDone(Outcome::Failed, $reason);
-
-            return;
-        }
-        /** @var list<string> $command */
-        $command = [$this->git, '-C', $this->rootDir, ...$args];
-        $key = $this->nextKey++;
-        $process = new AsyncProcess($command, $this->rootDir, captureStderr: true);
-        $started = $process->start(function (int $code) use ($key, $process, $onDone): void {
-            unset($this->running[$key]);
-            // @mago-expect lint:no-literal-password -- strtok's token: is a newline delimiter, not a credential
-            $firstLine = strtok(trim($process->errorOutput()), token: "\n");
-            $onDone(Outcome::of(0 === $code), \is_string($firstLine) ? $firstLine : '');
-        });
-        if (!$started) {
-            // @codeCoverageIgnoreStart
-            $reason = 'could not start git';
-            $onDone(Outcome::Failed, $reason);
-
-            return;
-
-            // @codeCoverageIgnoreEnd
-        }
-        $this->running[$key] = $process;
-    }
-
-    private static function findGit(?string $gitPath): ?string
-    {
-        // An explicit path (the "Git executable path" setting) wins over discovery.
-        if (null !== $gitPath && '' !== $gitPath) {
-            return $gitPath;
-        }
-
-        return new ExecutableFinder()->find('git');
+        $this->runner->cancelAll();
     }
 
     /**

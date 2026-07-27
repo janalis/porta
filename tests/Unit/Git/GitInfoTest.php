@@ -5,8 +5,10 @@ declare(strict_types=1);
 namespace Porta\Tests\Unit\Git;
 
 use PHPUnit\Framework\TestCase;
+use Porta\Git\BlameParser;
 use Porta\Git\GitInfo;
 use Porta\Git\GitSettings;
+use Porta\Git\HunkParser;
 use Porta\Support\Outcome;
 use Porta\Tests\Support\TempProject;
 use Revolt\EventLoop;
@@ -27,7 +29,7 @@ final class GitInfoTest extends TestCase
             -removed b
             DIFF;
 
-        $marks = GitInfo::parseHunks($diff);
+        $marks = HunkParser::parse($diff);
 
         $this->assertSame('modified', $marks[1]); // line 2 (0-based 1)
         $this->assertSame('added', $marks[3]); // line 4 (0-based 3)
@@ -37,7 +39,7 @@ final class GitInfoTest extends TestCase
     public function testParseMultiLineAdditionAndGrowthClassification(): void
     {
         // 1 old line replaced by 3 new: first is modified, extras are added.
-        $marks = GitInfo::parseHunks("@@ -5 +5,3 @@\n-old\n+a\n+b\n+c\n");
+        $marks = HunkParser::parse("@@ -5 +5,3 @@\n-old\n+a\n+b\n+c\n");
 
         $this->assertSame('modified', $marks[4]);
         $this->assertSame('added', $marks[5]);
@@ -46,7 +48,7 @@ final class GitInfoTest extends TestCase
 
     public function testParsePureAdditionBlock(): void
     {
-        $marks = GitInfo::parseHunks("@@ -0,0 +1,2 @@\n+first\n+second\n");
+        $marks = HunkParser::parse("@@ -0,0 +1,2 @@\n+first\n+second\n");
 
         $this->assertSame('added', $marks[0]);
         $this->assertSame('added', $marks[1]);
@@ -54,7 +56,7 @@ final class GitInfoTest extends TestCase
 
     public function testParseIgnoresNonHunkLines(): void
     {
-        $this->assertSame([], GitInfo::parseHunks("just some text\nno hunks here\n"));
+        $this->assertSame([], HunkParser::parse("just some text\nno hunks here\n"));
     }
 
     public function testDisabledWhenNotAGitRepo(): void
@@ -101,9 +103,9 @@ final class GitInfoTest extends TestCase
         $porcelain = "0123456789abcdef0123456789abcdef01234567 1 1 1\nauthor Jane Dev\nauthor-mail <jane@example.com>\nsummary Add the thing\n\tcode line\n";
         $this->assertSame(
             ['sha' => '01234567', 'author' => 'Jane Dev', 'summary' => 'Add the thing'],
-            GitInfo::parseBlameLine($porcelain),
+            BlameParser::parseLine($porcelain),
         );
-        $this->assertNull(GitInfo::parseBlameLine(''), 'no blame output -> null');
+        $this->assertNull(BlameParser::parseLine(''), 'no blame output -> null');
     }
 
     public function testStageCommitAndBlameAgainstRealRepository(): void
@@ -259,7 +261,7 @@ final class GitInfoTest extends TestCase
     {
         $project = new TempProject([]);
         $git = new GitInfo($project->dir, gitPath: '/custom/bin/git');
-        $this->assertSame('/custom/bin/git', new \ReflectionProperty($git, 'git')->getValue($git));
+        $this->assertSame('/custom/bin/git', $git->binary());
     }
 
     public function testFallsBackToDiscoveryWithoutAnExplicitPath(): void
@@ -269,7 +271,7 @@ final class GitInfoTest extends TestCase
         }
         $project = new TempProject([]);
         $git = new GitInfo($project->dir, gitPath: ''); // empty → auto-discover
-        $this->assertNotNull(new \ReflectionProperty($git, 'git')->getValue($git));
+        $this->assertNotNull($git->binary());
     }
 
     public function testCommitAppliesSignoffAndNoGpgSignFromSettings(): void

@@ -55,4 +55,32 @@ final class BlameParser
 
         return $entries;
     }
+
+    /**
+     * @return array{sha: string, author: string, summary: string}|null
+     */
+    public static function parseLine(string $out): ?array
+    {
+        $sha = '';
+        $author = '';
+        $summary = '';
+        foreach (explode("\n", $out) as $line) {
+            $m = [];
+            if (1 === preg_match('/^([0-9a-f]{40}) /', $line, $m)) {
+                $sha = substr($m[1], offset: 0, length: 8);
+
+                continue;
+            }
+            if (str_starts_with($line, 'author ')) {
+                $author = substr($line, offset: 7);
+
+                continue;
+            }
+            if (str_starts_with($line, 'summary ')) {
+                $summary = substr($line, offset: 8);
+            }
+        }
+
+        return '' === $sha ? null : ['sha' => $sha, 'author' => $author, 'summary' => $summary];
+    }
 }
