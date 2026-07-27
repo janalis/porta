@@ -1,0 +1,35 @@
+<?php
+
+declare(strict_types=1);
+
+namespace Porta\Settings\Section;
+
+use Porta\Settings\SettingsController;
+use Porta\Settings\SettingsRow;
+use Porta\Settings\SettingsSection;
+use Symfony\Component\DependencyInjection\Attribute\AsTaggedItem;
+
+/** The Interface page: the appearance half of the general settings table. */
+#[AsTaggedItem(priority: 600)]
+final readonly class InterfaceSection implements SettingsSection
+{
+    public function __construct(
+        private SettingsController $settings,
+    ) {}
+
+    public function handles(string $section): bool
+    {
+        return 'interface' === $section;
+    }
+
+    /** @return list<SettingsRow> */
+    public function rows(string $section): array
+    {
+        return $this->settings->interfaceRows();
+    }
+
+    public function change(string $section, string $key, bool|int|string $value): void
+    {
+        $this->settings->changeSetting($key, $value);
+    }
+}

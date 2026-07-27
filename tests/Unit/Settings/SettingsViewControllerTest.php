@@ -31,6 +31,12 @@ use Porta\Plugin\PluginSettings;
 use Porta\Plugin\ToolInstaller;
 use Porta\Search\TodoTags;
 use Porta\Settings\LiveSettingsApplier;
+use Porta\Settings\Section\GeneralSection;
+use Porta\Settings\Section\GitSection;
+use Porta\Settings\Section\HighlightingSection;
+use Porta\Settings\Section\InterfaceSection;
+use Porta\Settings\Section\LanguageSection;
+use Porta\Settings\Section\PluginsSection;
 use Porta\Settings\SettingsController;
 use Porta\Settings\SettingsDebugController;
 use Porta\Settings\SettingsGitController;
@@ -39,6 +45,7 @@ use Porta\Settings\SettingsKeymapController;
 use Porta\Settings\SettingsLanguageController;
 use Porta\Settings\SettingsLspController;
 use Porta\Settings\SettingsPluginsController;
+use Porta\Settings\SettingsSection;
 use Porta\Settings\SettingsViewController;
 use Porta\Tests\Support\FakePluginLifecycle;
 use Porta\Tests\Support\FakeScheduler;
@@ -87,7 +94,8 @@ final class SettingsViewControllerTest extends TestCase
     private PluginSettings $pluginSettings;
     private FakePluginLifecycle $lifecycle;
 
-    private function controller(?WorkspaceViews $views = null): SettingsViewController
+    /** @param list<SettingsSection>|null $sections */
+    private function controller(?WorkspaceViews $views = null, ?array $sections = null): SettingsViewController
     {
         $this->project = new TempProject();
         $editWidget = new ContainerWidget();
@@ -207,20 +215,24 @@ final class SettingsViewControllerTest extends TestCase
                 }
             },
             $this->tui,
-            $settings,
+            // Same order the porta.settings_section tag priorities produce, with
+            // the catch-all general section last.
+            $sections ?? [
+                new InterfaceSection($settings),
+                new HighlightingSection(new SettingsHighlightController(
+                    new HighlightRegistry(new NoHighlightPlugins(), new HighlightPreferences()),
+                    new Translator('en'),
+                    $this->project->dir,
+                    IdeConfig::load($this->project->dir),
+                    $this->lifecycle,
+                )),
+                new PluginsSection($plugins),
+                new GitSection($git),
+                new LanguageSection($languages, $lsp, $debug),
+                new GeneralSection($settings),
+            ],
             $keymap,
-            $languages,
-            $lsp,
-            $debug,
             $plugins,
-            $git,
-            new SettingsHighlightController(
-                new HighlightRegistry(new NoHighlightPlugins(), new HighlightPreferences()),
-                new Translator('en'),
-                $this->project->dir,
-                IdeConfig::load($this->project->dir),
-                $this->lifecycle,
-            ),
             editorArea: new EditorArea(new BufferManager(), $this->editorWidget = new CodeEditorWidget(), new ImageViewerWidget(), new HelpViewerWidget(), $this->tui),
             views: $views ?? new WorkspaceViews(),
         );
@@ -541,6 +553,18 @@ final class SettingsViewControllerTest extends TestCase
         $this->tui->setFocus($this->nav);
         $controller->close(); // already closed: a no-op that must not steal focus
         $this->assertSame($this->nav, $this->tui->getFocus());
+    }
+
+    public function testAnUnclaimedSectionIsAProgrammingError(): void
+    {
+        // The general section claims every id, so in the wired IDE this can
+        // never happen — the guard exists so a future section list that drops
+        // the catch-all fails loudly instead of rendering a blank page.
+        $controller = $this->controller(sections: []);
+
+        $this->expectException(\LogicException::class);
+        $this->expectExceptionMessage('No settings section claimed general');
+        $controller->open();
     }
 
     private static function formatOnSave(): FormatOnSave

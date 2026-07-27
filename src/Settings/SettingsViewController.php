@@ -7,21 +7,13 @@ namespace Porta\Settings;
 use Porta\Container\AsEager;
 use Porta\Container\LayoutSlot;
 use Porta\Layout\EditorAreaPanes;
-use Porta\Settings\SettingsController;
-use Porta\Settings\SettingsDebugController;
-use Porta\Settings\SettingsGitController;
-use Porta\Settings\SettingsHighlightController;
-use Porta\Settings\SettingsKeymapController;
-use Porta\Settings\SettingsLanguageController;
-use Porta\Settings\SettingsLspController;
-use Porta\Settings\SettingsPluginsController;
-use Porta\Settings\SettingsRow;
 use Porta\Ui\EditorArea;
 use Porta\Ui\WorkspaceViews;
 use Porta\Widget\MenuBarWidget;
 use Porta\Widget\Settings\KeybindingsListWidget;
 use Porta\Widget\Settings\SettingsFormWidget;
 use Porta\Widget\Settings\SettingsNavWidget;
+use Symfony\Component\DependencyInjection\Attribute\AutowireIterator;
 use Symfony\Component\Tui\Tui;
 use Symfony\Component\Tui\Widget\AbstractWidget;
 use Symfony\Component\Tui\Widget\ContainerWidget;
@@ -54,14 +46,11 @@ final class SettingsViewController
         private readonly MenuBarWidget $menuBar,
         private readonly EditorAreaPanes $editArea,
         private readonly Tui $tui,
-        private readonly SettingsController $settings,
+        /** @var iterable<SettingsSection> in #[AsTaggedItem] priority order; the general section claims everything and sorts last */
+        #[AutowireIterator('porta.settings_section')]
+        private readonly iterable $sections,
         private readonly SettingsKeymapController $keymap,
-        private readonly SettingsLanguageController $languages,
-        private readonly SettingsLspController $lsp,
-        private readonly SettingsDebugController $debug,
         private readonly SettingsPluginsController $plugins,
-        private readonly SettingsGitController $git,
-        private readonly SettingsHighlightController $highlighting,
         private readonly EditorArea $editorArea,
         WorkspaceViews $views,
     ) {
@@ -151,81 +140,30 @@ final class SettingsViewController
     }
 
     /**
-     * The form rows for the active (General or language) section.
-     *
-     * @return list<SettingsRow>
+     * The section owning the active nav id. Never null: the general section
+     * claims every id and its tag priority sorts it last.
      */
+    private function activeSection(): SettingsSection
+    {
+        foreach ($this->sections as $section) {
+            if ($section->handles($this->section)) {
+                return $section;
+            }
+        }
+
+        throw new \LogicException('No settings section claimed '.$this->section);
+    }
+
+    /** @return list<SettingsRow> */
     private function rowsForSection(): array
     {
-        if ('plugins' === $this->section) {
-            return $this->plugins->rows();
-        }
-        if (str_starts_with($this->section, 'plugin:')) {
-            return $this->plugins->pluginRows(substr($this->section, offset: 7));
-        }
-        if ('vcs:git' === $this->section) {
-            return $this->git->rows();
-        }
-        if ('interface' === $this->section) {
-            return $this->settings->interfaceRows();
-        }
-        if ('highlighting' === $this->section) {
-            return $this->highlighting->rows();
-        }
-        if (!str_starts_with($this->section, 'lang:')) {
-            return $this->settings->formRows();
-        }
-        $language = substr($this->section, offset: 5);
-
-        return [...$this->languages->rows($language), ...$this->lsp->rows($language), ...$this->debug->rows($language)];
+        return $this->activeSection()->rows($this->section);
     }
 
     private function changeSetting(string $key, bool|int|string $value): void
     {
-        $this->applySettingChange($key, $value);
+        $this->activeSection()->change($this->section, $key, $value);
         $this->form->setRows($this->rowsForSection());
-    }
-
-    private function applySettingChange(string $key, bool|int|string $value): void
-    {
-        if (str_starts_with($this->section, 'lang:')) {
-            $language = substr($this->section, offset: 5);
-            if ('lspServer' === $key) {
-                $this->lsp->changeLspServer($language, (string) $value);
-
-                return;
-            }
-            if ('debugAdapter' === $key || 'debugLaunch' === $key) {
-                $this->debug->change($language, $key, (string) $value);
-
-                return;
-            }
-            $this->languages->changeLanguageSetting($language, $key, $value);
-
-            return;
-        }
-        if ('highlighting' === $this->section) {
-            $this->highlighting->change($key, (string) $value);
-
-            return;
-        }
-        if ('plugins' === $this->section) {
-            $this->plugins->change($key, (string) $value);
-
-            return;
-        }
-        if (str_starts_with($this->section, 'plugin:')) {
-            // The scalar passes through untouched — bool/int rows need their types.
-            $this->plugins->changePlugin(substr($this->section, offset: 7), $key, $value);
-
-            return;
-        }
-        if ('vcs:git' === $this->section) {
-            $this->git->change($key, $value);
-
-            return;
-        }
-        $this->settings->changeSetting($key, $value);
     }
 
     /**

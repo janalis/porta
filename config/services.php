@@ -27,6 +27,7 @@ use Porta\Plugin\PluginManager;
 use Porta\Plugin\PluginSettings;
 use Porta\Search\Everywhere\SearchEverywhereController;
 use Porta\Search\Everywhere\SearchEverywhereFactory;
+use Porta\Settings\SettingsSection;
 use Porta\Ui\BidiTui;
 use Porta\Ui\Theme\Styles;
 use Porta\Ui\Theme\Themes;
@@ -102,6 +103,12 @@ return static function (ContainerConfigurator $container, ContainerBuilder $buil
     // display order, and core registers before plugins so core wins key
     // collisions.
     $builder->registerForAutoconfiguration(CommandProvider::class)->addTag('porta.command_provider');
+
+    // Settings pages, likewise in #[AsTaggedItem] priority order — contractual
+    // because SettingsViewController takes the first section whose handles()
+    // claims the nav id, and Section/GeneralSection claims every id as the
+    // fallback, so it must sort last.
+    $builder->registerForAutoconfiguration(SettingsSection::class)->addTag('porta.settings_section');
 
     // #[AsEager] services are constructed once at the Ide ctor tail (via
     // Bootstrap/EagerServices iterating this tag) purely for their
