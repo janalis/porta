@@ -1,0 +1,302 @@
+<?php
+
+declare(strict_types=1);
+
+namespace Porta\Config;
+
+use Porta\Support\JsonFile;
+use Symfony\Component\Filesystem\Exception\IOExceptionInterface;
+use Symfony\Component\Filesystem\Filesystem;
+
+/**
+ * Writes settings back into a project's `.porta.json`, merging with and
+ * preserving everything already there (including keys this build does not
+ * know). The read half is {@see IdeConfig}; the two share nothing but that
+ * file's value vocabulary ({@see IdeConfig::stringList()},
+ * {@see IdeConfig::commandString()}, {@see IdeConfig::LEGACY_SETTINGS}) and no
+ * state at all, which is why they are separate classes.
+ *
+ * Every public method is one edit: read the file, mutate one block, write it
+ * back atomically, and answer whether that succeeded. Nothing here is cached —
+ * a write always re-reads, so two settings pages editing different blocks
+ * cannot clobber each other.
+ */
+final class PortaJsonWriter
+{
+    private const string FILE = '/.porta.json';
+
+    /**
+     * Persist a single setting into .porta.json, merging with and preserving
+     * any existing content (including unknown keys). Returns true on success.
+     */
+    public static function persistSetting(string $rootDir, string $key, int|bool|string $value): bool
+    {
+        return self::edit($rootDir, static function (array &$config) use ($key, $value): void {
+            $settings = self::section($config, 'settings');
+            $settings[$key] = $value;
+            // Drop any migrated-away legacy key so a stale value doesn't linger next to
+            // the key that superseded it (e.g. relativeLineNumbers after lineNumbers).
+            foreach (IdeConfig::LEGACY_SETTINGS as $legacy) {
+                unset($settings[$legacy]);
+            }
+            $config['settings'] = $settings;
+        });
+    }
+
+    /**
+     * Persist an action's key binding into .porta.json's `keymap` block, merging
+     * with and preserving any existing content (other actions, unknown keys).
+     * The override takes effect next launch, when the keymap is merged into the
+     * live keybindings. Returns true on success.
+     *
+     * @param list<string> $keys
+     */
+    public static function persistKeymap(string $rootDir, string $action, array $keys): bool
+    {
+        return self::edit($rootDir, static function (array &$config) use ($action, $keys): void {
+            $keymap = self::section($config, 'keymap');
+            $keymap[$action] = array_values($keys);
+            $config['keymap'] = $keymap;
+        });
+    }
+
+    /** Persist a project/global plugin as enabled by dropping it from the `disabledPlugins` list. */
+    public static function persistPluginEnabled(string $rootDir, string $plugin): bool
+    {
+        return self::persistPluginMembership($rootDir, 'disabledPlugins', $plugin, member: false);
+    }
+
+    /** Persist a project/global plugin as disabled by adding it to the `disabledPlugins` list. */
+    public static function persistPluginDisabled(string $rootDir, string $plugin): bool
+    {
+        return self::persistPluginMembership($rootDir, 'disabledPlugins', $plugin, member: true);
+    }
+
+    /** Persist a bundled plugin as enabled by adding it to the opt-in `enabledPlugins` list. */
+    public static function persistBundledEnabled(string $rootDir, string $plugin): bool
+    {
+        return self::persistPluginMembership($rootDir, 'enabledPlugins', $plugin, member: true);
+    }
+
+    /** Persist a bundled plugin as disabled by dropping it from the `enabledPlugins` list. */
+    public static function persistBundledDisabled(string $rootDir, string $plugin): bool
+    {
+        return self::persistPluginMembership($rootDir, 'enabledPlugins', $plugin, member: false);
+    }
+
+    /** Persist one plugin-defined setting value under the top-level `plugins.<name>.<key>`. */
+    public static function persistPluginSetting(string $rootDir, string $plugin, string $key, bool|int|string $value): bool
+    {
+        return self::edit($rootDir, static function (array &$config) use ($plugin, $key, $value): void {
+            $plugins = self::section($config, 'plugins');
+            $entry = \is_array($plugins[$plugin] ?? null) ? $plugins[$plugin] : [];
+            $entry[$key] = $value;
+            $plugins[$plugin] = $entry;
+            $config['plugins'] = $plugins;
+        });
+    }
+
+    /**
+     * Write the top-level `highlight` block. An empty $id clears the entry —
+     * "no preference" and "prefer nothing" are the same thing, and leaving an
+     * empty string behind would look like a configured backend named "".
+     */
+    public static function persistHighlighter(string $rootDir, ?string $language, string $id): bool
+    {
+        return self::edit($rootDir, static function (array &$config) use ($language, $id): void {
+            $highlight = self::section($config, 'highlight');
+
+            if (null === $language) {
+                $highlight['default'] = $id;
+                if ('' === $id) {
+                    unset($highlight['default']);
+                }
+            }
+
+            if (null !== $language) {
+                $languages = \is_array($highlight['languages'] ?? null) ? $highlight['languages'] : [];
+                $languages[$language] = $id;
+                if ('' === $id) {
+                    unset($languages[$language]);
+                }
+                $highlight['languages'] = $languages;
+                if ([] === $languages) {
+                    unset($highlight['languages']);
+                }
+            }
+
+            $config['highlight'] = $highlight;
+            if ([] === $highlight) {
+                unset($config['highlight']);
+            }
+        });
+    }
+
+    /**
+     * Persist one per-language indent override into .porta.json's `languages`
+     * block, merging with and preserving existing content. Returns true on
+     * success.
+     */
+    public static function persistLanguageSetting(string $rootDir, string $language, string $key, int|string $value): bool
+    {
+        return self::edit($rootDir, static function (array &$config) use ($language, $key, $value): void {
+            $languages = self::section($config, 'languages');
+            $entry = \is_array($languages[$language] ?? null) ? $languages[$language] : [];
+            $entry[$key] = $value;
+            $languages[$language] = $entry;
+            $config['languages'] = $languages;
+        });
+    }
+
+    /**
+     * Persist one per-language debug override (`adapter` command string or
+     * `launch` object) into .porta.json's `languages.<id>.debug` block. A null
+     * / blank / empty value removes the key; an emptied `debug` block is
+     * dropped (the language entry itself is preserved). True on success.
+     *
+     * @param string|array<string, mixed>|null $value
+     */
+    public static function persistLanguageDebug(string $rootDir, string $language, string $key, string|array|null $value): bool
+    {
+        return self::edit($rootDir, static function (array &$config) use ($language, $key, $value): void {
+            $languages = self::section($config, 'languages');
+            $entry = \is_array($languages[$language] ?? null) ? $languages[$language] : [];
+            $debug = \is_array($entry['debug'] ?? null) ? $entry['debug'] : [];
+
+            $removeKey = null === $value || '' === $value || [] === $value;
+            if ($removeKey) {
+                unset($debug[$key]);
+            }
+            if (!$removeKey) {
+                $debug[$key] = $value;
+            }
+
+            if ([] === $debug) {
+                unset($entry['debug']);
+            }
+            if ([] !== $debug) {
+                $entry['debug'] = $debug;
+            }
+            $languages[$language] = $entry;
+            $config['languages'] = $languages;
+        });
+    }
+
+    /**
+     * Persist a per-language LSP server command into .porta.json's `lsp` map.
+     * A blank command removes the language's entry (reverting to auto-detect);
+     * an empty map drops the whole `lsp` block. A single-command form is
+     * converted to a map (its command kept as the `*` catch-all). True on success.
+     */
+    public static function persistLspServer(string $rootDir, string $languageId, string $command): bool
+    {
+        return self::edit($rootDir, static function (array &$config) use ($languageId, $command): void {
+            $map = self::lspMap($config['lsp'] ?? null);
+
+            $command = trim($command);
+            if ('' === $command) {
+                unset($map[$languageId]);
+            }
+            if ('' !== $command) {
+                $map[$languageId] = $command;
+            }
+
+            if ([] === $map) {
+                unset($config['lsp']);
+            }
+            if ([] !== $map) {
+                $config['lsp'] = $map;
+            }
+        });
+    }
+
+    /** Add ($member) or drop $plugin from a top-level string-list key, dropping the key when empty. */
+    // @mago-expect lint:no-boolean-flag-parameter -- shared add/drop membership helper; the four public persist* methods are its split faces
+    private static function persistPluginMembership(string $rootDir, string $key, string $plugin, bool $member): bool
+    {
+        return self::edit($rootDir, static function (array &$config) use ($key, $plugin, $member): void {
+            $without = array_values(array_diff(IdeConfig::stringList($config[$key] ?? null), [$plugin]));
+            $list = $member ? [...$without, $plugin] : $without;
+            if ([] === $list) {
+                unset($config[$key]);
+            }
+            if ([] !== $list) {
+                $config[$key] = $list;
+            }
+        });
+    }
+
+    /**
+     * Normalize any `lsp` value to a {languageId: command} map: a map is coerced
+     * to command strings; a single command string/argv list becomes the `*`
+     * catch-all; anything else is empty.
+     *
+     * @return array<string, string>
+     */
+    private static function lspMap(mixed $lsp): array
+    {
+        if (\is_array($lsp) && [] !== $lsp && array_is_list($lsp)) {
+            return ['*' => IdeConfig::commandString($lsp)];
+        }
+        if (\is_string($lsp) && '' !== $lsp) {
+            return ['*' => $lsp];
+        }
+        if (!\is_array($lsp)) {
+            return [];
+        }
+
+        $map = [];
+        foreach (array_keys($lsp) as $language) {
+            $map[(string) $language] = IdeConfig::commandString($lsp[$language]);
+        }
+
+        return $map;
+    }
+
+    /**
+     * The read-modify-write every persist* shares: load the file (missing or
+     * unparseable reads as empty), hand the decoded config to $mutate by
+     * reference, write it back. Spelled once here rather than eight times.
+     *
+     * @param \Closure(array<array-key, mixed>): void $mutate
+     */
+    private static function edit(string $rootDir, \Closure $mutate): bool
+    {
+        $file = $rootDir.self::FILE;
+        $config = JsonFile::read($file) ?? [];
+        $mutate($config);
+
+        return self::write($file, $config);
+    }
+
+    /**
+     * A top-level block as an array, treating a missing or non-array value as empty.
+     *
+     * @param array<array-key, mixed> $config
+     *
+     * @return array<array-key, mixed>
+     */
+    private static function section(array $config, string $key): array
+    {
+        return \is_array($config[$key] ?? null) ? $config[$key] : [];
+    }
+
+    /**
+     * Atomically write the merged config back, pretty-printed; false on IO error.
+     *
+     * @param array<array-key, mixed> $config
+     */
+    private static function write(string $file, array $config): bool
+    {
+        try {
+            new Filesystem()->dumpFile(
+                $file,
+                json_encode($config, JSON_THROW_ON_ERROR | \JSON_PRETTY_PRINT | \JSON_UNESCAPED_SLASHES).\PHP_EOL,
+            );
+        } catch (IOExceptionInterface) {
+            return false;
+        }
+
+        return true;
+    }
+}

@@ -4,8 +4,8 @@ declare(strict_types=1);
 
 namespace Porta\Settings;
 
-use Porta\Config\IdeConfig;
 use Porta\Config\LanguageCatalog;
+use Porta\Config\PortaJsonWriter;
 use Porta\Debug\DebugAdapters;
 use Porta\I18n\Translator;
 use Porta\Ui\Notifier;
@@ -63,7 +63,7 @@ final class SettingsDebugController
 
     private function changeAdapter(string $language, string $command): void
     {
-        $persisted = IdeConfig::persistLanguageDebug($this->rootDir, $language, 'adapter', $command);
+        $persisted = PortaJsonWriter::persistLanguageDebug($this->rootDir, $language, 'adapter', $command);
         $this->adapters->set($language, $command, $this->adapters->launchOverrides($language));
 
         $shown = '' === $command ? $this->translator->trans('not configured') : $command;
@@ -86,7 +86,7 @@ final class SettingsDebugController
             $launch = $decoded;
         }
 
-        $persisted = IdeConfig::persistLanguageDebug($this->rootDir, $language, 'launch', [] === $launch ? null : $launch);
+        $persisted = PortaJsonWriter::persistLanguageDebug($this->rootDir, $language, 'launch', [] === $launch ? null : $launch);
         $this->adapters->set($language, $this->adapters->adapterCommand($language), $launch);
 
         $saved = $persisted ? '' : ' ('.$this->translator->trans('not saved').')';

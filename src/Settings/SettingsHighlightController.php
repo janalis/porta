@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Porta\Settings;
 
 use Porta\Config\IdeConfig;
+use Porta\Config\PortaJsonWriter;
 use Porta\Highlight\HighlightRegistry;
 use Porta\I18n\Translator;
 use Porta\Plugin\PluginEnablement;
@@ -116,7 +117,7 @@ final class SettingsHighlightController
 
         $language = self::DEFAULT_KEY === $key ? null : substr($key, offset: 5);
 
-        IdeConfig::persistHighlighter($this->rootDir, $language, $value);
+        PortaJsonWriter::persistHighlighter($this->rootDir, $language, $value);
     }
 
     /**

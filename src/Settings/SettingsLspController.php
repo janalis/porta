@@ -6,6 +6,7 @@ namespace Porta\Settings;
 
 use Porta\Config\IdeConfig;
 use Porta\Config\LanguageCatalog;
+use Porta\Config\PortaJsonWriter;
 use Porta\I18n\Translator;
 use Porta\Lsp\LspReconfigurer;
 use Porta\Lsp\ServerLocator;
@@ -68,7 +69,7 @@ final class SettingsLspController
         }
 
         $command = trim($command);
-        $persisted = IdeConfig::persistLspServer($this->rootDir, $language, $command);
+        $persisted = PortaJsonWriter::persistLspServer($this->rootDir, $language, $command);
         if ('' === $command) {
             unset($this->overrides[$language]);
         }

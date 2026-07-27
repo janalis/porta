@@ -5,7 +5,7 @@ declare(strict_types=1);
 namespace Porta\Plugin;
 
 use Porta\Config\CommandRegistry;
-use Porta\Config\IdeConfig;
+use Porta\Config\PortaJsonWriter;
 use Porta\Container\AsIdeService;
 use Porta\I18n\Translator;
 use Porta\Lsp\LspReconfigurer;
@@ -181,12 +181,12 @@ final class PluginLifecycle implements PluginLifecycleOps
     {
         if ($this->isBundled($name)) {
             unset($this->enabled[$name]);
-            IdeConfig::persistBundledDisabled($this->rootDir, $name);
+            PortaJsonWriter::persistBundledDisabled($this->rootDir, $name);
 
             return;
         }
         $this->disabled[$name] = true;
-        IdeConfig::persistPluginDisabled($this->rootDir, $name);
+        PortaJsonWriter::persistPluginDisabled($this->rootDir, $name);
     }
 
     /**
@@ -197,12 +197,12 @@ final class PluginLifecycle implements PluginLifecycleOps
     {
         if ($this->isBundled($name)) {
             $this->enabled[$name] = true;
-            IdeConfig::persistBundledEnabled($this->rootDir, $name);
+            PortaJsonWriter::persistBundledEnabled($this->rootDir, $name);
 
             return;
         }
         unset($this->disabled[$name]);
-        IdeConfig::persistPluginEnabled($this->rootDir, $name);
+        PortaJsonWriter::persistPluginEnabled($this->rootDir, $name);
     }
 
     /** Re-resolve the LSP servers when a toggled plugin provides one (and no --lsp override wins). */

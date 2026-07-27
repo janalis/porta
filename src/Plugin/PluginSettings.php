@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Porta\Plugin;
 
 use Porta\Config\IdeConfig;
+use Porta\Config\PortaJsonWriter;
 use Porta\Settings\SettingsRow;
 use Porta\Settings\SettingsRowKind;
 
@@ -99,7 +100,7 @@ final class PluginSettings
         }
         $coerced = $this->coerce($descriptor, $value);
         $this->values[$plugin][$key] = $coerced;
-        IdeConfig::persistPluginSetting($this->rootDir, $plugin, $key, $coerced);
+        PortaJsonWriter::persistPluginSetting($this->rootDir, $plugin, $key, $coerced);
     }
 
     /** @param Descriptor $descriptor */

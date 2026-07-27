@@ -5,8 +5,6 @@ declare(strict_types=1);
 namespace Porta\Config;
 
 use Porta\Support\JsonFile;
-use Symfony\Component\Filesystem\Exception\IOExceptionInterface;
-use Symfony\Component\Filesystem\Filesystem;
 
 /**
  * Project configuration loaded from .porta.json:
@@ -59,7 +57,8 @@ final class IdeConfig
      * "Respect .editorconfig" toggle — .editorconfig is always honored now,
      * superseded per language by the indent settings.
      */
-    private const LEGACY_SETTINGS = ['editorConfig', 'relativeLineNumbers'];
+    /** Superseded setting keys: ignored on load and stripped on write ({@see PortaJsonWriter}). */
+    public const array LEGACY_SETTINGS = ['editorConfig', 'relativeLineNumbers'];
 
     /** An empty `highlight` block: no global default, no per-language overrides. */
     private const array NO_HIGHLIGHT = ['default' => '', 'languages' => []];
@@ -281,8 +280,18 @@ final class IdeConfig
         return $servers;
     }
 
+    /**
+     * A `.porta.json` value normalized to a list of strings (non-scalars dropped).
+     *
+     * @return list<string>
+     */
+    public static function stringList(mixed $value): array
+    {
+        return \is_array($value) ? array_values(array_map(strval(...), array_filter($value, is_scalar(...)))) : [];
+    }
+
     /** A raw `lsp` value (string or argv list) as a single command string. */
-    private static function commandString(mixed $command): string
+    public static function commandString(mixed $command): string
     {
         if (\is_array($command)) {
             return implode(' ', array_map(strval(...), $command));
@@ -399,278 +408,5 @@ final class IdeConfig
         }
 
         return \is_string($value) && 1 === preg_match('/^\d+$/', $value) ? max(1, (int) $value) : null;
-    }
-
-    /**
-     * Persist a single setting into .porta.json, merging with and preserving
-     * any existing content (including unknown keys). Returns true on success.
-     */
-    public static function persistSetting(string $rootDir, string $key, int|bool|string $value): bool
-    {
-        $file = $rootDir.'/.porta.json';
-        $config = JsonFile::read($file) ?? [];
-        $settings = \is_array($config['settings'] ?? null) ? $config['settings'] : [];
-        $settings[$key] = $value;
-        // Drop any migrated-away legacy key so a stale value doesn't linger next to
-        // the key that superseded it (e.g. relativeLineNumbers after lineNumbers).
-        foreach (self::LEGACY_SETTINGS as $legacy) {
-            unset($settings[$legacy]);
-        }
-        $config['settings'] = $settings;
-
-        return self::write($file, $config);
-    }
-
-    /**
-     * Persist an action's key binding into .porta.json's `keymap` block, merging
-     * with and preserving any existing content (other actions, unknown keys).
-     * The override takes effect next launch, when the keymap is merged into the
-     * live keybindings. Returns true on success.
-     *
-     * @param list<string> $keys
-     */
-    public static function persistKeymap(string $rootDir, string $action, array $keys): bool
-    {
-        $file = $rootDir.'/.porta.json';
-        $config = JsonFile::read($file) ?? [];
-        $keymap = \is_array($config['keymap'] ?? null) ? $config['keymap'] : [];
-        $keymap[$action] = array_values($keys);
-        $config['keymap'] = $keymap;
-
-        return self::write($file, $config);
-    }
-
-    /** Persist a project/global plugin as enabled by dropping it from the `disabledPlugins` list. */
-    public static function persistPluginEnabled(string $rootDir, string $plugin): bool
-    {
-        return self::persistPluginMembership($rootDir, 'disabledPlugins', $plugin, member: false);
-    }
-
-    /** Persist a project/global plugin as disabled by adding it to the `disabledPlugins` list. */
-    public static function persistPluginDisabled(string $rootDir, string $plugin): bool
-    {
-        return self::persistPluginMembership($rootDir, 'disabledPlugins', $plugin, member: true);
-    }
-
-    /** Persist a bundled plugin as enabled by adding it to the opt-in `enabledPlugins` list. */
-    public static function persistBundledEnabled(string $rootDir, string $plugin): bool
-    {
-        return self::persistPluginMembership($rootDir, 'enabledPlugins', $plugin, member: true);
-    }
-
-    /** Persist a bundled plugin as disabled by dropping it from the `enabledPlugins` list. */
-    public static function persistBundledDisabled(string $rootDir, string $plugin): bool
-    {
-        return self::persistPluginMembership($rootDir, 'enabledPlugins', $plugin, member: false);
-    }
-
-    /** Add ($member) or drop $plugin from a top-level string-list key, dropping the key when empty. */
-    // @mago-expect lint:no-boolean-flag-parameter -- shared add/drop membership helper; the four public persist* methods are its split faces
-    private static function persistPluginMembership(string $rootDir, string $key, string $plugin, bool $member): bool
-    {
-        $file = $rootDir.'/.porta.json';
-        $config = JsonFile::read($file) ?? [];
-        $without = array_values(array_diff(self::stringList($config[$key] ?? null), [$plugin]));
-        $list = $member ? [...$without, $plugin] : $without;
-        if ([] === $list) {
-            unset($config[$key]);
-        }
-        if ([] !== $list) {
-            $config[$key] = $list;
-        }
-
-        return self::write($file, $config);
-    }
-
-    /**
-     * A `.porta.json` value normalized to a list of strings (non-scalars dropped).
-     *
-     * @return list<string>
-     */
-    private static function stringList(mixed $value): array
-    {
-        return \is_array($value) ? array_values(array_map(strval(...), array_filter($value, is_scalar(...)))) : [];
-    }
-
-    /** Persist one plugin-defined setting value under the top-level `plugins.<name>.<key>`. */
-    public static function persistPluginSetting(string $rootDir, string $plugin, string $key, bool|int|string $value): bool
-    {
-        $file = $rootDir.'/.porta.json';
-        $config = JsonFile::read($file) ?? [];
-        $plugins = \is_array($config['plugins'] ?? null) ? $config['plugins'] : [];
-        $entry = \is_array($plugins[$plugin] ?? null) ? $plugins[$plugin] : [];
-        $entry[$key] = $value;
-        $plugins[$plugin] = $entry;
-        $config['plugins'] = $plugins;
-
-        return self::write($file, $config);
-    }
-
-    /**
-     * Write the top-level `highlight` block. An empty $id clears the entry —
-     * "no preference" and "prefer nothing" are the same thing, and leaving an
-     * empty string behind would look like a configured backend named "".
-     */
-    public static function persistHighlighter(string $rootDir, ?string $language, string $id): bool
-    {
-        $file = $rootDir.'/.porta.json';
-        $config = JsonFile::read($file) ?? [];
-        $highlight = \is_array($config['highlight'] ?? null) ? $config['highlight'] : [];
-
-        if (null === $language) {
-            $highlight['default'] = $id;
-            if ('' === $id) {
-                unset($highlight['default']);
-            }
-        }
-
-        if (null !== $language) {
-            $languages = \is_array($highlight['languages'] ?? null) ? $highlight['languages'] : [];
-            $languages[$language] = $id;
-            if ('' === $id) {
-                unset($languages[$language]);
-            }
-            $highlight['languages'] = $languages;
-            if ([] === $languages) {
-                unset($highlight['languages']);
-            }
-        }
-
-        $config['highlight'] = $highlight;
-        if ([] === $highlight) {
-            unset($config['highlight']);
-        }
-
-        return self::write($file, $config);
-    }
-
-    /**
-     * Persist one per-language indent override into .porta.json's `languages`
-     * block, merging with and preserving existing content. Returns true on
-     * success.
-     */
-    public static function persistLanguageSetting(string $rootDir, string $language, string $key, int|string $value): bool
-    {
-        $file = $rootDir.'/.porta.json';
-        $config = JsonFile::read($file) ?? [];
-        $languages = \is_array($config['languages'] ?? null) ? $config['languages'] : [];
-        $entry = \is_array($languages[$language] ?? null) ? $languages[$language] : [];
-        $entry[$key] = $value;
-        $languages[$language] = $entry;
-        $config['languages'] = $languages;
-
-        return self::write($file, $config);
-    }
-
-    /**
-     * Persist one per-language debug override (`adapter` command string or
-     * `launch` object) into .porta.json's `languages.<id>.debug` block. A null
-     * / blank / empty value removes the key; an emptied `debug` block is
-     * dropped (the language entry itself is preserved). True on success.
-     *
-     * @param string|array<string, mixed>|null $value
-     */
-    public static function persistLanguageDebug(string $rootDir, string $language, string $key, string|array|null $value): bool
-    {
-        $file = $rootDir.'/.porta.json';
-        $config = JsonFile::read($file) ?? [];
-        $languages = \is_array($config['languages'] ?? null) ? $config['languages'] : [];
-        $entry = \is_array($languages[$language] ?? null) ? $languages[$language] : [];
-        $debug = \is_array($entry['debug'] ?? null) ? $entry['debug'] : [];
-
-        $removeKey = null === $value || '' === $value || [] === $value;
-        if ($removeKey) {
-            unset($debug[$key]);
-        }
-        if (!$removeKey) {
-            $debug[$key] = $value;
-        }
-
-        if ([] === $debug) {
-            unset($entry['debug']);
-        }
-        if ([] !== $debug) {
-            $entry['debug'] = $debug;
-        }
-        $languages[$language] = $entry;
-        $config['languages'] = $languages;
-
-        return self::write($file, $config);
-    }
-
-    /**
-     * Persist a per-language LSP server command into .porta.json's `lsp` map.
-     * A blank command removes the language's entry (reverting to auto-detect);
-     * an empty map drops the whole `lsp` block. A single-command form is
-     * converted to a map (its command kept as the `*` catch-all). True on success.
-     */
-    public static function persistLspServer(string $rootDir, string $languageId, string $command): bool
-    {
-        $file = $rootDir.'/.porta.json';
-        $config = JsonFile::read($file) ?? [];
-        $map = self::lspMap($config['lsp'] ?? null);
-
-        $command = trim($command);
-        if ('' === $command) {
-            unset($map[$languageId]);
-        }
-        if ('' !== $command) {
-            $map[$languageId] = $command;
-        }
-
-        if ([] === $map) {
-            unset($config['lsp']);
-        }
-        if ([] !== $map) {
-            $config['lsp'] = $map;
-        }
-
-        return self::write($file, $config);
-    }
-
-    /**
-     * Normalize any `lsp` value to a {languageId: command} map: a map is coerced
-     * to command strings; a single command string/argv list becomes the `*`
-     * catch-all; anything else is empty.
-     *
-     * @return array<string, string>
-     */
-    private static function lspMap(mixed $lsp): array
-    {
-        if (\is_array($lsp) && [] !== $lsp && array_is_list($lsp)) {
-            return ['*' => self::commandString($lsp)];
-        }
-        if (\is_string($lsp) && '' !== $lsp) {
-            return ['*' => $lsp];
-        }
-        if (!\is_array($lsp)) {
-            return [];
-        }
-
-        $map = [];
-        foreach (array_keys($lsp) as $language) {
-            $map[(string) $language] = self::commandString($lsp[$language]);
-        }
-
-        return $map;
-    }
-
-    /**
-     * Atomically write the merged config back, pretty-printed; false on IO error.
-     *
-     * @param array<array-key, mixed> $config
-     */
-    private static function write(string $file, array $config): bool
-    {
-        try {
-            new Filesystem()->dumpFile(
-                $file,
-                json_encode($config, JSON_THROW_ON_ERROR | \JSON_PRETTY_PRINT | \JSON_UNESCAPED_SLASHES).\PHP_EOL,
-            );
-        } catch (IOExceptionInterface) {
-            return false;
-        }
-
-        return true;
     }
 }

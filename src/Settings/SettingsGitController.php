@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace Porta\Settings;
 
-use Porta\Config\IdeConfig;
+use Porta\Config\PortaJsonWriter;
 use Porta\Editor\EditorViewOptions;
 use Porta\Git\GitRefresher;
 use Porta\Git\GitSettings;
@@ -101,7 +101,7 @@ final class SettingsGitController
             default => null, // gitPath: applies on restart
         };
 
-        $persisted = IdeConfig::persistSetting($this->rootDir, $key, $value);
+        $persisted = PortaJsonWriter::persistSetting($this->rootDir, $key, $value);
         $state = \is_bool($value) ? $this->translator->trans($value ? 'on' : 'off') : (string) $value;
         $note = $meta[2] ? ' · '.$this->translator->trans('applies on restart') : '';
         $saved = $persisted ? '' : ' ('.$this->translator->trans('not saved').')';

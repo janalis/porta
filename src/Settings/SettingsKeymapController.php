@@ -5,8 +5,8 @@ declare(strict_types=1);
 namespace Porta\Settings;
 
 use Porta\Config\ActionCatalog;
-use Porta\Config\IdeConfig;
 use Porta\Config\KeybindingRow;
+use Porta\Config\PortaJsonWriter;
 use Porta\Editor\EditorKeymapProvider;
 use Porta\I18n\Translator;
 use Porta\Ui\Notifier;
@@ -64,7 +64,7 @@ final class SettingsKeymapController
         }
 
         $token = $parsed['key'];
-        $persisted = IdeConfig::persistKeymap($this->rootDir, $action, [$token]);
+        $persisted = PortaJsonWriter::persistKeymap($this->rootDir, $action, [$token]);
         $saved = $persisted ? '' : ' ('.$this->translator->trans('not saved').')';
         $this->notifier->flash($this->translator->trans('Rebound %action% to %key% · applies on restart', [
             '%action%' => $this->translator->trans(ActionCatalog::label($action)),

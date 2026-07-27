@@ -7,6 +7,7 @@ namespace Porta\Settings;
 use Porta\Config\IdeConfig;
 use Porta\Config\LanguageCatalog;
 use Porta\Config\LanguageIndent;
+use Porta\Config\PortaJsonWriter;
 use Porta\Container\AsIdeService;
 use Porta\Editor\EditorIndentTarget;
 use Porta\I18n\Translator;
@@ -117,7 +118,7 @@ final class SettingsLanguageController
             ? new LanguageIndent((string) $stored, $current->indentSize)
             : new LanguageIndent($current->indentStyle, $stored);
 
-        $persisted = IdeConfig::persistLanguageSetting($this->rootDir, $language, $key, $stored);
+        $persisted = PortaJsonWriter::persistLanguageSetting($this->rootDir, $language, $key, $stored);
         $this->applyToEditor();
         $label = $this->translator->trans('indentSize' === $key ? 'indent size' : 'indent style');
         $saved = $persisted ? '' : ' ('.$this->translator->trans('not saved').')';
@@ -131,7 +132,7 @@ final class SettingsLanguageController
     private function changeRunCommand(string $language, string $command): void
     {
         $this->runCommand[$language] = $command;
-        $persisted = IdeConfig::persistLanguageSetting($this->rootDir, $language, 'runCommand', $command);
+        $persisted = PortaJsonWriter::persistLanguageSetting($this->rootDir, $language, 'runCommand', $command);
         $note = ' · '.$this->translator->trans('applies on restart');
         $saved = $persisted ? '' : ' ('.$this->translator->trans('not saved').')';
         $shown = '' === $command ? $this->translator->trans('bundled php') : $command;
