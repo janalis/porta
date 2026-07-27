@@ -20,11 +20,7 @@ final class Themes
             return MonochromeTheme::definition();
         }
 
-        return match ($theme) {
-            'light' => LightTheme::definition(),
-            'high-contrast' => HighContrastTheme::definition(),
-            default => DarkTheme::definition(),
-        };
+        return Theme::fromId($theme)->definition();
     }
 
     /**

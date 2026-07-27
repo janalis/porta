@@ -7,6 +7,7 @@ namespace Porta\Plugin;
 use Porta\Editor\OpenFocus;
 use Porta\Highlight\DarkTerminalTheme;
 use Porta\Lsp\Uri;
+use Porta\Settings\SettingsRowKind;
 use Tempest\Highlight\TerminalTheme;
 
 /**
@@ -310,12 +311,7 @@ final class PluginApi
             return $descriptor['default'];
         }
 
-        return match ($descriptor['kind']) {
-            'bool' => (bool) $raw,
-            'int' => (int) $raw,
-            'choice' => \in_array((string) $raw, $descriptor['options'] ?? [], strict: true) ? (string) $raw : $descriptor['default'],
-            default => (string) $raw,
-        };
+        return SettingsRowKind::from($descriptor['kind'])->coerce($raw, $descriptor['default'], $descriptor['options'] ?? []);
     }
 
     /** @param \Closure(string): void $listener receives the absolute path */

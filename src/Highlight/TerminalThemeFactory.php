@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Porta\Highlight;
 
+use Porta\Ui\Theme\Theme;
 use Tempest\Highlight\TerminalTheme;
 
 /**
@@ -22,11 +23,7 @@ final class TerminalThemeFactory
             return new PlainTerminalTheme();
         }
 
-        return match ($theme) {
-            'light' => new LightTerminalTheme(),
-            'high-contrast' => new HighContrastTerminalTheme(),
-            default => new DarkTerminalTheme(),
-        };
+        return Theme::fromId($theme)->terminalTheme();
     }
 
     /**

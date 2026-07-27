@@ -110,11 +110,6 @@ final class PluginSettings
             return $descriptor['default'];
         }
 
-        return match ($descriptor['kind']) {
-            'bool' => (bool) $value,
-            'int' => (int) $value,
-            'choice' => \in_array((string) $value, $descriptor['options'] ?? [], strict: true) ? (string) $value : $descriptor['default'],
-            default => (string) $value,
-        };
+        return SettingsRowKind::from($descriptor['kind'])->coerce($value, $descriptor['default'], $descriptor['options'] ?? []);
     }
 }

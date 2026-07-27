@@ -58,11 +58,7 @@ final class SettingsGitController
         $rows = [];
         foreach (self::META as $key => [$label, $kind, $restart]) {
             $raw = $this->settings[$key] ?? '';
-            $value = match ($kind) {
-                SettingsRowKind::Bool => (bool) $raw,
-                SettingsRowKind::Int => (int) $raw,
-                default => (string) $raw,
-            };
+            $value = $kind->coerce($raw);
             $rows[] = new SettingsRow(
                 key: $key,
                 label: $this->translator->trans($label),

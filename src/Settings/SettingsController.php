@@ -12,6 +12,7 @@ use Porta\I18n\Translator;
 use Porta\Search\TodoTags;
 use Porta\Settings\LiveSettingsApplier;
 use Porta\Ui\Notifier;
+use Porta\Ui\Theme\Theme;
 use Porta\Widget\BreadcrumbsWidget;
 use Symfony\Component\DependencyInjection\Attribute\Autowire;
 
@@ -66,7 +67,7 @@ final class SettingsController
                 'group' => 'interface',
                 'restart' => false,
                 'apply' => static fn (int|bool|string $v) => $applier->applyTheme((string) $v),
-                'options' => ['dark', 'light', 'high-contrast'],
+                'options' => Theme::ids(),
             ],
             'cursorShape' => [
                 'label' => 'Cursor shape',
