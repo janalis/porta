@@ -6,10 +6,10 @@ namespace Porta\Plugin;
 
 use Porta\Container\AsIdeService;
 use Porta\Editor\DiagnosticsSink;
+use Porta\Editor\EditorTextAccess;
 use Porta\Editor\FileOpener;
 use Porta\I18n\Translator;
 use Porta\Ui\Notifier;
-use Porta\Widget\CodeEditorWidget;
 use Symfony\Component\Tui\Tui;
 
 /**
@@ -24,7 +24,7 @@ final readonly class PluginRuntime
     public function __construct(
         public Notifier $notifier,
         public Translator $translator,
-        public CodeEditorWidget $editor,
+        public EditorTextAccess $editor,
         public FileOpener $files,
         public Tui $tui,
         public DiagnosticsSink $diagnostics,

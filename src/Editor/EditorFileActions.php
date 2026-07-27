@@ -19,6 +19,8 @@ final class EditorFileActions implements EditorFileActionHandler
         private readonly BufferNavigator $navigator,
         private readonly Clipboard $clipboard,
         private readonly FindBarWidget $findBar,
+        // Concrete on purpose: it reads the document *and* hands the widget to
+        // EditorFindTarget as the decoration sink for match highlighting.
         private readonly CodeEditorWidget $editor,
         private readonly Tui $tui,
     ) {}

@@ -8,6 +8,7 @@ use Porta\Config\EditorConfig\ResolvedEditorConfig;
 use Porta\Config\LanguageIndent;
 use Porta\Container\AsIdeService;
 use Porta\Container\AsWidget;
+use Porta\Editor\ActiveDocumentProvider;
 use Porta\Editor\ActiveFileProvider;
 use Porta\Editor\AutoPairService;
 use Porta\Editor\BreadcrumbScanner;
@@ -27,6 +28,7 @@ use Porta\Editor\EditorKeymapProvider;
 use Porta\Editor\EditorMouse;
 use Porta\Editor\EditorScroll;
 use Porta\Editor\EditorStructural;
+use Porta\Editor\EditorTextAccess;
 use Porta\Editor\EditorViewOptions;
 use Porta\Editor\EditorViewport;
 use Porta\Editor\FoldModel;
@@ -80,6 +82,7 @@ use Tempest\Highlight\TerminalTheme;
 #[AsIdeService]
 #[AsWidget('editor')]
 final class CodeEditorWidget extends AbstractWidget implements
+    ActiveDocumentProvider,
     ActiveFileProvider,
     EditorCommandTarget,
     EditorDecorationSink,
@@ -87,6 +90,7 @@ final class CodeEditorWidget extends AbstractWidget implements
     EditorIndentTarget,
     EditorInvalidator,
     EditorKeymapProvider,
+    EditorTextAccess,
     EditorViewOptions,
     FocusableInterface,
     LtrPane,
