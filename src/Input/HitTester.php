@@ -23,6 +23,12 @@ final class HitTester
         private readonly Renderer $renderer,
     ) {}
 
+    /** Whether $rect exists and the pointer is inside it — the wheel-scroll hit guard. */
+    public function contains(?WidgetRect $rect, MouseEvent $mouse): bool
+    {
+        return null !== $rect && $rect->contains($mouse->row, $mouse->col);
+    }
+
     /**
      * The widget's rect in the last render, or null when the widget is
      * detached: the renderer keeps last-frame rects for widgets that were
