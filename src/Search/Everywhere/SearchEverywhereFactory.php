@@ -6,6 +6,7 @@ namespace Porta\Search\Everywhere;
 
 use Porta\Config\CommandRegistry;
 use Porta\Editor\BufferManager;
+use Porta\Editor\EditorTextAccess;
 use Porta\Editor\FileOpener;
 use Porta\Editor\OpenFocus;
 use Porta\I18n\Translator;
@@ -14,7 +15,6 @@ use Porta\Lsp\WorkspaceSymbolClient;
 use Porta\Search\FileIndex;
 use Porta\Search\ProjectSearch;
 use Porta\Support\Scheduler;
-use Porta\Widget\CodeEditorWidget;
 use Symfony\Component\Tui\Tui;
 
 /**
@@ -22,12 +22,15 @@ use Symfony\Component\Tui\Tui;
  * Actions/Text) feeding one aggregator that drives the editor's centered
  * overlay. A factory because the per-source open/jump hooks close over the
  * buffer stack and the editor, and the sync/async source split isn't
- * expressible as plain autowiring.
+ * expressible as plain autowiring. It needs the editor twice, once per role
+ * (both resolve to the same widget): the overlay surface the controllers
+ * drive, and the text seam the jump hooks close over.
  */
 final class SearchEverywhereFactory
 {
     public function __construct(
-        private readonly CodeEditorWidget $editor,
+        private readonly SearchOverlay $overlay,
+        private readonly EditorTextAccess $editorText,
         private readonly CommandRegistry $commands,
         private readonly BufferManager $buffers,
         private readonly FileOpener $bufferService,
@@ -48,7 +51,7 @@ final class SearchEverywhereFactory
         $openFile = fn (string $path, OpenFocus $focus) => $this->bufferService->openFile($path, $focus);
 
         return new SearchEverywhereController(
-            $this->editor,
+            $this->overlay,
             [new FilesSource(new FileIndex($this->rootDir), $this->rootDir, $openFile)],
             [],
             $this->buffers,
@@ -69,7 +72,7 @@ final class SearchEverywhereFactory
     public function createCommandPalette(): SearchEverywhereController
     {
         return new SearchEverywhereController(
-            $this->editor,
+            $this->overlay,
             [new ActionsSource($this->commands)],
             [],
             $this->buffers,
@@ -90,11 +93,11 @@ final class SearchEverywhereFactory
     public function createGoToSymbol(): SearchEverywhereController
     {
         $openFile = fn (string $path, OpenFocus $focus) => $this->bufferService->openFile($path, $focus);
-        $jumpTo = fn (int $line, int $col) => $this->editor->jumpTo($line, $col);
+        $jumpTo = fn (int $line, int $col) => $this->editorText->jumpTo($line, $col);
         $searchSymbols = new WorkspaceSymbolClient($this->lsp, $this->rootDir)->search(...);
 
         return new SearchEverywhereController(
-            $this->editor,
+            $this->overlay,
             [],
             [new WorkspaceSymbolSource($searchSymbols, SearchCategory::Symbols, [], $this->rootDir, $openFile, $jumpTo)],
             $this->buffers,
@@ -111,11 +114,11 @@ final class SearchEverywhereFactory
     public function create(): SearchEverywhereController
     {
         $openFile = fn (string $path, OpenFocus $focus) => $this->bufferService->openFile($path, $focus);
-        $jumpTo = fn (int $line, int $col) => $this->editor->jumpTo($line, $col);
+        $jumpTo = fn (int $line, int $col) => $this->editorText->jumpTo($line, $col);
         $searchSymbols = new WorkspaceSymbolClient($this->lsp, $this->rootDir)->search(...);
 
         return new SearchEverywhereController(
-            $this->editor,
+            $this->overlay,
             [
                 new FilesSource(new FileIndex($this->rootDir), $this->rootDir, $openFile),
                 new ActionsSource($this->commands),
