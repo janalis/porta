@@ -74,12 +74,21 @@ excludes = ["tests/Support/slow-reading-lsp-server.php", "tests/Support/demandin
 #
 #   cyclomatic-complexity 220  Input/MouseRouter, Overlay/State/FindInFilesModal
 #   too-many-methods      215  tests/E2e/IdeEdgeCasesTest (the rule covers tests)
-#   too-many-properties    45  src/Widget/CodeEditorWidget
-#   excessive-parameter-list 25 Input/MouseRouter's constructor (24 collaborators)
-#   kan-defect             40  unchanged from the aggressive probe — nothing near it
+#   too-many-properties    36  Overlay/State/FindInFilesModal (36 properties)
+#   excessive-parameter-list 24 Bootstrap/WidgetHooks' constructor (24 collaborators)
+#   kan-defect             40  nothing comes near it
 #   halstead                   backed off just above BreadcrumbScanner,
 #                              MarkdownRenderer and tests/E2e/IdeTest, which a
 #                              tighter setting flagged as standing noise
+#
+# The last two moved because their previous owners shrank: MouseRouter's ctor
+# went 25 -> 22 (ContextMenuRouter) and CodeEditorWidget 38 -> 34 properties
+# (EditorDisplayOptions), so the binding constraint is now a DIFFERENT class in
+# both cases. Both new owners are deliberate: WidgetHooks and FindInFilesModal
+# are, respectively, a wiring step and a dialog whose layout state genuinely is
+# that wide — see the plan's "why this is the last round" note. Neither can drop
+# without a change that was considered and declined, so these two are at their
+# floor until that decision changes.
 #
 # Re-measure and lower again after the next structural change; a threshold far
 # above the real maximum is not a gate. Verified failing: injecting 60 dummy
@@ -87,8 +96,8 @@ excludes = ["tests/Support/slow-reading-lsp-server.php", "tests/Support/demandin
 [linter.rules]
 cyclomatic-complexity = { threshold = 220 }
 too-many-methods = { threshold = 215 }
-too-many-properties = { threshold = 45 }
+too-many-properties = { threshold = 36 }
 too-many-enum-cases = { threshold = 60 }
-excessive-parameter-list = { threshold = 25 }
+excessive-parameter-list = { threshold = 24 }
 kan-defect = { threshold = 40 }
 halstead = { effort-threshold = 22000, difficulty-threshold = 33, volume-threshold = 3800 }
