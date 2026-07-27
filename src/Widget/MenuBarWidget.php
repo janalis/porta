@@ -80,7 +80,7 @@ final class MenuBarWidget extends OverlayWidget implements FocusableInterface
         if ([] === $this->menus) {
             return;
         }
-        $this->open = true;
+        $this->markOpen();
         $this->openIndex = IntMath::clamp($index, 0, \count($this->menus) - 1);
         $this->selected = $this->firstSelectable($this->openIndex);
         $this->afterNavigate();

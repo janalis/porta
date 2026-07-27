@@ -7,7 +7,7 @@ namespace Porta\Settings;
 use Porta\Config\IdeConfig;
 use Porta\Highlight\HighlightRegistry;
 use Porta\I18n\Translator;
-use Porta\Plugin\PluginLifecycleOps;
+use Porta\Plugin\PluginEnablement;
 use Porta\Support\LanguageMap;
 
 /**
@@ -51,7 +51,7 @@ final class SettingsHighlightController
         private readonly Translator $translator,
         private readonly string $rootDir,
         private readonly IdeConfig $config,
-        private readonly ?PluginLifecycleOps $lifecycle = null,
+        private readonly ?PluginEnablement $lifecycle = null,
     ) {}
 
     /** @return list<SettingsRow> */

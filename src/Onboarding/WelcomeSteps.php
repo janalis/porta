@@ -7,7 +7,7 @@ namespace Porta\Onboarding;
 use Porta\Config\CommandRegistry;
 use Porta\Highlight\SyntaxHighlightProviderSource;
 use Porta\I18n\Translator;
-use Porta\Plugin\PluginLifecycleOps;
+use Porta\Plugin\PluginEnablement;
 use Porta\Settings\SettingsHighlightController;
 
 /**
@@ -49,7 +49,7 @@ final class WelcomeSteps
     public function __construct(
         private readonly Translator $translator,
         private readonly SyntaxHighlightProviderSource $highlighters,
-        private readonly PluginLifecycleOps $lifecycle,
+        private readonly PluginEnablement $lifecycle,
         private readonly CommandRegistry $commands,
         private readonly MagoDetector $mago,
     ) {}

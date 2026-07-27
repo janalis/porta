@@ -88,7 +88,7 @@ final class FindBarWidget extends OverlayWidget implements FocusableInterface
     public function open(FindTarget $target, FindMode $mode, string $initialQuery = ''): void
     {
         $this->target = $target;
-        $this->open = true;
+        $this->markOpen();
         $this->withReplace = FindMode::Replace === $mode;
         $this->activeField = 0;
         if ('' !== $initialQuery) {

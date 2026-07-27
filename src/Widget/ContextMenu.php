@@ -62,7 +62,7 @@ final class ContextMenu extends OverlayWidget
             return;
         }
         $this->items = $items;
-        $this->open = true;
+        $this->markOpen();
         $this->selected = MenuPanel::firstSelectable($items);
         $this->afterNavigate();
     }
