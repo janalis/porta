@@ -24,7 +24,6 @@ use Porta\Widget\DockTabsWidget;
 use Porta\Widget\MenuBarWidget;
 use Porta\Widget\SeparatorWidget;
 use Porta\Widget\StatusBarWidget;
-use Porta\Widget\TerminalPanelWidget;
 use Symfony\Component\Tui\Render\WidgetRect;
 use Symfony\Component\Tui\Tui;
 
@@ -346,11 +345,7 @@ final class MouseRouter
         // list — the terminal scrolls its scrollback (wheel up → into history).
         $panel = $this->dock->visiblePanel();
         if (null !== $panel && $this->containsPointer($this->hit->rect($panel), $mouse)) {
-            match (true) {
-                // Scrollback runs the other way: wheel up goes INTO history.
-                $panel instanceof TerminalPanelWidget => $panel->scroll(WheelStep::rows($mouse, factor: -1)),
-                default => $panel->scrollBy(WheelStep::rows($mouse)),
-            };
+            $panel->wheelBy(WheelStep::rows($mouse));
             $this->tui->requestRender();
 
             return;
@@ -715,10 +710,7 @@ final class MouseRouter
         $panel = $this->dock->visiblePanel();
         if (null !== $panel && null !== ($rel = $this->hit->hit($panel, $mouse->row, $mouse->col))) {
             $this->tui->setFocus($panel);
-            match (true) {
-                $panel instanceof TerminalPanelWidget => null,
-                default => $panel->handleClick($rel['row']),
-            };
+            $panel->clickRow($rel['row']);
             $this->tui->requestRender();
 
             return true;

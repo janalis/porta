@@ -41,7 +41,7 @@ use Symfony\Component\Tui\Widget\KeybindingsTrait;
 #[AsChromeRoot]
 #[AsIdeService]
 #[AsWidget('results')]
-final class ResultsPanelWidget extends OverlayWidget implements FocusableInterface, HoverableList, LtrPane, MenuOverlayHost
+final class ResultsPanelWidget extends DockPanelWidget implements FocusableInterface, HoverableList, LtrPane, MenuOverlayHost
 {
     use FocusableTrait;
     use MenuOverlayHostTrait;
@@ -440,6 +440,16 @@ final class ResultsPanelWidget extends OverlayWidget implements FocusableInterfa
     }
 
     /** The dock strip's right-aligned status (result/shown counts). */
+    public function wheelBy(int $rows): void
+    {
+        $this->scrollBy($rows);
+    }
+
+    public function clickRow(int $row): void
+    {
+        $this->handleClick($row);
+    }
+
     public function statusText(): string
     {
         return $this->buildStatus();

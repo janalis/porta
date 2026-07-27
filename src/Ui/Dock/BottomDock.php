@@ -11,6 +11,7 @@ use Porta\Ui\EditorArea;
 use Porta\Ui\Glyphs;
 use Porta\Ui\Notifier;
 use Porta\Widget\DebugPanelWidget;
+use Porta\Widget\DockPanelWidget;
 use Porta\Widget\DockTabsWidget;
 use Porta\Widget\OverlayWidget;
 use Porta\Widget\ResultsPanelWidget;
@@ -38,7 +39,7 @@ final class BottomDock
 {
     private ResultsPanelMode $mode = ResultsPanelMode::Search;
 
-    /** @var list<TerminalPanelWidget|ResultsPanelWidget|DebugPanelWidget> visibility order, most recently visible last */
+    /** @var list<DockPanelWidget> visibility order, most recently visible last */
     private array $mru = [];
 
     /** @var (callable(): void)|null reveals a Terminal tab by re-opening the active session (RunController) */
@@ -283,7 +284,7 @@ final class BottomDock
     }
 
     /** The panel currently owning the dock slot, or null while the dock is hidden. */
-    public function visiblePanel(): TerminalPanelWidget|ResultsPanelWidget|DebugPanelWidget|null
+    public function visiblePanel(): ?DockPanelWidget
     {
         foreach ($this->panels() as $panel) {
             if ($panel->isVisible()) {
@@ -436,14 +437,14 @@ final class BottomDock
         $this->notifier->flash($message);
     }
 
-    /** @return list<TerminalPanelWidget|ResultsPanelWidget|DebugPanelWidget> */
+    /** @return list<DockPanelWidget> */
     private function panels(): array
     {
         return [$this->terminalPanel, $this->resultsPanel, $this->debugPanel];
     }
 
     /** A panel opened (or re-opened): it takes the dock slot; the others park behind it. */
-    private function activate(TerminalPanelWidget|ResultsPanelWidget|DebugPanelWidget $panel): void
+    private function activate(DockPanelWidget $panel): void
     {
         foreach ($this->panels() as $other) {
             if ($other === $panel) {
@@ -460,7 +461,7 @@ final class BottomDock
      * focus. Every entry still in the order is alive — a close always prunes
      * itself here through its own hook.
      */
-    private function restoreAfter(TerminalPanelWidget|ResultsPanelWidget|DebugPanelWidget $panel): void
+    private function restoreAfter(DockPanelWidget $panel): void
     {
         $this->mru = array_values(array_filter($this->mru, static fn (AbstractWidget $seen): bool => $seen !== $panel));
         $last = $this->mru[\count($this->mru) - 1] ?? null;

@@ -36,7 +36,7 @@ use Symfony\Component\Tui\Widget\KeybindingsTrait;
 #[AsChromeRoot]
 #[AsIdeService]
 #[AsWidget('terminal')]
-final class TerminalPanelWidget extends OverlayWidget implements FocusableInterface, LtrPane, MenuOverlayHost
+final class TerminalPanelWidget extends DockPanelWidget implements FocusableInterface, LtrPane, MenuOverlayHost
 {
     use FocusableTrait;
     use MenuOverlayHostTrait;
@@ -111,6 +111,18 @@ final class TerminalPanelWidget extends OverlayWidget implements FocusableInterf
         $this->scrollBack = IntMath::clamp($this->scrollBack + $lines, 0, $max);
         $this->invalidate();
     }
+
+    /** Wheel over the terminal: up goes INTO the scrollback, so the sign flips. */
+    public function wheelBy(int $rows): void
+    {
+        $this->scroll(-$rows);
+    }
+
+    /**
+     * No-op: a terminal body click only refocuses the pane. Selection and the
+     * shell's own mouse reporting are handled on the raw-input path, not here.
+     */
+    public function clickRow(int $row): void {}
 
     public function onInputForward(callable $callback): self
     {

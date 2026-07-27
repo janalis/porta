@@ -41,7 +41,7 @@ use Symfony\Component\Tui\Widget\KeybindingsTrait;
 #[AsChromeRoot]
 #[AsIdeService]
 #[AsWidget('debug')]
-final class DebugPanelWidget extends OverlayWidget implements FocusableInterface, HoverableList, LtrPane, MenuOverlayHost
+final class DebugPanelWidget extends DockPanelWidget implements FocusableInterface, HoverableList, LtrPane, MenuOverlayHost
 {
     use FocusableTrait;
     use MenuOverlayHostTrait;
@@ -123,6 +123,16 @@ final class DebugPanelWidget extends OverlayWidget implements FocusableInterface
     }
 
     /** The dock strip's right-aligned status: the session state plus the step-key legend. */
+    public function wheelBy(int $rows): void
+    {
+        $this->scrollBy($rows);
+    }
+
+    public function clickRow(int $row): void
+    {
+        $this->handleClick($row);
+    }
+
     public function statusText(): string
     {
         $status = match ($this->state) {

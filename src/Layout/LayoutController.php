@@ -12,11 +12,9 @@ use Porta\I18n\Translator;
 use Porta\Input\MouseEvent;
 use Porta\Support\IntMath;
 use Porta\Ui\Dock\BottomDock;
-use Porta\Widget\DebugPanelWidget;
+use Porta\Widget\DockPanelWidget;
 use Porta\Widget\FileTreeWidget;
-use Porta\Widget\ResultsPanelWidget;
 use Porta\Widget\Settings\SettingsNavWidget;
-use Porta\Widget\TerminalPanelWidget;
 use Symfony\Component\Tui\Render\Renderer;
 use Symfony\Component\Tui\Render\WidgetRect;
 use Symfony\Component\Tui\Tui;
@@ -240,7 +238,7 @@ final class LayoutController
      * Arm a bottom-panel (terminal or results) resize when a left-press lands on
      * the panel's top edge. Focuses the panel too, preserving click-to-focus.
      */
-    public function armPanelResize(TerminalPanelWidget|ResultsPanelWidget|DebugPanelWidget $panel, MouseEvent $mouse, int $grabRowOffset = 0): bool
+    public function armPanelResize(DockPanelWidget $panel, MouseEvent $mouse, int $grabRowOffset = 0): bool
     {
         if (!$panel->isVisible()) {
             return false;
