@@ -923,21 +923,12 @@ final class CodeEditorWidget extends AbstractWidget implements
     }
 
     /**
-     * Route a left-click (screen coords) at the open floating picker: on an
-     * item it picks it, on the × it closes, anywhere else it dismisses. The
-     * prompt wins when several are open — the same precedence its keyboard
-     * handling has ({@see OverlayHost::handleInput}).
+     * Route a left-click (screen coords) at the open floating picker; the
+     * topmost surface wins ({@see OverlayHost::topmostSurface}).
      */
     public function handlePickerClick(int $row, int $col): bool
     {
-        if ($this->overlayHost->isPromptOpen()) {
-            return $this->overlayHost->promptClickAt($row, $col);
-        }
-        if ($this->overlayHost->isSearchOpen()) {
-            return $this->overlayHost->searchClickAt($row, $col);
-        }
-
-        return $this->overlayHost->clickAt($row, $col);
+        return $this->overlayHost->pickerClickAt($row, $col);
     }
 
     /**
@@ -947,14 +938,7 @@ final class CodeEditorWidget extends AbstractWidget implements
      */
     public function movePopupSelection(int $delta): bool
     {
-        if ($this->overlayHost->isSearchOpen()) {
-            $this->overlayHost->moveSearchSelection($delta);
-
-            return true;
-        }
-        if ($this->overlayHost->isListOpen()) {
-            $this->overlayHost->moveListSelection($delta);
-
+        if ($this->overlayHost->moveSelection($delta)) {
             return true;
         }
         if ($this->completion->isOpen()) {
@@ -979,14 +963,7 @@ final class CodeEditorWidget extends AbstractWidget implements
     /** Tint the picker row (screen coords) under the pointer; returns whether it changed. */
     public function handlePickerHover(int $row, int $col): bool
     {
-        if ($this->overlayHost->isPromptOpen()) {
-            return $this->overlayHost->promptHoverAt($row, $col);
-        }
-        if ($this->overlayHost->isSearchOpen()) {
-            return $this->overlayHost->searchHoverAt($row, $col);
-        }
-
-        return $this->overlayHost->hoverAt($row, $col);
+        return $this->overlayHost->pickerHoverAt($row, $col);
     }
 
     /** Whether any floating picker (list overlay, Search Everywhere, prompt) is open. */

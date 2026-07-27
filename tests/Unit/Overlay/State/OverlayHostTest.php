@@ -6,6 +6,7 @@ namespace Porta\Tests\Unit\Overlay\State;
 
 use PHPUnit\Framework\TestCase;
 use Porta\Overlay\State\OverlayHost;
+use Porta\Overlay\State\PickerSurface;
 use Porta\Search\Everywhere\SearchCategory;
 use Porta\Search\Everywhere\SearchHit;
 use Porta\Search\Everywhere\SearchRow;
@@ -609,5 +610,81 @@ final class OverlayHostTest extends TestCase
         $body = implode("\n", $this->canvas($host, 80, 20));
         $this->assertStringContainsString("\x1b[48;5;31m", $body, 'the selected hit keeps its background');
         $this->assertStringContainsString("\x1b[48;5;236m", $body, 'the hovered hit takes the tint, not the selection');
+    }
+
+    public function testTopmostSurfaceRanksPromptOverSearchOverList(): void
+    {
+        $host = $this->host();
+        $this->assertNull($host->topmostSurface());
+        $this->assertFalse($host->anyOpen());
+        $this->assertFalse($host->pickerClickAt(0, 0));
+        $this->assertFalse($host->pickerHoverAt(0, 0));
+
+        $host->openList('L', [['label' => 'a', 'hint' => '', 'value' => 'A']], static fn () => null);
+        $this->assertSame(PickerSurface::ListOverlay, $host->topmostSurface());
+        $host->openSearch('Search', static fn () => null, static fn () => null, static fn () => null);
+        $this->assertSame(PickerSurface::Search, $host->topmostSurface());
+        $host->openPrompt('Go to line', '', static fn () => null);
+        $this->assertSame(PickerSurface::Prompt, $host->topmostSurface());
+        $this->assertTrue($host->anyOpen());
+    }
+
+    public function testPickerClickAndHoverGoToTheTopmostSurface(): void
+    {
+        $host = $this->host();
+        $picked = null;
+        $host->openList('L', [['label' => 'a', 'hint' => '', 'value' => 'A']], static function (string $v) use (&$picked): void {
+            $picked = $v;
+        });
+        $host->openPrompt('Rename to', 'old', static fn () => null);
+        $host->layout([0, 0, 24, 80]);
+
+        // The prompt owns the pointer: an outside click dismisses IT, not the list.
+        $this->assertTrue($host->pickerClickAt(23, 0));
+        $this->assertFalse($host->isPromptOpen());
+        $this->assertTrue($host->isListOpen(), 'the click never reached the list overlay');
+        $this->assertNull($picked);
+
+        // With the prompt gone the list is topmost; hover routes to its rows.
+        $host->layout([0, 0, 24, 80]);
+        $this->assertSame(PickerSurface::ListOverlay, $host->topmostSurface());
+        $host->pickerHoverAt(0, 0);
+        $this->assertTrue($host->pickerClickAt(23, 0), 'an outside click dismisses the list');
+        $this->assertFalse($host->isListOpen());
+    }
+
+    public function testWheelSelectionSkipsThePromptAndMovesTheListUnderneath(): void
+    {
+        $host = $this->host();
+        $items = [
+            ['label' => 'a', 'hint' => '', 'value' => 'A'],
+            ['label' => 'b', 'hint' => '', 'value' => 'B'],
+        ];
+        $picked = null;
+        $host->openList('L', $items, static function (string $v) use (&$picked): void {
+            $picked = $v;
+        });
+        $host->openPrompt('Go to line', '', static fn () => null);
+
+        // The prompt has no selection: the wheel falls through to the list.
+        $this->assertTrue($host->moveSelection(1));
+        $host->handleSearchInput('', $this->keybindings()); // inert: search is closed
+        $this->assertTrue($host->handleInput("\r", $this->keybindings()), 'Enter still submits the prompt');
+        $this->assertTrue($host->handleInput("\r", $this->keybindings()), 'then picks the wheel-moved list row');
+        $this->assertSame('B', $picked);
+
+        $this->assertFalse($host->moveSelection(1), 'nothing open consumes nothing');
+    }
+
+    public function testWheelSelectionPrefersTheSearchModal(): void
+    {
+        $host = $this->host();
+        $host->openList('L', [['label' => 'a', 'hint' => '', 'value' => 'A']], static fn () => null);
+        $host->openSearch('Search', static fn () => null, static fn () => null, static fn () => null);
+        $host->setSearchRows($this->searchRows(static fn () => null));
+        $before = $this->invalidations;
+
+        $this->assertTrue($host->moveSelection(1));
+        $this->assertGreaterThan($before, $this->invalidations, 'the search selection moved');
     }
 }

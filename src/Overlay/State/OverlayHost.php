@@ -35,8 +35,8 @@ final class OverlayHost
     private ?ModalBox $promptBox = null;
     private ?SearchModalState $search = null;
 
-    /** Which open surface's title-bar × is under the pointer ('list'|'search'|'prompt'), or null. */
-    private ?string $closeHovered = null;
+    /** Which open surface's title-bar × is under the pointer, or null. */
+    private ?PickerSurface $closeHovered = null;
     /** last-rendered search box, for mouse hit-testing */
     private ?ModalBox $searchBox = null;
 
@@ -246,7 +246,7 @@ final class OverlayHost
         if (null === $search) {
             return false;
         }
-        $closeChanged = $this->hoverClose('search', $this->searchBox, $relRow, $relCol);
+        $closeChanged = $this->hoverClose(PickerSurface::Search, $this->searchBox, $relRow, $relCol);
         $index = $this->searchBox?->itemAt($relRow, $relCol);
         $hovered = null !== $index && !$search->rows[$index]->isHeader() ? $index : null;
         if ($hovered === $search->hovered) {
@@ -401,7 +401,7 @@ final class OverlayHost
         // runs the invalidate closure, after which the analyser must assume
         // the property may have changed.
         $overlay = $this->overlay;
-        $closeChanged = $this->hoverClose('list', $this->overlayBox, $relRow, $relCol);
+        $closeChanged = $this->hoverClose(PickerSurface::ListOverlay, $this->overlayBox, $relRow, $relCol);
         $index = $this->overlayBox?->itemAt($relRow, $relCol);
         if ($index === ($overlay['hovered'] ?? null)) {
             return $closeChanged;
@@ -420,7 +420,7 @@ final class OverlayHost
             return false;
         }
 
-        return $this->hoverClose('prompt', $this->promptBox, $relRow, $relCol);
+        return $this->hoverClose(PickerSurface::Prompt, $this->promptBox, $relRow, $relCol);
     }
 
     /**
@@ -428,7 +428,7 @@ final class OverlayHost
      * it like the tab strips' close glyph; returns whether that changed. One
      * shared slot suffices — the surfaces are modal, never open together.
      */
-    private function hoverClose(string $surface, ?ModalBox $box, int $relRow, int $relCol): bool
+    private function hoverClose(PickerSurface $surface, ?ModalBox $box, int $relRow, int $relCol): bool
     {
         $hovered = null !== $box && $box->closeHit($relRow, $relCol) ? $surface : null;
         if ($hovered === $this->closeHovered) {
@@ -502,7 +502,71 @@ final class OverlayHost
     /** Whether any picker surface (list, search, prompt) is open. */
     public function anyOpen(): bool
     {
-        return null !== $this->overlay || null !== $this->search || null !== $this->prompt;
+        return null !== $this->topmostSurface();
+    }
+
+    /**
+     * The open surface that owns the pointer and the caret: prompt over
+     * search over list — the same precedence the keyboard path has
+     * ({@see handleInput}: the prompt wins) and the inverse of
+     * {@see layout()}'s paint order, which draws the topmost surface last.
+     */
+    public function topmostSurface(): ?PickerSurface
+    {
+        return match (true) {
+            null !== $this->prompt => PickerSurface::Prompt,
+            null !== $this->search => PickerSurface::Search,
+            null !== $this->overlay => PickerSurface::ListOverlay,
+            default => null,
+        };
+    }
+
+    /**
+     * Route a left-click (screen coords) to the topmost open surface: on an
+     * item it picks, on the × it closes, anywhere else it dismisses. Returns
+     * false only when no surface is open.
+     */
+    public function pickerClickAt(int $row, int $col): bool
+    {
+        return match ($this->topmostSurface()) {
+            PickerSurface::Prompt => $this->promptClickAt($row, $col),
+            PickerSurface::Search => $this->searchClickAt($row, $col),
+            PickerSurface::ListOverlay => $this->clickAt($row, $col),
+            null => false,
+        };
+    }
+
+    /** Route a hover (screen coords) to the topmost open surface; returns whether the tint changed. */
+    public function pickerHoverAt(int $row, int $col): bool
+    {
+        return match ($this->topmostSurface()) {
+            PickerSurface::Prompt => $this->promptHoverAt($row, $col),
+            PickerSurface::Search => $this->searchHoverAt($row, $col),
+            PickerSurface::ListOverlay => $this->hoverAt($row, $col),
+            null => false,
+        };
+    }
+
+    /**
+     * Wheel over the pickers: move the topmost SELECTION-bearing surface's
+     * selection — search over list, and never the prompt (it has none; with
+     * a prompt and a list both open the wheel still moves the list). Returns
+     * whether a surface consumed the wheel.
+     */
+    public function moveSelection(int $delta): bool
+    {
+        if (null !== $this->search) {
+            $this->moveSearchSelection($delta);
+
+            return true;
+        }
+        if (null !== $this->overlay) {
+            $this->moveListSelection($delta);
+
+            return true;
+        }
+
+        return false;
     }
 
     /**
@@ -524,16 +588,16 @@ final class OverlayHost
         $this->promptBox = null;
         $placed = [];
         if (null !== $this->overlay) {
-            $placed[] = $this->place(PickerLayout::layoutList($bounds, $this->overlay, $this->styles, 'list' === $this->closeHovered), $this->overlayBox);
+            $placed[] = $this->place(PickerLayout::layoutList($bounds, $this->overlay, $this->styles, PickerSurface::ListOverlay === $this->closeHovered), $this->overlayBox);
         }
         if (null !== $this->search) {
             // Only the TOPMOST surface renders the caret (the prompt wins): two
             // markers in one frame mangle ScreenWriter's cursor conversion.
             $caret = null === $this->prompt ? CaretVisibility::Shown : CaretVisibility::Hidden;
-            $placed[] = $this->place(PickerLayout::layoutSearch($bounds, $this->search, $this->styles, 'search' === $this->closeHovered, $caret), $this->searchBox);
+            $placed[] = $this->place(PickerLayout::layoutSearch($bounds, $this->search, $this->styles, PickerSurface::Search === $this->closeHovered, $caret), $this->searchBox);
         }
         if (null !== $this->prompt) {
-            $placed[] = $this->place(PickerLayout::layoutPrompt($bounds, $this->prompt, $this->styles, 'prompt' === $this->closeHovered), $this->promptBox);
+            $placed[] = $this->place(PickerLayout::layoutPrompt($bounds, $this->prompt, $this->styles, PickerSurface::Prompt === $this->closeHovered), $this->promptBox);
         }
 
         return $placed;
