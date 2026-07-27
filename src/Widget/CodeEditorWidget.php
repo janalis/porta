@@ -21,6 +21,7 @@ use Porta\Editor\Document;
 use Porta\Editor\EditorActions;
 use Porta\Editor\EditorCompletion;
 use Porta\Editor\EditorDecorationSink;
+use Porta\Editor\EditorDisplayOptions;
 use Porta\Editor\EditorHost;
 use Porta\Editor\EditorIndentTarget;
 use Porta\Editor\EditorInvalidator;
@@ -144,12 +145,8 @@ final class CodeEditorWidget extends AbstractWidget implements
     /** Structural selection (expand/shrink/surround) + merge-conflict nav, rebuilt per document. */
     private EditorStructural $structural;
 
-    private bool $inlineDiagnostics = true;
-    private LineNumberMode $lineNumbers = LineNumberMode::Absolute;
-    private bool $gitGutter = true;
-    private bool $stickyScroll = true;
-    private bool $indentGuides = true;
-    private bool $autoPairs = true;
+    /** The six display toggles; the public verbs below delegate here. */
+    private readonly EditorDisplayOptions $display;
 
     private readonly AutoPairService $autoPair;
 
@@ -203,6 +200,7 @@ final class CodeEditorWidget extends AbstractWidget implements
         $this->cursorStyle = $cursorStyle ?? new CursorStyle();
         $this->translator = $translator ?? new Translator('en');
         $this->callbacks = new EditorCallbacks();
+        $this->display = new EditorDisplayOptions($this->invalidate(...));
         $this->decorations = new DecorationStore($this->invalidate(...));
         $this->overlayHost = new OverlayHost($this->invalidate(...), $this->styles, $this->cursorStyle);
         $this->findModal = new FindInFilesModal($this->invalidate(...), $this->styles, $this->cursorStyle, $this->translator);
@@ -404,95 +402,69 @@ final class CodeEditorWidget extends AbstractWidget implements
 
     public function enableInlineDiagnostics(): void
     {
-        if (!$this->inlineDiagnostics) {
-            $this->inlineDiagnostics = true;
-            $this->invalidate();
-        }
+        $this->display->setInlineDiagnostics(true);
     }
 
     public function disableInlineDiagnostics(): void
     {
-        if ($this->inlineDiagnostics) {
-            $this->inlineDiagnostics = false;
-            $this->invalidate();
-        }
+        $this->display->setInlineDiagnostics(false);
     }
 
     public function setLineNumberMode(LineNumberMode $mode): void
     {
-        if ($mode !== $this->lineNumbers) {
-            $this->lineNumbers = $mode;
-            $this->invalidate();
-        }
+        $this->display->setLineNumbers($mode);
     }
 
     public function lineNumberMode(): LineNumberMode
     {
-        return $this->lineNumbers;
+        return $this->display->lineNumbers();
     }
 
     public function enableStickyScroll(): void
     {
-        if (!$this->stickyScroll) {
-            $this->stickyScroll = true;
-            $this->invalidate();
-        }
+        $this->display->setStickyScroll(true);
     }
 
     public function disableStickyScroll(): void
     {
-        if ($this->stickyScroll) {
-            $this->stickyScroll = false;
-            $this->invalidate();
-        }
+        $this->display->setStickyScroll(false);
     }
 
     public function hasStickyScroll(): bool
     {
-        return $this->stickyScroll;
+        return $this->display->stickyScroll();
     }
 
     public function enableIndentGuides(): void
     {
-        if (!$this->indentGuides) {
-            $this->indentGuides = true;
-            $this->invalidate();
-        }
+        $this->display->setIndentGuides(true);
     }
 
     public function disableIndentGuides(): void
     {
-        if ($this->indentGuides) {
-            $this->indentGuides = false;
-            $this->invalidate();
-        }
+        $this->display->setIndentGuides(false);
     }
 
     public function hasIndentGuides(): bool
     {
-        return $this->indentGuides;
+        return $this->display->indentGuides();
     }
 
     public function enableGitGutter(): void
     {
-        if (!$this->gitGutter) {
-            $this->gitGutter = true;
-            $this->invalidate();
-        }
+        $this->display->setGitGutter(true);
     }
 
     public function disableGitGutter(): void
     {
-        if ($this->gitGutter) {
-            $this->gitGutter = false;
+        if ($this->display->setGitGutter(false)) {
             $this->setGitMarks([]); // drop stale marks so nothing lingers when the strip hides
-            $this->invalidate();
         }
     }
 
     public function hasGitGutter(): bool
     {
-        return $this->gitGutter;
+        return $this->display->gitGutter();
     }
 
     /**
@@ -537,17 +509,17 @@ final class CodeEditorWidget extends AbstractWidget implements
 
     public function enableAutoPairs(): void
     {
-        $this->autoPairs = true;
+        $this->display->setAutoPairs(true);
     }
 
     public function disableAutoPairs(): void
     {
-        $this->autoPairs = false;
+        $this->display->setAutoPairs(false);
     }
 
     public function hasAutoPairs(): bool
     {
-        return $this->autoPairs;
+        return $this->display->autoPairs();
     }
 
     /**
@@ -590,7 +562,7 @@ final class CodeEditorWidget extends AbstractWidget implements
 
     public function autoPairsEnabled(): bool
     {
-        return $this->autoPairs;
+        return $this->display->autoPairs();
     }
 
     /**
@@ -1128,7 +1100,7 @@ final class CodeEditorWidget extends AbstractWidget implements
      */
     private function stickyHeadersAt(int $vScroll, int $rows): array
     {
-        if (!$this->stickyScroll) {
+        if (!$this->display->stickyScroll()) {
             return [];
         }
         $top = $this->foldModel->docLineAtRow($vScroll, 0) ?? 0;
@@ -1244,10 +1216,10 @@ final class CodeEditorWidget extends AbstractWidget implements
             $doc,
             $this->foldModel,
             $this->decorations,
-            $this->lineNumbers,
-            $this->indentGuides,
-            $this->gitGutter,
-            $this->inlineDiagnostics,
+            $this->display->lineNumbers(),
+            $this->display->indentGuides(),
+            $this->display->gitGutter(),
+            $this->display->inlineDiagnostics(),
             $this->focused,
             $this->focused && !$this->findModal->isOpen() && !$this->overlayHost->anyOpen(), // an open modal owns the caret
             $this->styles,
@@ -1281,8 +1253,8 @@ final class CodeEditorWidget extends AbstractWidget implements
      */
     private function computeGeometry(int $columns, int $lineCount): EditorGeometry
     {
-        $numberWidth = LineNumberMode::Off === $this->lineNumbers ? 0 : max(3, \strlen((string) $lineCount));
-        $gutterWidth = ($this->gitGutter ? 1 : 0) + $numberWidth + 2;
+        $numberWidth = LineNumberMode::Off === $this->display->lineNumbers() ? 0 : max(3, \strlen((string) $lineCount));
+        $gutterWidth = ($this->display->gitGutter() ? 1 : 0) + $numberWidth + 2;
         $contentWidth = max(1, $columns - $gutterWidth - 1);
 
         return new EditorGeometry($numberWidth, $gutterWidth, $contentWidth, $gutterWidth + $contentWidth);
