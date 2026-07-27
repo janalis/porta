@@ -16,6 +16,7 @@ use Porta\Highlight\SyntaxHighlightProviderSource;
 use Porta\I18n\Translator;
 use Porta\Onboarding\MagoDetector;
 use Porta\Onboarding\WelcomeSteps;
+use Porta\Overlay\Presenter\OverlayDelivery;
 use Porta\Overlay\Presenter\WelcomeModalController;
 use Porta\Overlay\State\MenuOverlayPanes;
 use Porta\Settings\SettingsHighlightController;
@@ -93,8 +94,7 @@ final class WelcomeModalControllerTest extends TestCase
         $editArea = new EditorArea(new BufferManager(), new CodeEditorWidget(), new ImageViewerWidget(), new HelpViewerWidget(), $this->tui);
 
         return new WelcomeModalController(
-            $this->renderer,
-            new MenuOverlayPanes([$this->pane], [], [], static fn (): bool => false, static fn (): bool => false),
+            new OverlayDelivery($this->renderer, new MenuOverlayPanes([$this->pane], [], [], static fn (): bool => false, static fn (): bool => false), $this->tui),
             $this->welcome,
             new WelcomeSteps(new Translator('en'), $source ?? new NoHighlightPlugins(), $lifecycle, new CommandRegistry(), new MagoDetector('/nonexistent')),
             new MenuBarWidget(),

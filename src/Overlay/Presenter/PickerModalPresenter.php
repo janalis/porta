@@ -6,15 +6,8 @@ namespace Porta\Overlay\Presenter;
 
 use Porta\Container\AsEager;
 use Porta\Overlay\Region\DropdownRegion;
-use Porta\Overlay\Region\PaneBounds;
-use Porta\Overlay\Region\SpanSlicer;
-use Porta\Overlay\State\MenuOverlayPanes;
 use Porta\Ui\FrameHooks;
-use Porta\Ui\Theme\Styles;
 use Porta\Widget\CodeEditorWidget;
-use Porta\Widget\Render\ModalShadow;
-use Symfony\Component\Tui\Render\Renderer;
-use Symfony\Component\Tui\Tui;
 
 /**
  * Presents the editor's pickers — the list overlay, Search Everywhere and the
@@ -46,17 +39,11 @@ final class PickerModalPresenter
     /** @var list<DropdownRegion> */
     private array $shadowRegions = [];
 
-    private readonly Styles $styles;
-
     public function __construct(
-        private readonly Renderer $renderer,
-        private readonly MenuOverlayPanes $panes,
+        private readonly OverlayDelivery $delivery,
         private readonly CodeEditorWidget $editor,
-        private readonly Tui $tui,
-        ?Styles $styles = null,
         ?FrameHooks $frameHooks = null,
     ) {
-        $this->styles = $styles ?? Styles::dark();
         $frameHooks?->onBeforeFrame($this->sync(...));
     }
 
@@ -84,51 +71,22 @@ final class PickerModalPresenter
             if ($this->shown) {
                 $this->shown = false;
                 $this->shadowRegions = [];
-                foreach ($this->panes->all() as $pane) {
-                    $pane->setModalOverlay([]);
-                    $pane->setModalBackdrop(false);
-                }
+                $this->delivery->clearModal();
             }
 
             return;
         }
 
-        $bounds = PaneBounds::union($this->panes->current(), $this->renderer);
+        $bounds = $this->delivery->bounds();
         if (null === $bounds) {
-            // No rects yet: keep asking for frames until the first one lands.
-            $this->tui->requestRender();
-
             return;
         }
         $placed = $this->editor->layoutPickers($bounds);
-        [, , $boundBottom, $boundRight] = $bounds;
 
-        foreach ($this->panes->current() as $pane) {
-            $rect = $this->renderer->getWidgetRect($pane);
-            $spans = [];
-            if (null !== $rect) {
-                foreach ($placed as $box) {
-                    $spans = [
-                        ...$spans,
-                        ...SpanSlicer::localSpans($box['rows'], $rect, $box['top'], $box['col'], $box['width']),
-                        ...ModalShadow::spans($rect, $box['top'], $box['col'], $box['width'], \count($box['rows']), $this->styles),
-                    ];
-                }
-            }
-            $pane->setModalOverlay($spans);
-            $pane->setModalBackdrop(true);
-        }
+        $this->delivery->deliverModal($placed);
         $this->shown = true;
-        // Cover only the shadow bands that actually paint, so the RTL
-        // segmenter never claims cells outside a box.
         $this->shadowRegions = array_map(
-            fn (array $box): DropdownRegion => new DropdownRegion(
-                $box['top'],
-                $box['col'],
-                min($box['width'] + 1, $boundRight - $box['col']),
-                min(\count($box['rows']) + 1, $boundBottom - $box['top']),
-                ltr: true,
-            ),
+            static fn (array $box): DropdownRegion => DropdownRegion::shadowClamped($box['top'], $box['col'], $box['width'], \count($box['rows']), $bounds, ltr: true),
             $placed,
         );
     }

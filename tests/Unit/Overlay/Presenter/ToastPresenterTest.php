@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Porta\Tests\Unit\Overlay\Presenter;
 
 use PHPUnit\Framework\TestCase;
+use Porta\Overlay\Presenter\OverlayDelivery;
 use Porta\Overlay\Presenter\ToastPresenter;
 use Porta\Overlay\State\MenuOverlayPanes;
 use Porta\Overlay\State\ToastCenter;
@@ -71,10 +72,8 @@ final class ToastPresenterTest extends TestCase
         $this->toasts = new ToastCenter($this->scheduler, $this->tui);
 
         return new ToastPresenter(
-            $this->renderer,
-            new MenuOverlayPanes([$this->pane], [], [], static fn (): bool => false, static fn (): bool => false),
+            new OverlayDelivery($this->renderer, new MenuOverlayPanes([$this->pane], [], [], static fn (): bool => false, static fn (): bool => false), $this->tui),
             $this->toasts,
-            $this->tui,
             frameHooks: $this->tui,
         );
     }

@@ -27,6 +27,20 @@ final class DropdownRegion
         public readonly bool $framed = false,
     ) {}
 
+    /**
+     * A surface's box grown by its shadow bands — but only where they
+     * actually paint (a box flush against the pane union's edge casts none
+     * there), so the RTL segmenter never claims cells outside the surface.
+     *
+     * @param array{int, int, int, int} $bounds [top, left, bottom, right)
+     */
+    public static function shadowClamped(int $top, int $col, int $width, int $rows, array $bounds, bool $ltr = false): self
+    {
+        [, , $boundBottom, $boundRight] = $bounds;
+
+        return new self($top, $col, min($width + 1, $boundRight - $col), min($rows + 1, $boundBottom - $top), ltr: $ltr);
+    }
+
     /** Whether the screen cell sits inside the box (borders included). */
     public function contains(int $row, int $col): bool
     {

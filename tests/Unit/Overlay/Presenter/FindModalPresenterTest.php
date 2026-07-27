@@ -6,6 +6,7 @@ namespace Porta\Tests\Unit\Overlay\Presenter;
 
 use PHPUnit\Framework\TestCase;
 use Porta\Overlay\Presenter\FindModalPresenter;
+use Porta\Overlay\Presenter\OverlayDelivery;
 use Porta\Overlay\State\MenuOverlayPanes;
 use Porta\Ui\BidiTui;
 use Porta\Widget\CodeEditorWidget;
@@ -67,10 +68,8 @@ final class FindModalPresenterTest extends TestCase
         $this->editor = new CodeEditorWidget();
 
         return new FindModalPresenter(
-            $this->renderer,
-            new MenuOverlayPanes([$this->pane], [], [], static fn (): bool => false, static fn (): bool => false),
+            new OverlayDelivery($this->renderer, new MenuOverlayPanes([$this->pane], [], [], static fn (): bool => false, static fn (): bool => false), $this->tui),
             $this->editor,
-            $this->tui,
             frameHooks: $this->tui,
         );
     }

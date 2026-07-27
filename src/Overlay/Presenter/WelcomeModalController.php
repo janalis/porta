@@ -9,9 +9,6 @@ use Porta\Container\AsIdeService;
 use Porta\Onboarding\WelcomeSteps;
 use Porta\Overlay\Region\DropdownRegion;
 use Porta\Overlay\Region\ModalBox;
-use Porta\Overlay\Region\PaneBounds;
-use Porta\Overlay\Region\SpanSlicer;
-use Porta\Overlay\State\MenuOverlayPanes;
 use Porta\Support\IntMath;
 use Porta\Ui\EditorArea;
 use Porta\Ui\FrameHooks;
@@ -20,9 +17,7 @@ use Porta\Ui\WorkspaceViews;
 use Porta\Widget\MenuBarWidget;
 use Porta\Widget\Onboarding\WelcomeWidget;
 use Porta\Widget\Render\ModalFrame;
-use Porta\Widget\Render\ModalShadow;
 use Symfony\Component\Tui\Render\RenderContext;
-use Symfony\Component\Tui\Render\Renderer;
 use Symfony\Component\Tui\Tui;
 use Symfony\Component\Tui\Widget\AbstractWidget;
 use Symfony\Component\Tui\Widget\FocusableInterface;
@@ -93,8 +88,7 @@ final class WelcomeModalController
     private readonly Styles $styles;
 
     public function __construct(
-        private readonly Renderer $renderer,
-        private readonly MenuOverlayPanes $panes,
+        private readonly OverlayDelivery $delivery,
         private readonly WelcomeWidget $welcome,
         private readonly WelcomeSteps $steps,
         private readonly MenuBarWidget $menuBar,
@@ -183,10 +177,7 @@ final class WelcomeModalController
         $this->resizing = false;
         $this->menuBar->close();
         // Clear every mode's pane set: the modal may close across a view swap.
-        foreach ($this->panes->all() as $pane) {
-            $pane->setModalOverlay([]);
-            $pane->setModalBackdrop(false);
-        }
+        $this->delivery->clearModal();
         $this->tui->setFocus($this->editorArea->widget());
         $this->tui->requestRender();
     }
@@ -343,11 +334,8 @@ final class WelcomeModalController
         if (!$this->open) {
             return;
         }
-        $bounds = PaneBounds::union($this->panes->current(), $this->renderer);
+        $bounds = $this->delivery->bounds();
         if (null === $bounds) {
-            // No rects yet: keep asking for frames until the first one lands.
-            $this->tui->requestRender();
-
             return;
         }
         if (null === $this->box || $bounds !== $this->lastBounds) {
@@ -366,9 +354,9 @@ final class WelcomeModalController
         if (!$this->open) {
             return;
         }
-        $bounds = PaneBounds::union($this->panes->current(), $this->renderer);
+        $bounds = $this->delivery->bounds();
         if (null === $bounds) {
-            return; // pre-first-frame: the before-frame hook will retry
+            return; // pre-first-frame: the before-frame hook (same retry path) re-runs this
         }
         [$boundTop, $boundLeft, $boundBottom, $boundRight] = $bounds;
         $this->lastBounds = $bounds;
@@ -397,26 +385,8 @@ final class WelcomeModalController
             $this->col = $col;
         }
 
-        foreach ($this->panes->current() as $pane) {
-            $rect = $this->renderer->getWidgetRect($pane);
-            $pane->setModalOverlay(
-                null !== $rect
-                    ? [
-                        ...SpanSlicer::localSpans($panel, $rect, $top, $col, $width),
-                        ...ModalShadow::spans($rect, $top, $col, $width, $rows, $this->styles),
-                    ] : [],
-            );
-            $pane->setModalBackdrop(true);
-        }
+        $this->delivery->deliverModal([['rows' => $panel, 'top' => $top, 'col' => $col, 'width' => $width]]);
         $this->box = new ModalBox($top, $col, $width, $rows, headerRows: ModalFrame::CHROME_ROWS_TOP, windowStart: 0, count: $innerHeight);
-        // The RTL region covers the shadow bands too — but only where they
-        // actually paint (a box flush against the union's edge casts none
-        // there), so the segmenter never claims cells outside the modal.
-        $this->shadowRegion = new DropdownRegion(
-            $top,
-            $col,
-            min($width + 1, $boundRight - $col),
-            min($rows + 1, $boundBottom - $top),
-        );
+        $this->shadowRegion = DropdownRegion::shadowClamped($top, $col, $width, $rows, $bounds);
     }
 }

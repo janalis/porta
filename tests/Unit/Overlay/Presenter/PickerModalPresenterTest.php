@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Porta\Tests\Unit\Overlay\Presenter;
 
 use PHPUnit\Framework\TestCase;
+use Porta\Overlay\Presenter\OverlayDelivery;
 use Porta\Overlay\Presenter\PickerModalPresenter;
 use Porta\Overlay\State\MenuOverlayPanes;
 use Porta\Ui\BidiTui;
@@ -71,10 +72,8 @@ final class PickerModalPresenterTest extends TestCase
         }
 
         return new PickerModalPresenter(
-            $this->renderer,
-            new MenuOverlayPanes([$this->pane], [], [], static fn (): bool => false, static fn (): bool => false),
+            new OverlayDelivery($this->renderer, new MenuOverlayPanes([$this->pane], [], [], static fn (): bool => false, static fn (): bool => false), $this->tui),
             $this->editor,
-            $this->tui,
             frameHooks: $this->tui,
         );
     }

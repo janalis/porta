@@ -7,18 +7,12 @@ namespace Porta\Overlay\Presenter;
 use Porta\Container\AsEager;
 use Porta\Overlay\Region\DropdownRegion;
 use Porta\Overlay\Region\ModalBox;
-use Porta\Overlay\Region\PaneBounds;
-use Porta\Overlay\Region\SpanSlicer;
-use Porta\Overlay\State\MenuOverlayPanes;
 use Porta\Overlay\State\ToastCenter;
 use Porta\Ui\FrameHooks;
 use Porta\Ui\Theme\Styles;
-use Porta\Widget\Render\ModalShadow;
 use Porta\Widget\Render\PopupFrame;
 use Porta\Widget\Render\PopupMetrics;
 use Porta\Widget\Render\ToastCard;
-use Symfony\Component\Tui\Render\Renderer;
-use Symfony\Component\Tui\Tui;
 
 /**
  * Presents the toast stack over the workspace's top-right corner: cards
@@ -44,10 +38,8 @@ final class ToastPresenter
     private readonly Styles $styles;
 
     public function __construct(
-        private readonly Renderer $renderer,
-        private readonly MenuOverlayPanes $panes,
+        private readonly OverlayDelivery $delivery,
         private readonly ToastCenter $toasts,
-        private readonly Tui $tui,
         ?Styles $styles = null,
         ?FrameHooks $frameHooks = null,
     ) {
@@ -80,19 +72,14 @@ final class ToastPresenter
                 $this->shown = false;
                 $this->regions = [];
                 $this->toasts->setBoxes([]);
-                foreach ($this->panes->all() as $pane) {
-                    $pane->setToastOverlay([]);
-                }
+                $this->delivery->clearToast();
             }
 
             return;
         }
 
-        $bounds = PaneBounds::union($this->panes->current(), $this->renderer);
+        $bounds = $this->delivery->bounds();
         if (null === $bounds) {
-            // No rects yet: keep asking for frames until the first one lands.
-            $this->tui->requestRender();
-
             return;
         }
         [$boundTop, $boundLeft, $boundBottom, $boundRight] = $bounds;
@@ -118,31 +105,14 @@ final class ToastPresenter
             $top += \count($rows) + 1; // the gap row doubles as the shadow band
         }
 
-        foreach ($this->panes->current() as $pane) {
-            $rect = $this->renderer->getWidgetRect($pane);
-            $spans = [];
-            if (null !== $rect) {
-                foreach ($cards as $card) {
-                    $spans = [
-                        ...$spans,
-                        ...SpanSlicer::localSpans($card['rows'], $rect, $card['top'], $col, $width),
-                        ...ModalShadow::spans($rect, $card['top'], $col, $width, \count($card['rows']), $this->styles),
-                    ];
-                }
-            }
-            $pane->setToastOverlay($spans);
-        }
+        $this->delivery->deliverToast(array_map(
+            static fn (array $card): array => ['rows' => $card['rows'], 'top' => $card['top'], 'col' => $col, 'width' => $width],
+            $cards,
+        ));
         $this->shown = true;
         $this->toasts->setBoxes($boxes);
-        // Cover only the shadow bands that actually paint, so the RTL
-        // segmenter never claims cells outside a card.
         $this->regions = array_map(
-            fn (array $card): DropdownRegion => new DropdownRegion(
-                $card['top'],
-                $col,
-                min($width + 1, $boundRight - $col),
-                min(\count($card['rows']) + 1, $boundBottom - $card['top']),
-            ),
+            static fn (array $card): DropdownRegion => DropdownRegion::shadowClamped($card['top'], $col, $width, \count($card['rows']), $bounds),
             $cards,
         );
     }
