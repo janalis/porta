@@ -19,14 +19,20 @@ use Porta\Editor\DiagnosticStyle;
 use Porta\Editor\Document;
 use Porta\Editor\EditorActions;
 use Porta\Editor\EditorCompletion;
+use Porta\Editor\EditorDecorationSink;
 use Porta\Editor\EditorHost;
+use Porta\Editor\EditorIndentTarget;
+use Porta\Editor\EditorInvalidator;
+use Porta\Editor\EditorKeymapProvider;
 use Porta\Editor\EditorMouse;
 use Porta\Editor\EditorScroll;
 use Porta\Editor\EditorStructural;
+use Porta\Editor\EditorViewOptions;
 use Porta\Editor\EditorViewport;
 use Porta\Editor\FoldModel;
 use Porta\Editor\IndentKind;
 use Porta\Editor\LineNumberMode;
+use Porta\Editor\ModalHost;
 use Porta\Editor\MultiCaret;
 use Porta\Highlight\CodeHighlighter;
 use Porta\Highlight\DarkTerminalTheme;
@@ -42,6 +48,7 @@ use Porta\Support\IntMath;
 use Porta\Support\ProjectPaths;
 use Porta\Ui\CursorStyle;
 use Porta\Ui\LtrPane;
+use Porta\Ui\Menu\EditorCommandTarget;
 use Porta\Ui\Role;
 use Porta\Ui\Sgr;
 use Porta\Ui\Theme\Styles;
@@ -72,7 +79,21 @@ use Tempest\Highlight\TerminalTheme;
  */
 #[AsIdeService]
 #[AsWidget('editor')]
-final class CodeEditorWidget extends AbstractWidget implements ActiveFileProvider, EditorHost, FocusableInterface, LtrPane, MenuOverlayHost, SearchOverlay, VerticallyExpandableInterface
+final class CodeEditorWidget extends AbstractWidget implements
+    ActiveFileProvider,
+    EditorCommandTarget,
+    EditorDecorationSink,
+    EditorHost,
+    EditorIndentTarget,
+    EditorInvalidator,
+    EditorKeymapProvider,
+    EditorViewOptions,
+    FocusableInterface,
+    LtrPane,
+    MenuOverlayHost,
+    ModalHost,
+    SearchOverlay,
+    VerticallyExpandableInterface
 {
     use BracketedPasteTrait;
     use FillsPaneTrait;

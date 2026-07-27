@@ -4,9 +4,9 @@ declare(strict_types=1);
 
 namespace Porta\Highlight;
 
+use Porta\Editor\EditorInvalidator;
 use Porta\Support\LanguageMap;
 use Porta\Support\Scheduler;
-use Porta\Widget\CodeEditorWidget;
 use Symfony\Component\Tui\Tui;
 use Tempest\Highlight\TerminalTheme;
 
@@ -33,7 +33,7 @@ final class CodeHighlighterFactory
         ?HighlightRegistry $registry = null,
         ?TerminalTheme $syntaxTheme = null,
         private readonly ?Tui $tui = null,
-        private readonly ?CodeEditorWidget $editor = null,
+        private readonly ?EditorInvalidator $editor = null,
         private readonly ?Scheduler $scheduler = null,
     ) {
         $this->syntaxTheme = $syntaxTheme ?? new DarkTerminalTheme();

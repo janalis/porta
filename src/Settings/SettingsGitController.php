@@ -5,11 +5,11 @@ declare(strict_types=1);
 namespace Porta\Settings;
 
 use Porta\Config\IdeConfig;
+use Porta\Editor\EditorViewOptions;
 use Porta\Git\GitRefresher;
 use Porta\Git\GitSettings;
 use Porta\I18n\Translator;
 use Porta\Ui\Notifier;
-use Porta\Widget\CodeEditorWidget;
 use Porta\Widget\StatusBarWidget;
 use Symfony\Component\DependencyInjection\Attribute\Autowire;
 use Symfony\Component\Tui\Tui;
@@ -43,7 +43,7 @@ final class SettingsGitController
         #[Autowire('%env(json:PORTA_SETTINGS)%')]
         private array $settings,
         private readonly GitSettings $gitSettings,
-        private readonly CodeEditorWidget $editor,
+        private readonly EditorViewOptions $editor,
         private readonly GitRefresher $gitRefresher,
         private readonly StatusBarWidget $statusBar,
         private readonly Tui $tui,

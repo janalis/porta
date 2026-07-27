@@ -7,10 +7,10 @@ namespace Porta\Settings;
 use Porta\Config\ActionCatalog;
 use Porta\Config\IdeConfig;
 use Porta\Config\KeybindingRow;
+use Porta\Editor\EditorKeymapProvider;
 use Porta\I18n\Translator;
 use Porta\Ui\Notifier;
 use Porta\Ui\ShortcutFormatter;
-use Porta\Widget\CodeEditorWidget;
 use Symfony\Component\Tui\Input\Keybindings;
 use Symfony\Component\Tui\Input\KeyParser;
 
@@ -24,7 +24,7 @@ use Symfony\Component\Tui\Input\KeyParser;
 final class SettingsKeymapController
 {
     public function __construct(
-        private readonly CodeEditorWidget $editor,
+        private readonly EditorKeymapProvider $editor,
         private readonly Keybindings $ideKeys,
         private readonly Notifier $notifier,
         private readonly string $rootDir,

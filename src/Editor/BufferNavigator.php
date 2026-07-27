@@ -8,7 +8,6 @@ use Porta\Search\Everywhere\SearchEverywhereController;
 use Porta\Support\ProjectPaths;
 use Porta\Ui\Glyphs;
 use Porta\Widget\BufferNavigationHandler;
-use Porta\Widget\CodeEditorWidget;
 use Symfony\Component\DependencyInjection\Attribute\Autowire;
 use Symfony\Component\Tui\Tui;
 
@@ -24,7 +23,7 @@ final class BufferNavigator implements BufferNavigationHandler
         private readonly BufferService $bufferService,
         #[Autowire(service: 'porta.go_to_file')]
         private readonly SearchEverywhereController $goToFile,
-        private readonly CodeEditorWidget $editor,
+        private readonly ModalHost $editor,
         private readonly Tui $tui,
         private readonly string $rootDir,
     ) {}

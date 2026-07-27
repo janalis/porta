@@ -13,7 +13,6 @@ use Porta\I18n\Translator;
 use Porta\Run\RunController;
 use Porta\Ui\Dock\BottomDock;
 use Porta\Ui\Dock\DockTab;
-use Porta\Widget\CodeEditorWidget;
 use Porta\Widget\Git\ChangesListWidget;
 use Symfony\Component\Tui\Input\Keybindings;
 
@@ -26,7 +25,7 @@ final class ContextMenuBuilder
 {
     public function __construct(
         private readonly CommandRegistry $commands,
-        private readonly CodeEditorWidget $editor,
+        private readonly EditorCommandTarget $editor,
         private readonly Keybindings $keybindings,
         private readonly BufferService $bufferService,
         private readonly Translator $translator,

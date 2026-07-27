@@ -9,7 +9,6 @@ use Porta\Config\CommandRegistry;
 use Porta\I18n\Translator;
 use Porta\Plugin\PluginMenuSpec;
 use Porta\Ui\ShortcutFormatter;
-use Porta\Widget\CodeEditorWidget;
 use Symfony\Component\Tui\Input\Keybindings;
 
 /**
@@ -17,7 +16,7 @@ use Symfony\Component\Tui\Input\Keybindings;
  * existing command + action systems, so menu labels, shortcuts and handlers stay
  * a single source of truth. Each item is either an **ide** command (run via
  * {@see CommandRegistry::run()}) or an **editor** action (run via
- * {@see CodeEditorWidget::runAction()}); shortcuts are resolved from the live
+ * {@see EditorCommandTarget::runAction()}); shortcuts are resolved from the live
  * keybindings and formatted by {@see ShortcutFormatter}.
  */
 final class MenuModel
@@ -153,7 +152,7 @@ final class MenuModel
      */
     public static function build(
         CommandRegistry $commands,
-        CodeEditorWidget $editor,
+        EditorCommandTarget $editor,
         Keybindings $ideKeys,
         Translator $translator,
         ?\Closure $gitViewOpen = null,
@@ -216,7 +215,7 @@ final class MenuModel
     public static function items(
         array $specs,
         CommandRegistry $commands,
-        CodeEditorWidget $editor,
+        EditorCommandTarget $editor,
         Keybindings $ideKeys,
         Translator $translator,
         ?\Closure $gitViewOpen = null,
@@ -270,7 +269,7 @@ final class MenuModel
     private static function item(
         string $spec,
         CommandRegistry $commands,
-        CodeEditorWidget $editor,
+        EditorCommandTarget $editor,
         Keybindings $ideKeys,
         Translator $translator,
         ?\Closure $gitViewOpen,
@@ -324,7 +323,7 @@ final class MenuModel
      * The primary key binding for an action id, looking in the editor's merged
      * keybindings first (editor actions) then the IDE-level ones (ide_* actions).
      */
-    private static function binding(string $id, CodeEditorWidget $editor, Keybindings $ideKeys): string
+    private static function binding(string $id, EditorCommandTarget $editor, Keybindings $ideKeys): string
     {
         return $editor->getKeybindings()->getBindings($id)[0] ?? $ideKeys->getBindings($id)[0] ?? '';
     }

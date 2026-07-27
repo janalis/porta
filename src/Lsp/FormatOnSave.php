@@ -5,10 +5,10 @@ declare(strict_types=1);
 namespace Porta\Lsp;
 
 use Porta\Editor\Buffer;
+use Porta\Editor\EditorInvalidator;
 use Porta\I18n\Translator;
 use Porta\Support\Scheduler;
 use Porta\Ui\Notifier;
-use Porta\Widget\CodeEditorWidget;
 use Symfony\Component\Tui\Tui;
 
 /**
@@ -35,7 +35,7 @@ final class FormatOnSave
     public function __construct(
         private readonly LspSessionPool $lsp,
         private readonly WorkspaceEditor $workspaceEditor,
-        private readonly CodeEditorWidget $editor,
+        private readonly EditorInvalidator $editor,
         private readonly Notifier $notifier,
         private readonly Translator $translator,
         private readonly Scheduler $scheduler,

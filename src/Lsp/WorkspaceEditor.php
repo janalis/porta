@@ -7,8 +7,8 @@ namespace Porta\Lsp;
 use Porta\Container\AsIdeService;
 use Porta\Editor\BufferManager;
 use Porta\Editor\Document;
+use Porta\Editor\EditorInvalidator;
 use Porta\Editor\SelectionMode;
-use Porta\Widget\CodeEditorWidget;
 use Symfony\Component\Filesystem\Filesystem;
 
 /**
@@ -21,7 +21,7 @@ final readonly class WorkspaceEditor
 {
     public function __construct(
         private BufferManager $buffers,
-        private CodeEditorWidget $editor,
+        private EditorInvalidator $editor,
         private LspSessionPool $lsp,
     ) {}
 

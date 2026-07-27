@@ -30,6 +30,8 @@ final class GitRemoteCommands
         private readonly Notifier $notifier,
         private readonly Translator $translator,
         private readonly EventDispatcherInterface $dispatcher,
+        // Concrete on purpose: besides the pick-one list this hands the widget
+        // itself back to Tui::setFocus(), which needs an AbstractWidget.
         private readonly CodeEditorWidget $editor,
         private readonly WorkspaceViews $views,
         private readonly Tui $tui,

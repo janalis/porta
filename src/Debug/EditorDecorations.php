@@ -4,8 +4,8 @@ declare(strict_types=1);
 
 namespace Porta\Debug;
 
+use Porta\Editor\EditorDecorationSink;
 use Porta\Event\BufferSwitched;
-use Porta\Widget\CodeEditorWidget;
 use Symfony\Component\EventDispatcher\Attribute\AsEventListener;
 
 /**
@@ -18,7 +18,7 @@ final class EditorDecorations
     public function __construct(
         private readonly BreakpointStore $breakpoints,
         private readonly DebugSessionState $state,
-        private readonly CodeEditorWidget $editor,
+        private readonly EditorDecorationSink $editor,
     ) {}
 
     public function apply(string $path): void

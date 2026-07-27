@@ -5,7 +5,7 @@ declare(strict_types=1);
 namespace Porta\Search;
 
 use Porta\Editor\Document;
-use Porta\Widget\CodeEditorWidget;
+use Porta\Editor\EditorDecorationSink;
 
 /**
  * The code editor as a {@see FindTarget}: matches are revealed by moving the
@@ -16,7 +16,7 @@ final class EditorFindTarget implements FindTarget
 {
     public function __construct(
         private readonly Document $document,
-        private readonly CodeEditorWidget $editor,
+        private readonly EditorDecorationSink $editor,
     ) {}
 
     public function findLines(): array

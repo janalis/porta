@@ -7,11 +7,11 @@ namespace Porta\Git;
 use Porta\Container\AsIdeService;
 use Porta\Editor\Buffer;
 use Porta\Editor\BufferManager;
+use Porta\Editor\EditorDecorationSink;
 use Porta\Event\BufferOpened;
 use Porta\Event\BufferSaved;
 use Porta\Event\GitCommitted;
 use Porta\Event\GitRemoteCompleted;
-use Porta\Widget\CodeEditorWidget;
 use Porta\Widget\StatusBarWidget;
 use Symfony\Component\EventDispatcher\Attribute\AsEventListener;
 use Symfony\Component\Tui\Tui;
@@ -29,7 +29,7 @@ final class GitRefresher
     public function __construct(
         private readonly GitInfo $git,
         private readonly BufferManager $buffers,
-        private readonly CodeEditorWidget $editor,
+        private readonly EditorDecorationSink $editor,
         private readonly StatusBarWidget $statusBar,
         private readonly Tui $tui,
         private readonly ?GitSettings $gitSettings = null,

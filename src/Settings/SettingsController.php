@@ -6,13 +6,13 @@ namespace Porta\Settings;
 
 use Porta\Config\IdeConfig;
 use Porta\Container\AsIdeService;
+use Porta\Editor\EditorViewOptions;
 use Porta\Editor\LineNumberMode;
 use Porta\I18n\Translator;
 use Porta\Search\TodoTags;
 use Porta\Settings\LiveSettingsApplier;
 use Porta\Ui\Notifier;
 use Porta\Widget\BreadcrumbsWidget;
-use Porta\Widget\CodeEditorWidget;
 use Symfony\Component\DependencyInjection\Attribute\Autowire;
 
 /**
@@ -41,7 +41,7 @@ final class SettingsController
     public function __construct(
         #[Autowire('%env(json:PORTA_SETTINGS)%')]
         private array $settings,
-        CodeEditorWidget $editor,
+        EditorViewOptions $editor,
         private readonly Notifier $notifier,
         private readonly string $rootDir,
         private readonly Translator $translator,

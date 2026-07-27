@@ -9,7 +9,6 @@ use Porta\Container\AsIdeService;
 use Porta\I18n\Translator;
 use Porta\Plugin\PluginManager;
 use Porta\Ui\WorkspaceViews;
-use Porta\Widget\CodeEditorWidget;
 use Porta\Widget\MenuBarWidget;
 use Symfony\Component\Tui\Input\Keybindings;
 
@@ -24,7 +23,7 @@ final class MenuRebuilder
     public function __construct(
         private readonly MenuBarWidget $menuBar,
         private readonly CommandRegistry $commands,
-        private readonly CodeEditorWidget $editor,
+        private readonly EditorCommandTarget $editor,
         private readonly Keybindings $keybindings,
         private readonly Translator $translator,
         private readonly WorkspaceViews $views,

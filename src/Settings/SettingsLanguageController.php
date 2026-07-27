@@ -8,9 +8,9 @@ use Porta\Config\IdeConfig;
 use Porta\Config\LanguageCatalog;
 use Porta\Config\LanguageIndent;
 use Porta\Container\AsIdeService;
+use Porta\Editor\EditorIndentTarget;
 use Porta\I18n\Translator;
 use Porta\Ui\Notifier;
-use Porta\Widget\CodeEditorWidget;
 use Symfony\Component\DependencyInjection\Attribute\Autowire;
 
 /**
@@ -35,7 +35,7 @@ final class SettingsLanguageController
      * @param array<string, array{indentStyle?: string, indentSize?: int|string, debug?: array{adapter?: string, launch?: array<string, mixed>}, runCommand?: string}> $overrides from {@see IdeConfig::$languages}
      */
     public function __construct(
-        private readonly CodeEditorWidget $editor,
+        private readonly EditorIndentTarget $editor,
         private readonly Notifier $notifier,
         private readonly string $rootDir,
         private readonly Translator $translator,
