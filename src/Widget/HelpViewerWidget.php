@@ -13,6 +13,7 @@ use Porta\Help\RenderedDoc;
 use Porta\Search\FindTarget;
 use Porta\Support\AnsiText;
 use Porta\Support\IntMath;
+use Porta\Ui\ClickZones;
 use Porta\Ui\Glyphs;
 use Porta\Ui\LtrPane;
 use Porta\Ui\Role;
@@ -66,8 +67,8 @@ final class HelpViewerWidget extends AbstractWidget implements FindTarget, Focus
     private array $history = [];
     /** @var list<array{path: string, scrollTop: int, currentLink: int}> pages backed out of, re-entered via the › arrow */
     private array $forward = [];
-    /** @var list<array{action: string, start: int, end: int}> header click zones, rebuilt per render */
-    private array $headerZones = [];
+    /** Header click zones (action names), rebuilt per render. */
+    private readonly ClickZones $headerZones;
     private int $lastRows = 24;
     /** The documentation root directory: the breadcrumb mirrors paths under it. */
     private ?string $docsRoot = null;
@@ -79,6 +80,7 @@ final class HelpViewerWidget extends AbstractWidget implements FindTarget, Focus
     {
         $this->styles = $styles ?? Styles::dark();
         $this->renderer = new MarkdownRenderer($this->styles);
+        $this->headerZones = new ClickZones();
     }
 
     public function setHandler(HelpViewerHandler $handler): void
@@ -142,16 +144,13 @@ final class HelpViewerWidget extends AbstractWidget implements FindTarget, Focus
     public function clickAt(int $relRow, int $relCol): bool
     {
         if (0 === $relRow) {
-            foreach ($this->headerZones as $zone) {
-                if (!($relCol >= $zone['start'] && $relCol < $zone['end'])) {
-                    continue;
-                }
-
+            $action = $this->headerZones->at($relCol);
+            if (null !== $action) {
                 match (true) {
-                    'back' === $zone['action'] => $this->back(),
-                    'forward' === $zone['action'] => $this->forward(),
-                    'top' === $zone['action'] => $this->scrollBy(-\PHP_INT_MAX),
-                    default => $this->follow(substr($zone['action'], offset: 4)),
+                    'back' === $action => $this->back(),
+                    'forward' === $action => $this->forward(),
+                    'top' === $action => $this->scrollBy(-\PHP_INT_MAX),
+                    default => $this->follow(substr($action, offset: 4)),
                 };
 
                 return true;
@@ -219,7 +218,7 @@ final class HelpViewerWidget extends AbstractWidget implements FindTarget, Focus
      */
     private function headerLine(int $cols): string
     {
-        $this->headerZones = [];
+        $this->headerZones->clear();
         $crumbs = $this->hierarchyCrumbs();
         $total = \count($crumbs);
         while (\count($crumbs) > 1 && (7 + array_sum(array_map(static fn (array $c): int => AnsiUtils::visibleWidth($c['label']) + 3, $crumbs))) > $cols) {
@@ -235,7 +234,7 @@ final class HelpViewerWidget extends AbstractWidget implements FindTarget, Focus
             if ($active) {
                 // A one-cell glyph is a frustrating click target: pad the zone
                 // a cell to each side (earlier zones win where they touch).
-                $this->headerZones[] = ['action' => $action, 'start' => $col - 1, 'end' => $col + 2];
+                $this->headerZones->add($action, $col - 1, $col + 2);
             }
             $text .= $this->styles->of($active ? Role::TabAccent : Role::Dim)->apply($glyph).' ';
             $col += 2;
@@ -251,13 +250,13 @@ final class HelpViewerWidget extends AbstractWidget implements FindTarget, Focus
             $width = AnsiUtils::visibleWidth($crumb['label']);
             $isLast = $i === (\count($crumbs) - 1);
             if ('' !== $crumb['action']) {
-                $this->headerZones[] = ['action' => $crumb['action'], 'start' => $col - 1, 'end' => $col + $width + 1];
+                $this->headerZones->add($crumb['action'], $col - 1, $col + $width + 1);
                 $text .= $this->styles->of(Role::TabAccent)->apply($crumb['label']);
             }
             if ('' === $crumb['action'] && $isLast) {
                 // The current page: clicking it scrolls back to the top rather
                 // than doing nothing (the only crumb on the root page).
-                $this->headerZones[] = ['action' => 'top', 'start' => $col - 1, 'end' => $col + $width + 1];
+                $this->headerZones->add('top', $col - 1, $col + $width + 1);
                 $text .= $bold.$crumb['label'].$unbold;
             }
             if ('' === $crumb['action'] && !$isLast) {

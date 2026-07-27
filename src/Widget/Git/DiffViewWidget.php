@@ -13,6 +13,7 @@ use Porta\Highlight\TempestHighlightProvider;
 use Porta\I18n\Translator;
 use Porta\Support\AnsiText;
 use Porta\Support\IntMath;
+use Porta\Ui\ClickZones;
 use Porta\Ui\LtrPane;
 use Porta\Ui\Role;
 use Porta\Ui\Theme\Styles;
@@ -63,8 +64,8 @@ final class DiffViewWidget extends AbstractWidget implements FocusableInterface,
     private bool $split = false;
     /** Mirror of the controller's hide-whitespace state, for the toolbar tag. */
     private bool $whitespaceHidden = false;
-    /** @var list<array{name: string, start: int, end: int}> clickable toolbar tag spans from the last render */
-    private array $buttonZones = [];
+    /** Clickable toolbar tag spans from the last render. */
+    private readonly ClickZones $buttonZones;
     /** Toolbar tag under the pointer ('split'|'whitespace'), or null. Visual only. */
     private ?string $hoveredButton = null;
     private int $scroll = 0;
@@ -99,6 +100,7 @@ final class DiffViewWidget extends AbstractWidget implements FocusableInterface,
         ?TerminalTheme $syntaxTheme = null,
     ) {
         $this->styles = $styles ?? Styles::dark();
+        $this->buttonZones = new ClickZones();
         $this->callbacks = new DiffViewCallbacks(); // a bare diff view fires nothing
         $theme = $syntaxTheme ?? new DarkTerminalTheme();
         // Diff hunks are non-contiguous lines from different files: always the
@@ -376,14 +378,9 @@ final class DiffViewWidget extends AbstractWidget implements FocusableInterface,
     public function handleClick(int $relRow, int $relCol): void
     {
         if (0 === $relRow) {
-            foreach ($this->buttonZones as $zone) {
-                if (!($relCol >= $zone['start'] && $relCol < $zone['end'])) {
-                    continue;
-                }
-
-                $this->fireButton($zone['name']);
-
-                return;
+            $name = $this->buttonZones->at($relCol);
+            if (null !== $name) {
+                $this->fireButton($name);
             }
 
             return;
@@ -686,7 +683,7 @@ final class DiffViewWidget extends AbstractWidget implements FocusableInterface,
      */
     private function renderToolbar(string $title, int $width): string
     {
-        $this->buttonZones = [];
+        $this->buttonZones->clear();
         // The key-hint dialect: a bare key is written as its own name, like
         // the Esc/Tab hints elsewhere — never invented shorthand.
         $tags = [
@@ -703,7 +700,7 @@ final class DiffViewWidget extends AbstractWidget implements FocusableInterface,
         $left = AnsiText::truncate($title, $col, pad: true);
         foreach ($tags as $tag) {
             $tagWidth = mb_strwidth($tag['label']);
-            $this->buttonZones[] = ['name' => $tag['name'], 'start' => $col, 'end' => $col + $tagWidth];
+            $this->buttonZones->add($tag['name'], $col, $col + $tagWidth);
             $rendered .= $this->tagStyle(OptionTagState::of($tag['on'], $tag['name'] === $this->hoveredButton))->apply($tag['label']).' ';
             $col += $tagWidth + 1;
         }
@@ -735,15 +732,7 @@ final class DiffViewWidget extends AbstractWidget implements FocusableInterface,
      */
     public function hoverHeader(int $relRow, int $relCol): bool
     {
-        $hovered = null;
-        foreach (0 === $relRow ? $this->buttonZones : [] as $zone) {
-            if ($relCol < $zone['start'] || $relCol >= $zone['end']) {
-                continue;
-            }
-
-            $hovered = $zone['name'];
-            break;
-        }
+        $hovered = 0 === $relRow ? $this->buttonZones->at($relCol) : null;
         if ($hovered === $this->hoveredButton) {
             return false;
         }

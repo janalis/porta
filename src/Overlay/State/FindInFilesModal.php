@@ -10,6 +10,7 @@ use Porta\Search\TokenScope;
 use Porta\Support\AnsiText;
 use Porta\Support\IntMath;
 use Porta\Ui\CaretVisibility;
+use Porta\Ui\ClickZones;
 use Porta\Ui\CursorStyle;
 use Porta\Ui\Glyphs;
 use Porta\Ui\Role;
@@ -92,10 +93,10 @@ final class FindInFilesModal
 
     /** last-rendered geometry, for hit-testing (`windowTop()` is the first preview row) */
     private ?ModalBox $box = null;
-    /** @var list<array{name: string, start: int, end: int}> option-tag + scope click zones (columns) on the options row */
-    private array $optionZones = [];
-    /** @var list<array{name: string, start: int, end: int}> clickable action zones (columns) on the footer row */
-    private array $footerZones = [];
+    /** Option-tag + scope click zones (columns) on the options row. */
+    private readonly ClickZones $optionZones;
+    /** Clickable action zones (columns) on the footer row. */
+    private readonly ClickZones $footerZones;
     private int $optionsRow = -1;
     private int $footerRowIndex = -1;
     /** hovered header/footer zone name ('regex'|'case'|'word'|'preserve'|'tokens'|'scope'|'find_window'|'footer_scope') or null */
@@ -137,6 +138,8 @@ final class FindInFilesModal
     ) {
         $this->styles = $styles ?? Styles::dark();
         $this->translator = $translator ?? new Translator('en');
+        $this->optionZones = new ClickZones();
+        $this->footerZones = new ClickZones();
         $this->callbacks = new FindModalCallbacks(); // a bare modal fires nothing
         $this->scopeLabels = [$this->translator->trans('Whole Project')];
         $this->query = new TextField(style: $cursorStyle);
@@ -684,12 +687,12 @@ final class FindInFilesModal
     private function optionsRowLine(int $width): string
     {
         $tokenGlyph = TokenScope::from($this->options['tokens'])->glyph();
-        $this->optionZones = [];
+        $this->optionZones->clear();
         $col = 1; // leading space
         $tags = '';
         foreach (['regex' => '.*', 'case' => 'Aa', 'word' => '\\b', 'preserve' => 'Pc', 'tokens' => $tokenGlyph] as $name => $glyph) {
             $w = mb_strwidth($glyph) + 2;
-            $this->optionZones[] = ['name' => $name, 'start' => $col, 'end' => $col + $w];
+            $this->optionZones->add($name, $col, $col + $w);
             $col += $w;
             $on = 'tokens' === $name ? 'any' !== $this->options['tokens'] : $this->options[$name];
             $tags .= FindModalRows::optionTag($glyph, OptionTagState::of($on, $name === $this->hovered), $this->styles);
@@ -701,7 +704,7 @@ final class FindInFilesModal
             : $this->styles->of(Role::TabAccent)->apply($label);
         $scope = '  '.$this->styles->of(Role::Dim)->apply($this->translator->trans('Scope:').' ').$labelPart.$this->styles->of(Role::Dim)->apply(' (Alt+S)');
         // The scope zone starts past the two-space gap; clamp so a truncated box can't hit past the edge.
-        $this->optionZones[] = ['name' => 'scope', 'start' => $col + 2, 'end' => min($col + 2 + mb_strwidth($this->translator->trans('Scope:').' '.$label.' (Alt+S)'), $width)];
+        $this->optionZones->add('scope', $col + 2, min($col + 2 + mb_strwidth($this->translator->trans('Scope:').' '.$label.' (Alt+S)'), $width));
 
         return $this->styles->of(Role::Toolbar)->apply(AnsiText::truncate(' '.$tags.$scope, $width, pad: true));
     }
@@ -736,7 +739,7 @@ final class FindInFilesModal
     /** The footer hint row; the action words are clickable/hoverable zones. */
     private function footerRow(int $width): string
     {
-        $this->footerZones = [];
+        $this->footerZones->clear();
         // A hovered label closes its own foreground, so the dim pen must be
         // re-opened explicitly (the row wrap only re-applies the background).
         $dim = $this->styles->of(Role::Dim)->getAnsiRestore();
@@ -744,7 +747,7 @@ final class FindInFilesModal
         $line = ' '.$this->translator->trans('⏎ open').$sep;
         $col = mb_strwidth($line);
         foreach ([$this->translator->trans('Find window') => 'find_window', $this->translator->trans('Scope') => 'footer_scope'] as $label => $name) {
-            $this->footerZones[] = ['name' => $name, 'start' => $col, 'end' => $col + mb_strwidth($label)];
+            $this->footerZones->add($name, $col, $col + mb_strwidth($label));
             $line .= $name === $this->hovered
                 ? $this->styles->merge(Role::RowHighlightBg, Role::Bright)->apply($label).$dim
                 : $label;
@@ -829,7 +832,7 @@ final class FindInFilesModal
             return true;
         }
         if ($relRow === $this->optionsRow) {
-            $zone = $this->zoneNameAt($innerCol, $this->optionZones);
+            $zone = $this->optionZones->at($innerCol);
             if ('scope' === $zone) {
                 $this->cycleScope();
 
@@ -842,7 +845,7 @@ final class FindInFilesModal
             return true;
         }
         if ($relRow === $this->footerRowIndex) {
-            $this->clickFooter($this->zoneNameAt($innerCol, $this->footerZones));
+            $this->clickFooter($this->footerZones->at($innerCol));
 
             return true;
         }
@@ -940,10 +943,10 @@ final class FindInFilesModal
             ($this->invalidate)();
         }
         if (null !== $box && $relRow === $this->optionsRow) {
-            return $this->hoverZone($this->zoneNameAt($box->innerCol($relCol), $this->optionZones)) || $closeChanged;
+            return $this->hoverZone($this->optionZones->at($box->innerCol($relCol))) || $closeChanged;
         }
         if (null !== $box && $relRow === $this->footerRowIndex) {
-            return $this->hoverZone($this->zoneNameAt($box->innerCol($relCol), $this->footerZones)) || $closeChanged;
+            return $this->hoverZone($this->footerZones->at($box->innerCol($relCol))) || $closeChanged;
         }
         $cleared = $this->hoverZone(null); // moving off the header/footer drops any tag hover
         $index = $this->previewIndexAt($relRow);
@@ -957,22 +960,6 @@ final class FindInFilesModal
         }
 
         return $cleared || $closeChanged;
-    }
-
-    /**
-     * The zone name whose column span covers $innerCol, or null.
-     *
-     * @param list<array{name: string, start: int, end: int}> $zones
-     */
-    private function zoneNameAt(int $innerCol, array $zones): ?string
-    {
-        foreach ($zones as $zone) {
-            if ($innerCol >= $zone['start'] && $innerCol < $zone['end']) {
-                return $zone['name'];
-            }
-        }
-
-        return null;
     }
 
     /** Set the hovered zone; no-op returning false when unchanged, else re-renders. */

@@ -18,6 +18,7 @@ use Porta\Search\SearchPattern;
 use Porta\Search\WordMode;
 use Porta\Support\AnsiText;
 use Porta\Ui\CaretVisibility;
+use Porta\Ui\ClickZones;
 use Porta\Ui\CursorStyle;
 use Porta\Ui\Role;
 use Porta\Ui\TextField;
@@ -84,6 +85,7 @@ final class FindBarWidget extends OverlayWidget implements FocusableInterface
         $this->styles = $styles ?? Styles::dark();
         $this->query = new TextField(style: $cursorStyle);
         $this->replacement = new TextField(style: $cursorStyle);
+        $this->optionZones = new ClickZones();
     }
 
     public function open(FindTarget $target, FindMode $mode, string $initialQuery = ''): void
@@ -229,10 +231,8 @@ final class FindBarWidget extends OverlayWidget implements FocusableInterface
      * The option tags' click zones (widget-relative columns) from the last
      * render. Right-aligned into a fixed strip, so unlike the rest of the bar
      * they do not move as the query grows — see {@see render()}.
-     *
-     * @var list<array{name: string, start: int, end: int}>
      */
-    private array $optionZones = [];
+    private readonly ClickZones $optionZones;
     /** The option tag under the pointer ('regex'|'word'), or null. Visual only. */
     private ?string $hoveredTag = null;
 
@@ -271,21 +271,13 @@ final class FindBarWidget extends OverlayWidget implements FocusableInterface
     /** The option-tag zone covering $col in the last render, or null. */
     private function zoneAt(int $col): ?string
     {
-        foreach ($this->optionZones as $zone) {
-            if ($col < $zone['start'] || $col >= $zone['end']) {
-                continue;
-            }
-
-            return $zone['name'];
-        }
-
-        return null;
+        return $this->optionZones->at($col);
     }
 
     public function render(RenderContext $context): array
     {
         if (!$this->open) {
-            $this->optionZones = [];
+            $this->optionZones->clear();
 
             return [];
         }
@@ -312,13 +304,13 @@ final class FindBarWidget extends OverlayWidget implements FocusableInterface
         // follow the caret, which would otherwise carry their columns off with
         // it and leave the zones pointing at whatever the query pushed there.
         // Same resolution the diff view's toolbar toggles already use.
-        $this->optionZones = [];
+        $this->optionZones->clear();
         $tags = '';
         $col = max(0, $columns - self::tagsWidth());
         foreach ([['regex', '.*', $this->regex], ['word', '\b', $this->wholeWord]] as [$name, $glyph, $on]) {
             $tags .= FindModalRows::optionTag($glyph, OptionTagState::of($on, $name === $this->hoveredTag), $this->styles);
             $width = mb_strwidth($glyph) + 2;
-            $this->optionZones[] = ['name' => $name, 'start' => $col, 'end' => $col + $width];
+            $this->optionZones->add($name, $col, $col + $width);
             $col += $width;
         }
 
