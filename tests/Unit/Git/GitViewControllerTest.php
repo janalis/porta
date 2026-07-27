@@ -12,6 +12,7 @@ use Porta\Event\GitRemoteCompleted;
 use Porta\Git\GitInfo;
 use Porta\Git\GitPanes;
 use Porta\Git\GitViewController;
+use Porta\Git\GitViewMode;
 use Porta\Git\RefreshMode;
 use Porta\Git\WhitespaceMode;
 use Porta\I18n\Translator;
@@ -750,7 +751,7 @@ final class GitViewControllerTest extends TestCase
         $this->await($controller->isOpen(...));
         $this->changes->setFocused(true);
         $this->changes->handleInput('2');
-        new \ReflectionMethod($controller, 'switchMode')->invoke($controller, 'history'); // same mode: no-op
+        new \ReflectionMethod($controller, 'switchMode')->invoke($controller, GitViewMode::History); // same mode: no-op
         $this->await(fn (): bool => null !== $this->history->selectedCommit());
 
         // A log request whose view closes before it resolves is dropped.

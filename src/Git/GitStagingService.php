@@ -38,9 +38,9 @@ final class GitStagingService
      * @param array<int, array<int, true>> $selected  hunk index => selected line set
      * @param \Closure(): void              $onApplied refresh + reload the shown diff
      */
-    public function stageSelection(ChangeEntry $entry, DiffDocument $document, string $side, WhitespaceMode $whitespace, array $selected, \Closure $onApplied): void
+    public function stageSelection(ChangeEntry $entry, DiffDocument $document, DiffSide $side, WhitespaceMode $whitespace, array $selected, \Closure $onApplied): void
     {
-        if ('untracked' === $side) {
+        if (DiffSide::Untracked === $side) {
             $this->notifier->flash($this->translator->trans('Untracked: stage the whole file with Space in the changes list'));
 
             return;
@@ -53,7 +53,7 @@ final class GitStagingService
             return;
         }
 
-        $hunks = 'cached' === $side
+        $hunks = DiffSide::Cached === $side
             ? array_map(PatchBuilder::invertHunk(...), $document->hunks)
             : $document->hunks;
         $patch = PatchBuilder::build($entry->path, $hunks, $selected);

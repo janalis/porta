@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Porta\Widget\Git;
 
 use Porta\Container\AsWidget;
+use Porta\Git\GitViewMode;
 use Porta\I18n\Translator;
 use Porta\Support\AnsiText;
 use Porta\Ui\Role;
@@ -29,16 +30,14 @@ final class GitTabsWidget extends AbstractWidget implements MenuOverlayHost
     use MenuOverlayHostTrait;
     use PanelWidth;
 
-    private const array TABS = ['changes' => ' Changes ', 'history' => ' History '];
-
-    private string $active = 'changes';
+    private GitViewMode $active = GitViewMode::Changes;
 
     /** The tab under the mouse pointer (visual only), or null. */
-    private ?string $hoveredMode = null;
-    /** @var list<array{mode: string, start: int, width: int}> tab layout from the last render, for hit-testing */
+    private ?GitViewMode $hoveredMode = null;
+    /** @var list<array{mode: GitViewMode, start: int, width: int}> tab layout from the last render, for hit-testing */
     private array $layout = [];
 
-    /** @var (callable(string): void)|null a click chose the other tab ('changes'|'history') */
+    /** @var (callable(GitViewMode): void)|null a click chose the other tab */
     private $onSelect = null;
 
     private readonly Styles $styles;
@@ -69,7 +68,7 @@ final class GitTabsWidget extends AbstractWidget implements MenuOverlayHost
         return 0.6;
     }
 
-    /** @param callable(string): void $callback */
+    /** @param callable(GitViewMode): void $callback */
     public function onSelect(callable $callback): self
     {
         $this->onSelect = $callback;
@@ -77,7 +76,7 @@ final class GitTabsWidget extends AbstractWidget implements MenuOverlayHost
         return $this;
     }
 
-    public function setActive(string $mode): void
+    public function setActive(GitViewMode $mode): void
     {
         if ($mode !== $this->active) {
             $this->active = $mode;
@@ -86,7 +85,7 @@ final class GitTabsWidget extends AbstractWidget implements MenuOverlayHost
     }
 
     /** Tint the (inactive) tab under the pointer; null clears. Returns whether it changed. */
-    public function hoverMode(?string $mode): bool
+    public function hoverMode(?GitViewMode $mode): bool
     {
         if ($mode === $this->hoveredMode) {
             return false;
@@ -98,7 +97,7 @@ final class GitTabsWidget extends AbstractWidget implements MenuOverlayHost
     }
 
     /** The tab under a widget-relative column, from the last render's layout. */
-    public function modeAtColumn(int $relCol): ?string
+    public function modeAtColumn(int $relCol): ?GitViewMode
     {
         foreach ($this->layout as $tab) {
             if ($relCol >= $tab['start'] && $relCol < ($tab['start'] + $tab['width'])) {
@@ -125,8 +124,11 @@ final class GitTabsWidget extends AbstractWidget implements MenuOverlayHost
         $this->layout = [];
         $line = ' ';
         $col = 1;
-        foreach (self::TABS as $mode => $rawLabel) {
-            $label = $this->translator->trans($rawLabel);
+        foreach (GitViewMode::cases() as $mode) {
+            $label = $this->translator->trans(match ($mode) {
+                GitViewMode::Changes => ' Changes ',
+                GitViewMode::History => ' History ',
+            });
             $tabWidth = mb_strwidth($label);
             $this->layout[] = ['mode' => $mode, 'start' => $col, 'width' => $tabWidth];
             $line .= TabStyle::of($this->styles, TabState::of($mode === $this->active, $mode === $this->hoveredMode))->apply($label);

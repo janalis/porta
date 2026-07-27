@@ -6,6 +6,7 @@ namespace Porta\Input;
 
 use Porta\Container\LayoutSlot;
 use Porta\Git\ChangeEntry;
+use Porta\Git\GitViewMode;
 use Porta\Git\LogEntry;
 use Porta\Widget\Git\ChangesListWidget;
 use Porta\Widget\Git\CommitBoxWidget;
@@ -163,7 +164,7 @@ final class GitMouseRouter
             // A strip click focuses the pane it reveals — this was the only
             // git pane click that left the focus wherever it happened to be.
             if (null !== $mode) {
-                $this->tui->setFocus('history' === $mode ? $this->history : $this->changes);
+                $this->tui->setFocus(GitViewMode::History === $mode ? $this->history : $this->changes);
             }
             $this->tui->requestRender();
 
