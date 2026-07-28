@@ -7,6 +7,7 @@ namespace Porta\Ui;
 use Porta\Container\AsIdeService;
 use Porta\Overlay\State\ToastCenter;
 use Porta\Overlay\State\ToastSeverity;
+use Porta\Support\FlashSink;
 use Porta\Widget\StatusBarWidget;
 use Symfony\Component\Tui\Tui;
 
@@ -22,7 +23,7 @@ use Symfony\Component\Tui\Tui;
  * back to the status-bar flash, preserving the pre-toast behavior seam.
  */
 #[AsIdeService]
-final readonly class Notifier
+final readonly class Notifier implements FlashSink
 {
     public function __construct(
         private StatusBarWidget $statusBar,

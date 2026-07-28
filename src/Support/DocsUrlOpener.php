@@ -5,7 +5,6 @@ declare(strict_types=1);
 namespace Porta\Support;
 
 use Porta\I18n\Translator;
-use Porta\Ui\Notifier;
 
 /**
  * Opens a documentation URL in the system browser (native-symbol docs from
@@ -15,7 +14,7 @@ use Porta\Ui\Notifier;
 final class DocsUrlOpener
 {
     public function __construct(
-        private readonly Notifier $notifier,
+        private readonly FlashSink $notifier,
         private readonly Translator $translator,
         private readonly string $rootDir,
     ) {}
