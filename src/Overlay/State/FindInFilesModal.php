@@ -255,31 +255,16 @@ final class FindInFilesModal
 
     /**
      * Handle one key. The editor's keybindings are passed only for their
-     * kitty-aware parser; the modal matches against its own action map.
+     * kitty-aware parser; the modal matches against its own action map. The
+     * handler map's KEYS drive both membership and dispatch (the
+     * EditorActionRouter doctrine); only the two history recalls stay
+     * sequential — their query-field condition gates the match itself — and
+     * the printable-insert fallback stays last.
      */
     public function handleInput(string $data, Keybindings $editorKb): void
     {
         $kb = new Keybindings(self::KEYS, $editorKb->getParser());
 
-        if ($kb->matches($data, 'select_cancel')) {
-            if (null !== $this->callbacks->onClose) {
-                ($this->callbacks->onClose)();
-            }
-
-            return;
-        }
-        if ($kb->matches($data, 'open_in_find_window')) {
-            if (null !== $this->callbacks->onOpenInFindWindow) {
-                ($this->callbacks->onOpenInFindWindow)();
-            }
-
-            return;
-        }
-        if ($kb->matches($data, 'accept_completion')) {
-            $this->jumpSelected();
-
-            return;
-        }
         if ('query' === $this->activeField && $kb->matches($data, 'history_prev')) {
             $this->recallHistory(1);
 
@@ -290,85 +275,82 @@ final class FindInFilesModal
 
             return;
         }
-        if ($kb->matches($data, 'cursor_up')) {
-            $this->step(-1);
+        foreach (self::keyHandlers() as $action => $handler) {
+            if ($kb->matches($data, $action)) {
+                $handler($this);
 
-            return;
-        }
-        if ($kb->matches($data, 'cursor_down')) {
-            $this->step(1);
-
-            return;
-        }
-        if ($kb->matches($data, 'switch_field')) {
-            $this->activeField = match ($this->activeField) {
-                'query' => 'replace',
-                'replace' => 'mask',
-                default => 'query',
-            };
-            ($this->invalidate)();
-
-            return;
-        }
-        if ($kb->matches($data, 'replace_all')) {
-            if (null !== $this->callbacks->onReplaceAll) {
-                ($this->callbacks->onReplaceAll)($this->replace->value(), $this->excludedIndices());
+                return;
             }
-
-            return;
-        }
-        if ($kb->matches($data, 'toggle_exclude')) {
-            if ($this->inPreview()) {
-                $this->toggleExcludeSelected();
-            }
-
-            return;
-        }
-        if ($kb->matches($data, 'insert_newline')) {
-            $this->activeTextField()->insertNewline();
-            $this->notifyField();
-
-            return;
-        }
-        if ($kb->matches($data, 'cycle_scope')) {
-            $this->cycleScope();
-
-            return;
-        }
-        if ($kb->matches($data, 'toggle_regex')) {
-            $this->fireToggle('regex');
-
-            return;
-        }
-        if ($kb->matches($data, 'toggle_case')) {
-            $this->fireToggle('case');
-
-            return;
-        }
-        if ($kb->matches($data, 'toggle_word')) {
-            $this->fireToggle('word');
-
-            return;
-        }
-        if ($kb->matches($data, 'toggle_preserve')) {
-            $this->fireToggle('preserve');
-
-            return;
-        }
-        if ($kb->matches($data, 'toggle_tokens')) {
-            $this->fireToggle('tokens');
-
-            return;
-        }
-        if ($kb->matches($data, 'delete_char_backward')) {
-            if ($this->activeTextField()->backspace()) {
-                $this->notifyField();
-            }
-
-            return;
         }
         if ($this->activeTextField()->insert($data)) {
             $this->notifyField();
+        }
+    }
+
+    /**
+     * The action table: one closure per bindable key, taking the modal as its
+     * parameter so the closures stay static. Kept in the original guard order
+     * (binding-disjoint, so only legibility depends on it).
+     *
+     * @return array<string, \Closure(self): void>
+     */
+    private static function keyHandlers(): array
+    {
+        return [
+            'select_cancel' => static fn (self $modal) => $modal->fireClose(),
+            'open_in_find_window' => static fn (self $modal) => $modal->fireOpenInFindWindow(),
+            'accept_completion' => static fn (self $modal) => $modal->jumpSelected(),
+            'cursor_up' => static fn (self $modal) => $modal->step(-1),
+            'cursor_down' => static fn (self $modal) => $modal->step(1),
+            'switch_field' => static function (self $modal): void {
+                $modal->activeField = match ($modal->activeField) {
+                    'query' => 'replace',
+                    'replace' => 'mask',
+                    default => 'query',
+                };
+                ($modal->invalidate)();
+            },
+            'replace_all' => static function (self $modal): void {
+                if (null !== $modal->callbacks->onReplaceAll) {
+                    ($modal->callbacks->onReplaceAll)($modal->replace->value(), $modal->excludedIndices());
+                }
+            },
+            'toggle_exclude' => static function (self $modal): void {
+                if ($modal->inPreview()) {
+                    $modal->toggleExcludeSelected();
+                }
+            },
+            'insert_newline' => static function (self $modal): void {
+                $modal->activeTextField()->insertNewline();
+                $modal->notifyField();
+            },
+            'cycle_scope' => static fn (self $modal) => $modal->cycleScope(),
+            'toggle_regex' => static fn (self $modal) => $modal->fireToggle('regex'),
+            'toggle_case' => static fn (self $modal) => $modal->fireToggle('case'),
+            'toggle_word' => static fn (self $modal) => $modal->fireToggle('word'),
+            'toggle_preserve' => static fn (self $modal) => $modal->fireToggle('preserve'),
+            'toggle_tokens' => static fn (self $modal) => $modal->fireToggle('tokens'),
+            'delete_char_backward' => static function (self $modal): void {
+                if ($modal->activeTextField()->backspace()) {
+                    $modal->notifyField();
+                }
+            },
+        ];
+    }
+
+    /** Esc, the title-bar × and an outside click all leave through here. */
+    private function fireClose(): void
+    {
+        if (null !== $this->callbacks->onClose) {
+            ($this->callbacks->onClose)();
+        }
+    }
+
+    /** Alt+Enter and the footer's "Find window" zone both promote through here. */
+    private function fireOpenInFindWindow(): void
+    {
+        if (null !== $this->callbacks->onOpenInFindWindow) {
+            ($this->callbacks->onOpenInFindWindow)();
         }
     }
 
@@ -778,9 +760,7 @@ final class FindInFilesModal
             return true;
         }
         if (null !== $box && $box->closeHit($relRow, $relCol)) {
-            if (null !== $this->callbacks->onClose) {
-                ($this->callbacks->onClose)();
-            }
+            $this->fireClose();
 
             return true;
         }
@@ -794,9 +774,7 @@ final class FindInFilesModal
             return true;
         }
         if (null === $box || $relCol < $box->col || $relCol >= ($box->col + $box->width)) {
-            if (null !== $this->callbacks->onClose) {
-                ($this->callbacks->onClose)();
-            }
+            $this->fireClose();
 
             return true;
         }
@@ -897,9 +875,7 @@ final class FindInFilesModal
     private function clickFooter(?string $name): void
     {
         if ('find_window' === $name) {
-            if (null !== $this->callbacks->onOpenInFindWindow) {
-                ($this->callbacks->onOpenInFindWindow)();
-            }
+            $this->fireOpenInFindWindow();
 
             return;
         }
