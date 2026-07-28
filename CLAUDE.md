@@ -413,8 +413,16 @@ query, Problems, TODO, each Usages/Choose-target list, the LSP/notification logs
 re-invoking a tool reuses and refreshes its tab; a different title appends. Switching tabs
 (`BottomDock::bind`) preserves rows/title/searching (+ a Search tab's frozen
 `Search/SearchTabState` — query/options/scope/mask, re-adopted by `ProjectSearchController` on
-bind so F5/replace/export act on the displayed tab's own query); filter text, collapse, context
-and selection reset — the accepted v1 trade-off of rebinding through the widget's `open()`.
+bind so F5/replace/export act on the displayed tab's own query) **and the per-tab view state**
+(round 10 lifted the old v1 reset): filter text, grouping, collapse, context and selection ride
+each tab as a frozen `Widget/Support/ResultsViewState`, captured from the widget before a rebind
+and restored after `open()`+`setResults()` — identity-keyed (`path\0line`, the pure-static
+`Widget/Support/ResultIdentity`) so a live refresh of a PARKED tab cannot dislocate them; the
+capture target is `BottomDock`'s own `$boundTab` field, NOT `tools->active()` (already moved in
+the closeTab→bind-neighbour path). A fresh bind still resets and selects the first match.
+Live refreshes of the DISPLAYED tab go through `ResultsPanelWidget::refreshResults()`, which
+preserves selection/collapse/context the same way — except location-less rows (`path === ''`,
+the logs), which deliberately re-select the newest line (the `LogRows` newest-first contract).
 Async completions (search runs, TODO scans, the live Problems/log refreshes via
 `Workbench/Dock/DockLiveRefreshListener` on `Event/DiagnosticsChanged`/`LspLogAppended`/`NotificationLogged`)
 write into their captured tab and reach the widget only through `refreshIfBound` — an inactive
@@ -760,8 +768,16 @@ deactivation** on removal/disable: `PluginManager::deactivate` filters its state
 watermark to the filtered count (safe: everything is registered before any deactivate),
 `CommandRegistry::remove` kills palette + key dispatch, `PluginEvents::removeFor` (listeners
 are keyed per plugin) drops hooks; removing a shadowing copy reactivates the next copy down.
-Default keys still need a restart (immutable `Keybindings`) — a dead binding just falls
-through. Every plugin's settings page (a `plugin:<name>` nav sub-item) has an Enabled toggle
+Default keys apply LIVE too (round 10): `Config/LiveKeybindings` — the `Styles::switchTo`
+holder pattern — wraps the boot map; `PluginLifecycle` calls `rebuild()` (always BEFORE the
+menu rebuild, so shortcut labels bake fresh) and `rebuild()` re-merges IDE defaults ← plugin
+defaults ← the user keymap **re-read from `.porta.json`** (so keymap-page rebinds and external
+edits land live as well — `SettingsKeymapController` holds the holder and rebuilds after
+`persistKeymap`). Two invariants: the rebuilt map MUST reuse the current map's `KeyParser`
+(the Tui mutates it on kitty negotiation — a fresh parser silently un-negotiates; pinned by
+parser-identity test), and the vendor boundary (Tui/BidiTui, `WidgetContext`, `FocusManager`)
+keeps the boot instance on purpose — final-with-no-interface, inert for plugin ids because
+plugin commands dispatch in `InputDispatcher` before any widget sees the key. Every plugin's settings page (a `plugin:<name>` nav sub-item) has an Enabled toggle
 (persisted in `disabledPlugins`) plus its `PluginApi::registerSetting` rows
 (`Plugin/PluginSettings`, values in `.porta.json` `plugins.<name>.<key>`, read via
 `PluginApi::setting()` — works during activate() because the config seeds first). Menu items

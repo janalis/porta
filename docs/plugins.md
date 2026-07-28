@@ -48,8 +48,8 @@ Open **Settings → Plugins** and use the form:
 
 A successful install **activates the plugin immediately**: its commands
 appear in the command palette and the Plugins menu (between Code and Run)
-right away. Only its default keybindings wait for a restart (the keybinding
-map is built once at startup). **Removal deactivates the plugin live** —
+right away, and its default keybindings dispatch at once (the live keymap
+re-merges on every plugin toggle). **Removal deactivates the plugin live** —
 its menu entries, palette commands, key dispatch and hooks all die
 immediately, and the same name can be reinstalled without a restart. When a
 removed project plugin was shadowing a global or bundled copy of the same
