@@ -56,7 +56,8 @@ final class LspClientTest extends TestCase
 
         // Close stderr behind the client's back: stop() must skip the dead
         // resource in its pipe-closing loop and still close the rest cleanly.
-        $stderr = new \ReflectionProperty($client, 'stderr')->getValue($client);
+        $transport = new \ReflectionProperty($client, 'transport')->getValue($client);
+        $stderr = new \ReflectionProperty($transport, 'stderr')->getValue($transport);
         if (\is_resource($stderr)) {
             fclose($stderr);
         }
@@ -264,15 +265,17 @@ final class LspClientTest extends TestCase
         });
         $this->await(static fn () => $ready);
 
-        $drain = new \ReflectionMethod($client, 'drainStdout');
+        $transport = new \ReflectionProperty($client, 'transport')->getValue($client);
+        $drain = new \ReflectionMethod($transport, 'drainStdout');
+        $onMessage = static function (): void {};
 
         // Live pipe with no pending data: empty read, not EOF
-        $drain->invoke($client);
+        $drain->invoke($transport, $onMessage, null);
         $this->assertTrue($client->isRunning());
 
         // After stop() the pipe is closed: the guard returns immediately
         $client->stop();
-        $drain->invoke($client);
+        $drain->invoke($transport, $onMessage, null);
         $this->assertFalse($client->isRunning());
     }
 

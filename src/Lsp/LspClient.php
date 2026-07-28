@@ -4,34 +4,21 @@ declare(strict_types=1);
 
 namespace Porta\Lsp;
 
-use Porta\Support\JsonRpcFramer;
+use Porta\Support\JsonRpcTransport;
 use Porta\Support\NonBlockingWriter;
 use Porta\Support\Outcome;
-use Revolt\EventLoop;
 
 /**
  * Minimal asynchronous Language Server Protocol client.
  *
- * Talks JSON-RPC 2.0 over the stdio of a spawned server process. Reads are
- * driven by the Revolt event loop (the same loop symfony/tui runs on), so
+ * Talks JSON-RPC 2.0 over the stdio of a spawned server process (the pipe
+ * plumbing and Content-Length framing live in {@see JsonRpcTransport}). Reads
+ * are driven by the Revolt event loop (the same loop symfony/tui runs on), so
  * responses and server notifications arrive without blocking the UI.
  */
 final class LspClient implements LspClientInterface
 {
-    /** @var resource|null */
-    private $process;
-    /** @var resource|null */
-    private $stdin;
-    /** @var resource|null */
-    private $stdout;
-    /** @var resource|null */
-    private $stderr;
-
-    private readonly JsonRpcFramer $framer;
-    private ?string $stdoutWatcher = null;
-    private ?string $stderrWatcher = null;
-    /** Queued non-blocking stdin writes — a wedged server must never block the event loop. */
-    private ?NonBlockingWriter $writer = null;
+    private readonly JsonRpcTransport $transport;
 
     private int $nextId = 1;
     /** @var array<int, callable(mixed, ?array): void> id => callback(result, error) */
@@ -58,18 +45,18 @@ final class LspClient implements LspClientInterface
      * @param list<string> $command e.g. ['phpactor', 'language-server']
      */
     public function __construct(
-        private readonly array $command,
+        array $command,
         private readonly string $rootDir,
         ?callable $logger = null,
-        private readonly int $maxWriteBuffer = NonBlockingWriter::DEFAULT_LIMIT,
+        int $maxWriteBuffer = NonBlockingWriter::DEFAULT_LIMIT,
     ) {
         $this->logger = $logger;
-        $this->framer = new JsonRpcFramer();
+        $this->transport = new JsonRpcTransport($command, $rootDir, 'LSP server', $logger, $maxWriteBuffer);
     }
 
     public function isRunning(): bool
     {
-        return null !== $this->process && proc_get_status($this->process)['running'];
+        return $this->transport->isRunning();
     }
 
     public function isInitialized(): bool
@@ -103,16 +90,15 @@ final class LspClient implements LspClientInterface
      */
     public function start(callable $onReady): void
     {
-        $pipes = [];
-        $process = $this->openServerProcess($pipes);
-        if (null === $process) {
+        $started = $this->transport->start(function (array $message): void {
+            /** @var array{id?: mixed, method?: string, result?: mixed, error?: array<array-key, mixed>, params?: array{items?: array<array-key, mixed>, edit?: array<array-key, mixed>}} $message */
+            $this->handleMessage($message);
+        });
+        if (!$started) {
             $onReady(Outcome::Failed);
 
             return;
         }
-
-        $this->process = $process;
-        $this->attachStreamWatchers($pipes);
 
         $this->request(
             'initialize',
@@ -136,53 +122,6 @@ final class LspClient implements LspClientInterface
                 $onReady(Outcome::Ok);
             },
         );
-    }
-
-    /**
-     * Spawn the server over three stdio pipes. Returns the process handle, or
-     * null when proc_open fails; $pipes is populated with [stdin, stdout, stderr].
-     *
-     * @param array<int, resource> $pipes
-     *
-     * @return resource|null
-     */
-    private function openServerProcess(array &$pipes)
-    {
-        $descriptors = [0 => ['pipe', 'r'], 1 => ['pipe', 'w'], 2 => ['pipe', 'w']];
-        /** @var non-empty-string $cwd */
-        $cwd = $this->rootDir;
-        // @mago-expect lint:no-error-control-operator -- proc_open on a nonexistent/unusable binary emits a spawn ("posix_spawn() failed") warning that guarding the inputs cannot reliably prevent; the false return is handled below.
-        $process = @proc_open($this->command, $descriptors, $pipes, $cwd);
-
-        return \is_resource($process) ? $process : null;
-    }
-
-    /**
-     * Keep the pipes, put reads in non-blocking mode and register the event-loop
-     * watchers that drain stdout (JSON-RPC) and forward stderr to the logger.
-     *
-     * @param array<int, resource> $pipes the [stdin, stdout, stderr] from openServerProcess
-     */
-    private function attachStreamWatchers(array $pipes): void
-    {
-        [$this->stdin, $this->stdout, $this->stderr] = [$pipes[0], $pipes[1], $pipes[2]];
-        // stdin non-blocking too: a server that stops draining its stdin must
-        // never park the whole event loop inside a blocking fwrite (the classic
-        // stdio deadlock once a frame exceeds the OS pipe buffer).
-        stream_set_blocking($this->stdin, enable: false);
-        stream_set_blocking($this->stdout, enable: false);
-        stream_set_blocking($this->stderr, enable: false);
-        $this->writer = new NonBlockingWriter($this->stdin, $this->onWriteError(...), $this->maxWriteBuffer);
-
-        $this->stdoutWatcher = EventLoop::onReadable($this->stdout, $this->drainStdout(...));
-        $this->stderrWatcher = EventLoop::onReadable($this->stderr, function (): void {
-            /** @var resource $stderr */
-            $stderr = $this->stderr;
-            $data = \is_resource($stderr) ? fread($stderr, length: 8192) : false;
-            if (\is_string($data) && '' !== $data && null !== $this->logger) {
-                ($this->logger)(rtrim($data));
-            }
-        });
     }
 
     /**
@@ -266,85 +205,21 @@ final class LspClient implements LspClientInterface
 
     public function stop(): void
     {
-        if (null !== $this->stdoutWatcher) {
-            EventLoop::cancel($this->stdoutWatcher);
-            $this->stdoutWatcher = null;
-        }
-        if (null !== $this->stderrWatcher) {
-            EventLoop::cancel($this->stderrWatcher);
-            $this->stderrWatcher = null;
-        }
-
-        if (null !== $this->process) {
-            $process = $this->process;
+        if ($this->transport->isRunning()) {
             // Best-effort polite shutdown (send() never throws), then terminate
             $this->send(['jsonrpc' => '2.0', 'id' => $this->nextId++, 'method' => 'shutdown', 'params' => null]);
             $this->send(['jsonrpc' => '2.0', 'method' => 'exit', 'params' => null]);
-            // The drain watcher must die before its fd is closed below.
-            $this->writer?->close();
-            $this->writer = null;
-
-            foreach ([$this->stdin, $this->stdout, $this->stderr] as $pipe) {
-                if (!\is_resource($pipe)) {
-                    continue;
-                }
-
-                fclose($pipe);
-            }
-            if (\is_resource($process)) {
-                proc_terminate($process);
-                proc_close($process);
-            }
-            $this->process = null;
         }
+        $this->transport->stop();
 
         $this->initialized = false;
         $this->serverCapabilities = [];
         $this->pending = [];
     }
 
-    // --- Wire protocol ------------------------------------------------------
-
     private function send(array $message): void
     {
-        $this->writer?->write(JsonRpcFramer::encode($message));
-    }
-
-    /**
-     * A stdin write failed (dead server) or the outbound queue overflowed
-     * (wedged server). Terminating the child converges both on the existing
-     * stdout-EOF path, so the session ends exactly like any server crash.
-     */
-    private function onWriteError(string $reason): void
-    {
-        $this->log('write to LSP server failed: '.$reason);
-        if (\is_resource($this->process)) {
-            proc_terminate($this->process);
-        }
-    }
-
-    private function drainStdout(): void
-    {
-        if (!\is_resource($this->stdout)) {
-            return;
-        }
-        $data = fread($this->stdout, length: 65_536);
-        if (!\is_string($data) || '' === $data) {
-            if (feof($this->stdout)) {
-                $this->log('LSP server closed its stdout');
-                if (null !== $this->stdoutWatcher) {
-                    EventLoop::cancel($this->stdoutWatcher);
-                    $this->stdoutWatcher = null;
-                }
-            }
-
-            return;
-        }
-
-        foreach ($this->framer->feed($data) as $message) {
-            /** @var array{id?: mixed, method?: string, result?: mixed, error?: array<array-key, mixed>, params?: array{items?: array<array-key, mixed>, edit?: array<array-key, mixed>}} $message */
-            $this->handleMessage($message);
-        }
+        $this->transport->send($message);
     }
 
     /**

@@ -170,7 +170,8 @@ final class DapClientTest extends TestCase
 
         // Close stderr behind the client's back: stop() must skip the now-dead
         // resource in its pipe-closing loop and still close the others cleanly.
-        $stderr = new \ReflectionProperty($client, 'stderr')->getValue($client);
+        $transport = new \ReflectionProperty($client, 'transport')->getValue($client);
+        $stderr = new \ReflectionProperty($transport, 'stderr')->getValue($transport);
         if (\is_resource($stderr)) {
             fclose($stderr);
         }
@@ -202,8 +203,9 @@ final class DapClientTest extends TestCase
         $client->request('initialize'); // closed stdin → silent no-op
 
         // The internal reader guard: a drain after stop must not error.
-        $drain = new \ReflectionMethod($client, 'drainStdout');
-        $drain->invoke($client);
+        $transport = new \ReflectionProperty($client, 'transport')->getValue($client);
+        $drain = new \ReflectionMethod($transport, 'drainStdout');
+        $drain->invoke($transport, static function (): void {}, null);
         $this->assertFalse($client->isRunning());
     }
 }

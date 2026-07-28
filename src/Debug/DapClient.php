@@ -4,33 +4,19 @@ declare(strict_types=1);
 
 namespace Porta\Debug;
 
-use Porta\Support\JsonRpcFramer;
+use Porta\Support\JsonRpcTransport;
 use Porta\Support\NonBlockingWriter;
-use Revolt\EventLoop;
 
 /**
  * Asynchronous Debug Adapter Protocol transport over a child process's stdio,
  * driven by the shared Revolt loop (the DAP wire format reuses LSP's
- * Content-Length framing via {@see JsonRpcFramer}; only the message envelope
- * differs). Reverse requests (e.g. runInTerminal) are answered with a failure —
+ * Content-Length framing and pipe plumbing via {@see JsonRpcTransport}; only
+ * the message envelope differs). Reverse requests (e.g. runInTerminal) are answered with a failure —
  * the initialize handshake advertises no support for them.
  */
 final class DapClient implements DapClientInterface
 {
-    /** @var resource|null */
-    private $process;
-    /** @var resource|null */
-    private $stdin;
-    /** @var resource|null */
-    private $stdout;
-    /** @var resource|null */
-    private $stderr;
-
-    private readonly JsonRpcFramer $framer;
-    private ?string $stdoutWatcher = null;
-    private ?string $stderrWatcher = null;
-    /** Queued non-blocking stdin writes — a wedged adapter must never block the event loop. */
-    private ?NonBlockingWriter $writer = null;
+    private readonly JsonRpcTransport $transport;
 
     private int $nextSeq = 1;
     /** @var array<int, callable(array<string, mixed>, ?string): void> request seq => callback */
@@ -41,56 +27,25 @@ final class DapClient implements DapClientInterface
     private $onClose = null;
     private bool $closed = false;
 
-    /** @var (callable(string): void)|null */
-    private $logger;
-
     /** @param list<string> $command */
-    public function __construct(
-        private readonly array $command,
-        private readonly string $rootDir,
-        ?callable $logger = null,
-        private readonly int $maxWriteBuffer = NonBlockingWriter::DEFAULT_LIMIT,
-    ) {
-        $this->logger = $logger;
-        $this->framer = new JsonRpcFramer();
+    public function __construct(array $command, string $rootDir, ?callable $logger = null, int $maxWriteBuffer = NonBlockingWriter::DEFAULT_LIMIT)
+    {
+        $this->transport = new JsonRpcTransport($command, $rootDir, 'debug adapter', $logger, $maxWriteBuffer);
     }
 
     public function start(): bool
     {
-        if ([] === $this->command || '' === $this->command[0]) {
-            return false; // a malformed adapter setting must not crash proc_open
-        }
-        $descriptors = [0 => ['pipe', 'r'], 1 => ['pipe', 'w'], 2 => ['pipe', 'w']];
-        /** @var non-empty-string $cwd */
-        $cwd = $this->rootDir;
-        $pipes = [];
-        // @mago-expect lint:no-error-control-operator -- proc_open on a nonexistent/unusable binary emits a spawn ("posix_spawn() failed") warning that guarding the inputs cannot reliably prevent; the false return is handled below.
-        $process = @proc_open($this->command, $descriptors, $pipes, $cwd);
-        if (!\is_resource($process)) {
-            return false;
-        }
-
-        $this->process = $process;
-        /** @var array{0: resource, 1: resource, 2: resource} $pipes */
-        [$this->stdin, $this->stdout, $this->stderr] = [$pipes[0], $pipes[1], $pipes[2]];
-        // stdin non-blocking too: an adapter that stops draining its stdin must
-        // never park the whole event loop inside a blocking fwrite.
-        stream_set_blocking($this->stdin, enable: false);
-        stream_set_blocking($this->stdout, enable: false);
-        stream_set_blocking($this->stderr, enable: false);
-        $this->writer = new NonBlockingWriter($this->stdin, $this->onWriteError(...), $this->maxWriteBuffer);
-
-        $this->stdoutWatcher = EventLoop::onReadable($this->stdout, $this->drainStdout(...));
-        $this->stderrWatcher = EventLoop::onReadable($this->stderr, function (): void {
-            /** @var resource $stderr */
-            $stderr = $this->stderr;
-            $data = \is_resource($stderr) ? fread($stderr, length: 8192) : false;
-            if (\is_string($data) && '' !== $data && null !== $this->logger) {
-                ($this->logger)(rtrim($data));
-            }
-        });
-
-        return true;
+        return $this->transport->start(
+            $this->handleMessage(...),
+            function (): void {
+                if (!$this->closed) {
+                    $this->closed = true;
+                    if (null !== $this->onClose) {
+                        ($this->onClose)();
+                    }
+                }
+            },
+        );
     }
 
     public function onEvent(string $event, callable $handler): void
@@ -114,67 +69,13 @@ final class DapClient implements DapClientInterface
 
     public function isRunning(): bool
     {
-        return null !== $this->process && proc_get_status($this->process)['running'];
+        return $this->transport->isRunning();
     }
 
     public function stop(): void
     {
-        if (null !== $this->stdoutWatcher) {
-            EventLoop::cancel($this->stdoutWatcher);
-            $this->stdoutWatcher = null;
-        }
-        if (null !== $this->stderrWatcher) {
-            EventLoop::cancel($this->stderrWatcher);
-            $this->stderrWatcher = null;
-        }
-        if (null !== $this->process) {
-            $process = $this->process;
-            // The drain watcher must die before its fd is closed below.
-            $this->writer?->close();
-            $this->writer = null;
-            foreach ([$this->stdin, $this->stdout, $this->stderr] as $pipe) {
-                if (!\is_resource($pipe)) {
-                    continue;
-                }
-
-                fclose($pipe);
-            }
-            if (\is_resource($process)) {
-                proc_terminate($process);
-                proc_close($process);
-            }
-            $this->process = null;
-        }
+        $this->transport->stop();
         $this->pending = [];
-    }
-
-    private function drainStdout(): void
-    {
-        if (!\is_resource($this->stdout)) {
-            return;
-        }
-        $data = fread($this->stdout, length: 65_536);
-        if (!\is_string($data) || '' === $data) {
-            if (feof($this->stdout)) {
-                $this->log('debug adapter closed its stdout');
-                if (null !== $this->stdoutWatcher) {
-                    EventLoop::cancel($this->stdoutWatcher);
-                    $this->stdoutWatcher = null;
-                }
-                if (!$this->closed) {
-                    $this->closed = true;
-                    if (null !== $this->onClose) {
-                        ($this->onClose)();
-                    }
-                }
-            }
-
-            return;
-        }
-
-        foreach ($this->framer->feed($data) as $message) {
-            $this->handleMessage($message);
-        }
     }
 
     /** @param array<array-key, mixed> $message */
@@ -223,26 +124,6 @@ final class DapClient implements DapClientInterface
     /** @param array<string, mixed> $message */
     private function send(array $message): void
     {
-        $this->writer?->write(JsonRpcFramer::encode($message));
-    }
-
-    /**
-     * A stdin write failed (dead adapter) or the outbound queue overflowed
-     * (wedged adapter). Terminating the child converges both on the existing
-     * stdout-EOF path, so {@see onClose} fires exactly like any adapter crash.
-     */
-    private function onWriteError(string $reason): void
-    {
-        $this->log('write to debug adapter failed: '.$reason);
-        if (\is_resource($this->process)) {
-            proc_terminate($this->process);
-        }
-    }
-
-    private function log(string $line): void
-    {
-        if (null !== $this->logger) {
-            ($this->logger)($line);
-        }
+        $this->transport->send($message);
     }
 }
