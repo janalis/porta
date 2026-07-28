@@ -34,6 +34,9 @@ jobs:
       - name: Static analysis
         run: composer analyze
 
+      - name: Architecture gate
+        run: composer arch
+
       - name: Tests
         run: composer test
 

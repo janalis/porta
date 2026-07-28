@@ -51,7 +51,8 @@
         "coverage:check": [
             "@coverage",
             "@php tools/coverage-check.php coverage/clover.xml 100"
-        ]
+        ],
+        "arch": "@php tools/architecture-check.php"
     },
     "minimum-stability": "stable",
     "config": {

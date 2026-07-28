@@ -26,7 +26,7 @@ vendor/bin/phpunit tests/Unit/I18n/BidiTest.php
 Run gate commands capturing output rather than piping to a pager, e.g.
 `composer analyze > /tmp/x.log 2>&1; echo "exit=$?"`.
 
-### Definition of done (every commit must pass all four)
+### Definition of done (every commit must pass all five)
 
 - `composer test` green. Two tests drive real git/opener subprocesses and were hardened
   against timing (`GitViewControllerTest::testLineStagingAndUnstagingThroughTheDiffPane`,
@@ -37,7 +37,12 @@ Run gate commands capturing output rather than piping to a pager, e.g.
 - `composer analyze` — mago reports **zero** issues, warnings, or help messages.
 - `composer lint` — **zero** findings. The `[linter.rules]` section of `mago.toml` disables
   the rules that conflict with house style (with rationale comments); everything else
-  applies at full strength. CI (`.github/workflows/ci.yml`) runs all four gates.
+  applies at full strength.
+- `composer arch` — the **architecture ratchet** (`tools/architecture-check.php`): the
+  exact namespace import graph, class-level acyclicity (two documented SCCs allowed),
+  and the E2e suite-size bound. It fails on drift in EITHER direction — a new edge needs
+  adding to the embedded allowlist **in the same PR** (that is the review point), and a
+  vanished edge must be removed from it. CI (`.github/workflows/ci.yml`) runs all five gates.
 
 ## Conventions
 
@@ -616,7 +621,8 @@ deliberate structure. **The standing audit is hereby closed**: six rounds, every
 measured, every lint threshold on its pin. Future SOLID work is *feature-driven* — apply
 the extraction test and the recorded precedents to new code as it lands; re-opening a
 recorded rejection requires new evidence (a changed dependency count, a removed cross-event
-seam), not a fresh sweep.
+seam), not a fresh sweep. Round 7 made the closure self-enforcing: `composer arch`
+(the fifth gate) pins the namespace graph, class acyclicity and the E2e suite bound.
 `Layout/LayoutController` holds one `Layout/SidebarResizeState` per sidebar (tree/git/settings:
 armed drag, start width, persisted percent), so arm/drag/nudge/restore are each written once;
 the public `arm*`/`nudge*` names stay as delegators (`MouseRouter`/`PaneResizer` call them), and
