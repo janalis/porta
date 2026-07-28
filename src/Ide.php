@@ -226,28 +226,35 @@ final class Ide
     }
 
     /**
-     * Resolve a shared service from the container, typed to the requested class.
+     * The resolution seam is deliberately TWO methods over one locator, and the
+     * difference between them is the public-boundary contract — do not merge
+     * them. {@see service()} is what Ide's own runtime logic calls: locator-only,
+     * so a class that forgets #[AsIdeService] fails loudly here instead of
+     * silently resolving through the raw container ({@see
+     * \Porta\Tests\Unit\Container\IdeLocatorMembershipTest} pins every call
+     * site). {@see resolve()} is the test seam: the same locator plus a
+     * container fallback that exists solely for the four synthetics
+     * (Renderer/Tui/BidiTui/IdeConfig), so tests reach the running IDE without
+     * reflecting private fields; every entry is the same shared instance Ide
+     * holds.
      *
      * @template T of object
      *
-     * @param class-string<T> $id
+     * @param class-string<T> $class
      *
      * @return T
      */
-    private function service(string $id): object
+    private function service(string $class): object
     {
         /** @var T $service */
-        $service = $this->locator->get($id);
-        \assert($service instanceof $id, description: 'The locator entry id matches the requested service type');
+        $service = $this->locator->get($class);
+        \assert($service instanceof $class, description: 'The locator entry id matches the requested service type');
 
         return $service;
     }
 
     /**
-     * Resolve any publicly reachable service by class — a `porta.ide` locator
-     * member, or one of the synthetics (Renderer/Tui/BidiTui/IdeConfig). The one
-     * seam tests use to reach the running IDE, so they never reflect private
-     * fields; every entry is the same shared instance Ide holds.
+     * See {@see service()} — this is the test-seam half of the pair.
      *
      * @internal exposed for tests
      *
@@ -261,6 +268,7 @@ final class Ide
     {
         /** @var T $service */
         $service = $this->locator->has($class) ? $this->locator->get($class) : $this->container->get($class);
+        \assert($service instanceof $class, description: 'The resolved service matches the requested type');
 
         return $service;
     }
