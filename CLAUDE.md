@@ -249,6 +249,20 @@ per-view rects and `Input/ActiveView` stay as they are on purpose: the routers o
 per-view slices by design, and `ActiveView` is a different vocabulary (has `Editor`, lacks
 `Welcome`), not a duplicate of `WorkspaceView`.
 
+**Namespace direction (measured, round 5).** The import graph had 42 top-level cycle pairs;
+the two stable-dependency inversions worth fixing were fixed: `Support` no longer holds a Ui
+service (`DocsUrlOpener` consumes the Support-owned `FlashSink`, which `Notifier` implements),
+and `Ui` was split — its efferent count dropped **20 → 6** (Container/Editor/Highlight/Input/
+Overlay/Support, all vocabulary-benign) while 19 namespaces still depend on it. `Workbench/`
+absorbed the feature-composing half; its 18 outbound edges are its job. The **cross-tier VO
+relocation was measured and mostly rejected**: for Git/Settings/Tree/Debug/Highlight the
+widget→domain-VO edges are the *correct* layering direction (views reading domain shapes) and
+the remaining cycles are controller/domain cohabitation artifacts — relocating those shapes
+would make parsers depend on views, and `SettingsRow`'s home is documented membership. Only
+`RowSelection` moved (a vocabulary enum that sat in `Overlay/State`; its docblock already
+named `Widget/Support`'s `OptionTagState` as its mirror). Do not re-litigate the other
+thirteen without new evidence.
+
 What stays hand-built in `Ide` (deliberate, ~520 lines total): the bootstrap infra above, the
 widget-tree mount + pane arrangement calls, per-buffer runtime objects
 (`Buffer`/`Document`/`CodeHighlighter`), and `$initialFile`/`$initialLine` handling in `run()`.
@@ -515,6 +529,10 @@ seam — call hierarchy's inner `incomingCalls` hop enters there and deliberatel
 `ready()`. `requestGoTo` stays separate: already factored, and it holds the one
 `FlushMode::Keep`. A collaborator was rejected — the scaffold consumes inherited
 `AbstractLspController` members, so extraction would just re-thread the parent.
+`Lsp/LspMapper` is **dense by nature** — pure statics whose branch count is `??`-coalescing
+over optional wire fields, exactly what defensive protocol mapping looks like; its one real
+duplication was folded (`firstLocation` is `allLocations()[0] ?? null`, with the accidental
+malformed-leading-element divergence fixed and pinned). Leave the rest alone.
 
 **Debugger (DAP).** `Debug/DapClient` speaks the Debug Adapter Protocol over a child process's
 stdio (framing shared with LSP via `Support/JsonRpcFramer`); `Debug/DapSession` is one launch's
@@ -530,6 +548,12 @@ shown: it sits one dock tab away (ctrl+` / alt+page_down) while the Debug tab ho
 in `Debug/DebugAdapters`. Keys: Shift+F9 debug, Ctrl+F8 breakpoint (also gutter click); F7/F8/F9/
 Shift+F8/Ctrl+F2 are gated by `CommandRegistry`'s `when` closures so they fall through to widget
 bindings when no session runs. Tests script `tests/Support/mock-dap-adapter.php`.
+`Debug/DapSession`'s three collection verbs share one `requestList` scaffold (command/args/
+body-key/row-map are the only per-verb facts; the row maps take the wide row type and narrow
+via inner `@var` — a narrowed closure param is contravariance-unsound); the advertised
+capabilities are one `DapCapabilities` VO, all-false before initialize. The rest of the
+session (0/1-based conversions, the run-to-cursor one-shot, the termination idempotence
+guard) is deliberate protocol structure — dense by nature, leave it.
 
 **Input routing.** `Input/MouseRouter` maps every SGR mouse event to the pane under the pointer
 and owns cross-event drag/click state; its `route()` guard order **is behaviour** (documented in
@@ -681,7 +705,13 @@ clicks map visual→logical per pane (`BidiTui::logicalColumn` → `PaneReorder`
 
 ## Tests
 
-`tests/Unit`, `tests/Integration`, `tests/E2e`. E2e tests boot a real `Ide` against a
+`tests/Unit`, `tests/Integration`, `tests/E2e`. E2e suites are **thematic** (the
+round-5 split of the old 208-method monolith): one suite per subject (LSP features, context
+menus, git flows, …), shared screen/modal/git-binary readers as `tests/Support` traits
+(`ScreenReads`/`FindModalReads`/`GitBinary`). Keep new E2e tests in their subject's suite —
+the too-many-methods and kan-defect ratchets now gate src, and a regrown monolith would
+re-pin them. `IdeTest::testFullScenario` stays one continuous session on purpose (see the
+mago.toml calibration comment). E2e tests boot a real `Ide` against a
 `VirtualTerminal` and a `TempProject` through the shared `tests/Support/RunsIde` trait: steps
 (`ms => fn($tui, $terminal, $ide)`) run **sequentially chained** — each schedules the next by
 key delta after it completes, so a step may `$this->await(fn: bool)` (pumping the live loop for
