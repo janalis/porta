@@ -11,6 +11,8 @@ use Porta\Ui\Role;
 use Porta\Ui\Theme\Styles;
 use Porta\Widget\Render\MenuOverlayHost;
 use Porta\Widget\Render\MenuOverlayHostTrait;
+use Porta\Widget\Support\ColumnHover;
+use Porta\Widget\Support\ProviderFingerprint;
 use Porta\Widget\Support\StylesDefault;
 use Symfony\Component\Tui\Render\RenderContext;
 use Symfony\Component\Tui\Style\Style;
@@ -25,7 +27,11 @@ use Symfony\Component\Tui\Widget\AbstractWidget;
 #[AsWidget('breadcrumbs')]
 final class BreadcrumbsWidget extends AbstractWidget implements MenuOverlayHost
 {
+    use ColumnHover;
     use MenuOverlayHostTrait;
+
+    /** @use ProviderFingerprint<list<array{label: string, line: int}>> */
+    use ProviderFingerprint;
     use StylesDefault;
 
     /** The "Interface > Breadcrumbs" toggle; when off the bar renders no rows. */
@@ -63,43 +69,17 @@ final class BreadcrumbsWidget extends AbstractWidget implements MenuOverlayHost
         return $this->styles->of(Role::Gutter)->apply(' '.Glyphs::BREADCRUMB_SEPARATOR.' ');
     }
 
-    /** @var (callable(): list<array{label: string, line: int}>)|null */
-    private $provider = null;
-
-    private string $lastFingerprint = '';
-
     /** @var list<array{start: int, width: int, line: int}> segment layout from the last render, for hit-testing */
     private array $lastLayout = [];
-
-    /**
-     * The pointer's column over the bar (visual hover), or null. Stored as a
-     * COLUMN and re-resolved against each frame's layout in render, so a crumb
-     * relabel under a still pointer keeps a correct tint without a motion event.
-     */
-    private ?int $hoverCol = null;
-    /** The crumb the column last resolved to — repaint change-detection. */
-    private ?int $hoverResolved = null;
-
-    /** @param callable(): list<array{label: string, line: int}> $provider */
-    public function setProvider(callable $provider): self
-    {
-        $this->provider = $provider;
-
-        return $this;
-    }
 
     public function beforeRender(): void
     {
         if (null === $this->provider) {
             return;
         }
-        $fingerprint = (string) json_encode(($this->provider)());
-        if ($fingerprint !== $this->lastFingerprint) {
-            // The hover column re-resolves per frame, so a relabel needs no
-            // clearHover() — a still-correct tint stays, a stale one falls off.
-            $this->lastFingerprint = $fingerprint;
-            $this->invalidate();
-        }
+        // The hover column re-resolves per frame, so a relabel needs no
+        // clearHover() — a still-correct tint stays, a stale one falls off.
+        $this->refreshFingerprint(($this->provider)());
     }
 
     public function render(RenderContext $context): array
@@ -155,28 +135,7 @@ final class BreadcrumbsWidget extends AbstractWidget implements MenuOverlayHost
     /** Tint the crumb under the pointer (visual only). Stores the column; change at crumb granularity. */
     public function hoverAt(int $col): bool
     {
-        $this->hoverCol = $col;
-        $resolved = $this->crumbIndexAt($col);
-        if ($resolved === $this->hoverResolved) {
-            return false;
-        }
-        $this->hoverResolved = $resolved;
-        $this->invalidate();
-
-        return true;
-    }
-
-    /** The pointer left the bar: drop the hover tint. Returns whether it changed. */
-    public function clearHover(): bool
-    {
-        if (null === $this->hoverCol) {
-            return false;
-        }
-        $this->hoverCol = null;
-        $this->hoverResolved = null;
-        $this->invalidate();
-
-        return true;
+        return $this->storeHover($col, $this->crumbIndexAt($col));
     }
 
     /** The jump line of the crumb at column $col of the last render, or null. */

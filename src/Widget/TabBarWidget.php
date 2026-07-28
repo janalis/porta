@@ -16,6 +16,8 @@ use Porta\Widget\Render\TabCell;
 use Porta\Widget\Render\TabCloseGlyph;
 use Porta\Widget\Render\TabState;
 use Porta\Widget\Render\TabStyle;
+use Porta\Widget\Support\ProviderFingerprint;
+use Porta\Widget\Support\StripScroll;
 use Porta\Widget\Support\StylesDefault;
 use Porta\Widget\Support\TabBarPosition;
 use Symfony\Component\Tui\Render\RenderContext;
@@ -31,6 +33,10 @@ use Symfony\Component\Tui\Widget\AbstractWidget;
 final class TabBarWidget extends AbstractWidget implements MenuOverlayHost
 {
     use MenuOverlayHostTrait;
+
+    /** @use ProviderFingerprint<list<array{name: string, dirty: bool, active: bool}>> */
+    use ProviderFingerprint;
+    use StripScroll;
     use StylesDefault;
 
     /** Display columns of the vertical (left/right) tab list. */
@@ -43,16 +49,8 @@ final class TabBarWidget extends AbstractWidget implements MenuOverlayHost
         $this->initStyles($styles);
     }
 
-    /** @var (callable(): list<array{name: string, dirty: bool, active: bool}>)|null */
-    private $provider = null;
-
-    private string $lastFingerprint = '';
-
     /** @var list<array{index: int, row: int, start: int, width: int, closeStart: int, closeWidth: int}> layout from the last render */
     private array $lastLayout = [];
-
-    /** Index of the first visible tab — the manual scroll offset, clamped at render. */
-    private int $scroll = 0;
 
     /** The active index the window last followed, so a manual scroll survives parked frames. */
     private ?int $lastActive = null;
@@ -70,28 +68,6 @@ final class TabBarWidget extends AbstractWidget implements MenuOverlayHost
     /** The tab the cell last resolved to — repaint change-detection at tab granularity. */
     private ?int $hoverResolved = null;
 
-    /** @var list<array{row: int, col: int, width: int, step: int}> clickable overflow-indicator zones from the last render */
-    private array $indicatorZones = [];
-
-    /** @param callable(): list<array{name: string, dirty: bool, active: bool}> $provider */
-    public function setProvider(callable $provider): self
-    {
-        $this->provider = $provider;
-
-        return $this;
-    }
-
-    /**
-     * Scroll the strip by $tabs (mouse wheel / overflow indicators); negative
-     * scrolls toward the first tab. Clamping against the tab widths happens at
-     * render time, where the geometry is known.
-     */
-    public function scrollBy(int $tabs): void
-    {
-        $this->scroll = max(0, $this->scroll + $tabs);
-        $this->invalidate();
-    }
-
     public function setPosition(TabBarPosition $position): void
     {
         if ($position === $this->position) {
@@ -105,22 +81,6 @@ final class TabBarWidget extends AbstractWidget implements MenuOverlayHost
         $this->invalidate();
     }
 
-    /**
-     * The scroll step of the overflow indicator at the given widget-relative
-     * cell (negative pages toward the first tab), or null when the cell is
-     * not a clickable indicator. Checked before the close/tab hit zones.
-     */
-    public function scrollIndicatorAt(int $row, int $col): ?int
-    {
-        foreach ($this->indicatorZones as $zone) {
-            if ($zone['row'] === $row && $col >= $zone['col'] && $col < ($zone['col'] + $zone['width'])) {
-                return $zone['step'];
-            }
-        }
-
-        return null;
-    }
-
     public function position(): TabBarPosition
     {
         return $this->position;
@@ -131,15 +91,11 @@ final class TabBarWidget extends AbstractWidget implements MenuOverlayHost
         if (null === $this->provider) {
             return;
         }
-        $fingerprint = (string) json_encode(($this->provider)());
-        if ($fingerprint !== $this->lastFingerprint) {
-            // The hover cell re-resolves against the new geometry in render, so
-            // a strip change needs no clearHover() here — a still-correct tint
-            // stays put, a stale one falls off whatever tab moved out from
-            // under the pointer.
-            $this->lastFingerprint = $fingerprint;
-            $this->invalidate();
-        }
+        // The hover cell re-resolves against the new geometry in render, so a
+        // strip change needs no clearHover() here — a still-correct tint stays
+        // put, a stale one falls off whatever tab moved out from under the
+        // pointer.
+        $this->refreshFingerprint(($this->provider)());
     }
 
     /**
