@@ -17,6 +17,14 @@ trait GitBinary
         return null !== $this->whichGit();
     }
 
+    /** Skip the running test when no git binary is reachable. */
+    private function skipWithoutGit(): void
+    {
+        if (null === $this->whichGit()) {
+            $this->markTestSkipped('git not available');
+        }
+    }
+
     private function whichGit(): ?string
     {
         foreach (explode(\PATH_SEPARATOR, (string) getenv('PATH')) as $d) {

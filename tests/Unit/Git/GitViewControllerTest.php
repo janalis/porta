@@ -21,6 +21,7 @@ use Porta\Layout\EditorAreaPanes;
 use Porta\Layout\GitSidebar;
 use Porta\Layout\LayoutController;
 use Porta\Support\Clipboard;
+use Porta\Tests\Support\GitBinary;
 use Porta\Tests\Support\Presence;
 use Porta\Tests\Support\PumpsLoop;
 use Porta\Tests\Support\StatusReads;
@@ -62,6 +63,7 @@ use Symfony\Component\Tui\Widget\ContainerWidget;
  */
 final class GitViewControllerTest extends TestCase
 {
+    use GitBinary;
     use PumpsLoop;
     use StatusReads;
 
@@ -83,7 +85,7 @@ final class GitViewControllerTest extends TestCase
 
     private function controller(Presence $realRepo = Presence::With, int $historyPageSize = 200): GitViewController
     {
-        if (Presence::With === $realRepo && null === self::findGit()) {
+        if (Presence::With === $realRepo && null === $this->whichGit()) {
             $this->markTestSkipped('git not available');
         }
         // .porta/ is ignored so the real LayoutController's pref writes never
@@ -832,17 +834,6 @@ final class GitViewControllerTest extends TestCase
             EventLoop::delay(0.01, $suspension->resume(...));
             $suspension->suspend();
         }
-    }
-
-    private static function findGit(): ?string
-    {
-        foreach (explode(\PATH_SEPARATOR, (string) getenv('PATH')) as $d) {
-            if (is_file($d.'/git') && is_executable($d.'/git')) {
-                return $d.'/git';
-            }
-        }
-
-        return null;
     }
 
     public function testHistoryPagesInOlderCommitsAtTheListBottom(): void

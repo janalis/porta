@@ -12,6 +12,7 @@ use Porta\Git\GitRefresher;
 use Porta\Git\LogEntry;
 use Porta\I18n\Translator;
 use Porta\Support\Clipboard;
+use Porta\Tests\Support\GitBinary;
 use Porta\Tests\Support\StatusReads;
 use Porta\Tests\Support\TempProject;
 use Porta\Widget\CodeEditorWidget;
@@ -40,6 +41,7 @@ use Symfony\Component\Tui\Tui;
  */
 final class GitCommandsTest extends TestCase
 {
+    use GitBinary;
     use StatusReads;
 
     private TempProject $project;
@@ -49,9 +51,7 @@ final class GitCommandsTest extends TestCase
 
     protected function setUp(): void
     {
-        if (null === new \Symfony\Component\Process\ExecutableFinder()->find('git')) {
-            $this->markTestSkipped('git not available');
-        }
+        $this->skipWithoutGit();
     }
 
     // --- Simple async actions -------------------------------------------------
@@ -84,7 +84,7 @@ final class GitCommandsTest extends TestCase
     {
         $commands = $this->commands(['a.txt' => "one\n"]);
         $this->write('a.txt', "one\ntwo\n");
-        $this->git('add', '-A');
+        $this->project->git('add', '-A');
 
         $commands->commit();
         $this->type('a fresh commit');
@@ -92,19 +92,19 @@ final class GitCommandsTest extends TestCase
         $this->pump();
 
         $this->assertStringContainsString('Committed: a fresh commit', $this->statusRow($this->statusBar));
-        $this->assertStringContainsString('a fresh commit', $this->git('log', '-1', '--pretty=%s'));
+        $this->assertStringContainsString('a fresh commit', $this->project->git('log', '-1', '--pretty=%s'));
     }
 
     public function testCommitWithAnEmptyMessageDoesNothing(): void
     {
         $commands = $this->commands(['a.txt' => "one\n"]);
-        $before = trim($this->git('rev-parse', 'HEAD'));
+        $before = trim($this->project->git('rev-parse', 'HEAD'));
 
         $commands->commit();
         $this->key("\r"); // submit with an empty message
         $this->pump();
 
-        $this->assertSame($before, trim($this->git('rev-parse', 'HEAD')), 'no commit was made');
+        $this->assertSame($before, trim($this->project->git('rev-parse', 'HEAD')), 'no commit was made');
     }
 
     public function testCommitWithNoRepositoryReportsUnavailable(): void
@@ -220,7 +220,7 @@ final class GitCommandsTest extends TestCase
     {
         $commands = $this->commands(['a.txt' => "one\n"]);
         $this->write('a.txt', "one\nstashed\n");
-        $this->git('stash', 'push', '-m', 'wip');
+        $this->project->git('stash', 'push', '-m', 'wip');
 
         $commands->stashes();
         $this->overlayOpens(); // the stash list
@@ -236,7 +236,7 @@ final class GitCommandsTest extends TestCase
     {
         $commands = $this->commands(['a.txt' => "one\n"]);
         $this->write('a.txt', "one\napplied\n");
-        $this->git('stash', 'push', '-m', 'wip');
+        $this->project->git('stash', 'push', '-m', 'wip');
 
         $commands->stashes();
         $this->overlayOpens();
@@ -245,14 +245,14 @@ final class GitCommandsTest extends TestCase
         $this->pump();
 
         $this->assertStringContainsString('applied', $this->readFile('a.txt'), 'the stash was applied to the tree');
-        $this->assertStringContainsString('wip', $this->git('stash', 'list'), 'apply keeps the stash');
+        $this->assertStringContainsString('wip', $this->project->git('stash', 'list'), 'apply keeps the stash');
     }
 
     public function testStashesDropsAStash(): void
     {
         $commands = $this->commands(['a.txt' => "one\n"]);
         $this->write('a.txt', "one\ndropme\n");
-        $this->git('stash', 'push', '-m', 'wip');
+        $this->project->git('stash', 'push', '-m', 'wip');
 
         $commands->stashes();
         $this->overlayOpens();
@@ -263,14 +263,14 @@ final class GitCommandsTest extends TestCase
         $this->pump();
 
         $this->assertStringContainsString('Dropped', $this->statusRow($this->statusBar));
-        $this->assertStringNotContainsString('wip', $this->git('stash', 'list'), 'the stash is gone');
+        $this->assertStringNotContainsString('wip', $this->project->git('stash', 'list'), 'the stash is gone');
     }
 
     public function testStashesActionCanBeCancelled(): void
     {
         $commands = $this->commands(['a.txt' => "one\n"]);
         $this->write('a.txt', "one\nkeep\n");
-        $this->git('stash', 'push', '-m', 'wip');
+        $this->project->git('stash', 'push', '-m', 'wip');
 
         $commands->stashes();
         $this->overlayOpens();
@@ -281,21 +281,21 @@ final class GitCommandsTest extends TestCase
         $this->key("\r"); // choose Cancel — a no-op
         $this->pump(fn (): bool => !$this->editor->isOverlayOpen());
 
-        $this->assertStringContainsString('wip', $this->git('stash', 'list'), 'the stash is untouched');
+        $this->assertStringContainsString('wip', $this->project->git('stash', 'list'), 'the stash is untouched');
     }
 
     public function testUndoLastCommitSoftResetsAndFlashes(): void
     {
         $commands = $this->commands(['a.txt' => "one\n"]);
         $this->write('a.txt', "one\nsecond\n");
-        $this->git('commit', '-am', 'second');
-        $tip = trim($this->git('rev-parse', 'HEAD'));
+        $this->project->git('commit', '-am', 'second');
+        $tip = trim($this->project->git('rev-parse', 'HEAD'));
 
         $commands->undoLastCommit();
         $this->pump();
 
         $this->assertStringContainsString('Last commit undone', $this->statusRow($this->statusBar));
-        $this->assertNotSame($tip, trim($this->git('rev-parse', 'HEAD')), 'HEAD moved back one commit');
+        $this->assertNotSame($tip, trim($this->project->git('rev-parse', 'HEAD')), 'HEAD moved back one commit');
     }
 
     // --- Commit-history context actions ---------------------------------------
@@ -303,7 +303,7 @@ final class GitCommandsTest extends TestCase
     public function testCopyCommitHashCopiesToTheClipboardAndFlashes(): void
     {
         $commands = $this->commands(['a.txt' => "one\n"]);
-        $sha = trim($this->git('rev-parse', 'HEAD'));
+        $sha = trim($this->project->git('rev-parse', 'HEAD'));
 
         $commands->copyCommitHash(self::commitEntry($sha));
 
@@ -314,9 +314,9 @@ final class GitCommandsTest extends TestCase
     public function testBranchFromCommitCreatesABranchAtThatCommit(): void
     {
         $commands = $this->commands(['a.txt' => "one\n"]);
-        $first = trim($this->git('rev-parse', 'HEAD'));
+        $first = trim($this->project->git('rev-parse', 'HEAD'));
         $this->write('a.txt', "one\ntwo\n");
-        $this->git('commit', '-am', 'second');
+        $this->project->git('commit', '-am', 'second');
 
         $commands->branchFromCommit(self::commitEntry($first));
         $this->type('from-first');
@@ -324,29 +324,29 @@ final class GitCommandsTest extends TestCase
         $this->pump();
 
         $this->assertStringContainsString('Created and switched to from-first', $this->statusRow($this->statusBar));
-        $this->assertSame($first, trim($this->git('rev-parse', 'from-first')), 'the new branch points at the chosen commit');
+        $this->assertSame($first, trim($this->project->git('rev-parse', 'from-first')), 'the new branch points at the chosen commit');
     }
 
     public function testBranchFromCommitWithAnEmptyNameDoesNothing(): void
     {
         $commands = $this->commands(['a.txt' => "one\n"]);
-        $before = trim($this->git('rev-parse', '--abbrev-ref', 'HEAD'));
+        $before = trim($this->project->git('rev-parse', '--abbrev-ref', 'HEAD'));
 
-        $commands->branchFromCommit(self::commitEntry(trim($this->git('rev-parse', 'HEAD'))));
+        $commands->branchFromCommit(self::commitEntry(trim($this->project->git('rev-parse', 'HEAD'))));
         $this->key("\r"); // submit an empty name — the prompt returns early
 
-        $this->assertSame($before, trim($this->git('rev-parse', '--abbrev-ref', 'HEAD')), 'no branch created or switched');
+        $this->assertSame($before, trim($this->project->git('rev-parse', '--abbrev-ref', 'HEAD')), 'no branch created or switched');
     }
 
     public function testCherryPickAppliesACommitOntoTheCurrentBranch(): void
     {
         $commands = $this->commands(['a.txt' => "one\n"]);
-        $this->git('checkout', '-b', 'side');
+        $this->project->git('checkout', '-b', 'side');
         $this->write('b.txt', "new\n");
-        $this->git('add', 'b.txt');
-        $this->git('commit', '-m', 'add b');
-        $pick = trim($this->git('rev-parse', 'HEAD'));
-        $this->git('checkout', '-'); // back to the starting branch — b.txt is gone
+        $this->project->git('add', 'b.txt');
+        $this->project->git('commit', '-m', 'add b');
+        $pick = trim($this->project->git('rev-parse', 'HEAD'));
+        $this->project->git('checkout', '-'); // back to the starting branch — b.txt is gone
 
         $commands->cherryPick(self::commitEntry($pick));
         // Await the completion flash, not the on-disk effect: git writes b.txt
@@ -362,8 +362,8 @@ final class GitCommandsTest extends TestCase
     {
         $commands = $this->commands(['a.txt' => "one\n"]);
         $this->write('a.txt', "one\nadded\n");
-        $this->git('commit', '-am', 'add line');
-        $bad = trim($this->git('rev-parse', 'HEAD'));
+        $this->project->git('commit', '-am', 'add line');
+        $bad = trim($this->project->git('rev-parse', 'HEAD'));
 
         $commands->revertCommit(self::commitEntry($bad));
         // Await the completion flash — the working-tree rewrite precedes the
@@ -377,9 +377,9 @@ final class GitCommandsTest extends TestCase
     public function testResetToCommitSoftMovesHeadAndKeepsTheWorkingTree(): void
     {
         $commands = $this->commands(['a.txt' => "one\n"]);
-        $base = trim($this->git('rev-parse', 'HEAD'));
+        $base = trim($this->project->git('rev-parse', 'HEAD'));
         $this->write('a.txt', "one\nmore\n");
-        $this->git('commit', '-am', 'more');
+        $this->project->git('commit', '-am', 'more');
 
         $commands->resetToCommit(self::commitEntry($base));
         $this->overlayOpens();
@@ -387,7 +387,7 @@ final class GitCommandsTest extends TestCase
         $this->pump();
 
         $this->assertStringContainsString('Reset to '.substr($base, offset: 0, length: 7).' (soft)', $this->statusRow($this->statusBar));
-        $this->assertSame($base, trim($this->git('rev-parse', 'HEAD')), 'HEAD moved to the chosen commit');
+        $this->assertSame($base, trim($this->project->git('rev-parse', 'HEAD')), 'HEAD moved to the chosen commit');
         $this->assertStringContainsString('more', $this->readFile('a.txt'), 'a soft reset leaves the working tree untouched');
     }
 
@@ -395,8 +395,8 @@ final class GitCommandsTest extends TestCase
     {
         $commands = $this->commands(['a.txt' => "one\n"]);
         $this->write('a.txt', "one\nmore\n");
-        $this->git('commit', '-am', 'more');
-        $tip = trim($this->git('rev-parse', 'HEAD'));
+        $this->project->git('commit', '-am', 'more');
+        $tip = trim($this->project->git('rev-parse', 'HEAD'));
 
         $commands->resetToCommit(self::commitEntry($tip));
         $this->overlayOpens();
@@ -404,7 +404,7 @@ final class GitCommandsTest extends TestCase
         $this->key("\x1b[B"); // → Cancel
         $this->key("\r"); // pick Cancel: onPick returns without touching git
 
-        $this->assertSame($tip, trim($this->git('rev-parse', 'HEAD')), 'cancelling changes nothing');
+        $this->assertSame($tip, trim($this->project->git('rev-parse', 'HEAD')), 'cancelling changes nothing');
     }
 
     public function testFileHistoryWithNoOpenFileReportsUnavailable(): void
@@ -444,7 +444,7 @@ final class GitCommandsTest extends TestCase
         $this->pump();
 
         $this->assertStringContainsString('Created and switched to feature', $this->statusRow($this->statusBar));
-        $this->assertSame('feature', trim($this->git('rev-parse', '--abbrev-ref', 'HEAD')));
+        $this->assertSame('feature', trim($this->project->git('rev-parse', '--abbrev-ref', 'HEAD')));
     }
 
     public function testNewBranchOpensTheCreatePromptDirectly(): void
@@ -457,13 +457,13 @@ final class GitCommandsTest extends TestCase
         $this->pump();
 
         $this->assertStringContainsString('Created and switched to feature', $this->statusRow($this->statusBar));
-        $this->assertSame('feature', trim($this->git('rev-parse', '--abbrev-ref', 'HEAD')));
+        $this->assertSame('feature', trim($this->project->git('rev-parse', '--abbrev-ref', 'HEAD')));
     }
 
     public function testDeleteBranchOpensThePickerDirectly(): void
     {
         $commands = $this->commands(['a.txt' => "one\n"]);
-        $this->git('branch', 'stale');
+        $this->project->git('branch', 'stale');
 
         $commands->deleteBranch(); // the status-bar branch menu's "Delete Branch…"
         $this->overlayOpens(); // the deletable list
@@ -486,7 +486,7 @@ final class GitCommandsTest extends TestCase
     public function testBranchesSwitchesToAnExistingBranch(): void
     {
         $commands = $this->commands(['a.txt' => "one\n"]);
-        $this->git('branch', 'other');
+        $this->project->git('branch', 'other');
 
         $commands->branches();
         $this->overlayOpens();
@@ -498,13 +498,13 @@ final class GitCommandsTest extends TestCase
         $this->pump();
 
         $this->assertStringContainsString('Switched to other', $this->statusRow($this->statusBar));
-        $this->assertSame('other', trim($this->git('rev-parse', '--abbrev-ref', 'HEAD')));
+        $this->assertSame('other', trim($this->project->git('rev-parse', '--abbrev-ref', 'HEAD')));
     }
 
     public function testBranchesDeletesABranchThroughTheConfirm(): void
     {
         $commands = $this->commands(['a.txt' => "one\n"]);
-        $this->git('branch', 'stale');
+        $this->project->git('branch', 'stale');
 
         $commands->branches();
         $this->overlayOpens();
@@ -516,13 +516,13 @@ final class GitCommandsTest extends TestCase
         $this->pump();
 
         $this->assertStringContainsString('Deleted branch stale', $this->statusRow($this->statusBar));
-        $this->assertStringNotContainsString('stale', $this->git('branch'));
+        $this->assertStringNotContainsString('stale', $this->project->git('branch'));
     }
 
     public function testBranchesDeleteCanBeCancelledAtTheConfirm(): void
     {
         $commands = $this->commands(['a.txt' => "one\n"]);
-        $this->git('branch', 'keep');
+        $this->project->git('branch', 'keep');
 
         $commands->branches();
         $this->overlayOpens();
@@ -534,13 +534,13 @@ final class GitCommandsTest extends TestCase
         $this->key("\r"); // choose Cancel
         $this->pump(fn (): bool => !$this->editor->isOverlayOpen());
 
-        $this->assertStringContainsString('keep', $this->git('branch'), 'the branch survived the cancel');
+        $this->assertStringContainsString('keep', $this->project->git('branch'), 'the branch survived the cancel');
     }
 
     public function testBranchesCreateIgnoresAnEmptyName(): void
     {
         $commands = $this->commands(['a.txt' => "one\n"]);
-        $before = $this->git('branch');
+        $before = $this->project->git('branch');
 
         $commands->branches();
         $this->overlayOpens();
@@ -548,7 +548,7 @@ final class GitCommandsTest extends TestCase
         $this->key("\r"); // submit an empty name
         $this->pump(fn (): bool => !$this->editor->isOverlayOpen());
 
-        $this->assertSame($before, $this->git('branch'), 'no branch was created');
+        $this->assertSame($before, $this->project->git('branch'), 'no branch was created');
     }
 
     public function testBranchesChecksOutARemoteBranchAsTracking(): void
@@ -556,10 +556,10 @@ final class GitCommandsTest extends TestCase
         $commands = $this->commands(['a.txt' => "one\n"]);
         // A bare remote carrying a branch this repo does not have locally.
         $remote = new TempProject([]);
-        $this->proc($remote->dir, 'git', 'init', '--bare', '-q');
-        $this->git('remote', 'add', 'origin', $remote->dir);
-        $this->git('push', '-q', 'origin', 'HEAD:refs/heads/shipped');
-        $this->git('fetch', '-q', 'origin');
+        $remote->git('init', '--bare', '-q');
+        $this->project->git('remote', 'add', 'origin', $remote->dir);
+        $this->project->git('push', '-q', 'origin', 'HEAD:refs/heads/shipped');
+        $this->project->git('fetch', '-q', 'origin');
 
         $commands->branches();
         $this->overlayOpens();
@@ -571,7 +571,7 @@ final class GitCommandsTest extends TestCase
         $this->pump();
 
         $this->assertStringContainsString('shipped', $this->statusRow($this->statusBar));
-        $this->assertSame('shipped', trim($this->git('rev-parse', '--abbrev-ref', 'HEAD')));
+        $this->assertSame('shipped', trim($this->project->git('rev-parse', '--abbrev-ref', 'HEAD')));
         $remote->__destruct();
     }
 
@@ -604,11 +604,8 @@ final class GitCommandsTest extends TestCase
     private function commands(array $files): GitCommands
     {
         $this->project = new TempProject($files);
-        $this->git('init', '-q');
-        $this->git('config', 'user.email', 't@t');
-        $this->git('config', 'user.name', 'Test');
-        $this->git('add', '-A');
-        $this->git('commit', '-qm', 'init');
+        $this->project->initGit();
+        $this->project->commitAll('init');
 
         return $this->build();
     }
@@ -644,23 +641,9 @@ final class GitCommandsTest extends TestCase
     }
 
     /** Run git synchronously via Symfony Process; returns stdout. */
-    private function git(string ...$args): string
-    {
-        return $this->proc($this->project->dir, 'git', '-C', $this->project->dir, ...$args);
-    }
-
-    /** Run any command synchronously via Symfony Process; returns stdout. */
-    private function proc(string $cwd, string ...$command): string
-    {
-        $process = new Process($command, $cwd);
-        $process->run();
-
-        return $process->getOutput();
-    }
-
     private function porcelain(): string
     {
-        return $this->git('status', '--porcelain');
+        return $this->project->git('status', '--porcelain');
     }
 
     private function write(string $rel, string $contents): void

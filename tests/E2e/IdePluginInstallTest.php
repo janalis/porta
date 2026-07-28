@@ -7,6 +7,7 @@ namespace Porta\Tests\E2e;
 use PHPUnit\Framework\TestCase;
 use Porta\Config\CommandRegistry;
 use Porta\Tests\Support\ClearsPortaLsp;
+use Porta\Tests\Support\GitBinary;
 use Porta\Tests\Support\NavigatesSettings;
 use Porta\Tests\Support\PreservesPath;
 use Porta\Tests\Support\RunsIde;
@@ -22,6 +23,7 @@ use Symfony\Component\Tui\Ansi\AnsiUtils;
 final class IdePluginInstallTest extends TestCase
 {
     use ClearsPortaLsp;
+    use GitBinary;
     use NavigatesSettings;
     use PreservesPath;
     use RunsIde;

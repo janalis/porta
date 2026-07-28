@@ -7,6 +7,7 @@ namespace Porta\Tests\Unit\Git;
 use PHPUnit\Framework\TestCase;
 use Porta\Git\GitRemote;
 use Porta\Support\Outcome;
+use Porta\Tests\Support\GitBinary;
 use Porta\Tests\Support\PumpsLoop;
 use Porta\Tests\Support\TempProject;
 use Revolt\EventLoop;
@@ -18,6 +19,7 @@ use Revolt\EventLoop;
  */
 final class GitRemoteTest extends TestCase
 {
+    use GitBinary;
     use PumpsLoop;
 
     private TempProject $bare;
@@ -32,9 +34,7 @@ final class GitRemoteTest extends TestCase
     /** A bare origin with one commit, cloned twice. */
     private function remotes(): GitRemote
     {
-        if (null === self::findGit()) {
-            $this->markTestSkipped('git not available');
-        }
+        $this->skipWithoutGit();
         $this->bare = new TempProject();
         $this->clone1 = new TempProject();
         $this->clone2 = new TempProject();
@@ -191,9 +191,7 @@ final class GitRemoteTest extends TestCase
 
     public function testUnavailableOutsideARepository(): void
     {
-        if (null === self::findGit()) {
-            $this->markTestSkipped('git not available');
-        }
+        $this->skipWithoutGit();
         $plain = new TempProject();
         $remote = new GitRemote($plain->dir);
 
@@ -242,16 +240,5 @@ final class GitRemoteTest extends TestCase
         });
         $this->assertTrue($result['ok'], $result['out']);
         $this->assertStringContainsString('Merge', $this->git($this->clone2, 'log -1 --format=%s'), 'a merge commit integrated the branches');
-    }
-
-    private static function findGit(): ?string
-    {
-        foreach (explode(\PATH_SEPARATOR, (string) getenv('PATH')) as $d) {
-            if (is_file($d.'/git') && is_executable($d.'/git')) {
-                return $d.'/git';
-            }
-        }
-
-        return null;
     }
 }

@@ -9,6 +9,7 @@ use Porta\Event\GitRemoteCompleted;
 use Porta\Git\GitRemote;
 use Porta\Git\GitRemoteCommands;
 use Porta\I18n\Translator;
+use Porta\Tests\Support\GitBinary;
 use Porta\Tests\Support\PumpsLoop;
 use Porta\Tests\Support\StatusReads;
 use Porta\Tests\Support\TempProject;
@@ -28,6 +29,7 @@ use Symfony\Component\Tui\Tui;
 
 final class GitRemoteCommandsTest extends TestCase
 {
+    use GitBinary;
     use PumpsLoop;
     use StatusReads;
 
@@ -53,9 +55,7 @@ final class GitRemoteCommandsTest extends TestCase
     /** A repo whose origin is itself — every remote operation completes fast. */
     private function selfRemoteRepo(): GitRemote
     {
-        if (null === self::findGit()) {
-            $this->markTestSkipped('git not available');
-        }
+        $this->skipWithoutGit();
         $project = new TempProject(['a.txt' => "x\n"]);
         $project->initGit();
         $project->commitAll('init');
@@ -121,9 +121,7 @@ final class GitRemoteCommandsTest extends TestCase
 
     public function testUnavailableRepositoryFlashesInsteadOfRunning(): void
     {
-        if (null === self::findGit()) {
-            $this->markTestSkipped('git not available');
-        }
+        $this->skipWithoutGit();
         $plain = new TempProject();
         $commands = $this->commands(new GitRemote($plain->dir));
 
@@ -135,9 +133,7 @@ final class GitRemoteCommandsTest extends TestCase
     /** A diverged bare+clone pair whose next plain pull must fail --ff-only. */
     private function divergedRepo(): GitRemote
     {
-        if (null === self::findGit()) {
-            $this->markTestSkipped('git not available');
-        }
+        $this->skipWithoutGit();
         $bare = new TempProject();
         $other = new TempProject();
         $mine = new TempProject();
@@ -258,16 +254,5 @@ final class GitRemoteCommandsTest extends TestCase
         $this->assertFalse($remote->isBusy());
         $this->assertStringContainsString('Git remote operation cancelled', $this->statusRow($this->status));
         $this->assertSame([], $this->events, 'no completion event is synthesized for a cancel');
-    }
-
-    private static function findGit(): ?string
-    {
-        foreach (explode(\PATH_SEPARATOR, (string) getenv('PATH')) as $d) {
-            if (is_file($d.'/git') && is_executable($d.'/git')) {
-                return $d.'/git';
-            }
-        }
-
-        return null;
     }
 }

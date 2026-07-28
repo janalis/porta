@@ -7,13 +7,15 @@ namespace Porta\Tests\Unit\Plugin;
 use PHPUnit\Framework\TestCase;
 use Porta\I18n\Translator;
 use Porta\Plugin\PluginInstaller;
+use Porta\Tests\Support\GitBinary;
 use Porta\Tests\Support\Presence;
 use Porta\Tests\Support\TempProject;
 use Revolt\EventLoop;
-use Symfony\Component\Process\ExecutableFinder;
 
 final class PluginInstallerTest extends TestCase
 {
+    use GitBinary;
+
     private TempProject $project;
     private TempProject $global;
 
@@ -61,12 +63,9 @@ final class PluginInstallerTest extends TestCase
 
     private function git(): string
     {
-        $git = new ExecutableFinder()->find('git');
-        if (null === $git) {
-            self::markTestSkipped('git binary not available');
-        }
+        $this->skipWithoutGit();
 
-        return $git;
+        return (string) $this->whichGit();
     }
 
     /** A local git repo usable as a clone URL. */

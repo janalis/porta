@@ -11,6 +11,7 @@ use Porta\Ide;
 use Porta\Layout\WorkspaceLayout;
 use Porta\Onboarding\OnboardingState;
 use Porta\Settings\SettingsViewController;
+use Porta\Tests\Support\GitBinary;
 use Porta\Tests\Support\TempProject;
 use Symfony\Component\Tui\Terminal\VirtualTerminal;
 use Symfony\Component\Tui\Widget\AbstractWidget;
@@ -22,16 +23,7 @@ use Symfony\Component\Tui\Widget\ContainerWidget;
  */
 final class IdeSettingsViewTest extends TestCase
 {
-    private static function findGit(): ?string
-    {
-        foreach (explode(\PATH_SEPARATOR, (string) getenv('PATH')) as $d) {
-            if (is_file($d.'/git') && is_executable($d.'/git')) {
-                return $d.'/git';
-            }
-        }
-
-        return null;
-    }
+    use GitBinary;
 
     private Ide $ide;
     private CommandRegistry $commands;
@@ -41,9 +33,7 @@ final class IdeSettingsViewTest extends TestCase
 
     private function boot(): void
     {
-        if (null === self::findGit()) {
-            $this->markTestSkipped('git not available');
-        }
+        $this->skipWithoutGit();
         $project = new TempProject(['a.php' => "<?php\n"]);
         $project->initGit();
         $project->commitAll('init');

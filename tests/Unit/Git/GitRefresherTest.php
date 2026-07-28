@@ -13,6 +13,7 @@ use Porta\Git\GitInfo;
 use Porta\Git\GitRefresher;
 use Porta\Git\GitSettings;
 use Porta\Image\ImageData;
+use Porta\Tests\Support\GitBinary;
 use Porta\Tests\Support\Presence;
 use Porta\Tests\Support\PumpsLoop;
 use Porta\Tests\Support\TempProject;
@@ -25,6 +26,7 @@ use Symfony\Component\Tui\Tui;
 /** Real git repo, virtual terminal — mirrors GitViewControllerTest's setup. */
 final class GitRefresherTest extends TestCase
 {
+    use GitBinary;
     use PumpsLoop;
 
     private TempProject $project;
@@ -35,12 +37,12 @@ final class GitRefresherTest extends TestCase
 
     private function refresher(Presence $realRepo = Presence::With, ?GitSettings $gitSettings = null): GitRefresher
     {
-        if (Presence::With === $realRepo && null === self::findGit()) {
+        if (Presence::With === $realRepo && null === $this->whichGit()) {
             $this->markTestSkipped('git not available');
         }
         $this->project = new TempProject(['a.txt' => "one\ntwo\n"]);
         if (Presence::With === $realRepo) {
-            $this->project->git('init', '-q', '-b', 'trunk'); // 'trunk' is asserted as the branch
+            $this->project->initGit(branch: 'trunk'); // 'trunk' is asserted as the branch
             $this->project->git('config', 'user.email', 't@t');
             $this->project->git('config', 'user.name', 't');
             $this->project->git('config', 'commit.gpgsign', 'false');
@@ -149,16 +151,5 @@ final class GitRefresherTest extends TestCase
             return [] !== $buffer->gitMarks && null !== $refresher->branch();
         }, what: 'a completed remote op refreshed branch + active marks');
         $this->addToAssertionCount(1); // the throwing await above is the assertion
-    }
-
-    private static function findGit(): ?string
-    {
-        foreach (explode(\PATH_SEPARATOR, (string) getenv('PATH')) as $d) {
-            if (is_file($d.'/git') && is_executable($d.'/git')) {
-                return $d.'/git';
-            }
-        }
-
-        return null;
     }
 }

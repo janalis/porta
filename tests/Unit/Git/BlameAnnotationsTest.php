@@ -12,6 +12,7 @@ use Porta\Event\BufferSwitched;
 use Porta\Git\BlameAnnotations;
 use Porta\Git\GitInfo;
 use Porta\I18n\Translator;
+use Porta\Tests\Support\GitBinary;
 use Porta\Tests\Support\Presence;
 use Porta\Tests\Support\PumpsLoop;
 use Porta\Tests\Support\StatusReads;
@@ -30,6 +31,7 @@ use Symfony\Component\Tui\Tui;
 
 final class BlameAnnotationsTest extends TestCase
 {
+    use GitBinary;
     use PumpsLoop;
     use StatusReads;
 
@@ -39,17 +41,11 @@ final class BlameAnnotationsTest extends TestCase
 
     private function blame(Presence $withRepo = Presence::With): BlameAnnotations
     {
-        if (null === new \Symfony\Component\Process\ExecutableFinder()->find('git')) {
-            $this->markTestSkipped('git not available');
-        }
+        $this->skipWithoutGit();
         $this->project = new TempProject(['a.php' => "<?php\n\$x = 1;\n"]);
         if (Presence::With === $withRepo) {
-            $this->project->git('init', '-q');
-            $this->project->git('config', 'user.email', 't@t');
-            $this->project->git('config', 'user.name', 'tester'); // asserted as the blame author
-            $this->project->git('config', 'commit.gpgsign', 'false');
-            $this->project->git('add', '-A');
-            $this->project->git('commit', '-q', '-m', 'init');
+            $this->project->initGit(name: 'tester', email: 't@t'); // 'tester' is asserted as the blame author
+            $this->project->commitAll('init');
         }
         $this->editor = new CodeEditorWidget();
         $this->status = new StatusBarWidget();

@@ -59,12 +59,12 @@ final class TempProject
         return trim($process->getOutput());
     }
 
-    /** git init + a deterministic identity, so `commit` never needs global config. */
-    public function initGit(): void
+    /** git init + a deterministic identity, so `commit` never needs global config. Pass $name/$email when a test asserts on the author. */
+    public function initGit(?string $branch = null, string $name = 'Porta Test', string $email = 'test@porta.dev'): void
     {
-        $this->git('init', '-q');
-        $this->git('config', 'user.email', 'test@porta.dev');
-        $this->git('config', 'user.name', 'Porta Test');
+        $this->git('init', '-q', ...null !== $branch ? ['-b', $branch] : []);
+        $this->git('config', 'user.email', $email);
+        $this->git('config', 'user.name', $name);
         $this->git('config', 'commit.gpgsign', 'false');
 
         // `.porta/` is machine-local state (session, layout, the onboarding

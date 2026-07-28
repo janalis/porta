@@ -10,12 +10,14 @@ use Porta\Git\GitInfo;
 use Porta\Git\GitSettings;
 use Porta\Git\HunkParser;
 use Porta\Support\Outcome;
+use Porta\Tests\Support\GitBinary;
 use Porta\Tests\Support\PumpsLoop;
 use Porta\Tests\Support\TempProject;
 use Revolt\EventLoop;
 
 final class GitInfoTest extends TestCase
 {
+    use GitBinary;
     use PumpsLoop;
 
     public function testParseModifiedAddedDeleted(): void
@@ -113,7 +115,7 @@ final class GitInfoTest extends TestCase
 
     public function testStageCommitAndBlameAgainstRealRepository(): void
     {
-        if (null === self::findGit()) {
+        if (null === $this->whichGit()) {
             self::markTestSkipped('git binary not available');
         }
 
@@ -162,7 +164,7 @@ final class GitInfoTest extends TestCase
 
     public function testIsBusyTracksInFlightOperations(): void
     {
-        if (null === self::findGit()) {
+        if (null === $this->whichGit()) {
             self::markTestSkipped('git binary not available');
         }
 
@@ -191,7 +193,7 @@ final class GitInfoTest extends TestCase
 
     public function testAgainstARealRepository(): void
     {
-        if (null === self::findGit()) {
+        if (null === $this->whichGit()) {
             self::markTestSkipped('git binary not available');
         }
 
@@ -229,7 +231,7 @@ final class GitInfoTest extends TestCase
 
     public function testCancelAllTerminatesInFlightProcesses(): void
     {
-        if (null === self::findGit()) {
+        if (null === $this->whichGit()) {
             self::markTestSkipped('git binary not available');
         }
 
@@ -268,7 +270,7 @@ final class GitInfoTest extends TestCase
 
     public function testFallsBackToDiscoveryWithoutAnExplicitPath(): void
     {
-        if (null === self::findGit()) {
+        if (null === $this->whichGit()) {
             self::markTestSkipped('git binary not available');
         }
         $project = new TempProject([]);
@@ -278,7 +280,7 @@ final class GitInfoTest extends TestCase
 
     public function testCommitAppliesSignoffAndNoGpgSignFromSettings(): void
     {
-        if (null === self::findGit()) {
+        if (null === $this->whichGit()) {
             self::markTestSkipped('git binary not available');
         }
         $project = new TempProject([]);
@@ -310,7 +312,7 @@ final class GitInfoTest extends TestCase
 
     public function testCommitSplicesSignAndNoVerifyFlags(): void
     {
-        if (null === self::findGit()) {
+        if (null === $this->whichGit()) {
             self::markTestSkipped('git binary not available');
         }
         $project = new TempProject([]);
@@ -340,26 +342,12 @@ final class GitInfoTest extends TestCase
 
     private function gitInit(TempProject $project): void
     {
-        $project->git('init', '-q');
-        $project->git('config', 'user.email', 't@t');
-        $project->git('config', 'user.name', 'tester'); // asserted as blame author
-        $project->git('config', 'commit.gpgsign', 'false');
+        $project->initGit(name: 'tester', email: 't@t'); // 'tester' is asserted as the blame author
     }
 
     private function gitCommit(TempProject $project, string $file): void
     {
         $project->git('add', $file);
         $project->git('commit', '-q', '-m', 'init');
-    }
-
-    private static function findGit(): ?string
-    {
-        foreach (explode(\PATH_SEPARATOR, (string) getenv('PATH')) as $d) {
-            if (is_file($d.'/git') && is_executable($d.'/git')) {
-                return $d.'/git';
-            }
-        }
-
-        return null;
     }
 }

@@ -9,6 +9,7 @@ use Porta\Git\DiffDocument;
 use Porta\Git\GitInfo;
 use Porta\Git\PatchBuilder;
 use Porta\Support\Outcome;
+use Porta\Tests\Support\GitBinary;
 use Porta\Tests\Support\PumpsLoop;
 use Porta\Tests\Support\TempProject;
 use Revolt\EventLoop;
@@ -20,6 +21,7 @@ use Revolt\EventLoop;
  */
 final class PatchBuilderTest extends TestCase
 {
+    use GitBinary;
     use PumpsLoop;
 
     // --- pure recount ----------------------------------------------------------
@@ -212,9 +214,7 @@ final class PatchBuilderTest extends TestCase
     /** @return array{GitInfo, TempProject} */
     private function repo(array $files): array
     {
-        if (null === self::findGit()) {
-            $this->markTestSkipped('git not available');
-        }
+        $this->skipWithoutGit();
         $project = new TempProject($files);
         $project->initGit();
         $project->commitAll('init');
@@ -251,17 +251,6 @@ final class PatchBuilderTest extends TestCase
     private function gitOut(TempProject $project, string $args): string
     {
         return $project->git(...explode(' ', $args));
-    }
-
-    private static function findGit(): ?string
-    {
-        foreach (explode(\PATH_SEPARATOR, (string) getenv('PATH')) as $d) {
-            if (is_file($d.'/git') && is_executable($d.'/git')) {
-                return $d.'/git';
-            }
-        }
-
-        return null;
     }
 }
 

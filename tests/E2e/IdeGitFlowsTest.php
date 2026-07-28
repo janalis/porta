@@ -31,12 +31,8 @@ final class IdeGitFlowsTest extends TestCase
     {
         putenv('PATH='.PORTA_TEST_PRISTINE_PATH); // a real branch needs git
         $project = new TempProject(['a.php' => "<?php\n"]);
-        $project->git('init', '-q');
-        $project->git('config', 'user.email', 't@t');
-        $project->git('config', 'user.name', 'tester');
-        $project->git('config', 'commit.gpgsign', 'false');
-        $project->git('add', '-A');
-        $project->git('commit', '-qm', 'init');
+        $project->initGit(name: 'tester', email: 't@t');
+        $project->commitAll('init');
 
         $this->runIde(
             $project,
@@ -128,10 +124,7 @@ final class IdeGitFlowsTest extends TestCase
         }
 
         $project = new TempProject([]);
-        $project->git('init', '-q');
-        $project->git('config', 'user.email', 't@t');
-        $project->git('config', 'user.name', 'tester'); // asserted as the blame author
-        $project->git('config', 'commit.gpgsign', 'false');
+        $project->initGit(name: 'tester', email: 't@t'); // 'tester' is asserted as the blame author
         $project->write('src/A.php', "<?php\n\$a = 1;\n");
         $project->git('add', '-A');
         $project->git('commit', '-qm', 'init');
@@ -195,10 +188,7 @@ final class IdeGitFlowsTest extends TestCase
         }
 
         $project = new TempProject([]);
-        $project->git('init', '-q');
-        $project->git('config', 'user.email', 't@t');
-        $project->git('config', 'user.name', 'tester');
-        $project->git('config', 'commit.gpgsign', 'false');
+        $project->initGit(name: 'tester', email: 't@t');
         $project->write('src/A.php', "<?php\n"); // one line on disk
         $project->git('add', '-A');
         $project->git('commit', '-qm', 'init');
@@ -436,10 +426,7 @@ final class IdeGitFlowsTest extends TestCase
         putenv('PATH='.PORTA_TEST_PRISTINE_PATH); // git must be reachable
 
         $project = new TempProject([]);
-        $project->git('init', '-q');
-        $project->git('config', 'user.email', 't@t');
-        $project->git('config', 'user.name', 'tester');
-        $project->git('config', 'commit.gpgsign', 'false');
+        $project->initGit(name: 'tester', email: 't@t');
         $project->write('src/A.php', "<?php\n\$a = 1;\n\$b = 2;\n");
         $project->git('add', '-A');
         $project->git('commit', '-qm', 'init');
@@ -821,9 +808,7 @@ final class IdeGitFlowsTest extends TestCase
         putenv('PATH='.PORTA_TEST_PRISTINE_PATH); // git must be reachable
 
         $project = new TempProject([]);
-        $project->git('init', '-q');
-        $project->git('config', 'user.email', 't@t');
-        $project->git('config', 'user.name', 'tester');
+        $project->initGit(name: 'tester', email: 't@t');
         $project->write('a.php', "<?php\n\$a = 1;\n");
 
         $this->runIde(
@@ -877,12 +862,8 @@ final class IdeGitFlowsTest extends TestCase
     {
         $project = new TempProject(['src/A.php' => "<?php\n\$x = 1;\n"]);
         // A deterministic 'tester' identity — blame below asserts on the name.
-        $project->git('init', '-q');
-        $project->git('config', 'user.email', 't@t');
-        $project->git('config', 'user.name', 'tester');
-        $project->git('config', 'commit.gpgsign', 'false');
-        $project->git('add', '-A');
-        $project->git('commit', '-qm', 'init');
+        $project->initGit(name: 'tester', email: 't@t');
+        $project->commitAll('init');
         // A second commit not touching A.php: file history must hide it.
         $project->write('other.txt', '');
         $project->git('add', '-A');

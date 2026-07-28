@@ -9,6 +9,7 @@ use Porta\Git\CommitMode;
 use Porta\Git\GitInfo;
 use Porta\Git\WhitespaceMode;
 use Porta\Support\Outcome;
+use Porta\Tests\Support\GitBinary;
 use Porta\Tests\Support\PumpsLoop;
 use Porta\Tests\Support\TempProject;
 use Revolt\EventLoop;
@@ -19,6 +20,7 @@ use Revolt\EventLoop;
  */
 final class GitInfoStatusTest extends TestCase
 {
+    use GitBinary;
     use PumpsLoop;
 
     public function testStatusListsStagedUnstagedAndUntracked(): void
@@ -367,16 +369,10 @@ final class GitInfoStatusTest extends TestCase
     /** A GitInfo on a fresh repo with $committed files committed; skips without git. */
     private function repo(?TempProject &$project, array $committed): GitInfo
     {
-        if (null === self::findGit()) {
-            $this->markTestSkipped('git not available');
-        }
+        $this->skipWithoutGit();
         $project = new TempProject($committed);
-        $project->git('init', '-q');
-        $project->git('config', 'user.email', 't@t');
-        $project->git('config', 'user.name', 'tester');
-        $project->git('config', 'commit.gpgsign', 'false');
-        $project->git('add', '-A');
-        $project->git('commit', '-q', '-m', 'init');
+        $project->initGit(name: 'tester', email: 't@t'); // 'tester' is asserted as the log author
+        $project->commitAll('init');
 
         return new GitInfo($project->dir);
     }
@@ -498,17 +494,6 @@ final class GitInfoStatusTest extends TestCase
         });
         $this->assertTrue($result['ok'], $result['error']);
         $this->assertSame('origin/feature', $project->git('rev-parse', '--abbrev-ref', 'feature@{upstream}'), 'the new local branch tracks the remote');
-    }
-
-    private static function findGit(): ?string
-    {
-        foreach (explode(\PATH_SEPARATOR, (string) getenv('PATH')) as $d) {
-            if (is_file($d.'/git') && is_executable($d.'/git')) {
-                return $d.'/git';
-            }
-        }
-
-        return null;
     }
 
     public function testLogSkipReturnsTheOlderPage(): void
@@ -633,9 +618,7 @@ final class GitInfoStatusTest extends TestCase
 
     public function testStashVerbsWithoutARepository(): void
     {
-        if (null === self::findGit()) {
-            $this->markTestSkipped('git not available');
-        }
+        $this->skipWithoutGit();
         $plain = new TempProject();
         $git = new GitInfo($plain->dir);
 
