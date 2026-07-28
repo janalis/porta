@@ -493,7 +493,7 @@ line-count guard and the `AnsiCodeTracker` per-line SGR re-open. The engine behi
   (global plugins are opt-out, so no per-project config). Writing config or plugin files into
   each `TempProject` was tried and rejected — it perturbs the git fixtures (working-tree
   assertions) and the tree/tab fixtures. The suites that *enumerate* plugins
-  (`IdeEmbeddedPluginsTest`, `IdePhpLspPluginsTest`, one `IdeEdgeCasesTest` case) opt out via
+  (`IdeEmbeddedPluginsTest`, `IdePhpLspPluginsTest`, one `IdeSettingsThemeTest` case) opt out via
   `PORTA_HOME` in `setUp` and **restore it in `tearDown`** — paratest reuses the worker, and a
   leaked value silently uncolors later tests.
 

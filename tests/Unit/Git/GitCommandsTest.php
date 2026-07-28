@@ -30,7 +30,7 @@ use Symfony\Component\Tui\Tui;
 /**
  * Drives every {@see GitCommands} action against a real git repository. These
  * used to be covered only through the full-Ide E2e flows
- * ({@see \Porta\Tests\E2e\IdeEdgeCasesTest}), which fork real git and race the
+ * ({@see \Porta\Tests\E2e\IdeGitFlowsTest}), which fork real git and race the
  * await window under machine load — so the coverage of GitCommands' async
  * callback bodies came and went with the load. This exercises the same
  * callbacks from a focused fixture: the repo is built synchronously with

@@ -1,0 +1,1043 @@
+<?php
+
+declare(strict_types=1);
+
+namespace Porta\Tests\E2e;
+
+use PHPUnit\Framework\TestCase;
+use Porta\Config\CommandRegistry;
+use Porta\Tests\Support\GitBinary;
+use Porta\Tests\Support\RunsIde;
+use Porta\Tests\Support\TempProject;
+use Porta\Widget\ContextMenu;
+use Symfony\Component\Tui\Ansi\AnsiUtils;
+use Symfony\Component\Tui\Render\Renderer;
+
+/**
+ * Git flows through the full app: staging, commits, branches,
+ * blame, stash, the git view and its focus ring.
+ * Split out of the oversized IdeEdgeCasesTest.
+ */
+final class IdeGitFlowsTest extends TestCase
+{
+    use GitBinary;
+    use RunsIde;
+
+    private string $originalPath;
+
+    private ?string $portaHomeToRestore = null;
+
+    protected function setUp(): void
+    {
+        $this->originalPath = PORTA_TEST_PRISTINE_PATH;
+        putenv('PORTA_LSP');
+    }
+
+    protected function tearDown(): void
+    {
+        if (null !== $this->portaHomeToRestore) {
+            putenv('PORTA_HOME='.$this->portaHomeToRestore);
+            $this->portaHomeToRestore = null;
+        }
+        putenv('PATH='.$this->originalPath);
+        putenv('PORTA_LSP');
+    }
+
+    public function testRightClickingTheStatusBarBranchOpensTheBranchMenu(): void
+    {
+        putenv('PATH='.$this->originalPath); // a real branch needs git
+        $project = new TempProject(['a.php' => "<?php\n"]);
+        $project->git('init', '-q');
+        $project->git('config', 'user.email', 't@t');
+        $project->git('config', 'user.name', 'tester');
+        $project->git('config', 'commit.gpgsign', 'false');
+        $project->git('add', '-A');
+        $project->git('commit', '-qm', 'init');
+
+        $this->runIde(
+            $project,
+            $project->path('a.php'),
+            [
+                300 => function ($tui, $terminal, $ide): void {
+                    $status = $tui->getById('status');
+                    // The branch resolves asynchronously; wait for it to render.
+                    $this->await(static fn (): bool => null !== $status->branchColumnSpan(), what: 'the branch to render in the status bar');
+
+                    $renderer = $ide->resolve(Renderer::class);
+                    $rect = $renderer->getWidgetRect($status);
+                    $span = $status->branchColumnSpan();
+                    $col = $rect->col + intdiv($span[0] + $span[1], num2: 2); // middle of the branch cell
+                    $tui->handleInput(\sprintf("\x1b[<2;%d;%dM", $col + 1, $rect->row + 1)); // right-click (1-based)
+                    $tui->tick();
+
+                    $menu = $ide->resolve(ContextMenu::class);
+                    $this->assertTrue($menu->isOpen(), 'the branch menu opened');
+                    $labels = array_map(
+                        static fn (array $row): string => trim(AnsiUtils::stripAnsiCodes($row['segment'])),
+                        $menu->segments($menu->panelWidth()),
+                    );
+                    $this->assertContains('Switch Branch…', $labels, 'with the branch actions');
+                    $this->assertContains('New Branch…', $labels);
+
+                    // A right-click elsewhere on the status bar (the legend area,
+                    // outside the branch cell) offers no branch menu.
+                    $tui->handleInput("\x1b"); // dismiss the menu
+                    $tui->tick();
+                    $tui->handleInput(\sprintf("\x1b[<2;%d;%dM", $rect->col + $rect->columns - 3, $rect->row + 1));
+                    $tui->tick();
+                    $this->assertFalse($menu->isOpen(), 'a right-click off the branch opens no menu');
+                },
+            ],
+        );
+
+        $this->addToAssertionCount(1);
+    }
+
+    public function testGitSidebarDragResizesAndPersists(): void
+    {
+        if (!$this->gitAvailable()) {
+            $this->markTestSkipped('git not available');
+        }
+        putenv('PATH='.\dirname((string) $this->whichGit()));
+        $project = new TempProject(['a.txt' => "one\n"]);
+        $project->initGit();
+        $project->commitAll('init');
+        // A seeded percent must be applied at startup (25% of 160 cols = 40).
+        if (!is_dir($project->path('.porta'))) {
+            mkdir($project->path('.porta'), permissions: 0o777, recursive: true);
+        }
+        file_put_contents($project->path('.porta/layout.json'), json_encode(['gitSidebarWidthPercent' => 25]));
+
+        $this->runIde(
+            $project,
+            $project->path('a.txt'),
+            [
+                300 => static function ($tui): void {
+                    $tui->handleInput("\x1b\x04"); // open the git view
+                },
+                600 => function ($tui): void {
+                    $this->frame($tui);
+                    $this->assertSame(40, $tui->getById('git-changes')->width(), 'the seeded percent applied at startup');
+                    // Drag the git separator (SGR col 41 with a 40-wide sidebar)
+                    // out to col 61: the whole left column follows.
+                    $tui->handleInput("\x1b[<0;41;6M"); // arm on the separator
+                    $tui->handleInput("\x1b[<32;61;6M"); // drag right
+                    $tui->handleInput("\x1b[<0;61;6m"); // release
+                },
+                900 => function ($tui) use ($project): void {
+                    $this->assertSame(60, $tui->getById('git-changes')->width(), 'the drag resized the sidebar');
+                    $this->assertSame(60, $tui->getById('git-tabs')->width(), 'the tab strip follows');
+                    $this->assertSame(60, $tui->getById('git-commit')->width(), 'the commit box follows');
+                    $layout = json_decode((string) file_get_contents($project->path('.porta/layout.json')), associative: true);
+                    $this->assertSame(38, $layout['gitSidebarWidthPercent'], 'saved as a percentage (round(60/160))');
+                },
+            ],
+        );
+
+        $this->addToAssertionCount(1);
+    }
+
+    public function testGitStageCommitBlameViaPalette(): void
+    {
+        if (!$this->gitAvailable()) {
+            $this->markTestSkipped('git binary not available');
+        }
+        putenv('PATH='.$this->originalPath);
+
+        $project = new TempProject([]);
+        $project->git('init', '-q');
+        $project->git('config', 'user.email', 't@t');
+        $project->git('config', 'user.name', 'tester'); // asserted as the blame author
+        $project->git('config', 'commit.gpgsign', 'false');
+        $project->write('src/A.php', "<?php\n\$a = 1;\n");
+        $project->git('add', '-A');
+        $project->git('commit', '-qm', 'init');
+        $project->write('src/A.php', "<?php\n\$a = 2;\n"); // unstaged change
+
+        $palette = static function ($tui, string $label): void {
+            $tui->handleInput("\x1b[97;6u"); // ctrl+shift+a
+            foreach (str_split($label) as $ch) {
+                $tui->handleInput($ch);
+            }
+            $tui->handleInput("\r");
+        };
+
+        $terminal = $this->runIde(
+            $project,
+            $project->path('src/A.php'),
+            [
+                400 => static fn ($tui) => $palette($tui, label: 'Git: Stage'),
+                650 => function ($tui, $terminal) use ($palette): void {
+                    $tui->tick();
+                    $this->assertStringContainsString('Staged src/A.php', AnsiUtils::stripAnsiCodes($terminal->getOutput()));
+                    $palette($tui, label: 'Git: Commit'); // opens the message prompt
+                },
+                850 => static function ($tui): void {
+                    $tui->handleInput("\r"); // empty message -> no-op, prompt closes
+                },
+                1000 => static function ($tui) use ($palette): void {
+                    $palette($tui, label: 'Git: Commit');
+                },
+                1150 => static function ($tui): void {
+                    foreach (str_split('my commit') as $ch) {
+                        $tui->handleInput($ch);
+                    }
+                    $tui->handleInput("\r"); // commit
+                },
+                1450 => function ($tui, $terminal) use ($palette): void {
+                    $tui->tick();
+                    $this->assertStringContainsString('Committed: my commit', AnsiUtils::stripAnsiCodes($terminal->getOutput()));
+                    $tui->getById('editor')->getDocument()->setCursor(1, 0);
+                    $palette($tui, label: 'Git: Blame');
+                },
+                1750 => function ($tui, $terminal) use ($palette): void {
+                    $tui->tick();
+                    $this->assertStringContainsString('tester', AnsiUtils::stripAnsiCodes($terminal->getOutput()), 'blame flashes the author');
+                    $palette($tui, label: 'Git: Undo');
+                },
+                2100 => function ($tui, $terminal) use ($project): void {
+                    $tui->tick();
+                    $this->assertStringContainsString('Last commit undone', AnsiUtils::stripAnsiCodes($terminal->getOutput()));
+                    $subjects = explode("\n", $project->git('log', '--format=%s'));
+                    $this->assertSame(['init'], $subjects, 'the soft reset removed "my commit"');
+                },
+            ],
+        );
+    }
+
+    public function testGitBlameBeyondFileFlashesNoBlame(): void
+    {
+        if (!$this->gitAvailable()) {
+            $this->markTestSkipped('git binary not available');
+        }
+        putenv('PATH='.$this->originalPath);
+
+        $project = new TempProject([]);
+        $project->git('init', '-q');
+        $project->git('config', 'user.email', 't@t');
+        $project->git('config', 'user.name', 'tester');
+        $project->git('config', 'commit.gpgsign', 'false');
+        $project->write('src/A.php', "<?php\n"); // one line on disk
+        $project->git('add', '-A');
+        $project->git('commit', '-qm', 'init');
+
+        $terminal = $this->runIde(
+            $project,
+            $project->path('src/A.php'),
+            [
+                400 => static function ($tui): void {
+                    // Grow the buffer (unsaved) and blame a line past the on-disk file,
+                    // which git rejects -> empty output -> "No blame".
+                    $doc = $tui->getById('editor')->getDocument();
+                    $doc->setCursor(1, 0);
+                    $doc->insert("\n\n\n\n\n");
+                    $doc->setCursor(4, 0);
+                    $tui->handleInput("\x1b[97;6u");
+                    foreach (str_split('Git: Blame') as $ch) {
+                        $tui->handleInput($ch);
+                    }
+                    $tui->handleInput("\r");
+                },
+                700 => function ($tui, $terminal): void {
+                    $tui->tick();
+                    $this->assertStringContainsString('No blame for this line', AnsiUtils::stripAnsiCodes($terminal->getOutput()));
+                },
+            ],
+        );
+    }
+
+    public function testGitCommandsWithoutRepoFlash(): void
+    {
+        putenv('PATH='.$this->originalPath);
+        $project = new TempProject(['src/A.php' => "<?php\n"]); // not a git repo
+
+        $palette = static function ($tui, string $label): void {
+            $tui->handleInput("\x1b[97;6u");
+            foreach (str_split($label) as $ch) {
+                $tui->handleInput($ch);
+            }
+            $tui->handleInput("\r");
+        };
+
+        $terminal = $this->runIde(
+            $project,
+            $project->path('src/A.php'),
+            [
+                400 => static fn ($tui) => $palette($tui, label: 'Git: Stage'),
+                550 => static fn ($tui) => $palette($tui, label: 'Git: Commit'),
+                700 => static fn ($tui) => $palette($tui, label: 'Git: Blame'),
+                850 => static fn ($tui) => $palette($tui, label: 'Git: Undo'),
+                925 => static fn ($tui) => $palette($tui, label: 'Git: Branches'),
+                1000 => static fn ($tui) => $palette($tui, label: 'Git: Stash Pop'),
+                1075 => static fn ($tui) => $palette($tui, label: 'Git: Stashes'),
+                1150 => static fn ($tui) => $palette($tui, label: 'Git: File History'),
+                1225 => static function ($tui) use ($palette): void {
+                    $palette($tui, label: 'Git: Stash');
+                },
+                1300 => function ($tui, $terminal): void {
+                    $tui->tick();
+                    $this->assertStringContainsString('Git not available', AnsiUtils::stripAnsiCodes($terminal->getOutput()));
+                },
+            ],
+        );
+    }
+
+    public function testGitBranchPickerSwitchesAndCreatesBranches(): void
+    {
+        putenv('PATH='.$this->originalPath);
+        $project = new TempProject(['src/A.php' => "<?php\n"]);
+        $project->initGit();
+        $project->commitAll('init');
+        $project->git('branch', 'feature');
+        // A local bare remote with a branch no local shadows: the picker must
+        // list it with a "remote" hint and check it out as a tracking branch.
+        $bare = new TempProject();
+        $bare->git('init', '-q', '--bare');
+        $project->git('remote', 'add', 'origin', $bare->dir);
+        $project->git('push', '-q', 'origin', 'HEAD:remote-only');
+        $project->git('fetch', '-q', 'origin');
+
+        $palette = static function ($tui, string $label): void {
+            $tui->handleInput("\x1b[97;6u");
+            foreach (str_split($label) as $ch) {
+                $tui->handleInput($ch);
+            }
+            $tui->handleInput("\r");
+        };
+
+        $this->runIde(
+            $project,
+            $project->path('src/A.php'),
+            [
+                300 => static fn ($tui) => $palette($tui, label: 'Git: Branches'),
+                700 => function ($tui, $terminal): void {
+                    $tui->tick();
+                    $screen = AnsiUtils::stripAnsiCodes($terminal->getOutput());
+                    $this->assertStringContainsString('Branches', $screen, 'the picker overlay opened');
+                    $this->assertStringContainsString('+ Create new branch…', $screen);
+                    $this->assertStringContainsString('− Delete branch…', $screen);
+                    $this->assertStringContainsString('feature', $screen);
+                    $this->assertStringContainsString('remote-only', $screen);
+                    $this->assertStringContainsString('remote', $screen);
+                    // Rows: create + delete sentinels, then feature, then the
+                    // current branch (ties sort by refname), then the remote
+                    // row — two steps down picks "feature".
+                    $tui->handleInput("\x1b[B");
+                    $tui->handleInput("\x1b[B");
+                    $tui->handleInput("\r");
+                },
+                1200 => function ($tui, $terminal, $ide) use ($project, $palette): void {
+                    $tui->tick();
+                    $this->assertStringContainsString('Switched to feature', AnsiUtils::stripAnsiCodes($terminal->getOutput()));
+                    $this->assertSame('feature', $project->git('rev-parse', '--abbrev-ref', 'HEAD'), 'the checkout really happened');
+
+                    // Round 2: create a branch through the sentinel row.
+                    $terminal->clearOutput();
+                    $palette($tui, label: 'Git: Branches');
+                },
+                1600 => function ($tui) use ($project, $palette): void {
+                    $tui->tick();
+                    $tui->handleInput("\r"); // the "+ Create new branch…" row leads the list
+                    $tui->handleInput("\r"); // an empty name is a no-op
+                    $branches = array_filter(explode("\n", $project->git('branch', '--list')));
+                    $this->assertCount(2, $branches, 'no branch was created from the empty prompt');
+                    $palette($tui, label: 'Git: Branches');
+                },
+                2000 => static function ($tui): void {
+                    $tui->tick();
+                    $tui->handleInput("\r"); // create sentinel again
+                    foreach (str_split('fresh') as $ch) {
+                        $tui->handleInput($ch);
+                    }
+                    $tui->handleInput("\r");
+                },
+                2500 => function ($tui, $terminal) use ($project, $palette): void {
+                    $tui->tick();
+                    $this->assertStringContainsString('Created and switched to fresh', AnsiUtils::stripAnsiCodes($terminal->getOutput()));
+                    $this->assertSame('fresh', $project->git('rev-parse', '--abbrev-ref', 'HEAD'));
+
+                    // Round 3: check out the remote branch as a tracking branch.
+                    $terminal->clearOutput();
+                    $palette($tui, label: 'Git: Branches');
+                },
+                2900 => static function ($tui): void {
+                    $tui->tick();
+                    // Rows: 2 sentinels + 3 locals (feature/fresh/main-or-master,
+                    // fresh current) + the remote row last — five steps down.
+                    foreach (range(1, end: 5) as $_) {
+                        $tui->handleInput("\x1b[B");
+                    }
+                    $tui->handleInput("\r");
+                },
+                3300 => function ($tui, $terminal, $ide) use ($project, $palette): void {
+                    $tui->tick();
+                    $this->assertStringContainsString('Switched to remote-only (tracking origin/remote-only)', \Porta\Tests\Support\Toasts::last($ide));
+                    $this->assertSame('origin/remote-only', $project->git('rev-parse', '--abbrev-ref', 'remote-only@{upstream}'), 'the checkout created a tracking branch');
+
+                    // Round 4: delete "feature" through the delete sentinel.
+                    $terminal->clearOutput();
+                    $palette($tui, label: 'Git: Branches');
+                },
+                3700 => static function ($tui): void {
+                    $tui->tick();
+                    $tui->handleInput("\x1b[B"); // the "− Delete branch…" row
+                    $tui->handleInput("\r");
+                },
+                4100 => function ($tui, $terminal) use ($project, $palette): void {
+                    $tui->tick();
+                    $this->assertStringContainsString('Delete branch', AnsiUtils::stripAnsiCodes($terminal->getOutput()), 'the delete picker opened');
+                    $tui->handleInput("\r"); // "feature" leads (refname tie-break)
+                    $tui->tick();
+                    $tui->handleInput("\x1b[B"); // down to "Cancel"
+                    $tui->handleInput("\r");
+                    $kept = array_filter(explode("\n", $project->git('branch', '--list', 'feature')));
+                    $this->assertCount(1, $kept, 'cancelling the confirm deletes nothing');
+
+                    // Round 5: same flow, but confirm the delete this time.
+                    $palette($tui, label: 'Git: Branches');
+                },
+                4500 => static function ($tui): void {
+                    $tui->tick();
+                    $tui->handleInput("\x1b[B"); // the "− Delete branch…" row
+                    $tui->handleInput("\r");
+                },
+                4900 => static function ($tui): void {
+                    $tui->tick();
+                    $tui->handleInput("\r"); // "feature" again
+                    $tui->tick();
+                    $tui->handleInput("\r"); // the "Delete" confirm row leads
+                },
+                5300 => function ($tui, $terminal) use ($project): void {
+                    $tui->tick();
+                    $this->assertStringContainsString('Deleted branch feature', AnsiUtils::stripAnsiCodes($terminal->getOutput()));
+                    $gone = array_filter(explode("\n", $project->git('branch', '--list', 'feature')));
+                    $this->assertSame([], $gone, 'the branch really was deleted');
+                },
+            ],
+        );
+        $bare->path('.'); // hold the bare remote alive through the run
+    }
+
+    public function testDeleteBranchWithOnlyOneLocalBranchFlashes(): void
+    {
+        putenv('PATH='.$this->originalPath);
+        $project = new TempProject(['src/A.php' => "<?php\n"]);
+        $project->initGit();
+        $project->commitAll('init');
+
+        $this->runIde(
+            $project,
+            $project->path('src/A.php'),
+            [
+                300 => static function ($tui): void {
+                    $tui->handleInput("\x1b[97;6u");
+                    foreach (str_split('Git: Branches') as $ch) {
+                        $tui->handleInput($ch);
+                    }
+                    $tui->handleInput("\r");
+                },
+                700 => static function ($tui): void {
+                    $tui->tick();
+                    $tui->handleInput("\x1b[B"); // the "− Delete branch…" row
+                    $tui->handleInput("\r");
+                },
+                1100 => function ($tui, $terminal): void {
+                    $tui->tick();
+                    $this->assertStringContainsString('No other local branches to delete', AnsiUtils::stripAnsiCodes($terminal->getOutput()));
+                },
+            ],
+        );
+    }
+
+    public function testGitGutterMarksAndBranchInStatusBar(): void
+    {
+        if (!$this->gitAvailable()) {
+            $this->markTestSkipped('git binary not available');
+        }
+        putenv('PATH='.$this->originalPath); // git must be reachable
+
+        $project = new TempProject([]);
+        $project->git('init', '-q');
+        $project->git('config', 'user.email', 't@t');
+        $project->git('config', 'user.name', 'tester');
+        $project->git('config', 'commit.gpgsign', 'false');
+        $project->write('src/A.php', "<?php\n\$a = 1;\n\$b = 2;\n");
+        $project->git('add', '-A');
+        $project->git('commit', '-qm', 'init');
+        // Modify line 2 and append a line after committing
+        $project->write('src/A.php', "<?php\n\$a = 999;\n\$b = 2;\n\$c = 3;\n");
+
+        $terminal = $this->runIde(
+            $project,
+            $project->path('src/A.php'),
+            [
+                500 => function ($tui, $terminal): void {
+                    $tui->tick();
+                    $screen = AnsiUtils::stripAnsiCodes($terminal->getOutput());
+                    // Branch name in the status bar (default branch: main or master)
+                    $this->assertMatchesRegularExpression('/\b(main|master)\b/', $screen);
+                    $editor = $tui->getById('editor');
+                    $rendered = $editor->render(new \Symfony\Component\Tui\Render\RenderContext(80, 10));
+                    $joined = implode('', $rendered);
+                    // Modified (blue ┆) on line 2, added (green ▎) on line 4
+                    $this->assertStringContainsString("\x1b[38;5;75m┆", $joined, 'modified mark present');
+                    $this->assertStringContainsString("\x1b[38;5;114m▎", $joined, 'added mark present');
+                    // Exact width contract still holds with the git strip
+                    foreach ($rendered as $line) {
+                        $this->assertSame(80, AnsiUtils::visibleWidth($line));
+                    }
+                },
+            ],
+        );
+
+        $this->addToAssertionCount(1);
+    }
+
+    public function testGitViewStagesCommitsDiscardsAndRestores(): void
+    {
+        if (!$this->gitAvailable()) {
+            $this->markTestSkipped('git not available');
+        }
+        putenv('PATH='.\dirname((string) $this->whichGit()));
+        $project = new TempProject(['src/A.php' => "<?php\n\$a = 1;\n"]);
+        $project->initGit();
+        $project->commitAll('init');
+        $project->write('src/A.php', "<?php\n\$a = 2;\n"); // unstaged edit
+        $project->write('notes.md', "hi\n"); // untracked
+
+        $terminal = $this->runIde(
+            $project,
+            $project->path('src/A.php'),
+            [
+                300 => static function ($tui): void {
+                    $tui->handleInput("\x1b\x04"); // ctrl+alt+d opens the git view
+                },
+                550 => function ($tui, $terminal, $ide) use ($project): void {
+                    $screen = AnsiUtils::stripAnsiCodes($terminal->getOutput());
+                    $this->assertStringContainsString('2 changed files', $screen);
+                    $this->assertStringContainsString('[ ] M src/A.php', $screen);
+                    $this->assertStringContainsString('+$a = 2;', $screen, 'the diff pane shows the worktree change');
+                    $tui->handleInput(' '); // stage src/A.php
+                },
+                850 => function ($tui, $terminal) use ($project): void {
+                    $lines = explode("\n", $project->git('status', '--porcelain'));
+                    $this->assertContains('M  src/A.php', $lines, 'space staged the file');
+                    // Tab twice: changes -> diff -> commit box; type + ctrl+enter.
+                    $tui->handleInput("\t");
+                    $tui->handleInput("\t");
+                    foreach (str_split('Update A') as $ch) {
+                        $tui->handleInput($ch);
+                    }
+                    $tui->handleInput("\x1b[13;5u");
+                },
+                1250 => function ($tui, $terminal) use ($project): void {
+                    $subjects = explode("\n", $project->git('log', '--format=%s'));
+                    $this->assertSame(['Update A', 'init'], $subjects, 'ctrl+enter committed the staged change');
+                    // Discard the untracked notes.md: Tab walks summary -> description
+                    // -> next pane (the changes list), then arm + confirm.
+                    $tui->handleInput("\t");
+                    $tui->handleInput("\t");
+                    $tui->handleInput('d');
+                    $tui->handleInput('y');
+                },
+                1550 => function ($tui, $terminal, $ide) use ($project): void {
+                    $this->assertFileDoesNotExist($project->path('notes.md'), 'discard deleted the untracked file');
+                    $tui->handleInput("\x1b"); // esc restores the editor view
+                },
+                1700 => function ($tui): void {
+                    $this->assertSame('editor', $tui->getFocus()?->getId());
+                    $this->assertNotNull($tui->getById('tree'), 'tree pane restored');
+                },
+            ],
+        );
+
+        $screen = AnsiUtils::stripAnsiCodes($terminal->getOutput());
+        $this->assertStringContainsString('Committed:', $screen);
+        $this->assertStringContainsString('Working tree clean', $screen, 'after commit+discard nothing is left');
+    }
+
+    public function testGitChangesRowContextMenuStagesAndArmsDiscard(): void
+    {
+        if (!$this->gitAvailable()) {
+            $this->markTestSkipped('git not available');
+        }
+        putenv('PATH='.\dirname((string) $this->whichGit()));
+        $project = new TempProject(['src/A.php' => "<?php\n\$a = 1;\n"]);
+        $project->initGit();
+        $project->commitAll('init');
+        $project->write('src/A.php', "<?php\n\$a = 2;\n"); // unstaged edit
+
+        $this->runIde(
+            $project,
+            $project->path('src/A.php'),
+            [
+                300 => static function ($tui): void {
+                    $tui->handleInput("\x1b\x04"); // ctrl+alt+d opens the git view
+                },
+                550 => function ($tui, $terminal, $ide) use ($project): void {
+                    $this->await(static fn (): bool => str_contains(AnsiUtils::stripAnsiCodes($terminal->getOutput()), '[ ] M src/A.php'));
+                    $renderer = $ide->resolve(Renderer::class);
+                    $rect = $renderer->getWidgetRect($tui->getById('git-changes'));
+
+                    $terminal->clearOutput();
+                    $tui->handleInput(\sprintf("\x1b[<2;%d;%dM", $rect->col + 8, $rect->row + 2)); // right-click the first row
+                    $this->assertTrue($tui->getById('context-menu')->isOpen(), 'right-clicking a changes row opened its menu');
+                    $this->await(static fn (): bool => str_contains(AnsiUtils::stripAnsiCodes($terminal->getOutput()), 'File History'));
+                    $screen = AnsiUtils::stripAnsiCodes($terminal->getOutput());
+                    $this->assertStringContainsString('Stage', $screen, 'an unstaged row offers Stage');
+                    $this->assertStringContainsString('File History', $screen);
+
+                    $tui->handleInput("\r"); // Stage leads the list
+                    // Await the app's git barrier (which pumps the loop) rather than
+                    // polling a blocking `git status` — under load the blocking poll
+                    // starves the async `git add` it is waiting on.
+                    $this->awaitGit($ide);
+                    $this->assertContains('M  src/A.php', explode("\n", $project->git('status', '--porcelain')), 'the row staged');
+                },
+                1000 => function ($tui, $terminal, $ide): void {
+                    $tui->tick();
+                    // Keyboard parity: Ctrl+F10 on the (focused) changes list —
+                    // a staged row offers Unstage; Discard… arms the confirm bar.
+                    $this->assertSame('git-changes', $tui->getFocus()?->getId());
+                    $terminal->clearOutput();
+                    $tui->handleInput("\x1b[21;5~");
+                    $this->assertTrue($tui->getById('context-menu')->isOpen(), 'Ctrl+F10 opened the row menu');
+                    $this->await(static fn (): bool => str_contains(AnsiUtils::stripAnsiCodes($terminal->getOutput()), 'Unstage'));
+                    $this->assertStringContainsString('Unstage', AnsiUtils::stripAnsiCodes($terminal->getOutput()), 'a staged row offers Unstage');
+
+                    $tui->handleInput("\x1b[B"); // → Discard…
+                    $tui->handleInput("\r");
+                    $tui->tick();
+                    $this->assertStringContainsString('Discard changes?', AnsiUtils::stripAnsiCodes($terminal->getOutput()), 'Discard… armed the two-press confirmation');
+                    $tui->handleInput('n'); // decline
+                },
+            ],
+        );
+
+        $this->addToAssertionCount(1);
+    }
+
+    public function testGitViewStagesASingleLineFromTheDiffPane(): void
+    {
+        if (!$this->gitAvailable()) {
+            $this->markTestSkipped('git not available');
+        }
+        putenv('PATH='.\dirname((string) $this->whichGit()));
+        $project = new TempProject(['f.txt' => "alpha\nbeta\ngamma\n"]);
+        $project->initGit();
+        $project->commitAll('init');
+        $project->write('f.txt', "alpha CHANGED\nbeta\ngamma CHANGED\n");
+
+        $terminal = $this->runIde(
+            $project,
+            $project->path('f.txt'),
+            [
+                300 => static function ($tui): void {
+                    $tui->handleInput("\x1b\x04"); // open the git view
+                },
+                600 => static function ($tui): void {
+                    $tui->tick();
+                    $tui->handleInput("\t"); // changes list -> diff pane
+                    // Rows: hunk header, ctx?, -alpha, +alpha CHANGED, ... walk to
+                    // the first '+' row and stage just it.
+                    $tui->handleInput("\x1b[B");
+                    $tui->handleInput("\x1b[B");
+                    $tui->handleInput(' ');
+                },
+                1000 => function ($tui, $terminal) use ($project): void {
+                    $joinedCached = $project->git('diff', '--cached');
+                    $this->assertStringContainsString('alpha', $joinedCached, 'the alpha change reached the index');
+                    $this->assertStringNotContainsString('gamma CHANGED', $joinedCached, 'gamma stayed out of the index');
+                    $this->assertStringContainsString('gamma CHANGED', $project->git('diff'), 'gamma remains a worktree change');
+                    $tui->handleInput("\x1b");
+                },
+            ],
+        );
+
+        $this->assertStringContainsString('[~] M f.txt', AnsiUtils::stripAnsiCodes($terminal->getOutput()), 'partial staging shows the mixed checkbox');
+    }
+
+    public function testGitViewMouseAndMenuGuard(): void
+    {
+        if (!$this->gitAvailable()) {
+            $this->markTestSkipped('git not available');
+        }
+        putenv('PATH='.\dirname((string) $this->whichGit()));
+        $project = new TempProject(['a.txt' => "one\ntwo\nthree\n"]);
+        $project->initGit();
+        $project->commitAll('init');
+        $project->write('a.txt', "one!\ntwo\nthree changed\n");
+        $project->write('b.txt', 'new '.str_repeat('long-tail ', times: 8)."\n"); // long enough to h-scroll
+
+        $terminal = $this->runIde(
+            $project,
+            $project->path('a.txt'),
+            [
+                300 => static function ($tui): void {
+                    $tui->handleInput("\x1b\x04"); // open the git view
+                },
+                600 => static function ($tui): void {
+                    $tui->tick();
+                    // F10 opens the app menu OVER the git view now.
+                    $tui->handleInput("\x1b[21~");
+                },
+                900 => function ($tui, $terminal): void {
+                    $tui->tick();
+                    $screen = AnsiUtils::stripAnsiCodes($terminal->getOutput());
+                    $this->assertSame('menu', $tui->getFocus()?->getId(), 'F10 focused the menu bar');
+                    $this->assertStringContainsString('Save File', $screen, 'the File dropdown composites over the git panes');
+                    $this->assertStringContainsString('Quit', $screen);
+                    // Hover a dropdown row (the frame's top border starts under
+                    // the menu row, items from SGR row 3), then click the greyed
+                    // 'Save File' item: disabled in the git view, so it only
+                    // closes the menu.
+                    $tui->handleInput("\x1b[<35;5;5M");
+                    $tui->handleInput("\x1b[<0;5;3M");
+                    $tui->handleInput("\x1b[<0;5;3m");
+                },
+                1150 => function ($tui): void {
+                    $tui->tick();
+                    $this->assertSame('git-changes', $tui->getFocus()?->getId(), 'closing the menu restores the git focus target');
+                    // Click the 'File' title (row 1) to open, then again to close.
+                    $tui->handleInput("\x1b[<0;3;1M");
+                    $tui->handleInput("\x1b[<0;3;1m");
+                    $tui->handleInput("\x1b[<0;3;1M");
+                    $tui->handleInput("\x1b[<0;3;1m");
+                    // Below the menu row sits the tab strip (row 2), then the
+                    // changes header (row 3); a.txt is row 4. Click the checkbox.
+                    $tui->handleInput("\x1b[<0;3;4M");
+                    $tui->handleInput("\x1b[<0;3;4m");
+                },
+                1500 => function ($tui, $terminal) use ($project): void {
+                    $lines = explode("\n", $project->git('status', '--porcelain'));
+                    $this->assertContains('M  a.txt', $lines, 'checkbox click staged the file');
+                    // Hover row 5 (b.txt): a tint only — the diff must NOT load.
+                    $tui->handleInput("\x1b[<35;10;5M");
+                },
+                1700 => function ($tui, $terminal): void {
+                    $tui->tick();
+                    $screen = AnsiUtils::stripAnsiCodes($terminal->getOutput());
+                    $this->assertStringNotContainsString('+new', $screen, 'hover alone must not load the hovered diff');
+                    $this->assertStringContainsString('three changed', $screen, "a.txt's diff is still shown");
+                    // Moving the pointer onto the diff pane clears the tint...
+                    $tui->handleInput("\x1b[<35;80;6M");
+                    // ...and a CLICK on b.txt selects it and loads its diff.
+                    $tui->handleInput("\x1b[<0;10;5M");
+                    $tui->handleInput("\x1b[<0;10;5m");
+                },
+                1950 => function ($tui, $terminal): void {
+                    $tui->tick();
+                    $this->assertStringContainsString('+new', AnsiUtils::stripAnsiCodes($terminal->getOutput()), 'the click loaded the untracked diff');
+                    // Horizontal wheel (trackpad code 67) over the diff pane
+                    // scrolls sideways; the tree/list panes ignore it.
+                    $tui->handleInput("\x1b[<67;80;6M");
+                    $this->assertSame(6, $tui->getById('git-diff')->hScroll(), 'wheel-right scrolled the diff text');
+                    $tui->handleInput("\x1b[<68;80;6M"); // shift+wheel-up = left
+                    $this->assertSame(0, $tui->getById('git-diff')->hScroll());
+                    $tui->handleInput("\x1b[<67;10;4M"); // over the changes list: ignored
+                    // Wheel over the diff pane scrolls it; over the list it moves
+                    // the selection (keyboard-like, so it may load).
+                    $tui->handleInput("\x1b[<65;80;6M");
+                    $tui->handleInput("\x1b[<65;10;4M");
+                    // Press mid-text on a diff row and drag ten columns right:
+                    // a char-level span arms; ctrl+c copies exactly those chars.
+                    $tui->handleInput("\x1b[<0;60;6M");
+                    $tui->handleInput("\x1b[<32;70;6M");
+                    $tui->handleInput("\x1b[<0;70;6m");
+                    $tui->handleInput("\x03");
+                    // Click into the commit box summary row.
+                    $tui->handleInput("\x1b[<0;5;20M");
+                    $tui->handleInput("\x1b[<0;5;20m");
+                },
+                2250 => function ($tui, $terminal): void {
+                    $raw = $terminal->getOutput();
+                    // Text col 2..12 of '+new long-tail …' (pane text starts at
+                    // SGR col 58): the exact ten chars, no markers, no newline.
+                    $this->assertStringContainsString("\x1b]52;c;".base64_encode('w long-tai'), $raw, 'the dragged char span reached the clipboard');
+                    $this->assertStringContainsString('Copied 1 line', AnsiUtils::stripAnsiCodes($raw));
+                    $this->assertSame('git-commit', $tui->getFocus()?->getId(), 'click focused the commit box');
+                    // The diff toolbar tags sit at the right edge of the diff
+                    // title row (screen row 2): ' S split ' then ' W hide-ws '.
+                    // Clicking them flips the modes and persists the prefs.
+                    $tui->handleInput("\x1b[<0;141;2M");
+                    $tui->handleInput("\x1b[<0;141;2m");
+                    $this->assertTrue($tui->getById('git-diff')->isSplit(), 'the split tag switched to side-by-side');
+                    $tui->handleInput("\x1b[<0;151;2M");
+                    $tui->handleInput("\x1b[<0;151;2m");
+                    $tui->handleInput("\x1b");
+                },
+            ],
+        );
+
+        $screen = AnsiUtils::stripAnsiCodes($terminal->getOutput());
+        $this->assertStringContainsString('b.txt', $screen);
+        $layout = json_decode((string) file_get_contents($project->path('.porta/layout.json')), associative: true);
+        $this->assertTrue($layout['gitDiffSplit'], 'the split preference persisted');
+        $this->assertTrue($layout['gitDiffHideWhitespace'], 'the whitespace preference persisted');
+    }
+
+    public function testGitViewHistoryTabBrowsesCommits(): void
+    {
+        if (!$this->gitAvailable()) {
+            $this->markTestSkipped('git not available');
+        }
+        putenv('PATH='.\dirname((string) $this->whichGit()));
+        $project = new TempProject(['a.txt' => "one\n"]);
+        $project->initGit();
+        $project->commitAll('first commit');
+        $project->write('a.txt', "one\nmore\n");
+        $project->commitAll('second commit');
+
+        $terminal = $this->runIde(
+            $project,
+            $project->path('a.txt'),
+            [
+                300 => static function ($tui): void {
+                    $tui->handleInput("\x1b\x04"); // open the git view
+                },
+                600 => static function ($tui): void {
+                    $tui->tick();
+                    // Click the [History] tab cell (tab strip = screen row 2).
+                    $tui->handleInput("\x1b[<0;14;2M");
+                    $tui->handleInput("\x1b[<0;14;2m");
+                },
+                1000 => function ($tui, $terminal): void {
+                    $screen = AnsiUtils::stripAnsiCodes($terminal->getOutput());
+                    $this->assertStringContainsString('History (2)', $screen);
+                    $this->assertStringContainsString('second commit', $screen);
+                    $this->assertStringContainsString('M a.txt', $screen, 'the newest commit file list loads');
+                    // Mouse: hover tints a commit row (no selection change),
+                    // wheel over the history list, click the first commit
+                    // row (menu row + tab strip shift the list down two).
+                    $tui->handleInput("\x1b[<35;10;5M");
+                    $tui->handleInput("\x1b[<65;10;5M");
+                    $tui->handleInput("\x1b[<0;10;4M");
+                    $tui->handleInput("\x1b[<0;10;4m");
+                },
+                1200 => function ($tui, $terminal): void {
+                    // The clicked commit's files settled AND its first file's
+                    // patch auto-loaded — no keystroke needed to see a diff.
+                    $this->assertStringContainsString('+more', AnsiUtils::stripAnsiCodes($terminal->getOutput()), 'first file auto-selected');
+                    $tui->handleInput("\r"); // into the files list
+                    $tui->handleInput("\x1b[B"); // wiggle selection to refire the load
+                    $tui->handleInput("\x1b[A");
+                },
+                1500 => function ($tui, $terminal): void {
+                    $this->assertStringContainsString('+more', AnsiUtils::stripAnsiCodes($terminal->getOutput()), 'the commit patch renders read-only');
+                    // Click the [Changes] tab to switch back.
+                    $tui->handleInput("\x1b[<0;4;2M");
+                    $tui->handleInput("\x1b[<0;4;2m");
+                },
+            ],
+        );
+
+        $this->assertStringContainsString('Working tree clean', AnsiUtils::stripAnsiCodes($terminal->getOutput()), 'the Changes tab restored');
+    }
+
+    public function testF6InsideTheGitViewWalksItsPanes(): void
+    {
+        if (!$this->gitAvailable()) {
+            $this->markTestSkipped('git binary not available');
+        }
+        putenv('PATH='.$this->originalPath); // git must be reachable
+
+        $project = new TempProject([]);
+        $project->git('init', '-q');
+        $project->git('config', 'user.email', 't@t');
+        $project->git('config', 'user.name', 'tester');
+        $project->write('a.php', "<?php\n\$a = 1;\n");
+
+        $this->runIde(
+            $project,
+            $project->path('a.php'),
+            [
+                400 => function ($tui, $terminal, $ide): void {
+                    $ide->resolve(CommandRegistry::class)->run('ide_git');
+                    $this->assertSame('git-changes', $tui->getFocus()?->getId(), 'git view opens on the changes list');
+                    $tui->handleInput("\x1b[17~"); // F6 delegates to the git view's pane order
+                    $this->assertSame('git-diff', $tui->getFocus()?->getId());
+                    $tui->handleInput("\x1b[17;5~"); // Ctrl+F6 walks back
+                    $this->assertSame('git-changes', $tui->getFocus()?->getId());
+
+                    // Pointer motion over the git mode tabs tints the inactive one.
+                    $tui->tick();
+                    $renderer = $ide->resolve(Renderer::class);
+                    $tabsRect = $renderer->getWidgetRect($tui->getById('git-tabs'));
+                    $tui->handleInput(\sprintf("\x1b[<35;%d;%dM", $tabsRect->col + 12, $tabsRect->row + 1)); // over 'History'
+                    $tui->tick();
+                    $this->assertStringContainsString(
+                        "\x1b[48;5;240m",
+                        implode('', $tui->getById('git-tabs')->render(new \Symfony\Component\Tui\Render\RenderContext(44, 1))),
+                        'the hovered git tab tints',
+                    );
+                    $tui->handleInput(\sprintf("\x1b[<35;%d;%dM", $tabsRect->col + 2, $tabsRect->row + 3)); // off the strip
+                    $tui->tick();
+                    $this->assertStringNotContainsString(
+                        "\x1b[48;5;240m",
+                        implode('', $tui->getById('git-tabs')->render(new \Symfony\Component\Tui\Render\RenderContext(44, 1))),
+                        'leaving the strip clears the tint',
+                    );
+
+                    // A strip click focuses the pane it reveals — the git tabs
+                    // used to leave the focus wherever it happened to be.
+                    $tui->setFocus($tui->getById('git-diff'));
+                    $tui->handleInput(\sprintf("\x1b[<0;%d;%dM", $tabsRect->col + 12, $tabsRect->row + 1)); // click 'History'
+                    $tui->tick();
+                    $this->assertSame('git-history', $tui->getFocus()?->getId(), 'clicking the History tab brings you to the history list');
+
+                    $tui->setFocus($tui->getById('git-diff'));
+                    $tui->handleInput(\sprintf("\x1b[<0;%d;%dM", $tabsRect->col + 2, $tabsRect->row + 1)); // click 'Changes'
+                    $tui->tick();
+                    $this->assertSame('git-changes', $tui->getFocus()?->getId(), 'and back to the changes list');
+                },
+            ],
+        );
+    }
+
+    public function testStashBlameAndFileHistoryFlows(): void
+    {
+        putenv('PATH='.$this->originalPath);
+        $project = new TempProject(['src/A.php' => "<?php\n\$x = 1;\n"]);
+        // A deterministic 'tester' identity — blame below asserts on the name.
+        $project->git('init', '-q');
+        $project->git('config', 'user.email', 't@t');
+        $project->git('config', 'user.name', 'tester');
+        $project->git('config', 'commit.gpgsign', 'false');
+        $project->git('add', '-A');
+        $project->git('commit', '-qm', 'init');
+        // A second commit not touching A.php: file history must hide it.
+        $project->write('other.txt', '');
+        $project->git('add', '-A');
+        $project->git('commit', '-qm', 'other');
+
+        $palette = static function ($tui, string $label): void {
+            $tui->handleInput("\x1b[97;6u");
+            foreach (str_split($label) as $ch) {
+                $tui->handleInput($ch);
+            }
+            $tui->handleInput("\r");
+        };
+        $screen = static fn ($terminal): string => AnsiUtils::stripAnsiCodes($terminal->getOutput());
+
+        $this->runIde(
+            $project,
+            $project->path('src/A.php'),
+            [
+                300 => function ($tui, $terminal, $ide) use ($palette, $project): void {
+                    // Guard the read: git replaces the file by atomic rename during a
+                    // stash/checkout, and a poll that lands in that instant would
+                    // otherwise warn on a momentarily-absent path.
+                    $reads = static fn (): string => is_file($project->path('src/A.php')) ? (string) file_get_contents($project->path('src/A.php')) : '';
+
+                    // A clean tree: git's own "nothing to stash" line is the flash.
+                    $palette($tui, label: 'Git: Stash');
+                    $this->await(static fn (): bool => str_contains(AnsiUtils::stripAnsiCodes($terminal->getOutput()), 'No local changes'), timeout: 8.0, what: 'the clean-tree flash');
+                    $this->awaitGit($ide);
+
+                    // Poll the on-disk effect itself, not the rendered flash: git
+                    // reverts the tree before its process exits, so the file content
+                    // is the earliest and most robust signal — immune to a flash that
+                    // renders late (or expires) under load.
+                    file_put_contents($project->path('src/A.php'), data: "<?php\n\$x = 2;\n");
+                    $terminal->clearOutput();
+                    $palette($tui, label: 'Git: Stash');
+                    $this->await(static fn (): bool => str_contains($reads(), '$x = 1;'), timeout: 8.0, what: 'the stash to revert the tree');
+                    $this->assertStringContainsString('$x = 1;', $reads(), 'the tree reverted');
+                    $this->awaitGit($ide);
+
+                    $terminal->clearOutput();
+                    $palette($tui, label: 'Git: Stash Pop');
+                    $this->await(static fn (): bool => str_contains($reads(), '$x = 2;'), timeout: 8.0, what: 'the stash to pop back');
+                    $this->assertStringContainsString('$x = 2;', $reads());
+                    $this->awaitGit($ide);
+                },
+                700 => function ($tui, $terminal, $ide) use ($palette, $project): void {
+                    $reads = static fn (): string => is_file($project->path('src/A.php')) ? (string) file_get_contents($project->path('src/A.php')) : '';
+                    // The tree still holds $x = 2 from round 1's pop; stash it away.
+                    $terminal->clearOutput();
+                    $palette($tui, label: 'Git: Stash');
+                    $this->await(static fn (): bool => !str_contains($reads(), '$x = 2;'), timeout: 8.0, what: 'the stash to revert the tree');
+                    $this->awaitGit($ide);
+
+                    // Round 1: Cancel leaves everything untouched.
+                    $palette($tui, label: 'Git: Stashes…');
+                    $this->await(static fn (): bool => $tui->getById('editor')->isOverlayOpen());
+                    $tui->handleInput("\r"); // pick the stash → the action chooser
+                    $tui->tick();
+                    $this->assertStringContainsString('apply, pop or drop?', AnsiUtils::stripAnsiCodes($terminal->getOutput()));
+                    $tui->handleInput("\x1b[B");
+                    $tui->handleInput("\x1b[B");
+                    $tui->handleInput("\x1b[B"); // down to Cancel
+                    $tui->handleInput("\r");
+                    $this->assertFalse($tui->getById('editor')->isOverlayOpen());
+
+                    // Round 2: Apply restores the change but keeps the stash.
+                    $terminal->clearOutput();
+                    $palette($tui, label: 'Git: Stashes…');
+                    $this->await(static fn (): bool => $tui->getById('editor')->isOverlayOpen());
+                    $tui->handleInput("\r");
+                    $tui->handleInput("\r"); // Apply leads the chooser
+                    $this->await(static fn (): bool => str_contains($reads(), '$x = 2;'), timeout: 8.0, what: 'apply to restore the change');
+                    $this->assertStringContainsString('$x = 2;', $reads());
+                    $this->awaitGit($ide);
+                    $project->git('checkout', '-q', '--', '.'); // clean for the pop round
+
+                    // Round 3: Pop restores AND consumes a fresh stash.
+                    file_put_contents($project->path('src/A.php'), data: "<?php\n\$x = 3;\n");
+                    $terminal->clearOutput();
+                    $palette($tui, label: 'Git: Stash');
+                    $this->await(static fn (): bool => !str_contains($reads(), '$x = 3;'), timeout: 8.0, what: 'the stash to revert the tree');
+                    $this->awaitGit($ide);
+                    $palette($tui, label: 'Git: Stashes…');
+                    $this->await(static fn (): bool => $tui->getById('editor')->isOverlayOpen());
+                    $tui->handleInput("\r");
+                    $tui->handleInput("\x1b[B"); // down to Pop
+                    $tui->handleInput("\r");
+                    $this->await(static fn (): bool => str_contains($reads(), '$x = 3;'), timeout: 8.0, what: 'the stash to pop back');
+                    $this->assertStringContainsString('$x = 3;', $reads());
+                    $this->awaitGit($ide);
+                    $project->git('checkout', '-q', '--', '.');
+
+                    // Round 4: Drop the remaining stash.
+                    $terminal->clearOutput();
+                    $palette($tui, label: 'Git: Stashes…');
+                    $this->await(static fn (): bool => $tui->getById('editor')->isOverlayOpen());
+                    $tui->handleInput("\r");
+                    $tui->tick();
+                    $tui->handleInput("\x1b[B");
+                    $tui->handleInput("\x1b[B"); // down to Drop
+                    $tui->handleInput("\r");
+                    // Drop's flash is transient and touches no file, so poll the app
+                    // barrier and then the stash list itself — the real effect —
+                    // rather than racing the rendered "Dropped stash@{0}" line.
+                    $this->awaitGit($ide);
+                    $this->await(static fn (): bool => '' === $project->git('stash', 'list'), timeout: 8.0, what: 'the stash to drop');
+                },
+                1100 => function ($tui, $terminal) use ($palette, $project): void {
+                    $this->assertSame('', $project->git('stash', 'list'), 'the stash really dropped');
+
+                    // An empty stash list flashes instead of opening the picker.
+                    $terminal->clearOutput();
+                    $palette($tui, label: 'Git: Stashes…');
+                    $this->await(static fn (): bool => str_contains(AnsiUtils::stripAnsiCodes($terminal->getOutput()), 'No stashes'), timeout: 8.0, what: 'the empty-stash flash');
+
+                    // Blame annotations on, then off.
+                    $editorScreen = static fn (): string => AnsiUtils::stripAnsiCodes(implode("\n", $tui->getById('editor')->render(new \Symfony\Component\Tui\Render\RenderContext(120, 20))));
+                    $palette($tui, label: 'Git: Toggle Blame Annotations');
+                    $this->await(static fn (): bool => str_contains($editorScreen(), 'tester'), timeout: 8.0, what: 'blame annotations to load');
+                    $palette($tui, label: 'Git: Toggle Blame Annotations');
+                    $this->assertStringNotContainsString('tester', $editorScreen(), 'annotations cleared');
+                },
+                1500 => function ($tui, $terminal) use ($palette): void {
+                    // File history: the git view opens filtered to the open file.
+                    $terminal->clearOutput();
+                    $palette($tui, label: 'Git: File History');
+                    $this->await(static fn (): bool => str_contains(AnsiUtils::stripAnsiCodes($terminal->getOutput()), 'History — src/A.php (1)'), timeout: 8.0, what: 'the file-history view');
+                    $screenText = AnsiUtils::stripAnsiCodes($terminal->getOutput());
+                    $this->assertStringContainsString('init', $screenText);
+                    $this->assertStringNotContainsString(' other ', $screenText, "the commit that didn't touch the file is hidden");
+                },
+            ],
+        );
+    }
+}

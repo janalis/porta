@@ -1,0 +1,287 @@
+<?php
+
+declare(strict_types=1);
+
+namespace Porta\Tests\E2e;
+
+use PHPUnit\Framework\TestCase;
+use Porta\Config\CommandRegistry;
+use Porta\Config\IdeConfig;
+use Porta\Editor\LineNumberMode;
+use Porta\Settings\SettingsController;
+use Porta\Tests\Support\FindModalReads;
+use Porta\Tests\Support\RunsIde;
+use Porta\Tests\Support\TempProject;
+use Symfony\Component\Tui\Ansi\AnsiUtils;
+
+/**
+ * The settings view and live-applied settings: theme recolor,
+ * cursor shape, sidebar resize, startup application.
+ * Split out of the oversized IdeEdgeCasesTest.
+ */
+final class IdeSettingsThemeTest extends TestCase
+{
+    use FindModalReads;
+    use RunsIde;
+
+    private string $originalPath;
+
+    private ?string $portaHomeToRestore = null;
+
+    protected function setUp(): void
+    {
+        $this->originalPath = PORTA_TEST_PRISTINE_PATH;
+        putenv('PORTA_LSP');
+    }
+
+    protected function tearDown(): void
+    {
+        if (null !== $this->portaHomeToRestore) {
+            putenv('PORTA_HOME='.$this->portaHomeToRestore);
+            $this->portaHomeToRestore = null;
+        }
+        putenv('PATH='.$this->originalPath);
+        putenv('PORTA_LSP');
+    }
+
+    public function testSettingsAppliedAtStartup(): void
+    {
+        putenv('PATH=/nonexistent');
+        $project = new TempProject([
+            '.porta.json' => json_encode(['settings' => ['inlineDiagnostics' => false, 'lineNumbers' => 'relative']]),
+            'A.php' => "<?php\n\$x = 1;\n",
+        ]);
+
+        $this->runIde(
+            $project,
+            $project->path('A.php'),
+            [
+                300 => function ($tui): void {
+                    $editor = $tui->getById('editor');
+                    $this->assertSame(LineNumberMode::Relative, $editor->lineNumberMode(), 'setting applied from file');
+                    // Inline diagnostics disabled: even with a diagnostic, no inline text.
+                    $editor->setDiagnostics([1 => [['severity' => 1, 'message' => 'boom', 'col' => 0]]]);
+                    $rendered = $editor->render(new \Symfony\Component\Tui\Render\RenderContext(80, 5));
+                    $this->assertStringNotContainsString('boom', AnsiUtils::stripAnsiCodes($rendered[1]));
+                },
+            ],
+        );
+
+        $this->addToAssertionCount(1);
+    }
+
+    public function testSettingsViewSidebarNavFormAndLanguages(): void
+    {
+        // Plugin-list navigation is index-based, so keep the suite-wide
+        // `tempest` highlighting fixture (installed via PORTA_HOME) out of it.
+        // tearDown puts it back — paratest reuses the process.
+        $portaHome = getenv('PORTA_HOME');
+        $this->portaHomeToRestore = false === $portaHome ? null : $portaHome;
+        putenv('PORTA_HOME=/nonexistent');
+        putenv('PATH=/nonexistent'); // no git/LSP subprocesses needed
+        $project = new TempProject(['a.php' => "<?php\n"]);
+
+        $terminal = $this->runIde(
+            $project,
+            $project->path('a.php'),
+            [
+                300 => static function ($tui, $terminal, $ide): void {
+                    // Open via the command registry (the ide_settings closure),
+                    // then the mouse steps below exercise the routing.
+                    $ide->resolve(CommandRegistry::class)->run('ide_settings');
+                },
+                500 => function ($tui, $terminal): void {
+                    $tui->tick();
+                    $screen = AnsiUtils::stripAnsiCodes($terminal->getOutput());
+                    $this->assertSame('settings-form', $tui->getFocus()?->getId(), 'settings opened focused on the General form');
+                    $this->assertStringContainsString('General', $screen, 'the nav sidebar lists sections');
+                    $this->assertStringContainsString('Languages', $screen);
+                    $this->assertStringContainsString('Inline diagnostics', $screen, 'General content shown');
+                    // Toggle Inline diagnostics (General row 0, now that the appearance rows moved to Interface) in the content pane.
+                    $tui->handleInput("\x1b[<0;40;2M");
+                    $tui->handleInput("\x1b[<0;40;2m");
+                    // Hover the nav sidebar (a tint).
+                    $tui->handleInput("\x1b[<35;5;3M");
+                },
+                700 => static function ($tui): void {
+                    $tui->tick();
+                    // Click the 'Keybindings' entry in the nav (screen row 5, after
+                    // General + Interface + Highlighting).
+                    $tui->handleInput("\x1b[<0;5;5M");
+                    $tui->handleInput("\x1b[<0;5;5m");
+                },
+                900 => function ($tui, $terminal): void {
+                    $tui->tick();
+                    $this->assertSame('settings-nav', $tui->getFocus()?->getId(), 'clicking the nav focuses it');
+                    $this->assertStringContainsString('actions', AnsiUtils::stripAnsiCodes($terminal->getOutput()), 'the keybindings list shows');
+                    // Hover + wheel + click the keybindings list (content pane), a nav miss too.
+                    $tui->handleInput("\x1b[<35;40;5M"); // hover a list row (nav clears)
+                    $tui->handleInput("\x1b[<65;40;5M"); // wheel down over the list
+                    $tui->handleInput("\x1b[<0;40;5M"); // click a list row
+                    $tui->handleInput("\x1b[<0;40;5m");
+                },
+                1100 => static function ($tui): void {
+                    $tui->tick();
+                    // Select PHP in the nav (screen row 10, after Interface +
+                    // Highlighting + Plugins + the Version control category and
+                    // the Languages header) → the content shows its indent rows.
+                    $tui->handleInput("\x1b[<0;5;10M");
+                    $tui->handleInput("\x1b[<0;5;10m");
+                },
+                1300 => function ($tui, $terminal): void {
+                    $tui->tick();
+                    $screen = AnsiUtils::stripAnsiCodes($terminal->getOutput());
+                    $this->assertStringContainsString('Indent style', $screen, 'the PHP section shows indent settings');
+                    $this->assertStringContainsString('LSP server', $screen, 'and its LSP server row');
+                    // Actuate the indent-style row (auto → spaces) in the content pane.
+                    $tui->handleInput("\x1b[<0;40;2M");
+                    $tui->handleInput("\x1b[<0;40;2m");
+                    // Edit the LSP server row (form row 3 = screen row 5, after the run-command row): a click starts inline editing.
+                    $tui->handleInput("\x1b[<0;40;5M");
+                    $tui->handleInput("\x1b[<0;40;5m");
+                    foreach (str_split('my-ls --stdio') as $char) {
+                        $tui->handleInput($char);
+                    }
+                    $tui->handleInput("\r"); // commit → persists + reconfigures the LSP pool live
+                    $tui->handleInput("\x1b[21~"); // F10 opens the app menu OVER the settings view
+                },
+                1500 => function ($tui, $terminal): void {
+                    $tui->tick();
+                    $tui->handleInput("\x1b[<35;5;3M"); // hover a dropdown row: the menu rides along
+                    $screen = AnsiUtils::stripAnsiCodes($terminal->getOutput());
+                    $this->assertSame('menu', $tui->getFocus()?->getId(), 'F10 focused the menu bar');
+                    $this->assertStringContainsString('Settings…', $screen, 'the File dropdown composites over the settings panes');
+                    $this->assertStringContainsString('Save File', $screen);
+                },
+            ],
+        );
+
+        $this->assertFalse(IdeConfig::load($project->dir)->settings['inlineDiagnostics'], 'the General toggle persisted');
+        $this->assertSame('spaces', IdeConfig::load($project->dir)->languages['php']['indentStyle'], 'the PHP indent change persisted');
+        $this->assertSame('my-ls --stdio', IdeConfig::load($project->dir)->lspServers['php'], 'the PHP LSP server persisted');
+    }
+
+    public function testThemeSwitchLiveRecolorsChromeAndSyntax(): void
+    {
+        putenv('PATH=/nonexistent'); // no git/LSP subprocesses needed
+        $project = new TempProject(['a.php' => "<?php\nreturn 1;\n"]);
+
+        $terminal = $this->runIde(
+            $project,
+            $project->path('a.php'),
+            [
+                300 => function ($tui, $terminal): void {
+                    $tui->tick();
+                    // Dark theme baseline: the `return` keyword is the dark KEYWORD color.
+                    $this->assertStringContainsString("\x1b[38;5;176m", $terminal->getOutput(), 'dark syntax at boot');
+                    $terminal->clearOutput(); // capture only the frames rendered after the switch
+                },
+                500 => static function ($tui, $terminal, $ide): void {
+                    // Change the theme setting live, as the settings form would.
+                    $ide->resolve(SettingsController::class)
+                        ->changeSetting('theme', 'light');
+                    $tui->tick();
+                },
+                700 => function ($tui, $terminal, $ide): void {
+                    $tui->tick();
+                    $out = $terminal->getOutput(); // only post-switch frames (cleared at step 300)
+                    // The buffer re-highlighted: light KEYWORD color in, dark gone.
+                    $this->assertStringContainsString("\x1b[38;5;91m", $out, 'light syntax after the switch');
+                    $this->assertStringNotContainsString("\x1b[38;5;176m", $out, 'no dark syntax remains');
+                    // Chrome recolored: light header bar in, dark gone.
+                    $this->assertStringContainsString("\x1b[48;5;253m", $out, 'light header bar present');
+                    $this->assertStringNotContainsString("\x1b[48;5;237m", $out, 'no dark header bar remains');
+
+                    // Second live switch: the accessibility theme.
+                    $terminal->clearOutput();
+                    $ide->resolve(SettingsController::class)
+                        ->changeSetting('theme', 'high-contrast');
+                    $tui->tick();
+                },
+                900 => function ($tui, $terminal): void {
+                    $tui->tick();
+                    $out = $terminal->getOutput(); // only post-high-contrast frames
+                    $this->assertStringContainsString("\x1b[38;5;213m", $out, 'high-contrast syntax after the switch');
+                    $this->assertStringNotContainsString("\x1b[38;5;91m", $out, 'no light syntax remains');
+                    $this->assertStringContainsString("\x1b[48;5;236m", $out, 'high-contrast header bar present');
+                    $this->assertStringNotContainsString("\x1b[48;5;253m", $out, 'no light header bar remains');
+                },
+            ],
+        );
+
+        $this->assertSame('high-contrast', IdeConfig::load($project->dir)->settings['theme'], 'the theme persisted');
+    }
+
+    public function testSettingsSidebarResizesAndPersists(): void
+    {
+        putenv('PATH=/nonexistent');
+        $project = new TempProject(['a.php' => "<?php\n"]);
+        // A seeded percent must be applied at startup (25% of 160 cols = 40).
+        if (!is_dir($project->path('.porta'))) {
+            mkdir($project->path('.porta'), permissions: 0o777, recursive: true);
+        }
+        file_put_contents($project->path('.porta/layout.json'), json_encode(['settingsSidebarWidthPercent' => 25]));
+
+        $this->runIde(
+            $project,
+            $project->path('a.php'),
+            [
+                300 => static function ($tui, $terminal, $ide): void {
+                    $ide->resolve(CommandRegistry::class)->run('ide_settings');
+                },
+                600 => function ($tui): void {
+                    $this->frame($tui);
+                    $this->assertSame(40, $tui->getById('settings-nav')->width(), 'the seeded percent applied at startup');
+                    // Drag the settings separator (SGR col 41 with a 40-wide nav) in to col 31.
+                    $tui->handleInput("\x1b[<0;41;6M"); // arm on the separator
+                    $tui->handleInput("\x1b[<32;31;6M"); // drag left
+                    $tui->handleInput("\x1b[<0;31;6m"); // release
+                },
+                900 => function ($tui) use ($project): void {
+                    $this->assertSame(30, $tui->getById('settings-nav')->width(), 'the drag resized the sidebar');
+                    $layout = json_decode((string) file_get_contents($project->path('.porta/layout.json')), associative: true);
+                    $this->assertSame(19, $layout['settingsSidebarWidthPercent'], 'saved as a percentage (round(30/160))');
+                },
+            ],
+        );
+    }
+
+    public function testCursorShapeSettingSwitchesTheMarkerLiveAndTerminalPanelPlacesTheCursor(): void
+    {
+        putenv('PATH=/nonexistent');
+        $project = new TempProject(['a.php' => "<?php\n\$a = 1;\n"]);
+
+        $this->runIde(
+            $project,
+            $project->path('a.php'),
+            [
+                200 => function ($tui, $terminal, $ide): void {
+                    $tui->tick();
+                    // ScreenWriter converts the zero-width marker into a hardware
+                    // cursor position plus a DECSCUSR shape: 5 = bar (default).
+                    $this->assertStringContainsString("\x1b[5 q", $terminal->getOutput(), 'the default bar shape is emitted');
+
+                    $ide->resolve(SettingsController::class)
+                        ->changeSetting('cursorShape', 'block');
+                    $terminal->clearOutput();
+                    $tui->tick();
+                },
+                400 => function ($tui, $terminal): void {
+                    $tui->tick();
+                    $out = $terminal->getOutput();
+                    $this->assertStringContainsString("\x1b[1 q", $out, 'the block shape (DECSCUSR 1) after the live switch');
+                    $this->assertStringNotContainsString("\x1b[5 q", $out, 'no stale bar shape survives the cache flush');
+                },
+                600 => function ($tui, $terminal, $ide): void {
+                    $ide->resolve(CommandRegistry::class)->run('ide_terminal');
+                    $terminal->clearOutput();
+                    $tui->tick();
+                    $rows = $tui->getById('terminal')->render(new \Symfony\Component\Tui\Render\RenderContext(160, 12));
+                    $this->assertSame(1, $this->caretMarkerCount($rows), 'the focused terminal panel places the hardware cursor');
+                },
+            ],
+        );
+
+        $this->assertSame('block', IdeConfig::load($project->dir)->settings['cursorShape'], 'the shape persisted');
+    }
+}

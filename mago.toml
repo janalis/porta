@@ -81,15 +81,18 @@ excludes = ["tests/Support/slow-reading-lsp-server.php", "tests/Support/demandin
 #   cyclomatic-complexity   149  Overlay/State/FindInFilesModal — alone now:
 #                                the WheelRouter/ContextMenuRouter splits took
 #                                MouseRouter well below (this was 220)
-#   too-many-methods        208  tests/E2e/IdeEdgeCasesTest (the rule covers
-#                                tests; the largest src class is ~100 below)
+#   too-many-methods        208  formerly tests/E2e/IdeEdgeCasesTest — split
+#                                into 14 thematic suites this round; the
+#                                threshold is slack until the round-close
+#                                re-bisect
 #   too-many-properties      35  Overlay/State/FindInFilesModal
 #   too-many-enum-cases      58  Ui/Role (the theme role vocabulary)
 #   excessive-parameter-list 24  Bootstrap/WidgetHooks' constructor — the one
 #                                pin unmoved since round 2 (splitting it was
 #                                measured: it INCREASES coupling edges)
-#   kan-defect               14  tests/E2e/IdeEdgeCasesTest (was parked at 40
-#                                on the belief nothing came near — false)
+#   kan-defect               14  formerly tests/E2e/IdeEdgeCasesTest (split,
+#                                same re-bisect pending; was parked at 40 on
+#                                the belief nothing came near — false)
 #   halstead effort       21435  Help/MarkdownRenderer::render
 #   halstead difficulty      30  Overlay/Presenter/WelcomeModalController::open
 #   halstead volume        3236  tests/E2e/IdeTest::testFullScenario
