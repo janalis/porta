@@ -10,7 +10,6 @@ use Porta\Container\AsChromeRoot;
 use Porta\Container\AsEager;
 use Porta\Container\AsIdeService;
 use Porta\Container\AsWidget;
-use Porta\Container\SingleImplAliasPass;
 use Porta\Editor\BufferService;
 use Porta\Highlight\ColorMode;
 use Porta\Highlight\SwitchableTerminalTheme;
@@ -95,9 +94,11 @@ return static function (ContainerConfigurator $container, ContainerBuilder $buil
         },
     );
     $builder->addCompilerPass(new RegisterListenersPass(), PassConfig::TYPE_BEFORE_REMOVING);
-    // Auto-derive single-impl Porta\ interface aliases (before autowiring
-    // resolves interface-typed args); multi-impl interfaces stay explicit below.
-    $builder->addCompilerPass(new SingleImplAliasPass(), PassConfig::TYPE_BEFORE_OPTIMIZATION, priority: 100);
+    // Single-impl Porta\ interface aliases are derived by the LOADER itself:
+    // PhpFileLoader::load() ends in registerAliasesForSinglyImplementedInterfaces(),
+    // which aliases every interface with exactly one discovered implementation
+    // and skips any interface that gains a second one — those stay explicit
+    // alias() calls below (FloatingRegions, SyntaxHighlightProviderSource).
 
     // Command providers register in #[AsTaggedItem] priority order (higher
     // first) — the order is contractual: registration order IS the palette
@@ -199,9 +200,10 @@ return static function (ContainerConfigurator $container, ContainerBuilder $buil
     // per-cell owner pass, matching the paint order (menus above the modal).
     $services->alias(FloatingRegions::class, CompositeFloatingRegions::class);
 
-    // BidiTui is a post-compile synthetic, so SingleImplAliasPass cannot see it
-    // — the FrameHooks seam the floating presenters register on needs the alias
-    // spelled out, or they would all silently receive null and never lay out.
+    // Kept explicit on purpose: BidiTui's def is overridden to synthetic AFTER
+    // the loader's load-time interface counting, so a natively derived
+    // FrameHooks alias here would be a load-order accident — and the presenters'
+    // nullable FrameHooks dep fails silently, so this seam must not hang on one.
     $services->alias(FrameHooks::class, BidiTui::class);
 
     // The app event bus. The id must be exactly 'event_dispatcher' — the
@@ -315,6 +317,8 @@ return static function (ContainerConfigurator $container, ContainerBuilder $buil
     // container's public surface alongside porta.ide — Ide::resolve() returns
     // them for the test seam.
     foreach ([Renderer::class, Tui::class, BidiTui::class, IdeConfig::class] as $syntheticId) {
-        $services->set($syntheticId)->synthetic()->public();
+        // The class is passed explicitly: set(id) alone leaves the definition
+        // classless, invisible to every reflection-driven pass.
+        $services->set($syntheticId, $syntheticId)->synthetic()->public();
     }
 };

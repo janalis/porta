@@ -203,13 +203,17 @@ singleton widget** (`#[Container/AsWidget]` declares tree id/flex, autoconfigure
   (`separator` / `git_separator` / `settings_separator`). The scoped Search Everywhere instances
   (`porta.go_to_file`/`command_palette`/`go_to_symbol`) are selected the same way with a plain
   `#[Autowire(service: 'porta.go_to_file')]`.
-- **Interface aliases are auto-derived**: `Container/SingleImplAliasPass` (a compiler pass at
-  `TYPE_BEFORE_OPTIMIZATION` priority 100, before autowiring) aliases every `Porta\` interface with
-  exactly **one** implementing service to it (`FileOpener`→`BufferService`,
-  `EditorAreaPanes`→`PaneLayout`, `ActiveFileProvider`→`CodeEditorWidget`, …). A **multi-impl**
-  interface (`FloatingRegions`, `SyntaxHighlightProviderSource` — two service impls each) is left
-  alone and stays an explicit `alias()`; cross-vendor interfaces (`ClockInterface`, `TerminalTheme`,
+- **Interface aliases are auto-derived by Symfony's loader itself** — round 9 measured the old
+  `SingleImplAliasPass` against it and deleted the pass (it added ZERO aliases):
+  `PhpFileLoader::load()` ends in `registerAliasesForSinglyImplementedInterfaces()`, which aliases
+  every `Porta\` interface with exactly **one** discovered implementation
+  (`FileOpener`→`BufferService`, `EditorAreaPanes`→`PaneLayout`,
+  `ActiveFileProvider`→`CodeEditorWidget`, …) and skips any that gains a second. A **multi-impl**
+  interface (`FloatingRegions`, `SyntaxHighlightProviderSource` — two service impls each) stays an
+  explicit `alias()`; cross-vendor interfaces (`ClockInterface`, `TerminalTheme`,
   `EventDispatcherInterface`) are out of scope and stay explicit too.
+  `tests/Unit/Container/ContainerAliasesTest` pins the derivation (load-only builder — compiling
+  strips private aliases) and the compiled FrameHooks wiring.
 - **Tagged command providers**: `Command/CommandProvider` autoconfigures into the
   `porta.command_provider` tag; each provider carries `#[AsTaggedItem(priority: N)]`
   (Workbench 700 → Debug 600 → PluginCommandProvider 500 → File 400 → Search 300 → View 200 →
@@ -238,7 +242,7 @@ depend on the narrow role they use, not the widget: `Editor/ActiveFileProvider` 
 decoration setters), `EditorViewOptions` (the display toggles; the six flags themselves live in
 `Editor/EditorDisplayOptions`, which takes the invalidate closure and repaints only on a real
 change — re-selecting a setting you already have must not flash the pane), `EditorIndentTarget`, `EditorKeymapProvider`, and `Workbench/Menu/EditorCommandTarget`
-(the menu chain). `SingleImplAliasPass` aliases each with **zero** container config. A consumer
+(the menu chain). the loader's native single-impl aliasing covers each with **zero** container config. A consumer
 whose methods span TWO roles takes **two params of the same widget** (each resolves through its
 own alias natively; tests hand in two narrow fakes): `History/LocalHistoryController`
 (`ActiveFileProvider` + `EditorInvalidator`), `Git/BlameAnnotations` (`ActiveFileProvider` +
@@ -271,8 +275,8 @@ the two view-specific capabilities keep concrete controllers, via the typed `att
 `attachSettings` wrappers (`openGitFileHistory`, `refreshSettings`) — callers can't hold the
 controllers themselves (the construction cycles the registry breaks). Welcome's
 `cycleFocus` returns **false** so `FocusCoordinator` falls through to the editor ring while the
-dispatcher's modal branch swallows keys. `FullScreenView` has three impls, so the alias pass
-skips it — instances travel through `attach()`, never autowiring. The mouse/hover routers'
+dispatcher's modal branch swallows keys. `FullScreenView` has three impls, so no alias is
+derived for it — instances travel through `attach()`, never autowiring. The mouse/hover routers'
 per-view rects and `Input/ActiveView` stay as they are on purpose: the routers own wide
 per-view slices by design, and `ActiveView` is a different vocabulary (has `Editor`, lacks
 `Welcome`), not a duplicate of `WorkspaceView`.
@@ -440,10 +444,11 @@ floating feature lands one class in each:
 - **`Overlay/Region/`** — pure geometry / hit-test value objects: `ModalBox`, `PaneBounds`,
   `DropdownRegion`, `SpanSlicer`, `FloatingRegions`/`CompositeFloatingRegions`.
 - **`Ui/FrameHooks`** is the per-frame hook seam the presenters register on (`onBeforeFrame`),
-  implemented by `Ui/BidiTui`; they take it as a nullable dep and no longer downcast. Because
-  `BidiTui` is a post-compile **synthetic**, `SingleImplAliasPass` cannot see it — the alias is
-  spelled out in `config/services.php`, and a nullable dep fails *silently*, so verify wiring after
-  touching it.
+  implemented by `Ui/BidiTui`; they take it as a nullable dep and no longer downcast. The alias is
+  spelled out in `config/services.php` **on purpose**: `BidiTui`'s def is overridden to synthetic
+  AFTER the loader's load-time interface counting, so a natively derived alias here would be a
+  load-order accident — and a nullable dep fails *silently*.
+  `ContainerAliasesTest::testEveryPresenterReceivesTheFrameHooksSynthetic` pins the compiled wiring.
 - **The stateless render tier stays in `Widget/Render/`** (`ModalFrame`, `PopupFrame`,
   `ModalShadow`, `OverlayCompositor`, `MenuOverlay*`, `ToastCard`) — it returns `string[]` bearing
   the `$innerWidth + CHROME_COLS` invariant and is cross-cutting (the editor renders here too), so
