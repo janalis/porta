@@ -24,6 +24,12 @@ final readonly class ModalBox
      */
     public const int CLOSE_OFFSET = 2;
 
+    /**
+     * $optionsRow and $footerRow are the find modal's two clickable chrome
+     * rows in the owner's space (-1 = the box has none). They are passed, not
+     * derived: both encode that modal's frame layout (ModalFrame chrome + the
+     * tee rows), which this generic shape must not bake in.
+     */
     public function __construct(
         public int $startRow,
         public int $col,
@@ -32,6 +38,8 @@ final readonly class ModalBox
         public int $headerRows,
         public int $windowStart,
         public int $count,
+        public int $optionsRow = -1,
+        public int $footerRow = -1,
     ) {}
 
     /** Whether the cell sits anywhere inside the box, borders included. */
