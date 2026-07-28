@@ -15,6 +15,7 @@ use Porta\Support\Clipboard;
 use Porta\Tests\Support\GitBinary;
 use Porta\Tests\Support\StatusReads;
 use Porta\Tests\Support\TempProject;
+use Porta\Tests\Support\TestTui;
 use Porta\Widget\CodeEditorWidget;
 use Porta\Widget\StatusBarWidget;
 use Porta\Workbench\Notifier;
@@ -623,7 +624,7 @@ final class GitCommandsTest extends TestCase
         $git = new GitInfo($this->project->dir);
         $this->editor = new CodeEditorWidget();
         $this->statusBar = new StatusBarWidget();
-        $this->tui = new Tui(terminal: new VirtualTerminal(columns: 100, rows: 24), keybindings: new Keybindings([]), renderer: new Renderer(new StyleSheet()));
+        $this->tui = TestTui::create(100, 24);
         $translator = new Translator('en');
         $refresher = new GitRefresher($git, new \Porta\Editor\BufferManager(), $this->editor, $this->statusBar, $this->tui);
 

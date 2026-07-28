@@ -11,6 +11,7 @@ use Porta\Search\TodoTags;
 use Porta\Tests\Support\PreservesPath;
 use Porta\Tests\Support\TempProject;
 use Porta\Tests\Support\TestBottomDock;
+use Porta\Tests\Support\TestTui;
 use Porta\Widget\DebugPanelWidget;
 use Porta\Widget\ResultsPanelWidget;
 use Porta\Widget\TerminalPanelWidget;
@@ -40,7 +41,7 @@ final class TodoScannerTest extends TestCase
             'src/A.php' => "<?php\n// TODO extract this\n",
             'src/B.py' => "# FIXME races\n# just a todo word in prose\n",
         ]);
-        $tui = new Tui(terminal: new VirtualTerminal(columns: 120, rows: 24), keybindings: new Keybindings([]), renderer: new Renderer(new StyleSheet()));
+        $tui = TestTui::create(120, 24);
         $results = new ResultsPanelWidget();
         $dock = TestBottomDock::create($tui, new TerminalPanelWidget(), $results, new DebugPanelWidget());
 
@@ -60,7 +61,7 @@ final class TodoScannerTest extends TestCase
         $project = new TempProject([
             'src/A.php' => "<?php\n// HACK temporary\n// TODO later\n",
         ]);
-        $tui = new Tui(terminal: new VirtualTerminal(columns: 120, rows: 24), keybindings: new Keybindings([]), renderer: new Renderer(new StyleSheet()));
+        $tui = TestTui::create(120, 24);
         $results = new ResultsPanelWidget();
         $dock = TestBottomDock::create($tui, new TerminalPanelWidget(), $results, new DebugPanelWidget());
 

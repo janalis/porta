@@ -9,6 +9,7 @@ use Porta\Editor\BufferManager;
 use Porta\Terminal\TerminalBuffer;
 use Porta\Tests\Support\TempProject;
 use Porta\Tests\Support\TestBottomDock;
+use Porta\Tests\Support\TestTui;
 use Porta\Widget\CodeEditorWidget;
 use Porta\Widget\DebugPanelWidget;
 use Porta\Widget\FileTreeWidget;
@@ -39,7 +40,7 @@ final class FocusRingTest extends TestCase
     private function ring(): FocusRing
     {
         $this->project = new TempProject(['a.php' => "<?php\n"]);
-        $this->tui = new Tui(terminal: new VirtualTerminal(columns: 100, rows: 24), keybindings: new Keybindings([]), renderer: new Renderer(new StyleSheet()));
+        $this->tui = TestTui::create(100, 24);
         $this->tree = new FileTreeWidget($this->project->dir);
         $this->editor = new CodeEditorWidget();
         $this->terminal = new TerminalPanelWidget();

@@ -12,6 +12,7 @@ use Porta\Lsp\LspSessionPool;
 use Porta\Tests\Support\FakeLspClient;
 use Porta\Tests\Support\FakeScheduler;
 use Porta\Tests\Support\FixedActiveFile;
+use Porta\Tests\Support\TestTui;
 use Porta\Widget\CodeEditorWidget;
 use Symfony\Component\Tui\Input\Keybindings;
 use Symfony\Component\Tui\Render\Renderer;
@@ -51,7 +52,7 @@ final class FoldingControllerTest extends TestCase
             $this->pool,
             $this->editor,
             $this->scheduler,
-            new Tui(terminal: new VirtualTerminal(columns: 80, rows: 24), keybindings: new Keybindings([]), renderer: new Renderer(new StyleSheet())),
+            TestTui::create(80, 24),
         );
     }
 

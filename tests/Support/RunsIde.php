@@ -25,6 +25,7 @@ use Symfony\Component\Tui\Tui;
 trait RunsIde
 {
     use PumpsLoop;
+    use ScreenReads;
 
     /** Set by {@see allowFirstRunWelcome()} for the tests that want the real first boot. */
     private bool $allowFirstRunWelcome = false;
@@ -114,17 +115,5 @@ trait RunsIde
     {
         $git = $ide->resolve(GitInfo::class);
         $this->await(static fn (): bool => !$git->isBusy(), $timeout, 'git to finish');
-    }
-
-    /**
-     * Force a full render pass so widget rects and rendered glyphs reflect the
-     * current tree. A bare tick() renders only when a change already requested
-     * one; reading getWidgetRect (or a rendered row) behind a plain delay races
-     * the first frame. This is the force-frame idiom screenGrid() uses.
-     */
-    private function frame(Tui $tui): void
-    {
-        $tui->requestRender(force: true);
-        $tui->processRender();
     }
 }

@@ -52,4 +52,16 @@ trait ScreenReads
 
         return null;
     }
+
+    /**
+     * Force a full render pass so widget rects and rendered glyphs reflect the
+     * current tree. A bare tick() renders only when a change already requested
+     * one; reading getWidgetRect (or a rendered row) behind a plain delay races
+     * the first frame. This is the force-frame idiom screenGrid() uses.
+     */
+    private function frame(Tui $tui): void
+    {
+        $tui->requestRender(force: true);
+        $tui->processRender();
+    }
 }

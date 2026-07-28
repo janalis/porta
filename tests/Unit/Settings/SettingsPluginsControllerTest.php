@@ -18,6 +18,7 @@ use Porta\Tests\Support\FakePluginLifecycle;
 use Porta\Tests\Support\PumpsLoop;
 use Porta\Tests\Support\StatusReads;
 use Porta\Tests\Support\TempProject;
+use Porta\Tests\Support\TestTui;
 use Porta\Widget\StatusBarWidget;
 use Porta\Workbench\Notifier;
 use Revolt\EventLoop;
@@ -49,7 +50,7 @@ final class SettingsPluginsControllerTest extends TestCase
         $this->global = new TempProject();
         $this->status = new StatusBarWidget();
         $this->lifecycle = new FakePluginLifecycle();
-        $tui = new Tui(terminal: new VirtualTerminal(columns: 80, rows: 24), keybindings: new Keybindings([]), renderer: new Renderer(new StyleSheet()));
+        $tui = TestTui::create(80, 24);
 
         $this->pluginSettings = new PluginSettings($this->project->dir, []);
         $this->plugins = new PluginManager(new PluginEvents(), $this->pluginSettings);

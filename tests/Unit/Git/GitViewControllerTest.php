@@ -27,6 +27,7 @@ use Porta\Tests\Support\PumpsLoop;
 use Porta\Tests\Support\StatusReads;
 use Porta\Tests\Support\TempProject;
 use Porta\Tests\Support\TestBottomDock;
+use Porta\Tests\Support\TestTui;
 use Porta\Widget\CodeEditorWidget;
 use Porta\Widget\DebugPanelWidget;
 use Porta\Widget\FileTreeWidget;
@@ -117,7 +118,7 @@ final class GitViewControllerTest extends TestCase
         $gitArea->setId('git-area');
         $gitArea->add($this->gitLeft)->add($this->diffView);
         $this->statusBar = new StatusBarWidget();
-        $this->tui = new Tui(terminal: new VirtualTerminal(columns: 100, rows: 24), keybindings: new Keybindings([]), renderer: new Renderer(new StyleSheet()));
+        $this->tui = TestTui::create(100, 24);
         $this->committed = 0;
         $dispatcher = new EventDispatcher();
         $dispatcher->addListener(GitCommitted::class, function (): void {

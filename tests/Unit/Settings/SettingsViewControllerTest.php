@@ -52,6 +52,7 @@ use Porta\Tests\Support\FakeScheduler;
 use Porta\Tests\Support\FixedActiveFile;
 use Porta\Tests\Support\NavigatesSettings;
 use Porta\Tests\Support\TempProject;
+use Porta\Tests\Support\TestTui;
 use Porta\Tests\Support\TestWorkspaceLayout;
 use Porta\Ui\CursorStyle;
 use Porta\Ui\Theme\StyleSheetThemer;
@@ -573,10 +574,10 @@ final class SettingsViewControllerTest extends TestCase
             $pool,
             new WorkspaceEditor(new BufferManager(), $editor, $pool),
             $editor,
-            new Notifier(new StatusBarWidget(), new Tui(terminal: new VirtualTerminal(columns: 80, rows: 24), keybindings: new Keybindings([]), renderer: new Renderer(new StyleSheet()))),
+            new Notifier(new StatusBarWidget(), TestTui::create(80, 24)),
             new Translator('en'),
             new FakeScheduler(),
-            new Tui(terminal: new VirtualTerminal(columns: 80, rows: 24), keybindings: new Keybindings([]), renderer: new Renderer(new StyleSheet())),
+            TestTui::create(80, 24),
         );
     }
 }

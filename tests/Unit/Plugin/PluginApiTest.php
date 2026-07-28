@@ -19,6 +19,7 @@ use Porta\Tests\Support\RecordingDiagnosticsSink;
 use Porta\Tests\Support\RecordingFileOpener;
 use Porta\Tests\Support\StatusReads;
 use Porta\Tests\Support\TempProject;
+use Porta\Tests\Support\TestTui;
 use Porta\Widget\CodeEditorWidget;
 use Porta\Widget\StatusBarWidget;
 use Porta\Workbench\Notifier;
@@ -45,7 +46,7 @@ final class PluginApiTest extends TestCase
         $this->files = new RecordingFileOpener();
         $this->diagnostics = new RecordingDiagnosticsSink();
         if (Presence::With === $wired) {
-            $tui = new Tui(terminal: new VirtualTerminal(columns: 100, rows: 24), keybindings: new Keybindings([]), renderer: new Renderer(new StyleSheet()));
+            $tui = TestTui::create(100, 24);
             $manager->wireRuntime(new PluginRuntime(new Notifier($this->status, $tui), new Translator('en'), $this->editor, $this->files, $tui, $this->diagnostics));
         }
 
@@ -208,7 +209,7 @@ final class PluginApiTest extends TestCase
     {
         $project = new TempProject();
         $manager = new PluginManager(new PluginEvents(), $settings = new PluginSettings($project->dir, []));
-        $tui = new Tui(terminal: new VirtualTerminal(columns: 100, rows: 24), keybindings: new Keybindings([]), renderer: new Renderer(new StyleSheet()));
+        $tui = TestTui::create(100, 24);
         $manager->wireRuntime(
             new PluginRuntime(new Notifier(new StatusBarWidget(), $tui), new Translator('en'), new CodeEditorWidget(), new RecordingFileOpener(), $tui, new RecordingDiagnosticsSink()),
         );

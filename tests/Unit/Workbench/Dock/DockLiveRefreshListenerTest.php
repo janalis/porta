@@ -12,6 +12,7 @@ use Porta\Event\NotificationLogged;
 use Porta\Lsp\LspLog;
 use Porta\Search\ProblemRows;
 use Porta\Tests\Support\TestBottomDock;
+use Porta\Tests\Support\TestTui;
 use Porta\Widget\DebugPanelWidget;
 use Porta\Widget\ResultsPanelWidget;
 use Porta\Widget\TerminalPanelWidget;
@@ -42,7 +43,7 @@ final class DockLiveRefreshListenerTest extends TestCase
 
     private function listener(): DockLiveRefreshListener
     {
-        $this->tui = new Tui(terminal: new VirtualTerminal(columns: 100, rows: 24), keybindings: new Keybindings([]), renderer: new Renderer(new StyleSheet()));
+        $this->tui = TestTui::create(100, 24);
         $this->results = new ResultsPanelWidget();
         $this->buffers = new BufferManager();
         $this->tools = new DockToolTabs();

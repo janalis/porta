@@ -14,6 +14,7 @@ use Porta\Lsp\WorkspaceEditor;
 use Porta\Tests\Support\FakeLspClient;
 use Porta\Tests\Support\FakeScheduler;
 use Porta\Tests\Support\FixedActiveFile;
+use Porta\Tests\Support\TestTui;
 use Porta\Widget\CodeEditorWidget;
 use Porta\Widget\StatusBarWidget;
 use Porta\Workbench\Notifier;
@@ -55,11 +56,11 @@ final class FormatOnSaveTest extends TestCase
             $editor,
             new Notifier(
                 $this->status = new StatusBarWidget(),
-                $tui = new Tui(terminal: new VirtualTerminal(columns: 80, rows: 24), keybindings: new Keybindings([]), renderer: new Renderer(new StyleSheet())),
+                $tui = TestTui::create(80, 24),
             ),
             new Translator('en'),
             $this->scheduler,
-            new Tui(terminal: new VirtualTerminal(columns: 80, rows: 24), keybindings: new Keybindings([]), renderer: new Renderer(new StyleSheet())),
+            TestTui::create(80, 24),
         );
         $formatOnSave->enable();
 

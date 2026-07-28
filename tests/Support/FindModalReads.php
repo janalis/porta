@@ -10,16 +10,11 @@ use Symfony\Component\Tui\Tui;
 /**
  * Find-in-Files modal readers for E2e suites: promote the modal to the
  * results pane, read its composited text, and locate the hardware-cursor
- * marker. Requires {@see RunsIde} (calls its frame()). Extracted with the
+ * marker. Requires {@see ScreenReads} (calls its frame()). Extracted with the
  * IdeEdgeCasesTest split.
  */
 trait FindModalReads
 {
-    /**
-     * Boot the IDE, run the scripted steps, stop after $duration seconds.
-     *
-     * @param array<int|string, callable> $steps delay-ms => callback(Tui, VirtualTerminal)
-     */
     /**
      * Promote the open Find-in-Files modal to the results pane (Alt+Enter =
      * "Open in Find Window"), so a test can drive the persistent pane as before.
