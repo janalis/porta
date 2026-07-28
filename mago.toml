@@ -66,38 +66,50 @@ excludes = ["tests/Support/slow-reading-lsp-server.php", "tests/Support/demandin
 # legitimately exceed generic thresholds, so the rules guard against *future*
 # regressions rather than the current deliberate structure.
 #
-# These numbers were RE-MEASURED after the cohesion refactor and lowered to the
-# new maxima — they are a ratchet, not a ceiling picked once. Each was found by
-# probing with mago itself (it does not report the measured value, so bisecting
-# the threshold is the only way to read it), then set to the lowest value at
-# which `composer lint` still exits 0 with no new findings. What now sets each:
+# These numbers are a ratchet, not a ceiling picked once: after every
+# structural round, every threshold is BISECTED to its floor (mago does not
+# report measured values, so probing is the only way to read them) and set to
+# the lowest clean value. Two different clean criteria, because the rules
+# report at two severities: the error-level rules (cyclomatic, too-many-*,
+# excessive-parameter-list, kan-defect) flip `composer lint`'s exit code, so
+# their floor is "lowest threshold that still exits 0"; the halstead rule
+# emits WARNINGS (exit stays 0 regardless), so its floor is "lowest threshold
+# with zero halstead warnings in the output" — standing warning noise would
+# train everyone to ignore the log. What sets each floor (re-bisected after
+# the round-4 tree, July 2026):
 #
-#   cyclomatic-complexity 220  Input/MouseRouter, Overlay/State/FindInFilesModal
-#   too-many-methods      215  tests/E2e/IdeEdgeCasesTest (the rule covers tests)
-#   too-many-properties    36  Overlay/State/FindInFilesModal (36 properties)
-#   excessive-parameter-list 24 Bootstrap/WidgetHooks' constructor (24 collaborators)
-#   kan-defect             40  nothing comes near it
-#   halstead                   backed off just above BreadcrumbScanner,
-#                              MarkdownRenderer and tests/E2e/IdeTest, which a
-#                              tighter setting flagged as standing noise
+#   cyclomatic-complexity   149  Overlay/State/FindInFilesModal — alone now:
+#                                the WheelRouter/ContextMenuRouter splits took
+#                                MouseRouter well below (this was 220)
+#   too-many-methods        208  tests/E2e/IdeEdgeCasesTest (the rule covers
+#                                tests; the largest src class is ~100 below)
+#   too-many-properties      35  Overlay/State/FindInFilesModal
+#   too-many-enum-cases      58  Ui/Role (the theme role vocabulary)
+#   excessive-parameter-list 24  Bootstrap/WidgetHooks' constructor — the one
+#                                pin unmoved since round 2 (splitting it was
+#                                measured: it INCREASES coupling edges)
+#   kan-defect               14  tests/E2e/IdeEdgeCasesTest (was parked at 40
+#                                on the belief nothing came near — false)
+#   halstead effort       21435  Help/MarkdownRenderer::render
+#   halstead difficulty      30  Overlay/Presenter/WelcomeModalController::open
+#   halstead volume        3236  tests/E2e/IdeTest::testFullScenario
+#                                (BreadcrumbScanner no longer pins any axis,
+#                                and MultilineInput::handleKey left the
+#                                shortlist when round 4 decomposed it)
 #
-# The last two moved because their previous owners shrank: MouseRouter's ctor
-# went 25 -> 22 (ContextMenuRouter) and CodeEditorWidget 38 -> 34 properties
-# (EditorDisplayOptions), so the binding constraint is now a DIFFERENT class in
-# both cases. Both new owners are deliberate: WidgetHooks and FindInFilesModal
-# are, respectively, a wiring step and a dialog whose layout state genuinely is
-# that wide — see the plan's "why this is the last round" note. Neither can drop
-# without a change that was considered and declined, so these two are at their
-# floor until that decision changes.
+# The two src pins are deliberate structure: WidgetHooks is a wiring step and
+# FindInFilesModal a dialog whose layout state genuinely is that wide (its
+# extraction candidates are all measured rejections — see CLAUDE.md). Neither
+# can drop without a decision that was considered and declined.
 #
-# Re-measure and lower again after the next structural change; a threshold far
+# Re-bisect and lower again after the next structural change; a threshold far
 # above the real maximum is not a gate. Verified failing: injecting 60 dummy
 # properties into Ui/Notifier trips too-many-properties and lint exits 1.
 [linter.rules]
-cyclomatic-complexity = { threshold = 220 }
-too-many-methods = { threshold = 215 }
-too-many-properties = { threshold = 36 }
-too-many-enum-cases = { threshold = 60 }
+cyclomatic-complexity = { threshold = 149 }
+too-many-methods = { threshold = 208 }
+too-many-properties = { threshold = 35 }
+too-many-enum-cases = { threshold = 58 }
 excessive-parameter-list = { threshold = 24 }
-kan-defect = { threshold = 40 }
-halstead = { effort-threshold = 22000, difficulty-threshold = 33, volume-threshold = 3800 }
+kan-defect = { threshold = 14 }
+halstead = { effort-threshold = 21435, difficulty-threshold = 30, volume-threshold = 3236 }
