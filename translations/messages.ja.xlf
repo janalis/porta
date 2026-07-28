@@ -1319,8 +1319,8 @@
         <target>もう一度Enterを押すと「%name%」を削除します</target>
       </trans-unit>
       <trans-unit id="330">
-        <source>Plugin installed — default keybindings apply on restart</source>
-        <target>プラグインをインストールしました — 既定のキー割り当ては再起動後に適用されます</target>
+        <source>Plugin installed</source>
+        <target>プラグインをインストールしました</target>
       </trans-unit>
       <trans-unit id="331">
         <source>Plugin "%name%" removed</source>
@@ -1391,8 +1391,8 @@
         <target>プラグイン「%name%」を無効にしました</target>
       </trans-unit>
       <trans-unit id="350">
-        <source>Plugin "%name%" enabled — default keybindings apply on restart</source>
-        <target>プラグイン「%name%」を有効にしました — 既定のキー割り当ては再起動後に適用されます</target>
+        <source>Plugin "%name%" enabled</source>
+        <target>プラグイン "%name%" を有効にしました</target>
       </trans-unit>
       <trans-unit id="351">
         <source>Show Context Menu</source>

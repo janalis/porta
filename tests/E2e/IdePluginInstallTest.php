@@ -106,7 +106,7 @@ final class IdePluginInstallTest extends TestCase
                     $tui->tick();
 
                     $screen = AnsiUtils::stripAnsiCodes($terminal->getOutput());
-                    $this->assertStringContainsString('Plugin installed — default keybindings apply on restart', \Porta\Tests\Support\Toasts::last($ide));
+                    $this->assertStringContainsString('Plugin installed', \Porta\Tests\Support\Toasts::last($ide));
                     $this->assertFileExists($project->path('.porta/plugins/installee/plugin.php'));
                     $this->assertStringContainsString('installee (project)  [Remove]', $screen, 'the new plugin lists with a Remove button');
 
@@ -116,6 +116,15 @@ final class IdePluginInstallTest extends TestCase
                     $commands->run('installee:hi');
                     $tui->tick();
                     $this->assertStringContainsString('installee says hi', AnsiUtils::stripAnsiCodes($terminal->getOutput()));
+
+                    // The DEFAULT KEY dispatches live too — no restart: the
+                    // lifecycle rebuilt the live keymap on activation. (The
+                    // dispatcher's command loop runs before any widget, so no
+                    // focus dance is needed.)
+                    $terminal->consumeOutput();
+                    $tui->handleInput("\x1b\x17"); // ctrl+alt+w, the plugin's default key
+                    $tui->tick();
+                    $this->assertStringContainsString('installee says hi', AnsiUtils::stripAnsiCodes($terminal->getOutput()), 'the default key dispatched without a restart');
 
                     // A plugin that installs but fails to load flashes the loader's error.
                     $tui->handleInput("\r"); // the install row is still selected
@@ -235,10 +244,10 @@ final class IdePluginInstallTest extends TestCase
                     $tui->handleInput("\r"); // commit → async clone
                 },
                 300 => function ($tui, $terminal, $ide) use ($project): void {
-                    $this->await(static fn (): bool => str_contains(\Porta\Tests\Support\Toasts::last($ide), 'Plugin installed — default keybindings apply on restart'));
+                    $this->await(static fn (): bool => str_contains(\Porta\Tests\Support\Toasts::last($ide), 'Plugin installed'));
                     $tui->tick();
                     $screen = AnsiUtils::stripAnsiCodes($terminal->getOutput());
-                    $this->assertStringContainsString('Plugin installed — default keybindings apply on restart', \Porta\Tests\Support\Toasts::last($ide));
+                    $this->assertStringContainsString('Plugin installed', \Porta\Tests\Support\Toasts::last($ide));
                     $this->assertFileExists($project->path('.porta/plugins/cloned/plugin.php'));
                     $this->assertStringContainsString('cloned (project)  [Remove]', $screen, 'the async refresh re-listed the section');
 

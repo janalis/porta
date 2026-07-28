@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Porta\Plugin;
 
 use Porta\Config\CommandRegistry;
+use Porta\Config\LiveKeybindings;
 use Porta\Config\PortaJsonWriter;
 use Porta\Container\AsIdeService;
 use Porta\I18n\Translator;
@@ -20,9 +21,9 @@ use Symfony\Component\Tui\Tui;
  * Live plugin lifecycle: activate a just-installed plugin, deactivate a
  * removed one (falling back to the next shadowed copy), and flip the
  * persisted enabled/disabled switch — keeping the menu bar, the palette, key
- * dispatch and the settings sidebar in sync without a restart. Default
- * keybindings still need a restart: the immutable Keybindings map was built
- * at boot.
+ * dispatch, DEFAULT KEYBINDINGS (via {@see LiveKeybindings::rebuild()},
+ * always before the menu rebuild so shortcut labels bake from the fresh map)
+ * and the settings sidebar in sync without a restart.
  */
 #[AsIdeService]
 final class PluginLifecycle implements PluginLifecycleOps
@@ -38,6 +39,7 @@ final class PluginLifecycle implements PluginLifecycleOps
      * @param list<string> $enabledPlugins  bundled plugins opted in (bundled are off by default)
      */
     public function __construct(
+        private readonly LiveKeybindings $keys,
         private readonly PluginLoader $loader,
         private readonly PluginManager $plugins,
         private readonly CommandRegistry $commands,
@@ -92,6 +94,7 @@ final class PluginLifecycle implements PluginLifecycleOps
             return $error;
         }
         $this->plugins->registerCommands($this->commands);
+        $this->keys->rebuild();
         $this->menuRebuilder->rebuild();
         $this->refreshNav();
 
@@ -121,6 +124,7 @@ final class PluginLifecycle implements PluginLifecycleOps
             }
             break;
         }
+        $this->keys->rebuild();
         $this->menuRebuilder->rebuild();
         $this->refreshNav();
         $this->views->refreshSettings();
@@ -161,7 +165,7 @@ final class PluginLifecycle implements PluginLifecycleOps
             if (null === $error) {
                 $this->plugins->registerCommands($this->commands);
                 $this->reconfigureLspIf($this->plugins->providesLanguageServer($name));
-                $this->notifier->flash($this->translator->trans('Plugin "%name%" enabled — default keybindings apply on restart', ['%name%' => $name]));
+                $this->notifier->flash($this->translator->trans('Plugin "%name%" enabled', ['%name%' => $name]));
             }
             break;
         }
@@ -217,6 +221,7 @@ final class PluginLifecycle implements PluginLifecycleOps
     /** Common tail after an enable/disable: refresh menu, sidebar and screen. */
     private function afterToggle(): void
     {
+        $this->keys->rebuild();
         $this->menuRebuilder->rebuild();
         $this->refreshNav();
         $this->tui->requestRender();

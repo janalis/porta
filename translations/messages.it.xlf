@@ -1319,8 +1319,8 @@
         <target>Premi di nuovo Invio per rimuovere «%name%»</target>
       </trans-unit>
       <trans-unit id="330">
-        <source>Plugin installed — default keybindings apply on restart</source>
-        <target>Plugin installato — le scorciatoie predefinite si applicano al riavvio</target>
+        <source>Plugin installed</source>
+        <target>Plugin installato</target>
       </trans-unit>
       <trans-unit id="331">
         <source>Plugin "%name%" removed</source>
@@ -1391,8 +1391,8 @@
         <target>Plugin «%name%» disattivato</target>
       </trans-unit>
       <trans-unit id="350">
-        <source>Plugin "%name%" enabled — default keybindings apply on restart</source>
-        <target>Plugin «%name%» attivato — le scorciatoie predefinite si applicano al riavvio</target>
+        <source>Plugin "%name%" enabled</source>
+        <target>Plugin "%name%" attivato</target>
       </trans-unit>
       <trans-unit id="351">
         <source>Show Context Menu</source>

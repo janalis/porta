@@ -18,9 +18,9 @@ use Porta\Workbench\Notifier;
  * an install field (git URL or local path, handed to {@see PluginInstaller})
  * and one row per installed plugin — a removal button, or an inert "Built-in"
  * marker for the plugins bundled with Porta. A successful install is activated
- * live through {@see PluginLifecycleOps} — its commands land in the palette
- * and Plugins menu immediately; only default keybindings wait for a restart
- * (the Keybindings map is immutable). Removal deletes the directory AND
+ * live through {@see PluginLifecycleOps} — its commands, menu entries AND
+ * default keybindings land immediately (the lifecycle rebuilds the live
+ * keymap). Removal deletes the directory AND
  * deactivates the plugin live (menu, palette, keys, hooks). Removal is guarded
  * by a two-press confirm ($armed). Each active plugin also gets its own
  * settings page ({@see pluginRows}) fed by {@see PluginSettings}.
@@ -211,7 +211,7 @@ final class SettingsPluginsController
             return;
         }
         $this->installer->install($source, $this->scope, function (?string $error, ?string $file): void {
-            $message = $error ?? $this->lifecycle->activateInstalled((string) $file) ?? $this->translator->trans('Plugin installed — default keybindings apply on restart');
+            $message = $error ?? $this->lifecycle->activateInstalled((string) $file) ?? $this->translator->trans('Plugin installed');
             $this->notifier->flash($message, 5.0);
             $this->lifecycle->refreshView();
         });

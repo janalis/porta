@@ -185,7 +185,7 @@ final class SettingsPluginsControllerTest extends TestCase
 
         $controller->change('pluginInstall', $this->sourceDir('demo'));
         $this->assertSame([$this->global->dir.'/.porta/plugins/demo/plugin.php'], $this->lifecycle->activated, 'installed into the chosen scope and activated');
-        $this->assertStringContainsString('Plugin installed — default keybindings apply on restart', $this->statusRow($this->status, 120));
+        $this->assertStringContainsString('Plugin installed', $this->statusRow($this->status, 120));
         $this->assertSame(1, $this->lifecycle->refreshed);
     }
 

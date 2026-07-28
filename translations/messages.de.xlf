@@ -1319,8 +1319,8 @@
         <target>Erneut Enter drücken, um „%name%“ zu entfernen</target>
       </trans-unit>
       <trans-unit id="330">
-        <source>Plugin installed — default keybindings apply on restart</source>
-        <target>Plugin installiert — Standard-Tastenkürzel gelten nach Neustart</target>
+        <source>Plugin installed</source>
+        <target>Plugin installiert</target>
       </trans-unit>
       <trans-unit id="331">
         <source>Plugin "%name%" removed</source>
@@ -1391,8 +1391,8 @@
         <target>Plugin „%name%“ deaktiviert</target>
       </trans-unit>
       <trans-unit id="350">
-        <source>Plugin "%name%" enabled — default keybindings apply on restart</source>
-        <target>Plugin „%name%“ aktiviert — Standard-Tastenkürzel gelten nach Neustart</target>
+        <source>Plugin "%name%" enabled</source>
+        <target>Plugin "%name%" aktiviert</target>
       </trans-unit>
       <trans-unit id="351">
         <source>Show Context Menu</source>

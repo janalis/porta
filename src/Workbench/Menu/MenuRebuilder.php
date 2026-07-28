@@ -5,13 +5,13 @@ declare(strict_types=1);
 namespace Porta\Workbench\Menu;
 
 use Porta\Config\CommandRegistry;
+use Porta\Config\LiveKeybindings;
 use Porta\Container\AsIdeService;
 use Porta\I18n\Translator;
 use Porta\Plugin\PluginManager;
 use Porta\Widget\MenuBarWidget;
 use Porta\Workbench\WorkspaceView;
 use Porta\Workbench\WorkspaceViews;
-use Symfony\Component\Tui\Input\Keybindings;
 
 /**
  * Rebuilds the application menu bar. The menu bakes translated, colored
@@ -25,7 +25,7 @@ final class MenuRebuilder
         private readonly MenuBarWidget $menuBar,
         private readonly CommandRegistry $commands,
         private readonly EditorCommandTarget $editor,
-        private readonly Keybindings $keybindings,
+        private readonly LiveKeybindings $keybindings,
         private readonly Translator $translator,
         private readonly WorkspaceViews $views,
         private readonly PluginManager $plugins,
@@ -36,7 +36,7 @@ final class MenuRebuilder
         $this->menuBar->setMenus(MenuModel::build(
             $this->commands,
             $this->editor,
-            $this->keybindings,
+            $this->keybindings->current(),
             $this->translator,
             fn (): ?WorkspaceView => $this->views->activeView(),
             $this->plugins->menuSpecs(),

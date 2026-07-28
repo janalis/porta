@@ -5,13 +5,13 @@ declare(strict_types=1);
 namespace Porta\Input;
 
 use Porta\Config\CommandRegistry;
+use Porta\Config\LiveKeybindings;
 use Porta\Container\AsIdeService;
 use Porta\Overlay\Presenter\WelcomeModalController;
 use Porta\Widget\CodeEditorWidget;
 use Porta\Widget\ContextMenu;
 use Porta\Widget\MenuBarWidget;
 use Symfony\Component\Tui\Event\InputEvent;
-use Symfony\Component\Tui\Input\Keybindings;
 use Symfony\Component\Tui\Tui;
 
 /**
@@ -31,7 +31,7 @@ final class InputDispatcher
         private readonly WelcomeModalController $welcomeModal,
         private readonly CodeEditorWidget $editor,
         private readonly CommandRegistry $commands,
-        private readonly Keybindings $keybindings,
+        private readonly LiveKeybindings $keybindings,
     ) {}
 
     public function dispatch(InputEvent $event): void

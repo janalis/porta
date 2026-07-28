@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Porta\Workbench\Menu;
 
 use Porta\Config\CommandRegistry;
+use Porta\Config\LiveKeybindings;
 use Porta\Editor\BufferService;
 use Porta\Git\ChangeEntry;
 use Porta\Git\GitCommands;
@@ -14,7 +15,6 @@ use Porta\Run\RunController;
 use Porta\Widget\Git\ChangesListWidget;
 use Porta\Workbench\Dock\BottomDock;
 use Porta\Workbench\Dock\DockTab;
-use Symfony\Component\Tui\Input\Keybindings;
 
 /**
  * Builds the right-click context-menu item lists (editor actions, tab close
@@ -26,7 +26,7 @@ final class ContextMenuBuilder
     public function __construct(
         private readonly CommandRegistry $commands,
         private readonly EditorCommandTarget $editor,
-        private readonly Keybindings $keybindings,
+        private readonly LiveKeybindings $keybindings,
         private readonly BufferService $bufferService,
         private readonly Translator $translator,
         private readonly BottomDock $dock,
@@ -69,7 +69,7 @@ final class ContextMenuBuilder
             ],
             $this->commands,
             $this->editor,
-            $this->keybindings,
+            $this->keybindings->current(),
             $this->translator,
         );
     }

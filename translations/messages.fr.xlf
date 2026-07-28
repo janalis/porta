@@ -1319,8 +1319,8 @@
         <target>Appuyez à nouveau sur Entrée pour supprimer « %name% »</target>
       </trans-unit>
       <trans-unit id="330">
-        <source>Plugin installed — default keybindings apply on restart</source>
-        <target>Extension installée — les raccourcis par défaut s’appliqueront au redémarrage</target>
+        <source>Plugin installed</source>
+        <target>Extension installée</target>
       </trans-unit>
       <trans-unit id="331">
         <source>Plugin "%name%" removed</source>
@@ -1391,8 +1391,8 @@
         <target>Extension « %name% » désactivée</target>
       </trans-unit>
       <trans-unit id="350">
-        <source>Plugin "%name%" enabled — default keybindings apply on restart</source>
-        <target>Extension « %name% » activée — les raccourcis par défaut s’appliqueront au redémarrage</target>
+        <source>Plugin "%name%" enabled</source>
+        <target>Extension « %name% » activée</target>
       </trans-unit>
       <trans-unit id="351">
         <source>Show Context Menu</source>

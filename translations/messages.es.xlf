@@ -1319,8 +1319,8 @@
         <target>Pulse Enter de nuevo para quitar «%name%»</target>
       </trans-unit>
       <trans-unit id="330">
-        <source>Plugin installed — default keybindings apply on restart</source>
-        <target>Complemento instalado — los atajos predeterminados se aplican al reiniciar</target>
+        <source>Plugin installed</source>
+        <target>Plugin instalado</target>
       </trans-unit>
       <trans-unit id="331">
         <source>Plugin "%name%" removed</source>
@@ -1391,8 +1391,8 @@
         <target>Complemento «%name%» desactivado</target>
       </trans-unit>
       <trans-unit id="350">
-        <source>Plugin "%name%" enabled — default keybindings apply on restart</source>
-        <target>Complemento «%name%» activado — los atajos predeterminados se aplican al reiniciar</target>
+        <source>Plugin "%name%" enabled</source>
+        <target>Plugin "%name%" activado</target>
       </trans-unit>
       <trans-unit id="351">
         <source>Show Context Menu</source>
