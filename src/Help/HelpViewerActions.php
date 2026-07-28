@@ -83,7 +83,7 @@ final class HelpViewerActions implements HelpViewerHandler
 
     public function openGotoFile(): void
     {
-        $this->navigator->openGoToFile();
+        $this->navigator->openGotoFile();
     }
 
     public function saveAll(): void

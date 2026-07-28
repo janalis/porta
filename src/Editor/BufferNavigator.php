@@ -8,15 +8,20 @@ use Porta\Search\Everywhere\SearchEverywhereController;
 use Porta\Support\ProjectPaths;
 use Porta\Ui\Glyphs;
 use Porta\Widget\BufferNavigationHandler;
+use Porta\Widget\ImageViewerHandler;
+use Porta\Widget\StatusBarWidget;
 use Symfony\Component\DependencyInjection\Attribute\Autowire;
 use Symfony\Component\Tui\Tui;
 
 /**
  * The tab-management actions shared by every editor-area occupant (the code
  * editor and the image/help viewers): cycling and closing tabs, the
- * recent-files switcher, the go-to-file palette, and save-all.
+ * recent-files switcher, the go-to-file palette, and save-all. It is also the
+ * image viewer's whole handler: four of its five hooks are these very tab
+ * actions, and the fifth ({@see viewChanged}) is the status-bar ping the
+ * viewer's zoom label rides.
  */
-final class BufferNavigator implements BufferNavigationHandler
+final class BufferNavigator implements BufferNavigationHandler, ImageViewerHandler
 {
     public function __construct(
         private readonly BufferManager $buffers,
@@ -24,6 +29,7 @@ final class BufferNavigator implements BufferNavigationHandler
         #[Autowire(service: 'porta.go_to_file')]
         private readonly SearchEverywhereController $goToFile,
         private readonly ModalHost $editor,
+        private readonly StatusBarWidget $statusBar,
         private readonly Tui $tui,
         private readonly string $rootDir,
     ) {}
@@ -42,7 +48,7 @@ final class BufferNavigator implements BufferNavigationHandler
         $this->bufferService->closeActiveBuffer($mode);
     }
 
-    public function openGoToFile(): void
+    public function openGotoFile(): void
     {
         // The picker composites over the editor pane, so ensure it is the active
         // view first (an image is swapped for an adjacent text buffer).
@@ -55,6 +61,12 @@ final class BufferNavigator implements BufferNavigationHandler
     public function saveAll(): void
     {
         $this->bufferService->saveAllBuffers();
+    }
+
+    public function viewChanged(): void
+    {
+        $this->statusBar->invalidate();
+        $this->tui->requestRender();
     }
 
     public function cycleBuffer(int $offset): void

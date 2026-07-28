@@ -65,6 +65,6 @@ final class EditorFileActions implements EditorFileActionHandler
 
     public function openGotoFile(): void
     {
-        $this->navigator->openGoToFile();
+        $this->navigator->openGotoFile();
     }
 }

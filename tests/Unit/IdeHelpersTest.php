@@ -684,7 +684,7 @@ final class IdeHelpersTest extends TestCase
 
         $imageViewer = $this->ide->resolve(\Porta\Widget\ImageViewerWidget::class);
         $image = new \ReflectionProperty($imageViewer, 'handler')->getValue($imageViewer);
-        \assert($image instanceof \Porta\Image\ImageViewerActions, description: 'the image viewer exposes its actions handler');
+        \assert($image instanceof \Porta\Editor\BufferNavigator, description: 'the image viewer is handled by the navigator itself');
         $image->saveAll(); // same silent sweep through the shared navigator
 
         $this->addToAssertionCount(1);
