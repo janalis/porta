@@ -152,10 +152,15 @@ return static function (ContainerConfigurator $container, ContainerBuilder $buil
 
     $services = $container->services();
 
-    // Private by default: autoregistration below relies on the removal pass
-    // pruning the ~137 non-service classes (closure-wired controllers, DTOs,
-    // value objects, per-buffer objects) that register but nothing public
-    // references. Making defaults public would keep them all and fail autowiring.
+    // Private by default: the seven fully-non-service locations are excluded
+    // from discovery outright (see the load() below); the remaining non-service
+    // classes in MIXED directories (closure-wired controllers, per-buffer
+    // objects, VOs beside their services) still register private and are pruned
+    // at compile because nothing public references them. Still *fragile* there:
+    // if a public service ever gains a dependency on a pruned class, compile
+    // fails with a Symfony autowiring error — explicit at boot, caught by the
+    // first E2e test. Making defaults public would keep them all and fail
+    // autowiring.
     // Per-boot scalars resolve at runtime from $_ENV (seeded by
     // IdeContainerFactory) so the compiled container is project-independent
     // and can be dumped/cached across boots.
@@ -176,14 +181,25 @@ return static function (ContainerConfigurator $container, ContainerBuilder $buil
     // #[Container/LayoutSlot('…')] / #[Autowire(service: 'porta.…')] — the
     // param that knows which one it wants names it, so no central binds here.
 
-    // Autoregister every Porta\ class. Only the orchestrator and the container
-    // factory are excluded; everything else that isn't a real service registers
-    // private and is pruned at compile.
+    // Autoregister every Porta\ class except the orchestrator, the container
+    // factory, and the measured 100%-non-service tiers (events, widget-support
+    // DTOs/enums/traits, the stateless render tier, the console entrypoint,
+    // grammar parsers — zero container-built classes in each). A class
+    // in one of these that ever becomes a real service must be un-excluded
+    // here; that edit is the review point. Mixed directories (Overlay/Region,
+    // Ui/, Editor/, Git/ proper, …) stay discovered and rely on compile
+    // pruning as before.
     $services
         ->load('Porta\\', '../src/*')
         ->exclude([
             '../src/Ide.php',
             '../src/Container/',
+            '../src/Console/',
+            '../src/Event/',
+            '../src/Git/*Parser.php',
+            '../src/Highlight/Json/',
+            '../src/Widget/Render/',
+            '../src/Widget/Support/',
         ]);
 
     // The wall clock (symfony/clock). A NativeClock backs Psr\Clock\ClockInterface

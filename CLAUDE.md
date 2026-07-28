@@ -317,10 +317,16 @@ container's public surface — `Ide::resolve()`'s container fallback returns the
 
 **Rules for the container** (`config/services.php`, deliberately **outside `src/`** so the wiring
 stays off the 100%-line-coverage gate): services are **autoregistered** via
-`$services->load('Porta\\', '../src/*')` excluding only `Ide.php` and `Container/` — the
-non-service classes register private and are pruned at compile because nothing public references
-them (*fragile*: if a **public** service ever gains a dependency on a non-service class,
-compile fails with a Symfony autowiring error — explicit at boot, caught by the first E2e test).
+`$services->load('Porta\\', '../src/*')` excluding `Ide.php`, `Container/`, and (round 9) the
+measured 100%-non-service tiers — `Console/`, `Event/`, `Git/*Parser.php`, `Highlight/Json/`,
+`Widget/Render/`, `Widget/Support/` (a class there that becomes a real service must be
+un-excluded; that edit is the review point — Symfony's error names the exclusion explicitly).
+Non-service classes in MIXED directories still register private and are pruned at compile
+because nothing public references them (*fragile*: if a **public** service ever gains a
+dependency on a pruned class, compile fails with a Symfony autowiring error — explicit at boot,
+caught by the first E2e test). `Config/EditorConfig/` looked non-service but is not
+(`EditorConfigResolver` autowires into `BufferService`) — measure with the compiler, not the
+dump.
 `_defaults` stays **private**; the single public boundary is the `porta.ide` `ServiceLocator`
 (plus the synthetics) — `Ide` resolves everything through its typed `service()` helper. **Locator
 membership is declared on the class with `#[Container/AsIdeService]`** (autoconfigured into the
