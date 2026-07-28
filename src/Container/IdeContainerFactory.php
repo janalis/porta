@@ -84,7 +84,7 @@ final class IdeContainerFactory
             $builder = $this->compileFresh(CompileTarget::Dump);
             try {
                 $dump = new PhpDumper($builder)->dump(['class' => $class]);
-                \assert(\is_string($dump), description: 'PhpDumper::dump returns a string when no class array is requested');
+                \assert(\is_string($dump), description: 'PhpDumper::dump returns a string unless as_files is requested');
                 $cache->write($dump, $builder->getResources());
             } catch (IOException) {
                 return $this->compileFresh(CompileTarget::Direct); // unwritable cache dir: serve this boot uncached

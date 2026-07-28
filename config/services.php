@@ -55,7 +55,9 @@ use function Symfony\Component\DependencyInjection\Loader\Configurator\tagged_it
  * Porta's service definitions. Lives outside src/ so this wiring stays off the
  * 100%-line-coverage gate (phpunit's <source> includes only src/). Every
  * service is shared (the DI default), matching the app-lifetime-singleton
- * lifecycle; never use lazy: true — it would proxy-subclass a final class.
+ * lifecycle; never use lazy: true — pure overhead for shared app-lifetime
+ * services (and no longer even blocked by final: PHP 8.4 lazy objects don't
+ * proxy-subclass).
  */
 return static function (ContainerConfigurator $container, ContainerBuilder $builder): void {
     // Widgets declare their widget-tree id (and optional flex style) with
@@ -186,15 +188,16 @@ return static function (ContainerConfigurator $container, ContainerBuilder $buil
 
     // The app event bus. The id must be exactly 'event_dispatcher' — the
     // RegisterListenersPass hard-codes it. Emitters autowire the PSR interface
-    // (dispatch() only); Ide autowires the component interface for its runtime
-    // addListener() registrations on hand-built widgets.
+    // (dispatch() only); the component-interface alias (and its locator key)
+    // is the wiring test's seam for runtime addListener() — no src consumer
+    // imports it today.
     $services->set('event_dispatcher', EventDispatcher::class)
         ->tag('porta.ide_service', ['key' => EventDispatcherInterface::class]);
     $services->alias(EventDispatcherInterface::class, 'event_dispatcher');
     $services->alias(PsrEventDispatcherInterface::class, 'event_dispatcher');
 
     // The IDE color scheme: the active theme's tui Styles per Role, one
-    // swappable holder (built from the porta.ansi/porta.theme parameters) so
+    // swappable holder (built from the PORTA_ANSI/PORTA_THEME env placeholders) so
     // the theme can swap live; widgets autowire Styles and hold that one
     // holder instance.
     $services

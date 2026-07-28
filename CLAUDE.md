@@ -341,7 +341,8 @@ central list to update. Two members can't carry the attribute and are tagged at 
 since the interface is an alias). **`tests/Unit/Container/IdeLocatorMembershipTest`** still guards the
 `Ide` side — it tokenizes `Ide.php` for `service(X::class)` targets and fails if any isn't a member,
 so a forgotten `#[AsIdeService]` is a loud test failure, not a boot crash. Every def is **shared**;
-**never `lazy: true`** — it proxy-subclasses, which breaks `final` classes.
+**never `lazy: true`** — pure overhead for shared app-lifetime services (the old "proxies
+break `final`" reason is obsolete: PHP 8.4 native lazy objects don't subclass).
 
 **Events.** `symfony/event-dispatcher`, kernel-less: `config/services.php` registers the
 `#[AsEventListener]` attribute autoconfiguration and the `RegisterListenersPass` (the service id
@@ -349,8 +350,10 @@ must be exactly `event_dispatcher`). Typed domain events live in `src/Event/`: t
 lifecycle (`BufferOpened`/`BufferSwitched`/`BufferSaved`, emitted by `BufferService`),
 `GitCommitted`, `DebugStatusChanged`/`LspStatusChanged` (status-bar refresh), and the live-setting
 events (`ThemeChanged`/`LocaleChanged`/`CursorShapeChanged`/`TabBarPositionChanged`, dispatched by
-`Settings/LiveSettingsApplier`). Emitters autowire the **PSR** interface; `Ide` uses the component
-interface for runtime `addListener` on hand-assembled state (menu rebuild, RTL re-mirroring).
+`Settings/LiveSettingsApplier`). Emitters autowire the **PSR** interface; the component-interface
+alias exists as the wiring test's seam for runtime `addListener` — no src consumer imports it
+(the old claim that `Ide` did was stale; its menu-rebuild/RTL listeners are the compiled
+`MenuLayoutRefreshListener`).
 Priorities are contractual: plugin bridge (`PluginEvents`) and the chrome sweep
 (`Workbench/ChromeRefreshListener`) run at **-100**, after core listeners.
 
@@ -769,7 +772,9 @@ the locale relabels the tree, the cursor shape swaps the
 `ChromeRefreshListener` sweeps the chrome caches last).
 `.editorconfig` is always honored (superseded per language by the indent settings); legacy
 setting keys (`IdeConfig::LEGACY_SETTINGS`) load silently. The `restart` descriptor flag is
-retained but unused.
+live: the git `gitPath` and per-language `runCommand` rows set it true and
+`SettingsFormWidget` renders their "applies on restart" note (round 9 corrected the old
+"retained but unused" record here — it was stale).
 
 **i18n / RTL.** `I18n/Translator` wraps `symfony/translation`; the English source string *is* the
 message id (so untranslated lookups fall back to English) with XLIFF catalogs in `translations/`

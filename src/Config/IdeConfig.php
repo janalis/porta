@@ -52,12 +52,12 @@ final class IdeConfig
     ];
 
     /**
-     * Setting keys that used to exist: silently skipped at load so a stale
-     * value in an older .porta.json never warns. `editorConfig` was the
-     * "Respect .editorconfig" toggle — .editorconfig is always honored now,
-     * superseded per language by the indent settings.
+     * Superseded setting keys: silently skipped at load (so a stale value in
+     * an older .porta.json never warns) and stripped on write
+     * ({@see PortaJsonWriter}). `editorConfig` was the "Respect .editorconfig"
+     * toggle — .editorconfig is always honored now, superseded per language by
+     * the indent settings.
      */
-    /** Superseded setting keys: ignored on load and stripped on write ({@see PortaJsonWriter}). */
     public const array LEGACY_SETTINGS = ['editorConfig', 'relativeLineNumbers'];
 
     /** An empty `highlight` block: no global default, no per-language overrides. */

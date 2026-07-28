@@ -24,9 +24,11 @@ use Symfony\Component\DependencyInjection\Attribute\Autowire;
  *
  * Every setting applies live: its `apply` closure mutates the running UI (the
  * editor, the theme, the cursor shape, or the locale) the instant it
- * changes, and the value is persisted. The `restart` descriptor flag (and the
- * form's "applies on restart" note) is retained for any future setting that
- * genuinely needs a relaunch, but none do today.
+ * changes, and the value is persisted. Every descriptor in THIS table is
+ * `restart: false`; the flag itself is live elsewhere — the git `gitPath` and
+ * the per-language `runCommand` rows set it true, and
+ * {@see \Porta\Widget\Settings\SettingsFormWidget} renders their
+ * "applies on restart" note.
  *
  * @phpstan-type Descriptor array{label: string, kind: SettingsRowKind, group: 'general'|'interface', restart: bool, apply: (\Closure(int|bool|string): void)|null, options?: list<string>, optionLabels?: array<string, string>, min?: int, max?: int}
  */
