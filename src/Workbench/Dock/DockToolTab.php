@@ -6,14 +6,17 @@ namespace Porta\Workbench\Dock;
 
 use Porta\Search\SearchTabState;
 use Porta\Widget\Support\ResultsPanelFields;
+use Porta\Widget\Support\ResultsViewState;
 
 /**
  * One list-tool instance living as a tab on the dock strip: a Problems run,
  * a TODO scan, one Find-in-Project query, a Usages list, a log… Created by
  * {@see DockToolTabs} (not a service, like a terminal session); the results
  * panel widget displays exactly one of these at a time and the tab carries
- * the state that survives a switch — rows, title, the searching flag and
- * (for Find-in-Project tabs) the query definition.
+ * the state that survives a switch — rows, title, the searching flag, the
+ * frozen view state (filter/grouping/collapse/context/selection, captured by
+ * the dock on switch-away) and (for Find-in-Project tabs) the query
+ * definition.
  */
 final class DockToolTab
 {
@@ -25,6 +28,9 @@ final class DockToolTab
 
     /** The find-in-project definition behind a Search tab; null for other Search-mode lists (Usages, Choose target). */
     public ?SearchTabState $searchState = null;
+
+    /** The view state frozen when the dock last switched away from this tab; null until then. */
+    public ?ResultsViewState $viewState = null;
 
     public function __construct(
         /** The strip identity — stable across renames-by-reuse, cheap to fingerprint. */

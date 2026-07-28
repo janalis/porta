@@ -585,4 +585,108 @@ final class ResultsPanelWidgetTest extends TestCase
         $panel->handleInput("\x1bm"); // alt+m on a header → no-op
         $this->assertStringNotContainsString('above line', $plain());
     }
+
+    public function testCaptureAndRestoreRoundTripsFilterCollapseAndSelection(): void
+    {
+        $panel = new ResultsPanelWidget();
+        $panel->open('Find in Project', ResultsPanelFields::searchResults());
+        $panel->setResults($this->groupedResults());
+
+        // Shape some view state: a filter that keeps every row, selection on A:4.
+        $panel->handleInput("\x1b[B"); // A:0 -> A:4
+        $panel->handleInput('match'); // every fixture row matches, so nothing narrows
+        $state = $panel->captureViewState();
+        $this->assertSame('match', $state->filter);
+        $this->assertSame('src/A.php', $state->selectedPath);
+
+        // Rebind to something else, then back — the dock's switch sequence.
+        $panel->open('Usages', ResultsPanelFields::resultsOnly());
+        $panel->setResults($this->results(2));
+        $panel->open('Find in Project', ResultsPanelFields::searchResults());
+        $panel->setResults($this->groupedResults());
+        $panel->restoreViewState($state);
+
+        $restored = $panel->captureViewState();
+        $this->assertSame('match', $restored->filter, 'the filter text survives the round trip');
+        $this->assertSame('src/A.php', $restored->selectedPath, 'the selection survives by identity');
+        $this->assertSame(4, $restored->selectedLine);
+    }
+
+    public function testRestoreRelocatesTheSelectionAfterRowsChangedWhileParked(): void
+    {
+        $panel = new ResultsPanelWidget();
+        $panel->open('Find in Project', ResultsPanelFields::searchResults());
+        $panel->setResults($this->groupedResults());
+        $panel->handleInput("\x1b[B");
+        $panel->handleInput("\x1b[B");
+        $panel->handleInput("\x1b[B"); // A:0 -> A:4 -> B header -> B:2
+        $state = $panel->captureViewState();
+        $this->assertSame('src/B.php', $state->selectedPath);
+
+        // The tab's rows were refreshed while parked: a new match prepended.
+        $panel->open('Find in Project', ResultsPanelFields::searchResults());
+        $panel->setResults([
+            ['path' => 'src/New.php', 'line' => 9, 'text' => 'fresh', 'ranges' => []],
+            ...$this->groupedResults(),
+        ]);
+        $panel->restoreViewState($state);
+
+        $jumped = null;
+        $panel->onJump(static function (string $path, int $line) use (&$jumped): void {
+            $jumped = [$path, $line];
+        });
+        $panel->handleInput("\r");
+        $this->assertSame(['src/B.php', 2], $jumped, 'identity relocation found the same match at its new position');
+    }
+
+    public function testRestoreFallsBackToGroupKeyThenClampedIndex(): void
+    {
+        $panel = new ResultsPanelWidget();
+        $panel->open('Find in Project', ResultsPanelFields::searchResults());
+        $panel->setResults($this->groupedResults());
+        // Select the A header (row 0), collapse it.
+        $panel->handleInput("\x1b[A");
+        $panel->handleInput("\r");
+        $state = $panel->captureViewState();
+        $this->assertSame('src/A.php', $state->selectedGroupKey, 'a header selection stores its group key');
+        $this->assertSame(['src/A.php' => true], $state->collapsed);
+
+        $panel->open('Find in Project', ResultsPanelFields::searchResults());
+        $panel->setResults($this->groupedResults());
+        $panel->restoreViewState($state);
+        $rendered = implode("\n", array_map(AnsiUtils::stripAnsiCodes(...), $panel->render(new RenderContext(80, 12))));
+        $this->assertStringContainsString('▸', $rendered, 'the collapse state survived');
+
+        // A state whose identities all vanished clamps to the stored index.
+        $gone = $panel->captureViewState();
+        $panel->open('Find in Project', ResultsPanelFields::searchResults());
+        $panel->setResults([['path' => 'src/Z.php', 'line' => 1, 'text' => 'other', 'ranges' => []]]);
+        $panel->restoreViewState($gone);
+        $this->assertTrue($panel->isOpen(), 'a fully-mismatched restore is safe');
+    }
+
+    public function testContextStateSurvivesTheRoundTripByIdentity(): void
+    {
+        $panel = new ResultsPanelWidget();
+        $panel->setContextProvider(static fn (string $path, int $line): array => [['line' => $line + 1, 'text' => 'ctx of '.$path]]);
+        $panel->open('Find in Project', ResultsPanelFields::searchResults());
+        $panel->setResults($this->groupedResults());
+        $panel->handleInput("\x1bm"); // alt+m expands context on the selected match (A:0)
+
+        $state = $panel->captureViewState();
+        $this->assertArrayHasKey("src/A.php\x000", $state->contextExpanded, 'context keys are (path, line) identities');
+
+        $panel->open('Find in Project', ResultsPanelFields::searchResults());
+        $panel->setResults($this->groupedResults());
+        $panel->restoreViewState($state);
+        $rendered = implode("\n", array_map(AnsiUtils::stripAnsiCodes(...), $panel->render(new RenderContext(80, 14))));
+        $this->assertStringContainsString('ctx of src/A.php', $rendered, 'the expanded context re-mapped to the same match');
+
+        // An identity that no longer matches any result drops silently.
+        $panel->open('Find in Project', ResultsPanelFields::searchResults());
+        $panel->setResults([['path' => 'src/Z.php', 'line' => 7, 'text' => 'other', 'ranges' => []]]);
+        $panel->restoreViewState($state);
+        $rendered = implode("\n", array_map(AnsiUtils::stripAnsiCodes(...), $panel->render(new RenderContext(80, 14))));
+        $this->assertStringNotContainsString('ctx of', $rendered);
+    }
 }

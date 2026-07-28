@@ -430,4 +430,54 @@ final class BottomDockTest extends TestCase
 
         $this->assertSame($this->terminal, $this->tui->getFocus(), 'nothing to reveal, nothing to focus');
     }
+
+    public function testSwitchingTabsRoundTripsTheViewState(): void
+    {
+        $dock = $this->dock();
+        $rows = [
+            ['path' => 'src/A.php', 'line' => 0, 'text' => 'alpha zero'],
+            ['path' => 'src/A.php', 'line' => 4, 'text' => 'alpha four'],
+            ['path' => 'src/B.php', 'line' => 2, 'text' => 'beta two'],
+        ];
+        $problems = $dock->showList(ResultsPanelMode::Problems, 'Problems', $rows);
+        $this->results->handleInput("\x1b[B"); // move the selection off the first match
+
+        $dock->showList(ResultsPanelMode::Todo, 'TODO', [['path' => 't.php', 'line' => 1, 'text' => 'todo']]);
+        $this->assertNotNull($problems->viewState, 'switching away froze the outgoing tab\'s view state');
+        $this->assertSame('src/A.php', $problems->viewState->selectedPath);
+        $this->assertSame(4, $problems->viewState->selectedLine);
+
+        $dock->showList(ResultsPanelMode::Problems, 'Problems', $rows);
+        $captured = $this->results->captureViewState();
+        $this->assertSame('src/A.php', $captured->selectedPath, 'switching back restored the selection by identity');
+        $this->assertSame(4, $captured->selectedLine);
+    }
+
+    public function testAClosedTabsStateDoesNotLeakOntoItsNeighbour(): void
+    {
+        $dock = $this->dock();
+        $neighbour = $dock->showList(ResultsPanelMode::Problems, 'Problems', [
+            ['path' => 'p.php', 'line' => 1, 'text' => 'problem'],
+            ['path' => 'q.php', 'line' => 2, 'text' => 'quibble'],
+        ]);
+        $this->results->handleInput("\x1b[B"); // neighbour's own state: second row
+        $displayed = $dock->showList(ResultsPanelMode::Todo, 'TODO', [['path' => 't.php', 'line' => 1, 'text' => 'todo']]);
+
+        $dock->closeTab(DockTab::Results); // closes TODO, binds the Problems neighbour
+        $this->assertFalse($this->tools->contains($displayed));
+        $captured = $this->results->captureViewState();
+        $this->assertSame('q.php', $captured->selectedPath, 'the neighbour got ITS OWN frozen state back, not the corpse\'s');
+    }
+
+    public function testAFreshBindStillResetsAndSelectsTheFirstMatch(): void
+    {
+        $dock = $this->dock();
+        $dock->showList(ResultsPanelMode::Problems, 'Problems', [
+            ['path' => 'p.php', 'line' => 1, 'text' => 'problem'],
+            ['path' => 'q.php', 'line' => 2, 'text' => 'quibble'],
+        ]);
+        $captured = $this->results->captureViewState();
+        $this->assertSame('p.php', $captured->selectedPath, 'no saved state: the first match is selected as always');
+        $this->assertSame('', $captured->filter);
+    }
 }

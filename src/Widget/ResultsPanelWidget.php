@@ -28,6 +28,7 @@ use Porta\Widget\Support\PanelRows;
 use Porta\Widget\Support\ResultGrouping;
 use Porta\Widget\Support\ResultLayout;
 use Porta\Widget\Support\ResultsPanelFields;
+use Porta\Widget\Support\ResultsViewState;
 use Porta\Widget\Support\StylesDefault;
 use Symfony\Component\Tui\Input\Key;
 use Symfony\Component\Tui\Render\RenderContext;
@@ -169,6 +170,115 @@ final class ResultsPanelWidget extends DockPanelWidget implements FocusableInter
         }
         $this->searching = false;
         $this->invalidate();
+    }
+
+    /**
+     * Freeze this tab's view state before the dock rebinds the shared widget
+     * to another tab. Selection and context are keyed by (path, line) identity
+     * — a parked tab's rows may be rewritten by a live refresh, so positions
+     * captured now can be stale at restore ({@see ResultsViewState}).
+     */
+    public function captureViewState(): ResultsViewState
+    {
+        $selectedPath = null;
+        $selectedLine = null;
+        $selectedGroupKey = null;
+        $row = $this->displayRows[$this->list->selected()] ?? null;
+        if (null !== $row && $row->matchIndex >= 0 && null !== ($result = $this->results[$row->matchIndex] ?? null)) {
+            $selectedPath = $result['path'];
+            $selectedLine = $result['line'];
+        } elseif (null !== $row && null !== $row->filePath) {
+            $selectedGroupKey = $row->filePath;
+        }
+
+        $expanded = [];
+        $cache = [];
+        foreach ($this->contextExpanded as $matchIndex => $on) {
+            if (null !== ($result = $this->results[$matchIndex] ?? null)) {
+                $expanded[$result['path']."\0".$result['line']] = $on;
+            }
+        }
+        foreach ($this->contextCache as $matchIndex => $lines) {
+            if (null !== ($result = $this->results[$matchIndex] ?? null)) {
+                $cache[$result['path']."\0".$result['line']] = $lines;
+            }
+        }
+
+        return new ResultsViewState(
+            $this->filter->value(),
+            $this->grouping,
+            $this->collapsed,
+            $selectedPath,
+            $selectedLine,
+            $selectedGroupKey,
+            $this->list->selected(),
+            $expanded,
+            $cache,
+        );
+    }
+
+    /**
+     * Re-adopt a frozen view state after {@see open()}/{@see setResults()}
+     * rebound this widget to the state's tab. Context entries whose identity
+     * no longer matches a result drop; the selection re-locates by identity,
+     * then group key, then the clamped stored index.
+     */
+    public function restoreViewState(ResultsViewState $state): void
+    {
+        $this->filter->setValue($state->filter);
+        $this->grouping = $state->grouping;
+        $this->collapsed = $state->collapsed;
+
+        $byIdentity = [];
+        foreach ($this->results as $index => $result) {
+            $byIdentity[$result['path']."\0".$result['line']] ??= $index;
+        }
+        $this->contextExpanded = [];
+        $this->contextCache = [];
+        foreach ($state->contextExpanded as $identity => $on) {
+            if (null !== ($index = $byIdentity[$identity] ?? null)) {
+                $this->contextExpanded[$index] = $on;
+            }
+        }
+        foreach ($state->contextCache as $identity => $lines) {
+            if (null !== ($index = $byIdentity[$identity] ?? null)) {
+                $this->contextCache[$index] = $lines;
+            }
+        }
+
+        $this->rebuildView();
+        $this->relocateSelection($state->selectedPath, $state->selectedLine, $state->selectedGroupKey, $state->selectedIndex);
+        $this->invalidate();
+    }
+
+    /**
+     * Re-locate the selection after the display rows changed: (path, line)
+     * identity first, then the group header's key, then the clamped index.
+     */
+    private function relocateSelection(?string $path, ?int $line, ?string $groupKey, int $fallbackIndex): void
+    {
+        if (null !== $path && null !== $line) {
+            foreach ($this->displayRows as $i => $row) {
+                if ($row->matchIndex >= 0 && null !== ($result = $this->results[$row->matchIndex] ?? null) && $result['path'] === $path && $result['line'] === $line) {
+                    $this->list->select($i);
+
+                    return;
+                }
+            }
+        }
+        if (null !== $groupKey) {
+            foreach ($this->displayRows as $i => $row) {
+                if ($row->filePath === $groupKey) {
+                    $this->list->select($i);
+
+                    return;
+                }
+            }
+        }
+        $count = \count($this->displayRows);
+        if ($count > 0) {
+            $this->list->select(min(max($fallbackIndex, 0), $count - 1));
+        }
     }
 
     /**

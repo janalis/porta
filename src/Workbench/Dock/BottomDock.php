@@ -30,15 +30,26 @@ use Symfony\Component\Tui\Widget\AbstractWidget;
  * completions write into their tab and {@see refreshIfBound()} pushes to the
  * widget only when that tab is the one on display. Tabs coexist (opening a
  * tool never closes another) and only their strip × closes them. Switching
- * tabs preserves rows/title/searching (and a Search tab's query definition);
- * filter text, collapse, context and selection reset — the accepted v1
- * trade-off of rebinding through the widget's open(). The dock also owns the
+ * tabs preserves rows/title/searching (and a Search tab's query definition)
+ * AND the per-tab view state — filter text, grouping, collapse, context and
+ * selection ride each tab as a frozen {@see ResultsViewState}, captured from
+ * the widget before a rebind and restored after (identity-keyed, so a live
+ * refresh of a parked tab cannot dislocate them). The dock also owns the
  * {@see ResultsPanelMode} routing and the focus/repaint/flash choreography.
  */
 #[AsIdeService]
 final class BottomDock
 {
     private ResultsPanelMode $mode = ResultsPanelMode::Search;
+
+    /**
+     * The tab whose state the shared widget currently displays — the capture
+     * target when bind() switches away. NOT tools->active(): in the
+     * closeTab()→bind-neighbour path the active pointer has already moved, and
+     * capturing "the active tab" would write the closed tab's view state onto
+     * its neighbour.
+     */
+    private ?DockToolTab $boundTab = null;
 
     /** @var list<DockPanelWidget> visibility order, most recently visible last */
     private array $mru = [];
@@ -404,16 +415,26 @@ final class BottomDock
         $this->onToolClosed[] = $callback;
     }
 
-    /** Make $tab the displayed tool: mode + widget open (reset semantics) + its rows. */
+    /** Make $tab the displayed tool: freeze the outgoing tab's view state, open (reset) + rows, restore $tab's own. */
     private function bind(DockToolTab $tab): void
     {
+        // Capture unconditionally while the outgoing tab is alive — a same-tab
+        // rebind (tool re-invocation, hidden-dock re-reveal) wipes the widget
+        // through open() too, so its live state must round-trip as well.
+        if (null !== $this->boundTab && $this->tools->contains($this->boundTab)) {
+            $this->boundTab->viewState = $this->resultsPanel->captureViewState();
+        }
         $this->mode = $tab->mode;
         $this->tools->makeActive($tab);
         $this->resultsPanel->open($tab->title, $tab->fields);
         $this->resultsPanel->setResults($tab->rows);
+        if (null !== $tab->viewState) {
+            $this->resultsPanel->restoreViewState($tab->viewState);
+        }
         if ($tab->searching) {
             $this->resultsPanel->setSearching();
         }
+        $this->boundTab = $tab;
         foreach ($this->onToolBound as $callback) {
             $callback($tab);
         }
