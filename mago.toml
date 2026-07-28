@@ -76,43 +76,44 @@ excludes = ["tests/Support/slow-reading-lsp-server.php", "tests/Support/demandin
 # emits WARNINGS (exit stays 0 regardless), so its floor is "lowest threshold
 # with zero halstead warnings in the output" — standing warning noise would
 # train everyone to ignore the log. What sets each floor (re-bisected after
-# the round-4 tree, July 2026):
+# the round-5 tree, July 2026 — for the first time EVERY pin is production
+# code; the round-5 test split retired the E2e monolith that pinned two rules):
 #
-#   cyclomatic-complexity   149  Overlay/State/FindInFilesModal — alone now:
-#                                the WheelRouter/ContextMenuRouter splits took
-#                                MouseRouter well below (this was 220)
-#   too-many-methods        208  formerly tests/E2e/IdeEdgeCasesTest — split
-#                                into 14 thematic suites this round; the
-#                                threshold is slack until the round-close
-#                                re-bisect
-#   too-many-properties      35  Overlay/State/FindInFilesModal
+#   cyclomatic-complexity   133  Input/MouseRouter — back on top: round 5's
+#                                handler map took FindInFilesModal below it
+#                                (this was 220 two rounds ago)
+#   too-many-methods        106  Widget/CodeEditorWidget (was 208, a test file)
+#   too-many-properties      33  Widget/CodeEditorWidget (FindInFilesModal
+#                                dropped below after the round-5 pair merges)
 #   too-many-enum-cases      58  Ui/Role (the theme role vocabulary)
 #   excessive-parameter-list 24  Bootstrap/WidgetHooks' constructor — the one
 #                                pin unmoved since round 2 (splitting it was
 #                                measured: it INCREASES coupling edges)
-#   kan-defect               14  formerly tests/E2e/IdeEdgeCasesTest (split,
-#                                same re-bisect pending; was parked at 40 on
-#                                the belief nothing came near — false)
+#   kan-defect                8  Widget/Git/DiffViewWidget and
+#                                Overlay/State/FindInFilesModal (was 14, the
+#                                E2e monolith)
 #   halstead effort       21435  Help/MarkdownRenderer::render
 #   halstead difficulty      30  Overlay/Presenter/WelcomeModalController::open
-#   halstead volume        3236  tests/E2e/IdeTest::testFullScenario
-#                                (BreadcrumbScanner no longer pins any axis,
-#                                and MultilineInput::handleKey left the
-#                                shortlist when round 4 decomposed it)
+#   halstead volume        3236  tests/E2e/IdeTest::testFullScenario — one
+#                                continuous scripted session, deliberately
+#                                NOT split: its stages assert on state earlier
+#                                stages created, and that continuity IS the
+#                                coverage value
 #
-# The two src pins are deliberate structure: WidgetHooks is a wiring step and
-# FindInFilesModal a dialog whose layout state genuinely is that wide (its
-# extraction candidates are all measured rejections — see CLAUDE.md). Neither
-# can drop without a decision that was considered and declined.
+# The src pins are deliberate structure: WidgetHooks is a wiring step,
+# MouseRouter's route() guard order is behaviour, and CodeEditorWidget /
+# FindInFilesModal / DiffViewWidget carry measured-and-rejected extraction
+# candidates (see CLAUDE.md). None can drop without a decision that was
+# considered and declined.
 #
 # Re-bisect and lower again after the next structural change; a threshold far
 # above the real maximum is not a gate. Verified failing: injecting 60 dummy
 # properties into Ui/Notifier trips too-many-properties and lint exits 1.
 [linter.rules]
-cyclomatic-complexity = { threshold = 149 }
-too-many-methods = { threshold = 208 }
-too-many-properties = { threshold = 35 }
+cyclomatic-complexity = { threshold = 133 }
+too-many-methods = { threshold = 106 }
+too-many-properties = { threshold = 33 }
 too-many-enum-cases = { threshold = 58 }
 excessive-parameter-list = { threshold = 24 }
-kan-defect = { threshold = 14 }
+kan-defect = { threshold = 8 }
 halstead = { effort-threshold = 21435, difficulty-threshold = 30, volume-threshold = 3236 }
