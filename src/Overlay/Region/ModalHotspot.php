@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace Porta\Overlay\State;
+namespace Porta\Overlay\Region;
 
 /**
  * Which of a modal's two frame affordances is under the pointer. Mutually

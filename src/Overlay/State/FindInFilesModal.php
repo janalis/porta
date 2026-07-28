@@ -8,6 +8,7 @@ use Porta\I18n\Translator;
 use Porta\Overlay\Region\BoxPosition;
 use Porta\Overlay\Region\BoxSize;
 use Porta\Overlay\Region\ModalBox;
+use Porta\Overlay\Region\ModalHotspot;
 use Porta\Search\TokenScope;
 use Porta\Support\AnsiText;
 use Porta\Support\IntMath;
