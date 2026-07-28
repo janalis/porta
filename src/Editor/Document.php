@@ -800,7 +800,7 @@ final class Document
 
         $this->goalCol ??= $this->getCursorDisplayCol();
         --$this->cursorLine;
-        $this->cursorCol = TextMetrics::byteColForDisplayCol($this->lines[$this->cursorLine], $this->goalCol, $this->tabWidth());
+        $this->cursorCol = $this->byteColForDisplayCol($this->cursorLine, $this->goalCol);
 
         return true;
     }
@@ -821,7 +821,7 @@ final class Document
 
         $this->goalCol ??= $this->getCursorDisplayCol();
         ++$this->cursorLine;
-        $this->cursorCol = TextMetrics::byteColForDisplayCol($this->lines[$this->cursorLine], $this->goalCol, $this->tabWidth());
+        $this->cursorCol = $this->byteColForDisplayCol($this->cursorLine, $this->goalCol);
 
         return true;
     }
