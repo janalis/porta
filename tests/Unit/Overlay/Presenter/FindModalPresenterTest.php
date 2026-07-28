@@ -8,6 +8,8 @@ use PHPUnit\Framework\TestCase;
 use Porta\Overlay\Presenter\FindModalPresenter;
 use Porta\Overlay\Presenter\OverlayDelivery;
 use Porta\Overlay\State\MenuOverlayPanes;
+use Porta\Tests\Support\RendersRoot;
+use Porta\Tests\Support\TestOverlayPane;
 use Porta\Ui\BidiTui;
 use Porta\Widget\CodeEditorWidget;
 use Porta\Widget\Render\MenuOverlayHost;
@@ -26,8 +28,8 @@ use Symfony\Component\Tui\Widget\AbstractWidget;
  */
 final class FindModalPresenterTest extends TestCase
 {
-    private BidiTui $tui;
-    private Renderer $renderer;
+    use RendersRoot;
+
     private CodeEditorWidget $editor;
     private AbstractWidget&MenuOverlayHost $pane;
 
@@ -39,31 +41,7 @@ final class FindModalPresenterTest extends TestCase
             keybindings: new Keybindings([]),
             renderer: $this->renderer,
         );
-        $this->pane = new class extends AbstractWidget implements MenuOverlayHost {
-            use MenuOverlayHostTrait;
-
-            /** @var list<array{row: int, col: int, width: int, segment: string}> the last pushed modal spans */
-            public array $modalSpans = [];
-
-            public bool $backdrop = false;
-
-            public function setModalOverlay(array $spans): void
-            {
-                $this->modalSpans = $spans;
-            }
-
-            public function setModalBackdrop(bool $on): void
-            {
-                $this->backdrop = $on;
-            }
-
-            public function render(RenderContext $context): array
-            {
-                return array_fill(0, $context->getRows(), str_repeat('.', $context->getColumns()));
-            }
-
-            public function handleInput(string $data): void {}
-        };
+        $this->pane = new TestOverlayPane();
         $this->tui->add($this->pane);
         $this->editor = new CodeEditorWidget();
 
@@ -72,14 +50,6 @@ final class FindModalPresenterTest extends TestCase
             $this->editor,
             frameHooks: $this->tui,
         );
-    }
-
-    /** Record the pane's rect so the presenter has bounds to lay out against. */
-    private function frame(): void
-    {
-        $root = new \ReflectionProperty(\Symfony\Component\Tui\Tui::class, 'root')->getValue($this->tui);
-        \assert($root instanceof \Symfony\Component\Tui\Widget\ContainerWidget);
-        $this->renderer->render($root, 100, 24);
     }
 
     public function testSyncPushesSpansShadowAndBackdropWhileOpen(): void

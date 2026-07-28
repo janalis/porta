@@ -21,6 +21,8 @@ use Porta\Overlay\Presenter\WelcomeModalController;
 use Porta\Overlay\State\MenuOverlayPanes;
 use Porta\Settings\SettingsHighlightController;
 use Porta\Tests\Support\FakePluginLifecycle;
+use Porta\Tests\Support\RendersRoot;
+use Porta\Tests\Support\TestOverlayPane;
 use Porta\Ui\BidiTui;
 use Porta\Widget\CodeEditorWidget;
 use Porta\Widget\HelpViewerWidget;
@@ -50,8 +52,8 @@ use Symfony\Component\Tui\Widget\AbstractWidget;
  */
 final class WelcomeModalControllerTest extends TestCase
 {
-    private BidiTui $tui;
-    private Renderer $renderer;
+    use RendersRoot;
+
     private WelcomeWidget $welcome;
     private WorkspaceViews $views;
     private AbstractWidget&MenuOverlayHost $pane;
@@ -69,24 +71,7 @@ final class WelcomeModalControllerTest extends TestCase
             keybindings: new Keybindings([]),
             renderer: $this->renderer,
         );
-        $this->pane = new class extends AbstractWidget implements MenuOverlayHost {
-            use MenuOverlayHostTrait;
-
-            /** @var list<array{row: int, col: int, width: int, segment: string}> the last pushed modal spans */
-            public array $modalSpans = [];
-
-            public function setModalOverlay(array $spans): void
-            {
-                $this->modalSpans = $spans;
-            }
-
-            public function render(RenderContext $context): array
-            {
-                return $this->withMenuOverlay(array_fill(0, $context->getRows(), str_repeat('.', $context->getColumns())), $context->getColumns());
-            }
-
-            public function handleInput(string $data): void {}
-        };
+        $this->pane = new TestOverlayPane();
         $this->tui->add($this->pane);
 
         $this->welcome = new WelcomeWidget(new Translator('en'));
@@ -104,14 +89,6 @@ final class WelcomeModalControllerTest extends TestCase
             $this->views,
             frameHooks: $this->tui,
         );
-    }
-
-    /** Record the pane's rect so the modal has bounds to lay out against. */
-    private function frame(int $columns = 80, int $rows = 24): void
-    {
-        $root = new \ReflectionProperty(\Symfony\Component\Tui\Tui::class, 'root')->getValue($this->tui);
-        \assert($root instanceof \Symfony\Component\Tui\Widget\ContainerWidget);
-        $this->renderer->render($root, $columns, $rows);
     }
 
     public function testAttachesItselfSoTheWorkspaceCanReachIt(): void
@@ -136,7 +113,7 @@ final class WelcomeModalControllerTest extends TestCase
     public function testOpenPushesSpansOntoThePaneAndCloseClearsThem(): void
     {
         $controller = $this->controller();
-        $this->frame();
+        $this->frame(80);
 
         $controller->open();
         $this->assertNotSame([], $this->pane->modalSpans, 'the framed box was composited onto the pane');
@@ -151,7 +128,7 @@ final class WelcomeModalControllerTest extends TestCase
     public function testOpenAndCloseAreIdempotent(): void
     {
         $controller = $this->controller();
-        $this->frame();
+        $this->frame(80);
 
         $controller->open();
         $spans = $this->pane->modalSpans;
@@ -298,7 +275,7 @@ final class WelcomeModalControllerTest extends TestCase
     public function testTheCloseButtonClosesTheModal(): void
     {
         $controller = $this->controller();
-        $this->frame();
+        $this->frame(80);
         $controller->open();
         $region = $controller->region();
         $this->assertNotNull($region);
@@ -314,7 +291,7 @@ final class WelcomeModalControllerTest extends TestCase
     public function testATitleBarDragMovesAndClampsTheBox(): void
     {
         $controller = $this->controller();
-        $this->frame();
+        $this->frame(80);
         $controller->open();
         $region = $controller->region();
         $this->assertNotNull($region);
@@ -341,7 +318,7 @@ final class WelcomeModalControllerTest extends TestCase
     public function testACornerDragResizesTheBoxAndReopenResets(): void
     {
         $controller = $this->controller();
-        $this->frame();
+        $this->frame(80);
         $controller->open();
         $region = $controller->region();
         $this->assertNotNull($region);
@@ -375,7 +352,7 @@ final class WelcomeModalControllerTest extends TestCase
     public function testHoveringTheResizeCornerHeaviesIt(): void
     {
         $controller = $this->controller();
-        $this->frame();
+        $this->frame(80);
         $controller->open();
         $region = $controller->region();
         $this->assertNotNull($region);
@@ -391,7 +368,7 @@ final class WelcomeModalControllerTest extends TestCase
     public function testAFreshPressCancelsAnArmedDrag(): void
     {
         $controller = $this->controller();
-        $this->frame();
+        $this->frame(80);
         $controller->open();
         $region = $controller->region();
         $this->assertNotNull($region);
@@ -406,7 +383,7 @@ final class WelcomeModalControllerTest extends TestCase
     {
         $lifecycle = new FakePluginLifecycle();
         $controller = $this->controllerWith($lifecycle);
-        $this->frame();
+        $this->frame(80);
         $controller->open();
         $region = $controller->region();
         $this->assertNotNull($region);
@@ -424,7 +401,7 @@ final class WelcomeModalControllerTest extends TestCase
     public function testClicksAreNotConsumedWhileClosed(): void
     {
         $controller = $this->controller();
-        $this->frame();
+        $this->frame(80);
 
         $this->assertFalse($controller->clickAt(5, 5));
         $this->assertFalse($controller->hoverAt(5, 5));
@@ -434,7 +411,7 @@ final class WelcomeModalControllerTest extends TestCase
     public function testHoveringTheCloseRestylesAndAMissRestores(): void
     {
         $controller = $this->controller();
-        $this->frame();
+        $this->frame(80);
         $controller->open();
         $region = $controller->region();
         $this->assertNotNull($region);
@@ -447,7 +424,7 @@ final class WelcomeModalControllerTest extends TestCase
     public function testWheelOverTheBoxScrollsAndOutsideIsStillConsumed(): void
     {
         $controller = $this->controller();
-        $this->frame();
+        $this->frame(80);
         $controller->open();
         $region = $controller->region();
         $this->assertNotNull($region);
@@ -492,7 +469,7 @@ final class WelcomeModalControllerTest extends TestCase
     public function testOpenSetsTheBackdropAndCloseClearsIt(): void
     {
         $controller = $this->controller();
-        $this->frame();
+        $this->frame(80);
 
         $controller->open();
         $this->assertStringContainsString("\x1b[2m", $this->pane->render(new RenderContext(80, 24))[10], 'the pane renders faint behind the box');
@@ -505,7 +482,7 @@ final class WelcomeModalControllerTest extends TestCase
     public function testAThemeChangeRecomposesTheOpenModal(): void
     {
         $controller = $this->controller();
-        $this->frame();
+        $this->frame(80);
         $controller->open();
         $this->pane->modalSpans = []; // wiped: only the listener can bring them back
 
@@ -517,7 +494,7 @@ final class WelcomeModalControllerTest extends TestCase
     public function testAThemeChangeLeavesAClosedModalAlone(): void
     {
         $controller = $this->controller();
-        $this->frame();
+        $this->frame(80);
 
         new ChromeRefreshListener(new ChromeInvalidator(), $controller, $this->tui)->onSettingApplied(new ThemeChanged('dark'));
 
