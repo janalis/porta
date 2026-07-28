@@ -8,6 +8,7 @@ use PHPUnit\Framework\TestCase;
 use Porta\I18n\Translator;
 use Porta\Onboarding\WelcomeStep;
 use Porta\Tests\Support\AttachedStyles;
+use Porta\Tests\Support\RendersWidget;
 use Porta\Ui\Glyphs;
 use Porta\Widget\Onboarding\WelcomeWidget;
 use Symfony\Component\Tui\Ansi\AnsiUtils;
@@ -25,6 +26,8 @@ use Symfony\Component\Tui\Render\RenderContext;
  */
 final class WelcomeWidgetTest extends TestCase
 {
+    use RendersWidget;
+
     private const int FIRST_STEP_ROW = 3;
 
     private function widget(WelcomeStep ...$steps): WelcomeWidget
@@ -66,14 +69,14 @@ final class WelcomeWidgetTest extends TestCase
     }
 
     /** @return list<string> */
-    private function plain(WelcomeWidget $widget, int $rows = 12, int $columns = 60): array
+    private function rendered(WelcomeWidget $widget, int $rows = 12, int $columns = 60): array
     {
-        return array_map(AnsiUtils::stripAnsiCodes(...), $widget->render(new RenderContext($columns, $rows)));
+        return $this->rows($widget->render(new RenderContext($columns, $rows)));
     }
 
     public function testRendersAHeroThenACardPerStep(): void
     {
-        $lines = $this->plain($this->widget($this->step('Syntax highlighting'), $this->step('Language server')));
+        $lines = $this->rendered($this->widget($this->step('Syntax highlighting'), $this->step('Language server')));
 
         $this->assertStringContainsString('Welcome to Porta', $lines[1], 'the hero greeting');
         $this->assertStringContainsString('Syntax highlighting', $lines[self::FIRST_STEP_ROW]);
@@ -84,7 +87,7 @@ final class WelcomeWidgetTest extends TestCase
     /** The hero is centred by construction: equal margins up to the odd column. */
     public function testTheHeroIsCentred(): void
     {
-        $lines = $this->plain($this->widget($this->step('First')));
+        $lines = $this->rendered($this->widget($this->step('First')));
 
         // 'Welcome to Porta' is 16 columns; (60 - 16) / 2 = 22.
         $this->assertSame(22, strpos($lines[1], needle: 'Welcome to Porta'));
@@ -93,7 +96,7 @@ final class WelcomeWidgetTest extends TestCase
     /** Below HERO_MIN_ROWS the greeting cedes its rows to the steps. */
     public function testTheHeroIsDroppedOnAShortPane(): void
     {
-        $lines = $this->plain($this->widget($this->step('First')), rows: 8);
+        $lines = $this->rendered($this->widget($this->step('First')), rows: 8);
 
         $this->assertStringNotContainsString('Welcome to Porta', implode("\n", $lines));
         $this->assertStringContainsString('First', $lines[0], 'the first card moves up to row 0');
@@ -121,7 +124,7 @@ final class WelcomeWidgetTest extends TestCase
     public function testAnAllLinkListGetsThePlainTitle(): void
     {
         $widget = $this->widget($this->linkStep('Guide'));
-        $lines = $this->plain($widget);
+        $lines = $this->rendered($widget);
 
         $this->assertStringContainsString('Welcome', $widget->title());
         $this->assertStringNotContainsString('done', $widget->title());
@@ -131,7 +134,7 @@ final class WelcomeWidgetTest extends TestCase
     /** A pending step offers its action; a done one does not. */
     public function testPendingStepsShowTheirActionAndDoneStepsDoNot(): void
     {
-        $lines = $this->plain($this->widget($this->step('Pending'), $this->doneStep('Finished')));
+        $lines = $this->rendered($this->widget($this->step('Pending'), $this->doneStep('Finished')));
 
         $this->assertStringContainsString('[Do it]', $lines[self::FIRST_STEP_ROW]);
         $this->assertStringNotContainsString('[Do it]', $lines[self::FIRST_STEP_ROW + 3]);
@@ -143,7 +146,7 @@ final class WelcomeWidgetTest extends TestCase
      */
     public function testStepKindsAreDistinguishableWithoutColour(): void
     {
-        $lines = $this->plain($this->widget($this->doneStep('Finished'), $this->step('Pending'), $this->linkStep('Guide')));
+        $lines = $this->rendered($this->widget($this->doneStep('Finished'), $this->step('Pending'), $this->linkStep('Guide')));
 
         $this->assertStringContainsString('[x]', $lines[self::FIRST_STEP_ROW]);
         $this->assertStringContainsString('[ ]', $lines[self::FIRST_STEP_ROW + 3]);
@@ -156,7 +159,7 @@ final class WelcomeWidgetTest extends TestCase
         // Asserted on the SECOND card: the first is selected, and its accent
         // bar (a 3-byte glyph) would shift these byte-based offsets while the
         // visible columns stay put — the bar tests pin that geometry.
-        $lines = $this->plain($this->widget($this->step('First'), $this->step('Second', detail: 'more prose')));
+        $lines = $this->rendered($this->widget($this->step('First'), $this->step('Second', detail: 'more prose')));
 
         // Margin (2) plus '[ ]  ' (5): both texts start at column 7.
         $this->assertSame(7, strpos($lines[self::FIRST_STEP_ROW + 3], needle: 'Second'));
@@ -166,7 +169,7 @@ final class WelcomeWidgetTest extends TestCase
     /** The bar marks every row of the selected card — and only that card. */
     public function testTheSelectedCardShowsTheAccentBarOnEveryRow(): void
     {
-        $lines = $this->plain($this->widget($this->step('First'), $this->step('Second')));
+        $lines = $this->rendered($this->widget($this->step('First'), $this->step('Second')));
 
         $this->assertSame(0, strpos($lines[self::FIRST_STEP_ROW], needle: Glyphs::CARD_ACCENT), 'the title row starts with the bar');
         $this->assertSame(0, strpos($lines[self::FIRST_STEP_ROW + 1], needle: Glyphs::CARD_ACCENT), 'so does the detail row');
@@ -177,7 +180,7 @@ final class WelcomeWidgetTest extends TestCase
     /** The bar replaces margin columns, so the marker and title do not shift. */
     public function testTheBarDoesNotShiftTheSelectedCardsColumns(): void
     {
-        $lines = $this->plain($this->widget($this->step('First'), $this->step('Second')));
+        $lines = $this->rendered($this->widget($this->step('First'), $this->step('Second')));
 
         // Same visible columns as an unselected card: marker at 2, title at 7.
         $this->assertSame(2, AnsiUtils::visibleWidth(substr($lines[self::FIRST_STEP_ROW], offset: 0, length: (int) strpos($lines[self::FIRST_STEP_ROW], needle: '['))));
@@ -188,7 +191,7 @@ final class WelcomeWidgetTest extends TestCase
     {
         $widget = $this->widget($this->step('First'), $this->step('Second'));
         $widget->handleInput("\x1b[B");
-        $lines = $this->plain($widget);
+        $lines = $this->rendered($widget);
 
         $this->assertStringNotContainsString(Glyphs::CARD_ACCENT, $lines[self::FIRST_STEP_ROW]);
         $this->assertSame(0, strpos($lines[self::FIRST_STEP_ROW + 3], needle: Glyphs::CARD_ACCENT), 'the bar followed the selection');
@@ -258,7 +261,7 @@ final class WelcomeWidgetTest extends TestCase
     public function testALongDetailWrapsInsteadOfTruncating(): void
     {
         $detail = 'this explanation is deliberately long enough that it cannot fit on a single detail row of a forty column pane';
-        $lines = $this->plain($this->widget($this->step('First', detail: $detail)), rows: 20, columns: 40);
+        $lines = $this->rendered($this->widget($this->step('First', detail: $detail)), rows: 20, columns: 40);
 
         $text = implode("\n", array_map(trim(...), $lines));
         foreach (explode(' ', $detail) as $word) {
@@ -274,7 +277,7 @@ final class WelcomeWidgetTest extends TestCase
      */
     public function testANarrowPaneTruncatesTheTitleBeforeTheAction(): void
     {
-        $lines = $this->plain($this->widget($this->step('A very long step title indeed')), rows: 8, columns: 30);
+        $lines = $this->rendered($this->widget($this->step('A very long step title indeed')), rows: 8, columns: 30);
 
         $this->assertStringContainsString('[Do it]', $lines[0]);
         $this->assertStringContainsString('…', $lines[0], 'the title took the cut');
@@ -283,7 +286,7 @@ final class WelcomeWidgetTest extends TestCase
     /** Too narrow for even marker + action: the whole line clips rather than garbles. */
     public function testATinyPaneFallsBackToWholeLineTruncation(): void
     {
-        $lines = $this->plain($this->widget($this->step('A very long step title indeed')), rows: 8, columns: 12);
+        $lines = $this->rendered($this->widget($this->step('A very long step title indeed')), rows: 8, columns: 12);
 
         $this->assertStringContainsString('[ ]', $lines[0]);
         $this->assertStringNotContainsString('[Do it]', $lines[0]);
@@ -495,7 +498,7 @@ final class WelcomeWidgetTest extends TestCase
         for ($i = 0; $i < 11; ++$i) {
             $widget->handleInput("\x1b[B");
         }
-        $lines = $this->plain($widget, rows: 8);
+        $lines = $this->rendered($widget, rows: 8);
 
         $this->assertStringContainsString('Step 11', implode("\n", $lines), 'the selection scrolled into view');
         $this->assertCount(8, $lines);
@@ -504,7 +507,7 @@ final class WelcomeWidgetTest extends TestCase
     /** All done is a banner above the cards, not a replacement for them. */
     public function testAllSetIsSaidOutLoudWhenEveryStepIsDone(): void
     {
-        $lines = $this->plain($this->widget($this->doneStep('First'), $this->linkStep('Guide')));
+        $lines = $this->rendered($this->widget($this->doneStep('First'), $this->linkStep('Guide')));
 
         $this->assertStringContainsString('All set', $lines[self::FIRST_STEP_ROW]);
         $this->assertStringContainsString('Help', $lines[self::FIRST_STEP_ROW], 'and how to get back');
@@ -514,7 +517,7 @@ final class WelcomeWidgetTest extends TestCase
 
     public function testNoStepsRendersAMessageRatherThanABlankPane(): void
     {
-        $lines = $this->plain($this->widget());
+        $lines = $this->rendered($this->widget());
 
         $this->assertStringContainsString('Nothing to set up', $lines[self::FIRST_STEP_ROW]);
     }
@@ -573,7 +576,7 @@ final class WelcomeWidgetTest extends TestCase
         }
 
         $widget->resetView();
-        $lines = $this->plain($widget, rows: 8);
+        $lines = $this->rendered($widget, rows: 8);
 
         $this->assertStringContainsString('Step 0', implode("\n", $lines), 'the window is back at the top');
     }

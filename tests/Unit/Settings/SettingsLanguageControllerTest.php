@@ -8,6 +8,7 @@ use PHPUnit\Framework\TestCase;
 use Porta\Config\IdeConfig;
 use Porta\I18n\Translator;
 use Porta\Settings\SettingsLanguageController;
+use Porta\Tests\Support\StatusReads;
 use Porta\Tests\Support\TempProject;
 use Porta\Widget\CodeEditorWidget;
 use Porta\Widget\StatusBarWidget;
@@ -17,6 +18,8 @@ use Symfony\Component\Tui\Tui;
 
 final class SettingsLanguageControllerTest extends TestCase
 {
+    use StatusReads;
+
     /**
      * @param array<string, array{indentStyle?: string, indentSize?: int|string, runCommand?: string}> $overrides
      */
@@ -25,11 +28,6 @@ final class SettingsLanguageControllerTest extends TestCase
         $tui = new Tui(terminal: new VirtualTerminal(columns: 80, rows: 24));
 
         return new SettingsLanguageController($editor, new Notifier($status, $tui), $rootDir, new Translator('en'), $overrides);
-    }
-
-    private function flashText(StatusBarWidget $status): string
-    {
-        return $status->activeFlash() ?? '';
     }
 
     public function testRowsReflectStoredOverridesAndDefaults(): void

@@ -27,6 +27,7 @@ use Porta\Settings\SettingsRowKind;
 use Porta\Tests\Support\FakeScheduler;
 use Porta\Tests\Support\FixedActiveFile;
 use Porta\Tests\Support\PreservesPath;
+use Porta\Tests\Support\StatusReads;
 use Porta\Tests\Support\TempProject;
 use Porta\Tests\Support\TestWorkspaceLayout;
 use Porta\Ui\CursorStyle;
@@ -49,6 +50,7 @@ use Symfony\Component\Tui\Tui;
 final class SettingsControllerTest extends TestCase
 {
     use PreservesPath;
+    use StatusReads;
 
     protected function setUp(): void
     {
@@ -127,11 +129,6 @@ final class SettingsControllerTest extends TestCase
             $breadcrumbs,
             $todoTags,
         );
-    }
-
-    private function flashText(StatusBarWidget $status): string
-    {
-        return $status->activeFlash() ?? '';
     }
 
     public function testFormRowsExposeOnlyTheGeneralGroup(): void

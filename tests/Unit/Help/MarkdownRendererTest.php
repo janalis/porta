@@ -7,6 +7,7 @@ namespace Porta\Tests\Unit\Help;
 use PHPUnit\Framework\TestCase;
 use Porta\Help\MarkdownRenderer;
 use Porta\Help\RenderedDoc;
+use Porta\Tests\Support\RendersWidget;
 use Porta\Ui\Theme\DarkTheme;
 use Porta\Ui\Theme\MonochromeTheme;
 use Porta\Ui\Theme\Styles;
@@ -14,21 +15,18 @@ use Symfony\Component\Tui\Ansi\AnsiUtils;
 
 final class MarkdownRendererTest extends TestCase
 {
+    use RendersWidget;
+
     private function render(string $markdown, int $width = 80): RenderedDoc
     {
         return new MarkdownRenderer(new Styles(DarkTheme::definition()))->render($markdown, $width);
     }
 
     /** @return list<string> */
-    private function plain(RenderedDoc $doc): array
-    {
-        return array_map(AnsiUtils::stripAnsiCodes(...), $doc->lines);
-    }
-
     public function testHeadingsRenderStyledWithoutTheHashes(): void
     {
         $doc = $this->render("# Title\n\n## Section\n\n### Sub");
-        $plain = $this->plain($doc);
+        $plain = $this->rows($doc->lines);
 
         $this->assertSame('Title', $plain[0]);
         $this->assertStringContainsString("\x1b[1m", $doc->lines[0], 'headings are bold');
@@ -42,12 +40,12 @@ final class MarkdownRendererTest extends TestCase
     public function testHeadingSpacingIsTwoBlanksAboveAndOneBelowRegardlessOfTheSource(): void
     {
         $doc = $this->render("intro\n\n\n\n## Head\n\n\ntext\nmore\n\ntail");
-        $plain = $this->plain($doc);
+        $plain = $this->rows($doc->lines);
 
         $this->assertSame(['intro', '', '', 'Head', '────', '', 'text more', '', 'tail'], array_map(rtrim(...), $plain));
 
         $doc = $this->render("# Top\ntight");
-        $this->assertSame(['Top', '═══', '', 'tight'], array_map(rtrim(...), $this->plain($doc)), 'no blanks above at the document top, one below even without a source blank');
+        $this->assertSame(['Top', '═══', '', 'tight'], array_map(rtrim(...), $this->rows($doc->lines)), 'no blanks above at the document top, one below even without a source blank');
     }
 
     public function testInlineStylesAndParagraphJoining(): void
@@ -55,7 +53,7 @@ final class MarkdownRendererTest extends TestCase
         $doc = $this->render("Some **bold** and *italic* and `code` here\njoined onto one source line.");
 
         $this->assertCount(1, $doc->lines, 'hard-wrapped source joins, then re-wraps to the width');
-        $plain = $this->plain($doc)[0];
+        $plain = $this->rows($doc->lines)[0];
         $this->assertSame('Some bold and italic and code here joined onto one source line.', $plain);
         $this->assertStringContainsString("\x1b[1mbold\x1b[22m", $doc->lines[0]);
         $this->assertStringContainsString("\x1b[3mitalic\x1b[23m", $doc->lines[0]);
@@ -64,23 +62,23 @@ final class MarkdownRendererTest extends TestCase
     public function testWordWrapWithHangingIndentAndOverWideWords(): void
     {
         $doc = $this->render('- alpha beta gamma delta epsilon zeta', 20);
-        $plain = $this->plain($doc);
+        $plain = $this->rows($doc->lines);
         $this->assertSame('• alpha beta gamma', rtrim($plain[0]));
         $this->assertSame('  delta epsilon zeta', rtrim($plain[1]), 'continuations hang under the marker');
 
         $doc = $this->render('averyveryverylongunbrokenword', 20);
-        $plain = $this->plain($doc);
+        $plain = $this->rows($doc->lines);
         $this->assertSame('averyveryverylongu', rtrim($plain[0]), 'over-wide words hard-break');
         $this->assertSame('nbrokenword', rtrim($plain[1]));
 
         $doc = $this->render('tiny', 5);
-        $this->assertSame('tiny', rtrim($this->plain($doc)[0]), 'width clamps to a sane minimum');
+        $this->assertSame('tiny', rtrim($this->rows($doc->lines)[0]), 'width clamps to a sane minimum');
     }
 
     public function testOrderedListsBlockquotesAndRules(): void
     {
         $doc = $this->render("1. first\n2. second\n\n> quoted words\n\n---");
-        $plain = $this->plain($doc);
+        $plain = $this->rows($doc->lines);
 
         $this->assertSame('1. first', rtrim($plain[0]));
         $this->assertSame('2. second', rtrim($plain[1]));
@@ -91,7 +89,7 @@ final class MarkdownRendererTest extends TestCase
     public function testFencedCodeBlocksBandTruncateAndNeverWrap(): void
     {
         $doc = $this->render("```php\n\$x = 1;\n".str_repeat('x', times: 200)."\n```", 30);
-        $plain = $this->plain($doc);
+        $plain = $this->rows($doc->lines);
 
         $this->assertSame('  $x = 1;', rtrim($plain[0]));
         $this->assertSame(30, mb_strwidth($plain[0]), 'code lines pad to the full width (bg band)');
@@ -102,7 +100,7 @@ final class MarkdownRendererTest extends TestCase
     public function testTablesAlignBoldTheHeaderAndCarryCellLinks(): void
     {
         $doc = $this->render("| Key | Action |\n| --- | --- |\n| `F1` | Open [docs](guide.md) now |");
-        $plain = $this->plain($doc);
+        $plain = $this->rows($doc->lines);
 
         $this->assertSame(' Key  Action', rtrim($plain[0]));
         $this->assertStringContainsString("\x1b[1m", $doc->lines[0], 'header row is bold');
@@ -133,7 +131,7 @@ final class MarkdownRendererTest extends TestCase
             $this->assertStringContainsString(trim($text), 'the full editor guide', 'every fragment covers link text only');
         }
 
-        $this->assertStringContainsString('anchor', implode("\n", $this->plain($doc)), 'the anchor text still renders');
+        $this->assertStringContainsString('anchor', implode("\n", $this->rows($doc->lines)), 'the anchor text still renders');
     }
 
     public function testAngleBracketTargetsAndTruncatedTableSpansAreDropped(): void

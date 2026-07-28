@@ -6,6 +6,7 @@ namespace Porta\Tests\Unit\Widget;
 
 use PHPUnit\Framework\TestCase;
 use Porta\Tests\Support\AttachedStyles;
+use Porta\Tests\Support\RendersWidget;
 use Porta\Tests\Support\TempProject;
 use Porta\Widget\FileTreeWidget;
 use Symfony\Component\Tui\Ansi\AnsiUtils;
@@ -13,10 +14,7 @@ use Symfony\Component\Tui\Render\RenderContext;
 
 final class FileTreeWidgetTest extends TestCase
 {
-    private function plain(array $lines): string
-    {
-        return implode("\n", array_map(AnsiUtils::stripAnsiCodes(...), $lines));
-    }
+    use RendersWidget;
 
     public function testListsDirsFirstThenFiles(): void
     {

@@ -6,22 +6,20 @@ namespace Porta\Tests\Unit\Terminal;
 
 use PHPUnit\Framework\TestCase;
 use Porta\Terminal\TerminalBuffer;
+use Porta\Tests\Support\RendersWidget;
 use Symfony\Component\Tui\Ansi\AnsiUtils;
 
 final class TerminalBufferTest extends TestCase
 {
-    /** @return string[] plain-text view of the buffer */
-    private function plain(TerminalBuffer $b): array
-    {
-        return array_map(AnsiUtils::stripAnsiCodes(...), $b->getLines());
-    }
+    use RendersWidget;
 
+    /** @return string[] plain-text view of the buffer */
     public function testNewlinesSplitLines(): void
     {
         $b = new TerminalBuffer();
         $b->feed("hello\nworld\n");
 
-        $this->assertSame(['hello', 'world', ''], $this->plain($b));
+        $this->assertSame(['hello', 'world', ''], $this->rows($b->getLines()));
     }
 
     public function testCarriageReturnOverwrites(): void
@@ -29,7 +27,7 @@ final class TerminalBufferTest extends TestCase
         $b = new TerminalBuffer();
         $b->feed("Progress: 10%\rProgress: 99%");
 
-        $this->assertSame(['Progress: 99%'], $this->plain($b));
+        $this->assertSame(['Progress: 99%'], $this->rows($b->getLines()));
     }
 
     public function testCarriageReturnShorterOverwriteKeepsTail(): void
@@ -37,7 +35,7 @@ final class TerminalBufferTest extends TestCase
         $b = new TerminalBuffer();
         $b->feed("abcdef\rXYZ");
 
-        $this->assertSame(['XYZdef'], $this->plain($b));
+        $this->assertSame(['XYZdef'], $this->rows($b->getLines()));
     }
 
     public function testBackspace(): void
@@ -45,7 +43,7 @@ final class TerminalBufferTest extends TestCase
         $b = new TerminalBuffer();
         $b->feed("abcX\x08\x08YZ");
 
-        $this->assertSame(['abYZ'], $this->plain($b));
+        $this->assertSame(['abYZ'], $this->rows($b->getLines()));
     }
 
     public function testTabExpandsToStops(): void
@@ -53,7 +51,7 @@ final class TerminalBufferTest extends TestCase
         $b = new TerminalBuffer();
         $b->feed("a\tb");
 
-        $this->assertSame(['a       b'], $this->plain($b));
+        $this->assertSame(['a       b'], $this->rows($b->getLines()));
     }
 
     public function testColourCodesArePreserved(): void
@@ -104,7 +102,7 @@ final class TerminalBufferTest extends TestCase
         $b = new TerminalBuffer();
         $b->feed("longtext\r\x1b[Kshort");
 
-        $this->assertSame(['short'], $this->plain($b));
+        $this->assertSame(['short'], $this->rows($b->getLines()));
     }
 
     public function testEraseEntireDisplayResetsBuffer(): void
@@ -112,11 +110,11 @@ final class TerminalBufferTest extends TestCase
         $b = new TerminalBuffer();
         $b->feed("some content\nmore\n");
         $b->feed("\x1b[2J"); // the `clear` command
-        $this->assertSame([''], $this->plain($b));
+        $this->assertSame([''], $this->rows($b->getLines()));
 
         $b->feed("again\n");
         $b->feed("\x1b[3J"); // erase scrollback too
-        $this->assertSame([''], $this->plain($b));
+        $this->assertSame([''], $this->rows($b->getLines()));
     }
 
     public function testEraseToEndOfDisplayKeepsScrollback(): void
@@ -126,12 +124,12 @@ final class TerminalBufferTest extends TestCase
         $b = new TerminalBuffer();
         $b->feed("file1\nfile2\n"); // command output
         $b->feed("prompt$ \x1b[J"); // prompt redraw: erase from the cursor (at EOL) onward
-        $this->assertSame(['file1', 'file2', 'prompt$ '], $this->plain($b), 'scrollback survives');
+        $this->assertSame(['file1', 'file2', 'prompt$ '], $this->rows($b->getLines()), 'scrollback survives');
 
         // With the cursor moved back, ESC[0J trims the current line's tail only.
         $b2 = new TerminalBuffer();
         $b2->feed("abcdef\r\x1b[0J");
-        $this->assertSame([''], $this->plain($b2));
+        $this->assertSame([''], $this->rows($b2->getLines()));
     }
 
     public function testCursorHomeDoesNotClear(): void
@@ -142,7 +140,7 @@ final class TerminalBufferTest extends TestCase
         $b->feed("\x1b[H");
         $b->feed("\x1b[1J"); // erase-above is also dropped (rows are not modelled)
 
-        $this->assertSame(['output line', ''], $this->plain($b));
+        $this->assertSame(['output line', ''], $this->rows($b->getLines()));
     }
 
     public function testCursorAddressingSequencesAreStripped(): void
@@ -151,7 +149,7 @@ final class TerminalBufferTest extends TestCase
         $b->feed("a\x1b[10;5Hb");
 
         // The cursor-move is dropped; text stays on one line.
-        $this->assertSame(['ab'], $this->plain($b));
+        $this->assertSame(['ab'], $this->rows($b->getLines()));
     }
 
     public function testBellAndOtherControlsIgnored(): void
@@ -159,7 +157,7 @@ final class TerminalBufferTest extends TestCase
         $b = new TerminalBuffer();
         $b->feed("a\x07b\x00c");
 
-        $this->assertSame(['abc'], $this->plain($b));
+        $this->assertSame(['abc'], $this->rows($b->getLines()));
     }
 
     public function testScrollbackCapDropsOldestLines(): void
@@ -167,7 +165,7 @@ final class TerminalBufferTest extends TestCase
         $b = new TerminalBuffer(maxLines: 3);
         $b->feed("l1\nl2\nl3\nl4\nl5\n");
 
-        $lines = $this->plain($b);
+        $lines = $this->rows($b->getLines());
         $this->assertCount(3, $lines);
         $this->assertSame(['l4', 'l5', ''], $lines);
     }
@@ -197,7 +195,7 @@ final class TerminalBufferTest extends TestCase
         $b->feed("stuff\nmore");
         $b->clear();
 
-        $this->assertSame([''], $this->plain($b));
+        $this->assertSame([''], $this->rows($b->getLines()));
         $this->assertSame(1, $b->lineCount());
     }
 
@@ -206,6 +204,6 @@ final class TerminalBufferTest extends TestCase
         $b = new TerminalBuffer();
         $b->feed("a\r\nb\r\n");
 
-        $this->assertSame(['a', 'b', ''], $this->plain($b));
+        $this->assertSame(['a', 'b', ''], $this->rows($b->getLines()));
     }
 }

@@ -7,6 +7,7 @@ namespace Porta\Tests\Unit\Widget\Git;
 use PHPUnit\Framework\TestCase;
 use Porta\Git\CommitMode;
 use Porta\I18n\Translator;
+use Porta\Tests\Support\RendersWidget;
 use Porta\Ui\Glyphs;
 use Porta\Widget\Git\CommitBoxWidget;
 use Symfony\Component\Tui\Ansi\AnsiUtils;
@@ -15,6 +16,8 @@ use Symfony\Component\Tui\Style\CursorShape;
 
 final class CommitBoxWidgetTest extends TestCase
 {
+    use RendersWidget;
+
     private bool $staged = true;
 
     private function widget(?string &$committed = null, ?bool &$amended = null): CommitBoxWidget
@@ -37,9 +40,9 @@ final class CommitBoxWidgetTest extends TestCase
         }
     }
 
-    private function plain(CommitBoxWidget $widget): string
+    private function rendered(CommitBoxWidget $widget): string
     {
-        return implode("\n", array_map(AnsiUtils::stripAnsiCodes(...), $widget->render(new RenderContext(44, 10))));
+        return $this->plain($widget->render(new RenderContext(44, 10)));
     }
 
     public function testMessageAssemblyAndEnabledState(): void
@@ -109,7 +112,7 @@ final class CommitBoxWidgetTest extends TestCase
         $widget = new CommitBoxWidget(new Translator('en'));
         $widget->setStagedChangesProvider(static fn (): bool => true);
 
-        $screen = $this->plain($widget);
+        $screen = $this->rendered($widget);
         $this->assertStringContainsString('Summary (required)', $screen);
         $this->assertStringContainsString('Description', $screen);
         $this->assertStringContainsString('Commit to branch', $screen);
@@ -122,7 +125,7 @@ final class CommitBoxWidgetTest extends TestCase
         $widget->clear();
         $this->assertSame('', $widget->message());
         $widget->setFocused(false); // a focused empty field shows the caret, not the hint
-        $this->assertStringContainsString('Summary (required)', $this->plain($widget));
+        $this->assertStringContainsString('Summary (required)', $this->rendered($widget));
     }
 
     public function testSummaryBackspaceAndResetField(): void
@@ -164,7 +167,7 @@ final class CommitBoxWidgetTest extends TestCase
         $this->assertTrue($widget->isAmend());
         $this->assertTrue($widget->commitEnabled(), 'amending only the message needs nothing staged');
 
-        $screen = $this->plain($widget);
+        $screen = $this->rendered($widget);
         $this->assertStringContainsString('Alt+M amend '.Glyphs::CHECKBOX_ON, $screen, 'the amend state reads as a checkbox, without colour');
         $this->assertStringContainsString('Amend last commit', $screen);
 
@@ -218,7 +221,7 @@ final class CommitBoxWidgetTest extends TestCase
         $markers = array_sum(array_map(static fn (string $l): int => substr_count($l, $marker), $lines));
 
         $this->assertSame(1, $markers, 'the description caret marker stays inside the visible window');
-        $this->assertStringContainsString('l5', $this->plain($widget), 'the window scrolled to the caret line');
+        $this->assertStringContainsString('l5', $this->rendered($widget), 'the window scrolled to the caret line');
     }
 
     private function markerCount(CommitBoxWidget $widget): int

@@ -14,6 +14,7 @@ use Porta\I18n\Translator;
 use Porta\Settings\SettingsGitController;
 use Porta\Settings\SettingsRowKind;
 use Porta\Tests\Support\PreservesPath;
+use Porta\Tests\Support\StatusReads;
 use Porta\Tests\Support\TempProject;
 use Porta\Widget\CodeEditorWidget;
 use Porta\Widget\StatusBarWidget;
@@ -24,6 +25,7 @@ use Symfony\Component\Tui\Tui;
 final class SettingsGitControllerTest extends TestCase
 {
     use PreservesPath;
+    use StatusReads;
 
     protected function setUp(): void
     {
@@ -54,11 +56,6 @@ final class SettingsGitControllerTest extends TestCase
             new Translator('en'),
             $rootDir,
         );
-    }
-
-    private function flashText(): string
-    {
-        return $this->status->activeFlash() ?? '';
     }
 
     public function testRowsExposeAllEightGitSettings(): void
@@ -103,8 +100,8 @@ final class SettingsGitControllerTest extends TestCase
 
         $controller->change('gitShowBranch', false);
         $this->assertFalse($this->git->showBranch());
-        $this->assertStringContainsString('off', $this->flashText());
-        $this->assertStringNotContainsString('restart', $this->flashText(), 'a display toggle is live');
+        $this->assertStringContainsString('off', $this->flashText($this->status));
+        $this->assertStringNotContainsString('restart', $this->flashText($this->status), 'a display toggle is live');
         $this->assertStringContainsString('"gitShowBranch": false', (string) file_get_contents($project->path('.porta.json')));
     }
 
@@ -155,7 +152,7 @@ final class SettingsGitControllerTest extends TestCase
         $controller = $this->controller($project->dir);
 
         $controller->change('gitPath', '/opt/git/bin/git');
-        $this->assertStringContainsString('restart', $this->flashText(), 'the git path applies on restart');
+        $this->assertStringContainsString('restart', $this->flashText($this->status), 'the git path applies on restart');
         $this->assertStringContainsString('/opt/git/bin/git', (string) file_get_contents($project->path('.porta.json')));
     }
 
@@ -165,7 +162,7 @@ final class SettingsGitControllerTest extends TestCase
         $controller = $this->controller($project->dir);
 
         $controller->change('gitNope', true);
-        $this->assertStringContainsString('Unknown setting', $this->flashText());
+        $this->assertStringContainsString('Unknown setting', $this->flashText($this->status));
         $this->assertFalse(is_file($project->path('.porta.json')), 'an unknown key persists nothing');
     }
 
@@ -173,6 +170,6 @@ final class SettingsGitControllerTest extends TestCase
     {
         $controller = $this->controller('/nonexistent-root'); // unwritable → persist fails
         $controller->change('gitShowBranch', false);
-        $this->assertStringContainsString('not saved', $this->flashText());
+        $this->assertStringContainsString('not saved', $this->flashText($this->status));
     }
 }

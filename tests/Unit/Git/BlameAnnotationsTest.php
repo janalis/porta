@@ -14,6 +14,7 @@ use Porta\Git\GitInfo;
 use Porta\I18n\Translator;
 use Porta\Tests\Support\Presence;
 use Porta\Tests\Support\PumpsLoop;
+use Porta\Tests\Support\StatusReads;
 use Porta\Tests\Support\TempProject;
 use Porta\Widget\CodeEditorWidget;
 use Porta\Widget\StatusBarWidget;
@@ -30,6 +31,7 @@ use Symfony\Component\Tui\Tui;
 final class BlameAnnotationsTest extends TestCase
 {
     use PumpsLoop;
+    use StatusReads;
 
     private CodeEditorWidget $editor;
     private StatusBarWidget $status;
@@ -61,11 +63,6 @@ final class BlameAnnotationsTest extends TestCase
         return AnsiUtils::stripAnsiCodes(implode("\n", $this->editor->render(new RenderContext(120, 10))));
     }
 
-    private function flash(): string
-    {
-        return AnsiUtils::stripAnsiCodes(implode(' ', $this->status->render(new RenderContext(120, 1))));
-    }
-
     private function showFile(string $name = 'a.php'): void
     {
         $this->editor->showDocument($this->project->path($name), new Document((string) file_get_contents($this->project->path($name))));
@@ -77,12 +74,12 @@ final class BlameAnnotationsTest extends TestCase
         $this->showFile();
 
         $blame->toggle();
-        $this->assertStringContainsString('Blame annotations shown', $this->flash());
+        $this->assertStringContainsString('Blame annotations shown', $this->statusRow($this->status, 120));
         $this->await(fn (): bool => str_contains($this->editorScreen(), 'tester'));
         $this->assertStringContainsString(date('Y-m-d'), $this->editorScreen(), 'sha author date rendered');
 
         $blame->toggle();
-        $this->assertStringContainsString('Blame annotations hidden', $this->flash());
+        $this->assertStringContainsString('Blame annotations hidden', $this->statusRow($this->status, 120));
         $this->assertStringNotContainsString('tester', $this->editorScreen());
     }
 
@@ -91,11 +88,11 @@ final class BlameAnnotationsTest extends TestCase
         $blame = $this->blame(withRepo: Presence::Without);
         $this->showFile();
         $blame->toggle();
-        $this->assertStringContainsString('Git not available', $this->flash());
+        $this->assertStringContainsString('Git not available', $this->statusRow($this->status, 120));
 
         $blame = $this->blame(); // repo, but nothing open
         $blame->toggle();
-        $this->assertStringContainsString('Git not available', $this->flash());
+        $this->assertStringContainsString('Git not available', $this->statusRow($this->status, 120));
     }
 
     public function testBufferEventsReapplyOnlyWhileEnabled(): void

@@ -7,12 +7,15 @@ namespace Porta\Tests\Unit\Widget\Settings;
 use PHPUnit\Framework\TestCase;
 use Porta\Config\KeybindingRow;
 use Porta\I18n\Translator;
+use Porta\Tests\Support\RendersWidget;
 use Porta\Widget\Settings\KeybindingsListWidget;
 use Symfony\Component\Tui\Ansi\AnsiUtils;
 use Symfony\Component\Tui\Render\RenderContext;
 
 final class KeybindingsListWidgetTest extends TestCase
 {
+    use RendersWidget;
+
     /** @return list<KeybindingRow> */
     private function rows(): array
     {
@@ -34,11 +37,6 @@ final class KeybindingsListWidgetTest extends TestCase
         });
 
         return $widget;
-    }
-
-    private function plain(array $lines): string
-    {
-        return implode("\n", array_map(AnsiUtils::stripAnsiCodes(...), $lines));
     }
 
     public function testRendersLabelsFormattedShortcutsAndUnbound(): void

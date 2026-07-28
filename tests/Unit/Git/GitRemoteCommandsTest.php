@@ -10,6 +10,7 @@ use Porta\Git\GitRemote;
 use Porta\Git\GitRemoteCommands;
 use Porta\I18n\Translator;
 use Porta\Tests\Support\PumpsLoop;
+use Porta\Tests\Support\StatusReads;
 use Porta\Tests\Support\TempProject;
 use Porta\Widget\CodeEditorWidget;
 use Porta\Widget\StatusBarWidget;
@@ -28,6 +29,7 @@ use Symfony\Component\Tui\Tui;
 final class GitRemoteCommandsTest extends TestCase
 {
     use PumpsLoop;
+    use StatusReads;
 
     private StatusBarWidget $status;
     private CodeEditorWidget $editor;
@@ -46,11 +48,6 @@ final class GitRemoteCommandsTest extends TestCase
         });
 
         return new GitRemoteCommands($remote, new Notifier($this->status, $tui), new Translator('en'), $dispatcher, $this->editor = new CodeEditorWidget(), new WorkspaceViews(), $tui);
-    }
-
-    private function flash(): string
-    {
-        return AnsiUtils::stripAnsiCodes(implode(' ', $this->status->render(new RenderContext(100, 1))));
     }
 
     /** A repo whose origin is itself — every remote operation completes fast. */
@@ -75,10 +72,10 @@ final class GitRemoteCommandsTest extends TestCase
         $commands = $this->commands($this->selfRemoteRepo());
 
         $commands->fetch();
-        $this->assertStringContainsString('Fetching…', $this->flash(), 'the start flash is up while the operation runs');
+        $this->assertStringContainsString('Fetching…', $this->statusRow($this->status), 'the start flash is up while the operation runs');
 
         $this->await(fn (): bool => [] !== $this->events);
-        $this->assertStringContainsString('Fetched', $this->flash());
+        $this->assertStringContainsString('Fetched', $this->statusRow($this->status));
         $this->assertSame('fetch', $this->events[0]->operation);
         $this->assertTrue($this->events[0]->ok);
     }
@@ -92,7 +89,7 @@ final class GitRemoteCommandsTest extends TestCase
         $commands->pull();
         $this->await(fn (): bool => [] !== $this->events);
 
-        $this->assertStringContainsString('Pull failed:', $this->flash());
+        $this->assertStringContainsString('Pull failed:', $this->statusRow($this->status));
         $this->assertFalse($this->events[0]->ok);
         $this->assertSame('pull', $this->events[0]->operation);
     }
@@ -103,9 +100,9 @@ final class GitRemoteCommandsTest extends TestCase
         $commands = $this->commands($remote);
 
         $commands->runOperation('push');
-        $this->assertStringContainsString('Pushing…', $this->flash(), 'runOperation routed to push');
+        $this->assertStringContainsString('Pushing…', $this->statusRow($this->status), 'runOperation routed to push');
         $commands->runOperation('fetch');
-        $this->assertStringContainsString('already running', $this->flash(), 'a second operation is refused while one runs');
+        $this->assertStringContainsString('already running', $this->statusRow($this->status), 'a second operation is refused while one runs');
         $commands->runOperation('pull'); // routed, then refused by the busy guard
         $commands->runOperation('unknown'); // silently ignored
 
@@ -131,7 +128,7 @@ final class GitRemoteCommandsTest extends TestCase
         $commands = $this->commands(new GitRemote($plain->dir));
 
         $commands->fetch();
-        $this->assertStringContainsString('Not a git repository', $this->flash());
+        $this->assertStringContainsString('Not a git repository', $this->statusRow($this->status));
         $this->assertSame([], $this->events, 'nothing ran, nothing dispatched');
     }
 
@@ -190,7 +187,7 @@ final class GitRemoteCommandsTest extends TestCase
         $this->editor->handleInput("\r");
         $this->await(fn (): bool => \count($this->events) >= 2);
         $this->assertTrue($this->events[1]->ok, 'the rebase pull succeeded');
-        $this->assertStringContainsString('Pulled', $this->flash());
+        $this->assertStringContainsString('Pulled', $this->statusRow($this->status));
         $this->assertFileExists($this->mine->path('remote.txt'));
     }
 
@@ -228,7 +225,7 @@ final class GitRemoteCommandsTest extends TestCase
         $this->await(fn (): bool => [] !== $this->events);
         $this->assertFalse($this->events[0]->ok);
         $this->assertFalse($this->editor->isOverlayOpen(), 'a rejected push is not an upstream offer');
-        $this->assertStringContainsString('Push failed:', $this->flash());
+        $this->assertStringContainsString('Push failed:', $this->statusRow($this->status));
     }
 
     public function testPushWithoutUpstreamOffersSetUpstream(): void
@@ -253,13 +250,13 @@ final class GitRemoteCommandsTest extends TestCase
         $commands = $this->commands($remote);
 
         $commands->cancelOperation();
-        $this->assertStringContainsString('No git remote operation is running', $this->flash());
+        $this->assertStringContainsString('No git remote operation is running', $this->statusRow($this->status));
 
         $commands->fetch();
         $this->assertTrue($remote->isBusy());
         $commands->cancelOperation();
         $this->assertFalse($remote->isBusy());
-        $this->assertStringContainsString('Git remote operation cancelled', $this->flash());
+        $this->assertStringContainsString('Git remote operation cancelled', $this->statusRow($this->status));
         $this->assertSame([], $this->events, 'no completion event is synthesized for a cancel');
     }
 

@@ -7,12 +7,15 @@ namespace Porta\Tests\Unit\Widget\Settings;
 use PHPUnit\Framework\TestCase;
 use Porta\I18n\Translator;
 use Porta\Tests\Support\AttachedStyles;
+use Porta\Tests\Support\RendersWidget;
 use Porta\Widget\Settings\SettingsNavWidget;
 use Symfony\Component\Tui\Ansi\AnsiUtils;
 use Symfony\Component\Tui\Render\RenderContext;
 
 final class SettingsNavWidgetTest extends TestCase
 {
+    use RendersWidget;
+
     private function widget(?array &$selected = null): SettingsNavWidget
     {
         $selected = [];
@@ -24,11 +27,6 @@ final class SettingsNavWidgetTest extends TestCase
         });
 
         return $widget;
-    }
-
-    private function plain(array $lines): string
-    {
-        return implode("\n", array_map(AnsiUtils::stripAnsiCodes(...), $lines));
     }
 
     public function testRendersSectionsHeaderAndLanguages(): void

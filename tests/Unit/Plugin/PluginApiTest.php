@@ -17,6 +17,7 @@ use Porta\Plugin\PluginSettings;
 use Porta\Tests\Support\Presence;
 use Porta\Tests\Support\RecordingDiagnosticsSink;
 use Porta\Tests\Support\RecordingFileOpener;
+use Porta\Tests\Support\StatusReads;
 use Porta\Tests\Support\TempProject;
 use Porta\Widget\CodeEditorWidget;
 use Porta\Widget\StatusBarWidget;
@@ -29,6 +30,8 @@ use Symfony\Component\Tui\Tui;
 
 final class PluginApiTest extends TestCase
 {
+    use StatusReads;
+
     private CodeEditorWidget $editor;
     private StatusBarWidget $status;
     private RecordingFileOpener $files;
@@ -47,11 +50,6 @@ final class PluginApiTest extends TestCase
         }
 
         return new PluginApi('demo', $manager, '/p', new PluginSettings('/p', []));
-    }
-
-    private function flash(): string
-    {
-        return \Symfony\Component\Tui\Ansi\AnsiUtils::stripAnsiCodes(implode(' ', $this->status->render(new \Symfony\Component\Tui\Render\RenderContext(100, 1))));
     }
 
     public function testRegistrationBuffersNamespacedCommandsAndValidatesIds(): void
@@ -237,7 +235,7 @@ final class PluginApiTest extends TestCase
         $api = $this->api();
 
         $api->flash('hi', 1.5);
-        $this->assertStringContainsString('hi', $this->flash());
+        $this->assertStringContainsString('hi', $this->statusRow($this->status));
 
         // No file open: reads are null, insert is a no-op.
         $this->assertNull($api->activeFile());

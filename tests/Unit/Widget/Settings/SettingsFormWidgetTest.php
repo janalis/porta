@@ -9,12 +9,15 @@ use Porta\I18n\Translator;
 use Porta\Settings\SettingsRow;
 use Porta\Settings\SettingsRowKind;
 use Porta\Tests\Support\AttachedStyles;
+use Porta\Tests\Support\RendersWidget;
 use Porta\Widget\Settings\SettingsFormWidget;
 use Symfony\Component\Tui\Ansi\AnsiUtils;
 use Symfony\Component\Tui\Render\RenderContext;
 
 final class SettingsFormWidgetTest extends TestCase
 {
+    use RendersWidget;
+
     /** @return list<SettingsRow> */
     private function rows(): array
     {
@@ -39,11 +42,6 @@ final class SettingsFormWidgetTest extends TestCase
         });
 
         return $widget;
-    }
-
-    private function plain(array $lines): string
-    {
-        return implode("\n", array_map(AnsiUtils::stripAnsiCodes(...), $lines));
     }
 
     public function testRendersCheckboxesSteppersAndRestartNote(): void

@@ -16,6 +16,7 @@ use Porta\Settings\SettingsPluginsController;
 use Porta\Settings\SettingsRowKind;
 use Porta\Tests\Support\FakePluginLifecycle;
 use Porta\Tests\Support\PumpsLoop;
+use Porta\Tests\Support\StatusReads;
 use Porta\Tests\Support\TempProject;
 use Porta\Widget\StatusBarWidget;
 use Porta\Workbench\Notifier;
@@ -29,6 +30,7 @@ use Symfony\Component\Tui\Tui;
 final class SettingsPluginsControllerTest extends TestCase
 {
     use PumpsLoop;
+    use StatusReads;
 
     private TempProject $project;
     private TempProject $global;
@@ -90,11 +92,6 @@ final class SettingsPluginsControllerTest extends TestCase
         file_put_contents($dir.'/plugin.php', data: "<?php\n");
 
         return $dir;
-    }
-
-    private function flash(): string
-    {
-        return $this->status->render(new \Symfony\Component\Tui\Render\RenderContext(120, 1))[0];
     }
 
     public function testRowsShapeScopeChoiceInstallFieldAndRemoveButtons(): void
@@ -187,7 +184,7 @@ final class SettingsPluginsControllerTest extends TestCase
 
         $controller->change('pluginInstall', $this->sourceDir('demo'));
         $this->assertSame([$this->global->dir.'/.porta/plugins/demo/plugin.php'], $this->lifecycle->activated, 'installed into the chosen scope and activated');
-        $this->assertStringContainsString('Plugin installed — default keybindings apply on restart', $this->flash());
+        $this->assertStringContainsString('Plugin installed — default keybindings apply on restart', $this->statusRow($this->status, 120));
         $this->assertSame(1, $this->lifecycle->refreshed);
     }
 
@@ -195,13 +192,13 @@ final class SettingsPluginsControllerTest extends TestCase
     {
         $controller = $this->controller();
         $controller->change('pluginInstall', $this->project->dir.'/missing');
-        $this->assertStringContainsString('git is not available', $this->flash(), 'a nonexistent path falls through to the clone branch');
+        $this->assertStringContainsString('git is not available', $this->statusRow($this->status, 120), 'a nonexistent path falls through to the clone branch');
         $this->assertSame([], $this->lifecycle->activated);
         $this->assertSame(1, $this->lifecycle->refreshed, 'the section still refreshes after a failure');
 
         $this->lifecycle->activateResult = 'Plugin "demo" failed to load: nope';
         $controller->change('pluginInstall', $this->sourceDir('demo'));
-        $this->assertStringContainsString('Plugin "demo" failed to load: nope', $this->flash());
+        $this->assertStringContainsString('Plugin "demo" failed to load: nope', $this->statusRow($this->status, 120));
     }
 
     public function testRemovalNeedsTwoPressesAndDisarmsOnAnythingElse(): void
@@ -210,16 +207,16 @@ final class SettingsPluginsControllerTest extends TestCase
         $this->seedPlugin($this->project, 'demo');
 
         $controller->change('pluginRemove:project:demo', 'Remove');
-        $this->assertStringContainsString('Press Enter again to remove "demo"', $this->flash());
+        $this->assertStringContainsString('Press Enter again to remove "demo"', $this->statusRow($this->status, 120));
         $this->assertDirectoryExists($this->project->dir.'/.porta/plugins/demo');
 
         $controller->change('pluginScope', 'global'); // anything else disarms
         $controller->change('pluginRemove:project:demo', 'Remove');
-        $this->assertStringContainsString('Press Enter again to remove "demo"', $this->flash());
+        $this->assertStringContainsString('Press Enter again to remove "demo"', $this->statusRow($this->status, 120));
         $this->assertDirectoryExists($this->project->dir.'/.porta/plugins/demo');
 
         $controller->change('pluginRemove:project:demo', 'Remove'); // the confirming press
-        $this->assertStringContainsString('Plugin "demo" removed', $this->flash());
+        $this->assertStringContainsString('Plugin "demo" removed', $this->statusRow($this->status, 120));
         $this->assertDirectoryDoesNotExist($this->project->dir.'/.porta/plugins/demo');
     }
 
@@ -231,7 +228,7 @@ final class SettingsPluginsControllerTest extends TestCase
 
         $controller->change('pluginRemove:project:one', 'Remove');
         $controller->change('pluginRemove:project:two', 'Remove'); // re-arms onto "two"
-        $this->assertStringContainsString('Press Enter again to remove "two"', $this->flash());
+        $this->assertStringContainsString('Press Enter again to remove "two"', $this->statusRow($this->status, 120));
         $this->assertDirectoryExists($this->project->dir.'/.porta/plugins/one');
         $this->assertDirectoryExists($this->project->dir.'/.porta/plugins/two');
 
@@ -270,10 +267,10 @@ final class SettingsPluginsControllerTest extends TestCase
         $this->declareInstaller('demo', 'phpstan', available: false);
 
         $controller->changePlugin('demo', 'pluginInstallBinary', false);
-        $this->assertStringContainsString('Installing phpstan', $this->flash());
+        $this->assertStringContainsString('Installing phpstan', $this->statusRow($this->status, 120));
 
         $this->await(fn (): bool => 0 < $this->lifecycle->refreshed);
-        $this->assertStringContainsString('Installed phpstan', $this->flash());
+        $this->assertStringContainsString('Installed phpstan', $this->statusRow($this->status, 120));
         $this->assertSame(['demo'], $this->lifecycle->providerSettingChanged, 'a successful install relaunches the provider');
         $this->assertSame(1, $this->lifecycle->refreshed);
     }
@@ -287,7 +284,7 @@ final class SettingsPluginsControllerTest extends TestCase
 
         $controller->changePlugin('demo', 'pluginInstallBinary', false);
         $this->await(fn (): bool => 0 < $this->lifecycle->refreshed);
-        $this->assertStringContainsString('Could not install phpstan', $this->flash());
+        $this->assertStringContainsString('Could not install phpstan', $this->statusRow($this->status, 120));
         $this->assertSame([], $this->lifecycle->providerSettingChanged, 'a failed install reconfigures nothing');
         $this->assertSame(1, $this->lifecycle->refreshed, 'the page still refreshes so the row state is current');
     }
@@ -303,7 +300,7 @@ final class SettingsPluginsControllerTest extends TestCase
         ]);
 
         $controller->changePlugin('demo', 'pluginInstallBinary', false);
-        $this->assertStringContainsString('No installer found for phpantom', $this->flash());
+        $this->assertStringContainsString('No installer found for phpantom', $this->statusRow($this->status, 120));
         $this->assertSame(0, $this->lifecycle->refreshed, 'nothing ran, so no reconfigure');
     }
 
@@ -316,7 +313,7 @@ final class SettingsPluginsControllerTest extends TestCase
 
         $controller->changePlugin('demo', 'pluginInstallBinary', false); // starts, stays running
         $controller->changePlugin('demo', 'pluginInstallBinary', false); // rejected
-        $this->assertStringContainsString('An install is already running', $this->flash());
+        $this->assertStringContainsString('An install is already running', $this->statusRow($this->status, 120));
     }
 
     public function testInstallingWithoutADeclaredOfferIsANoOp(): void

@@ -15,6 +15,7 @@ use Porta\Settings\SettingsLspController;
 use Porta\Settings\SettingsRowKind;
 use Porta\Tests\Support\FixedActiveFile;
 use Porta\Tests\Support\PreservesPath;
+use Porta\Tests\Support\StatusReads;
 use Porta\Tests\Support\TempProject;
 use Porta\Widget\StatusBarWidget;
 use Porta\Workbench\Notifier;
@@ -24,6 +25,7 @@ use Symfony\Component\Tui\Tui;
 final class SettingsLspControllerTest extends TestCase
 {
     use PreservesPath;
+    use StatusReads;
 
     private int $reopened = 0;
 
@@ -67,11 +69,6 @@ final class SettingsLspControllerTest extends TestCase
             new Notifier($status, $tui),
             new Translator('en'),
         );
-    }
-
-    private function flashText(StatusBarWidget $status): string
-    {
-        return $status->activeFlash() ?? '';
     }
 
     public function testRowShowsTheOverrideAndAnAutoHint(): void

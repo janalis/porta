@@ -9,6 +9,7 @@ use Porta\Git\ChangeEntry;
 use Porta\Git\GitInfo;
 use Porta\Git\GitStagingService;
 use Porta\I18n\Translator;
+use Porta\Tests\Support\StatusReads;
 use Porta\Tests\Support\TempProject;
 use Porta\Widget\Git\CommitBoxWidget;
 use Porta\Widget\StatusBarWidget;
@@ -18,6 +19,8 @@ use Symfony\Component\Tui\Tui;
 
 final class GitStagingServiceTest extends TestCase
 {
+    use StatusReads;
+
     private function service(string $rootDir, StatusBarWidget $status): GitStagingService
     {
         $translator = new Translator('en');
@@ -29,11 +32,6 @@ final class GitStagingServiceTest extends TestCase
             new Notifier($status, new Tui(terminal: new VirtualTerminal(columns: 80, rows: 24))),
             $translator,
         );
-    }
-
-    private function flashText(StatusBarWidget $status): string
-    {
-        return $status->activeFlash() ?? '';
     }
 
     public function testDiscardingAnUnremovableUntrackedFileStillFlashes(): void

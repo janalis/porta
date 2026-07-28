@@ -8,6 +8,7 @@ use PHPUnit\Framework\TestCase;
 use Porta\I18n\Translator;
 use Porta\Support\DocsUrlOpener;
 use Porta\Tests\Support\PreservesPath;
+use Porta\Tests\Support\StatusReads;
 use Porta\Tests\Support\TempProject;
 use Porta\Widget\StatusBarWidget;
 use Porta\Workbench\Notifier;
@@ -17,11 +18,7 @@ use Symfony\Component\Tui\Tui;
 final class DocsUrlOpenerTest extends TestCase
 {
     use PreservesPath;
-
-    private function flashText(StatusBarWidget $status): string
-    {
-        return $status->activeFlash() ?? '';
-    }
+    use StatusReads;
 
     public function testWithoutAnOpenerOnPathTheUrlItselfIsFlashed(): void
     {

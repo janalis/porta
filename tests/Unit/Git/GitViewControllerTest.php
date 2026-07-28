@@ -23,6 +23,7 @@ use Porta\Layout\LayoutController;
 use Porta\Support\Clipboard;
 use Porta\Tests\Support\Presence;
 use Porta\Tests\Support\PumpsLoop;
+use Porta\Tests\Support\StatusReads;
 use Porta\Tests\Support\TempProject;
 use Porta\Tests\Support\TestBottomDock;
 use Porta\Widget\CodeEditorWidget;
@@ -62,6 +63,7 @@ use Symfony\Component\Tui\Widget\ContainerWidget;
 final class GitViewControllerTest extends TestCase
 {
     use PumpsLoop;
+    use StatusReads;
 
     private TempProject $project;
     private GitInfo $git;
@@ -167,11 +169,6 @@ final class GitViewControllerTest extends TestCase
         );
     }
 
-    private function statusFlash(): string
-    {
-        return AnsiUtils::stripAnsiCodes(implode(' ', $this->statusBar->render(new RenderContext(100, 1))));
-    }
-
     /** @return list<string> porcelain rows of the test repo */
     private function porcelain(): array
     {
@@ -186,7 +183,7 @@ final class GitViewControllerTest extends TestCase
         $controller->open();
 
         $this->assertFalse($controller->isOpen());
-        $this->assertStringContainsString('Not a git repository', $this->statusFlash());
+        $this->assertStringContainsString('Not a git repository', $this->statusRow($this->statusBar));
     }
 
     public function testToggleSwapsTheMainChildrenAndRestoresThem(): void
@@ -306,7 +303,7 @@ final class GitViewControllerTest extends TestCase
         $this->changes->handleInput('y');
         // Await the flash (fired after the restore's exit), not the worktree
         // state — git cleans the file before its process exits.
-        $this->await(fn (): bool => str_contains($this->statusFlash(), 'Discarded changes to a.txt'));
+        $this->await(fn (): bool => str_contains($this->statusRow($this->statusBar), 'Discarded changes to a.txt'));
 
         $this->assertSame("one\ntwo\n", file_get_contents($this->project->path('a.txt')));
         $this->assertSame([], $this->porcelain());
@@ -326,7 +323,7 @@ final class GitViewControllerTest extends TestCase
         }
         $this->commitBox->handleInput("\x1b[13;5u"); // ctrl+enter
         $this->await(fn (): bool => 1 === $this->committed);
-        $this->assertStringContainsString('Committed:', $this->statusFlash());
+        $this->assertStringContainsString('Committed:', $this->statusRow($this->statusBar));
         $this->assertSame('', $this->commitBox->message(), 'the box clears after a commit');
 
         // Second commit with a clean index: git refuses, the failure path flashes.
@@ -337,7 +334,7 @@ final class GitViewControllerTest extends TestCase
         // commitEnabled() blocks submit() now, so drive the pipeline directly
         // through a forced submit with a staged predicate bypassed via reflection.
         new \ReflectionMethod($controller, 'commit')->invoke($controller, 'Nothing');
-        $this->await(fn (): bool => str_contains($this->statusFlash(), 'Commit failed'));
+        $this->await(fn (): bool => str_contains($this->statusRow($this->statusBar), 'Commit failed'));
         $this->assertSame(1, $this->committed, 'a failed commit fires no onCommitted');
     }
 
@@ -405,7 +402,7 @@ final class GitViewControllerTest extends TestCase
 
         $ghost = new \Porta\Git\ChangeEntry('does-not-exist.txt', ' ', 'M');
         new \ReflectionMethod($controller, 'toggleStage')->invoke($controller, $ghost);
-        $this->await(fn (): bool => str_contains($this->statusFlash(), 'git refused the staging change'));
+        $this->await(fn (): bool => str_contains($this->statusRow($this->statusBar), 'git refused the staging change'));
         $this->addToAssertionCount(1); // the throwing awaits above are the assertions
     }
 
@@ -481,7 +478,7 @@ final class GitViewControllerTest extends TestCase
         $this->diffView->setFocused(true);
         $this->diffView->handleInput("\x1b[B");
         $this->diffView->handleInput(' '); // untracked: flash, no patch
-        $this->await(fn (): bool => str_contains($this->statusFlash(), 'stage the whole file'));
+        $this->await(fn (): bool => str_contains($this->statusRow($this->statusBar), 'stage the whole file'));
         $this->assertSame(['?? new.txt'], $this->porcelain(), 'nothing was staged');
 
         // Guard: no shown document at all.
@@ -499,14 +496,14 @@ final class GitViewControllerTest extends TestCase
 
         // A context-only selection builds no patch and is a silent no-op.
         new \ReflectionMethod($controller, 'stageSelection')->invoke($controller, [0 => [2 => true]]);
-        $this->assertStringNotContainsString('git apply', $this->statusFlash());
+        $this->assertStringNotContainsString('git apply', $this->statusRow($this->statusBar));
 
         // Corrupt the worktree state between diff load and apply: replace the
         // file so the crafted patch no longer matches the index.
         $this->project->git('add', 'a.txt'); // index = edited
         $this->diffView->setFocused(true);
         $this->diffView->handleInput(' '); // whole first hunk, built against the OLD worktree diff
-        $this->await(fn (): bool => str_contains($this->statusFlash(), 'git apply refused'));
+        $this->await(fn (): bool => str_contains($this->statusRow($this->statusBar), 'git apply refused'));
     }
 
     public function testDiffPrefsApplyOnOpenAndPersistOnToggle(): void
@@ -537,7 +534,7 @@ final class GitViewControllerTest extends TestCase
         $this->diffView->handleInput("\x03");
 
         $this->assertStringContainsString("\x1b]52;c;".base64_encode("one\ntwo\n"), $this->tui->getTerminal()->getOutput(), 'the diff selection reached the OSC 52 clipboard');
-        $this->assertStringContainsString('Copied 2 lines', $this->statusFlash());
+        $this->assertStringContainsString('Copied 2 lines', $this->statusRow($this->statusBar));
     }
 
     public function testWhitespaceToggleHidesWhitespaceHunksAndBlocksStaging(): void
@@ -552,19 +549,19 @@ final class GitViewControllerTest extends TestCase
         $this->diffView->handleInput('w');
         $this->await(fn (): bool => !str_contains($this->diffText(), '+  one'), what: 'the indent-only pair disappears');
         $this->assertStringContainsString('+two CHANGED', $this->diffText(), 'real changes survive');
-        $this->assertStringContainsString('Whitespace changes hidden', $this->statusFlash());
+        $this->assertStringContainsString('Whitespace changes hidden', $this->statusRow($this->statusBar));
         $this->assertSame(['layout' => DiffLayout::Unified, 'whitespace' => WhitespaceMode::Hidden], $this->layoutController->gitDiffPrefs(), 'the preference persisted');
 
         // Staging is blocked while whitespace is hidden: a -w diff cannot
         // produce an appliable patch.
         $this->diffView->handleInput("\x1b[B");
         $this->diffView->handleInput(' ');
-        $this->await(fn (): bool => str_contains($this->statusFlash(), 'Show whitespace changes to stage lines'));
+        $this->await(fn (): bool => str_contains($this->statusRow($this->statusBar), 'Show whitespace changes to stage lines'));
         $this->assertSame([' M a.txt'], $this->porcelain(), 'nothing was staged');
 
         $this->diffView->handleInput('w'); // back on
         $this->await(fn (): bool => str_contains($this->diffText(), '+  one'));
-        $this->assertStringContainsString('Whitespace changes shown', $this->statusFlash());
+        $this->assertStringContainsString('Whitespace changes shown', $this->statusRow($this->statusBar));
     }
 
     public function testWhitespaceOnlyChangeShowsThePlaceholder(): void
@@ -612,16 +609,16 @@ final class GitViewControllerTest extends TestCase
         $this->diffView->setFocused(true);
         $this->diffView->handleInput('c');
         $this->await(fn (): bool => str_contains($this->diffText(), 'line 5 '), what: '-U10 pulls in farther context');
-        $this->assertStringContainsString('Diff context: ±10 lines', $this->statusFlash());
+        $this->assertStringContainsString('Diff context: ±10 lines', $this->statusRow($this->statusBar));
         $this->assertStringNotContainsString('line 1 ', $this->diffText());
 
         $this->diffView->handleInput('c');
         $this->await(fn (): bool => str_contains($this->diffText(), 'line 1 '), what: 'whole-file context starts at line 1');
-        $this->assertStringContainsString('Diff context: whole file', $this->statusFlash());
+        $this->assertStringContainsString('Diff context: whole file', $this->statusRow($this->statusBar));
 
         $this->diffView->handleInput('c'); // wraps back to the default
         $this->await(fn (): bool => !str_contains($this->diffText(), 'line 5 '));
-        $this->assertStringContainsString('Diff context: default', $this->statusFlash());
+        $this->assertStringContainsString('Diff context: default', $this->statusRow($this->statusBar));
     }
 
     public function testContextCycleGuardsUntrackedAndMissingDiffs(): void
@@ -634,12 +631,12 @@ final class GitViewControllerTest extends TestCase
         // Untracked diffs are already whole-file: flash, no reload.
         $this->diffView->setFocused(true);
         $this->diffView->handleInput('c');
-        $this->assertStringContainsString('Untracked files always show the whole file', $this->statusFlash());
+        $this->assertStringContainsString('Untracked files always show the whole file', $this->statusRow($this->statusBar));
 
         // No shown entry at all: a silent no-op.
         new \ReflectionProperty($controller, 'shownEntry')->setValue($controller, null);
         new \ReflectionMethod($controller, 'cycleContext')->invoke($controller);
-        $this->assertStringContainsString('Untracked files', $this->statusFlash(), 'no new flash replaced the old one');
+        $this->assertStringContainsString('Untracked files', $this->statusRow($this->statusBar), 'no new flash replaced the old one');
     }
 
     public function testHistoryModeBrowsesCommitsAndShowsReadOnlyDiffs(): void
@@ -970,6 +967,6 @@ final class GitViewControllerTest extends TestCase
         $controller = $this->controller(realRepo: Presence::Without);
         $controller->openFileHistory($this->project->path('a.txt'));
         $this->assertFalse($controller->isOpen());
-        $this->assertStringContainsString('Not a git repository', $this->statusFlash());
+        $this->assertStringContainsString('Not a git repository', $this->statusRow($this->statusBar));
     }
 }

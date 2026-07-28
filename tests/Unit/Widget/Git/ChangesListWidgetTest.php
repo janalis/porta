@@ -7,6 +7,7 @@ namespace Porta\Tests\Unit\Widget\Git;
 use PHPUnit\Framework\TestCase;
 use Porta\Git\ChangeEntry;
 use Porta\I18n\Translator;
+use Porta\Tests\Support\RendersWidget;
 use Porta\Widget\Git\ChangesListCallbacks;
 use Porta\Widget\Git\ChangesListWidget;
 use Symfony\Component\Tui\Ansi\AnsiUtils;
@@ -14,6 +15,8 @@ use Symfony\Component\Tui\Render\RenderContext;
 
 final class ChangesListWidgetTest extends TestCase
 {
+    use RendersWidget;
+
     /** @return list<ChangeEntry> */
     private function entries(): array
     {
@@ -23,11 +26,6 @@ final class ChangesListWidgetTest extends TestCase
             new ChangeEntry('c.txt', '?', '?'),
             new ChangeEntry('renamed.php', 'R', ' ', 'old.php'),
         ];
-    }
-
-    private function plain(array $lines): string
-    {
-        return implode("\n", array_map(AnsiUtils::stripAnsiCodes(...), $lines));
     }
 
     public function testRendersHeaderCheckboxesAndStatuses(): void

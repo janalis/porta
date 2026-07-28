@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Porta\Tests\Unit\Widget;
 
 use PHPUnit\Framework\TestCase;
+use Porta\Tests\Support\RendersWidget;
 use Porta\Widget\MenuBarWidget;
 use Porta\Workbench\Menu\Menu;
 use Porta\Workbench\Menu\MenuItem;
@@ -13,6 +14,8 @@ use Symfony\Component\Tui\Render\RenderContext;
 
 final class MenuBarWidgetTest extends TestCase
 {
+    use RendersWidget;
+
     /** @var list<string> */
     private array $ran = [];
 
@@ -49,11 +52,6 @@ final class MenuBarWidgetTest extends TestCase
         foreach ($rows as $i => $row) {
             $this->assertSame($width, AnsiUtils::visibleWidth($row), "row {$i} must be {$width} wide");
         }
-    }
-
-    private function plain(array $rows): string
-    {
-        return AnsiUtils::stripAnsiCodes(implode("\n", $rows));
     }
 
     public function testClosedRendersTitleStripOnly(): void

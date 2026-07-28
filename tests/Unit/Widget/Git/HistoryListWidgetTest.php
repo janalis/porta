@@ -8,6 +8,7 @@ use PHPUnit\Framework\TestCase;
 use Porta\Git\LogEntry;
 use Porta\I18n\Translator;
 use Porta\Tests\Support\AttachedStyles;
+use Porta\Tests\Support\RendersWidget;
 use Porta\Widget\Git\HistoryListCallbacks;
 use Porta\Widget\Git\HistoryListWidget;
 use Symfony\Component\Tui\Ansi\AnsiUtils;
@@ -15,6 +16,8 @@ use Symfony\Component\Tui\Render\RenderContext;
 
 final class HistoryListWidgetTest extends TestCase
 {
+    use RendersWidget;
+
     private function widget(): HistoryListWidget
     {
         $widget = new HistoryListWidget(new Translator('en'));
@@ -31,14 +34,14 @@ final class HistoryListWidgetTest extends TestCase
         return $widget;
     }
 
-    private function plain(HistoryListWidget $widget): string
+    private function rendered(HistoryListWidget $widget): string
     {
-        return implode("\n", array_map(AnsiUtils::stripAnsiCodes(...), $widget->render(new RenderContext(44, 16))));
+        return $this->plain($widget->render(new RenderContext(44, 16)));
     }
 
     public function testRendersCommitsAndFiles(): void
     {
-        $screen = $this->plain($this->widget());
+        $screen = $this->rendered($this->widget());
 
         $this->assertStringContainsString('History (2)', $screen);
         // With 16 rows and 2 files, filler rows pad the files section.

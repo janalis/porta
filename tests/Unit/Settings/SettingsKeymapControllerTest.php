@@ -8,6 +8,7 @@ use PHPUnit\Framework\TestCase;
 use Porta\Config\IdeConfig;
 use Porta\I18n\Translator;
 use Porta\Settings\SettingsKeymapController;
+use Porta\Tests\Support\StatusReads;
 use Porta\Tests\Support\TempProject;
 use Porta\Widget\CodeEditorWidget;
 use Porta\Widget\StatusBarWidget;
@@ -18,16 +19,13 @@ use Symfony\Component\Tui\Tui;
 
 final class SettingsKeymapControllerTest extends TestCase
 {
+    use StatusReads;
+
     private function controller(string $rootDir, StatusBarWidget $status, Keybindings $ideKeys): SettingsKeymapController
     {
         $tui = new Tui(terminal: new VirtualTerminal(columns: 80, rows: 24));
 
         return new SettingsKeymapController(new CodeEditorWidget(), $ideKeys, new Notifier($status, $tui), $rootDir, new Translator('en'));
-    }
-
-    private function flashText(StatusBarWidget $status): string
-    {
-        return $status->activeFlash() ?? '';
     }
 
     public function testRowsResolveEditorFirstThenIdeBindings(): void
