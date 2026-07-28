@@ -88,6 +88,11 @@ return static function (ContainerConfigurator $container, ContainerBuilder $buil
         static function (ChildDefinition $definition, AsEventListener $attribute, \ReflectionClass|\ReflectionMethod $reflector): void {
             $tagAttributes = get_object_vars($attribute);
             if ($reflector instanceof \ReflectionMethod) {
+                // FrameworkBundle rejects this contradiction too — the old
+                // closure here silently clobbered a declared method: instead.
+                if (null !== $attribute->method) {
+                    throw new LogicException(\sprintf('#[AsEventListener] on method %s::%s() must not declare method: "%s".', $reflector->class, $reflector->getName(), $attribute->method));
+                }
                 $tagAttributes['method'] = $reflector->getName();
             }
             $definition->addTag('kernel.event_listener', $tagAttributes);
