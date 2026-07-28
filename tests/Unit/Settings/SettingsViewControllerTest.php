@@ -132,9 +132,6 @@ final class SettingsViewControllerTest extends TestCase
             TestWorkspaceLayout::create(
                 rootDir: $this->project->dir,
                 editor: $editor,
-                settingsNav: $this->nav,
-                settingsForm: $this->form,
-                settingsKeys: $this->keymapList,
                 menuBar: $menuBar,
                 statusBar: $status,
             ),

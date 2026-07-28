@@ -16,14 +16,9 @@ use Porta\Widget\FileTreeWidget;
 use Porta\Widget\FindBarWidget;
 use Porta\Widget\Git\ChangesListWidget;
 use Porta\Widget\Git\CommitBoxWidget;
-use Porta\Widget\Git\DiffViewWidget;
 use Porta\Widget\Git\GitTabsWidget;
-use Porta\Widget\Git\HistoryListWidget;
 use Porta\Widget\MenuBarWidget;
 use Porta\Widget\ResultsPanelWidget;
-use Porta\Widget\Settings\KeybindingsListWidget;
-use Porta\Widget\Settings\SettingsFormWidget;
-use Porta\Widget\Settings\SettingsNavWidget;
 use Porta\Widget\StatusBarWidget;
 use Porta\Widget\TabBarWidget;
 use Porta\Widget\TerminalPanelWidget;
@@ -32,7 +27,7 @@ use Symfony\Component\Tui\Widget\AbstractWidget;
 /**
  * Builds a {@see WorkspaceLayout} over throwaway widgets for unit tests, so
  * a constructor change lands here once instead of in every test that used to
- * spell out the full 20-widget construction. Pass named overrides for the
+ * spell out the full 15-widget construction. Pass named overrides for the
  * widgets a test needs to hold; every widget the factory creates itself gets
  * its production `#[AsWidget]` id (the container applies those in the real
  * boot), while overrides are used untouched.
@@ -48,11 +43,6 @@ final class TestWorkspaceLayout
         ?GitTabsWidget $gitTabs = null,
         ?ChangesListWidget $gitChanges = null,
         ?CommitBoxWidget $gitCommitBox = null,
-        ?DiffViewWidget $gitDiff = null,
-        ?HistoryListWidget $gitHistory = null,
-        ?SettingsNavWidget $settingsNav = null,
-        ?SettingsFormWidget $settingsForm = null,
-        ?KeybindingsListWidget $settingsKeys = null,
         ?MenuBarWidget $menuBar = null,
         ?ContextMenu $contextMenu = null,
         ?FindBarWidget $findBar = null,
@@ -78,11 +68,6 @@ final class TestWorkspaceLayout
             $gitTabs ?? $id(new GitTabsWidget($t), id: 'git-tabs'),
             $gitChanges ?? $id(new ChangesListWidget($t), id: 'git-changes'),
             $gitCommitBox ?? $id(new CommitBoxWidget($t), id: 'git-commit'),
-            $gitDiff ?? $id(new DiffViewWidget($t), id: 'git-diff'),
-            $gitHistory ?? $id(new HistoryListWidget($t), id: 'git-history'),
-            $settingsNav ?? $id(new SettingsNavWidget($t), id: 'settings-nav'),
-            $settingsForm ?? $id(new SettingsFormWidget($t), id: 'settings-form'),
-            $settingsKeys ?? $id(new KeybindingsListWidget($t), id: 'settings-keys'),
             $menuBar ?? $id(new MenuBarWidget(), id: 'menu'),
             $contextMenu ?? $id(new ContextMenu(), id: 'context-menu'),
             $findBar ?? $id(new FindBarWidget($t), id: 'find-bar'),

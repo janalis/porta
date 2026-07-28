@@ -15,15 +15,10 @@ use Porta\Widget\FileTreeWidget;
 use Porta\Widget\FindBarWidget;
 use Porta\Widget\Git\ChangesListWidget;
 use Porta\Widget\Git\CommitBoxWidget;
-use Porta\Widget\Git\DiffViewWidget;
 use Porta\Widget\Git\GitTabsWidget;
-use Porta\Widget\Git\HistoryListWidget;
 use Porta\Widget\MenuBarWidget;
 use Porta\Widget\ResultsPanelWidget;
 use Porta\Widget\SeparatorWidget;
-use Porta\Widget\Settings\KeybindingsListWidget;
-use Porta\Widget\Settings\SettingsFormWidget;
-use Porta\Widget\Settings\SettingsNavWidget;
 use Porta\Widget\StatusBarWidget;
 use Porta\Widget\Support\TabBarPosition;
 use Porta\Widget\TabBarWidget;
@@ -72,11 +67,6 @@ final class WorkspaceLayout
         GitTabsWidget $gitTabs,
         ChangesListWidget $gitChanges,
         CommitBoxWidget $gitCommitBox,
-        DiffViewWidget $gitDiff,
-        HistoryListWidget $gitHistory,
-        SettingsNavWidget $settingsNav,
-        SettingsFormWidget $settingsForm,
-        KeybindingsListWidget $settingsKeys,
         private readonly MenuBarWidget $menuBar,
         private readonly ContextMenu $contextMenu,
         private readonly FindBarWidget $findBar,
