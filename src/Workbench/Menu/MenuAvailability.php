@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace Porta\Ui\Menu;
+namespace Porta\Workbench\Menu;
 
 /**
  * Whether a menu row is runnable, so it renders normally or dimmed and never

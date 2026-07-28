@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace Porta\Tests\Unit\Ui\Menu;
+namespace Porta\Tests\Unit\Workbench\Menu;
 
 use PHPUnit\Framework\TestCase;
 use Porta\Config\CommandRegistry;
@@ -10,11 +10,11 @@ use Porta\Config\KeyDispatch;
 use Porta\Config\PaletteVisibility;
 use Porta\I18n\Translator;
 use Porta\Plugin\PluginMenuSpec;
-use Porta\Ui\Menu\Menu;
-use Porta\Ui\Menu\MenuItem;
-use Porta\Ui\Menu\MenuModel;
 use Porta\Ui\WorkspaceView;
 use Porta\Widget\CodeEditorWidget;
+use Porta\Workbench\Menu\Menu;
+use Porta\Workbench\Menu\MenuItem;
+use Porta\Workbench\Menu\MenuModel;
 use Symfony\Component\Tui\Input\Keybindings;
 
 final class MenuModelTest extends TestCase

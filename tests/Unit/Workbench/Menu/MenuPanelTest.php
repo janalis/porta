@@ -2,13 +2,13 @@
 
 declare(strict_types=1);
 
-namespace Porta\Tests\Unit\Ui;
+namespace Porta\Tests\Unit\Workbench\Menu;
 
 use PHPUnit\Framework\TestCase;
-use Porta\Ui\Menu\MenuItem;
-use Porta\Ui\MenuPanel;
 use Porta\Ui\Theme\DarkTheme;
 use Porta\Ui\Theme\Styles;
+use Porta\Workbench\Menu\MenuItem;
+use Porta\Workbench\Menu\MenuPanel;
 use Symfony\Component\Tui\Ansi\AnsiUtils;
 
 final class MenuPanelTest extends TestCase

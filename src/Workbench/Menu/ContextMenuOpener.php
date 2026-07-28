@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace Porta\Ui\Menu;
+namespace Porta\Workbench\Menu;
 
 use Porta\Editor\BufferManager;
 use Porta\I18n\Translator;

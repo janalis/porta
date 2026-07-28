@@ -11,7 +11,7 @@ use Symfony\Component\Tui\Input\Keybindings;
  * Implemented by the editor widget (via the vendored `KeybindingsTrait`).
  *
  * Depended on by the keymap settings page, which lists and rebinds these, and —
- * through {@see \Porta\Ui\Menu\EditorCommandTarget} — by the menu builder, which
+ * through {@see \Porta\Workbench\Menu\EditorCommandTarget} — by the menu builder, which
  * shows the editor binding for an action before falling back to the IDE's.
  */
 interface EditorKeymapProvider

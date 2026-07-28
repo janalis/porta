@@ -190,7 +190,7 @@ final class GitViewControllerTest extends TestCase
     {
         $controller = $this->controller();
 
-        $this->menuBar->setMenus([new \Porta\Ui\Menu\Menu('File', [])]);
+        $this->menuBar->setMenus([new \Porta\Workbench\Menu\Menu('File', [])]);
         $this->menuBar->open(0);
         $controller->toggle();
         $this->assertTrue($controller->isOpen());

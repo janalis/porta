@@ -2,12 +2,11 @@
 
 declare(strict_types=1);
 
-namespace Porta\Ui;
+namespace Porta\Workbench\Menu;
 
 use Porta\Support\AnsiText;
-use Porta\Ui\Menu\MenuAvailability;
-use Porta\Ui\Menu\MenuItem;
-use Porta\Ui\Menu\MenuSelection;
+use Porta\Ui\Glyphs;
+use Porta\Ui\Role;
 use Porta\Ui\Theme\Styles;
 use Symfony\Component\Tui\Ansi\AnsiUtils;
 

@@ -6,11 +6,11 @@ namespace Porta\Input;
 
 use Porta\Editor\BufferManager;
 use Porta\Tree\TreeOperations;
-use Porta\Ui\Menu\ContextMenuBuilder;
-use Porta\Ui\Menu\ContextMenuOpener;
 use Porta\Widget\DockTabsWidget;
 use Porta\Widget\MenuBarWidget;
 use Porta\Widget\StatusBarWidget;
+use Porta\Workbench\Menu\ContextMenuBuilder;
+use Porta\Workbench\Menu\ContextMenuOpener;
 use Symfony\Component\Tui\Render\WidgetRect;
 use Symfony\Component\Tui\Tui;
 

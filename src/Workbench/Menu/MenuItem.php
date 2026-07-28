@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace Porta\Ui\Menu;
+namespace Porta\Workbench\Menu;
 
 /**
  * One entry in an application-menu dropdown: a label, its keyboard shortcut for
