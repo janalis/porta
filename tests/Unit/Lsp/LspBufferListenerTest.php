@@ -14,9 +14,9 @@ use Porta\Lsp\CompletionController;
 use Porta\Lsp\LspBufferListener;
 use Porta\Lsp\LspSessionPool;
 use Porta\Tests\Support\FixedActiveFile;
-use Porta\Ui\Notifier;
 use Porta\Widget\CodeEditorWidget;
 use Porta\Widget\StatusBarWidget;
+use Porta\Workbench\Notifier;
 use Symfony\Component\Tui\Terminal\VirtualTerminal;
 use Symfony\Component\Tui\Tui;
 

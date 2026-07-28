@@ -9,7 +9,7 @@ namespace Porta\Support;
  * message. Consumed by Support utilities so they never hold a Ui service —
  * the consuming namespace owns the interface (the LanguageServerProvider
  * precedent), and the alias pass binds the single implementation
- * ({@see \Porta\Ui\Notifier}) with zero config.
+ * ({@see \Porta\Workbench\Notifier}) with zero config.
  */
 interface FlashSink
 {

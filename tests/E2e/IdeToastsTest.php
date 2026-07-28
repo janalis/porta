@@ -8,7 +8,7 @@ use PHPUnit\Framework\TestCase;
 use Porta\Tests\Support\RunsIde;
 use Porta\Tests\Support\TempProject;
 use Porta\Tests\Support\Toasts;
-use Porta\Ui\Notifier;
+use Porta\Workbench\Notifier;
 use Symfony\Component\Tui\Ansi\AnsiUtils;
 
 /**

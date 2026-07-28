@@ -20,7 +20,7 @@ use Porta\Widget\Render\ToastCard;
  * delivered per frame through the panes' toast span slot — a third overlay
  * layer that composites above the modal spans (readable over a dimmed modal)
  * and below the menu dropdowns. Deliberately passive: no backdrop dim, no
- * {@see \Porta\Ui\WorkspaceViews} interlock, no focus change — toasts coexist
+ * {@see \Porta\Workbench\WorkspaceViews} interlock, no focus change — toasts coexist
  * with whatever modal is open and never trap input.
  *
  * Resolved eagerly by {@see \Porta\Ide} — nothing else references it, and

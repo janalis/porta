@@ -9,8 +9,8 @@ use Porta\Editor\EditorViewOptions;
 use Porta\Git\GitRefresher;
 use Porta\Git\GitSettings;
 use Porta\I18n\Translator;
-use Porta\Ui\Notifier;
 use Porta\Widget\StatusBarWidget;
+use Porta\Workbench\Notifier;
 use Symfony\Component\DependencyInjection\Attribute\Autowire;
 use Symfony\Component\Tui\Tui;
 

@@ -2,15 +2,15 @@
 
 declare(strict_types=1);
 
-namespace Porta\Tests\Unit\Ui;
+namespace Porta\Tests\Unit\Workbench;
 
 use PHPUnit\Framework\TestCase;
 use Porta\Editor\BufferManager;
 use Porta\Image\ImageData;
-use Porta\Ui\EditorArea;
 use Porta\Widget\CodeEditorWidget;
 use Porta\Widget\HelpViewerWidget;
 use Porta\Widget\ImageViewerWidget;
+use Porta\Workbench\EditorArea;
 use Symfony\Component\Tui\Terminal\VirtualTerminal;
 use Symfony\Component\Tui\Tui;
 

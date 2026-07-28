@@ -6,7 +6,7 @@ namespace Porta\Container;
 
 /**
  * Marks a service that must be CONSTRUCTED at boot for its constructor's side
- * effect — it registers itself somewhere (attaches to {@see \Porta\Ui\WorkspaceViews},
+ * effect — it registers itself somewhere (attaches to {@see \Porta\Workbench\WorkspaceViews},
  * hooks {@see \Porta\Ui\BidiTui::onBeforeFrame}, …) and has no inbound service
  * reference, so without a forced resolve it would never exist. Autoconfiguration
  * (config/services.php) tags it `porta.eager`; {@see \Porta\Bootstrap\EagerServices}

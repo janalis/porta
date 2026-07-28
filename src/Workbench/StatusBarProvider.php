@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace Porta\Ui;
+namespace Porta\Workbench;
 
 use Porta\Debug\DebugController;
 use Porta\Editor\BufferManager;
@@ -12,6 +12,7 @@ use Porta\I18n\Translator;
 use Porta\Lsp\LspSessionPool;
 use Porta\Support\ProjectPaths;
 use Porta\Ui\Glyphs;
+use Porta\Ui\Role;
 use Porta\Ui\Theme\Styles;
 use Porta\Widget\CodeEditorWidget;
 use Porta\Widget\ImageViewerWidget;

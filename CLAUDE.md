@@ -68,9 +68,15 @@ dangling reference; grep the old namespace to prove zero. Membership rules:
 - **`Overlay/`** — floating surfaces, three tiers: `State/` (mutable per-surface models),
   `Presenter/` (per-frame span producers), `Region/` (geometry/hit-test VOs). Stateless render
   helpers stay in `Widget/Render/` (see Floating surfaces below).
-- **`Ui/`** — cross-cutting UI primitives only (theme: `Role`/`Sgr`/`Glyphs`/`CursorStyle` +
-  `Ui/Theme/`; `BidiTui`, `PaneSegmenter`, `TextField`, focus/list helpers…). Subsystems get
-  subdirs: `Ui/Menu/` (menu **model**), `Ui/Dock/` (dock tab **model**). Their **widgets**
+- **`Ui/`** — the primitive vocabulary ONLY (theme: `Role`/`Sgr`/`Glyphs`/`CursorStyle` +
+  `Ui/Theme/`; `BidiTui`, `PaneSegmenter`, `TextField`, `MultilineInput`, `ClickZones`,
+  list/shortcut helpers…). It is the codebase's most-depended-on namespace, so it imports
+  nothing feature-owned — anything that composes features does not belong here.
+- **`Workbench/`** — the composition tier over the features: the view-interlock registry
+  (`WorkspaceViews`/`WorkspaceView`/`FullScreenView`), `Notifier`/`NotificationLog`,
+  `StatusBarProvider`, focus (`FocusRing`/`FocusCoordinator`), the chrome sweep pair, and the
+  two subsystem **models** — `Workbench/Menu/` (menu model + opener/builder/rebuilder) and
+  `Workbench/Dock/` (dock tab model, `BottomDock`). Their **widgets**
   (`MenuBarWidget`, `ContextMenu`, `DockTabsWidget`, `ResultsPanelWidget`) live in `Widget/`.
 - **`Settings/`** — all settings controllers + the row model (`SettingsRow`/`SettingsRowKind`).
   `Config/` keeps only `.porta.json` parsing (`IdeConfig`) and the Action/Command catalogs.
@@ -109,7 +115,7 @@ the `Input/InputDispatcher` listener, and finally `Bootstrap/StartupWiring::wire
 plugin handlers their live `Plugin/PluginRuntime` seam + flashes the config/plugin load warnings —
 a `WidgetHooks` sibling kept separate so neither constructor grows unwieldy) — commands register
 and menus bake at the **end** of the constructor. Services that must be constructed **eagerly for a self-registering side effect** (they
-attach to `Ui/WorkspaceViews` or hook `BidiTui::onBeforeFrame` and have no inbound reference, so
+attach to `Workbench/WorkspaceViews` or hook `BidiTui::onBeforeFrame` and have no inbound reference, so
 without a forced resolve they never exist) carry **`#[Container/AsEager(priority)]`**; the attribute
 tags them `porta.eager`, and `Bootstrap/EagerServices` iterates the tag once at the ctor tail to
 construct them (the `CommandRegistryPopulator` tagged-iterator pattern). The priority fixes
@@ -118,7 +124,7 @@ contractual construction order (the find→picker→toast presenters). Adopters:
 the three overlay presenters, and `ResponsiveLayout`. The **chrome roots** the live-setting
 appliers sweep (theme/locale/cursor/tab-position → recolor/relabel the whole tree) declare
 themselves the same way with **`#[Container/AsChromeRoot]`** (tag `porta.chrome_root`);
-`Ui/ChromeInvalidator` injects them as a `#[AutowireIterator]` (order-independent — it only clears
+`Workbench/ChromeInvalidator` injects them as a `#[AutowireIterator]` (order-independent — it only clears
 render caches), so there is no `register()` list in `Ide`. The eight chrome widgets carry the
 attribute; the ninth root (`$main`, the `porta.widget.main` getter service) is tagged at its def —
 the `Keybindings`/`event_dispatcher` exception. `tests/Unit/Container/ChromeRootMembershipTest`
@@ -207,7 +213,7 @@ depend on the narrow role they use, not the widget: `Editor/ActiveFileProvider` 
 `EditorInvalidator`, `ModalHost` (`openListOverlay`/`openPrompt`), `EditorDecorationSink` (the eight
 decoration setters), `EditorViewOptions` (the display toggles; the six flags themselves live in
 `Editor/EditorDisplayOptions`, which takes the invalidate closure and repaints only on a real
-change — re-selecting a setting you already have must not flash the pane), `EditorIndentTarget`, `EditorKeymapProvider`, and `Ui/Menu/EditorCommandTarget`
+change — re-selecting a setting you already have must not flash the pane), `EditorIndentTarget`, `EditorKeymapProvider`, and `Workbench/Menu/EditorCommandTarget`
 (the menu chain). `SingleImplAliasPass` aliases each with **zero** container config. A consumer
 whose methods span TWO roles takes **two params of the same widget** (each resolves through its
 own alias natively; tests hand in two narrow fakes): `History/LocalHistoryController`
@@ -219,16 +225,16 @@ methods), `Git/GitRemoteCommands`, `Editor/EditorFileActions` and `Run/RunContro
 hand the widget to `setFocus()` / `EditorFindTarget`), `Input/EditorLayoutPanes` (the mouse
 routers use a wide slice by design — narrowing it is the rejected `Clickable` idea), and the
 one-method callers whose method lives in no role — `Tree/TreeOperations` (`showDocument`),
-`Editor/BreadcrumbTrailProvider` (`scopes`), `Ui/Menu/ContextMenuOpener` (`caretScreenCell`):
+`Editor/BreadcrumbTrailProvider` (`scopes`), `Workbench/Menu/ContextMenuOpener` (`caretScreenCell`):
 **one-consumer interfaces are forbidden**, as is widening an existing role for one caller.
 `WorkspaceLayout`/`EditorArea`/`WorkbenchCommands` want *a widget*; typing them `AbstractWidget`
 would make the param ambiguous to autowiring, so they stay too. `BufferService` (25 public
 methods, 13 concrete consumers) was re-measured: no consumer uses only the `FileOpener` slice,
 so it keeps its concrete hints beyond the extracted `DiagnosticsSink`.
 
-**Full-screen views are a registry, not three fields.** `Ui/WorkspaceViews` keys
-`Ui/FullScreenView` controllers (isOpen/open/close/toggle/focusTarget/`cycleFocus(int): bool`)
-by the `Ui/WorkspaceView` pure enum, whose exhaustive `ownsMainArea()` match makes Welcome's
+**Full-screen views are a registry, not three fields.** `Workbench/WorkspaceViews` keys
+`Workbench/FullScreenView` controllers (isOpen/open/close/toggle/focusTarget/`cycleFocus(int): bool`)
+by the `Workbench/WorkspaceView` pure enum, whose exhaustive `ownsMainArea()` match makes Welcome's
 floating nature declarative: Welcome is *active* without *detaching* the main area, so
 `isAnyOpen()`/`isAttached()` range over `ownsMainArea()` cases only — a 4th view fails
 `composer analyze` until it decides. Every verb (toggle-with-interlock, closeAll, focusTarget,
@@ -249,7 +255,7 @@ widget-tree mount + pane arrangement calls, per-buffer runtime objects
 The widgets' runtime hook registrations (providers, viewer handlers, panel/menu close-focus flow,
 the tree's open hook) live in the container-built `Bootstrap/WidgetHooks::wire()`, called once
 at the ctor tail; the theme/locale menu-rebuild + RTL re-mirroring are the compiled
-`Ui/MenuLayoutRefreshListener` (priority 0, ahead of the −100 chrome sweep). `Plugin/PluginRuntime`
+`Workbench/Menu/MenuLayoutRefreshListener` (priority 0, ahead of the −100 chrome sweep). `Plugin/PluginRuntime`
 and `Widget/EditorCallbacks` are plain services (the runtime consumes the narrow
 `Editor/DiagnosticsSink` seam instead of BufferService). Four objects are handed to the container
 as **synthetic** services right after `Ide` creates them: `Renderer`, `Tui`, `BidiTui` (external
@@ -284,7 +290,7 @@ events (`ThemeChanged`/`LocaleChanged`/`CursorShapeChanged`/`TabBarPositionChang
 `Settings/LiveSettingsApplier`). Emitters autowire the **PSR** interface; `Ide` uses the component
 interface for runtime `addListener` on hand-assembled state (menu rebuild, RTL re-mirroring).
 Priorities are contractual: plugin bridge (`PluginEvents`) and the chrome sweep
-(`Ui/ChromeRefreshListener`) run at **-100**, after core listeners.
+(`Workbench/ChromeRefreshListener`) run at **-100**, after core listeners.
 
 **Git.** `Git/GitProcessRunner` owns the only mutable state in the layer — the in-flight process
 map — so `Git/GitInfo`'s thirty-odd porcelain verbs are stateless argv-builders over it.
@@ -308,19 +314,19 @@ all async work (LSP over stdio, git subprocesses, the integrated terminal PTYs �
 configurations). Nothing blocks; long operations are timers/callbacks on the shared loop.
 
 **Bottom dock.** The terminal panel, the debug panel and the list tools share one dock above
-the status bar, coordinated by `Ui/BottomDock` (also the owner of `Ui/ResultsPanelMode` routing
+the status bar, coordinated by `Workbench/Dock/BottomDock` (also the owner of `Workbench/Dock/ResultsPanelMode` routing
 and the shared focus-return/flash choreography). All three extend
 **`Widget/DockPanelWidget`** (itself an `OverlayWidget`), which is why `BottomDock::visiblePanel()`
 returns one type instead of a three-way union: it declares `statusText()`, `setVisibleRows()` and
 the two verbs that genuinely differ — `wheelBy(int $rows)` (the terminal scrolls its **scrollback**,
 so wheel-up goes into history and the sign flips; the two lists `scrollBy`) and `clickRow(int $row)`
 (a no-op on the terminal, whose body clicks only refocus). Those two retired the `instanceof`
-downcasts in `Input/MouseRouter`. It is a **class, not an interface**, deliberately: `Ui/FocusRing`
+downcasts in `Input/MouseRouter`. It is a **class, not an interface**, deliberately: `Workbench/FocusRing`
 and `Layout/PaneResizer` compare the panel against the focused widget and the router hands it to
 `setFocus()`/the hit-tester, all of which need an `AbstractWidget`. Note `wheelBy` is **not** named
 `scrollBy` (the `Widget/Support/WheelScrollable` verb) precisely because the terminal inverts
-direction — sharing the name would make two opposite meanings look interchangeable. **Every list tool lives as a `Ui/DockToolTab`
-in the `Ui/DockToolTabs` model** — the model, not the widget, is the source of truth: the single
+direction — sharing the name would make two opposite meanings look interchangeable. **Every list tool lives as a `Workbench/Dock/DockToolTab`
+in the `Workbench/Dock/DockToolTabs` model** — the model, not the widget, is the source of truth: the single
 `ResultsPanelWidget` displays exactly one tab, and tool tabs **coexist** (each Find-in-Project
 query, Problems, TODO, each Usages/Choose-target list, the LSP/notification logs, Local History
 — one strip tab apiece, closed only by its ×, no cap). Instance identity is **(mode, title)**:
@@ -330,7 +336,7 @@ re-invoking a tool reuses and refreshes its tab; a different title appends. Swit
 bind so F5/replace/export act on the displayed tab's own query); filter text, collapse, context
 and selection reset — the accepted v1 trade-off of rebinding through the widget's `open()`.
 Async completions (search runs, TODO scans, the live Problems/log refreshes via
-`Ui/DockLiveRefreshListener` on `Event/DiagnosticsChanged`/`LspLogAppended`/`NotificationLogged`)
+`Workbench/Dock/DockLiveRefreshListener` on `Event/DiagnosticsChanged`/`LspLogAppended`/`NotificationLogged`)
 write into their captured tab and reach the widget only through `refreshIfBound` — an inactive
 tab stays fresh in the model and a late grep can never clobber the tool on display.
 `Widget/OverlayWidget` carries the panels' two axes: `isOpen()` (alive) vs `isVisible()`
@@ -421,7 +427,7 @@ same way.
 
 **Commands & keybindings are single-sourced.** `Config/ActionCatalog` is the descriptor table
 for every rebindable action (label + default keys). `Config/CommandRegistry` holds IDE-level
-commands (id → handler, key-bound?, in-palette?). `Ui/Menu/MenuModel` builds the menu bar / context
+commands (id → handler, key-bound?, in-palette?). `Workbench/Menu/MenuModel` builds the menu bar / context
 menus from these. Don't hand-maintain parallel keybinding/palette/menu lists — extend the
 catalog/registry. View gating rides ONE `?\Closure(): ?WorkspaceView $activeView` param and one
 per-view `VIEW_SAFE` map keyed by case name (a new view = one map entry); moving those
@@ -630,7 +636,7 @@ paths take (`Settings/SettingsHighlightController` offering the bundled `tempest
 and is driven only by the plugins settings page
 (activate/deactivate/setEnabled + the settings-nav sync): **live activation** —
 `PluginLoader::loadFile` + `PluginManager::registerCommands` (incremental via a watermark) +
-`Ui/MenuRebuilder::rebuild` — and **live
+`Workbench/Menu/MenuRebuilder::rebuild` — and **live
 deactivation** on removal/disable: `PluginManager::deactivate` filters its state, resets the
 watermark to the filtered count (safe: everything is registered before any deactivate),
 `CommandRegistry::remove` kills palette + key dispatch, `PluginEvents::removeFor` (listeners

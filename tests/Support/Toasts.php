@@ -6,7 +6,7 @@ namespace Porta\Tests\Support;
 
 use Porta\Ide;
 use Porta\Overlay\State\ToastCenter;
-use Porta\Ui\Notifier;
+use Porta\Workbench\Notifier;
 
 /**
  * Reads the live toast stack off a booted Ide — the test-side counterpart of

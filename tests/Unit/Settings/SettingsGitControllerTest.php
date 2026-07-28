@@ -14,9 +14,9 @@ use Porta\I18n\Translator;
 use Porta\Settings\SettingsGitController;
 use Porta\Settings\SettingsRowKind;
 use Porta\Tests\Support\TempProject;
-use Porta\Ui\Notifier;
 use Porta\Widget\CodeEditorWidget;
 use Porta\Widget\StatusBarWidget;
+use Porta\Workbench\Notifier;
 use Symfony\Component\Tui\Terminal\VirtualTerminal;
 use Symfony\Component\Tui\Tui;
 

@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace Porta\Ui;
+namespace Porta\Workbench;
 
 use Porta\Widget\FileTreeWidget;
 use Porta\Workbench\Dock\BottomDock;

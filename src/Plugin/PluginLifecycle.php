@@ -9,10 +9,10 @@ use Porta\Config\PortaJsonWriter;
 use Porta\Container\AsIdeService;
 use Porta\I18n\Translator;
 use Porta\Lsp\LspReconfigurer;
-use Porta\Ui\Notifier;
-use Porta\Ui\WorkspaceViews;
 use Porta\Widget\Settings\SettingsNavWidget;
 use Porta\Workbench\Menu\MenuRebuilder;
+use Porta\Workbench\Notifier;
+use Porta\Workbench\WorkspaceViews;
 use Symfony\Component\DependencyInjection\Attribute\Autowire;
 use Symfony\Component\Tui\Tui;
 

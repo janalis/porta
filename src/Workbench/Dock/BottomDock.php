@@ -7,9 +7,7 @@ namespace Porta\Workbench\Dock;
 use Porta\Container\AsIdeService;
 use Porta\I18n\Translator;
 use Porta\Terminal\TerminalSessions;
-use Porta\Ui\EditorArea;
 use Porta\Ui\Glyphs;
-use Porta\Ui\Notifier;
 use Porta\Widget\DebugPanelWidget;
 use Porta\Widget\DockPanelWidget;
 use Porta\Widget\DockTabsWidget;
@@ -17,6 +15,8 @@ use Porta\Widget\OverlayWidget;
 use Porta\Widget\ResultsPanelWidget;
 use Porta\Widget\Support\ResultsPanelFields;
 use Porta\Widget\TerminalPanelWidget;
+use Porta\Workbench\EditorArea;
+use Porta\Workbench\Notifier;
 use Symfony\Component\Tui\Tui;
 use Symfony\Component\Tui\Widget\AbstractWidget;
 

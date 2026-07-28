@@ -9,10 +9,10 @@ use Porta\I18n\Translator;
 use Porta\Image\ImageDecoder;
 use Porta\Lsp\LspSessionPool;
 use Porta\Support\ProjectPaths;
-use Porta\Ui\Notifier;
 use Porta\Widget\FileTreeWidget;
 use Porta\Widget\HelpViewerWidget;
 use Porta\Widget\ImageViewerWidget;
+use Porta\Workbench\Notifier;
 use Symfony\Component\Tui\Tui;
 
 /**

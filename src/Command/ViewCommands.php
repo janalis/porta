@@ -12,10 +12,10 @@ use Porta\Lsp\FoldingController;
 use Porta\Run\RunController;
 use Porta\Search\Everywhere\SearchEverywhereController;
 use Porta\Settings\SettingsController;
-use Porta\Ui\WorkbenchActions;
-use Porta\Ui\WorkspaceView;
-use Porta\Ui\WorkspaceViews;
 use Porta\Workbench\Dock\BottomDock;
+use Porta\Workbench\WorkbenchActions;
+use Porta\Workbench\WorkspaceView;
+use Porta\Workbench\WorkspaceViews;
 use Symfony\Component\DependencyInjection\Attribute\AsTaggedItem;
 use Symfony\Component\DependencyInjection\Attribute\Autowire;
 

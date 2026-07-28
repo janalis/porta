@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace Porta\Ui;
+namespace Porta\Workbench;
 
 use Porta\Event\DebugStatusChanged;
 use Porta\Event\LspStatusChanged;

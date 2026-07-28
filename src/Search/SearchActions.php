@@ -9,9 +9,9 @@ use Porta\Editor\ActiveFileProvider;
 use Porta\Editor\BufferService;
 use Porta\Editor\OpenFocus;
 use Porta\I18n\Translator;
-use Porta\Ui\Notifier;
 use Porta\Workbench\Dock\BottomDock;
 use Porta\Workbench\Dock\ResultsPanelMode;
+use Porta\Workbench\Notifier;
 
 /**
  * The search entry points behind the commands and tree context menus:

@@ -8,8 +8,8 @@ use PHPUnit\Framework\TestCase;
 use Porta\I18n\Translator;
 use Porta\Support\DocsUrlOpener;
 use Porta\Tests\Support\TempProject;
-use Porta\Ui\Notifier;
 use Porta\Widget\StatusBarWidget;
+use Porta\Workbench\Notifier;
 use Symfony\Component\Tui\Terminal\VirtualTerminal;
 use Symfony\Component\Tui\Tui;
 

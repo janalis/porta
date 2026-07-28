@@ -2,10 +2,10 @@
 
 declare(strict_types=1);
 
-namespace Porta\Tests\Unit\Ui;
+namespace Porta\Tests\Unit\Workbench;
 
 use PHPUnit\Framework\TestCase;
-use Porta\Ui\NotificationLog;
+use Porta\Workbench\NotificationLog;
 use Symfony\Component\Clock\MockClock;
 use Symfony\Component\EventDispatcher\EventDispatcher;
 

@@ -2,15 +2,15 @@
 
 declare(strict_types=1);
 
-namespace Porta\Tests\Unit\Ui;
+namespace Porta\Tests\Unit\Workbench;
 
 use PHPUnit\Framework\TestCase;
 use Porta\Overlay\State\ToastCenter;
 use Porta\Overlay\State\ToastSeverity;
 use Porta\Tests\Support\FakeScheduler;
-use Porta\Ui\NotificationLog;
-use Porta\Ui\Notifier;
 use Porta\Widget\StatusBarWidget;
+use Porta\Workbench\NotificationLog;
+use Porta\Workbench\Notifier;
 use Symfony\Component\Clock\MockClock;
 use Symfony\Component\EventDispatcher\EventDispatcher;
 use Symfony\Component\Tui\Terminal\VirtualTerminal;

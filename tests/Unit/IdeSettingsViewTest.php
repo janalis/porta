@@ -51,7 +51,7 @@ final class IdeSettingsViewTest extends TestCase
         new OnboardingState($project->dir)->markWelcomeSeen();
         $this->ide = new Ide($project->dir, $project->path('a.php'), new VirtualTerminal(columns: 100, rows: 24));
         $this->commands = $this->ide->resolve(CommandRegistry::class);
-        $views = $this->ide->resolve(\Porta\Ui\WorkspaceViews::class);
+        $views = $this->ide->resolve(\Porta\Workbench\WorkspaceViews::class);
         $this->gitView = new \ReflectionProperty($views, 'git')->getValue($views);
         $this->settingsView = new \ReflectionProperty($views, 'settings')->getValue($views);
         $this->main = $this->ide->resolve(WorkspaceLayout::class)->main();

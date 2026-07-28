@@ -7,8 +7,6 @@ namespace Porta\Tests\Support;
 use Porta\Editor\BufferManager;
 use Porta\I18n\Translator;
 use Porta\Terminal\TerminalSessions;
-use Porta\Ui\EditorArea;
-use Porta\Ui\Notifier;
 use Porta\Widget\CodeEditorWidget;
 use Porta\Widget\DebugPanelWidget;
 use Porta\Widget\DockTabsWidget;
@@ -19,6 +17,8 @@ use Porta\Widget\StatusBarWidget;
 use Porta\Widget\TerminalPanelWidget;
 use Porta\Workbench\Dock\BottomDock;
 use Porta\Workbench\Dock\DockToolTabs;
+use Porta\Workbench\EditorArea;
+use Porta\Workbench\Notifier;
 use Symfony\Component\Tui\Tui;
 
 /** Builds a wired {@see BottomDock} over the given panels for unit tests. */

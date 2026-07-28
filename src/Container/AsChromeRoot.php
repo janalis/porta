@@ -8,7 +8,7 @@ namespace Porta\Container;
  * Marks a widget as a chrome root swept by the live-setting appliers — a
  * theme/locale/cursor/tab-position switch must relabel or recolor the whole
  * tree, and widgets cache their rendered lines with only an upward-bubbling
- * invalidate(), so {@see \Porta\Ui\ChromeInvalidator} clears every cache
+ * invalidate(), so {@see \Porta\Workbench\ChromeInvalidator} clears every cache
  * downward from these roots. Autoconfiguration (config/services.php) tags it
  * `porta.chrome_root`; the invalidator injects the tag as a `#[AutowireIterator]`
  * (the {@see AsEager} pattern), so membership travels with the class instead of

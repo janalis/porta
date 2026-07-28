@@ -6,8 +6,8 @@ namespace Porta\Layout;
 
 use Porta\Container\AsEager;
 use Porta\Ui\BidiTui;
-use Porta\Ui\EditorArea;
 use Porta\Widget\FileTreeWidget;
+use Porta\Workbench\EditorArea;
 use Symfony\Component\Tui\Widget\FocusableInterface;
 
 /**

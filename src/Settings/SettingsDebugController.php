@@ -8,7 +8,7 @@ use Porta\Config\LanguageCatalog;
 use Porta\Config\PortaJsonWriter;
 use Porta\Debug\DebugAdapters;
 use Porta\I18n\Translator;
-use Porta\Ui\Notifier;
+use Porta\Workbench\Notifier;
 
 /**
  * The per-language debug rows behind the settings view's Languages section:

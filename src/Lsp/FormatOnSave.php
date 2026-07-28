@@ -8,7 +8,7 @@ use Porta\Editor\Buffer;
 use Porta\Editor\EditorInvalidator;
 use Porta\I18n\Translator;
 use Porta\Support\Scheduler;
-use Porta\Ui\Notifier;
+use Porta\Workbench\Notifier;
 use Symfony\Component\Tui\Tui;
 
 /**

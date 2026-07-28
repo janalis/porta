@@ -8,7 +8,7 @@ use Porta\Config\IdeConfig;
 use Porta\Container\AsIdeService;
 use Porta\Plugin\PluginManager;
 use Porta\Plugin\PluginRuntime;
-use Porta\Ui\Notifier;
+use Porta\Workbench\Notifier;
 
 /**
  * The last step of the Ide ctor-tail composition, run once every service

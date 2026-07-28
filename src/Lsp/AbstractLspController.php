@@ -5,8 +5,8 @@ declare(strict_types=1);
 namespace Porta\Lsp;
 
 use Porta\I18n\Translator;
-use Porta\Ui\Notifier;
 use Porta\Widget\CodeEditorWidget;
+use Porta\Workbench\Notifier;
 use Symfony\Component\Tui\Tui;
 
 /**

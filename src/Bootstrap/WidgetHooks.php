@@ -12,9 +12,6 @@ use Porta\Help\HelpViewerActions;
 use Porta\Image\ImageViewerActions;
 use Porta\Overlay\State\MenuOverlayController;
 use Porta\Run\RunController;
-use Porta\Ui\EditorArea;
-use Porta\Ui\StatusBarProvider;
-use Porta\Ui\WorkspaceViews;
 use Porta\Widget\BreadcrumbsWidget;
 use Porta\Widget\CodeEditorWidget;
 use Porta\Widget\ContextMenu;
@@ -28,6 +25,9 @@ use Porta\Widget\TabBarWidget;
 use Porta\Widget\TerminalPanelWidget;
 use Porta\Workbench\Dock\BottomDock;
 use Porta\Workbench\Dock\TabListProvider;
+use Porta\Workbench\EditorArea;
+use Porta\Workbench\StatusBarProvider;
+use Porta\Workbench\WorkspaceViews;
 use Symfony\Component\Tui\Tui;
 
 /**

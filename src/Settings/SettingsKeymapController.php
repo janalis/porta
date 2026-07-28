@@ -9,8 +9,8 @@ use Porta\Config\KeybindingRow;
 use Porta\Config\PortaJsonWriter;
 use Porta\Editor\EditorKeymapProvider;
 use Porta\I18n\Translator;
-use Porta\Ui\Notifier;
 use Porta\Ui\ShortcutFormatter;
+use Porta\Workbench\Notifier;
 use Symfony\Component\Tui\Input\Keybindings;
 use Symfony\Component\Tui\Input\KeyParser;
 

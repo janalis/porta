@@ -11,7 +11,7 @@ use Porta\Config\PortaJsonWriter;
 use Porta\Container\AsIdeService;
 use Porta\Editor\EditorIndentTarget;
 use Porta\I18n\Translator;
-use Porta\Ui\Notifier;
+use Porta\Workbench\Notifier;
 use Symfony\Component\DependencyInjection\Attribute\Autowire;
 
 /**

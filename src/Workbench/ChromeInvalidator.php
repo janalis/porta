@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace Porta\Ui;
+namespace Porta\Workbench;
 
 use Porta\Container\AsIdeService;
 use Symfony\Component\DependencyInjection\Attribute\AutowireIterator;

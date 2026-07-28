@@ -2,12 +2,12 @@
 
 declare(strict_types=1);
 
-namespace Porta\Tests\Unit\Ui;
+namespace Porta\Tests\Unit\Workbench;
 
 use PHPUnit\Framework\TestCase;
-use Porta\Ui\FullScreenView;
-use Porta\Ui\WorkspaceView;
-use Porta\Ui\WorkspaceViews;
+use Porta\Workbench\FullScreenView;
+use Porta\Workbench\WorkspaceView;
+use Porta\Workbench\WorkspaceViews;
 use Symfony\Component\Tui\Render\RenderContext;
 use Symfony\Component\Tui\Widget\AbstractWidget;
 use Symfony\Component\Tui\Widget\FocusableInterface;

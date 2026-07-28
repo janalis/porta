@@ -10,11 +10,11 @@ use Porta\Config\KeyDispatch;
 use Porta\Config\PaletteVisibility;
 use Porta\I18n\Translator;
 use Porta\Plugin\PluginMenuSpec;
-use Porta\Ui\WorkspaceView;
 use Porta\Widget\CodeEditorWidget;
 use Porta\Workbench\Menu\Menu;
 use Porta\Workbench\Menu\MenuItem;
 use Porta\Workbench\Menu\MenuModel;
+use Porta\Workbench\WorkspaceView;
 use Symfony\Component\Tui\Input\Keybindings;
 
 final class MenuModelTest extends TestCase

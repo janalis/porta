@@ -15,7 +15,7 @@ use Porta\Event\LocaleChanged;
 use Porta\Event\ThemeChanged;
 use Porta\Highlight\HighlightThemeListener;
 use Porta\Plugin\PluginEvents;
-use Porta\Ui\ChromeRefreshListener;
+use Porta\Workbench\ChromeRefreshListener;
 use Porta\Workbench\Menu\MenuLayoutRefreshListener;
 use Symfony\Component\DependencyInjection\ServiceLocator;
 use Symfony\Component\EventDispatcher\EventDispatcher;

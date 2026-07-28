@@ -11,7 +11,7 @@ use Porta\Plugin\PluginLifecycleOps;
 use Porta\Plugin\PluginManager;
 use Porta\Plugin\PluginSettings;
 use Porta\Plugin\ToolInstaller;
-use Porta\Ui\Notifier;
+use Porta\Workbench\Notifier;
 
 /**
  * The Plugins section of the settings view: a scope choice (project/global),

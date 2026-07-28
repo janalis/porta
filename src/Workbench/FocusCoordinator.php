@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace Porta\Ui;
+namespace Porta\Workbench;
 
 /**
  * F6/Ctrl+F6 focus cycling: an open full view (git, settings) owns its own

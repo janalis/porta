@@ -9,8 +9,8 @@ use Porta\Event\LspLogAppended;
 use Porta\Event\NotificationLogged;
 use Porta\Lsp\LspLog;
 use Porta\Search\ProblemRows;
-use Porta\Ui\LogRows;
-use Porta\Ui\NotificationLog;
+use Porta\Workbench\LogRows;
+use Porta\Workbench\NotificationLog;
 use Symfony\Component\EventDispatcher\Attribute\AsEventListener;
 
 /**

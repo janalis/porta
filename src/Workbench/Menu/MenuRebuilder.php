@@ -8,9 +8,9 @@ use Porta\Config\CommandRegistry;
 use Porta\Container\AsIdeService;
 use Porta\I18n\Translator;
 use Porta\Plugin\PluginManager;
-use Porta\Ui\WorkspaceView;
-use Porta\Ui\WorkspaceViews;
 use Porta\Widget\MenuBarWidget;
+use Porta\Workbench\WorkspaceView;
+use Porta\Workbench\WorkspaceViews;
 use Symfony\Component\Tui\Input\Keybindings;
 
 /**

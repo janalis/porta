@@ -7,7 +7,7 @@ namespace Porta\Lsp;
 use Porta\Container\AsIdeService;
 use Porta\Editor\DiagnosticsSink;
 use Porta\I18n\Translator;
-use Porta\Ui\Notifier;
+use Porta\Workbench\Notifier;
 
 /**
  * Declares the configured/detected language servers on the session pool at

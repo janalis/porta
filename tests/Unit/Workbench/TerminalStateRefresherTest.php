@@ -2,10 +2,10 @@
 
 declare(strict_types=1);
 
-namespace Porta\Tests\Unit\Ui;
+namespace Porta\Tests\Unit\Workbench;
 
 use PHPUnit\Framework\TestCase;
-use Porta\Ui\TerminalStateRefresher;
+use Porta\Workbench\TerminalStateRefresher;
 use Symfony\Component\Tui\Terminal\TerminalInterface;
 use Symfony\Component\Tui\Terminal\VirtualTerminal;
 use Symfony\Component\Tui\Tui;

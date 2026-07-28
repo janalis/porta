@@ -7,9 +7,9 @@ namespace Porta\Git;
 use Porta\Event\GitRemoteCompleted;
 use Porta\I18n\Translator;
 use Porta\Support\Outcome;
-use Porta\Ui\Notifier;
-use Porta\Ui\WorkspaceViews;
 use Porta\Widget\CodeEditorWidget;
+use Porta\Workbench\Notifier;
+use Porta\Workbench\WorkspaceViews;
 use Psr\EventDispatcher\EventDispatcherInterface;
 use Symfony\Component\Tui\Tui;
 

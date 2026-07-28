@@ -8,7 +8,7 @@ use Porta\Container\AsIdeService;
 use Porta\Editor\Buffer;
 use Porta\Editor\BufferManager;
 use Porta\Editor\BufferService;
-use Porta\Ui\EditorArea;
+use Porta\Workbench\EditorArea;
 use Symfony\Component\Tui\Tui;
 
 /**

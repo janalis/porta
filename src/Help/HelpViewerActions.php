@@ -10,10 +10,10 @@ use Porta\Editor\FindMode;
 use Porta\Editor\OpenFocus;
 use Porta\I18n\Translator;
 use Porta\Support\DocsUrlOpener;
-use Porta\Ui\Notifier;
 use Porta\Widget\FindBarWidget;
 use Porta\Widget\HelpViewerHandler;
 use Porta\Widget\HelpViewerWidget;
+use Porta\Workbench\Notifier;
 use Symfony\Component\Tui\Tui;
 
 /** The IDE-side implementation of the help viewer's link and tab hooks. */

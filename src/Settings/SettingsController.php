@@ -11,9 +11,9 @@ use Porta\Editor\LineNumberMode;
 use Porta\I18n\Translator;
 use Porta\Search\TodoTags;
 use Porta\Settings\LiveSettingsApplier;
-use Porta\Ui\Notifier;
 use Porta\Ui\Theme\Theme;
 use Porta\Widget\BreadcrumbsWidget;
+use Porta\Workbench\Notifier;
 use Symfony\Component\DependencyInjection\Attribute\Autowire;
 
 /**

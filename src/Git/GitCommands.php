@@ -9,9 +9,9 @@ use Porta\Support\Clipboard;
 use Porta\Support\Outcome;
 use Porta\Support\ProjectPaths;
 use Porta\Ui\Glyphs;
-use Porta\Ui\Notifier;
-use Porta\Ui\WorkspaceViews;
 use Porta\Widget\CodeEditorWidget;
+use Porta\Workbench\Notifier;
+use Porta\Workbench\WorkspaceViews;
 use Symfony\Component\Tui\Tui;
 
 /**

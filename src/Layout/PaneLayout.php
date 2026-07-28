@@ -9,9 +9,9 @@ use Porta\I18n\PaneReorder;
 use Porta\I18n\Translator;
 use Porta\Ui\BidiTui;
 use Porta\Ui\PaneSegmenter;
-use Porta\Ui\WorkspaceViews;
 use Porta\Widget\Git\DiffViewWidget;
 use Porta\Widget\Settings\SettingsNavWidget;
+use Porta\Workbench\WorkspaceViews;
 use Symfony\Component\Tui\Widget\AbstractWidget;
 use Symfony\Component\Tui\Widget\ContainerWidget;
 

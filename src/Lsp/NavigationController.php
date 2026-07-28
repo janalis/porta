@@ -13,11 +13,11 @@ use Porta\Support\DocsUrlOpener;
 use Porta\Support\NativeDocs;
 use Porta\Support\ProjectPaths;
 use Porta\Ui\Glyphs;
-use Porta\Ui\Notifier;
 use Porta\Widget\CodeEditorWidget;
 use Porta\Widget\EditorNavigationHandler;
 use Porta\Workbench\Dock\BottomDock;
 use Porta\Workbench\Dock\ResultsPanelMode;
+use Porta\Workbench\Notifier;
 use Symfony\Component\Tui\Tui;
 
 /**

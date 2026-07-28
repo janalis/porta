@@ -2,10 +2,10 @@
 
 declare(strict_types=1);
 
-namespace Porta\Tests\Unit\Ui;
+namespace Porta\Tests\Unit\Workbench;
 
 use PHPUnit\Framework\TestCase;
-use Porta\Ui\LogRows;
+use Porta\Workbench\LogRows;
 
 final class LogRowsTest extends TestCase
 {

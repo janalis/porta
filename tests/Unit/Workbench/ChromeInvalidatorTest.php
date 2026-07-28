@@ -2,11 +2,11 @@
 
 declare(strict_types=1);
 
-namespace Porta\Tests\Unit\Ui;
+namespace Porta\Tests\Unit\Workbench;
 
 use PHPUnit\Framework\TestCase;
-use Porta\Ui\ChromeInvalidator;
 use Porta\Widget\StatusBarWidget;
+use Porta\Workbench\ChromeInvalidator;
 use Symfony\Component\Tui\Widget\ContainerWidget;
 
 final class ChromeInvalidatorTest extends TestCase

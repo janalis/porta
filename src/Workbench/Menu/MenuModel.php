@@ -9,7 +9,7 @@ use Porta\Config\CommandRegistry;
 use Porta\I18n\Translator;
 use Porta\Plugin\PluginMenuSpec;
 use Porta\Ui\ShortcutFormatter;
-use Porta\Ui\WorkspaceView;
+use Porta\Workbench\WorkspaceView;
 use Symfony\Component\Tui\Input\Keybindings;
 
 /**

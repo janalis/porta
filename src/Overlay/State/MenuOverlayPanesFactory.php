@@ -5,8 +5,6 @@ declare(strict_types=1);
 namespace Porta\Overlay\State;
 
 use Porta\Layout\WorkspaceLayout;
-use Porta\Ui\WorkspaceView;
-use Porta\Ui\WorkspaceViews;
 use Porta\Widget\BreadcrumbsWidget;
 use Porta\Widget\CodeEditorWidget;
 use Porta\Widget\DebugPanelWidget;
@@ -25,6 +23,8 @@ use Porta\Widget\Settings\SettingsFormWidget;
 use Porta\Widget\Settings\SettingsNavWidget;
 use Porta\Widget\TabBarWidget;
 use Porta\Widget\TerminalPanelWidget;
+use Porta\Workbench\WorkspaceView;
+use Porta\Workbench\WorkspaceViews;
 
 /**
  * Assembles the {@see MenuOverlayPanes} value from the autowired widgets, the

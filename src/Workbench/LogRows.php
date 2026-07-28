@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace Porta\Ui;
+namespace Porta\Workbench;
 
 /**
  * Maps a bounded time/text ring (notification log, LSP log) onto the results

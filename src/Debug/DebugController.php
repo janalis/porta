@@ -11,12 +11,12 @@ use Porta\I18n\Translator;
 use Porta\Support\ProjectPaths;
 use Porta\Terminal\TerminalSessions;
 use Porta\Ui\Glyphs;
-use Porta\Ui\Notifier;
 use Porta\Widget\CodeEditorWidget;
 use Porta\Widget\DebugPanelWidget;
 use Porta\Widget\TerminalPanelWidget;
 use Porta\Workbench\Dock\BottomDock;
 use Porta\Workbench\Dock\DockTab;
+use Porta\Workbench\Notifier;
 use Psr\EventDispatcher\EventDispatcherInterface;
 use Symfony\Component\Tui\Tui;
 

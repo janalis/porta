@@ -9,7 +9,7 @@ use Porta\Editor\EditorDecorationSink;
 use Porta\Event\BufferSaved;
 use Porta\Event\BufferSwitched;
 use Porta\I18n\Translator;
-use Porta\Ui\Notifier;
+use Porta\Workbench\Notifier;
 use Symfony\Component\EventDispatcher\Attribute\AsEventListener;
 use Symfony\Component\Tui\Tui;
 

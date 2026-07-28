@@ -9,7 +9,7 @@ use Porta\Editor\DiagnosticsSink;
 use Porta\Editor\EditorTextAccess;
 use Porta\Editor\FileOpener;
 use Porta\I18n\Translator;
-use Porta\Ui\Notifier;
+use Porta\Workbench\Notifier;
 use Symfony\Component\Tui\Tui;
 
 /**

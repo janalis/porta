@@ -8,9 +8,9 @@ use Porta\Container\AsIdeService;
 use Porta\Editor\BufferManager;
 use Porta\I18n\Translator;
 use Porta\Support\ProjectPaths;
-use Porta\Ui\Notifier;
 use Porta\Widget\CodeEditorWidget;
 use Porta\Widget\EditorRefactorHandler;
+use Porta\Workbench\Notifier;
 use Symfony\Component\Tui\Tui;
 
 /**

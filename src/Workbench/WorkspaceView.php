@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace Porta\Ui;
+namespace Porta\Workbench;
 
 /**
  * The full-screen views {@see WorkspaceViews} interlocks. Adding a view means

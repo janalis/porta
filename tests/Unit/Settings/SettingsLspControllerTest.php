@@ -15,8 +15,8 @@ use Porta\Settings\SettingsLspController;
 use Porta\Settings\SettingsRowKind;
 use Porta\Tests\Support\FixedActiveFile;
 use Porta\Tests\Support\TempProject;
-use Porta\Ui\Notifier;
 use Porta\Widget\StatusBarWidget;
+use Porta\Workbench\Notifier;
 use Symfony\Component\Tui\Terminal\VirtualTerminal;
 use Symfony\Component\Tui\Tui;
 

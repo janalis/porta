@@ -10,7 +10,6 @@ use Porta\Editor\OpenFocus;
 use Porta\History\LocalHistoryController;
 use Porta\Overlay\State\FindModalCallbacks;
 use Porta\Support\Scheduler;
-use Porta\Ui\EditorArea;
 use Porta\Widget\CodeEditorWidget;
 use Porta\Widget\FindBarWidget;
 use Porta\Widget\ResultsPanelWidget;
@@ -18,6 +17,7 @@ use Porta\Workbench\Dock\BottomDock;
 use Porta\Workbench\Dock\DockTab;
 use Porta\Workbench\Dock\DockToolTab;
 use Porta\Workbench\Dock\ResultsPanelMode;
+use Porta\Workbench\EditorArea;
 use Symfony\Component\Tui\Tui;
 
 /**

@@ -10,9 +10,9 @@ use Porta\Terminal\PtyProcess;
 use Porta\Terminal\TerminalKeyEncoder;
 use Porta\Terminal\TerminalSession;
 use Porta\Terminal\TerminalSessions;
-use Porta\Ui\Notifier;
 use Porta\Widget\CodeEditorWidget;
 use Porta\Widget\TerminalPanelWidget;
+use Porta\Workbench\Notifier;
 use Symfony\Component\Tui\Tui;
 
 /**

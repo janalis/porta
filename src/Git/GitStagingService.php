@@ -6,8 +6,8 @@ namespace Porta\Git;
 
 use Porta\I18n\Translator;
 use Porta\Support\Outcome;
-use Porta\Ui\Notifier;
 use Porta\Widget\Git\CommitBoxWidget;
+use Porta\Workbench\Notifier;
 use Symfony\Component\Filesystem\Exception\IOExceptionInterface;
 use Symfony\Component\Filesystem\Filesystem;
 

@@ -10,7 +10,7 @@ use Porta\Config\PortaJsonWriter;
 use Porta\I18n\Translator;
 use Porta\Lsp\LspReconfigurer;
 use Porta\Lsp\ServerLocator;
-use Porta\Ui\Notifier;
+use Porta\Workbench\Notifier;
 use Symfony\Component\DependencyInjection\Attribute\Autowire;
 
 /**
