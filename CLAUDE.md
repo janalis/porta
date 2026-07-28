@@ -344,6 +344,21 @@ so a forgotten `#[AsIdeService]` is a loud test failure, not a boot crash. Every
 **never `lazy: true`** — pure overhead for shared app-lifetime services (the old "proxies
 break `final`" reason is obsolete: PHP 8.4 native lazy objects don't subclass).
 
+**Round 9 (the recorded-problems round) — measured verdicts, do not re-litigate without new
+evidence.** `SingleImplAliasPass` was deleted on a measured zero-delta: the loader itself
+registers every singly-implemented alias before any pass runs (`ContainerAliasesTest` pins the
+derivation and the compiled FrameHooks wiring). Discovery excludes the six measured
+100%-non-service tiers; `Config/EditorConfig/` stays discovered (the compiler proved
+`EditorConfigResolver` autowires into `BufferService` — measure exclusions with the compiler, not
+the dump). The porta tag attributes are `AutoconfigureTag` subclasses; the `tagged_iterator`'s
+`indexAttribute: 'key'` must stay (its absence yields numeric keys — the FQCN keys come from the
+trait's service-id fallback), and `tagged_locator()` was REJECTED for `porta.ide` (an
+argument-position construct; the named public def is the canonical kernel-less spelling).
+Considered and deliberately NOT done: `$_ENV`/`getenv` channel unification (runtime-timing risk
+vs low value), `#[When]` env wiring (the loader gets no env, so it can never match — unused),
+`AddEventAliasesPass` (matters only with opcache preloading), and a `test.service_container`
+emulation (the two-method `Ide` seam is the round-8 verdict).
+
 **Events.** `symfony/event-dispatcher`, kernel-less: `config/services.php` registers the
 `#[AsEventListener]` attribute autoconfiguration and the `RegisterListenersPass` (the service id
 must be exactly `event_dispatcher`). Typed domain events live in `src/Event/`: the buffer
