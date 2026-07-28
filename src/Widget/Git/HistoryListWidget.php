@@ -88,16 +88,6 @@ final class HistoryListWidget extends AbstractWidget implements FocusableInterfa
         $this->fileList = new ListSelection();
     }
 
-    public function minWidth(): int
-    {
-        return 24;
-    }
-
-    public function maxWidth(): int
-    {
-        return 200;
-    }
-
     public function onSelectCommit(callable $callback): self
     {
         $this->onSelectCommit = $callback;

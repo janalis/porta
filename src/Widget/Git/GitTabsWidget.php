@@ -58,11 +58,6 @@ final class GitTabsWidget extends AbstractWidget implements MenuOverlayHost
         return 30;
     }
 
-    public function maxWidth(): int
-    {
-        return 200;
-    }
-
     public function maxRatio(): float
     {
         return 0.6;

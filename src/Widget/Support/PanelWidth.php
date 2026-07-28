@@ -22,10 +22,16 @@ trait PanelWidth
     abstract public function invalidate(): void;
 
     /** Narrowest column this panel may be resized to. */
-    abstract public function minWidth(): int;
+    public function minWidth(): int
+    {
+        return 24;
+    }
 
     /** Widest column this panel may be resized to. */
-    abstract public function maxWidth(): int;
+    public function maxWidth(): int
+    {
+        return 200;
+    }
 
     /** Resize the panel to $width columns (clamped to a sensible range). */
     public function setWidth(int $width): void
