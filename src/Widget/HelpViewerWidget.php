@@ -22,6 +22,7 @@ use Porta\Ui\Theme\Styles;
 use Porta\Widget\Render\MenuOverlayHost;
 use Porta\Widget\Render\MenuOverlayHostTrait;
 use Porta\Widget\Support\FillsPaneTrait;
+use Porta\Widget\Support\StylesDefault;
 use Symfony\Component\Tui\Ansi\AnsiUtils;
 use Symfony\Component\Tui\Input\Key;
 use Symfony\Component\Tui\Render\RenderContext;
@@ -47,6 +48,7 @@ final class HelpViewerWidget extends AbstractWidget implements FindTarget, Focus
     use FocusableTrait;
     use KeybindingsTrait;
     use MenuOverlayHostTrait;
+    use StylesDefault;
 
     /** The clickable navigation header occupies the first rendered row. */
     private const int HEADER_ROWS = 1;
@@ -72,13 +74,12 @@ final class HelpViewerWidget extends AbstractWidget implements FindTarget, Focus
     private int $lastRows = 24;
     /** The documentation root directory: the breadcrumb mirrors paths under it. */
     private ?string $docsRoot = null;
-    private readonly Styles $styles;
     private readonly MarkdownRenderer $renderer;
     private ?HelpViewerHandler $handler = null;
 
     public function __construct(?Styles $styles = null)
     {
-        $this->styles = $styles ?? Styles::dark();
+        $this->initStyles($styles);
         $this->renderer = new MarkdownRenderer($this->styles);
         $this->headerZones = new ClickZones();
     }

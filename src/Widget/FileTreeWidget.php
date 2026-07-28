@@ -22,6 +22,7 @@ use Porta\Widget\Support\FillsPaneTrait;
 use Porta\Widget\Support\HoverTrait;
 use Porta\Widget\Support\InputHook;
 use Porta\Widget\Support\PanelWidth;
+use Porta\Widget\Support\StylesDefault;
 use Porta\Widget\Support\WheelScrollable;
 use Psr\Clock\ClockInterface;
 use Symfony\Component\Clock\NativeClock;
@@ -48,6 +49,7 @@ final class FileTreeWidget extends AbstractWidget implements FocusableInterface,
     use KeybindingsTrait;
     use MenuOverlayHostTrait;
     use PanelWidth;
+    use StylesDefault;
 
     // '.porta' is the IDE's own session/history metadata dir; '.porta.json' (the
     // project config file) is not matched by the exact-name check and still shows.
@@ -81,7 +83,6 @@ final class FileTreeWidget extends AbstractWidget implements FocusableInterface,
     private $onOpenFile = null;
 
     private readonly ClockInterface $clock;
-    private readonly Styles $styles;
 
     public function __construct(
         private readonly string $rootDir,
@@ -91,7 +92,7 @@ final class FileTreeWidget extends AbstractWidget implements FocusableInterface,
     ) {
         $this->width = $width;
         $this->clock = $clock ?? new NativeClock();
-        $this->styles = $styles ?? Styles::dark();
+        $this->initStyles($styles);
         $this->list = new ListSelection();
         $this->addStyleClass('list'); // the theme's .list::selected(:focus) rules style the selection
         $this->rebuild();

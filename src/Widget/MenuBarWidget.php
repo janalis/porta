@@ -12,6 +12,7 @@ use Porta\Ui\Role;
 use Porta\Ui\Theme\Styles;
 use Porta\Widget\Render\BarChromeStyle;
 use Porta\Widget\Render\TabState;
+use Porta\Widget\Support\StylesDefault;
 use Porta\Workbench\Menu\Menu;
 use Porta\Workbench\Menu\MenuPanel;
 use Symfony\Component\Tui\Input\Key;
@@ -39,12 +40,11 @@ final class MenuBarWidget extends OverlayWidget implements FocusableInterface
 {
     use FocusableTrait;
     use KeybindingsTrait;
-
-    private readonly Styles $styles;
+    use StylesDefault;
 
     public function __construct(?Styles $styles = null)
     {
-        $this->styles = $styles ?? Styles::dark();
+        $this->initStyles($styles);
     }
 
     /** @var list<Menu> */

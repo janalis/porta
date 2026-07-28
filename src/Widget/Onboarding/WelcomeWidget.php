@@ -19,6 +19,7 @@ use Porta\Widget\Support\ArrowScrollTrait;
 use Porta\Widget\Support\FillsPaneTrait;
 use Porta\Widget\Support\HoverTrait;
 use Porta\Widget\Support\InputHook;
+use Porta\Widget\Support\StylesDefault;
 use Porta\Widget\Support\WheelScrollable;
 use Symfony\Component\Tui\Ansi\AnsiUtils;
 use Symfony\Component\Tui\Input\Key;
@@ -67,6 +68,7 @@ final class WelcomeWidget extends AbstractWidget implements FocusableInterface, 
     use InputHook;
     use KeybindingsTrait;
     use PaneNavigationCallbacks;
+    use StylesDefault;
 
     /** The content column never grows past this many columns — long lines are hard to scan. */
     private const int CONTENT_MAX = 72;
@@ -77,7 +79,6 @@ final class WelcomeWidget extends AbstractWidget implements FocusableInterface, 
     /** Below this many pane rows the hero greeting is dropped: steps need every row. */
     private const int HERO_MIN_ROWS = 10;
 
-    private readonly Styles $styles;
     private readonly ListSelection $list;
 
     /** @var list<WelcomeStep> */
@@ -105,7 +106,7 @@ final class WelcomeWidget extends AbstractWidget implements FocusableInterface, 
         private readonly Translator $translator,
         ?Styles $styles = null,
     ) {
-        $this->styles = $styles ?? Styles::dark();
+        $this->initStyles($styles);
         $this->list = new ListSelection();
         $this->addStyleClass('card'); // the theme's .card::selected(:focus) rules tint the selection behind the accent bar
     }

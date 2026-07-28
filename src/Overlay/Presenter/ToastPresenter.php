@@ -13,6 +13,7 @@ use Porta\Ui\Theme\Styles;
 use Porta\Widget\Render\PopupFrame;
 use Porta\Widget\Render\PopupMetrics;
 use Porta\Widget\Render\ToastCard;
+use Porta\Widget\Support\StylesDefault;
 
 /**
  * Presents the toast stack over the workspace's top-right corner: cards
@@ -29,13 +30,13 @@ use Porta\Widget\Render\ToastCard;
 #[AsEager(priority: 100)]
 final class ToastPresenter
 {
+    use StylesDefault;
+
     /** Whether this presenter's spans are currently painted (its clear-once guard). */
     private bool $shown = false;
 
     /** @var list<DropdownRegion> */
     private array $regions = [];
-
-    private readonly Styles $styles;
 
     public function __construct(
         private readonly OverlayDelivery $delivery,
@@ -43,7 +44,7 @@ final class ToastPresenter
         ?Styles $styles = null,
         ?FrameHooks $frameHooks = null,
     ) {
-        $this->styles = $styles ?? Styles::dark();
+        $this->initStyles($styles);
         $frameHooks?->onBeforeFrame($this->sync(...));
     }
 

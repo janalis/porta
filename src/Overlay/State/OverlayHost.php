@@ -13,6 +13,7 @@ use Porta\Ui\Role;
 use Porta\Ui\TextField;
 use Porta\Ui\Theme\Styles;
 use Porta\Widget\Render\PickerLayout;
+use Porta\Widget\Support\StylesDefault;
 use Symfony\Component\Tui\Input\Keybindings;
 
 /**
@@ -25,6 +26,8 @@ use Symfony\Component\Tui\Input\Keybindings;
  */
 final class OverlayHost
 {
+    use StylesDefault;
+
     /** @var array{title: string, items: list<array{label: string, hint: string, value: string}>, selected: int, hovered: int|null, onPick: callable(string): void}|null */
     private ?array $overlay = null;
     /** last-rendered overlay box, for mouse hit-testing */
@@ -40,8 +43,6 @@ final class OverlayHost
     /** last-rendered search box, for mouse hit-testing */
     private ?ModalBox $searchBox = null;
 
-    private readonly Styles $styles;
-
     /**
      * @param \Closure(): void $invalidate repaint request back into the widget
      */
@@ -52,7 +53,7 @@ final class OverlayHost
         ?Styles $styles = null,
         ?CursorStyle $cursorStyle = null,
     ) {
-        $this->styles = $styles ?? Styles::dark();
+        $this->initStyles($styles);
         $this->cursorStyle = $cursorStyle ?? new CursorStyle();
     }
 

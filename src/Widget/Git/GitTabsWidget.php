@@ -15,6 +15,7 @@ use Porta\Widget\Render\MenuOverlayHostTrait;
 use Porta\Widget\Render\TabState;
 use Porta\Widget\Render\TabStyle;
 use Porta\Widget\Support\PanelWidth;
+use Porta\Widget\Support\StylesDefault;
 use Symfony\Component\Tui\Render\RenderContext;
 use Symfony\Component\Tui\Widget\AbstractWidget;
 
@@ -29,6 +30,7 @@ final class GitTabsWidget extends AbstractWidget implements MenuOverlayHost
 {
     use MenuOverlayHostTrait;
     use PanelWidth;
+    use StylesDefault;
 
     private GitViewMode $active = GitViewMode::Changes;
 
@@ -40,15 +42,13 @@ final class GitTabsWidget extends AbstractWidget implements MenuOverlayHost
     /** @var (callable(GitViewMode): void)|null a click chose the other tab */
     private $onSelect = null;
 
-    private readonly Styles $styles;
-
     public function __construct(
         private readonly Translator $translator,
         int $width = 44,
         ?Styles $styles = null,
     ) {
         $this->width = $width;
-        $this->styles = $styles ?? Styles::dark();
+        $this->initStyles($styles);
     }
 
     public function minWidth(): int

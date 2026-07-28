@@ -65,6 +65,7 @@ use Porta\Widget\Render\MenuOverlayHostTrait;
 use Porta\Widget\Render\PaneFocus;
 use Porta\Widget\Support\FillsPaneTrait;
 use Porta\Widget\Support\InputHook;
+use Porta\Widget\Support\StylesDefault;
 use Porta\Workbench\Menu\EditorCommandTarget;
 use Porta\Workbench\WorkspaceView;
 use Porta\Workbench\WorkspaceViews;
@@ -105,9 +106,10 @@ final class CodeEditorWidget extends AbstractWidget implements
     use BracketedPasteTrait;
     use FillsPaneTrait;
     use FocusableTrait;
-    use MenuOverlayHostTrait;
     use InputHook;
     use KeybindingsTrait;
+    use MenuOverlayHostTrait;
+    use StylesDefault;
 
     private Document $document;
     private CodeHighlighter $highlighter;
@@ -180,8 +182,6 @@ final class CodeEditorWidget extends AbstractWidget implements
     /** Editor-level action dispatch (keymap actions + menu items). */
     private readonly EditorActionRouter $actionRouter;
 
-    private readonly Styles $styles;
-
     private readonly TerminalTheme $syntaxTheme;
 
     /** Shared hardware-cursor shape holder (the `cursorShape` setting swaps it live). */
@@ -197,7 +197,7 @@ final class CodeEditorWidget extends AbstractWidget implements
         ?Translator $translator = null,
         private readonly ?WorkspaceViews $views = null,
     ) {
-        $this->styles = $styles ?? Styles::dark();
+        $this->initStyles($styles);
         $this->syntaxTheme = $syntaxTheme ?? new DarkTerminalTheme();
         $this->cursorStyle = $cursorStyle ?? new CursorStyle();
         $this->translator = $translator ?? new Translator('en');

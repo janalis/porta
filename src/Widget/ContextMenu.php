@@ -8,6 +8,7 @@ use Porta\Container\AsChromeRoot;
 use Porta\Container\AsIdeService;
 use Porta\Container\AsWidget;
 use Porta\Ui\Theme\Styles;
+use Porta\Widget\Support\StylesDefault;
 use Porta\Workbench\Menu\MenuItem;
 use Porta\Workbench\Menu\MenuPanel;
 use Symfony\Component\Tui\Input\Key;
@@ -29,12 +30,11 @@ use Symfony\Component\Tui\Widget\KeybindingsTrait;
 final class ContextMenu extends OverlayWidget
 {
     use KeybindingsTrait;
-
-    private readonly Styles $styles;
+    use StylesDefault;
 
     public function __construct(?Styles $styles = null)
     {
-        $this->styles = $styles ?? Styles::dark();
+        $this->initStyles($styles);
     }
 
     /** @var list<MenuItem> */

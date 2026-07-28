@@ -15,6 +15,7 @@ use Porta\Ui\Theme\Styles;
 use Porta\Widget\Render\MenuOverlayHost;
 use Porta\Widget\Render\MenuOverlayHostTrait;
 use Porta\Widget\Render\TabStripRenderer;
+use Porta\Widget\Support\StylesDefault;
 use Porta\Workbench\Dock\DockTab;
 use Symfony\Component\Tui\Render\RenderContext;
 use Symfony\Component\Tui\Widget\AbstractWidget;
@@ -36,6 +37,7 @@ use Symfony\Component\Tui\Widget\AbstractWidget;
 final class DockTabsWidget extends AbstractWidget implements LtrPane, MenuOverlayHost
 {
     use MenuOverlayHostTrait;
+    use StylesDefault;
 
     /**
      * The pointer's widget-relative column, re-resolved to a tab each frame by
@@ -87,11 +89,9 @@ final class DockTabsWidget extends AbstractWidget implements LtrPane, MenuOverla
     /** @var (callable(DockTab, int, int): void)|null drag-reorder within a family: family, from, to */
     private $onTabMoved = null;
 
-    private readonly Styles $styles;
-
     public function __construct(?Styles $styles = null)
     {
-        $this->styles = $styles ?? Styles::dark();
+        $this->initStyles($styles);
     }
 
     /** @param callable(): list<array{tab: DockTab, key: string, label: string, active: bool, status: string}> $provider */

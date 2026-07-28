@@ -15,6 +15,7 @@ use Porta\Ui\Theme\Styles;
 use Porta\Widget\MenuBarWidget;
 use Porta\Widget\Onboarding\WelcomeWidget;
 use Porta\Widget\Render\ModalFrame;
+use Porta\Widget\Support\StylesDefault;
 use Porta\Workbench\EditorArea;
 use Porta\Workbench\FullScreenView;
 use Porta\Workbench\WorkspaceView;
@@ -53,6 +54,8 @@ use Symfony\Component\Tui\Widget\FocusableInterface;
 #[AsEager(priority: 400)]
 final class WelcomeModalController implements FullScreenView
 {
+    use StylesDefault;
+
     /** The frame's widest content column; matches the widget's own comfortable cap. */
     private const int MAX_INNER_WIDTH = 76;
 
@@ -87,8 +90,6 @@ final class WelcomeModalController implements FullScreenView
     /** @var array{int, int, int, int}|null the pane-union bounds of the last compose, for the per-frame re-sync */
     private ?array $lastBounds = null;
 
-    private readonly Styles $styles;
-
     public function __construct(
         private readonly OverlayDelivery $delivery,
         private readonly WelcomeWidget $welcome,
@@ -100,7 +101,7 @@ final class WelcomeModalController implements FullScreenView
         ?Styles $styles = null,
         ?FrameHooks $frameHooks = null,
     ) {
-        $this->styles = $styles ?? Styles::dark();
+        $this->initStyles($styles);
         $views->attach(WorkspaceView::Welcome, $this);
         $this->welcome
             ->onExit($this->close(...))

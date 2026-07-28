@@ -22,6 +22,7 @@ use Porta\Widget\Support\FillsPaneTrait;
 use Porta\Widget\Support\HoverTrait;
 use Porta\Widget\Support\InputHook;
 use Porta\Widget\Support\PanelWidth;
+use Porta\Widget\Support\StylesDefault;
 use Porta\Widget\Support\WheelScrollable;
 use Symfony\Component\Tui\Input\Key;
 use Symfony\Component\Tui\Render\RenderContext;
@@ -49,6 +50,7 @@ final class ChangesListWidget extends AbstractWidget implements FocusableInterfa
     use KeybindingsTrait;
     use MenuOverlayHostTrait;
     use PanelWidth;
+    use StylesDefault;
 
     /** @var array<string, Role> file-status char → color role */
     private const array STATUS_ROLE = [
@@ -58,8 +60,6 @@ final class ChangesListWidget extends AbstractWidget implements FocusableInterfa
         'R' => Role::Hunk,
         'C' => Role::Hunk,
     ];
-
-    private readonly Styles $styles;
 
     /** @var list<ChangeEntry> */
     private array $entries = [];
@@ -83,7 +83,7 @@ final class ChangesListWidget extends AbstractWidget implements FocusableInterfa
         ?Styles $styles = null,
     ) {
         $this->width = $width;
-        $this->styles = $styles ?? Styles::dark();
+        $this->initStyles($styles);
         $this->list = new ListSelection();
         $this->addStyleClass('list'); // the theme's .list::selected(:focus) rules style the selection
     }

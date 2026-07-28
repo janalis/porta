@@ -16,6 +16,7 @@ use Porta\Ui\Theme\Styles;
 use Porta\Widget\Render\MenuOverlayHost;
 use Porta\Widget\Render\MenuOverlayHostTrait;
 use Porta\Widget\Support\FillsPaneTrait;
+use Porta\Widget\Support\StylesDefault;
 use Symfony\Component\Tui\Ansi\AnsiUtils;
 use Symfony\Component\Tui\Input\Key;
 use Symfony\Component\Tui\Render\RenderContext;
@@ -40,6 +41,7 @@ final class ImageViewerWidget extends AbstractWidget implements FocusableInterfa
     use FocusableTrait;
     use KeybindingsTrait;
     use MenuOverlayHostTrait;
+    use StylesDefault;
 
     private ?ImageData $image = null;
     private ?ZoomPanModel $view = null;
@@ -48,11 +50,9 @@ final class ImageViewerWidget extends AbstractWidget implements FocusableInterfa
     private int $lastRows = 24;
     private ?ImageViewerHandler $handler = null;
 
-    private readonly Styles $styles;
-
     public function __construct(?Styles $styles = null)
     {
-        $this->styles = $styles ?? Styles::dark();
+        $this->initStyles($styles);
     }
 
     public function setHandler(ImageViewerHandler $handler): void

@@ -23,6 +23,7 @@ use Porta\Widget\Render\MenuOverlayHostTrait;
 use Porta\Widget\Support\HoverTrait;
 use Porta\Widget\Support\InputHook;
 use Porta\Widget\Support\PanelWidth;
+use Porta\Widget\Support\StylesDefault;
 use Symfony\Component\Tui\Input\Key;
 use Symfony\Component\Tui\Render\RenderContext;
 use Symfony\Component\Tui\Widget\AbstractWidget;
@@ -42,10 +43,11 @@ final class CommitBoxWidget extends AbstractWidget implements FocusableInterface
     use FocusableTrait;
     use HoverTrait;
     use InputHook;
-    use MenuOverlayHostTrait;
     use KeybindingsTrait;
-    use PaneNavigationCallbacks;
+    use MenuOverlayHostTrait;
     use PanelWidth;
+    use PaneNavigationCallbacks;
+    use StylesDefault;
 
     private const int DESCRIPTION_ROWS = 3;
 
@@ -61,8 +63,6 @@ final class CommitBoxWidget extends AbstractWidget implements FocusableInterface
     /** @var (callable(CommitMode): void)|null amend toggled: the controller prefills/clears the message */
     private $onAmendToggle = null;
 
-    private readonly Styles $styles;
-
     public function __construct(
         private readonly Translator $translator,
         int $width = 44,
@@ -70,7 +70,7 @@ final class CommitBoxWidget extends AbstractWidget implements FocusableInterface
         ?CursorStyle $cursorStyle = null,
     ) {
         $this->width = $width;
-        $this->styles = $styles ?? Styles::dark();
+        $this->initStyles($styles);
         $this->summary = new TextField(style: $cursorStyle);
         $this->description = new MultilineInput($cursorStyle);
     }

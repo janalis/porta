@@ -20,6 +20,7 @@ use Porta\Widget\Support\ArrowScrollTrait;
 use Porta\Widget\Support\FillsPaneTrait;
 use Porta\Widget\Support\InputHook;
 use Porta\Widget\Support\PanelWidth;
+use Porta\Widget\Support\StylesDefault;
 use Porta\Widget\Support\WheelScrollable;
 use Symfony\Component\Tui\Input\Key;
 use Symfony\Component\Tui\Render\RenderContext;
@@ -46,6 +47,7 @@ final class HistoryListWidget extends AbstractWidget implements FocusableInterfa
     use KeybindingsTrait;
     use MenuOverlayHostTrait;
     use PanelWidth;
+    use StylesDefault;
 
     private const int FILE_ROWS = 8;
 
@@ -74,8 +76,6 @@ final class HistoryListWidget extends AbstractWidget implements FocusableInterfa
     /** @var (callable(): void)|null `1`: switch back to the Changes tab */
     private $onShowChanges = null;
 
-    private readonly Styles $styles;
-
     public function __construct(
         private readonly Translator $translator,
         int $width = 44,
@@ -83,7 +83,7 @@ final class HistoryListWidget extends AbstractWidget implements FocusableInterfa
     ) {
         $this->addStyleClass('list'); // the theme's .list::selected(:focus) rules style the focused sub-list
         $this->width = $width;
-        $this->styles = $styles ?? Styles::dark();
+        $this->initStyles($styles);
         $this->commitList = new ListSelection();
         $this->fileList = new ListSelection();
     }

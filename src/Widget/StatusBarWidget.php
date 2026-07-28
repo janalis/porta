@@ -10,6 +10,7 @@ use Porta\Container\AsWidget;
 use Porta\Support\AnsiText;
 use Porta\Ui\Role;
 use Porta\Ui\Theme\Styles;
+use Porta\Widget\Support\StylesDefault;
 use Psr\Clock\ClockInterface;
 use Symfony\Component\Clock\NativeClock;
 use Symfony\Component\Tui\Ansi\AnsiUtils;
@@ -25,6 +26,8 @@ use Symfony\Component\Tui\Widget\AbstractWidget;
 #[AsWidget('status')]
 final class StatusBarWidget extends AbstractWidget
 {
+    use StylesDefault;
+
     /** @var (callable(): array{left: string, right: string, branchStart?: int|null, branchEnd?: int|null})|null */
     private $provider = null;
 
@@ -40,13 +43,12 @@ final class StatusBarWidget extends AbstractWidget
     private ?array $flash = null;
 
     private readonly ClockInterface $clock;
-    private readonly Styles $styles;
 
     /** The clock is injected by the container; a MockClock makes flash expiry testable. */
     public function __construct(?ClockInterface $clock = null, ?Styles $styles = null)
     {
         $this->clock = $clock ?? new NativeClock();
-        $this->styles = $styles ?? Styles::dark();
+        $this->initStyles($styles);
     }
 
     /**

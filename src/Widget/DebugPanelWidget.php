@@ -22,6 +22,7 @@ use Porta\Widget\Support\DebugRow;
 use Porta\Widget\Support\DebugRowKind;
 use Porta\Widget\Support\ListPanelInteraction;
 use Porta\Widget\Support\PanelRows;
+use Porta\Widget\Support\StylesDefault;
 use Symfony\Component\Tui\Input\Key;
 use Symfony\Component\Tui\Render\RenderContext;
 use Symfony\Component\Tui\Widget\FocusableInterface;
@@ -44,10 +45,11 @@ use Symfony\Component\Tui\Widget\KeybindingsTrait;
 final class DebugPanelWidget extends DockPanelWidget implements FocusableInterface, HoverableList, LtrPane, MenuOverlayHost
 {
     use FocusableTrait;
-    use MenuOverlayHostTrait;
     use KeybindingsTrait;
     use ListPanelInteraction;
+    use MenuOverlayHostTrait;
     use PanelRows;
+    use StylesDefault;
 
     private string $title = '';
     private DebugState $state = DebugState::Idle;
@@ -76,12 +78,11 @@ final class DebugPanelWidget extends DockPanelWidget implements FocusableInterfa
     /** @var (callable(int, string, string): void)|null a variable's edit key: parent reference, name, current value */
     private $onEditVariable = null;
 
-    private readonly Styles $styles;
     private readonly Translator $translator;
 
     public function __construct(?Styles $styles = null, ?Translator $translator = null)
     {
-        $this->styles = $styles ?? Styles::dark();
+        $this->initStyles($styles);
         $this->translator = $translator ?? new Translator('en');
         $this->list = new ListSelection();
         $this->addStyleClass('list'); // the theme's .list::selected(:focus) rules style the selection

@@ -21,6 +21,7 @@ use Porta\Widget\Support\FillsPaneTrait;
 use Porta\Widget\Support\HoverTrait;
 use Porta\Widget\Support\InputHook;
 use Porta\Widget\Support\PanelWidth;
+use Porta\Widget\Support\StylesDefault;
 use Porta\Widget\Support\WheelScrollable;
 use Symfony\Component\Tui\Input\Key;
 use Symfony\Component\Tui\Render\RenderContext;
@@ -51,6 +52,7 @@ final class SettingsNavWidget extends AbstractWidget implements FocusableInterfa
     use MenuOverlayHostTrait;
     use PanelWidth;
     use PaneNavigationCallbacks;
+    use StylesDefault;
 
     private const array SECTIONS = ['general' => 'General', 'interface' => 'Interface', 'highlighting' => 'Highlighting', 'keybindings' => 'Keybindings', 'plugins' => 'Plugins'];
 
@@ -61,15 +63,13 @@ final class SettingsNavWidget extends AbstractWidget implements FocusableInterfa
     /** @var (callable(string): void)|null selection moved to this entry id */
     private $onSelect = null;
 
-    private readonly Styles $styles;
-
     public function __construct(
         private readonly Translator $translator,
         int $width = 22,
         ?Styles $styles = null,
     ) {
         $this->width = $width;
-        $this->styles = $styles ?? Styles::dark();
+        $this->initStyles($styles);
         $this->entries = $this->buildEntries([]);
         $this->list = new ListSelection();
         $this->addStyleClass('list'); // the theme's .list::selected(:focus) rules style the selection

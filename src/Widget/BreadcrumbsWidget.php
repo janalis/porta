@@ -11,6 +11,7 @@ use Porta\Ui\Role;
 use Porta\Ui\Theme\Styles;
 use Porta\Widget\Render\MenuOverlayHost;
 use Porta\Widget\Render\MenuOverlayHostTrait;
+use Porta\Widget\Support\StylesDefault;
 use Symfony\Component\Tui\Render\RenderContext;
 use Symfony\Component\Tui\Style\Style;
 use Symfony\Component\Tui\Widget\AbstractWidget;
@@ -25,15 +26,14 @@ use Symfony\Component\Tui\Widget\AbstractWidget;
 final class BreadcrumbsWidget extends AbstractWidget implements MenuOverlayHost
 {
     use MenuOverlayHostTrait;
-
-    private readonly Styles $styles;
+    use StylesDefault;
 
     /** The "Interface > Breadcrumbs" toggle; when off the bar renders no rows. */
     private bool $visible = true;
 
     public function __construct(?Styles $styles = null)
     {
-        $this->styles = $styles ?? Styles::dark();
+        $this->initStyles($styles);
     }
 
     public function show(): void

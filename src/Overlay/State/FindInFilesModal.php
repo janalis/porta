@@ -29,6 +29,7 @@ use Porta\Widget\Support\OptionTagState;
 use Porta\Widget\Support\ResultGrouping;
 use Porta\Widget\Support\ResultLayout;
 use Porta\Widget\Support\RowSelection;
+use Porta\Widget\Support\StylesDefault;
 use Symfony\Component\Tui\Input\Key;
 use Symfony\Component\Tui\Input\Keybindings;
 
@@ -44,6 +45,8 @@ use Symfony\Component\Tui\Input\Keybindings;
  */
 final class FindInFilesModal
 {
+    use StylesDefault;
+
     /** @var array<string, list<string>> the modal's own action bindings (matched with the editor's parser) */
     private const array KEYS = [
         'select_cancel' => [Key::ESCAPE],
@@ -121,7 +124,6 @@ final class FindInFilesModal
     /** Outbound hooks into the search controller; replaced wholesale by wiring/tests. */
     private FindModalCallbacks $callbacks;
 
-    private readonly Styles $styles;
     private readonly Translator $translator;
 
     public function __construct(
@@ -130,7 +132,7 @@ final class FindInFilesModal
         ?CursorStyle $cursorStyle = null,
         ?Translator $translator = null,
     ) {
-        $this->styles = $styles ?? Styles::dark();
+        $this->initStyles($styles);
         $this->translator = $translator ?? new Translator('en');
         $this->optionZones = new ClickZones();
         $this->footerZones = new ClickZones();

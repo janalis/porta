@@ -22,6 +22,7 @@ use Porta\Widget\Support\ArrowScrollTrait;
 use Porta\Widget\Support\FillsPaneTrait;
 use Porta\Widget\Support\HoverTrait;
 use Porta\Widget\Support\InputHook;
+use Porta\Widget\Support\StylesDefault;
 use Porta\Widget\Support\WheelScrollable;
 use Symfony\Component\Tui\Input\Key;
 use Symfony\Component\Tui\Render\RenderContext;
@@ -49,6 +50,7 @@ final class KeybindingsListWidget extends AbstractWidget implements FocusableInt
     use KeybindingsTrait;
     use MenuOverlayHostTrait;
     use PaneNavigationCallbacks;
+    use StylesDefault;
 
     /** @var list<KeybindingRow> */
     private array $rows = [];
@@ -62,13 +64,11 @@ final class KeybindingsListWidget extends AbstractWidget implements FocusableInt
     /** @var (callable(): void)|null `1`: switch to the Settings tab */
     private $onShowSettings = null;
 
-    private readonly Styles $styles;
-
     public function __construct(
         private readonly Translator $translator,
         ?Styles $styles = null,
     ) {
-        $this->styles = $styles ?? Styles::dark();
+        $this->initStyles($styles);
         $this->list = new ListSelection();
         $this->addStyleClass('list'); // the theme's .list::selected(:focus) rules style the selection
     }

@@ -16,6 +16,7 @@ use Porta\Widget\Render\TabCell;
 use Porta\Widget\Render\TabCloseGlyph;
 use Porta\Widget\Render\TabState;
 use Porta\Widget\Render\TabStyle;
+use Porta\Widget\Support\StylesDefault;
 use Porta\Widget\Support\TabBarPosition;
 use Symfony\Component\Tui\Render\RenderContext;
 use Symfony\Component\Tui\Widget\AbstractWidget;
@@ -30,17 +31,16 @@ use Symfony\Component\Tui\Widget\AbstractWidget;
 final class TabBarWidget extends AbstractWidget implements MenuOverlayHost
 {
     use MenuOverlayHostTrait;
+    use StylesDefault;
 
     /** Display columns of the vertical (left/right) tab list. */
     public const VERTICAL_WIDTH = 24;
-
-    private readonly Styles $styles;
 
     private TabBarPosition $position = TabBarPosition::Top;
 
     public function __construct(?Styles $styles = null)
     {
-        $this->styles = $styles ?? Styles::dark();
+        $this->initStyles($styles);
     }
 
     /** @var (callable(): list<array{name: string, dirty: bool, active: bool}>)|null */

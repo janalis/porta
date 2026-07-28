@@ -24,6 +24,7 @@ use Porta\Widget\Support\ArrowScrollTrait;
 use Porta\Widget\Support\FillsPaneTrait;
 use Porta\Widget\Support\HoverTrait;
 use Porta\Widget\Support\InputHook;
+use Porta\Widget\Support\StylesDefault;
 use Porta\Widget\Support\WheelScrollable;
 use Symfony\Component\Tui\Input\Key;
 use Symfony\Component\Tui\Input\Keybindings;
@@ -57,8 +58,7 @@ final class SettingsFormWidget extends AbstractWidget implements FocusableInterf
     use KeybindingsTrait;
     use MenuOverlayHostTrait;
     use PaneNavigationCallbacks;
-
-    private readonly Styles $styles;
+    use StylesDefault;
 
     private readonly CursorStyle $cursorStyle;
 
@@ -67,7 +67,7 @@ final class SettingsFormWidget extends AbstractWidget implements FocusableInterf
         ?Styles $styles = null,
         ?CursorStyle $cursorStyle = null,
     ) {
-        $this->styles = $styles ?? Styles::dark();
+        $this->initStyles($styles);
         $this->cursorStyle = $cursorStyle ?? new CursorStyle();
         $this->addStyleClass('list'); // the theme's .list::selected(:focus) rules style the selection
     }

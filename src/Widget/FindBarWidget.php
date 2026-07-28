@@ -27,6 +27,7 @@ use Porta\Widget\Render\FindModalRows;
 use Porta\Widget\Support\InputHook;
 use Porta\Widget\Support\MatchJump;
 use Porta\Widget\Support\OptionTagState;
+use Porta\Widget\Support\StylesDefault;
 use Symfony\Component\Tui\Input\Key;
 use Symfony\Component\Tui\Render\RenderContext;
 use Symfony\Component\Tui\Widget\FocusableInterface;
@@ -52,6 +53,7 @@ final class FindBarWidget extends OverlayWidget implements FocusableInterface
     use FocusableTrait;
     use InputHook;
     use KeybindingsTrait;
+    use StylesDefault;
 
     private const int MAX_MATCHES = 5000;
 
@@ -75,14 +77,12 @@ final class FindBarWidget extends OverlayWidget implements FocusableInterface
     /** @var (callable(): void)|null called when matches/current change */
     private $onUpdate = null;
 
-    private readonly Styles $styles;
-
     public function __construct(
         private readonly Translator $translator,
         ?Styles $styles = null,
         ?CursorStyle $cursorStyle = null,
     ) {
-        $this->styles = $styles ?? Styles::dark();
+        $this->initStyles($styles);
         $this->query = new TextField(style: $cursorStyle);
         $this->replacement = new TextField(style: $cursorStyle);
         $this->optionZones = new ClickZones();

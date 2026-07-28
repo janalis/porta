@@ -24,6 +24,7 @@ use Porta\Widget\Render\MenuOverlayHostTrait;
 use Porta\Widget\Support\FillsPaneTrait;
 use Porta\Widget\Support\InputHook;
 use Porta\Widget\Support\OptionTagState;
+use Porta\Widget\Support\StylesDefault;
 use Symfony\Component\Tui\Input\Key;
 use Symfony\Component\Tui\Render\RenderContext;
 use Symfony\Component\Tui\Style\Style;
@@ -47,11 +48,10 @@ final class DiffViewWidget extends AbstractWidget implements FocusableInterface,
     use FillsPaneTrait;
     use FocusableTrait;
     use InputHook;
-    use MenuOverlayHostTrait;
     use KeybindingsTrait;
+    use MenuOverlayHostTrait;
     use PaneNavigationCallbacks;
-
-    private readonly Styles $styles;
+    use StylesDefault;
 
     private ?DiffDocument $document = null;
     private ?string $path = null;
@@ -99,7 +99,7 @@ final class DiffViewWidget extends AbstractWidget implements FocusableInterface,
         ?Styles $styles = null,
         ?TerminalTheme $syntaxTheme = null,
     ) {
-        $this->styles = $styles ?? Styles::dark();
+        $this->initStyles($styles);
         $this->buttonZones = new ClickZones();
         $this->callbacks = new DiffViewCallbacks(); // a bare diff view fires nothing
         $theme = $syntaxTheme ?? new DarkTerminalTheme();

@@ -10,6 +10,7 @@ use Porta\Ui\Theme\Styles;
 use Porta\Widget\Render\MenuOverlayHost;
 use Porta\Widget\Render\MenuOverlayHostTrait;
 use Porta\Widget\Support\FillsPaneTrait;
+use Porta\Widget\Support\StylesDefault;
 use Symfony\Component\Tui\Render\RenderContext;
 use Symfony\Component\Tui\Widget\AbstractWidget;
 use Symfony\Component\Tui\Widget\VerticallyExpandableInterface;
@@ -32,15 +33,14 @@ final class SeparatorWidget extends AbstractWidget implements MenuOverlayHost, V
 {
     use FillsPaneTrait;
     use MenuOverlayHostTrait;
+    use StylesDefault;
 
     /** True while the pointer is on this column, or dragging it. */
     private bool $hovered = false;
 
-    private readonly Styles $styles;
-
     public function __construct(?Styles $styles = null)
     {
-        $this->styles = $styles ?? Styles::dark();
+        $this->initStyles($styles);
     }
 
     /** The pointer is on the divider (or dragging it); returns whether it changed. */

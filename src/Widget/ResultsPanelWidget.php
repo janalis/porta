@@ -28,6 +28,7 @@ use Porta\Widget\Support\PanelRows;
 use Porta\Widget\Support\ResultGrouping;
 use Porta\Widget\Support\ResultLayout;
 use Porta\Widget\Support\ResultsPanelFields;
+use Porta\Widget\Support\StylesDefault;
 use Symfony\Component\Tui\Input\Key;
 use Symfony\Component\Tui\Render\RenderContext;
 use Symfony\Component\Tui\Widget\FocusableInterface;
@@ -44,11 +45,12 @@ use Symfony\Component\Tui\Widget\KeybindingsTrait;
 final class ResultsPanelWidget extends DockPanelWidget implements FocusableInterface, HoverableList, LtrPane, MenuOverlayHost
 {
     use FocusableTrait;
-    use MenuOverlayHostTrait;
     use InputHook;
     use KeybindingsTrait;
     use ListPanelInteraction;
+    use MenuOverlayHostTrait;
     use PanelRows;
+    use StylesDefault;
 
     private bool $withFilter = false;
     private string $title = '';
@@ -78,12 +80,11 @@ final class ResultsPanelWidget extends DockPanelWidget implements FocusableInter
     /** @var (\Closure(string, int): list<array{line: int, text: string}>)|null neighbouring source lines around a match (path, line) => lines */
     private $contextProvider = null;
 
-    private readonly Styles $styles;
     private readonly Translator $translator;
 
     public function __construct(?Styles $styles = null, ?CursorStyle $cursorStyle = null, ?Translator $translator = null)
     {
-        $this->styles = $styles ?? Styles::dark();
+        $this->initStyles($styles);
         $this->translator = $translator ?? new Translator('en');
         $this->list = new ListSelection();
         $this->addStyleClass('list'); // the theme's .list::selected(:focus) rules style the selection

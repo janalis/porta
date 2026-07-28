@@ -16,6 +16,7 @@ use Porta\Widget\MenuBarWidget;
 use Porta\Widget\Render\MenuOverlayHost;
 use Porta\Widget\Render\ModalShadow;
 use Porta\Widget\Render\PopupFrame;
+use Porta\Widget\Support\StylesDefault;
 use Symfony\Component\Tui\Render\Renderer;
 use Symfony\Component\Tui\Render\WidgetRect;
 use Symfony\Component\Tui\Widget\AbstractWidget;
@@ -35,14 +36,14 @@ use Symfony\Component\Tui\Widget\AbstractWidget;
 #[AsIdeService]
 final class MenuOverlayController implements FloatingRegions
 {
+    use StylesDefault;
+
     private ?DropdownRegion $menuDropdown = null;
     private ?DropdownRegion $contextMenuDropdown = null;
     private ?DropdownRegion $menuShadowRegion = null;
     private ?DropdownRegion $contextShadowRegion = null;
     private int $contextAnchorRow = 0;
     private int $contextAnchorCol = 0;
-
-    private readonly Styles $styles;
 
     public function __construct(
         private readonly Renderer $renderer,
@@ -51,7 +52,7 @@ final class MenuOverlayController implements FloatingRegions
         private readonly MenuOverlayPanes $panes,
         ?Styles $styles = null,
     ) {
-        $this->styles = $styles ?? Styles::dark();
+        $this->initStyles($styles);
     }
 
     /** The app-menu dropdown box (framed), for click/hover hit-testing; null when closed. */

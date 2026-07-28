@@ -9,6 +9,7 @@ use Porta\Overlay\Region\SpanSlicer;
 use Porta\Overlay\State\MenuOverlayPanes;
 use Porta\Ui\Theme\Styles;
 use Porta\Widget\Render\ModalShadow;
+use Porta\Widget\Support\StylesDefault;
 use Symfony\Component\Tui\Render\Renderer;
 use Symfony\Component\Tui\Render\WidgetRect;
 use Symfony\Component\Tui\Tui;
@@ -24,7 +25,7 @@ use Symfony\Component\Tui\Tui;
  */
 final class OverlayDelivery
 {
-    private readonly Styles $styles;
+    use StylesDefault;
 
     public function __construct(
         private readonly Renderer $renderer,
@@ -32,7 +33,7 @@ final class OverlayDelivery
         private readonly Tui $tui,
         ?Styles $styles = null,
     ) {
-        $this->styles = $styles ?? Styles::dark();
+        $this->initStyles($styles);
     }
 
     /**
