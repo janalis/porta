@@ -6,8 +6,8 @@ namespace Porta\Widget\Git;
 
 /**
  * A character-level selection in the diff pane: the press point (from) and the
- * drag point (to) as (row, display-column) pairs, plus the split-view side the
- * drag started on (`'left'`/`'right'`, or null in unified view). Owned by
+ * drag point (to) as (row, display-column) pairs, plus the split-view column
+ * the drag started on (null in unified view). Owned by
  * {@see DiffViewWidget}; replaces the former
  * array{fromRow, fromCol, toRow, toCol, side} shape.
  */
@@ -18,7 +18,7 @@ final readonly class DiffCharSelection
         public int $fromCol,
         public int $toRow,
         public int $toCol,
-        public ?string $side,
+        public ?DiffColumn $side,
     ) {}
 
     /** A zero-width selection — a plain click with no drag (row-copy rules apply). */

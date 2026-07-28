@@ -7,11 +7,13 @@ namespace Porta\Widget\Git;
 use Porta\Git\DiffLine;
 
 /**
- * Which side of a side-by-side diff row a half renders: the old (pre-image)
- * or the new (post-image) column. Owns the line-number pick so the renderer
- * asks the side rather than branching on a bool.
+ * Which column of a side-by-side diff row a half renders: the old (pre-image)
+ * or the new (post-image) one. Renamed from DiffSide so it can no longer be
+ * confused with {@see \Porta\Git\DiffSide}, the staging axis. Owns the
+ * line-number pick so the renderer asks the column rather than branching on a
+ * bool.
  */
-enum DiffSide
+enum DiffColumn
 {
     case Old;
     case New;

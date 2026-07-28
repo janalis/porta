@@ -13,7 +13,8 @@ use Porta\Ui\Role;
 use Porta\Ui\Sgr;
 use Porta\Ui\Theme\Styles;
 use Porta\Widget\Git\DiffCharSelection;
-use Porta\Widget\Git\DiffSide;
+use Porta\Widget\Git\DiffColumn;
+use Porta\Widget\Git\DiffGeometry;
 use Symfony\Component\Tui\Ansi\AnsiUtils;
 
 /**
@@ -59,14 +60,14 @@ final readonly class DiffViewRenderer
      *
      * @param Row $row
      */
-    public static function lineAtRow(DiffDocument $document, array $row, ?string $side): ?DiffLine
+    public static function lineAtRow(DiffDocument $document, array $row, ?DiffColumn $side): ?DiffLine
     {
         if (DiffRowKind::Hunk === $row['kind']) {
             return null;
         }
         $index = $row['line'] ?? -1;
         if (DiffRowKind::Line !== $row['kind']) {
-            $index = 'left' === ($side ?? 'left') ? $row['left'] ?? -1 : $row['right'] ?? -1;
+            $index = DiffColumn::New !== $side ? $row['left'] ?? -1 : $row['right'] ?? -1;
         }
 
         return $index >= 0 ? $document->hunks[$row['hunk']]->lines[$index] : null;
@@ -112,12 +113,8 @@ final readonly class DiffViewRenderer
         if (null === $target) {
             return $line;
         }
-        $textStart = match ($sel->side) {
-            null => 12,
-            'left' => 6,
-            default => intdiv($width - 1, num2: 2) + 7,
-        };
-        $segEnd = 'left' === $sel->side ? intdiv($width - 1, num2: 2) : $width;
+        $textStart = DiffGeometry::textStart($sel->side, $width);
+        $segEnd = DiffColumn::Old === $sel->side ? DiffGeometry::splitBoundary($width) : $width;
         $fromCol = $rowIndex === $sel->fromRow ? $sel->fromCol : 0;
         $toCol = $rowIndex === $sel->toRow ? $sel->toCol : mb_strwidth($target->text);
         $start = max($textStart, $textStart + $fromCol - $this->hScroll);
@@ -161,13 +158,13 @@ final readonly class DiffViewRenderer
             return $this->styles->of(Role::Hunk)->apply(AnsiText::truncate(' '.$hunk->header(), $width, pad: true));
         }
         if (DiffRowKind::Pair === $row['kind']) {
-            $leftW = intdiv($width - 1, num2: 2);
+            $leftW = DiffGeometry::splitBoundary($width);
             $rightW = $width - 1 - $leftW;
 
             return (
-                $this->renderHalf($row['hunk'], $row['left'] ?? -1, $leftW, DiffSide::Old)
+                $this->renderHalf($row['hunk'], $row['left'] ?? -1, $leftW, DiffColumn::Old)
                 .$this->styles->of(Role::Gutter)->apply(Glyphs::DIFF_COLUMN)
-                .$this->renderHalf($row['hunk'], $row['right'] ?? -1, $rightW, DiffSide::New)
+                .$this->renderHalf($row['hunk'], $row['right'] ?? -1, $rightW, DiffColumn::New)
                 .Sgr::RESET
             );
         }
@@ -229,7 +226,7 @@ final readonly class DiffViewRenderer
      * $width columns; -1 (no line on this side) renders blank. Colors reset
      * to the default foreground at the end so nothing bleeds past the divider.
      */
-    private function renderHalf(int $hunkIndex, int $lineIndex, int $width, DiffSide $side): string
+    private function renderHalf(int $hunkIndex, int $lineIndex, int $width, DiffColumn $side): string
     {
         if ($lineIndex < 0) {
             return str_repeat(' ', max(0, $width));

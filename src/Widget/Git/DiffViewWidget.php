@@ -108,7 +108,6 @@ final class DiffViewWidget extends AbstractWidget implements FocusableInterface,
         $this->highlighter = new CodeHighlighter(new TempestHighlightProvider($theme), $theme);
     }
 
-    /** @param callable(array<int, array<int, true>>): void $callback */
     /** Install the git view's outbound hooks (see {@see DiffViewCallbacks}). */
     public function setCallbacks(DiffViewCallbacks $callbacks): void
     {
@@ -414,29 +413,23 @@ final class DiffViewWidget extends AbstractWidget implements FocusableInterface,
         $this->invalidate();
     }
 
-    /** Which split half a widget column falls in (null in unified mode). */
-    private function sideAt(int $relCol): ?string
+    /** Which split column a widget column falls in (null in unified mode). */
+    private function sideAt(int $relCol): ?DiffColumn
     {
         if (!$this->split) {
             return null;
         }
 
-        return $relCol <= intdiv($this->lastWidth - 1, num2: 2) ? 'left' : 'right';
+        return $relCol <= DiffGeometry::splitBoundary($this->lastWidth) ? DiffColumn::Old : DiffColumn::New;
     }
 
     /**
      * A widget column as a display column into the (side's) line text,
      * accounting for gutters, the ± marker and the horizontal scroll.
      */
-    private function pointCol(int $relCol, ?string $side): int
+    private function pointCol(int $relCol, ?DiffColumn $side): int
     {
-        $textStart = match ($side) {
-            null => 12,
-            'left' => 6,
-            default => intdiv($this->lastWidth - 1, num2: 2) + 7,
-        };
-
-        return max(0, $relCol - $textStart + $this->hScroll);
+        return max(0, $relCol - DiffGeometry::textStart($side, $this->lastWidth) + $this->hScroll);
     }
 
     private function fireButton(string $name): void
