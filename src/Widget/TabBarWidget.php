@@ -12,9 +12,9 @@ use Porta\Ui\Theme\Styles;
 use Porta\Widget\Render\MenuOverlayHost;
 use Porta\Widget\Render\MenuOverlayHostTrait;
 use Porta\Widget\Render\StripWindow;
-use Porta\Widget\Render\TabCell;
 use Porta\Widget\Render\TabCloseGlyph;
 use Porta\Widget\Render\TabState;
+use Porta\Widget\Render\TabStripRenderer;
 use Porta\Widget\Render\TabStyle;
 use Porta\Widget\Support\ProviderFingerprint;
 use Porta\Widget\Support\StripScroll;
@@ -158,7 +158,7 @@ final class TabBarWidget extends AbstractWidget implements MenuOverlayHost
         /** @var list<array{text: string, active: bool, width: int, closeOffset: int}> $parts */
         $parts = [];
         foreach ($tabs as $tab) {
-            $parts[] = ['active' => $tab['active']] + TabCell::measure($tab['name'], $tab['dirty'] ? $this->styles->of(Role::Modified)->apply(Glyphs::DIRTY) : '');
+            $parts[] = ['active' => $tab['active']] + TabStripRenderer::measureCell($tab['name'], $tab['dirty'] ? $this->styles->of(Role::Modified)->apply(Glyphs::DIRTY) : '');
         }
 
         $activeIndex = 0;
@@ -190,14 +190,14 @@ final class TabBarWidget extends AbstractWidget implements MenuOverlayHost
             if (($used + $part['width']) > ($overflow ? $columns - 1 : $columns)) {
                 break;
             }
-            $line .= TabCell::render($part['text'], $part['closeOffset'], $this->styles, TabState::of($part['active'], $this->isHoverCell(0, $used, $part['width'])));
+            $line .= TabStripRenderer::renderCell($part['text'], $part['closeOffset'], $this->styles, TabState::of($part['active'], $this->isHoverCell(0, $used, $part['width'])));
             $this->lastLayout[] = [
                 'index' => $index,
                 'row' => 0,
                 'start' => $used,
                 'width' => $part['width'],
                 'closeStart' => $used + $part['closeOffset'],
-                'closeWidth' => TabCell::CLOSE_WIDTH,
+                'closeWidth' => TabStripRenderer::CLOSE_WIDTH,
             ];
             $used += $part['width'];
             $last = $index;
@@ -273,8 +273,8 @@ final class TabBarWidget extends AbstractWidget implements MenuOverlayHost
                     'row' => \count($lines) - 1,
                     'start' => 0,
                     'width' => self::VERTICAL_WIDTH,
-                    'closeStart' => self::VERTICAL_WIDTH - TabCell::CLOSE_WIDTH,
-                    'closeWidth' => TabCell::CLOSE_WIDTH,
+                    'closeStart' => self::VERTICAL_WIDTH - TabStripRenderer::CLOSE_WIDTH,
+                    'closeWidth' => TabStripRenderer::CLOSE_WIDTH,
                 ];
             }
             if ($overflow) {

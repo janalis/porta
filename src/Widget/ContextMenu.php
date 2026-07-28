@@ -8,6 +8,7 @@ use Porta\Container\AsChromeRoot;
 use Porta\Container\AsIdeService;
 use Porta\Container\AsWidget;
 use Porta\Ui\Theme\Styles;
+use Porta\Widget\Support\MenuNavigation;
 use Porta\Widget\Support\StylesDefault;
 use Porta\Workbench\Menu\MenuItem;
 use Porta\Workbench\Menu\MenuPanel;
@@ -30,6 +31,7 @@ use Symfony\Component\Tui\Widget\KeybindingsTrait;
 final class ContextMenu extends OverlayWidget
 {
     use KeybindingsTrait;
+    use MenuNavigation;
     use StylesDefault;
 
     public function __construct(?Styles $styles = null)
@@ -40,16 +42,6 @@ final class ContextMenu extends OverlayWidget
     /** @var list<MenuItem> */
     private array $items = [];
     private int $selected = 0;
-
-    /** @var (callable(): void)|null fired on open/navigate so the coordinator re-places the overlay */
-    private $onNavigate = null;
-
-    public function onNavigate(callable $callback): self
-    {
-        $this->onNavigate = $callback;
-
-        return $this;
-    }
 
     /**
      * Open the menu with $items and select its first non-separator entry.
@@ -179,14 +171,6 @@ final class ContextMenu extends OverlayWidget
             ($item->run)();
         }
         $this->close();
-    }
-
-    private function afterNavigate(): void
-    {
-        $this->invalidate();
-        if (null !== $this->onNavigate) {
-            ($this->onNavigate)();
-        }
     }
 
     protected static function getDefaultKeybindings(): array

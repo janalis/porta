@@ -12,6 +12,7 @@ use Porta\Ui\Role;
 use Porta\Ui\Theme\Styles;
 use Porta\Widget\Render\BarChromeStyle;
 use Porta\Widget\Render\TabState;
+use Porta\Widget\Support\MenuNavigation;
 use Porta\Widget\Support\StylesDefault;
 use Porta\Workbench\Menu\Menu;
 use Porta\Workbench\Menu\MenuPanel;
@@ -40,6 +41,7 @@ final class MenuBarWidget extends OverlayWidget implements FocusableInterface
 {
     use FocusableTrait;
     use KeybindingsTrait;
+    use MenuNavigation;
     use StylesDefault;
 
     public function __construct(?Styles $styles = null)
@@ -56,20 +58,10 @@ final class MenuBarWidget extends OverlayWidget implements FocusableInterface
     /** @var list<array{index: int, start: int, width: int}> title strip layout from the last render */
     private array $titleLayout = [];
 
-    /** @var (callable(): void)|null fired whenever the open/selection state changes, so the coordinator can re-place the floating dropdown */
-    private $onNavigate = null;
-
     /** @param list<Menu> $menus */
     public function setMenus(array $menus): self
     {
         $this->menus = $menus;
-
-        return $this;
-    }
-
-    public function onNavigate(callable $callback): self
-    {
-        $this->onNavigate = $callback;
 
         return $this;
     }
@@ -84,14 +76,6 @@ final class MenuBarWidget extends OverlayWidget implements FocusableInterface
         $this->openIndex = IntMath::clamp($index, 0, \count($this->menus) - 1);
         $this->selected = $this->firstSelectable($this->openIndex);
         $this->afterNavigate();
-    }
-
-    private function afterNavigate(): void
-    {
-        $this->invalidate();
-        if (null !== $this->onNavigate) {
-            ($this->onNavigate)();
-        }
     }
 
     protected function resetState(): void

@@ -7,15 +7,15 @@ namespace Porta\Tests\Unit\Widget\Render;
 use PHPUnit\Framework\TestCase;
 use Porta\Ui\Glyphs;
 use Porta\Ui\Theme\Styles;
-use Porta\Widget\Render\TabCell;
 use Porta\Widget\Render\TabState;
+use Porta\Widget\Render\TabStripRenderer;
 use Symfony\Component\Tui\Ansi\AnsiUtils;
 
-final class TabCellTest extends TestCase
+final class TabCellRenderingTest extends TestCase
 {
     public function testMeasuresTheBareCellAndItsDivider(): void
     {
-        $cell = TabCell::measure('one');
+        $cell = TabStripRenderer::measureCell('one');
 
         $this->assertSame(' one × ', $cell['text']);
         $this->assertSame(8, $cell['width'], 'seven columns of cell plus the divider');
@@ -24,7 +24,7 @@ final class TabCellTest extends TestCase
 
     public function testAMarkerShiftsTheCloseZoneWithoutBreakingTheWidth(): void
     {
-        $cell = TabCell::measure('one', Glyphs::DIRTY);
+        $cell = TabStripRenderer::measureCell('one', Glyphs::DIRTY);
 
         $this->assertSame(' one ●× ', $cell['text']);
         $this->assertSame(9, $cell['width']);
@@ -35,7 +35,7 @@ final class TabCellTest extends TestCase
     {
         // CJK glyphs are two columns wide; a byte count would under-measure the
         // cell and the strip would garble at exactly this tab.
-        $cell = TabCell::measure('日本');
+        $cell = TabStripRenderer::measureCell('日本');
 
         $this->assertSame(mb_strwidth($cell['text']) + 1, $cell['width']);
         $this->assertSame(6, $cell['closeOffset'], '" 日本 " is six display columns');
@@ -50,8 +50,8 @@ final class TabCellTest extends TestCase
     {
         foreach (['one', '日本', 'a-very-long-buffer-name.php'] as $label) {
             foreach (TabState::cases() as $state) {
-                $cell = TabCell::measure($label, Glyphs::DIRTY);
-                $rendered = TabCell::render($cell['text'], $cell['closeOffset'], Styles::dark(), $state);
+                $cell = TabStripRenderer::measureCell($label, Glyphs::DIRTY);
+                $rendered = TabStripRenderer::renderCell($cell['text'], $cell['closeOffset'], Styles::dark(), $state);
 
                 $this->assertSame($cell['width'], AnsiUtils::visibleWidth($rendered), $label);
             }
@@ -60,13 +60,13 @@ final class TabCellTest extends TestCase
 
     public function testRendersTheDividerAndBothCloseShades(): void
     {
-        $cell = TabCell::measure('one');
+        $cell = TabStripRenderer::measureCell('one');
 
-        $active = TabCell::render($cell['text'], $cell['closeOffset'], Styles::dark(), TabState::Active);
+        $active = TabStripRenderer::renderCell($cell['text'], $cell['closeOffset'], Styles::dark(), TabState::Active);
         $this->assertStringEndsWith(Glyphs::SEPARATOR, AnsiUtils::stripAnsiCodes($active), 'the divider closes the cell');
         $this->assertStringContainsString("\x1b[38;5;252m", $active, 'the active tab takes the bright × shade');
 
-        $inactive = TabCell::render($cell['text'], $cell['closeOffset'], Styles::dark(), TabState::Plain);
+        $inactive = TabStripRenderer::renderCell($cell['text'], $cell['closeOffset'], Styles::dark(), TabState::Plain);
         $this->assertStringContainsString("\x1b[38;5;240m", $inactive, 'an inactive tab takes the dim × shade');
     }
 
@@ -74,8 +74,8 @@ final class TabCellTest extends TestCase
     {
         // The × is a foreground-only span: it must not emit a full reset, which
         // would drop the tab's background for the rest of the cell.
-        $cell = TabCell::measure('one');
-        $rendered = TabCell::render($cell['text'], $cell['closeOffset'], Styles::dark(), TabState::Active);
+        $cell = TabStripRenderer::measureCell('one');
+        $rendered = TabStripRenderer::renderCell($cell['text'], $cell['closeOffset'], Styles::dark(), TabState::Active);
 
         $body = substr($rendered, offset: 0, length: (int) strrpos($rendered, Glyphs::SEPARATOR));
         $this->assertStringNotContainsString("\x1b[0m", $body, 'no full reset inside the tab run');
@@ -86,8 +86,8 @@ final class TabCellTest extends TestCase
     {
         // A file named a×b.php: the label's own × must stay plain, and only the
         // real close × at closeOffset gets the affordance shade.
-        $cell = TabCell::measure('a×b.php');
-        $rendered = TabCell::render($cell['text'], $cell['closeOffset'], Styles::dark(), TabState::Active);
+        $cell = TabStripRenderer::measureCell('a×b.php');
+        $rendered = TabStripRenderer::renderCell($cell['text'], $cell['closeOffset'], Styles::dark(), TabState::Active);
 
         $plain = AnsiUtils::stripAnsiCodes($rendered);
         $this->assertSame(' a×b.php × '.Glyphs::SEPARATOR, $plain, 'both × survive as plain text');
