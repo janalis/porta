@@ -52,87 +52,130 @@ final class MultilineInput
         $this->col = 0;
     }
 
-    /** Handle one keystroke; returns whether it was consumed (content or caret changed). */
+    /**
+     * Handle one keystroke; returns whether it was consumed (content or caret
+     * changed). A flat dispatch over mutually exclusive key literals — the one
+     * ordering constraint is that the printable fallback stays last.
+     */
     public function handleKey(string $keys): bool
     {
         switch ($keys) {
             case "\r":
             case "\n":
-                $current = $this->lines[$this->line];
-                $this->lines[$this->line] = substr($current, offset: 0, length: $this->col);
-                array_splice($this->lines, $this->line + 1, length: 0, replacement: [substr($current, $this->col)]);
-                ++$this->line;
-                $this->col = 0;
-
-                return true;
+                return $this->splitLineAtCaret();
             case "\x7f":
             case "\x08":
-                if ($this->col > 0) {
-                    $line = $this->lines[$this->line];
-                    $prev = TextMetrics::prevCharBoundary($line, $this->col);
-                    $this->lines[$this->line] = substr($line, offset: 0, length: $prev).substr($line, $this->col);
-                    $this->col = $prev;
-
-                    return true;
-                }
-                if ($this->line > 0) {
-                    $tail = $this->lines[$this->line];
-                    array_splice($this->lines, $this->line, length: 1);
-                    --$this->line;
-                    $this->col = \strlen($this->lines[$this->line]);
-                    $this->lines[$this->line] .= $tail;
-                }
-
-                return true;
-            case "\x1b[A": // up
-                if ($this->line > 0) {
-                    --$this->line;
-                    $this->col = TextMetrics::charBoundaryAtOrBefore($this->lines[$this->line], $this->col);
-                }
-
-                return true;
-            case "\x1b[B": // down
-                if ($this->line < (\count($this->lines) - 1)) {
-                    ++$this->line;
-                    $this->col = TextMetrics::charBoundaryAtOrBefore($this->lines[$this->line], $this->col);
-                }
-
-                return true;
-            case "\x1b[D": // left
-                if ($this->col > 0) {
-                    $this->col = TextMetrics::prevCharBoundary($this->lines[$this->line], $this->col);
-
-                    return true;
-                }
-                if ($this->line > 0) {
-                    --$this->line;
-                    $this->col = \strlen($this->lines[$this->line]);
-                }
-
-                return true;
-            case "\x1b[C": // right
-                if ($this->col < \strlen($this->lines[$this->line])) {
-                    $this->col = TextMetrics::nextCharBoundary($this->lines[$this->line], $this->col);
-
-                    return true;
-                }
-                if ($this->line < (\count($this->lines) - 1)) {
-                    ++$this->line;
-                    $this->col = 0;
-                }
-
-                return true;
+                return $this->deleteBackward();
+            case "\x1b[A":
+                return $this->moveUp();
+            case "\x1b[B":
+                return $this->moveDown();
+            case "\x1b[D":
+                return $this->moveLeft();
+            case "\x1b[C":
+                return $this->moveRight();
         }
 
-        if (TextInput::isPrintable($keys)) {
+        return TextInput::isPrintable($keys) && $this->insertPrintable($keys);
+    }
+
+    // --- Editing ------------------------------------------------------------
+
+    /** Enter: split the caret line, caret to the start of the new tail line. */
+    private function splitLineAtCaret(): bool
+    {
+        $current = $this->lines[$this->line];
+        $this->lines[$this->line] = substr($current, offset: 0, length: $this->col);
+        array_splice($this->lines, $this->line + 1, length: 0, replacement: [substr($current, $this->col)]);
+        ++$this->line;
+        $this->col = 0;
+
+        return true;
+    }
+
+    /** Backspace: delete the char before the caret, or join onto the previous line at its end. */
+    private function deleteBackward(): bool
+    {
+        if ($this->col > 0) {
             $line = $this->lines[$this->line];
-            $this->lines[$this->line] = substr($line, offset: 0, length: $this->col).$keys.substr($line, $this->col);
-            $this->col += \strlen($keys);
+            $prev = TextMetrics::prevCharBoundary($line, $this->col);
+            $this->lines[$this->line] = substr($line, offset: 0, length: $prev).substr($line, $this->col);
+            $this->col = $prev;
 
             return true;
         }
+        if ($this->line > 0) {
+            $tail = $this->lines[$this->line];
+            array_splice($this->lines, $this->line, length: 1);
+            --$this->line;
+            $this->col = \strlen($this->lines[$this->line]);
+            $this->lines[$this->line] .= $tail;
+        }
 
-        return false;
+        return true;
+    }
+
+    private function insertPrintable(string $keys): bool
+    {
+        $line = $this->lines[$this->line];
+        $this->lines[$this->line] = substr($line, offset: 0, length: $this->col).$keys.substr($line, $this->col);
+        $this->col += \strlen($keys);
+
+        return true;
+    }
+
+    // --- Caret motion (columns snap to the nearest UTF-8 boundary) ----------
+
+    private function moveUp(): bool
+    {
+        if ($this->line > 0) {
+            --$this->line;
+            $this->col = TextMetrics::charBoundaryAtOrBefore($this->lines[$this->line], $this->col);
+        }
+
+        return true;
+    }
+
+    private function moveDown(): bool
+    {
+        if ($this->line < (\count($this->lines) - 1)) {
+            ++$this->line;
+            $this->col = TextMetrics::charBoundaryAtOrBefore($this->lines[$this->line], $this->col);
+        }
+
+        return true;
+    }
+
+    /** Left: previous char, or wrap to the previous line's end. */
+    private function moveLeft(): bool
+    {
+        if ($this->col > 0) {
+            $this->col = TextMetrics::prevCharBoundary($this->lines[$this->line], $this->col);
+
+            return true;
+        }
+        if ($this->line > 0) {
+            --$this->line;
+            $this->col = \strlen($this->lines[$this->line]);
+        }
+
+        return true;
+    }
+
+    /** Right: next char, or wrap to the next line's start. */
+    private function moveRight(): bool
+    {
+        if ($this->col < \strlen($this->lines[$this->line])) {
+            $this->col = TextMetrics::nextCharBoundary($this->lines[$this->line], $this->col);
+
+            return true;
+        }
+        if ($this->line < (\count($this->lines) - 1)) {
+            ++$this->line;
+            $this->col = 0;
+        }
+
+        return true;
     }
 
     /**
