@@ -15,12 +15,8 @@ final class DapSession
 {
     private DebugState $state = DebugState::Idle;
     private ?int $threadId = null;
-    private bool $supportsConfigurationDone = false;
-    private bool $supportsConditionalBreakpoints = false;
-    private bool $supportsHitConditionalBreakpoints = false;
-    private bool $supportsLogPoints = false;
-    private bool $supportsSetVariable = false;
-    private bool $supportsRestart = false;
+    /** What the adapter advertised at initialize; all-false until then. */
+    private DapCapabilities $capabilities;
     private bool $terminationReported = false;
 
     /** @var list<array{filter: string, label: string, default: bool}> the adapter's advertised exception filters */
@@ -39,7 +35,9 @@ final class DapSession
         private readonly \Closure $breakpointsProvider,
         private readonly DebugSessionObserver $observer,
         private readonly \Closure $exceptionFiltersProvider,
-    ) {}
+    ) {
+        $this->capabilities = new DapCapabilities();
+    }
 
     public function state(): DebugState
     {
@@ -103,12 +101,7 @@ final class DapSession
 
                     return;
                 }
-                $this->supportsConfigurationDone = true === ($body['supportsConfigurationDoneRequest'] ?? false);
-                $this->supportsConditionalBreakpoints = true === ($body['supportsConditionalBreakpoints'] ?? false);
-                $this->supportsHitConditionalBreakpoints = true === ($body['supportsHitConditionalBreakpoints'] ?? false);
-                $this->supportsLogPoints = true === ($body['supportsLogPoints'] ?? false);
-                $this->supportsSetVariable = true === ($body['supportsSetVariable'] ?? false);
-                $this->supportsRestart = true === ($body['supportsRestartRequest'] ?? false);
+                $this->capabilities = DapCapabilities::fromInitializeResponse($body);
                 $this->exceptionFilters = self::normalizeExceptionFilters($body['exceptionBreakpointFilters'] ?? null);
                 $this->client->request('launch', $launchArguments, function (array $ignored, ?string $launchError): void {
                     if (null !== $launchError) {
@@ -143,9 +136,9 @@ final class DapSession
         foreach ($breakpoints as $breakpoint) {
             $entry = ['line' => $breakpoint['line'] + 1];
             foreach ([
-                'condition' => $this->supportsConditionalBreakpoints,
-                'hitCondition' => $this->supportsHitConditionalBreakpoints,
-                'logMessage' => $this->supportsLogPoints,
+                'condition' => $this->capabilities->conditionalBreakpoints,
+                'hitCondition' => $this->capabilities->hitConditionalBreakpoints,
+                'logMessage' => $this->capabilities->logPoints,
             ] as $field => $supported) {
                 if (null === $breakpoint[$field]) {
                     continue;
@@ -322,7 +315,7 @@ final class DapSession
     /** Whether the adapter advertised support for editing variables while paused. */
     public function supportsSetVariable(): bool
     {
-        return $this->supportsSetVariable;
+        return $this->capabilities->setVariable;
     }
 
     /**
@@ -337,7 +330,7 @@ final class DapSession
         if (!$this->isActive()) {
             return;
         }
-        if (!$this->supportsSetVariable) {
+        if (!$this->capabilities->setVariable) {
             // @mago-expect lint:literal-named-argument -- positional call of a caller-supplied closure; naming would couple to its param names
             $deliver('', 'the debug adapter does not support editing variables');
 
@@ -359,7 +352,7 @@ final class DapSession
     /** Whether the adapter advertised native restart support. */
     public function supportsRestart(): bool
     {
-        return $this->supportsRestart;
+        return $this->capabilities->restart;
     }
 
     /** Restart the debuggee in place via the adapter's native restart request. */
@@ -387,7 +380,7 @@ final class DapSession
             $this->setBreakpoints($path, $breakpoints);
         }
         $this->syncExceptionBreakpoints();
-        if ($this->supportsConfigurationDone) {
+        if ($this->capabilities->configurationDone) {
             $this->client->request('configurationDone');
         }
     }
