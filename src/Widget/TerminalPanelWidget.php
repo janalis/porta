@@ -48,13 +48,7 @@ final class TerminalPanelWidget extends DockPanelWidget implements FocusableInte
     private TerminalBuffer $buffer;
     private int $scrollBack = 0; // lines scrolled up from the bottom
 
-    /** @var (callable(string): void)|null forwards input bytes to the process */
-    private $onInputForward = null;
-
-    /** @var (callable(int): void)|null */
-    private $onSessionClosed = null;
-    /** @var (callable(int): void)|null +1 next / -1 prev */
-    private $onSessionCycled = null;
+    private TerminalPanelCallbacks $callbacks;
 
     private readonly CursorStyle $cursorStyle;
     private readonly Translator $translator;
@@ -65,6 +59,12 @@ final class TerminalPanelWidget extends DockPanelWidget implements FocusableInte
         $this->translator = $translator ?? new Translator('en');
         $this->buffer = new TerminalBuffer();
         $this->visibleRows = 12;
+        $this->callbacks = new TerminalPanelCallbacks(); // a bare widget fires nothing
+    }
+
+    public function setCallbacks(TerminalPanelCallbacks $callbacks): void
+    {
+        $this->callbacks = $callbacks;
     }
 
     public function open(string $title, TerminalBuffer $buffer): void
@@ -124,27 +124,6 @@ final class TerminalPanelWidget extends DockPanelWidget implements FocusableInte
      */
     public function clickRow(int $row): void {}
 
-    public function onInputForward(callable $callback): self
-    {
-        $this->onInputForward = $callback;
-
-        return $this;
-    }
-
-    public function onSessionClosed(callable $callback): self
-    {
-        $this->onSessionClosed = $callback;
-
-        return $this;
-    }
-
-    public function onSessionCycled(callable $callback): self
-    {
-        $this->onSessionCycled = $callback;
-
-        return $this;
-    }
-
     public function handleInput(string $data): void
     {
         if ($this->inputHookHandled($data)) {
@@ -182,16 +161,16 @@ final class TerminalPanelWidget extends DockPanelWidget implements FocusableInte
             return;
         }
         if ($kb->matches($data, 'terminal_close_session')) {
-            if (null !== $this->onSessionClosed) {
-                ($this->onSessionClosed)(-1); // -1 = the active session
+            if (null !== $this->callbacks->onSessionClosed) {
+                ($this->callbacks->onSessionClosed)(-1); // -1 = the active session
             }
 
             return;
         }
 
         // Everything else is forwarded verbatim to the process.
-        if (null !== $this->onInputForward) {
-            ($this->onInputForward)($data);
+        if (null !== $this->callbacks->onInputForward) {
+            ($this->callbacks->onInputForward)($data);
         }
     }
 
@@ -234,8 +213,8 @@ final class TerminalPanelWidget extends DockPanelWidget implements FocusableInte
 
     private function cycle(int $delta): void
     {
-        if (null !== $this->onSessionCycled) {
-            ($this->onSessionCycled)($delta);
+        if (null !== $this->callbacks->onSessionCycled) {
+            ($this->callbacks->onSessionCycled)($delta);
         }
     }
 

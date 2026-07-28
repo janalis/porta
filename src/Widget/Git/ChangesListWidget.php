@@ -68,14 +68,7 @@ final class ChangesListWidget extends AbstractWidget implements FocusableInterfa
     /** Index of the entry an inline discard confirmation is armed for, or null. */
     private ?int $confirmDiscard = null;
 
-    /** @var (callable(ChangeEntry): void)|null selection moved to this entry */
-    private $onSelect = null;
-    /** @var (callable(ChangeEntry): void)|null checkbox toggled */
-    private $onToggleStage = null;
-    /** @var (callable(ChangeEntry): void)|null discard confirmed */
-    private $onDiscard = null;
-    /** @var (callable(): void)|null `2`: switch to the History tab */
-    private $onShowHistory = null;
+    private ChangesListCallbacks $callbacks;
 
     public function __construct(
         private readonly Translator $translator,
@@ -85,35 +78,13 @@ final class ChangesListWidget extends AbstractWidget implements FocusableInterfa
         $this->width = $width;
         $this->initStyles($styles);
         $this->list = new ListSelection();
+        $this->callbacks = new ChangesListCallbacks(); // a bare widget fires nothing
         $this->addStyleClass('list'); // the theme's .list::selected(:focus) rules style the selection
     }
 
-    public function onSelect(callable $callback): self
+    public function setCallbacks(ChangesListCallbacks $callbacks): void
     {
-        $this->onSelect = $callback;
-
-        return $this;
-    }
-
-    public function onToggleStage(callable $callback): self
-    {
-        $this->onToggleStage = $callback;
-
-        return $this;
-    }
-
-    public function onDiscard(callable $callback): self
-    {
-        $this->onDiscard = $callback;
-
-        return $this;
-    }
-
-    public function onShowHistory(callable $callback): self
-    {
-        $this->onShowHistory = $callback;
-
-        return $this;
+        $this->callbacks = $callbacks;
     }
 
     /**
@@ -166,8 +137,8 @@ final class ChangesListWidget extends AbstractWidget implements FocusableInterfa
         if (null !== $this->confirmDiscard) {
             $entry = $this->entries[$this->confirmDiscard] ?? null;
             $this->confirmDiscard = null;
-            if (('y' === $data || 'Y' === $data) && null !== $entry && null !== $this->onDiscard) {
-                ($this->onDiscard)($entry);
+            if (('y' === $data || 'Y' === $data) && null !== $entry && null !== $this->callbacks->onDiscard) {
+                ($this->callbacks->onDiscard)($entry);
             }
             $this->invalidate();
 
@@ -184,15 +155,15 @@ final class ChangesListWidget extends AbstractWidget implements FocusableInterfa
             return;
         }
         if ($kb->matches($data, 'toggle_stage')) {
-            if (null !== ($entry = $this->selectedEntry()) && null !== $this->onToggleStage) {
-                ($this->onToggleStage)($entry);
+            if (null !== ($entry = $this->selectedEntry()) && null !== $this->callbacks->onToggleStage) {
+                ($this->callbacks->onToggleStage)($entry);
             }
 
             return;
         }
         if ($kb->matches($data, 'show_history')) {
-            if (null !== $this->onShowHistory) {
-                ($this->onShowHistory)();
+            if (null !== $this->callbacks->onShowHistory) {
+                ($this->callbacks->onShowHistory)();
             }
 
             return;
@@ -222,8 +193,8 @@ final class ChangesListWidget extends AbstractWidget implements FocusableInterfa
     /** Context-menu trigger: toggle the selected entry's staging (same path as Space). */
     public function toggleStageSelected(): void
     {
-        if (null !== ($entry = $this->selectedEntry()) && null !== $this->onToggleStage) {
-            ($this->onToggleStage)($entry);
+        if (null !== ($entry = $this->selectedEntry()) && null !== $this->callbacks->onToggleStage) {
+            ($this->callbacks->onToggleStage)($entry);
             $this->invalidate();
         }
     }
@@ -240,8 +211,8 @@ final class ChangesListWidget extends AbstractWidget implements FocusableInterfa
     /** Context-menu trigger: switch to the History tab (same path as the `2` key). */
     public function showHistory(): void
     {
-        if (null !== $this->onShowHistory) {
-            ($this->onShowHistory)();
+        if (null !== $this->callbacks->onShowHistory) {
+            ($this->callbacks->onShowHistory)();
         }
     }
 
@@ -260,8 +231,8 @@ final class ChangesListWidget extends AbstractWidget implements FocusableInterfa
         }
         $this->list->select($index);
         $entry = $this->entries[$index];
-        if ($relCol <= 3 && null !== $this->onToggleStage) {
-            ($this->onToggleStage)($entry);
+        if ($relCol <= 3 && null !== $this->callbacks->onToggleStage) {
+            ($this->callbacks->onToggleStage)($entry);
             $this->invalidate();
 
             return;
@@ -287,8 +258,8 @@ final class ChangesListWidget extends AbstractWidget implements FocusableInterfa
 
     private function fireSelect(): void
     {
-        if (null !== ($entry = $this->selectedEntry()) && null !== $this->onSelect) {
-            ($this->onSelect)($entry);
+        if (null !== ($entry = $this->selectedEntry()) && null !== $this->callbacks->onSelect) {
+            ($this->callbacks->onSelect)($entry);
         }
     }
 

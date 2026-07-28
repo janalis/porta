@@ -10,6 +10,7 @@ use Porta\Terminal\TerminalSessions;
 use Porta\Ui\Glyphs;
 use Porta\Widget\DebugPanelWidget;
 use Porta\Widget\DockPanelWidget;
+use Porta\Widget\DockTabsCallbacks;
 use Porta\Widget\DockTabsWidget;
 use Porta\Widget\OverlayWidget;
 use Porta\Widget\ResultsPanelWidget;
@@ -79,15 +80,17 @@ final class BottomDock
         $this->debugPanel->onDismiss($this->hide(...));
         $this->resultsPanel->onDismiss($this->hide(...));
         $this->dockTabs->setProvider($this->aliveTabs(...));
-        $this->dockTabs->onTabSelected($this->reveal(...));
-        $this->dockTabs->onTabClosed($this->closeTab(...));
-        // A strip drag reorders within its own family: session tabs among
-        // themselves, tool tabs among themselves (Debug is a single tab).
-        $this->dockTabs->onTabMoved(fn (DockTab $family, int $from, int $to) => match ($family) {
-            DockTab::Terminal => $this->sessions->move($from, $to),
-            DockTab::Results => $this->tools->move($from, $to),
-            DockTab::Debug => null,
-        });
+        $this->dockTabs->setCallbacks(new DockTabsCallbacks(
+            onTabSelected: $this->reveal(...),
+            onTabClosed: $this->closeTab(...),
+            // A strip drag reorders within its own family: session tabs among
+            // themselves, tool tabs among themselves (Debug is a single tab).
+            onTabMoved: fn (DockTab $family, int $from, int $to) => match ($family) {
+                DockTab::Terminal => $this->sessions->move($from, $to),
+                DockTab::Results => $this->tools->move($from, $to),
+                DockTab::Debug => null,
+            },
+        ));
     }
 
     /** How a Terminal tab reveals itself: re-open the active session (wired to RunController). */

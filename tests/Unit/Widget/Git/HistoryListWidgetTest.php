@@ -8,6 +8,7 @@ use PHPUnit\Framework\TestCase;
 use Porta\Git\LogEntry;
 use Porta\I18n\Translator;
 use Porta\Tests\Support\AttachedStyles;
+use Porta\Widget\Git\HistoryListCallbacks;
 use Porta\Widget\Git\HistoryListWidget;
 use Symfony\Component\Tui\Ansi\AnsiUtils;
 use Symfony\Component\Tui\Render\RenderContext;
@@ -51,12 +52,14 @@ final class HistoryListWidgetTest extends TestCase
     {
         $widget = $this->widget();
         $events = [];
-        $widget->onSelectCommit(static function (LogEntry $c) use (&$events): void {
-            $events[] = 'commit:'.$c->shortSha;
-        });
-        $widget->onSelectFile(static function (LogEntry $c, string $path) use (&$events): void {
-            $events[] = 'file:'.$path;
-        });
+        $widget->setCallbacks(new HistoryListCallbacks(
+            onSelectCommit: static function (LogEntry $c) use (&$events): void {
+                $events[] = 'commit:'.$c->shortSha;
+            },
+            onSelectFile: static function (LogEntry $c, string $path) use (&$events): void {
+                $events[] = 'file:'.$path;
+            },
+        ));
 
         $widget->handleInput("\x1b[B"); // second commit
         $widget->handleInput("\r"); // into the file list
@@ -71,12 +74,14 @@ final class HistoryListWidgetTest extends TestCase
         $widget = $this->widget();
         $widget->render(new RenderContext(44, 16)); // commitRowCount = 6, Files header row 7
         $fired = 0;
-        $widget->onSelectCommit(static function () use (&$fired): void {
-            ++$fired;
-        });
-        $widget->onSelectFile(static function () use (&$fired): void {
-            ++$fired;
-        });
+        $widget->setCallbacks(new HistoryListCallbacks(
+            onSelectCommit: static function () use (&$fired): void {
+                ++$fired;
+            },
+            onSelectFile: static function () use (&$fired): void {
+                ++$fired;
+            },
+        ));
 
         $this->assertTrue($widget->hoverRow(2), 'second commit row tints');
         $this->assertFalse($widget->hoverRow(2), 'same row: no repaint');
@@ -110,12 +115,14 @@ final class HistoryListWidgetTest extends TestCase
     {
         $widget = $this->widget();
         $events = [];
-        $widget->onSelectCommit(static function (LogEntry $c) use (&$events): void {
-            $events[] = 'commit:'.$c->shortSha;
-        });
-        $widget->onSelectFile(static function (LogEntry $c, string $path) use (&$events): void {
-            $events[] = 'file:'.$path;
-        });
+        $widget->setCallbacks(new HistoryListCallbacks(
+            onSelectCommit: static function (LogEntry $c) use (&$events): void {
+                $events[] = 'commit:'.$c->shortSha;
+            },
+            onSelectFile: static function (LogEntry $c, string $path) use (&$events): void {
+                $events[] = 'file:'.$path;
+            },
+        ));
         $widget->render(new RenderContext(44, 16)); // teach it its height
 
         $widget->handleClick(2); // second commit row
@@ -131,9 +138,11 @@ final class HistoryListWidgetTest extends TestCase
     {
         $widget = $this->widget();
         $events = [];
-        $widget->onShowChanges(static function () use (&$events): void {
-            $events[] = 'changes';
-        });
+        $widget->setCallbacks(new HistoryListCallbacks(
+            onShowChanges: static function () use (&$events): void {
+                $events[] = 'changes';
+            },
+        ));
         $widget->onFocusNext(static function () use (&$events): void {
             $events[] = 'next';
         });
@@ -168,9 +177,11 @@ final class HistoryListWidgetTest extends TestCase
         ]);
         $loads = 0;
         $widget->markHasMore();
-        $widget->onLoadMore(static function () use (&$loads): void {
-            ++$loads;
-        });
+        $widget->setCallbacks(new HistoryListCallbacks(
+            onLoadMore: static function () use (&$loads): void {
+                ++$loads;
+            },
+        ));
 
         $widget->handleInput("\x1b[B");
         $this->assertSame(0, $loads, 'mid-list navigation never loads');

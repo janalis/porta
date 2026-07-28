@@ -69,14 +69,7 @@ final class DebugPanelWidget extends DockPanelWidget implements FocusableInterfa
     /** @var list<DebugRow> flattened display rows */
     private array $rows = [];
 
-    /** @var (callable(int, string, int): void)|null frameId, path, 0-based line */
-    private $onFrameSelected = null;
-    /** @var (callable(int, callable(list<array{name: string, value: string, variablesReference: int}>): void): void)|null */
-    private $onExpandVariable = null;
-    /** @var (callable(int): void)|null a watch row's Delete key, by watch index */
-    private $onRemoveWatch = null;
-    /** @var (callable(int, string, string): void)|null a variable's edit key: parent reference, name, current value */
-    private $onEditVariable = null;
+    private DebugPanelCallbacks $callbacks;
 
     private readonly Translator $translator;
 
@@ -87,34 +80,12 @@ final class DebugPanelWidget extends DockPanelWidget implements FocusableInterfa
         $this->list = new ListSelection();
         $this->addStyleClass('list'); // the theme's .list::selected(:focus) rules style the selection
         $this->visibleRows = 10;
+        $this->callbacks = new DebugPanelCallbacks(); // a bare widget fires nothing
     }
 
-    public function onFrameSelected(callable $callback): self
+    public function setCallbacks(DebugPanelCallbacks $callbacks): void
     {
-        $this->onFrameSelected = $callback;
-
-        return $this;
-    }
-
-    public function onExpandVariable(callable $callback): self
-    {
-        $this->onExpandVariable = $callback;
-
-        return $this;
-    }
-
-    public function onEditVariable(callable $callback): self
-    {
-        $this->onEditVariable = $callback;
-
-        return $this;
-    }
-
-    public function onRemoveWatch(callable $callback): self
-    {
-        $this->onRemoveWatch = $callback;
-
-        return $this;
+        $this->callbacks = $callbacks;
     }
 
     /** The launched file's name, shown on the dock strip's Debug tab. */
@@ -239,18 +210,18 @@ final class DebugPanelWidget extends DockPanelWidget implements FocusableInterfa
         }
         if ($kb->matches($data, 'edit_variable')) {
             $row = $this->rows[$this->list->selected()] ?? null;
-            if (null !== $row && DebugRowKind::Variable === $row->kind && $row->parentRef > 0 && null !== $this->onEditVariable) {
+            if (null !== $row && DebugRowKind::Variable === $row->kind && $row->parentRef > 0 && null !== $this->callbacks->onEditVariable) {
                 // The label is "name = value"; hand the current value back for prefill.
                 $value = explode(' = ', $row->label, limit: 2)[1] ?? '';
-                ($this->onEditVariable)($row->parentRef, $row->name, $value);
+                ($this->callbacks->onEditVariable)($row->parentRef, $row->name, $value);
             }
 
             return;
         }
         if ($kb->matches($data, 'remove_watch')) {
             $row = $this->rows[$this->list->selected()] ?? null;
-            if (null !== $row && DebugRowKind::Watch === $row->kind && null !== $this->onRemoveWatch) {
-                ($this->onRemoveWatch)($row->watchIndex);
+            if (null !== $row && DebugRowKind::Watch === $row->kind && null !== $this->callbacks->onRemoveWatch) {
+                ($this->callbacks->onRemoveWatch)($row->watchIndex);
             }
         }
     }
@@ -405,8 +376,8 @@ final class DebugPanelWidget extends DockPanelWidget implements FocusableInterfa
         if (null === $row) {
             return;
         }
-        if (DebugRowKind::Frame === $row->kind && null !== $this->onFrameSelected) {
-            ($this->onFrameSelected)($row->frameId, $row->path, $row->line);
+        if (DebugRowKind::Frame === $row->kind && null !== $this->callbacks->onFrameSelected) {
+            ($this->callbacks->onFrameSelected)($row->frameId, $row->path, $row->line);
 
             return;
         }
@@ -424,8 +395,8 @@ final class DebugPanelWidget extends DockPanelWidget implements FocusableInterfa
             return;
         }
         $this->expanded[$reference] = true;
-        if (!array_key_exists($reference, $this->children) && null !== $this->onExpandVariable) {
-            ($this->onExpandVariable)($reference, fn (array $variables) => $this->setVariables($reference, $variables));
+        if (!array_key_exists($reference, $this->children) && null !== $this->callbacks->onExpandVariable) {
+            ($this->callbacks->onExpandVariable)($reference, fn (array $variables) => $this->setVariables($reference, $variables));
         }
         $this->rebuild();
     }

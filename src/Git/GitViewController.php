@@ -14,7 +14,9 @@ use Porta\Layout\EditorAreaPanes;
 use Porta\Layout\LayoutController;
 use Porta\Support\Clipboard;
 use Porta\Support\ProjectPaths;
+use Porta\Widget\Git\ChangesListCallbacks;
 use Porta\Widget\Git\DiffViewCallbacks;
+use Porta\Widget\Git\HistoryListCallbacks;
 use Porta\Widget\MenuBarWidget;
 use Porta\Workbench\EditorArea;
 use Porta\Workbench\FullScreenView;
@@ -87,7 +89,6 @@ final class GitViewController implements FullScreenView
         private readonly ?GitSettings $gitSettings = null,
     ) {
         $views->attachGit($this);
-        $this->panes->history->onLoadMore($this->loadMoreHistory(...));
         $this->panes->changes->onRemote(fn (string $operation) => $this->remoteCommands?->runOperation($operation));
         $this->panes->history->onRemote(fn (string $operation) => $this->remoteCommands?->runOperation($operation));
         $this->staging = new GitStagingService($this->git, $this->rootDir, $this->panes->commitBox, $this->notifier, $this->translator);
@@ -95,21 +96,20 @@ final class GitViewController implements FullScreenView
         $exit = $this->close(...);
         $next = $this->focusNext(...);
 
-        $this->panes
-            ->changes
-            ->onSelect($this->loadDiff(...))
-            ->onToggleStage($this->toggleStage(...))
-            ->onDiscard($this->discard(...))
-            ->onShowHistory(fn () => $this->switchMode(GitViewMode::History))
-            ->onFocusNext($next)
-            ->onExit($exit);
-        $this->panes
-            ->history
-            ->onSelectCommit($this->loadCommitFiles(...))
-            ->onSelectFile($this->loadCommitFileDiff(...))
-            ->onShowChanges(fn () => $this->switchMode(GitViewMode::Changes))
-            ->onFocusNext($next)
-            ->onExit($exit);
+        $this->panes->changes->setCallbacks(new ChangesListCallbacks(
+            onSelect: $this->loadDiff(...),
+            onToggleStage: $this->toggleStage(...),
+            onDiscard: $this->discard(...),
+            onShowHistory: fn () => $this->switchMode(GitViewMode::History),
+        ));
+        $this->panes->changes->onFocusNext($next)->onExit($exit);
+        $this->panes->history->setCallbacks(new HistoryListCallbacks(
+            onSelectCommit: $this->loadCommitFiles(...),
+            onSelectFile: $this->loadCommitFileDiff(...),
+            onShowChanges: fn () => $this->switchMode(GitViewMode::Changes),
+            onLoadMore: $this->loadMoreHistory(...),
+        ));
+        $this->panes->history->onFocusNext($next)->onExit($exit);
         $this->panes->diffView->setCallbacks(new DiffViewCallbacks(
             onStageSelection: $this->stageSelection(...),
             onCycleContext: $this->cycleContext(...),

@@ -6,6 +6,7 @@ namespace Porta\Tests\Unit\Widget;
 
 use PHPUnit\Framework\TestCase;
 use Porta\Terminal\TerminalBuffer;
+use Porta\Widget\TerminalPanelCallbacks;
 use Porta\Widget\TerminalPanelWidget;
 use Symfony\Component\Tui\Ansi\AnsiUtils;
 use Symfony\Component\Tui\Render\RenderContext;
@@ -19,9 +20,11 @@ final class TerminalPanelWidgetTest extends TestCase
 
         // Input while closed is a no-op.
         $forwarded = '';
-        $panel->onInputForward(static function (string $d) use (&$forwarded): void {
-            $forwarded .= $d;
-        });
+        $panel->setCallbacks(new TerminalPanelCallbacks(
+            onInputForward: static function (string $d) use (&$forwarded): void {
+                $forwarded .= $d;
+            },
+        ));
         $panel->handleInput('x');
         $this->assertSame('', $forwarded);
 
@@ -161,9 +164,11 @@ final class TerminalPanelWidgetTest extends TestCase
         $panel->open('sh', $buffer);
 
         $forwarded = '';
-        $panel->onInputForward(static function (string $d) use (&$forwarded): void {
-            $forwarded .= $d;
-        });
+        $panel->setCallbacks(new TerminalPanelCallbacks(
+            onInputForward: static function (string $d) use (&$forwarded): void {
+                $forwarded .= $d;
+            },
+        ));
 
         // Printable input is forwarded to the process.
         $panel->handleInput('ls');
@@ -200,9 +205,11 @@ final class TerminalPanelWidgetTest extends TestCase
         $panel->onInput(static fn (string $d): bool => 'Z' === $d);
 
         $forwarded = '';
-        $panel->onInputForward(static function (string $d) use (&$forwarded): void {
-            $forwarded .= $d;
-        });
+        $panel->setCallbacks(new TerminalPanelCallbacks(
+            onInputForward: static function (string $d) use (&$forwarded): void {
+                $forwarded .= $d;
+            },
+        ));
         $panel->handleInput('Z'); // consumed by hook, not forwarded
         $this->assertSame('', $forwarded);
     }
@@ -216,15 +223,17 @@ final class TerminalPanelWidgetTest extends TestCase
         $forwarded = '';
         $cycled = [];
         $closed = null;
-        $panel->onInputForward(static function (string $d) use (&$forwarded): void {
-            $forwarded .= $d;
-        });
-        $panel->onSessionCycled(static function (int $d) use (&$cycled): void {
-            $cycled[] = $d;
-        });
-        $panel->onSessionClosed(static function (int $i) use (&$closed): void {
-            $closed = $i;
-        });
+        $panel->setCallbacks(new TerminalPanelCallbacks(
+            onInputForward: static function (string $d) use (&$forwarded): void {
+                $forwarded .= $d;
+            },
+            onSessionCycled: static function (int $d) use (&$cycled): void {
+                $cycled[] = $d;
+            },
+            onSessionClosed: static function (int $i) use (&$closed): void {
+                $closed = $i;
+            },
+        ));
 
         $panel->handleInput("\x1b[6^"); // ctrl+page_down → next
         $panel->handleInput("\x1b[5^"); // ctrl+page_up → prev

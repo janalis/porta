@@ -63,18 +63,12 @@ final class HistoryListWidget extends AbstractWidget implements FocusableInterfa
     private ?int $hoveredFile = null;
     private int $lastRows = 12;
 
-    /** @var (callable(LogEntry): void)|null */
-    private $onSelectCommit = null;
-    /** @var (callable(): void)|null fired once when the selection reaches the last loaded commit */
-    private $onLoadMore = null;
+    private HistoryListCallbacks $callbacks;
+
     /** Whether an older page exists past the loaded commits. */
     private bool $hasMore = false;
     /** Latch: one load-more in flight at a time. */
     private bool $loadingMore = false;
-    /** @var (callable(LogEntry, string): void)|null commit + file path */
-    private $onSelectFile = null;
-    /** @var (callable(): void)|null `1`: switch back to the Changes tab */
-    private $onShowChanges = null;
 
     public function __construct(
         private readonly Translator $translator,
@@ -86,27 +80,12 @@ final class HistoryListWidget extends AbstractWidget implements FocusableInterfa
         $this->initStyles($styles);
         $this->commitList = new ListSelection();
         $this->fileList = new ListSelection();
+        $this->callbacks = new HistoryListCallbacks(); // a bare widget fires nothing
     }
 
-    public function onSelectCommit(callable $callback): self
+    public function setCallbacks(HistoryListCallbacks $callbacks): void
     {
-        $this->onSelectCommit = $callback;
-
-        return $this;
-    }
-
-    public function onSelectFile(callable $callback): self
-    {
-        $this->onSelectFile = $callback;
-
-        return $this;
-    }
-
-    public function onShowChanges(callable $callback): self
-    {
-        $this->onShowChanges = $callback;
-
-        return $this;
+        $this->callbacks = $callbacks;
     }
 
     /** @param list<LogEntry> $commits */
@@ -159,13 +138,6 @@ final class HistoryListWidget extends AbstractWidget implements FocusableInterfa
         return \count($this->commits);
     }
 
-    public function onLoadMore(callable $callback): self
-    {
-        $this->onLoadMore = $callback;
-
-        return $this;
-    }
-
     /** @param list<array{status: string, path: string}> $files */
     public function setFiles(array $files): void
     {
@@ -197,8 +169,8 @@ final class HistoryListWidget extends AbstractWidget implements FocusableInterfa
             return;
         }
         if ($kb->matches($data, 'show_changes')) {
-            if (null !== $this->onShowChanges) {
-                ($this->onShowChanges)();
+            if (null !== $this->callbacks->onShowChanges) {
+                ($this->callbacks->onShowChanges)();
             }
 
             return;
@@ -222,9 +194,9 @@ final class HistoryListWidget extends AbstractWidget implements FocusableInterfa
             $this->fireSelectCommit();
             // Hitting the bottom of the loaded page pulls the next one in
             // (keyboard and wheel — GitMouseRouter translates scroll to keys).
-            if ($this->hasMore && !$this->loadingMore && null !== $this->onLoadMore && $this->commitList->selected() === (\count($this->commits) - 1)) {
+            if ($this->hasMore && !$this->loadingMore && null !== $this->callbacks->onLoadMore && $this->commitList->selected() === (\count($this->commits) - 1)) {
                 $this->loadingMore = true;
-                ($this->onLoadMore)();
+                ($this->callbacks->onLoadMore)();
             }
             $this->invalidate();
         }
@@ -319,8 +291,8 @@ final class HistoryListWidget extends AbstractWidget implements FocusableInterfa
 
     private function fireSelectCommit(): void
     {
-        if (null !== ($commit = $this->selectedCommit()) && null !== $this->onSelectCommit) {
-            ($this->onSelectCommit)($commit);
+        if (null !== ($commit = $this->selectedCommit()) && null !== $this->callbacks->onSelectCommit) {
+            ($this->callbacks->onSelectCommit)($commit);
         }
     }
 
@@ -328,8 +300,8 @@ final class HistoryListWidget extends AbstractWidget implements FocusableInterfa
     {
         $commit = $this->selectedCommit();
         $file = $this->files[$this->fileList->selected()] ?? null;
-        if (null !== $commit && null !== $file && null !== $this->onSelectFile) {
-            ($this->onSelectFile)($commit, $file['path']);
+        if (null !== $commit && null !== $file && null !== $this->callbacks->onSelectFile) {
+            ($this->callbacks->onSelectFile)($commit, $file['path']);
         }
     }
 

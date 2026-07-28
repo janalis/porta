@@ -22,6 +22,7 @@ use Porta\Widget\ImageViewerWidget;
 use Porta\Widget\MenuBarWidget;
 use Porta\Widget\StatusBarWidget;
 use Porta\Widget\TabBarWidget;
+use Porta\Widget\TerminalPanelCallbacks;
 use Porta\Widget\TerminalPanelWidget;
 use Porta\Workbench\Dock\BottomDock;
 use Porta\Workbench\Dock\TabListProvider;
@@ -87,9 +88,11 @@ final class WidgetHooks
         $this->panels->onTerminalReveal(fn () => $this->run->showActiveSession());
         $this->panels->onTerminalSessionClose(fn (int $index) => $this->run->closeSession($index));
         $terminalPanel = $this->terminalPanel;
-        $terminalPanel->onInputForward(fn (string $data) => $this->run->forwardInput($data));
-        $terminalPanel->onSessionClosed(fn (int $index) => $this->run->closeSession($index));
-        $terminalPanel->onSessionCycled(fn (int $delta) => $this->run->cycleSession($delta));
+        $terminalPanel->setCallbacks(new TerminalPanelCallbacks(
+            onInputForward: fn (string $data) => $this->run->forwardInput($data),
+            onSessionClosed: fn (int $index) => $this->run->closeSession($index),
+            onSessionCycled: fn (int $delta) => $this->run->cycleSession($delta),
+        ));
 
         $this->menuBar->onNavigate(function (): void {
             $this->overlay->refreshMenu();

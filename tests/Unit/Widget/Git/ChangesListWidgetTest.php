@@ -7,6 +7,7 @@ namespace Porta\Tests\Unit\Widget\Git;
 use PHPUnit\Framework\TestCase;
 use Porta\Git\ChangeEntry;
 use Porta\I18n\Translator;
+use Porta\Widget\Git\ChangesListCallbacks;
 use Porta\Widget\Git\ChangesListWidget;
 use Symfony\Component\Tui\Ansi\AnsiUtils;
 use Symfony\Component\Tui\Render\RenderContext;
@@ -57,9 +58,11 @@ final class ChangesListWidgetTest extends TestCase
         $widget->setFocused(true);
         $widget->setEntries($this->entries());
         $selected = [];
-        $widget->onSelect(static function (ChangeEntry $entry) use (&$selected): void {
-            $selected[] = $entry->path;
-        });
+        $widget->setCallbacks(new ChangesListCallbacks(
+            onSelect: static function (ChangeEntry $entry) use (&$selected): void {
+                $selected[] = $entry->path;
+            },
+        ));
 
         $widget->handleInput("\x1b[B"); // down
         $widget->handleInput("\x1b[B");
@@ -74,9 +77,11 @@ final class ChangesListWidgetTest extends TestCase
         $widget->setFocused(true);
         $widget->setEntries($this->entries());
         $toggled = null;
-        $widget->onToggleStage(static function (ChangeEntry $entry) use (&$toggled): void {
-            $toggled = $entry->path;
-        });
+        $widget->setCallbacks(new ChangesListCallbacks(
+            onToggleStage: static function (ChangeEntry $entry) use (&$toggled): void {
+                $toggled = $entry->path;
+            },
+        ));
 
         $widget->handleInput(' ');
 
@@ -89,9 +94,11 @@ final class ChangesListWidgetTest extends TestCase
         $widget->setFocused(true);
         $widget->setEntries($this->entries());
         $discarded = null;
-        $widget->onDiscard(static function (ChangeEntry $entry) use (&$discarded): void {
-            $discarded = $entry->path;
-        });
+        $widget->setCallbacks(new ChangesListCallbacks(
+            onDiscard: static function (ChangeEntry $entry) use (&$discarded): void {
+                $discarded = $entry->path;
+            },
+        ));
 
         $widget->handleInput('d');
         $this->assertStringContainsString('Discard changes?', $this->plain($widget->render(new RenderContext(44, 8))));
@@ -112,15 +119,17 @@ final class ChangesListWidgetTest extends TestCase
         $selected = [];
         $toggled = [];
         $history = 0;
-        $widget->onSelect(static function (ChangeEntry $entry) use (&$selected): void {
-            $selected[] = $entry->path;
-        });
-        $widget->onToggleStage(static function (ChangeEntry $entry) use (&$toggled): void {
-            $toggled[] = $entry->path;
-        });
-        $widget->onShowHistory(static function () use (&$history): void {
-            ++$history;
-        });
+        $widget->setCallbacks(new ChangesListCallbacks(
+            onSelect: static function (ChangeEntry $entry) use (&$selected): void {
+                $selected[] = $entry->path;
+            },
+            onToggleStage: static function (ChangeEntry $entry) use (&$toggled): void {
+                $toggled[] = $entry->path;
+            },
+            onShowHistory: static function () use (&$history): void {
+                ++$history;
+            },
+        ));
         $widget->render(new RenderContext(60, 8));
 
         $this->assertNull($widget->selectRowAt(0), 'the header row is no entry');
@@ -165,12 +174,14 @@ final class ChangesListWidgetTest extends TestCase
         $widget->setEntries($this->entries());
         $toggled = null;
         $selected = null;
-        $widget->onToggleStage(static function (ChangeEntry $entry) use (&$toggled): void {
-            $toggled = $entry->path;
-        });
-        $widget->onSelect(static function (ChangeEntry $entry) use (&$selected): void {
-            $selected = $entry->path;
-        });
+        $widget->setCallbacks(new ChangesListCallbacks(
+            onToggleStage: static function (ChangeEntry $entry) use (&$toggled): void {
+                $toggled = $entry->path;
+            },
+            onSelect: static function (ChangeEntry $entry) use (&$selected): void {
+                $selected = $entry->path;
+            },
+        ));
 
         $widget->handleClick(2, 2); // row of src/b.php, inside [x]
         $this->assertSame('src/b.php', $toggled);
@@ -188,9 +199,11 @@ final class ChangesListWidgetTest extends TestCase
         $widget = new ChangesListWidget(new Translator('en'));
         $widget->setEntries($this->entries());
         $selectFired = 0;
-        $widget->onSelect(static function () use (&$selectFired): void {
-            ++$selectFired;
-        });
+        $widget->setCallbacks(new ChangesListCallbacks(
+            onSelect: static function () use (&$selectFired): void {
+                ++$selectFired;
+            },
+        ));
 
         $this->assertTrue($widget->hoverRow(2));
         $this->assertFalse($widget->hoverRow(2), 'same row: no repaint needed');

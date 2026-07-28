@@ -9,6 +9,7 @@ use Porta\Git\ChangeEntry;
 use Porta\I18n\Translator;
 use Porta\Tests\Support\TempProject;
 use Porta\Widget\FileTreeWidget;
+use Porta\Widget\Git\ChangesListCallbacks;
 use Porta\Widget\Git\ChangesListWidget;
 use Porta\Widget\Settings\SettingsNavWidget;
 use Symfony\Component\Tui\Render\RenderContext;
@@ -26,9 +27,9 @@ final class ArrowScrollTraitTest extends TestCase
     {
         $selected = [];
         $list = new ChangesListWidget(new Translator('en'));
-        $list->onSelect(static function (ChangeEntry $entry) use (&$selected): void {
+        $list->setCallbacks(new ChangesListCallbacks(onSelect: static function (ChangeEntry $entry) use (&$selected): void {
             $selected[] = $entry->path;
-        });
+        }));
         $list->setEntries([
             new ChangeEntry('a.php', ' ', 'M'),
             new ChangeEntry('b.php', ' ', 'M'),

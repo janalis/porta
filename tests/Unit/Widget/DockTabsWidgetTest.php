@@ -6,6 +6,7 @@ namespace Porta\Tests\Unit\Widget;
 
 use PHPUnit\Framework\TestCase;
 use Porta\Ui\Glyphs;
+use Porta\Widget\DockTabsCallbacks;
 use Porta\Widget\DockTabsWidget;
 use Porta\Workbench\Dock\DockTab;
 use Symfony\Component\Tui\Ansi\AnsiUtils;
@@ -58,12 +59,14 @@ final class DockTabsWidgetTest extends TestCase
             ['tab' => DockTab::Terminal, 'label' => 'Terminal', 'active' => true, 'key' => '', 'status' => ''],
             ['tab' => DockTab::Debug, 'label' => 'Debug', 'active' => false, 'key' => '', 'status' => ''],
         ]);
-        $bar->onTabSelected(static function (DockTab $tab, string $key) use (&$selected): void {
-            $selected[] = [$tab, $key];
-        });
-        $bar->onTabClosed(static function (DockTab $tab, string $key) use (&$closed): void {
-            $closed[] = [$tab, $key];
-        });
+        $bar->setCallbacks(new DockTabsCallbacks(
+            onTabSelected: static function (DockTab $tab, string $key) use (&$selected): void {
+                $selected[] = [$tab, $key];
+            },
+            onTabClosed: static function (DockTab $tab, string $key) use (&$closed): void {
+                $closed[] = [$tab, $key];
+            },
+        ));
         $bar->render(new RenderContext(80, 1));
 
         // ' Terminal × │ Debug × ': tab 1 body starts at col 0, its × at col 10.
@@ -146,9 +149,11 @@ final class DockTabsWidgetTest extends TestCase
         $this->assertStringNotContainsString('search-00', $plain, 'leading tabs drop first');
         // The hit map follows the window: clicking column 2 hits the first VISIBLE tab.
         $selected = [];
-        $bar->onTabSelected(static function (DockTab $tab, string $key) use (&$selected): void {
-            $selected[] = $key;
-        });
+        $bar->setCallbacks(new DockTabsCallbacks(
+            onTabSelected: static function (DockTab $tab, string $key) use (&$selected): void {
+                $selected[] = $key;
+            },
+        ));
         $this->assertTrue($bar->handleTabClick(2));
         $this->assertNotContains('1', $selected, 'the dropped leading tab is not clickable');
     }
@@ -177,9 +182,11 @@ final class DockTabsWidgetTest extends TestCase
 
         $bar->moveTab(DockTab::Results, 0, 1); // unwired: a no-op
         $moves = [];
-        $bar->onTabMoved(static function (DockTab $family, int $from, int $to) use (&$moves): void {
-            $moves[] = [$family, $from, $to];
-        });
+        $bar->setCallbacks(new DockTabsCallbacks(
+            onTabMoved: static function (DockTab $family, int $from, int $to) use (&$moves): void {
+                $moves[] = [$family, $from, $to];
+            },
+        ));
         $bar->moveTab(DockTab::Results, 0, 1);
         $this->assertSame([[DockTab::Results, 0, 1]], $moves, 'the reorder request reaches the wired dock');
     }

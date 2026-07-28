@@ -62,46 +62,24 @@ final class DockTabsWidget extends AbstractWidget implements LtrPane, MenuOverla
     /** The active index the strip window last followed, so a manual scroll survives parked frames. */
     private ?int $lastActive = null;
 
-    /** @var (callable(DockTab, string): void)|null */
-    private $onTabSelected = null;
-
-    /** @var (callable(DockTab, string): void)|null */
-    private $onTabClosed = null;
-
-    /** @var (callable(DockTab, int, int): void)|null drag-reorder within a family: family, from, to */
-    private $onTabMoved = null;
+    private DockTabsCallbacks $callbacks;
 
     public function __construct(?Styles $styles = null)
     {
         $this->initStyles($styles);
+        $this->callbacks = new DockTabsCallbacks(); // a bare strip fires nothing
     }
 
-    public function onTabSelected(callable $callback): self
+    public function setCallbacks(DockTabsCallbacks $callbacks): void
     {
-        $this->onTabSelected = $callback;
-
-        return $this;
-    }
-
-    public function onTabClosed(callable $callback): self
-    {
-        $this->onTabClosed = $callback;
-
-        return $this;
-    }
-
-    public function onTabMoved(callable $callback): self
-    {
-        $this->onTabMoved = $callback;
-
-        return $this;
+        $this->callbacks = $callbacks;
     }
 
     /** A drag over the strip crossed same-family tabs: ask the dock to reorder that model. */
     public function moveTab(DockTab $family, int $from, int $to): void
     {
-        if (null !== $this->onTabMoved) {
-            ($this->onTabMoved)($family, $from, $to);
+        if (null !== $this->callbacks->onTabMoved) {
+            ($this->callbacks->onTabMoved)($family, $from, $to);
         }
     }
 
@@ -253,8 +231,8 @@ final class DockTabsWidget extends AbstractWidget implements LtrPane, MenuOverla
                 continue;
             }
 
-            if (null !== $this->onTabClosed) {
-                ($this->onTabClosed)($entry['tab'], $entry['key']);
+            if (null !== $this->callbacks->onTabClosed) {
+                ($this->callbacks->onTabClosed)($entry['tab'], $entry['key']);
             }
 
             return true;
@@ -264,8 +242,8 @@ final class DockTabsWidget extends AbstractWidget implements LtrPane, MenuOverla
                 continue;
             }
 
-            if (null !== $this->onTabSelected) {
-                ($this->onTabSelected)($entry['tab'], $entry['key']);
+            if (null !== $this->callbacks->onTabSelected) {
+                ($this->callbacks->onTabSelected)($entry['tab'], $entry['key']);
             }
 
             return true;

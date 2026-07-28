@@ -12,6 +12,7 @@ use Porta\Support\ProjectPaths;
 use Porta\Terminal\TerminalSessions;
 use Porta\Ui\Glyphs;
 use Porta\Widget\CodeEditorWidget;
+use Porta\Widget\DebugPanelCallbacks;
 use Porta\Widget\DebugPanelWidget;
 use Porta\Widget\TerminalPanelWidget;
 use Porta\Workbench\Dock\BottomDock;
@@ -58,18 +59,20 @@ final class DebugController implements DebugSessionObserver
         private readonly TerminalSessions $sessions,
         private readonly BottomDock $dock,
     ) {
-        $this->panel->onFrameSelected($this->jumpToFrame(...));
-        $this->panel->onRemoveWatch(function (int $index): void {
-            $this->watches->remove($index);
-            $this->panel->setWatches($this->watches->all());
-            $this->reevaluateWatches();
-            $this->tui->requestRender();
-        });
-        $this->panel->onExpandVariable(function (int $reference, callable $deliver): void {
-            $this->session?->variables($reference, static fn (array $variables) => $deliver($variables));
-            $this->tui->requestRender();
-        });
-        $this->panel->onEditVariable($this->editVariable(...));
+        $this->panel->setCallbacks(new DebugPanelCallbacks(
+            onFrameSelected: $this->jumpToFrame(...),
+            onExpandVariable: function (int $reference, callable $deliver): void {
+                $this->session?->variables($reference, static fn (array $variables) => $deliver($variables));
+                $this->tui->requestRender();
+            },
+            onEditVariable: $this->editVariable(...),
+            onRemoveWatch: function (int $index): void {
+                $this->watches->remove($index);
+                $this->panel->setWatches($this->watches->all());
+                $this->reevaluateWatches();
+                $this->tui->requestRender();
+            },
+        ));
     }
 
     /** The panel's edit key on a variable: prompt for a new value and set it live. */
