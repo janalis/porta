@@ -581,8 +581,6 @@ final class ResultsPanelWidget extends DockPanelWidget implements FocusableInter
             'toggle_context' => ['alt+m'],
             'export' => ['alt+x'],
             'rerun' => [Key::F5],
-            'switch_field' => [Key::TAB],
-            'insert_newline' => ['shift+enter'],
         ];
     }
 }
