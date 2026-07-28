@@ -399,8 +399,8 @@
         <target>‏&quot;%title%&quot; הופעל</target>
       </trans-unit>
       <trans-unit id="101">
-        <source>Rebound %action% to %key% · applies on restart</source>
-        <target>%action% הוקצה מחדש ל-%key% · חל לאחר הפעלה מחדש</target>
+        <source>Rebound %action% to %key%</source>
+        <target>%action% הוקצה מחדש אל %key%</target>
       </trans-unit>
       <trans-unit id="102">
         <source>Reformatted %file%</source>

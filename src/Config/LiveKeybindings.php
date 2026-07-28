@@ -12,7 +12,10 @@ use Symfony\Component\Tui\Input\Keybindings;
  * instance as a readonly reference; {@see rebuild()} re-runs the factory
  * merge (IDE defaults ← plugin defaults ← user keymap, user last) and swaps
  * the backing map, so a live-activated plugin's default keys dispatch — and
- * a deactivated plugin's die — without a restart.
+ * a deactivated plugin's die — without a restart. The user keymap is
+ * RE-READ from .porta.json on every rebuild: once the session writes rebinds
+ * ({@see \Porta\Config\PortaJsonWriter::persistKeymap}), the file is the
+ * keymap's truth, and external edits land on the next rebuild too.
  *
  * Two boundary invariants:
  * - The rebuilt map MUST reuse the current map's {@see \Symfony\Component\Tui\Input\KeyParser}:
@@ -31,6 +34,7 @@ final class LiveKeybindings
     public function __construct(
         private readonly KeybindingsFactory $factory,
         Keybindings $boot,
+        private readonly string $rootDir,
     ) {
         $this->current = $boot;
     }
@@ -58,9 +62,9 @@ final class LiveKeybindings
         return $this->current->all();
     }
 
-    /** Re-merge (a plugin activated/deactivated) and swap the backing map. */
+    /** Re-merge (a plugin toggled, a key rebound) and swap the backing map. */
     public function rebuild(): void
     {
-        $this->current = $this->factory->create($this->current->getParser());
+        $this->current = $this->factory->create($this->current->getParser(), IdeConfig::load($this->rootDir)->keymap);
     }
 }

@@ -21,11 +21,14 @@ final class KeybindingsFactory
         private readonly IdeConfig $config,
     ) {}
 
-    /** @param ?KeyParser $parser LiveKeybindings::rebuild() threads the live parser through (the kitty negotiation lives on it); null builds the boot default */
-    public function create(?KeyParser $parser = null): Keybindings
+    /**
+     * @param ?KeyParser                        $parser LiveKeybindings::rebuild() threads the live parser through (the kitty negotiation lives on it); null builds the boot default
+     * @param ?array<string, list<string>>      $keymap a fresher user keymap than the boot config's (LiveKeybindings re-reads .porta.json); null uses the boot snapshot
+     */
+    public function create(?KeyParser $parser = null, ?array $keymap = null): Keybindings
     {
         $this->plugins->ensureLoaded();
 
-        return new Keybindings(array_merge(ActionCatalog::ideDefaults(), $this->plugins->manager()->defaultKeys(), $this->config->keymap), $parser);
+        return new Keybindings(array_merge(ActionCatalog::ideDefaults(), $this->plugins->manager()->defaultKeys(), $keymap ?? $this->config->keymap), $parser);
     }
 }

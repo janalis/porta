@@ -399,8 +399,8 @@
         <target>「%title%」を実行しました</target>
       </trans-unit>
       <trans-unit id="101">
-        <source>Rebound %action% to %key% · applies on restart</source>
-        <target>%action% を %key% に再割り当て · 再起動後に適用</target>
+        <source>Rebound %action% to %key%</source>
+        <target>%action% を %key% に再割り当てしました</target>
       </trans-unit>
       <trans-unit id="102">
         <source>Reformatted %file%</source>

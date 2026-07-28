@@ -5,7 +5,10 @@ declare(strict_types=1);
 namespace Porta\Tests\Unit\Settings;
 
 use PHPUnit\Framework\TestCase;
+use Porta\Config\CommandRegistry;
 use Porta\Config\IdeConfig;
+use Porta\Config\KeybindingsFactory;
+use Porta\Config\LiveKeybindings;
 use Porta\Debug\DebugAdapters;
 use Porta\Editor\BufferManager;
 use Porta\Git\GitInfo;
@@ -25,6 +28,7 @@ use Porta\Lsp\LspReconfigurer;
 use Porta\Lsp\LspSessionPool;
 use Porta\Lsp\WorkspaceEditor;
 use Porta\Plugin\PluginEvents;
+use Porta\Plugin\PluginHost;
 use Porta\Plugin\PluginInstaller;
 use Porta\Plugin\PluginManager;
 use Porta\Plugin\PluginSettings;
@@ -69,6 +73,7 @@ use Porta\Widget\Settings\SettingsNavWidget;
 use Porta\Widget\StatusBarWidget;
 use Porta\Widget\TabBarWidget;
 use Porta\Workbench\EditorArea;
+use Porta\Workbench\Menu\MenuRebuilder;
 use Porta\Workbench\Notifier;
 use Porta\Workbench\WorkspaceViews;
 use Symfony\Component\EventDispatcher\EventDispatcher;
@@ -150,7 +155,19 @@ final class SettingsViewControllerTest extends TestCase
             new BreadcrumbsWidget(),
             new TodoTags(),
         );
-        $keymap = new SettingsKeymapController($editor, new Keybindings([]), $notifier, $this->project->dir, new Translator('en'));
+        $bootKeys = new Keybindings([]);
+        $keysFactory = new KeybindingsFactory(new PluginHost(IdeConfig::load($this->project->dir), new PluginEvents(), $this->project->dir), IdeConfig::load($this->project->dir));
+        $liveKeys = new LiveKeybindings($keysFactory, $bootKeys, $this->project->dir);
+        $keymapRebuilder = new MenuRebuilder(
+            new MenuBarWidget(),
+            new CommandRegistry(),
+            $editor,
+            $liveKeys,
+            new Translator('en'),
+            new WorkspaceViews(),
+            new PluginManager(new PluginEvents(), $this->pluginSettings ?? new PluginSettings($this->project->dir, [])),
+        );
+        $keymap = new SettingsKeymapController($editor, $liveKeys, $keymapRebuilder, $notifier, $this->project->dir, new Translator('en'));
         $languages = new SettingsLanguageController($editor, $notifier, $this->project->dir, new Translator('en'), []);
         $pool = new LspSessionPool($this->project->dir, new FixedActiveFile(), new Translator('en'));
         $reconfigurer = new LspReconfigurer(

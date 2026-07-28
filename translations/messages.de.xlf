@@ -399,8 +399,8 @@
         <target>„%title%“ ausgeführt</target>
       </trans-unit>
       <trans-unit id="101">
-        <source>Rebound %action% to %key% · applies on restart</source>
-        <target>%action% neu belegt auf %key% · gilt nach Neustart</target>
+        <source>Rebound %action% to %key%</source>
+        <target>%action% neu belegt auf %key%</target>
       </trans-unit>
       <trans-unit id="102">
         <source>Reformatted %file%</source>

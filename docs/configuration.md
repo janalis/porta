@@ -109,8 +109,9 @@ A full-screen view with a resizable sidebar: **General**, **Keybindings**,
 - **General** — the `settings` table above, edited live (theme and language
   switch immediately, including a full RTL re-layout for Hebrew).
 - **Keybindings** — every action with its current binding; `Enter` arms a
-  capture, the next keypress becomes the binding (persisted to `.porta.json`,
-  applies on restart).
+  capture, the next keypress becomes the binding (persisted to `.porta.json`
+  and applied live — IDE-level dispatch and menu shortcut labels re-merge
+  immediately).
 - **Plugins** — install (git URL or local path, project or global scope) and
   remove plugins; see [plugins.md](plugins.md).
 - **Languages** — indent style/size, the LSP server command (live: the pool

@@ -39,7 +39,7 @@ final class LiveKeybindingsTest extends TestCase
         $host = new PluginHost($config, new PluginEvents(), $project->dir);
         $factory = new KeybindingsFactory($host, $config);
 
-        return [new LiveKeybindings($factory, $factory->create()), $host];
+        return [new LiveKeybindings($factory, $factory->create(), $project->dir), $host];
     }
 
     public function testRebuildPicksUpALiveActivatedPluginsDefaultKeys(): void
