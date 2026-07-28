@@ -57,7 +57,6 @@ final class FilesystemReconciler
             if (null !== $buffer->diskStamp) {
                 $buffer->diskStamp = null; // flash once; keep the buffer so it can be re-saved
                 $this->notifier->flash($this->translator->trans('%file% deleted on disk', ['%file%' => $this->relativePath($buffer->path)]));
-                $this->tui->requestRender();
             }
 
             return;
@@ -81,7 +80,6 @@ final class FilesystemReconciler
                     $this->helpViewer->show($buffer->path, $content);
                 }
                 $this->notifier->flash($this->translator->trans('Reloaded %file%', ['%file%' => $this->relativePath($buffer->path)]));
-                $this->tui->requestRender();
             }
 
             return;
@@ -92,7 +90,6 @@ final class FilesystemReconciler
         }
         if ($buffer->isDirty()) {
             $this->notifier->flash($this->translator->trans('%file% changed on disk', ['%file%' => $this->relativePath($buffer->path)]));
-            $this->tui->requestRender();
 
             return;
         }
@@ -111,7 +108,6 @@ final class FilesystemReconciler
             $this->imageViewer->show($image);
         }
         $this->notifier->flash($this->translator->trans('Reloaded %file%', ['%file%' => $this->relativePath($buffer->path)]));
-        $this->tui->requestRender();
     }
 
     /** Replace a clean buffer's content with the new on-disk text, keeping it clean. */
@@ -122,7 +118,6 @@ final class FilesystemReconciler
         $this->lsp->notifyFullChange($buffer->path, $buffer->document); // no-op when no server is running
         $this->gitRefresher->refreshMarks($buffer);
         $this->notifier->flash($this->translator->trans('Reloaded %file%', ['%file%' => $this->relativePath($buffer->path)]));
-        $this->tui->requestRender();
     }
 
     /** Read a small UTF-8 text file, or null if missing, unreadable, too large or binary. */

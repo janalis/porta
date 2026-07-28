@@ -13,7 +13,6 @@ use Porta\Lsp\CompletionController;
 use Porta\Workbench\Dock\BottomDock;
 use Porta\Workbench\Dock\ResultsPanelMode;
 use Porta\Workbench\Notifier;
-use Symfony\Component\Tui\Tui;
 
 /**
  * The Local History feature: lists a file's save-time snapshots in the results
@@ -35,7 +34,6 @@ final class LocalHistoryController
         private readonly EditorInvalidator $editorInvalidator,
         private readonly BufferManager $buffers,
         private readonly Notifier $notifier,
-        private readonly Tui $tui,
         private readonly Translator $translator,
         private readonly CompletionController $completion,
     ) {}
@@ -75,7 +73,6 @@ final class LocalHistoryController
         $content = $this->history->read($file);
         if (null === $content) {
             $this->notifier->error($this->translator->trans('Could not read that snapshot'));
-            $this->tui->requestRender();
 
             return;
         }
@@ -87,6 +84,5 @@ final class LocalHistoryController
         $this->editorInvalidator->invalidate();
         $this->completion->scheduleDidChange($doc);
         $this->notifier->flash($this->translator->trans('Restored from local history'));
-        $this->tui->requestRender();
     }
 }

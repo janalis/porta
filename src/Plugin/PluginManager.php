@@ -355,7 +355,6 @@ final class PluginManager implements LanguageServerProvider, SyntaxHighlightProv
             return;
         }
         $runtime->notifier->error($runtime->translator->trans('Plugin "%name%" failed: %message%', ['%name%' => $plugin, '%message%' => $error->getMessage()]));
-        $runtime->tui->requestRender();
     }
 
     /**

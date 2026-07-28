@@ -215,14 +215,12 @@ final class DebugController implements DebugSessionObserver
     {
         if ($this->isActive()) {
             $this->notifier->flash($this->translator->trans('Debugger already running — stop it first (Ctrl+F2)'));
-            $this->tui->requestRender();
 
             return;
         }
         $path = $this->editor->getFilePath();
         if (null === $path) {
             $this->notifier->flash($this->translator->trans('Nothing to debug — open a file first'));
-            $this->tui->requestRender();
 
             return;
         }
@@ -230,7 +228,6 @@ final class DebugController implements DebugSessionObserver
         $config = $this->adapters->adapterFor($languageId);
         if (null === $config) {
             $this->notifier->flash($this->translator->trans('No debug adapter configured for %language% — set one in Settings', ['%language%' => $languageId]));
-            $this->tui->requestRender();
 
             return;
         }
@@ -299,7 +296,6 @@ final class DebugController implements DebugSessionObserver
     {
         if (null === $this->session || !$this->session->isActive()) {
             $this->notifier->flash($this->translator->trans('No debug session to restart'));
-            $this->tui->requestRender();
 
             return;
         }
@@ -320,14 +316,12 @@ final class DebugController implements DebugSessionObserver
     {
         if (!$this->isPaused()) {
             $this->notifier->flash($this->translator->trans('Run to cursor needs a paused debugger'));
-            $this->tui->requestRender();
 
             return;
         }
         $path = $this->editor->getFilePath();
         if (null === $path) {
             $this->notifier->flash($this->translator->trans('Nothing to debug — open a file first'));
-            $this->tui->requestRender();
 
             return;
         }
@@ -344,14 +338,12 @@ final class DebugController implements DebugSessionObserver
         $session = $this->session;
         if (null === $session || !$session->isActive()) {
             $this->notifier->flash($this->translator->trans('No debugger session — exception filters come from the adapter'));
-            $this->tui->requestRender();
 
             return;
         }
         $filters = $session->exceptionBreakpointFilters();
         if ([] === $filters) {
             $this->notifier->flash($this->translator->trans('The adapter has no exception breakpoint filters'));
-            $this->tui->requestRender();
 
             return;
         }
@@ -478,10 +470,8 @@ final class DebugController implements DebugSessionObserver
             }
             $this->session->evaluate($expression, $this->currentFrameId, 'repl', function (array $result) use ($expression): void {
                 $this->notifier->flash($expression.' = '.(null !== $result['error'] ? $result['error'] : $result['result']), 5.0);
-                $this->tui->requestRender();
             });
         });
-        $this->tui->requestRender();
     }
 
     /** Evaluate every watch against the current frame; results land index-addressed. */

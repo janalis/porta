@@ -51,7 +51,6 @@ final class GitCommands
                     : $this->translator->trans('Stage failed'),
             );
             $this->refresher->refreshActiveMarks();
-            $this->tui->requestRender();
         });
     }
 
@@ -75,10 +74,8 @@ final class GitCommands
                 );
                 $this->refresher->refreshBranch();
                 $this->refresher->refreshActiveMarks();
-                $this->tui->requestRender();
             });
         });
-        $this->tui->requestRender();
     }
 
     public function blameLine(): void
@@ -98,7 +95,6 @@ final class GitCommands
                         ? $this->translator->trans('No blame for this line')
                         : \sprintf('%s  %s: %s', $blame['sha'], $blame['author'], $blame['summary']),
                 );
-                $this->tui->requestRender();
             },
         );
     }
@@ -142,7 +138,6 @@ final class GitCommands
         $this->git->stashList(function (array $stashes): void {
             if ([] === $stashes) {
                 $this->notifier->flash($this->translator->trans('No stashes'));
-                $this->tui->requestRender();
 
                 return;
             }
@@ -177,14 +172,12 @@ final class GitCommands
                             // Drop never touches the worktree — no marks refresh.
                             'drop' => $this->git->stashDrop($ref, function (Outcome $ok, string $error) use ($ref): void {
                                 $this->notifier->flash($ok->isOk() ? $this->translator->trans('Dropped %stash%', ['%stash%' => $ref]) : $error, $ok->isOk() ? 3.0 : 6.0);
-                                $this->tui->requestRender();
                             }),
                             default => null,
                         };
                     },
                 );
             });
-            $this->tui->requestRender();
         });
     }
 
@@ -216,7 +209,6 @@ final class GitCommands
             );
             $this->refresher->refreshBranch();
             $this->refresher->refreshActiveMarks();
-            $this->tui->requestRender();
         });
     }
 
@@ -225,7 +217,6 @@ final class GitCommands
     {
         $this->clipboard->copy($commit->sha);
         $this->notifier->flash($this->translator->trans('Copied %sha%', ['%sha%' => $commit->shortSha]));
-        $this->tui->requestRender();
     }
 
     /** Prompt for a name, then branch off $commit and switch to it. */
@@ -313,7 +304,6 @@ final class GitCommands
         $this->notifier->flash($ok->isOk() ? $success : $error, $ok->isOk() ? 3.0 : 6.0);
         $this->refresher->refreshBranch();
         $this->refresher->refreshActiveMarks();
-        $this->tui->requestRender();
     }
 
     /** A conflicting pop/apply reports on stdout, not stderr — provide the message git doesn't. */
@@ -410,7 +400,6 @@ final class GitCommands
             $deletable = array_values(array_filter($branches, static fn (array $b): bool => !$b['remote'] && !$b['current']));
             if ([] === $deletable) {
                 $this->notifier->flash($this->translator->trans('No other local branches to delete'));
-                $this->tui->requestRender();
 
                 return;
             }
@@ -430,12 +419,10 @@ final class GitCommands
                         // which itself names the -D escape hatch.
                         $this->git->deleteBranch($name, function (Outcome $ok, string $error) use ($name): void {
                             $this->notifier->flash($ok->isOk() ? $this->translator->trans('Deleted branch %branch%', ['%branch%' => $name]) : $error, $ok->isOk() ? 3.0 : 6.0);
-                            $this->tui->requestRender();
                         });
                     },
                 );
             });
-            $this->tui->requestRender();
         });
     }
 

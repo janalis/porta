@@ -375,7 +375,6 @@ final class PluginApi
     {
         $runtime = $this->manager->runtime();
         $runtime->notifier->flash($message, $seconds);
-        $runtime->tui->requestRender();
     }
 
     /**

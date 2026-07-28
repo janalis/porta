@@ -47,13 +47,11 @@ final class BlameAnnotations
             $this->enabled = false;
             $this->decorations->setLineAnnotations([]);
             $this->notifier->flash($this->translator->trans('Blame annotations hidden'));
-            $this->tui->requestRender();
 
             return;
         }
         if (!$this->git->isAvailable() || null === $this->activeFile->getFilePath()) {
             $this->notifier->flash($this->translator->trans('Git not available'));
-            $this->tui->requestRender();
 
             return;
         }

@@ -151,7 +151,6 @@ final class GitViewController implements FullScreenView
         }
         if (!$this->git->isAvailable()) {
             $this->notifier->flash($this->translator->trans('Not a git repository'));
-            $this->tui->requestRender();
 
             return;
         }
@@ -270,7 +269,6 @@ final class GitViewController implements FullScreenView
                 ? $this->translator->trans('Copied %count% line', ['%count%' => $lines])
                 : $this->translator->trans('Copied %count% lines', ['%count%' => $lines]),
         );
-        $this->tui->requestRender();
     }
 
     /** Persist the diff pane's current split/whitespace display state to the layout. */
@@ -315,14 +313,12 @@ final class GitViewController implements FullScreenView
         }
         if (DiffSide::Untracked === $this->shownSide) {
             $this->notifier->flash($this->translator->trans('Untracked files always show the whole file'));
-            $this->tui->requestRender();
 
             return;
         }
         $this->contextStep = ($this->contextStep + 1) % \count(self::CONTEXT_STEPS);
         $this->notifier->flash($this->translator->trans('Diff context: %label%', ['%label%' => $this->translator->trans(self::CONTEXT_LABELS[$this->contextStep])]));
         $this->loadDiff($this->shownEntry);
-        $this->tui->requestRender();
     }
 
     /**

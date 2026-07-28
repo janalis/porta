@@ -456,7 +456,6 @@ final class BufferService implements BufferReopener, DiagnosticsSink, FileOpener
             1 === $saved => $this->translator->trans('Saved %count% file', ['%count%' => $saved]),
             default => $this->translator->trans('Saved %count% files', ['%count%' => $saved]),
         });
-        $this->tui->requestRender();
     }
 
     public function saveBuffer(Buffer $buffer): bool
@@ -471,7 +470,6 @@ final class BufferService implements BufferReopener, DiagnosticsSink, FileOpener
             new Filesystem()->dumpFile($buffer->path, $bytes);
         } catch (IOExceptionInterface) {
             $this->notifier->error($this->translator->trans('Save failed: %file%', ['%file%' => $this->relativePath($buffer->path)]));
-            $this->tui->requestRender();
 
             return false;
         }
@@ -528,7 +526,6 @@ final class BufferService implements BufferReopener, DiagnosticsSink, FileOpener
             return true;
         }
         $this->notifier->flash($this->translator->trans('Not available in this view'));
-        $this->tui->requestRender();
 
         return false;
     }
