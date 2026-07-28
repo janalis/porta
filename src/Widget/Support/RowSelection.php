@@ -2,14 +2,14 @@
 
 declare(strict_types=1);
 
-namespace Porta\Overlay\State;
+namespace Porta\Widget\Support;
 
 /**
  * How a row in an always-focused modal list is lit: the selected row carries
  * the selection background, the row under the pointer the hover tint, everything
  * else the plain popup shade. The Selected/Hovered/Unselected split mirrors
- * {@see \Porta\Widget\Support\OptionTagState}'s — and, as everywhere else, hover is a
- * pure visual that never moves the selection (see {@see \Porta\Widget\Support\HoverTrait}).
+ * {@see OptionTagState}'s — and, as everywhere else, hover is a
+ * pure visual that never moves the selection (see {@see HoverTrait}).
  *
  * {@see \Porta\Widget\Render\ModalRowStyle} resolves the state to its role; the
  * find-in-files results, the go-to-file picker and the editor popups share it.

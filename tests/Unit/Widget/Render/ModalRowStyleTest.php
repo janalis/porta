@@ -5,9 +5,9 @@ declare(strict_types=1);
 namespace Porta\Tests\Unit\Widget\Render;
 
 use PHPUnit\Framework\TestCase;
-use Porta\Overlay\State\RowSelection;
 use Porta\Ui\Role;
 use Porta\Widget\Render\ModalRowStyle;
+use Porta\Widget\Support\RowSelection;
 
 final class ModalRowStyleTest extends TestCase
 {

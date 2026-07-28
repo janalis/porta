@@ -5,7 +5,6 @@ declare(strict_types=1);
 namespace Porta\Widget\Render;
 
 use Porta\Overlay\Region\ModalBox;
-use Porta\Overlay\State\RowSelection;
 use Porta\Overlay\State\SearchModalState;
 use Porta\Support\AnsiText;
 use Porta\Support\IntMath;
@@ -13,6 +12,7 @@ use Porta\Ui\CaretVisibility;
 use Porta\Ui\Role;
 use Porta\Ui\TextField;
 use Porta\Ui\Theme\Styles;
+use Porta\Widget\Support\RowSelection;
 use Symfony\Component\Tui\Ansi\AnsiUtils;
 
 /**

@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 namespace Porta\Widget\Render;
 
-use Porta\Overlay\State\RowSelection;
 use Porta\Support\AnsiText;
 use Porta\Ui\Glyphs;
 use Porta\Ui\Role;
@@ -12,6 +11,7 @@ use Porta\Ui\Sgr;
 use Porta\Ui\Theme\Styles;
 use Porta\Widget\MatchRowDecorator;
 use Porta\Widget\Support\OptionTagState;
+use Porta\Widget\Support\RowSelection;
 
 /**
  * The Find-in-Files modal's leaf rows: one option tag, one file header, one

@@ -27,6 +27,7 @@ use Porta\Widget\SearchFieldRenderer;
 use Porta\Widget\Support\OptionTagState;
 use Porta\Widget\Support\ResultGrouping;
 use Porta\Widget\Support\ResultLayout;
+use Porta\Widget\Support\RowSelection;
 use Symfony\Component\Tui\Input\Key;
 use Symfony\Component\Tui\Input\Keybindings;
 
