@@ -4,8 +4,8 @@ declare(strict_types=1);
 
 namespace Porta\Ui;
 
-use Porta\Ui\Dock\BottomDock;
 use Porta\Widget\FileTreeWidget;
+use Porta\Workbench\Dock\BottomDock;
 use Symfony\Component\Tui\Tui;
 
 /**

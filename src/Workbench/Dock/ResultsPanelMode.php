@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace Porta\Ui\Dock;
+namespace Porta\Workbench\Dock;
 
 /**
  * Which content the shared bottom results panel is currently serving. The IDE

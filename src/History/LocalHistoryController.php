@@ -10,9 +10,9 @@ use Porta\Editor\BufferManager;
 use Porta\Editor\EditorInvalidator;
 use Porta\I18n\Translator;
 use Porta\Lsp\CompletionController;
-use Porta\Ui\Dock\BottomDock;
-use Porta\Ui\Dock\ResultsPanelMode;
 use Porta\Ui\Notifier;
+use Porta\Workbench\Dock\BottomDock;
+use Porta\Workbench\Dock\ResultsPanelMode;
 use Symfony\Component\Tui\Tui;
 
 /**

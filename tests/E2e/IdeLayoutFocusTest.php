@@ -117,8 +117,8 @@ final class IdeLayoutFocusTest extends TestCase
             [
                 200 => static function ($tui, $terminal, $ide) use (&$expected): void {
                     $results = $tui->getById('results');
-                    $ide->resolve(\Porta\Ui\Dock\BottomDock::class)
-                        ->showList(\Porta\Ui\Dock\ResultsPanelMode::Search, 'Find in Project', [
+                    $ide->resolve(\Porta\Workbench\Dock\BottomDock::class)
+                        ->showList(\Porta\Workbench\Dock\ResultsPanelMode::Search, 'Find in Project', [
                             ['path' => 'b.php', 'line' => 0, 'text' => 'one'],
                             ['path' => 'c.php', 'line' => 0, 'text' => 'two'],
                         ]);
@@ -157,8 +157,8 @@ final class IdeLayoutFocusTest extends TestCase
                 200 => static function ($tui, $terminal, $ide) use (&$expected): void {
                     // An empty tool (no results): it used to render no rows, so the
                     // dock had no rect to grab. It now reserves its full height.
-                    $ide->resolve(\Porta\Ui\Dock\BottomDock::class)
-                        ->showList(\Porta\Ui\Dock\ResultsPanelMode::Search, 'Find in Project', []);
+                    $ide->resolve(\Porta\Workbench\Dock\BottomDock::class)
+                        ->showList(\Porta\Workbench\Dock\ResultsPanelMode::Search, 'Find in Project', []);
                     $tui->requestRender();
                     $tui->tick();
                     $renderer = $ide->resolve(Renderer::class);

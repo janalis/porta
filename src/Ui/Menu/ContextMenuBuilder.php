@@ -11,9 +11,9 @@ use Porta\Git\GitCommands;
 use Porta\Git\LogEntry;
 use Porta\I18n\Translator;
 use Porta\Run\RunController;
-use Porta\Ui\Dock\BottomDock;
-use Porta\Ui\Dock\DockTab;
 use Porta\Widget\Git\ChangesListWidget;
+use Porta\Workbench\Dock\BottomDock;
+use Porta\Workbench\Dock\DockTab;
 use Symfony\Component\Tui\Input\Keybindings;
 
 /**

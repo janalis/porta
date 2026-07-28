@@ -5,9 +5,9 @@ declare(strict_types=1);
 namespace Porta\Tests\Unit\Widget;
 
 use PHPUnit\Framework\TestCase;
-use Porta\Ui\Dock\DockTab;
 use Porta\Ui\Glyphs;
 use Porta\Widget\DockTabsWidget;
+use Porta\Workbench\Dock\DockTab;
 use Symfony\Component\Tui\Ansi\AnsiUtils;
 use Symfony\Component\Tui\Render\RenderContext;
 

@@ -13,14 +13,14 @@ use Porta\Overlay\State\MenuOverlayController;
 use Porta\Overlay\State\ToastCenter;
 use Porta\Support\IntMath;
 use Porta\Ui\BidiTui;
-use Porta\Ui\Dock\BottomDock;
-use Porta\Ui\Dock\DockTab;
 use Porta\Ui\WorkspaceView;
 use Porta\Ui\WorkspaceViews;
 use Porta\Widget\ContextMenu;
 use Porta\Widget\DockTabsWidget;
 use Porta\Widget\MenuBarWidget;
 use Porta\Widget\SeparatorWidget;
+use Porta\Workbench\Dock\BottomDock;
+use Porta\Workbench\Dock\DockTab;
 use Symfony\Component\Tui\Render\WidgetRect;
 use Symfony\Component\Tui\Tui;
 

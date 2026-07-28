@@ -9,9 +9,9 @@ use Porta\Editor\ActiveFileProvider;
 use Porta\Editor\BufferService;
 use Porta\Editor\OpenFocus;
 use Porta\I18n\Translator;
-use Porta\Ui\Dock\BottomDock;
-use Porta\Ui\Dock\ResultsPanelMode;
 use Porta\Ui\Notifier;
+use Porta\Workbench\Dock\BottomDock;
+use Porta\Workbench\Dock\ResultsPanelMode;
 
 /**
  * The search entry points behind the commands and tree context menus:
@@ -56,7 +56,7 @@ final class SearchActions
         $this->projectSearch->replaceInFolder($absDir);
     }
 
-    /** Every open buffer's diagnostics as one sorted, scannable list (kept live by {@see \Porta\Ui\Dock\DockLiveRefreshListener}). */
+    /** Every open buffer's diagnostics as one sorted, scannable list (kept live by {@see \Porta\Workbench\Dock\DockLiveRefreshListener}). */
     public function showProblems(): void
     {
         $this->panels->showList(ResultsPanelMode::Problems, $this->translator->trans('Problems'), $this->problemRows->build());

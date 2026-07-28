@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace Porta\Ui\Dock;
+namespace Porta\Workbench\Dock;
 
 use Porta\Event\DiagnosticsChanged;
 use Porta\Event\LspLogAppended;

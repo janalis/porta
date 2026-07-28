@@ -2,16 +2,16 @@
 
 declare(strict_types=1);
 
-namespace Porta\Tests\Unit\Ui\Dock;
+namespace Porta\Tests\Unit\Workbench\Dock;
 
 use PHPUnit\Framework\TestCase;
 use Porta\Search\SearchOptions;
 use Porta\Search\SearchTabState;
-use Porta\Ui\Dock\DockToolTab;
-use Porta\Ui\Dock\DockToolTabs;
-use Porta\Ui\Dock\ResultsPanelMode;
 use Porta\Ui\ScopeKind;
 use Porta\Widget\Support\ResultsPanelFields;
+use Porta\Workbench\Dock\DockToolTab;
+use Porta\Workbench\Dock\DockToolTabs;
+use Porta\Workbench\Dock\ResultsPanelMode;
 
 final class DockToolTabsTest extends TestCase
 {

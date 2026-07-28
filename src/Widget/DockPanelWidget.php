@@ -7,7 +7,7 @@ namespace Porta\Widget;
 /**
  * A panel that can own the bottom dock's slot: the terminal, the list tools and
  * the debugger. Adds to {@see OverlayWidget}'s open/conceal lifecycle the four
- * things {@see \Porta\Ui\Dock\BottomDock}, {@see DockTabsWidget} and the mouse
+ * things {@see \Porta\Workbench\Dock\BottomDock}, {@see DockTabsWidget} and the mouse
  * router need from whichever panel is currently showing.
  *
  * It exists as a class rather than an interface because the callers need an

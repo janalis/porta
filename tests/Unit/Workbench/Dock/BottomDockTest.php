@@ -2,17 +2,13 @@
 
 declare(strict_types=1);
 
-namespace Porta\Tests\Unit\Ui\Dock;
+namespace Porta\Tests\Unit\Workbench\Dock;
 
 use PHPUnit\Framework\TestCase;
 use Porta\Editor\BufferManager;
 use Porta\Terminal\TerminalBuffer;
 use Porta\Terminal\TerminalSessions;
 use Porta\Tests\Support\TestBottomDock;
-use Porta\Ui\Dock\BottomDock;
-use Porta\Ui\Dock\DockTab;
-use Porta\Ui\Dock\DockToolTabs;
-use Porta\Ui\Dock\ResultsPanelMode;
 use Porta\Ui\EditorArea;
 use Porta\Widget\CodeEditorWidget;
 use Porta\Widget\DebugPanelWidget;
@@ -22,6 +18,10 @@ use Porta\Widget\ImageViewerWidget;
 use Porta\Widget\ResultsPanelWidget;
 use Porta\Widget\Support\ResultsPanelFields;
 use Porta\Widget\TerminalPanelWidget;
+use Porta\Workbench\Dock\BottomDock;
+use Porta\Workbench\Dock\DockTab;
+use Porta\Workbench\Dock\DockToolTabs;
+use Porta\Workbench\Dock\ResultsPanelMode;
 use Symfony\Component\Tui\Input\Keybindings;
 use Symfony\Component\Tui\Render\RenderContext;
 use Symfony\Component\Tui\Render\Renderer;

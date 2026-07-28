@@ -6,9 +6,9 @@ namespace Porta\Input;
 
 use Porta\Overlay\State\MenuOverlayController;
 use Porta\Ui\BidiTui;
-use Porta\Ui\Dock\BottomDock;
 use Porta\Widget\ContextMenu;
 use Porta\Widget\MenuBarWidget;
+use Porta\Workbench\Dock\BottomDock;
 use Symfony\Component\Tui\Render\WidgetRect;
 use Symfony\Component\Tui\Tui;
 

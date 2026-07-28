@@ -10,14 +10,14 @@ use Porta\Editor\OpenFocus;
 use Porta\History\LocalHistoryController;
 use Porta\Overlay\State\FindModalCallbacks;
 use Porta\Support\Scheduler;
-use Porta\Ui\Dock\BottomDock;
-use Porta\Ui\Dock\DockTab;
-use Porta\Ui\Dock\DockToolTab;
-use Porta\Ui\Dock\ResultsPanelMode;
 use Porta\Ui\EditorArea;
 use Porta\Widget\CodeEditorWidget;
 use Porta\Widget\FindBarWidget;
 use Porta\Widget\ResultsPanelWidget;
+use Porta\Workbench\Dock\BottomDock;
+use Porta\Workbench\Dock\DockTab;
+use Porta\Workbench\Dock\DockToolTab;
+use Porta\Workbench\Dock\ResultsPanelMode;
 use Symfony\Component\Tui\Tui;
 
 /**

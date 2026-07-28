@@ -11,13 +11,13 @@ use Porta\History\SearchScopeStore;
 use Porta\I18n\Translator;
 use Porta\Lsp\LspSessionPool;
 use Porta\Support\ProjectPaths;
-use Porta\Ui\Dock\BottomDock;
-use Porta\Ui\Dock\DockToolTab;
-use Porta\Ui\Dock\ResultsPanelMode;
 use Porta\Ui\ScopeKind;
 use Porta\Widget\CodeEditorWidget;
 use Porta\Widget\StatusBarWidget;
 use Porta\Widget\Support\ResultsPanelFields;
+use Porta\Workbench\Dock\BottomDock;
+use Porta\Workbench\Dock\DockToolTab;
+use Porta\Workbench\Dock\ResultsPanelMode;
 use Symfony\Component\Filesystem\Filesystem;
 use Symfony\Component\Tui\Tui;
 

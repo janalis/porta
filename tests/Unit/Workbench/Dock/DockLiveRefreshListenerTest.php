@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace Porta\Tests\Unit\Ui\Dock;
+namespace Porta\Tests\Unit\Workbench\Dock;
 
 use PHPUnit\Framework\TestCase;
 use Porta\Editor\BufferManager;
@@ -12,14 +12,14 @@ use Porta\Event\NotificationLogged;
 use Porta\Lsp\LspLog;
 use Porta\Search\ProblemRows;
 use Porta\Tests\Support\TestBottomDock;
-use Porta\Ui\Dock\BottomDock;
-use Porta\Ui\Dock\DockLiveRefreshListener;
-use Porta\Ui\Dock\DockToolTabs;
-use Porta\Ui\Dock\ResultsPanelMode;
 use Porta\Ui\NotificationLog;
 use Porta\Widget\DebugPanelWidget;
 use Porta\Widget\ResultsPanelWidget;
 use Porta\Widget\TerminalPanelWidget;
+use Porta\Workbench\Dock\BottomDock;
+use Porta\Workbench\Dock\DockLiveRefreshListener;
+use Porta\Workbench\Dock\DockToolTabs;
+use Porta\Workbench\Dock\ResultsPanelMode;
 use Symfony\Component\Clock\MockClock;
 use Symfony\Component\EventDispatcher\EventDispatcher;
 use Symfony\Component\Tui\Ansi\AnsiUtils;

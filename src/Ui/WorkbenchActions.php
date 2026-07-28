@@ -7,9 +7,9 @@ namespace Porta\Ui;
 use Porta\Editor\BufferManager;
 use Porta\I18n\Translator;
 use Porta\Lsp\LspLog;
-use Porta\Ui\Dock\BottomDock;
-use Porta\Ui\Dock\ResultsPanelMode;
 use Porta\Widget\MenuBarWidget;
+use Porta\Workbench\Dock\BottomDock;
+use Porta\Workbench\Dock\ResultsPanelMode;
 use Symfony\Component\Tui\Tui;
 
 /**

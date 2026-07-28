@@ -7,12 +7,12 @@ namespace Porta\Input;
 use Porta\Container\LayoutSlot;
 use Porta\Overlay\State\MenuOverlayController;
 use Porta\Overlay\State\ToastCenter;
-use Porta\Ui\Dock\BottomDock;
 use Porta\Widget\ContextMenu;
 use Porta\Widget\DockTabsWidget;
 use Porta\Widget\HoverableList;
 use Porta\Widget\MenuBarWidget;
 use Porta\Widget\SeparatorWidget;
+use Porta\Workbench\Dock\BottomDock;
 use Symfony\Component\Tui\Render\WidgetRect;
 use Symfony\Component\Tui\Tui;
 

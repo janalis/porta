@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace Porta\Ui\Dock;
+namespace Porta\Workbench\Dock;
 
 use Porta\Container\AsIdeService;
 use Porta\I18n\Translator;

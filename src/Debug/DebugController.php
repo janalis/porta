@@ -10,13 +10,13 @@ use Porta\Event\DebugStatusChanged;
 use Porta\I18n\Translator;
 use Porta\Support\ProjectPaths;
 use Porta\Terminal\TerminalSessions;
-use Porta\Ui\Dock\BottomDock;
-use Porta\Ui\Dock\DockTab;
 use Porta\Ui\Glyphs;
 use Porta\Ui\Notifier;
 use Porta\Widget\CodeEditorWidget;
 use Porta\Widget\DebugPanelWidget;
 use Porta\Widget\TerminalPanelWidget;
+use Porta\Workbench\Dock\BottomDock;
+use Porta\Workbench\Dock\DockTab;
 use Psr\EventDispatcher\EventDispatcherInterface;
 use Symfony\Component\Tui\Tui;
 
