@@ -83,8 +83,10 @@ excludes = ["tests/Support/slow-reading-lsp-server.php", "tests/Support/demandin
 #                                handler map took FindInFilesModal below it
 #                                (this was 220 two rounds ago)
 #   too-many-methods        106  Widget/CodeEditorWidget (was 208, a test file)
-#   too-many-properties      33  Widget/CodeEditorWidget (FindInFilesModal
-#                                dropped below after the round-5 pair merges)
+#   too-many-properties      32  Widget/CodeEditorWidget (round 8's
+#                                StylesDefault trait absorbed its $styles
+#                                field; FindInFilesModal sits at 32 too after
+#                                reabsorbing the round-5 VOs as plain fields)
 #   too-many-enum-cases      58  Ui/Role (the theme role vocabulary)
 #   excessive-parameter-list 24  Bootstrap/WidgetHooks' constructor — the one
 #                                pin unmoved since round 2 (splitting it was
@@ -115,7 +117,7 @@ excludes = ["tests/Support/slow-reading-lsp-server.php", "tests/Support/demandin
 [linter.rules]
 cyclomatic-complexity = { threshold = 133 }
 too-many-methods = { threshold = 106 }
-too-many-properties = { threshold = 33 }
+too-many-properties = { threshold = 32 }
 too-many-enum-cases = { threshold = 58 }
 excessive-parameter-list = { threshold = 24 }
 kan-defect = { threshold = 8 }
