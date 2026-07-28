@@ -250,22 +250,21 @@ final class DapSession
      */
     public function stackTrace(\Closure $deliver): void
     {
-        $this->client->request('stackTrace', ['threadId' => $this->threadId ?? 1], static function (array $body, ?string $error) use ($deliver): void {
-            $frames = [];
-            if (null === $error && \is_array($body['stackFrames'] ?? null)) {
-                /** @var array<array-key, array{id?: int, name?: string, line?: int, source?: array{path?: string}}> $rawFrames */
-                $rawFrames = $body['stackFrames'];
-                foreach ($rawFrames as $frame) {
-                    $frames[] = [
-                        'id' => $frame['id'] ?? 0,
-                        'name' => $frame['name'] ?? '?',
-                        'path' => $frame['source']['path'] ?? '',
-                        'line' => max(0, ($frame['line'] ?? 1) - 1),
-                    ];
-                }
-            }
-            $deliver($frames);
-        });
+        $this->requestList(
+            'stackTrace',
+            ['threadId' => $this->threadId ?? 1],
+            'stackFrames',
+            static function (array $frame): array {
+                /** @var array{id?: int, name?: string, line?: int, source?: array{path?: string}} $frame */
+                return [
+                    'id' => $frame['id'] ?? 0,
+                    'name' => $frame['name'] ?? '?',
+                    'path' => $frame['source']['path'] ?? '',
+                    'line' => max(0, ($frame['line'] ?? 1) - 1),
+                ];
+            },
+            $deliver,
+        );
     }
 
     /**
@@ -275,17 +274,16 @@ final class DapSession
      */
     public function scopes(int $frameId, \Closure $deliver): void
     {
-        $this->client->request('scopes', ['frameId' => $frameId], static function (array $body, ?string $error) use ($deliver): void {
-            $scopes = [];
-            if (null === $error && \is_array($body['scopes'] ?? null)) {
-                /** @var array<array-key, array{name?: string, variablesReference?: int}> $rawScopes */
-                $rawScopes = $body['scopes'];
-                foreach ($rawScopes as $scope) {
-                    $scopes[] = ['name' => $scope['name'] ?? '?', 'variablesReference' => $scope['variablesReference'] ?? 0];
-                }
-            }
-            $deliver($scopes);
-        });
+        $this->requestList(
+            'scopes',
+            ['frameId' => $frameId],
+            'scopes',
+            static function (array $scope): array {
+                /** @var array{name?: string, variablesReference?: int} $scope */
+                return ['name' => $scope['name'] ?? '?', 'variablesReference' => $scope['variablesReference'] ?? 0];
+            },
+            $deliver,
+        );
     }
 
     /**
@@ -295,20 +293,46 @@ final class DapSession
      */
     public function variables(int $reference, \Closure $deliver): void
     {
-        $this->client->request('variables', ['variablesReference' => $reference], static function (array $body, ?string $error) use ($deliver): void {
-            $variables = [];
-            if (null === $error && \is_array($body['variables'] ?? null)) {
-                /** @var array<array-key, array{name?: string, value?: string, variablesReference?: int}> $rawVariables */
-                $rawVariables = $body['variables'];
-                foreach ($rawVariables as $variable) {
-                    $variables[] = [
-                        'name' => $variable['name'] ?? '?',
-                        'value' => $variable['value'] ?? '',
-                        'variablesReference' => $variable['variablesReference'] ?? 0,
-                    ];
+        $this->requestList(
+            'variables',
+            ['variablesReference' => $reference],
+            'variables',
+            static function (array $variable): array {
+                /** @var array{name?: string, value?: string, variablesReference?: int} $variable */
+                return [
+                    'name' => $variable['name'] ?? '?',
+                    'value' => $variable['value'] ?? '',
+                    'variablesReference' => $variable['variablesReference'] ?? 0,
+                ];
+            },
+            $deliver,
+        );
+    }
+
+    /**
+     * The scaffold the three collection verbs share: request, guard the
+     * error-or-absent-key outcome, map each row, deliver the list (empty on
+     * any fault — the panel simply shows nothing). Only the command, its
+     * arguments, the body key and the per-row map differ per verb.
+     *
+     * @template T of array<string, mixed>
+     *
+     * @param array<string, mixed>                  $arguments
+     * @param \Closure(array<array-key, mixed>): T $mapRow
+     * @param \Closure(list<T>): void              $deliver
+     */
+    private function requestList(string $command, array $arguments, string $key, \Closure $mapRow, \Closure $deliver): void
+    {
+        $this->client->request($command, $arguments, static function (array $body, ?string $error) use ($key, $mapRow, $deliver): void {
+            $rows = [];
+            if (null === $error && \is_array($body[$key] ?? null)) {
+                /** @var list<array<array-key, mixed>> $raw */
+                $raw = $body[$key];
+                foreach ($raw as $row) {
+                    $rows[] = $mapRow($row);
                 }
             }
-            $deliver($variables);
+            $deliver($rows);
         });
     }
 
