@@ -4,13 +4,16 @@ declare(strict_types=1);
 
 namespace Porta\Container;
 
+use Symfony\Component\DependencyInjection\Attribute\AutoconfigureTag;
+
 /**
  * Marks a widget as a chrome root swept by the live-setting appliers — a
  * theme/locale/cursor/tab-position switch must relabel or recolor the whole
  * tree, and widgets cache their rendered lines with only an upward-bubbling
  * invalidate(), so {@see \Porta\Workbench\ChromeInvalidator} clears every cache
- * downward from these roots. Autoconfiguration (config/services.php) tags it
- * `porta.chrome_root`; the invalidator injects the tag as a `#[AutowireIterator]`
+ * downward from these roots. Extends `#[AutoconfigureTag]`, so the
+ * `porta.chrome_root` tag applies natively with no central registration;
+ * the invalidator injects the tag as a `#[AutowireIterator]`
  * (the {@see AsEager} pattern), so membership travels with the class instead of
  * a hand-maintained list in {@see \Porta\Ide}.
  *
@@ -20,4 +23,10 @@ namespace Porta\Container;
  * exception pattern.
  */
 #[\Attribute(\Attribute::TARGET_CLASS)]
-final readonly class AsChromeRoot {}
+final class AsChromeRoot extends AutoconfigureTag
+{
+    public function __construct()
+    {
+        parent::__construct('porta.chrome_root');
+    }
+}

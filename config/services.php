@@ -3,12 +3,8 @@
 declare(strict_types=1);
 
 use Porta\Bootstrap\EagerServices;
-use Porta\Command\CommandProvider;
 use Porta\Config\IdeConfig;
 use Porta\Config\KeybindingsFactory;
-use Porta\Container\AsChromeRoot;
-use Porta\Container\AsEager;
-use Porta\Container\AsIdeService;
 use Porta\Container\AsWidget;
 use Porta\Editor\BufferService;
 use Porta\Highlight\ColorMode;
@@ -26,7 +22,6 @@ use Porta\Plugin\PluginManager;
 use Porta\Plugin\PluginSettings;
 use Porta\Search\Everywhere\SearchEverywhereController;
 use Porta\Search\Everywhere\SearchEverywhereFactory;
-use Porta\Settings\SettingsSection;
 use Porta\Ui\BidiTui;
 use Porta\Ui\FrameHooks;
 use Porta\Ui\Theme\Styles;
@@ -105,50 +100,12 @@ return static function (ContainerConfigurator $container, ContainerBuilder $buil
     // and skips any interface that gains a second one — those stay explicit
     // alias() calls below (FloatingRegions, SyntaxHighlightProviderSource).
 
-    // Command providers register in #[AsTaggedItem] priority order (higher
-    // first) — the order is contractual: registration order IS the palette
-    // display order, and core registers before plugins so core wins key
-    // collisions.
-    $builder->registerForAutoconfiguration(CommandProvider::class)->addTag('porta.command_provider');
-
-    // Settings pages, likewise in #[AsTaggedItem] priority order — contractual
-    // because SettingsViewController takes the first section whose handles()
-    // claims the nav id, and Section/GeneralSection claims every id as the
-    // fallback, so it must sort last.
-    $builder->registerForAutoconfiguration(SettingsSection::class)->addTag('porta.settings_section');
-
-    // #[AsEager] services are constructed once at the Ide ctor tail (via
-    // Bootstrap/EagerServices iterating this tag) purely for their
-    // self-registering constructor side effect; the priority fixes the
-    // contractual find→picker→toast order.
-    $builder->registerAttributeForAutoconfiguration(
-        AsEager::class,
-        static function (ChildDefinition $definition, AsEager $attribute): void {
-            $definition->addTag('porta.eager', ['priority' => $attribute->priority]);
-        },
-    );
-
-    // #[AsChromeRoot] widgets become the chrome roots ChromeInvalidator sweeps
-    // on a live theme/locale/cursor/tab-position switch; it injects the tag as a
-    // #[AutowireIterator] (the #[AsEager] pattern), so membership travels with
-    // the class instead of a hand-maintained register() list in Ide.
-    $builder->registerAttributeForAutoconfiguration(
-        AsChromeRoot::class,
-        static function (ChildDefinition $definition): void {
-            $definition->addTag('porta.chrome_root');
-        },
-    );
-
-    // #[AsIdeService] classes become members of the porta.ide ServiceLocator
-    // (the single public boundary). The tagged_iterator below keys each by its
-    // service id = FQCN, so Ide::service(X::class) resolves it. Membership
-    // travels with the class instead of a hand-maintained list.
-    $builder->registerAttributeForAutoconfiguration(
-        AsIdeService::class,
-        static function (ChildDefinition $definition): void {
-            $definition->addTag('porta.ide_service');
-        },
-    );
+    // The porta.* tag attributes (#[AsIdeService], #[AsEager], #[AsChromeRoot])
+    // and the tagged interfaces (CommandProvider, SettingsSection) carry their
+    // own autoconfiguration as #[AutoconfigureTag] subclasses/uses — Symfony
+    // resolves them natively (IS_INSTANCEOF), so nothing registers them here.
+    // #[AsWidget] above is the one that cannot: it builds a nested Style
+    // definition, inexpressible as a tag.
 
     $services = $container->services();
 

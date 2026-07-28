@@ -140,8 +140,11 @@ plugin handlers their live `Plugin/PluginRuntime` seam + flashes the config/plug
 a `WidgetHooks` sibling kept separate so neither constructor grows unwieldy) — commands register
 and menus bake at the **end** of the constructor. Services that must be constructed **eagerly for a self-registering side effect** (they
 attach to `Workbench/WorkspaceViews` or hook `BidiTui::onBeforeFrame` and have no inbound reference, so
-without a forced resolve they never exist) carry **`#[Container/AsEager(priority)]`**; the attribute
-tags them `porta.eager`, and `Bootstrap/EagerServices` iterates the tag once at the ctor tail to
+without a forced resolve they never exist) carry **`#[Container/AsEager(priority)]`** — an
+`AutoconfigureTag` subclass (round 9; Symfony applies the `porta.eager` tag natively, no central
+registration; note its priority is deliberately NOT a promoted property — the autoconfigure pass
+`(array)`-casts the attribute, and a stray public property fails config parsing) — and
+`Bootstrap/EagerServices` iterates the tag once at the ctor tail to
 construct them (the `CommandRegistryPopulator` tagged-iterator pattern). The priority fixes
 contractual construction order (the find→picker→toast presenters). Adopters:
 `GitViewController`/`SettingsViewController`/`WelcomeModalController` (attach to WorkspaceViews),
@@ -214,14 +217,14 @@ singleton widget** (`#[Container/AsWidget]` declares tree id/flex, autoconfigure
   `EventDispatcherInterface`) are out of scope and stay explicit too.
   `tests/Unit/Container/ContainerAliasesTest` pins the derivation (load-only builder — compiling
   strips private aliases) and the compiled FrameHooks wiring.
-- **Tagged command providers**: `Command/CommandProvider` autoconfigures into the
-  `porta.command_provider` tag; each provider carries `#[AsTaggedItem(priority: N)]`
+- **Tagged command providers**: `Command/CommandProvider` carries an interface-level
+  `#[AutoconfigureTag('porta.command_provider')]`; each provider carries `#[AsTaggedItem(priority: N)]`
   (Workbench 700 → Debug 600 → PluginCommandProvider 500 → File 400 → Search 300 → View 200 →
   Git 100) and `CommandRegistryPopulator` iterates them via `#[AutowireIterator]` — **priority
   order is contractual**: registration order IS the palette display order and core registers
   before plugins so core wins key collisions.
-- **Tagged settings sections**: `Settings/SettingsSection` (`handles`/`rows`/`change`)
-  autoconfigures into `porta.settings_section`; the six adapters in `Settings/Section/` delegate to
+- **Tagged settings sections**: `Settings/SettingsSection` (`handles`/`rows`/`change`) carries
+  an interface-level `#[AutoconfigureTag('porta.settings_section')]`; the six adapters in `Settings/Section/` delegate to
   the eight settings controllers (which keep their differing `rows()` arities and setter spellings
   — that is what the adapters are for). `SettingsViewController` iterates them via
   `#[AutowireIterator]` and takes the **first** section whose `handles()` claims the nav id.
@@ -329,8 +332,9 @@ caught by the first E2e test). `Config/EditorConfig/` looked non-service but is 
 dump.
 `_defaults` stays **private**; the single public boundary is the `porta.ide` `ServiceLocator`
 (plus the synthetics) — `Ide` resolves everything through its typed `service()` helper. **Locator
-membership is declared on the class with `#[Container/AsIdeService]`** (autoconfigured into the
-`porta.ide_service` tag; the locator is a `tagged_iterator` keyed by service id = FQCN, so
+membership is declared on the class with `#[Container/AsIdeService]`** (an `AutoconfigureTag`
+subclass — the tag applies natively, no central registration; the locator is a `tagged_iterator`
+keyed by service id = FQCN, so
 `service(X::class)`/`$locator->get(X::class)` resolve unchanged) — a new member marks itself, no
 central list to update. Two members can't carry the attribute and are tagged at their def:
 `Keybindings` (factory-built) and `event_dispatcher` (with an explicit `key => EventDispatcherInterface`
