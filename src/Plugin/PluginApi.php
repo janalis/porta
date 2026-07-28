@@ -22,24 +22,40 @@ final class PluginApi
     private const string ID_PATTERN = '/^[a-z0-9][a-z0-9_-]*$/i';
     private const array SETTING_KINDS = ['bool', 'choice', 'text', 'int'];
 
-    /** @var list<array{plugin: string, id: string, label: string, handler: \Closure(): void, keys: list<string>}> */
+    /**
+     * Plain array, not a {@see PluginBuffer}: paired with the $ids dedup index below.
+     *
+     * @var list<array{plugin: string, id: string, label: string, handler: \Closure(): void, keys: list<string>}>
+     */
     private array $commands = [];
     /** @var array<string, true> registered short ids, for duplicate detection */
     private array $ids = [];
-    /** @var list<array{id: string, when: (\Closure(): bool)|null}> namespaced command ids shown in the Plugins menu */
+    /**
+     * Plain array: the drain transforms rows into {@see PluginMenuSpec}s.
+     *
+     * @var list<array{id: string, when: (\Closure(): bool)|null}> namespaced command ids shown in the Plugins menu
+     */
     private array $menuItems = [];
-    /** @var list<array{0: string, 1: \Closure(string): void}> [event, listener] */
+    /**
+     * Plain array: four writer methods, positional tuples, drains into PluginEvents.
+     *
+     * @var list<array{0: string, 1: \Closure(string): void}> [event, listener]
+     */
     private array $hooks = [];
-    /** @var array<string, array{key: string, label: string, kind: string, default: bool|int|string, options: list<string>|null, hint: string|null}> by key */
+    /**
+     * Plain array: keyed by setting key for dedup, drains into PluginSettings.
+     *
+     * @var array<string, array{key: string, label: string, kind: string, default: bool|int|string, options: list<string>|null, hint: string|null}> by key
+     */
     private array $settingDescriptors = [];
-    /** @var list<array{plugin: string, languageId: string, name: string, resolve: \Closure(): (list<string>|null)}> */
-    private array $languageServers = [];
-    /** @var list<array{plugin: string, tool: string, available: \Closure(): bool, via: list<array{0: string, 1: string}>}> */
-    private array $installers = [];
-    /** @var list<array{plugin: string, id: string, label: string, languages: \Closure(): list<string>, highlight: \Closure(string, string, \Closure(string): void): void, available: (\Closure(): bool)|null}> */
-    private array $highlighters = [];
-    /** @var list<array{plugin: string, languages: \Closure(): list<string>, classify: \Closure(string, string): (list<array{start: int, end: int}>|null)}> */
-    private array $tokenSpans = [];
+    /** @var PluginBuffer<array{plugin: string, languageId: string, name: string, resolve: \Closure(): (list<string>|null)}> */
+    private readonly PluginBuffer $languageServers;
+    /** @var PluginBuffer<array{plugin: string, tool: string, available: \Closure(): bool, via: list<array{0: string, 1: string}>}> */
+    private readonly PluginBuffer $installers;
+    /** @var PluginBuffer<array{plugin: string, id: string, label: string, languages: \Closure(): list<string>, highlight: \Closure(string, string, \Closure(string): void): void, available: (\Closure(): bool)|null}> */
+    private readonly PluginBuffer $highlighters;
+    /** @var PluginBuffer<array{plugin: string, languages: \Closure(): list<string>, classify: \Closure(string, string): (list<array{start: int, end: int}>|null)}> */
+    private readonly PluginBuffer $tokenSpans;
 
     public function __construct(
         private readonly string $pluginName,
@@ -47,7 +63,12 @@ final class PluginApi
         private readonly string $rootDir,
         private readonly PluginSettings $settings,
         private readonly ?TerminalTheme $syntaxTheme = null,
-    ) {}
+    ) {
+        $this->languageServers = new PluginBuffer();
+        $this->installers = new PluginBuffer();
+        $this->highlighters = new PluginBuffer();
+        $this->tokenSpans = new PluginBuffer();
+    }
 
     /**
      * The live syntax color scheme, for a backend that renders its own colours.
@@ -166,12 +187,12 @@ final class PluginApi
         if (1 !== preg_match(self::ID_PATTERN, $languageId)) {
             throw new PluginException(\sprintf('Invalid language id "%s" (expected /^[a-z0-9][a-z0-9_-]*$/i)', $languageId));
         }
-        $this->languageServers[] = [
+        $this->languageServers->add([
             'plugin' => $this->pluginName,
             'languageId' => $languageId,
             'name' => $name,
             'resolve' => $resolveCommand,
-        ];
+        ]);
     }
 
     /**
@@ -223,14 +244,14 @@ final class PluginApi
             throw new PluginException('A highlighter must claim at least one language (or "*")');
         }
         $resolve = $languages instanceof \Closure ? $languages : static fn (): array => array_values($languages);
-        $this->highlighters[] = [
+        $this->highlighters->add([
             'plugin' => $this->pluginName,
             'id' => $id,
             'label' => $label,
             'languages' => $resolve,
             'highlight' => $highlight,
             'available' => $isAvailable,
-        ];
+        ]);
     }
 
     /**
@@ -253,11 +274,11 @@ final class PluginApi
         if (\is_array($languages) && [] === $languages) {
             throw new PluginException('A token-span provider must claim at least one language (or "*")');
         }
-        $this->tokenSpans[] = [
+        $this->tokenSpans->add([
             'plugin' => $this->pluginName,
             'languages' => $languages instanceof \Closure ? $languages : static fn (): array => array_values($languages),
             'classify' => $classify,
-        ];
+        ]);
     }
 
     /**
@@ -289,12 +310,12 @@ final class PluginApi
                 throw new PluginException('An installer candidate needs a non-empty package name');
             }
         }
-        $this->installers[] = [
+        $this->installers->add([
             'plugin' => $this->pluginName,
             'tool' => $tool,
             'available' => $isAvailable,
             'via' => $via,
-        ];
+        ]);
     }
 
     /**
@@ -490,24 +511,24 @@ final class PluginApi
     /** @return list<array{plugin: string, languageId: string, name: string, resolve: \Closure(): (list<string>|null)}> */
     public function bufferedLanguageServers(): array
     {
-        return $this->languageServers;
+        return $this->languageServers->all();
     }
 
     /** @return list<array{plugin: string, tool: string, available: \Closure(): bool, via: list<array{0: string, 1: string}>}> */
     public function bufferedInstallers(): array
     {
-        return $this->installers;
+        return $this->installers->all();
     }
 
     /** @return list<array{plugin: string, id: string, label: string, languages: \Closure(): list<string>, highlight: \Closure(string, string, \Closure(string): void): void, available: (\Closure(): bool)|null}> */
     public function bufferedHighlighters(): array
     {
-        return $this->highlighters;
+        return $this->highlighters->all();
     }
 
     /** @return list<array{plugin: string, languages: \Closure(): list<string>, classify: \Closure(string, string): (list<array{start: int, end: int}>|null)}> */
     public function bufferedTokenSpans(): array
     {
-        return $this->tokenSpans;
+        return $this->tokenSpans->all();
     }
 }
