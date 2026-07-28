@@ -539,7 +539,23 @@ dependency was exclusive. It also rejected **`CodeEditorWidget`'s ~270-line rend
 stronger failure: 3 of ~23 touched dependencies exclusive, and the cluster *writes* four fields
 the mouse paths *read* (`lastGutterWidth`/`lastRenderRows`/`lastStripeCol`/`stickyLines` feed
 `viewport()`, `caretScreenCell()`, `documentLineAt()`, `gutterWidth()`) —
-render-event-writes/mouse-event-reads is exactly the shared cross-event state clause. Only the
+render-event-writes/mouse-event-reads is exactly the shared cross-event state clause. Round 4
+re-measured the remaining large candidates and rejected them all on the same clauses:
+**`GitViewController`'s history tier** (1/11 exclusive — `$historyPageSize` only; the
+diff-toolbar's `toggleWhitespace` reads `$shownCommit`/`$shownCommitPath` that the history path
+writes, and `switchMode` writes `$historyPath`), **both `HelpViewerWidget` clusters** (history
+stack 0/6 — both stack fields feed `headerLine()`'s arrow states; FindTarget adapter 1/7 —
+`render()` itself bumps `$findVersion`, and `byteAtColumn` is shared with link highlighting),
+and **unifying the four multi-field form state machines** (FindBar/CommitBox/FindInFilesModal/
+ResultsPanel: 8 variance axes across 4 participants — heterogeneous `MultilineInput` field,
+cycling-disabled and field-absent flags, last-field-escapes, three Esc dispositions, per-field
+post-edit side effects — and ResultsPanel has no `$activeField` at all). Also measured and
+rejected: **splitting any of the four widget-roster enumerations** (`WidgetHooks`,
+`WorkspaceLayout`, `ContextMenuOpener`, `MenuOverlayPanesFactory`) — every split *increases*
+total coupling edges (WidgetHooks 25→30+ with three shared deps duplicated; ContextMenuOpener
+per-branch 22→~66, 8 of its 20 deps are cross-branch), and the three roster enumerations are
+different-order, different-purpose (Z-order assembly / hit-test pane lists / focus dispatch), so
+no single list serves them. Only the
 slice that already took its state as parameters left: `Widget/Render/ErrorStripe` (the
 right-margin stripe, pure static). Named zone rows share `Ui/ClickZones`
 (`clear`/`add(name, start, end)`/`at(col)`, half-open, first match wins — the help header's
@@ -569,7 +585,14 @@ triggered by the `Keybindings` factory) runs each file's `activate(PluginApi)` *
 overrides them; ids are
 namespaced `plugin:command` and bypass the ActionCatalog keymap validation — plugin ids stay
 OUT of `ActionCatalog::ACTIONS`). Registration buffers in the per-plugin `PluginApi` and commits
-atomically after `activate()`; action methods (flash/editor access/openFile) resolve services
+atomically after `activate()`. Exactly **four** of the eight extension points share the generic
+`Plugin/PluginBuffer` (language servers, installers, highlighters, token spans — the
+validate/append-a-`'plugin'`-stamped-row/bare-foreach-drain shape); the other four stay plain
+arrays **on purpose**, each saying why at its declaration (commands: paired `$ids` dedup index;
+menu items: drain-time `PluginMenuSpec` transform; hooks: four writers + positional tuples;
+settings: keyed map sinking into `PluginSettings`) — unifying them was measured as needing five
+variance axes for four conforming cases. The eight `register*` signatures are frozen public
+plugin API. Action methods (flash/editor access/openFile) resolve services
 lazily via `Plugin/PluginRuntime` (wired late in the ctor) and throw during `activate()`. Every
 plugin handler and hook is wrapped in try/catch → status-bar flash, so a faulting plugin never
 kills the loop. Hooks (`fileOpened`/`fileSaved`/`bufferSwitched`/`themeChanged`) fan out from
