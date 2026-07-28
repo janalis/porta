@@ -7,22 +7,13 @@ namespace Porta\Tests\Unit\Search;
 use PHPUnit\Framework\TestCase;
 use Porta\Search\ProjectSearch;
 use Porta\Search\SearchOptions;
+use Porta\Tests\Support\PreservesPath;
 use Porta\Tests\Support\TempProject;
 use Revolt\EventLoop;
 
 final class ProjectSearchTest extends TestCase
 {
-    private string $originalPath;
-
-    protected function setUp(): void
-    {
-        $this->originalPath = PORTA_TEST_PRISTINE_PATH;
-    }
-
-    protected function tearDown(): void
-    {
-        putenv('PATH='.$this->originalPath);
-    }
+    use PreservesPath;
 
     /** @return list<array{path: string, line: int, text: string, ranges: list<array{start: int, length: int}>}> */
     private function await(

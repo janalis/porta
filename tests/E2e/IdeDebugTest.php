@@ -8,6 +8,8 @@ use PHPUnit\Framework\TestCase;
 use Porta\Debug\DebugController;
 use Porta\Editor\BufferService;
 use Porta\Editor\OpenFocus;
+use Porta\Tests\Support\ClearsPortaLsp;
+use Porta\Tests\Support\PreservesPath;
 use Porta\Tests\Support\RunsIde;
 use Porta\Tests\Support\TempProject;
 use Symfony\Component\Tui\Ansi\AnsiUtils;
@@ -19,20 +21,9 @@ use Symfony\Component\Tui\Render\Renderer;
  */
 final class IdeDebugTest extends TestCase
 {
+    use ClearsPortaLsp;
+    use PreservesPath;
     use RunsIde;
-
-    private string $originalPath;
-
-    protected function setUp(): void
-    {
-        $this->originalPath = PORTA_TEST_PRISTINE_PATH;
-        putenv('PORTA_LSP');
-    }
-
-    protected function tearDown(): void
-    {
-        putenv('PATH='.$this->originalPath);
-    }
 
     /** A .porta.json wiring php files to the scripted mock adapter. */
     private function mockDapConfig(): string

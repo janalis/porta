@@ -6,6 +6,8 @@ namespace Porta\Tests\E2e;
 
 use PHPUnit\Framework\TestCase;
 use Porta\Config\CommandRegistry;
+use Porta\Tests\Support\ClearsPortaLsp;
+use Porta\Tests\Support\PreservesPath;
 use Porta\Tests\Support\RunsIde;
 use Porta\Tests\Support\TempProject;
 use Porta\Workbench\Notifier;
@@ -19,27 +21,9 @@ use Symfony\Component\Tui\Render\Renderer;
  */
 final class IdeEditingTest extends TestCase
 {
+    use ClearsPortaLsp;
+    use PreservesPath;
     use RunsIde;
-
-    private string $originalPath;
-
-    private ?string $portaHomeToRestore = null;
-
-    protected function setUp(): void
-    {
-        $this->originalPath = PORTA_TEST_PRISTINE_PATH;
-        putenv('PORTA_LSP');
-    }
-
-    protected function tearDown(): void
-    {
-        if (null !== $this->portaHomeToRestore) {
-            putenv('PORTA_HOME='.$this->portaHomeToRestore);
-            $this->portaHomeToRestore = null;
-        }
-        putenv('PATH='.$this->originalPath);
-        putenv('PORTA_LSP');
-    }
 
     public function testStickyScrollPinsHeaderAndClickJumps(): void
     {

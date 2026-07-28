@@ -9,7 +9,9 @@ use Porta\Config\CommandRegistry;
 use Porta\Config\IdeConfig;
 use Porta\Editor\LineNumberMode;
 use Porta\Settings\SettingsController;
+use Porta\Tests\Support\ClearsPortaLsp;
 use Porta\Tests\Support\FindModalReads;
+use Porta\Tests\Support\PreservesPath;
 use Porta\Tests\Support\RunsIde;
 use Porta\Tests\Support\TempProject;
 use Symfony\Component\Tui\Ansi\AnsiUtils;
@@ -21,18 +23,12 @@ use Symfony\Component\Tui\Ansi\AnsiUtils;
  */
 final class IdeSettingsThemeTest extends TestCase
 {
+    use ClearsPortaLsp;
     use FindModalReads;
+    use PreservesPath;
     use RunsIde;
 
-    private string $originalPath;
-
     private ?string $portaHomeToRestore = null;
-
-    protected function setUp(): void
-    {
-        $this->originalPath = PORTA_TEST_PRISTINE_PATH;
-        putenv('PORTA_LSP');
-    }
 
     protected function tearDown(): void
     {
@@ -40,8 +36,6 @@ final class IdeSettingsThemeTest extends TestCase
             putenv('PORTA_HOME='.$this->portaHomeToRestore);
             $this->portaHomeToRestore = null;
         }
-        putenv('PATH='.$this->originalPath);
-        putenv('PORTA_LSP');
     }
 
     public function testSettingsAppliedAtStartup(): void

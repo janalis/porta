@@ -8,6 +8,8 @@ use PHPUnit\Framework\TestCase;
 use Porta\Editor\BufferManager;
 use Porta\Editor\BufferService;
 use Porta\Editor\OpenFocus;
+use Porta\Tests\Support\ClearsPortaLsp;
+use Porta\Tests\Support\PreservesPath;
 use Porta\Tests\Support\RunsIde;
 use Porta\Tests\Support\TempProject;
 use Porta\Widget\CodeEditorWidget;
@@ -20,27 +22,9 @@ use Symfony\Component\Tui\Ansi\AnsiUtils;
  */
 final class IdeImageViewerTest extends TestCase
 {
+    use ClearsPortaLsp;
+    use PreservesPath;
     use RunsIde;
-
-    private string $originalPath;
-
-    private ?string $portaHomeToRestore = null;
-
-    protected function setUp(): void
-    {
-        $this->originalPath = PORTA_TEST_PRISTINE_PATH;
-        putenv('PORTA_LSP');
-    }
-
-    protected function tearDown(): void
-    {
-        if (null !== $this->portaHomeToRestore) {
-            putenv('PORTA_HOME='.$this->portaHomeToRestore);
-            $this->portaHomeToRestore = null;
-        }
-        putenv('PATH='.$this->originalPath);
-        putenv('PORTA_LSP');
-    }
 
     public function testImageOpensInlineWithHalfBlocksZoomAndPan(): void
     {

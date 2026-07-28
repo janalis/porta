@@ -6,6 +6,7 @@ namespace Porta\Tests\E2e;
 
 use PHPUnit\Framework\TestCase;
 use Porta\Run\RunController;
+use Porta\Tests\Support\PreservesPath;
 use Porta\Tests\Support\RunsIde;
 use Porta\Tests\Support\TempProject;
 use Symfony\Component\Tui\Ansi\AnsiUtils;
@@ -18,18 +19,11 @@ use Symfony\Component\Tui\Render\Renderer;
  */
 final class IdeTerminalTest extends TestCase
 {
+    use PreservesPath;
     use RunsIde;
-
-    private string $originalPath;
-
-    protected function setUp(): void
-    {
-        $this->originalPath = PORTA_TEST_PRISTINE_PATH;
-    }
 
     protected function tearDown(): void
     {
-        putenv('PATH='.$this->originalPath);
         putenv('SHELL');
     }
 
@@ -48,7 +42,6 @@ final class IdeTerminalTest extends TestCase
 
     public function testTwoSessionsIsolateInputAndCycle(): void
     {
-        putenv('PATH='.$this->originalPath);
         putenv('SHELL=/bin/sh');
         $project = new TempProject(['A.php' => "<?php\n"]);
 
@@ -114,7 +107,6 @@ final class IdeTerminalTest extends TestCase
 
     public function testCloseSessionByTabClickThenCloseLastClosesPanel(): void
     {
-        putenv('PATH='.$this->originalPath);
         putenv('SHELL=/bin/sh');
         $project = new TempProject(['A.php' => "<?php\n"]);
 
@@ -158,7 +150,6 @@ final class IdeTerminalTest extends TestCase
 
     public function testSessionTabDragReorders(): void
     {
-        putenv('PATH='.$this->originalPath);
         putenv('SHELL=/bin/sh');
         $project = new TempProject(['A.php' => "<?php\n"]);
 
@@ -198,7 +189,6 @@ final class IdeTerminalTest extends TestCase
 
     public function testSessionTabContextMenuOffersNewAndCloseSession(): void
     {
-        putenv('PATH='.$this->originalPath);
         putenv('SHELL=/bin/sh');
         $project = new TempProject(['A.php' => "<?php\n"]);
 
@@ -246,7 +236,6 @@ final class IdeTerminalTest extends TestCase
 
     public function testRunConfigurationGetsItsOwnTabBesideTheShellAndReRunsInPlace(): void
     {
-        putenv('PATH='.$this->originalPath);
         putenv('SHELL=/bin/sh');
         $project = new TempProject(['run.php' => "<?php\necho 'RAN-'.getmypid().PHP_EOL;\n"]);
 

@@ -15,23 +15,18 @@ use Porta\Search\Everywhere\TextSource;
 use Porta\Search\Everywhere\WorkspaceSymbolSource;
 use Porta\Search\FileIndex;
 use Porta\Search\ProjectSearch;
+use Porta\Tests\Support\PreservesPath;
 use Porta\Tests\Support\TempProject;
 
 final class SourcesTest extends TestCase
 {
-    private string $originalPath;
+    use PreservesPath;
 
     protected function setUp(): void
     {
         // No grep on PATH → ProjectSearch takes its synchronous PHP fallback, so
         // the TextSource emit is deterministic in-test.
-        $this->originalPath = PORTA_TEST_PRISTINE_PATH;
         putenv('PATH=/nonexistent');
-    }
-
-    protected function tearDown(): void
-    {
-        putenv('PATH='.$this->originalPath);
     }
 
     /** @return list<SearchHit> */

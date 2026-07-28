@@ -6,23 +6,14 @@ namespace Porta\Tests\Unit\Lsp;
 
 use PHPUnit\Framework\TestCase;
 use Porta\Lsp\ServerLocator;
+use Porta\Tests\Support\ClearsPortaLsp;
+use Porta\Tests\Support\PreservesPath;
 use Porta\Tests\Support\TempProject;
 
 final class ServerLocatorTest extends TestCase
 {
-    private string $originalPath;
-
-    protected function setUp(): void
-    {
-        $this->originalPath = PORTA_TEST_PRISTINE_PATH;
-        putenv('PORTA_LSP');
-    }
-
-    protected function tearDown(): void
-    {
-        putenv('PATH='.$this->originalPath);
-        putenv('PORTA_LSP');
-    }
+    use ClearsPortaLsp;
+    use PreservesPath;
 
     /** @var array<string, array{command: list<string>, name: string}> a phpantom plugin server, for the defaults layer */
     private const array PHPANTOM = ['php' => ['command' => ['/opt/phpantom_lsp'], 'name' => 'phpantom']];

@@ -5,6 +5,8 @@ declare(strict_types=1);
 namespace Porta\Tests\E2e;
 
 use PHPUnit\Framework\TestCase;
+use Porta\Tests\Support\ClearsPortaLsp;
+use Porta\Tests\Support\PreservesPath;
 use Porta\Tests\Support\RunsIde;
 use Porta\Tests\Support\TempProject;
 use Symfony\Component\Tui\Ansi\AnsiUtils;
@@ -16,22 +18,20 @@ use Symfony\Component\Tui\Ansi\AnsiUtils;
  */
 final class IdePluginTest extends TestCase
 {
+    use ClearsPortaLsp;
+    use PreservesPath;
     use RunsIde;
 
-    private string $originalPath;
     private ?string $portaHome = null;
 
     protected function setUp(): void
     {
-        $this->originalPath = PORTA_TEST_PRISTINE_PATH;
         $portaHome = getenv('PORTA_HOME');
         $this->portaHome = $portaHome ? $portaHome : null;
-        putenv('PORTA_LSP');
     }
 
     protected function tearDown(): void
     {
-        putenv('PATH='.$this->originalPath);
         putenv(null !== $this->portaHome ? 'PORTA_HOME='.$this->portaHome : 'PORTA_HOME');
     }
 

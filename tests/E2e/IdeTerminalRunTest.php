@@ -5,6 +5,8 @@ declare(strict_types=1);
 namespace Porta\Tests\E2e;
 
 use PHPUnit\Framework\TestCase;
+use Porta\Tests\Support\ClearsPortaLsp;
+use Porta\Tests\Support\PreservesPath;
 use Porta\Tests\Support\RunsIde;
 use Porta\Tests\Support\ScreenReads;
 use Porta\Tests\Support\TempProject;
@@ -19,32 +21,14 @@ use Symfony\Component\Tui\Render\Renderer;
  */
 final class IdeTerminalRunTest extends TestCase
 {
+    use ClearsPortaLsp;
+    use PreservesPath;
     use RunsIde;
     use ScreenReads;
 
-    private string $originalPath;
-
-    private ?string $portaHomeToRestore = null;
-
-    protected function setUp(): void
-    {
-        $this->originalPath = PORTA_TEST_PRISTINE_PATH;
-        putenv('PORTA_LSP');
-    }
-
-    protected function tearDown(): void
-    {
-        if (null !== $this->portaHomeToRestore) {
-            putenv('PORTA_HOME='.$this->portaHomeToRestore);
-            $this->portaHomeToRestore = null;
-        }
-        putenv('PATH='.$this->originalPath);
-        putenv('PORTA_LSP');
-    }
-
     public function testClickingTerminalPaneRefocusesIt(): void
     {
-        putenv('PATH='.$this->originalPath); // needs /bin/sh
+        putenv('PATH='.PORTA_TEST_PRISTINE_PATH); // needs /bin/sh
         putenv('SHELL=/bin/sh');
         $project = new TempProject(['A.php' => "<?php\n"]);
 
@@ -78,7 +62,7 @@ final class IdeTerminalRunTest extends TestCase
 
     public function testMouseWheelScrollsTheTerminal(): void
     {
-        putenv('PATH='.$this->originalPath); // needs /bin/sh + seq
+        putenv('PATH='.PORTA_TEST_PRISTINE_PATH); // needs /bin/sh + seq
         putenv('SHELL=/bin/sh');
         $project = new TempProject(['A.php' => "<?php\n"]);
 
@@ -120,7 +104,7 @@ final class IdeTerminalRunTest extends TestCase
 
     public function testKittyKeyInputIsTranslatedForTheShell(): void
     {
-        putenv('PATH='.$this->originalPath); // needs /bin/sh
+        putenv('PATH='.PORTA_TEST_PRISTINE_PATH); // needs /bin/sh
         putenv('SHELL=/bin/sh');
         $project = new TempProject(['A.php' => "<?php\n"]);
 
@@ -152,7 +136,7 @@ final class IdeTerminalRunTest extends TestCase
     public function testIntegratedTerminalOpensRunsAndCloses(): void
     {
         // Force a predictable shell so the panel spawns deterministically.
-        putenv('PATH='.$this->originalPath); // needs /bin/sh
+        putenv('PATH='.PORTA_TEST_PRISTINE_PATH); // needs /bin/sh
         putenv('SHELL=/bin/sh');
         $project = new TempProject(['A.php' => "<?php\n"]);
 
@@ -212,7 +196,6 @@ final class IdeTerminalRunTest extends TestCase
 
     public function testTerminalScrollAndPanelKeys(): void
     {
-        putenv('PATH='.$this->originalPath);
         putenv('SHELL=/bin/sh');
         $project = new TempProject(['A.php' => "<?php\n"]);
 
@@ -257,7 +240,6 @@ final class IdeTerminalRunTest extends TestCase
 
     public function testTerminalViaCommandPalette(): void
     {
-        putenv('PATH='.$this->originalPath);
         putenv('SHELL=/bin/sh');
         $project = new TempProject(['A.php' => "<?php\n"]);
 
@@ -288,7 +270,7 @@ final class IdeTerminalRunTest extends TestCase
 
     public function testRunMenuRunsCurrentFileInTerminal(): void
     {
-        putenv('PATH='.$this->originalPath); // needs php + a shell
+        putenv('PATH='.PORTA_TEST_PRISTINE_PATH); // needs php + a shell
         $project = new TempProject(['hello.php' => "<?php\necho \"run-output-ok\\n\";\n"]);
 
         $terminal = $this->runIde(
@@ -319,7 +301,6 @@ final class IdeTerminalRunTest extends TestCase
 
     public function testRunLastRepeatsAndEmptyGuards(): void
     {
-        putenv('PATH='.$this->originalPath);
         $project = new TempProject(['hello.php' => "<?php\necho \"second-run\\n\";\n"]);
 
         $terminal = $this->runIde(

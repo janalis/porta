@@ -9,6 +9,7 @@ use Porta\Config\CommandRegistry;
 use Porta\Editor\BufferService;
 use Porta\Ide;
 use Porta\Lsp\Uri;
+use Porta\Tests\Support\PreservesPath;
 use Porta\Tests\Support\RunsIde;
 use Porta\Tests\Support\TempProject;
 use Porta\Widget\DockTabsWidget;
@@ -22,19 +23,8 @@ use Symfony\Component\Tui\Render\Renderer;
  */
 final class IdeDockToolsTest extends TestCase
 {
+    use PreservesPath;
     use RunsIde;
-
-    private string $originalPath;
-
-    protected function setUp(): void
-    {
-        $this->originalPath = PORTA_TEST_PRISTINE_PATH;
-    }
-
-    protected function tearDown(): void
-    {
-        putenv('PATH='.$this->originalPath);
-    }
 
     private static function bufferService(mixed $ide): BufferService
     {
@@ -149,7 +139,7 @@ final class IdeDockToolsTest extends TestCase
 
     public function testTodoScanListsJumpsAndRerunsWithF5(): void
     {
-        putenv('PATH='.$this->originalPath); // real grep for the async scan
+        putenv('PATH='.PORTA_TEST_PRISTINE_PATH); // real grep for the async scan
         $project = new TempProject([
             'src/A.php' => "<?php\n// TODO extract this\n",
             'src/B.py' => "# FIXME races\n",
@@ -215,7 +205,7 @@ final class IdeDockToolsTest extends TestCase
 
     public function testTwoSearchesCoexistAsTabsAndF5RerunsTheRightOne(): void
     {
-        putenv('PATH='.$this->originalPath); // real grep
+        putenv('PATH='.PORTA_TEST_PRISTINE_PATH); // real grep
         $project = new TempProject([
             'src/Main.php' => "<?php\n// nothing to see\n",
             'src/A.php' => "<?php\n// alpha here\n",
@@ -290,7 +280,7 @@ final class IdeDockToolsTest extends TestCase
 
     public function testOverflowingDockStripScrollsWhenTheIndicatorIsClicked(): void
     {
-        putenv('PATH='.$this->originalPath); // real grep
+        putenv('PATH='.PORTA_TEST_PRISTINE_PATH); // real grep
         $project = new TempProject([
             'src/A.php' => "<?php\n// alpha here\n",
             'src/B.php' => "<?php\n// beta here\n",
@@ -352,7 +342,7 @@ final class IdeDockToolsTest extends TestCase
 
     public function testToolTabsCoexistCycleAndClose(): void
     {
-        putenv('PATH='.$this->originalPath); // real grep for the TODO scan
+        putenv('PATH='.PORTA_TEST_PRISTINE_PATH); // real grep for the TODO scan
         $project = new TempProject(['src/Main.php' => "<?php\n// TODO polish\n"]);
         $dock = static fn ($ide): object => $ide->resolve(\Porta\Workbench\Dock\BottomDock::class);
 
@@ -402,7 +392,7 @@ final class IdeDockToolsTest extends TestCase
 
     public function testDockToolTabDragReordersAndFixedEndpointsAreNoOps(): void
     {
-        putenv('PATH='.$this->originalPath); // real grep for the TODO scan
+        putenv('PATH='.PORTA_TEST_PRISTINE_PATH); // real grep for the TODO scan
         $project = new TempProject(['src/Main.php' => "<?php\n// TODO polish\n"]);
         $dock = static fn ($ide): object => $ide->resolve(\Porta\Workbench\Dock\BottomDock::class);
 

@@ -11,6 +11,7 @@ use Porta\Editor\BufferService;
 use Porta\Editor\OpenFocus;
 use Porta\Ide;
 use Porta\Onboarding\OnboardingState;
+use Porta\Tests\Support\PreservesPath;
 use Porta\Tests\Support\TempProject;
 use Porta\Widget\StatusBarWidget;
 use Symfony\Component\Tui\Terminal\VirtualTerminal;
@@ -22,17 +23,11 @@ use Symfony\Component\Tui\Terminal\VirtualTerminal;
  */
 final class EditorConfigIntegrationTest extends TestCase
 {
-    private string $originalPath;
+    use PreservesPath;
 
     protected function setUp(): void
     {
-        $this->originalPath = PORTA_TEST_PRISTINE_PATH;
         putenv('PATH=/nonexistent'); // keep git/LSP out of these unit runs
-    }
-
-    protected function tearDown(): void
-    {
-        putenv('PATH='.$this->originalPath);
     }
 
     private function ide(TempProject $project): Ide

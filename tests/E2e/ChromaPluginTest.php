@@ -5,6 +5,8 @@ declare(strict_types=1);
 namespace Porta\Tests\E2e;
 
 use PHPUnit\Framework\TestCase;
+use Porta\Tests\Support\ClearsPortaLsp;
+use Porta\Tests\Support\PreservesPath;
 use Porta\Tests\Support\RunsIde;
 use Porta\Tests\Support\TempProject;
 use Symfony\Component\Tui\Ansi\AnsiUtils;
@@ -20,20 +22,13 @@ use Symfony\Component\Tui\Ansi\AnsiUtils;
  */
 final class ChromaPluginTest extends TestCase
 {
+    use ClearsPortaLsp;
+    use PreservesPath;
     use RunsIde;
-
-    private string $originalPath;
 
     protected function setUp(): void
     {
-        $this->originalPath = PORTA_TEST_PRISTINE_PATH;
-        putenv('PORTA_LSP');
         putenv('PATH=/nonexistent');
-    }
-
-    protected function tearDown(): void
-    {
-        putenv('PATH='.$this->originalPath);
     }
 
     /**

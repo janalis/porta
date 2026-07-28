@@ -6,7 +6,9 @@ namespace Porta\Tests\E2e;
 
 use PHPUnit\Framework\TestCase;
 use Porta\Config\CommandRegistry;
+use Porta\Tests\Support\ClearsPortaLsp;
 use Porta\Tests\Support\NavigatesSettings;
+use Porta\Tests\Support\PreservesPath;
 use Porta\Tests\Support\RunsIde;
 use Porta\Tests\Support\TempProject;
 use Symfony\Component\Tui\Ansi\AnsiUtils;
@@ -19,7 +21,9 @@ use Symfony\Component\Tui\Ansi\AnsiUtils;
  */
 final class IdeEmbeddedPluginsTest extends TestCase
 {
+    use ClearsPortaLsp;
     use NavigatesSettings;
+    use PreservesPath;
 
     /** The suite-wide PORTA_HOME (the `tempest` highlighting fixture), to restore. */
     private ?string $savedPortaHome = null;
@@ -51,22 +55,18 @@ final class IdeEmbeddedPluginsTest extends TestCase
 
     use RunsIde;
 
-    private string $originalPath;
     private string $originalEmbedded;
 
     protected function setUp(): void
     {
         $this->withoutTheHighlightingFixture();
-        $this->originalPath = PORTA_TEST_PRISTINE_PATH;
         $this->originalEmbedded = (string) getenv('PORTA_EMBEDDED_PLUGINS');
-        putenv('PORTA_LSP');
         putenv('PATH=/nonexistent');
     }
 
     protected function tearDown(): void
     {
         $this->restoreTheHighlightingFixture();
-        putenv('PATH='.$this->originalPath);
         putenv('PORTA_EMBEDDED_PLUGINS='.$this->originalEmbedded);
     }
 

@@ -14,6 +14,7 @@ use Porta\Lsp\LspSessionPool;
 use Porta\Settings\SettingsLspController;
 use Porta\Settings\SettingsRowKind;
 use Porta\Tests\Support\FixedActiveFile;
+use Porta\Tests\Support\PreservesPath;
 use Porta\Tests\Support\TempProject;
 use Porta\Widget\StatusBarWidget;
 use Porta\Workbench\Notifier;
@@ -22,18 +23,13 @@ use Symfony\Component\Tui\Tui;
 
 final class SettingsLspControllerTest extends TestCase
 {
-    private string $originalPath;
+    use PreservesPath;
+
     private int $reopened = 0;
 
     protected function setUp(): void
     {
-        $this->originalPath = PORTA_TEST_PRISTINE_PATH;
         putenv('PATH=/nonexistent'); // deterministic auto-detect
-    }
-
-    protected function tearDown(): void
-    {
-        putenv('PATH='.$this->originalPath);
     }
 
     /**

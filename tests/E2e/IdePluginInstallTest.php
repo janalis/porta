@@ -6,7 +6,9 @@ namespace Porta\Tests\E2e;
 
 use PHPUnit\Framework\TestCase;
 use Porta\Config\CommandRegistry;
+use Porta\Tests\Support\ClearsPortaLsp;
 use Porta\Tests\Support\NavigatesSettings;
+use Porta\Tests\Support\PreservesPath;
 use Porta\Tests\Support\RunsIde;
 use Porta\Tests\Support\TempProject;
 use Symfony\Component\Process\ExecutableFinder;
@@ -19,24 +21,22 @@ use Symfony\Component\Tui\Ansi\AnsiUtils;
  */
 final class IdePluginInstallTest extends TestCase
 {
+    use ClearsPortaLsp;
     use NavigatesSettings;
+    use PreservesPath;
     use RunsIde;
 
-    private string $originalPath;
     private ?string $portaHome = null;
 
     protected function setUp(): void
     {
-        $this->originalPath = PORTA_TEST_PRISTINE_PATH;
         $portaHome = getenv('PORTA_HOME');
         $this->portaHome = $portaHome ? $portaHome : null;
-        putenv('PORTA_LSP');
         putenv('PATH=/nonexistent');
     }
 
     protected function tearDown(): void
     {
-        putenv('PATH='.$this->originalPath);
         putenv(null !== $this->portaHome ? 'PORTA_HOME='.$this->portaHome : 'PORTA_HOME');
     }
 
@@ -209,7 +209,7 @@ final class IdePluginInstallTest extends TestCase
 
     public function testGitUrlInstallClonesAndActivates(): void
     {
-        putenv('PATH='.$this->originalPath); // the installer needs a real git
+        putenv('PATH='.PORTA_TEST_PRISTINE_PATH); // the installer needs a real git
         if (null === new ExecutableFinder()->find('git')) {
             self::markTestSkipped('git binary not available');
         }

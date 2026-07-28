@@ -12,6 +12,8 @@ use Porta\Editor\SelectionMode;
 use Porta\Ide;
 use Porta\Lsp\NavigationController;
 use Porta\Onboarding\OnboardingState;
+use Porta\Tests\Support\ClearsPortaLsp;
+use Porta\Tests\Support\PreservesPath;
 use Porta\Tests\Support\RunsIde;
 use Porta\Tests\Support\TempProject;
 use Revolt\EventLoop;
@@ -26,27 +28,9 @@ use Symfony\Component\Tui\Tui;
  */
 final class IdeLspFeaturesTest extends TestCase
 {
+    use ClearsPortaLsp;
+    use PreservesPath;
     use RunsIde;
-
-    private string $originalPath;
-
-    private ?string $portaHomeToRestore = null;
-
-    protected function setUp(): void
-    {
-        $this->originalPath = PORTA_TEST_PRISTINE_PATH;
-        putenv('PORTA_LSP');
-    }
-
-    protected function tearDown(): void
-    {
-        if (null !== $this->portaHomeToRestore) {
-            putenv('PORTA_HOME='.$this->portaHomeToRestore);
-            $this->portaHomeToRestore = null;
-        }
-        putenv('PATH='.$this->originalPath);
-        putenv('PORTA_LSP');
-    }
 
     public function testNoLanguageServerMode(): void
     {

@@ -8,6 +8,7 @@ use PHPUnit\Framework\TestCase;
 use Porta\Search\ProjectSearch;
 use Porta\Search\TodoScanner;
 use Porta\Search\TodoTags;
+use Porta\Tests\Support\PreservesPath;
 use Porta\Tests\Support\TempProject;
 use Porta\Tests\Support\TestBottomDock;
 use Porta\Widget\DebugPanelWidget;
@@ -24,19 +25,13 @@ use Symfony\Component\Tui\Tui;
 
 final class TodoScannerTest extends TestCase
 {
-    private string $originalPath;
+    use PreservesPath;
 
     protected function setUp(): void
     {
         // No grep on PATH → the engine's synchronous PHP fallback, so the
         // scan completes inside scan() without pumping the event loop.
-        $this->originalPath = PORTA_TEST_PRISTINE_PATH;
         putenv('PATH=/nonexistent');
-    }
-
-    protected function tearDown(): void
-    {
-        putenv('PATH='.$this->originalPath);
     }
 
     public function testScanFillsTheTodoTabWithBothMarkersCaseSensitively(): void

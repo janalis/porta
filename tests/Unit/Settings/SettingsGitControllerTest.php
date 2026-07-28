@@ -13,6 +13,7 @@ use Porta\Git\GitSettings;
 use Porta\I18n\Translator;
 use Porta\Settings\SettingsGitController;
 use Porta\Settings\SettingsRowKind;
+use Porta\Tests\Support\PreservesPath;
 use Porta\Tests\Support\TempProject;
 use Porta\Widget\CodeEditorWidget;
 use Porta\Widget\StatusBarWidget;
@@ -22,17 +23,11 @@ use Symfony\Component\Tui\Tui;
 
 final class SettingsGitControllerTest extends TestCase
 {
-    private string $originalPath;
+    use PreservesPath;
 
     protected function setUp(): void
     {
-        $this->originalPath = PORTA_TEST_PRISTINE_PATH;
         putenv('PATH=/nonexistent'); // keep git out of these unit runs
-    }
-
-    protected function tearDown(): void
-    {
-        putenv('PATH='.$this->originalPath);
     }
 
     private GitSettings $git;

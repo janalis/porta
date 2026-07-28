@@ -6,7 +6,9 @@ namespace Porta\Tests\E2e;
 
 use PHPUnit\Framework\TestCase;
 use Porta\Config\CommandRegistry;
+use Porta\Tests\Support\ClearsPortaLsp;
 use Porta\Tests\Support\GitBinary;
+use Porta\Tests\Support\PreservesPath;
 use Porta\Tests\Support\RunsIde;
 use Porta\Tests\Support\TempProject;
 use Porta\Widget\ContextMenu;
@@ -20,32 +22,14 @@ use Symfony\Component\Tui\Render\Renderer;
  */
 final class IdeGitFlowsTest extends TestCase
 {
+    use ClearsPortaLsp;
     use GitBinary;
+    use PreservesPath;
     use RunsIde;
-
-    private string $originalPath;
-
-    private ?string $portaHomeToRestore = null;
-
-    protected function setUp(): void
-    {
-        $this->originalPath = PORTA_TEST_PRISTINE_PATH;
-        putenv('PORTA_LSP');
-    }
-
-    protected function tearDown(): void
-    {
-        if (null !== $this->portaHomeToRestore) {
-            putenv('PORTA_HOME='.$this->portaHomeToRestore);
-            $this->portaHomeToRestore = null;
-        }
-        putenv('PATH='.$this->originalPath);
-        putenv('PORTA_LSP');
-    }
 
     public function testRightClickingTheStatusBarBranchOpensTheBranchMenu(): void
     {
-        putenv('PATH='.$this->originalPath); // a real branch needs git
+        putenv('PATH='.PORTA_TEST_PRISTINE_PATH); // a real branch needs git
         $project = new TempProject(['a.php' => "<?php\n"]);
         $project->git('init', '-q');
         $project->git('config', 'user.email', 't@t');
@@ -142,7 +126,6 @@ final class IdeGitFlowsTest extends TestCase
         if (!$this->gitAvailable()) {
             $this->markTestSkipped('git binary not available');
         }
-        putenv('PATH='.$this->originalPath);
 
         $project = new TempProject([]);
         $project->git('init', '-q');
@@ -210,7 +193,6 @@ final class IdeGitFlowsTest extends TestCase
         if (!$this->gitAvailable()) {
             $this->markTestSkipped('git binary not available');
         }
-        putenv('PATH='.$this->originalPath);
 
         $project = new TempProject([]);
         $project->git('init', '-q');
@@ -248,7 +230,6 @@ final class IdeGitFlowsTest extends TestCase
 
     public function testGitCommandsWithoutRepoFlash(): void
     {
-        putenv('PATH='.$this->originalPath);
         $project = new TempProject(['src/A.php' => "<?php\n"]); // not a git repo
 
         $palette = static function ($tui, string $label): void {
@@ -284,7 +265,6 @@ final class IdeGitFlowsTest extends TestCase
 
     public function testGitBranchPickerSwitchesAndCreatesBranches(): void
     {
-        putenv('PATH='.$this->originalPath);
         $project = new TempProject(['src/A.php' => "<?php\n"]);
         $project->initGit();
         $project->commitAll('init');
@@ -420,7 +400,6 @@ final class IdeGitFlowsTest extends TestCase
 
     public function testDeleteBranchWithOnlyOneLocalBranchFlashes(): void
     {
-        putenv('PATH='.$this->originalPath);
         $project = new TempProject(['src/A.php' => "<?php\n"]);
         $project->initGit();
         $project->commitAll('init');
@@ -454,7 +433,7 @@ final class IdeGitFlowsTest extends TestCase
         if (!$this->gitAvailable()) {
             $this->markTestSkipped('git binary not available');
         }
-        putenv('PATH='.$this->originalPath); // git must be reachable
+        putenv('PATH='.PORTA_TEST_PRISTINE_PATH); // git must be reachable
 
         $project = new TempProject([]);
         $project->git('init', '-q');
@@ -839,7 +818,7 @@ final class IdeGitFlowsTest extends TestCase
         if (!$this->gitAvailable()) {
             $this->markTestSkipped('git binary not available');
         }
-        putenv('PATH='.$this->originalPath); // git must be reachable
+        putenv('PATH='.PORTA_TEST_PRISTINE_PATH); // git must be reachable
 
         $project = new TempProject([]);
         $project->git('init', '-q');
@@ -896,7 +875,6 @@ final class IdeGitFlowsTest extends TestCase
 
     public function testStashBlameAndFileHistoryFlows(): void
     {
-        putenv('PATH='.$this->originalPath);
         $project = new TempProject(['src/A.php' => "<?php\n\$x = 1;\n"]);
         // A deterministic 'tester' identity — blame below asserts on the name.
         $project->git('init', '-q');

@@ -7,6 +7,7 @@ namespace Porta\Tests\Unit\Support;
 use PHPUnit\Framework\TestCase;
 use Porta\I18n\Translator;
 use Porta\Support\DocsUrlOpener;
+use Porta\Tests\Support\PreservesPath;
 use Porta\Tests\Support\TempProject;
 use Porta\Widget\StatusBarWidget;
 use Porta\Workbench\Notifier;
@@ -15,17 +16,7 @@ use Symfony\Component\Tui\Tui;
 
 final class DocsUrlOpenerTest extends TestCase
 {
-    private string $originalPath;
-
-    protected function setUp(): void
-    {
-        $this->originalPath = PORTA_TEST_PRISTINE_PATH;
-    }
-
-    protected function tearDown(): void
-    {
-        putenv('PATH='.$this->originalPath);
-    }
+    use PreservesPath;
 
     private function flashText(StatusBarWidget $status): string
     {

@@ -26,6 +26,7 @@ use Porta\Settings\SettingsController;
 use Porta\Settings\SettingsRowKind;
 use Porta\Tests\Support\FakeScheduler;
 use Porta\Tests\Support\FixedActiveFile;
+use Porta\Tests\Support\PreservesPath;
 use Porta\Tests\Support\TempProject;
 use Porta\Tests\Support\TestWorkspaceLayout;
 use Porta\Ui\CursorStyle;
@@ -47,17 +48,11 @@ use Symfony\Component\Tui\Tui;
 
 final class SettingsControllerTest extends TestCase
 {
-    private string $originalPath;
+    use PreservesPath;
 
     protected function setUp(): void
     {
-        $this->originalPath = PORTA_TEST_PRISTINE_PATH;
         putenv('PATH=/nonexistent'); // keep git/LSP out of these unit runs
-    }
-
-    protected function tearDown(): void
-    {
-        putenv('PATH='.$this->originalPath);
     }
 
     /** @var list<string> */
