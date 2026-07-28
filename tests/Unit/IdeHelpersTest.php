@@ -108,6 +108,12 @@ final class IdeHelpersTest extends TestCase
 
         $linkNoSelection = ['targetUri' => 'file:///z.php', 'targetRange' => ['start' => ['line' => 3]]];
         $this->assertSame(['start' => ['line' => 3]], LspMapper::firstLocation([$linkNoSelection])['range']);
+
+        $this->assertSame(
+            $location,
+            LspMapper::firstLocation([['bogus' => 1], $location]),
+            'a malformed leading element no longer masks a valid later one',
+        );
     }
 
     public function testRangeContains(): void

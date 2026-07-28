@@ -244,36 +244,18 @@ final class LspMapper
     }
 
     /**
-     * Normalize a definition result (Location | Location[] | LocationLink[])
-     * to a single {uri, range} array.
+     * The first normalized location of a definition result — exactly
+     * {@see allLocations()}[0]. One normalization, not two hand-maintained
+     * copies: the old duplicate returned null when a list's LEADING element
+     * was malformed even if a later one was valid, a divergence that was
+     * accidental and only ever hurt (peek flashed not-found on a partially
+     * broken answer).
      *
      * @return array{uri: string, range: array}|null
      */
     public static function firstLocation(mixed $result): ?array
     {
-        if (!\is_array($result) || [] === $result) {
-            return null;
-        }
-
-        /** @var array{uri?: string, range?: array<array-key, mixed>, targetUri?: string, targetSelectionRange?: array<array-key, mixed>, targetRange?: array<array-key, mixed>}|scalar|null $candidate */
-        $candidate = array_is_list($result) ? $result[0] : $result;
-        if (!\is_array($candidate)) {
-            return null;
-        }
-
-        if (($candidate['uri'] ?? null) !== null && ($candidate['range'] ?? null) !== null) {
-            return ['uri' => $candidate['uri'], 'range' => $candidate['range']];
-        }
-
-        // LocationLink
-        if (($candidate['targetUri'] ?? null) !== null) {
-            return [
-                'uri' => $candidate['targetUri'],
-                'range' => $candidate['targetSelectionRange'] ?? $candidate['targetRange'] ?? [],
-            ];
-        }
-
-        return null;
+        return self::allLocations($result)[0] ?? null;
     }
 
     /**
