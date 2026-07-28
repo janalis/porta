@@ -19,8 +19,11 @@ use Symfony\Component\EventDispatcher\Attribute\AsEventListener;
  * tab is inactive, so activating it always shows current data — and pushed
  * to the widget only when that tab is on display. Never open(), reveal() or
  * a focus move, so a background refresh cannot yank the user around; the
- * known trade-off is that a bound refresh resets the list selection to the
- * first row.
+ * bound push goes through {@see \Porta\Widget\ResultsPanelWidget::refreshResults()},
+ * which preserves the selection by (path, line) identity plus the collapse
+ * and context state (the old reset — which also silently wiped collapse and
+ * context — was the recorded v1 trade-off). Location-less rows (the logs)
+ * still re-select the newest line on purpose.
  */
 final class DockLiveRefreshListener
 {

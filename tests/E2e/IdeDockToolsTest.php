@@ -109,6 +109,22 @@ final class IdeDockToolsTest extends TestCase
                     $this->assertStringContainsString('✗ live boom', $screen, 'the open Problems tab refreshed in place');
                     $this->assertStringContainsString('1 results', $screen, 'the strip count followed');
                     $this->assertSame('editor', $tui->getFocus()?->getId(), 'the live refresh did not steal the focus');
+
+                    // A further refresh that adds an EARLIER row must not move
+                    // the selection off the diagnostic the user is on.
+                    $results = $tui->getById('results');
+                    \assert($results instanceof \Porta\Widget\ResultsPanelWidget);
+                    $this->assertSame(1, $results->captureViewState()->selectedLine, 'the fresh tab selected its first match');
+                    self::bufferService($ide)
+                        ->applyDiagnostics(
+                            Uri::fromPath($project->path('a.php')),
+                            [
+                                0 => [['severity' => 2, 'message' => 'warn zero', 'col' => 0, 'endCol' => 3]],
+                                1 => [['severity' => 1, 'message' => 'live boom', 'col' => 0, 'endCol' => 3]],
+                            ],
+                        );
+                    $tui->tick();
+                    $this->assertSame(1, $results->captureViewState()->selectedLine, 'the selection stayed on the same diagnostic through the refresh');
                 },
                 500 => function ($tui, $terminal, $ide) use ($project): void {
                     // Concealed (Esc-hidden dock): the tab still refreshes, so

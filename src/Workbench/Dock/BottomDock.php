@@ -396,7 +396,7 @@ final class BottomDock
         if ($this->activeTool() !== $tab) {
             return; // the model stays fresh; binding the tab later shows it
         }
-        $this->resultsPanel->setResults($tab->rows);
+        $this->resultsPanel->refreshResults($tab->rows);
         if ($tab->searching) {
             $this->resultsPanel->setSearching();
         }

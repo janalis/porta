@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Porta\Tests\Support;
 
+use Symfony\Component\Filesystem\Exception\IOException;
 use Symfony\Component\Filesystem\Filesystem;
 use Symfony\Component\Process\ExecutableFinder;
 use Symfony\Component\Process\Process;
@@ -91,6 +92,20 @@ final class TempProject
 
     public function __destruct()
     {
-        $this->fs->remove($this->dir);
+        // macOS races the rename-then-rmdir delete against anything still
+        // touching the tree (a just-reaped git subprocess, Spotlight): the
+        // remove throws "Directory not empty" on a .!!xxx temp name and the
+        // IOException crashes the whole paratest worker. Retry once, then
+        // leave the corpse to the OS temp cleaner — a leftover dir is
+        // harmless; a crashed worker fails the suite.
+        try {
+            $this->fs->remove($this->dir);
+        } catch (IOException) {
+            try {
+                $this->fs->remove($this->dir);
+            } catch (IOException) {
+                // Abandoned to /var/folders cleanup.
+            }
+        }
     }
 }

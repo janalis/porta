@@ -123,4 +123,37 @@ final class DockLiveRefreshListenerTest extends TestCase
         $this->assertStringContainsString('entry', $this->plainPanel(), 'the history rows were not clobbered');
         $this->assertStringNotContainsString('boom', $this->plainPanel());
     }
+
+    public function testProblemsRefreshKeepsTheSelectedDiagnostic(): void
+    {
+        $listener = $this->listener();
+        $this->dock->showList(ResultsPanelMode::Problems, 'Problems', []);
+
+        $a = $this->buffers->open('/p/src/A.php', "<?php\n\n");
+        $a->diagnostics = [0 => [['severity' => 1, 'message' => 'first', 'col' => 0, 'endCol' => 1]], 1 => [['severity' => 1, 'message' => 'second', 'col' => 0, 'endCol' => 1]]];
+        $listener->onDiagnosticsChanged(new DiagnosticsChanged());
+        $this->results->handleInput("\x1b[B"); // select the second diagnostic
+
+        // A new buffer's diagnostics land ABOVE ours in the rebuilt rows.
+        $before = $this->buffers->open('/p/src/0Aaa.php', "<?php\n");
+        $before->diagnostics = [0 => [['severity' => 1, 'message' => 'earlier', 'col' => 0, 'endCol' => 1]]];
+        $listener->onDiagnosticsChanged(new DiagnosticsChanged());
+
+        $state = $this->results->captureViewState();
+        $this->assertSame('src/A.php', $state->selectedPath, 'the selected diagnostic survived the live refresh');
+        $this->assertSame(1, $state->selectedLine);
+    }
+
+    public function testLogAppendKeepsTheNewestLineSelected(): void
+    {
+        $listener = $this->listener();
+        $this->notificationLog->append('older');
+        $listener->onNotificationLogged(new NotificationLogged());
+        $this->dock->showList(ResultsPanelMode::Notifications, 'Notifications', []);
+        $listener->onNotificationLogged(new NotificationLogged());
+
+        $this->notificationLog->append('newest');
+        $listener->onNotificationLogged(new NotificationLogged());
+        $this->assertStringContainsString('newest', explode("\n", $this->plainPanel())[0], 'location-less rows re-select the newest line on refresh');
+    }
 }

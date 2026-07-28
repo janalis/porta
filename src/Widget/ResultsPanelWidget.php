@@ -26,6 +26,7 @@ use Porta\Widget\Support\InputHook;
 use Porta\Widget\Support\ListPanelInteraction;
 use Porta\Widget\Support\PanelRows;
 use Porta\Widget\Support\ResultGrouping;
+use Porta\Widget\Support\ResultIdentity;
 use Porta\Widget\Support\ResultLayout;
 use Porta\Widget\Support\ResultsPanelFields;
 use Porta\Widget\Support\ResultsViewState;
@@ -158,7 +159,14 @@ final class ResultsPanelWidget extends DockPanelWidget implements FocusableInter
         $this->contextCache = [];
         $this->rebuildView();
         $this->list->reset();
-        // Start on the first match, not the leading file header, so Enter jumps.
+        $this->selectFirstMatch();
+        $this->searching = false;
+        $this->invalidate();
+    }
+
+    /** Start on the first match, not the leading file header, so Enter jumps. */
+    private function selectFirstMatch(): void
+    {
         foreach ($this->displayRows as $i => $row) {
             if (null !== $row->filePath) {
                 continue;
@@ -167,6 +175,33 @@ final class ResultsPanelWidget extends DockPanelWidget implements FocusableInter
             $this->list->select($i);
 
             break;
+        }
+    }
+
+    /**
+     * Replace the rows of the tab ALREADY on display (a live refresh — new
+     * diagnostics, a rerun, a log append) while preserving the user's view:
+     * filter, grouping and collapse stay; context re-maps by identity; the
+     * selection re-locates by (path, line). A previously location-less
+     * selection (log tools, path === '') or one that never located re-selects
+     * the first match — for the newest-first logs that IS the contract: the
+     * latest line stays visible on every append.
+     *
+     * @param list<array{path: string, line: int, text: string, ranges?: list<array{start: int, length: int}>}> $rows
+     */
+    public function refreshResults(array $rows): void
+    {
+        [$selectedPath, $selectedLine, $selectedGroupKey] = ResultIdentity::ofSelection($this->displayRows[$this->list->selected()] ?? null, $this->results);
+        [$expanded, $cache] = ResultIdentity::freezeContext($this->results, $this->contextExpanded, $this->contextCache);
+
+        $this->results = $rows;
+        [$this->contextExpanded, $this->contextCache] = ResultIdentity::thawContext($this->results, $expanded, $cache);
+
+        $this->rebuildView();
+        if (null !== $selectedPath || null !== $selectedGroupKey) {
+            $this->relocateSelection($selectedPath, $selectedLine, $selectedGroupKey, $this->list->selected());
+        } else {
+            $this->selectFirstMatch();
         }
         $this->searching = false;
         $this->invalidate();
@@ -180,29 +215,8 @@ final class ResultsPanelWidget extends DockPanelWidget implements FocusableInter
      */
     public function captureViewState(): ResultsViewState
     {
-        $selectedPath = null;
-        $selectedLine = null;
-        $selectedGroupKey = null;
-        $row = $this->displayRows[$this->list->selected()] ?? null;
-        if (null !== $row && $row->matchIndex >= 0 && null !== ($result = $this->results[$row->matchIndex] ?? null)) {
-            $selectedPath = $result['path'];
-            $selectedLine = $result['line'];
-        } elseif (null !== $row && null !== $row->filePath) {
-            $selectedGroupKey = $row->filePath;
-        }
-
-        $expanded = [];
-        $cache = [];
-        foreach ($this->contextExpanded as $matchIndex => $on) {
-            if (null !== ($result = $this->results[$matchIndex] ?? null)) {
-                $expanded[$result['path']."\0".$result['line']] = $on;
-            }
-        }
-        foreach ($this->contextCache as $matchIndex => $lines) {
-            if (null !== ($result = $this->results[$matchIndex] ?? null)) {
-                $cache[$result['path']."\0".$result['line']] = $lines;
-            }
-        }
+        [$selectedPath, $selectedLine, $selectedGroupKey] = ResultIdentity::ofSelection($this->displayRows[$this->list->selected()] ?? null, $this->results);
+        [$expanded, $cache] = ResultIdentity::freezeContext($this->results, $this->contextExpanded, $this->contextCache);
 
         return new ResultsViewState(
             $this->filter->value(),
@@ -228,23 +242,7 @@ final class ResultsPanelWidget extends DockPanelWidget implements FocusableInter
         $this->filter->setValue($state->filter);
         $this->grouping = $state->grouping;
         $this->collapsed = $state->collapsed;
-
-        $byIdentity = [];
-        foreach ($this->results as $index => $result) {
-            $byIdentity[$result['path']."\0".$result['line']] ??= $index;
-        }
-        $this->contextExpanded = [];
-        $this->contextCache = [];
-        foreach ($state->contextExpanded as $identity => $on) {
-            if (null !== ($index = $byIdentity[$identity] ?? null)) {
-                $this->contextExpanded[$index] = $on;
-            }
-        }
-        foreach ($state->contextCache as $identity => $lines) {
-            if (null !== ($index = $byIdentity[$identity] ?? null)) {
-                $this->contextCache[$index] = $lines;
-            }
-        }
+        [$this->contextExpanded, $this->contextCache] = ResultIdentity::thawContext($this->results, $state->contextExpanded, $state->contextCache);
 
         $this->rebuildView();
         $this->relocateSelection($state->selectedPath, $state->selectedLine, $state->selectedGroupKey, $state->selectedIndex);

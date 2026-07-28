@@ -689,4 +689,69 @@ final class ResultsPanelWidgetTest extends TestCase
         $rendered = implode("\n", array_map(AnsiUtils::stripAnsiCodes(...), $panel->render(new RenderContext(80, 14))));
         $this->assertStringNotContainsString('ctx of', $rendered);
     }
+
+    public function testRefreshResultsPreservesSelectionCollapseAndFilter(): void
+    {
+        $panel = new ResultsPanelWidget();
+        $panel->open('Problems', ResultsPanelFields::searchResults());
+        $panel->setResults($this->groupedResults());
+        $panel->handleInput("\x1b[B"); // selection A:0 -> A:4
+        $panel->handleInput('match'); // keeps every row
+
+        // A refresh prepends a new diagnostic; the user's place must hold.
+        $panel->refreshResults([
+            ['path' => 'src/New.php', 'line' => 9, 'text' => 'match fresh', 'ranges' => []],
+            ...$this->groupedResults(),
+        ]);
+
+        $state = $panel->captureViewState();
+        $this->assertSame('src/A.php', $state->selectedPath, 'the selected diagnostic survived the refresh');
+        $this->assertSame(4, $state->selectedLine);
+        $this->assertSame('match', $state->filter, 'the filter survived');
+    }
+
+    public function testRefreshResultsPreservesCollapse(): void
+    {
+        $panel = new ResultsPanelWidget();
+        $panel->open('Problems', ResultsPanelFields::searchResults());
+        $panel->setResults($this->groupedResults());
+        $panel->handleInput("\x1b[A"); // A:0 -> the A header
+        $panel->handleInput("\r"); // collapse it
+
+        $panel->refreshResults($this->groupedResults());
+        $this->assertSame(['src/A.php' => true], $panel->captureViewState()->collapsed, 'collapse survived the refresh');
+    }
+
+    public function testRefreshResultsReselectsNewestForLocationlessRows(): void
+    {
+        $panel = new ResultsPanelWidget();
+        $panel->open('Notifications', ResultsPanelFields::resultsOnly());
+        $panel->setResults([['path' => '', 'line' => 0, 'text' => 'older']]);
+        $panel->handleInput("\x1b[B"); // wander (no-op on one row, but selection is 'located' at index 0)
+
+        $panel->refreshResults([
+            ['path' => '', 'line' => 0, 'text' => 'newest'],
+            ['path' => '', 'line' => 0, 'text' => 'older'],
+        ]);
+        $rendered = array_map(AnsiUtils::stripAnsiCodes(...), $panel->render(new RenderContext(80, 6)));
+        $this->assertStringContainsString('newest', $rendered[0] ?? '', 'log refresh keeps the latest line on top and selected');
+    }
+
+    public function testRefreshResultsClampsWhenTheSelectedIdentityVanished(): void
+    {
+        $panel = new ResultsPanelWidget();
+        $panel->open('Problems', ResultsPanelFields::searchResults());
+        $panel->setResults($this->groupedResults());
+        $panel->handleInput("\x1b[B");
+        $panel->handleInput("\x1b[B");
+        $panel->handleInput("\x1b[B"); // B:2
+
+        $panel->refreshResults([['path' => 'src/C.php', 'line' => 5, 'text' => 'only one left', 'ranges' => []]]);
+        $jumped = null;
+        $panel->onJump(static function (string $path, int $line) use (&$jumped): void {
+            $jumped = [$path, $line];
+        });
+        $panel->handleInput("\r");
+        $this->assertSame(['src/C.php', 5], $jumped, 'a vanished identity clamps onto a real match');
+    }
 }

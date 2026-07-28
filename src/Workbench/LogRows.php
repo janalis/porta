@@ -6,10 +6,12 @@ namespace Porta\Workbench;
 
 /**
  * Maps a bounded time/text ring (notification log, LSP log) onto the results
- * panel's rows, newest first — {@see \Porta\Widget\ResultsPanelWidget::setResults}
- * auto-selects the first row, so the latest line stays visible on every live
- * append. The empty path marks the rows as location-less (inert jump,
- * no `path:line` accent).
+ * panel's rows, newest first. The empty path marks the rows as location-less
+ * (inert jump, no `path:line` accent) — which is also what makes a live
+ * refresh re-select the first row ({@see \Porta\Widget\ResultsPanelWidget::refreshResults}
+ * preserves located selections by identity but deliberately re-selects
+ * newest for location-less rows), so the latest line stays visible on every
+ * append.
  */
 final class LogRows
 {
