@@ -7,23 +7,15 @@ namespace Porta\Tests\Unit\Plugin;
 use PHPUnit\Framework\TestCase;
 use Porta\Plugin\InstallOutcome;
 use Porta\Plugin\ToolInstaller;
+use Porta\Tests\Support\PumpsLoop;
 use Porta\Tests\Support\TempProject;
 use Revolt\EventLoop;
 
 final class ToolInstallerTest extends TestCase
 {
-    private TempProject $project;
+    use PumpsLoop;
 
-    private function await(callable $done, float $timeout = 3.0): void
-    {
-        $elapsed = 0.0;
-        while (!$done() && $elapsed < $timeout) {
-            $suspension = EventLoop::getSuspension();
-            EventLoop::delay(0.02, $suspension->resume(...));
-            $suspension->suspend();
-            $elapsed += 0.02;
-        }
-    }
+    private TempProject $project;
 
     /** An executable stand-in that records its argv to $logPath, then exits with $exitCode after an optional sleep. */
     private function fakeManager(int $exitCode, string $logPath, int $sleepSeconds = 0): string
@@ -53,7 +45,9 @@ final class ToolInstallerTest extends TestCase
         });
         $this->assertSame(InstallOutcome::Started, $outcome);
 
-        $this->await(static fn (): bool => null !== $result);
+        $this->await(static function () use (&$result): bool {
+            return null !== $result;
+        });
         $this->assertTrue($result, 'a zero exit is a successful install');
         $this->assertSame("install\nphpantom-lsp\n", file_get_contents($log), 'brew install <pkg>, brew winning over cargo');
     }
@@ -76,7 +70,9 @@ final class ToolInstallerTest extends TestCase
         });
         $this->assertSame(InstallOutcome::Started, $outcome);
 
-        $this->await(static fn (): bool => null !== $result);
+        $this->await(static function () use (&$result): bool {
+            return null !== $result;
+        });
         $this->assertSame("install\nphpantom_lsp\n--locked\n", file_get_contents($log), 'cargo install <pkg> --locked');
     }
 
@@ -91,7 +87,9 @@ final class ToolInstallerTest extends TestCase
             $result = $ok;
         });
 
-        $this->await(static fn (): bool => null !== $result);
+        $this->await(static function () use (&$result): bool {
+            return null !== $result;
+        });
         $this->assertSame("require\n--dev\nphpstan/phpstan\n", file_get_contents($log), 'composer require --dev <pkg>');
     }
 
@@ -106,7 +104,9 @@ final class ToolInstallerTest extends TestCase
             $result = $ok;
         });
 
-        $this->await(static fn (): bool => null !== $result);
+        $this->await(static function () use (&$result): bool {
+            return null !== $result;
+        });
         $this->assertFalse($result, 'a non-zero exit is a failed install');
     }
 

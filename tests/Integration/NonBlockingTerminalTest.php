@@ -5,12 +5,15 @@ declare(strict_types=1);
 namespace Porta\Tests\Integration;
 
 use PHPUnit\Framework\TestCase;
+use Porta\Tests\Support\PumpsLoop;
 use Porta\Ui\NonBlockingTerminal;
 use Revolt\EventLoop;
 use Symfony\Component\Tui\Terminal\VirtualTerminal;
 
 final class NonBlockingTerminalTest extends TestCase
 {
+    use PumpsLoop;
+
     /**
      * The freeze regression (mirrors LspClientTest::testAWedgedServerNeverBlocksTheEventLoop):
      * a terminal that stops draining used to park the whole loop inside the
@@ -40,7 +43,9 @@ final class NonBlockingTerminalTest extends TestCase
         EventLoop::delay(0.05, static function () use (&$ticked): void {
             $ticked = true;
         });
-        $this->await(static fn (): bool => $ticked, 2.0);
+        $this->await(static function () use (&$ticked): bool {
+            return $ticked;
+        }, 2.0);
         $this->assertTrue($ticked, 'the event loop kept running while the terminal sat on a full buffer');
 
         // Once the terminal drains, everything arrives byte-identical and in order.
@@ -61,14 +66,4 @@ final class NonBlockingTerminalTest extends TestCase
     }
 
     /** Run the event loop until $done() is true or the timeout elapses. */
-    private function await(callable $done, float $timeout = 3.0): void
-    {
-        $elapsed = 0.0;
-        while (!$done() && $elapsed < $timeout) {
-            $suspension = EventLoop::getSuspension();
-            EventLoop::delay(0.02, $suspension->resume(...));
-            $suspension->suspend();
-            $elapsed += 0.02;
-        }
-    }
 }

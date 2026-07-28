@@ -9,6 +9,7 @@ use Porta\Event\GitRemoteCompleted;
 use Porta\Git\GitRemote;
 use Porta\Git\GitRemoteCommands;
 use Porta\I18n\Translator;
+use Porta\Tests\Support\PumpsLoop;
 use Porta\Tests\Support\TempProject;
 use Porta\Widget\CodeEditorWidget;
 use Porta\Widget\StatusBarWidget;
@@ -26,23 +27,13 @@ use Symfony\Component\Tui\Tui;
 
 final class GitRemoteCommandsTest extends TestCase
 {
+    use PumpsLoop;
+
     private StatusBarWidget $status;
     private CodeEditorWidget $editor;
 
     /** @var list<GitRemoteCompleted> */
     private array $events = [];
-
-    private function await(callable $done, float $timeout = 5.0): void
-    {
-        $elapsed = 0.0;
-        while (!$done() && $elapsed < $timeout) {
-            $suspension = EventLoop::getSuspension();
-            EventLoop::delay(0.02, $suspension->resume(...));
-            $suspension->suspend();
-            $elapsed += 0.02;
-        }
-        $this->assertTrue($done(), 'condition met before timeout');
-    }
 
     private function commands(GitRemote $remote): GitRemoteCommands
     {

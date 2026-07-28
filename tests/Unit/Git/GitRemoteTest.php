@@ -7,6 +7,7 @@ namespace Porta\Tests\Unit\Git;
 use PHPUnit\Framework\TestCase;
 use Porta\Git\GitRemote;
 use Porta\Support\Outcome;
+use Porta\Tests\Support\PumpsLoop;
 use Porta\Tests\Support\TempProject;
 use Revolt\EventLoop;
 
@@ -17,21 +18,11 @@ use Revolt\EventLoop;
  */
 final class GitRemoteTest extends TestCase
 {
+    use PumpsLoop;
+
     private TempProject $bare;
     private TempProject $clone1;
     private TempProject $clone2;
-
-    private function await(callable $done, float $timeout = 5.0): void
-    {
-        $elapsed = 0.0;
-        while (!$done() && $elapsed < $timeout) {
-            $suspension = EventLoop::getSuspension();
-            EventLoop::delay(0.02, $suspension->resume(...));
-            $suspension->suspend();
-            $elapsed += 0.02;
-        }
-        $this->assertTrue($done(), 'condition met before timeout');
-    }
 
     private function git(TempProject $project, string $command): string
     {

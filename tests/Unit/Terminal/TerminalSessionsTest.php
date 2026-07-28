@@ -7,10 +7,13 @@ namespace Porta\Tests\Unit\Terminal;
 use PHPUnit\Framework\TestCase;
 use Porta\Terminal\PtyProcess;
 use Porta\Terminal\TerminalSessions;
+use Porta\Tests\Support\PumpsLoop;
 use Revolt\EventLoop;
 
 final class TerminalSessionsTest extends TestCase
 {
+    use PumpsLoop;
+
     public function testCreateActivatesAndFind(): void
     {
         $sessions = new TerminalSessions();
@@ -162,16 +165,5 @@ final class TerminalSessionsTest extends TestCase
         $this->await($second->isRunning(...));
         $this->assertTrue($session->isRunning());
         $session->stop();
-    }
-
-    private function await(callable $done, float $timeout = 3.0): void
-    {
-        $elapsed = 0.0;
-        while (!$done() && $elapsed < $timeout) {
-            $suspension = EventLoop::getSuspension();
-            EventLoop::delay(0.02, $suspension->resume(...));
-            $suspension->suspend();
-            $elapsed += 0.02;
-        }
     }
 }

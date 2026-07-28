@@ -6,10 +6,13 @@ namespace Porta\Tests\Unit\Support;
 
 use PHPUnit\Framework\TestCase;
 use Porta\Support\NonBlockingWriter;
+use Porta\Tests\Support\PumpsLoop;
 use Revolt\EventLoop;
 
 final class NonBlockingWriterTest extends TestCase
 {
+    use PumpsLoop;
+
     /** @var list<string> */
     private array $errors = [];
 
@@ -38,17 +41,6 @@ final class NonBlockingWriterTest extends TestCase
     }
 
     /** Run the event loop until $done() is true or the timeout elapses. */
-    private function await(callable $done, float $timeout = 3.0): void
-    {
-        $elapsed = 0.0;
-        while (!$done() && $elapsed < $timeout) {
-            $suspension = EventLoop::getSuspension();
-            EventLoop::delay(0.02, $suspension->resume(...));
-            $suspension->suspend();
-            $elapsed += 0.02;
-        }
-    }
-
     public function testASmallWriteIsFlushedImmediately(): void
     {
         [$write, $read] = $this->pair();
@@ -158,7 +150,9 @@ final class NonBlockingWriterTest extends TestCase
         EventLoop::delay(0.05, static function () use (&$ticked): void {
             $ticked = true;
         });
-        $this->await(static fn (): bool => $ticked);
+        $this->await(static function () use (&$ticked): bool {
+            return $ticked;
+        });
         $this->assertTrue($ticked);
 
         $writer->close();
@@ -235,7 +229,9 @@ final class NonBlockingWriterTest extends TestCase
         EventLoop::delay(0.05, static function () use (&$ticked): void {
             $ticked = true;
         });
-        $this->await(static fn (): bool => $ticked);
+        $this->await(static function () use (&$ticked): bool {
+            return $ticked;
+        });
         $this->assertTrue($ticked);
         $this->assertSame([], $this->errors);
         fclose($read);

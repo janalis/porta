@@ -24,6 +24,8 @@ use Symfony\Component\Tui\Tui;
  */
 trait RunsIde
 {
+    use PumpsLoop;
+
     /** Set by {@see allowFirstRunWelcome()} for the tests that want the real first boot. */
     private bool $allowFirstRunWelcome = false;
 
@@ -99,51 +101,6 @@ trait RunsIde
         }
 
         return $terminal;
-    }
-
-    /**
-     * Pump the live loop until $done() or timeout, then return. Usable inside a
-     * step — steps run on the loop, so suspending here lets subprocess output
-     * and async callbacks land. THROWS on timeout: a silent fall-through is the
-     * classic flake — the assertion then runs against pre-op state. Await the
-     * real condition; if you genuinely want to pump the loop for a fixed span
-     * with no condition, use {@see pump()}.
-     *
-     * The default is generous on purpose: these poll real async effects (grep,
-     * git, LSP, render passes), and under the pcov coverage run (2-3x slower)
-     * plus heavy parallelism a tight budget times out before the effect lands —
-     * a genuinely stuck condition still throws, just a few seconds later.
-     */
-    private function await(callable $done, float $timeout = 10.0, string $what = 'condition'): void
-    {
-        $elapsed = 0.0;
-        while (!$done()) {
-            if ($elapsed >= $timeout) {
-                throw new \RuntimeException(\sprintf('timed out after %.1fs waiting for %s', $timeout, $what));
-            }
-            $suspension = EventLoop::getSuspension();
-            EventLoop::delay(0.02, $suspension->resume(...));
-            $suspension->suspend();
-            $elapsed += 0.02;
-        }
-    }
-
-    /**
-     * Pump the live loop for a fixed span with no completion condition — the
-     * deliberate cousin of {@see await()}, for the rare case that has nothing to
-     * await (e.g. proving a debounce has NOT yet fired, or draining output whose
-     * arrival is the thing under test). Prefer await() whenever a real condition
-     * exists.
-     */
-    private function pump(float $seconds): void
-    {
-        $elapsed = 0.0;
-        while ($elapsed < $seconds) {
-            $suspension = EventLoop::getSuspension();
-            EventLoop::delay(0.02, $suspension->resume(...));
-            $suspension->suspend();
-            $elapsed += 0.02;
-        }
     }
 
     /**

@@ -7,11 +7,14 @@ namespace Porta\Tests\Integration;
 use PHPUnit\Framework\TestCase;
 use Porta\Terminal\PtyProcess;
 use Porta\Terminal\TerminalBuffer;
+use Porta\Tests\Support\PumpsLoop;
 use Revolt\EventLoop;
 use Symfony\Component\Tui\Ansi\AnsiUtils;
 
 final class PtyProcessTest extends TestCase
 {
+    use PumpsLoop;
+
     /** @var list<PtyProcess> */
     private array $procs = [];
 
@@ -21,17 +24,6 @@ final class PtyProcessTest extends TestCase
             $p->stop();
         }
         $this->procs = [];
-    }
-
-    private function await(callable $done, float $timeout = 3.0): void
-    {
-        $elapsed = 0.0;
-        while (!$done() && $elapsed < $timeout) {
-            $suspension = EventLoop::getSuspension();
-            EventLoop::delay(0.02, $suspension->resume(...));
-            $suspension->suspend();
-            $elapsed += 0.02;
-        }
     }
 
     public function testStreamsOutputAndReportsExitCode(): void
@@ -47,7 +39,9 @@ final class PtyProcessTest extends TestCase
         $this->assertTrue($p->start());
         $this->assertTrue($p->isPty(), 'a real PTY was allocated');
 
-        $this->await(static fn () => null !== $exit);
+        $this->await(static function () use (&$exit): bool {
+            return null !== $exit;
+        });
         $this->assertSame(3, $exit);
         $this->assertSame(3, $p->exitCode());
         $lines = array_map(AnsiUtils::stripAnsiCodes(...), $buffer->getLines());
@@ -66,7 +60,9 @@ final class PtyProcessTest extends TestCase
         $this->assertTrue($p->start());
 
         $p->write("ping\n");
-        $this->await(static fn () => str_contains(implode("\n", $buffer->getLines()), 'ping'));
+        $this->await(static function () use (&$buffer): bool {
+            return str_contains(implode("\n", $buffer->getLines()), 'ping');
+        });
 
         $this->assertStringContainsString('ping', implode("\n", array_map(AnsiUtils::stripAnsiCodes(...), $buffer->getLines())));
         $p->kill();

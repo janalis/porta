@@ -6,20 +6,12 @@ namespace Porta\Tests\Unit\Support;
 
 use PHPUnit\Framework\TestCase;
 use Porta\Support\AsyncProcess;
+use Porta\Tests\Support\PumpsLoop;
 use Revolt\EventLoop;
 
 final class AsyncProcessTest extends TestCase
 {
-    private function await(callable $done, float $timeout = 3.0): void
-    {
-        $elapsed = 0.0;
-        while (!$done() && $elapsed < $timeout) {
-            $suspension = EventLoop::getSuspension();
-            EventLoop::delay(0.02, $suspension->resume(...));
-            $suspension->suspend();
-            $elapsed += 0.02;
-        }
-    }
+    use PumpsLoop;
 
     public function testCollectsStdoutAndExitCode(): void
     {
@@ -31,7 +23,9 @@ final class AsyncProcessTest extends TestCase
             $out = $stdout;
         }));
 
-        $this->await(static fn () => null !== $exit);
+        $this->await(static function () use (&$exit): bool {
+            return null !== $exit;
+        });
         $this->assertSame(3, $exit);
         $this->assertSame("hello\nworld\n", $out);
         $this->assertSame("hello\nworld\n", $process->output());
@@ -51,7 +45,9 @@ final class AsyncProcessTest extends TestCase
             },
         );
 
-        $this->await(static fn () => null !== $exit);
+        $this->await(static function () use (&$exit): bool {
+            return null !== $exit;
+        });
         $this->assertSame(0, $exit);
         $this->assertGreaterThanOrEqual(2, \count($chunks), 'output split across sleeps arrives in separate chunks');
         $this->assertSame("a\nb\n", implode('', $chunks));
@@ -65,9 +61,11 @@ final class AsyncProcessTest extends TestCase
             $exited = true;
         });
 
-        $this->await(static fn () => '' !== $process->output());
+        $this->await(static function () use (&$process): bool {
+            return '' !== $process->output();
+        });
         $process->cancel();
-        $this->await(static fn () => false, timeout: 0.1); // give a cancelled watcher a chance to misfire
+        $this->pump(0.1); // give a cancelled watcher a chance to misfire
         $this->assertFalse($exited, 'onExit must not fire after cancel');
         $this->assertSame("start\n", $process->output());
     }
@@ -80,7 +78,9 @@ final class AsyncProcessTest extends TestCase
             $exit = $code;
         });
 
-        $this->await(static fn () => null !== $exit);
+        $this->await(static function () use (&$exit): bool {
+            return null !== $exit;
+        });
         $process->cancel();
         $process->cancel();
         $this->assertSame(0, $exit);
@@ -98,7 +98,9 @@ final class AsyncProcessTest extends TestCase
             $exit = $code;
         }));
 
-        $this->await(static fn () => null !== $exit);
+        $this->await(static function () use (&$exit): bool {
+            return null !== $exit;
+        });
         $this->assertSame(1, $exit);
         $this->assertSame('out', $process->output());
         $this->assertSame('boom', $process->errorOutput(), 'stderr drained into its own buffer');
@@ -112,7 +114,9 @@ final class AsyncProcessTest extends TestCase
             $exit = $code;
         });
 
-        $this->await(static fn () => null !== $exit);
+        $this->await(static function () use (&$exit): bool {
+            return null !== $exit;
+        });
         $this->assertSame('', $process->errorOutput());
     }
 
@@ -129,7 +133,9 @@ final class AsyncProcessTest extends TestCase
             $out = $stdout;
         });
 
-        $this->await(static fn () => null !== $out);
+        $this->await(static function () use (&$out): bool {
+            return null !== $out;
+        });
         $this->assertSame('42', $out);
     }
 
@@ -144,11 +150,11 @@ final class AsyncProcessTest extends TestCase
         $process->start(static function () use (&$exited): void {
             $exited = true;
         });
-        $this->await(static fn () => false, 0.06); // a few ticks: mid-flight
+        $this->pump(0.06); // a few ticks: mid-flight
         $process->cancel();
         $process->cancel(); // idempotent
 
-        $this->await(static fn () => false, 0.1);
+        $this->pump(0.1);
         $this->assertFalse($exited, 'the exit callback never fires after cancel');
     }
 
@@ -172,7 +178,9 @@ final class AsyncProcessTest extends TestCase
             $out = $stdout;
         }));
 
-        $this->await(static fn (): bool => null !== $out, timeout: 10.0);
+        $this->await(static function () use (&$out): bool {
+            return null !== $out;
+        }, timeout: 10.0);
 
         $this->assertSame((string) \strlen($payload), $out, 'the child received every byte');
     }
@@ -202,7 +210,9 @@ final class AsyncProcessTest extends TestCase
         });
         $spentInStart = (hrtime(as_number: true) - $before) / 1e6;
 
-        $this->await(static fn (): bool => null !== $out, timeout: 10.0);
+        $this->await(static function () use (&$out): bool {
+            return null !== $out;
+        }, timeout: 10.0);
 
         $this->assertSame('done', $out);
         $this->assertLessThan(100.0, $spentInStart, 'start() must not block on the child draining stdin');

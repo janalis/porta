@@ -15,6 +15,7 @@ use Porta\Plugin\ToolInstaller;
 use Porta\Settings\SettingsPluginsController;
 use Porta\Settings\SettingsRowKind;
 use Porta\Tests\Support\FakePluginLifecycle;
+use Porta\Tests\Support\PumpsLoop;
 use Porta\Tests\Support\TempProject;
 use Porta\Widget\StatusBarWidget;
 use Porta\Workbench\Notifier;
@@ -27,6 +28,8 @@ use Symfony\Component\Tui\Tui;
 
 final class SettingsPluginsControllerTest extends TestCase
 {
+    use PumpsLoop;
+
     private TempProject $project;
     private TempProject $global;
     private StatusBarWidget $status;
@@ -326,17 +329,6 @@ final class SettingsPluginsControllerTest extends TestCase
     }
 
     /** Drive the event loop until $done or the timeout. */
-    private function await(callable $done, float $timeout = 3.0): void
-    {
-        $elapsed = 0.0;
-        while (!$done() && $elapsed < $timeout) {
-            $suspension = EventLoop::getSuspension();
-            EventLoop::delay(0.02, $suspension->resume(...));
-            $suspension->suspend();
-            $elapsed += 0.02;
-        }
-    }
-
     /** An executable stand-in for a package manager that exits with $exitCode after an optional sleep. */
     private function fakeManager(int $exitCode, int $sleepSeconds = 0): string
     {

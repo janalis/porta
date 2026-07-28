@@ -9,6 +9,7 @@ use Porta\Git\DiffDocument;
 use Porta\Git\GitInfo;
 use Porta\Git\PatchBuilder;
 use Porta\Support\Outcome;
+use Porta\Tests\Support\PumpsLoop;
 use Porta\Tests\Support\TempProject;
 use Revolt\EventLoop;
 
@@ -19,6 +20,8 @@ use Revolt\EventLoop;
  */
 final class PatchBuilderTest extends TestCase
 {
+    use PumpsLoop;
+
     // --- pure recount ----------------------------------------------------------
 
     public function testSingleSelectedAdditionDemotesAndDrops(): void
@@ -226,7 +229,9 @@ final class PatchBuilderTest extends TestCase
             $raw = $out;
         };
         DiffSide::Worktree === $side ? $git->worktreeFileDiff($abs, $cb) : $git->cachedFileDiff($abs, $cb);
-        $this->await(static fn (): bool => null !== $raw);
+        $this->await(static function () use (&$raw): bool {
+            return null !== $raw;
+        });
 
         return (string) $raw;
     }
@@ -237,24 +242,15 @@ final class PatchBuilderTest extends TestCase
         $git->applyCached($patch, static function (Outcome $result) use (&$ok): void {
             $ok = $result->isOk();
         });
-        $this->await(static fn (): bool => null !== $ok);
+        $this->await(static function () use (&$ok): bool {
+            return null !== $ok;
+        });
         $this->assertTrue($ok, "git apply --cached accepted the patch:\n".$patch);
     }
 
     private function gitOut(TempProject $project, string $args): string
     {
         return $project->git(...explode(' ', $args));
-    }
-
-    private function await(callable $done, float $timeout = 3.0): void
-    {
-        $elapsed = 0.0;
-        while (!$done() && $elapsed < $timeout) {
-            $suspension = EventLoop::getSuspension();
-            EventLoop::delay(0.02, $suspension->resume(...));
-            $suspension->suspend();
-            $elapsed += 0.02;
-        }
     }
 
     private static function findGit(): ?string

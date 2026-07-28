@@ -6,10 +6,13 @@ namespace Porta\Tests\Integration;
 
 use PHPUnit\Framework\TestCase;
 use Porta\Debug\DapClient;
+use Porta\Tests\Support\PumpsLoop;
 use Revolt\EventLoop;
 
 final class DapClientTest extends TestCase
 {
+    use PumpsLoop;
+
     /** @var list<DapClient> */
     private array $clients = [];
 
@@ -31,17 +34,6 @@ final class DapClientTest extends TestCase
     }
 
     /** Run the event loop until $done() is true or the timeout elapses. */
-    private function await(callable $done, float $timeout = 3.0): void
-    {
-        $elapsed = 0.0;
-        while (!$done() && $elapsed < $timeout) {
-            $suspension = EventLoop::getSuspension();
-            EventLoop::delay(0.02, $suspension->resume(...));
-            $suspension->suspend();
-            $elapsed += 0.02;
-        }
-    }
-
     public function testFullLifecycleAgainstTheMockAdapter(): void
     {
         $log = [];
@@ -63,11 +55,17 @@ final class DapClientTest extends TestCase
         $client->request('initialize', ['clientID' => 'porta'], static function (array $body, ?string $error) use (&$capabilities): void {
             $capabilities = $body;
         });
-        $this->await(static fn (): bool => null !== $capabilities);
+        $this->await(static function () use (&$capabilities): bool {
+            return null !== $capabilities;
+        });
         $this->assertTrue($capabilities['supportsConfigurationDoneRequest'] ?? false);
 
-        $this->await(static fn (): bool => \in_array('initialized', array_column($events, 0), strict: true));
-        $this->await(static fn (): bool => \in_array('reverseRejected', array_column($events, 0), strict: true), 2.0);
+        $this->await(static function () use (&$events): bool {
+            return \in_array('initialized', array_column($events, 0), strict: true);
+        });
+        $this->await(static function () use (&$events): bool {
+            return \in_array('reverseRejected', array_column($events, 0), strict: true);
+        }, 2.0);
         $this->assertContains('reverseRejected', array_column($events, 0), 'the client rejected the reverse request');
 
         $verified = null;
@@ -84,7 +82,9 @@ final class DapClientTest extends TestCase
         $client->request('launch', ['program' => '/tmp/prog.php']);
         $client->request('configurationDone');
 
-        $this->await(static fn (): bool => \in_array('stopped', array_column($events, 0), strict: true));
+        $this->await(static function () use (&$events): bool {
+            return \in_array('stopped', array_column($events, 0), strict: true);
+        });
         $stopped = array_values(array_filter($events, static fn (array $e): bool => 'stopped' === $e[0]))[0][1];
         $this->assertSame('breakpoint', $stopped['reason']);
         $this->assertSame([['verified' => true, 'line' => 5]], $verified);
@@ -94,15 +94,21 @@ final class DapClientTest extends TestCase
         $client->request('stackTrace', ['threadId' => 1], static function (array $body) use (&$frames): void {
             $frames = $body['stackFrames'] ?? null;
         });
-        $this->await(static fn (): bool => null !== $frames);
+        $this->await(static function () use (&$frames): bool {
+            return null !== $frames;
+        });
         $this->assertSame(5, $frames[0]['line']);
         $this->assertSame('{main}', $frames[0]['name']);
 
         $client->request('continue', ['threadId' => 1]);
-        $this->await(static fn (): bool => \in_array('terminated', array_column($events, 0), strict: true));
+        $this->await(static function () use (&$events): bool {
+            return \in_array('terminated', array_column($events, 0), strict: true);
+        });
         $this->assertContains('exited', array_column($events, 0));
 
-        $this->await(static fn (): bool => [] !== $log);
+        $this->await(static function () use (&$log): bool {
+            return [] !== $log;
+        });
         $this->assertContains('mock-dap-adapter started', $log, 'stderr reached the logger');
 
         $client->stop();
@@ -119,7 +125,9 @@ final class DapClientTest extends TestCase
         $client->request('initialize', [], static function () use (&$done): void {
             $done = true;
         });
-        $this->await(static fn (): bool => $done);
+        $this->await(static function () use (&$done): bool {
+            return $done;
+        });
 
         // stackTrace with no launch → currentLine 0… force the scripted error via line >= 90:
         $client->request('setBreakpoints', ['source' => ['path' => '/x'], 'breakpoints' => [['line' => 95]]]);
@@ -129,13 +137,17 @@ final class DapClientTest extends TestCase
         $client->onEvent('stopped', static function () use (&$stoppedSeen): void {
             $stoppedSeen = true;
         });
-        $this->await(static fn (): bool => $stoppedSeen);
+        $this->await(static function () use (&$stoppedSeen): bool {
+            return $stoppedSeen;
+        });
 
         $error = null;
         $client->request('stackTrace', ['threadId' => 1], static function (array $body, ?string $message) use (&$error): void {
             $error = $message;
         });
-        $this->await(static fn (): bool => null !== $error);
+        $this->await(static function () use (&$error): bool {
+            return null !== $error;
+        });
         $this->assertSame('no stack available', $error);
     }
 
@@ -148,7 +160,9 @@ final class DapClientTest extends TestCase
         });
 
         $this->assertTrue($client->start());
-        $this->await(static fn (): bool => $closed > 0);
+        $this->await(static function () use (&$closed): bool {
+            return $closed > 0;
+        });
         $this->assertSame(1, $closed);
     }
 
@@ -191,12 +205,16 @@ final class DapClientTest extends TestCase
             $closed = true;
         });
         $this->assertTrue($client->start());
-        $this->await(static fn (): bool => $closed);
+        $this->await(static function () use (&$closed): bool {
+            return $closed;
+        });
 
         // The adapter is dead but the pipe resources still exist: the write fails and is logged.
         $client->request('initialize');
         $failed = static fn (array $log): bool => [] !== array_filter($log, static fn (string $line): bool => str_contains($line, 'write to debug adapter failed'));
-        $this->await(static fn (): bool => $failed($log), 2.0);
+        $this->await(static function () use (&$failed, &$log): bool {
+            return $failed($log);
+        }, 2.0);
         $this->assertTrue($failed($log), 'the failed write was logged (with its reason)');
 
         $client->stop();

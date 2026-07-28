@@ -10,11 +10,14 @@ use Porta\Git\GitInfo;
 use Porta\Git\GitSettings;
 use Porta\Git\HunkParser;
 use Porta\Support\Outcome;
+use Porta\Tests\Support\PumpsLoop;
 use Porta\Tests\Support\TempProject;
 use Revolt\EventLoop;
 
 final class GitInfoTest extends TestCase
 {
+    use PumpsLoop;
+
     public function testParseModifiedAddedDeleted(): void
     {
         $diff = <<<'DIFF'
@@ -127,7 +130,9 @@ final class GitInfoTest extends TestCase
         $git->stage($project->path('a.txt'), static function (Outcome $ok) use (&$staged): void {
             $staged = $ok->isOk();
         });
-        $this->await(static fn () => null !== $staged);
+        $this->await(static function () use (&$staged): bool {
+            return null !== $staged;
+        });
         $this->assertTrue($staged, 'git add succeeded');
 
         // Commit it.
@@ -135,7 +140,9 @@ final class GitInfoTest extends TestCase
         $git->commit('add second line', static function (Outcome $ok) use (&$committed): void {
             $committed = $ok->isOk();
         });
-        $this->await(static fn () => null !== $committed);
+        $this->await(static function () use (&$committed): bool {
+            return null !== $committed;
+        });
         $this->assertTrue($committed, 'git commit succeeded');
 
         // Blame the committed second line.
@@ -143,7 +150,9 @@ final class GitInfoTest extends TestCase
         $git->blameLine($project->path('a.txt'), 1, static function (?array $b) use (&$blame): void {
             $blame = $b;
         });
-        $this->await(static fn () => 'pending' !== $blame);
+        $this->await(static function () use (&$blame): bool {
+            return 'pending' !== $blame;
+        });
         $this->assertNotNull($blame);
         $this->assertSame('tester', $blame['author']);
         $this->assertSame('add second line', $blame['summary']);
@@ -172,7 +181,9 @@ final class GitInfoTest extends TestCase
         });
         $this->assertTrue($git->isBusy(), 'busy the instant an op is in flight, before its process exits');
 
-        $this->await(static fn (): bool => $done);
+        $this->await(static function () use (&$done): bool {
+            return $done;
+        });
         $this->assertFalse($git->isBusy(), 'idle again once the process has exited');
 
         $git->cancelAll();
@@ -205,7 +216,9 @@ final class GitInfoTest extends TestCase
             $marks = $m;
         });
 
-        $this->await(static fn () => 'pending' !== $branch && null !== $marks);
+        $this->await(static function () use (&$branch, &$marks): bool {
+            return 'pending' !== $branch && null !== $marks;
+        });
 
         $this->assertNotNull($branch, 'branch name resolved');
         $this->assertSame('modified', $marks[1] ?? null, 'line 2 modified');
@@ -246,17 +259,6 @@ final class GitInfoTest extends TestCase
         $this->assertFalse($done, 'cancelled requests never invoke their callbacks');
     }
 
-    private function await(callable $done, float $timeout = 3.0): void
-    {
-        $elapsed = 0.0;
-        while (!$done() && $elapsed < $timeout) {
-            $suspension = EventLoop::getSuspension();
-            EventLoop::delay(0.02, $suspension->resume(...));
-            $suspension->suspend();
-            $elapsed += 0.02;
-        }
-    }
-
     public function testExplicitGitPathWinsOverDiscovery(): void
     {
         $project = new TempProject([]);
@@ -290,12 +292,16 @@ final class GitInfoTest extends TestCase
         $git->stage($project->path('a.txt'), static function (Outcome $ok) use (&$staged): void {
             $staged = $ok->isOk();
         });
-        $this->await(static fn (): bool => null !== $staged);
+        $this->await(static function () use (&$staged): bool {
+            return null !== $staged;
+        });
         $committed = null;
         $git->commit('do the thing', static function (Outcome $ok) use (&$committed): void {
             $committed = $ok->isOk();
         });
-        $this->await(static fn (): bool => null !== $committed);
+        $this->await(static function () use (&$committed): bool {
+            return null !== $committed;
+        });
 
         $this->assertTrue($committed, '--no-gpg-sign let the commit through despite commit.gpgsign=true');
         $this->assertStringContainsString('Signed-off-by: tester <t@t>', $project->git('log', '-1', '--format=%B'));
@@ -318,12 +324,16 @@ final class GitInfoTest extends TestCase
         $git->stage($project->path('a.txt'), static function (Outcome $ok) use (&$staged): void {
             $staged = $ok->isOk();
         });
-        $this->await(static fn (): bool => null !== $staged);
+        $this->await(static function () use (&$staged): bool {
+            return null !== $staged;
+        });
         $done = false;
         $git->commit('m', static function () use (&$done): void {
             $done = true;
         });
-        $this->await(static fn (): bool => $done);
+        $this->await(static function () use (&$done): bool {
+            return $done;
+        });
         $this->assertTrue($done, 'the commit ran with the sign/no-verify flags spliced');
         $git->cancelAll();
     }

@@ -7,10 +7,13 @@ namespace Porta\Tests\Integration;
 use PHPUnit\Framework\TestCase;
 use Porta\Lsp\LspClient;
 use Porta\Support\Outcome;
+use Porta\Tests\Support\PumpsLoop;
 use Revolt\EventLoop;
 
 final class LspClientTest extends TestCase
 {
+    use PumpsLoop;
+
     /** @var list<LspClient> */
     private array $clients = [];
 
@@ -34,17 +37,6 @@ final class LspClientTest extends TestCase
     /**
      * Run the event loop until $done() is true or the timeout elapses.
      */
-    private function await(callable $done, float $timeout = 3.0): void
-    {
-        $elapsed = 0.0;
-        while (!$done() && $elapsed < $timeout) {
-            $suspension = EventLoop::getSuspension();
-            EventLoop::delay(0.02, $suspension->resume(...));
-            $suspension->suspend();
-            $elapsed += 0.02;
-        }
-    }
-
     public function testStopSkipsAnAlreadyClosedPipe(): void
     {
         $client = $this->client();
@@ -52,7 +44,9 @@ final class LspClientTest extends TestCase
         $client->start(static function () use (&$ready): void {
             $ready = true;
         });
-        $this->await(static fn (): bool => $ready);
+        $this->await(static function () use (&$ready): bool {
+            return $ready;
+        });
 
         // Close stderr behind the client's back: stop() must skip the dead
         // resource in its pipe-closing loop and still close the rest cleanly.
@@ -87,7 +81,9 @@ final class LspClientTest extends TestCase
             ]);
         });
 
-        $this->await(static fn () => null !== $diagnostics);
+        $this->await(static function () use (&$diagnostics): bool {
+            return null !== $diagnostics;
+        });
         $this->assertTrue($initialized);
         $this->assertTrue($client->isInitialized());
         $this->assertSame('Mock diagnostic', $diagnostics['diagnostics'][0]['message'] ?? null);
@@ -104,7 +100,9 @@ final class LspClientTest extends TestCase
             },
         );
 
-        $this->await(static fn () => null !== $completions);
+        $this->await(static function () use (&$completions): bool {
+            return null !== $completions;
+        });
         $this->assertSame('strlen', $completions['items'][0]['label'] ?? null);
 
         $client->stop();
@@ -126,7 +124,9 @@ final class LspClientTest extends TestCase
             $ready = true;
         });
 
-        $this->await(static fn () => $ready);
+        $this->await(static function () use (&$ready): bool {
+            return $ready;
+        });
         $client->whenReady(static function () use (&$order): void {
             $order[] = 'immediate';
         });
@@ -141,7 +141,9 @@ final class LspClientTest extends TestCase
         $client->start(static function () use (&$ready): void {
             $ready = true;
         });
-        $this->await(static fn () => $ready);
+        $this->await(static function () use (&$ready): bool {
+            return $ready;
+        });
 
         $responses = [];
         $collect = static function (string $key) use (&$responses): callable {
@@ -156,7 +158,9 @@ final class LspClientTest extends TestCase
         $client->request('textDocument/references', $doc + ['context' => ['includeDeclaration' => true]], $collect('references'));
         $client->request('textDocument/rename', $doc + ['newName' => 'Foo'], $collect('rename'));
 
-        $this->await(static fn () => 4 === \count($responses));
+        $this->await(static function () use (&$responses): bool {
+            return 4 === \count($responses);
+        });
 
         $this->assertStringContainsString('greet(): string', $responses['hover']['result']['contents']['value']);
         $this->assertSame('greet(string $name): string', $responses['signature']['result']['signatures'][0]['label']);
@@ -182,7 +186,9 @@ final class LspClientTest extends TestCase
             $ready = $ok->isOk();
         });
 
-        $this->await(static fn () => [] !== $logs, 2.0);
+        $this->await(static function () use (&$logs): bool {
+            return [] !== $logs;
+        }, 2.0);
         $this->assertNull($ready, 'initialize never completes on a crashed server');
         $this->assertFalse($client->isInitialized());
         $this->assertNotEmpty($logs, 'stderr and EOF are logged');
@@ -197,7 +203,9 @@ final class LspClientTest extends TestCase
             $ready = $ok->isOk();
         });
 
-        $this->await(static fn () => null !== $ready, 2.0);
+        $this->await(static function () use (&$ready): bool {
+            return null !== $ready;
+        }, 2.0);
         $this->assertTrue($ready, 'valid frame after garbage still parsed');
     }
 
@@ -221,7 +229,9 @@ final class LspClientTest extends TestCase
 
         // The demanding server sends configuration/applyEdit/unknown requests
         // after initialize, then echoes our replies back as a notification.
-        $this->await(static fn () => null !== $echoed, 3.0);
+        $this->await(static function () use (&$echoed): bool {
+            return null !== $echoed;
+        }, 3.0);
 
         $this->assertNotNull($applied, 'applyEdit handler received the edit');
         $this->assertSame([null], $echoed['configuration'], 'workspace/configuration answered with nulls');
@@ -237,7 +247,9 @@ final class LspClientTest extends TestCase
         $client->start(static function (Outcome $ok) use (&$ready): void {
             $ready = $ok->isOk();
         });
-        $this->await(static fn () => null !== $ready);
+        $this->await(static function () use (&$ready): bool {
+            return null !== $ready;
+        });
 
         $this->assertFalse($ready);
         $this->assertFalse($client->isInitialized());
@@ -251,7 +263,9 @@ final class LspClientTest extends TestCase
         $client->start(static function (Outcome $ok) use (&$ready): void {
             $ready = $ok->isOk();
         });
-        $this->await(static fn () => null !== $ready);
+        $this->await(static function () use (&$ready): bool {
+            return null !== $ready;
+        });
 
         $this->assertTrue($ready, 'split frame reassembled across reads');
     }
@@ -263,7 +277,9 @@ final class LspClientTest extends TestCase
         $client->start(static function () use (&$ready): void {
             $ready = true;
         });
-        $this->await(static fn () => $ready);
+        $this->await(static function () use (&$ready): bool {
+            return $ready;
+        });
 
         $transport = new \ReflectionProperty($client, 'transport')->getValue($client);
         $drain = new \ReflectionMethod($transport, 'drainStdout');
@@ -288,7 +304,9 @@ final class LspClientTest extends TestCase
         $client->start(static function (Outcome $ok) use (&$ready): void {
             $ready = $ok->isOk();
         });
-        $this->await(static fn () => null !== $ready, 2.0);
+        $this->await(static function () use (&$ready): bool {
+            return null !== $ready;
+        }, 2.0);
 
         $this->assertFalse($ready);
     }
@@ -309,7 +327,9 @@ final class LspClientTest extends TestCase
         $client->start(static function () use (&$ready): void {
             $ready = true;
         });
-        $this->await(static fn () => $ready);
+        $this->await(static function () use (&$ready): bool {
+            return $ready;
+        });
 
         $client->stop();
         $client->notify('textDocument/didSave', ['textDocument' => ['uri' => 'file:///x']]);
@@ -335,7 +355,9 @@ final class LspClientTest extends TestCase
         \Revolt\EventLoop::delay(0.05, static function () use (&$ticked): void {
             $ticked = true;
         });
-        $this->await(static fn (): bool => $ticked, 2.0);
+        $this->await(static function () use (&$ticked): bool {
+            return $ticked;
+        }, 2.0);
         $this->assertTrue($ticked, 'the event loop kept running while the server sat on a full pipe');
 
         $client->stop();
@@ -355,7 +377,9 @@ final class LspClientTest extends TestCase
         $client->start(static function (Outcome $ok) use (&$ready): void {
             $ready = $ok->isOk();
         });
-        $this->await(static fn (): bool => $ready);
+        $this->await(static function () use (&$ready): bool {
+            return $ready;
+        });
         $this->assertTrue($ready);
 
         $expected = [];
@@ -366,7 +390,9 @@ final class LspClientTest extends TestCase
             $client->notify('porta/blob', $message['params']);
         }
 
-        $this->await(static fn (): bool => 3 === \count($digests), 15.0);
+        $this->await(static function () use (&$digests): bool {
+            return 3 === \count($digests);
+        }, 15.0);
         $this->assertSame($expected, $digests, 'all frames crossed the slow pipe intact and in send order');
     }
 
@@ -388,11 +414,15 @@ final class LspClientTest extends TestCase
         $client->notify('porta/blob', ['data' => str_repeat('b', times: 65_536)]);
 
         $overflowed = static fn (array $log): bool => [] !== array_filter($log, static fn (string $l): bool => str_contains($l, 'overflow'));
-        $this->await(static fn (): bool => $overflowed($log), 2.0);
+        $this->await(static function () use (&$log, &$overflowed): bool {
+            return $overflowed($log);
+        }, 2.0);
         $this->assertTrue($overflowed($log), 'the overflow was logged');
 
         // The wedged server was terminated — the session ends like any crash.
-        $this->await(static fn (): bool => !$client->isRunning(), 3.0);
+        $this->await(static function () use (&$client): bool {
+            return !$client->isRunning();
+        }, 3.0);
         $this->assertFalse($client->isRunning());
     }
 }

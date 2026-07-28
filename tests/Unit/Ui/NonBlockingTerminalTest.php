@@ -5,12 +5,15 @@ declare(strict_types=1);
 namespace Porta\Tests\Unit\Ui;
 
 use PHPUnit\Framework\TestCase;
+use Porta\Tests\Support\PumpsLoop;
 use Porta\Ui\NonBlockingTerminal;
 use Revolt\EventLoop;
 use Symfony\Component\Tui\Terminal\TerminalInterface;
 
 final class NonBlockingTerminalTest extends TestCase
 {
+    use PumpsLoop;
+
     /** @return array{0: resource, 1: resource} [decoratorStream, peerReadSide] */
     private function pair(): array
     {
@@ -120,17 +123,6 @@ final class NonBlockingTerminalTest extends TestCase
     }
 
     /** Run the event loop until $done() is true or the timeout elapses. */
-    private function await(callable $done, float $timeout = 3.0): void
-    {
-        $elapsed = 0.0;
-        while (!$done() && $elapsed < $timeout) {
-            $suspension = EventLoop::getSuspension();
-            EventLoop::delay(0.02, $suspension->resume(...));
-            $suspension->suspend();
-            $elapsed += 0.02;
-        }
-    }
-
     public function testEveryWritingMethodEmitsVendorIdenticalBytesInOrderThroughTheQueue(): void
     {
         [$stream, $peer] = $this->pair();

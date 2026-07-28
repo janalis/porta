@@ -13,6 +13,7 @@ use Porta\Git\BlameAnnotations;
 use Porta\Git\GitInfo;
 use Porta\I18n\Translator;
 use Porta\Tests\Support\Presence;
+use Porta\Tests\Support\PumpsLoop;
 use Porta\Tests\Support\TempProject;
 use Porta\Widget\CodeEditorWidget;
 use Porta\Widget\StatusBarWidget;
@@ -28,21 +29,11 @@ use Symfony\Component\Tui\Tui;
 
 final class BlameAnnotationsTest extends TestCase
 {
+    use PumpsLoop;
+
     private CodeEditorWidget $editor;
     private StatusBarWidget $status;
     private TempProject $project;
-
-    private function await(callable $done, float $timeout = 3.0): void
-    {
-        $elapsed = 0.0;
-        while (!$done() && $elapsed < $timeout) {
-            $suspension = EventLoop::getSuspension();
-            EventLoop::delay(0.02, $suspension->resume(...));
-            $suspension->suspend();
-            $elapsed += 0.02;
-        }
-        $this->assertTrue($done(), 'condition met before timeout');
-    }
 
     private function blame(Presence $withRepo = Presence::With): BlameAnnotations
     {
@@ -151,7 +142,9 @@ final class BlameAnnotationsTest extends TestCase
         $blame->toggle(); // off again before the subprocess lands
         // Pump long enough for the blame subprocess to complete and be dropped.
         $deadline = microtime(true) + 0.6;
-        $this->await(static fn (): bool => microtime(true) > $deadline, 2.0);
+        $this->await(static function () use (&$deadline): bool {
+            return microtime(true) > $deadline;
+        }, 2.0);
         $this->assertStringNotContainsString('tester', $this->editorScreen(), 'the stale response annotated nothing');
     }
 }

@@ -9,6 +9,7 @@ use Porta\Git\CommitMode;
 use Porta\Git\GitInfo;
 use Porta\Git\WhitespaceMode;
 use Porta\Support\Outcome;
+use Porta\Tests\Support\PumpsLoop;
 use Porta\Tests\Support\TempProject;
 use Revolt\EventLoop;
 
@@ -18,6 +19,8 @@ use Revolt\EventLoop;
  */
 final class GitInfoStatusTest extends TestCase
 {
+    use PumpsLoop;
+
     public function testStatusListsStagedUnstagedAndUntracked(): void
     {
         $git = $this->repo($project, committed: ['a.txt' => "one\n"]);
@@ -31,7 +34,9 @@ final class GitInfoStatusTest extends TestCase
             $entries = $e;
             $raw = $r;
         });
-        $this->await(static fn (): bool => null !== $entries);
+        $this->await(static function () use (&$entries): bool {
+            return null !== $entries;
+        });
 
         $byPath = [];
         foreach ($entries as $entry) {
@@ -58,7 +63,9 @@ final class GitInfoStatusTest extends TestCase
         $git->worktreeFileDiff($project->path('a.txt'), static function (string $out) use (&$worktree): void {
             $worktree = $out;
         });
-        $this->await(static fn (): bool => null !== $cached && null !== $worktree);
+        $this->await(static function () use (&$cached, &$worktree): bool {
+            return null !== $cached && null !== $worktree;
+        });
 
         $this->assertStringContainsString('+one staged', $cached);
         $this->assertStringNotContainsString('worktree', $cached);
@@ -84,7 +91,9 @@ final class GitInfoStatusTest extends TestCase
             },
             context: 10,
         );
-        $this->await(static fn (): bool => null !== $default && null !== $ten);
+        $this->await(static function () use (&$default, &$ten): bool {
+            return null !== $default && null !== $ten;
+        });
 
         $this->assertStringContainsString(" line 12\n", $default, 'git default: three lines of context');
         $this->assertStringNotContainsString(" line 5\n", $default);
@@ -100,7 +109,9 @@ final class GitInfoStatusTest extends TestCase
             },
             context: 999_999,
         );
-        $this->await(static fn (): bool => null !== $full);
+        $this->await(static function () use (&$full): bool {
+            return null !== $full;
+        });
         $this->assertStringContainsString(" line 1\n", $full, 'the huge -U shows the whole file');
         $this->assertStringContainsString(" line 30\n", $full);
     }
@@ -123,7 +134,9 @@ final class GitInfoStatusTest extends TestCase
             },
             whitespace: WhitespaceMode::Hidden,
         );
-        $this->await(static fn (): bool => null !== $plain && null !== $ignoring);
+        $this->await(static function () use (&$ignoring, &$plain): bool {
+            return null !== $plain && null !== $ignoring;
+        });
 
         $this->assertStringContainsString('+  bravo', $plain, 'the plain diff shows the indent change');
         $this->assertStringNotContainsString('bravo', $ignoring, '-w drops the whitespace-only hunk');
@@ -152,7 +165,9 @@ final class GitInfoStatusTest extends TestCase
             },
             whitespace: WhitespaceMode::Hidden,
         );
-        $this->await(static fn (): bool => null !== $cached && null !== $show);
+        $this->await(static function () use (&$cached, &$show): bool {
+            return null !== $cached && null !== $show;
+        });
 
         $this->assertStringNotContainsString('bravo', $cached, 'the cached -w diff hides the reindent');
         $this->assertStringNotContainsString('bravo', $show, "the commit's -w patch hides its indent hunk");
@@ -168,7 +183,9 @@ final class GitInfoStatusTest extends TestCase
         $git->untrackedFileDiff($project->path('brand-new.txt'), static function (string $out) use (&$diff): void {
             $diff = $out;
         });
-        $this->await(static fn (): bool => null !== $diff);
+        $this->await(static function () use (&$diff): bool {
+            return null !== $diff;
+        });
 
         $this->assertStringContainsString('+alpha', $diff);
         $this->assertStringContainsString('+beta', $diff);
@@ -184,7 +201,9 @@ final class GitInfoStatusTest extends TestCase
         $git->unstageFile($project->path('a.txt'), static function (Outcome $ok) use (&$unstaged): void {
             $unstaged = $ok->isOk();
         });
-        $this->await(static fn (): bool => null !== $unstaged);
+        $this->await(static function () use (&$unstaged): bool {
+            return null !== $unstaged;
+        });
         $this->assertTrue($unstaged);
         // Not $project->git(): its trim() would strip the leading porcelain
         // status column (' M' — worktree-modified), which is load-bearing here.
@@ -195,7 +214,9 @@ final class GitInfoStatusTest extends TestCase
         $git->discardFile($project->path('a.txt'), static function (Outcome $ok) use (&$discarded): void {
             $discarded = $ok->isOk();
         });
-        $this->await(static fn (): bool => null !== $discarded);
+        $this->await(static function () use (&$discarded): bool {
+            return null !== $discarded;
+        });
         $this->assertTrue($discarded);
         $this->assertSame("one\n", file_get_contents($project->path('a.txt')), 'worktree restored to HEAD');
     }
@@ -210,14 +231,18 @@ final class GitInfoStatusTest extends TestCase
         $git->commit("second\n\nwith body", static function (Outcome $ok) use (&$committed): void {
             $committed = $ok->isOk();
         });
-        $this->await(static fn (): bool => null !== $committed);
+        $this->await(static function () use (&$committed): bool {
+            return null !== $committed;
+        });
         $this->assertTrue($committed);
 
         $message = null;
         $git->lastCommitMessage(static function (string $m) use (&$message): void {
             $message = $m;
         });
-        $this->await(static fn (): bool => null !== $message);
+        $this->await(static function () use (&$message): bool {
+            return null !== $message;
+        });
         $this->assertSame("second\n\nwith body", $message, 'the full message comes back for the amend prefill');
 
         $amended = null;
@@ -228,7 +253,9 @@ final class GitInfoStatusTest extends TestCase
             },
             CommitMode::Amend,
         );
-        $this->await(static fn (): bool => null !== $amended);
+        $this->await(static function () use (&$amended): bool {
+            return null !== $amended;
+        });
         $this->assertTrue($amended);
         $subjects = explode("\n", $project->git('log', '--format=%s'));
         $this->assertSame(['second, reworded', 'init'], $subjects, 'amend rewrote the tip without adding a commit');
@@ -245,7 +272,9 @@ final class GitInfoStatusTest extends TestCase
         $git->undoLastCommit(static function (Outcome $ok) use (&$undone): void {
             $undone = $ok->isOk();
         });
-        $this->await(static fn (): bool => null !== $undone);
+        $this->await(static function () use (&$undone): bool {
+            return null !== $undone;
+        });
         $this->assertTrue($undone);
         $this->assertSame(['M  a.txt'], explode("\n", $project->git('status', '--porcelain')), 'the undone commit\'s change is back and still staged');
 
@@ -253,7 +282,9 @@ final class GitInfoStatusTest extends TestCase
         $git->undoLastCommit(static function (Outcome $ok) use (&$refused): void {
             $refused = $ok->isOk();
         });
-        $this->await(static fn (): bool => null !== $refused);
+        $this->await(static function () use (&$refused): bool {
+            return null !== $refused;
+        });
         $this->assertFalse($refused, 'the root commit has no parent to reset onto');
     }
 
@@ -348,17 +379,6 @@ final class GitInfoStatusTest extends TestCase
         $project->git('commit', '-q', '-m', 'init');
 
         return new GitInfo($project->dir);
-    }
-
-    private function await(callable $done, float $timeout = 3.0): void
-    {
-        $elapsed = 0.0;
-        while (!$done() && $elapsed < $timeout) {
-            $suspension = EventLoop::getSuspension();
-            EventLoop::delay(0.02, $suspension->resume(...));
-            $suspension->suspend();
-            $elapsed += 0.02;
-        }
     }
 
     public function testBranchListSwitchAndCreate(): void
@@ -509,7 +529,9 @@ final class GitInfoStatusTest extends TestCase
             skip: 2,
         );
 
-        $this->await(static fn (): bool => 2 === \count($pages));
+        $this->await(static function () use (&$pages): bool {
+            return 2 === \count($pages);
+        });
         $this->assertSame(['third', 'second'], $pages[0]);
         $this->assertSame(['init'], $pages[1], '--skip lands on the older page');
     }

@@ -14,6 +14,7 @@ use Porta\Git\GitRefresher;
 use Porta\Git\GitSettings;
 use Porta\Image\ImageData;
 use Porta\Tests\Support\Presence;
+use Porta\Tests\Support\PumpsLoop;
 use Porta\Tests\Support\TempProject;
 use Porta\Widget\CodeEditorWidget;
 use Porta\Widget\StatusBarWidget;
@@ -24,6 +25,8 @@ use Symfony\Component\Tui\Tui;
 /** Real git repo, virtual terminal — mirrors GitViewControllerTest's setup. */
 final class GitRefresherTest extends TestCase
 {
+    use PumpsLoop;
+
     private TempProject $project;
 
     private BufferManager $buffers;
@@ -50,25 +53,15 @@ final class GitRefresherTest extends TestCase
         return new GitRefresher(new GitInfo($this->project->dir), $this->buffers, $this->editor, new StatusBarWidget(), new Tui(terminal: new VirtualTerminal(columns: 80, rows: 10)), $gitSettings);
     }
 
-    private function await(callable $done, string $why, float $timeout = 3.0): void
-    {
-        $elapsed = 0.0;
-        while (!$done() && $elapsed < $timeout) {
-            $suspension = EventLoop::getSuspension();
-            EventLoop::delay(0.02, $suspension->resume(...));
-            $suspension->suspend();
-            $elapsed += 0.02;
-        }
-        $this->assertTrue($done(), $why);
-    }
-
     public function testRefreshBranchExposesTheBranchForTheStatusBar(): void
     {
         $refresher = $this->refresher();
         $this->assertNull($refresher->branch(), 'no branch before the first refresh');
 
         $refresher->refreshBranch();
-        $this->await(static fn (): bool => null !== $refresher->branch(), 'the async branch lookup resolved');
+        $this->await(static function () use (&$refresher): bool {
+            return null !== $refresher->branch();
+        }, what: 'the async branch lookup resolved');
 
         $this->assertSame('trunk', $refresher->branch());
     }
@@ -80,7 +73,9 @@ final class GitRefresherTest extends TestCase
         $buffer = $this->buffers->open($this->project->path('a.txt'), "one\nchanged\n");
 
         $refresher->refreshActiveMarks();
-        $this->await(static fn (): bool => [] !== $buffer->gitMarks, 'the async diff resolved');
+        $this->await(static function () use (&$buffer): bool {
+            return [] !== $buffer->gitMarks;
+        }, what: 'the async diff resolved');
 
         $editorMarks = new \ReflectionProperty($this->editor, 'decorations')
             ->getValue($this->editor)
@@ -127,7 +122,9 @@ final class GitRefresherTest extends TestCase
         $buffer = $this->buffers->open($this->project->path('a.txt'), "one\nchanged\n");
 
         $refresher->onBufferOpened(new BufferOpened($buffer));
-        $this->await(static fn (): bool => [] !== $buffer->gitMarks, 'the open listener diffed the text buffer');
+        $this->await(static function () use (&$buffer): bool {
+            return [] !== $buffer->gitMarks;
+        }, what: 'the open listener diffed the text buffer');
 
         $help = $this->buffers->openHelp($this->project->path('h.md'), '# hi');
         $refresher->onBufferOpened(new BufferOpened($help));
@@ -135,7 +132,9 @@ final class GitRefresherTest extends TestCase
 
         $buffer->gitMarks = [];
         $refresher->onBufferSaved(new BufferSaved($buffer));
-        $this->await(static fn (): bool => [] !== $buffer->gitMarks && null !== $refresher->branch(), 'the save listener refreshed marks and branch');
+        $this->await(static function () use (&$buffer, &$refresher): bool {
+            return [] !== $buffer->gitMarks && null !== $refresher->branch();
+        }, what: 'the save listener refreshed marks and branch');
     }
 
     public function testRemoteCompletedRefreshesBranchAndActiveMarks(): void
@@ -146,7 +145,10 @@ final class GitRefresherTest extends TestCase
         $this->buffers->setActive($buffer->path);
 
         $refresher->onGitRemoteCompleted(new GitRemoteCompleted('pull', true));
-        $this->await(static fn (): bool => [] !== $buffer->gitMarks && null !== $refresher->branch(), 'a completed remote op refreshed branch + active marks');
+        $this->await(static function () use (&$buffer, &$refresher): bool {
+            return [] !== $buffer->gitMarks && null !== $refresher->branch();
+        }, what: 'a completed remote op refreshed branch + active marks');
+        $this->addToAssertionCount(1); // the throwing await above is the assertion
     }
 
     private static function findGit(): ?string

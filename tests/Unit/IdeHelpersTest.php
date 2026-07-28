@@ -23,6 +23,7 @@ use Porta\Lsp\WorkspaceEditor;
 use Porta\Onboarding\OnboardingState;
 use Porta\Search\SearchActions;
 use Porta\Support\ProjectPaths;
+use Porta\Tests\Support\PumpsLoop;
 use Porta\Tests\Support\TempProject;
 use Symfony\Component\Tui\Render\Renderer;
 use Symfony\Component\Tui\Terminal\VirtualTerminal;
@@ -34,6 +35,8 @@ use Symfony\Component\Tui\Tui;
  */
 final class IdeHelpersTest extends TestCase
 {
+    use PumpsLoop;
+
     private TempProject $project;
     private Ide $ide;
 
@@ -442,7 +445,9 @@ final class IdeHelpersTest extends TestCase
         $client->start(static function () use (&$ready): void {
             $ready = true;
         });
-        $this->await(static fn () => $ready);
+        $this->await(static function () use (&$ready): bool {
+            return $ready;
+        });
         $this->injectLspClient($client);
 
         $results = [];
@@ -455,7 +460,9 @@ final class IdeHelpersTest extends TestCase
         // Command the server rejects (error branch — line 989)
         $this->callRefactor('applyCodeAction', ['title' => 'Boom', 'command' => ['command' => 'mock.fail']]);
 
-        $this->await(static fn () => \count($results) >= 1);
+        $this->await(static function () use (&$results): bool {
+            return \count($results) >= 1;
+        });
         $this->assertContains('mock.ok', $results);
 
         $client->stop();
@@ -471,17 +478,6 @@ final class IdeHelpersTest extends TestCase
         new \ReflectionProperty($pool, 'servers')->setValue($pool, ['*' => ['command' => ['injected'], 'name' => 'injected']]);
         new \ReflectionProperty($pool, 'sessions')->setValue($pool, ['injected' => $session]);
         new \ReflectionProperty($pool, 'configured')->setValue($pool, true);
-    }
-
-    private function await(callable $done, float $timeout = 3.0): void
-    {
-        $elapsed = 0.0;
-        while (!$done() && $elapsed < $timeout) {
-            $suspension = \Revolt\EventLoop::getSuspension();
-            \Revolt\EventLoop::delay(0.02, $suspension->resume(...));
-            $suspension->suspend();
-            $elapsed += 0.02;
-        }
     }
 
     public function testShowProblemsAggregatesAndSortsWithSeverityMarkers(): void
@@ -526,7 +522,9 @@ final class IdeHelpersTest extends TestCase
         $client->start(static function () use (&$ready): void {
             $ready = true;
         });
-        $this->await(static fn () => $ready);
+        $this->await(static function () use (&$ready): bool {
+            return $ready;
+        });
         $this->injectLspClient($client);
         $pool = $this->ide->resolve(LspSessionPool::class);
         new \ReflectionProperty($pool, 'statuses')->setValue($pool, ['injected' => 'mock-lsp-server']);
