@@ -78,7 +78,9 @@ dangling reference; grep the old namespace to prove zero. Membership rules:
   list/shortcut helpers…). It is the codebase's most-depended-on namespace, so it imports
   nothing feature-owned — anything that composes features does not belong here.
 - **`Workbench/`** — the composition tier over the features: the view-interlock registry
-  (`WorkspaceViews`/`WorkspaceView`/`FullScreenView`), `Notifier`/`NotificationLog`,
+  (`WorkspaceViews`/`WorkspaceView`/`FullScreenView`), `Notifier`/`NotificationLog`
+  (**`Notifier::notify()` ends in `requestRender()`** on both the toast and status-bar paths —
+  never follow a flash with your own render request; round 8 deleted 41 such dead calls),
   `StatusBarProvider`, focus (`FocusRing`/`FocusCoordinator`), the chrome sweep pair, and the
   two subsystem **models** — `Workbench/Menu/` (menu model + opener/builder/rebuilder) and
   `Workbench/Dock/` (dock tab model, `BottomDock`). Their **widgets**
@@ -88,7 +90,19 @@ dangling reference; grep the old namespace to prove zero. Membership rules:
   Settings **widgets** stay in `Widget/Settings/`.
 - **`Widget/`** — classes that render (`#[AsWidget]` or produce `string[]`). Non-rendering
   widget-internal helpers (row DTOs, enums, traits) go in `Widget/Support/`. `Widget/Render/` is
-  the stateless render-algorithm tier.
+  the stateless render-algorithm tier. Round 8's shared-row traits live in `Widget/Support/`:
+  `StylesDefault` (the `$styles ?? Styles::dark()` ctor pair; `EditorRowAssembler` is the one
+  non-adopter — a **readonly class cannot use a trait with a non-readonly property**, and mago
+  rejects readonly writes outside a constructor, so it keeps the inline pair),
+  `ProviderFingerprint` (template-typed provider + `setProvider` + the json_encode repaint guard;
+  `StatusBarWidget` deliberately keeps its own — its lastLeft/lastRight compare is load-bearing
+  render state, not a repaint guard), `StripScroll` (scroll offset + ‹/› indicator zones),
+  `ColumnHover` (column-stored hover + `clearHover`/`storeHover`; `TabBarWidget`'s CELL-stored
+  hover is a different model and stays), `MenuNavigation` (the two menus' onNavigate/afterNavigate;
+  their keymaps do NOT merge — the bar carries left/right the context menu has no axis for), and
+  `PanelWidth` now defaults `minWidth`/`maxWidth` to 24/200 (override only where a panel genuinely
+  differs). The single tab cell lives in `Widget/Render/TabStripRenderer` as
+  `measureCell`/`renderCell` (TabCell merged in — 100% co-change, same tier).
 - Suffix homes: mouse/keymap routers in `Input/`, typed events in `Event/`, LSP controllers in
   `Lsp/`, `*Store` state beside its domain.
 
@@ -111,7 +125,12 @@ bootstrap infra (Renderer/`Ui/BidiTui`/NonBlockingTerminal + StyleSheet), and ot
 **resolves** the graph into private properties — but only the ones its own runtime logic reads.
 Tests reach every other service through the single `@internal Ide::resolve(X::class)` seam (a
 `porta.ide` locator lookup with a container fallback for the synthetics), never by reflecting
-private fields, so `Ide` holds no test-only alias fields or `get*()` getters. The `build*` steps
+private fields, so `Ide` holds no test-only alias fields or `get*()` getters. Resolution is
+**deliberately two methods** (round 8's measured verdict on the merge candidate): the private
+`service()` is locator-only, so a class that forgets `#[AsIdeService]` fails loudly instead of
+silently resolving through the raw container; `resolve()` adds the container fallback that exists
+solely for the four synthetics. Both assert the type; the shared docblock in `Ide.php` carries the
+rationale — do not merge them. The `build*` steps
 (`buildEditorArea`, `buildGitView`, `buildSettingsWidgets`, `buildLayoutAndOverlay`) are now
 resolution + arrangement only, and the ctor tail runs
 `Command/CommandRegistryPopulator::populate()` (tagged providers), `Bootstrap/WidgetHooks::wire()`,
@@ -235,7 +254,11 @@ one-method callers whose method lives in no role — `Tree/TreeOperations` (`sho
 `WorkspaceLayout`/`EditorArea`/`WorkbenchCommands` want *a widget*; typing them `AbstractWidget`
 would make the param ambiguous to autowiring, so they stay too. `BufferService` (25 public
 methods, 13 concrete consumers) was re-measured: no consumer uses only the `FileOpener` slice,
-so it keeps its concrete hints beyond the extracted `DiagnosticsSink`.
+so it keeps its concrete hints beyond the extracted `DiagnosticsSink`. `Editor/BufferNavigator`
+IS the image viewer's handler (round 8: `ImageViewerActions` was 80% verbatim forwarding to it,
+so it implements `ImageViewerHandler` itself — four hooks are its own tab actions, plus the
+`viewChanged` status-bar ping); `Help/HelpViewerActions` stays a real adapter on purpose —
+folding it would push six deps into whichever caller absorbed it.
 
 **Full-screen views are a registry, not three fields.** `Workbench/WorkspaceViews` keys
 `Workbench/FullScreenView` controllers (isOpen/open/close/toggle/focusTarget/`cycleFocus(int): bool`)
@@ -430,8 +453,14 @@ floating feature lands one class in each:
   moving them would need a 40-field VO or a back-reference to the modal; `OverlayHost`'s layouts were
   extractable only because they already took their state as parameters. Measure before assuming.
 - Outbound hooks travel as **one callbacks DTO**, not per-slot fluent setters:
-  `Widget/EditorCallbacks`, `Overlay/State/FindModalCallbacks`, `Widget/Git/DiffViewCallbacks`
-  (`ResultsPanelWidget`'s four-slot bag is left alone on purpose — a four-field DTO is lateral).
+  `Widget/EditorCallbacks`, `Overlay/State/FindModalCallbacks`, `Widget/Git/DiffViewCallbacks`,
+  and (round 8, user-elected) `HistoryListCallbacks`/`ChangesListCallbacks`/`DebugPanelCallbacks`/
+  `TerminalPanelCallbacks`/`DockTabsCallbacks` — every ≥3-slot widget wires one `setCallbacks()`
+  call; a bare widget holds an empty DTO and fires nothing. `ResultsPanelWidget`'s four-slot bag
+  is still left alone on purpose. The modal's former `BoxPosition`/`BoxSize`/`ScopeChoices` VOs
+  were **reversed back into `FindInFilesModal` as plain fields** in the same round (single
+  consumer each; the cleaned logic they introduced stayed) — a single-consumer VO needs a second
+  consumer to justify itself here.
 
 `OverlayHost` owns picker state/layout/hit-testing (SCREEN-space boxes; `layout()` per frame);
 `PickerModalPresenter` delivers spans + `ModalShadow` + dim, gated on an attached editor. The
@@ -553,7 +582,11 @@ duplication was folded (`firstLocation` is `allLocations()[0] ?? null`, with the
 malformed-leading-element divergence fixed and pinned). Leave the rest alone.
 
 **Debugger (DAP).** `Debug/DapClient` speaks the Debug Adapter Protocol over a child process's
-stdio (framing shared with LSP via `Support/JsonRpcFramer`); `Debug/DapSession` is one launch's
+stdio — the whole wire layer (proc_open spawn, non-blocking pipes, Revolt watchers, the frame
+drain, write-error → terminate convergence, teardown) is **`Support/JsonRpcTransport`**, shared
+verbatim with `Lsp/LspClient` (each keeps only its envelope: JSON-RPC 2.0 handshake/whenReady vs
+DAP's seq/type + closed-once onClose; log wording rides the transport's `$peerName`).
+`Debug/DapSession` is one launch's
 order-agnostic state machine (0-based lines internally, 1-based on the wire; conditional/exception
 breakpoints, run-to-cursor via a wire-level one-shot, evaluate); `Debug/DebugController`
 (container-autowired) owns the `BreakpointStore`/`WatchStore`/`ExceptionFilterStore` (persisted to
@@ -736,15 +769,31 @@ clicks map visual→logical per pane (`BidiTui::logicalColumn` → `PaneReorder`
 
 `tests/Unit`, `tests/Integration`, `tests/E2e`. E2e suites are **thematic** (the
 round-5 split of the old 208-method monolith): one suite per subject (LSP features, context
-menus, git flows, …), shared screen/modal/git-binary readers as `tests/Support` traits
-(`ScreenReads`/`FindModalReads`/`GitBinary`). Keep new E2e tests in their subject's suite —
-the too-many-methods and kan-defect ratchets now gate src, and a regrown monolith would
-re-pin them. `IdeTest::testFullScenario` stays one continuous session on purpose (see the
-mago.toml calibration comment). E2e tests boot a real `Ide` against a
-`VirtualTerminal` and a `TempProject` through the shared `tests/Support/RunsIde` trait: steps
+menus, git flows, …). Keep new E2e tests in their subject's suite — the too-many-methods and
+kan-defect ratchets now gate src, and a regrown monolith would re-pin them.
+`IdeTest::testFullScenario` stays one continuous session on purpose (see the mago.toml
+calibration comment). E2e tests boot a real `Ide` against a `VirtualTerminal` and a
+`TempProject` through the shared `tests/Support/RunsIde` trait: steps
 (`ms => fn($tui, $terminal, $ide)`) run **sequentially chained** — each schedules the next by
 key delta after it completes, so a step may `$this->await(fn: bool)` (pumping the live loop for
 subprocess/async effects) without a later step firing underneath it. Without an explicit
 `$duration` the loop stops ~80ms after the last step; pass a duration only when effects land
 after the final step — better, await them in the step. When a constructor gains a dependency,
 fix the direct construction sites in these tests too.
+
+**Never hand-roll a test rig `tests/Support` already provides** (round 8 collapsed ~700
+duplicated lines onto these): `PreservesPath` + `ClearsPortaLsp` (attribute hooks — the env rig;
+classes keep their own setUp/tearDown), `PumpsLoop` (`await()`/`pump()`, composed by `RunsIde`),
+`ScreenReads` (screen scrape + the force-`frame()` idiom, composed by `RunsIde`),
+`FindModalReads`, `RendersWidget` (`plain()`/`rows()` ANSI-stripping), `StatusReads`
+(`flashText()` reads the MODEL, `statusRow()` the RENDERED row — pick deliberately; `Toasts`
+makes the same model argument for toasts), `GitBinary` (`skipWithoutGit()`/`whichGit()`),
+`TempProject` (`git()`/`initGit(branch:/name:/email:)` — pass name/email when a test asserts the
+author — /`commitAll()`), `TestOverlayPane` + `RendersRoot` (the presenter rigs),
+`TestTui::create(cols, rows)` (the three-arg Tui rig; terminal-only one-arg stays inline), and
+`lsp-stub.php` (`sendMessage`/`readFrames` for stub servers; deviant-I/O stubs keep the deviant
+side hand-rolled). **`await()` THROWS on timeout, and its condition must re-evaluate**: an arrow
+fn (`static fn () => null !== $x`) captures `$x` BY VALUE at creation and can never observe the
+async callback's by-reference write — round 8 found 64 such conditions silently burning their
+full timeout as de-facto sleeps. Write `static function () use (&$x): bool {...}` (or read
+`$this->…` state); when there is genuinely nothing to await, say so with `pump()`.
