@@ -5,8 +5,6 @@ declare(strict_types=1);
 namespace Porta\Overlay\State;
 
 use Porta\I18n\Translator;
-use Porta\Overlay\Region\BoxPosition;
-use Porta\Overlay\Region\BoxSize;
 use Porta\Overlay\Region\ModalBox;
 use Porta\Overlay\Region\ModalHotspot;
 use Porta\Search\TokenScope;
@@ -76,8 +74,14 @@ final class FindInFilesModal
     private readonly TextField $mask;
     /** @var array<int, bool> matchIndex => excluded from replace (preview mode only) */
     private array $excluded = [];
-    /** The Alt+S scope carousel (labels + active index). */
-    private ScopeChoices $scopes;
+    /**
+     * The Alt+S scope carousel: translated choice labels + which one is active.
+     *
+     * @var list<string>
+     */
+    private array $scopeLabels;
+
+    private int $scopeIndex = 0;
     /** @var array{regex: bool, case: bool, word: bool, preserve: bool, tokens: string} */
     private array $options = ['regex' => false, 'case' => false, 'word' => false, 'preserve' => false, 'tokens' => 'any'];
     /** @var list<array{path: string, line: int, text: string, ranges?: list<array{start: int, length: int}>}> */
@@ -113,11 +117,24 @@ final class FindInFilesModal
     /** @var array{rowOffset: int, colOffset: int}|null a title-bar move drag in progress */
     private ?array $moving = null;
 
-    /** User size override from a corner drag; null = auto (session-only, reset on open). */
-    private ?BoxSize $userSize = null;
+    /**
+     * User size override from a corner drag; null = auto (session-only, reset
+     * on open). $userRows is the preview WINDOW's row count (the frame chrome
+     * is not included); a corner drag writes both components together, so one
+     * null check covers the pair.
+     */
+    private ?int $userWidth = null;
 
-    /** User position override from a title-bar drag; null = centered (session-only, reset on open). */
-    private ?BoxPosition $userPosition = null;
+    private ?int $userRows = null;
+
+    /**
+     * User position override from a title-bar drag; null = centered
+     * (session-only, reset on open). A drag writes both components and the
+     * composite clamps both, so one null check covers the pair.
+     */
+    private ?int $userRow = null;
+
+    private ?int $userCol = null;
     /** display-row index tinted under the pointer; visual only, never the selection — you type into the query field while it rests. */
     private ?int $hoveredRow = null;
 
@@ -137,7 +154,7 @@ final class FindInFilesModal
         $this->optionZones = new ClickZones();
         $this->footerZones = new ClickZones();
         $this->callbacks = new FindModalCallbacks(); // a bare modal fires nothing
-        $this->scopes = new ScopeChoices([$this->translator->trans('Whole Project')]);
+        $this->scopeLabels = [$this->translator->trans('Whole Project')];
         $this->query = new TextField(style: $cursorStyle);
         $this->replace = new TextField(style: $cursorStyle);
         $this->mask = new TextField(style: $cursorStyle);
@@ -153,8 +170,10 @@ final class FindInFilesModal
     {
         // Session-only, like the Welcome modal's drag position: a reopen
         // re-derives the size from content.
-        $this->userSize = null;
-        $this->userPosition = null;
+        $this->userWidth = null;
+        $this->userRows = null;
+        $this->userRow = null;
+        $this->userCol = null;
         $this->moving = null;
         $this->resizing = false;
         $this->hotspot = null;
@@ -200,7 +219,8 @@ final class FindInFilesModal
     /** @param list<string> $labels */
     public function setScopes(array $labels, int $index): void
     {
-        $this->scopes = new ScopeChoices([] === $labels ? [$this->translator->trans('Whole Project')] : $labels, $index);
+        $this->scopeLabels = [] === $labels ? [$this->translator->trans('Whole Project')] : $labels;
+        $this->scopeIndex = $index;
         ($this->invalidate)();
     }
 
@@ -357,12 +377,15 @@ final class FindInFilesModal
         };
     }
 
-    /** Advance to the next search scope (Alt+S / a click on the scope label). */
+    /**
+     * Advance to the next search scope (Alt+S / a click on the scope label);
+     * the carousel wraps, and a no-op carousel of one is fine.
+     */
     private function cycleScope(): void
     {
-        $this->scopes = $this->scopes->cycled();
+        $this->scopeIndex = ($this->scopeIndex + 1) % max(1, \count($this->scopeLabels));
         if (null !== $this->callbacks->onScopeCycle) {
-            ($this->callbacks->onScopeCycle)($this->scopes->index);
+            ($this->callbacks->onScopeCycle)($this->scopeIndex);
         }
         ($this->invalidate)();
     }
@@ -500,7 +523,7 @@ final class FindInFilesModal
         $columns = $boundRight - $boundLeft;
         $rows = $boundBottom - $boundTop;
 
-        $maxPreview = max(1, min(\count($this->displayRows), $rows - 13, $this->userSize?->rows ?? 10));
+        $maxPreview = max(1, min(\count($this->displayRows), $rows - 13, $this->userRows ?? 10));
         $windowStart = $this->windowStart($maxPreview);
         $visible = \array_slice($this->displayRows, $windowStart, $maxPreview);
 
@@ -547,10 +570,11 @@ final class FindInFilesModal
         // rows outside the pane union would simply not paint.
         $boxWidth = $width + ModalFrame::CHROME_COLS;
         $startRow = $boundTop + max(0, intdiv($rows - \count($popup), num2: 3));
-        if (null !== $this->userPosition) {
-            $startRow = IntMath::clamp($this->userPosition->row, $boundTop, max($boundTop, $boundBottom - \count($popup)));
-            $col = IntMath::clamp($this->userPosition->col, $boundLeft, max($boundLeft, $boundRight - $boxWidth));
-            $this->userPosition = new BoxPosition($startRow, $col);
+        if (null !== $this->userRow && null !== $this->userCol) {
+            $startRow = IntMath::clamp($this->userRow, $boundTop, max($boundTop, $boundBottom - \count($popup)));
+            $col = IntMath::clamp($this->userCol, $boundLeft, max($boundLeft, $boundRight - $boxWidth));
+            $this->userRow = $startRow;
+            $this->userCol = $col;
         }
 
         $this->box = new ModalBox(
@@ -601,8 +625,8 @@ final class FindInFilesModal
         // Inner width; the frame adds a rail and a padding column each side.
         // A corner-drag override replaces the content-driven width (and its
         // 80-column comfort cap — user intent wins), still floored/clamped.
-        if (null !== $this->userSize) {
-            return max(PopupMetrics::FIND_MIN_WIDTH, min($this->userSize->width, $columns - PopupMetrics::CENTERED_MARGIN));
+        if (null !== $this->userWidth) {
+            return max(PopupMetrics::FIND_MIN_WIDTH, min($this->userWidth, $columns - PopupMetrics::CENTERED_MARGIN));
         }
 
         return min($width, $columns - PopupMetrics::CENTERED_MARGIN, 80);
@@ -687,7 +711,7 @@ final class FindInFilesModal
             $tags .= FindModalRows::optionTag($glyph, OptionTagState::of($on, $name === $this->hovered), $this->styles);
         }
 
-        $label = $this->scopes->label() ?? $this->translator->trans('Whole Project');
+        $label = $this->scopeLabels[$this->scopeIndex] ?? $this->translator->trans('Whole Project');
         $labelPart = 'scope' === $this->hovered
             ? $this->styles->merge(Role::RowHighlightBg, Role::Bright)->apply($label)
             : $this->styles->of(Role::TabAccent)->apply($label);
@@ -768,7 +792,8 @@ final class FindInFilesModal
         if (null !== $box && $relRow === $box->startRow && $box->contains($relRow, $relCol)) {
             // A title-bar press arms a move drag: freeze the centered position
             // into an absolute one, then capture the grab offset.
-            $this->userPosition = new BoxPosition($box->startRow, $box->col);
+            $this->userRow = $box->startRow;
+            $this->userCol = $box->col;
             $this->moving = ['rowOffset' => $relRow - $box->startRow, 'colOffset' => $relCol - $box->col];
 
             return true;
@@ -841,7 +866,8 @@ final class FindInFilesModal
             return false;
         }
         if ($this->resizing) {
-            $this->userSize = new BoxSize($relCol - $box->col + 1 - ModalFrame::CHROME_COLS, max(3, $relRow - $box->startRow + 1 - 11));
+            $this->userWidth = $relCol - $box->col + 1 - ModalFrame::CHROME_COLS;
+            $this->userRows = max(3, $relRow - $box->startRow + 1 - 11);
             if ($release) {
                 $this->resizing = false;
             }
@@ -853,7 +879,8 @@ final class FindInFilesModal
         if (null === $moving) {
             return false;
         }
-        $this->userPosition = new BoxPosition($relRow - $moving['rowOffset'], $relCol - $moving['colOffset']);
+        $this->userRow = $relRow - $moving['rowOffset'];
+        $this->userCol = $relCol - $moving['colOffset'];
         if ($release) {
             $this->moving = null;
         }
