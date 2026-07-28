@@ -7,6 +7,8 @@ declare(strict_types=1);
 $in = fopen('php://stdin', mode: 'rb');
 $out = fopen('php://stdout', mode: 'wb');
 
+require __DIR__.'/lsp-stub.php';
+
 $buffer = '';
 while (!feof($in)) {
     $chunk = fread($in, length: 8192);
@@ -24,9 +26,7 @@ while (!feof($in)) {
         $buffer = substr($buffer, $headerEnd + 4 + (int) $m[1]);
 
         if ('initialize' === ($message['method'] ?? '')) {
-            $json = json_encode(['jsonrpc' => '2.0', 'id' => $message['id'], 'error' => ['code' => -32_002, 'message' => 'server not ready']]);
-            fwrite($out, 'Content-Length: '.\strlen($json)."\r\n\r\n".$json);
-            fflush($out);
+            sendMessage($out, ['jsonrpc' => '2.0', 'id' => $message['id'], 'error' => ['code' => -32_002, 'message' => 'server not ready']]);
         }
         if ('exit' === ($message['method'] ?? '')) {
             exit(0);

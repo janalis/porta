@@ -26,6 +26,8 @@ declare(strict_types=1);
 
 $in = fopen('php://stdin', 'rb');
 $out = fopen('php://stdout', 'wb');
+
+require __DIR__.'/lsp-stub.php';
 fwrite(STDERR, "mock-dap-adapter started\n");
 
 $seq = 1000;
@@ -34,9 +36,7 @@ function sendDap($out, array $message): void
 {
     global $seq;
     $message['seq'] = $seq++;
-    $json = json_encode($message, JSON_UNESCAPED_SLASHES);
-    fwrite($out, 'Content-Length: '.strlen($json)."\r\n\r\n".$json);
-    fflush($out);
+    sendMessage($out, $message);
 }
 
 function respond($out, array $request, array $body = [], ?string $error = null): void
@@ -56,195 +56,171 @@ function event($out, string $name, array $body = []): void
     sendDap($out, ['type' => 'event', 'event' => $name, 'body' => (object) $body]);
 }
 
-$buffer = '';
 $breakpoints = []; // path => list of 1-based lines
 $varOverrides = []; // variablesReference => [name => value] from setVariable
 $program = '';
 $currentLine = 0;
 
-while (!feof($in)) {
-    $chunk = fread($in, 8192);
-    if (false === $chunk) {
-        break;
+foreach (readFrames($in) as $message) {
+    // The client's rejection of our reverse request arrives as a response.
+    if ('response' === ($message['type'] ?? '')) {
+        if ('runInTerminal' === ($message['command'] ?? '') && false === ($message['success'] ?? true)) {
+            event($out, 'reverseRejected');
+        }
+        continue;
     }
-    $buffer .= $chunk;
 
-    while (true) {
-        $headerEnd = strpos($buffer, "\r\n\r\n");
-        if (false === $headerEnd || !preg_match('/Content-Length:\s*(\d+)/i', substr($buffer, 0, $headerEnd), $m)) {
-            break;
-        }
-        $length = (int) $m[1];
-        $bodyStart = $headerEnd + 4;
-        if (strlen($buffer) < ($bodyStart + $length)) {
-            break;
-        }
-        $message = json_decode(substr($buffer, $bodyStart, $length), true);
-        $buffer = substr($buffer, $bodyStart + $length);
-        if (!is_array($message)) {
-            continue;
-        }
+    $command = $message['command'] ?? '';
+    $args = is_array($message['arguments'] ?? null) ? $message['arguments'] : [];
 
-        // The client's rejection of our reverse request arrives as a response.
-        if ('response' === ($message['type'] ?? '')) {
-            if ('runInTerminal' === ($message['command'] ?? '') && false === ($message['success'] ?? true)) {
-                event($out, 'reverseRejected');
+    switch ($command) {
+        case 'initialize':
+            respond($out, $message, [
+                'supportsConfigurationDoneRequest' => true,
+                'supportsConditionalBreakpoints' => true,
+                'supportsHitConditionalBreakpoints' => false,
+                'supportsLogPoints' => true,
+                'supportsSetVariable' => true,
+                'supportsRestartRequest' => true,
+                'exceptionBreakpointFilters' => [
+                    ['filter' => 'warning', 'label' => 'Warnings', 'default' => false],
+                    ['filter' => 'exception', 'label' => 'Uncaught Exceptions', 'default' => true],
+                ],
+            ]);
+            event($out, 'initialized');
+            sendDap($out, ['type' => 'request', 'command' => 'runInTerminal', 'arguments' => (object) []]);
+            break;
+
+        case 'setBreakpoints':
+            $path = $args['source']['path'] ?? '';
+            $lines = array_map(static fn (array $bp): int => (int) $bp['line'], $args['breakpoints'] ?? []);
+            $breakpoints[$path] = $lines;
+            respond($out, $message, ['breakpoints' => array_map(static fn (int $l): array => ['verified' => true, 'line' => $l], $lines)]);
+            foreach ($args['breakpoints'] ?? [] as $bp) {
+                if (isset($bp['condition'])) {
+                    event($out, 'output', ['category' => 'console', 'output' => 'cond@'.$bp['line'].': '.$bp['condition']."\n"]);
+                }
             }
-            continue;
-        }
+            break;
 
-        $command = $message['command'] ?? '';
-        $args = is_array($message['arguments'] ?? null) ? $message['arguments'] : [];
+        case 'launch':
+            $program = (string) ($args['program'] ?? '');
+            respond($out, $message);
+            event($out, 'output', ['category' => 'stdout', 'output' => "hello from debuggee\n"]);
+            break;
 
-        switch ($command) {
-            case 'initialize':
-                respond($out, $message, [
-                    'supportsConfigurationDoneRequest' => true,
-                    'supportsConditionalBreakpoints' => true,
-                    'supportsHitConditionalBreakpoints' => false,
-                    'supportsLogPoints' => true,
-                    'supportsSetVariable' => true,
-                    'supportsRestartRequest' => true,
-                    'exceptionBreakpointFilters' => [
-                        ['filter' => 'warning', 'label' => 'Warnings', 'default' => false],
-                        ['filter' => 'exception', 'label' => 'Uncaught Exceptions', 'default' => true],
-                    ],
-                ]);
-                event($out, 'initialized');
-                sendDap($out, ['type' => 'request', 'command' => 'runInTerminal', 'arguments' => (object) []]);
+        case 'configurationDone':
+            respond($out, $message);
+            $lines = $breakpoints[$program] ?? [];
+            if ([] !== $lines) {
+                $currentLine = $lines[0];
+                event($out, 'stopped', ['reason' => 'breakpoint', 'threadId' => 1]);
+            } else {
+                event($out, 'terminated');
+                event($out, 'exited', ['exitCode' => 0]);
+            }
+            break;
+
+        case 'threads':
+            respond($out, $message, ['threads' => [['id' => 1, 'name' => 'main']]]);
+            break;
+
+        case 'stackTrace':
+            if ($currentLine >= 90) {
+                respond($out, $message, [], 'no stack available');
                 break;
+            }
+            respond($out, $message, [
+                'stackFrames' => [
+                    ['id' => 1, 'name' => '{main}', 'source' => ['path' => $program], 'line' => $currentLine, 'column' => 1],
+                    ['id' => 2, 'name' => 'require', 'source' => ['path' => $program], 'line' => 1, 'column' => 1],
+                ],
+                'totalFrames' => 2,
+            ]);
+            break;
 
-            case 'setBreakpoints':
-                $path = $args['source']['path'] ?? '';
-                $lines = array_map(static fn (array $bp): int => (int) $bp['line'], $args['breakpoints'] ?? []);
-                $breakpoints[$path] = $lines;
-                respond($out, $message, ['breakpoints' => array_map(static fn (int $l): array => ['verified' => true, 'line' => $l], $lines)]);
-                foreach ($args['breakpoints'] ?? [] as $bp) {
-                    if (isset($bp['condition'])) {
-                        event($out, 'output', ['category' => 'console', 'output' => 'cond@'.$bp['line'].': '.$bp['condition']."\n"]);
-                    }
+        case 'scopes':
+            respond($out, $message, ['scopes' => [['name' => 'Locals', 'variablesReference' => 1000, 'expensive' => false]]]);
+            break;
+
+        case 'variables':
+            $ref = (int) ($args['variablesReference'] ?? 0);
+            $vars = 1000 === $ref
+                ? [
+                    ['name' => '$x', 'value' => '42', 'type' => 'int', 'variablesReference' => 0],
+                    ['name' => '$arr', 'value' => 'array(2)', 'type' => 'array', 'variablesReference' => 1001],
+                ]
+                : [
+                    ['name' => '0', 'value' => "'a'", 'variablesReference' => 0],
+                    ['name' => '1', 'value' => "'b'", 'variablesReference' => 0],
+                ];
+            // Reflect any live edits (setVariable) back on the next fetch.
+            foreach ($vars as &$var) {
+                if (isset($varOverrides[$ref][$var['name']])) {
+                    $var['value'] = $varOverrides[$ref][$var['name']];
                 }
-                break;
+            }
+            unset($var);
+            respond($out, $message, ['variables' => $vars]);
+            break;
 
-            case 'launch':
-                $program = (string) ($args['program'] ?? '');
-                respond($out, $message);
-                event($out, 'output', ['category' => 'stdout', 'output' => "hello from debuggee\n"]);
-                break;
+        case 'setVariable':
+            $ref = (int) ($args['variablesReference'] ?? 0);
+            $varOverrides[$ref][(string) ($args['name'] ?? '')] = (string) ($args['value'] ?? '');
+            respond($out, $message, ['value' => (string) ($args['value'] ?? '')]);
+            break;
 
-            case 'configurationDone':
-                respond($out, $message);
-                $lines = $breakpoints[$program] ?? [];
-                if ([] !== $lines) {
-                    $currentLine = $lines[0];
-                    event($out, 'stopped', ['reason' => 'breakpoint', 'threadId' => 1]);
-                } else {
-                    event($out, 'terminated');
-                    event($out, 'exited', ['exitCode' => 0]);
-                }
-                break;
+        case 'next':
+        case 'stepIn':
+        case 'stepOut':
+            respond($out, $message);
+            ++$currentLine;
+            event($out, 'stopped', ['reason' => 'step', 'threadId' => 1]);
+            break;
 
-            case 'threads':
-                respond($out, $message, ['threads' => [['id' => 1, 'name' => 'main']]]);
-                break;
-
-            case 'stackTrace':
-                if ($currentLine >= 90) {
-                    respond($out, $message, [], 'no stack available');
+        case 'continue':
+            respond($out, $message, ['allThreadsContinued' => true]);
+            $next = null;
+            foreach ($breakpoints[$program] ?? [] as $line) {
+                if ($line > $currentLine) {
+                    $next = $line;
                     break;
                 }
-                respond($out, $message, [
-                    'stackFrames' => [
-                        ['id' => 1, 'name' => '{main}', 'source' => ['path' => $program], 'line' => $currentLine, 'column' => 1],
-                        ['id' => 2, 'name' => 'require', 'source' => ['path' => $program], 'line' => 1, 'column' => 1],
-                    ],
-                    'totalFrames' => 2,
-                ]);
-                break;
-
-            case 'scopes':
-                respond($out, $message, ['scopes' => [['name' => 'Locals', 'variablesReference' => 1000, 'expensive' => false]]]);
-                break;
-
-            case 'variables':
-                $ref = (int) ($args['variablesReference'] ?? 0);
-                $vars = 1000 === $ref
-                    ? [
-                        ['name' => '$x', 'value' => '42', 'type' => 'int', 'variablesReference' => 0],
-                        ['name' => '$arr', 'value' => 'array(2)', 'type' => 'array', 'variablesReference' => 1001],
-                    ]
-                    : [
-                        ['name' => '0', 'value' => "'a'", 'variablesReference' => 0],
-                        ['name' => '1', 'value' => "'b'", 'variablesReference' => 0],
-                    ];
-                // Reflect any live edits (setVariable) back on the next fetch.
-                foreach ($vars as &$var) {
-                    if (isset($varOverrides[$ref][$var['name']])) {
-                        $var['value'] = $varOverrides[$ref][$var['name']];
-                    }
-                }
-                unset($var);
-                respond($out, $message, ['variables' => $vars]);
-                break;
-
-            case 'setVariable':
-                $ref = (int) ($args['variablesReference'] ?? 0);
-                $varOverrides[$ref][(string) ($args['name'] ?? '')] = (string) ($args['value'] ?? '');
-                respond($out, $message, ['value' => (string) ($args['value'] ?? '')]);
-                break;
-
-            case 'next':
-            case 'stepIn':
-            case 'stepOut':
-                respond($out, $message);
-                ++$currentLine;
-                event($out, 'stopped', ['reason' => 'step', 'threadId' => 1]);
-                break;
-
-            case 'continue':
-                respond($out, $message, ['allThreadsContinued' => true]);
-                $next = null;
-                foreach ($breakpoints[$program] ?? [] as $line) {
-                    if ($line > $currentLine) {
-                        $next = $line;
-                        break;
-                    }
-                }
-                if (null !== $next) {
-                    $currentLine = $next;
-                    event($out, 'stopped', ['reason' => 'breakpoint', 'threadId' => 1]);
-                } else {
-                    event($out, 'terminated');
-                    event($out, 'exited', ['exitCode' => 0]);
-                }
-                break;
-
-            case 'setExceptionBreakpoints':
-                respond($out, $message);
-                event($out, 'output', ['category' => 'console', 'output' => 'xfilters: '.implode(',', $args['filters'] ?? [])."\n"]);
-                break;
-
-            case 'evaluate':
-                $expr = (string) ($args['expression'] ?? '');
-                if ('$x' === $expr) {
-                    static $bump = 0;
-                    respond($out, $message, ['result' => '42#'.++$bump, 'variablesReference' => 0]);
-                } elseif ('$arr' === $expr) {
-                    respond($out, $message, ['result' => 'array(2)', 'variablesReference' => 1001]);
-                } else {
-                    respond($out, $message, [], 'cannot evaluate');
-                }
-                break;
-
-            case 'restart':
-                respond($out, $message);
-                event($out, 'output', ['category' => 'stdout', 'output' => "restarted\n"]);
+            }
+            if (null !== $next) {
+                $currentLine = $next;
                 event($out, 'stopped', ['reason' => 'breakpoint', 'threadId' => 1]);
-                break;
+            } else {
+                event($out, 'terminated');
+                event($out, 'exited', ['exitCode' => 0]);
+            }
+            break;
 
-            case 'disconnect':
-                respond($out, $message);
-                exit(0);
-        }
+        case 'setExceptionBreakpoints':
+            respond($out, $message);
+            event($out, 'output', ['category' => 'console', 'output' => 'xfilters: '.implode(',', $args['filters'] ?? [])."\n"]);
+            break;
+
+        case 'evaluate':
+            $expr = (string) ($args['expression'] ?? '');
+            if ('$x' === $expr) {
+                static $bump = 0;
+                respond($out, $message, ['result' => '42#'.++$bump, 'variablesReference' => 0]);
+            } elseif ('$arr' === $expr) {
+                respond($out, $message, ['result' => 'array(2)', 'variablesReference' => 1001]);
+            } else {
+                respond($out, $message, [], 'cannot evaluate');
+            }
+            break;
+
+        case 'restart':
+            respond($out, $message);
+            event($out, 'output', ['category' => 'stdout', 'output' => "restarted\n"]);
+            event($out, 'stopped', ['reason' => 'breakpoint', 'threadId' => 1]);
+            break;
+
+        case 'disconnect':
+            respond($out, $message);
+            exit(0);
     }
 }

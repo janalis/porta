@@ -12,16 +12,11 @@ declare(strict_types=1);
 
 $in = fopen('php://stdin', 'rb');
 $out = fopen('php://stdout', 'wb');
+
+require __DIR__.'/lsp-stub.php';
 // Non-blocking tiny reads: a blocking fread(512) would stall inside PHP's
 // read-buffer top-up while holding undelivered bytes.
 stream_set_blocking($in, false);
-
-function sendMessage($out, array $message): void
-{
-    $json = json_encode($message, JSON_UNESCAPED_SLASHES);
-    fwrite($out, 'Content-Length: '.strlen($json)."\r\n\r\n".$json);
-    fflush($out);
-}
 
 $buffer = '';
 $deadline = time() + 30; // bounded lifetime

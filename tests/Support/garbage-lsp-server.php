@@ -8,6 +8,8 @@ declare(strict_types=1);
 $in = fopen('php://stdin', mode: 'rb');
 $out = fopen('php://stdout', mode: 'wb');
 
+require __DIR__.'/lsp-stub.php';
+
 // Corrupt frame first: header terminator without a Content-Length
 fwrite($out, data: "X-Garbage: yes\r\n\r\n");
 fflush($out);
@@ -29,9 +31,7 @@ while (!feof($in)) {
         $buffer = substr($buffer, $headerEnd + 4 + (int) $m[1]);
 
         if ('initialize' === ($message['method'] ?? '')) {
-            $json = json_encode(['jsonrpc' => '2.0', 'id' => $message['id'], 'result' => ['capabilities' => []]]);
-            fwrite($out, 'Content-Length: '.\strlen($json)."\r\n\r\n".$json);
-            fflush($out);
+            sendMessage($out, ['jsonrpc' => '2.0', 'id' => $message['id'], 'result' => ['capabilities' => []]]);
         }
         if ('exit' === ($message['method'] ?? '')) {
             exit(0);
