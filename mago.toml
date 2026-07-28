@@ -103,8 +103,11 @@ excludes = ["tests/Support/slow-reading-lsp-server.php", "tests/Support/demandin
 # The src pins are deliberate structure: WidgetHooks is a wiring step,
 # MouseRouter's route() guard order is behaviour, and CodeEditorWidget /
 # FindInFilesModal / DiffViewWidget carry measured-and-rejected extraction
-# candidates (see CLAUDE.md). None can drop without a decision that was
-# considered and declined.
+# candidates (see CLAUDE.md; DiffViewWidget's was actually measured in round
+# 6 — 0/8 and 2/10 exclusive, worse than any prior rejection — so this
+# sentence is no longer an assertion ahead of its evidence). None can drop
+# without a decision that was considered and declined. Round 6 re-probed
+# every threshold after its cleanups: no floor moved.
 #
 # Re-bisect and lower again after the next structural change; a threshold far
 # above the real maximum is not a gate. Verified failing: injecting 60 dummy

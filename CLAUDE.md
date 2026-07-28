@@ -261,7 +261,13 @@ the remaining cycles are controller/domain cohabitation artifacts — relocating
 would make parsers depend on views, and `SettingsRow`'s home is documented membership. Only
 `RowSelection` moved (a vocabulary enum that sat in `Overlay/State`; its docblock already
 named `Widget/Support`'s `OptionTagState` as its mirror). Do not re-litigate the other
-thirteen without new evidence.
+thirteen without new evidence. Round 6 verified the cycle question at **class**
+granularity (550 classes, 1534 code edges): exactly one real SCC exists — the seven
+classes around `WorkspaceViews`, closed solely by its two documented `attach*()` setter
+fields, with construction remaining a DAG — plus a degenerate `Ide::VERSION` constant
+read and one pure `{@see}`-docblock artifact (`SpanSlicer`/`FloatingRegions` import
+`MenuOverlayController` for prose only — a naive import-graph tool will report an Overlay
+cycle that does not exist in code). **The namespace-cycle topic is closed.**
 
 What stays hand-built in `Ide` (deliberate, ~520 lines total): the bootstrap infra above, the
 widget-tree mount + pane arrangement calls, per-buffer runtime objects
@@ -456,7 +462,14 @@ parameters so both resolve only at fire time) — never reintroduce a parallel i
 boundaries, undo/redo, change tracking, per-file indent via `.editorconfig`); the whole-line verbs
 keep their mutation, cursor clamping and undo here but delegate the algorithm to the pure statics in
 `Editor/LineOperations` (`indentSelection`/`dedentSelection` are deliberately excluded — they track
-cursor and anchor deltas *inside* the mutation loop). `Editor/MultiCaret`
+cursor and anchor deltas *inside* the mutation loop). The coordinate math (byte↔UTF-16↔display
+columns, offset/position, the visual-lines tab cache) lives in the internally-newed
+`Editor/PositionMapper` — round 1 proposed this as "ColumnGeometry" and the record never
+noted the name it landed under — which delegates to the pure-static `Editor/TextMetrics`;
+`clampLine`/`clampCol` stay on `Document` because the mapper calls them back. Note:
+`Document` is #2 in `src/` by size and branch mass yet pins **no** gate — its mass is
+spread over 85 small methods. Correct, but it means the ratchet gives no signal if it
+grows; watch it in review, not in lint. `Editor/MultiCaret`
 and `Editor/EditorActions` layer multi-cursor and editing operations; `Widget/CodeEditorWidget`
 + `Widget/Render/EditorRenderer` render the viewport (the caret is spliced in as a zero-width
 APC marker that `ScreenWriter` converts to a hardware cursor position).
@@ -594,6 +607,16 @@ the diff toolbar and the find modal's options+footer rows. The five *other* zone
 (`GitTabsWidget`, `BreadcrumbsWidget`, `MenuBarWidget`, `TabBarWidget`, `DockTabsWidget`) are
 deliberately not converted: non-string payloads (enum modes, line ints) and positional lookups
 (dropdown anchoring, drag-reorder) would launder worse than the loops they keep.
+Round 6 completed the audit's last measurement: **`DiffViewWidget`'s clusters all fail** —
+the selection model 0/8 exclusive (`render()` writes `$lastWidth`, the mouse-only
+`sideAt`/`pointCol` read it; `$anchor`/`$charSel` cross the same seam the other way), the
+document/highlight cluster 2/10 (both exclusives total three lines), the narrowest
+highlight-cache slice is the four-field-DTO lateral shape. Its kan-defect co-pin is
+deliberate structure. **The standing audit is hereby closed**: six rounds, every candidate
+measured, every lint threshold on its pin. Future SOLID work is *feature-driven* — apply
+the extraction test and the recorded precedents to new code as it lands; re-opening a
+recorded rejection requires new evidence (a changed dependency count, a removed cross-event
+seam), not a fresh sweep.
 `Layout/LayoutController` holds one `Layout/SidebarResizeState` per sidebar (tree/git/settings:
 armed drag, start width, persisted percent), so arm/drag/nudge/restore are each written once;
 the public `arm*`/`nudge*` names stay as delegators (`MouseRouter`/`PaneResizer` call them), and
