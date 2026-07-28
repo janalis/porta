@@ -154,4 +154,22 @@ final class EventListenerWiringTest extends TestCase
 
         return \PHP_INT_MAX;
     }
+
+    /**
+     * The other two live-setting events. MenuLayoutRefreshListener does not
+     * listen to these (no menu relabel needed), so there is no "first"
+     * contract — only the -100 sweep-last one.
+     */
+    public function testCursorAndTabPositionEventsEndInTheChromeSweep(): void
+    {
+        $dispatcher = $this->dispatcher();
+
+        foreach ([\Porta\Event\CursorShapeChanged::class, \Porta\Event\TabBarPositionChanged::class] as $event) {
+            $listeners = $dispatcher->getListeners($event);
+            $this->assertNotEmpty($listeners, $event.' has compiled listeners');
+            $last = end($listeners);
+            \assert(\is_array($last), description: 'listener entries are [service, method] pairs');
+            $this->assertInstanceOf(ChromeRefreshListener::class, $last[0], $event.': the chrome sweep runs last');
+        }
+    }
 }

@@ -344,4 +344,29 @@ final class MenuModelTest extends TestCase
             'File menu has at least one separator',
         );
     }
+
+    /**
+     * The VIEW_SAFE map must decide for EVERY WorkspaceView case: the gate at
+     * MenuModel::item() reads `VIEW_SAFE[$active->name] ?? []`, so a new view
+     * with no entry silently disables every single menu item — the same
+     * silent-unreachable failure mode the settings-section order test guards.
+     */
+    public function testViewSafeCoversEveryWorkspaceViewCaseBothWays(): void
+    {
+        /** @var array<string, list<string>> $map */
+        $map = new \ReflectionClassConstant(MenuModel::class, 'VIEW_SAFE')->getValue();
+
+        foreach (\Porta\Workbench\WorkspaceView::cases() as $case) {
+            $this->assertArrayHasKey($case->name, $map, $case->name.' has a VIEW_SAFE entry (a missing one disables every menu item silently)');
+            $this->assertNotSame([], $map[$case->name], $case->name.': the entry is non-empty');
+            $this->assertContains('ide_quit', $map[$case->name], $case->name.': quitting stays reachable');
+            $this->assertContains('ide_command_palette', $map[$case->name], $case->name.': the palette stays reachable');
+        }
+        foreach (array_keys($map) as $name) {
+            $this->assertNotNull(
+                \constant(\Porta\Workbench\WorkspaceView::class.'::'.$name),
+                $name.' is a live WorkspaceView case (no stale allowlist entry)',
+            );
+        }
+    }
 }
