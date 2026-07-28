@@ -17,10 +17,8 @@ use Porta\Ui\Role;
 use Porta\Ui\Sgr;
 use Porta\Ui\TextField;
 use Porta\Ui\Theme\Styles;
-use Porta\Widget\MatchRowDecorator;
 use Porta\Widget\Render\FindModalRows;
 use Porta\Widget\Render\ModalFrame;
-use Porta\Widget\Render\ModalRowStyle;
 use Porta\Widget\Render\PopupMetrics;
 use Porta\Widget\ResultsView;
 use Porta\Widget\SearchFieldRenderer;
@@ -544,11 +542,19 @@ final class FindInFilesModal
                 $this->hoveredRow => RowSelection::Hovered,
                 default => RowSelection::Unselected,
             };
-            $previewRows[] = match (true) {
-                null !== $row->filePath => FindModalRows::fileHeader($row->filePath, $row->count, $width, $this->styles),
-                $this->inPreview() => $this->previewMatchRow($this->results[$row->matchIndex], $row->matchIndex, $selected, $width),
-                default => FindModalRows::match($this->results[$row->matchIndex], $selected, $width, $this->styles),
-            };
+            if (null !== $row->filePath) {
+                $previewRows[] = FindModalRows::fileHeader($row->filePath, $row->count, $width, $this->styles);
+
+                continue;
+            }
+            $result = $this->results[$row->matchIndex];
+            if ($this->inPreview()) {
+                $excluded = $this->excluded[$row->matchIndex] ?? false;
+                $previewRows[] = FindModalRows::previewMatch($result, $selected, $excluded, $excluded ? '' : $this->replacementFor($result['text']), $width, $this->styles);
+
+                continue;
+            }
+            $previewRows[] = FindModalRows::match($result, $selected, $width, $this->styles);
         }
         if ([] === $visible) {
             $previewRows[] = FindModalRows::empty('' === $this->query->value() ? $this->translator->trans('type to search…') : $this->translator->trans('no results'), $width, $this->styles);
@@ -709,31 +715,10 @@ final class FindInFilesModal
         return $this->styles->of(Role::Toolbar)->apply(AnsiText::truncate(' '.$tags.$scope, $width, pad: true));
     }
 
-    /**
-     * A match row in replace-preview mode: a {@see Glyphs} checkbox, the line number,
-     * and either the original line (highlighted, when excluded) or `old → new`.
-     *
-     * @param array{path: string, line: int, text: string, ranges?: list<array{start: int, length: int}>} $result
-     */
-    private function previewMatchRow(array $result, int $matchIndex, RowSelection $selected, int $width): string
+    /** The replacement column for a preview row (the raw text when no preview closure is wired). */
+    private function replacementFor(string $old): string
     {
-        $bg = $this->styles->of(ModalRowStyle::role($selected))->getAnsiRestore();
-        $excluded = $this->excluded[$matchIndex] ?? false;
-        $label = (string) ($result['line'] + 1);
-        $old = $result['text'];
-        $checkbox = '  '.($excluded ? Glyphs::CHECKBOX_OFF : Glyphs::CHECKBOX_ON).' ';
-        $prefixWidth = mb_strwidth($checkbox) + mb_strwidth($label) + 2;
-        $head = $checkbox.$this->styles->of(Role::TabAccent)->apply($label).'  ';
-
-        $text = $head.$old.$this->styles->of(Role::Dim)->apply('   (excluded)');
-        if (!$excluded) {
-            $new = null !== $this->callbacks->previewReplacement ? ($this->callbacks->previewReplacement)($old, $this->replace->value()) : $old;
-            $text = $head.$old.'  '.Glyphs::REPLACE_ARROW.'  '.$this->styles->of(Role::Added)->apply($new);
-        }
-
-        $searchStyle = $this->styles->of(Role::SearchBg);
-
-        return MatchRowDecorator::highlight($text, $width, $bg, $prefixWidth, $searchStyle->getAnsiRestore(), Sgr::resetFor($searchStyle), $result['ranges'] ?? []);
+        return null !== $this->callbacks->previewReplacement ? ($this->callbacks->previewReplacement)($old, $this->replace->value()) : $old;
     }
 
     /** The footer hint row; the action words are clickable/hoverable zones. */
