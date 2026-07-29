@@ -90,7 +90,9 @@ file's snapshots; `Enter` restores one as a single undoable edit.
 Opening a `png`, `jpg`, `jpeg`, `gif`, `webp` or `bmp` file shows it as an
 inline image tab (truecolor half-block rendering) instead of text. Zoom
 with `=`/`-`, `0`/`f` fit, `1` actual size, or `Ctrl+wheel` anchored at the
-pointer (12.5%–800%); pan with the arrows or the wheel. Images over 20 MB
+pointer (12.5%–800%); pan with the arrows or the wheel. Shrinking averages
+the pixels it covers, so a downscaled image keeps its thin lines instead of
+shimmering; magnifying stays pixel-crisp. Images over 20 MB
 or 16 megapixels are refused (the size cap is the bundled `image-viewer`
 plugin's setting). The viewer is a bundled plugin, enabled by default —
 disabling it in Settings ▸ Plugins routes images to the ordinary text-path
@@ -100,13 +102,22 @@ active.
 ## Graph viewer
 
 Opening a `.dot` or `.gv` file renders the Graphviz graph as an interactive
-tab: clusters, edge labels, arrowheads and DOT colors, laid out by the real
-`dot` binary (install graphviz, or point the `dotPath` setting at it).
+tab, showing **the picture `dot` itself draws** — real splines, arrowheads,
+fills and fonts (install graphviz, or point the `dotPath` setting at it).
 Zoom with `=`/`-`, `0`/`f` fit, `1` actual size, or `Ctrl+wheel` at the
 pointer; pan with the arrows, the wheel, or by dragging; select nodes with
-`n`/`p` or a click (the status bar shows the node under selection). Editing
-the file re-renders it in place — an invalid document keeps the previous
-graph under an error banner. The viewer is a bundled plugin, enabled by
+`n`/`p` or a click, which frames the node and names it in the status bar.
+Zooming in re-renders the graph at a higher resolution rather than magnifying
+pixels, so labels sharpen as you go.
+
+`v` switches to a **cell rendering** that draws node labels as terminal text
+— less faithful, but readable when the picture's own type is only a few
+pixels tall. The *Graph rendering* setting (Settings ▸ General) picks which
+one new tabs open with. It is also what you get automatically if your
+graphviz was built without PNG support, with the reason in the banner.
+
+Editing the file re-renders it in place — an invalid document keeps the
+previous graph under an error banner. The viewer is a bundled plugin, enabled by
 default — disabling it opens `.dot` files as editable text instead.
 **Plugins ▸ Project Architecture** generates a namespace-dependency graph of
 the current project into `.porta/architecture.dot` and opens it in this viewer

@@ -512,15 +512,44 @@ latest wins).
 
 **Graph viewer (Project Architecture).** `.dot`/`.gv` files route to `Widget/GraphViewerWidget`
 (the third editor-pane occupant; `Buffer::$graphDot` + `isGraph()`, with `isViewer()` the single
-"not code" guard). Layout is the REAL `dot` binary (`Graph/DotLayoutEngine`: async, stdin-fed,
-exit-code-keyed, single slot latest-wins; explicit `dotPath` setting → `ExecutableFinder`),
-parsed from `-Tjson0` into point-denominated screen-down VOs; the widget caches layouts per DOT
-hash (LRU 8 — tab switches and unchanged regenerations never re-run dot), keeps zoom/pan per
-path across regenerations (refit only when the extent changes), and KEEPS the last good graph
-under a one-row stderr banner on a failed layout (the banner paints AFTER the focus frame — it
-hid behind the frame's top border once). Zoom/pan ride `Image/ZoomPanModel` with a finer ladder
-(1 pt → scale cols × scale half-rows; the px=half-row convention is the 2:1 cell aspect
-correction). The commands are PLUGIN-owned: `graph-viewer:architecture` (Plugins menu) runs
+"not code" guard). The REAL `dot` binary answers TWICE per graph, on two independent slots of
+`Graph/DotLayoutEngine` (async, stdin-fed, exit-code-keyed, latest-wins each; explicit `dotPath`
+setting → `ExecutableFinder`): `-Tjson0` for the geometry, parsed into point-denominated
+screen-down VOs, and **`-Tpng -Gdpi=<n> -Gpad=0` for the PICTURE** — PNG bytes off the child's
+stdout into `Image/ImageDecoder::decodeBytes()`, painted as half-blocks by the image viewer's
+`Image/HalfBlockRasterizer`. The slots are separate so a zoom-driven re-render cannot cancel the
+geometry it is about to be drawn with.
+- **`-Gpad=0` at 72 dpi is the coordinate identity** the whole feature rests on: measured against
+  the real binary, dot pads a bitmap by 4 points a side by default (`margin` is NOT that knob),
+  and with pad 0 the PNG is exactly `ceil(bb)` pixels — one per point. So the bitmap, the layout
+  and `ZoomPanModel` share ONE coordinate space and hit-testing needs no conversion.
+- **The bitmap follows the zoom**: `dpiFor()` asks for `72 × max(1, scale)` (so nothing at or
+  below 1:1 asks for more than 72 — shrinking is the resampling filter's job), capped by
+  `72 × sqrt(MAX_PIXELS / area)` so a huge graph renders soft rather than not at all. Debounced
+  on the WANTED dpi through the `Support/Scheduler` seam (a pan costs nothing), with the previous
+  bitmap held on screen while dot works — paint-then-refine, the highlighter contract.
+  `scheduleBitmap()` is also called from `render()` because the pane size, and so the fit scale,
+  is known nowhere else; the wanted-dpi guard makes that a float compare.
+- **One bitmap at a time, no LRU** — a big graph decodes to tens of megabytes of truecolor
+  pixels, and the expensive half (the layout) is what stays cached per DOT hash. A tab switch
+  drops it immediately so the previous tab's picture cannot paint under this tab's geometry, and
+  a late answer is discarded by its DOT hash.
+- **`Graph/GraphRenderMode`** (backed — it crosses `.porta.json`) picks the rendering: `Bitmap`
+  or `Cells`, the `graphRender` core setting for the default and `v` (`graph_render_mode` in
+  `ActionCatalog`) to flip live. `Widget/Render/GraphRenderer`'s cell rendering is NOT a
+  degraded mode — it draws labels as real terminal text, readable at pane sizes where the
+  bitmap's own type is a few pixels tall — and it is what paints before the first bitmap
+  arrives, when `dot` has no PNG support at all (a graphviz built without libgd, whose stderr
+  becomes the banner), and whenever `Cells` is selected (in which mode NO bitmap is ever
+  requested). Selection stays layout-driven in both: `Widget/Render/GraphSelectionOverlay`
+  frames the selected node over the picture using the same `GraphCellGrid` transform
+  `GraphRenderer::nodeAt()` inverts for clicks, so click and frame agree by construction.
+- The widget caches layouts per DOT hash (LRU 8 — tab switches and unchanged regenerations never
+  re-run dot), keeps zoom/pan per path across regenerations (refit only when the extent changes),
+  and KEEPS the last good graph under a one-row stderr banner on a failed layout (the banner
+  paints AFTER the focus frame — it hid behind the frame's top border once). Zoom/pan ride
+  `Image/ZoomPanModel` with a finer ladder (1 pt → scale cols × scale half-rows; the px=half-row
+  convention is the 2:1 cell aspect correction). The commands are PLUGIN-owned: `graph-viewer:architecture` (Plugins menu) runs
 `Graph/ArchitectureArtifact` (plugin-constructible — rootDir only; the generator command is the
 plugin's `command` setting, `plugins.graph-viewer.command`) and writes `.porta/architecture.dot`
 — file-backed on purpose: tab reuse is the ordinary path-keyed lookup (realpath before the reuse
@@ -531,8 +560,11 @@ and invalid documents keep the previous rendering. `graph-viewer:export-svg/png`
 active tab's file and reach the core `dotPath` setting through the seeded `PORTA_DOT_PATH` env
 (the documented plugin↔IDE-settings bridge). Tests need NO graphviz: the committed `tests/Support/fake-dot*`
 stubs (env-shebang'd — E2e uses a php-only PATH dir so git/LSP stay blocked while the stubs
-run; `fake-dot` fails on the 'broken' sentinel) + `FakeLayoutEngine` for widget tests; one
-real-binary smoke test sits behind `GraphvizBinary::skipWithoutDot`. The graph feature re-pinned
+run; `fake-dot` fails on the 'broken' sentinel and, for `-Tpng`, emits a real PNG whose WIDTH
+ENCODES the requested dpi — 10 px per 72 — which is how a test tells one zoom level's render from
+another's) + `FakeLayoutEngine` (`nextPng`/`renderDpis`) and `FakeScheduler` for widget tests;
+two real-binary smoke tests sit behind `GraphvizBinary::skipWithoutDot`, the bitmap one skipping
+itself with dot's own message when the local build cannot do PNG. The graph feature re-pinned
 two ratchets (MouseRouter cyclomatic 145, WidgetHooks params 25 — the drag-pan routing and the
 handler wiring, rationale in mago.toml).
 
@@ -542,6 +574,21 @@ ANSI-styled text align correctly. Widgets cache their rendered output; `invalida
 bubbles *up*, so a change that must relabel the whole tree (e.g. a live locale switch) has to
 clear render caches recursively. Layout is horizontal/vertical `ContainerWidget`s; sizes come
 from rendered content, with proportions persisted per project.
+
+**Image sampling (`Image/`, both viewers).** `HalfBlockRasterizer` paints one `▀` cell per two
+vertical pixels and samples **nearest-neighbour over whatever `Image/SampleSource` hands it** —
+which is the image itself when magnifying and a GD-resampled copy when shrinking. The rule is
+**box-filter down, nearest up**: at a 10% fit, nearest-neighbour reads every tenth pixel and a
+one-pixel line disappears (pinned by test), while a magnified image must stay crisp — at 400% you
+want pixels, not blur. The averaging cannot happen in the rasterizer (~2M `imagecolorat` calls to
+paint one 200×48 pane), so `Image/ScaledSource` memoises ONE `imagecopyresampled` copy per scale,
+keyed on the image IDENTITY as well as the scale so a new tab is never shown the previous image's
+copy — which is why there is no `reset()` to forget. `SampleSource::$ratio` is source pixels per
+view unit, and it does double duty: 1.0 for an image, and dpi/72 for the graph viewer's
+oversampled bitmap, whose pixels are denser than the layout points its zoom is measured in
+(`forScale(…, ratio:)` composes the two and returns the ratio in the caller's units). One visible
+consequence: the alpha checkerboard's squares stay 8 SCREEN pixels instead of shrinking with the
+zoom.
 
 **Floating surfaces — the `Overlay/` subsystem, three tiers.** Every modal floats over the whole
 workspace on one per-pane span path (spans pushed through `setModalOverlay` + backdrop dim,
