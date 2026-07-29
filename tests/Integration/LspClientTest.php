@@ -425,4 +425,22 @@ final class LspClientTest extends TestCase
         }, 3.0);
         $this->assertFalse($client->isRunning());
     }
+
+    /**
+     * The stdout-EOF path must cancel BOTH pipe watchers: a stderr watcher
+     * left armed on the dead peer's pipe would spin on every loop tick (and
+     * anchor the transport) until an owner stop() an abandoned client never
+     * issues — the [loop-leak] regression this pins.
+     */
+    public function testPeerExitClearsEveryLoopWatcher(): void
+    {
+        $baseline = \count(\Revolt\EventLoop::getIdentifiers());
+        $client = $this->client('crashing-lsp-server.php');
+        $client->start(static function (): void {});
+        $this->assertGreaterThan($baseline, \count(\Revolt\EventLoop::getIdentifiers()), 'the pipe watchers are armed');
+
+        // The crashing server exits immediately; EOF must retire the watchers.
+        $this->await(static fn (): bool => \count(\Revolt\EventLoop::getIdentifiers()) <= ($baseline + 0), 5.0, 'the EOF path to cancel both pipe watchers');
+        $this->assertSame($baseline, \count(\Revolt\EventLoop::getIdentifiers()), 'no watcher survives the peer');
+    }
 }

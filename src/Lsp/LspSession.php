@@ -68,6 +68,12 @@ final class LspSession
 
     public function stop(): void
     {
+        // A debounce armed at shutdown would fire a didChange into the next
+        // event-loop consumer (in tests: the next test) 0.3s later.
+        if (null !== $this->changeDebounce) {
+            EventLoop::cancel($this->changeDebounce);
+            $this->changeDebounce = null;
+        }
         $this->client?->stop();
     }
 

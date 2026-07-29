@@ -324,6 +324,9 @@ final class Ide
 
             $this->tui->run();
         } finally {
+            // First: closing the full-screen views cancels their timers (the
+            // git view's 2s status-poll repeat) so nothing re-arms below.
+            $this->service(WorkspaceViews::class)->closeAll();
             $this->watchdog->stop();
             EventLoop::cancel($watcher);
             // Disable mouse reporting, then leave the alternate screen (restoring

@@ -10,6 +10,7 @@ use Porta\Lsp\LspClientInterface;
 use Porta\Lsp\LspSession;
 use Porta\Support\Outcome;
 use Porta\Tests\Support\FakeLspClient;
+use Porta\Tests\Support\PumpsLoop;
 
 /**
  * Unit tests for {@see LspSession} using an injected fake transport — no server
@@ -18,6 +19,8 @@ use Porta\Tests\Support\FakeLspClient;
  */
 final class LspSessionTest extends TestCase
 {
+    use PumpsLoop;
+
     private function session(FakeLspClient $client): LspSession
     {
         return new LspSession(
@@ -146,5 +149,38 @@ final class LspSessionTest extends TestCase
         $this->start($session);
 
         $this->assertFalse($session->isActive(), 'failed start nulls the client');
+    }
+
+    public function testStopCancelsAnArmedChangeDebounce(): void
+    {
+        $client = new FakeLspClient();
+        $session = $this->session($client);
+        $this->start($session);
+        $before = \count(\Revolt\EventLoop::getIdentifiers());
+
+        $session->scheduleDidChange(new Document('x'), static fn (): ?string => '/tmp/project/a.php', static function (): void {});
+        $this->assertGreaterThan($before, \count(\Revolt\EventLoop::getIdentifiers()), 'the 0.3s debounce is armed');
+
+        $session->stop();
+        $this->assertSame($before, \count(\Revolt\EventLoop::getIdentifiers()), 'stop() cancels the debounce — nothing may fire into the next loop consumer');
+
+        $this->pump(0.35); // past the debounce window
+        $sent = array_column($client->notifications, 'method');
+        $this->assertNotContains('textDocument/didChange', $sent, 'no late didChange after stop');
+    }
+
+    public function testADebounceFiringForAClosedBufferSendsNothing(): void
+    {
+        $client = new FakeLspClient();
+        $session = $this->session($client);
+        $this->start($session);
+
+        // The buffer closes before the debounce fires: resolvePath answers null
+        // and the didChange is dropped.
+        $session->scheduleDidChange(new Document('x'), static fn (): ?string => null, static function (): void {});
+        $this->pump(0.35);
+
+        $sent = array_column($client->notifications, 'method');
+        $this->assertNotContains('textDocument/didChange', $sent, 'a closed buffer sends no didChange');
     }
 }

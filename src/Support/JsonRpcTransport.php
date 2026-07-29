@@ -158,6 +158,13 @@ final class JsonRpcTransport
                     EventLoop::cancel($this->stdoutWatcher);
                     $this->stdoutWatcher = null;
                 }
+                // stderr dies with the peer too: left armed it would spin on
+                // every tick of an EOF'd pipe (and anchor the transport) until
+                // an owner stop() that an abandoned client never issues.
+                if (null !== $this->stderrWatcher) {
+                    EventLoop::cancel($this->stderrWatcher);
+                    $this->stderrWatcher = null;
+                }
                 if (null !== $onEof) {
                     $onEof();
                 }
