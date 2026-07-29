@@ -6,6 +6,7 @@ namespace Porta\Plugin;
 
 use Porta\Config\CommandRegistry;
 use Porta\Config\KeyDispatch;
+use Porta\Editor\ViewerProviderSource;
 use Porta\Highlight\CallableHighlightProvider;
 use Porta\Highlight\SyntaxHighlightProvider;
 use Porta\Highlight\SyntaxHighlightProviderSource;
@@ -21,7 +22,7 @@ use Porta\Search\TokenSpanProvider;
  * an action method used before that (i.e. during activate()) hits the
  * {@see runtime()} gate.
  */
-final class PluginManager implements LanguageServerProvider, SyntaxHighlightProviderSource, TokenSpanProvider
+final class PluginManager implements LanguageServerProvider, SyntaxHighlightProviderSource, TokenSpanProvider, ViewerProviderSource
 {
     /** @var list<array{plugin: string, id: string, label: string, handler: \Closure(): void, keys: list<string>}> */
     private array $commands = [];
@@ -37,6 +38,8 @@ final class PluginManager implements LanguageServerProvider, SyntaxHighlightProv
     private array $highlighters = [];
     /** @var list<array{plugin: string, languages: \Closure(): list<string>, classify: \Closure(string, string): (list<array{start: int, end: int}>|null)}> committed search classifiers, in load order */
     private array $tokenSpans = [];
+    /** @var list<array{plugin: string, id: string, claims: \Closure(string): bool}> committed viewer routes, in load order */
+    private array $viewers = [];
     /** @var list<string> */
     private array $warnings = [];
     /** @var array<string, true> loaded plugin names */
@@ -47,6 +50,8 @@ final class PluginManager implements LanguageServerProvider, SyntaxHighlightProv
     private array $reportedWhens = [];
     /** @var array<string, true> plugins whose highlighting backend already reported a throw */
     private array $reportedHighlighters = [];
+    /** @var array<string, true> plugins whose viewer claim already reported a throw */
+    private array $reportedViewers = [];
 
     private ?PluginRuntime $runtime = null;
 
@@ -104,6 +109,9 @@ final class PluginManager implements LanguageServerProvider, SyntaxHighlightProv
         }
         foreach ($api->bufferedTokenSpans() as $spans) {
             $this->tokenSpans[] = $spans;
+        }
+        foreach ($api->bufferedViewers() as $viewer) {
+            $this->viewers[] = $viewer;
         }
         $this->settings->registerFor($name, $api->bufferedSettings());
     }
@@ -191,9 +199,10 @@ final class PluginManager implements LanguageServerProvider, SyntaxHighlightProv
         $this->installers = array_values(array_filter($this->installers, static fn (array $installer): bool => $name !== $installer['plugin']));
         $this->highlighters = array_values(array_filter($this->highlighters, static fn (array $highlighter): bool => $name !== $highlighter['plugin']));
         $this->tokenSpans = array_values(array_filter($this->tokenSpans, static fn (array $spans): bool => $name !== $spans['plugin']));
+        $this->viewers = array_values(array_filter($this->viewers, static fn (array $viewer): bool => $name !== $viewer['plugin']));
         $this->registered = \count($this->commands);
 
-        unset($this->reportedWhens[$name], $this->reportedHighlighters[$name]);
+        unset($this->reportedWhens[$name], $this->reportedHighlighters[$name], $this->reportedViewers[$name]);
         $registry->remove($removed);
         $this->events->removeFor($name);
         $this->settings->removeFor($name);
@@ -330,6 +339,29 @@ final class PluginManager implements LanguageServerProvider, SyntaxHighlightProv
     }
 
     /** Report a highlighting fault at most once per plugin — this runs while typing. */
+    /**
+     * The first committed viewer route (in load order) whose claim matches
+     * $path, or null. A throwing claim declines and reports once per plugin —
+     * this runs on every file open.
+     */
+    public function viewerFor(string $path): ?string
+    {
+        foreach ($this->viewers as $viewer) {
+            try {
+                if ($viewer['claims']($path)) {
+                    return $viewer['id'];
+                }
+            } catch (\Throwable $error) {
+                if (!array_key_exists($viewer['plugin'], $this->reportedViewers)) {
+                    $this->reportedViewers[$viewer['plugin']] = true;
+                    $this->reportFailure($viewer['plugin'], $error);
+                }
+            }
+        }
+
+        return null;
+    }
+
     private function reportHighlightFailure(string $plugin, \Throwable $error): void
     {
         if (array_key_exists($plugin, $this->reportedHighlighters)) {

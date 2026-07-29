@@ -56,6 +56,8 @@ final class PluginApi
     private readonly PluginBuffer $highlighters;
     /** @var PluginBuffer<array{plugin: string, languages: \Closure(): list<string>, classify: \Closure(string, string): (list<array{start: int, end: int}>|null)}> */
     private readonly PluginBuffer $tokenSpans;
+    /** @var PluginBuffer<array{plugin: string, id: string, claims: \Closure(string): bool}> */
+    private readonly PluginBuffer $viewers;
 
     public function __construct(
         private readonly string $pluginName,
@@ -68,6 +70,7 @@ final class PluginApi
         $this->installers = new PluginBuffer();
         $this->highlighters = new PluginBuffer();
         $this->tokenSpans = new PluginBuffer();
+        $this->viewers = new PluginBuffer();
     }
 
     /**
@@ -251,6 +254,41 @@ final class PluginApi
             'languages' => $resolve,
             'highlight' => $highlight,
             'available' => $isAvailable,
+        ]);
+    }
+
+    /**
+     * Claim file paths for a viewer pane: files matching $claims open in the
+     * viewer named by $id instead of the text editor. Today the id names a
+     * BUILT-IN pane ('image', 'graph' — the bundled image-viewer/graph-viewer
+     * plugins are what makes those viewers enable/disableable); an id no pane
+     * answers to falls through to the text path, so a future
+     * widget-registration API can widen this without breaking the contract.
+     *
+     * $claims is a list of file extensions (matched case-insensitively) or a
+     * `\Closure(string $path): bool` for richer predicates; a throwing
+     * predicate declines the path (reported once).
+     *
+     * @param list<string>|\Closure(string): bool $claims
+     */
+    public function registerViewer(string $id, array|\Closure $claims): void
+    {
+        if (1 !== preg_match(self::ID_PATTERN, $id)) {
+            throw new PluginException(\sprintf('Invalid viewer id "%s" (expected /^[a-z0-9][a-z0-9_-]*$/i)', $id));
+        }
+        if (\is_array($claims) && [] === $claims) {
+            throw new PluginException('A viewer must claim at least one file extension');
+        }
+        if (\is_array($claims)) {
+            /** @var list<string> $list */
+            $list = array_values($claims);
+            $extensions = array_map(static fn (string $extension): string => strtolower($extension), $list);
+            $claims = static fn (string $path): bool => \in_array(strtolower(pathinfo($path, \PATHINFO_EXTENSION)), $extensions, strict: true);
+        }
+        $this->viewers->add([
+            'plugin' => $this->pluginName,
+            'id' => $id,
+            'claims' => $claims,
         ]);
     }
 
@@ -529,5 +567,11 @@ final class PluginApi
     public function bufferedTokenSpans(): array
     {
         return $this->tokenSpans->all();
+    }
+
+    /** @return list<array{plugin: string, id: string, claims: \Closure(string): bool}> */
+    public function bufferedViewers(): array
+    {
+        return $this->viewers->all();
     }
 }

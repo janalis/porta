@@ -69,6 +69,7 @@ final class BufferService implements BufferReopener, DiagnosticsSink, FileOpener
         private readonly ContainerWidget $editorBody,
         private readonly EventDispatcherInterface $dispatcher,
         private readonly FormatOnSave $formatOnSave,
+        private readonly ViewerProviderSource $viewers,
     ) {}
 
     public function openFile(string $path, OpenFocus $focus = OpenFocus::Keep): void
@@ -91,12 +92,18 @@ final class BufferService implements BufferReopener, DiagnosticsSink, FileOpener
 
             return;
         }
-        if (ImageDecoder::isImagePath($path)) {
+        // The registered viewer routes decide which pane a file opens in (the
+        // bundled image-viewer/graph-viewer plugins claim their extensions; an
+        // id no built-in pane answers to falls through to the text path).
+        // TRANSITIONAL: the hardcoded predicates back the routes up until the
+        // bundled plugins ship the claims — the next commit removes them.
+        $viewer = $this->viewers->viewerFor($path);
+        if ('image' === $viewer || ImageDecoder::isImagePath($path)) {
             $this->openImageFile($path, $focus);
 
             return;
         }
-        if (DotFiles::isDotPath($path)) {
+        if ('graph' === $viewer || DotFiles::isDotPath($path)) {
             $this->openGraphFile($path, $focus);
 
             return;
