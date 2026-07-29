@@ -832,6 +832,34 @@ subprocess/async effects) without a later step firing underneath it. Without an 
 after the final step — better, await them in the step. When a constructor gains a dependency,
 fix the direct construction sites in these tests too.
 
+**The flake doctrine (round 11 — the suite is expected deterministic now).**
+`await()` budgets are denominated in LOOP TURNS (+0.02 per turn regardless of wall time), so an
+await almost never fails from slowness — a timeout means the condition never became true. The
+flaky shapes are all on the fixed-clock side, and each has a named cure:
+- **No fixed-gap asserts**: never `handleInput` → next `ms =>` step → assert. Await the effect
+  in the SAME step (`awaitGit($ide)` after every mutating git key, then await the
+  porcelain/log/on-disk predicate — never a blocking `$project->git()` read racing the async op).
+- **A bare `tick()` is not a frame** (adaptive ticker); use `frame($tui)` before scraping, and
+  remember modals lay out from the PREVIOUS frame's rects — two frames before a modal paints.
+- **Toasts prove nothing**: lifetimes are 2.5–6s, so `Toasts::last()` can return the previous
+  action's toast. Assert the on-disk effect or the model.
+- **Gate picker/overlay navigation** on `isOverlayOpen()`/`isPromptOpen()` — their lists are
+  built inside git/LSP callbacks; early arrows fall through to the editor. When the accumulated
+  output would satisfy a substring early (e.g. a sentinel row's own label), read the CURRENT
+  grid via `screenGrid()`.
+- **Awaits must be terminal-state**, not success-only: `done || failure-message` then assert
+  success, so a real failure fails fast with its own message instead of a bare timeout.
+- **`pump()` only for genuine negatives** (proving something did NOT happen).
+- **The event loop is process-global per paratest worker**; `tests/Support/LoopIsolationExtension`
+  (phpunit.xml `<extensions>`) swaps in a fresh driver after EVERY test and reports leaked
+  identifiers to STDERR as `[loop-leak]` (report-only; escalate to a failure once the suite has
+  run leak-clean for a while — the recorded follow-up). Never leave a watcher armed on a stream
+  a local `proc_open` handle will close (try/finally around the span); `PumpsLoop` cancels its
+  own delay timers in finally for the same reason.
+- **Both git argv paths pass `--no-optional-locks`** (`GitProcessRunner` + `TempProject::git()`):
+  porcelain readers must never take the opportunistic index lock that collides with a concurrent
+  add/commit's mandatory one — keep the flag on any new git invocation site.
+
 **Never hand-roll a test rig `tests/Support` already provides** (round 8 collapsed ~700
 duplicated lines onto these): `PreservesPath` + `ClearsPortaLsp` (attribute hooks — the env rig;
 classes keep their own setUp/tearDown), `PumpsLoop` (`await()`/`pump()`, composed by `RunsIde`),
