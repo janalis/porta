@@ -87,7 +87,10 @@ final class GitProcessRunner
     public function runStatus(array $args, callable $onDone, ?string $stdin = null): void
     {
         /** @var list<string> $command */
-        $command = [$this->git, '-C', $this->rootDir, ...$args];
+        // --no-optional-locks: the porcelain readers (status/diff) must never
+        // take the opportunistic index lock — under load it collides with a
+        // concurrent add/commit's MANDATORY index.lock and fails the mutation.
+        $command = [$this->git, '--no-optional-locks', '-C', $this->rootDir, ...$args];
         $key = $this->nextKey++;
         $process = new AsyncProcess($command, $this->rootDir, $stdin);
         $started = $process->start(function (int $code, string $out) use ($key, $onDone): void {
@@ -123,7 +126,10 @@ final class GitProcessRunner
             return;
         }
         /** @var list<string> $command */
-        $command = [$this->git, '-C', $this->rootDir, ...$args];
+        // --no-optional-locks: the porcelain readers (status/diff) must never
+        // take the opportunistic index lock — under load it collides with a
+        // concurrent add/commit's MANDATORY index.lock and fails the mutation.
+        $command = [$this->git, '--no-optional-locks', '-C', $this->rootDir, ...$args];
         $key = $this->nextKey++;
         $process = new AsyncProcess($command, $this->rootDir, captureStderr: true);
         $started = $process->start(function (int $code) use ($key, $process, $onDone): void {

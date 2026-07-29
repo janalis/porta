@@ -53,7 +53,7 @@ final class TempProject
      */
     public function git(string ...$args): string
     {
-        $process = new Process([self::gitBinary(), '-C', $this->dir, ...$args], $this->dir, ['PATH' => PORTA_TEST_PRISTINE_PATH]);
+        $process = new Process([self::gitBinary(), '--no-optional-locks', '-C', $this->dir, ...$args], $this->dir, ['PATH' => PORTA_TEST_PRISTINE_PATH]);
         $process->mustRun();
 
         return trim($process->getOutput());
