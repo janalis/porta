@@ -172,7 +172,6 @@ final class ArchitectureCheckCommand extends Command
         'Plugin>Search',
         'Plugin>Settings',
         'Plugin>Support',
-        'Plugin>Widget',
         'Plugin>Workbench',
         'Run>Container',
         'Run>Support',

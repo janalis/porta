@@ -12,7 +12,7 @@ use Porta\I18n\Translator;
 use Porta\Lsp\LspReconfigurer;
 use Porta\Plugin\Runtime\PluginLoader;
 use Porta\Plugin\Runtime\PluginManager;
-use Porta\Widget\Settings\SettingsNavWidget;
+use Porta\Plugin\Runtime\PluginPagesSync;
 use Porta\Workbench\Menu\MenuRebuilder;
 use Porta\Workbench\Notifier;
 use Porta\Workbench\WorkspaceViews;
@@ -49,7 +49,7 @@ final class PluginLifecycle implements PluginLifecycleOps
         private readonly Notifier $notifier,
         private readonly Translator $translator,
         private readonly MenuRebuilder $menuRebuilder,
-        private readonly SettingsNavWidget $settingsNav,
+        private readonly PluginPagesSync $pages,
         private readonly WorkspaceViews $views,
         private readonly Tui $tui,
         private readonly LspReconfigurer $lspReconfigurer,
@@ -253,10 +253,10 @@ final class PluginLifecycle implements PluginLifecycleOps
         return array_keys($names);
     }
 
-    /** Sync the settings sidebar's per-plugin sub-items with the installed set. */
+    /** Sync the per-plugin settings pages with the installed set. */
     public function refreshNav(): void
     {
-        $this->settingsNav->setPluginEntries($this->listedNames());
+        $this->pages->refresh($this->listedNames());
     }
 
     public function refreshView(): void
