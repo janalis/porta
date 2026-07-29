@@ -854,20 +854,24 @@ exit 2 = issues found). The on-save toggle commands flip the persisted settings 
 `PluginApi::changeSetting()` (an action method mirroring `flash()`'s runtime gate).
 Their E2e tests load the real files from those paths.
 
-**A plugin file wires; `src/` implements — enforced by three abstract bases in `Plugin/Api/`.**
+**A plugin file wires; `src/` implements — enforced by four abstract bases in `Plugin/Api/`.**
 Every bundled plugin is `return new class('<name>', …) extends …`, and the machinery they used to
 copy (ten `name()`s, a byte-identical three-tier `binary()` ×5, the single-flight `$running`
 guard ×6, the "open a PHP file first" guard ×5, the availability closure ×12) now lives under the
 coverage gate and mago's analyzer, where plugin files are NOT (they sit outside `[source] paths`,
-so they are neither formatted nor linted).
+so they are neither formatted nor linted). **That gate boundary — not deduplication — is the
+test for what belongs here**: chroma's scheduler and mago's report walk each had ONE caller and
+still moved, because a debounce and a JSON→diagnostics decode are exactly the logic that must be
+covered and analysed.
 - **`AbstractPlugin`** — the ctor-supplied `name()`, `claimedLanguages()` (the highlighters'
   comma-separated `languages` row) and `coreSetting()`, which reads a CORE IDE setting off the
   `PORTA_*` env channel the container itself reads. `coreSetting()` is bundled-plugin territory
   on purpose: `PluginApi::setting()` can only read keys the plugin registered, and duplicating
   an IDE setting as a plugin one would give the user two knobs for one thing (graph-viewer's
   `dotPath` — the raw `$_ENV` triple-guard it used to carry is retired).
-- **`AbstractToolPlugin`** — external-binary plugins (php-cs-fixer, mago, phpactor, phpantom,
-  chroma + both analyzers). Owns discovery (`binary` setting → `vendor/bin/<tool>` → PATH; the
+- **`AbstractToolPlugin`** — every external-binary plugin sits under this (php-cs-fixer,
+  phpactor, phpantom directly; chroma and the three analyzers through the two bases below).
+  Owns discovery (`binary` setting → `vendor/bin/<tool>` → PATH; the
   two-tier case is the **`BinarySearch`** enum, not an override), the single-flight slot
   (`acquire()` fuses already-running / missing-binary / take-the-slot into one call; `release()`
   is explicit precisely so mago can chain format→lint under ONE slot), `activeFileOrFlash()`,
@@ -879,13 +883,31 @@ so they are neither formatted nor linted).
   the subclass supplies only the per-tool truth: `command()`, `acceptsExitCode()` (phpstan `0|1`,
   psalm `0|2` — reading one tool's codes for the other would swallow every finding),
   `diagnostics()` and `noun()`. The command ids (`analyse`, `toggle-on-save`) are single-sourced
-  in the base because they are palette entries and keymap targets.
+  in the base because they are palette entries and keymap targets. `analyse()` is acquire +
+  **`analyseWith()`**, the run WITHOUT the acquire: `mago` extends this base but formats first and
+  lints the formatted file through `analyseWith()`, so one user action stays ONE slot (it releases
+  at the process exit, so it is a chain's last step, never its middle). mago also keeps its own
+  command registrations — two verbs, two toggles — instead of `registerAnalysis()`, and its
+  `acceptsExitCode()` returns **true**: mago exits 0 with an unparseable report, so the JSON parse
+  is the only honest gate.
+- **`AbstractSubprocessHighlighter`** — a highlighting backend that is an external process
+  (chroma). It runs on the TYPING path, so the base owns the whole scheduling problem: a
+  per-language debounce that REPLACES a pending run rather than queueing it, a latest-wins
+  sequence stamp, a hard two-process ceiling across all languages, the `maxBytes` skip, and the
+  token-stream → themed-ANSI conversion (longest-prefix matching, since Pygments-style names are
+  a flattened hierarchy). `registerSubprocessHighlighter()` declares the
+  languages/debounce/maxBytes rows and wires the backend; the subclass supplies only
+  `lexerArgs()` and `tokenMap()` (data). Every malformed shape returns null, which KEEPS the
+  previous paint instead of blanking the buffer. A **synchronous** backend does not belong here —
+  the bundled `tempest` plugin is a plain `AbstractPlugin` that delivers before returning.
 
 Third-party plugins may extend these or implement `PortaPlugin` directly — the interface is the
 contract, the bases are convenience, and `PluginLoader` only ever checks `instanceof PortaPlugin`.
-The bundled set went 1183 → 772 lines with no behavior lost; the tests live in
-`tests/Unit/Plugin/Api/`, driving concrete doubles (and a real subprocess shim for the analyzer)
-rather than the plugin files.
+The bundled set went 1183 → 673 lines with no behavior lost; the tests live in
+`tests/Unit/Plugin/Api/`, driving concrete doubles against real subprocess shims rather than the
+plugin files. Their negatives await a **terminal state** — the base's in-flight counter back to
+zero (via `Probe`) — because a bare `pump()` lets "nothing was delivered" pass vacuously whenever
+the subprocess had not finished yet; the coverage gate is what caught that.
 
 Settings → Plugins installs/removes plugin dirs (`Plugin/Lifecycle/PluginInstaller`: git clone for URLs,
 recursive copy for local dirs; per-install project/global scope; bundled plugins list as
@@ -896,7 +918,8 @@ paths take (`Settings/SettingsHighlightController` offering the bundled `tempest
 **`Plugin/Lifecycle/PluginLifecycleOps extends PluginEnablement`** adds install/deactivate/disable/refresh
 and is driven only by the plugins settings page
 (activate/deactivate/setEnabled + the settings-nav sync — which travels through the
-consumer-owned **`Plugin/Runtime/PluginPagesSync`** seam, implemented by
+consumer-owned **`Plugin/Lifecycle/PluginPagesSync`** seam (it sits beside its only consumer),
+implemented by
 `Settings/SettingsPluginPages`, the only class that knows a "plugin page" is a sidebar row;
 holding `SettingsNavWidget` directly was the codebase's ENTIRE `Plugin > Widget` arch edge, and
 the names travel as an argument because an implementation that fetched them would depend back

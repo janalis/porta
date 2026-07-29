@@ -117,7 +117,7 @@ keymap entry beats a plugin's default key.
 ### Base classes
 
 `PortaPlugin` is the contract, but most plugins do the same handful of things,
-so three abstract classes in `Porta\Plugin\Api` carry them. Extending one is
+so four abstract classes in `Porta\Plugin\Api` carry them. Extending one is
 optional — the loader only checks `instanceof PortaPlugin` — but a plugin that
 shells out to a binary should not hand-roll discovery and a busy flag.
 
@@ -125,7 +125,8 @@ shells out to a binary should not hand-roll discovery and a busy flag.
 | --- | --- |
 | `AbstractPlugin` | `name()` from the constructor, `claimedLanguages($api)` (a comma-separated `languages` setting, `'*'` for everything) |
 | `AbstractToolPlugin` | Everything above plus: `binary($api)` (the `binary` setting → `<root>/vendor/bin/<tool>` → `PATH`; pass `BinarySearch::PathOnly` for a tool composer never installs), `binaryAvailable($api)` for `addMenuItem`'s dim predicate, `acquire($api)`/`release()` (one run at a time, with the "already running" and "not found" flashes), `activeFileOrFlash($api)`, `registerBinarySetting($api, $via)`, `registerToggle(…)`, `flashExit(…)`/`flashCount(…)` |
-| `AbstractAnalyzerPlugin` | Everything above plus the whole analysis run — you supply `command()`, `acceptsExitCode()`, `diagnostics()` and optionally `noun()`, and `registerAnalysis($api, 'MyTool', ['ctrl+alt+x'])` wires the command, the on-save toggle, the menu entries and the save hook |
+| `AbstractAnalyzerPlugin` | Everything above plus the whole analysis run — you supply `command()`, `acceptsExitCode()`, `diagnostics()` and optionally `noun()`, and `registerAnalysis($api, 'MyTool', ['ctrl+alt+x'])` wires the command, the on-save toggle, the menu entries and the save hook. Use `analyseWith($api, $binary, $file)` instead of `analyse()` when you already hold the slot — that is how a format-then-lint chain stays one run |
+| `AbstractSubprocessHighlighter` | Everything `AbstractToolPlugin` gives, plus a highlighting backend that shells out: `registerSubprocessHighlighter($api, 'MyTool', 'rust,go')` declares the `languages`/`debounce`/`maxBytes` settings and wires it, and the base debounces per language, drops superseded answers, caps concurrent processes and turns the JSON token stream into themed ANSI. You supply `lexerArgs($language)` and `tokenMap()` (type-name prefix => `TokenTypeEnum`, longest prefix first) |
 
 A complete linter, using the analyzer base:
 
@@ -230,6 +231,9 @@ new AsyncProcess([$binary, 'lint', '--json', $file], $api->projectRoot())
         // parse $stdout, then $api->setDiagnostics(...) / $api->flash(...)
     });
 ```
+
+A **synchronous** highlighter needs none of that — call `$deliver` before
+returning, as the bundled `tempest` plugin does.
 
 See the shipped reference plugins for complete, tested examples of the
 formatter pattern (rewrite the file on disk — the IDE's filesystem poller
