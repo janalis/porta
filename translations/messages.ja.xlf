@@ -2138,6 +2138,34 @@
         <source>+/- zoom  0 fit  n/p select  Ctrl+Q quit</source>
         <target>+/- ズーム  0 フィット  n/p 選択  Ctrl+Q 終了</target>
       </trans-unit>
+      <trans-unit id="537">
+        <source>Architecture command failed: %error%</source>
+        <target>アーキテクチャコマンドが失敗しました: %error%</target>
+      </trans-unit>
+      <trans-unit id="538">
+        <source>Architecture command produced no output</source>
+        <target>アーキテクチャコマンドの出力がありません</target>
+      </trans-unit>
+      <trans-unit id="539">
+        <source>Cannot write %file%</source>
+        <target>%file% に書き込めません</target>
+      </trans-unit>
+      <trans-unit id="540">
+        <source>Export failed: %error%</source>
+        <target>エクスポートに失敗しました: %error%</target>
+      </trans-unit>
+      <trans-unit id="541">
+        <source>Exported %file%</source>
+        <target>%file% をエクスポートしました</target>
+      </trans-unit>
+      <trans-unit id="542">
+        <source>Graph: Export SVG</source>
+        <target>グラフ: SVG としてエクスポート</target>
+      </trans-unit>
+      <trans-unit id="543">
+        <source>Graph: Export PNG</source>
+        <target>グラフ: PNG としてエクスポート</target>
+      </trans-unit>
     </body>
   </file>
 </xliff>

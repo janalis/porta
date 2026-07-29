@@ -5,9 +5,12 @@ declare(strict_types=1);
 namespace Porta\Tests\E2e;
 
 use PHPUnit\Framework\TestCase;
+use Porta\Config\CommandRegistry;
 use Porta\Editor\BufferManager;
 use Porta\Editor\BufferService;
 use Porta\Editor\OpenFocus;
+use Porta\Graph\GraphExportFormat;
+use Porta\Graph\GraphTabActions;
 use Porta\Tests\Support\ClearsPortaLsp;
 use Porta\Tests\Support\PreservesPath;
 use Porta\Tests\Support\RunsIde;
@@ -99,6 +102,10 @@ final class IdeGraphViewerTest extends TestCase
                     }, what: 'the error banner');
                     $output = AnsiUtils::stripAnsiCodes($terminal->getOutput());
                     $this->assertStringContainsString('3 nodes · 2 edges', $output, 'the last good graph is still the model');
+
+                    // Exporting the broken document fails the same loud way.
+                    Services::resolve($ide, CommandRegistry::class)->run('graph_export_svg');
+                    $this->await(static fn (): bool => str_contains(AnsiUtils::stripAnsiCodes($terminal->getOutput()), 'Export failed'), what: 'the export-failure flash');
                 },
             ],
         );
@@ -132,7 +139,7 @@ final class IdeGraphViewerTest extends TestCase
             '.porta.json' => (string) json_encode(['settings' => ['dotPath' => self::fakeDot()]]),
             'g.dot' => self::SMALL_DOT,
             'src/A.php' => "<?php\n",
-            'big.dot' => str_repeat('/* pad */ ', 1_100_000).'digraph {}',
+            'big.dot' => str_repeat('/* pad */ ', times: 1_100_000).'digraph {}',
             'binary.dot' => "\xff\xfe\x00digraph",
             '.porta/architecture.dot' => self::SMALL_DOT,
         ]);
@@ -188,6 +195,142 @@ final class IdeGraphViewerTest extends TestCase
                     $buffers = Services::resolve($ide, BufferManager::class);
                     $this->assertCount(1, $buffers->all(), 'the graph tab closed');
                     $this->assertFalse($buffers->has($dotPath));
+                },
+            ],
+        );
+    }
+
+    public function testArchitectureCommandScansOpensReusesAndExports(): void
+    {
+        $project = new TempProject([
+            '.porta.json' => (string) json_encode(['settings' => ['dotPath' => self::fakeDot()]]),
+            'composer.json' => (string) json_encode(['autoload' => ['psr-4' => ['App\\' => 'src/']]]),
+            'src/Editor/Doc.php' => "<?php\nnamespace App\\Editor;\nuse App\\Support\\Text;\nfinal class Doc {}\n",
+            'src/Support/Text.php' => "<?php\nnamespace App\\Support;\nfinal class Text {}\n",
+        ]);
+        $this->phpOnlyPath($project);
+
+        $this->runIde(
+            $project,
+            null,
+            [
+                200 => function ($tui, $terminal, $ide) use ($project): void {
+                    Services::resolve($ide, CommandRegistry::class)->run('ide_architecture');
+                    $this->await(static fn (): bool => str_contains(AnsiUtils::stripAnsiCodes($terminal->getOutput()), 'nodes'), what: 'the architecture graph');
+                    $artifact = $project->path('.porta/architecture.dot');
+                    $this->assertFileExists($artifact);
+                    $this->assertStringContainsString('App\\\\Editor', (string) file_get_contents($artifact), 'the scanner produced the namespace graph');
+                    $tui->tick();
+                    $this->assertStringContainsString('Project Architecture', AnsiUtils::stripAnsiCodes($terminal->getOutput()), 'the titled tab');
+
+                    $buffers = Services::resolve($ide, BufferManager::class);
+                    $this->assertCount(1, $buffers->all());
+                    Services::resolve($ide, CommandRegistry::class)->run('ide_architecture'); // regenerate: reuse, no duplicate
+                    $this->assertCount(1, $buffers->all(), 'the second invocation reused the tab');
+
+                    Services::resolve($ide, CommandRegistry::class)->run('graph_export_svg');
+                    $this->await(static fn (): bool => is_file($project->path('.porta/architecture.svg')), what: 'the SVG export');
+                    Services::resolve($ide, GraphTabActions::class)->exportActive(GraphExportFormat::Png);
+                    $this->await(static fn (): bool => is_file($project->path('.porta/architecture.png')), what: 'the PNG export');
+                },
+            ],
+        );
+    }
+
+    public function testConfiguredGeneratorCommandTakesPrecedence(): void
+    {
+        $project = new TempProject([
+            '.porta.json' => (string) json_encode(['settings' => [
+                'dotPath' => self::fakeDot(),
+                'architectureCommand' => 'printf \'digraph FromCommand { X -> Y; }\'',
+            ]]),
+        ]);
+        $this->phpOnlyPath($project);
+
+        $this->runIde(
+            $project,
+            null,
+            [
+                200 => function ($tui, $terminal, $ide) use ($project): void {
+                    Services::resolve($ide, CommandRegistry::class)->run('ide_architecture');
+                    $this->await(static fn (): bool => is_file($project->path('.porta/architecture.dot')), what: 'the generated artifact');
+                    $this->assertStringContainsString('FromCommand', (string) file_get_contents($project->path('.porta/architecture.dot')), 'the configured command supplied the DOT');
+                },
+            ],
+        );
+    }
+
+    public function testGeneratorFailuresFlashInsteadOfOpening(): void
+    {
+        $project = new TempProject([
+            '.porta.json' => (string) json_encode(['settings' => [
+                'dotPath' => self::fakeDot(),
+                'architectureCommand' => 'echo doomed >&2; exit 3',
+            ]]),
+        ]);
+        $this->phpOnlyPath($project);
+
+        $this->runIde(
+            $project,
+            null,
+            [
+                200 => function ($tui, $terminal, $ide) use ($project): void {
+                    Services::resolve($ide, CommandRegistry::class)->run('ide_architecture');
+                    $this->await(static fn (): bool => str_contains(AnsiUtils::stripAnsiCodes($terminal->getOutput()), 'doomed'), what: 'the failure flash');
+                    $this->assertFileDoesNotExist($project->path('.porta/architecture.dot'));
+
+                    // Empty output is its own loud failure.
+                    $registry = Services::resolve($ide, \Porta\Graph\ArchitectureGraphController::class);
+                    $this->assertNotNull($registry);
+                },
+            ],
+        );
+    }
+
+    public function testEmptyGeneratorOutputFlashes(): void
+    {
+        $project = new TempProject([
+            '.porta.json' => (string) json_encode(['settings' => [
+                'dotPath' => self::fakeDot(),
+                'architectureCommand' => 'true',
+            ]]),
+        ]);
+        $this->phpOnlyPath($project);
+
+        $this->runIde(
+            $project,
+            null,
+            [
+                200 => function ($tui, $terminal, $ide) use ($project): void {
+                    Services::resolve($ide, CommandRegistry::class)->run('ide_architecture');
+                    $this->await(static fn (): bool => str_contains(AnsiUtils::stripAnsiCodes($terminal->getOutput()), 'produced no output'), what: 'the empty-output flash');
+                    $this->assertFileDoesNotExist($project->path('.porta/architecture.dot'));
+                },
+            ],
+        );
+    }
+
+    public function testUnwritableArtifactDirFlashesAndExportSelfGuards(): void
+    {
+        $project = new TempProject([
+            '.porta' => 'a FILE squatting on the state dir name',
+            'src/A.php' => "<?php\n",
+            'composer.json' => (string) json_encode(['autoload' => ['psr-4' => ['App\\' => 'src/']]]),
+        ]);
+        $this->phpOnlyPath($project);
+
+        $this->runIde(
+            $project,
+            $project->path('src/A.php'),
+            [
+                200 => function ($tui, $terminal, $ide): void {
+                    Services::resolve($ide, CommandRegistry::class)->run('ide_architecture');
+                    $this->await(static fn (): bool => str_contains(AnsiUtils::stripAnsiCodes($terminal->getOutput()), 'Cannot write'), what: 'the unwritable flash');
+
+                    // A text tab active: exportActive self-guards (the palette path bypasses when:).
+                    Services::resolve($ide, GraphTabActions::class)->exportActive(GraphExportFormat::Svg);
+                    $this->pump(0.1);
+                    $this->assertStringNotContainsString('Exported', AnsiUtils::stripAnsiCodes($terminal->getOutput()));
                 },
             ],
         );

@@ -8,6 +8,9 @@ use Porta\Config\CommandRegistry;
 use Porta\Config\KeyDispatch;
 use Porta\Editor\BufferManager;
 use Porta\Editor\BufferService;
+use Porta\Graph\ArchitectureGraphController;
+use Porta\Graph\GraphExportFormat;
+use Porta\Graph\GraphTabActions;
 use Porta\Lsp\FoldingController;
 use Porta\Run\RunController;
 use Porta\Search\Everywhere\SearchEverywhereController;
@@ -34,6 +37,8 @@ final class ViewCommands implements CommandProvider
         private readonly WorkspaceViews $views,
         private readonly BufferService $bufferService,
         private readonly FoldingController $folding,
+        private readonly ArchitectureGraphController $architecture,
+        private readonly GraphTabActions $graphTabs,
         private readonly string $docsDir,
     ) {}
 
@@ -82,6 +87,27 @@ final class ViewCommands implements CommandProvider
                 'ide_welcome',
                 fn () => $this->views->toggle(WorkspaceView::Welcome),
                 label: 'Welcome',
+            )
+            // Menu/palette actions like ide_welcome: explicit labels, no keys.
+            ->add(
+                'ide_architecture',
+                function (): void {
+                    $this->views->closeAll();
+                    $this->architecture->open();
+                },
+                label: 'Project Architecture',
+            )
+            ->add(
+                'graph_export_svg',
+                fn () => $this->graphTabs->exportActive(GraphExportFormat::Svg),
+                label: 'Graph: Export SVG',
+                when: fn (): bool => true === $this->buffers->active()?->isGraph(),
+            )
+            ->add(
+                'graph_export_png',
+                fn () => $this->graphTabs->exportActive(GraphExportFormat::Png),
+                label: 'Graph: Export PNG',
+                when: fn (): bool => true === $this->buffers->active()?->isGraph(),
             )
             ->add(
                 'ide_help',

@@ -2138,6 +2138,34 @@
         <source>+/- zoom  0 fit  n/p select  Ctrl+Q quit</source>
         <target>+/- זום  0 התאמה  n/p בחירה  Ctrl+Q יציאה</target>
       </trans-unit>
+      <trans-unit id="537">
+        <source>Architecture command failed: %error%</source>
+        <target>פקודת הארכיטקטורה נכשלה: %error%</target>
+      </trans-unit>
+      <trans-unit id="538">
+        <source>Architecture command produced no output</source>
+        <target>פקודת הארכיטקטורה לא הפיקה פלט</target>
+      </trans-unit>
+      <trans-unit id="539">
+        <source>Cannot write %file%</source>
+        <target>לא ניתן לכתוב אל %file%</target>
+      </trans-unit>
+      <trans-unit id="540">
+        <source>Export failed: %error%</source>
+        <target>הייצוא נכשל: %error%</target>
+      </trans-unit>
+      <trans-unit id="541">
+        <source>Exported %file%</source>
+        <target>‏%file% יוצא</target>
+      </trans-unit>
+      <trans-unit id="542">
+        <source>Graph: Export SVG</source>
+        <target>גרף: ייצוא כ-SVG</target>
+      </trans-unit>
+      <trans-unit id="543">
+        <source>Graph: Export PNG</source>
+        <target>גרף: ייצוא כ-PNG</target>
+      </trans-unit>
     </body>
   </file>
 </xliff>

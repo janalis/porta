@@ -2138,6 +2138,34 @@
         <source>+/- zoom  0 fit  n/p select  Ctrl+Q quit</source>
         <target>+/- Zoom  0 Anpassen  n/p Auswahl  Ctrl+Q Beenden</target>
       </trans-unit>
+      <trans-unit id="537">
+        <source>Architecture command failed: %error%</source>
+        <target>Architekturbefehl fehlgeschlagen: %error%</target>
+      </trans-unit>
+      <trans-unit id="538">
+        <source>Architecture command produced no output</source>
+        <target>Architekturbefehl erzeugte keine Ausgabe</target>
+      </trans-unit>
+      <trans-unit id="539">
+        <source>Cannot write %file%</source>
+        <target>%file% kann nicht geschrieben werden</target>
+      </trans-unit>
+      <trans-unit id="540">
+        <source>Export failed: %error%</source>
+        <target>Export fehlgeschlagen: %error%</target>
+      </trans-unit>
+      <trans-unit id="541">
+        <source>Exported %file%</source>
+        <target>%file% exportiert</target>
+      </trans-unit>
+      <trans-unit id="542">
+        <source>Graph: Export SVG</source>
+        <target>Graph: Als SVG exportieren</target>
+      </trans-unit>
+      <trans-unit id="543">
+        <source>Graph: Export PNG</source>
+        <target>Graph: Als PNG exportieren</target>
+      </trans-unit>
     </body>
   </file>
 </xliff>

@@ -7,7 +7,6 @@ namespace Porta\Tests\Support;
 use Porta\Editor\BufferManager;
 use Porta\I18n\Translator;
 use Porta\Terminal\TerminalSessions;
-use Porta\Tests\Support\FakeLayoutEngine;
 use Porta\Widget\CodeEditorWidget;
 use Porta\Widget\DebugPanelWidget;
 use Porta\Widget\DockTabsWidget;

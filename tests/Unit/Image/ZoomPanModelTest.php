@@ -159,7 +159,7 @@ final class ZoomPanModelTest extends TestCase
     public function testACustomZoomLadderIsWalkedInBothDirections(): void
     {
         // A "graph" whose fit scale (~0.008) sits far below the default ladder's 12.5% floor.
-        $view = new ZoomPanModel(10_000, 10_000, [0.03125, 0.0625, 0.125]);
+        $view = new ZoomPanModel(10_000, 10_000, [0.031_25, 0.062_5, 0.125]);
 
         $view->zoomOut(80, 48);
         $this->assertSame('Fit (0%)', $view->zoomLabel(80, 48), 'no rung below fit: zoomOut stays at fit');
