@@ -50,6 +50,7 @@ final class IdeContainerFactory
         $_ENV['PORTA_DOCS_DIR'] = $docsDir;
         $_ENV['PORTA_GIT_PATH'] = (string) ($config->settings['gitPath'] ?? ''); // '' → auto-discover
         $_ENV['PORTA_DOT_PATH'] = (string) ($config->settings['dotPath'] ?? ''); // '' → auto-discover
+        $_ENV['PORTA_GRAPH_RENDER'] = (string) ($config->settings['graphRender'] ?? 'bitmap');
         // The per-project config arrays travel JSON-encoded through the env
         // channel (each consumer reads its own via env(json:PORTA_…)); one map,
         // one encode shape.

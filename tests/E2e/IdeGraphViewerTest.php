@@ -111,6 +111,35 @@ final class IdeGraphViewerTest extends TestCase
         );
     }
 
+    public function testTheBitmapPaintsAndTheRenderModeKeyFlipsBackToTheCells(): void
+    {
+        $project = new TempProject([
+            '.porta.json' => (string) json_encode(['settings' => ['dotPath' => self::fakeDot()]]),
+            'g.dot' => self::SMALL_DOT,
+        ]);
+        $this->phpOnlyPath($project);
+
+        $this->runIde(
+            $project,
+            $project->path('g.dot'),
+            [
+                200 => function ($tui, $terminal): void {
+                    // Read the CURRENT grid: the accumulated output still holds
+                    // the cell rendering that painted before the bitmap landed.
+                    $grid = fn (): string => implode("\n", $this->screenGrid($tui, $terminal));
+                    $this->await(static fn (): bool => str_contains($grid(), '▀'), what: "dot's bitmap to paint");
+
+                    $tui->handleInput('v');
+                    $this->await(static fn (): bool => str_contains($grid(), 'calls'), what: 'the cell rendering to come back');
+                    $this->assertStringNotContainsString('▀', $grid(), 'the picture stepped aside');
+
+                    $tui->handleInput('v');
+                    $this->await(static fn (): bool => str_contains($grid(), '▀'), what: 'the picture to come back');
+                },
+            ],
+        );
+    }
+
     public function testMissingBinaryShowsTheActionablePane(): void
     {
         // No dotPath setting and an empty PATH: discovery finds nothing.

@@ -515,6 +515,53 @@ final class GraphViewerWidgetTest extends TestCase
         }
     }
 
+    public function testTheRenderModeKeyFlipsBetweenThePictureAndTheCells(): void
+    {
+        $this->engine->nextResult = self::layout();
+        $this->engine->nextPng = PngFixture::bytes(260, 36);
+        $widget = $this->widget();
+        $widget->show('/p/g.dot', 'digraph G { A -> B; }');
+        $this->settle();
+        $this->assertStringContainsString('▀', implode("\n", $widget->render(new RenderContext(80, 24))));
+
+        $widget->handleInput('v');
+        $screen = self::plain($widget->render(new RenderContext(80, 24)));
+        $this->assertStringContainsString('┌', $screen, 'the cells are back');
+        $this->assertStringContainsString('calls', $screen, 'with labels as real text');
+
+        $widget->handleInput('v');
+        $this->assertStringContainsString('▀', implode("\n", $widget->render(new RenderContext(80, 24))), 'and back to the picture');
+    }
+
+    public function testThePersistedCellsDefaultNeverAsksDotForAPicture(): void
+    {
+        $this->engine->nextResult = self::layout();
+        $this->engine->nextPng = PngFixture::bytes(260, 36);
+        $widget = new GraphViewerWidget($this->engine, new Translator('en'), scheduler: $this->scheduler, renderMode: 'cells');
+        $widget->show('/p/g.dot', 'digraph G { A -> B; }');
+        $widget->render(new RenderContext(80, 24));
+
+        $this->assertSame([], $this->scheduler->scheduled, 'no bitmap is even scheduled');
+        $this->assertSame([], $this->engine->renderDpis);
+
+        // Asking for the picture is what makes it render.
+        $widget->handleInput('v');
+        $this->settle();
+        $this->assertSame([72], $this->engine->renderDpis);
+        $this->assertStringContainsString('▀', implode("\n", $widget->render(new RenderContext(80, 24))));
+    }
+
+    public function testAnUnknownRenderModeReadsAsThePicture(): void
+    {
+        $this->engine->nextResult = self::layout();
+        $this->engine->nextPng = PngFixture::bytes(260, 36);
+        $widget = new GraphViewerWidget($this->engine, new Translator('en'), scheduler: $this->scheduler, renderMode: 'nonsense');
+        $widget->show('/p/g.dot', 'digraph G { A -> B; }');
+        $this->settle();
+
+        $this->assertStringContainsString('▀', implode("\n", $widget->render(new RenderContext(80, 24))));
+    }
+
     public function testRefreshThemeInvalidatesTheRenderCache(): void
     {
         $this->engine->nextResult = self::layout();

@@ -153,6 +153,14 @@ final class SettingsController
                 'restart' => true, // the engine resolves its binary from the compiled env channel
                 'apply' => null,
             ],
+            'graphRender' => [
+                'label' => 'Graph rendering',
+                'kind' => SettingsRowKind::Choice,
+                'options' => ['bitmap', 'cells'],
+                'group' => 'general',
+                'restart' => true, // the pane reads its default from the compiled env channel
+                'apply' => null,
+            ],
         ];
     }
 

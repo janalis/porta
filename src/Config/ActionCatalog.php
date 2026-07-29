@@ -173,6 +173,7 @@ final class ActionCatalog
         'graph_pan_down' => ['label' => 'Graph: Pan Down'],
         'graph_select_next' => ['label' => 'Graph: Select Next Node'],
         'graph_select_prev' => ['label' => 'Graph: Select Previous Node'],
+        'graph_render_mode' => ['label' => 'Graph: Toggle Bitmap/Cell Rendering'],
         // Tree
         'move_up' => ['label' => 'Tree: Select Previous'],
         'move_down' => ['label' => 'Tree: Select Next'],

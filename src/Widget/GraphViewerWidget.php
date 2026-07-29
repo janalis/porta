@@ -7,6 +7,7 @@ namespace Porta\Widget;
 use Porta\Container\AsIdeService;
 use Porta\Container\AsWidget;
 use Porta\Graph\GraphLayout;
+use Porta\Graph\GraphRenderMode;
 use Porta\Graph\LayoutEngine;
 use Porta\I18n\Translator;
 use Porta\Image\HalfBlockRasterizer;
@@ -26,6 +27,7 @@ use Porta\Widget\Render\MenuOverlayHost;
 use Porta\Widget\Render\MenuOverlayHostTrait;
 use Porta\Widget\Support\FillsPaneTrait;
 use Porta\Widget\Support\StylesDefault;
+use Symfony\Component\DependencyInjection\Attribute\Autowire;
 use Symfony\Component\Tui\Ansi\AnsiUtils;
 use Symfony\Component\Tui\Input\Key;
 use Symfony\Component\Tui\Render\RenderContext;
@@ -91,6 +93,8 @@ final class GraphViewerWidget extends AbstractWidget implements FocusableInterfa
     /** The dpi the current zoom wants, or null when it has not been decided yet. */
     private ?int $wantedDpi = null;
     private ?string $renderTimer = null;
+    /** Which rendering paints: the persisted default, flipped live by its key. */
+    private GraphRenderMode $mode;
     /** The laid-out extent in points, for the resolution cap. */
     private int $extentW = 1;
     private int $extentH = 1;
@@ -123,9 +127,13 @@ final class GraphViewerWidget extends AbstractWidget implements FocusableInterfa
         // so the widget-tree tests need not thread one through.
         ?ImageDecoder $decoder = null,
         ?Scheduler $scheduler = null,
+        // The `graphRender` setting; anything unrecognized reads as the picture.
+        #[Autowire('%env(default::PORTA_GRAPH_RENDER)%')]
+        ?string $renderMode = null,
         ?Styles $styles = null,
     ) {
         $this->initStyles($styles);
+        $this->mode = GraphRenderMode::fromId($renderMode);
         $this->decoder = $decoder ?? new ImageDecoder();
         $this->scheduler = $scheduler ?? new RevoltScheduler();
         $this->scaled = new ScaledSource();
@@ -319,6 +327,7 @@ final class GraphViewerWidget extends AbstractWidget implements FocusableInterfa
             $kb->matches($data, 'graph_pan_right') => $this->pan(2, 0, $data),
             $kb->matches($data, 'graph_pan_up') => $this->pan(0, -4, $data),
             $kb->matches($data, 'graph_pan_down') => $this->pan(0, 4, $data),
+            $kb->matches($data, 'graph_render_mode') => $this->toggleRenderMode(),
             $kb->matches($data, 'graph_select_next') => $this->cycleSelection(1),
             $kb->matches($data, 'graph_select_prev') => $this->cycleSelection(-1),
             $kb->matches($data, 'next_buffer') => $this->handler?->cycleBuffer(1),
@@ -342,6 +351,7 @@ final class GraphViewerWidget extends AbstractWidget implements FocusableInterfa
             'graph_pan_right' => [Key::RIGHT, 'shift+right'],
             'graph_pan_up' => [Key::UP, 'shift+up'],
             'graph_pan_down' => [Key::DOWN, 'shift+down'],
+            'graph_render_mode' => ['v'],
             'graph_select_next' => ['n'],
             'graph_select_prev' => ['p'],
             // Re-bound to the editor's defaults so tab management keeps working
@@ -405,8 +415,8 @@ final class GraphViewerWidget extends AbstractWidget implements FocusableInterfa
      */
     private function scheduleBitmap(): void
     {
-        if (null === $this->view || null === $this->dot) {
-            return;
+        if (GraphRenderMode::Cells === $this->mode || null === $this->view || null === $this->dot) {
+            return; // the cell rendering needs no process
         }
         $dpi = $this->dpiFor($this->view->effectiveScale($this->lastCols, 2 * $this->lastRows));
         if ($dpi === $this->wantedDpi) {
@@ -467,6 +477,19 @@ final class GraphViewerWidget extends AbstractWidget implements FocusableInterfa
         );
     }
 
+    /**
+     * Swap the picture for the readable cells and back. Switching TO the picture
+     * asks for one if this pane never had reason to render it (the persisted
+     * default was the cells), which is why it is not just an invalidate.
+     */
+    private function toggleRenderMode(): void
+    {
+        $this->mode = $this->mode->toggled();
+        $this->invalidate();
+        $this->scheduleBitmap();
+        $this->handler?->viewChanged();
+    }
+
     private function zoom(int $dir): void
     {
         $this->withView(fn (ZoomPanModel $v) => $dir > 0 ? $v->zoomIn($this->lastCols, 2 * $this->lastRows) : $v->zoomOut($this->lastCols, 2 * $this->lastRows));
@@ -525,7 +548,7 @@ final class GraphViewerWidget extends AbstractWidget implements FocusableInterfa
     {
         // A bitmap only exists after a layout was adopted, so the overlay always
         // has the geometry it needs to frame the selection.
-        if (null !== $this->bitmap && null !== $this->view && null !== $this->layout) {
+        if (GraphRenderMode::Bitmap === $this->mode && null !== $this->bitmap && null !== $this->view && null !== $this->layout) {
             $lines = HalfBlockRasterizer::render(
                 $this->scaled->forScale(
                     $this->bitmap,
