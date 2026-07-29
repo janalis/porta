@@ -5,9 +5,11 @@ Porta is extensible with small PHP plugins: a directory containing a
 hooks through a stable API. Plugins run in-process on the shared event loop
 and are trusted code, like composer scripts.
 
-Eight plugins ship **bundled with Porta** ([`plugins/`](../plugins/) in the
-package; bundled plugins are opt-in via `enabledPlugins`). Four of them are the
-documented reference patterns:
+Ten plugins ship **bundled with Porta** ([`plugins/`](../plugins/) in the
+package). Bundled plugins are governed by the `enabledPlugins` list; when your
+`.porta.json` has no such key, the two viewer plugins (`image-viewer`,
+`graph-viewer`) are enabled by default — an explicit list (even an empty one)
+replaces that default. Four of them are the documented reference patterns:
 
 | Plugin | What it shows |
 | --- | --- |
@@ -16,10 +18,13 @@ documented reference patterns:
 | `mago` | Both patterns at once: format-in-place + JSON-lint diagnostics, with separate "Format on save" / "Lint on save" settings (both on chains format→lint) |
 | `psalm` | The phpstan pattern for Psalm's JSON array output, with "Analyse on save" |
 
-The other four: `tempest` (the built-in-quality syntax highlighting engine the
-Settings ▸ Highlighting page offers), `chroma` (an external-highlighter
-example), and `phpantom` / `phpactor` (PHP language-server providers — the
-Welcome screen's one-keystroke LSP setup).
+The other six: `image-viewer` and `graph-viewer` (the inline viewers as
+routing-claim plugins — disable one and its files open as text instead),
+`tempest` (the built-in-quality syntax highlighting engine the Settings ▸
+Highlighting page offers), `chroma` (an external-highlighter example), and
+`phpantom` / `phpactor` (PHP language-server providers — the Welcome screen's
+one-keystroke LSP setup). Every bundled plugin surfaces its commands in the
+Plugins menu and its knobs on its own settings page.
 
 The on-save options are persisted bool settings (each plugin's Settings page),
 also flippable live via the palette's "Toggle … on Save" commands. Their menu

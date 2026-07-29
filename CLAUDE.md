@@ -497,12 +497,16 @@ path across regenerations (refit only when the extent changes), and KEEPS the la
 under a one-row stderr banner on a failed layout (the banner paints AFTER the focus frame — it
 hid behind the frame's top border once). Zoom/pan ride `Image/ZoomPanModel` with a finer ladder
 (1 pt → scale cols × scale half-rows; the px=half-row convention is the 2:1 cell aspect
-correction). `ide_architecture` (View menu) writes the scanner's (or the `architectureCommand`
-setting's stdout) DOT to `.porta/architecture.dot` — file-backed on purpose: tab reuse is the
-ordinary path-keyed lookup (realpath before the reuse lookup — buffers key canonical paths),
-the "Project Architecture" title rides `BufferService`'s artifact-path match (surviving session
-restore), and external regenerations re-render via the 1s reconciler with invalid documents
-keeping the previous rendering. Tests need NO graphviz: the committed `tests/Support/fake-dot*`
+correction). The commands are PLUGIN-owned: `graph-viewer:architecture` (Plugins menu) runs
+`Graph/ArchitectureArtifact` (plugin-constructible — rootDir only; the generator command is the
+plugin's `command` setting, `plugins.graph-viewer.command`) and writes `.porta/architecture.dot`
+— file-backed on purpose: tab reuse is the ordinary path-keyed lookup (realpath before the reuse
+lookup — buffers key canonical paths), the "Project Architecture" title rides `BufferService`'s
+artifact-path match (surviving session restore), explicit re-opens of a changed file refresh the
+payload immediately (`refreshStaleViewerPayload` — the reconciler covers background changes),
+and invalid documents keep the previous rendering. `graph-viewer:export-svg/png` read the
+active tab's file and reach the core `dotPath` setting through the seeded `PORTA_DOT_PATH` env
+(the documented plugin↔IDE-settings bridge). Tests need NO graphviz: the committed `tests/Support/fake-dot*`
 stubs (env-shebang'd — E2e uses a php-only PATH dir so git/LSP stay blocked while the stubs
 run; `fake-dot` fails on the 'broken' sentinel) + `FakeLayoutEngine` for widget tests; one
 real-binary smoke test sits behind `GraphvizBinary::skipWithoutDot`. The graph feature re-pinned
@@ -767,8 +771,12 @@ the home dir), and the plugins **bundled in the Porta package** at `<package>/pl
 (`PORTA_EMBEDDED_PLUGINS` overrides; earlier sources shadow later ones by directory name — and
 since the bundled source left `.porta/plugins`, a Porta dev checkout loads them as bundled/
 opt-in, not accidentally as project plugins). Project and global plugins are
-**opt-out** (loaded by default); **bundled ones are opt-in** — only names in `enabledPlugins`
-load, which is why the shipped `tempest` highlighter is off unless asked for. Names in
+**opt-out** (loaded by default); **bundled ones follow `enabledPlugins`** — when the key is
+ABSENT, `IdeConfig::DEFAULT_ENABLED_PLUGINS` (`image-viewer`, `graph-viewer`) applies, so the
+viewers work on a fresh install while `tempest` stays off unless asked for; an explicit list
+(even `[]`) replaces the default, and `PortaJsonWriter::persistBundled*` MATERIALIZES the
+default before editing (disabling the last defaulted name writes an explicit `[]` — an unset
+key would flip the default back on). Names in
 `disabledPlugins` are skipped at boot in every source. phpunit pins `PORTA_EMBEDDED_PLUGINS` to
 `/nonexistent` (bundled plugins opt in via putenv) and points `PORTA_HOME` at
 `tests/Support/fixtures/home`, which installs `tempest` globally so the suite renders coloured.
@@ -779,14 +787,21 @@ triggered by the `Keybindings` factory) runs each file's `activate(PluginApi)` *
 overrides them; ids are
 namespaced `plugin:command` and bypass the ActionCatalog keymap validation — plugin ids stay
 OUT of `ActionCatalog::ACTIONS`). Registration buffers in the per-plugin `PluginApi` and commits
-atomically after `activate()`. Exactly **four** of the eight extension points share the generic
-`Plugin/PluginBuffer` (language servers, installers, highlighters, token spans — the
-validate/append-a-`'plugin'`-stamped-row/bare-foreach-drain shape); the other four stay plain
+atomically after `activate()`. Exactly **five** of the nine extension points share the generic
+`Plugin/PluginBuffer` (language servers, installers, highlighters, token spans, and **viewers**
+— `registerViewer(id, claims)`, the routing claim behind the bundled image-viewer/graph-viewer
+plugins: `Editor/ViewerProviderSource` is the consumer-owned seam `BufferService::openFile`
+consults, first claiming plugin in load order wins, a throwing claim declines and reports once,
+and an id no built-in pane answers to falls through to the text path — which is also what
+DISABLING a viewer plugin means: `.dot` opens as editable text, images hit the not-UTF-8
+refusal, open tabs stay); the other four stay plain
 arrays **on purpose**, each saying why at its declaration (commands: paired `$ids` dedup index;
 menu items: drain-time `PluginMenuSpec` transform; hooks: four writers + positional tuples;
 settings: keyed map sinking into `PluginSettings`) — unifying them was measured as needing five
-variance axes for four conforming cases. The eight `register*` signatures are frozen public
-plugin API. Action methods (flash/editor access/openFile) resolve services
+variance axes for four conforming cases. The nine `register*` signatures are frozen public
+plugin API; `activeFile()` is BUFFER truth (the active tab's path, viewer tabs included — every
+consumer guards by extension). Every bundled plugin surfaces its commands as Plugins-menu items
+and its knobs as plugin settings (the viewers deliberately carry no menu — nothing to invoke). Action methods (flash/editor access/openFile) resolve services
 lazily via `Plugin/PluginRuntime` (wired late in the ctor) and throw during `activate()`. Every
 plugin handler and hook is wrapped in try/catch → status-bar flash, so a faulting plugin never
 kills the loop. Hooks (`fileOpened`/`fileSaved`/`bufferSwitched`/`themeChanged`) fan out from
