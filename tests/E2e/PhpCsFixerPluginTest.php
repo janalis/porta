@@ -95,19 +95,26 @@ final class PhpCsFixerPluginTest extends TestCase
                     $tui->handleInput("\x13"); // ctrl+s → save → the hook runs the fixer
                 },
                 300 => function ($tui, $terminal, $ide) use ($project): void {
-                    $this->await(static fn (): bool => substr_count((string) (is_file($project->path('a.php')) ? file_get_contents($project->path('a.php')) : false), needle: '// fixed') >= 1);
+                    $this->await(
+                        static fn (): bool => substr_count((string) (is_file($project->path('a.php')) ? file_get_contents($project->path('a.php')) : false), needle: '// fixed') >= 1,
+                        what: 'the on-save fixer to run',
+                    );
                     $this->assertSame(1, substr_count((string) file_get_contents($project->path('a.php')), needle: '// fixed'), 'save triggered one fix');
 
                     // Toggling off stops the hook.
                     $ide->resolve(CommandRegistry::class)->run('php-cs-fixer:toggle-on-save');
-                    $tui->tick();
-                    $this->assertStringContainsString('php-cs-fixer on save: off', AnsiUtils::stripAnsiCodes($terminal->getOutput()));
+                    $this->await(static fn (): bool => str_contains(AnsiUtils::stripAnsiCodes($terminal->getOutput()), 'php-cs-fixer on save: off'), what: 'the toggle-off flash');
                     $this->assertFalse((bool) (\Porta\Config\IdeConfig::load($project->dir)->plugins['php-cs-fixer']['autoFormat'] ?? true), 'the off state persisted');
-                    $ide->resolve(BufferService::class)
-                        ->pollFilesystem(); // absorb the on-disk change first
+                    // Await the RELOAD LANDING IN THE BUFFER, not just the poll
+                    // call: saving an un-reloaded buffer would write back the
+                    // unfixed text and zero the count below.
+                    $ide->resolve(BufferService::class)->pollFilesystem();
+                    $editor = $tui->getById('editor');
+                    $this->await(static fn (): bool => str_contains($editor->getDocument()->getText(), '// fixed'), what: 'the fixed file to reload into the buffer');
                     $tui->handleInput("\x13");
-                },
-                450 => function ($tui, $terminal, $ide) use ($project): void {
+                    // A negative ("no second fix ran") has nothing to await:
+                    // give the would-be fixer a real window, then assert.
+                    $this->pump(0.3);
                     $this->assertSame(1, substr_count((string) file_get_contents($project->path('a.php')), needle: '// fixed'), 'no fix while toggled off');
                 },
             ],
@@ -126,8 +133,7 @@ final class PhpCsFixerPluginTest extends TestCase
             [
                 100 => function ($tui, $terminal, $ide): void {
                     $tui->handleInput("\x1b\x06");
-                    $tui->tick();
-                    $this->assertStringContainsString('php-cs-fixer not found (vendor/bin or PATH)', \Porta\Tests\Support\Toasts::last($ide));
+                    $this->await(static fn (): bool => str_contains(\Porta\Tests\Support\Toasts::last($ide), 'php-cs-fixer not found (vendor/bin or PATH)'), what: 'the missing-binary toast');
                 },
             ],
         );
@@ -140,8 +146,7 @@ final class PhpCsFixerPluginTest extends TestCase
             [
                 100 => function ($tui, $terminal): void {
                     $tui->handleInput("\x1b\x06");
-                    $tui->tick();
-                    $this->assertStringContainsString('php-cs-fixer: open a PHP file first', AnsiUtils::stripAnsiCodes($terminal->getOutput()));
+                    $this->await(static fn (): bool => str_contains(AnsiUtils::stripAnsiCodes($terminal->getOutput()), 'php-cs-fixer: open a PHP file first'), what: 'the non-PHP guard flash');
                 },
             ],
         );

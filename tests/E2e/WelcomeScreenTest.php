@@ -67,8 +67,11 @@ final class WelcomeScreenTest extends TestCase
         $project = new TempProject(['a.php' => "<?php\nreturn 1;\n"]);
 
         $terminal = $this->runIde($project, $project->path('a.php'), [
-            120 => static function ($tui): void {
-                $tui->tick();
+            120 => function ($tui, $terminal): void {
+                // The modal lays out from the PREVIOUS frame's pane rects, so
+                // it needs two frames: force one, then await the hero.
+                $this->frame($tui);
+                $this->await(static fn (): bool => str_contains(AnsiUtils::stripAnsiCodes($terminal->getOutput()), 'Welcome to Porta'), what: 'the Welcome modal to paint');
             },
         ]);
 
@@ -89,18 +92,16 @@ final class WelcomeScreenTest extends TestCase
 
         $this->runIde($project, $project->path('a.php'), [
             120 => function ($tui, $terminal) use ($project): void {
+                $this->frame($tui); // the modal lays out from the first frame's rects
+                $this->await(static fn (): bool => str_contains(AnsiUtils::stripAnsiCodes($terminal->getOutput()), 'Welcome to Porta'), what: 'the Welcome modal to paint');
                 $tui->handleInput("\r"); // the selected step: enable highlighting
-                $tui->tick();
+                $this->await(static fn (): bool => str_contains(AnsiUtils::stripAnsiCodes($terminal->getOutput()), 'Plugin "tempest" enabled'), what: 'the enable flash');
 
                 $config = json_decode((string) file_get_contents($project->path('.porta.json')), associative: true);
                 $this->assertSame(
                     ['tempest'],
                     \is_array($config) ? $config['enabledPlugins'] ?? null : null,
                     'the choice persisted',
-                );
-                $this->assertStringContainsString(
-                    'Plugin "tempest" enabled',
-                    AnsiUtils::stripAnsiCodes($terminal->getOutput()),
                 );
             },
         ]);
@@ -112,9 +113,11 @@ final class WelcomeScreenTest extends TestCase
         $project = new TempProject(['a.php' => "<?php\nreturn 1;\n"]);
 
         $terminal = $this->runIde($project, $project->path('a.php'), [
-            120 => static function ($tui): void {
+            120 => function ($tui, $terminal): void {
+                $this->frame($tui); // the modal needs its second frame before Esc means anything
+                $this->await(static fn (): bool => str_contains(AnsiUtils::stripAnsiCodes($terminal->getOutput()), 'Welcome to Porta'), what: 'the Welcome modal to paint');
                 $tui->handleInput("\x1b");
-                $tui->tick();
+                $this->await(static fn (): bool => str_contains(AnsiUtils::stripAnsiCodes($terminal->getOutput()), 'return 1;'), what: 'the editor to reveal');
             },
         ]);
 
@@ -127,16 +130,19 @@ final class WelcomeScreenTest extends TestCase
         $project = new TempProject(['a.php' => "<?php\nreturn 1;\n"]);
 
         $this->runIde($project, $project->path('a.php'), [
-            80 => static function ($tui): void {
-                $tui->tick();
+            80 => function ($tui): void {
+                $this->frame($tui);
             },
         ]);
 
         $this->assertTrue(new OnboardingState($project->dir)->hasSeenWelcome(), 'the first boot recorded it');
 
         $second = $this->runIde($project, $project->path('a.php'), [
-            80 => static function ($tui): void {
-                $tui->tick();
+            80 => function ($tui): void {
+                // Two settled frames: if the modal WERE going to paint, this
+                // is when it would — the negative below is then meaningful.
+                $this->frame($tui);
+                $this->frame($tui);
             },
         ]);
 

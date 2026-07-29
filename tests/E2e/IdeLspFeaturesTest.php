@@ -879,45 +879,37 @@ final class IdeLspFeaturesTest extends TestCase
             $project,
             $project->path('src/Tall.php'),
             [
-                400 => static function ($tui): void {
+                400 => function ($tui, $terminal): void {
+                    // Every negative path is a mock-server round trip; await
+                    // each flash instead of racing fixed gaps and asserting
+                    // the accumulated output after the loop stopped.
+                    $screen = static fn (): string => AnsiUtils::stripAnsiCodes($terminal->getOutput());
                     $editor = $tui->getById('editor');
                     $editor->getDocument()->setCursor(91, 0); // mock convention: >= 90 -> nothing found
                     $tui->handleInput("\x1b[24~"); // definition -> none
-                },
-                500 => static function ($tui): void {
-                    $tui->tick(); // flush the previous flash
+                    $this->await(static fn (): bool => str_contains($screen(), 'No definition found'), what: 'the no-definition flash');
                     $tui->handleInput("\x1b[1;2P"); // hover -> none
-                },
-                600 => static function ($tui): void {
-                    $tui->tick();
+                    $this->await(static fn (): bool => str_contains($screen(), 'No documentation found'), what: 'the no-hover flash');
                     $tui->handleInput("\x1b[18;3~"); // usages -> none
-                },
-                650 => static function ($tui): void {
-                    $editor = $tui->getById('editor');
+                    $this->await(static fn (): bool => str_contains($screen(), 'No usages found'), what: 'the no-usages flash');
                     $editor->getDocument()->setCursor(96, 0); // >= 95 -> definition outside filesystem
                     $tui->handleInput("\x1b[24~");
-                },
-                850 => static function ($tui): void {
+                    $this->await(static fn (): bool => str_contains($screen(), 'Target outside the filesystem'), what: 'the outside-filesystem flash');
                     // Rename that the server rejects: prepareRename succeeds at a
                     // low line, then the rename call itself errors on "ERR".
-                    $tui->getById('editor')->getDocument()->setCursor(1, 0);
+                    $editor->getDocument()->setCursor(1, 0);
                     $tui->handleInput("\x1b[17;2~"); // shift+f6 -> prepareRename
-                },
-                1000 => static function ($tui): void {
+                    $this->await(static fn (): bool => $editor->isPromptOpen(), what: 'the rename prompt');
                     foreach (str_split('ERR') as $ch) {
                         $tui->handleInput($ch);
                     }
                     $tui->handleInput("\r");
+                    $this->await(static fn (): bool => str_contains($screen(), 'Rename failed: cannot rename this'), what: 'the rename-rejected flash');
                 },
             ],
         );
 
-        $screen = AnsiUtils::stripAnsiCodes($terminal->getOutput());
-        $this->assertStringContainsString('No definition found', $screen);
-        $this->assertStringContainsString('No documentation found', $screen);
-        $this->assertStringContainsString('No usages found', $screen);
-        $this->assertStringContainsString('Target outside the filesystem', $screen);
-        $this->assertStringContainsString('Rename failed: cannot rename this', $screen);
+        $this->addToAssertionCount(1); // the throwing awaits above are the assertions
     }
 
     public function testGotoDeclarationOnNativePhpFunctionOpensDocs(): void

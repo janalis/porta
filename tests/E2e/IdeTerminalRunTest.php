@@ -173,15 +173,15 @@ final class IdeTerminalRunTest extends TestCase
                         $tui->handleInput($ch);
                     }
                 },
-                1000 => function ($tui, $terminal): void {
-                    // The shell's exit ripples through PTY EOF + reap; await it
-                    // instead of racing a fixed delay under machine load. The
-                    // budget is doubled: this is the suite's longest subprocess
-                    // chain (spawn → echo → exit → EOF → reap → strip repaint)
-                    // and the default 10s has timed out under pcov + full-core
-                    // paratest load. A genuinely stuck exit still throws.
-                    $this->await(static fn (): bool => str_contains(AnsiUtils::stripAnsiCodes($terminal->getOutput()), Glyphs::SESSION_STOPPED), timeout: 20.0, what: 'the exited-session marker');
-                    $tui->tick();
+                1000 => function ($tui, $terminal, $ide): void {
+                    // The shell's exit ripples through PTY EOF + reap; await
+                    // the MODEL (the session's own running flag), then force a
+                    // frame and assert the paint — one indirection fewer than
+                    // awaiting the rendered glyph, and a genuinely stuck exit
+                    // still throws.
+                    $sessions = $ide->resolve(\Porta\Run\RunController::class)->sessions();
+                    $this->await(static fn (): bool => false === ($sessions->active()?->isRunning() ?? true), timeout: 20.0, what: 'the shell exit to be reaped');
+                    $this->frame($tui);
                     $out = AnsiUtils::stripAnsiCodes($terminal->getOutput());
                     $this->assertStringContainsString(Glyphs::SESSION_STOPPED, $out, 'the exited session shows the ○ stopped marker');
                     $this->assertStringContainsString('(0)', $out, 'and its exit code — without the redundant "exited" prose');

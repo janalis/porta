@@ -164,8 +164,7 @@ final class IdeDebugTest extends TestCase
                     $this->assertGreaterThan(0, $tui->getById('editor')->getDocument()->getCursorLine(), 'F7 reached next_conflict while no session runs');
 
                     $tui->handleInput("\x1b[20;2~"); // shift+f9 with no adapter configured
-                    $tui->tick();
-                    $this->assertStringContainsString('No debug adapter configured for php', AnsiUtils::stripAnsiCodes($terminal->getOutput()));
+                    $this->await(static fn (): bool => str_contains(AnsiUtils::stripAnsiCodes($terminal->getOutput()), 'No debug adapter configured for php'), what: 'the adapterless-launch flash');
                 },
             ],
         );
@@ -368,9 +367,12 @@ final class IdeDebugTest extends TestCase
                 },
                 600 => function ($tui, $terminal) use ($palette): void {
                     $tui->handleInput("\x1b[96;5u"); // ctrl+` → the adapter echo lives in the debug terminal session
-                    $tui->tick();
-                    // The defaults went out during configuration.
-                    $this->assertStringContainsString('xfilters: exception', AnsiUtils::stripAnsiCodes($terminal->getOutput()));
+                    // The defaults go out during the adapter handshake — a
+                    // whole php subprocess spawn; await, never a fixed gap.
+                    $this->await(static fn (): bool => str_contains(
+                        AnsiUtils::stripAnsiCodes($terminal->getOutput()),
+                        'xfilters: exception',
+                    ), what: 'the default exception filters to reach the adapter');
 
                     $palette($tui, label: 'Debug: Exception Breakpoints');
                     $this->await(static fn (): bool => $tui->getById('editor')->isOverlayOpen());
