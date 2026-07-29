@@ -258,7 +258,7 @@ final class GitInfoStatusTest extends TestCase
         $this->await(static function () use (&$amended): bool {
             return null !== $amended;
         });
-        $this->assertTrue($amended);
+        $this->assertTrue($amended, 'the amend succeeded (a false here is git itself failing — lock contention, not a race)');
         $subjects = explode("\n", $project->git('log', '--format=%s'));
         $this->assertSame(['second, reworded', 'init'], $subjects, 'amend rewrote the tip without adding a commit');
     }

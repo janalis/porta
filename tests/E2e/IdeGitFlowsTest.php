@@ -144,8 +144,7 @@ final class IdeGitFlowsTest extends TestCase
             [
                 400 => static fn ($tui) => $palette($tui, label: 'Git: Stage'),
                 650 => function ($tui, $terminal) use ($palette): void {
-                    $tui->tick();
-                    $this->assertStringContainsString('Staged src/A.php', AnsiUtils::stripAnsiCodes($terminal->getOutput()));
+                    $this->await(static fn (): bool => str_contains(AnsiUtils::stripAnsiCodes($terminal->getOutput()), 'Staged src/A.php'), what: 'the async stage to flash');
                     $palette($tui, label: 'Git: Commit'); // opens the message prompt
                 },
                 850 => static function ($tui): void {
@@ -161,24 +160,23 @@ final class IdeGitFlowsTest extends TestCase
                     $tui->handleInput("\r"); // commit
                 },
                 1450 => function ($tui, $terminal) use ($palette): void {
-                    $tui->tick();
-                    $this->assertStringContainsString('Committed: my commit', AnsiUtils::stripAnsiCodes($terminal->getOutput()));
+                    $this->await(static fn (): bool => str_contains(AnsiUtils::stripAnsiCodes($terminal->getOutput()), 'Committed: my commit'), what: 'the async commit to flash');
                     $tui->getById('editor')->getDocument()->setCursor(1, 0);
                     $palette($tui, label: 'Git: Blame');
                 },
                 1750 => function ($tui, $terminal) use ($palette): void {
-                    $tui->tick();
-                    $this->assertStringContainsString('tester', AnsiUtils::stripAnsiCodes($terminal->getOutput()), 'blame flashes the author');
+                    $this->await(static fn (): bool => str_contains(AnsiUtils::stripAnsiCodes($terminal->getOutput()), 'tester'), what: 'blame to flash the author');
                     $palette($tui, label: 'Git: Undo');
                 },
-                2100 => function ($tui, $terminal) use ($project): void {
-                    $tui->tick();
-                    $this->assertStringContainsString('Last commit undone', AnsiUtils::stripAnsiCodes($terminal->getOutput()));
-                    $subjects = explode("\n", $project->git('log', '--format=%s'));
-                    $this->assertSame(['init'], $subjects, 'the soft reset removed "my commit"');
+                2100 => function ($tui, $terminal, $ide) use ($project): void {
+                    $this->await(static fn (): bool => str_contains(AnsiUtils::stripAnsiCodes($terminal->getOutput()), 'Last commit undone'), what: 'the undo to flash');
+                    $this->awaitGit($ide);
+                    $this->await(static fn (): bool => ['init'] === explode("\n", $project->git('log', '--format=%s')), what: 'the soft reset to remove "my commit"');
                 },
             ],
         );
+
+        $this->addToAssertionCount(1); // the throwing awaits above are the assertions
     }
 
     public function testGitBlameBeyondFileFlashesNoBlame(): void
@@ -279,112 +277,104 @@ final class IdeGitFlowsTest extends TestCase
             $project,
             $project->path('src/A.php'),
             [
-                300 => static fn ($tui) => $palette($tui, label: 'Git: Branches'),
-                700 => function ($tui, $terminal): void {
-                    $tui->tick();
-                    $screen = AnsiUtils::stripAnsiCodes($terminal->getOutput());
-                    $this->assertStringContainsString('Branches', $screen, 'the picker overlay opened');
-                    $this->assertStringContainsString('+ Create new branch…', $screen);
-                    $this->assertStringContainsString('− Delete branch…', $screen);
-                    $this->assertStringContainsString('feature', $screen);
-                    $this->assertStringContainsString('remote-only', $screen);
-                    $this->assertStringContainsString('remote', $screen);
+                300 => function ($tui, $terminal, $ide) use ($project, $palette): void {
+                    $editor = $tui->getById('editor');
+                    $screen = static fn (): string => AnsiUtils::stripAnsiCodes($terminal->getOutput());
+
+                    // Round 1: switch to "feature". The picker's list is built
+                    // inside a git callback — gate every navigation on the
+                    // overlay actually being open, and prove each action by
+                    // its ON-DISK effect (a toast outlives the step that
+                    // flashed it, so it proves nothing about THIS action).
+                    $palette($tui, label: 'Git: Branches');
+                    $this->await(static fn (): bool => $editor->isOverlayOpen(), what: 'the branch picker to open');
+                    $this->frame($tui);
+                    $this->assertStringContainsString('+ Create new branch…', $screen());
+                    $this->assertStringContainsString('− Delete branch…', $screen());
+                    $this->assertStringContainsString('feature', $screen());
+                    $this->assertStringContainsString('remote-only', $screen());
                     // Rows: create + delete sentinels, then feature, then the
                     // current branch (ties sort by refname), then the remote
                     // row — two steps down picks "feature".
                     $tui->handleInput("\x1b[B");
                     $tui->handleInput("\x1b[B");
                     $tui->handleInput("\r");
-                },
-                1200 => function ($tui, $terminal, $ide) use ($project, $palette): void {
-                    $tui->tick();
-                    $this->assertStringContainsString('Switched to feature', AnsiUtils::stripAnsiCodes($terminal->getOutput()));
-                    $this->assertSame('feature', $project->git('rev-parse', '--abbrev-ref', 'HEAD'), 'the checkout really happened');
+                    $this->awaitGit($ide);
+                    $this->await(static fn (): bool => 'feature' === $project->git('rev-parse', '--abbrev-ref', 'HEAD'), what: 'the checkout to land on disk');
+                    $this->await(static fn (): bool => str_contains($screen(), 'Switched to feature'), what: 'the switch flash');
 
-                    // Round 2: create a branch through the sentinel row.
+                    // Round 2: the create sentinel with an empty name is a no-op.
                     $terminal->clearOutput();
                     $palette($tui, label: 'Git: Branches');
-                },
-                1600 => function ($tui) use ($project, $palette): void {
-                    $tui->tick();
+                    $this->await(static fn (): bool => $editor->isOverlayOpen(), what: 'the picker to reopen');
                     $tui->handleInput("\r"); // the "+ Create new branch…" row leads the list
+                    $this->await(static fn (): bool => $editor->isPromptOpen(), what: 'the branch-name prompt');
                     $tui->handleInput("\r"); // an empty name is a no-op
                     $branches = array_filter(explode("\n", $project->git('branch', '--list')));
                     $this->assertCount(2, $branches, 'no branch was created from the empty prompt');
+
+                    // Round 3: create "fresh" for real.
                     $palette($tui, label: 'Git: Branches');
-                },
-                2000 => static function ($tui): void {
-                    $tui->tick();
+                    $this->await(static fn (): bool => $editor->isOverlayOpen(), what: 'the picker for the create round');
                     $tui->handleInput("\r"); // create sentinel again
+                    $this->await(static fn (): bool => $editor->isPromptOpen(), what: 'the name prompt');
                     foreach (str_split('fresh') as $ch) {
                         $tui->handleInput($ch);
                     }
                     $tui->handleInput("\r");
-                },
-                2500 => function ($tui, $terminal) use ($project, $palette): void {
-                    $tui->tick();
-                    $this->assertStringContainsString('Created and switched to fresh', AnsiUtils::stripAnsiCodes($terminal->getOutput()));
-                    $this->assertSame('fresh', $project->git('rev-parse', '--abbrev-ref', 'HEAD'));
+                    $this->awaitGit($ide);
+                    $this->await(static fn (): bool => 'fresh' === $project->git('rev-parse', '--abbrev-ref', 'HEAD'), what: 'the created branch to be checked out');
+                    $this->await(static fn (): bool => str_contains($screen(), 'Created and switched to fresh'), what: 'the create flash');
 
-                    // Round 3: check out the remote branch as a tracking branch.
+                    // Round 4: check out the remote branch as a tracking branch.
                     $terminal->clearOutput();
                     $palette($tui, label: 'Git: Branches');
-                },
-                2900 => static function ($tui): void {
-                    $tui->tick();
+                    $this->await(static fn (): bool => $editor->isOverlayOpen(), what: 'the picker for the tracking round');
                     // Rows: 2 sentinels + 3 locals (feature/fresh/main-or-master,
                     // fresh current) + the remote row last — five steps down.
                     foreach (range(1, end: 5) as $_) {
                         $tui->handleInput("\x1b[B");
                     }
                     $tui->handleInput("\r");
-                },
-                3300 => function ($tui, $terminal, $ide) use ($project, $palette): void {
-                    $tui->tick();
+                    $this->awaitGit($ide);
+                    $this->await(static fn (): bool => 'origin/remote-only' === $project->git('rev-parse', '--abbrev-ref', 'remote-only@{upstream}'), what: 'the tracking branch to exist');
                     $this->assertStringContainsString('Switched to remote-only (tracking origin/remote-only)', \Porta\Tests\Support\Toasts::last($ide));
-                    $this->assertSame('origin/remote-only', $project->git('rev-parse', '--abbrev-ref', 'remote-only@{upstream}'), 'the checkout created a tracking branch');
 
-                    // Round 4: delete "feature" through the delete sentinel.
-                    $terminal->clearOutput();
+                    // Round 5: the delete picker, cancelled. The gates read
+                    // the CURRENT grid (screenGrid forces a full frame) — the
+                    // accumulated output still shows the branches picker's own
+                    // '− Delete branch…' sentinel, which would satisfy a
+                    // substring await before the delete picker ever opened.
+                    $grid = fn (): string => implode("\n", $this->screenGrid($tui, $terminal));
                     $palette($tui, label: 'Git: Branches');
-                },
-                3700 => static function ($tui): void {
-                    $tui->tick();
+                    $this->await(static fn (): bool => $editor->isOverlayOpen(), what: 'the picker for the delete round');
                     $tui->handleInput("\x1b[B"); // the "− Delete branch…" row
                     $tui->handleInput("\r");
-                },
-                4100 => function ($tui, $terminal) use ($project, $palette): void {
-                    $tui->tick();
-                    $this->assertStringContainsString('Delete branch', AnsiUtils::stripAnsiCodes($terminal->getOutput()), 'the delete picker opened');
+                    $this->await(static fn (): bool => str_contains($grid(), 'Delete branch') && !str_contains($grid(), '+ Create new branch…'), what: 'the delete picker');
                     $tui->handleInput("\r"); // "feature" leads (refname tie-break)
-                    $tui->tick();
+                    $this->await(static fn (): bool => str_contains($grid(), 'Cancel'), what: 'the confirm list');
                     $tui->handleInput("\x1b[B"); // down to "Cancel"
                     $tui->handleInput("\r");
                     $kept = array_filter(explode("\n", $project->git('branch', '--list', 'feature')));
                     $this->assertCount(1, $kept, 'cancelling the confirm deletes nothing');
 
-                    // Round 5: same flow, but confirm the delete this time.
+                    // Round 6: same flow, but confirm the delete this time.
                     $palette($tui, label: 'Git: Branches');
-                },
-                4500 => static function ($tui): void {
-                    $tui->tick();
+                    $this->await(static fn (): bool => str_contains($grid(), '+ Create new branch…'), what: 'the picker for the confirmed delete');
                     $tui->handleInput("\x1b[B"); // the "− Delete branch…" row
                     $tui->handleInput("\r");
-                },
-                4900 => static function ($tui): void {
-                    $tui->tick();
+                    $this->await(static fn (): bool => str_contains($grid(), 'Delete branch') && !str_contains($grid(), '+ Create new branch…'), what: 'the delete picker again');
                     $tui->handleInput("\r"); // "feature" again
-                    $tui->tick();
+                    $this->await(static fn (): bool => str_contains($grid(), 'Cancel'), what: 'the confirm list again');
                     $tui->handleInput("\r"); // the "Delete" confirm row leads
-                },
-                5300 => function ($tui, $terminal) use ($project): void {
-                    $tui->tick();
-                    $this->assertStringContainsString('Deleted branch feature', AnsiUtils::stripAnsiCodes($terminal->getOutput()));
-                    $gone = array_filter(explode("\n", $project->git('branch', '--list', 'feature')));
-                    $this->assertSame([], $gone, 'the branch really was deleted');
+                    $this->awaitGit($ide);
+                    $this->await(static fn (): bool => [] === array_filter(explode("\n", $project->git('branch', '--list', 'feature'))), what: 'the branch to be deleted on disk');
+                    $this->await(static fn (): bool => str_contains($grid(), 'Deleted branch feature'), what: 'the delete flash');
                 },
             ],
         );
+
+        $this->addToAssertionCount(1); // the throwing awaits above are the assertions
         $bare->path('.'); // hold the bare remote alive through the run
     }
 
@@ -438,18 +428,21 @@ final class IdeGitFlowsTest extends TestCase
             $project->path('src/A.php'),
             [
                 500 => function ($tui, $terminal): void {
-                    $tui->tick();
+                    // Branch + gutter marks resolve through two async git
+                    // round trips; await each, never a fixed gap.
+                    $status = $tui->getById('status');
+                    $this->await(static fn (): bool => null !== $status->branchColumnSpan(), what: 'the branch to resolve in the status bar');
+                    $this->frame($tui);
                     $screen = AnsiUtils::stripAnsiCodes($terminal->getOutput());
                     // Branch name in the status bar (default branch: main or master)
                     $this->assertMatchesRegularExpression('/\b(main|master)\b/', $screen);
                     $editor = $tui->getById('editor');
-                    $rendered = $editor->render(new \Symfony\Component\Tui\Render\RenderContext(80, 10));
-                    $joined = implode('', $rendered);
+                    $joined = static fn (): string => implode('', $editor->render(new \Symfony\Component\Tui\Render\RenderContext(80, 10)));
                     // Modified (blue ┆) on line 2, added (green ▎) on line 4
-                    $this->assertStringContainsString("\x1b[38;5;75m┆", $joined, 'modified mark present');
-                    $this->assertStringContainsString("\x1b[38;5;114m▎", $joined, 'added mark present');
+                    $this->await(static fn (): bool => str_contains($joined(), "\x1b[38;5;75m┆"), what: 'the modified gutter mark to land');
+                    $this->assertStringContainsString("\x1b[38;5;114m▎", $joined(), 'added mark present');
                     // Exact width contract still holds with the git strip
-                    foreach ($rendered as $line) {
+                    foreach ($editor->render(new \Symfony\Component\Tui\Render\RenderContext(80, 10)) as $line) {
                         $this->assertSame(80, AnsiUtils::visibleWidth($line));
                     }
                 },
@@ -479,15 +472,17 @@ final class IdeGitFlowsTest extends TestCase
                     $tui->handleInput("\x1b\x04"); // ctrl+alt+d opens the git view
                 },
                 550 => function ($tui, $terminal, $ide) use ($project): void {
-                    $screen = AnsiUtils::stripAnsiCodes($terminal->getOutput());
-                    $this->assertStringContainsString('2 changed files', $screen);
-                    $this->assertStringContainsString('[ ] M src/A.php', $screen);
-                    $this->assertStringContainsString('+$a = 2;', $screen, 'the diff pane shows the worktree change');
+                    // The view fills through status -> chained diff; await the
+                    // rendered tail, never a fixed gap.
+                    $screen = static fn (): string => AnsiUtils::stripAnsiCodes($terminal->getOutput());
+                    $this->await(static fn (): bool => str_contains($screen(), '+$a = 2;'), what: 'the diff pane to show the worktree change');
+                    $this->assertStringContainsString('2 changed files', $screen());
+                    $this->assertStringContainsString('[ ] M src/A.php', $screen());
                     $tui->handleInput(' '); // stage src/A.php
-                },
-                850 => function ($tui, $terminal) use ($project): void {
-                    $lines = explode("\n", $project->git('status', '--porcelain'));
-                    $this->assertContains('M  src/A.php', $lines, 'space staged the file');
+                    // Await the app's git barrier, then the on-disk effect —
+                    // a blocking porcelain poll would race the async add.
+                    $this->awaitGit($ide);
+                    $this->await(static fn (): bool => \in_array('M  src/A.php', explode("\n", $project->git('status', '--porcelain')), strict: true), what: 'space to stage the file');
                     // Tab twice: changes -> diff -> commit box; type + ctrl+enter.
                     $tui->handleInput("\t");
                     $tui->handleInput("\t");
@@ -495,31 +490,30 @@ final class IdeGitFlowsTest extends TestCase
                         $tui->handleInput($ch);
                     }
                     $tui->handleInput("\x1b[13;5u");
-                },
-                1250 => function ($tui, $terminal) use ($project): void {
-                    $subjects = explode("\n", $project->git('log', '--format=%s'));
-                    $this->assertSame(['Update A', 'init'], $subjects, 'ctrl+enter committed the staged change');
+                    $this->awaitGit($ide);
+                    $this->await(static fn (): bool => ['Update A', 'init'] === explode("\n", $project->git('log', '--format=%s')), what: 'ctrl+enter to commit the staged change');
                     // Discard the untracked notes.md: Tab walks summary -> description
                     // -> next pane (the changes list), then arm + confirm.
                     $tui->handleInput("\t");
                     $tui->handleInput("\t");
                     $tui->handleInput('d');
                     $tui->handleInput('y');
-                },
-                1550 => function ($tui, $terminal, $ide) use ($project): void {
-                    $this->assertFileDoesNotExist($project->path('notes.md'), 'discard deleted the untracked file');
+                    $this->awaitGit($ide);
+                    $this->await(static fn (): bool => !is_file($project->path('notes.md')), what: 'discard to delete the untracked file');
+                    // Await the view's own refresh BEFORE Esc leaves it — the
+                    // clean-tree placeholder only paints while it is open.
+                    $this->await(static fn (): bool => str_contains($screen(), 'Committed:'), what: 'the commit flash');
+                    $this->await(static fn (): bool => str_contains($screen(), 'Working tree clean'), what: 'the clean-tree summary after commit+discard');
                     $tui->handleInput("\x1b"); // esc restores the editor view
                 },
-                1700 => function ($tui): void {
+                700 => function ($tui): void {
                     $this->assertSame('editor', $tui->getFocus()?->getId());
                     $this->assertNotNull($tui->getById('tree'), 'tree pane restored');
                 },
             ],
         );
 
-        $screen = AnsiUtils::stripAnsiCodes($terminal->getOutput());
-        $this->assertStringContainsString('Committed:', $screen);
-        $this->assertStringContainsString('Working tree clean', $screen, 'after commit+discard nothing is left');
+        $this->addToAssertionCount(1); // the throwing awaits above are the assertions
     }
 
     public function testGitChangesRowContextMenuStagesAndArmsDiscard(): void
@@ -601,26 +595,33 @@ final class IdeGitFlowsTest extends TestCase
                 300 => static function ($tui): void {
                     $tui->handleInput("\x1b\x04"); // open the git view
                 },
-                600 => static function ($tui): void {
-                    $tui->tick();
+                600 => function ($tui, $terminal, $ide) use ($project): void {
+                    // The diff pane fills through status -> chained diff; the
+                    // arrows must not walk rows that aren't there yet.
+                    $screen = static fn (): string => AnsiUtils::stripAnsiCodes($terminal->getOutput());
+                    $this->await(static fn (): bool => str_contains($screen(), '+alpha CHANGED'), what: 'the diff rows to load');
                     $tui->handleInput("\t"); // changes list -> diff pane
                     // Rows: hunk header, ctx?, -alpha, +alpha CHANGED, ... walk to
                     // the first '+' row and stage just it.
                     $tui->handleInput("\x1b[B");
                     $tui->handleInput("\x1b[B");
                     $tui->handleInput(' ');
-                },
-                1000 => function ($tui, $terminal) use ($project): void {
+                    // The staging is an async git apply --cached: barrier, then
+                    // prove the index state on disk.
+                    $this->awaitGit($ide);
+                    $this->await(static fn (): bool => str_contains($project->git('diff', '--cached'), 'alpha'), what: 'the alpha change to reach the index');
                     $joinedCached = $project->git('diff', '--cached');
-                    $this->assertStringContainsString('alpha', $joinedCached, 'the alpha change reached the index');
                     $this->assertStringNotContainsString('gamma CHANGED', $joinedCached, 'gamma stayed out of the index');
                     $this->assertStringContainsString('gamma CHANGED', $project->git('diff'), 'gamma remains a worktree change');
+                    // The post-apply refresh repaints the mixed checkbox; await
+                    // it here instead of scraping after the loop stopped.
+                    $this->await(static fn (): bool => str_contains($screen(), '[~] M f.txt'), what: 'partial staging to show the mixed checkbox');
                     $tui->handleInput("\x1b");
                 },
             ],
         );
 
-        $this->assertStringContainsString('[~] M f.txt', AnsiUtils::stripAnsiCodes($terminal->getOutput()), 'partial staging shows the mixed checkbox');
+        $this->addToAssertionCount(1); // the throwing awaits above are the assertions
     }
 
     public function testGitViewMouseAndMenuGuard(): void

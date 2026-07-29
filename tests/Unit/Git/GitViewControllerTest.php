@@ -358,7 +358,11 @@ final class GitViewControllerTest extends TestCase
             $this->commitBox->handleInput($ch);
         }
         $this->commitBox->handleInput("\x1b[13;5u");
-        $this->await(fn (): bool => 1 === $this->committed);
+        // Terminal-state await: a real git failure (lock contention, fs
+        // hiccup) fails fast with git's own message instead of a bare
+        // 10s timeout on a success-only signal.
+        $this->await(fn (): bool => 1 === $this->committed || str_contains($this->statusRow($this->statusBar), 'Commit failed'), what: 'the amend to land or fail');
+        $this->assertSame(1, $this->committed, 'the amend committed: '.$this->statusRow($this->statusBar));
         $subjects = explode("\n", $this->project->git('log', '--format=%s'));
         $this->assertSame(['init reworded'], $subjects);
         $this->assertFalse($this->commitBox->isAmend(), 'the box clears (and disarms) after committing');
