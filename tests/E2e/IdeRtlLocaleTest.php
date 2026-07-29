@@ -8,11 +8,11 @@ use PHPUnit\Framework\TestCase;
 use Porta\Config\CommandRegistry;
 use Porta\Tests\Support\ClearsPortaLsp;
 use Porta\Tests\Support\PreservesPath;
+use Porta\Tests\Support\Probe;
 use Porta\Tests\Support\RunsIde;
 use Porta\Tests\Support\Services;
 use Porta\Tests\Support\TempProject;
 use Symfony\Component\Tui\Ansi\AnsiUtils;
-use Symfony\Component\Tui\Tui;
 
 /**
  * RTL locale mirroring: layout, per-pane row reordering, and
@@ -132,8 +132,8 @@ final class IdeRtlLocaleTest extends TestCase
 
         $assertWidths = function ($tui, $ide): void {
             $tui->tick();
-            $renderer = new \ReflectionProperty(\Symfony\Component\Tui\Tui::class, 'renderer')->getValue($tui);
-            $root = new \ReflectionProperty(\Symfony\Component\Tui\Tui::class, 'root')->getValue($tui);
+            $renderer = Probe::get($tui, 'renderer');
+            $root = Probe::get($tui, 'root');
             $segmenter = Services::resolve($ide, \Porta\Ui\PaneSegmenter::class);
             $reorder = Services::resolve($ide, \Porta\I18n\PaneReorder::class);
             $terminal = $tui->getTerminal();
@@ -178,7 +178,7 @@ final class IdeRtlLocaleTest extends TestCase
             [
                 300 => function ($tui): void {
                     $tui->tick();
-                    $renderer = new \ReflectionProperty(\Symfony\Component\Tui\Tui::class, 'renderer')->getValue($tui);
+                    $renderer = Probe::get($tui, 'renderer');
                     $rect = $renderer->getWidgetRect($tui->getById('tree'));
                     $this->assertNotNull($rect);
                     $this->assertGreaterThan(0, $rect->col, 'RTL puts the file tree on the right');

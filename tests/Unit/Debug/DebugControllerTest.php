@@ -23,6 +23,7 @@ use Porta\Terminal\TerminalSessions;
 use Porta\Tests\Support\EditorState;
 use Porta\Tests\Support\FakeDapClient;
 use Porta\Tests\Support\Presence;
+use Porta\Tests\Support\Probe;
 use Porta\Tests\Support\TestBottomDock;
 use Porta\Widget\CodeEditorWidget;
 use Porta\Widget\DebugPanelWidget;
@@ -564,7 +565,7 @@ final class DebugControllerTest extends TestCase
         $controller = $this->controller();
         $this->pauseAtBreakpoint($controller);
         // The buffers were all closed while paused: the editor has no path.
-        new \ReflectionProperty($this->editor, 'filePath')->setValue($this->editor, null);
+        Probe::set($this->editor, 'filePath', null);
 
         $controller->runToCursor();
         $this->assertStringContainsString('Nothing to debug', $this->flashed());

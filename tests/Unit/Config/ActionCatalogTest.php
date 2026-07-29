@@ -6,6 +6,7 @@ namespace Porta\Tests\Unit\Config;
 
 use PHPUnit\Framework\TestCase;
 use Porta\Config\ActionCatalog;
+use Porta\Tests\Support\Probe;
 use Porta\Widget\CodeEditorWidget;
 use Porta\Widget\ContextMenu;
 use Porta\Widget\FileTreeWidget;
@@ -48,9 +49,8 @@ final class ActionCatalogTest extends TestCase
     {
         $widgetBound = [];
         foreach (self::WIDGETS as $widget) {
-            $method = new \ReflectionMethod($widget, 'getDefaultKeybindings');
             /** @var array<string, string[]> $bindings */
-            $bindings = $method->invoke(null);
+            $bindings = Probe::invokeStatic($widget, 'getDefaultKeybindings');
             foreach (array_keys($bindings) as $id) {
                 $widgetBound[$id] = true;
             }

@@ -7,6 +7,7 @@ namespace Porta\Tests\Unit\Input;
 use PHPUnit\Framework\TestCase;
 use Porta\Config\ActionCatalog;
 use Porta\Input\EditorActionRouter;
+use Porta\Tests\Support\Probe;
 use Porta\Widget\EditorCallbacks;
 
 /**
@@ -28,7 +29,7 @@ final class EditorActionRouterTest extends TestCase
 
         $maps = [];
         foreach (['simpleHandlers', 'positionalHandlers'] as $method) {
-            $maps[$method] = new \ReflectionMethod($router, $method)->invoke($router);
+            $maps[$method] = Probe::invoke($router, $method);
         }
 
         $overlap = array_intersect(array_keys($maps['simpleHandlers']), array_keys($maps['positionalHandlers']));

@@ -179,7 +179,7 @@ final class OverlayHostTest extends TestCase
         $host = $this->host();
         $host->openList('Title', [['label' => 'a', 'hint' => '', 'value' => 'A']], static fn () => null);
         $lines = $this->canvas($host, 80, 20);
-        $box = new \ReflectionProperty($host, 'overlayBox')->getValue($host);
+        $box = Probe::get($host, 'overlayBox');
         \assert($box instanceof \Porta\Overlay\Region\ModalBox);
         $normalBar = $lines[$box->startRow];
 
@@ -200,7 +200,7 @@ final class OverlayHostTest extends TestCase
 
         $host->openPrompt('Go to line', '', static fn () => null);
         $host->layout([0, 0, 8, 40]);
-        $box = new \ReflectionProperty($host, 'promptBox')->getValue($host);
+        $box = Probe::get($host, 'promptBox');
         \assert($box instanceof \Porta\Overlay\Region\ModalBox);
 
         $this->assertTrue($host->promptHoverAt($box->startRow, $box->col + $box->width - 2), 'onto the ×');
@@ -213,7 +213,7 @@ final class OverlayHostTest extends TestCase
         $host = $this->host();
         $host->openList('Title', [['label' => 'a', 'hint' => '', 'value' => 'A']], static fn () => null);
         $host->layout([0, 0, 20, 80]);
-        $box = new \ReflectionProperty($host, 'overlayBox')->getValue($host);
+        $box = Probe::get($host, 'overlayBox');
         \assert($box instanceof \Porta\Overlay\Region\ModalBox);
 
         $this->assertTrue($host->clickAt($box->startRow, $box->col + $box->width - 2), 'the title bar ×');
@@ -228,7 +228,7 @@ final class OverlayHostTest extends TestCase
             $closed = true;
         });
         $host->layout([0, 0, 20, 80]);
-        $box = new \ReflectionProperty($host, 'searchBox')->getValue($host);
+        $box = Probe::get($host, 'searchBox');
         \assert($box instanceof \Porta\Overlay\Region\ModalBox);
 
         $this->assertTrue($host->searchClickAt($box->startRow, $box->col + $box->width - 2), 'the title bar ×');

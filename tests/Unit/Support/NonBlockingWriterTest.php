@@ -6,6 +6,7 @@ namespace Porta\Tests\Unit\Support;
 
 use PHPUnit\Framework\TestCase;
 use Porta\Support\NonBlockingWriter;
+use Porta\Tests\Support\Probe;
 use Porta\Tests\Support\PumpsLoop;
 use Revolt\EventLoop;
 
@@ -210,7 +211,7 @@ final class NonBlockingWriterTest extends TestCase
         [$write, $read] = $this->pair();
         $writer = $this->writer($write);
 
-        new \ReflectionMethod($writer, 'flush')->invoke($writer);
+        Probe::invoke($writer, 'flush');
 
         $this->assertSame(0, $writer->pendingBytes());
         $this->assertSame([], $this->errors);

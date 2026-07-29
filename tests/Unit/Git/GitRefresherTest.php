@@ -15,6 +15,7 @@ use Porta\Git\GitSettings;
 use Porta\Image\ImageData;
 use Porta\Tests\Support\GitBinary;
 use Porta\Tests\Support\Presence;
+use Porta\Tests\Support\Probe;
 use Porta\Tests\Support\PumpsLoop;
 use Porta\Tests\Support\TempProject;
 use Porta\Widget\CodeEditorWidget;
@@ -79,8 +80,7 @@ final class GitRefresherTest extends TestCase
             return [] !== $buffer->gitMarks;
         }, what: 'the async diff resolved');
 
-        $editorMarks = new \ReflectionProperty($this->editor, 'decorations')
-            ->getValue($this->editor)
+        $editorMarks = Probe::get($this->editor, 'decorations')
             ->gitMarks();
         $this->assertSame($buffer->gitMarks, $editorMarks, 'the active buffer pushed its marks into the editor gutter');
     }

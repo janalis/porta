@@ -7,6 +7,7 @@ namespace Porta\Tests\Integration;
 use PHPUnit\Framework\TestCase;
 use Porta\Lsp\LspClient;
 use Porta\Support\Outcome;
+use Porta\Tests\Support\Probe;
 use Porta\Tests\Support\PumpsLoop;
 use Revolt\EventLoop;
 
@@ -50,8 +51,8 @@ final class LspClientTest extends TestCase
 
         // Close stderr behind the client's back: stop() must skip the dead
         // resource in its pipe-closing loop and still close the rest cleanly.
-        $transport = new \ReflectionProperty($client, 'transport')->getValue($client);
-        $stderr = new \ReflectionProperty($transport, 'stderr')->getValue($transport);
+        $transport = Probe::get($client, 'transport');
+        $stderr = Probe::get($transport, 'stderr');
         if (\is_resource($stderr)) {
             fclose($stderr);
         }
@@ -281,17 +282,16 @@ final class LspClientTest extends TestCase
             return $ready;
         });
 
-        $transport = new \ReflectionProperty($client, 'transport')->getValue($client);
-        $drain = new \ReflectionMethod($transport, 'drainStdout');
+        $transport = Probe::get($client, 'transport');
         $onMessage = static function (): void {};
 
         // Live pipe with no pending data: empty read, not EOF
-        $drain->invoke($transport, $onMessage, null);
+        Probe::invoke($transport, 'drainStdout', $onMessage, null);
         $this->assertTrue($client->isRunning());
 
         // After stop() the pipe is closed: the guard returns immediately
         $client->stop();
-        $drain->invoke($transport, $onMessage, null);
+        Probe::invoke($transport, 'drainStdout', $onMessage, null);
         $this->assertFalse($client->isRunning());
     }
 

@@ -10,6 +10,7 @@ use Porta\Config\KeyDispatch;
 use Porta\Config\PaletteVisibility;
 use Porta\I18n\Translator;
 use Porta\Plugin\PluginMenuSpec;
+use Porta\Tests\Support\Probe;
 use Porta\Widget\CodeEditorWidget;
 use Porta\Workbench\Menu\Menu;
 use Porta\Workbench\Menu\MenuItem;
@@ -354,7 +355,7 @@ final class MenuModelTest extends TestCase
     public function testViewSafeCoversEveryWorkspaceViewCaseBothWays(): void
     {
         /** @var array<string, list<string>> $map */
-        $map = new \ReflectionClassConstant(MenuModel::class, 'VIEW_SAFE')->getValue();
+        $map = Probe::getStatic(MenuModel::class, 'VIEW_SAFE');
 
         foreach (\Porta\Workbench\WorkspaceView::cases() as $case) {
             $this->assertArrayHasKey($case->name, $map, $case->name.' has a VIEW_SAFE entry (a missing one disables every menu item silently)');

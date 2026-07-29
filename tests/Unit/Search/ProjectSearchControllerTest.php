@@ -145,11 +145,9 @@ final class ProjectSearchControllerTest extends TestCase
     {
         $project = new TempProject(['src/A.php' => "<?php\n"]);
         $controller = $this->controller($project->dir);
-        $replace = new \ReflectionMethod($controller, 'replaceLines');
-
         // Index 5 is past the two lines of "a\nb": it is skipped and the content
         // is returned byte-for-byte unchanged.
-        $this->assertSame("a\nb", $replace->invoke($controller, "a\nb", [5], 'x'));
+        $this->assertSame("a\nb", Probe::invoke($controller, 'replaceLines', "a\nb", [5], 'x'));
     }
 
     public function testReplaceInFolderPreselectsTheFolderScope(): void

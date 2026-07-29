@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Porta\Tests\E2e;
 
 use PHPUnit\Framework\TestCase;
+use Porta\Tests\Support\Probe;
 use Porta\Tests\Support\RunsIde;
 use Porta\Tests\Support\Services;
 use Porta\Tests\Support\TempProject;
@@ -46,7 +47,7 @@ final class IdeToastsTest extends TestCase
                     // top border's width − 2 (ModalBox::closeHit).
                     $notifier = Services::resolve($ide, Notifier::class);
                     $center = \Porta\Tests\Support\Probe::get($notifier, 'toasts');
-                    $boxes = new \ReflectionProperty($center, 'boxes')->getValue($center);
+                    $boxes = Probe::get($center, 'boxes');
                     $this->assertNotSame([], $boxes, 'the presenter recorded the card box');
                     $box = $boxes[0]['box'];
 

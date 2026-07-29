@@ -8,6 +8,7 @@ use PHPUnit\Framework\TestCase;
 use Porta\Tests\Support\ClearsPortaLsp;
 use Porta\Tests\Support\EditorState;
 use Porta\Tests\Support\PreservesPath;
+use Porta\Tests\Support\Probe;
 use Porta\Tests\Support\RunsIde;
 use Porta\Tests\Support\Services;
 use Porta\Tests\Support\TempProject;
@@ -419,8 +420,8 @@ final class IdeMousePrimitivesTest extends TestCase
                 540 => function ($tui, $terminal, $ide): void {
                     $editor = $tui->getById('editor');
                     $this->assertTrue(EditorState::pickerOpen($editor));
-                    $host = new \ReflectionProperty($editor, 'overlayHost')->getValue($editor);
-                    $box = new \ReflectionProperty($host, 'overlayBox')->getValue($host);
+                    $host = Probe::get($editor, 'overlayHost');
+                    $box = Probe::get($host, 'overlayBox');
                     // Hover then click item index 1 ("Discard & Close"): the
                     // box is SCREEN-space now (the picker floats over the
                     // workspace); the frame's title bar is row startRow, a
@@ -466,8 +467,8 @@ final class IdeMousePrimitivesTest extends TestCase
                     // Hover then click the suggestion itself (through the
                     // router's editor-relative completion branch): the box is
                     // the INNER item box, one row below the frame's top border.
-                    $completion = new \ReflectionProperty($editor, 'completion')->getValue($editor);
-                    $box = new \ReflectionProperty($completion, 'box')->getValue($completion);
+                    $completion = Probe::get($editor, 'completion');
+                    $box = Probe::get($completion, 'box');
                     \assert($box instanceof \Porta\Editor\CompletionBox);
                     $x = $rect->col + $box->col + 2;
                     $y = $rect->row + $box->startRow;

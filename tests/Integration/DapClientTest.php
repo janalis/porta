@@ -6,6 +6,7 @@ namespace Porta\Tests\Integration;
 
 use PHPUnit\Framework\TestCase;
 use Porta\Debug\DapClient;
+use Porta\Tests\Support\Probe;
 use Porta\Tests\Support\PumpsLoop;
 use Revolt\EventLoop;
 
@@ -184,8 +185,8 @@ final class DapClientTest extends TestCase
 
         // Close stderr behind the client's back: stop() must skip the now-dead
         // resource in its pipe-closing loop and still close the others cleanly.
-        $transport = new \ReflectionProperty($client, 'transport')->getValue($client);
-        $stderr = new \ReflectionProperty($transport, 'stderr')->getValue($transport);
+        $transport = Probe::get($client, 'transport');
+        $stderr = Probe::get($transport, 'stderr');
         if (\is_resource($stderr)) {
             fclose($stderr);
         }
@@ -221,9 +222,8 @@ final class DapClientTest extends TestCase
         $client->request('initialize'); // closed stdin → silent no-op
 
         // The internal reader guard: a drain after stop must not error.
-        $transport = new \ReflectionProperty($client, 'transport')->getValue($client);
-        $drain = new \ReflectionMethod($transport, 'drainStdout');
-        $drain->invoke($transport, static function (): void {}, null);
+        $transport = Probe::get($client, 'transport');
+        Probe::invoke($transport, 'drainStdout', static function (): void {}, null);
         $this->assertFalse($client->isRunning());
     }
 }

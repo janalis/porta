@@ -10,6 +10,7 @@ use Porta\Tests\Support\ClearsPortaLsp;
 use Porta\Tests\Support\FindModalReads;
 use Porta\Tests\Support\GitBinary;
 use Porta\Tests\Support\PreservesPath;
+use Porta\Tests\Support\Probe;
 use Porta\Tests\Support\RunsIde;
 use Porta\Tests\Support\ScreenReads;
 use Porta\Tests\Support\Services;
@@ -163,15 +164,14 @@ final class IdeContextMenusTest extends TestCase
                     $region = $overlay->contextMenuDropdown();
                     $this->assertNotNull($region, 'the menu overlay was placed');
 
-                    $selected = new \ReflectionProperty($menu, 'selected');
-                    $before = $selected->getValue($menu);
+                    $before = Probe::get($menu, 'selected');
 
                     // Hover up from the bottom row until the highlight lands on a
                     // selectable item other than the initially-selected first one.
                     $moved = false;
                     for ($row = $region->count - 1; $row >= 0 && !$moved; --$row) {
                         $tui->handleInput(\sprintf("\x1b[<35;%d;%dM", $region->col + 3, $region->top + $row + 1));
-                        $moved = $selected->getValue($menu) !== $before;
+                        $moved = Probe::get($menu, 'selected') !== $before;
                     }
                     $this->assertTrue($moved, 'hovering a menu item moves the highlight to it');
                 },

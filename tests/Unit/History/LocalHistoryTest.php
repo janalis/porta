@@ -6,6 +6,7 @@ namespace Porta\Tests\Unit\History;
 
 use PHPUnit\Framework\TestCase;
 use Porta\History\LocalHistory;
+use Porta\Tests\Support\Probe;
 use Porta\Tests\Support\TempProject;
 use Symfony\Component\Clock\MockClock;
 
@@ -101,8 +102,7 @@ final class LocalHistoryTest extends TestCase
         // First snapshot creates the per-file directory; make it read-only so
         // the next write fails.
         $history->snapshot($path, 'first');
-        $reflection = new \ReflectionMethod($history, 'dirFor');
-        $dir = $reflection->invoke($history, $path);
+        $dir = Probe::invoke($history, 'dirFor', $path);
         chmod($dir, permissions: 0o555);
 
         $this->assertSame(-1, $history->snapshot($path, 'second'));

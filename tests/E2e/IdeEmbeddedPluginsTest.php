@@ -9,6 +9,7 @@ use Porta\Config\CommandRegistry;
 use Porta\Tests\Support\ClearsPortaLsp;
 use Porta\Tests\Support\NavigatesSettings;
 use Porta\Tests\Support\PreservesPath;
+use Porta\Tests\Support\Probe;
 use Porta\Tests\Support\RunsIde;
 use Porta\Tests\Support\Services;
 use Porta\Tests\Support\TempProject;
@@ -96,7 +97,7 @@ final class IdeEmbeddedPluginsTest extends TestCase
     /** @return list<\Porta\Workbench\Menu\Menu> */
     private function menus($tui): array
     {
-        return new \ReflectionProperty($tui->getById('menu'), 'menus')->getValue($tui->getById('menu'));
+        return Probe::get($tui->getById('menu'), 'menus');
     }
 
     public function testEmbeddedPluginLoadsWithAMenuBetweenCodeAndRunAndIsNotRemovable(): void

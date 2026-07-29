@@ -10,6 +10,7 @@ use Porta\Console\Workspace;
 use Porta\Container\Ansi;
 use Porta\Container\LspMode;
 use Porta\Tests\Support\Presence;
+use Porta\Tests\Support\Probe;
 use Porta\Tests\Support\TempProject;
 use Symfony\Component\Console\Command\Command;
 use Symfony\Component\Console\Tester\CommandTester;
@@ -112,8 +113,8 @@ final class PortaCommandTest extends TestCase
         // Construct with the real defaults, then call only the interactivity
         // check — never execute(), so the real IDE launcher is not invoked.
         $command = new PortaCommand();
-        $isInteractive = new \ReflectionProperty($command, 'isInteractive')->getValue($command);
+        $isInteractive = Probe::get($command, 'isInteractive');
         $this->assertIsBool($isInteractive());
-        $this->assertIsCallable(new \ReflectionProperty($command, 'launch')->getValue($command));
+        $this->assertIsCallable(Probe::get($command, 'launch'));
     }
 }

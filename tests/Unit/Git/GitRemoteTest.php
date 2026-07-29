@@ -8,6 +8,7 @@ use PHPUnit\Framework\TestCase;
 use Porta\Git\GitRemote;
 use Porta\Support\Outcome;
 use Porta\Tests\Support\GitBinary;
+use Porta\Tests\Support\Probe;
 use Porta\Tests\Support\PumpsLoop;
 use Porta\Tests\Support\TempProject;
 use Revolt\EventLoop;
@@ -186,7 +187,7 @@ final class GitRemoteTest extends TestCase
     {
         $plain = new TempProject();
         $remote = new GitRemote($plain->dir, '/custom/bin/git');
-        $this->assertSame('/custom/bin/git', new \ReflectionProperty($remote, 'git')->getValue($remote));
+        $this->assertSame('/custom/bin/git', Probe::get($remote, 'git'));
     }
 
     public function testUnavailableOutsideARepository(): void

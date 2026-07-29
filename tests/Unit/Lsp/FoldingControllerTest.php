@@ -12,6 +12,7 @@ use Porta\Lsp\LspSessionPool;
 use Porta\Tests\Support\FakeLspClient;
 use Porta\Tests\Support\FakeScheduler;
 use Porta\Tests\Support\FixedActiveFile;
+use Porta\Tests\Support\Probe;
 use Porta\Tests\Support\TestTui;
 use Porta\Widget\CodeEditorWidget;
 use Symfony\Component\Tui\Input\Keybindings;
@@ -81,7 +82,7 @@ final class FoldingControllerTest extends TestCase
 
     private function foldEndAt(int $line): ?int
     {
-        $foldModel = new \ReflectionProperty($this->editor, 'foldModel')->getValue($this->editor);
+        $foldModel = Probe::get($this->editor, 'foldModel');
         \assert($foldModel instanceof \Porta\Editor\FoldModel, description: 'the editor exposes a FoldModel for fold queries');
 
         return $foldModel->foldEndAt($line);

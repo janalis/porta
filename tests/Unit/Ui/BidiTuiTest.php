@@ -6,6 +6,7 @@ namespace Porta\Tests\Unit\Ui;
 
 use PHPUnit\Framework\TestCase;
 use Porta\I18n\PaneReorder;
+use Porta\Tests\Support\Probe;
 use Porta\Ui\BidiTui;
 use Porta\Ui\PaneSegmenter;
 use Symfony\Component\Tui\Render\RenderContext;
@@ -110,8 +111,7 @@ final class BidiTuiTest extends TestCase
         $tui->requestRender();
         $tui->processRender();
 
-        $requested = new \ReflectionProperty(\Symfony\Component\Tui\Tui::class, 'renderRequested');
-        $this->assertTrue((bool) $requested->getValue($tui), 'the render request stays pending while the tty is behind');
+        $this->assertTrue((bool) Probe::get($tui, 'renderRequested'), 'the render request stays pending while the tty is behind');
         $this->assertSame($backlog, $terminal->pendingBytes(), 'no new frame bytes were generated into the backlog');
 
         // Drain the peer; the writer's watcher empties the queue as the loop runs.
@@ -126,7 +126,7 @@ final class BidiTuiTest extends TestCase
         \Revolt\EventLoop::cancel($drain);
 
         $tui->processRender();
-        $this->assertFalse((bool) $requested->getValue($tui), 'the queued request rendered once the tty caught up');
+        $this->assertFalse((bool) Probe::get($tui, 'renderRequested'), 'the queued request rendered once the tty caught up');
         $this->assertGreaterThan(0, $terminal->pendingBytes() + \strlen((string) fread($pair[1], length: 65_536)), 'the frame reached the terminal');
 
         $terminal->stop();

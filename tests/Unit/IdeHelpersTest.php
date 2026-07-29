@@ -24,6 +24,7 @@ use Porta\Onboarding\OnboardingState;
 use Porta\Search\SearchActions;
 use Porta\Support\ProjectPaths;
 use Porta\Tests\Support\EditorState;
+use Porta\Tests\Support\Probe;
 use Porta\Tests\Support\PumpsLoop;
 use Porta\Tests\Support\Services;
 use Porta\Tests\Support\TempProject;
@@ -51,9 +52,7 @@ final class IdeHelpersTest extends TestCase
 
     private function call(string $method, mixed ...$args): mixed
     {
-        $reflection = new \ReflectionMethod($this->ide, $method);
-
-        return $reflection->invoke($this->ide, ...$args);
+        return Probe::invoke($this->ide, $method, ...$args);
     }
 
     public function testServicesSeamReturnsLocatorMembersAndSynthetics(): void
@@ -81,7 +80,7 @@ final class IdeHelpersTest extends TestCase
     {
         $nav = $this->navigation();
 
-        return new \ReflectionMethod($nav, $method)->invoke($nav, ...$args);
+        return Probe::invoke($nav, $method, ...$args);
     }
 
     private function refactor(): RefactorController
@@ -93,7 +92,7 @@ final class IdeHelpersTest extends TestCase
     {
         $refactor = $this->refactor();
 
-        return new \ReflectionMethod($refactor, $method)->invoke($refactor, ...$args);
+        return Probe::invoke($refactor, $method, ...$args);
     }
 
     public function testFirstLocationVariants(): void
@@ -324,7 +323,7 @@ final class IdeHelpersTest extends TestCase
         // Now point at a snapshot file that does not exist, with a buffer open.
         $buffers = Services::resolve($this->ide, BufferManager::class);
         $buffers->open($this->project->path('x.php'), "content\n");
-        new \ReflectionProperty($this->localHistory(), 'snapshots')->setValue($this->localHistory(), ['/nonexistent/1.snap']);
+        Probe::set($this->localHistory(), 'snapshots', ['/nonexistent/1.snap']);
 
         $this->localHistory()->restore(0);
         $this->assertStringContainsString('Could not read that snapshot', \Porta\Tests\Support\Toasts::last($this->ide));
@@ -477,12 +476,12 @@ final class IdeHelpersTest extends TestCase
     private function injectLspClient(\Porta\Lsp\LspClient $client): void
     {
         $session = new \Porta\Lsp\LspSession(sys_get_temp_dir());
-        new \ReflectionProperty($session, 'client')->setValue($session, $client);
+        Probe::set($session, 'client', $client);
 
         $pool = Services::resolve($this->ide, LspSessionPool::class);
-        new \ReflectionProperty($pool, 'servers')->setValue($pool, ['*' => ['command' => ['injected'], 'name' => 'injected']]);
-        new \ReflectionProperty($pool, 'sessions')->setValue($pool, ['injected' => $session]);
-        new \ReflectionProperty($pool, 'configured')->setValue($pool, true);
+        Probe::set($pool, 'servers', ['*' => ['command' => ['injected'], 'name' => 'injected']]);
+        Probe::set($pool, 'sessions', ['injected' => $session]);
+        Probe::set($pool, 'configured', true);
     }
 
     public function testShowProblemsAggregatesAndSortsWithSeverityMarkers(): void
@@ -532,7 +531,7 @@ final class IdeHelpersTest extends TestCase
         });
         $this->injectLspClient($client);
         $pool = Services::resolve($this->ide, LspSessionPool::class);
-        new \ReflectionProperty($pool, 'statuses')->setValue($pool, ['injected' => 'mock-lsp-server']);
+        Probe::set($pool, 'statuses', ['injected' => 'mock-lsp-server']);
 
         // Open a "noformat" buffer and make it the active editor document.
         $buffers = Services::resolve($this->ide, BufferManager::class);
@@ -671,7 +670,7 @@ final class IdeHelpersTest extends TestCase
 
         $file = $this->project->write('src/Hooked.php', "<?php\n");
         $helpViewer = Services::resolve($this->ide, \Porta\Widget\HelpViewerWidget::class);
-        $help = new \ReflectionProperty($helpViewer, 'handler')->getValue($helpViewer);
+        $help = Probe::get($helpViewer, 'handler');
         \assert($help instanceof \Porta\Help\HelpViewerActions, description: 'the help viewer exposes its actions handler');
 
         $help->openFile($file);
@@ -686,7 +685,7 @@ final class IdeHelpersTest extends TestCase
         $this->assertNull($buffers->active(), 'the viewer close hook closed the only tab');
 
         $imageViewer = Services::resolve($this->ide, \Porta\Widget\ImageViewerWidget::class);
-        $image = new \ReflectionProperty($imageViewer, 'handler')->getValue($imageViewer);
+        $image = Probe::get($imageViewer, 'handler');
         \assert($image instanceof \Porta\Editor\BufferNavigator, description: 'the image viewer is handled by the navigator itself');
         $image->saveAll(); // same silent sweep through the shared navigator
 

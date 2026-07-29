@@ -337,7 +337,7 @@ final class GitViewControllerTest extends TestCase
         }
         // commitEnabled() blocks submit() now, so drive the pipeline directly
         // through a forced submit with a staged predicate bypassed via reflection.
-        new \ReflectionMethod($controller, 'commit')->invoke($controller, 'Nothing');
+        Probe::invoke($controller, 'commit', 'Nothing');
         $this->await(fn (): bool => str_contains($this->statusRow($this->statusBar), 'Commit failed'));
         $this->assertSame(1, $this->committed, 'a failed commit fires no onCommitted');
     }
@@ -409,7 +409,7 @@ final class GitViewControllerTest extends TestCase
         $this->await($controller->isOpen(...));
 
         $ghost = new \Porta\Git\ChangeEntry('does-not-exist.txt', ' ', 'M');
-        new \ReflectionMethod($controller, 'toggleStage')->invoke($controller, $ghost);
+        Probe::invoke($controller, 'toggleStage', $ghost);
         $this->await(fn (): bool => str_contains($this->statusRow($this->statusBar), 'git refused the staging change'));
         $this->addToAssertionCount(1); // the throwing awaits above are the assertions
     }
@@ -422,7 +422,7 @@ final class GitViewControllerTest extends TestCase
         $this->await(fn (): bool => null !== ($entry = $this->changes->selectedEntry()));
 
         $entry = $this->changes->selectedEntry();
-        new \ReflectionMethod($controller, 'loadDiff')->invoke($controller, $entry);
+        Probe::invoke($controller, 'loadDiff', $entry);
         $controller->close(); // the in-flight diff callback must no-op now
         $this->awaitTicks(15);
         $this->assertFalse($controller->isOpen());
@@ -459,7 +459,7 @@ final class GitViewControllerTest extends TestCase
         $stable = 0;
         $this->await(
             function () use (&$snapshot, &$stable): bool {
-                $now = $this->diffText().new \ReflectionProperty($this->diffView, 'cursor')->getValue($this->diffView);
+                $now = $this->diffText().Probe::get($this->diffView, 'cursor');
                 $stable = $now === $snapshot ? $stable + 1 : 0;
                 $snapshot = $now;
 
@@ -490,8 +490,8 @@ final class GitViewControllerTest extends TestCase
         $this->assertSame(['?? new.txt'], $this->porcelain(), 'nothing was staged');
 
         // Guard: no shown document at all.
-        new \ReflectionProperty($controller, 'shownDocument')->setValue($controller, null);
-        new \ReflectionMethod($controller, 'stageSelection')->invoke($controller, [0 => [0 => true]]);
+        Probe::set($controller, 'shownDocument', null);
+        Probe::invoke($controller, 'stageSelection', [0 => [0 => true]]);
         $this->assertSame(['?? new.txt'], $this->porcelain());
     }
 
@@ -503,7 +503,7 @@ final class GitViewControllerTest extends TestCase
         $this->await(fn (): bool => str_contains($this->diffText(), '+edited'));
 
         // A context-only selection builds no patch and is a silent no-op.
-        new \ReflectionMethod($controller, 'stageSelection')->invoke($controller, [0 => [2 => true]]);
+        Probe::invoke($controller, 'stageSelection', [0 => [2 => true]]);
         $this->assertStringNotContainsString('git apply', $this->statusRow($this->statusBar));
 
         // Corrupt the worktree state between diff load and apply: replace the
@@ -642,8 +642,8 @@ final class GitViewControllerTest extends TestCase
         $this->assertStringContainsString('Untracked files always show the whole file', $this->statusRow($this->statusBar));
 
         // No shown entry at all: a silent no-op.
-        new \ReflectionProperty($controller, 'shownEntry')->setValue($controller, null);
-        new \ReflectionMethod($controller, 'cycleContext')->invoke($controller);
+        Probe::set($controller, 'shownEntry', null);
+        Probe::invoke($controller, 'cycleContext');
         $this->assertStringContainsString('Untracked files', $this->statusRow($this->statusBar), 'no new flash replaced the old one');
     }
 
@@ -763,7 +763,7 @@ final class GitViewControllerTest extends TestCase
         $this->await($controller->isOpen(...));
         $this->changes->setFocused(true);
         $this->changes->handleInput('2');
-        new \ReflectionMethod($controller, 'switchMode')->invoke($controller, GitViewMode::History); // same mode: no-op
+        Probe::invoke($controller, 'switchMode', GitViewMode::History); // same mode: no-op
         $this->await(fn (): bool => null !== $this->history->selectedCommit());
 
         // A log request whose view closes before it resolves is dropped.
@@ -779,8 +779,8 @@ final class GitViewControllerTest extends TestCase
         $commit = $this->history->selectedCommit();
         // Fire the loaders, then flip back to Changes before they resolve:
         // both callbacks must drop their results.
-        new \ReflectionMethod($controller, 'loadCommitFiles')->invoke($controller, $commit);
-        new \ReflectionMethod($controller, 'loadCommitFileDiff')->invoke($controller, $commit, 'a.txt');
+        Probe::invoke($controller, 'loadCommitFiles', $commit);
+        Probe::invoke($controller, 'loadCommitFileDiff', $commit, 'a.txt');
         $this->history->setFocused(true);
         $this->history->handleInput('1');
         $this->awaitTicks(15);

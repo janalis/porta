@@ -19,6 +19,7 @@ use Porta\Tests\Support\FakeEditorCompletion;
 use Porta\Tests\Support\FakeEditorFileActions;
 use Porta\Tests\Support\FakeEditorNavigation;
 use Porta\Tests\Support\FakeEditorRefactor;
+use Porta\Tests\Support\Probe;
 use Porta\Widget\CodeEditorWidget;
 use Porta\Widget\EditorCallbacks;
 use Porta\Widget\Render\LineDecorator;
@@ -925,8 +926,8 @@ final class CodeEditorWidgetTest extends TestCase
         $editor->openPrompt('Go to line', '', static fn () => null);
         $editor->layoutPickers([0, 0, 20, 80]); // records the prompt box
 
-        $host = new \ReflectionProperty($editor, 'overlayHost')->getValue($editor);
-        $box = new \ReflectionProperty($host, 'promptBox')->getValue($host);
+        $host = Probe::get($editor, 'overlayHost');
+        $box = Probe::get($host, 'promptBox');
         \assert($box instanceof \Porta\Overlay\Region\ModalBox);
 
         $this->assertTrue($editor->handlePickerHover($box->startRow, $box->col + $box->width - 2), 'onto the ×');

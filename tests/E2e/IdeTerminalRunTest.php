@@ -84,7 +84,7 @@ final class IdeTerminalRunTest extends TestCase
                     // more lines exist than the pane shows, scroll() clamps
                     // scrollBack to 0 and there is nothing to scroll into.
                     $panel = $tui->getById('terminal');
-                    $buffer = new \ReflectionProperty($panel, 'buffer')->getValue($panel);
+                    $buffer = Probe::get($panel, 'buffer');
                     $this->await(static fn (): bool => $buffer->lineCount() >= 30, what: 'seq 30 output to fill the scrollback');
 
                     // Force a full frame so the terminal pane has a live WidgetRect.

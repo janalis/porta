@@ -28,6 +28,7 @@ use Porta\Tests\Support\EditorState;
 use Porta\Tests\Support\FakeScheduler;
 use Porta\Tests\Support\FixedActiveFile;
 use Porta\Tests\Support\PreservesPath;
+use Porta\Tests\Support\Probe;
 use Porta\Tests\Support\Services;
 use Porta\Tests\Support\StatusReads;
 use Porta\Tests\Support\TempProject;
@@ -342,7 +343,7 @@ final class SettingsControllerTest extends TestCase
         // carries one null-apply row.
         $controller = new \ReflectionClass(SettingsController::class)->newInstanceWithoutConstructor();
         $applied = [];
-        new \ReflectionProperty($controller, 'descriptors')->setValue($controller, [
+        Probe::set($controller, 'descriptors', [
             'live' => [
                 'label' => 'Live',
                 'kind' => 'bool',
@@ -353,7 +354,7 @@ final class SettingsControllerTest extends TestCase
             ],
             'restartOnly' => ['label' => 'Restart only', 'kind' => 'bool', 'restart' => true, 'apply' => null],
         ]);
-        new \ReflectionProperty($controller, 'settings')->setValue($controller, ['live' => true, 'restartOnly' => false]);
+        Probe::set($controller, 'settings', ['live' => true, 'restartOnly' => false]);
 
         $controller->applyAll();
 

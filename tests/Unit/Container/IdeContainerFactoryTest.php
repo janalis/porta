@@ -10,6 +10,7 @@ use Porta\Container\Ansi;
 use Porta\Container\IdeContainerFactory;
 use Porta\History\SessionStore;
 use Porta\I18n\Translator;
+use Porta\Tests\Support\Probe;
 use Porta\Tests\Support\TempProject;
 use Symfony\Component\DependencyInjection\Container;
 use Symfony\Component\DependencyInjection\ContainerBuilder;
@@ -140,7 +141,7 @@ final class IdeContainerFactoryTest extends TestCase
         $locator = $container->get('porta.ide');
         \assert($locator instanceof ServiceLocator, description: 'porta.ide resolves to a service locator');
         $store = $locator->get(SessionStore::class);
-        $this->assertSame('/tmp/porta-factory-test/.porta/session.json', new \ReflectionProperty($store, 'file')->getValue($store));
+        $this->assertSame('/tmp/porta-factory-test/.porta/session.json', Probe::get($store, 'file'));
     }
 
     public function testXdgAndHomeFallbacksDeriveThePortaCacheDir(): void

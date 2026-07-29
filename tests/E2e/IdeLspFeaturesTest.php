@@ -15,6 +15,7 @@ use Porta\Onboarding\OnboardingState;
 use Porta\Tests\Support\ClearsPortaLsp;
 use Porta\Tests\Support\EditorState;
 use Porta\Tests\Support\PreservesPath;
+use Porta\Tests\Support\Probe;
 use Porta\Tests\Support\RunsIde;
 use Porta\Tests\Support\Services;
 use Porta\Tests\Support\TempProject;
@@ -827,14 +828,13 @@ final class IdeLspFeaturesTest extends TestCase
         $tui = Services::resolve($ide, Tui::class);
 
         $navigation = Services::resolve($ide, NavigationController::class);
-        $stack = new \ReflectionProperty($navigation, 'jumpStack');
-        $stack->setValue($navigation, array_fill(0, count: 50, value: ['path' => $project->path('src/Demo.php'), 'line' => 0, 'col' => 0]));
+        Probe::set($navigation, 'jumpStack', array_fill(0, count: 50, value: ['path' => $project->path('src/Demo.php'), 'line' => 0, 'col' => 0]));
 
         EventLoop::delay(0.4, static fn () => $tui->handleInput("\x1b[24~")); // F12
         EventLoop::delay(0.8, $tui->stop(...));
         $ide->run();
 
-        $this->assertCount(50, $stack->getValue($navigation), 'oldest entry evicted at the cap');
+        $this->assertCount(50, Probe::get($navigation, 'jumpStack'), 'oldest entry evicted at the cap');
         $this->assertStringEndsWith('Target.php', (string) $tui->getById('editor')->getFilePath());
     }
 

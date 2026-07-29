@@ -8,6 +8,7 @@ use PHPUnit\Framework\TestCase;
 use Porta\Search\ProjectSearch;
 use Porta\Search\SearchOptions;
 use Porta\Tests\Support\PreservesPath;
+use Porta\Tests\Support\Probe;
 use Porta\Tests\Support\PumpsLoop;
 use Porta\Tests\Support\TempProject;
 use Revolt\EventLoop;
@@ -380,9 +381,7 @@ final class ProjectSearchTest extends TestCase
     public function testParseSkipsMalformedGrepLines(): void
     {
         $search = new ProjectSearch('/tmp');
-        $parse = new \ReflectionMethod($search, 'parse');
-
-        $results = $parse->invoke($search, "src/A.php:3:a match here\ngarbage without line number\n\n./src/B.php:7:no hit\n", '/match/');
+        $results = Probe::invoke($search, 'parse', "src/A.php:3:a match here\ngarbage without line number\n\n./src/B.php:7:no hit\n", '/match/');
 
         $this->assertSame(
             [
@@ -396,15 +395,13 @@ final class ProjectSearchTest extends TestCase
     public function testMatchRangesHandleEmptyLinesAndZeroWidthMatches(): void
     {
         $search = new ProjectSearch('/tmp');
-        $ranges = new \ReflectionMethod($search, 'rangesFor');
-
         // An empty (whitespace-only, trimmed) line yields no ranges.
-        $this->assertSame([], $ranges->invoke($search, '', '/x/'));
+        $this->assertSame([], Probe::invoke($search, 'rangesFor', '', '/x/'));
         // A pattern that can match empty (`l*`) skips its zero-width matches but
         // keeps the real one ("ll" at column 2).
-        $this->assertSame([['start' => 2, 'length' => 2]], $ranges->invoke($search, 'hello', '/l*/'));
+        $this->assertSame([['start' => 2, 'length' => 2]], Probe::invoke($search, 'rangesFor', 'hello', '/l*/'));
         // A malformed pattern makes preg_match_all fail → no ranges.
-        $this->assertSame([], $ranges->invoke($search, 'hello', '/(/'));
+        $this->assertSame([], Probe::invoke($search, 'rangesFor', 'hello', '/(/'));
     }
 
     public function testCancelStopsInFlightSearch(): void

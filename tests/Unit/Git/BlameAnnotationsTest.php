@@ -14,6 +14,7 @@ use Porta\Git\GitInfo;
 use Porta\I18n\Translator;
 use Porta\Tests\Support\GitBinary;
 use Porta\Tests\Support\Presence;
+use Porta\Tests\Support\Probe;
 use Porta\Tests\Support\PumpsLoop;
 use Porta\Tests\Support\StatusReads;
 use Porta\Tests\Support\TempProject;
@@ -121,7 +122,7 @@ final class BlameAnnotationsTest extends TestCase
         $blame = $this->blame();
         // Enabled (e.g. toggled on earlier), then every buffer closed: the
         // save listener must not blame a null path.
-        new \ReflectionProperty($blame, 'enabled')->setValue($blame, true);
+        Probe::set($blame, 'enabled', true);
         $buffer = new BufferManager()->open($this->project->path('a.php'), "<?php\n");
         $blame->onBufferSaved(new BufferSaved($buffer));
         $this->assertStringNotContainsString('tester', $this->editorScreen());

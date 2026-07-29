@@ -7,6 +7,7 @@ namespace Porta\Tests\Unit\Widget;
 use PHPUnit\Framework\TestCase;
 use Porta\Editor\SelectionMode;
 use Porta\Tests\Support\EditorState;
+use Porta\Tests\Support\Probe;
 use Porta\Widget\CodeEditorWidget;
 use Symfony\Component\Tui\Render\RenderContext;
 
@@ -24,7 +25,7 @@ final class CodeEditorSelectionMouseTest extends TestCase
 
     private function gutter(CodeEditorWidget $editor): int
     {
-        return new \ReflectionProperty($editor, 'lastGutterWidth')->getValue($editor);
+        return Probe::get($editor, 'lastGutterWidth');
     }
 
     public function testDragSelectsARange(): void

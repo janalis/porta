@@ -13,6 +13,7 @@ use Porta\Settings\SettingsController;
 use Porta\Tests\Support\ClearsPortaLsp;
 use Porta\Tests\Support\EditorState;
 use Porta\Tests\Support\PreservesPath;
+use Porta\Tests\Support\Probe;
 use Porta\Tests\Support\RunsIde;
 use Porta\Tests\Support\Services;
 use Porta\Tests\Support\TempProject;
@@ -328,7 +329,7 @@ final class IdeTabsBuffersTest extends TestCase
                     $renderer = Services::resolve($ide, Renderer::class);
                     $tabsRow = $renderer->getWidgetRect($tui->getById('tabs'))->row;
                     $overlay = Services::resolve($ide, \Porta\Overlay\State\MenuOverlayController::class);
-                    $this->assertSame($tabsRow, new \ReflectionProperty($overlay, 'contextAnchorRow')->getValue($overlay));
+                    $this->assertSame($tabsRow, Probe::get($overlay, 'contextAnchorRow'));
                 },
             ],
         );
@@ -562,7 +563,7 @@ final class IdeTabsBuffersTest extends TestCase
     private function tabNames(Tui $tui): array
     {
         $tabBar = $tui->getById('tabs');
-        $provider = new \ReflectionProperty($tabBar, 'provider')->getValue($tabBar);
+        $provider = Probe::get($tabBar, 'provider');
 
         return array_column($provider(), 'name');
     }

@@ -24,6 +24,33 @@ final class Probe
         throw new \LogicException(\sprintf('No property $%s on %s', $property, $object::class));
     }
 
+    /** Write a private/protected property, walking parent classes like {@see get()}. */
+    public static function set(object $object, string $property, mixed $value): void
+    {
+        for ($ref = new \ReflectionObject($object); false !== $ref; $ref = $ref->getParentClass()) {
+            if (!$ref->hasProperty($property)) {
+                continue;
+            }
+            $ref->getProperty($property)->setValue($object, $value);
+
+            return;
+        }
+
+        throw new \LogicException(\sprintf('No property $%s on %s', $property, $object::class));
+    }
+
+    /** Invoke a private/protected method, walking parent classes like {@see get()}. */
+    public static function invoke(object $object, string $method, mixed ...$args): mixed
+    {
+        for ($ref = new \ReflectionObject($object); false !== $ref; $ref = $ref->getParentClass()) {
+            if ($ref->hasMethod($method)) {
+                return $ref->getMethod($method)->invokeArgs($object, $args);
+            }
+        }
+
+        throw new \LogicException(\sprintf('No method %s() on %s', $method, $object::class));
+    }
+
     /**
      * Invoke a private static method.
      *

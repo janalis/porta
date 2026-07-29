@@ -884,15 +884,17 @@ async callback's by-reference write — round 8 found 64 such conditions silentl
 full timeout as de-facto sleeps. Write `static function () use (&$x): bool {...}` (or read
 `$this->…` state); when there is genuinely nothing to await, say so with `pump()`.
 
-**No test-only code in src; reflection lives only in the blessed `tests/Support` seams** (round
-12 deleted `Ide::resolve()` plus ~45 observability getters/counts/statics). The seams:
-`Services::resolve($ide, X::class)` (a running IDE's services — locator-first, container
-fallback for the synthetics), `Probe` (`get()` private-property read with a parent-class walk;
-`getStatic()` for private consts/statics; `invokeStatic()` for private static methods) and its
-typed wrappers — `EditorState` (`pickerOpen`/`promptOpen`/`display`/`scroll`/`multiCaret` on the
-editor widget), `StatusReads`, `Toasts`, `RunsIde::awaitGit`. Before adding a getter to src, ask
-who calls it at runtime: an interface implementation the vendor calls
-(`FillsPaneTrait::isVerticallyExpanded`) or a timer/signal entry point (`Ide::pollFilesystem`,
-`FreezeWatchdog::heartbeat`/`handleAlarm`) is production code; a method only assertions read is
-not — probe it instead. Recorded follow-up: 10+ legacy ad-hoc `ReflectionProperty` sites in
-older tests predate `Probe` and should fold into it as their files are touched.
+**No test-only code in src; private-state reflection lives only in the blessed `tests/Support`
+seams** (round 12 deleted `Ide::resolve()` plus ~45 observability getters/counts/statics, then
+folded every legacy ad-hoc reflection site — zero `ReflectionProperty`/`ReflectionMethod` remain
+outside `tests/Support`). The seams: `Services::resolve($ide, X::class)` (a running IDE's
+services — locator-first, container fallback for the synthetics), `Probe` (`get`/`set`
+private-property access with a parent-class walk; `invoke` for private methods;
+`getStatic`/`invokeStatic` for private consts/statics/static methods) and its typed wrappers —
+`EditorState` (`pickerOpen`/`promptOpen`/`display`/`scroll`/`multiCaret` on the editor widget),
+`StatusReads`, `Toasts`, `RunsIde::awaitGit`. Metadata reflection (`getAttributes`,
+`newInstanceWithoutConstructor` in the container-contract tests) reads public structure, not
+private state, and stays ad-hoc. Before adding a getter to src, ask who calls it at runtime: an
+interface implementation the vendor calls (`FillsPaneTrait::isVerticallyExpanded`) or a
+timer/signal entry point (`Ide::pollFilesystem`, `FreezeWatchdog::heartbeat`/`handleAlarm`) is
+production code; a method only assertions read is not — probe it instead.
