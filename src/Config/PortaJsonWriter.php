@@ -72,16 +72,16 @@ final class PortaJsonWriter
         return self::persistPluginMembership($rootDir, 'disabledPlugins', $plugin, member: true);
     }
 
-    /** Persist a bundled plugin as enabled by adding it to the opt-in `enabledPlugins` list. */
+    /** Persist a bundled plugin as enabled by adding it to the `enabledPlugins` list (the absent-key default materialized first). */
     public static function persistBundledEnabled(string $rootDir, string $plugin): bool
     {
-        return self::persistPluginMembership($rootDir, 'enabledPlugins', $plugin, member: true);
+        return self::persistPluginMembership($rootDir, 'enabledPlugins', $plugin, member: true, default: IdeConfig::DEFAULT_ENABLED_PLUGINS);
     }
 
-    /** Persist a bundled plugin as disabled by dropping it from the `enabledPlugins` list. */
+    /** Persist a bundled plugin as disabled by dropping it from the `enabledPlugins` list (the absent-key default materialized first). */
     public static function persistBundledDisabled(string $rootDir, string $plugin): bool
     {
-        return self::persistPluginMembership($rootDir, 'enabledPlugins', $plugin, member: false);
+        return self::persistPluginMembership($rootDir, 'enabledPlugins', $plugin, member: false, default: IdeConfig::DEFAULT_ENABLED_PLUGINS);
     }
 
     /** Persist one plugin-defined setting value under the top-level `plugins.<name>.<key>`. */
@@ -212,17 +212,26 @@ final class PortaJsonWriter
 
     /** Add ($member) or drop $plugin from a top-level string-list key, dropping the key when empty. */
     // @mago-expect lint:no-boolean-flag-parameter -- shared add/drop membership helper; the four public persist* methods are its split faces
-    private static function persistPluginMembership(string $rootDir, string $key, string $plugin, bool $member): bool
+    /**
+     * @param list<string> $default the list an ABSENT key means (bundled
+     *                              plugins default some names ON, so removing a
+     *                              name from the default state must write the
+     *                              default minus that name — and an empty
+     *                              result must stay as an explicit `[]`, or the
+     *                              unset key would flip the default back on)
+     */
+    private static function persistPluginMembership(string $rootDir, string $key, string $plugin, bool $member, array $default = []): bool
     {
-        return self::edit($rootDir, static function (array &$config) use ($key, $plugin, $member): void {
-            $without = array_values(array_diff(IdeConfig::stringList($config[$key] ?? null), [$plugin]));
+        return self::edit($rootDir, static function (array &$config) use ($key, $plugin, $member, $default): void {
+            $current = \array_key_exists($key, $config) ? IdeConfig::stringList($config[$key]) : $default;
+            $without = array_values(array_diff($current, [$plugin]));
             $list = $member ? [...$without, $plugin] : $without;
-            if ([] === $list) {
+            if ([] === $list && [] === $default) {
                 unset($config[$key]);
+
+                return;
             }
-            if ([] !== $list) {
-                $config[$key] = $list;
-            }
+            $config[$key] = $list;
         });
     }
 

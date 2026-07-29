@@ -62,6 +62,15 @@ final class IdeConfig
      */
     public const array LEGACY_SETTINGS = ['editorConfig', 'relativeLineNumbers'];
 
+    /**
+     * Bundled plugins enabled when `.porta.json` has NO `enabledPlugins` key —
+     * the viewers ship on so a fresh install opens images and graphs inline.
+     * An explicit list (even an empty one) replaces this default entirely;
+     * {@see PortaJsonWriter} materializes it before editing so a disable from
+     * the default state persists "the default minus that name".
+     */
+    public const array DEFAULT_ENABLED_PLUGINS = ['image-viewer', 'graph-viewer'];
+
     /** An empty `highlight` block: no global default, no per-language overrides. */
     private const array NO_HIGHLIGHT = ['default' => '', 'languages' => []];
 
@@ -75,7 +84,7 @@ final class IdeConfig
      * @param array<string, string>                                                                                                          $lspServers per-language LSP command overrides (map form)
      * @param array<string, array<string, bool|int|string>>                                                                                  $plugins    raw per-plugin setting values (coerced at read by PluginSettings)
      * @param list<string>                                                                                                                   $disabledPlugins plugin names skipped at boot (project/global plugins are on unless listed here)
-     * @param list<string>                                                                                                                   $enabledPlugins  bundled (embedded) plugin names to load — bundled plugins are off unless opted in here
+     * @param list<string>                                                                                                                   $enabledPlugins  bundled (embedded) plugin names to load — {@see DEFAULT_ENABLED_PLUGINS} unless the key is present (an explicit list, even empty, replaces the default)
      * @param array{default: string, languages: array<string, string>}                                                                      $highlight  the top-level `highlight` block: grammar name => backend id
      * @param list<string>                                                                                                                   $warnings
      */
@@ -95,12 +104,12 @@ final class IdeConfig
     {
         $file = $rootDir.'/.porta.json';
         if (!is_file($file)) {
-            return new self([], self::DEFAULT_SETTINGS, [], [], [], [], [], self::NO_HIGHLIGHT, []);
+            return new self([], self::DEFAULT_SETTINGS, [], [], [], [], self::DEFAULT_ENABLED_PLUGINS, self::NO_HIGHLIGHT, []);
         }
 
         $config = JsonFile::read($file);
         if (null === $config) {
-            return new self([], self::DEFAULT_SETTINGS, [], [], [], [], [], self::NO_HIGHLIGHT, ['.porta.json is not valid JSON']);
+            return new self([], self::DEFAULT_SETTINGS, [], [], [], [], self::DEFAULT_ENABLED_PLUGINS, self::NO_HIGHLIGHT, ['.porta.json is not valid JSON']);
         }
 
         $keymap = [];
@@ -154,7 +163,9 @@ final class IdeConfig
         $lspServers = self::parseLspServers($config['lsp'] ?? null);
         $plugins = self::parsePluginSettings(\is_array($config['plugins'] ?? null) ? $config['plugins'] : [], $warnings);
         $disabledPlugins = self::stringList($config['disabledPlugins'] ?? null);
-        $enabledPlugins = self::stringList($config['enabledPlugins'] ?? null);
+        $enabledPlugins = \array_key_exists('enabledPlugins', $config)
+            ? self::stringList($config['enabledPlugins'])
+            : self::DEFAULT_ENABLED_PLUGINS;
 
         $highlight = self::parseHighlight($config['highlight'] ?? null, $warnings);
 

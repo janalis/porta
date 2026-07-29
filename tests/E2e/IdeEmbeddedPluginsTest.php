@@ -179,7 +179,7 @@ final class IdeEmbeddedPluginsTest extends TestCase
                     $commands = Services::resolve($ide, CommandRegistry::class);
                     $this->assertNotContains('Bundled Run', array_column($commands->paletteCommands(), 'label'));
                     $config = json_decode((string) file_get_contents($project->path('.porta.json')), associative: true);
-                    $this->assertArrayNotHasKey('enabledPlugins', $config, 'a bundled plugin disables by leaving the opt-in list');
+                    $this->assertSame([], $config['enabledPlugins'] ?? null, 'a bundled plugin disables by leaving the list — kept explicit, or the absent-key default would flip back on');
 
                     // And re-enable it live from the same page.
                     $tui->handleInput("\r");

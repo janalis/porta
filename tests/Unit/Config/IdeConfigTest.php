@@ -513,4 +513,43 @@ final class IdeConfigTest extends TestCase
 
         $this->assertSame([], $config->highlight['languages']);
     }
+
+    public function testEnabledPluginsDefaultAppliesOnlyWhenTheKeyIsAbsent(): void
+    {
+        $none = new TempProject();
+        $this->assertSame(IdeConfig::DEFAULT_ENABLED_PLUGINS, IdeConfig::load($none->dir)->enabledPlugins, 'no .porta.json: the viewer plugins ship on');
+
+        $absent = new TempProject(['.porta.json' => '{"settings":{"theme":"dark"}}']);
+        $this->assertSame(IdeConfig::DEFAULT_ENABLED_PLUGINS, IdeConfig::load($absent->dir)->enabledPlugins, 'no enabledPlugins key: the default applies');
+
+        $explicit = new TempProject(['.porta.json' => '{"enabledPlugins":["tempest"]}']);
+        $this->assertSame(['tempest'], IdeConfig::load($explicit->dir)->enabledPlugins, 'an explicit list replaces the default entirely');
+
+        $empty = new TempProject(['.porta.json' => '{"enabledPlugins":[]}']);
+        $this->assertSame([], IdeConfig::load($empty->dir)->enabledPlugins, 'an explicit empty list means none — not the default');
+    }
+
+    public function testBundledPersistenceMaterializesTheDefaultList(): void
+    {
+        // Disabling from the default state writes "the default minus that name".
+        $project = new TempProject(['.porta.json' => '{}']);
+        $this->assertTrue(PortaJsonWriter::persistBundledDisabled($project->dir, 'image-viewer'));
+        $this->assertSame(['graph-viewer'], IdeConfig::load($project->dir)->enabledPlugins);
+
+        // Disabling the last one must persist an explicit [] — an unset key would flip the default back on.
+        $this->assertTrue(PortaJsonWriter::persistBundledDisabled($project->dir, 'graph-viewer'));
+        $written = json_decode((string) file_get_contents($project->path('.porta.json')), associative: true);
+        $this->assertSame([], $written['enabledPlugins'] ?? null, 'the empty list is explicit in the file');
+        $this->assertSame([], IdeConfig::load($project->dir)->enabledPlugins);
+
+        // Re-enabling appends to the explicit list.
+        $this->assertTrue(PortaJsonWriter::persistBundledEnabled($project->dir, 'image-viewer'));
+        $this->assertSame(['image-viewer'], IdeConfig::load($project->dir)->enabledPlugins);
+
+        // Project/global disable lists keep their unset-when-empty behavior.
+        $this->assertTrue(PortaJsonWriter::persistPluginDisabled($project->dir, 'demo'));
+        $this->assertTrue(PortaJsonWriter::persistPluginEnabled($project->dir, 'demo'));
+        $written = json_decode((string) file_get_contents($project->path('.porta.json')), associative: true);
+        $this->assertArrayNotHasKey('disabledPlugins', $written, 'an emptied disabledPlugins key is dropped');
+    }
 }

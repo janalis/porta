@@ -6,6 +6,7 @@ namespace Porta\Tests\E2e;
 
 use PHPUnit\Framework\TestCase;
 use Porta\Config\CommandRegistry;
+use Porta\Config\IdeConfig;
 use Porta\Settings\SettingsHighlightController;
 use Porta\Tests\Support\NavigatesSettings;
 use Porta\Tests\Support\RunsIde;
@@ -86,9 +87,9 @@ final class HighlightingSettingsTest extends TestCase
 
                 $config = json_decode((string) file_get_contents($project->path('.porta.json')), associative: true);
                 $this->assertSame(
-                    [SettingsHighlightController::BUNDLED_ENGINE],
+                    [...IdeConfig::DEFAULT_ENABLED_PLUGINS, SettingsHighlightController::BUNDLED_ENGINE],
                     \is_array($config) ? $config['enabledPlugins'] ?? null : null,
-                    'the choice persisted',
+                    'the choice persisted (the absent-key default materialized first)',
                 );
 
                 // The terminal output is cumulative, so "the offer is gone" cannot

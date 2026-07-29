@@ -6,6 +6,7 @@ namespace Porta\Tests\E2e;
 
 use PHPUnit\Framework\TestCase;
 use Porta\Config\CommandRegistry;
+use Porta\Config\IdeConfig;
 use Porta\Onboarding\OnboardingState;
 use Porta\Overlay\Presenter\WelcomeModalController;
 use Porta\Overlay\Region\DropdownRegion;
@@ -100,9 +101,9 @@ final class WelcomeScreenTest extends TestCase
 
                 $config = json_decode((string) file_get_contents($project->path('.porta.json')), associative: true);
                 $this->assertSame(
-                    ['tempest'],
+                    [...IdeConfig::DEFAULT_ENABLED_PLUGINS, 'tempest'],
                     \is_array($config) ? $config['enabledPlugins'] ?? null : null,
-                    'the choice persisted',
+                    'the choice persisted (the absent-key default materialized first)',
                 );
             },
         ]);
@@ -184,7 +185,7 @@ final class WelcomeScreenTest extends TestCase
 
                 $config = json_decode((string) file_get_contents($project->path('.porta.json')), associative: true);
                 $this->assertSame(
-                    ['phpantom'],
+                    [...IdeConfig::DEFAULT_ENABLED_PLUGINS, 'phpantom'],
                     \is_array($config) ? $config['enabledPlugins'] ?? null : null,
                     'the click moved the selection to the second step',
                 );
@@ -215,7 +216,7 @@ final class WelcomeScreenTest extends TestCase
 
                 $config = json_decode((string) file_get_contents($project->path('.porta.json')), associative: true);
                 $this->assertSame(
-                    ['tempest', 'phpantom'],
+                    [...IdeConfig::DEFAULT_ENABLED_PLUGINS, 'tempest', 'phpantom'],
                     \is_array($config) ? $config['enabledPlugins'] ?? null : null,
                     'the reopen landed on the first still-pending step, the language server',
                 );
@@ -242,7 +243,7 @@ final class WelcomeScreenTest extends TestCase
 
                 $config = json_decode((string) file_get_contents($project->path('.porta.json')), associative: true);
                 $this->assertSame(
-                    ['php-cs-fixer'],
+                    [...IdeConfig::DEFAULT_ENABLED_PLUGINS, 'php-cs-fixer'],
                     \is_array($config) ? $config['enabledPlugins'] ?? null : null,
                     'the choice persisted',
                 );
@@ -273,7 +274,7 @@ final class WelcomeScreenTest extends TestCase
 
                 $config = json_decode((string) file_get_contents($project->path('.porta.json')), associative: true);
                 $this->assertSame(
-                    ['mago'],
+                    [...IdeConfig::DEFAULT_ENABLED_PLUGINS, 'mago'],
                     \is_array($config) ? $config['enabledPlugins'] ?? null : null,
                     'one enable, one plugin',
                 );
