@@ -17,6 +17,7 @@ use Porta\Widget\CodeEditorWidget;
 use Porta\Widget\ContextMenu;
 use Porta\Widget\EditorCallbacks;
 use Porta\Widget\FileTreeWidget;
+use Porta\Widget\GraphViewerWidget;
 use Porta\Widget\HelpViewerWidget;
 use Porta\Widget\ImageViewerWidget;
 use Porta\Widget\MenuBarWidget;
@@ -49,6 +50,7 @@ final class WidgetHooks
         private readonly CodeEditorWidget $editor,
         private readonly EditorCallbacks $editorCallbacks,
         private readonly ImageViewerWidget $imageViewer,
+        private readonly GraphViewerWidget $graphViewer,
         private readonly BufferNavigator $bufferNavigator,
         private readonly HelpViewerWidget $helpViewer,
         private readonly HelpViewerActions $helpViewerActions,
@@ -75,6 +77,7 @@ final class WidgetHooks
 
         $this->editor->setCallbacks($this->editorCallbacks);
         $this->imageViewer->setHandler($this->bufferNavigator);
+        $this->graphViewer->setHandler($this->bufferNavigator);
         $this->helpViewer->setDocsRoot($this->docsDir);
         $this->helpViewer->setHandler($this->helpViewerActions);
 

@@ -8,7 +8,14 @@
 
 declare(strict_types=1);
 
-stream_get_contents(STDIN);
+$stdin = (string) stream_get_contents(STDIN);
+if (str_contains($stdin, 'broken')) {
+    // The invalid-document contract: a DOT containing the 'broken' sentinel
+    // fails the way real dot does — parse error on stderr, non-zero exit.
+    fwrite(STDERR, "syntax error near 'broken'\n");
+
+    exit(1);
+}
 
 $args = array_slice($argv, 1);
 $outIndex = array_search('-o', $args, true);

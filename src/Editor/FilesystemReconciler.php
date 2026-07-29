@@ -10,6 +10,7 @@ use Porta\Image\ImageDecoder;
 use Porta\Lsp\LspSessionPool;
 use Porta\Support\ProjectPaths;
 use Porta\Widget\FileTreeWidget;
+use Porta\Widget\GraphViewerWidget;
 use Porta\Widget\HelpViewerWidget;
 use Porta\Widget\ImageViewerWidget;
 use Porta\Workbench\Notifier;
@@ -32,6 +33,7 @@ final class FilesystemReconciler
         private readonly Translator $translator,
         private readonly HelpViewerWidget $helpViewer,
         private readonly ImageViewerWidget $imageViewer,
+        private readonly GraphViewerWidget $graphViewer,
         private readonly ImageDecoder $imageDecoder,
         private readonly LspSessionPool $lsp,
         private readonly GitRefresher $gitRefresher,
@@ -78,6 +80,21 @@ final class FilesystemReconciler
                 $buffer->helpMarkdown = $content;
                 if ($this->buffers->active() === $buffer && $buffer->path === $this->helpViewer->path()) {
                     $this->helpViewer->show($buffer->path, $content);
+                }
+                $this->notifier->flash($this->translator->trans('Reloaded %file%', ['%file%' => $this->relativePath($buffer->path)]));
+            }
+
+            return;
+        }
+        if ($buffer->isGraph()) {
+            // The live-refresh path: a regenerated (or hand-edited) DOT re-lays
+            // out in place; invalid new content keeps the previous rendering
+            // under the viewer's error banner.
+            $content = $this->readTextFile($buffer->path);
+            if (null !== $content) {
+                $buffer->graphDot = $content;
+                if ($this->buffers->active() === $buffer) {
+                    $this->graphViewer->show($buffer->path, $content);
                 }
                 $this->notifier->flash($this->translator->trans('Reloaded %file%', ['%file%' => $this->relativePath($buffer->path)]));
             }

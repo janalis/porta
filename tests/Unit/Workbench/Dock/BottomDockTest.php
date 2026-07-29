@@ -6,14 +6,17 @@ namespace Porta\Tests\Unit\Workbench\Dock;
 
 use PHPUnit\Framework\TestCase;
 use Porta\Editor\BufferManager;
+use Porta\I18n\Translator;
 use Porta\Terminal\TerminalBuffer;
 use Porta\Terminal\TerminalSessions;
+use Porta\Tests\Support\FakeLayoutEngine;
 use Porta\Tests\Support\Probe;
 use Porta\Tests\Support\TestBottomDock;
 use Porta\Tests\Support\TestTui;
 use Porta\Widget\CodeEditorWidget;
 use Porta\Widget\DebugPanelWidget;
 use Porta\Widget\DockTabsWidget;
+use Porta\Widget\GraphViewerWidget;
 use Porta\Widget\HelpViewerWidget;
 use Porta\Widget\ImageViewerWidget;
 use Porta\Widget\ResultsPanelWidget;
@@ -58,7 +61,7 @@ final class BottomDockTest extends TestCase
             $this->terminal,
             $this->results,
             $this->debug,
-            new EditorArea(new BufferManager(), $this->editor, new ImageViewerWidget(), new HelpViewerWidget(), $this->tui),
+            new EditorArea(new BufferManager(), $this->editor, new ImageViewerWidget(), new HelpViewerWidget(), new GraphViewerWidget(new FakeLayoutEngine(), new Translator('en')), $this->tui),
             $this->strip,
             $this->sessions,
             $this->tools,

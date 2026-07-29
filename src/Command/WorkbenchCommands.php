@@ -15,6 +15,7 @@ use Porta\Search\Everywhere\SearchEverywhereController;
 use Porta\Widget\CodeEditorWidget;
 use Porta\Widget\FileTreeWidget;
 use Porta\Widget\FindBarWidget;
+use Porta\Widget\GraphViewerWidget;
 use Porta\Widget\ImageViewerWidget;
 use Porta\Widget\MenuBarWidget;
 use Porta\Workbench\EditorArea;
@@ -44,6 +45,7 @@ final class WorkbenchCommands implements CommandProvider
         private readonly Tui $tui,
         private readonly CodeEditorWidget $editor,
         private readonly ImageViewerWidget $imageViewer,
+        private readonly GraphViewerWidget $graphViewer,
         private readonly FileTreeWidget $tree,
         private readonly MenuBarWidget $menuBar,
         private readonly FindBarWidget $findBar,
@@ -57,7 +59,7 @@ final class WorkbenchCommands implements CommandProvider
             ->add(
                 'ide_toggle_focus',
                 function (): void {
-                    $inEditorArea = \in_array($this->tui->getFocus(), [$this->editor, $this->imageViewer], strict: true);
+                    $inEditorArea = \in_array($this->tui->getFocus(), [$this->editor, $this->imageViewer, $this->graphViewer], strict: true);
                     $this->tui->setFocus($inEditorArea ? $this->tree : $this->editorArea->widget());
                     $this->tui->requestRender();
                 },

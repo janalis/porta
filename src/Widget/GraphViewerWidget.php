@@ -228,6 +228,17 @@ final class GraphViewerWidget extends AbstractWidget implements FocusableInterfa
         if ($this->isFocused() && $cols >= 3 && $rows >= 3) {
             $lines = $this->focusFrame($lines, $cols, $rows);
         }
+        // The banner/progress row outranks the focus frame's top border — an
+        // error (or in-flight hint) must never hide behind focus chrome.
+        if (null !== $this->layout) {
+            if (null !== $this->error) {
+                $banner = ' ✗ '.explode("\n", $this->error)[0].' ';
+                $lines[0] = AnsiUtils::truncateToWidth($this->styles->of(Role::DiagError)->apply($banner), $cols, pad: true);
+            }
+            if ($this->layingOut) {
+                $lines[0] = AnsiUtils::truncateToWidth($this->styles->of(Role::Dim)->apply(' ⏳ '.$this->translator->trans('layout…').' '), $cols, pad: true);
+            }
+        }
 
         return $this->withMenuOverlay($lines, $cols);
     }
@@ -365,16 +376,7 @@ final class GraphViewerWidget extends AbstractWidget implements FocusableInterfa
     private function contentLines(int $cols, int $rows): array
     {
         if (null !== $this->layout && null !== $this->view) {
-            $lines = GraphRenderer::render($this->layout, $this->view, $this->selected, $cols, $rows, $this->styles);
-            if (null !== $this->error) {
-                $banner = ' ✗ '.explode("\n", $this->error)[0].' ';
-                $lines[0] = AnsiUtils::truncateToWidth($this->styles->of(Role::DiagError)->apply($banner), $cols, pad: true);
-            }
-            if ($this->layingOut) {
-                $lines[0] = AnsiUtils::truncateToWidth($this->styles->of(Role::Dim)->apply(' ⏳ '.$this->translator->trans('layout…').' '), $cols, pad: true);
-            }
-
-            return $lines;
+            return GraphRenderer::render($this->layout, $this->view, $this->selected, $cols, $rows, $this->styles);
         }
         $blank = array_fill(0, max(1, $rows), str_repeat(' ', max(1, $cols)));
         $message = match (true) {

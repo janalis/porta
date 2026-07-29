@@ -51,6 +51,7 @@ use Porta\Settings\SettingsLspController;
 use Porta\Settings\SettingsPluginsController;
 use Porta\Settings\SettingsSection;
 use Porta\Settings\SettingsViewController;
+use Porta\Tests\Support\FakeLayoutEngine;
 use Porta\Tests\Support\FakePluginLifecycle;
 use Porta\Tests\Support\FakeScheduler;
 use Porta\Tests\Support\FixedActiveFile;
@@ -64,6 +65,7 @@ use Porta\Ui\Theme\Themes;
 use Porta\Widget\BreadcrumbsWidget;
 use Porta\Widget\CodeEditorWidget;
 use Porta\Widget\Git\DiffViewWidget;
+use Porta\Widget\GraphViewerWidget;
 use Porta\Widget\HelpViewerWidget;
 use Porta\Widget\ImageViewerWidget;
 use Porta\Widget\MenuBarWidget;
@@ -134,6 +136,7 @@ final class SettingsViewControllerTest extends TestCase
             new Translator('en'),
             new DiffViewWidget(new Translator('en')),
             new HelpViewerWidget(),
+            new GraphViewerWidget(new FakeLayoutEngine(), new Translator('en')),
             new TabBarWidget(),
             TestWorkspaceLayout::create(
                 rootDir: $this->project->dir,
@@ -248,7 +251,14 @@ final class SettingsViewControllerTest extends TestCase
             ],
             $keymap,
             $plugins,
-            editorArea: new EditorArea(new BufferManager(), $this->editorWidget = new CodeEditorWidget(), new ImageViewerWidget(), new HelpViewerWidget(), $this->tui),
+            editorArea: new EditorArea(
+                new BufferManager(),
+                $this->editorWidget = new CodeEditorWidget(),
+                new ImageViewerWidget(),
+                new HelpViewerWidget(),
+                new GraphViewerWidget(new FakeLayoutEngine(), new Translator('en')),
+                $this->tui,
+            ),
             views: $views ?? new WorkspaceViews(),
         );
     }

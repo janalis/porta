@@ -25,6 +25,7 @@ use Porta\Settings\LiveSettingsApplier;
 use Porta\Settings\SettingsController;
 use Porta\Settings\SettingsRowKind;
 use Porta\Tests\Support\EditorState;
+use Porta\Tests\Support\FakeLayoutEngine;
 use Porta\Tests\Support\FakeScheduler;
 use Porta\Tests\Support\FixedActiveFile;
 use Porta\Tests\Support\PreservesPath;
@@ -40,6 +41,7 @@ use Porta\Ui\Theme\Themes;
 use Porta\Widget\BreadcrumbsWidget;
 use Porta\Widget\CodeEditorWidget;
 use Porta\Widget\Git\DiffViewWidget;
+use Porta\Widget\GraphViewerWidget;
 use Porta\Widget\HelpViewerWidget;
 use Porta\Widget\StatusBarWidget;
 use Porta\Widget\TabBarWidget;
@@ -116,6 +118,7 @@ final class SettingsControllerTest extends TestCase
             $translator,
             new DiffViewWidget($t),
             new HelpViewerWidget(),
+            new GraphViewerWidget(new FakeLayoutEngine(), new Translator('en')),
             new TabBarWidget(),
             TestWorkspaceLayout::create(rootDir: $rootDir),
             $dispatcher,

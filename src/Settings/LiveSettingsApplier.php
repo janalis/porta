@@ -19,6 +19,7 @@ use Porta\Ui\Theme\Styles;
 use Porta\Ui\Theme\StyleSheetThemer;
 use Porta\Ui\Theme\Themes;
 use Porta\Widget\Git\DiffViewWidget;
+use Porta\Widget\GraphViewerWidget;
 use Porta\Widget\HelpViewerWidget;
 use Porta\Widget\Support\TabBarPosition;
 use Porta\Widget\TabBarWidget;
@@ -40,6 +41,7 @@ final class LiveSettingsApplier
         private readonly Translator $translator,
         private readonly DiffViewWidget $gitDiff,
         private readonly HelpViewerWidget $helpViewer,
+        private readonly GraphViewerWidget $graphViewer,
         private readonly TabBarWidget $tabBar,
         private readonly WorkspaceLayout $workspaceLayout,
         private readonly EventDispatcherInterface $dispatcher,
@@ -67,6 +69,7 @@ final class LiveSettingsApplier
         // theme has rebuilt itself before core drops the caches.
         $this->gitDiff->refreshTheme();
         $this->helpViewer->refreshTheme(); // rendered help lines bake palette codes
+        $this->graphViewer->refreshTheme(); // graph lines bake SGR too
         $this->dispatcher->dispatch(new ThemeChanged($theme));
     }
 

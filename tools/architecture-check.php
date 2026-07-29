@@ -65,6 +65,7 @@ const ALLOWED_EDGES = [
     'Editor>Container',
     'Editor>Event',
     'Editor>Git',
+    'Editor>Graph',
     'Editor>Highlight',
     'Editor>History',
     'Editor>Image',

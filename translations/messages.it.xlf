@@ -2126,6 +2126,18 @@
         <source>layout…</source>
         <target>layout…</target>
       </trans-unit>
+      <trans-unit id="534">
+        <source>Project Architecture</source>
+        <target>Architettura del progetto</target>
+      </trans-unit>
+      <trans-unit id="535">
+        <source>Graph file too large (&gt; 10 MB)</source>
+        <target>File di grafo troppo grande (&gt; 10 MB)</target>
+      </trans-unit>
+      <trans-unit id="536">
+        <source>+/- zoom  0 fit  n/p select  Ctrl+Q quit</source>
+        <target>+/- zoom  0 adatta  n/p seleziona  Ctrl+Q esci</target>
+      </trans-unit>
     </body>
   </file>
 </xliff>

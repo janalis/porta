@@ -21,6 +21,7 @@ use Porta\Layout\EditorAreaPanes;
 use Porta\Layout\GitSidebar;
 use Porta\Layout\LayoutController;
 use Porta\Support\Clipboard;
+use Porta\Tests\Support\FakeLayoutEngine;
 use Porta\Tests\Support\GitBinary;
 use Porta\Tests\Support\Presence;
 use Porta\Tests\Support\Probe;
@@ -37,6 +38,7 @@ use Porta\Widget\Git\CommitBoxWidget;
 use Porta\Widget\Git\DiffViewWidget;
 use Porta\Widget\Git\GitTabsWidget;
 use Porta\Widget\Git\HistoryListWidget;
+use Porta\Widget\GraphViewerWidget;
 use Porta\Widget\HelpViewerWidget;
 use Porta\Widget\ImageViewerWidget;
 use Porta\Widget\MenuBarWidget;
@@ -130,7 +132,14 @@ final class GitViewControllerTest extends TestCase
         $this->editor = new CodeEditorWidget();
         $this->editor->setId('editor');
         $editWidget->add($this->editor);
-        $editorArea = new EditorArea(new BufferManager(), $this->editor, new ImageViewerWidget(), new HelpViewerWidget(), $this->tui);
+        $editorArea = new EditorArea(
+            new BufferManager(),
+            $this->editor,
+            new ImageViewerWidget(),
+            new HelpViewerWidget(),
+            new GraphViewerWidget(new FakeLayoutEngine(), new Translator('en')),
+            $this->tui,
+        );
         $t = new Translator('en');
         $this->layoutController = new LayoutController(
             new LayoutStore($this->project->dir),

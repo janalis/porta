@@ -12,6 +12,7 @@ use Porta\Event\BufferOpened;
 use Porta\Event\BufferSaved;
 use Porta\Event\BufferSwitched;
 use Porta\Event\DiagnosticsChanged;
+use Porta\Graph\DotFiles;
 use Porta\History\LocalHistory;
 use Porta\I18n\Translator;
 use Porta\Image\ImageDecoder;
@@ -22,6 +23,7 @@ use Porta\Lsp\Uri;
 use Porta\Support\ProjectPaths;
 use Porta\Widget\CodeEditorWidget;
 use Porta\Widget\FileTreeWidget;
+use Porta\Widget\GraphViewerWidget;
 use Porta\Widget\HelpViewerWidget;
 use Porta\Widget\ImageViewerWidget;
 use Porta\Workbench\Notifier;
@@ -61,6 +63,7 @@ final class BufferService implements BufferReopener, DiagnosticsSink, FileOpener
         private readonly FilesystemReconciler $reconciler,
         private readonly ImageViewerWidget $imageViewer,
         private readonly HelpViewerWidget $helpViewer,
+        private readonly GraphViewerWidget $graphViewer,
         private readonly ImageDecoder $imageDecoder,
         #[LayoutSlot('editor_body')]
         private readonly ContainerWidget $editorBody,
@@ -90,6 +93,11 @@ final class BufferService implements BufferReopener, DiagnosticsSink, FileOpener
         }
         if (ImageDecoder::isImagePath($path)) {
             $this->openImageFile($path, $focus);
+
+            return;
+        }
+        if (DotFiles::isDotPath($path)) {
+            $this->openGraphFile($path, $focus);
 
             return;
         }
@@ -157,6 +165,39 @@ final class BufferService implements BufferReopener, DiagnosticsSink, FileOpener
     }
 
     /**
+     * Open a Graphviz DOT document into a graph-viewer tab: no editorconfig,
+     * no LSP didOpen, no git marks — the DOT source rides the buffer beside
+     * an empty document. The generated architecture artifact gets its tab
+     * title here, so session restore reproduces it through the plain
+     * path-keyed reuse.
+     */
+    private function openGraphFile(string $path, OpenFocus $focus): void
+    {
+        if ((int) filesize($path) > DotFiles::MAX_BYTES) {
+            $this->notifier->flash($this->translator->trans('Graph file too large (> 10 MB)'));
+
+            return;
+        }
+        $dot = (string) file_get_contents($path);
+        if ('' !== $dot && !mb_check_encoding($dot, encoding: 'UTF-8')) {
+            $this->notifier->flash($this->translator->trans('Not a UTF-8 text file'));
+
+            return;
+        }
+        $buffer = $this->buffers->openGraph($path, $dot);
+        if (str_ends_with($path, '/.porta/architecture.dot')) {
+            $buffer->title = 'Project Architecture';
+        }
+        $buffer->stampFromDisk();
+        $this->showBuffer($buffer);
+        $this->dispatcher->dispatch(new BufferOpened($buffer));
+        if (OpenFocus::Editor === $focus) {
+            $this->focusEditorArea();
+        }
+        $this->tui->requestRender();
+    }
+
+    /**
      * Open a documentation page into a rendered help-viewer tab: no LSP, no
      * git marks — the raw markdown rides the buffer beside an empty document.
      * A path already open as a normal text buffer just re-shows that source
@@ -214,6 +255,7 @@ final class BufferService implements BufferReopener, DiagnosticsSink, FileOpener
         $this->tui->setFocus(match (true) {
             null !== $active && $active->isImage() => $this->imageViewer,
             null !== $active && $active->isHelp() => $this->helpViewer,
+            null !== $active && $active->isGraph() => $this->graphViewer,
             default => $this->editor,
         });
     }
@@ -260,6 +302,16 @@ final class BufferService implements BufferReopener, DiagnosticsSink, FileOpener
 
             return;
         }
+        if ($buffer->isGraph()) {
+            $this->editor->showDocument('', new Document(''));
+            $this->graphViewer->show($buffer->path, (string) $buffer->graphDot);
+            $this->imageViewer->clear();
+            $this->swapEditorPaneTo($this->graphViewer);
+            $this->dispatcher->dispatch(new BufferSwitched($buffer));
+            $this->tui->requestRender();
+
+            return;
+        }
         $this->swapEditorPaneTo($this->editor);
         $this->imageViewer->clear();
         $this->editor->showDocument($buffer->path, $buffer->document, $buffer->diagnostics, $buffer->highlighter, $buffer->editorConfig);
@@ -280,7 +332,7 @@ final class BufferService implements BufferReopener, DiagnosticsSink, FileOpener
             return;
         }
         $hadFocus = false;
-        foreach ([$this->editor, $this->imageViewer, $this->helpViewer] as $occupant) {
+        foreach ([$this->editor, $this->imageViewer, $this->helpViewer, $this->graphViewer] as $occupant) {
             if ($occupant === $widget) {
                 continue;
             }
@@ -299,6 +351,7 @@ final class BufferService implements BufferReopener, DiagnosticsSink, FileOpener
         $this->swapEditorPaneTo($this->editor);
         $this->imageViewer->clear();
         $this->helpViewer->clear();
+        $this->graphViewer->clear();
         $this->editor->showDocument('', new Document(''));
         $this->tui->setFocus($this->tree);
     }
@@ -336,6 +389,9 @@ final class BufferService implements BufferReopener, DiagnosticsSink, FileOpener
             }
             if ($buffer->isHelp()) {
                 $this->helpViewer->clear();
+            }
+            if ($buffer->isGraph()) {
+                $this->graphViewer->forget($buffer->path);
             }
             $this->buffers->close($buffer->path);
         }
@@ -407,6 +463,9 @@ final class BufferService implements BufferReopener, DiagnosticsSink, FileOpener
         $next = $this->buffers->close($active->path);
         if ($active->isHelp()) {
             $this->helpViewer->clear(); // history dies with the tab, not on tab switches
+        }
+        if ($active->isGraph()) {
+            $this->graphViewer->forget($active->path); // the remembered zoom dies with the tab
         }
         if (null !== $next) {
             $this->showBuffer($next);

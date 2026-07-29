@@ -6,8 +6,11 @@ namespace Porta\Tests\Unit\Workbench;
 
 use PHPUnit\Framework\TestCase;
 use Porta\Editor\BufferManager;
+use Porta\I18n\Translator;
 use Porta\Image\ImageData;
+use Porta\Tests\Support\FakeLayoutEngine;
 use Porta\Widget\CodeEditorWidget;
+use Porta\Widget\GraphViewerWidget;
 use Porta\Widget\HelpViewerWidget;
 use Porta\Widget\ImageViewerWidget;
 use Porta\Workbench\EditorArea;
@@ -24,6 +27,8 @@ final class EditorAreaTest extends TestCase
 
     private HelpViewerWidget $helpViewer;
 
+    private GraphViewerWidget $graphViewer;
+
     private Tui $tui;
 
     private EditorArea $area;
@@ -34,8 +39,9 @@ final class EditorAreaTest extends TestCase
         $this->editor = new CodeEditorWidget();
         $this->imageViewer = new ImageViewerWidget();
         $this->helpViewer = new HelpViewerWidget();
+        $this->graphViewer = new GraphViewerWidget(new FakeLayoutEngine(), new Translator('en'));
         $this->tui = new Tui(terminal: new VirtualTerminal(columns: 40, rows: 10));
-        $this->area = new EditorArea($this->buffers, $this->editor, $this->imageViewer, $this->helpViewer, $this->tui);
+        $this->area = new EditorArea($this->buffers, $this->editor, $this->imageViewer, $this->helpViewer, $this->graphViewer, $this->tui);
     }
 
     public function testTheEditorIsTheContentWithoutBuffersAndForTextBuffers(): void
@@ -55,6 +61,9 @@ final class EditorAreaTest extends TestCase
 
         $this->buffers->openHelp('/tmp/help.md', '# Hi');
         $this->assertSame($this->helpViewer, $this->area->widget(), 'help tab: the help viewer');
+
+        $this->buffers->openGraph('/tmp/arch.dot', 'digraph {}');
+        $this->assertSame($this->graphViewer, $this->area->widget(), 'graph tab: the graph viewer');
     }
 
     public function testFocusFocusesTheCurrentContentWidget(): void

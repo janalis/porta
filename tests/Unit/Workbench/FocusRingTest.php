@@ -6,13 +6,16 @@ namespace Porta\Tests\Unit\Workbench;
 
 use PHPUnit\Framework\TestCase;
 use Porta\Editor\BufferManager;
+use Porta\I18n\Translator;
 use Porta\Terminal\TerminalBuffer;
+use Porta\Tests\Support\FakeLayoutEngine;
 use Porta\Tests\Support\TempProject;
 use Porta\Tests\Support\TestBottomDock;
 use Porta\Tests\Support\TestTui;
 use Porta\Widget\CodeEditorWidget;
 use Porta\Widget\DebugPanelWidget;
 use Porta\Widget\FileTreeWidget;
+use Porta\Widget\GraphViewerWidget;
 use Porta\Widget\HelpViewerWidget;
 use Porta\Widget\ImageViewerWidget;
 use Porta\Widget\MenuBarWidget;
@@ -49,7 +52,14 @@ final class FocusRingTest extends TestCase
 
         // With no buffers open, EditorArea resolves to the editor — the same
         // widget the old closure returned.
-        $editorArea = new EditorArea(new BufferManager(), $this->editor, new ImageViewerWidget(), new HelpViewerWidget(), $this->tui);
+        $editorArea = new EditorArea(
+            new BufferManager(),
+            $this->editor,
+            new ImageViewerWidget(),
+            new HelpViewerWidget(),
+            new GraphViewerWidget(new FakeLayoutEngine(), new Translator('en')),
+            $this->tui,
+        );
         $dock = TestBottomDock::create($this->tui, $this->terminal, $this->results, $this->debug, $editorArea);
 
         return new FocusRing($this->tui, $this->tree, $dock, $editorArea);

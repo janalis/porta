@@ -20,11 +20,13 @@ use Porta\Overlay\Presenter\OverlayDelivery;
 use Porta\Overlay\Presenter\WelcomeModalController;
 use Porta\Overlay\State\MenuOverlayPanes;
 use Porta\Settings\SettingsHighlightController;
+use Porta\Tests\Support\FakeLayoutEngine;
 use Porta\Tests\Support\FakePluginLifecycle;
 use Porta\Tests\Support\RendersRoot;
 use Porta\Tests\Support\TestOverlayPane;
 use Porta\Ui\BidiTui;
 use Porta\Widget\CodeEditorWidget;
+use Porta\Widget\GraphViewerWidget;
 use Porta\Widget\HelpViewerWidget;
 use Porta\Widget\ImageViewerWidget;
 use Porta\Widget\MenuBarWidget;
@@ -77,7 +79,14 @@ final class WelcomeModalControllerTest extends TestCase
         $this->welcome = new WelcomeWidget(new Translator('en'));
         $this->views = new WorkspaceViews();
 
-        $editArea = new EditorArea(new BufferManager(), new CodeEditorWidget(), new ImageViewerWidget(), new HelpViewerWidget(), $this->tui);
+        $editArea = new EditorArea(
+            new BufferManager(),
+            new CodeEditorWidget(),
+            new ImageViewerWidget(),
+            new HelpViewerWidget(),
+            new GraphViewerWidget(new FakeLayoutEngine(), new Translator('en')),
+            $this->tui,
+        );
 
         return new WelcomeModalController(
             new OverlayDelivery($this->renderer, new MenuOverlayPanes([$this->pane], [], [], static fn (): bool => false, static fn (): bool => false), $this->tui),

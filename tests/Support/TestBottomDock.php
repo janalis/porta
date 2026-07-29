@@ -7,9 +7,11 @@ namespace Porta\Tests\Support;
 use Porta\Editor\BufferManager;
 use Porta\I18n\Translator;
 use Porta\Terminal\TerminalSessions;
+use Porta\Tests\Support\FakeLayoutEngine;
 use Porta\Widget\CodeEditorWidget;
 use Porta\Widget\DebugPanelWidget;
 use Porta\Widget\DockTabsWidget;
+use Porta\Widget\GraphViewerWidget;
 use Porta\Widget\HelpViewerWidget;
 use Porta\Widget\ImageViewerWidget;
 use Porta\Widget\ResultsPanelWidget;
@@ -44,7 +46,14 @@ final class TestBottomDock
             $sessions ?? new TerminalSessions(),
             new Translator('en'),
             new Notifier(new StatusBarWidget(), $tui),
-            $editorArea ?? new EditorArea(new BufferManager(), new CodeEditorWidget(), new ImageViewerWidget(), new HelpViewerWidget(), $tui),
+            $editorArea ?? new EditorArea(
+                new BufferManager(),
+                new CodeEditorWidget(),
+                new ImageViewerWidget(),
+                new HelpViewerWidget(),
+                new GraphViewerWidget(new FakeLayoutEngine(), new Translator('en')),
+                $tui,
+            ),
         );
         $dock->wire();
 

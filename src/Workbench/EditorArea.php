@@ -7,6 +7,7 @@ namespace Porta\Workbench;
 use Porta\Container\AsIdeService;
 use Porta\Editor\BufferManager;
 use Porta\Widget\CodeEditorWidget;
+use Porta\Widget\GraphViewerWidget;
 use Porta\Widget\HelpViewerWidget;
 use Porta\Widget\ImageViewerWidget;
 use Symfony\Component\Tui\Tui;
@@ -24,6 +25,7 @@ final class EditorArea
         private readonly CodeEditorWidget $editor,
         private readonly ImageViewerWidget $imageViewer,
         private readonly HelpViewerWidget $helpViewer,
+        private readonly GraphViewerWidget $graphViewer,
         private readonly Tui $tui,
     ) {}
 
@@ -35,6 +37,7 @@ final class EditorArea
         return match (true) {
             null !== $active && $active->isImage() => $this->imageViewer,
             null !== $active && $active->isHelp() => $this->helpViewer,
+            null !== $active && $active->isGraph() => $this->graphViewer,
             default => $this->editor,
         };
     }

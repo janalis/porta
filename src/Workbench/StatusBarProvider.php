@@ -15,6 +15,7 @@ use Porta\Ui\Glyphs;
 use Porta\Ui\Role;
 use Porta\Ui\Theme\Styles;
 use Porta\Widget\CodeEditorWidget;
+use Porta\Widget\GraphViewerWidget;
 use Porta\Widget\ImageViewerWidget;
 use Symfony\Component\Tui\Ansi\AnsiUtils;
 
@@ -29,6 +30,7 @@ final class StatusBarProvider
         private readonly BufferManager $buffers,
         private readonly CodeEditorWidget $editor,
         private readonly ImageViewerWidget $imageViewer,
+        private readonly GraphViewerWidget $graphViewer,
         private readonly GitRefresher $gitRefresher,
         private readonly DebugController $debug,
         private readonly LspSessionPool $lsp,
@@ -54,7 +56,7 @@ final class StatusBarProvider
         $path = $this->editor->getFilePath();
 
         $left = match (true) {
-            null !== $active && (null !== $image || $active->isHelp()) => ProjectPaths::relative($this->rootDir, $active->path),
+            null !== $active && (null !== $image || $active->isHelp() || $active->isGraph()) => ProjectPaths::relative($this->rootDir, $active->path),
             null === $path => $this->translator->trans('porta — open a file from the tree (Enter)'),
             default => ProjectPaths::relative($this->rootDir, $path).($doc->isDirty() ? ' '.Glyphs::DIRTY : ''),
         };
@@ -81,6 +83,13 @@ final class StatusBarProvider
         if (null !== $image) {
             // An image tab: dimensions + zoom instead of cursor/LSP/problems.
             $right = \sprintf('%d × %d  %s  %s', $image->width, $image->height, $this->imageViewer->zoomLabel(), $this->translator->trans('+/- zoom  0 fit  Arrows pan  Ctrl+Q quit'));
+
+            return ['left' => $left, 'right' => $right, 'branchStart' => $branchStart, 'branchEnd' => $branchEnd];
+        }
+
+        if (null !== $active && $active->isGraph()) {
+            // A graph tab: node/edge counts + zoom + the key hints.
+            $right = trim(\sprintf('%s  %s  %s', $this->graphViewer->statusInfo(), $this->graphViewer->zoomLabel(), $this->translator->trans('+/- zoom  0 fit  n/p select  Ctrl+Q quit')));
 
             return ['left' => $left, 'right' => $right, 'branchStart' => $branchStart, 'branchEnd' => $branchEnd];
         }

@@ -71,6 +71,12 @@ final class WheelRouter
             if ($this->hit->contains($imageRect, $mouse)) {
                 $this->panes->imageViewer()->scrollBy(WheelStep::cols($mouse), 0);
                 $this->tui->requestRender();
+
+                return;
+            }
+            if ($this->hit->contains($this->hit->rect($this->panes->graphViewer()), $mouse)) {
+                $this->panes->graphViewer()->scrollBy(WheelStep::cols($mouse), 0);
+                $this->tui->requestRender();
             }
 
             return;
@@ -169,6 +175,16 @@ final class WheelRouter
         }
         if (null !== ($helpRect = $this->hit->rect($this->panes->helpViewer())) && $helpRect->contains($mouse->row, $mouse->col)) {
             $this->panes->helpViewer()->scrollBy($step);
+            $this->tui->requestRender();
+
+            return;
+        }
+        if (null !== ($graphRect = $this->hit->rect($this->panes->graphViewer())) && $graphRect->contains($mouse->row, $mouse->col)) {
+            // The image viewer's contract: plain wheel pans, Ctrl+wheel zooms toward the pointer.
+            $rel = $graphRect->toRelative($mouse->row, $mouse->col);
+            $mouse->ctrl
+                ? $this->panes->graphViewer()->zoomAt($mouse->wheelDelta < 0 ? 1 : -1, $rel['col'], $rel['row'])
+                : $this->panes->graphViewer()->scrollBy(0, WheelStep::rows($mouse, factor: 2));
             $this->tui->requestRender();
 
             return;

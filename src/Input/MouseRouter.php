@@ -31,8 +31,10 @@ use Symfony\Component\Tui\Tui;
  * the cross-event drag state and the double/triple-click counter that the
  * coordinator used to carry.
  *
- * Guard order is behavior: active drags run first, then resize drags, then
- * right-press, then the modal popups, then the panes front-to-back.
+ * Guard order is behavior: active drags run first (the graph viewer's
+ * drag-pan among them — its press ARMS the drag and its release-without-motion
+ * is the click-select), then resize drags, then right-press, then the modal
+ * popups, then the panes front-to-back.
  *
  * Two rules hold across every pane here:
  *
@@ -55,6 +57,9 @@ final class MouseRouter
 
     /** @var array{tab: DockTab, index: int}|null the dock-strip tab being drag-reordered */
     private ?array $dockTabDrag = null;
+
+    /** @var array{row: int, col: int, moved: bool}|null a left-drag panning the graph viewer (release without motion = select) */
+    private ?array $graphDrag = null;
     private ?string $tabDragPath = null;
 
     /** Double/triple-click detection, kept out of the routing logic. */
@@ -150,6 +155,7 @@ final class MouseRouter
             $this->continueTextDrag($mouse, $editorRect)
             || $this->continueColumnDrag($mouse, $editorRect)
             || $this->continueTabDrag($mouse, $tabsRect)
+            || $this->continueGraphDrag($mouse)
             || $this->continueDockTabDrag($mouse)
             || $this->git->continueDiffDrag($mouse)
             || $this->welcome->continueDrag($mouse)
@@ -177,6 +183,7 @@ final class MouseRouter
         $this->columnSelecting = false;
         $this->tabDragging = false;
         $this->dockTabDrag = null;
+        $this->graphDrag = null;
         $this->git->cancelDrag();
         $this->welcome->cancelDrag();
         $this->panes->editor()->cancelFindModalDrag();
@@ -256,6 +263,37 @@ final class MouseRouter
      * Active text selection: a left-drag started in the editor keeps extending
      * on motion/release, wherever the pointer now is.
      */
+    /**
+     * A graph-pane drag pans the viewport by the pointer's cell delta (world
+     * moves WITH the pointer, so the pan is the negated delta in half-rows);
+     * a release that never moved is a click and selects the node under it.
+     */
+    private function continueGraphDrag(MouseEvent $mouse): bool
+    {
+        if (null === $this->graphDrag || !$mouse->isLeftDrag() && !$mouse->isLeftRelease()) {
+            return false;
+        }
+        $dCols = $mouse->col - $this->graphDrag['col'];
+        $dRows = $mouse->row - $this->graphDrag['row'];
+        if (0 !== $dCols || 0 !== $dRows) {
+            $this->panes->graphViewer()->scrollBy(-$dCols, -2 * $dRows);
+            $this->graphDrag = ['row' => $mouse->row, 'col' => $mouse->col, 'moved' => true];
+        }
+        if ($mouse->isLeftRelease()) {
+            if (!$this->graphDrag['moved']) {
+                $rect = $this->hit->rect($this->panes->graphViewer());
+                if (null !== $rect && $rect->contains($mouse->row, $mouse->col)) {
+                    $rel = $rect->toRelative($mouse->row, $mouse->col);
+                    $this->panes->graphViewer()->selectAt($rel['row'], $rel['col']);
+                }
+            }
+            $this->graphDrag = null;
+        }
+        $this->tui->requestRender();
+
+        return true;
+    }
+
     private function continueTextDrag(MouseEvent $mouse, ?WidgetRect $editorRect): bool
     {
         if (!$this->mouseSelecting || !$mouse->isLeftDrag() && !$mouse->isLeftRelease()) {
@@ -480,6 +518,16 @@ final class MouseRouter
             $this->tui->setFocus($this->panes->helpViewer());
             $rel = $helpRect->toRelative($mouse->row, $mouse->col);
             $this->panes->helpViewer()->clickAt($rel['row'], $rel['col']);
+            $this->tui->requestRender();
+
+            return;
+        }
+        // The graph viewer: a press focuses it and ARMS a drag-pan; release
+        // without motion selects the node under the pointer instead.
+        $graphRect = $this->hit->rect($this->panes->graphViewer());
+        if (null !== $graphRect && $graphRect->contains($mouse->row, $mouse->col)) {
+            $this->tui->setFocus($this->panes->graphViewer());
+            $this->graphDrag = ['row' => $mouse->row, 'col' => $mouse->col, 'moved' => false];
             $this->tui->requestRender();
 
             return;

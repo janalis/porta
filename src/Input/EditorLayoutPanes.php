@@ -8,6 +8,7 @@ use Porta\Widget\BreadcrumbsWidget;
 use Porta\Widget\CodeEditorWidget;
 use Porta\Widget\FileTreeWidget;
 use Porta\Widget\FindBarWidget;
+use Porta\Widget\GraphViewerWidget;
 use Porta\Widget\HelpViewerWidget;
 use Porta\Widget\ImageViewerWidget;
 use Porta\Widget\TabBarWidget;
@@ -28,6 +29,7 @@ final readonly class EditorLayoutPanes
         private BreadcrumbsWidget $breadcrumbs,
         private ImageViewerWidget $imageViewer,
         private HelpViewerWidget $helpViewer,
+        private GraphViewerWidget $graphViewer,
         private FindBarWidget $findBar,
     ) {}
 
@@ -44,6 +46,11 @@ final readonly class EditorLayoutPanes
     public function helpViewer(): HelpViewerWidget
     {
         return $this->helpViewer;
+    }
+
+    public function graphViewer(): GraphViewerWidget
+    {
+        return $this->graphViewer;
     }
 
     public function tree(): FileTreeWidget

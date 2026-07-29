@@ -11,6 +11,7 @@ use Porta\I18n\Translator;
 use Porta\Layout\PaneLayout;
 use Porta\Layout\ResponsiveLayout;
 use Porta\Overlay\Region\FloatingRegions;
+use Porta\Tests\Support\FakeLayoutEngine;
 use Porta\Tests\Support\TempProject;
 use Porta\Tests\Support\TestWorkspaceLayout;
 use Porta\Ui\BidiTui;
@@ -18,6 +19,7 @@ use Porta\Ui\PaneSegmenter;
 use Porta\Widget\CodeEditorWidget;
 use Porta\Widget\FileTreeWidget;
 use Porta\Widget\Git\DiffViewWidget;
+use Porta\Widget\GraphViewerWidget;
 use Porta\Widget\HelpViewerWidget;
 use Porta\Widget\ImageViewerWidget;
 use Porta\Widget\Settings\SettingsNavWidget;
@@ -67,7 +69,14 @@ final class ResponsiveLayoutTest extends TestCase
         );
         $this->paneLayout->arrangeEditorArea();
 
-        $editorArea = new EditorArea(new BufferManager(), $this->editor, new ImageViewerWidget(), new HelpViewerWidget(), $this->bidi);
+        $editorArea = new EditorArea(
+            new BufferManager(),
+            $this->editor,
+            new ImageViewerWidget(),
+            new HelpViewerWidget(),
+            new GraphViewerWidget(new FakeLayoutEngine(), new Translator('en')),
+            $this->bidi,
+        );
 
         return new ResponsiveLayout($this->paneLayout, $this->tree, $editorArea, $this->bidi);
     }

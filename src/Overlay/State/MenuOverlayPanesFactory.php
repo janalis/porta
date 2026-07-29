@@ -15,6 +15,7 @@ use Porta\Widget\Git\CommitBoxWidget;
 use Porta\Widget\Git\DiffViewWidget;
 use Porta\Widget\Git\GitTabsWidget;
 use Porta\Widget\Git\HistoryListWidget;
+use Porta\Widget\GraphViewerWidget;
 use Porta\Widget\HelpViewerWidget;
 use Porta\Widget\ImageViewerWidget;
 use Porta\Widget\ResultsPanelWidget;
@@ -40,6 +41,7 @@ final class MenuOverlayPanesFactory
         private readonly CodeEditorWidget $editor,
         private readonly ImageViewerWidget $imageViewer,
         private readonly HelpViewerWidget $helpViewer,
+        private readonly GraphViewerWidget $graphViewer,
         private readonly BreadcrumbsWidget $breadcrumbs,
         private readonly DockTabsWidget $dockTabs,
         private readonly ResultsPanelWidget $resultsPanel,
@@ -68,6 +70,7 @@ final class MenuOverlayPanesFactory
                 $this->editor,
                 $this->imageViewer,
                 $this->helpViewer,
+                $this->graphViewer,
                 $this->breadcrumbs,
                 $this->dockTabs,
                 $this->resultsPanel,
