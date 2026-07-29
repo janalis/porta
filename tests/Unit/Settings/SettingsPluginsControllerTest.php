@@ -6,12 +6,12 @@ namespace Porta\Tests\Unit\Settings;
 
 use PHPUnit\Framework\TestCase;
 use Porta\I18n\Translator;
-use Porta\Plugin\PluginApi;
-use Porta\Plugin\PluginEvents;
-use Porta\Plugin\PluginInstaller;
-use Porta\Plugin\PluginManager;
-use Porta\Plugin\PluginSettings;
-use Porta\Plugin\ToolInstaller;
+use Porta\Plugin\Api\PluginApi;
+use Porta\Plugin\Lifecycle\PluginInstaller;
+use Porta\Plugin\Lifecycle\ToolInstaller;
+use Porta\Plugin\Runtime\PluginEvents;
+use Porta\Plugin\Runtime\PluginManager;
+use Porta\Plugin\Runtime\PluginSettings;
 use Porta\Settings\SettingsPluginsController;
 use Porta\Settings\SettingsRowKind;
 use Porta\Tests\Support\FakePluginLifecycle;

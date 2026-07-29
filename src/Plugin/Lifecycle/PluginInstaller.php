@@ -2,9 +2,10 @@
 
 declare(strict_types=1);
 
-namespace Porta\Plugin;
+namespace Porta\Plugin\Lifecycle;
 
 use Porta\I18n\Translator;
+use Porta\Plugin\Runtime\PluginLoader;
 use Porta\Support\AsyncProcess;
 use Symfony\Component\DependencyInjection\Attribute\Autoconfigure;
 use Symfony\Component\Filesystem\Exception\IOException;

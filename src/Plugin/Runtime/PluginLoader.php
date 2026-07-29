@@ -2,8 +2,11 @@
 
 declare(strict_types=1);
 
-namespace Porta\Plugin;
+namespace Porta\Plugin\Runtime;
 
+use Porta\Plugin\Api\PluginApi;
+use Porta\Plugin\Api\PluginException;
+use Porta\Plugin\Api\PortaPlugin;
 use Tempest\Highlight\TerminalTheme;
 
 /**
@@ -53,7 +56,8 @@ final class PluginLoader
     {
         $dir = getenv('PORTA_EMBEDDED_PLUGINS');
 
-        return \is_string($dir) && '' !== $dir ? $dir : \dirname(__DIR__, levels: 2).'/plugins';
+        // src/Plugin/Runtime → the package root is three levels up.
+        return \is_string($dir) && '' !== $dir ? $dir : \dirname(__DIR__, levels: 3).'/plugins';
     }
 
     /** Discover, activate and commit every plugin into $manager. */

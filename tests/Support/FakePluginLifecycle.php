@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace Porta\Tests\Support;
 
-use Porta\Plugin\PluginLifecycleOps;
+use Porta\Plugin\Lifecycle\PluginLifecycleOps;
 
 /** Records every live plugin operation; fixtures drive the query answers. */
 final class FakePluginLifecycle implements PluginLifecycleOps

@@ -2,11 +2,11 @@
 
 declare(strict_types=1);
 
-namespace Porta\Tests\Unit\Plugin;
+namespace Porta\Tests\Unit\Plugin\Lifecycle;
 
 use PHPUnit\Framework\TestCase;
 use Porta\I18n\Translator;
-use Porta\Plugin\PluginInstaller;
+use Porta\Plugin\Lifecycle\PluginInstaller;
 use Porta\Tests\Support\GitBinary;
 use Porta\Tests\Support\Presence;
 use Porta\Tests\Support\TempProject;

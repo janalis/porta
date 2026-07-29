@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace Porta\Plugin;
+namespace Porta\Plugin\Lifecycle;
 
 use Porta\Support\AsyncProcess;
 use Symfony\Component\DependencyInjection\Attribute\Autoconfigure;

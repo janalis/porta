@@ -2,11 +2,15 @@
 
 declare(strict_types=1);
 
-namespace Porta\Plugin;
+namespace Porta\Plugin\Api;
 
 use Porta\Editor\OpenFocus;
 use Porta\Highlight\DarkTerminalTheme;
 use Porta\Lsp\Uri;
+use Porta\Plugin\Runtime\PluginEvents;
+use Porta\Plugin\Runtime\PluginManager;
+use Porta\Plugin\Runtime\PluginMenuSpec;
+use Porta\Plugin\Runtime\PluginSettings;
 use Porta\Settings\SettingsRowKind;
 use Tempest\Highlight\TerminalTheme;
 

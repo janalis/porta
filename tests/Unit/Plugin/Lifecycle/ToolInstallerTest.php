@@ -2,11 +2,11 @@
 
 declare(strict_types=1);
 
-namespace Porta\Tests\Unit\Plugin;
+namespace Porta\Tests\Unit\Plugin\Lifecycle;
 
 use PHPUnit\Framework\TestCase;
-use Porta\Plugin\InstallOutcome;
-use Porta\Plugin\ToolInstaller;
+use Porta\Plugin\Lifecycle\InstallOutcome;
+use Porta\Plugin\Lifecycle\ToolInstaller;
 use Porta\Tests\Support\PumpsLoop;
 use Porta\Tests\Support\TempProject;
 use Revolt\EventLoop;

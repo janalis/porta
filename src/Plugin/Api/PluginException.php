@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace Porta\Plugin;
+namespace Porta\Plugin\Api;
 
 /**
  * Thrown by {@see PluginApi} on misuse: an action method called during

@@ -2,10 +2,10 @@
 
 declare(strict_types=1);
 
-namespace Porta\Tests\Unit\Plugin;
+namespace Porta\Tests\Unit\Plugin\Runtime;
 
 use PHPUnit\Framework\TestCase;
-use Porta\Plugin\PluginSettings;
+use Porta\Plugin\Runtime\PluginSettings;
 use Porta\Tests\Support\TempProject;
 
 final class PluginSettingsTest extends TestCase

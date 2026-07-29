@@ -9,7 +9,7 @@ use Porta\Config\CommandRegistry;
 use Porta\Config\KeyDispatch;
 use Porta\Config\PaletteVisibility;
 use Porta\I18n\Translator;
-use Porta\Plugin\PluginMenuSpec;
+use Porta\Plugin\Runtime\PluginMenuSpec;
 use Porta\Tests\Support\Probe;
 use Porta\Widget\CodeEditorWidget;
 use Porta\Workbench\Menu\Menu;

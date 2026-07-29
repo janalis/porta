@@ -6,11 +6,11 @@ namespace Porta\Tests\Unit\Plugin;
 
 use PHPUnit\Framework\TestCase;
 use Porta\Config\CommandRegistry;
-use Porta\Plugin\PluginApi;
-use Porta\Plugin\PluginEvents;
-use Porta\Plugin\PluginException;
-use Porta\Plugin\PluginManager;
-use Porta\Plugin\PluginSettings;
+use Porta\Plugin\Api\PluginApi;
+use Porta\Plugin\Api\PluginException;
+use Porta\Plugin\Runtime\PluginEvents;
+use Porta\Plugin\Runtime\PluginManager;
+use Porta\Plugin\Runtime\PluginSettings;
 
 /**
  * Plugin-provided viewer routes: registration, claim normalization, load

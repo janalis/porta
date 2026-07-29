@@ -2,12 +2,13 @@
 
 declare(strict_types=1);
 
-namespace Porta\Plugin;
+namespace Porta\Plugin\Runtime;
 
 use Porta\Event\BufferOpened;
 use Porta\Event\BufferSaved;
 use Porta\Event\BufferSwitched;
 use Porta\Event\ThemeChanged;
+use Porta\Plugin\Api\PluginException;
 use Symfony\Component\EventDispatcher\Attribute\AsEventListener;
 
 /**

@@ -123,6 +123,17 @@ dangling reference; grep the old namespace to prove zero. Membership rules:
   `NamespaceGraphScanner`/`DotWriter`) and the two controllers
   (`ArchitectureGraphController`, `GraphTabActions`). The widget is `Widget/GraphViewerWidget`;
   its stateless rasterizer `Widget/Render/GraphRenderer`+`GraphCellGrid` (render-tier rule).
+- **`Plugin/`** — three tiers, one rule each: **`Api/`** is the surface a plugin file compiles
+  against (`PortaPlugin`, `PluginApi`, `PluginException`, `PluginBuffer`, and the abstract
+  bases); **`Runtime/`** is what the IDE runs (`PluginLoader`, `PluginManager`, `PluginHost`,
+  `PluginRuntime`, `PluginEvents`, `PluginSettings`, `PluginMenuSpec`); **`Lifecycle/`** is
+  enabling, disabling and acquiring (`PluginLifecycle`, `PluginEnablement`,
+  `PluginLifecycleOps`, `PluginInstaller`, `ToolInstaller`, `InstallOutcome`). The tiers are
+  invisible to `composer arch` (its edge key is the FIRST segment after `Porta\`), but they
+  are NOT cosmetic: the split forced the `PluginApi`↔`PluginManager` buffer/drain cycle into
+  the open, where it is now a pinned SCC — same-namespace classes need no import, so the class
+  graph could never see it before. The consumer-owned provider interfaces stay OUT of here on
+  purpose (see the Plugins architecture note).
 - Suffix homes: mouse/keymap routers in `Input/`, typed events in `Event/`, LSP controllers in
   `Lsp/`, `*Store` state beside its domain.
 

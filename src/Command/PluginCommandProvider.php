@@ -5,7 +5,7 @@ declare(strict_types=1);
 namespace Porta\Command;
 
 use Porta\Config\CommandRegistry;
-use Porta\Plugin\PluginManager;
+use Porta\Plugin\Runtime\PluginManager;
 use Symfony\Component\DependencyInjection\Attribute\AsTaggedItem;
 
 /**

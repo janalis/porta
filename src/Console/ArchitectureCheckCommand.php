@@ -281,6 +281,10 @@ final class ArchitectureCheckCommand extends Command
             'Porta\\Container\\IdeContainerFactory',
             'Porta\\Ide',
         ],
+        [
+            'Porta\\Plugin\\Api\\PluginApi',
+            'Porta\\Plugin\\Runtime\\PluginManager',
+        ],
     ];
 
     private const int E2E_MAX_TESTS = 60;

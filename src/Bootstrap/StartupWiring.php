@@ -6,8 +6,8 @@ namespace Porta\Bootstrap;
 
 use Porta\Config\IdeConfig;
 use Porta\Container\AsIdeService;
-use Porta\Plugin\PluginManager;
-use Porta\Plugin\PluginRuntime;
+use Porta\Plugin\Runtime\PluginManager;
+use Porta\Plugin\Runtime\PluginRuntime;
 use Porta\Workbench\Notifier;
 
 /**

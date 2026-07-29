@@ -48,8 +48,8 @@ final class IdePluginInstallTest extends TestCase
     {
         return <<<PHP
             <?php
-            use Porta\\Plugin\\PluginApi;
-            use Porta\\Plugin\\PortaPlugin;
+            use Porta\\Plugin\\Api\\PluginApi;
+            use Porta\\Plugin\\Api\\PortaPlugin;
 
             return new class implements PortaPlugin {
                 public function name(): string { return '{$name}'; }

@@ -8,7 +8,7 @@ use Porta\Config\IdeConfig;
 use Porta\Config\PortaJsonWriter;
 use Porta\Highlight\HighlightRegistry;
 use Porta\I18n\Translator;
-use Porta\Plugin\PluginEnablement;
+use Porta\Plugin\Lifecycle\PluginEnablement;
 use Porta\Support\LanguageMap;
 
 /**

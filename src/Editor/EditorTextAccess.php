@@ -6,7 +6,7 @@ namespace Porta\Editor;
 
 /**
  * Read *and* write access to the active buffer's text: the seam handed to
- * plugins through {@see \Porta\Plugin\PluginApi}. Implemented by the editor
+ * plugins through {@see \Porta\Plugin\Api\PluginApi}. Implemented by the editor
  * widget.
  *
  * This is the public plugin surface, so it is deliberately the smallest set

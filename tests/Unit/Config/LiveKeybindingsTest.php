@@ -9,8 +9,8 @@ use Porta\Config\CommandRegistry;
 use Porta\Config\IdeConfig;
 use Porta\Config\KeybindingsFactory;
 use Porta\Config\LiveKeybindings;
-use Porta\Plugin\PluginEvents;
-use Porta\Plugin\PluginHost;
+use Porta\Plugin\Runtime\PluginEvents;
+use Porta\Plugin\Runtime\PluginHost;
 use Porta\Tests\Support\TempProject;
 
 /**
@@ -23,9 +23,9 @@ final class LiveKeybindingsTest extends TestCase
 {
     private const string PLUGIN = <<<'PHP'
         <?php
-        return new class implements Porta\Plugin\PortaPlugin {
+        return new class implements Porta\Plugin\Api\PortaPlugin {
             public function name(): string { return 'keyed'; }
-            public function activate(Porta\Plugin\PluginApi $api): void
+            public function activate(Porta\Plugin\Api\PluginApi $api): void
             {
                 $api->registerCommand('boom', 'Boom', static function (): void {}, keys: ['ctrl+alt+b']);
             }

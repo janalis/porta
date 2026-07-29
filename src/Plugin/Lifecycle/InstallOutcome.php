@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace Porta\Plugin;
+namespace Porta\Plugin\Lifecycle;
 
 /**
  * The immediate result of asking {@see ToolInstaller} to install a tool: the

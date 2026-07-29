@@ -9,11 +9,11 @@ use Porta\Config\CommandRegistry;
 use Porta\Highlight\CapturingHighlightSink;
 use Porta\Highlight\HighlightRequest;
 use Porta\Highlight\SyntaxHighlightProvider;
-use Porta\Plugin\PluginApi;
-use Porta\Plugin\PluginEvents;
-use Porta\Plugin\PluginException;
-use Porta\Plugin\PluginManager;
-use Porta\Plugin\PluginSettings;
+use Porta\Plugin\Api\PluginApi;
+use Porta\Plugin\Api\PluginException;
+use Porta\Plugin\Runtime\PluginEvents;
+use Porta\Plugin\Runtime\PluginManager;
+use Porta\Plugin\Runtime\PluginSettings;
 
 /**
  * Plugin-provided highlighting backends: registration, load order, the

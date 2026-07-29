@@ -5,12 +5,12 @@ declare(strict_types=1);
 namespace Porta\Settings;
 
 use Porta\I18n\Translator;
-use Porta\Plugin\InstallOutcome;
-use Porta\Plugin\PluginInstaller;
-use Porta\Plugin\PluginLifecycleOps;
-use Porta\Plugin\PluginManager;
-use Porta\Plugin\PluginSettings;
-use Porta\Plugin\ToolInstaller;
+use Porta\Plugin\Lifecycle\InstallOutcome;
+use Porta\Plugin\Lifecycle\PluginInstaller;
+use Porta\Plugin\Lifecycle\PluginLifecycleOps;
+use Porta\Plugin\Lifecycle\ToolInstaller;
+use Porta\Plugin\Runtime\PluginManager;
+use Porta\Plugin\Runtime\PluginSettings;
 use Porta\Workbench\Notifier;
 
 /**

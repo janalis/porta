@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace Porta\Plugin;
+namespace Porta\Plugin\Api;
 
 /**
  * One extension point's registration buffer: rows appended during a plugin's

@@ -26,7 +26,7 @@ use Porta\Layout\WorkspaceLayout;
 use Porta\Lsp\LspBootstrapper;
 use Porta\Lsp\LspSessionPool;
 use Porta\Onboarding\OnboardingState;
-use Porta\Plugin\PluginLifecycle;
+use Porta\Plugin\Lifecycle\PluginLifecycle;
 use Porta\Run\RunController;
 use Porta\Search\SearchUiWiring;
 use Porta\Settings\SettingsController;

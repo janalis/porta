@@ -7,7 +7,7 @@ namespace Porta\Highlight;
 /**
  * The plugin-supplied highlighting backends.
  *
- * Implemented by `Porta\Plugin\PluginManager` and consumed by
+ * Implemented by `Porta\Plugin\Runtime\PluginManager` and consumed by
  * {@see HighlightRegistry}. The interface lives here, in the consuming
  * namespace, so the highlighting subsystem never depends on `Porta\Plugin` —
  * the same arrangement as {@see \Porta\Lsp\LanguageServerProvider}.

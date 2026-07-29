@@ -2,19 +2,19 @@
 
 declare(strict_types=1);
 
-namespace Porta\Tests\Unit\Plugin;
+namespace Porta\Tests\Unit\Plugin\Api;
 
 use PHPUnit\Framework\TestCase;
 use Porta\Config\IdeConfig;
 use Porta\Editor\BufferManager;
 use Porta\Editor\Document;
 use Porta\I18n\Translator;
-use Porta\Plugin\PluginApi;
-use Porta\Plugin\PluginEvents;
-use Porta\Plugin\PluginException;
-use Porta\Plugin\PluginManager;
-use Porta\Plugin\PluginRuntime;
-use Porta\Plugin\PluginSettings;
+use Porta\Plugin\Api\PluginApi;
+use Porta\Plugin\Api\PluginException;
+use Porta\Plugin\Runtime\PluginEvents;
+use Porta\Plugin\Runtime\PluginManager;
+use Porta\Plugin\Runtime\PluginRuntime;
+use Porta\Plugin\Runtime\PluginSettings;
 use Porta\Tests\Support\Presence;
 use Porta\Tests\Support\RecordingDiagnosticsSink;
 use Porta\Tests\Support\RecordingFileOpener;

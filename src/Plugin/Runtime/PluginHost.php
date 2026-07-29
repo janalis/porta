@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace Porta\Plugin;
+namespace Porta\Plugin\Runtime;
 
 use Porta\Config\IdeConfig;
 use Porta\Container\AsIdeService;

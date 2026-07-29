@@ -2,10 +2,11 @@
 
 declare(strict_types=1);
 
-namespace Porta\Plugin;
+namespace Porta\Plugin\Runtime;
 
 use Porta\Config\IdeConfig;
 use Porta\Config\PortaJsonWriter;
+use Porta\Plugin\Api\PluginApi;
 use Porta\Settings\SettingsRow;
 use Porta\Settings\SettingsRowKind;
 

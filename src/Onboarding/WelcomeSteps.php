@@ -7,7 +7,7 @@ namespace Porta\Onboarding;
 use Porta\Config\CommandRegistry;
 use Porta\Highlight\SyntaxHighlightProviderSource;
 use Porta\I18n\Translator;
-use Porta\Plugin\PluginEnablement;
+use Porta\Plugin\Lifecycle\PluginEnablement;
 use Porta\Settings\SettingsHighlightController;
 
 /**

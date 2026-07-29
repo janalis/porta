@@ -2,10 +2,10 @@
 
 declare(strict_types=1);
 
-namespace Porta\Tests\Unit\Plugin;
+namespace Porta\Tests\Unit\Plugin\Api;
 
 use PHPUnit\Framework\TestCase;
-use Porta\Plugin\PluginBuffer;
+use Porta\Plugin\Api\PluginBuffer;
 
 final class PluginBufferTest extends TestCase
 {

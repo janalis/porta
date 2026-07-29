@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace Porta\Plugin;
+namespace Porta\Plugin\Lifecycle;
 
 /**
  * The full live plugin lifecycle the plugins settings page drives: activate a

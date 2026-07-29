@@ -2,13 +2,13 @@
 
 declare(strict_types=1);
 
-namespace Porta\Tests\Unit\Plugin;
+namespace Porta\Tests\Unit\Plugin\Runtime;
 
 use PHPUnit\Framework\TestCase;
-use Porta\Plugin\PluginEvents;
-use Porta\Plugin\PluginLoader;
-use Porta\Plugin\PluginManager;
-use Porta\Plugin\PluginSettings;
+use Porta\Plugin\Runtime\PluginEvents;
+use Porta\Plugin\Runtime\PluginLoader;
+use Porta\Plugin\Runtime\PluginManager;
+use Porta\Plugin\Runtime\PluginSettings;
 use Porta\Tests\Support\TempProject;
 
 final class PluginLoaderTest extends TestCase
@@ -31,8 +31,8 @@ final class PluginLoaderTest extends TestCase
     {
         return <<<PHP
             <?php
-            use Porta\\Plugin\\PluginApi;
-            use Porta\\Plugin\\PortaPlugin;
+            use Porta\\Plugin\\Api\\PluginApi;
+            use Porta\\Plugin\\Api\\PortaPlugin;
 
             return new class('{$name}') implements PortaPlugin {
                 public function __construct(private readonly string \$name) {}
@@ -196,8 +196,8 @@ final class PluginLoaderTest extends TestCase
     {
         return <<<'PHP'
             <?php
-            use Porta\Plugin\PluginApi;
-            use Porta\Plugin\PortaPlugin;
+            use Porta\Plugin\Api\PluginApi;
+            use Porta\Plugin\Api\PortaPlugin;
 
             return new class implements PortaPlugin {
                 public function name(): string { return 'bad:name'; }

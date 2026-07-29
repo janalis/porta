@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace Porta\Tests\Unit\Plugin;
+namespace Porta\Tests\Unit\Plugin\Runtime;
 
 use PHPUnit\Framework\TestCase;
 use Porta\Editor\Buffer;
@@ -10,8 +10,8 @@ use Porta\Editor\BufferManager;
 use Porta\Event\BufferOpened;
 use Porta\Event\BufferSaved;
 use Porta\Event\BufferSwitched;
-use Porta\Plugin\PluginEvents;
-use Porta\Plugin\PluginException;
+use Porta\Plugin\Api\PluginException;
+use Porta\Plugin\Runtime\PluginEvents;
 
 final class PluginEventsTest extends TestCase
 {

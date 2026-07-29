@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace Porta\Tests\Unit\Plugin;
+namespace Porta\Tests\Unit\Plugin\Runtime;
 
 use PHPUnit\Framework\TestCase;
 use Porta\Config\CommandRegistry;
@@ -13,12 +13,12 @@ use Porta\Event\BufferOpened;
 use Porta\Event\BufferSaved;
 use Porta\Event\BufferSwitched;
 use Porta\I18n\Translator;
-use Porta\Plugin\PluginApi;
-use Porta\Plugin\PluginEvents;
-use Porta\Plugin\PluginManager;
-use Porta\Plugin\PluginMenuSpec;
-use Porta\Plugin\PluginRuntime;
-use Porta\Plugin\PluginSettings;
+use Porta\Plugin\Api\PluginApi;
+use Porta\Plugin\Runtime\PluginEvents;
+use Porta\Plugin\Runtime\PluginManager;
+use Porta\Plugin\Runtime\PluginMenuSpec;
+use Porta\Plugin\Runtime\PluginRuntime;
+use Porta\Plugin\Runtime\PluginSettings;
 use Porta\Tests\Support\Probe;
 use Porta\Tests\Support\RecordingDiagnosticsSink;
 use Porta\Tests\Support\RecordingFileOpener;

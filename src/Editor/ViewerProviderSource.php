@@ -10,7 +10,7 @@ namespace Porta\Editor;
  * text editor. Owned by the CONSUMING namespace (the
  * {@see \Porta\Highlight\SyntaxHighlightProviderSource} precedent), so the
  * editor never depends on `Porta\Plugin` even though the claims come from
- * plugin registrations ({@see \Porta\Plugin\PluginApi::registerViewer()}).
+ * plugin registrations ({@see \Porta\Plugin\Api\PluginApi::registerViewer()}).
  *
  * The returned id names a built-in viewer pane ('image', 'graph'); unknown
  * ids fall through to the text path, leaving room for a future

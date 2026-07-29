@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace Porta\Plugin;
+namespace Porta\Plugin\Runtime;
 
 /**
  * One Plugins-menu entry: the owning plugin (for grouping and live removal),

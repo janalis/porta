@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace Porta\Plugin;
+namespace Porta\Plugin\Lifecycle;
 
 /**
  * Which plugins are installed, which are switched off, and the verb to switch

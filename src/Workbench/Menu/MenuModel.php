@@ -7,7 +7,7 @@ namespace Porta\Workbench\Menu;
 use Porta\Config\ActionCatalog;
 use Porta\Config\CommandRegistry;
 use Porta\I18n\Translator;
-use Porta\Plugin\PluginMenuSpec;
+use Porta\Plugin\Runtime\PluginMenuSpec;
 use Porta\Ui\ShortcutFormatter;
 use Porta\Workbench\WorkspaceView;
 use Symfony\Component\Tui\Input\Keybindings;

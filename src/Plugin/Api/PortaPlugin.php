@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace Porta\Plugin;
+namespace Porta\Plugin\Api;
 
 /**
  * The contract a plugin file fulfills: `<project>/.porta/plugins/<dir>/plugin.php`

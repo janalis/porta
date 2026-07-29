@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace Porta\Plugin;
+namespace Porta\Plugin\Runtime;
 
 use Porta\Container\AsIdeService;
 use Porta\Editor\BufferManager;
@@ -10,6 +10,7 @@ use Porta\Editor\DiagnosticsSink;
 use Porta\Editor\EditorTextAccess;
 use Porta\Editor\FileOpener;
 use Porta\I18n\Translator;
+use Porta\Plugin\Api\PluginApi;
 use Porta\Workbench\Notifier;
 use Symfony\Component\Tui\Tui;
 

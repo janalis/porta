@@ -6,8 +6,8 @@ use Porta\Graph\ArchitectureArtifact;
 use Porta\Graph\DotFiles;
 use Porta\Graph\DotLayoutEngine;
 use Porta\Graph\GraphExportFormat;
-use Porta\Plugin\PluginApi;
-use Porta\Plugin\PortaPlugin;
+use Porta\Plugin\Api\PluginApi;
+use Porta\Plugin\Api\PortaPlugin;
 
 /**
  * The Graphviz graph viewer as a bundled plugin: the routing claim (.dot/.gv

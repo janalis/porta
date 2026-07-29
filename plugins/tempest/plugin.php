@@ -3,8 +3,8 @@
 declare(strict_types=1);
 
 use Porta\Highlight\TempestBackend;
-use Porta\Plugin\PluginApi;
-use Porta\Plugin\PortaPlugin;
+use Porta\Plugin\Api\PluginApi;
+use Porta\Plugin\Api\PortaPlugin;
 use Tempest\Highlight\Highlighter;
 
 /**

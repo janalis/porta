@@ -2,14 +2,14 @@
 
 declare(strict_types=1);
 
-namespace Porta\Tests\Unit\Plugin;
+namespace Porta\Tests\Unit\Plugin\Runtime;
 
 use PHPUnit\Framework\TestCase;
 use Porta\Config\ActionCatalog;
 use Porta\Config\IdeConfig;
 use Porta\Config\KeybindingsFactory;
-use Porta\Plugin\PluginEvents;
-use Porta\Plugin\PluginHost;
+use Porta\Plugin\Runtime\PluginEvents;
+use Porta\Plugin\Runtime\PluginHost;
 use Porta\Tests\Support\TempProject;
 
 final class PluginHostTest extends TestCase
@@ -24,9 +24,9 @@ final class PluginHostTest extends TestCase
         $project = new TempProject([
             '.porta/plugins/greeter/plugin.php' => <<<'PHP'
                 <?php
-                return new class implements Porta\Plugin\PortaPlugin {
+                return new class implements Porta\Plugin\Api\PortaPlugin {
                     public function name(): string { return 'greeter'; }
-                    public function activate(Porta\Plugin\PluginApi $api): void
+                    public function activate(Porta\Plugin\Api\PluginApi $api): void
                     {
                         $api->registerCommand('hello', 'Say Hello', static function (): void {});
                     }
@@ -51,9 +51,9 @@ final class PluginHostTest extends TestCase
             '.porta.json' => json_encode(['keymap' => ['save' => ['ctrl+shift+s']]]),
             '.porta/plugins/keyed/plugin.php' => <<<'PHP'
                 <?php
-                return new class implements Porta\Plugin\PortaPlugin {
+                return new class implements Porta\Plugin\Api\PortaPlugin {
                     public function name(): string { return 'keyed'; }
-                    public function activate(Porta\Plugin\PluginApi $api): void
+                    public function activate(Porta\Plugin\Api\PluginApi $api): void
                     {
                         $api->registerCommand('boom', 'Boom', static function (): void {}, keys: ['ctrl+alt+b']);
                     }

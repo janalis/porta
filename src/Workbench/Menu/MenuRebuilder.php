@@ -8,7 +8,7 @@ use Porta\Config\CommandRegistry;
 use Porta\Config\LiveKeybindings;
 use Porta\Container\AsIdeService;
 use Porta\I18n\Translator;
-use Porta\Plugin\PluginManager;
+use Porta\Plugin\Runtime\PluginManager;
 use Porta\Widget\MenuBarWidget;
 use Porta\Workbench\WorkspaceView;
 use Porta\Workbench\WorkspaceViews;

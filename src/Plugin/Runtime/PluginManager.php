@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace Porta\Plugin;
+namespace Porta\Plugin\Runtime;
 
 use Porta\Config\CommandRegistry;
 use Porta\Config\KeyDispatch;
@@ -11,6 +11,8 @@ use Porta\Highlight\CallableHighlightProvider;
 use Porta\Highlight\SyntaxHighlightProvider;
 use Porta\Highlight\SyntaxHighlightProviderSource;
 use Porta\Lsp\LanguageServerProvider;
+use Porta\Plugin\Api\PluginApi;
+use Porta\Plugin\Api\PluginException;
 use Porta\Search\TokenSpanProvider;
 
 /**

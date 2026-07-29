@@ -241,7 +241,7 @@ final class IdeConfig
     /**
      * The raw per-plugin setting values from the top-level `plugins` block.
      * Values stay uncoerced — descriptors are only known once plugins load;
-     * {@see \Porta\Plugin\PluginSettings} coerces at read time.
+     * {@see \Porta\Plugin\Runtime\PluginSettings} coerces at read time.
      *
      * @param array<array-key, mixed> $config
      * @param list<string>            $warnings

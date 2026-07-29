@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace Porta\Config;
 
-use Porta\Plugin\PluginHost;
+use Porta\Plugin\Runtime\PluginHost;
 use Symfony\Component\Tui\Input\Keybindings;
 use Symfony\Component\Tui\Input\KeyParser;
 

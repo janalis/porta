@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace Porta\Plugin;
+namespace Porta\Plugin\Lifecycle;
 
 use Porta\Config\CommandRegistry;
 use Porta\Config\LiveKeybindings;
@@ -10,6 +10,8 @@ use Porta\Config\PortaJsonWriter;
 use Porta\Container\AsIdeService;
 use Porta\I18n\Translator;
 use Porta\Lsp\LspReconfigurer;
+use Porta\Plugin\Runtime\PluginLoader;
+use Porta\Plugin\Runtime\PluginManager;
 use Porta\Widget\Settings\SettingsNavWidget;
 use Porta\Workbench\Menu\MenuRebuilder;
 use Porta\Workbench\Notifier;

@@ -40,8 +40,8 @@ final class IdePluginTest extends TestCase
     {
         return <<<'PHP'
             <?php
-            use Porta\Plugin\PluginApi;
-            use Porta\Plugin\PortaPlugin;
+            use Porta\Plugin\Api\PluginApi;
+            use Porta\Plugin\Api\PortaPlugin;
 
             return new class implements PortaPlugin {
                 public function name(): string
@@ -151,8 +151,8 @@ final class IdePluginTest extends TestCase
             '.porta/plugins/demo/plugin.php' => str_replace(["'demo'", "'hello ran in '"], ["'globaldemo'", "'GLOBAL ran in '"], $this->demoPlugin()),
             '.porta/plugins/wave/plugin.php' => <<<'PHP'
                 <?php
-                use Porta\Plugin\PluginApi;
-                use Porta\Plugin\PortaPlugin;
+                use Porta\Plugin\Api\PluginApi;
+                use Porta\Plugin\Api\PortaPlugin;
 
                 return new class implements PortaPlugin {
                     public function name(): string

@@ -128,7 +128,7 @@ final class PsalmPluginTest extends TestCase
                     $this->assertTrue((bool) (\Porta\Config\IdeConfig::load($project->dir)->plugins['psalm']['autoLint'] ?? false), 'the toggle persisted to .porta.json');
 
                     // The persisted setting shows on the plugin's settings page.
-                    $rows = Services::resolve($ide, \Porta\Plugin\PluginHost::class)
+                    $rows = Services::resolve($ide, \Porta\Plugin\Runtime\PluginHost::class)
                         ->settings()
                         ->rows('psalm');
                     $byKey = array_column($rows, null, 'key');

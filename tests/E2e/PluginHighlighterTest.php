@@ -31,8 +31,8 @@ final class PluginHighlighterTest extends TestCase
 
         declare(strict_types=1);
 
-        use Porta\Plugin\PluginApi;
-        use Porta\Plugin\PortaPlugin;
+        use Porta\Plugin\Api\PluginApi;
+        use Porta\Plugin\Api\PortaPlugin;
 
         return new class implements PortaPlugin {
             public function name(): string
