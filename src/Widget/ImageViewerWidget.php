@@ -31,7 +31,7 @@ use Symfony\Component\Tui\Widget\VerticallyExpandableInterface;
  * (via {@see HalfBlockRasterizer}) and owns its zoom/pan. It replaces the
  * code editor as the editor-pane's content while an image buffer is active,
  * so the tab-cycling / close / go-to-file keys are re-bound here and routed
- * back to the IDE through {@see ImageViewerHandler}.
+ * back to the IDE through {@see ViewerTabHandler}.
  */
 #[AsIdeService]
 #[AsWidget('image-viewer')]
@@ -48,14 +48,14 @@ final class ImageViewerWidget extends AbstractWidget implements FocusableInterfa
     /** last rendered pane size, so key handling scales/pans what is on screen */
     private int $lastCols = 80;
     private int $lastRows = 24;
-    private ?ImageViewerHandler $handler = null;
+    private ?ViewerTabHandler $handler = null;
 
     public function __construct(?Styles $styles = null)
     {
         $this->initStyles($styles);
     }
 
-    public function setHandler(ImageViewerHandler $handler): void
+    public function setHandler(ViewerTabHandler $handler): void
     {
         $this->handler = $handler;
     }

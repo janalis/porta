@@ -2078,6 +2078,54 @@
         <source>Open the guide</source>
         <target>פתיחת המדריך</target>
       </trans-unit>
+      <trans-unit id="522">
+        <source>Graph: Zoom In</source>
+        <target>גרף: התקרבות</target>
+      </trans-unit>
+      <trans-unit id="523">
+        <source>Graph: Zoom Out</source>
+        <target>גרף: התרחקות</target>
+      </trans-unit>
+      <trans-unit id="524">
+        <source>Graph: Fit to Window</source>
+        <target>גרף: התאמה לחלון</target>
+      </trans-unit>
+      <trans-unit id="525">
+        <source>Graph: Actual Size</source>
+        <target>גרף: גודל אמיתי</target>
+      </trans-unit>
+      <trans-unit id="526">
+        <source>Graph: Pan Left</source>
+        <target>גרף: הזזה שמאלה</target>
+      </trans-unit>
+      <trans-unit id="527">
+        <source>Graph: Pan Right</source>
+        <target>גרף: הזזה ימינה</target>
+      </trans-unit>
+      <trans-unit id="528">
+        <source>Graph: Pan Up</source>
+        <target>גרף: הזזה למעלה</target>
+      </trans-unit>
+      <trans-unit id="529">
+        <source>Graph: Pan Down</source>
+        <target>גרף: הזזה למטה</target>
+      </trans-unit>
+      <trans-unit id="530">
+        <source>Graph: Select Next Node</source>
+        <target>גרף: בחירת הצומת הבא</target>
+      </trans-unit>
+      <trans-unit id="531">
+        <source>Graph: Select Previous Node</source>
+        <target>גרף: בחירת הצומת הקודם</target>
+      </trans-unit>
+      <trans-unit id="532">
+        <source>graphviz not found — install graphviz, or set the "dotPath" setting</source>
+        <target>graphviz לא נמצא — התקינו graphviz או הגדירו את ההגדרה "dotPath"</target>
+      </trans-unit>
+      <trans-unit id="533">
+        <source>layout…</source>
+        <target>פריסה…</target>
+      </trans-unit>
     </body>
   </file>
 </xliff>

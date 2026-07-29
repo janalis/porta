@@ -2078,6 +2078,54 @@
         <source>Open the guide</source>
         <target>Apri la guida</target>
       </trans-unit>
+      <trans-unit id="522">
+        <source>Graph: Zoom In</source>
+        <target>Grafo: Ingrandisci</target>
+      </trans-unit>
+      <trans-unit id="523">
+        <source>Graph: Zoom Out</source>
+        <target>Grafo: Riduci</target>
+      </trans-unit>
+      <trans-unit id="524">
+        <source>Graph: Fit to Window</source>
+        <target>Grafo: Adatta alla finestra</target>
+      </trans-unit>
+      <trans-unit id="525">
+        <source>Graph: Actual Size</source>
+        <target>Grafo: Dimensione reale</target>
+      </trans-unit>
+      <trans-unit id="526">
+        <source>Graph: Pan Left</source>
+        <target>Grafo: Scorri a sinistra</target>
+      </trans-unit>
+      <trans-unit id="527">
+        <source>Graph: Pan Right</source>
+        <target>Grafo: Scorri a destra</target>
+      </trans-unit>
+      <trans-unit id="528">
+        <source>Graph: Pan Up</source>
+        <target>Grafo: Scorri in alto</target>
+      </trans-unit>
+      <trans-unit id="529">
+        <source>Graph: Pan Down</source>
+        <target>Grafo: Scorri in basso</target>
+      </trans-unit>
+      <trans-unit id="530">
+        <source>Graph: Select Next Node</source>
+        <target>Grafo: Seleziona nodo successivo</target>
+      </trans-unit>
+      <trans-unit id="531">
+        <source>Graph: Select Previous Node</source>
+        <target>Grafo: Seleziona nodo precedente</target>
+      </trans-unit>
+      <trans-unit id="532">
+        <source>graphviz not found — install graphviz, or set the "dotPath" setting</source>
+        <target>graphviz non trovato — installare graphviz o impostare l'opzione "dotPath"</target>
+      </trans-unit>
+      <trans-unit id="533">
+        <source>layout…</source>
+        <target>layout…</target>
+      </trans-unit>
     </body>
   </file>
 </xliff>

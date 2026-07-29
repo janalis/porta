@@ -8,8 +8,8 @@ use Porta\Search\Everywhere\SearchEverywhereController;
 use Porta\Support\ProjectPaths;
 use Porta\Ui\Glyphs;
 use Porta\Widget\BufferNavigationHandler;
-use Porta\Widget\ImageViewerHandler;
 use Porta\Widget\StatusBarWidget;
+use Porta\Widget\ViewerTabHandler;
 use Symfony\Component\DependencyInjection\Attribute\Autowire;
 use Symfony\Component\Tui\Tui;
 
@@ -21,7 +21,7 @@ use Symfony\Component\Tui\Tui;
  * actions, and the fifth ({@see viewChanged}) is the status-bar ping the
  * viewer's zoom label rides.
  */
-final class BufferNavigator implements BufferNavigationHandler, ImageViewerHandler
+final class BufferNavigator implements BufferNavigationHandler, ViewerTabHandler
 {
     public function __construct(
         private readonly BufferManager $buffers,

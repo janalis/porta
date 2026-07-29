@@ -206,6 +206,7 @@ const ALLOWED_EDGES = [
     'Widget>Debug',
     'Widget>Editor',
     'Widget>Git',
+    'Widget>Graph',
     'Widget>Help',
     'Widget>Highlight',
     'Widget>Image',

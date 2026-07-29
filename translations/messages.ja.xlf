@@ -2078,6 +2078,54 @@
         <source>Open the guide</source>
         <target>ガイドを開く</target>
       </trans-unit>
+      <trans-unit id="522">
+        <source>Graph: Zoom In</source>
+        <target>グラフ: ズームイン</target>
+      </trans-unit>
+      <trans-unit id="523">
+        <source>Graph: Zoom Out</source>
+        <target>グラフ: ズームアウト</target>
+      </trans-unit>
+      <trans-unit id="524">
+        <source>Graph: Fit to Window</source>
+        <target>グラフ: ウィンドウに合わせる</target>
+      </trans-unit>
+      <trans-unit id="525">
+        <source>Graph: Actual Size</source>
+        <target>グラフ: 実際のサイズ</target>
+      </trans-unit>
+      <trans-unit id="526">
+        <source>Graph: Pan Left</source>
+        <target>グラフ: 左へパン</target>
+      </trans-unit>
+      <trans-unit id="527">
+        <source>Graph: Pan Right</source>
+        <target>グラフ: 右へパン</target>
+      </trans-unit>
+      <trans-unit id="528">
+        <source>Graph: Pan Up</source>
+        <target>グラフ: 上へパン</target>
+      </trans-unit>
+      <trans-unit id="529">
+        <source>Graph: Pan Down</source>
+        <target>グラフ: 下へパン</target>
+      </trans-unit>
+      <trans-unit id="530">
+        <source>Graph: Select Next Node</source>
+        <target>グラフ: 次のノードを選択</target>
+      </trans-unit>
+      <trans-unit id="531">
+        <source>Graph: Select Previous Node</source>
+        <target>グラフ: 前のノードを選択</target>
+      </trans-unit>
+      <trans-unit id="532">
+        <source>graphviz not found — install graphviz, or set the "dotPath" setting</source>
+        <target>graphviz が見つかりません — graphviz をインストールするか、"dotPath" 設定を指定してください</target>
+      </trans-unit>
+      <trans-unit id="533">
+        <source>layout…</source>
+        <target>レイアウト中…</target>
+      </trans-unit>
     </body>
   </file>
 </xliff>

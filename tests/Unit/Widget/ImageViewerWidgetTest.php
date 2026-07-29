@@ -6,7 +6,7 @@ namespace Porta\Tests\Unit\Widget;
 
 use PHPUnit\Framework\TestCase;
 use Porta\Image\ImageData;
-use Porta\Tests\Support\RecordingImageViewerHandler;
+use Porta\Tests\Support\RecordingViewerTabHandler;
 use Porta\Ui\Glyphs;
 use Porta\Widget\ImageViewerWidget;
 use Symfony\Component\Tui\Ansi\AnsiUtils;
@@ -125,7 +125,7 @@ final class ImageViewerWidgetTest extends TestCase
     public function testPassThroughActionsFireTheCallbacks(): void
     {
         $widget = new ImageViewerWidget();
-        $handler = new RecordingImageViewerHandler();
+        $handler = new RecordingViewerTabHandler();
         $widget->setHandler($handler);
         $widget->show($this->gradient());
         $widget->render(new RenderContext(8, 2));

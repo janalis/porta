@@ -5,12 +5,13 @@ declare(strict_types=1);
 namespace Porta\Widget;
 
 /**
- * The image viewer's hooks into the IDE: the tab actions re-bound while the
- * code editor is detached, plus a view-change ping so the status bar's zoom
- * label stays live. Implemented by {@see \Porta\Image\ImageViewerActions};
+ * A viewer tab's hooks into the IDE: the tab actions re-bound while the code
+ * editor is detached, plus a view-change ping so the status bar stays live.
+ * Shared by the image and graph viewers (five identical methods — one seam,
+ * not one per viewer); implemented by {@see \Porta\Editor\BufferNavigator},
  * tests inject recording fakes.
  */
-interface ImageViewerHandler
+interface ViewerTabHandler
 {
     /** Switch tabs (+1 / -1). */
     public function cycleBuffer(int $offset): void;

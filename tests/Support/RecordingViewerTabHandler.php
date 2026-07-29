@@ -4,10 +4,10 @@ declare(strict_types=1);
 
 namespace Porta\Tests\Support;
 
-use Porta\Widget\ImageViewerHandler;
+use Porta\Widget\ViewerTabHandler;
 
 /** Records every hook invocation for assertions. */
-final class RecordingImageViewerHandler implements ImageViewerHandler
+final class RecordingViewerTabHandler implements ViewerTabHandler
 {
     /** @var list<string> */
     public array $events = [];

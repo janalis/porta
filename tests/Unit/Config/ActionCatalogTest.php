@@ -11,6 +11,7 @@ use Porta\Widget\CodeEditorWidget;
 use Porta\Widget\ContextMenu;
 use Porta\Widget\FileTreeWidget;
 use Porta\Widget\FindBarWidget;
+use Porta\Widget\GraphViewerWidget;
 use Porta\Widget\HelpViewerWidget;
 use Porta\Widget\ImageViewerWidget;
 use Porta\Widget\MenuBarWidget;
@@ -25,6 +26,7 @@ final class ActionCatalogTest extends TestCase
         ContextMenu::class,
         FileTreeWidget::class,
         FindBarWidget::class,
+        GraphViewerWidget::class,
         HelpViewerWidget::class,
         ImageViewerWidget::class,
         MenuBarWidget::class,

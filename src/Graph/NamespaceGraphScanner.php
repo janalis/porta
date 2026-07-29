@@ -98,7 +98,7 @@ final class NamespaceGraphScanner
             new \RecursiveCallbackFilterIterator(
                 new \RecursiveDirectoryIterator($dir, \FilesystemIterator::SKIP_DOTS),
                 static function (\RecursiveDirectoryIterator|\SplFileInfo|string $file): bool {
-                    $basename = $file instanceof \SplFileInfo ? $file->getBasename() : basename((string) $file);
+                    $basename = $file instanceof \SplFileInfo ? $file->getBasename() : basename($file);
 
                     return !\in_array($basename, self::SKIP_DIRS, strict: true) && !str_starts_with($basename, '.');
                 },
