@@ -1,0 +1,566 @@
+<?php
+
+declare(strict_types=1);
+
+namespace Porta\Console;
+
+use Symfony\Component\Console\Attribute\AsCommand;
+use Symfony\Component\Console\Command\Command;
+use Symfony\Component\Console\Input\InputArgument;
+use Symfony\Component\Console\Input\InputInterface;
+use Symfony\Component\Console\Output\ConsoleOutputInterface;
+use Symfony\Component\Console\Output\OutputInterface;
+
+/**
+ * The architecture gate: the structural facts the six-round SOLID audit
+ * established (July 2026), enforced as a ratchet. Three checks:
+ *
+ *   1. Namespace edges — the exact import graph between top-level src/
+ *      namespaces, pinned below. A NEW edge fails (new coupling: justify it
+ *      by adding it here in the same PR, where it is reviewable); a listed
+ *      edge that no longer exists ALSO fails (tighten the list — a stale
+ *      allowlist is not a gate, the mago.toml doctrine).
+ *   2. Class-level acyclicity — no multi-member strongly-connected component
+ *      may exist except the pinned ones below. Docblocks and comments are
+ *      stripped before an import counts as used, so {@see}-only imports
+ *      (the SpanSlicer/FloatingRegions prose references) form no edge.
+ *   3. E2e suite size — no tests/E2e file may exceed E2E_MAX_TESTS methods.
+ *      The retired IdeEdgeCasesTest monolith had 187 and pinned two lint
+ *      ratchets; the largest suite today has 42.
+ *
+ * Runs from the dev console (`bin/porta-dev`, via `composer arch`): a
+ * maintainer gate over Porta\'s own tree, which is why the vendor prefix and
+ * the pins are baked in. The scan root is an argument and the pins are
+ * constructor-injectable so the checker can be driven over fixture trees —
+ * which is also how it earns its own 100% coverage. It scans src/, so it
+ * scans itself: keep it importing nothing from `Porta\` (its pin strings are
+ * invisible to the `use Porta\…;` regex) or it grows the very edges it
+ * grades.
+ */
+#[AsCommand(name: 'arch', description: "Enforce Porta's namespace, acyclicity and E2e-size ratchets")]
+final class ArchitectureCheckCommand extends Command
+{
+    /** The audited namespace import graph, sorted, as 'From>To'. */
+    private const array ALLOWED_EDGES = [
+        'Bootstrap>Config',
+        'Bootstrap>Container',
+        'Bootstrap>Editor',
+        'Bootstrap>Help',
+        'Bootstrap>Overlay',
+        'Bootstrap>Plugin',
+        'Bootstrap>Run',
+        'Bootstrap>Widget',
+        'Bootstrap>Workbench',
+        'Command>Config',
+        'Command>Container',
+        'Command>Debug',
+        'Command>Editor',
+        'Command>Git',
+        'Command>History',
+        'Command>Layout',
+        'Command>Lsp',
+        'Command>Plugin',
+        'Command>Run',
+        'Command>Search',
+        'Command>Settings',
+        'Command>Widget',
+        'Command>Workbench',
+        'Config>Container',
+        'Config>Editor',
+        'Config>Plugin',
+        'Config>Support',
+        'Console>Container',
+        'Container>Config',
+        'Debug>Container',
+        'Debug>Editor',
+        'Debug>Event',
+        'Debug>Support',
+        'Debug>Terminal',
+        'Debug>Ui',
+        'Debug>Widget',
+        'Debug>Workbench',
+        'Editor>Config',
+        'Editor>Container',
+        'Editor>Event',
+        'Editor>Git',
+        'Editor>Graph',
+        'Editor>Highlight',
+        'Editor>History',
+        'Editor>Image',
+        'Editor>Lsp',
+        'Editor>Search',
+        'Editor>Support',
+        'Editor>Ui',
+        'Editor>Widget',
+        'Editor>Workbench',
+        'Event>Editor',
+        'Event>Widget',
+        'Git>Container',
+        'Git>Editor',
+        'Git>Event',
+        'Git>Layout',
+        'Git>Support',
+        'Git>Ui',
+        'Git>Widget',
+        'Git>Workbench',
+        'Graph>Support',
+        'Help>Editor',
+        'Help>Support',
+        'Help>Ui',
+        'Help>Widget',
+        'Help>Workbench',
+        'Highlight>Editor',
+        'Highlight>Event',
+        'Highlight>Support',
+        'Highlight>Ui',
+        'History>Container',
+        'History>Editor',
+        'History>Lsp',
+        'History>Support',
+        'History>Ui',
+        'History>Workbench',
+        'I18n>Container',
+        'I18n>Ui',
+        'Image>Ui',
+        'Input>Config',
+        'Input>Container',
+        'Input>Debug',
+        'Input>Editor',
+        'Input>Git',
+        'Input>Layout',
+        'Input>Overlay',
+        'Input>Support',
+        'Input>Tree',
+        'Input>Ui',
+        'Input>Widget',
+        'Input>Workbench',
+        'Layout>Config',
+        'Layout>Container',
+        'Layout>Git',
+        'Layout>Input',
+        'Layout>Support',
+        'Layout>Ui',
+        'Layout>Widget',
+        'Layout>Workbench',
+        'Lsp>Container',
+        'Lsp>Editor',
+        'Lsp>Event',
+        'Lsp>Support',
+        'Lsp>Ui',
+        'Lsp>Widget',
+        'Lsp>Workbench',
+        'Onboarding>Config',
+        'Onboarding>Container',
+        'Onboarding>Highlight',
+        'Onboarding>Plugin',
+        'Onboarding>Settings',
+        'Onboarding>Support',
+        'Overlay>Container',
+        'Overlay>Layout',
+        'Overlay>Onboarding',
+        'Overlay>Search',
+        'Overlay>Support',
+        'Overlay>Ui',
+        'Overlay>Widget',
+        'Overlay>Workbench',
+        'Plugin>Config',
+        'Plugin>Container',
+        'Plugin>Editor',
+        'Plugin>Event',
+        'Plugin>Highlight',
+        'Plugin>Lsp',
+        'Plugin>Search',
+        'Plugin>Settings',
+        'Plugin>Support',
+        'Plugin>Widget',
+        'Plugin>Workbench',
+        'Run>Container',
+        'Run>Support',
+        'Run>Terminal',
+        'Run>Widget',
+        'Run>Workbench',
+        'Search>Config',
+        'Search>Container',
+        'Search>Editor',
+        'Search>Highlight',
+        'Search>History',
+        'Search>Lsp',
+        'Search>Overlay',
+        'Search>Support',
+        'Search>Ui',
+        'Search>Widget',
+        'Search>Workbench',
+        'Settings>Config',
+        'Settings>Container',
+        'Settings>Debug',
+        'Settings>Editor',
+        'Settings>Event',
+        'Settings>Git',
+        'Settings>Highlight',
+        'Settings>Layout',
+        'Settings>Lsp',
+        'Settings>Plugin',
+        'Settings>Search',
+        'Settings>Support',
+        'Settings>Ui',
+        'Settings>Widget',
+        'Settings>Workbench',
+        'Support>Container',
+        'Support>Ui',
+        'Terminal>Support',
+        'Terminal>Ui',
+        'Tree>Editor',
+        'Tree>Search',
+        'Tree>Support',
+        'Tree>Widget',
+        'Tree>Workbench',
+        'Ui>Container',
+        'Ui>Editor',
+        'Ui>Highlight',
+        'Ui>Input',
+        'Ui>Overlay',
+        'Ui>Support',
+        'Widget>Config',
+        'Widget>Container',
+        'Widget>Debug',
+        'Widget>Editor',
+        'Widget>Git',
+        'Widget>Graph',
+        'Widget>Help',
+        'Widget>Highlight',
+        'Widget>Image',
+        'Widget>Input',
+        'Widget>Layout',
+        'Widget>Onboarding',
+        'Widget>Overlay',
+        'Widget>Search',
+        'Widget>Settings',
+        'Widget>Support',
+        'Widget>Terminal',
+        'Widget>Tree',
+        'Widget>Ui',
+        'Widget>Workbench',
+        'Workbench>Config',
+        'Workbench>Container',
+        'Workbench>Debug',
+        'Workbench>Editor',
+        'Workbench>Event',
+        'Workbench>Git',
+        'Workbench>Layout',
+        'Workbench>Lsp',
+        'Workbench>Overlay',
+        'Workbench>Plugin',
+        'Workbench>Run',
+        'Workbench>Search',
+        'Workbench>Settings',
+        'Workbench>Support',
+        'Workbench>Terminal',
+        'Workbench>Tree',
+        'Workbench>Ui',
+        'Workbench>Widget',
+    ];
+
+    /**
+     * Multi-member SCCs the audit measured and accepted, each a sorted member
+     * list. #1 is the WorkspaceViews registry: closed only by its attach*()
+     * setter fields; construction stays a DAG (CLAUDE.md, round 6). #2 is
+     * degenerate: IdeContainerFactory reads Ide::VERSION as a cache-key salt —
+     * a constant, not a collaboration.
+     */
+    private const array ALLOWED_SCCS = [
+        [
+            'Porta\\Git\\GitViewController',
+            'Porta\\Layout\\LayoutController',
+            'Porta\\Settings\\SettingsViewController',
+            'Porta\\Widget\\CodeEditorWidget',
+            'Porta\\Workbench\\Dock\\BottomDock',
+            'Porta\\Workbench\\EditorArea',
+            'Porta\\Workbench\\WorkspaceViews',
+        ],
+        [
+            'Porta\\Container\\IdeContainerFactory',
+            'Porta\\Ide',
+        ],
+    ];
+
+    private const int E2E_MAX_TESTS = 60;
+
+    /** @var list<string> */
+    private readonly array $allowedEdges;
+
+    /** @var list<list<string>> */
+    private readonly array $allowedSccs;
+
+    /**
+     * @param list<string>|null       $allowedEdges the pinned namespace graph; defaults to {@see ALLOWED_EDGES}
+     * @param list<list<string>>|null $allowedSccs  the pinned cycles; defaults to {@see ALLOWED_SCCS}
+     */
+    public function __construct(?array $allowedEdges = null, ?array $allowedSccs = null)
+    {
+        parent::__construct();
+        $this->allowedEdges = $allowedEdges ?? self::ALLOWED_EDGES;
+        $this->allowedSccs = $allowedSccs ?? self::ALLOWED_SCCS;
+    }
+
+    protected function configure(): void
+    {
+        $this->addArgument('path', InputArgument::OPTIONAL, 'Project root to scan (defaults to the working directory)');
+    }
+
+    protected function execute(InputInterface $input, OutputInterface $output): int
+    {
+        /** @var string|null $pathArgument */
+        $pathArgument = $input->getArgument('path');
+        $root = rtrim($pathArgument ?? (string) getcwd(), characters: '/');
+
+        [$nsEdges, $classEdges] = $this->graphs($root.'/src');
+        $current = array_keys($nsEdges);
+        sort($current);
+        $sccs = $this->cycles($classEdges);
+
+        $failures = [
+            ...$this->edgeDrift($current),
+            ...$this->cycleDrift($sccs),
+            ...$this->oversizedSuites($root.'/tests/E2e'),
+        ];
+
+        if ([] !== $failures) {
+            $errors = $output instanceof ConsoleOutputInterface ? $output->getErrorOutput() : $output;
+            $errors->writeln('architecture-check: FAILED');
+            foreach ($failures as $failure) {
+                $errors->writeln('  '.$failure);
+            }
+
+            return Command::FAILURE;
+        }
+
+        $output->writeln(\sprintf(
+            'architecture-check: OK (%d namespace edges, %d known SCCs, E2e suites within bounds)',
+            \count($current),
+            \count($sccs),
+        ));
+
+        return Command::SUCCESS;
+    }
+
+    /**
+     * Both graphs in one pass over the source tree: namespace-level edges
+     * (`From>To`) and class-level ones (FQCN => imported FQCNs). An import
+     * counts only when its short name also appears in the comment-stripped
+     * body — a `{@see}`-only reference is prose, not coupling.
+     *
+     * @return array{array<string, true>, array<string, list<string>>}
+     */
+    private function graphs(string $srcDir): array
+    {
+        $nsEdges = [];
+        $classEdges = [];
+        foreach ($this->phpFiles($srcDir) as $path) {
+            $rel = substr($path, \strlen($srcDir) + 1, -4); // strip the src dir and .php
+            $fqcn = 'Porta\\'.str_replace('/', replace: '\\', subject: $rel);
+            $parts = explode('/', $rel);
+            $ns = \count($parts) > 1 ? $parts[0] : null;
+            $source = (string) file_get_contents($path);
+            $code = $this->stripComments($source);
+            $matches = [];
+            preg_match_all('/^use (Porta\\\\[A-Za-z\\\\]+);$/m', $source, $matches);
+            $body = (string) preg_replace('/^use [^;]+;$/m', replacement: '', subject: $code);
+            foreach ($matches[1] as $import) {
+                $short = substr((string) strrchr($import, needle: '\\'), offset: 1);
+                if (1 !== preg_match('/\\b'.preg_quote($short, delimiter: '/').'\\b/', $body)) {
+                    continue;
+                }
+                $classEdges[$fqcn][] = $import;
+                $importNs = explode(separator: '\\', string: $import)[1] ?? '';
+                if (null !== $ns && '' !== $importNs && $importNs !== $ns && str_contains($import, needle: '\\'.$importNs.'\\')) {
+                    $nsEdges[$ns.'>'.$importNs] = true;
+                }
+            }
+        }
+
+        return [$nsEdges, $classEdges];
+    }
+
+    /**
+     * Namespace-ratchet drift, in both directions: a new edge is unjustified
+     * coupling, a vanished one is a stale allowlist.
+     *
+     * @param list<string> $current
+     *
+     * @return list<string>
+     */
+    private function edgeDrift(array $current): array
+    {
+        $failures = [];
+        foreach (array_diff($current, $this->allowedEdges) as $edge) {
+            $failures[] = "namespace: NEW edge {$edge} — new coupling; if deliberate, add it to ALLOWED_EDGES in this PR";
+        }
+        foreach (array_diff($this->allowedEdges, $current) as $edge) {
+            $failures[] = "namespace: edge {$edge} no longer exists — remove it from ALLOWED_EDGES (a stale allowlist is not a gate)";
+        }
+
+        return $failures;
+    }
+
+    /**
+     * @param list<list<string>> $sccs
+     *
+     * @return list<string>
+     */
+    private function cycleDrift(array $sccs): array
+    {
+        $failures = [];
+        foreach ($sccs as $scc) {
+            if (\in_array($scc, $this->allowedSccs, strict: true)) {
+                continue;
+            }
+            $failures[] = 'classes: new circular dependency — '.implode(' <-> ', $scc).' (re-opening acyclicity needs the CLAUDE.md bar: new evidence, recorded)';
+        }
+        foreach ($this->allowedSccs as $allowed) {
+            if (\in_array($allowed, $sccs, strict: true)) {
+                continue;
+            }
+            $failures[] = 'classes: allowed SCC {'.implode(', ', $allowed).'} no longer exists — remove it from ALLOWED_SCCS';
+        }
+
+        return $failures;
+    }
+
+    /** @return list<string> */
+    private function oversizedSuites(string $e2eDir): array
+    {
+        $failures = [];
+        foreach ($this->phpFiles($e2eDir) as $path) {
+            $count = (int) preg_match_all('/^    public function test/m', (string) file_get_contents($path));
+            if ($count <= self::E2E_MAX_TESTS) {
+                continue;
+            }
+            $failures[] = "e2e: {$path} has {$count} test methods (max ".self::E2E_MAX_TESTS.') — split it before it regrows the monolith';
+        }
+
+        return $failures;
+    }
+
+    /**
+     * Tarjan over the class graph, keeping only multi-member components —
+     * a class importing itself is not a cycle worth pinning.
+     *
+     * @param array<string, list<string>> $classEdges
+     *
+     * @return list<list<string>>
+     */
+    private function cycles(array $classEdges): array
+    {
+        $index = 0;
+        $indices = [];
+        $low = [];
+        $onStack = [];
+        $stack = [];
+        $sccs = [];
+        $strongconnect = static function (string $v) use (&$strongconnect, &$index, &$indices, &$low, &$onStack, &$stack, &$sccs, $classEdges): void {
+            $indices[$v] = $index;
+            $low[$v] = $index;
+            ++$index;
+            $stack[] = $v;
+            $onStack[$v] = true;
+            foreach ($classEdges[$v] ?? [] as $w) {
+                if (!\array_key_exists($w, $classEdges) && !\array_key_exists($w, $indices)) {
+                    $indices[$w] = \PHP_INT_MAX; // leaf import (an interface with no file of its own, etc.)
+                    continue;
+                }
+                if (!\array_key_exists($w, $indices)) {
+                    $strongconnect($w);
+                    $low[$v] = min($low[$v], $low[$w]);
+                    continue;
+                }
+                if ($onStack[$w] ?? false) {
+                    $low[$v] = min($low[$v], $indices[$w]);
+                }
+            }
+            // Only a component ROOT pops a component — Tarjan's invariant, and
+            // genuinely variable at runtime: the loop above lowers $low[$v]
+            // through min() for every back-edge. The analyzer cannot follow
+            // those by-reference writes and reads the comparison as constant.
+            // @mago-expect analysis:redundant-condition -- $low[$v] is mutated by the by-reference min() writes above.
+            // @mago-expect analysis:redundant-comparison -- same: the operands diverge whenever this node is not a component root.
+            if ($low[$v] === $indices[$v]) {
+                $scc = self::popComponent($v, $stack, $onStack);
+                if (\count($scc) > 1) {
+                    sort($scc);
+                    $sccs[] = $scc;
+                }
+            }
+        };
+        foreach (array_keys($classEdges) as $v) {
+            if (\array_key_exists($v, $indices)) {
+                continue;
+            }
+            $strongconnect($v);
+        }
+
+        return $sccs;
+    }
+
+    /**
+     * Pop one strongly-connected component off the Tarjan stack, up to and
+     * including its root.
+     *
+     * @param list<string>        $stack
+     * @param array<string, bool> $onStack
+     *
+     * @return list<string>
+     */
+    private static function popComponent(string $root, array &$stack, array &$onStack): array
+    {
+        $scc = [];
+        do {
+            $popped = (string) array_pop($stack);
+            $onStack[$popped] = false;
+            $scc[] = $popped;
+        } while ($popped !== $root);
+
+        return $scc;
+    }
+
+    /**
+     * Every .php file under $dir, sorted; a missing directory yields none (a
+     * scanned tree need not have both src/ and tests/E2e).
+     *
+     * @return list<string>
+     */
+    private function phpFiles(string $dir): array
+    {
+        if (!is_dir($dir)) {
+            return [];
+        }
+        $files = [];
+        $iterator = new \RecursiveIteratorIterator(new \RecursiveDirectoryIterator($dir, \FilesystemIterator::SKIP_DOTS));
+        foreach ($iterator as $file) {
+            if (!$file instanceof \SplFileInfo || !$file->isFile() || 'php' !== $file->getExtension()) {
+                continue;
+            }
+            $files[] = $file->getPathname();
+        }
+        sort($files);
+
+        return $files;
+    }
+
+    /** The source with comments and docblocks removed, so prose cannot fake a code edge. */
+    private function stripComments(string $source): string
+    {
+        $out = '';
+        foreach (token_get_all($source) as $token) {
+            if (!\is_array($token)) {
+                $out .= $token;
+                continue;
+            }
+            if (\T_COMMENT === $token[0] || \T_DOC_COMMENT === $token[0]) {
+                continue;
+            }
+            $out .= $token[1];
+        }
+
+        return $out;
+    }
+}

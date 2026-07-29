@@ -52,7 +52,7 @@
             "@coverage",
             "@php bin/porta-dev coverage:check coverage/clover.xml 100"
         ],
-        "arch": "@php tools/architecture-check.php",
+        "arch": "@php bin/porta-dev arch",
         "container": "@php tools/container-debug.php"
     },
     "minimum-stability": "stable",
