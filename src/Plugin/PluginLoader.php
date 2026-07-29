@@ -53,7 +53,7 @@ final class PluginLoader
     {
         $dir = getenv('PORTA_EMBEDDED_PLUGINS');
 
-        return \is_string($dir) && '' !== $dir ? $dir : \dirname(__DIR__, levels: 2).'/.porta/plugins';
+        return \is_string($dir) && '' !== $dir ? $dir : \dirname(__DIR__, levels: 2).'/plugins';
     }
 
     /** Discover, activate and commit every plugin into $manager. */

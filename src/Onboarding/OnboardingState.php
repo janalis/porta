@@ -20,8 +20,9 @@ use Symfony\Component\Filesystem\Filesystem;
  *   when no buffers are open, so its absence means "new project **or** the user
  *   closed every tab last time".
  * - *No `.porta/` directory* — it is created lazily by whichever store persists
- *   first, but a repository can perfectly well commit `.porta/plugins/` (this
- *   one does), which would suppress onboarding for everyone who clones it.
+ *   first, but a repository can perfectly well commit `.porta/plugins/` (Porta
+ *   itself used to, before the bundled plugins moved to `plugins/`), which
+ *   would suppress onboarding for everyone who clones it.
  *
  * Project-scoped rather than global because the setup it walks through is
  * per-project: highlighting and the language server are configured in

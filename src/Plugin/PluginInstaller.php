@@ -174,9 +174,11 @@ final class PluginInstaller
      * Every installed plugin directory in precedence order — project, global,
      * then the plugins bundled with Porta (scope 'embedded', never removable).
      * A name present in several scopes is listed once per copy (the loader's
-     * shadowing only affects which one activates). In a Porta dev checkout the
-     * project plugins dir IS the embedded dir — those entries classify as
-     * embedded so the bundled plugins stay non-removable there too.
+     * shadowing only affects which one activates). When a scanned dir COINCIDES
+     * with the embedded dir (e.g. PORTA_EMBEDDED_PLUGINS pointed at a project's
+     * own plugin dir — the bundled source at `<package>/plugins` no longer
+     * overlaps by default), those entries classify as embedded so the bundled
+     * plugins stay non-removable there too.
      *
      * @return list<array{name: string, scope: string, dir: string}>
      */

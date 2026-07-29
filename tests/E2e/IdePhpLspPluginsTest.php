@@ -78,7 +78,7 @@ final class IdePhpLspPluginsTest extends TestCase
     /** An embedded dir holding only the real phpantom plugin (loads its actual code). */
     private function embeddedPhpantom(): TempProject
     {
-        return new TempProject(['phpantom/plugin.php' => (string) file_get_contents(__DIR__.'/../../.porta/plugins/phpantom/plugin.php')]);
+        return new TempProject(['phpantom/plugin.php' => (string) file_get_contents(__DIR__.'/../../plugins/phpantom/plugin.php')]);
     }
 
     public function testPhpantomProvidesThePhpServerAndTogglingItReconfiguresLive(): void

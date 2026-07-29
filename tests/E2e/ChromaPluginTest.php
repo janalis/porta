@@ -12,7 +12,7 @@ use Porta\Tests\Support\TempProject;
 use Symfony\Component\Tui\Ansi\AnsiUtils;
 
 /**
- * The shipped chroma plugin (.porta/plugins/chroma/plugin.php) against stub
+ * The shipped chroma plugin (plugins/chroma/plugin.php) against stub
  * binaries — the real plugin file is loaded from the repo, and PATH is blanked
  * so a chroma that happens to be installed on the machine can never be found.
  *
@@ -47,7 +47,7 @@ final class ChromaPluginTest extends TestCase
 
     private function project(string $stubBody, string $source = "fn main()\n"): TempProject
     {
-        $plugin = (string) file_get_contents(__DIR__.'/../../.porta/plugins/chroma/plugin.php');
+        $plugin = (string) file_get_contents(__DIR__.'/../../plugins/chroma/plugin.php');
         $project = new TempProject([
             '.porta/plugins/chroma/plugin.php' => $plugin,
             // Claim rust and drop the debounce so the test does not wait on it.
@@ -127,7 +127,7 @@ final class ChromaPluginTest extends TestCase
     /** With no binary anywhere the backend declines and the built-in serves the file. */
     public function testWithoutTheBinaryTheBackendDeclines(): void
     {
-        $plugin = (string) file_get_contents(__DIR__.'/../../.porta/plugins/chroma/plugin.php');
+        $plugin = (string) file_get_contents(__DIR__.'/../../plugins/chroma/plugin.php');
         $project = new TempProject([
             '.porta/plugins/chroma/plugin.php' => $plugin,
             '.porta.json' => '{"plugins":{"chroma":{"languages":"php"}}}',

@@ -15,7 +15,7 @@ use Porta\Tests\Support\TempProject;
 use Symfony\Component\Tui\Ansi\AnsiUtils;
 
 /**
- * The shipped psalm plugin (.porta/plugins/psalm/plugin.php) against stub
+ * The shipped psalm plugin (plugins/psalm/plugin.php) against stub
  * analyser binaries — the real plugin file is loaded from the repo. Issues
  * surface as editor diagnostics and in the Problems panel; a clean run clears.
  */
@@ -33,7 +33,7 @@ final class PsalmPluginTest extends TestCase
     /** A project with the real plugin file and (optionally) a stub psalm. */
     private function project(?string $stubBody = null): TempProject
     {
-        $plugin = (string) file_get_contents(__DIR__.'/../../.porta/plugins/psalm/plugin.php');
+        $plugin = (string) file_get_contents(__DIR__.'/../../plugins/psalm/plugin.php');
         $project = new TempProject([
             '.porta/plugins/psalm/plugin.php' => $plugin,
             'a.php' => "<?php\n\$x = 1;\n\$y = 2;\n",

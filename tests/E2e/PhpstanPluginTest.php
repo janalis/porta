@@ -14,7 +14,7 @@ use Porta\Tests\Support\TempProject;
 use Symfony\Component\Tui\Ansi\AnsiUtils;
 
 /**
- * The shipped phpstan plugin (.porta/plugins/phpstan/plugin.php) against stub
+ * The shipped phpstan plugin (plugins/phpstan/plugin.php) against stub
  * analyser binaries — the real plugin file is loaded from the repo. Errors
  * surface as editor diagnostics and in the Problems panel; a clean run clears.
  */
@@ -32,7 +32,7 @@ final class PhpstanPluginTest extends TestCase
     /** A project with the real plugin file and (optionally) a stub phpstan. */
     private function project(?string $stubBody = null): TempProject
     {
-        $plugin = (string) file_get_contents(__DIR__.'/../../.porta/plugins/phpstan/plugin.php');
+        $plugin = (string) file_get_contents(__DIR__.'/../../plugins/phpstan/plugin.php');
         $project = new TempProject([
             '.porta/plugins/phpstan/plugin.php' => $plugin,
             'a.php' => "<?php\n\$x = 1;\n\$y = 2;\n",

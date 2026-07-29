@@ -199,9 +199,10 @@ final class PluginInstallerTest extends TestCase
         $this->assertDirectoryExists($embedded->dir.'/bundled');
     }
 
-    public function testAPortaDevCheckoutClassifiesItsProjectPluginsAsEmbedded(): void
+    public function testACoincidingEmbeddedDirClassifiesItsPluginsAsEmbedded(): void
     {
-        // rootDir/.porta/plugins IS the embedded dir (developing Porta itself).
+        // PORTA_EMBEDDED_PLUGINS pointed at the project's own plugin dir: the
+        // realpath-equality guard keeps those entries non-removable.
         mkdir($this->project->dir.'/.porta/plugins/bundled', permissions: 0o777, recursive: true);
         file_put_contents($this->project->dir.'/.porta/plugins/bundled/plugin.php', data: "<?php\n");
         $installer = new PluginInstaller($this->project->dir, null, new Translator('en'), null, $this->project->dir.'/.porta/plugins');

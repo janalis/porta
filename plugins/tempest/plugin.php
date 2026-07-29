@@ -17,7 +17,7 @@ use Tempest\Highlight\Highlighter;
  * The engine itself lives in `src/Highlight` ({@see TempestBackend}, which
  * registers Porta's house grammars for PHP docblocks, JSON and JSONC).
  * Deliberately: `tempest/highlight` is a composer requirement that the diff
- * view and project search also use directly, and code under `.porta/plugins`
+ * view and project search also use directly, and code under `plugins/`
  * sits outside the 100% line-coverage gate. This file is the *registration* —
  * what makes tempest one selectable backend among others rather than the
  * hard-wired engine.

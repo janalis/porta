@@ -147,7 +147,7 @@ final class PluginLoaderTest extends TestCase
         $pinned = (string) getenv('PORTA_EMBEDDED_PLUGINS');
         putenv('PORTA_EMBEDDED_PLUGINS=');
         try {
-            $this->assertStringEndsWith('/.porta/plugins', PluginLoader::embeddedDir(), 'empty env → the package dir');
+            $this->assertStringEndsWith('/plugins', PluginLoader::embeddedDir(), 'empty env → the package dir');
             $this->assertFileExists(PluginLoader::embeddedDir().'/psalm/plugin.php', 'and it holds the bundled plugins');
         } finally {
             putenv('PORTA_EMBEDDED_PLUGINS='.$pinned);

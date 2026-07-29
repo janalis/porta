@@ -39,7 +39,7 @@ final class WelcomeScreenTest extends TestCase
 
         putenv('PORTA_LSP');
         putenv('PORTA_HOME=/nonexistent');
-        putenv('PORTA_EMBEDDED_PLUGINS='.\dirname(__DIR__, levels: 2).'/.porta/plugins');
+        putenv('PORTA_EMBEDDED_PLUGINS='.\dirname(__DIR__, levels: 2).'/plugins');
         $this->allowFirstRunWelcome();
     }
 
