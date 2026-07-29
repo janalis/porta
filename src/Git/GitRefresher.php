@@ -56,7 +56,7 @@ final class GitRefresher
     /** Recompute git change marks for a buffer (on open and after save). */
     public function refreshMarks(Buffer $buffer): void
     {
-        if (!$this->git->isAvailable() || $buffer->isImage() || false === $this->gitSettings?->gutterMarks()) {
+        if (!$this->git->isAvailable() || $buffer->isViewer() || false === $this->gitSettings?->gutterMarks()) {
             return;
         }
         $this->git->diff($buffer->path, function (array $marks) use ($buffer): void {
@@ -80,7 +80,7 @@ final class GitRefresher
     #[AsEventListener]
     public function onBufferOpened(BufferOpened $event): void
     {
-        if (!$event->buffer->isImage() && !$event->buffer->isHelp()) {
+        if (!$event->buffer->isViewer()) {
             $this->refreshMarks($event->buffer);
         }
     }

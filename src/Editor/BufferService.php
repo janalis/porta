@@ -331,7 +331,7 @@ final class BufferService implements BufferReopener, DiagnosticsSink, FileOpener
                 ++$dirtyKept;
                 continue;
             }
-            if (!$buffer->isImage() && !$buffer->isHelp()) {
+            if (!$buffer->isViewer()) {
                 $this->lsp->notifyDidClose($buffer->path);
             }
             if ($buffer->isHelp()) {
@@ -400,7 +400,7 @@ final class BufferService implements BufferReopener, DiagnosticsSink, FileOpener
             return;
         }
 
-        if (!$active->isImage() && !$active->isHelp()) {
+        if (!$active->isViewer()) {
             $this->lsp->notifyDidClose($active->path);
         }
 
@@ -425,7 +425,7 @@ final class BufferService implements BufferReopener, DiagnosticsSink, FileOpener
         }
         // Format-on-save only covers the single-file save: saveAllBuffers()
         // and Save & Close keep the synchronous bool contract of saveBuffer().
-        if ($this->formatOnSave->isEnabled() && !$active->isImage() && !$active->isHelp()) {
+        if ($this->formatOnSave->isEnabled() && !$active->isViewer()) {
             $this->formatOnSave->formatThenSave($active, function () use ($active): void {
                 if ($this->saveBuffer($active)) {
                     $this->notifier->success($this->translator->trans('Saved %file%', ['%file%' => $this->relativePath($active->path)]));
@@ -460,7 +460,7 @@ final class BufferService implements BufferReopener, DiagnosticsSink, FileOpener
 
     public function saveBuffer(Buffer $buffer): bool
     {
-        if ($buffer->isImage() || $buffer->isHelp()) {
+        if ($buffer->isViewer()) {
             return false; // never write the empty backing document over the real file
         }
         $bytes = null !== $buffer->editorConfig
@@ -498,7 +498,7 @@ final class BufferService implements BufferReopener, DiagnosticsSink, FileOpener
     public function activateAdjacentTextBuffer(): ?Buffer
     {
         foreach ($this->buffers->recent() as $buffer) {
-            if (!(!$buffer->isImage() && !$buffer->isHelp())) {
+            if ($buffer->isViewer()) {
                 continue;
             }
 
@@ -519,7 +519,7 @@ final class BufferService implements BufferReopener, DiagnosticsSink, FileOpener
     public function ensureTextEditorActive(): bool
     {
         $active = $this->buffers->active();
-        if (null === $active || !$active->isImage() && !$active->isHelp()) {
+        if (null === $active || !$active->isViewer()) {
             return true;
         }
         if (null !== $this->activateAdjacentTextBuffer()) {

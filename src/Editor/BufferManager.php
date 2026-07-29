@@ -61,6 +61,18 @@ final class BufferManager
         return $buffer;
     }
 
+    /** Open (or re-activate) a graph tab carrying its DOT source. */
+    public function openGraph(string $path, string $dot): Buffer
+    {
+        $this->buffers[$path] ??= new Buffer($path, new Document(''), $this->highlighters->forFile($path), graphDot: $dot);
+        $buffer = $this->buffers[$path];
+        $buffer->graphDot = $dot; // refresh when the document changed on disk
+        $this->activePath = $path;
+        $buffer->lastFocused = ++$this->focusCounter;
+
+        return $buffer;
+    }
+
     public function has(string $path): bool
     {
         return \array_key_exists($path, $this->buffers);

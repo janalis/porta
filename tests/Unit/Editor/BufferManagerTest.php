@@ -169,6 +169,29 @@ final class BufferManagerTest extends TestCase
         $this->assertFalse($manager->moveActive(1));
     }
 
+    public function testOpenGraphCarriesAndRefreshesTheDotSource(): void
+    {
+        $manager = new BufferManager();
+        $buffer = $manager->openGraph('/p/arch.dot', 'digraph { A -> B; }');
+
+        $this->assertTrue($buffer->isGraph());
+        $this->assertTrue($buffer->isViewer());
+        $this->assertFalse($buffer->isImage());
+        $this->assertFalse($buffer->isDirty(), 'the empty backing document never dirties');
+
+        $again = $manager->openGraph('/p/arch.dot', 'digraph { A; }');
+        $this->assertSame($buffer, $again, 'path-keyed reuse');
+        $this->assertSame('digraph { A; }', $again->graphDot, 're-opening refreshes the payload');
+    }
+
+    public function testViewerPredicateCoversEveryKind(): void
+    {
+        $manager = new BufferManager();
+        $this->assertFalse($manager->open('/p/a.php', 'A')->isViewer());
+        $this->assertTrue($manager->openHelp('/p/doc.md', '# hi')->isViewer());
+        $this->assertTrue($manager->openGraph('/p/g.dot', 'digraph {}')->isViewer());
+    }
+
     public function testDirtyCount(): void
     {
         $manager = new BufferManager();

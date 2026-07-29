@@ -63,7 +63,7 @@ final class BlameAnnotations
     #[AsEventListener]
     public function onBufferSwitched(BufferSwitched $event): void
     {
-        if ($this->enabled && !$event->buffer->isImage() && !$event->buffer->isHelp()) {
+        if ($this->enabled && !$event->buffer->isViewer()) {
             $this->refresh();
         }
     }

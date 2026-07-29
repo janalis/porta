@@ -20,9 +20,19 @@ final class TabListProvider
     public function tabs(): array
     {
         return array_map(fn (Buffer $b) => [
-            'name' => $b->isHelp() ? $this->translator->trans('Documentation') : basename($b->path),
+            'name' => $this->title($b),
             'dirty' => $b->isDirty(),
             'active' => $b === $this->buffers->active(),
         ], $this->buffers->all());
+    }
+
+    /** Help pages share one "Documentation" tab name; a titled buffer (the architecture graph) shows its translated title; everything else its basename. */
+    private function title(Buffer $b): string
+    {
+        if ($b->isHelp()) {
+            return $this->translator->trans('Documentation');
+        }
+
+        return null !== $b->title ? $this->translator->trans($b->title) : basename($b->path);
     }
 }

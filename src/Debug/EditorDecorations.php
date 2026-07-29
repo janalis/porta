@@ -31,7 +31,7 @@ final class EditorDecorations
     #[AsEventListener]
     public function onBufferSwitched(BufferSwitched $event): void
     {
-        if (!$event->buffer->isImage() && !$event->buffer->isHelp()) {
+        if (!$event->buffer->isViewer()) {
             $this->apply($event->buffer->path);
         }
     }

@@ -11,8 +11,9 @@ use Porta\Image\ImageData;
 /**
  * One open file: its document (cursor, undo history), diagnostics and its
  * own syntax-highlight cache, so switching buffers never re-highlights.
- * An image buffer carries decoded pixels beside a permanently-empty document
- * (never dirty, cursor pinned at 0:0), so text-path consumers stay safe.
+ * A viewer buffer (image / help / graph) carries its payload beside a
+ * permanently-empty document (never dirty, cursor pinned at 0:0), so
+ * text-path consumers stay safe.
  */
 final class Buffer
 {
@@ -31,6 +32,9 @@ final class Buffer
     /** On-disk fingerprint ("<mtime>:<size>") last seen by the IDE, for change detection. */
     public ?string $diskStamp = null;
 
+    /** Untranslated tab-title message id, overriding the basename (the architecture tab). */
+    public ?string $title = null;
+
     public readonly CodeHighlighter $highlighter;
 
     public function __construct(
@@ -39,6 +43,7 @@ final class Buffer
         ?CodeHighlighter $highlighter = null,
         public ?ImageData $image = null,
         public ?string $helpMarkdown = null,
+        public ?string $graphDot = null,
     ) {
         $this->highlighter = $highlighter ?? new CodeHighlighter();
         $this->highlighter->setFile($path);
@@ -54,6 +59,18 @@ final class Buffer
     public function isHelp(): bool
     {
         return null !== $this->helpMarkdown;
+    }
+
+    /** Whether this tab is a Graphviz DOT document shown by the graph viewer. */
+    public function isGraph(): bool
+    {
+        return null !== $this->graphDot;
+    }
+
+    /** Any non-text tab (image / help / graph) — the single spelling of the "not code" guard. */
+    public function isViewer(): bool
+    {
+        return $this->isImage() || $this->isHelp() || $this->isGraph();
     }
 
     /** Whether the document has unsaved changes. */
