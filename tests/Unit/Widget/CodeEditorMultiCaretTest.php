@@ -6,6 +6,7 @@ namespace Porta\Tests\Unit\Widget;
 
 use PHPUnit\Framework\TestCase;
 use Porta\Editor\Caret;
+use Porta\Tests\Support\EditorState;
 use Porta\Tests\Support\FakeEditorFileActions;
 use Porta\Widget\CodeEditorWidget;
 use Porta\Widget\EditorCallbacks;
@@ -30,8 +31,8 @@ final class CodeEditorMultiCaretTest extends TestCase
 
         $editor->handleInput("\x1b[1;7B"); // ctrl+alt+down
         $editor->handleInput("\x1b[1;7B");
-        $this->assertTrue($editor->hasMultipleCarets());
-        $this->assertCount(2, $editor->getExtraCarets());
+        $this->assertTrue(EditorState::multiCaret($editor)->hasMultiple());
+        $this->assertCount(2, EditorState::multiCaret($editor)->carets());
 
         $editor->handleInput('X');
         $this->assertSame("Xaaa\nXbbb\nXccc\n", $editor->getDocument()->getText());
@@ -55,20 +56,20 @@ final class CodeEditorMultiCaretTest extends TestCase
         $editor->getDocument()->setCursor(0, 0);
         $editor->handleInput("\x1b[1;7B"); // add caret below
         $editor->handleInput("\x1b[1;7B");
-        $this->assertCount(2, $editor->getExtraCarets(), '3 carets active');
+        $this->assertCount(2, EditorState::multiCaret($editor)->carets(), '3 carets active');
 
         $editor->handleInput('X'); // edit at every caret
 
         // Undo brings back both the text and every secondary caret (previously lost).
         $editor->handleInput("\x1a"); // ctrl+z
         $this->assertSame("aaa\nbbb\nccc\n", $editor->getDocument()->getText());
-        $this->assertTrue($editor->hasMultipleCarets(), 'the secondary carets are restored on undo');
-        $this->assertCount(2, $editor->getExtraCarets());
+        $this->assertTrue(EditorState::multiCaret($editor)->hasMultiple(), 'the secondary carets are restored on undo');
+        $this->assertCount(2, EditorState::multiCaret($editor)->carets());
 
         // Redo re-applies the edit and its carets (the restore hook fires either way).
         $editor->getDocument()->redo();
         $this->assertSame("Xaaa\nXbbb\nXccc\n", $editor->getDocument()->getText());
-        $this->assertCount(2, $editor->getExtraCarets(), 'redo restores the carets too');
+        $this->assertCount(2, EditorState::multiCaret($editor)->carets(), 'redo restores the carets too');
     }
 
     public function testTabInsertsAtEveryCaretNotBlockIndent(): void
@@ -77,7 +78,7 @@ final class CodeEditorMultiCaretTest extends TestCase
         $editor->getDocument()->setCursor(0, 0);
         $editor->handleInput("\x1b[1;7B"); // add caret below
         $editor->handleInput("\x1b[1;7B");
-        $this->assertCount(2, $editor->getExtraCarets());
+        $this->assertCount(2, EditorState::multiCaret($editor)->carets());
 
         $editor->handleInput("\t"); // multi-caret Tab inserts a unit at each caret
         $this->assertSame("    aa\n    bb\n    cc\n", $editor->getDocument()->getText());
@@ -89,7 +90,7 @@ final class CodeEditorMultiCaretTest extends TestCase
         $editor->getDocument()->setCursor(2, 0);
 
         $editor->handleInput("\x1b[1;7A"); // ctrl+alt+up
-        $this->assertCount(1, $editor->getExtraCarets());
+        $this->assertCount(1, EditorState::multiCaret($editor)->carets());
         $editor->handleInput('Z');
         $this->assertSame("aaa\nZbbb\nZccc\n", $editor->getDocument()->getText());
     }
@@ -99,7 +100,7 @@ final class CodeEditorMultiCaretTest extends TestCase
         $editor = $this->editor("only\n");
         $editor->getDocument()->setCursor(0, 0);
         $editor->handleInput("\x1b[1;7A"); // nothing above
-        $this->assertFalse($editor->hasMultipleCarets());
+        $this->assertFalse(EditorState::multiCaret($editor)->hasMultiple());
     }
 
     public function testAddNextOccurrence(): void
@@ -109,7 +110,7 @@ final class CodeEditorMultiCaretTest extends TestCase
 
         $editor->handleInput("\x1bj"); // alt+j
         $editor->handleInput("\x1bj");
-        $this->assertCount(2, $editor->getExtraCarets());
+        $this->assertCount(2, EditorState::multiCaret($editor)->carets());
     }
 
     public function testAddNextOccurrenceWithNoWordIsNoOp(): void
@@ -117,7 +118,7 @@ final class CodeEditorMultiCaretTest extends TestCase
         $editor = $this->editor("   \n");
         $editor->getDocument()->setCursor(0, 1);
         $editor->handleInput("\x1bj");
-        $this->assertFalse($editor->hasMultipleCarets());
+        $this->assertFalse(EditorState::multiCaret($editor)->hasMultiple());
     }
 
     public function testSelectAllOccurrences(): void
@@ -126,7 +127,7 @@ final class CodeEditorMultiCaretTest extends TestCase
         $editor->getDocument()->setCursor(0, 0); // on first "xy"
 
         $editor->handleInput("\x1b[106;8u"); // ctrl+alt+shift+j (CSI-u)
-        $this->assertSame(2, \count($editor->getExtraCarets()), 'three occurrences -> primary + 2 extras');
+        $this->assertSame(2, \count(EditorState::multiCaret($editor)->carets()), 'three occurrences -> primary + 2 extras');
 
         $editor->handleInput('!');
         $this->assertSame("xy! = xy! + xy!\n", $editor->getDocument()->getText());
@@ -137,7 +138,7 @@ final class CodeEditorMultiCaretTest extends TestCase
         $editor = $this->editor("   \n");
         $editor->getDocument()->setCursor(0, 1);
         $editor->handleInput("\x1b[106;8u");
-        $this->assertFalse($editor->hasMultipleCarets());
+        $this->assertFalse(EditorState::multiCaret($editor)->hasMultiple());
     }
 
     public function testAltClickRemovesAMiddleCaretSkippingTheEarlierOne(): void
@@ -147,12 +148,12 @@ final class CodeEditorMultiCaretTest extends TestCase
         $editor->getDocument()->setCursor(0, 0);
         $editor->handleInput("\x1b[1;7B"); // extra caret on line 0, primary → line 1
         $editor->handleInput("\x1b[1;7B"); // extras: lines 0 and 1, primary → line 2
-        $this->assertCount(2, $editor->getExtraCarets());
+        $this->assertCount(2, EditorState::multiCaret($editor)->carets());
 
         // Alt+click the second extra caret (line 1). Toggling it iterates past the
         // line-0 extra (a non-match → skipped) before removing the line-1 one.
         $editor->addOrRemoveCaretAt(1, 6); // relRow 1 → line 1, relCol 6 → col 0
-        $extras = $editor->getExtraCarets();
+        $extras = EditorState::multiCaret($editor)->carets();
         $this->assertCount(1, $extras, 'the middle caret was removed, the line-0 one stays');
         $this->assertSame(0, $extras[0]->line, 'the surviving extra is the line-0 caret the loop skipped over');
     }
@@ -165,7 +166,7 @@ final class CodeEditorMultiCaretTest extends TestCase
         $editor->handleInput("\x1b[C"); // right: both carets move to col 1
 
         $this->assertSame(1, $editor->getDocument()->getCursorCol());
-        $this->assertCount(1, $editor->getExtraCarets());
+        $this->assertCount(1, EditorState::multiCaret($editor)->carets());
     }
 
     public function testEscapeCollapsesToSingleCaret(): void
@@ -173,10 +174,10 @@ final class CodeEditorMultiCaretTest extends TestCase
         $editor = $this->editor("aaa\nbbb\n");
         $editor->getDocument()->setCursor(0, 0);
         $editor->handleInput("\x1b[1;7B");
-        $this->assertTrue($editor->hasMultipleCarets());
+        $this->assertTrue(EditorState::multiCaret($editor)->hasMultiple());
 
         $editor->handleInput("\x1b"); // escape
-        $this->assertFalse($editor->hasMultipleCarets());
+        $this->assertFalse(EditorState::multiCaret($editor)->hasMultiple());
     }
 
     public function testStrayInputLeavesCaretsIntact(): void
@@ -184,16 +185,16 @@ final class CodeEditorMultiCaretTest extends TestCase
         $editor = $this->editor("word here\nword there\n");
         $editor->getDocument()->setCursor(0, 0);
         $editor->handleInput("\x1b[1;7B");
-        $this->assertTrue($editor->hasMultipleCarets());
+        $this->assertTrue(EditorState::multiCaret($editor)->hasMultiple());
 
         // A stray terminal escape sequence (e.g. a focus report) that multi-caret
         // mode does not own must NOT collapse the carets — they are sticky.
         $editor->handleInput("\x1b[I");
-        $this->assertTrue($editor->hasMultipleCarets(), 'stray input keeps the carets');
+        $this->assertTrue(EditorState::multiCaret($editor)->hasMultiple(), 'stray input keeps the carets');
 
         // Escape still collapses deliberately.
         $editor->handleInput("\x1b");
-        $this->assertFalse($editor->hasMultipleCarets());
+        $this->assertFalse(EditorState::multiCaret($editor)->hasMultiple());
     }
 
     public function testMultiCaretNewlineDeleteAndPaste(): void
@@ -267,8 +268,8 @@ final class CodeEditorMultiCaretTest extends TestCase
         $editor->beginColumnSelectionAt(0, 6 + 1); // anchor display col 1
         $editor->extendColumnSelectionTo(2, 6 + 3); // caret display col 3
 
-        $this->assertTrue($editor->hasMultipleCarets());
-        $carets = $editor->getExtraCarets();
+        $this->assertTrue(EditorState::multiCaret($editor)->hasMultiple());
+        $carets = EditorState::multiCaret($editor)->carets();
         $this->assertCount(2, $carets, 'rows 0 and 1 are extras; the caret row 2 is primary');
         // The short middle line "bb" clamps its selection to the line end.
         $this->assertEquals(new Caret(1, 2, 1, 1), $carets[1]);
@@ -281,9 +282,9 @@ final class CodeEditorMultiCaretTest extends TestCase
         $editor->beginColumnSelectionAt(0, 6 + 2);
         $editor->extendColumnSelectionTo(2, 6 + 2); // same column: a vertical caret stack, no selection
 
-        $this->assertTrue($editor->hasMultipleCarets());
+        $this->assertTrue(EditorState::multiCaret($editor)->hasMultiple());
         $this->assertFalse($editor->getDocument()->hasSelection(), 'the caret row has an empty selection');
-        foreach ($editor->getExtraCarets() as $caret) {
+        foreach (EditorState::multiCaret($editor)->carets() as $caret) {
             $this->assertSame($caret->col, $caret->anchorCol);
             $this->assertSame($caret->line, $caret->anchorLine);
         }
@@ -299,7 +300,7 @@ final class CodeEditorMultiCaretTest extends TestCase
         $editor->handleInput('X');
 
         $this->assertSame("aXa\nbX\ncXc\n", $editor->getDocument()->getText());
-        foreach ($editor->getExtraCarets() as $caret) {
+        foreach (EditorState::multiCaret($editor)->carets() as $caret) {
             $this->assertSame($caret->col, $caret->anchorCol, 'carets collapse to points after the edit');
         }
     }

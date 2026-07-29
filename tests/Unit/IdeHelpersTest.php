@@ -23,6 +23,7 @@ use Porta\Lsp\WorkspaceEditor;
 use Porta\Onboarding\OnboardingState;
 use Porta\Search\SearchActions;
 use Porta\Support\ProjectPaths;
+use Porta\Tests\Support\EditorState;
 use Porta\Tests\Support\PumpsLoop;
 use Porta\Tests\Support\Services;
 use Porta\Tests\Support\TempProject;
@@ -386,17 +387,17 @@ final class IdeHelpersTest extends TestCase
 
         // Cycle line numbers (absolute → relative) and toggle a bool setting.
         $editor = $tui->getById('editor');
-        $before = $editor->lineNumberMode();
+        $before = EditorState::display($editor)->lineNumbers();
         $byLabel['Cycle Line Numbers']();
-        $this->assertNotSame($before, $editor->lineNumberMode());
+        $this->assertNotSame($before, EditorState::display($editor)->lineNumbers());
 
         $byLabel['Toggle Inline Diagnostics']();
         // Toggling back and forth is a no-op-free round trip.
         $byLabel['Toggle Inline Diagnostics']();
 
-        $autoBefore = $editor->hasAutoPairs();
+        $autoBefore = EditorState::display($editor)->autoPairs();
         $byLabel['Toggle Auto-Pairs']();
-        $this->assertNotSame($autoBefore, $editor->hasAutoPairs());
+        $this->assertNotSame($autoBefore, EditorState::display($editor)->autoPairs());
 
         // Save-family and reformat commands are safe no-ops without a file/LSP.
         $byLabel['Save File']();

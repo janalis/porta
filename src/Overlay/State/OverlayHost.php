@@ -72,11 +72,6 @@ final class OverlayHost
         ($this->invalidate)();
     }
 
-    public function isListOpen(): bool
-    {
-        return null !== $this->overlay;
-    }
-
     /** Dismiss the list overlay (e.g. on a buffer switch); the prompt is untouched. */
     public function closeList(): void
     {
@@ -92,11 +87,6 @@ final class OverlayHost
     {
         $this->prompt = ['label' => $label, 'value' => new TextField($initial, $this->cursorStyle), 'onSubmit' => $onSubmit, 'danger' => $danger];
         ($this->invalidate)();
-    }
-
-    public function isPromptOpen(): bool
-    {
-        return null !== $this->prompt;
     }
 
     /**

@@ -6,6 +6,7 @@ namespace Porta\Tests\Unit\Widget;
 
 use PHPUnit\Framework\TestCase;
 use Porta\Editor\SelectionMode;
+use Porta\Tests\Support\EditorState;
 use Porta\Widget\CodeEditorWidget;
 use Symfony\Component\Tui\Render\RenderContext;
 
@@ -153,7 +154,7 @@ final class CodeEditorSelectionMouseTest extends TestCase
 
         $line = $editor->render(new RenderContext(80, 3))[0];
 
-        $this->assertGreaterThan(0, $editor->scroll()->hScroll(), 'a caret near end-of-line scrolls horizontally');
+        $this->assertGreaterThan(0, EditorState::scroll($editor)->hScroll(), 'a caret near end-of-line scrolls horizontally');
         $this->assertSame(1, substr_count($line, needle: "\x1b[48;5;24m"));
     }
 
@@ -164,11 +165,11 @@ final class CodeEditorSelectionMouseTest extends TestCase
         $editor->getDocument()->setCursor(0, 0);
 
         $editor->addOrRemoveCaretAt(1, $g + 2); // add a caret on line 1 (becomes primary)
-        $this->assertTrue($editor->hasMultipleCarets());
-        $this->assertCount(1, $editor->getExtraCarets());
+        $this->assertTrue(EditorState::multiCaret($editor)->hasMultiple());
+        $this->assertCount(1, EditorState::multiCaret($editor)->carets());
 
         $editor->addOrRemoveCaretAt(1, $g + 2); // click it again -> remove (promote the extra)
-        $this->assertFalse($editor->hasMultipleCarets());
+        $this->assertFalse(EditorState::multiCaret($editor)->hasMultiple());
     }
 
     public function testAltClickRemovesAnExtraCaret(): void
@@ -179,7 +180,7 @@ final class CodeEditorSelectionMouseTest extends TestCase
 
         $editor->addOrRemoveCaretAt(1, $g); // primary=(1,0), extra=(0,0)
         $editor->addOrRemoveCaretAt(0, $g); // click the extra at (0,0) -> remove it
-        $this->assertFalse($editor->hasMultipleCarets());
+        $this->assertFalse(EditorState::multiCaret($editor)->hasMultiple());
     }
 
     public function testAltClickNeverRemovesTheOnlyCaret(): void
@@ -189,7 +190,7 @@ final class CodeEditorSelectionMouseTest extends TestCase
         $editor->getDocument()->setCursor(0, 2);
 
         $editor->addOrRemoveCaretAt(0, $g + 2); // clicks the sole caret -> no-op
-        $this->assertFalse($editor->hasMultipleCarets());
+        $this->assertFalse(EditorState::multiCaret($editor)->hasMultiple());
         $this->assertSame(2, $editor->getDocument()->getCursorCol());
     }
 

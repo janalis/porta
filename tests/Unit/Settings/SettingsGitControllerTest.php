@@ -13,6 +13,7 @@ use Porta\Git\GitSettings;
 use Porta\I18n\Translator;
 use Porta\Settings\SettingsGitController;
 use Porta\Settings\SettingsRowKind;
+use Porta\Tests\Support\EditorState;
 use Porta\Tests\Support\PreservesPath;
 use Porta\Tests\Support\StatusReads;
 use Porta\Tests\Support\TempProject;
@@ -109,15 +110,15 @@ final class SettingsGitControllerTest extends TestCase
     {
         $project = new TempProject([]);
         $controller = $this->controller($project->dir);
-        $this->assertTrue($this->editor->hasGitGutter());
+        $this->assertTrue(EditorState::display($this->editor)->gitGutter());
 
         $controller->change('gitGutterMarks', false);
         $this->assertFalse($this->git->gutterMarks());
-        $this->assertFalse($this->editor->hasGitGutter());
+        $this->assertFalse(EditorState::display($this->editor)->gitGutter());
 
         $controller->change('gitGutterMarks', true);
         $this->assertTrue($this->git->gutterMarks());
-        $this->assertTrue($this->editor->hasGitGutter());
+        $this->assertTrue(EditorState::display($this->editor)->gitGutter());
     }
 
     public function testCommitBoolsAndBlameMutateTheHolder(): void

@@ -13,6 +13,7 @@ use Porta\Ide;
 use Porta\Lsp\NavigationController;
 use Porta\Onboarding\OnboardingState;
 use Porta\Tests\Support\ClearsPortaLsp;
+use Porta\Tests\Support\EditorState;
 use Porta\Tests\Support\PreservesPath;
 use Porta\Tests\Support\RunsIde;
 use Porta\Tests\Support\Services;
@@ -512,7 +513,7 @@ final class IdeLspFeaturesTest extends TestCase
                 },
                 600 => function ($tui, $terminal): void {
                     $editor = $tui->getById('editor');
-                    $this->assertTrue($editor->isOverlayOpen());
+                    $this->assertTrue(EditorState::pickerOpen($editor));
                     $tui->tick(); // flush pending render before reading the screen
                     $this->assertStringContainsString('Quick Fixes', AnsiUtils::stripAnsiCodes($terminal->getOutput()));
                     $this->assertStringContainsString('Import class', AnsiUtils::stripAnsiCodes($terminal->getOutput()));
@@ -541,7 +542,7 @@ final class IdeLspFeaturesTest extends TestCase
                     $tui->handleInput("\x1b\r");
                 },
                 1300 => function ($tui, $terminal): void {
-                    $this->assertFalse($tui->getById('editor')->isOverlayOpen());
+                    $this->assertFalse(EditorState::pickerOpen($tui->getById('editor')));
                     $tui->tick();
                     $this->assertStringContainsString('No quick fixes here', AnsiUtils::stripAnsiCodes($terminal->getOutput()));
                 },
@@ -570,7 +571,7 @@ final class IdeLspFeaturesTest extends TestCase
                     $tui->handleInput("\x1b\r");
                 },
                 700 => function ($tui): void {
-                    $this->assertTrue($tui->getById('editor')->isOverlayOpen());
+                    $this->assertTrue(EditorState::pickerOpen($tui->getById('editor')));
                     $tui->tick();
                     $tui->handleInput("\x1b"); // close without applying
                 },
@@ -594,7 +595,7 @@ final class IdeLspFeaturesTest extends TestCase
                 400 => static fn ($tui) => $tui->handleInput("\x1b[24;5~"), // ctrl+f12
                 600 => function ($tui, $terminal): void {
                     $editor = $tui->getById('editor');
-                    $this->assertTrue($editor->isOverlayOpen());
+                    $this->assertTrue(EditorState::pickerOpen($editor));
                     $tui->tick();
                     $screen = AnsiUtils::stripAnsiCodes($terminal->getOutput());
                     $this->assertStringContainsString('File Structure', $screen);
@@ -626,7 +627,7 @@ final class IdeLspFeaturesTest extends TestCase
             [
                 400 => static fn ($tui) => $tui->handleInput("\x1b7"), // alt+7
                 600 => function ($tui, $terminal): void {
-                    $this->assertFalse($tui->getById('editor')->isOverlayOpen());
+                    $this->assertFalse(EditorState::pickerOpen($tui->getById('editor')));
                     $tui->tick();
                     $this->assertStringContainsString('No symbols in this file', AnsiUtils::stripAnsiCodes($terminal->getOutput()));
                 },
@@ -760,7 +761,7 @@ final class IdeLspFeaturesTest extends TestCase
                 },
                 600 => function ($tui, $terminal): void {
                     $editor = $tui->getById('editor');
-                    $this->assertTrue($editor->isOverlayOpen());
+                    $this->assertTrue(EditorState::pickerOpen($editor));
                     $tui->tick();
                     $screen = AnsiUtils::stripAnsiCodes($terminal->getOutput());
                     $this->assertStringContainsString('Peek: src/Target.php:4', $screen);
@@ -795,7 +796,7 @@ final class IdeLspFeaturesTest extends TestCase
                     $tui->handleInput("\x1b[105;6u");
                 },
                 600 => function ($tui, $terminal): void {
-                    $this->assertFalse($tui->getById('editor')->isOverlayOpen());
+                    $this->assertFalse(EditorState::pickerOpen($tui->getById('editor')));
                     $tui->tick();
                     $this->assertStringContainsString('Nothing to peek', AnsiUtils::stripAnsiCodes($terminal->getOutput()));
                     // A definition that resolves outside the filesystem is refused.
@@ -900,7 +901,7 @@ final class IdeLspFeaturesTest extends TestCase
                     // low line, then the rename call itself errors on "ERR".
                     $editor->getDocument()->setCursor(1, 0);
                     $tui->handleInput("\x1b[17;2~"); // shift+f6 -> prepareRename
-                    $this->await(static fn (): bool => $editor->isPromptOpen(), what: 'the rename prompt');
+                    $this->await(static fn (): bool => EditorState::promptOpen($editor), what: 'the rename prompt');
                     foreach (str_split('ERR') as $ch) {
                         $tui->handleInput($ch);
                     }

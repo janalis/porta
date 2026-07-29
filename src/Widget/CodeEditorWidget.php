@@ -341,16 +341,6 @@ final class CodeEditorWidget extends AbstractWidget implements
         $this->findModal->close();
     }
 
-    public function isOverlayOpen(): bool
-    {
-        return $this->overlayHost->isListOpen();
-    }
-
-    public function isPromptOpen(): bool
-    {
-        return $this->overlayHost->isPromptOpen();
-    }
-
     public function openSearch(string $title, \Closure $onQuery, \Closure $onPick, \Closure $onClose, string $emptyMessage = ''): void
     {
         $this->closeSiblingFloaters();
@@ -417,11 +407,6 @@ final class CodeEditorWidget extends AbstractWidget implements
         $this->display->setLineNumbers($mode);
     }
 
-    public function lineNumberMode(): LineNumberMode
-    {
-        return $this->display->lineNumbers();
-    }
-
     public function enableStickyScroll(): void
     {
         $this->display->setStickyScroll(true);
@@ -430,11 +415,6 @@ final class CodeEditorWidget extends AbstractWidget implements
     public function disableStickyScroll(): void
     {
         $this->display->setStickyScroll(false);
-    }
-
-    public function hasStickyScroll(): bool
-    {
-        return $this->display->stickyScroll();
     }
 
     public function enableIndentGuides(): void
@@ -447,11 +427,6 @@ final class CodeEditorWidget extends AbstractWidget implements
         $this->display->setIndentGuides(false);
     }
 
-    public function hasIndentGuides(): bool
-    {
-        return $this->display->indentGuides();
-    }
-
     public function enableGitGutter(): void
     {
         $this->display->setGitGutter(true);
@@ -462,11 +437,6 @@ final class CodeEditorWidget extends AbstractWidget implements
         if ($this->display->setGitGutter(false)) {
             $this->setGitMarks([]); // drop stale marks so nothing lingers when the strip hides
         }
-    }
-
-    public function hasGitGutter(): bool
-    {
-        return $this->display->gitGutter();
     }
 
     /**
@@ -517,11 +487,6 @@ final class CodeEditorWidget extends AbstractWidget implements
     public function disableAutoPairs(): void
     {
         $this->display->setAutoPairs(false);
-    }
-
-    public function hasAutoPairs(): bool
-    {
-        return $this->display->autoPairs();
     }
 
     /**
@@ -616,16 +581,6 @@ final class CodeEditorWidget extends AbstractWidget implements
     public function getDocument(): Document
     {
         return $this->document;
-    }
-
-    /**
-     * The viewport scroll state (vertical/horizontal offsets).
-     *
-     * @internal exposed for tests
-     */
-    public function scroll(): EditorScroll
-    {
-        return $this->scroll;
     }
 
     public function getFilePath(): ?string
@@ -1035,17 +990,6 @@ final class CodeEditorWidget extends AbstractWidget implements
     }
 
     // --- Multi-cursor -------------------------------------------------------
-
-    public function hasMultipleCarets(): bool
-    {
-        return $this->multiCaret->hasMultiple();
-    }
-
-    /** @return list<Caret> secondary carets (for tests/render) */
-    public function getExtraCarets(): array
-    {
-        return $this->multiCaret->carets();
-    }
 
     public function clearExtraCarets(): void
     {

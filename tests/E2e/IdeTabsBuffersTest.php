@@ -11,6 +11,7 @@ use Porta\Editor\BufferService;
 use Porta\Editor\OpenFocus;
 use Porta\Settings\SettingsController;
 use Porta\Tests\Support\ClearsPortaLsp;
+use Porta\Tests\Support\EditorState;
 use Porta\Tests\Support\PreservesPath;
 use Porta\Tests\Support\RunsIde;
 use Porta\Tests\Support\Services;
@@ -99,7 +100,7 @@ final class IdeTabsBuffersTest extends TestCase
                     $tui->handleInput("\x1bw"); // close: opens the unsaved-changes dialog
                 },
                 700 => function ($tui, $terminal): void {
-                    $this->assertTrue($tui->getById('editor')->isOverlayOpen());
+                    $this->assertTrue(EditorState::pickerOpen($tui->getById('editor')));
                     $this->assertStringContainsString('Unsaved changes in b.php', AnsiUtils::stripAnsiCodes($terminal->getOutput()));
                     $tui->handleInput("\x1b"); // cancel via escape: buffer stays
                     $tui->handleInput("\x1bw"); // reopen the dialog

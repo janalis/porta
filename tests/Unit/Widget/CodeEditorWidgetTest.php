@@ -13,6 +13,7 @@ use Porta\Overlay\State\FindModalCallbacks;
 use Porta\Search\Everywhere\SearchCategory;
 use Porta\Search\Everywhere\SearchHit;
 use Porta\Search\Everywhere\SearchRow;
+use Porta\Tests\Support\EditorState;
 use Porta\Tests\Support\FakeBufferNavigation;
 use Porta\Tests\Support\FakeEditorCompletion;
 use Porta\Tests\Support\FakeEditorFileActions;
@@ -620,7 +621,7 @@ final class CodeEditorWidgetTest extends TestCase
             },
         );
 
-        $this->assertTrue($editor->isOverlayOpen());
+        $this->assertTrue(EditorState::pickerOpen($editor));
 
         $placed = $editor->layoutPickers([0, 0, 20, 80]);
         $this->assertStringContainsString('Recent Files', implode("\n", $placed[0]['rows']), 'the floating box carries the title');
@@ -629,7 +630,7 @@ final class CodeEditorWidgetTest extends TestCase
         $editor->handleInput("\x1b[B"); // down
         $editor->handleInput("\r"); // pick
         $this->assertSame('B', $picked);
-        $this->assertFalse($editor->isOverlayOpen());
+        $this->assertFalse(EditorState::pickerOpen($editor));
     }
 
     public function testListOverlayEscapeCloses(): void
@@ -638,7 +639,7 @@ final class CodeEditorWidgetTest extends TestCase
         $editor->openListOverlay('X', [['label' => 'a', 'hint' => '', 'value' => 'a']], static fn () => null);
 
         $editor->handleInput("\x1b");
-        $this->assertFalse($editor->isOverlayOpen());
+        $this->assertFalse(EditorState::pickerOpen($editor));
     }
 
     /** @return list<SearchRow> */
@@ -794,7 +795,7 @@ final class CodeEditorWidgetTest extends TestCase
 
         $this->assertTrue($editor->handlePickerClick(7, 35), 'a click on an item is consumed');
         $this->assertSame('B', $sink['picked']);
-        $this->assertFalse($editor->isOverlayOpen());
+        $this->assertFalse(EditorState::pickerOpen($editor));
     }
 
     public function testListOverlayClickOutsideDismisses(): void
@@ -805,7 +806,7 @@ final class CodeEditorWidgetTest extends TestCase
 
         $this->assertTrue($editor->handlePickerClick(0, 0), 'the modal overlay consumes any click');
         $this->assertNull($sink['picked']);
-        $this->assertFalse($editor->isOverlayOpen());
+        $this->assertFalse(EditorState::pickerOpen($editor));
     }
 
     public function testListOverlayClickBeforeRenderDismisses(): void
@@ -815,7 +816,7 @@ final class CodeEditorWidgetTest extends TestCase
         // No layout yet → no captured box → the click cannot hit an item, so it dismisses.
         $this->assertTrue($editor->handlePickerClick(7, 35));
         $this->assertNull($sink['picked']);
-        $this->assertFalse($editor->isOverlayOpen());
+        $this->assertFalse(EditorState::pickerOpen($editor));
     }
 
     public function testPromptClickOnItsBoxIsSwallowedAndElsewhereDismisses(): void
@@ -824,11 +825,11 @@ final class CodeEditorWidgetTest extends TestCase
         $editor->openPrompt('Go to line', '', static fn () => null);
         $editor->layoutPickers([0, 0, 20, 80]); // records the centered prompt box (row 6, cols 25..55)
 
-        $this->assertTrue($editor->isPromptOpen());
+        $this->assertTrue(EditorState::promptOpen($editor));
         $this->assertTrue($editor->handlePickerClick(6, 40), 'a click on the centered prompt box is consumed');
-        $this->assertTrue($editor->isPromptOpen(), 'and does not dismiss it — the caret stays');
+        $this->assertTrue(EditorState::promptOpen($editor), 'and does not dismiss it — the caret stays');
         $this->assertTrue($editor->handlePickerClick(0, 3), 'a click off the prompt is consumed');
-        $this->assertFalse($editor->isPromptOpen(), 'and dismisses it, like every sibling overlay');
+        $this->assertFalse(EditorState::promptOpen($editor), 'and dismisses it, like every sibling overlay');
     }
 
     public function testListOverlayHoverTintsWithoutMovingTheSelection(): void

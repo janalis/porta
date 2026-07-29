@@ -7,6 +7,7 @@ namespace Porta\Tests\E2e;
 use PHPUnit\Framework\TestCase;
 use Porta\Ide;
 use Porta\Onboarding\OnboardingState;
+use Porta\Tests\Support\EditorState;
 use Porta\Tests\Support\Services;
 use Porta\Tests\Support\TempProject;
 use Revolt\EventLoop;
@@ -161,7 +162,7 @@ final class IdeTest extends TestCase
             $tui->handleInput("\x05"); // ctrl+e
         });
         $this->step(2.65, function () use ($editor, $screen, $tui): void {
-            $this->assertTrue($editor()->isOverlayOpen());
+            $this->assertTrue(EditorState::pickerOpen($editor()));
             $this->assertStringContainsString('Recent Files', $screen());
             $tui->handleInput("\r"); // pick previous (composer.json)
         });
@@ -235,7 +236,7 @@ final class IdeTest extends TestCase
         // --- Hover quick-doc ----------------------------------------------------------------
         $this->step(3.95, static fn () => $tui->handleInput("\x1b[1;2P")); // F1
         $this->step(4.05, function () use ($editor, $screen, $tui): void {
-            $this->assertTrue($editor()->isOverlayOpen());
+            $this->assertTrue(EditorState::pickerOpen($editor()));
             $this->assertStringContainsString('greet(): string', $screen());
             $tui->handleInput("\x1b");
         });

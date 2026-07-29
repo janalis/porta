@@ -10,6 +10,7 @@ use Porta\Overlay\State\PickerSurface;
 use Porta\Search\Everywhere\SearchCategory;
 use Porta\Search\Everywhere\SearchHit;
 use Porta\Search\Everywhere\SearchRow;
+use Porta\Tests\Support\Probe;
 use Porta\Widget\Render\OverlayCompositor;
 use Symfony\Component\Tui\Ansi\AnsiUtils;
 use Symfony\Component\Tui\Input\Key;
@@ -67,7 +68,7 @@ final class OverlayHostTest extends TestCase
     {
         $host = $this->host();
         $host->openList('Empty', [], static fn () => null);
-        $this->assertFalse($host->isListOpen());
+        $this->assertFalse(null !== Probe::get($host, 'overlay'));
         $this->assertSame(0, $this->invalidations);
     }
 
@@ -95,7 +96,7 @@ final class OverlayHostTest extends TestCase
         $this->assertTrue($host->handleInput("\r", $this->keybindings()));
         $this->assertSame('old', $submitted);
         $this->assertNull($picked);
-        $this->assertTrue($host->isListOpen(), 'the list overlay survives the prompt');
+        $this->assertTrue(null !== Probe::get($host, 'overlay'), 'the list overlay survives the prompt');
     }
 
     public function testCloseListLeavesThePromptOpen(): void
@@ -105,7 +106,7 @@ final class OverlayHostTest extends TestCase
         $host->openList('L', [['label' => 'a', 'hint' => '', 'value' => 'A']], static fn () => null);
 
         $host->closeList();
-        $this->assertFalse($host->isListOpen());
+        $this->assertFalse(null !== Probe::get($host, 'overlay'));
         // The prompt still swallows and edits input.
         $this->assertTrue($host->handleInput('4', $this->keybindings()));
         $lines = $this->canvas($host, 40, 5);
@@ -144,12 +145,12 @@ final class OverlayHostTest extends TestCase
         $host->layout([0, 0, 2, 40]); // framed box: rows 0-4, inner width 30 at col 3
 
         $this->assertTrue($host->promptClickAt(0, 5), 'a click on the frame title bar is consumed');
-        $this->assertTrue($host->isPromptOpen(), 'and does not dismiss it — the caret stays');
+        $this->assertTrue(null !== Probe::get($host, 'prompt'), 'and does not dismiss it — the caret stays');
         $this->assertTrue($host->promptClickAt(2, 5), 'a click on the field row is consumed');
-        $this->assertTrue($host->isPromptOpen());
+        $this->assertTrue(null !== Probe::get($host, 'prompt'));
 
         $this->assertTrue($host->promptClickAt(5, 5), 'a click below the box is consumed');
-        $this->assertFalse($host->isPromptOpen(), 'and dismisses it, like every sibling overlay');
+        $this->assertFalse(null !== Probe::get($host, 'prompt'), 'and dismisses it, like every sibling overlay');
     }
 
     public function testPromptClickBeyondTheBoxWidthDismisses(): void
@@ -159,7 +160,7 @@ final class OverlayHostTest extends TestCase
         $host->layout([0, 0, 2, 40]);
 
         $this->assertTrue($host->promptClickAt(0, 37), 'row 0 but past the box width is outside');
-        $this->assertFalse($host->isPromptOpen());
+        $this->assertFalse(null !== Probe::get($host, 'prompt'));
     }
 
     public function testThePromptCloseButtonDismisses(): void
@@ -169,7 +170,7 @@ final class OverlayHostTest extends TestCase
         $host->layout([0, 0, 2, 40]); // box [4, 36): × at col 34
 
         $this->assertTrue($host->promptClickAt(0, 34), 'the title bar ×');
-        $this->assertFalse($host->isPromptOpen());
+        $this->assertFalse(null !== Probe::get($host, 'prompt'));
     }
 
     /** Hovering a picker's × brightens it, exactly like the tab strips' close glyph. */
@@ -216,7 +217,7 @@ final class OverlayHostTest extends TestCase
         \assert($box instanceof \Porta\Overlay\Region\ModalBox);
 
         $this->assertTrue($host->clickAt($box->startRow, $box->col + $box->width - 2), 'the title bar ×');
-        $this->assertFalse($host->isListOpen());
+        $this->assertFalse(null !== Probe::get($host, 'overlay'));
     }
 
     public function testTheSearchModalCloseButtonCloses(): void
@@ -641,8 +642,8 @@ final class OverlayHostTest extends TestCase
 
         // The prompt owns the pointer: an outside click dismisses IT, not the list.
         $this->assertTrue($host->pickerClickAt(23, 0));
-        $this->assertFalse($host->isPromptOpen());
-        $this->assertTrue($host->isListOpen(), 'the click never reached the list overlay');
+        $this->assertFalse(null !== Probe::get($host, 'prompt'));
+        $this->assertTrue(null !== Probe::get($host, 'overlay'), 'the click never reached the list overlay');
         $this->assertNull($picked);
 
         // With the prompt gone the list is topmost; hover routes to its rows.
@@ -650,7 +651,7 @@ final class OverlayHostTest extends TestCase
         $this->assertSame(PickerSurface::ListOverlay, $host->topmostSurface());
         $host->pickerHoverAt(0, 0);
         $this->assertTrue($host->pickerClickAt(23, 0), 'an outside click dismisses the list');
-        $this->assertFalse($host->isListOpen());
+        $this->assertFalse(null !== Probe::get($host, 'overlay'));
     }
 
     public function testWheelSelectionSkipsThePromptAndMovesTheListUnderneath(): void

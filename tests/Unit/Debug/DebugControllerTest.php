@@ -20,6 +20,7 @@ use Porta\Editor\OpenFocus;
 use Porta\Event\DebugStatusChanged;
 use Porta\I18n\Translator;
 use Porta\Terminal\TerminalSessions;
+use Porta\Tests\Support\EditorState;
 use Porta\Tests\Support\FakeDapClient;
 use Porta\Tests\Support\Presence;
 use Porta\Tests\Support\TestBottomDock;
@@ -592,7 +593,7 @@ final class DebugControllerTest extends TestCase
         $this->assertSame(['filters' => ['warning']], $this->client->argumentsOf('setExceptionBreakpoints'));
 
         $this->editor->handleInput("\x1b"); // Escape leaves the loop
-        $this->assertFalse($this->editor->isOverlayOpen());
+        $this->assertFalse(EditorState::pickerOpen($this->editor));
         $this->assertSame(['warning'], $this->filters->selection(), 'the selection persisted in the store');
     }
 

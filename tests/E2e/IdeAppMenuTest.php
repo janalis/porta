@@ -9,6 +9,7 @@ use Porta\Editor\LineNumberMode;
 use Porta\Ide;
 use Porta\Onboarding\OnboardingState;
 use Porta\Tests\Support\ClearsPortaLsp;
+use Porta\Tests\Support\EditorState;
 use Porta\Tests\Support\PreservesPath;
 use Porta\Tests\Support\RunsIde;
 use Porta\Tests\Support\ScreenReads;
@@ -401,7 +402,7 @@ final class IdeAppMenuTest extends TestCase
                 },
                 600 => function ($tui, $terminal) use ($project): void {
                     $tui->tick();
-                    $this->assertSame(LineNumberMode::Relative, $tui->getById('editor')->lineNumberMode());
+                    $this->assertSame(LineNumberMode::Relative, EditorState::display($tui->getById('editor'))->lineNumbers());
                     $this->assertStringContainsString('Line numbers relative', AnsiUtils::stripAnsiCodes($terminal->getOutput()));
                     // Persisted into .porta.json.
                     $config = json_decode((string) file_get_contents($project->path('.porta.json')), associative: true);

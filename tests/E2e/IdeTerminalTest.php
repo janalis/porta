@@ -6,6 +6,7 @@ namespace Porta\Tests\E2e;
 
 use PHPUnit\Framework\TestCase;
 use Porta\Run\RunController;
+use Porta\Tests\Support\EditorState;
 use Porta\Tests\Support\PreservesPath;
 use Porta\Tests\Support\Probe;
 use Porta\Tests\Support\RunsIde;
@@ -252,7 +253,7 @@ final class IdeTerminalTest extends TestCase
                 500 => function ($tui, $terminal, $ide): void {
                     $tui->tick();
                     $tui->handleInput("\x1b[114;6u"); // ctrl+shift+r → Run menu
-                    $this->await(static fn (): bool => $tui->getById('editor')->isOverlayOpen());
+                    $this->await(static fn (): bool => EditorState::pickerOpen($tui->getById('editor')));
                     $tui->handleInput("\r"); // "Run current file: run.php" leads the list
                 },
                 900 => function ($tui, $terminal, $ide): void {

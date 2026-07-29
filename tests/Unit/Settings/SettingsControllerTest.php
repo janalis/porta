@@ -24,6 +24,7 @@ use Porta\Search\TodoTags;
 use Porta\Settings\LiveSettingsApplier;
 use Porta\Settings\SettingsController;
 use Porta\Settings\SettingsRowKind;
+use Porta\Tests\Support\EditorState;
 use Porta\Tests\Support\FakeScheduler;
 use Porta\Tests\Support\FixedActiveFile;
 use Porta\Tests\Support\PreservesPath;
@@ -221,7 +222,7 @@ final class SettingsControllerTest extends TestCase
 
         $controller->changeSetting('lineNumbers', 'relative');
 
-        $this->assertSame(LineNumberMode::Relative, $editor->lineNumberMode(), 'applied to the editor');
+        $this->assertSame(LineNumberMode::Relative, EditorState::display($editor)->lineNumbers(), 'applied to the editor');
         $this->assertSame('relative', IdeConfig::load($project->dir)->settings['lineNumbers'], 'persisted');
         $this->assertStringContainsString('Line numbers relative', $this->flashText($status));
         $this->assertStringNotContainsString('restart', $this->flashText($status), 'live change is immediate');
@@ -234,7 +235,7 @@ final class SettingsControllerTest extends TestCase
         $controller = $this->controller($project->dir, $editor, new StatusBarWidget());
 
         $controller->changeSetting('lineNumbers', 'off');
-        $this->assertSame(LineNumberMode::Off, $editor->lineNumberMode());
+        $this->assertSame(LineNumberMode::Off, EditorState::display($editor)->lineNumbers());
         $this->assertSame('off', IdeConfig::load($project->dir)->settings['lineNumbers']);
     }
 
@@ -246,11 +247,11 @@ final class SettingsControllerTest extends TestCase
 
         // Default absolute → relative → off → absolute.
         $controller->cycleLineNumbers();
-        $this->assertSame(LineNumberMode::Relative, $editor->lineNumberMode());
+        $this->assertSame(LineNumberMode::Relative, EditorState::display($editor)->lineNumbers());
         $controller->cycleLineNumbers();
-        $this->assertSame(LineNumberMode::Off, $editor->lineNumberMode());
+        $this->assertSame(LineNumberMode::Off, EditorState::display($editor)->lineNumbers());
         $controller->cycleLineNumbers();
-        $this->assertSame(LineNumberMode::Absolute, $editor->lineNumberMode());
+        $this->assertSame(LineNumberMode::Absolute, EditorState::display($editor)->lineNumbers());
     }
 
     public function testChangingTheNewInterfaceBoolsAppliesToTheEditorAndBreadcrumbs(): void
@@ -261,14 +262,14 @@ final class SettingsControllerTest extends TestCase
         $controller = $this->controller($project->dir, $editor, new StatusBarWidget(), breadcrumbs: $breadcrumbs);
 
         $controller->changeSetting('stickyScroll', false);
-        $this->assertFalse($editor->hasStickyScroll());
+        $this->assertFalse(EditorState::display($editor)->stickyScroll());
         $controller->changeSetting('indentGuides', false);
-        $this->assertFalse($editor->hasIndentGuides());
+        $this->assertFalse(EditorState::display($editor)->indentGuides());
         $controller->changeSetting('breadcrumbs', false);
         $this->assertFalse($breadcrumbs->isVisible());
 
         $controller->changeSetting('stickyScroll', true);
-        $this->assertTrue($editor->hasStickyScroll());
+        $this->assertTrue(EditorState::display($editor)->stickyScroll());
         $controller->changeSetting('breadcrumbs', true);
         $this->assertTrue($breadcrumbs->isVisible());
     }
@@ -326,7 +327,7 @@ final class SettingsControllerTest extends TestCase
         $controller = $this->controller($project->dir, $editor, new StatusBarWidget(), ['lineNumbers' => 'relative', 'theme' => 'light']);
 
         $controller->applyAll(); // every descriptor applies live now
-        $this->assertSame(LineNumberMode::Relative, $editor->lineNumberMode());
+        $this->assertSame(LineNumberMode::Relative, EditorState::display($editor)->lineNumbers());
         $this->assertSame(['light'], $this->themeChanges, 'the theme hook applies at boot too');
         $this->assertSame(['bar'], $this->cursorShapeChanges, 'the cursor-shape hook applies at boot too');
         $this->assertSame(['top'], $this->tabBarPositionChanges, 'the tab-bar-position hook applies at boot too');

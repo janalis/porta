@@ -7,6 +7,7 @@ namespace Porta\Tests\E2e;
 use PHPUnit\Framework\TestCase;
 use Porta\Config\CommandRegistry;
 use Porta\Tests\Support\ClearsPortaLsp;
+use Porta\Tests\Support\EditorState;
 use Porta\Tests\Support\GitBinary;
 use Porta\Tests\Support\PreservesPath;
 use Porta\Tests\Support\RunsIde;
@@ -288,7 +289,7 @@ final class IdeGitFlowsTest extends TestCase
                     // its ON-DISK effect (a toast outlives the step that
                     // flashed it, so it proves nothing about THIS action).
                     $palette($tui, label: 'Git: Branches');
-                    $this->await(static fn (): bool => $editor->isOverlayOpen(), what: 'the branch picker to open');
+                    $this->await(static fn (): bool => EditorState::pickerOpen($editor), what: 'the branch picker to open');
                     $this->frame($tui);
                     $this->assertStringContainsString('+ Create new branch…', $screen());
                     $this->assertStringContainsString('− Delete branch…', $screen());
@@ -307,18 +308,18 @@ final class IdeGitFlowsTest extends TestCase
                     // Round 2: the create sentinel with an empty name is a no-op.
                     $terminal->clearOutput();
                     $palette($tui, label: 'Git: Branches');
-                    $this->await(static fn (): bool => $editor->isOverlayOpen(), what: 'the picker to reopen');
+                    $this->await(static fn (): bool => EditorState::pickerOpen($editor), what: 'the picker to reopen');
                     $tui->handleInput("\r"); // the "+ Create new branch…" row leads the list
-                    $this->await(static fn (): bool => $editor->isPromptOpen(), what: 'the branch-name prompt');
+                    $this->await(static fn (): bool => EditorState::promptOpen($editor), what: 'the branch-name prompt');
                     $tui->handleInput("\r"); // an empty name is a no-op
                     $branches = array_filter(explode("\n", $project->git('branch', '--list')));
                     $this->assertCount(2, $branches, 'no branch was created from the empty prompt');
 
                     // Round 3: create "fresh" for real.
                     $palette($tui, label: 'Git: Branches');
-                    $this->await(static fn (): bool => $editor->isOverlayOpen(), what: 'the picker for the create round');
+                    $this->await(static fn (): bool => EditorState::pickerOpen($editor), what: 'the picker for the create round');
                     $tui->handleInput("\r"); // create sentinel again
-                    $this->await(static fn (): bool => $editor->isPromptOpen(), what: 'the name prompt');
+                    $this->await(static fn (): bool => EditorState::promptOpen($editor), what: 'the name prompt');
                     foreach (str_split('fresh') as $ch) {
                         $tui->handleInput($ch);
                     }
@@ -330,7 +331,7 @@ final class IdeGitFlowsTest extends TestCase
                     // Round 4: check out the remote branch as a tracking branch.
                     $terminal->clearOutput();
                     $palette($tui, label: 'Git: Branches');
-                    $this->await(static fn (): bool => $editor->isOverlayOpen(), what: 'the picker for the tracking round');
+                    $this->await(static fn (): bool => EditorState::pickerOpen($editor), what: 'the picker for the tracking round');
                     // Rows: 2 sentinels + 3 locals (feature/fresh/main-or-master,
                     // fresh current) + the remote row last — five steps down.
                     foreach (range(1, end: 5) as $_) {
@@ -348,7 +349,7 @@ final class IdeGitFlowsTest extends TestCase
                     // substring await before the delete picker ever opened.
                     $grid = fn (): string => implode("\n", $this->screenGrid($tui, $terminal));
                     $palette($tui, label: 'Git: Branches');
-                    $this->await(static fn (): bool => $editor->isOverlayOpen(), what: 'the picker for the delete round');
+                    $this->await(static fn (): bool => EditorState::pickerOpen($editor), what: 'the picker for the delete round');
                     $tui->handleInput("\x1b[B"); // the "− Delete branch…" row
                     $tui->handleInput("\r");
                     $this->await(static fn (): bool => str_contains($grid(), 'Delete branch') && !str_contains($grid(), '+ Create new branch…'), what: 'the delete picker');
@@ -922,7 +923,7 @@ final class IdeGitFlowsTest extends TestCase
 
                     // Round 1: Cancel leaves everything untouched.
                     $palette($tui, label: 'Git: Stashes…');
-                    $this->await(static fn (): bool => $tui->getById('editor')->isOverlayOpen());
+                    $this->await(static fn (): bool => EditorState::pickerOpen($tui->getById('editor')));
                     $tui->handleInput("\r"); // pick the stash → the action chooser
                     $tui->tick();
                     $this->assertStringContainsString('apply, pop or drop?', AnsiUtils::stripAnsiCodes($terminal->getOutput()));
@@ -930,12 +931,12 @@ final class IdeGitFlowsTest extends TestCase
                     $tui->handleInput("\x1b[B");
                     $tui->handleInput("\x1b[B"); // down to Cancel
                     $tui->handleInput("\r");
-                    $this->assertFalse($tui->getById('editor')->isOverlayOpen());
+                    $this->assertFalse(EditorState::pickerOpen($tui->getById('editor')));
 
                     // Round 2: Apply restores the change but keeps the stash.
                     $terminal->clearOutput();
                     $palette($tui, label: 'Git: Stashes…');
-                    $this->await(static fn (): bool => $tui->getById('editor')->isOverlayOpen());
+                    $this->await(static fn (): bool => EditorState::pickerOpen($tui->getById('editor')));
                     $tui->handleInput("\r");
                     $tui->handleInput("\r"); // Apply leads the chooser
                     $this->await(static fn (): bool => str_contains($reads(), '$x = 2;'), timeout: 8.0, what: 'apply to restore the change');
@@ -950,7 +951,7 @@ final class IdeGitFlowsTest extends TestCase
                     $this->await(static fn (): bool => !str_contains($reads(), '$x = 3;'), timeout: 8.0, what: 'the stash to revert the tree');
                     $this->awaitGit($ide);
                     $palette($tui, label: 'Git: Stashes…');
-                    $this->await(static fn (): bool => $tui->getById('editor')->isOverlayOpen());
+                    $this->await(static fn (): bool => EditorState::pickerOpen($tui->getById('editor')));
                     $tui->handleInput("\r");
                     $tui->handleInput("\x1b[B"); // down to Pop
                     $tui->handleInput("\r");
@@ -962,7 +963,7 @@ final class IdeGitFlowsTest extends TestCase
                     // Round 4: Drop the remaining stash.
                     $terminal->clearOutput();
                     $palette($tui, label: 'Git: Stashes…');
-                    $this->await(static fn (): bool => $tui->getById('editor')->isOverlayOpen());
+                    $this->await(static fn (): bool => EditorState::pickerOpen($tui->getById('editor')));
                     $tui->handleInput("\r");
                     $tui->tick();
                     $tui->handleInput("\x1b[B");

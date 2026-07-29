@@ -7,6 +7,7 @@ namespace Porta\Tests\E2e;
 use PHPUnit\Framework\TestCase;
 use Porta\Config\CommandRegistry;
 use Porta\Tests\Support\ClearsPortaLsp;
+use Porta\Tests\Support\EditorState;
 use Porta\Tests\Support\PreservesPath;
 use Porta\Tests\Support\RunsIde;
 use Porta\Tests\Support\Services;
@@ -113,7 +114,7 @@ final class IdeEditingTest extends TestCase
                     $editor->getDocument()->setCursor(0, 0);
                     $tui->handleInput("\x1b[1;7B"); // ctrl+alt+down
                     $tui->handleInput("\x1b[1;7B");
-                    $this->assertTrue($editor->hasMultipleCarets());
+                    $this->assertTrue(EditorState::multiCaret($editor)->hasMultiple());
                     $tui->handleInput('#'); // type at all three carets
                     $this->assertSame("#one\n#two\n#three\n", $editor->getDocument()->getText());
                     $tui->handleInput("\x1a"); // ctrl+z: one undo reverts all
@@ -143,7 +144,7 @@ final class IdeEditingTest extends TestCase
                     $tui->handleInput('X');
                     $tui->handleInput("\x1b[I");
                     $tui->handleInput('Y');
-                    $this->assertTrue($editor->hasMultipleCarets(), 'stray input kept the carets');
+                    $this->assertTrue(EditorState::multiCaret($editor)->hasMultiple(), 'stray input kept the carets');
                     $this->assertSame("XYaaaa\nXYbbbb\nXYcccc\n", $editor->getDocument()->getText());
                     // shift+right selects one char at every caret; typing replaces each.
                     $tui->handleInput("\x1b[1;2C");

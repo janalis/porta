@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Porta\Tests\Unit\Widget;
 
 use PHPUnit\Framework\TestCase;
+use Porta\Tests\Support\EditorState;
 use Porta\Widget\CodeEditorWidget;
 
 final class CodeEditorConflictTest extends TestCase
@@ -105,7 +106,7 @@ final class CodeEditorConflictTest extends TestCase
         $editor->getDocument()->setCursor(0, 0); // "top", outside any conflict
 
         $editor->handleInput("\x1bm");
-        $this->assertFalse($editor->isOverlayOpen());
+        $this->assertFalse(EditorState::pickerOpen($editor));
         $this->assertStringContainsString('<<<<<<< a', $editor->getDocument()->getText());
     }
 }

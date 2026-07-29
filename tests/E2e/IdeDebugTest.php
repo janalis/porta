@@ -9,6 +9,7 @@ use Porta\Debug\DebugController;
 use Porta\Editor\BufferService;
 use Porta\Editor\OpenFocus;
 use Porta\Tests\Support\ClearsPortaLsp;
+use Porta\Tests\Support\EditorState;
 use Porta\Tests\Support\PreservesPath;
 use Porta\Tests\Support\RunsIde;
 use Porta\Tests\Support\Services;
@@ -376,7 +377,7 @@ final class IdeDebugTest extends TestCase
                     ), what: 'the default exception filters to reach the adapter');
 
                     $palette($tui, label: 'Debug: Exception Breakpoints');
-                    $this->await(static fn (): bool => $tui->getById('editor')->isOverlayOpen());
+                    $this->await(static fn (): bool => EditorState::pickerOpen($tui->getById('editor')));
                     $tui->handleInput("\r"); // toggle Warnings on → re-sync + re-open
                     $this->await(static fn (): bool => str_contains(AnsiUtils::stripAnsiCodes($terminal->getOutput()), 'xfilters: exception,warning'));
                     $tui->handleInput("\x1b"); // leave the chooser

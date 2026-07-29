@@ -9,6 +9,7 @@ use Porta\Event\GitRemoteCompleted;
 use Porta\Git\GitRemote;
 use Porta\Git\GitRemoteCommands;
 use Porta\I18n\Translator;
+use Porta\Tests\Support\EditorState;
 use Porta\Tests\Support\GitBinary;
 use Porta\Tests\Support\PumpsLoop;
 use Porta\Tests\Support\StatusReads;
@@ -178,7 +179,7 @@ final class GitRemoteCommandsTest extends TestCase
         $commands->pull();
         $this->await(fn (): bool => [] !== $this->events);
         $this->assertFalse($this->events[0]->ok);
-        $this->assertTrue($this->editor->isOverlayOpen(), 'the diverged pull opened the choice overlay');
+        $this->assertTrue(EditorState::pickerOpen($this->editor), 'the diverged pull opened the choice overlay');
 
         // Pick "Rebase" (the first row).
         $this->editor->handleInput("\r");
@@ -198,7 +199,7 @@ final class GitRemoteCommandsTest extends TestCase
         $this->editor->handleInput("\x1b[B");
         $this->editor->handleInput("\x1b[B");
         $this->editor->handleInput("\r");
-        $this->assertFalse($this->editor->isOverlayOpen());
+        $this->assertFalse(EditorState::pickerOpen($this->editor));
         $this->assertCount(1, $this->events, 'cancelling the choice starts no second operation');
 
         // Round 2: pick "Merge" (the second row).
@@ -221,7 +222,7 @@ final class GitRemoteCommandsTest extends TestCase
         $commands->push();
         $this->await(fn (): bool => [] !== $this->events);
         $this->assertFalse($this->events[0]->ok);
-        $this->assertFalse($this->editor->isOverlayOpen(), 'a rejected push is not an upstream offer');
+        $this->assertFalse(EditorState::pickerOpen($this->editor), 'a rejected push is not an upstream offer');
         $this->assertStringContainsString('Push failed:', $this->statusRow($this->status));
     }
 
@@ -234,7 +235,7 @@ final class GitRemoteCommandsTest extends TestCase
         $commands->push();
         $this->await(fn (): bool => [] !== $this->events);
         $this->assertFalse($this->events[0]->ok);
-        $this->assertTrue($this->editor->isOverlayOpen(), 'the missing-upstream push opened the confirm overlay');
+        $this->assertTrue(EditorState::pickerOpen($this->editor), 'the missing-upstream push opened the confirm overlay');
 
         $this->editor->handleInput("\r"); // "Push with --set-upstream …"
         $this->await(fn (): bool => \count($this->events) >= 2);

@@ -7,6 +7,7 @@ namespace Porta\Tests\Unit\Widget;
 use PHPUnit\Framework\TestCase;
 use Porta\Editor\CompletionItem;
 use Porta\Editor\LineNumberMode;
+use Porta\Tests\Support\EditorState;
 use Porta\Tests\Support\FakeEditorNavigation;
 use Porta\Widget\CodeEditorWidget;
 use Porta\Widget\EditorCallbacks;
@@ -499,7 +500,7 @@ final class CodeEditorWidgetEdgeTest extends TestCase
 
         // Empty overlay refuses to open
         $editor->openListOverlay('Empty', [], static fn () => null);
-        $this->assertFalse($editor->isOverlayOpen());
+        $this->assertFalse(EditorState::pickerOpen($editor));
     }
 
     public function testSignatureHintClearedOnCloseParenAndVerticalMove(): void
@@ -698,16 +699,16 @@ final class CodeEditorWidgetEdgeTest extends TestCase
 
         // lineNumbers defaults to absolute: change to relative, set relative again (no-op), then absolute, then off.
         $editor->setLineNumberMode(LineNumberMode::Relative);
-        $this->assertSame(LineNumberMode::Relative, $editor->lineNumberMode());
+        $this->assertSame(LineNumberMode::Relative, EditorState::display($editor)->lineNumbers());
         $editor->setLineNumberMode(LineNumberMode::Relative); // same → guard skips
-        $this->assertSame(LineNumberMode::Relative, $editor->lineNumberMode());
+        $this->assertSame(LineNumberMode::Relative, EditorState::display($editor)->lineNumbers());
         $editor->setLineNumberMode(LineNumberMode::Off);
-        $this->assertSame(LineNumberMode::Off, $editor->lineNumberMode());
+        $this->assertSame(LineNumberMode::Off, EditorState::display($editor)->lineNumbers());
 
         // Sticky scroll and indent guides default on: disable (set), disable again (skip), enable (set), enable again (skip).
         foreach ([
-            [$editor->disableStickyScroll(...), $editor->enableStickyScroll(...), $editor->hasStickyScroll(...)],
-            [$editor->disableIndentGuides(...), $editor->enableIndentGuides(...), $editor->hasIndentGuides(...)],
+            [$editor->disableStickyScroll(...), $editor->enableStickyScroll(...), static fn (): bool => EditorState::display($editor)->stickyScroll()],
+            [$editor->disableIndentGuides(...), $editor->enableIndentGuides(...), static fn (): bool => EditorState::display($editor)->indentGuides()],
         ] as [$off, $on, $has]) {
             $off();
             $this->assertFalse($has());

@@ -12,6 +12,7 @@ use Porta\Git\GitRefresher;
 use Porta\Git\LogEntry;
 use Porta\I18n\Translator;
 use Porta\Support\Clipboard;
+use Porta\Tests\Support\EditorState;
 use Porta\Tests\Support\GitBinary;
 use Porta\Tests\Support\StatusReads;
 use Porta\Tests\Support\TempProject;
@@ -280,7 +281,7 @@ final class GitCommandsTest extends TestCase
         $this->key("\x1b[B"); // Pop → Drop
         $this->key("\x1b[B"); // Drop → Cancel
         $this->key("\r"); // choose Cancel — a no-op
-        $this->pump(fn (): bool => !$this->editor->isOverlayOpen());
+        $this->pump(fn (): bool => !EditorState::pickerOpen($this->editor));
 
         $this->assertStringContainsString('wip', $this->project->git('stash', 'list'), 'the stash is untouched');
     }
@@ -533,7 +534,7 @@ final class GitCommandsTest extends TestCase
         $this->key("\r"); // pick "keep"
         $this->key("\x1b[B"); // Delete → Cancel
         $this->key("\r"); // choose Cancel
-        $this->pump(fn (): bool => !$this->editor->isOverlayOpen());
+        $this->pump(fn (): bool => !EditorState::pickerOpen($this->editor));
 
         $this->assertStringContainsString('keep', $this->project->git('branch'), 'the branch survived the cancel');
     }
@@ -547,7 +548,7 @@ final class GitCommandsTest extends TestCase
         $this->overlayOpens();
         $this->key("\r"); // "+ Create new branch…"
         $this->key("\r"); // submit an empty name
-        $this->pump(fn (): bool => !$this->editor->isOverlayOpen());
+        $this->pump(fn (): bool => !EditorState::pickerOpen($this->editor));
 
         $this->assertSame($before, $this->project->git('branch'), 'no branch was created');
     }
@@ -703,7 +704,7 @@ final class GitCommandsTest extends TestCase
     /** Waits for the editor's list overlay (branch/stash pickers). */
     private function overlayOpens(): void
     {
-        $this->pump(fn (): bool => $this->editor->isOverlayOpen());
+        $this->pump(fn (): bool => EditorState::pickerOpen($this->editor));
     }
 
     private function tick(): void

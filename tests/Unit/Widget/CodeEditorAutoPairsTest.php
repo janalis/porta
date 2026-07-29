@@ -6,6 +6,7 @@ namespace Porta\Tests\Unit\Widget;
 
 use PHPUnit\Framework\TestCase;
 use Porta\Editor\SelectionMode;
+use Porta\Tests\Support\EditorState;
 use Porta\Widget\CodeEditorWidget;
 
 final class CodeEditorAutoPairsTest extends TestCase
@@ -21,7 +22,7 @@ final class CodeEditorAutoPairsTest extends TestCase
 
     public function testDefaultsOn(): void
     {
-        $this->assertTrue($this->editor()->hasAutoPairs());
+        $this->assertTrue(EditorState::display($this->editor())->autoPairs());
     }
 
     public function testInsertsMatchingPairWithCursorBetween(): void
@@ -154,7 +155,7 @@ final class CodeEditorAutoPairsTest extends TestCase
         $editor->handleInput('(');
 
         $this->assertSame('(', $editor->getDocument()->getLine(0));
-        $this->assertFalse($editor->hasAutoPairs());
+        $this->assertFalse(EditorState::display($editor)->autoPairs());
     }
 
     public function testMultiCaretFallsBackToPlainInsert(): void

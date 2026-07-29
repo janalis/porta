@@ -6,6 +6,7 @@ namespace Porta\Tests\E2e;
 
 use PHPUnit\Framework\TestCase;
 use Porta\Tests\Support\ClearsPortaLsp;
+use Porta\Tests\Support\EditorState;
 use Porta\Tests\Support\PreservesPath;
 use Porta\Tests\Support\RunsIde;
 use Porta\Tests\Support\Services;
@@ -123,7 +124,7 @@ final class IdeMousePrimitivesTest extends TestCase
                     // Horizontal wheel over the editor slides the view without
                     // moving the caret; shift+wheel-up brings it back.
                     $tui->handleInput("\x1b[<67;45;6M");
-                    $scroll = $editor->scroll();
+                    $scroll = EditorState::scroll($editor);
                     $this->assertSame(6, $scroll->hScroll(), 'wheel-right scrolled the editor sideways');
                     $this->assertSame(2, $editor->getDocument()->getCursorLine(), 'the caret stayed put');
                     $tui->handleInput("\x1b[<68;45;6M");
@@ -328,9 +329,9 @@ final class IdeMousePrimitivesTest extends TestCase
                 300 => function ($tui): void {
                     $tui->tick();
                     $tui->handleInput("\x1b[<8;39;4M"); // Alt+Click (code 8) on line 1 -> add caret
-                    $this->assertTrue($tui->getById('editor')->hasMultipleCarets(), 'Alt+Click added a caret');
+                    $this->assertTrue(EditorState::multiCaret($tui->getById('editor'))->hasMultiple(), 'Alt+Click added a caret');
                     $tui->handleInput("\x1b[<8;39;4M"); // Alt+Click same spot -> remove
-                    $this->assertFalse($tui->getById('editor')->hasMultipleCarets(), 'Alt+Click again removed it');
+                    $this->assertFalse(EditorState::multiCaret($tui->getById('editor'))->hasMultiple(), 'Alt+Click again removed it');
                 },
             ],
         );
@@ -350,9 +351,9 @@ final class IdeMousePrimitivesTest extends TestCase
                 300 => function ($tui): void {
                     $tui->tick();
                     $tui->handleInput("\x1b[<8;39;4M"); // Alt+Click adds a caret
-                    $this->assertTrue($tui->getById('editor')->hasMultipleCarets());
+                    $this->assertTrue(EditorState::multiCaret($tui->getById('editor'))->hasMultiple());
                     $tui->handleInput("\x1b[<0;38;3M"); // plain click collapses to one caret
-                    $this->assertFalse($tui->getById('editor')->hasMultipleCarets());
+                    $this->assertFalse(EditorState::multiCaret($tui->getById('editor'))->hasMultiple());
                 },
             ],
         );
@@ -376,7 +377,7 @@ final class IdeMousePrimitivesTest extends TestCase
                     $tui->handleInput("\x1b[<12;39;3M"); // press line 0, display col 1
                     $tui->handleInput("\x1b[<44;41;5M"); // drag to line 2, display col 3
                     $tui->handleInput("\x1b[<0;41;5m"); // release
-                    $this->assertTrue($tui->getById('editor')->hasMultipleCarets(), 'rectangle spans 3 lines');
+                    $this->assertTrue(EditorState::multiCaret($tui->getById('editor'))->hasMultiple(), 'rectangle spans 3 lines');
                     $tui->handleInput('X'); // type at every caret
                 },
                 400 => function ($tui): void {
@@ -400,7 +401,7 @@ final class IdeMousePrimitivesTest extends TestCase
                 200 => function ($tui): void {
                     $tui->handleInput('E'); // dirty a.php
                     $tui->handleInput("\x1bw"); // close → unsaved-changes overlay
-                    $this->assertTrue($tui->getById('editor')->isOverlayOpen());
+                    $this->assertTrue(EditorState::pickerOpen($tui->getById('editor')));
                 },
                 320 => static function ($tui): void {
                     // A click outside the floating box dismisses the modal
@@ -411,13 +412,13 @@ final class IdeMousePrimitivesTest extends TestCase
                 },
                 420 => function ($tui): void {
                     $editor = $tui->getById('editor');
-                    $this->assertFalse($editor->isOverlayOpen(), 'outside click dismissed the dialog');
+                    $this->assertFalse(EditorState::pickerOpen($editor), 'outside click dismissed the dialog');
                     $this->assertStringEndsWith('a.php', (string) $editor->getFilePath(), 'dismiss kept the buffer');
                     $tui->handleInput("\x1bw"); // reopen the overlay
                 },
                 540 => function ($tui, $terminal, $ide): void {
                     $editor = $tui->getById('editor');
-                    $this->assertTrue($editor->isOverlayOpen());
+                    $this->assertTrue(EditorState::pickerOpen($editor));
                     $host = new \ReflectionProperty($editor, 'overlayHost')->getValue($editor);
                     $box = new \ReflectionProperty($host, 'overlayBox')->getValue($host);
                     // Hover then click item index 1 ("Discard & Close"): the
@@ -430,7 +431,7 @@ final class IdeMousePrimitivesTest extends TestCase
                     $tui->handleInput(\sprintf("\x1b[<0;%d;%dM", $col + 1, $row + 1)); // click
                 },
                 660 => function ($tui) use ($project): void {
-                    $this->assertFalse($tui->getById('editor')->isOverlayOpen());
+                    $this->assertFalse(EditorState::pickerOpen($tui->getById('editor')));
                     $this->assertStringNotContainsString('E', (string) file_get_contents($project->path('a.php')), 'discard did not save the edit');
                 },
             ],

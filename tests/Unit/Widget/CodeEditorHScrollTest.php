@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Porta\Tests\Unit\Widget;
 
 use PHPUnit\Framework\TestCase;
+use Porta\Tests\Support\EditorState;
 use Porta\Widget\CodeEditorWidget;
 use Symfony\Component\Tui\Ansi\AnsiUtils;
 use Symfony\Component\Tui\Render\RenderContext;
@@ -31,7 +32,7 @@ final class CodeEditorHScrollTest extends TestCase
 
     private function hScroll(CodeEditorWidget $editor): int
     {
-        return $editor->scroll()->hScroll();
+        return EditorState::scroll($editor)->hScroll();
     }
 
     public function testScrollHBySlidesTheViewAndSurvivesRenders(): void

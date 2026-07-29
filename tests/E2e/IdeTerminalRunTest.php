@@ -6,6 +6,7 @@ namespace Porta\Tests\E2e;
 
 use PHPUnit\Framework\TestCase;
 use Porta\Tests\Support\ClearsPortaLsp;
+use Porta\Tests\Support\EditorState;
 use Porta\Tests\Support\PreservesPath;
 use Porta\Tests\Support\Probe;
 use Porta\Tests\Support\RunsIde;
@@ -281,7 +282,7 @@ final class IdeTerminalRunTest extends TestCase
             [
                 300 => function ($tui): void {
                     $tui->handleInput("\x1b[114;6u"); // ctrl+shift+r run menu
-                    $this->assertTrue($tui->getById('editor')->isOverlayOpen());
+                    $this->assertTrue(EditorState::pickerOpen($tui->getById('editor')));
                 },
                 400 => function ($tui, $terminal): void {
                     $tui->tick();
@@ -345,7 +346,7 @@ final class IdeTerminalRunTest extends TestCase
                 300 => function ($tui, $terminal): void {
                     $tui->handleInput("\x1b[114;6u"); // ctrl+shift+r
                     $tui->tick();
-                    $this->assertFalse($tui->getById('editor')->isOverlayOpen());
+                    $this->assertFalse(EditorState::pickerOpen($tui->getById('editor')));
                     $this->assertStringContainsString('Nothing to run', AnsiUtils::stripAnsiCodes($terminal->getOutput()));
                 },
             ],
