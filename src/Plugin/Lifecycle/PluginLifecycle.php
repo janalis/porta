@@ -12,7 +12,6 @@ use Porta\I18n\Translator;
 use Porta\Lsp\LspReconfigurer;
 use Porta\Plugin\Runtime\PluginLoader;
 use Porta\Plugin\Runtime\PluginManager;
-use Porta\Plugin\Runtime\PluginPagesSync;
 use Porta\Workbench\Menu\MenuRebuilder;
 use Porta\Workbench\Notifier;
 use Porta\Workbench\WorkspaceViews;

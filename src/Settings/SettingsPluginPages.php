@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace Porta\Settings;
 
-use Porta\Plugin\Runtime\PluginPagesSync;
+use Porta\Plugin\Lifecycle\PluginPagesSync;
 use Porta\Widget\Settings\SettingsNavWidget;
 
 /**
