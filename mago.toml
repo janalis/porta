@@ -13,7 +13,7 @@
 php-version = "8.4"
 
 [source]
-paths = ["src", "tests", "tools"]
+paths = ["src", "tests"]
 # Analyzed for type information but never reported on, so the analyzer knows the
 # types of third-party classes (symfony/tui, PHPUnit, …) instead of treating
 # everything from them as `mixed`.
@@ -22,8 +22,10 @@ includes = ["vendor"]
 [analyzer]
 # Static analysis targets production code. Tests drive widgets through dynamic,
 # string-keyed lookups ($tui->getById('editor')->…) that a static analyzer cannot
-# follow, and tools/ are one-off scripts — analysing them yields only noise.
-excludes = ["tests", "tools"]
+# follow. (The quality gates themselves used to sit in tools/ and be excluded
+# too; they are Symfony commands in src/Console/ now, analysed like everything
+# else.)
+excludes = ["tests"]
 
 [formatter]
 # Never re-wrap: keep the author's line breaks, like php-cs-fixer does.

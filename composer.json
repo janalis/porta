@@ -53,7 +53,7 @@
             "@php bin/porta-dev coverage:check coverage/clover.xml 100"
         ],
         "arch": "@php bin/porta-dev arch",
-        "container": "@php tools/container-debug.php"
+        "container": "@php bin/porta-dev container"
     },
     "minimum-stability": "stable",
     "config": {

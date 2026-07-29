@@ -21,5 +21,6 @@ require $autoload;
 
 $application = new Symfony\Component\Console\Application('porta-dev', Porta\Ide::VERSION);
 $application->addCommand(new Porta\Console\ArchitectureCheckCommand());
+$application->addCommand(new Porta\Console\ContainerDebugCommand());
 $application->addCommand(new Porta\Console\CoverageCheckCommand());
 $application->run();
