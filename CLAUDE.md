@@ -166,7 +166,7 @@ resolution + arrangement only, and the ctor tail runs
 `Command/CommandRegistryPopulator::populate()` (tagged providers), `Bootstrap/WidgetHooks::wire()`,
 `Bootstrap/EagerServices::boot()` (tagged eager services — see below), the menu bake, registers
 the `Input/InputDispatcher` listener, and finally `Bootstrap/StartupWiring::wire()` (hands the
-plugin handlers their live `Plugin/PluginRuntime` seam + flashes the config/plugin load warnings —
+plugin handlers their live `Plugin/Runtime/PluginRuntime` seam + flashes the config/plugin load warnings —
 a `WidgetHooks` sibling kept separate so neither constructor grows unwieldy) — commands register
 and menus bake at the **end** of the constructor. Services that must be constructed **eagerly for a self-registering side effect** (they
 attach to `Workbench/WorkspaceViews` or hook `BidiTui::onBeforeFrame` and have no inbound reference, so
@@ -215,13 +215,13 @@ The container owns everything expressible as service+scalar injection — **incl
 singleton widget** (`#[Container/AsWidget]` declares tree id/flex, autoconfigured into
 `setId`/`setStyle` calls) and all controllers. The non-obvious mechanics:
 - **Typed factories**: `Keybindings` via `Config/KeybindingsFactory` (resolving it triggers
-  `Plugin/PluginHost::ensureLoaded()`, the idempotent one-time plugin load, so plugin default keys
+  `Plugin/Runtime/PluginHost::ensureLoaded()`, the idempotent one-time plugin load, so plugin default keys
   merge into the immutable map); `Overlay/State/MenuOverlayPanes`; `PluginManager`/`PluginLoader`/
   `PluginSettings` exposed off `PluginHost`; `SearchEverywhereController` via
   `Search/Everywhere/SearchEverywhereFactory`. **Static self-factories declare themselves on the
   class** with `#[Autoconfigure(constructor: '…')]` instead of a central `->factory()` def:
   `HighlightPreferences::fromConfig` (its `%env(json:PORTA_HIGHLIGHT)%` arg via `#[Autowire]` on the
-  param), `Plugin/PluginInstaller::create` and `Plugin/ToolInstaller::create` (environment-derived
+  param), `Plugin/Lifecycle/PluginInstaller::create` and `Plugin/Lifecycle/ToolInstaller::create` (environment-derived
   scalars; their `$rootDir`/`Translator` args autowire). A collaborator-instance factory
   (`[PluginHost, 'manager']`) or a cross-class one (`Themes::createSwitchable` → `Styles`) can't use
   it and stays an explicit def.
@@ -273,7 +273,7 @@ singleton widget** (`#[Container/AsWidget]` declares tree id/flex, autoconfigure
 **Role interfaces over the editor widget.** `CodeEditorWidget` has 91 public methods, so consumers
 depend on the narrow role they use, not the widget: `Editor/ActiveFileProvider` (`getFilePath`),
 `ActiveDocumentProvider` (+`getDocument`), `EditorTextAccess` (+`insertText`/`jumpTo` — the seam
-`Plugin/PluginRuntime` exposes to plugins, so the whole widget is *not* public plugin API),
+`Plugin/Runtime/PluginRuntime` exposes to plugins, so the whole widget is *not* public plugin API),
 `EditorInvalidator`, `ModalHost` (`openListOverlay`/`openPrompt`), `EditorDecorationSink` (the eight
 decoration setters), `EditorViewOptions` (the display toggles; the six flags themselves live in
 `Editor/EditorDisplayOptions`, which takes the invalidate closure and repaints only on a real
@@ -345,7 +345,7 @@ widget-tree mount + pane arrangement calls, per-buffer runtime objects
 The widgets' runtime hook registrations (providers, viewer handlers, panel/menu close-focus flow,
 the tree's open hook) live in the container-built `Bootstrap/WidgetHooks::wire()`, called once
 at the ctor tail; the theme/locale menu-rebuild + RTL re-mirroring are the compiled
-`Workbench/Menu/MenuLayoutRefreshListener` (priority 0, ahead of the −100 chrome sweep). `Plugin/PluginRuntime`
+`Workbench/Menu/MenuLayoutRefreshListener` (priority 0, ahead of the −100 chrome sweep). `Plugin/Runtime/PluginRuntime`
 and `Widget/EditorCallbacks` are plain services (the runtime consumes the narrow
 `Editor/DiagnosticsSink` seam instead of BufferService). Four objects are handed to the container
 as **synthetic** services right after `Ide` creates them: `Renderer`, `Tui`, `BidiTui` (external
@@ -803,7 +803,7 @@ key would flip the default back on). Names in
 `disabledPlugins` are skipped at boot in every source. phpunit pins `PORTA_EMBEDDED_PLUGINS` to
 `/nonexistent` (bundled plugins opt in via putenv) and points `PORTA_HOME` at
 `tests/Support/fixtures/home`, which installs `tempest` globally so the suite renders coloured.
-The subsystem is container-owned: `Plugin/PluginHost` builds the
+The subsystem is container-owned: `Plugin/Runtime/PluginHost` builds the
 settings/manager/loader triple from the synthetic `IdeConfig`, and `ensureLoaded()` (idempotent,
 triggered by the `Keybindings` factory) runs each file's `activate(PluginApi)` **before** the
 (immutable) `Keybindings` map is built so plugin default keys merge into it (user `.porta.json`
@@ -811,7 +811,7 @@ overrides them; ids are
 namespaced `plugin:command` and bypass the ActionCatalog keymap validation — plugin ids stay
 OUT of `ActionCatalog::ACTIONS`). Registration buffers in the per-plugin `PluginApi` and commits
 atomically after `activate()`. Exactly **five** of the nine extension points share the generic
-`Plugin/PluginBuffer` (language servers, installers, highlighters, token spans, and **viewers**
+`Plugin/Api/PluginBuffer` (language servers, installers, highlighters, token spans, and **viewers**
 — `registerViewer(id, claims)`, the routing claim behind the bundled image-viewer/graph-viewer
 plugins: `Editor/ViewerProviderSource` is the consumer-owned seam `BufferService::openFile`
 consults, first claiming plugin in load order wins, a throwing claim declines and reports once,
@@ -825,10 +825,10 @@ variance axes for four conforming cases. The nine `register*` signatures are fro
 plugin API; `activeFile()` is BUFFER truth (the active tab's path, viewer tabs included — every
 consumer guards by extension). Every bundled plugin surfaces its commands as Plugins-menu items
 and its knobs as plugin settings (the viewers deliberately carry no menu — nothing to invoke). Action methods (flash/editor access/openFile) resolve services
-lazily via `Plugin/PluginRuntime` (wired late in the ctor) and throw during `activate()`. Every
+lazily via `Plugin/Runtime/PluginRuntime` (wired late in the ctor) and throw during `activate()`. Every
 plugin handler and hook is wrapped in try/catch → status-bar flash, so a faulting plugin never
 kills the loop. Hooks (`fileOpened`/`fileSaved`/`bufferSwitched`/`themeChanged`) fan out from
-`Plugin/PluginEvents`, which is a `#[AsEventListener(priority: -100)]` bridge on the app event
+`Plugin/Runtime/PluginEvents`, which is a `#[AsEventListener(priority: -100)]` bridge on the app event
 bus: `BufferService` dispatches typed `Event/BufferOpened`/`BufferSwitched`/`BufferSaved`
 events (symfony/event-dispatcher, wired kernel-less in `config/services.php` — the
 `event_dispatcher` service id is mandatory for `RegisterListenersPass`), core listeners
@@ -853,15 +853,54 @@ and `psalm` (the phpstan pattern for Psalm's JSON array output — 1-based lines
 exit 2 = issues found). The on-save toggle commands flip the persisted settings via
 `PluginApi::changeSetting()` (an action method mirroring `flash()`'s runtime gate).
 Their E2e tests load the real files from those paths.
-Settings → Plugins installs/removes plugin dirs (`Plugin/PluginInstaller`: git clone for URLs,
+
+**A plugin file wires; `src/` implements — enforced by three abstract bases in `Plugin/Api/`.**
+Every bundled plugin is `return new class('<name>', …) extends …`, and the machinery they used to
+copy (ten `name()`s, a byte-identical three-tier `binary()` ×5, the single-flight `$running`
+guard ×6, the "open a PHP file first" guard ×5, the availability closure ×12) now lives under the
+coverage gate and mago's analyzer, where plugin files are NOT (they sit outside `[source] paths`,
+so they are neither formatted nor linted).
+- **`AbstractPlugin`** — the ctor-supplied `name()`, `claimedLanguages()` (the highlighters'
+  comma-separated `languages` row) and `coreSetting()`, which reads a CORE IDE setting off the
+  `PORTA_*` env channel the container itself reads. `coreSetting()` is bundled-plugin territory
+  on purpose: `PluginApi::setting()` can only read keys the plugin registered, and duplicating
+  an IDE setting as a plugin one would give the user two knobs for one thing (graph-viewer's
+  `dotPath` — the raw `$_ENV` triple-guard it used to carry is retired).
+- **`AbstractToolPlugin`** — external-binary plugins (php-cs-fixer, mago, phpactor, phpantom,
+  chroma + both analyzers). Owns discovery (`binary` setting → `vendor/bin/<tool>` → PATH; the
+  two-tier case is the **`BinarySearch`** enum, not an override), the single-flight slot
+  (`acquire()` fuses already-running / missing-binary / take-the-slot into one call; `release()`
+  is explicit precisely so mago can chain format→lint under ONE slot), `activeFileOrFlash()`,
+  `registerBinarySetting()`/`registerToggle()`, and the `flashExit`/`flashFailure`/`flashCount`
+  reports. `binary()` is deliberately **not memoized** — chroma's memo cached across a settings
+  change, so editing its binary did nothing until restart.
+- **`AbstractAnalyzerPlugin`** — phpstan and psalm were ~85% the same file. It owns the whole
+  run (registration block → acquire → `AsyncProcess` → decode → `setDiagnostics` → count flash);
+  the subclass supplies only the per-tool truth: `command()`, `acceptsExitCode()` (phpstan `0|1`,
+  psalm `0|2` — reading one tool's codes for the other would swallow every finding),
+  `diagnostics()` and `noun()`. The command ids (`analyse`, `toggle-on-save`) are single-sourced
+  in the base because they are palette entries and keymap targets.
+
+Third-party plugins may extend these or implement `PortaPlugin` directly — the interface is the
+contract, the bases are convenience, and `PluginLoader` only ever checks `instanceof PortaPlugin`.
+The bundled set went 1183 → 772 lines with no behavior lost; the tests live in
+`tests/Unit/Plugin/Api/`, driving concrete doubles (and a real subprocess shim for the analyzer)
+rather than the plugin files.
+
+Settings → Plugins installs/removes plugin dirs (`Plugin/Lifecycle/PluginInstaller`: git clone for URLs,
 recursive copy for local dirs; per-install project/global scope; bundled plugins list as
-built-in and refuse removal). The live lifecycle lives in `Plugin/PluginLifecycle`, behind two
-seams: **`Plugin/PluginEnablement`** (`enable`/`isDisabled`/`listedNames`) is what the *offer*
+built-in and refuse removal). The live lifecycle lives in `Plugin/Lifecycle/PluginLifecycle`, behind two
+seams: **`Plugin/Lifecycle/PluginEnablement`** (`enable`/`isDisabled`/`listedNames`) is what the *offer*
 paths take (`Settings/SettingsHighlightController` offering the bundled `tempest` engine,
 `Onboarding/WelcomeSteps` offering the same plus the server/fixer/analyzer), while
-**`Plugin/PluginLifecycleOps extends PluginEnablement`** adds install/deactivate/disable/refresh
+**`Plugin/Lifecycle/PluginLifecycleOps extends PluginEnablement`** adds install/deactivate/disable/refresh
 and is driven only by the plugins settings page
-(activate/deactivate/setEnabled + the settings-nav sync): **live activation** —
+(activate/deactivate/setEnabled + the settings-nav sync — which travels through the
+consumer-owned **`Plugin/Runtime/PluginPagesSync`** seam, implemented by
+`Settings/SettingsPluginPages`, the only class that knows a "plugin page" is a sidebar row;
+holding `SettingsNavWidget` directly was the codebase's ENTIRE `Plugin > Widget` arch edge, and
+the names travel as an argument because an implementation that fetched them would depend back
+on `PluginEnablement` and cycle): **live activation** —
 `PluginLoader::loadFile` + `PluginManager::registerCommands` (incremental via a watermark) +
 `Workbench/Menu/MenuRebuilder::rebuild` — and **live
 deactivation** on removal/disable: `PluginManager::deactivate` filters its state, resets the
@@ -879,7 +918,7 @@ parser-identity test), and the vendor boundary (Tui/BidiTui, `WidgetContext`, `F
 keeps the boot instance on purpose — final-with-no-interface, inert for plugin ids because
 plugin commands dispatch in `InputDispatcher` before any widget sees the key. Every plugin's settings page (a `plugin:<name>` nav sub-item) has an Enabled toggle
 (persisted in `disabledPlugins`) plus its `PluginApi::registerSetting` rows
-(`Plugin/PluginSettings`, values in `.porta.json` `plugins.<name>.<key>`, read via
+(`Plugin/Runtime/PluginSettings`, values in `.porta.json` `plugins.<name>.<key>`, read via
 `PluginApi::setting()` — works during activate() because the config seeds first). Menu items
 take an `enabledWhen` closure (dimmed when false; the Plugins menu sits between Code and Run).
 Removal rows use the settings form's `'action'` row kind (two-press confirm in

@@ -77,7 +77,7 @@ are picked up on the next launch.
 
 ## Writing a plugin
 
-`plugin.php` must **return** an instance of `Porta\Plugin\PortaPlugin`.
+`plugin.php` must **return** an instance of `Porta\Plugin\Api\PortaPlugin`.
 Prefer an **anonymous class** — two plugins declaring the same named class
 is an uncatchable PHP fatal.
 
@@ -86,8 +86,8 @@ is an uncatchable PHP fatal.
 
 declare(strict_types=1);
 
-use Porta\Plugin\PluginApi;
-use Porta\Plugin\PortaPlugin;
+use Porta\Plugin\Api\PluginApi;
+use Porta\Plugin\Api\PortaPlugin;
 
 return new class implements PortaPlugin {
     public function name(): string
@@ -113,6 +113,61 @@ Command ids are namespaced as `<plugin>:<command>` (`hello:greet` above),
 appear in the command palette, and can be rebound by users in `.porta.json`
 like any core action. Core commands win key-sequence collisions; a user
 keymap entry beats a plugin's default key.
+
+### Base classes
+
+`PortaPlugin` is the contract, but most plugins do the same handful of things,
+so three abstract classes in `Porta\Plugin\Api` carry them. Extending one is
+optional — the loader only checks `instanceof PortaPlugin` — but a plugin that
+shells out to a binary should not hand-roll discovery and a busy flag.
+
+| Class | Gives you |
+| --- | --- |
+| `AbstractPlugin` | `name()` from the constructor, `claimedLanguages($api)` (a comma-separated `languages` setting, `'*'` for everything) |
+| `AbstractToolPlugin` | Everything above plus: `binary($api)` (the `binary` setting → `<root>/vendor/bin/<tool>` → `PATH`; pass `BinarySearch::PathOnly` for a tool composer never installs), `binaryAvailable($api)` for `addMenuItem`'s dim predicate, `acquire($api)`/`release()` (one run at a time, with the "already running" and "not found" flashes), `activeFileOrFlash($api)`, `registerBinarySetting($api, $via)`, `registerToggle(…)`, `flashExit(…)`/`flashCount(…)` |
+| `AbstractAnalyzerPlugin` | Everything above plus the whole analysis run — you supply `command()`, `acceptsExitCode()`, `diagnostics()` and optionally `noun()`, and `registerAnalysis($api, 'MyTool', ['ctrl+alt+x'])` wires the command, the on-save toggle, the menu entries and the save hook |
+
+A complete linter, using the analyzer base:
+
+```php
+<?php
+
+declare(strict_types=1);
+
+use Porta\Plugin\Api\AbstractAnalyzerPlugin;
+use Porta\Plugin\Api\PluginApi;
+
+return new class('mylint', 'mylint') extends AbstractAnalyzerPlugin {
+    public function activate(PluginApi $api): void
+    {
+        $this->registerBinarySetting($api, [['composer', 'acme/mylint']]);
+        $this->registerAnalysis($api, 'MyLint', ['ctrl+alt+x']);
+    }
+
+    protected function command(string $binary, string $file): array
+    {
+        return [$binary, '--json', $file];
+    }
+
+    protected function acceptsExitCode(int $code): bool
+    {
+        return 0 === $code || 1 === $code; // 1 = findings, not a crash
+    }
+
+    protected function diagnostics(array $report): array
+    {
+        return array_map(static fn (array $row): array => [
+            'line' => max(0, (int) $row['line'] - 1), // the tool is 1-based
+            'message' => (string) $row['message'],
+        ], $report['issues'] ?? []);
+    }
+};
+```
+
+The constructor arguments are the plugin name and the binary name; the `binary`
+setting row, the install offer, the "Analyse Current File" command, the
+"Analyse on save" toggle and both menu entries come from the two calls in
+`activate()`.
 
 ### Lifecycle
 
