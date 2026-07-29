@@ -21,6 +21,7 @@ use Porta\Ui\LtrPane;
 use Porta\Ui\Role;
 use Porta\Ui\Theme\Styles;
 use Porta\Widget\Render\GraphRenderer;
+use Porta\Widget\Render\GraphSelectionOverlay;
 use Porta\Widget\Render\MenuOverlayHost;
 use Porta\Widget\Render\MenuOverlayHostTrait;
 use Porta\Widget\Support\FillsPaneTrait;
@@ -522,8 +523,10 @@ final class GraphViewerWidget extends AbstractWidget implements FocusableInterfa
     /** @return list<string> */
     private function contentLines(int $cols, int $rows): array
     {
-        if (null !== $this->bitmap && null !== $this->view) {
-            return HalfBlockRasterizer::render(
+        // A bitmap only exists after a layout was adopted, so the overlay always
+        // has the geometry it needs to frame the selection.
+        if (null !== $this->bitmap && null !== $this->view && null !== $this->layout) {
+            $lines = HalfBlockRasterizer::render(
                 $this->scaled->forScale(
                     $this->bitmap,
                     $this->view->effectiveScale($cols, 2 * $rows),
@@ -533,6 +536,8 @@ final class GraphViewerWidget extends AbstractWidget implements FocusableInterfa
                 $cols,
                 $rows,
             );
+
+            return GraphSelectionOverlay::apply($lines, $this->layout, $this->view, $this->selected, $cols, $rows, $this->styles);
         }
         if (null !== $this->layout && null !== $this->view) {
             return GraphRenderer::render($this->layout, $this->view, $this->selected, $cols, $rows, $this->styles);

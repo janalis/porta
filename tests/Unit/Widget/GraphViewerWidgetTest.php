@@ -471,6 +471,50 @@ final class GraphViewerWidgetTest extends TestCase
         $this->assertNotSame([], $this->scheduler->cancelled);
     }
 
+    public function testTheSelectionIsFramedOverTheBitmap(): void
+    {
+        $this->engine->nextResult = self::layout();
+        $this->engine->nextPng = PngFixture::bytes(260, 36);
+        $widget = $this->widget();
+        $widget->show('/p/g.dot', 'digraph G { A -> B; }');
+        $this->settle();
+        $bare = implode("\n", $widget->render(new RenderContext(80, 24)));
+        $this->assertStringNotContainsString(Glyphs::FRAME_VERTICAL, $bare, 'nothing framed while nothing is selected');
+
+        $widget->handleInput('n'); // select A
+        $lines = $widget->render(new RenderContext(80, 24));
+        $framed = implode("\n", $lines);
+
+        $this->assertStringContainsString(Glyphs::FRAME_HORIZONTAL, $framed, 'the selected node is framed');
+        $this->assertStringContainsString('▀', $framed, 'over the picture, which is still there');
+        foreach ($lines as $line) {
+            $this->assertSame(80, AnsiUtils::visibleWidth($line), 'splicing kept every line pane-wide');
+        }
+
+        $widget->selectAt(0, 0); // deselect on empty space
+        $this->assertStringNotContainsString(Glyphs::FRAME_VERTICAL, implode("\n", $widget->render(new RenderContext(80, 24))));
+    }
+
+    public function testAFramedNodeScrolledOutOfThePaneDrawsNothing(): void
+    {
+        $this->engine->nextResult = self::layout();
+        $this->engine->nextPng = PngFixture::bytes(260, 36);
+        $widget = $this->widget();
+        $widget->show('/p/g.dot', 'digraph G { A -> B; }');
+        $this->settle();
+        $widget->render(new RenderContext(80, 24));
+        $widget->handleInput('n'); // select A, the leftmost node
+
+        $widget->handleInput('1'); // actual size, so the graph overflows the pane
+        $widget->scrollBy(400, 0); // pan far past it
+        $lines = $widget->render(new RenderContext(80, 24));
+
+        $this->assertStringNotContainsString(Glyphs::FRAME_VERTICAL, implode("\n", $lines), 'an off-pane selection frames nothing');
+        foreach ($lines as $line) {
+            $this->assertSame(80, AnsiUtils::visibleWidth($line));
+        }
+    }
+
     public function testRefreshThemeInvalidatesTheRenderCache(): void
     {
         $this->engine->nextResult = self::layout();
