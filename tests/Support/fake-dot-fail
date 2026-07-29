@@ -1,0 +1,12 @@
+#!/usr/bin/env php
+<?php
+
+// A dot stand-in that fails like dot does on invalid DOT: parse error on
+// stderr, non-zero exit.
+
+declare(strict_types=1);
+
+stream_get_contents(STDIN);
+fwrite(STDERR, "syntax error in line 3 near 'digraph'\n");
+
+exit(1);

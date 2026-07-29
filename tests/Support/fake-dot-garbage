@@ -1,0 +1,11 @@
+#!/usr/bin/env php
+<?php
+
+// A dot stand-in that "succeeds" with non-JSON output — the mangled-pipe
+// shape that must surface as a parse error, not a crash.
+
+declare(strict_types=1);
+
+stream_get_contents(STDIN);
+
+echo "this is not json {\n";

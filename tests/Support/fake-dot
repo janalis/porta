@@ -1,0 +1,21 @@
+#!/usr/bin/env php
+<?php
+
+// A dot stand-in for tests: drains stdin (the DOT document), ignores it, and
+// emits the committed small-graph -Tjson0 fixture — so every DotLayoutEngine
+// branch is coverable without graphviz installed. Also serves the export
+// shape: with `-o <path>` it writes a marker file instead of printing.
+
+declare(strict_types=1);
+
+stream_get_contents(STDIN);
+
+$args = array_slice($argv, 1);
+$outIndex = array_search('-o', $args, true);
+if (false !== $outIndex && isset($args[$outIndex + 1])) {
+    file_put_contents($args[$outIndex + 1], 'fake export: '.implode(' ', $args)."\n");
+
+    exit(0);
+}
+
+echo file_get_contents(__DIR__.'/fixtures/graph/small.json');

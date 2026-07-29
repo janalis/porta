@@ -84,6 +84,7 @@ const ALLOWED_EDGES = [
     'Git>Ui',
     'Git>Widget',
     'Git>Workbench',
+    'Graph>Support',
     'Help>Editor',
     'Help>Support',
     'Help>Ui',
