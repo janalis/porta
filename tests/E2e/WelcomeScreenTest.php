@@ -14,6 +14,7 @@ use Porta\Tests\Support\RunsIde;
 use Porta\Tests\Support\Services;
 use Porta\Tests\Support\TempProject;
 use Symfony\Component\Tui\Ansi\AnsiUtils;
+use Symfony\Component\Tui\Tui;
 
 /**
  * The first-run path, end to end: a genuinely fresh project opens the Welcome
@@ -55,10 +56,24 @@ final class WelcomeScreenTest extends TestCase
      * rect to hit-test — the controller's region is the mouse-space anchor,
      * reached through the Ide's service-locator boundary like the other
      * reflection seams.
+     *
+     * The region is only computed while a frame renders, and the modal lays
+     * out from the PREVIOUS frame's pane rects — so one forced frame is not
+     * always enough. Await it across frames instead: a single frame() before
+     * the read is a fixed-gap assert, which is exactly the shape that fails
+     * under a loaded coverage run.
      */
     private function modalRegion(object $ide): DropdownRegion
     {
-        $region = Services::resolve($ide, WelcomeModalController::class)->region();
+        $controller = Services::resolve($ide, WelcomeModalController::class);
+        $tui = Services::resolve($ide, Tui::class);
+        $this->await(function () use ($controller, $tui): bool {
+            $this->frame($tui);
+
+            return null !== $controller->region();
+        }, what: 'the Welcome modal to be placed');
+
+        $region = $controller->region();
         $this->assertNotNull($region, 'the Welcome modal is open and placed');
 
         return $region;
