@@ -11,6 +11,7 @@ use Porta\Tests\Support\ClearsPortaLsp;
 use Porta\Tests\Support\NavigatesSettings;
 use Porta\Tests\Support\PreservesPath;
 use Porta\Tests\Support\RunsIde;
+use Porta\Tests\Support\Services;
 use Porta\Tests\Support\TempProject;
 use Symfony\Component\Tui\Ansi\AnsiUtils;
 
@@ -102,7 +103,7 @@ final class IdePhpLspPluginsTest extends TestCase
                 },
                 450 => function ($tui, $terminal, $ide): void {
                     // Open the phpantom settings page: it lists the binary row.
-                    $ide->resolve(CommandRegistry::class)->run('ide_settings');
+                    Services::resolve($ide, CommandRegistry::class)->run('ide_settings');
                     $tui->handleInput("\t"); // form → nav
                     $this->selectSettingsSection($tui->getById('settings-nav'), 'plugins');
                     $tui->handleInput("\x1b[B"); // phpantom sub-item
@@ -170,7 +171,7 @@ final class IdePhpLspPluginsTest extends TestCase
             $project->path('a.php'),
             [
                 300 => function ($tui, $terminal, $ide): void {
-                    $ide->resolve(CommandRegistry::class)->run('ide_settings');
+                    Services::resolve($ide, CommandRegistry::class)->run('ide_settings');
                     $tui->handleInput("\t"); // form → nav
                     $this->selectSettingsSection($tui->getById('settings-nav'), 'plugins');
                     $tui->handleInput("\x1b[B"); // phpantom sub-item
@@ -215,18 +216,18 @@ final class IdePhpLspPluginsTest extends TestCase
             $project->path('a.php'),
             [
                 100 => static function ($tui, $terminal, $ide): void {
-                    $ide->resolve(CommandRegistry::class)->run('phpantom:fix');
+                    Services::resolve($ide, CommandRegistry::class)->run('phpantom:fix');
                 },
                 300 => function ($tui, $terminal, $ide) use ($project): void {
                     $this->await(static fn (): bool => str_contains(AnsiUtils::stripAnsiCodes($terminal->getOutput()), 'phpantom: fixed a.php'));
                     $tui->tick();
                     $this->assertStringContainsString('phpantom: fixed a.php', AnsiUtils::stripAnsiCodes($terminal->getOutput()));
                     $this->await(static fn (): bool => str_contains((string) (is_file($project->path('a.php')) ? file_get_contents($project->path('a.php')) : false), '// fixed'));
-                    $ide->resolve(BufferService::class)
+                    Services::resolve($ide, BufferService::class)
                         ->pollFilesystem();
                     $this->assertStringContainsString('// fixed', $tui->getById('editor')->getDocument()->getText(), 'buffer reloaded with the fixed content');
 
-                    $ide->resolve(CommandRegistry::class)->run('phpantom:init');
+                    Services::resolve($ide, CommandRegistry::class)->run('phpantom:init');
                 },
                 500 => function ($tui, $terminal) use ($project): void {
                     $this->await(static fn (): bool => is_file($project->path('phpantom.json')));

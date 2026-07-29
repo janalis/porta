@@ -27,6 +27,7 @@ use Porta\Settings\SettingsRowKind;
 use Porta\Tests\Support\FakeScheduler;
 use Porta\Tests\Support\FixedActiveFile;
 use Porta\Tests\Support\PreservesPath;
+use Porta\Tests\Support\Services;
 use Porta\Tests\Support\StatusReads;
 use Porta\Tests\Support\TempProject;
 use Porta\Tests\Support\TestTui;
@@ -363,7 +364,7 @@ final class SettingsControllerTest extends TestCase
         $project = new TempProject(['composer.json' => '{}']);
         new OnboardingState($project->dir)->markWelcomeSeen();
         $ide = new Ide($project->dir, null, new VirtualTerminal(columns: 80, rows: 24));
-        $settings = $ide->resolve(SettingsController::class);
+        $settings = Services::resolve($ide, SettingsController::class);
         \assert($settings instanceof SettingsController, description: 'the settings property is a SettingsController');
 
         $settings->toggle('doesNotExist');

@@ -222,7 +222,7 @@ return static function (ContainerConfigurator $container, ContainerBuilder $buil
 
     // The single public boundary: Ide resolves every service through this
     // locator, so the entries stay private (alive because referenced) and the
-    // container's public surface is exactly this id plus the synthetics.
+    // container's public surface is exactly this one id.
     // Widget ids and flex styles live on the widget classes as #[AsWidget].
     // Membership is declared on each class with #[AsIdeService] (tag
     // porta.ide_service); the locator is built from that tag, keyed by service
@@ -294,12 +294,15 @@ return static function (ContainerConfigurator $container, ContainerBuilder $buil
     // the container can't build, or values that exist before the container does
     // (IdeConfig steers the container's own env parameters). Ide constructs
     // these and ->set()s the instances right after each is created; declared
-    // here so services can depend on them by type. Public so they form the
-    // container's public surface alongside porta.ide — Ide::resolve() returns
-    // them for the test seam.
+    // here so services can depend on them by type. PRIVATE on purpose (round
+    // 12): the dumper emits every synthetic id regardless of visibility, and
+    // set() works because the id is synthetic — tests reach them through
+    // tests/Support/Services' container fallback. Tripwire: if a private
+    // synthetic ever loses its last internal consumer it is compile-removed
+    // and set() throws AT BOOT — loud, caught by the first E2e test.
     foreach ([Renderer::class, Tui::class, BidiTui::class, IdeConfig::class] as $syntheticId) {
         // The class is passed explicitly: set(id) alone leaves the definition
         // classless, invisible to every reflection-driven pass.
-        $services->set($syntheticId, $syntheticId)->synthetic()->public();
+        $services->set($syntheticId, $syntheticId)->synthetic();
     }
 };

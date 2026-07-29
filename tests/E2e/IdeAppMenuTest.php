@@ -12,6 +12,7 @@ use Porta\Tests\Support\ClearsPortaLsp;
 use Porta\Tests\Support\PreservesPath;
 use Porta\Tests\Support\RunsIde;
 use Porta\Tests\Support\ScreenReads;
+use Porta\Tests\Support\Services;
 use Porta\Tests\Support\TempProject;
 use Symfony\Component\Tui\Ansi\AnsiUtils;
 use Symfony\Component\Tui\Terminal\VirtualTerminal;
@@ -330,7 +331,7 @@ final class IdeAppMenuTest extends TestCase
         $terminal = new VirtualTerminal(columns: 80, rows: 20);
         new OnboardingState($project->dir)->markWelcomeSeen();
         $ide = new Ide($project->dir, $project->path('a.php'), $terminal);
-        $tui = $ide->resolve(Tui::class);
+        $tui = Services::resolve($ide, Tui::class);
 
         // No frame has rendered yet, so every widget rect is null. Opening the
         // menu must not blow up placing the (impossible-to-place) overlay.

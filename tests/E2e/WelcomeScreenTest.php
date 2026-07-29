@@ -10,6 +10,7 @@ use Porta\Onboarding\OnboardingState;
 use Porta\Overlay\Presenter\WelcomeModalController;
 use Porta\Overlay\Region\DropdownRegion;
 use Porta\Tests\Support\RunsIde;
+use Porta\Tests\Support\Services;
 use Porta\Tests\Support\TempProject;
 use Symfony\Component\Tui\Ansi\AnsiUtils;
 
@@ -56,7 +57,7 @@ final class WelcomeScreenTest extends TestCase
      */
     private function modalRegion(object $ide): DropdownRegion
     {
-        $region = $ide->resolve(WelcomeModalController::class)->region();
+        $region = Services::resolve($ide, WelcomeModalController::class)->region();
         $this->assertNotNull($region, 'the Welcome modal is open and placed');
 
         return $region;
@@ -207,7 +208,7 @@ final class WelcomeScreenTest extends TestCase
                 $tui->handleInput("\x1b"); // back to the editor
                 $tui->tick();
 
-                $ide->resolve(CommandRegistry::class)->run('ide_welcome'); // Help → Welcome
+                Services::resolve($ide, CommandRegistry::class)->run('ide_welcome'); // Help → Welcome
                 $tui->tick();
                 $tui->handleInput("\r");
                 $tui->tick();
@@ -363,7 +364,7 @@ final class WelcomeScreenTest extends TestCase
                 $tui->tick();
             },
             240 => function ($tui, $terminal, $ide): void {
-                $this->assertFalse($ide->resolve(WelcomeModalController::class)->isOpen(), 'the × closed the modal');
+                $this->assertFalse(Services::resolve($ide, WelcomeModalController::class)->isOpen(), 'the × closed the modal');
                 $this->assertSame('editor', $tui->getFocus()?->getId(), 'focus returned to the editor');
             },
         ]);

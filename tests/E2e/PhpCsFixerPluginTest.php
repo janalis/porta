@@ -10,6 +10,7 @@ use Porta\Editor\BufferService;
 use Porta\Tests\Support\ClearsPortaLsp;
 use Porta\Tests\Support\PreservesPath;
 use Porta\Tests\Support\RunsIde;
+use Porta\Tests\Support\Services;
 use Porta\Tests\Support\TempProject;
 use Symfony\Component\Tui\Ansi\AnsiUtils;
 
@@ -69,7 +70,7 @@ final class PhpCsFixerPluginTest extends TestCase
                     $this->assertStringContainsString('// fixed', (string) file_get_contents($project->path('a.php')), 'the stub rewrote the file');
 
                     // The filesystem poller reloads the clean buffer with the fixed content.
-                    $ide->resolve(BufferService::class)
+                    Services::resolve($ide, BufferService::class)
                         ->pollFilesystem();
                     $this->assertStringContainsString('// fixed', $tui->getById('editor')->getDocument()->getText(), 'buffer reloaded');
                 },
@@ -88,7 +89,7 @@ final class PhpCsFixerPluginTest extends TestCase
             $project->path('a.php'),
             [
                 100 => function ($tui, $terminal, $ide) use ($project): void {
-                    $ide->resolve(CommandRegistry::class)->run('php-cs-fixer:toggle-on-save');
+                    Services::resolve($ide, CommandRegistry::class)->run('php-cs-fixer:toggle-on-save');
                     $tui->tick();
                     $this->assertStringContainsString('php-cs-fixer on save: on', AnsiUtils::stripAnsiCodes($terminal->getOutput()));
                     $this->assertTrue((bool) (\Porta\Config\IdeConfig::load($project->dir)->plugins['php-cs-fixer']['autoFormat'] ?? false), 'the toggle persisted to .porta.json');
@@ -102,13 +103,13 @@ final class PhpCsFixerPluginTest extends TestCase
                     $this->assertSame(1, substr_count((string) file_get_contents($project->path('a.php')), needle: '// fixed'), 'save triggered one fix');
 
                     // Toggling off stops the hook.
-                    $ide->resolve(CommandRegistry::class)->run('php-cs-fixer:toggle-on-save');
+                    Services::resolve($ide, CommandRegistry::class)->run('php-cs-fixer:toggle-on-save');
                     $this->await(static fn (): bool => str_contains(AnsiUtils::stripAnsiCodes($terminal->getOutput()), 'php-cs-fixer on save: off'), what: 'the toggle-off flash');
                     $this->assertFalse((bool) (\Porta\Config\IdeConfig::load($project->dir)->plugins['php-cs-fixer']['autoFormat'] ?? true), 'the off state persisted');
                     // Await the RELOAD LANDING IN THE BUFFER, not just the poll
                     // call: saving an un-reloaded buffer would write back the
                     // unfixed text and zero the count below.
-                    $ide->resolve(BufferService::class)->pollFilesystem();
+                    Services::resolve($ide, BufferService::class)->pollFilesystem();
                     $editor = $tui->getById('editor');
                     $this->await(static fn (): bool => str_contains($editor->getDocument()->getText(), '// fixed'), what: 'the fixed file to reload into the buffer');
                     $tui->handleInput("\x13");

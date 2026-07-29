@@ -9,6 +9,7 @@ use Porta\Tests\Support\ClearsPortaLsp;
 use Porta\Tests\Support\FindModalReads;
 use Porta\Tests\Support\PreservesPath;
 use Porta\Tests\Support\RunsIde;
+use Porta\Tests\Support\Services;
 use Porta\Tests\Support\TempProject;
 use Porta\Widget\Support\ResultsPanelFields;
 use Symfony\Component\Tui\Ansi\AnsiUtils;
@@ -146,7 +147,7 @@ final class IdeFindUiTest extends TestCase
                     $this->assertStringContainsString('File0.php', $panelText($tui), 'the first files show initially');
                 },
                 900 => function ($tui, $terminal, $ide) use ($panelText): void {
-                    $renderer = $ide->resolve(Renderer::class);
+                    $renderer = Services::resolve($ide, Renderer::class);
                     $rect = $renderer->getWidgetRect($tui->getById('results'));
                     $this->assertNotNull($rect, 'the results pane has a rect');
 
@@ -224,7 +225,7 @@ final class IdeFindUiTest extends TestCase
                     $this->assertStringContainsString('[1/3]', AnsiUtils::stripAnsiCodes($terminal->getOutput()), 'substring mode hits foobar too');
 
                     // Click the right-aligned [\b] tag through the real router.
-                    $renderer = $ide->resolve(Renderer::class);
+                    $renderer = Services::resolve($ide, Renderer::class);
                     $rect = $renderer->getWidgetRect($tui->getById('find-bar'));
                     $tui->handleInput(\sprintf("\x1b[<0;%d;%dM", $rect->col + $rect->columns - 2, $rect->row + 1));
                 },
@@ -420,7 +421,7 @@ final class IdeFindUiTest extends TestCase
                     ]);
                     $tui->requestRender();
                     $tui->tick(); // force a frame so the panel gets a positioned rect
-                    $renderer = $ide->resolve(Renderer::class);
+                    $renderer = Services::resolve($ide, Renderer::class);
                     $rect = $renderer->getWidgetRect($results);
                     // A list tool has no header row; the second result is at relative row 1.
                     $x = $rect->col + 6;

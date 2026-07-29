@@ -9,6 +9,7 @@ use Porta\Config\CommandRegistry;
 use Porta\Tests\Support\ClearsPortaLsp;
 use Porta\Tests\Support\PreservesPath;
 use Porta\Tests\Support\RunsIde;
+use Porta\Tests\Support\Services;
 use Porta\Tests\Support\TempProject;
 use Symfony\Component\Tui\Ansi\AnsiUtils;
 use Symfony\Component\Tui\Tui;
@@ -133,8 +134,8 @@ final class IdeRtlLocaleTest extends TestCase
             $tui->tick();
             $renderer = new \ReflectionProperty(\Symfony\Component\Tui\Tui::class, 'renderer')->getValue($tui);
             $root = new \ReflectionProperty(\Symfony\Component\Tui\Tui::class, 'root')->getValue($tui);
-            $segmenter = $ide->resolve(\Porta\Ui\PaneSegmenter::class);
-            $reorder = $ide->resolve(\Porta\I18n\PaneReorder::class);
+            $segmenter = Services::resolve($ide, \Porta\Ui\PaneSegmenter::class);
+            $reorder = Services::resolve($ide, \Porta\I18n\PaneReorder::class);
             $terminal = $tui->getTerminal();
             $columns = $terminal->getColumns();
             $lines = array_values($renderer->render($root, $columns, $terminal->getRows()));
@@ -150,7 +151,7 @@ final class IdeRtlLocaleTest extends TestCase
             [
                 300 => static function ($tui, $terminal, $ide) use ($assertWidths): void {
                     $assertWidths($tui, $ide); // editor view
-                    $ide->resolve(CommandRegistry::class)->run('ide_settings');
+                    Services::resolve($ide, CommandRegistry::class)->run('ide_settings');
                 },
                 500 => static function ($tui, $terminal, $ide) use ($assertWidths): void {
                     $assertWidths($tui, $ide); // settings view

@@ -8,6 +8,7 @@ use PHPUnit\Framework\TestCase;
 use Porta\Tests\Support\ClearsPortaLsp;
 use Porta\Tests\Support\PreservesPath;
 use Porta\Tests\Support\RunsIde;
+use Porta\Tests\Support\Services;
 use Porta\Tests\Support\TempProject;
 use Symfony\Component\Tui\Ansi\AnsiUtils;
 use Symfony\Component\Tui\Render\Renderer;
@@ -33,7 +34,7 @@ final class IdeMousePrimitivesTest extends TestCase
             $project->path('a.php'),
             [
                 200 => function ($tui, $terminal, $ide): void {
-                    $renderer = $ide->resolve(Renderer::class);
+                    $renderer = Services::resolve($ide, Renderer::class);
                     $rect = $renderer->getWidgetRect($tui->getById('editor'));
 
                     // Control: a click INSIDE the editor (row for line 2) routes
@@ -69,7 +70,7 @@ final class IdeMousePrimitivesTest extends TestCase
             $project->path('a.php'),
             [
                 200 => static function ($tui, $terminal, $ide): void {
-                    $renderer = $ide->resolve(Renderer::class);
+                    $renderer = Services::resolve($ide, Renderer::class);
                     $rect = $renderer->getWidgetRect($tui->getById('tree'));
                     // Header is relative row 0, a.php (selected) is row 1; hover b.php at row 2.
                     $tui->handleInput(\sprintf("\x1b[<35;%d;%dM", $rect->col + 3, $rect->row + 3));
@@ -79,7 +80,7 @@ final class IdeMousePrimitivesTest extends TestCase
                     $line = $tree->render(new \Symfony\Component\Tui\Render\RenderContext(30, 24))[2];
                     $this->assertStringContainsString("\x1b[48;5;236m", $line, 'hovered tree row is highlighted');
                     // Move off the tree into the editor → the hover clears.
-                    $renderer = $ide->resolve(Renderer::class);
+                    $renderer = Services::resolve($ide, Renderer::class);
                     $editorRect = $renderer->getWidgetRect($tui->getById('editor'));
                     $tui->handleInput(\sprintf("\x1b[<35;%d;%dM", $editorRect->col + 5, $editorRect->row + 3));
                 },
@@ -459,7 +460,7 @@ final class IdeMousePrimitivesTest extends TestCase
                     $tui->requestRender();
                     $tui->tick(); // paint the popup so its box geometry is recorded
                     $editor = $tui->getById('editor');
-                    $renderer = $ide->resolve(Renderer::class);
+                    $renderer = Services::resolve($ide, Renderer::class);
                     $rect = $renderer->getWidgetRect($editor);
                     // Hover then click the suggestion itself (through the
                     // router's editor-relative completion branch): the box is
@@ -483,7 +484,7 @@ final class IdeMousePrimitivesTest extends TestCase
                         new \Porta\Editor\CompletionItem(label: 'alpha', insertText: 'alpha', kind: 'fn', detail: ''),
                     ]);
                     $this->assertTrue($editor->isCompletionOpen());
-                    $renderer = $ide->resolve(Renderer::class);
+                    $renderer = Services::resolve($ide, Renderer::class);
                     $rect = $renderer->getWidgetRect($editor);
                     $tui->handleInput(\sprintf("\x1b[<0;%d;%dM", $rect->col + 6, $rect->row + $rect->rows));
                 },

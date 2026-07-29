@@ -9,6 +9,7 @@ use Porta\Config\CommandRegistry;
 use Porta\Settings\SettingsHighlightController;
 use Porta\Tests\Support\NavigatesSettings;
 use Porta\Tests\Support\RunsIde;
+use Porta\Tests\Support\Services;
 use Porta\Tests\Support\TempProject;
 use Symfony\Component\Tui\Ansi\AnsiUtils;
 
@@ -66,7 +67,7 @@ final class HighlightingSettingsTest extends TestCase
 
         $this->runIde($project, $project->path('a.php'), [
             100 => function ($tui, $terminal, $ide): void {
-                $ide->resolve(CommandRegistry::class)->run('ide_settings');
+                Services::resolve($ide, CommandRegistry::class)->run('ide_settings');
                 $tui->tick();
                 $this->selectSettingsSection($tui->getById('settings-nav'), 'highlighting');
                 $tui->tick();

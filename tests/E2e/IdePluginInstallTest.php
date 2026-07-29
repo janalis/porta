@@ -11,6 +11,7 @@ use Porta\Tests\Support\GitBinary;
 use Porta\Tests\Support\NavigatesSettings;
 use Porta\Tests\Support\PreservesPath;
 use Porta\Tests\Support\RunsIde;
+use Porta\Tests\Support\Services;
 use Porta\Tests\Support\TempProject;
 use Symfony\Component\Process\ExecutableFinder;
 use Symfony\Component\Tui\Ansi\AnsiUtils;
@@ -66,7 +67,7 @@ final class IdePluginInstallTest extends TestCase
     /** Open settings and select the Plugins section, leaving focus on the form. */
     private function openPluginsSection($tui, $ide): void
     {
-        $ide->resolve(CommandRegistry::class)->run('ide_settings');
+        Services::resolve($ide, CommandRegistry::class)->run('ide_settings');
         $tui->handleInput("\t"); // form → nav
         $this->selectSettingsSection($tui->getById('settings-nav'), 'plugins');
         $tui->handleInput("\t"); // nav → form (scope row selected)
@@ -111,7 +112,7 @@ final class IdePluginInstallTest extends TestCase
                     $this->assertStringContainsString('installee (project)  [Remove]', $screen, 'the new plugin lists with a Remove button');
 
                     // Live activation: the command is in the registry and the palette.
-                    $commands = $ide->resolve(CommandRegistry::class);
+                    $commands = Services::resolve($ide, CommandRegistry::class);
                     $this->assertContains('Hi from installee', array_column($commands->paletteCommands(), 'label'));
                     $commands->run('installee:hi');
                     $tui->tick();
@@ -173,7 +174,7 @@ final class IdePluginInstallTest extends TestCase
             $project->path('a.php'),
             [
                 100 => function ($tui, $terminal, $ide) use ($project): void {
-                    $commands = $ide->resolve(CommandRegistry::class);
+                    $commands = Services::resolve($ide, CommandRegistry::class);
                     $this->assertContains('Hi from demo', array_column($commands->paletteCommands(), 'label'), 'active before removal');
 
                     $this->openPluginsSection($tui, $ide);
@@ -191,7 +192,7 @@ final class IdePluginInstallTest extends TestCase
 
                     // The loaded code cannot be unloaded: the command still runs.
                     // Live deactivation: palette entry, key dispatch and menu are gone.
-                    $commands = $ide->resolve(CommandRegistry::class);
+                    $commands = Services::resolve($ide, CommandRegistry::class);
                     $this->assertNotContains('Hi from demo', array_column($commands->paletteCommands(), 'label'), 'palette entry died');
                     $this->assertNotContains('demo:hi', $commands->keyBoundIds(), 'key dispatch died');
                     $terminal->clearOutput();
@@ -251,7 +252,7 @@ final class IdePluginInstallTest extends TestCase
                     $this->assertFileExists($project->path('.porta/plugins/cloned/plugin.php'));
                     $this->assertStringContainsString('cloned (project)  [Remove]', $screen, 'the async refresh re-listed the section');
 
-                    $commands = $ide->resolve(CommandRegistry::class);
+                    $commands = Services::resolve($ide, CommandRegistry::class);
                     $commands->run('cloned:hi');
                     $tui->tick();
                     $this->assertStringContainsString('cloned says hi', AnsiUtils::stripAnsiCodes($terminal->getOutput()));

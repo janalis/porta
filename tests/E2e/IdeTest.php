@@ -7,6 +7,7 @@ namespace Porta\Tests\E2e;
 use PHPUnit\Framework\TestCase;
 use Porta\Ide;
 use Porta\Onboarding\OnboardingState;
+use Porta\Tests\Support\Services;
 use Porta\Tests\Support\TempProject;
 use Revolt\EventLoop;
 use Symfony\Component\Tui\Ansi\AnsiUtils;
@@ -68,7 +69,7 @@ final class IdeTest extends TestCase
     {
         // Flush any pending render before reading, so assertions do not
         // depend on the adaptive ticker having fired between steps.
-        $this->ide->resolve(Tui::class)->tick();
+        Services::resolve($this->ide, Tui::class)->tick();
 
         return AnsiUtils::stripAnsiCodes($this->terminal->getOutput());
     }
@@ -80,7 +81,7 @@ final class IdeTest extends TestCase
 
     public function testFullScenario(): void
     {
-        $tui = $this->ide->resolve(Tui::class);
+        $tui = Services::resolve($this->ide, Tui::class);
         $screen = $this->screen(...);
         $editor = static fn () => $tui->getById('editor');
 
@@ -316,7 +317,7 @@ final class IdeTest extends TestCase
      */
     public function testSearchEverywhere(): void
     {
-        $tui = $this->ide->resolve(Tui::class);
+        $tui = Services::resolve($this->ide, Tui::class);
         $screen = $this->screen(...);
         $editor = static fn () => $tui->getById('editor');
 

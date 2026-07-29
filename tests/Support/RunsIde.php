@@ -7,6 +7,7 @@ namespace Porta\Tests\Support;
 use Porta\Git\GitInfo;
 use Porta\Ide;
 use Porta\Onboarding\OnboardingState;
+use Porta\Tests\Support\Services;
 use Revolt\EventLoop;
 use Symfony\Component\Tui\Terminal\VirtualTerminal;
 use Symfony\Component\Tui\Tui;
@@ -61,7 +62,7 @@ trait RunsIde
         $terminal = new VirtualTerminal(columns: $columns, rows: 24);
         $this->suppressFirstRunWelcome($project);
         $ide = new Ide($project->dir, $file, $terminal, docsDir: $docsDir);
-        $tui = $ide->resolve(Tui::class);
+        $tui = Services::resolve($ide, Tui::class);
 
         // Steps chain sequentially: each schedules the next with the key
         // DELTA after it completes. A step may await() (suspending on the
@@ -116,7 +117,7 @@ trait RunsIde
      */
     private function awaitGit(Ide $ide, float $timeout = 5.0): void
     {
-        $git = $ide->resolve(GitInfo::class);
+        $git = Services::resolve($ide, GitInfo::class);
         $this->await(static fn (): bool => !$git->isBusy(), $timeout, 'git to finish');
     }
 }

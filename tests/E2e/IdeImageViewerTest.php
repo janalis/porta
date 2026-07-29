@@ -11,6 +11,7 @@ use Porta\Editor\OpenFocus;
 use Porta\Tests\Support\ClearsPortaLsp;
 use Porta\Tests\Support\PreservesPath;
 use Porta\Tests\Support\RunsIde;
+use Porta\Tests\Support\Services;
 use Porta\Tests\Support\TempProject;
 use Porta\Widget\CodeEditorWidget;
 use Symfony\Component\Tui\Ansi\AnsiUtils;
@@ -98,10 +99,10 @@ final class IdeImageViewerTest extends TestCase
             $project->path('a.php'),
             [
                 200 => function ($tui, $terminal, $ide) use ($project): void {
-                    $service = $ide->resolve(BufferService::class);
+                    $service = Services::resolve($ide, BufferService::class);
                     $service->openFile($project->path('img.png'), OpenFocus::Editor);
                     $tui->tick();
-                    $editor = $ide->resolve(CodeEditorWidget::class);
+                    $editor = Services::resolve($ide, CodeEditorWidget::class);
                     $this->assertNull($editor->getContext(), 'the editor is detached under an image tab');
                     $this->assertSame('image-viewer', $tui->getFocus()?->getId());
                     // Ctrl+S reaches the viewer (unbound) and saveBuffer guards anyway.
@@ -122,9 +123,9 @@ final class IdeImageViewerTest extends TestCase
                     // An external change re-decodes on the next poll; garbage keeps the old pixels.
                     file_put_contents($project->path('img.png'), $this->twoColorPng(16, 2));
                     touch($project->path('img.png'), time() + 2); // force a new disk stamp within the same second
-                    $service = $ide->resolve(BufferService::class);
+                    $service = Services::resolve($ide, BufferService::class);
                     $service->pollFilesystem();
-                    $buffers = $ide->resolve(BufferManager::class);
+                    $buffers = Services::resolve($ide, BufferManager::class);
                     $this->assertSame(16, $buffers->active()?->image?->width, 'externally changed image reloaded');
                     $tui->tick();
                     $this->assertStringContainsString('Reloaded img.png', AnsiUtils::stripAnsiCodes($terminal->getOutput()));
@@ -170,7 +171,7 @@ final class IdeImageViewerTest extends TestCase
             $project->path('a.php'),
             [
                 200 => static function ($tui, $terminal, $ide) use ($project): void {
-                    $ide->resolve(BufferService::class)
+                    Services::resolve($ide, BufferService::class)
                         ->openFile($project->path('img.png'), OpenFocus::Editor);
                     $tui->handleInput("\x1b[102;6u"); // ctrl+shift+f → find in files
                 },
@@ -199,7 +200,7 @@ final class IdeImageViewerTest extends TestCase
             null,
             [
                 200 => function ($tui, $terminal, $ide) use ($project): void {
-                    $service = $ide->resolve(BufferService::class);
+                    $service = Services::resolve($ide, BufferService::class);
                     $service->openFile($project->path('big.png'));
                     $tui->tick();
                     $this->assertStringContainsString('Image too large (> 20 MB)', AnsiUtils::stripAnsiCodes($terminal->getOutput()));

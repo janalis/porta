@@ -11,6 +11,7 @@ use Porta\Tests\Support\ClearsPortaLsp;
 use Porta\Tests\Support\PreservesPath;
 use Porta\Tests\Support\RunsIde;
 use Porta\Tests\Support\ScreenReads;
+use Porta\Tests\Support\Services;
 use Porta\Tests\Support\TempProject;
 use Revolt\EventLoop;
 use Symfony\Component\Tui\Ansi\AnsiUtils;
@@ -145,7 +146,7 @@ final class IdeFilesystemSessionTest extends TestCase
         $terminal = new VirtualTerminal(columns: 100, rows: 24);
         new OnboardingState($project->dir)->markWelcomeSeen();
         $ide = new Ide($project->dir, $project->path('A.php'), $terminal);
-        $tui = $ide->resolve(Tui::class);
+        $tui = Services::resolve($ide, Tui::class);
         EventLoop::delay(0.3, static function () use ($tui): void {
             $tui->handleInput("\x14"); // tree
             $tui->handleInput("\x1b[B"); // B.php
@@ -168,7 +169,7 @@ final class IdeFilesystemSessionTest extends TestCase
         $terminal2 = new VirtualTerminal(columns: 100, rows: 24);
         new OnboardingState($project->dir)->markWelcomeSeen();
         $ide2 = new Ide($project->dir, null, $terminal2);
-        $tui2 = $ide2->resolve(Tui::class);
+        $tui2 = Services::resolve($ide2, Tui::class);
         EventLoop::delay(0.3, function () use ($tui2): void {
             $editor = $tui2->getById('editor');
             $this->assertNotNull($editor->getFilePath(), 'a buffer was restored');
@@ -324,7 +325,7 @@ final class IdeFilesystemSessionTest extends TestCase
         $terminal = new VirtualTerminal(columns: 80, rows: 20);
         new OnboardingState($project->dir)->markWelcomeSeen();
         $ide = new Ide($project->dir, $project->path('a.php'), $terminal);
-        $tui = $ide->resolve(Tui::class);
+        $tui = Services::resolve($ide, Tui::class);
 
         EventLoop::delay(0.2, static fn () => $tui->handleInput("\x11"));
         $watchdog = EventLoop::delay(3.0, static function () use ($tui): void {
@@ -344,7 +345,7 @@ final class IdeFilesystemSessionTest extends TestCase
         $terminal = new VirtualTerminal(columns: 80, rows: 20);
         new OnboardingState($project->dir)->markWelcomeSeen();
         $ide = new Ide($project->dir, $project->path('a.php'), $terminal);
-        $tui = $ide->resolve(Tui::class);
+        $tui = Services::resolve($ide, Tui::class);
 
         EventLoop::delay(0.2, static fn () => $tui->handleInput("\x11")); // Ctrl+Q
         $watchdog = EventLoop::delay(3.0, static function () use ($tui): void {
@@ -370,7 +371,7 @@ final class IdeFilesystemSessionTest extends TestCase
         $terminal = new VirtualTerminal(columns: 80, rows: 24);
         new OnboardingState($project->dir)->markWelcomeSeen();
         $ide = new Ide($project->dir, $project->path('A.php'), $terminal, null, initialLine: 4);
-        $tui = $ide->resolve(Tui::class);
+        $tui = Services::resolve($ide, Tui::class);
 
         $timer = EventLoop::delay(0.2, function () use ($tui): void {
             $tui->tick();

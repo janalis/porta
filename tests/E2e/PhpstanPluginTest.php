@@ -9,6 +9,7 @@ use Porta\Config\CommandRegistry;
 use Porta\Tests\Support\ClearsPortaLsp;
 use Porta\Tests\Support\PreservesPath;
 use Porta\Tests\Support\RunsIde;
+use Porta\Tests\Support\Services;
 use Porta\Tests\Support\TempProject;
 use Symfony\Component\Tui\Ansi\AnsiUtils;
 
@@ -114,7 +115,7 @@ final class PhpstanPluginTest extends TestCase
             $project->path('a.php'),
             [
                 100 => function ($tui, $terminal, $ide) use ($project): void {
-                    $ide->resolve(CommandRegistry::class)->run('phpstan:toggle-on-save');
+                    Services::resolve($ide, CommandRegistry::class)->run('phpstan:toggle-on-save');
                     $tui->tick();
                     $this->assertStringContainsString('phpstan on save: on', AnsiUtils::stripAnsiCodes($terminal->getOutput()));
                     $this->assertTrue((bool) (\Porta\Config\IdeConfig::load($project->dir)->plugins['phpstan']['autoLint'] ?? false), 'the toggle persisted to .porta.json');

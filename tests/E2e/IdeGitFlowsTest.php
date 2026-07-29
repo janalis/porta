@@ -10,6 +10,7 @@ use Porta\Tests\Support\ClearsPortaLsp;
 use Porta\Tests\Support\GitBinary;
 use Porta\Tests\Support\PreservesPath;
 use Porta\Tests\Support\RunsIde;
+use Porta\Tests\Support\Services;
 use Porta\Tests\Support\TempProject;
 use Porta\Widget\ContextMenu;
 use Symfony\Component\Tui\Ansi\AnsiUtils;
@@ -43,14 +44,14 @@ final class IdeGitFlowsTest extends TestCase
                     // The branch resolves asynchronously; wait for it to render.
                     $this->await(static fn (): bool => null !== $status->branchColumnSpan(), what: 'the branch to render in the status bar');
 
-                    $renderer = $ide->resolve(Renderer::class);
+                    $renderer = Services::resolve($ide, Renderer::class);
                     $rect = $renderer->getWidgetRect($status);
                     $span = $status->branchColumnSpan();
                     $col = $rect->col + intdiv($span[0] + $span[1], num2: 2); // middle of the branch cell
                     $tui->handleInput(\sprintf("\x1b[<2;%d;%dM", $col + 1, $rect->row + 1)); // right-click (1-based)
                     $tui->tick();
 
-                    $menu = $ide->resolve(ContextMenu::class);
+                    $menu = Services::resolve($ide, ContextMenu::class);
                     $this->assertTrue($menu->isOpen(), 'the branch menu opened');
                     $labels = array_map(
                         static fn (array $row): string => trim(AnsiUtils::stripAnsiCodes($row['segment'])),
@@ -536,7 +537,7 @@ final class IdeGitFlowsTest extends TestCase
                 },
                 550 => function ($tui, $terminal, $ide) use ($project): void {
                     $this->await(static fn (): bool => str_contains(AnsiUtils::stripAnsiCodes($terminal->getOutput()), '[ ] M src/A.php'));
-                    $renderer = $ide->resolve(Renderer::class);
+                    $renderer = Services::resolve($ide, Renderer::class);
                     $rect = $renderer->getWidgetRect($tui->getById('git-changes'));
 
                     $terminal->clearOutput();
@@ -817,7 +818,7 @@ final class IdeGitFlowsTest extends TestCase
             $project->path('a.php'),
             [
                 400 => function ($tui, $terminal, $ide): void {
-                    $ide->resolve(CommandRegistry::class)->run('ide_git');
+                    Services::resolve($ide, CommandRegistry::class)->run('ide_git');
                     $this->assertSame('git-changes', $tui->getFocus()?->getId(), 'git view opens on the changes list');
                     $tui->handleInput("\x1b[17~"); // F6 delegates to the git view's pane order
                     $this->assertSame('git-diff', $tui->getFocus()?->getId());
@@ -826,7 +827,7 @@ final class IdeGitFlowsTest extends TestCase
 
                     // Pointer motion over the git mode tabs tints the inactive one.
                     $tui->tick();
-                    $renderer = $ide->resolve(Renderer::class);
+                    $renderer = Services::resolve($ide, Renderer::class);
                     $tabsRect = $renderer->getWidgetRect($tui->getById('git-tabs'));
                     $tui->handleInput(\sprintf("\x1b[<35;%d;%dM", $tabsRect->col + 12, $tabsRect->row + 1)); // over 'History'
                     $tui->tick();

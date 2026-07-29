@@ -24,6 +24,7 @@ use Porta\Onboarding\OnboardingState;
 use Porta\Search\SearchActions;
 use Porta\Support\ProjectPaths;
 use Porta\Tests\Support\PumpsLoop;
+use Porta\Tests\Support\Services;
 use Porta\Tests\Support\TempProject;
 use Symfony\Component\Tui\Render\Renderer;
 use Symfony\Component\Tui\Terminal\VirtualTerminal;
@@ -54,22 +55,25 @@ final class IdeHelpersTest extends TestCase
         return $reflection->invoke($this->ide, ...$args);
     }
 
-    public function testResolveReturnsLocatorMembersAndSynthetics(): void
+    public function testServicesSeamReturnsLocatorMembersAndSynthetics(): void
     {
         // A porta.ide locator member resolves through the locator branch...
-        self::assertInstanceOf(GitInfo::class, $this->ide->resolve(GitInfo::class));
-        // ...and a synthetic (Renderer) falls back to the container branch.
-        self::assertInstanceOf(Renderer::class, $this->ide->resolve(Renderer::class));
+        self::assertInstanceOf(GitInfo::class, Services::resolve($this->ide, GitInfo::class));
+        // ...and a synthetic (Renderer) falls back to the container branch —
+        // the empirical proof that PRIVATE synthetics stay get()-able once
+        // Ide's constructor has set() them.
+        self::assertInstanceOf(Renderer::class, Services::resolve($this->ide, Renderer::class));
+        self::assertSame(Services::resolve($this->ide, Renderer::class), Services::resolve($this->ide, Renderer::class), 'the same shared instance every time');
     }
 
     private function workspaceEditor(): WorkspaceEditor
     {
-        return $this->ide->resolve(WorkspaceEditor::class);
+        return Services::resolve($this->ide, WorkspaceEditor::class);
     }
 
     private function navigation(): NavigationController
     {
-        return $this->ide->resolve(NavigationController::class);
+        return Services::resolve($this->ide, NavigationController::class);
     }
 
     private function callNav(string $method, mixed ...$args): mixed
@@ -81,7 +85,7 @@ final class IdeHelpersTest extends TestCase
 
     private function refactor(): RefactorController
     {
-        return $this->ide->resolve(RefactorController::class);
+        return Services::resolve($this->ide, RefactorController::class);
     }
 
     private function callRefactor(string $method, mixed ...$args): mixed
@@ -298,7 +302,7 @@ final class IdeHelpersTest extends TestCase
     /** The local-history feature controller wired into the coordinator. */
     private function localHistory(): LocalHistoryController
     {
-        $controller = $this->ide->resolve(LocalHistoryController::class);
+        $controller = Services::resolve($this->ide, LocalHistoryController::class);
         \assert($controller instanceof LocalHistoryController, description: 'the coordinator wires a LocalHistoryController');
 
         return $controller;
@@ -308,7 +312,7 @@ final class IdeHelpersTest extends TestCase
     {
         // The bare Ide has no file open.
         $this->localHistory()->show();
-        $this->assertFalse($this->ide->resolve(Tui::class)->getById('results')->isOpen());
+        $this->assertFalse(Services::resolve($this->ide, Tui::class)->getById('results')->isOpen());
     }
 
     public function testRestoreHistorySnapshotWithBadIndexOrMissingFile(): void
@@ -317,7 +321,7 @@ final class IdeHelpersTest extends TestCase
         $this->localHistory()->restore(0);
 
         // Now point at a snapshot file that does not exist, with a buffer open.
-        $buffers = $this->ide->resolve(BufferManager::class);
+        $buffers = Services::resolve($this->ide, BufferManager::class);
         $buffers->open($this->project->path('x.php'), "content\n");
         new \ReflectionProperty($this->localHistory(), 'snapshots')->setValue($this->localHistory(), ['/nonexistent/1.snap']);
 
@@ -334,15 +338,15 @@ final class IdeHelpersTest extends TestCase
             ['path' => $real, 'line' => 0, 'col' => 1],
         ], $real);
 
-        $restorer = $this->ide->resolve(SessionRestorer::class);
+        $restorer = Services::resolve($this->ide, SessionRestorer::class);
         \assert($restorer instanceof \Porta\History\SessionRestorer, description: 'the sessionRestorer property holds a SessionRestorer');
         $this->assertTrue($restorer->restore(), 'restored at least the real file');
-        $this->assertStringEndsWith('Real.php', (string) $this->ide->resolve(Tui::class)->getById('editor')->getFilePath());
+        $this->assertStringEndsWith('Real.php', (string) Services::resolve($this->ide, Tui::class)->getById('editor')->getFilePath());
     }
 
     public function testProviderPriorityOrderMatchesTheContractualPaletteOrder(): void
     {
-        $registry = $this->ide->resolve(CommandRegistry::class);
+        $registry = Services::resolve($this->ide, CommandRegistry::class);
         \assert($registry instanceof \Porta\Config\CommandRegistry, description: 'the IDE exposes a CommandRegistry');
         $labels = array_column($registry->paletteCommands(), 'label');
 
@@ -357,8 +361,8 @@ final class IdeHelpersTest extends TestCase
 
     public function testEveryPaletteCommandRuns(): void
     {
-        $tui = $this->ide->resolve(Tui::class);
-        $registry = $this->ide->resolve(CommandRegistry::class);
+        $tui = Services::resolve($this->ide, Tui::class);
+        $registry = Services::resolve($this->ide, CommandRegistry::class);
         $commands = $registry->paletteCommands();
 
         $byLabel = [];
@@ -403,8 +407,8 @@ final class IdeHelpersTest extends TestCase
         // Tab-closing commands: with buffers open, Close Others keeps the
         // active one; Close All empties the strip; Close Others with nothing
         // active is a guarded no-op.
-        $buffers = $this->ide->resolve(BufferManager::class);
-        $service = $this->ide->resolve(BufferService::class);
+        $buffers = Services::resolve($this->ide, BufferManager::class);
+        $service = Services::resolve($this->ide, BufferService::class);
         $service->openFile($this->project->write('one.txt', "a\n"));
         $service->openFile($this->project->write('two.txt', "b\n"));
         $byLabel['Close Other Tabs']();
@@ -474,7 +478,7 @@ final class IdeHelpersTest extends TestCase
         $session = new \Porta\Lsp\LspSession(sys_get_temp_dir());
         new \ReflectionProperty($session, 'client')->setValue($session, $client);
 
-        $pool = $this->ide->resolve(LspSessionPool::class);
+        $pool = Services::resolve($this->ide, LspSessionPool::class);
         new \ReflectionProperty($pool, 'servers')->setValue($pool, ['*' => ['command' => ['injected'], 'name' => 'injected']]);
         new \ReflectionProperty($pool, 'sessions')->setValue($pool, ['injected' => $session]);
         new \ReflectionProperty($pool, 'configured')->setValue($pool, true);
@@ -482,7 +486,7 @@ final class IdeHelpersTest extends TestCase
 
     public function testShowProblemsAggregatesAndSortsWithSeverityMarkers(): void
     {
-        $buffers = $this->ide->resolve(BufferManager::class);
+        $buffers = Services::resolve($this->ide, BufferManager::class);
         $b = $buffers->open($this->project->path('src/B.php'), "<?php\n");
         $b->diagnostics = [5 => [['severity' => 2, 'message' => 'warn here', 'col' => 0]]];
         $a = $buffers->open($this->project->path('src/A.php'), "<?php\n");
@@ -491,9 +495,9 @@ final class IdeHelpersTest extends TestCase
             0 => [['severity' => 1, 'message' => 'top error', 'col' => 0]],
         ];
 
-        $this->ide->resolve(SearchActions::class)->showProblems();
+        Services::resolve($this->ide, SearchActions::class)->showProblems();
 
-        $panel = $this->ide->resolve(Tui::class)->getById('results');
+        $panel = Services::resolve($this->ide, Tui::class)->getById('results');
         $this->assertTrue($panel->isOpen());
         $rendered = \Symfony\Component\Tui\Ansi\AnsiUtils::stripAnsiCodes(
             implode("\n", $panel->render(new \Symfony\Component\Tui\Render\RenderContext(120, 14))),
@@ -526,14 +530,14 @@ final class IdeHelpersTest extends TestCase
             return $ready;
         });
         $this->injectLspClient($client);
-        $pool = $this->ide->resolve(LspSessionPool::class);
+        $pool = Services::resolve($this->ide, LspSessionPool::class);
         new \ReflectionProperty($pool, 'statuses')->setValue($pool, ['injected' => 'mock-lsp-server']);
 
         // Open a "noformat" buffer and make it the active editor document.
-        $buffers = $this->ide->resolve(BufferManager::class);
+        $buffers = Services::resolve($this->ide, BufferManager::class);
         $path = $this->project->write('src/noformat.php', "<?php\n\$b=2;\n");
         $buffer = $buffers->open($path, (string) file_get_contents($path));
-        $this->ide->resolve(BufferService::class)->showBuffer($buffer);
+        Services::resolve($this->ide, BufferService::class)->showBuffer($buffer);
 
         $this->refactor()->requestReformat();
         // The message is a toast now, so await the toast stack itself — polling
@@ -568,7 +572,7 @@ final class IdeHelpersTest extends TestCase
     {
         $this->navigation()->pushCurrentLocation();
         $this->navigation()->navigateBack();
-        $this->assertNull($this->ide->resolve(Tui::class)->getById('editor')->getFilePath(), 'the empty push left no stack entry');
+        $this->assertNull(Services::resolve($this->ide, Tui::class)->getById('editor')->getFilePath(), 'the empty push left no stack entry');
     }
 
     public function testOpenHelpShowsARenderedTabAndSharesThePathWithSourceBuffers(): void
@@ -577,11 +581,11 @@ final class IdeHelpersTest extends TestCase
         $this->project->write('docs/editor.md', "# Editor guide\n");
 
         /** @var \Porta\Editor\BufferService $buffers */
-        $buffers = $this->ide->resolve(BufferService::class);
+        $buffers = Services::resolve($this->ide, BufferService::class);
         /** @var \Porta\Widget\HelpViewerWidget $viewer */
-        $viewer = $this->ide->resolve(\Porta\Widget\HelpViewerWidget::class);
+        $viewer = Services::resolve($this->ide, \Porta\Widget\HelpViewerWidget::class);
         /** @var \Porta\Editor\BufferManager $manager */
-        $manager = $this->ide->resolve(BufferManager::class);
+        $manager = Services::resolve($this->ide, BufferManager::class);
 
         $buffers->openHelp($readme);
         $active = $manager->active();
@@ -616,11 +620,11 @@ final class IdeHelpersTest extends TestCase
         $code = (string) realpath($this->project->write('a.php', "<?php\n"));
 
         /** @var \Porta\Editor\BufferService $buffers */
-        $buffers = $this->ide->resolve(BufferService::class);
+        $buffers = Services::resolve($this->ide, BufferService::class);
         /** @var \Porta\Widget\HelpViewerWidget $viewer */
-        $viewer = $this->ide->resolve(\Porta\Widget\HelpViewerWidget::class);
+        $viewer = Services::resolve($this->ide, \Porta\Widget\HelpViewerWidget::class);
         /** @var \Porta\Editor\BufferManager $manager */
-        $manager = $this->ide->resolve(BufferManager::class);
+        $manager = Services::resolve($this->ide, BufferManager::class);
 
         // In-place navigation: the viewer moves, no second help buffer appears.
         $buffers->openHelp($readme);
@@ -661,11 +665,11 @@ final class IdeHelpersTest extends TestCase
 
     public function testViewerHandlerHooksDelegateToTheBufferStack(): void
     {
-        $tui = $this->ide->resolve(Tui::class);
+        $tui = Services::resolve($this->ide, Tui::class);
         $flash = fn (): string => \Porta\Tests\Support\Toasts::last($this->ide);
 
         $file = $this->project->write('src/Hooked.php', "<?php\n");
-        $helpViewer = $this->ide->resolve(\Porta\Widget\HelpViewerWidget::class);
+        $helpViewer = Services::resolve($this->ide, \Porta\Widget\HelpViewerWidget::class);
         $help = new \ReflectionProperty($helpViewer, 'handler')->getValue($helpViewer);
         \assert($help instanceof \Porta\Help\HelpViewerActions, description: 'the help viewer exposes its actions handler');
 
@@ -677,10 +681,10 @@ final class IdeHelpersTest extends TestCase
 
         $help->saveAll(); // nothing dirty: a silent sweep
         $help->closeBuffer();
-        $buffers = $this->ide->resolve(BufferManager::class);
+        $buffers = Services::resolve($this->ide, BufferManager::class);
         $this->assertNull($buffers->active(), 'the viewer close hook closed the only tab');
 
-        $imageViewer = $this->ide->resolve(\Porta\Widget\ImageViewerWidget::class);
+        $imageViewer = Services::resolve($this->ide, \Porta\Widget\ImageViewerWidget::class);
         $image = new \ReflectionProperty($imageViewer, 'handler')->getValue($imageViewer);
         \assert($image instanceof \Porta\Editor\BufferNavigator, description: 'the image viewer is handled by the navigator itself');
         $image->saveAll(); // same silent sweep through the shared navigator

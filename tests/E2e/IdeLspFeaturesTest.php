@@ -15,6 +15,7 @@ use Porta\Onboarding\OnboardingState;
 use Porta\Tests\Support\ClearsPortaLsp;
 use Porta\Tests\Support\PreservesPath;
 use Porta\Tests\Support\RunsIde;
+use Porta\Tests\Support\Services;
 use Porta\Tests\Support\TempProject;
 use Revolt\EventLoop;
 use Symfony\Component\Tui\Ansi\AnsiUtils;
@@ -822,9 +823,9 @@ final class IdeLspFeaturesTest extends TestCase
         $terminal = new VirtualTerminal(columns: 160, rows: 24);
         new OnboardingState($project->dir)->markWelcomeSeen();
         $ide = new Ide($project->dir, $project->path('src/Demo.php'), $terminal);
-        $tui = $ide->resolve(Tui::class);
+        $tui = Services::resolve($ide, Tui::class);
 
-        $navigation = $ide->resolve(NavigationController::class);
+        $navigation = Services::resolve($ide, NavigationController::class);
         $stack = new \ReflectionProperty($navigation, 'jumpStack');
         $stack->setValue($navigation, array_fill(0, count: 50, value: ['path' => $project->path('src/Demo.php'), 'line' => 0, 'col' => 0]));
 
@@ -1028,7 +1029,7 @@ final class IdeLspFeaturesTest extends TestCase
                     // the mock LSP server is a separate process and lags under a
                     // loaded/pcov run, so the definition may not have landed yet.
                     $this->await(static fn (): bool => str_ends_with((string) $tui->getById('editor')->getFilePath(), 'Target.php'), timeout: 8.0, what: 'the php-routed definition jump');
-                    $ide->resolve(BufferService::class)->openFile($project->path('src/app.js'), OpenFocus::Keep);
+                    Services::resolve($ide, BufferService::class)->openFile($project->path('src/app.js'), OpenFocus::Keep);
                 },
                 1100 => static function ($tui): void {
                     $tui->getById('editor')->getDocument()->setCursor(0, 2); // on doWork
@@ -1036,7 +1037,7 @@ final class IdeLspFeaturesTest extends TestCase
                 },
                 1400 => function ($tui, $terminal, $ide) use ($project): void {
                     $this->await(static fn (): bool => str_ends_with((string) $tui->getById('editor')->getFilePath(), 'Target.php'), timeout: 8.0, what: 'the js-routed definition jump');
-                    $ide->resolve(BufferService::class)->openFile($project->path('notes.md'), OpenFocus::Keep);
+                    Services::resolve($ide, BufferService::class)->openFile($project->path('notes.md'), OpenFocus::Keep);
                     $tui->tick();
                 },
             ],
@@ -1179,7 +1180,7 @@ final class IdeLspFeaturesTest extends TestCase
         $terminal = new VirtualTerminal(columns: 100, rows: 24);
         new OnboardingState($project->dir)->markWelcomeSeen();
         $ide = new Ide($project->dir, $project->path('A.php'), $terminal, null, lspDisabled: true);
-        $tui = $ide->resolve(Tui::class);
+        $tui = Services::resolve($ide, Tui::class);
 
         $timer = EventLoop::delay(0.2, function () use ($tui): void {
             $tui->tick();
@@ -1234,15 +1235,15 @@ final class IdeLspFeaturesTest extends TestCase
                 200 => function ($tui, $terminal, $ide): void {
                     // No server ran (PATH is empty): the tool opens empty and
                     // will live-tail — the exact "why is my server silent" flow.
-                    $ide->resolve(CommandRegistry::class)->run('ide_lsp_log');
+                    Services::resolve($ide, CommandRegistry::class)->run('ide_lsp_log');
                     $tui->tick();
                     $screen = AnsiUtils::stripAnsiCodes($terminal->getOutput());
                     $this->assertStringContainsString('LSP Server Log', $screen, 'the dock tab opened');
                     $this->assertStringContainsString('0 results', $screen, 'empty so far');
 
                     // Output arrives while the tab is open: it appears without re-running the command.
-                    $ide->resolve(\Porta\Lsp\LspLog::class)->append("[php-ls] fatal: cannot index\n");
-                    $ide->resolve(\Porta\Lsp\LspLog::class)->append("[php-ls] retrying\n");
+                    Services::resolve($ide, \Porta\Lsp\LspLog::class)->append("[php-ls] fatal: cannot index\n");
+                    Services::resolve($ide, \Porta\Lsp\LspLog::class)->append("[php-ls] retrying\n");
                     $tui->tick();
                     $panelText = AnsiUtils::stripAnsiCodes(implode("\n", $tui->getById('results')->render(new \Symfony\Component\Tui\Render\RenderContext(160, 12))));
                     $this->assertStringContainsString('[php-ls] fatal: cannot index', $panelText, 'the captured server line appeared live');

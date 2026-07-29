@@ -6,6 +6,7 @@ namespace Porta\Tests\Support;
 
 use Porta\Ide;
 use Porta\Overlay\State\ToastCenter;
+use Porta\Tests\Support\Services;
 use Porta\Workbench\Notifier;
 
 /**
@@ -27,7 +28,7 @@ final class Toasts
     /** @return list<string> live toast messages, newest first */
     public static function all(Ide $ide): array
     {
-        $notifier = $ide->resolve(Notifier::class);
+        $notifier = Services::resolve($ide, Notifier::class);
         $center = $notifier->toasts();
         \assert($center instanceof ToastCenter);
 

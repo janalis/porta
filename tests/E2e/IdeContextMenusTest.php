@@ -12,6 +12,7 @@ use Porta\Tests\Support\GitBinary;
 use Porta\Tests\Support\PreservesPath;
 use Porta\Tests\Support\RunsIde;
 use Porta\Tests\Support\ScreenReads;
+use Porta\Tests\Support\Services;
 use Porta\Tests\Support\TempProject;
 use Porta\Widget\ContextMenu;
 use Symfony\Component\Tui\Ansi\AnsiUtils;
@@ -52,7 +53,7 @@ final class IdeContextMenusTest extends TestCase
                     $tui->handleInput("\x1b[<2;26;3M");
                     $this->assertTrue($tui->getById('context-menu')->isOpen(), 'context menu opened');
 
-                    $renderer = $ide->resolve(Renderer::class);
+                    $renderer = Services::resolve($ide, Renderer::class);
                     $editor = $tui->getById('editor');
                     $rect = $renderer->getWidgetRect($editor);
                     $rows = $editor->render(new \Symfony\Component\Tui\Render\RenderContext($rect->columns, $rect->rows));
@@ -90,7 +91,7 @@ final class IdeContextMenusTest extends TestCase
                     $tui->handleInput('2'); // switch to the History tab
                     $this->await(static fn (): bool => null !== $tui->getById('git-history')->selectedCommit());
 
-                    $renderer = $ide->resolve(Renderer::class);
+                    $renderer = Services::resolve($ide, Renderer::class);
                     $rect = $renderer->getWidgetRect($tui->getById('git-history'));
                     $terminal->clearOutput();
                     $tui->handleInput(\sprintf("\x1b[<2;%d;%dM", $rect->col + 8, $rect->row + 2)); // right-click the first commit row (SGR is 1-based)
@@ -158,7 +159,7 @@ final class IdeContextMenusTest extends TestCase
                     $menu = $tui->getById('context-menu');
                     $this->assertTrue($menu->isOpen(), 'the context menu is open');
 
-                    $overlay = $ide->resolve(\Porta\Overlay\State\MenuOverlayController::class);
+                    $overlay = Services::resolve($ide, \Porta\Overlay\State\MenuOverlayController::class);
                     $region = $overlay->contextMenuDropdown();
                     $this->assertNotNull($region, 'the menu overlay was placed');
 
@@ -193,7 +194,7 @@ final class IdeContextMenusTest extends TestCase
         $rightClickFolder = static function ($tui, $terminal, $ide): void {
             $tui->requestRender(force: true); // force a frame so the tree rect is live under load
             $tui->processRender();
-            $renderer = $ide->resolve(Renderer::class);
+            $renderer = Services::resolve($ide, Renderer::class);
             $rect = $renderer->getWidgetRect($tui->getById('tree'));
             // Header is relative row 0; the first entry (the `sub` folder) is row 1.
             $tui->handleInput(\sprintf("\x1b[<2;%d;%dM", $rect->col + 3, $rect->row + 2));
@@ -256,7 +257,7 @@ final class IdeContextMenusTest extends TestCase
         $rightClickFolder = static function ($tui, $terminal, $ide): void {
             $tui->requestRender(force: true); // force a frame so the tree rect is live under load
             $tui->processRender();
-            $renderer = $ide->resolve(Renderer::class);
+            $renderer = Services::resolve($ide, Renderer::class);
             $rect = $renderer->getWidgetRect($tui->getById('tree'));
             $tui->handleInput(\sprintf("\x1b[<2;%d;%dM", $rect->col + 3, $rect->row + 2));
         };
@@ -875,7 +876,7 @@ final class IdeContextMenusTest extends TestCase
                     $tui->tick();
                     $tui->handleInput("\x1b[21;5~"); // Ctrl+F10 in the editor
                     $tui->tick();
-                    $context = $ide->resolve(ContextMenu::class);
+                    $context = Services::resolve($ide, ContextMenu::class);
                     $this->assertTrue($context->isOpen(), 'the editor context menu opened at the caret');
                     $screen = AnsiUtils::stripAnsiCodes($terminal->getOutput());
                     $this->assertStringContainsString('Go to Declaration or Usages', $screen);
@@ -891,7 +892,7 @@ final class IdeContextMenusTest extends TestCase
                     $tui->handleInput("\x1b");
                 },
                 500 => function ($tui, $terminal, $ide): void {
-                    $ide->resolve(CommandRegistry::class)->run('ide_help');
+                    Services::resolve($ide, CommandRegistry::class)->run('ide_help');
                     $tui->tick();
                     $terminal->clearOutput();
                     $tui->handleInput("\x1b[21;5~"); // Ctrl+F10 on the help viewer: the tab menu

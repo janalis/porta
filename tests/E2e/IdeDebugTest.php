@@ -11,6 +11,7 @@ use Porta\Editor\OpenFocus;
 use Porta\Tests\Support\ClearsPortaLsp;
 use Porta\Tests\Support\PreservesPath;
 use Porta\Tests\Support\RunsIde;
+use Porta\Tests\Support\Services;
 use Porta\Tests\Support\TempProject;
 use Symfony\Component\Tui\Ansi\AnsiUtils;
 use Symfony\Component\Tui\Render\Renderer;
@@ -60,7 +61,7 @@ final class IdeDebugTest extends TestCase
                 },
                 340 => function ($tui, $terminal, $ide) use ($project): void {
                     $editorScreen = static fn (): string => implode("\n", $tui->getById('editor')->render(new \Symfony\Component\Tui\Render\RenderContext(120, 20)));
-                    $ide->resolve(BufferService::class)
+                    Services::resolve($ide, BufferService::class)
                         ->openFile($project->path('other.php'), OpenFocus::Editor);
                     $this->assertStringNotContainsString('●', $editorScreen(), 'no dot in the other file');
                     $tui->handleInput("\x1b[1;5D"); // ctrl+left back to prog.php
@@ -71,7 +72,7 @@ final class IdeDebugTest extends TestCase
                 480 => function ($tui, $terminal, $ide): void {
                     // A plain click in the gutter toggles a breakpoint on that line.
                     $tui->tick();
-                    $renderer = $ide->resolve(Renderer::class);
+                    $renderer = Services::resolve($ide, Renderer::class);
                     $rect = $renderer->getWidgetRect($tui->getById('editor'));
                     $editorScreen = static fn (): string => implode("\n", $tui->getById('editor')->render(new \Symfony\Component\Tui\Render\RenderContext(120, 20)));
                     $tui->handleInput(\sprintf("\x1b[<0;%d;%dM", $rect->col + 2, $rect->row + 2)); // gutter, row 1
@@ -190,7 +191,7 @@ final class IdeDebugTest extends TestCase
                     $tui->tick();
                     $this->assertStringContainsString('paused at prog.php:3', AnsiUtils::stripAnsiCodes($terminal->getOutput()));
                     // Drag the debug panel's top edge up: all three bottom panels resize.
-                    $renderer = $ide->resolve(Renderer::class);
+                    $renderer = Services::resolve($ide, Renderer::class);
                     $rect = $renderer->getWidgetRect($tui->getById('debug'));
                     $this->assertNotNull($rect);
                     $top = $rect->row; // 1-based screen row of the dock strip — the resize grab
@@ -211,7 +212,7 @@ final class IdeDebugTest extends TestCase
                     $this->assertSame(0, $tui->getById('editor')->getDocument()->getCursorLine(), 'clicking frame #1 jumped to its line 1');
                     $this->assertSame('debug', $tui->getFocus()?->getId(), 'the click focused the panel');
                     // Hover + wheel route to the panel; Escape closes it and restores focus.
-                    $renderer = $ide->resolve(Renderer::class);
+                    $renderer = Services::resolve($ide, Renderer::class);
                     $rect = $renderer->getWidgetRect($tui->getById('debug'));
                     $tui->handleInput(\sprintf("\x1b[<35;8;%dM", $rect->row + 3)); // hover a row
                     $tui->handleInput(\sprintf("\x1b[<64;8;%dM", $rect->row + 3)); // wheel scrolls the list
@@ -245,7 +246,7 @@ final class IdeDebugTest extends TestCase
                 },
                 1300 => function ($tui, $terminal, $ide): void {
                     $tui->tick();
-                    $debug = $ide->resolve(DebugController::class);
+                    $debug = Services::resolve($ide, DebugController::class);
                     $this->assertFalse($debug->isActive(), 'ctrl+f2 disconnected the session');
                 },
             ],

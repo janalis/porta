@@ -9,6 +9,7 @@ use Porta\Editor\BufferService;
 use Porta\Editor\OpenFocus;
 use Porta\Ide;
 use Porta\Tests\Support\RunsIde;
+use Porta\Tests\Support\Services;
 use Porta\Tests\Support\TempProject;
 use Porta\Widget\TabBarWidget;
 use Symfony\Component\Tui\Render\Renderer;
@@ -44,7 +45,7 @@ final class IdeTabScrollTest extends TestCase
     private static function openAll(mixed $ide, TempProject $project, int $count): void
     {
         /** @var BufferService $buffers */
-        $buffers = $ide->resolve(BufferService::class);
+        $buffers = Services::resolve($ide, BufferService::class);
         for ($i = 0; $i < $count; ++$i) {
             $buffers->openFile($project->path(\sprintf('chapter-file-%02d.php', $i)), OpenFocus::Keep);
         }
@@ -52,7 +53,7 @@ final class IdeTabScrollTest extends TestCase
 
     private static function tabsRect(mixed $ide, Tui $tui): WidgetRect
     {
-        $rect = $ide->resolve(Renderer::class)
+        $rect = Services::resolve($ide, Renderer::class)
             ->getWidgetRect($tui->getById('tabs'));
         \assert($rect instanceof WidgetRect, description: 'the strip rendered, so its rect exists');
 

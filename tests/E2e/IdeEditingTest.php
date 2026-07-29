@@ -9,6 +9,7 @@ use Porta\Config\CommandRegistry;
 use Porta\Tests\Support\ClearsPortaLsp;
 use Porta\Tests\Support\PreservesPath;
 use Porta\Tests\Support\RunsIde;
+use Porta\Tests\Support\Services;
 use Porta\Tests\Support\TempProject;
 use Porta\Workbench\Notifier;
 use Symfony\Component\Tui\Ansi\AnsiUtils;
@@ -42,7 +43,7 @@ final class IdeEditingTest extends TestCase
                 },
                 280 => function ($tui, $terminal, $ide): void {
                     $editor = $tui->getById('editor');
-                    $renderer = $ide->resolve(Renderer::class);
+                    $renderer = Services::resolve($ide, Renderer::class);
                     $rect = $renderer->getWidgetRect($editor);
                     $rendered = $editor->render(new \Symfony\Component\Tui\Render\RenderContext($rect->columns, $rect->rows));
                     $this->assertStringContainsString('class Service', AnsiUtils::stripAnsiCodes($rendered[0]), 'class header pinned at the top');
@@ -83,7 +84,7 @@ final class IdeEditingTest extends TestCase
                 340 => static function ($tui, $terminal, $ide): void {
                     $tui->requestRender();
                     $tui->tick();
-                    $renderer = $ide->resolve(Renderer::class);
+                    $renderer = Services::resolve($ide, Renderer::class);
                     $rect = $renderer->getWidgetRect($tui->getById('breadcrumbs'));
                     // ' App'(1..3) › 'Service'(7..13) › 'handle'. Click 'Service' (col 8) →
                     // jump to the class declaration (0-based line 4).
@@ -192,19 +193,19 @@ final class IdeEditingTest extends TestCase
             [
                 200 => static function ($tui, $terminal, $ide): void {
                     // The 0.1 s flash will expire; the log is the only way back to it.
-                    $ide->resolve(Notifier::class)
+                    Services::resolve($ide, Notifier::class)
                         ->flash('the answer is 42', 0.1);
                 },
                 400 => function ($tui, $terminal, $ide): void {
                     $tui->tick();
-                    $ide->resolve(CommandRegistry::class)->run('ide_notifications');
+                    Services::resolve($ide, CommandRegistry::class)->run('ide_notifications');
                     $tui->tick();
                     $screen = AnsiUtils::stripAnsiCodes($terminal->getOutput());
                     $this->assertStringContainsString('Notifications', $screen, 'the dock tab opened');
                     $this->assertStringContainsString('the answer is 42', $screen, 'the expired flash is reviewable');
 
                     // A flash landing while the tab is open appears live, newest first.
-                    $ide->resolve(Notifier::class)
+                    Services::resolve($ide, Notifier::class)
                         ->flash('a later event', 0.1);
                     $tui->tick();
                     $panelText = AnsiUtils::stripAnsiCodes(implode("\n", $tui->getById('results')->render(new \Symfony\Component\Tui\Render\RenderContext(160, 12))));

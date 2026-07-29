@@ -13,6 +13,7 @@ use Porta\Settings\SettingsController;
 use Porta\Tests\Support\ClearsPortaLsp;
 use Porta\Tests\Support\PreservesPath;
 use Porta\Tests\Support\RunsIde;
+use Porta\Tests\Support\Services;
 use Porta\Tests\Support\TempProject;
 use Porta\Widget\TabBarWidget;
 use Symfony\Component\Tui\Ansi\AnsiUtils;
@@ -41,7 +42,7 @@ final class IdeTabsBuffersTest extends TestCase
             [
                 300 => function ($tui, $terminal, $ide) use ($project): void {
                     // Open the deep file as a background tab (does not reveal it).
-                    $ide->resolve(\Porta\Editor\BufferService::class)
+                    Services::resolve($ide, \Porta\Editor\BufferService::class)
                         ->openFile($project->path('src/deep/Target.php'), \Porta\Editor\OpenFocus::Keep);
                     $tui->requestRender();
                     $tui->tick();
@@ -50,7 +51,7 @@ final class IdeTabsBuffersTest extends TestCase
                     $this->assertNotSame('Target.php', $tree->selectedNode()?->name, 'opening a file does not reveal it in the tree');
 
                     $tabs = $tui->getById('tabs');
-                    $rect = $ide->resolve(Renderer::class)
+                    $rect = Services::resolve($ide, Renderer::class)
                         ->getWidgetRect($tabs);
                     $anchor = $tabs->tabAnchor(1); // the Target.php tab
                     $this->assertNotNull($anchor);
@@ -153,11 +154,11 @@ final class IdeTabsBuffersTest extends TestCase
         $project = new TempProject(['a.php' => "<?php\n"]);
 
         $changePosition = static function ($ide, string $position): void {
-            $ide->resolve(SettingsController::class)
+            Services::resolve($ide, SettingsController::class)
                 ->changeSetting('tabBarPosition', $position);
         };
         $rects = static function ($tui, $ide): array {
-            $renderer = $ide->resolve(Renderer::class);
+            $renderer = Services::resolve($ide, Renderer::class);
 
             return [$renderer->getWidgetRect($tui->getById('tabs')), $renderer->getWidgetRect($tui->getById('editor'))];
         };
@@ -219,7 +220,7 @@ final class IdeTabsBuffersTest extends TestCase
             [
                 200 => function ($tui, $terminal, $ide): void {
                     $tui->tick();
-                    $renderer = $ide->resolve(Renderer::class);
+                    $renderer = Services::resolve($ide, Renderer::class);
                     $tabs = $renderer->getWidgetRect($tui->getById('tabs'));
                     $editor = $renderer->getWidgetRect($tui->getById('editor'));
                     $this->assertSame(1, $tabs->rows, 'an unknown persisted value boots the top strip');
@@ -241,7 +242,7 @@ final class IdeTabsBuffersTest extends TestCase
             '.porta.json' => json_encode(['settings' => ['tabBarPosition' => 'left']]),
         ]);
 
-        $tabsRect = static fn ($tui, $ide) => $ide->resolve(Renderer::class)
+        $tabsRect = static fn ($tui, $ide) => Services::resolve($ide, Renderer::class)
             ->getWidgetRect($tui->getById('tabs'));
 
         $this->runIde(
@@ -249,7 +250,7 @@ final class IdeTabsBuffersTest extends TestCase
             $project->path('A.php'),
             [
                 150 => function ($tui, $terminal, $ide) use ($project): void {
-                    $service = $ide->resolve(BufferService::class);
+                    $service = Services::resolve($ide, BufferService::class);
                     $service->openFile($project->path('B.php'), OpenFocus::Editor);
                     $service->openFile($project->path('C.php'), OpenFocus::Editor);
                     $tui->tick();
@@ -292,7 +293,7 @@ final class IdeTabsBuffersTest extends TestCase
                 900 => function ($tui, $terminal, $ide): void {
                     // A content swap (the help viewer) lands inside the editor body,
                     // not beside the vertical list in the horizontal editor pane.
-                    $ide->resolve(CommandRegistry::class)->run('ide_help');
+                    Services::resolve($ide, CommandRegistry::class)->run('ide_help');
                     $tui->tick();
                     $this->assertContains($tui->getById('help-viewer'), $tui->getById('editor-body')->all(), 'the viewer swapped into the editor body slot');
                     $this->assertCount(2, $tui->getById('editor-pane')->all(), 'the editor pane keeps exactly the list and the body');
@@ -316,16 +317,16 @@ final class IdeTabsBuffersTest extends TestCase
             $project->path('a.php'),
             [
                 200 => function ($tui, $terminal, $ide): void {
-                    $ide->resolve(CommandRegistry::class)->run('ide_help');
+                    Services::resolve($ide, CommandRegistry::class)->run('ide_help');
                     $tui->tick();
                     $tui->handleInput("\x1b[21;5~"); // Ctrl+F10 on the help viewer: the tab menu
                     $tui->tick();
                     $this->assertTrue($tui->getById('context-menu')->isOpen(), 'the keyboard tab menu opened');
                     // A top strip anchors one row below the tab; the bottom strip anchors on
                     // its own row so the overlay's overflow flip opens the panel above it.
-                    $renderer = $ide->resolve(Renderer::class);
+                    $renderer = Services::resolve($ide, Renderer::class);
                     $tabsRow = $renderer->getWidgetRect($tui->getById('tabs'))->row;
-                    $overlay = $ide->resolve(\Porta\Overlay\State\MenuOverlayController::class);
+                    $overlay = Services::resolve($ide, \Porta\Overlay\State\MenuOverlayController::class);
                     $this->assertSame($tabsRow, new \ReflectionProperty($overlay, 'contextAnchorRow')->getValue($overlay));
                 },
             ],

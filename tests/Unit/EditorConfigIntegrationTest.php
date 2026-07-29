@@ -12,6 +12,7 @@ use Porta\Editor\OpenFocus;
 use Porta\Ide;
 use Porta\Onboarding\OnboardingState;
 use Porta\Tests\Support\PreservesPath;
+use Porta\Tests\Support\Services;
 use Porta\Tests\Support\TempProject;
 use Porta\Widget\StatusBarWidget;
 use Symfony\Component\Tui\Terminal\VirtualTerminal;
@@ -39,8 +40,8 @@ final class EditorConfigIntegrationTest extends TestCase
 
     private function open(Ide $ide, string $path): Buffer
     {
-        $ide->resolve(BufferService::class)->openFile($path, OpenFocus::Keep);
-        $buffers = $ide->resolve(BufferManager::class);
+        Services::resolve($ide, BufferService::class)->openFile($path, OpenFocus::Keep);
+        $buffers = Services::resolve($ide, BufferManager::class);
         \assert($buffers instanceof BufferManager, description: 'the buffers property is a BufferManager');
 
         return $buffers->active();
@@ -48,7 +49,7 @@ final class EditorConfigIntegrationTest extends TestCase
 
     private function save(Ide $ide, Buffer $buffer): void
     {
-        $service = $ide->resolve(BufferService::class);
+        $service = Services::resolve($ide, BufferService::class);
         \assert($service instanceof BufferService, description: 'the bufferService property is a BufferService');
         $service->saveBuffer($buffer);
     }

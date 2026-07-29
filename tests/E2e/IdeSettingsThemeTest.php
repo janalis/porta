@@ -13,6 +13,7 @@ use Porta\Tests\Support\ClearsPortaLsp;
 use Porta\Tests\Support\FindModalReads;
 use Porta\Tests\Support\PreservesPath;
 use Porta\Tests\Support\RunsIde;
+use Porta\Tests\Support\Services;
 use Porta\Tests\Support\TempProject;
 use Symfony\Component\Tui\Ansi\AnsiUtils;
 
@@ -82,7 +83,7 @@ final class IdeSettingsThemeTest extends TestCase
                 300 => static function ($tui, $terminal, $ide): void {
                     // Open via the command registry (the ide_settings closure),
                     // then the mouse steps below exercise the routing.
-                    $ide->resolve(CommandRegistry::class)->run('ide_settings');
+                    Services::resolve($ide, CommandRegistry::class)->run('ide_settings');
                 },
                 500 => function ($tui, $terminal): void {
                     $tui->tick();
@@ -172,7 +173,7 @@ final class IdeSettingsThemeTest extends TestCase
                 },
                 500 => static function ($tui, $terminal, $ide): void {
                     // Change the theme setting live, as the settings form would.
-                    $ide->resolve(SettingsController::class)
+                    Services::resolve($ide, SettingsController::class)
                         ->changeSetting('theme', 'light');
                     $tui->tick();
                 },
@@ -188,7 +189,7 @@ final class IdeSettingsThemeTest extends TestCase
 
                     // Second live switch: the accessibility theme.
                     $terminal->clearOutput();
-                    $ide->resolve(SettingsController::class)
+                    Services::resolve($ide, SettingsController::class)
                         ->changeSetting('theme', 'high-contrast');
                     $tui->tick();
                 },
@@ -221,7 +222,7 @@ final class IdeSettingsThemeTest extends TestCase
             $project->path('a.php'),
             [
                 300 => static function ($tui, $terminal, $ide): void {
-                    $ide->resolve(CommandRegistry::class)->run('ide_settings');
+                    Services::resolve($ide, CommandRegistry::class)->run('ide_settings');
                 },
                 600 => function ($tui): void {
                     $this->frame($tui);
@@ -255,7 +256,7 @@ final class IdeSettingsThemeTest extends TestCase
                     // cursor position plus a DECSCUSR shape: 5 = bar (default).
                     $this->assertStringContainsString("\x1b[5 q", $terminal->getOutput(), 'the default bar shape is emitted');
 
-                    $ide->resolve(SettingsController::class)
+                    Services::resolve($ide, SettingsController::class)
                         ->changeSetting('cursorShape', 'block');
                     $terminal->clearOutput();
                     $tui->tick();
@@ -267,7 +268,7 @@ final class IdeSettingsThemeTest extends TestCase
                     $this->assertStringNotContainsString("\x1b[5 q", $out, 'no stale bar shape survives the cache flush');
                 },
                 600 => function ($tui, $terminal, $ide): void {
-                    $ide->resolve(CommandRegistry::class)->run('ide_terminal');
+                    Services::resolve($ide, CommandRegistry::class)->run('ide_terminal');
                     $terminal->clearOutput();
                     $tui->tick();
                     $rows = $tui->getById('terminal')->render(new \Symfony\Component\Tui\Render\RenderContext(160, 12));

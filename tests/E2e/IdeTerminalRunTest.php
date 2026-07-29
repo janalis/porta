@@ -9,6 +9,7 @@ use Porta\Tests\Support\ClearsPortaLsp;
 use Porta\Tests\Support\PreservesPath;
 use Porta\Tests\Support\RunsIde;
 use Porta\Tests\Support\ScreenReads;
+use Porta\Tests\Support\Services;
 use Porta\Tests\Support\TempProject;
 use Porta\Ui\Glyphs;
 use Symfony\Component\Tui\Ansi\AnsiUtils;
@@ -46,7 +47,7 @@ final class IdeTerminalRunTest extends TestCase
                 360 => function ($tui, $terminal, $ide): void {
                     $tui->tick();
                     // Click the centre of the terminal pane → focus returns to it.
-                    $renderer = $ide->resolve(Renderer::class);
+                    $renderer = Services::resolve($ide, Renderer::class);
                     $rect = $renderer->getWidgetRect($tui->getById('terminal'));
                     $this->assertNotNull($rect, 'terminal pane is laid out');
                     $row = $rect->row + intdiv($rect->rows, num2: 2);
@@ -86,7 +87,7 @@ final class IdeTerminalRunTest extends TestCase
 
                     // Force a full frame so the terminal pane has a live WidgetRect.
                     $this->frame($tui);
-                    $renderer = $ide->resolve(Renderer::class);
+                    $renderer = Services::resolve($ide, Renderer::class);
                     $rect = $renderer->getWidgetRect($panel);
                     $row = $rect->row + intdiv($rect->rows, num2: 2);
                     $col = $rect->col + intdiv($rect->columns, num2: 2);
@@ -179,7 +180,7 @@ final class IdeTerminalRunTest extends TestCase
                     // frame and assert the paint — one indirection fewer than
                     // awaiting the rendered glyph, and a genuinely stuck exit
                     // still throws.
-                    $sessions = $ide->resolve(\Porta\Run\RunController::class)->sessions();
+                    $sessions = Services::resolve($ide, \Porta\Run\RunController::class)->sessions();
                     $this->await(static fn (): bool => false === ($sessions->active()?->isRunning() ?? true), timeout: 20.0, what: 'the shell exit to be reaped');
                     $this->frame($tui);
                     $out = AnsiUtils::stripAnsiCodes($terminal->getOutput());

@@ -9,6 +9,7 @@ use Porta\Config\CommandRegistry;
 use Porta\Tests\Support\ClearsPortaLsp;
 use Porta\Tests\Support\PreservesPath;
 use Porta\Tests\Support\RunsIde;
+use Porta\Tests\Support\Services;
 use Porta\Tests\Support\TempProject;
 use Porta\Ui\Glyphs;
 use Symfony\Component\Tui\Ansi\AnsiUtils;
@@ -68,7 +69,7 @@ final class IdeLayoutFocusTest extends TestCase
                     $tp->open('sh', new \Porta\Terminal\TerminalBuffer());
                     $tui->requestRender();
                     $tui->tick();
-                    $renderer = $ide->resolve(Renderer::class);
+                    $renderer = Services::resolve($ide, Renderer::class);
                     $rect = $renderer->getWidgetRect($tp);
                     $top = $rect->row + 1; // 1-based screen row of the panel's top edge
                     // Arm past the tab strip's tabs (the tail of the top row is
@@ -101,14 +102,14 @@ final class IdeLayoutFocusTest extends TestCase
             [
                 200 => static function ($tui, $terminal, $ide) use (&$expected): void {
                     $results = $tui->getById('results');
-                    $ide->resolve(\Porta\Workbench\Dock\BottomDock::class)
+                    Services::resolve($ide, \Porta\Workbench\Dock\BottomDock::class)
                         ->showList(\Porta\Workbench\Dock\ResultsPanelMode::Search, 'Find in Project', [
                             ['path' => 'b.php', 'line' => 0, 'text' => 'one'],
                             ['path' => 'c.php', 'line' => 0, 'text' => 'two'],
                         ]);
                     $tui->requestRender();
                     $tui->tick(); // force a frame so the pane gets a positioned rect
-                    $renderer = $ide->resolve(Renderer::class);
+                    $renderer = Services::resolve($ide, Renderer::class);
                     $rect = $renderer->getWidgetRect($results);
                     $expected = $rect->rows + 4;
                     $top = $rect->row; // 1-based screen row of the dock strip — the resize grab
@@ -141,11 +142,11 @@ final class IdeLayoutFocusTest extends TestCase
                 200 => static function ($tui, $terminal, $ide) use (&$expected): void {
                     // An empty tool (no results): it used to render no rows, so the
                     // dock had no rect to grab. It now reserves its full height.
-                    $ide->resolve(\Porta\Workbench\Dock\BottomDock::class)
+                    Services::resolve($ide, \Porta\Workbench\Dock\BottomDock::class)
                         ->showList(\Porta\Workbench\Dock\ResultsPanelMode::Search, 'Find in Project', []);
                     $tui->requestRender();
                     $tui->tick();
-                    $renderer = $ide->resolve(Renderer::class);
+                    $renderer = Services::resolve($ide, Renderer::class);
                     $rect = $renderer->getWidgetRect($tui->getById('results'));
                     $expected = $rect->rows + 4;
                     $top = $rect->row; // the dock strip row doubles as the resize grab
@@ -264,22 +265,22 @@ final class IdeLayoutFocusTest extends TestCase
                     $this->assertSame('editor', $tui->getFocus()?->getId());
                 },
                 350 => function ($tui, $terminal, $ide): void {
-                    $ide->resolve(CommandRegistry::class)->run('ide_terminal');
+                    Services::resolve($ide, CommandRegistry::class)->run('ide_terminal');
                     $this->assertSame('terminal', $tui->getFocus()?->getId());
                     $tui->handleInput("\x1b[17;5~"); // Ctrl+F6: terminal → editor (backward)
                     $this->assertSame('editor', $tui->getFocus()?->getId());
                     $tui->handleInput("\x1b[17~"); // F6 forward returns to the terminal
                     $this->assertSame('terminal', $tui->getFocus()?->getId());
-                    $ide->resolve(CommandRegistry::class)->run('ide_terminal'); // close it again
+                    Services::resolve($ide, CommandRegistry::class)->run('ide_terminal'); // close it again
                 },
                 500 => function ($tui, $terminal, $ide): void {
-                    $ide->resolve(CommandRegistry::class)->run('ide_settings');
+                    Services::resolve($ide, CommandRegistry::class)->run('ide_settings');
                     $this->assertSame('settings-form', $tui->getFocus()?->getId(), 'settings opens on the form');
                     $tui->handleInput("\x1b[17~"); // F6 delegates to the settings view
                     $this->assertSame('settings-nav', $tui->getFocus()?->getId());
                     $tui->handleInput("\x1b[17;5~"); // either direction bounces the two panes
                     $this->assertSame('settings-form', $tui->getFocus()?->getId());
-                    $ide->resolve(CommandRegistry::class)->run('ide_settings');
+                    Services::resolve($ide, CommandRegistry::class)->run('ide_settings');
                 },
             ],
         );
@@ -305,7 +306,7 @@ final class IdeLayoutFocusTest extends TestCase
                     $this->assertSame(30, $tui->getById('tree')->width());
                 },
                 350 => function ($tui, $terminal, $ide): void {
-                    $ide->resolve(CommandRegistry::class)->run('ide_terminal');
+                    Services::resolve($ide, CommandRegistry::class)->run('ide_terminal');
                     $tui->tick(); // render a frame so the panel has a rect to resize from
                     $rows = $tui->getById('terminal')->visibleRows();
                     $tui->handleInput("\x1b[24;2~"); // grow the focused bottom panel
