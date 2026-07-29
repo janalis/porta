@@ -9,6 +9,7 @@ use Porta\Graph\DotJsonParser;
 use Porta\Graph\GraphLayout;
 use Porta\I18n\Translator;
 use Porta\Tests\Support\FakeLayoutEngine;
+use Porta\Tests\Support\FakeScheduler;
 use Porta\Tests\Support\PngFixture;
 use Porta\Tests\Support\RecordingViewerTabHandler;
 use Porta\Ui\Glyphs;
@@ -19,15 +20,25 @@ use Symfony\Component\Tui\Render\RenderContext;
 final class GraphViewerWidgetTest extends TestCase
 {
     private FakeLayoutEngine $engine;
+    private FakeScheduler $scheduler;
 
     protected function setUp(): void
     {
         $this->engine = new FakeLayoutEngine();
+        $this->scheduler = new FakeScheduler();
     }
 
     private function widget(): GraphViewerWidget
     {
-        return new GraphViewerWidget($this->engine, new Translator('en'));
+        return new GraphViewerWidget($this->engine, new Translator('en'), scheduler: $this->scheduler);
+    }
+
+    /** Let the bitmap debounce elapse, as the event loop would. */
+    private function settle(): void
+    {
+        if ([] !== $this->scheduler->scheduled) {
+            $this->scheduler->fire();
+        }
     }
 
     private static function layout(string $fixture = 'small.json'): GraphLayout
@@ -312,6 +323,7 @@ final class GraphViewerWidgetTest extends TestCase
         $this->engine->nextPng = PngFixture::bytes(260, 36);
         $widget = $this->widget();
         $widget->show('/p/g.dot', 'digraph G { A -> B; }');
+        $this->settle();
 
         $raw = implode("\n", $widget->render(new RenderContext(80, 24)));
         $this->assertStringContainsString('▀', $raw, 'the picture paints as half-blocks');
@@ -339,6 +351,7 @@ final class GraphViewerWidgetTest extends TestCase
         $this->engine->pngIsError = true;
         $widget = $this->widget();
         $widget->show('/p/g.dot', 'digraph G { A -> B; }');
+        $this->settle();
 
         $screen = self::plain($widget->render(new RenderContext(60, 16)));
         $this->assertStringContainsString('not recognized', $screen, 'the banner says why there is no picture');
@@ -351,6 +364,7 @@ final class GraphViewerWidgetTest extends TestCase
         $this->engine->nextPng = 'this is not a PNG';
         $widget = $this->widget();
         $widget->show('/p/g.dot', 'digraph G { A -> B; }');
+        $this->settle();
 
         $screen = self::plain($widget->render(new RenderContext(60, 16)));
         $this->assertStringContainsString('could not be decoded', $screen);
@@ -363,10 +377,12 @@ final class GraphViewerWidgetTest extends TestCase
         $this->engine->nextPng = PngFixture::bytes(260, 36);
         $widget = $this->widget();
         $widget->show('/p/a.dot', 'digraph A { A -> B; }');
+        $this->settle();
         $this->assertStringContainsString('▀', implode("\n", $widget->render(new RenderContext(80, 24))));
 
         $this->engine->nextPng = null; // the new tab's picture has not arrived
         $widget->show('/p/b.dot', 'digraph B { X -> Y; }');
+        $this->settle();
         $screen = self::plain($widget->render(new RenderContext(80, 24)));
 
         $this->assertStringContainsString('┌', $screen, 'the new tab falls back to cells rather than showing the old picture');
@@ -379,6 +395,7 @@ final class GraphViewerWidgetTest extends TestCase
         $widget = $this->widget();
         $widget->show('/p/a.dot', 'digraph A { A -> B; }');
         ($this->engine->pendingDone)(self::layout()); // the layout lands, so a bitmap is requested
+        $this->settle();
         $deliverA = $this->engine->pendingPng;
         $this->assertNotNull($deliverA);
 
@@ -386,6 +403,72 @@ final class GraphViewerWidgetTest extends TestCase
         $deliverA(PngFixture::bytes(260, 36)); // dot answers for the tab that left
 
         $this->assertStringNotContainsString('▀', implode("\n", $widget->render(new RenderContext(80, 24))), 'a stale picture never reaches the pane');
+    }
+
+    public function testAZoomStepAsksForASharperBitmap(): void
+    {
+        $this->engine->nextResult = self::layout();
+        $this->engine->nextPng = PngFixture::bytes(260, 36);
+        $widget = $this->widget();
+        $widget->show('/p/g.dot', 'digraph G { A -> B; }');
+        $this->settle();
+        $widget->render(new RenderContext(80, 24));
+        $this->assertSame([72], $this->engine->renderDpis);
+
+        // Fit is ~31%, so the first two steps (50%, 100%) still want 1:1 — only
+        // magnifying past it needs more pixels than the layout has points.
+        $widget->handleInput('=');
+        $widget->handleInput('=');
+        $this->assertSame([], $this->scheduler->scheduled, 'nothing to re-render at or below 1:1');
+
+        $widget->handleInput('='); // 200%
+        $this->settle();
+        $this->assertSame([72, 144], $this->engine->renderDpis, 'the picture is re-rendered at twice the resolution');
+
+        $raw = implode("\n", $widget->render(new RenderContext(80, 24)));
+        $this->assertStringContainsString('▀', $raw, 'and the sharper bitmap is what paints');
+    }
+
+    public function testAPanNeverAsksForANewBitmap(): void
+    {
+        $this->engine->nextResult = self::layout();
+        $this->engine->nextPng = PngFixture::bytes(260, 36);
+        $widget = $this->widget();
+        $widget->show('/p/g.dot', 'digraph G { A -> B; }');
+        $this->settle();
+        $widget->render(new RenderContext(80, 24));
+
+        $widget->handleInput("\x1b[C"); // right
+        $widget->scrollBy(0, 4);
+
+        $this->assertSame([], $this->scheduler->scheduled, 'panning changes no resolution');
+        $this->assertSame([72], $this->engine->renderDpis);
+    }
+
+    public function testTheResolutionIsCappedSoAHugeGraphStaysDecodable(): void
+    {
+        // 20000 × 20000 points: at 72 dpi that is 400M pixels, 25× over the
+        // decoder's ceiling, so the request is capped rather than refused.
+        $this->engine->nextResult = new GraphLayout(20_000.0, 20_000.0, [], [], []);
+        $this->engine->nextPng = PngFixture::bytes(40, 40);
+        $widget = $this->widget();
+        $widget->show('/p/huge.dot', 'digraph Huge {}');
+        $this->settle();
+
+        $this->assertSame([14], $this->engine->renderDpis, '72 × sqrt(16M / 400M), floored');
+    }
+
+    public function testAClearedTabDropsItsPendingRerender(): void
+    {
+        $this->engine->nextResult = self::layout();
+        $widget = $this->widget();
+        $widget->show('/p/g.dot', 'digraph G { A -> B; }');
+        $this->assertNotSame([], $this->scheduler->scheduled, 'a render is pending');
+
+        $widget->clear();
+
+        $this->assertSame([], $this->scheduler->scheduled, 'the pane went away; so did the request');
+        $this->assertNotSame([], $this->scheduler->cancelled);
     }
 
     public function testRefreshThemeInvalidatesTheRenderCache(): void

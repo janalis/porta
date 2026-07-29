@@ -29,25 +29,34 @@ final class ScaledSource
     private float $scale = 0.0;
     private ?SampleSource $memo = null;
 
-    /** The pixels to sample for a pane showing $image at $scale. */
-    public function forScale(ImageData $image, float $scale): SampleSource
+    /**
+     * The pixels to sample for a pane showing $image at $scale.
+     *
+     * $ratio is how many of $image's pixels already cover one unit of whatever
+     * $scale is measured in — 1.0 for an ordinary image, and dpi/72 for the
+     * graph viewer's oversampled bitmap, whose pixels are denser than the layout
+     * points its zoom is expressed in. The work below is done in the image's own
+     * grid and converted back on the way out.
+     */
+    public function forScale(ImageData $image, float $scale, float $ratio = 1.0): SampleSource
     {
-        if ($scale >= (1.0 - 1e-9)) {
-            return SampleSource::original($image);
+        $relative = $scale / $ratio;
+        if ($relative >= (1.0 - 1e-9)) {
+            return new SampleSource($image, $ratio);
         }
-        if (null !== $this->memo && $this->source === $image && abs($this->scale - $scale) < 1e-9) {
+        if (null !== $this->memo && $this->source === $image && abs($this->scale - $relative) < 1e-9) {
             return $this->memo;
         }
 
         $this->source = $image;
-        $this->scale = $scale;
-        $this->memo = self::resample($image, $scale);
+        $this->scale = $relative;
+        $this->memo = self::resample($image, $relative, $ratio);
 
         return $this->memo;
     }
 
-    /** One area-averaged copy at $scale (never smaller than a single pixel). */
-    private static function resample(ImageData $image, float $scale): SampleSource
+    /** One area-averaged copy at $scale of $image (never smaller than a single pixel). */
+    private static function resample(ImageData $image, float $scale, float $ratio): SampleSource
     {
         $width = max(1, (int) round($image->width * $scale));
         $height = max(1, (int) round($image->height * $scale));
@@ -72,7 +81,9 @@ final class ScaledSource
 
         return new SampleSource(
             new ImageData($canvas, $width, $height, $image->byteSize),
-            ratio: $width / $image->width,
+            // Back into the caller's units: the copy's own shrink, times what
+            // the source was already denser by.
+            ratio: ($width / $image->width) * $ratio,
         );
     }
 }

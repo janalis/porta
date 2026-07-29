@@ -14,6 +14,8 @@ use Porta\Image\ImageData;
 use Porta\Image\ImageDecoder;
 use Porta\Image\ScaledSource;
 use Porta\Image\ZoomPanModel;
+use Porta\Support\RevoltScheduler;
+use Porta\Support\Scheduler;
 use Porta\Ui\Glyphs;
 use Porta\Ui\LtrPane;
 use Porta\Ui\Role;
@@ -74,12 +76,23 @@ final class GraphViewerWidget extends AbstractWidget implements FocusableInterfa
     /** 72 dpi = one point per pixel, so the bitmap shares the layout's coordinates. */
     private const int BITMAP_DPI = 72;
 
+    /** How long a zoom has to settle before dot is asked for a sharper bitmap. */
+    private const float RENDER_DEBOUNCE = 0.15;
+
     private ?string $path = null;
     private ?string $dotHash = null;
     /** The DOT source of the shown tab — kept because a bitmap is re-rendered from it. */
     private ?string $dot = null;
     /** The picture dot rendered, or null while none has arrived for this graph. */
     private ?ImageData $bitmap = null;
+    /** The dpi the shown bitmap was rendered at — its pixels per layout point. */
+    private int $bitmapDpi = self::BITMAP_DPI;
+    /** The dpi the current zoom wants, or null when it has not been decided yet. */
+    private ?int $wantedDpi = null;
+    private ?string $renderTimer = null;
+    /** The laid-out extent in points, for the resolution cap. */
+    private int $extentW = 1;
+    private int $extentH = 1;
     /** Memoises the area-averaged copy the rasterizer samples while shrinking. */
     private readonly ScaledSource $scaled;
     /** The last GOOD layout — kept on screen when a newer layout fails. */
@@ -100,6 +113,7 @@ final class GraphViewerWidget extends AbstractWidget implements FocusableInterfa
     private int $lastRows = 24;
     private ?ViewerTabHandler $handler = null;
     private readonly ImageDecoder $decoder;
+    private readonly Scheduler $scheduler;
 
     public function __construct(
         private readonly LayoutEngine $engine,
@@ -107,10 +121,12 @@ final class GraphViewerWidget extends AbstractWidget implements FocusableInterfa
         // Defaulted like $styles (the StylesDefault pattern): a decoder is pure,
         // so the widget-tree tests need not thread one through.
         ?ImageDecoder $decoder = null,
+        ?Scheduler $scheduler = null,
         ?Styles $styles = null,
     ) {
         $this->initStyles($styles);
         $this->decoder = $decoder ?? new ImageDecoder();
+        $this->scheduler = $scheduler ?? new RevoltScheduler();
         $this->scaled = new ScaledSource();
     }
 
@@ -175,6 +191,11 @@ final class GraphViewerWidget extends AbstractWidget implements FocusableInterfa
         $this->dotHash = null;
         $this->dot = null;
         $this->bitmap = null;
+        $this->wantedDpi = null;
+        if (null !== $this->renderTimer) {
+            $this->scheduler->cancel($this->renderTimer);
+            $this->renderTimer = null;
+        }
         $this->layout = null;
         $this->view = null;
         $this->error = null;
@@ -257,6 +278,9 @@ final class GraphViewerWidget extends AbstractWidget implements FocusableInterfa
         }
         $this->lastCols = $cols;
         $this->lastRows = $rows;
+        // The fit scale depends on the pane size, which is only known here; the
+        // wanted-dpi guard makes this a float compare on every other frame.
+        $this->scheduleBitmap();
         $lines = $this->contentLines($cols, $rows);
         if ($this->isFocused() && $cols >= 3 && $rows >= 3) {
             $lines = $this->focusFrame($lines, $cols, $rows);
@@ -336,6 +360,9 @@ final class GraphViewerWidget extends AbstractWidget implements FocusableInterfa
         $this->error = null;
         $width = max(1, (int) ceil($layout->width));
         $height = max(1, (int) ceil($layout->height));
+        $this->extentW = $width;
+        $this->extentH = $height;
+        $this->wantedDpi = null; // re-decide the resolution for this graph
         $path = (string) $this->path;
         $remembered = $this->viewCache[$path] ?? null;
         $this->view =
@@ -351,7 +378,47 @@ final class GraphViewerWidget extends AbstractWidget implements FocusableInterfa
         $this->selectionOrder = array_map(static fn (array $entry): int => (int) $entry[2], $order);
         $this->invalidate();
         $this->handler?->viewChanged();
-        $this->requestBitmap();
+        $this->scheduleBitmap();
+    }
+
+    /**
+     * The dpi the picture needs to look sharp at $scale, capped so a huge graph
+     * cannot ask for a bitmap the decoder would refuse. 72 dpi is 1:1 with the
+     * layout, so magnifying 2× wants 144 and nothing below 1:1 wants more than
+     * 72 (shrinking is the {@see ScaledSource} filter's job, not dot's).
+     */
+    private function dpiFor(float $scale): int
+    {
+        $wanted = (int) round(self::BITMAP_DPI * max(1.0, $scale));
+        // pixels = extent × dpi/72 per axis, so the ceiling scales with 1/√area.
+        $cap = (int) floor(self::BITMAP_DPI * sqrt(ImageDecoder::MAX_PIXELS / ($this->extentW * $this->extentH)));
+
+        return max(1, min($wanted, $cap));
+    }
+
+    /**
+     * Ask dot for a bitmap at the resolution the current zoom wants, once the
+     * zoom has settled. Debounced and coalesced on the WANTED dpi, so a pan (or
+     * any zoom that lands on the same resolution) costs nothing, and a spin of
+     * the wheel costs one process rather than one per notch.
+     */
+    private function scheduleBitmap(): void
+    {
+        if (null === $this->view || null === $this->dot) {
+            return;
+        }
+        $dpi = $this->dpiFor($this->view->effectiveScale($this->lastCols, 2 * $this->lastRows));
+        if ($dpi === $this->wantedDpi) {
+            return; // already asked for exactly this
+        }
+        $this->wantedDpi = $dpi;
+        if (null !== $this->renderTimer) {
+            $this->scheduler->cancel($this->renderTimer);
+        }
+        $this->renderTimer = $this->scheduler->delay(self::RENDER_DEBOUNCE, function () use ($dpi): void {
+            $this->renderTimer = null;
+            $this->requestBitmap($dpi);
+        });
     }
 
     /**
@@ -360,7 +427,7 @@ final class GraphViewerWidget extends AbstractWidget implements FocusableInterfa
      * would be a memory trap — and re-rendering is one fast process, while the
      * expensive half (the layout) is still cached per DOT hash.
      */
-    private function requestBitmap(): void
+    private function requestBitmap(int $dpi): void
     {
         $dot = $this->dot;
         // Only reachable through adopt(), which only runs after show() stored the
@@ -369,8 +436,8 @@ final class GraphViewerWidget extends AbstractWidget implements FocusableInterfa
         $hash = $this->dotHash;
         $this->engine->render(
             $dot,
-            self::BITMAP_DPI,
-            function (string $png) use ($hash): void {
+            $dpi,
+            function (string $png) use ($hash, $dpi): void {
                 if ($hash !== $this->dotHash) {
                     return; // the tab moved on while dot was working
                 }
@@ -384,6 +451,7 @@ final class GraphViewerWidget extends AbstractWidget implements FocusableInterfa
                     return;
                 }
                 $this->bitmap = $image;
+                $this->bitmapDpi = $dpi;
                 $this->invalidate();
                 $this->handler?->viewChanged();
             },
@@ -448,6 +516,7 @@ final class GraphViewerWidget extends AbstractWidget implements FocusableInterfa
     {
         $this->invalidate();
         $this->handler?->viewChanged();
+        $this->scheduleBitmap();
     }
 
     /** @return list<string> */
@@ -455,7 +524,11 @@ final class GraphViewerWidget extends AbstractWidget implements FocusableInterfa
     {
         if (null !== $this->bitmap && null !== $this->view) {
             return HalfBlockRasterizer::render(
-                $this->scaled->forScale($this->bitmap, $this->view->effectiveScale($cols, 2 * $rows)),
+                $this->scaled->forScale(
+                    $this->bitmap,
+                    $this->view->effectiveScale($cols, 2 * $rows),
+                    ratio: $this->bitmapDpi / self::BITMAP_DPI,
+                ),
                 $this->view,
                 $cols,
                 $rows,

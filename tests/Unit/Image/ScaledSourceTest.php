@@ -69,6 +69,21 @@ final class ScaledSourceTest extends TestCase
         $this->assertNotSame($first, $scaled->forScale($other, 0.25), 'a new image at the same scale must not reuse the old copy');
     }
 
+    public function testAnOversampledSourceIsMeasuredInTheCallersUnits(): void
+    {
+        // A bitmap rendered at 2 pixels per unit (the graph viewer's 144 dpi).
+        $bitmap = $this->withThinLine(40, 40, lineX: 5);
+        $scaled = new ScaledSource();
+
+        $same = $scaled->forScale($bitmap, 2.0, ratio: 2.0);
+        $this->assertSame($bitmap, $same->image, 'zoom 2 on a 2× bitmap is 1:1 — nothing to average');
+        $this->assertSame(2.0, $same->ratio);
+
+        $copy = $scaled->forScale($bitmap, 0.5, ratio: 2.0);
+        $this->assertSame(10, $copy->image->width, 'zoom 0.5 on a 2× bitmap is a 4× shrink');
+        $this->assertSame(0.5, $copy->ratio, 'and the ratio comes back in the caller\'s units, not the copy\'s');
+    }
+
     /**
      * The point of the whole exercise: at a 10% fit, nearest-neighbour reads
      * every tenth pixel and a one-pixel line falls between the samples. The
