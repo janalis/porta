@@ -155,4 +155,21 @@ final class ZoomPanModelTest extends TestCase
         $view->panBy(5, 5, 8, 4);
         $this->assertSame(0, $view->visibleRect(8, 4)['srcX'], 'a fully visible image cannot pan');
     }
+
+    public function testACustomZoomLadderIsWalkedInBothDirections(): void
+    {
+        // A "graph" whose fit scale (~0.008) sits far below the default ladder's 12.5% floor.
+        $view = new ZoomPanModel(10_000, 10_000, [0.03125, 0.0625, 0.125]);
+
+        $view->zoomOut(80, 48);
+        $this->assertSame('Fit (0%)', $view->zoomLabel(80, 48), 'no rung below fit: zoomOut stays at fit');
+
+        $view->zoomIn(80, 48);
+        $this->assertSame('3%', $view->zoomLabel(80, 48), 'zoomIn lands on the custom floor rung');
+
+        $view->zoomIn(80, 48);
+        $view->zoomIn(80, 48);
+        $view->zoomIn(80, 48);
+        $this->assertSame('13%', $view->zoomLabel(80, 48), 'the custom ceiling rung caps zoomIn');
+    }
 }

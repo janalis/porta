@@ -21,9 +21,11 @@ final class ZoomPanModel
     private int $panX = 0;
     private int $panY = 0;
 
+    /** @param ?list<float> $steps a custom zoom ladder — the graph viewer's fit scales sit far below the image ladder's 12.5% floor */
     public function __construct(
         private readonly int $imgW,
         private readonly int $imgH,
+        private readonly ?array $steps = null,
     ) {}
 
     /** The factor actually applied for a pane of $cols × $pxRows (fit resolves here). */
@@ -135,7 +137,8 @@ final class ZoomPanModel
     /** The next ladder rung in $dir, or null when none exists in that direction. */
     private function step(float $current, int $dir): ?float
     {
-        $steps = $dir > 0 ? self::STEPS : array_reverse(self::STEPS);
+        $ladder = $this->steps ?? self::STEPS;
+        $steps = $dir > 0 ? $ladder : array_reverse($ladder);
         foreach ($steps as $step) {
             if ($dir > 0 ? $step > ($current + 1e-9) : $step < ($current - 1e-9)) {
                 return $step;
