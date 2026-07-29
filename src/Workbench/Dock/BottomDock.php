@@ -309,11 +309,6 @@ final class BottomDock
         return null;
     }
 
-    public function terminalPanel(): TerminalPanelWidget
-    {
-        return $this->terminalPanel;
-    }
-
     /** Drive the shared bottom-panel height (all three panels track one size). */
     public function setPanelRows(int $rows): void
     {

@@ -12,7 +12,7 @@ use Revolt\EventLoop;
  * callback; keystrokes are forwarded with {@see write()}.
  *
  * Falls back to plain pipes when the platform lacks PTY support, in which case
- * child programs see a non-TTY (no colour) — surfaced by {@see isPty()}.
+ * child programs see a non-TTY (no colour) — tracked by the `$pty` flag.
  */
 final class PtyProcess
 {
@@ -61,16 +61,6 @@ final class PtyProcess
     public function isRunning(): bool
     {
         return $this->running;
-    }
-
-    public function isPty(): bool
-    {
-        return $this->pty;
-    }
-
-    public function exitCode(): int
-    {
-        return $this->exitCode;
     }
 
     public function start(): bool
@@ -143,13 +133,6 @@ final class PtyProcess
         if (\is_resource($target)) {
             // @mago-expect lint:no-error-control-operator -- fwrite to a pty/pipe whose child has died (the fd is still a live resource) raises an unavoidable EPIPE/EIO warning that no is_resource guard prevents.
             @fwrite($target, $data);
-        }
-    }
-
-    public function kill(int $signal = \SIGTERM): void
-    {
-        if (\is_resource($this->process)) {
-            proc_terminate($this->process, $signal);
         }
     }
 

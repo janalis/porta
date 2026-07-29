@@ -143,11 +143,6 @@ final class WorkspaceLayout
         return $this->main;
     }
 
-    public function editorPane(): ContainerWidget
-    {
-        return $this->editorPane;
-    }
-
     public function editorBody(): ContainerWidget
     {
         return $this->editorBody;

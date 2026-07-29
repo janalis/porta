@@ -80,6 +80,6 @@ final class LiveKeybindingsTest extends TestCase
 
         $live->rebuild();
         $this->assertSame($parser, $live->current()->getParser(), 'the kitty-negotiated parser rides through every rebuild');
-        $this->assertNotSame([], $live->all(), 'the IDE defaults are in the rebuilt map');
+        $this->assertNotSame([], $live->current()->all(), 'the IDE defaults are in the rebuilt map');
     }
 }

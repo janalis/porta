@@ -7,6 +7,7 @@ namespace Porta\Tests\Unit\Widget\Git;
 use PHPUnit\Framework\TestCase;
 use Porta\Git\DiffDocument;
 use Porta\I18n\Translator;
+use Porta\Tests\Support\Probe;
 use Porta\Widget\Git\DiffViewCallbacks;
 use Porta\Widget\Git\DiffViewWidget;
 use Symfony\Component\Tui\Ansi\AnsiUtils;
@@ -280,9 +281,9 @@ final class DiffViewWidgetTest extends TestCase
     public function testReadOnlyFlagRoundTrips(): void
     {
         $widget = $this->widget();
-        $this->assertFalse($widget->isReadOnly());
+        $this->assertFalse(Probe::get($widget, 'readOnly'));
         $widget->makeReadOnly();
-        $this->assertTrue($widget->isReadOnly());
+        $this->assertTrue(Probe::get($widget, 'readOnly'));
         $this->assertTrue($widget->expandVertically(false)->isVerticallyExpanded(), 'always fills its pane');
     }
 

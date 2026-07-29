@@ -102,16 +102,6 @@ final class KeybindingsListWidget extends AbstractWidget implements FocusableInt
         $this->invalidate();
     }
 
-    public function isCapturing(): bool
-    {
-        return null !== $this->capturingIndex;
-    }
-
-    public function selectedAction(): ?string
-    {
-        return ($this->rows[$this->list->selected()] ?? null)?->action;
-    }
-
     public function handleInput(string $data): void
     {
         if ($this->inputHookHandled($data)) {

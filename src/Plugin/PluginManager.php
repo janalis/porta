@@ -72,12 +72,6 @@ final class PluginManager implements LanguageServerProvider, SyntaxHighlightProv
         return false;
     }
 
-    /** @return list<string> the active plugin names, in load order */
-    public function names(): array
-    {
-        return array_keys($this->names);
-    }
-
     /** Land one successfully activated plugin's buffered registrations. */
     public function commit(PluginApi $api): void
     {

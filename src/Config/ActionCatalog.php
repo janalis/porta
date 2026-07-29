@@ -185,12 +185,6 @@ final class ActionCatalog
         'resize_pane_grow' => ['label' => 'Grow Pane', 'keys' => ['shift+f12']],
     ];
 
-    /** @return list<string> every rebindable action id */
-    public static function knownActions(): array
-    {
-        return array_keys(self::ACTIONS);
-    }
-
     /** @return array<string, list<string>> default keymap for Ide-scope actions */
     public static function ideDefaults(): array
     {
@@ -204,12 +198,6 @@ final class ActionCatalog
         }
 
         return $defaults;
-    }
-
-    /** @return array<string, string> action id => palette label */
-    public static function labels(): array
-    {
-        return array_map(static fn (array $spec): string => $spec['label'], self::ACTIONS);
     }
 
     /** Palette label for an action id; unknown actions fall back to a title-cased slug. */

@@ -11,6 +11,7 @@ use Porta\Editor\OpenFocus;
 use Porta\Tests\Support\ClearsPortaLsp;
 use Porta\Tests\Support\EditorState;
 use Porta\Tests\Support\PreservesPath;
+use Porta\Tests\Support\Probe;
 use Porta\Tests\Support\RunsIde;
 use Porta\Tests\Support\Services;
 use Porta\Tests\Support\TempProject;
@@ -200,9 +201,9 @@ final class IdeDebugTest extends TestCase
                     $tui->handleInput(\sprintf("\x1b[<32;60;%dM", $top - 2));
                     $tui->handleInput(\sprintf("\x1b[<0;60;%dm", $top - 2));
                     $tui->tick();
-                    $expected = $tui->getById('debug')->visibleRows();
-                    $this->assertSame($expected, $tui->getById('terminal')->visibleRows(), 'bottom panels stay in sync');
-                    $this->assertSame($expected, $tui->getById('results')->visibleRows());
+                    $expected = Probe::get($tui->getById('debug'), 'visibleRows');
+                    $this->assertSame($expected, Probe::get($tui->getById('terminal'), 'visibleRows'), 'bottom panels stay in sync');
+                    $this->assertSame($expected, Probe::get($tui->getById('results'), 'visibleRows'));
                     // Click the second frame row: Frames header +2 = frame #1 at line 1.
                     $rect = $renderer->getWidgetRect($tui->getById('debug'));
                     $tui->handleInput(\sprintf("\x1b[<0;5;%dM", $rect->row + 3)); // Frames,#0,#1 → rel 2 (no header row)

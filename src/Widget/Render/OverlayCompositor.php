@@ -45,26 +45,4 @@ final class OverlayCompositor
         // full-width over a blank pane.
         return AnsiText::padRight($head.Sgr::RESET.$popup.Sgr::RESET.$tail.Sgr::RESET, $columns);
     }
-
-    /**
-     * Blit a fully-built box at an explicit position. Rows beyond the pane
-     * are skipped — the bounds guard every replayed composition relies on.
-     *
-     * @param list<string> $lines
-     * @param list<string> $box
-     *
-     * @return list<string>
-     */
-    public static function placeAt(array $lines, array $box, int $startRow, int $col, int $width, int $columns): array
-    {
-        foreach ($box as $i => $boxLine) {
-            $row = $startRow + $i;
-            if ($row >= \count($lines)) {
-                break;
-            }
-            $lines[$row] = self::into($lines[$row], $col, $width, $columns, $boxLine);
-        }
-
-        return $lines;
-    }
 }

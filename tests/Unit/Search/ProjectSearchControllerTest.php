@@ -10,6 +10,7 @@ use Porta\Search\ProjectSearch;
 use Porta\Search\ProjectSearchController;
 use Porta\Search\SearchOptions;
 use Porta\Search\SearchTabState;
+use Porta\Tests\Support\Probe;
 use Porta\Tests\Support\TempProject;
 use Porta\Tests\Support\TestBottomDock;
 use Porta\Ui\ScopeKind;
@@ -203,6 +204,6 @@ final class ProjectSearchControllerTest extends TestCase
         $controller->closeSearch(new SearchTabState('kept-query', new SearchOptions(), ['.'], '*.tpl', ScopeKind::Project));
 
         $this->assertContains('kept-query', new \Porta\History\SearchHistoryStore($project->dir)->all(), '×ing a search tab records its query');
-        $this->assertContains('*.tpl', new \Porta\History\SearchPrefsStore($project->dir)->recentMasks(), 'and its mask');
+        $this->assertContains('*.tpl', Probe::get(new \Porta\History\SearchPrefsStore($project->dir), 'recentMasks'), 'and its mask');
     }
 }

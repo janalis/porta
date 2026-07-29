@@ -123,17 +123,6 @@ final class ServerLocator
     }
 
     /**
-     * Parse a raw command string into a server descriptor (command argv + display
-     * name), for previewing a user-typed LSP command.
-     *
-     * @return array{command: list<string>, name: string}
-     */
-    public static function describe(string $command): array
-    {
-        return self::server(self::split($command));
-    }
-
-    /**
      * Auto-detected per-language servers, each only reached when a file of its
      * language is opened (sessions start lazily).
      *

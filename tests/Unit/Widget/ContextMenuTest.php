@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Porta\Tests\Unit\Widget;
 
 use PHPUnit\Framework\TestCase;
+use Porta\Tests\Support\Probe;
 use Porta\Widget\ContextMenu;
 use Porta\Workbench\Menu\MenuItem;
 use Symfony\Component\Tui\Ansi\AnsiUtils;
@@ -52,7 +53,7 @@ final class ContextMenuTest extends TestCase
         $width = $menu->panelWidth();
         $segments = $menu->segments($width);
 
-        $this->assertSame(3, $menu->itemCount());
+        $this->assertSame(3, \count(Probe::get($menu, 'items')));
         $this->assertCount(3, $segments);
         $this->assertFalse($segments[0]['separator']);
         $this->assertTrue($segments[1]['separator']);
@@ -70,7 +71,7 @@ final class ContextMenuTest extends TestCase
         $menu = new ContextMenu();
         $this->assertSame(0, $menu->panelWidth());
         $this->assertSame([], $menu->segments(20));
-        $this->assertSame(0, $menu->itemCount());
+        $this->assertSame(0, \count(Probe::get($menu, 'items')));
     }
 
     public function testOpenWithNoItemsIsNoOp(): void

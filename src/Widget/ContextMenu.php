@@ -65,11 +65,6 @@ final class ContextMenu extends OverlayWidget
         $this->selected = 0;
     }
 
-    public function itemCount(): int
-    {
-        return \count($this->items);
-    }
-
     /** Natural width of the panel (unclamped; the coordinator clamps it to fit). */
     public function panelWidth(): int
     {

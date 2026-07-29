@@ -56,12 +56,6 @@ final class LiveKeybindings
         return $this->current->getBindings($action);
     }
 
-    /** @return array<string, array<array-key, string>> the vendor map's own shape */
-    public function all(): array
-    {
-        return $this->current->all();
-    }
-
     /** Re-merge (a plugin toggled, a key rebound) and swap the backing map. */
     public function rebuild(): void
     {

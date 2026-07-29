@@ -28,11 +28,6 @@ final class CursorStyle
         $this->shape = $shape;
     }
 
-    public function shape(): CursorShape
-    {
-        return $this->shape;
-    }
-
     /** The APC cursor marker for the current shape (ScreenWriter turns it into the hardware cursor). */
     public function marker(): string
     {

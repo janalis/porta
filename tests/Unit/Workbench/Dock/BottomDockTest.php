@@ -8,6 +8,7 @@ use PHPUnit\Framework\TestCase;
 use Porta\Editor\BufferManager;
 use Porta\Terminal\TerminalBuffer;
 use Porta\Terminal\TerminalSessions;
+use Porta\Tests\Support\Probe;
 use Porta\Tests\Support\TestBottomDock;
 use Porta\Tests\Support\TestTui;
 use Porta\Widget\CodeEditorWidget;
@@ -220,12 +221,12 @@ final class BottomDockTest extends TestCase
 
         $again = $dock->showList(ResultsPanelMode::Problems, 'Problems', [['path' => 'b.php', 'line' => 1, 'text' => 'boom']]);
         $this->assertSame($first, $again, 'same (mode, title) reuses the tab');
-        $this->assertSame(2, $this->tools->count(), 'no duplicate appended');
+        $this->assertSame(2, \count(Probe::get($this->tools, 'tabs')), 'no duplicate appended');
         $this->assertSame($first, $dock->activeTool(), 'the reused tab took the slot back');
         $this->assertSame([['path' => 'b.php', 'line' => 1, 'text' => 'boom']], $first->rows, 'and its content refreshed');
 
         $other = $dock->showList(ResultsPanelMode::Search, 'Usages: other', []);
-        $this->assertSame(3, $this->tools->count(), 'a different title appends a new tab');
+        $this->assertSame(3, \count(Probe::get($this->tools, 'tabs')), 'a different title appends a new tab');
         $this->assertSame($other, $dock->activeTool());
     }
 
@@ -402,10 +403,10 @@ final class BottomDockTest extends TestCase
         $dock = $this->dock();
         $dock->setPanelRows(17);
 
-        $this->assertSame(17, $this->terminal->visibleRows());
-        $this->assertSame(17, $this->results->visibleRows());
-        $this->assertSame(17, $this->debug->visibleRows());
-        $this->assertSame($this->terminal, $dock->terminalPanel());
+        $this->assertSame(17, Probe::get($this->terminal, 'visibleRows'));
+        $this->assertSame(17, Probe::get($this->results, 'visibleRows'));
+        $this->assertSame(17, Probe::get($this->debug, 'visibleRows'));
+        $this->assertSame($this->terminal, Probe::get($dock, 'terminalPanel'));
     }
 
     public function testRevealingTheAlreadyVisibleDebugTabStillFocusesIt(): void

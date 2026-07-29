@@ -64,10 +64,15 @@ final class SettingsViewController implements FullScreenView
             ->onExit($exit);
         $this->form
             ->onChange($this->changeSetting(...))
+            // '2' on the form jumps to the Keybindings page (the widget
+            // advertises the key; this wiring is what makes it real).
+            ->onShowKeybindings(fn () => $this->selectSection('keybindings'))
             ->onFocusNext($this->focusNav(...))
             ->onExit($exit);
         $this->keymapList
             ->onRebind($this->rebind(...))
+            // '1' on the keybindings list jumps back to the Settings form.
+            ->onShowSettings(fn () => $this->selectSection('general'))
             ->onFocusNext($this->focusNav(...))
             ->onExit($exit);
     }

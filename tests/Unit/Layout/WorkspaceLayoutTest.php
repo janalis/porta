@@ -6,6 +6,7 @@ namespace Porta\Tests\Unit\Layout;
 
 use PHPUnit\Framework\TestCase;
 use Porta\Layout\WorkspaceLayout;
+use Porta\Tests\Support\Probe;
 use Porta\Tests\Support\TestWorkspaceLayout;
 use Porta\Widget\Support\TabBarPosition;
 use Porta\Widget\TabBarWidget;
@@ -39,7 +40,7 @@ final class WorkspaceLayoutTest extends TestCase
         $layout = $this->layout();
 
         $this->assertSame('main', $layout->main()->getId());
-        $this->assertSame(['tabs', 'editor-body'], $this->ids($layout->editorPane()), 'top position at boot');
+        $this->assertSame(['tabs', 'editor-body'], $this->ids(Probe::get($layout, 'editorPane')), 'top position at boot');
         $this->assertSame(['breadcrumbs', 'find-bar', 'editor'], $this->ids($layout->editorBody()), 'the find bar sits below the breadcrumbs, above the content slot');
         $this->assertSame(['git-tabs', 'git-changes', 'git-commit'], $this->ids($layout->gitLeft()));
         $this->assertSame([], $layout->gitArea()->all(), 'horizontal areas are filled by the RTL-aware pane ordering');
@@ -69,12 +70,12 @@ final class WorkspaceLayoutTest extends TestCase
         $layout = $this->layout();
 
         $layout->setTabBarPosition(TabBarPosition::Bottom);
-        $this->assertSame(['editor-body', 'tabs'], $this->ids($layout->editorPane()), 'bottom: strip after the body');
+        $this->assertSame(['editor-body', 'tabs'], $this->ids(Probe::get($layout, 'editorPane')), 'bottom: strip after the body');
 
         $layout->setTabBarPosition(TabBarPosition::Left);
-        $this->assertSame(['tabs', 'editor-body'], $this->ids($layout->editorPane()), 'left: strip first in the horizontal pane');
+        $this->assertSame(['tabs', 'editor-body'], $this->ids(Probe::get($layout, 'editorPane')), 'left: strip first in the horizontal pane');
 
         $layout->setTabBarPosition(TabBarPosition::Top);
-        $this->assertSame(['tabs', 'editor-body'], $this->ids($layout->editorPane()));
+        $this->assertSame(['tabs', 'editor-body'], $this->ids(Probe::get($layout, 'editorPane')));
     }
 }

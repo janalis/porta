@@ -25,6 +25,16 @@ final class Probe
     }
 
     /**
+     * Invoke a private static method.
+     *
+     * @param class-string $class
+     */
+    public static function invokeStatic(string $class, string $method, mixed ...$args): mixed
+    {
+        return new \ReflectionMethod($class, $method)->invokeArgs(null, $args);
+    }
+
+    /**
      * Read a private static property or class constant.
      *
      * @param class-string $class

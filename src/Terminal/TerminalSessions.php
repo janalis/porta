@@ -69,11 +69,6 @@ final class TerminalSessions
         return $this->sessions;
     }
 
-    public function count(): int
-    {
-        return \count($this->sessions);
-    }
-
     public function isEmpty(): bool
     {
         return [] === $this->sessions;

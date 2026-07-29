@@ -112,11 +112,6 @@ final class DockToolTabs
         return \in_array($tab, $this->tabs, strict: true);
     }
 
-    public function count(): int
-    {
-        return \count($this->tabs);
-    }
-
     /** Remove a tab; the active pointer moves to the nearest surviving neighbour. Returns the new active tab, or null when emptied. */
     public function close(DockToolTab $tab): ?DockToolTab
     {

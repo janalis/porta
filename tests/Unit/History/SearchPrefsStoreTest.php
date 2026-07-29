@@ -6,6 +6,7 @@ namespace Porta\Tests\Unit\History;
 
 use PHPUnit\Framework\TestCase;
 use Porta\History\SearchPrefsStore;
+use Porta\Tests\Support\Probe;
 use Porta\Tests\Support\TempProject;
 use Porta\Ui\ScopeKind;
 
@@ -17,7 +18,7 @@ final class SearchPrefsStoreTest extends TestCase
 
         $this->assertSame(ScopeKind::Project, $store->lastScope());
         $this->assertSame('', $store->lastMask());
-        $this->assertSame([], $store->recentMasks());
+        $this->assertSame([], Probe::get($store, 'recentMasks'));
     }
 
     public function testPersistsScopeAndMaskAcrossInstances(): void
@@ -39,7 +40,7 @@ final class SearchPrefsStoreTest extends TestCase
         $store->addRecentMask('*.js');
         $store->addRecentMask('*.php'); // moves *.php back to the front
 
-        $this->assertSame(['*.php', '*.js'], $store->recentMasks());
+        $this->assertSame(['*.php', '*.js'], Probe::get($store, 'recentMasks'));
     }
 
     public function testBlankRecentMasksAreIgnored(): void
@@ -48,7 +49,7 @@ final class SearchPrefsStoreTest extends TestCase
         $store->addRecentMask('   ');
         $store->addRecentMask('');
 
-        $this->assertSame([], $store->recentMasks());
+        $this->assertSame([], Probe::get($store, 'recentMasks'));
     }
 
     public function testRecentMasksCapAtTwenty(): void
@@ -58,8 +59,8 @@ final class SearchPrefsStoreTest extends TestCase
             $store->addRecentMask("*.x{$i}");
         }
 
-        $this->assertCount(20, $store->recentMasks());
-        $this->assertSame('*.x24', $store->recentMasks()[0], 'newest first');
+        $this->assertCount(20, Probe::get($store, 'recentMasks'));
+        $this->assertSame('*.x24', Probe::get($store, 'recentMasks')[0], 'newest first');
     }
 
     public function testToleratesAnUnwritableLocation(): void
@@ -71,7 +72,7 @@ final class SearchPrefsStoreTest extends TestCase
             $store->setMask('*.php'); // dumpFile throws → caught, in-memory value still set
             $store->addRecentMask('*.php');
             $this->assertSame('*.php', $store->lastMask());
-            $this->assertSame(['*.php'], $store->recentMasks());
+            $this->assertSame(['*.php'], Probe::get($store, 'recentMasks'));
         } finally {
             is_file($file) && unlink($file);
         }
@@ -100,6 +101,6 @@ final class SearchPrefsStoreTest extends TestCase
         $store = new SearchPrefsStore($mixed->dir);
         $this->assertSame(ScopeKind::Project, $store->lastScope());
         $this->assertSame('', $store->lastMask(), 'a non-string mask is ignored');
-        $this->assertSame(['*.php'], $store->recentMasks());
+        $this->assertSame(['*.php'], Probe::get($store, 'recentMasks'));
     }
 }

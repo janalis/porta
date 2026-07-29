@@ -7,6 +7,7 @@ namespace Porta\Tests\Unit\Highlight;
 use PHPUnit\Framework\TestCase;
 use Porta\Highlight\CodeHighlighter;
 use Porta\Tests\Support\ClosureHighlightProvider;
+use Porta\Tests\Support\Probe;
 use Symfony\Component\Tui\Ansi\AnsiUtils;
 
 final class CodeHighlighterIncrementalTest extends TestCase
@@ -35,12 +36,12 @@ final class CodeHighlighterIncrementalTest extends TestCase
         $highlighter = $this->highlighter();
         $doc = $this->bigDocument();
         $first = $highlighter->highlight($doc, 1);
-        $this->assertSame(1, $highlighter->getStats()['fullParses']);
+        $this->assertSame(1, Probe::get($highlighter, 'fullParses'));
 
         $doc[1500] = '$edited = "new text";';
         $second = $highlighter->highlight($doc, 2);
 
-        $stats = $highlighter->getStats();
+        $stats = ['fullParses' => Probe::get($highlighter, 'fullParses'), 'incrementalUpdates' => Probe::get($highlighter, 'incrementalUpdates')];
         $this->assertSame(1, $stats['fullParses'], 'no second full parse');
         $this->assertSame(1, $stats['incrementalUpdates']);
         $this->assertCount(\count($doc), $second);
@@ -64,8 +65,8 @@ final class CodeHighlighterIncrementalTest extends TestCase
         array_splice($doc, offset: 100, length: 1);
         $afterDelete = $highlighter->highlight($doc, 3);
         $this->assertCount(\count($doc), $afterDelete);
-        $this->assertSame(1, $highlighter->getStats()['fullParses']);
-        $this->assertSame(2, $highlighter->getStats()['incrementalUpdates']);
+        $this->assertSame(1, Probe::get($highlighter, 'fullParses'));
+        $this->assertSame(2, Probe::get($highlighter, 'incrementalUpdates'));
     }
 
     public function testNonLocalChangeForcesFullParse(): void
@@ -79,8 +80,8 @@ final class CodeHighlighterIncrementalTest extends TestCase
         }
         $highlighter->highlight($doc, 2);
 
-        $this->assertSame(2, $highlighter->getStats()['fullParses']);
-        $this->assertSame(0, $highlighter->getStats()['incrementalUpdates']);
+        $this->assertSame(2, Probe::get($highlighter, 'fullParses'));
+        $this->assertSame(0, Probe::get($highlighter, 'incrementalUpdates'));
     }
 
     public function testRepairParseAfterManyIncrementalEdits(): void
@@ -95,7 +96,7 @@ final class CodeHighlighterIncrementalTest extends TestCase
             $highlighter->highlight($doc, $version++);
         }
 
-        $stats = $highlighter->getStats();
+        $stats = ['fullParses' => Probe::get($highlighter, 'fullParses'), 'incrementalUpdates' => Probe::get($highlighter, 'incrementalUpdates')];
         // Edits 1-25 incremental, edit 26 triggers a repair parse (counter
         // resets), edits 27-30 incremental again.
         $this->assertSame(29, $stats['incrementalUpdates']);
@@ -111,8 +112,8 @@ final class CodeHighlighterIncrementalTest extends TestCase
         $doc[1] = '$a = 99;';
         $highlighter->highlight($doc, 2);
 
-        $this->assertSame(2, $highlighter->getStats()['fullParses']);
-        $this->assertSame(0, $highlighter->getStats()['incrementalUpdates']);
+        $this->assertSame(2, Probe::get($highlighter, 'fullParses'));
+        $this->assertSame(0, Probe::get($highlighter, 'incrementalUpdates'));
     }
 
     public function testEmptyEditedLineAndParserFailureFallbacks(): void

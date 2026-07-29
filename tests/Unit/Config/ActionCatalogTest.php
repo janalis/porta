@@ -66,11 +66,6 @@ final class ActionCatalogTest extends TestCase
         }
     }
 
-    public function testKnownActionsAreTheCatalogKeys(): void
-    {
-        $this->assertSame(array_keys(ActionCatalog::ACTIONS), ActionCatalog::knownActions());
-    }
-
     public function testIdeDefaultsCarryOnlyKeyedEntries(): void
     {
         $defaults = ActionCatalog::ideDefaults();
@@ -79,11 +74,12 @@ final class ActionCatalogTest extends TestCase
         $this->assertArrayNotHasKey('cursor_up', $defaults);
     }
 
-    public function testLabelsMapEveryAction(): void
+    public function testEveryActionCarriesALabel(): void
     {
-        $labels = ActionCatalog::labels();
-        $this->assertSame('Save File', $labels['save']);
-        $this->assertCount(\count(ActionCatalog::ACTIONS), $labels);
+        $this->assertSame('Save File', ActionCatalog::label('save'));
+        foreach (ActionCatalog::ACTIONS as $spec) {
+            $this->assertNotSame('', $spec['label']);
+        }
     }
 
     public function testLabelLookup(): void

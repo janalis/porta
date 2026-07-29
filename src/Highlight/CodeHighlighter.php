@@ -366,16 +366,6 @@ final class CodeHighlighter implements HighlightSink
     }
 
     /**
-     * Parse/update counters, for tests and debugging.
-     *
-     * @return array{fullParses: int, incrementalUpdates: int}
-     */
-    public function getStats(): array
-    {
-        return ['fullParses' => $this->fullParses, 'incrementalUpdates' => $this->incrementalUpdates];
-    }
-
-    /**
      * For a local edit in a large document, splice per-line-highlighted
      * replacements into the previous result instead of re-parsing everything.
      * Multi-line tokens crossing the edited lines may lose their color until

@@ -176,7 +176,7 @@ final class TerminalBufferTest extends TestCase
         $b->feed("a\nb\nc\nd");
 
         $this->assertSame(4, $b->lineCount());
-        $this->assertSame(['c', 'd'], array_map(AnsiUtils::stripAnsiCodes(...), $b->tail(2)));
+        $this->assertSame(['c', 'd'], array_map(AnsiUtils::stripAnsiCodes(...), \array_slice($this->rows($b->getLines()), -2)));
     }
 
     public function testEscapeSplitAcrossChunksIsBuffered(): void

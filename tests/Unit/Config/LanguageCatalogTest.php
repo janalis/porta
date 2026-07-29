@@ -8,6 +8,7 @@ use PHPUnit\Framework\TestCase;
 use Porta\Config\LanguageCatalog;
 use Porta\Support\LanguageMap;
 use Porta\Support\ProjectPaths;
+use Porta\Tests\Support\Probe;
 
 final class LanguageCatalogTest extends TestCase
 {
@@ -39,7 +40,7 @@ final class LanguageCatalogTest extends TestCase
     public function testCatalogCoversExactlyTheResolvableLanguageIds(): void
     {
         $catalog = LanguageCatalog::ids();
-        $resolvable = LanguageMap::lspIds();
+        $resolvable = array_values(array_unique(array_filter(array_map(static fn (array $entry): ?string => $entry[1], Probe::getStatic(LanguageMap::class, 'EXTENSIONS')))));
 
         sort($catalog);
         sort($resolvable);

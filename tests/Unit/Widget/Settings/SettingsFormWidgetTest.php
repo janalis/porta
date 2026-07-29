@@ -9,6 +9,7 @@ use Porta\I18n\Translator;
 use Porta\Settings\SettingsRow;
 use Porta\Settings\SettingsRowKind;
 use Porta\Tests\Support\AttachedStyles;
+use Porta\Tests\Support\Probe;
 use Porta\Tests\Support\RendersWidget;
 use Porta\Widget\Settings\SettingsFormWidget;
 use Symfony\Component\Tui\Ansi\AnsiUtils;
@@ -145,14 +146,14 @@ final class SettingsFormWidgetTest extends TestCase
         $this->assertStringContainsString("\x1b[48;5;31m", $rendered[0], 'row 0 selected + focused');
 
         $widget->handleInput("\x1b[B"); // down
-        $this->assertSame(1, $widget->selectedIndex());
+        $this->assertSame(1, Probe::get($widget, 'selected'));
         $rendered = $widget->render(new RenderContext(60, 8));
         $this->assertStringNotContainsString("\x1b[48;5;31m", $rendered[0]);
         $this->assertStringContainsString("\x1b[48;5;31m", $rendered[1], 'the highlight followed');
 
         $widget->handleInput("\x1b[A"); // up
         $widget->handleInput("\x1b[A"); // clamps at the top
-        $this->assertSame(0, $widget->selectedIndex());
+        $this->assertSame(0, Probe::get($widget, 'selected'));
     }
 
     public function testUnfocusedSelectionUsesADimmerBar(): void
@@ -253,7 +254,7 @@ final class SettingsFormWidgetTest extends TestCase
     {
         $widget = $this->widget($changes);
         $widget->handleClick(1); // Relative line numbers row
-        $this->assertSame(1, $widget->selectedIndex());
+        $this->assertSame(1, Probe::get($widget, 'selected'));
         $this->assertSame([['relativeLineNumbers', true]], $changes);
 
         $widget->handleClick(99); // past the last row
@@ -285,7 +286,7 @@ final class SettingsFormWidgetTest extends TestCase
             $widget->handleInput("\x1b[B"); // selected = 4
         }
         $widget->setRows([new SettingsRow(key: 'inlineDiagnostics', label: 'Inline diagnostics', kind: SettingsRowKind::Bool, value: true, restart: false)]);
-        $this->assertSame(0, $widget->selectedIndex());
+        $this->assertSame(0, Probe::get($widget, 'selected'));
     }
 
     public function testInputHookConsumesFirst(): void
@@ -346,7 +347,7 @@ final class SettingsFormWidgetTest extends TestCase
     {
         $widget = $this->textWidget($changes);
         $widget->handleInput("\r"); // Enter starts editing row 0
-        $this->assertTrue($widget->isEditing());
+        $this->assertTrue(null !== Probe::get($widget, 'editing'));
 
         $widget->handleInput('-');
         $widget->handleInput('x');
@@ -354,7 +355,7 @@ final class SettingsFormWidgetTest extends TestCase
 
         $widget->handleInput("\x7f"); // backspace
         $widget->handleInput("\r"); // Enter commits
-        $this->assertFalse($widget->isEditing());
+        $this->assertFalse(null !== Probe::get($widget, 'editing'));
         $this->assertSame([['lspServer', 'phpactor-']], $changes);
     }
 
@@ -364,7 +365,7 @@ final class SettingsFormWidgetTest extends TestCase
         $widget->handleInput("\r"); // edit
         $widget->handleInput('z');
         $widget->handleInput("\x1b"); // Esc cancels
-        $this->assertFalse($widget->isEditing());
+        $this->assertFalse(null !== Probe::get($widget, 'editing'));
         $this->assertSame([], $changes);
     }
 
@@ -372,11 +373,11 @@ final class SettingsFormWidgetTest extends TestCase
     {
         $widget = $this->textWidget($changes);
         $widget->handleClick(1); // the empty text row
-        $this->assertTrue($widget->isEditing());
-        $this->assertSame(1, $widget->selectedIndex());
+        $this->assertTrue(null !== Probe::get($widget, 'editing'));
+        $this->assertSame(1, Probe::get($widget, 'selected'));
 
         $widget->handleInput("\x1b[B"); // arrow ignored while editing
-        $this->assertSame(1, $widget->selectedIndex());
+        $this->assertSame(1, Probe::get($widget, 'selected'));
         $widget->handleInput('a');
         $widget->handleInput("\r");
         $this->assertSame([['other', 'a']], $changes);
@@ -386,9 +387,9 @@ final class SettingsFormWidgetTest extends TestCase
     {
         $widget = $this->textWidget();
         $widget->handleInput("\r");
-        $this->assertTrue($widget->isEditing());
+        $this->assertTrue(null !== Probe::get($widget, 'editing'));
         $widget->setRows([new SettingsRow(key: 'lspServer', label: 'LSP server', kind: SettingsRowKind::Text, value: 'x', restart: false)]);
-        $this->assertFalse($widget->isEditing());
+        $this->assertFalse(null !== Probe::get($widget, 'editing'));
     }
 
     public function testEditingWithoutAChangeHandlerIsSafe(): void
@@ -408,7 +409,7 @@ final class SettingsFormWidgetTest extends TestCase
         $widget->onInput(static fn (string $d): bool => true);
         $widget->handleInput('q'); // swallowed
         $widget->handleInput("\r"); // swallowed too, so no commit
-        $this->assertTrue($widget->isEditing());
+        $this->assertTrue(null !== Probe::get($widget, 'editing'));
         $this->assertSame([], $changes);
     }
 

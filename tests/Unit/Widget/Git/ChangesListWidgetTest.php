@@ -7,6 +7,7 @@ namespace Porta\Tests\Unit\Widget\Git;
 use PHPUnit\Framework\TestCase;
 use Porta\Git\ChangeEntry;
 use Porta\I18n\Translator;
+use Porta\Tests\Support\Probe;
 use Porta\Tests\Support\RendersWidget;
 use Porta\Widget\Git\ChangesListCallbacks;
 use Porta\Widget\Git\ChangesListWidget;
@@ -231,7 +232,7 @@ final class ChangesListWidgetTest extends TestCase
 
         $widget->handleInput("\x1b[B"); // swallowed by the hook
         $this->assertSame('src/a.php', $widget->selectedEntry()?->path);
-        $this->assertSame(4, $widget->entryCount());
+        $this->assertSame(4, \count(Probe::get($widget, 'entries')));
     }
 
     public function testAlwaysFillsItsPane(): void

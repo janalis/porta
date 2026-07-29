@@ -121,11 +121,6 @@ final class ChangesListWidget extends AbstractWidget implements FocusableInterfa
         return $this->entries[$this->list->selected()] ?? null;
     }
 
-    public function entryCount(): int
-    {
-        return \count($this->entries);
-    }
-
     public function handleInput(string $data): void
     {
         if ($this->inputHookHandled($data)) {

@@ -23,6 +23,7 @@ use Porta\Layout\LayoutController;
 use Porta\Support\Clipboard;
 use Porta\Tests\Support\GitBinary;
 use Porta\Tests\Support\Presence;
+use Porta\Tests\Support\Probe;
 use Porta\Tests\Support\PumpsLoop;
 use Porta\Tests\Support\StatusReads;
 use Porta\Tests\Support\TempProject;
@@ -241,14 +242,14 @@ final class GitViewControllerTest extends TestCase
         $controller->focusNext();
         $this->assertSame($this->changes, $this->tui->getFocus(), 'wraps back to the changes list');
 
-        $controller->focusPrevious();
+        $controller->cycleFocus(-1);
         $this->assertSame($this->commitBox, $this->tui->getFocus(), 'reverse: changes → commit box');
-        $controller->focusPrevious();
+        $controller->cycleFocus(-1);
         $this->assertSame($this->diffView, $this->tui->getFocus(), 'commit box → diff');
 
         // Focus outside the git panes enters at the changes list either way.
         $this->tui->setFocus($this->menuBar);
-        $controller->focusPrevious();
+        $controller->cycleFocus(-1);
         $this->assertSame($this->changes, $this->tui->getFocus());
     }
 
@@ -661,7 +662,7 @@ final class GitViewControllerTest extends TestCase
         $this->await(fn (): bool => null !== $this->history->selectedCommit());
         $this->assertSame(['git-tabs', 'git-history'], array_map(static fn ($w) => $w->getId(), $this->gitLeft->all()), 'the left pane swapped to the history list (tabs stay on top)');
         $this->assertSame('second', $this->history->selectedCommit()?->subject);
-        $this->assertTrue($this->diffView->isReadOnly());
+        $this->assertTrue(Probe::get($this->diffView, 'readOnly'));
 
         // The files of the newest commit load, and the FIRST file's patch
         // shows immediately — no keyboard step needed to see a diff.
@@ -684,7 +685,7 @@ final class GitViewControllerTest extends TestCase
         $this->history->setFocused(true);
         $this->history->handleInput('1');
         $this->await(fn (): bool => 3 === \count($this->gitLeft->all()));
-        $this->assertFalse($this->diffView->isReadOnly());
+        $this->assertFalse(Probe::get($this->diffView, 'readOnly'));
     }
 
     public function testRightClickSelectsAHistoryCommitForItsContextMenu(): void
@@ -741,7 +742,7 @@ final class GitViewControllerTest extends TestCase
         $controller->close();
         $controller->open(); // must reset to the Changes tab
         $this->await(fn (): bool => 3 === \count($this->gitLeft->all()));
-        $this->assertFalse($this->diffView->isReadOnly());
+        $this->assertFalse(Probe::get($this->diffView, 'readOnly'));
 
         // History-mode focus cycle: history <-> diff only.
         $this->changes->setFocused(true);
@@ -783,7 +784,7 @@ final class GitViewControllerTest extends TestCase
         $this->history->setFocused(true);
         $this->history->handleInput('1');
         $this->awaitTicks(15);
-        $this->assertFalse($this->diffView->isReadOnly(), 'back on Changes, untouched by stale history data');
+        $this->assertFalse(Probe::get($this->diffView, 'readOnly'), 'back on Changes, untouched by stale history data');
     }
 
     private function historyText(): string

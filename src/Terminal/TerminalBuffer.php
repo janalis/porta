@@ -38,14 +38,6 @@ final class TerminalBuffer
         return $this->lines;
     }
 
-    /**
-     * @return string[] the last $count lines
-     */
-    public function tail(int $count): array
-    {
-        return \array_slice($this->lines, max(0, \count($this->lines) - $count));
-    }
-
     public function lineCount(): int
     {
         return \count($this->lines);

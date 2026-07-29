@@ -7,6 +7,7 @@ namespace Porta\Tests\Unit\Overlay\State;
 use PHPUnit\Framework\TestCase;
 use Porta\Overlay\State\FindInFilesModal;
 use Porta\Overlay\State\FindModalCallbacks;
+use Porta\Tests\Support\Probe;
 use Porta\Ui\CaretVisibility;
 use Porta\Ui\Glyphs;
 use Porta\Widget\Render\OverlayCompositor;
@@ -57,7 +58,29 @@ final class FindInFilesModalTest extends TestCase
         $box = $modal->lastBox();
         \assert(null !== $box);
 
-        return OverlayCompositor::placeAt($lines, $placed['rows'], $placed['top'], $placed['col'], $box->width, $columns);
+        return $this->placeAt($lines, $placed['rows'], $placed['top'], $placed['col'], $box->width, $columns);
+    }
+
+    /**
+     * Splice the box rows into the screen lines — the test's own composition
+     * scaffold over the prod {@see OverlayCompositor::into} splicer.
+     *
+     * @param list<string> $lines
+     * @param list<string> $box
+     *
+     * @return list<string>
+     */
+    private function placeAt(array $lines, array $box, int $startRow, int $col, int $width, int $columns): array
+    {
+        foreach ($box as $i => $boxLine) {
+            $row = $startRow + $i;
+            if ($row >= \count($lines)) {
+                break;
+            }
+            $lines[$row] = OverlayCompositor::into($lines[$row], $col, $width, $columns, $boxLine);
+        }
+
+        return $lines;
     }
 
     private function screen(FindInFilesModal $modal): string
@@ -797,7 +820,7 @@ final class FindInFilesModalTest extends TestCase
         $modal->open('Find in Files');
         $modal->setPreview($this->results());
         $lines = $this->compose($modal);
-        $footerRow = $modal->lastFooterRow();
+        $footerRow = Probe::get($modal, 'box')->footerRow ?? -1;
         $footerLine = AnsiUtils::stripAnsiCodes($lines[$footerRow]);
 
         // Hover the "Find window" action → highlight changes and still renders.

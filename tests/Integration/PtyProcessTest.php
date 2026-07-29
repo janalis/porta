@@ -7,6 +7,7 @@ namespace Porta\Tests\Integration;
 use PHPUnit\Framework\TestCase;
 use Porta\Terminal\PtyProcess;
 use Porta\Terminal\TerminalBuffer;
+use Porta\Tests\Support\Probe;
 use Porta\Tests\Support\PumpsLoop;
 use Revolt\EventLoop;
 use Symfony\Component\Tui\Ansi\AnsiUtils;
@@ -37,13 +38,12 @@ final class PtyProcessTest extends TestCase
         });
 
         $this->assertTrue($p->start());
-        $this->assertTrue($p->isPty(), 'a real PTY was allocated');
+        $this->assertTrue(Probe::get($p, 'pty'), 'a real PTY was allocated');
 
         $this->await(static function () use (&$exit): bool {
             return null !== $exit;
         });
         $this->assertSame(3, $exit);
-        $this->assertSame(3, $p->exitCode());
         $lines = array_map(AnsiUtils::stripAnsiCodes(...), $buffer->getLines());
         $this->assertContains('line1', $lines);
         $this->assertContains('line2', $lines);
@@ -65,7 +65,6 @@ final class PtyProcessTest extends TestCase
         });
 
         $this->assertStringContainsString('ping', implode("\n", array_map(AnsiUtils::stripAnsiCodes(...), $buffer->getLines())));
-        $p->kill();
         $p->stop();
     }
 

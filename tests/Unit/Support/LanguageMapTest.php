@@ -8,6 +8,7 @@ use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\TestCase;
 use Porta\Support\LanguageMap;
 use Porta\Support\ProjectPaths;
+use Porta\Tests\Support\Probe;
 
 /**
  * Pins both columns of {@see LanguageMap} per extension.
@@ -107,7 +108,7 @@ final class LanguageMapTest extends TestCase
 
     public function testLspIdsAreDistinctAndExcludePlaintext(): void
     {
-        $ids = LanguageMap::lspIds();
+        $ids = array_values(array_unique(array_filter(array_map(static fn (array $entry): ?string => $entry[1], Probe::getStatic(LanguageMap::class, 'EXTENSIONS')))));
 
         $this->assertSame(array_values(array_unique($ids)), $ids, 'no duplicates');
         $this->assertNotContains('plaintext', $ids);

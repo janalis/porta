@@ -47,12 +47,6 @@ final class SearchPrefsStore
         return $this->mask;
     }
 
-    /** @return list<string> most-recent-first */
-    public function recentMasks(): array
-    {
-        return $this->recentMasks;
-    }
-
     /** Record the active scope kind (on each Alt+S cycle). */
     public function setScope(ScopeKind $scope): void
     {

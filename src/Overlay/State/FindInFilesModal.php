@@ -762,12 +762,6 @@ final class FindInFilesModal
         return $this->box;
     }
 
-    /** The last composited footer row (for mouse hit-testing and tests); -1 while unplaced. */
-    public function lastFooterRow(): int
-    {
-        return $this->box?->footerRow ?? -1;
-    }
-
     /**
      * A left-click at editor-pane-relative coords: fields focus, option tags /
      * scope toggle, footer actions fire, preview rows jump (or toggle a match's

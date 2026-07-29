@@ -597,4 +597,20 @@ final class SettingsViewControllerTest extends TestCase
             TestTui::create(80, 24),
         );
     }
+
+    public function testTheOneTwoKeysJumpBetweenFormAndKeybindings(): void
+    {
+        $controller = $this->controller();
+        $controller->open();
+
+        // '2' on the form jumps to the Keybindings page...
+        $this->form->setFocused(true);
+        $this->form->handleInput('2');
+        $this->assertSame('keybindings', $this->nav->selectedId(), "the form's advertised '2' key swaps to the keybindings page");
+
+        // ...and '1' on the keybindings list jumps back to the Settings form.
+        $this->keymapList->setFocused(true);
+        $this->keymapList->handleInput('1');
+        $this->assertSame('general', $this->nav->selectedId(), "the list's advertised '1' key swaps back");
+    }
 }

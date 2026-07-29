@@ -19,6 +19,7 @@ use Porta\Plugin\PluginManager;
 use Porta\Plugin\PluginMenuSpec;
 use Porta\Plugin\PluginRuntime;
 use Porta\Plugin\PluginSettings;
+use Porta\Tests\Support\Probe;
 use Porta\Tests\Support\RecordingDiagnosticsSink;
 use Porta\Tests\Support\RecordingFileOpener;
 use Porta\Tests\Support\TestTui;
@@ -60,7 +61,7 @@ final class PluginManagerTest extends TestCase
         $manager->commit($api);
 
         $this->assertTrue($manager->hasPlugin('demo'));
-        $this->assertSame(['demo'], $manager->names());
+        $this->assertSame(['demo'], array_keys(Probe::get($manager, 'names')));
         $this->assertSame(['demo:hello' => ['ctrl+alt+y']], $manager->defaultKeys(), 'keyless commands contribute no defaults');
         $this->assertEquals([new PluginMenuSpec('demo', 'i:demo:hello')], $manager->menuSpecs());
 
@@ -120,7 +121,7 @@ final class PluginManagerTest extends TestCase
         $manager->deactivate('demo', $registry); // unknown now → no-op
 
         $this->assertFalse($manager->hasPlugin('demo'));
-        $this->assertSame(['bystander'], $manager->names(), 'the other plugin is untouched');
+        $this->assertSame(['bystander'], array_keys(Probe::get($manager, 'names')), 'the other plugin is untouched');
         $this->assertContains('bystander:stay', $registry->keyBoundIds());
         $this->assertSame([], $manager->menuSpecs());
         $this->assertSame([], $manager->defaultKeys());

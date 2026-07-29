@@ -144,26 +144,6 @@ final class LanguageMap
     }
 
     /**
-     * Every distinct LSP languageId the map can produce, `plaintext` aside.
-     *
-     * @return list<string>
-     */
-    public static function lspIds(): array
-    {
-        $ids = [];
-
-        foreach (self::EXTENSIONS as [, $lsp]) {
-            if (null === $lsp) {
-                continue;
-            }
-
-            $ids[$lsp] = true;
-        }
-
-        return array_keys($ids);
-    }
-
-    /**
      * Every distinct highlighting grammar name the map can produce, sorted.
      *
      * The settings page probes backends against this list to work out which

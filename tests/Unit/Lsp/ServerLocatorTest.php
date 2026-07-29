@@ -8,6 +8,7 @@ use PHPUnit\Framework\TestCase;
 use Porta\Lsp\ServerLocator;
 use Porta\Tests\Support\ClearsPortaLsp;
 use Porta\Tests\Support\PreservesPath;
+use Porta\Tests\Support\Probe;
 use Porta\Tests\Support\TempProject;
 
 final class ServerLocatorTest extends TestCase
@@ -177,7 +178,7 @@ final class ServerLocatorTest extends TestCase
 
     public function testDescribeParsesACommand(): void
     {
-        $this->assertSame(['node', '/x/ls.js', '--stdio'], ServerLocator::describe('node /x/ls.js --stdio')['command']);
-        $this->assertSame('ls', ServerLocator::describe('node /x/ls.js --stdio')['name']);
+        $this->assertSame(['node', '/x/ls.js', '--stdio'], Probe::invokeStatic(ServerLocator::class, 'server', Probe::invokeStatic(ServerLocator::class, 'split', 'node /x/ls.js --stdio'))['command']);
+        $this->assertSame('ls', Probe::invokeStatic(ServerLocator::class, 'server', Probe::invokeStatic(ServerLocator::class, 'split', 'node /x/ls.js --stdio'))['name']);
     }
 }

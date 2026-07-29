@@ -36,9 +36,4 @@ trait PanelRows
             $this->invalidate();
         }
     }
-
-    public function visibleRows(): int
-    {
-        return $this->visibleRows;
-    }
 }

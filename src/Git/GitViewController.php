@@ -534,12 +534,6 @@ final class GitViewController implements FullScreenView
         $this->cycleFocus(1);
     }
 
-    /** The reverse walk of {@see focusNext} (Ctrl+F6). */
-    public function focusPrevious(): void
-    {
-        $this->cycleFocus(-1);
-    }
-
     public function cycleFocus(int $direction): bool
     {
         /** @var list<FocusableInterface&AbstractWidget> $order */

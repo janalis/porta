@@ -7,6 +7,7 @@ namespace Porta\Tests\Unit\Terminal;
 use PHPUnit\Framework\TestCase;
 use Porta\Terminal\PtyProcess;
 use Porta\Terminal\TerminalSessions;
+use Porta\Tests\Support\Probe;
 use Porta\Tests\Support\PumpsLoop;
 use Revolt\EventLoop;
 
@@ -22,7 +23,7 @@ final class TerminalSessionsTest extends TestCase
 
         $a = $sessions->create('shell:1', 'sh 1');
         $b = $sessions->create('run:build', 'build');
-        $this->assertSame(2, $sessions->count());
+        $this->assertSame(2, \count(Probe::get($sessions, 'sessions')));
         $this->assertSame($b, $sessions->active(), 'create activates the newest');
         $this->assertSame(1, $sessions->activeIndex());
         $this->assertSame($a, $sessions->find('shell:1'));
@@ -75,7 +76,7 @@ final class TerminalSessionsTest extends TestCase
         $c = $sessions->create('c', 'c'); // active at index 2
 
         $this->assertSame($b, $sessions->close(2), 'closing the active pointer falls back to the neighbour');
-        $this->assertSame(2, $sessions->count());
+        $this->assertSame(2, \count(Probe::get($sessions, 'sessions')));
         $this->assertSame($b, $sessions->close(9), 'an out-of-range close is a no-op returning the active');
         $this->assertSame($b, $sessions->active());
 

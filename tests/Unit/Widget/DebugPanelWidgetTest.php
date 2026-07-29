@@ -6,6 +6,7 @@ namespace Porta\Tests\Unit\Widget;
 
 use PHPUnit\Framework\TestCase;
 use Porta\Debug\DebugState;
+use Porta\Tests\Support\Probe;
 use Porta\Widget\DebugPanelCallbacks;
 use Porta\Widget\DebugPanelWidget;
 use Symfony\Component\Tui\Ansi\AnsiUtils;
@@ -230,7 +231,7 @@ final class DebugPanelWidgetTest extends TestCase
         $this->assertStringNotContainsString('Frames', $screen, 'resuming clears the stale stack');
 
         $panel->setVisibleRows(4);
-        $this->assertSame(4, $panel->visibleRows());
+        $this->assertSame(4, Probe::get($panel, 'visibleRows'));
     }
 
     public function testWatchesSectionPendingResultErrorAndStaleIndex(): void

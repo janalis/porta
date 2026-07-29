@@ -8,6 +8,7 @@ use PHPUnit\Framework\TestCase;
 use Porta\Config\CommandRegistry;
 use Porta\Tests\Support\ClearsPortaLsp;
 use Porta\Tests\Support\PreservesPath;
+use Porta\Tests\Support\Probe;
 use Porta\Tests\Support\RunsIde;
 use Porta\Tests\Support\Services;
 use Porta\Tests\Support\TempProject;
@@ -80,7 +81,7 @@ final class IdeLayoutFocusTest extends TestCase
                     $tui->handleInput(\sprintf("\x1b[<0;%d;%dm", $grabCol, $top - 4)); // release
                 },
                 320 => function ($tui) use ($project): void {
-                    $this->assertSame(16, $tui->getById('terminal')->visibleRows(), 'panel grew by the drag (clamped at rows-8)');
+                    $this->assertSame(16, Probe::get($tui->getById('terminal'), 'visibleRows'), 'panel grew by the drag (clamped at rows-8)');
                     $layout = json_decode((string) file_get_contents($project->path('.porta/layout.json')), associative: true);
                     $this->assertSame(67, $layout['bottomPanelHeightPercent'], 'saved as a percentage (round(16/24))');
                 },
@@ -118,8 +119,8 @@ final class IdeLayoutFocusTest extends TestCase
                     $tui->handleInput(\sprintf("\x1b[<0;60;%dm", $top - 4)); // release
                 },
                 320 => function ($tui) use ($project, &$expected): void {
-                    $this->assertSame($expected, $tui->getById('results')->visibleRows(), 'the results pane grew by the drag');
-                    $this->assertSame($expected, $tui->getById('terminal')->visibleRows(), 'shared bottom-panel height stays in sync');
+                    $this->assertSame($expected, Probe::get($tui->getById('results'), 'visibleRows'), 'the results pane grew by the drag');
+                    $this->assertSame($expected, Probe::get($tui->getById('terminal'), 'visibleRows'), 'shared bottom-panel height stays in sync');
                     $layout = json_decode((string) file_get_contents($project->path('.porta/layout.json')), associative: true);
                     $this->assertSame((int) round(($expected * 100) / 24), $layout['bottomPanelHeightPercent'], 'saved as a percentage of the 24 rows');
                 },
@@ -155,7 +156,7 @@ final class IdeLayoutFocusTest extends TestCase
                     $tui->handleInput(\sprintf("\x1b[<0;60;%dm", $top - 4)); // release
                 },
                 320 => function ($tui) use (&$expected): void {
-                    $this->assertSame($expected, $tui->getById('results')->visibleRows(), 'the empty results pane is resizable');
+                    $this->assertSame($expected, Probe::get($tui->getById('results'), 'visibleRows'), 'the empty results pane is resizable');
                 },
             ],
         );
@@ -181,7 +182,7 @@ final class IdeLayoutFocusTest extends TestCase
             [
                 200 => function ($tui): void {
                     $this->assertSame(40, $tui->getById('tree')->width(), '25% of 160 columns');
-                    $this->assertSame(10, $tui->getById('terminal')->visibleRows(), '40% of 24 rows');
+                    $this->assertSame(10, Probe::get($tui->getById('terminal'), 'visibleRows'), '40% of 24 rows');
                 },
             ],
         );
@@ -308,9 +309,9 @@ final class IdeLayoutFocusTest extends TestCase
                 350 => function ($tui, $terminal, $ide): void {
                     Services::resolve($ide, CommandRegistry::class)->run('ide_terminal');
                     $tui->tick(); // render a frame so the panel has a rect to resize from
-                    $rows = $tui->getById('terminal')->visibleRows();
+                    $rows = Probe::get($tui->getById('terminal'), 'visibleRows');
                     $tui->handleInput("\x1b[24;2~"); // grow the focused bottom panel
-                    $this->assertSame($rows + 1, $tui->getById('terminal')->visibleRows());
+                    $this->assertSame($rows + 1, Probe::get($tui->getById('terminal'), 'visibleRows'));
                 },
                 500 => function () use ($project): void {
                     $layout = json_decode((string) file_get_contents($project->dir.'/.porta/layout.json'), associative: true);

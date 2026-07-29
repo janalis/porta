@@ -112,16 +112,6 @@ final class SettingsFormWidget extends AbstractWidget implements FocusableInterf
         $this->invalidate();
     }
 
-    public function selectedIndex(): int
-    {
-        return $this->selected;
-    }
-
-    public function isEditing(): bool
-    {
-        return null !== $this->editing;
-    }
-
     public function handleInput(string $data): void
     {
         if ($this->inputHookHandled($data)) {

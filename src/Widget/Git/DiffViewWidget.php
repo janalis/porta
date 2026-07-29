@@ -189,11 +189,6 @@ final class DiffViewWidget extends AbstractWidget implements FocusableInterface,
         $this->readOnly = false;
     }
 
-    public function isReadOnly(): bool
-    {
-        return $this->readOnly;
-    }
-
     /**
      * Show $document for $path (null document = the placeholder message). A
      * reload of the SAME path (after staging part of it) keeps the cursor and
