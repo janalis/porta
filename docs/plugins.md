@@ -5,8 +5,9 @@ Porta is extensible with small PHP plugins: a directory containing a
 hooks through a stable API. Plugins run in-process on the shared event loop
 and are trusted code, like composer scripts.
 
-Four complete plugins ship **bundled with Porta** and are available in every
-project ([`.porta/plugins/`](../.porta/plugins/) in the package):
+Eight plugins ship **bundled with Porta** ([`plugins/`](../plugins/) in the
+package; bundled plugins are opt-in via `enabledPlugins`). Four of them are the
+documented reference patterns:
 
 | Plugin | What it shows |
 | --- | --- |
@@ -14,6 +15,11 @@ project ([`.porta/plugins/`](../.porta/plugins/) in the package):
 | `phpstan` | Publishing editor diagnostics (`setDiagnostics`) — inline messages, stripe, Problems panel — with "Analyse on save" |
 | `mago` | Both patterns at once: format-in-place + JSON-lint diagnostics, with separate "Format on save" / "Lint on save" settings (both on chains format→lint) |
 | `psalm` | The phpstan pattern for Psalm's JSON array output, with "Analyse on save" |
+
+The other four: `tempest` (the built-in-quality syntax highlighting engine the
+Settings ▸ Highlighting page offers), `chroma` (an external-highlighter
+example), and `phpantom` / `phpactor` (PHP language-server providers — the
+Welcome screen's one-keystroke LSP setup).
 
 The on-save options are persisted bool settings (each plugin's Settings page),
 also flippable live via the palette's "Toggle … on Save" commands. Their menu
@@ -27,7 +33,7 @@ entries with separators.
 | --- | --- |
 | Project | `<project>/.porta/plugins/<name>/plugin.php` |
 | Global | `~/.porta/plugins/<name>/plugin.php` (`PORTA_HOME` overrides the home directory) |
-| Bundled | shipped inside the Porta package, available everywhere |
+| Bundled | `<package>/plugins/<name>/plugin.php`, available everywhere (opt-in) |
 
 All three sources are scanned at startup, in that precedence order: a project
 plugin shadows a global one of the same directory name, and both shadow a

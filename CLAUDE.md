@@ -117,7 +117,7 @@ dangling reference; grep the old namespace to prove zero. Membership rules:
 **Autoloading.** `composer.json` sets `config.optimize-autoloader` (precomputed classmap every
 boot; PSR-4 fallback keeps new files working in dev). CI's `composer install` adds
 `--classmap-authoritative` (safe: `src/` is PSR-4-clean, the only dynamic `class_exists`/`new
-$class` pass `autoload: false`, and bundled `.porta/plugins/*/plugin.php` are `require`d directly,
+$class` pass `autoload: false`, and bundled `plugins/*/plugin.php` are `require`d directly,
 never Composer-autoloaded). Every test namespace must mirror its path under `tests/` or the
 authoritative classmap rejects it — `composer dump-autoload --classmap-authoritative` surfaces any
 PSR-4 violation. Making `composer.json` itself `classmap-authoritative` was considered and
@@ -646,7 +646,7 @@ line-count guard and the `AnsiCodeTracker` per-line SGR re-open. The engine behi
   still named there.
 - `Highlight/TempestBackend` (the house grammars: PHP docblocks, JSON, JSONC) and the four
   `TerminalTheme` classes stay in `src/` deliberately: `tempest/highlight` is a composer
-  requirement the diff view and project search use directly, and `.porta/plugins` is **outside
+  requirement the diff view and project search use directly, and the bundled `plugins/` dir is **outside
   the 100% coverage gate** — moving grammars there would launder them past it. Bundled plugin
   files are registration only.
 - Plugins register via `PluginApi::registerHighlighter()` and, separately,
@@ -763,8 +763,10 @@ the old readonly `SidebarResize` ferry-spec is subsumed and gone.
 
 **Plugins.** User PHP loaded at boot from three sources in precedence order —
 `<project>/.porta/plugins/*/plugin.php`, `~/.porta/plugins/*/plugin.php` (`PORTA_HOME` overrides
-the home dir), and the plugins **bundled in the Porta package** (`PORTA_EMBEDDED_PLUGINS`
-overrides; earlier sources shadow later ones by directory name). Project and global plugins are
+the home dir), and the plugins **bundled in the Porta package** at `<package>/plugins/`
+(`PORTA_EMBEDDED_PLUGINS` overrides; earlier sources shadow later ones by directory name — and
+since the bundled source left `.porta/plugins`, a Porta dev checkout loads them as bundled/
+opt-in, not accidentally as project plugins). Project and global plugins are
 **opt-out** (loaded by default); **bundled ones are opt-in** — only names in `enabledPlugins`
 load, which is why the shipped `tempest` highlighter is off unless asked for. Names in
 `disabledPlugins` are skipped at boot in every source. phpunit pins `PORTA_EMBEDDED_PLUGINS` to
@@ -801,8 +803,9 @@ still after every *rebuild* listener, which is what its contract means. Plugin c
 `CommandRegistry` after core (core wins key collisions) and surface in the palette plus a
 trailing translated "Plugins" menu (`MenuModel::build`'s `$pluginSpecs`, grouped per plugin
 with separators). Prefer anonymous
-classes in plugin files — cross-plugin class redeclaration is an uncatchable fatal. Four complete
-reference plugins ship in this repo under `.porta/plugins/`: `php-cs-fixer` (async process via
+classes in plugin files — cross-plugin class redeclaration is an uncatchable fatal. EIGHT plugins
+ship in this repo under `plugins/` (also: `tempest`, `chroma`, `phpantom`, `phpactor`); four are
+the complete reference patterns: `php-cs-fixer` (async process via
 `Support/AsyncProcess`, binary discovery via `PluginApi::projectRoot()`, persisted
 `autoFormat` on-save setting), `phpstan` (publishes editor diagnostics via
 `PluginApi::setDiagnostics`, which rides `BufferService::applyDiagnostics` — inline messages,
