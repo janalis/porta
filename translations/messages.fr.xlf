@@ -2166,6 +2166,14 @@
         <source>Graph: Export PNG</source>
         <target>Graphe : Exporter en PNG</target>
       </trans-unit>
+      <trans-unit id="544">
+        <source>Graphviz dot path</source>
+        <target>Chemin de l'exécutable Graphviz dot</target>
+      </trans-unit>
+      <trans-unit id="545">
+        <source>Architecture command (stdout = DOT)</source>
+        <target>Commande d'architecture (stdout = DOT)</target>
+      </trans-unit>
     </body>
   </file>
 </xliff>

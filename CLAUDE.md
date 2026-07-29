@@ -105,6 +105,12 @@ dangling reference; grep the old namespace to prove zero. Membership rules:
   `PanelWidth` now defaults `minWidth`/`maxWidth` to 24/200 (override only where a panel genuinely
   differs). The single tab cell lives in `Widget/Render/TabStripRenderer` as
   `measureCell`/`renderCell` (TabCell merged in — 100% co-change, same tier).
+- **`Graph/`** — the Graphviz viewer domain: the layout model VOs + `DotJsonParser` (json0 →
+  screen-down points, the y-flip done ONCE), `LayoutEngine`/`DotLayoutEngine` (async `dot
+  -Tjson0`, stdin-fed), the architecture scanner (`ComposerRoots`/`UseScanner`/
+  `NamespaceGraphScanner`/`DotWriter`) and the two controllers
+  (`ArchitectureGraphController`, `GraphTabActions`). The widget is `Widget/GraphViewerWidget`;
+  its stateless rasterizer `Widget/Render/GraphRenderer`+`GraphCellGrid` (render-tier rule).
 - Suffix homes: mouse/keymap routers in `Input/`, typed events in `Event/`, LSP controllers in
   `Lsp/`, `*Store` state beside its domain.
 
@@ -266,10 +272,12 @@ one-method callers whose method lives in no role — `Tree/TreeOperations` (`sho
 would make the param ambiguous to autowiring, so they stay too. `BufferService` (25 public
 methods, 13 concrete consumers) was re-measured: no consumer uses only the `FileOpener` slice,
 so it keeps its concrete hints beyond the extracted `DiagnosticsSink`. `Editor/BufferNavigator`
-IS the image viewer's handler (round 8: `ImageViewerActions` was 80% verbatim forwarding to it,
-so it implements `ImageViewerHandler` itself — four hooks are its own tab actions, plus the
-`viewChanged` status-bar ping); `Help/HelpViewerActions` stays a real adapter on purpose —
-folding it would push six deps into whichever caller absorbed it.
+IS the image AND graph viewers' handler (round 8: `ImageViewerActions` was 80% verbatim
+forwarding to it, so it implements the handler itself — four hooks are its own tab actions, plus
+the `viewChanged` status-bar ping; the graph feature renamed that seam
+`Widget/ViewerTabHandler`, five identical methods shared by both viewers);
+`Help/HelpViewerActions` stays a real adapter on purpose — folding it would push six deps into
+whichever caller absorbed it.
 
 **Full-screen views are a registry, not three fields.** `Workbench/WorkspaceViews` keys
 `Workbench/FullScreenView` controllers (isOpen/open/close/toggle/focusTarget/`cycleFocus(int): bool`)
@@ -478,6 +486,28 @@ reorders it **within its family** (session tabs → `TerminalSessions::move`, to
 reseeded, if ×'d). `Search/TodoScanner` (ide_todo, alt+8) greps `TODO|FIXME` case-sensitively
 over the shared `ProjectSearch` engine (single slot — a scan and a find cancel each other,
 latest wins).
+
+**Graph viewer (Project Architecture).** `.dot`/`.gv` files route to `Widget/GraphViewerWidget`
+(the third editor-pane occupant; `Buffer::$graphDot` + `isGraph()`, with `isViewer()` the single
+"not code" guard). Layout is the REAL `dot` binary (`Graph/DotLayoutEngine`: async, stdin-fed,
+exit-code-keyed, single slot latest-wins; explicit `dotPath` setting → `ExecutableFinder`),
+parsed from `-Tjson0` into point-denominated screen-down VOs; the widget caches layouts per DOT
+hash (LRU 8 — tab switches and unchanged regenerations never re-run dot), keeps zoom/pan per
+path across regenerations (refit only when the extent changes), and KEEPS the last good graph
+under a one-row stderr banner on a failed layout (the banner paints AFTER the focus frame — it
+hid behind the frame's top border once). Zoom/pan ride `Image/ZoomPanModel` with a finer ladder
+(1 pt → scale cols × scale half-rows; the px=half-row convention is the 2:1 cell aspect
+correction). `ide_architecture` (View menu) writes the scanner's (or the `architectureCommand`
+setting's stdout) DOT to `.porta/architecture.dot` — file-backed on purpose: tab reuse is the
+ordinary path-keyed lookup (realpath before the reuse lookup — buffers key canonical paths),
+the "Project Architecture" title rides `BufferService`'s artifact-path match (surviving session
+restore), and external regenerations re-render via the 1s reconciler with invalid documents
+keeping the previous rendering. Tests need NO graphviz: the committed `tests/Support/fake-dot*`
+stubs (env-shebang'd — E2e uses a php-only PATH dir so git/LSP stay blocked while the stubs
+run; `fake-dot` fails on the 'broken' sentinel) + `FakeLayoutEngine` for widget tests; one
+real-binary smoke test sits behind `GraphvizBinary::skipWithoutDot`. The graph feature re-pinned
+two ratchets (MouseRouter cyclomatic 145, WidgetHooks params 25 — the drag-pan routing and the
+handler wiring, rationale in mago.toml).
 
 **Rendering pipeline (`symfony/tui`).** Widgets (`src/Widget/**`) render to `string[]` lines
 measured in **display columns** (`mb_strwidth`, `AnsiUtils::visibleWidth`) so CJK/wide chars and

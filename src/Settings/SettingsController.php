@@ -24,11 +24,11 @@ use Symfony\Component\DependencyInjection\Attribute\Autowire;
  *
  * Every setting applies live: its `apply` closure mutates the running UI (the
  * editor, the theme, the cursor shape, or the locale) the instant it
- * changes, and the value is persisted. Every descriptor in THIS table is
- * `restart: false`; the flag itself is live elsewhere — the git `gitPath` and
- * the per-language `runCommand` rows set it true, and
- * {@see \Porta\Widget\Settings\SettingsFormWidget} renders their
- * "applies on restart" note.
+ * changes, and the value is persisted — except the two graph-viewer paths
+ * (`dotPath`, `architectureCommand`), which are `restart: true` like the git
+ * `gitPath` and per-language `runCommand` rows: they resolve through the
+ * compiled env channel, and {@see \Porta\Widget\Settings\SettingsFormWidget}
+ * renders their "applies on restart" note.
  *
  * @phpstan-type Descriptor array{label: string, kind: SettingsRowKind, group: 'general'|'interface', restart: bool, apply: (\Closure(int|bool|string): void)|null, options?: list<string>, optionLabels?: array<string, string>, min?: int, max?: int}
  */
@@ -144,6 +144,20 @@ final class SettingsController
                 'group' => 'general',
                 'restart' => false,
                 'apply' => static fn (int|bool|string $v) => $todoTags->set((string) $v),
+            ],
+            'dotPath' => [
+                'label' => 'Graphviz dot path',
+                'kind' => SettingsRowKind::Text,
+                'group' => 'general',
+                'restart' => true, // the engine resolves its binary from the compiled env channel
+                'apply' => null,
+            ],
+            'architectureCommand' => [
+                'label' => 'Architecture command (stdout = DOT)',
+                'kind' => SettingsRowKind::Text,
+                'group' => 'general',
+                'restart' => true,
+                'apply' => null,
             ],
         ];
     }

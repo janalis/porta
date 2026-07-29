@@ -94,6 +94,22 @@ pointer (12.5%–800%); pan with the arrows or the wheel. Images over 20 MB
 or 16 megapixels are refused. Tab-switching and go-to-file keys keep
 working while an image is active.
 
+## Graph viewer
+
+Opening a `.dot` or `.gv` file renders the Graphviz graph as an interactive
+tab: clusters, edge labels, arrowheads and DOT colors, laid out by the real
+`dot` binary (install graphviz, or point the `dotPath` setting at it).
+Zoom with `=`/`-`, `0`/`f` fit, `1` actual size, or `Ctrl+wheel` at the
+pointer; pan with the arrows, the wheel, or by dragging; select nodes with
+`n`/`p` or a click (the status bar shows the node under selection). Editing
+the file re-renders it in place — an invalid document keeps the previous
+graph under an error banner. **View ▸ Project Architecture** generates a
+namespace-dependency graph of the current project into
+`.porta/architecture.dot` and opens it in this viewer (a configured
+`architectureCommand` setting supplies the DOT instead — its stdout wins);
+`Graph: Export SVG/PNG` in the palette renders the active graph beside its
+file.
+
 ## Mouse
 
 Click to place the cursor, drag to select (double-click a word,
