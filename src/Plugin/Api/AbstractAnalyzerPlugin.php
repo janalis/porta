@@ -86,14 +86,24 @@ abstract class AbstractAnalyzerPlugin extends AbstractToolPlugin
         });
     }
 
-    /** One analysis run: slot, process, report. */
+    /** One analysis run: take the slot, then run it. */
     final protected function analyse(PluginApi $api, string $file): void
     {
         $binary = $this->acquire($api);
-        if (null === $binary) {
-            return;
+        if (null !== $binary) {
+            $this->analyseWith($api, $binary, $file);
         }
+    }
 
+    /**
+     * The run WITHOUT the acquire, for a plugin that already holds the slot —
+     * mago's "format, then lint the formatted file" chain is one user action and
+     * must be one slot, so it formats under `acquire()` and lints through here.
+     * It still releases when the process exits, so it is the LAST step of a
+     * chain, never the middle one.
+     */
+    final protected function analyseWith(PluginApi $api, string $binary, string $file): void
+    {
         new AsyncProcess($this->command($binary, $file), $api->projectRoot())->start(
             function (int $code, string $stdout) use ($api, $file): void {
                 $this->release();

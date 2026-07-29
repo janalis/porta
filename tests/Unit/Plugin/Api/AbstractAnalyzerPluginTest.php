@@ -13,6 +13,7 @@ use Porta\Plugin\Runtime\PluginEvents;
 use Porta\Plugin\Runtime\PluginManager;
 use Porta\Plugin\Runtime\PluginRuntime;
 use Porta\Plugin\Runtime\PluginSettings;
+use Porta\Tests\Support\Probe;
 use Porta\Tests\Support\PumpsLoop;
 use Porta\Tests\Support\RecordingDiagnosticsSink;
 use Porta\Tests\Support\RecordingFileOpener;
@@ -42,6 +43,7 @@ final class AbstractAnalyzerPluginTest extends TestCase
     private TempProject $project;
     private PluginManager $manager;
     private RecordingDiagnosticsSink $sink;
+    private AbstractAnalyzerPlugin $plugin;
 
     /**
      * A concrete analyzer: its report shape is a flat `rows` list, it accepts
@@ -110,6 +112,7 @@ final class AbstractAnalyzerPluginTest extends TestCase
         $plugin = $this->analyzer();
         $plugin->activate($api);
         $this->manager->commit($api);
+        $this->plugin = $plugin;
 
         return $api;
     }
@@ -223,6 +226,26 @@ final class AbstractAnalyzerPluginTest extends TestCase
         $this->await(fn (): bool => str_contains($this->flashText($this->status), 'code 0'), what: 'the failure report');
         $this->assertSame([], $this->sink->published);
         $this->assertStringContainsString('demo: exited with code 0', $this->flashText($this->status));
+    }
+
+    /**
+     * The seam a chained tool needs: mago formats under `acquire()` and then
+     * lints through `analyseWith()`, so one user action is one slot. It must run
+     * with the slot already held, and release it when the process exits.
+     */
+    public function testAChainedRunUsesTheSlotItAlreadyHolds(): void
+    {
+        $api = $this->withShim('{"rows":[{"line":4,"message":"chained"}]}', code: 0);
+        $file = $this->project->path('a.php');
+        $this->buffers->open($file, "<?php\n");
+
+        $binary = Probe::invoke($this->plugin, 'acquire', $api);
+        $this->assertNotNull($binary, 'the chaining plugin holds the slot');
+        Probe::invoke($this->plugin, 'analyseWith', $api, $binary, $file);
+
+        $this->await(fn (): bool => [] !== $this->sink->published, what: 'the chained analysis to land');
+        $this->assertSame('chained', $this->sink->published[0]['byLine'][4][0]['message']);
+        $this->assertFalse(Probe::get($this->plugin, 'running'), 'the chain released the slot at its end');
     }
 
     public function testASecondRunIsRefusedWhileOneIsInFlight(): void
