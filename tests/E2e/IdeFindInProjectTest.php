@@ -183,14 +183,17 @@ final class IdeFindInProjectTest extends TestCase
                     }
                 },
                 700 => function ($tui) use ($panelText): void {
-                    $tui->tick();
+                    // The grep is a subprocess: await its rows instead of
+                    // asserting a fixed number of ms after the query was typed.
+                    $this->await(static fn (): bool => str_contains($panelText($tui), 'other/Outside.php'), what: 'the whole-project search to land');
                     $this->assertStringContainsString('other/Outside.php', $panelText($tui), 'whole project finds both first');
                     for ($i = 0; $i < 5; ++$i) {
                         $tui->handleInput("\x1bs"); // cycle past the 5 built-ins to the saved lib scope
                     }
                 },
                 1000 => function ($tui) use ($panelText): void {
-                    $tui->tick();
+                    // Cycling the scope re-runs the search, so await the new rows.
+                    $this->await(static fn (): bool => str_contains($panelText($tui), 'lib/Inside.php'), what: 'the folder-scoped search to land');
                     $panel = $panelText($tui);
                     $this->assertStringContainsString('Scope: lib', $panel, 'the saved scope is selectable in the Alt+S cycle');
                     $this->assertStringContainsString('lib/Inside.php', $panel);

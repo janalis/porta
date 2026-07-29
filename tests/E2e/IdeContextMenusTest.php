@@ -224,7 +224,10 @@ final class IdeContextMenusTest extends TestCase
                     }
                 },
                 650 => function ($tui): void {
-                    $tui->tick();
+                    // The grep is a subprocess: await its row in the MODAL (the
+                    // results pane holds nothing until promote() moves it there)
+                    // instead of asserting a fixed number of ms after the query.
+                    $this->await(fn (): bool => str_contains($this->modalText($tui), 'Inside.php'), what: 'the folder-scoped search to land');
                     $this->promote($tui); // modal → results pane
                     // Assert on the results panel itself (the tree sidebar also lists
                     // Outside.php, so the whole screen is the wrong surface).

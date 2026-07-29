@@ -230,8 +230,10 @@ final class IdePhpLspPluginsTest extends TestCase
                     Services::resolve($ide, CommandRegistry::class)->run('phpantom:init');
                 },
                 500 => function ($tui, $terminal) use ($project): void {
-                    $this->await(static fn (): bool => is_file($project->path('phpantom.json')));
-                    $tui->tick();
+                    // Await the FLASH, not the file: the stub writes the config
+                    // before it exits, so the file exists a moment before the
+                    // exit callback flashes — and one tick() may not paint it.
+                    $this->await(static fn (): bool => str_contains(AnsiUtils::stripAnsiCodes($terminal->getOutput()), 'phpantom: generated config'));
                     $this->assertStringContainsString('phpantom: generated config', AnsiUtils::stripAnsiCodes($terminal->getOutput()));
                     $this->assertFileExists($project->path('phpantom.json'));
                 },

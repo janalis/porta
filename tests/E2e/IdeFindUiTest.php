@@ -182,7 +182,9 @@ final class IdeFindUiTest extends TestCase
                     }
                 },
                 600 => function ($tui) use ($panelText): void {
-                    $tui->tick();
+                    // Await in the MODAL — the results pane holds nothing until
+                    // promote() moves the rows onto it.
+                    $this->await(fn (): bool => str_contains($this->modalText($tui), 'other/B.php'), what: 'both search hits to land');
                     $this->promote($tui); // modal → results pane (the filter field lives on the pane)
                     $panel = $panelText($tui);
                     $this->assertStringContainsString('src/A.php', $panel, 'both files match');
@@ -378,7 +380,9 @@ final class IdeFindUiTest extends TestCase
                     }
                 },
                 600 => function ($tui) use ($panelText): void {
-                    $tui->tick();
+                    // The grep is a subprocess: await its rows before driving
+                    // the preview, instead of assuming 400ms was enough.
+                    $this->await(static fn (): bool => str_contains($panelText($tui), 'A.php'), what: 'the project search to land');
                     $tui->handleInput("\t"); // modal: query → replace
                     foreach (str_split('bar') as $ch) {
                         $tui->handleInput($ch);
