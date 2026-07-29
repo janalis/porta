@@ -8,6 +8,7 @@ use Porta\Container\AsIdeService;
 use Porta\Container\AsWidget;
 use Porta\Image\HalfBlockRasterizer;
 use Porta\Image\ImageData;
+use Porta\Image\ScaledSource;
 use Porta\Image\ZoomPanModel;
 use Porta\Ui\Glyphs;
 use Porta\Ui\LtrPane;
@@ -45,6 +46,8 @@ final class ImageViewerWidget extends AbstractWidget implements FocusableInterfa
 
     private ?ImageData $image = null;
     private ?ZoomPanModel $view = null;
+    /** Memoises the area-averaged copy this pane samples while shrinking. */
+    private readonly ScaledSource $scaled;
     /** last rendered pane size, so key handling scales/pans what is on screen */
     private int $lastCols = 80;
     private int $lastRows = 24;
@@ -53,6 +56,7 @@ final class ImageViewerWidget extends AbstractWidget implements FocusableInterfa
     public function __construct(?Styles $styles = null)
     {
         $this->initStyles($styles);
+        $this->scaled = new ScaledSource();
     }
 
     public function setHandler(ViewerTabHandler $handler): void
@@ -115,7 +119,12 @@ final class ImageViewerWidget extends AbstractWidget implements FocusableInterfa
         $lines =
             null === $this->image || null === $this->view
                 ? array_fill(0, $rows, str_repeat(' ', $cols))
-                : HalfBlockRasterizer::render($this->image, $this->view, $cols, $rows);
+                : HalfBlockRasterizer::render(
+                    $this->scaled->forScale($this->image, $this->view->effectiveScale($cols, 2 * $rows)),
+                    $this->view,
+                    $cols,
+                    $rows,
+                );
 
         // A caret-less, row-less pane still needs a focus cue like its siblings:
         // a box-drawing frame drawn over the image's edge ring while focused. The

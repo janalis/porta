@@ -8,10 +8,15 @@ use Porta\Ui\Sgr;
 
 /**
  * Rasterizes an image into terminal lines: each `▀` cell shows 2 vertical
- * pixels (24-bit foreground = top, background = bottom), nearest-neighbor
- * sampled. Transparency is blended onto a fixed gray checkerboard. SGR codes
- * are emitted only when the color pair changes, and letterbox cells are plain
- * spaces, so a line costs far less than 2 escapes per cell.
+ * pixels (24-bit foreground = top, background = bottom). Transparency is
+ * blended onto a fixed gray checkerboard. SGR codes are emitted only when the
+ * color pair changes, and letterbox cells are plain spaces, so a line costs far
+ * less than 2 escapes per cell.
+ *
+ * Sampling is nearest-neighbour over whatever {@see SampleSource} hands it —
+ * which is the image itself when magnifying, and a GD-resampled copy when
+ * shrinking, so a downscale is area-averaged without this loop changing shape
+ * (see {@see ScaledSource} for why the averaging cannot happen here).
  */
 final class HalfBlockRasterizer
 {
@@ -19,11 +24,18 @@ final class HalfBlockRasterizer
     private const array VOID = [30, 30, 30];
 
     /** @return list<string> exactly $rows lines of exactly $cols display columns */
-    public static function render(ImageData $image, ZoomPanModel $view, int $cols, int $rows): array
+    public static function render(SampleSource $source, ZoomPanModel $view, int $cols, int $rows): array
     {
+        $image = $source->image;
         $pxRows = $rows * 2;
-        $scale = $view->effectiveScale($cols, $pxRows);
         $rect = $view->visibleRect($cols, $pxRows);
+        // The view speaks in ORIGINAL image pixels; a prescaled source has its
+        // own, smaller grid. Converting the two source-space fields (and the
+        // scale) here keeps sample() below in one coordinate space, and both
+        // conversions are identities at ratio 1.0.
+        $scale = $view->effectiveScale($cols, $pxRows) / $source->ratio;
+        $rect['srcX'] = (int) round($rect['srcX'] * $source->ratio);
+        $rect['srcY'] = (int) round($rect['srcY'] * $source->ratio);
 
         $lines = [];
         for ($row = 0; $row < $rows; ++$row) {
@@ -61,7 +73,10 @@ final class HalfBlockRasterizer
 
     /**
      * The RGB shown at one pane half-row/column, alpha pre-blended onto the
-     * checkerboard — or null when the position lies outside the image.
+     * checkerboard — or null when the position lies outside the image. Its
+     * coordinates are the SOURCE's (see the conversion in render()), which is
+     * also why the checkerboard squares stay 8 screen pixels rather than
+     * shrinking with the zoom.
      *
      * @param array{srcX: int, srcY: int, padCols: int, padHalfRows: int, outCols: int, outHalfRows: int} $rect
      *
