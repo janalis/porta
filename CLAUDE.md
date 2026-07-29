@@ -17,6 +17,8 @@ composer coverage:check      # runs the suite with coverage and enforces 100% li
 composer format              # mago format (apply)
 composer format:check        # mago format --check
 composer lint                # mago lint
+composer container           # kernel-less debug:container (tools/container-debug.php);
+                             #   flags via `--`: --loaded, --tag=<name>, --aliases
 
 # Run a single test / filter
 vendor/bin/phpunit --filter testName
@@ -363,6 +365,26 @@ Considered and deliberately NOT done: `$_ENV`/`getenv` channel unification (runt
 vs low value), `#[When]` env wiring (the loader gets no env, so it can never match — unused),
 `AddEventAliasesPass` (matters only with opcache preloading), and a `test.service_container`
 emulation (the two-method `Ide` seam is the round-8 verdict).
+
+**FrameworkBundle/Kernel adoption was measured head-on and REJECTED (round 13).** The evidence:
+(a) the five porta attributes are already Symfony-native — three `AutoconfigureTag` subclasses,
+one `Autowire` subclass, and `AsWidget` on the stock `registerAttributeForAutoconfiguration()`
+API (it builds a nested `Style` definition, inexpressible as a tag) — the bundle replaces none
+of them, they encode domain concepts no bundle knows; (b) `composer require
+symfony/framework-bundle --dry-run` pulls **10 packages** (http-kernel, http-foundation,
+routing, cache, error-handler, var-dumper, …), all HTTP infrastructure a TUI never touches, to
+replace ~160 lines that are the *documented* component-level pattern (`IdeContainerFactory` is
+symfony.com's "compilation" recipe with ConfigCache and env placeholders on top); (c) the
+decisive regression — a Kernel resolves `kernel.project_dir` at compile time, so its dumped
+container is per-project, where Porta dumps ONE project-independent container shared across
+every project the IDE opens. The `inline_factories` dump was also measured (it silently
+requires `as_files` — `PhpDumper.php`, `$this->inlineFactories = $this->asFiles && …` — and
+then collapses back to ~4 files): container-only micro-bench 23.09→23.23 ms (wash),
+full-locator proxy resolving 28 service chains 43.66→42.07 ms (−3.6%, under the 5% keep gate
+and diluted to noise in a real boot that also loads plugins and builds the Tui) — not adopted.
+Re-opening either verdict requires new evidence (e.g. a TUI-relevant bundle, or opcache
+preloading becoming applicable to the CLI boot). `composer container` is the round's keeper:
+the kernel-less `debug:container` equivalent.
 
 **Events.** `symfony/event-dispatcher`, kernel-less: `config/services.php` registers the
 `#[AsEventListener]` attribute autoconfiguration and the `RegisterListenersPass` (the service id
