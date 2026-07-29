@@ -123,14 +123,13 @@ class is `require_once`d by path, never Composer-autoloaded, so it is unaffected
 Its constructor builds the container via `Container/IdeContainerFactory`, hand-builds only the
 bootstrap infra (Renderer/`Ui/BidiTui`/NonBlockingTerminal + StyleSheet), and otherwise
 **resolves** the graph into private properties — but only the ones its own runtime logic reads.
-Tests reach every other service through the single `@internal Ide::resolve(X::class)` seam (a
-`porta.ide` locator lookup with a container fallback for the synthetics), never by reflecting
-private fields, so `Ide` holds no test-only alias fields or `get*()` getters. Resolution is
-**deliberately two methods** (round 8's measured verdict on the merge candidate): the private
-`service()` is locator-only, so a class that forgets `#[AsIdeService]` fails loudly instead of
-silently resolving through the raw container; `resolve()` adds the container fallback that exists
-solely for the four synthetics. Both assert the type; the shared docblock in `Ide.php` carries the
-rationale — do not merge them. The `build*` steps
+**`src` carries no test-only resolution API** (round 12): the only resolver is the private
+locator-only `service()` — a class that forgets `#[AsIdeService]` fails loudly instead of
+silently resolving through the raw container. Tests reach a running IDE's services through
+`tests/Support/Services::resolve($ide, X::class)` (reflects `Ide::$container` once, then
+locator-first with a container fallback for the synthetics — the semantics the deleted
+`Ide::resolve()` had), so `Ide` holds no test-only alias fields, `get*()` getters or public
+resolve seam. The `build*` steps
 (`buildEditorArea`, `buildGitView`, `buildSettingsWidgets`, `buildLayoutAndOverlay`) are now
 resolution + arrangement only, and the ctor tail runs
 `Command/CommandRegistryPopulator::populate()` (tagged providers), `Bootstrap/WidgetHooks::wire()`,
@@ -234,7 +233,10 @@ singleton widget** (`#[Container/AsWidget]` declares tree id/flex, autoconfigure
   500 → Plugins 400 (owns both `plugins` and `plugin:<name>`) → Git 300 → Language 200 (merges the
   languages/lsp/debug controllers) → General 100`, pinned by
   `tests/Unit/Container/SettingsSectionOrderTest`. `keybindings` is deliberately **not** a section:
-  it is the one nav id that swaps the content *widget*, so it stays in `selectSection()`. Adding a
+  it is the one nav id that swaps the content *widget*, so it stays in `selectSection()`. The two
+  widgets' advertised '1'/'2' shortcut keys really jump between the form and the keybindings page —
+  `SettingsViewController` wires `onShowSettings`/`onShowKeybindings` to `selectSection()` (round 12
+  wired what had been dead hooks rather than deleting them). Adding a
   page still touches `Widget/Settings/SettingsNavWidget` (nav order/headers/language list).
 
 **Role interfaces over the editor widget.** `CodeEditorWidget` has 91 public methods, so consumers
@@ -315,8 +317,11 @@ and `Widget/EditorCallbacks` are plain services (the runtime consumes the narrow
 `Editor/DiagnosticsSink` seam instead of BufferService). Four objects are handed to the container
 as **synthetic** services right after `Ide` creates them: `Renderer`, `Tui`, `BidiTui` (external
 `symfony/tui` infra) and `IdeConfig` (parsed before the container exists — its settings steer the
-env parameters). They are declared **public** so that, with the `porta.ide` locator, they form the
-container's public surface — `Ide::resolve()`'s container fallback returns them for tests.
+env parameters). The synthetics are **private** (round 12 dropped `->public()`, which served only
+the deleted `Ide::resolve()`): `PhpDumper` emits every synthetic id regardless of visibility and
+`Container::set()` accepts them, so `tests/Support/Services`' container fallback still returns
+them. Tripwire: a private synthetic that loses its last internal consumer is compile-removed and
+the boot-time `set()` throws — loud, caught by the first E2e test.
 
 **Rules for the container** (`config/services.php`, deliberately **outside `src/`** so the wiring
 stays off the 100%-line-coverage gate): services are **autoregistered** via
@@ -845,8 +850,8 @@ flaky shapes are all on the fixed-clock side, and each has a named cure:
   remember modals lay out from the PREVIOUS frame's rects — two frames before a modal paints.
 - **Toasts prove nothing**: lifetimes are 2.5–6s, so `Toasts::last()` can return the previous
   action's toast. Assert the on-disk effect or the model.
-- **Gate picker/overlay navigation** on `isOverlayOpen()`/`isPromptOpen()` — their lists are
-  built inside git/LSP callbacks; early arrows fall through to the editor. When the accumulated
+- **Gate picker/overlay navigation** on `EditorState::pickerOpen()`/`promptOpen()` — their lists
+  are built inside git/LSP callbacks; early arrows fall through to the editor. When the accumulated
   output would satisfy a substring early (e.g. a sentinel row's own label), read the CURRENT
   grid via `screenGrid()`.
 - **Awaits must be terminal-state**, not success-only: `done || failure-message` then assert
@@ -878,3 +883,16 @@ fn (`static fn () => null !== $x`) captures `$x` BY VALUE at creation and can ne
 async callback's by-reference write — round 8 found 64 such conditions silently burning their
 full timeout as de-facto sleeps. Write `static function () use (&$x): bool {...}` (or read
 `$this->…` state); when there is genuinely nothing to await, say so with `pump()`.
+
+**No test-only code in src; reflection lives only in the blessed `tests/Support` seams** (round
+12 deleted `Ide::resolve()` plus ~45 observability getters/counts/statics). The seams:
+`Services::resolve($ide, X::class)` (a running IDE's services — locator-first, container
+fallback for the synthetics), `Probe` (`get()` private-property read with a parent-class walk;
+`getStatic()` for private consts/statics; `invokeStatic()` for private static methods) and its
+typed wrappers — `EditorState` (`pickerOpen`/`promptOpen`/`display`/`scroll`/`multiCaret` on the
+editor widget), `StatusReads`, `Toasts`, `RunsIde::awaitGit`. Before adding a getter to src, ask
+who calls it at runtime: an interface implementation the vendor calls
+(`FillsPaneTrait::isVerticallyExpanded`) or a timer/signal entry point (`Ide::pollFilesystem`,
+`FreezeWatchdog::heartbeat`/`handleAlarm`) is production code; a method only assertions read is
+not — probe it instead. Recorded follow-up: 10+ legacy ad-hoc `ReflectionProperty` sites in
+older tests predate `Probe` and should fold into it as their files are touched.

@@ -376,10 +376,9 @@ final class Ide
     }
 
     /**
-     * Reconcile the open buffers and the file tree with the on-disk state. Runs on
-     * a timer (see {@see run()}); also invoked directly by tests.
-     *
-     * @internal exposed for tests
+     * Timer entry point — {@see run()}'s 1s EventLoop::repeat reconciles the open
+     * buffers and the file tree with the on-disk state (tests fire it directly
+     * instead of waiting out the timer).
      */
     public function pollFilesystem(): void
     {

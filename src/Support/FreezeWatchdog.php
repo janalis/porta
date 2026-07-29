@@ -65,7 +65,7 @@ final class FreezeWatchdog
         }
     }
 
-    /** @internal exposed for tests */
+    /** Timer entry point — {@see start()}'s EventLoop::repeat fires this every `$interval` seconds. */
     public function heartbeat(): void
     {
         $now = $this->clock->now();
@@ -81,7 +81,7 @@ final class FreezeWatchdog
         }
     }
 
-    /** @internal exposed for tests */
+    /** Signal entry point — the SIGALRM handler {@see start()} installs. */
     public function handleAlarm(): void
     {
         // The loop missed $alarmSeconds of heartbeats: it is blocked right now.
