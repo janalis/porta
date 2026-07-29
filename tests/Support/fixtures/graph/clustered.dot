@@ -1,0 +1,19 @@
+digraph Architecture {
+    rankdir=LR;
+    node [shape=box, color=lightblue, style=filled];
+    subgraph cluster_app {
+        label="App";
+        color=blue;
+        API [fillcolor="#ffcc00"];
+        Service;
+    }
+    subgraph cluster_infra {
+        label="Infra";
+        Repository [style=dashed, color=red];
+        Database;
+    }
+    API -> Service;
+    Service -> Repository [label="uses", color="#00aa00"];
+    Repository -> Database;
+    API -> Database [style=dotted];
+}

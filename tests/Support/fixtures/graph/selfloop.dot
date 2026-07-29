@@ -1,0 +1,1 @@
+digraph M { A [pos="10,10!"]; A -> A; }

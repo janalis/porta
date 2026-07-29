@@ -1,0 +1,122 @@
+{
+  "name": "Architecture",
+  "directed": true,
+  "strict": false,
+  "bb": "0,0,416.5,98.402",
+  "label": "",
+  "rankdir": "LR",
+  "_subgraph_cnt": 2,
+  "objects": [
+    {
+      "name": "cluster_app",
+      "bb": "8,13.402,171.5,90.402",
+      "color": "blue",
+      "label": "App",
+      "lheight": "0.23",
+      "lp": "89.75,78.152",
+      "lwidth": "0.32",
+      "rankdir": "LR",
+      "_gvid": 0,
+      "nodes": [
+        2,3
+      ],
+      "edges": [
+        0
+      ]
+    },
+    {
+      "name": "cluster_infra",
+      "bb": "214.75,13.402,408.5,90.402",
+      "label": "Infra",
+      "lheight": "0.23",
+      "lp": "311.62,78.152",
+      "lwidth": "0.36",
+      "rankdir": "LR",
+      "_gvid": 1,
+      "nodes": [
+        4,5
+      ],
+      "edges": [
+        3
+      ]
+    },
+    {
+      "_gvid": 2,
+      "name": "API",
+      "color": "lightblue",
+      "fillcolor": "#ffcc00",
+      "height": "0.5",
+      "label": "\\N",
+      "pos": "43,39.402",
+      "shape": "box",
+      "style": "filled",
+      "width": "0.75"
+    },
+    {
+      "_gvid": 3,
+      "name": "Service",
+      "color": "lightblue",
+      "height": "0.5",
+      "label": "\\N",
+      "pos": "135.25,39.402",
+      "shape": "box",
+      "style": "filled",
+      "width": "0.78472"
+    },
+    {
+      "_gvid": 4,
+      "name": "Repository",
+      "color": "red",
+      "height": "0.5",
+      "label": "\\N",
+      "pos": "260.38,39.402",
+      "shape": "box",
+      "style": "dashed",
+      "width": "1.0451"
+    },
+    {
+      "_gvid": 5,
+      "name": "Database",
+      "color": "lightblue",
+      "height": "0.5",
+      "label": "\\N",
+      "pos": "367.75,39.402",
+      "shape": "box",
+      "style": "filled",
+      "width": "0.90972"
+    }
+  ],
+  "edges": [
+    {
+      "_gvid": 0,
+      "tail": 2,
+      "head": 3,
+      "label": "",
+      "pos": "e,106.63,39.402 70.104,39.402 77.978,39.402 86.798,39.402 95.317,39.402"
+    },
+    {
+      "_gvid": 2,
+      "tail": 3,
+      "head": 4,
+      "color": "#00aa00",
+      "label": "uses",
+      "lp": "193.12,47.652",
+      "pos": "e,222.49,39.402 163.88,39.402 177.8,39.402 195.09,39.402 211.11,39.402"
+    },
+    {
+      "_gvid": 3,
+      "tail": 4,
+      "head": 5,
+      "label": "",
+      "pos": "e,334.65,39.402 298.23,39.402 306.3,39.402 314.91,39.402 323.21,39.402"
+    },
+    {
+      "_gvid": 1,
+      "tail": 2,
+      "head": 5,
+      "label": "",
+      "pos": "e,334.62,23.914 70.2,25.355 81.231,20.195 94.411,14.986 107,12.402 190.16,-4.6662 214.59,-3.389 298,12.402 306.59,14.027 315.47,16.701 323.89,19.748",
+      "style": "dotted"
+    }
+  ]
+}
