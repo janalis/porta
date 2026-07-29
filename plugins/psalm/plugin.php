@@ -2,99 +2,41 @@
 
 declare(strict_types=1);
 
+use Porta\Plugin\Api\AbstractAnalyzerPlugin;
 use Porta\Plugin\Api\PluginApi;
-use Porta\Plugin\Api\PortaPlugin;
-use Porta\Support\AsyncProcess;
-use Symfony\Component\Process\ExecutableFinder;
 
 /**
- * Psalm integration: "Analyse Current File" (Ctrl+Alt+P) and an
- * persisted "Analyse on save" setting (toggled from the palette or the
- * plugin's settings page). Issues are published as editor diagnostics —
- * inline messages, gutter/stripe colors and the Problems panel (Alt+6),
- * exactly like LSP diagnostics — and a clean run clears them. The analysis
- * runs asynchronously; the binary resolves from vendor/bin, then the PATH.
- * Note: an LSP server publishing diagnostics for the same file replaces
- * these (and vice versa) — last writer wins.
+ * Psalm integration: "Analyse Current File" (Ctrl+Alt+P) and a persisted
+ * "Analyse on save" setting (toggled from the palette or the plugin's settings
+ * page). Issues are published as editor diagnostics — inline messages,
+ * gutter/stripe colors and the Problems panel (Alt+6), exactly like LSP
+ * diagnostics — and a clean run clears them. The run, the binary and the
+ * single-flight slot come from {@see AbstractAnalyzerPlugin}; what is left
+ * here is psalm's own truth: its argv, that it exits 0 (clean) or 2 (issues
+ * found) with a report either way, and its flat issue list, whose lines AND
+ * columns are 1-based and whose severity is a word. Note: an LSP server
+ * publishing diagnostics for the same file replaces these (and vice versa) —
+ * last writer wins.
  */
-return new class implements PortaPlugin {
-    private bool $running = false;
-
-    public function name(): string
-    {
-        return 'psalm';
-    }
-
+return new class('psalm', 'psalm') extends AbstractAnalyzerPlugin {
     public function activate(PluginApi $api): void
     {
-        $api->registerSetting('binary', 'psalm binary', 'text', '', hint: 'empty = vendor/bin, then PATH');
-        $api->registerSetting('autoLint', 'Analyse on save', 'bool', false);
-        $api->registerInstaller('psalm', fn (): bool => null !== $this->binary($api), [['composer', 'vimeo/psalm']]);
-
-        $api->registerCommand(
-            'analyse',
-            'Psalm: Analyse Current File',
-            function () use ($api): void {
-                $file = $api->activeFile();
-                if (null === $file || !str_ends_with($file, '.php')) {
-                    $api->flash('psalm: open a PHP file first');
-
-                    return;
-                }
-                $this->analyse($api, $file);
-            },
-            ['ctrl+alt+p'],
-        );
-
-        $api->registerCommand('toggle-on-save', 'Psalm: Toggle Analyse on Save', static function () use ($api): void {
-            $next = !(bool) $api->setting('autoLint');
-            $api->changeSetting('autoLint', $next);
-            $api->flash('psalm on save: '.($next ? 'on' : 'off'));
-        });
-
-        $api->addMenuItem('analyse', fn (): bool => null !== $this->binary($api));
-        $api->addMenuItem('toggle-on-save');
-
-        $api->onFileSaved(function (string $path) use ($api): void {
-            if ((bool) $api->setting('autoLint') && str_ends_with($path, '.php')) {
-                $this->analyse($api, $path);
-            }
-        });
+        $this->registerBinarySetting($api, [['composer', 'vimeo/psalm']]);
+        $this->registerAnalysis($api, 'Psalm', ['ctrl+alt+p']);
     }
 
-    private function analyse(PluginApi $api, string $file): void
+    protected function command(string $binary, string $file): array
     {
-        if ($this->running) {
-            $api->flash('psalm: already running');
-
-            return;
-        }
-        $binary = $this->binary($api);
-        if (null === $binary) {
-            $api->flash('psalm not found (vendor/bin or PATH)', 4.0);
-
-            return;
-        }
-
-        $this->running = true;
-        $command = [$binary, '--output-format=json', '--no-progress', $file];
-        new AsyncProcess($command, $api->projectRoot())->start(function (int $code, string $stdout) use ($api, $file): void {
-            $this->running = false;
-            $this->report($api, $file, $code, $stdout);
-        });
+        return [$binary, '--output-format=json', '--no-progress', $file];
     }
 
-    private function report(PluginApi $api, string $file, int $code, string $stdout): void
+    protected function acceptsExitCode(int $code): bool
     {
-        // psalm exits 0 (clean) or 2 (issues found), both with a JSON report;
-        // anything else is an internal failure (missing psalm.xml, crash, …).
-        $report = json_decode($stdout, true);
-        if ($code !== 0 && $code !== 2 || !is_array($report)) {
-            $api->flash('psalm: exited with code '.$code, 4.0);
+        return 0 === $code || 2 === $code;
+    }
 
-            return;
-        }
-
+    protected function diagnostics(array $report): array
+    {
         $diagnostics = [];
         foreach ($report as $issue) {
             if (!is_array($issue)) {
@@ -112,26 +54,6 @@ return new class implements PortaPlugin {
             ];
         }
 
-        $api->setDiagnostics($file, $diagnostics);
-        $count = count($diagnostics);
-        $api->flash(match (true) {
-            0 === $count => 'psalm: no issues in '.basename($file),
-            1 === $count => 'psalm: 1 issue in '.basename($file),
-            default => "psalm: {$count} issues in ".basename($file),
-        }, 4.0);
-    }
-
-    private function binary(PluginApi $api): ?string
-    {
-        $configured = trim((string) $api->setting('binary'));
-        if ('' !== $configured) {
-            return $configured;
-        }
-        $local = $api->projectRoot().'/vendor/bin/psalm';
-        if (is_file($local) && is_executable($local)) {
-            return $local;
-        }
-
-        return new ExecutableFinder()->find('psalm');
+        return $diagnostics;
     }
 };
