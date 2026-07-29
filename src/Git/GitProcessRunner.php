@@ -49,19 +49,6 @@ final class GitProcessRunner
         return $this->available;
     }
 
-    /**
-     * Whether any git subprocess is still in flight. Every async verb registers
-     * its process in {@see $running} before it starts and clears it in the exit
-     * callback, and git mutates the working tree before that exit fires — so a
-     * false here means every dispatched op has fully landed on disk. Tests await
-     * this as a real completion barrier instead of inferring done-ness from a
-     * rendered flash.
-     */
-    public function isBusy(): bool
-    {
-        return [] !== $this->running;
-    }
-
     public function cancelAll(): void
     {
         foreach ($this->running as $process) {

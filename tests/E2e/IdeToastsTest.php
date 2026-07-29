@@ -45,7 +45,7 @@ final class IdeToastsTest extends TestCase
                     // The presenter's regions place the card; its × sits at the
                     // top border's width − 2 (ModalBox::closeHit).
                     $notifier = Services::resolve($ide, Notifier::class);
-                    $center = $notifier->toasts();
+                    $center = \Porta\Tests\Support\Probe::get($notifier, 'toasts');
                     $boxes = new \ReflectionProperty($center, 'boxes')->getValue($center);
                     $this->assertNotSame([], $boxes, 'the presenter recorded the card box');
                     $box = $boxes[0]['box'];

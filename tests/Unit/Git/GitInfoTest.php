@@ -174,19 +174,20 @@ final class GitInfoTest extends TestCase
         $this->gitCommit($project, 'a.txt');
 
         $git = new GitInfo($project->dir);
-        $this->assertFalse($git->isBusy(), 'idle before any op is dispatched');
+        $busy = static fn (): bool => [] !== \Porta\Tests\Support\Probe::get(\Porta\Tests\Support\Probe::get($git, 'runner'), 'running');
+        $this->assertFalse($busy(), 'idle before any op is dispatched');
 
         $project->write('a.txt', "first\nsecond\n");
         $done = false;
         $git->stage($project->path('a.txt'), static function () use (&$done): void {
             $done = true;
         });
-        $this->assertTrue($git->isBusy(), 'busy the instant an op is in flight, before its process exits');
+        $this->assertTrue($busy(), 'busy the instant an op is in flight, before its process exits');
 
         $this->await(static function () use (&$done): bool {
             return $done;
         });
-        $this->assertFalse($git->isBusy(), 'idle again once the process has exited');
+        $this->assertFalse($busy(), 'idle again once the process has exited');
 
         $git->cancelAll();
     }

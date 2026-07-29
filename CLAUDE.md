@@ -374,8 +374,10 @@ Priorities are contractual: plugin bridge (`PluginEvents`) and the chrome sweep
 
 **Git.** `Git/GitProcessRunner` owns the only mutable state in the layer — the in-flight process
 map — so `Git/GitInfo`'s thirty-odd porcelain verbs are stateless argv-builders over it.
-`GitInfo::isBusy()` stays on GitInfo as a delegator: it is a **load-bearing E2e completion barrier**
-(git mutates the tree before the exit callback fires, so `!isBusy()` means the op landed on disk).
+The **E2e completion barrier** is the runner's in-flight map (git mutates the tree before the
+exit callback fires, so an empty map means the op landed on disk) — read by `RunsIde::awaitGit`
+through the blessed test Probe; round 12 removed the old `isBusy()` delegators (src carries no
+test-only API).
 Output parsing lives in the `Git/*Parser` tier — `BlameParser` (whole-file `parse()` **and**
 single-line `parseLine()`), `BranchParser`, `LogParser`, `StatusParser`, `HunkParser`.
 The view's axes are all enums, all **pure** (nothing crosses a persistence boundary — backed is

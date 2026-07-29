@@ -11,7 +11,7 @@ use Symfony\Component\Tui\Render\RenderContext;
 /**
  * The two ways a test reads "what flashed" off the status bar, named so a
  * suite picks deliberately. {@see flashText()} reads the MODEL
- * (StatusBarWidget::activeFlash()) — independent of truncation and wrap
+ * (the status bar's private $flash, via Probe) — independent of truncation and wrap
  * points, the same argument {@see Toasts} makes for the toast stack.
  * {@see statusRow()} reads the RENDERED row — for assertions about what
  * actually paints (truncation, the flash winning the width fight over the
@@ -19,10 +19,12 @@ use Symfony\Component\Tui\Render\RenderContext;
  */
 trait StatusReads
 {
-    /** The status bar's live flash message (model read), or '' when none. */
+    /** The status bar's live flash message (model read via Probe — src carries no test-only getter), or '' when none. */
     private function flashText(StatusBarWidget $status): string
     {
-        return $status->activeFlash() ?? '';
+        $flash = Probe::get($status, 'flash');
+
+        return \is_array($flash) ? (string) $flash['text'] : '';
     }
 
     /** The composed status row, ANSI-stripped (rendered read). */

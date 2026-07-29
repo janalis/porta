@@ -7,6 +7,7 @@ namespace Porta\Tests\E2e;
 use PHPUnit\Framework\TestCase;
 use Porta\Tests\Support\ClearsPortaLsp;
 use Porta\Tests\Support\PreservesPath;
+use Porta\Tests\Support\Probe;
 use Porta\Tests\Support\RunsIde;
 use Porta\Tests\Support\ScreenReads;
 use Porta\Tests\Support\Services;
@@ -180,7 +181,7 @@ final class IdeTerminalRunTest extends TestCase
                     // frame and assert the paint — one indirection fewer than
                     // awaiting the rendered glyph, and a genuinely stuck exit
                     // still throws.
-                    $sessions = Services::resolve($ide, \Porta\Run\RunController::class)->sessions();
+                    $sessions = \Porta\Tests\Support\Probe::get(Services::resolve($ide, \Porta\Run\RunController::class), 'sessions');
                     $this->await(static fn (): bool => false === ($sessions->active()?->isRunning() ?? true), timeout: 20.0, what: 'the shell exit to be reaped');
                     $this->frame($tui);
                     $out = AnsiUtils::stripAnsiCodes($terminal->getOutput());

@@ -7,6 +7,7 @@ namespace Porta\Tests\E2e;
 use PHPUnit\Framework\TestCase;
 use Porta\Run\RunController;
 use Porta\Tests\Support\PreservesPath;
+use Porta\Tests\Support\Probe;
 use Porta\Tests\Support\RunsIde;
 use Porta\Tests\Support\Services;
 use Porta\Tests\Support\TempProject;
@@ -31,7 +32,7 @@ final class IdeTerminalTest extends TestCase
     /** @return list<\Porta\Terminal\TerminalSession> */
     private function sessions(mixed $ide): array
     {
-        $sessions = Services::resolve($ide, RunController::class)->sessions();
+        $sessions = Probe::get(Services::resolve($ide, RunController::class), 'sessions');
 
         return $sessions->all();
     }
@@ -88,7 +89,7 @@ final class IdeTerminalTest extends TestCase
                     // Ctrl+Page Up cycles back to shell 1 (widget-scope, terminal focused).
                     $tui->handleInput("\x1b[5^");
                     $run = Services::resolve($ide, RunController::class);
-                    $sessionsOf = static fn () => $run->sessions();
+                    $sessionsOf = static fn () => Probe::get($run, 'sessions');
                     $this->assertSame('shell:1', $sessionsOf()->active()?->id, 'cycled to the first shell');
 
                     // Click shell 2's dock-strip tab label to activate it (mouse select path).
@@ -179,7 +180,7 @@ final class IdeTerminalTest extends TestCase
                     $tui->handleInput(\sprintf("\x1b[<0;%d;%dm", $rect->col + $secondTab + 1, $rect->row + 1));
                     $this->assertSame(['shell:2', 'shell:1'], $ids(), 'the drag reordered the session tabs on the dock strip');
 
-                    $sessions = Services::resolve($ide, RunController::class)->sessions();
+                    $sessions = Probe::get(Services::resolve($ide, RunController::class), 'sessions');
                     $this->assertSame('shell:1', $sessions->active()?->id, 'the pressed session stays active through its move');
                 },
             ],

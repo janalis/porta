@@ -110,14 +110,16 @@ trait RunsIde
 
     /**
      * Await the app's git completion barrier: block until no git subprocess is
-     * in flight ({@see \Porta\Git\GitInfo::isBusy()}). git mutates the working
+     * in flight (the GitProcessRunner's in-flight map). git mutates the working
      * tree before its process exits, so once this returns the on-disk effect —
      * a revert, a stash pop, a checkout — has fully landed and an assertion
      * against the tree (or a mark refresh) is safe.
      */
     private function awaitGit(Ide $ide, float $timeout = 5.0): void
     {
-        $git = Services::resolve($ide, GitInfo::class);
-        $this->await(static fn (): bool => !$git->isBusy(), $timeout, 'git to finish');
+        // src carries no test-only isBusy(); the barrier reads the runner's
+        // in-flight map through the blessed Probe (once, outside the poll).
+        $runner = Probe::get(Services::resolve($ide, GitInfo::class), 'runner');
+        $this->await(static fn (): bool => [] === Probe::get($runner, 'running'), $timeout, 'git to finish');
     }
 }

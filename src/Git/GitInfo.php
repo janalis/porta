@@ -39,19 +39,6 @@ final class GitInfo
     }
 
     /**
-     * Whether any git subprocess is still in flight ({@see GitProcessRunner::isBusy()}).
-     * Git mutates the working tree before a process's exit callback fires, so a
-     * false here means every dispatched op has fully landed on disk. Tests await
-     * this as a real completion barrier instead of inferring done-ness from a
-     * rendered flash — which is why it stays on GitInfo rather than making them
-     * reach through to the runner.
-     */
-    public function isBusy(): bool
-    {
-        return $this->runner->isBusy();
-    }
-
-    /**
      * @param callable(?string): void $onDone branch name, or null when detached/unavailable
      */
     public function branch(callable $onDone): void

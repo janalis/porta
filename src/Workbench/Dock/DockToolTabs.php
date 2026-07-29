@@ -40,7 +40,7 @@ final class DockToolTabs
         return $tab;
     }
 
-    public function find(ResultsPanelMode $mode, string $title): ?DockToolTab
+    private function find(ResultsPanelMode $mode, string $title): ?DockToolTab
     {
         foreach ($this->tabs as $tab) {
             if ($tab->mode === $mode && $tab->title === $title) {
