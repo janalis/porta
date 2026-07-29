@@ -2,39 +2,33 @@
 
 declare(strict_types=1);
 
+use Porta\Plugin\Api\AbstractToolPlugin;
+use Porta\Plugin\Api\BinarySearch;
 use Porta\Plugin\Api\PluginApi;
-use Porta\Plugin\Api\PortaPlugin;
 use Porta\Support\AsyncProcess;
-use Symfony\Component\Process\ExecutableFinder;
 
 /**
  * phpantom (github.com/PHPantom-dev/phpantom_lsp) as the default PHP language
  * server plus its CLI. Registers the native `phpantom_lsp` binary (no
  * subcommand — it speaks LSP over stdio) for PHP; the binary resolves from the
- * plugin's `binary` setting, then `phpantom_lsp` on the PATH. When no binary is
- * found the LSP resolver returns null (PHP is unserved) and the Settings page
- * offers to install it via Homebrew (`brew install phpantom-lsp`) or cargo
- * (`cargo install phpantom_lsp --locked`). The CLI drives "Fix Current File" /
- * "Fix Project" (`phpantom_lsp fix`, in place — the filesystem poller reloads
- * the buffer) with a persisted "Fix on save" setting, and "Generate Config"
+ * plugin's `binary` setting, then `phpantom_lsp` on the PATH — a Rust binary,
+ * so {@see BinarySearch::PathOnly}: composer never puts one in vendor/bin.
+ * When no binary is found the LSP resolver returns null (PHP is unserved) and
+ * the Settings page offers to install it via Homebrew
+ * (`brew install phpantom-lsp`) or cargo (`cargo install phpantom_lsp
+ * --locked`). The CLI drives "Fix Current File" / "Fix Project"
+ * (`phpantom_lsp fix`, in place — the filesystem poller reloads the buffer)
+ * with a persisted "Fix on save" setting, and "Generate Config"
  * (`phpantom_lsp init`). Everything runs asynchronously on the shared loop.
  */
-return new class implements PortaPlugin {
-    private bool $running = false;
-
-    public function name(): string
-    {
-        return 'phpantom';
-    }
-
+return new class('phpantom', 'phpantom_lsp', BinarySearch::PathOnly) extends AbstractToolPlugin {
     public function activate(PluginApi $api): void
     {
-        $api->registerSetting('binary', 'phpantom_lsp binary', 'text', '', hint: 'empty = phpantom_lsp on PATH');
-        $api->registerSetting('autoFix', 'Fix on save', 'bool', false);
-        $api->registerInstaller('phpantom', fn (): bool => null !== $this->binary($api), [
+        $this->registerBinarySetting($api, [
             ['brew',  'phpantom-lsp'],
             ['cargo', 'phpantom_lsp'],
         ]);
+        $api->registerSetting('autoFix', 'Fix on save', 'bool', false);
 
         $api->registerLanguageServer('php', 'phpantom', function () use ($api): ?array {
             $binary = $this->binary($api);
@@ -46,32 +40,22 @@ return new class implements PortaPlugin {
             'fix',
             'PHPantom: Fix Current File',
             function () use ($api): void {
-                $file = $api->activeFile();
-                if (null === $file || !str_ends_with($file, '.php')) {
-                    $api->flash('phpantom: open a PHP file first');
-
-                    return;
+                $file = $this->activeFileOrFlash($api);
+                if (null !== $file) {
+                    $this->run($api, ['fix', $file], 'fixed '.basename($file));
                 }
-                $this->fix($api, [$file], basename($file));
             },
             ['ctrl+alt+m'],
         );
-
         $api->registerCommand('fix-project', 'PHPantom: Fix Project', function () use ($api): void {
-            $this->fix($api, [], 'project');
+            $this->run($api, ['fix'], 'fixed project');
         });
-
         $api->registerCommand('init', 'PHPantom: Generate Config', function () use ($api): void {
-            $this->init($api);
+            $this->run($api, ['init'], 'generated config');
         });
+        $this->registerToggle($api, 'toggle-auto-fix', 'PHPantom: Toggle Fix on Save', 'autoFix', 'phpantom fix on save');
 
-        $api->registerCommand('toggle-auto-fix', 'PHPantom: Toggle Fix on Save', static function () use ($api): void {
-            $next = !(bool) $api->setting('autoFix');
-            $api->changeSetting('autoFix', $next);
-            $api->flash('phpantom fix on save: '.($next ? 'on' : 'off'));
-        });
-
-        $usable = fn (): bool => null !== $this->binary($api);
+        $usable = $this->binaryAvailable($api);
         $api->addMenuItem('fix', $usable);
         $api->addMenuItem('fix-project', $usable);
         $api->addMenuItem('init', $usable);
@@ -79,76 +63,26 @@ return new class implements PortaPlugin {
 
         $api->onFileSaved(function (string $path) use ($api): void {
             if ((bool) $api->setting('autoFix') && str_ends_with($path, '.php')) {
-                $this->fix($api, [$path], basename($path));
+                $this->run($api, ['fix', $path], 'fixed '.basename($path));
             }
         });
     }
 
     /**
-     * Run `phpantom_lsp fix` (over $paths, or the whole project when empty) in
-     * place; the filesystem poller reloads the rewritten buffer.
+     * One CLI invocation under the shared single-flight slot; `fix` rewrites
+     * in place and the filesystem poller reloads the buffer.
      *
-     * @param list<string> $paths
+     * @param list<string> $arguments
      */
-    private function fix(PluginApi $api, array $paths, string $label): void
+    private function run(PluginApi $api, array $arguments, string $success): void
     {
-        if ($this->running) {
-            $api->flash('phpantom: already running');
-
-            return;
-        }
-        $binary = $this->binary($api);
+        $binary = $this->acquire($api);
         if (null === $binary) {
-            $api->flash('phpantom not found (set its binary or install it)', 4.0);
-
             return;
         }
-
-        $this->running = true;
-        new AsyncProcess([$binary, 'fix', ...$paths], $api->projectRoot())->start(function (int $code) use ($api, $label): void {
-            $this->running = false;
-            $api->flash(
-                0 === $code
-                    ? 'phpantom: fixed '.$label
-                    : 'phpantom: exited with code '.$code,
-                4.0,
-            );
+        new AsyncProcess([$binary, ...$arguments], $api->projectRoot())->start(function (int $code) use ($api, $success): void {
+            $this->release();
+            $this->flashExit($api, $code, 'phpantom: '.$success);
         });
-    }
-
-    private function init(PluginApi $api): void
-    {
-        if ($this->running) {
-            $api->flash('phpantom: already running');
-
-            return;
-        }
-        $binary = $this->binary($api);
-        if (null === $binary) {
-            $api->flash('phpantom not found (set its binary or install it)', 4.0);
-
-            return;
-        }
-
-        $this->running = true;
-        new AsyncProcess([$binary, 'init'], $api->projectRoot())->start(function (int $code) use ($api): void {
-            $this->running = false;
-            $api->flash(
-                0 === $code
-                    ? 'phpantom: generated config'
-                    : 'phpantom: exited with code '.$code,
-                4.0,
-            );
-        });
-    }
-
-    private function binary(PluginApi $api): ?string
-    {
-        $configured = trim((string) $api->setting('binary'));
-        if ('' !== $configured) {
-            return $configured;
-        }
-
-        return new ExecutableFinder()->find('phpantom_lsp');
     }
 };

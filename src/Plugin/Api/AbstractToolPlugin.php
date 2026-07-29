@@ -135,7 +135,22 @@ abstract class AbstractToolPlugin extends AbstractPlugin
     /** The exit-code report every tool run ends with: the success line, or the code. */
     protected function flashExit(PluginApi $api, int $code, string $success): void
     {
-        $api->flash(0 === $code ? $success : $this->name().': exited with code '.$code, 4.0);
+        if (0 === $code) {
+            $api->flash($success, 4.0);
+
+            return;
+        }
+        $this->flashFailure($api, $code);
+    }
+
+    /**
+     * The failure half on its own — for a run that failed for a reason the
+     * exit code alone does not carry (mago exits 0 with an unparseable
+     * report), where {@see flashExit()} would wrongly report success.
+     */
+    protected function flashFailure(PluginApi $api, int $code): void
+    {
+        $api->flash($this->name().': exited with code '.$code, 4.0);
     }
 
     /** '<n> issues' / '1 issue' / 'no issues' — the count report the analysis tools share. */

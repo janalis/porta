@@ -3,8 +3,8 @@
 declare(strict_types=1);
 
 use Porta\Highlight\TempestBackend;
+use Porta\Plugin\Api\AbstractPlugin;
 use Porta\Plugin\Api\PluginApi;
-use Porta\Plugin\Api\PortaPlugin;
 use Tempest\Highlight\Highlighter;
 
 /**
@@ -32,25 +32,15 @@ use Tempest\Highlight\Highlighter;
  * classification is core's own, so the scope filter keeps working whichever
  * highlighting backend is enabled — or none.
  */
-return new class implements PortaPlugin {
+return new class('tempest') extends AbstractPlugin {
     private ?Highlighter $highlighter = null;
-
-    public function name(): string
-    {
-        return 'tempest';
-    }
 
     public function activate(PluginApi $api): void
     {
         $theme = $api->syntaxTheme();
         $api->registerSetting('languages', 'Languages', 'text', '*', hint: 'comma-separated grammar names, or * for all');
 
-        $claimed = static function () use ($api): array {
-            $raw = trim((string) $api->setting('languages'));
-
-            return '' === $raw ? [] : array_values(array_filter(array_map(trim(...), explode(',', $raw))));
-        };
-        $api->registerHighlighter('Tempest', $claimed, function (string $content, string $language, Closure $deliver) use ($theme): void {
+        $api->registerHighlighter('Tempest', fn (): array => $this->claimedLanguages($api), function (string $content, string $language, Closure $deliver) use ($theme): void {
             // Built on first use: the theme holder is swapped in place on a
             // live theme switch, but tempest bakes its escape codes at
             // construction, so the Highlighter has to outlive nothing.

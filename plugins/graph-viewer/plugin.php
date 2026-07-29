@@ -6,8 +6,8 @@ use Porta\Graph\ArchitectureArtifact;
 use Porta\Graph\DotFiles;
 use Porta\Graph\DotLayoutEngine;
 use Porta\Graph\GraphExportFormat;
+use Porta\Plugin\Api\AbstractPlugin;
 use Porta\Plugin\Api\PluginApi;
-use Porta\Plugin\Api\PortaPlugin;
 
 /**
  * The Graphviz graph viewer as a bundled plugin: the routing claim (.dot/.gv
@@ -19,12 +19,7 @@ use Porta\Plugin\Api\PortaPlugin;
  * and its commands leave the palette and Plugins menu live.
  * Enabled by default ({@see \Porta\Config\IdeConfig::DEFAULT_ENABLED_PLUGINS}).
  */
-return new class implements PortaPlugin {
-    public function name(): string
-    {
-        return 'graph-viewer';
-    }
-
+return new class('graph-viewer') extends AbstractPlugin {
     public function activate(PluginApi $api): void
     {
         $api->registerViewer('graph', DotFiles::EXTENSIONS);
@@ -49,11 +44,9 @@ return new class implements PortaPlugin {
                 return; // palette self-guard: only a graph tab exports
             }
             $out = \sprintf('%s/%s.%s', \dirname($file), pathinfo($file, \PATHINFO_FILENAME), $format->extension());
-            // The dot binary follows the core dotPath setting through the same
-            // env channel the container reads — a plugin cannot read IDE
-            // settings, and two dotPath knobs would be worse.
-            $dotPath = isset($_ENV['PORTA_DOT_PATH']) && \is_string($_ENV['PORTA_DOT_PATH']) && '' !== $_ENV['PORTA_DOT_PATH'] ? $_ENV['PORTA_DOT_PATH'] : null;
-            new DotLayoutEngine($api->projectRoot(), $dotPath)->export((string) file_get_contents($file), $format, $out, static function (?string $error) use ($api, $out): void {
+            // The dot binary follows the CORE dotPath setting: two knobs for
+            // one path would be worse ({@see AbstractPlugin::coreSetting}).
+            new DotLayoutEngine($api->projectRoot(), $this->coreSetting('dotPath'))->export((string) file_get_contents($file), $format, $out, static function (?string $error) use ($api, $out): void {
                 null === $error
                     ? $api->flash('Exported '.basename($out))
                     : $api->flash('Export failed: '.$error, 5.0);
