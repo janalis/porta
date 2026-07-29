@@ -50,7 +50,6 @@ final class IdeConfig
         'gitRefreshInterval' => 2,
         'gitPath' => '',
         'dotPath' => '',
-        'architectureCommand' => '',
     ];
 
     /**

@@ -13,6 +13,7 @@ use Porta\Tests\Support\PreservesPath;
 use Porta\Tests\Support\RunsIde;
 use Porta\Tests\Support\Services;
 use Porta\Tests\Support\TempProject;
+use Porta\Tests\Support\UsesBundledPlugins;
 use Porta\Widget\CodeEditorWidget;
 use Symfony\Component\Tui\Ansi\AnsiUtils;
 
@@ -26,6 +27,7 @@ final class IdeImageViewerTest extends TestCase
     use ClearsPortaLsp;
     use PreservesPath;
     use RunsIde;
+    use UsesBundledPlugins;
 
     public function testImageOpensInlineWithHalfBlocksZoomAndPan(): void
     {
@@ -233,5 +235,32 @@ final class IdeImageViewerTest extends TestCase
         imagepng($gd);
 
         return (string) ob_get_clean();
+    }
+
+    public function testReopeningAChangedImageRefreshesThePixelsImmediately(): void
+    {
+        putenv('PATH=/nonexistent');
+        $project = new TempProject(['img.png' => $this->twoColorPng(64, 64), 'a.php' => "<?php\n"]);
+
+        $this->runIde(
+            $project,
+            $project->path('img.png'),
+            [
+                200 => function ($tui, $terminal, $ide) use ($project): void {
+                    $tui->tick();
+                    $this->assertStringContainsString('64 × 64', AnsiUtils::stripAnsiCodes($terminal->getOutput()));
+
+                    // Switch away, change the file on disk, and explicitly re-open:
+                    // the payload refreshes without waiting out the 1s reconciler.
+                    $service = Services::resolve($ide, BufferService::class);
+                    $service->openFile((string) realpath($project->path('a.php')));
+                    file_put_contents($project->path('img.png'), data: $this->twoColorPng(32, 16));
+                    $service->openFile((string) realpath($project->path('img.png')));
+                    $this->await(static function () use ($terminal): bool {
+                        return str_contains(AnsiUtils::stripAnsiCodes($terminal->getOutput()), '32 × 16');
+                    }, what: 'the refreshed dimensions');
+                },
+            ],
+        );
     }
 }

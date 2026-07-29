@@ -24,11 +24,12 @@ use Symfony\Component\DependencyInjection\Attribute\Autowire;
  *
  * Every setting applies live: its `apply` closure mutates the running UI (the
  * editor, the theme, the cursor shape, or the locale) the instant it
- * changes, and the value is persisted — except the two graph-viewer paths
- * (`dotPath`, `architectureCommand`), which are `restart: true` like the git
- * `gitPath` and per-language `runCommand` rows: they resolve through the
- * compiled env channel, and {@see \Porta\Widget\Settings\SettingsFormWidget}
- * renders their "applies on restart" note.
+ * changes, and the value is persisted — except the Graphviz `dotPath`, which
+ * is `restart: true` like the git `gitPath` and per-language `runCommand`
+ * rows: it resolves through the compiled env channel, and
+ * {@see \Porta\Widget\Settings\SettingsFormWidget} renders its
+ * "applies on restart" note. (The architecture generator command lives on the
+ * graph-viewer PLUGIN's settings page, not here.)
  *
  * @phpstan-type Descriptor array{label: string, kind: SettingsRowKind, group: 'general'|'interface', restart: bool, apply: (\Closure(int|bool|string): void)|null, options?: list<string>, optionLabels?: array<string, string>, min?: int, max?: int}
  */
@@ -150,13 +151,6 @@ final class SettingsController
                 'kind' => SettingsRowKind::Text,
                 'group' => 'general',
                 'restart' => true, // the engine resolves its binary from the compiled env channel
-                'apply' => null,
-            ],
-            'architectureCommand' => [
-                'label' => 'Architecture command (stdout = DOT)',
-                'kind' => SettingsRowKind::Text,
-                'group' => 'general',
-                'restart' => true,
                 'apply' => null,
             ],
         ];

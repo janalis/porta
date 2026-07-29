@@ -6,6 +6,7 @@ namespace Porta\Tests\Unit\Plugin;
 
 use PHPUnit\Framework\TestCase;
 use Porta\Config\IdeConfig;
+use Porta\Editor\BufferManager;
 use Porta\Editor\Document;
 use Porta\I18n\Translator;
 use Porta\Plugin\PluginApi;
@@ -37,6 +38,7 @@ final class PluginApiTest extends TestCase
     private StatusBarWidget $status;
     private RecordingFileOpener $files;
     private RecordingDiagnosticsSink $diagnostics;
+    private BufferManager $buffers;
 
     private function api(Presence $wired = Presence::With): PluginApi
     {
@@ -45,9 +47,10 @@ final class PluginApiTest extends TestCase
         $this->status = new StatusBarWidget();
         $this->files = new RecordingFileOpener();
         $this->diagnostics = new RecordingDiagnosticsSink();
+        $this->buffers = new BufferManager();
         if (Presence::With === $wired) {
             $tui = TestTui::create(100, 24);
-            $manager->wireRuntime(new PluginRuntime(new Notifier($this->status, $tui), new Translator('en'), $this->editor, $this->files, $tui, $this->diagnostics));
+            $manager->wireRuntime(new PluginRuntime(new Notifier($this->status, $tui), new Translator('en'), $this->editor, $this->files, $tui, $this->diagnostics, $this->buffers));
         }
 
         return new PluginApi('demo', $manager, '/p', new PluginSettings('/p', []));
@@ -211,7 +214,15 @@ final class PluginApiTest extends TestCase
         $manager = new PluginManager(new PluginEvents(), $settings = new PluginSettings($project->dir, []));
         $tui = TestTui::create(100, 24);
         $manager->wireRuntime(
-            new PluginRuntime(new Notifier(new StatusBarWidget(), $tui), new Translator('en'), new CodeEditorWidget(), new RecordingFileOpener(), $tui, new RecordingDiagnosticsSink()),
+            new PluginRuntime(
+                new Notifier(new StatusBarWidget(), $tui),
+                new Translator('en'),
+                new CodeEditorWidget(),
+                new RecordingFileOpener(),
+                $tui,
+                new RecordingDiagnosticsSink(),
+                new BufferManager(),
+            ),
         );
         $api = new PluginApi('demo', $manager, $project->dir, $settings);
 
@@ -245,6 +256,7 @@ final class PluginApiTest extends TestCase
         $api->insertAtCaret('nope');
 
         $this->editor->showDocument('/p/a.php', new Document("hello\nworld\n"));
+        $this->buffers->open('/p/a.php', "hello\nworld\n"); // activeFile() is buffer truth
         $this->editor->getDocument()->setCursor(1, 2);
         $this->assertSame('/p/a.php', $api->activeFile());
         $this->assertSame("hello\nworld\n", $api->documentText());

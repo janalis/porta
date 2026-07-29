@@ -46,7 +46,9 @@ final class PluginManagerTest extends TestCase
         $manager = new PluginManager($events, new PluginSettings('/p', []));
         $tui = TestTui::create(120, 24);
         $this->status = new StatusBarWidget();
-        $manager->wireRuntime(new PluginRuntime(new Notifier($this->status, $tui), new Translator('en'), new CodeEditorWidget(), new RecordingFileOpener(), $tui, new RecordingDiagnosticsSink()));
+        $manager->wireRuntime(
+            new PluginRuntime(new Notifier($this->status, $tui), new Translator('en'), new CodeEditorWidget(), new RecordingFileOpener(), $tui, new RecordingDiagnosticsSink(), new BufferManager()),
+        );
 
         return $manager;
     }

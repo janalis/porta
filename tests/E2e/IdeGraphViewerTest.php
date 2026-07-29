@@ -9,13 +9,12 @@ use Porta\Config\CommandRegistry;
 use Porta\Editor\BufferManager;
 use Porta\Editor\BufferService;
 use Porta\Editor\OpenFocus;
-use Porta\Graph\GraphExportFormat;
-use Porta\Graph\GraphTabActions;
 use Porta\Tests\Support\ClearsPortaLsp;
 use Porta\Tests\Support\PreservesPath;
 use Porta\Tests\Support\RunsIde;
 use Porta\Tests\Support\Services;
 use Porta\Tests\Support\TempProject;
+use Porta\Tests\Support\UsesBundledPlugins;
 use Symfony\Component\Tui\Ansi\AnsiUtils;
 
 /**
@@ -29,6 +28,7 @@ final class IdeGraphViewerTest extends TestCase
     use ClearsPortaLsp;
     use PreservesPath;
     use RunsIde;
+    use UsesBundledPlugins;
 
     private const string SMALL_DOT = "digraph G { rankdir=LR; A -> B [label=\"calls\"]; B -> C; }\n";
 
@@ -104,7 +104,7 @@ final class IdeGraphViewerTest extends TestCase
                     $this->assertStringContainsString('3 nodes · 2 edges', $output, 'the last good graph is still the model');
 
                     // Exporting the broken document fails the same loud way.
-                    Services::resolve($ide, CommandRegistry::class)->run('graph_export_svg');
+                    Services::resolve($ide, CommandRegistry::class)->run('graph-viewer:export-svg');
                     $this->await(static fn (): bool => str_contains(AnsiUtils::stripAnsiCodes($terminal->getOutput()), 'Export failed'), what: 'the export-failure flash');
                 },
             ],
@@ -173,6 +173,15 @@ final class IdeGraphViewerTest extends TestCase
                     $tui->tick();
                     $this->assertStringContainsString('3 nodes', AnsiUtils::stripAnsiCodes($terminal->getOutput()));
 
+                    // An explicit re-open of a tab whose file changed on disk
+                    // refreshes the payload immediately — no 1s reconciler wait.
+                    // (The display cannot prove it — fake-dot ignores stdin —
+                    // so assert the model; the synchronous refresh needs no await.)
+                    $service->openFile($phpPath);
+                    file_put_contents($dotPath, data: "digraph G { A -> B; }\n");
+                    $service->openFile($dotPath);
+                    $this->assertSame("digraph G { A -> B; }\n", $buffers->get($dotPath)?->graphDot, 'the payload refreshed on the explicit re-open');
+
                     $service->openFile($bigPath);
                     $this->assertCount(2, $buffers->all(), 'an oversized DOT is refused');
                     $service->openFile($binaryPath);
@@ -215,7 +224,7 @@ final class IdeGraphViewerTest extends TestCase
             null,
             [
                 200 => function ($tui, $terminal, $ide) use ($project): void {
-                    Services::resolve($ide, CommandRegistry::class)->run('ide_architecture');
+                    Services::resolve($ide, CommandRegistry::class)->run('graph-viewer:architecture');
                     $this->await(static fn (): bool => str_contains(AnsiUtils::stripAnsiCodes($terminal->getOutput()), 'nodes'), what: 'the architecture graph');
                     $artifact = $project->path('.porta/architecture.dot');
                     $this->assertFileExists($artifact);
@@ -225,12 +234,12 @@ final class IdeGraphViewerTest extends TestCase
 
                     $buffers = Services::resolve($ide, BufferManager::class);
                     $this->assertCount(1, $buffers->all());
-                    Services::resolve($ide, CommandRegistry::class)->run('ide_architecture'); // regenerate: reuse, no duplicate
+                    Services::resolve($ide, CommandRegistry::class)->run('graph-viewer:architecture'); // regenerate: reuse, no duplicate
                     $this->assertCount(1, $buffers->all(), 'the second invocation reused the tab');
 
-                    Services::resolve($ide, CommandRegistry::class)->run('graph_export_svg');
+                    Services::resolve($ide, CommandRegistry::class)->run('graph-viewer:export-svg');
                     $this->await(static fn (): bool => is_file($project->path('.porta/architecture.svg')), what: 'the SVG export');
-                    Services::resolve($ide, GraphTabActions::class)->exportActive(GraphExportFormat::Png);
+                    Services::resolve($ide, CommandRegistry::class)->run('graph-viewer:export-png');
                     $this->await(static fn (): bool => is_file($project->path('.porta/architecture.png')), what: 'the PNG export');
                 },
             ],
@@ -240,10 +249,10 @@ final class IdeGraphViewerTest extends TestCase
     public function testConfiguredGeneratorCommandTakesPrecedence(): void
     {
         $project = new TempProject([
-            '.porta.json' => (string) json_encode(['settings' => [
-                'dotPath' => self::fakeDot(),
-                'architectureCommand' => 'printf \'digraph FromCommand { X -> Y; }\'',
-            ]]),
+            '.porta.json' => (string) json_encode([
+                'settings' => ['dotPath' => self::fakeDot()],
+                'plugins' => ['graph-viewer' => ['command' => 'printf \'digraph FromCommand { X -> Y; }\'']],
+            ]),
         ]);
         $this->phpOnlyPath($project);
 
@@ -252,7 +261,7 @@ final class IdeGraphViewerTest extends TestCase
             null,
             [
                 200 => function ($tui, $terminal, $ide) use ($project): void {
-                    Services::resolve($ide, CommandRegistry::class)->run('ide_architecture');
+                    Services::resolve($ide, CommandRegistry::class)->run('graph-viewer:architecture');
                     $this->await(static fn (): bool => is_file($project->path('.porta/architecture.dot')), what: 'the generated artifact');
                     $this->assertStringContainsString('FromCommand', (string) file_get_contents($project->path('.porta/architecture.dot')), 'the configured command supplied the DOT');
                 },
@@ -263,10 +272,10 @@ final class IdeGraphViewerTest extends TestCase
     public function testGeneratorFailuresFlashInsteadOfOpening(): void
     {
         $project = new TempProject([
-            '.porta.json' => (string) json_encode(['settings' => [
-                'dotPath' => self::fakeDot(),
-                'architectureCommand' => 'echo doomed >&2; exit 3',
-            ]]),
+            '.porta.json' => (string) json_encode([
+                'settings' => ['dotPath' => self::fakeDot()],
+                'plugins' => ['graph-viewer' => ['command' => 'echo doomed >&2; exit 3']],
+            ]),
         ]);
         $this->phpOnlyPath($project);
 
@@ -275,13 +284,9 @@ final class IdeGraphViewerTest extends TestCase
             null,
             [
                 200 => function ($tui, $terminal, $ide) use ($project): void {
-                    Services::resolve($ide, CommandRegistry::class)->run('ide_architecture');
+                    Services::resolve($ide, CommandRegistry::class)->run('graph-viewer:architecture');
                     $this->await(static fn (): bool => str_contains(AnsiUtils::stripAnsiCodes($terminal->getOutput()), 'doomed'), what: 'the failure flash');
                     $this->assertFileDoesNotExist($project->path('.porta/architecture.dot'));
-
-                    // Empty output is its own loud failure.
-                    $registry = Services::resolve($ide, \Porta\Graph\ArchitectureGraphController::class);
-                    $this->assertNotNull($registry);
                 },
             ],
         );
@@ -290,10 +295,10 @@ final class IdeGraphViewerTest extends TestCase
     public function testEmptyGeneratorOutputFlashes(): void
     {
         $project = new TempProject([
-            '.porta.json' => (string) json_encode(['settings' => [
-                'dotPath' => self::fakeDot(),
-                'architectureCommand' => 'true',
-            ]]),
+            '.porta.json' => (string) json_encode([
+                'settings' => ['dotPath' => self::fakeDot()],
+                'plugins' => ['graph-viewer' => ['command' => 'true']],
+            ]),
         ]);
         $this->phpOnlyPath($project);
 
@@ -302,7 +307,7 @@ final class IdeGraphViewerTest extends TestCase
             null,
             [
                 200 => function ($tui, $terminal, $ide) use ($project): void {
-                    Services::resolve($ide, CommandRegistry::class)->run('ide_architecture');
+                    Services::resolve($ide, CommandRegistry::class)->run('graph-viewer:architecture');
                     $this->await(static fn (): bool => str_contains(AnsiUtils::stripAnsiCodes($terminal->getOutput()), 'produced no output'), what: 'the empty-output flash');
                     $this->assertFileDoesNotExist($project->path('.porta/architecture.dot'));
                 },
@@ -324,11 +329,11 @@ final class IdeGraphViewerTest extends TestCase
             $project->path('src/A.php'),
             [
                 200 => function ($tui, $terminal, $ide): void {
-                    Services::resolve($ide, CommandRegistry::class)->run('ide_architecture');
+                    Services::resolve($ide, CommandRegistry::class)->run('graph-viewer:architecture');
                     $this->await(static fn (): bool => str_contains(AnsiUtils::stripAnsiCodes($terminal->getOutput()), 'Cannot write'), what: 'the unwritable flash');
 
-                    // A text tab active: exportActive self-guards (the palette path bypasses when:).
-                    Services::resolve($ide, GraphTabActions::class)->exportActive(GraphExportFormat::Svg);
+                    // A text tab active: the plugin export handler self-guards.
+                    Services::resolve($ide, CommandRegistry::class)->run('graph-viewer:export-svg');
                     $this->pump(0.1);
                     $this->assertStringNotContainsString('Exported', AnsiUtils::stripAnsiCodes($terminal->getOutput()));
                 },

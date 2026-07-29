@@ -79,6 +79,7 @@ final class BufferService implements BufferReopener, DiagnosticsSink, FileOpener
         if ($this->buffers->has($path)) {
             /** @var Buffer $active */
             $active = $this->buffers->setActive($path);
+            $this->refreshStaleViewerPayload($active);
             $this->showBuffer($active);
             if (OpenFocus::Editor === $focus) {
                 $this->focusEditorArea();
@@ -93,17 +94,16 @@ final class BufferService implements BufferReopener, DiagnosticsSink, FileOpener
             return;
         }
         // The registered viewer routes decide which pane a file opens in (the
-        // bundled image-viewer/graph-viewer plugins claim their extensions; an
-        // id no built-in pane answers to falls through to the text path).
-        // TRANSITIONAL: the hardcoded predicates back the routes up until the
-        // bundled plugins ship the claims — the next commit removes them.
+        // bundled image-viewer/graph-viewer plugins claim their extensions —
+        // disabling one routes its files here to the text path instead; an id
+        // no built-in pane answers to falls through the same way).
         $viewer = $this->viewers->viewerFor($path);
-        if ('image' === $viewer || ImageDecoder::isImagePath($path)) {
+        if ('image' === $viewer) {
             $this->openImageFile($path, $focus);
 
             return;
         }
-        if ('graph' === $viewer || DotFiles::isDotPath($path)) {
+        if ('graph' === $viewer) {
             $this->openGraphFile($path, $focus);
 
             return;
@@ -142,6 +142,37 @@ final class BufferService implements BufferReopener, DiagnosticsSink, FileOpener
             $this->focusEditorArea();
         }
         $this->tui->requestRender();
+    }
+
+    /**
+     * Re-opening an already-open viewer tab whose file changed on disk shows
+     * the CURRENT content, not the stale payload — an explicit open must not
+     * wait out the 1s reconciler (the regenerated architecture artifact is the
+     * motivating case: the plugin writes it, then opens it). Silent on
+     * purpose, unlike the reconciler's "Reloaded" flash — the user asked for
+     * this file just now.
+     */
+    private function refreshStaleViewerPayload(Buffer $buffer): void
+    {
+        if (!$buffer->isViewer() || $buffer->diskStamp === $buffer->diskStampNow()) {
+            return;
+        }
+        if ($buffer->isGraph()) {
+            $dot = (string) file_get_contents($buffer->path);
+            if ('' === $dot || mb_check_encoding($dot, encoding: 'UTF-8')) {
+                $buffer->graphDot = $dot;
+                $buffer->stampFromDisk();
+            }
+
+            return;
+        }
+        if ($buffer->isImage() && (int) filesize($buffer->path) <= ImageDecoder::MAX_BYTES) {
+            $image = $this->imageDecoder->decode($buffer->path);
+            if (null !== $image) {
+                $buffer->image = $image;
+                $buffer->stampFromDisk();
+            }
+        }
     }
 
     /**

@@ -147,9 +147,9 @@ final class SettingsControllerTest extends TestCase
         $byKey = array_column($rows, null, 'key');
 
         $this->assertSame(
-            ['inlineDiagnostics', 'autoPairs', 'formatOnSave', 'todoTags', 'dotPath', 'architectureCommand'],
+            ['inlineDiagnostics', 'autoPairs', 'formatOnSave', 'todoTags', 'dotPath'],
             array_column($rows, 'key'),
-            'General holds editor behavior (incl. the two restart-required graph paths); appearance moved to Interface',
+            'General holds editor behavior (incl. the restart-required dot path); appearance moved to Interface',
         );
         $this->assertFalse($byKey['autoPairs']->value);
         $this->assertSame(SettingsRowKind::Bool, $byKey['autoPairs']->kind);

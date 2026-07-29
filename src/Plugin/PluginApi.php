@@ -432,10 +432,13 @@ final class PluginApi
         $runtime->tui->requestRender();
     }
 
-    /** The active file's absolute path, or null (no file / an image tab). */
+    /** The active TAB's file path (viewer tabs included), or null when no tab is open. */
     public function activeFile(): ?string
     {
-        $path = $this->manager->runtime()->editor->getFilePath();
+        // The active TAB's file — buffer truth, not the editor widget's (a
+        // viewer tab neutralizes the editor document, but its file is still
+        // the active one; the graph-viewer's export glue needs exactly that).
+        $path = $this->manager->runtime()->buffers->active()?->path;
 
         return null !== $path && '' !== $path ? $path : null;
     }

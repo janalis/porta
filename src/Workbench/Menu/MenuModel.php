@@ -128,7 +128,6 @@ final class MenuModel
         'View' => [
             'i:ide_problems',
             'i:ide_todo',
-            'i:ide_architecture',
             'i:ide_toggle_focus',
             self::SEP,
             'i:toggle_inline_diagnostics',

@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Porta\Plugin;
 
 use Porta\Container\AsIdeService;
+use Porta\Editor\BufferManager;
 use Porta\Editor\DiagnosticsSink;
 use Porta\Editor\EditorTextAccess;
 use Porta\Editor\FileOpener;
@@ -28,5 +29,6 @@ final readonly class PluginRuntime
         public FileOpener $files,
         public Tui $tui,
         public DiagnosticsSink $diagnostics,
+        public BufferManager $buffers,
     ) {}
 }
