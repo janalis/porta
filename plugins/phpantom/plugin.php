@@ -73,7 +73,9 @@ return new class implements PortaPlugin {
 
         $usable = fn (): bool => null !== $this->binary($api);
         $api->addMenuItem('fix', $usable);
+        $api->addMenuItem('fix-project', $usable);
         $api->addMenuItem('init', $usable);
+        $api->addMenuItem('toggle-auto-fix');
 
         $api->onFileSaved(function (string $path) use ($api): void {
             if ((bool) $api->setting('autoFix') && str_ends_with($path, '.php')) {

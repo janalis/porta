@@ -43,8 +43,14 @@ return new class implements PortaPlugin {
     public function activate(PluginApi $api): void
     {
         $theme = $api->syntaxTheme();
+        $api->registerSetting('languages', 'Languages', 'text', '*', hint: 'comma-separated grammar names, or * for all');
 
-        $api->registerHighlighter('Tempest', ['*'], function (string $content, string $language, Closure $deliver) use ($theme): void {
+        $claimed = static function () use ($api): array {
+            $raw = trim((string) $api->setting('languages'));
+
+            return '' === $raw ? [] : array_values(array_filter(array_map(trim(...), explode(',', $raw))));
+        };
+        $api->registerHighlighter('Tempest', $claimed, function (string $content, string $language, Closure $deliver) use ($theme): void {
             // Built on first use: the theme holder is swapped in place on a
             // live theme switch, but tempest bakes its escape codes at
             // construction, so the Highlighter has to outlive nothing.

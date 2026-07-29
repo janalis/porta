@@ -192,6 +192,11 @@ final class IdeImageViewerTest extends TestCase
     {
         putenv('PATH=/nonexistent');
         $project = new TempProject([
+            // The plugin's maxBytes claim is raised past the core decoder cap,
+            // so the oversized file still ROUTES to the image path and the
+            // core backstop refuses it (the default claim would drop it to the
+            // text path's own 2 MB refusal instead).
+            '.porta.json' => (string) json_encode(['plugins' => ['image-viewer' => ['maxBytes' => 30 * 1024 * 1024]]]),
             'fake.png' => 'not an image at all',
             'img.png' => $this->twoColorPng(4, 4),
         ]);

@@ -54,6 +54,7 @@ return new class implements PortaPlugin {
         });
 
         $api->addMenuItem('fix', fn (): bool => null !== $this->binary($api));
+        $api->addMenuItem('toggle-on-save');
 
         $api->onFileSaved(function (string $path) use ($api): void {
             if ((bool) $api->setting('autoFormat') && str_ends_with($path, '.php')) {
