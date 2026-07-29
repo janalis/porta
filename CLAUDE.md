@@ -17,8 +17,15 @@ composer coverage:check      # runs the suite with coverage and enforces 100% li
 composer format              # mago format (apply)
 composer format:check        # mago format --check
 composer lint                # mago lint
-composer container           # kernel-less debug:container (tools/container-debug.php);
+composer container           # kernel-less debug:container;
                              #   flags via `--`: --loaded, --tag=<name>, --aliases
+
+# The three gates above (arch, coverage:check, container) are Symfony commands
+# in src/Console/, run through the MAINTAINER console bin/porta-dev — a separate
+# binary because bin/porta is a single-command application (that is what lets
+# `porta src/Foo.php:12` read its argument as a path). porta-dev is deliberately
+# absent from composer's "bin": it grades Porta's own tree, so it has no meaning
+# in a user's project. Always invoke them through the composer scripts.
 
 # Run a single test / filter
 vendor/bin/phpunit --filter testName
@@ -40,11 +47,16 @@ Run gate commands capturing output rather than piping to a pager, e.g.
 - `composer lint` — **zero** findings. The `[linter.rules]` section of `mago.toml` disables
   the rules that conflict with house style (with rationale comments); everything else
   applies at full strength.
-- `composer arch` — the **architecture ratchet** (`tools/architecture-check.php`): the
+- `composer arch` — the **architecture ratchet** (`src/Console/ArchitectureCheckCommand`): the
   exact namespace import graph, class-level acyclicity (two documented SCCs allowed),
   and the E2e suite-size bound. It fails on drift in EITHER direction — a new edge needs
   adding to the embedded allowlist **in the same PR** (that is the review point), and a
   vanished edge must be removed from it. CI (`.github/workflows/ci.yml`) runs all five gates.
+  The gates are ordinary `src/` code (they left `tools/`, which is gone): analysed by mago
+  and 100%-covered like everything else, which is why each takes its inputs as seams — the
+  arch command's scan root is an argument and its pins are constructor-injected, so it can
+  be driven over fixture trees. It scans `src/`, so it scans itself: keep it importing
+  nothing from `Porta\` or it grows the very edges it grades.
 
 ## Conventions
 
