@@ -9,6 +9,7 @@ use Porta\Graph\DotJsonParser;
 use Porta\Graph\GraphLayout;
 use Porta\I18n\Translator;
 use Porta\Tests\Support\FakeLayoutEngine;
+use Porta\Tests\Support\PngFixture;
 use Porta\Tests\Support\RecordingViewerTabHandler;
 use Porta\Ui\Glyphs;
 use Porta\Widget\GraphViewerWidget;
@@ -303,6 +304,88 @@ final class GraphViewerWidgetTest extends TestCase
         $screen = self::plain($widget->render(new RenderContext(60, 16)));
         $this->assertStringContainsString('layout…', $screen, 'the hint rides the first row');
         $this->assertStringContainsString('┌', $screen, 'the previous graph stays visible underneath');
+    }
+
+    public function testShowsTheBitmapDotRenders(): void
+    {
+        $this->engine->nextResult = self::layout();
+        $this->engine->nextPng = PngFixture::bytes(260, 36);
+        $widget = $this->widget();
+        $widget->show('/p/g.dot', 'digraph G { A -> B; }');
+
+        $raw = implode("\n", $widget->render(new RenderContext(80, 24)));
+        $this->assertStringContainsString('▀', $raw, 'the picture paints as half-blocks');
+        $this->assertStringContainsString('38;2;200;40;40', $raw, "and it is dot's pixels, not ours");
+        $this->assertStringNotContainsString('┌', self::plain($widget->render(new RenderContext(80, 24))), 'the cell rendering stepped aside');
+        $this->assertSame([72], $this->engine->renderDpis, '72 dpi: one point per pixel');
+        $this->assertSame('3 nodes · 2 edges', $widget->statusInfo(), 'the geometry still answers for the status bar');
+    }
+
+    public function testTheCellRenderingCoversTheGapUntilTheBitmapArrives(): void
+    {
+        $this->engine->nextResult = self::layout();
+        $this->engine->nextPng = null; // dot has not answered yet
+        $widget = $this->widget();
+        $widget->show('/p/g.dot', 'digraph G { A -> B; }');
+
+        $this->assertStringContainsString('┌', self::plain($widget->render(new RenderContext(80, 24))), 'never a blank pane');
+    }
+
+    public function testAFailedRenderKeepsTheCellsUnderABanner(): void
+    {
+        // What a graphviz built without libgd says — the case the fallback exists for.
+        $this->engine->nextResult = self::layout();
+        $this->engine->nextPng = 'Format: "png" not recognized.';
+        $this->engine->pngIsError = true;
+        $widget = $this->widget();
+        $widget->show('/p/g.dot', 'digraph G { A -> B; }');
+
+        $screen = self::plain($widget->render(new RenderContext(60, 16)));
+        $this->assertStringContainsString('not recognized', $screen, 'the banner says why there is no picture');
+        $this->assertStringContainsString('┌', $screen, 'and the cell rendering carries the graph');
+    }
+
+    public function testUndecodableBytesReportInsteadOfBlanking(): void
+    {
+        $this->engine->nextResult = self::layout();
+        $this->engine->nextPng = 'this is not a PNG';
+        $widget = $this->widget();
+        $widget->show('/p/g.dot', 'digraph G { A -> B; }');
+
+        $screen = self::plain($widget->render(new RenderContext(60, 16)));
+        $this->assertStringContainsString('could not be decoded', $screen);
+        $this->assertStringContainsString('┌', $screen);
+    }
+
+    public function testATabSwitchNeverPaintsThePreviousTabsPicture(): void
+    {
+        $this->engine->nextResult = self::layout();
+        $this->engine->nextPng = PngFixture::bytes(260, 36);
+        $widget = $this->widget();
+        $widget->show('/p/a.dot', 'digraph A { A -> B; }');
+        $this->assertStringContainsString('▀', implode("\n", $widget->render(new RenderContext(80, 24))));
+
+        $this->engine->nextPng = null; // the new tab's picture has not arrived
+        $widget->show('/p/b.dot', 'digraph B { X -> Y; }');
+        $screen = self::plain($widget->render(new RenderContext(80, 24)));
+
+        $this->assertStringContainsString('┌', $screen, 'the new tab falls back to cells rather than showing the old picture');
+    }
+
+    public function testALateBitmapForAnAbandonedTabIsDropped(): void
+    {
+        $this->engine->nextResult = self::layout();
+        $this->engine->deferred = true;
+        $widget = $this->widget();
+        $widget->show('/p/a.dot', 'digraph A { A -> B; }');
+        ($this->engine->pendingDone)(self::layout()); // the layout lands, so a bitmap is requested
+        $deliverA = $this->engine->pendingPng;
+        $this->assertNotNull($deliverA);
+
+        $widget->show('/p/b.dot', 'digraph B { X -> Y; }'); // the tab moves on
+        $deliverA(PngFixture::bytes(260, 36)); // dot answers for the tab that left
+
+        $this->assertStringNotContainsString('▀', implode("\n", $widget->render(new RenderContext(80, 24))), 'a stale picture never reaches the pane');
     }
 
     public function testRefreshThemeInvalidatesTheRenderCache(): void

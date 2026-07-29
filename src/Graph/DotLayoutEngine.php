@@ -96,7 +96,12 @@ final class DotLayoutEngine implements LayoutEngine
             return;
         }
         $this->rendering?->cancel();
-        $process = new AsyncProcess([$binary, '-Tpng', '-Gdpi='.$dpi], $this->rootDir, stdin: $dot, captureStderr: true);
+        // -Gpad=0 is what makes the pixel grid line up with the layout: dot pads
+        // a bitmap by 4 points a side by default (measured — `margin` is NOT the
+        // knob, it leaves the canvas untouched), which would shift every
+        // coordinate the viewer hit-tests against. With pad 0 the PNG is exactly
+        // ceil(bb) × dpi/72 pixels.
+        $process = new AsyncProcess([$binary, '-Tpng', '-Gdpi='.$dpi, '-Gpad=0'], $this->rootDir, stdin: $dot, captureStderr: true);
         $this->rendering = $process;
         $started = $process->start(function (int $code, string $stdout) use ($process, $onPng, $onError): void {
             if ($this->rendering === $process) {

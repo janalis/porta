@@ -9,6 +9,10 @@ use Porta\Container\AsWidget;
 use Porta\Graph\GraphLayout;
 use Porta\Graph\LayoutEngine;
 use Porta\I18n\Translator;
+use Porta\Image\HalfBlockRasterizer;
+use Porta\Image\ImageData;
+use Porta\Image\ImageDecoder;
+use Porta\Image\ScaledSource;
 use Porta\Image\ZoomPanModel;
 use Porta\Ui\Glyphs;
 use Porta\Ui\LtrPane;
@@ -29,10 +33,18 @@ use Symfony\Component\Tui\Widget\KeybindingsTrait;
 use Symfony\Component\Tui\Widget\VerticallyExpandableInterface;
 
 /**
- * The graph tab's pane: shows a Graphviz DOT document laid out by the
- * {@see LayoutEngine} and rasterized by {@see GraphRenderer}, owning zoom/pan
- * ({@see ZoomPanModel} with a finer ladder — graph fit scales sit far below
- * the image ladder's floor) and node selection. It replaces the code editor
+ * The graph tab's pane: shows a Graphviz DOT document as the PICTURE dot itself
+ * renders — `dot -Tpng` decoded into truecolor pixels and painted as half-blocks,
+ * the image viewer's path — over the geometry `dot -Tjson0` provides, which is
+ * what still answers "which node is under the pointer" and "how many edges".
+ * It owns zoom/pan ({@see ZoomPanModel} with a finer ladder — graph fit scales
+ * sit far below the image ladder's floor) and node selection.
+ *
+ * Until the bitmap arrives — and forever, on a graphviz built without libgd,
+ * whose `dot` cannot emit PNG at all — {@see GraphRenderer}'s cell rendering
+ * paints instead. That is not a degraded mode so much as a different one: it
+ * draws node labels as real text, which stays readable at a pane size where the
+ * bitmap's own type is a few pixels tall. It replaces the code editor
  * as the editor-pane's content while a graph buffer is active, so the
  * tab-cycling / close / go-to-file keys are re-bound here and routed back
  * through {@see ViewerTabHandler} (the image viewer's seam, shared).
@@ -59,8 +71,17 @@ final class GraphViewerWidget extends AbstractWidget implements FocusableInterfa
 
     private const int LAYOUT_CACHE_CAP = 8;
 
+    /** 72 dpi = one point per pixel, so the bitmap shares the layout's coordinates. */
+    private const int BITMAP_DPI = 72;
+
     private ?string $path = null;
     private ?string $dotHash = null;
+    /** The DOT source of the shown tab — kept because a bitmap is re-rendered from it. */
+    private ?string $dot = null;
+    /** The picture dot rendered, or null while none has arrived for this graph. */
+    private ?ImageData $bitmap = null;
+    /** Memoises the area-averaged copy the rasterizer samples while shrinking. */
+    private readonly ScaledSource $scaled;
     /** The last GOOD layout — kept on screen when a newer layout fails. */
     private ?GraphLayout $layout = null;
     private ?ZoomPanModel $view = null;
@@ -78,13 +99,19 @@ final class GraphViewerWidget extends AbstractWidget implements FocusableInterfa
     private int $lastCols = 80;
     private int $lastRows = 24;
     private ?ViewerTabHandler $handler = null;
+    private readonly ImageDecoder $decoder;
 
     public function __construct(
         private readonly LayoutEngine $engine,
         private readonly Translator $translator,
+        // Defaulted like $styles (the StylesDefault pattern): a decoder is pure,
+        // so the widget-tree tests need not thread one through.
+        ?ImageDecoder $decoder = null,
         ?Styles $styles = null,
     ) {
         $this->initStyles($styles);
+        $this->decoder = $decoder ?? new ImageDecoder();
+        $this->scaled = new ScaledSource();
     }
 
     public function setHandler(ViewerTabHandler $handler): void
@@ -101,6 +128,10 @@ final class GraphViewerWidget extends AbstractWidget implements FocusableInterfa
         }
         $this->path = $path;
         $this->dotHash = $hash;
+        $this->dot = $dot;
+        // The previous tab's picture must not paint under this tab's geometry;
+        // the cell rendering covers the gap until the new bitmap lands.
+        $this->bitmap = null;
         $this->selected = null;
         $cached = $this->layoutCache[$hash] ?? null;
         if (null !== $cached) {
@@ -142,6 +173,8 @@ final class GraphViewerWidget extends AbstractWidget implements FocusableInterfa
     {
         $this->path = null;
         $this->dotHash = null;
+        $this->dot = null;
+        $this->bitmap = null;
         $this->layout = null;
         $this->view = null;
         $this->error = null;
@@ -318,6 +351,51 @@ final class GraphViewerWidget extends AbstractWidget implements FocusableInterfa
         $this->selectionOrder = array_map(static fn (array $entry): int => (int) $entry[2], $order);
         $this->invalidate();
         $this->handler?->viewChanged();
+        $this->requestBitmap();
+    }
+
+    /**
+     * Ask dot for the picture. One bitmap at a time, deliberately: a big graph
+     * decodes to tens of megabytes of truecolor pixels, so caching one per tab
+     * would be a memory trap — and re-rendering is one fast process, while the
+     * expensive half (the layout) is still cached per DOT hash.
+     */
+    private function requestBitmap(): void
+    {
+        $dot = $this->dot;
+        // Only reachable through adopt(), which only runs after show() stored the
+        // source it laid out.
+        \assert(null !== $dot, description: 'a bitmap is only ever requested for a shown document');
+        $hash = $this->dotHash;
+        $this->engine->render(
+            $dot,
+            self::BITMAP_DPI,
+            function (string $png) use ($hash): void {
+                if ($hash !== $this->dotHash) {
+                    return; // the tab moved on while dot was working
+                }
+                $image = $this->decoder->decodeBytes($png);
+                if (null === $image) {
+                    // Undecodable: keep whatever is on screen (a re-render must
+                    // not blank a good picture) and say why it did not change.
+                    $this->error = $this->translator->trans('the graph bitmap could not be decoded');
+                    $this->invalidate();
+
+                    return;
+                }
+                $this->bitmap = $image;
+                $this->invalidate();
+                $this->handler?->viewChanged();
+            },
+            function (string $message) use ($hash): void {
+                if ($hash === $this->dotHash) {
+                    // No picture: the cell rendering keeps the pane usable and
+                    // the banner says why (a dot without libgd lands here).
+                    $this->error = $message;
+                    $this->invalidate();
+                }
+            },
+        );
     }
 
     private function zoom(int $dir): void
@@ -375,6 +453,14 @@ final class GraphViewerWidget extends AbstractWidget implements FocusableInterfa
     /** @return list<string> */
     private function contentLines(int $cols, int $rows): array
     {
+        if (null !== $this->bitmap && null !== $this->view) {
+            return HalfBlockRasterizer::render(
+                $this->scaled->forScale($this->bitmap, $this->view->effectiveScale($cols, 2 * $rows)),
+                $this->view,
+                $cols,
+                $rows,
+            );
+        }
         if (null !== $this->layout && null !== $this->view) {
             return GraphRenderer::render($this->layout, $this->view, $this->selected, $cols, $rows, $this->styles);
         }
