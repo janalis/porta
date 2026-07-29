@@ -301,14 +301,19 @@ final class NonBlockingTerminalTest extends TestCase
         $terminal = new NonBlockingTerminal($this->inner($calls), $pipes[0], limit: 65_536);
         $this->start($terminal, $received);
 
-        $first = str_repeat('x', times: 131_072); // fills the ~64KiB pipe, remainder queued past the limit
-        $second = str_repeat('y', times: 131_072); // trips the pre-check → flushBlocking against the slow peer
-        $terminal->write($first);
-        $terminal->write($second);
-        $terminal->stop(); // flushes whatever is still queued
-
-        fclose($pipes[0]); // EOF ends the peer's fpassthru
-        proc_close($process); // waits for the child, so the sink is complete
+        // try/finally: an abort must stop the terminal (cancelling its writer
+        // watcher) before the local $process handle's destructor closes
+        // $pipes[0] behind it — the worker-poisoning shape.
+        try {
+            $first = str_repeat('x', times: 131_072); // fills the ~64KiB pipe, remainder queued past the limit
+            $second = str_repeat('y', times: 131_072); // trips the pre-check → flushBlocking against the slow peer
+            $terminal->write($first);
+            $terminal->write($second);
+        } finally {
+            $terminal->stop(); // flushes whatever is still queued
+            fclose($pipes[0]); // EOF ends the peer's fpassthru
+            proc_close($process); // waits for the child, so the sink is complete
+        }
         $this->assertSame($first.$second, (string) file_get_contents($sink), 'nothing was dropped across the blocking fallback');
         is_file($sink) && unlink($sink);
     }

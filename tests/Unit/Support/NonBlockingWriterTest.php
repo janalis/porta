@@ -135,29 +135,35 @@ final class NonBlockingWriterTest extends TestCase
         \assert(\is_resource($process), description: 'the peer process launched');
         stream_set_blocking($pipes[0], enable: false);
         $writer = $this->writer($pipes[0]);
-        $payload = str_repeat('q', times: 262_144); // larger than the ~64KiB pipe → remainder queued
-        $writer->write($payload);
-        $this->assertGreaterThan(0, $writer->pendingBytes());
+        // try/finally: an assertion failure mid-test must still tear the
+        // writer down BEFORE the local $process handle dies — its destructor
+        // closes $pipes[0] behind the armed drain watcher, which poisons the
+        // worker's shared event loop for every later test.
+        try {
+            $payload = str_repeat('q', times: 262_144); // larger than the ~64KiB pipe → remainder queued
+            $writer->write($payload);
+            $this->assertGreaterThan(0, $writer->pendingBytes());
 
-        $writer->flushBlocking();
+            $writer->flushBlocking();
 
-        $this->assertSame(0, $writer->pendingBytes(), 'the whole queue was delivered synchronously');
-        $this->assertFalse(stream_get_meta_data($pipes[0])['blocked'], 'the stream is back in non-blocking mode');
-        $this->assertSame([], $this->errors);
+            $this->assertSame(0, $writer->pendingBytes(), 'the whole queue was delivered synchronously');
+            $this->assertFalse(stream_get_meta_data($pipes[0])['blocked'], 'the stream is back in non-blocking mode');
+            $this->assertSame([], $this->errors);
 
-        // No orphaned watcher fires after the synchronous flush.
-        $ticked = false;
-        EventLoop::delay(0.05, static function () use (&$ticked): void {
-            $ticked = true;
-        });
-        $this->await(static function () use (&$ticked): bool {
-            return $ticked;
-        });
-        $this->assertTrue($ticked);
-
-        $writer->close();
-        fclose($pipes[0]); // EOF: the peer's fpassthru finishes
-        proc_close($process); // waits for the child, so the sink is complete
+            // No orphaned watcher fires after the synchronous flush.
+            $ticked = false;
+            EventLoop::delay(0.05, static function () use (&$ticked): void {
+                $ticked = true;
+            });
+            $this->await(static function () use (&$ticked): bool {
+                return $ticked;
+            });
+            $this->assertTrue($ticked);
+        } finally {
+            $writer->close();
+            fclose($pipes[0]); // EOF: the peer's fpassthru finishes
+            proc_close($process); // waits for the child, so the sink is complete
+        }
         $this->assertSame($payload, (string) file_get_contents($sink), 'bytes intact and in order');
         is_file($sink) && unlink($sink);
     }

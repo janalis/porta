@@ -71,7 +71,7 @@ trait RunsIde
         $keys = array_keys($steps);
         $schedule = static function (int $index, int $previousKey) use (&$schedule, &$timers, $steps, $keys, $tui, $terminal, $ide, $duration): void {
             $key = $keys[$index];
-            $timers[] = EventLoop::delay(($key - $previousKey) / 1000, static function () use ($index, $key, $steps, $keys, $tui, $terminal, $ide, $duration, $schedule): void {
+            $timers[] = EventLoop::delay(($key - $previousKey) / 1000, static function () use ($index, $key, $steps, $keys, $tui, $terminal, $ide, $duration, $schedule, &$timers): void {
                 $steps[$key]($tui, $terminal, $ide);
                 if (array_key_exists($index + 1, $keys)) {
                     $schedule($index + 1, $key);
@@ -79,7 +79,10 @@ trait RunsIde
                     return;
                 }
                 if (null === $duration) {
-                    EventLoop::delay(0.08, static function () use ($tui): void {
+                    // Tracked in $timers: when a step already stopped the Tui,
+                    // this terminator would otherwise survive into the next
+                    // test in the worker and tick the dead Ide there.
+                    $timers[] = EventLoop::delay(0.08, static function () use ($tui): void {
                         $tui->tick();
                         $tui->stop();
                     });

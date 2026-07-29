@@ -35,9 +35,7 @@ trait PumpsLoop
             if ($elapsed >= $timeout) {
                 throw new \RuntimeException(\sprintf('timed out after %.1fs waiting for %s', $timeout, $what));
             }
-            $suspension = EventLoop::getSuspension();
-            EventLoop::delay(0.02, $suspension->resume(...));
-            $suspension->suspend();
+            $this->turn();
             $elapsed += 0.02;
         }
     }
@@ -53,10 +51,25 @@ trait PumpsLoop
     {
         $elapsed = 0.0;
         while ($elapsed < $seconds) {
-            $suspension = EventLoop::getSuspension();
-            EventLoop::delay(0.02, $suspension->resume(...));
-            $suspension->suspend();
+            $this->turn();
             $elapsed += 0.02;
+        }
+    }
+
+    /**
+     * One 0.02s loop turn. The delay is cancelled in FINALLY: if the loop dies
+     * mid-suspend (a poisoned worker), an un-cancelled timer would hold a
+     * strong reference to the now-corrupt {main} suspension and anchor the
+     * poison for the rest of the worker; cancelling a fired timer is a no-op.
+     */
+    private function turn(): void
+    {
+        $suspension = EventLoop::getSuspension();
+        $timer = EventLoop::delay(0.02, $suspension->resume(...));
+        try {
+            $suspension->suspend();
+        } finally {
+            EventLoop::cancel($timer);
         }
     }
 }

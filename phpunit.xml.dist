@@ -45,4 +45,7 @@
          (PORTA_CONTAINER_CACHE=off in tests/bootstrap.php), so no file can
          drop out of the report. -->
     <coverage includeUncoveredFiles="false"/>
+    <extensions>
+        <bootstrap class="Porta\Tests\Support\LoopIsolationExtension"/>
+    </extensions>
 </phpunit>
