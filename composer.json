@@ -52,7 +52,8 @@
             "@coverage",
             "@php tools/coverage-check.php coverage/clover.xml 100"
         ],
-        "arch": "@php tools/architecture-check.php"
+        "arch": "@php tools/architecture-check.php",
+        "container": "@php tools/container-debug.php"
     },
     "minimum-stability": "stable",
     "config": {
