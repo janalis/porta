@@ -31,7 +31,16 @@ final class ImageDecoder
     /** Decode the file, or null when the bytes are not a displayable image. */
     public function decode(string $path): ?ImageData
     {
-        $bytes = is_file($path) ? (string) file_get_contents($path) : '';
+        return $this->decodeBytes(is_file($path) ? (string) file_get_contents($path) : '');
+    }
+
+    /**
+     * Decode an in-memory image, or null when the bytes are not a displayable
+     * one. The file-less door: the graph viewer pipes `dot -Tpng` straight from
+     * the child's stdout, so there is no temp file to write, poll and unlink.
+     */
+    public function decodeBytes(string $bytes): ?ImageData
+    {
         // Arbitrary bytes can't be pre-validated: swallow the warning GD raises
         // on non-image data and rely on the false return below.
         set_error_handler(static fn (): bool => true);

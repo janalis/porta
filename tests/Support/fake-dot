@@ -4,7 +4,10 @@
 // A dot stand-in for tests: drains stdin (the DOT document), ignores it, and
 // emits the committed small-graph -Tjson0 fixture — so every DotLayoutEngine
 // branch is coverable without graphviz installed. Also serves the export
-// shape: with `-o <path>` it writes a marker file instead of printing.
+// shape: with `-o <path>` it writes a marker file instead of printing, and the
+// bitmap shape: with `-Tpng` it prints a real PNG whose WIDTH IN PIXELS encodes
+// the requested dpi (10 px per 72 dpi), which is how a test tells the render at
+// one zoom level from the render at another.
 
 declare(strict_types=1);
 
@@ -21,6 +24,21 @@ $args = array_slice($argv, 1);
 $outIndex = array_search('-o', $args, true);
 if (false !== $outIndex && isset($args[$outIndex + 1])) {
     file_put_contents($args[$outIndex + 1], 'fake export: '.implode(' ', $args)."\n");
+
+    exit(0);
+}
+
+if (in_array('-Tpng', $args, true)) {
+    $dpi = 72;
+    foreach ($args as $arg) {
+        if (str_starts_with($arg, '-Gdpi=')) {
+            $dpi = max(1, (int) substr($arg, 6));
+        }
+    }
+    $width = max(1, (int) round(10 * $dpi / 72));
+    $gd = imagecreatetruecolor($width, 8);
+    imagefilledrectangle($gd, 0, 0, $width - 1, 7, (int) imagecolorallocate($gd, 200, 40, 40));
+    imagepng($gd);
 
     exit(0);
 }

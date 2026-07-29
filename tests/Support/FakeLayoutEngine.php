@@ -10,8 +10,8 @@ use Porta\Graph\LayoutEngine;
 
 /**
  * A scriptable {@see LayoutEngine} for widget tests: delivers a queued layout
- * (or error) synchronously, or holds the callbacks for manual delivery when
- * `$deferred` — no dot binary, no subprocess, no event loop.
+ * or bitmap (or error) synchronously, or holds the callbacks for manual delivery
+ * when `$deferred` — no dot binary, no subprocess, no event loop.
  */
 final class FakeLayoutEngine implements LayoutEngine
 {
@@ -32,6 +32,20 @@ final class FakeLayoutEngine implements LayoutEngine
 
     /** @var ?\Closure(string): void the held onError when $deferred */
     public ?\Closure $pendingError = null;
+
+    /** @var list<int> the dpi of every render() call, in order */
+    public array $renderDpis = [];
+
+    /** The next render() outcome: PNG bytes, an error string, or null to answer nothing. */
+    public ?string $nextPng = null;
+
+    public bool $pngIsError = false;
+
+    /** @var ?\Closure(string): void the held render onPng when $deferred */
+    public ?\Closure $pendingPng = null;
+
+    /** @var ?\Closure(string): void the held render onError when $deferred */
+    public ?\Closure $pendingPngError = null;
 
     public function binary(): ?string
     {
@@ -55,6 +69,21 @@ final class FakeLayoutEngine implements LayoutEngine
         if (\is_string($this->nextResult)) {
             $onError($this->nextResult);
         }
+    }
+
+    public function render(string $dot, int $dpi, \Closure $onPng, \Closure $onError): void
+    {
+        $this->renderDpis[] = $dpi;
+        if ($this->deferred) {
+            $this->pendingPng = $onPng;
+            $this->pendingPngError = $onError;
+
+            return;
+        }
+        if (null === $this->nextPng) {
+            return;
+        }
+        $this->pngIsError ? $onError($this->nextPng) : $onPng($this->nextPng);
     }
 
     public function export(string $dot, GraphExportFormat $format, string $outPath, \Closure $onDone): void

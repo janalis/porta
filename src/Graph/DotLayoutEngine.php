@@ -9,15 +9,18 @@ use Symfony\Component\DependencyInjection\Attribute\Autowire;
 use Symfony\Component\Process\ExecutableFinder;
 
 /**
- * The Graphviz-backed {@see LayoutEngine}: `dot -Tjson0` as an async child
- * process, DOT fed via stdin (the onWritable feeder keeps large documents off
- * the critical path — no temp file). Success is keyed on the EXIT CODE, never
- * on stderr presence: dot writes warnings there and still exits 0, and stderr
- * must be captured regardless or a warning-spewing dot blocks on a full pipe.
+ * The Graphviz-backed {@see LayoutEngine}: `dot -Tjson0` for geometry and
+ * `dot -Tpng` for the picture, both as async child processes with DOT fed via
+ * stdin (the onWritable feeder keeps large documents off the critical path — no
+ * temp file, and the PNG comes back the same way). Success is keyed on the EXIT
+ * CODE, never on stderr presence: dot writes warnings there and still exits 0,
+ * and stderr must be captured regardless or a warning-spewing dot blocks on a
+ * full pipe.
  *
- * One layout slot, latest wins: a new layout() cancels the in-flight process
- * (the TodoScanner single-slot precedent), so a stale answer can never repaint
- * over a newer graph. Pathological output sizes are bounded upstream — the
+ * Three independent slots (layout / render / export), each latest wins: a new
+ * call cancels that slot's in-flight process (the TodoScanner single-slot
+ * precedent), so a stale answer can never repaint over a newer graph, and a
+ * zoom-driven re-render cannot cancel the geometry it is about to be drawn with. Pathological output sizes are bounded upstream — the
  * viewer refuses DOT documents over {@see DotFiles::MAX_BYTES} — and by PHP's
  * own memory limit, so no separate output cap is imposed here.
  */
@@ -26,6 +29,8 @@ final class DotLayoutEngine implements LayoutEngine
     private ?AsyncProcess $running = null;
 
     private ?AsyncProcess $exporting = null;
+
+    private ?AsyncProcess $rendering = null;
 
     public function __construct(
         private readonly string $rootDir,
@@ -82,6 +87,40 @@ final class DotLayoutEngine implements LayoutEngine
         }
     }
 
+    public function render(string $dot, int $dpi, \Closure $onPng, \Closure $onError): void
+    {
+        $binary = $this->binary();
+        if (null === $binary) {
+            $onError('graphviz not found');
+
+            return;
+        }
+        $this->rendering?->cancel();
+        $process = new AsyncProcess([$binary, '-Tpng', '-Gdpi='.$dpi], $this->rootDir, stdin: $dot, captureStderr: true);
+        $this->rendering = $process;
+        $started = $process->start(function (int $code, string $stdout) use ($process, $onPng, $onError): void {
+            if ($this->rendering === $process) {
+                $this->rendering = null;
+            }
+            if (0 !== $code) {
+                // A dot built without libgd has no PNG support and says so here;
+                // the viewer treats that as "fall back to the cell rendering".
+                $stderr = trim($process->errorOutput());
+                $onError('' !== $stderr ? $stderr : "dot failed (exit {$code})");
+
+                return;
+            }
+            $onPng($stdout);
+        });
+        if (!$started) {
+            // @codeCoverageIgnoreStart
+            $this->rendering = null;
+            $onError('could not start dot');
+
+            // @codeCoverageIgnoreEnd
+        }
+    }
+
     public function export(string $dot, GraphExportFormat $format, string $outPath, \Closure $onDone): void
     {
         $binary = $this->binary();
@@ -121,5 +160,7 @@ final class DotLayoutEngine implements LayoutEngine
         $this->running = null;
         $this->exporting?->cancel();
         $this->exporting = null;
+        $this->rendering?->cancel();
+        $this->rendering = null;
     }
 }

@@ -8,6 +8,7 @@ use PHPUnit\Framework\TestCase;
 use Porta\Graph\DotLayoutEngine;
 use Porta\Graph\GraphExportFormat;
 use Porta\Graph\GraphLayout;
+use Porta\Image\ImageDecoder;
 use Porta\Tests\Support\GraphvizBinary;
 use Porta\Tests\Support\PreservesPath;
 use Porta\Tests\Support\PumpsLoop;
@@ -207,6 +208,137 @@ final class DotLayoutEngineTest extends TestCase
         $this->assertFalse($fired, 'a cancelled layout never reports');
     }
 
+    public function testRendersPngBytesAtTheRequestedDpi(): void
+    {
+        $engine = $this->engine('fake-dot');
+        $png = null;
+        $onError = static function (string $message): void {
+            self::fail("unexpected render error: {$message}");
+        };
+
+        $engine->render(
+            self::SMALL_DOT,
+            144,
+            static function (string $bytes) use (&$png): void {
+                $png = $bytes;
+            },
+            $onError,
+        );
+        $this->await(static function () use (&$png): bool {
+            return null !== $png;
+        }, what: 'the PNG bytes');
+
+        $image = new ImageDecoder()->decodeBytes((string) $png);
+        $this->assertNotNull($image, 'the bytes decode as an image — no temp file in between');
+        // The stub sizes its PNG from -Gdpi: 10 px per 72 dpi.
+        $this->assertSame(20, $image->width, 'the dpi reached dot as an argument');
+    }
+
+    public function testRenderFailureSurfacesDotsStderr(): void
+    {
+        // A dot built without libgd fails exactly here, which is what makes the
+        // viewer fall back to its cell rendering.
+        $engine = $this->engine('fake-dot-fail');
+        $error = null;
+        $engine->render(
+            self::SMALL_DOT,
+            72,
+            static function (): void {
+                self::fail('onPng must not fire for a failing dot');
+            },
+            static function (string $message) use (&$error): void {
+                $error = $message;
+            },
+        );
+        $this->await(static function () use (&$error): bool {
+            return null !== $error;
+        }, what: 'the render-error callback');
+
+        $this->assertStringContainsString('syntax error', (string) $error);
+    }
+
+    public function testRenderAndLayoutDoNotCancelEachOther(): void
+    {
+        // Separate slots: a zoom-driven re-render must not kill the geometry
+        // request the bitmap is about to be drawn with.
+        $engine = $this->engine('fake-dot');
+        $layout = null;
+        $png = null;
+        $onError = static function (string $message): void {
+            self::fail("unexpected error: {$message}");
+        };
+        $engine->layout(
+            self::SMALL_DOT,
+            static function (GraphLayout $done) use (&$layout): void {
+                $layout = $done;
+            },
+            $onError,
+        );
+        $engine->render(
+            self::SMALL_DOT,
+            72,
+            static function (string $bytes) use (&$png): void {
+                $png = $bytes;
+            },
+            $onError,
+        );
+
+        $this->await(static function () use (&$layout, &$png): bool {
+            return null !== $layout && null !== $png;
+        }, what: 'both answers');
+        $this->assertSame(3, $layout->nodeCount());
+        $this->assertNotSame('', $png);
+    }
+
+    public function testANewRenderSupersedesTheInFlightOne(): void
+    {
+        $engine = $this->engine('fake-dot');
+        $fired = [];
+        $onError = static function (string $message): void {
+            self::fail("unexpected render error: {$message}");
+        };
+        $engine->render(
+            self::SMALL_DOT,
+            72,
+            static function () use (&$fired): void {
+                $fired[] = 'first';
+            },
+            $onError,
+        );
+        $engine->render(
+            self::SMALL_DOT,
+            144,
+            static function () use (&$fired): void {
+                $fired[] = 'second';
+            },
+            $onError,
+        );
+        $this->await(static function () use (&$fired): bool {
+            return [] !== $fired;
+        }, what: 'the surviving render');
+        $this->pump(0.2);
+
+        $this->assertSame(['second'], $fired, 'the superseded render went silent, latest wins');
+    }
+
+    public function testRenderWithoutABinaryErrorsWithoutSpawning(): void
+    {
+        putenv('PATH=/nonexistent');
+        $error = null;
+        new DotLayoutEngine(sys_get_temp_dir(), null)->render(
+            self::SMALL_DOT,
+            72,
+            static function (): void {
+                self::fail('onPng must not fire without a binary');
+            },
+            static function (string $message) use (&$error): void {
+                $error = $message;
+            },
+        );
+
+        $this->assertSame('graphviz not found', $error, 'synchronous — no process was involved');
+    }
+
     public function testRealGraphvizSmokeTest(): void
     {
         $this->skipWithoutDot();
@@ -232,5 +364,34 @@ final class DotLayoutEngineTest extends TestCase
         $this->assertNotNull($layout);
         $this->assertSame(3, $layout->nodeCount());
         $this->assertSame(2, $layout->edgeCount());
+    }
+
+    public function testRealGraphvizRendersABitmapWhenItHasPngSupport(): void
+    {
+        $this->skipWithoutDot();
+        $png = null;
+        $error = null;
+        new DotLayoutEngine(sys_get_temp_dir(), null)->render(
+            self::SMALL_DOT,
+            72,
+            static function (string $bytes) use (&$png): void {
+                $png = $bytes;
+            },
+            static function (string $message) use (&$error): void {
+                $error = $message;
+            },
+        );
+        $this->await(static function () use (&$png, &$error): bool {
+            return null !== $png || null !== $error;
+        }, what: 'real dot render');
+
+        if (null !== $error) {
+            // PNG output is optional in graphviz (it needs libgd), and a build
+            // without it is the case the viewer's cell fallback exists for.
+            self::markTestSkipped('this dot has no PNG support: '.$error);
+        }
+        $image = new ImageDecoder()->decodeBytes((string) $png);
+        $this->assertNotNull($image, 'real dot emitted a decodable PNG');
+        $this->assertGreaterThan(0, $image->width);
     }
 }
