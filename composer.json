@@ -50,7 +50,7 @@
         "coverage": "@php -d pcov.enabled=1 vendor/bin/paratest --processes=auto --functional --passthru-php='-d pcov.enabled=1' --coverage-clover coverage/clover.xml",
         "coverage:check": [
             "@coverage",
-            "@php tools/coverage-check.php coverage/clover.xml 100"
+            "@php bin/porta-dev coverage:check coverage/clover.xml 100"
         ],
         "arch": "@php tools/architecture-check.php",
         "container": "@php tools/container-debug.php"

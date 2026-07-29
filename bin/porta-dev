@@ -1,0 +1,24 @@
+#!/usr/bin/env php
+<?php
+
+declare(strict_types=1);
+
+// The MAINTAINER console: the quality gates and wiring inspectors that run
+// from composer scripts (`composer arch`, `composer coverage:check`,
+// `composer container`). Deliberately NOT in composer.json's "bin" — these
+// commands grade Porta's own tree and have no meaning in a user's project.
+//
+// A separate binary because `bin/porta` is a SINGLE-command application: that
+// is what lets `porta src/Foo.php:12` treat its argument as a path rather than
+// a command name, and adding sibling commands there would break it.
+
+$autoload = __DIR__.'/../vendor/autoload.php';
+if (!is_file($autoload)) {
+    fwrite(STDERR, "porta-dev: could not find Composer's autoload.php. Run 'composer install' first.\n");
+    exit(1);
+}
+require $autoload;
+
+$application = new Symfony\Component\Console\Application('porta-dev', Porta\Ide::VERSION);
+$application->addCommand(new Porta\Console\CoverageCheckCommand());
+$application->run();
