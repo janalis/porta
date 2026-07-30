@@ -16,6 +16,7 @@ use Porta\Debug\DebugController;
 use Porta\Debug\DebugStatePersistence;
 use Porta\Editor\BufferService;
 use Porta\Editor\OpenFocus;
+use Porta\Editor\PaneRegistrar;
 use Porta\Git\GitInfo;
 use Porta\Git\GitRefresher;
 use Porta\History\SessionRestorer;
@@ -197,6 +198,9 @@ final class Ide
         $this->paneLayout->applyDirection();
 
         $this->service(SearchUiWiring::class)->wire();
+        // Panes before commands: a pane's registration is what makes its
+        // routing id answerable, and nothing may open a file before it does.
+        $this->service(PaneRegistrar::class)->register();
         $this->service(CommandRegistryPopulator::class)->populate();
         $this->service(WidgetHooks::class)->wire();
         $this->menuRebuilder->rebuild();

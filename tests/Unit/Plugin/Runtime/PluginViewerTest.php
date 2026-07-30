@@ -6,11 +6,14 @@ namespace Porta\Tests\Unit\Plugin\Runtime;
 
 use PHPUnit\Framework\TestCase;
 use Porta\Config\CommandRegistry;
+use Porta\Editor\PaneServices;
 use Porta\Plugin\Api\PluginApi;
 use Porta\Plugin\Api\PluginException;
 use Porta\Plugin\Runtime\PluginEvents;
 use Porta\Plugin\Runtime\PluginManager;
 use Porta\Plugin\Runtime\PluginSettings;
+use Porta\Tests\Support\TestPane;
+use Porta\Widget\EditorPaneWidget;
 
 /**
  * Plugin-provided viewer routes: registration, claim normalization, load
@@ -83,6 +86,34 @@ final class PluginViewerTest extends TestCase
 
         $manager->deactivate('image-viewer', new CommandRegistry());
         $this->assertNull($manager->viewerFor('/p/a.png'), 'a disabled plugin routes nothing');
+    }
+
+    public function testAPaneRegistrationCommitsAndDeactivatesWithItsPlugin(): void
+    {
+        // The claim says which files are mine; the pane says what shows them.
+        // Both must die together when the plugin is disabled, or a disabled
+        // viewer still owns the editor slot for its extensions.
+        $manager = $this->manager();
+        $api = $this->api($manager, 'image-viewer');
+        $api->registerViewer('image', ['png']);
+        $api->registerPane('image', static fn (PaneServices $services): EditorPaneWidget => new TestPane('image'), static fn (string $path): string => 'bytes');
+        $manager->commit($api);
+        $this->assertCount(1, $manager->panes());
+        $this->assertSame('image', $manager->panes()[0]['id']);
+        $this->assertSame('image-viewer', $manager->panes()[0]['plugin']);
+
+        $manager->deactivate('image-viewer', new CommandRegistry());
+
+        $this->assertSame([], $manager->panes(), 'the pane goes with the claim');
+    }
+
+    public function testAPaneIdIsValidatedLikeEveryOtherId(): void
+    {
+        $api = $this->api($this->manager(), 'p');
+
+        $this->expectException(PluginException::class);
+        $this->expectExceptionMessageMatches('/Invalid pane id/');
+        $api->registerPane('BAD ID!', static fn (PaneServices $services): EditorPaneWidget => new TestPane(), static fn (string $path): string => '');
     }
 
     public function testRegistrationValidation(): void

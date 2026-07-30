@@ -6,6 +6,7 @@ namespace Porta\Plugin\Runtime;
 
 use Porta\Config\CommandRegistry;
 use Porta\Config\KeyDispatch;
+use Porta\Editor\EditorPaneSource;
 use Porta\Editor\ViewerProviderSource;
 use Porta\Highlight\CallableHighlightProvider;
 use Porta\Highlight\SyntaxHighlightProvider;
@@ -24,7 +25,7 @@ use Porta\Search\TokenSpanProvider;
  * an action method used before that (i.e. during activate()) hits the
  * {@see runtime()} gate.
  */
-final class PluginManager implements LanguageServerProvider, SyntaxHighlightProviderSource, TokenSpanProvider, ViewerProviderSource
+final class PluginManager implements EditorPaneSource, LanguageServerProvider, SyntaxHighlightProviderSource, TokenSpanProvider, ViewerProviderSource
 {
     /** @var list<array{plugin: string, id: string, label: string, handler: \Closure(): void, keys: list<string>}> */
     private array $commands = [];
@@ -42,6 +43,8 @@ final class PluginManager implements LanguageServerProvider, SyntaxHighlightProv
     private array $tokenSpans = [];
     /** @var list<array{plugin: string, id: string, claims: \Closure(string): bool}> committed viewer routes, in load order */
     private array $viewers = [];
+    /** @var list<array{plugin: string, id: string, pane: \Closure, load: \Closure}> committed panes, in load order */
+    private array $panes = [];
     /** @var list<string> */
     private array $warnings = [];
     /** @var array<string, true> loaded plugin names */
@@ -114,6 +117,9 @@ final class PluginManager implements LanguageServerProvider, SyntaxHighlightProv
         }
         foreach ($api->bufferedViewers() as $viewer) {
             $this->viewers[] = $viewer;
+        }
+        foreach ($api->bufferedPanes() as $pane) {
+            $this->panes[] = $pane;
         }
         $this->settings->registerFor($name, $api->bufferedSettings());
     }
@@ -202,6 +208,7 @@ final class PluginManager implements LanguageServerProvider, SyntaxHighlightProv
         $this->highlighters = array_values(array_filter($this->highlighters, static fn (array $highlighter): bool => $name !== $highlighter['plugin']));
         $this->tokenSpans = array_values(array_filter($this->tokenSpans, static fn (array $spans): bool => $name !== $spans['plugin']));
         $this->viewers = array_values(array_filter($this->viewers, static fn (array $viewer): bool => $name !== $viewer['plugin']));
+        $this->panes = array_values(array_filter($this->panes, static fn (array $pane): bool => $name !== $pane['plugin']));
         $this->registered = \count($this->commands);
 
         unset($this->reportedWhens[$name], $this->reportedHighlighters[$name], $this->reportedViewers[$name]);
@@ -342,6 +349,17 @@ final class PluginManager implements LanguageServerProvider, SyntaxHighlightProv
 
     /** Report a highlighting fault at most once per plugin — this runs while typing. */
     /**
+     * Every committed pane registration, in load order — drained once by
+     * {@see PluginPanes} into the core registry that actually holds them.
+     *
+     * @return list<array{plugin: string, id: string, pane: \Closure, load: \Closure}>
+     */
+    public function panes(): array
+    {
+        return $this->panes;
+    }
+
+    /**
      * The first committed viewer route (in load order) whose claim matches
      * $path, or null. A throwing claim declines and reports once per plugin —
      * this runs on every file open.
@@ -370,6 +388,12 @@ final class PluginManager implements LanguageServerProvider, SyntaxHighlightProv
             return;
         }
         $this->reportedHighlighters[$plugin] = true;
+        $this->reportFailure($plugin, $error);
+    }
+
+    /** A pane that could not be built — {@see EditorPaneSource}'s half of the fault barrier. */
+    public function reportPaneFailure(string $plugin, \Throwable $error): void
+    {
         $this->reportFailure($plugin, $error);
     }
 

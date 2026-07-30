@@ -8,6 +8,7 @@ use Porta\Config\CommandRegistry;
 use Porta\Config\LiveKeybindings;
 use Porta\Config\PortaJsonWriter;
 use Porta\Container\AsIdeService;
+use Porta\Editor\PaneRegistrar;
 use Porta\I18n\Translator;
 use Porta\Lsp\LspReconfigurer;
 use Porta\Plugin\Runtime\PluginLoader;
@@ -44,6 +45,7 @@ final class PluginLifecycle implements PluginLifecycleOps
         private readonly LiveKeybindings $keys,
         private readonly PluginLoader $loader,
         private readonly PluginManager $plugins,
+        private readonly PaneRegistrar $panes,
         private readonly CommandRegistry $commands,
         private readonly PluginInstaller $installer,
         private readonly Notifier $notifier,
@@ -112,6 +114,7 @@ final class PluginLifecycle implements PluginLifecycleOps
     public function deactivate(string $name): void
     {
         $this->plugins->deactivate($name, $this->commands);
+        $this->panes->forget($name);
         foreach ($this->installer->installed() as $candidate) {
             if ($candidate['name'] !== $name) {
                 continue;

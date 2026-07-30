@@ -62,6 +62,8 @@ final class PluginApi
     private readonly PluginBuffer $tokenSpans;
     /** @var PluginBuffer<array{plugin: string, id: string, claims: \Closure(string): bool}> */
     private readonly PluginBuffer $viewers;
+    /** @var PluginBuffer<array{plugin: string, id: string, pane: \Closure, load: \Closure}> */
+    private readonly PluginBuffer $panes;
 
     public function __construct(
         private readonly string $pluginName,
@@ -75,6 +77,7 @@ final class PluginApi
         $this->highlighters = new PluginBuffer();
         $this->tokenSpans = new PluginBuffer();
         $this->viewers = new PluginBuffer();
+        $this->panes = new PluginBuffer();
     }
 
     /**
@@ -293,6 +296,40 @@ final class PluginApi
             'plugin' => $this->pluginName,
             'id' => $id,
             'claims' => $claims,
+        ]);
+    }
+
+    /**
+     * Supply the PANE a viewer id names: the widget that takes the editor area
+     * for files {@see registerViewer()} claimed, and the loader that turns one of
+     * those paths into whatever payload the pane understands.
+     *
+     * The two calls are separate because they answer different questions —
+     * "does this file belong to me?" and "what shows it?" — and a plugin may
+     * still claim an id some other plugin's pane answers to. An id with a claim
+     * and no pane falls through to the text path, unchanged from before panes
+     * existed.
+     *
+     * $pane is called ONCE, at the constructor tail, with the
+     * {@see PaneServices} core assembles; a plugin class cannot be a container
+     * service, so this is how a pane receives its collaborators. $load runs on
+     * every open of a claimed path — a throw declines the file, which is how a
+     * pane refuses an oversized or malformed document.
+     *
+     * @param \Closure $pane  `\Closure(\Porta\Editor\PaneServices): \Porta\Widget\EditorPaneWidget` — untyped here so the
+     *                        plugin tier never names a widget class (the `Plugin > Widget` edge round 18 severed)
+     * @param \Closure $load  `\Closure(string $path): mixed`
+     */
+    public function registerPane(string $id, \Closure $pane, \Closure $load): void
+    {
+        if (1 !== preg_match(self::ID_PATTERN, $id)) {
+            throw new PluginException(\sprintf('Invalid pane id "%s" (expected /^[a-z0-9][a-z0-9_-]*$/i)', $id));
+        }
+        $this->panes->add([
+            'plugin' => $this->pluginName,
+            'id' => $id,
+            'pane' => $pane,
+            'load' => $load,
         ]);
     }
 
@@ -580,5 +617,11 @@ final class PluginApi
     public function bufferedViewers(): array
     {
         return $this->viewers->all();
+    }
+
+    /** @return list<array{plugin: string, id: string, pane: \Closure, load: \Closure}> */
+    public function bufferedPanes(): array
+    {
+        return $this->panes->all();
     }
 }

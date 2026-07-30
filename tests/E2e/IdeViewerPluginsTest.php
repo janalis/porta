@@ -8,6 +8,7 @@ use PHPUnit\Framework\TestCase;
 use Porta\Config\CommandRegistry;
 use Porta\Editor\BufferManager;
 use Porta\Editor\BufferService;
+use Porta\Editor\EditorPanes;
 use Porta\Plugin\Lifecycle\PluginLifecycle;
 use Porta\Tests\Support\ClearsPortaLsp;
 use Porta\Tests\Support\PreservesPath;
@@ -104,6 +105,96 @@ final class IdeViewerPluginsTest extends TestCase
                 },
             ],
         );
+    }
+
+    public function testAPluginShipsItsOwnPane(): void
+    {
+        // The whole point of the registry: a pane that core has never heard of,
+        // built from the plugin's own class, answering to the id its claim
+        // returns. Consumption comes later — what this pins is that the
+        // registration survives the boot and dies with the plugin.
+        putenv('PATH=/nonexistent');
+        $project = new TempProject(['a.php' => "<?php\n", 'doc.demo' => 'demo payload']);
+        $this->demoPanePlugin($project);
+
+        $this->runIde(
+            $project,
+            $project->path('a.php'),
+            [
+                200 => function ($tui, $terminal, $ide) use ($project): void {
+                    $panes = Services::resolve($ide, EditorPanes::class);
+                    $pane = $panes->paneFor('demo');
+                    $this->assertNotNull($pane, 'the plugin\'s pane is registered under its id');
+                    $this->assertSame('demo', $pane->paneId());
+
+                    $loader = $panes->loaderFor('demo');
+                    $this->assertNotNull($loader);
+                    $this->assertSame('demo payload', $loader($project->path('doc.demo')), 'the pane reads its own payload');
+
+                    // Disabling stops the ROUTING claim and leaves the pane
+                    // standing: a tab opened before the toggle still has to
+                    // render, which is the contract this suite already pins for
+                    // the bundled viewers.
+                    $lifecycle = Services::resolve($ide, PluginLifecycle::class);
+                    $lifecycle->disable('demo-pane');
+                    $this->assertNotNull($panes->paneFor('demo'), 'a disabled plugin keeps its pane for tabs already open in it');
+
+                    // Removal is the other half: the code is gone from disk, so
+                    // nothing may route to it again.
+                    $lifecycle->deactivate('demo-pane');
+                    $this->assertNull($panes->paneFor('demo'), 'a removed plugin takes its pane with it');
+                },
+            ],
+        );
+    }
+
+    /** A project plugin that claims an extension AND supplies the pane for it. */
+    private function demoPanePlugin(TempProject $project): void
+    {
+        $dir = $project->path('.porta/plugins/demo-pane');
+        mkdir($dir, permissions: 0o777, recursive: true);
+        file_put_contents($dir.'/plugin.php', data: <<<'PHP'
+            <?php
+
+            declare(strict_types=1);
+
+            use Porta\Plugin\Api\AbstractPlugin;
+            use Porta\Editor\PaneServices;
+            use Porta\Plugin\Api\PluginApi;
+            use Porta\Widget\EditorPaneWidget;
+            use Symfony\Component\Tui\Render\RenderContext;
+
+            return new class('demo-pane') extends AbstractPlugin {
+                public function activate(PluginApi $api): void
+                {
+                    $api->registerViewer('demo', ['demo']);
+                    $api->registerPane(
+                        'demo',
+                        static fn (PaneServices $services): EditorPaneWidget => new class extends EditorPaneWidget {
+                            private string $body = '';
+
+                            public function paneId(): string { return 'demo'; }
+                            public function show(string $path, mixed $payload): void { $this->body = (string) $payload; $this->invalidate(); }
+                            public function clear(): void { $this->body = ''; }
+                            public function statusRight(): string { return 'demo pane'; }
+                            public function handleInput(string $data): void {}
+
+                            public function render(RenderContext $context): array
+                            {
+                                $cols = $context->getColumns();
+                                $lines = [substr(str_pad($this->body, $cols), 0, $cols)];
+                                for ($row = 1; $row < $context->getRows(); ++$row) {
+                                    $lines[] = str_repeat(' ', $cols);
+                                }
+
+                                return $this->withMenuOverlay($lines, $cols);
+                            }
+                        },
+                        static fn (string $path): string => (string) file_get_contents($path),
+                    );
+                }
+            };
+            PHP);
     }
 
     /**
