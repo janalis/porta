@@ -36,7 +36,7 @@
     },
     "require-dev": {
         "brianium/paratest": "^7.23",
-        "carthage-software/mago": "1.43.*",
+        "carthage-software/mago": "1.45.*",
         "phpunit/phpunit": "^13.2"
     },
     "scripts": {

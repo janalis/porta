@@ -170,6 +170,7 @@ final class LspMapper
         }
 
         $parts = [];
+        /** @var mixed $chunk each chunk is untrusted wire data — the guards below are the narrowing */
         foreach (\is_array($contents) && array_is_list($contents) ? $contents : [$contents] as $chunk) {
             if (\is_string($chunk)) {
                 $parts[] = $chunk;

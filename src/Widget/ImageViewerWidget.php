@@ -241,6 +241,7 @@ final class ImageViewerWidget extends AbstractWidget implements FocusableInterfa
     }
 
     /** The status bar's size text ('64 × 64' in the document's own pixels), '' when nothing is shown. */
+    // @mago-expect lint:no-missing-format-argument -- mago 1.45's new rule cannot count through a spread: it flags every spread call and reports the placeholder count as the value count ("2 placeholders, 2 values given"). dimensions() returns array{0: int, 1: int}.
     public function statusInfo(): string
     {
         return null === $this->view ? '' : \sprintf('%d × %d', ...$this->view->dimensions());
