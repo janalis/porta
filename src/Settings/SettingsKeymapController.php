@@ -9,6 +9,7 @@ use Porta\Config\KeybindingRow;
 use Porta\Config\LiveKeybindings;
 use Porta\Config\PortaJsonWriter;
 use Porta\Editor\EditorKeymapProvider;
+use Porta\Editor\EditorPanes;
 use Porta\I18n\Translator;
 use Porta\Ui\ShortcutFormatter;
 use Porta\Workbench\Menu\MenuRebuilder;
@@ -29,6 +30,7 @@ final class SettingsKeymapController
     public function __construct(
         private readonly ActionRegistry $actions,
         private readonly EditorKeymapProvider $editor,
+        private readonly EditorPanes $panes,
         private readonly LiveKeybindings $ideKeys,
         private readonly MenuRebuilder $menuRebuilder,
         private readonly Notifier $notifier,
@@ -38,10 +40,16 @@ final class SettingsKeymapController
     ) {}
 
     /**
-     * One row per rebindable action — core's and every loaded plugin's — its
-     * current primary binding resolved the way
-     * the menu does: the editor's merged keybindings first, then the IDE-level
-     * ones.
+     * One row per rebindable action — core's and every loaded plugin's — with
+     * the binding that actually fires.
+     *
+     * Three tiers, the menu's two plus one: the editor's merged keybindings,
+     * then the registered PANES', then the IDE-level map. The middle tier is
+     * not optional — a pane's actions are bound on the pane and nowhere else,
+     * so resolving through the other two shows every plugin pane's key as
+     * unbound, which reads as "no key" for a key that works. Panes are
+     * consulted in registration order; each widget's merged map already has the
+     * user's keymap laid over its defaults, so a rebind shows through at once.
      *
      * @return list<KeybindingRow>
      */
@@ -49,11 +57,24 @@ final class SettingsKeymapController
     {
         $rows = [];
         foreach ($this->actions->labels() as $action => $label) {
-            $binding = $this->editor->getKeybindings()->getBindings($action)[0] ?? $this->ideKeys->getBindings($action)[0] ?? '';
+            $binding = $this->editor->getKeybindings()->getBindings($action)[0] ?? $this->paneBinding($action) ?? $this->ideKeys->getBindings($action)[0] ?? '';
             $rows[] = new KeybindingRow($action, $this->translator->trans($label), $binding);
         }
 
         return $rows;
+    }
+
+    /** $action's key on the first registered pane that binds it, or null. */
+    private function paneBinding(string $action): ?string
+    {
+        foreach ($this->panes->all() as $pane) {
+            $binding = $pane->getKeybindings()->getBindings($action)[0] ?? null;
+            if (null !== $binding) {
+                return $binding;
+            }
+        }
+
+        return null;
     }
 
     /**

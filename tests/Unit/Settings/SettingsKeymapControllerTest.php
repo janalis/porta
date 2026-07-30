@@ -10,6 +10,7 @@ use Porta\Config\CommandRegistry;
 use Porta\Config\IdeConfig;
 use Porta\Config\KeybindingsFactory;
 use Porta\Config\LiveKeybindings;
+use Porta\Editor\EditorPanes;
 use Porta\I18n\Translator;
 use Porta\Plugin\Runtime\PluginEvents;
 use Porta\Plugin\Runtime\PluginHost;
@@ -18,6 +19,7 @@ use Porta\Plugin\Runtime\PluginSettings;
 use Porta\Settings\SettingsKeymapController;
 use Porta\Tests\Support\StatusReads;
 use Porta\Tests\Support\TempProject;
+use Porta\Tests\Support\TestPane;
 use Porta\Widget\CodeEditorWidget;
 use Porta\Widget\MenuBarWidget;
 use Porta\Widget\StatusBarWidget;
@@ -37,7 +39,7 @@ final class SettingsKeymapControllerTest extends TestCase
     private ActionRegistry $actions;
     private PluginHost $host;
 
-    private function controller(string $rootDir, StatusBarWidget $status, Keybindings $boot): SettingsKeymapController
+    private function controller(string $rootDir, StatusBarWidget $status, Keybindings $boot, ?EditorPanes $panes = null): SettingsKeymapController
     {
         $tui = new Tui(terminal: new VirtualTerminal(columns: 80, rows: 24));
         $this->host = new PluginHost(IdeConfig::load($rootDir), new PluginEvents(), $rootDir);
@@ -55,7 +57,7 @@ final class SettingsKeymapControllerTest extends TestCase
             new PluginManager(new PluginEvents(), new PluginSettings($rootDir, [])),
         );
 
-        return new SettingsKeymapController($this->actions, new CodeEditorWidget(), $this->live, $rebuilder, new Notifier($status, $tui), $rootDir, new Translator('en'));
+        return new SettingsKeymapController($this->actions, new CodeEditorWidget(), $panes ?? new EditorPanes(), $this->live, $rebuilder, new Notifier($status, $tui), $rootDir, new Translator('en'));
     }
 
     public function testRowsResolveEditorFirstThenIdeBindings(): void
@@ -149,5 +151,32 @@ final class SettingsKeymapControllerTest extends TestCase
         $this->assertSame(['f12'], IdeConfig::load($project->dir)->keymap['hex_next_field'], 'persisted under the bare id');
         $this->assertStringContainsString('Rebound Hex: Next Field to F12', $this->flashText($status));
         $this->assertSame(['f12'], $this->live->getBindings('hex_next_field'), 'and it survived the factory\'s membership check');
+    }
+
+    public function testARowShowsThePaneKeyThatActuallyFires(): void
+    {
+        // The two halves meet here: the plugin DECLARES the action, its pane
+        // BINDS it, and the page must show the key that fires. Resolving
+        // through the code editor and the IDE map alone shows every plugin
+        // pane's action as unbound — "no key" for a key that works — because a
+        // pane's defaults live on the pane and nowhere else.
+        $project = new TempProject(['.porta/plugins/demo/plugin.php' => <<<'PHP'
+                <?php
+                return new class('demo') extends \Porta\Plugin\Api\AbstractPlugin {
+                    public function activate(\Porta\Plugin\Api\PluginApi $api): void
+                    {
+                        $api->registerActions(['test_pane_step' => 'Demo: Step']);
+                    }
+                };
+                PHP]);
+        $panes = new EditorPanes();
+        $panes->register(new TestPane('demo'), static fn (): string => '');
+        $controller = $this->controller($project->dir, new StatusBarWidget(), new Keybindings(), $panes);
+        $this->host->ensureLoaded();
+
+        $byAction = array_column($controller->rows(), null, 'action');
+
+        $this->assertSame('n', $byAction['test_pane_step']->binding, "the pane's own action shows the pane's key");
+        $this->assertSame('ctrl+shift+n', $byAction['goto_file']->binding, "a core action the editor also binds keeps the editor's");
     }
 }

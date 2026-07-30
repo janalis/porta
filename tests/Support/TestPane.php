@@ -25,6 +25,17 @@ final class TestPane extends NavigablePaneWidget
         private readonly string $id = 'test-pane',
     ) {}
 
+    /**
+     * A pane binds its own keys, which is exactly what the keymap page has to
+     * be able to see — one of its own actions and one of core's.
+     *
+     * @return array<string, list<string>>
+     */
+    public static function getDefaultKeybindings(): array
+    {
+        return ['test_pane_step' => ['n'], 'goto_file' => ['g']];
+    }
+
     public function paneId(): string
     {
         return $this->id;
