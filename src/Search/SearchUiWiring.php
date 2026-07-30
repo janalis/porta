@@ -81,6 +81,14 @@ final class SearchUiWiring
         // switches driven outside the dock.
         $this->resultsPanel->onRerun(function (): void {
             $tool = $this->panels->activeTool();
+            $handlers = $tool?->handlers;
+            if (null !== $handlers) {
+                // A contributed tool's own F5, already inside its plugin's
+                // fault barrier; a null rerun leaves the key inert.
+                ($handlers->rerun ?? static function (): void {})();
+
+                return;
+            }
             if (null !== $tool?->searchState) {
                 $this->projectSearch->rerun(); // only real find-in-project tabs re-grep
 
@@ -117,14 +125,31 @@ final class SearchUiWiring
         });
 
         $this->resultsPanel->onJump(function (string $relativePath, int $line): void {
-            $mode = $this->panels->activeTool()->mode ?? $this->panels->mode();
-            if (\in_array($mode, [ResultsPanelMode::LspLog, ResultsPanelMode::Notifications], strict: true)) {
-                return; // log rows carry no file location
-            }
-            if (ResultsPanelMode::History === $mode) {
-                $this->localHistory->restore($line);
+            $tool = $this->panels->activeTool();
+            $activate = $tool?->handlers?->activate;
+            if (null !== $activate) {
+                // A contributed tool's own Enter.
+                $activate($relativePath, $line);
 
                 return;
+            }
+            // A contributed tool that declares no activate falls through to the
+            // built-in open-and-jump, which is what most tools want; a CORE tab
+            // is routed by its mode.
+            if (null === $tool?->handlers) {
+                // Spelled out rather than `$tool->mode ?? $this->panels->mode()`:
+                // a contributed tab has a null MODE too, so the coalesce would
+                // silently fall back to whatever core tool was bound last and
+                // route this jump by it. Only a missing TAB may fall back.
+                $mode = null === $tool ? $this->panels->mode() : $tool->mode;
+                if (\in_array($mode, [ResultsPanelMode::LspLog, ResultsPanelMode::Notifications], strict: true)) {
+                    return; // log rows carry no file location
+                }
+                if (ResultsPanelMode::History === $mode) {
+                    $this->localHistory->restore($line);
+
+                    return;
+                }
             }
             $this->bufferService->openFile($this->rootDir.'/'.$relativePath, focus: OpenFocus::Editor);
             $this->editor->jumpTo($line, 0);

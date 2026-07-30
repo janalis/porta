@@ -40,7 +40,8 @@ use Symfony\Component\Tui\Widget\AbstractWidget;
 #[AsIdeService]
 final class BottomDock
 {
-    private ResultsPanelMode $mode = ResultsPanelMode::Search;
+    /** Null while a CONTRIBUTED tool is bound — it is not one of core's multiplexed contents. */
+    private ?ResultsPanelMode $mode = ResultsPanelMode::Search;
 
     /**
      * The tab whose state the shared widget currently displays — the capture
@@ -317,8 +318,8 @@ final class BottomDock
         }
     }
 
-    /** Which content the results panel is currently serving (drives query/jump routing). */
-    public function mode(): ResultsPanelMode
+    /** Which content the results panel is currently serving (drives query/jump routing); null under a contributed tool. */
+    public function mode(): ?ResultsPanelMode
     {
         return $this->mode;
     }
@@ -341,6 +342,23 @@ final class BottomDock
     public function showList(ResultsPanelMode $mode, string $title, array $rows, ?ResultsPanelFields $fields = null): DockToolTab
     {
         $tab = $this->tools->openOrReuse($mode, $title, $fields ?? ResultsPanelFields::resultsOnly());
+        $tab->rows = $rows;
+        $tab->searching = false;
+        $this->show($tab);
+
+        return $tab;
+    }
+
+    /**
+     * Open (or reuse, keyed by the tool's id) a CONTRIBUTED tool's tab, bind it
+     * and focus it. The title is the tool's own and is only used when the tab
+     * is created — the id is what identifies it.
+     *
+     * @param list<array{path: string, line: int, text: string, ranges?: list<array{start: int, length: int}>}> $rows
+     */
+    public function showTool(DockToolHandlers $handlers, string $title, array $rows): DockToolTab
+    {
+        $tab = $this->tools->openOrReuse(null, $title, ResultsPanelFields::resultsOnly(), $handlers);
         $tab->rows = $rows;
         $tab->searching = false;
         $this->show($tab);

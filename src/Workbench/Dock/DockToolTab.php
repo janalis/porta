@@ -17,6 +17,10 @@ use Porta\Widget\Support\ResultsViewState;
  * frozen view state (filter/grouping/collapse/context/selection, captured by
  * the dock on switch-away) and (for Find-in-Project tabs) the query
  * definition.
+ *
+ * A CONTRIBUTED tool (a plugin's) has a null $mode and carries its identity and
+ * behaviour in {@see DockToolHandlers} instead — see that class for why null
+ * rather than an extra enum case.
  */
 final class DockToolTab
 {
@@ -35,8 +39,11 @@ final class DockToolTab
     public function __construct(
         /** The strip identity — stable across renames-by-reuse, cheap to fingerprint. */
         public readonly int $id,
-        public readonly ResultsPanelMode $mode,
+        /** Which of core's multiplexed contents this serves; null for a contributed tool. */
+        public readonly ?ResultsPanelMode $mode,
         public readonly string $title,
         public ResultsPanelFields $fields,
+        /** Set for a contributed tool, null for core's own. */
+        public readonly ?DockToolHandlers $handlers = null,
     ) {}
 }

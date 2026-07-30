@@ -14,6 +14,8 @@ use Porta\Tests\Support\RunsIde;
 use Porta\Tests\Support\Services;
 use Porta\Tests\Support\TempProject;
 use Porta\Widget\DockTabsWidget;
+use Porta\Workbench\Dock\BottomDock;
+use Porta\Workbench\Dock\DockToolHandlers;
 use Symfony\Component\Tui\Ansi\AnsiUtils;
 use Symfony\Component\Tui\Render\Renderer;
 
@@ -613,6 +615,63 @@ final class IdeDockToolsTest extends TestCase
                     $wheel($tui, $stripRect->col + 3, $stripRect->row + 1, code: 64); // wheel-up cycles back
                     $tui->tick();
                     $this->assertSame('Problems', $tui->getById('results')->getTitle(), 'a strip wheel switches the tool tab');
+                },
+            ],
+        );
+
+        $this->addToAssertionCount(1);
+    }
+
+    public function testAContributedToolOwnsItsEnterAndItsF5(): void
+    {
+        // The seam a plugin's list tool rides: the tab carries its behaviour,
+        // so Enter and F5 reach the tool rather than being routed by a mode it
+        // does not have. Both directions matter — a tool WITHOUT an activate
+        // must still get core's open-and-jump, which is what most want.
+        putenv('PATH=/nonexistent');
+        $project = new TempProject(['a.php' => "<?php\n// one\n// two\n", 'b.php' => "<?php\n"]);
+
+        $this->runIde(
+            $project,
+            $project->path('b.php'),
+            [
+                200 => function ($tui, $terminal, $ide): void {
+                    $dock = Services::resolve($ide, BottomDock::class);
+                    $reruns = 0;
+                    $activated = [];
+                    $rows = [['path' => 'a.php', 'line' => 1, 'text' => '// one']];
+
+                    // A tool that answers Enter itself.
+                    $mine = new DockToolHandlers(
+                        'demo:mine',
+                        activate: static function (string $path, int $line) use (&$activated): void {
+                            $activated[] = $path.':'.$line;
+                        },
+                        rerun: static function () use (&$reruns): void {
+                            ++$reruns;
+                        },
+                    );
+                    $dock->showTool($mine, 'Mine', $rows);
+                    $tui->tick();
+                    $tui->setFocus($tui->getById('results'));
+                    $tui->handleInput("\r");
+                    $tui->handleInput("\x1b[15~"); // F5
+
+                    $this->assertSame(['a.php:1'], $activated, "the tool's own Enter fired with the row's location");
+                    $this->assertSame(1, $reruns, 'and its own F5');
+                    $this->assertStringEndsWith('/b.php', (string) $tui->getById('editor')->getFilePath(), 'core did not also jump');
+
+                    // A tool that declares neither: Enter falls through to
+                    // core's open-and-jump, F5 is inert.
+                    $dock->showTool(new DockToolHandlers('demo:bare'), 'Bare', $rows);
+                    $tui->tick();
+                    $tui->setFocus($tui->getById('results'));
+                    $tui->handleInput("\x1b[15~"); // F5: nothing to re-run
+                    $tui->handleInput("\r");
+                    $tui->tick();
+
+                    $this->assertStringEndsWith('/a.php', (string) $tui->getById('editor')->getFilePath(), 'the default Enter opened the row');
+                    $this->assertSame(1, $reruns, "the other tool's F5 did not fire");
                 },
             ],
         );

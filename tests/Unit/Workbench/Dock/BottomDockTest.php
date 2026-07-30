@@ -20,6 +20,7 @@ use Porta\Widget\Support\ResultsPanelFields;
 use Porta\Widget\TerminalPanelWidget;
 use Porta\Workbench\Dock\BottomDock;
 use Porta\Workbench\Dock\DockTab;
+use Porta\Workbench\Dock\DockToolHandlers;
 use Porta\Workbench\Dock\DockToolTabs;
 use Porta\Workbench\Dock\ResultsPanelMode;
 use Porta\Workbench\EditorArea;
@@ -480,5 +481,29 @@ final class BottomDockTest extends TestCase
         $captured = $this->results->captureViewState();
         $this->assertSame('p.php', $captured->selectedPath, 'no saved state: the first match is selected as always');
         $this->assertSame('', $captured->filter);
+    }
+
+    public function testShowToolBindsAContributedTabAndLeavesTheModeBehind(): void
+    {
+        // A contributed tool is not one of core's multiplexed contents, so the
+        // dock's mode goes null while it is bound. Anything that reads mode()
+        // to decide what a row MEANS has to see that, not the stale mode of
+        // whichever core tool happened to be bound before.
+        $dock = $this->dock();
+        $dock->showList(ResultsPanelMode::Problems, 'Problems', []);
+        $this->assertSame(ResultsPanelMode::Problems, $dock->mode());
+
+        $handlers = new DockToolHandlers('todo:todo');
+        $tab = $dock->showTool($handlers, 'TODO', [['path' => 'a.php', 'line' => 1, 'text' => 'TODO: this']]);
+
+        $this->assertNull($dock->mode(), 'no core mode is serving this tab');
+        $this->assertSame($handlers, $tab->handlers);
+        $this->assertSame($tab, $dock->activeTool());
+        $this->assertSame($this->results, $dock->visiblePanel());
+        $this->assertSame($this->results, $this->tui->getFocus(), 'showing a tool focuses it');
+
+        $again = $dock->showTool($handlers, 'TODO', []);
+        $this->assertSame($tab, $again, 'the id reuses the tab rather than appending');
+        $this->assertSame([], $again->rows);
     }
 }

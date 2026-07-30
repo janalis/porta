@@ -10,6 +10,7 @@ use Porta\Search\SearchTabState;
 use Porta\Tests\Support\Probe;
 use Porta\Ui\ScopeKind;
 use Porta\Widget\Support\ResultsPanelFields;
+use Porta\Workbench\Dock\DockToolHandlers;
 use Porta\Workbench\Dock\DockToolTab;
 use Porta\Workbench\Dock\DockToolTabs;
 use Porta\Workbench\Dock\ResultsPanelMode;
@@ -116,5 +117,29 @@ final class DockToolTabsTest extends TestCase
 
         $this->assertSame('foo', $tab->searchState->query, 'the frozen definition rides the tab');
         $this->assertSame(['src'], $tab->searchState->scope);
+    }
+
+    public function testAContributedToolIsKeyedByItsIdAloneAndNoModeCanReachIt(): void
+    {
+        // The whole reason a contributed tab carries a null mode: findByMode()
+        // returns the FIRST tab in a mode, so a shared "extension" case would
+        // let a core caller bind, refresh or clobber somebody's plugin tab. A
+        // null matches no case at all.
+        $tabs = new DockToolTabs();
+        $core = $tabs->openOrReuse(ResultsPanelMode::Problems, 'Problems', ResultsPanelFields::resultsOnly());
+        $mine = $tabs->openOrReuse(null, 'TODO', ResultsPanelFields::resultsOnly(), new DockToolHandlers('todo:todo'));
+        $theirs = $tabs->openOrReuse(null, 'TODO', ResultsPanelFields::resultsOnly(), new DockToolHandlers('other:todo'));
+
+        $this->assertNotSame($mine, $theirs, 'same title, different plugins, different tabs');
+        $this->assertSame($mine, $tabs->findByToolId('todo:todo'));
+        $this->assertNull($tabs->findByToolId('nobody:nothing'), 'a ×\'d tool answers null — the staleness guard');
+        $this->assertSame($core, $tabs->findByMode(ResultsPanelMode::Problems), 'core tabs still resolve by mode');
+        foreach (ResultsPanelMode::cases() as $mode) {
+            $this->assertNotSame($mine, $tabs->findByMode($mode), $mode->name.' must not reach a contributed tab');
+        }
+
+        $reused = $tabs->openOrReuse(null, 'TODO (renamed)', ResultsPanelFields::resultsOnly(), new DockToolHandlers('todo:todo'));
+        $this->assertSame($mine, $reused, 'the id reuses the tab; the title is only the plugin\'s label');
+        $this->assertSame('TODO', $reused->title, 'and the title it was created with stands');
     }
 }
