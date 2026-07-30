@@ -160,6 +160,13 @@ final class SettingsController
                 'restart' => true, // the rasterizer resolves its binary from the compiled env channel
                 'apply' => null,
             ],
+            'plantuml' => [
+                'label' => 'PlantUML path (or .jar)',
+                'kind' => SettingsRowKind::Text,
+                'group' => 'general',
+                'restart' => true, // the engine resolves its tool from the compiled env channel
+                'apply' => null,
+            ],
             'graphRender' => [
                 'label' => 'Graph rendering',
                 'kind' => SettingsRowKind::Choice,

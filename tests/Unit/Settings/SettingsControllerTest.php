@@ -147,7 +147,7 @@ final class SettingsControllerTest extends TestCase
         $byKey = array_column($rows, null, 'key');
 
         $this->assertSame(
-            ['inlineDiagnostics', 'autoPairs', 'formatOnSave', 'todoTags', 'dotPath', 'svgConverter', 'graphRender'],
+            ['inlineDiagnostics', 'autoPairs', 'formatOnSave', 'todoTags', 'dotPath', 'svgConverter', 'plantuml', 'graphRender'],
             array_column($rows, 'key'),
             'General holds editor behavior (incl. the restart-required converter rows); appearance moved to Interface',
         );

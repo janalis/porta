@@ -211,6 +211,9 @@ final class DotLayoutEngineTest extends TestCase
     public function testRendersPngBytesAtTheRequestedDpi(): void
     {
         $engine = $this->engine('fake-dot');
+        // 72 is the whole coordinate identity: one PostScript point per pixel,
+        // which is what lets a dot bitmap and its layout share hit-testing.
+        $this->assertSame(72, $engine->baseDpi());
         $png = null;
         $onError = static function (string $message): void {
             self::fail("unexpected render error: {$message}");

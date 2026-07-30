@@ -22,6 +22,9 @@ final class FakeLayoutEngine implements LayoutEngine
 
     public ?string $binary = '/fake/dot';
 
+    /** Graphviz's 1:1; a PlantUML fake would answer 96. */
+    public int $baseDpi = 72;
+
     /** The next layout() outcome: a layout, an error string, or null to answer nothing. */
     public GraphLayout|string|null $nextResult = null;
 
@@ -50,6 +53,11 @@ final class FakeLayoutEngine implements LayoutEngine
     public function binary(): ?string
     {
         return $this->binary;
+    }
+
+    public function baseDpi(): int
+    {
+        return $this->baseDpi;
     }
 
     public function layout(string $dot, \Closure $onDone, \Closure $onError): void

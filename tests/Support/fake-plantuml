@@ -1,0 +1,35 @@
+#!/usr/bin/env php
+<?php
+
+// A PlantUML stand-in for tests: drains stdin (the diagram), and emits a real
+// PNG whose WIDTH ENCODES THE REQUESTED DPI — 120px at PlantUML's natural 96,
+// so a test can tell one zoom level's render from another's without a JVM.
+//
+// A document containing the 'broken' sentinel fails the way -failfast2 does:
+// the error on stderr, non-zero exit, no image at all.
+
+declare(strict_types=1);
+
+$stdin = (string) stream_get_contents(STDIN);
+if (str_contains($stdin, 'broken')) {
+    fwrite(STDERR, "Syntax Error? (line 2)\n");
+
+    exit(1);
+}
+
+$dpi = 96;
+$args = array_slice($argv, 1);
+foreach ($args as $arg) {
+    if (str_starts_with($arg, '-Sdpi=')) {
+        $dpi = max(1, (int) substr($arg, 6));
+    }
+}
+
+$scale = $dpi / 96;
+$width = max(1, (int) round(120 * $scale));
+$height = max(1, (int) round(80 * $scale));
+$gd = imagecreatetruecolor($width, $height);
+imagefilledrectangle($gd, 0, 0, $width - 1, $height - 1, (int) imagecolorallocate($gd, 60, 90, 200));
+imagepng($gd);
+
+exit(0);

@@ -52,6 +52,7 @@ final class IdeConfig
         'dotPath' => '',
         'graphRender' => 'bitmap',
         'svgConverter' => '',
+        'plantuml' => '',
     ];
 
     /**

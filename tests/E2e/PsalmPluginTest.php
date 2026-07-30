@@ -183,8 +183,10 @@ final class PsalmPluginTest extends TestCase
             [
                 100 => function ($tui, $terminal): void {
                     $tui->handleInput("\x1b\x10");
-                    $tui->tick();
-                    $this->assertStringContainsString('psalm not found (vendor/bin or PATH)', AnsiUtils::stripAnsiCodes($terminal->getOutput()));
+                    // Await the painted flash: a tick() is not a frame (the
+                    // adaptive ticker), so asserting straight after one races
+                    // the render under load.
+                    $this->await(static fn (): bool => str_contains(AnsiUtils::stripAnsiCodes($terminal->getOutput()), 'psalm not found (vendor/bin or PATH)'), what: 'the missing-binary flash');
                 },
             ],
         );
@@ -196,8 +198,7 @@ final class PsalmPluginTest extends TestCase
             [
                 100 => function ($tui, $terminal): void {
                     $tui->handleInput("\x1b\x10");
-                    $tui->tick();
-                    $this->assertStringContainsString('psalm: open a PHP file first', AnsiUtils::stripAnsiCodes($terminal->getOutput()));
+                    $this->await(static fn (): bool => str_contains(AnsiUtils::stripAnsiCodes($terminal->getOutput()), 'psalm: open a PHP file first'), what: 'the wrong-file flash');
                 },
             ],
         );
@@ -212,9 +213,7 @@ final class PsalmPluginTest extends TestCase
                     $tui->handleInput("\x1b\x10");
                 },
                 300 => function ($tui, $terminal): void {
-                    $this->await(static fn (): bool => str_contains(AnsiUtils::stripAnsiCodes($terminal->getOutput()), 'psalm: exited with code 1'));
-                    $tui->tick();
-                    $this->assertStringContainsString('psalm: exited with code 1', AnsiUtils::stripAnsiCodes($terminal->getOutput()));
+                    $this->await(static fn (): bool => str_contains(AnsiUtils::stripAnsiCodes($terminal->getOutput()), 'psalm: exited with code 1'), what: 'the internal-failure flash');
                 },
             ],
         );

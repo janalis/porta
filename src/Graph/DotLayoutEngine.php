@@ -39,6 +39,13 @@ final class DotLayoutEngine implements LayoutEngine
         private readonly ?string $dotPath = null,
     ) {}
 
+    public function baseDpi(): int
+    {
+        // 72 dpi is one PostScript point per pixel, which is what makes a dot
+        // bitmap share its coordinates with the layout it was drawn from.
+        return 72;
+    }
+
     public function binary(): ?string
     {
         // An explicit path (the dotPath setting) wins over discovery, the gitPath pattern.
@@ -87,7 +94,7 @@ final class DotLayoutEngine implements LayoutEngine
         }
     }
 
-    public function render(string $dot, int $dpi, \Closure $onPng, \Closure $onError): void
+    public function render(string $source, int $dpi, \Closure $onPng, \Closure $onError): void
     {
         $binary = $this->binary();
         if (null === $binary) {
@@ -101,7 +108,7 @@ final class DotLayoutEngine implements LayoutEngine
         // knob, it leaves the canvas untouched), which would shift every
         // coordinate the viewer hit-tests against. With pad 0 the PNG is exactly
         // ceil(bb) × dpi/72 pixels.
-        $process = new AsyncProcess([$binary, '-Tpng', '-Gdpi='.$dpi, '-Gpad=0'], $this->rootDir, stdin: $dot, captureStderr: true);
+        $process = new AsyncProcess([$binary, '-Tpng', '-Gdpi='.$dpi, '-Gpad=0'], $this->rootDir, stdin: $source, captureStderr: true);
         $this->rendering = $process;
         $started = $process->start(function (int $code, string $stdout) use ($process, $onPng, $onError): void {
             if ($this->rendering === $process) {
