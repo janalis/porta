@@ -92,7 +92,16 @@ inline image tab (truecolor half-block rendering) instead of text. Zoom
 with `=`/`-`, `0`/`f` fit, `1` actual size, or `Ctrl+wheel` anchored at the
 pointer (12.5%–800%); pan with the arrows or the wheel. Shrinking averages
 the pixels it covers, so a downscaled image keeps its thin lines instead of
-shimmering; magnifying stays pixel-crisp. Images over 20 MB
+shimmering; magnifying stays pixel-crisp.
+
+**Ctrl+two-finger-scroll on a trackpad is the pinch**: after the first notch
+the zoom glides continuously toward the pointer instead of jumping between
+the preset levels, while a single deliberate wheel click still snaps to the
+next one. A real pinch cannot be delivered to a program running in a
+terminal — the terminal receives the gesture and keeps it, usually for its
+own font size, and no terminal mouse protocol can express a magnification.
+If your terminal can bind a gesture to an escape sequence (iTerm2 does this
+for taps and swipes), point it at whatever key `Image: Zoom In` is bound to. Images over 20 MB
 or 16 megapixels are refused (the size cap is the bundled `image-viewer`
 plugin's setting). The viewer is a bundled plugin, enabled by default —
 disabling it in Settings ▸ Plugins routes images to the ordinary text-path
@@ -105,7 +114,9 @@ Opening a `.dot` or `.gv` file renders the Graphviz graph as an interactive
 tab, showing **the picture `dot` itself draws** — real splines, arrowheads,
 fills and fonts (install graphviz, or point the `dotPath` setting at it).
 Zoom with `=`/`-`, `0`/`f` fit, `1` actual size, or `Ctrl+wheel` at the
-pointer; pan with the arrows, the wheel, or by dragging; select nodes with
+pointer — including the trackpad's Ctrl+two-finger-scroll, which glides (see
+the image viewer above for why that is as close to a pinch as a terminal
+gets); pan with the arrows, the wheel, or by dragging; select nodes with
 `n`/`p` or a click, which frames the node and names it in the status bar.
 Zooming in re-renders the graph at a higher resolution rather than magnifying
 pixels, so labels sharpen as you go.

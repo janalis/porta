@@ -791,7 +791,24 @@ its class docblock). Hit-testing uses the renderer's per-widget rects (`Input/Hi
 `contains()` is the shared pointer-in-rect predicate). Satellites carry the parts that need no
 drag state: `Input/WheelRouter` (all wheel routing), `Input/ContextMenuRouter` (all right-click
 routing — it resolves which item list the pointer is over, then hands off to `ContextMenuOpener`),
-`HoverRouter`, `ClickCounter`, `GitMouseRouter`, `SettingsMouseRouter`, `WelcomeMouseRouter`.
+`HoverRouter`, `ClickCounter`, `ZoomGesture`, `GitMouseRouter`, `SettingsMouseRouter`,
+`WelcomeMouseRouter`.
+
+**A trackpad pinch cannot reach a terminal program — recorded so it is not
+re-investigated.** macOS delivers it as an NSEvent magnify gesture, the terminal keeps it (iTerm2
+spends it on font size; `PinchToChangeFontSizeDisabled` only stops that, it forwards nothing),
+Ghostty has an open request for gestures, and NO mouse protocol encodes a magnification — not SGR
+1006, not 1016 pixel-precision, not the kitty keyboard protocol. iTerm2 can bind taps and swipes
+(not pinch) to "Send Escape Sequence", which is the only route from a gesture to a TUI, and the
+zoom actions are rebindable like any other. What a trackpad DOES send is **Ctrl+two-finger-scroll**
+as ordinary wheel notches, so that is the pinch: `Input/ZoomGesture` reads the gap between notches
+(0.1s window — an order of magnitude above trackpad spacing, comfortably below a human's repeated
+wheel click, and above the 140ms step deltas the E2e drives isolated notches at) and a
+continuation asks for a FACTOR (`ZoomPanModel::magnifyAt()`, clamped to the ladder's own ends)
+while an isolated notch steps the ladder. The opening notch of a gesture is necessarily a rung —
+nothing can know a burst has begun until its second notch — so a flick reads as one step then a
+glide, pinned by `IdeImageViewerTest` at 100% → 200% → 272%. Its state is newed by `WheelRouter`,
+not injected, for the same reason `ClickCounter`'s is.
 The extraction test that produced these: a method whose dependencies it **exclusively** owns
 (counted inside the method vs across the file) and which touches none of the six cross-event drag
 fields. Applying the same test to `BufferService`'s pane-swap cluster **rejected** it — only one
