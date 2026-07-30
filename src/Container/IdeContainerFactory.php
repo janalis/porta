@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Porta\Container;
 
+use Composer\InstalledVersions;
 use Porta\Config\IdeConfig;
 use Porta\Ide;
 use Symfony\Component\Config\ConfigCache;
@@ -74,8 +75,10 @@ final class IdeContainerFactory
         }
 
         // The cache dir is folded into the hash so distinct cache dirs yield
-        // distinct class names (each dump loads at most once per process).
-        $hash = hash('xxh128', Ide::VERSION.\PHP_VERSION.\dirname(__DIR__, levels: 2).'/config'.$cacheDir);
+        // distinct class names (each dump loads at most once per process), and
+        // the installed package set so a dependency upgrade cannot be served a
+        // container dumped by the previous one.
+        $hash = hash('xxh128', Ide::VERSION.\PHP_VERSION.\dirname(__DIR__, levels: 2).'/config'.$cacheDir.self::installedPackages());
         $file = $cacheDir.'/container-'.$hash.'.php';
         /** @var class-string<Container> $class The PhpDumper-generated class (declared by the require below). */
         $class = 'PortaCachedContainer_'.$hash;
@@ -107,6 +110,31 @@ final class IdeContainerFactory
 
         // @mago-expect analysis:unsafe-instantiation — PhpDumper generates the class with a parameterless constructor.
         return new $class();
+    }
+
+    /**
+     * Every installed package and its version, sorted — the dependency half of
+     * the cache key.
+     *
+     * `ConfigCache` tracks project files (services.php, the src/ glob, per-class
+     * reflection), so a wiring change rebuilds the dump on its own; nothing
+     * tracks VENDOR. Without this, `composer update` could hand a container
+     * dumped by the previous dependency set to the new one — the dumper's output
+     * is version-specific, and freshness would rest on vendor mtimes surviving
+     * whatever the deploy did. Versions rather than references, so a dev
+     * checkout does not re-dump on every commit of its own root package.
+     */
+    private static function installedPackages(): string
+    {
+        $versions = [];
+        foreach (InstalledVersions::getAllRawData() as $dataset) {
+            foreach ($dataset['versions'] as $name => $package) {
+                $versions[] = $name.'@'.($package['version'] ?? '');
+            }
+        }
+        sort($versions);
+
+        return implode("\n", $versions);
     }
 
     /**

@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Porta\Tests\Unit\Container;
 
+use Composer\InstalledVersions;
 use PHPUnit\Framework\TestCase;
 use Porta\Config\IdeConfig;
 use Porta\Container\Ansi;
@@ -112,6 +113,37 @@ final class IdeContainerFactoryTest extends TestCase
         $this->assertInstanceOf(ContainerBuilder::class, $container, 'the loaded class cannot be redeclared, so the fresh builder is served');
         clearstatcache();
         $this->assertGreaterThan(time() - 60, filemtime($file), 'the dump was rewritten for the next process');
+    }
+
+    public function testAChangedPackageSetDumpsItsOwnContainer(): void
+    {
+        // ConfigCache tracks project files, never vendor, so the installed set
+        // is half the cache key: without it a `composer update` could be served
+        // a container the PREVIOUS dependency set dumped.
+        $project = new TempProject();
+        putenv('PORTA_CACHE_DIR='.$project->dir);
+        $this->build();
+        $this->assertCount(1, (array) glob($project->path('container-*.php')));
+
+        // InstalledVersions is process-global vendor state: perturb it, then put
+        // all three fields reload() touches back.
+        $saved = [];
+        foreach (['installed', 'installedByVendor', 'installedIsLocalDir'] as $field) {
+            $saved[$field] = Probe::getStatic(InstalledVersions::class, $field);
+        }
+
+        try {
+            $data = InstalledVersions::getAllRawData()[0];
+            $data['versions']['symfony/tui']['version'] = '99.0.0.0';
+            InstalledVersions::reload($data);
+            $this->build();
+        } finally {
+            foreach ($saved as $field => $value) {
+                Probe::setStatic(InstalledVersions::class, $field, $value);
+            }
+        }
+
+        $this->assertCount(2, (array) glob($project->path('container-*.php')), 'the upgraded set got its own dump instead of the old one');
     }
 
     public function testCacheOffCompilesInMemory(): void
