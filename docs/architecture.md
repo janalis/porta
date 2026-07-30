@@ -111,7 +111,11 @@ after a live install); `Plugin/PluginManager` holds the committed state and
 wraps every handler/hook in a catch-all; `Plugin/PluginApi` is the
 buffered, per-plugin registration surface; `Plugin/PluginRuntime` wires the
 live IDE seams late in construction; `Plugin/PluginInstaller` copies/clones
-plugin directories for the Settings → Plugins section. A plugin may also own
+plugin directories for the Settings → Plugins section. A plugin can also PROVIDE
+THE EDITOR PANE for the files it claims: `Editor/EditorPanes` is the registry,
+`Widget/EditorPaneWidget` the base a pane extends, and both bundled viewers are
+plugins that own their whole implementation — the image viewer, and the graph
+viewer that `requires` it for the shared rasterizer. A plugin may also own
 CLASSES and declare DEPENDENCIES: `Plugin/Runtime/PluginManifest` reads an
 optional `plugin.json` before any plugin PHP is required,
 `Plugin/Runtime/PluginAutoloader` maps its namespace to its directory (composer

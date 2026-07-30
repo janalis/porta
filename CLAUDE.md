@@ -122,14 +122,24 @@ dangling reference; grep the old namespace to prove zero. Membership rules:
   `PanelWidth` now defaults `minWidth`/`maxWidth` to 24/200 (override only where a panel genuinely
   differs). The single tab cell lives in `Widget/Render/TabStripRenderer` as
   `measureCell`/`renderCell` (TabCell merged in — 100% co-change, same tier).
-- **`Graph/`** — the Graphviz viewer domain: the layout model VOs + `DotJsonParser` (json0 →
-  screen-down points, the y-flip done ONCE), `LayoutEngine`/`DotLayoutEngine` (async `dot
-  -Tjson0`, stdin-fed) and the two controllers
-  (`ArchitectureGraphController`, `GraphTabActions`). The architecture scanner
-  (`ArchitectureArtifact`/`NamespaceGraphScanner`/`UseScanner`/`ComposerRoots`/`DotWriter`) is
-  NOT here: it is the graph-viewer PLUGIN's own code (`plugins/graph-viewer/src`, namespace
-  `Porta\GraphViewer`) — nothing in core reached it. The widget is `Widget/GraphViewerWidget`;
-  its stateless rasterizer `Widget/Render/GraphRenderer`+`GraphCellGrid` (render-tier rule).
+- **`Widget/EditorPaneWidget`** + **`Widget/NavigablePaneWidget`** — the two abstract
+  bases a pane extends (round 25). A pane IS a widget rather than having one, for
+  `DockPanelWidget`'s reason: `BufferService` adds it to a container, the routers hand it to
+  the hit-tester and `setFocus()` takes it. The base carries the five pane traits, the
+  `ViewerTabHandler` and the `afterViewChange()` funnel, and declares `paneId`/`show`/`clear`/
+  `statusRight` plus the inert defaults `hide`/`forget`/`press`/`wheelBy`/`refreshTheme`. The
+  navigable subclass adds the pointer surface (`scrollBy` in columns and HALF-rows, `zoomAt`,
+  `magnifyAt`, `selectAt`) — the type `WheelRouter`'s `ImageViewerWidget|GraphViewerWidget`
+  union used to approximate. Help extends the plain base: its wheel scrolls whole rows, which
+  is why the wheel verb is `wheelBy` and not `scrollBy` (two units, two names).
+- **`Editor/EditorPanes`** — the registry, keyed by the id a viewer claim returns, each pane
+  with the LOADER that turns a path into its payload. `Editor/PaneRegistrar` builds
+  plugin-registered panes from `Editor/EditorPaneSource` (implemented by `PluginManager` —
+  the `ViewerProviderSource` arrangement) and `Bootstrap/CorePanes` registers the one pane core
+  still ships, the help browser. **The drain is core's on purpose**: put it in `Porta\Plugin`
+  and it must name `EditorPaneWidget`, resurrecting the `Plugin > Widget` edge round 18
+  severed — which is why the factory and loader cross that boundary as bare `\Closure`s and
+  the registrar checks what comes back.
 - **`Plugin/`** — three tiers, one rule each: **`Api/`** is the surface a plugin file compiles
   against (`PortaPlugin`, `PluginApi`, `PluginException`, `PluginBuffer`, and the abstract
   bases); **`Runtime/`** is what the IDE runs (`PluginLoader`, `PluginManager`, `PluginHost`,
@@ -519,15 +529,17 @@ reseeded, if ×'d). `Search/TodoScanner` (ide_todo, alt+8) greps `TODO|FIXME` ca
 over the shared `ProjectSearch` engine (single slot — a scan and a find cancel each other,
 latest wins).
 
-**Graph viewer (Project Architecture).** `.dot`/`.gv` files route to `Widget/GraphViewerWidget`
+**Graph viewer (Project Architecture).** Everything in this note is the graph-viewer PLUGIN's
+code now (`plugins/graph-viewer/src`, `Porta\GraphViewer`); the paths below are relative to it.
+`.dot`/`.gv` files route to its `GraphViewerWidget`
 (the third editor-pane occupant; `Buffer::$graphDot` + `isGraph()`, with `isViewer()` the single
 "not code" guard) — as do PlantUML's `.puml`/`.plantuml`/`.pu`/`.iuml`/`.wsd`, which makes it the
 DIAGRAM tab rather than the graph one. The REAL `dot` binary answers TWICE per graph, on two independent slots of
-`Graph/DotLayoutEngine` (async, stdin-fed, exit-code-keyed, latest-wins each; explicit `dotPath`
+`GraphViewer\Graph\DotLayoutEngine` (async, stdin-fed, exit-code-keyed, latest-wins each; explicit `dotPath`
 setting → `ExecutableFinder`): `-Tjson0` for the geometry, parsed into point-denominated
 screen-down VOs, and **`-Tpng -Gdpi=<n> -Gpad=0` for the PICTURE** — PNG bytes off the child's
-stdout into `Image/ImageDecoder::decodeBytes()`, painted as half-blocks by the image viewer's
-`Image/HalfBlockRasterizer`. The slots are separate so a zoom-driven re-render cannot cancel the
+stdout into `ImageViewer\ImageDecoder::decodeBytes()`, painted as half-blocks by the image viewer's
+`ImageViewer\HalfBlockRasterizer`. The slots are separate so a zoom-driven re-render cannot cancel the
 geometry it is about to be drawn with.
 - **`-Gpad=0` at 72 dpi is the coordinate identity** the whole feature rests on: measured against
   the real binary, dot pads a bitmap by 4 points a side by default (`margin` is NOT that knob),
@@ -544,11 +556,11 @@ geometry it is about to be drawn with.
   pixels, and the expensive half (the layout) is what stays cached per DOT hash. A tab switch
   drops it immediately so the previous tab's picture cannot paint under this tab's geometry, and
   a late answer is discarded by its DOT hash.
-- **Two engines, one of which has geometry.** `Graph/DiagramEngine` (`binary()`, `baseDpi()`,
+- **Two engines, one of which has geometry.** `GraphViewer\Graph\DiagramEngine` (`binary()`, `baseDpi()`,
   `render()`) is everything the pane needs to show a PICTURE; `Graph/LayoutEngine` extends it with
-  `layout()`/`export()`, the things only `dot` can answer. `Graph/PlantUmlEngine` implements the
+  `layout()`/`export()`, the things only `dot` can answer. `GraphViewer\Graph\PlantUmlEngine` implements the
   supertype alone, which is exactly why a `.puml` tab has **no node selection, no counts, no
-  cell rendering and an inert `v`** — `Graph/DiagramKind::forPath()` decides which tool draws, and
+  cell rendering and an inert `v`** — `GraphViewer\Graph\DiagramKind::forPath()` decides which tool draws, and
   `hasLayout()` is the single spelling of that difference. With no layout the FIRST render (at the
   tool's own 1:1) establishes the extent, the image viewer's probe rule and its "only a probe may"
   clause included. `baseDpi()` is on the interface because the tools disagree about 1:1 — 72 for
@@ -556,14 +568,14 @@ geometry it is about to be drawn with.
   whichever is drawing. `DiagramEngine` has two implementations, so the loader derives NO alias:
   `config/services.php` aliases the bare interface to `PlantUmlEngine` (it means "the tool with no
   geometry"), and without that the widget's nullable dependency resolves to null in silence.
-  `Graph/PlantUmlCommand` is pure and static so the three shapes PlantUML arrives in — a launcher
+  `GraphViewer\Graph\PlantUmlCommand` is pure and static so the three shapes PlantUML arrives in — a launcher
   on PATH, an explicit path, and a bare `plantuml.jar` that must become `java -jar <path>` — are
   pinned without a JVM in the suite. **`-failfast2` is what makes a syntax error an error**: by
   default PlantUML draws the message INTO the image and exits 0, which would reach the pane as a
   perfectly valid picture of a mistake. PlantUML shells out to Graphviz itself for several diagram
   types, so a machine without `dot` renders some documents and not others — its stderr says which,
   and that is what the banner shows.
-- **`Graph/GraphRenderMode`** (backed — it crosses `.porta.json`) picks the rendering: `Bitmap`
+- **`GraphViewer\Graph\GraphRenderMode`** (backed — it crosses `.porta.json`) picks the rendering: `Bitmap`
   or `Cells`, the `graphRender` core setting for the default and `v` (`graph_render_mode` in
   `ActionCatalog`) to flip live. `Widget/Render/GraphRenderer`'s cell rendering is NOT a
   degraded mode — it draws labels as real terminal text, readable at pane sizes where the
@@ -577,9 +589,9 @@ geometry it is about to be drawn with.
   re-run dot), keeps zoom/pan per path across regenerations (refit only when the extent changes),
   and KEEPS the last good graph under a one-row stderr banner on a failed layout (the banner
   paints AFTER the focus frame — it hid behind the frame's top border once). Zoom/pan ride
-  `Image/ZoomPanModel` with a finer ladder (1 pt → scale cols × scale half-rows; the px=half-row
+  `ImageViewer\ZoomPanModel` with a finer ladder (1 pt → scale cols × scale half-rows; the px=half-row
   convention is the 2:1 cell aspect correction). The commands are PLUGIN-owned: `graph-viewer:architecture` (Plugins menu) runs
-`Graph/ArchitectureArtifact` (plugin-constructible — two strings, no services; the generator
+`GraphViewer\ArchitectureArtifact` (plugin-constructible — two strings, no services; the generator
 command and the OUTPUT DIRECTORY are the plugin's `command`/`outputDir` settings) and writes
 `architecture.dot` into that directory — **the project root by default** (an artifact meant to be
 opened, versioned and shared does not belong among the machine files in `.porta/`); a relative
@@ -609,13 +621,14 @@ bubbles *up*, so a change that must relabel the whole tree (e.g. a live locale s
 clear render caches recursively. Layout is horizontal/vertical `ContainerWidget`s; sizes come
 from rendered content, with proportions persisted per project.
 
-**Image sampling (`Image/`, both viewers).** `HalfBlockRasterizer` paints one `▀` cell per two
-vertical pixels and samples **nearest-neighbour over whatever `Image/SampleSource` hands it** —
+**Image sampling (`plugins/image-viewer/src`, both viewers — the graph pane reaches it across
+the `requires` edge).** `HalfBlockRasterizer` paints one `▀` cell per two
+vertical pixels and samples **nearest-neighbour over whatever `ImageViewer\SampleSource` hands it** —
 which is the image itself when magnifying and a GD-resampled copy when shrinking. The rule is
 **box-filter down, nearest up**: at a 10% fit, nearest-neighbour reads every tenth pixel and a
 one-pixel line disappears (pinned by test), while a magnified image must stay crisp — at 400% you
 want pixels, not blur. The averaging cannot happen in the rasterizer (~2M `imagecolorat` calls to
-paint one 200×48 pane), so `Image/ScaledSource` memoises ONE `imagecopyresampled` copy per scale,
+paint one 200×48 pane), so `ImageViewer\ScaledSource` memoises ONE `imagecopyresampled` copy per scale,
 keyed on the image IDENTITY as well as the scale so a new tab is never shown the previous image's
 copy — which is why there is no `reset()` to forget. `SampleSource::$ratio` is source pixels per
 view unit, and it does double duty: 1.0 for an image, and dpi/72 for the graph viewer's
@@ -642,7 +655,7 @@ measured and rejected** — 3 of ~8 dependencies exclusive, the rest being each 
 most-touched state plus three genuinely different policies (the gate, the resolution function,
 the call) — so only the mechanism was extracted.
 
-**SVG (`Image/SvgRasterizer`, `Image/SvgConverter`).** GD cannot decode SVG, so an external
+**SVG (`ImageViewer\SvgRasterizer`, `ImageViewer\SvgConverter`).** GD cannot decode SVG, so an external
 converter rasterizes it: the `svgConverter` CORE setting, else `rsvg-convert`, `magick`, `convert`
 in that order. Both argv shapes take a SCALE and agree exactly (measured: a 100×50 document at 3.5
 gives 350×175 from either) — `-density` and NOT `-resize`, which would rasterize at the intrinsic
@@ -932,6 +945,23 @@ key would flip the default back on). Names in
 `disabledPlugins` are skipped at boot in every source. phpunit pins `PORTA_EMBEDDED_PLUGINS` to
 `/nonexistent` (bundled plugins opt in via putenv) and points `PORTA_HOME` at
 `tests/Support/fixtures/home`, which installs `tempest` globally so the suite renders coloured.
+**A plugin may PROVIDE A PANE (round 25).** `registerViewer(id, claims)` says which files are
+mine; `registerPane(id, factory, loader)` says what shows them. The factory is called once at the
+constructor tail with an `Editor/PaneServices` DTO — the `Styles` holder, the `Translator`, the
+`Support/Scheduler` and the `Widget/ViewerTabHandler` — because a plugin class **cannot** be a
+container service: discovery globs `src/*`, autoconfiguration is consumed and the container
+compiled before any plugin PHP runs, the dump is cached across boots on a key that knows nothing
+about plugins, and the only post-compile mutation is `set()` on the four synthetics. Growing that
+DTO is how "my pane needs one more thing from core" becomes visible in review. The loader runs on
+every open and THROWS to refuse a file (too large, undecodable, not UTF-8); its message is
+flashed as-is. `Buffer` carries `?string $paneId` + `mixed $panePayload` — core never looks
+inside — and `isViewer()` is the one kind question core still asks. **Disable and removal differ**:
+disabling stops the routing claim and leaves the pane standing (a tab opened before the toggle
+still has to render), removal drops it. A pane that loses the editor slot gets `hide()` (the
+image pane frees its pixels; the graph pane's layout cache and the help pane's history survive),
+a closed tab gets `forget($path)`, and the last tab closing gets `clear()` — three moments core
+used to spell inconsistently per viewer.
+
 **A plugin may own its code (round 24).** An optional `plugin.json` beside `plugin.php`
 (`Plugin/Runtime/PluginManifest`, a readonly VO + `beside()` reader) declares `namespace`,
 `autoload` (default `src`) and `requires`; it is read **before any plugin PHP is required**,
@@ -951,16 +981,21 @@ config** — a startup that silently re-enables what the user turned off is the 
 one LITERAL path per plugin — mago's excludes take no globs), `composer arch` (per-plugin
 (directory, PSR-4 prefix) scan roots read from the manifests **by hand**, since that command
 scans `src/` and may import nothing from `Porta\`; the namespace an edge belongs to comes from
-the FQCN, not the path), and coverage — see below, it needs its own pass. What has moved so far
-is the provably plugin-owned slice: the architecture scanner chain
-(`plugins/graph-viewer/src`, `Porta\GraphViewer`). **`src/Graph` and `src/Image` cannot follow
-yet**: every remaining class is consumed by CORE (`Buffer`/`BufferService`/`FilesystemReconciler`/
-`StatusBarProvider`/`WheelRouter` plus the two viewer widgets mounted in the editor area), so
-moving them needs a plugin-provided-PANE API (widget registration, plugin-owned buffer kinds,
-status segments) that does not exist — until it does, core would have to import plugin code.
+the FQCN, not the path), and coverage — see below, it needs its own pass. **Both bundled
+viewers are plugin-owned as of round 25**: `plugins/graph-viewer/src` (`Porta\GraphViewer` —
+the diagram domain, the pane widget, its three renderers and the architecture scanner) and
+`plugins/image-viewer/src` (`Porta\ImageViewer` — the decoder, the half-block rasterizer, the
+zoom/pan model, the SVG converter and the pane widget). `src/Graph` and `src/Image` no longer
+exist. The graph plugin `requires` the image one, because a graph is painted with the image
+viewer's rasterizer — the first cross-plugin edge (`GraphViewer>ImageViewer`) and the first real
+use of round 24's dependency mechanism. **Order was forced**: graph had to move first, while
+`src/Image` was still core, or core's `src/Graph` would have imported `Porta\ImageViewer`.
 Core↔plugin ties that remain are severed, not inverted: `BufferService` keeps its OWN
 `ARCHITECTURE_FILENAME` (titling a tab is core's policy) and the PLUGIN's test pins that the two
-constants agree.
+constants agree. Same shape for the nineteen viewer ACTIONS: the ids stay in core's
+`ActionCatalog` (they are user-visible keymap keys — renaming them would break every existing
+`.porta.json`), the KEYS are the panes', and each plugin's suite pins that its pane binds every
+id core declares, because a core test asserting it would import plugin code.
 
 **Plugin coverage runs a SECOND, SERIAL pass, and the reason is upstream.** `composer
 coverage:check` = the parallel run over `src` (100%) **plus** `composer coverage:plugins` (serial
@@ -977,7 +1012,13 @@ pcov has its own instrumentation window, ships a machine-level default (`pcov.di
 here), and a file outside it is never measured no matter what phpunit's `<source>` says.
 A plugin's code must therefore be 100% covered **by its own tests** (`plugins/*/tests`, a
 `Plugins` testsuite), not by an E2e in `tests/` — that is why `ArchitectureArtifact::generate()`
-gained plugin-side tests when it moved.
+gained plugin-side tests when it moved. Round 25 added the corollary: **a plugin file loaded by
+ANOTHER plugin's tests enters the report**, because booting an IDE loads every default-enabled
+bundled plugin, and its unexercised lines then fail the gate. Two cures, both used: a suite's
+`TempProject`s name `enabledPlugins` explicitly (the plugin under test **and** whatever it
+`requires` — leave the requirement out and `PluginOrder` skips the plugin under test entirely,
+which reads as a mystifying timeout), and each plugin's own E2e lives in its own suite so its
+lines are its own tests' business.
 
 The subsystem is container-owned: `Plugin/Runtime/PluginHost` builds the
 settings/manager/loader triple from the synthetic `IdeConfig`, and `ensureLoaded()` (idempotent,

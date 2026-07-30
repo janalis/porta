@@ -18,8 +18,10 @@ replaces that default. Four of them are the documented reference patterns:
 | `mago` | Both patterns at once: format-in-place + JSON-lint diagnostics, with separate "Format on save" / "Lint on save" settings (both on chains format→lint) |
 | `psalm` | The phpstan pattern for Psalm's JSON array output, with "Analyse on save" |
 
-The other six: `image-viewer` and `graph-viewer` (the inline viewers as
-routing-claim plugins — disable one and its files open as text instead),
+The other six: `image-viewer` and `graph-viewer` (the inline viewers — each
+owns its whole implementation and PROVIDES its pane; disable one and its files
+open as text instead, and note that `graph-viewer` requires `image-viewer`
+because a graph is painted with the same rasterizer),
 `tempest` (the built-in-quality syntax highlighting engine the Settings ▸
 Highlighting page offers), `chroma` (an external-highlighter example), and
 `phpantom` / `phpactor` (PHP language-server providers — the Welcome screen's
@@ -206,6 +208,61 @@ The constructor arguments are the plugin name and the binary name; the `binary`
 setting row, the install offer, the "Analyse Current File" command, the
 "Analyse on save" toggle and both menu entries come from the two calls in
 `activate()`.
+
+### Providing a pane
+
+A plugin can own the editor area for the files it claims — that is what the
+bundled image and graph viewers are. Two calls: one says which files are yours,
+the other says what shows them.
+
+```php
+use Porta\Editor\PaneServices;
+use Porta\Widget\EditorPaneWidget;
+use Porta\Widget\NavigablePaneWidget;
+
+$api->registerViewer('hex', ['bin', 'dat']);
+$api->registerPane(
+    'hex',
+    static fn (PaneServices $pane): EditorPaneWidget => new HexPane($pane->styles, $pane->translator),
+    static fn (string $path): string => (string) file_get_contents($path),
+);
+```
+
+- **The factory** runs once, at startup, after every plugin has activated. It is
+  handed a `PaneServices`: the live `Styles` holder (a theme switch swaps its
+  contents in place, so a pane that reads it per render follows along), the
+  `Translator`, a `Scheduler` for debouncing expensive re-renders, and the
+  `ViewerTabHandler` your pane calls for tab cycling, close, go-to-file and the
+  "my view moved" ping that refreshes the status bar. That is the whole list —
+  a pane is hand-built, because a plugin class cannot be a container service.
+- **The loader** runs on every open of a claimed path and returns whatever your
+  pane understands — decoded pixels, source text, a parsed model. The buffer
+  carries it untouched; the IDE never looks inside. **Throw to refuse a file**
+  (too large, undecodable, wrong encoding) and your message is flashed.
+
+Your widget extends `EditorPaneWidget`, or `NavigablePaneWidget` if the pointer
+can pan and zoom it:
+
+| Member | Meaning |
+| --- | --- |
+| `paneId()` | the id your claim returns |
+| `show(string $path, mixed $payload)` | display it (your loader made the payload) |
+| `clear()` | nothing is open at all |
+| `statusRight()` | your status-bar segment, **including your key hints** |
+| `hide()` | another pane took the slot — free what only the visible pane needs |
+| `forget(string $path)` | that tab closed for good; drop per-path state |
+| `refreshTheme()` | the theme changed; re-make anything that baked colours |
+| `press(int $row, int $col): bool` | a click, after focus; return true to arm a drag |
+| `wheelBy(int $rows)` | a wheel notch, in rows |
+| `scrollBy`, `zoomAt`, `magnifyAt`, `selectAt` | `NavigablePaneWidget` only: pan, zoom, select |
+
+Call `$this->afterViewChange()` whenever your view moves — it repaints and tells
+the status bar. Set your widget's id in its constructor (`$this->setId('hex')`);
+that is the name the tests and the hit-tester know it by.
+
+Disabling your plugin stops the routing, so its files fall back to the text
+editor; a tab already open in your pane keeps working. Removing the plugin drops
+the pane for good.
 
 ### Lifecycle
 
