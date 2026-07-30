@@ -157,26 +157,13 @@ final class ActionCatalog
         'help_page_down' => ['label' => 'Help: Page Down'],
         'help_home' => ['label' => 'Help: Go to Top'],
         'help_end' => ['label' => 'Help: Go to Bottom'],
-        // Image viewer (bound by ImageViewerWidget)
-        'image_zoom_in' => ['label' => 'Image: Zoom In'],
-        'image_zoom_out' => ['label' => 'Image: Zoom Out'],
-        'image_zoom_fit' => ['label' => 'Image: Fit to Window'],
-        'image_zoom_actual' => ['label' => 'Image: Actual Size'],
-        'image_pan_left' => ['label' => 'Image: Pan Left'],
-        'image_pan_right' => ['label' => 'Image: Pan Right'],
-        'image_pan_up' => ['label' => 'Image: Pan Up'],
-        'image_pan_down' => ['label' => 'Image: Pan Down'],
-        'graph_zoom_in' => ['label' => 'Graph: Zoom In'],
-        'graph_zoom_out' => ['label' => 'Graph: Zoom Out'],
-        'graph_zoom_fit' => ['label' => 'Graph: Fit to Window'],
-        'graph_zoom_actual' => ['label' => 'Graph: Actual Size'],
-        'graph_pan_left' => ['label' => 'Graph: Pan Left'],
-        'graph_pan_right' => ['label' => 'Graph: Pan Right'],
-        'graph_pan_up' => ['label' => 'Graph: Pan Up'],
-        'graph_pan_down' => ['label' => 'Graph: Pan Down'],
-        'graph_select_next' => ['label' => 'Graph: Select Next Node'],
-        'graph_select_prev' => ['label' => 'Graph: Select Previous Node'],
-        'graph_render_mode' => ['label' => 'Graph: Toggle Bitmap/Cell Rendering'],
+        // The image and graph viewers' twenty actions are NOT here: they belong
+        // to the two viewer PLUGINS, which declare them through
+        // PluginApi::registerActions() and get composed onto this table by
+        // Config/ActionRegistry. Their ids stay un-namespaced ("image_zoom_in",
+        // not "image-viewer:zoom-in") on purpose — they are user-visible
+        // .porta.json keymap keys, and renaming them would silently break every
+        // existing rebind.
         // Tree
         'move_up' => ['label' => 'Tree: Select Previous'],
         'move_down' => ['label' => 'Tree: Select Next'],

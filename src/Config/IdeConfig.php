@@ -119,12 +119,11 @@ final class IdeConfig
         /** @var array<string, string|int|list<string>> $keymapConfig */
         $keymapConfig = $config['keymap'] ?? [];
         foreach ($keymapConfig as $action => $keys) {
-            // Namespaced ids ("plugin:command") belong to plugins registered at
-            // runtime — they bypass the catalog check and bind if the plugin loads.
-            if ((ActionCatalog::ACTIONS[$action] ?? null) === null && !str_contains($action, ':')) {
-                $warnings[] = \sprintf('Unknown keymap action "%s" in .porta.json', $action);
-                continue;
-            }
+            // Only the SHAPE is judged here. Whether an id exists is a question
+            // this class cannot answer: it parses .porta.json before the
+            // container exists, let alone the plugins, and a plugin pane's
+            // actions ("image_zoom_in") are as real as core's. KeybindingsFactory
+            // asks that once the catalog is complete, and warns there.
             $keys = \is_string($keys) ? [$keys] : $keys;
             if (!\is_array($keys)) {
                 $warnings[] = \sprintf('Keymap action "%s" must map to a key or list of keys', $action);

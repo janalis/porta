@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Porta\Tests\Unit\Config;
 
 use PHPUnit\Framework\TestCase;
+use Porta\Config\ActionRegistry;
 use Porta\Config\CommandRegistry;
 use Porta\Config\IdeConfig;
 use Porta\Config\KeybindingsFactory;
@@ -37,7 +38,7 @@ final class LiveKeybindingsTest extends TestCase
     {
         $config = IdeConfig::load($project->dir);
         $host = new PluginHost($config, new PluginEvents(), $project->dir);
-        $factory = new KeybindingsFactory($host, $config);
+        $factory = new KeybindingsFactory($host, $config, new ActionRegistry($host->manager()));
 
         return [new LiveKeybindings($factory, $factory->create(), $project->dir), $host];
     }

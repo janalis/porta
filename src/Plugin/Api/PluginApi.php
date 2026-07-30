@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Porta\Plugin\Api;
 
+use Porta\Config\ActionCatalog;
 use Porta\Editor\OpenFocus;
 use Porta\Highlight\DarkTerminalTheme;
 use Porta\Lsp\Uri;
@@ -64,6 +65,8 @@ final class PluginApi
     private readonly PluginBuffer $viewers;
     /** @var PluginBuffer<array{plugin: string, id: string, pane: \Closure, load: \Closure}> */
     private readonly PluginBuffer $panes;
+    /** @var PluginBuffer<array{plugin: string, id: string, label: string}> */
+    private readonly PluginBuffer $actions;
 
     public function __construct(
         private readonly string $pluginName,
@@ -78,6 +81,7 @@ final class PluginApi
         $this->tokenSpans = new PluginBuffer();
         $this->viewers = new PluginBuffer();
         $this->panes = new PluginBuffer();
+        $this->actions = new PluginBuffer();
     }
 
     /**
@@ -331,6 +335,32 @@ final class PluginApi
             'pane' => $pane,
             'load' => $load,
         ]);
+    }
+
+    /**
+     * Declare REBINDABLE ACTIONS — keys a pane binds itself, listed on the
+     * Settings → Keymap page and overridable in `.porta.json` under their bare
+     * ids, exactly like core's.
+     *
+     * Not commands: a command is globally dispatched and appears in the
+     * palette, which is wrong for `-`, `0` and the arrow keys a viewer binds —
+     * they must fire only while that pane holds the editor slot. The DEFAULTS
+     * live in the pane's own `getDefaultKeybindings()`; what is declared here is
+     * the id and the label, which is all the keymap page needs.
+     *
+     * @param array<string, string> $actions id => untranslated label
+     */
+    public function registerActions(array $actions): void
+    {
+        foreach ($actions as $id => $label) {
+            if (1 !== preg_match(self::ID_PATTERN, $id)) {
+                throw new PluginException(\sprintf('Invalid action id "%s" (expected /^[a-z0-9][a-z0-9_-]*$/i)', $id));
+            }
+            if (array_key_exists($id, ActionCatalog::ACTIONS)) {
+                throw new PluginException(\sprintf('Action "%s" is a core action — pick an id core does not use', $id));
+            }
+            $this->actions->add(['plugin' => $this->pluginName, 'id' => $id, 'label' => $label]);
+        }
     }
 
     /**
@@ -623,5 +653,11 @@ final class PluginApi
     public function bufferedPanes(): array
     {
         return $this->panes->all();
+    }
+
+    /** @return list<array{plugin: string, id: string, label: string}> */
+    public function bufferedActions(): array
+    {
+        return $this->actions->all();
     }
 }

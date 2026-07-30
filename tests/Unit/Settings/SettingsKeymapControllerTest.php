@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Porta\Tests\Unit\Settings;
 
 use PHPUnit\Framework\TestCase;
+use Porta\Config\ActionRegistry;
 use Porta\Config\CommandRegistry;
 use Porta\Config\IdeConfig;
 use Porta\Config\KeybindingsFactory;
@@ -33,11 +34,14 @@ final class SettingsKeymapControllerTest extends TestCase
 
     private LiveKeybindings $live;
     private MenuBarWidget $menuBar;
+    private ActionRegistry $actions;
 
     private function controller(string $rootDir, StatusBarWidget $status, Keybindings $boot): SettingsKeymapController
     {
         $tui = new Tui(terminal: new VirtualTerminal(columns: 80, rows: 24));
-        $this->live = new LiveKeybindings(new KeybindingsFactory(new PluginHost(IdeConfig::load($rootDir), new PluginEvents(), $rootDir), IdeConfig::load($rootDir)), $boot, $rootDir);
+        $host = new PluginHost(IdeConfig::load($rootDir), new PluginEvents(), $rootDir);
+        $this->actions = new ActionRegistry($host->manager());
+        $this->live = new LiveKeybindings(new KeybindingsFactory($host, IdeConfig::load($rootDir), $this->actions), $boot, $rootDir);
 
         $this->menuBar = new MenuBarWidget();
         $rebuilder = new MenuRebuilder(
@@ -50,7 +54,7 @@ final class SettingsKeymapControllerTest extends TestCase
             new PluginManager(new PluginEvents(), new PluginSettings($rootDir, [])),
         );
 
-        return new SettingsKeymapController(new CodeEditorWidget(), $this->live, $rebuilder, new Notifier($status, $tui), $rootDir, new Translator('en'));
+        return new SettingsKeymapController($this->actions, new CodeEditorWidget(), $this->live, $rebuilder, new Notifier($status, $tui), $rootDir, new Translator('en'));
     }
 
     public function testRowsResolveEditorFirstThenIdeBindings(): void
@@ -61,7 +65,7 @@ final class SettingsKeymapControllerTest extends TestCase
         $rows = $controller->rows();
         $byAction = array_column($rows, null, 'action');
 
-        $this->assertSame(\count(\Porta\Config\ActionCatalog::ACTIONS), \count($rows), 'one row per catalog action');
+        $this->assertSame(\count(\Porta\Config\ActionCatalog::ACTIONS), \count($rows), 'one row per catalog action — no plugin registered any here');
         $this->assertSame('ctrl+d', $byAction['duplicate_line']->binding, 'editor binding wins');
         $this->assertSame('Duplicate Line or Selection', $byAction['duplicate_line']->label);
         $this->assertSame('ctrl+6', $byAction['ide_problems']->binding, 'ide binding fills in when the editor has none');

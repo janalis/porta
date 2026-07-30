@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace Porta\Settings;
 
-use Porta\Config\ActionCatalog;
+use Porta\Config\ActionRegistry;
 use Porta\Config\KeybindingRow;
 use Porta\Config\LiveKeybindings;
 use Porta\Config\PortaJsonWriter;
@@ -27,6 +27,7 @@ use Symfony\Component\Tui\Input\KeyParser;
 final class SettingsKeymapController
 {
     public function __construct(
+        private readonly ActionRegistry $actions,
         private readonly EditorKeymapProvider $editor,
         private readonly LiveKeybindings $ideKeys,
         private readonly MenuRebuilder $menuRebuilder,
@@ -37,7 +38,8 @@ final class SettingsKeymapController
     ) {}
 
     /**
-     * One row per catalog action, its current primary binding resolved the way
+     * One row per rebindable action — core's and every loaded plugin's — its
+     * current primary binding resolved the way
      * the menu does: the editor's merged keybindings first, then the IDE-level
      * ones.
      *
@@ -46,9 +48,9 @@ final class SettingsKeymapController
     public function rows(): array
     {
         $rows = [];
-        foreach (array_keys(ActionCatalog::ACTIONS) as $action) {
+        foreach ($this->actions->labels() as $action => $label) {
             $binding = $this->editor->getKeybindings()->getBindings($action)[0] ?? $this->ideKeys->getBindings($action)[0] ?? '';
-            $rows[] = new KeybindingRow($action, $this->translator->trans(ActionCatalog::label($action)), $binding);
+            $rows[] = new KeybindingRow($action, $this->translator->trans($label), $binding);
         }
 
         return $rows;
@@ -77,7 +79,7 @@ final class SettingsKeymapController
         }
         $saved = $persisted ? '' : ' ('.$this->translator->trans('not saved').')';
         $this->notifier->flash($this->translator->trans('Rebound %action% to %key%', [
-            '%action%' => $this->translator->trans(ActionCatalog::label($action)),
+            '%action%' => $this->translator->trans($this->actions->label($action)),
             '%key%' => ShortcutFormatter::format($token),
         ])
             .$saved);

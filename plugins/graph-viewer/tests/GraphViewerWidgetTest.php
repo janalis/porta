@@ -10,6 +10,10 @@ use Porta\GraphViewer\Graph\DotJsonParser;
 use Porta\GraphViewer\Graph\GraphLayout;
 use Porta\GraphViewer\GraphViewerWidget;
 use Porta\I18n\Translator;
+use Porta\Plugin\Api\PluginApi;
+use Porta\Plugin\Runtime\PluginEvents;
+use Porta\Plugin\Runtime\PluginManager;
+use Porta\Plugin\Runtime\PluginSettings;
 use Porta\Tests\Support\FakeLayoutEngine;
 use Porta\Tests\Support\FakeScheduler;
 use Porta\Tests\Support\PngFixture;
@@ -56,25 +60,32 @@ final class GraphViewerWidgetTest extends TestCase
         return implode("\n", array_map(AnsiUtils::stripAnsiCodes(...), $lines));
     }
 
-    public function testItBindsEveryGraphActionCoresCatalogDeclares(): void
+    public function testItBindsExactlyTheActionsThePluginDeclares(): void
     {
-        // The action IDS stay in core's catalog so Settings → Keymap lists them
-        // and an existing `.porta.json` keeps rebinding them; the KEYS are this
-        // pane's. Core cannot assert the pair without importing plugin code, so
-        // the pin lives here — the direction the architecture-filename
-        // agreement already uses.
+        // Both halves belong to this plugin now: plugin.php declares the ids and
+        // labels Settings → Keymap lists, the pane binds the keys. Core sees
+        // neither, so this is the only place the pair can be pinned — and each
+        // direction catches a real defect the other cannot see: a declared
+        // action nothing binds is a keymap row that does nothing, and a bound
+        // key nothing declares is a key the user can never find or rebind.
+        $manager = new PluginManager(new PluginEvents(), new PluginSettings('/p', []));
+        $api = new PluginApi('graph-viewer', $manager, '/p', new PluginSettings('/p', []));
+        $plugin = require \dirname(__DIR__).'/plugin.php';
+        $plugin->activate($api);
+
+        $declared = array_column($api->bufferedActions(), 'id');
         /** @var array<string, list<string>> $bound */
         $bound = Probe::invokeStatic(GraphViewerWidget::class, 'getDefaultKeybindings');
-        $catalogued = array_keys(array_filter(
-            ActionCatalog::ACTIONS,
-            static fn (string $id): bool => str_starts_with($id, 'graph_'),
-            \ARRAY_FILTER_USE_KEY,
-        ));
+        // Scoped to the ids CORE does not declare — a pane also binds core
+        // actions (goto_file, next_buffer…), which are the catalog's rows. What
+        // must match is the remainder: the actions that exist only because this
+        // plugin does.
+        $ours = array_keys(array_diff_key($bound, ActionCatalog::ACTIONS));
 
-        $this->assertNotSame([], $catalogued);
-        foreach ($catalogued as $id) {
-            $this->assertArrayHasKey($id, $bound, "core's catalog declares '{$id}' but this pane does not bind it");
-        }
+        $this->assertNotSame([], $declared);
+        sort($declared);
+        sort($ours);
+        $this->assertSame($ours, $declared, 'every declared action is bound, and every key core does not declare is declared here');
     }
 
     public function testTheStatusSegmentNamesTheGraphsOwnKeys(): void

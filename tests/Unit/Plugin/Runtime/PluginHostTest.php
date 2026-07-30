@@ -6,6 +6,7 @@ namespace Porta\Tests\Unit\Plugin\Runtime;
 
 use PHPUnit\Framework\TestCase;
 use Porta\Config\ActionCatalog;
+use Porta\Config\ActionRegistry;
 use Porta\Config\IdeConfig;
 use Porta\Config\KeybindingsFactory;
 use Porta\Plugin\Runtime\PluginEvents;
@@ -62,7 +63,7 @@ final class PluginHostTest extends TestCase
         ]);
         $config = IdeConfig::load($project->dir);
         $host = new PluginHost($config, new PluginEvents(), $project->dir);
-        $keybindings = new KeybindingsFactory($host, $config)->create();
+        $keybindings = new KeybindingsFactory($host, $config, new ActionRegistry($host->manager()))->create();
 
         $this->assertTrue($host->manager()->hasPlugin('keyed'), 'creating the map forces the plugin load');
         $this->assertSame(['ctrl+shift+s'], $keybindings->getBindings('save'), 'user keymap wins');

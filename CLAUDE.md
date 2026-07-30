@@ -732,7 +732,19 @@ dismisses); the completion popup and signature hint stay editor-pane-composited,
 same way.
 
 **Commands & keybindings are single-sourced.** `Config/ActionCatalog` is the descriptor table
-for every rebindable action (label + default keys). `Config/CommandRegistry` holds IDE-level
+for CORE's rebindable actions (label + default keys); `Config/ActionRegistry` is the whole set —
+the catalog composed with what plugins declare through `PluginApi::registerActions()`, arriving
+via the consumer-owned `Config/RebindableActionSource` (implemented by `PluginManager`), so
+`Porta\Config` still imports nothing from `Porta\Plugin`. The union is core-wins in BOTH senses
+(label and position), and `registerActions()` refuses a catalog id outright, so a plugin can
+neither relabel `save` nor reorder the keymap page's first rows. Consume the REGISTRY wherever
+the question is "what can the user rebind" (`SettingsKeymapController`'s rows,
+`KeybindingsFactory`'s membership check); the catalog stays the right constant for core's own
+tables. **A consequence worth knowing**: `IdeConfig::load()` no longer checks whether a keymap id
+exists — it parses `.porta.json` before the container, let alone the plugins, so it judges SHAPE
+only and keeps every well-formed entry. Membership is asked once, in `KeybindingsFactory::create()`
+right after `ensureLoaded()`, which drops unknown ids and reports each ONE time (`rebuild()`
+re-enters it on every keymap edit) through the plugin boot-warning channel. `Config/CommandRegistry` holds IDE-level
 commands (id → handler, key-bound?, in-palette?). `Workbench/Menu/MenuModel` builds the menu bar / context
 menus from these. Don't hand-maintain parallel keybinding/palette/menu lists — extend the
 catalog/registry. View gating rides ONE `?\Closure(): ?WorkspaceView $activeView` param and one
@@ -992,10 +1004,14 @@ use of round 24's dependency mechanism. **Order was forced**: graph had to move 
 `src/Image` was still core, or core's `src/Graph` would have imported `Porta\ImageViewer`.
 Core↔plugin ties that remain are severed, not inverted: `BufferService` keeps its OWN
 `ARCHITECTURE_FILENAME` (titling a tab is core's policy) and the PLUGIN's test pins that the two
-constants agree. Same shape for the nineteen viewer ACTIONS: the ids stay in core's
-`ActionCatalog` (they are user-visible keymap keys — renaming them would break every existing
-`.porta.json`), the KEYS are the panes', and each plugin's suite pins that its pane binds every
-id core declares, because a core test asserting it would import plugin code.
+constants agree. The twenty viewer ACTIONS went the whole way: each plugin declares its own ids
+and labels with `registerActions()` and binds them in its pane, so core's catalog names neither
+half. Their ids stay UN-namespaced (`image_zoom_in`, not `image-viewer:zoom-in`) because they are
+user-visible `.porta.json` keymap keys and renaming them would silently break every existing
+rebind — the one place a plugin registration deliberately does not ride the namespaced channel.
+Each plugin's suite pins the two halves against each other (declared == bound, scoped to the ids
+core does NOT declare, since a pane also binds core actions like `goto_file`); a core test
+asserting it would import plugin code.
 
 **Plugin coverage runs a SECOND, SERIAL pass, and the reason is upstream.** `composer
 coverage:check` = the parallel run over `src` (100%) **plus** `composer coverage:plugins` (serial
@@ -1027,8 +1043,9 @@ triggered by the `Keybindings` factory) runs each file's `activate(PluginApi)` *
 overrides them; ids are
 namespaced `plugin:command` and bypass the ActionCatalog keymap validation — plugin ids stay
 OUT of `ActionCatalog::ACTIONS`). Registration buffers in the per-plugin `PluginApi` and commits
-atomically after `activate()`. Exactly **five** of the nine extension points share the generic
-`Plugin/Api/PluginBuffer` (language servers, installers, highlighters, token spans, and **viewers**
+atomically after `activate()`. **Seven** of the eleven extension points share the generic
+`Plugin/Api/PluginBuffer` (language servers, installers, highlighters, token spans, panes,
+rebindable actions, and **viewers**
 — `registerViewer(id, claims)`, the routing claim behind the bundled image-viewer/graph-viewer
 plugins: `Editor/ViewerProviderSource` is the consumer-owned seam `BufferService::openFile`
 consults, first claiming plugin in load order wins, a throwing claim declines and reports once,
@@ -1038,7 +1055,7 @@ refusal, open tabs stay); the other four stay plain
 arrays **on purpose**, each saying why at its declaration (commands: paired `$ids` dedup index;
 menu items: drain-time `PluginMenuSpec` transform; hooks: four writers + positional tuples;
 settings: keyed map sinking into `PluginSettings`) — unifying them was measured as needing five
-variance axes for four conforming cases. The nine `register*` signatures are frozen public
+variance axes for four conforming cases. The nine `register*` signatures plus `addMenuItem` and the three `on*` hooks are frozen public
 plugin API; `activeFile()` is BUFFER truth (the active tab's path, viewer tabs included — every
 consumer guards by extension). Every bundled plugin surfaces its commands as Plugins-menu items
 and its knobs as plugin settings (the viewers deliberately carry no menu — nothing to invoke). Action methods (flash/editor access/openFile) resolve services

@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Porta\Tests\Unit\Settings;
 
 use PHPUnit\Framework\TestCase;
+use Porta\Config\ActionRegistry;
 use Porta\Config\CommandRegistry;
 use Porta\Config\IdeConfig;
 use Porta\Config\KeybindingsFactory;
@@ -155,7 +156,8 @@ final class SettingsViewControllerTest extends TestCase
             new TodoTags(),
         );
         $bootKeys = new Keybindings([]);
-        $keysFactory = new KeybindingsFactory(new PluginHost(IdeConfig::load($this->project->dir), new PluginEvents(), $this->project->dir), IdeConfig::load($this->project->dir));
+        $keysHost = new PluginHost(IdeConfig::load($this->project->dir), new PluginEvents(), $this->project->dir);
+        $keysFactory = new KeybindingsFactory($keysHost, IdeConfig::load($this->project->dir), new ActionRegistry($keysHost->manager()));
         $liveKeys = new LiveKeybindings($keysFactory, $bootKeys, $this->project->dir);
         $keymapRebuilder = new MenuRebuilder(
             new MenuBarWidget(),
@@ -166,7 +168,7 @@ final class SettingsViewControllerTest extends TestCase
             new WorkspaceViews(),
             new PluginManager(new PluginEvents(), $this->pluginSettings ?? new PluginSettings($this->project->dir, [])),
         );
-        $keymap = new SettingsKeymapController($editor, $liveKeys, $keymapRebuilder, $notifier, $this->project->dir, new Translator('en'));
+        $keymap = new SettingsKeymapController(new ActionRegistry($keysHost->manager()), $editor, $liveKeys, $keymapRebuilder, $notifier, $this->project->dir, new Translator('en'));
         $languages = new SettingsLanguageController($editor, $notifier, $this->project->dir, new Translator('en'), []);
         $pool = new LspSessionPool($this->project->dir, new FixedActiveFile(), new Translator('en'));
         $reconfigurer = new LspReconfigurer(

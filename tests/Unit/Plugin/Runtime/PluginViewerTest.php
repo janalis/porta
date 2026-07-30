@@ -129,4 +129,51 @@ final class PluginViewerTest extends TestCase
         $this->expectExceptionMessageMatches('/at least one file extension/');
         $api->registerViewer('ok', []);
     }
+
+    public function testAPluginsActionsReachTheRegistryAndLeaveWithIt(): void
+    {
+        // A pane's keys are listed on Settings → Keymap, so they must appear
+        // when the plugin loads and disappear when it is removed — a keymap row
+        // for a pane that no longer exists is a rebind that binds nothing.
+        $manager = $this->manager();
+        $api = $this->api($manager, 'image-viewer');
+        $api->registerActions(['image_zoom_in' => 'Image: Zoom In', 'image_pan_up' => 'Image: Pan Up']);
+        $manager->commit($api);
+
+        $other = $this->api($manager, 'graph-viewer');
+        $other->registerActions(['graph_zoom_in' => 'Graph: Zoom In']);
+        $manager->commit($other);
+
+        $this->assertSame(
+            [
+                'image_zoom_in' => 'Image: Zoom In',
+                'image_pan_up' => 'Image: Pan Up',
+                'graph_zoom_in' => 'Graph: Zoom In',
+            ],
+            $manager->rebindableActions(),
+            'load order, ids to labels',
+        );
+
+        $manager->deactivate('image-viewer', new CommandRegistry());
+
+        $this->assertSame(['graph_zoom_in' => 'Graph: Zoom In'], $manager->rebindableActions());
+    }
+
+    public function testAnActionIdIsValidatedAndMayNotShadowACoreAction(): void
+    {
+        $api = $this->api($this->manager(), 'p');
+        try {
+            $api->registerActions(['BAD ID!' => 'Nope']);
+            $this->fail('an invalid id must throw');
+        } catch (PluginException $e) {
+            $this->assertStringContainsString('Invalid action id', $e->getMessage());
+        }
+
+        // The catalog collision is refused at registration rather than resolved
+        // later: a plugin that thinks it owns "save" should hear so at boot,
+        // not silently lose to core on the keymap page.
+        $this->expectException(PluginException::class);
+        $this->expectExceptionMessageMatches('/"save" is a core action/');
+        $api->registerActions(['save' => 'Demo: Save']);
+    }
 }

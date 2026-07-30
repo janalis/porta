@@ -294,10 +294,15 @@ final class IdeConfigTest extends TestCase
 
         $this->assertSame(['ctrl+shift+d'], $config->keymap['duplicate_line']);
         $this->assertSame(['f10'], $config->keymap['save'], 'string normalized to list');
-        $this->assertArrayNotHasKey('bogus_action', $config->keymap);
         $this->assertArrayNotHasKey('copy', $config->keymap, 'non-list value rejected');
-        $this->assertCount(2, $config->warnings);
-        $this->assertStringContainsString('bogus_action', $config->warnings[0]);
+        $this->assertCount(1, $config->warnings);
+        $this->assertStringContainsString('copy', $config->warnings[0]);
+
+        // Whether an id EXISTS is not asked here: this runs before the
+        // container, so the catalog is still missing every plugin pane's
+        // actions. KeybindingsFactory judges membership once plugins have
+        // loaded (see KeybindingsFactoryTest).
+        $this->assertSame(['x'], $config->keymap['bogus_action'], 'an unrecognized id is kept for the factory to judge');
     }
 
     public function testLspServersMapLoaded(): void
@@ -450,7 +455,7 @@ final class IdeConfigTest extends TestCase
         $this->assertArrayNotHasKey('disabledPlugins', $written, 'an emptied list is dropped');
     }
 
-    public function testNamespacedPluginKeymapIdsBypassTheCatalogCheck(): void
+    public function testEveryWellShapedKeymapEntrySurvivesLoading(): void
     {
         $project = new TempProject(['.porta.json' => json_encode([
             'keymap' => [
@@ -461,9 +466,8 @@ final class IdeConfigTest extends TestCase
         ])]);
         $config = IdeConfig::load($project->dir);
 
-        $this->assertSame(['f8'], $config->keymap['demo:hello'], 'plugin ids bind without catalog validation');
-        $this->assertArrayNotHasKey('still_unknown', $config->keymap);
-        $this->assertContains('Unknown keymap action "still_unknown" in .porta.json', $config->warnings);
+        $this->assertSame(['f8'], $config->keymap['demo:hello'], 'a plugin command id binds if its plugin loads');
+        $this->assertSame(['f9'], $config->keymap['still_unknown'], 'membership is the factory\'s question, not this class\'s');
         $this->assertArrayNotHasKey('demo:bad_value', $config->keymap, 'the value-shape check still applies');
         $this->assertContains('Keymap action "demo:bad_value" must map to a key or list of keys', $config->warnings);
     }

@@ -260,6 +260,26 @@ Call `$this->afterViewChange()` whenever your view moves — it repaints and tel
 the status bar. Set your widget's id in its constructor (`$this->setId('hex')`);
 that is the name the tests and the hit-tester know it by.
 
+**Your pane's keys belong on the keymap page.** A pane binds keys the way any
+widget does, with `getDefaultKeybindings()` — but a key nobody can find or
+rebind is a key the user does not have. Declare them and they appear under
+Settings → Keymap, and `.porta.json` can rebind them:
+
+```php
+$api->registerActions([
+    'hex_next_field' => 'Hex: Next Field',
+    'hex_prev_field' => 'Hex: Previous Field',
+]);
+```
+
+These are **actions, not commands**: they fire only while your pane holds the
+editor slot, and they never enter the command palette — which is what you want
+for `-`, `0` or an arrow key. The ids are bare, not `hex:next-field`, because a
+user types them into their own `.porta.json`; pick a prefix nobody else will use
+and keep it forever, since renaming one silently breaks every existing rebind.
+An id core already declares is refused at registration — you cannot relabel
+`save`. Removing your plugin takes the rows away with it.
+
 Disabling your plugin stops the routing, so its files fall back to the text
 editor; a tab already open in your pane keeps working. Removing the plugin drops
 the pane for good.
@@ -288,6 +308,7 @@ Registration (during `activate()`):
 | `registerCommand(string $id, string $label, \Closure $handler, array $keys = [])` | Register a command; `$keys` are default keybindings (e.g. `['ctrl+alt+y']`) |
 | `addMenuItem(string $commandId, ?\Closure $enabledWhen = null)` | Add the command to the **Plugins** menu; with `$enabledWhen`, the item renders dimmed while the closure returns false (re-evaluated per render; a throw reads as disabled) |
 | `registerSetting(string $key, string $label, string $kind = 'text', $default = '', ?array $options = null, ?string $hint = null)` | Declare a user-editable setting shown on the plugin's settings page; kinds: `text`, `bool`, `int`, `choice` (with `$options`). Values persist under `plugins.<name>.<key>` in `.porta.json` |
+| `registerActions(array $actions)` | Declare rebindable actions (`id => label`) your pane binds — they appear on Settings → Keymap and may be rebound in `.porta.json`. Ids are bare and permanent; a core id is refused |
 | `onFileOpened(\Closure $hook)` | `$hook(string $path)` after a file opens |
 | `onFileSaved(\Closure $hook)` | `$hook(string $path)` after a buffer saves |
 | `onBufferSwitched(\Closure $hook)` | `$hook(string $path)` when the active buffer changes |

@@ -44,6 +44,19 @@ return new class('graph-viewer') extends AbstractPlugin {
         $dot = new DotLayoutEngine($api->projectRoot(), $this->coreSetting('dotPath'));
         $plantUml = new PlantUmlEngine($api->projectRoot(), $this->coreSetting('plantuml'));
         $renderMode = $this->coreSetting('graphRender');
+        $api->registerActions([
+            'graph_zoom_in' => 'Graph: Zoom In',
+            'graph_zoom_out' => 'Graph: Zoom Out',
+            'graph_zoom_fit' => 'Graph: Fit to Window',
+            'graph_zoom_actual' => 'Graph: Actual Size',
+            'graph_pan_left' => 'Graph: Pan Left',
+            'graph_pan_right' => 'Graph: Pan Right',
+            'graph_pan_up' => 'Graph: Pan Up',
+            'graph_pan_down' => 'Graph: Pan Down',
+            'graph_select_next' => 'Graph: Select Next Node',
+            'graph_select_prev' => 'Graph: Select Previous Node',
+            'graph_render_mode' => 'Graph: Toggle Bitmap/Cell Rendering',
+        ]);
         $api->registerPane(
             'graph',
             static fn (PaneServices $pane): EditorPaneWidget => new GraphViewerWidget($dot, $pane->translator, $plantUml, new ImageDecoder(), $pane->scheduler, $renderMode, $pane->styles),
