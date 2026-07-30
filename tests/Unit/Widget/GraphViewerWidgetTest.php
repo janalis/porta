@@ -20,17 +20,20 @@ use Symfony\Component\Tui\Render\RenderContext;
 final class GraphViewerWidgetTest extends TestCase
 {
     private FakeLayoutEngine $engine;
+    private FakeLayoutEngine $plantUml;
     private FakeScheduler $scheduler;
 
     protected function setUp(): void
     {
         $this->engine = new FakeLayoutEngine();
+        $this->plantUml = new FakeLayoutEngine();
+        $this->plantUml->baseDpi = 96; // PlantUML's own 1:1
         $this->scheduler = new FakeScheduler();
     }
 
     private function widget(): GraphViewerWidget
     {
-        return new GraphViewerWidget($this->engine, new Translator('en'), scheduler: $this->scheduler);
+        return new GraphViewerWidget($this->engine, new Translator('en'), $this->plantUml, scheduler: $this->scheduler);
     }
 
     /** Let the bitmap debounce elapse, as the event loop would. */
@@ -594,6 +597,93 @@ final class GraphViewerWidgetTest extends TestCase
         $widget->render(new RenderContext(80, 24));
         $widget->refreshTheme(); // must not throw; repaint verified by the chrome sweep E2e
 
+        $this->assertStringContainsString('┌', self::plain($widget->render(new RenderContext(80, 24))));
+    }
+
+    public function testAPlantUmlTabIsThePictureAndNothingElse(): void
+    {
+        $this->plantUml->nextPng = PngFixture::bytes(120, 80);
+        $widget = $this->widget();
+        $widget->show('/p/seq.puml', "@startuml\nBob -> Alice\n@enduml");
+        $this->settle();
+
+        $this->assertSame(0, $this->engine->layoutCalls, 'nothing to lay out — dot is not involved');
+        $this->assertSame([96], $this->plantUml->renderDpis, "asked at PlantUML's own 1:1, not graphviz's 72");
+        $raw = implode("\n", $widget->render(new RenderContext(80, 24)));
+        $this->assertStringContainsString('▀', $raw, 'the picture paints');
+        $this->assertSame('', $widget->statusInfo(), 'there are no nodes to count');
+        $this->assertStringContainsString('Fit', $widget->zoomLabel(), 'and the probe established its extent');
+    }
+
+    public function testTheLayoutFedKeysAreInertOnAPlantUmlTab(): void
+    {
+        $this->plantUml->nextPng = PngFixture::bytes(120, 80);
+        $widget = $this->widget();
+        $widget->show('/p/seq.puml', '@startuml');
+        $this->settle();
+        $widget->render(new RenderContext(80, 24));
+        $before = implode("\n", $widget->render(new RenderContext(80, 24)));
+
+        $widget->handleInput('n'); // select next node
+        $widget->handleInput('p');
+        $widget->selectAt(4, 4); // click-select
+        $widget->handleInput('v'); // the cell rendering
+
+        $this->assertSame($before, implode("\n", $widget->render(new RenderContext(80, 24))), 'none of the geometry keys do anything');
+        $this->assertSame('', $widget->statusInfo());
+    }
+
+    public function testAPlantUmlZoomReRendersAtTheHigherDpi(): void
+    {
+        $this->plantUml->nextPng = PngFixture::bytes(120, 80);
+        $widget = $this->widget();
+        $widget->show('/p/seq.puml', '@startuml');
+        $this->settle();
+        $widget->render(new RenderContext(80, 24));
+        $widget->handleInput('1'); // actual size
+        $this->settle();
+        $this->assertSame([96], $this->plantUml->renderDpis, '1:1 is what the probe already produced');
+
+        $widget->handleInput('='); // 200%
+        $this->plantUml->nextPng = PngFixture::bytes(240, 160);
+        $this->settle();
+
+        $this->assertSame([96, 192], $this->plantUml->renderDpis, 'twice the resolution, in PlantUML units');
+    }
+
+    public function testAFailedPlantUmlRenderShowsItsReason(): void
+    {
+        $this->plantUml->nextPng = 'Syntax Error? (line 2)';
+        $this->plantUml->pngIsError = true;
+        $widget = $this->widget();
+        $widget->show('/p/seq.puml', "@startuml\nbroken");
+        $this->settle();
+
+        $this->assertStringContainsString('Syntax Error', self::plain($widget->render(new RenderContext(60, 12))));
+    }
+
+    public function testWithoutPlantumlThePaneSaysSo(): void
+    {
+        $this->plantUml->binary = null;
+        $widget = $this->widget();
+        $widget->show('/p/seq.puml', '@startuml');
+
+        $screen = self::plain($widget->render(new RenderContext(80, 10)));
+        $this->assertStringContainsString('plantuml not found', $screen);
+        $this->assertStringContainsString('"plantuml" setting', $screen, 'and says what to do about it');
+    }
+
+    public function testADotTabAfterAPlantUmlOneStillLaysOut(): void
+    {
+        $this->plantUml->nextPng = PngFixture::bytes(120, 80);
+        $this->engine->nextResult = self::layout();
+        $widget = $this->widget();
+        $widget->show('/p/seq.puml', '@startuml');
+        $this->settle();
+
+        $widget->show('/p/g.dot', 'digraph G { A -> B; }');
+        $this->assertSame(1, $this->engine->layoutCalls, 'the geometry path is untouched');
+        $this->assertSame('3 nodes · 2 edges', $widget->statusInfo());
         $this->assertStringContainsString('┌', self::plain($widget->render(new RenderContext(80, 24))));
     }
 }

@@ -6,6 +6,8 @@ namespace Porta\Widget;
 
 use Porta\Container\AsIdeService;
 use Porta\Container\AsWidget;
+use Porta\Graph\DiagramEngine;
+use Porta\Graph\DiagramKind;
 use Porta\Graph\GraphLayout;
 use Porta\Graph\GraphRenderMode;
 use Porta\Graph\LayoutEngine;
@@ -85,8 +87,10 @@ final class GraphViewerWidget extends AbstractWidget implements FocusableInterfa
 
     private ?string $path = null;
     private ?string $dotHash = null;
-    /** The DOT source of the shown tab — kept because a bitmap is re-rendered from it. */
+    /** The source of the shown tab — kept because a bitmap is re-rendered from it. */
     private ?string $dot = null;
+    /** Which tool draws it; a PlantUML tab has a picture and no geometry at all. */
+    private DiagramKind $kind = DiagramKind::Dot;
     /** The picture dot rendered, or null while none has arrived for this graph. */
     private ?ImageData $bitmap = null;
     /** The dpi the shown bitmap was rendered at — its pixels per layout point. */
@@ -122,6 +126,9 @@ final class GraphViewerWidget extends AbstractWidget implements FocusableInterfa
     public function __construct(
         private readonly LayoutEngine $engine,
         private readonly Translator $translator,
+        // Optional so the widget-tree tests need not thread one through; a null
+        // one simply means this instance cannot draw PlantUML.
+        private readonly ?DiagramEngine $plantUml = null,
         // Defaulted like $styles (the StylesDefault pattern): a decoder is pure,
         // so the widget-tree tests need not thread one through.
         ?ImageDecoder $decoder = null,
@@ -153,10 +160,24 @@ final class GraphViewerWidget extends AbstractWidget implements FocusableInterfa
         $this->path = $path;
         $this->dotHash = $hash;
         $this->dot = $dot;
+        $this->kind = DiagramKind::forPath($path) ?? DiagramKind::Dot;
         // The previous tab's picture must not paint under this tab's geometry;
         // the cell rendering covers the gap until the new bitmap lands.
         $this->bitmap = null;
         $this->selected = null;
+        if (!$this->kind->hasLayout()) {
+            // Nothing to lay out: the picture is the whole tab, and its first
+            // render at 1:1 is what establishes the extent.
+            $this->layout = null;
+            $this->view = null;
+            $this->selectionOrder = [];
+            $this->error = null === $this->plantUml?->binary() ? 'missing-plantuml' : null;
+            $this->pending->reset();
+            $this->invalidate();
+            $this->scheduleBitmap();
+
+            return;
+        }
         $cached = $this->layoutCache[$hash] ?? null;
         if (null !== $cached) {
             $this->adopt($cached);
@@ -401,6 +422,12 @@ final class GraphViewerWidget extends AbstractWidget implements FocusableInterfa
         $this->scheduleBitmap();
     }
 
+    /** The tool that draws the shown tab, or null when this instance has none for it. */
+    private function drawingEngine(): ?DiagramEngine
+    {
+        return $this->kind->hasLayout() ? $this->engine : $this->plantUml;
+    }
+
     /**
      * The dpi the picture needs to look sharp at $scale, capped so a huge graph
      * cannot ask for a bitmap the decoder would refuse. 72 dpi is 1:1 with the
@@ -409,12 +436,15 @@ final class GraphViewerWidget extends AbstractWidget implements FocusableInterfa
      */
     private function dpiFor(float $scale): int
     {
+        // The tools disagree about 1:1 — 72 for dot (one point per pixel), 96
+        // for PlantUML — so the multiples are of whichever is drawing.
+        $base = $this->drawingEngine()?->baseDpi() ?? self::BITMAP_DPI;
         // CEIL, not round: a continuous zoom (the Ctrl+scroll glide) would
-        // otherwise ask dot for a different dpi at every nudge, where ceiling to
+        // otherwise ask for a different dpi at every nudge, where ceiling to
         // the next whole multiple asks once per doubling and never undersamples.
-        $wanted = self::BITMAP_DPI * (int) ceil(max(1.0, $scale));
-        // pixels = extent × dpi/72 per axis, so the ceiling scales with 1/√area.
-        $cap = (int) floor(self::BITMAP_DPI * sqrt(ImageDecoder::MAX_PIXELS / ($this->extentW * $this->extentH)));
+        $wanted = $base * (int) ceil(max(1.0, $scale));
+        // pixels = extent × dpi/base per axis, so the ceiling scales with 1/√area.
+        $cap = (int) floor($base * sqrt(ImageDecoder::MAX_PIXELS / ($this->extentW * $this->extentH)));
 
         return max(1, min($wanted, $cap));
     }
@@ -427,10 +457,17 @@ final class GraphViewerWidget extends AbstractWidget implements FocusableInterfa
      */
     private function scheduleBitmap(): void
     {
-        if (GraphRenderMode::Cells === $this->mode || null === $this->view || null === $this->dot) {
-            return; // the cell rendering needs no process
+        if (null === $this->dot || null === $this->drawingEngine()) {
+            return;
         }
-        $dpi = $this->dpiFor($this->view->effectiveScale($this->lastCols, 2 * $this->lastRows));
+        if (GraphRenderMode::Cells === $this->mode && $this->kind->hasLayout()) {
+            return; // the cell rendering needs no process (and only dot has one)
+        }
+        // A tab with no geometry has no view until its first render lands, and
+        // that render is what creates one — at the tool's own 1:1.
+        $dpi = null === $this->view
+            ? $this->dpiFor(1.0)
+            : $this->dpiFor($this->view->effectiveScale($this->lastCols, 2 * $this->lastRows));
         $this->pending->want((float) $dpi, fn (float $value) => $this->requestBitmap((int) $value));
     }
 
@@ -447,10 +484,12 @@ final class GraphViewerWidget extends AbstractWidget implements FocusableInterfa
         // source it laid out.
         \assert(null !== $dot, description: 'a bitmap is only ever requested for a shown document');
         $hash = $this->dotHash;
-        $this->engine->render(
+        $engine = $this->drawingEngine();
+        \assert(null !== $engine, description: 'a bitmap is only ever requested for a tool that exists');
+        $engine->render(
             $dot,
             $dpi,
-            function (string $png) use ($hash, $dpi): void {
+            function (string $png) use ($hash, $dpi, $engine): void {
                 if ($hash !== $this->dotHash) {
                     return; // the tab moved on while dot was working
                 }
@@ -465,6 +504,16 @@ final class GraphViewerWidget extends AbstractWidget implements FocusableInterfa
                 }
                 $this->bitmap = $image;
                 $this->bitmapDpi = $dpi;
+                // With no layout there is nothing else to size the zoom model
+                // from, so the first render does it — and only that one may, for
+                // the reason the image viewer's probe records: a re-render at a
+                // higher dpi must not redefine its own coordinate space.
+                if (null === $this->view) {
+                    $base = $engine->baseDpi();
+                    $this->extentW = max(1, (int) round(($image->width * $base) / $dpi));
+                    $this->extentH = max(1, (int) round(($image->height * $base) / $dpi));
+                    $this->view = new ZoomPanModel($this->extentW, $this->extentH, self::ZOOM_STEPS);
+                }
                 $this->invalidate();
                 $this->handler?->viewChanged();
             },
@@ -486,6 +535,9 @@ final class GraphViewerWidget extends AbstractWidget implements FocusableInterfa
      */
     private function toggleRenderMode(): void
     {
+        if (!$this->kind->hasLayout()) {
+            return; // there is no cell rendering of a picture
+        }
         $this->mode = $this->mode->toggled();
         $this->invalidate();
         $this->scheduleBitmap();
@@ -548,21 +600,24 @@ final class GraphViewerWidget extends AbstractWidget implements FocusableInterfa
     /** @return list<string> */
     private function contentLines(int $cols, int $rows): array
     {
-        // A bitmap only exists after a layout was adopted, so the overlay always
-        // has the geometry it needs to frame the selection.
-        if (GraphRenderMode::Bitmap === $this->mode && null !== $this->bitmap && null !== $this->view && null !== $this->layout) {
+        $view = $this->view;
+        if (GraphRenderMode::Bitmap === $this->mode && null !== $this->bitmap && null !== $view) {
             $lines = HalfBlockRasterizer::render(
                 $this->scaled->forScale(
                     $this->bitmap,
-                    $this->view->effectiveScale($cols, 2 * $rows),
-                    ratio: $this->bitmapDpi / self::BITMAP_DPI,
+                    $view->effectiveScale($cols, 2 * $rows),
+                    // The raster's own density: dpi over whatever this tool calls 1:1.
+                    ratio: $this->bitmapDpi / ($this->drawingEngine()?->baseDpi() ?? self::BITMAP_DPI),
                 ),
-                $this->view,
+                $view,
                 $cols,
                 $rows,
             );
 
-            return GraphSelectionOverlay::apply($lines, $this->layout, $this->view, $this->selected, $cols, $rows, $this->styles);
+            // Only a tab WITH geometry has a selection to frame.
+            return null === $this->layout
+                ? $lines
+                : GraphSelectionOverlay::apply($lines, $this->layout, $view, $this->selected, $cols, $rows, $this->styles);
         }
         if (null !== $this->layout && null !== $this->view) {
             return GraphRenderer::render($this->layout, $this->view, $this->selected, $cols, $rows, $this->styles);
@@ -570,6 +625,7 @@ final class GraphViewerWidget extends AbstractWidget implements FocusableInterfa
         $blank = array_fill(0, max(1, $rows), str_repeat(' ', max(1, $cols)));
         $message = match (true) {
             'missing-binary' === $this->error => $this->translator->trans('graphviz not found — install graphviz, or set the "dotPath" setting'),
+            'missing-plantuml' === $this->error => $this->translator->trans('plantuml not found — install it, or set the "plantuml" setting'),
             null !== $this->error => explode("\n", $this->error)[0],
             $this->layingOut => '⏳ '.$this->translator->trans('layout…'),
             default => '',

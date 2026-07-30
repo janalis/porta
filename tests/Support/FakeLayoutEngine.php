@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Porta\Tests\Support;
 
+use Porta\Graph\DiagramEngine;
 use Porta\Graph\GraphExportFormat;
 use Porta\Graph\GraphLayout;
 use Porta\Graph\LayoutEngine;
@@ -13,7 +14,7 @@ use Porta\Graph\LayoutEngine;
  * or bitmap (or error) synchronously, or holds the callbacks for manual delivery
  * when `$deferred` — no dot binary, no subprocess, no event loop.
  */
-final class FakeLayoutEngine implements LayoutEngine
+final class FakeLayoutEngine implements DiagramEngine, LayoutEngine
 {
     public int $layoutCalls = 0;
 

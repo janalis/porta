@@ -3,9 +3,11 @@
 declare(strict_types=1);
 
 use Porta\Graph\ArchitectureArtifact;
+use Porta\Graph\DiagramKind;
 use Porta\Graph\DotFiles;
 use Porta\Graph\DotLayoutEngine;
 use Porta\Graph\GraphExportFormat;
+use Porta\Graph\PlantUmlCommand;
 use Porta\Plugin\Api\AbstractPlugin;
 use Porta\Plugin\Api\PluginApi;
 
@@ -20,11 +22,19 @@ use Porta\Plugin\Api\PluginApi;
  * Enabled by default ({@see \Porta\Config\IdeConfig::DEFAULT_ENABLED_PLUGINS}).
  */
 return new class('graph-viewer') extends AbstractPlugin {
+    /** Held so the routing claim can read this plugin's own settings. */
+    private ?PluginApi $api = null;
+
     public function activate(PluginApi $api): void
     {
-        $api->registerViewer('graph', DotFiles::EXTENSIONS);
+        $api->registerSetting('plantuml', 'Render PlantUML diagrams', 'bool', true);
+        $api->registerViewer('graph', function (string $path): bool {
+            return DotFiles::isDotPath($path) || $this->claimsPlantUml($path);
+        });
         $api->registerSetting('command', 'Architecture command (stdout = DOT)', hint: 'empty = built-in PHP namespace scanner');
         $api->registerSetting('outputDir', 'Architecture output directory', hint: 'empty = project root; relative paths resolve from it');
+
+        $this->api = $api;
 
         $api->registerCommand('architecture', 'Project Architecture', function () use ($api): void {
             $command = (string) $api->setting('command');
@@ -59,5 +69,20 @@ return new class('graph-viewer') extends AbstractPlugin {
         $isDotTab = static fn (): bool => null !== ($file = $api->activeFile()) && DotFiles::isDotPath($file);
         $api->addMenuItem('export-svg', $isDotTab);
         $api->addMenuItem('export-png', $isDotTab);
+    }
+
+    /**
+     * A PlantUML document is the viewer's only if the user wants it AND
+     * something can draw it — otherwise it stays the editable text it has
+     * always been. The tool is a CORE setting, so it is read through
+     * coreSetting(): a plugin setting can only be read by its own plugin, and
+     * the engine that needs the path is a core service.
+     */
+    private function claimsPlantUml(string $path): bool
+    {
+        return null !== DiagramKind::forPath($path)
+            && !DotFiles::isDotPath($path)
+            && true === (bool) $this->api?->setting('plantuml')
+            && null !== PlantUmlCommand::tool($this->coreSetting('plantuml'));
     }
 };

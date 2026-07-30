@@ -7,6 +7,8 @@ use Porta\Config\IdeConfig;
 use Porta\Config\KeybindingsFactory;
 use Porta\Container\AsWidget;
 use Porta\Editor\BufferService;
+use Porta\Graph\DiagramEngine;
+use Porta\Graph\PlantUmlEngine;
 use Porta\Highlight\ColorMode;
 use Porta\Highlight\SwitchableTerminalTheme;
 use Porta\Highlight\SyntaxHighlightProviderSource;
@@ -179,6 +181,12 @@ return static function (ContainerConfigurator $container, ContainerBuilder $buil
     // Modal region first, menus after — later regions win the segmenter's
     // per-cell owner pass, matching the paint order (menus above the modal).
     $services->alias(FloatingRegions::class, CompositeFloatingRegions::class);
+
+    // DiagramEngine has two implementations — DotLayoutEngine reaches it through
+    // LayoutEngine, PlantUmlEngine implements it directly — so the loader derives
+    // no alias. The bare interface means the tool with no geometry: the graph
+    // viewer takes its LayoutEngine for dot and this for everything else.
+    $services->alias(DiagramEngine::class, PlantUmlEngine::class);
 
     // Kept explicit on purpose: BidiTui's def is overridden to synthetic AFTER
     // the loader's load-time interface counting, so a natively derived

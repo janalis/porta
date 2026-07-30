@@ -140,6 +140,52 @@ final class IdeGraphViewerTest extends TestCase
         );
     }
 
+    public function testAPlantUmlDocumentOpensInTheDiagramPane(): void
+    {
+        $project = new TempProject([
+            '.porta.json' => (string) json_encode(['settings' => ['plantuml' => \dirname(__DIR__).'/Support/fake-plantuml']]),
+            'seq.puml' => "@startuml\nBob -> Alice : hello\n@enduml\n",
+        ]);
+        $this->phpOnlyPath($project);
+
+        $this->runIde(
+            $project,
+            $project->path('seq.puml'),
+            [
+                200 => function ($tui, $terminal): void {
+                    $grid = fn (): string => implode("\n", $this->screenGrid($tui, $terminal));
+                    $this->await(static fn (): bool => str_contains($grid(), '▀'), what: "PlantUML's picture to paint");
+
+                    $this->assertSame('graph-viewer', $tui->getFocus()?->getId(), 'a .puml takes the diagram pane');
+                    // screenGrid() consumes the accumulated output, so the tab
+                    // title has to be read from the grid too.
+                    $this->assertStringContainsString('seq.puml', $grid());
+                    // No geometry exists for it, so the pane reports zoom only.
+                    $this->assertSame('', $tui->getById('graph-viewer')->statusInfo());
+                    $this->assertStringContainsString('Fit', $tui->getById('graph-viewer')->zoomLabel());
+                },
+            ],
+        );
+    }
+
+    public function testWithoutPlantumlADocumentStaysText(): void
+    {
+        putenv('PATH=/nonexistent'); // nothing to discover, and no setting
+        $project = new TempProject(['seq.puml' => "@startuml\nBob -> Alice\n@enduml\n"]);
+
+        $this->runIde(
+            $project,
+            $project->path('seq.puml'),
+            [
+                200 => function ($tui, $terminal): void {
+                    $tui->tick();
+                    $this->assertSame('editor', $tui->getFocus()?->getId(), 'the text path, as before');
+                    $this->assertStringContainsString('@startuml', AnsiUtils::stripAnsiCodes($terminal->getOutput()));
+                },
+            ],
+        );
+    }
+
     public function testMissingBinaryShowsTheActionablePane(): void
     {
         // No dotPath setting and an empty PATH: discovery finds nothing.
