@@ -5,12 +5,17 @@ declare(strict_types=1);
 namespace Porta\Config;
 
 /**
- * The single descriptor table for every rebindable action: its palette label
+ * The descriptor table for CORE's rebindable actions: each one's palette label
  * and, for Ide-scope actions (bound on the application rather than on a
- * widget), its default keys. {@see IdeConfig} derives the rebindable-action
- * allowlist from it, {@see self::label()} serves labels from it, and the
- * coordinator builds its default keymap from it — previously three
- * hand-synced lists.
+ * widget), its default keys. {@see self::label()} serves labels from it and the
+ * coordinator builds its default keymap from it — previously two hand-synced
+ * lists.
+ *
+ * It is not the whole set any more: a plugin declares its pane's actions with
+ * `PluginApi::registerActions()`, and {@see ActionRegistry} is the composition
+ * the keymap page lists and {@see KeybindingsFactory} validates against. Ask
+ * the REGISTRY "can the user rebind this"; this constant answers "is this
+ * core's".
  *
  * Widget-scope defaults stay in each widget's getDefaultKeybindings(); a test
  * asserts every catalog entry is default-bound in exactly one of the two

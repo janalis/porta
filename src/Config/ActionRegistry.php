@@ -14,6 +14,12 @@ namespace Porta\Config;
  * pane's keys: `image_zoom_in` belongs to the image-viewer plugin now, and a
  * constant in `src/` naming it would be core describing plugin behaviour.
  *
+ * It lists the plugins that have LOADED, which in a running IDE is all of them:
+ * boot resolves `Keybindings` before the widget tree exists, and that resolution
+ * is what triggers the one-time load. (The same arrangement
+ * {@see \Porta\Editor\ViewerProviderSource} has — a registration is visible
+ * once its plugin is in.)
+ *
  * **The composition is only complete after plugins load**, which is why the
  * keymap's membership check moved out of {@see IdeConfig::load()} (it runs
  * before the container exists, let alone the plugins) and into

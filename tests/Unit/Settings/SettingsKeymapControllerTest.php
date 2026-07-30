@@ -35,13 +35,14 @@ final class SettingsKeymapControllerTest extends TestCase
     private LiveKeybindings $live;
     private MenuBarWidget $menuBar;
     private ActionRegistry $actions;
+    private PluginHost $host;
 
     private function controller(string $rootDir, StatusBarWidget $status, Keybindings $boot): SettingsKeymapController
     {
         $tui = new Tui(terminal: new VirtualTerminal(columns: 80, rows: 24));
-        $host = new PluginHost(IdeConfig::load($rootDir), new PluginEvents(), $rootDir);
-        $this->actions = new ActionRegistry($host->manager());
-        $this->live = new LiveKeybindings(new KeybindingsFactory($host, IdeConfig::load($rootDir), $this->actions), $boot, $rootDir);
+        $this->host = new PluginHost(IdeConfig::load($rootDir), new PluginEvents(), $rootDir);
+        $this->actions = new ActionRegistry($this->host->manager());
+        $this->live = new LiveKeybindings(new KeybindingsFactory($this->host, IdeConfig::load($rootDir), $this->actions), $boot, $rootDir);
 
         $this->menuBar = new MenuBarWidget();
         $rebuilder = new MenuRebuilder(
@@ -116,5 +117,37 @@ final class SettingsKeymapControllerTest extends TestCase
         $controller->rebind('save', 'a');
 
         $this->assertStringContainsString('(not saved)', $this->flashText($status));
+    }
+
+    public function testAPluginPanesActionGetsARowAndCanBeRebound(): void
+    {
+        // The whole user-visible loop this seam exists for: a plugin declares an
+        // action, the page lists it with the plugin's own label, a rebind
+        // persists under the bare id, and the re-merged live map binds it. Core
+        // names none of it.
+        $project = new TempProject(['.porta/plugins/hex/plugin.php' => <<<'PHP'
+                <?php
+                return new class('hex') extends \Porta\Plugin\Api\AbstractPlugin {
+                    public function activate(\Porta\Plugin\Api\PluginApi $api): void
+                    {
+                        $api->registerActions(['hex_next_field' => 'Hex: Next Field']);
+                    }
+                };
+                PHP]);
+        $controller = $this->controller($project->dir, $status = new StatusBarWidget(), new Keybindings());
+        // What boot does when it resolves Keybindings, long before a settings
+        // page can exist — the registry lists the plugins that have LOADED.
+        $this->host->ensureLoaded();
+
+        $byAction = array_column($controller->rows(), null, 'action');
+        $this->assertArrayHasKey('hex_next_field', $byAction, 'the plugin\'s action is on the keymap page');
+        $this->assertSame('Hex: Next Field', $byAction['hex_next_field']->label);
+        $this->assertSame('', $byAction['hex_next_field']->binding, 'no default at IDE scope — the pane binds it');
+
+        $controller->rebind('hex_next_field', "\x1b[24~"); // F12
+
+        $this->assertSame(['f12'], IdeConfig::load($project->dir)->keymap['hex_next_field'], 'persisted under the bare id');
+        $this->assertStringContainsString('Rebound Hex: Next Field to F12', $this->flashText($status));
+        $this->assertSame(['f12'], $this->live->getBindings('hex_next_field'), 'and it survived the factory\'s membership check');
     }
 }
