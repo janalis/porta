@@ -13,6 +13,8 @@ use Porta\Image\ImageDecoder;
 use Porta\Image\Rasterizer;
 use Porta\Image\ScaledSource;
 use Porta\Image\ZoomPanModel;
+use Porta\Support\RevoltScheduler;
+use Porta\Support\Scheduler;
 use Porta\Ui\Glyphs;
 use Porta\Ui\LtrPane;
 use Porta\Ui\Role;
@@ -47,6 +49,9 @@ final class ImageViewerWidget extends AbstractWidget implements FocusableInterfa
     use MenuOverlayHostTrait;
     use StylesDefault;
 
+    /** How long a zoom has to settle before the converter is asked for a sharper raster. */
+    private const float RENDER_DEBOUNCE = 0.15;
+
     private ?ImageData $image = null;
     private ?ZoomPanModel $view = null;
     /** The SVG source of a VECTOR tab, re-rasterized per zoom level; null for a bitmap tab. */
@@ -55,6 +60,9 @@ final class ImageViewerWidget extends AbstractWidget implements FocusableInterfa
     private ?string $svgPath = null;
     /** The scale the shown raster was rendered at — its pixels per document pixel. */
     private float $rasterScale = 1.0;
+    /** The scale the current zoom wants, or null before one has been decided. */
+    private ?float $wantedScale = null;
+    private ?string $rasterTimer = null;
     private bool $rasterizing = false;
     /** The converter's stderr (or the missing-converter message), shown as a banner. */
     private ?string $error = null;
@@ -64,13 +72,16 @@ final class ImageViewerWidget extends AbstractWidget implements FocusableInterfa
     private int $lastCols = 80;
     private int $lastRows = 24;
     private ?ViewerTabHandler $handler = null;
+    private readonly Scheduler $scheduler;
 
     public function __construct(
         private readonly Rasterizer $rasterizer,
         private readonly Translator $translator,
+        ?Scheduler $scheduler = null,
         ?Styles $styles = null,
     ) {
         $this->initStyles($styles);
+        $this->scheduler = $scheduler ?? new RevoltScheduler();
         $this->scaled = new ScaledSource();
     }
 
@@ -128,6 +139,11 @@ final class ImageViewerWidget extends AbstractWidget implements FocusableInterfa
         $this->svg = null;
         $this->svgPath = null;
         $this->rasterScale = 1.0;
+        $this->wantedScale = null;
+        if (null !== $this->rasterTimer) {
+            $this->scheduler->cancel($this->rasterTimer);
+            $this->rasterTimer = null;
+        }
         $this->rasterizing = false;
         $this->error = null;
     }
@@ -143,6 +159,7 @@ final class ImageViewerWidget extends AbstractWidget implements FocusableInterfa
         // Only reachable from showVector() and the zoom path, both of which run
         // with a document shown.
         \assert(null !== $svg, description: 'a rasterization is only ever asked for a shown document');
+        $this->wantedScale = $scale ?? 1.0;
         $this->rasterizing = true;
         $this->rasterizer->rasterize(
             $svg,
@@ -158,17 +175,18 @@ final class ImageViewerWidget extends AbstractWidget implements FocusableInterfa
                 }
                 $this->image = $image;
                 $this->rasterScale = $scale ?? 1.0;
-                // The document's own size is the view's coordinate space, so a
-                // 2× raster is still a view of the same 100×50 document — and the
-                // view survives it. A document of a DIFFERENT size is a different
-                // picture (the file changed on disk), so that one is fitted
-                // fresh: the graph viewer's extent rule.
-                $size = [
-                    max(1, (int) round($image->width / $this->rasterScale)),
-                    max(1, (int) round($image->height / $this->rasterScale)),
-                ];
-                if (null === $this->view || $size !== $this->view->dimensions()) {
-                    $this->view = new ZoomPanModel(...$size);
+                // Only a PROBE may (re)establish what the document's size is:
+                // a scaled re-render returns the same picture at a different
+                // resolution, and must not redefine the coordinate space its own
+                // zoom is expressed in. A probe whose size differs is a different
+                // picture — the file changed on disk — so that one is fitted
+                // fresh, the graph viewer's extent rule; a probe that agrees
+                // keeps the zoom and pan.
+                if (null === $scale) {
+                    $size = [$image->width, $image->height];
+                    if (null === $this->view || $size !== $this->view->dimensions()) {
+                        $this->view = new ZoomPanModel(...$size);
+                    }
                 }
                 $this->invalidate();
                 $this->handler?->viewChanged();
@@ -181,6 +199,48 @@ final class ImageViewerWidget extends AbstractWidget implements FocusableInterfa
                 }
             },
         );
+    }
+
+    /**
+     * The raster scale the current zoom needs, capped so a big document cannot
+     * ask for a bitmap the decoder would refuse. 1.0 is the document's own size,
+     * so magnifying 2× wants 2 and nothing below 1:1 wants more than 1 —
+     * shrinking is {@see ScaledSource}'s filter to do, not the converter's.
+     */
+    private function scaleFor(float $viewScale): float
+    {
+        // CEIL, not round: a continuous zoom (the Ctrl+scroll glide) would
+        // otherwise ask the converter for a different size at every nudge.
+        $wanted = (float) (int) ceil(max(1.0, $viewScale));
+        [$width, $height] = $this->view?->dimensions() ?? [1, 1];
+        $cap = sqrt(ImageDecoder::MAX_PIXELS / max(1, $width * $height));
+
+        return max(0.01, min($wanted, $cap));
+    }
+
+    /**
+     * Ask the converter for a sharper raster once the zoom has settled.
+     * Debounced and coalesced on the WANTED scale, so a pan (or a zoom that
+     * lands on the same resolution) costs nothing, and a Ctrl+scroll glide costs
+     * one process rather than one per notch — the graph viewer's arrangement.
+     */
+    private function scheduleRaster(): void
+    {
+        if (null === $this->svg || null === $this->view) {
+            return; // a bitmap tab has nothing to re-render
+        }
+        $scale = $this->scaleFor($this->view->effectiveScale($this->lastCols, 2 * $this->lastRows));
+        if (abs($scale - (float) $this->wantedScale) < 1e-9) {
+            return; // already asked for exactly this
+        }
+        $this->wantedScale = $scale;
+        if (null !== $this->rasterTimer) {
+            $this->scheduler->cancel($this->rasterTimer);
+        }
+        $this->rasterTimer = $this->scheduler->delay(self::RENDER_DEBOUNCE, function () use ($scale): void {
+            $this->rasterTimer = null;
+            $this->rasterize($scale);
+        });
     }
 
     /** The PNG the converter produced, or null after recording why it is unusable. */
@@ -251,6 +311,9 @@ final class ImageViewerWidget extends AbstractWidget implements FocusableInterfa
         }
         $this->lastCols = $cols;
         $this->lastRows = $rows;
+        // The fit scale depends on the pane size, which is only known here; the
+        // wanted-scale guard makes this a float compare on every other frame.
+        $this->scheduleRaster();
         $lines = $this->contentLines($cols, $rows);
 
         // A caret-less, row-less pane still needs a focus cue like its siblings:
@@ -402,5 +465,6 @@ final class ImageViewerWidget extends AbstractWidget implements FocusableInterfa
     {
         $this->invalidate();
         $this->handler?->viewChanged();
+        $this->scheduleRaster();
     }
 }

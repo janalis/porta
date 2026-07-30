@@ -8,6 +8,7 @@ use PHPUnit\Framework\TestCase;
 use Porta\I18n\Translator;
 use Porta\Image\ImageData;
 use Porta\Tests\Support\FakeRasterizer;
+use Porta\Tests\Support\FakeScheduler;
 use Porta\Tests\Support\PngFixture;
 use Porta\Tests\Support\RecordingViewerTabHandler;
 use Porta\Ui\Glyphs;
@@ -18,16 +19,26 @@ use Symfony\Component\Tui\Render\RenderContext;
 final class ImageViewerWidgetTest extends TestCase
 {
     private FakeRasterizer $rasterizer;
+    private FakeScheduler $scheduler;
 
     protected function setUp(): void
     {
         $this->rasterizer = new FakeRasterizer();
+        $this->scheduler = new FakeScheduler();
     }
 
-    /** A pane whose converter is scripted — the vector-mode rig. */
+    /** A pane whose converter and debounce are both scripted — the vector-mode rig. */
     private function vectorWidget(): ImageViewerWidget
     {
-        return new ImageViewerWidget($this->rasterizer, new Translator('en'));
+        return new ImageViewerWidget($this->rasterizer, new Translator('en'), scheduler: $this->scheduler);
+    }
+
+    /** Let the re-render debounce elapse, as the event loop would. */
+    private function settle(): void
+    {
+        if ([] !== $this->scheduler->scheduled) {
+            $this->scheduler->fire();
+        }
     }
 
     private static function plain(array $lines): string
@@ -285,5 +296,92 @@ final class ImageViewerWidgetTest extends TestCase
         $this->assertSame('', $widget->zoomLabel());
         $widget->showVector('/p/a.svg', '<svg/>'); // the same source is a fresh document after a clear
         $this->assertSame([null, null], $this->rasterizer->scales);
+    }
+
+    public function testZoomingPastTheDocumentAsksForASharperRaster(): void
+    {
+        $this->rasterizer->nextPng = PngFixture::bytes(100, 50);
+        $widget = $this->vectorWidget();
+        $widget->showVector('/p/a.svg', '<svg viewBox="0 0 100 50"/>');
+        $widget->render(new RenderContext(50, 13));
+        $widget->handleInput('1'); // actual size — the probe already covers 1:1
+        $this->settle();
+        $this->assertSame([null], $this->rasterizer->scales, 'nothing to re-render at the document\'s own size');
+
+        $widget->handleInput('='); // 100% → 200%
+        $this->rasterizer->nextPng = PngFixture::bytes(200, 100);
+        $this->settle();
+
+        $this->assertSame([null, 2.0], $this->rasterizer->scales, 'the converter re-renders at twice the size');
+        $this->assertSame('100 × 50', $widget->statusInfo(), 'the document is still the document');
+        $this->assertSame('200%', $widget->zoomLabel(), 'and the zoom is unchanged by the re-render');
+    }
+
+    public function testAGlideBetweenTheRungsAsksForOneSharperRaster(): void
+    {
+        $this->rasterizer->nextPng = PngFixture::bytes(100, 50);
+        $widget = $this->vectorWidget();
+        $widget->showVector('/p/a.svg', '<svg viewBox="0 0 100 50"/>');
+        $widget->render(new RenderContext(50, 13));
+        $widget->handleInput('1'); // actual size
+
+        // A Ctrl+scroll burst: several fractional steps, one resolution.
+        foreach (range(1, end: 3) as $ignored) {
+            $widget->magnifyAt(1.08, 25, 6);
+        }
+        $this->assertSame('126%', $widget->zoomLabel());
+        $this->rasterizer->nextPng = PngFixture::bytes(200, 100);
+        $this->settle();
+
+        $this->assertSame([null, 2.0], $this->rasterizer->scales, 'ceilinged to the next whole multiple');
+    }
+
+    public function testAPanNeverAsksForANewRaster(): void
+    {
+        $this->rasterizer->nextPng = PngFixture::bytes(100, 50);
+        $widget = $this->vectorWidget();
+        $widget->showVector('/p/a.svg', '<svg viewBox="0 0 100 50"/>');
+        $widget->render(new RenderContext(50, 13));
+
+        $widget->handleInput("\x1b[C"); // right
+        $widget->scrollBy(0, 4);
+
+        $this->assertSame([], $this->scheduler->scheduled, 'panning changes no resolution');
+        $this->assertSame([null], $this->rasterizer->scales);
+    }
+
+    public function testTheRasterScaleIsCappedForAHugeDocument(): void
+    {
+        // 2000×1500 is 3M pixels at 1:1 — fine — but 4× would be 48M, three
+        // times the decoder's ceiling, so the ask is capped instead.
+        $this->rasterizer->nextPng = PngFixture::bytes(2000, 1500);
+        $widget = $this->vectorWidget();
+        $widget->showVector('/p/big.svg', '<svg viewBox="0 0 2000 1500"/>');
+        $widget->render(new RenderContext(50, 13));
+        $widget->handleInput('1'); // fit is ~2% here, so start from the document's own size
+        $widget->handleInput('=');
+        $widget->handleInput('='); // 400%
+        $this->settle();
+
+        $asked = $this->rasterizer->scales;
+        $this->assertCount(2, $asked);
+        $this->assertSame('400%', $widget->zoomLabel(), 'the ZOOM is not capped');
+        $this->assertEqualsWithDelta(sqrt(16_000_000 / (2000 * 1500)), (float) $asked[1], 0.01, 'but the raster is: 72 × sqrt(MAX_PIXELS / area)');
+    }
+
+    public function testATabSwitchDropsThePendingRerender(): void
+    {
+        $this->rasterizer->nextPng = PngFixture::bytes(100, 50);
+        $widget = $this->vectorWidget();
+        $widget->showVector('/p/a.svg', '<svg viewBox="0 0 100 50"/>');
+        $widget->render(new RenderContext(50, 13));
+        $widget->handleInput('1');
+        $widget->handleInput('='); // 200%: arms a re-render
+        $this->assertNotSame([], $this->scheduler->scheduled);
+
+        $widget->clear();
+
+        $this->assertSame([], $this->scheduler->scheduled, 'the pane went away; so did the request');
+        $this->assertNotSame([], $this->scheduler->cancelled);
     }
 }
