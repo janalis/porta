@@ -67,15 +67,23 @@ final class PluginLoader
     /** Discover, activate and commit every plugin into $manager. */
     public function loadInto(PluginManager $manager): void
     {
-        $files = $this->discover();
         // Every manifest is read, and every namespace registered, BEFORE any
         // plugin PHP runs: a plugin's own classes have to resolve from the first
-        // line of its plugin.php, and nothing here may depend on load order.
-        foreach ($files as $file) {
-            PluginAutoloader::register(PluginManifest::beside($file));
+        // line of its plugin.php, and the requires[] that decide LOAD ORDER
+        // cannot be discovered by loading, since loading is what they order.
+        $manifests = [];
+        foreach ($this->discover() as $file) {
+            $manifest = PluginManifest::beside($file);
+            PluginAutoloader::register($manifest);
+            $manifests[] = $manifest;
         }
-        foreach ($files as $file) {
-            $error = $this->loadFile($file, $manager);
+
+        ['order' => $order, 'skipped' => $skipped] = PluginOrder::resolve($manifests);
+        foreach ($skipped as $warning) {
+            $manager->addWarning($warning);
+        }
+        foreach ($order as $manifest) {
+            $error = $this->loadFile($manifest->directory.'/plugin.php', $manager);
             if (null !== $error) {
                 $manager->addWarning($error);
             }

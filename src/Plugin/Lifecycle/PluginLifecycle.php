@@ -12,6 +12,7 @@ use Porta\I18n\Translator;
 use Porta\Lsp\LspReconfigurer;
 use Porta\Plugin\Runtime\PluginLoader;
 use Porta\Plugin\Runtime\PluginManager;
+use Porta\Plugin\Runtime\PluginManifest;
 use Porta\Workbench\Menu\MenuRebuilder;
 use Porta\Workbench\Notifier;
 use Porta\Workbench\WorkspaceViews;
@@ -138,11 +139,18 @@ final class PluginLifecycle implements PluginLifecycleOps
      */
     public function disable(string $name): void
     {
-        $this->persistDisabledChoice($name);
-        $wasProvider = $this->plugins->providesLanguageServer($name);
-        $this->plugins->deactivate($name, $this->commands); // no shadow fallback: the NAME is off
-        $this->reconfigureLspIf($wasProvider);
+        // Whatever needs this one cannot work without it, so it goes too — the
+        // counterpart of enable()'s auto-enable, and for the same reason: the
+        // user acted on one plugin, and the honest answer names what followed.
+        $dependents = $this->dependentsOf($name);
+        foreach ([$name, ...$dependents] as $target) {
+            $this->persistDisabledChoice($target);
+            $wasProvider = $this->plugins->providesLanguageServer($target);
+            $this->plugins->deactivate($target, $this->commands); // no shadow fallback: the NAME is off
+            $this->reconfigureLspIf($wasProvider);
+        }
         $this->notifier->flash($this->translator->trans('Plugin "%name%" disabled', ['%name%' => $name]));
+        $this->flashCompanions('Also disabled: %names%', $dependents);
         $this->afterToggle();
     }
 
@@ -153,7 +161,23 @@ final class PluginLifecycle implements PluginLifecycleOps
      */
     public function enable(string $name): void
     {
-        $this->persistEnabledChoice($name);
+        // What it requires comes with it, transitively and in order — a plugin
+        // turned on without its dependencies would be turned on and broken.
+        // Only here, never at boot: a startup that silently re-enables what the
+        // user switched off is a worse surprise than a message.
+        $required = $this->missingRequirementsOf($name);
+        foreach ([...$required, $name] as $target) {
+            $this->persistEnabledChoice($target);
+            $this->activateInstalledCopy($target);
+        }
+        $this->notifier->flash($this->translator->trans('Plugin "%name%" enabled', ['%name%' => $name]));
+        $this->flashCompanions('Also enabled: %names%', $required);
+        $this->afterToggle();
+    }
+
+    /** Load the highest-precedence installed copy of one plugin, reporting a failure. */
+    private function activateInstalledCopy(string $name): void
+    {
         foreach ($this->installer->installed() as $candidate) {
             if ($candidate['name'] !== $name) {
                 continue;
@@ -162,15 +186,76 @@ final class PluginLifecycle implements PluginLifecycleOps
             $error = $this->loader->loadFile($candidate['dir'].'/plugin.php', $this->plugins);
             if (null !== $error) {
                 $this->notifier->error($error);
+
+                return;
             }
-            if (null === $error) {
-                $this->plugins->registerCommands($this->commands);
-                $this->reconfigureLspIf($this->plugins->providesLanguageServer($name));
-                $this->notifier->flash($this->translator->trans('Plugin "%name%" enabled', ['%name%' => $name]));
-            }
-            break;
+            $this->plugins->registerCommands($this->commands);
+            $this->reconfigureLspIf($this->plugins->providesLanguageServer($name));
+
+            return;
         }
-        $this->afterToggle();
+    }
+
+    /**
+     * The disabled plugins $name requires, transitively, in load order — the
+     * ones enabling it has to bring along.
+     *
+     * @return list<string>
+     */
+    private function missingRequirementsOf(string $name): array
+    {
+        $needed = [];
+        foreach ($this->manifestsOf($name) as $required) {
+            if (!$this->isDisabled($required) || \in_array($required, $needed, strict: true)) {
+                continue;
+            }
+            $needed = [...$this->missingRequirementsOf($required), $required, ...$needed];
+        }
+
+        return array_values(array_unique($needed));
+    }
+
+    /**
+     * The enabled plugins that require $name, transitively — the ones disabling
+     * it takes with it.
+     *
+     * @return list<string>
+     */
+    private function dependentsOf(string $name): array
+    {
+        $dependents = [];
+        foreach ($this->installer->installed() as $plugin) {
+            $candidate = $plugin['name'];
+            if ($this->isDisabled($candidate) || \in_array($candidate, $dependents, strict: true)) {
+                continue;
+            }
+            if (\in_array($name, $this->manifestsOf($candidate), strict: true)) {
+                $dependents = [...$dependents, $candidate, ...$this->dependentsOf($candidate)];
+            }
+        }
+
+        return array_values(array_unique($dependents));
+    }
+
+    /**
+     * What $name declares it requires, from its manifest.
+     *
+     * @return list<string>
+     */
+    private function manifestsOf(string $name): array
+    {
+        $dirs = array_column($this->installer->installed(), 'dir', 'name');
+        $dir = $dirs[$name] ?? null;
+
+        return null === $dir ? [] : PluginManifest::beside($dir.'/plugin.php')->requires;
+    }
+
+    /** @param list<string> $names */
+    private function flashCompanions(string $message, array $names): void
+    {
+        if ([] !== $names) {
+            $this->notifier->flash($this->translator->trans($message, ['%names%' => implode(', ', $names)]));
+        }
     }
 
     public function onProviderSettingChanged(string $name): void

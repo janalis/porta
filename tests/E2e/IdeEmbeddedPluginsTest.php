@@ -6,6 +6,7 @@ namespace Porta\Tests\E2e;
 
 use PHPUnit\Framework\TestCase;
 use Porta\Config\CommandRegistry;
+use Porta\Plugin\Lifecycle\PluginLifecycle;
 use Porta\Tests\Support\ClearsPortaLsp;
 use Porta\Tests\Support\NavigatesSettings;
 use Porta\Tests\Support\PreservesPath;
@@ -13,6 +14,7 @@ use Porta\Tests\Support\Probe;
 use Porta\Tests\Support\RunsIde;
 use Porta\Tests\Support\Services;
 use Porta\Tests\Support\TempProject;
+use Porta\Tests\Support\Toasts;
 use Symfony\Component\Tui\Ansi\AnsiUtils;
 
 /**
@@ -338,6 +340,98 @@ final class IdeEmbeddedPluginsTest extends TestCase
                     // resolves through the manifest's autoload mapping.
                     $commands->run('acme-tools:greet');
                     $this->await(static fn (): bool => str_contains(AnsiUtils::stripAnsiCodes($terminal->getOutput()), 'hello from acme-tools'), what: "the plugin class's answer");
+                },
+            ],
+        );
+
+        $this->addToAssertionCount(1);
+    }
+
+    /** A project plugin directory: an entry file, and a manifest when $requires is given. */
+    private function projectPlugin(TempProject $project, string $name, array $requires = []): void
+    {
+        $dir = $project->path('.porta/plugins/'.$name);
+        mkdir($dir, permissions: 0o777, recursive: true);
+        file_put_contents($dir.'/plugin.php', data: $this->namedPlugin($name, ucfirst($name).' Run'));
+        if ([] !== $requires) {
+            file_put_contents($dir.'/plugin.json', data: (string) json_encode(['requires' => $requires]));
+        }
+    }
+
+    public function testADependencyLoadsFirstAndAMissingOneKeepsThePluginOut(): void
+    {
+        $project = new TempProject(['a.php' => "<?php\n"]);
+        $this->projectPlugin($project, 'zbase'); // discovered LAST alphabetically
+        $this->projectPlugin($project, 'app', ['zbase']); // but needed FIRST
+        $this->projectPlugin($project, 'orphan', ['absent']);
+
+        $this->runIde(
+            $project,
+            $project->path('a.php'),
+            [
+                100 => function ($tui, $terminal, $ide): void {
+                    $labels = array_column(Services::resolve($ide, CommandRegistry::class)->paletteCommands(), 'label');
+                    $this->assertContains('Zbase Run', $labels);
+                    $this->assertContains('App Run', $labels);
+                    $this->assertLessThan(
+                        array_search('App Run', $labels, strict: true),
+                        array_search('Zbase Run', $labels, strict: true),
+                        'the dependency registered first, so it loaded first',
+                    );
+
+                    // The one whose requirement does not exist is skipped, and
+                    // the boot warning says which requirement.
+                    $this->assertNotContains('Orphan Run', $labels);
+                    $screen = AnsiUtils::stripAnsiCodes($terminal->getOutput());
+                    $this->assertStringContainsString('needs "absent"', $screen);
+                },
+            ],
+        );
+
+        $this->addToAssertionCount(1);
+    }
+
+    public function testEnablingBringsWhatItRequiresAndDisablingTakesItsDependents(): void
+    {
+        $project = new TempProject([
+            '.porta.json' => (string) json_encode(['disabledPlugins' => ['app', 'zbase']]),
+            'a.php' => "<?php\n",
+        ]);
+        $this->projectPlugin($project, 'zbase');
+        $this->projectPlugin($project, 'app', ['zbase']);
+
+        $this->runIde(
+            $project,
+            $project->path('a.php'),
+            [
+                100 => function ($tui, $terminal, $ide): void {
+                    $lifecycle = Services::resolve($ide, PluginLifecycle::class);
+                    $commands = Services::resolve($ide, CommandRegistry::class);
+                    $this->assertNotContains('App Run', array_column($commands->paletteCommands(), 'label'), 'both start off');
+
+                    // Enabling the dependent brings its requirement with it.
+                    $lifecycle->enable('app');
+                    $labels = array_column($commands->paletteCommands(), 'label');
+                    $this->assertContains('App Run', $labels);
+                    $this->assertContains('Zbase Run', $labels, 'the requirement came along');
+                    // The toast MODEL, not the painted row: no frame has run
+                    // between the enable and this assertion.
+                    $this->assertContains('Also enabled: zbase', Toasts::all($ide));
+
+                    // A requirement that is ALREADY on brings nothing along:
+                    // turning the dependent off and on again is a no-op for it.
+                    $lifecycle->disable('app');
+                    $lifecycle->enable('app');
+                    $this->assertContains('App Run', array_column($commands->paletteCommands(), 'label'));
+                    $this->assertSame(['Plugin "app" enabled'], array_slice(Toasts::all($ide), 0, 1), 'nothing to also-enable');
+
+                    // Disabling the requirement takes the dependent with it: it
+                    // cannot work without what it declared it needs.
+                    $lifecycle->disable('zbase');
+                    $labels = array_column($commands->paletteCommands(), 'label');
+                    $this->assertNotContains('Zbase Run', $labels);
+                    $this->assertNotContains('App Run', $labels, 'the dependent went too');
+                    $this->assertContains('Also disabled: app', Toasts::all($ide));
                 },
             ],
         );
