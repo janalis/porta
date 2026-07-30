@@ -251,6 +251,20 @@ final class GraphViewerWidget extends AbstractWidget implements FocusableInterfa
         $this->afterViewChange();
     }
 
+    /**
+     * The continuous half of the same gesture: zoom by a factor on the same
+     * anchor, for the burst of notches a trackpad's Ctrl+scroll delivers
+     * ({@see \Porta\Input\ZoomGesture}).
+     */
+    public function magnifyAt(float $factor, int $relCol, int $relRow): void
+    {
+        if (null === $this->view) {
+            return;
+        }
+        $this->view->magnifyAt($factor, $relCol, (2 * $relRow) + 1, $this->lastCols, 2 * $this->lastRows);
+        $this->afterViewChange();
+    }
+
     /** Pan by wheel/drag (in half-rows vertically, columns horizontally). */
     public function scrollBy(int $dxCells, int $dyHalfRows): void
     {
@@ -400,7 +414,10 @@ final class GraphViewerWidget extends AbstractWidget implements FocusableInterfa
      */
     private function dpiFor(float $scale): int
     {
-        $wanted = (int) round(self::BITMAP_DPI * max(1.0, $scale));
+        // CEIL, not round: a continuous zoom (the Ctrl+scroll glide) would
+        // otherwise ask dot for a different dpi at every nudge, where ceiling to
+        // the next whole multiple asks once per doubling and never undersamples.
+        $wanted = self::BITMAP_DPI * (int) ceil(max(1.0, $scale));
         // pixels = extent × dpi/72 per axis, so the ceiling scales with 1/√area.
         $cap = (int) floor(self::BITMAP_DPI * sqrt(ImageDecoder::MAX_PIXELS / ($this->extentW * $this->extentH)));
 

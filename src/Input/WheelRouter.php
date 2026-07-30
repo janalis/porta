@@ -7,6 +7,8 @@ namespace Porta\Input;
 use Porta\Overlay\State\MenuOverlayController;
 use Porta\Ui\BidiTui;
 use Porta\Widget\ContextMenu;
+use Porta\Widget\GraphViewerWidget;
+use Porta\Widget\ImageViewerWidget;
 use Porta\Widget\MenuBarWidget;
 use Porta\Workbench\Dock\BottomDock;
 use Symfony\Component\Tui\Render\WidgetRect;
@@ -24,6 +26,9 @@ use Symfony\Component\Tui\Tui;
  */
 final class WheelRouter
 {
+    /** Ctrl+wheel burst detection — newed, not injected, like MouseRouter's ClickCounter. */
+    private readonly ZoomGesture $zoom;
+
     public function __construct(
         private readonly HitTester $hit,
         private readonly Tui $tui,
@@ -36,7 +41,25 @@ final class WheelRouter
         private readonly SettingsMouseRouter $settings,
         private readonly BidiTui $bidi,
         private readonly HoverRouter $hover,
-    ) {}
+    ) {
+        $this->zoom = new ZoomGesture();
+    }
+
+    /**
+     * One Ctrl+wheel notch on a viewer pane: a burst glides by a factor (a
+     * trackpad's Ctrl+scroll, the nearest thing to a pinch a terminal can
+     * deliver), an isolated notch steps the zoom ladder.
+     *
+     */
+    private function zoomToward(ImageViewerWidget|GraphViewerWidget $pane, MouseEvent $mouse, WidgetRect $rect): void
+    {
+        $rel = $rect->toRelative($mouse->row, $mouse->col);
+        $dir = $mouse->wheelDelta < 0 ? 1 : -1;
+        $factor = $this->zoom->glideFactor($dir);
+        null === $factor
+            ? $pane->zoomAt($dir, $rel['col'], $rel['row'])
+            : $pane->magnifyAt($factor, $rel['col'], $rel['row']);
+    }
 
     /**
      * Route one wheel notch to the pane under the pointer, in the same guard
@@ -164,9 +187,8 @@ final class WheelRouter
         }
         if (null !== $imageRect && $imageRect->contains($mouse->row, $mouse->col)) {
             // Plain wheel pans the image; Ctrl+wheel zooms toward the pointer.
-            $rel = $imageRect->toRelative($mouse->row, $mouse->col);
             $mouse->ctrl
-                ? $this->panes->imageViewer()->zoomAt($mouse->wheelDelta < 0 ? 1 : -1, $rel['col'], $rel['row'])
+                ? $this->zoomToward($this->panes->imageViewer(), $mouse, $imageRect)
                 // Pixel rows are half-height, so a notch covers the same distance.
                 : $this->panes->imageViewer()->scrollBy(0, WheelStep::rows($mouse, factor: 2));
             $this->tui->requestRender();
@@ -181,9 +203,8 @@ final class WheelRouter
         }
         if (null !== ($graphRect = $this->hit->rect($this->panes->graphViewer())) && $graphRect->contains($mouse->row, $mouse->col)) {
             // The image viewer's contract: plain wheel pans, Ctrl+wheel zooms toward the pointer.
-            $rel = $graphRect->toRelative($mouse->row, $mouse->col);
             $mouse->ctrl
-                ? $this->panes->graphViewer()->zoomAt($mouse->wheelDelta < 0 ? 1 : -1, $rel['col'], $rel['row'])
+                ? $this->zoomToward($this->panes->graphViewer(), $mouse, $graphRect)
                 : $this->panes->graphViewer()->scrollBy(0, WheelStep::rows($mouse, factor: 2));
             $this->tui->requestRender();
 

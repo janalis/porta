@@ -96,6 +96,20 @@ final class ImageViewerWidget extends AbstractWidget implements FocusableInterfa
         $this->afterViewChange();
     }
 
+    /**
+     * The continuous half of the same gesture: zoom by a factor on the same
+     * anchor, for the burst of notches a trackpad's Ctrl+scroll delivers
+     * ({@see \Porta\Input\ZoomGesture}).
+     */
+    public function magnifyAt(float $factor, int $relCol, int $relRow): void
+    {
+        if (null === $this->view) {
+            return;
+        }
+        $this->view->magnifyAt($factor, $relCol, (2 * $relRow) + 1, $this->lastCols, 2 * $this->lastRows);
+        $this->afterViewChange();
+    }
+
     /** Pan by wheel scrolling (in half-rows vertically, columns horizontally). */
     public function scrollBy(int $dxCells, int $dyHalfRows): void
     {

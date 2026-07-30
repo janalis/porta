@@ -90,6 +90,44 @@ final class IdeImageViewerTest extends TestCase
         $this->addToAssertionCount(1);
     }
 
+    public function testATrackpadCtrlScrollBurstGlidesWhereASingleNotchSteps(): void
+    {
+        putenv('PATH=/nonexistent');
+        $project = new TempProject(['img.png' => $this->twoColorPng(64, 64)]);
+
+        $this->runIde(
+            $project,
+            $project->path('img.png'),
+            [
+                200 => function ($tui): void {
+                    $viewer = $tui->getById('image-viewer');
+                    $tui->handleInput('1'); // 100%, off the fit scale
+                    $this->assertSame('100%', $viewer->zoomLabel());
+
+                    // What a trackpad sends for one pinch-out: a burst of
+                    // ctrl+wheel notches, microseconds apart in one step. The
+                    // FIRST cannot be known to belong to a gesture yet, so it
+                    // steps the ladder like a mouse click would…
+                    $tui->handleInput("\x1b[<80;40;10M");
+                    $this->assertSame('200%', $viewer->zoomLabel(), 'the opening notch is still a rung');
+
+                    // …and everything after it glides, instead of crossing the
+                    // whole ladder the way one flick used to.
+                    foreach (range(1, end: 4) as $ignored) {
+                        $tui->handleInput("\x1b[<80;40;10M");
+                    }
+                    $this->assertSame('272%', $viewer->zoomLabel(), '200% × 1.08⁴ — between the rungs');
+                },
+                // A later step is >100ms away, so this notch stands alone again
+                // and snaps to the rung above 272%.
+                400 => function ($tui): void {
+                    $tui->handleInput("\x1b[<80;40;10M");
+                    $this->assertSame('400%', $tui->getById('image-viewer')->zoomLabel(), 'an isolated notch still steps');
+                },
+            ],
+        );
+    }
+
     public function testImageTabSwitchingSavingAndClosingKeepTheEditorSafe(): void
     {
         putenv('PATH=/nonexistent');

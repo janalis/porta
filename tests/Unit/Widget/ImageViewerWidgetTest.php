@@ -56,6 +56,7 @@ final class ImageViewerWidgetTest extends TestCase
         $widget->handleInput('='); // zoom without an image is a no-op, not an error
         $widget->scrollBy(1, 1);
         $widget->zoomAt(1, 0, 0);
+        $widget->magnifyAt(1.08, 0, 0);
         $this->assertSame('', $widget->zoomLabel());
     }
 
@@ -85,6 +86,23 @@ final class ImageViewerWidgetTest extends TestCase
 
         $widget->clear();
         $this->assertSame('', $widget->zoomLabel());
+    }
+
+    public function testATrackpadBurstGlidesBetweenTheRungs(): void
+    {
+        $widget = new ImageViewerWidget();
+        $widget->show($this->gradient());
+        $widget->render(new RenderContext(8, 2));
+        $widget->handleInput('1'); // 100%, off the fit
+
+        // What WheelRouter hands over for each notch of a Ctrl+scroll burst.
+        foreach (range(1, end: 4) as $ignored) {
+            $widget->magnifyAt(1.08, 4, 1);
+        }
+        $this->assertSame('136%', $widget->zoomLabel(), 'four notches of 8%, not two rungs');
+
+        $widget->magnifyAt(1 / 1.08, 4, 1);
+        $this->assertSame('126%', $widget->zoomLabel(), 'and it glides back');
     }
 
     public function testArrowsPanAndShiftPansFiveTimesAsFar(): void

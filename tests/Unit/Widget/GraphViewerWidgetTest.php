@@ -280,12 +280,15 @@ final class GraphViewerWidgetTest extends TestCase
         $this->assertStringContainsString('100%', $widget->zoomLabel(), 'panning never changes zoom');
     }
 
-    public function testSelectionKeysAreInertWithoutALayout(): void
+    public function testSelectionAndZoomAreInertWithoutALayout(): void
     {
         $widget = $this->widget();
         $widget->handleInput('n');
         $widget->handleInput('p');
+        $widget->zoomAt(1, 0, 0);
+        $widget->magnifyAt(1.08, 0, 0); // a stray wheel burst before the layout lands
         $this->assertSame('', $widget->statusInfo());
+        $this->assertSame('', $widget->zoomLabel());
     }
 
     public function testTheLayoutCacheEvictsItsOldestEntryPastTheCap(): void
@@ -427,6 +430,27 @@ final class GraphViewerWidgetTest extends TestCase
 
         $raw = implode("\n", $widget->render(new RenderContext(80, 24)));
         $this->assertStringContainsString('▀', $raw, 'and the sharper bitmap is what paints');
+    }
+
+    public function testAGlideBetweenTheRungsAsksForOneSharperBitmap(): void
+    {
+        $this->engine->nextResult = self::layout();
+        $this->engine->nextPng = PngFixture::bytes(260, 36);
+        $widget = $this->widget();
+        $widget->show('/p/g.dot', 'digraph G { A -> B; }');
+        $this->settle();
+        $widget->render(new RenderContext(80, 24));
+        $widget->handleInput('1'); // 100%, so a glide crosses into oversampling
+        $this->settle();
+        $this->assertSame([72], $this->engine->renderDpis, '1:1 wants the same resolution as fit did — nothing to re-render');
+
+        // A Ctrl+scroll burst: several fractional steps, one resolution.
+        foreach (range(1, end: 3) as $ignored) {
+            $widget->magnifyAt(1.08, 40, 12);
+        }
+        $this->assertSame('126%', $widget->zoomLabel(), 'the zoom itself is continuous');
+        $this->settle();
+        $this->assertSame([72, 144], $this->engine->renderDpis, 'but the dpi ceilings to the next whole multiple');
     }
 
     public function testAPanNeverAsksForANewBitmap(): void
