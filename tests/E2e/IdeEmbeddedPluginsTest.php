@@ -312,4 +312,36 @@ final class IdeEmbeddedPluginsTest extends TestCase
 
         $this->addToAssertionCount(1);
     }
+
+    public function testAThirdPartyPluginShipsItsOwnNamespacedClass(): void
+    {
+        // The committed fixture is shaped like a real third-party plugin: a
+        // plugin.json declaring `Acme\\Tools`, and a class under its own src/
+        // that composer's autoloader knows nothing about.
+        // setUp() already opted this class out of the PORTA_HOME fixture, and
+        // tearDown restores it — calling either again here would capture the
+        // ALREADY-modified value and leak /nonexistent into the whole worker.
+        $fixture = \dirname(__DIR__).'/Support/fixtures/thirdparty/acme-tools';
+        $project = new TempProject(['a.php' => "<?php\n"]);
+        mkdir($project->path('.porta/plugins'), permissions: 0o777, recursive: true);
+        symlink($fixture, $project->path('.porta/plugins/acme-tools'));
+
+        $this->runIde(
+            $project,
+            $project->path('a.php'),
+            [
+                100 => function ($tui, $terminal, $ide): void {
+                    $commands = Services::resolve($ide, CommandRegistry::class);
+                    $this->assertContains('Acme: Greet', array_column($commands->paletteCommands(), 'label'), 'the plugin loaded');
+
+                    // Running it reaches into the plugin's OWN class, which only
+                    // resolves through the manifest's autoload mapping.
+                    $commands->run('acme-tools:greet');
+                    $this->await(static fn (): bool => str_contains(AnsiUtils::stripAnsiCodes($terminal->getOutput()), 'hello from acme-tools'), what: "the plugin class's answer");
+                },
+            ],
+        );
+
+        $this->addToAssertionCount(1);
+    }
 }

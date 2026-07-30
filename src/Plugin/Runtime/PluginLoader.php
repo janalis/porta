@@ -18,6 +18,10 @@ use Tempest\Highlight\TerminalTheme;
  * (registrations buffer in its {@see PluginApi} and only commit on success)
  * and a boot warning is collected. Plugins are trusted in-process PHP, like
  * composer scripts.
+ *
+ * A plugin that ships CLASSES of its own declares them in a `plugin.json`
+ * beside its entry file ({@see PluginManifest}); those namespaces are
+ * registered with {@see PluginAutoloader} before anything is required.
  */
 final class PluginLoader
 {
@@ -63,7 +67,14 @@ final class PluginLoader
     /** Discover, activate and commit every plugin into $manager. */
     public function loadInto(PluginManager $manager): void
     {
-        foreach ($this->discover() as $file) {
+        $files = $this->discover();
+        // Every manifest is read, and every namespace registered, BEFORE any
+        // plugin PHP runs: a plugin's own classes have to resolve from the first
+        // line of its plugin.php, and nothing here may depend on load order.
+        foreach ($files as $file) {
+            PluginAutoloader::register(PluginManifest::beside($file));
+        }
+        foreach ($files as $file) {
             $error = $this->loadFile($file, $manager);
             if (null !== $error) {
                 $manager->addWarning($error);
@@ -125,6 +136,9 @@ final class PluginLoader
      */
     public function loadFile(string $file, PluginManager $manager): ?string
     {
+        // The live path too (a just-installed or re-enabled plugin never went
+        // through loadInto's pre-pass).
+        PluginAutoloader::register(PluginManifest::beside($file));
         try {
             /** @var mixed $plugin */
             $plugin = (static fn (): mixed => require $file)();
