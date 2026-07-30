@@ -4,7 +4,9 @@ declare(strict_types=1);
 
 namespace Porta\Settings;
 
+use Porta\Config\ActionCatalog;
 use Porta\Config\ActionRegistry;
+use Porta\Config\CommandRegistry;
 use Porta\Config\KeybindingRow;
 use Porta\Config\LiveKeybindings;
 use Porta\Config\PortaJsonWriter;
@@ -23,12 +25,14 @@ use Symfony\Component\Tui\Input\KeyParser;
  * re-merged through {@see LiveKeybindings::rebuild()} and the menus rebake
  * their shortcut labels. (Widget-level defaults still resolve through each
  * widget's own merged keymap, which reads the boot context instance — the
- * IDE-level dispatch and labels are what go live here.)
+ * IDE-level dispatch and labels are what go live here — and a rebind that lands
+ * on that side of the line says "applies on restart" rather than pretending.)
  */
 final class SettingsKeymapController
 {
     public function __construct(
         private readonly ActionRegistry $actions,
+        private readonly CommandRegistry $commands,
         private readonly EditorKeymapProvider $editor,
         private readonly EditorPanes $panes,
         private readonly LiveKeybindings $ideKeys,
@@ -99,10 +103,22 @@ final class SettingsKeymapController
             $this->menuRebuilder->rebuild();
         }
         $saved = $persisted ? '' : ' ('.$this->translator->trans('not saved').')';
+        // Two dispatch paths, and only one of them re-reads the rebuilt map:
+        // `InputDispatcher` matches every key-bound COMMAND against it before
+        // any widget sees the key, and IDE-scope catalog actions ride the same
+        // map — those go live. Everything else is matched by the WIDGET,
+        // against the keymap it merged from the boot WidgetContext (vendor-
+        // owned, final, holding the instance handed to the Tui at startup):
+        // every pure editor action, and every pane action a plugin declares.
+        // Persisting it is real and it fires on the next launch — saying so
+        // beats a flash that claims a rebind the next keypress will not honour.
+        $live = null !== (ActionCatalog::ACTIONS[$action]['keys'] ?? null) || \in_array($action, $this->commands->keyBoundIds(), strict: true);
+        $note = $persisted && !$live ? ' · '.$this->translator->trans('applies on restart') : '';
         $this->notifier->flash($this->translator->trans('Rebound %action% to %key%', [
             '%action%' => $this->translator->trans($this->actions->label($action)),
             '%key%' => ShortcutFormatter::format($token),
         ])
-            .$saved);
+        .$saved
+        .$note);
     }
 }

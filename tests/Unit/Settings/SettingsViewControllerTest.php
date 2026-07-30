@@ -168,7 +168,17 @@ final class SettingsViewControllerTest extends TestCase
             new WorkspaceViews(),
             new PluginManager(new PluginEvents(), $this->pluginSettings ?? new PluginSettings($this->project->dir, [])),
         );
-        $keymap = new SettingsKeymapController(new ActionRegistry($keysHost->manager()), $editor, new EditorPanes(), $liveKeys, $keymapRebuilder, $notifier, $this->project->dir, new Translator('en'));
+        $keymap = new SettingsKeymapController(
+            new ActionRegistry($keysHost->manager()),
+            new CommandRegistry(),
+            $editor,
+            new EditorPanes(),
+            $liveKeys,
+            $keymapRebuilder,
+            $notifier,
+            $this->project->dir,
+            new Translator('en'),
+        );
         $languages = new SettingsLanguageController($editor, $notifier, $this->project->dir, new Translator('en'), []);
         $pool = new LspSessionPool($this->project->dir, new FixedActiveFile(), new Translator('en'));
         $reconfigurer = new LspReconfigurer(

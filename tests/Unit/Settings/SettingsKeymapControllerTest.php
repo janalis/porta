@@ -9,6 +9,7 @@ use Porta\Config\ActionRegistry;
 use Porta\Config\CommandRegistry;
 use Porta\Config\IdeConfig;
 use Porta\Config\KeybindingsFactory;
+use Porta\Config\KeyDispatch;
 use Porta\Config\LiveKeybindings;
 use Porta\Editor\EditorPanes;
 use Porta\I18n\Translator;
@@ -38,6 +39,7 @@ final class SettingsKeymapControllerTest extends TestCase
     private MenuBarWidget $menuBar;
     private ActionRegistry $actions;
     private PluginHost $host;
+    private CommandRegistry $commands;
 
     private function controller(string $rootDir, StatusBarWidget $status, Keybindings $boot, ?EditorPanes $panes = null): SettingsKeymapController
     {
@@ -47,9 +49,10 @@ final class SettingsKeymapControllerTest extends TestCase
         $this->live = new LiveKeybindings(new KeybindingsFactory($this->host, IdeConfig::load($rootDir), $this->actions), $boot, $rootDir);
 
         $this->menuBar = new MenuBarWidget();
+        $this->commands = new CommandRegistry();
         $rebuilder = new MenuRebuilder(
             $this->menuBar,
-            new CommandRegistry(),
+            $this->commands,
             new CodeEditorWidget(),
             $this->live,
             new Translator('en'),
@@ -57,7 +60,17 @@ final class SettingsKeymapControllerTest extends TestCase
             new PluginManager(new PluginEvents(), new PluginSettings($rootDir, [])),
         );
 
-        return new SettingsKeymapController($this->actions, new CodeEditorWidget(), $panes ?? new EditorPanes(), $this->live, $rebuilder, new Notifier($status, $tui), $rootDir, new Translator('en'));
+        return new SettingsKeymapController(
+            $this->actions,
+            $this->commands,
+            new CodeEditorWidget(),
+            $panes ?? new EditorPanes(),
+            $this->live,
+            $rebuilder,
+            new Notifier($status, $tui),
+            $rootDir,
+            new Translator('en'),
+        );
     }
 
     public function testRowsResolveEditorFirstThenIdeBindings(): void
@@ -79,13 +92,17 @@ final class SettingsKeymapControllerTest extends TestCase
         $project = new TempProject();
         $controller = $this->controller($project->dir, $status = new StatusBarWidget(), new Keybindings());
         $parser = $this->live->current()->getParser();
+        // What FileCommandProvider registers: save is a key-bound COMMAND, so
+        // InputDispatcher matches it against the rebuilt map before any widget
+        // sees the key. That is what makes this rebind live.
+        $this->commands->add('save', static function (): void {}, KeyDispatch::Bound);
 
         $controller->rebind('save', "\x1b[24~"); // F12
 
         $this->assertSame(['f12'], IdeConfig::load($project->dir)->keymap['save']);
         $flash = $this->flashText($status);
         $this->assertStringContainsString('Rebound Save File to F12', $flash);
-        $this->assertStringNotContainsString('applies on restart', $flash, 'rebinds are live now');
+        $this->assertStringNotContainsString('applies on restart', $flash, 'save is IDE-scope: the rebuilt map dispatches it immediately');
         $this->assertSame(['f12'], $this->live->getBindings('save'), 'the live map re-merged the persisted rebind');
         $this->assertSame($parser, $this->live->current()->getParser(), 'the shared parser rode through');
     }
@@ -178,5 +195,45 @@ final class SettingsKeymapControllerTest extends TestCase
 
         $this->assertSame('n', $byAction['test_pane_step']->binding, "the pane's own action shows the pane's key");
         $this->assertSame('ctrl+shift+n', $byAction['goto_file']->binding, "a core action the editor also binds keeps the editor's");
+    }
+
+    public function testAWidgetScopeRebindSaysItAppliesOnRestart(): void
+    {
+        // Two scopes, two truths. An IDE-scope action (save) is dispatched from
+        // the map rebuild() swaps, so it is live. A widget-scope one is matched
+        // against the keymap the WIDGET merged from the boot WidgetContext —
+        // vendor-owned, final, and holding the instance handed to the Tui at
+        // startup — so it lands on the next launch. Both are persisted; only
+        // one takes effect now, and the flash has to say which.
+        $project = new TempProject();
+        $controller = $this->controller($project->dir, $status = new StatusBarWidget(), new Keybindings());
+
+        $controller->rebind('duplicate_line', "\x1b[24~"); // F12
+
+        $this->assertSame(['f12'], IdeConfig::load($project->dir)->keymap['duplicate_line'], 'persisted either way');
+        $this->assertStringContainsString('Rebound Duplicate Line or Selection to F12 · applies on restart', $this->flashText($status));
+    }
+
+    public function testAPluginPanesRebindSaysTheSame(): void
+    {
+        // A pane's actions are widget-scope by construction — the pane binds
+        // them — so a plugin author's rebind carries the note too. Nothing
+        // declares it at IDE scope, and nothing can: registerActions() takes no
+        // keys, deliberately.
+        $project = new TempProject(['.porta/plugins/hex/plugin.php' => <<<'PHP'
+                <?php
+                return new class('hex') extends \Porta\Plugin\Api\AbstractPlugin {
+                    public function activate(\Porta\Plugin\Api\PluginApi $api): void
+                    {
+                        $api->registerActions(['hex_next_field' => 'Hex: Next Field']);
+                    }
+                };
+                PHP]);
+        $controller = $this->controller($project->dir, $status = new StatusBarWidget(), new Keybindings());
+        $this->host->ensureLoaded();
+
+        $controller->rebind('hex_next_field', "\x1b[24~");
+
+        $this->assertStringContainsString('Rebound Hex: Next Field to F12 · applies on restart', $this->flashText($status));
     }
 }
