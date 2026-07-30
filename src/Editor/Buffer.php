@@ -44,15 +44,25 @@ final class Buffer
         public ?ImageData $image = null,
         public ?string $helpMarkdown = null,
         public ?string $graphDot = null,
+        public ?string $svg = null,
     ) {
         $this->highlighter = $highlighter ?? new CodeHighlighter();
         $this->highlighter->setFile($path);
     }
 
-    /** Whether this tab is an image shown by the viewer rather than the editor. */
+    /**
+     * Whether this tab is an image shown by the viewer rather than the editor —
+     * decoded pixels, or an SVG the viewer rasterizes for itself.
+     */
     public function isImage(): bool
     {
-        return null !== $this->image;
+        return null !== $this->image || $this->isVector();
+    }
+
+    /** Whether this image tab is a VECTOR document, re-rendered per zoom level. */
+    public function isVector(): bool
+    {
+        return null !== $this->svg;
     }
 
     /** Whether this tab is a rendered documentation page (the F1 help browser). */

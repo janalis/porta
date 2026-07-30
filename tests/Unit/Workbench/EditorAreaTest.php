@@ -9,6 +9,7 @@ use Porta\Editor\BufferManager;
 use Porta\I18n\Translator;
 use Porta\Image\ImageData;
 use Porta\Tests\Support\FakeLayoutEngine;
+use Porta\Tests\Support\FakeRasterizer;
 use Porta\Widget\CodeEditorWidget;
 use Porta\Widget\GraphViewerWidget;
 use Porta\Widget\HelpViewerWidget;
@@ -37,7 +38,7 @@ final class EditorAreaTest extends TestCase
     {
         $this->buffers = new BufferManager();
         $this->editor = new CodeEditorWidget();
-        $this->imageViewer = new ImageViewerWidget();
+        $this->imageViewer = new ImageViewerWidget(new FakeRasterizer(), new Translator('en'));
         $this->helpViewer = new HelpViewerWidget();
         $this->graphViewer = new GraphViewerWidget(new FakeLayoutEngine(), new Translator('en'));
         $this->tui = new Tui(terminal: new VirtualTerminal(columns: 40, rows: 10));

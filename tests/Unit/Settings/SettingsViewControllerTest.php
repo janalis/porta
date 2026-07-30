@@ -53,6 +53,7 @@ use Porta\Settings\SettingsSection;
 use Porta\Settings\SettingsViewController;
 use Porta\Tests\Support\FakeLayoutEngine;
 use Porta\Tests\Support\FakePluginLifecycle;
+use Porta\Tests\Support\FakeRasterizer;
 use Porta\Tests\Support\FakeScheduler;
 use Porta\Tests\Support\FixedActiveFile;
 use Porta\Tests\Support\NavigatesSettings;
@@ -254,7 +255,7 @@ final class SettingsViewControllerTest extends TestCase
             editorArea: new EditorArea(
                 new BufferManager(),
                 $this->editorWidget = new CodeEditorWidget(),
-                new ImageViewerWidget(),
+                new ImageViewerWidget(new FakeRasterizer(), new Translator('en')),
                 new HelpViewerWidget(),
                 new GraphViewerWidget(new FakeLayoutEngine(), new Translator('en')),
                 $this->tui,

@@ -9,6 +9,7 @@ use Porta\Editor\BufferManager;
 use Porta\I18n\Translator;
 use Porta\Terminal\TerminalBuffer;
 use Porta\Tests\Support\FakeLayoutEngine;
+use Porta\Tests\Support\FakeRasterizer;
 use Porta\Tests\Support\TempProject;
 use Porta\Tests\Support\TestBottomDock;
 use Porta\Tests\Support\TestTui;
@@ -55,7 +56,7 @@ final class FocusRingTest extends TestCase
         $editorArea = new EditorArea(
             new BufferManager(),
             $this->editor,
-            new ImageViewerWidget(),
+            new ImageViewerWidget(new FakeRasterizer(), new Translator('en')),
             new HelpViewerWidget(),
             new GraphViewerWidget(new FakeLayoutEngine(), new Translator('en')),
             $this->tui,

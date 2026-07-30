@@ -17,6 +17,7 @@ use Porta\Graph\DotFiles;
 use Porta\History\LocalHistory;
 use Porta\I18n\Translator;
 use Porta\Image\ImageDecoder;
+use Porta\Image\SvgConverter;
 use Porta\Lsp\BufferReopener;
 use Porta\Lsp\FormatOnSave;
 use Porta\Lsp\LspSessionPool;
@@ -167,6 +168,15 @@ final class BufferService implements BufferReopener, DiagnosticsSink, FileOpener
 
             return;
         }
+        if ($buffer->isVector()) {
+            $svg = (string) file_get_contents($buffer->path);
+            if ('' === $svg || mb_check_encoding($svg, encoding: 'UTF-8')) {
+                $buffer->svg = $svg;
+                $buffer->stampFromDisk();
+            }
+
+            return;
+        }
         if ($buffer->isImage() && (int) filesize($buffer->path) <= ImageDecoder::MAX_BYTES) {
             $image = $this->imageDecoder->decode($buffer->path);
             if (null !== $image) {
@@ -182,6 +192,11 @@ final class BufferService implements BufferReopener, DiagnosticsSink, FileOpener
      */
     private function openImageFile(string $path, OpenFocus $focus): void
     {
+        if (SvgConverter::isSvgPath($path)) {
+            $this->openSvgFile($path, $focus);
+
+            return;
+        }
         if ((int) filesize($path) > ImageDecoder::MAX_BYTES) {
             $this->notifier->flash($this->translator->trans('Image too large (> 20 MB)'));
 
@@ -194,6 +209,33 @@ final class BufferService implements BufferReopener, DiagnosticsSink, FileOpener
             return;
         }
         $buffer = $this->buffers->openImage($path, $image);
+        $buffer->stampFromDisk();
+        $this->showBuffer($buffer);
+        $this->dispatcher->dispatch(new BufferOpened($buffer));
+        if (OpenFocus::Editor === $focus) {
+            $this->focusEditorArea();
+        }
+        $this->tui->requestRender();
+    }
+
+    /**
+     * Open an SVG into the image viewer: the source rides the buffer and the
+     * VIEWER rasterizes it, because the pixels depend on the zoom — the graph
+     * tab's arrangement, for the other vector format.
+     */
+    private function openSvgFile(string $path, OpenFocus $focus): void
+    {
+        // No size guard here on purpose, unlike the bitmap branch: there is no
+        // decoder to protect (the source is handed to a subprocess as text), and
+        // the viewer claim's own maxBytes IS the limit — re-checking it against a
+        // constant would contradict a user who deliberately raised that setting.
+        $svg = (string) file_get_contents($path);
+        if ('' !== $svg && !mb_check_encoding($svg, encoding: 'UTF-8')) {
+            $this->notifier->flash($this->translator->trans('Not a UTF-8 text file'));
+
+            return;
+        }
+        $buffer = $this->buffers->openSvg($path, $svg);
         $buffer->stampFromDisk();
         $this->showBuffer($buffer);
         $this->dispatcher->dispatch(new BufferOpened($buffer));
@@ -321,11 +363,19 @@ final class BufferService implements BufferReopener, DiagnosticsSink, FileOpener
 
     public function showBuffer(Buffer $buffer): void
     {
-        if ($buffer->isImage() && null !== $buffer->image) {
+        if ($buffer->isImage()) {
             // Neutralize the editor so any jumpTo() fired after openFile()
             // mutates a throwaway document, not the previous buffer's cursor.
             $this->editor->showDocument('', new Document(''));
-            $this->imageViewer->show($buffer->image);
+            // A vector tab hands over its SOURCE: the viewer owns the pixels,
+            // because which pixels depends on the zoom. The two are exclusive —
+            // an SVG buffer carries no decoded image and vice versa.
+            if ($buffer->isVector()) {
+                $this->imageViewer->showVector($buffer->path, (string) $buffer->svg);
+            }
+            if (null !== $buffer->image) {
+                $this->imageViewer->show($buffer->image);
+            }
             $this->swapEditorPaneTo($this->imageViewer);
             $this->dispatcher->dispatch(new BufferSwitched($buffer));
             $this->tui->requestRender();

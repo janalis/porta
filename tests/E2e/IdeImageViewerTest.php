@@ -299,9 +299,137 @@ final class IdeImageViewerTest extends TestCase
                     $service->openFile((string) realpath($project->path('a.php')));
                     file_put_contents($project->path('img.png'), data: $this->twoColorPng(32, 16));
                     $service->openFile((string) realpath($project->path('img.png')));
-                    $this->await(static function () use ($terminal): bool {
-                        return str_contains(AnsiUtils::stripAnsiCodes($terminal->getOutput()), '32 × 16');
-                    }, what: 'the refreshed dimensions');
+                    $this->await(static fn (): bool => str_contains(AnsiUtils::stripAnsiCodes($terminal->getOutput()), '32 × 16'), what: 'the refreshed dimensions');
+                },
+            ],
+        );
+    }
+
+    private const string SMALL_SVG = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 50"><rect width="100" height="50" fill="#284"/></svg>';
+
+    /** The committed converter stub, driven through the core svgConverter setting. */
+    private static function fakeConverter(): string
+    {
+        return \dirname(__DIR__).'/Support/fake-rsvg';
+    }
+
+    /**
+     * The stub runs via `#!/usr/bin/env php`, so PATH must resolve `php` — the
+     * graph suite's php-only bin dir, for the same reason.
+     */
+    private function phpOnlyPath(TempProject $project): void
+    {
+        $bin = $project->path('.php-only-bin');
+        mkdir($bin);
+        symlink(\PHP_BINARY, $bin.'/php');
+        putenv('PATH='.$bin);
+    }
+
+    public function testAnSvgOpensAsAPictureRasterizedByTheConverter(): void
+    {
+        $project = new TempProject([
+            '.porta.json' => (string) json_encode(['settings' => ['svgConverter' => self::fakeConverter()]]),
+            'logo.svg' => self::SMALL_SVG,
+            'other.svg' => self::SMALL_SVG,
+            'binary.svg' => "\xff\xfe\x00<svg",
+        ]);
+        $this->phpOnlyPath($project);
+
+        $this->runIde(
+            $project,
+            $project->path('logo.svg'),
+            [
+                200 => function ($tui, $terminal, $ide) use ($project): void {
+                    $this->await(static fn (): bool => str_contains(AnsiUtils::stripAnsiCodes($terminal->getOutput()), '100 × 50'), what: 'the rasterized SVG');
+                    $this->assertSame('image-viewer', $tui->getFocus()?->getId(), 'an SVG takes the image pane');
+
+                    $output = $terminal->getOutput();
+                    $this->assertStringContainsString('▀', $output, 'half-block cells rendered');
+                    $this->assertStringContainsString('38;2;40;130;70', $output, "the converter's pixels");
+                    $this->assertStringContainsString('logo.svg', AnsiUtils::stripAnsiCodes($output));
+                    // The size is the DOCUMENT's, not the raster's — the probe
+                    // asked the converter rather than parsing the XML.
+                    $this->assertStringContainsString('100 × 50', AnsiUtils::stripAnsiCodes($output));
+
+                    // Opening another one with editor focus keeps the pane.
+                    $service = Services::resolve($ide, BufferService::class);
+                    $service->openFile((string) realpath($project->path('other.svg')), OpenFocus::Editor);
+                    $tui->tick();
+                    $this->assertSame('image-viewer', $tui->getFocus()?->getId());
+
+                    // Bytes that are not UTF-8 are refused the same way any
+                    // text-backed document is, rather than reaching a converter.
+                    $service->openFile((string) realpath($project->path('binary.svg')));
+                    $this->await(static fn (): bool => str_contains(AnsiUtils::stripAnsiCodes($terminal->getOutput()), 'Not a UTF-8 text file'), what: 'the refusal');
+                },
+            ],
+        );
+    }
+
+    public function testReopeningAChangedSvgRerastersItImmediately(): void
+    {
+        $project = new TempProject([
+            '.porta.json' => (string) json_encode(['settings' => ['svgConverter' => self::fakeConverter()]]),
+            'logo.svg' => self::SMALL_SVG,
+        ]);
+        $this->phpOnlyPath($project);
+
+        $this->runIde(
+            $project,
+            $project->path('logo.svg'),
+            [
+                200 => function ($tui, $terminal, $ide) use ($project): void {
+                    $this->await(static fn (): bool => str_contains(AnsiUtils::stripAnsiCodes($terminal->getOutput()), '100 × 50'), what: 'the first raster');
+
+                    // Change the document on disk and re-open it explicitly: the
+                    // source refreshes without waiting out the 1s reconciler, and
+                    // the pane re-rasterizes what is now there.
+                    file_put_contents($project->path('logo.svg'), data: '<svg data-w="60" viewBox="0 0 60 30"/>');
+                    Services::resolve($ide, BufferService::class)->openFile((string) realpath($project->path('logo.svg')));
+                    $this->await(static fn (): bool => str_contains(AnsiUtils::stripAnsiCodes($terminal->getOutput()), '60 × 30'), what: 'the re-rasterized document');
+                    $this->assertSame('60 × 30', $tui->getById('image-viewer')->statusInfo(), 'a resized document is fitted fresh');
+                },
+            ],
+        );
+    }
+
+    public function testWithoutAConverterAnSvgStaysText(): void
+    {
+        putenv('PATH=/nonexistent'); // nothing to discover, and no setting
+        $project = new TempProject(['logo.svg' => self::SMALL_SVG]);
+
+        $this->runIde(
+            $project,
+            $project->path('logo.svg'),
+            [
+                200 => function ($tui, $terminal): void {
+                    $tui->tick();
+                    $this->assertSame('editor', $tui->getFocus()?->getId(), 'the text path, as before');
+                    $this->assertStringContainsString('<svg', AnsiUtils::stripAnsiCodes($terminal->getOutput()), 'the XML is editable');
+                },
+            ],
+        );
+    }
+
+    public function testTheSvgSettingSendsItBackToTheEditor(): void
+    {
+        $project = new TempProject([
+            '.porta.json' => (string) json_encode([
+                'settings' => ['svgConverter' => self::fakeConverter()],
+                'plugins' => ['image-viewer' => ['svg' => false]],
+            ]),
+            'logo.svg' => self::SMALL_SVG,
+        ]);
+        $this->phpOnlyPath($project);
+
+        $this->runIde(
+            $project,
+            $project->path('logo.svg'),
+            [
+                200 => function ($tui, $terminal): void {
+                    $tui->tick();
+                    $this->assertSame('editor', $tui->getFocus()?->getId(), 'someone who edits SVGs turns the claim off');
+                    $this->assertStringContainsString('<svg', AnsiUtils::stripAnsiCodes($terminal->getOutput()));
                 },
             ],
         );

@@ -23,6 +23,15 @@ enum SvgConverter
     case Magick;
     case Convert;
 
+    /** The extensions the viewer claims when a converter is available. */
+    public const array EXTENSIONS = ['svg'];
+
+    /** Whether the path names an SVG (the viewer's routing test, {@see ImageDecoder::isImagePath}'s sibling). */
+    public static function isSvgPath(string $path): bool
+    {
+        return \in_array(strtolower(pathinfo($path, \PATHINFO_EXTENSION)), self::EXTENSIONS, strict: true);
+    }
+
     public function binaryName(): string
     {
         return match ($this) {

@@ -7,6 +7,7 @@ namespace Porta\Tests\Support;
 use Porta\Editor\BufferManager;
 use Porta\I18n\Translator;
 use Porta\Terminal\TerminalSessions;
+use Porta\Tests\Support\FakeRasterizer;
 use Porta\Widget\CodeEditorWidget;
 use Porta\Widget\DebugPanelWidget;
 use Porta\Widget\DockTabsWidget;
@@ -48,7 +49,7 @@ final class TestBottomDock
             $editorArea ?? new EditorArea(
                 new BufferManager(),
                 new CodeEditorWidget(),
-                new ImageViewerWidget(),
+                new ImageViewerWidget(new FakeRasterizer(), new Translator('en')),
                 new HelpViewerWidget(),
                 new GraphViewerWidget(new FakeLayoutEngine(), new Translator('en')),
                 $tui,

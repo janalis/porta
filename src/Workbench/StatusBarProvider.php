@@ -50,13 +50,13 @@ final class StatusBarProvider
     public function segments(): array
     {
         $active = $this->buffers->active();
-        $image = null !== $active && $active->isImage() ? $active->image : null;
+        $isImage = null !== $active && $active->isImage();
 
         $doc = $this->editor->getDocument();
         $path = $this->editor->getFilePath();
 
         $left = match (true) {
-            null !== $active && (null !== $image || $active->isHelp() || $active->isGraph()) => ProjectPaths::relative($this->rootDir, $active->path),
+            null !== $active && ($isImage || $active->isHelp() || $active->isGraph()) => ProjectPaths::relative($this->rootDir, $active->path),
             null === $path => $this->translator->trans('porta — open a file from the tree (Enter)'),
             default => ProjectPaths::relative($this->rootDir, $path).($doc->isDirty() ? ' '.Glyphs::DIRTY : ''),
         };
@@ -80,9 +80,11 @@ final class StatusBarProvider
         }
         $left = $prefix.$left;
 
-        if (null !== $image) {
+        if ($isImage) {
             // An image tab: dimensions + zoom instead of cursor/LSP/problems.
-            $right = \sprintf('%d × %d  %s  %s', $image->width, $image->height, $this->imageViewer->zoomLabel(), $this->translator->trans('+/- zoom  0 fit  Arrows pan  Ctrl+Q quit'));
+            // The WIDGET answers for the size, not the buffer: an SVG tab has no
+            // decoded pixels of its own, and its dimensions are the document's.
+            $right = trim(\sprintf('%s  %s  %s', $this->imageViewer->statusInfo(), $this->imageViewer->zoomLabel(), $this->translator->trans('+/- zoom  0 fit  Arrows pan  Ctrl+Q quit')));
 
             return ['left' => $left, 'right' => $right, 'branchStart' => $branchStart, 'branchEnd' => $branchEnd];
         }

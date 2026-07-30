@@ -22,6 +22,7 @@ use Porta\Overlay\State\MenuOverlayPanes;
 use Porta\Settings\SettingsHighlightController;
 use Porta\Tests\Support\FakeLayoutEngine;
 use Porta\Tests\Support\FakePluginLifecycle;
+use Porta\Tests\Support\FakeRasterizer;
 use Porta\Tests\Support\RendersRoot;
 use Porta\Tests\Support\TestOverlayPane;
 use Porta\Ui\BidiTui;
@@ -82,7 +83,7 @@ final class WelcomeModalControllerTest extends TestCase
         $editArea = new EditorArea(
             new BufferManager(),
             new CodeEditorWidget(),
-            new ImageViewerWidget(),
+            new ImageViewerWidget(new FakeRasterizer(), new Translator('en')),
             new HelpViewerWidget(),
             new GraphViewerWidget(new FakeLayoutEngine(), new Translator('en')),
             $this->tui,

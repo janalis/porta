@@ -12,6 +12,7 @@ use Porta\Layout\PaneLayout;
 use Porta\Layout\ResponsiveLayout;
 use Porta\Overlay\Region\FloatingRegions;
 use Porta\Tests\Support\FakeLayoutEngine;
+use Porta\Tests\Support\FakeRasterizer;
 use Porta\Tests\Support\TempProject;
 use Porta\Tests\Support\TestWorkspaceLayout;
 use Porta\Ui\BidiTui;
@@ -72,7 +73,7 @@ final class ResponsiveLayoutTest extends TestCase
         $editorArea = new EditorArea(
             new BufferManager(),
             $this->editor,
-            new ImageViewerWidget(),
+            new ImageViewerWidget(new FakeRasterizer(), new Translator('en')),
             new HelpViewerWidget(),
             new GraphViewerWidget(new FakeLayoutEngine(), new Translator('en')),
             $this->bidi,

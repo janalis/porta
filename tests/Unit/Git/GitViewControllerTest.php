@@ -22,6 +22,7 @@ use Porta\Layout\GitSidebar;
 use Porta\Layout\LayoutController;
 use Porta\Support\Clipboard;
 use Porta\Tests\Support\FakeLayoutEngine;
+use Porta\Tests\Support\FakeRasterizer;
 use Porta\Tests\Support\GitBinary;
 use Porta\Tests\Support\Presence;
 use Porta\Tests\Support\Probe;
@@ -135,7 +136,7 @@ final class GitViewControllerTest extends TestCase
         $editorArea = new EditorArea(
             new BufferManager(),
             $this->editor,
-            new ImageViewerWidget(),
+            new ImageViewerWidget(new FakeRasterizer(), new Translator('en')),
             new HelpViewerWidget(),
             new GraphViewerWidget(new FakeLayoutEngine(), new Translator('en')),
             $this->tui,

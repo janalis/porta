@@ -5,7 +5,10 @@ declare(strict_types=1);
 namespace Porta\Tests\Unit\Widget;
 
 use PHPUnit\Framework\TestCase;
+use Porta\I18n\Translator;
 use Porta\Image\ImageData;
+use Porta\Tests\Support\FakeRasterizer;
+use Porta\Tests\Support\PngFixture;
 use Porta\Tests\Support\RecordingViewerTabHandler;
 use Porta\Ui\Glyphs;
 use Porta\Widget\ImageViewerWidget;
@@ -14,6 +17,24 @@ use Symfony\Component\Tui\Render\RenderContext;
 
 final class ImageViewerWidgetTest extends TestCase
 {
+    private FakeRasterizer $rasterizer;
+
+    protected function setUp(): void
+    {
+        $this->rasterizer = new FakeRasterizer();
+    }
+
+    /** A pane whose converter is scripted — the vector-mode rig. */
+    private function vectorWidget(): ImageViewerWidget
+    {
+        return new ImageViewerWidget($this->rasterizer, new Translator('en'));
+    }
+
+    private static function plain(array $lines): string
+    {
+        return implode("\n", array_map(AnsiUtils::stripAnsiCodes(...), $lines));
+    }
+
     /** A 64×8 horizontal gradient (red channel = x*4) for pan-visible sampling. */
     private function gradient(): ImageData
     {
@@ -29,7 +50,7 @@ final class ImageViewerWidgetTest extends TestCase
 
     public function testAFocusedPaneShowsAFocusFrameThatSurvivesNoAnsi(): void
     {
-        $widget = new ImageViewerWidget();
+        $widget = new ImageViewerWidget(new FakeRasterizer(), new Translator('en'));
         $plain = static fn (array $lines): string => implode("\n", array_map(AnsiUtils::stripAnsiCodes(...), $lines));
 
         $unfocused = $plain($widget->render(new RenderContext(12, 4)));
@@ -48,7 +69,7 @@ final class ImageViewerWidgetTest extends TestCase
 
     public function testRendersBlankWithoutAnImageAndNothingOnAZeroSizePane(): void
     {
-        $widget = new ImageViewerWidget();
+        $widget = new ImageViewerWidget(new FakeRasterizer(), new Translator('en'));
         $this->assertSame([], $widget->render(new RenderContext(10, 0)), 'zero rows');
         $this->assertSame(array_fill(0, count: 3, value: str_repeat(' ', times: 10)), $widget->render(new RenderContext(10, 3)));
         $this->assertSame('', $widget->zoomLabel(), 'no image, no label');
@@ -62,7 +83,7 @@ final class ImageViewerWidgetTest extends TestCase
 
     public function testShowsAnImageAndZoomKeysDriveTheLabel(): void
     {
-        $widget = new ImageViewerWidget();
+        $widget = new ImageViewerWidget(new FakeRasterizer(), new Translator('en'));
         $widget->show($this->gradient());
         $widget->render(new RenderContext(8, 2)); // fit = min(8/64, 4/8) = 0.125
 
@@ -90,7 +111,7 @@ final class ImageViewerWidgetTest extends TestCase
 
     public function testATrackpadBurstGlidesBetweenTheRungs(): void
     {
-        $widget = new ImageViewerWidget();
+        $widget = new ImageViewerWidget(new FakeRasterizer(), new Translator('en'));
         $widget->show($this->gradient());
         $widget->render(new RenderContext(8, 2));
         $widget->handleInput('1'); // 100%, off the fit
@@ -107,7 +128,7 @@ final class ImageViewerWidgetTest extends TestCase
 
     public function testArrowsPanAndShiftPansFiveTimesAsFar(): void
     {
-        $widget = new ImageViewerWidget();
+        $widget = new ImageViewerWidget(new FakeRasterizer(), new Translator('en'));
         $widget->show($this->gradient());
         $widget->render(new RenderContext(4, 2)); // viewport 4×4 px at 100%
         $widget->handleInput('1');
@@ -142,7 +163,7 @@ final class ImageViewerWidgetTest extends TestCase
 
     public function testPassThroughActionsFireTheCallbacks(): void
     {
-        $widget = new ImageViewerWidget();
+        $widget = new ImageViewerWidget(new FakeRasterizer(), new Translator('en'));
         $handler = new RecordingViewerTabHandler();
         $widget->setHandler($handler);
         $widget->show($this->gradient());
@@ -158,5 +179,111 @@ final class ImageViewerWidgetTest extends TestCase
 
         $this->assertSame(['cycle:1', 'cycle:-1', 'close', 'goto', 'save_all', 'view', 'view'], $handler->events);
         $this->assertSame('50%', $widget->zoomLabel(), 'wheel zoom stepped the ladder');
+    }
+
+    public function testAnSvgIsProbedAtItsOwnSizeAndPaintsWhatComesBack(): void
+    {
+        $this->rasterizer->nextPng = PngFixture::bytes(100, 50);
+        $handler = new RecordingViewerTabHandler();
+        $widget = $this->vectorWidget();
+        $widget->setHandler($handler);
+        $widget->showVector('/p/a.svg', '<svg viewBox="0 0 100 50"/>');
+
+        $this->assertSame([null], $this->rasterizer->scales, 'the first ask has no scale: that IS the size probe');
+        $this->assertSame('100 × 50', $widget->statusInfo(), "the document's own pixels, from the converter");
+        $raw = implode("\n", $widget->render(new RenderContext(50, 13)));
+        $this->assertStringContainsString('▀', $raw, 'and it paints as half-blocks like any image');
+        $this->assertStringContainsString('38;2;200;40;40', $raw);
+        $this->assertContains('view', $handler->events, 'the status bar hears about it');
+    }
+
+    public function testTheSameDocumentIsNotRasterizedTwice(): void
+    {
+        $this->rasterizer->nextPng = PngFixture::bytes(100, 50);
+        $widget = $this->vectorWidget();
+        $widget->showVector('/p/a.svg', '<svg/>');
+        $widget->showVector('/p/a.svg', '<svg/>');
+
+        $this->assertSame([null], $this->rasterizer->scales, 'same tab, same document');
+    }
+
+    public function testTheHintShowsWhileTheConverterWorks(): void
+    {
+        $this->rasterizer->deferred = true;
+        $widget = $this->vectorWidget();
+        $widget->showVector('/p/a.svg', '<svg viewBox="0 0 100 50"/>');
+
+        $this->assertStringContainsString('rendering…', self::plain($widget->render(new RenderContext(40, 8))));
+        $this->assertSame('', $widget->statusInfo(), 'no size until the converter answers');
+
+        $deliver = $this->rasterizer->pendingPng;
+        $this->assertNotNull($deliver);
+        $deliver(PngFixture::bytes(100, 50));
+        $this->assertStringContainsString('▀', implode('', $widget->render(new RenderContext(40, 8))), 'delivery repaints');
+    }
+
+    public function testAConverterFailureFillsThePaneWithItsReason(): void
+    {
+        $this->rasterizer->nextPng = 'no SVG converter found';
+        $this->rasterizer->pngIsError = true;
+        $widget = $this->vectorWidget();
+        $widget->showVector('/p/a.svg', '<svg/>');
+
+        $this->assertStringContainsString('no SVG converter found', self::plain($widget->render(new RenderContext(60, 9))));
+    }
+
+    public function testAFailedRerenderKeepsThePictureUnderABanner(): void
+    {
+        $this->rasterizer->nextPng = PngFixture::bytes(100, 50);
+        $widget = $this->vectorWidget();
+        $widget->showVector('/p/a.svg', '<svg viewBox="0 0 100 50"/>');
+        $widget->render(new RenderContext(50, 13));
+
+        // A later render fails: the pane keeps its pixels and says why.
+        $this->rasterizer->deferred = true;
+        $widget->showVector('/p/a.svg', '<svg viewBox="0 0 100 50"><rect/></svg>');
+        $fail = $this->rasterizer->pendingError;
+        $this->assertNotNull($fail);
+        $fail('XML parse error');
+
+        $lines = $widget->render(new RenderContext(50, 13));
+        $this->assertStringContainsString('XML parse error', self::plain($lines));
+        $this->assertStringContainsString('▀', implode('', $lines), 'the previous raster is still on screen');
+    }
+
+    public function testUndecodableBytesReportInsteadOfBlanking(): void
+    {
+        $this->rasterizer->nextPng = 'this is not a PNG';
+        $widget = $this->vectorWidget();
+        $widget->showVector('/p/a.svg', '<svg/>');
+
+        $this->assertStringContainsString('could not be decoded', self::plain($widget->render(new RenderContext(60, 9))));
+    }
+
+    public function testALateRasterForAnAbandonedTabIsDropped(): void
+    {
+        $this->rasterizer->deferred = true;
+        $widget = $this->vectorWidget();
+        $widget->showVector('/p/a.svg', '<svg id="a"/>');
+        $deliverA = $this->rasterizer->pendingPng;
+        $this->assertNotNull($deliverA);
+
+        $widget->showVector('/p/b.svg', '<svg id="b"/>'); // the tab moves on
+        $deliverA(PngFixture::bytes(100, 50)); // the converter answers for the one that left
+
+        $this->assertSame('', $widget->statusInfo(), 'a stale raster never reaches the pane');
+    }
+
+    public function testClearingLeavesNoVectorStateBehind(): void
+    {
+        $this->rasterizer->nextPng = PngFixture::bytes(100, 50);
+        $widget = $this->vectorWidget();
+        $widget->showVector('/p/a.svg', '<svg/>');
+        $widget->clear();
+
+        $this->assertSame('', $widget->statusInfo());
+        $this->assertSame('', $widget->zoomLabel());
+        $widget->showVector('/p/a.svg', '<svg/>'); // the same source is a fresh document after a clear
+        $this->assertSame([null, null], $this->rasterizer->scales);
     }
 }

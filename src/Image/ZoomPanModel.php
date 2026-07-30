@@ -28,6 +28,17 @@ final class ZoomPanModel
         private readonly ?array $steps = null,
     ) {}
 
+    /**
+     * The document's own size — what the status bar reports and what every
+     * coordinate here is expressed in.
+     *
+     * @return array{0: int, 1: int}
+     */
+    public function dimensions(): array
+    {
+        return [$this->imgW, $this->imgH];
+    }
+
     /** The factor actually applied for a pane of $cols × $pxRows (fit resolves here). */
     public function effectiveScale(int $cols, int $pxRows): float
     {

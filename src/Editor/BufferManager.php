@@ -49,6 +49,18 @@ final class BufferManager
         return $buffer;
     }
 
+    /** Open (or re-activate) an SVG tab carrying its source — the viewer rasterizes it per zoom level. */
+    public function openSvg(string $path, string $svg): Buffer
+    {
+        $this->buffers[$path] ??= new Buffer($path, new Document(''), $this->highlighters->forFile($path), svg: $svg);
+        $buffer = $this->buffers[$path];
+        $buffer->svg = $svg; // refresh when the document changed on disk
+        $this->activePath = $path;
+        $buffer->lastFocused = ++$this->focusCounter;
+
+        return $buffer;
+    }
+
     /** Open (or re-activate) a rendered help tab carrying the page's markdown. */
     public function openHelp(string $path, string $markdown): Buffer
     {

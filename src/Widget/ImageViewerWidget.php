@@ -6,8 +6,11 @@ namespace Porta\Widget;
 
 use Porta\Container\AsIdeService;
 use Porta\Container\AsWidget;
+use Porta\I18n\Translator;
 use Porta\Image\HalfBlockRasterizer;
 use Porta\Image\ImageData;
+use Porta\Image\ImageDecoder;
+use Porta\Image\Rasterizer;
 use Porta\Image\ScaledSource;
 use Porta\Image\ZoomPanModel;
 use Porta\Ui\Glyphs;
@@ -46,6 +49,15 @@ final class ImageViewerWidget extends AbstractWidget implements FocusableInterfa
 
     private ?ImageData $image = null;
     private ?ZoomPanModel $view = null;
+    /** The SVG source of a VECTOR tab, re-rasterized per zoom level; null for a bitmap tab. */
+    private ?string $svg = null;
+    /** The vector tab's path, so a REGENERATION is told from a tab switch. */
+    private ?string $svgPath = null;
+    /** The scale the shown raster was rendered at — its pixels per document pixel. */
+    private float $rasterScale = 1.0;
+    private bool $rasterizing = false;
+    /** The converter's stderr (or the missing-converter message), shown as a banner. */
+    private ?string $error = null;
     /** Memoises the area-averaged copy this pane samples while shrinking. */
     private readonly ScaledSource $scaled;
     /** last rendered pane size, so key handling scales/pans what is on screen */
@@ -53,8 +65,11 @@ final class ImageViewerWidget extends AbstractWidget implements FocusableInterfa
     private int $lastRows = 24;
     private ?ViewerTabHandler $handler = null;
 
-    public function __construct(?Styles $styles = null)
-    {
+    public function __construct(
+        private readonly Rasterizer $rasterizer,
+        private readonly Translator $translator,
+        ?Styles $styles = null,
+    ) {
         $this->initStyles($styles);
         $this->scaled = new ScaledSource();
     }
@@ -67,17 +82,123 @@ final class ImageViewerWidget extends AbstractWidget implements FocusableInterfa
     /** Show an image, resetting the view to fit-to-pane. */
     public function show(ImageData $image): void
     {
+        $this->reset();
         $this->image = $image;
         $this->view = new ZoomPanModel($image->width, $image->height);
+        $this->invalidate();
+    }
+
+    /**
+     * Show an SVG: the pane has no pixels yet, so it asks the converter for the
+     * document at its OWN size. That first answer establishes both the bitmap
+     * and the zoom model's dimensions, which is why the status bar and the zoom
+     * label go on speaking in the SVG's own pixels — 100% means 100% of the
+     * document, not of whatever raster happens to be on screen.
+     */
+    public function showVector(string $path, string $svg): void
+    {
+        if ($path === $this->svgPath && $svg === $this->svg) {
+            return; // same tab, same document
+        }
+        if ($path !== $this->svgPath) {
+            // A different tab: its raster must not paint under this document.
+            // The SAME tab re-shown (the file changed on disk) keeps what is on
+            // screen until the new render lands — the graph viewer's contract.
+            $this->reset();
+        }
+        $this->error = null;
+        $this->svgPath = $path;
+        $this->svg = $svg;
+        $this->rasterize(scale: null);
         $this->invalidate();
     }
 
     /** Drop the image reference (frees the GdImage once the buffer is gone too). */
     public function clear(): void
     {
+        $this->reset();
+        $this->invalidate();
+    }
+
+    /** Forget everything about the shown document — the shared head of show/showVector/clear. */
+    private function reset(): void
+    {
         $this->image = null;
         $this->view = null;
-        $this->invalidate();
+        $this->svg = null;
+        $this->svgPath = null;
+        $this->rasterScale = 1.0;
+        $this->rasterizing = false;
+        $this->error = null;
+    }
+
+    /**
+     * Ask the converter for this document at $scale (null = its own size). The
+     * previous raster stays on screen while it works — paint-then-refine, the
+     * highlighter's contract — and a failure keeps it too, under the banner.
+     */
+    private function rasterize(?float $scale): void
+    {
+        $svg = $this->svg;
+        // Only reachable from showVector() and the zoom path, both of which run
+        // with a document shown.
+        \assert(null !== $svg, description: 'a rasterization is only ever asked for a shown document');
+        $this->rasterizing = true;
+        $this->rasterizer->rasterize(
+            $svg,
+            $scale,
+            function (string $png) use ($svg, $scale): void {
+                $this->rasterizing = false;
+                if ($svg !== $this->svg) {
+                    return; // the tab moved on while the converter was working
+                }
+                $image = $this->decoded($png);
+                if (null === $image) {
+                    return;
+                }
+                $this->image = $image;
+                $this->rasterScale = $scale ?? 1.0;
+                // The document's own size is the view's coordinate space, so a
+                // 2× raster is still a view of the same 100×50 document — and the
+                // view survives it. A document of a DIFFERENT size is a different
+                // picture (the file changed on disk), so that one is fitted
+                // fresh: the graph viewer's extent rule.
+                $size = [
+                    max(1, (int) round($image->width / $this->rasterScale)),
+                    max(1, (int) round($image->height / $this->rasterScale)),
+                ];
+                if (null === $this->view || $size !== $this->view->dimensions()) {
+                    $this->view = new ZoomPanModel(...$size);
+                }
+                $this->invalidate();
+                $this->handler?->viewChanged();
+            },
+            function (string $message) use ($svg): void {
+                $this->rasterizing = false;
+                if ($svg === $this->svg) {
+                    $this->error = $message;
+                    $this->invalidate();
+                }
+            },
+        );
+    }
+
+    /** The PNG the converter produced, or null after recording why it is unusable. */
+    private function decoded(string $png): ?ImageData
+    {
+        $image = new ImageDecoder()->decodeBytes($png);
+        if (null === $image) {
+            $this->error = $this->translator->trans('the SVG could not be decoded');
+            $this->invalidate();
+        }
+
+        return $image;
+    }
+
+    /** The status bar's size text ('64 × 64' in the document's own pixels), '' when nothing is shown. */
+    public function statusInfo(): string
+    {
+        return null === $this->view ? '' : \sprintf('%d × %d', ...$this->view->dimensions());
     }
 
     /** The status bar's zoom text ('Fit (37%)' / '200%'), '' when nothing is shown. */
@@ -130,15 +251,7 @@ final class ImageViewerWidget extends AbstractWidget implements FocusableInterfa
         }
         $this->lastCols = $cols;
         $this->lastRows = $rows;
-        $lines =
-            null === $this->image || null === $this->view
-                ? array_fill(0, $rows, str_repeat(' ', $cols))
-                : HalfBlockRasterizer::render(
-                    $this->scaled->forScale($this->image, $this->view->effectiveScale($cols, 2 * $rows)),
-                    $this->view,
-                    $cols,
-                    $rows,
-                );
+        $lines = $this->contentLines($cols, $rows);
 
         // A caret-less, row-less pane still needs a focus cue like its siblings:
         // a box-drawing frame drawn over the image's edge ring while focused. The
@@ -146,8 +259,47 @@ final class ImageViewerWidget extends AbstractWidget implements FocusableInterfa
         if ($this->isFocused() && $cols >= 3 && $rows >= 3) {
             $lines = $this->focusFrame($lines, $cols, $rows);
         }
+        // A vector tab's banner outranks the focus frame's top border, the graph
+        // viewer's rule — a converter error must not hide behind focus chrome.
+        if (null !== $this->image && null !== $this->error) {
+            $banner = ' ✗ '.explode("\n", $this->error)[0].' ';
+            $lines[0] = AnsiUtils::truncateToWidth($this->styles->of(Role::DiagError)->apply($banner), $cols, pad: true);
+        }
 
         return $this->withMenuOverlay($lines, $cols);
+    }
+
+    /**
+     * The pane's pixels, or — for a vector tab with nothing rendered yet — the
+     * progress hint or the reason there never will be one.
+     *
+     * @return list<string>
+     */
+    private function contentLines(int $cols, int $rows): array
+    {
+        if (null !== $this->image && null !== $this->view) {
+            return HalfBlockRasterizer::render(
+                $this->scaled->forScale($this->image, $this->view->effectiveScale($cols, 2 * $rows), ratio: $this->rasterScale),
+                $this->view,
+                $cols,
+                $rows,
+            );
+        }
+        $blank = array_fill(0, max(1, $rows), str_repeat(' ', max(1, $cols)));
+        $message = match (true) {
+            null !== $this->error => explode("\n", $this->error)[0],
+            $this->rasterizing => '⏳ '.$this->translator->trans('rendering…'),
+            default => '',
+        };
+        if ('' === $message) {
+            return $blank;
+        }
+        $text = AnsiUtils::truncateToWidth($message, $cols);
+        $pad = max(0, intdiv($cols - AnsiUtils::visibleWidth($text), num2: 2));
+        $style = null !== $this->error ? Role::DiagError : Role::Dim;
+        $blank[intdiv($rows, num2: 2)] = str_repeat(' ', $pad).$this->styles->of($style)->apply($text).str_repeat(' ', max(0, $cols - $pad - AnsiUtils::visibleWidth($text)));
+
+        return $blank;
     }
 
     /**

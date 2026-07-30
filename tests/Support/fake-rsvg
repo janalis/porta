@@ -30,8 +30,14 @@ foreach ($args as $index => $arg) {
     }
 }
 
-$width = max(1, (int) round(100 * $scale));
-$height = max(1, (int) round(50 * $scale));
+// The document's own width, so a test can change the FILE and see the pane
+// follow: `data-w="60"` renders 60×30 at 1:1.
+$base = 100;
+if (1 === preg_match('/data-w="(\d+)"/', $stdin, $match)) {
+    $base = max(1, (int) $match[1]);
+}
+$width = max(1, (int) round($base * $scale));
+$height = max(1, (int) round(($base / 2) * $scale));
 $gd = imagecreatetruecolor($width, $height);
 imagefilledrectangle($gd, 0, 0, $width - 1, $height - 1, (int) imagecolorallocate($gd, 40, 130, 70));
 imagepng($gd);
