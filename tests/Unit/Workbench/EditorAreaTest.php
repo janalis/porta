@@ -57,13 +57,13 @@ final class EditorAreaTest extends TestCase
     {
         $gd = imagecreatetruecolor(2, height: 2);
         \assert(false !== $gd, description: 'the truecolor image handle was created');
-        $this->buffers->openImage('/tmp/a.png', new ImageData($gd, 2, 2, 10));
+        $this->buffers->openPane('/tmp/a.png', 'image', new ImageData($gd, 2, 2, 10));
         $this->assertSame($this->imageViewer, $this->area->widget(), 'image tab: the image viewer');
 
-        $this->buffers->openHelp('/tmp/help.md', '# Hi');
+        $this->buffers->openPane('/tmp/help.md', 'help', '# Hi');
         $this->assertSame($this->helpViewer, $this->area->widget(), 'help tab: the help viewer');
 
-        $this->buffers->openGraph('/tmp/arch.dot', 'digraph {}');
+        $this->buffers->openPane('/tmp/arch.dot', 'graph', 'digraph {}');
         $this->assertSame($this->graphViewer, $this->area->widget(), 'graph tab: the graph viewer');
     }
 

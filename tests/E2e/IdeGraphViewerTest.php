@@ -255,7 +255,7 @@ final class IdeGraphViewerTest extends TestCase
                     $service->openFile($phpPath);
                     file_put_contents($dotPath, data: "digraph G { A -> B; }\n");
                     $service->openFile($dotPath);
-                    $this->assertSame("digraph G { A -> B; }\n", $buffers->get($dotPath)?->graphDot, 'the payload refreshed on the explicit re-open');
+                    $this->assertSame("digraph G { A -> B; }\n", $buffers->get($dotPath)?->panePayload, 'the payload refreshed on the explicit re-open');
 
                     $service->openFile($bigPath);
                     $this->assertCount(2, $buffers->all(), 'an oversized DOT is refused');

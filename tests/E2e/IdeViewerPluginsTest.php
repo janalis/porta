@@ -84,24 +84,24 @@ final class IdeViewerPluginsTest extends TestCase
                     $this->await(static fn (): bool => str_contains(AnsiUtils::stripAnsiCodes($terminal->getOutput()), 'nodes'), what: 'the graph layout');
                     $buffers = Services::resolve($ide, BufferManager::class);
                     $aPath = (string) realpath($project->path('a.dot'));
-                    $this->assertTrue($buffers->get($aPath)?->isGraph(), 'default-enabled: the viewer routed the initial file');
+                    $this->assertTrue($buffers->get($aPath)?->paneId === 'graph', 'default-enabled: the viewer routed the initial file');
 
                     $lifecycle = Services::resolve($ide, PluginLifecycle::class);
                     $lifecycle->disable('graph-viewer');
-                    $this->assertTrue($buffers->get($aPath)?->isGraph(), 'the open tab STAYS a graph tab');
+                    $this->assertTrue($buffers->get($aPath)?->paneId === 'graph', 'the open tab STAYS a graph tab');
                     $this->assertNull(Services::resolve($ide, CommandRegistry::class)->label('graph-viewer:architecture'), 'the plugin commands left the registry live');
 
                     $service = Services::resolve($ide, BufferService::class);
                     $bPath = (string) realpath($project->path('b.dot'));
                     $service->openFile($bPath);
                     $tui->tick();
-                    $this->assertFalse($buffers->get($bPath)?->isGraph(), 'a NEW .dot open routes to text while disabled');
+                    $this->assertFalse($buffers->get($bPath)?->paneId === 'graph', 'a NEW .dot open routes to text while disabled');
 
                     $lifecycle->enable('graph-viewer');
                     $this->assertNotNull(Services::resolve($ide, CommandRegistry::class)->label('graph-viewer:architecture'), 're-enable restores the commands live');
                     $cPath = (string) realpath($project->path('c.dot'));
                     $service->openFile($cPath);
-                    $this->assertTrue($buffers->get($cPath)?->isGraph(), 'routing resumed for files opened afterwards');
+                    $this->assertTrue($buffers->get($cPath)?->paneId === 'graph', 'routing resumed for files opened afterwards');
                 },
             ],
         );

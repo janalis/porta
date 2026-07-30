@@ -69,15 +69,24 @@ final class FilesystemReconciler
 
         // The file changed on disk. Record the new stamp either way so we react once.
         $buffer->diskStamp = $stamp;
-        if ($buffer->isImage()) {
+        if ('image' === $buffer->paneId) {
+            // A VECTOR tab's payload is its SOURCE, not pixels: the bitmap path
+            // would ask the decoder for an SVG, be refused, and return — which
+            // is why an SVG edited on disk never used to reload at all. The
+            // payload shape is what tells the two apart.
+            if (\is_string($buffer->panePayload)) {
+                $this->reloadVectorBuffer($buffer);
+
+                return;
+            }
             $this->reloadImageBuffer($buffer);
 
             return;
         }
-        if ($buffer->isHelp()) {
+        if ('help' === $buffer->paneId) {
             $content = $this->readTextFile($buffer->path);
             if (null !== $content) {
-                $buffer->helpMarkdown = $content;
+                $buffer->panePayload = $content;
                 if ($this->buffers->active() === $buffer && $buffer->path === $this->helpViewer->path()) {
                     $this->helpViewer->show($buffer->path, $content);
                 }
@@ -86,13 +95,13 @@ final class FilesystemReconciler
 
             return;
         }
-        if ($buffer->isGraph()) {
+        if ('graph' === $buffer->paneId) {
             // The live-refresh path: a regenerated (or hand-edited) DOT re-lays
             // out in place; invalid new content keeps the previous rendering
             // under the viewer's error banner.
             $content = $this->readTextFile($buffer->path);
             if (null !== $content) {
-                $buffer->graphDot = $content;
+                $buffer->panePayload = $content;
                 if ($this->buffers->active() === $buffer) {
                     $this->graphViewer->show($buffer->path, $content);
                 }
@@ -113,6 +122,20 @@ final class FilesystemReconciler
         $this->reloadBuffer($buffer, $content);
     }
 
+    /** Re-read an externally changed SVG; the viewer re-rasterizes it at the current zoom. */
+    private function reloadVectorBuffer(Buffer $buffer): void
+    {
+        $content = $this->readTextFile($buffer->path);
+        if (null === $content) {
+            return;
+        }
+        $buffer->panePayload = $content;
+        if ($buffer === $this->buffers->active()) {
+            $this->imageViewer->showVector($buffer->path, $content);
+        }
+        $this->notifier->flash($this->translator->trans('Reloaded %file%', ['%file%' => $this->relativePath($buffer->path)]));
+    }
+
     /** Re-decode an externally changed image; undecodable new bytes keep the old pixels. */
     private function reloadImageBuffer(Buffer $buffer): void
     {
@@ -120,7 +143,7 @@ final class FilesystemReconciler
         if (null === $image) {
             return;
         }
-        $buffer->image = $image;
+        $buffer->panePayload = $image;
         if ($buffer === $this->buffers->active()) {
             $this->imageViewer->show($image);
         }

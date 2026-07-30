@@ -6,14 +6,14 @@ namespace Porta\Editor;
 
 use Porta\Config\EditorConfig\ResolvedEditorConfig;
 use Porta\Highlight\CodeHighlighter;
-use Porta\Image\ImageData;
 
 /**
  * One open file: its document (cursor, undo history), diagnostics and its
  * own syntax-highlight cache, so switching buffers never re-highlights.
- * A viewer buffer (image / help / graph) carries its payload beside a
- * permanently-empty document (never dirty, cursor pinned at 0:0), so
- * text-path consumers stay safe.
+ * A viewer buffer carries the id of the PANE that shows it and that pane's own
+ * payload, beside a permanently-empty document (never dirty, cursor pinned at
+ * 0:0) so text-path consumers stay safe. Core never looks inside the payload —
+ * it is decoded pixels, DOT source or markdown, and only its pane knows which.
  */
 final class Buffer
 {
@@ -41,46 +41,24 @@ final class Buffer
         public readonly string $path,
         public readonly Document $document,
         ?CodeHighlighter $highlighter = null,
-        public ?ImageData $image = null,
-        public ?string $helpMarkdown = null,
-        public ?string $graphDot = null,
-        public ?string $svg = null,
+        /** The registered pane that shows this buffer; null means the text editor. */
+        public ?string $paneId = null,
+        /** Whatever that pane's loader produced for this path — opaque to core. */
+        public mixed $panePayload = null,
     ) {
         $this->highlighter = $highlighter ?? new CodeHighlighter();
         $this->highlighter->setFile($path);
     }
 
     /**
-     * Whether this tab is an image shown by the viewer rather than the editor —
-     * decoded pixels, or an SVG the viewer rasterizes for itself.
+     * Any non-text tab — the single spelling of the "not code" guard, and the
+     * one kind question core still asks. Nine callers gate on it: the save path
+     * (never write the empty backing document over a real file), git marks, LSP
+     * didOpen, debug decorations and the modal-hosting fallbacks.
      */
-    public function isImage(): bool
-    {
-        return null !== $this->image || $this->isVector();
-    }
-
-    /** Whether this image tab is a VECTOR document, re-rendered per zoom level. */
-    public function isVector(): bool
-    {
-        return null !== $this->svg;
-    }
-
-    /** Whether this tab is a rendered documentation page (the F1 help browser). */
-    public function isHelp(): bool
-    {
-        return null !== $this->helpMarkdown;
-    }
-
-    /** Whether this tab is a Graphviz DOT document shown by the graph viewer. */
-    public function isGraph(): bool
-    {
-        return null !== $this->graphDot;
-    }
-
-    /** Any non-text tab (image / help / graph) — the single spelling of the "not code" guard. */
     public function isViewer(): bool
     {
-        return $this->isImage() || $this->isHelp() || $this->isGraph();
+        return null !== $this->paneId;
     }
 
     /** Whether the document has unsaved changes. */

@@ -29,7 +29,7 @@ final class TabListProvider
     /** Help pages share one "Documentation" tab name; a titled buffer (the architecture graph) shows its translated title; everything else its basename. */
     private function title(Buffer $b): string
     {
-        if ($b->isHelp()) {
+        if ('help' === $b->paneId) {
             return $this->translator->trans('Documentation');
         }
 

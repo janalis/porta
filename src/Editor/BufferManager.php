@@ -6,7 +6,6 @@ namespace Porta\Editor;
 
 use Porta\Container\AsIdeService;
 use Porta\Highlight\CodeHighlighterFactory;
-use Porta\Image\ImageData;
 use Porta\Support\IndexMove;
 
 /**
@@ -38,47 +37,20 @@ final class BufferManager
         return $buffer;
     }
 
-    /** Open an image tab: an empty document plus the decoded pixels. */
-    public function openImage(string $path, ImageData $image): Buffer
+    /**
+     * Open (or re-activate) a PANE tab: an empty document plus the payload that
+     * pane's loader produced. The four near-identical per-viewer factories this
+     * replaced differed only in which field they filled.
+     *
+     * The payload is re-assigned on re-activation, so an explicit re-open of a
+     * document that changed on disk shows the new bytes instead of waiting out
+     * the filesystem poll.
+     */
+    public function openPane(string $path, string $paneId, mixed $payload): Buffer
     {
-        $this->buffers[$path] ??= new Buffer($path, new Document(''), $this->highlighters->forFile($path), $image);
+        $this->buffers[$path] ??= new Buffer($path, new Document(''), $this->highlighters->forFile($path), $paneId, $payload);
         $buffer = $this->buffers[$path];
-        $this->activePath = $path;
-        $buffer->lastFocused = ++$this->focusCounter;
-
-        return $buffer;
-    }
-
-    /** Open (or re-activate) an SVG tab carrying its source — the viewer rasterizes it per zoom level. */
-    public function openSvg(string $path, string $svg): Buffer
-    {
-        $this->buffers[$path] ??= new Buffer($path, new Document(''), $this->highlighters->forFile($path), svg: $svg);
-        $buffer = $this->buffers[$path];
-        $buffer->svg = $svg; // refresh when the document changed on disk
-        $this->activePath = $path;
-        $buffer->lastFocused = ++$this->focusCounter;
-
-        return $buffer;
-    }
-
-    /** Open (or re-activate) a rendered help tab carrying the page's markdown. */
-    public function openHelp(string $path, string $markdown): Buffer
-    {
-        $this->buffers[$path] ??= new Buffer($path, new Document(''), $this->highlighters->forFile($path), helpMarkdown: $markdown);
-        $buffer = $this->buffers[$path];
-        $buffer->helpMarkdown = $markdown; // refresh when the page changed on disk
-        $this->activePath = $path;
-        $buffer->lastFocused = ++$this->focusCounter;
-
-        return $buffer;
-    }
-
-    /** Open (or re-activate) a graph tab carrying its DOT source. */
-    public function openGraph(string $path, string $dot): Buffer
-    {
-        $this->buffers[$path] ??= new Buffer($path, new Document(''), $this->highlighters->forFile($path), graphDot: $dot);
-        $buffer = $this->buffers[$path];
-        $buffer->graphDot = $dot; // refresh when the document changed on disk
+        $buffer->panePayload = $payload;
         $this->activePath = $path;
         $buffer->lastFocused = ++$this->focusCounter;
 

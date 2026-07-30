@@ -15,6 +15,7 @@ use Porta\Event\DiagnosticsChanged;
 use Porta\Graph\DotFiles;
 use Porta\History\LocalHistory;
 use Porta\I18n\Translator;
+use Porta\Image\ImageData;
 use Porta\Image\ImageDecoder;
 use Porta\Image\SvgConverter;
 use Porta\Lsp\BufferReopener;
@@ -175,28 +176,43 @@ final class BufferService implements BufferReopener, DiagnosticsSink, FileOpener
         if (!$buffer->isViewer() || $buffer->diskStamp === $buffer->diskStampNow()) {
             return;
         }
-        if ($buffer->isGraph()) {
+        if ('graph' === $buffer->paneId) {
             $dot = (string) file_get_contents($buffer->path);
             if ('' === $dot || mb_check_encoding($dot, encoding: 'UTF-8')) {
-                $buffer->graphDot = $dot;
+                $buffer->panePayload = $dot;
                 $buffer->stampFromDisk();
             }
 
             return;
         }
-        if ($buffer->isVector()) {
+        // Any other pane keeps what it has: a help page is re-read by its own
+        // open path, and a third-party pane's payload is core's to carry, not to
+        // refresh behind its back.
+        if ('image' === $buffer->paneId) {
+            $this->refreshStaleImagePayload($buffer);
+        }
+    }
+
+    /** The image pane's two payload shapes: an SVG's source, or decoded pixels. */
+    private function refreshStaleImagePayload(Buffer $buffer): void
+    {
+        if (\is_string($buffer->panePayload)) {
+            // A VECTOR tab: the payload IS the source, re-rasterized per zoom.
             $svg = (string) file_get_contents($buffer->path);
             if ('' === $svg || mb_check_encoding($svg, encoding: 'UTF-8')) {
-                $buffer->svg = $svg;
+                $buffer->panePayload = $svg;
                 $buffer->stampFromDisk();
             }
 
             return;
         }
-        if ($buffer->isImage() && (int) filesize($buffer->path) <= ImageDecoder::MAX_BYTES) {
+        // One condition, not an early return: an image too big to decode needs
+        // no line of its own to be understood, and would need a multi-megabyte
+        // fixture to cover.
+        if ((int) filesize($buffer->path) <= ImageDecoder::MAX_BYTES) {
             $image = $this->imageDecoder->decode($buffer->path);
             if (null !== $image) {
-                $buffer->image = $image;
+                $buffer->panePayload = $image;
                 $buffer->stampFromDisk();
             }
         }
@@ -224,7 +240,7 @@ final class BufferService implements BufferReopener, DiagnosticsSink, FileOpener
 
             return;
         }
-        $buffer = $this->buffers->openImage($path, $image);
+        $buffer = $this->buffers->openPane($path, 'image', $image);
         $buffer->stampFromDisk();
         $this->showBuffer($buffer);
         $this->dispatcher->dispatch(new BufferOpened($buffer));
@@ -251,7 +267,7 @@ final class BufferService implements BufferReopener, DiagnosticsSink, FileOpener
 
             return;
         }
-        $buffer = $this->buffers->openSvg($path, $svg);
+        $buffer = $this->buffers->openPane($path, 'image', $svg);
         $buffer->stampFromDisk();
         $this->showBuffer($buffer);
         $this->dispatcher->dispatch(new BufferOpened($buffer));
@@ -281,7 +297,7 @@ final class BufferService implements BufferReopener, DiagnosticsSink, FileOpener
 
             return;
         }
-        $buffer = $this->buffers->openGraph($path, $dot);
+        $buffer = $this->buffers->openPane($path, 'graph', $dot);
         // The artifact's directory is a plugin setting, so the FILE NAME is all
         // core can key the title on (and a hand-written architecture.dot is
         // titled the same, which is the honest reading of the name).
@@ -323,7 +339,7 @@ final class BufferService implements BufferReopener, DiagnosticsSink, FileOpener
             return;
         }
 
-        $buffer = $this->buffers->openHelp($path, (string) file_get_contents($path));
+        $buffer = $this->buffers->openPane($path, 'help', (string) file_get_contents($path));
         $buffer->stampFromDisk();
         $this->showBuffer($buffer);
         $this->dispatcher->dispatch(new BufferOpened($buffer));
@@ -353,9 +369,9 @@ final class BufferService implements BufferReopener, DiagnosticsSink, FileOpener
     {
         $active = $this->buffers->active();
         $this->tui->setFocus(match (true) {
-            null !== $active && $active->isImage() => $this->imageViewer,
-            null !== $active && $active->isHelp() => $this->helpViewer,
-            null !== $active && $active->isGraph() => $this->graphViewer,
+            'image' === $active?->paneId => $this->imageViewer,
+            'help' === $active?->paneId => $this->helpViewer,
+            'graph' === $active?->paneId => $this->graphViewer,
             default => $this->editor,
         });
     }
@@ -388,11 +404,11 @@ final class BufferService implements BufferReopener, DiagnosticsSink, FileOpener
         // Neutralize the editor so any jumpTo() fired after openFile() mutates a
         // throwaway document, not the previous buffer's cursor.
         $this->editor->showDocument('', new Document(''));
-        if ($buffer->isVector()) {
-            $this->imageViewer->showVector($buffer->path, (string) $buffer->svg);
+        if (\is_string($buffer->panePayload)) {
+            $this->imageViewer->showVector($buffer->path, $buffer->panePayload);
         }
-        if (null !== $buffer->image) {
-            $this->imageViewer->show($buffer->image);
+        if ($buffer->panePayload instanceof ImageData) {
+            $this->imageViewer->show($buffer->panePayload);
         }
         $this->swapEditorPaneTo($this->imageViewer);
         $this->dispatcher->dispatch(new BufferSwitched($buffer));
@@ -401,15 +417,15 @@ final class BufferService implements BufferReopener, DiagnosticsSink, FileOpener
 
     public function showBuffer(Buffer $buffer): void
     {
-        if ($buffer->isImage()) {
+        if ('image' === $buffer->paneId) {
             $this->showImageBuffer($buffer);
 
             return;
         }
-        if ($buffer->isHelp()) {
+        if ('help' === $buffer->paneId) {
             $this->editor->showDocument('', new Document(''));
             if (null === $this->helpViewer->path()) {
-                $this->helpViewer->show($buffer->path, (string) $buffer->helpMarkdown);
+                $this->helpViewer->show($buffer->path, (string) $buffer->panePayload);
             }
             $this->imageViewer->clear();
             $this->swapEditorPaneTo($this->helpViewer);
@@ -418,9 +434,9 @@ final class BufferService implements BufferReopener, DiagnosticsSink, FileOpener
 
             return;
         }
-        if ($buffer->isGraph()) {
+        if ('graph' === $buffer->paneId) {
             $this->editor->showDocument('', new Document(''));
-            $this->graphViewer->show($buffer->path, (string) $buffer->graphDot);
+            $this->graphViewer->show($buffer->path, (string) $buffer->panePayload);
             $this->imageViewer->clear();
             $this->swapEditorPaneTo($this->graphViewer);
             $this->dispatcher->dispatch(new BufferSwitched($buffer));
@@ -503,10 +519,10 @@ final class BufferService implements BufferReopener, DiagnosticsSink, FileOpener
             if (!$buffer->isViewer()) {
                 $this->lsp->notifyDidClose($buffer->path);
             }
-            if ($buffer->isHelp()) {
+            if ('help' === $buffer->paneId) {
                 $this->helpViewer->clear();
             }
-            if ($buffer->isGraph()) {
+            if ('graph' === $buffer->paneId) {
                 $this->graphViewer->forget($buffer->path);
             }
             $this->buffers->close($buffer->path);
@@ -577,10 +593,10 @@ final class BufferService implements BufferReopener, DiagnosticsSink, FileOpener
         }
 
         $next = $this->buffers->close($active->path);
-        if ($active->isHelp()) {
+        if ('help' === $active->paneId) {
             $this->helpViewer->clear(); // history dies with the tab, not on tab switches
         }
-        if ($active->isGraph()) {
+        if ('graph' === $active->paneId) {
             $this->graphViewer->forget($active->path); // the remembered zoom dies with the tab
         }
         if (null !== $next) {

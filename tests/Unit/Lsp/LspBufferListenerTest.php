@@ -44,7 +44,7 @@ final class LspBufferListenerTest extends TestCase
 
         $gd = imagecreatetruecolor(2, height: 2);
         \assert(false !== $gd, description: 'the truecolor image was created');
-        $image = $buffers->openImage('/tmp/i.png', new ImageData($gd, 2, 2, 5));
+        $image = $buffers->openPane('/tmp/i.png', 'image', new ImageData($gd, 2, 2, 5));
         $listener->onBufferSwitched(new BufferSwitched($image)); // viewer tab: no inlay request
 
         $this->addToAssertionCount(1);

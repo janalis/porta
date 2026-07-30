@@ -169,27 +169,30 @@ final class BufferManagerTest extends TestCase
         $this->assertFalse($manager->moveActive(1));
     }
 
-    public function testOpenGraphCarriesAndRefreshesTheDotSource(): void
+    public function testAPaneTabCarriesItsIdAndRefreshesItsPayload(): void
     {
         $manager = new BufferManager();
-        $buffer = $manager->openGraph('/p/arch.dot', 'digraph { A -> B; }');
+        $buffer = $manager->openPane('/p/arch.dot', 'graph', 'digraph { A -> B; }');
 
-        $this->assertTrue($buffer->isGraph());
+        $this->assertSame('graph', $buffer->paneId);
+        $this->assertSame('digraph { A -> B; }', $buffer->panePayload);
         $this->assertTrue($buffer->isViewer());
-        $this->assertFalse($buffer->isImage());
         $this->assertFalse($buffer->isDirty(), 'the empty backing document never dirties');
 
-        $again = $manager->openGraph('/p/arch.dot', 'digraph { A; }');
+        $again = $manager->openPane('/p/arch.dot', 'graph', 'digraph { A; }');
         $this->assertSame($buffer, $again, 'path-keyed reuse');
-        $this->assertSame('digraph { A; }', $again->graphDot, 're-opening refreshes the payload');
+        $this->assertSame('digraph { A; }', $again->panePayload, 're-opening refreshes the payload');
     }
 
-    public function testViewerPredicateCoversEveryKind(): void
+    public function testTheViewerGuardIsTheOneKindQuestionCoreAsks(): void
     {
+        // Whatever the pane is: a text buffer is not a viewer, a pane buffer is,
+        // and no core caller needs to know WHICH pane to stay safe.
         $manager = new BufferManager();
         $this->assertFalse($manager->open('/p/a.php', 'A')->isViewer());
-        $this->assertTrue($manager->openHelp('/p/doc.md', '# hi')->isViewer());
-        $this->assertTrue($manager->openGraph('/p/g.dot', 'digraph {}')->isViewer());
+        $this->assertTrue($manager->openPane('/p/doc.md', 'help', '# hi')->isViewer());
+        $this->assertTrue($manager->openPane('/p/g.dot', 'graph', 'digraph {}')->isViewer());
+        $this->assertTrue($manager->openPane('/p/x.q', 'third-party', ['anything'])->isViewer(), 'a payload core cannot name is still a viewer');
     }
 
     public function testDirtyCount(): void

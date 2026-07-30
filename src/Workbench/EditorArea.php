@@ -35,9 +35,9 @@ final class EditorArea
         $active = $this->buffers->active();
 
         return match (true) {
-            null !== $active && $active->isImage() => $this->imageViewer,
-            null !== $active && $active->isHelp() => $this->helpViewer,
-            null !== $active && $active->isGraph() => $this->graphViewer,
+            'image' === $active?->paneId => $this->imageViewer,
+            'help' === $active?->paneId => $this->helpViewer,
+            'graph' === $active?->paneId => $this->graphViewer,
             default => $this->editor,
         };
     }

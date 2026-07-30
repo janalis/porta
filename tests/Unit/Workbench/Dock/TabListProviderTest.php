@@ -15,10 +15,10 @@ final class TabListProviderTest extends TestCase
     {
         $buffers = new BufferManager();
         $buffers->open('/p/src/Demo.php', '<?php');
-        $buffers->openHelp('/p/docs/README.md', '# docs');
-        $graph = $buffers->openGraph('/p/.porta/architecture.dot', 'digraph {}');
+        $buffers->openPane('/p/docs/README.md', 'help', '# docs');
+        $graph = $buffers->openPane('/p/.porta/architecture.dot', 'graph', 'digraph {}');
         $graph->title = 'Project Architecture';
-        $buffers->openGraph('/p/other.dot', 'digraph {}'); // untitled graph tab keeps its basename
+        $buffers->openPane('/p/other.dot', 'graph', 'digraph {}'); // untitled graph tab keeps its basename
 
         $names = array_column(new TabListProvider($buffers, new Translator('en'))->tabs(), 'name');
 

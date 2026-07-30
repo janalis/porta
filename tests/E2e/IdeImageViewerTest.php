@@ -167,13 +167,13 @@ final class IdeImageViewerTest extends TestCase
                     $service = Services::resolve($ide, BufferService::class);
                     $service->pollFilesystem();
                     $buffers = Services::resolve($ide, BufferManager::class);
-                    $this->assertSame(16, $buffers->active()?->image?->width, 'externally changed image reloaded');
+                    $this->assertSame(16, $buffers->active()?->panePayload?->width, 'externally changed image reloaded');
                     $tui->tick();
                     $this->assertStringContainsString('Reloaded img.png', AnsiUtils::stripAnsiCodes($terminal->getOutput()));
                     file_put_contents($project->path('img.png'), data: 'not a png anymore');
                     touch($project->path('img.png'), time() + 4);
                     $service->pollFilesystem();
-                    $this->assertSame(16, $buffers->active()?->image?->width, 'undecodable bytes keep the old pixels');
+                    $this->assertSame(16, $buffers->active()?->panePayload?->width, 'undecodable bytes keep the old pixels');
                     $tui->handleInput("\x1bw"); // alt+w → close the image tab
                 },
                 620 => function ($tui, $terminal): void {
@@ -389,6 +389,47 @@ final class IdeImageViewerTest extends TestCase
                     Services::resolve($ide, BufferService::class)->openFile((string) realpath($project->path('logo.svg')));
                     $this->await(static fn (): bool => str_contains(AnsiUtils::stripAnsiCodes($terminal->getOutput()), '60 × 30'), what: 'the re-rasterized document');
                     $this->assertSame('60 × 30', $tui->getById('image-viewer')->statusInfo(), 'a resized document is fitted fresh');
+                },
+            ],
+        );
+    }
+
+    public function testAnSvgChangedOnDiskReloadsOnItsOwn(): void
+    {
+        // Pre-pane, this never happened: a vector tab satisfied isImage(), so
+        // the reconciler sent it down the BITMAP path, asked the decoder for an
+        // SVG, was refused, and returned. Nothing reloaded until the tab was
+        // re-opened by hand. The payload shape now tells the two apart.
+        $project = new TempProject([
+            '.porta.json' => (string) json_encode(['settings' => ['svgConverter' => self::fakeConverter()]]),
+            'logo.svg' => self::SMALL_SVG,
+        ]);
+        $this->phpOnlyPath($project);
+
+        $this->runIde(
+            $project,
+            $project->path('logo.svg'),
+            [
+                200 => function ($tui, $terminal, $ide) use ($project): void {
+                    $this->await(static fn (): bool => str_contains(AnsiUtils::stripAnsiCodes($terminal->getOutput()), '100 × 50'), what: 'the first raster');
+
+                    file_put_contents($project->path('logo.svg'), data: '<svg data-w="70" viewBox="0 0 70 35"/>');
+                    touch($project->path('logo.svg'), mtime: time() + 2); // a new disk stamp within the same second
+                    Services::resolve($ide, BufferService::class)->pollFilesystem();
+
+                    // The stub converter reports height = width / 2, so a 70-wide
+                    // document probes as 70 × 35.
+                    $this->await(static fn (): bool => str_contains(AnsiUtils::stripAnsiCodes($terminal->getOutput()), '70 × 35'), what: 'the reloaded document');
+                    $this->assertSame('70 × 35', $tui->getById('image-viewer')->statusInfo(), 'the poller re-read the source and the pane re-rasterized it');
+
+                    // Garbage keeps the picture, the same contract the bitmap
+                    // path keeps: an unreadable new payload is not a reason to
+                    // blank a pane that is showing something valid.
+                    file_put_contents($project->path('logo.svg'), data: "\xff\xfe\x00<svg");
+                    touch($project->path('logo.svg'), mtime: time() + 4);
+                    Services::resolve($ide, BufferService::class)->pollFilesystem();
+                    $this->pump(0.3);
+                    $this->assertSame('70 × 35', $tui->getById('image-viewer')->statusInfo(), 'invalid new bytes keep the last good document');
                 },
             ],
         );

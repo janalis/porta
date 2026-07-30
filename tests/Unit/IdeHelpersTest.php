@@ -590,7 +590,7 @@ final class IdeHelpersTest extends TestCase
         $buffers->openHelp($readme);
         $active = $manager->active();
         $this->assertNotNull($active);
-        $this->assertTrue($active->isHelp());
+        $this->assertTrue($active->paneId === 'help');
         $this->assertSame($readme, $viewer->path(), 'the viewer shows the page');
         $this->assertFalse($active->isDirty(), 'the backing document stays empty');
         $this->assertFalse($buffers->saveBuffer($active), 'help tabs never save');
@@ -604,13 +604,13 @@ final class IdeHelpersTest extends TestCase
         clearstatcache();
         touch($readme, time() + 2);
         $buffers->pollFilesystem();
-        $this->assertSame("# Guides v2\n", $manager->active()?->helpMarkdown, 'the poller refreshed the page');
+        $this->assertSame("# Guides v2\n", $manager->active()?->panePayload, 'the poller refreshed the page');
 
         // The same path already open as SOURCE re-shows the text buffer.
         $buffers->closeActiveBuffer();
         $buffers->openFile($readme, focus: OpenFocus::Editor);
         $buffers->openHelp($readme);
-        $this->assertFalse($manager->active()?->isHelp(), 'the editable source tab wins');
+        $this->assertFalse($manager->active()?->paneId === 'help', 'the editable source tab wins');
     }
 
     public function testHelpNavigationStaysInOneTabAndSurvivesTabSwitches(): void
@@ -648,7 +648,7 @@ final class IdeHelpersTest extends TestCase
         clearstatcache();
         touch($readme, time() + 2);
         $buffers->pollFilesystem();
-        $this->assertSame("# Guides v2\n", $manager->active()?->helpMarkdown);
+        $this->assertSame("# Guides v2\n", $manager->active()?->panePayload);
         $this->assertSame($editor, $viewer->path(), 'a background root reload does not yank the navigated page');
 
         // Closing the help tab is what drops the viewer state.

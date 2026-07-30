@@ -7,7 +7,7 @@ namespace Porta\Graph;
 /**
  * Which tool draws a diagram tab, decided by the file's extension. Pure — it
  * never crosses `.porta.json`; the buffer keeps carrying its source as text and
- * `isGraph()` still means "a diagram tab", so nothing else has to know.
+ * the 'graph' pane id still means "a diagram tab", so nothing else has to know.
  *
  * The difference that matters downstream is GEOMETRY: `Dot` has a layout (nodes,
  * edges, hit-testing, counts, the readable cell rendering), `PlantUml` has a

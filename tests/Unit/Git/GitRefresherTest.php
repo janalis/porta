@@ -100,7 +100,7 @@ final class GitRefresherTest extends TestCase
         $refresher = $this->refresher();
         $gd = imagecreatetruecolor(2, height: 2);
         \assert(false !== $gd, description: 'the truecolor image was created');
-        $image = $this->buffers->openImage($this->project->path('i.png'), new ImageData($gd, 2, 2, 9));
+        $image = $this->buffers->openPane($this->project->path('i.png'), 'image', new ImageData($gd, 2, 2, 9));
         $refresher->refreshMarks($image); // image buffers have no git marks
 
         $unavailable = $this->refresher(realRepo: Presence::Without);
@@ -128,7 +128,7 @@ final class GitRefresherTest extends TestCase
             return [] !== $buffer->gitMarks;
         }, what: 'the open listener diffed the text buffer');
 
-        $help = $this->buffers->openHelp($this->project->path('h.md'), '# hi');
+        $help = $this->buffers->openPane($this->project->path('h.md'), 'help', '# hi');
         $refresher->onBufferOpened(new BufferOpened($help));
         $this->assertSame([], $help->gitMarks, 'help tabs are never diffed');
 

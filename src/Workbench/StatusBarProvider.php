@@ -50,13 +50,13 @@ final class StatusBarProvider
     public function segments(): array
     {
         $active = $this->buffers->active();
-        $isImage = null !== $active && $active->isImage();
+        $isImage = 'image' === $active?->paneId;
 
         $doc = $this->editor->getDocument();
         $path = $this->editor->getFilePath();
 
         $left = match (true) {
-            null !== $active && ($isImage || $active->isHelp() || $active->isGraph()) => ProjectPaths::relative($this->rootDir, $active->path),
+            null !== $active && $active->isViewer() => ProjectPaths::relative($this->rootDir, $active->path),
             null === $path => $this->translator->trans('porta — open a file from the tree (Enter)'),
             default => ProjectPaths::relative($this->rootDir, $path).($doc->isDirty() ? ' '.Glyphs::DIRTY : ''),
         };
@@ -89,7 +89,7 @@ final class StatusBarProvider
             return ['left' => $left, 'right' => $right, 'branchStart' => $branchStart, 'branchEnd' => $branchEnd];
         }
 
-        if (null !== $active && $active->isGraph()) {
+        if ('graph' === $active?->paneId) {
             // A graph tab: node/edge counts + zoom + the key hints.
             $right = trim(\sprintf('%s  %s  %s', $this->graphViewer->statusInfo(), $this->graphViewer->zoomLabel(), $this->translator->trans('+/- zoom  0 fit  n/p select  Ctrl+Q quit')));
 
