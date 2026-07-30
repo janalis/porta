@@ -68,5 +68,6 @@
     <coverage includeUncoveredFiles="false"/>
     <extensions>
         <bootstrap class="Porta\Tests\Support\LoopIsolationExtension"/>
+        <bootstrap class="Porta\Tests\Support\EnvIsolationExtension"/>
     </extensions>
 </phpunit>

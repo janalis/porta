@@ -1256,7 +1256,16 @@ flaky shapes are all on the fixed-clock side, and each has a named cure:
 - **The event loop is process-global per paratest worker**; `tests/Support/LoopIsolationExtension`
   (phpunit.xml `<extensions>`) swaps in a fresh driver after EVERY test and reports leaked
   identifiers to STDERR as `[loop-leak]` (report-only; escalate to a failure once the suite has
-  run leak-clean for a while — the recorded follow-up). Never leave a watcher armed on a stream
+  run leak-clean for a while — the recorded follow-up).
+- **So is the ENVIRONMENT**, and its leaks are nastier because the symptom lands in another file:
+  a test that leaves `PATH=/nonexistent` behind makes the next test's `#!/usr/bin/env php` stub
+  fail with `env: php: No such file or directory`, and a leaked `PORTA_HOME` silently uncolours a
+  later suite — each depending on which tests shared a worker, so each reads as machine load and
+  passes in isolation. `tests/Support/EnvIsolationExtension` restores the worker's boot snapshot
+  after every test in BOTH channels (`putenv`/`getenv` and `$_ENV` — Porta reads the second) and
+  reports the drift as `[env-leak]`. It is a net, not a licence: keep using `PreservesPath` /
+  `ClearsPortaLsp` (or a save/restore tearDown) at the test that needs it, since the net only acts
+  after the test that leaked has already finished. Never leave a watcher armed on a stream
   a local `proc_open` handle will close (try/finally around the span); `PumpsLoop` cancels its
   own delay timers in finally for the same reason.
 - **Both git argv paths pass `--no-optional-locks`** (`GitProcessRunner` + `TempProject::git()`):
