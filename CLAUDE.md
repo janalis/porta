@@ -550,11 +550,16 @@ geometry it is about to be drawn with.
   paints AFTER the focus frame — it hid behind the frame's top border once). Zoom/pan ride
   `Image/ZoomPanModel` with a finer ladder (1 pt → scale cols × scale half-rows; the px=half-row
   convention is the 2:1 cell aspect correction). The commands are PLUGIN-owned: `graph-viewer:architecture` (Plugins menu) runs
-`Graph/ArchitectureArtifact` (plugin-constructible — rootDir only; the generator command is the
-plugin's `command` setting, `plugins.graph-viewer.command`) and writes `.porta/architecture.dot`
-— file-backed on purpose: tab reuse is the ordinary path-keyed lookup (realpath before the reuse
-lookup — buffers key canonical paths), the "Project Architecture" title rides `BufferService`'s
-artifact-path match (surviving session restore), explicit re-opens of a changed file refresh the
+`Graph/ArchitectureArtifact` (plugin-constructible — two strings, no services; the generator
+command and the OUTPUT DIRECTORY are the plugin's `command`/`outputDir` settings) and writes
+`architecture.dot` into that directory — **the project root by default** (an artifact meant to be
+opened, versioned and shared does not belong among the machine files in `.porta/`); a relative
+setting resolves from the root, an absolute one is taken as given, and the directory is created
+recursively. File-backed on purpose: tab reuse is the ordinary path-keyed lookup (realpath before
+the reuse lookup — buffers key canonical paths), the "Project Architecture" title rides
+`BufferService`'s match on the FILE NAME — `ArchitectureArtifact::FILENAME`, since a configurable
+directory can no longer be part of the identity, and a hand-written `architecture.dot` is titled
+the same on purpose — (surviving session restore), explicit re-opens of a changed file refresh the
 payload immediately (`refreshStaleViewerPayload` — the reconciler covers background changes),
 and invalid documents keep the previous rendering. `graph-viewer:export-svg/png` read the
 active tab's file and reach the core `dotPath` setting through the seeded `PORTA_DOT_PATH` env

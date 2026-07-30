@@ -24,10 +24,12 @@ return new class('graph-viewer') extends AbstractPlugin {
     {
         $api->registerViewer('graph', DotFiles::EXTENSIONS);
         $api->registerSetting('command', 'Architecture command (stdout = DOT)', hint: 'empty = built-in PHP namespace scanner');
+        $api->registerSetting('outputDir', 'Architecture output directory', hint: 'empty = project root; relative paths resolve from it');
 
         $api->registerCommand('architecture', 'Project Architecture', function () use ($api): void {
             $command = (string) $api->setting('command');
-            new ArchitectureArtifact($api->projectRoot())->generate('' === $command ? null : $command, static function (?string $error, ?string $path) use ($api): void {
+            $outputDir = (string) $api->setting('outputDir');
+            new ArchitectureArtifact($api->projectRoot(), $outputDir)->generate('' === $command ? null : $command, static function (?string $error, ?string $path) use ($api): void {
                 if (null !== $error) {
                     $api->flash($error, 5.0);
 

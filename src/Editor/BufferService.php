@@ -12,6 +12,7 @@ use Porta\Event\BufferOpened;
 use Porta\Event\BufferSaved;
 use Porta\Event\BufferSwitched;
 use Porta\Event\DiagnosticsChanged;
+use Porta\Graph\ArchitectureArtifact;
 use Porta\Graph\DotFiles;
 use Porta\History\LocalHistory;
 use Porta\I18n\Translator;
@@ -223,7 +224,10 @@ final class BufferService implements BufferReopener, DiagnosticsSink, FileOpener
             return;
         }
         $buffer = $this->buffers->openGraph($path, $dot);
-        if (str_ends_with($path, '/.porta/architecture.dot')) {
+        // The artifact's directory is a plugin setting, so the FILE NAME is all
+        // core can key the title on (and a hand-written architecture.dot is
+        // titled the same, which is the honest reading of the name).
+        if (ArchitectureArtifact::FILENAME === basename($path)) {
             $buffer->title = 'Project Architecture';
         }
         $buffer->stampFromDisk();

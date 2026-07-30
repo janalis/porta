@@ -120,9 +120,12 @@ Editing the file re-renders it in place — an invalid document keeps the
 previous graph under an error banner. The viewer is a bundled plugin, enabled by
 default — disabling it opens `.dot` files as editable text instead.
 **Plugins ▸ Project Architecture** generates a namespace-dependency graph of
-the current project into `.porta/architecture.dot` and opens it in this viewer
-(the plugin's *Architecture command* setting supplies the DOT instead — its
-stdout wins); `Graph: Export SVG/PNG` in the palette renders the active graph
+the current project into `architecture.dot` and opens it in this viewer. The
+plugin's *Architecture output directory* setting picks where that file goes —
+empty means the project root, a relative path resolves from it, an absolute one
+is taken as given, and the directory is created if it does not exist. (Its
+*Architecture command* setting supplies the DOT instead — that command's stdout
+wins.) `Graph: Export SVG/PNG` in the palette renders the active graph
 beside its file.
 
 ## Mouse

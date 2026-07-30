@@ -255,7 +255,7 @@ final class IdeGraphViewerTest extends TestCase
                 200 => function ($tui, $terminal, $ide) use ($project): void {
                     Services::resolve($ide, CommandRegistry::class)->run('graph-viewer:architecture');
                     $this->await(static fn (): bool => str_contains(AnsiUtils::stripAnsiCodes($terminal->getOutput()), 'nodes'), what: 'the architecture graph');
-                    $artifact = $project->path('.porta/architecture.dot');
+                    $artifact = $project->path('architecture.dot');
                     $this->assertFileExists($artifact);
                     $this->assertStringContainsString('App\\\\Editor', (string) file_get_contents($artifact), 'the scanner produced the namespace graph');
                     $tui->tick();
@@ -267,9 +267,40 @@ final class IdeGraphViewerTest extends TestCase
                     $this->assertCount(1, $buffers->all(), 'the second invocation reused the tab');
 
                     Services::resolve($ide, CommandRegistry::class)->run('graph-viewer:export-svg');
-                    $this->await(static fn (): bool => is_file($project->path('.porta/architecture.svg')), what: 'the SVG export');
+                    $this->await(static fn (): bool => is_file($project->path('architecture.svg')), what: 'the SVG export');
                     Services::resolve($ide, CommandRegistry::class)->run('graph-viewer:export-png');
-                    $this->await(static fn (): bool => is_file($project->path('.porta/architecture.png')), what: 'the PNG export');
+                    $this->await(static fn (): bool => is_file($project->path('architecture.png')), what: 'the PNG export');
+                },
+            ],
+        );
+    }
+
+    public function testTheOutputDirectorySettingPlacesTheArtifact(): void
+    {
+        $project = new TempProject([
+            '.porta.json' => (string) json_encode([
+                'settings' => ['dotPath' => self::fakeDot()],
+                'plugins' => ['graph-viewer' => ['outputDir' => 'docs/arch']],
+            ]),
+            'composer.json' => (string) json_encode(['autoload' => ['psr-4' => ['App\\' => 'src/']]]),
+            'src/A.php' => "<?php\nnamespace App;\nfinal class A {}\n",
+        ]);
+        $this->phpOnlyPath($project);
+
+        $this->runIde(
+            $project,
+            null,
+            [
+                200 => function ($tui, $terminal, $ide) use ($project): void {
+                    Services::resolve($ide, CommandRegistry::class)->run('graph-viewer:architecture');
+                    $this->await(static fn (): bool => is_file($project->path('docs/arch/architecture.dot')), what: 'the artifact in its configured directory');
+                    $this->assertFileDoesNotExist($project->path('architecture.dot'), 'and not in the default one');
+
+                    $this->await(static fn (): bool => str_contains(AnsiUtils::stripAnsiCodes($terminal->getOutput()), 'Project Architecture'), what: 'the titled tab');
+
+                    // The exports land beside the artifact, wherever it is.
+                    Services::resolve($ide, CommandRegistry::class)->run('graph-viewer:export-svg');
+                    $this->await(static fn (): bool => is_file($project->path('docs/arch/architecture.svg')), what: 'the SVG beside it');
                 },
             ],
         );
@@ -291,8 +322,8 @@ final class IdeGraphViewerTest extends TestCase
             [
                 200 => function ($tui, $terminal, $ide) use ($project): void {
                     Services::resolve($ide, CommandRegistry::class)->run('graph-viewer:architecture');
-                    $this->await(static fn (): bool => is_file($project->path('.porta/architecture.dot')), what: 'the generated artifact');
-                    $this->assertStringContainsString('FromCommand', (string) file_get_contents($project->path('.porta/architecture.dot')), 'the configured command supplied the DOT');
+                    $this->await(static fn (): bool => is_file($project->path('architecture.dot')), what: 'the generated artifact');
+                    $this->assertStringContainsString('FromCommand', (string) file_get_contents($project->path('architecture.dot')), 'the configured command supplied the DOT');
                 },
             ],
         );
@@ -315,7 +346,7 @@ final class IdeGraphViewerTest extends TestCase
                 200 => function ($tui, $terminal, $ide) use ($project): void {
                     Services::resolve($ide, CommandRegistry::class)->run('graph-viewer:architecture');
                     $this->await(static fn (): bool => str_contains(AnsiUtils::stripAnsiCodes($terminal->getOutput()), 'doomed'), what: 'the failure flash');
-                    $this->assertFileDoesNotExist($project->path('.porta/architecture.dot'));
+                    $this->assertFileDoesNotExist($project->path('architecture.dot'));
                 },
             ],
         );
@@ -338,7 +369,7 @@ final class IdeGraphViewerTest extends TestCase
                 200 => function ($tui, $terminal, $ide) use ($project): void {
                     Services::resolve($ide, CommandRegistry::class)->run('graph-viewer:architecture');
                     $this->await(static fn (): bool => str_contains(AnsiUtils::stripAnsiCodes($terminal->getOutput()), 'produced no output'), what: 'the empty-output flash');
-                    $this->assertFileDoesNotExist($project->path('.porta/architecture.dot'));
+                    $this->assertFileDoesNotExist($project->path('architecture.dot'));
                 },
             ],
         );
@@ -347,7 +378,10 @@ final class IdeGraphViewerTest extends TestCase
     public function testUnwritableArtifactDirFlashesAndExportSelfGuards(): void
     {
         $project = new TempProject([
-            '.porta' => 'a FILE squatting on the state dir name',
+            // The configured output directory cannot be created: a FILE sits
+            // where its parent would have to be.
+            '.porta.json' => (string) json_encode(['plugins' => ['graph-viewer' => ['outputDir' => 'blocked/sub']]]),
+            'blocked' => 'a FILE squatting on the output path',
             'src/A.php' => "<?php\n",
             'composer.json' => (string) json_encode(['autoload' => ['psr-4' => ['App\\' => 'src/']]]),
         ]);

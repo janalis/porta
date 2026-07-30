@@ -7,29 +7,45 @@ namespace Porta\Graph;
 use Porta\Support\AsyncProcess;
 
 /**
- * Produces the project's architecture DOT and writes it to
- * `.porta/architecture.dot` (a machine artifact, per the settings-store
- * split): the configured generator command's stdout when one is given (any
- * language, any generator — `/bin/sh -c`, project trust level, async on the
- * shared loop), else the built-in {@see NamespaceGraphScanner}.
+ * Produces the project's architecture DOT and writes it as `architecture.dot`
+ * in the output directory — the project root by default: the artifact is meant
+ * to be opened, versioned or handed around, so it sits where the user can see
+ * it rather than hidden among the machine files in `.porta/`. The content is
+ * the configured generator command's stdout when one is given (any language,
+ * any generator — `/bin/sh -c`, project trust level, async on the shared loop),
+ * else the built-in {@see NamespaceGraphScanner}.
  *
- * Deliberately constructible from a plugin file (rootDir only, no container
+ * Deliberately constructible from a plugin file (two strings, no container
  * services) — the bundled graph-viewer plugin's `architecture` command is thin
- * glue over this class, per the registration-only doctrine. Errors surface as
- * strings through $done (the caller flashes); the success path reports the
- * REALPATH'd artifact so path-keyed buffer reuse matches.
+ * glue over this class, per the registration-only doctrine, and the output
+ * directory is that plugin's `outputDir` setting. Errors surface as strings
+ * through $done (the caller flashes); the success path reports the REALPATH'd
+ * artifact so path-keyed buffer reuse matches.
  */
 final class ArchitectureArtifact
 {
+    /** The artifact's file name, wherever it is written — also its tab-title identity. */
+    public const string FILENAME = 'architecture.dot';
+
     private ?AsyncProcess $running = null;
 
+    /** @param string $outputDir absolute, or relative to the project root; '' is the root itself */
     public function __construct(
         private readonly string $rootDir,
+        private readonly string $outputDir = '',
     ) {}
 
-    public static function path(string $rootDir): string
+    /** Where this run will write, created on demand by {@see generate()}. */
+    public function path(): string
     {
-        return $rootDir.'/.porta/architecture.dot';
+        $dir = trim($this->outputDir);
+        $base = match (true) {
+            '' === $dir => $this->rootDir,
+            str_starts_with($dir, '/') => $dir,
+            default => $this->rootDir.'/'.$dir,
+        };
+
+        return rtrim($base, characters: '/').'/'.self::FILENAME;
     }
 
     /** @param \Closure(?string $error, ?string $path): void $done exactly one call; a newer generate() supersedes an in-flight command */
@@ -73,11 +89,13 @@ final class ArchitectureArtifact
     /** @param \Closure(?string $error, ?string $path): void $done */
     private function publish(string $dot, \Closure $done): void
     {
-        $path = self::path($this->rootDir);
+        $path = $this->path();
         $dir = \dirname($path);
+        // A configured output directory need not exist yet, so create it (with
+        // parents — the setting may name a nested one).
         // @mago-expect lint:no-error-control-operator -- a concurrent mkdir (or a file squatting on the name) warns; the is_dir recheck handles both.
-        if (!is_dir($dir) && !@mkdir($dir, permissions: 0o755) && !is_dir($dir)) {
-            $done('Cannot write .porta/architecture.dot', null);
+        if (!is_dir($dir) && !@mkdir($dir, permissions: 0o755, recursive: true) && !is_dir($dir)) {
+            $done('Cannot write '.$path, null);
 
             return;
         }
