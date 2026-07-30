@@ -1218,6 +1218,19 @@ async callback's by-reference write — round 8 found 64 such conditions silentl
 full timeout as de-facto sleeps. Write `static function () use (&$x): bool {...}` (or read
 `$this->…` state); when there is genuinely nothing to await, say so with `pump()`.
 
+**An invariant assertion is not a guard until a mutation kills it.** A test that asserts
+"every row is still the terminal width" or "the runs still tile the row" reads like a
+safety net and can easily be satisfied by construction. Two were measured this way in
+July 2026, both in the RTL layer: a new resize test asserted reordered rows keep the
+terminal width, and *passed* when fed pane runs describing the OLD width (the reorder
+produces correctly-wide rows either way) — it needed a second assertion that the runs
+SPAN the new width before it could fail; and `PaneReorder`'s per-run `Sgr::RESET`
+survives deletion against the whole RTL suite, because `Bidi::reorder()` and
+`sliceByColumn(strict: true)` already bracket their output with resets (recorded at the
+line; the code stays). The rule: when a test's whole value is an invariant, break the
+production line it guards and confirm the test goes red — if it does not, the assertion
+is documentation, and the commit message should say which mutation it survives.
+
 **No test-only code in src; private-state reflection lives only in the blessed `tests/Support`
 seams** (round 12 deleted `Ide::resolve()` plus ~45 observability getters/counts/statics, then
 folded every legacy ad-hoc reflection site — zero `ReflectionProperty`/`ReflectionMethod` remain
