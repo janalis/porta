@@ -279,7 +279,7 @@ singleton widget** (`#[Container/AsWidget]` declares tree id/flex, autoconfigure
   wired what had been dead hooks rather than deleting them). Adding a
   page still touches `Widget/Settings/SettingsNavWidget` (nav order/headers/language list).
 
-**Role interfaces over the editor widget.** `CodeEditorWidget` has 91 public methods, so consumers
+**Role interfaces over the editor widget.** `CodeEditorWidget` has 81 public methods, so consumers
 depend on the narrow role they use, not the widget: `Editor/ActiveFileProvider` (`getFilePath`),
 `ActiveDocumentProvider` (+`getDocument`), `EditorTextAccess` (+`insertText`/`jumpTo` — the seam
 `Plugin/Runtime/PluginRuntime` exposes to plugins, so the whole widget is *not* public plugin API),
