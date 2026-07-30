@@ -40,10 +40,47 @@ entries with separators.
 | Global | `~/.porta/plugins/<name>/plugin.php` (`PORTA_HOME` overrides the home directory) |
 | Bundled | `<package>/plugins/<name>/plugin.php`, available everywhere (opt-in) |
 
+A plugin directory may hold more than the entry file: an optional
+`plugin.json`, and — with one — a `src/` of its own classes (see below).
+
 All three sources are scanned at startup, in that precedence order: a project
 plugin shadows a global one of the same directory name, and both shadow a
 bundled one — so you can override a bundled plugin by installing your own
 under the same name.
+
+## `plugin.json`: your own classes, and what you depend on
+
+A plugin may ship a `plugin.json` beside its `plugin.php`. Every field is
+optional, and a plugin without one behaves exactly as before there was one.
+
+```json
+{
+    "namespace": "Acme\\Tools",
+    "autoload": "src",
+    "requires": ["image-viewer"]
+}
+```
+
+- **`namespace` / `autoload`** — a PSR-4 prefix and the directory it maps to,
+  relative to the plugin. `Acme\Tools\Greeting` then loads from
+  `<plugin>/src/Greeting.php`. Composer maps only `Porta\ => src/` and cannot
+  be edited by a plugin you install, so this is how a plugin ships classes of
+  its own; the mapping is registered **before** your `plugin.php` is required,
+  so your classes resolve from its first line.
+- **`requires`** — plugin **names** (directory names) that must load, and load
+  **first**. A plugin whose requirement is missing or disabled does not
+  activate, and says which requirement in a startup warning. Dependency cycles
+  are reported rather than resolved: no member of a cycle loads, because
+  picking one to go first would make the bug intermittent.
+
+The manifest is read before any plugin PHP is executed — it has to be, since
+`requires` decides load order and load order cannot be discovered by loading.
+
+Enabling a plugin from **Settings → Plugins** enables what it requires along
+with it, transitively, and says so ("Also enabled: …"); disabling one disables
+whatever required it ("Also disabled: …"), since those cannot work without it.
+Startup does **not** rewrite your config that way: a launch that silently
+re-enabled things you turned off would be a worse surprise than a message.
 
 ## Installing, removing, disabling
 

@@ -41,8 +41,11 @@ Run gate commands capturing output rather than piping to a pager, e.g.
   against timing (`GitViewControllerTest::testLineStagingAndUnstagingThroughTheDiffPane`,
   the async URL-open E2e in `IdeDocsTest`); if one ever fails under heavy machine load,
   re-run with `--filter` to confirm before assuming a regression.
-- `composer coverage:check` — **100% line coverage is required**. New code needs tests that
-  hit every branch; a new branch with no covering test fails the gate.
+- `composer coverage:check` — **100% line coverage is required**, over `src/` AND over every
+  plugin's own `src/`. New code needs tests that hit every branch; a new branch with no covering
+  test fails the gate. It runs TWO passes: the parallel one over `src`, then the serial
+  `composer coverage:plugins` over `plugins/` (see the Plugins note for why the plugin half
+  cannot ride the parallel run) — so plugin code must be covered by the plugin's OWN tests.
 - `composer analyze` — mago reports **zero** issues, warnings, or help messages.
 - `composer lint` — **zero** findings. The `[linter.rules]` section of `mago.toml` disables
   the rules that conflict with house style (with rationale comments); everything else
@@ -54,9 +57,11 @@ Run gate commands capturing output rather than piping to a pager, e.g.
   vanished edge must be removed from it. CI (`.github/workflows/ci.yml`) runs all five gates.
   The gates are ordinary `src/` code (they left `tools/`, which is gone): analysed by mago
   and 100%-covered like everything else, which is why each takes its inputs as seams — the
-  arch command's scan root is an argument and its pins are constructor-injected, so it can
-  be driven over fixture trees. It scans `src/`, so it scans itself: keep it importing
-  nothing from `Porta\` or it grows the very edges it grades.
+  arch command's scan roots are derived from an argument and its pins are constructor-injected,
+  so it can be driven over fixture trees. It scans `src/` AND each plugin's declared class
+  directory, so it scans itself: keep it importing nothing from `Porta\` or it grows the very
+  edges it grades (which is why it re-reads `plugin.json` by hand instead of using
+  `PluginManifest`).
 
 ## Conventions
 
@@ -119,14 +124,18 @@ dangling reference; grep the old namespace to prove zero. Membership rules:
   `measureCell`/`renderCell` (TabCell merged in — 100% co-change, same tier).
 - **`Graph/`** — the Graphviz viewer domain: the layout model VOs + `DotJsonParser` (json0 →
   screen-down points, the y-flip done ONCE), `LayoutEngine`/`DotLayoutEngine` (async `dot
-  -Tjson0`, stdin-fed), the architecture scanner (`ComposerRoots`/`UseScanner`/
-  `NamespaceGraphScanner`/`DotWriter`) and the two controllers
-  (`ArchitectureGraphController`, `GraphTabActions`). The widget is `Widget/GraphViewerWidget`;
+  -Tjson0`, stdin-fed) and the two controllers
+  (`ArchitectureGraphController`, `GraphTabActions`). The architecture scanner
+  (`ArchitectureArtifact`/`NamespaceGraphScanner`/`UseScanner`/`ComposerRoots`/`DotWriter`) is
+  NOT here: it is the graph-viewer PLUGIN's own code (`plugins/graph-viewer/src`, namespace
+  `Porta\GraphViewer`) — nothing in core reached it. The widget is `Widget/GraphViewerWidget`;
   its stateless rasterizer `Widget/Render/GraphRenderer`+`GraphCellGrid` (render-tier rule).
 - **`Plugin/`** — three tiers, one rule each: **`Api/`** is the surface a plugin file compiles
   against (`PortaPlugin`, `PluginApi`, `PluginException`, `PluginBuffer`, and the abstract
   bases); **`Runtime/`** is what the IDE runs (`PluginLoader`, `PluginManager`, `PluginHost`,
-  `PluginRuntime`, `PluginEvents`, `PluginSettings`, `PluginMenuSpec`); **`Lifecycle/`** is
+  `PluginRuntime`, `PluginEvents`, `PluginSettings`, `PluginMenuSpec`, and the round-24 trio
+  `PluginManifest`/`PluginAutoloader`/`PluginOrder` — what a plugin declares about itself, how
+  its own classes resolve, and what may load at all); **`Lifecycle/`** is
   enabling, disabling and acquiring (`PluginLifecycle`, `PluginEnablement`,
   `PluginLifecycleOps`, `PluginInstaller`, `ToolInstaller`, `InstallOutcome`). The tiers are
   invisible to `composer arch` (its edge key is the FIRST segment after `Porta\`), but they
@@ -923,6 +932,53 @@ key would flip the default back on). Names in
 `disabledPlugins` are skipped at boot in every source. phpunit pins `PORTA_EMBEDDED_PLUGINS` to
 `/nonexistent` (bundled plugins opt in via putenv) and points `PORTA_HOME` at
 `tests/Support/fixtures/home`, which installs `tempest` globally so the suite renders coloured.
+**A plugin may own its code (round 24).** An optional `plugin.json` beside `plugin.php`
+(`Plugin/Runtime/PluginManifest`, a readonly VO + `beside()` reader) declares `namespace`,
+`autoload` (default `src`) and `requires`; it is read **before any plugin PHP is required**,
+which is a requirement and not a preference — `requires` decides LOAD ORDER, so it cannot be
+discovered by loading. `Plugin/Runtime/PluginAutoloader` holds ONE `spl_autoload_register` over a
+prefix→directory map (composer maps only `Porta\ => src/`, and a third-party plugin cannot edit
+composer.json); it is registered from `PluginLoader` at boot AND from `tests/bootstrap.php`, so
+plugin classes resolve under paratest including CI's `--classmap-authoritative` install. The map
+IS the registration state (empty ⇒ register the loader), so there is no second static.
+`Plugin/Runtime/PluginOrder::resolve()` topologically sorts the manifests: a missing/disabled
+requirement skips the plugin with a named warning, the skip propagates to its dependents, and a
+CYCLE is reported rather than resolved (no member loads — picking one to go first would make the
+bug intermittent). Enabling through `PluginLifecycle` auto-enables requirements transitively and
+flashes `Also enabled: …`; disabling cascades to dependents. **Boot deliberately does NOT rewrite
+config** — a startup that silently re-enables what the user turned off is the worse surprise.
+**The gates follow the code** into `plugins/`: mago's `[source] paths` (plugin tests excluded by
+one LITERAL path per plugin — mago's excludes take no globs), `composer arch` (per-plugin
+(directory, PSR-4 prefix) scan roots read from the manifests **by hand**, since that command
+scans `src/` and may import nothing from `Porta\`; the namespace an edge belongs to comes from
+the FQCN, not the path), and coverage — see below, it needs its own pass. What has moved so far
+is the provably plugin-owned slice: the architecture scanner chain
+(`plugins/graph-viewer/src`, `Porta\GraphViewer`). **`src/Graph` and `src/Image` cannot follow
+yet**: every remaining class is consumed by CORE (`Buffer`/`BufferService`/`FilesystemReconciler`/
+`StatusBarProvider`/`WheelRouter` plus the two viewer widgets mounted in the editor area), so
+moving them needs a plugin-provided-PANE API (widget registration, plugin-owned buffer kinds,
+status segments) that does not exist — until it does, core would have to import plugin code.
+Core↔plugin ties that remain are severed, not inverted: `BufferService` keeps its OWN
+`ARCHITECTURE_FILENAME` (titling a tab is core's policy) and the PLUGIN's test pins that the two
+constants agree.
+
+**Plugin coverage runs a SECOND, SERIAL pass, and the reason is upstream.** `composer
+coverage:check` = the parallel run over `src` (100%) **plus** `composer coverage:plugins` (serial
+phpunit, `--testsuite Plugins`, `--coverage-filter plugins`, graded with the checker's new
+`--only=/plugins/` scope). Putting `plugins/*/src` into phpunit's `<source>` for the PARALLEL run
+collapses the total to 86–95%, differently every run and spread over every file: each paratest
+worker serializes coverage with paths relative to ITS OWN longest common directory
+(php-code-coverage `Util/PathReducer`) while `Serialization/Merger` keeps only the FIRST worker's
+base path, so a worker that covered a plugin file reduces to the repo root instead of `src`, every
+path it reports then resolves wrong, fails the filter, and that whole worker's data is dropped
+silently. No project-side configuration prevents it; a serial run never merges. `composer
+coverage` also sets `pcov.directory`/`pcov.exclude` itself (project root minus vendor/tests) —
+pcov has its own instrumentation window, ships a machine-level default (`pcov.directory=src`
+here), and a file outside it is never measured no matter what phpunit's `<source>` says.
+A plugin's code must therefore be 100% covered **by its own tests** (`plugins/*/tests`, a
+`Plugins` testsuite), not by an E2e in `tests/` — that is why `ArchitectureArtifact::generate()`
+gained plugin-side tests when it moved.
+
 The subsystem is container-owned: `Plugin/Runtime/PluginHost` builds the
 settings/manager/loader triple from the synthetic `IdeConfig`, and `ensureLoaded()` (idempotent,
 triggered by the `Keybindings` factory) runs each file's `activate(PluginApi)` **before** the
@@ -1100,7 +1156,10 @@ clicks map visual→logical per pane (`BidiTui::logicalColumn` → `PaneReorder`
 
 ## Tests
 
-`tests/Unit`, `tests/Integration`, `tests/E2e`. E2e suites are **thematic** (the
+`tests/Unit`, `tests/Integration`, `tests/E2e` — plus **`plugins/*/tests`** (the `Plugins`
+suite): a plugin's own tests live with its own code, use `Porta\Tests\Support` freely, and are
+what hold that plugin at 100% (its serial coverage pass sees nothing in `tests/`).
+E2e suites are **thematic** (the
 round-5 split of the old 208-method monolith): one suite per subject (LSP features, context
 menus, git flows, …). Keep new E2e tests in their subject's suite — the too-many-methods and
 kan-defect ratchets now gate src, and a regrown monolith would re-pin them.

@@ -111,7 +111,12 @@ after a live install); `Plugin/PluginManager` holds the committed state and
 wraps every handler/hook in a catch-all; `Plugin/PluginApi` is the
 buffered, per-plugin registration surface; `Plugin/PluginRuntime` wires the
 live IDE seams late in construction; `Plugin/PluginInstaller` copies/clones
-plugin directories for the Settings → Plugins section. The user-facing
+plugin directories for the Settings → Plugins section. A plugin may also own
+CLASSES and declare DEPENDENCIES: `Plugin/Runtime/PluginManifest` reads an
+optional `plugin.json` before any plugin PHP is required,
+`Plugin/Runtime/PluginAutoloader` maps its namespace to its directory (composer
+maps only `Porta\ => src/`), and `Plugin/Runtime/PluginOrder` puts the set into
+load order, skipping a plugin whose requirement is absent. The user-facing
 guide is [plugins.md](plugins.md).
 
 ## Tests and quality gates
@@ -120,17 +125,26 @@ guide is [plugins.md](plugins.md).
 tests/Unit          # per-class tests
 tests/Integration   # LSP client against mock/fault-injection servers
 tests/E2e           # boot the real Ide on a VirtualTerminal, scripted input
+plugins/*/tests     # a plugin's own tests, beside its own code
 ```
 
 E2e tests feed synthetic input (including SGR mouse sequences and
 `.porta.json` fixtures) on scheduled timers and assert on rendered output
 and widget state.
 
-Every change must pass all three gates:
+Every change must pass all of the gates:
 
 ```bash
 composer test              # full suite (paratest, parallel)
-composer coverage:check    # enforces 100% line coverage of src/
+composer coverage:check    # 100% line coverage of src/ AND of every plugin's src/
 composer analyze           # mago static analysis — zero issues
+composer lint              # mago linter — zero findings
+composer arch              # the namespace/acyclicity ratchet, src/ + plugin src/
 composer format            # mago formatter
 ```
+
+`coverage:check` runs two passes: the parallel one over `src`, then the serial
+`coverage:plugins` over `plugins/`. The split is forced by an upstream detail —
+paratest workers serialize coverage with paths relative to their own longest
+common directory and the merge keeps only the first worker's, so a worker that
+covered a file outside `src/` loses all of its data.
