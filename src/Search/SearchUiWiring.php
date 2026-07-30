@@ -41,7 +41,6 @@ final class SearchUiWiring
         private readonly BottomDock $panels,
         private readonly ProjectSearchController $projectSearch,
         private readonly LocalHistoryController $localHistory,
-        private readonly TodoScanner $todoScanner,
         private readonly ResultContextProvider $resultContext,
         private readonly FileOpener $bufferService,
         private readonly Scheduler $scheduler,
@@ -91,11 +90,6 @@ final class SearchUiWiring
             }
             if (null !== $tool?->searchState) {
                 $this->projectSearch->rerun(); // only real find-in-project tabs re-grep
-
-                return;
-            }
-            if (ResultsPanelMode::Todo === $tool?->mode) {
-                $this->todoScanner->scan();
             }
         });
 

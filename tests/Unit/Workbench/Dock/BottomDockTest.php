@@ -181,12 +181,12 @@ final class BottomDockTest extends TestCase
         $this->sessions->create('shell:1', 'sh 1');
         $this->terminal->open('sh 1', new TerminalBuffer());
         $dock->showList(ResultsPanelMode::Problems, 'Problems', []);
-        $dock->showList(ResultsPanelMode::Todo, 'TODO', [['path' => 'a', 'line' => 0, 'text' => 't']]);
+        $dock->showList(ResultsPanelMode::History, 'Local History', [['path' => 'a', 'line' => 0, 'text' => 't']]);
 
         $tabs = $dock->aliveTabs();
         $this->assertTrue($dock->stripVisible());
         $this->assertSame([DockTab::Terminal, DockTab::Results, DockTab::Results], array_column($tabs, 'tab'));
-        $this->assertSame(['sh 1', 'Problems', 'TODO'], array_column($tabs, 'label'), 'sessions and tool instances each keep their own strip tab');
+        $this->assertSame(['sh 1', 'Problems', 'Local History'], array_column($tabs, 'label'), 'sessions and tool instances each keep their own strip tab');
         $this->assertSame([false, false, true], array_column($tabs, 'active'), 'the newest tool owns the slot');
         $this->assertSame(['shell:1', '1', '2'], array_column($tabs, 'key'), 'session tabs carry their session id, tool tabs their instance key');
         $this->assertSame(['', '', '1 results'], array_column($tabs, 'status'), 'only the displayed tool carries a status');
@@ -201,17 +201,17 @@ final class BottomDockTest extends TestCase
         $this->sessions->create('shell:1', 'sh 1');
         $this->sessions->create('shell:2', 'sh 2');
         $dock->showList(ResultsPanelMode::Problems, 'Problems', []);
-        $dock->showList(ResultsPanelMode::Todo, 'TODO', []);
+        $dock->showList(ResultsPanelMode::History, 'Local History', []);
 
         $this->strip->moveTab(DockTab::Results, 0, 1); // the wired widget callback lands in DockToolTabs::move
-        $this->assertSame(['TODO', 'Problems'], array_map(static fn ($tab) => $tab->title, $this->tools->all()));
-        $this->assertSame('TODO', $this->tools->active()?->title, 'the active pointer follows its tab');
+        $this->assertSame(['Local History', 'Problems'], array_map(static fn ($tab) => $tab->title, $this->tools->all()));
+        $this->assertSame('Local History', $this->tools->active()?->title, 'the active pointer follows its tab');
 
         $this->strip->moveTab(DockTab::Terminal, 0, 1); // and the Terminal family lands in TerminalSessions::move
         $this->assertSame(['shell:2', 'shell:1'], array_map(static fn ($session) => $session->id, $this->sessions->all()));
 
         $this->strip->moveTab(DockTab::Debug, 0, 1); // a single fixed tab: nothing to reorder
-        $this->assertSame(['TODO', 'Problems'], array_map(static fn ($tab) => $tab->title, $this->tools->all()));
+        $this->assertSame(['Local History', 'Problems'], array_map(static fn ($tab) => $tab->title, $this->tools->all()));
     }
 
     public function testReinvokingAToolReusesItsTabAndRefreshes(): void
@@ -285,7 +285,7 @@ final class BottomDockTest extends TestCase
         $dock->cycle(1); // a single tab: a no-op
         $this->assertSame($this->results, $dock->visiblePanel());
 
-        $todo = $dock->showList(ResultsPanelMode::Todo, 'TODO', []);
+        $todo = $dock->showList(ResultsPanelMode::History, 'Local History', []);
         $this->debug->open('a.php');
 
         $dock->cycle(1); // debug → wraps to the first instance
@@ -305,7 +305,7 @@ final class BottomDockTest extends TestCase
         $this->sessions->create('shell:2', 'sh 2');
         $this->terminal->open('sh 2', new TerminalBuffer());
         $problems = $dock->showList(ResultsPanelMode::Problems, 'Problems', []);
-        $todo = $dock->showList(ResultsPanelMode::Todo, 'TODO', []);
+        $todo = $dock->showList(ResultsPanelMode::History, 'Local History', []);
 
         $dock->closeTab(DockTab::Results, (string) $problems->id); // × an INACTIVE instance
         $this->assertFalse($dock->isToolAlive($problems), 'the strip × really closes a tool');
@@ -334,7 +334,7 @@ final class BottomDockTest extends TestCase
     {
         $dock = $this->dock();
         $problems = $dock->showList(ResultsPanelMode::Problems, 'Problems', [['path' => 'a.php', 'line' => 0, 'text' => 'boom']]);
-        $todo = $dock->showList(ResultsPanelMode::Todo, 'TODO', []);
+        $todo = $dock->showList(ResultsPanelMode::History, 'Local History', []);
         $closed = [];
         $dock->onToolClosed(static function ($tab) use (&$closed): void {
             $closed[] = $tab;
@@ -350,7 +350,7 @@ final class BottomDockTest extends TestCase
     public function testMarkSearchingAndRefreshIfBound(): void
     {
         $dock = $this->dock();
-        $todo = $dock->showList(ResultsPanelMode::Todo, 'TODO', []);
+        $todo = $dock->showList(ResultsPanelMode::History, 'Local History', []);
         $dock->markSearching($todo);
         $this->assertStringContainsString('searching…', $this->results->statusText());
 
@@ -444,7 +444,7 @@ final class BottomDockTest extends TestCase
         $problems = $dock->showList(ResultsPanelMode::Problems, 'Problems', $rows);
         $this->results->handleInput("\x1b[B"); // move the selection off the first match
 
-        $dock->showList(ResultsPanelMode::Todo, 'TODO', [['path' => 't.php', 'line' => 1, 'text' => 'todo']]);
+        $dock->showList(ResultsPanelMode::History, 'Local History', [['path' => 't.php', 'line' => 1, 'text' => 'todo']]);
         $this->assertNotNull($problems->viewState, 'switching away froze the outgoing tab\'s view state');
         $this->assertSame('src/A.php', $problems->viewState->selectedPath);
         $this->assertSame(4, $problems->viewState->selectedLine);
@@ -463,7 +463,7 @@ final class BottomDockTest extends TestCase
             ['path' => 'q.php', 'line' => 2, 'text' => 'quibble'],
         ]);
         $this->results->handleInput("\x1b[B"); // neighbour's own state: second row
-        $displayed = $dock->showList(ResultsPanelMode::Todo, 'TODO', [['path' => 't.php', 'line' => 1, 'text' => 'todo']]);
+        $displayed = $dock->showList(ResultsPanelMode::History, 'Local History', [['path' => 't.php', 'line' => 1, 'text' => 'todo']]);
 
         $dock->closeTab(DockTab::Results); // closes TODO, binds the Problems neighbour
         $this->assertFalse($this->tools->contains($displayed));
@@ -494,7 +494,7 @@ final class BottomDockTest extends TestCase
         $this->assertSame(ResultsPanelMode::Problems, $dock->mode());
 
         $handlers = new DockToolHandlers('todo:todo');
-        $tab = $dock->showTool($handlers, 'TODO', [['path' => 'a.php', 'line' => 1, 'text' => 'TODO: this']]);
+        $tab = $dock->showTool($handlers, 'Local History', [['path' => 'a.php', 'line' => 1, 'text' => 'TODO: this']]);
 
         $this->assertNull($dock->mode(), 'no core mode is serving this tab');
         $this->assertSame($handlers, $tab->handlers);
@@ -502,7 +502,7 @@ final class BottomDockTest extends TestCase
         $this->assertSame($this->results, $dock->visiblePanel());
         $this->assertSame($this->results, $this->tui->getFocus(), 'showing a tool focuses it');
 
-        $again = $dock->showTool($handlers, 'TODO', []);
+        $again = $dock->showTool($handlers, 'Local History', []);
         $this->assertSame($tab, $again, 'the id reuses the tab rather than appending');
         $this->assertSame([], $again->rows);
     }

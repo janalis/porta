@@ -9,7 +9,6 @@ use Porta\Config\KeyDispatch;
 use Porta\Editor\BufferService;
 use Porta\Search\Everywhere\SearchEverywhereController;
 use Porta\Search\SearchActions;
-use Porta\Search\TodoScanner;
 use Symfony\Component\DependencyInjection\Attribute\AsTaggedItem;
 use Symfony\Component\DependencyInjection\Attribute\Autowire;
 
@@ -19,7 +18,6 @@ final class SearchCommands implements CommandProvider
 {
     public function __construct(
         private readonly SearchActions $searchActions,
-        private readonly TodoScanner $todoScanner,
         #[Autowire(service: 'porta.go_to_symbol')]
         private readonly SearchEverywhereController $goToSymbol,
         private readonly BufferService $bufferService,
@@ -29,7 +27,6 @@ final class SearchCommands implements CommandProvider
     {
         $commands
             ->add('ide_problems', fn () => $this->searchActions->showProblems(), keyBound: KeyDispatch::Bound)
-            ->add('ide_todo', fn () => $this->todoScanner->scan(), keyBound: KeyDispatch::Bound)
             ->add('ide_find_in_project', fn () => $this->searchActions->openProjectSearch(), keyBound: KeyDispatch::Bound)
             ->add(
                 'ide_goto_symbol',

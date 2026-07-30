@@ -142,6 +142,44 @@ final class PluginApi
     }
 
     /**
+     * Implement a CORE command whose id core has vacated — the way a feature
+     * that used to live in `src/` keeps its identity after moving into a
+     * bundled plugin.
+     *
+     * The id stays BARE (`ide_todo`, not `todo:todo`), so an existing
+     * `.porta.json` keymap entry still binds it, the Settings → Keymap page
+     * still lists it under core's label, and its position in a core menu is
+     * unchanged. The label and the default keys come from
+     * {@see ActionCatalog} — the identity is core's, only the implementation
+     * moved.
+     *
+     * Only ids core marks `adoptable` may be taken, which is what stops a
+     * third-party plugin from quietly becoming `save`.
+     *
+     * @param \Closure(): void $handler
+     */
+    public function adoptCommand(string $id, \Closure $handler): void
+    {
+        if (!ActionCatalog::isAdoptable($id)) {
+            throw new PluginException(\sprintf('Command "%s" is not adoptable — core still implements it (or there is no such action)', $id));
+        }
+        if (array_key_exists($id, $this->ids)) {
+            throw new PluginException(\sprintf('Duplicate command id "%s"', $id));
+        }
+        $this->ids[$id] = true;
+        $this->commands[] = [
+            'plugin' => $this->pluginName,
+            'id' => $id,
+            'label' => ActionCatalog::label($id),
+            'handler' => $handler,
+            // None: an adoptable id is an IDE-scope catalog action, so its
+            // default key is already in the map ActionCatalog::ideDefaults()
+            // builds. Declaring it again here would just shadow itself.
+            'keys' => [],
+        ];
+    }
+
+    /**
      * Show a registered command in the Plugins menu (its label is reused).
      * With $enabledWhen, the item renders disabled while the closure returns
      * false (e.g. the tool's binary is missing) — it is re-evaluated on every

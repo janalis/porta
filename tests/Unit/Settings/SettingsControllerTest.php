@@ -21,7 +21,6 @@ use Porta\Lsp\FormatOnSave;
 use Porta\Lsp\LspSessionPool;
 use Porta\Lsp\WorkspaceEditor;
 use Porta\Onboarding\OnboardingState;
-use Porta\Search\TodoTags;
 use Porta\Settings\LiveSettingsApplier;
 use Porta\Settings\SettingsController;
 use Porta\Settings\SettingsRowKind;
@@ -82,10 +81,8 @@ final class SettingsControllerTest extends TestCase
         StatusBarWidget $status,
         array $settings = [],
         ?BreadcrumbsWidget $breadcrumbs = null,
-        ?TodoTags $todoTags = null,
     ): SettingsController {
         $breadcrumbs ??= new BreadcrumbsWidget();
-        $todoTags ??= new TodoTags();
         $tui = new Tui(terminal: new VirtualTerminal(columns: 80, rows: 24));
         $this->languageChanges = [];
         $this->themeChanges = [];
@@ -131,7 +128,6 @@ final class SettingsControllerTest extends TestCase
             $translator,
             $applier,
             $breadcrumbs,
-            $todoTags,
         );
     }
 
@@ -144,27 +140,14 @@ final class SettingsControllerTest extends TestCase
         $byKey = array_column($rows, null, 'key');
 
         $this->assertSame(
-            ['inlineDiagnostics', 'autoPairs', 'formatOnSave', 'todoTags', 'dotPath', 'svgConverter', 'plantuml', 'graphRender'],
+            ['inlineDiagnostics', 'autoPairs', 'formatOnSave', 'dotPath', 'svgConverter', 'plantuml', 'graphRender'],
             array_column($rows, 'key'),
             'General holds editor behavior (incl. the restart-required converter rows); appearance moved to Interface',
         );
         $this->assertFalse($byKey['autoPairs']->value);
         $this->assertSame(SettingsRowKind::Bool, $byKey['autoPairs']->kind);
         $this->assertFalse($byKey['inlineDiagnostics']->restart, 'live toggles need no restart');
-        $this->assertSame(SettingsRowKind::Text, $byKey['todoTags']->kind, 'TODO tags is a free-text row');
-    }
-
-    public function testChangingTodoTagsAppliesToTheScannerLive(): void
-    {
-        $project = new TempProject();
-        $tags = new TodoTags();
-        $controller = $this->controller($project->dir, new CodeEditorWidget(), new StatusBarWidget(), todoTags: $tags);
-
-        $controller->changeSetting('todoTags', 'HACK,NOTE');
-        $this->assertSame('HACK|NOTE', $tags->pattern(), 'the change applies to the live scanner');
-
-        $written = json_decode((string) file_get_contents($project->path('.porta.json')), associative: true);
-        $this->assertSame('HACK,NOTE', $written['settings']['todoTags'], 'and persists');
+        $this->assertSame(SettingsRowKind::Text, $byKey['dotPath']->kind, 'a path is a free-text row');
     }
 
     public function testInterfaceRowsExposeTheAppearanceSettings(): void

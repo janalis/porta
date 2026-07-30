@@ -23,7 +23,16 @@ namespace Porta\Config;
  */
 final class ActionCatalog
 {
-    /** @var array<string, array{label: string, keys?: list<string>}> */
+    /**
+     * `adoptable` marks a verb core NAMES but no longer IMPLEMENTS: a bundled
+     * plugin registers the handler under this same bare id through
+     * `PluginApi::adoptCommand()`, so the keymap page, the `.porta.json` binding
+     * and the menu position all survive the implementation moving out. Core
+     * must have VACATED the id — two registrations would both dispatch — which
+     * is why the flag lands in the same commit as the move.
+     *
+     * @var array<string, array{label: string, keys?: list<string>, adoptable?: true}>
+     */
     public const array ACTIONS = [
         // Editor: movement
         'cursor_up' => ['label' => 'Move Caret Up'],
@@ -122,7 +131,7 @@ final class ActionCatalog
         'ide_goto_symbol' => ['label' => 'Go to Symbol in Project', 'keys' => ['ctrl+alt+shift+n', 'ctrl+alt+o']],
         'ide_goto_test' => ['label' => 'Go to Test', 'keys' => ['ctrl+shift+t']],
         'ide_problems' => ['label' => 'Show Problems', 'keys' => ['alt+6']],
-        'ide_todo' => ['label' => 'Show TODOs', 'keys' => ['alt+8']],
+        'ide_todo' => ['label' => 'Show TODOs', 'keys' => ['alt+8'], 'adoptable' => true], // implemented by the bundled todo plugin
         'ide_command_palette' => ['label' => 'Find Action', 'keys' => ['ctrl+shift+a']],
         'ide_search_everywhere' => ['label' => 'Search Everywhere', 'keys' => ['ctrl+shift+e']],
         'ide_local_history' => ['label' => 'Show Local History', 'keys' => ['ctrl+alt+h']],
@@ -190,6 +199,12 @@ final class ActionCatalog
         'resize_pane_shrink' => ['label' => 'Shrink Pane', 'keys' => ['shift+f11']],
         'resize_pane_grow' => ['label' => 'Grow Pane', 'keys' => ['shift+f12']],
     ];
+
+    /** Whether a bundled plugin may register the handler for $id (core has vacated it). */
+    public static function isAdoptable(string $id): bool
+    {
+        return self::ACTIONS[$id]['adoptable'] ?? false;
+    }
 
     /** @return array<string, list<string>> default keymap for Ide-scope actions */
     public static function ideDefaults(): array

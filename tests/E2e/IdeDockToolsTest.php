@@ -156,72 +156,6 @@ final class IdeDockToolsTest extends TestCase
         $this->addToAssertionCount(1);
     }
 
-    public function testTodoScanListsJumpsAndRerunsWithF5(): void
-    {
-        putenv('PATH='.PORTA_TEST_PRISTINE_PATH); // real grep for the async scan
-        $project = new TempProject([
-            'src/A.php' => "<?php\n// TODO extract this\n",
-            'src/B.py' => "# FIXME races\n",
-        ]);
-
-        $this->runIde(
-            $project,
-            $project->path('src/A.php'),
-            [
-                200 => function ($tui, $terminal): void {
-                    $tui->handleInput("\x1b8"); // alt+8 → Show TODOs
-                    $this->await(static fn (): bool => str_contains(AnsiUtils::stripAnsiCodes($terminal->getOutput()), 'FIXME races'));
-                    $tui->tick();
-                    $screen = AnsiUtils::stripAnsiCodes($terminal->getOutput());
-                    $this->assertStringContainsString('TODO extract this', $screen, 'the scan found both markers');
-                    $this->assertStringContainsString('2 results', $screen);
-                    // The list is path-sorted: src/A.php first, selected. Enter jumps.
-                    $tui->handleInput("\r");
-                },
-                400 => function ($tui, $terminal, $ide) use ($project): void {
-                    $tui->tick();
-                    // grep's row order is directory-walk order, so the first
-                    // (auto-selected) row may be either file.
-                    $this->assertMatchesRegularExpression('~src/(A\.php|B\.py)$~', (string) $tui->getById('editor')->getFilePath(), 'Enter jumped to a TODO match');
-                    // F5 re-scans and picks up a marker added on disk meanwhile.
-                    $project->write('src/C.php', "<?php\n// TODO added later\n");
-                    $tui->setFocus($tui->getById('results'));
-                    $tui->handleInput("\x1b[15~"); // F5
-                    $this->await(static fn (): bool => str_contains(AnsiUtils::stripAnsiCodes($terminal->getOutput()), '3 results'));
-                    $this->assertStringContainsString('TODO added later', AnsiUtils::stripAnsiCodes($terminal->getOutput()), 'the rerun saw the new file');
-                },
-                700 => function ($tui, $terminal, $ide): void {
-                    // Stale completion: kick a scan, bind another tool, then ×
-                    // the TODO tab before grep lands — the panel stays open (no
-                    // engine cancel) and the late result must be dropped.
-                    $dock = Services::resolve($ide, \Porta\Workbench\Dock\BottomDock::class);
-                    $tui->handleInput("\x1b8"); // alt+8 → scan starts
-                    $tui->handleInput("\x1b6"); // alt+6 → Problems binds; the TODO tab stays alive behind it
-                    foreach ($dock->aliveTabs() as $entry) {
-                        if ('TODO' !== $entry['label']) {
-                            continue;
-                        }
-
-                        $dock->closeTab(\Porta\Workbench\Dock\DockTab::Results, $entry['key']); // × the inactive TODO tab
-                    }
-                    $this->await(static fn (): bool => str_contains(AnsiUtils::stripAnsiCodes($terminal->getOutput()), 'Problems'));
-                },
-                1000 => function ($tui): void {
-                    // Assert on the widget, not the accumulated terminal
-                    // output (which still carries every earlier frame).
-                    $tui->tick();
-                    $results = $tui->getById('results');
-                    $this->assertSame('Problems', $results->getTitle(), 'the Problems tab kept the panel');
-                    $this->assertStringContainsString('0 results', $results->statusText(), 'the stale TODO completion did not overwrite the rows');
-                    $panel = AnsiUtils::stripAnsiCodes(implode("\n", $results->render(new \Symfony\Component\Tui\Render\RenderContext(160, 12))));
-                    $this->assertStringNotContainsString('FIXME races', $panel, 'the stale TODO completion was dropped');
-                },
-            ],
-        );
-
-        $this->addToAssertionCount(1);
-    }
-
     public function testTwoSearchesCoexistAsTabsAndF5RerunsTheRightOne(): void
     {
         putenv('PATH='.PORTA_TEST_PRISTINE_PATH); // real grep
@@ -361,8 +295,8 @@ final class IdeDockToolsTest extends TestCase
 
     public function testToolTabsCoexistCycleAndClose(): void
     {
-        putenv('PATH='.PORTA_TEST_PRISTINE_PATH); // real grep for the TODO scan
-        $project = new TempProject(['src/Main.php' => "<?php\n// TODO polish\n"]);
+        putenv('PATH=/nonexistent');
+        $project = new TempProject(['src/Main.php' => "<?php\n"]);
         $dock = static fn ($ide): object => Services::resolve($ide, \Porta\Workbench\Dock\BottomDock::class);
 
         $this->runIde(
@@ -371,12 +305,12 @@ final class IdeDockToolsTest extends TestCase
             [
                 200 => function ($tui, $terminal, $ide) use ($dock, $project): void {
                     $tui->handleInput("\x1b6"); // alt+6 → Problems
-                    $tui->handleInput("\x1b8"); // alt+8 → TODO joins, Problems keeps its tab
-                    $this->await(static fn (): bool => str_contains(AnsiUtils::stripAnsiCodes($terminal->getOutput()), 'TODO polish'));
-                    Services::resolve($ide, CommandRegistry::class)->run('ide_lsp_log'); // LSP Log joins
+                    $commands = Services::resolve($ide, CommandRegistry::class);
+                    $commands->run('ide_notifications'); // Notifications joins, Problems keeps its tab
+                    $commands->run('ide_lsp_log'); // LSP Log joins
                     $tui->tick();
                     $labels = array_column($dock($ide)->aliveTabs(), 'label');
-                    $this->assertSame(['Problems', 'TODO', 'LSP Server Log'], $labels, 'three tools coexist, none replaced');
+                    $this->assertSame(['Problems', 'Notifications', 'LSP Server Log'], $labels, 'three tools coexist, none replaced');
 
                     // A diagnostic lands while the Problems tab is INACTIVE: its
                     // model refreshes, so activating it shows the fresh row.
@@ -411,8 +345,8 @@ final class IdeDockToolsTest extends TestCase
 
     public function testDockToolTabDragReordersAndFixedEndpointsAreNoOps(): void
     {
-        putenv('PATH='.PORTA_TEST_PRISTINE_PATH); // real grep for the TODO scan
-        $project = new TempProject(['src/Main.php' => "<?php\n// TODO polish\n"]);
+        putenv('PATH=/nonexistent');
+        $project = new TempProject(['src/Main.php' => "<?php\n"]);
         $dock = static fn ($ide): object => Services::resolve($ide, \Porta\Workbench\Dock\BottomDock::class);
 
         $this->runIde(
@@ -421,28 +355,27 @@ final class IdeDockToolsTest extends TestCase
             [
                 200 => function ($tui, $terminal, $ide) use ($dock): void {
                     $tui->handleInput("\x1b6"); // alt+6 → Problems
-                    $tui->handleInput("\x1b8"); // alt+8 → TODO joins
-                    $this->await(static fn (): bool => str_contains(AnsiUtils::stripAnsiCodes($terminal->getOutput()), 'TODO polish'));
+                    Services::resolve($ide, CommandRegistry::class)->run('ide_notifications'); // a second tool joins
                     $tui->tick();
                     $labels = static fn (): array => array_column($dock($ide)->aliveTabs(), 'label');
-                    $this->assertSame(['Problems', 'TODO'], $labels());
+                    $this->assertSame(['Problems', 'Notifications'], $labels());
 
                     $renderer = Services::resolve($ide, Renderer::class);
                     $rect = $renderer->getWidgetRect($tui->getById('dock-tabs'));
                     $strip = AnsiUtils::stripAnsiCodes($tui->getById('dock-tabs')->render(new \Symfony\Component\Tui\Render\RenderContext($rect->columns, 1))[0]);
                     $problems = (int) mb_strpos($strip, needle: 'Problems');
-                    $todo = (int) mb_strpos($strip, needle: 'TODO');
+                    $second = (int) mb_strpos($strip, needle: 'Notifications');
 
-                    // Press the Problems tab body and drag it over TODO's slot.
+                    // Press the Problems tab body and drag it over the other tab's slot.
                     $tui->handleInput(\sprintf("\x1b[<0;%d;%dM", $rect->col + $problems + 1, $rect->row + 1));
-                    $tui->handleInput(\sprintf("\x1b[<32;%d;%dM", $rect->col + $todo + 1, $rect->row + 1));
-                    $this->assertSame(['TODO', 'Problems'], $labels(), 'the drag reordered the tool tabs');
+                    $tui->handleInput(\sprintf("\x1b[<32;%d;%dM", $rect->col + $second + 1, $rect->row + 1));
+                    $this->assertSame(['Notifications', 'Problems'], $labels(), 'the drag reordered the tool tabs');
 
                     // Wandering onto the strip's empty tail (a non-tool endpoint)
                     // moves nothing; the release there just ends the drag.
                     $tui->handleInput(\sprintf("\x1b[<32;%d;%dM", $rect->col + $rect->columns - 2, $rect->row + 1));
                     $tui->handleInput(\sprintf("\x1b[<0;%d;%dm", $rect->col + $rect->columns - 2, $rect->row + 1));
-                    $this->assertSame(['TODO', 'Problems'], $labels(), 'a fixed/tail endpoint is a no-op');
+                    $this->assertSame(['Notifications', 'Problems'], $labels(), 'a fixed/tail endpoint is a no-op');
                     $this->assertSame('Problems', $tui->getById('results')->getTitle(), 'the pressed tool stayed revealed through its move');
                 },
             ],
@@ -607,11 +540,11 @@ final class IdeDockToolsTest extends TestCase
                 600 => function ($tui, $terminal, $ide) use ($wheel): void {
                     // Dock strip: the wheel cycles the tool tabs.
                     $tui->handleInput("\x1b6"); // Problems
-                    $tui->handleInput("\x1b8"); // the scanner tab joins (grep-less PATH → instant empty scan)
+                    Services::resolve($ide, CommandRegistry::class)->run('ide_notifications'); // a second tab joins
                     $tui->tick();
                     $renderer = Services::resolve($ide, Renderer::class);
                     $stripRect = $renderer->getWidgetRect($tui->getById('dock-tabs'));
-                    $this->assertSame('TODO', $tui->getById('results')->getTitle());
+                    $this->assertSame('Notifications', $tui->getById('results')->getTitle());
                     $wheel($tui, $stripRect->col + 3, $stripRect->row + 1, code: 64); // wheel-up cycles back
                     $tui->tick();
                     $this->assertSame('Problems', $tui->getById('results')->getTitle(), 'a strip wheel switches the tool tab');

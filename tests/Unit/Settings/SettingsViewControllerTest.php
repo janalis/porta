@@ -35,7 +35,6 @@ use Porta\Plugin\Runtime\PluginEvents;
 use Porta\Plugin\Runtime\PluginHost;
 use Porta\Plugin\Runtime\PluginManager;
 use Porta\Plugin\Runtime\PluginSettings;
-use Porta\Search\TodoTags;
 use Porta\Settings\LiveSettingsApplier;
 use Porta\Settings\Section\GeneralSection;
 use Porta\Settings\Section\GitSection;
@@ -153,7 +152,6 @@ final class SettingsViewControllerTest extends TestCase
             new Translator('en'),
             $applier,
             new BreadcrumbsWidget(),
-            new TodoTags(),
         );
         $bootKeys = new Keybindings([]);
         $keysHost = new PluginHost(IdeConfig::load($this->project->dir), new PluginEvents(), $this->project->dir);

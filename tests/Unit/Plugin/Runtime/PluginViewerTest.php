@@ -234,4 +234,43 @@ final class PluginViewerTest extends TestCase
         $this->expectExceptionMessageMatches('/Duplicate list tool id "ok"/');
         $api->registerListTool('ok', 'Ok again');
     }
+
+    public function testAdoptionTakesACoreIdCoreHasVacatedAndRefusesEverythingElse(): void
+    {
+        // What makes a core feature movable without breaking a user's keymap:
+        // the plugin registers under core's BARE id, with core's label, and no
+        // keys of its own — an adoptable id is IDE-scope, so its default key is
+        // already in the map ActionCatalog::ideDefaults() builds.
+        $manager = $this->manager();
+        $api = $this->api($manager, 'todo');
+        $api->adoptCommand('ide_todo', static function (): void {});
+        $manager->commit($api);
+        $registry = new CommandRegistry();
+        $manager->registerCommands($registry);
+
+        $this->assertSame('Show TODOs', $registry->label('ide_todo'), "core's label, not the plugin's");
+        $this->assertContains('ide_todo', $registry->keyBoundIds(), 'and it dispatches under the bare id');
+        $this->assertSame([], $manager->defaultKeys(), 'no plugin default keys: the catalog already binds alt+8');
+
+        // The guarantee: only ids core has marked adoptable can be taken, so a
+        // third-party plugin cannot quietly become "save".
+        try {
+            $this->api($manager, 'greedy')->adoptCommand('save', static function (): void {});
+            $this->fail('a core-implemented id must not be adoptable');
+        } catch (PluginException $e) {
+            $this->assertStringContainsString('not adoptable', $e->getMessage());
+        }
+        try {
+            $this->api($manager, 'greedy')->adoptCommand('no_such_action', static function (): void {});
+            $this->fail('an id no catalog entry names must throw');
+        } catch (PluginException $e) {
+            $this->assertStringContainsString('not adoptable', $e->getMessage());
+        }
+
+        $twice = $this->api($manager, 'twice');
+        $twice->adoptCommand('ide_todo', static function (): void {});
+        $this->expectException(PluginException::class);
+        $this->expectExceptionMessageMatches('/Duplicate command id "ide_todo"/');
+        $twice->adoptCommand('ide_todo', static function (): void {});
+    }
 }
