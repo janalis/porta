@@ -109,9 +109,8 @@ final class BufferService implements BufferReopener, DiagnosticsSink, FileOpener
         // disabling one routes its files here to the text path instead; an id
         // no built-in pane answers to falls through the same way).
         $viewer = OpenAs::Text === $as ? null : $this->viewers->viewerFor($path);
-        $load = null === $viewer ? null : $this->panes->loaderFor($viewer);
-        if (null !== $viewer && null !== $load) {
-            $this->openInPane($path, $viewer, $load, $focus);
+        if (null !== $viewer && null !== $this->panes->paneFor($viewer)) {
+            $this->openInPane($path, $viewer, $focus);
 
             return;
         }
@@ -188,17 +187,12 @@ final class BufferService implements BufferReopener, DiagnosticsSink, FileOpener
      * and its message is flashed as-is. That is the pane's last word on a file
      * its claim already accepted.
      *
-     * The loader arrives as an argument rather than being looked up here: the
-     * caller had to find it to know a pane answers at all, and looking twice
-     * would leave a "no pane" branch here that cannot happen.
-     *
-     * @param \Closure(string): mixed $load
      */
-    private function openInPane(string $path, string $paneId, \Closure $load, OpenFocus $focus): void
+    private function openInPane(string $path, string $paneId, OpenFocus $focus): void
     {
         try {
             /** @var mixed $payload */
-            $payload = $load($path);
+            $payload = $this->panes->load($paneId, $path);
         } catch (\Throwable $refusal) {
             $this->notifier->flash($refusal->getMessage());
 
@@ -246,12 +240,9 @@ final class BufferService implements BufferReopener, DiagnosticsSink, FileOpener
             return;
         }
 
-        $buffer = $this->buffers->openPane($path, 'help', (string) file_get_contents($path));
-        $buffer->stampFromDisk();
-        $this->showBuffer($buffer);
-        $this->dispatcher->dispatch(new BufferOpened($buffer));
-        $this->focusEditorArea();
-        $this->tui->requestRender();
+        // Through the pane's own loader, like every other pane: a docs file that
+        // is not text is refused rather than rendered as mojibake.
+        $this->openInPane($path, 'help', OpenFocus::Editor);
     }
 
     /**

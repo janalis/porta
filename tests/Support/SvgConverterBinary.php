@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace Porta\Tests\Support;
 
-use Porta\Image\SvgConverter;
+use Porta\ImageViewer\SvgConverter;
 
 /**
  * Whether a real SVG converter is reachable on the current PATH — the skip guard

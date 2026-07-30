@@ -21,6 +21,7 @@ final class EditorPanesTest extends TestCase
         $loader = $panes->loaderFor('demo');
         $this->assertNotNull($loader);
         $this->assertSame('payload of a.demo', $loader('/p/a.demo'));
+        $this->assertSame('payload of a.demo', $panes->load('demo', '/p/a.demo'), 'the same read, through the id');
         $this->assertSame([$pane], $panes->all());
     }
 
@@ -33,6 +34,19 @@ final class EditorPanesTest extends TestCase
         $this->assertNull($panes->paneFor('nothing'));
         $this->assertNull($panes->loaderFor('nothing'));
         $this->assertSame([], $panes->all());
+    }
+
+    public function testLoadingThroughAnIdNoPaneAnswersToIsARefusal(): void
+    {
+        // The caller that already asked `paneFor()` cannot reach this; the one
+        // that knows its id by heart (core's help pane) can, if that pane is
+        // ever not registered — and a refusal reads better than a silent
+        // nothing-happens.
+        $panes = new EditorPanes();
+
+        $this->expectException(\RuntimeException::class);
+        $this->expectExceptionMessageMatches('/No pane answers to "help"/');
+        $panes->load('help', '/p/docs/README.md');
     }
 
     public function testRegisteringTheSameIdTwiceKeepsTheLastPane(): void

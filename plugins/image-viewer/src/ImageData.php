@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace Porta\Image;
+namespace Porta\ImageViewer;
 
 /** A decoded image: the GD handle plus the facts the viewer and status bar show. */
 final readonly class ImageData

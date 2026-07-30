@@ -46,11 +46,9 @@ final class ArchitectureCheckCommand extends Command
         'Bootstrap>Container',
         'Bootstrap>Editor',
         'Bootstrap>Help',
-        'Bootstrap>Image',
         'Bootstrap>Overlay',
         'Bootstrap>Plugin',
         'Bootstrap>Run',
-        'Bootstrap>Support',
         'Bootstrap>Widget',
         'Bootstrap>Workbench',
         'Command>Config',
@@ -108,11 +106,12 @@ final class ArchitectureCheckCommand extends Command
         // plugin depending on core is the allowed direction — core depending on
         // a plugin is what the missing `Editor>GraphViewer` edge shows it does
         // not do.
-        // The graph viewer's own code (plugins/graph-viewer/src). GraphViewer>Image
-        // is the shared rasterizer, and it lasts exactly one commit: when the
-        // image viewer moves into ITS plugin this becomes GraphViewer>ImageViewer,
-        // the first cross-plugin edge, declared by a manifest requirement.
-        'GraphViewer>Image',
+        // The graph viewer's own code (plugins/graph-viewer/src).
+        // GraphViewer>ImageViewer is the first CROSS-PLUGIN edge: the graph pane
+        // paints with the image viewer's rasterizer, which is why its manifest
+        // declares `requires: ["image-viewer"]` — the dependency mechanism's
+        // first real use.
+        'GraphViewer>ImageViewer',
         'GraphViewer>Support',
         'GraphViewer>Ui',
         'GraphViewer>Widget',
@@ -133,13 +132,14 @@ final class ArchitectureCheckCommand extends Command
         'History>Workbench',
         'I18n>Container',
         'I18n>Ui',
-        'Image>Support',
-        'Image>Ui',
         'Input>Config',
         'Input>Container',
         'Input>Debug',
         'Input>Editor',
         'Input>Git',
+        'ImageViewer>Support',
+        'ImageViewer>Ui',
+        'ImageViewer>Widget',
         'Input>Layout',
         'Input>Overlay',
         'Input>Support',
@@ -240,7 +240,6 @@ final class ArchitectureCheckCommand extends Command
         'Widget>Git',
         'Widget>Help',
         'Widget>Highlight',
-        'Widget>Image',
         'Widget>Input',
         'Widget>Layout',
         'Widget>Onboarding',

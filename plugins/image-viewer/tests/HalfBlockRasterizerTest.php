@@ -2,13 +2,13 @@
 
 declare(strict_types=1);
 
-namespace Porta\Tests\Unit\Image;
+namespace Porta\ImageViewer\Tests;
 
 use PHPUnit\Framework\TestCase;
-use Porta\Image\HalfBlockRasterizer;
-use Porta\Image\ImageData;
-use Porta\Image\SampleSource;
-use Porta\Image\ZoomPanModel;
+use Porta\ImageViewer\HalfBlockRasterizer;
+use Porta\ImageViewer\ImageData;
+use Porta\ImageViewer\SampleSource;
+use Porta\ImageViewer\ZoomPanModel;
 use Symfony\Component\Tui\Ansi\AnsiUtils;
 
 final class HalfBlockRasterizerTest extends TestCase

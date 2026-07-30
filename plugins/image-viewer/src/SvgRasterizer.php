@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace Porta\Image;
+namespace Porta\ImageViewer;
 
 use Porta\Support\AsyncProcess;
 use Symfony\Component\DependencyInjection\Attribute\Autowire;

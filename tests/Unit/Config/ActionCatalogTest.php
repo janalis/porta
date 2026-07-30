@@ -12,7 +12,6 @@ use Porta\Widget\ContextMenu;
 use Porta\Widget\FileTreeWidget;
 use Porta\Widget\FindBarWidget;
 use Porta\Widget\HelpViewerWidget;
-use Porta\Widget\ImageViewerWidget;
 use Porta\Widget\MenuBarWidget;
 use Porta\Widget\ResultsPanelWidget;
 use Porta\Widget\TerminalPanelWidget;
@@ -22,7 +21,7 @@ final class ActionCatalogTest extends TestCase
     /**
      * Every CORE widget that contributes default keybindings.
      *
-     * A plugin's pane binds catalog actions too — the graph viewer's eleven —
+     * A plugin's pane binds catalog actions too — the two viewers' nineteen —
      * and asserting that here would make a core test import plugin code. The
      * plugin's own suite pins its half instead, the same direction as the
      * architecture-filename agreement.
@@ -33,7 +32,6 @@ final class ActionCatalogTest extends TestCase
         FileTreeWidget::class,
         FindBarWidget::class,
         HelpViewerWidget::class,
-        ImageViewerWidget::class,
         MenuBarWidget::class,
         ResultsPanelWidget::class,
         TerminalPanelWidget::class,
@@ -64,8 +62,8 @@ final class ActionCatalogTest extends TestCase
         }
 
         foreach (ActionCatalog::ACTIONS as $id => $spec) {
-            if (str_starts_with($id, 'graph_')) {
-                continue; // bound by the graph-viewer plugin's pane; pinned in its suite
+            if (str_starts_with($id, 'graph_') || str_starts_with($id, 'image_')) {
+                continue; // bound by a viewer plugin's pane; each is pinned in its own suite
             }
             if (!array_key_exists('keys', $spec)) {
                 $this->assertArrayHasKey($id, $widgetBound, "action '{$id}' has no default binding anywhere");

@@ -5,7 +5,7 @@ declare(strict_types=1);
 namespace Porta\GraphViewer\Render;
 
 use Porta\GraphViewer\Graph\GraphNode;
-use Porta\Image\ZoomPanModel;
+use Porta\ImageViewer\ZoomPanModel;
 use Porta\Ui\Role;
 use Porta\Ui\Sgr;
 use Porta\Ui\Theme\Styles;

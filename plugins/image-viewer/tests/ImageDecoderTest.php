@@ -2,10 +2,10 @@
 
 declare(strict_types=1);
 
-namespace Porta\Tests\Unit\Image;
+namespace Porta\ImageViewer\Tests;
 
 use PHPUnit\Framework\TestCase;
-use Porta\Image\ImageDecoder;
+use Porta\ImageViewer\ImageDecoder;
 use Porta\Tests\Support\TempProject;
 
 final class ImageDecoderTest extends TestCase

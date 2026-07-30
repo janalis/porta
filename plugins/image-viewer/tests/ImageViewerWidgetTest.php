@@ -2,17 +2,17 @@
 
 declare(strict_types=1);
 
-namespace Porta\Tests\Unit\Widget;
+namespace Porta\ImageViewer\Tests;
 
 use PHPUnit\Framework\TestCase;
 use Porta\I18n\Translator;
-use Porta\Image\ImageData;
+use Porta\ImageViewer\ImageData;
+use Porta\ImageViewer\ImageViewerWidget;
 use Porta\Tests\Support\FakeRasterizer;
 use Porta\Tests\Support\FakeScheduler;
 use Porta\Tests\Support\PngFixture;
 use Porta\Tests\Support\RecordingViewerTabHandler;
 use Porta\Ui\Glyphs;
-use Porta\Widget\ImageViewerWidget;
 use Symfony\Component\Tui\Ansi\AnsiUtils;
 use Symfony\Component\Tui\Render\RenderContext;
 

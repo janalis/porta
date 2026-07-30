@@ -11,7 +11,7 @@ use Porta\GraphViewer\Graph\GraphLayout;
 use Porta\GraphViewer\Graph\GraphNode;
 use Porta\GraphViewer\Render\GraphCellGrid;
 use Porta\GraphViewer\Render\GraphRenderer;
-use Porta\Image\ZoomPanModel;
+use Porta\ImageViewer\ZoomPanModel;
 use Porta\Ui\Role;
 use Porta\Ui\Theme\Styles;
 use Symfony\Component\Tui\Ansi\AnsiUtils;

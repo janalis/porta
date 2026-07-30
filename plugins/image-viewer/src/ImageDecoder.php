@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace Porta\Image;
+namespace Porta\ImageViewer;
 
 /**
  * Decodes an image file into truecolor pixels via GD. Palette images (GIF,

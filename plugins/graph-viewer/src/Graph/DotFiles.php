@@ -7,7 +7,7 @@ namespace Porta\GraphViewer\Graph;
 /**
  * What counts as a Graphviz DOT file — the routing predicate
  * {@see \Porta\Editor\BufferService} uses to send a path to the graph viewer
- * instead of the text editor (the {@see \Porta\Image\ImageDecoder} mirror).
+ * instead of the text editor (the {@see \Porta\ImageViewer\ImageDecoder} mirror).
  */
 final class DotFiles
 {

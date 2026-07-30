@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace Porta\Image;
+namespace Porta\ImageViewer;
 
 /**
  * Turns SVG source into PNG bytes asynchronously — the seam the image viewer

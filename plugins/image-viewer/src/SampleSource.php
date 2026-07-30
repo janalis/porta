@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace Porta\Image;
+namespace Porta\ImageViewer;
 
 /**
  * The pixels {@see HalfBlockRasterizer} should read, plus how they relate to the

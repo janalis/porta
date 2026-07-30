@@ -8,7 +8,7 @@ use PHPUnit\Framework\TestCase;
 use Porta\GraphViewer\Graph\DotLayoutEngine;
 use Porta\GraphViewer\Graph\GraphExportFormat;
 use Porta\GraphViewer\Graph\GraphLayout;
-use Porta\Image\ImageDecoder;
+use Porta\ImageViewer\ImageDecoder;
 use Porta\Tests\Support\GraphvizBinary;
 use Porta\Tests\Support\PreservesPath;
 use Porta\Tests\Support\PumpsLoop;

@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace Porta\Image;
+namespace Porta\ImageViewer;
 
 /**
  * The viewer's zoom/pan state, in image pixels. The viewport is measured in

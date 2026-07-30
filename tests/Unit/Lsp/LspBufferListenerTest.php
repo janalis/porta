@@ -9,7 +9,7 @@ use Porta\Editor\BufferManager;
 use Porta\Event\BufferSaved;
 use Porta\Event\BufferSwitched;
 use Porta\I18n\Translator;
-use Porta\Image\ImageData;
+use Porta\ImageViewer\ImageData;
 use Porta\Lsp\CompletionController;
 use Porta\Lsp\LspBufferListener;
 use Porta\Lsp\LspSessionPool;

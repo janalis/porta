@@ -599,6 +599,14 @@ final class IdeHelpersTest extends TestCase
         $buffers->openHelp($this->project->path('docs/nope.md'));
         $this->assertSame($readme, $manager->active()?->path);
 
+        // A page that is not text is REFUSED by the pane's loader rather than
+        // rendered as mojibake — the same refusal every pane makes about a file
+        // its claim already accepted.
+        $binary = (string) realpath($this->project->write('docs/binary.md', "\xff\xfe\x00# not text"));
+        $buffers->openHelp($binary);
+        $this->assertSame($readme, $manager->active()?->path, 'the corrupt page opened no tab');
+        $this->assertStringContainsString('Not a UTF-8 text file', \Porta\Tests\Support\Toasts::last($this->ide));
+
         // A page changed on disk reloads through the filesystem poller.
         file_put_contents($readme, data: "# Guides v2\n");
         clearstatcache();
@@ -689,11 +697,9 @@ final class IdeHelpersTest extends TestCase
         $buffers = Services::resolve($this->ide, BufferManager::class);
         $this->assertNull($buffers->active(), 'the viewer close hook closed the only tab');
 
-        $imageViewer = Services::resolve($this->ide, \Porta\Widget\ImageViewerWidget::class);
-        $image = Probe::get($imageViewer, 'handler');
-        \assert($image instanceof \Porta\Editor\BufferNavigator, description: 'the image viewer is handled by the navigator itself');
-        $image->saveAll(); // same silent sweep through the shared navigator
-
+        // The other half of this test used to reach the image viewer the same
+        // way; it is a PLUGIN pane now, and that its handler arrives at all is
+        // pinned where the plugin is loaded (IdeImageViewerTest).
         $this->addToAssertionCount(1);
     }
 }

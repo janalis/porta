@@ -2,12 +2,12 @@
 
 declare(strict_types=1);
 
-namespace Porta\Tests\Integration;
+namespace Porta\ImageViewer\Tests;
 
 use PHPUnit\Framework\TestCase;
-use Porta\Image\ImageDecoder;
-use Porta\Image\SvgConverter;
-use Porta\Image\SvgRasterizer;
+use Porta\ImageViewer\ImageDecoder;
+use Porta\ImageViewer\SvgConverter;
+use Porta\ImageViewer\SvgRasterizer;
 use Porta\Tests\Support\PreservesPath;
 use Porta\Tests\Support\PumpsLoop;
 use Porta\Tests\Support\SvgConverterBinary;
@@ -22,7 +22,7 @@ final class SvgRasterizerTest extends TestCase
 
     private static function stub(): string
     {
-        return \dirname(__DIR__).'/Support/fake-rsvg';
+        return \dirname(__DIR__, levels: 3).'/tests/Support/fake-rsvg';
     }
 
     /** @return array{0: ?string, 1: ?string} [png bytes, error] once the run settles */

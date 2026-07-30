@@ -6,7 +6,7 @@ namespace Porta\GraphViewer\Tests\Graph;
 
 use PHPUnit\Framework\TestCase;
 use Porta\GraphViewer\Graph\PlantUmlEngine;
-use Porta\Image\ImageDecoder;
+use Porta\ImageViewer\ImageDecoder;
 use Porta\Tests\Support\PreservesPath;
 use Porta\Tests\Support\PumpsLoop;
 

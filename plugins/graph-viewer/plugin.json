@@ -1,4 +1,7 @@
 {
     "namespace": "Porta\\GraphViewer",
-    "autoload": "src"
+    "autoload": "src",
+    "requires": [
+        "image-viewer"
+    ]
 }

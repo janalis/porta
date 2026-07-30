@@ -8,7 +8,7 @@ use Porta\GraphViewer\Graph\GraphCluster;
 use Porta\GraphViewer\Graph\GraphEdge;
 use Porta\GraphViewer\Graph\GraphLayout;
 use Porta\GraphViewer\Graph\GraphNode;
-use Porta\Image\ZoomPanModel;
+use Porta\ImageViewer\ZoomPanModel;
 use Porta\Ui\Role;
 use Porta\Ui\Theme\Styles;
 

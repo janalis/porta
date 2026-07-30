@@ -11,7 +11,7 @@ use Porta\GraphViewer\Graph\GraphExportFormat;
 use Porta\GraphViewer\Graph\PlantUmlCommand;
 use Porta\GraphViewer\Graph\PlantUmlEngine;
 use Porta\GraphViewer\GraphViewerWidget;
-use Porta\Image\ImageDecoder;
+use Porta\ImageViewer\ImageDecoder;
 use Porta\Plugin\Api\AbstractPlugin;
 use Porta\Plugin\Api\PluginApi;
 use Porta\Widget\EditorPaneWidget;

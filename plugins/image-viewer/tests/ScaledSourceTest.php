@@ -2,14 +2,14 @@
 
 declare(strict_types=1);
 
-namespace Porta\Tests\Unit\Image;
+namespace Porta\ImageViewer\Tests;
 
 use PHPUnit\Framework\TestCase;
-use Porta\Image\HalfBlockRasterizer;
-use Porta\Image\ImageData;
-use Porta\Image\SampleSource;
-use Porta\Image\ScaledSource;
-use Porta\Image\ZoomPanModel;
+use Porta\ImageViewer\HalfBlockRasterizer;
+use Porta\ImageViewer\ImageData;
+use Porta\ImageViewer\SampleSource;
+use Porta\ImageViewer\ScaledSource;
+use Porta\ImageViewer\ZoomPanModel;
 
 /** The downscale anti-aliasing: what the rasterizer samples, and when. */
 final class ScaledSourceTest extends TestCase

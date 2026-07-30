@@ -2,23 +2,22 @@
 
 declare(strict_types=1);
 
-namespace Porta\Widget;
+namespace Porta\ImageViewer;
 
-use Porta\Container\AsIdeService;
-use Porta\Container\AsWidget;
 use Porta\I18n\Translator;
-use Porta\Image\HalfBlockRasterizer;
-use Porta\Image\ImageData;
-use Porta\Image\ImageDecoder;
-use Porta\Image\Rasterizer;
-use Porta\Image\ScaledSource;
-use Porta\Image\ZoomPanModel;
+use Porta\ImageViewer\HalfBlockRasterizer;
+use Porta\ImageViewer\ImageData;
+use Porta\ImageViewer\ImageDecoder;
+use Porta\ImageViewer\Rasterizer;
+use Porta\ImageViewer\ScaledSource;
+use Porta\ImageViewer\ZoomPanModel;
 use Porta\Support\DebouncedRequest;
 use Porta\Support\RevoltScheduler;
 use Porta\Support\Scheduler;
 use Porta\Ui\Glyphs;
 use Porta\Ui\Role;
 use Porta\Ui\Theme\Styles;
+use Porta\Widget\NavigablePaneWidget;
 use Symfony\Component\Tui\Ansi\AnsiUtils;
 use Symfony\Component\Tui\Input\Key;
 use Symfony\Component\Tui\Render\RenderContext;
@@ -30,8 +29,6 @@ use Symfony\Component\Tui\Render\RenderContext;
  * so the tab-cycling / close / go-to-file keys are re-bound here and routed
  * back to the IDE through {@see ViewerTabHandler}.
  */
-#[AsIdeService]
-#[AsWidget('image-viewer')]
 final class ImageViewerWidget extends NavigablePaneWidget
 {
     /** How long a zoom has to settle before the converter is asked for a sharper raster. */
@@ -63,6 +60,8 @@ final class ImageViewerWidget extends NavigablePaneWidget
         ?Styles $styles = null,
     ) {
         $this->initStyles($styles);
+        // Hand-built by its plugin, so the id #[AsWidget] used to apply is set here.
+        $this->setId('image-viewer');
         $this->pending = new DebouncedRequest($scheduler ?? new RevoltScheduler(), self::RENDER_DEBOUNCE);
         $this->scaled = new ScaledSource();
     }

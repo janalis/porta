@@ -12,7 +12,7 @@ use Porta\Event\GitRemoteCompleted;
 use Porta\Git\GitInfo;
 use Porta\Git\GitRefresher;
 use Porta\Git\GitSettings;
-use Porta\Image\ImageData;
+use Porta\ImageViewer\ImageData;
 use Porta\Tests\Support\GitBinary;
 use Porta\Tests\Support\Presence;
 use Porta\Tests\Support\Probe;

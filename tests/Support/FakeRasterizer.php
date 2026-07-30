@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace Porta\Tests\Support;
 
-use Porta\Image\Rasterizer;
+use Porta\ImageViewer\Rasterizer;
 
 /**
  * A scriptable {@see Rasterizer} for widget tests: answers with queued PNG bytes

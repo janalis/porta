@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace Porta\Image;
+namespace Porta\ImageViewer;
 
 /**
  * Anti-aliasing for the way DOWN: below 1:1 it hands the rasterizer a GD-resampled

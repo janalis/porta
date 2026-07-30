@@ -17,7 +17,7 @@ namespace Porta\Input;
  * whole ladder.
  *
  * So a notch that continues a burst asks for a small FACTOR instead
- * ({@see \Porta\Image\ZoomPanModel::magnifyAt()}), and the gesture glides. A
+ * ({@see \Porta\ImageViewer\ZoomPanModel::magnifyAt()}), and the gesture glides. A
  * notch that stands alone — a real mouse wheel, or a deliberate single
  * scroll — still gets null, and the caller steps the ladder exactly as before.
  *

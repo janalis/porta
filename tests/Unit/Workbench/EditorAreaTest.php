@@ -7,13 +7,10 @@ namespace Porta\Tests\Unit\Workbench;
 use PHPUnit\Framework\TestCase;
 use Porta\Editor\BufferManager;
 use Porta\Editor\EditorPanes;
-use Porta\I18n\Translator;
-use Porta\Image\ImageData;
-use Porta\Tests\Support\FakeRasterizer;
+use Porta\ImageViewer\ImageData;
 use Porta\Tests\Support\TestPane;
 use Porta\Widget\CodeEditorWidget;
 use Porta\Widget\HelpViewerWidget;
-use Porta\Widget\ImageViewerWidget;
 use Porta\Workbench\EditorArea;
 use Symfony\Component\Tui\Terminal\VirtualTerminal;
 use Symfony\Component\Tui\Tui;
@@ -24,7 +21,7 @@ final class EditorAreaTest extends TestCase
 
     private CodeEditorWidget $editor;
 
-    private ImageViewerWidget $imageViewer;
+    private TestPane $imageViewer;
 
     private HelpViewerWidget $helpViewer;
 
@@ -38,7 +35,7 @@ final class EditorAreaTest extends TestCase
     {
         $this->buffers = new BufferManager();
         $this->editor = new CodeEditorWidget();
-        $this->imageViewer = new ImageViewerWidget(new FakeRasterizer(), new Translator('en'));
+        $this->imageViewer = new TestPane('image');
         $this->helpViewer = new HelpViewerWidget();
         $this->graphViewer = new TestPane('graph');
         $this->tui = new Tui(terminal: new VirtualTerminal(columns: 40, rows: 10));

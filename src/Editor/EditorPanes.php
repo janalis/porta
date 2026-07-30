@@ -63,6 +63,21 @@ final class EditorPanes
         return $this->loaders[$id] ?? null;
     }
 
+    /**
+     * Read $path through the pane registered for $id.
+     *
+     * Throws when the loader refuses the file — too large, undecodable, not
+     * text — and equally when no pane answers to $id at all, which a caller
+     * that already checked cannot hit but a caller that knows the id by heart
+     * (core's help pane) can, if that pane is ever not there.
+     */
+    public function load(string $id, string $path): mixed
+    {
+        $load = $this->loaders[$id] ?? throw new \RuntimeException(\sprintf('No pane answers to "%s"', $id));
+
+        return $load($path);
+    }
+
     /** @return list<EditorPaneWidget> every registered pane, for the sweeps that range over all of them */
     public function all(): array
     {
