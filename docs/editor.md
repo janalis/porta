@@ -94,6 +94,17 @@ pointer (12.5%–800%); pan with the arrows or the wheel. Shrinking averages
 the pixels it covers, so a downscaled image keeps its thin lines instead of
 shimmering; magnifying stays pixel-crisp.
 
+`.svg` files open here too, rasterized by an external converter — the
+`svgConverter` setting if you set one, otherwise `rsvg-convert`, `magick` or
+`convert`, whichever is installed. Zooming in re-renders the drawing rather
+than magnifying pixels, so it stays sharp, and the status bar reports the
+document's own size (100% means 100% of the SVG). With no converter
+installed — or with *Render SVG as an image* turned off on the image-viewer
+plugin's settings page — `.svg` keeps opening as editable XML, as it always
+has. **Open as Text** (`Ctrl+Alt+X`, or the palette) is the per-file way back:
+it reopens the active viewer tab in the editor, and works for a graph's DOT or
+an image's bytes just as well.
+
 **Ctrl+two-finger-scroll on a trackpad is the pinch**: after the first notch
 the zoom glides continuously toward the pointer instead of jumping between
 the preset levels, while a single deliberate wheel click still snaps to the

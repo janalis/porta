@@ -591,9 +591,40 @@ keyed on the image IDENTITY as well as the scale so a new tab is never shown the
 copy — which is why there is no `reset()` to forget. `SampleSource::$ratio` is source pixels per
 view unit, and it does double duty: 1.0 for an image, and dpi/72 for the graph viewer's
 oversampled bitmap, whose pixels are denser than the layout points its zoom is measured in
-(`forScale(…, ratio:)` composes the two and returns the ratio in the caller's units). One visible
-consequence: the alpha checkerboard's squares stay 8 SCREEN pixels instead of shrinking with the
-zoom.
+(`forScale(…, ratio:)` composes the two and returns the ratio in the caller's units — and the SVG
+raster's own scale is the third user of the same field). One visible consequence: the alpha
+checkerboard's squares stay 8 SCREEN pixels instead of shrinking with the zoom.
+
+**The two VECTOR viewers share one arrangement**, because a graph and an SVG are the same kind of
+source — no resolution of their own until something picks one. Both hold the SOURCE (`Buffer::$graphDot`
+/ `Buffer::$svg`, `isVector()`), ask an external renderer for pixels at the resolution the zoom
+needs (`dot -Tpng -Gdpi=` / `Image/SvgRasterizer` over `rsvg-convert -z` or ImageMagick
+`-density`, both async, stdin→stdout, one slot latest-wins), hold the previous bitmap on screen
+while it works, keep ONE bitmap at a time, and re-render through
+**`Support/DebouncedRequest`** (coalesce on the wanted value, cancel-and-re-arm, forget on reset —
+a timer left armed on a gone document fires into a dead pane). Two rules are load-bearing and were
+each earned by a test: the requested resolution CEILINGS to a whole multiple, so a Ctrl+scroll
+glide costs one process rather than one per notch; and **only a probe may establish the document's
+size** — a scaled re-render returns the same picture at a different resolution and must not
+redefine the coordinate space its own zoom is expressed in (dividing the raster back by its scale
+turns any rounding into a silent refit). A probe whose size DIFFERS is a different picture (the
+file changed on disk) and is fitted fresh. A **shared trait for the scheduling cluster was
+measured and rejected** — 3 of ~8 dependencies exclusive, the rest being each widget's
+most-touched state plus three genuinely different policies (the gate, the resolution function,
+the call) — so only the mechanism was extracted.
+
+**SVG (`Image/SvgRasterizer`, `Image/SvgConverter`).** GD cannot decode SVG, so an external
+converter rasterizes it: the `svgConverter` CORE setting, else `rsvg-convert`, `magick`, `convert`
+in that order. Both argv shapes take a SCALE and agree exactly (measured: a 100×50 document at 3.5
+gives 350×175 from either) — `-density` and NOT `-resize`, which would rasterize at the intrinsic
+size and upscale a bitmap. A render with NO scale emits the document's own pixels, and that is how
+the viewer learns its size: asking the converter beats parsing `width`/`height`/`viewBox`, because
+units, percentages and the spec's defaults become librsvg's problem. Routing is the image-viewer
+plugin's claim, which adds `.svg` only when its `svg` setting is on AND a converter resolves (via
+`coreSetting()` — a plugin cannot read a core setting any other way), so a machine without one
+keeps the text path. `Editor/OpenAs::Text` + the `open_as_text` command (Ctrl+Alt+X, an IDE-scope
+binding because the editor widget is DETACHED while a viewer holds the pane) is the way back to
+the XML, the DOT, or any viewer file's bytes.
 
 **Floating surfaces — the `Overlay/` subsystem, three tiers.** Every modal floats over the whole
 workspace on one per-pane span path (spans pushed through `setModalOverlay` + backdrop dim,
