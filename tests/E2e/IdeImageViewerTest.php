@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Porta\Tests\E2e;
 
 use PHPUnit\Framework\TestCase;
+use Porta\Config\CommandRegistry;
 use Porta\Editor\BufferManager;
 use Porta\Editor\BufferService;
 use Porta\Editor\OpenFocus;
@@ -388,6 +389,31 @@ final class IdeImageViewerTest extends TestCase
                     Services::resolve($ide, BufferService::class)->openFile((string) realpath($project->path('logo.svg')));
                     $this->await(static fn (): bool => str_contains(AnsiUtils::stripAnsiCodes($terminal->getOutput()), '60 × 30'), what: 'the re-rasterized document');
                     $this->assertSame('60 × 30', $tui->getById('image-viewer')->statusInfo(), 'a resized document is fitted fresh');
+                },
+            ],
+        );
+    }
+
+    public function testOpenAsTextGivesTheXmlBack(): void
+    {
+        $project = new TempProject([
+            '.porta.json' => (string) json_encode(['settings' => ['svgConverter' => self::fakeConverter()]]),
+            'logo.svg' => self::SMALL_SVG,
+        ]);
+        $this->phpOnlyPath($project);
+
+        $this->runIde(
+            $project,
+            $project->path('logo.svg'),
+            [
+                200 => function ($tui, $terminal, $ide): void {
+                    $this->await(static fn (): bool => str_contains(AnsiUtils::stripAnsiCodes($terminal->getOutput()), '100 × 50'), what: 'the rasterized SVG');
+                    $this->assertSame('image-viewer', $tui->getFocus()?->getId());
+
+                    Services::resolve($ide, CommandRegistry::class)->run('open_as_text');
+                    $this->await(static fn (): bool => str_contains(AnsiUtils::stripAnsiCodes($terminal->getOutput()), '<svg'), what: 'the XML behind the picture');
+                    $this->assertSame('editor', $tui->getFocus()?->getId(), 'the editor took the pane back');
+                    $this->assertStringContainsString('viewBox', Services::resolve($ide, CodeEditorWidget::class)->getDocument()->getText(), 'and it is editable');
                 },
             ],
         );

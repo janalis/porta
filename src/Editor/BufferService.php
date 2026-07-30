@@ -74,10 +74,16 @@ final class BufferService implements BufferReopener, DiagnosticsSink, FileOpener
         private readonly ViewerProviderSource $viewers,
     ) {}
 
-    public function openFile(string $path, OpenFocus $focus = OpenFocus::Keep): void
+    public function openFile(string $path, OpenFocus $focus = OpenFocus::Keep, OpenAs $as = OpenAs::Viewer): void
     {
         $path = ($resolved = realpath($path)) ? $resolved : $path;
 
+        // "Open as Text" on a tab that is already a viewer: drop it first, so
+        // the path key is free for a text buffer. A viewer tab holds an empty
+        // document, so there is nothing to lose and nothing to confirm.
+        if (OpenAs::Text === $as && true === $this->buffers->get($path)?->isViewer()) {
+            $this->buffers->close($path);
+        }
         if ($this->buffers->has($path)) {
             /** @var Buffer $active */
             $active = $this->buffers->setActive($path);
@@ -99,7 +105,7 @@ final class BufferService implements BufferReopener, DiagnosticsSink, FileOpener
         // bundled image-viewer/graph-viewer plugins claim their extensions —
         // disabling one routes its files here to the text path instead; an id
         // no built-in pane answers to falls through the same way).
-        $viewer = $this->viewers->viewerFor($path);
+        $viewer = OpenAs::Text === $as ? null : $this->viewers->viewerFor($path);
         if ('image' === $viewer) {
             $this->openImageFile($path, $focus);
 
@@ -361,24 +367,32 @@ final class BufferService implements BufferReopener, DiagnosticsSink, FileOpener
         }
     }
 
+    /**
+     * Hand an image tab to the viewer. A VECTOR tab hands over its source
+     * instead of pixels — the viewer owns those, because which pixels depends on
+     * the zoom — and the two are exclusive: an SVG buffer carries no decoded
+     * image and a bitmap one carries no source.
+     */
+    private function showImageBuffer(Buffer $buffer): void
+    {
+        // Neutralize the editor so any jumpTo() fired after openFile() mutates a
+        // throwaway document, not the previous buffer's cursor.
+        $this->editor->showDocument('', new Document(''));
+        if ($buffer->isVector()) {
+            $this->imageViewer->showVector($buffer->path, (string) $buffer->svg);
+        }
+        if (null !== $buffer->image) {
+            $this->imageViewer->show($buffer->image);
+        }
+        $this->swapEditorPaneTo($this->imageViewer);
+        $this->dispatcher->dispatch(new BufferSwitched($buffer));
+        $this->tui->requestRender();
+    }
+
     public function showBuffer(Buffer $buffer): void
     {
         if ($buffer->isImage()) {
-            // Neutralize the editor so any jumpTo() fired after openFile()
-            // mutates a throwaway document, not the previous buffer's cursor.
-            $this->editor->showDocument('', new Document(''));
-            // A vector tab hands over its SOURCE: the viewer owns the pixels,
-            // because which pixels depends on the zoom. The two are exclusive —
-            // an SVG buffer carries no decoded image and vice versa.
-            if ($buffer->isVector()) {
-                $this->imageViewer->showVector($buffer->path, (string) $buffer->svg);
-            }
-            if (null !== $buffer->image) {
-                $this->imageViewer->show($buffer->image);
-            }
-            $this->swapEditorPaneTo($this->imageViewer);
-            $this->dispatcher->dispatch(new BufferSwitched($buffer));
-            $this->tui->requestRender();
+            $this->showImageBuffer($buffer);
 
             return;
         }

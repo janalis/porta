@@ -83,6 +83,9 @@ final class ActionCatalog
         // Editor: IDE features
         'save' => ['label' => 'Save File'],
         'save_all' => ['label' => 'Save All'],
+        // IDE scope, not the editor keymap: the point of this one is to be
+        // available while a VIEWER holds the pane and the editor is detached.
+        'open_as_text' => ['label' => 'Open as Text', 'keys' => ['ctrl+alt+x']],
         'trigger_completion' => ['label' => 'Code Completion'],
         'accept_completion' => ['label' => 'Accept Completion'],
         'select_cancel' => ['label' => 'Cancel'],
