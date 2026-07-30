@@ -137,6 +137,54 @@ final class ZoomPanModelTest extends TestCase
         $this->assertSame('800%', $view->zoomLabel(40, 40));
     }
 
+    public function testMagnifyAtGlidesOffTheLadderAndKeepsTheAnchorFixed(): void
+    {
+        $view = new ZoomPanModel(100, 50);
+        $view->actualSize(40, 40); // 100%, srcX/srcY = 30/5
+
+        // A gesture's worth of small increments lands between the rungs.
+        $view->magnifyAt(1.25, 10, 10, 40, 40);
+        $this->assertSame('125%', $view->zoomLabel(40, 40), 'a factor, not a rung');
+        $view->magnifyAt(1.2, 10, 10, 40, 40);
+        $this->assertSame('150%', $view->zoomLabel(40, 40));
+
+        // The anchored image point (40,15) is still under cell (10,10): at 150%
+        // that is srcX + 10/1.5 = 40 and srcY + 10/1.5 = 15, both rounded.
+        $rect = $view->visibleRect(40, 40);
+        $this->assertSame([33, 8], [$rect['srcX'], $rect['srcY']]);
+
+        // And gliding back down returns to where it started.
+        $view->magnifyAt(1 / 1.5, 10, 10, 40, 40);
+        $this->assertSame('100%', $view->zoomLabel(40, 40));
+        $rect = $view->visibleRect(40, 40);
+        $this->assertSame([30, 5], [$rect['srcX'], $rect['srcY']]);
+    }
+
+    public function testMagnifyAtClampsToTheLaddersEndsAndIsInertThere(): void
+    {
+        $view = new ZoomPanModel(100, 50);
+        $view->actualSize(40, 40);
+
+        $view->magnifyAt(100.0, 10, 10, 40, 40); // way past the 800% ceiling
+        $this->assertSame('800%', $view->zoomLabel(40, 40), 'the ladder still bounds a free zoom');
+        $before = $view->visibleRect(40, 40);
+        $view->magnifyAt(2.0, 10, 10, 40, 40); // already there: nothing moves
+        $this->assertSame($before, $view->visibleRect(40, 40));
+
+        $view->magnifyAt(0.001, 10, 10, 40, 40); // way past the 12.5% floor
+        $this->assertSame('13%', $view->zoomLabel(40, 40), 'the 12.5% floor, rounded for display');
+    }
+
+    public function testMagnifyAtHonoursACustomLaddersBounds(): void
+    {
+        $view = new ZoomPanModel(10_000, 10_000, [0.031_25, 0.062_5, 0.125]);
+
+        $view->magnifyAt(100.0, 10, 10, 80, 48);
+        $this->assertSame('13%', $view->zoomLabel(80, 48), 'the graph ladder tops out at 12.5%');
+        $view->magnifyAt(0.000_1, 10, 10, 80, 48);
+        $this->assertSame('3%', $view->zoomLabel(80, 48), 'and bottoms out at its own 3.125% floor');
+    }
+
     public function testZoomAtClampsALetterboxAnchorToTheImageEdge(): void
     {
         $view = new ZoomPanModel(2, 2); // fit = 2 in an 8×4 pane, padCols = 2

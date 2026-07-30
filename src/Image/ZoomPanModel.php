@@ -57,11 +57,37 @@ final class ZoomPanModel
      */
     public function zoomAt(int $dir, int $anchorCol, int $anchorHalfRow, int $cols, int $pxRows): void
     {
-        $old = $this->effectiveScale($cols, $pxRows);
-        $new = $this->step($old, $dir);
-        if (null === $new) {
-            return; // already past the ladder's end in that direction
+        $new = $this->step($this->effectiveScale($cols, $pxRows), $dir);
+        if (null !== $new) {
+            $this->applyAt($new, $anchorCol, $anchorHalfRow, $cols, $pxRows);
         }
+    }
+
+    /**
+     * Zoom by an arbitrary FACTOR, off the ladder, keeping the same anchor fixed
+     * — the continuous half of the zoom, for a gesture that arrives as a burst
+     * of small increments (a trackpad's Ctrl+scroll). Clamped to the ladder's own
+     * ends, so a ladder still defines how far a viewer may zoom even when the
+     * rungs are bypassed; a factor that lands outside leaves the view untouched.
+     */
+    public function magnifyAt(float $factor, int $anchorCol, int $anchorHalfRow, int $cols, int $pxRows): void
+    {
+        $ladder = $this->steps ?? self::STEPS;
+        $old = $this->effectiveScale($cols, $pxRows);
+        $new = max($ladder[0], min($old * $factor, $ladder[\count($ladder) - 1]));
+        if (abs($new - $old) > 1e-9) {
+            $this->applyAt($new, $anchorCol, $anchorHalfRow, $cols, $pxRows);
+        }
+    }
+
+    /**
+     * Adopt $new, re-panning so the image point under ($anchorCol,
+     * $anchorHalfRow) stays under it. An anchor over the letterbox clamps to the
+     * nearest image edge.
+     */
+    private function applyAt(float $new, int $anchorCol, int $anchorHalfRow, int $cols, int $pxRows): void
+    {
+        $old = $this->effectiveScale($cols, $pxRows);
         $rect = $this->visibleRect($cols, $pxRows);
         $pX = max(0.0, min((float) $this->imgW, $rect['srcX'] + (($anchorCol - $rect['padCols']) / $old)));
         $pY = max(0.0, min((float) $this->imgH, $rect['srcY'] + (($anchorHalfRow - $rect['padHalfRows']) / $old)));
