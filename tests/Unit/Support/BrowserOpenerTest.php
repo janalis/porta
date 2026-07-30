@@ -6,21 +6,11 @@ namespace Porta\Tests\Unit\Support;
 
 use PHPUnit\Framework\TestCase;
 use Porta\Support\BrowserOpener;
+use Porta\Tests\Support\PreservesPath;
 
 final class BrowserOpenerTest extends TestCase
 {
-    private ?string $savedPath = null;
-
-    protected function setUp(): void
-    {
-        $path = getenv('PATH');
-        $this->savedPath = $path ? $path : null;
-    }
-
-    protected function tearDown(): void
-    {
-        putenv(null === $this->savedPath ? 'PATH' : 'PATH='.$this->savedPath);
-    }
+    use PreservesPath;
 
     /** A temp dir holding executable shims named $names, put first on PATH. */
     private function shimPath(string ...$names): string

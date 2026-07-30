@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Porta\Tests\E2e;
 
 use PHPUnit\Framework\TestCase;
+use Porta\Tests\Support\PreservesPath;
 use Porta\Tests\Support\Probe;
 use Porta\Tests\Support\RunsIde;
 use Porta\Tests\Support\Services;
@@ -21,6 +22,7 @@ use Symfony\Component\Tui\Ansi\AnsiUtils;
  */
 final class IdeToastsTest extends TestCase
 {
+    use PreservesPath;
     use RunsIde;
 
     public function testAFlashRendersAsACornerCardDismissableByItsClose(): void
